@@ -56,7 +56,10 @@ const out={};
 Object.keys(obj).forEach(k=>{
 if(k==='id')return;
 const dbKey=map[k]||k;
-out[dbKey]=obj[k];
+let val=obj[k];
+// Postgres rifiuta stringhe vuote per colonne date/numeriche: convertiamo '' in null
+if(val==='')val=null;
+out[dbKey]=val;
 });
 return out;
 };
@@ -2339,6 +2342,7 @@ const [studioInfo,setStudioInfo]=useState(DEF_STUDIO);
 const [appTypes,setAppTypes]=useState([]);
 const [initPatId,setInitPatId]=useState(null);
 const [schedaDashPaz,setSchedaDashPaz]=useState(null);
+const [syncError,setSyncError]=useState(null);
 
 // ── controllo sessione all'avvio + listener cambi auth ──
 useEffect(()=>{
@@ -2394,8 +2398,9 @@ return()=>{cancelled=true;};
 
 // ── wrapper setter "intelligente": confronta prev/next e traduce le differenze
 // in insert/update/delete reali su Supabase, sostituendo gli id temporanei locali
-// con gli id veri assegnati dal database.
-const makeSyncSetter=(key,setLocal)=>{
+// con gli id veri assegnati dal database. Gli errori vengono mostrati a schermo
+// (non solo in console) tramite setSyncError, passato dal componente App.
+const makeSyncSetter=(key,setLocal,onError)=>{
 return (updater)=>{
 setLocal(prev=>{
 const next=typeof updater==='function'?updater(prev):updater;
@@ -2403,18 +2408,25 @@ const prevIds=new Set(prev.map(x=>x.id));
 const nextIds=new Set(next.map(x=>x.id));
 
 prev.forEach(item=>{
-if(!nextIds.has(item.id))DB.remove(key,item.id).catch(e=>console.error('remove',key,e));
+if(!nextIds.has(item.id))DB.remove(key,item.id).catch(e=>{console.error('remove',key,e);onError&&onError(`Errore eliminazione: ${e.message||e}`);});
 });
 
 const nuovi=next.filter(item=>!prevIds.has(item.id));
 if(nuovi.length>0){
 (async()=>{
+let falliti=0;
 for(const item of nuovi){
 try{
 const {id:tempId,...rest}=item;
 const saved=await DB.insert(key,rest);
 setLocal(curr=>curr.map(x=>x.id===tempId?{...x,id:saved.id}:x));
-}catch(e){console.error('insert',key,e);}
+}catch(e){
+console.error('insert',key,e);
+falliti++;
+}
+}
+if(falliti>0&&onError){
+onError(`${falliti} elemento/i non salvato/i sul cloud. Controlla i campi obbligatori (es. nome/cognome) e riprova.`);
 }
 })();
 }
@@ -2424,7 +2436,7 @@ if(prevIds.has(item.id)){
 const before=prev.find(x=>x.id===item.id);
 if(before&&JSON.stringify(before)!==JSON.stringify(item)){
 const {id,...rest}=item;
-DB.update(key,id,rest).catch(e=>console.error('update',key,e));
+DB.update(key,id,rest).catch(e=>{console.error('update',key,e);onError&&onError(`Errore salvataggio: ${e.message||e}`);});
 }
 }
 });
@@ -2434,13 +2446,13 @@ return next;
 };
 };
 
-const setPatientsSync=makeSyncSetter('dm_p',setPatients);
-const setAppointmentsSync=makeSyncSetter('dm_a',setAppointments);
-const setPlansSync=makeSyncSetter('dm_pl',setPlans);
-const setPaymentsSync=makeSyncSetter('dm_py',setPayments);
-const setPricelistSync=makeSyncSetter('dm_pr',setPricelist);
-const setTemplatesSync=makeSyncSetter('dm_tp',setTemplates);
-const setAppTypesSync=makeSyncSetter('dm_at',setAppTypes);
+const setPatientsSync=makeSyncSetter('dm_p',setPatients,setSyncError);
+const setAppointmentsSync=makeSyncSetter('dm_a',setAppointments,setSyncError);
+const setPlansSync=makeSyncSetter('dm_pl',setPlans,setSyncError);
+const setPaymentsSync=makeSyncSetter('dm_py',setPayments,setSyncError);
+const setPricelistSync=makeSyncSetter('dm_pr',setPricelist,setSyncError);
+const setTemplatesSync=makeSyncSetter('dm_tp',setTemplates,setSyncError);
+const setAppTypesSync=makeSyncSetter('dm_at',setAppTypes,setSyncError);
 
 const setStudioInfoSync=(updaterOrVal)=>{
 setStudioInfo(prev=>{
@@ -2473,6 +2485,11 @@ return <div style={{display:'flex',flexDirection:'column',height:'100dvh',backgr
 <button onClick={handleLogout} title="Esci" style={{background:'rgba(255,255,255,0.12)',border:'none',borderRadius:6,padding:'4px 8px',color:'#fff',fontSize:10,fontWeight:700,cursor:'pointer'}}>Esci</button>
 </div>
 </div>
+{syncError&&<div style={{background:C.danL,borderBottom:`2px solid ${C.dan}`,padding:'9px 14px',display:'flex',alignItems:'flex-start',gap:8,flexShrink:0}}>
+<span style={{fontSize:15,flexShrink:0}}>⚠️</span>
+<span style={{flex:1,fontSize:12,fontWeight:600,color:'#C53030',lineHeight:1.4}}>{syncError}</span>
+<button onClick={()=>setSyncError(null)} style={{background:'none',border:'none',cursor:'pointer',padding:2,flexShrink:0,color:'#C53030',fontWeight:800,fontSize:14}}>✕</button>
+</div>}
 {schedaDashPaz&&<SchedaPaz
 paz={schedaDashPaz.paz}
 initTab={schedaDashPaz.tab}
