@@ -146,11 +146,13 @@ export default function PdfView({ pl, paz, si, onClose }) {
         y += boxH + 4;
       }
 
-      if (y > 275) { doc.addPage(); y = 18; }
-      y += 4; hLine(y); y += 4;
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(74, 85, 104);
+      // Footer fisso a fondo pagina (y=285 su A4 210x297mm)
+      const footerY = 287;
+      doc.setDrawColor(203, 213, 224); doc.setLineWidth(0.3);
+      doc.line(margin, footerY - 4, W - margin, footerY - 4);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(74, 85, 104);
       const foot = [si.tel && `Tel: ${si.tel}`, si.addr1, si.addr2, si.email].filter(Boolean);
-      txt(foot.join('   |   '), W / 2, y, { align: 'center' });
+      txt(foot.join('   |   '), W / 2, footerY, { align: 'center' });
 
       const nomeFile = `preventivo_${(paz?.cognome || 'paziente').replace(/\s+/g, '_')}_${String(pl.id || Date.now()).slice(-6)}.pdf`.toLowerCase();
 
