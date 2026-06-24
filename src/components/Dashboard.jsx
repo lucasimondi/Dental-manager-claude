@@ -11,14 +11,20 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
   const mInc = payments.filter((p) => p.data && p.data.startsWith(t.slice(0, 7))).reduce((s, p) => s + Number(p.importo), 0);
   const upcoming = [...appointments].filter((a) => a.data >= t).sort((a, b) => a.data.localeCompare(b.data) || a.ora.localeCompare(b.ora)).slice(0, 6);
 
+  // Calcolo basato su pagamenti reali (dovuto piani - pagamenti registrati)
   const saldoPerPaz = patients.map((paz) => {
     const patPlans = plans.filter((pl) => pl.pazienteId === paz.id);
-    const vociDaInc = patPlans.flatMap((pl) => pl.voci.filter((v) => v.eseguita && !v.incassata).map((v) => ({ ...v, pianoTitolo: pl.titolo, pianoId: pl.id })));
-    const vociIncAnno = patPlans.flatMap((pl) => pl.voci.filter((v) => v.incassata && v.dataEsec && v.dataEsec.startsWith(anno)).map((v) => ({ ...v, pianoTitolo: pl.titolo })));
-    const totDaInc = vociDaInc.reduce((s, v) => s + Number(v.prezzo), 0);
-    const totIncAnno = vociIncAnno.reduce((s, v) => s + Number(v.prezzo), 0);
-    return { paz, vociDaInc, vociIncAnno, totDaInc, totIncAnno };
-  }).filter((x) => x.totDaInc > 0 || x.totIncAnno > 0);
+    const dovuto = patPlans.reduce((s, pl) => {
+      const sub = pl.voci.reduce((a, v) => a + Number(v.prezzo), 0);
+      const sc = Number(pl.sconto) || 0;
+      const scontato = pl.scontoTipo === 'pct' ? sub * (sc / 100) : Math.min(sc, sub);
+      return s + Math.max(0, sub - scontato);
+    }, 0);
+    const pagato = payments.filter((p) => p.pazienteId === paz.id).reduce((s, p) => s + Number(p.importo), 0);
+    const pagatoAnno = payments.filter((p) => p.pazienteId === paz.id && p.data && p.data.startsWith(anno)).reduce((s, p) => s + Number(p.importo), 0);
+    const totDaInc = Math.max(0, dovuto - pagato);
+    return { paz, dovuto, pagato, pagatoAnno, totDaInc, totIncAnno: pagatoAnno };
+  }).filter((x) => x.dovuto > 0 || x.pagato > 0);
 
   const totDaInc = saldoPerPaz.reduce((s, x) => s + x.totDaInc, 0);
   const totIncAnno = saldoPerPaz.reduce((s, x) => s + x.totIncAnno, 0);
@@ -223,7 +229,7 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
             <span style={{ fontSize: 20, fontWeight: 900, color: C.dan }}>{fmt(totDaInc)}</span>
           </div>
           {righeDAInc.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Nessun residuo 🎉</div>}
-          {righeDAInc.map(({ paz, totDaInc: tot, vociDaInc }) => (
+          {righeDAInc.map(({ paz, totDaInc: tot, dovuto, pagato }) => (
             <Crd key={paz.id} style={{ marginBottom: 10, borderLeft: `3px solid ${C.dan}` }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
                 <div>
@@ -232,18 +238,9 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: 18, fontWeight: 900, color: C.dan }}>{fmt(tot)}</div>
-                  <div style={{ fontSize: 10, color: C.txm }}>{vociDaInc.length} prestazion{vociDaInc.length === 1 ? 'e' : 'i'}</div>
+                  <div style={{ fontSize: 10, color: C.txm }}>dovuto {fmt(dovuto)} · pagato {fmt(pagato)}</div>
                 </div>
               </div>
-              {vociDaInc.map((v, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '6px 0', borderTop: `1px solid ${C.brd}`, fontSize: 12, gap: 8 }}>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontWeight: 600 }}>{v.prestazione}{v.dente ? ` · d.${v.dente}` : ''}</div>
-                    <div style={{ fontSize: 10, color: C.txl }}>{v.pianoTitolo}{v.dataEsec ? ` · eseguita ${fmtD(v.dataEsec)}` : ''}</div>
-                  </div>
-                  <span style={{ fontWeight: 800, color: C.dan, flexShrink: 0 }}>{fmt(v.prezzo)}</span>
-                </div>
-              ))}
             </Crd>
           ))}
         </Modal>
@@ -256,29 +253,29 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
             <span style={{ fontSize: 20, fontWeight: 900, color: C.suc }}>{fmt(totIncAnno)}</span>
           </div>
           {righeInc.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Nessun incasso registrato</div>}
-          {righeInc.map(({ paz, totIncAnno: tot, vociIncAnno }) => (
-            <Crd key={paz.id} style={{ marginBottom: 10, borderLeft: `3px solid ${C.suc}` }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
-                <div>
-                  <div onClick={() => { setDetailModal(null); onOpenPaz(paz, 'paga'); }} style={{ fontWeight: 700, fontSize: 14, color: C.pri, cursor: 'pointer', textDecoration: 'underline', textDecorationColor: C.pri + '60' }}>{paz.nome} {paz.cognome} ›</div>
-                  {paz.telefono && <div style={{ fontSize: 11, color: C.txm }}>📞 {paz.telefono}</div>}
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 18, fontWeight: 900, color: C.suc }}>{fmt(tot)}</div>
-                  <div style={{ fontSize: 10, color: C.txm }}>{vociIncAnno.length} prestazion{vociIncAnno.length === 1 ? 'e' : 'i'}</div>
-                </div>
-              </div>
-              {vociIncAnno.map((v, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '6px 0', borderTop: `1px solid ${C.brd}`, fontSize: 12, gap: 8 }}>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontWeight: 600 }}>{v.prestazione}{v.dente ? ` · d.${v.dente}` : ''}</div>
-                    <div style={{ fontSize: 10, color: C.txl }}>{v.pianoTitolo}{v.dataEsec ? ` · ${fmtD(v.dataEsec)}` : ''}</div>
+          {righeInc.map(({ paz, totIncAnno: tot }) => {
+            const patPay = payments.filter((p) => p.pazienteId === paz.id && p.data && p.data.startsWith(anno));
+            return (
+              <Crd key={paz.id} style={{ marginBottom: 10, borderLeft: `3px solid ${C.suc}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+                  <div>
+                    <div onClick={() => { setDetailModal(null); onOpenPaz(paz, 'paga'); }} style={{ fontWeight: 700, fontSize: 14, color: C.pri, cursor: 'pointer', textDecoration: 'underline', textDecorationColor: C.pri + '60' }}>{paz.nome} {paz.cognome} ›</div>
+                    {paz.telefono && <div style={{ fontSize: 11, color: C.txm }}>📞 {paz.telefono}</div>}
                   </div>
-                  <span style={{ fontWeight: 800, color: C.suc, flexShrink: 0 }}>{fmt(v.prezzo)}</span>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: C.suc }}>{fmt(tot)}</div>
+                    <div style={{ fontSize: 10, color: C.txm }}>{patPay.length} pagament{patPay.length === 1 ? 'o' : 'i'}</div>
+                  </div>
                 </div>
-              ))}
-            </Crd>
-          ))}
+                {patPay.map((p, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderTop: `1px solid ${C.brd}`, fontSize: 12 }}>
+                    <span style={{ color: C.txm }}>{fmtD(p.data)} · {p.metodo}</span>
+                    <span style={{ fontWeight: 700, color: C.suc }}>{fmt(p.importo)}</span>
+                  </div>
+                ))}
+              </Crd>
+            );
+          })}
         </Modal>
       )}
 
