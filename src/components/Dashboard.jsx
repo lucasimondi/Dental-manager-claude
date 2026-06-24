@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Crd, Bdg, Modal, Ic } from './ui';
+import { Crd, Bdg, Modal, Ic, Btn } from './ui';
 import { C, fmt, fmtD, today } from '../lib/utils';
 
 export default function Dashboard({ patients, appointments, payments, plans, onOpenPaz }) {
@@ -10,6 +10,15 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
   const todayApps = appointments.filter((a) => a.data === t);
   const mInc = payments.filter((p) => p.data && p.data.startsWith(t.slice(0, 7))).reduce((s, p) => s + Number(p.importo), 0);
   const upcoming = [...appointments].filter((a) => a.data >= t).sort((a, b) => a.data.localeCompare(b.data) || a.ora.localeCompare(b.ora)).slice(0, 6);
+
+  // ── PROMEMORIA: richiami da note cliniche non ancora fatti ──
+  const promemoria = patients.flatMap(paz =>
+    (paz.annotazioni || [])
+      .filter(ann => ann.richiamo && !ann.richiamo.fatto)
+      .map(ann => ({ paz, ann, richiamo: ann.richiamo }))
+  ).sort((a, b) => (a.richiamo.data || '').localeCompare(b.richiamo.data || ''));
+  const promemoriScaduti = promemoria.filter(p => p.richiamo.data && p.richiamo.data < t);
+  const promemoriOggi = promemoria.filter(p => p.richiamo.data === t);
 
   // Calcolo basato su pagamenti reali (dovuto piani - pagamenti registrati)
   const saldoPerPaz = patients.map((paz) => {
@@ -78,6 +87,50 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
     return Object.entries(mesi).sort((a, b) => a[0].localeCompare(b[0])).slice(0, 6);
   })();
   const MESI_NOMI = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+  // ── ORTODONZIA IN CORSO ──
+  const prossimaDataMascherinaDash = (orto) => {
+    if (!orto?.dataConsegnaInizio || !orto?.mascherineConsegnate) return null;
+    const ultima = orto.storico && orto.storico.length > 0 ? orto.storico[orto.storico.length - 1].data : orto.dataConsegnaInizio;
+    const d = new Date(ultima + 'T12:00');
+    d.setDate(d.getDate() + (orto.frequenzaSettimane || 2) * 7);
+    return d.toISOString().slice(0, 10);
+  };
+  const pianiOrto = plans.filter(pl => pl.ortodonzia?.attivo).map(pl => {
+    const paz = patients.find(x => x.id === pl.pazienteId);
+    if (!paz) return null;
+    const orto = pl.ortodonzia;
+    const tot = Number(orto.mascherineTotali) || 0;
+    const cons = orto.mascherineConsegnate || 0;
+    const completato = tot > 0 && cons >= tot;
+    const prossima = prossimaDataMascherinaDash(orto);
+    const inAttesa = !orto.dataConsegnaInizio;
+    const cambioScaduto = prossima && prossima <= t;
+    return { pl, paz, orto, tot, cons, completato, prossima, inAttesa, cambioScaduto };
+  }).filter(Boolean);
+  const ortoAttivi = pianiOrto.filter(o => !o.completato);
+  const ortoCambioOggi = ortoAttivi.filter(o => o.cambioScaduto);
+
+  // ── TO-DO STUDIO ──
+  const [todoList, setTodoList] = React.useState(() => {
+    try { return JSON.parse(localStorage.getItem('dm_todo') || '[]'); } catch { return []; }
+  });
+  const [todoInput, setTodoInput] = React.useState('');
+  const [todoModal, setTodoModal] = React.useState(false);
+
+  const saveTodo = (list) => {
+    setTodoList(list);
+    try { localStorage.setItem('dm_todo', JSON.stringify(list)); } catch {}
+  };
+  const addTodo = () => {
+    if (!todoInput.trim()) return;
+    saveTodo([{ id: Date.now(), testo: todoInput.trim(), fatto: false, data: t }, ...todoList]);
+    setTodoInput('');
+  };
+  const toggleTodo = (id) => saveTodo(todoList.map(x => x.id === id ? { ...x, fatto: !x.fatto } : x));
+  const deleteTodo = (id) => saveTodo(todoList.filter(x => x.id !== id));
+  const todoAttivi = todoList.filter(x => !x.fatto);
+  const todoFatti = todoList.filter(x => x.fatto);
+
 
   return (
     <div>
@@ -329,6 +382,12 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
             <div style={{ fontSize: 22, fontWeight: 900, color: C.suc, marginTop: 4 }}>{fmt(previsionaleMesi.reduce((s, x) => s + x[1], 0))}</div>
             <div style={{ fontSize: 11, color: C.suc + 'BB', marginTop: 2 }}>prossimi 6 mesi</div>
           </div>
+          <div onClick={() => setDetailModal('orto')} style={{ background: ortoCambioOggi.length > 0 ? C.danL : C.purL, borderRadius: 12, padding: 14, border: `1px solid ${ortoCambioOggi.length > 0 ? C.dan : C.pur}40`, cursor: 'pointer', position: 'relative', gridColumn: '1 / -1' }}>
+            <div style={{ position: 'absolute', top: 10, right: 10, fontSize: 14, opacity: 0.5 }}>›</div>
+            <div style={{ fontSize: 10, fontWeight: 800, color: ortoCambioOggi.length > 0 ? C.dan : C.pur, textTransform: 'uppercase', letterSpacing: '0.06em' }}>🦷 Ortodonzia — mascherine</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: ortoCambioOggi.length > 0 ? C.dan : C.pur, marginTop: 4 }}>{pianiOrto.length} pazienti</div>
+            <div style={{ fontSize: 11, color: (ortoCambioOggi.length > 0 ? C.dan : C.pur) + 'BB', marginTop: 2 }}>{ortoCambioOggi.length} da cambiare oggi · {ortoAttivi.filter(o=>o.inAttesa).length} da avviare · {ortoAttivi.filter(o=>!o.inAttesa&&!o.cambioScaduto).length} in corso</div>
+          </div>
         </div>
       </div>
 
@@ -347,7 +406,143 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
         </div>
       </div>
 
-      <Crd>
+
+      {detailModal === 'orto' && (
+        <Modal title="🦷 Ortodonzia — mascherine in corso" onClose={() => setDetailModal(null)} wide>
+          {ortoCambioOggi.length > 0 && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.dan, textTransform: 'uppercase', marginBottom: 8 }}>⚠️ Cambio mascherina dovuto ({ortoCambioOggi.length})</div>
+              {ortoCambioOggi.map(o => (
+                <Crd key={o.pl.id} style={{ marginBottom: 8, borderLeft: `3px solid ${C.dan}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div onClick={() => { setDetailModal(null); onOpenPaz(o.paz, 'piani'); }} style={{ fontWeight: 700, fontSize: 13, color: C.pri, cursor: 'pointer' }}>{o.paz.nome} {o.paz.cognome} ›</div>
+                      <div style={{ fontSize: 11, color: C.txm }}>Masch. {o.cons}/{o.tot||'?'} · prevista {fmtD(o.prossima)}</div>
+                    </div>
+                    <Bdg ch="scaduta" co={C.dan} />
+                  </div>
+                </Crd>
+              ))}
+            </>
+          )}
+          {ortoAttivi.filter(o => !o.cambioScaduto && !o.inAttesa).length > 0 && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.pur, textTransform: 'uppercase', margin: '14px 0 8px' }}>🔄 In corso</div>
+              {ortoAttivi.filter(o => !o.cambioScaduto && !o.inAttesa).map(o => {
+                const pct = o.tot > 0 ? Math.round(o.cons / o.tot * 100) : 0;
+                return (
+                  <Crd key={o.pl.id} style={{ marginBottom: 8, borderLeft: `3px solid ${C.pur}` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <div onClick={() => { setDetailModal(null); onOpenPaz(o.paz, 'piani'); }} style={{ fontWeight: 700, fontSize: 13, color: C.pri, cursor: 'pointer' }}>{o.paz.nome} {o.paz.cognome} ›</div>
+                      <span style={{ fontSize: 12, fontWeight: 800, color: C.pur }}>{o.cons}/{o.tot||'?'}</span>
+                    </div>
+                    {o.tot > 0 && <div style={{ background: C.bg, borderRadius: 4, height: 5, overflow: 'hidden', marginBottom: 4 }}><div style={{ height: '100%', width: `${pct}%`, background: C.pur, borderRadius: 4 }} /></div>}
+                    <div style={{ fontSize: 10, color: C.txl }}>Prossimo cambio: {o.prossima ? fmtD(o.prossima) : '—'}</div>
+                  </Crd>
+                );
+              })}
+            </>
+          )}
+          {pianiOrto.filter(o => o.inAttesa).length > 0 && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.war, textTransform: 'uppercase', margin: '14px 0 8px' }}>🆕 Da avviare</div>
+              {pianiOrto.filter(o => o.inAttesa).map(o => (
+                <Crd key={o.pl.id} style={{ marginBottom: 8, borderLeft: `3px solid ${C.war}` }}>
+                  <div onClick={() => { setDetailModal(null); onOpenPaz(o.paz, 'piani'); }} style={{ fontWeight: 700, fontSize: 13, color: C.pri, cursor: 'pointer' }}>{o.paz.nome} {o.paz.cognome} ›</div>
+                  <div style={{ fontSize: 11, color: C.txm }}>Ciclo da {o.tot||'?'} masch. — da avviare</div>
+                </Crd>
+              ))}
+            </>
+          )}
+          {pianiOrto.filter(o => o.completato).length > 0 && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.suc, textTransform: 'uppercase', margin: '14px 0 8px' }}>✓ Completati</div>
+              {pianiOrto.filter(o => o.completato).map(o => (
+                <Crd key={o.pl.id} style={{ marginBottom: 8, borderLeft: `3px solid ${C.suc}` }}>
+                  <div onClick={() => { setDetailModal(null); onOpenPaz(o.paz, 'piani'); }} style={{ fontWeight: 700, fontSize: 13, color: C.pri, cursor: 'pointer' }}>{o.paz.nome} {o.paz.cognome} ›</div>
+                  <div style={{ fontSize: 11, color: C.suc }}>Ciclo di {o.tot} mascherine completato ✓</div>
+                </Crd>
+              ))}
+            </>
+          )}
+          {pianiOrto.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Nessun piano ortodontico attivo</div>}
+        </Modal>
+      )}
+
+      {/* ── TO-DO STUDIO ── */}
+      <Crd style={{ marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: C.txt, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            ✅ Attività da fare {todoAttivi.length > 0 && <span style={{ background: C.dan, color: '#fff', borderRadius: 10, padding: '1px 7px', fontSize: 10, marginLeft: 5 }}>{todoAttivi.length}</span>}
+          </div>
+          <button onClick={() => setTodoModal(true)} style={{ background: C.pri, border: 'none', borderRadius: 8, padding: '6px 11px', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>+ Aggiungi</button>
+        </div>
+        {todoAttivi.length === 0 && <div style={{ textAlign: 'center', color: C.txl, fontSize: 12, padding: '8px 0' }}>Nessuna attività in sospeso 🎉</div>}
+        {todoAttivi.map(todo => (
+          <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: `1px solid ${C.brd}` }}>
+            <button onClick={() => toggleTodo(todo.id)} style={{ width: 22, height: 22, borderRadius: 6, border: `2px solid ${C.brd}`, background: '#fff', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.txt }}>{todo.testo}</div>
+              <div style={{ fontSize: 10, color: C.txl, marginTop: 1 }}>Aggiunto il {fmtD(todo.data)}</div>
+            </div>
+            <button onClick={() => deleteTodo(todo.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, flexShrink: 0 }}><Ic n="del" s={13} c={C.dan} /></button>
+          </div>
+        ))}
+        {todoFatti.length > 0 && (
+          <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.brd}` }}>
+            <div style={{ fontSize: 10, color: C.txl, fontWeight: 700, marginBottom: 5 }}>✓ Completate ({todoFatti.length})</div>
+            {todoFatti.slice(0, 3).map(todo => (
+              <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0' }}>
+                <button onClick={() => toggleTodo(todo.id)} style={{ width: 22, height: 22, borderRadius: 6, border: `2px solid ${C.suc}`, background: C.suc, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                  <Ic n="ok" s={11} c="#fff" />
+                </button>
+                <span style={{ fontSize: 12, color: C.txl, textDecoration: 'line-through', flex: 1 }}>{todo.testo}</span>
+                <button onClick={() => deleteTodo(todo.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}><Ic n="del" s={12} c={C.txl} /></button>
+              </div>
+            ))}
+          </div>
+        )}
+      </Crd>
+
+      {todoModal && (
+        <Modal title="+ Nuova attività" onClose={() => setTodoModal(false)}>
+          <div style={{ fontSize: 12, color: C.txm, marginBottom: 12 }}>Aggiungi un promemoria, un paziente in sospeso, un ordine da fare, ecc.</div>
+          <textarea value={todoInput} onChange={e => setTodoInput(e.target.value)} autoFocus rows={4} placeholder="es. Richiamare Rossi per conferma piano&#10;es. Ordinare viti impianto Nobel 4.3mm&#10;es. Verificare RX Bianchi dente 46" style={{ width: '100%', padding: '11px 12px', border: `1.5px solid ${C.brd}`, borderRadius: 10, fontSize: 13, color: C.txt, background: C.sur, boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }} />
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <Btn ch="Annulla" v="sec" onClick={() => setTodoModal(false)} full />
+            <Btn ch="Aggiungi" onClick={() => { addTodo(); setTodoModal(false); }} dis={!todoInput.trim()} full />
+          </div>
+        </Modal>
+      )}
+
+      {promemoria.length > 0 && (
+        <Crd style={{ marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.pur, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              📌 Promemoria {promemoriScaduti.length > 0 && <span style={{ background: C.dan, color: '#fff', borderRadius: 10, padding: '1px 7px', fontSize: 10, marginLeft: 5 }}>{promemoriScaduti.length} scaduti</span>}
+            </div>
+            <span style={{ fontSize: 11, color: C.txl }}>{promemoria.length} totali</span>
+          </div>
+          {promemoria.slice(0, 5).map(({ paz, ann, richiamo }) => {
+            const scaduto = richiamo.data && richiamo.data < t;
+            const oggi2 = richiamo.data === t;
+            return (
+              <div key={ann.id} style={{ padding: '8px 0', borderBottom: `1px solid ${C.brd}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div onClick={() => onOpenPaz(paz, 'info')} style={{ fontWeight: 700, fontSize: 13, color: C.pri, cursor: 'pointer' }}>{paz.nome} {paz.cognome} ›</div>
+                  <div style={{ fontSize: 12, color: C.txt, marginTop: 1 }}>{richiamo.testo}</div>
+                  <div style={{ fontSize: 10, color: scaduto ? C.dan : oggi2 ? C.war : C.txl, fontWeight: 700, marginTop: 2 }}>
+                    {scaduto ? '⚠️ Scaduto · ' : oggi2 ? '📅 Oggi · ' : '📅 '}{fmtD(richiamo.data)}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {promemoria.length > 5 && <div style={{ fontSize: 11, color: C.txl, textAlign: 'center', marginTop: 8 }}>+{promemoria.length - 5} altri promemoria</div>}
+        </Crd>
+      )}
+
+            <Crd>
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>Prossimi appuntamenti</div>
         {upcoming.length === 0 && <div style={{ color: C.txl, fontSize: 13, textAlign: 'center', padding: '14px 0' }}>Nessun appuntamento</div>}
         {upcoming.map((a) => {

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { supabase } from '../lib/supabase.js';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr } from './ui';
 import { C, fmt, fmtD, today, SCADENZA_PRESET, addMesi, rilevaRichiamo } from '../lib/utils';
 import PdfView from './PdfView.jsx';
@@ -11,15 +12,31 @@ const prossimaDataMascherina = (orto) => {
   return d.toISOString().slice(0, 10);
 };
 
-export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab }) {
+export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, implants = [], setImplants, setPatients }) {
   const [tab, setTab] = useState(initTab || 'info');
   const [pdfPlan, setPdfPlan] = useState(null);
   const [selPiani, setSelPiani] = useState([]);
   const [editPianoModal, setEditPianoModal] = useState(null);
   const [editForm, setEditForm] = useState(null);
   const [confirmDelId, setConfirmDelId] = useState(null);
+  const [impModal, setImpModal] = useState(false);
+  const [impForm, setImpForm] = useState({});
+  const [impEditId, setImpEditId] = useState(null);
+  const [impConfirmDel, setImpConfirmDel] = useState(null);
+  const [foto, setFoto] = useState([]);
+  const [fotoLoading, setFotoLoading] = useState(false);
+  const [fotoLabelModal, setFotoLabelModal] = useState(null);
+  const [fotoLabel, setFotoLabel] = useState('');
+  const fileInputRef = useRef(null);
+  const [noteGenerale, setNoteGenerale] = useState(paz.note || '');
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
+  const [nuovaAnnotazione, setNuovaAnnotazione] = useState('');
+  const [ricordaModal, setRicordaModal] = useState(null);
+  const [ricordaTesto, setRicordaTesto] = useState('');
+  const [ricordaData, setRicordaData] = useState(today());
 
   const patPlans = plans.filter((pl) => pl.pazienteId === paz.id);
+  const patImpianti = (implants || []).filter((im) => im.pazienteId === paz.id).sort((a, b) => (b.dataInserimento || '').localeCompare(a.dataInserimento || ''));
   const patPay = [...payments.filter((p) => p.pazienteId === paz.id)].reverse();
   const patApp = [...appointments.filter((a) => a.pazienteId === paz.id)].sort((a, b) => b.data.localeCompare(a.data));
 
@@ -92,7 +109,81 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
 
   if (pdfPlan) return <PdfView pl={pdfPlan} paz={paz} si={si} onClose={() => setPdfPlan(null)} />;
 
-  const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'piani', l: '🦷 Piani' }, { id: 'paga', l: '💰 Pagamenti' }, { id: 'app', l: '📅 Agenda' }];
+  // ── NOTE CLINICHE ──
+  const annotazioni = paz.annotazioni || [];
+
+  const saveNoteGenerale = () => {
+    if (!setPatients) return;
+    setPatients(prev => prev.map(p => p.id === paz.id ? { ...p, note: noteGenerale } : p));
+    setNoteModalOpen(false);
+  };
+
+  const aggiungiAnnotazione = () => {
+    if (!nuovaAnnotazione.trim() || !setPatients) return;
+    const nuova = { id: Date.now(), data: today(), testo: nuovaAnnotazione.trim(), richiamo: null };
+    setPatients(prev => prev.map(p => p.id === paz.id ? { ...p, annotazioni: [nuova, ...(p.annotazioni || [])] } : p));
+    setNuovaAnnotazione('');
+  };
+
+  const eliminaAnnotazione = (id) => {
+    if (!setPatients || !confirm('Eliminare questa annotazione?')) return;
+    setPatients(prev => prev.map(p => p.id === paz.id ? { ...p, annotazioni: (p.annotazioni || []).filter(a => a.id !== id) } : p));
+  };
+
+  const creaRichiamo = () => {
+    if (!ricordaModal || !ricordaTesto.trim() || !setPatients) return;
+    setPatients(prev => prev.map(p => p.id === paz.id ? {
+      ...p,
+      annotazioni: (p.annotazioni || []).map(a => a.id === ricordaModal ? { ...a, richiamo: { testo: ricordaTesto.trim(), data: ricordaData, fatto: false } } : a)
+    } : p));
+    setRicordaModal(null);
+    setRicordaTesto('');
+  };
+
+  const segnaRichiamoFatto = (annId) => {
+    if (!setPatients) return;
+    setPatients(prev => prev.map(p => p.id === paz.id ? {
+      ...p,
+      annotazioni: (p.annotazioni || []).map(a => a.id === annId ? { ...a, richiamo: { ...a.richiamo, fatto: true } } : a)
+    } : p));
+  };
+
+  // ── FOTO PAZIENTE ──
+  const loadFoto = async () => {
+    setFotoLoading(true);
+    const { data, error } = await supabase.storage.from('patient-files').list(`${paz.id}/`, { sortBy: { column: 'created_at', order: 'desc' } });
+    if (!error && data) {
+      const items = await Promise.all(data.filter(f => f.name !== '.emptyFolderPlaceholder').map(async f => {
+        const { data: { publicUrl } } = supabase.storage.from('patient-files').getPublicUrl(`${paz.id}/${f.name}`);
+        const label = f.name.split('_LABEL_')[1]?.replace(/\.[^.]+$/, '') || f.name;
+        return { name: f.name, url: publicUrl, label };
+      }));
+      setFoto(items);
+    }
+    setFotoLoading(false);
+  };
+
+  React.useEffect(() => { loadFoto(); }, [paz.id]);
+
+  const uploadFoto = async (file) => {
+    setFotoLoading(true);
+    const ext = file.name.split('.').pop();
+    const fname = `${Date.now()}_LABEL_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}.${ext}`;
+    const { error } = await supabase.storage.from('patient-files').upload(`${paz.id}/${fname}`, file, { upsert: false });
+    if (!error) await loadFoto();
+    setFotoLoading(false);
+  };
+
+  const deleteFoto = async (name) => {
+    if (!confirm('Eliminare questo file?')) return;
+    await supabase.storage.from('patient-files').remove([`${paz.id}/${name}`]);
+    await loadFoto();
+  };
+
+  const isImage = (name) => /\.(jpg|jpeg|png|gif|webp|heic)$/i.test(name);
+  const isPdf = (name) => /\.pdf$/i.test(name);
+
+  const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'piani', l: '🦷 Piani' }, { id: 'impl', l: '🔩 Impianti' }, { id: 'paga', l: '💰 Pagamenti' }, { id: 'app', l: '📅 Agenda' }];
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
@@ -138,12 +229,101 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
                 </div>
               ))}
             </Crd>
-            {paz.note && (
-              <Crd style={{ background: '#FFFBEB', border: '1px solid #FCD34D' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#92400E', textTransform: 'uppercase', marginBottom: 5 }}>⚠️ Note cliniche</div>
-                <div style={{ fontSize: 13, color: '#78350F', lineHeight: 1.6 }}>{paz.note}</div>
-              </Crd>
-            )}
+            {/* NOTE GENERALI (anamnesi/allergie) */}
+            <Crd style={{ background: noteGenerale ? '#FFFBEB' : C.sur, border: noteGenerale ? '1px solid #FCD34D' : `1px solid ${C.brd}`, marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: noteGenerale ? 7 : 0 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#92400E', textTransform: 'uppercase' }}>⚠️ Anamnesi / Allergie</div>
+                <button onClick={() => { setNoteGenerale(paz.note || ''); setNoteModalOpen(true); }} style={{ background: 'none', border: `1px solid ${C.brd}`, borderRadius: 7, padding: '4px 9px', fontSize: 10, fontWeight: 700, color: C.txm, cursor: 'pointer' }}>
+                  {noteGenerale ? '✏️ Modifica' : '+ Aggiungi'}
+                </button>
+              </div>
+              {noteGenerale && <div style={{ fontSize: 13, color: '#78350F', lineHeight: 1.6 }}>{noteGenerale}</div>}
+              {!noteGenerale && <div style={{ fontSize: 11, color: C.txl, marginTop: 4 }}>Nessuna nota generale — tocca per aggiungere allergie, anamnesi, ecc.</div>}
+            </Crd>
+
+            {/* STORICO ANNOTAZIONI CLINICHE */}
+            <Crd style={{ marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em' }}>📝 Annotazioni cliniche</div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                <input value={nuovaAnnotazione} onChange={e => setNuovaAnnotazione(e.target.value)} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && aggiungiAnnotazione()} placeholder="Scrivi una nota clinica..." style={{ flex: 1, padding: '9px 11px', border: `1.5px solid ${C.brd}`, borderRadius: 9, fontSize: 13, color: C.txt, background: C.sur }} />
+                <button onClick={aggiungiAnnotazione} disabled={!nuovaAnnotazione.trim()} style={{ background: C.pri, border: 'none', borderRadius: 9, padding: '9px 14px', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: nuovaAnnotazione.trim() ? 1 : 0.4, whiteSpace: 'nowrap' }}>+ Aggiungi</button>
+              </div>
+              {annotazioni.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: '14px 0', fontSize: 12 }}>Nessuna annotazione</div>}
+              {annotazioni.map(ann => (
+                <div key={ann.id} style={{ padding: '10px 0', borderBottom: `1px solid ${C.brd}` }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 10, color: C.txl, fontWeight: 700, marginBottom: 3 }}>{fmtD(ann.data)}</div>
+                      <div style={{ fontSize: 13, color: C.txt, lineHeight: 1.5 }}>{ann.testo}</div>
+                      {ann.richiamo && (
+                        <div style={{ marginTop: 6, background: ann.richiamo.fatto ? C.sucL : C.purL, borderRadius: 7, padding: '6px 9px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                          <div>
+                            <div style={{ fontSize: 10, fontWeight: 800, color: ann.richiamo.fatto ? C.suc : C.pur }}>📌 {ann.richiamo.fatto ? '✓ Fatto' : 'Richiamo'}: {fmtD(ann.richiamo.data)}</div>
+                            <div style={{ fontSize: 11, color: ann.richiamo.fatto ? C.suc : C.pur }}>{ann.richiamo.testo}</div>
+                          </div>
+                          {!ann.richiamo.fatto && <button onClick={() => segnaRichiamoFatto(ann.id)} style={{ background: C.suc, border: 'none', borderRadius: 6, padding: '4px 8px', fontSize: 10, fontWeight: 700, color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>✓ Fatto</button>}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+                      {!ann.richiamo && <button onClick={() => { setRicordaModal(ann.id); setRicordaTesto(''); setRicordaData(today()); }} style={{ background: C.purL, border: 'none', borderRadius: 7, padding: '5px 8px', cursor: 'pointer', fontSize: 10, fontWeight: 700, color: C.pur, whiteSpace: 'nowrap' }}>📌 Richiamo</button>}
+                      <button onClick={() => eliminaAnnotazione(ann.id)} style={{ background: C.danL, border: 'none', borderRadius: 7, padding: '5px 7px', cursor: 'pointer' }}><Ic n="del" s={12} c={C.dan} /></button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </Crd>
+
+            {/* ── FOTO E DOCUMENTI ── */}
+            <Crd>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em' }}>📁 Foto e documenti</div>
+                <button onClick={() => fileInputRef.current?.click()} style={{ background: C.pri, border: 'none', borderRadius: 8, padding: '7px 13px', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Ic n="plus" s={12} c="#fff" /> Carica
+                </button>
+                <input ref={fileInputRef} type="file" accept="image/*,.pdf" multiple style={{ display: 'none' }} onChange={e => { Array.from(e.target.files).forEach(uploadFoto); e.target.value = ''; }} />
+              </div>
+
+              {fotoLoading && <div style={{ textAlign: 'center', color: C.txl, padding: 16, fontSize: 12 }}>⏳ Caricamento...</div>}
+
+              {!fotoLoading && foto.length === 0 && (
+                <label style={{ display: 'block', border: `2px dashed ${C.brd}`, borderRadius: 10, padding: '20px 14px', textAlign: 'center', cursor: 'pointer', background: C.bg }}>
+                  <input type="file" accept="image/*,.pdf" multiple style={{ display: 'none' }} onChange={e => { Array.from(e.target.files).forEach(uploadFoto); e.target.value = ''; }} />
+                  <div style={{ fontSize: 22, marginBottom: 4 }}>📷</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: C.pri }}>Tocca per caricare foto o PDF</div>
+                  <div style={{ fontSize: 10, color: C.txl, marginTop: 2 }}>Panoramiche, RX, documenti...</div>
+                </label>
+              )}
+
+              {!fotoLoading && foto.length > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                  {foto.map((f, i) => (
+                    <div key={i} style={{ position: 'relative' }}>
+                      <a href={f.url} target="_blank" rel="noopener" style={{ display: 'block', textDecoration: 'none' }}>
+                        {isImage(f.name) ? (
+                          <div style={{ width: '100%', paddingBottom: '100%', position: 'relative', borderRadius: 8, overflow: 'hidden', background: C.bg }}>
+                            <img src={f.url} alt={f.label} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                          </div>
+                        ) : (
+                          <div style={{ width: '100%', paddingBottom: '100%', position: 'relative', borderRadius: 8, background: C.danL, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                              <div style={{ fontSize: 24 }}>📄</div>
+                              <div style={{ fontSize: 9, color: C.dan, fontWeight: 700, marginTop: 3, textAlign: 'center', padding: '0 4px' }}>PDF</div>
+                            </div>
+                          </div>
+                        )}
+                        <div style={{ fontSize: 9, color: C.txm, marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{f.label}</div>
+                      </a>
+                      <button onClick={() => deleteFoto(f.name)} style={{ position: 'absolute', top: 3, right: 3, background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: 4, width: 18, height: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                        <Ic n="x" s={9} c="#fff" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Crd>
           </div>
         )}
 
@@ -337,6 +517,86 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
           </div>
         )}
 
+
+        {tab === 'impl' && (
+          <div>
+            {/* alert corona in scadenza */}
+            {patImpianti.filter(im => im.dataCorona && new Date(im.dataCorona + 'T12:00') <= new Date(new Date().setDate(new Date().getDate() + 30))).map(im => (
+              <div key={im.id} style={{ background: new Date(im.dataCorona + 'T12:00') < new Date() ? C.danL : '#FEF3E2', borderRadius: 10, padding: '10px 13px', marginBottom: 10, borderLeft: `3px solid ${new Date(im.dataCorona + 'T12:00') < new Date() ? C.dan : C.war}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: new Date(im.dataCorona + 'T12:00') < new Date() ? C.dan : C.war }}>
+                    {new Date(im.dataCorona + 'T12:00') < new Date() ? '⚠️ Carico corona scaduto' : '📅 Carico corona in arrivo'}
+                  </div>
+                  <div style={{ fontSize: 11, color: C.txm }}>Dente {im.dente || '—'} · {im.marca || ''} {im.modello || ''} · previsto {fmtD(im.dataCorona)}</div>
+                </div>
+              </div>
+            ))}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 11 }}>
+              <button onClick={() => { setImpForm({ dente: '', marca: '', modello: '', lotto: '', diametro: '', lunghezza: '', dataInserimento: today(), dataCorona: '', noteCorona: '' }); setImpEditId(null); setImpModal(true); }} style={{ background: C.pri, border: 'none', borderRadius: 10, padding: '10px 16px', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Ic n="plus" s={14} c="#fff" /> Nuovo impianto
+              </button>
+            </div>
+
+            {patImpianti.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>Nessun impianto registrato</div>}
+
+            {patImpianti.map(im => {
+              const hasCorona = !!im.dataCorona;
+              const coronaScaduta = hasCorona && new Date(im.dataCorona + 'T12:00') < new Date();
+              const coronaVicina = hasCorona && !coronaScaduta && new Date(im.dataCorona + 'T12:00') <= new Date(new Date().setDate(new Date().getDate() + 30));
+              return (
+                <Crd key={im.id} style={{ marginBottom: 11, borderLeft: `3px solid ${coronaScaduta ? C.dan : coronaVicina ? C.war : C.brd}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: 15 }}>🦷 Dente {im.dente || '—'}</div>
+                      <div style={{ fontSize: 11, color: C.txm, marginTop: 2 }}>Inserito: {fmtD(im.dataInserimento)}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => { setImpForm({ ...im }); setImpEditId(im.id); setImpModal(true); }} style={{ background: C.purL, border: 'none', borderRadius: 7, padding: '6px 8px', cursor: 'pointer' }}><Ic n="edit" s={13} c={C.pur} /></button>
+                      <button onClick={() => setImpConfirmDel(im.id)} style={{ background: C.danL, border: 'none', borderRadius: 7, padding: '6px 8px', cursor: 'pointer' }}><Ic n="del" s={13} c={C.dan} /></button>
+                    </div>
+                  </div>
+
+                  {/* passaporto implantare */}
+                  <div style={{ background: C.bg, borderRadius: 9, padding: 10, marginBottom: 8 }}>
+                    <div style={{ fontSize: 10, fontWeight: 800, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 7 }}>📋 Passaporto implantare</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
+                      {[['Marca', im.marca], ['Modello', im.modello], ['Lotto/N° serie', im.lotto], ['Diametro', im.diametro], ['Lunghezza', im.lunghezza]].map(([l, v]) => v ? (
+                        <div key={l}>
+                          <div style={{ fontSize: 9, color: C.txl, fontWeight: 700, textTransform: 'uppercase' }}>{l}</div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: C.txt }}>{v}</div>
+                        </div>
+                      ) : null)}
+                    </div>
+                  </div>
+
+                  {/* carico corona */}
+                  <div style={{ background: coronaScaduta ? C.danL : coronaVicina ? '#FEF3E2' : C.sucL, borderRadius: 8, padding: '8px 11px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: C.txm, textTransform: 'uppercase' }}>Carico / Corona prevista</div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: coronaScaduta ? C.dan : coronaVicina ? C.war : C.suc }}>{hasCorona ? fmtD(im.dataCorona) : '— non impostata'}</div>
+                      {im.noteCorona && <div style={{ fontSize: 10, color: C.txm, marginTop: 2 }}>{im.noteCorona}</div>}
+                    </div>
+                    {coronaScaduta && <Bdg ch="⚠️ Scaduto" co={C.dan} />}
+                    {coronaVicina && <Bdg ch="📅 Prossimo" co={C.war} />}
+                    {hasCorona && !coronaScaduta && !coronaVicina && <Bdg ch="✓ Programmato" co={C.suc} />}
+                  </div>
+
+                  {impConfirmDel === im.id && (
+                    <div style={{ background: C.danL, borderRadius: 8, padding: '8px 11px', marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: C.dan }}>Eliminare questo impianto?</span>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button onClick={() => setImpConfirmDel(null)} style={{ background: '#fff', border: `1px solid ${C.brd}`, borderRadius: 6, padding: '4px 9px', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: C.txm }}>No</button>
+                        <button onClick={() => { setImplants && setImplants(prev => prev.filter(x => x.id !== im.id)); setImpConfirmDel(null); }} style={{ background: C.dan, border: 'none', borderRadius: 6, padding: '4px 9px', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#fff' }}>Sì, elimina</button>
+                      </div>
+                    </div>
+                  )}
+                </Crd>
+              );
+            })}
+          </div>
+        )}
+
         {tab === 'paga' && (
           <div>
             <Crd style={{ marginBottom: 12, background: C.priD, border: 'none' }}>
@@ -429,6 +689,77 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
           </div>
         )}
       </div>
+
+      {noteModalOpen && (
+        <Modal title="Anamnesi / Allergie / Note generali" onClose={() => setNoteModalOpen(false)}>
+          <div style={{ fontSize: 12, color: C.txm, marginBottom: 10 }}>Campo libero per anamnesi, allergie, farmaci abituali, note importanti sul paziente.</div>
+          <textarea value={noteGenerale} onChange={e => setNoteGenerale(e.target.value)} rows={7} placeholder="es. Allergia alla penicillina, diabetico, in terapia con Coumadin..." style={{ width: '100%', padding: '11px 12px', border: `1.5px solid ${C.brd}`, borderRadius: 10, fontSize: 14, color: C.txt, background: C.sur, boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }} />
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <Btn ch="Annulla" v="sec" onClick={() => setNoteModalOpen(false)} full />
+            <Btn ch="Salva" onClick={saveNoteGenerale} full />
+          </div>
+        </Modal>
+      )}
+
+      {ricordaModal && (
+        <Modal title="📌 Crea richiamo" onClose={() => setRicordaModal(null)}>
+          <div style={{ fontSize: 12, color: C.txm, marginBottom: 12 }}>Il richiamo apparirà in dashboard fino a quando non lo segni come fatto.</div>
+          <Fld label="Cosa ricordare">
+            <Inp value={ricordaTesto} onChange={e => setRicordaTesto(e.target.value)} placeholder={`es. Richiamare ${paz.nome} per rx dente 36`} />
+          </Fld>
+          <Fld label="Entro quando">
+            <Inp type="date" value={ricordaData} onChange={e => setRicordaData(e.target.value)} />
+            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+              {[['1 settimana', 7], ['2 settimane', 14], ['1 mese', 30]].map(([l, g]) => (
+                <button key={g} onClick={() => { const d = new Date(); d.setDate(d.getDate() + g); setRicordaData(d.toISOString().slice(0,10)); }} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '5px 9px', fontSize: 11, fontWeight: 700, color: C.pri, cursor: 'pointer' }}>{l}</button>
+              ))}
+            </div>
+          </Fld>
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <Btn ch="Annulla" v="sec" onClick={() => setRicordaModal(null)} full />
+            <Btn ch="Crea richiamo" onClick={creaRichiamo} dis={!ricordaTesto.trim()} full />
+          </div>
+        </Modal>
+      )}
+
+      {impModal && (
+        <Modal title={impEditId ? 'Modifica impianto' : 'Nuovo impianto'} onClose={() => setImpModal(false)} wide>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <Fld label="Dente"><Inp value={impForm.dente || ''} onChange={e => setImpForm(f => ({ ...f, dente: e.target.value }))} placeholder="es. 36" /></Fld>
+            <Fld label="Data inserimento"><Inp type="date" value={impForm.dataInserimento || ''} onChange={e => setImpForm(f => ({ ...f, dataInserimento: e.target.value }))} /></Fld>
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, marginTop: 4 }}>📋 Passaporto implantare</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <Fld label="Marca"><Inp value={impForm.marca || ''} onChange={e => setImpForm(f => ({ ...f, marca: e.target.value }))} placeholder="es. Nobel Biocare" /></Fld>
+            <Fld label="Modello"><Inp value={impForm.modello || ''} onChange={e => setImpForm(f => ({ ...f, modello: e.target.value }))} placeholder="es. NobelActive" /></Fld>
+            <Fld label="Lotto / N° serie"><Inp value={impForm.lotto || ''} onChange={e => setImpForm(f => ({ ...f, lotto: e.target.value }))} placeholder="es. LOT123456" /></Fld>
+            <Fld label="Diametro"><Inp value={impForm.diametro || ''} onChange={e => setImpForm(f => ({ ...f, diametro: e.target.value }))} placeholder="es. 4.3 mm" /></Fld>
+            <Fld label="Lunghezza"><Inp value={impForm.lunghezza || ''} onChange={e => setImpForm(f => ({ ...f, lunghezza: e.target.value }))} placeholder="es. 11.5 mm" /></Fld>
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, marginTop: 4 }}>🦷 Carico / Corona</div>
+          <Fld label="Data carico/corona prevista">
+            <Inp type="date" value={impForm.dataCorona || ''} onChange={e => setImpForm(f => ({ ...f, dataCorona: e.target.value }))} />
+            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+              {[['3 mesi', 3], ['4 mesi', 4], ['6 mesi', 6]].map(([l, m]) => (
+                <button key={m} onClick={() => { const d = new Date((impForm.dataInserimento || today()) + 'T12:00'); d.setMonth(d.getMonth() + m); setImpForm(f => ({ ...f, dataCorona: d.toISOString().slice(0, 10) })); }} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '5px 10px', fontSize: 11, fontWeight: 700, color: C.pri, cursor: 'pointer' }}>{l}</button>
+              ))}
+            </div>
+          </Fld>
+          <Fld label="Note carico/corona"><Inp value={impForm.noteCorona || ''} onChange={e => setImpForm(f => ({ ...f, noteCorona: e.target.value }))} placeholder="es. Attesa osteointegrazione, ricontrollare RX" /></Fld>
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <Btn ch="Annulla" v="sec" onClick={() => setImpModal(false)} full />
+            <Btn ch="Salva impianto" onClick={() => {
+              if (!setImplants) return;
+              if (impEditId) {
+                setImplants(prev => prev.map(x => x.id === impEditId ? { ...impForm, id: impEditId, pazienteId: paz.id } : x));
+              } else {
+                setImplants(prev => [...prev, { ...impForm, id: Date.now() + Math.floor(Math.random() * 9999), pazienteId: paz.id }]);
+              }
+              setImpModal(false);
+            }} full />
+          </div>
+        </Modal>
+      )}
 
       {editPianoModal && editForm && (
         <Modal title="Modifica piano" onClose={() => setEditPianoModal(null)} wide>
