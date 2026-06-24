@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase.js';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr } from './ui';
 import { C, fmt, fmtD, today, SCADENZA_PRESET, addMesi, rilevaRichiamo } from '../lib/utils';
 import PdfView from './PdfView.jsx';
+import DocFiscale from './DocFiscale.jsx';
 
 const prossimaDataMascherina = (orto) => {
   if (!orto?.dataConsegnaInizio || !orto?.mascherineConsegnate) return null;
@@ -15,6 +16,7 @@ const prossimaDataMascherina = (orto) => {
 export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, implants = [], setImplants, setPatients }) {
   const [tab, setTab] = useState(initTab || 'info');
   const [pdfPlan, setPdfPlan] = useState(null);
+  const [docFiscale, setDocFiscale] = useState(false);
   const [selPiani, setSelPiani] = useState([]);
   const [editPianoModal, setEditPianoModal] = useState(null);
   const [editForm, setEditForm] = useState(null);
@@ -107,6 +109,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
     setPdfPlan(virtuale);
   };
 
+  if (docFiscale) return <DocFiscale paz={paz} plans={plans} onClose={() => setDocFiscale(false)} />;
   if (pdfPlan) return <PdfView pl={pdfPlan} paz={paz} si={si} onClose={() => setPdfPlan(null)} />;
 
   // ── NOTE CLINICHE ──
@@ -600,7 +603,10 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
         {tab === 'paga' && (
           <div>
             <Crd style={{ marginBottom: 12, background: C.priD, border: 'none' }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Situazione finanziaria</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Situazione finanziaria</div>
+            <button onClick={() => setDocFiscale(true)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, padding: '6px 11px', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>📄 Fattura / Rimborso</button>
+          </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                 <div><div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)' }}>Dovuto totale</div><div style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>{fmt(totDovuto)}</div></div>
                 <div style={{ textAlign: 'center' }}><div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)' }}>Pagato</div><div style={{ fontSize: 16, fontWeight: 800, color: '#86efac' }}>{fmt(totPaid)}</div></div>
