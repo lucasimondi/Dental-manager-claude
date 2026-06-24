@@ -27,10 +27,13 @@ const FIELD_MAP = {
 };
 
 const toDb = (table, obj) => {
+  // campi temporanei UI da non salvare su Supabase
+  const UI_ONLY = new Set(["_presetScadenza"]);
   const map = FIELD_MAP[table] || {};
   const out = {};
   Object.keys(obj).forEach((k) => {
-    if (k === 'id') return;
+    if (k === "id") return;
+    if (UI_ONLY.has(k)) return;
     const dbKey = map[k] || k;
     let val = obj[k];
     // Postgres rifiuta stringhe vuote per colonne date/numeriche: convertiamo '' in null
