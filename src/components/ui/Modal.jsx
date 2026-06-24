@@ -1,22 +1,19 @@
 import React, { useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import Ic from './Ic.jsx';
 import { C } from '../../lib/utils';
 
 export default function Modal({ title, onClose, children, wide }) {
   useEffect(() => {
-    // Il contenuto scrolla dentro #app-scroll, non nel body
-    const scroller = document.getElementById('app-scroll');
-    const prevOverflow = scroller ? scroller.style.overflow : '';
-    if (scroller) scroller.style.overflow = 'hidden';
-    return () => {
-      if (scroller) scroller.style.overflow = prevOverflow;
-    };
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
   }, []);
 
-  return (
+  return ReactDOM.createPortal(
     <div
       style={{
-        position: 'fixed', inset: 0, background: 'rgba(10,20,40,0.55)', zIndex: 1000,
+        position: 'fixed', inset: 0, background: 'rgba(10,20,40,0.55)', zIndex: 9999,
         display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
       }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
@@ -37,6 +34,7 @@ export default function Modal({ title, onClose, children, wide }) {
         <div style={{ padding: 18 }}>{children}</div>
         <div style={{ height: 'env(safe-area-inset-bottom,12px)' }} />
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
