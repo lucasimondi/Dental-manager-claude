@@ -17,26 +17,42 @@ const TABLE_MAP = {
   dm_im: 'implants',
 };
 
+/* ── CAMPI UI TEMPORANEI DA NON SALVARE SU DB ── */
+const UI_ONLY_FIELDS = new Set(['_presetScadenza']);
+
 /* ── CONVERSIONE CAMPI: app (camelCase) <-> db (snake_case) ── */
 const FIELD_MAP = {
-  patients: { dataNascita: 'data_nascita' },
-  plans: { pazienteId: 'paziente_id', scontoTipo: 'sconto_tipo' },
-  payments: { pazienteId: 'paziente_id' },
-  appointments: { pazienteId: 'paziente_id' },
-  implants: { pazienteId: 'paziente_id', planId: 'plan_id' },
+  patients: {
+    dataNascita: 'data_nascita',
+  },
+  plans: {
+    pazienteId: 'paziente_id',
+    scontoTipo: 'sconto_tipo',
+    scadenzaPagamento: 'scadenza_pagamento',
+  },
+  payments: {
+    pazienteId: 'paziente_id',
+  },
+  appointments: {
+    pazienteId: 'paziente_id',
+  },
+  implants: {
+    pazienteId: 'paziente_id',
+    planId: 'plan_id',
+    dataInserimento: 'data_inserimento',
+    dataCorona: 'data_corona',
+    noteCorona: 'note_corona',
+  },
 };
 
 const toDb = (table, obj) => {
-  // campi temporanei UI da non salvare su Supabase
-  const UI_ONLY = new Set(["_presetScadenza"]);
   const map = FIELD_MAP[table] || {};
   const out = {};
   Object.keys(obj).forEach((k) => {
-    if (k === "id") return;
-    if (UI_ONLY.has(k)) return;
+    if (k === 'id') return;
+    if (UI_ONLY_FIELDS.has(k)) return;
     const dbKey = map[k] || k;
     let val = obj[k];
-    // Postgres rifiuta stringhe vuote per colonne date/numeriche: convertiamo '' in null
     if (val === '') val = null;
     out[dbKey] = val;
   });
@@ -46,9 +62,7 @@ const toDb = (table, obj) => {
 const fromDb = (table, row) => {
   const map = FIELD_MAP[table] || {};
   const rev = {};
-  Object.entries(map).forEach(([app, db]) => {
-    rev[db] = app;
-  });
+  Object.entries(map).forEach(([app, db]) => { rev[db] = app; });
   const out = { id: row.id };
   Object.keys(row).forEach((k) => {
     if (k === 'id' || k === 'user_id' || k === 'created_at') return;
@@ -64,10 +78,7 @@ export const DB = {
     const table = TABLE_MAP[key];
     if (!table) return null;
     const { data, error } = await supabase.from(table).select('*').order('id', { ascending: true });
-    if (error) {
-      console.error('DB.getAll', table, error);
-      return [];
-    }
+    if (error) { console.error('DB.getAll', table, error); return []; }
     return (data || []).map((r) => fromDb(table, r));
   },
 
@@ -76,10 +87,7 @@ export const DB = {
     const { data: { user } } = await supabase.auth.getUser();
     const payload = { ...toDb(table, obj), user_id: user.id };
     const { data, error } = await supabase.from(table).insert(payload).select().single();
-    if (error) {
-      console.error('DB.insert', table, error);
-      throw error;
-    }
+    if (error) { console.error('DB.insert', table, error); throw error; }
     return fromDb(table, data);
   },
 
@@ -87,29 +95,20 @@ export const DB = {
     const table = TABLE_MAP[key];
     const payload = toDb(table, obj);
     const { error } = await supabase.from(table).update(payload).eq('id', id);
-    if (error) {
-      console.error('DB.update', table, error);
-      throw error;
-    }
+    if (error) { console.error('DB.update', table, error); throw error; }
   },
 
   async remove(key, id) {
     const table = TABLE_MAP[key];
     const { error } = await supabase.from(table).delete().eq('id', id);
-    if (error) {
-      console.error('DB.remove', table, error);
-      throw error;
-    }
+    if (error) { console.error('DB.remove', table, error); throw error; }
   },
 
   async getStudioInfo() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
     const { data, error } = await supabase.from('studio_info').select('*').eq('user_id', user.id).maybeSingle();
-    if (error) {
-      console.error('DB.getStudioInfo', error);
-      return null;
-    }
+    if (error) { console.error('DB.getStudioInfo', error); return null; }
     if (!data) return null;
     const { user_id, updated_at, ...rest } = data;
     return rest;
@@ -119,9 +118,6 @@ export const DB = {
     const { data: { user } } = await supabase.auth.getUser();
     const payload = { ...obj, user_id: user.id, updated_at: new Date().toISOString() };
     const { error } = await supabase.from('studio_info').upsert(payload, { onConflict: 'user_id' });
-    if (error) {
-      console.error('DB.setStudioInfo', error);
-      throw error;
-    }
+    if (error) { console.error('DB.setStudioInfo', error); throw error; }
   },
 };
