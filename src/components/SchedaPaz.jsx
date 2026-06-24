@@ -111,8 +111,6 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
   const isImage = (name) => /\.(jpg|jpeg|png|gif|webp|heic)$/i.test(name);
   const isPdf = (name) => /\.pdf$/i.test(name);
 
-  const TABS = [
-
   const patPlans = plans.filter((pl) => pl.pazienteId === paz.id);
   const patImpianti = (implants || []).filter((im) => im.pazienteId === paz.id).sort((a, b) => (b.dataInserimento || '').localeCompare(a.dataInserimento || ''));
   const patPay = [...payments.filter((p) => p.pazienteId === paz.id)].reverse();
