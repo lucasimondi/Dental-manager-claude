@@ -195,7 +195,7 @@ export default function App() {
         />
       )}
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: 13, paddingBottom: 78 }}>
+      <div id="app-scroll" style={{ flex: 1, overflowY: 'auto', padding: 13, paddingBottom: 78 }}>
         {page === 'home' && <Dashboard patients={patients} appointments={appointments} payments={payments} plans={plans} onOpenPaz={goSchedaPaz} />}
         {page === 'paz' && (
           <Pazienti

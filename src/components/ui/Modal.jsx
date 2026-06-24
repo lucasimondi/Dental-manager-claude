@@ -4,19 +4,12 @@ import { C } from '../../lib/utils';
 
 export default function Modal({ title, onClose, children, wide }) {
   useEffect(() => {
-    const prevOverflow = document.body.style.overflow;
-    const prevPosition = document.body.style.position;
-    const scrollY = window.scrollY;
-    document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = '100%';
+    // Il contenuto scrolla dentro #app-scroll, non nel body
+    const scroller = document.getElementById('app-scroll');
+    const prevOverflow = scroller ? scroller.style.overflow : '';
+    if (scroller) scroller.style.overflow = 'hidden';
     return () => {
-      document.body.style.overflow = prevOverflow;
-      document.body.style.position = prevPosition;
-      document.body.style.top = '';
-      document.body.style.width = '';
-      window.scrollTo(0, scrollY);
+      if (scroller) scroller.style.overflow = prevOverflow;
     };
   }, []);
 
