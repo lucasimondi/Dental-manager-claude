@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { jsPDF } from 'jspdf';
 
 export default function PdfView({ pl, paz, si, onClose }) {
   const sub = pl.voci.reduce((s, v) => s + Number(v.prezzo), 0);
@@ -42,17 +43,12 @@ export default function PdfView({ pl, paz, si, onClose }) {
   const generaPdf = () => {
     if (generating) return;
     setPdfMsg(null);
-    if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF === 'undefined') {
-      setPdfMsg({ type: 'error', text: 'Libreria PDF non ancora caricata. Attendi qualche secondo e riprova, oppure verifica la connessione internet.' });
-      return;
-    }
     setGenerating(true);
     buildAndSave();
   };
 
   const buildAndSave = () => {
     try {
-      const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const W = 210, margin = 14;
       const contentW = W - margin * 2;
