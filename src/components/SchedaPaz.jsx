@@ -37,6 +37,82 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
   const [ricordaTesto, setRicordaTesto] = useState('');
   const [ricordaData, setRicordaData] = useState(today());
 
+  // ── NOTE CLINICHE ──
+  const annotazioni = paz.annotazioni || [];
+
+  const saveNoteGenerale = () => {
+    if (!setPatients) return;
+    setPatients(prev => prev.map(p => p.id === paz.id ? { ...p, note: noteGenerale } : p));
+    setNoteModalOpen(false);
+  };
+
+  const aggiungiAnnotazione = () => {
+    if (!nuovaAnnotazione.trim() || !setPatients) return;
+    const nuova = { id: Date.now(), data: today(), testo: nuovaAnnotazione.trim(), richiamo: null };
+    setPatients(prev => prev.map(p => p.id === paz.id ? { ...p, annotazioni: [nuova, ...(p.annotazioni || [])] } : p));
+    setNuovaAnnotazione('');
+  };
+
+  const eliminaAnnotazione = (id) => {
+    if (!setPatients || !confirm('Eliminare questa annotazione?')) return;
+    setPatients(prev => prev.map(p => p.id === paz.id ? { ...p, annotazioni: (p.annotazioni || []).filter(a => a.id !== id) } : p));
+  };
+
+  const creaRichiamo = () => {
+    if (!ricordaModal || !ricordaTesto.trim() || !setPatients) return;
+    setPatients(prev => prev.map(p => p.id === paz.id ? {
+      ...p,
+      annotazioni: (p.annotazioni || []).map(a => a.id === ricordaModal ? { ...a, richiamo: { testo: ricordaTesto.trim(), data: ricordaData, fatto: false } } : a)
+    } : p));
+    setRicordaModal(null);
+    setRicordaTesto('');
+  };
+
+  const segnaRichiamoFatto = (annId) => {
+    if (!setPatients) return;
+    setPatients(prev => prev.map(p => p.id === paz.id ? {
+      ...p,
+      annotazioni: (p.annotazioni || []).map(a => a.id === annId ? { ...a, richiamo: { ...a.richiamo, fatto: true } } : a)
+    } : p));
+  };
+
+  // ── FOTO PAZIENTE ──
+  const loadFoto = async () => {
+    setFotoLoading(true);
+    const { data, error } = await supabase.storage.from('patient-files').list(`${paz.id}/`, { sortBy: { column: 'created_at', order: 'desc' } });
+    if (!error && data) {
+      const items = await Promise.all(data.filter(f => f.name !== '.emptyFolderPlaceholder').map(async f => {
+        const { data: { publicUrl } } = supabase.storage.from('patient-files').getPublicUrl(`${paz.id}/${f.name}`);
+        const label = f.name.split('_LABEL_')[1]?.replace(/\.[^.]+$/, '') || f.name;
+        return { name: f.name, url: publicUrl, label };
+      }));
+      setFoto(items);
+    }
+    setFotoLoading(false);
+  };
+
+  React.useEffect(() => { loadFoto(); }, [paz.id]);
+
+  const uploadFoto = async (file) => {
+    setFotoLoading(true);
+    const ext = file.name.split('.').pop();
+    const fname = `${Date.now()}_LABEL_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}.${ext}`;
+    const { error } = await supabase.storage.from('patient-files').upload(`${paz.id}/${fname}`, file, { upsert: false });
+    if (!error) await loadFoto();
+    setFotoLoading(false);
+  };
+
+  const deleteFoto = async (name) => {
+    if (!confirm('Eliminare questo file?')) return;
+    await supabase.storage.from('patient-files').remove([`${paz.id}/${name}`]);
+    await loadFoto();
+  };
+
+  const isImage = (name) => /\.(jpg|jpeg|png|gif|webp|heic)$/i.test(name);
+  const isPdf = (name) => /\.pdf$/i.test(name);
+
+  const TABS = [
+
   const patPlans = plans.filter((pl) => pl.pazienteId === paz.id);
   const patImpianti = (implants || []).filter((im) => im.pazienteId === paz.id).sort((a, b) => (b.dataInserimento || '').localeCompare(a.dataInserimento || ''));
   const patPay = [...payments.filter((p) => p.pazienteId === paz.id)].reverse();
@@ -111,80 +187,6 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
 
   if (docFiscale) return <DocFiscale paz={paz} plans={plans} onClose={() => setDocFiscale(false)} />;
   if (pdfPlan) return <PdfView pl={pdfPlan} paz={paz} si={si} onClose={() => setPdfPlan(null)} />;
-
-  // ── NOTE CLINICHE ──
-  const annotazioni = paz.annotazioni || [];
-
-  const saveNoteGenerale = () => {
-    if (!setPatients) return;
-    setPatients(prev => prev.map(p => p.id === paz.id ? { ...p, note: noteGenerale } : p));
-    setNoteModalOpen(false);
-  };
-
-  const aggiungiAnnotazione = () => {
-    if (!nuovaAnnotazione.trim() || !setPatients) return;
-    const nuova = { id: Date.now(), data: today(), testo: nuovaAnnotazione.trim(), richiamo: null };
-    setPatients(prev => prev.map(p => p.id === paz.id ? { ...p, annotazioni: [nuova, ...(p.annotazioni || [])] } : p));
-    setNuovaAnnotazione('');
-  };
-
-  const eliminaAnnotazione = (id) => {
-    if (!setPatients || !confirm('Eliminare questa annotazione?')) return;
-    setPatients(prev => prev.map(p => p.id === paz.id ? { ...p, annotazioni: (p.annotazioni || []).filter(a => a.id !== id) } : p));
-  };
-
-  const creaRichiamo = () => {
-    if (!ricordaModal || !ricordaTesto.trim() || !setPatients) return;
-    setPatients(prev => prev.map(p => p.id === paz.id ? {
-      ...p,
-      annotazioni: (p.annotazioni || []).map(a => a.id === ricordaModal ? { ...a, richiamo: { testo: ricordaTesto.trim(), data: ricordaData, fatto: false } } : a)
-    } : p));
-    setRicordaModal(null);
-    setRicordaTesto('');
-  };
-
-  const segnaRichiamoFatto = (annId) => {
-    if (!setPatients) return;
-    setPatients(prev => prev.map(p => p.id === paz.id ? {
-      ...p,
-      annotazioni: (p.annotazioni || []).map(a => a.id === annId ? { ...a, richiamo: { ...a.richiamo, fatto: true } } : a)
-    } : p));
-  };
-
-  // ── FOTO PAZIENTE ──
-  const loadFoto = async () => {
-    setFotoLoading(true);
-    const { data, error } = await supabase.storage.from('patient-files').list(`${paz.id}/`, { sortBy: { column: 'created_at', order: 'desc' } });
-    if (!error && data) {
-      const items = await Promise.all(data.filter(f => f.name !== '.emptyFolderPlaceholder').map(async f => {
-        const { data: { publicUrl } } = supabase.storage.from('patient-files').getPublicUrl(`${paz.id}/${f.name}`);
-        const label = f.name.split('_LABEL_')[1]?.replace(/\.[^.]+$/, '') || f.name;
-        return { name: f.name, url: publicUrl, label };
-      }));
-      setFoto(items);
-    }
-    setFotoLoading(false);
-  };
-
-  React.useEffect(() => { loadFoto(); }, [paz.id]);
-
-  const uploadFoto = async (file) => {
-    setFotoLoading(true);
-    const ext = file.name.split('.').pop();
-    const fname = `${Date.now()}_LABEL_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}.${ext}`;
-    const { error } = await supabase.storage.from('patient-files').upload(`${paz.id}/${fname}`, file, { upsert: false });
-    if (!error) await loadFoto();
-    setFotoLoading(false);
-  };
-
-  const deleteFoto = async (name) => {
-    if (!confirm('Eliminare questo file?')) return;
-    await supabase.storage.from('patient-files').remove([`${paz.id}/${name}`]);
-    await loadFoto();
-  };
-
-  const isImage = (name) => /\.(jpg|jpeg|png|gif|webp|heic)$/i.test(name);
-  const isPdf = (name) => /\.pdf$/i.test(name);
 
   const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'piani', l: '🦷 Piani' }, { id: 'impl', l: '🔩 Impianti' }, { id: 'paga', l: '💰 Pagamenti' }, { id: 'app', l: '📅 Agenda' }];
 
