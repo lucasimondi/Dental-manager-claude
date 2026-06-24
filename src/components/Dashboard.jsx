@@ -6,6 +6,11 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
   const t = today();
   const anno = t.slice(0, 4);
   const [detailModal, setDetailModal] = useState(null);
+  const [todoList, setTodoList] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('dm_todo') || '[]'); } catch { return []; }
+  });
+  const [todoInput, setTodoInput] = useState('');
+  const [todoModal, setTodoModal] = useState(false);
 
   const todayApps = appointments.filter((a) => a.data === t);
   const mInc = payments.filter((p) => p.data && p.data.startsWith(t.slice(0, 7))).reduce((s, p) => s + Number(p.importo), 0);
@@ -111,12 +116,6 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
   const ortoCambioOggi = ortoAttivi.filter(o => o.cambioScaduto);
 
   // ── TO-DO STUDIO ──
-  const [todoList, setTodoList] = React.useState(() => {
-    try { return JSON.parse(localStorage.getItem('dm_todo') || '[]'); } catch { return []; }
-  });
-  const [todoInput, setTodoInput] = React.useState('');
-  const [todoModal, setTodoModal] = React.useState(false);
-
   const saveTodo = (list) => {
     setTodoList(list);
     try { localStorage.setItem('dm_todo', JSON.stringify(list)); } catch {}
