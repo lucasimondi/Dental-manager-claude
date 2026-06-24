@@ -12,6 +12,7 @@ const STUDIO = {
   email: 'dottorsimondi@gmail.com',
   piva: '03830670042',
   cf: '03830670042',
+  iban: 'IE94SUMU99036510687267',
 };
 
 const getNumeroProgressivo = (tipo) => {
@@ -38,6 +39,7 @@ export default function DocFiscale({ paz, plans, onClose }) {
   const [voci, setVoci] = useState([]);
   const [nuovaVoce, setNuovaVoce] = useState({ desc: '', importo: '' });
   const [selectedPiani, setSelectedPiani] = useState([]);
+  const [iban, setIban] = useState(STUDIO.iban);
 
   const patPlans = plans.filter(pl => pl.pazienteId === paz.id);
   const totale = voci.reduce((s, v) => s + Number(v.importo), 0);
@@ -92,7 +94,7 @@ export default function DocFiscale({ paz, plans, onClose }) {
     hLine(y); y += 6;
 
     // ── TITOLO DOCUMENTO ──
-    const titoloDoc = tipo === 'fattura' ? 'FATTURA' : 'NOTA DI RIMBORSO SPESE';
+    const titoloDoc = tipo === 'fattura' ? 'FATTURA' : 'RIMBORSO SPESE';
     const tw = doc.getTextWidth(titoloDoc) + 14;
     box(W / 2 - tw / 2, y - 5, tw, 9, 26, 107, 138);
     doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(255, 255, 255);
@@ -149,24 +151,38 @@ export default function DocFiscale({ paz, plans, onClose }) {
     txt(`€ ${totale.toFixed(2)}`, W - M - 3, y + 7, { align: 'right' });
     y += 14;
 
-    // ── NOTE LEGALI ──
+    // ── NOTE LEGALI + IBAN ──
     if (tipo === 'rimborso') {
       doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(113, 128, 150);
       const noteText = 'Il presente documento attesta il rimborso delle spese sanitarie sostenute. Conservare ai fini della dichiarazione dei redditi.';
       const noteLines = doc.splitTextToSize(noteText, CW);
       noteLines.forEach((line, i) => { txt(line, M, y + i * 4); });
       y += noteLines.length * 4 + 6;
+
+      if (iban) {
+        box(M, y, CW, 14, 232, 247, 238);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(45, 158, 97);
+        txt('COORDINATE BANCARIE PER IL RIMBORSO', M + 3, y + 5);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(26, 32, 44);
+        txt('IBAN: ' + iban, M + 3, y + 11);
+        doc.setFontSize(7.5); doc.setTextColor(113, 128, 150);
+        txt('Intestato a: ' + STUDIO.nome, W - M - 3, y + 11, { align: 'right' });
+        y += 18;
+      }
     }
 
-    // ── FIRMA ──
-    if (y > 245) { doc.addPage(); y = 20; }
-    const firmaY = Math.max(y + 10, 240);
-    hLine(firmaY - 8);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(74, 85, 104);
-    txt('Firma del professionista', W - M - 50, firmaY - 4);
-    doc.setDrawColor(26, 107, 138); doc.setLineWidth(0.5);
-    doc.line(W - M - 50, firmaY + 8, W - M, firmaY + 8);
-    txt(STUDIO.nome, W - M - 50, firmaY + 14);
+    // ── IBAN (solo rimborso) ──
+    if (tipo === 'rimborso' && iban) {
+      y += 4;
+      box(M, y, CW, 14, 232, 247, 238);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(45, 158, 97);
+      txt('COORDINATE BANCARIE PER IL RIMBORSO', M + 3, y + 5);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(26, 32, 44);
+      txt(`IBAN: ${iban}`, M + 3, y + 11);
+      doc.setFontSize(7.5); doc.setTextColor(113, 128, 150);
+      txt(`Intestato a: ${STUDIO.nome}`, W - M - 3, y + 11, { align: 'right' });
+      y += 18;
+    }
 
     // ── FOOTER ──
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(150, 150, 150);
@@ -294,6 +310,15 @@ export default function DocFiscale({ paz, plans, onClose }) {
         </Crd>
 
         {/* GENERA */}
+        {/* IBAN (solo rimborso) */}
+        {tipo === 'rimborso' && voci.length > 0 && (
+          <Crd style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 8 }}>🏦 IBAN per il rimborso</div>
+            <Inp value={iban} onChange={e => setIban(e.target.value)} placeholder="es. IE94SUMU99036510687267" style={{ fontFamily: 'monospace', fontSize: 13 }} />
+            <div style={{ fontSize: 10, color: C.txl, marginTop: 5 }}>Appare nel documento — modificabile per ogni rimborso</div>
+          </Crd>
+        )}
+
         {voci.length > 0 && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
             <Btn ch="Annulla" v="sec" onClick={onClose} full />
