@@ -101,12 +101,10 @@ export default function WhatsApp({ patients, appointments, templates, setTemplat
         <Crd>
           <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 11 }}>Messaggio personalizzato</div>
           <Fld label="Paziente">
-            <Sel
-              value={selPaz}
-              onChange={(v) => setSelPaz(v)}
-              placeholder="Cerca paziente…"
-              options={patients.map(p => ({ value: String(p.id), label: `${p.nome} ${p.cognome}`, sub: p.telefono || '' }))}
-            />
+            <Sel value={selPaz} onChange={(e) => setSelPaz(e.target.value)}>
+              <option value="">Seleziona…</option>
+              {patients.map((p) => <option key={p.id} value={p.id}>{p.nome} {p.cognome} — {p.telefono}</option>)}
+            </Sel>
           </Fld>
           {selPaz && <div style={{ marginBottom: 11 }}><PhStr tel={patients.find((x) => x.id === Number(selPaz))?.telefono} /></div>}
           <Fld label="Template">
@@ -164,6 +162,3 @@ export default function WhatsApp({ patients, appointments, templates, setTemplat
     </div>
   );
 }
-
-
-

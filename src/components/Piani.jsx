@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, SearchSel } from './ui';
 import { C, uid, fmt, today, SCADENZA_PRESET, addMesi } from '../lib/utils';
 import Odontogramma from './Odontogramma.jsx';
 import PdfView from './PdfView.jsx';
@@ -265,12 +265,10 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
       {modal && (
         <Modal title="Nuovo piano di cura" onClose={() => setModal(false)} wide>
           <Fld label="Paziente">
-            <Sel
-              value={form.pazienteId}
-              onChange={(v) => setForm((f) => ({ ...f, pazienteId: v }))}
-              placeholder="Cerca paziente…"
-              options={patients.map(p => ({ value: String(p.id), label: `${p.nome} ${p.cognome}`, sub: p.telefono || '' }))}
-            />
+            <Sel value={form.pazienteId} onChange={(e) => setForm((f) => ({ ...f, pazienteId: e.target.value }))}>
+              <option value="">Seleziona paziente…</option>
+              {patients.map((p) => <option key={p.id} value={p.id}>{p.nome} {p.cognome}</option>)}
+            </Sel>
           </Fld>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <Fld label="Titolo"><Inp value={form.titolo} onChange={(e) => setForm((f) => ({ ...f, titolo: e.target.value }))} placeholder="es. Piano conservativa" /></Fld>
@@ -344,12 +342,10 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
                   style={{ flex: 1 }}
                 />
               </div>
-              <Sel
-                value={pricelist.find(p => p.nome === nv.prestazione)?.id || ''}
-                onChange={(v) => { const item = pricelist.find(p => String(p.id) === String(v)); if (item) selPr(item.nome); }}
-                placeholder="Oppure scegli dal listino…"
-                options={pricelist.map(p => ({ value: String(p.id), label: p.nome, sub: `${p.cat} — ${fmt(p.prezzo)}` }))}
-              />
+              <Sel value={nv.prestazione} onChange={(e) => selPr(e.target.value)}>
+                <option value="">Scegli dal listino…</option>
+                {pricelist.map((p) => <option key={p.id} value={p.nome}>{p.nome} — {fmt(p.prezzo)}</option>)}
+              </Sel>
             </Fld>
             <Odontogramma selected={selectedDenti} onChange={setSelectedDenti} onDenteChange={(v) => setNv((n) => ({ ...n, dente: v }))} />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -434,6 +430,3 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
     </div>
   );
 }
-
-
-
