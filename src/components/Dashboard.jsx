@@ -51,8 +51,19 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
   // ── ESEGUITO DA INCASSARE (voci eseguite ma non incassate) ──
   const esegDaInc = patients.map(paz => {
     const patPlans = plans.filter(pl => pl.pazienteId === paz.id);
-    const voci = patPlans.flatMap(pl => pl.voci.filter(v => v.eseguita && !v.incassata).map(v => ({ ...v, pianoTitolo: pl.titolo })));
-    const tot = voci.reduce((s, v) => s + Number(v.prezzo), 0);
+    // Calcola per ogni piano la percentuale di sconto e applicala proporzionalmente
+    const voci = patPlans.flatMap(pl => {
+      const subTot = pl.voci.reduce((s, v) => s + Number(v.prezzo), 0);
+      const sc = Number(pl.sconto) || 0;
+      const scontato = pl.scontoTipo === 'pct' ? subTot * (sc / 100) : Math.min(sc, subTot);
+      const fattoreSconto = subTot > 0 ? Math.max(0, subTot - scontato) / subTot : 1;
+      return pl.voci.filter(v => v.eseguita && !v.incassata).map(v => ({
+        ...v,
+        pianoTitolo: pl.titolo,
+        prezzoScontato: Number(v.prezzo) * fattoreSconto,
+      }));
+    });
+    const tot = voci.reduce((s, v) => s + v.prezzoScontato, 0);
     return { paz, voci, tot };
   }).filter(x => x.tot > 0).sort((a, b) => b.tot - a.tot);
   const totEsegDaInc = esegDaInc.reduce((s, x) => s + x.tot, 0);
@@ -355,7 +366,7 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
               {voci.map((v, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderTop: `1px solid ${C.brd}`, fontSize: 12 }}>
                   <div><span style={{ fontWeight: 600 }}>{v.prestazione}</span>{v.dente ? ` · d.${v.dente}` : ''}<div style={{ fontSize: 10, color: C.txl }}>{v.pianoTitolo}</div></div>
-                  <span style={{ fontWeight: 700, color: C.dan }}>{fmt(v.prezzo)}</span>
+                  <span style={{ fontWeight: 700, color: C.dan }}>{fmt(v.prezzoScontato ?? v.prezzo)}</span>
                 </div>
               ))}
             </Crd>
