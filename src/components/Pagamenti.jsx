@@ -79,7 +79,7 @@ export default function Pagamenti({ patients, payments, setPayments, plans }) {
       {modal && (
         <Modal title="Registra pagamento" onClose={() => setModal(false)}>
           <Fld label="Paziente">
-            <SearchSel
+            <Sel
               value={form.pazienteId}
               onChange={(v) => F({ pazienteId: v })}
               placeholder="Cerca paziente…"
@@ -124,4 +124,6 @@ export default function Pagamenti({ patients, payments, setPayments, plans }) {
     </div>
   );
 }
+
+
 

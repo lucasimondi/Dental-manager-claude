@@ -101,7 +101,7 @@ export default function WhatsApp({ patients, appointments, templates, setTemplat
         <Crd>
           <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 11 }}>Messaggio personalizzato</div>
           <Fld label="Paziente">
-            <SearchSel
+            <Sel
               value={selPaz}
               onChange={(v) => setSelPaz(v)}
               placeholder="Cerca paziente…"
@@ -164,4 +164,6 @@ export default function WhatsApp({ patients, appointments, templates, setTemplat
     </div>
   );
 }
+
+
 

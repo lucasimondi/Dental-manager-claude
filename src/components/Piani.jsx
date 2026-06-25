@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic } from './ui';
-import SearchSel from './ui/SearchSel.jsx';
 import { C, uid, fmt, today, SCADENZA_PRESET, addMesi } from '../lib/utils';
 import Odontogramma from './Odontogramma.jsx';
 import PdfView from './PdfView.jsx';
@@ -266,7 +265,7 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
       {modal && (
         <Modal title="Nuovo piano di cura" onClose={() => setModal(false)} wide>
           <Fld label="Paziente">
-            <SearchSel
+            <Sel
               value={form.pazienteId}
               onChange={(v) => setForm((f) => ({ ...f, pazienteId: v }))}
               placeholder="Cerca paziente…"
@@ -345,7 +344,7 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
                   style={{ flex: 1 }}
                 />
               </div>
-              <SearchSel
+              <Sel
                 value={pricelist.find(p => p.nome === nv.prestazione)?.id || ''}
                 onChange={(v) => { const item = pricelist.find(p => String(p.id) === String(v)); if (item) selPr(item.nome); }}
                 placeholder="Oppure scegli dal listino…"
@@ -435,4 +434,6 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
     </div>
   );
 }
+
+
 

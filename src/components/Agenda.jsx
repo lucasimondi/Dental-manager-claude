@@ -216,7 +216,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
       {modal && (
         <Modal title="Nuovo appuntamento" onClose={() => setModal(false)}>
           <Fld label="Paziente">
-            <SearchSel
+            <Sel
               value={form.pazienteId}
               onChange={(v) => F({ pazienteId: v })}
               placeholder="Cerca paziente…"
@@ -261,4 +261,6 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
     </div>
   );
 }
+
+
 
