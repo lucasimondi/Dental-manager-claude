@@ -216,10 +216,12 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
       {modal && (
         <Modal title="Nuovo appuntamento" onClose={() => setModal(false)}>
           <Fld label="Paziente">
-            <Sel value={form.pazienteId} onChange={(e) => F({ pazienteId: e.target.value })}>
-              <option value="">Seleziona…</option>
-              {patients.map((p) => <option key={p.id} value={p.id}>{p.nome} {p.cognome}</option>)}
-            </Sel>
+            <SearchSel
+              value={form.pazienteId}
+              onChange={(v) => F({ pazienteId: v })}
+              placeholder="Cerca paziente…"
+              options={patients.map(p => ({ value: String(p.id), label: `${p.nome} ${p.cognome}`, sub: p.telefono || '' }))}
+            />
           </Fld>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <Fld label="Data"><Inp type="date" value={form.data} onChange={(e) => F({ data: e.target.value })} /></Fld>

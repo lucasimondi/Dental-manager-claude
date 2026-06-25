@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, SearchSel } from './ui';
 import { C, uid, fmt, today, SCADENZA_PRESET, addMesi } from '../lib/utils';
 import Odontogramma from './Odontogramma.jsx';
 import PdfView from './PdfView.jsx';
@@ -15,6 +15,8 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
   const [pdfPlan, setPdfPlan] = useState(null);
   const [toast, setToast] = useState('');
   const [selPiani, setSelPiani] = useState([]);
+  const [filtro, setFiltro] = useState(null); // null=tutti | 'attivo'|'accettato'|'rifiutato'|'concluso'|'inCorso'
+  const [filtroModal, setFiltroModal] = useState(null);
 
   useEffect(() => {
     if (initPatId) {
@@ -33,6 +35,12 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
     rifiutati: plans.filter((p) => p.stato === 'rifiutato').length,
     conclusi: plans.filter((p) => p.stato === 'concluso').length,
     inCorso: plans.filter((p) => { const d = p.voci.filter((v) => v.eseguita).length; return d > 0 && d < p.voci.length; }).length,
+  };
+
+  const pianiFiltrati = (stato) => {
+    if (stato === 'inCorso') return plans.filter(p => { const d = p.voci.filter(v => v.eseguita).length; return d > 0 && d < p.voci.length; });
+    if (stato === 'totali') return plans;
+    return plans.filter(p => (p.stato || 'attivo') === stato);
   };
 
   const calcTot = (voci, sconto, scontoTipo) => {
@@ -129,16 +137,65 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
         <Btn ch="Nuovo" ic="plus" onClick={() => { setForm({ pazienteId: '', titolo: '', data: today(), voci: [], stato: 'attivo', sconto: 0, scontoTipo: 'pct', scadenzaPagamento: '', ortodonzia: null }); setNv({ prestazione: '', dente: '', prezzo: '' }); setSelectedDenti([]); setModal(true); }} />
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
-        {[['Totali', kpi.totali, C.pri], ['Attivi', kpi.attivi, C.war], ['Accettati', kpi.accettati, C.acc], ['Rifiutati', kpi.rifiutati, C.dan], ['Conclusi', kpi.conclusi, C.suc], ['In corso', kpi.inCorso, C.pur]].map(([l, v, co]) => (
-          <Crd key={l} style={{ padding: 11, display: 'flex', alignItems: 'center', gap: 9 }}>
+        {[['Totali', kpi.totali, C.pri, 'totali'], ['Attivi', kpi.attivi, C.war, 'attivo'], ['Accettati', kpi.accettati, C.acc, 'accettato'], ['Rifiutati', kpi.rifiutati, C.dan, 'rifiutato'], ['Conclusi', kpi.conclusi, C.suc, 'concluso'], ['In corso', kpi.inCorso, C.pur, 'inCorso']].map(([l, v, co, key]) => (
+          <Crd key={l} onClick={() => { setFiltroModal(key); }} style={{ padding: 11, display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', border: filtro === key ? `2px solid ${co}` : undefined, background: filtro === key ? co + '10' : '#fff', position: 'relative' }}>
             <div style={{ background: co + '20', borderRadius: 8, padding: 7, flexShrink: 0 }}><Ic n="plan" s={16} c={co} /></div>
-            <div><div style={{ fontSize: 18, fontWeight: 800 }}>{v}</div><div style={{ fontSize: 10, color: C.txm, fontWeight: 600 }}>{l}</div></div>
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: filtro === key ? co : C.txt }}>{v}</div>
+              <div style={{ fontSize: 10, color: filtro === key ? co : C.txm, fontWeight: 600 }}>{l}</div>
+            </div>
+            <div style={{ position: 'absolute', top: 4, right: 6, fontSize: 10, color: co, opacity: 0.5 }}>›</div>
           </Crd>
         ))}
       </div>
 
+      {filtro && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, background: C.priL, borderRadius: 9, padding: '8px 12px' }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: C.pri }}>Filtro: {filtro === 'totali' ? 'Tutti' : filtro === 'inCorso' ? 'In corso' : filtro.charAt(0).toUpperCase() + filtro.slice(1)}</span>
+          <button onClick={() => setFiltro(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.dan, fontWeight: 700, fontSize: 12 }}>✕ Rimuovi</button>
+        </div>
+      )}
+
+      {filtroModal && (
+        <Modal title={`📋 ${filtroModal === 'totali' ? 'Tutti i piani' : filtroModal === 'inCorso' ? 'In corso' : filtroModal.charAt(0).toUpperCase() + filtroModal.slice(1)}`} onClose={() => setFiltroModal(null)} wide>
+          <div style={{ marginBottom: 12, display: 'flex', gap: 8 }}>
+            <Btn ch="Mostra solo questi" onClick={() => { setFiltro(filtroModal); setFiltroModal(null); }} full />
+            <Btn ch="Mostra tutti" v="sec" onClick={() => { setFiltro(null); setFiltroModal(null); }} full />
+          </div>
+          {pianiFiltrati(filtroModal).length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Nessun piano in questa categoria</div>}
+          {pianiFiltrati(filtroModal).map(pl => {
+            const p = patients.find(x => x.id === pl.pazienteId);
+            const { finale: tot } = calcTot(pl.voci, pl.sconto || 0, pl.scontoTipo || 'pct');
+            const done = pl.voci.filter(v => v.eseguita).length;
+            const pct = pl.voci.length ? Math.round(done / pl.voci.length * 100) : 0;
+            const statoC = { attivo: C.war, accettato: C.acc, concluso: C.suc, rifiutato: C.dan }[pl.stato || 'attivo'] || C.war;
+            return (
+              <Crd key={pl.id} style={{ marginBottom: 9, borderLeft: `3px solid ${statoC}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pl.titolo}</div>
+                    <div style={{ fontSize: 12, color: C.txm }}>{p?.nome} {p?.cognome}</div>
+                    <div style={{ fontSize: 11, color: C.txl, marginTop: 2 }}>{pl.data} · {done}/{pl.voci.length} eseguite · {pct}%</div>
+                    <div style={{ background: C.bg, borderRadius: 4, height: 4, overflow: 'hidden', marginTop: 5 }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? C.suc : C.pri, borderRadius: 4 }} />
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontWeight: 800, fontSize: 14, color: C.pri }}>{fmt(tot)}</div>
+                    <Bdg ch={pl.stato || 'attivo'} co={statoC} />
+                    <div style={{ marginTop: 6 }}>
+                      <button onClick={() => { setFiltroModal(null); setPdfPlan(pl); }} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '5px 9px', cursor: 'pointer', color: C.pri, fontWeight: 700, fontSize: 11 }}>PDF</button>
+                    </div>
+                  </div>
+                </div>
+              </Crd>
+            );
+          })}
+        </Modal>
+      )}
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {plans.map((pl) => {
+        {(filtro ? pianiFiltrati(filtro) : plans).map((pl) => {
           const p = patients.find((x) => x.id === pl.pazienteId);
           const { sub, scontato, finale: tot } = calcTot(pl.voci, pl.sconto || 0, pl.scontoTipo || 'pct');
           const done = pl.voci.filter((v) => v.eseguita).length;
@@ -208,10 +265,12 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
       {modal && (
         <Modal title="Nuovo piano di cura" onClose={() => setModal(false)} wide>
           <Fld label="Paziente">
-            <Sel value={form.pazienteId} onChange={(e) => setForm((f) => ({ ...f, pazienteId: e.target.value }))}>
-              <option value="">Seleziona paziente…</option>
-              {patients.map((p) => <option key={p.id} value={p.id}>{p.nome} {p.cognome}</option>)}
-            </Sel>
+            <SearchSel
+              value={form.pazienteId}
+              onChange={(v) => setForm((f) => ({ ...f, pazienteId: v }))}
+              placeholder="Cerca paziente…"
+              options={patients.map(p => ({ value: String(p.id), label: `${p.nome} ${p.cognome}`, sub: p.telefono || '' }))}
+            />
           </Fld>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <Fld label="Titolo"><Inp value={form.titolo} onChange={(e) => setForm((f) => ({ ...f, titolo: e.target.value }))} placeholder="es. Piano conservativa" /></Fld>
@@ -276,11 +335,21 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
 
           <div style={{ background: C.bg, borderRadius: 10, padding: 11, marginBottom: 11 }}>
             <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 9 }}>Aggiungi prestazione</div>
-            <Fld label="Dal listino">
-              <Sel value={nv.prestazione} onChange={(e) => selPr(e.target.value)}>
-                <option value="">Scegli dal listino…</option>
-                {pricelist.map((p) => <option key={p.id} value={p.nome}>{p.nome} — {fmt(p.prezzo)}</option>)}
-              </Sel>
+            <Fld label="Prestazione (digita o scegli dal listino)">
+              <div style={{ display: 'flex', gap: 8, marginBottom: 7 }}>
+                <Inp
+                  value={nv.prestazione}
+                  onChange={(e) => setNv((v) => ({ ...v, prestazione: e.target.value }))}
+                  placeholder="Digita nome prestazione…"
+                  style={{ flex: 1 }}
+                />
+              </div>
+              <SearchSel
+                value={pricelist.find(p => p.nome === nv.prestazione)?.id || ''}
+                onChange={(v) => { const item = pricelist.find(p => String(p.id) === String(v)); if (item) selPr(item.nome); }}
+                placeholder="Oppure scegli dal listino…"
+                options={pricelist.map(p => ({ value: String(p.id), label: p.nome, sub: `${p.cat} — ${fmt(p.prezzo)}` }))}
+              />
             </Fld>
             <Odontogramma selected={selectedDenti} onChange={setSelectedDenti} onDenteChange={(v) => setNv((n) => ({ ...n, dente: v }))} />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>

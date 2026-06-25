@@ -79,10 +79,12 @@ export default function Pagamenti({ patients, payments, setPayments, plans }) {
       {modal && (
         <Modal title="Registra pagamento" onClose={() => setModal(false)}>
           <Fld label="Paziente">
-            <Sel value={form.pazienteId} onChange={(e) => F({ pazienteId: e.target.value })}>
-              <option value="">Seleziona…</option>
-              {patients.map((p) => <option key={p.id} value={p.id}>{p.nome} {p.cognome}</option>)}
-            </Sel>
+            <SearchSel
+              value={form.pazienteId}
+              onChange={(v) => F({ pazienteId: v })}
+              placeholder="Cerca paziente…"
+              options={patients.map(p => ({ value: String(p.id), label: `${p.nome} ${p.cognome}`, sub: p.telefono || '' }))}
+            />
           </Fld>
           {selPazSaldo && (
             <div style={{ background: C.priD, borderRadius: 10, padding: 11, marginBottom: 11 }}>
