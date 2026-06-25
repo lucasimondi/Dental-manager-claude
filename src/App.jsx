@@ -211,6 +211,7 @@ export default function App() {
             patients={patients} plans={plans} setPlans={setPlansSync}
             pricelist={pricelist} templates={templates} si={studioInfo}
             initPatId={initPatId} onClearInitPat={() => setInitPatId(null)}
+            onOpenPaz={goSchedaPaz}
           />
         )}
         {page === 'paga' && <Pagamenti patients={patients} payments={payments} setPayments={setPaymentsSync} plans={plans} />}

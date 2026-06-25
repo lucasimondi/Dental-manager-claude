@@ -4,7 +4,7 @@ import { C, uid, fmt, today, SCADENZA_PRESET, addMesi } from '../lib/utils';
 import Odontogramma from './Odontogramma.jsx';
 import PdfView from './PdfView.jsx';
 
-export default function Piani({ patients, plans, setPlans, pricelist, templates, si, initPatId, onClearInitPat }) {
+export default function Piani({ patients, plans, setPlans, pricelist, templates, si, initPatId, onClearInitPat, onOpenPaz }) {
   const [modal, setModal] = useState(false);
   const ortoVuoto = { attivo: false, mascherineTotali: '', frequenzaSettimane: 2, dataConsegnaInizio: '', mascherineConsegnate: 0, storico: [] };
   const [form, setForm] = useState({ pazienteId: '', titolo: '', data: today(), voci: [], stato: 'attivo', sconto: 0, scontoTipo: 'pct', scadenzaPagamento: '', ortodonzia: null });
@@ -211,7 +211,10 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
                   </button>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pl.titolo}</div>
-                    <div style={{ fontSize: 11, color: C.txm }}>{p?.nome} {p?.cognome} · {pl.data}</div>
+                    <div style={{ fontSize: 11, color: C.txm }}>
+                      {p && onOpenPaz ? <span onClick={() => onOpenPaz(p, 'piani')} style={{ color: C.pri, cursor: 'pointer', fontWeight: 700, textDecoration: 'underline', textDecorationColor: C.pri + '60' }}>{p.nome} {p.cognome}</span> : `${p?.nome || ''} ${p?.cognome || ''}`}
+                      {' · '}{pl.data}
+                    </div>
                     <div style={{ marginTop: 6, display: 'flex', gap: 5, flexWrap: 'wrap' }}><Bdg ch={pl.stato || 'attivo'} co={statoC} /></div>
                   </div>
                 </div>
