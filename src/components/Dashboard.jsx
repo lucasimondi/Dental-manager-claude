@@ -142,6 +142,56 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
       )}
 
       {/* ── MODALS ── */}
+      {detailModal === 'attesa' && (
+        <Modal title="⏳ Preventivi in attesa" onClose={() => setDetailModal(null)} wide>
+          <div style={{ background: C.purL, borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ fontWeight: 700, color: C.pur }}>{preventiviAttesa.length} preventivi in attesa di risposta</span>
+          </div>
+          {preventiviAttesa.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Nessun preventivo in attesa</div>}
+          {preventiviAttesa.map(pl => {
+            const paz = patients.find(x => x.id === pl.pazienteId);
+            if (!paz) return null;
+            const tot = calcPlanTot(pl);
+            return (
+              <Crd key={pl.id} style={{ marginBottom: 8, borderLeft: `3px solid ${C.pur}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div onClick={() => { setDetailModal(null); onOpenPaz(paz, 'piani'); }} style={{ fontWeight: 700, color: C.pri, cursor: 'pointer', fontSize: 13 }}>{paz.nome} {paz.cognome} ›</div>
+                    <div style={{ fontSize: 11, color: C.txm }}>{pl.titolo} · {fmtD(pl.data)}</div>
+                  </div>
+                  <span style={{ fontWeight: 900, color: C.pur }}>{fmt(tot)}</span>
+                </div>
+              </Crd>
+            );
+          })}
+        </Modal>
+      )}
+
+      {detailModal === 'rifiutati' && (
+        <Modal title="✗ Preventivi rifiutati" onClose={() => setDetailModal(null)} wide>
+          <div style={{ background: C.danL, borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+            <span style={{ fontWeight: 700, color: C.dan }}>{preventiviRifiutati.length} preventivi non accettati</span>
+          </div>
+          {preventiviRifiutati.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Nessun preventivo rifiutato</div>}
+          {preventiviRifiutati.map(pl => {
+            const paz = patients.find(x => x.id === pl.pazienteId);
+            if (!paz) return null;
+            const tot = calcPlanTot(pl);
+            return (
+              <Crd key={pl.id} style={{ marginBottom: 8, borderLeft: `3px solid ${C.dan}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div onClick={() => { setDetailModal(null); onOpenPaz(paz, 'piani'); }} style={{ fontWeight: 700, color: C.pri, cursor: 'pointer', fontSize: 13 }}>{paz.nome} {paz.cognome} ›</div>
+                    <div style={{ fontSize: 11, color: C.txm }}>{pl.titolo} · {fmtD(pl.data)}</div>
+                  </div>
+                  <span style={{ fontWeight: 900, color: C.dan }}>{fmt(tot)}</span>
+                </div>
+              </Crd>
+            );
+          })}
+        </Modal>
+      )}
+
       {detailModal === 'accettati' && (
         <Modal title="✓ Piani accettati" onClose={() => setDetailModal(null)} wide>
           <div style={{ background: '#E8FAF9', borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
@@ -328,18 +378,18 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>🎛️ Controllo studio</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <div onClick={() => setDetailModal('accettati')} style={{ background: C.priL, borderRadius: 12, padding: 12, border: `1px solid ${C.pri}25`, cursor: 'pointer' }}>
+            <div style={{ background: C.priL, borderRadius: 12, padding: 12, border: `1px solid ${C.pri}25` }}>
               <div style={{ fontSize: 10, fontWeight: 800, color: C.pri, textTransform: 'uppercase' }}>📋 Preventivi</div>
               <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                <div style={{ flex: 1, textAlign: 'center' }}>
+                <div onClick={(e) => { e.stopPropagation(); setDetailModal('attesa'); }} style={{ flex: 1, textAlign: 'center', cursor: 'pointer', padding: '4px 0', borderRadius: 7, background: 'rgba(124,58,237,0.08)' }}>
                   <div style={{ fontSize: 18, fontWeight: 900, color: C.pur }}>{preventiviAttesa.length}</div>
                   <div style={{ fontSize: 9, color: C.txl }}>in attesa</div>
                 </div>
-                <div style={{ flex: 1, textAlign: 'center', borderLeft: `1px solid ${C.brd}` }}>
+                <div onClick={(e) => { e.stopPropagation(); setDetailModal('accettati'); }} style={{ flex: 1, textAlign: 'center', cursor: 'pointer', padding: '4px 0', borderRadius: 7, background: 'rgba(46,196,182,0.1)' }}>
                   <div style={{ fontSize: 18, fontWeight: 900, color: C.acc }}>{preventiviAccettati.length}</div>
                   <div style={{ fontSize: 9, color: C.txl }}>accettati</div>
                 </div>
-                <div style={{ flex: 1, textAlign: 'center', borderLeft: `1px solid ${C.brd}` }}>
+                <div onClick={(e) => { e.stopPropagation(); setDetailModal('rifiutati'); }} style={{ flex: 1, textAlign: 'center', cursor: 'pointer', padding: '4px 0', borderRadius: 7, background: 'rgba(230,57,70,0.08)' }}>
                   <div style={{ fontSize: 18, fontWeight: 900, color: C.dan }}>{preventiviRifiutati.length}</div>
                   <div style={{ fontSize: 9, color: C.txl }}>rifiutati</div>
                 </div>
