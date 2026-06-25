@@ -164,3 +164,4 @@ export default function WhatsApp({ patients, appointments, templates, setTemplat
     </div>
   );
 }
+

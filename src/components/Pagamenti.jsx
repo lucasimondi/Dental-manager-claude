@@ -124,3 +124,4 @@ export default function Pagamenti({ patients, payments, setPayments, plans }) {
     </div>
   );
 }
+

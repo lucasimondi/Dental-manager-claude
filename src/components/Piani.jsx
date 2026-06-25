@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, SearchSel } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic } from './ui';
+import SearchSel from './ui/SearchSel.jsx';
 import { C, uid, fmt, today, SCADENZA_PRESET, addMesi } from '../lib/utils';
 import Odontogramma from './Odontogramma.jsx';
 import PdfView from './PdfView.jsx';
@@ -434,3 +435,4 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
     </div>
   );
 }
+
