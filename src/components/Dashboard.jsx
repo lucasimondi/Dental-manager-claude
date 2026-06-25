@@ -47,9 +47,45 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
   const righeDAInc = saldoPerPaz.filter((x) => x.totDaInc > 0).sort((a, b) => b.totDaInc - a.totDaInc);
   const righeInc = saldoPerPaz.filter((x) => x.totIncAnno > 0).sort((a, b) => b.totIncAnno - a.totIncAnno);
 
+
+  // ── ESEGUITO DA INCASSARE (voci eseguite ma non incassate) ──
+  const esegDaInc = patients.map(paz => {
+    const patPlans = plans.filter(pl => pl.pazienteId === paz.id);
+    const voci = patPlans.flatMap(pl => pl.voci.filter(v => v.eseguita && !v.incassata).map(v => ({ ...v, pianoTitolo: pl.titolo })));
+    const tot = voci.reduce((s, v) => s + Number(v.prezzo), 0);
+    return { paz, voci, tot };
+  }).filter(x => x.tot > 0).sort((a, b) => b.tot - a.tot);
+  const totEsegDaInc = esegDaInc.reduce((s, x) => s + x.tot, 0);
+
+  // ── ACCETTATO NON ESEGUITO (piani accettati con voci da fare) ──
+  const accNonEseg = patients.map(paz => {
+    const patPlans = plans.filter(pl => pl.pazienteId === paz.id && pl.stato === 'accettato');
+    const voci = patPlans.flatMap(pl => pl.voci.filter(v => !v.eseguita).map(v => ({ ...v, pianoTitolo: pl.titolo })));
+    const tot = voci.reduce((s, v) => s + Number(v.prezzo), 0);
+    return { paz, voci, tot };
+  }).filter(x => x.tot > 0).sort((a, b) => b.tot - a.tot);
+  const totAccNonEseg = accNonEseg.reduce((s, x) => s + x.tot, 0);
+
+  // ── DA ESEGUIRE (tutte le prestazioni non ancora eseguite) ──
+  const daEseguire = patients.map(paz => {
+    const patPlans = plans.filter(pl => pl.pazienteId === paz.id);
+    const voci = patPlans.flatMap(pl => pl.voci.filter(v => !v.eseguita).map(v => ({ ...v, pianoTitolo: pl.titolo, pianoStato: pl.stato })));
+    const tot = voci.reduce((s, v) => s + Number(v.prezzo), 0);
+    return { paz, voci, tot };
+  }).filter(x => x.tot > 0).sort((a, b) => b.tot - a.tot);
+  const totDaEseguire = daEseguire.reduce((s, x) => s + x.tot, 0);
+
   // PREVENTIVI
   const preventiviAttesa = plans.filter((pl) => (pl.stato || 'attivo') === 'attivo').map((pl) => ({ pl, paz: patients.find((x) => x.id === pl.pazienteId) })).filter((x) => x.paz);
   const preventiviRifiutati = plans.filter((pl) => pl.stato === 'rifiutato').map((pl) => ({ pl, paz: patients.find((x) => x.id === pl.pazienteId) })).filter((x) => x.paz);
+  const preventiviAccettati = plans.filter((pl) => pl.stato === 'accettato').map((pl) => {
+    const paz = patients.find((x) => x.id === pl.pazienteId);
+    const sub = pl.voci.reduce((s, v) => s + Number(v.prezzo), 0);
+    const sc = Number(pl.sconto) || 0;
+    const scontato = pl.scontoTipo === 'pct' ? sub * (sc / 100) : Math.min(sc, sub);
+    return { pl, paz, tot: Math.max(0, sub - scontato) };
+  }).filter((x) => x.paz);
+  const totAccettati = preventiviAccettati.reduce((s, x) => s + x.tot, 0);
 
   // RICHIAMI
   const oggiD = new Date(t + 'T12:00');
@@ -133,6 +169,35 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
 
   return (
     <div>
+      {detailModal === 'accettati' && (
+        <Modal title="✓ Piani accettati" onClose={() => setDetailModal(null)} wide>
+          <div style={{ background: '#E8FAF9', borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.acc }}>Totale accettato</span>
+            <span style={{ fontSize: 20, fontWeight: 900, color: C.acc }}>{fmt(totAccettati)}</span>
+          </div>
+          {preventiviAccettati.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Nessun piano accettato</div>}
+          {preventiviAccettati.map(({ pl, paz, tot }) => {
+            const done = pl.voci.filter(v => v.eseguita).length;
+            const pct = pl.voci.length ? Math.round(done / pl.voci.length * 100) : 0;
+            return (
+              <Crd key={pl.id} style={{ marginBottom: 9, borderLeft: `3px solid ${C.acc}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div onClick={() => { setDetailModal(null); onOpenPaz(paz, 'piani'); }} style={{ fontWeight: 700, fontSize: 14, color: C.pri, cursor: 'pointer' }}>{paz.nome} {paz.cognome} ›</div>
+                    <div style={{ fontSize: 11, color: C.txm }}>{pl.titolo} · {fmtD(pl.data)}</div>
+                    <div style={{ background: C.bg, borderRadius: 4, height: 4, overflow: 'hidden', marginTop: 6 }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? C.suc : C.acc, borderRadius: 4 }} />
+                    </div>
+                    <div style={{ fontSize: 10, color: C.txl, marginTop: 3 }}>{done}/{pl.voci.length} eseguite · {pct}%</div>
+                  </div>
+                  <span style={{ fontWeight: 900, fontSize: 16, color: C.acc, flexShrink: 0 }}>{fmt(tot)}</span>
+                </div>
+              </Crd>
+            );
+          })}
+        </Modal>
+      )}
+
       {detailModal === 'prevent' && (
         <Modal title="📋 Preventivi da gestire" onClose={() => setDetailModal(null)} wide>
           {preventiviAttesa.length === 0 && preventiviRifiutati.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Nessun preventivo in sospeso 🎉</div>}
@@ -274,6 +339,82 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
         </Modal>
       )}
 
+      {detailModal === 'esegDaInc' && (
+        <Modal title="💰 Eseguito da incassare" onClose={() => setDetailModal(null)} wide>
+          <div style={{ background: C.danL, borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.dan }}>Prestazioni eseguite non ancora incassate</span>
+            <span style={{ fontSize: 20, fontWeight: 900, color: C.dan }}>{fmt(totEsegDaInc)}</span>
+          </div>
+          {esegDaInc.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Nessuna prestazione eseguita da incassare 🎉</div>}
+          {esegDaInc.map(({ paz, voci, tot }) => (
+            <Crd key={paz.id} style={{ marginBottom: 10, borderLeft: `3px solid ${C.dan}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div onClick={() => { setDetailModal(null); onOpenPaz(paz, 'piani'); }} style={{ fontWeight: 700, fontSize: 14, color: C.pri, cursor: 'pointer' }}>{paz.nome} {paz.cognome} ›</div>
+                <span style={{ fontWeight: 900, fontSize: 16, color: C.dan }}>{fmt(tot)}</span>
+              </div>
+              {voci.map((v, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderTop: `1px solid ${C.brd}`, fontSize: 12 }}>
+                  <div><span style={{ fontWeight: 600 }}>{v.prestazione}</span>{v.dente ? ` · d.${v.dente}` : ''}<div style={{ fontSize: 10, color: C.txl }}>{v.pianoTitolo}</div></div>
+                  <span style={{ fontWeight: 700, color: C.dan }}>{fmt(v.prezzo)}</span>
+                </div>
+              ))}
+            </Crd>
+          ))}
+        </Modal>
+      )}
+
+      {detailModal === 'accNonEseg' && (
+        <Modal title="✓ Accettato da eseguire" onClose={() => setDetailModal(null)} wide>
+          <div style={{ background: C.purL, borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.pur }}>Piani accettati con prestazioni ancora da eseguire</span>
+            <span style={{ fontSize: 20, fontWeight: 900, color: C.pur }}>{fmt(totAccNonEseg)}</span>
+          </div>
+          {accNonEseg.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Nessun piano accettato da eseguire 🎉</div>}
+          {accNonEseg.map(({ paz, voci, tot }) => (
+            <Crd key={paz.id} style={{ marginBottom: 10, borderLeft: `3px solid ${C.pur}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div onClick={() => { setDetailModal(null); onOpenPaz(paz, 'piani'); }} style={{ fontWeight: 700, fontSize: 14, color: C.pri, cursor: 'pointer' }}>{paz.nome} {paz.cognome} ›</div>
+                <span style={{ fontWeight: 900, fontSize: 16, color: C.pur }}>{fmt(tot)}</span>
+              </div>
+              {voci.map((v, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderTop: `1px solid ${C.brd}`, fontSize: 12 }}>
+                  <div><span style={{ fontWeight: 600 }}>{v.prestazione}</span>{v.dente ? ` · d.${v.dente}` : ''}<div style={{ fontSize: 10, color: C.txl }}>{v.pianoTitolo}</div></div>
+                  <span style={{ fontWeight: 700, color: C.pur }}>{fmt(v.prezzo)}</span>
+                </div>
+              ))}
+            </Crd>
+          ))}
+        </Modal>
+      )}
+
+      {detailModal === 'daEseg' && (
+        <Modal title="🔧 Totale da eseguire" onClose={() => setDetailModal(null)} wide>
+          <div style={{ background: '#FEF3E2', borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.war }}>Tutte le prestazioni non ancora eseguite</span>
+            <span style={{ fontSize: 20, fontWeight: 900, color: C.war }}>{fmt(totDaEseguire)}</span>
+          </div>
+          {daEseguire.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Nessuna prestazione da eseguire 🎉</div>}
+          {daEseguire.map(({ paz, voci, tot }) => (
+            <Crd key={paz.id} style={{ marginBottom: 10, borderLeft: `3px solid ${C.war}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div onClick={() => { setDetailModal(null); onOpenPaz(paz, 'piani'); }} style={{ fontWeight: 700, fontSize: 14, color: C.pri, cursor: 'pointer' }}>{paz.nome} {paz.cognome} ›</div>
+                <span style={{ fontWeight: 900, fontSize: 16, color: C.war }}>{fmt(tot)}</span>
+              </div>
+              {voci.slice(0, 5).map((v, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderTop: `1px solid ${C.brd}`, fontSize: 12 }}>
+                  <div>
+                    <span style={{ fontWeight: 600 }}>{v.prestazione}</span>{v.dente ? ` · d.${v.dente}` : ''}
+                    <div style={{ fontSize: 10, color: C.txl }}>{v.pianoTitolo} · {v.pianoStato || 'attivo'}</div>
+                  </div>
+                  <span style={{ fontWeight: 700, color: C.war }}>{fmt(v.prezzo)}</span>
+                </div>
+              ))}
+              {voci.length > 5 && <div style={{ fontSize: 11, color: C.txl, textAlign: 'center', marginTop: 5 }}>+{voci.length - 5} altre prestazioni</div>}
+            </Crd>
+          ))}
+        </Modal>
+      )}
+
       {detailModal === 'daInc' && (
         <Modal title="⚠️ Da incassare — tutti i pazienti" onClose={() => setDetailModal(null)} wide>
           <div style={{ background: C.danL, borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -357,11 +498,18 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
       <div style={{ marginBottom: 14 }}>
         <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>🎛️ Controllo studio</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <div onClick={() => setDetailModal('prevent')} style={{ background: C.purL, borderRadius: 12, padding: 14, border: `1px solid ${C.pur}40`, cursor: 'pointer', position: 'relative' }}>
-            <div style={{ position: 'absolute', top: 10, right: 10, fontSize: 14, opacity: 0.5 }}>›</div>
-            <div style={{ fontSize: 10, fontWeight: 800, color: C.pur, textTransform: 'uppercase', letterSpacing: '0.06em' }}>📋 Preventivi</div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: C.pur, marginTop: 4 }}>{preventiviAttesa.length + preventiviRifiutati.length}</div>
-            <div style={{ fontSize: 11, color: C.pur + 'BB', marginTop: 2 }}>{preventiviAttesa.length} in attesa · {preventiviRifiutati.length} rifiutati</div>
+          <div style={{ background: C.purL, borderRadius: 12, padding: 14, border: `1px solid ${C.pur}40`, position: 'relative' }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: C.pur, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>📋 Preventivi</div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <div onClick={() => setDetailModal('prevent')} style={{ flex: 1, background: 'rgba(124,58,237,0.08)', borderRadius: 9, padding: '8px 10px', cursor: 'pointer' }}>
+                <div style={{ fontSize: 18, fontWeight: 900, color: C.pur }}>{preventiviAttesa.length + preventiviRifiutati.length}</div>
+                <div style={{ fontSize: 10, color: C.pur + 'BB' }}>{preventiviAttesa.length} attesa · {preventiviRifiutati.length} rif.</div>
+              </div>
+              <div onClick={() => setDetailModal('accettati')} style={{ flex: 1, background: 'rgba(46,196,182,0.12)', borderRadius: 9, padding: '8px 10px', cursor: 'pointer' }}>
+                <div style={{ fontSize: 16, fontWeight: 900, color: C.acc }}>{fmt(totAccettati)}</div>
+                <div style={{ fontSize: 10, color: C.acc + 'BB' }}>{preventiviAccettati.length} accettati ✓</div>
+              </div>
+            </div>
           </div>
           <div onClick={() => setDetailModal('richiami')} style={{ background: richiamiScaduti.length > 0 ? C.danL : '#FEF3E2', borderRadius: 12, padding: 14, border: `1px solid ${richiamiScaduti.length > 0 ? C.dan : C.war}40`, cursor: 'pointer', position: 'relative' }}>
             <div style={{ position: 'absolute', top: 10, right: 10, fontSize: 14, opacity: 0.5 }}>›</div>
@@ -390,18 +538,32 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-        <div onClick={() => setDetailModal('daInc')} style={{ background: C.danL, borderRadius: 12, padding: 14, border: `1px solid ${C.dan}40`, cursor: 'pointer', position: 'relative', userSelect: 'none' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 8 }}>
+        <div onClick={() => setDetailModal('esegDaInc')} style={{ background: C.danL, borderRadius: 12, padding: 14, border: `1px solid ${C.dan}40`, cursor: 'pointer', position: 'relative', userSelect: 'none' }}>
           <div style={{ position: 'absolute', top: 10, right: 10, fontSize: 14, opacity: 0.5 }}>›</div>
-          <div style={{ fontSize: 10, fontWeight: 800, color: C.dan, textTransform: 'uppercase', letterSpacing: '0.06em' }}>⚠️ Da incassare</div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: C.dan, marginTop: 4 }}>{fmt(totDaInc)}</div>
-          <div style={{ fontSize: 11, color: C.dan + 'BB', marginTop: 2 }}>{nPazDaInc} pazienti · tocca per dettagli</div>
+          <div style={{ fontSize: 10, fontWeight: 800, color: C.dan, textTransform: 'uppercase', letterSpacing: '0.06em' }}>💰 Eseguito da incassare</div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: C.dan, marginTop: 4 }}>{fmt(totEsegDaInc)}</div>
+          <div style={{ fontSize: 11, color: C.dan + 'BB', marginTop: 2 }}>{esegDaInc.length} pazienti</div>
         </div>
         <div onClick={() => setDetailModal('inc')} style={{ background: C.sucL, borderRadius: 12, padding: 14, border: `1px solid ${C.suc}40`, cursor: 'pointer', position: 'relative', userSelect: 'none' }}>
           <div style={{ position: 'absolute', top: 10, right: 10, fontSize: 14, opacity: 0.5 }}>›</div>
           <div style={{ fontSize: 10, fontWeight: 800, color: C.suc, textTransform: 'uppercase', letterSpacing: '0.06em' }}>✓ Incassate {anno}</div>
           <div style={{ fontSize: 22, fontWeight: 900, color: C.suc, marginTop: 4 }}>{fmt(totIncAnno)}</div>
-          <div style={{ fontSize: 11, color: C.suc + 'BB', marginTop: 2 }}>{nPazInc} pazienti · tocca per dettagli</div>
+          <div style={{ fontSize: 11, color: C.suc + 'BB', marginTop: 2 }}>{nPazInc} pazienti</div>
+        </div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+        <div onClick={() => setDetailModal('accNonEseg')} style={{ background: C.purL, borderRadius: 12, padding: 14, border: `1px solid ${C.pur}40`, cursor: 'pointer', position: 'relative', userSelect: 'none' }}>
+          <div style={{ position: 'absolute', top: 10, right: 10, fontSize: 14, opacity: 0.5 }}>›</div>
+          <div style={{ fontSize: 10, fontWeight: 800, color: C.pur, textTransform: 'uppercase', letterSpacing: '0.06em' }}>✓ Accettato da eseguire</div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: C.pur, marginTop: 4 }}>{fmt(totAccNonEseg)}</div>
+          <div style={{ fontSize: 11, color: C.pur + 'BB', marginTop: 2 }}>{accNonEseg.length} pazienti</div>
+        </div>
+        <div onClick={() => setDetailModal('daEseg')} style={{ background: '#FEF3E2', borderRadius: 12, padding: 14, border: `1px solid ${C.war}40`, cursor: 'pointer', position: 'relative', userSelect: 'none' }}>
+          <div style={{ position: 'absolute', top: 10, right: 10, fontSize: 14, opacity: 0.5 }}>›</div>
+          <div style={{ fontSize: 10, fontWeight: 800, color: C.war, textTransform: 'uppercase', letterSpacing: '0.06em' }}>🔧 Totale da eseguire</div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: C.war, marginTop: 4 }}>{fmt(totDaEseguire)}</div>
+          <div style={{ fontSize: 11, color: C.war + 'BB', marginTop: 2 }}>{daEseguire.length} pazienti</div>
         </div>
       </div>
 
