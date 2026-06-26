@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase.js';
 import { Crd, Bdg, Modal, Ic, Btn } from './ui';
 import { C, fmt, fmtD, today } from '../lib/utils';
 
@@ -14,11 +15,10 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
   const [sections, setSections] = useState(() => {
     try { return { ...SECTIONS_DEFAULT, ...JSON.parse(localStorage.getItem('dm_dash_sections') || '{}') }; } catch { return SECTIONS_DEFAULT; }
   });
-  const [todoList, setTodoList] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('dm_todo') || '[]'); } catch { return []; }
-  });
+  const [todoList, setTodoList] = useState([]);
   const [todoInput, setTodoInput] = useState('');
   const [todoModal, setTodoModal] = useState(false);
+  const [todoLoading, setTodoLoading] = useState(false);
 
   const toggleSection = (key) => {
     const next = { ...sections, [key]: !sections[key] };
@@ -26,10 +26,33 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
     localStorage.setItem('dm_dash_sections', JSON.stringify(next));
   };
 
-  const saveTodo = (list) => { setTodoList(list); try { localStorage.setItem('dm_todo', JSON.stringify(list)); } catch {} };
-  const addTodo = () => { if (!todoInput.trim()) return; saveTodo([{ id: Date.now(), testo: todoInput.trim(), fatto: false, data: t }, ...todoList]); setTodoInput(''); };
-  const toggleTodo = (id) => saveTodo(todoList.map(x => x.id === id ? { ...x, fatto: !x.fatto } : x));
-  const deleteTodo = (id) => saveTodo(todoList.filter(x => x.id !== id));
+  useEffect(() => { loadTodos(); }, []);
+
+  const loadTodos = async () => {
+    setTodoLoading(true);
+    const { data, error } = await supabase.from('todos').select('*').order('created_at', { ascending: false });
+    if (!error && data) setTodoList(data);
+    setTodoLoading(false);
+  };
+
+  const addTodo = async () => {
+    if (!todoInput.trim()) return;
+    const nuova = { id: Date.now(), testo: todoInput.trim(), fatto: false, data: t };
+    const { error } = await supabase.from('todos').insert([nuova]);
+    if (!error) { setTodoList(prev => [nuova, ...prev]); setTodoInput(''); }
+  };
+
+  const toggleTodo = async (id) => {
+    const todo = todoList.find(x => x.id === id);
+    if (!todo) return;
+    const { error } = await supabase.from('todos').update({ fatto: !todo.fatto }).eq('id', id);
+    if (!error) setTodoList(prev => prev.map(x => x.id === id ? { ...x, fatto: !x.fatto } : x));
+  };
+
+  const deleteTodo = async (id) => {
+    const { error } = await supabase.from('todos').delete().eq('id', id);
+    if (!error) setTodoList(prev => prev.filter(x => x.id !== id));
+  };
 
   // ── CALCOLI ──
   const todayApps = appointments.filter(a => a.data === t).sort((a, b) => a.ora.localeCompare(b.ora));
@@ -506,7 +529,8 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
               <span style={{ fontSize: 12, fontWeight: 700 }}>Attività {todoAttivi.length > 0 && <span style={{ background: C.dan, color: '#fff', borderRadius: 8, padding: '1px 6px', fontSize: 10 }}>{todoAttivi.length}</span>}</span>
               <button onClick={() => setTodoModal(true)} style={{ background: C.pri, border: 'none', borderRadius: 7, padding: '5px 10px', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>+ Aggiungi</button>
             </div>
-            {todoAttivi.length === 0 && <div style={{ fontSize: 12, color: C.txl, textAlign: 'center', padding: '8px 0' }}>Nessuna attività in sospeso 🎉</div>}
+            {todoLoading && <div style={{ fontSize: 12, color: C.txl, textAlign: 'center', padding: '8px 0' }}>⏳ Caricamento...</div>}
+            {!todoLoading && todoAttivi.length === 0 && <div style={{ fontSize: 12, color: C.txl, textAlign: 'center', padding: '8px 0' }}>Nessuna attività in sospeso 🎉</div>}
             <div style={{ maxHeight: 220, overflowY: 'auto' }}>
               {todoAttivi.map(todo => (
                 <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 0', borderBottom: `1px solid ${C.brd}` }}>
