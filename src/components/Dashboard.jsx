@@ -26,7 +26,14 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
     localStorage.setItem('dm_dash_sections', JSON.stringify(next));
   };
 
-  useEffect(() => { loadTodos(); }, []);
+  useEffect(() => {
+    loadTodos();
+    // Realtime: aggiorna automaticamente quando cambiano i todo
+    const channel = supabase.channel('todos-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'todos' }, () => { loadTodos(); })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const loadTodos = async () => {
     setTodoLoading(true);
