@@ -257,6 +257,80 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
         </Modal>
       )}
 
+      {detailModal === 'lucaMese' && (
+        <Modal title="💼 Incasso Luca — questo mese" onClose={() => setDetailModal(null)} wide>
+          <div style={{ background: '#F5F3FF', borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ fontWeight: 700, color: '#7C3AED' }}>Totale mese</span>
+            <span style={{ fontWeight: 900, fontSize: 18, color: '#7C3AED' }}>{fmt(incassoLucaMese)}</span>
+          </div>
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.suc, textTransform: 'uppercase', marginBottom: 6 }}>🦷 Studio ({fmt(mInc)})</div>
+            {payments.filter(p => p.data && p.data.startsWith(t.slice(0,7))).sort((a,b) => b.data.localeCompare(a.data)).map(pay => {
+              const paz = patients.find(x => x.id === pay.pazienteId);
+              return <Crd key={pay.id} style={{ marginBottom: 6, borderLeft: `3px solid ${C.suc}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div><div style={{ fontWeight: 700, fontSize: 13 }}>{paz ? `${paz.nome} ${paz.cognome}` : '—'}</div><div style={{ fontSize: 11, color: C.txm }}>{fmtD(pay.data)} · {pay.metodo}</div></div>
+                  <span style={{ fontWeight: 800, color: C.suc }}>{fmt(pay.importo)}</span>
+                </div>
+              </Crd>;
+            })}
+            {payments.filter(p => p.data && p.data.startsWith(t.slice(0,7))).length === 0 && <div style={{ fontSize: 12, color: C.txl, padding: '8px 0' }}>Nessun pagamento studio questo mese</div>}
+          </div>
+          {extMese > 0 && <div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#7C3AED', textTransform: 'uppercase', marginBottom: 6 }}>🤝 Collaborazioni ({fmt(extMese)})</div>
+            {pagExt.filter(p => p.data && p.data.startsWith(t.slice(0,7))).map(pag => (
+              <Crd key={pag.id} style={{ marginBottom: 6, borderLeft: '3px solid #7C3AED' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div><div style={{ fontWeight: 700, fontSize: 13 }}>{pag.collaborazione_nome}</div><div style={{ fontSize: 11, color: C.txm }}>{fmtD(pag.data)} · {pag.metodo}</div></div>
+                  <span style={{ fontWeight: 800, color: '#7C3AED' }}>{fmt(pag.importo)}</span>
+                </div>
+              </Crd>
+            ))}
+          </div>}
+        </Modal>
+      )}
+
+      {detailModal === 'lucaAnno' && (
+        <Modal title={`💼 Incasso Luca — ${anno}`} onClose={() => setDetailModal(null)} wide>
+          <div style={{ background: '#F5F3FF', borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ fontWeight: 700, color: '#7C3AED' }}>Totale anno {anno}</span>
+            <span style={{ fontWeight: 900, fontSize: 18, color: '#7C3AED' }}>{fmt(incassoLucaAnno)}</span>
+          </div>
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.suc, textTransform: 'uppercase', marginBottom: 6 }}>🦷 Studio ({fmt(aInc)})</div>
+            {(() => {
+              const mesiStudio = {};
+              payments.filter(p => p.data && p.data.startsWith(anno)).forEach(p => { const m = p.data.slice(0,7); mesiStudio[m] = (mesiStudio[m] || 0) + Number(p.importo); });
+              const MESI = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+              return Object.entries(mesiStudio).sort((a,b) => b[0].localeCompare(a[0])).map(([m, tot]) => (
+                <Crd key={m} style={{ marginBottom: 6, borderLeft: `3px solid ${C.suc}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontWeight: 600 }}>{MESI[parseInt(m.slice(5))-1]} {m.slice(0,4)}</span>
+                    <span style={{ fontWeight: 800, color: C.suc }}>{fmt(tot)}</span>
+                  </div>
+                </Crd>
+              ));
+            })()}
+          </div>
+          {extAnno > 0 && <div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#7C3AED', textTransform: 'uppercase', marginBottom: 6 }}>🤝 Collaborazioni ({fmt(extAnno)})</div>
+            {(() => {
+              const mesiExt = {};
+              pagExt.filter(p => p.data && p.data.startsWith(anno)).forEach(p => { const key = p.collaborazione_nome + '|' + p.data.slice(0,7); mesiExt[key] = (mesiExt[key] || { nome: p.collaborazione_nome, mese: p.data.slice(0,7), tot: 0 }); mesiExt[key].tot += Number(p.importo); });
+              const MESI = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+              return Object.values(mesiExt).sort((a,b) => b.mese.localeCompare(a.mese)).map((x, i) => (
+                <Crd key={i} style={{ marginBottom: 6, borderLeft: '3px solid #7C3AED' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div><span style={{ fontWeight: 600 }}>{x.nome}</span><div style={{ fontSize: 11, color: C.txl }}>{MESI[parseInt(x.mese.slice(5))-1]} {x.mese.slice(0,4)}</div></div>
+                    <span style={{ fontWeight: 800, color: '#7C3AED' }}>{fmt(x.tot)}</span>
+                  </div>
+                </Crd>
+              ));
+            })()}
+          </div>}
+        </Modal>
+      )}
+
       {detailModal === 'esegDaInc' && (
         <Modal title="💰 Eseguito da incassare" onClose={() => setDetailModal(null)} wide>
           <div style={{ background: C.danL, borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
