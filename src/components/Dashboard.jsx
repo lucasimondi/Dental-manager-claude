@@ -274,16 +274,97 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
 
       {detailModal === 'scadenze' && (
         <Modal title="📆 Scadenze pagamento" onClose={() => setDetailModal(null)} wide>
-          {scadenzeScadute.length > 0 && <><div style={{ fontSize: 11, fontWeight: 800, color: C.dan, textTransform: 'uppercase', marginBottom: 8 }}>⚠️ Scadute</div>{scadenzeScadute.map((s, i) => <Crd key={i} style={{ marginBottom: 7, borderLeft: `3px solid ${C.dan}` }}><div style={{ display: 'flex', justifyContent: 'space-between' }}><div onClick={() => { setDetailModal(null); onOpenPaz(s.paz, 'paga'); }} style={{ fontWeight: 700, color: C.pri, cursor: 'pointer' }}>{s.paz.nome} {s.paz.cognome} ›</div><span style={{ fontWeight: 800, color: C.dan }}>{fmt(s.importo)}</span></div><div style={{ fontSize: 11, color: C.txm }}>{s.pl.titolo} · scad. {fmtD(s.scadenza)}</div></Crd>)}</>}
-          {scadenzeProssime.length > 0 && <><div style={{ fontSize: 11, fontWeight: 800, color: C.war, textTransform: 'uppercase', margin: '12px 0 8px' }}>📅 Prossime 30gg</div>{scadenzeProssime.map((s, i) => <Crd key={i} style={{ marginBottom: 7, borderLeft: `3px solid ${C.war}` }}><div style={{ display: 'flex', justifyContent: 'space-between' }}><div onClick={() => { setDetailModal(null); onOpenPaz(s.paz, 'paga'); }} style={{ fontWeight: 700, color: C.pri, cursor: 'pointer' }}>{s.paz.nome} {s.paz.cognome} ›</div><span style={{ fontWeight: 800, color: C.war }}>{fmt(s.importo)}</span></div></Crd>)}</>}
+          {scadenzePagamento.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Nessuna scadenza impostata</div>}
+          {scadenzeScadute.length > 0 && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.dan, textTransform: 'uppercase', marginBottom: 8 }}>⚠️ Scadute ({scadenzeScadute.length})</div>
+              {scadenzeScadute.map((s, i) => (
+                <Crd key={i} style={{ marginBottom: 8, borderLeft: `3px solid ${C.dan}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div onClick={() => { setDetailModal(null); onOpenPaz(s.paz, 'paga'); }} style={{ fontWeight: 700, color: C.pri, cursor: 'pointer', fontSize: 13 }}>{s.paz.nome} {s.paz.cognome} ›</div>
+                      <div style={{ fontSize: 11, color: C.txm }}>{s.pl.titolo}</div>
+                      <div style={{ fontSize: 11, color: C.dan, fontWeight: 700 }}>Scadenza: {fmtD(s.scadenza)}</div>
+                    </div>
+                    <span style={{ fontWeight: 900, color: C.dan, fontSize: 16 }}>{fmt(s.importo)}</span>
+                  </div>
+                </Crd>
+              ))}
+            </>
+          )}
+          {scadenzeProssime.length > 0 && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.war, textTransform: 'uppercase', margin: '12px 0 8px' }}>📅 Prossime 30 giorni ({scadenzeProssime.length})</div>
+              {scadenzeProssime.map((s, i) => (
+                <Crd key={i} style={{ marginBottom: 8, borderLeft: `3px solid ${C.war}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div onClick={() => { setDetailModal(null); onOpenPaz(s.paz, 'paga'); }} style={{ fontWeight: 700, color: C.pri, cursor: 'pointer', fontSize: 13 }}>{s.paz.nome} {s.paz.cognome} ›</div>
+                      <div style={{ fontSize: 11, color: C.txm }}>{s.pl.titolo}</div>
+                      <div style={{ fontSize: 11, color: C.war, fontWeight: 700 }}>Scadenza: {fmtD(s.scadenza)}</div>
+                    </div>
+                    <span style={{ fontWeight: 900, color: C.war, fontSize: 16 }}>{fmt(s.importo)}</span>
+                  </div>
+                </Crd>
+              ))}
+            </>
+          )}
+          {scadenzeScadute.length === 0 && scadenzeProssime.length === 0 && scadenzePagamento.length > 0 && (
+            <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Tutte le scadenze sono lontane 🎉</div>
+          )}
         </Modal>
       )}
 
       {detailModal === 'orto' && (
-        <Modal title="🦷 Ortodonzia" onClose={() => setDetailModal(null)} wide>
-          {pianiOrto.filter(o => o.cambioScaduto).length > 0 && <><div style={{ fontSize: 11, fontWeight: 800, color: C.dan, textTransform: 'uppercase', marginBottom: 8 }}>⚠️ Cambio scaduto</div>{pianiOrto.filter(o => o.cambioScaduto).map(o => <Crd key={o.pl.id} style={{ marginBottom: 7, borderLeft: `3px solid ${C.dan}` }}><div onClick={() => { setDetailModal(null); onOpenPaz(o.paz, 'piani'); }} style={{ fontWeight: 700, color: C.pri, cursor: 'pointer' }}>{o.paz.nome} {o.paz.cognome} ›</div><div style={{ fontSize: 11, color: C.txm }}>Masch. {o.cons}/{o.tot||'?'} · prevista {fmtD(o.prossima)}</div></Crd>)}</>}
-          {pianiOrto.filter(o => !o.cambioScaduto && !o.inAttesa && !o.completato).map(o => { const pct = o.tot > 0 ? Math.round(o.cons/o.tot*100) : 0; return <Crd key={o.pl.id} style={{ marginBottom: 7, borderLeft: `3px solid ${C.pur}` }}><div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}><div onClick={() => { setDetailModal(null); onOpenPaz(o.paz, 'piani'); }} style={{ fontWeight: 700, color: C.pri, cursor: 'pointer' }}>{o.paz.nome} {o.paz.cognome} ›</div><span style={{ fontWeight: 800, color: C.pur }}>{o.cons}/{o.tot||'?'}</span></div><div style={{ background: C.bg, borderRadius: 3, height: 5 }}><div style={{ height: '100%', width: `${pct}%`, background: C.pur, borderRadius: 3 }} /></div><div style={{ fontSize: 10, color: C.txl, marginTop: 3 }}>Prossimo: {o.prossima ? fmtD(o.prossima) : '—'}</div></Crd>; })}
-          {pianiOrto.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Nessun piano ortodontico</div>}
+        <Modal title="🦷 Ortodonzia — mascherine" onClose={() => setDetailModal(null)} wide>
+          {pianiOrto.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Nessun piano ortodontico attivo</div>}
+          {pianiOrto.filter(o => o.cambioScaduto).length > 0 && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.dan, textTransform: 'uppercase', marginBottom: 8 }}>⚠️ Cambio mascherina scaduto</div>
+              {pianiOrto.filter(o => o.cambioScaduto).map(o => (
+                <Crd key={o.pl.id} style={{ marginBottom: 8, borderLeft: `3px solid ${C.dan}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div onClick={() => { setDetailModal(null); onOpenPaz(o.paz, 'piani'); }} style={{ fontWeight: 700, color: C.pri, cursor: 'pointer', fontSize: 13 }}>{o.paz.nome} {o.paz.cognome} ›</div>
+                      <div style={{ fontSize: 11, color: C.txm }}>Mascherina {o.cons}/{o.tot || '?'} · prevista il {fmtD(o.prossima)}</div>
+                    </div>
+                    <Bdg ch="⚠️ Scaduto" co={C.dan} />
+                  </div>
+                </Crd>
+              ))}
+            </>
+          )}
+          {pianiOrto.filter(o => !o.cambioScaduto && !o.completato).length > 0 && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.pur, textTransform: 'uppercase', margin: '12px 0 8px' }}>🔄 In corso</div>
+              {pianiOrto.filter(o => !o.cambioScaduto && !o.completato).map(o => {
+                const pct = o.tot > 0 ? Math.round(o.cons / o.tot * 100) : 0;
+                return (
+                  <Crd key={o.pl.id} style={{ marginBottom: 8, borderLeft: `3px solid ${C.pur}` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <div onClick={() => { setDetailModal(null); onOpenPaz(o.paz, 'piani'); }} style={{ fontWeight: 700, color: C.pri, cursor: 'pointer', fontSize: 13 }}>{o.paz.nome} {o.paz.cognome} ›</div>
+                      <span style={{ fontWeight: 800, color: C.pur }}>{o.cons}/{o.tot || '?'}</span>
+                    </div>
+                    {o.tot > 0 && <div style={{ background: C.bg, borderRadius: 4, height: 6 }}><div style={{ height: '100%', width: `${pct}%`, background: C.pur, borderRadius: 4 }} /></div>}
+                    <div style={{ fontSize: 11, color: C.txl, marginTop: 4 }}>
+                      {o.inAttesa ? '⏳ Da avviare' : `Prossimo cambio: ${o.prossima ? fmtD(o.prossima) : '—'}`}
+                    </div>
+                  </Crd>
+                );
+              })}
+            </>
+          )}
+          {pianiOrto.filter(o => o.completato).length > 0 && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.suc, textTransform: 'uppercase', margin: '12px 0 8px' }}>✓ Completati</div>
+              {pianiOrto.filter(o => o.completato).map(o => (
+                <Crd key={o.pl.id} style={{ marginBottom: 8, borderLeft: `3px solid ${C.suc}` }}>
+                  <div onClick={() => { setDetailModal(null); onOpenPaz(o.paz, 'piani'); }} style={{ fontWeight: 700, color: C.pri, cursor: 'pointer', fontSize: 13 }}>{o.paz.nome} {o.paz.cognome} ›</div>
+                  <div style={{ fontSize: 11, color: C.suc }}>Ciclo di {o.tot} mascherine completato ✓</div>
+                </Crd>
+              ))}
+            </>
+          )}
         </Modal>
       )}
 
@@ -426,13 +507,16 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
               <button onClick={() => setTodoModal(true)} style={{ background: C.pri, border: 'none', borderRadius: 7, padding: '5px 10px', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>+ Aggiungi</button>
             </div>
             {todoAttivi.length === 0 && <div style={{ fontSize: 12, color: C.txl, textAlign: 'center', padding: '8px 0' }}>Nessuna attività in sospeso 🎉</div>}
-            {todoAttivi.slice(0, 5).map(todo => (
-              <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 0', borderBottom: `1px solid ${C.brd}` }}>
-                <button onClick={() => toggleTodo(todo.id)} style={{ width: 20, height: 20, borderRadius: 5, border: `2px solid ${C.brd}`, background: '#fff', cursor: 'pointer', flexShrink: 0, padding: 0 }} />
-                <span style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{todo.testo}</span>
-                <button onClick={() => deleteTodo(todo.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}><Ic n="x" s={11} c={C.dan} /></button>
-              </div>
-            ))}
+            <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+              {todoAttivi.map(todo => (
+                <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 0', borderBottom: `1px solid ${C.brd}` }}>
+                  <button onClick={() => toggleTodo(todo.id)} style={{ width: 20, height: 20, borderRadius: 5, border: `2px solid ${C.brd}`, background: '#fff', cursor: 'pointer', flexShrink: 0, padding: 0 }} />
+                  <span style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{todo.testo}</span>
+                  <button onClick={() => { const msg = encodeURIComponent('📋 Attività: ' + todo.testo); window.open('https://wa.me/?text=' + msg, '_blank'); }} style={{ background: '#25D366', border: 'none', borderRadius: 5, padding: '3px 6px', cursor: 'pointer', fontSize: 10, color: '#fff', fontWeight: 700, flexShrink: 0 }}>WA</button>
+                  <button onClick={() => deleteTodo(todo.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}><Ic n="x" s={11} c={C.dan} /></button>
+                </div>
+              ))}
+            </div>
             {todoFatti.length > 0 && <div style={{ marginTop: 6, fontSize: 10, color: C.txl, textAlign: 'center' }}>{todoFatti.length} completate</div>}
           </Crd>
           {promemoria.length > 0 && (
