@@ -19,6 +19,15 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
   const [todoInput, setTodoInput] = useState('');
   const [todoModal, setTodoModal] = useState(false);
   const [todoLoading, setTodoLoading] = useState(false);
+  const [pagExt, setPagExt] = useState([]);
+
+  useEffect(() => {
+    const loadPagExt = async () => {
+      const { data } = await supabase.from('pagamenti_esterni').select('*');
+      if (data) setPagExt(data);
+    };
+    loadPagExt();
+  }, []);
 
   const toggleSection = (key) => {
     const next = { ...sections, [key]: !sections[key] };
@@ -68,6 +77,10 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
   const mInc = payments.filter(p => p.data && p.data.startsWith(t.slice(0, 7))).reduce((s, p) => s + Number(p.importo), 0);
   const aInc = payments.filter(p => p.data && p.data.startsWith(anno)).reduce((s, p) => s + Number(p.importo), 0);
   const hInc = payments.filter(p => p.data === t).reduce((s, p) => s + Number(p.importo), 0);
+  const extMese = pagExt.filter(p => p.data && p.data.startsWith(t.slice(0, 7))).reduce((s, p) => s + Number(p.importo), 0);
+  const extAnno = pagExt.filter(p => p.data && p.data.startsWith(anno)).reduce((s, p) => s + Number(p.importo), 0);
+  const incassoLucaMese = mInc + extMese;
+  const incassoLucaAnno = aInc + extAnno;
 
   const calcPlanTot = (pl) => {
     const sub = pl.voci.reduce((s, v) => s + Number(v.prezzo), 0);
@@ -461,8 +474,10 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>💰 Economico</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-            <StatCard label="Incassato mese" value={fmt(mInc)} color={C.suc} />
-            <StatCard label={`Incassato ${anno}`} value={fmt(aInc)} color={C.suc} />
+            <StatCard label="Incassato mese" value={fmt(mInc)} sub="solo studio" color={C.suc} />
+            <StatCard label={`Incassato ${anno}`} value={fmt(aInc)} sub="solo studio" color={C.suc} />
+            <StatCard label="💼 Incasso Luca mese" value={fmt(incassoLucaMese)} sub={`studio + collab. ${extMese > 0 ? '(+'+fmt(extMese)+')' : ''}`} color="#7C3AED" />
+            <StatCard label="💼 Incasso Luca anno" value={fmt(incassoLucaAnno)} sub={`studio + collab. ${extAnno > 0 ? '(+'+fmt(extAnno)+')' : ''}`} color="#7C3AED" />
             <StatCard label="Eseguito da incassare" value={fmt(totEsegDaInc)} color={C.dan} onClick={() => setDetailModal('esegDaInc')} urgent={totEsegDaInc > 0} />
             <StatCard label="Accettato da eseguire" value={fmt(totAccNonEseg)} color={C.pur} onClick={() => setDetailModal('accNonEseg')} />
             <StatCard label="Totale accettati" value={fmt(totAccettati)} sub={`${preventiviAccettati.length} piani`} color={C.acc} onClick={() => setDetailModal('accettati')} />
