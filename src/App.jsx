@@ -29,6 +29,7 @@ export default function App() {
   const [appTypes, setAppTypes] = useState([]);
   const [implants, setImplants] = useState([]);
   const [initPatId, setInitPatId] = useState(null);
+  const [agendaInitPaz, setAgendaInitPaz] = useState(null);
   const [schedaDashPaz, setSchedaDashPaz] = useState(null);
   const [syncError, setSyncError] = useState(null);
 
@@ -151,6 +152,7 @@ export default function App() {
 
   const goNuovoPiano = (id) => { setInitPatId(id); setPage('piani'); };
   const goSchedaPaz = (paz, tab = 'paga') => setSchedaDashPaz({ paz, tab });
+  const goAgendaPaz = (pazId) => { setAgendaInitPaz(pazId); setPage('agenda'); };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -205,6 +207,8 @@ export default function App() {
             payments={payments} appointments={appointments} si={studioInfo}
             onNuovoPiano={goNuovoPiano}
             implants={implants} setImplants={setImplantsSync}
+            setAppointments={setAppointmentsSync}
+            onNuovoAppuntamento={goAgendaPaz}
           />
         )}
         {page === 'piani' && (
@@ -217,7 +221,7 @@ export default function App() {
         )}
         {page === 'paga' && <Pagamenti patients={patients} payments={payments} setPayments={setPaymentsSync} plans={plans} />}
         {page === 'listino' && <Listino pricelist={pricelist} setPricelist={setPricelistSync} />}
-        {page === 'agenda' && <Agenda patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} />}
+        {page === 'agenda' && <Agenda patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} />}
         {page === 'spese' && <Spese />}
         {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
         {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} />}
