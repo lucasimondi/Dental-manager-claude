@@ -90,11 +90,6 @@ export default function DocMedico({ paz, onClose }) {
   const footer = (doc, W, M) => {
     const fY = 228;
 
-    // ── LINEA SEPARATORE ──
-    doc.setDrawColor(200, 210, 220);
-    doc.setLineWidth(0.4);
-    doc.line(M, fY, W - M, fY);
-
     // ── TIMBRO PROFESSIONALE centrato (metà dimensione) ──
     const tW = 60, tH = 21;
     const tX = (W - tW) / 2;
