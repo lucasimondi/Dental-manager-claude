@@ -4,6 +4,7 @@ import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr } from './ui
 import { C, fmt, fmtD, today, SCADENZA_PRESET, addMesi, rilevaRichiamo } from '../lib/utils';
 import PdfView from './PdfView.jsx';
 import DocFiscale from './DocFiscale.jsx';
+import DocMedico from './DocMedico.jsx';
 
 const prossimaDataMascherina = (orto) => {
   if (!orto?.dataConsegnaInizio || !orto?.mascherineConsegnate) return null;
@@ -13,10 +14,11 @@ const prossimaDataMascherina = (orto) => {
   return d.toISOString().slice(0, 10);
 };
 
-export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, implants = [], setImplants, setPatients }) {
+export default function SchedaPaz({ paz, plans, payments, appointments, setAppointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, implants = [], setImplants, setPatients }) {
   const [tab, setTab] = useState(initTab || 'info');
   const [pdfPlan, setPdfPlan] = useState(null);
   const [docFiscale, setDocFiscale] = useState(false);
+  const [docMedico, setDocMedico] = useState(false);
   const [selPiani, setSelPiani] = useState([]);
   const [editPianoModal, setEditPianoModal] = useState(null);
   const [editForm, setEditForm] = useState(null);
@@ -116,6 +118,8 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
   const patPay = [...payments.filter((p) => p.pazienteId === paz.id)].reverse();
   const patApp = [...appointments.filter((a) => a.pazienteId === paz.id)].sort((a, b) => b.data.localeCompare(a.data));
 
+  const totEseguito = patPlans.reduce((s, pl) => s + pl.voci.filter(v => v.eseguita).reduce((a, v) => a + Number(v.prezzo), 0), 0);
+  const totAccNonEseg = patPlans.filter(pl => pl.stato === 'accettato').reduce((s, pl) => s + pl.voci.filter(v => !v.eseguita).reduce((a, v) => a + Number(v.prezzo), 0), 0);
   const totDovuto = patPlans.reduce((s, pl) => {
     const sub = pl.voci.reduce((a, v) => a + Number(v.prezzo), 0);
     const sc = Number(pl.sconto) || 0;
@@ -183,10 +187,11 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
     setPdfPlan(virtuale);
   };
 
+  if (docMedico) return <DocMedico paz={paz} onClose={() => setDocMedico(false)} />;
   if (docFiscale) return <DocFiscale paz={paz} plans={plans} onClose={() => setDocFiscale(false)} />;
   if (pdfPlan) return <PdfView pl={pdfPlan} paz={paz} si={si} onClose={() => setPdfPlan(null)} />;
 
-  const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'piani', l: '🦷 Piani' }, { id: 'impl', l: '🔩 Impianti' }, { id: 'paga', l: '💰 Pagamenti' }, { id: 'app', l: '📅 Agenda' }];
+  const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'piani', l: '🦷 Piani' }, { id: 'impl', l: '🔩 Impianti' }, { id: 'paga', l: '💰 Pagamenti' }, { id: 'foto', l: '📁 Foto' }, { id: 'doc', l: '📄 Documenti' }, { id: 'app', l: '📅 Agenda' }];
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
@@ -200,7 +205,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
       </div>
 
       <div style={{ background: C.priD, display: 'flex', borderTop: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
-        {[{ l: 'Piani', v: patPlans.length }, { l: 'Pagato', v: fmt(totPaid) }, { l: 'Da pagare', v: fmt(totDaPagare) }, { l: 'Visite', v: patApp.length }].map((s) => (
+        {[{ l: 'Piani', v: patPlans.length }, { l: 'Eseguito', v: fmt(totEseguito) }, { l: 'Pagato', v: fmt(totPaid) }, { l: 'Da pagare', v: fmt(totDaPagare) }].map((s) => (
           <div key={s.l} style={{ flex: 1, textAlign: 'center', padding: '8px 2px', borderRight: '1px solid rgba(255,255,255,0.1)' }}>
             <div style={{ color: s.l === 'Da pagare' && totDaPagare > 0 ? '#FCA5A5' : '#fff', fontWeight: 800, fontSize: 12 }}>{s.v}</div>
             <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 9 }}>{s.l}</div>
@@ -357,10 +362,10 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
               const terminato = pct === 100;
               const isSel = selPiani.includes(pl.id);
               const statoEff = terminato ? 'concluso' : (pl.stato || 'attivo');
-              const statoC = { attivo: C.war, accettato: C.acc, concluso: C.suc, rifiutato: C.dan }[statoEff] || C.war;
+              const statoC = { attivo: C.war, accettato: C.acc, concluso: C.pri, rifiutato: C.dan }[statoEff] || C.war;
 
               return (
-                <Crd key={pl.id} style={{ marginBottom: 12, border: `2px solid ${isSel ? C.pri : terminato ? C.suc + '50' : C.brd}`, background: terminato ? C.sucL + '40' : '#fff' }}>
+                <Crd key={pl.id} style={{ marginBottom: 12, border: `2px solid ${isSel ? C.pri : terminato ? C.pri + '50' : C.brd}`, background: terminato ? C.priL + '40' : '#fff' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
                     <button onClick={() => toggleSel(pl.id)} style={{ marginTop: 2, width: 22, height: 22, borderRadius: 6, border: `2px solid ${isSel ? C.pri : C.brd}`, background: isSel ? C.pri : '#fff', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                       {isSel && <Ic n="ok" s={12} c="#fff" />}
@@ -370,7 +375,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
                       <div style={{ fontSize: 11, color: C.txm }}>{fmtD(pl.data)}</div>
                       <div style={{ marginTop: 4, display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
                         <Bdg ch={terminato ? '✓ Terminato' : statoEff} co={statoC} />
-                        {terminato && <span style={{ fontSize: 10, color: C.suc, fontWeight: 700 }}>Tutte le prestazioni eseguite</span>}
+                        {terminato && <span style={{ fontSize: 10, color: C.pri, fontWeight: 700 }}>Tutte le prestazioni eseguite</span>}
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
@@ -453,7 +458,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
                   )}
 
                   <div style={{ background: C.bg, borderRadius: 5, height: 6, overflow: 'hidden', marginBottom: 4 }}>
-                    <div style={{ height: '100%', width: `${pct}%`, background: terminato ? C.suc : C.pri, borderRadius: 5, transition: 'width 0.3s' }} />
+                    <div style={{ height: '100%', width: `${pct}%`, background: C.pri, borderRadius: 5, transition: 'width 0.3s' }} />
                   </div>
                   <div style={{ fontSize: 10, color: C.txm, marginBottom: 10 }}>{done}/{pl.voci.length} eseguite · {pct}%</div>
 
@@ -612,6 +617,14 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
                 <div style={{ textAlign: 'center' }}><div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)' }}>Pagato</div><div style={{ fontSize: 16, fontWeight: 800, color: '#86efac' }}>{fmt(totPaid)}</div></div>
                 <div style={{ textAlign: 'right' }}><div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)' }}>Da pagare</div><div style={{ fontSize: 16, fontWeight: 800, color: totDaPagare > 0 ? '#FCA5A5' : '#86efac' }}>{fmt(totDaPagare)}</div></div>
               </div>
+              {totAccNonEseg > 0 && (
+                <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>✓ Accettato da eseguire</span>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: '#c4b5fd' }}>{fmt(totAccNonEseg)}</span>
+                </div>
+              )}
+
+              </div>
               <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 6, height: 8, overflow: 'hidden', marginBottom: 4 }}>
                 <div style={{ height: '100%', width: `${pctPagato}%`, background: pctPagato >= 100 ? '#86efac' : '#60a5fa', borderRadius: 6, transition: 'width 0.3s' }} />
               </div>
@@ -674,8 +687,82 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
           </div>
         )}
 
+        {tab === 'foto' && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ fontSize: 14, fontWeight: 700 }}>📁 Foto e documenti</div>
+              <button onClick={() => fileInputRef.current?.click()} style={{ background: C.pri, border: 'none', borderRadius: 8, padding: '8px 14px', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Ic n="plus" s={12} c="#fff" /> Carica
+              </button>
+              <input ref={fileInputRef} type="file" accept="image/*,.pdf" multiple style={{ display: 'none' }} onChange={e => { Array.from(e.target.files).forEach(uploadFoto); e.target.value = ''; }} />
+            </div>
+            {fotoLoading && <div style={{ textAlign: 'center', color: C.txl, padding: 16 }}>⏳ Caricamento...</div>}
+            {!fotoLoading && foto.length === 0 && (
+              <label style={{ display: 'block', border: `2px dashed ${C.brd}`, borderRadius: 10, padding: '30px 14px', textAlign: 'center', cursor: 'pointer' }}>
+                <input type="file" accept="image/*,.pdf" multiple style={{ display: 'none' }} onChange={e => { Array.from(e.target.files).forEach(uploadFoto); e.target.value = ''; }} />
+                <div style={{ fontSize: 28, marginBottom: 6 }}>📷</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.pri }}>Carica foto o PDF</div>
+                <div style={{ fontSize: 11, color: C.txl, marginTop: 3 }}>Panoramiche, RX, documenti...</div>
+              </label>
+            )}
+            {!fotoLoading && foto.length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                {foto.map((f, i) => (
+                  <div key={i} style={{ position: 'relative' }}>
+                    <a href={f.url} target="_blank" rel="noopener" style={{ display: 'block', textDecoration: 'none' }}>
+                      {isImage(f.name) ? (
+                        <div style={{ width: '100%', paddingBottom: '100%', position: 'relative', borderRadius: 8, overflow: 'hidden', background: C.bg }}>
+                          <img src={f.url} alt={f.label} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                        </div>
+                      ) : (
+                        <div style={{ width: '100%', paddingBottom: '100%', position: 'relative', borderRadius: 8, background: C.danL }}>
+                          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ fontSize: 28 }}>📄</div>
+                            <div style={{ fontSize: 9, color: C.dan, fontWeight: 700, marginTop: 3 }}>PDF</div>
+                          </div>
+                        </div>
+                      )}
+                      <div style={{ fontSize: 9, color: C.txm, marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{f.label}</div>
+                    </a>
+                    <button onClick={() => deleteFoto(f.name)} style={{ position: 'absolute', top: 3, right: 3, background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: 4, width: 20, height: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                      <Ic n="x" s={10} c="#fff" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === 'doc' && (
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>📄 Documenti medici</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button onClick={() => setDocMedico(true)} style={{ background: C.priL, border: `1.5px solid ${C.pri}`, borderRadius: 12, padding: 16, cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ background: C.pri, borderRadius: 8, padding: 8 }}><Ic n="plan" s={20} c="#fff" /></div>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: C.pri }}>Ricetta / Certificato / Lettera</div>
+                  <div style={{ fontSize: 11, color: C.txm, marginTop: 2 }}>Genera documenti medici in PDF</div>
+                </div>
+              </button>
+              <button onClick={() => setDocFiscale(true)} style={{ background: '#E8FAF9', border: `1.5px solid ${C.acc}`, borderRadius: 12, padding: 16, cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ background: C.acc, borderRadius: 8, padding: 8 }}><Ic n="eur" s={20} c="#fff" /></div>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: C.acc }}>Fattura / Rimborso spese</div>
+                  <div style={{ fontSize: 11, color: C.txm, marginTop: 2 }}>Genera documenti fiscali in PDF</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
+
         {tab === 'app' && (
           <div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+              <button onClick={() => { if (setAppointments) { const nuovoApp = { id: Date.now(), pazienteId: paz.id, data: today(), ora: '09:00', durata: 30, tipo: 'Visita di controllo', colore: '#1A4E66', note: '', stato: 'confermato' }; setAppointments(prev => [...prev, nuovoApp]); } }} style={{ background: C.pri, border: 'none', borderRadius: 8, padding: '8px 14px', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Ic n="plus" s={12} c="#fff" /> Nuovo appuntamento
+              </button>
+            </div>
             {patApp.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>Nessun appuntamento</div>}
             {patApp.map((a) => (
               <Crd key={a.id} style={{ marginBottom: 8, borderLeft: `3px solid ${a.data >= today() ? C.pri : C.brd}` }}>

@@ -5,7 +5,7 @@ import ImportCsvModal from './ImportCsvModal.jsx';
 import DupModal from './DupModal.jsx';
 import SchedaPaz from './SchedaPaz.jsx';
 
-export default function Pazienti({ patients, setPatients, plans, setPlans, payments, appointments, si, onNuovoPiano, implants, setImplants }) {
+export default function Pazienti({ patients, setPatients, plans, setPlans, payments, appointments, setAppointments, si, onNuovoPiano, implants, setImplants }) {
   const [modal, setModal] = useState(false);
   const [importModal, setImportModal] = useState(false);
   const [dupModal, setDupModal] = useState(false);
@@ -62,6 +62,7 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
         onEdit={(p) => { setScheda(null); openEdit(p); }}
         onNuovoPiano={(id) => { setScheda(null); onNuovoPiano(id); }}
         setPatients={setPatients}
+        setAppointments={setAppointments}
       />
     );
   }
