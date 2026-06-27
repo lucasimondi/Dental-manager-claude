@@ -20,13 +20,19 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
   const [todoModal, setTodoModal] = useState(false);
   const [todoLoading, setTodoLoading] = useState(false);
   const [pagExt, setPagExt] = useState([]);
+  const [spese, setSpese] = useState([]);
 
   useEffect(() => {
     const loadPagExt = async () => {
       const { data } = await supabase.from('pagamenti_esterni').select('*');
       if (data) setPagExt(data);
     };
+    const loadSpese = async () => {
+      const { data } = await supabase.from('spese').select('*');
+      if (data) setSpese(data);
+    };
     loadPagExt();
+    loadSpese();
   }, []);
 
   const toggleSection = (key) => {
@@ -81,6 +87,16 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
   const extAnno = pagExt.filter(p => p.data && p.data.startsWith(anno)).reduce((s, p) => s + Number(p.importo), 0);
   const incassoLucaMese = mInc + extMese;
   const incassoLucaAnno = aInc + extAnno;
+
+  // ── SPESE ──
+  const speseMese = spese.filter(s => !s.ricorrente && s.data && s.data.startsWith(t.slice(0,7))).reduce((s, x) => s + Number(x.importo), 0);
+  const speseAnnoRegistrate = spese.filter(s => !s.ricorrente && s.data && s.data.startsWith(anno)).reduce((s, x) => s + Number(x.importo), 0);
+  const speseRicorrentiAnno = spese.filter(s => s.ricorrente).reduce((s, x) => {
+    const m = { Mensile: 12, Bimestrale: 6, Trimestrale: 4, Semestrale: 2, Annuale: 1 }[x.frequenza] || 12;
+    return s + Number(x.importo) * m;
+  }, 0);
+  const speseAnnoTotale = speseAnnoRegistrate + speseRicorrentiAnno;
+  const margineAnno = incassoLucaAnno - speseAnnoTotale;
 
   const calcPlanTot = (pl) => {
     const sub = pl.voci.reduce((s, v) => s + Number(v.prezzo), 0);
@@ -328,6 +344,50 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
               ));
             })()}
           </div>}
+        </Modal>
+      )}
+
+      {detailModal === 'spese' && (
+        <Modal title="💸 Spese" onClose={() => setDetailModal(null)} wide>
+          <div style={{ background: C.danL, borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ fontWeight: 700, color: C.dan }}>Proiezione annuale {anno}</span>
+              <span style={{ fontWeight: 900, fontSize: 18, color: C.dan }}>{fmt(speseAnnoTotale)}</span>
+            </div>
+            {speseRicorrentiAnno > 0 && <div style={{ fontSize: 11, color: C.txm }}>Di cui {fmt(speseRicorrentiAnno)} da spese ricorrenti</div>}
+          </div>
+          {margineAnno !== 0 && (
+            <div style={{ background: margineAnno > 0 ? C.sucL : C.danL, borderRadius: 10, padding: '8px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontWeight: 700, color: margineAnno > 0 ? C.suc : C.dan }}>Margine stimato {anno}</span>
+              <span style={{ fontWeight: 900, color: margineAnno > 0 ? C.suc : C.dan }}>{margineAnno > 0 ? '+' : ''}{fmt(margineAnno)}</span>
+            </div>
+          )}
+          {spese.filter(s => s.ricorrente).length > 0 && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.war, textTransform: 'uppercase', marginBottom: 8 }}>🔄 Ricorrenti</div>
+              {spese.filter(s => s.ricorrente).map(s => {
+                const m = { Mensile: 12, Bimestrale: 6, Trimestrale: 4, Semestrale: 2, Annuale: 1 }[s.frequenza] || 12;
+                return <Crd key={s.id} style={{ marginBottom: 6, borderLeft: `3px solid ${C.war}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div><div style={{ fontWeight: 700, fontSize: 13 }}>{s.titolo}</div><div style={{ fontSize: 11, color: C.txm }}>{s.frequenza} · {fmt(s.importo)} × {m}</div></div>
+                    <span style={{ fontWeight: 800, color: C.war }}>{fmt(Number(s.importo) * m)}/anno</span>
+                  </div>
+                </Crd>;
+              })}
+            </>
+          )}
+          <div style={{ fontSize: 11, fontWeight: 800, color: C.dan, textTransform: 'uppercase', margin: '12px 0 8px' }}>📋 Questo mese ({fmt(speseMese)})</div>
+          {spese.filter(s => !s.ricorrente && s.data && s.data.startsWith(t.slice(0,7))).length === 0
+            ? <div style={{ textAlign: 'center', color: C.txl, padding: 16 }}>Nessuna spesa questo mese</div>
+            : spese.filter(s => !s.ricorrente && s.data && s.data.startsWith(t.slice(0,7))).map(s => (
+              <Crd key={s.id} style={{ marginBottom: 6, borderLeft: `3px solid ${C.dan}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div><div style={{ fontWeight: 700, fontSize: 13 }}>{s.titolo}</div><div style={{ fontSize: 11, color: C.txm }}>{s.categoria}</div></div>
+                  <span style={{ fontWeight: 800, color: C.dan }}>{fmt(s.importo)}</span>
+                </div>
+              </Crd>
+            ))
+          }
         </Modal>
       )}
 

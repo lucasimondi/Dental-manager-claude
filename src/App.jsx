@@ -9,6 +9,7 @@ import Pazienti from './components/Pazienti.jsx';
 import SchedaPaz from './components/SchedaPaz.jsx';
 import Piani from './components/Piani.jsx';
 import Pagamenti from './components/Pagamenti.jsx';
+import Spese from './components/Spese.jsx';
 import Listino from './components/Listino.jsx';
 import Agenda from './components/Agenda.jsx';
 import WhatsApp from './components/WhatsApp.jsx';
@@ -217,6 +218,7 @@ export default function App() {
         {page === 'paga' && <Pagamenti patients={patients} payments={payments} setPayments={setPaymentsSync} plans={plans} />}
         {page === 'listino' && <Listino pricelist={pricelist} setPricelist={setPricelistSync} />}
         {page === 'agenda' && <Agenda patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} />}
+        {page === 'spese' && <Spese />}
         {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
         {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} />}
       </div>
