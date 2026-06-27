@@ -612,6 +612,9 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
             <StatCard label={`Incassato ${anno}`} value={fmt(aInc)} sub="solo studio" color={C.suc} />
             <StatCard label="💼 Incasso Luca mese" value={fmt(incassoLucaMese)} sub={`studio + collab. ${extMese > 0 ? '(+'+fmt(extMese)+')' : ''}`} color="#7C3AED" onClick={() => setDetailModal('lucaMese')} />
             <StatCard label="💼 Incasso Luca anno" value={fmt(incassoLucaAnno)} sub={`studio + collab. ${extAnno > 0 ? '(+'+fmt(extAnno)+')' : ''}`} color="#7C3AED" onClick={() => setDetailModal('lucaAnno')} />
+            <StatCard label="💸 Spese mese" value={fmt(speseMese)} color={C.dan} onClick={() => setDetailModal('spese')} />
+            <StatCard label="💸 Spese anno (stimate)" value={fmt(speseAnnoTotale)} sub={speseRicorrentiAnno > 0 ? `+${fmt(speseRicorrentiAnno)} ricorrenti` : undefined} color={C.dan} onClick={() => setDetailModal('spese')} />
+            <StatCard label={margineAnno >= 0 ? '✅ Margine stimato' : '⚠️ Margine stimato'} value={`${margineAnno >= 0 ? '+' : ''}${fmt(margineAnno)}`} sub={`incassi - spese ${anno}`} color={margineAnno >= 0 ? C.suc : C.dan} />
             <StatCard label="Eseguito da incassare" value={fmt(totEsegDaInc)} color={C.dan} onClick={() => setDetailModal('esegDaInc')} urgent={totEsegDaInc > 0} />
             <StatCard label="Accettato da eseguire" value={fmt(totAccNonEseg)} color={C.pur} onClick={() => setDetailModal('accNonEseg')} />
             <StatCard label="Totale accettati" value={fmt(totAccettati)} sub={`${preventiviAccettati.length} piani`} color={C.acc} onClick={() => setDetailModal('accettati')} />

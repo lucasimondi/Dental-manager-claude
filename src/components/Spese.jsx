@@ -92,7 +92,7 @@ export default function Spese() {
       {/* HEADER */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Spese</div>
-        <Btn ch="+ Nuova spesa" ic="plus" onClick={openNuova} />
+        <Btn ch="Nuova spesa" ic="plus" onClick={openNuova} />
       </div>
 
       {/* KPI CARDS */}

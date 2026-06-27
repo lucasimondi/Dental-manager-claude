@@ -185,7 +185,7 @@ export const NAV = [
   { id: 'paga', l: 'Pagamenti', ic: 'pay' },
   { id: 'listino', l: 'Listino', ic: 'list' },
   { id: 'agenda', l: 'Agenda', ic: 'cal' },
-  { id: 'spese', l: 'Spese', ic: 'dan' },
+  { id: 'spese', l: 'Spese', ic: 'spe' },
   { id: 'wa', l: 'WhatsApp', ic: 'wa' },
   { id: 'set', l: 'Setup', ic: 'set' },
 ];
