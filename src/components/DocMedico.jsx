@@ -145,7 +145,7 @@ export default function DocMedico({ paz, onClose }) {
 
     // ── FIRMA sovrapposta ──
     try {
-      doc.addImage(FIRMA_B64, 'PNG', tX + tW / 2 - 2, tY + 2, 30, 18, undefined, 'FAST');
+      doc.addImage(FIRMA_B64, 'PNG', tX + tW / 2 - 14, tY - 4, 60, 36, undefined, 'FAST');
     } catch(e) {}
 
     // ── FOOTER TESTO ──
