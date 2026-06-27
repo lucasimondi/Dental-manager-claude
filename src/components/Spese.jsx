@@ -46,11 +46,11 @@ export default function Spese() {
     const record = { ...form, importo: Number(form.importo) };
     if (editItem) {
       const { error } = await supabase.from('spese').update(record).eq('id', editItem.id);
-      if (!error) { setSpese(prev => prev.map(s => s.id === editItem.id ? { ...s, ...record } : s)); setToast('Aggiornata ✓'); }
+      if (!error) { await loadSpese(); setToast('Aggiornata ✓'); }
     } else {
       const nuova = { ...record, id: Date.now() };
       const { error } = await supabase.from('spese').insert([nuova]);
-      if (!error) { setSpese(prev => [nuova, ...prev]); setToast('Aggiunta ✓'); }
+      if (!error) { await loadSpese(); setToast('Aggiunta ✓'); }
     }
     setModal(false);
   };
@@ -64,7 +64,7 @@ export default function Spese() {
   // Calcola spese ricorrenti proiettate all'anno corrente
   const anno = today().slice(0, 4);
   const calcolaAnnuale = () => {
-    const speseNormali = spese.filter(s => !s.ricorrente && s.data.startsWith(anno)).reduce((sum, s) => sum + Number(s.importo), 0);
+    const speseNormali = spese.filter(s => !s.ricorrente && s.data && s.data.startsWith(anno)).reduce((sum, s) => sum + Number(s.importo), 0);
     const speseRicorrenti = spese.filter(s => s.ricorrente).reduce((sum, s) => {
       const moltiplicatore = { Mensile: 12, Bimestrale: 6, Trimestrale: 4, Semestrale: 2, Annuale: 1 }[s.frequenza] || 12;
       return sum + Number(s.importo) * moltiplicatore;
@@ -73,7 +73,7 @@ export default function Spese() {
   };
 
   const totaleAnno = calcolaAnnuale();
-  const totaleMese = spese.filter(s => s.data.startsWith(today().slice(0, 7))).reduce((s, x) => s + Number(x.importo), 0);
+  const totaleMese = spese.filter(s => s.data && s.data.startsWith(today().slice(0, 7))).reduce((s, x) => s + Number(x.importo), 0);
   const totaleAll = spese.filter(s => !s.ricorrente).reduce((s, x) => s + Number(x.importo), 0);
 
   const speseFiltrate = filtroCategoria ? spese.filter(s => s.categoria === filtroCategoria) : spese;
