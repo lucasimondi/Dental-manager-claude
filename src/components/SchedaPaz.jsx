@@ -623,8 +623,6 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                   <span style={{ fontSize: 14, fontWeight: 800, color: '#c4b5fd' }}>{fmt(totAccNonEseg)}</span>
                 </div>
               )}
-
-              </div>
               <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 6, height: 8, overflow: 'hidden', marginBottom: 4 }}>
                 <div style={{ height: '100%', width: `${pctPagato}%`, background: pctPagato >= 100 ? '#86efac' : '#60a5fa', borderRadius: 6, transition: 'width 0.3s' }} />
               </div>
