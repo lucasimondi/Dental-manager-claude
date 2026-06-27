@@ -95,59 +95,57 @@ export default function DocMedico({ paz, onClose }) {
     doc.setLineWidth(0.4);
     doc.line(M, fY, W - M, fY);
 
-    // ── TIMBRO PROFESSIONALE centrato ──
-    const tW = 120, tH = 42;
+    // ── TIMBRO PROFESSIONALE centrato (metà dimensione) ──
+    const tW = 60, tH = 21;
     const tX = (W - tW) / 2;
     const tY = fY + 5;
-    const pad = 5; // padding interno testo
+    const pad = 3;
 
     // Bordo esterno
     doc.setDrawColor(26, 78, 102);
-    doc.setLineWidth(1.5);
-    doc.roundedRect(tX, tY, tW, tH, 5, 5, 'S');
+    doc.setLineWidth(0.8);
+    doc.roundedRect(tX, tY, tW, tH, 2.5, 2.5, 'S');
     // Bordo interno
-    doc.setLineWidth(0.5);
-    doc.roundedRect(tX + 2, tY + 2, tW - 4, tH - 4, 4, 4, 'S');
+    doc.setLineWidth(0.3);
+    doc.roundedRect(tX + 1, tY + 1, tW - 2, tH - 2, 2, 2, 'S');
 
     // Nome medico
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
+    doc.setFontSize(4.5);
     doc.setTextColor(26, 78, 102);
-    doc.text('Dott. Luca Simondi', tX + tW / 2, tY + 9, { align: 'center', maxWidth: tW - pad * 2 });
+    doc.text('Dott. Luca Simondi', tX + tW / 2, tY + 4.5, { align: 'center', maxWidth: tW - pad * 2 });
 
     // Linea decorativa
     doc.setDrawColor(26, 78, 102);
-    doc.setLineWidth(0.4);
-    doc.line(tX + 8, tY + 11.5, tX + tW - 8, tY + 11.5);
+    doc.setLineWidth(0.2);
+    doc.line(tX + 4, tY + 5.8, tX + tW - 4, tY + 5.8);
 
-    // Specializzazione — due righe separate per evitare overflow
+    // Specializzazione
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6);
+    doc.setFontSize(3);
     doc.setTextColor(26, 78, 102);
-    doc.text('Medico Odontoiatra · Chirurgo Orale', tX + tW / 2, tY + 16, { align: 'center', maxWidth: tW - pad * 2 });
-    doc.text('Medico Estetico', tX + tW / 2, tY + 20, { align: 'center', maxWidth: tW - pad * 2 });
+    doc.text('Medico Odontoiatra · Chirurgo Orale · Medico Estetico', tX + tW / 2, tY + 8, { align: 'center', maxWidth: tW - pad * 2 });
 
     // Iscrizione ordine
-    doc.setFontSize(5.5);
-    doc.text('Iscr. Ordine Medici e Odontoiatri Cuneo n. 0577', tX + tW / 2, tY + 24.5, { align: 'center', maxWidth: tW - pad * 2 });
+    doc.text('Iscr. Ordine Medici e Odontoiatri Cuneo n. 0577', tX + tW / 2, tY + 10.5, { align: 'center', maxWidth: tW - pad * 2 });
 
     // Linea decorativa 2
-    doc.setLineWidth(0.3);
-    doc.line(tX + 10, tY + 27, tX + tW - 10, tY + 27);
+    doc.setLineWidth(0.2);
+    doc.line(tX + 5, tY + 12, tX + tW - 5, tY + 12);
 
     // Indirizzo
-    doc.setFontSize(5.5);
-    doc.text('C.so Galileo Ferraris 11bis · 12100 Cuneo (CN)', tX + tW / 2, tY + 31, { align: 'center', maxWidth: tW - pad * 2 });
-    doc.text('Tel. 320 5505397 · dottorsimondi@gmail.com', tX + tW / 2, tY + 35, { align: 'center', maxWidth: tW - pad * 2 });
+    doc.setFontSize(2.8);
+    doc.text('C.so Galileo Ferraris 11bis · 12100 Cuneo (CN)', tX + tW / 2, tY + 14, { align: 'center', maxWidth: tW - pad * 2 });
+    doc.text('Tel. 320 5505397 · dottorsimondi@gmail.com', tX + tW / 2, tY + 16.5, { align: 'center', maxWidth: tW - pad * 2 });
 
     // P.IVA
-    doc.setFontSize(5);
+    doc.setFontSize(2.5);
     doc.setTextColor(80, 110, 130);
-    doc.text('P.IVA 03830670042', tX + tW / 2, tY + 39.5, { align: 'center', maxWidth: tW - pad * 2 });
+    doc.text('P.IVA 03830670042', tX + tW / 2, tY + 19, { align: 'center', maxWidth: tW - pad * 2 });
 
-    // ── FIRMA sovrapposta — più grande, centrata sul timbro ──
+    // ── FIRMA sovrapposta ──
     try {
-      doc.addImage(FIRMA_B64, 'PNG', tX + tW / 2 - 5, tY + 4, 58, 34, undefined, 'FAST');
+      doc.addImage(FIRMA_B64, 'PNG', tX + tW / 2 - 2, tY + 2, 30, 18, undefined, 'FAST');
     } catch(e) {}
 
     // ── FOOTER TESTO ──
