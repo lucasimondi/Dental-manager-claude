@@ -604,225 +604,182 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
         </button>
       </div>
 
-      {/* ── OGGI (nascosta, sostituita da agenda) ── */}
-      {/* widget ordinati dinamicamente */}
-      {false && isOn('oggi') && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>🌅 Oggi — {todayApps.length} appuntament{todayApps.length === 1 ? 'o' : 'i'}</div>
-          {todayApps.length === 0 ? (
-            <Crd style={{ textAlign: 'center', color: C.txl, padding: '20px 0', fontSize: 13 }}>Nessun appuntamento oggi</Crd>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {todayApps.map(a => {
-                const p = patients.find(x => x.id === a.pazienteId);
-                const isPast = a.ora < new Date().toTimeString().slice(0, 5);
-                return (
-                  <Crd key={a.id} style={{ padding: '10px 12px', borderLeft: `4px solid ${isPast ? C.brd : C.pri}`, background: isPast ? '#fafafa' : '#fff' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ background: isPast ? C.bg : C.priL, borderRadius: 8, padding: '4px 8px', textAlign: 'center', flexShrink: 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 900, color: isPast ? C.txl : C.priD }}>{a.ora}</div>
+      {/* ── WIDGET ORDINATI DINAMICAMENTE ── */}
+      {widgets.filter(w => w.attivo !== false).map(w => {
+        if (w.id === 'agenda') return (
+          <div key="agenda" style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em' }}>📅 Agenda oggi</div>
+              <button onClick={() => onGoAgenda && onGoAgenda()} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '5px 10px', color: C.pri, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>Apri agenda ›</button>
+            </div>
+            {todayApps.length === 0 ? (
+              <Crd style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessun appuntamento oggi</Crd>
+            ) : (
+              <Crd style={{ padding: 0, overflow: 'hidden' }}>
+                {todayApps.map((a, i) => {
+                  const p = patients.find(x => x.id === a.pazienteId);
+                  const co = getColore(a);
+                  const isPast = a.ora < new Date().toTimeString().slice(0, 5);
+                  return (
+                    <div key={a.id} onClick={() => onGoAgenda && onGoAgenda()} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: i < todayApps.length - 1 ? `1px solid ${C.brd}` : 'none', background: isPast ? '#fafafa' : '#fff', cursor: 'pointer' }}>
+                      <div style={{ background: co + '20', borderRadius: 8, padding: '4px 8px', textAlign: 'center', flexShrink: 0, minWidth: 44, borderLeft: `3px solid ${co}` }}>
+                        <div style={{ fontSize: 13, fontWeight: 900, color: co }}>{a.ora}</div>
+                        <div style={{ fontSize: 9, color: co, opacity: 0.8 }}>{a.durata}m</div>
                       </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 700, fontSize: 13, color: isPast ? C.txm : C.txt }}>{p ? `${p.nome} ${p.cognome}` : '—'}</div>
-                        <div style={{ fontSize: 11, color: C.txl }}>{a.tipo} · {a.durata}min</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: isPast ? C.txm : C.txt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p ? `${p.nome} ${p.cognome}` : '—'}</div>
+                        <div style={{ fontSize: 11, color: C.txl, display: 'flex', alignItems: 'center', gap: 5 }}><div style={{ width: 7, height: 7, borderRadius: '50%', background: co }} />{a.tipo}</div>
                       </div>
                       <Bdg ch={a.stato} co={a.stato === 'confermato' ? C.suc : C.war} />
                     </div>
-                  </Crd>
-                );
-              })}
+                  );
+                })}
+              </Crd>
+            )}
+            {hInc > 0 && <div style={{ marginTop: 6, background: C.sucL, borderRadius: 9, padding: '7px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: C.suc }}>💳 Incassato oggi</span>
+              <span style={{ fontSize: 15, fontWeight: 900, color: C.suc }}>{fmt(hInc)}</span>
+            </div>}
+          </div>
+        );
+
+        if (w.id === 'economico') return (
+          <div key="economico" style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>💰 Economico</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+              <StatCard label="Incassato mese" value={fmt(mInc)} sub="solo studio" color={C.suc} />
+              <StatCard label={`Incassato ${anno}`} value={fmt(aInc)} sub="solo studio" color={C.suc} />
+              <StatCard label="💼 Incasso Luca mese" value={fmt(incassoLucaMese)} sub={`studio + collab. ${extMese > 0 ? '(+'+fmt(extMese)+')' : ''}`} color="#7C3AED" onClick={() => setDetailModal('lucaMese')} />
+              <StatCard label="💼 Incasso Luca anno" value={fmt(incassoLucaAnno)} sub={`studio + collab. ${extAnno > 0 ? '(+'+fmt(extAnno)+')' : ''}`} color="#7C3AED" onClick={() => setDetailModal('lucaAnno')} />
+              <StatCard label="💸 Spese mese" value={fmt(speseMese)} color={C.dan} onClick={() => setDetailModal('spese')} />
+              <StatCard label="💸 Spese anno (stimate)" value={fmt(speseAnnoTotale)} sub={speseRicorrentiAnno > 0 ? `+${fmt(speseRicorrentiAnno)} ricorrenti` : undefined} color={C.dan} onClick={() => setDetailModal('spese')} />
+              <StatCard label={margineAnno >= 0 ? '✅ Margine stimato' : '⚠️ Margine stimato'} value={`${margineAnno >= 0 ? '+' : ''}${fmt(margineAnno)}`} sub={`incassi - spese ${anno}`} color={margineAnno >= 0 ? C.suc : C.dan} />
+              <StatCard label="Eseguito da incassare" value={fmt(totEsegDaInc)} color={C.dan} onClick={() => setDetailModal('esegDaInc')} urgent={totEsegDaInc > 0} />
+              <StatCard label="Accettato da eseguire" value={fmt(totAccNonEseg)} color={C.pur} onClick={() => setDetailModal('accNonEseg')} />
+              <StatCard label="Totale accettati" value={fmt(totAccettati)} sub={`${preventiviAccettati.length} piani`} color={C.acc} onClick={() => setDetailModal('accettati')} />
             </div>
-          )}
-          {hInc > 0 && <div style={{ marginTop: 8, background: C.sucL, borderRadius: 9, padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: C.suc }}>💳 Incassato oggi</span>
-            <span style={{ fontSize: 15, fontWeight: 900, color: C.suc }}>{fmt(hInc)}</span>
-          </div>}
-        </div>
-      )}
-
-      {/* ── ECONOMICO ── */}
-      {isOn('economico') && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>💰 Economico</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-            <StatCard label="Incassato mese" value={fmt(mInc)} sub="solo studio" color={C.suc} />
-            <StatCard label={`Incassato ${anno}`} value={fmt(aInc)} sub="solo studio" color={C.suc} />
-            <StatCard label="💼 Incasso Luca mese" value={fmt(incassoLucaMese)} sub={`studio + collab. ${extMese > 0 ? '(+'+fmt(extMese)+')' : ''}`} color="#7C3AED" onClick={() => setDetailModal('lucaMese')} />
-            <StatCard label="💼 Incasso Luca anno" value={fmt(incassoLucaAnno)} sub={`studio + collab. ${extAnno > 0 ? '(+'+fmt(extAnno)+')' : ''}`} color="#7C3AED" onClick={() => setDetailModal('lucaAnno')} />
-            <StatCard label="💸 Spese mese" value={fmt(speseMese)} color={C.dan} onClick={() => setDetailModal('spese')} />
-            <StatCard label="💸 Spese anno (stimate)" value={fmt(speseAnnoTotale)} sub={speseRicorrentiAnno > 0 ? `+${fmt(speseRicorrentiAnno)} ricorrenti` : undefined} color={C.dan} onClick={() => setDetailModal('spese')} />
-            <StatCard label={margineAnno >= 0 ? '✅ Margine stimato' : '⚠️ Margine stimato'} value={`${margineAnno >= 0 ? '+' : ''}${fmt(margineAnno)}`} sub={`incassi - spese ${anno}`} color={margineAnno >= 0 ? C.suc : C.dan} />
-            <StatCard label="Eseguito da incassare" value={fmt(totEsegDaInc)} color={C.dan} onClick={() => setDetailModal('esegDaInc')} urgent={totEsegDaInc > 0} />
-            <StatCard label="Accettato da eseguire" value={fmt(totAccNonEseg)} color={C.pur} onClick={() => setDetailModal('accNonEseg')} />
-            <StatCard label="Totale accettati" value={fmt(totAccettati)} sub={`${preventiviAccettati.length} piani`} color={C.acc} onClick={() => setDetailModal('accettati')} />
-            <StatCard label="Da eseguire" value={daEseguire} sub="prestazioni" color={C.war} />
           </div>
-        </div>
-      )}
+        );
 
-      {/* ── AGENDA OGGI ── */}
-      {isOn('agenda') && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em' }}>📅 Agenda oggi</div>
-            <button onClick={() => onGoAgenda && onGoAgenda()} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '5px 10px', color: C.pri, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>Apri agenda ›</button>
+        if (w.id === 'kpi') return (
+          <div key="kpi" style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>📊 Statistiche</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <StatCard label="Pazienti totali" value={patients.length} sub={`+${nuoviMese} questo mese`} color={C.pri} />
+              <StatCard label="Tasso accettazione" value={`${tassoAccettazione}%`} sub={`${preventiviAccettati.length}/${preventiviAttesa.length + preventiviAccettati.length + preventiviRifiutati.length} prev.`} color={tassoAccettazione >= 70 ? C.suc : tassoAccettazione >= 40 ? C.war : C.dan} />
+              <StatCard label="Valore medio piano" value={fmt(mediaValore)} color={C.pri} />
+              {topPrest && <StatCard label="Top prestazione" value={topPrest[0].length > 18 ? topPrest[0].slice(0,16)+'…' : topPrest[0]} sub={`${topPrest[1]}x eseguita`} color={C.acc} />}
+            </div>
           </div>
-          {todayApps.length === 0 ? (
-            <Crd style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessun appuntamento oggi</Crd>
-          ) : (
-            <Crd style={{ padding: 0, overflow: 'hidden' }}>
-              {todayApps.map((a, i) => {
+        );
+
+        if (w.id === 'controllo') return (
+          <div key="controllo" style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>🎛️ Controllo studio</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <div style={{ background: C.priL, borderRadius: 12, padding: 12, border: `1px solid ${C.pri}25` }}>
+                <div style={{ fontSize: 10, fontWeight: 800, color: C.pri, textTransform: 'uppercase', marginBottom: 8 }}>📋 Preventivi</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <div onClick={() => setDetailModal('attesa')} style={{ flex: 1, textAlign: 'center', cursor: 'pointer', padding: '4px 0', borderRadius: 7, background: 'rgba(124,58,237,0.08)' }}>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: C.pur }}>{preventiviAttesa.length}</div>
+                    <div style={{ fontSize: 9, color: C.txl }}>attesa</div>
+                  </div>
+                  <div onClick={() => setDetailModal('accettati')} style={{ flex: 1, textAlign: 'center', cursor: 'pointer', padding: '4px 0', borderRadius: 7, background: 'rgba(46,196,182,0.1)' }}>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: C.acc }}>{preventiviAccettati.length}</div>
+                    <div style={{ fontSize: 9, color: C.txl }}>accettati</div>
+                  </div>
+                  <div onClick={() => setDetailModal('rifiutati')} style={{ flex: 1, textAlign: 'center', cursor: 'pointer', padding: '4px 0', borderRadius: 7, background: 'rgba(230,57,70,0.08)' }}>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: C.dan }}>{preventiviRifiutati.length}</div>
+                    <div style={{ fontSize: 9, color: C.txl }}>rifiutati</div>
+                  </div>
+                </div>
+              </div>
+              <div onClick={() => setDetailModal('richiami')} style={{ background: richiamiScaduti.length > 0 ? C.danL : '#FEF3E2', borderRadius: 12, padding: 12, border: `1px solid ${richiamiScaduti.length > 0 ? C.dan : C.war}25`, cursor: 'pointer', position: 'relative' }}>
+                {richiamiScaduti.length > 0 && <div style={{ position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: '50%', background: C.dan }} />}
+                <div style={{ fontSize: 10, fontWeight: 800, color: richiamiScaduti.length > 0 ? C.dan : C.war, textTransform: 'uppercase' }}>🔔 Richiami</div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: richiamiScaduti.length > 0 ? C.dan : C.war, marginTop: 4 }}>{richiamiScaduti.length + richiamiProssimi.length}</div>
+                <div style={{ fontSize: 10, color: C.txl }}>{richiamiScaduti.length} scaduti · {richiamiProssimi.length} prossimi</div>
+              </div>
+              <div onClick={() => setDetailModal('scadenze')} style={{ background: scadenzeScadute.length > 0 ? C.danL : C.priL, borderRadius: 12, padding: 12, border: `1px solid ${scadenzeScadute.length > 0 ? C.dan : C.pri}25`, cursor: 'pointer', position: 'relative' }}>
+                {scadenzeScadute.length > 0 && <div style={{ position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: '50%', background: C.dan }} />}
+                <div style={{ fontSize: 10, fontWeight: 800, color: scadenzeScadute.length > 0 ? C.dan : C.pri, textTransform: 'uppercase' }}>📆 Scadenze</div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: scadenzeScadute.length > 0 ? C.dan : C.pri, marginTop: 4 }}>{scadenzePagamento.length}</div>
+                <div style={{ fontSize: 10, color: C.txl }}>{scadenzeScadute.length} scadute · {scadenzeProssime.length} prossime</div>
+              </div>
+              <div onClick={() => setDetailModal('orto')} style={{ background: pianiOrto.some(o => o.cambioScaduto) ? C.danL : C.purL, borderRadius: 12, padding: 12, border: `1px solid ${pianiOrto.some(o => o.cambioScaduto) ? C.dan : C.pur}25`, cursor: 'pointer' }}>
+                <div style={{ fontSize: 10, fontWeight: 800, color: pianiOrto.some(o => o.cambioScaduto) ? C.dan : C.pur, textTransform: 'uppercase' }}>🦷 Ortodonzia</div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: pianiOrto.some(o => o.cambioScaduto) ? C.dan : C.pur, marginTop: 4 }}>{pianiOrto.filter(o => !o.completato).length}</div>
+                <div style={{ fontSize: 10, color: C.txl }}>{pianiOrto.filter(o => o.cambioScaduto).length} da cambiare · {pianiOrto.filter(o => o.inAttesa).length} da avviare</div>
+              </div>
+            </div>
+          </div>
+        );
+
+        if (w.id === 'todo') return (
+          <div key="todo" style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>✅ Attività e promemoria</div>
+            <Crd style={{ marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700 }}>Attività {todoAttivi.length > 0 && <span style={{ background: C.dan, color: '#fff', borderRadius: 8, padding: '1px 6px', fontSize: 10 }}>{todoAttivi.length}</span>}</span>
+                <button onClick={() => setTodoModal(true)} style={{ background: C.pri, border: 'none', borderRadius: 7, padding: '5px 10px', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>+ Aggiungi</button>
+              </div>
+              {todoLoading && <div style={{ fontSize: 12, color: C.txl, textAlign: 'center', padding: '8px 0' }}>⏳ Caricamento...</div>}
+              {!todoLoading && todoAttivi.length === 0 && <div style={{ fontSize: 12, color: C.txl, textAlign: 'center', padding: '8px 0' }}>Nessuna attività in sospeso 🎉</div>}
+              <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+                {todoAttivi.map(todo => (
+                  <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 0', borderBottom: `1px solid ${C.brd}` }}>
+                    <button onClick={() => toggleTodo(todo.id)} style={{ width: 20, height: 20, borderRadius: 5, border: `2px solid ${C.brd}`, background: '#fff', cursor: 'pointer', flexShrink: 0, padding: 0 }} />
+                    <span style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{todo.testo}</span>
+                    <button onClick={() => { const msg = encodeURIComponent('📋 Attività: ' + todo.testo); window.open('https://wa.me/?text=' + msg, '_blank'); }} style={{ background: '#25D366', border: 'none', borderRadius: 5, padding: '3px 6px', cursor: 'pointer', fontSize: 10, color: '#fff', fontWeight: 700, flexShrink: 0 }}>WA</button>
+                    <button onClick={() => deleteTodo(todo.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}><Ic n="x" s={11} c={C.dan} /></button>
+                  </div>
+                ))}
+              </div>
+              {todoFatti.length > 0 && <div style={{ marginTop: 6, fontSize: 10, color: C.txl, textAlign: 'center' }}>{todoFatti.length} completate</div>}
+            </Crd>
+            {promemoria.length > 0 && (
+              <Crd>
+                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>📌 Promemoria {promemoria.filter(p => p.richiamo.data < t).length > 0 && <span style={{ background: C.dan, color: '#fff', borderRadius: 8, padding: '1px 6px', fontSize: 10 }}>{promemoria.filter(p => p.richiamo.data < t).length} scaduti</span>}</div>
+                {promemoria.slice(0, 4).map(({ paz, ann, richiamo }, i) => (
+                  <div key={i} style={{ padding: '6px 0', borderBottom: `1px solid ${C.brd}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ flex: 1 }}>
+                      <div onClick={() => onOpenPaz(paz, 'info')} style={{ fontSize: 12, fontWeight: 700, color: C.pri, cursor: 'pointer' }}>{paz.nome} {paz.cognome} ›</div>
+                      <div style={{ fontSize: 11, color: C.txm }}>{richiamo.testo}</div>
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: richiamo.data < t ? C.dan : C.pur, flexShrink: 0 }}>{fmtD(richiamo.data)}</span>
+                  </div>
+                ))}
+              </Crd>
+            )}
+          </div>
+        );
+
+        if (w.id === 'appuntamenti' && upcoming.length > 0) return (
+          <div key="appuntamenti" style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>📅 Prossimi appuntamenti</div>
+            <Crd>
+              {upcoming.map((a, i) => {
                 const p = patients.find(x => x.id === a.pazienteId);
-                const co = getColore(a);
-                const ora = a.ora;
-                const isPast = ora < new Date().toTimeString().slice(0, 5);
                 return (
-                  <div key={a.id} onClick={() => onGoAgenda && onGoAgenda()} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: i < todayApps.length - 1 ? `1px solid ${C.brd}` : 'none', background: isPast ? '#fafafa' : '#fff', cursor: 'pointer' }}>
-                    <div style={{ background: co + '20', borderRadius: 8, padding: '4px 8px', textAlign: 'center', flexShrink: 0, minWidth: 44, borderLeft: `3px solid ${co}` }}>
-                      <div style={{ fontSize: 13, fontWeight: 900, color: co }}>{ora}</div>
-                      <div style={{ fontSize: 9, color: co, opacity: 0.8 }}>{a.durata}m</div>
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: i < upcoming.length-1 ? `1px solid ${C.brd}` : 'none' }}>
+                    <div style={{ background: C.priL, borderRadius: 7, padding: '4px 7px', textAlign: 'center', minWidth: 44, flexShrink: 0 }}>
+                      <div style={{ fontSize: 9, color: C.pri, fontWeight: 700 }}>{a.data.slice(8)}/{a.data.slice(5,7)}</div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: C.priD }}>{a.ora}</div>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 13, color: isPast ? C.txm : C.txt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p ? `${p.nome} ${p.cognome}` : '—'}</div>
-                      <div style={{ fontSize: 11, color: C.txl, display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: co }} />
-                        {a.tipo}
-                      </div>
+                      <div style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p ? `${p.nome} ${p.cognome}` : '—'}</div>
+                      <div style={{ fontSize: 11, color: C.txm }}>{a.tipo}</div>
                     </div>
                     <Bdg ch={a.stato} co={a.stato === 'confermato' ? C.suc : C.war} />
                   </div>
                 );
               })}
             </Crd>
-          )}
-          {hInc > 0 && <div style={{ marginTop: 6, background: C.sucL, borderRadius: 9, padding: '7px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: C.suc }}>💳 Incassato oggi</span>
-            <span style={{ fontSize: 15, fontWeight: 900, color: C.suc }}>{fmt(hInc)}</span>
-          </div>}
-        </div>
-      )}
-
-      {/* ── KPI ── */}}
-      {isOn('kpi') && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>📊 Statistiche</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <StatCard label="Pazienti totali" value={patients.length} sub={`+${nuoviMese} questo mese`} color={C.pri} />
-            <StatCard label="Tasso accettazione" value={`${tassoAccettazione}%`} sub={`${preventiviAccettati.length}/${preventiviAttesa.length + preventiviAccettati.length + preventiviRifiutati.length} prev.`} color={tassoAccettazione >= 70 ? C.suc : tassoAccettazione >= 40 ? C.war : C.dan} />
-            <StatCard label="Valore medio piano" value={fmt(mediaValore)} color={C.pri} />
-            {topPrest && <StatCard label="Top prestazione" value={topPrest[0].length > 18 ? topPrest[0].slice(0,16)+'…' : topPrest[0]} sub={`${topPrest[1]}x eseguita`} color={C.acc} />}
           </div>
-        </div>
-      )}
+        );
 
-      {/* ── CONTROLLO STUDIO ── */}
-      {isOn('controllo') && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>🎛️ Controllo studio</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <div style={{ background: C.priL, borderRadius: 12, padding: 12, border: `1px solid ${C.pri}25` }}>
-              <div style={{ fontSize: 10, fontWeight: 800, color: C.pri, textTransform: 'uppercase' }}>📋 Preventivi</div>
-              <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                <div onClick={(e) => { e.stopPropagation(); setDetailModal('attesa'); }} style={{ flex: 1, textAlign: 'center', cursor: 'pointer', padding: '4px 0', borderRadius: 7, background: 'rgba(124,58,237,0.08)' }}>
-                  <div style={{ fontSize: 18, fontWeight: 900, color: C.pur }}>{preventiviAttesa.length}</div>
-                  <div style={{ fontSize: 9, color: C.txl }}>in attesa</div>
-                </div>
-                <div onClick={(e) => { e.stopPropagation(); setDetailModal('accettati'); }} style={{ flex: 1, textAlign: 'center', cursor: 'pointer', padding: '4px 0', borderRadius: 7, background: 'rgba(46,196,182,0.1)' }}>
-                  <div style={{ fontSize: 18, fontWeight: 900, color: C.acc }}>{preventiviAccettati.length}</div>
-                  <div style={{ fontSize: 9, color: C.txl }}>accettati</div>
-                </div>
-                <div onClick={(e) => { e.stopPropagation(); setDetailModal('rifiutati'); }} style={{ flex: 1, textAlign: 'center', cursor: 'pointer', padding: '4px 0', borderRadius: 7, background: 'rgba(230,57,70,0.08)' }}>
-                  <div style={{ fontSize: 18, fontWeight: 900, color: C.dan }}>{preventiviRifiutati.length}</div>
-                  <div style={{ fontSize: 9, color: C.txl }}>rifiutati</div>
-                </div>
-              </div>
-            </div>
-            <div onClick={() => setDetailModal('richiami')} style={{ background: richiamiScaduti.length > 0 ? C.danL : '#FEF3E2', borderRadius: 12, padding: 12, border: `1px solid ${richiamiScaduti.length > 0 ? C.dan : C.war}25`, cursor: 'pointer', position: 'relative' }}>
-              {richiamiScaduti.length > 0 && <div style={{ position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: '50%', background: C.dan }} />}
-              <div style={{ fontSize: 10, fontWeight: 800, color: richiamiScaduti.length > 0 ? C.dan : C.war, textTransform: 'uppercase' }}>🔔 Richiami</div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: richiamiScaduti.length > 0 ? C.dan : C.war, marginTop: 4 }}>{richiamiScaduti.length + richiamiProssimi.length}</div>
-              <div style={{ fontSize: 10, color: C.txl }}>{richiamiScaduti.length} scaduti · {richiamiProssimi.length} prossimi</div>
-            </div>
-            <div onClick={() => setDetailModal('scadenze')} style={{ background: scadenzeScadute.length > 0 ? C.danL : C.priL, borderRadius: 12, padding: 12, border: `1px solid ${scadenzeScadute.length > 0 ? C.dan : C.pri}25`, cursor: 'pointer', position: 'relative' }}>
-              {scadenzeScadute.length > 0 && <div style={{ position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: '50%', background: C.dan }} />}
-              <div style={{ fontSize: 10, fontWeight: 800, color: scadenzeScadute.length > 0 ? C.dan : C.pri, textTransform: 'uppercase' }}>📆 Scadenze</div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: scadenzeScadute.length > 0 ? C.dan : C.pri, marginTop: 4 }}>{scadenzePagamento.length}</div>
-              <div style={{ fontSize: 10, color: C.txl }}>{scadenzeScadute.length} scadute · {scadenzeProssime.length} prossime</div>
-            </div>
-            <div onClick={() => setDetailModal('orto')} style={{ background: pianiOrto.some(o => o.cambioScaduto) ? C.danL : C.purL, borderRadius: 12, padding: 12, border: `1px solid ${pianiOrto.some(o => o.cambioScaduto) ? C.dan : C.pur}25`, cursor: 'pointer' }}>
-              <div style={{ fontSize: 10, fontWeight: 800, color: pianiOrto.some(o => o.cambioScaduto) ? C.dan : C.pur, textTransform: 'uppercase' }}>🦷 Ortodonzia</div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: pianiOrto.some(o => o.cambioScaduto) ? C.dan : C.pur, marginTop: 4 }}>{pianiOrto.filter(o => !o.completato).length}</div>
-              <div style={{ fontSize: 10, color: C.txl }}>{pianiOrto.filter(o => o.cambioScaduto).length} da cambiare · {pianiOrto.filter(o => o.inAttesa).length} da avviare</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── TODO + PROMEMORIA ── */}
-      {isOn('todo') && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>✅ Attività e promemoria</div>
-          <Crd style={{ marginBottom: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ fontSize: 12, fontWeight: 700 }}>Attività {todoAttivi.length > 0 && <span style={{ background: C.dan, color: '#fff', borderRadius: 8, padding: '1px 6px', fontSize: 10 }}>{todoAttivi.length}</span>}</span>
-              <button onClick={() => setTodoModal(true)} style={{ background: C.pri, border: 'none', borderRadius: 7, padding: '5px 10px', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>+ Aggiungi</button>
-            </div>
-            {todoLoading && <div style={{ fontSize: 12, color: C.txl, textAlign: 'center', padding: '8px 0' }}>⏳ Caricamento...</div>}
-            {!todoLoading && todoAttivi.length === 0 && <div style={{ fontSize: 12, color: C.txl, textAlign: 'center', padding: '8px 0' }}>Nessuna attività in sospeso 🎉</div>}
-            <div style={{ maxHeight: 220, overflowY: 'auto' }}>
-              {todoAttivi.map(todo => (
-                <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 0', borderBottom: `1px solid ${C.brd}` }}>
-                  <button onClick={() => toggleTodo(todo.id)} style={{ width: 20, height: 20, borderRadius: 5, border: `2px solid ${C.brd}`, background: '#fff', cursor: 'pointer', flexShrink: 0, padding: 0 }} />
-                  <span style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{todo.testo}</span>
-                  <button onClick={() => { const msg = encodeURIComponent('📋 Attività: ' + todo.testo); window.open('https://wa.me/?text=' + msg, '_blank'); }} style={{ background: '#25D366', border: 'none', borderRadius: 5, padding: '3px 6px', cursor: 'pointer', fontSize: 10, color: '#fff', fontWeight: 700, flexShrink: 0 }}>WA</button>
-                  <button onClick={() => deleteTodo(todo.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}><Ic n="x" s={11} c={C.dan} /></button>
-                </div>
-              ))}
-            </div>
-            {todoFatti.length > 0 && <div style={{ marginTop: 6, fontSize: 10, color: C.txl, textAlign: 'center' }}>{todoFatti.length} completate</div>}
-          </Crd>
-          {promemoria.length > 0 && (
-            <Crd>
-              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>📌 Promemoria {promemoria.filter(p => p.richiamo.data < t).length > 0 && <span style={{ background: C.dan, color: '#fff', borderRadius: 8, padding: '1px 6px', fontSize: 10 }}>{promemoria.filter(p => p.richiamo.data < t).length} scaduti</span>}</div>
-              {promemoria.slice(0, 4).map(({ paz, ann, richiamo }, i) => (
-                <div key={i} style={{ padding: '6px 0', borderBottom: `1px solid ${C.brd}`, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ flex: 1 }}>
-                    <div onClick={() => onOpenPaz(paz, 'info')} style={{ fontSize: 12, fontWeight: 700, color: C.pri, cursor: 'pointer' }}>{paz.nome} {paz.cognome} ›</div>
-                    <div style={{ fontSize: 11, color: C.txm }}>{richiamo.testo}</div>
-                  </div>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: richiamo.data < t ? C.dan : C.pur, flexShrink: 0 }}>{fmtD(richiamo.data)}</span>
-                </div>
-              ))}
-              {promemoria.length > 4 && <div style={{ fontSize: 11, color: C.txl, textAlign: 'center', marginTop: 6 }}>+{promemoria.length-4} altri</div>}
-            </Crd>
-          )}
-        </div>
-      )}
-
-      {/* ── PROSSIMI APPUNTAMENTI ── */}
-      {isOn('appuntamenti') && upcoming.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>📅 Prossimi appuntamenti</div>
-          <Crd>
-            {upcoming.map((a, i) => {
-              const p = patients.find(x => x.id === a.pazienteId);
-              return (
-                <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: i < upcoming.length-1 ? `1px solid ${C.brd}` : 'none' }}>
-                  <div style={{ background: C.priL, borderRadius: 7, padding: '4px 7px', textAlign: 'center', minWidth: 44, flexShrink: 0 }}>
-                    <div style={{ fontSize: 9, color: C.pri, fontWeight: 700 }}>{a.data.slice(8)}/{a.data.slice(5,7)}</div>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: C.priD }}>{a.ora}</div>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p ? `${p.nome} ${p.cognome}` : '—'}</div>
-                    <div style={{ fontSize: 11, color: C.txm }}>{a.tipo}</div>
-                  </div>
-                  <Bdg ch={a.stato} co={a.stato === 'confermato' ? C.suc : C.war} />
-                </div>
-              );
-            })}
-          </Crd>
-        </div>
-      )}
+        return null;
+      })}
     </div>
   );
 }
