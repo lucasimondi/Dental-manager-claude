@@ -96,56 +96,58 @@ export default function DocMedico({ paz, onClose }) {
     doc.line(M, fY, W - M, fY);
 
     // ── TIMBRO PROFESSIONALE centrato ──
-    const tW = 95, tH = 32;
+    const tW = 120, tH = 42;
     const tX = (W - tW) / 2;
     const tY = fY + 5;
+    const pad = 5; // padding interno testo
 
-    // Bordo esterno blu scuro
+    // Bordo esterno
     doc.setDrawColor(26, 78, 102);
     doc.setLineWidth(1.5);
     doc.roundedRect(tX, tY, tW, tH, 5, 5, 'S');
-    // Bordo interno sottile
+    // Bordo interno
     doc.setLineWidth(0.5);
     doc.roundedRect(tX + 2, tY + 2, tW - 4, tH - 4, 4, 4, 'S');
 
-    // Nome medico — bold grande
+    // Nome medico
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.setTextColor(26, 78, 102);
-    doc.text('Dott. Luca Simondi', tX + tW / 2, tY + 9, { align: 'center' });
+    doc.text('Dott. Luca Simondi', tX + tW / 2, tY + 9, { align: 'center', maxWidth: tW - pad * 2 });
 
     // Linea decorativa
     doc.setDrawColor(26, 78, 102);
     doc.setLineWidth(0.4);
     doc.line(tX + 8, tY + 11.5, tX + tW - 8, tY + 11.5);
 
-    // Specializzazione
+    // Specializzazione — due righe separate per evitare overflow
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
+    doc.setFontSize(6);
     doc.setTextColor(26, 78, 102);
-    doc.text('Medico Odontoiatra · Chirurgo Orale · Medico Estetico', tX + tW / 2, tY + 16, { align: 'center' });
+    doc.text('Medico Odontoiatra · Chirurgo Orale', tX + tW / 2, tY + 16, { align: 'center', maxWidth: tW - pad * 2 });
+    doc.text('Medico Estetico', tX + tW / 2, tY + 20, { align: 'center', maxWidth: tW - pad * 2 });
 
     // Iscrizione ordine
-    doc.setFontSize(6.5);
-    doc.text('Iscr. Ordine Medici ed Odontoiatri di Cuneo n. 0577', tX + tW / 2, tY + 20.5, { align: 'center' });
+    doc.setFontSize(5.5);
+    doc.text('Iscr. Ordine Medici e Odontoiatri Cuneo n. 0577', tX + tW / 2, tY + 24.5, { align: 'center', maxWidth: tW - pad * 2 });
 
     // Linea decorativa 2
     doc.setLineWidth(0.3);
-    doc.line(tX + 12, tY + 23, tX + tW - 12, tY + 23);
+    doc.line(tX + 10, tY + 27, tX + tW - 10, tY + 27);
 
-    // Indirizzo e contatti
-    doc.setFontSize(6);
-    doc.text('C.so Galileo Ferraris 11bis · 12100 Cuneo (CN)', tX + tW / 2, tY + 27, { align: 'center' });
-    doc.text('Tel. 320 5505397 · dottorsimondi@gmail.com', tX + tW / 2, tY + 31, { align: 'center' });
+    // Indirizzo
+    doc.setFontSize(5.5);
+    doc.text('C.so Galileo Ferraris 11bis · 12100 Cuneo (CN)', tX + tW / 2, tY + 31, { align: 'center', maxWidth: tW - pad * 2 });
+    doc.text('Tel. 320 5505397 · dottorsimondi@gmail.com', tX + tW / 2, tY + 35, { align: 'center', maxWidth: tW - pad * 2 });
 
     // P.IVA
-    doc.setFontSize(5.5);
+    doc.setFontSize(5);
     doc.setTextColor(80, 110, 130);
-    doc.text('P.IVA 03830670042', tX + tW / 2, tY + 34.5, { align: 'center' });
+    doc.text('P.IVA 03830670042', tX + tW / 2, tY + 39.5, { align: 'center', maxWidth: tW - pad * 2 });
 
-    // ── FIRMA sovrapposta al timbro ──
+    // ── FIRMA sovrapposta — più grande, centrata sul timbro ──
     try {
-      doc.addImage(FIRMA_B64, 'PNG', tX + tW - 48, tY - 4, 44, 26, undefined, 'FAST');
+      doc.addImage(FIRMA_B64, 'PNG', tX + tW / 2 - 5, tY + 4, 58, 34, undefined, 'FAST');
     } catch(e) {}
 
     // ── FOOTER TESTO ──
