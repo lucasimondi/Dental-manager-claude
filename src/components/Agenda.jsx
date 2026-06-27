@@ -30,6 +30,9 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const [toast, setToast] = useState('');
   const [editApp, setEditApp] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [tmpI, setTmpI] = useState(oraInizio);
+  const [tmpF, setTmpF] = useState(oraFine);
+  const [tmpS, setTmpS] = useState(slotMin);
   const [vd, setVd] = useState(new Date());
 
   // Impostazioni griglia
@@ -268,7 +271,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
           )}
           {view === 'mese' && <span style={{ fontWeight: 800, fontSize: 16 }}>Agenda</span>}
         </div>
-        <button onClick={() => setSettingsOpen(true)} style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 8, padding: '6px 8px', cursor: 'pointer', display: 'flex' }}><Ic n="set" s={15} c={C.txm} /></button>
+        <button onClick={() => { setTmpI(oraInizio); setTmpF(oraFine); setTmpS(slotMin); setSettingsOpen(true); }} style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 8, padding: '6px 8px', cursor: 'pointer', display: 'flex' }}><Ic n="set" s={15} c={C.txm} /></button>
         <Btn ch="+ Nuovo" onClick={() => apriNuovo()} />
       </div>
 
@@ -285,36 +288,41 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
       {view === 'mese' && <MonthView />}
 
       {/* MODAL IMPOSTAZIONI GRIGLIA */}
-      {settingsOpen && (() => {
-        const [tmpI, setTmpI] = useState(oraInizio);
-        const [tmpF, setTmpF] = useState(oraFine);
-        const [tmpS, setTmpS] = useState(slotMin);
-        return (
-          <Modal title="⚙️ Impostazioni griglia" onClose={() => setSettingsOpen(false)}>
-            <Fld label="Ora inizio">
-              <Sel value={tmpI} onChange={e => setTmpI(Number(e.target.value))}>
-                {Array.from({ length: 16 }, (_, i) => i + 6).map(h => <option key={h} value={h}>{String(h).padStart(2,'0')}:00</option>)}
-              </Sel>
-            </Fld>
-            <Fld label="Ora fine">
-              <Sel value={tmpF} onChange={e => setTmpF(Number(e.target.value))}>
-                {Array.from({ length: 16 }, (_, i) => i + 6).map(h => <option key={h} value={h}>{String(h).padStart(2,'0')}:00</option>)}
-              </Sel>
-            </Fld>
-            <Fld label="Dimensione slot">
-              <Sel value={tmpS} onChange={e => setTmpS(Number(e.target.value))}>
-                <option value={15}>15 minuti</option>
-                <option value={30}>30 minuti</option>
-                <option value={60}>60 minuti</option>
-              </Sel>
-            </Fld>
-            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-              <Btn ch="Annulla" v="sec" onClick={() => setSettingsOpen(false)} full />
-              <Btn ch="Salva" onClick={() => saveSettings(tmpI, tmpF, tmpS)} full />
+      {settingsOpen && (
+        <Modal title="⚙️ Impostazioni agenda" onClose={() => setSettingsOpen(false)}>
+          <div style={{ fontSize: 12, color: C.txm, marginBottom: 14 }}>Personalizza la visualizzazione della griglia oraria.</div>
+          <Fld label="Ora inizio giornata">
+            <Sel value={tmpI} onChange={e => setTmpI(Number(e.target.value))}>
+              {Array.from({ length: 16 }, (_, i) => i + 6).map(h => <option key={h} value={h}>{String(h).padStart(2,'0')}:00</option>)}
+            </Sel>
+          </Fld>
+          <Fld label="Ora fine giornata">
+            <Sel value={tmpF} onChange={e => setTmpF(Number(e.target.value))}>
+              {Array.from({ length: 16 }, (_, i) => i + 6).map(h => <option key={h} value={h}>{String(h).padStart(2,'0')}:00</option>)}
+            </Sel>
+          </Fld>
+          <Fld label="Dimensione slot orario">
+            <Sel value={tmpS} onChange={e => setTmpS(Number(e.target.value))}>
+              <option value={15}>15 minuti (più dettagliato)</option>
+              <option value={30}>30 minuti (consigliato)</option>
+              <option value={60}>60 minuti (più compatto)</option>
+            </Sel>
+          </Fld>
+          {tmpI >= tmpF && (
+            <div style={{ background: C.danL, borderRadius: 8, padding: '8px 12px', marginBottom: 10, fontSize: 12, color: C.dan, fontWeight: 700 }}>
+              ⚠️ L'ora di inizio deve essere prima dell'ora di fine
             </div>
-          </Modal>
-        );
-      })()}
+          )}
+          <div style={{ background: C.bg, borderRadius: 9, padding: '9px 12px', marginBottom: 10 }}>
+            <div style={{ fontSize: 11, color: C.txm, fontWeight: 700 }}>Anteprima: {String(tmpI).padStart(2,'0')}:00 — {String(tmpF).padStart(2,'0')}:00 · slot da {tmpS} min</div>
+            <div style={{ fontSize: 11, color: C.txl, marginTop: 2 }}>{Math.ceil((tmpF - tmpI) * 60 / tmpS)} slot totali nella giornata</div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <Btn ch="Annulla" v="sec" onClick={() => setSettingsOpen(false)} full />
+            <Btn ch="Salva impostazioni" onClick={() => saveSettings(tmpI, tmpF, tmpS)} dis={tmpI >= tmpF} full />
+          </div>
+        </Modal>
+      )}
 
       {/* MODAL NUOVO / MODIFICA APPUNTAMENTO */}
       {modal && (
