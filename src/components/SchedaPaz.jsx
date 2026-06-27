@@ -19,6 +19,8 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
   const [pdfPlan, setPdfPlan] = useState(null);
   const [docFiscale, setDocFiscale] = useState(false);
   const [docMedico, setDocMedico] = useState(false);
+  const [appModal, setAppModal] = useState(false);
+  const [appForm, setAppForm] = useState({ data: today(), ora: '09:00', durata: 30, tipo: 'Visita di controllo', note: '', stato: 'confermato' });
   const [selPiani, setSelPiani] = useState([]);
   const [editPianoModal, setEditPianoModal] = useState(null);
   const [editForm, setEditForm] = useState(null);
@@ -757,7 +759,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
         {tab === 'app' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-              <button onClick={() => { if (setAppointments) { const nuovoApp = { id: Date.now(), pazienteId: paz.id, data: today(), ora: '09:00', durata: 30, tipo: 'Visita di controllo', colore: '#1A4E66', note: '', stato: 'confermato' }; setAppointments(prev => [...prev, nuovoApp]); } }} style={{ background: C.pri, border: 'none', borderRadius: 8, padding: '8px 14px', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+              <button onClick={() => { setAppForm({ data: today(), ora: '09:00', durata: 30, tipo: 'Visita di controllo', note: '', stato: 'confermato' }); setAppModal(true); }} style={{ background: C.pri, border: 'none', borderRadius: 8, padding: '8px 14px', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
                 <Ic n="plus" s={12} c="#fff" /> Nuovo appuntamento
               </button>
             </div>
@@ -780,6 +782,45 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
           </div>
         )}
       </div>
+
+      {appModal && (
+        <Modal title="📅 Nuovo appuntamento" onClose={() => setAppModal(false)}>
+          <div style={{ background: C.priL, borderRadius: 9, padding: '9px 12px', marginBottom: 12, fontWeight: 700, fontSize: 13, color: C.pri }}>
+            👤 {paz.nome} {paz.cognome}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <Fld label="Data"><Inp type="date" value={appForm.data} onChange={e => setAppForm(f => ({ ...f, data: e.target.value }))} /></Fld>
+            <Fld label="Ora"><Inp type="time" value={appForm.ora} onChange={e => setAppForm(f => ({ ...f, ora: e.target.value }))} /></Fld>
+            <Fld label="Durata">
+              <Sel value={appForm.durata} onChange={e => setAppForm(f => ({ ...f, durata: Number(e.target.value) }))}>
+                {[15, 30, 45, 60, 90, 120].map(d => <option key={d} value={d}>{d} min</option>)}
+              </Sel>
+            </Fld>
+            <Fld label="Stato">
+              <Sel value={appForm.stato} onChange={e => setAppForm(f => ({ ...f, stato: e.target.value }))}>
+                <option value="confermato">Confermato</option>
+                <option value="da confermare">Da confermare</option>
+                <option value="annullato">Annullato</option>
+              </Sel>
+            </Fld>
+          </div>
+          <Fld label="Tipo visita">
+            <Inp value={appForm.tipo} onChange={e => setAppForm(f => ({ ...f, tipo: e.target.value }))} placeholder="es. Visita di controllo, Otturazione..." />
+          </Fld>
+          <Fld label="Note (opzionale)">
+            <Inp value={appForm.note} onChange={e => setAppForm(f => ({ ...f, note: e.target.value }))} />
+          </Fld>
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <Btn ch="Annulla" v="sec" onClick={() => setAppModal(false)} full />
+            <Btn ch="Salva appuntamento" onClick={() => {
+              if (setAppointments) {
+                setAppointments(prev => [...prev, { ...appForm, id: Date.now(), pazienteId: paz.id, colore: '#1A4E66' }]);
+              }
+              setAppModal(false);
+            }} full />
+          </div>
+        </Modal>
+      )}
 
       {noteModalOpen && (
         <Modal title="Anamnesi / Allergie / Note generali" onClose={() => setNoteModalOpen(false)}>
