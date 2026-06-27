@@ -7,7 +7,7 @@ const SECTIONS_DEFAULT = {
   oggi: true, economico: true, controllo: true, kpi: true, todo: true, appuntamenti: true,
 };
 
-export default function Dashboard({ patients, appointments, payments, plans, onOpenPaz }) {
+export default function Dashboard({ patients, appointments, payments, plans, onOpenPaz, appTypes, onGoAgenda }) {
   const t = today();
   const anno = t.slice(0, 4);
   const [detailModal, setDetailModal] = useState(null);
@@ -74,6 +74,12 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
   const deleteTodo = async (id) => {
     const { error } = await supabase.from('todos').delete().eq('id', id);
     if (!error) setTodoList(prev => prev.filter(x => x.id !== id));
+  };
+
+  const getColore = (a) => {
+    if (a.colore) return a.colore;
+    if (appTypes) { const t = appTypes.find(x => x.nome === a.tipo); if (t) return t.colore; }
+    return C.pri;
   };
 
   // ── CALCOLI ──
@@ -194,7 +200,8 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
       {settingsOpen && (
         <Modal title="⚙️ Personalizza dashboard" onClose={() => setSettingsOpen(false)}>
           <div style={{ fontSize: 12, color: C.txm, marginBottom: 12 }}>Attiva o disattiva le sezioni della dashboard.</div>
-          {[['oggi', '🌅 Appuntamenti di oggi'], ['economico', '💰 Pannello economico'], ['controllo', '🎛️ Controllo studio'], ['kpi', '📊 KPI e statistiche'], ['todo', '✅ Attività e promemoria'], ['appuntamenti', '📅 Prossimi appuntamenti']].map(([id, lbl]) => (
+          {[['oggi', '🌅 Appuntamenti di oggi'], ['economico', '💰 Pannello economico'], ['controllo', '🎛️ Controllo studio'], ['kpi', '📊 KPI e statistiche'], ['todo', '✅ Attività e promemoria'], ['agenda', '📅 Agenda oggi'],
+          ['appuntamenti', '📅 Prossimi appuntamenti']].map(([id, lbl]) => (
             <SectionToggle key={id} id={id} label={lbl} />
           ))}
         </Modal>
@@ -568,8 +575,8 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
         </button>
       </div>
 
-      {/* ── OGGI ── */}
-      {sections.oggi && (
+      {/* ── OGGI (nascosta, sostituita da agenda) ── */}
+      {false && sections.oggi && (
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>🌅 Oggi — {todayApps.length} appuntament{todayApps.length === 1 ? 'o' : 'i'}</div>
           {todayApps.length === 0 ? (
@@ -623,7 +630,49 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
         </div>
       )}
 
-      {/* ── KPI ── */}
+      {/* ── AGENDA OGGI ── */}
+      {sections.agenda && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em' }}>📅 Agenda oggi</div>
+            <button onClick={() => onGoAgenda && onGoAgenda()} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '5px 10px', color: C.pri, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>Apri agenda ›</button>
+          </div>
+          {todayApps.length === 0 ? (
+            <Crd style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessun appuntamento oggi</Crd>
+          ) : (
+            <Crd style={{ padding: 0, overflow: 'hidden' }}>
+              {todayApps.map((a, i) => {
+                const p = patients.find(x => x.id === a.pazienteId);
+                const co = getColore(a);
+                const ora = a.ora;
+                const isPast = ora < new Date().toTimeString().slice(0, 5);
+                return (
+                  <div key={a.id} onClick={() => onGoAgenda && onGoAgenda()} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: i < todayApps.length - 1 ? `1px solid ${C.brd}` : 'none', background: isPast ? '#fafafa' : '#fff', cursor: 'pointer' }}>
+                    <div style={{ background: co + '20', borderRadius: 8, padding: '4px 8px', textAlign: 'center', flexShrink: 0, minWidth: 44, borderLeft: `3px solid ${co}` }}>
+                      <div style={{ fontSize: 13, fontWeight: 900, color: co }}>{ora}</div>
+                      <div style={{ fontSize: 9, color: co, opacity: 0.8 }}>{a.durata}m</div>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: isPast ? C.txm : C.txt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p ? `${p.nome} ${p.cognome}` : '—'}</div>
+                      <div style={{ fontSize: 11, color: C.txl, display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: co }} />
+                        {a.tipo}
+                      </div>
+                    </div>
+                    <Bdg ch={a.stato} co={a.stato === 'confermato' ? C.suc : C.war} />
+                  </div>
+                );
+              })}
+            </Crd>
+          )}
+          {hInc > 0 && <div style={{ marginTop: 6, background: C.sucL, borderRadius: 9, padding: '7px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: C.suc }}>💳 Incassato oggi</span>
+            <span style={{ fontSize: 15, fontWeight: 900, color: C.suc }}>{fmt(hInc)}</span>
+          </div>}
+        </div>
+      )}
+
+      {/* ── KPI ── */}}
       {sections.kpi && (
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>📊 Statistiche</div>
