@@ -3,8 +3,27 @@ import { supabase } from '../lib/supabase.js';
 import { Crd, Bdg, Modal, Ic, Btn } from './ui';
 import { C, fmt, fmtD, today } from '../lib/utils';
 
-const SECTIONS_DEFAULT = {
-  oggi: true, economico: true, controllo: true, kpi: true, todo: true, appuntamenti: true,
+const WIDGETS_DEFAULT = [
+  { id: 'agenda',       label: '📅 Agenda oggi',           attivo: true },
+  { id: 'economico',    label: '💰 Pannello economico',     attivo: true },
+  { id: 'controllo',    label: '🎛️ Controllo studio',       attivo: true },
+  { id: 'kpi',          label: '📊 Statistiche',            attivo: true },
+  { id: 'todo',         label: '✅ Attività e promemoria',  attivo: true },
+  { id: 'appuntamenti', label: '📅 Prossimi appuntamenti',  attivo: true },
+];
+
+const loadWidgets = () => {
+  try {
+    const saved = JSON.parse(localStorage.getItem('dm_widgets') || 'null');
+    if (!saved) return WIDGETS_DEFAULT;
+    const ids = saved.map(w => w.id);
+    const missing = WIDGETS_DEFAULT.filter(w => !ids.includes(w.id));
+    return [...saved, ...missing];
+  } catch { return WIDGETS_DEFAULT; }
+};
+
+const saveWidgets = (ws) => {
+  try { localStorage.setItem('dm_widgets', JSON.stringify(ws)); } catch {}
 };
 
 export default function Dashboard({ patients, appointments, payments, plans, onOpenPaz, appTypes, onGoAgenda }) {
@@ -12,9 +31,8 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
   const anno = t.slice(0, 4);
   const [detailModal, setDetailModal] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [sections, setSections] = useState(() => {
-    try { return { ...SECTIONS_DEFAULT, ...JSON.parse(localStorage.getItem('dm_dash_sections') || '{}') }; } catch { return SECTIONS_DEFAULT; }
-  });
+  const [widgets, setWidgets] = useState(loadWidgets);
+  const isOn = (id) => { const w = widgets.find(x => x.id === id); return w ? w.attivo !== false : true; };
   const [todoList, setTodoList] = useState([]);
   const [todoInput, setTodoInput] = useState('');
   const [todoModal, setTodoModal] = useState(false);
@@ -35,11 +53,7 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
     loadSpese();
   }, []);
 
-  const toggleSection = (key) => {
-    const next = { ...sections, [key]: !sections[key] };
-    setSections(next);
-    localStorage.setItem('dm_dash_sections', JSON.stringify(next));
-  };
+  const widgetOrder = widgets.filter(w => w.attivo !== false);
 
   useEffect(() => {
     loadTodos();
@@ -175,14 +189,7 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
 
   const MESI = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
 
-  const SectionToggle = ({ id, label }) => (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: `1px solid ${C.brd}` }}>
-      <span style={{ fontSize: 13, fontWeight: 600, color: C.txt }}>{label}</span>
-      <button onClick={() => toggleSection(id)} style={{ width: 44, height: 24, borderRadius: 12, background: sections[id] ? C.pri : C.brd, border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 0.2s' }}>
-        <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: sections[id] ? 23 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-      </button>
-    </div>
-  );
+  // SectionToggle rimosso — sostituito da drag-and-drop widgets
 
   const StatCard = ({ label, value, sub, color = C.pri, bg, onClick, urgent }) => (
     <div onClick={onClick} style={{ background: bg || (color + '12'), borderRadius: 12, padding: '12px 14px', border: `1px solid ${color}25`, cursor: onClick ? 'pointer' : 'default', position: 'relative' }}>
@@ -199,11 +206,33 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
       {/* ── SETTINGS MODAL ── */}
       {settingsOpen && (
         <Modal title="⚙️ Personalizza dashboard" onClose={() => setSettingsOpen(false)}>
-          <div style={{ fontSize: 12, color: C.txm, marginBottom: 12 }}>Attiva o disattiva le sezioni della dashboard.</div>
-          {[['oggi', '🌅 Appuntamenti di oggi'], ['economico', '💰 Pannello economico'], ['controllo', '🎛️ Controllo studio'], ['kpi', '📊 KPI e statistiche'], ['todo', '✅ Attività e promemoria'], ['agenda', '📅 Agenda oggi'],
-          ['appuntamenti', '📅 Prossimi appuntamenti']].map(([id, lbl]) => (
-            <SectionToggle key={id} id={id} label={lbl} />
+          <div style={{ fontSize: 12, color: C.txm, marginBottom: 12 }}>Trascina ⠿ per riordinare · toggle per attivare/disattivare</div>
+          {widgets.map((w, i) => (
+            <div key={w.id} draggable
+              onDragStart={e => e.dataTransfer.setData('widgetIdx', String(i))}
+              onDragOver={e => e.preventDefault()}
+              onDrop={e => {
+                const from = Number(e.dataTransfer.getData('widgetIdx'));
+                if (from === i) return;
+                const next = [...widgets];
+                const [moved] = next.splice(from, 1);
+                next.splice(i, 0, moved);
+                setWidgets(next); saveWidgets(next);
+              }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 10px', marginBottom: 6, background: C.bg, borderRadius: 10, border: `1px solid ${C.brd}`, cursor: 'grab', userSelect: 'none' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 18, color: C.txl }}>⠿</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: w.attivo !== false ? C.txt : C.txl }}>{w.label}</span>
+              </div>
+              <button onClick={() => {
+                const next = widgets.map(x => x.id === w.id ? { ...x, attivo: x.attivo === false } : x);
+                setWidgets(next); saveWidgets(next);
+              }} style={{ width: 44, height: 24, borderRadius: 12, background: w.attivo !== false ? C.pri : C.brd, border: 'none', cursor: 'pointer', position: 'relative', flexShrink: 0 }}>
+                <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: w.attivo !== false ? 23 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+              </button>
+            </div>
           ))}
+          <button onClick={() => { setWidgets([...WIDGETS_DEFAULT]); saveWidgets([...WIDGETS_DEFAULT]); }} style={{ width: '100%', padding: '9px', marginTop: 8, background: C.danL, border: 'none', borderRadius: 9, color: C.dan, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>↺ Ripristina predefinito</button>
         </Modal>
       )}
 
@@ -576,7 +605,8 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
       </div>
 
       {/* ── OGGI (nascosta, sostituita da agenda) ── */}
-      {false && sections.oggi && (
+      {/* widget ordinati dinamicamente */}
+      {false && isOn('oggi') && (
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>🌅 Oggi — {todayApps.length} appuntament{todayApps.length === 1 ? 'o' : 'i'}</div>
           {todayApps.length === 0 ? (
@@ -611,7 +641,7 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
       )}
 
       {/* ── ECONOMICO ── */}
-      {sections.economico && (
+      {isOn('economico') && (
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>💰 Economico</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
@@ -631,7 +661,7 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
       )}
 
       {/* ── AGENDA OGGI ── */}
-      {sections.agenda && (
+      {isOn('agenda') && (
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em' }}>📅 Agenda oggi</div>
@@ -673,7 +703,7 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
       )}
 
       {/* ── KPI ── */}}
-      {sections.kpi && (
+      {isOn('kpi') && (
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>📊 Statistiche</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
@@ -686,7 +716,7 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
       )}
 
       {/* ── CONTROLLO STUDIO ── */}
-      {sections.controllo && (
+      {isOn('controllo') && (
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>🎛️ Controllo studio</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
@@ -729,7 +759,7 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
       )}
 
       {/* ── TODO + PROMEMORIA ── */}
-      {sections.todo && (
+      {isOn('todo') && (
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>✅ Attività e promemoria</div>
           <Crd style={{ marginBottom: 8 }}>
@@ -770,7 +800,7 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
       )}
 
       {/* ── PROSSIMI APPUNTAMENTI ── */}
-      {sections.appuntamenti && upcoming.length > 0 && (
+      {isOn('appuntamenti') && upcoming.length > 0 && (
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>📅 Prossimi appuntamenti</div>
           <Crd>
