@@ -17,6 +17,7 @@ const startOfWeek = (d) => {
 
 export default function Agenda({ patients, appointments, setAppointments, appTypes }) {
   const [modal, setModal] = useState(false);
+  const [pazSearch, setPazSearch] = useState('');
   const [selDay, setSelDay] = useState(today());
   const [view, setView] = useState('mese');
   const tipiList = appTypes && appTypes.length ? appTypes : DEF_APP_TYPES;
@@ -216,10 +217,53 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
       {modal && (
         <Modal title="Nuovo appuntamento" onClose={() => setModal(false)}>
           <Fld label="Paziente">
-            <Sel value={form.pazienteId} onChange={(e) => F({ pazienteId: e.target.value })}>
-              <option value="">Seleziona paziente…</option>
-              {patients.map((p) => <option key={p.id} value={p.id}>{p.nome} {p.cognome}</option>)}
-            </Sel>
+            {(() => {
+              const sel = patients.find(p => String(p.id) === String(form.pazienteId));
+              const filtered = pazSearch.trim()
+                ? patients.filter(p => `${p.nome} ${p.cognome} ${p.cognome} ${p.nome}`.toLowerCase().includes(pazSearch.toLowerCase()))
+                : patients;
+              return (
+                <div style={{ position: 'relative' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, border: `1.5px solid ${sel && !pazSearch ? C.suc : C.brd}`, borderRadius: 10, padding: '10px 12px', background: C.sur }}>
+                    {sel && !pazSearch ? (
+                      <>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, fontSize: 14, color: C.txt }}>{sel.nome} {sel.cognome}</div>
+                          {sel.telefono && <div style={{ fontSize: 11, color: C.txl }}>{sel.telefono}</div>}
+                        </div>
+                        <button onClick={() => { F({ pazienteId: '' }); setPazSearch(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.txl, fontSize: 18, padding: 0 }}>✕</button>
+                      </>
+                    ) : (
+                      <input
+                        autoFocus
+                        value={pazSearch}
+                        onChange={e => { setPazSearch(e.target.value); if (!e.target.value) F({ pazienteId: '' }); }}
+                        placeholder="Cerca per nome o cognome…"
+                        style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 14, color: C.txt, outline: 'none', fontFamily: 'inherit' }}
+                      />
+                    )}
+                  </div>
+                  {(!sel || pazSearch) && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: C.sur, border: `1.5px solid ${C.pri}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', marginTop: 3, maxHeight: 240, overflowY: 'auto' }}>
+                      {filtered.length === 0 && <div style={{ padding: '12px 14px', color: C.txl, fontSize: 13 }}>Nessun paziente trovato</div>}
+                      {filtered.slice(0, 30).map(p => (
+                        <div key={p.id}
+                          onClick={() => { F({ pazienteId: String(p.id) }); setPazSearch(''); }}
+                          style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: `1px solid ${C.brd}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                          onMouseEnter={e => e.currentTarget.style.background = C.priL}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: C.txt }}>{p.cognome} {p.nome}</div>
+                            {p.telefono && <div style={{ fontSize: 11, color: C.txl }}>{p.telefono}</div>}
+                          </div>
+                          <div style={{ fontSize: 10, color: C.txl }}>{p.dataNascita ? new Date().getFullYear() - new Date(p.dataNascita).getFullYear() + 'a' : ''}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </Fld>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <Fld label="Data"><Inp type="date" value={form.data} onChange={(e) => F({ data: e.target.value })} /></Fld>
