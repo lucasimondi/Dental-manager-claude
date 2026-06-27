@@ -10,6 +10,7 @@ import SchedaPaz from './components/SchedaPaz.jsx';
 import Piani from './components/Piani.jsx';
 import Pagamenti from './components/Pagamenti.jsx';
 import Spese from './components/Spese.jsx';
+import ArchivioDocs from './components/ArchivioDocs.jsx';
 import Listino from './components/Listino.jsx';
 import Agenda from './components/Agenda.jsx';
 import WhatsApp from './components/WhatsApp.jsx';
@@ -199,7 +200,7 @@ export default function App() {
       )}
 
       <div id="app-scroll" style={{ flex: 1, overflowY: 'auto', padding: 13, paddingBottom: 78 }}>
-        {page === 'home' && <Dashboard patients={patients} appointments={appointments} payments={payments} plans={plans} onOpenPaz={goSchedaPaz} />}
+        {page === 'home' && <Dashboard patients={patients} appointments={appointments} payments={payments} plans={plans} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} />}
         {page === 'paz' && (
           <Pazienti
             patients={patients} setPatients={setPatientsSync}
@@ -223,6 +224,7 @@ export default function App() {
         {page === 'listino' && <Listino pricelist={pricelist} setPricelist={setPricelistSync} />}
         {page === 'agenda' && <Agenda patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} />}
         {page === 'spese' && <Spese />}
+        {page === 'archivio' && <ArchivioDocs patients={patients} />}
         {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
         {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} />}
       </div>

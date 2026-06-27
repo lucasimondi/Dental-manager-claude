@@ -186,6 +186,7 @@ export const NAV = [
   { id: 'listino', l: 'Listino', ic: 'list' },
   { id: 'agenda', l: 'Agenda', ic: 'cal' },
   { id: 'spese', l: 'Spese', ic: 'spe' },
+  { id: 'archivio', l: 'Archivio', ic: 'list' },
   { id: 'wa', l: 'WhatsApp', ic: 'wa' },
   { id: 'set', l: 'Setup', ic: 'set' },
 ];
