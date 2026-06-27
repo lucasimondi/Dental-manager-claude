@@ -88,7 +88,7 @@ export default function DocMedico({ paz, onClose }) {
   };
 
   const footer = (doc, W, M) => {
-    const fY = 252;
+    const fY = 228;
 
     // ── LINEA SEPARATORE ──
     doc.setDrawColor(200, 210, 220);
@@ -96,8 +96,7 @@ export default function DocMedico({ paz, onClose }) {
     doc.line(M, fY, W - M, fY);
 
     // ── TIMBRO PROFESSIONALE centrato ──
-    // dimensioni timbro
-    const tW = 110, tH = 36;
+    const tW = 95, tH = 32;
     const tX = (W - tW) / 2;
     const tY = fY + 5;
 
@@ -111,7 +110,7 @@ export default function DocMedico({ paz, onClose }) {
 
     // Nome medico — bold grande
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setTextColor(26, 78, 102);
     doc.text('Dott. Luca Simondi', tX + tW / 2, tY + 9, { align: 'center' });
 
@@ -122,7 +121,7 @@ export default function DocMedico({ paz, onClose }) {
 
     // Specializzazione
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setTextColor(26, 78, 102);
     doc.text('Medico Odontoiatra · Chirurgo Orale · Medico Estetico', tX + tW / 2, tY + 16, { align: 'center' });
 
@@ -146,17 +145,17 @@ export default function DocMedico({ paz, onClose }) {
 
     // ── FIRMA sovrapposta al timbro ──
     try {
-      doc.addImage(FIRMA_B64, 'PNG', tX + tW - 52, tY - 2, 48, 28, undefined, 'FAST');
+      doc.addImage(FIRMA_B64, 'PNG', tX + tW - 48, tY - 4, 44, 26, undefined, 'FAST');
     } catch(e) {}
 
     // ── FOOTER TESTO ──
     doc.setDrawColor(200, 210, 220);
     doc.setLineWidth(0.3);
-    doc.line(M, 284, W - M, 284);
+    doc.line(M, 283, W - M, 283);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
     doc.setTextColor(150, 160, 170);
-    doc.text(`${STUDIO.nome} · ${STUDIO.addr} · P.IVA ${STUDIO.piva}`, W / 2, 288, { align: 'center' });
+    doc.text(`${STUDIO.nome} · ${STUDIO.addr} · P.IVA ${STUDIO.piva}`, W / 2, 287, { align: 'center' });
   };
 
   const generaRicetta = () => {
