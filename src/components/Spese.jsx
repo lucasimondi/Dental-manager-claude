@@ -43,14 +43,26 @@ export default function Spese() {
 
   const save = async () => {
     if (!form.titolo || !form.importo) return;
-    const record = { ...form, importo: Number(form.importo) };
+    const record = {
+      titolo: form.titolo,
+      importo: Number(form.importo),
+      data: form.data,
+      categoria: form.categoria,
+      note: form.note || '',
+      ricorrente: form.ricorrente,
+      frequenza: form.frequenza,
+    };
     if (editItem) {
       const { error } = await supabase.from('spese').update(record).eq('id', editItem.id);
-      if (!error) { await loadSpese(); setToast('Aggiornata ✓'); }
+      if (error) { alert('Errore aggiornamento: ' + error.message); return; }
+      await loadSpese();
+      setToast('Aggiornata ✓');
     } else {
       const nuova = { ...record, id: Date.now() };
       const { error } = await supabase.from('spese').insert([nuova]);
-      if (!error) { await loadSpese(); setToast('Aggiunta ✓'); }
+      if (error) { alert('Errore inserimento: ' + error.message); return; }
+      await loadSpese();
+      setToast('Aggiunta ✓');
     }
     setModal(false);
   };
