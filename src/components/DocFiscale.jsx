@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase.js';
 import { jsPDF } from 'jspdf';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Ic } from './ui';
 import { C, fmt, fmtD, today } from '../lib/utils';
@@ -40,6 +41,22 @@ export default function DocFiscale({ paz, plans, onClose }) {
   const [nuovaVoce, setNuovaVoce] = useState({ desc: '', importo: '' });
   const [selectedPiani, setSelectedPiani] = useState([]);
   const [iban, setIban] = useState(STUDIO.iban);
+  const [tabView, setTabView] = useState('nuovo'); // 'nuovo' | 'archivio'
+  const [archivio, setArchivio] = useState([]);
+  const [archivioLoading, setArchivioLoading] = useState(false);
+  const [selDoc, setSelDoc] = useState([]);
+
+  const loadArchivio = async () => {
+    setArchivioLoading(true);
+    const { data } = await supabase.from('documenti_fiscali')
+      .select('id, tipo, numero, data, paziente_nome, importo, created_at')
+      .eq('paziente_id', paz.id)
+      .order('created_at', { ascending: false });
+    if (data) setArchivio(data);
+    setArchivioLoading(false);
+  };
+
+  useEffect(() => { if (tabView === 'archivio') loadArchivio(); }, [tabView]);
 
   const patPlans = plans.filter(pl => pl.pazienteId === paz.id);
   const totale = voci.reduce((s, v) => s + Number(v.importo), 0);
@@ -159,16 +176,6 @@ export default function DocFiscale({ paz, plans, onClose }) {
       noteLines.forEach((line, i) => { txt(line, M, y + i * 4); });
       y += noteLines.length * 4 + 6;
 
-      if (iban) {
-        box(M, y, CW, 14, 232, 247, 238);
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(45, 158, 97);
-        txt('COORDINATE BANCARIE PER IL RIMBORSO', M + 3, y + 5);
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(26, 32, 44);
-        txt('IBAN: ' + iban, M + 3, y + 11);
-        doc.setFontSize(7.5); doc.setTextColor(113, 128, 150);
-        txt('Intestato a: ' + STUDIO.nome, W - M - 3, y + 11, { align: 'right' });
-        y += 18;
-      }
     }
 
     // ── IBAN (solo rimborso) ──
@@ -194,12 +201,29 @@ export default function DocFiscale({ paz, plans, onClose }) {
 
     // download
     const nomeFile = `${tipo}_${String(numero).padStart(3,'0')}_${paz.cognome.replace(/\s+/g,'_')}_${data}.pdf`.toLowerCase();
+    const pdfBase64 = doc.output('datauristring');
     const blob = doc.output('blob');
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = nomeFile; a.style.display = 'none';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+    // Salva in Supabase
+    const docRecord = {
+      id: Date.now(),
+      tipo,
+      numero: String(numero).padStart(3, '0'),
+      data,
+      paziente_nome: `${paz.nome} ${paz.cognome}`,
+      paziente_id: paz.id,
+      importo: totale,
+      pdf_base64: pdfBase64,
+    };
+    supabase.from('documenti_fiscali').insert([docRecord]).then(() => {
+      if (tabView === 'archivio') loadArchivio();
+    });
+
     setGenerated(true);
   };
 
@@ -214,7 +238,109 @@ export default function DocFiscale({ paz, plans, onClose }) {
         <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>{paz.nome} {paz.cognome}</span>
       </div>
 
+      {/* TAB SWITCHER */}
+      <div style={{ display: 'flex', background: C.bg, borderBottom: `1px solid ${C.brd}`, flexShrink: 0 }}>
+        {[['nuovo', '+ Nuovo documento'], ['archivio', '📁 Archivio']].map(([id, lbl]) => (
+          <button key={id} onClick={() => setTabView(id)} style={{ flex: 1, padding: '11px 0', border: 'none', background: 'transparent', borderBottom: tabView === id ? `2px solid ${C.pri}` : '2px solid transparent', color: tabView === id ? C.pri : C.txm, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{lbl}</button>
+        ))}
+      </div>
+
       <div style={{ flex: 1, overflowY: 'auto', padding: 14 }}>
+
+        {/* ── ARCHIVIO ── */}
+        {tabView === 'archivio' && (
+          <div>
+            {archivioLoading && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>⏳ Caricamento...</div>}
+            {!archivioLoading && archivio.length === 0 && (
+              <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>
+                <div style={{ fontSize: 32, marginBottom: 10 }}>📄</div>
+                <div style={{ fontWeight: 700 }}>Nessun documento salvato</div>
+                <div style={{ fontSize: 12, marginTop: 4 }}>I documenti generati vengono salvati automaticamente</div>
+              </div>
+            )}
+            {!archivioLoading && archivio.length > 0 && (
+              <>
+                {selDoc.length > 0 && (
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                    <button onClick={async () => {
+                      for (const id of selDoc) {
+                        const doc = archivio.find(d => d.id === id);
+                        if (!doc) continue;
+                        const { data: full } = await supabase.from('documenti_fiscali').select('pdf_base64').eq('id', id).single();
+                        if (full?.pdf_base64) {
+                          const a = document.createElement('a');
+                          a.href = full.pdf_base64;
+                          a.download = `${doc.tipo}_${doc.numero}_${doc.paziente_nome.replace(/\s+/g,'_')}_${doc.data}.pdf`.toLowerCase();
+                          a.style.display = 'none';
+                          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                          await new Promise(r => setTimeout(r, 300));
+                        }
+                      }
+                    }} style={{ flex: 1, background: C.pri, border: 'none', borderRadius: 9, padding: '10px', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                      ⬇️ Scarica selezionati ({selDoc.length})
+                    </button>
+                    <button onClick={async () => {
+                      if (!confirm(`Eliminare ${selDoc.length} documento/i?`)) return;
+                      for (const id of selDoc) await supabase.from('documenti_fiscali').delete().eq('id', id);
+                      setSelDoc([]);
+                      loadArchivio();
+                    }} style={{ background: C.danL, border: 'none', borderRadius: 9, padding: '10px 14px', color: C.dan, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                      🗑️
+                    </button>
+                  </div>
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <button onClick={() => setSelDoc(selDoc.length === archivio.length ? [] : archivio.map(d => d.id))} style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 7, padding: '5px 10px', fontSize: 11, fontWeight: 700, color: C.txm, cursor: 'pointer' }}>
+                    {selDoc.length === archivio.length ? 'Deseleziona tutti' : 'Seleziona tutti'}
+                  </button>
+                  <span style={{ fontSize: 11, color: C.txl }}>{archivio.length} documenti</span>
+                </div>
+                {archivio.map(doc => {
+                  const isSel = selDoc.includes(doc.id);
+                  return (
+                    <Crd key={doc.id} style={{ marginBottom: 8, border: isSel ? `2px solid ${C.pri}` : undefined, background: isSel ? C.priL : '#fff' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <button onClick={() => setSelDoc(prev => isSel ? prev.filter(x => x !== doc.id) : [...prev, doc.id])}
+                          style={{ width: 22, height: 22, borderRadius: 6, border: `2px solid ${isSel ? C.pri : C.brd}`, background: isSel ? C.pri : '#fff', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                          {isSel && <Ic n="ok" s={11} c="#fff" />}
+                        </button>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13 }}>
+                            {doc.tipo === 'fattura' ? '📄 Fattura' : '🧾 Rimborso'} n° {doc.numero}
+                          </div>
+                          <div style={{ fontSize: 11, color: C.txm }}>{fmtD(doc.data)} · {doc.paziente_nome}</div>
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <div style={{ fontWeight: 800, color: C.pri, fontSize: 14 }}>{fmt(doc.importo)}</div>
+                          <div style={{ display: 'flex', gap: 5, marginTop: 4 }}>
+                            <button onClick={async () => {
+                              const { data: full } = await supabase.from('documenti_fiscali').select('pdf_base64').eq('id', doc.id).single();
+                              if (full?.pdf_base64) {
+                                const a = document.createElement('a');
+                                a.href = full.pdf_base64;
+                                a.download = `${doc.tipo}_${doc.numero}_${doc.paziente_nome.replace(/\s+/g,'_')}_${doc.data}.pdf`.toLowerCase();
+                                a.style.display = 'none';
+                                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                              }
+                            }} style={{ background: C.priL, border: 'none', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: C.pri }}>⬇️</button>
+                            <button onClick={async () => {
+                              if (!confirm('Eliminare?')) return;
+                              await supabase.from('documenti_fiscali').delete().eq('id', doc.id);
+                              loadArchivio();
+                            }} style={{ background: C.danL, border: 'none', borderRadius: 6, padding: '4px 7px', cursor: 'pointer' }}><Ic n="del" s={12} c={C.dan} /></button>
+                          </div>
+                        </div>
+                      </div>
+                    </Crd>
+                  );
+                })}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── NUOVO DOCUMENTO ── */}
+        {tabView === 'nuovo' && <>
 
         {/* TIPO DOCUMENTO */}
         <Crd style={{ marginBottom: 14 }}>
@@ -328,10 +454,12 @@ export default function DocFiscale({ paz, plans, onClose }) {
 
         {generated && (
           <div style={{ background: C.sucL, border: `1px solid ${C.suc}`, borderRadius: 10, padding: '11px 14px', marginBottom: 20, textAlign: 'center' }}>
-            <div style={{ fontWeight: 700, color: C.suc, fontSize: 13 }}>✓ PDF generato e scaricato</div>
-            <div style={{ fontSize: 11, color: C.txm, marginTop: 3 }}>Controlla la cartella Download del dispositivo</div>
+            <div style={{ fontWeight: 700, color: C.suc, fontSize: 13 }}>✓ PDF generato e salvato in archivio</div>
+            <div style={{ fontSize: 11, color: C.txm, marginTop: 3 }}>Controlla la cartella Download · visibile in Archivio</div>
           </div>
         )}
+        </>
+        }
       </div>
     </div>
   );
