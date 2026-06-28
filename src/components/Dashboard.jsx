@@ -12,6 +12,31 @@ const WIDGETS_DEFAULT = [
   { id: 'appuntamenti', label: '📅 Prossimi appuntamenti',  attivo: true },
 ];
 
+const PALETTE = [
+  '#1A4E66','#2EC4B6','#2D9E61','#7C3AED','#E63946',
+  '#F4A261','#EC4899','#0EA5E9','#84CC16','#F59E0B',
+  '#6366F1','#14B8A6','#64748B','#DC2626','#059669',
+];
+
+const THEME_DEFAULT = {
+  incMese: C?.suc || '#2D9E61',
+  incAnno: C?.suc || '#2D9E61',
+  lucaMese: '#7C3AED',
+  lucaAnno: '#7C3AED',
+  speseMese: C?.dan || '#E63946',
+  speseAnno: C?.dan || '#E63946',
+  margine: C?.suc || '#2D9E61',
+  esegDaInc: C?.dan || '#E63946',
+  accNonEseg: '#7C3AED',
+  totAccettati: C?.acc || '#2EC4B6',
+};
+
+const loadTheme = () => {
+  try { return { ...THEME_DEFAULT, ...JSON.parse(localStorage.getItem('dm_theme') || '{}') }; }
+  catch { return THEME_DEFAULT; }
+};
+const saveTheme = (t) => { try { localStorage.setItem('dm_theme', JSON.stringify(t)); } catch {} };
+
 const loadWidgets = () => {
   try {
     const saved = JSON.parse(localStorage.getItem('dm_widgets') || 'null');
@@ -32,6 +57,8 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
   const [detailModal, setDetailModal] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [widgets, setWidgets] = useState(loadWidgets);
+  const [theme, setTheme] = useState(loadTheme);
+  const [themeTab, setThemeTab] = useState('widgets'); // 'widgets' | 'colori'
   const isOn = (id) => { const w = widgets.find(x => x.id === id); return w ? w.attivo !== false : true; };
   const [todoList, setTodoList] = useState([]);
   const [todoInput, setTodoInput] = useState('');
@@ -206,33 +233,74 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
       {/* ── SETTINGS MODAL ── */}
       {settingsOpen && (
         <Modal title="⚙️ Personalizza dashboard" onClose={() => setSettingsOpen(false)}>
-          <div style={{ fontSize: 12, color: C.txm, marginBottom: 12 }}>Trascina ⠿ per riordinare · toggle per attivare/disattivare</div>
-          {widgets.map((w, i) => (
-            <div key={w.id} draggable
-              onDragStart={e => e.dataTransfer.setData('widgetIdx', String(i))}
-              onDragOver={e => e.preventDefault()}
-              onDrop={e => {
-                const from = Number(e.dataTransfer.getData('widgetIdx'));
-                if (from === i) return;
-                const next = [...widgets];
-                const [moved] = next.splice(from, 1);
-                next.splice(i, 0, moved);
-                setWidgets(next); saveWidgets(next);
-              }}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 10px', marginBottom: 6, background: C.bg, borderRadius: 10, border: `1px solid ${C.brd}`, cursor: 'grab', userSelect: 'none' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 18, color: C.txl }}>⠿</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: w.attivo !== false ? C.txt : C.txl }}>{w.label}</span>
+          {/* TAB SWITCHER */}
+          <div style={{ display: 'flex', background: C.bg, borderRadius: 9, border: `1px solid ${C.brd}`, marginBottom: 14, overflow: 'hidden' }}>
+            {[['widgets','📦 Widget'],['colori','🎨 Colori card']].map(([id, lbl]) => (
+              <button key={id} onClick={() => setThemeTab(id)} style={{ flex: 1, padding: '9px 0', border: 'none', background: themeTab === id ? C.pri : 'transparent', color: themeTab === id ? '#fff' : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{lbl}</button>
+            ))}
+          </div>
+
+          {/* TAB WIDGET */}
+          {themeTab === 'widgets' && <>
+            <div style={{ fontSize: 12, color: C.txm, marginBottom: 12 }}>Trascina ⠿ per riordinare · toggle per attivare/disattivare</div>
+            {widgets.map((w, i) => (
+              <div key={w.id} draggable
+                onDragStart={e => e.dataTransfer.setData('widgetIdx', String(i))}
+                onDragOver={e => e.preventDefault()}
+                onDrop={e => {
+                  const from = Number(e.dataTransfer.getData('widgetIdx'));
+                  if (from === i) return;
+                  const next = [...widgets];
+                  const [moved] = next.splice(from, 1);
+                  next.splice(i, 0, moved);
+                  setWidgets(next); saveWidgets(next);
+                }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 10px', marginBottom: 6, background: C.bg, borderRadius: 10, border: `1px solid ${C.brd}`, cursor: 'grab', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 18, color: C.txl }}>⠿</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: w.attivo !== false ? C.txt : C.txl }}>{w.label}</span>
+                </div>
+                <button onClick={() => {
+                  const next = widgets.map(x => x.id === w.id ? { ...x, attivo: x.attivo === false } : x);
+                  setWidgets(next); saveWidgets(next);
+                }} style={{ width: 44, height: 24, borderRadius: 12, background: w.attivo !== false ? C.pri : C.brd, border: 'none', cursor: 'pointer', position: 'relative', flexShrink: 0 }}>
+                  <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: w.attivo !== false ? 23 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                </button>
               </div>
-              <button onClick={() => {
-                const next = widgets.map(x => x.id === w.id ? { ...x, attivo: x.attivo === false } : x);
-                setWidgets(next); saveWidgets(next);
-              }} style={{ width: 44, height: 24, borderRadius: 12, background: w.attivo !== false ? C.pri : C.brd, border: 'none', cursor: 'pointer', position: 'relative', flexShrink: 0 }}>
-                <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: w.attivo !== false ? 23 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-              </button>
-            </div>
-          ))}
-          <button onClick={() => { setWidgets([...WIDGETS_DEFAULT]); saveWidgets([...WIDGETS_DEFAULT]); }} style={{ width: '100%', padding: '9px', marginTop: 8, background: C.danL, border: 'none', borderRadius: 9, color: C.dan, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>↺ Ripristina predefinito</button>
+            ))}
+            <button onClick={() => { setWidgets([...WIDGETS_DEFAULT]); saveWidgets([...WIDGETS_DEFAULT]); }} style={{ width: '100%', padding: '9px', marginTop: 8, background: C.danL, border: 'none', borderRadius: 9, color: C.dan, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>↺ Ripristina ordine predefinito</button>
+          </>}
+
+          {/* TAB COLORI */}
+          {themeTab === 'colori' && <>
+            <div style={{ fontSize: 12, color: C.txm, marginBottom: 14 }}>Scegli il colore per ogni card del pannello economico.</div>
+            {[
+              ['incMese', '📈 Incassato mese'],
+              ['incAnno', '📈 Incassato anno'],
+              ['lucaMese', '💼 Incasso Luca mese'],
+              ['lucaAnno', '💼 Incasso Luca anno'],
+              ['speseMese', '💸 Spese mese'],
+              ['speseAnno', '💸 Spese anno'],
+              ['margine', '✅ Margine stimato'],
+              ['esegDaInc', '💰 Eseguito da incassare'],
+              ['accNonEseg', '✓ Accettato da eseguire'],
+              ['totAccettati', '✓ Totale accettati'],
+            ].map(([key, label]) => (
+              <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: `1px solid ${C.brd}` }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: C.txt }}>{label}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', maxWidth: 160, justifyContent: 'flex-end' }}>
+                    {PALETTE.map(col => (
+                      <button key={col} onClick={() => { const next = { ...theme, [key]: col }; setTheme(next); saveTheme(next); }}
+                        style={{ width: 18, height: 18, borderRadius: 4, background: col, border: theme[key] === col ? '2px solid #000' : '1px solid rgba(0,0,0,0.15)', cursor: 'pointer', padding: 0, flexShrink: 0 }} />
+                    ))}
+                  </div>
+                  <div style={{ width: 28, height: 28, borderRadius: 6, background: theme[key], border: '2px solid rgba(0,0,0,0.15)', flexShrink: 0 }} />
+                </div>
+              </div>
+            ))}
+            <button onClick={() => { setTheme(THEME_DEFAULT); saveTheme(THEME_DEFAULT); }} style={{ width: '100%', padding: '9px', marginTop: 12, background: C.danL, border: 'none', borderRadius: 9, color: C.dan, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>↺ Ripristina colori predefiniti</button>
+          </>}
         </Modal>
       )}
 
@@ -647,16 +715,16 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
           <div key="economico" style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>💰 Economico</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-              <StatCard label="Incassato mese" value={fmt(mInc)} sub="solo studio" color={C.suc} />
-              <StatCard label={`Incassato ${anno}`} value={fmt(aInc)} sub="solo studio" color={C.suc} />
-              <StatCard label="💼 Incasso Luca mese" value={fmt(incassoLucaMese)} sub={`studio + collab. ${extMese > 0 ? '(+'+fmt(extMese)+')' : ''}`} color="#7C3AED" onClick={() => setDetailModal('lucaMese')} />
-              <StatCard label="💼 Incasso Luca anno" value={fmt(incassoLucaAnno)} sub={`studio + collab. ${extAnno > 0 ? '(+'+fmt(extAnno)+')' : ''}`} color="#7C3AED" onClick={() => setDetailModal('lucaAnno')} />
-              <StatCard label="💸 Spese mese" value={fmt(speseMese)} color={C.dan} onClick={() => setDetailModal('spese')} />
-              <StatCard label="💸 Spese anno (stimate)" value={fmt(speseAnnoTotale)} sub={speseRicorrentiAnno > 0 ? `+${fmt(speseRicorrentiAnno)} ricorrenti` : undefined} color={C.dan} onClick={() => setDetailModal('spese')} />
-              <StatCard label={margineAnno >= 0 ? '✅ Margine stimato' : '⚠️ Margine stimato'} value={`${margineAnno >= 0 ? '+' : ''}${fmt(margineAnno)}`} sub={`incassi - spese ${anno}`} color={margineAnno >= 0 ? C.suc : C.dan} />
-              <StatCard label="Eseguito da incassare" value={fmt(totEsegDaInc)} color={C.dan} onClick={() => setDetailModal('esegDaInc')} urgent={totEsegDaInc > 0} />
-              <StatCard label="Accettato da eseguire" value={fmt(totAccNonEseg)} color={C.pur} onClick={() => setDetailModal('accNonEseg')} />
-              <StatCard label="Totale accettati" value={fmt(totAccettati)} sub={`${preventiviAccettati.length} piani`} color={C.acc} onClick={() => setDetailModal('accettati')} />
+              <StatCard label="Incassato mese" value={fmt(mInc)} sub="solo studio" color={theme.incMese} />
+              <StatCard label={`Incassato ${anno}`} value={fmt(aInc)} sub="solo studio" color={theme.incAnno} />
+              <StatCard label="💼 Incasso Luca mese" value={fmt(incassoLucaMese)} sub={`studio + collab. ${extMese > 0 ? '(+'+fmt(extMese)+')' : ''}`} color={theme.lucaMese} onClick={() => setDetailModal('lucaMese')} />
+              <StatCard label="💼 Incasso Luca anno" value={fmt(incassoLucaAnno)} sub={`studio + collab. ${extAnno > 0 ? '(+'+fmt(extAnno)+')' : ''}`} color={theme.lucaAnno} onClick={() => setDetailModal('lucaAnno')} />
+              <StatCard label="💸 Spese mese" value={fmt(speseMese)} color={theme.speseMese} onClick={() => setDetailModal('spese')} />
+              <StatCard label="💸 Spese anno" value={fmt(speseAnnoTotale)} sub={speseRicorrentiAnno > 0 ? `+${fmt(speseRicorrentiAnno)} ricorrenti` : undefined} color={theme.speseAnno} onClick={() => setDetailModal('spese')} />
+              <StatCard label={margineAnno >= 0 ? '✅ Margine stimato' : '⚠️ Margine stimato'} value={`${margineAnno >= 0 ? '+' : ''}${fmt(margineAnno)}`} sub={`incassi - spese ${anno}`} color={margineAnno >= 0 ? theme.margine : theme.speseMese} />
+              <StatCard label="Eseguito da incassare" value={fmt(totEsegDaInc)} color={theme.esegDaInc} onClick={() => setDetailModal('esegDaInc')} urgent={totEsegDaInc > 0} />
+              <StatCard label="Accettato da eseguire" value={fmt(totAccNonEseg)} color={theme.accNonEseg} onClick={() => setDetailModal('accNonEseg')} />
+              <StatCard label="Totale accettati" value={fmt(totAccettati)} sub={`${preventiviAccettati.length} piani`} color={theme.totAccettati} onClick={() => setDetailModal('accettati')} />
             </div>
           </div>
         );
