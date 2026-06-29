@@ -835,8 +835,10 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
             <Btn ch="Annulla" v="sec" onClick={() => setPagModal(false)} full />
             <Btn ch="Salva pagamento" onClick={() => {
               if (!pagForm.importo) return;
-              const nuovoPag = { id: Date.now(), pazienteId: paz.id, data: pagForm.data, importo: Number(pagForm.importo), metodo: pagForm.metodo, nota: pagForm.nota, stato: 'pagato', pianoId: pagForm.pianoId ? Number(pagForm.pianoId) : null };
-              if (setPayments) setPayments(prev => [...prev, nuovoPag]);
+              if (setPayments) {
+                const recordPag = { id: Date.now(), pazienteId: paz.id, data: pagForm.data, importo: Number(pagForm.importo), metodo: pagForm.metodo, nota: pagForm.nota, stato: 'pagato' };
+                setPayments(prev => [...prev, recordPag]);
+              }
               setPagModal(false);
             }} dis={!pagForm.importo} full />
           </div>

@@ -76,7 +76,7 @@ function GridView({ days, slots, slotH, oraInizio, appointments, patients, getCo
                         <div style={{ fontSize: 10, fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.ora} {p ? `${p.cognome}` : '—'}</div>
                         {height > 32 && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.9)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.tipo}</div>}
                       </div>
-                      {height > 48 && <button onClick={e => { e.stopPropagation(); apriWA(a); }} style={{ position: 'absolute', bottom: 2, right: 2, background: '#25D366', border: 'none', borderRadius: 4, padding: '1px 4px', cursor: 'pointer', fontSize: 9, color: '#fff', fontWeight: 700 }}>WA</button>}
+                      <button onClick={e => { e.stopPropagation(); apriWA(a); }} style={{ position: 'absolute', bottom: 2, right: 2, background: '#25D366', border: 'none', borderRadius: 4, padding: '1px 4px', cursor: 'pointer', fontSize: 9, color: '#fff', fontWeight: 700 }}>WA</button>
                     </div>
                   );
                 })}
@@ -334,33 +334,32 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
       })()}
 
       {/* MODAL WA */}
-      {waModal && (() => {
-        const p = patients.find(x => x.id === waModal.pazienteId);
-        return (
-          <Modal title="💬 Invia WhatsApp" onClose={() => setWaModal(null)}>
+      {waModal && (
+        <Modal title="💬 Invia WhatsApp" onClose={() => setWaModal(null)}>
+          {(() => { const p = patients.find(x => x.id === waModal.pazienteId); return (
             <div style={{ background: C.priL, borderRadius: 9, padding: '9px 12px', marginBottom: 12 }}>
               <div style={{ fontWeight: 700, fontSize: 13 }}>{p?.nome} {p?.cognome}</div>
               <div style={{ fontSize: 11, color: C.txm }}>📅 {fmtD(waModal.data)} · {waModal.ora} · {waModal.tipo}</div>
               {p?.telefono && <div style={{ fontSize: 11, color: C.txl }}>📱 {p.telefono}</div>}
             </div>
-            {templates?.length > 0 && (
-              <Fld label="Template (opzionale)">
-                <Sel value={waTplId} onChange={e => selTplWA(e.target.value)}>
-                  <option value="">Messaggio personalizzato</option>
-                  {templates.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
-                </Sel>
-              </Fld>
-            )}
-            <Fld label="Messaggio">
-              <Txt value={waMsg} onChange={e => setWaMsg(e.target.value)} rows={6} />
+          ); })()}
+          {templates?.length > 0 && (
+            <Fld label="Template (opzionale)">
+              <Sel value={waTplId} onChange={e => selTplWA(e.target.value)}>
+                <option value="">Messaggio personalizzato</option>
+                {templates.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+              </Sel>
             </Fld>
-            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <Btn ch="Annulla" v="sec" onClick={() => setWaModal(null)} full />
-              <Btn ch="Apri WhatsApp" onClick={sendWA} dis={!waMsg} full />
-            </div>
-          </Modal>
-        );
-      })()}
+          )}
+          <Fld label="Messaggio">
+            <Txt value={waMsg} onChange={e => setWaMsg(e.target.value)} rows={6} />
+          </Fld>
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <Btn ch="Annulla" v="sec" onClick={() => setWaModal(null)} full />
+            <Btn ch="Apri WhatsApp" onClick={sendWA} dis={!waMsg} full />
+          </div>
+        </Modal>
+      )}
 
       {/* MODAL IMPOSTAZIONI */}
       {settingsOpen && (
