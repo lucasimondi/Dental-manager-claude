@@ -13,7 +13,7 @@ const startOfWeek = (d) => {
 };
 
 // Componente griglia oraria — definito FUORI dalla funzione principale
-function GridView({ days, slots, slotH, oraInizio, appointments, patients, getColore, appPosition, apriNuovo, apriEdit, selDay, setSelDay, setView, today: t }) {
+function GridView({ days, slots, slotH, oraInizio, appointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t }) {
   const scrollRef = useRef(null);
   useEffect(() => {
     if (scrollRef.current) {
@@ -260,7 +260,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
           slots={slots} slotH={slotH} oraInizio={oraInizio}
           appointments={appointments} patients={patients}
           getColore={getColore} appPosition={appPosition}
-          apriNuovo={apriNuovo} apriEdit={apriEdit}
+          apriNuovo={apriNuovo} apriEdit={apriEdit} apriWA={apriWA}
           selDay={selDay} setSelDay={setSelDay} setView={setView} today={t}
         />
       )}
@@ -270,7 +270,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
           slots={slots} slotH={slotH} oraInizio={oraInizio}
           appointments={appointments} patients={patients}
           getColore={getColore} appPosition={appPosition}
-          apriNuovo={apriNuovo} apriEdit={apriEdit}
+          apriNuovo={apriNuovo} apriEdit={apriEdit} apriWA={apriWA}
           selDay={selDay} setSelDay={setSelDay} setView={setView} today={t}
         />
       )}

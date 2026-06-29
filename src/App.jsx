@@ -205,7 +205,7 @@ export default function App() {
           <Pazienti
             patients={patients} setPatients={setPatientsSync}
             plans={plans} setPlans={setPlansSync}
-            payments={payments} appointments={appointments} si={studioInfo}
+            payments={payments} setPayments={setPaymentsSync} appointments={appointments} si={studioInfo}
             onNuovoPiano={goNuovoPiano}
             implants={implants} setImplants={setImplantsSync}
             setAppointments={setAppointmentsSync}

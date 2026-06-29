@@ -14,13 +14,15 @@ const prossimaDataMascherina = (orto) => {
   return d.toISOString().slice(0, 10);
 };
 
-export default function SchedaPaz({ paz, plans, payments, appointments, setAppointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, implants = [], setImplants, setPatients, onNuovoAppuntamento, templates }) {
+export default function SchedaPaz({ paz, plans, payments, appointments, setAppointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, implants = [], setImplants, setPatients, onNuovoAppuntamento, templates, setPayments }) {
   const [tab, setTab] = useState(initTab || 'info');
   const [pdfPlan, setPdfPlan] = useState(null);
   const [docFiscale, setDocFiscale] = useState(false);
   const [docMedico, setDocMedico] = useState(false);
   const [appModal, setAppModal] = useState(false);
   const [waModal, setWaModal] = useState(false);
+  const [pagModal, setPagModal] = useState(false);
+  const [pagForm, setPagForm] = useState({ importo: '', metodo: 'Contanti', nota: '', data: today(), pianoId: '' });
   const [waMsg, setWaMsg] = useState('');
   const [waTplId, setWaTplId] = useState('');
   const [appForm, setAppForm] = useState({ data: today(), ora: '09:00', durata: 30, tipo: 'Visita di controllo', note: '', stato: 'confermato' });
@@ -615,7 +617,10 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
             <Crd style={{ marginBottom: 12, background: C.priD, border: 'none' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Situazione finanziaria</div>
-            <button onClick={() => setDocFiscale(true)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, padding: '6px 11px', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>📄 Fattura / Rimborso</button>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button onClick={() => { setPagForm({ importo: totDaPagare > 0 ? totDaPagare.toFixed(2) : '', metodo: 'Contanti', nota: '', data: today(), pianoId: '' }); setPagModal(true); }} style={{ background: '#86efac', border: 'none', borderRadius: 8, padding: '6px 11px', color: '#166534', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>+ Pagamento</button>
+              <button onClick={() => setDocFiscale(true)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, padding: '6px 11px', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>📄 Fattura</button>
+            </div>
           </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                 <div><div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)' }}>Dovuto totale</div><div style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>{fmt(totDovuto)}</div></div>
@@ -785,6 +790,58 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
           </div>
         )}
       </div>
+
+      {pagModal && (
+        <Modal title="💳 Registra pagamento" onClose={() => setPagModal(false)}>
+          <div style={{ background: C.priD, borderRadius: 10, padding: 12, marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <div><div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Dovuto</div><div style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{fmt(totDovuto)}</div></div>
+              <div style={{ textAlign: 'center' }}><div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Pagato</div><div style={{ fontSize: 14, fontWeight: 800, color: '#86efac' }}>{fmt(totPaid)}</div></div>
+              <div style={{ textAlign: 'right' }}><div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Residuo</div><div style={{ fontSize: 14, fontWeight: 800, color: totDaPagare > 0 ? '#FCA5A5' : '#86efac' }}>{fmt(totDaPagare)}</div></div>
+            </div>
+          </div>
+          {patPlans.length > 0 && (
+            <Fld label="Piano di cura (opzionale)">
+              <Sel value={pagForm.pianoId} onChange={e => {
+                const pl = patPlans.find(p => String(p.id) === e.target.value);
+                if (pl) {
+                  const sub = pl.voci.reduce((s, v) => s + Number(v.prezzo), 0);
+                  const sc = Number(pl.sconto) || 0;
+                  const scontato = pl.scontoTipo === 'pct' ? sub * (sc / 100) : Math.min(sc, sub);
+                  const tot = Math.max(0, sub - scontato);
+                  const pagato = patPay.filter(p => p.pianoId === pl.id).reduce((s, p) => s + Number(p.importo), 0);
+                  const residuo = Math.max(0, tot - pagato);
+                  setPagForm(f => ({ ...f, pianoId: e.target.value, importo: residuo > 0 ? residuo.toFixed(2) : f.importo }));
+                } else {
+                  setPagForm(f => ({ ...f, pianoId: '' }));
+                }
+              }}>
+                <option value="">Nessun piano specifico</option>
+                {patPlans.map(pl => <option key={pl.id} value={pl.id}>{pl.titolo}</option>)}
+              </Sel>
+            </Fld>
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <Fld label="Data"><Inp type="date" value={pagForm.data} onChange={e => setPagForm(f => ({ ...f, data: e.target.value }))} /></Fld>
+            <Fld label="Importo €"><Inp type="number" inputMode="decimal" value={pagForm.importo} onChange={e => setPagForm(f => ({ ...f, importo: e.target.value }))} /></Fld>
+            <Fld label="Metodo">
+              <Sel value={pagForm.metodo} onChange={e => setPagForm(f => ({ ...f, metodo: e.target.value }))}>
+                {['Contanti','Carta','Bonifico','POS','Assegno'].map(m => <option key={m}>{m}</option>)}
+              </Sel>
+            </Fld>
+          </div>
+          <Fld label="Note (opzionale)"><Inp value={pagForm.nota} onChange={e => setPagForm(f => ({ ...f, nota: e.target.value }))} /></Fld>
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <Btn ch="Annulla" v="sec" onClick={() => setPagModal(false)} full />
+            <Btn ch="Salva pagamento" onClick={() => {
+              if (!pagForm.importo) return;
+              const nuovoPag = { id: Date.now(), pazienteId: paz.id, data: pagForm.data, importo: Number(pagForm.importo), metodo: pagForm.metodo, nota: pagForm.nota, stato: 'pagato', pianoId: pagForm.pianoId ? Number(pagForm.pianoId) : null };
+              if (setPayments) setPayments(prev => [...prev, nuovoPag]);
+              setPagModal(false);
+            }} dis={!pagForm.importo} full />
+          </div>
+        </Modal>
+      )}
 
       {waModal && (
         <Modal title="💬 Invia WhatsApp" onClose={() => setWaModal(false)}>
