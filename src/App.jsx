@@ -200,7 +200,7 @@ export default function App() {
       )}
 
       <div id="app-scroll" style={{ flex: 1, overflowY: 'auto', padding: 13, paddingBottom: 78 }}>
-        {page === 'home' && <Dashboard patients={patients} appointments={appointments} payments={payments} plans={plans} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} />}
+        {page === 'home' && <Dashboard patients={patients} appointments={appointments} payments={payments} plans={plans} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} templates={templates} />}
         {page === 'paz' && (
           <Pazienti
             patients={patients} setPatients={setPatientsSync}
@@ -210,6 +210,7 @@ export default function App() {
             implants={implants} setImplants={setImplantsSync}
             setAppointments={setAppointmentsSync}
             onNuovoAppuntamento={goAgendaPaz}
+            templates={templates}
           />
         )}
         {page === 'piani' && (
@@ -222,7 +223,7 @@ export default function App() {
         )}
         {page === 'paga' && <Pagamenti patients={patients} payments={payments} setPayments={setPaymentsSync} plans={plans} />}
         {page === 'listino' && <Listino pricelist={pricelist} setPricelist={setPricelistSync} />}
-        {page === 'agenda' && <Agenda patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} />}
+        {page === 'agenda' && <Agenda patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} />}
         {page === 'spese' && <Spese />}
         {page === 'archivio' && <ArchivioDocs patients={patients} />}
         {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}

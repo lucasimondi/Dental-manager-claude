@@ -71,9 +71,12 @@ function GridView({ days, slots, slotH, oraInizio, appointments, patients, getCo
                   const p = patients.find(x => x.id === a.pazienteId);
                   const co = getColore(a);
                   return (
-                    <div key={a.id} onClick={e => { e.stopPropagation(); apriEdit(a); }} style={{ position: 'absolute', top, left: 2, right: 2, height, background: co, borderRadius: 5, padding: '2px 5px', cursor: 'pointer', overflow: 'hidden', zIndex: 2, borderLeft: `3px solid ${co}DD` }}>
-                      <div style={{ fontSize: 10, fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.ora} {p ? `${p.cognome}` : '—'}</div>
-                      {height > 32 && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.9)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.tipo}</div>}
+                    <div key={a.id} style={{ position: 'absolute', top, left: 2, right: 2, height, background: co, borderRadius: 5, padding: '2px 5px', overflow: 'hidden', zIndex: 2, borderLeft: `3px solid ${co}DD` }}>
+                      <div onClick={e => { e.stopPropagation(); apriEdit(a); }} style={{ cursor: 'pointer' }}>
+                        <div style={{ fontSize: 10, fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.ora} {p ? `${p.cognome}` : '—'}</div>
+                        {height > 32 && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.9)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.tipo}</div>}
+                      </div>
+                      {height > 48 && <button onClick={e => { e.stopPropagation(); apriWA(a); }} style={{ position: 'absolute', bottom: 2, right: 2, background: '#25D366', border: 'none', borderRadius: 4, padding: '1px 4px', cursor: 'pointer', fontSize: 9, color: '#fff', fontWeight: 700 }}>WA</button>}
                     </div>
                   );
                 })}
@@ -86,7 +89,7 @@ function GridView({ days, slots, slotH, oraInizio, appointments, patients, getCo
   );
 }
 
-export default function Agenda({ patients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz }) {
+export default function Agenda({ patients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates }) {
   const tipiList = appTypes?.length ? appTypes : DEF_APP_TYPES;
 
   // ── TUTTI GLI HOOK IN CIMA ──
@@ -103,6 +106,9 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const [toast, setToast] = useState('');
   const [editApp, setEditApp] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [waModal, setWaModal] = useState(null); // appointment object
+  const [waMsg, setWaMsg] = useState('');
+  const [waTplId, setWaTplId] = useState('');
   const [vd, setVd] = useState(new Date());
   const [form, setForm] = useState({ pazienteId: '', data: today(), ora: '09:00', durata: 30, tipo: tipiList[0]?.nome || 'Visita', colore: tipiList[0]?.colore || C.pri, note: '', stato: 'confermato' });
 
@@ -168,11 +174,36 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
 
   const del = (id) => { if (confirm('Eliminare?')) setAppointments(p => p.filter(a => a.id !== id)); };
 
-  const sendWA = (a) => {
+  const apriWA = (a) => {
     const p = patients.find(x => x.id === a.pazienteId);
+    if (!p?.telefono) { alert('Nessun telefono per questo paziente'); return; }
+    const defMsg = `Gentile ${p.nome},\nricordiamo il suo appuntamento:\n📅 ${fmtD(a.data)} alle ${a.ora}\n🦷 ${a.tipo}\nPer variazioni contattarci entro 24h. Grazie!`;
+    setWaModal(a);
+    setWaTplId('');
+    setWaMsg(defMsg);
+  };
+
+  const sendWA = () => {
+    if (!waModal) return;
+    const p = patients.find(x => x.id === waModal.pazienteId);
     if (!p?.telefono) return;
-    const msg = encodeURIComponent(`Gentile ${p.nome},\nricordiamo il suo appuntamento:\n📅 ${fmtD(a.data)} alle ${a.ora}\n🦷 ${a.tipo}\nPer variazioni contattarci entro 24h. Grazie!`);
-    window.open(`https://wa.me/39${p.telefono.replace(/\D/g, '')}?text=${msg}`, '_blank');
+    window.open(`https://wa.me/39${p.telefono.replace(/\D/g, '')}?text=${encodeURIComponent(waMsg)}`, '_blank');
+    setWaModal(null);
+  };
+
+  const selTplWA = (id) => {
+    setWaTplId(id);
+    if (!id || !waModal) return;
+    const p = patients.find(x => x.id === waModal.pazienteId);
+    const tpl = templates?.find(t => String(t.id) === String(id));
+    if (tpl && p) {
+      setWaMsg(tpl.testo
+        .replace(/{nome}/g, `${p.nome} ${p.cognome}`)
+        .replace(/{data}/g, fmtD(waModal.data))
+        .replace(/{ora}/g, waModal.ora)
+        .replace(/{tipo}/g, waModal.tipo)
+      );
+    }
   };
 
   const saveSettings = () => {
@@ -290,7 +321,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
                       <div style={{ fontSize: 11, color: C.txm }}>{a.tipo}</div>
                     </div>
                     <div style={{ display: 'flex', gap: 5 }}>
-                      <button onClick={e => { e.stopPropagation(); sendWA(a); }} style={{ background: '#25D366', border: 'none', borderRadius: 6, padding: 6, cursor: 'pointer', display: 'flex' }}><Ic n="wa" s={13} c="#fff" /></button>
+                      <button onClick={e => { e.stopPropagation(); apriWA(a); }} style={{ background: '#25D366', border: 'none', borderRadius: 6, padding: 6, cursor: 'pointer', display: 'flex' }}><Ic n="wa" s={13} c="#fff" /></button>
                       <button onClick={e => { e.stopPropagation(); del(a.id); }} style={{ background: C.danL, border: 'none', borderRadius: 6, padding: 6, cursor: 'pointer', display: 'flex' }}><Ic n="del" s={13} c={C.dan} /></button>
                     </div>
                   </div>
@@ -299,6 +330,35 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
             })}
             {appointments.filter(a => a.data === selDay).length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 20, fontSize: 13 }}>Nessun appuntamento — tocca un giorno per aggiungerne</div>}
           </div>
+        );
+      })()}
+
+      {/* MODAL WA */}
+      {waModal && (() => {
+        const p = patients.find(x => x.id === waModal.pazienteId);
+        return (
+          <Modal title="💬 Invia WhatsApp" onClose={() => setWaModal(null)}>
+            <div style={{ background: C.priL, borderRadius: 9, padding: '9px 12px', marginBottom: 12 }}>
+              <div style={{ fontWeight: 700, fontSize: 13 }}>{p?.nome} {p?.cognome}</div>
+              <div style={{ fontSize: 11, color: C.txm }}>📅 {fmtD(waModal.data)} · {waModal.ora} · {waModal.tipo}</div>
+              {p?.telefono && <div style={{ fontSize: 11, color: C.txl }}>📱 {p.telefono}</div>}
+            </div>
+            {templates?.length > 0 && (
+              <Fld label="Template (opzionale)">
+                <Sel value={waTplId} onChange={e => selTplWA(e.target.value)}>
+                  <option value="">Messaggio personalizzato</option>
+                  {templates.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+                </Sel>
+              </Fld>
+            )}
+            <Fld label="Messaggio">
+              <Txt value={waMsg} onChange={e => setWaMsg(e.target.value)} rows={6} />
+            </Fld>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <Btn ch="Annulla" v="sec" onClick={() => setWaModal(null)} full />
+              <Btn ch="Apri WhatsApp" onClick={sendWA} dis={!waMsg} full />
+            </div>
+          </Modal>
         );
       })()}
 

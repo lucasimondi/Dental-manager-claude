@@ -14,12 +14,15 @@ const prossimaDataMascherina = (orto) => {
   return d.toISOString().slice(0, 10);
 };
 
-export default function SchedaPaz({ paz, plans, payments, appointments, setAppointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, implants = [], setImplants, setPatients, onNuovoAppuntamento }) {
+export default function SchedaPaz({ paz, plans, payments, appointments, setAppointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, implants = [], setImplants, setPatients, onNuovoAppuntamento, templates }) {
   const [tab, setTab] = useState(initTab || 'info');
   const [pdfPlan, setPdfPlan] = useState(null);
   const [docFiscale, setDocFiscale] = useState(false);
   const [docMedico, setDocMedico] = useState(false);
   const [appModal, setAppModal] = useState(false);
+  const [waModal, setWaModal] = useState(false);
+  const [waMsg, setWaMsg] = useState('');
+  const [waTplId, setWaTplId] = useState('');
   const [appForm, setAppForm] = useState({ data: today(), ora: '09:00', durata: 30, tipo: 'Visita di controllo', note: '', stato: 'confermato' });
   const [selPiani, setSelPiani] = useState([]);
   const [editPianoModal, setEditPianoModal] = useState(null);
@@ -782,6 +785,41 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
           </div>
         )}
       </div>
+
+      {waModal && (
+        <Modal title="💬 Invia WhatsApp" onClose={() => setWaModal(false)}>
+          <div style={{ background: C.priL, borderRadius: 9, padding: '9px 12px', marginBottom: 12 }}>
+            <div style={{ fontWeight: 700, fontSize: 13 }}>{paz.nome} {paz.cognome}</div>
+            {paz.telefono && <div style={{ fontSize: 11, color: C.txl }}>📱 {paz.telefono}</div>}
+          </div>
+          {templates?.length > 0 && (
+            <Fld label="Template (opzionale)">
+              <Sel value={waTplId} onChange={e => {
+                const id = e.target.value;
+                setWaTplId(id);
+                if (id) {
+                  const tpl = templates.find(t => String(t.id) === id);
+                  if (tpl) setWaMsg(tpl.testo.replace(/{nome}/g, `${paz.nome} ${paz.cognome}`).replace(/{data}/g, '').replace(/{ora}/g, '').replace(/{tipo}/g, '').replace(/{totale}/g, '').replace(/{voci}/g, ''));
+                }
+              }}>
+                <option value="">Messaggio personalizzato</option>
+                {templates.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+              </Sel>
+            </Fld>
+          )}
+          <Fld label="Messaggio">
+            <textarea value={waMsg} onChange={e => setWaMsg(e.target.value)} rows={6} style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${C.brd}`, borderRadius: 10, fontSize: 13, color: C.txt, background: C.sur, boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }} />
+          </Fld>
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <Btn ch="Annulla" v="sec" onClick={() => setWaModal(false)} full />
+            <Btn ch="Apri WhatsApp" onClick={() => {
+              if (!paz.telefono) return;
+              window.open(`https://wa.me/39${paz.telefono.replace(/\D/g, '')}?text=${encodeURIComponent(waMsg)}`, '_blank');
+              setWaModal(false);
+            }} dis={!waMsg} full />
+          </div>
+        </Modal>
+      )}
 
       {appModal && (
         <Modal title="📅 Nuovo appuntamento" onClose={() => setAppModal(false)}>

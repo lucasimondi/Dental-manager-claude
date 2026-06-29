@@ -10,6 +10,7 @@ const WIDGETS_DEFAULT = [
   { id: 'kpi',          label: '📊 Statistiche',            attivo: true },
   { id: 'todo',         label: '✅ Attività e promemoria',  attivo: true },
   { id: 'appuntamenti', label: '📅 Prossimi appuntamenti',  attivo: true },
+  { id: 'wa',            label: '💬 Reminder WhatsApp',       attivo: false },
 ];
 
 const PALETTE = [
@@ -51,7 +52,7 @@ const saveWidgets = (ws) => {
   try { localStorage.setItem('dm_widgets', JSON.stringify(ws)); } catch {}
 };
 
-export default function Dashboard({ patients, appointments, payments, plans, onOpenPaz, appTypes, onGoAgenda }) {
+export default function Dashboard({ patients, appointments, payments, plans, onOpenPaz, appTypes, onGoAgenda, templates }) {
   const t = today();
   const anno = t.slice(0, 4);
   const [detailModal, setDetailModal] = useState(null);
@@ -126,6 +127,8 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
   // ── CALCOLI ──
   const todayApps = appointments.filter(a => a.data === t).sort((a, b) => a.ora.localeCompare(b.ora));
   const upcoming = [...appointments].filter(a => a.data > t).sort((a, b) => a.data.localeCompare(b.data) || a.ora.localeCompare(b.ora)).slice(0, 8);
+  const domani = (() => { const d = new Date(t + 'T12:00'); d.setDate(d.getDate() + 1); return d.toISOString().slice(0,10); })();
+  const domaniApps = appointments.filter(a => a.data === domani).sort((a, b) => a.ora.localeCompare(b.ora));
 
   const mInc = payments.filter(p => p.data && p.data.startsWith(t.slice(0, 7))).reduce((s, p) => s + Number(p.importo), 0);
   const aInc = payments.filter(p => p.data && p.data.startsWith(anno)).reduce((s, p) => s + Number(p.importo), 0);
@@ -817,6 +820,56 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
                     <span style={{ fontSize: 10, fontWeight: 700, color: richiamo.data < t ? C.dan : C.pur, flexShrink: 0 }}>{fmtD(richiamo.data)}</span>
                   </div>
                 ))}
+              </Crd>
+            )}
+          </div>
+        );
+
+        if (w.id === 'wa') return (
+          <div key="wa" style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>💬 Reminder WhatsApp — domani</div>
+            {domaniApps.length === 0 ? (
+              <Crd style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessun appuntamento domani</Crd>
+            ) : (
+              <Crd>
+                <div style={{ fontSize: 11, color: C.txm, marginBottom: 10 }}>
+                  {domaniApps.length} appuntament{domaniApps.length === 1 ? 'o' : 'i'} domani — tocca WA per inviare il reminder
+                </div>
+                {domaniApps.map((a, i) => {
+                  const p = patients.find(x => x.id === a.pazienteId);
+                  const co = getColore(a);
+                  const hasTel = p?.telefono;
+                  const defMsg = p ? `Gentile ${p.nome},\nricordiamo il suo appuntamento:\n📅 ${fmtD(a.data)} alle ${a.ora}\n🦷 ${a.tipo}\nPer variazioni contattarci entro 24h. Grazie!` : '';
+                  return (
+                    <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: i < domaniApps.length - 1 ? `1px solid ${C.brd}` : 'none' }}>
+                      <div style={{ background: co + '20', borderRadius: 7, padding: '3px 7px', textAlign: 'center', flexShrink: 0, borderLeft: `3px solid ${co}` }}>
+                        <div style={{ fontSize: 12, fontWeight: 900, color: co }}>{a.ora}</div>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p ? `${p.nome} ${p.cognome}` : '—'}</div>
+                        <div style={{ fontSize: 10, color: C.txl }}>{a.tipo}</div>
+                      </div>
+                      {hasTel ? (
+                        <button onClick={() => window.open(`https://wa.me/39${p.telefono.replace(/\D/g,'')}?text=${encodeURIComponent(defMsg)}`, '_blank')}
+                          style={{ background: '#25D366', border: 'none', borderRadius: 7, padding: '6px 10px', cursor: 'pointer', color: '#fff', fontWeight: 700, fontSize: 11, flexShrink: 0 }}>
+                          WA
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: 10, color: C.txl }}>no tel.</span>
+                      )}
+                    </div>
+                  );
+                })}
+                <button onClick={() => {
+                  domaniApps.forEach(a => {
+                    const p = patients.find(x => x.id === a.pazienteId);
+                    if (!p?.telefono) return;
+                    const msg = `Gentile ${p.nome},\nricordiamo il suo appuntamento:\n📅 ${fmtD(a.data)} alle ${a.ora}\n🦷 ${a.tipo}\nPer variazioni contattarci entro 24h. Grazie!`;
+                    setTimeout(() => window.open(`https://wa.me/39${p.telefono.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`, '_blank'), 500);
+                  });
+                }} style={{ width: '100%', marginTop: 10, padding: '9px', background: '#25D366', border: 'none', borderRadius: 9, color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                  💬 Invia reminder a tutti ({domaniApps.filter(a => patients.find(x => x.id === a.pazienteId)?.telefono).length}/{domaniApps.length})
+                </button>
               </Crd>
             )}
           </div>
