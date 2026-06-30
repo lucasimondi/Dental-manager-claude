@@ -791,59 +791,93 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
         )}
       </div>
 
-      {pagModal && (
-        <Modal title="💳 Registra pagamento" onClose={() => setPagModal(false)}>
-          <div style={{ background: C.priD, borderRadius: 10, padding: 12, marginBottom: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <div><div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Dovuto</div><div style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{fmt(totDovuto)}</div></div>
-              <div style={{ textAlign: 'center' }}><div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Pagato</div><div style={{ fontSize: 14, fontWeight: 800, color: '#86efac' }}>{fmt(totPaid)}</div></div>
-              <div style={{ textAlign: 'right' }}><div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Residuo</div><div style={{ fontSize: 14, fontWeight: 800, color: totDaPagare > 0 ? '#FCA5A5' : '#86efac' }}>{fmt(totDaPagare)}</div></div>
+      {pagModal && (() => {
+        const plSel = patPlans.find(p => String(p.id) === pagForm.pianoId);
+        const eseguitoNonIncassato = plSel ? plSel.voci.filter(v => v.eseguita && !v.incassata).reduce((s, v) => s + Number(v.prezzo), 0) : 0;
+        const importoNum = Number(pagForm.importo) || 0;
+        const nonEseguito = plSel && importoNum > 0 && eseguitoNonIncassato === 0;
+        const isAnticipo = plSel && importoNum > 0 && importoNum > eseguitoNonIncassato && eseguitoNonIncassato > 0;
+        return (
+          <Modal title="💳 Registra pagamento" onClose={() => setPagModal(false)}>
+            <div style={{ background: C.priD, borderRadius: 10, padding: 12, marginBottom: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div><div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Dovuto</div><div style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{fmt(totDovuto)}</div></div>
+                <div style={{ textAlign: 'center' }}><div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Pagato</div><div style={{ fontSize: 14, fontWeight: 800, color: '#86efac' }}>{fmt(totPaid)}</div></div>
+                <div style={{ textAlign: 'right' }}><div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Residuo</div><div style={{ fontSize: 14, fontWeight: 800, color: totDaPagare > 0 ? '#FCA5A5' : '#86efac' }}>{fmt(totDaPagare)}</div></div>
+              </div>
             </div>
-          </div>
-          {patPlans.length > 0 && (
-            <Fld label="Piano di cura (opzionale)">
-              <Sel value={pagForm.pianoId} onChange={e => {
-                const pl = patPlans.find(p => String(p.id) === e.target.value);
-                if (pl) {
-                  const sub = pl.voci.reduce((s, v) => s + Number(v.prezzo), 0);
-                  const sc = Number(pl.sconto) || 0;
-                  const scontato = pl.scontoTipo === 'pct' ? sub * (sc / 100) : Math.min(sc, sub);
-                  const tot = Math.max(0, sub - scontato);
-                  const pagato = patPay.filter(p => p.pianoId === pl.id).reduce((s, p) => s + Number(p.importo), 0);
-                  const residuo = Math.max(0, tot - pagato);
-                  setPagForm(f => ({ ...f, pianoId: e.target.value, importo: residuo > 0 ? residuo.toFixed(2) : f.importo }));
-                } else {
-                  setPagForm(f => ({ ...f, pianoId: '' }));
-                }
-              }}>
-                <option value="">Nessun piano specifico</option>
-                {patPlans.map(pl => <option key={pl.id} value={pl.id}>{pl.titolo}</option>)}
-              </Sel>
-            </Fld>
-          )}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <Fld label="Data"><Inp type="date" value={pagForm.data} onChange={e => setPagForm(f => ({ ...f, data: e.target.value }))} /></Fld>
-            <Fld label="Importo €"><Inp type="number" inputMode="decimal" value={pagForm.importo} onChange={e => setPagForm(f => ({ ...f, importo: e.target.value }))} /></Fld>
-            <Fld label="Metodo">
-              <Sel value={pagForm.metodo} onChange={e => setPagForm(f => ({ ...f, metodo: e.target.value }))}>
-                {['Contanti','Carta','Bonifico','POS','Assegno'].map(m => <option key={m}>{m}</option>)}
-              </Sel>
-            </Fld>
-          </div>
-          <Fld label="Note (opzionale)"><Inp value={pagForm.nota} onChange={e => setPagForm(f => ({ ...f, nota: e.target.value }))} /></Fld>
-          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-            <Btn ch="Annulla" v="sec" onClick={() => setPagModal(false)} full />
-            <Btn ch="Salva pagamento" onClick={() => {
-              if (!pagForm.importo) return;
-              if (setPayments) {
-                const recordPag = { id: Date.now(), pazienteId: paz.id, data: pagForm.data, importo: Number(pagForm.importo), metodo: pagForm.metodo, nota: pagForm.nota, stato: 'pagato' };
-                setPayments(prev => [...prev, recordPag]);
-              }
-              setPagModal(false);
-            }} dis={!pagForm.importo} full />
-          </div>
-        </Modal>
-      )}
+
+            {patPlans.length > 0 && (
+              <Fld label="Piano di cura (opzionale)">
+                <Sel value={pagForm.pianoId} onChange={e => {
+                  const pl = patPlans.find(p => String(p.id) === e.target.value);
+                  if (pl) {
+                    const eseg = pl.voci.filter(v => v.eseguita && !v.incassata).reduce((s, v) => s + Number(v.prezzo), 0);
+                    setPagForm(f => ({ ...f, pianoId: e.target.value, importo: eseg > 0 ? eseg.toFixed(2) : f.importo }));
+                  } else {
+                    setPagForm(f => ({ ...f, pianoId: '' }));
+                  }
+                }}>
+                  <option value="">Nessun piano specifico</option>
+                  {patPlans.map(pl => {
+                    const eseg = pl.voci.filter(v => v.eseguita && !v.incassata).reduce((s, v) => s + Number(v.prezzo), 0);
+                    return <option key={pl.id} value={pl.id}>{pl.titolo} {eseg > 0 ? `(eseguito da incassare: ${fmt(eseg)})` : '(nessuna voce eseguita)'}</option>;
+                  })}
+                </Sel>
+              </Fld>
+            )}
+
+            {plSel && eseguitoNonIncassato > 0 && (
+              <div style={{ background: C.sucL, borderRadius: 8, padding: '8px 12px', marginBottom: 8, display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: C.suc }}>✓ Eseguito da incassare</span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: C.suc }}>{fmt(eseguitoNonIncassato)}</span>
+              </div>
+            )}
+
+            {nonEseguito && (
+              <div style={{ background: C.danL, borderRadius: 8, padding: '8px 12px', marginBottom: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.dan }}>⚠️ Nessuna prestazione eseguita su questo piano</div>
+                <div style={{ fontSize: 11, color: C.dan, marginTop: 3 }}>Il pagamento verrà registrato come anticipo. Le prestazioni andranno segnate come eseguite dal tab Piani.</div>
+              </div>
+            )}
+
+            {isAnticipo && (
+              <div style={{ background: '#FEF3E2', borderRadius: 8, padding: '8px 12px', marginBottom: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.war }}>⚠️ Importo superiore all'eseguito ({fmt(eseguitoNonIncassato)})</div>
+                <div style={{ fontSize: 11, color: C.war, marginTop: 3 }}>La parte eccedente ({fmt(importoNum - eseguitoNonIncassato)}) verrà registrata come anticipo.</div>
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <Fld label="Data"><Inp type="date" value={pagForm.data} onChange={e => setPagForm(f => ({ ...f, data: e.target.value }))} /></Fld>
+              <Fld label="Importo €"><Inp type="number" inputMode="decimal" value={pagForm.importo} onChange={e => setPagForm(f => ({ ...f, importo: e.target.value }))} /></Fld>
+              <Fld label="Metodo">
+                <Sel value={pagForm.metodo} onChange={e => setPagForm(f => ({ ...f, metodo: e.target.value }))}>
+                  {['Contanti','Carta','Bonifico','POS','Assegno'].map(m => <option key={m}>{m}</option>)}
+                </Sel>
+              </Fld>
+              <Fld label="Stato">
+                <Sel value={pagForm.stato || 'pagato'} onChange={e => setPagForm(f => ({ ...f, stato: e.target.value }))}>
+                  <option value="pagato">Pagato</option>
+                  <option value="acconto">Acconto / Anticipo</option>
+                </Sel>
+              </Fld>
+            </div>
+            <Fld label="Note (opzionale)"><Inp value={pagForm.nota} onChange={e => setPagForm(f => ({ ...f, nota: e.target.value }))} /></Fld>
+            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+              <Btn ch="Annulla" v="sec" onClick={() => setPagModal(false)} full />
+              <Btn ch={nonEseguito ? 'Registra anticipo' : 'Salva pagamento'} onClick={() => {
+                if (!pagForm.importo) return;
+                const stato = nonEseguito ? 'acconto' : (pagForm.stato || 'pagato');
+                const nota = nonEseguito && !pagForm.nota ? 'Anticipo — prestazioni da eseguire' : pagForm.nota;
+                const recordPag = { id: Date.now(), pazienteId: paz.id, data: pagForm.data, importo: Number(pagForm.importo), metodo: pagForm.metodo, nota, stato };
+                if (setPayments) setPayments(prev => [...prev, recordPag]);
+                setPagModal(false);
+              }} dis={!pagForm.importo} full />
+            </div>
+          </Modal>
+        );
+      })()}
 
       {waModal && (
         <Modal title="💬 Invia WhatsApp" onClose={() => setWaModal(false)}>
