@@ -3,7 +3,9 @@ import { Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, Btn } from './ui';
 import { C, fmt, fmtD, today } from '../lib/utils';
 import { supabase } from '../lib/supabase.js';
 
-export default function ArchivioDocs({ patients }) {
+export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedico }) {
+  const [pazModal, setPazModal] = useState(null); // 'fiscale' | 'medico' | null
+  const [pazSearch, setPazSearch] = useState('');
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
@@ -96,9 +98,44 @@ export default function ArchivioDocs({ patients }) {
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
       {/* HEADER */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>📁 Archivio documenti</div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button onClick={() => { setPazModal('medico'); setPazSearch(''); }} style={{ background: C.priL, border: 'none', borderRadius: 9, padding: '8px 12px', color: C.pri, fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <Ic n="plus" s={12} c={C.pri} /> Ricetta/Cert.
+          </button>
+          <button onClick={() => { setPazModal('fiscale'); setPazSearch(''); }} style={{ background: '#E8FAF9', border: 'none', borderRadius: 9, padding: '8px 12px', color: C.acc, fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <Ic n="plus" s={12} c={C.acc} /> Fattura/Rimb.
+          </button>
+        </div>
       </div>
+
+      {/* MODAL SELEZIONA PAZIENTE */}
+      {pazModal && (
+        <Modal title={`Seleziona paziente — ${pazModal === 'fiscale' ? 'Fattura/Rimborso' : 'Ricetta/Certificato'}`} onClose={() => setPazModal(null)}>
+          <Inp autoFocus value={pazSearch} onChange={e => setPazSearch(e.target.value)} placeholder="Cerca per nome o cognome…" style={{ marginBottom: 12 }} />
+          <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+            {patients
+              .filter(p => !pazSearch.trim() || `${p.nome} ${p.cognome} ${p.cognome} ${p.nome}`.toLowerCase().includes(pazSearch.toLowerCase()))
+              .slice(0, 30)
+              .map(p => (
+                <div key={p.id} onClick={() => {
+                  setPazModal(null);
+                  if (pazModal === 'fiscale' && onApriDocFiscale) onApriDocFiscale(p);
+                  if (pazModal === 'medico' && onApriDocMedico) onApriDocMedico(p);
+                }} style={{ padding: '11px 12px', cursor: 'pointer', borderBottom: `1px solid ${C.brd}`, borderRadius: 8 }}
+                  onMouseEnter={e => e.currentTarget.style.background = C.bg}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>{p.cognome} {p.nome}</div>
+                  {p.telefono && <div style={{ fontSize: 11, color: C.txl }}>{p.telefono}</div>}
+                </div>
+              ))}
+            {patients.filter(p => !pazSearch.trim() || `${p.nome} ${p.cognome}`.toLowerCase().includes(pazSearch.toLowerCase())).length === 0 && (
+              <div style={{ textAlign: 'center', color: C.txl, padding: 20 }}>Nessun paziente trovato</div>
+            )}
+          </div>
+        </Modal>
+      )}
 
       {/* KPI */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
