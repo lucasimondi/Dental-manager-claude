@@ -99,7 +99,7 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
 
       {/* HEADER */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
-        <div style={{ fontSize: 20, fontWeight: 800 }}>📁 Archivio documenti</div>
+        <div style={{ fontSize: 20, fontWeight: 800 }}>📁 Documenti</div>
         <div style={{ display: 'flex', gap: 6 }}>
           <button onClick={() => { setPazModal('medico'); setPazSearch(''); }} style={{ background: C.priL, border: 'none', borderRadius: 9, padding: '8px 12px', color: C.pri, fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
             <Ic n="plus" s={12} c={C.pri} /> Ricetta/Cert.
