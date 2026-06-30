@@ -15,19 +15,26 @@ const startOfWeek = (d) => {
 // Componente griglia oraria — definito FUORI dalla funzione principale
 function GridView({ days, slots, slotH, oraInizio, appointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t }) {
   const scrollRef = useRef(null);
+  const gridScrollRef = useRef(null);
+
   useEffect(() => {
     if (scrollRef.current) {
       const pct = Math.max(0, (9 - oraInizio) / Math.max(1, slots.length * (slotH / 48)));
-      scrollRef.current.scrollTop = pct * scrollRef.current.scrollHeight * 0.4;
+      const top = pct * scrollRef.current.scrollHeight * 0.4;
+      scrollRef.current.scrollTop = top;
+      if (gridScrollRef.current) gridScrollRef.current.scrollTop = top;
     }
   }, []);
+
+  const syncFromHours = (e) => { if (gridScrollRef.current) gridScrollRef.current.scrollTop = e.target.scrollTop; };
+  const syncFromGrid = (e) => { if (scrollRef.current) scrollRef.current.scrollTop = e.target.scrollTop; };
 
   return (
     <div style={{ display: 'flex', flex: 1, overflow: 'hidden', border: `1px solid ${C.brd}`, borderRadius: 10, background: '#fff', minHeight: 0 }}>
       {/* Colonna ore */}
       <div style={{ width: 44, flexShrink: 0, borderRight: `1px solid ${C.brd}`, display: 'flex', flexDirection: 'column' }}>
         <div style={{ height: 40, borderBottom: `1px solid ${C.brd}`, flexShrink: 0 }} />
-        <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto' }}>
+        <div ref={scrollRef} onScroll={syncFromHours} style={{ flex: 1, overflowY: 'auto' }}>
           {slots.map((slot, i) => (
             <div key={slot} style={{ height: slotH, borderBottom: `1px solid ${C.brd}20`, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: 4, paddingTop: 2 }}>
               <span style={{ fontSize: 9, color: C.txl, fontWeight: 600 }}>{slot.endsWith(':00') ? slot : ''}</span>
@@ -54,7 +61,7 @@ function GridView({ days, slots, slotH, oraInizio, appointments, patients, getCo
         </div>
 
         {/* Griglia */}
-        <div style={{ flex: 1, overflowY: 'auto', display: 'flex' }}>
+        <div ref={gridScrollRef} onScroll={syncFromGrid} style={{ flex: 1, overflowY: 'auto', display: 'flex' }}>
           {days.map((d, di) => {
             const ds = toISO(d);
             const dayApps = appointments.filter(a => a.data === ds).sort((a, b) => a.ora.localeCompare(b.ora));
