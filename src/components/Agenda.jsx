@@ -16,6 +16,12 @@ const startOfWeek = (d) => {
 function GridView({ days, slots, slotH, oraInizio, appointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t }) {
   const scrollRef = useRef(null);
   const gridScrollRef = useRef(null);
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -29,56 +35,78 @@ function GridView({ days, slots, slotH, oraInizio, appointments, patients, getCo
   const syncFromHours = (e) => { if (gridScrollRef.current) gridScrollRef.current.scrollTop = e.target.scrollTop; };
   const syncFromGrid = (e) => { if (scrollRef.current) scrollRef.current.scrollTop = e.target.scrollTop; };
 
+  // Posizione linea "ora attuale"
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const startMin = oraInizio * 60;
+  const nowTop = ((nowMin - startMin) / slotMinFromSlots(slots)) * slotH;
+  function slotMinFromSlots(s) { if (s.length < 2) return 30; const [h1,m1] = s[0].split(':').map(Number); const [h2,m2] = s[1].split(':').map(Number); return (h2*60+m2)-(h1*60+m1); }
+  const showNowLine = nowTop >= 0 && nowTop <= slots.length * slotH;
+
   return (
-    <div style={{ display: 'flex', flex: 1, overflow: 'hidden', border: `1px solid ${C.brd}`, borderRadius: 10, background: '#fff', minHeight: 0 }}>
+    <div style={{ display: 'flex', flex: 1, overflow: 'hidden', border: `1px solid ${C.brd}`, borderRadius: 12, background: '#fff', minHeight: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
       {/* Colonna ore */}
-      <div style={{ width: 44, flexShrink: 0, borderRight: `1px solid ${C.brd}`, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ height: 40, borderBottom: `1px solid ${C.brd}`, flexShrink: 0 }} />
+      <div style={{ width: 46, flexShrink: 0, borderRight: `1.5px solid ${C.brd}`, display: 'flex', flexDirection: 'column', background: '#fafbfc' }}>
+        <div style={{ height: 44, borderBottom: `1.5px solid ${C.brd}`, flexShrink: 0 }} />
         <div ref={scrollRef} onScroll={syncFromHours} style={{ flex: 1, overflowY: 'auto' }}>
-          {slots.map((slot, i) => (
-            <div key={slot} style={{ height: slotH, borderBottom: `1px solid ${C.brd}20`, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: 4, paddingTop: 2 }}>
-              <span style={{ fontSize: 9, color: C.txl, fontWeight: 600 }}>{slot.endsWith(':00') ? slot : ''}</span>
-            </div>
-          ))}
+          {slots.map((slot, i) => {
+            const isHour = slot.endsWith(':00');
+            return (
+              <div key={slot} style={{ height: slotH, borderBottom: `1px solid ${isHour ? C.brd : C.brd + '40'}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: 5, paddingTop: 2, boxSizing: 'border-box' }}>
+                <span style={{ fontSize: isHour ? 9.5 : 8, color: isHour ? C.txm : C.txl, fontWeight: isHour ? 800 : 500 }}>{isHour ? slot : ''}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
 
       {/* Colonne giorni */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Header */}
-        <div style={{ display: 'flex', borderBottom: `1px solid ${C.brd}`, height: 40, flexShrink: 0 }}>
+        <div style={{ display: 'flex', borderBottom: `1.5px solid ${C.brd}`, height: 44, flexShrink: 0, background: '#fafbfc' }}>
           {days.map((d, di) => {
             const ds = toISO(d);
             const isToday = ds === t;
             const isSelected = ds === selDay;
+            const isWeekend = d.getDay() === 0 || d.getDay() === 6;
             return (
-              <div key={di} onClick={() => { setSelDay(ds); if (days.length > 1) setView('giorno'); }} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: isSelected && days.length > 1 ? C.priL : 'transparent', borderLeft: di > 0 ? `1px solid ${C.brd}` : 'none' }}>
-                <div style={{ fontSize: 9, fontWeight: 700, color: isToday ? C.pri : C.txl, textTransform: 'uppercase' }}>{WD_SHORT[d.getDay()]}</div>
-                <div style={{ fontSize: 15, fontWeight: 900, color: isToday ? '#fff' : isSelected ? C.pri : C.txt, background: isToday ? C.pri : 'transparent', borderRadius: '50%', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{d.getDate()}</div>
+              <div key={di} onClick={() => { setSelDay(ds); if (days.length > 1) setView('giorno'); }} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, cursor: 'pointer', background: isSelected && days.length > 1 ? C.priL : isWeekend ? '#f5f5f7' : 'transparent', borderLeft: di > 0 ? `1.5px solid ${C.brd}` : 'none' }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: isToday ? C.pri : isWeekend ? C.txl : C.txm, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{WD_SHORT[d.getDay()]}</div>
+                <div style={{ fontSize: 15, fontWeight: 900, color: isToday ? '#fff' : isSelected ? C.pri : C.txt, background: isToday ? C.pri : 'transparent', borderRadius: '50%', width: 25, height: 25, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{d.getDate()}</div>
               </div>
             );
           })}
         </div>
 
         {/* Griglia */}
-        <div ref={gridScrollRef} onScroll={syncFromGrid} style={{ flex: 1, overflowY: 'auto', display: 'flex' }}>
+        <div ref={gridScrollRef} onScroll={syncFromGrid} style={{ flex: 1, overflowY: 'auto', display: 'flex', position: 'relative' }}>
           {days.map((d, di) => {
             const ds = toISO(d);
             const dayApps = appointments.filter(a => a.data === ds).sort((a, b) => a.ora.localeCompare(b.ora));
+            const isToday = ds === t;
+            const isWeekend = d.getDay() === 0 || d.getDay() === 6;
             return (
-              <div key={di} style={{ flex: 1, position: 'relative', borderLeft: di > 0 ? `1px solid ${C.brd}` : 'none' }}>
-                {slots.map((slot, si) => (
-                  <div key={slot} onClick={() => apriNuovo(ds, slot)} style={{ height: slotH, borderBottom: `1px solid ${C.brd}${slot.endsWith(':00') ? '30' : '10'}`, cursor: 'pointer' }}
-                    onMouseEnter={e => e.currentTarget.style.background = C.priL + '60'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'} />
-                ))}
+              <div key={di} style={{ flex: 1, position: 'relative', borderLeft: di > 0 ? `1.5px solid ${C.brd}` : 'none', background: isWeekend ? '#fcfcfd' : isToday ? '#fafdff' : '#fff' }}>
+                {slots.map((slot, si) => {
+                  const isHour = slot.endsWith(':00');
+                  return (
+                    <div key={slot} onClick={() => apriNuovo(ds, slot)} style={{ height: slotH, borderBottom: `1px solid ${isHour ? C.brd : C.brd + '35'}`, cursor: 'pointer', boxSizing: 'border-box' }}
+                      onMouseEnter={e => e.currentTarget.style.background = C.priL + '70'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'} />
+                  );
+                })}
+                {isToday && showNowLine && (
+                  <div style={{ position: 'absolute', top: nowTop, left: di === 0 ? -6 : 0, right: 0, zIndex: 5, pointerEvents: 'none', display: 'flex', alignItems: 'center' }}>
+                    {di === 0 && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#E63946', flexShrink: 0 }} />}
+                    <div style={{ flex: 1, height: 1.5, background: '#E63946' }} />
+                  </div>
+                )}
                 {dayApps.map(a => {
                   const { top, height } = appPosition(a);
                   if (top < 0) return null;
                   const p = patients.find(x => x.id === a.pazienteId);
                   const co = getColore(a);
                   return (
-                    <div key={a.id} style={{ position: 'absolute', top, left: 2, right: 2, height, background: co, borderRadius: 5, padding: '2px 5px', overflow: 'hidden', zIndex: 2, borderLeft: `3px solid ${co}DD` }}>
+                    <div key={a.id} style={{ position: 'absolute', top, left: 2, right: 2, height, background: co, borderRadius: 5, padding: '2px 5px', overflow: 'hidden', zIndex: 2, borderLeft: `3px solid ${co}DD`, boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }}>
                       <div onClick={e => { e.stopPropagation(); apriEdit(a); }} style={{ cursor: 'pointer' }}>
                         <div style={{ fontSize: 10, fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.ora} {p ? `${p.cognome}` : '—'}</div>
                         {height > 32 && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.9)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.tipo}</div>}
