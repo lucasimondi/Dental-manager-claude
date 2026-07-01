@@ -12,11 +12,12 @@ const startOfWeek = (d) => {
   return dt;
 };
 
-// Componente griglia oraria — definito FUORI dalla funzione principale
-function GridView({ days, slots, slotH, oraInizio, appointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t }) {
+function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t }) {
   const scrollRef = useRef(null);
   const gridScrollRef = useRef(null);
+  const resizeRef = useRef(null);
   const [now, setNow] = useState(new Date());
+  const [resizing, setResizing] = useState(null); // { id, startY, startDurata }
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
@@ -25,21 +26,41 @@ function GridView({ days, slots, slotH, oraInizio, appointments, patients, getCo
 
   useEffect(() => {
     if (scrollRef.current) {
-      const pct = Math.max(0, (9 - oraInizio) / Math.max(1, slots.length * (slotH / 48)));
-      const top = pct * scrollRef.current.scrollHeight * 0.4;
+      const pct = Math.max(0, (9 - oraInizio) / Math.max(1, slots.length));
+      const top = pct * slots.length * slotH * 0.4;
       scrollRef.current.scrollTop = top;
       if (gridScrollRef.current) gridScrollRef.current.scrollTop = top;
     }
   }, []);
 
+  // Resize mouse handlers
+  useEffect(() => {
+    if (!resizing) return;
+    const onMove = (e) => {
+      const dy = (e.clientY || e.touches?.[0]?.clientY || 0) - resizing.startY;
+      const deltaMins = Math.round(dy / slotH * slotMin / slotMin) * slotMin;
+      const newDurata = Math.max(slotMin, resizing.startDurata + deltaMins);
+      setAppointments(prev => prev.map(a => a.id === resizing.id ? { ...a, durata: newDurata } : a));
+    };
+    const onUp = () => setResizing(null);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchmove', onMove, { passive: true });
+    window.addEventListener('touchend', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onUp);
+    };
+  }, [resizing, slotH, slotMin]);
+
   const syncFromHours = (e) => { if (gridScrollRef.current) gridScrollRef.current.scrollTop = e.target.scrollTop; };
   const syncFromGrid = (e) => { if (scrollRef.current) scrollRef.current.scrollTop = e.target.scrollTop; };
 
-  // Posizione linea "ora attuale"
   const nowMin = now.getHours() * 60 + now.getMinutes();
   const startMin = oraInizio * 60;
-  const nowTop = ((nowMin - startMin) / slotMinFromSlots(slots)) * slotH;
-  function slotMinFromSlots(s) { if (s.length < 2) return 30; const [h1,m1] = s[0].split(':').map(Number); const [h2,m2] = s[1].split(':').map(Number); return (h2*60+m2)-(h1*60+m1); }
+  const nowTop = ((nowMin - startMin) / slotMin) * slotH;
   const showNowLine = nowTop >= 0 && nowTop <= slots.length * slotH;
 
   return (
@@ -48,7 +69,7 @@ function GridView({ days, slots, slotH, oraInizio, appointments, patients, getCo
       <div style={{ width: 46, flexShrink: 0, borderRight: `1.5px solid ${C.brd}`, display: 'flex', flexDirection: 'column', background: '#fafbfc' }}>
         <div style={{ height: 44, borderBottom: `1.5px solid ${C.brd}`, flexShrink: 0 }} />
         <div ref={scrollRef} onScroll={syncFromHours} style={{ flex: 1, overflowY: 'auto' }}>
-          {slots.map((slot, i) => {
+          {slots.map((slot) => {
             const isHour = slot.endsWith(':00');
             return (
               <div key={slot} style={{ height: slotH, borderBottom: `1px solid ${isHour ? C.brd : C.brd + '40'}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: 5, paddingTop: 2, boxSizing: 'border-box' }}>
@@ -86,10 +107,10 @@ function GridView({ days, slots, slotH, oraInizio, appointments, patients, getCo
             const isWeekend = d.getDay() === 0 || d.getDay() === 6;
             return (
               <div key={di} style={{ flex: 1, position: 'relative', borderLeft: di > 0 ? `1.5px solid ${C.brd}` : 'none', background: isWeekend ? '#fcfcfd' : isToday ? '#fafdff' : '#fff' }}>
-                {slots.map((slot, si) => {
+                {slots.map((slot) => {
                   const isHour = slot.endsWith(':00');
                   return (
-                    <div key={slot} onClick={() => apriNuovo(ds, slot)} style={{ height: slotH, borderBottom: `1px solid ${isHour ? C.brd : C.brd + '35'}`, cursor: 'pointer', boxSizing: 'border-box' }}
+                    <div key={slot} onClick={() => apriNuovo(ds, slot)} style={{ height: slotH, borderBottom: `1px solid ${isHour ? C.brd + '60' : C.brd + '25'}`, cursor: 'pointer', boxSizing: 'border-box' }}
                       onMouseEnter={e => e.currentTarget.style.background = C.priL + '70'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'} />
                   );
@@ -105,13 +126,24 @@ function GridView({ days, slots, slotH, oraInizio, appointments, patients, getCo
                   if (top < 0) return null;
                   const p = patients.find(x => x.id === a.pazienteId);
                   const co = getColore(a);
+                  const isBeingResized = resizing?.id === a.id;
                   return (
-                    <div key={a.id} style={{ position: 'absolute', top, left: 2, right: 2, height, background: co, borderRadius: 5, padding: '2px 5px', overflow: 'hidden', zIndex: 2, borderLeft: `3px solid ${co}DD`, boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }}>
-                      <div onClick={e => { e.stopPropagation(); apriEdit(a); }} style={{ cursor: 'pointer' }}>
+                    <div key={a.id} style={{ position: 'absolute', top, left: 2, right: 2, height, background: co, borderRadius: 5, overflow: 'hidden', zIndex: isBeingResized ? 10 : 2, borderLeft: `3px solid ${co}DD`, boxShadow: isBeingResized ? '0 4px 12px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.15)', userSelect: 'none' }}>
+                      {/* Contenuto appuntamento */}
+                      <div onClick={e => { if (!isBeingResized) { e.stopPropagation(); apriEdit(a); } }} style={{ padding: '2px 5px', cursor: 'pointer', paddingBottom: 12 }}>
                         <div style={{ fontSize: 10, fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.ora} {p ? `${p.cognome}` : '—'}</div>
                         {height > 32 && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.9)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.tipo}</div>}
+                        {height > 48 && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)' }}>{a.durata} min</div>}
                       </div>
-                      <button onClick={e => { e.stopPropagation(); apriWA(a); }} style={{ position: 'absolute', bottom: 2, right: 2, background: '#25D366', border: 'none', borderRadius: 4, padding: '1px 4px', cursor: 'pointer', fontSize: 9, color: '#fff', fontWeight: 700 }}>WA</button>
+                      {/* WA button */}
+                      <button onClick={e => { e.stopPropagation(); apriWA(a); }} style={{ position: 'absolute', bottom: 14, right: 2, background: '#25D366', border: 'none', borderRadius: 4, padding: '1px 4px', cursor: 'pointer', fontSize: 9, color: '#fff', fontWeight: 700 }}>WA</button>
+                      {/* RESIZE HANDLE */}
+                      <div
+                        onMouseDown={e => { e.stopPropagation(); e.preventDefault(); setResizing({ id: a.id, startY: e.clientY, startDurata: Number(a.durata) }); }}
+                        onTouchStart={e => { e.stopPropagation(); setResizing({ id: a.id, startY: e.touches[0].clientY, startDurata: Number(a.durata) }); }}
+                        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 12, cursor: 'ns-resize', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.15)', borderBottomLeftRadius: 5, borderBottomRightRadius: 5 }}>
+                        <div style={{ width: 20, height: 2, background: 'rgba(255,255,255,0.6)', borderRadius: 1 }} />
+                      </div>
                     </div>
                   );
                 })}
@@ -127,7 +159,6 @@ function GridView({ days, slots, slotH, oraInizio, appointments, patients, getCo
 export default function Agenda({ patients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates }) {
   const tipiList = appTypes?.length ? appTypes : DEF_APP_TYPES;
 
-  // ── TUTTI GLI HOOK IN CIMA ──
   const [oraInizio, setOraInizio] = useState(() => { try { return Number(localStorage.getItem('ag_oraInizio') || 8); } catch { return 8; } });
   const [oraFine, setOraFine] = useState(() => { try { return Number(localStorage.getItem('ag_oraFine') || 20); } catch { return 20; } });
   const [slotMin, setSlotMin] = useState(() => { try { return Number(localStorage.getItem('ag_slotMin') || 30); } catch { return 30; } });
@@ -141,11 +172,11 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const [toast, setToast] = useState('');
   const [editApp, setEditApp] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [waModal, setWaModal] = useState(null); // appointment object
-  const [waMsg, setWaMsg] = useState('');
-  const [waTplId, setWaTplId] = useState('');
   const [vd, setVd] = useState(new Date());
   const [form, setForm] = useState({ pazienteId: '', data: today(), ora: '09:00', durata: 30, tipo: tipiList[0]?.nome || 'Visita', colore: tipiList[0]?.colore || C.pri, note: '', stato: 'confermato' });
+  const [waModal, setWaModal] = useState(null);
+  const [waMsg, setWaMsg] = useState('');
+  const [waTplId, setWaTplId] = useState('');
 
   const F = (f) => setForm(p => ({ ...p, ...f }));
 
@@ -157,7 +188,6 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
     }
   }, [initPazienteId]);
 
-  // ── CALCOLI ──
   const slotH = slotMin === 15 ? 36 : slotMin === 30 ? 48 : 64;
   const slots = [];
   for (let h = oraInizio; h < oraFine; h++) {
@@ -180,7 +210,6 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const weekDays = Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
   const t = today();
 
-  // ── HANDLERS ──
   const apriNuovo = (data, ora) => {
     setPazSearch('');
     setEditApp(null);
@@ -193,6 +222,29 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
     setPazSearch('');
     setForm({ pazienteId: String(a.pazienteId), data: a.data, ora: a.ora, durata: a.durata, tipo: a.tipo, colore: a.colore || C.pri, note: a.note || '', stato: a.stato || 'confermato' });
     setModal(true);
+  };
+
+  const apriWA = (a) => {
+    const p = patients.find(x => x.id === a.pazienteId);
+    if (!p?.telefono) { alert('Nessun telefono per questo paziente'); return; }
+    const defMsg = `Gentile ${p.nome},\nricordiamo il suo appuntamento:\n📅 ${fmtD(a.data)} alle ${a.ora}\n🦷 ${a.tipo}\nPer variazioni contattarci entro 24h. Grazie!`;
+    setWaModal(a); setWaTplId(''); setWaMsg(defMsg);
+  };
+
+  const sendWA = () => {
+    if (!waModal) return;
+    const p = patients.find(x => x.id === waModal.pazienteId);
+    if (!p?.telefono) return;
+    window.open(`https://wa.me/39${p.telefono.replace(/\D/g, '')}?text=${encodeURIComponent(waMsg)}`, '_blank');
+    setWaModal(null);
+  };
+
+  const selTplWA = (id) => {
+    setWaTplId(id);
+    if (!id || !waModal) return;
+    const p = patients.find(x => x.id === waModal.pazienteId);
+    const tpl = templates?.find(tt => String(tt.id) === String(id));
+    if (tpl && p) setWaMsg(tpl.testo.replace(/{nome}/g, `${p.nome} ${p.cognome}`).replace(/{data}/g, fmtD(waModal.data)).replace(/{ora}/g, waModal.ora).replace(/{tipo}/g, waModal.tipo));
   };
 
   const save = () => {
@@ -209,38 +261,6 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
 
   const del = (id) => { if (confirm('Eliminare?')) setAppointments(p => p.filter(a => a.id !== id)); };
 
-  const apriWA = (a) => {
-    const p = patients.find(x => x.id === a.pazienteId);
-    if (!p?.telefono) { alert('Nessun telefono per questo paziente'); return; }
-    const defMsg = `Gentile ${p.nome},\nricordiamo il suo appuntamento:\n📅 ${fmtD(a.data)} alle ${a.ora}\n🦷 ${a.tipo}\nPer variazioni contattarci entro 24h. Grazie!`;
-    setWaModal(a);
-    setWaTplId('');
-    setWaMsg(defMsg);
-  };
-
-  const sendWA = () => {
-    if (!waModal) return;
-    const p = patients.find(x => x.id === waModal.pazienteId);
-    if (!p?.telefono) return;
-    window.open(`https://wa.me/39${p.telefono.replace(/\D/g, '')}?text=${encodeURIComponent(waMsg)}`, '_blank');
-    setWaModal(null);
-  };
-
-  const selTplWA = (id) => {
-    setWaTplId(id);
-    if (!id || !waModal) return;
-    const p = patients.find(x => x.id === waModal.pazienteId);
-    const tpl = templates?.find(t => String(t.id) === String(id));
-    if (tpl && p) {
-      setWaMsg(tpl.testo
-        .replace(/{nome}/g, `${p.nome} ${p.cognome}`)
-        .replace(/{data}/g, fmtD(waModal.data))
-        .replace(/{ora}/g, waModal.ora)
-        .replace(/{tipo}/g, waModal.tipo)
-      );
-    }
-  };
-
   const saveSettings = () => {
     if (tmpI >= tmpF) return;
     setOraInizio(tmpI); setOraFine(tmpF); setSlotMin(tmpS);
@@ -253,7 +273,8 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const navGiorno = (n) => { const d = new Date(selDay + 'T12:00'); d.setDate(d.getDate() + n); setSelDay(toISO(d)); };
   const navSettimana = (n) => { const d = new Date(selDay + 'T12:00'); d.setDate(d.getDate() + n * 7); setSelDay(toISO(d)); };
 
-  // ── RENDER ──
+  const gridProps = { slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 130px)' }}>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
@@ -289,26 +310,8 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
       </div>
 
       {/* VIEWS */}
-      {view === 'giorno' && (
-        <GridView
-          days={[new Date(selDay + 'T12:00')]}
-          slots={slots} slotH={slotH} oraInizio={oraInizio}
-          appointments={appointments} patients={patients}
-          getColore={getColore} appPosition={appPosition}
-          apriNuovo={apriNuovo} apriEdit={apriEdit} apriWA={apriWA}
-          selDay={selDay} setSelDay={setSelDay} setView={setView} today={t}
-        />
-      )}
-      {view === 'settimana' && (
-        <GridView
-          days={weekDays}
-          slots={slots} slotH={slotH} oraInizio={oraInizio}
-          appointments={appointments} patients={patients}
-          getColore={getColore} appPosition={appPosition}
-          apriNuovo={apriNuovo} apriEdit={apriEdit} apriWA={apriWA}
-          selDay={selDay} setSelDay={setSelDay} setView={setView} today={t}
-        />
-      )}
+      {view === 'giorno' && <GridView days={[new Date(selDay + 'T12:00')]} {...gridProps} />}
+      {view === 'settimana' && <GridView days={weekDays} {...gridProps} />}
       {view === 'mese' && (() => {
         const K = vd.getFullYear(), mese = vd.getMonth();
         const primo = new Date(K, mese, 1).getDay();
@@ -382,13 +385,11 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
             <Fld label="Template (opzionale)">
               <Sel value={waTplId} onChange={e => selTplWA(e.target.value)}>
                 <option value="">Messaggio personalizzato</option>
-                {templates.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+                {templates.map(tt => <option key={tt.id} value={tt.id}>{tt.nome}</option>)}
               </Sel>
             </Fld>
           )}
-          <Fld label="Messaggio">
-            <Txt value={waMsg} onChange={e => setWaMsg(e.target.value)} rows={6} />
-          </Fld>
+          <Fld label="Messaggio"><Txt value={waMsg} onChange={e => setWaMsg(e.target.value)} rows={6} /></Fld>
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             <Btn ch="Annulla" v="sec" onClick={() => setWaModal(null)} full />
             <Btn ch="Apri WhatsApp" onClick={sendWA} dis={!waMsg} full />
@@ -399,7 +400,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
       {/* MODAL IMPOSTAZIONI */}
       {settingsOpen && (
         <Modal title="⚙️ Impostazioni agenda" onClose={() => setSettingsOpen(false)}>
-          <div style={{ fontSize: 12, color: C.txm, marginBottom: 14 }}>Personalizza la visualizzazione della griglia oraria. Le impostazioni vengono salvate sul dispositivo.</div>
+          <div style={{ fontSize: 12, color: C.txm, marginBottom: 14 }}>Le impostazioni vengono salvate sul dispositivo.</div>
           <Fld label="Ora inizio giornata">
             <Sel value={tmpI} onChange={e => setTmpI(Number(e.target.value))}>
               {Array.from({ length: 16 }, (_, i) => i + 6).map(h => <option key={h} value={h}>{String(h).padStart(2,'0')}:00</option>)}
@@ -412,15 +413,14 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
           </Fld>
           <Fld label="Dimensione slot">
             <Sel value={tmpS} onChange={e => setTmpS(Number(e.target.value))}>
-              <option value={15}>15 minuti (più dettagliato)</option>
+              <option value={15}>15 minuti</option>
               <option value={30}>30 minuti (consigliato)</option>
-              <option value={60}>60 minuti (più compatto)</option>
+              <option value={60}>60 minuti</option>
             </Sel>
           </Fld>
           {tmpI >= tmpF && <div style={{ background: C.danL, borderRadius: 8, padding: '8px 12px', marginBottom: 8, fontSize: 12, color: C.dan, fontWeight: 700 }}>⚠️ L'ora di inizio deve essere prima dell'ora di fine</div>}
           <div style={{ background: C.bg, borderRadius: 9, padding: '9px 12px', marginBottom: 10 }}>
-            <div style={{ fontSize: 11, color: C.txm, fontWeight: 700 }}>Anteprima: {String(tmpI).padStart(2,'0')}:00 — {String(tmpF).padStart(2,'0')}:00 · slot da {tmpS} min</div>
-            <div style={{ fontSize: 11, color: C.txl, marginTop: 2 }}>{Math.ceil((tmpF - tmpI) * 60 / tmpS)} slot totali</div>
+            <div style={{ fontSize: 11, color: C.txm, fontWeight: 700 }}>{String(tmpI).padStart(2,'0')}:00 — {String(tmpF).padStart(2,'0')}:00 · slot da {tmpS} min · {Math.ceil((tmpF - tmpI) * 60 / tmpS)} slot totali</div>
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
             <Btn ch="Annulla" v="sec" onClick={() => setSettingsOpen(false)} full />
@@ -429,26 +429,19 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
         </Modal>
       )}
 
-      {/* MODAL NUOVO/MODIFICA APPUNTAMENTO */}
+      {/* MODAL NUOVO/MODIFICA */}
       {modal && (
         <Modal title={editApp ? '✏️ Modifica appuntamento' : '📅 Nuovo appuntamento'} onClose={() => setModal(false)} wide>
           <Fld label="Paziente">
             {(() => {
               const sel = patients.find(p => String(p.id) === String(form.pazienteId));
-              const filtered = pazSearch.trim()
-                ? patients.filter(p => `${p.nome} ${p.cognome} ${p.cognome} ${p.nome}`.toLowerCase().includes(pazSearch.toLowerCase()))
-                : patients;
+              const filtered = pazSearch.trim() ? patients.filter(p => `${p.nome} ${p.cognome} ${p.cognome} ${p.nome}`.toLowerCase().includes(pazSearch.toLowerCase())) : patients;
               return (
                 <div style={{ position: 'relative' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, border: `1.5px solid ${sel && !pazSearch ? C.suc : C.brd}`, borderRadius: 10, padding: '10px 12px', background: C.sur }}>
                     {sel && !pazSearch ? (
-                      <>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 700, fontSize: 14 }}>{sel.nome} {sel.cognome}</div>
-                          {sel.telefono && <div style={{ fontSize: 11, color: C.txl }}>{sel.telefono}</div>}
-                        </div>
-                        <button onClick={() => { F({ pazienteId: '' }); setPazSearch(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.txl, fontSize: 18, padding: 0 }}>✕</button>
-                      </>
+                      <><div style={{ flex: 1 }}><div style={{ fontWeight: 700, fontSize: 14 }}>{sel.nome} {sel.cognome}</div>{sel.telefono && <div style={{ fontSize: 11, color: C.txl }}>{sel.telefono}</div>}</div>
+                        <button onClick={() => { F({ pazienteId: '' }); setPazSearch(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.txl, fontSize: 18, padding: 0 }}>✕</button></>
                     ) : (
                       <input autoFocus value={pazSearch} onChange={e => { setPazSearch(e.target.value); if (!e.target.value) F({ pazienteId: '' }); }} placeholder="Cerca per nome o cognome…" style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 14, color: C.txt, outline: 'none', fontFamily: 'inherit' }} />
                     )}
@@ -456,10 +449,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
                   {(!sel || pazSearch) && filtered.length > 0 && (
                     <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: C.sur, border: `1.5px solid ${C.pri}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', marginTop: 3, maxHeight: 200, overflowY: 'auto' }}>
                       {filtered.slice(0, 20).map(p => (
-                        <div key={p.id} onClick={() => { F({ pazienteId: String(p.id) }); setPazSearch(''); }}
-                          style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: `1px solid ${C.brd}` }}
-                          onMouseEnter={e => e.currentTarget.style.background = C.priL}
-                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                        <div key={p.id} onClick={() => { F({ pazienteId: String(p.id) }); setPazSearch(''); }} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: `1px solid ${C.brd}` }} onMouseEnter={e => e.currentTarget.style.background = C.priL} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                           <div style={{ fontWeight: 700, fontSize: 13 }}>{p.cognome} {p.nome}</div>
                           {p.telefono && <div style={{ fontSize: 11, color: C.txl }}>{p.telefono}</div>}
                         </div>
