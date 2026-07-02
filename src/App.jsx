@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { supabase, DB } from './lib/supabase.js';
 import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_APP_TYPES, NAV } from './lib/utils';
 import { Ic } from './components/ui';
@@ -36,10 +36,9 @@ export default function App() {
   const [syncError, setSyncError] = useState(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user?.user_metadata?.nome) {
-        setUserName(user.user_metadata.nome + ' ' + (user.user_metadata.cognome || ''));
-      }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const m = session?.user?.user_metadata;
+      if (m?.nome) setUserName((m.nome + ' ' + (m.cognome || '')).trim());
     });
   }, []);
 
@@ -181,6 +180,8 @@ export default function App() {
         <div style={{ background: C.acc, borderRadius: 7, padding: 5 }}><Ic n="tooth" s={16} c="#fff" /></div>
         <span style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>DentalManager</span>
         <div style={{ marginLeft: 'auto', fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10 }}>
+          {userName && <span style={{ color: 'rgba(255,255,255,0.8)', fontWeight: 700 }}>{userName}</span>}
+          <span style={{ color: 'rgba(255,255,255,0.3)' }}>·</span>
           <span>{NAV.find((n) => n.id === page)?.l}</span>
           <button onClick={handleLogout} title="Esci" style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, padding: '4px 8px', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>Esci</button>
         </div>
@@ -254,3 +255,4 @@ export default function App() {
     </div>
   );
 }
+

@@ -76,24 +76,10 @@ const fromDb = (table, row) => {
 // Tabelle che hanno studio_id
 const STUDIO_TABLES = new Set(['patients','plans','payments','appointments','implants']);
 
-// Recupera studio_id dall'utente corrente
+// Recupera studio_id dalla sessione corrente
 const getStudioId = async () => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return '00000000-0000-0000-0000-000000000001';
-  // Prova tutte le possibili posizioni del studio_id
-  const sid = user?.user_metadata?.studio_id 
-    || user?.app_metadata?.studio_id
-    || user?.raw_app_meta_data?.studio_id
-    || user?.raw_user_meta_data?.studio_id;
-  if (sid) return sid;
-  // Se non trovato, cerca nella tabella studios per email
-  const { data } = await supabase.from('studios').select('id').eq('email', user.email).single();
-  if (data?.id) {
-    // Salva per il futuro
-    await supabase.auth.updateUser({ data: { studio_id: data.id } });
-    return data.id;
-  }
-  return '00000000-0000-0000-0000-000000000001';
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.user?.user_metadata?.studio_id || '00000000-0000-0000-0000-000000000001';
 };
 
 export const DB = {
