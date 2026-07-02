@@ -172,7 +172,7 @@ export default function App() {
         <div style={{ background: C.acc, borderRadius: 7, padding: 5 }}><Ic n="tooth" s={16} c="#fff" /></div>
         <span style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>DentalManager</span>
         <div style={{ marginLeft: 'auto', fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ color: 'rgba(255,255,255,0.7)' }}>{studioInfo?.nome || session?.user?.email?.split('@')[0] || ''}</span><span>·</span><span>{NAV.find((n) => n.id === page)?.l}</span>
+          <span style={{ color: 'rgba(255,255,255,0.7)' }}>{studioInfo?.nome || session?.user?.email?.split('@')[0] || ''}</span><span>·</span><div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}><span style={{ color: "#fff", fontWeight: 700, fontSize: 11 }}>{studioInfo?.nome || session?.user?.email?.split("@")[0] || ""}</span><span style={{ color: "rgba(255,255,255,0.5)", fontSize: 9 }}>{session?.user?.email || ""}</span></div><span style={{ color: "rgba(255,255,255,0.3)" }}>·</span><span>{NAV.find((n) => n.id === page)?.l}</span>
           <button onClick={handleLogout} title="Esci" style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, padding: '4px 8px', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>Esci</button>
         </div>
       </div>
@@ -245,3 +245,4 @@ export default function App() {
     </div>
   );
 }
+
