@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Login from './components/Login.jsx';
 import { supabase, DB } from './lib/supabase.js';
 import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_APP_TYPES, NAV } from './lib/utils';
 import { Ic } from './components/ui';
@@ -32,6 +33,8 @@ export default function App() {
   const [initPatId, setInitPatId] = useState(null);
   const [agendaInitPaz, setAgendaInitPaz] = useState(null);
   const [schedaDashPaz, setSchedaDashPaz] = useState(null);
+  const [session, setSession] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [syncError, setSyncError] = useState(null);
 
   useEffect(() => {
@@ -166,6 +169,14 @@ export default function App() {
   if (session === null) return <LoginScreen onLogin={() => {}} />;
   if (dataLoading) return <LoadingScreen />;
 
+  if (authLoading) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0F2940' }}>
+      <div style={{ fontSize: 40 }}>🦷</div>
+    </div>
+  );
+
+  if (!session) return <Login onLogin={setSession} />;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: C.bg, overflow: 'hidden' }}>
       <div style={{ background: C.priD, padding: '11px 14px', paddingTop: 'max(11px,env(safe-area-inset-top))', display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
@@ -230,13 +241,17 @@ export default function App() {
         {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} />}
       </div>
 
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: C.sur, borderTop: `1px solid ${C.brd}`, display: 'grid', gridTemplateColumns: `repeat(${NAV.length},1fr)`, paddingBottom: 'env(safe-area-inset-bottom,0px)', zIndex: 100, boxShadow: '0 -2px 10px rgba(0,0,0,0.07)' }}>
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: C.sur, borderTop: `1px solid ${C.brd}`, display: 'grid', gridTemplateColumns: `repeat(${NAV.length + 1},1fr)`, paddingBottom: 'env(safe-area-inset-bottom,0px)', zIndex: 100, boxShadow: '0 -2px 10px rgba(0,0,0,0.07)' }}>
         {NAV.map((n) => (
           <button key={n.id} onClick={() => setPage(n.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '7px 1px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, color: page === n.id ? C.pri : C.txl }}>
             <div style={{ background: page === n.id ? C.priL : 'transparent', borderRadius: 7, padding: '3px 5px' }}><Ic n={n.ic} s={17} c={page === n.id ? C.pri : C.txl} /></div>
             <span style={{ fontSize: 8, fontWeight: page === n.id ? 800 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{n.l}</span>
           </button>
         ))}
+        <button onClick={() => supabase.auth.signOut()} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '7px 1px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, color: C.txl }}>
+          <div style={{ borderRadius: 7, padding: '3px 5px' }}><Ic n="x" s={17} c={C.txl} /></div>
+          <span style={{ fontSize: 8, fontWeight: 500 }}>Esci</span>
+        </button>
       </div>
     </div>
   );
