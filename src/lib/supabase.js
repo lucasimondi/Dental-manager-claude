@@ -79,6 +79,7 @@ const STUDIO_TABLES = new Set(['patients','plans','payments','appointments','imp
 // Recupera studio_id dalla sessione corrente
 const getStudioId = async () => {
   const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return null; // nessuna sessione = nessun accesso
   return session?.user?.user_metadata?.studio_id || '00000000-0000-0000-0000-000000000001';
 };
 
@@ -89,6 +90,7 @@ export const DB = {
     let q = supabase.from(table).select('*').order('id', { ascending: true });
     if (STUDIO_TABLES.has(table)) {
       const studioId = await getStudioId();
+      if (!studioId) return []; // no session = no data
       q = q.eq('studio_id', studioId);
     }
     const { data, error } = await q;
