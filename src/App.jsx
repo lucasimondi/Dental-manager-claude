@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Login from './components/Login.jsx';
 import { supabase, DB } from './lib/supabase.js';
 import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_APP_TYPES, NAV } from './lib/utils';
 import { Ic } from './components/ui';
@@ -164,7 +163,7 @@ export default function App() {
   };
 
   if (session === undefined) return <LoadingScreen />;
-  if (session === null) return <Login onLogin={() => {}} />;
+  if (session === null) return <LoginScreen onLogin={() => {}} />;
   if (dataLoading) return <LoadingScreen />;
 
   return (
