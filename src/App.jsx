@@ -36,19 +36,32 @@ export default function App() {
   const [syncError, setSyncError] = useState(null);
 
   useEffect(() => {
+    // Inizializza sessione — se non risponde entro 3s forza null (no session)
+    let resolved = false;
+    const timeout = setTimeout(() => {
+      if (!resolved) { resolved = true; setSession(null); }
+    }, 3000);
+
     supabase.auth.getSession().then(({ data }) => {
-      const sess = data.session;
-      setSession(sess);
-      const m = sess?.user?.user_metadata;
-      if (m?.nome) setUserName((m.nome + ' ' + (m.cognome || '')).trim());
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeout);
+        const sess = data.session;
+        setSession(sess ?? null);
+        const m = sess?.user?.user_metadata;
+        if (m?.nome) setUserName((m.nome + ' ' + (m.cognome || '')).trim());
+      }
     });
+
     const { data: listener } = supabase.auth.onAuthStateChange((_event, sess) => {
-      setSession(sess);
+      resolved = true;
+      clearTimeout(timeout);
+      setSession(sess ?? null);
       const m = sess?.user?.user_metadata;
       if (m?.nome) setUserName((m.nome + ' ' + (m.cognome || '')).trim());
       else setUserName('');
     });
-    return () => listener.subscription.unsubscribe();
+    return () => { listener.subscription.unsubscribe(); clearTimeout(timeout); };
   }, []);
 
   useEffect(() => {
