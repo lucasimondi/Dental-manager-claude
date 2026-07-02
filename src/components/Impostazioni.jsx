@@ -1,9 +1,10 @@
-﻿import GestioneUtenti from './GestioneUtenti.jsx';
+﻿import ProfiloUtente from './ProfiloUtente.jsx';
+import GestioneUtenti from './GestioneUtenti.jsx';
 import React, { useState } from 'react';
 import { Btn, Crd, Fld, Inp, Txt, Modal, Toast, Ic } from './ui';
 import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI } from '../lib/utils';
 
-export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId }) {
+export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange }) {
   const [si, setSi] = useState({ ...DEF_STUDIO, ...(studioInfo || {}) });
   const [toast, setToast] = useState('');
   const [tipoModal, setTipoModal] = useState(null);
@@ -113,10 +114,13 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           </div>
         </Modal>
       )}
-    <GestioneUtenti studioId={studioInfo?.id || '00000000-0000-0000-0000-000000000001'} currentUserId={currentUserId} />
+    <ProfiloUtente onNomeChange={onNomeChange} />`n    <GestioneUtenti studioId={studioInfo?.id || '00000000-0000-0000-0000-000000000001'} currentUserId={currentUserId} />
     </div>
   );
 }
+
+
+
 
 
 
