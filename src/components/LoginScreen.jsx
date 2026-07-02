@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import RegisterScreen from './RegisterScreen.jsx';
 import Ic from './ui/Ic.jsx';
 import { supabase } from '../lib/supabase.js';
 
@@ -7,6 +8,7 @@ export default function LoginScreen({ onLogin }) {
   const [password, setPassword] = useState('');
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -21,6 +23,8 @@ export default function LoginScreen({ onLogin }) {
     }
     onLogin(data.user);
   };
+
+  if (showRegister) return <RegisterScreen onBack={() => setShowRegister(false)} />;
 
   return (
     <div style={{
@@ -81,6 +85,11 @@ export default function LoginScreen({ onLogin }) {
             {loading ? 'Accesso in corso…' : 'Accedi'}
           </button>
         </form>
+        <div style={{ textAlign: 'center', marginTop: 16 }}>
+          <button onClick={() => setShowRegister(true)} style={{ background: 'none', border: 'none', color: '#718096', fontSize: 13, cursor: 'pointer', textDecoration: 'underline' }}>
+            Nuovo studio? Registrati
+          </button>
+        </div>
       </div>
     </div>
   );
