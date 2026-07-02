@@ -73,11 +73,25 @@ const fromDb = (table, row) => {
 };
 
 /* ── DB: interfaccia unificata di accesso dati ── */
+// Tabelle che hanno studio_id
+const STUDIO_TABLES = new Set(['patients','plans','payments','appointments','implants']);
+
+// Recupera studio_id dall'utente corrente
+const getStudioId = async () => {
+  const { data: { user } } = await supabase.auth.getUser();
+  return user?.user_metadata?.studio_id || user?.app_metadata?.studio_id || '00000000-0000-0000-0000-000000000001';
+};
+
 export const DB = {
   async getAll(key) {
     const table = TABLE_MAP[key];
     if (!table) return null;
-    const { data, error } = await supabase.from(table).select('*').order('id', { ascending: true });
+    let q = supabase.from(table).select('*').order('id', { ascending: true });
+    if (STUDIO_TABLES.has(table)) {
+      const studioId = await getStudioId();
+      q = q.eq('studio_id', studioId);
+    }
+    const { data, error } = await q;
     if (error) { console.error('DB.getAll', table, error); return []; }
     return (data || []).map((r) => fromDb(table, r));
   },
@@ -85,7 +99,11 @@ export const DB = {
   async insert(key, obj) {
     const table = TABLE_MAP[key];
     const { data: { user } } = await supabase.auth.getUser();
-    const payload = { ...toDb(table, obj), user_id: user.id };
+    let payload = { ...toDb(table, obj), user_id: user.id };
+    if (STUDIO_TABLES.has(table)) {
+      const studioId = await getStudioId();
+      payload.studio_id = studioId;
+    }
     const { data, error } = await supabase.from(table).insert(payload).select().single();
     if (error) { console.error('DB.insert', table, error); throw error; }
     return fromDb(table, data);
