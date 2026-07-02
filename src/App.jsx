@@ -33,8 +33,6 @@ export default function App() {
   const [initPatId, setInitPatId] = useState(null);
   const [agendaInitPaz, setAgendaInitPaz] = useState(null);
   const [schedaDashPaz, setSchedaDashPaz] = useState(null);
-  const [session, setSession] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
   const [syncError, setSyncError] = useState(null);
 
   useEffect(() => {
