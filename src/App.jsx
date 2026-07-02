@@ -164,16 +164,8 @@ export default function App() {
   };
 
   if (session === undefined) return <LoadingScreen />;
-  if (session === null) return <LoginScreen onLogin={() => {}} />;
+  if (session === null) return <Login onLogin={() => {}} />;
   if (dataLoading) return <LoadingScreen />;
-
-  
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0F2940' }}>
-      <div style={{ fontSize: 40 }}>🦷</div>
-    </div>
-  );
-
-  if (!session) return <Login onLogin={setSession} />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: C.bg, overflow: 'hidden' }}>
