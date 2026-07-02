@@ -36,16 +36,17 @@ export default function App() {
   const [syncError, setSyncError] = useState(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const m = session?.user?.user_metadata;
+    supabase.auth.getSession().then(({ data }) => {
+      const sess = data.session;
+      setSession(sess);
+      const m = sess?.user?.user_metadata;
       if (m?.nome) setUserName((m.nome + ' ' + (m.cognome || '')).trim());
     });
-  }, []);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data: listener } = supabase.auth.onAuthStateChange((_event, sess) => {
       setSession(sess);
+      const m = sess?.user?.user_metadata;
+      if (m?.nome) setUserName((m.nome + ' ' + (m.cognome || '')).trim());
+      else setUserName('');
     });
     return () => listener.subscription.unsubscribe();
   }, []);
