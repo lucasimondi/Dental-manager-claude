@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { Crd, Bdg, Modal, Ic, Btn } from './ui';
 import { C, fmt, fmtD, today } from '../lib/utils';
@@ -51,6 +51,9 @@ const loadWidgets = () => {
 const saveWidgets = (ws) => {
   try { localStorage.setItem('dm_widgets', JSON.stringify(ws)); } catch {}
 };
+
+const NOMI_F = ['alessia','alice','anna','beatrice','camilla','chiara','claudia','elena','elisa','emma','federica','francesca','giulia','ilaria','laura','lisa','lucia','luisa','mara','maria','marina','martina','monica','paola','roberta','sara','silvia','sofia','valentina','veronica','virginia'];
+const getSaluto = (nome) => { if (!nome) return 'Benvenuto'; const ora = new Date().getHours(); const s = ora < 12 ? 'Buongiorno' : ora < 18 ? 'Buon pomeriggio' : 'Buonasera'; const p = nome.trim().split(' ')[0].toLowerCase(); const fem = NOMI_F.includes(p) || (p.endsWith('a') && !['luca','andrea','mattia','nicola','enea'].includes(p)); return s + ', ' + (fem ? 'cara ' : 'caro ') + nome.trim().split(' ')[0]; };
 
 export default function Dashboard({ patients, appointments, payments, plans, onOpenPaz, appTypes, onGoAgenda, templates }) {
   const t = today();
@@ -904,3 +907,4 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
     </div>
   );
 }
+
