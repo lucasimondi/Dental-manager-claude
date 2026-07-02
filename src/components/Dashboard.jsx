@@ -55,8 +55,20 @@ const saveWidgets = (ws) => {
 const NOMI_F = ['alessia','alice','anna','beatrice','camilla','chiara','claudia','elena','elisa','emma','federica','francesca','giulia','ilaria','laura','lisa','lucia','luisa','mara','maria','marina','martina','monica','paola','roberta','sara','silvia','sofia','valentina','veronica','virginia'];
 const getSaluto = (nome) => { if (!nome) return 'Benvenuto'; const ora = new Date().getHours(); const s = ora < 12 ? 'Buongiorno' : ora < 18 ? 'Buon pomeriggio' : 'Buonasera'; const p = nome.trim().split(' ')[0].toLowerCase(); const fem = NOMI_F.includes(p) || (p.endsWith('a') && !['luca','andrea','mattia','nicola','enea'].includes(p)); return s + ', ' + (fem ? 'cara ' : 'caro ') + nome.trim().split(' ')[0]; };
 
-export default function Dashboard({ patients, appointments, payments, plans, onOpenPaz, appTypes, onGoAgenda, templates, userName }) {
+export default function Dashboard({ patients, appointments, payments, plans, onOpenPaz, appTypes, onGoAgenda, templates, userName: userNameProp }) {
   const t = today();
+  const [userNameLocal, setUserNameLocal] = useState(userNameProp || '');
+
+  useEffect(() => {
+    import('../lib/supabase.js').then(({ supabase }) => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        const m = session?.user?.user_metadata;
+        if (m?.nome) setUserNameLocal((m.nome + ' ' + (m.cognome || '')).trim());
+      });
+    });
+  }, []);
+
+  const userName = userNameLocal || userNameProp || '';
   const anno = t.slice(0, 4);
   const [detailModal, setDetailModal] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -676,6 +688,16 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
         <button onClick={() => setSettingsOpen(true)} style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 10, padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, color: C.txm, fontSize: 12, fontWeight: 700 }}>
           <Ic n="set" s={14} c={C.txm} /> Personalizza
         </button>
+      </div>
+
+      {/* SALUTO */}
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ fontSize: 24, fontWeight: 900, color: C.txt, letterSpacing: '-0.5px' }}>
+          {getSaluto(userName)}
+        </div>
+        <div style={{ fontSize: 12, color: C.txm, marginTop: 3 }}>
+          {new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+        </div>
       </div>
 
       {/* ── WIDGET ORDINATI DINAMICAMENTE ── */}
