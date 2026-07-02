@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase, DB } from './lib/supabase.js';
 import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_APP_TYPES, NAV } from './lib/utils';
 import { Ic } from './components/ui';
@@ -28,11 +28,20 @@ export default function App() {
   const [templates, setTemplates] = useState([]);
   const [studioInfo, setStudioInfo] = useState(DEF_STUDIO);
   const [appTypes, setAppTypes] = useState([]);
+  const [userName, setUserName] = useState('');
   const [implants, setImplants] = useState([]);
   const [initPatId, setInitPatId] = useState(null);
-  const [userName, setUserName] = useState('');`n  const [agendaInitPaz, setAgendaInitPaz] = useState(null);
+  const [agendaInitPaz, setAgendaInitPaz] = useState(null);
   const [schedaDashPaz, setSchedaDashPaz] = useState(null);
   const [syncError, setSyncError] = useState(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.user_metadata?.nome) {
+        setUserName(user.user_metadata.nome + ' ' + (user.user_metadata.cognome || ''));
+      }
+    });
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -172,16 +181,16 @@ export default function App() {
         <div style={{ background: C.acc, borderRadius: 7, padding: 5 }}><Ic n="tooth" s={16} c="#fff" /></div>
         <span style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>DentalManager</span>
         <div style={{ marginLeft: 'auto', fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ color: 'rgba(255,255,255,0.7)' }}>{studioInfo?.nome || session?.user?.email?.split('@')[0] || ''}</span><span>·</span><div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}><span style={{ color: "#fff", fontWeight: 700, fontSize: 11 }}>{studioInfo?.nome || session?.user?.email?.split("@")[0] || ""}</span><span style={{ color: "rgba(255,255,255,0.5)", fontSize: 9 }}>{session?.user?.email || ""}</span></div><span style={{ color: "rgba(255,255,255,0.3)" }}>·</span><span>{NAV.find((n) => n.id === page)?.l}</span>
+          <span>{NAV.find((n) => n.id === page)?.l}</span>
           <button onClick={handleLogout} title="Esci" style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, padding: '4px 8px', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>Esci</button>
         </div>
       </div>
 
       {syncError && (
         <div style={{ background: C.danL, borderBottom: `2px solid ${C.dan}`, padding: '9px 14px', display: 'flex', alignItems: 'flex-start', gap: 8, flexShrink: 0 }}>
-          <span style={{ fontSize: 15, flexShrink: 0 }}>âš ï¸</span>
+          <span style={{ fontSize: 15, flexShrink: 0 }}>⚠️</span>
           <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: '#C53030', lineHeight: 1.4 }}>{syncError}</span>
-          <button onClick={() => setSyncError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, flexShrink: 0, color: '#C53030', fontWeight: 800, fontSize: 14 }}>âœ•</button>
+          <button onClick={() => setSyncError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, flexShrink: 0, color: '#C53030', fontWeight: 800, fontSize: 14 }}>✕</button>
         </div>
       )}
 
@@ -200,7 +209,7 @@ export default function App() {
       )}
 
       <div id="app-scroll" style={{ flex: 1, overflowY: 'auto', padding: 13, paddingBottom: 78 }}>
-        {page === 'home' && <Dashboard patients={patients} appointments={appointments} payments={payments} plans={plans} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} templates={templates} userName={userName || session?.user?.user_metadata?.nome || session?.user?.email?.split('@')[0] || ''} />}
+        {page === 'home' && <Dashboard patients={patients} appointments={appointments} payments={payments} plans={plans} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} templates={templates} userName={userName} />}
         {page === 'paz' && (
           <Pazienti
             patients={patients} setPatients={setPatientsSync}
@@ -223,7 +232,7 @@ export default function App() {
         )}
         {page === 'paga' && <Pagamenti patients={patients} payments={payments} setPayments={setPaymentsSync} plans={plans} />}
         {page === 'listino' && <Listino pricelist={pricelist} setPricelist={setPricelistSync} />}
-        {page === 'agenda' && <Agenda patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName || session?.user?.user_metadata?.nome || session?.user?.email?.split('@')[0] || ''} />}
+        {page === 'agenda' && <Agenda patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} />}
         {page === 'spese' && <Spese />}
         {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} />}
         {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
@@ -245,10 +254,3 @@ export default function App() {
     </div>
   );
 }
-
-
-
-
-
-
-
