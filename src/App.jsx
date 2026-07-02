@@ -167,7 +167,7 @@ export default function App() {
   if (session === null) return <LoginScreen onLogin={() => {}} />;
   if (dataLoading) return <LoadingScreen />;
 
-  if (authLoading) return (
+  
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0F2940' }}>
       <div style={{ fontSize: 40 }}>🦷</div>
     </div>
