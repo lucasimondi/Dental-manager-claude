@@ -1,14 +1,15 @@
+﻿import GestioneUtenti from './GestioneUtenti.jsx';
 import React, { useState } from 'react';
 import { Btn, Crd, Fld, Inp, Txt, Modal, Toast, Ic } from './ui';
 import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI } from '../lib/utils';
 
-export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes }) {
+export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId }) {
   const [si, setSi] = useState({ ...DEF_STUDIO, ...(studioInfo || {}) });
   const [toast, setToast] = useState('');
   const [tipoModal, setTipoModal] = useState(null);
   const [tipoForm, setTipoForm] = useState({ nome: '', colore: COLORI_DISPONIBILI[0] });
   const S = (f) => setSi((s) => ({ ...s, ...f }));
-  const save = () => { setStudioInfo(si); setToast('Salvato ✓'); };
+  const save = () => { setStudioInfo(si); setToast('Salvato âœ“'); };
 
   const openNewTipo = () => { setTipoForm({ nome: '', colore: COLORI_DISPONIBILI[Math.floor(Math.random() * COLORI_DISPONIBILI.length)] }); setTipoModal('new'); };
   const openEditTipo = (t) => { setTipoForm({ ...t }); setTipoModal(t.id); };
@@ -39,9 +40,9 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           {si.iscr && <div style={{ fontSize: 10, color: '#4A90C4' }}>{si.iscr}</div>}
         </div>
         <div style={{ borderTop: `1px solid ${C.brd}`, marginTop: 8, paddingTop: 7, display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap', gap: 5 }}>
-          {si.tel && <span style={{ fontSize: 10, color: C.txm }}>📞 {si.tel}</span>}
-          {si.addr1 && <span style={{ fontSize: 10, color: C.txm }}>📍 {si.addr1}</span>}
-          {si.email && <span style={{ fontSize: 10, color: C.txm }}>✉️ {si.email}</span>}
+          {si.tel && <span style={{ fontSize: 10, color: C.txm }}>ðŸ“ž {si.tel}</span>}
+          {si.addr1 && <span style={{ fontSize: 10, color: C.txm }}>ðŸ“ {si.addr1}</span>}
+          {si.email && <span style={{ fontSize: 10, color: C.txm }}>âœ‰ï¸ {si.email}</span>}
         </div>
       </Crd>
       <Crd style={{ marginBottom: 11 }}>
@@ -60,9 +61,9 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       </Crd>
       <Crd style={{ marginBottom: 11 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Note legali PDF</div>
-        <Txt value={si.note} onChange={(e) => S({ note: e.target.value })} rows={3} placeholder="Il preventivo è valido 30 giorni…" />
+        <Txt value={si.note} onChange={(e) => S({ note: e.target.value })} rows={3} placeholder="Il preventivo Ã¨ valido 30 giorniâ€¦" />
       </Crd>
-      <Btn ch="💾 Salva impostazioni" onClick={save} full sz="lg" />
+      <Btn ch="ðŸ’¾ Salva impostazioni" onClick={save} full sz="lg" />
 
       <div style={{ marginTop: 26, marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Agenda</div>
@@ -82,14 +83,23 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
 
       {tipoModal && (
         <Modal title={tipoModal === 'new' ? 'Nuovo tipo appuntamento' : 'Modifica tipo'} onClose={() => setTipoModal(null)}>
-          <Fld label="Nome"><Inp value={tipoForm.nome} onChange={(e) => setTipoForm((f) => ({ ...f, nome: e.target.value }))} placeholder="es. Igiene, Urgenza, Controllo…" /></Fld>
+          <Fld label="Nome"><Inp value={tipoForm.nome} onChange={(e) => setTipoForm((f) => ({ ...f, nome: e.target.value }))} placeholder="es. Igiene, Urgenza, Controlloâ€¦" /></Fld>
           <Fld label="Colore">
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8, marginBottom: 10 }}>
               {COLORI_DISPONIBILI.map((c) => (
                 <button key={c} onClick={() => setTipoForm((f) => ({ ...f, colore: c }))} style={{ width: '100%', aspectRatio: '1', borderRadius: 9, background: c, border: tipoForm.colore === c ? `3px solid ${C.txt}` : '1px solid rgba(0,0,0,0.1)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                   {tipoForm.colore === c && <Ic n="ok" s={14} c="#fff" />}
                 </button>
               ))}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: C.txm }}>Colore personalizzato:</div>
+              <div style={{ position: 'relative' }}>
+                <input type="color" value={tipoForm.colore} onChange={e => setTipoForm(f => ({ ...f, colore: e.target.value }))} style={{ width: 40, height: 32, border: `1.5px solid ${C.brd}`, borderRadius: 8, cursor: 'pointer', padding: 2, background: 'none' }} />
+              </div>
+              <div style={{ background: tipoForm.colore, borderRadius: 7, padding: '4px 10px' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>{tipoForm.colore}</span>
+              </div>
             </div>
           </Fld>
           <div style={{ background: C.bg, borderRadius: 9, padding: 10, marginTop: 6, marginBottom: 11, display: 'flex', alignItems: 'center', gap: 9 }}>
@@ -103,6 +113,10 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           </div>
         </Modal>
       )}
+    <GestioneUtenti studioId={studioInfo?.id || '00000000-0000-0000-0000-000000000001'} currentUserId={currentUserId} />
     </div>
   );
 }
+
+
+
