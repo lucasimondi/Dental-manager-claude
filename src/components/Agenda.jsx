@@ -25,13 +25,13 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   }, []);
 
   useEffect(() => {
+    // Scroll to oraInizio (8:00) - position 0 corrisponde all'inizio della griglia
+    // che parte già da oraInizio, quindi scroll = 0 mostra dalle 8:00
     if (scrollRef.current) {
-      const pct = Math.max(0, (9 - oraInizio) / Math.max(1, slots.length));
-      const top = pct * slots.length * slotH * 0.4;
-      scrollRef.current.scrollTop = top;
-      if (gridScrollRef.current) gridScrollRef.current.scrollTop = top;
+      scrollRef.current.scrollTop = 0;
+      if (gridScrollRef.current) gridScrollRef.current.scrollTop = 0;
     }
-  }, []);
+  }, [oraInizio, slotH]);
 
   // Resize mouse handlers
   useEffect(() => {
@@ -68,7 +68,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
       {/* Colonna ore */}
       <div style={{ width: 46, flexShrink: 0, borderRight: `1.5px solid ${C.brd}`, display: 'flex', flexDirection: 'column', background: '#fafbfc' }}>
         <div style={{ height: 44, borderBottom: `1.5px solid ${C.brd}`, flexShrink: 0 }} />
-        <div ref={scrollRef} onScroll={syncFromHours} style={{ flex: 1, overflowY: 'auto' }}>
+        <div ref={scrollRef} onScroll={syncFromHours} style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
           {slots.map((slot) => {
             const isHour = slot.endsWith(':00');
             return (
@@ -99,7 +99,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
         </div>
 
         {/* Griglia */}
-        <div ref={gridScrollRef} onScroll={syncFromGrid} style={{ flex: 1, overflowY: 'auto', display: 'flex', position: 'relative' }}>
+        <div ref={gridScrollRef} onScroll={syncFromGrid} style={{ flex: 1, overflowY: 'auto', display: 'flex', position: 'relative', WebkitOverflowScrolling: 'touch', scrollBehavior: 'auto' }}>
           {days.map((d, di) => {
             const ds = toISO(d);
             const dayApps = appointments.filter(a => a.data === ds).sort((a, b) => a.ora.localeCompare(b.ora));
@@ -188,7 +188,11 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
     }
   }, [initPazienteId]);
 
-  const slotH = slotMin === 15 ? 36 : slotMin === 30 ? 48 : 64;
+  // Calcola slotH per far stare 8-20 nello schermo senza scroll
+  // viewport stimato ~700px mobile, togliamo ~180px di header/tab
+  const visiblePx = Math.max(400, (typeof window !== 'undefined' ? window.innerHeight : 700) - 180);
+  const slotsPerView = (20 - 8) * (60 / slotMin); // slot nelle 12 ore visibili
+  const slotH = Math.max(14, Math.floor(visiblePx / slotsPerView));
   const slots = [];
   for (let h = oraInizio; h < oraFine; h++) {
     for (let m = 0; m < 60; m += slotMin) {
