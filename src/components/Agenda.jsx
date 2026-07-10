@@ -25,13 +25,11 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   }, []);
 
   useEffect(() => {
-    // Scroll to oraInizio (8:00) - position 0 corrisponde all'inizio della griglia
-    // che parte già da oraInizio, quindi scroll = 0 mostra dalle 8:00
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = 0;
-      if (gridScrollRef.current) gridScrollRef.current.scrollTop = 0;
-    }
-  }, [oraInizio, slotH]);
+    // Scroll iniziale alle 08:00
+    const top8 = (8 * 60 / slotMin) * slotH;
+    if (scrollRef.current) scrollRef.current.scrollTop = top8;
+    if (gridScrollRef.current) gridScrollRef.current.scrollTop = top8;
+  }, [slotH, slotMin]);
 
   // Resize mouse handlers
   useEffect(() => {
@@ -55,20 +53,30 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
     };
   }, [resizing, slotH, slotMin]);
 
-  const syncFromHours = (e) => { if (gridScrollRef.current) gridScrollRef.current.scrollTop = e.target.scrollTop; };
-  const syncFromGrid = (e) => { if (scrollRef.current) scrollRef.current.scrollTop = e.target.scrollTop; };
+  const syncing = useRef(false);
+  const syncFromHours = (e) => {
+    if (syncing.current) return;
+    syncing.current = true;
+    if (gridScrollRef.current) gridScrollRef.current.scrollTop = e.target.scrollTop;
+    requestAnimationFrame(() => { syncing.current = false; });
+  };
+  const syncFromGrid = (e) => {
+    if (syncing.current) return;
+    syncing.current = true;
+    if (scrollRef.current) scrollRef.current.scrollTop = e.target.scrollTop;
+    requestAnimationFrame(() => { syncing.current = false; });
+  };
 
   const nowMin = now.getHours() * 60 + now.getMinutes();
-  const startMin = oraInizio * 60;
-  const nowTop = ((nowMin - startMin) / slotMin) * slotH;
-  const showNowLine = nowTop >= 0 && nowTop <= slots.length * slotH;
+  const nowTop = (nowMin / slotMin) * slotH;
+  const showNowLine = true;
 
   return (
     <div style={{ display: 'flex', flex: 1, overflow: 'hidden', border: `1px solid ${C.brd}`, borderRadius: 12, background: '#fff', minHeight: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
       {/* Colonna ore */}
       <div style={{ width: 46, flexShrink: 0, borderRight: `1.5px solid ${C.brd}`, display: 'flex', flexDirection: 'column', background: '#fafbfc' }}>
         <div style={{ height: 44, borderBottom: `1.5px solid ${C.brd}`, flexShrink: 0 }} />
-        <div ref={scrollRef} onScroll={syncFromHours} style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div ref={scrollRef} onScroll={syncFromHours} style={{ flex: 1, overflowY: 'scroll', WebkitOverflowScrolling: 'touch' }}>
           {slots.map((slot) => {
             const isHour = slot.endsWith(':00');
             return (
@@ -99,7 +107,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
         </div>
 
         {/* Griglia */}
-        <div ref={gridScrollRef} onScroll={syncFromGrid} style={{ flex: 1, overflowY: 'auto', display: 'flex', position: 'relative', WebkitOverflowScrolling: 'touch', scrollBehavior: 'auto' }}>
+        <div ref={gridScrollRef} onScroll={syncFromGrid} style={{ flex: 1, overflowY: 'scroll', display: 'flex', position: 'relative', WebkitOverflowScrolling: 'touch' }}>
           {days.map((d, di) => {
             const ds = toISO(d);
             const dayApps = appointments.filter(a => a.data === ds).sort((a, b) => a.ora.localeCompare(b.ora));
@@ -188,13 +196,10 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
     }
   }, [initPazienteId]);
 
-  // Calcola slotH per far stare 8-20 nello schermo senza scroll
-  // viewport stimato ~700px mobile, togliamo ~180px di header/tab
-  const visiblePx = Math.max(400, (typeof window !== 'undefined' ? window.innerHeight : 700) - 180);
-  const slotsPerView = (20 - 8) * (60 / slotMin); // slot nelle 12 ore visibili
-  const slotH = Math.max(14, Math.floor(visiblePx / slotsPerView));
+  const slotH = slotMin === 15 ? 24 : slotMin === 30 ? 48 : 64;
+  // Griglia sempre 00:00 - 24:00
   const slots = [];
-  for (let h = oraInizio; h < oraFine; h++) {
+  for (let h = 0; h < 24; h++) {
     for (let m = 0; m < 60; m += slotMin) {
       slots.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
     }
@@ -204,7 +209,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
 
   const appPosition = (a) => {
     const [ah, am] = a.ora.split(':').map(Number);
-    const min = (ah - oraInizio) * 60 + am;
+    const min = ah * 60 + am; // dalla mezzanotte
     const top = (min / slotMin) * slotH;
     const height = Math.max((Number(a.durata) / slotMin) * slotH - 2, slotH * 0.6);
     return { top, height };
