@@ -13,8 +13,7 @@ const startOfWeek = (d) => {
 };
 
 function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t }) {
-  const scrollRef = useRef(null);
-  const gridScrollRef = useRef(null);
+  const containerRef = useRef(null); // unico scroll container
   const resizeRef = useRef(null);
   const [now, setNow] = useState(new Date());
   const [resizing, setResizing] = useState(null); // { id, startY, startDurata }
@@ -27,8 +26,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   useEffect(() => {
     // Scroll iniziale alle 08:00
     const top8 = (8 * 60 / slotMin) * slotH;
-    if (scrollRef.current) scrollRef.current.scrollTop = top8;
-    if (gridScrollRef.current) gridScrollRef.current.scrollTop = top8;
+    if (containerRef.current) containerRef.current.scrollTop = top8;
   }, [slotH, slotMin]);
 
   // Resize mouse handlers
@@ -53,19 +51,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
     };
   }, [resizing, slotH, slotMin]);
 
-  const syncing = useRef(false);
-  const syncFromHours = (e) => {
-    if (syncing.current) return;
-    syncing.current = true;
-    if (gridScrollRef.current) gridScrollRef.current.scrollTop = e.target.scrollTop;
-    requestAnimationFrame(() => { syncing.current = false; });
-  };
-  const syncFromGrid = (e) => {
-    if (syncing.current) return;
-    syncing.current = true;
-    if (scrollRef.current) scrollRef.current.scrollTop = e.target.scrollTop;
-    requestAnimationFrame(() => { syncing.current = false; });
-  };
+
 
   const nowMin = now.getHours() * 60 + now.getMinutes();
   const nowTop = (nowMin / slotMin) * slotH;
@@ -73,25 +59,11 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
 
   return (
     <div style={{ display: 'flex', flex: 1, overflow: 'hidden', border: `1px solid ${C.brd}`, borderRadius: 12, background: '#fff', minHeight: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-      {/* Colonna ore */}
-      <div style={{ width: 46, flexShrink: 0, borderRight: `1.5px solid ${C.brd}`, display: 'flex', flexDirection: 'column', background: '#fafbfc' }}>
-        <div style={{ height: 44, borderBottom: `1.5px solid ${C.brd}`, flexShrink: 0 }} />
-        <div ref={scrollRef} onScroll={syncFromHours} style={{ flex: 1, overflowY: 'scroll', WebkitOverflowScrolling: 'touch' }}>
-          {slots.map((slot) => {
-            const isHour = slot.endsWith(':00');
-            return (
-              <div key={slot} style={{ height: slotH, borderBottom: `1px solid ${isHour ? C.brd : C.brd + '40'}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: 5, paddingTop: 2, boxSizing: 'border-box' }}>
-                <span style={{ fontSize: isHour ? 9.5 : 8, color: isHour ? C.txm : C.txl, fontWeight: isHour ? 800 : 500 }}>{isHour ? slot : ''}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Colonne giorni */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {/* Header */}
+
+        {/* Header fisso: angolo vuoto + giorni */}
         <div style={{ display: 'flex', borderBottom: `1.5px solid ${C.brd}`, height: 44, flexShrink: 0, background: '#fafbfc' }}>
+          <div style={{ width: 46, flexShrink: 0, borderRight: `1.5px solid ${C.brd}` }} />
           {days.map((d, di) => {
             const ds = toISO(d);
             const isToday = ds === t;
@@ -106,8 +78,24 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
           })}
         </div>
 
-        {/* Griglia */}
-        <div ref={gridScrollRef} onScroll={syncFromGrid} style={{ flex: 1, overflowY: 'scroll', display: 'flex', position: 'relative', WebkitOverflowScrolling: 'touch' }}>
+        {/* UN SOLO contenitore scrollabile — ore sticky a sinistra */}
+        <div ref={containerRef} style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', position: 'relative' }}>
+          <div style={{ display: 'flex', minHeight: slots.length * slotH }}>
+
+            {/* Colonna ore — sticky */}
+            <div style={{ width: 46, flexShrink: 0, borderRight: `1.5px solid ${C.brd}`, background: '#fafbfc', position: 'sticky', left: 0, zIndex: 3 }}>
+              {slots.map((slot) => {
+                const isHour = slot.endsWith(':00');
+                return (
+                  <div key={slot} style={{ height: slotH, borderBottom: `1px solid ${isHour ? C.brd : C.brd + '40'}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: 5, paddingTop: 2, boxSizing: 'border-box' }}>
+                    <span style={{ fontSize: isHour ? 9.5 : 8, color: isHour ? C.txm : C.txl, fontWeight: isHour ? 800 : 500 }}>{isHour ? slot : ''}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Griglia giorni */}
+            <div style={{ flex: 1, display: 'flex', position: 'relative' }}>
           {days.map((d, di) => {
             const ds = toISO(d);
             const dayApps = appointments.filter(a => a.data === ds).sort((a, b) => a.ora.localeCompare(b.ora));
@@ -158,6 +146,8 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
               </div>
             );
           })}
+            </div>
+          </div>
         </div>
       </div>
     </div>
