@@ -186,7 +186,9 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
     }
   }, [initPazienteId]);
 
-  const slotH = slotMin === 15 ? 24 : slotMin === 30 ? 48 : 64;
+  // slotH calcolato per far stare 8-20 (12 ore) nello schermo mobile (~700px - 180px header)
+  const availH = typeof window !== 'undefined' ? Math.max(400, window.innerHeight - 180) : 520;
+  const slotH = Math.floor(availH / (12 * 60 / slotMin));
   // Griglia sempre 00:00 - 24:00
   const slots = [];
   for (let h = 0; h < 24; h++) {
