@@ -23,6 +23,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
   const [waModal, setWaModal] = useState(false);
   const [pagModal, setPagModal] = useState(false);
   const [pagForm, setPagForm] = useState({ importo: '', metodo: 'Contanti', nota: '', data: today(), pianoId: '' });
+  const [pagVoceCtx, setPagVoceCtx] = useState(null); // { plId, voceIndex } quando la modale è aperta da "Da incassare" su una singola voce
   const [waMsg, setWaMsg] = useState('');
   const [waTplId, setWaTplId] = useState('');
   const [appForm, setAppForm] = useState({ data: today(), ora: '09:00', durata: 30, tipo: 'Visita di controllo', note: '', stato: 'confermato' });
@@ -496,7 +497,15 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                           {v.eseguita ? '✓ Eseguita' : '○ Segna eseguita'}
                         </button>
                         {v.eseguita && (
-                          <button onClick={() => toggleIncassata(pl.id, i)} style={{ flex: 1, padding: '6px 0', borderRadius: 7, border: `1.5px solid ${v.incassata ? C.suc : C.dan}`, background: v.incassata ? C.sucL : C.danL, color: v.incassata ? C.suc : C.dan, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
+                          <button onClick={() => {
+                            if (v.incassata) {
+                              if (confirm('Annullare l\'incasso di questa prestazione? Il pagamento già registrato in Pagamenti non verrà eliminato automaticamente.')) toggleIncassata(pl.id, i);
+                              return;
+                            }
+                            setPagVoceCtx({ plId: pl.id, voceIndex: i });
+                            setPagForm({ importo: Number(v.prezzo).toFixed(2), metodo: 'Contanti', nota: `${v.prestazione}${v.dente ? ` (d.${v.dente})` : ''}`, data: today(), pianoId: String(pl.id), stato: 'pagato' });
+                            setPagModal(true);
+                          }} style={{ flex: 1, padding: '6px 0', borderRadius: 7, border: `1.5px solid ${v.incassata ? C.suc : C.dan}`, background: v.incassata ? C.sucL : C.danL, color: v.incassata ? C.suc : C.dan, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
                             {v.incassata ? '€ Incassata' : '€ Da incassare'}
                           </button>
                         )}
@@ -618,7 +627,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Situazione finanziaria</div>
             <div style={{ display: 'flex', gap: 6 }}>
-              <button onClick={() => { setPagForm({ importo: totDaPagare > 0 ? totDaPagare.toFixed(2) : '', metodo: 'Contanti', nota: '', data: today(), pianoId: '' }); setPagModal(true); }} style={{ background: '#86efac', border: 'none', borderRadius: 8, padding: '6px 11px', color: '#166534', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>+ Pagamento</button>
+              <button onClick={() => { setPagVoceCtx(null); setPagForm({ importo: totDaPagare > 0 ? totDaPagare.toFixed(2) : '', metodo: 'Contanti', nota: '', data: today(), pianoId: '' }); setPagModal(true); }} style={{ background: '#86efac', border: 'none', borderRadius: 8, padding: '6px 11px', color: '#166534', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>+ Pagamento</button>
               <button onClick={() => setDocFiscale(true)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, padding: '6px 11px', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>📄 Fattura</button>
             </div>
           </div>
@@ -798,7 +807,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
         const nonEseguito = plSel && importoNum > 0 && eseguitoNonIncassato === 0;
         const isAnticipo = plSel && importoNum > 0 && importoNum > eseguitoNonIncassato && eseguitoNonIncassato > 0;
         return (
-          <Modal title="💳 Registra pagamento" onClose={() => setPagModal(false)}>
+          <Modal title="💳 Registra pagamento" onClose={() => { setPagModal(false); setPagVoceCtx(null); }}>
             <div style={{ background: C.priD, borderRadius: 10, padding: 12, marginBottom: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <div><div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Dovuto</div><div style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{fmt(totDovuto)}</div></div>
@@ -865,14 +874,26 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
             </div>
             <Fld label="Note (opzionale)"><Inp value={pagForm.nota} onChange={e => setPagForm(f => ({ ...f, nota: e.target.value }))} /></Fld>
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-              <Btn ch="Annulla" v="sec" onClick={() => setPagModal(false)} full />
+              <Btn ch="Annulla" v="sec" onClick={() => { setPagModal(false); setPagVoceCtx(null); }} full />
               <Btn ch={nonEseguito ? 'Registra anticipo' : 'Salva pagamento'} onClick={() => {
                 if (!pagForm.importo) return;
                 const stato = nonEseguito ? 'acconto' : (pagForm.stato || 'pagato');
                 const nota = nonEseguito && !pagForm.nota ? 'Anticipo — prestazioni da eseguire' : pagForm.nota;
                 const recordPag = { id: Date.now(), pazienteId: paz.id, data: pagForm.data, importo: Number(pagForm.importo), metodo: pagForm.metodo, nota, stato };
                 if (setPayments) setPayments(prev => [...prev, recordPag]);
+
+                // Aggiorna lo stato "incassata" sulle voci coerentemente col pagamento appena registrato
+                if (pagVoceCtx) {
+                  // Pagamento avviato dal singolo bottone "Da incassare" → marca solo quella voce
+                  const { plId, voceIndex } = pagVoceCtx;
+                  setPlans(prev => prev.map(pl => (pl.id === plId ? { ...pl, voci: pl.voci.map((v, j) => (j === voceIndex ? { ...v, incassata: true } : v)) } : pl)));
+                } else if (plSel && !nonEseguito && importoNum >= eseguitoNonIncassato) {
+                  // Pagamento generico su un piano che copre (o supera) tutto l'eseguito non incassato → marca tutte quelle voci
+                  setPlans(prev => prev.map(pl => (pl.id === plSel.id ? { ...pl, voci: pl.voci.map(v => (v.eseguita && !v.incassata ? { ...v, incassata: true } : v)) } : pl)));
+                }
+
                 setPagModal(false);
+                setPagVoceCtx(null);
               }} dis={!pagForm.importo} full />
             </div>
           </Modal>
