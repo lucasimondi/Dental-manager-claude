@@ -1,8 +1,8 @@
 ﻿import ProfiloUtente from './ProfiloUtente.jsx';
 import GestioneUtenti from './GestioneUtenti.jsx';
 import React, { useState } from 'react';
-import { Btn, Crd, Fld, Inp, Txt, Modal, Toast, Ic } from './ui';
-import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI } from '../lib/utils';
+import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Ic } from './ui';
+import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI } from '../lib/utils';
 
 export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange }) {
   const [si, setSi] = useState({ ...DEF_STUDIO, ...(studioInfo || {}) });
@@ -45,6 +45,15 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           {si.addr1 && <span style={{ fontSize: 10, color: C.txm }}>ðŸ“ {si.addr1}</span>}
           {si.email && <span style={{ fontSize: 10, color: C.txm }}>âœ‰ï¸ {si.email}</span>}
         </div>
+      </Crd>
+      <Crd style={{ marginBottom: 11 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Tipo di studio</div>
+        <Fld label="Ambito professionale">
+          <Sel value={si.vertical || 'dentistico'} onChange={(e) => S({ vertical: e.target.value })}>
+            {VERTICALI_DISPONIBILI.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
+          </Sel>
+        </Fld>
+        <div style={{ fontSize: 11, color: C.txl, marginTop: 4 }}>Determina quali moduli specifici (es. ortodonzia, impianti) sono visibili nell'app.</div>
       </Crd>
       <Crd style={{ marginBottom: 11 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Intestazione PDF</div>

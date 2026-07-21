@@ -5,6 +5,7 @@ import Odontogramma from './Odontogramma.jsx';
 import PdfView from './PdfView.jsx';
 
 export default function Piani({ patients, plans, setPlans, pricelist, templates, si, initPatId, onClearInitPat, onOpenPaz }) {
+  const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const [modal, setModal] = useState(false);
   const [pazSearch, setPazSearch] = useState('');
   const ortoVuoto = { attivo: false, mascherineTotali: '', frequenzaSettimane: 2, dataConsegnaInizio: '', mascherineConsegnate: 0, storico: [] };
@@ -334,6 +335,7 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
             <Inp type="date" value={form.scadenzaPagamento || ''} onChange={(e) => setForm((f) => ({ ...f, scadenzaPagamento: e.target.value, _presetScadenza: null }))} />
           </Fld>
 
+          {isDentistico && (
           <div style={{ background: form.ortodonzia?.attivo ? C.purL : C.bg, borderRadius: 10, padding: 11, marginBottom: 11, border: form.ortodonzia?.attivo ? `1.5px solid ${C.pur}40` : 'none' }}>
             <button onClick={() => setForm((f) => ({ ...f, ortodonzia: f.ortodonzia?.attivo ? { ...ortoVuoto } : { ...ortoVuoto, attivo: true } }))} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0, width: '100%' }}>
               <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${form.ortodonzia?.attivo ? C.pur : C.brd}`, background: form.ortodonzia?.attivo ? C.pur : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -367,6 +369,7 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
               </div>
             )}
           </div>
+          )}
 
           <div style={{ background: C.bg, borderRadius: 10, padding: 11, marginBottom: 11 }}>
             <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 9 }}>Aggiungi prestazione</div>

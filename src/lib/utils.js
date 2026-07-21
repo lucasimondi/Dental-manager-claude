@@ -150,6 +150,7 @@ export const DEF_TPL = [
 ];
 
 export const DEF_STUDIO = {
+  vertical: 'dentistico',
   nome: 'Dott. Luca Simondi',
   spec: 'Medico Odontoiatra · Chirurgo Orale · Medico Estetico',
   iscr: 'Iscr. Ordine Medici ed Odontoiatri Cuneo 0577',
@@ -170,6 +171,14 @@ export const DEF_APP_TYPES = [
   { id: 6, nome: 'Protesi', colore: '#F4A261' },
   { id: 7, nome: 'Ortodonzia', colore: '#EC4899' },
   { id: 8, nome: 'Urgenza', colore: '#DC2626' },
+];
+
+export const VERTICALI_DISPONIBILI = [
+  { id: 'dentistico', label: 'Studio dentistico' },
+  { id: 'medico_generico', label: 'Studio medico generico' },
+  { id: 'estetico', label: 'Studio estetico / medicina estetica' },
+  { id: 'psicologico', label: 'Studio psicologico' },
+  { id: 'altro', label: 'Altro professionista sanitario' },
 ];
 
 export const COLORI_DISPONIBILI = [

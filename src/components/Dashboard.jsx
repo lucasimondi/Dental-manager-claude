@@ -55,7 +55,8 @@ const saveWidgets = (ws) => {
 const NOMI_F = ['alessia','alice','anna','beatrice','camilla','chiara','claudia','elena','elisa','emma','federica','francesca','giulia','ilaria','laura','lisa','lucia','luisa','mara','maria','marina','martina','monica','paola','roberta','sara','silvia','sofia','valentina','veronica','virginia'];
 const getSaluto = (nome) => { if (!nome) return 'Benvenuto'; const ora = new Date().getHours(); const s = ora < 12 ? 'Buongiorno' : ora < 18 ? 'Buon pomeriggio' : 'Buonasera'; const p = nome.trim().split(' ')[0].toLowerCase(); const fem = NOMI_F.includes(p) || (p.endsWith('a') && !['luca','andrea','mattia','nicola','enea'].includes(p)); return s + ', ' + (fem ? 'cara ' : 'caro ') + nome.trim().split(' ')[0]; };
 
-export default function Dashboard({ patients, appointments, payments, plans, onOpenPaz, appTypes, onGoAgenda, templates, userName: userNameProp }) {
+export default function Dashboard({ patients, appointments, payments, plans, onOpenPaz, appTypes, onGoAgenda, templates, userName: userNameProp, si }) {
+  const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const t = today();
   const [userName, setUserName] = useState(userNameProp || '');
 
@@ -786,11 +787,13 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
                 <div style={{ fontSize: 22, fontWeight: 900, color: scadenzeScadute.length > 0 ? C.dan : C.pri, marginTop: 4 }}>{scadenzePagamento.length}</div>
                 <div style={{ fontSize: 10, color: C.txl }}>{scadenzeScadute.length} scadute · {scadenzeProssime.length} prossime</div>
               </div>
+              {isDentistico && (
               <div onClick={() => setDetailModal('orto')} style={{ background: pianiOrto.some(o => o.cambioScaduto) ? C.danL : C.purL, borderRadius: 12, padding: 12, border: `1px solid ${pianiOrto.some(o => o.cambioScaduto) ? C.dan : C.pur}25`, cursor: 'pointer' }}>
                 <div style={{ fontSize: 10, fontWeight: 800, color: pianiOrto.some(o => o.cambioScaduto) ? C.dan : C.pur, textTransform: 'uppercase' }}>🦷 Ortodonzia</div>
                 <div style={{ fontSize: 22, fontWeight: 900, color: pianiOrto.some(o => o.cambioScaduto) ? C.dan : C.pur, marginTop: 4 }}>{pianiOrto.filter(o => !o.completato).length}</div>
                 <div style={{ fontSize: 10, color: C.txl }}>{pianiOrto.filter(o => o.cambioScaduto).length} da cambiare · {pianiOrto.filter(o => o.inAttesa).length} da avviare</div>
               </div>
+              )}
             </div>
           </div>
         );

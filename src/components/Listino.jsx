@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Ic } from './ui';
 import { C, uid, fmt, DEF_PRICE } from '../lib/utils';
 
-export default function Listino({ pricelist, setPricelist }) {
+export default function Listino({ pricelist, setPricelist, si }) {
+  const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const [modal, setModal] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [form, setForm] = useState({ cat: 'Igiene', cod: '', nome: '', prezzo: '' });
@@ -52,9 +53,11 @@ export default function Listino({ pricelist, setPricelist }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8, flexWrap: 'wrap' }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Listino</div>
         <div style={{ display: 'flex', gap: 6 }}>
+          {isDentistico && (
           <button onClick={caricaListinoStudio} style={{ background: C.purL, border: 'none', borderRadius: 10, padding: '10px 12px', color: C.pur, fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
             🔄 Aggiorna listino
           </button>
+          )}
           <Btn ch="Nuova" ic="plus" onClick={openNew} />
         </div>
       </div>

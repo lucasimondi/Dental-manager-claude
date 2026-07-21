@@ -199,7 +199,8 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
   if (docFiscale) return <DocFiscale paz={paz} plans={plans} onClose={() => setDocFiscale(false)} />;
   if (pdfPlan) return <PdfView pl={pdfPlan} paz={paz} si={si} onClose={() => setPdfPlan(null)} />;
 
-  const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'piani', l: '🦷 Piani' }, { id: 'impl', l: '🔩 Impianti' }, { id: 'paga', l: '💰 Pagamenti' }, { id: 'foto', l: '📁 Foto' }, { id: 'doc', l: '📄 Documenti' }, { id: 'app', l: '📅 Agenda' }];
+  const isDentistico = !si?.vertical || si.vertical === 'dentistico';
+  const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'piani', l: '🦷 Piani' }, ...(isDentistico ? [{ id: 'impl', l: '🔩 Impianti' }] : []), { id: 'paga', l: '💰 Pagamenti' }, { id: 'foto', l: '📁 Foto' }, { id: 'doc', l: '📄 Documenti' }, { id: 'app', l: '📅 Agenda' }];
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
@@ -542,7 +543,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
         )}
 
 
-        {tab === 'impl' && (
+        {tab === 'impl' && isDentistico && (
           <div>
             {/* alert corona in scadenza */}
             {patImpianti.filter(im => im.dataCorona && new Date(im.dataCorona + 'T12:00') <= new Date(new Date().setDate(new Date().getDate() + 30))).map(im => (
