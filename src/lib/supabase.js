@@ -74,7 +74,7 @@ const fromDb = (table, row) => {
 
 /* ── DB: interfaccia unificata di accesso dati ── */
 // Tabelle che hanno studio_id
-const STUDIO_TABLES = new Set(['patients','plans','payments','appointments','implants']);
+const STUDIO_TABLES = new Set(['patients','plans','payments','appointments','implants','pricelist','templates','app_types']);
 
 // Recupera studio_id dalla sessione corrente
 const getStudioId = async () => {
