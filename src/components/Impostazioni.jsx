@@ -50,7 +50,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
         <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Tipo di studio</div>
         <Fld label="Ambito professionale">
           <div style={{ padding: '11px 13px', borderRadius: 10, background: C.bg, border: `1.5px solid ${C.brd}`, fontSize: 14, fontWeight: 700, color: C.txt }}>
-            {(VERTICALI_DISPONIBILI.find((v) => v.id === (si.vertical || 'dentistico')) || {}).label}
+            {si.vertical === 'altro' && si.vertical_altro ? si.vertical_altro : (VERTICALI_DISPONIBILI.find((v) => v.id === (si.vertical || 'dentistico')) || {}).label}
           </div>
         </Fld>
         <div style={{ fontSize: 11, color: C.txl, marginTop: 4 }}>Impostato in fase di registrazione e non modificabile, per evitare incoerenze tra i dati (es. listino, template). Contattaci se hai bisogno di cambiarlo.</div>

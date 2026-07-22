@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { jsPDF } from 'jspdf';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Ic } from './ui';
-import { C, fmt, fmtD, today } from '../lib/utils';
+import { C, fmt, fmtD, today, VERTICALI_CON_RICETTA } from '../lib/utils';
 
 
 const TIPI = [
@@ -19,6 +19,10 @@ export default function DocMedico({ paz, si, onClose }) {
   // che ne abbia caricata una da Impostazioni — non solo per Studio Simondi.
   const hasFirma = !!si?.firma_b64;
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
+  // La ricetta medica richiede l'iscrizione all'Ordine dei Medici e Odontoiatri:
+  // disponibile solo per dentisti e medici chirurghi, non per altri professionisti sanitari.
+  const puoiPrescrivere = VERTICALI_CON_RICETTA.has(si?.vertical) || !si?.vertical;
+  const tipiDisponibili = puoiPrescrivere ? TIPI : TIPI.filter((t) => t.id !== 'ricetta');
   const STUDIO = {
     nome: si?.nome || 'Studio',
     spec: si?.spec || '',
@@ -28,7 +32,7 @@ export default function DocMedico({ paz, si, onClose }) {
     email: si?.email || '',
     piva: si?.piva || '',
   };
-  const [tipo, setTipo] = useState('ricetta');
+  const [tipo, setTipo] = useState(puoiPrescrivere ? 'ricetta' : 'certificato');
   const [data, setData] = useState(today());
   const [generated, setGenerated] = useState(false);
 
@@ -377,7 +381,7 @@ export default function DocMedico({ paz, si, onClose }) {
         <Crd style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10 }}>Tipo documento</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {TIPI.map(t => (
+            {tipiDisponibili.map(t => (
               <button key={t.id} onClick={() => { setTipo(t.id); setGenerated(false); }} style={{ padding: '12px 14px', borderRadius: 10, border: `2px solid ${tipo === t.id ? C.pri : C.brd}`, background: tipo === t.id ? C.priL : C.sur, cursor: 'pointer', textAlign: 'left' }}>
                 <div style={{ fontWeight: 800, fontSize: 14, color: tipo === t.id ? C.pri : C.txt }}>{t.label}</div>
                 <div style={{ fontSize: 11, color: C.txm, marginTop: 2 }}>{t.desc}</div>

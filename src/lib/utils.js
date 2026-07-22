@@ -174,12 +174,20 @@ export const DEF_APP_TYPES = [
 ];
 
 export const VERTICALI_DISPONIBILI = [
-  { id: 'dentistico', label: 'Studio dentistico' },
-  { id: 'medico_generico', label: 'Studio medico generico' },
-  { id: 'estetico', label: 'Studio estetico / medicina estetica' },
-  { id: 'psicologico', label: 'Studio psicologico' },
-  { id: 'altro', label: 'Altro professionista sanitario' },
+  { id: 'medico_chirurgo', label: 'Medico chirurgo' },
+  { id: 'dentistico', label: 'Medico odontoiatra' },
+  { id: 'psicologo', label: 'Psicologo' },
+  { id: 'fisioterapista', label: 'Fisioterapista' },
+  { id: 'professionista_sanitario', label: 'Professionista sanitario' },
+  { id: 'massaggiatore', label: 'Massaggiatore' },
+  { id: 'massofisioterapista', label: 'Massofisioterapista' },
+  { id: 'personal_trainer', label: 'Personal trainer' },
+  { id: 'altro', label: 'Altro' },
 ];
+
+// Verticali abilitati a generare la ricetta medica (richiede iscrizione
+// all'Ordine dei Medici e degli Odontoiatri).
+export const VERTICALI_CON_RICETTA = new Set(['medico_chirurgo', 'dentistico']);
 
 /* ── DEFAULT GENERICI (professionisti non dentistici) ──
    Usati in fase di primo accesso quando lo studio ha un vertical diverso da 'dentistico'.

@@ -10,7 +10,7 @@ export default function RegisterScreen({ onBack }) {
   const [err, setErr] = useState('');
   const [form, setForm] = useState({
     nomeStudio: '', email: '', password: '', confermaPassword: '',
-    nomeMedico: '', telefono: '', indirizzo: '', citta: '', piva: '', vertical: 'dentistico',
+    nomeMedico: '', telefono: '', indirizzo: '', citta: '', piva: '', vertical: 'dentistico', verticalAltro: '',
   });
   const F = (f) => setForm(p => ({ ...p, ...f }));
 
@@ -27,6 +27,7 @@ export default function RegisterScreen({ onBack }) {
         p_email: form.email,
         p_piano: 'base',
         p_vertical: form.vertical,
+        p_vertical_altro: form.vertical === 'altro' ? form.verticalAltro : null,
       });
       if (studioErr) throw studioErr;
 
@@ -95,7 +96,10 @@ export default function RegisterScreen({ onBack }) {
                 {VERTICALI_DISPONIBILI.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
               </select>
             </div>
-            <button onClick={() => { if (!form.nomeStudio || !form.nomeMedico) { setErr('Compila nome studio e medico'); return; } setErr(''); setStep(2); }}
+            {form.vertical === 'altro' && (
+              inp('Specifica la tua professione', 'verticalAltro', 'text', 'es. Osteopata, Logopedista...')
+            )}
+            <button onClick={() => { if (!form.nomeStudio || !form.nomeMedico) { setErr('Compila nome studio e medico'); return; } if (form.vertical === 'altro' && !form.verticalAltro.trim()) { setErr('Specifica la tua professione'); return; } setErr(''); setStep(2); }}
               style={{ width: '100%', padding: '13px 0', background: '#1A6B8A', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
               Continua →
             </button>
