@@ -4,18 +4,6 @@ import { jsPDF } from 'jspdf';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Ic } from './ui';
 import { C, fmt, fmtD, today } from '../lib/utils';
 
-const STUDIO = {
-  nome: 'Dott. Luca Simondi',
-  spec: 'Medico Odontoiatra · Chirurgo Orale · Medico Estetico',
-  iscr: 'Iscr. Ordine Medici ed Odontoiatri Cuneo 0577',
-  addr: 'Via Piccona 35 · 12100 Cuneo (CN)',
-  tel: '320 5505397',
-  email: 'dottorsimondi@gmail.com',
-  piva: '03830670042',
-  cf: '03830670042',
-  iban: 'IE94SUMU99036510687267',
-};
-
 const getNumeroProgressivo = (tipo) => {
   const key = tipo === 'fattura' ? 'dm_fattura_num' : 'dm_rimborso_num';
   const anno = new Date().getFullYear();
@@ -29,7 +17,19 @@ const saveNumeroProgressivo = (tipo, num, anno) => {
   localStorage.setItem(key, JSON.stringify({ num, anno }));
 };
 
-export default function DocFiscale({ paz, plans, onClose }) {
+export default function DocFiscale({ paz, plans, si, onClose }) {
+  const isDentistico = !si?.vertical || si.vertical === 'dentistico';
+  const STUDIO = {
+    nome: si?.nome || 'Studio',
+    spec: si?.spec || '',
+    iscr: si?.iscr || '',
+    addr: si?.addr1 || '',
+    tel: si?.tel || '',
+    email: si?.email || '',
+    piva: si?.piva || '',
+    cf: si?.piva || '',
+    iban: si?.iban || '',
+  };
   const [tipo, setTipo] = useState('fattura');
   const [step, setStep] = useState(1); // 1=tipo+voci, 2=anteprima
   const [generated, setGenerated] = useState(false);
@@ -74,7 +74,7 @@ export default function DocFiscale({ paz, plans, onClose }) {
       setVoci(prev => [...prev, ...pl.voci.map((v, i) => ({
         id: `${pl.id}_${i}`,
         _pianoId: pl.id,
-        desc: v.prestazione + (v.dente ? ` (d.${v.dente})` : ''),
+        desc: v.prestazione + ((isDentistico && v.dente) ? ` (d.${v.dente})` : ''),
         importo: String(v.prezzo),
       }))]);
     }
@@ -440,7 +440,7 @@ export default function DocFiscale({ paz, plans, onClose }) {
         {tipo === 'rimborso' && voci.length > 0 && (
           <Crd style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 8 }}>🏦 IBAN per il rimborso</div>
-            <Inp value={iban} onChange={e => setIban(e.target.value)} placeholder="es. IE94SUMU99036510687267" style={{ fontFamily: 'monospace', fontSize: 13 }} />
+            <Inp value={iban} onChange={e => setIban(e.target.value)} placeholder="es. IT60X0542811101000000123456" style={{ fontFamily: 'monospace', fontSize: 13 }} />
             <div style={{ fontSize: 10, color: C.txl, marginTop: 5 }}>Appare nel documento — modificabile per ogni rimborso</div>
           </Crd>
         )}

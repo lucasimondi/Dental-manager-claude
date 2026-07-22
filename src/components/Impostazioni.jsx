@@ -70,6 +70,36 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
         <Fld label="P.IVA"><Inp value={si.piva} onChange={(e) => S({ piva: e.target.value })} /></Fld>
       </Crd>
       <Crd style={{ marginBottom: 11 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Timbro professionale e firma</div>
+        <div style={{ fontSize: 11, color: C.txl, marginBottom: 10 }}>Usati nei documenti medici (ricette, certificati, lettere) e nei rimborsi spese. Nome, specializzazione, iscrizione e contatti sono già presi dalle sezioni sopra.</div>
+        <Fld label="IBAN (per rimborsi)"><Inp value={si.iban || ''} onChange={(e) => S({ iban: e.target.value })} placeholder="es. IT60X0542811101000000123456" style={{ fontFamily: 'monospace' }} /></Fld>
+        <Fld label="Firma scansionata">
+          {si.firma_b64 ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <img src={si.firma_b64} alt="Firma" style={{ height: 50, background: '#fff', border: `1px solid ${C.brd}`, borderRadius: 6, padding: 4 }} />
+              <Btn ch="Rimuovi" v="sec" sz="sm" onClick={() => S({ firma_b64: null })} />
+            </div>
+          ) : (
+            <div>
+              <input
+                type="file"
+                accept="image/png,image/jpeg"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  if (file.size > 1_500_000) { setToast('Immagine troppo grande (max 1.5MB)'); return; }
+                  const reader = new FileReader();
+                  reader.onload = () => S({ firma_b64: reader.result });
+                  reader.readAsDataURL(file);
+                }}
+                style={{ fontSize: 12 }}
+              />
+              <div style={{ fontSize: 10, color: C.txl, marginTop: 4 }}>PNG o JPG, meglio se con sfondo trasparente. Comparirà nel timbro dei documenti medici, nella stessa posizione della firma.</div>
+            </div>
+          )}
+        </Fld>
+      </Crd>
+      <Crd style={{ marginBottom: 11 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Note legali PDF</div>
         <Txt value={si.note} onChange={(e) => S({ note: e.target.value })} rows={3} placeholder="Il preventivo Ã¨ valido 30 giorniâ€¦" />
       </Crd>

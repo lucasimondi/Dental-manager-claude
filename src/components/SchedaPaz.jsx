@@ -195,8 +195,8 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
     setPdfPlan(virtuale);
   };
 
-  if (docMedico) return <DocMedico paz={paz} onClose={() => setDocMedico(false)} />;
-  if (docFiscale) return <DocFiscale paz={paz} plans={plans} onClose={() => setDocFiscale(false)} />;
+  if (docMedico) return <DocMedico paz={paz} si={si} onClose={() => setDocMedico(false)} />;
+  if (docFiscale) return <DocFiscale paz={paz} plans={plans} si={si} onClose={() => setDocFiscale(false)} />;
   if (pdfPlan) return <PdfView pl={pdfPlan} paz={paz} si={si} onClose={() => setPdfPlan(null)} />;
 
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
