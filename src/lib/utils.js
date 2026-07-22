@@ -181,6 +181,23 @@ export const VERTICALI_DISPONIBILI = [
   { id: 'altro', label: 'Altro professionista sanitario' },
 ];
 
+/* ── DEFAULT GENERICI (professionisti non dentistici) ──
+   Usati in fase di primo accesso quando lo studio ha un vertical diverso da 'dentistico'.
+   Niente terminologia odontoiatrica: il professionista personalizza da qui. */
+export const DEF_TPL_GENERICO = [
+  { id: 1, nome: 'Reminder appuntamento', testo: 'Gentile {nome},\nle ricordiamo il suo appuntamento:\n📅 {data} alle {ora}\nPer variazioni contattarci entro 24h.\nGrazie.' },
+  { id: 2, nome: 'Preventivo pronto', testo: 'Gentile {nome},\nil suo preventivo è pronto.\nTotale: {totale}\nSiamo a disposizione per informazioni.\nGrazie.' },
+  { id: 3, nome: 'Piano di trattamento riepilogo', testo: 'Gentile {nome},\ndi seguito il riepilogo:\n\n{voci}\n\n💰 Totale: {totale}\n\nGrazie.' },
+  { id: 4, nome: 'Sollecito controllo', testo: 'Gentile {nome},\nè il momento del suo controllo periodico.\nContattarci per fissare un appuntamento.\nGrazie.' },
+];
+
+export const DEF_APP_TYPES_GENERICO = [
+  { id: 1, nome: 'Prima visita', colore: '#1A6B8A' },
+  { id: 2, nome: 'Visita di controllo', colore: '#2EC4B6' },
+  { id: 3, nome: 'Trattamento', colore: '#2D9E61' },
+  { id: 4, nome: 'Urgenza', colore: '#DC2626' },
+];
+
 export const COLORI_DISPONIBILI = [
   '#1A6B8A', '#2EC4B6', '#2D9E61', '#7C3AED', '#E63946', '#F4A261',
   '#EC4899', '#DC2626', '#0EA5E9', '#84CC16', '#F59E0B', '#6366F1',

@@ -387,11 +387,18 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
                 {pricelist.map((p) => <option key={p.id} value={p.nome}>{p.nome} — {fmt(p.prezzo)}</option>)}
               </Sel>
             </Fld>
-            <Odontogramma selected={selectedDenti} onChange={setSelectedDenti} onDenteChange={(v) => setNv((n) => ({ ...n, dente: v }))} />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <Fld label={`Dente${nv.dente ? ' ✓' : ''}`}><Inp value={nv.dente} onChange={(e) => { setNv((v) => ({ ...v, dente: e.target.value })); if (!e.target.value) setSelectedDenti([]); }} placeholder="es. 16, 26 (opzionale)" /></Fld>
+            {isDentistico && (
+              <>
+                <Odontogramma selected={selectedDenti} onChange={setSelectedDenti} onDenteChange={(v) => setNv((n) => ({ ...n, dente: v }))} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <Fld label={`Dente${nv.dente ? ' ✓' : ''}`}><Inp value={nv.dente} onChange={(e) => { setNv((v) => ({ ...v, dente: e.target.value })); if (!e.target.value) setSelectedDenti([]); }} placeholder="es. 16, 26 (opzionale)" /></Fld>
+                  <Fld label="Prezzo €"><Inp type="number" value={nv.prezzo} onChange={(e) => setNv((v) => ({ ...v, prezzo: e.target.value }))} /></Fld>
+                </div>
+              </>
+            )}
+            {!isDentistico && (
               <Fld label="Prezzo €"><Inp type="number" value={nv.prezzo} onChange={(e) => setNv((v) => ({ ...v, prezzo: e.target.value }))} /></Fld>
-            </div>
+            )}
             <Btn ch="+ Aggiungi" onClick={addVoce} full />
           </div>
 

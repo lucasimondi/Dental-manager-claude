@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { supabase, DB } from './lib/supabase.js';
-import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_APP_TYPES, NAV } from './lib/utils';
+import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_APP_TYPES, DEF_TPL_GENERICO, DEF_APP_TYPES_GENERICO, NAV } from './lib/utils';
 import { Ic } from './components/ui';
 import LoginScreen from './components/LoginScreen.jsx';
 import LoadingScreen from './components/LoadingScreen.jsx';
@@ -88,18 +88,28 @@ export default function App() {
         setPayments(py || []);
         setImplants(im || []);
 
+        // Determina il vertical PRIMA di seedare, usando 'si' appena arrivato dalla stessa fetch
+        // (non ancora salvato in state) — default 'dentistico' se lo studio non l'ha ancora impostato
+        const isDentisticoNew = !si?.vertical || si.vertical === 'dentistico';
+
         if (!pr || pr.length === 0) {
-          const seeded = await Promise.all(DEF_PRICE.map((item) => { const { id, ...rest } = item; return DB.insert('dm_pr', rest); }));
-          setPricelist(seeded);
+          if (isDentisticoNew) {
+            const seeded = await Promise.all(DEF_PRICE.map((item) => { const { id, ...rest } = item; return DB.insert('dm_pr', rest); }));
+            setPricelist(seeded);
+          } else {
+            // Nessun listino dentale precompilato per verticali non dentistici: il professionista
+            // costruisce il proprio listino da zero (i prezzi variano troppo tra specializzazioni).
+            setPricelist([]);
+          }
         } else setPricelist(pr);
 
         if (!tp || tp.length === 0) {
-          const seeded = await Promise.all(DEF_TPL.map((item) => { const { id, ...rest } = item; return DB.insert('dm_tp', rest); }));
+          const seeded = await Promise.all((isDentisticoNew ? DEF_TPL : DEF_TPL_GENERICO).map((item) => { const { id, ...rest } = item; return DB.insert('dm_tp', rest); }));
           setTemplates(seeded);
         } else setTemplates(tp);
 
         if (!at || at.length === 0) {
-          const seeded = await Promise.all(DEF_APP_TYPES.map((item) => { const { id, ...rest } = item; return DB.insert('dm_at', rest); }));
+          const seeded = await Promise.all((isDentisticoNew ? DEF_APP_TYPES : DEF_APP_TYPES_GENERICO).map((item) => { const { id, ...rest } = item; return DB.insert('dm_at', rest); }));
           setAppTypes(seeded);
         } else setAppTypes(at);
 
