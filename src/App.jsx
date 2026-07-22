@@ -206,7 +206,7 @@ export default function App() {
         <img
           src={(!studioInfo?.vertical || studioInfo.vertical === 'dentistico') ? logoDentalWhite : logoSalusWhite}
           alt="Poliedra"
-          style={{ height: 22, display: 'block' }}
+          style={{ height: 34, display: 'block' }}
         />
         <div style={{ marginLeft: 'auto', fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10 }}>
           {userName && <span style={{ color: 'rgba(255,255,255,0.8)', fontWeight: 700 }}>{userName}</span>}
