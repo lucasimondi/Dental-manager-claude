@@ -80,7 +80,7 @@ const STUDIO_TABLES = new Set(['patients','plans','payments','appointments','imp
 const getStudioId = async () => {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return null; // nessuna sessione = nessun accesso
-  return session?.user?.user_metadata?.studio_id || '00000000-0000-0000-0000-000000000001';
+  return session?.user?.app_metadata?.studio_id || '00000000-0000-0000-0000-000000000001';
 };
 
 export const DB = {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import Ic from './ui/Ic.jsx';
+import { VERTICALI_DISPONIBILI } from '../lib/utils';
 
 export default function RegisterScreen({ onBack }) {
   const [step, setStep] = useState(1); // 1=dati studio, 2=credenziali, 3=successo
@@ -8,7 +9,7 @@ export default function RegisterScreen({ onBack }) {
   const [err, setErr] = useState('');
   const [form, setForm] = useState({
     nomeStudio: '', email: '', password: '', confermaPassword: '',
-    nomeMedico: '', telefono: '', indirizzo: '', citta: '', piva: '',
+    nomeMedico: '', telefono: '', indirizzo: '', citta: '', piva: '', vertical: 'dentistico',
   });
   const F = (f) => setForm(p => ({ ...p, ...f }));
 
@@ -17,30 +18,26 @@ export default function RegisterScreen({ onBack }) {
     if (form.password.length < 8) { setErr('Password minimo 8 caratteri'); return; }
     setLoading(true); setErr('');
     try {
-      // 1. Crea utente Auth
-      const { data: authData, error: authErr } = await supabase.auth.signUp({
+      // 1. Crea lo studio PRIMA del signup (funzione sicura, utilizzabile anche da utente non autenticato).
+      //    L'ordine è importante: il trigger che collega lo studio all'utente cerca lo studio
+      //    per email al momento della creazione dell'utente Auth, quindi deve già esistere.
+      const { error: studioErr } = await supabase.rpc('register_studio', {
+        p_nome: form.nomeStudio,
+        p_email: form.email,
+        p_piano: 'base',
+        p_vertical: form.vertical,
+      });
+      if (studioErr) throw studioErr;
+
+      // 2. Crea utente Auth — il trigger sul database collega automaticamente lo studio_id
+      //    in app_metadata (sicuro, letto dalle policy RLS) e pre-crea la riga studio_info
+      //    con il vertical scelto sopra.
+      const { error: authErr } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
         options: { data: { nome_studio: form.nomeStudio } }
       });
       if (authErr) throw authErr;
-
-      // 2. Crea studio
-      const { data: studio, error: studioErr } = await supabase
-        .from('studios')
-        .insert([{
-          nome: form.nomeStudio,
-          email: form.email,
-          piano: 'base',
-        }])
-        .select()
-        .single();
-      if (studioErr) throw studioErr;
-
-      // 3. Aggiorna metadati utente con studio_id
-      await supabase.auth.updateUser({
-        data: { studio_id: studio.id }
-      });
 
       setStep(3);
     } catch (e) {
@@ -89,6 +86,13 @@ export default function RegisterScreen({ onBack }) {
             {inp('Indirizzo', 'indirizzo', 'text', 'es. Via Roma 1')}
             {inp('Città', 'citta', 'text', 'es. Milano')}
             {inp('P.IVA', 'piva', 'text', 'es. 01234567890')}
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#4A5568', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tipo di studio</label>
+              <select value={form.vertical} onChange={e => F({ vertical: e.target.value })}
+                style={{ width: '100%', padding: '12px 13px', border: '1.5px solid #E2E8F0', borderRadius: 10, fontSize: 15, boxSizing: 'border-box', fontFamily: 'inherit', background: '#fff' }}>
+                {VERTICALI_DISPONIBILI.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
+              </select>
+            </div>
             <button onClick={() => { if (!form.nomeStudio || !form.nomeMedico) { setErr('Compila nome studio e medico'); return; } setErr(''); setStep(2); }}
               style={{ width: '100%', padding: '13px 0', background: '#1A6B8A', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
               Continua →
