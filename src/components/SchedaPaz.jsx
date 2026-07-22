@@ -958,7 +958,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
             </Fld>
           </div>
           <Fld label="Tipo visita">
-            <Inp value={appForm.tipo} onChange={e => setAppForm(f => ({ ...f, tipo: e.target.value }))} placeholder="es. Visita di controllo, Otturazione..." />
+            <Inp value={appForm.tipo} onChange={e => setAppForm(f => ({ ...f, tipo: e.target.value }))} placeholder={isDentistico ? 'es. Visita di controllo, Otturazione...' : 'es. Visita di controllo, Trattamento...'} />
           </Fld>
           <Fld label="Note (opzionale)">
             <Inp value={appForm.note} onChange={e => setAppForm(f => ({ ...f, note: e.target.value }))} />
@@ -990,7 +990,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
         <Modal title="📌 Crea richiamo" onClose={() => setRicordaModal(null)}>
           <div style={{ fontSize: 12, color: C.txm, marginBottom: 12 }}>Il richiamo apparirà in dashboard fino a quando non lo segni come fatto.</div>
           <Fld label="Cosa ricordare">
-            <Inp value={ricordaTesto} onChange={e => setRicordaTesto(e.target.value)} placeholder={`es. Richiamare ${paz.nome} per rx dente 36`} />
+            <Inp value={ricordaTesto} onChange={e => setRicordaTesto(e.target.value)} placeholder={isDentistico ? `es. Richiamare ${paz.nome} per rx dente 36` : `es. Richiamare ${paz.nome} per il controllo`} />
           </Fld>
           <Fld label="Entro quando">
             <Inp type="date" value={ricordaData} onChange={e => setRicordaData(e.target.value)} />

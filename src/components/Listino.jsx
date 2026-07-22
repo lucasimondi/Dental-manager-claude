@@ -31,18 +31,6 @@ export default function Listino({ pricelist, setPricelist, si }) {
     'Consulenza ortodontica', 'Ortopantomografia', 'Curettage per quadrante',
   ];
 
-  const rimuoviVociDentali = () => {
-    const nomiDentali = new Set(DEF_PRICE.map((item) => item.nome.trim().toLowerCase()));
-    const daRimuovere = pricelist.filter((p) => nomiDentali.has((p.nome || '').trim().toLowerCase()));
-    if (daRimuovere.length === 0) {
-      setToast('Nessuna voce odontoiatrica trovata');
-      return;
-    }
-    if (!confirm(`Verranno rimosse ${daRimuovere.length} voci odontoiatriche precaricate. Le voci aggiunte manualmente da te non vengono toccate. Procedere?`)) return;
-    setPricelist((p) => p.filter((x) => !nomiDentali.has((x.nome || '').trim().toLowerCase())));
-    setToast(`${daRimuovere.length} voci rimosse ✓`);
-  };
-
   const caricaListinoStudio = () => {
     const daRimuovere = pricelist.filter((p) => VECCHIE_VOCI_DEMO.includes((p.nome || '').trim()));
     const esistenti = new Set(pricelist.map((p) => (p.nome || '').trim().toLowerCase()));
@@ -65,13 +53,9 @@ export default function Listino({ pricelist, setPricelist, si }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8, flexWrap: 'wrap' }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Listino</div>
         <div style={{ display: 'flex', gap: 6 }}>
-          {isDentistico ? (
+          {isDentistico && (
           <button onClick={caricaListinoStudio} style={{ background: C.purL, border: 'none', borderRadius: 10, padding: '10px 12px', color: C.pur, fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
             🔄 Aggiorna listino
-          </button>
-          ) : (
-          <button onClick={rimuoviVociDentali} style={{ background: C.purL, border: 'none', borderRadius: 10, padding: '10px 12px', color: C.pur, fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-            🧹 Rimuovi voci dentali
           </button>
           )}
           <Btn ch="Nuova" ic="plus" onClick={openNew} />

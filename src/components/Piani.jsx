@@ -90,9 +90,10 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
     const { scontato, finale } = calcTot(pl.voci, pl.sconto || 0, pl.scontoTipo || 'pct');
     const vociTxt = pl.voci.map((v, i) => `${i + 1}. ${v.prestazione}${v.dente ? ` (d.${v.dente})` : ''} — ${fmt(v.prezzo)}`).join('\n');
     const scontoTxt = scontato > 0 ? `\n🏷️ Sconto: −${fmt(scontato)}` : '';
+    const nomeStudio = si?.nome || 'Studio';
     const msg = mode === 'piano'
-      ? `Gentile ${p?.nome || ''} ${p?.cognome || ''},\npiano di cura *${pl.titolo}*:\n\n${vociTxt}${scontoTxt}\n\n💰 *Totale: ${fmt(finale)}*\n\nGrazie, Studio Dentistico.`
-      : `Gentile ${p?.nome || ''} ${p?.cognome || ''},\nil suo preventivo *${pl.titolo}* è pronto.${scontoTxt}\n\n💰 *Totale: ${fmt(finale)}*\n\nContattarci per confermare.\nGrazie, Studio Dentistico.`;
+      ? `Gentile ${p?.nome || ''} ${p?.cognome || ''},\npiano di cura *${pl.titolo}*:\n\n${vociTxt}${scontoTxt}\n\n💰 *Totale: ${fmt(finale)}*\n\nGrazie, ${nomeStudio}.`
+      : `Gentile ${p?.nome || ''} ${p?.cognome || ''},\nil suo preventivo *${pl.titolo}* è pronto.${scontoTxt}\n\n💰 *Totale: ${fmt(finale)}*\n\nContattarci per confermare.\nGrazie, ${nomeStudio}.`;
     setWaMsg(msg);
     setWaModal({ pl, paz: p });
   };
@@ -309,7 +310,7 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
             })()}
           </Fld>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <Fld label="Titolo"><Inp value={form.titolo} onChange={(e) => setForm((f) => ({ ...f, titolo: e.target.value }))} placeholder="es. Piano conservativa" /></Fld>
+            <Fld label="Titolo"><Inp value={form.titolo} onChange={(e) => setForm((f) => ({ ...f, titolo: e.target.value }))} placeholder={isDentistico ? 'es. Piano conservativa' : 'es. Piano di trattamento'} /></Fld>
             <Fld label="Data"><Inp type="date" value={form.data} onChange={(e) => setForm((f) => ({ ...f, data: e.target.value }))} /></Fld>
           </div>
           <Fld label="Stato preventivo">

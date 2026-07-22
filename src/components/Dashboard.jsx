@@ -292,8 +292,8 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
             {[
               ['incMese', '📈 Incassato mese'],
               ['incAnno', '📈 Incassato anno'],
-              ['lucaMese', '💼 Incasso Luca mese'],
-              ['lucaAnno', '💼 Incasso Luca anno'],
+              ['lucaMese', '💼 Incasso mese'],
+              ['lucaAnno', '💼 Incasso anno'],
               ['speseMese', '💸 Spese mese'],
               ['speseAnno', '💸 Spese anno'],
               ['margine', '✅ Margine stimato'],
@@ -393,7 +393,7 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
       )}
 
       {detailModal === 'lucaMese' && (
-        <Modal title="💼 Incasso Luca — questo mese" onClose={() => setDetailModal(null)} wide>
+        <Modal title="💼 Incasso — questo mese" onClose={() => setDetailModal(null)} wide>
           <div style={{ background: '#F5F3FF', borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ fontWeight: 700, color: '#7C3AED' }}>Totale mese</span>
             <span style={{ fontWeight: 900, fontSize: 18, color: '#7C3AED' }}>{fmt(incassoLucaMese)}</span>
@@ -426,7 +426,7 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
       )}
 
       {detailModal === 'lucaAnno' && (
-        <Modal title={`💼 Incasso Luca — ${anno}`} onClose={() => setDetailModal(null)} wide>
+        <Modal title={`💼 Incasso — ${anno}`} onClose={() => setDetailModal(null)} wide>
           <div style={{ background: '#F5F3FF', borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ fontWeight: 700, color: '#7C3AED' }}>Totale anno {anno}</span>
             <span style={{ fontWeight: 900, fontSize: 18, color: '#7C3AED' }}>{fmt(incassoLucaAnno)}</span>
@@ -730,8 +730,8 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
               <StatCard label="Incassato mese" value={fmt(mInc)} sub="solo studio" color={theme.incMese} />
               <StatCard label={`Incassato ${anno}`} value={fmt(aInc)} sub="solo studio" color={theme.incAnno} />
-              <StatCard label="💼 Incasso Luca mese" value={fmt(incassoLucaMese)} sub={`studio + collab. ${extMese > 0 ? '(+'+fmt(extMese)+')' : ''}`} color={theme.lucaMese} onClick={() => setDetailModal('lucaMese')} />
-              <StatCard label="💼 Incasso Luca anno" value={fmt(incassoLucaAnno)} sub={`studio + collab. ${extAnno > 0 ? '(+'+fmt(extAnno)+')' : ''}`} color={theme.lucaAnno} onClick={() => setDetailModal('lucaAnno')} />
+              <StatCard label="💼 Incasso mese" value={fmt(incassoLucaMese)} sub={`studio + collab. ${extMese > 0 ? '(+'+fmt(extMese)+')' : ''}`} color={theme.lucaMese} onClick={() => setDetailModal('lucaMese')} />
+              <StatCard label="💼 Incasso anno" value={fmt(incassoLucaAnno)} sub={`studio + collab. ${extAnno > 0 ? '(+'+fmt(extAnno)+')' : ''}`} color={theme.lucaAnno} onClick={() => setDetailModal('lucaAnno')} />
               <StatCard label="💸 Spese mese" value={fmt(speseMese)} color={theme.speseMese} onClick={() => setDetailModal('spese')} />
               <StatCard label="💸 Spese anno" value={fmt(speseAnnoTotale)} sub={speseRicorrentiAnno > 0 ? `+${fmt(speseRicorrentiAnno)} ricorrenti` : undefined} color={theme.speseAnno} onClick={() => setDetailModal('spese')} />
               <StatCard label={margineAnno >= 0 ? '✅ Margine stimato' : '⚠️ Margine stimato'} value={`${margineAnno >= 0 ? '+' : ''}${fmt(margineAnno)}`} sub={`incassi - spese ${anno}`} color={margineAnno >= 0 ? theme.margine : theme.speseMese} />
