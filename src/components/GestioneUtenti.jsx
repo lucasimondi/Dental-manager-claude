@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase.js';
 import { C } from '../lib/utils';
 import { Crd, Fld, Inp, Sel, Modal, Toast, Btn, Ic } from './ui';
 
-export default function GestioneUtenti({ studioId, currentUserId }) {
+export default function GestioneUtenti({ studioId, currentUserId, features }) {
   const [utenti, setUtenti] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
@@ -24,8 +24,12 @@ export default function GestioneUtenti({ studioId, currentUserId }) {
     setLoading(false);
   };
 
+  const maxUtenti = features?.max_utenti ?? null; // include il titolare nel conteggio
+  const limiteRaggiunto = maxUtenti != null && (utenti.length + 1) >= maxUtenti;
+
   const invita = async () => {
     if (!form.email || !form.nome) return;
+    if (limiteRaggiunto) { setToast(`Limite di ${maxUtenti} utenti del tuo piano raggiunto. Passa a un piano superiore per aggiungerne altri.`); return; }
     setSending(true);
     try {
       // 1. Crea record in studio_users
@@ -74,11 +78,16 @@ export default function GestioneUtenti({ studioId, currentUserId }) {
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={{ fontSize: 14, fontWeight: 800, color: C.txt }}>👥 Utenti studio</div>
-        <button onClick={() => { setForm({ email: '', nome: '', ruolo: 'utente' }); setInvitaModal(true); }}
-          style={{ background: C.pri, border: 'none', borderRadius: 9, padding: '8px 14px', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Ic n="plus" s={12} c="#fff" /> Invita utente
+        <button onClick={() => { if (limiteRaggiunto) { setToast(`Limite di ${maxUtenti} utenti raggiunto per il tuo piano.`); return; } setForm({ email: '', nome: '', ruolo: 'utente' }); setInvitaModal(true); }}
+          style={{ background: limiteRaggiunto ? C.bg : C.pri, border: 'none', borderRadius: 9, padding: '8px 14px', color: limiteRaggiunto ? C.txl : '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          {limiteRaggiunto ? '🔒 Limite raggiunto' : <><Ic n="plus" s={12} c="#fff" /> Invita utente</>}
         </button>
       </div>
+      {maxUtenti != null && (
+        <div style={{ fontSize: 11, color: limiteRaggiunto ? C.dan : C.txl, marginBottom: 12, marginTop: -8 }}>
+          {utenti.length + 1}/{maxUtenti} utenti usati (incluso il titolare) nel piano attuale
+        </div>
+      )}
 
       {loading && <div style={{ textAlign: 'center', color: C.txl, padding: 20 }}>⏳ Caricamento...</div>}
 

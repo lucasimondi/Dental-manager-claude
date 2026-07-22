@@ -212,6 +212,27 @@ export const COLORI_DISPONIBILI = [
   '#14B8A6', '#A855F7', '#64748B',
 ];
 
+/* ── PIANI E FUNZIONALITÀ ──
+   Default per piano; ogni studio può avere override individuali (feature_overrides
+   su Supabase, impostabili dalla Dashboard Master) che sovrascrivono questi default. */
+export const PIANI_FEATURES_DEFAULT = {
+  base: { whatsapp: false, documenti: false, spese: false, custom_branding: false, max_pazienti: 50, max_utenti: 1 },
+  pro: { whatsapp: true, documenti: true, spese: true, custom_branding: false, max_pazienti: null, max_utenti: 3 },
+  premium: { whatsapp: true, documenti: true, spese: true, custom_branding: true, max_pazienti: null, max_utenti: null },
+};
+
+export const FEATURE_TOGGLES = [
+  { id: 'whatsapp', label: 'WhatsApp' },
+  { id: 'documenti', label: 'Documenti medici/fiscali' },
+  { id: 'spese', label: 'Spese studio' },
+  { id: 'custom_branding', label: 'Branding personalizzato' },
+];
+
+export const computeFeatures = (piano, overrides) => {
+  const base = PIANI_FEATURES_DEFAULT[piano] || PIANI_FEATURES_DEFAULT.base;
+  return { ...base, ...(overrides || {}) };
+};
+
 export const NAV = [
   { id: 'home', l: 'Home', ic: 'home' },
   { id: 'paz', l: 'Pazienti', ic: 'pz' },

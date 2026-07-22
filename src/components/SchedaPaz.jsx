@@ -14,7 +14,7 @@ const prossimaDataMascherina = (orto) => {
   return d.toISOString().slice(0, 10);
 };
 
-export default function SchedaPaz({ paz, plans, payments, appointments, setAppointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, implants = [], setImplants, setPatients, onNuovoAppuntamento, templates, setPayments }) {
+export default function SchedaPaz({ paz, plans, payments, appointments, setAppointments, si, features, onClose, onEdit, onNuovoPiano, setPlans, initTab, implants = [], setImplants, setPatients, onNuovoAppuntamento, templates, setPayments }) {
   const [tab, setTab] = useState(initTab || 'info');
   const [pdfPlan, setPdfPlan] = useState(null);
   const [docFiscale, setDocFiscale] = useState(false);
@@ -195,8 +195,8 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
     setPdfPlan(virtuale);
   };
 
-  if (docMedico) return <DocMedico paz={paz} si={si} onClose={() => setDocMedico(false)} />;
-  if (docFiscale) return <DocFiscale paz={paz} plans={plans} si={si} onClose={() => setDocFiscale(false)} />;
+  if (docMedico && features?.documenti !== false) return <DocMedico paz={paz} si={si} onClose={() => setDocMedico(false)} />;
+  if (docFiscale && features?.documenti !== false) return <DocFiscale paz={paz} plans={plans} si={si} onClose={() => setDocFiscale(false)} />;
   if (pdfPlan) return <PdfView pl={pdfPlan} paz={paz} si={si} onClose={() => setPdfPlan(null)} />;
 
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
@@ -755,6 +755,13 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
         {tab === 'doc' && (
           <div>
             <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>📄 Documenti medici</div>
+            {(features?.documenti === false) ? (
+              <div style={{ background: C.bg, borderRadius: 12, padding: 20, textAlign: 'center' }}>
+                <div style={{ fontSize: 24, marginBottom: 8 }}>🔒</div>
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Funzione non disponibile nel tuo piano</div>
+                <div style={{ fontSize: 12, color: C.txm }}>Passa a Pro o Premium per generare ricette, certificati, lettere e fatture in PDF.</div>
+              </div>
+            ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <button onClick={() => setDocMedico(true)} style={{ background: C.priL, border: `1.5px solid ${C.pri}`, borderRadius: 12, padding: 16, cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ background: C.pri, borderRadius: 8, padding: 8 }}><Ic n="plan" s={20} c="#fff" /></div>
@@ -771,6 +778,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                 </div>
               </button>
             </div>
+            )}
           </div>
         )}
 

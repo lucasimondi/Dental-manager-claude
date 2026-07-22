@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Ic, Toast } from './ui';
-import { C, fmtD, VERTICALI_DISPONIBILI } from '../lib/utils';
+import { C, fmtD, VERTICALI_DISPONIBILI, FEATURE_TOGGLES, PIANI_FEATURES_DEFAULT, computeFeatures } from '../lib/utils';
 
 const PIANI = [
   { id: 'base', label: 'Base' },
@@ -16,7 +16,7 @@ export default function MasterDashboard({ onClose }) {
   const [selStudio, setSelStudio] = useState(null); // studio aperto nel pannello dettaglio
   const [utenti, setUtenti] = useState([]);
   const [utentiLoading, setUtentiLoading] = useState(false);
-  const [form, setForm] = useState({ piano: 'base', vertical: 'dentistico', vertical_altro: '', attivo: true });
+  const [form, setForm] = useState({ piano: 'base', vertical: 'dentistico', vertical_altro: '', attivo: true, featureOverrides: {} });
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
 
@@ -33,7 +33,7 @@ export default function MasterDashboard({ onClose }) {
 
   const apriStudio = async (s) => {
     setSelStudio(s);
-    setForm({ piano: s.piano || 'base', vertical: s.vertical || 'dentistico', vertical_altro: s.vertical_altro || '', attivo: s.attivo });
+    setForm({ piano: s.piano || 'base', vertical: s.vertical || 'dentistico', vertical_altro: s.vertical_altro || '', attivo: s.attivo, featureOverrides: { ...(s.feature_overrides || {}) } });
     setUtentiLoading(true);
     const { data, error } = await supabase.rpc('admin_list_studio_users', { p_studio_id: s.id });
     setUtenti(error ? [] : (data || []));
@@ -49,12 +49,23 @@ export default function MasterDashboard({ onClose }) {
       p_vertical: form.vertical,
       p_vertical_altro: form.vertical === 'altro' ? form.vertical_altro : null,
       p_attivo: form.attivo,
+      p_feature_overrides: form.featureOverrides,
     });
     setSaving(false);
     if (error) { setToast('Errore: ' + error.message); return; }
     setToast('Salvato ✓');
     setSelStudio(null);
     load();
+  };
+
+  // Tri-stato per ogni toggle: undefined = usa il default del piano, true/false = override esplicito
+  const setToggle = (id, value) => {
+    setForm((f) => {
+      const next = { ...f.featureOverrides };
+      if (value === undefined) delete next[id];
+      else next[id] = value;
+      return { ...f, featureOverrides: next };
+    });
   };
 
   const toggleAttivo = async (s) => {
@@ -137,7 +148,28 @@ export default function MasterDashboard({ onClose }) {
             </button>
           </div>
 
-          <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 8 }}>Utenti dello studio</div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 8 }}>Funzionalità (override manuale)</div>
+          <div style={{ fontSize: 10, color: C.txl, marginBottom: 10 }}>Di default seguono il piano "{form.piano}". Puoi forzare singolarmente attiva/disattiva per questo studio.</div>
+          {FEATURE_TOGGLES.map((ft) => {
+            const pianoDefault = !!(PIANI_FEATURES_DEFAULT[form.piano] || PIANI_FEATURES_DEFAULT.base)[ft.id];
+            const override = form.featureOverrides[ft.id]; // undefined | true | false
+            const effettivo = override === undefined ? pianoDefault : override;
+            return (
+              <div key={ft.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: `1px solid ${C.brd}` }}>
+                <div style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>
+                  {ft.label}
+                  {override === undefined && <span style={{ color: C.txl, fontWeight: 400 }}> · default piano ({pianoDefault ? 'attivo' : 'disattivo'})</span>}
+                </div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button onClick={() => setToggle(ft.id, undefined)} title="Usa il default del piano" style={{ background: override === undefined ? C.priL : 'transparent', color: override === undefined ? C.pri : C.txl, border: `1px solid ${C.brd}`, borderRadius: 6, padding: '4px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>Default</button>
+                  <button onClick={() => setToggle(ft.id, true)} style={{ background: override === true ? C.sucL : 'transparent', color: override === true ? C.suc : C.txl, border: `1px solid ${C.brd}`, borderRadius: 6, padding: '4px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>ON</button>
+                  <button onClick={() => setToggle(ft.id, false)} style={{ background: override === false ? C.danL : 'transparent', color: override === false ? C.dan : C.txl, border: `1px solid ${C.brd}`, borderRadius: 6, padding: '4px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>OFF</button>
+                </div>
+              </div>
+            );
+          })}
+
+          <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginTop: 16, marginBottom: 8 }}>Utenti dello studio</div>
           {utentiLoading && <div style={{ color: C.txl, fontSize: 12, marginBottom: 10 }}>Caricamento...</div>}
           {!utentiLoading && utenti.length === 0 && <div style={{ color: C.txl, fontSize: 12, marginBottom: 10 }}>Nessun utente registrato oltre al titolare</div>}
           {!utentiLoading && utenti.map((u) => (

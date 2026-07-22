@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { supabase, DB } from './lib/supabase.js';
-import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_APP_TYPES, DEF_TPL_GENERICO, DEF_APP_TYPES_GENERICO, NAV } from './lib/utils';
+import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_APP_TYPES, DEF_TPL_GENERICO, DEF_APP_TYPES_GENERICO, NAV, PIANI_FEATURES_DEFAULT, computeFeatures } from './lib/utils';
 import { Ic } from './components/ui';
 import logoDentalWhite from './assets/logo-poliedra-dental-outline.png';
 import logoSalusWhite from './assets/logo-poliedra-salus-outline.png';
@@ -40,6 +40,7 @@ export default function App() {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [showMasterDashboard, setShowMasterDashboard] = useState(false);
   const [studioAttivo, setStudioAttivo] = useState(true);
+  const [features, setFeatures] = useState(PIANI_FEATURES_DEFAULT.base);
 
   useEffect(() => {
     // Inizializza sessione — se non risponde entro 3s forza null (no session)
@@ -129,7 +130,7 @@ export default function App() {
   }, [session]);
 
   useEffect(() => {
-    if (!session) { setIsSuperAdmin(false); setStudioAttivo(true); return; }
+    if (!session) { setIsSuperAdmin(false); setStudioAttivo(true); setFeatures(PIANI_FEATURES_DEFAULT.base); return; }
     let cancelled = false;
     (async () => {
       const { data: admin } = await supabase.rpc('is_super_admin');
@@ -137,12 +138,19 @@ export default function App() {
 
       const studioId = session?.user?.app_metadata?.studio_id;
       if (studioId) {
-        const { data: st } = await supabase.from('studios').select('attivo').eq('id', studioId).maybeSingle();
-        if (!cancelled) setStudioAttivo(st ? st.attivo !== false : true);
+        const { data: st } = await supabase.from('studios').select('attivo, piano, feature_overrides').eq('id', studioId).maybeSingle();
+        if (!cancelled) {
+          setStudioAttivo(st ? st.attivo !== false : true);
+          setFeatures(computeFeatures(st?.piano || 'base', st?.feature_overrides));
+        }
       }
     })();
     return () => { cancelled = true; };
   }, [session]);
+
+  useEffect(() => {
+    if ((page === 'wa' && !features.whatsapp) || (page === 'spese' && !features.spese)) setPage('home');
+  }, [page, features]);
 
   const makeSyncSetter = (key, setLocal, onError) => {
     return (updater) => {
@@ -235,18 +243,24 @@ export default function App() {
 
   if (showMasterDashboard) return <MasterDashboard onClose={() => setShowMasterDashboard(false)} />;
 
+  const navVisibile = NAV.filter((n) => (n.id !== 'wa' || features.whatsapp) && (n.id !== 'spese' || features.spese));
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: C.bg, overflow: 'hidden' }}>
       <div style={{ background: C.priD, padding: '11px 14px', paddingTop: 'max(11px,env(safe-area-inset-top))', display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
-        <img
-          src={(!studioInfo?.vertical || studioInfo.vertical === 'dentistico') ? logoDentalWhite : logoSalusWhite}
-          alt="Poliedra"
-          style={{ height: 48, display: 'block' }}
-        />
+        {features.custom_branding && studioInfo?.custom_logo_b64 ? (
+          <img src={studioInfo.custom_logo_b64} alt={studioInfo?.nome || 'Logo'} style={{ height: 40, maxWidth: 160, display: 'block', objectFit: 'contain' }} />
+        ) : (
+          <img
+            src={(!studioInfo?.vertical || studioInfo.vertical === 'dentistico') ? logoDentalWhite : logoSalusWhite}
+            alt="Poliedra"
+            style={{ height: 48, display: 'block' }}
+          />
+        )}
         <div style={{ marginLeft: 'auto', fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10 }}>
           {userName && <span style={{ color: 'rgba(255,255,255,0.8)', fontWeight: 700 }}>{userName}</span>}
           <span style={{ color: 'rgba(255,255,255,0.3)' }}>·</span>
-          <span>{NAV.find((n) => n.id === page)?.l}</span>
+          <span>{navVisibile.find((n) => n.id === page)?.l}</span>
           {isSuperAdmin && <button onClick={() => setShowMasterDashboard(true)} title="Dashboard Master" style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, padding: '4px 8px', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>🛠️</button>}
           <button onClick={handleLogout} title="Esci" style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, padding: '4px 8px', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>Esci</button>
         </div>
@@ -268,6 +282,7 @@ export default function App() {
           payments={payments}
           appointments={appointments}
           si={studioInfo}
+          features={features}
           onClose={() => setSchedaDashPaz(null)}
           onEdit={() => setSchedaDashPaz(null)}
           onNuovoPiano={(id) => { setSchedaDashPaz(null); goNuovoPiano(id); }}
@@ -281,6 +296,7 @@ export default function App() {
             patients={patients} setPatients={setPatientsSync}
             plans={plans} setPlans={setPlansSync}
             payments={payments} setPayments={setPaymentsSync} appointments={appointments} si={studioInfo}
+            features={features}
             onNuovoPiano={goNuovoPiano}
             implants={implants} setImplants={setImplantsSync}
             setAppointments={setAppointmentsSync}
@@ -302,11 +318,11 @@ export default function App() {
         {page === 'spese' && <Spese />}
         {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} />}
         {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
-        {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} />}
+        {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} />}
       </div>
 
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: C.sur, borderTop: `1px solid ${C.brd}`, display: 'grid', gridTemplateColumns: `repeat(${NAV.length + 1},1fr)`, paddingBottom: 'env(safe-area-inset-bottom,0px)', zIndex: 100, boxShadow: '0 -2px 10px rgba(0,0,0,0.07)' }}>
-        {NAV.map((n) => (
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: C.sur, borderTop: `1px solid ${C.brd}`, display: 'grid', gridTemplateColumns: `repeat(${navVisibile.length + 1},1fr)`, paddingBottom: 'env(safe-area-inset-bottom,0px)', zIndex: 100, boxShadow: '0 -2px 10px rgba(0,0,0,0.07)' }}>
+        {navVisibile.map((n) => (
           <button key={n.id} onClick={() => setPage(n.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '7px 1px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, color: page === n.id ? C.pri : C.txl }}>
             <div style={{ background: page === n.id ? C.priL : 'transparent', borderRadius: 7, padding: '3px 5px' }}><Ic n={n.ic} s={17} c={page === n.id ? C.pri : C.txl} /></div>
             <span style={{ fontSize: 8, fontWeight: page === n.id ? 800 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{n.l}</span>

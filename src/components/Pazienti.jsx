@@ -5,7 +5,7 @@ import ImportCsvModal from './ImportCsvModal.jsx';
 import DupModal from './DupModal.jsx';
 import SchedaPaz from './SchedaPaz.jsx';
 
-export default function Pazienti({ patients, setPatients, plans, setPlans, payments, setPayments, appointments, setAppointments, si, onNuovoPiano, implants, setImplants, onNuovoAppuntamento, templates }) {
+export default function Pazienti({ patients, setPatients, plans, setPlans, payments, setPayments, appointments, setAppointments, si, features, onNuovoPiano, implants, setImplants, onNuovoAppuntamento, templates }) {
   const [modal, setModal] = useState(false);
   const [importModal, setImportModal] = useState(false);
   const [dupModal, setDupModal] = useState(false);
@@ -15,10 +15,16 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
   const [toast, setToast] = useState('');
   const [confirmDelId, setConfirmDelId] = useState(null);
   const F = (f) => setForm((p) => ({ ...p, ...f }));
+  const limitePazienti = features?.max_pazienti ?? null;
+  const limiteRaggiunto = limitePazienti != null && patients.length >= limitePazienti;
 
-  const openEdit = (p) => { setForm(p || { nome: '', cognome: '', dataNascita: '', telefono: '', email: '', cf: '', indirizzo: '', note: '' }); setModal(true); };
+  const openEdit = (p) => {
+    if (!p && limiteRaggiunto) { setToast(`Hai raggiunto il limite di ${limitePazienti} pazienti del tuo piano. Passa a Pro per pazienti illimitati.`); return; }
+    setForm(p || { nome: '', cognome: '', dataNascita: '', telefono: '', email: '', cf: '', indirizzo: '', note: '' }); setModal(true);
+  };
   const save = () => {
     if (!form.nome || !form.cognome) return;
+    if (!form.id && limiteRaggiunto) { setToast(`Limite di ${limitePazienti} pazienti raggiunto.`); setModal(false); return; }
     if (form.id) setPatients((p) => p.map((x) => (x.id === form.id ? form : x)));
     else setPatients((p) => [...p, { ...form, id: uid() }]);
     setModal(false);
@@ -33,11 +39,20 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
   const chiaveDup = (p) => `${(p.nome || '').trim().toLowerCase()}|${(p.cognome || '').trim().toLowerCase()}`;
   const handleImport = (nuoviPazienti) => {
     const esistenti = new Set(patients.map(chiaveDup));
-    const daImportare = nuoviPazienti.filter((p) => !esistenti.has(chiaveDup(p)));
+    let daImportare = nuoviPazienti.filter((p) => !esistenti.has(chiaveDup(p)));
     const scartati = nuoviPazienti.length - daImportare.length;
+    let bloccatiDaLimite = 0;
+    if (limitePazienti != null) {
+      const postiLiberi = Math.max(0, limitePazienti - patients.length);
+      if (daImportare.length > postiLiberi) {
+        bloccatiDaLimite = daImportare.length - postiLiberi;
+        daImportare = daImportare.slice(0, postiLiberi);
+      }
+    }
     setPatients((prev) => [...prev, ...daImportare.map((p) => ({ ...p, id: uid() }))]);
     setImportModal(false);
-    setToast(scartati > 0 ? `${daImportare.length} importati, ${scartati} scartati (già esistenti)` : `${daImportare.length} pazienti importati ✓`);
+    if (bloccatiDaLimite > 0) setToast(`${daImportare.length} importati. ${bloccatiDaLimite} non importati: limite di ${limitePazienti} pazienti raggiunto.`);
+    else setToast(scartati > 0 ? `${daImportare.length} importati, ${scartati} scartati (già esistenti)` : `${daImportare.length} pazienti importati ✓`);
   };
 
   const gruppiDuplicati = (() => {
@@ -57,7 +72,7 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
     return (
       <SchedaPaz
         paz={scheda} plans={plans} setPlans={setPlans} payments={payments} appointments={appointments}
-        si={si} implants={implants} setImplants={setImplants}
+        si={si} features={features} implants={implants} setImplants={setImplants}
         onClose={() => setScheda(null)}
         onEdit={(p) => { setScheda(null); openEdit(p); }}
         onNuovoPiano={(id) => { setScheda(null); onNuovoPiano(id); }}
@@ -106,9 +121,14 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
           <button onClick={() => setImportModal(true)} style={{ background: C.priL, border: 'none', borderRadius: 10, padding: '10px 13px', color: C.pri, fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
             📥 CSV
           </button>
-          <Btn ch="Nuovo" ic="plus" onClick={() => openEdit()} />
+          <Btn ch={limiteRaggiunto ? '🔒 Limite raggiunto' : 'Nuovo'} ic={limiteRaggiunto ? undefined : 'plus'} onClick={() => openEdit()} />
         </div>
       </div>
+      {limitePazienti != null && (
+        <div style={{ fontSize: 11, color: limiteRaggiunto ? C.dan : C.txl, marginBottom: 10, marginTop: -8 }}>
+          {patients.length}/{limitePazienti} pazienti usati nel piano attuale{limiteRaggiunto ? ' — passa a Pro per pazienti illimitati' : ''}
+        </div>
+      )}
 
       <div style={{ position: 'relative', marginBottom: 14 }}>
         <div style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)' }}><Ic n="srch" s={15} c={C.txl} /></div>
