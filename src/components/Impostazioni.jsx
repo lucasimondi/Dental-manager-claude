@@ -1,7 +1,7 @@
 ﻿import ProfiloUtente from './ProfiloUtente.jsx';
 import GestioneUtenti from './GestioneUtenti.jsx';
 import React, { useState } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Ic } from './ui';
+import { Btn, Crd, Fld, Inp, Txt, Modal, Toast, Ic } from './ui';
 import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI } from '../lib/utils';
 
 export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange }) {
@@ -49,11 +49,11 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       <Crd style={{ marginBottom: 11 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Tipo di studio</div>
         <Fld label="Ambito professionale">
-          <Sel value={si.vertical || 'dentistico'} onChange={(e) => S({ vertical: e.target.value })}>
-            {VERTICALI_DISPONIBILI.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
-          </Sel>
+          <div style={{ padding: '11px 13px', borderRadius: 10, background: C.bg, border: `1.5px solid ${C.brd}`, fontSize: 14, fontWeight: 700, color: C.txt }}>
+            {(VERTICALI_DISPONIBILI.find((v) => v.id === (si.vertical || 'dentistico')) || {}).label}
+          </div>
         </Fld>
-        <div style={{ fontSize: 11, color: C.txl, marginTop: 4 }}>Determina quali moduli specifici (es. ortodonzia, impianti) sono visibili nell'app.</div>
+        <div style={{ fontSize: 11, color: C.txl, marginTop: 4 }}>Impostato in fase di registrazione e non modificabile, per evitare incoerenze tra i dati (es. listino, template). Contattaci se hai bisogno di cambiarlo.</div>
       </Crd>
       <Crd style={{ marginBottom: 11 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Intestazione PDF</div>
