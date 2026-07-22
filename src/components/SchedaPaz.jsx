@@ -197,7 +197,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
 
   if (docMedico && features?.documenti !== false) return <DocMedico paz={paz} si={si} onClose={() => setDocMedico(false)} />;
   if (docFiscale && features?.documenti !== false) return <DocFiscale paz={paz} plans={plans} si={si} onClose={() => setDocFiscale(false)} />;
-  if (pdfPlan) return <PdfView pl={pdfPlan} paz={paz} si={si} onClose={() => setPdfPlan(null)} />;
+  if (pdfPlan) return <PdfView pl={pdfPlan} paz={paz} si={si} features={features} onClose={() => setPdfPlan(null)} />;
 
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'piani', l: '🦷 Piani' }, ...(isDentistico ? [{ id: 'impl', l: '🔩 Impianti' }] : []), { id: 'paga', l: '💰 Pagamenti' }, { id: 'foto', l: '📁 Foto' }, { id: 'doc', l: '📄 Documenti' }, { id: 'app', l: '📅 Agenda' }];
@@ -234,7 +234,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
             {paz.telefono && (
               <Crd style={{ marginBottom: 10 }}>
                 <div style={{ fontWeight: 700, fontSize: 13 }}>📞 {paz.telefono}</div>
-                <PhStr tel={paz.telefono} />
+                <PhStr tel={paz.telefono} whatsapp={features?.whatsapp !== false} />
               </Crd>
             )}
             <Crd style={{ marginBottom: 10 }}>

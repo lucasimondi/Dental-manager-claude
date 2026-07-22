@@ -4,7 +4,7 @@ import { C, uid, fmt, today, SCADENZA_PRESET, addMesi } from '../lib/utils';
 import Odontogramma from './Odontogramma.jsx';
 import PdfView from './PdfView.jsx';
 
-export default function Piani({ patients, plans, setPlans, pricelist, templates, si, initPatId, onClearInitPat, onOpenPaz }) {
+export default function Piani({ patients, plans, setPlans, pricelist, templates, si, features, initPatId, onClearInitPat, onOpenPaz }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const [modal, setModal] = useState(false);
   const [pazSearch, setPazSearch] = useState('');
@@ -129,7 +129,7 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
 
   if (pdfPlan) {
     const p = patients.find((x) => x.id === pdfPlan.pazienteId);
-    return <PdfView pl={pdfPlan} paz={p} si={si} onClose={() => setPdfPlan(null)} />;
+    return <PdfView pl={pdfPlan} paz={p} si={si} features={features} onClose={() => setPdfPlan(null)} />;
   }
 
   return (
@@ -256,8 +256,10 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
               ))}
               <div style={{ textAlign: 'right', fontWeight: 800, color: C.pri, marginTop: 7, fontSize: 13 }}>Totale: {fmt(tot)}</div>
               <div style={{ marginTop: 9, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {features?.whatsapp !== false && <>
                 <button onClick={() => openWA(pl, 'piano')} style={{ background: '#25D366', border: 'none', borderRadius: 8, padding: '6px 11px', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="wa" s={12} c="#fff" />Piano WA</button>
                 <button onClick={() => openWA(pl, 'preventivo')} style={{ background: '#128C7E', border: 'none', borderRadius: 8, padding: '6px 11px', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="send" s={12} c="#fff" />Prev. WA</button>
+                </>}
                 <Sel value={pl.stato || 'attivo'} onChange={(e) => setStato(pl.id, e.target.value)} style={{ padding: '6px 8px', fontSize: 11, borderRadius: 8, width: 'auto', flex: 1 }}>
                   <option value="attivo">Attivo</option><option value="accettato">Accettato ✓</option><option value="rifiutato">Rifiutato ✗</option><option value="concluso">Concluso ✓</option>
                 </Sel>

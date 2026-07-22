@@ -55,7 +55,7 @@ const saveWidgets = (ws) => {
 const NOMI_F = ['alessia','alice','anna','beatrice','camilla','chiara','claudia','elena','elisa','emma','federica','francesca','giulia','ilaria','laura','lisa','lucia','luisa','mara','maria','marina','martina','monica','paola','roberta','sara','silvia','sofia','valentina','veronica','virginia'];
 const getSaluto = (nome) => { if (!nome) return 'Benvenuto'; const ora = new Date().getHours(); const s = ora < 12 ? 'Buongiorno' : ora < 18 ? 'Buon pomeriggio' : 'Buonasera'; const p = nome.trim().split(' ')[0].toLowerCase(); const fem = NOMI_F.includes(p) || (p.endsWith('a') && !['luca','andrea','mattia','nicola','enea'].includes(p)); return s + ', ' + (fem ? 'cara ' : 'caro ') + nome.trim().split(' ')[0]; };
 
-export default function Dashboard({ patients, appointments, payments, plans, onOpenPaz, appTypes, onGoAgenda, templates, userName: userNameProp, si }) {
+export default function Dashboard({ patients, appointments, payments, plans, onOpenPaz, appTypes, onGoAgenda, templates, userName: userNameProp, si, features }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const t = today();
   const [userName, setUserName] = useState(userNameProp || '');
@@ -837,7 +837,9 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
           </div>
         );
 
-        if (w.id === 'wa') return (
+        if (w.id === 'wa') {
+          if (features && features.whatsapp === false) return null;
+          return (
           <div key="wa" style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>💬 Reminder WhatsApp — domani</div>
             {domaniApps.length === 0 ? (
@@ -885,7 +887,8 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
               </Crd>
             )}
           </div>
-        );
+          );
+        }
 
         if (w.id === 'appuntamenti' && upcoming.length > 0) return (
           <div key="appuntamenti" style={{ marginBottom: 16 }}>

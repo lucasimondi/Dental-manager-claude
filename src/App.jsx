@@ -290,7 +290,7 @@ export default function App() {
       )}
 
       <div id="app-scroll" style={{ flex: 1, overflowY: 'auto', padding: 13, paddingBottom: 78 }}>
-        {page === 'home' && <Dashboard patients={patients} appointments={appointments} payments={payments} plans={plans} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} templates={templates} userName={userName} si={studioInfo} />}
+        {page === 'home' && <Dashboard patients={patients} appointments={appointments} payments={payments} plans={plans} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} templates={templates} userName={userName} si={studioInfo} features={features} />}
         {page === 'paz' && (
           <Pazienti
             patients={patients} setPatients={setPatientsSync}
@@ -307,7 +307,7 @@ export default function App() {
         {page === 'piani' && (
           <Piani
             patients={patients} plans={plans} setPlans={setPlansSync}
-            pricelist={pricelist} templates={templates} si={studioInfo}
+            pricelist={pricelist} templates={templates} si={studioInfo} features={features}
             initPatId={initPatId} onClearInitPat={() => setInitPatId(null)}
             onOpenPaz={goSchedaPaz}
           />

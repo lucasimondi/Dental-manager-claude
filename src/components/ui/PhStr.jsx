@@ -2,7 +2,7 @@ import React from 'react';
 import Ic from './Ic.jsx';
 import { C } from '../../lib/utils';
 
-export default function PhStr({ tel }) {
+export default function PhStr({ tel, whatsapp = true }) {
   if (!tel) return null;
   const d = tel.replace(/\D/g, '');
   return (
@@ -17,6 +17,7 @@ export default function PhStr({ tel }) {
       >
         <Ic n="ph" s={13} c={C.pri} />Chiama
       </a>
+      {whatsapp && (
       <a
         href={`https://wa.me/39${d}`}
         target="_blank"
@@ -29,6 +30,7 @@ export default function PhStr({ tel }) {
       >
         <Ic n="wa" s={13} c="#128C7E" />WhatsApp
       </a>
+      )}
     </div>
   );
 }
