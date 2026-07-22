@@ -2,8 +2,8 @@
 import { supabase, DB } from './lib/supabase.js';
 import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_APP_TYPES, DEF_TPL_GENERICO, DEF_APP_TYPES_GENERICO, NAV } from './lib/utils';
 import { Ic } from './components/ui';
-import logoDentalWhite from './assets/logo-poliedra-dental-white-text.png';
-import logoSalusWhite from './assets/logo-poliedra-salus-white-text.png';
+import logoDentalWhite from './assets/logo-poliedra-dental-outline.png';
+import logoSalusWhite from './assets/logo-poliedra-salus-outline.png';
 import LoginScreen from './components/LoginScreen.jsx';
 import LoadingScreen from './components/LoadingScreen.jsx';
 import Dashboard from './components/Dashboard.jsx';
@@ -206,7 +206,7 @@ export default function App() {
         <img
           src={(!studioInfo?.vertical || studioInfo.vertical === 'dentistico') ? logoDentalWhite : logoSalusWhite}
           alt="Poliedra"
-          style={{ height: 34, display: 'block' }}
+          style={{ height: 48, display: 'block' }}
         />
         <div style={{ marginLeft: 'auto', fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10 }}>
           {userName && <span style={{ color: 'rgba(255,255,255,0.8)', fontWeight: 700 }}>{userName}</span>}
