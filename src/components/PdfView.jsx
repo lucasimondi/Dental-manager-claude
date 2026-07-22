@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { jsPDF } from 'jspdf';
 
 export default function PdfView({ pl, paz, si, onClose }) {
+  const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const sub = pl.voci.reduce((s, v) => s + Number(v.prezzo), 0);
   const sc = Number(pl.sconto) || 0;
   const scontato = pl.scontoTipo === 'pct' ? sub * (sc / 100) : Math.min(sc, sub);
@@ -9,9 +10,9 @@ export default function PdfView({ pl, paz, si, onClose }) {
   const fmtE = (n) => `€ ${Number(n).toFixed(2)}`;
 
   const buildTesto = () => {
-    const righe = pl.voci.map((v, i) => `${i + 1}. ${v.prestazione}${v.dente ? ' (d.' + v.dente + ')' : ''} — ${fmtE(v.prezzo)}${v.eseguita ? ' ✓' : ''}`).join('\n');
+    const righe = pl.voci.map((v, i) => `${i + 1}. ${v.prestazione}${(isDentistico && v.dente) ? ' (d.' + v.dente + ')' : ''} — ${fmtE(v.prezzo)}${v.eseguita ? ' ✓' : ''}`).join('\n');
     const scontoR = scontato > 0 ? `\n🏷️ Sconto: −${fmtE(scontato)}` : '';
-    return `🦷 *${si.nome || 'Studio Dentistico'}*\n${si.spec || ''}\n${'─'.repeat(32)}\n\n📋 *PREVENTIVO*\nPaziente: ${paz?.nome || ''} ${paz?.cognome || ''}\nData: ${new Date().toLocaleDateString('it-IT')}\nN°: ${String(pl.id || '').slice(-6).padStart(6, '0')}\n\nPiano: *${pl.titolo}*\n\n${righe}${scontoR}\n${'─'.repeat(32)}\n💰 *TOTALE: ${fmtE(tot)}*\n${'─'.repeat(32)}\n📞 ${si.tel || ''}  ✉️ ${si.email || ''}\n${si.addr1 || ''}`;
+    return `📋 *${si.nome || 'Studio'}*\n${si.spec || ''}\n${'─'.repeat(32)}\n\n📋 *PREVENTIVO*\nPaziente: ${paz?.nome || ''} ${paz?.cognome || ''}\nData: ${new Date().toLocaleDateString('it-IT')}\nN°: ${String(pl.id || '').slice(-6).padStart(6, '0')}\n\nPiano: *${pl.titolo}*\n\n${righe}${scontoR}\n${'─'.repeat(32)}\n💰 *TOTALE: ${fmtE(tot)}*\n${'─'.repeat(32)}\n📞 ${si.tel || ''}  ✉️ ${si.email || ''}\n${si.addr1 || ''}`;
   };
 
   const sendWA = () => {
@@ -59,7 +60,7 @@ export default function PdfView({ pl, paz, si, onClose }) {
       const box = (x, yy, w, h, r, g, b) => { doc.setFillColor(r, g, b); doc.rect(x, yy, w, h, 'F'); };
 
       doc.setFont('helvetica', 'bolditalic'); doc.setFontSize(22); doc.setTextColor(26, 78, 102);
-      txt(si.nome || 'Studio Dentistico', W / 2, y, { align: 'center' }); y += 7;
+      txt(si.nome || 'Studio', W / 2, y, { align: 'center' }); y += 7;
       if (si.spec) { doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(74, 144, 196); txt(si.spec, W / 2, y, { align: 'center' }); y += 5; }
       if (si.iscr) { doc.setFontSize(8); txt(si.iscr, W / 2, y, { align: 'center' }); y += 5; }
       y += 2;
@@ -94,8 +95,8 @@ export default function PdfView({ pl, paz, si, onClose }) {
       doc.setDrawColor(74, 144, 196); doc.setLineWidth(0.4); doc.line(margin, y + 2, W - margin, y + 2);
       y += 7;
 
-      const cols = [8, 82, 18, 28, 24];
-      const heads = ['#', 'Prestazione', 'Dente', 'Importo', 'Stato'];
+      const cols = isDentistico ? [8, 82, 18, 28, 24] : [8, 100, 28, 24];
+      const heads = isDentistico ? ['#', 'Prestazione', 'Dente', 'Importo', 'Stato'] : ['#', 'Prestazione', 'Importo', 'Stato'];
       box(margin, y, contentW, 7, 26, 107, 138);
       doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(255, 255, 255);
       let cx = margin + 2;
@@ -112,10 +113,12 @@ export default function PdfView({ pl, paz, si, onClose }) {
         txt(String(i + 1), cx, y + 5); cx += cols[0];
         const prest = doc.splitTextToSize(v.prestazione, cols[1] - 3)[0] || '';
         txt(prest, cx, y + 5); cx += cols[1];
-        txt(v.dente || '—', cx, y + 5); cx += cols[2];
-        txt(`€ ${Number(v.prezzo).toFixed(2)}`, cx, y + 5); cx += cols[3];
-        if (v.eseguita) { box(cx - 1, y + 1, cols[4] - 2, 5, 232, 247, 238); doc.setTextColor(45, 158, 97); txt('Eseguita', cx + 1, y + 5); }
-        else { box(cx - 1, y + 1, cols[4] - 2, 5, 254, 243, 226); doc.setTextColor(224, 128, 64); txt('Da fare', cx + 1, y + 5); }
+        if (isDentistico) { txt(v.dente || '—', cx, y + 5); cx += cols[2]; }
+        const importoColIdx = isDentistico ? 3 : 2;
+        const statoColIdx = isDentistico ? 4 : 3;
+        txt(`€ ${Number(v.prezzo).toFixed(2)}`, cx, y + 5); cx += cols[importoColIdx];
+        if (v.eseguita) { box(cx - 1, y + 1, cols[statoColIdx] - 2, 5, 232, 247, 238); doc.setTextColor(45, 158, 97); txt('Eseguita', cx + 1, y + 5); }
+        else { box(cx - 1, y + 1, cols[statoColIdx] - 2, 5, 254, 243, 226); doc.setTextColor(224, 128, 64); txt('Da fare', cx + 1, y + 5); }
         y += rowH;
       });
 
@@ -251,7 +254,7 @@ export default function PdfView({ pl, paz, si, onClose }) {
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px 10px 40px' }}>
         <div style={{ background: '#fff', maxWidth: 680, margin: '0 auto', boxShadow: '0 4px 24px rgba(0,0,0,0.15)', borderRadius: 4, padding: '28px 24px', fontFamily: 'Georgia,serif', color: '#1A202C' }}>
           <div style={{ textAlign: 'center', marginBottom: 6 }}>
-            <div style={{ fontSize: 24, fontStyle: 'italic', fontWeight: 'bold', color: '#1A4E66' }}>{si.nome || 'Studio Dentistico'}</div>
+            <div style={{ fontSize: 24, fontStyle: 'italic', fontWeight: 'bold', color: '#1A4E66' }}>{si.nome || 'Studio'}</div>
             {si.spec && <div style={{ fontSize: 11, color: '#4A90C4', fontFamily: 'Arial,sans-serif', marginTop: 2 }}>{si.spec}</div>}
             {si.iscr && <div style={{ fontSize: 10, color: '#4A90C4', fontFamily: 'Arial,sans-serif', marginTop: 1 }}>{si.iscr}</div>}
           </div>
@@ -267,7 +270,7 @@ export default function PdfView({ pl, paz, si, onClose }) {
           <div style={{ textAlign: 'center', margin: '8px 0 12px' }}><span style={{ fontSize: 14, fontWeight: 'bold', letterSpacing: '.16em', textTransform: 'uppercase', border: '2px solid #1A202C', display: 'inline-block', padding: '4px 20px' }}>PREVENTIVO</span></div>
           <div style={{ fontSize: 10, fontWeight: 'bold', color: '#4A90C4', textTransform: 'uppercase', letterSpacing: '.08em', borderBottom: '1.5px solid #4A90C4', paddingBottom: 3, marginBottom: 10, fontFamily: 'Arial,sans-serif' }}>Piano di cura: {pl.titolo}</div>
           <table style={S.tbl}>
-            <thead><tr>{['#', 'Prestazione', 'Dente', 'Importo', 'Stato'].map((h) => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
+            <thead><tr>{(isDentistico ? ['#', 'Prestazione', 'Dente', 'Importo', 'Stato'] : ['#', 'Prestazione', 'Importo', 'Stato']).map((h) => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
             <tbody>
               {pl.voci.map((v, i) => {
                 const td = i % 2 === 0 ? S.tdE : S.tdO;
@@ -275,14 +278,14 @@ export default function PdfView({ pl, paz, si, onClose }) {
                   <tr key={i}>
                     <td style={{ ...td, width: 24 }}>{i + 1}</td>
                     <td style={td}>{v.prestazione}</td>
-                    <td style={{ ...td, width: 55, textAlign: 'center' }}>{v.dente || '—'}</td>
+                    {isDentistico && <td style={{ ...td, width: 55, textAlign: 'center' }}>{v.dente || '—'}</td>}
                     <td style={{ ...td, width: 80, textAlign: 'right' }}>€ {Number(v.prezzo).toFixed(2)}</td>
                     <td style={{ ...td, width: 90 }}><span style={{ background: v.eseguita ? '#E8F7EE' : '#FEF3E2', color: v.eseguita ? '#2D9E61' : '#E08040', padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 'bold' }}>{v.eseguita ? '✓ Eseguita' : 'Da eseguire'}</span></td>
                   </tr>
                 );
               })}
-              {scontato > 0 && <tr><td colSpan={3} style={S.tdS}>Sconto {pl.scontoTipo === 'pct' ? `${sc}%` : `€ ${Number(sc).toFixed(2)}`}</td><td colSpan={2} style={{ ...S.tdS, textAlign: 'right' }}>−{fmtE(scontato)}</td></tr>}
-              <tr><td colSpan={3} style={S.tdT}><b>TOTALE</b></td><td colSpan={2} style={{ ...S.tdT, textAlign: 'right' }}><b>{fmtE(tot)}</b></td></tr>
+              {scontato > 0 && <tr><td colSpan={isDentistico ? 3 : 2} style={S.tdS}>Sconto {pl.scontoTipo === 'pct' ? `${sc}%` : `€ ${Number(sc).toFixed(2)}`}</td><td colSpan={2} style={{ ...S.tdS, textAlign: 'right' }}>−{fmtE(scontato)}</td></tr>}
+              <tr><td colSpan={isDentistico ? 3 : 2} style={S.tdT}><b>TOTALE</b></td><td colSpan={2} style={{ ...S.tdT, textAlign: 'right' }}><b>{fmtE(tot)}</b></td></tr>
             </tbody>
           </table>
           {paz?.note && <div style={{ marginTop: 10, background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 4, padding: 9, fontSize: 11, color: '#78350F', fontFamily: 'Arial,sans-serif' }}><b>⚠️ Note:</b> {paz.note}</div>}
