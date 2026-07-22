@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase.js';
-import Ic from './ui/Ic.jsx';
 import { VERTICALI_DISPONIBILI } from '../lib/utils';
+import logoDental from '../assets/logo-poliedra-dental-transparent.png';
+import logoSalus from '../assets/logo-poliedra-salus-transparent.png';
 
 export default function RegisterScreen({ onBack }) {
   const [step, setStep] = useState(1); // 1=dati studio, 2=credenziali, 3=successo
@@ -60,10 +61,11 @@ export default function RegisterScreen({ onBack }) {
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div style={{ background: '#2EC4B6', borderRadius: 14, width: 54, height: 54, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-            <Ic n="tooth" s={28} c="#fff" />
-          </div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#1A202C' }}>DentalManager</div>
+          <img
+            src={form.vertical === 'dentistico' ? logoDental : logoSalus}
+            alt="Poliedra"
+            style={{ height: 54, margin: '0 auto 12px', display: 'block' }}
+          />
           <div style={{ fontSize: 12, color: '#718096', marginTop: 2 }}>Registra il tuo studio</div>
         </div>
 

@@ -2,6 +2,7 @@
 import { supabase, DB } from './lib/supabase.js';
 import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_APP_TYPES, DEF_TPL_GENERICO, DEF_APP_TYPES_GENERICO, NAV } from './lib/utils';
 import { Ic } from './components/ui';
+import iconGem from './assets/icon-poliedra-gem.png';
 import LoginScreen from './components/LoginScreen.jsx';
 import LoadingScreen from './components/LoadingScreen.jsx';
 import Dashboard from './components/Dashboard.jsx';
@@ -201,8 +202,8 @@ export default function App() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: C.bg, overflow: 'hidden' }}>
       <div style={{ background: C.priD, padding: '11px 14px', paddingTop: 'max(11px,env(safe-area-inset-top))', display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
-        <div style={{ background: C.acc, borderRadius: 7, padding: 5 }}><Ic n="tooth" s={16} c="#fff" /></div>
-        <span style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>DentalManager</span>
+        <img src={iconGem} alt="" style={{ height: 22, display: 'block' }} />
+        <span style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>Poliedra</span>
         <div style={{ marginLeft: 'auto', fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10 }}>
           {userName && <span style={{ color: 'rgba(255,255,255,0.8)', fontWeight: 700 }}>{userName}</span>}
           <span style={{ color: 'rgba(255,255,255,0.3)' }}>·</span>
