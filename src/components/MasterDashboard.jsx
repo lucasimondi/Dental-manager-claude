@@ -1,0 +1,158 @@
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase.js';
+import { Btn, Crd, Fld, Inp, Sel, Modal, Ic, Toast } from './ui';
+import { C, fmtD, VERTICALI_DISPONIBILI } from '../lib/utils';
+
+const PIANI = [
+  { id: 'base', label: 'Base' },
+  { id: 'pro', label: 'Pro' },
+  { id: 'premium', label: 'Premium' },
+];
+
+export default function MasterDashboard({ onClose }) {
+  const [studi, setStudi] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState('');
+  const [selStudio, setSelStudio] = useState(null); // studio aperto nel pannello dettaglio
+  const [utenti, setUtenti] = useState([]);
+  const [utentiLoading, setUtentiLoading] = useState(false);
+  const [form, setForm] = useState({ piano: 'base', vertical: 'dentistico', vertical_altro: '', attivo: true });
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState('');
+
+  const load = async () => {
+    setLoading(true);
+    setErr('');
+    const { data, error } = await supabase.rpc('admin_list_studios');
+    if (error) setErr(error.message || 'Errore nel caricamento');
+    else setStudi(data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const apriStudio = async (s) => {
+    setSelStudio(s);
+    setForm({ piano: s.piano || 'base', vertical: s.vertical || 'dentistico', vertical_altro: s.vertical_altro || '', attivo: s.attivo });
+    setUtentiLoading(true);
+    const { data, error } = await supabase.rpc('admin_list_studio_users', { p_studio_id: s.id });
+    setUtenti(error ? [] : (data || []));
+    setUtentiLoading(false);
+  };
+
+  const salva = async () => {
+    if (!selStudio) return;
+    setSaving(true);
+    const { error } = await supabase.rpc('admin_update_studio', {
+      p_studio_id: selStudio.id,
+      p_piano: form.piano,
+      p_vertical: form.vertical,
+      p_vertical_altro: form.vertical === 'altro' ? form.vertical_altro : null,
+      p_attivo: form.attivo,
+    });
+    setSaving(false);
+    if (error) { setToast('Errore: ' + error.message); return; }
+    setToast('Salvato ✓');
+    setSelStudio(null);
+    load();
+  };
+
+  const toggleAttivo = async (s) => {
+    const nuovoStato = !s.attivo;
+    if (!confirm(nuovoStato ? `Riattivare "${s.nome}"?` : `Sospendere "${s.nome}"? Non potrà più accedere all'app.`)) return;
+    const { error } = await supabase.rpc('admin_update_studio', { p_studio_id: s.id, p_attivo: nuovoStato });
+    if (error) { setToast('Errore: ' + error.message); return; }
+    setToast(nuovoStato ? 'Studio riattivato ✓' : 'Studio sospeso ✓');
+    load();
+  };
+
+  const totPazienti = studi.reduce((a, s) => a + Number(s.n_pazienti || 0), 0);
+  const totAttivi = studi.filter((s) => s.attivo).length;
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 900, display: 'flex', flexDirection: 'column' }}>
+      {toast && <Toast msg={toast} onDone={() => setToast('')} />}
+
+      <div style={{ background: C.priD, padding: '12px 14px', paddingTop: 'max(12px,env(safe-area-inset-top))', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 8, padding: 8, cursor: 'pointer', display: 'flex' }}>
+          <Ic n="back" s={18} c="#fff" />
+        </button>
+        <div style={{ flex: 1 }}>
+          <div style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>🛠️ Dashboard Master</div>
+          <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }}>{studi.length} studi · {totAttivi} attivi · {totPazienti} pazienti totali</div>
+        </div>
+        <button onClick={load} style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 8, padding: 8, cursor: 'pointer', display: 'flex', fontSize: 16 }}>
+          🔄
+        </button>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: 14 }}>
+        {loading && <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>⏳ Caricamento...</div>}
+        {err && <div style={{ background: C.danL, color: C.dan, padding: 12, borderRadius: 10, marginBottom: 12, fontSize: 13, fontWeight: 600 }}>{err}</div>}
+
+        {!loading && !err && studi.map((s) => {
+          const vLabel = s.vertical === 'altro' && s.vertical_altro ? s.vertical_altro : (VERTICALI_DISPONIBILI.find((v) => v.id === s.vertical) || {}).label || s.vertical;
+          return (
+            <Crd key={s.id} style={{ marginBottom: 10, opacity: s.attivo ? 1 : 0.6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                <div onClick={() => apriStudio(s)} style={{ flex: 1, cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontWeight: 800, fontSize: 15 }}>{s.nome}</span>
+                    {!s.attivo && <span style={{ background: C.danL, color: C.dan, fontSize: 10, fontWeight: 800, padding: '2px 7px', borderRadius: 20 }}>SOSPESO</span>}
+                    <span style={{ background: C.priL, color: C.pri, fontSize: 10, fontWeight: 800, padding: '2px 7px', borderRadius: 20, textTransform: 'uppercase' }}>{s.piano}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: C.txm, marginTop: 3 }}>{s.email}</div>
+                  <div style={{ fontSize: 11, color: C.txl, marginTop: 2 }}>{vLabel} · {s.n_pazienti} pazienti · {s.n_utenti} utenti · dal {fmtD(s.created_at?.slice(0, 10))}</div>
+                </div>
+                <button onClick={() => toggleAttivo(s)} style={{ background: s.attivo ? C.danL : C.sucL, color: s.attivo ? C.dan : C.suc, border: 'none', borderRadius: 8, padding: '6px 10px', fontWeight: 700, fontSize: 11, cursor: 'pointer', flexShrink: 0 }}>
+                  {s.attivo ? 'Sospendi' : 'Riattiva'}
+                </button>
+              </div>
+            </Crd>
+          );
+        })}
+      </div>
+
+      {selStudio && (
+        <Modal title={selStudio.nome} onClose={() => setSelStudio(null)} wide>
+          <Fld label="Piano abbonamento">
+            <Sel value={form.piano} onChange={(e) => setForm((f) => ({ ...f, piano: e.target.value }))}>
+              {PIANI.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+            </Sel>
+          </Fld>
+          <Fld label="Tipo professionista">
+            <Sel value={form.vertical} onChange={(e) => setForm((f) => ({ ...f, vertical: e.target.value }))}>
+              {VERTICALI_DISPONIBILI.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
+            </Sel>
+          </Fld>
+          {form.vertical === 'altro' && (
+            <Fld label="Specifica professione">
+              <Inp value={form.vertical_altro} onChange={(e) => setForm((f) => ({ ...f, vertical_altro: e.target.value }))} placeholder="es. Osteopata" />
+            </Fld>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: C.bg, borderRadius: 10, padding: 12, marginBottom: 14 }}>
+            <div style={{ flex: 1, fontSize: 13, fontWeight: 700 }}>Stato account</div>
+            <button onClick={() => setForm((f) => ({ ...f, attivo: !f.attivo }))} style={{ background: form.attivo ? C.sucL : C.danL, color: form.attivo ? C.suc : C.dan, border: 'none', borderRadius: 8, padding: '7px 14px', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>
+              {form.attivo ? '✓ Attivo' : '✕ Sospeso'}
+            </button>
+          </div>
+
+          <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 8 }}>Utenti dello studio</div>
+          {utentiLoading && <div style={{ color: C.txl, fontSize: 12, marginBottom: 10 }}>Caricamento...</div>}
+          {!utentiLoading && utenti.length === 0 && <div style={{ color: C.txl, fontSize: 12, marginBottom: 10 }}>Nessun utente registrato oltre al titolare</div>}
+          {!utentiLoading && utenti.map((u) => (
+            <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: `1px solid ${C.brd}`, fontSize: 12 }}>
+              <span>{u.nome || u.email} <span style={{ color: C.txl }}>· {u.ruolo}</span></span>
+              <span style={{ color: u.stato === 'attivo' ? C.suc : C.txl, fontWeight: 700 }}>{u.stato}</span>
+            </div>
+          ))}
+
+          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+            <Btn ch="Annulla" v="sec" onClick={() => setSelStudio(null)} full />
+            <Btn ch={saving ? 'Salvataggio...' : 'Salva modifiche'} onClick={salva} full />
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}

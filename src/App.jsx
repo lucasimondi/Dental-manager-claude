@@ -17,6 +17,7 @@ import Listino from './components/Listino.jsx';
 import Agenda from './components/Agenda.jsx';
 import WhatsApp from './components/WhatsApp.jsx';
 import Impostazioni from './components/Impostazioni.jsx';
+import MasterDashboard from './components/MasterDashboard.jsx';
 
 export default function App() {
   const [session, setSession] = useState(undefined);
@@ -36,6 +37,9 @@ export default function App() {
   const [agendaInitPaz, setAgendaInitPaz] = useState(null);
   const [schedaDashPaz, setSchedaDashPaz] = useState(null);
   const [syncError, setSyncError] = useState(null);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [showMasterDashboard, setShowMasterDashboard] = useState(false);
+  const [studioAttivo, setStudioAttivo] = useState(true);
 
   useEffect(() => {
     // Inizializza sessione — se non risponde entro 3s forza null (no session)
@@ -124,6 +128,22 @@ export default function App() {
     return () => { cancelled = true; };
   }, [session]);
 
+  useEffect(() => {
+    if (!session) { setIsSuperAdmin(false); setStudioAttivo(true); return; }
+    let cancelled = false;
+    (async () => {
+      const { data: admin } = await supabase.rpc('is_super_admin');
+      if (!cancelled) setIsSuperAdmin(!!admin);
+
+      const studioId = session?.user?.app_metadata?.studio_id;
+      if (studioId) {
+        const { data: st } = await supabase.from('studios').select('attivo').eq('id', studioId).maybeSingle();
+        if (!cancelled) setStudioAttivo(st ? st.attivo !== false : true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [session]);
+
   const makeSyncSetter = (key, setLocal, onError) => {
     return (updater) => {
       setLocal((prev) => {
@@ -200,6 +220,21 @@ export default function App() {
   if (session === null) return <LoginScreen onLogin={() => {}} />;
   if (dataLoading) return <LoadingScreen />;
 
+  if (!studioAttivo && !isSuperAdmin) {
+    return (
+      <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.bg, padding: 24, textAlign: 'center' }}>
+        <div>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>⏸️</div>
+          <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 8 }}>Account sospeso</div>
+          <div style={{ fontSize: 13, color: C.txm, marginBottom: 20, maxWidth: 320 }}>Il tuo account è temporaneamente sospeso. Contatta l'assistenza per maggiori informazioni.</div>
+          <button onClick={handleLogout} style={{ background: C.pri, border: 'none', borderRadius: 10, padding: '11px 22px', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Esci</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (showMasterDashboard) return <MasterDashboard onClose={() => setShowMasterDashboard(false)} />;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: C.bg, overflow: 'hidden' }}>
       <div style={{ background: C.priD, padding: '11px 14px', paddingTop: 'max(11px,env(safe-area-inset-top))', display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
@@ -212,6 +247,7 @@ export default function App() {
           {userName && <span style={{ color: 'rgba(255,255,255,0.8)', fontWeight: 700 }}>{userName}</span>}
           <span style={{ color: 'rgba(255,255,255,0.3)' }}>·</span>
           <span>{NAV.find((n) => n.id === page)?.l}</span>
+          {isSuperAdmin && <button onClick={() => setShowMasterDashboard(true)} title="Dashboard Master" style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, padding: '4px 8px', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>🛠️</button>}
           <button onClick={handleLogout} title="Esci" style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, padding: '4px 8px', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>Esci</button>
         </div>
       </div>
