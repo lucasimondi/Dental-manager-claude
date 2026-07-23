@@ -25,10 +25,11 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   }, []);
 
   useEffect(() => {
-    // Scroll iniziale alle 08:00
-    const top8 = (8 * 60 / slotMin) * slotH + 44; // +44 = altezza header giorni, ora dentro il contenitore scrollabile
-    if (containerRef.current) containerRef.current.scrollTop = top8;
-  }, [slotH, slotMin]);
+    // Scroll iniziale: vicino all'ora corrente se è dentro l'intervallo visibile, altrimenti in cima
+    const headerH = 44;
+    const target = showNowLine ? Math.max(0, nowTop - slotH * 2) + headerH : headerH;
+    if (containerRef.current) containerRef.current.scrollTop = target;
+  }, [slotH, slotMin, oraInizio, oraFine]);
 
   // Resize mouse handlers
   useEffect(() => {
@@ -54,12 +55,12 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
 
 
 
-  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const nowMin = now.getHours() * 60 + now.getMinutes() - oraInizio * 60;
   const nowTop = (nowMin / slotMin) * slotH;
-  const showNowLine = true;
+  const showNowLine = nowMin >= 0 && nowMin <= slots.length * slotMin;
 
   return (
-    <div style={{ display: 'flex', flex: 1, overflow: 'hidden', border: `1px solid ${C.brd}`, borderRadius: 12, background: '#fff', minHeight: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+    <div style={{ display: 'flex', flex: 1, overflow: 'hidden', border: `1px solid ${C.brd}`, borderRadius: 12, background: C.sur, minHeight: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
         {/* UNICO contenitore scrollabile: header + griglia insieme, cosi' le colonne hanno sempre esattamente la stessa larghezza */}
@@ -67,7 +68,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
           <div style={{ display: 'flex', flexDirection: 'column', minHeight: slots.length * slotH + 44 }}>
 
             {/* Header: angolo vuoto + giorni — sticky in cima, dentro lo stesso contenitore scrollabile della griglia */}
-            <div style={{ display: 'flex', borderBottom: `1.5px solid ${C.brd}`, height: 44, flexShrink: 0, background: '#fafbfc', position: 'sticky', top: 0, zIndex: 4 }}>
+            <div style={{ display: 'flex', borderBottom: `1.5px solid ${C.brd}`, height: 44, flexShrink: 0, background: C.bg, position: 'sticky', top: 0, zIndex: 4 }}>
               <div style={{ width: 46, flexShrink: 0, borderRight: `1.5px solid ${C.brd}` }} />
               {days.map((d, di) => {
                 const ds = toISO(d);
@@ -75,7 +76,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                 const isSelected = ds === selDay;
                 const isWeekend = d.getDay() === 0 || d.getDay() === 6;
                 return (
-                  <div key={di} onClick={() => { setSelDay(ds); if (days.length > 1) setView('giorno'); }} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, cursor: 'pointer', background: isSelected && days.length > 1 ? C.priL : isWeekend ? '#f5f5f7' : 'transparent', borderLeft: di > 0 ? `1.5px solid ${C.brd}` : 'none' }}>
+                  <div key={di} onClick={() => { setSelDay(ds); if (days.length > 1) setView('giorno'); }} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, cursor: 'pointer', background: isSelected && days.length > 1 ? C.priL : isWeekend ? C.bg : 'transparent', borderLeft: di > 0 ? `1.5px solid ${C.brd}` : 'none' }}>
                     <div style={{ fontSize: 9, fontWeight: 700, color: isToday ? C.pri : isWeekend ? C.txl : C.txm, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{WD_SHORT[d.getDay()]}</div>
                     <div style={{ fontSize: 15, fontWeight: 900, color: isToday ? '#fff' : isSelected ? C.pri : C.txt, background: isToday ? C.pri : 'transparent', borderRadius: '50%', width: 25, height: 25, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{d.getDate()}</div>
                   </div>
@@ -86,7 +87,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
             <div style={{ display: 'flex', flex: 1 }}>
 
             {/* Colonna ore — sticky */}
-            <div style={{ width: 46, flexShrink: 0, borderRight: `1.5px solid ${C.brd}`, background: '#fafbfc', position: 'sticky', left: 0, zIndex: 3 }}>
+            <div style={{ width: 46, flexShrink: 0, borderRight: `1.5px solid ${C.brd}`, background: C.bg, position: 'sticky', left: 0, zIndex: 3 }}>
               {slots.map((slot) => {
                 const isHour = slot.endsWith(':00');
                 return (
@@ -105,7 +106,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
             const isToday = ds === t;
             const isWeekend = d.getDay() === 0 || d.getDay() === 6;
             return (
-              <div key={di} style={{ flex: 1, position: 'relative', borderLeft: di > 0 ? `1.5px solid ${C.brd}` : 'none', background: isWeekend ? '#fcfcfd' : isToday ? '#fafdff' : '#fff' }}>
+              <div key={di} style={{ flex: 1, position: 'relative', borderLeft: di > 0 ? `1.5px solid ${C.brd}` : 'none', background: isWeekend ? C.bg : isToday ? C.priL : C.sur }}>
                 {slots.map((slot) => {
                   const isHour = slot.endsWith(':00');
                   return (
@@ -122,7 +123,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                 )}
                 {dayApps.map(a => {
                   const { top, height } = appPosition(a);
-                  if (top < 0) return null;
+                  if (top < 0 || top >= slots.length * slotH) return null;
                   const p = patients.find(x => x.id === a.pazienteId);
                   const co = getColore(a);
                   const isBeingResized = resizing?.id === a.id;
@@ -164,9 +165,11 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const [oraInizio, setOraInizio] = useState(() => { try { return Number(localStorage.getItem('ag_oraInizio') || 8); } catch { return 8; } });
   const [oraFine, setOraFine] = useState(() => { try { return Number(localStorage.getItem('ag_oraFine') || 20); } catch { return 20; } });
   const [slotMin, setSlotMin] = useState(() => { try { return Number(localStorage.getItem('ag_slotMin') || 30); } catch { return 30; } });
+  const [zoom, setZoom] = useState(() => { try { return Number(localStorage.getItem('ag_zoom')) || 1; } catch { return 1; } });
   const [tmpI, setTmpI] = useState(8);
   const [tmpF, setTmpF] = useState(20);
   const [tmpS, setTmpS] = useState(30);
+  const [tmpZ, setTmpZ] = useState(1);
   const [view, setView] = useState('settimana');
   const [selDay, setSelDay] = useState(today());
   const [modal, setModal] = useState(false);
@@ -193,11 +196,13 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   }, [initPazienteId]);
 
   // slotH calcolato per far stare 8-20 (12 ore) nello schermo mobile (~700px - 180px header)
+  // slotH calcolato per far stare l'intervallo scelto (oraInizio-oraFine) nello schermo, poi scalato dal fattore zoom
   const availH = typeof window !== 'undefined' ? Math.max(400, window.innerHeight - 180) : 520;
-  const slotH = Math.floor(availH / (12 * 60 / slotMin));
-  // Griglia sempre 00:00 - 24:00
+  const oreVisibili = Math.max(1, oraFine - oraInizio);
+  const slotH = Math.max(8, Math.round((availH / (oreVisibili * 60 / slotMin)) * zoom));
+  // Griglia limitata all'intervallo oraInizio - oraFine scelto nelle impostazioni
   const slots = [];
-  for (let h = 0; h < 24; h++) {
+  for (let h = oraInizio; h < oraFine; h++) {
     for (let m = 0; m < 60; m += slotMin) {
       slots.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
     }
@@ -207,7 +212,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
 
   const appPosition = (a) => {
     const [ah, am] = a.ora.split(':').map(Number);
-    const min = ah * 60 + am; // dalla mezzanotte
+    const min = ah * 60 + am - oraInizio * 60; // relativo all'inizio dell'intervallo visibile
     const top = (min / slotMin) * slotH;
     const height = Math.max((Number(a.durata) / slotMin) * slotH - 2, slotH * 0.6);
     return { top, height };
@@ -270,10 +275,11 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
 
   const saveSettings = () => {
     if (tmpI >= tmpF) return;
-    setOraInizio(tmpI); setOraFine(tmpF); setSlotMin(tmpS);
+    setOraInizio(tmpI); setOraFine(tmpF); setSlotMin(tmpS); setZoom(tmpZ);
     localStorage.setItem('ag_oraInizio', tmpI);
     localStorage.setItem('ag_oraFine', tmpF);
     localStorage.setItem('ag_slotMin', tmpS);
+    localStorage.setItem('ag_zoom', tmpZ);
     setSettingsOpen(false);
   };
 
@@ -309,7 +315,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
             <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
           </>}
         </div>
-        <button onClick={() => { setTmpI(oraInizio); setTmpF(oraFine); setTmpS(slotMin); setSettingsOpen(true); }} style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 8, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+        <button onClick={() => { setTmpI(oraInizio); setTmpF(oraFine); setTmpS(slotMin); setTmpZ(zoom); setSettingsOpen(true); }} style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 8, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
           <Ic n="set" s={15} c={C.txm} />
         </button>
         <Btn ch="+ Nuovo" onClick={() => apriNuovo()} />
@@ -446,6 +452,15 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
               <option value={15}>15 minuti</option>
               <option value={30}>30 minuti (consigliato)</option>
               <option value={60}>60 minuti</option>
+            </Sel>
+          </Fld>
+          <Fld label="Zoom griglia">
+            <Sel value={tmpZ} onChange={e => setTmpZ(Number(e.target.value))}>
+              <option value={0.6}>Compatto — vedo più ore insieme</option>
+              <option value={0.8}>Ridotto</option>
+              <option value={1}>Normale (consigliato)</option>
+              <option value={1.3}>Grande</option>
+              <option value={1.6}>Molto grande — più leggibile</option>
             </Sel>
           </Fld>
           {tmpI >= tmpF && <div style={{ background: C.danL, borderRadius: 8, padding: '8px 12px', marginBottom: 8, fontSize: 12, color: C.dan, fontWeight: 700 }}>⚠️ L'ora di inizio deve essere prima dell'ora di fine</div>}
