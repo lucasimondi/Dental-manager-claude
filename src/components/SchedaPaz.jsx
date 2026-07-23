@@ -234,7 +234,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
             {paz.telefono && (
               <Crd style={{ marginBottom: 10 }}>
                 <div style={{ fontWeight: 700, fontSize: 13 }}>📞 {paz.telefono}</div>
-                <PhStr tel={paz.telefono} whatsapp={features?.whatsapp !== false} />
+                <PhStr tel={paz.telefono} features={features} />
               </Crd>
             )}
             <Crd style={{ marginBottom: 10 }}>

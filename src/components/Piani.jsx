@@ -3,6 +3,7 @@ import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, SearchSel } from '
 import { C, uid, fmt, today, SCADENZA_PRESET, addMesi } from '../lib/utils';
 import Odontogramma from './Odontogramma.jsx';
 import PdfView from './PdfView.jsx';
+import WaAction, { apriWaDiretto } from './ui/WaAction.jsx';
 
 export default function Piani({ patients, plans, setPlans, pricelist, templates, si, features, initPatId, onClearInitPat, onOpenPaz }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
@@ -99,7 +100,7 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
   };
   const sendWA = () => {
     if (!waModal?.paz?.telefono || !waMsg) return;
-    window.open(`https://wa.me/39${waModal.paz.telefono.replace(/\D/g, '')}?text=${encodeURIComponent(waMsg)}`, '_blank');
+    apriWaDiretto(waModal.paz.telefono, waMsg);
     setWaModal(null);
   };
   const fillTpl = (tplId, pl, paz) => {
@@ -256,10 +257,8 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
               ))}
               <div style={{ textAlign: 'right', fontWeight: 800, color: C.pri, marginTop: 7, fontSize: 13 }}>Totale: {fmt(tot)}</div>
               <div style={{ marginTop: 9, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {features?.whatsapp !== false && <>
-                <button onClick={() => openWA(pl, 'piano')} style={{ background: '#25D366', border: 'none', borderRadius: 8, padding: '6px 11px', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="wa" s={12} c="#fff" />Piano WA</button>
-                <button onClick={() => openWA(pl, 'preventivo')} style={{ background: '#128C7E', border: 'none', borderRadius: 8, padding: '6px 11px', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="send" s={12} c="#fff" />Prev. WA</button>
-                </>}
+                <WaAction features={features} onClick={() => openWA(pl, 'piano')} label="Piano WA" style={{ flex: 'none', background: '#25D366', color: '#fff', borderRadius: 8, padding: '6px 11px', fontSize: 11 }} />
+                <WaAction features={features} onClick={() => openWA(pl, 'preventivo')} label="Prev. WA" style={{ flex: 'none', background: '#128C7E', color: '#fff', borderRadius: 8, padding: '6px 11px', fontSize: 11 }} />
                 <Sel value={pl.stato || 'attivo'} onChange={(e) => setStato(pl.id, e.target.value)} style={{ padding: '6px 8px', fontSize: 11, borderRadius: 8, width: 'auto', flex: 1 }}>
                   <option value="attivo">Attivo</option><option value="accettato">Accettato ✓</option><option value="rifiutato">Rifiutato ✗</option><option value="concluso">Concluso ✓</option>
                 </Sel>

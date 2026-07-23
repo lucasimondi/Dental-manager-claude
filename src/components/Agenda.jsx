@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr } from './ui';
+import WaAction, { apriWaDiretto } from './ui/WaAction.jsx';
 import { C, uid, fmtD, today, DEF_APP_TYPES } from '../lib/utils';
 
 const WD_SHORT = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
@@ -132,7 +133,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                         {height > 48 && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)' }}>{a.durata} min</div>}
                       </div>
                       {/* WA button */}
-                      {features?.whatsapp !== false && <button onClick={e => { e.stopPropagation(); apriWA(a); }} style={{ position: 'absolute', bottom: 14, right: 2, background: '#25D366', border: 'none', borderRadius: 4, padding: '1px 4px', cursor: 'pointer', fontSize: 9, color: '#fff', fontWeight: 700 }}>WA</button>}
+                      <WaAction tel={p?.telefono} features={features} variant="chip" onClick={() => apriWA(a)} style={{ position: 'absolute', bottom: 14, right: 2 }} />
                       {/* RESIZE HANDLE */}
                       <div
                         onMouseDown={e => { e.stopPropagation(); e.preventDefault(); setResizing({ id: a.id, startY: e.clientY, startDurata: Number(a.durata) }); }}
@@ -236,7 +237,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
     if (!waModal) return;
     const p = patients.find(x => x.id === waModal.pazienteId);
     if (!p?.telefono) return;
-    window.open(`https://wa.me/39${p.telefono.replace(/\D/g, '')}?text=${encodeURIComponent(waMsg)}`, '_blank');
+    apriWaDiretto(p.telefono, waMsg);
     setWaModal(null);
   };
 
@@ -360,7 +361,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
                       <div style={{ fontSize: 11, color: C.txm }}>{a.tipo}</div>
                     </div>
                     <div style={{ display: 'flex', gap: 5 }}>
-                      {features?.whatsapp !== false && <button onClick={e => { e.stopPropagation(); apriWA(a); }} style={{ background: '#25D366', border: 'none', borderRadius: 6, padding: 6, cursor: 'pointer', display: 'flex' }}><Ic n="wa" s={13} c="#fff" /></button>}
+                      <WaAction tel={p?.telefono} features={features} variant="icon" onClick={() => apriWA(a)} />
                       <button onClick={e => { e.stopPropagation(); del(a.id); }} style={{ background: C.danL, border: 'none', borderRadius: 6, padding: 6, cursor: 'pointer', display: 'flex' }}><Ic n="del" s={13} c={C.dan} /></button>
                     </div>
                   </div>

@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { Crd, Bdg, Modal, Ic, Btn } from './ui';
+import { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
 import { C, fmt, fmtD, today } from '../lib/utils';
 
 const WIDGETS_DEFAULT = [
@@ -838,7 +839,7 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
         );
 
         if (w.id === 'wa') {
-          if (features && features.whatsapp === false) return null;
+          if (!waAbilitato(features)) return null;
           return (
           <div key="wa" style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>💬 Reminder WhatsApp — domani</div>
@@ -864,7 +865,7 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
                         <div style={{ fontSize: 10, color: C.txl }}>{a.tipo}</div>
                       </div>
                       {hasTel ? (
-                        <button onClick={() => window.open(`https://wa.me/39${p.telefono.replace(/\D/g,'')}?text=${encodeURIComponent(defMsg)}`, '_blank')}
+                        <button onClick={() => apriWaDiretto(p.telefono, defMsg)}
                           style={{ background: '#25D366', border: 'none', borderRadius: 7, padding: '6px 10px', cursor: 'pointer', color: '#fff', fontWeight: 700, fontSize: 11, flexShrink: 0 }}>
                           WA
                         </button>
@@ -879,7 +880,7 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
                     const p = patients.find(x => x.id === a.pazienteId);
                     if (!p?.telefono) return;
                     const msg = `Gentile ${p.nome},\nricordiamo il suo appuntamento:\n📅 ${fmtD(a.data)} alle ${a.ora}\n🦷 ${a.tipo}\nPer variazioni contattarci entro 24h. Grazie!`;
-                    setTimeout(() => window.open(`https://wa.me/39${p.telefono.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`, '_blank'), 500);
+                    setTimeout(() => apriWaDiretto(p.telefono, msg), 500);
                   });
                 }} style={{ width: '100%', marginTop: 10, padding: '9px', background: '#25D366', border: 'none', borderRadius: 9, color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
                   💬 Invia reminder a tutti ({domaniApps.filter(a => patients.find(x => x.id === a.pazienteId)?.telefono).length}/{domaniApps.length})
