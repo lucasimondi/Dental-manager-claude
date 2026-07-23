@@ -133,7 +133,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                         {height > 48 && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)' }}>{a.durata} min</div>}
                       </div>
                       {/* WA button */}
-                      <WaAction tel={p?.telefono} features={features} variant="chip" onClick={() => apriWA(a)} style={{ position: 'absolute', bottom: 14, right: 2 }} />
+                      <WaAction tel={p?.telefono} features={features} variant="chip" onClick={() => apriWA(a)} style={{ position: 'absolute', top: 2, right: 2, zIndex: 3 }} />
                       {/* RESIZE HANDLE */}
                       <div
                         onMouseDown={e => { e.stopPropagation(); e.preventDefault(); setResizing({ id: a.id, startY: e.clientY, startDurata: Number(a.durata) }); }}
