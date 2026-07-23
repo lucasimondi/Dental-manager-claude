@@ -55,9 +55,9 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           {si.iscr && <div style={{ fontSize: 10, color: '#4A90C4' }}>{si.iscr}</div>}
         </div>
         <div style={{ borderTop: `1px solid ${C.brd}`, marginTop: 8, paddingTop: 7, display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap', gap: 5 }}>
-          {si.tel && <span style={{ fontSize: 10, color: C.txm }}>ðŸ“ž {si.tel}</span>}
-          {si.addr1 && <span style={{ fontSize: 10, color: C.txm }}>ðŸ“ {si.addr1}</span>}
-          {si.email && <span style={{ fontSize: 10, color: C.txm }}>âœ‰ï¸ {si.email}</span>}
+          {si.tel && <span style={{ fontSize: 10, color: C.txm }}>📞 {si.tel}</span>}
+          {si.addr1 && <span style={{ fontSize: 10, color: C.txm }}>📍 {si.addr1}</span>}
+          {si.email && <span style={{ fontSize: 10, color: C.txm }}>✉️ {si.email}</span>}
         </div>
       </Crd>
       <Crd style={{ marginBottom: 11 }}>
@@ -151,9 +151,9 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       </Crd>
       <Crd style={{ marginBottom: 11 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Note legali PDF</div>
-        <Txt value={si.note} onChange={(e) => S({ note: e.target.value })} rows={3} placeholder="Il preventivo Ã¨ valido 30 giorniâ€¦" />
+        <Txt value={si.note} onChange={(e) => S({ note: e.target.value })} rows={3} placeholder="Il preventivo è valido 30 giorni…" />
       </Crd>
-      <Btn ch="ðŸ’¾ Salva impostazioni" onClick={save} full sz="lg" />
+      <Btn ch="💾 Salva impostazioni" onClick={save} full sz="lg" />
 
       <div style={{ marginTop: 26, marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Agenda</div>
@@ -173,7 +173,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
 
       {tipoModal && (
         <Modal title={tipoModal === 'new' ? 'Nuovo tipo appuntamento' : 'Modifica tipo'} onClose={() => setTipoModal(null)}>
-          <Fld label="Nome"><Inp value={tipoForm.nome} onChange={(e) => setTipoForm((f) => ({ ...f, nome: e.target.value }))} placeholder="es. Igiene, Urgenza, Controlloâ€¦" /></Fld>
+          <Fld label="Nome"><Inp value={tipoForm.nome} onChange={(e) => setTipoForm((f) => ({ ...f, nome: e.target.value }))} placeholder="es. Igiene, Urgenza, Controllo…" /></Fld>
           <Fld label="Colore">
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8, marginBottom: 10 }}>
               {COLORI_DISPONIBILI.map((c) => (
