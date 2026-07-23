@@ -314,7 +314,7 @@ export default function App() {
         )}
         {page === 'paga' && <Pagamenti patients={patients} payments={payments} setPayments={setPaymentsSync} plans={plans} />}
         {page === 'listino' && <Listino pricelist={pricelist} setPricelist={setPricelistSync} si={studioInfo} />}
-        {page === 'agenda' && <Agenda patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} />}
+        {page === 'agenda' && <Agenda patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} />}
         {page === 'spese' && <Spese />}
         {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} />}
         {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}

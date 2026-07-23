@@ -132,7 +132,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                         {height > 48 && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)' }}>{a.durata} min</div>}
                       </div>
                       {/* WA button */}
-                      <button onClick={e => { e.stopPropagation(); apriWA(a); }} style={{ position: 'absolute', bottom: 14, right: 2, background: '#25D366', border: 'none', borderRadius: 4, padding: '1px 4px', cursor: 'pointer', fontSize: 9, color: '#fff', fontWeight: 700 }}>WA</button>
+                      {features?.whatsapp !== false && <button onClick={e => { e.stopPropagation(); apriWA(a); }} style={{ position: 'absolute', bottom: 14, right: 2, background: '#25D366', border: 'none', borderRadius: 4, padding: '1px 4px', cursor: 'pointer', fontSize: 9, color: '#fff', fontWeight: 700 }}>WA</button>}
                       {/* RESIZE HANDLE */}
                       <div
                         onMouseDown={e => { e.stopPropagation(); e.preventDefault(); setResizing({ id: a.id, startY: e.clientY, startDurata: Number(a.durata) }); }}
@@ -154,7 +154,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   );
 }
 
-export default function Agenda({ patients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates }) {
+export default function Agenda({ patients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features }) {
   const tipiList = appTypes?.length ? appTypes : DEF_APP_TYPES;
 
   const [oraInizio, setOraInizio] = useState(() => { try { return Number(localStorage.getItem('ag_oraInizio') || 8); } catch { return 8; } });
@@ -360,7 +360,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
                       <div style={{ fontSize: 11, color: C.txm }}>{a.tipo}</div>
                     </div>
                     <div style={{ display: 'flex', gap: 5 }}>
-                      <button onClick={e => { e.stopPropagation(); apriWA(a); }} style={{ background: '#25D366', border: 'none', borderRadius: 6, padding: 6, cursor: 'pointer', display: 'flex' }}><Ic n="wa" s={13} c="#fff" /></button>
+                      {features?.whatsapp !== false && <button onClick={e => { e.stopPropagation(); apriWA(a); }} style={{ background: '#25D366', border: 'none', borderRadius: 6, padding: 6, cursor: 'pointer', display: 'flex' }}><Ic n="wa" s={13} c="#fff" /></button>}
                       <button onClick={e => { e.stopPropagation(); del(a.id); }} style={{ background: C.danL, border: 'none', borderRadius: 6, padding: 6, cursor: 'pointer', display: 'flex' }}><Ic n="del" s={13} c={C.dan} /></button>
                     </div>
                   </div>
