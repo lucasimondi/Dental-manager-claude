@@ -10,7 +10,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
   const [tipoModal, setTipoModal] = useState(null);
   const [tipoForm, setTipoForm] = useState({ nome: '', colore: COLORI_DISPONIBILI[0] });
   const S = (f) => setSi((s) => ({ ...s, ...f }));
-  const save = () => { setStudioInfo(si); setToast('Salvato âœ“'); };
+  const save = () => { setStudioInfo(si); setToast('Salvato ✓'); };
 
   const openNewTipo = () => { setTipoForm({ nome: '', colore: COLORI_DISPONIBILI[Math.floor(Math.random() * COLORI_DISPONIBILI.length)] }); setTipoModal('new'); };
   const openEditTipo = (t) => { setTipoForm({ ...t }); setTipoModal(t.id); };
