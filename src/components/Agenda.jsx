@@ -291,21 +291,21 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexShrink: 0 }}>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
           {view === 'giorno' && <>
-            <button onClick={() => navGiorno(-1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16 }}>‹</button>
+            <button onClick={() => navGiorno(-1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>‹</button>
             <span style={{ fontWeight: 700, fontSize: 13, minWidth: 120 }}>{fmtD(selDay)}</span>
-            <button onClick={() => navGiorno(1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16 }}>›</button>
+            <button onClick={() => navGiorno(1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>›</button>
             {selDay !== t && <button onClick={() => setSelDay(t)} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>}
           </>}
           {view === 'settimana' && <>
-            <button onClick={() => navSettimana(-1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16 }}>‹</button>
+            <button onClick={() => navSettimana(-1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>‹</button>
             <span style={{ fontWeight: 700, fontSize: 12 }}>{weekDays[0].getDate()} {MESI[weekDays[0].getMonth()].slice(0,3)} – {weekDays[6].getDate()} {MESI[weekDays[6].getMonth()].slice(0,3)}</span>
-            <button onClick={() => navSettimana(1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16 }}>›</button>
+            <button onClick={() => navSettimana(1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>›</button>
             <button onClick={() => setSelDay(t)} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
           </>}
           {view === 'mese' && <>
-            <button onClick={() => navMese(-1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16 }}>‹</button>
+            <button onClick={() => navMese(-1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>‹</button>
             <span style={{ fontWeight: 700, fontSize: 12 }}>{MESI[vd.getMonth()]} {vd.getFullYear()}</span>
-            <button onClick={() => navMese(1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16 }}>›</button>
+            <button onClick={() => navMese(1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>›</button>
             <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
           </>}
         </div>
@@ -350,9 +350,9 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
               style={{ marginBottom: 10 }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <button onClick={() => navMese(-1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 32, height: 32, cursor: 'pointer', fontSize: 17 }}>‹</button>
+                <button onClick={() => navMese(-1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 32, height: 32, cursor: 'pointer', fontSize: 17, color: C.txm }}>‹</button>
                 <span style={{ fontWeight: 700 }}>{MESI[mese]} {K}</span>
-                <button onClick={() => navMese(1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 32, height: 32, cursor: 'pointer', fontSize: 17 }}>›</button>
+                <button onClick={() => navMese(1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 32, height: 32, cursor: 'pointer', fontSize: 17, color: C.txm }}>›</button>
               </div>
               <div style={{ textAlign: 'center', fontSize: 10, color: C.txl, marginBottom: 6 }}>Scorri con la rotellina o trascina per cambiare mese</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2, marginBottom: 4 }}>
