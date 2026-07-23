@@ -10,9 +10,10 @@ export const Bdg = ({ ch, co = C.pri }) => (
   </span>
 );
 
-export const Crd = ({ children, style, onClick }) => (
+export const Crd = ({ children, style, onClick, ...rest }) => (
   <div
     onClick={onClick}
+    {...rest}
     style={{
       background: C.sur, borderRadius: 14, padding: 14, boxShadow: '0 1px 3px rgba(0,0,0,0.07)',
       border: `1px solid ${C.brd}`, cursor: onClick ? 'pointer' : 'default', ...(style || {}),

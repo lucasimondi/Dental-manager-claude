@@ -26,7 +26,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
 
   useEffect(() => {
     // Scroll iniziale alle 08:00
-    const top8 = (8 * 60 / slotMin) * slotH;
+    const top8 = (8 * 60 / slotMin) * slotH + 44; // +44 = altezza header giorni, ora dentro il contenitore scrollabile
     if (containerRef.current) containerRef.current.scrollTop = top8;
   }, [slotH, slotMin]);
 
@@ -62,26 +62,28 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
     <div style={{ display: 'flex', flex: 1, overflow: 'hidden', border: `1px solid ${C.brd}`, borderRadius: 12, background: '#fff', minHeight: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-        {/* Header fisso: angolo vuoto + giorni */}
-        <div style={{ display: 'flex', borderBottom: `1.5px solid ${C.brd}`, height: 44, flexShrink: 0, background: '#fafbfc' }}>
-          <div style={{ width: 46, flexShrink: 0, borderRight: `1.5px solid ${C.brd}` }} />
-          {days.map((d, di) => {
-            const ds = toISO(d);
-            const isToday = ds === t;
-            const isSelected = ds === selDay;
-            const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-            return (
-              <div key={di} onClick={() => { setSelDay(ds); if (days.length > 1) setView('giorno'); }} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, cursor: 'pointer', background: isSelected && days.length > 1 ? C.priL : isWeekend ? '#f5f5f7' : 'transparent', borderLeft: di > 0 ? `1.5px solid ${C.brd}` : 'none' }}>
-                <div style={{ fontSize: 9, fontWeight: 700, color: isToday ? C.pri : isWeekend ? C.txl : C.txm, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{WD_SHORT[d.getDay()]}</div>
-                <div style={{ fontSize: 15, fontWeight: 900, color: isToday ? '#fff' : isSelected ? C.pri : C.txt, background: isToday ? C.pri : 'transparent', borderRadius: '50%', width: 25, height: 25, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{d.getDate()}</div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* UN SOLO contenitore scrollabile — ore sticky a sinistra */}
+        {/* UNICO contenitore scrollabile: header + griglia insieme, cosi' le colonne hanno sempre esattamente la stessa larghezza */}
         <div ref={containerRef} style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', position: 'relative' }}>
-          <div style={{ display: 'flex', minHeight: slots.length * slotH }}>
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: slots.length * slotH + 44 }}>
+
+            {/* Header: angolo vuoto + giorni — sticky in cima, dentro lo stesso contenitore scrollabile della griglia */}
+            <div style={{ display: 'flex', borderBottom: `1.5px solid ${C.brd}`, height: 44, flexShrink: 0, background: '#fafbfc', position: 'sticky', top: 0, zIndex: 4 }}>
+              <div style={{ width: 46, flexShrink: 0, borderRight: `1.5px solid ${C.brd}` }} />
+              {days.map((d, di) => {
+                const ds = toISO(d);
+                const isToday = ds === t;
+                const isSelected = ds === selDay;
+                const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                return (
+                  <div key={di} onClick={() => { setSelDay(ds); if (days.length > 1) setView('giorno'); }} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, cursor: 'pointer', background: isSelected && days.length > 1 ? C.priL : isWeekend ? '#f5f5f7' : 'transparent', borderLeft: di > 0 ? `1.5px solid ${C.brd}` : 'none' }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: isToday ? C.pri : isWeekend ? C.txl : C.txm, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{WD_SHORT[d.getDay()]}</div>
+                    <div style={{ fontSize: 15, fontWeight: 900, color: isToday ? '#fff' : isSelected ? C.pri : C.txt, background: isToday ? C.pri : 'transparent', borderRadius: '50%', width: 25, height: 25, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{d.getDate()}</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ display: 'flex', flex: 1 }}>
 
             {/* Colonna ore — sticky */}
             <div style={{ width: 46, flexShrink: 0, borderRight: `1.5px solid ${C.brd}`, background: '#fafbfc', position: 'sticky', left: 0, zIndex: 3 }}>
@@ -127,26 +129,27 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                   return (
                     <div key={a.id} style={{ position: 'absolute', top, left: 2, right: 2, height, background: co, borderRadius: 5, overflow: 'hidden', zIndex: isBeingResized ? 10 : 2, borderLeft: `3px solid ${co}DD`, boxShadow: isBeingResized ? '0 4px 12px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.15)', userSelect: 'none' }}>
                       {/* Contenuto appuntamento */}
-                      <div onClick={e => { if (!isBeingResized) { e.stopPropagation(); apriEdit(a); } }} style={{ padding: '2px 5px', cursor: 'pointer', paddingBottom: 12 }}>
-                        <div style={{ fontSize: 10, fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.ora} {p ? `${p.cognome}` : '—'}</div>
-                        {height > 32 && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.9)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.tipo}</div>}
-                        {height > 48 && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)' }}>{a.durata} min</div>}
+                      <div onClick={e => { if (!isBeingResized) { e.stopPropagation(); apriEdit(a); } }} style={{ padding: '2px 5px', cursor: 'pointer', paddingBottom: height > 26 ? 9 : 2 }}>
+                        <div style={{ fontSize: 10, lineHeight: '11px', fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.ora} {p ? `${p.cognome}` : '—'}</div>
+                        {height > 32 && <div style={{ fontSize: 9, lineHeight: '10px', color: 'rgba(255,255,255,0.9)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.tipo}</div>}
+                        {height > 48 && <div style={{ fontSize: 9, lineHeight: '10px', color: 'rgba(255,255,255,0.7)' }}>{a.durata} min</div>}
                       </div>
                       {/* WA button */}
                       <WaAction tel={p?.telefono} features={features} variant="chip" onClick={() => apriWA(a)} style={{ position: 'absolute', top: 2, right: 2, zIndex: 3 }} />
-                      {/* RESIZE HANDLE */}
-                      <div
+                      {/* RESIZE HANDLE - nascosta sugli appuntamenti troppo brevi per contenerla senza sovrapporsi al testo */}
+                      {height > 26 && <div
                         onMouseDown={e => { e.stopPropagation(); e.preventDefault(); setResizing({ id: a.id, startY: e.clientY, startDurata: Number(a.durata) }); }}
                         onTouchStart={e => { e.stopPropagation(); setResizing({ id: a.id, startY: e.touches[0].clientY, startDurata: Number(a.durata) }); }}
-                        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 12, cursor: 'ns-resize', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.15)', borderBottomLeftRadius: 5, borderBottomRightRadius: 5 }}>
-                        <div style={{ width: 20, height: 2, background: 'rgba(255,255,255,0.6)', borderRadius: 1 }} />
-                      </div>
+                        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 8, cursor: 'ns-resize', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.15)', borderBottomLeftRadius: 5, borderBottomRightRadius: 5 }}>
+                        <div style={{ width: 16, height: 2, background: 'rgba(255,255,255,0.6)', borderRadius: 1 }} />
+                      </div>}
                     </div>
                   );
                 })}
               </div>
             );
           })}
+            </div>
             </div>
           </div>
         </div>
@@ -172,6 +175,8 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const [editApp, setEditApp] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [vd, setVd] = useState(new Date());
+  const wheelRef = useRef(0);
+  const touchXRef = useRef(null);
   const [form, setForm] = useState({ pazienteId: '', data: today(), ora: '09:00', durata: 30, tipo: tipiList[0]?.nome || 'Visita', colore: tipiList[0]?.colore || C.pri, note: '', stato: 'confermato' });
   const [waModal, setWaModal] = useState(null);
   const [waMsg, setWaMsg] = useState('');
@@ -274,6 +279,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
 
   const navGiorno = (n) => { const d = new Date(selDay + 'T12:00'); d.setDate(d.getDate() + n); setSelDay(toISO(d)); };
   const navSettimana = (n) => { const d = new Date(selDay + 'T12:00'); d.setDate(d.getDate() + n * 7); setSelDay(toISO(d)); };
+  const navMese = (n) => setVd(v => new Date(v.getFullYear(), v.getMonth() + n, 1));
 
   const gridProps = { slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t };
 
@@ -296,7 +302,12 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
             <button onClick={() => navSettimana(1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16 }}>›</button>
             <button onClick={() => setSelDay(t)} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
           </>}
-          {view === 'mese' && <span style={{ fontWeight: 800, fontSize: 16 }}>Agenda</span>}
+          {view === 'mese' && <>
+            <button onClick={() => navMese(-1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16 }}>‹</button>
+            <span style={{ fontWeight: 700, fontSize: 12 }}>{MESI[vd.getMonth()]} {vd.getFullYear()}</span>
+            <button onClick={() => navMese(1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16 }}>›</button>
+            <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
+          </>}
         </div>
         <button onClick={() => { setTmpI(oraInizio); setTmpF(oraFine); setTmpS(slotMin); setSettingsOpen(true); }} style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 8, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
           <Ic n="set" s={15} c={C.txm} />
@@ -321,12 +332,29 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
         const celle = Array(primo === 0 ? 6 : primo - 1).fill(null).concat(Array.from({ length: giorni }, (_, i) => i + 1));
         return (
           <div>
-            <Crd style={{ marginBottom: 10 }}>
+            <Crd
+              onWheel={e => {
+                const now = Date.now();
+                if (now - (wheelRef.current || 0) < 350) return; // throttle: uno scatto di mese per volta
+                if (Math.abs(e.deltaY) < 15) return;
+                wheelRef.current = now;
+                navMese(e.deltaY > 0 ? 1 : -1);
+              }}
+              onTouchStart={e => { touchXRef.current = e.touches[0].clientX; }}
+              onTouchEnd={e => {
+                if (touchXRef.current == null) return;
+                const dx = e.changedTouches[0].clientX - touchXRef.current;
+                if (Math.abs(dx) > 50) navMese(dx < 0 ? 1 : -1);
+                touchXRef.current = null;
+              }}
+              style={{ marginBottom: 10 }}
+            >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <button onClick={() => setVd(new Date(vd.getFullYear(), vd.getMonth() - 1, 1))} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 32, height: 32, cursor: 'pointer', fontSize: 17 }}>‹</button>
+                <button onClick={() => navMese(-1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 32, height: 32, cursor: 'pointer', fontSize: 17 }}>‹</button>
                 <span style={{ fontWeight: 700 }}>{MESI[mese]} {K}</span>
-                <button onClick={() => setVd(new Date(vd.getFullYear(), vd.getMonth() + 1, 1))} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 32, height: 32, cursor: 'pointer', fontSize: 17 }}>›</button>
+                <button onClick={() => navMese(1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 32, height: 32, cursor: 'pointer', fontSize: 17 }}>›</button>
               </div>
+              <div style={{ textAlign: 'center', fontSize: 10, color: C.txl, marginBottom: 6 }}>Scorri con la rotellina o trascina per cambiare mese</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2, marginBottom: 4 }}>
                 {['L','M','M','G','V','S','D'].map((d, i) => <div key={i} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: C.txm, padding: '2px 0' }}>{d}</div>)}
                 {celle.map((g, i) => {
