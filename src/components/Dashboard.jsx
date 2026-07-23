@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
-import { Crd, Bdg, Modal, Ic, Btn } from './ui';
+import { Crd, Bdg, Modal, Ic, Btn, Fld, Sel, Inp, Txt } from './ui';
 import { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
 import { C, fmt, fmtD, today } from '../lib/utils';
 
@@ -56,7 +56,7 @@ const saveWidgets = (ws) => {
 const NOMI_F = ['alessia','alice','anna','beatrice','camilla','chiara','claudia','elena','elisa','emma','federica','francesca','giulia','ilaria','laura','lisa','lucia','luisa','mara','maria','marina','martina','monica','paola','roberta','sara','silvia','sofia','valentina','veronica','virginia'];
 const getSaluto = (nome) => { if (!nome) return 'Benvenuto'; const ora = new Date().getHours(); const s = ora < 12 ? 'Buongiorno' : ora < 18 ? 'Buon pomeriggio' : 'Buonasera'; const p = nome.trim().split(' ')[0].toLowerCase(); const fem = NOMI_F.includes(p) || (p.endsWith('a') && !['luca','andrea','mattia','nicola','enea'].includes(p)); return s + ', ' + (fem ? 'cara ' : 'caro ') + nome.trim().split(' ')[0]; };
 
-export default function Dashboard({ patients, appointments, payments, plans, onOpenPaz, appTypes, onGoAgenda, templates, userName: userNameProp, si, features }) {
+export default function Dashboard({ patients, appointments, setAppointments, payments, plans, onOpenPaz, appTypes, onGoAgenda, templates, userName: userNameProp, si, features }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const t = today();
   const [userName, setUserName] = useState(userNameProp || '');
@@ -69,6 +69,8 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
   }, []);
   const anno = t.slice(0, 4);
   const [detailModal, setDetailModal] = useState(null);
+  const [editApp, setEditApp] = useState(null);
+  const [editForm, setEditForm] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [widgets, setWidgets] = useState(loadWidgets);
   const [theme, setTheme] = useState(loadTheme);
@@ -140,6 +142,27 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
   // ── CALCOLI ──
   const todayApps = appointments.filter(a => a.data === t).sort((a, b) => a.ora.localeCompare(b.ora));
   const upcoming = [...appointments].filter(a => a.data > t).sort((a, b) => a.data.localeCompare(b.data) || a.ora.localeCompare(b.ora)).slice(0, 8);
+
+  const apriEditApp = (a) => {
+    setEditApp(a);
+    setEditForm({ data: a.data, ora: a.ora, durata: a.durata, tipo: a.tipo, stato: a.stato || 'confermato', note: a.note || '' });
+  };
+  const salvaEditApp = () => {
+    if (!editApp || !setAppointments) return;
+    setAppointments(prev => prev.map(x => x.id === editApp.id ? { ...x, ...editForm, durata: Number(editForm.durata) } : x));
+    setEditApp(null);
+  };
+  const eliminaEditApp = () => {
+    if (!editApp || !setAppointments) return;
+    if (!confirm('Eliminare questo appuntamento?')) return;
+    setAppointments(prev => prev.filter(x => x.id !== editApp.id));
+    setEditApp(null);
+  };
+  const eliminaAppuntamentoDiretto = (a) => {
+    if (!setAppointments) return;
+    if (!confirm('Eliminare questo appuntamento?')) return;
+    setAppointments(prev => prev.filter(x => x.id !== a.id));
+  };
   const domani = (() => { const d = new Date(t + 'T12:00'); d.setDate(d.getDate() + 1); return d.toISOString().slice(0,10); })();
   const domaniApps = appointments.filter(a => a.data === domani).sort((a, b) => a.ora.localeCompare(b.ora));
 
@@ -898,7 +921,7 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
               {upcoming.map((a, i) => {
                 const p = patients.find(x => x.id === a.pazienteId);
                 return (
-                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: i < upcoming.length-1 ? `1px solid ${C.brd}` : 'none' }}>
+                  <div key={a.id} onClick={() => apriEditApp(a)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: i < upcoming.length-1 ? `1px solid ${C.brd}` : 'none', cursor: 'pointer' }}>
                     <div style={{ background: C.priL, borderRadius: 7, padding: '4px 7px', textAlign: 'center', minWidth: 44, flexShrink: 0 }}>
                       <div style={{ fontSize: 9, color: C.pri, fontWeight: 700 }}>{a.data.slice(8)}/{a.data.slice(5,7)}</div>
                       <div style={{ fontSize: 12, fontWeight: 800, color: C.priD }}>{a.ora}</div>
@@ -908,6 +931,9 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
                       <div style={{ fontSize: 11, color: C.txm }}>{a.tipo}</div>
                     </div>
                     <Bdg ch={a.stato} co={a.stato === 'confermato' ? C.suc : C.war} />
+                    <button onClick={e => { e.stopPropagation(); eliminaAppuntamentoDiretto(a); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', flexShrink: 0, opacity: 0.5 }} title="Elimina">
+                      <Ic n="del" s={14} c={C.dan} />
+                    </button>
                   </div>
                 );
               })}
@@ -917,6 +943,45 @@ export default function Dashboard({ patients, appointments, payments, plans, onO
 
         return null;
       })}
+
+      {editApp && editForm && (
+        <Modal title="✏️ Modifica appuntamento" onClose={() => setEditApp(null)}>
+          {(() => {
+            const p = patients.find(x => x.id === editApp.pazienteId);
+            return (
+              <div style={{ background: C.priL, borderRadius: 9, padding: '9px 12px', marginBottom: 12 }}>
+                <div style={{ fontWeight: 700, fontSize: 13 }}>{p ? `${p.nome} ${p.cognome}` : '—'}</div>
+                {p?.telefono && <div style={{ fontSize: 11, color: C.txm }}>{p.telefono}</div>}
+              </div>
+            );
+          })()}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <Fld label="Data"><Inp type="date" value={editForm.data} onChange={e => setEditForm(f => ({ ...f, data: e.target.value }))} /></Fld>
+            <Fld label="Ora"><Inp type="time" value={editForm.ora} onChange={e => setEditForm(f => ({ ...f, ora: e.target.value }))} /></Fld>
+            <Fld label="Durata">
+              <Sel value={editForm.durata} onChange={e => setEditForm(f => ({ ...f, durata: e.target.value }))}>
+                {[15,30,45,60,90,120].map(d => <option key={d} value={d}>{d} min</option>)}
+              </Sel>
+            </Fld>
+            <Fld label="Stato">
+              <Sel value={editForm.stato} onChange={e => setEditForm(f => ({ ...f, stato: e.target.value }))}>
+                <option value="confermato">Confermato</option>
+                <option value="da confermare">Da confermare</option>
+                <option value="annullato">Annullato</option>
+              </Sel>
+            </Fld>
+          </div>
+          <Fld label="Tipo visita">
+            <Inp value={editForm.tipo} onChange={e => setEditForm(f => ({ ...f, tipo: e.target.value }))} />
+          </Fld>
+          <Fld label="Note"><Txt value={editForm.note} onChange={e => setEditForm(f => ({ ...f, note: e.target.value }))} /></Fld>
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <Btn ch="Elimina" v="dan" onClick={eliminaEditApp} />
+            <Btn ch="Annulla" v="sec" onClick={() => setEditApp(null)} full />
+            <Btn ch="Salva" onClick={salvaEditApp} full />
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

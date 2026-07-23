@@ -292,7 +292,7 @@ export default function App() {
       )}
 
       <div id="app-scroll" style={{ flex: 1, overflowY: 'auto', padding: 13, paddingBottom: 78 }}>
-        {page === 'home' && <Dashboard patients={patients} appointments={appointments} payments={payments} plans={plans} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} templates={templates} userName={userName} si={studioInfo} features={features} />}
+        {page === 'home' && <Dashboard patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} templates={templates} userName={userName} si={studioInfo} features={features} />}
         {page === 'paz' && (
           <Pazienti
             patients={patients} setPatients={setPatientsSync}

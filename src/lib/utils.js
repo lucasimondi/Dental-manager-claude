@@ -44,7 +44,7 @@ export const C_DARK = {
   txt: '#E8E6DE', txm: '#8B9296', txl: '#6B7276', brd: '#2A3237',
 };
 
-export const THEME_KEY = 'dm_theme';
+export const THEME_KEY = 'dm_color_mode';
 
 export const C = { ...C_LIGHT };
 
