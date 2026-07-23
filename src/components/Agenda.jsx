@@ -12,7 +12,7 @@ const startOfWeek = (d) => {
   return dt;
 };
 
-function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t }) {
+function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t, features }) {
   const containerRef = useRef(null); // unico scroll container
   const resizeRef = useRef(null);
   const [now, setNow] = useState(new Date());
@@ -311,8 +311,8 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
       </div>
 
       {/* VIEWS */}
-      {view === 'giorno' && <GridView days={[new Date(selDay + 'T12:00')]} {...gridProps} />}
-      {view === 'settimana' && <GridView days={weekDays} {...gridProps} />}
+      {view === 'giorno' && <GridView days={[new Date(selDay + 'T12:00')]} {...gridProps} features={features} />}
+      {view === 'settimana' && <GridView days={weekDays} {...gridProps} features={features} />}
       {view === 'mese' && (() => {
         const K = vd.getFullYear(), mese = vd.getMonth();
         const primo = new Date(K, mese, 1).getDay();
