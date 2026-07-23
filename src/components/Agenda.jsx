@@ -29,7 +29,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
     const headerH = 44;
     const target = showNowLine ? Math.max(0, nowTop - slotH * 2) + headerH : headerH;
     if (containerRef.current) containerRef.current.scrollTop = target;
-  }, [slotH, slotMin, oraInizio, oraFine]);
+  }, [slotH, slotMin, oraInizio]);
 
   // Resize mouse handlers
   useEffect(() => {
