@@ -16,15 +16,48 @@ export const LS = {
 };
 
 /* ── COLORI ── */
-export const C = {
-  bg: '#F0F4F8', sur: '#FFFFFF',
-  pri: '#1A6B8A', priL: '#E8F4F8', priD: '#124E66',
-  acc: '#2EC4B6',
-  suc: '#2D9E61', sucL: '#E8F7EE',
-  war: '#F4A261',
-  dan: '#E63946', danL: '#FDECEA',
-  pur: '#7C3AED', purL: '#EDE9FE',
-  txt: '#1A202C', txm: '#4A5568', txl: '#718096', brd: '#E2E8F0',
+/* ── TEMA: due palette (chiaro "Cartella clinica" / scuro "Turno di sera").
+   C resta lo stesso oggetto mutabile importato ovunque nell'app: applyTheme()
+   ne aggiorna le proprietà in place, così ogni componente che legge C.xxx a
+   render-time vede i nuovi colori senza bisogno di essere riscritto.
+   Tutti i valori restano esadecimali a 6 cifre (mai rgba) perché in alcuni
+   punti del codice vengono concatenati con un suffisso alpha, es. C.pri + '30'. ── */
+export const C_LIGHT = {
+  bg: '#F7F8FA', sur: '#FFFFFF',
+  pri: '#185FA5', priL: '#E6F1FB', priD: '#0C447C',
+  acc: '#0F6E56',
+  suc: '#27500A', sucL: '#EAF3DE',
+  war: '#854F0B',
+  dan: '#791F1F', danL: '#FCEBEB',
+  pur: '#3C3489', purL: '#EEEDFE',
+  txt: '#1A2433', txm: '#5F6B7A', txl: '#8A93A0', brd: '#DCE1E6',
+};
+
+export const C_DARK = {
+  bg: '#12181C', sur: '#1B2226',
+  pri: '#C9932F', priL: '#2A2318', priD: '#8F6A1F',
+  acc: '#4FA8C9',
+  suc: '#5AB478', sucL: '#16261C',
+  war: '#E0B75B',
+  dan: '#F09595', danL: '#2A1616',
+  pur: '#A79AE0', purL: '#211E33',
+  txt: '#E8E6DE', txm: '#8B9296', txl: '#6B7276', brd: '#2A3237',
+};
+
+export const THEME_KEY = 'dm_theme';
+
+export const C = { ...C_LIGHT };
+
+export const applyTheme = (mode) => {
+  Object.assign(C, mode === 'dark' ? C_DARK : C_LIGHT);
+  if (typeof document !== 'undefined') {
+    document.documentElement.dataset.theme = mode === 'dark' ? 'dark' : 'light';
+  }
+};
+
+export const getInitialTheme = () => {
+  if (typeof window === 'undefined') return 'light';
+  return window.localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
 };
 
 /* ── UTILS ── */

@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { supabase, DB } from './lib/supabase.js';
 import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_APP_TYPES, DEF_TPL_GENERICO, DEF_APP_TYPES_GENERICO, NAV, PIANI_FEATURES_DEFAULT, computeFeatures } from './lib/utils';
+import { useTheme } from './lib/useTheme';
 import { Ic } from './components/ui';
 import logoDentalWhite from './assets/logo-poliedra-dental-outline.png';
 import logoSalusWhite from './assets/logo-poliedra-salus-outline.png';
@@ -20,6 +21,7 @@ import Impostazioni from './components/Impostazioni.jsx';
 import MasterDashboard from './components/MasterDashboard.jsx';
 
 export default function App() {
+  const { theme, toggleTheme } = useTheme();
   const [session, setSession] = useState(undefined);
   const [dataLoading, setDataLoading] = useState(true);
   const [page, setPage] = useState('home');
@@ -318,7 +320,7 @@ export default function App() {
         {page === 'spese' && <Spese />}
         {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} />}
         {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
-        {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} />}
+        {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} />}
       </div>
 
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: C.sur, borderTop: `1px solid ${C.brd}`, display: 'grid', gridTemplateColumns: `repeat(${navVisibile.length + 1},1fr)`, paddingBottom: 'env(safe-area-inset-bottom,0px)', zIndex: 100, boxShadow: '0 -2px 10px rgba(0,0,0,0.07)' }}>

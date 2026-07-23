@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Btn, Crd, Fld, Inp, Txt, Modal, Toast, Ic } from './ui';
 import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI } from '../lib/utils';
 
-export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange, features }) {
+export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange, features, theme, toggleTheme }) {
   const [si, setSi] = useState({ ...DEF_STUDIO, ...(studioInfo || {}) });
   const [toast, setToast] = useState('');
   const [tipoModal, setTipoModal] = useState(null);
@@ -34,6 +34,20 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
         <div style={{ fontSize: 20, fontWeight: 800 }}>Impostazioni Studio</div>
         <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Dati che appaiono sul PDF preventivo</div>
       </div>
+      {toggleTheme && (
+        <Crd style={{ marginBottom: 11 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700 }}>Aspetto</div>
+              <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Tema chiaro per il lavoro diurno, scuro per le sessioni serali</div>
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <Btn ch="Chiaro" sz="sm" v={theme === 'light' ? 'pri' : 'sec'} onClick={() => theme !== 'light' && toggleTheme()} ic="sun" />
+              <Btn ch="Scuro" sz="sm" v={theme === 'dark' ? 'pri' : 'sec'} onClick={() => theme !== 'dark' && toggleTheme()} ic="moon" />
+            </div>
+          </div>
+        </Crd>
+      )}
       <Crd style={{ marginBottom: 11, background: `linear-gradient(135deg,${C.priL},${C.sucL})`, border: `1px solid ${C.pri}30` }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 19, fontStyle: 'italic', fontWeight: 700 }}>{si.nome || 'Nome Studio'}</div>
