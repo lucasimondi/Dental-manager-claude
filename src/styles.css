@@ -8,9 +8,11 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html{background:var(--dm-bg);}
-body{margin:0;padding:0;font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--dm-bg);color:var(--dm-txt);overscroll-behavior:none;transition:background .15s ease,color .15s ease;}
+body{margin:0;padding:0;font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--dm-bg);color:var(--dm-txt);overscroll-behavior:none;}
 input,select,textarea,button{font-family:inherit;}
 ::-webkit-scrollbar{width:4px;}
 ::-webkit-scrollbar-thumb{background:var(--dm-scroll);border-radius:4px;}
 input:focus,select:focus,textarea:focus{outline:2px solid var(--dm-pri);outline-offset:1px;}
 @media print{.noprint{display:none!important;}}
+
+
