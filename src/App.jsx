@@ -132,6 +132,30 @@ export default function App() {
     return () => { cancelled = true; };
   }, [session]);
 
+  // Aggiornamento automatico: appointments/patients/payments possono essere scritti
+  // anche fuori dal flusso normale dell'app (es. dall'assistente AI, o da un altro
+  // dispositivo/utente dello stesso studio) — senza questo, restano visibili solo
+  // dopo un ricaricamento manuale della pagina.
+  useEffect(() => {
+    if (!session) return;
+    const channel = supabase
+      .channel('dm-external-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, async () => {
+        const a = await DB.getAll('dm_a');
+        setAppointments(a || []);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'patients' }, async () => {
+        const p = await DB.getAll('dm_p');
+        setPatients(p || []);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, async () => {
+        const py = await DB.getAll('dm_py');
+        setPayments(py || []);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [session]);
+
   useEffect(() => {
     if (!session) { setIsSuperAdmin(false); setStudioAttivo(true); setFeatures(PIANI_FEATURES_DEFAULT.base); return; }
     let cancelled = false;

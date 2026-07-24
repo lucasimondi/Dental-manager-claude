@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Ic, Toast } from './ui';
-import { C, fmtD, VERTICALI_DISPONIBILI, FEATURE_TOGGLES, PIANI_FEATURES_DEFAULT, computeFeatures } from '../lib/utils';
+import { C, fmtD, VERTICALI_DISPONIBILI, FEATURE_TOGGLES, PIANI_FEATURES_DEFAULT, computeFeatures, ASSISTENTE_AI_LIVELLI } from '../lib/utils';
 
 const PIANI = [
   { id: 'base', label: 'Base' },
@@ -16,7 +16,7 @@ export default function MasterDashboard({ onClose }) {
   const [selStudio, setSelStudio] = useState(null); // studio aperto nel pannello dettaglio
   const [utenti, setUtenti] = useState([]);
   const [utentiLoading, setUtentiLoading] = useState(false);
-  const [form, setForm] = useState({ piano: 'base', vertical: 'dentistico', vertical_altro: '', attivo: true, featureOverrides: {} });
+  const [form, setForm] = useState({ piano: 'base', vertical: 'dentistico', vertical_altro: '', attivo: true, featureOverrides: {}, aiTrialEndsAt: null });
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
 
@@ -33,7 +33,7 @@ export default function MasterDashboard({ onClose }) {
 
   const apriStudio = async (s) => {
     setSelStudio(s);
-    setForm({ piano: s.piano || 'base', vertical: s.vertical || 'dentistico', vertical_altro: s.vertical_altro || '', attivo: s.attivo, featureOverrides: { ...(s.feature_overrides || {}) } });
+    setForm({ piano: s.piano || 'base', vertical: s.vertical || 'dentistico', vertical_altro: s.vertical_altro || '', attivo: s.attivo, featureOverrides: { ...(s.feature_overrides || {}) }, aiTrialEndsAt: s.ai_trial_ends_at || null });
     setUtentiLoading(true);
     const { data, error } = await supabase.rpc('admin_list_studio_users', { p_studio_id: s.id });
     setUtenti(error ? [] : (data || []));
@@ -50,12 +50,27 @@ export default function MasterDashboard({ onClose }) {
       p_vertical_altro: form.vertical === 'altro' ? form.vertical_altro : null,
       p_attivo: form.attivo,
       p_feature_overrides: form.featureOverrides,
+      p_clear_ai_trial: !form.aiTrialEndsAt,
     });
     setSaving(false);
     if (error) { setToast('Errore: ' + error.message); return; }
     setToast('Salvato ✓');
     setSelStudio(null);
     load();
+  };
+
+  const attivaProvaAssistente = async () => {
+    const scadenza = new Date(Date.now() + 15 * 86400000).toISOString();
+    setSaving(true);
+    const { error } = await supabase.rpc('admin_update_studio', {
+      p_studio_id: selStudio.id,
+      p_feature_overrides: { ...form.featureOverrides, assistente_ai: 'premium' },
+      p_ai_trial_ends_at: scadenza,
+    });
+    setSaving(false);
+    if (error) { setToast('Errore: ' + error.message); return; }
+    setForm((f) => ({ ...f, featureOverrides: { ...f.featureOverrides, assistente_ai: 'premium' }, aiTrialEndsAt: scadenza }));
+    setToast('Prova 15gg attivata ✓');
   };
 
   // Tri-stato per ogni toggle: undefined = usa il default del piano, true/false = override esplicito
@@ -169,7 +184,47 @@ export default function MasterDashboard({ onClose }) {
             );
           })}
 
+          <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginTop: 16, marginBottom: 8 }}>Assistente AI</div>
+          {(() => {
+            const pianoDefault = (PIANI_FEATURES_DEFAULT[form.piano] || PIANI_FEATURES_DEFAULT.base).assistente_ai;
+            const override = form.featureOverrides.assistente_ai; // undefined | 'off' | 'base' | 'pro' | 'premium'
+            const effettivo = override === undefined ? pianoDefault : override;
+            const trialAttivo = form.aiTrialEndsAt && new Date(form.aiTrialEndsAt) > new Date();
+            return (
+              <>
+                <div style={{ fontSize: 10, color: C.txl, marginBottom: 8 }}>
+                  Di default segue il piano "{form.piano}" ({ASSISTENTE_AI_LIVELLI.find((l) => l.id === pianoDefault)?.label}). Puoi forzare un livello specifico per questo studio.
+                </div>
+                <Fld label="Livello per questo studio">
+                  <Sel value={override === undefined ? '__default__' : override} onChange={(e) => setToggle('assistente_ai', e.target.value === '__default__' ? undefined : e.target.value)}>
+                    <option value="__default__">Usa il default del piano ({ASSISTENTE_AI_LIVELLI.find((l) => l.id === pianoDefault)?.label})</option>
+                    {ASSISTENTE_AI_LIVELLI.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
+                  </Sel>
+                </Fld>
+                <div style={{ fontSize: 11, color: C.txm, marginBottom: 10 }}>
+                  Livello effettivo attuale: <b>{ASSISTENTE_AI_LIVELLI.find((l) => l.id === effettivo)?.label || effettivo}</b>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: C.bg, borderRadius: 10, padding: 12, marginBottom: 14 }}>
+                  <div style={{ flex: 1, fontSize: 12 }}>
+                    {trialAttivo
+                      ? <>Prova Premium attiva fino al <b>{fmtD(form.aiTrialEndsAt?.slice(0, 10))}</b></>
+                      : (form.aiTrialEndsAt ? <>Prova scaduta il {fmtD(form.aiTrialEndsAt?.slice(0, 10))}</> : 'Nessuna prova attiva')}
+                  </div>
+                  <button onClick={attivaProvaAssistente} style={{ background: C.priL, color: C.pri, border: 'none', borderRadius: 8, padding: '6px 10px', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
+                    {trialAttivo ? 'Rinnova 15gg' : 'Attiva prova 15gg'}
+                  </button>
+                  {form.aiTrialEndsAt && (
+                    <button onClick={() => setForm((f) => ({ ...f, aiTrialEndsAt: null }))} style={{ background: 'transparent', color: C.txl, border: `1px solid ${C.brd}`, borderRadius: 8, padding: '6px 10px', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
+                      Rimuovi scadenza
+                    </button>
+                  )}
+                </div>
+              </>
+            );
+          })()}
+
           <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginTop: 16, marginBottom: 8 }}>Utenti dello studio</div>
+
           {utentiLoading && <div style={{ color: C.txl, fontSize: 12, marginBottom: 10 }}>Caricamento...</div>}
           {!utentiLoading && utenti.length === 0 && <div style={{ color: C.txl, fontSize: 12, marginBottom: 10 }}>Nessun utente registrato oltre al titolare</div>}
           {!utentiLoading && utenti.map((u) => (

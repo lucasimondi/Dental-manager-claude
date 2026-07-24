@@ -249,10 +249,18 @@ export const COLORI_DISPONIBILI = [
    Default per piano; ogni studio può avere override individuali (feature_overrides
    su Supabase, impostabili dalla Dashboard Master) che sovrascrivono questi default. */
 export const PIANI_FEATURES_DEFAULT = {
-  base: { whatsapp: false, documenti: false, spese: false, custom_branding: false, max_pazienti: 50, max_utenti: 1 },
-  pro: { whatsapp: true, documenti: true, spese: true, custom_branding: false, max_pazienti: null, max_utenti: 3 },
-  premium: { whatsapp: true, documenti: true, spese: true, custom_branding: true, max_pazienti: null, max_utenti: null },
+  base: { whatsapp: false, documenti: false, spese: false, custom_branding: false, max_pazienti: 50, max_utenti: 1, assistente_ai: 'off' },
+  pro: { whatsapp: true, documenti: true, spese: true, custom_branding: false, max_pazienti: null, max_utenti: 3, assistente_ai: 'off' },
+  premium: { whatsapp: true, documenti: true, spese: true, custom_branding: true, max_pazienti: null, max_utenti: null, assistente_ai: 'off' },
 };
+
+// Livelli dell'assistente AI, dal più limitato al più completo.
+export const ASSISTENTE_AI_LIVELLI = [
+  { id: 'off', label: 'Disattivato' },
+  { id: 'base', label: 'Base (solo guida al software)' },
+  { id: 'pro', label: 'Pro (guida + lettura dati)' },
+  { id: 'premium', label: 'Premium (completo, azioni incluse)' },
+];
 
 export const FEATURE_TOGGLES = [
   { id: 'whatsapp', label: 'WhatsApp' },
