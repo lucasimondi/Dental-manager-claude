@@ -1,8 +1,8 @@
 ﻿import ProfiloUtente from './ProfiloUtente.jsx';
 import GestioneUtenti from './GestioneUtenti.jsx';
 import React, { useState } from 'react';
-import { Btn, Crd, Fld, Inp, Txt, Modal, Toast, Ic } from './ui';
-import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI } from '../lib/utils';
+import { Btn, Crd, Fld, Inp, Txt, Modal, Toast, Ic, DockIc, DOCK_ICON_STYLES } from './ui';
+import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI, DEF_DOCK_SETTINGS } from '../lib/utils';
 
 export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange, features, theme, toggleTheme }) {
   const [si, setSi] = useState({ ...DEF_STUDIO, ...(studioInfo || {}) });
@@ -170,6 +170,34 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
         {appTypes.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 24 }}>Nessun tipo configurato</div>}
       </Crd>
       <Btn ch="+ Nuovo tipo appuntamento" v="sec" onClick={openNewTipo} full />
+
+      <div style={{ marginTop: 26, marginBottom: 14 }}>
+        <div style={{ fontSize: 20, fontWeight: 800 }}>Menu mobile</div>
+        <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Stile delle icone nel dock in basso, su telefono</div>
+      </div>
+      <Crd style={{ marginBottom: 14 }}>
+        <Fld label="Stile icone">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+            {DOCK_ICON_STYLES.map((opt) => {
+              const active = (si.dock_settings?.iconStyle || DEF_DOCK_SETTINGS.iconStyle) === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => S({ dock_settings: { ...DEF_DOCK_SETTINGS, ...(si.dock_settings || {}), iconStyle: opt.id } })}
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '12px 6px', borderRadius: 12, border: `1.5px solid ${active ? C.pri : C.brd}`, background: active ? C.priL : C.sur, cursor: 'pointer' }}
+                >
+                  <div style={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <DockIc n="cal" style={opt.id} s={28} c={C.pri} />
+                  </div>
+                  <span style={{ fontSize: 11.5, fontWeight: active ? 800 : 600, color: active ? C.pri : C.txm }}>{opt.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </Fld>
+        <div style={{ fontSize: 11, color: C.txl, marginTop: 2 }}>"Vivid" è lo stile consigliato — icone a duotono, più riconoscibili al tocco.</div>
+      </Crd>
+      <Btn ch="💾 Salva impostazioni" onClick={save} full sz="lg" />
 
       {tipoModal && (
         <Modal title={tipoModal === 'new' ? 'Nuovo tipo appuntamento' : 'Modifica tipo'} onClose={() => setTipoModal(null)}>
