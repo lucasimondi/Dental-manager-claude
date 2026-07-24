@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { C } from '../lib/utils';
 import { Ic } from './ui';
+import { generaRicettaPdf } from '../lib/pdfDocs.js';
 
 // Etichette leggibili per le azioni che richiedono conferma — mostrate nella
 // scheda di conferma invece del nome tecnico del tool.
@@ -60,11 +61,34 @@ export default function AssistenteAI() {
     }
   };
 
+  // Cerca nei messaggi della conversazione un tool_result di compila_ricetta_medica
+  // che contenga i dati pronti per il PDF, e lo scarica subito — nessun passaggio manuale.
+  const scaricaRicetteSePresenti = (messages) => {
+    if (!Array.isArray(messages)) return;
+    for (const m of messages) {
+      if (m.role !== 'user' || !Array.isArray(m.content)) continue;
+      for (const block of m.content) {
+        if (block.type !== 'tool_result' || typeof block.content !== 'string') continue;
+        let parsed;
+        try { parsed = JSON.parse(block.content); } catch { continue; }
+        if (parsed && parsed.pdf_data) {
+          try {
+            const nomeFile = generaRicettaPdf(parsed.pdf_data);
+            setMsgs(m2 => [...m2, { role: 'system', display: `📄 Ricetta generata: ${nomeFile}` }]);
+          } catch (e) {
+            setMsgs(m2 => [...m2, { role: 'system', display: '⚠️ Ricetta compilata ma il PDF non si è generato correttamente. Riprova o usa Documenti Medici.' }]);
+          }
+        }
+      }
+    }
+  };
+
   const gestisciRisposta = (risposta) => {
     if (risposta.error) {
       setErrore(risposta.error);
       return;
     }
+    scaricaRicetteSePresenti(risposta.messages);
     if (risposta.needsConfirmation) {
       if (risposta.text) {
         setMsgs(m => [...m, { role: 'assistant', display: risposta.text, apiContent: risposta.text }]);
