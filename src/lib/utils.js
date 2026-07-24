@@ -286,3 +286,36 @@ export const NAV = [
   { id: 'wa', l: 'WhatsApp', ic: 'wa' },
   { id: 'set', l: 'Setup', ic: 'set' },
 ];
+
+/* ── DOCK MOBILE PERSONALIZZABILE ──
+   Struttura salvata in studio_info.dock_settings (jsonb):
+   {
+     iconStyle: 'outline' | 'filled' | 'vivid',
+     slots: ['home','agenda','__menu__','paga','wa'],   // 5 posizioni fisse, '__menu__' è lo slot rialzato centrale
+     menuItems: ['paz','piani','listino','spese','archivio','set'],  // ordine nel popup
+   }
+   Il dock ha SEMPRE 5 posizioni; lo slot centrale (indice 2) è normalmente il pulsante
+   "menu" rialzato che apre il popup — ma può essere sostituito da una voce diretta
+   se lo studio preferisce così (in tal caso niente popup: 5 scorciatoie dirette). */
+export const DOCK_MENU_SLOT = '__menu__';
+
+export const DEF_DOCK_SETTINGS = {
+  iconStyle: 'vivid',
+  slots: ['home', 'agenda', DOCK_MENU_SLOT, 'paga', 'wa'],
+  menuItems: ['paz', 'piani', 'listino', 'spese', 'archivio', 'set'],
+};
+
+// Tutte le voci disponibili per comporre dock/popup, indicizzate per id (comodo per i <select>)
+export const NAV_BY_ID = Object.fromEntries(NAV.map((n) => [n.id, n]));
+
+/* ── AGENDA PERSONALIZZABILE ──
+   Struttura salvata in studio_info.agenda_settings (jsonb).
+   hiddenWeekdays: array di numeri getDay() da nascondere nella vista Settimana
+   (0=Domenica … 6=Sabato). Esempio: [0] nasconde solo la domenica, [0,6] nasconde il weekend intero. */
+export const DEF_AGENDA_SETTINGS = {
+  hiddenWeekdays: [],
+  oraInizio: 8,
+  oraFine: 20,
+  slotMin: 30,
+  zoom: 1,
+};

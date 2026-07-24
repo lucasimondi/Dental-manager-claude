@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr } from './ui';
 import WaAction, { apriWaDiretto } from './ui/WaAction.jsx';
-import { C, uid, fmtD, today, DEF_APP_TYPES } from '../lib/utils';
+import { C, uid, fmtD, today, DEF_APP_TYPES, DEF_AGENDA_SETTINGS } from '../lib/utils';
+import { useIsMobile } from '../lib/useIsMobile';
 
 const WD_SHORT = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
@@ -90,26 +91,30 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
               })}
             </div>
 
-            {/* Riga impegni personali: stile "tutto il giorno" di Google Calendar, spanna piu' giorni */}
+            {/* Riga impegni personali: stile "tutto il giorno" di Google Calendar, spanna piu' giorni.
+                overflow:hidden sulla riga e sulla cella evita che l'etichetta di un impegno di un solo
+                giorno "sconfini" visivamente sulla colonna accanto quando lo spazio e' stretto (mobile). */}
             {impegni && impegni.length > 0 && (
-              <div style={{ display: 'flex', borderBottom: `1.5px solid ${C.brd}`, flexShrink: 0, background: C.bg }}>
+              <div style={{ display: 'flex', borderBottom: `1.5px solid ${C.brd}`, flexShrink: 0, background: C.bg, overflow: 'hidden' }}>
                 <div style={{ width: 46, flexShrink: 0, borderRight: `1.5px solid ${C.brd}` }} />
                 {days.map((d, di) => {
                   const ds = toISO(d);
                   const dayImp = impegni.filter((imp) => ds >= imp.dataInizio && ds <= imp.dataFine);
                   return (
-                    <div key={di} style={{ flex: 1, borderLeft: di > 0 ? `1.5px solid ${C.brd}` : 'none', padding: dayImp.length ? '3px 2px' : 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <div key={di} style={{ flex: 1, minWidth: 0, overflow: 'hidden', borderLeft: di > 0 ? `1.5px solid ${C.brd}` : 'none', padding: dayImp.length ? '3px 2px' : 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                       {dayImp.map((imp) => {
                         const co = imp.colore || TIPO_IMPEGNO.find((x) => x.id === imp.tipo)?.colore || C.pri;
+                        const isSingleDay = imp.dataInizio === imp.dataFine;
                         const isStart = ds === imp.dataInizio;
                         const isEnd = ds === imp.dataFine;
                         const etichetta = imp.tuttoIlGiorno ? imp.titolo : `${(imp.oraInizio || '').slice(0, 5)} ${imp.titolo}`;
                         return (
                           <div key={imp.id} onClick={() => apriEditImpegno(imp)} title={imp.titolo} style={{
                             background: co, color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 6px', lineHeight: '13px',
-                            borderRadius: isStart && isEnd ? 5 : isStart ? '5px 0 0 5px' : isEnd ? '0 5px 5px 0' : 0,
-                            marginLeft: isStart ? 0 : -2, marginRight: isEnd ? 0 : -2,
-                            cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                            borderRadius: isSingleDay ? 5 : isStart ? '5px 0 0 5px' : isEnd ? '0 5px 5px 0' : 0,
+                            marginLeft: isSingleDay ? 0 : isStart ? 0 : -2,
+                            marginRight: isSingleDay ? 0 : isEnd ? 0 : -2,
+                            cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0,
                           }}>
                             {isStart ? etichetta : '\u00A0'}
                           </div>
@@ -196,17 +201,23 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   );
 }
 
-export default function Agenda({ patients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni, setImpegni }) {
+export default function Agenda({ patients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni, setImpegni, si, setStudioInfo }) {
   const tipiList = appTypes?.length ? appTypes : DEF_APP_TYPES;
 
-  const [oraInizio, setOraInizio] = useState(() => { try { return Number(localStorage.getItem('ag_oraInizio') || 8); } catch { return 8; } });
-  const [oraFine, setOraFine] = useState(() => { try { return Number(localStorage.getItem('ag_oraFine') || 20); } catch { return 20; } });
-  const [slotMin, setSlotMin] = useState(() => { try { return Number(localStorage.getItem('ag_slotMin') || 30); } catch { return 30; } });
-  const [zoom, setZoom] = useState(() => { try { return Number(localStorage.getItem('ag_zoom')) || 1; } catch { return 1; } });
+  // Setup Agenda: le impostazioni sono condivise a livello di studio (studioInfo.agenda_settings),
+  // così tutti i collaboratori vedono la stessa configurazione. localStorage resta solo come
+  // valore iniziale offline-first prima che arrivi lo studioInfo dal server.
+  const agSet = { ...DEF_AGENDA_SETTINGS, ...(si?.agenda_settings || {}) };
+  const [oraInizio, setOraInizio] = useState(() => { try { return si?.agenda_settings?.oraInizio ?? Number(localStorage.getItem('ag_oraInizio') || DEF_AGENDA_SETTINGS.oraInizio); } catch { return DEF_AGENDA_SETTINGS.oraInizio; } });
+  const [oraFine, setOraFine] = useState(() => { try { return si?.agenda_settings?.oraFine ?? Number(localStorage.getItem('ag_oraFine') || DEF_AGENDA_SETTINGS.oraFine); } catch { return DEF_AGENDA_SETTINGS.oraFine; } });
+  const [slotMin, setSlotMin] = useState(() => { try { return si?.agenda_settings?.slotMin ?? Number(localStorage.getItem('ag_slotMin') || DEF_AGENDA_SETTINGS.slotMin); } catch { return DEF_AGENDA_SETTINGS.slotMin; } });
+  const [zoom, setZoom] = useState(() => { try { return si?.agenda_settings?.zoom ?? (Number(localStorage.getItem('ag_zoom')) || DEF_AGENDA_SETTINGS.zoom); } catch { return DEF_AGENDA_SETTINGS.zoom; } });
+  const [hiddenWeekdays, setHiddenWeekdays] = useState(() => si?.agenda_settings?.hiddenWeekdays || DEF_AGENDA_SETTINGS.hiddenWeekdays);
   const [tmpI, setTmpI] = useState(8);
   const [tmpF, setTmpF] = useState(20);
   const [tmpS, setTmpS] = useState(30);
   const [tmpZ, setTmpZ] = useState(1);
+  const [tmpHidden, setTmpHidden] = useState([]);
   const [view, setView] = useState('settimana');
   const [selDay, setSelDay] = useState(today());
   const [modal, setModal] = useState(false);
@@ -217,7 +228,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const [vd, setVd] = useState(new Date());
   const wheelRef = useRef(0);
   const touchXRef = useRef(null);
-  const [form, setForm] = useState({ pazienteId: '', data: today(), ora: '09:00', durata: 30, tipo: tipiList[0]?.nome || 'Visita', colore: tipiList[0]?.colore || C.pri, note: '', stato: 'confermato' });
+  const [form, setForm] = useState({ pazienteId: '', data: today(), ora: '09:00', durata: 30, tipo: tipiList[0]?.nome || 'Visita', colore: tipiList[0]?.colore || C.pri, note: '', stato: 'confermato', ripeti: 'nessuna', ripetiFino: '' });
   const [waModal, setWaModal] = useState(null);
   const [waMsg, setWaMsg] = useState('');
   const [waTplId, setWaTplId] = useState('');
@@ -236,9 +247,21 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
     }
   }, [initPazienteId]);
 
-  // slotH calcolato per far stare 8-20 (12 ore) nello schermo mobile (~700px - 180px header)
+  const isMobile = useIsMobile();
+  // availH reattivo: ricalcolato a ogni resize/orientazione, non solo al primo render.
+  // Sottrae header app + header agenda + tab switcher + dock (84px mobile / 60px desktop),
+  // così la griglia è sempre tarata sullo spazio reale disponibile, non su un valore fisso.
+  const [availH, setAvailH] = useState(() => (typeof window !== 'undefined' ? Math.max(360, window.innerHeight - 210) : 480));
+  useEffect(() => {
+    const dockH = isMobile ? 84 : 60;
+    const chrome = 126 + dockH; // header studio + header agenda + tab switcher, misurati empiricamente
+    const recalc = () => setAvailH(Math.max(360, window.innerHeight - chrome));
+    recalc();
+    window.addEventListener('resize', recalc);
+    window.addEventListener('orientationchange', recalc);
+    return () => { window.removeEventListener('resize', recalc); window.removeEventListener('orientationchange', recalc); };
+  }, [isMobile]);
   // slotH calcolato per far stare l'intervallo scelto (oraInizio-oraFine) nello schermo, poi scalato dal fattore zoom
-  const availH = typeof window !== 'undefined' ? Math.max(400, window.innerHeight - 180) : 520;
   const oreVisibili = Math.max(1, oraFine - oraInizio);
   const slotH = Math.max(8, Math.round((availH / (oreVisibili * 60 / slotMin)) * zoom));
   // Griglia limitata all'intervallo oraInizio - oraFine scelto nelle impostazioni
@@ -260,20 +283,23 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   };
 
   const weekStart = startOfWeek(selDay);
-  const weekDays = Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
+  const weekDaysAll = Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
+  // Non nasconde MAI tutti i 7 giorni: se per errore lo studio ha nascosto tutta la settimana, mostra comunque tutto.
+  const weekDaysVisibili = weekDaysAll.filter(d => !hiddenWeekdays.includes(d.getDay()));
+  const weekDays = weekDaysVisibili.length > 0 ? weekDaysVisibili : weekDaysAll;
   const t = today();
 
   const apriNuovo = (data, ora) => {
     setPazSearch('');
     setEditApp(null);
-    setForm({ pazienteId: '', data: data || selDay, ora: ora || '09:00', durata: 30, tipo: tipiList[0]?.nome || 'Visita', colore: tipiList[0]?.colore || C.pri, note: '', stato: 'confermato' });
+    setForm({ pazienteId: '', data: data || selDay, ora: ora || '09:00', durata: 30, tipo: tipiList[0]?.nome || 'Visita', colore: tipiList[0]?.colore || C.pri, note: '', stato: 'confermato', ripeti: 'nessuna', ripetiFino: '' });
     setModal(true);
   };
 
   const apriEdit = (a) => {
     setEditApp(a);
     setPazSearch('');
-    setForm({ pazienteId: String(a.pazienteId), data: a.data, ora: a.ora, durata: a.durata, tipo: a.tipo, colore: a.colore || C.pri, note: a.note || '', stato: a.stato || 'confermato' });
+    setForm({ pazienteId: String(a.pazienteId), data: a.data, ora: a.ora, durata: a.durata, tipo: a.tipo, colore: a.colore || C.pri, note: a.note || '', stato: a.stato || 'confermato', ripeti: 'nessuna', ripetiFino: '' });
     setModal(true);
   };
 
@@ -300,14 +326,37 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
     if (tpl && p) setWaMsg(tpl.testo.replace(/{nome}/g, `${p.nome} ${p.cognome}`).replace(/{data}/g, fmtD(waModal.data)).replace(/{ora}/g, waModal.ora).replace(/{tipo}/g, waModal.tipo));
   };
 
+  // Genera le date delle occorrenze ripetute (inclusa la prima), fino a ripetiFino incluso.
+  // Limite di sicurezza a 104 occorrenze (~2 anni di settimanale) per evitare loop pericolosi
+  // in caso di date immesse male.
+  const generaDateRipetizione = (dataBase, tipo, dataFine) => {
+    if (tipo === 'nessuna' || !dataFine || dataFine < dataBase) return [dataBase];
+    const step = tipo === 'giornaliera' ? 1 : tipo === 'settimanale' ? 7 : null; // 'mensile' gestita a parte
+    const out = [dataBase];
+    let cur = new Date(dataBase + 'T12:00');
+    let guard = 0;
+    while (guard++ < 104) {
+      if (tipo === 'mensile') cur = new Date(cur.getFullYear(), cur.getMonth() + 1, cur.getDate(), 12);
+      else cur = new Date(cur.getTime() + step * 86400000);
+      const ds = toISO(cur);
+      if (ds > dataFine) break;
+      out.push(ds);
+    }
+    return out;
+  };
+
   const save = () => {
     if (!form.pazienteId) return;
     if (editApp) {
-      setAppointments(p => p.map(a => a.id === editApp.id ? { ...a, ...form, pazienteId: Number(form.pazienteId), durata: Number(form.durata) } : a));
+      const { ripeti, ripetiFino, ...rest } = form;
+      setAppointments(p => p.map(a => a.id === editApp.id ? { ...a, ...rest, pazienteId: Number(form.pazienteId), durata: Number(form.durata) } : a));
       setToast('Aggiornato ✓');
     } else {
-      setAppointments(p => [...p, { ...form, id: uid(), pazienteId: Number(form.pazienteId), durata: Number(form.durata) }]);
-      setToast('Salvato ✓');
+      const { ripeti, ripetiFino, ...rest } = form;
+      const date = generaDateRipetizione(form.data, ripeti, ripetiFino);
+      const nuovi = date.map((d) => ({ ...rest, data: d, id: uid() + Math.floor(Math.random() * 1000), pazienteId: Number(form.pazienteId), durata: Number(form.durata) }));
+      setAppointments(p => [...p, ...nuovi]);
+      setToast(nuovi.length > 1 ? `${nuovi.length} appuntamenti creati ✓` : 'Salvato ✓');
     }
     setModal(false);
   };
@@ -351,11 +400,15 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
 
   const saveSettings = () => {
     if (tmpI >= tmpF) return;
-    setOraInizio(tmpI); setOraFine(tmpF); setSlotMin(tmpS); setZoom(tmpZ);
+    setOraInizio(tmpI); setOraFine(tmpF); setSlotMin(tmpS); setZoom(tmpZ); setHiddenWeekdays(tmpHidden);
     localStorage.setItem('ag_oraInizio', tmpI);
     localStorage.setItem('ag_oraFine', tmpF);
     localStorage.setItem('ag_slotMin', tmpS);
     localStorage.setItem('ag_zoom', tmpZ);
+    if (setStudioInfo) {
+      setStudioInfo((prev) => ({ ...prev, agenda_settings: { oraInizio: tmpI, oraFine: tmpF, slotMin: tmpS, zoom: tmpZ, hiddenWeekdays: tmpHidden } }));
+      setToast('Impostazioni salvate per tutto lo studio ✓');
+    }
     setSettingsOpen(false);
   };
 
@@ -391,7 +444,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
             <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
           </>}
         </div>
-        <button onClick={() => { setTmpI(oraInizio); setTmpF(oraFine); setTmpS(slotMin); setTmpZ(zoom); setSettingsOpen(true); }} style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 8, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+        <button onClick={() => { setTmpI(oraInizio); setTmpF(oraFine); setTmpS(slotMin); setTmpZ(zoom); setTmpHidden(hiddenWeekdays); setSettingsOpen(true); }} style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 8, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
           <Ic n="set" s={15} c={C.txm} />
         </button>
         <Btn ch="+ Impegno" v="sec" onClick={() => apriNuovoImpegno()} />
@@ -537,7 +590,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
       {/* MODAL IMPOSTAZIONI */}
       {settingsOpen && (
         <Modal title="⚙️ Impostazioni agenda" onClose={() => setSettingsOpen(false)}>
-          <div style={{ fontSize: 12, color: C.txm, marginBottom: 14 }}>Le impostazioni vengono salvate sul dispositivo.</div>
+          <div style={{ fontSize: 12, color: C.txm, marginBottom: 14 }}>Il Setup Agenda vale per tutto lo studio: chiunque acceda vedrà la stessa configurazione.</div>
           <Fld label="Ora inizio giornata">
             <Sel value={tmpI} onChange={e => setTmpI(Number(e.target.value))}>
               {Array.from({ length: 16 }, (_, i) => i + 6).map(h => <option key={h} value={h}>{String(h).padStart(2,'0')}:00</option>)}
@@ -565,9 +618,21 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
             </Sel>
           </Fld>
           {tmpI >= tmpF && <div style={{ background: C.danL, borderRadius: 8, padding: '8px 12px', marginBottom: 8, fontSize: 12, color: C.dan, fontWeight: 700 }}>⚠️ L'ora di inizio deve essere prima dell'ora di fine</div>}
-          <div style={{ background: C.bg, borderRadius: 9, padding: '9px 12px', marginBottom: 10 }}>
+          <div style={{ background: C.bg, borderRadius: 9, padding: '9px 12px', marginBottom: 14 }}>
             <div style={{ fontSize: 11, color: C.txm, fontWeight: 700 }}>{String(tmpI).padStart(2,'0')}:00 — {String(tmpF).padStart(2,'0')}:00 · slot da {tmpS} min · {Math.ceil((tmpF - tmpI) * 60 / tmpS)} slot totali</div>
           </div>
+          <Fld label="Giorni visibili in vista Settimana">
+            <div style={{ display: 'flex', gap: 4 }}>
+              {WD_SHORT.map((lbl, wd) => {
+                const isHidden = tmpHidden.includes(wd);
+                return (
+                  <button key={wd} onClick={() => setTmpHidden(h => isHidden ? h.filter(x => x !== wd) : [...h, wd])} style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: `1.5px solid ${isHidden ? C.brd : C.pri}`, background: isHidden ? C.bg : C.priL, color: isHidden ? C.txl : C.pri, fontWeight: 700, fontSize: 10.5, cursor: 'pointer' }}>{lbl}</button>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 10.5, color: C.txl, marginTop: 5 }}>Tocca un giorno per nasconderlo dalla vista Settimana (es. domenica se lo studio è chiuso)</div>
+          </Fld>
+          <div style={{ fontSize: 11, color: C.txl, marginTop: 4, marginBottom: 4 }}>Salvando, queste impostazioni valgono per tutto lo studio, non solo per questo dispositivo.</div>
           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
             <Btn ch="Annulla" v="sec" onClick={() => setSettingsOpen(false)} full />
             <Btn ch="Salva" onClick={saveSettings} dis={tmpI >= tmpF} full />
@@ -634,10 +699,32 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
             <Inp value={form.tipo} onChange={e => F({ tipo: e.target.value })} placeholder="Personalizza tipo visita" />
           </Fld>
           <Fld label="Note"><Txt value={form.note} onChange={e => F({ note: e.target.value })} /></Fld>
+          {!editApp && (
+            <Fld label="Ripeti">
+              <Sel value={form.ripeti} onChange={e => F({ ripeti: e.target.value, ripetiFino: e.target.value === 'nessuna' ? '' : form.ripetiFino })}>
+                <option value="nessuna">Non si ripete</option>
+                <option value="giornaliera">Ogni giorno</option>
+                <option value="settimanale">Ogni settimana</option>
+                <option value="mensile">Ogni mese</option>
+              </Sel>
+              {form.ripeti !== 'nessuna' && (
+                <div style={{ marginTop: 8 }}>
+                  <Fld label="Ripeti fino al">
+                    <Inp type="date" value={form.ripetiFino} min={form.data} onChange={e => F({ ripetiFino: e.target.value })} />
+                  </Fld>
+                  {form.ripetiFino && (
+                    <div style={{ fontSize: 11, color: C.txm, marginTop: -4 }}>
+                      Verranno creati {generaDateRipetizione(form.data, form.ripeti, form.ripetiFino).length} appuntamenti
+                    </div>
+                  )}
+                </div>
+              )}
+            </Fld>
+          )}
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             {editApp && <Btn ch="Elimina" v="dan" onClick={() => { del(editApp.id); setModal(false); }} />}
             <Btn ch="Annulla" v="sec" onClick={() => setModal(false)} full />
-            <Btn ch={editApp ? 'Aggiorna' : 'Salva'} onClick={save} dis={!form.pazienteId} full />
+            <Btn ch={editApp ? 'Aggiorna' : 'Salva'} onClick={save} dis={!form.pazienteId || (!editApp && form.ripeti !== 'nessuna' && !form.ripetiFino)} full />
           </div>
         </Modal>
       )}

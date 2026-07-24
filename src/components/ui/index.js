@@ -1,4 +1,5 @@
 export { default as Ic } from './Ic.jsx';
+export { default as DockIc, DOCK_ICON_STYLES } from './DockIc.jsx';
 export { default as Btn } from './Btn.jsx';
 export { default as Modal } from './Modal.jsx';
 export { default as Toast } from './Toast.jsx';

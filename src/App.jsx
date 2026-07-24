@@ -1,6 +1,8 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { supabase, DB } from './lib/supabase.js';
-import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_APP_TYPES, DEF_TPL_GENERICO, DEF_APP_TYPES_GENERICO, NAV, PIANI_FEATURES_DEFAULT, computeFeatures } from './lib/utils';
+import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_APP_TYPES, DEF_TPL_GENERICO, DEF_APP_TYPES_GENERICO, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, DEF_DOCK_SETTINGS } from './lib/utils';
+import MobileDock from './components/MobileDock.jsx';
+import { useIsMobile } from './lib/useIsMobile';
 import { useTheme } from './lib/useTheme';
 import { Ic } from './components/ui';
 import AssistenteAI from './components/AssistenteAI.jsx';
@@ -23,6 +25,7 @@ import MasterDashboard from './components/MasterDashboard.jsx';
 
 export default function App() {
   const { theme, toggleTheme } = useTheme();
+  const isMobile = useIsMobile();
   const [session, setSession] = useState(undefined);
   const [dataLoading, setDataLoading] = useState(true);
   const [page, setPage] = useState('home');
@@ -292,12 +295,13 @@ export default function App() {
             style={{ height: 48, display: 'block' }}
           />
         )}
-        <div style={{ marginLeft: 'auto', fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10 }}>
-          {userName && <span style={{ color: 'rgba(255,255,255,0.8)', fontWeight: 700 }}>{userName}</span>}
-          <span style={{ color: 'rgba(255,255,255,0.3)' }}>·</span>
-          <span>{navVisibile.find((n) => n.id === page)?.l}</span>
-          {isSuperAdmin && <button onClick={() => setShowMasterDashboard(true)} title="Dashboard Master" style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, padding: '4px 8px', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>🛠️</button>}
-          <button onClick={handleLogout} title="Esci" style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, padding: '4px 8px', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>Esci</button>
+        <div style={{ marginLeft: 'auto', fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          {userName && !isMobile && <span style={{ color: 'rgba(255,255,255,0.8)', fontWeight: 700 }}>{userName}</span>}
+          {!isMobile && <span style={{ color: 'rgba(255,255,255,0.3)' }}>·</span>}
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: isMobile ? 120 : 'none' }}>{navVisibile.find((n) => n.id === page)?.l}</span>
+          {isSuperAdmin && <button onClick={() => setShowMasterDashboard(true)} title="Dashboard Master" style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, padding: '4px 8px', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>🛠️</button>}
+          {/* Su mobile 'Esci' vive nel dock/popup in basso — evita la sovrapposizione con quello in alto */}
+          {!isMobile && <button onClick={handleLogout} title="Esci" style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, padding: '4px 8px', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>Esci</button>}
         </div>
       </div>
 
@@ -324,7 +328,7 @@ export default function App() {
         />
       )}
 
-      <div id="app-scroll" style={{ flex: 1, overflowY: 'auto', padding: 13, paddingBottom: 78 }}>
+      <div id="app-scroll" style={{ flex: 1, overflowY: 'auto', padding: 13, paddingBottom: isMobile ? 98 : 78 }}>
         {page === 'home' && <Dashboard patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} templates={templates} userName={userName} si={studioInfo} features={features} />}
         {page === 'paz' && (
           <Pazienti
@@ -349,7 +353,7 @@ export default function App() {
         )}
         {page === 'paga' && <Pagamenti patients={patients} payments={payments} setPayments={setPaymentsSync} plans={plans} />}
         {page === 'listino' && <Listino pricelist={pricelist} setPricelist={setPricelistSync} si={studioInfo} />}
-        {page === 'agenda' && <Agenda patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} />}
+        {page === 'agenda' && <Agenda patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} />}
         {page === 'spese' && <Spese />}
         {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} />}
         {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
@@ -358,18 +362,27 @@ export default function App() {
 
       <AssistenteAI />
 
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: C.sur, borderTop: `1px solid ${C.brd}`, display: 'grid', gridTemplateColumns: `repeat(${navVisibile.length + 1},1fr)`, paddingBottom: 'env(safe-area-inset-bottom,0px)', zIndex: 100, boxShadow: '0 -2px 10px rgba(0,0,0,0.07)' }}>
-        {navVisibile.map((n) => (
-          <button key={n.id} onClick={() => setPage(n.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '7px 1px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, color: page === n.id ? C.pri : C.txl }}>
-            <div style={{ background: page === n.id ? C.priL : 'transparent', borderRadius: 7, padding: '3px 5px' }}><Ic n={n.ic} s={17} c={page === n.id ? C.pri : C.txl} /></div>
-            <span style={{ fontSize: 8, fontWeight: page === n.id ? 800 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{n.l}</span>
+      {isMobile ? (
+        <MobileDock
+          page={page}
+          setPage={setPage}
+          dockSettings={{ ...DEF_DOCK_SETTINGS, ...(studioInfo?.dock_settings || {}) }}
+          onLogout={handleLogout}
+        />
+      ) : (
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: C.sur, borderTop: `1px solid ${C.brd}`, display: 'grid', gridTemplateColumns: `repeat(${navVisibile.length + 1},1fr)`, paddingBottom: 'env(safe-area-inset-bottom,0px)', zIndex: 100, boxShadow: '0 -2px 10px rgba(0,0,0,0.07)' }}>
+          {navVisibile.map((n) => (
+            <button key={n.id} onClick={() => setPage(n.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '7px 1px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, color: page === n.id ? C.pri : C.txl }}>
+              <div style={{ background: page === n.id ? C.priL : 'transparent', borderRadius: 7, padding: '3px 5px' }}><Ic n={n.ic} s={17} c={page === n.id ? C.pri : C.txl} /></div>
+              <span style={{ fontSize: 8, fontWeight: page === n.id ? 800 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{n.l}</span>
+            </button>
+          ))}
+          <button onClick={() => supabase.auth.signOut()} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '7px 1px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, color: C.txl }}>
+            <div style={{ borderRadius: 7, padding: '3px 5px' }}><Ic n="x" s={17} c={C.txl} /></div>
+            <span style={{ fontSize: 8, fontWeight: 500 }}>Esci</span>
           </button>
-        ))}
-        <button onClick={() => supabase.auth.signOut()} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '7px 1px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, color: C.txl }}>
-          <div style={{ borderRadius: 7, padding: '3px 5px' }}><Ic n="x" s={17} c={C.txl} /></div>
-          <span style={{ fontSize: 8, fontWeight: 500 }}>Esci</span>
-        </button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
