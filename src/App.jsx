@@ -36,6 +36,7 @@ export default function App() {
   const [appTypes, setAppTypes] = useState([]);
   const [userName, setUserName] = useState('');
   const [implants, setImplants] = useState([]);
+  const [impegni, setImpegni] = useState([]);
   const [initPatId, setInitPatId] = useState(null);
   const [agendaInitPaz, setAgendaInitPaz] = useState(null);
   const [schedaDashPaz, setSchedaDashPaz] = useState(null);
@@ -80,7 +81,7 @@ export default function App() {
     (async () => {
       setDataLoading(true);
       try {
-        const [p, a, pl, py, pr, tp, at, im, si] = await Promise.all([
+        const [p, a, pl, py, pr, tp, at, im, ip, si] = await Promise.all([
           DB.getAll('dm_p'),
           DB.getAll('dm_a'),
           DB.getAll('dm_pl'),
@@ -89,6 +90,7 @@ export default function App() {
           DB.getAll('dm_tp'),
           DB.getAll('dm_at'),
           DB.getAll('dm_im'),
+          DB.getAll('dm_ip'),
           DB.getStudioInfo(),
         ]);
         if (cancelled) return;
@@ -97,6 +99,7 @@ export default function App() {
         setPlans(pl || []);
         setPayments(py || []);
         setImplants(im || []);
+        setImpegni(ip || []);
 
         // Determina il vertical PRIMA di seedare, usando 'si' appena arrivato dalla stessa fetch
         // (non ancora salvato in state) — default 'dentistico' se lo studio non l'ha ancora impostato
@@ -151,6 +154,10 @@ export default function App() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, async () => {
         const py = await DB.getAll('dm_py');
         setPayments(py || []);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'impegni_personali' }, async () => {
+        const ip = await DB.getAll('dm_ip');
+        setImpegni(ip || []);
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -231,6 +238,7 @@ export default function App() {
   const setTemplatesSync = makeSyncSetter('dm_tp', setTemplates, setSyncError);
   const setAppTypesSync = makeSyncSetter('dm_at', setAppTypes, setSyncError);
   const setImplantsSync = makeSyncSetter('dm_im', setImplants, setSyncError);
+  const setImpegniSync = makeSyncSetter('dm_ip', setImpegni, setSyncError);
 
   const setStudioInfoSync = (updaterOrVal) => {
     setStudioInfo((prev) => {
@@ -246,7 +254,7 @@ export default function App() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    setPatients([]); setAppointments([]); setPlans([]); setPayments([]);
+    setPatients([]); setAppointments([]); setPlans([]); setPayments([]); setImpegni([]);
     setPricelist([]); setTemplates([]); setAppTypes([]); setStudioInfo(DEF_STUDIO); setImplants([]);
     setPage('home');
   };
@@ -341,7 +349,7 @@ export default function App() {
         )}
         {page === 'paga' && <Pagamenti patients={patients} payments={payments} setPayments={setPaymentsSync} plans={plans} />}
         {page === 'listino' && <Listino pricelist={pricelist} setPricelist={setPricelistSync} si={studioInfo} />}
-        {page === 'agenda' && <Agenda patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} />}
+        {page === 'agenda' && <Agenda patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} />}
         {page === 'spese' && <Spese />}
         {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} />}
         {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}

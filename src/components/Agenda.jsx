@@ -6,6 +6,12 @@ import { C, uid, fmtD, today, DEF_APP_TYPES } from '../lib/utils';
 const WD_SHORT = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
 const toISO = (d) => d.toISOString().slice(0, 10);
+const TIPO_IMPEGNO = [
+  { id: 'personale', label: 'Personale', colore: '#64748b' },
+  { id: 'ferie', label: 'Ferie', colore: '#f59e0b' },
+  { id: 'chiamata', label: 'Chiamata', colore: '#8b5cf6' },
+  { id: 'altro', label: 'Altro', colore: '#6b7280' },
+];
 const startOfWeek = (d) => {
   const dt = new Date(d + 'T12:00');
   const day = dt.getDay();
@@ -13,7 +19,7 @@ const startOfWeek = (d) => {
   return dt;
 };
 
-function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t, features }) {
+function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno }) {
   const containerRef = useRef(null); // unico scroll container
   const resizeRef = useRef(null);
   const [now, setNow] = useState(new Date());
@@ -83,6 +89,37 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                 );
               })}
             </div>
+
+            {/* Riga impegni personali: stile "tutto il giorno" di Google Calendar, spanna piu' giorni */}
+            {impegni && impegni.length > 0 && (
+              <div style={{ display: 'flex', borderBottom: `1.5px solid ${C.brd}`, flexShrink: 0, background: C.bg }}>
+                <div style={{ width: 46, flexShrink: 0, borderRight: `1.5px solid ${C.brd}` }} />
+                {days.map((d, di) => {
+                  const ds = toISO(d);
+                  const dayImp = impegni.filter((imp) => ds >= imp.dataInizio && ds <= imp.dataFine);
+                  return (
+                    <div key={di} style={{ flex: 1, borderLeft: di > 0 ? `1.5px solid ${C.brd}` : 'none', padding: dayImp.length ? '3px 2px' : 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {dayImp.map((imp) => {
+                        const co = imp.colore || TIPO_IMPEGNO.find((x) => x.id === imp.tipo)?.colore || C.pri;
+                        const isStart = ds === imp.dataInizio;
+                        const isEnd = ds === imp.dataFine;
+                        const etichetta = imp.tuttoIlGiorno ? imp.titolo : `${(imp.oraInizio || '').slice(0, 5)} ${imp.titolo}`;
+                        return (
+                          <div key={imp.id} onClick={() => apriEditImpegno(imp)} title={imp.titolo} style={{
+                            background: co, color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 6px', lineHeight: '13px',
+                            borderRadius: isStart && isEnd ? 5 : isStart ? '5px 0 0 5px' : isEnd ? '0 5px 5px 0' : 0,
+                            marginLeft: isStart ? 0 : -2, marginRight: isEnd ? 0 : -2,
+                            cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                          }}>
+                            {isStart ? etichetta : '\u00A0'}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             <div style={{ display: 'flex', flex: 1 }}>
 
@@ -159,7 +196,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   );
 }
 
-export default function Agenda({ patients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features }) {
+export default function Agenda({ patients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni, setImpegni }) {
   const tipiList = appTypes?.length ? appTypes : DEF_APP_TYPES;
 
   const [oraInizio, setOraInizio] = useState(() => { try { return Number(localStorage.getItem('ag_oraInizio') || 8); } catch { return 8; } });
@@ -184,6 +221,10 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const [waModal, setWaModal] = useState(null);
   const [waMsg, setWaMsg] = useState('');
   const [waTplId, setWaTplId] = useState('');
+  const [impModal, setImpModal] = useState(false);
+  const [editImp, setEditImp] = useState(null);
+  const [impForm, setImpForm] = useState({ titolo: '', tipo: 'personale', colore: '', dataInizio: today(), dataFine: today(), tuttoIlGiorno: true, oraInizio: '09:00', oraFine: '10:00', note: '' });
+  const IF = (f) => setImpForm((p) => ({ ...p, ...f }));
 
   const F = (f) => setForm(p => ({ ...p, ...f }));
 
@@ -273,6 +314,41 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
 
   const del = (id) => { if (confirm('Eliminare?')) setAppointments(p => p.filter(a => a.id !== id)); };
 
+  const apriNuovoImpegno = (data) => {
+    setEditImp(null);
+    setImpForm({ titolo: '', tipo: 'personale', colore: '', dataInizio: data || selDay, dataFine: data || selDay, tuttoIlGiorno: true, oraInizio: '09:00', oraFine: '10:00', note: '' });
+    setImpModal(true);
+  };
+
+  const apriEditImpegno = (imp) => {
+    setEditImp(imp);
+    setImpForm({
+      titolo: imp.titolo, tipo: imp.tipo, colore: imp.colore || '', dataInizio: imp.dataInizio, dataFine: imp.dataFine,
+      tuttoIlGiorno: imp.tuttoIlGiorno !== false, oraInizio: imp.oraInizio || '09:00', oraFine: imp.oraFine || '10:00', note: imp.note || '',
+    });
+    setImpModal(true);
+  };
+
+  const saveImpegno = () => {
+    if (!impForm.titolo.trim() || impForm.dataFine < impForm.dataInizio) return;
+    const payload = { ...impForm, oraInizio: impForm.tuttoIlGiorno ? null : impForm.oraInizio, oraFine: impForm.tuttoIlGiorno ? null : impForm.oraFine };
+    if (editImp) {
+      setImpegni(p => p.map(i => i.id === editImp.id ? { ...i, ...payload } : i));
+      setToast('Aggiornato ✓');
+    } else {
+      setImpegni(p => [...p, { ...payload, id: uid() }]);
+      setToast('Salvato ✓');
+    }
+    setImpModal(false);
+  };
+
+  const delImpegno = () => {
+    if (!editImp) return;
+    if (!confirm('Eliminare questo impegno?')) return;
+    setImpegni(p => p.filter(i => i.id !== editImp.id));
+    setImpModal(false);
+  };
+
   const saveSettings = () => {
     if (tmpI >= tmpF) return;
     setOraInizio(tmpI); setOraFine(tmpF); setSlotMin(tmpS); setZoom(tmpZ);
@@ -287,7 +363,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const navSettimana = (n) => { const d = new Date(selDay + 'T12:00'); d.setDate(d.getDate() + n * 7); setSelDay(toISO(d)); };
   const navMese = (n) => setVd(v => new Date(v.getFullYear(), v.getMonth() + n, 1));
 
-  const gridProps = { slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t };
+  const gridProps = { slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 130px)' }}>
@@ -318,6 +394,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
         <button onClick={() => { setTmpI(oraInizio); setTmpF(oraFine); setTmpS(slotMin); setTmpZ(zoom); setSettingsOpen(true); }} style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 8, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
           <Ic n="set" s={15} c={C.txm} />
         </button>
+        <Btn ch="+ Impegno" v="sec" onClick={() => apriNuovoImpegno()} />
         <Btn ch="+ Nuovo" onClick={() => apriNuovo()} />
       </div>
 
@@ -367,9 +444,17 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
                   if (!g) return <div key={i} />;
                   const ds = `${K}-${String(mese+1).padStart(2,'0')}-${String(g).padStart(2,'0')}`;
                   const cnt = appointments.filter(a => a.data === ds).length;
+                  const dayImp = (impegni || []).filter(imp => ds >= imp.dataInizio && ds <= imp.dataFine);
                   const isSel = ds === selDay, isTod = ds === t;
                   return (
                     <div key={i} onClick={() => { setSelDay(ds); setView('giorno'); }} style={{ textAlign: 'center', padding: '5px 2px', borderRadius: 7, cursor: 'pointer', background: isSel ? C.pri : isTod ? C.priL : 'transparent', color: isSel ? '#fff' : isTod ? C.pri : C.txt, fontWeight: isSel || isTod ? 700 : 400, fontSize: 12, position: 'relative', minHeight: 28 }}>
+                      {dayImp.length > 0 && (
+                        <div style={{ display: 'flex', gap: 1, position: 'absolute', top: 2, left: 3, right: 3, height: 3 }}>
+                          {dayImp.slice(0, 3).map((imp) => (
+                            <div key={imp.id} style={{ flex: 1, height: 3, borderRadius: 2, background: imp.colore || TIPO_IMPEGNO.find(x => x.id === imp.tipo)?.colore || C.pri }} />
+                          ))}
+                        </div>
+                      )}
                       {g}
                       {cnt > 0 && <div style={{ display: 'flex', gap: 1, justifyContent: 'center', position: 'absolute', bottom: 1, left: '50%', transform: 'translateX(-50%)' }}>
                         {Array.from({ length: Math.min(cnt, 3) }, (_, j) => <div key={j} style={{ width: 4, height: 4, borderRadius: '50%', background: isSel ? '#fff' : C.pri }} />)}
@@ -379,6 +464,22 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
                 })}
               </div>
             </Crd>
+            {(impegni || []).filter(imp => selDay >= imp.dataInizio && selDay <= imp.dataFine).map(imp => {
+              const co = imp.colore || TIPO_IMPEGNO.find(x => x.id === imp.tipo)?.colore || C.pri;
+              return (
+                <Crd key={imp.id} style={{ marginBottom: 8, borderLeft: `4px solid ${co}`, cursor: 'pointer' }} onClick={() => apriEditImpegno(imp)}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ background: co + '20', borderRadius: 7, padding: '4px 9px', textAlign: 'center', flexShrink: 0 }}>
+                      <div style={{ fontSize: 10, fontWeight: 900, color: co, textTransform: 'uppercase' }}>{TIPO_IMPEGNO.find(x => x.id === imp.tipo)?.label || imp.tipo}</div>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700 }}>{imp.titolo}</div>
+                      <div style={{ fontSize: 11, color: C.txm }}>{imp.tuttoIlGiorno ? 'Tutto il giorno' : `${(imp.oraInizio || '').slice(0,5)} – ${(imp.oraFine || '').slice(0,5)}`}{imp.dataInizio !== imp.dataFine ? ` · ${fmtD(imp.dataInizio)} – ${fmtD(imp.dataFine)}` : ''}</div>
+                    </div>
+                  </div>
+                </Crd>
+              );
+            })}
             <div style={{ fontSize: 12, fontWeight: 700, color: C.txm, marginBottom: 8 }}>{fmtD(selDay)}</div>
             {appointments.filter(a => a.data === selDay).sort((a, b) => a.ora.localeCompare(b.ora)).map(a => {
               const p = patients.find(x => x.id === a.pazienteId);
@@ -537,6 +638,44 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
             {editApp && <Btn ch="Elimina" v="dan" onClick={() => { del(editApp.id); setModal(false); }} />}
             <Btn ch="Annulla" v="sec" onClick={() => setModal(false)} full />
             <Btn ch={editApp ? 'Aggiorna' : 'Salva'} onClick={save} dis={!form.pazienteId} full />
+          </div>
+        </Modal>
+      )}
+
+      {/* MODAL IMPEGNO PERSONALE */}
+      {impModal && (
+        <Modal title={editImp ? '✏️ Modifica impegno' : '🗓️ Nuovo impegno personale'} onClose={() => setImpModal(false)}>
+          <Fld label="Titolo"><Inp value={impForm.titolo} onChange={e => IF({ titolo: e.target.value })} placeholder="Es. Ferie, Chiamata commercialista…" autoFocus /></Fld>
+          <Fld label="Tipo">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {TIPO_IMPEGNO.map(tp => (
+                <button key={tp.id} onClick={() => IF({ tipo: tp.id, colore: '' })} style={{ padding: '5px 10px', borderRadius: 20, border: `1.5px solid ${impForm.tipo === tp.id ? tp.colore : C.brd}`, background: impForm.tipo === tp.id ? tp.colore + '18' : C.sur, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: tp.colore }} />
+                  <span style={{ fontSize: 11, fontWeight: impForm.tipo === tp.id ? 700 : 500, color: impForm.tipo === tp.id ? tp.colore : C.txm }}>{tp.label}</span>
+                </button>
+              ))}
+            </div>
+          </Fld>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <Fld label="Dal"><Inp type="date" value={impForm.dataInizio} onChange={e => IF({ dataInizio: e.target.value, dataFine: e.target.value > impForm.dataFine ? e.target.value : impForm.dataFine })} /></Fld>
+            <Fld label="Al"><Inp type="date" value={impForm.dataFine} onChange={e => IF({ dataFine: e.target.value })} /></Fld>
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, cursor: 'pointer' }}>
+            <input type="checkbox" checked={impForm.tuttoIlGiorno} onChange={e => IF({ tuttoIlGiorno: e.target.checked })} />
+            <span style={{ fontSize: 12, fontWeight: 600, color: C.txm }}>Tutto il giorno</span>
+          </label>
+          {!impForm.tuttoIlGiorno && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <Fld label="Dalle"><Inp type="time" value={impForm.oraInizio} onChange={e => IF({ oraInizio: e.target.value })} /></Fld>
+              <Fld label="Alle"><Inp type="time" value={impForm.oraFine} onChange={e => IF({ oraFine: e.target.value })} /></Fld>
+            </div>
+          )}
+          <Fld label="Note (opzionale)"><Txt value={impForm.note} onChange={e => IF({ note: e.target.value })} /></Fld>
+          {impForm.dataFine < impForm.dataInizio && <div style={{ background: C.danL, borderRadius: 8, padding: '8px 12px', marginBottom: 8, fontSize: 12, color: C.dan, fontWeight: 700 }}>⚠️ La data di fine deve essere uguale o successiva alla data di inizio</div>}
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            {editImp && <Btn ch="Elimina" v="dan" onClick={delImpegno} />}
+            <Btn ch="Annulla" v="sec" onClick={() => setImpModal(false)} full />
+            <Btn ch={editImp ? 'Aggiorna' : 'Salva'} onClick={saveImpegno} dis={!impForm.titolo.trim() || impForm.dataFine < impForm.dataInizio} full />
           </div>
         </Modal>
       )}

@@ -15,6 +15,7 @@ const TABLE_MAP = {
   dm_tp: 'templates',
   dm_at: 'app_types',
   dm_im: 'implants',
+  dm_ip: 'impegni_personali',
 };
 
 /* ── CAMPI UI TEMPORANEI DA NON SALVARE SU DB ── */
@@ -42,6 +43,13 @@ const FIELD_MAP = {
     dataInserimento: 'data_inserimento',
     dataCorona: 'data_corona',
     noteCorona: 'note_corona',
+  },
+  impegni_personali: {
+    dataInizio: 'data_inizio',
+    dataFine: 'data_fine',
+    tuttoIlGiorno: 'tutto_il_giorno',
+    oraInizio: 'ora_inizio',
+    oraFine: 'ora_fine',
   },
 };
 
@@ -74,7 +82,7 @@ const fromDb = (table, row) => {
 
 /* ── DB: interfaccia unificata di accesso dati ── */
 // Tabelle che hanno studio_id
-const STUDIO_TABLES = new Set(['patients','plans','payments','appointments','implants','pricelist','templates','app_types']);
+const STUDIO_TABLES = new Set(['patients','plans','payments','appointments','implants','pricelist','templates','app_types','impegni_personali']);
 
 // Recupera studio_id dalla sessione corrente
 const getStudioId = async () => {
