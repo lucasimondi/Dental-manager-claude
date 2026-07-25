@@ -1,8 +1,10 @@
 ﻿import ProfiloUtente from './ProfiloUtente.jsx';
 import GestioneUtenti from './GestioneUtenti.jsx';
 import React, { useState } from 'react';
-import { Btn, Crd, Fld, Inp, Txt, Modal, Toast, Ic, DockIc, DOCK_ICON_STYLES } from './ui';
-import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI, DEF_DOCK_SETTINGS } from '../lib/utils';
+import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Ic, DockIc, DOCK_ICON_STYLES } from './ui';
+import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI, DEF_DOCK_SETTINGS, DEF_AGENDA_SETTINGS } from '../lib/utils';
+
+const GIORNI_SETTIMANA = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 
 export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange, features, theme, toggleTheme }) {
   const [si, setSi] = useState({ ...DEF_STUDIO, ...(studioInfo || {}) });
@@ -10,6 +12,8 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
   const [tipoModal, setTipoModal] = useState(null);
   const [tipoForm, setTipoForm] = useState({ nome: '', colore: COLORI_DISPONIBILI[0] });
   const S = (f) => setSi((s) => ({ ...s, ...f }));
+  const agSet = { ...DEF_AGENDA_SETTINGS, ...(si.agenda_settings || {}) };
+  const SA = (f) => S({ agenda_settings: { ...agSet, ...f } });
   const save = () => { setStudioInfo(si); setToast('Salvato ✓'); };
 
   const openNewTipo = () => { setTipoForm({ nome: '', colore: COLORI_DISPONIBILI[Math.floor(Math.random() * COLORI_DISPONIBILI.length)] }); setTipoModal('new'); };
@@ -170,6 +174,55 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
         {appTypes.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 24 }}>Nessun tipo configurato</div>}
       </Crd>
       <Btn ch="+ Nuovo tipo appuntamento" v="sec" onClick={openNewTipo} full />
+
+      <div style={{ marginTop: 26, marginBottom: 14 }}>
+        <div style={{ fontSize: 20, fontWeight: 800 }}>Impostazioni Agenda</div>
+        <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Orari, slot e giorni visibili — valgono per tutto lo studio</div>
+      </div>
+      <Crd style={{ marginBottom: 14 }}>
+        <Fld label="Ora inizio giornata">
+          <Sel value={agSet.oraInizio} onChange={(e) => SA({ oraInizio: Number(e.target.value) })}>
+            {Array.from({ length: 16 }, (_, i) => i + 6).map((h) => <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>)}
+          </Sel>
+        </Fld>
+        <Fld label="Ora fine giornata">
+          <Sel value={agSet.oraFine} onChange={(e) => SA({ oraFine: Number(e.target.value) })}>
+            {Array.from({ length: 16 }, (_, i) => i + 6).map((h) => <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>)}
+          </Sel>
+        </Fld>
+        <Fld label="Dimensione slot">
+          <Sel value={agSet.slotMin} onChange={(e) => SA({ slotMin: Number(e.target.value) })}>
+            <option value={15}>15 minuti</option>
+            <option value={30}>30 minuti (consigliato)</option>
+            <option value={60}>60 minuti</option>
+          </Sel>
+        </Fld>
+        <Fld label="Zoom griglia">
+          <Sel value={agSet.zoom} onChange={(e) => SA({ zoom: Number(e.target.value) })}>
+            <option value={0.6}>Compatto — vedo più ore insieme</option>
+            <option value={0.8}>Ridotto</option>
+            <option value={1}>Normale (consigliato)</option>
+            <option value={1.3}>Grande</option>
+            <option value={1.6}>Molto grande — più leggibile</option>
+          </Sel>
+        </Fld>
+        {agSet.oraInizio >= agSet.oraFine && <div style={{ background: C.danL, borderRadius: 8, padding: '8px 12px', marginBottom: 10, fontSize: 12, color: C.dan, fontWeight: 700 }}>⚠️ L'ora di inizio deve essere prima dell'ora di fine</div>}
+        <div style={{ background: C.bg, borderRadius: 9, padding: '9px 12px', marginBottom: 14 }}>
+          <div style={{ fontSize: 11, color: C.txm, fontWeight: 700 }}>{String(agSet.oraInizio).padStart(2, '0')}:00 — {String(agSet.oraFine).padStart(2, '0')}:00 · slot da {agSet.slotMin} min · {Math.ceil((agSet.oraFine - agSet.oraInizio) * 60 / agSet.slotMin)} slot totali</div>
+        </div>
+        <Fld label="Giorni visibili in vista Settimana">
+          <div style={{ display: 'flex', gap: 4 }}>
+            {GIORNI_SETTIMANA.map((lbl, wd) => {
+              const hidden = (agSet.hiddenWeekdays || []).includes(wd);
+              return (
+                <button key={wd} onClick={() => SA({ hiddenWeekdays: hidden ? agSet.hiddenWeekdays.filter((x) => x !== wd) : [...(agSet.hiddenWeekdays || []), wd] })} style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: `1.5px solid ${hidden ? C.brd : C.pri}`, background: hidden ? C.bg : C.priL, color: hidden ? C.txl : C.pri, fontWeight: 700, fontSize: 10.5, cursor: 'pointer' }}>{lbl}</button>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: 10.5, color: C.txl, marginTop: 5 }}>Tocca un giorno per nasconderlo dalla vista Settimana (es. domenica se lo studio è chiuso)</div>
+        </Fld>
+      </Crd>
+      <Btn ch="💾 Salva impostazioni agenda" onClick={save} dis={agSet.oraInizio >= agSet.oraFine} full sz="lg" />
 
       <div style={{ marginTop: 26, marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Menu mobile</div>

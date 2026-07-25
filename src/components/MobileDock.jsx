@@ -70,10 +70,14 @@ export default function MobileDock({ page, setPage, dockSettings, onLogout }) {
                     background: `linear-gradient(150deg, ${C.pri}, ${C.priD})`, border: 'none', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     boxShadow: `0 10px 22px ${C.pri}55, 0 0 0 6px ${C.bg}`,
-                    transform: menuOpen ? 'rotate(45deg)' : 'none', transition: 'transform .25s cubic-bezier(.34,1.56,.64,1)',
+                    transition: 'transform .25s cubic-bezier(.34,1.56,.64,1)',
                   }}
                 >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                  {menuOpen ? (
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></svg>
+                  ) : (
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round"><line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" /></svg>
+                  )}
                 </button>
                 <span style={{ fontSize: 9, fontWeight: 700, color: menuOpen ? C.pri : C.txl, marginTop: -18 }}>Menu</span>
               </div>

@@ -39,7 +39,7 @@ const startOfWeek = (d) => {
   return dt;
 };
 
-function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno, zoom, setZoom, isMobile, onSwipeDay }) {
+function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno, onSwipeDay }) {
   const containerRef = useRef(null); // unico scroll container
   const resizeRef = useRef(null);
   const [now, setNow] = useState(new Date());
@@ -110,40 +110,9 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
     };
   }, [moving, slotH, slotMin]);
 
-  // Pinch-to-zoom: solo vista Giorno su mobile (days.length === 1). Due dita sulla griglia
-  // ridimensionano lo slot in tempo reale agendo sullo stesso "zoom" usato dal Setup Agenda;
-  // il valore parte fisso all'inizio del gesto per restare stabile anche se il componente
-  // si ri-renderizza durante il pinch.
-  const pinchRef = useRef(null); // { startDist, startZoom }
-  const distanzaTouch = (touches) => {
-    const [a, b] = touches;
-    const dx = a.clientX - b.clientX, dy = a.clientY - b.clientY;
-    return Math.sqrt(dx * dx + dy * dy);
-  };
-  const pinchAttivo = isMobile && days.length === 1 && typeof setZoom === 'function';
-  const onTouchStartGrid = (e) => {
-    if (pinchAttivo && e.touches.length === 2) {
-      pinchRef.current = { startDist: distanzaTouch(e.touches), startZoom: zoom || 1 };
-    }
-  };
-  const onTouchMoveGrid = (e) => {
-    if (pinchAttivo && e.touches.length === 2 && pinchRef.current) {
-      e.preventDefault();
-      const scale = distanzaTouch(e.touches) / pinchRef.current.startDist;
-      const nz = Math.max(0.5, Math.min(2.5, pinchRef.current.startZoom * scale));
-      setZoom(nz);
-    }
-  };
-  const onTouchEndGrid = (e) => {
-    if (pinchAttivo && e.touches.length < 2 && pinchRef.current) {
-      pinchRef.current = null;
-      try { localStorage.setItem('ag_zoom', zoom); } catch {}
-    }
-  };
-
   // Swipe orizzontale sulla griglia: solo vista Giorno (days.length === 1), va al giorno
-  // successivo/precedente. Ignorato se in corso un pinch, un resize o uno spostamento
-  // di appuntamento, per non entrare in conflitto con quei gesti.
+  // successivo/precedente. Ignorato se in corso un resize o uno spostamento di appuntamento,
+  // per non entrare in conflitto con quei gesti.
   const swipeStartRef = useRef(null);
   const swipeAttivo = days.length === 1 && typeof onSwipeDay === 'function';
   const onTouchStartSwipe = (e) => {
@@ -154,7 +123,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
     }
   };
   const onTouchEndSwipe = (e) => {
-    if (!swipeAttivo || !swipeStartRef.current || resizing || moving || pinchRef.current) { swipeStartRef.current = null; return; }
+    if (!swipeAttivo || !swipeStartRef.current || resizing || moving) { swipeStartRef.current = null; return; }
     const touch = e.changedTouches[0];
     const dx = touch.clientX - swipeStartRef.current.x;
     const dy = touch.clientY - swipeStartRef.current.y;
@@ -173,7 +142,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
         {/* UNICO contenitore scrollabile: header + griglia insieme, cosi' le colonne hanno sempre esattamente la stessa larghezza */}
-        <div ref={containerRef} onTouchStart={onTouchStartGrid} onTouchMove={onTouchMoveGrid} onTouchEnd={onTouchEndGrid} style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', position: 'relative' }}>
+        <div ref={containerRef} style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', position: 'relative' }}>
           <div style={{ display: 'flex', flexDirection: 'column', minHeight: slots.length * slotH + 44 }}>
 
             {/* Header: angolo vuoto + giorni — sticky in cima, dentro lo stesso contenitore scrollabile della griglia */}
@@ -327,77 +296,6 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   );
 }
 
-/* ── STRISCIA GIORNI stile iOS Calendar ──
-   Mostra Lun–Dom della settimana corrente, scrollabile in orizzontale a scatti di
-   settimana (scroll-snap) per cambiare settimana, con i giorni cliccabili per saltare
-   direttamente a quel giorno. Lo scroll da solo NON cambia il giorno selezionato
-   (come in iOS): serve solo a "sfogliare" le settimane finché non tocchi un giorno. */
-function DayStrip({ selDay, setSelDay, today: t }) {
-  const scrollRef = useRef(null);
-  const [stripBaseWeek, setStripBaseWeek] = useState(() => toISO(startOfWeek(selDay)));
-  const settleTimer = useRef(null);
-  const itemWidthRef = useRef(0);
-
-  // Se il giorno selezionato cambia da fuori (frecce, "Oggi"…) e non è nella settimana
-  // già mostrata, ricentra la striscia su quella settimana.
-  useEffect(() => {
-    const wk = toISO(startOfWeek(selDay));
-    if (wk !== stripBaseWeek) setStripBaseWeek(wk);
-  }, [selDay]);
-
-  // Ogni volta che cambia la settimana "centrale", riporta lo scroll al centro (indice 2
-  // su 5) istantaneamente, senza animazione — dà l'illusione di scroll infinito.
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const w = el.clientWidth;
-    itemWidthRef.current = w;
-    el.scrollLeft = w * 2;
-  }, [stripBaseWeek]);
-
-  const windowStart = new Date(stripBaseWeek + 'T12:00');
-  windowStart.setDate(windowStart.getDate() - 14);
-  const weeks = Array.from({ length: 5 }, (_, wi) => {
-    const ws = new Date(windowStart);
-    ws.setDate(ws.getDate() + wi * 7);
-    return Array.from({ length: 7 }, (_, di) => { const d = new Date(ws); d.setDate(d.getDate() + di); return d; });
-  });
-
-  const onScroll = () => {
-    if (settleTimer.current) clearTimeout(settleTimer.current);
-    settleTimer.current = setTimeout(() => {
-      const el = scrollRef.current;
-      if (!el || !itemWidthRef.current) return;
-      const idx = Math.round(el.scrollLeft / itemWidthRef.current);
-      if (idx !== 2) {
-        const nb = new Date(stripBaseWeek + 'T12:00');
-        nb.setDate(nb.getDate() + (idx - 2) * 7);
-        setStripBaseWeek(toISO(nb));
-      }
-    }, 120);
-  };
-
-  return (
-    <div ref={scrollRef} onScroll={onScroll} style={{ display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch', marginBottom: 8, borderRadius: 12, background: C.sur, border: `1px solid ${C.brd}`, flexShrink: 0 }}>
-      {weeks.map((week, wi) => (
-        <div key={wi} style={{ flex: '0 0 100%', scrollSnapAlign: 'start', display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', padding: '8px 4px' }}>
-          {week.map((d, di) => {
-            const ds = toISO(d);
-            const isToday = ds === t;
-            const isSel = ds === selDay;
-            return (
-              <div key={di} onClick={() => setSelDay(ds)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', padding: '2px 0' }}>
-                <span style={{ fontSize: 9, fontWeight: 700, color: isToday ? C.pri : C.txl, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{WD_SHORT[d.getDay()]}</span>
-                <span style={{ fontSize: 15, fontWeight: 800, width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isSel ? C.pri : isToday ? C.priL : 'transparent', color: isSel ? '#fff' : isToday ? C.pri : C.txt }}>{d.getDate()}</span>
-              </div>
-            );
-          })}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export default function Agenda({ patients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni, setImpegni, si, setStudioInfo }) {
   const tipiList = appTypes?.length ? appTypes : DEF_APP_TYPES;
 
@@ -410,18 +308,13 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const [slotMin, setSlotMin] = useState(() => { try { return si?.agenda_settings?.slotMin ?? Number(localStorage.getItem('ag_slotMin') || DEF_AGENDA_SETTINGS.slotMin); } catch { return DEF_AGENDA_SETTINGS.slotMin; } });
   const [zoom, setZoom] = useState(() => { try { return si?.agenda_settings?.zoom ?? (Number(localStorage.getItem('ag_zoom')) || DEF_AGENDA_SETTINGS.zoom); } catch { return DEF_AGENDA_SETTINGS.zoom; } });
   const [hiddenWeekdays, setHiddenWeekdays] = useState(() => si?.agenda_settings?.hiddenWeekdays || DEF_AGENDA_SETTINGS.hiddenWeekdays);
-  const [tmpI, setTmpI] = useState(8);
-  const [tmpF, setTmpF] = useState(20);
-  const [tmpS, setTmpS] = useState(30);
-  const [tmpZ, setTmpZ] = useState(1);
-  const [tmpHidden, setTmpHidden] = useState([]);
   const [view, setView] = useState('settimana');
   const [selDay, setSelDay] = useState(today());
   const [modal, setModal] = useState(false);
   const [pazSearch, setPazSearch] = useState('');
   const [toast, setToast] = useState('');
   const [editApp, setEditApp] = useState(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
   const [vd, setVd] = useState(new Date());
   const wheelRef = useRef(0);
   const touchXRef = useRef(null);
@@ -633,25 +526,11 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
     setImpModal(false);
   };
 
-  const saveSettings = () => {
-    if (tmpI >= tmpF) return;
-    setOraInizio(tmpI); setOraFine(tmpF); setSlotMin(tmpS); setZoom(tmpZ); setHiddenWeekdays(tmpHidden);
-    localStorage.setItem('ag_oraInizio', tmpI);
-    localStorage.setItem('ag_oraFine', tmpF);
-    localStorage.setItem('ag_slotMin', tmpS);
-    localStorage.setItem('ag_zoom', tmpZ);
-    if (setStudioInfo) {
-      setStudioInfo((prev) => ({ ...prev, agenda_settings: { oraInizio: tmpI, oraFine: tmpF, slotMin: tmpS, zoom: tmpZ, hiddenWeekdays: tmpHidden } }));
-      setToast('Impostazioni salvate per tutto lo studio ✓');
-    }
-    setSettingsOpen(false);
-  };
-
   const navGiorno = (n) => { const d = new Date(selDay + 'T12:00'); d.setDate(d.getDate() + n); setSelDay(toISO(d)); };
   const navSettimana = (n) => { const d = new Date(selDay + 'T12:00'); d.setDate(d.getDate() + n * 7); setSelDay(toISO(d)); };
   const navMese = (n) => setVd(v => new Date(v.getFullYear(), v.getMonth() + n, 1));
 
-  const gridProps = { slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, zoom, setZoom, isMobile, onSwipeDay: navGiorno };
+  const gridProps = { slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, onSwipeDay: navGiorno };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 130px)' }}>
@@ -679,11 +558,6 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
             <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
           </>}
         </div>
-        <button onClick={() => { setTmpI(oraInizio); setTmpF(oraFine); setTmpS(slotMin); setTmpZ(zoom); setTmpHidden(hiddenWeekdays); setSettingsOpen(true); }} style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 8, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-          <Ic n="set" s={15} c={C.txm} />
-        </button>
-        <Btn ch="+ Impegno" v="sec" onClick={() => apriNuovoImpegno()} />
-        <Btn ch="+ Nuovo" onClick={() => apriNuovo()} />
       </div>
 
       {/* TAB SWITCHER */}
@@ -694,7 +568,6 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
       </div>
 
       {/* VIEWS */}
-      {view === 'giorno' && <DayStrip selDay={selDay} setSelDay={setSelDay} today={t} />}
       {view === 'giorno' && <GridView days={[new Date(selDay + 'T12:00')]} {...gridProps} features={features} />}
       {view === 'settimana' && <GridView days={weekDays} {...gridProps} features={features} />}
       {view === 'mese' && (() => {
@@ -819,59 +692,6 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             <Btn ch="Annulla" v="sec" onClick={() => setWaModal(null)} full />
             <Btn ch="Apri WhatsApp" onClick={sendWA} dis={!waMsg} full />
-          </div>
-        </Modal>
-      )}
-
-      {/* MODAL IMPOSTAZIONI */}
-      {settingsOpen && (
-        <Modal title="⚙️ Impostazioni agenda" onClose={() => setSettingsOpen(false)}>
-          <div style={{ fontSize: 12, color: C.txm, marginBottom: 14 }}>Il Setup Agenda vale per tutto lo studio: chiunque acceda vedrà la stessa configurazione.</div>
-          <Fld label="Ora inizio giornata">
-            <Sel value={tmpI} onChange={e => setTmpI(Number(e.target.value))}>
-              {Array.from({ length: 16 }, (_, i) => i + 6).map(h => <option key={h} value={h}>{String(h).padStart(2,'0')}:00</option>)}
-            </Sel>
-          </Fld>
-          <Fld label="Ora fine giornata">
-            <Sel value={tmpF} onChange={e => setTmpF(Number(e.target.value))}>
-              {Array.from({ length: 16 }, (_, i) => i + 6).map(h => <option key={h} value={h}>{String(h).padStart(2,'0')}:00</option>)}
-            </Sel>
-          </Fld>
-          <Fld label="Dimensione slot">
-            <Sel value={tmpS} onChange={e => setTmpS(Number(e.target.value))}>
-              <option value={15}>15 minuti</option>
-              <option value={30}>30 minuti (consigliato)</option>
-              <option value={60}>60 minuti</option>
-            </Sel>
-          </Fld>
-          <Fld label="Zoom griglia">
-            <Sel value={tmpZ} onChange={e => setTmpZ(Number(e.target.value))}>
-              <option value={0.6}>Compatto — vedo più ore insieme</option>
-              <option value={0.8}>Ridotto</option>
-              <option value={1}>Normale (consigliato)</option>
-              <option value={1.3}>Grande</option>
-              <option value={1.6}>Molto grande — più leggibile</option>
-            </Sel>
-          </Fld>
-          {tmpI >= tmpF && <div style={{ background: C.danL, borderRadius: 8, padding: '8px 12px', marginBottom: 8, fontSize: 12, color: C.dan, fontWeight: 700 }}>⚠️ L'ora di inizio deve essere prima dell'ora di fine</div>}
-          <div style={{ background: C.bg, borderRadius: 9, padding: '9px 12px', marginBottom: 14 }}>
-            <div style={{ fontSize: 11, color: C.txm, fontWeight: 700 }}>{String(tmpI).padStart(2,'0')}:00 — {String(tmpF).padStart(2,'0')}:00 · slot da {tmpS} min · {Math.ceil((tmpF - tmpI) * 60 / tmpS)} slot totali</div>
-          </div>
-          <Fld label="Giorni visibili in vista Settimana">
-            <div style={{ display: 'flex', gap: 4 }}>
-              {WD_SHORT.map((lbl, wd) => {
-                const isHidden = tmpHidden.includes(wd);
-                return (
-                  <button key={wd} onClick={() => setTmpHidden(h => isHidden ? h.filter(x => x !== wd) : [...h, wd])} style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: `1.5px solid ${isHidden ? C.brd : C.pri}`, background: isHidden ? C.bg : C.priL, color: isHidden ? C.txl : C.pri, fontWeight: 700, fontSize: 10.5, cursor: 'pointer' }}>{lbl}</button>
-                );
-              })}
-            </div>
-            <div style={{ fontSize: 10.5, color: C.txl, marginTop: 5 }}>Tocca un giorno per nasconderlo dalla vista Settimana (es. domenica se lo studio è chiuso)</div>
-          </Fld>
-          <div style={{ fontSize: 11, color: C.txl, marginTop: 4, marginBottom: 4 }}>Salvando, queste impostazioni valgono per tutto lo studio, non solo per questo dispositivo.</div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-            <Btn ch="Annulla" v="sec" onClick={() => setSettingsOpen(false)} full />
-            <Btn ch="Salva" onClick={saveSettings} dis={tmpI >= tmpF} full />
           </div>
         </Modal>
       )}
@@ -1033,6 +853,28 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
           </div>
         </Modal>
       )}
+
+      {/* PULSANTE FLOTTANTE "Nuovo" — apre un piccolo popup per scegliere Appuntamento o Impegno,
+          stile iOS. Sostituisce i due pulsanti "+ Impegno"/"+ Nuovo" che stavano nell'header,
+          per lasciare più spazio verticale alla griglia in vista Giorno su mobile. */}
+      <div style={{ position: 'fixed', right: 18, bottom: isMobile ? 100 : 88, zIndex: 140 }}>
+        {fabOpen && <div onClick={() => setFabOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: -1 }} />}
+        {fabOpen && (
+          <div style={{ position: 'absolute', bottom: 62, right: 0, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
+            <button onClick={() => { setFabOpen(false); apriNuovoImpegno(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 24, padding: '8px 14px 8px 8px', boxShadow: '0 4px 14px rgba(0,0,0,0.18)', cursor: 'pointer' }}>
+              <div style={{ width: 30, height: 30, borderRadius: '50%', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Ic n="clk" s={15} c={C.txm} /></div>
+              <span style={{ fontSize: 13, fontWeight: 700, color: C.txt }}>Impegno</span>
+            </button>
+            <button onClick={() => { setFabOpen(false); apriNuovo(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 24, padding: '8px 14px 8px 8px', boxShadow: '0 4px 14px rgba(0,0,0,0.18)', cursor: 'pointer' }}>
+              <div style={{ width: 30, height: 30, borderRadius: '50%', background: C.priL, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Ic n="cal" s={15} c={C.pri} /></div>
+              <span style={{ fontSize: 13, fontWeight: 700, color: C.txt }}>Appuntamento</span>
+            </button>
+          </div>
+        )}
+        <button onClick={() => setFabOpen(v => !v)} aria-label="Nuovo" style={{ width: 54, height: 54, borderRadius: '50%', background: `linear-gradient(150deg, ${C.pri}, ${C.priD})`, border: 'none', boxShadow: `0 8px 20px ${C.pri}55`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transform: fabOpen ? 'rotate(45deg)' : 'none', transition: 'transform .2s ease' }}>
+          <Ic n="plus" s={24} c="#fff" />
+        </button>
+      </div>
     </div>
   );
 }
