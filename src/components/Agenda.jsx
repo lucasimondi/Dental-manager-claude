@@ -54,7 +54,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
 
   useEffect(() => {
     // Scroll iniziale: vicino all'ora corrente se è dentro l'intervallo visibile, altrimenti in cima
-    const headerH = 44;
+    const headerH = 0; // l'header giorni ora è fuori dal contenitore scrollabile (striscia esterna fissa)
     const target = showNowLine ? Math.max(0, nowTop - slotH * 2) + headerH : headerH;
     if (containerRef.current) containerRef.current.scrollTop = target;
   }, [slotH, slotMin, oraInizio]);
@@ -114,7 +114,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   // successivo/precedente. Ignorato se in corso un resize o uno spostamento di appuntamento,
   // per non entrare in conflitto con quei gesti.
   const swipeStartRef = useRef(null);
-  const swipeAttivo = days.length === 1 && typeof onSwipeDay === 'function';
+  const swipeAttivo = (days.length === 1 || days.length === 7) && typeof onSwipeDay === 'function';
   const onTouchStartSwipe = (e) => {
     if (swipeAttivo && e.touches.length === 1 && !resizing && !moving) {
       swipeStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -143,24 +143,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
 
         {/* UNICO contenitore scrollabile: header + griglia insieme, cosi' le colonne hanno sempre esattamente la stessa larghezza */}
         <div ref={containerRef} style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', position: 'relative' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', minHeight: slots.length * slotH + 44 }}>
-
-            {/* Header: angolo vuoto + giorni — sticky in cima, dentro lo stesso contenitore scrollabile della griglia */}
-            <div style={{ display: 'flex', borderBottom: `1.5px solid ${C.brd}`, height: 44, flexShrink: 0, background: C.bg, position: 'sticky', top: 0, zIndex: 4 }}>
-              <div style={{ width: 46, flexShrink: 0, borderRight: `1.5px solid ${C.brd}` }} />
-              {days.map((d, di) => {
-                const ds = toISO(d);
-                const isToday = ds === t;
-                const isSelected = ds === selDay;
-                const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-                return (
-                  <div key={di} onClick={() => { setSelDay(ds); if (days.length > 1) setView('giorno'); }} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, cursor: 'pointer', background: isSelected && days.length > 1 ? C.priL : isWeekend ? C.bg : 'transparent', borderLeft: di > 0 ? `1.5px solid ${C.brd}` : 'none' }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, color: isToday ? C.pri : isWeekend ? C.txl : C.txm, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{WD_SHORT[d.getDay()]}</div>
-                    <div style={{ fontSize: 15, fontWeight: 900, color: isToday ? '#fff' : isSelected ? C.pri : C.txt, background: isToday ? C.pri : 'transparent', borderRadius: '50%', width: 25, height: 25, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{d.getDate()}</div>
-                  </div>
-                );
-              })}
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: slots.length * slotH }}>
 
             {/* Riga impegni personali: stile "tutto il giorno" di Google Calendar, spanna piu' giorni.
                 overflow:hidden sulla riga e sulla cella evita che l'etichetta di un impegno di un solo
@@ -296,14 +279,16 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   );
 }
 
-/* ── STRISCIA GIORNI stile iOS Calendar ──
-   Mostra Lun–Dom della settimana corrente, scrollabile in orizzontale a scatti di
-   settimana (scroll-snap) per cambiare settimana, con i giorni cliccabili per saltare
-   direttamente a quel giorno. Lo scroll da solo NON cambia il giorno selezionato
-   (come in iOS): serve solo a "sfogliare" le settimane finché non tocchi un giorno.
+/* ── STRISCIA GIORNI/SETTIMANE stile iOS Calendar ──
+   Mostra Lun–Dom, scrollabile in orizzontale a scatti di settimana (scroll-snap).
+   Due modalità, secondo i prop passati:
+   - Vista Giorno: lo scroll da solo NON cambia il giorno selezionato (come in iOS,
+     serve solo a "sfogliare"); tocca un giorno per saltarci.
+   - Vista Settimana: passando onWeekChange, anche lo SCROLL cambia la settimana
+     visualizzata in agenda (la striscia guida direttamente il contenuto sotto).
    È un elemento statico (flexShrink: 0) fuori dal contenitore che scrolla verticalmente:
    resta sempre visibile, solo la griglia oraria sotto scorre. */
-function DayStrip({ selDay, setSelDay, today: t }) {
+function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected = true }) {
   const scrollRef = useRef(null);
   const [stripBaseWeek, setStripBaseWeek] = useState(() => toISO(startOfWeek(selDay)));
   const settleTimer = useRef(null);
@@ -320,6 +305,7 @@ function DayStrip({ selDay, setSelDay, today: t }) {
     const w = el.clientWidth;
     itemWidthRef.current = w;
     el.scrollLeft = w * 2;
+    if (onWeekChange) onWeekChange(stripBaseWeek);
   }, [stripBaseWeek]);
 
   const windowStart = new Date(stripBaseWeek + 'T12:00');
@@ -351,7 +337,7 @@ function DayStrip({ selDay, setSelDay, today: t }) {
           {week.map((d, di) => {
             const ds = toISO(d);
             const isToday = ds === t;
-            const isSel = ds === selDay;
+            const isSel = highlightSelected && ds === selDay;
             return (
               <div key={di} onClick={() => setSelDay(ds)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', padding: '2px 0' }}>
                 <span style={{ fontSize: 9, fontWeight: 700, color: isToday ? C.pri : C.txl, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{WD_SHORT[d.getDay()]}</span>
@@ -599,29 +585,31 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const navSettimana = (n) => { const d = new Date(selDay + 'T12:00'); d.setDate(d.getDate() + n * 7); setSelDay(toISO(d)); };
   const navMese = (n) => setVd(v => new Date(v.getFullYear(), v.getMonth() + n, 1));
 
-  const gridProps = { slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, onSwipeDay: navGiorno };
+  const gridProps = { slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 130px)', overflow: 'hidden' }}>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
-      {view === 'giorno' ? (
+      {view === 'giorno' && (
         <DayStrip selDay={selDay} setSelDay={setSelDay} today={t} />
-      ) : (
+      )}
+      {view === 'settimana' && (
+        <DayStrip
+          selDay={selDay}
+          setSelDay={(ds) => { setSelDay(ds); setView('giorno'); }}
+          today={t}
+          highlightSelected={false}
+          onWeekChange={(wk) => setSelDay(wk)}
+        />
+      )}
+      {view === 'mese' && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexShrink: 0 }}>
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
-            {view === 'settimana' && <>
-              <button onClick={() => navSettimana(-1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>‹</button>
-              <span style={{ fontWeight: 700, fontSize: 12 }}>{weekDays[0].getDate()} {MESI[weekDays[0].getMonth()].slice(0,3)} – {weekDays[weekDays.length - 1].getDate()} {MESI[weekDays[weekDays.length - 1].getMonth()].slice(0,3)}</span>
-              <button onClick={() => navSettimana(1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>›</button>
-              <button onClick={() => setSelDay(t)} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
-            </>}
-            {view === 'mese' && <>
-              <button onClick={() => navMese(-1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>‹</button>
-              <span style={{ fontWeight: 700, fontSize: 12 }}>{MESI[vd.getMonth()]} {vd.getFullYear()}</span>
-              <button onClick={() => navMese(1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>›</button>
-              <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
-            </>}
+            <button onClick={() => navMese(-1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>‹</button>
+            <span style={{ fontWeight: 700, fontSize: 12 }}>{MESI[vd.getMonth()]} {vd.getFullYear()}</span>
+            <button onClick={() => navMese(1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>›</button>
+            <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
           </div>
         </div>
       )}
@@ -634,8 +622,8 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
       </div>
 
       {/* VIEWS */}
-      {view === 'giorno' && <GridView days={[new Date(selDay + 'T12:00')]} {...gridProps} features={features} />}
-      {view === 'settimana' && <GridView days={weekDays} {...gridProps} features={features} />}
+      {view === 'giorno' && <GridView days={[new Date(selDay + 'T12:00')]} {...gridProps} onSwipeDay={navGiorno} features={features} />}
+      {view === 'settimana' && <GridView days={weekDays} {...gridProps} onSwipeDay={navSettimana} features={features} />}
       {view === 'mese' && (() => {
         const K = vd.getFullYear(), mese = vd.getMonth();
         const primo = new Date(K, mese, 1).getDay();
@@ -921,17 +909,17 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
       )}
 
       {/* PULSANTE FLOTTANTE "Nuovo" — apre un piccolo popup per scegliere Appuntamento o Impegno,
-          stile iOS. Sostituisce i due pulsanti "+ Impegno"/"+ Nuovo" che stavano nell'header,
-          per lasciare più spazio verticale alla griglia in vista Giorno su mobile. */}
-      <div style={{ position: 'fixed', right: 16, bottom: isMobile ? 172 : 150, zIndex: 140 }}>
+          stile iOS. A sinistra, alla stessa altezza del pulsante dell'assistente AI (che sta
+          a destra): niente più sovrapposizione tra i due flottanti. */}
+      <div style={{ position: 'fixed', left: 16, bottom: 74, zIndex: 140 }}>
         {fabOpen && <div onClick={() => setFabOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: -1 }} />}
         {fabOpen && (
-          <div style={{ position: 'absolute', bottom: 62, right: 0, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
-            <button onClick={() => { setFabOpen(false); apriNuovoImpegno(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 24, padding: '8px 14px 8px 8px', boxShadow: '0 4px 14px rgba(0,0,0,0.18)', cursor: 'pointer' }}>
+          <div style={{ position: 'absolute', bottom: 62, left: 0, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+            <button onClick={() => { setFabOpen(false); apriNuovoImpegno(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 24, padding: '8px 8px 8px 14px', boxShadow: '0 4px 14px rgba(0,0,0,0.18)', cursor: 'pointer', flexDirection: 'row-reverse' }}>
               <div style={{ width: 30, height: 30, borderRadius: '50%', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Ic n="clk" s={15} c={C.txm} /></div>
               <span style={{ fontSize: 13, fontWeight: 700, color: C.txt }}>Impegno</span>
             </button>
-            <button onClick={() => { setFabOpen(false); apriNuovo(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 24, padding: '8px 14px 8px 8px', boxShadow: '0 4px 14px rgba(0,0,0,0.18)', cursor: 'pointer' }}>
+            <button onClick={() => { setFabOpen(false); apriNuovo(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 24, padding: '8px 8px 8px 14px', boxShadow: '0 4px 14px rgba(0,0,0,0.18)', cursor: 'pointer', flexDirection: 'row-reverse' }}>
               <div style={{ width: 30, height: 30, borderRadius: '50%', background: C.priL, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Ic n="cal" s={15} c={C.pri} /></div>
               <span style={{ fontSize: 13, fontWeight: 700, color: C.txt }}>Appuntamento</span>
             </button>
