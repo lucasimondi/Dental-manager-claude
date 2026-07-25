@@ -264,7 +264,33 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
      visualizzata in agenda (la striscia guida direttamente il contenuto sotto).
    È un elemento statico (flexShrink: 0) fuori dal contenitore che scrolla verticalmente:
    resta sempre visibile, solo la griglia oraria sotto scorre. */
-function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected = true }) {
+/* ── SELETTORE VISTA compatto ──
+   Pillola "Giorno ▾" che apre un mini-menu per scegliere Giorno/Settimana/Mese.
+   Va incollato sulla stessa riga dell'etichetta mese: non aggiunge nessuna riga
+   in più, a differenza della vecchia barra a tre tab che occupava spazio prezioso
+   sullo schermo del telefono. */
+function ViewPicker({ view, setView }) {
+  const [open, setOpen] = useState(false);
+  const LABEL = { giorno: 'Giorno', settimana: 'Settimana', mese: 'Mese' };
+  return (
+    <div style={{ position: 'relative', flexShrink: 0 }}>
+      <button onClick={() => setOpen(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: C.priL, color: C.pri, border: 'none', borderRadius: 14, padding: '5px 8px 5px 11px', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
+        {LABEL[view]}
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke={C.pri} strokeWidth="3" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="M6 9l6 6 6-6" /></svg>
+      </button>
+      {open && <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 34 }} />}
+      {open && (
+        <div style={{ position: 'absolute', top: 30, right: 0, background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 10, boxShadow: '0 8px 22px rgba(0,0,0,0.18)', width: 126, overflow: 'hidden', zIndex: 35 }}>
+          {['giorno', 'settimana', 'mese'].map((v) => (
+            <div key={v} onClick={() => { setView(v); setOpen(false); }} style={{ padding: '9px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', background: view === v ? C.priL : 'transparent', color: view === v ? C.pri : C.txt }}>{LABEL[v]}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected = true, viewPicker }) {
   const scrollRef = useRef(null);
   const [stripBaseWeek, setStripBaseWeek] = useState(() => toISO(startOfWeek(selDay)));
   const settleTimer = useRef(null);
@@ -317,9 +343,42 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
       ? `${MESI[wkMonStart.getMonth()].slice(0, 3)} – ${MESI[wkMonEnd.getMonth()].slice(0, 3)} ${wkMonStart.getFullYear()}`
       : `${MESI[wkMonStart.getMonth()].slice(0, 3)} ${wkMonStart.getFullYear()} – ${MESI[wkMonEnd.getMonth()].slice(0, 3)} ${wkMonEnd.getFullYear()}`;
 
-  return (
-    <div style={{ position: 'sticky', top: 0, zIndex: 20, background: C.bg, paddingTop: 2, marginTop: -2 }}>
-      <div style={{ fontSize: 13, fontWeight: 800, color: C.txt, padding: '0 4px 6px', textTransform: 'capitalize' }}>{meseLabel}</div>
+  // position:fixed invece di sticky: sticky ha bug intermittenti noti su iOS Safari
+  // proprio in contesti come questo (flex + viewport dinamico). Fixed è sempre ancorato
+  // al vero viewport, indipendente da qualunque contenitore scrollabile — niente più
+  // "a volte funziona a volte no". Calcolo dinamicamente dove deve stare (subito sotto
+  // l'header dell'app) e riservo lo spazio equivalente con uno spacer, per non far
+  // saltare il contenuto sotto.
+  const wrapRef = useRef(null);
+  const [fixedRect, setFixedRect] = useState(null); // { top, left, width, height }
+  useEffect(() => {
+    const misura = () => {
+      const scrollEl = document.getElementById('app-scroll');
+      if (!scrollEl || !wrapRef.current) return;
+      const scrollRect = scrollEl.getBoundingClientRect();
+      const style = window.getComputedStyle(scrollEl);
+      const padLeft = parseFloat(style.paddingLeft) || 0;
+      const padRight = parseFloat(style.paddingRight) || 0;
+      setFixedRect({
+        top: scrollRect.top,
+        left: scrollRect.left + padLeft,
+        width: scrollRect.width - padLeft - padRight,
+        height: wrapRef.current.offsetHeight,
+      });
+    };
+    misura();
+    window.addEventListener('resize', misura);
+    window.addEventListener('orientationchange', misura);
+    const t2 = setTimeout(misura, 200); // ricalcola dopo l'assestamento iniziale del layout
+    return () => { window.removeEventListener('resize', misura); window.removeEventListener('orientationchange', misura); clearTimeout(t2); };
+  }, [stripBaseWeek]);
+
+  const contenuto = (
+    <div ref={wrapRef}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px 6px' }}>
+        <span style={{ fontSize: 13, fontWeight: 800, color: C.txt, textTransform: 'capitalize' }}>{meseLabel}</span>
+        {viewPicker}
+      </div>
       <div ref={scrollRef} onScroll={onScroll} style={{ display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch', marginBottom: 8, borderRadius: 12, background: C.sur, border: `1px solid ${C.brd}` }}>
         {weeks.map((week, wi) => (
           <div key={wi} style={{ flex: '0 0 100%', scrollSnapAlign: 'start', display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', padding: '8px 4px' }}>
@@ -338,6 +397,19 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
         ))}
       </div>
     </div>
+  );
+
+  // Prima renderizzazione: nessuna misura ancora disponibile -> mostro il contenuto in flusso
+  // normale (invisibile un istante, ma evita un "buco" vuoto). Dopo la prima misura, passa a
+  // fixed vero con uno spacer della stessa altezza al suo posto.
+  if (!fixedRect) return contenuto;
+  return (
+    <>
+      <div style={{ position: 'fixed', top: fixedRect.top, left: fixedRect.left, width: fixedRect.width, zIndex: 30, background: C.bg, paddingTop: 2 }}>
+        {contenuto}
+      </div>
+      <div style={{ height: fixedRect.height + 2 }} />
+    </>
   );
 }
 
@@ -582,7 +654,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
       {view === 'giorno' && (
-        <DayStrip selDay={selDay} setSelDay={setSelDay} today={t} />
+        <DayStrip selDay={selDay} setSelDay={setSelDay} today={t} viewPicker={<ViewPicker view={view} setView={setView} />} />
       )}
       {view === 'settimana' && (
         <DayStrip
@@ -591,6 +663,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
           today={t}
           highlightSelected={false}
           onWeekChange={(wk) => setSelDay(wk)}
+          viewPicker={<ViewPicker view={view} setView={setView} />}
         />
       )}
       {view === 'mese' && (
@@ -601,15 +674,9 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
             <button onClick={() => navMese(1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>›</button>
             <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
           </div>
+          <ViewPicker view={view} setView={setView} />
         </div>
       )}
-
-      {/* TAB SWITCHER */}
-      <div style={{ display: 'flex', background: C.bg, borderRadius: 9, border: `1px solid ${C.brd}`, marginBottom: 10, overflow: 'hidden', flexShrink: 0 }}>
-        {[['giorno','Giorno'],['settimana','Settimana'],['mese','Mese']].map(([id, lbl]) => (
-          <button key={id} onClick={() => setView(id)} style={{ flex: 1, padding: '9px 0', border: 'none', background: view === id ? C.pri : 'transparent', color: view === id ? '#fff' : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{lbl}</button>
-        ))}
-      </div>
 
       {/* VIEWS */}
       {view === 'giorno' && <GridView days={[new Date(selDay + 'T12:00')]} {...gridProps} onSwipeDay={navGiorno} features={features} />}
