@@ -7,11 +7,30 @@ import { useIsMobile } from '../lib/useIsMobile';
 const WD_SHORT = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
 const toISO = (d) => d.toISOString().slice(0, 10);
+const orarioInMinutiUI = (ora) => {
+  const [h, m] = (ora || '0:0').split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+};
 const TIPO_IMPEGNO = [
   { id: 'personale', label: 'Personale', colore: '#64748b' },
   { id: 'ferie', label: 'Ferie', colore: '#f59e0b' },
   { id: 'chiamata', label: 'Chiamata', colore: '#8b5cf6' },
   { id: 'altro', label: 'Altro', colore: '#6b7280' },
+];
+const ETICHETTE_SUGGERITE = [
+  { titolo: 'Ferie', tipo: 'ferie' },
+  { titolo: 'Malattia', tipo: 'personale' },
+  { titolo: 'Corso/Formazione', tipo: 'altro' },
+  { titolo: 'Riunione', tipo: 'chiamata' },
+  { titolo: 'Chiamata', tipo: 'chiamata' },
+  { titolo: 'Impegno privato', tipo: 'personale' },
+  { titolo: 'Congresso', tipo: 'altro' },
+];
+const RIPETI_OPZIONI = [
+  { id: 'no', label: 'Non si ripete', giorni: 0 },
+  { id: 'giornaliera', label: 'Ogni giorno', giorni: 1 },
+  { id: 'settimanale', label: 'Ogni settimana', giorni: 7 },
+  { id: 'due_settimane', label: 'Ogni 2 settimane', giorni: 14 },
 ];
 const startOfWeek = (d) => {
   const dt = new Date(d + 'T12:00');
@@ -20,11 +39,13 @@ const startOfWeek = (d) => {
   return dt;
 };
 
-function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno }) {
+function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno, zoom, setZoom, isMobile, onSwipeDay }) {
   const containerRef = useRef(null); // unico scroll container
   const resizeRef = useRef(null);
   const [now, setNow] = useState(new Date());
   const [resizing, setResizing] = useState(null); // { id, startY, startDurata }
+  const [moving, setMoving] = useState(null); // { id, startY, startOra }
+  const movedRef = useRef(false); // distingue click da drag: true se il mouse si e' spostato oltre la soglia
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
@@ -60,18 +81,99 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
     };
   }, [resizing, slotH, slotMin]);
 
+  // Move (drag) mouse handlers — sposta l'orario trascinando l'intero blocco appuntamento,
+  // stesso pattern del resize ma cambia "ora" invece di "durata".
+  useEffect(() => {
+    if (!moving) return;
+    const onMove = (e) => {
+      const clientY = e.clientY || e.touches?.[0]?.clientY || 0;
+      const dy = clientY - moving.startY;
+      if (!movedRef.current && Math.abs(dy) < 6) return; // soglia minima prima di considerarlo un drag
+      movedRef.current = true;
+      const deltaSlots = Math.round(dy / slotH);
+      const deltaMin = deltaSlots * slotMin;
+      const [oh, om] = moving.startOra.split(':').map(Number);
+      let totMin = Math.max(0, oh * 60 + om + deltaMin);
+      const newOra = `${String(Math.floor(totMin / 60)).padStart(2, '0')}:${String(totMin % 60).padStart(2, '0')}`;
+      setAppointments(prev => prev.map(a => a.id === moving.id ? { ...a, ora: newOra } : a));
+    };
+    const onUp = () => setMoving(null);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchmove', onMove, { passive: true });
+    window.addEventListener('touchend', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onUp);
+    };
+  }, [moving, slotH, slotMin]);
 
+  // Pinch-to-zoom: solo vista Giorno su mobile (days.length === 1). Due dita sulla griglia
+  // ridimensionano lo slot in tempo reale agendo sullo stesso "zoom" usato dal Setup Agenda;
+  // il valore parte fisso all'inizio del gesto per restare stabile anche se il componente
+  // si ri-renderizza durante il pinch.
+  const pinchRef = useRef(null); // { startDist, startZoom }
+  const distanzaTouch = (touches) => {
+    const [a, b] = touches;
+    const dx = a.clientX - b.clientX, dy = a.clientY - b.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+  const pinchAttivo = isMobile && days.length === 1 && typeof setZoom === 'function';
+  const onTouchStartGrid = (e) => {
+    if (pinchAttivo && e.touches.length === 2) {
+      pinchRef.current = { startDist: distanzaTouch(e.touches), startZoom: zoom || 1 };
+    }
+  };
+  const onTouchMoveGrid = (e) => {
+    if (pinchAttivo && e.touches.length === 2 && pinchRef.current) {
+      e.preventDefault();
+      const scale = distanzaTouch(e.touches) / pinchRef.current.startDist;
+      const nz = Math.max(0.5, Math.min(2.5, pinchRef.current.startZoom * scale));
+      setZoom(nz);
+    }
+  };
+  const onTouchEndGrid = (e) => {
+    if (pinchAttivo && e.touches.length < 2 && pinchRef.current) {
+      pinchRef.current = null;
+      try { localStorage.setItem('ag_zoom', zoom); } catch {}
+    }
+  };
+
+  // Swipe orizzontale sulla griglia: solo vista Giorno (days.length === 1), va al giorno
+  // successivo/precedente. Ignorato se in corso un pinch, un resize o uno spostamento
+  // di appuntamento, per non entrare in conflitto con quei gesti.
+  const swipeStartRef = useRef(null);
+  const swipeAttivo = days.length === 1 && typeof onSwipeDay === 'function';
+  const onTouchStartSwipe = (e) => {
+    if (swipeAttivo && e.touches.length === 1 && !resizing && !moving) {
+      swipeStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    } else {
+      swipeStartRef.current = null;
+    }
+  };
+  const onTouchEndSwipe = (e) => {
+    if (!swipeAttivo || !swipeStartRef.current || resizing || moving || pinchRef.current) { swipeStartRef.current = null; return; }
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - swipeStartRef.current.x;
+    const dy = touch.clientY - swipeStartRef.current.y;
+    swipeStartRef.current = null;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      onSwipeDay(dx < 0 ? 1 : -1);
+    }
+  };
 
   const nowMin = now.getHours() * 60 + now.getMinutes() - oraInizio * 60;
   const nowTop = (nowMin / slotMin) * slotH;
   const showNowLine = nowMin >= 0 && nowMin <= slots.length * slotMin;
 
   return (
-    <div style={{ display: 'flex', flex: 1, overflow: 'hidden', border: `1px solid ${C.brd}`, borderRadius: 12, background: C.sur, minHeight: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+    <div onTouchStart={onTouchStartSwipe} onTouchEnd={onTouchEndSwipe} style={{ display: 'flex', flex: 1, overflow: 'hidden', border: `1px solid ${C.brd}`, borderRadius: 12, background: C.sur, minHeight: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
         {/* UNICO contenitore scrollabile: header + griglia insieme, cosi' le colonne hanno sempre esattamente la stessa larghezza */}
-        <div ref={containerRef} style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', position: 'relative' }}>
+        <div ref={containerRef} onTouchStart={onTouchStartGrid} onTouchMove={onTouchMoveGrid} onTouchEnd={onTouchEndGrid} style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', position: 'relative' }}>
           <div style={{ display: 'flex', flexDirection: 'column', minHeight: slots.length * slotH + 44 }}>
 
             {/* Header: angolo vuoto + giorni — sticky in cima, dentro lo stesso contenitore scrollabile della griglia */}
@@ -145,6 +247,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
           {days.map((d, di) => {
             const ds = toISO(d);
             const dayApps = appointments.filter(a => a.data === ds).sort((a, b) => a.ora.localeCompare(b.ora));
+            const dayImpOrari = (impegni || []).filter(imp => !imp.tuttoIlGiorno && imp.oraInizio && ds >= imp.dataInizio && ds <= imp.dataFine);
             const isToday = ds === t;
             const isWeekend = d.getDay() === 0 || d.getDay() === 6;
             return (
@@ -163,16 +266,39 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                     <div style={{ flex: 1, height: 1.5, background: '#E63946' }} />
                   </div>
                 )}
+                {dayImpOrari.map(imp => {
+                  const inizioMin = orarioInMinutiUI(imp.oraInizio) - oraInizio * 60;
+                  const fineMin = orarioInMinutiUI(imp.oraFine || imp.oraInizio) - oraInizio * 60;
+                  const top = (inizioMin / slotMin) * slotH;
+                  const height = Math.max(((fineMin - inizioMin) / slotMin) * slotH, slotH * 0.5);
+                  if (top + height < 0 || top >= slots.length * slotH) return null;
+                  const co = imp.colore || TIPO_IMPEGNO.find(x => x.id === imp.tipo)?.colore || C.pri;
+                  return (
+                    <div key={'imp-' + imp.id} onClick={() => apriEditImpegno(imp)} title={imp.titolo} style={{
+                      position: 'absolute', top, left: 2, right: 2, height, zIndex: 1, cursor: 'pointer',
+                      background: co + '35', border: `1.5px dashed ${co}AA`, borderRadius: 5,
+                      display: 'flex', alignItems: 'flex-start', padding: '2px 5px', boxSizing: 'border-box', overflow: 'hidden',
+                    }}>
+                      <span style={{ fontSize: 9, fontWeight: 800, color: co, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{imp.titolo}</span>
+                    </div>
+                  );
+                })}
                 {dayApps.map(a => {
                   const { top, height } = appPosition(a);
                   if (top < 0 || top >= slots.length * slotH) return null;
                   const p = patients.find(x => x.id === a.pazienteId);
                   const co = getColore(a);
                   const isBeingResized = resizing?.id === a.id;
+                  const isBeingMoved = moving?.id === a.id;
                   return (
-                    <div key={a.id} style={{ position: 'absolute', top, left: 2, right: 2, height, background: co, borderRadius: 5, overflow: 'hidden', zIndex: isBeingResized ? 10 : 2, borderLeft: `3px solid ${co}DD`, boxShadow: isBeingResized ? '0 4px 12px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.15)', userSelect: 'none' }}>
-                      {/* Contenuto appuntamento */}
-                      <div onClick={e => { if (!isBeingResized) { e.stopPropagation(); apriEdit(a); } }} style={{ padding: '2px 5px', cursor: 'pointer', paddingBottom: height > 26 ? 9 : 2 }}>
+                    <div key={a.id} style={{ position: 'absolute', top, left: 2, right: 2, height, background: co, borderRadius: 5, overflow: 'hidden', zIndex: isBeingResized || isBeingMoved ? 10 : 2, borderLeft: `3px solid ${co}DD`, boxShadow: isBeingResized || isBeingMoved ? '0 6px 16px rgba(0,0,0,0.35)' : '0 1px 3px rgba(0,0,0,0.15)', userSelect: 'none', opacity: isBeingMoved ? 0.85 : 1 }}>
+                      {/* Contenuto appuntamento — trascina per spostare l'orario, tocca/clicca senza muovere per modificare */}
+                      <div
+                        onMouseDown={e => { if (isBeingResized) return; movedRef.current = false; setMoving({ id: a.id, startY: e.clientY, startOra: a.ora }); }}
+                        onTouchStart={e => { if (isBeingResized) return; movedRef.current = false; setMoving({ id: a.id, startY: e.touches[0].clientY, startOra: a.ora }); }}
+                        onClick={e => { if (isBeingResized || movedRef.current) { movedRef.current = false; return; } e.stopPropagation(); apriEdit(a); }}
+                        style={{ padding: '2px 5px', cursor: isBeingMoved ? 'grabbing' : 'grab', paddingBottom: height > 26 ? 9 : 2 }}
+                      >
                         <div style={{ fontSize: 10, lineHeight: '11px', fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.ora} {p ? `${p.cognome}` : '—'}</div>
                         {height > 32 && <div style={{ fontSize: 9, lineHeight: '10px', color: 'rgba(255,255,255,0.9)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.tipo}</div>}
                         {height > 48 && <div style={{ fontSize: 9, lineHeight: '10px', color: 'rgba(255,255,255,0.7)' }}>{a.durata} min</div>}
@@ -197,6 +323,77 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ── STRISCIA GIORNI stile iOS Calendar ──
+   Mostra Lun–Dom della settimana corrente, scrollabile in orizzontale a scatti di
+   settimana (scroll-snap) per cambiare settimana, con i giorni cliccabili per saltare
+   direttamente a quel giorno. Lo scroll da solo NON cambia il giorno selezionato
+   (come in iOS): serve solo a "sfogliare" le settimane finché non tocchi un giorno. */
+function DayStrip({ selDay, setSelDay, today: t }) {
+  const scrollRef = useRef(null);
+  const [stripBaseWeek, setStripBaseWeek] = useState(() => toISO(startOfWeek(selDay)));
+  const settleTimer = useRef(null);
+  const itemWidthRef = useRef(0);
+
+  // Se il giorno selezionato cambia da fuori (frecce, "Oggi"…) e non è nella settimana
+  // già mostrata, ricentra la striscia su quella settimana.
+  useEffect(() => {
+    const wk = toISO(startOfWeek(selDay));
+    if (wk !== stripBaseWeek) setStripBaseWeek(wk);
+  }, [selDay]);
+
+  // Ogni volta che cambia la settimana "centrale", riporta lo scroll al centro (indice 2
+  // su 5) istantaneamente, senza animazione — dà l'illusione di scroll infinito.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const w = el.clientWidth;
+    itemWidthRef.current = w;
+    el.scrollLeft = w * 2;
+  }, [stripBaseWeek]);
+
+  const windowStart = new Date(stripBaseWeek + 'T12:00');
+  windowStart.setDate(windowStart.getDate() - 14);
+  const weeks = Array.from({ length: 5 }, (_, wi) => {
+    const ws = new Date(windowStart);
+    ws.setDate(ws.getDate() + wi * 7);
+    return Array.from({ length: 7 }, (_, di) => { const d = new Date(ws); d.setDate(d.getDate() + di); return d; });
+  });
+
+  const onScroll = () => {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    settleTimer.current = setTimeout(() => {
+      const el = scrollRef.current;
+      if (!el || !itemWidthRef.current) return;
+      const idx = Math.round(el.scrollLeft / itemWidthRef.current);
+      if (idx !== 2) {
+        const nb = new Date(stripBaseWeek + 'T12:00');
+        nb.setDate(nb.getDate() + (idx - 2) * 7);
+        setStripBaseWeek(toISO(nb));
+      }
+    }, 120);
+  };
+
+  return (
+    <div ref={scrollRef} onScroll={onScroll} style={{ display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch', marginBottom: 8, borderRadius: 12, background: C.sur, border: `1px solid ${C.brd}`, flexShrink: 0 }}>
+      {weeks.map((week, wi) => (
+        <div key={wi} style={{ flex: '0 0 100%', scrollSnapAlign: 'start', display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', padding: '8px 4px' }}>
+          {week.map((d, di) => {
+            const ds = toISO(d);
+            const isToday = ds === t;
+            const isSel = ds === selDay;
+            return (
+              <div key={di} onClick={() => setSelDay(ds)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', padding: '2px 0' }}>
+                <span style={{ fontSize: 9, fontWeight: 700, color: isToday ? C.pri : C.txl, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{WD_SHORT[d.getDay()]}</span>
+                <span style={{ fontSize: 15, fontWeight: 800, width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isSel ? C.pri : isToday ? C.priL : 'transparent', color: isSel ? '#fff' : isToday ? C.pri : C.txt }}>{d.getDate()}</span>
+              </div>
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 }
@@ -234,7 +431,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const [waTplId, setWaTplId] = useState('');
   const [impModal, setImpModal] = useState(false);
   const [editImp, setEditImp] = useState(null);
-  const [impForm, setImpForm] = useState({ titolo: '', tipo: 'personale', colore: '', dataInizio: today(), dataFine: today(), tuttoIlGiorno: true, oraInizio: '09:00', oraFine: '10:00', note: '' });
+  const [impForm, setImpForm] = useState({ titolo: '', tipo: 'personale', colore: '', dataInizio: today(), dataFine: today(), tuttoIlGiorno: true, oraInizio: '09:00', oraFine: '10:00', note: '', ripeti: 'no', ripetiFino: today() });
   const IF = (f) => setImpForm((p) => ({ ...p, ...f }));
 
   const F = (f) => setForm(p => ({ ...p, ...f }));
@@ -365,7 +562,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
 
   const apriNuovoImpegno = (data) => {
     setEditImp(null);
-    setImpForm({ titolo: '', tipo: 'personale', colore: '', dataInizio: data || selDay, dataFine: data || selDay, tuttoIlGiorno: true, oraInizio: '09:00', oraFine: '10:00', note: '' });
+    setImpForm({ titolo: '', tipo: 'personale', colore: '', dataInizio: data || selDay, dataFine: data || selDay, tuttoIlGiorno: true, oraInizio: '09:00', oraFine: '10:00', note: '', ripeti: 'no', ripetiFino: data || selDay });
     setImpModal(true);
   };
 
@@ -374,20 +571,58 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
     setImpForm({
       titolo: imp.titolo, tipo: imp.tipo, colore: imp.colore || '', dataInizio: imp.dataInizio, dataFine: imp.dataFine,
       tuttoIlGiorno: imp.tuttoIlGiorno !== false, oraInizio: imp.oraInizio || '09:00', oraFine: imp.oraFine || '10:00', note: imp.note || '',
+      ripeti: 'no', ripetiFino: imp.dataInizio,
     });
     setImpModal(true);
   };
 
   const saveImpegno = () => {
-    if (!impForm.titolo.trim() || impForm.dataFine < impForm.dataInizio) return;
-    const payload = { ...impForm, oraInizio: impForm.tuttoIlGiorno ? null : impForm.oraInizio, oraFine: impForm.tuttoIlGiorno ? null : impForm.oraFine };
+    if (!impForm.titolo.trim()) return;
+    const base = { titolo: impForm.titolo, tipo: impForm.tipo, colore: impForm.colore, tuttoIlGiorno: impForm.tuttoIlGiorno, note: impForm.note };
+
     if (editImp) {
+      const payload = impForm.tuttoIlGiorno
+        ? { ...base, dataInizio: impForm.dataInizio, dataFine: impForm.dataFine, oraInizio: null, oraFine: null }
+        : { ...base, dataInizio: impForm.dataInizio, dataFine: impForm.dataInizio, oraInizio: impForm.oraInizio, oraFine: impForm.oraFine };
       setImpegni(p => p.map(i => i.id === editImp.id ? { ...i, ...payload } : i));
       setToast('Aggiornato ✓');
-    } else {
-      setImpegni(p => [...p, { ...payload, id: uid() }]);
-      setToast('Salvato ✓');
+      setImpModal(false);
+      return;
     }
+
+    if (impForm.tuttoIlGiorno) {
+      if (impForm.dataFine < impForm.dataInizio) return;
+      setImpegni(p => [...p, { ...base, dataInizio: impForm.dataInizio, dataFine: impForm.dataFine, oraInizio: null, oraFine: null, id: uid() }]);
+      setToast('Salvato ✓');
+      setImpModal(false);
+      return;
+    }
+
+    // Impegno con orario specifico: opzionalmente ripetuto su piu' occorrenze,
+    // ognuna un impegno indipendente (modificabile/eliminabile singolarmente).
+    const passo = RIPETI_OPZIONI.find(r => r.id === impForm.ripeti)?.giorni || 0;
+    const occorrenze = [];
+    if (passo === 0) {
+      occorrenze.push(impForm.dataInizio);
+    } else {
+      const fine = impForm.ripetiFino || impForm.dataInizio;
+      let cursore = new Date(impForm.dataInizio + 'T12:00');
+      const limite = new Date(fine + 'T12:00');
+      let guardia = 0;
+      while (cursore <= limite && guardia < 366) {
+        occorrenze.push(toISO(cursore));
+        cursore.setDate(cursore.getDate() + passo);
+        guardia++;
+      }
+    }
+    if (occorrenze.length === 0) return;
+    const recurrenceId = occorrenze.length > 1 ? uid() : null;
+    const nuovi = occorrenze.map(data => ({
+      ...base, dataInizio: data, dataFine: data, oraInizio: impForm.oraInizio, oraFine: impForm.oraFine,
+      recurrenceId, id: uid(),
+    }));
+    setImpegni(p => [...p, ...nuovi]);
+    setToast(occorrenze.length > 1 ? `Creati ${occorrenze.length} impegni ✓` : 'Salvato ✓');
     setImpModal(false);
   };
 
@@ -416,7 +651,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const navSettimana = (n) => { const d = new Date(selDay + 'T12:00'); d.setDate(d.getDate() + n * 7); setSelDay(toISO(d)); };
   const navMese = (n) => setVd(v => new Date(v.getFullYear(), v.getMonth() + n, 1));
 
-  const gridProps = { slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno };
+  const gridProps = { slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, zoom, setZoom, isMobile, onSwipeDay: navGiorno };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 130px)' }}>
@@ -459,6 +694,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
       </div>
 
       {/* VIEWS */}
+      {view === 'giorno' && <DayStrip selDay={selDay} setSelDay={setSelDay} today={t} />}
       {view === 'giorno' && <GridView days={[new Date(selDay + 'T12:00')]} {...gridProps} features={features} />}
       {view === 'settimana' && <GridView days={weekDays} {...gridProps} features={features} />}
       {view === 'mese' && (() => {
@@ -732,37 +968,68 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
       {/* MODAL IMPEGNO PERSONALE */}
       {impModal && (
         <Modal title={editImp ? '✏️ Modifica impegno' : '🗓️ Nuovo impegno personale'} onClose={() => setImpModal(false)}>
-          <Fld label="Titolo"><Inp value={impForm.titolo} onChange={e => IF({ titolo: e.target.value })} placeholder="Es. Ferie, Chiamata commercialista…" autoFocus /></Fld>
-          <Fld label="Tipo">
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          <Fld label="Titolo">
+            <Inp value={impForm.titolo} onChange={e => IF({ titolo: e.target.value })} placeholder="Es. Ferie, Chiamata commercialista…" autoFocus />
+          </Fld>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: -6, marginBottom: 12 }}>
+            {ETICHETTE_SUGGERITE.map(et => (
+              <button key={et.titolo} onClick={() => IF({ titolo: et.titolo, tipo: et.tipo })} style={{ padding: '3px 8px', borderRadius: 20, border: `1px solid ${C.brd}`, background: C.bg, cursor: 'pointer', fontSize: 10, fontWeight: 600, color: C.txm }}>
+                {et.titolo}
+              </button>
+            ))}
+          </div>
+          <Fld label="Tipo / colore">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
               {TIPO_IMPEGNO.map(tp => (
-                <button key={tp.id} onClick={() => IF({ tipo: tp.id, colore: '' })} style={{ padding: '5px 10px', borderRadius: 20, border: `1.5px solid ${impForm.tipo === tp.id ? tp.colore : C.brd}`, background: impForm.tipo === tp.id ? tp.colore + '18' : C.sur, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <button key={tp.id} onClick={() => IF({ tipo: tp.id, colore: '' })} style={{ padding: '5px 10px', borderRadius: 20, border: `1.5px solid ${impForm.tipo === tp.id && !impForm.colore ? tp.colore : C.brd}`, background: impForm.tipo === tp.id && !impForm.colore ? tp.colore + '18' : C.sur, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: tp.colore }} />
-                  <span style={{ fontSize: 11, fontWeight: impForm.tipo === tp.id ? 700 : 500, color: impForm.tipo === tp.id ? tp.colore : C.txm }}>{tp.label}</span>
+                  <span style={{ fontSize: 11, fontWeight: impForm.tipo === tp.id && !impForm.colore ? 700 : 500, color: impForm.tipo === tp.id && !impForm.colore ? tp.colore : C.txm }}>{tp.label}</span>
                 </button>
               ))}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 20, border: `1.5px solid ${impForm.colore ? impForm.colore : C.brd}`, background: impForm.colore ? impForm.colore + '18' : C.sur, cursor: 'pointer' }}>
+                <input type="color" value={impForm.colore || TIPO_IMPEGNO.find(x => x.id === impForm.tipo)?.colore || C.pri} onChange={e => IF({ colore: e.target.value })} style={{ width: 16, height: 16, border: 'none', padding: 0, background: 'none', cursor: 'pointer' }} />
+                <span style={{ fontSize: 11, fontWeight: 600, color: C.txm }}>Colore personalizzato</span>
+              </label>
             </div>
           </Fld>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <Fld label="Dal"><Inp type="date" value={impForm.dataInizio} onChange={e => IF({ dataInizio: e.target.value, dataFine: e.target.value > impForm.dataFine ? e.target.value : impForm.dataFine })} /></Fld>
-            <Fld label="Al"><Inp type="date" value={impForm.dataFine} onChange={e => IF({ dataFine: e.target.value })} /></Fld>
-          </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, cursor: 'pointer' }}>
             <input type="checkbox" checked={impForm.tuttoIlGiorno} onChange={e => IF({ tuttoIlGiorno: e.target.checked })} />
             <span style={{ fontSize: 12, fontWeight: 600, color: C.txm }}>Tutto il giorno</span>
           </label>
-          {!impForm.tuttoIlGiorno && (
+
+          {impForm.tuttoIlGiorno ? (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <Fld label="Dalle"><Inp type="time" value={impForm.oraInizio} onChange={e => IF({ oraInizio: e.target.value })} /></Fld>
-              <Fld label="Alle"><Inp type="time" value={impForm.oraFine} onChange={e => IF({ oraFine: e.target.value })} /></Fld>
+              <Fld label="Dal"><Inp type="date" value={impForm.dataInizio} onChange={e => IF({ dataInizio: e.target.value, dataFine: e.target.value > impForm.dataFine ? e.target.value : impForm.dataFine })} /></Fld>
+              <Fld label="Al"><Inp type="date" value={impForm.dataFine} onChange={e => IF({ dataFine: e.target.value })} /></Fld>
             </div>
+          ) : (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                <Fld label="Data"><Inp type="date" value={impForm.dataInizio} onChange={e => IF({ dataInizio: e.target.value, ripetiFino: e.target.value > impForm.ripetiFino ? e.target.value : impForm.ripetiFino })} /></Fld>
+                <Fld label="Dalle"><Inp type="time" value={impForm.oraInizio} onChange={e => IF({ oraInizio: e.target.value })} /></Fld>
+                <Fld label="Alle"><Inp type="time" value={impForm.oraFine} onChange={e => IF({ oraFine: e.target.value })} /></Fld>
+              </div>
+              {!editImp && (
+                <>
+                  <Fld label="Ripeti">
+                    <Sel value={impForm.ripeti} onChange={e => IF({ ripeti: e.target.value })}>
+                      {RIPETI_OPZIONI.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+                    </Sel>
+                  </Fld>
+                  {impForm.ripeti !== 'no' && (
+                    <Fld label="Ripeti fino al"><Inp type="date" value={impForm.ripetiFino} onChange={e => IF({ ripetiFino: e.target.value })} /></Fld>
+                  )}
+                </>
+              )}
+            </>
           )}
+
           <Fld label="Note (opzionale)"><Txt value={impForm.note} onChange={e => IF({ note: e.target.value })} /></Fld>
-          {impForm.dataFine < impForm.dataInizio && <div style={{ background: C.danL, borderRadius: 8, padding: '8px 12px', marginBottom: 8, fontSize: 12, color: C.dan, fontWeight: 700 }}>⚠️ La data di fine deve essere uguale o successiva alla data di inizio</div>}
+          {impForm.tuttoIlGiorno && impForm.dataFine < impForm.dataInizio && <div style={{ background: C.danL, borderRadius: 8, padding: '8px 12px', marginBottom: 8, fontSize: 12, color: C.dan, fontWeight: 700 }}>⚠️ La data di fine deve essere uguale o successiva alla data di inizio</div>}
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             {editImp && <Btn ch="Elimina" v="dan" onClick={delImpegno} />}
             <Btn ch="Annulla" v="sec" onClick={() => setImpModal(false)} full />
-            <Btn ch={editImp ? 'Aggiorna' : 'Salva'} onClick={saveImpegno} dis={!impForm.titolo.trim() || impForm.dataFine < impForm.dataInizio} full />
+            <Btn ch={editImp ? 'Aggiorna' : 'Salva'} onClick={saveImpegno} dis={!impForm.titolo.trim() || (impForm.tuttoIlGiorno && impForm.dataFine < impForm.dataInizio)} full />
           </div>
         </Modal>
       )}
