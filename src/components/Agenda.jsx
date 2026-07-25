@@ -602,7 +602,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const gridProps = { slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 130px)', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
       {view === 'giorno' && (
