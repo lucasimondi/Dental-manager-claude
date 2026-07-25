@@ -330,23 +330,37 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
     }, 120);
   };
 
+  // Etichetta mese, fissa, calcolata dalla settimana attualmente mostrata (si aggiorna
+  // anche solo scorrendo, senza dover toccare un giorno) — se la settimana attraversa
+  // due mesi (o due anni) li mostra entrambi, es. "Lug – Ago 2026".
+  const wkMonStart = new Date(stripBaseWeek + 'T12:00');
+  const wkMonEnd = new Date(wkMonStart); wkMonEnd.setDate(wkMonEnd.getDate() + 6);
+  const meseLabel = wkMonStart.getMonth() === wkMonEnd.getMonth()
+    ? `${MESI[wkMonStart.getMonth()]} ${wkMonStart.getFullYear()}`
+    : wkMonStart.getFullYear() === wkMonEnd.getFullYear()
+      ? `${MESI[wkMonStart.getMonth()].slice(0, 3)} – ${MESI[wkMonEnd.getMonth()].slice(0, 3)} ${wkMonStart.getFullYear()}`
+      : `${MESI[wkMonStart.getMonth()].slice(0, 3)} ${wkMonStart.getFullYear()} – ${MESI[wkMonEnd.getMonth()].slice(0, 3)} ${wkMonEnd.getFullYear()}`;
+
   return (
-    <div ref={scrollRef} onScroll={onScroll} style={{ display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch', marginBottom: 8, borderRadius: 12, background: C.sur, border: `1px solid ${C.brd}`, flexShrink: 0 }}>
-      {weeks.map((week, wi) => (
-        <div key={wi} style={{ flex: '0 0 100%', scrollSnapAlign: 'start', display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', padding: '8px 4px' }}>
-          {week.map((d, di) => {
-            const ds = toISO(d);
-            const isToday = ds === t;
-            const isSel = highlightSelected && ds === selDay;
-            return (
-              <div key={di} onClick={() => setSelDay(ds)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', padding: '2px 0' }}>
-                <span style={{ fontSize: 9, fontWeight: 700, color: isToday ? C.pri : C.txl, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{WD_SHORT[d.getDay()]}</span>
-                <span style={{ fontSize: 15, fontWeight: 800, width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isSel ? C.pri : isToday ? C.priL : 'transparent', color: isSel ? '#fff' : isToday ? C.pri : C.txt }}>{d.getDate()}</span>
-              </div>
-            );
-          })}
-        </div>
-      ))}
+    <div style={{ flexShrink: 0 }}>
+      <div style={{ fontSize: 13, fontWeight: 800, color: C.txt, padding: '0 4px 6px', textTransform: 'capitalize' }}>{meseLabel}</div>
+      <div ref={scrollRef} onScroll={onScroll} style={{ display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch', marginBottom: 8, borderRadius: 12, background: C.sur, border: `1px solid ${C.brd}` }}>
+        {weeks.map((week, wi) => (
+          <div key={wi} style={{ flex: '0 0 100%', scrollSnapAlign: 'start', display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', padding: '8px 4px' }}>
+            {week.map((d, di) => {
+              const ds = toISO(d);
+              const isToday = ds === t;
+              const isSel = highlightSelected && ds === selDay;
+              return (
+                <div key={di} onClick={() => setSelDay(ds)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', padding: '2px 0' }}>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: isToday ? C.pri : C.txl, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{WD_SHORT[d.getDay()]}</span>
+                  <span style={{ fontSize: 15, fontWeight: 800, width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isSel ? C.pri : isToday ? C.priL : 'transparent', color: isSel ? '#fff' : isToday ? C.pri : C.txt }}>{d.getDate()}</span>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -588,7 +602,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const gridProps = { slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 130px)', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 130px)', overflow: 'hidden' }}>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
       {view === 'giorno' && (
