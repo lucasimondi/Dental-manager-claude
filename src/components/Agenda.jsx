@@ -53,10 +53,18 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   }, []);
 
   useEffect(() => {
-    // Scroll iniziale: vicino all'ora corrente se è dentro l'intervallo visibile, altrimenti in cima
-    const headerH = 0; // l'header giorni ora è fuori dal contenitore scrollabile (striscia esterna fissa)
-    const target = showNowLine ? Math.max(0, nowTop - slotH * 2) + headerH : headerH;
-    if (containerRef.current) containerRef.current.scrollTop = target;
+    // Scroll iniziale: vicino all'ora corrente se è dentro l'intervallo visibile, altrimenti in cima.
+    // Agisce sul vero contenitore di scroll della pagina (#app-scroll) — non più su un div
+    // interno annidato: gli scroll annidati (overflow:auto dentro overflow:auto) sono
+    // notoriamente inaffidabili su Safari mobile quando il viewport cambia dinamicamente
+    // (barra indirizzi che appare/scompare), causando lo "scrolla tutto invece che solo la griglia".
+    const pageEl = document.getElementById('app-scroll');
+    if (!pageEl) return;
+    const headerRect = containerRef.current?.getBoundingClientRect();
+    const pageRect = pageEl.getBoundingClientRect();
+    const offsetInPage = headerRect ? headerRect.top - pageRect.top + pageEl.scrollTop : 0;
+    const target = showNowLine ? Math.max(0, offsetInPage + nowTop - slotH * 2) : offsetInPage;
+    pageEl.scrollTop = target;
   }, [slotH, slotMin, oraInizio]);
 
   // Resize mouse handlers
@@ -138,47 +146,15 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   const showNowLine = nowMin >= 0 && nowMin <= slots.length * slotMin;
 
   return (
-    <div onTouchStart={onTouchStartSwipe} onTouchEnd={onTouchEndSwipe} style={{ display: 'flex', flex: 1, overflow: 'hidden', border: `1px solid ${C.brd}`, borderRadius: 12, background: C.sur, minHeight: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div onTouchStart={onTouchStartSwipe} onTouchEnd={onTouchEndSwipe} style={{ display: 'flex', border: `1px solid ${C.brd}`, borderRadius: 12, background: C.sur, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
 
-        {/* UNICO contenitore scrollabile: header + griglia insieme, cosi' le colonne hanno sempre esattamente la stessa larghezza */}
-        <div ref={containerRef} style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', position: 'relative' }}>
+        {/* Contenitore della griglia — non scrolla più internamente: è la pagina intera
+            (#app-scroll) a farlo, con la striscia giorni "sticky" sopra a restare fissa.
+            Niente più scroll annidato (overflow:auto dentro overflow:auto), inaffidabile
+            su Safari mobile quando il viewport cambia dinamicamente. */}
+        <div ref={containerRef} style={{ flex: 1, position: 'relative' }}>
           <div style={{ display: 'flex', flexDirection: 'column', minHeight: slots.length * slotH }}>
-
-            {/* Riga impegni personali: stile "tutto il giorno" di Google Calendar, spanna piu' giorni.
-                overflow:hidden sulla riga e sulla cella evita che l'etichetta di un impegno di un solo
-                giorno "sconfini" visivamente sulla colonna accanto quando lo spazio e' stretto (mobile). */}
-            {impegni && impegni.length > 0 && (
-              <div style={{ display: 'flex', borderBottom: `1.5px solid ${C.brd}`, flexShrink: 0, background: C.bg, overflow: 'hidden' }}>
-                <div style={{ width: 46, flexShrink: 0, borderRight: `1.5px solid ${C.brd}` }} />
-                {days.map((d, di) => {
-                  const ds = toISO(d);
-                  const dayImp = impegni.filter((imp) => ds >= imp.dataInizio && ds <= imp.dataFine);
-                  return (
-                    <div key={di} style={{ flex: 1, minWidth: 0, overflow: 'hidden', borderLeft: di > 0 ? `1.5px solid ${C.brd}` : 'none', padding: dayImp.length ? '3px 2px' : 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      {dayImp.map((imp) => {
-                        const co = imp.colore || TIPO_IMPEGNO.find((x) => x.id === imp.tipo)?.colore || C.pri;
-                        const isSingleDay = imp.dataInizio === imp.dataFine;
-                        const isStart = ds === imp.dataInizio;
-                        const isEnd = ds === imp.dataFine;
-                        const etichetta = imp.tuttoIlGiorno ? imp.titolo : `${(imp.oraInizio || '').slice(0, 5)} ${imp.titolo}`;
-                        return (
-                          <div key={imp.id} onClick={() => apriEditImpegno(imp)} title={imp.titolo} style={{
-                            background: co, color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 6px', lineHeight: '13px',
-                            borderRadius: isSingleDay ? 5 : isStart ? '5px 0 0 5px' : isEnd ? '0 5px 5px 0' : 0,
-                            marginLeft: isSingleDay ? 0 : isStart ? 0 : -2,
-                            marginRight: isSingleDay ? 0 : isEnd ? 0 : -2,
-                            cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0,
-                          }}>
-                            {isStart ? etichetta : '\u00A0'}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
 
             <div style={{ display: 'flex', flex: 1 }}>
 
@@ -342,7 +318,7 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
       : `${MESI[wkMonStart.getMonth()].slice(0, 3)} ${wkMonStart.getFullYear()} – ${MESI[wkMonEnd.getMonth()].slice(0, 3)} ${wkMonEnd.getFullYear()}`;
 
   return (
-    <div style={{ flexShrink: 0 }}>
+    <div style={{ position: 'sticky', top: 0, zIndex: 20, background: C.bg, paddingTop: 2, marginTop: -2 }}>
       <div style={{ fontSize: 13, fontWeight: 800, color: C.txt, padding: '0 4px 6px', textTransform: 'capitalize' }}>{meseLabel}</div>
       <div ref={scrollRef} onScroll={onScroll} style={{ display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch', marginBottom: 8, borderRadius: 12, background: C.sur, border: `1px solid ${C.brd}` }}>
         {weeks.map((week, wi) => (
@@ -602,7 +578,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const gridProps = { slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
       {view === 'giorno' && (
