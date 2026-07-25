@@ -53,18 +53,9 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   }, []);
 
   useEffect(() => {
-    // Scroll iniziale: vicino all'ora corrente se è dentro l'intervallo visibile, altrimenti in cima.
-    // Agisce sul vero contenitore di scroll della pagina (#app-scroll) — non più su un div
-    // interno annidato: gli scroll annidati (overflow:auto dentro overflow:auto) sono
-    // notoriamente inaffidabili su Safari mobile quando il viewport cambia dinamicamente
-    // (barra indirizzi che appare/scompare), causando lo "scrolla tutto invece che solo la griglia".
-    const pageEl = document.getElementById('app-scroll');
-    if (!pageEl) return;
-    const headerRect = containerRef.current?.getBoundingClientRect();
-    const pageRect = pageEl.getBoundingClientRect();
-    const offsetInPage = headerRect ? headerRect.top - pageRect.top + pageEl.scrollTop : 0;
-    const target = showNowLine ? Math.max(0, offsetInPage + nowTop - slotH * 2) : offsetInPage;
-    pageEl.scrollTop = target;
+    // Scroll iniziale: vicino all'ora corrente se è dentro l'intervallo visibile, altrimenti in cima
+    const target = showNowLine ? Math.max(0, nowTop - slotH * 2) : 0;
+    if (containerRef.current) containerRef.current.scrollTop = target;
   }, [slotH, slotMin, oraInizio]);
 
   // Resize mouse handlers
@@ -146,14 +137,17 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   const showNowLine = nowMin >= 0 && nowMin <= slots.length * slotMin;
 
   return (
-    <div onTouchStart={onTouchStartSwipe} onTouchEnd={onTouchEndSwipe} style={{ display: 'flex', border: `1px solid ${C.brd}`, borderRadius: 12, background: C.sur, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+    <div onTouchStart={onTouchStartSwipe} onTouchEnd={onTouchEndSwipe} style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', border: `1px solid ${C.brd}`, borderRadius: 12, background: C.sur, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-        {/* Contenitore della griglia — non scrolla più internamente: è la pagina intera
-            (#app-scroll) a farlo, con la striscia giorni "sticky" sopra a restare fissa.
-            Niente più scroll annidato (overflow:auto dentro overflow:auto), inaffidabile
-            su Safari mobile quando il viewport cambia dinamicamente. */}
-        <div ref={containerRef} style={{ flex: 1, position: 'relative' }}>
+        {/* Contenitore della griglia — scrolla qui dentro, isolato dal resto della pagina.
+            IMPORTANTE: ogni div con flex:1+overflow:auto in questa catena ha anche
+            min-height:0 esplicito. Senza, su iOS Safari un elemento flex di default
+            si allarga per contenere tutto il suo contenuto invece di rispettare lo
+            spazio assegnato — e a quel punto è la PAGINA a scrollare per compensare,
+            non l'elemento stesso. È il bug reale dietro lo scroll incoerente di prima:
+            dipendeva da quanti appuntamenti/ore c'erano, non era mai stato casuale. */}
+        <div ref={containerRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y', overscrollBehavior: 'contain', position: 'relative' }}>
           <div style={{ display: 'flex', flexDirection: 'column', minHeight: slots.length * slotH }}>
 
             <div style={{ display: 'flex', flex: 1 }}>
@@ -225,7 +219,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                         onMouseDown={e => { if (isBeingResized) return; movedRef.current = false; setMoving({ id: a.id, startY: e.clientY, startOra: a.ora }); }}
                         onTouchStart={e => { if (isBeingResized) return; movedRef.current = false; setMoving({ id: a.id, startY: e.touches[0].clientY, startOra: a.ora }); }}
                         onClick={e => { if (isBeingResized || movedRef.current) { movedRef.current = false; return; } e.stopPropagation(); apriEdit(a); }}
-                        style={{ padding: '2px 5px', cursor: isBeingMoved ? 'grabbing' : 'grab', paddingBottom: height > 26 ? 9 : 2 }}
+                        style={{ padding: '2px 5px', cursor: isBeingMoved ? 'grabbing' : 'grab', paddingBottom: height > 26 ? 9 : 2, touchAction: 'none' }}
                       >
                         <div style={{ fontSize: 10, lineHeight: '11px', fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.ora} {p ? `${p.cognome}` : '—'}</div>
                         {height > 32 && <div style={{ fontSize: 9, lineHeight: '10px', color: 'rgba(255,255,255,0.9)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.tipo}</div>}
@@ -237,7 +231,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                       {height > 26 && <div
                         onMouseDown={e => { e.stopPropagation(); e.preventDefault(); setResizing({ id: a.id, startY: e.clientY, startDurata: Number(a.durata) }); }}
                         onTouchStart={e => { e.stopPropagation(); setResizing({ id: a.id, startY: e.touches[0].clientY, startDurata: Number(a.durata) }); }}
-                        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 8, cursor: 'ns-resize', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.15)', borderBottomLeftRadius: 5, borderBottomRightRadius: 5 }}>
+                        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 8, cursor: 'ns-resize', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.15)', borderBottomLeftRadius: 5, borderBottomRightRadius: 5, touchAction: 'none' }}>
                         <div style={{ width: 16, height: 2, background: 'rgba(255,255,255,0.6)', borderRadius: 1 }} />
                       </div>}
                     </div>
@@ -343,38 +337,8 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
       ? `${MESI[wkMonStart.getMonth()].slice(0, 3)} – ${MESI[wkMonEnd.getMonth()].slice(0, 3)} ${wkMonStart.getFullYear()}`
       : `${MESI[wkMonStart.getMonth()].slice(0, 3)} ${wkMonStart.getFullYear()} – ${MESI[wkMonEnd.getMonth()].slice(0, 3)} ${wkMonEnd.getFullYear()}`;
 
-  // position:fixed invece di sticky: sticky ha bug intermittenti noti su iOS Safari
-  // proprio in contesti come questo (flex + viewport dinamico). Fixed è sempre ancorato
-  // al vero viewport, indipendente da qualunque contenitore scrollabile — niente più
-  // "a volte funziona a volte no". Calcolo dinamicamente dove deve stare (subito sotto
-  // l'header dell'app) e riservo lo spazio equivalente con uno spacer, per non far
-  // saltare il contenuto sotto.
-  const wrapRef = useRef(null);
-  const [fixedRect, setFixedRect] = useState(null); // { top, left, width, height }
-  useEffect(() => {
-    const misura = () => {
-      const scrollEl = document.getElementById('app-scroll');
-      if (!scrollEl || !wrapRef.current) return;
-      const scrollRect = scrollEl.getBoundingClientRect();
-      const style = window.getComputedStyle(scrollEl);
-      const padLeft = parseFloat(style.paddingLeft) || 0;
-      const padRight = parseFloat(style.paddingRight) || 0;
-      setFixedRect({
-        top: scrollRect.top,
-        left: scrollRect.left + padLeft,
-        width: scrollRect.width - padLeft - padRight,
-        height: wrapRef.current.offsetHeight,
-      });
-    };
-    misura();
-    window.addEventListener('resize', misura);
-    window.addEventListener('orientationchange', misura);
-    const t2 = setTimeout(misura, 200); // ricalcola dopo l'assestamento iniziale del layout
-    return () => { window.removeEventListener('resize', misura); window.removeEventListener('orientationchange', misura); clearTimeout(t2); };
-  }, [stripBaseWeek]);
-
-  const contenuto = (
-    <div ref={wrapRef}>
+  return (
+    <div style={{ flexShrink: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px 6px' }}>
         <span style={{ fontSize: 13, fontWeight: 800, color: C.txt, textTransform: 'capitalize' }}>{meseLabel}</span>
         {viewPicker}
@@ -397,19 +361,6 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
         ))}
       </div>
     </div>
-  );
-
-  // Prima renderizzazione: nessuna misura ancora disponibile -> mostro il contenuto in flusso
-  // normale (invisibile un istante, ma evita un "buco" vuoto). Dopo la prima misura, passa a
-  // fixed vero con uno spacer della stessa altezza al suo posto.
-  if (!fixedRect) return contenuto;
-  return (
-    <>
-      <div style={{ position: 'fixed', top: fixedRect.top, left: fixedRect.left, width: fixedRect.width, zIndex: 30, background: C.bg, paddingTop: 2 }}>
-        {contenuto}
-      </div>
-      <div style={{ height: fixedRect.height + 2 }} />
-    </>
   );
 }
 
@@ -650,7 +601,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const gridProps = { slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
       {view === 'giorno' && (
@@ -679,8 +630,12 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
       )}
 
       {/* VIEWS */}
-      {view === 'giorno' && <GridView days={[new Date(selDay + 'T12:00')]} {...gridProps} onSwipeDay={navGiorno} features={features} />}
-      {view === 'settimana' && <GridView days={weekDays} {...gridProps} onSwipeDay={navSettimana} features={features} />}
+      {(view === 'giorno' || view === 'settimana') && (
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {view === 'giorno' && <GridView days={[new Date(selDay + 'T12:00')]} {...gridProps} onSwipeDay={navGiorno} features={features} />}
+          {view === 'settimana' && <GridView days={weekDays} {...gridProps} onSwipeDay={navSettimana} features={features} />}
+        </div>
+      )}
       {view === 'mese' && (() => {
         const K = vd.getFullYear(), mese = vd.getMonth();
         const primo = new Date(K, mese, 1).getDay();
