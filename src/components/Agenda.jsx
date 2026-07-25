@@ -296,6 +296,75 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   );
 }
 
+/* ── STRISCIA GIORNI stile iOS Calendar ──
+   Mostra Lun–Dom della settimana corrente, scrollabile in orizzontale a scatti di
+   settimana (scroll-snap) per cambiare settimana, con i giorni cliccabili per saltare
+   direttamente a quel giorno. Lo scroll da solo NON cambia il giorno selezionato
+   (come in iOS): serve solo a "sfogliare" le settimane finché non tocchi un giorno.
+   È un elemento statico (flexShrink: 0) fuori dal contenitore che scrolla verticalmente:
+   resta sempre visibile, solo la griglia oraria sotto scorre. */
+function DayStrip({ selDay, setSelDay, today: t }) {
+  const scrollRef = useRef(null);
+  const [stripBaseWeek, setStripBaseWeek] = useState(() => toISO(startOfWeek(selDay)));
+  const settleTimer = useRef(null);
+  const itemWidthRef = useRef(0);
+
+  useEffect(() => {
+    const wk = toISO(startOfWeek(selDay));
+    if (wk !== stripBaseWeek) setStripBaseWeek(wk);
+  }, [selDay]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const w = el.clientWidth;
+    itemWidthRef.current = w;
+    el.scrollLeft = w * 2;
+  }, [stripBaseWeek]);
+
+  const windowStart = new Date(stripBaseWeek + 'T12:00');
+  windowStart.setDate(windowStart.getDate() - 14);
+  const weeks = Array.from({ length: 5 }, (_, wi) => {
+    const ws = new Date(windowStart);
+    ws.setDate(ws.getDate() + wi * 7);
+    return Array.from({ length: 7 }, (_, di) => { const d = new Date(ws); d.setDate(d.getDate() + di); return d; });
+  });
+
+  const onScroll = () => {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    settleTimer.current = setTimeout(() => {
+      const el = scrollRef.current;
+      if (!el || !itemWidthRef.current) return;
+      const idx = Math.round(el.scrollLeft / itemWidthRef.current);
+      if (idx !== 2) {
+        const nb = new Date(stripBaseWeek + 'T12:00');
+        nb.setDate(nb.getDate() + (idx - 2) * 7);
+        setStripBaseWeek(toISO(nb));
+      }
+    }, 120);
+  };
+
+  return (
+    <div ref={scrollRef} onScroll={onScroll} style={{ display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch', marginBottom: 8, borderRadius: 12, background: C.sur, border: `1px solid ${C.brd}`, flexShrink: 0 }}>
+      {weeks.map((week, wi) => (
+        <div key={wi} style={{ flex: '0 0 100%', scrollSnapAlign: 'start', display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', padding: '8px 4px' }}>
+          {week.map((d, di) => {
+            const ds = toISO(d);
+            const isToday = ds === t;
+            const isSel = ds === selDay;
+            return (
+              <div key={di} onClick={() => setSelDay(ds)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', padding: '2px 0' }}>
+                <span style={{ fontSize: 9, fontWeight: 700, color: isToday ? C.pri : C.txl, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{WD_SHORT[d.getDay()]}</span>
+                <span style={{ fontSize: 15, fontWeight: 800, width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isSel ? C.pri : isToday ? C.priL : 'transparent', color: isSel ? '#fff' : isToday ? C.pri : C.txt }}>{d.getDate()}</span>
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Agenda({ patients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni, setImpegni, si, setStudioInfo }) {
   const tipiList = appTypes?.length ? appTypes : DEF_APP_TYPES;
 
@@ -533,32 +602,29 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const gridProps = { slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, appPosition, apriNuovo, apriEdit, apriWA, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, onSwipeDay: navGiorno };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 130px)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 130px)', overflow: 'hidden' }}>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
-      {/* HEADER */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexShrink: 0 }}>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
-          {view === 'giorno' && <>
-            <button onClick={() => navGiorno(-1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>‹</button>
-            <span style={{ fontWeight: 700, fontSize: 13, minWidth: 120 }}>{fmtD(selDay)}</span>
-            <button onClick={() => navGiorno(1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>›</button>
-            {selDay !== t && <button onClick={() => setSelDay(t)} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>}
-          </>}
-          {view === 'settimana' && <>
-            <button onClick={() => navSettimana(-1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>‹</button>
-            <span style={{ fontWeight: 700, fontSize: 12 }}>{weekDays[0].getDate()} {MESI[weekDays[0].getMonth()].slice(0,3)} – {weekDays[weekDays.length - 1].getDate()} {MESI[weekDays[weekDays.length - 1].getMonth()].slice(0,3)}</span>
-            <button onClick={() => navSettimana(1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>›</button>
-            <button onClick={() => setSelDay(t)} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
-          </>}
-          {view === 'mese' && <>
-            <button onClick={() => navMese(-1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>‹</button>
-            <span style={{ fontWeight: 700, fontSize: 12 }}>{MESI[vd.getMonth()]} {vd.getFullYear()}</span>
-            <button onClick={() => navMese(1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>›</button>
-            <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
-          </>}
+      {view === 'giorno' ? (
+        <DayStrip selDay={selDay} setSelDay={setSelDay} today={t} />
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexShrink: 0 }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+            {view === 'settimana' && <>
+              <button onClick={() => navSettimana(-1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>‹</button>
+              <span style={{ fontWeight: 700, fontSize: 12 }}>{weekDays[0].getDate()} {MESI[weekDays[0].getMonth()].slice(0,3)} – {weekDays[weekDays.length - 1].getDate()} {MESI[weekDays[weekDays.length - 1].getMonth()].slice(0,3)}</span>
+              <button onClick={() => navSettimana(1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>›</button>
+              <button onClick={() => setSelDay(t)} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
+            </>}
+            {view === 'mese' && <>
+              <button onClick={() => navMese(-1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>‹</button>
+              <span style={{ fontWeight: 700, fontSize: 12 }}>{MESI[vd.getMonth()]} {vd.getFullYear()}</span>
+              <button onClick={() => navMese(1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>›</button>
+              <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
+            </>}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* TAB SWITCHER */}
       <div style={{ display: 'flex', background: C.bg, borderRadius: 9, border: `1px solid ${C.brd}`, marginBottom: 10, overflow: 'hidden', flexShrink: 0 }}>
@@ -857,7 +923,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
       {/* PULSANTE FLOTTANTE "Nuovo" — apre un piccolo popup per scegliere Appuntamento o Impegno,
           stile iOS. Sostituisce i due pulsanti "+ Impegno"/"+ Nuovo" che stavano nell'header,
           per lasciare più spazio verticale alla griglia in vista Giorno su mobile. */}
-      <div style={{ position: 'fixed', right: 18, bottom: isMobile ? 100 : 88, zIndex: 140 }}>
+      <div style={{ position: 'fixed', right: 16, bottom: isMobile ? 172 : 150, zIndex: 140 }}>
         {fabOpen && <div onClick={() => setFabOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: -1 }} />}
         {fabOpen && (
           <div style={{ position: 'absolute', bottom: 62, right: 0, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
