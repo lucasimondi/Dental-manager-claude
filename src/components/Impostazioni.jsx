@@ -21,7 +21,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
   // Tabella separata (whatsapp_config), non fa parte di studioInfo: si legge/scrive
   // direttamente, protetta dalla stessa RLS studio-scoped di tutto il resto.
   const [waConfig, setWaConfig] = useState(null); // riga esistente (null finché non caricata/creata)
-  const [waForm, setWaForm] = useState({ phone_number_id: '', waba_id: '', access_token: '', app_secret: '', verify_token: '', attivo: true });
+  const [waForm, setWaForm] = useState({ phone_number_id: '', waba_id: '', attivo: true });
   const [waLoading, setWaLoading] = useState(true);
   const [waSaving, setWaSaving] = useState(false);
   const [waMsg, setWaMsg] = useState('');
@@ -41,9 +41,6 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
         setWaForm({
           phone_number_id: data.phone_number_id || '',
           waba_id: data.waba_id || '',
-          access_token: data.access_token || '',
-          app_secret: data.app_secret || '',
-          verify_token: data.verify_token || '',
           attivo: data.attivo !== false,
         });
       }
@@ -55,8 +52,8 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
   const WF = (f) => setWaForm((p) => ({ ...p, ...f }));
 
   const saveWaConfig = async () => {
-    if (!waForm.phone_number_id || !waForm.access_token || !waForm.app_secret || !waForm.verify_token) {
-      setWaMsg('Compila almeno Phone Number ID, Access Token, App Secret e Verify Token.');
+    if (!waForm.phone_number_id) {
+      setWaMsg('Serve almeno il Phone Number ID (te lo dà Meta quando aggiunge il numero dello studio alla App).');
       return;
     }
     setWaSaving(true);
@@ -327,7 +324,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           <>
             {!waConfig && (
               <div style={{ background: C.priL, borderRadius: 9, padding: '9px 12px', marginBottom: 14, fontSize: 12, color: C.pri }}>
-                Non ancora configurato. Trovi Phone Number ID, Access Token e App Secret nel pannello Meta Business → WhatsApp → Erogazione API. Il Verify Token te lo inventi tu (una stringa a caso), serve solo per collegare il webhook.
+                Non ancora configurato. Il Phone Number ID te lo dà chi gestisce l'attivazione (assistenza DentalManager) quando aggiunge il numero del tuo studio.
               </div>
             )}
             {waConfig && (
@@ -342,21 +339,12 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
             <Fld label="WABA ID (opzionale)">
               <Inp value={waForm.waba_id} onChange={(e) => WF({ waba_id: e.target.value })} placeholder="ID del WhatsApp Business Account" />
             </Fld>
-            <Fld label="Access Token">
-              <Inp type="password" value={waForm.access_token} onChange={(e) => WF({ access_token: e.target.value })} placeholder="Token permanente da Meta Business" />
-            </Fld>
-            <Fld label="App Secret">
-              <Inp type="password" value={waForm.app_secret} onChange={(e) => WF({ app_secret: e.target.value })} placeholder="Serve per verificare i messaggi in arrivo" />
-            </Fld>
-            <Fld label="Verify Token">
-              <Inp type="password" value={waForm.verify_token} onChange={(e) => WF({ verify_token: e.target.value })} placeholder="Una stringa a scelta tua" />
-            </Fld>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, cursor: 'pointer' }}>
               <input type="checkbox" checked={waForm.attivo} onChange={(e) => WF({ attivo: e.target.checked })} />
               <span style={{ fontSize: 12.5, fontWeight: 600, color: C.txm }}>Attivo — se spento, l'assistente smette di rispondere su questo numero</span>
             </label>
             {waMsg && <div style={{ fontSize: 12, color: waMsg.startsWith('Errore') ? C.dan : C.suc, marginBottom: 10, fontWeight: 700 }}>{waMsg}</div>}
-            <Btn ch={waSaving ? 'Salvataggio…' : '💾 Salva credenziali WhatsApp'} onClick={saveWaConfig} dis={waSaving} full />
+            <Btn ch={waSaving ? 'Salvataggio…' : '💾 Salva'} onClick={saveWaConfig} dis={waSaving} full />
             {waConfig && (
               <div style={{ fontSize: 11, color: C.txl, marginTop: 10, wordBreak: 'break-all' }}>
                 URL webhook da incollare nel pannello Meta:<br />
