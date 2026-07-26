@@ -343,22 +343,28 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
         <span style={{ fontSize: 13, fontWeight: 800, color: C.txt, textTransform: 'capitalize' }}>{meseLabel}</span>
         {viewPicker}
       </div>
-      <div ref={scrollRef} onScroll={onScroll} style={{ display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch', marginBottom: 8, borderRadius: 12, background: C.sur, border: `1px solid ${C.brd}` }}>
-        {weeks.map((week, wi) => (
-          <div key={wi} style={{ flex: '0 0 100%', scrollSnapAlign: 'start', display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', padding: '8px 4px' }}>
-            {week.map((d, di) => {
-              const ds = toISO(d);
-              const isToday = ds === t;
-              const isSel = highlightSelected && ds === selDay;
-              return (
-                <div key={di} onClick={() => setSelDay(ds)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', padding: '2px 0' }}>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: isToday ? C.pri : C.txl, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{WD_SHORT[d.getDay()]}</span>
-                  <span style={{ fontSize: 15, fontWeight: 800, width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isSel ? C.pri : isToday ? C.priL : 'transparent', color: isSel ? '#fff' : isToday ? C.pri : C.txt }}>{d.getDate()}</span>
-                </div>
-              );
-            })}
-          </div>
-        ))}
+      {/* Gutter da 46px, identico alla colonna ore della griglia sotto: senza, le colonne di
+          questa striscia non coinciderebbero con quelle della griglia (uno sfasamento che
+          confonde su quale giorno si sta guardando). */}
+      <div style={{ display: 'flex', marginBottom: 8, borderRadius: 12, background: C.sur, border: `1px solid ${C.brd}`, overflow: 'hidden' }}>
+        <div style={{ width: 46, flexShrink: 0, borderRight: `1px solid ${C.brd}` }} />
+        <div ref={scrollRef} onScroll={onScroll} style={{ flex: 1, minWidth: 0, display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
+          {weeks.map((week, wi) => (
+            <div key={wi} style={{ flex: '0 0 100%', scrollSnapAlign: 'start', display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', padding: '8px 4px' }}>
+              {week.map((d, di) => {
+                const ds = toISO(d);
+                const isToday = ds === t;
+                const isSel = highlightSelected && ds === selDay;
+                return (
+                  <div key={di} onClick={() => setSelDay(ds)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', padding: '2px 0' }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: isToday ? C.pri : C.txl, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{WD_SHORT[d.getDay()]}</span>
+                    <span style={{ fontSize: 15, fontWeight: 800, width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isSel ? C.pri : isToday ? C.priL : 'transparent', color: isSel ? '#fff' : isToday ? C.pri : C.txt }}>{d.getDate()}</span>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
