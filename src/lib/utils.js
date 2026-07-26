@@ -249,9 +249,9 @@ export const COLORI_DISPONIBILI = [
    Default per piano; ogni studio può avere override individuali (feature_overrides
    su Supabase, impostabili dalla Dashboard Master) che sovrascrivono questi default. */
 export const PIANI_FEATURES_DEFAULT = {
-  base: { whatsapp: false, documenti: false, spese: false, custom_branding: false, max_pazienti: 50, max_utenti: 1, assistente_ai: 'off' },
-  pro: { whatsapp: true, documenti: true, spese: true, custom_branding: false, max_pazienti: null, max_utenti: 3, assistente_ai: 'off' },
-  premium: { whatsapp: true, documenti: true, spese: true, custom_branding: true, max_pazienti: null, max_utenti: null, assistente_ai: 'off' },
+  base: { whatsapp: false, whatsapp_automatico: false, documenti: false, spese: false, custom_branding: false, max_pazienti: 50, max_utenti: 1, assistente_ai: 'off' },
+  pro: { whatsapp: true, whatsapp_automatico: false, documenti: true, spese: true, custom_branding: false, max_pazienti: null, max_utenti: 3, assistente_ai: 'off' },
+  premium: { whatsapp: true, whatsapp_automatico: false, documenti: true, spese: true, custom_branding: true, max_pazienti: null, max_utenti: null, assistente_ai: 'off' },
 };
 
 // Livelli dell'assistente AI, dal più limitato al più completo.
@@ -263,7 +263,8 @@ export const ASSISTENTE_AI_LIVELLI = [
 ];
 
 export const FEATURE_TOGGLES = [
-  { id: 'whatsapp', label: 'WhatsApp' },
+  { id: 'whatsapp', label: 'WhatsApp (manuale)' },
+  { id: 'whatsapp_automatico', label: 'WhatsApp Automatico (AI + promemoria)' },
   { id: 'documenti', label: 'Documenti medici/fiscali' },
   { id: 'spese', label: 'Spese studio' },
   { id: 'custom_branding', label: 'Branding personalizzato' },
