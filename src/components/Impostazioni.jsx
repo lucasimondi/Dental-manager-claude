@@ -312,7 +312,16 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
         <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Credenziali per i promemoria automatici e l'assistente AI su WhatsApp</div>
       </div>
       <Crd style={{ marginBottom: 14 }}>
-        {waLoading ? (
+        {!features?.whatsapp_automatico ? (
+          <div style={{ textAlign: 'center', padding: '20px 10px' }}>
+            <div style={{ fontSize: 28, marginBottom: 8 }}>🔒</div>
+            <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 4 }}>Non incluso nel tuo piano</div>
+            <div style={{ fontSize: 12.5, color: C.txm, lineHeight: 1.5 }}>
+              Promemoria automatici e assistente AI su WhatsApp sono un modulo a parte rispetto
+              al WhatsApp manuale già incluso. Contatta l'assistenza per attivarlo sul tuo studio.
+            </div>
+          </div>
+        ) : waLoading ? (
           <div style={{ fontSize: 13, color: C.txl, padding: '8px 0' }}>Caricamento…</div>
         ) : (
           <>
