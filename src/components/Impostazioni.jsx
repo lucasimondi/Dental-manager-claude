@@ -1,8 +1,9 @@
 ﻿import ProfiloUtente from './ProfiloUtente.jsx';
 import GestioneUtenti from './GestioneUtenti.jsx';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Ic, DockIc, DOCK_ICON_STYLES } from './ui';
 import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI, DEF_DOCK_SETTINGS, DEF_AGENDA_SETTINGS } from '../lib/utils';
+import { supabase } from '../lib/supabase';
 
 const GIORNI_SETTIMANA = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 
@@ -15,6 +16,60 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
   const agSet = { ...DEF_AGENDA_SETTINGS, ...(si.agenda_settings || {}) };
   const SA = (f) => S({ agenda_settings: { ...agSet, ...f } });
   const save = () => { setStudioInfo(si); setToast('Salvato ✓'); };
+
+  // ── WhatsApp Business (automazione) ──
+  // Tabella separata (whatsapp_config), non fa parte di studioInfo: si legge/scrive
+  // direttamente, protetta dalla stessa RLS studio-scoped di tutto il resto.
+  const [waConfig, setWaConfig] = useState(null); // riga esistente (null finché non caricata/creata)
+  const [waForm, setWaForm] = useState({ phone_number_id: '', waba_id: '', access_token: '', app_secret: '', verify_token: '', attivo: true });
+  const [waLoading, setWaLoading] = useState(true);
+  const [waSaving, setWaSaving] = useState(false);
+  const [waMsg, setWaMsg] = useState('');
+
+  useEffect(() => {
+    let annullato = false;
+    (async () => {
+      if (!si.studio_id) { setWaLoading(false); return; }
+      const { data, error } = await supabase
+        .from('whatsapp_config')
+        .select('*')
+        .eq('studio_id', si.studio_id)
+        .maybeSingle();
+      if (annullato) return;
+      if (!error && data) {
+        setWaConfig(data);
+        setWaForm({
+          phone_number_id: data.phone_number_id || '',
+          waba_id: data.waba_id || '',
+          access_token: data.access_token || '',
+          app_secret: data.app_secret || '',
+          verify_token: data.verify_token || '',
+          attivo: data.attivo !== false,
+        });
+      }
+      setWaLoading(false);
+    })();
+    return () => { annullato = true; };
+  }, [si.studio_id]);
+
+  const WF = (f) => setWaForm((p) => ({ ...p, ...f }));
+
+  const saveWaConfig = async () => {
+    if (!waForm.phone_number_id || !waForm.access_token || !waForm.app_secret || !waForm.verify_token) {
+      setWaMsg('Compila almeno Phone Number ID, Access Token, App Secret e Verify Token.');
+      return;
+    }
+    setWaSaving(true);
+    setWaMsg('');
+    const payload = { ...waForm, studio_id: si.studio_id };
+    const { data, error } = waConfig
+      ? await supabase.from('whatsapp_config').update(payload).eq('id', waConfig.id).select().single()
+      : await supabase.from('whatsapp_config').insert(payload).select().single();
+    setWaSaving(false);
+    if (error) { setWaMsg('Errore: ' + error.message); return; }
+    setWaConfig(data);
+    setWaMsg('Salvato ✓');
+  };
 
   const openNewTipo = () => { setTipoForm({ nome: '', colore: COLORI_DISPONIBILI[Math.floor(Math.random() * COLORI_DISPONIBILI.length)] }); setTipoModal('new'); };
   const openEditTipo = (t) => { setTipoForm({ ...t }); setTipoModal(t.id); };
@@ -251,6 +306,57 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
         <div style={{ fontSize: 11, color: C.txl, marginTop: 2 }}>"Vivid" è lo stile consigliato — icone a duotono, più riconoscibili al tocco.</div>
       </Crd>
       <Btn ch="💾 Salva impostazioni" onClick={save} full sz="lg" />
+
+      <div style={{ marginTop: 26, marginBottom: 14 }}>
+        <div style={{ fontSize: 20, fontWeight: 800 }}>WhatsApp Business — Automazione</div>
+        <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Credenziali per i promemoria automatici e l'assistente AI su WhatsApp</div>
+      </div>
+      <Crd style={{ marginBottom: 14 }}>
+        {waLoading ? (
+          <div style={{ fontSize: 13, color: C.txl, padding: '8px 0' }}>Caricamento…</div>
+        ) : (
+          <>
+            {!waConfig && (
+              <div style={{ background: C.priL, borderRadius: 9, padding: '9px 12px', marginBottom: 14, fontSize: 12, color: C.pri }}>
+                Non ancora configurato. Trovi Phone Number ID, Access Token e App Secret nel pannello Meta Business → WhatsApp → Erogazione API. Il Verify Token te lo inventi tu (una stringa a caso), serve solo per collegare il webhook.
+              </div>
+            )}
+            {waConfig && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: waForm.attivo ? '#E8F5E9' : C.bg, borderRadius: 9, padding: '9px 12px', marginBottom: 14 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: waForm.attivo ? '#2E7D32' : C.txl, flexShrink: 0 }} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: waForm.attivo ? '#2E7D32' : C.txm }}>{waForm.attivo ? 'Configurato e attivo' : 'Configurato ma disattivato'}</span>
+              </div>
+            )}
+            <Fld label="Phone Number ID">
+              <Inp value={waForm.phone_number_id} onChange={(e) => WF({ phone_number_id: e.target.value })} placeholder="es. 109876543210987" />
+            </Fld>
+            <Fld label="WABA ID (opzionale)">
+              <Inp value={waForm.waba_id} onChange={(e) => WF({ waba_id: e.target.value })} placeholder="ID del WhatsApp Business Account" />
+            </Fld>
+            <Fld label="Access Token">
+              <Inp type="password" value={waForm.access_token} onChange={(e) => WF({ access_token: e.target.value })} placeholder="Token permanente da Meta Business" />
+            </Fld>
+            <Fld label="App Secret">
+              <Inp type="password" value={waForm.app_secret} onChange={(e) => WF({ app_secret: e.target.value })} placeholder="Serve per verificare i messaggi in arrivo" />
+            </Fld>
+            <Fld label="Verify Token">
+              <Inp type="password" value={waForm.verify_token} onChange={(e) => WF({ verify_token: e.target.value })} placeholder="Una stringa a scelta tua" />
+            </Fld>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, cursor: 'pointer' }}>
+              <input type="checkbox" checked={waForm.attivo} onChange={(e) => WF({ attivo: e.target.checked })} />
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: C.txm }}>Attivo — se spento, l'assistente smette di rispondere su questo numero</span>
+            </label>
+            {waMsg && <div style={{ fontSize: 12, color: waMsg.startsWith('Errore') ? C.dan : C.suc, marginBottom: 10, fontWeight: 700 }}>{waMsg}</div>}
+            <Btn ch={waSaving ? 'Salvataggio…' : '💾 Salva credenziali WhatsApp'} onClick={saveWaConfig} dis={waSaving} full />
+            {waConfig && (
+              <div style={{ fontSize: 11, color: C.txl, marginTop: 10, wordBreak: 'break-all' }}>
+                URL webhook da incollare nel pannello Meta:<br />
+                <code style={{ fontSize: 10.5 }}>https://idklxdqebfceplrualgh.supabase.co/functions/v1/whatsapp-webhook</code>
+              </div>
+            )}
+          </>
+        )}
+      </Crd>
 
       {tipoModal && (
         <Modal title={tipoModal === 'new' ? 'Nuovo tipo appuntamento' : 'Modifica tipo'} onClose={() => setTipoModal(null)}>
