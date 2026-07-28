@@ -766,7 +766,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
               <button onClick={() => setDocMedico(true)} style={{ background: C.priL, border: `1.5px solid ${C.pri}`, borderRadius: 12, padding: 16, cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ background: C.pri, borderRadius: 8, padding: 8 }}><Ic n="plan" s={20} c="#fff" /></div>
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: 14, color: C.pri }}>Ricetta / Certificato / Lettera</div>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: C.pri }}>Ricetta / Certificato / Lettera / Protocollo</div>
                   <div style={{ fontSize: 11, color: C.txm, marginTop: 2 }}>Genera documenti medici in PDF</div>
                 </div>
               </button>

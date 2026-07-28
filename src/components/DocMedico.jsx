@@ -8,6 +8,68 @@ const TIPI = [
   { id: 'ricetta', label: '💊 Ricetta medica', desc: 'Prescrizione farmaci e posologia' },
   { id: 'certificato', label: '📋 Certificato di visita', desc: 'Certificato attestante la visita effettuata' },
   { id: 'lettera', label: '✉️ Lettera per specialista', desc: 'Referral / lettera di consulenza' },
+  { id: 'protocollo', label: '📖 Protocollo post-trattamento', desc: 'Istruzioni da consegnare al paziente' },
+];
+
+// Protocolli predefiniti — punto di partenza, ogni testo resta liberamente
+// modificabile prima della generazione del PDF. Se in futuro si vuole
+// salvare la personalizzazione per studio, questi possono migrare nella
+// tabella `templates` (stesso pattern dei template WhatsApp) con una
+// colonna `tipo = 'protocollo'` e `studio_id` per l'isolamento multi-tenant.
+const PROTOCOLLI_PREDEFINITI = [
+  {
+    id: 'post_chirurgia',
+    label: 'Post-chirurgia orale',
+    testo: `Nelle prime 2 ore dopo l'intervento tenere una garza in leggera pressione sulla zona trattata e non sciacquare la bocca.
+
+Applicare ghiaccio esternamente sulla guancia (20 minuti sì, 20 minuti no) nelle prime 24-48 ore per limitare il gonfiore.
+
+Alimentazione morbida e fredda/tiepida nelle prime 24 ore (evitare cibi caldi, duri o croccanti). Evitare alcolici e fumo per almeno 48-72 ore.
+
+Non sciacquare né sputare con forza nelle prime 24 ore per non rimuovere il coagulo. Dal giorno successivo, sciacqui delicati con collutorio a base di clorexidina come indicato.
+
+Assumere la terapia farmacologica prescritta rispettando gli orari. In caso di sanguinamento persistente, gonfiore in aumento dopo 3 giorni, febbre o dolore non controllato dai farmaci, contattare immediatamente lo studio.
+
+Evitare sforzi fisici intensi nelle prime 48 ore.`,
+  },
+  {
+    id: 'post_implantologia',
+    label: 'Post-implantologia',
+    testo: `Nelle prime ore dopo l'inserimento dell'impianto è normale un lieve sanguinamento e gonfiore della zona: tenere una garza in leggera pressione se necessario.
+
+Applicare ghiaccio esternamente sulla guancia (20 minuti sì, 20 minuti no) nelle prime 24-48 ore.
+
+Alimentazione morbida per i primi giorni, masticando dal lato opposto a quello trattato. Evitare cibi duri, croccanti o molto caldi nella zona dell'impianto per almeno 1-2 settimane.
+
+Mantenere un'igiene orale accurata ma delicata attorno alla zona trattata; evitare lo spazzolamento diretto sull'impianto nei primi giorni, usando invece i risciacqui indicati.
+
+Evitare fumo e alcolici, che rallentano l'osteointegrazione. Evitare sforzi fisici intensi e variazioni brusche di pressione (voli aerei, immersioni) nei giorni indicati dal medico.
+
+Assumere la terapia antibiotica e antinfiammatoria come prescritto, rispettando l'intero ciclo anche se il sintomo scompare prima.
+
+Contattare lo studio in caso di dolore in aumento, gonfiore persistente oltre 4-5 giorni, febbre o mobilità della vite di guarigione.
+
+I controlli successivi sono fondamentali per monitorare la corretta integrazione dell'impianto: non saltare gli appuntamenti di richiamo.`,
+  },
+  {
+    id: 'ortodonzia_invisibile',
+    label: 'Ortodonzia invisibile (allineatori)',
+    testo: `Indossare gli allineatori per almeno 20-22 ore al giorno, rimuovendoli solo per mangiare, bere bevande diverse dall'acqua e per l'igiene orale.
+
+Cambiare l'allineatore secondo la cadenza indicata dal medico (generalmente ogni 7-14 giorni), seguendo l'ordine numerico della sequenza consegnata.
+
+Lavare i denti e passare il filo interdentale dopo ogni pasto prima di reinserire l'allineatore, per evitare accumulo di placca e macchie.
+
+Pulire l'allineatore quotidianamente con acqua tiepida (mai calda) e uno spazzolino morbido dedicato, senza dentifricio abrasivo che potrebbe opacizzarlo.
+
+Conservare sempre l'allineatore precedente fino alla consegna del successivo controllo, e portare con sé l'astuccio per non perderlo o danneggiarlo quando non è in bocca.
+
+È normale avvertire una lieve pressione o fastidio nei primi giorni di ogni nuovo allineatore: è segno che sta esercitando la forza correttiva prevista.
+
+Rispettare gli appuntamenti di controllo periodici concordati, necessari per monitorare l'avanzamento del piano e consegnare i set successivi.
+
+In caso di allineatore rotto, perso o che non calza più correttamente, contattare lo studio prima di procedere al successivo per non compromettere il piano di trattamento.`,
+  },
 ];
 
 export default function DocMedico({ paz, si, onClose }) {
@@ -50,6 +112,18 @@ export default function DocMedico({ paz, si, onClose }) {
   const [anamnesi, setAnamnesi] = useState('');
   const [diagnosi, setDiagnosi] = useState('');
   const [richiesta, setRichiesta] = useState('');
+
+  // Protocollo
+  const [protocolloId, setProtocolloId] = useState(PROTOCOLLI_PREDEFINITI[0].id);
+  const [titoloProtocollo, setTitoloProtocollo] = useState(PROTOCOLLI_PREDEFINITI[0].label);
+  const [testoProtocollo, setTestoProtocollo] = useState(PROTOCOLLI_PREDEFINITI[0].testo);
+  const selezionaProtocollo = (id) => {
+    const p = PROTOCOLLI_PREDEFINITI.find(x => x.id === id);
+    if (!p) return;
+    setProtocolloId(id);
+    setTitoloProtocollo(p.label);
+    setTestoProtocollo(p.testo);
+  };
 
   const addFarmaco = () => setFarmaci(f => [...f, { farmaco: '', posologia: '', durata: '' }]);
   const updFarmaco = (i, field, val) => setFarmaci(f => f.map((x, j) => j === i ? { ...x, [field]: val } : x));
@@ -356,11 +430,58 @@ export default function DocMedico({ paz, si, onClose }) {
     setGenerated(true);
   };
 
+  const generaProtocollo = () => {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const W = 210, M = 18;
+    let y = intestazione(doc, W, M);
+
+    doc.setFillColor(26, 107, 138);
+    doc.rect(M, y, W - M * 2, 9, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(255, 255, 255);
+    doc.text(`PROTOCOLLO: ${titoloProtocollo}`.toUpperCase(), W / 2, y + 6, { align: 'center', maxWidth: W - M * 2 - 10 });
+    y += 13;
+
+    y = pazienteBox(doc, paz, y, W, M);
+    y += 8;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10.5);
+    doc.setTextColor(26, 32, 44);
+
+    const paragrafi = testoProtocollo.split('\n').filter(p => p.trim() !== '');
+    paragrafi.forEach((p) => {
+      const lines = doc.splitTextToSize(p, W - M * 2);
+      if (y + lines.length * 5.5 > 235) { doc.addPage(); y = 20; }
+      doc.text(lines, M, y);
+      y += lines.length * 5.5 + 5;
+    });
+
+    y += 3;
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8.5);
+    doc.setTextColor(130, 130, 130);
+    if (y > 240) { doc.addPage(); y = 20; }
+    doc.text('Per qualsiasi dubbio o sintomo non descritto sopra, non esiti a contattare lo studio.', M, y);
+
+    footer(doc, W, M);
+    const blob = doc.output('blob');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `protocollo_${protocolloId}_${paz.cognome}_${data}.pdf`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    setGenerated(true);
+  };
+
   const genera = () => {
     setGenerated(false);
     if (tipo === 'ricetta') generaRicetta();
     else if (tipo === 'certificato') generaCertificato();
-    else generaLettera();
+    else if (tipo === 'lettera') generaLettera();
+    else generaProtocollo();
   };
 
   return (
@@ -457,6 +578,25 @@ export default function DocMedico({ paz, si, onClose }) {
             <Fld label="Si richiede">
               <textarea value={richiesta} onChange={e => setRichiesta(e.target.value)} rows={2} placeholder="es. Valutazione per intervento chirurgico e piano di trattamento..." style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${C.brd}`, borderRadius: 10, fontSize: 13, color: C.txt, background: C.sur, boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }} />
             </Fld>
+          </Crd>
+        )}
+
+        {/* ── PROTOCOLLO POST-TRATTAMENTO ── */}
+        {tipo === 'protocollo' && (
+          <Crd style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10 }}>📖 Protocollo</div>
+            <Fld label="Protocollo predefinito">
+              <Sel value={protocolloId} onChange={e => selezionaProtocollo(e.target.value)}>
+                {PROTOCOLLI_PREDEFINITI.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+              </Sel>
+            </Fld>
+            <Fld label="Titolo documento">
+              <Inp value={titoloProtocollo} onChange={e => setTitoloProtocollo(e.target.value)} placeholder="es. Post-chirurgia orale" />
+            </Fld>
+            <Fld label="Testo istruzioni (modificabile)">
+              <textarea value={testoProtocollo} onChange={e => setTestoProtocollo(e.target.value)} rows={14} style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${C.brd}`, borderRadius: 10, fontSize: 13, color: C.txt, background: C.sur, boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} />
+            </Fld>
+            <div style={{ fontSize: 11, color: C.txm, marginTop: 4 }}>Ogni paragrafo va su una riga separata (righe vuote per andare a capo nel PDF).</div>
           </Crd>
         )}
 
