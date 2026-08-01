@@ -589,21 +589,37 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
     if (tpl) setWaMassMsg(tpl.testo);
   };
 
-  const inviaWAMassivo = () => {
+  // I browser bloccano l'apertura automatica di più finestre in sequenza (solo il click diretto
+  // dell'utente sblocca un popup) — quindi teniamo una coda e apriamo un messaggio alla volta,
+  // ciascuno con un tap esplicito su "Prossimo".
+  const [waQueue, setWaQueue] = useState(null); // { items: [{paziente, msg}], idx } oppure null
+
+  const costruisciCodaWA = () => {
     const selezionati = appointments.filter(a => selAppIds.includes(a.id));
-    selezionati.forEach((a, i) => {
+    const items = selezionati.map(a => {
       const p = patients.find(x => x.id === a.pazienteId);
-      if (!p?.telefono) return;
       const msg = waMassMsg
-        .replace(/{nome}/g, `${p.nome} ${p.cognome}`)
-        .replace(/{data}/g, fmtD(a.data)).replace(/{ora}/g, a.ora).replace(/{tipo}/g, a.tipo)
-        .replace(/{totale}/g, '').replace(/{voci}/g, '');
-      setTimeout(() => apriWaDiretto(p.telefono, msg), i * 350);
-    });
-    setToast(`Invio avviato per ${selezionati.length} pazient${selezionati.length === 1 ? 'e' : 'i'} ✓`);
+        .replace(/{nome}/g, p ? `${p.nome} ${p.cognome}` : '')
+        .replace(/{data}/g, fmtD(a.data)).replace(/{ora}/g, a.ora).replace(/{tipo}/g, a.tipo);
+      return { paziente: p, msg };
+    }).filter(it => it.paziente?.telefono);
+    return items;
+  };
+
+  const inviaWAMassivo = () => {
+    const items = costruisciCodaWA();
+    if (items.length === 0) return;
+    apriWaDiretto(items[0].paziente.telefono, items[0].msg); // il primo parte subito: è ancora nel click dell'utente
+    setWaQueue({ items, idx: 0 });
     setWaMassModal(false);
-    setSelModeWA(false);
-    setSelAppIds([]);
+  };
+
+  const prossimoWAMassivo = () => {
+    if (!waQueue) return;
+    const nextIdx = waQueue.idx + 1;
+    if (nextIdx >= waQueue.items.length) { setWaQueue(null); setSelModeWA(false); setSelAppIds([]); setToast('Invio completato ✓'); return; }
+    apriWaDiretto(waQueue.items[nextIdx].paziente.telefono, waQueue.items[nextIdx].msg);
+    setWaQueue({ ...waQueue, idx: nextIdx });
   };
 
   // Genera le date delle occorrenze ripetute (inclusa la prima), fino a ripetiFino incluso.
@@ -955,7 +971,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
             </Fld>
             <div style={{ fontSize: 10.5, color: C.txl, marginBottom: 8 }}>Segnaposto disponibili: {'{nome}'} {'{data}'} {'{ora}'} {'{tipo}'} — ogni paziente riceve il messaggio con i propri dati</div>
             <div style={{ background: '#FFF7E6', borderRadius: 8, padding: '8px 10px', fontSize: 11, color: '#946200', marginBottom: 8 }}>
-              ⚠️ Si apriranno {selezionati.length} finestre WhatsApp in sequenza, una per paziente: conferma l'invio in ciascuna.
+              ℹ️ Si apre WhatsApp per il primo paziente; dopo aver inviato, tocca "Prossimo" per passare al successivo — {selezionati.length} in totale.
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               <Btn ch="Annulla" v="sec" onClick={() => setWaMassModal(false)} full />
@@ -964,6 +980,29 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
           </Modal>
         );
       })()}
+
+      {/* Banner coda invio WhatsApp — resta visibile finché non hai passato in rassegna tutti i pazienti selezionati */}
+      {waQueue && (
+        <div style={{ position: 'fixed', left: 12, right: 12, bottom: 'calc(12px + env(safe-area-inset-bottom,0px))', zIndex: 9998, background: C.txt, borderRadius: 14, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>
+          <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#25D366', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Ic n="wa" s={15} c="#fff" />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ color: '#fff', fontWeight: 800, fontSize: 12.5 }}>{waQueue.idx + 1} di {waQueue.items.length} inviati</div>
+            <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 10.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {waQueue.idx + 1 < waQueue.items.length ? `Prossimo: ${waQueue.items[waQueue.idx + 1].paziente.nome} ${waQueue.items[waQueue.idx + 1].paziente.cognome}` : 'Ultimo inviato'}
+            </div>
+          </div>
+          <button onClick={() => { setWaQueue(null); setSelModeWA(false); setSelAppIds([]); }} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 11.5, cursor: 'pointer', padding: '8px 6px' }}>
+            Chiudi
+          </button>
+          {waQueue.idx + 1 < waQueue.items.length && (
+            <button onClick={prossimoWAMassivo} style={{ background: '#25D366', border: 'none', borderRadius: 9, padding: '9px 14px', color: '#fff', fontWeight: 800, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              Prossimo ({waQueue.idx + 2}/{waQueue.items.length})
+            </button>
+          )}
+        </div>
+      )}
 
       {/* MODAL NUOVO/MODIFICA */}
       {modal && (
