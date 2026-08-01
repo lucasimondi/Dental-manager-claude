@@ -46,11 +46,20 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   const [resizing, setResizing] = useState(null); // { id, startY, startDurata }
   const [moving, setMoving] = useState(null); // { id, startY, startOra }
   const movedRef = useRef(false); // distingue click da drag: true se il mouse si e' spostato oltre la soglia
+  const [waRevealId, setWaRevealId] = useState(null); // id dell'appuntamento con chip WA espanso (vista Settimana: tap per rivelare)
+  const isSettimana = days.length > 1; // colonne strette -> serve la modalità "puntino + reveal"
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
+
+  // Il chip WA rivelato in vista Settimana si richiude da solo dopo 3s se non viene toccato
+  useEffect(() => {
+    if (!waRevealId) return;
+    const timer = setTimeout(() => setWaRevealId(null), 3000);
+    return () => clearTimeout(timer);
+  }, [waRevealId]);
 
   useEffect(() => {
     // Scroll iniziale: vicino all'ora corrente se è dentro l'intervallo visibile, altrimenti in cima
@@ -225,8 +234,28 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                         {height > 32 && <div style={{ fontSize: 9, lineHeight: '10px', color: 'rgba(255,255,255,0.9)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.tipo}</div>}
                         {height > 48 && <div style={{ fontSize: 9, lineHeight: '10px', color: 'rgba(255,255,255,0.7)' }}>{a.durata} min</div>}
                       </div>
-                      {/* WA button */}
-                      <WaAction tel={p?.telefono} features={features} variant="chip" onClick={() => apriWA(a)} style={{ position: 'absolute', top: 2, right: 2, zIndex: 3 }} />
+                      {/* WA button — sotto una soglia minima l'appuntamento è troppo corto per ospitarlo senza coprire il testo: non lo mostriamo affatto. */}
+                      {height > 20 && (isSettimana ? (
+                        // Vista Settimana (colonne strette): di default solo un puntino minuscolo,
+                        // non intercetta il tap sull'appuntamento. Un tocco sul puntino rivela il
+                        // chip "WA" vero e proprio per un istante, così non copre mai il testo.
+                        waRevealId === a.id ? (
+                          <WaAction
+                            tel={p?.telefono} features={features} variant="chip"
+                            onClick={() => { apriWA(a); setWaRevealId(null); }}
+                            style={{ position: 'absolute', top: 2, right: 2, zIndex: 4 }}
+                          />
+                        ) : (
+                          <button
+                            onClick={e => { e.stopPropagation(); setWaRevealId(a.id); }}
+                            title="WhatsApp"
+                            style={{ position: 'absolute', top: 3, right: 3, zIndex: 3, width: 7, height: 7, borderRadius: '50%', background: '#25D366', border: '1px solid rgba(255,255,255,0.8)', padding: 0, cursor: 'pointer' }}
+                          />
+                        )
+                      ) : (
+                        // Vista Giorno (colonna larga): spazio a sufficienza, chip sempre visibile.
+                        <WaAction tel={p?.telefono} features={features} variant="chip" onClick={() => apriWA(a)} style={{ position: 'absolute', top: 2, right: 2, zIndex: 3 }} />
+                      ))}
                       {/* RESIZE HANDLE - nascosta sugli appuntamenti troppo brevi per contenerla senza sovrapporsi al testo */}
                       {height > 26 && <div
                         onMouseDown={e => { e.stopPropagation(); e.preventDefault(); setResizing({ id: a.id, startY: e.clientY, startDurata: Number(a.durata) }); }}
