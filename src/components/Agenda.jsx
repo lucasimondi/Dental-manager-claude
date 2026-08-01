@@ -762,7 +762,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexShrink: 0, flexWrap: 'wrap', rowGap: 6 }}>
           {!selModeWA ? (
             <button
-              onClick={() => { setSelModeWA(true); setSelAppIds(appVisibiliConTel.map(a => a.id)); }}
+              onClick={() => { setSelModeWA(true); setSelAppIds([]); }}
               disabled={appVisibiliConTel.length === 0}
               style={{ display: 'flex', alignItems: 'center', gap: 6, background: appVisibiliConTel.length === 0 ? C.bg : '#E6F9EE', border: 'none', borderRadius: 9, padding: '7px 12px', color: appVisibiliConTel.length === 0 ? C.txl : '#128C7E', fontWeight: 700, fontSize: 11.5, cursor: appVisibiliConTel.length === 0 ? 'not-allowed' : 'pointer' }}
             >
