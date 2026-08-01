@@ -249,6 +249,15 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
             <option value={60}>60 minuti</option>
           </Sel>
         </Fld>
+        <Fld label="Durata predefinita nuovo appuntamento">
+          <Sel value={agSet.durataDefault} onChange={(e) => SA({ durataDefault: Number(e.target.value) })}>
+            <option value={15}>15 minuti</option>
+            <option value={30}>30 minuti</option>
+            <option value={45}>45 minuti</option>
+            <option value={60}>60 minuti</option>
+            <option value={90}>90 minuti</option>
+          </Sel>
+        </Fld>
         <Fld label="Zoom griglia">
           <Sel value={agSet.zoom} onChange={(e) => SA({ zoom: Number(e.target.value) })}>
             <option value={0.6}>Compatto — vedo più ore insieme</option>

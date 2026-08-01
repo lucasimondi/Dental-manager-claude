@@ -319,4 +319,5 @@ export const DEF_AGENDA_SETTINGS = {
   oraFine: 20,
   slotMin: 30,
   zoom: 1,
+  durataDefault: 45,
 };
