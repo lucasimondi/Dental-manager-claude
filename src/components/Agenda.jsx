@@ -231,7 +231,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                         }}
                         style={{ padding: '2px 5px', cursor: selModeWA ? (isSelezionabileWA ? 'pointer' : 'not-allowed') : (isBeingMoved ? 'grabbing' : 'grab'), paddingBottom: height > 26 ? 9 : 2, touchAction: 'none' }}
                       >
-                        <div style={{ fontSize: 9, lineHeight: '10px', fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.ora} {p ? `${p.cognome}` : '—'}</div>
+                        <div style={{ fontSize: 9, lineHeight: '10px', fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.ora} {p ? `${p.nome} ${p.cognome}` : '—'}</div>
                         {height > 28 && <div style={{ fontSize: 8, lineHeight: '9px', color: 'rgba(255,255,255,0.9)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.tipo}</div>}
                         {height > 44 && <div style={{ fontSize: 8, lineHeight: '9px', color: 'rgba(255,255,255,0.7)' }}>{a.durata} min</div>}
                       </div>
@@ -344,7 +344,7 @@ function ViewPicker({ view, setView }) {
   );
 }
 
-function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected = true, viewPicker }) {
+function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected = true, viewPicker, hiddenWeekdays = [] }) {
   const scrollRef = useRef(null);
   const [stripBaseWeek, setStripBaseWeek] = useState(() => toISO(startOfWeek(selDay)));
   const settleTimer = useRef(null);
@@ -366,11 +366,18 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
 
   const windowStart = new Date(stripBaseWeek + 'T12:00');
   windowStart.setDate(windowStart.getDate() - 14);
-  const weeks = Array.from({ length: 5 }, (_, wi) => {
+  const weeksAll = Array.from({ length: 5 }, (_, wi) => {
     const ws = new Date(windowStart);
     ws.setDate(ws.getDate() + wi * 7);
     return Array.from({ length: 7 }, (_, di) => { const d = new Date(ws); d.setDate(d.getDate() + di); return d; });
   });
+  // Stessa regola della griglia sotto: filtra i giorni nascosti in Setup Agenda, ma non nasconde
+  // MAI tutti e 7 i giorni di una settimana (altrimenti la striscia sparirebbe del tutto).
+  const weeks = weeksAll.map(week => {
+    const filtrata = week.filter(d => !hiddenWeekdays.includes(d.getDay()));
+    return filtrata.length > 0 ? filtrata : week;
+  });
+  const nCol = weeks[0]?.length || 7;
 
   const onScroll = () => {
     if (settleTimer.current) clearTimeout(settleTimer.current);
@@ -410,7 +417,7 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
         <div style={{ width: 46, flexShrink: 0, borderRight: `1px solid ${C.brd}` }} />
         <div ref={scrollRef} onScroll={onScroll} style={{ flex: 1, minWidth: 0, display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
           {weeks.map((week, wi) => (
-            <div key={wi} style={{ flex: '0 0 100%', scrollSnapAlign: 'start', display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', padding: '8px 4px' }}>
+            <div key={wi} style={{ flex: '0 0 100%', scrollSnapAlign: 'start', display: 'grid', gridTemplateColumns: `repeat(${nCol},1fr)`, padding: '8px 4px' }}>
               {week.map((d, di) => {
                 const ds = toISO(d);
                 const isToday = ds === t;
@@ -725,7 +732,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
       {view === 'giorno' && (
-        <DayStrip selDay={selDay} setSelDay={setSelDay} today={t} viewPicker={<ViewPicker view={view} setView={setView} />} />
+        <DayStrip selDay={selDay} setSelDay={setSelDay} today={t} viewPicker={<ViewPicker view={view} setView={setView} />} hiddenWeekdays={hiddenWeekdays} />
       )}
       {view === 'settimana' && (
         <DayStrip
@@ -735,6 +742,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
           highlightSelected={false}
           onWeekChange={(wk) => setSelDay(wk)}
           viewPicker={<ViewPicker view={view} setView={setView} />}
+          hiddenWeekdays={hiddenWeekdays}
         />
       )}
       {view === 'mese' && (
@@ -751,10 +759,10 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
 
       {/* Toolbar invio WhatsApp di massa — solo vista Giorno/Settimana, dove ha senso "tutti gli appuntamenti visibili" */}
       {(view === 'giorno' || view === 'settimana') && waAbilitato(features) && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexShrink: 0, flexWrap: 'wrap', rowGap: 6 }}>
           {!selModeWA ? (
             <button
-              onClick={() => { setSelModeWA(true); setSelAppIds([]); }}
+              onClick={() => { setSelModeWA(true); setSelAppIds(appVisibiliConTel.map(a => a.id)); }}
               disabled={appVisibiliConTel.length === 0}
               style={{ display: 'flex', alignItems: 'center', gap: 6, background: appVisibiliConTel.length === 0 ? C.bg : '#E6F9EE', border: 'none', borderRadius: 9, padding: '7px 12px', color: appVisibiliConTel.length === 0 ? C.txl : '#128C7E', fontWeight: 700, fontSize: 11.5, cursor: appVisibiliConTel.length === 0 ? 'not-allowed' : 'pointer' }}
             >
@@ -769,7 +777,8 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
               >
                 {selAppIds.length === appVisibiliConTel.length ? 'Deseleziona tutti' : `Seleziona tutti (${appVisibiliConTel.length})`}
               </button>
-              <div style={{ flex: 1, fontSize: 11.5, color: C.txm, fontWeight: 700 }}>{selAppIds.length} selezionat{selAppIds.length === 1 ? 'o' : 'i'}</div>
+              <div style={{ fontSize: 11.5, color: C.txm, fontWeight: 700, whiteSpace: 'nowrap' }}>{selAppIds.length} selezionat{selAppIds.length === 1 ? 'o' : 'i'}</div>
+              <div style={{ flex: 1 }} />
               <button
                 onClick={() => { setSelModeWA(false); setSelAppIds([]); }}
                 style={{ background: 'none', border: 'none', color: C.txl, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', padding: '7px 8px' }}
