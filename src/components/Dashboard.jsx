@@ -3,12 +3,14 @@ import { supabase } from '../lib/supabase.js';
 import { Crd, Bdg, Modal, Ic, Btn, Fld, Sel, Inp, Txt } from './ui';
 import { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
 import { C, fmt, fmtD, today } from '../lib/utils';
+import { BarChart, Bar, LineChart, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 const WIDGETS_DEFAULT = [
   { id: 'agenda',       label: '📅 Agenda oggi',           attivo: true },
   { id: 'economico',    label: '💰 Pannello economico',     attivo: true },
   { id: 'controllo',    label: '🎛️ Controllo studio',       attivo: true },
   { id: 'kpi',          label: '📊 Statistiche',            attivo: true },
+  { id: 'grafici',      label: '📈 Andamento incassi',      attivo: true },
   { id: 'todo',         label: '✅ Attività e promemoria',  attivo: true },
   { id: 'appuntamenti', label: '📅 Prossimi appuntamenti',  attivo: true },
   { id: 'wa',            label: '💬 Reminder WhatsApp',       attivo: false },
@@ -250,6 +252,49 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   const mediaValore = plans.length > 0 ? plans.reduce((s, pl) => s + calcPlanTot(pl), 0) / plans.length : 0;
   const prestCount = {}; plans.forEach(pl => pl.voci.forEach(v => { if (v.eseguita) prestCount[v.prestazione] = (prestCount[v.prestazione] || 0) + 1; }));
   const topPrest = Object.entries(prestCount).sort((a, b) => b[1] - a[1])[0];
+
+  // ── GRAFICI: andamento mensile, incasso per prestazione, incasso per giorno settimana ──
+  const MESI_LBL = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+  const andamentoMensile = (() => {
+    const map = {};
+    payments.forEach(p => { if (!p.data) return; const m = p.data.slice(0, 7); map[m] = (map[m] || 0) + Number(p.importo); });
+    const chiavi = Object.keys(map).sort();
+    const ultime6 = chiavi.slice(-6);
+    return ultime6.map((m, i) => {
+      const finestra = ultime6.slice(Math.max(0, i - 2), i + 1).map(k => map[k]);
+      const media = finestra.reduce((s, x) => s + x, 0) / finestra.length;
+      return { mese: `${MESI_LBL[parseInt(m.slice(5)) - 1]} ${m.slice(2, 4)}`, incasso: Math.round(map[m]), media: Math.round(media) };
+    });
+  })();
+
+  const CHART_PALETTE = [C.pri, C.acc, C.war, C.suc, '#7C3AED', C.dan, C.txl];
+  const incassoPerPrestazione = (() => {
+    const map = {};
+    plans.forEach(pl => {
+      const subTot = pl.voci.reduce((s, v) => s + Number(v.prezzo), 0);
+      const sc = Number(pl.sconto) || 0;
+      const scontato = pl.scontoTipo === 'pct' ? subTot * (sc / 100) : Math.min(sc, subTot);
+      const fattore = subTot > 0 ? Math.max(0, subTot - scontato) / subTot : 1;
+      pl.voci.forEach(v => {
+        if (!v.eseguita) return;
+        const nome = v.prestazione || 'Altro';
+        map[nome] = (map[nome] || 0) + Number(v.prezzo) * fattore;
+      });
+    });
+    return Object.entries(map)
+      .map(([tipo, incasso]) => ({ tipo, incasso: Math.round(incasso) }))
+      .sort((a, b) => b.incasso - a.incasso)
+      .slice(0, 6);
+  })();
+
+  const incassoPerGiorno = (() => {
+    const GIORNI_LBL = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
+    const somma = [0, 0, 0, 0, 0, 0, 0];
+    payments.forEach(p => { if (!p.data) return; const d = new Date(p.data + 'T12:00'); somma[d.getDay()] += Number(p.importo); });
+    const ordine = [1, 2, 3, 4, 5, 6, 0]; // Lun..Dom
+    const max = Math.max(...ordine.map(i => somma[i]));
+    return ordine.map(i => ({ giorno: GIORNI_LBL[i], incasso: Math.round(somma[i]), top: somma[i] === max && max > 0 }));
+  })();
   const todoAttivi = todoList.filter(x => !x.fatto);
   const todoFatti = todoList.filter(x => x.fatto);
 
@@ -774,6 +819,68 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
               <StatCard label="Tasso accettazione" value={`${tassoAccettazione}%`} sub={`${preventiviAccettati.length}/${preventiviAttesa.length + preventiviAccettati.length + preventiviRifiutati.length} prev.`} color={tassoAccettazione >= 70 ? C.suc : tassoAccettazione >= 40 ? C.war : C.dan} />
               <StatCard label="Valore medio piano" value={fmt(mediaValore)} color={C.pri} />
               {topPrest && <StatCard label="Top prestazione" value={topPrest[0].length > 18 ? topPrest[0].slice(0,16)+'…' : topPrest[0]} sub={`${topPrest[1]}x eseguita`} color={C.acc} />}
+            </div>
+          </div>
+        );
+
+        if (w.id === 'grafici') return (
+          <div key="grafici" style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>📈 Andamento incassi</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <Crd>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 2 }}>Ultimi mesi</div>
+                <div style={{ fontSize: 11, color: C.txl, marginBottom: 8 }}>Incasso mensile e media mobile</div>
+                {andamentoMensile.length === 0 ? (
+                  <div style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessun incasso registrato</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <ComposedChart data={andamentoMensile} margin={{ top: 4, right: 8, left: -22, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={C.brd} vertical={false} />
+                      <XAxis dataKey="mese" tick={{ fontSize: 11, fill: C.txl }} axisLine={{ stroke: C.brd }} tickLine={false} />
+                      <YAxis tick={{ fontSize: 10, fill: C.txl }} axisLine={false} tickLine={false} width={42} />
+                      <Tooltip contentStyle={{ background: C.txt, border: 'none', borderRadius: 8, color: C.sur, fontSize: 12 }} labelStyle={{ color: C.sur }} formatter={(v, n) => [fmt(v), n === 'incasso' ? 'Incasso' : 'Media mobile']} />
+                      <Bar dataKey="incasso" fill={C.priL} radius={[6, 6, 0, 0]} barSize={26} />
+                      <Line dataKey="media" stroke={C.pri} strokeWidth={2.5} dot={{ r: 3, fill: C.pri }} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                )}
+              </Crd>
+
+              <Crd>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 2 }}>Dove incasso di più</div>
+                <div style={{ fontSize: 11, color: C.txl, marginBottom: 8 }}>Per tipo prestazione, voci eseguite</div>
+                {incassoPerPrestazione.length === 0 ? (
+                  <div style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessuna prestazione eseguita</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={Math.max(140, incassoPerPrestazione.length * 34)}>
+                    <BarChart data={incassoPerPrestazione} layout="vertical" margin={{ top: 4, right: 24, left: 4, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={C.brd} horizontal={false} />
+                      <XAxis type="number" tick={{ fontSize: 10, fill: C.txl }} axisLine={false} tickLine={false} />
+                      <YAxis type="category" dataKey="tipo" tick={{ fontSize: 11, fill: C.txt }} axisLine={false} tickLine={false} width={92} />
+                      <Tooltip contentStyle={{ background: C.txt, border: 'none', borderRadius: 8, color: C.sur, fontSize: 12 }} labelStyle={{ color: C.sur }} formatter={(v) => fmt(v)} />
+                      <Bar dataKey="incasso" radius={[0, 6, 6, 0]} barSize={16}>
+                        {incassoPerPrestazione.map((_, i) => <Cell key={i} fill={CHART_PALETTE[i % CHART_PALETTE.length]} />)}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </Crd>
+
+              <Crd>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 2 }}>Incasso per giorno</div>
+                <div style={{ fontSize: 11, color: C.txl, marginBottom: 8 }}>Aggregato su tutti gli incassi, Lun–Dom</div>
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart data={incassoPerGiorno} margin={{ top: 4, right: 8, left: -22, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={C.brd} vertical={false} />
+                    <XAxis dataKey="giorno" tick={{ fontSize: 11, fill: C.txl }} axisLine={{ stroke: C.brd }} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: C.txl }} axisLine={false} tickLine={false} width={42} />
+                    <Tooltip contentStyle={{ background: C.txt, border: 'none', borderRadius: 8, color: C.sur, fontSize: 12 }} labelStyle={{ color: C.sur }} formatter={(v) => fmt(v)} />
+                    <Bar dataKey="incasso" radius={[6, 6, 0, 0]} barSize={28}>
+                      {incassoPerGiorno.map((d, i) => <Cell key={i} fill={d.top ? C.pri : C.priL} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </Crd>
             </div>
           </div>
         );
