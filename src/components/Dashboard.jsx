@@ -295,6 +295,24 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
     const max = Math.max(...ordine.map(i => somma[i]));
     return ordine.map(i => ({ giorno: GIORNI_LBL[i], incasso: Math.round(somma[i]), top: somma[i] === max && max > 0 }));
   })();
+
+  const FREQ_MESI = { Mensile: 1, Bimestrale: 2, Trimestrale: 3, Semestrale: 6, Annuale: 12 };
+  const ricorrentiMensile = spese.filter(s => s.ricorrente).reduce((s, x) => s + Number(x.importo) / (FREQ_MESI[x.frequenza] || 1), 0);
+  const speseMensili = (() => {
+    const map = {};
+    spese.filter(s => !s.ricorrente).forEach(s => { if (!s.data) return; const m = s.data.slice(0, 7); map[m] = (map[m] || 0) + Number(s.importo); });
+    const chiavi = Object.keys(map).sort();
+    const ultime6 = chiavi.slice(-6);
+    return ultime6.map(m => ({ mese: `${MESI_LBL[parseInt(m.slice(5)) - 1]} ${m.slice(2, 4)}`, unaTantum: Math.round(map[m]), ricorrenti: Math.round(ricorrentiMensile) }));
+  })();
+
+  const speseCategoria = (() => {
+    const map = {};
+    spese.filter(s => !s.ricorrente).forEach(s => { const cat = s.categoria || 'Altro'; map[cat] = (map[cat] || 0) + Number(s.importo); });
+    spese.filter(s => s.ricorrente).forEach(s => { const cat = s.categoria || 'Ricorrenti'; map[cat] = (map[cat] || 0) + Number(s.importo) / (FREQ_MESI[s.frequenza] || 1) * 12; });
+    return Object.entries(map).map(([categoria, tot]) => ({ categoria, tot: Math.round(tot) })).sort((a, b) => b.tot - a.tot).slice(0, 6);
+  })();
+
   const todoAttivi = todoList.filter(x => !x.fatto);
   const todoFatti = todoList.filter(x => x.fatto);
 
@@ -881,6 +899,43 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                   </BarChart>
                 </ResponsiveContainer>
               </Crd>
+
+              <Crd>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 2 }}>Andamento spese</div>
+                <div style={{ fontSize: 11, color: C.txl, marginBottom: 8 }}>Una tantum per mese + quota mensile ricorrenti ({fmt(ricorrentiMensile)}/mese)</div>
+                {speseMensili.length === 0 && ricorrentiMensile === 0 ? (
+                  <div style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessuna spesa registrata</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={speseMensili} margin={{ top: 4, right: 8, left: -22, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={C.brd} vertical={false} />
+                      <XAxis dataKey="mese" tick={{ fontSize: 11, fill: C.txl }} axisLine={{ stroke: C.brd }} tickLine={false} />
+                      <YAxis tick={{ fontSize: 10, fill: C.txl }} axisLine={false} tickLine={false} width={42} />
+                      <Tooltip contentStyle={{ background: C.txt, border: 'none', borderRadius: 8, color: C.sur, fontSize: 12 }} labelStyle={{ color: C.sur }} formatter={(v, n) => [fmt(v), n === 'unaTantum' ? 'Una tantum' : 'Ricorrenti (quota mese)']} />
+                      <Bar dataKey="ricorrenti" stackId="s" fill={C.war + '55'} radius={[0, 0, 0, 0]} barSize={26} />
+                      <Bar dataKey="unaTantum" stackId="s" fill={C.dan} radius={[6, 6, 0, 0]} barSize={26} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </Crd>
+
+              {speseCategoria.length > 0 && (
+                <Crd>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 2 }}>Dove vanno le spese</div>
+                  <div style={{ fontSize: 11, color: C.txl, marginBottom: 8 }}>Per categoria, ricorrenti proiettate su base annua/12</div>
+                  <ResponsiveContainer width="100%" height={Math.max(140, speseCategoria.length * 34)}>
+                    <BarChart data={speseCategoria} layout="vertical" margin={{ top: 4, right: 24, left: 4, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={C.brd} horizontal={false} />
+                      <XAxis type="number" tick={{ fontSize: 10, fill: C.txl }} axisLine={false} tickLine={false} />
+                      <YAxis type="category" dataKey="categoria" tick={{ fontSize: 11, fill: C.txt }} axisLine={false} tickLine={false} width={92} />
+                      <Tooltip contentStyle={{ background: C.txt, border: 'none', borderRadius: 8, color: C.sur, fontSize: 12 }} labelStyle={{ color: C.sur }} formatter={(v) => fmt(v)} />
+                      <Bar dataKey="tot" radius={[0, 6, 6, 0]} barSize={16}>
+                        {speseCategoria.map((_, i) => <Cell key={i} fill={C.dan} fillOpacity={1 - i * 0.12} />)}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Crd>
+              )}
             </div>
           </div>
         );
