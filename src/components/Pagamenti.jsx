@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, SelettorePaziente } from './ui';
 import { C, uid, fmt, fmtD, today } from '../lib/utils';
 import { supabase } from '../lib/supabase.js';
 
 export default function Pagamenti({ patients, payments, setPayments, plans }) {
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ pazienteId: '', data: today(), importo: '', metodo: 'Contanti', nota: '', stato: 'pagato' });
+  const [pazSearch, setPazSearch] = useState('');
   const [toast, setToast] = useState('');
   const F = (f) => setForm((p) => ({ ...p, ...f }));
 
@@ -92,7 +93,7 @@ export default function Pagamenti({ patients, payments, setPayments, plans }) {
         <div style={{ fontSize: 20, fontWeight: 800 }}>Pagamenti</div>
         <div style={{ display: 'flex', gap: 7 }}>
           {tabAttiva === 'studio'
-            ? <Btn ch="+ Studio" ic="plus" onClick={() => { setForm({ pazienteId: '', data: today(), importo: '', metodo: 'Contanti', nota: '', stato: 'pagato' }); setModal(true); }} />
+            ? <Btn ch="+ Studio" ic="plus" onClick={() => { setForm({ pazienteId: '', data: today(), importo: '', metodo: 'Contanti', nota: '', stato: 'pagato' }); setPazSearch(''); setModal(true); }} />
             : <Btn ch="+ Esterno" ic="plus" onClick={() => { setFormExt({ collaborazione_id: '', collaborazione_nome: '', importo: '', data: today(), metodo: 'Bonifico', note: '' }); setModalExt(true); }} />
           }
         </div>
@@ -193,10 +194,14 @@ export default function Pagamenti({ patients, payments, setPayments, plans }) {
       {modal && (
         <Modal title="Registra pagamento studio" onClose={() => setModal(false)}>
           <Fld label="Paziente">
-            <Sel value={form.pazienteId} onChange={(e) => F({ pazienteId: e.target.value })}>
-              <option value="">Seleziona…</option>
-              {patients.map((p) => <option key={p.id} value={p.id}>{p.nome} {p.cognome}</option>)}
-            </Sel>
+            <SelettorePaziente
+              patients={patients}
+              value={form.pazienteId}
+              onChange={(id) => F({ pazienteId: id })}
+              search={pazSearch}
+              onSearchChange={setPazSearch}
+              autoFocus
+            />
           </Fld>
           {selPazSaldo && (
             <div style={{ background: C.priD, borderRadius: 10, padding: 11, marginBottom: 11 }}>

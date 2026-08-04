@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, Btn } from './ui';
+import { cercaPazienti } from '../lib/ricercaPazienti';
 import { C, fmt, fmtD, today } from '../lib/utils';
 import { supabase } from '../lib/supabase.js';
 
@@ -113,10 +114,9 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
       {/* MODAL SELEZIONA PAZIENTE */}
       {pazModal && (
         <Modal title={`Seleziona paziente — ${pazModal === 'fiscale' ? 'Fattura/Rimborso' : 'Ricetta/Certificato'}`} onClose={() => setPazModal(null)}>
-          <Inp autoFocus value={pazSearch} onChange={e => setPazSearch(e.target.value)} placeholder="Cerca per nome o cognome…" style={{ marginBottom: 12 }} />
+          <Inp autoFocus value={pazSearch} onChange={e => setPazSearch(e.target.value)} placeholder="Cerca per nome, cognome, CF o telefono…" style={{ marginBottom: 12 }} />
           <div style={{ maxHeight: 320, overflowY: 'auto' }}>
-            {patients
-              .filter(p => !pazSearch.trim() || `${p.nome} ${p.cognome} ${p.cognome} ${p.nome}`.toLowerCase().includes(pazSearch.toLowerCase()))
+            {cercaPazienti(patients, pazSearch)
               .slice(0, 30)
               .map(p => (
                 <div key={p.id} onClick={() => {
@@ -130,7 +130,7 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
                   {p.telefono && <div style={{ fontSize: 11, color: C.txl }}>{p.telefono}</div>}
                 </div>
               ))}
-            {patients.filter(p => !pazSearch.trim() || `${p.nome} ${p.cognome}`.toLowerCase().includes(pazSearch.toLowerCase())).length === 0 && (
+            {cercaPazienti(patients, pazSearch).length === 0 && (
               <div style={{ textAlign: 'center', color: C.txl, padding: 20 }}>Nessun paziente trovato</div>
             )}
           </div>

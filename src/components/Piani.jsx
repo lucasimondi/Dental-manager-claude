@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, SearchSel } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, SearchSel, SelettorePaziente } from './ui';
 import { C, uid, fmt, today, SCADENZA_PRESET, addMesi } from '../lib/utils';
 import Odontogramma from './Odontogramma.jsx';
 import PdfView from './PdfView.jsx';
@@ -272,43 +272,13 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
       {modal && (
         <Modal title="Nuovo piano di cura" onClose={() => setModal(false)} wide>
           <Fld label="Paziente">
-            {(() => {
-              const sel = patients.find(p => String(p.id) === String(form.pazienteId));
-              const filtered = pazSearch.trim()
-                ? patients.filter(p => `${p.nome} ${p.cognome}`.toLowerCase().includes(pazSearch.toLowerCase()))
-                : patients;
-              return (
-                <div style={{ position: 'relative' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, border: `1.5px solid ${C.brd}`, borderRadius: 10, padding: '10px 12px', background: C.sur, cursor: 'text' }} onClick={() => { setPazSearch(''); }}>
-                    {sel && !pazSearch ? (
-                      <span style={{ flex: 1, fontSize: 14, color: C.txt, fontWeight: 600 }}>{sel.nome} {sel.cognome}</span>
-                    ) : (
-                      <input
-                        autoFocus={!!pazSearch || !sel}
-                        value={pazSearch}
-                        onChange={e => { setPazSearch(e.target.value); if (!e.target.value) setForm(f => ({ ...f, pazienteId: '' })); }}
-                        placeholder={sel ? `${sel.nome} ${sel.cognome}` : 'Cerca paziente…'}
-                        style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 14, color: C.txt, outline: 'none', fontFamily: 'inherit' }}
-                      />
-                    )}
-                    {sel && <button onClick={e => { e.stopPropagation(); setForm(f => ({ ...f, pazienteId: '' })); setPazSearch(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.txl, fontSize: 16, padding: 0 }}>✕</button>}
-                  </div>
-                  {(pazSearch || !sel) && filtered.length > 0 && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: C.sur, border: `1.5px solid ${C.pri}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', marginTop: 3, maxHeight: 220, overflowY: 'auto' }}>
-                      {filtered.slice(0, 20).map(p => (
-                        <div key={p.id} onClick={() => { setForm(f => ({ ...f, pazienteId: String(p.id) })); setPazSearch(''); }}
-                          style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: `1px solid ${C.brd}`, fontSize: 13, fontWeight: 600 }}
-                          onMouseEnter={e => e.currentTarget.style.background = C.bg}
-                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                          {p.nome} {p.cognome}
-                          {p.telefono && <span style={{ fontSize: 11, color: C.txl, marginLeft: 8 }}>{p.telefono}</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
+            <SelettorePaziente
+              patients={patients}
+              value={form.pazienteId}
+              onChange={(id) => setForm(f => ({ ...f, pazienteId: id }))}
+              search={pazSearch}
+              onSearchChange={setPazSearch}
+            />
           </Fld>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <Fld label="Titolo"><Inp value={form.titolo} onChange={(e) => setForm((f) => ({ ...f, titolo: e.target.value }))} placeholder={isDentistico ? 'es. Piano conservativa' : 'es. Piano di trattamento'} /></Fld>

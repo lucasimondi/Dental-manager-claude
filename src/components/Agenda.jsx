@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker, SelettorePaziente } from './ui';
 import WaAction, { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
 import { C, uid, fmtD, today, DEF_APP_TYPES, DEF_AGENDA_SETTINGS } from '../lib/utils';
 import { useIsMobile } from '../lib/useIsMobile';
@@ -960,32 +960,14 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
       {modal && (
         <Modal title={editApp ? '✏️ Modifica appuntamento' : '📅 Nuovo appuntamento'} onClose={() => setModal(false)} wide>
           <Fld label="Paziente">
-            {(() => {
-              const sel = patients.find(p => String(p.id) === String(form.pazienteId));
-              const filtered = pazSearch.trim() ? patients.filter(p => `${p.nome} ${p.cognome} ${p.cognome} ${p.nome}`.toLowerCase().includes(pazSearch.toLowerCase())) : patients;
-              return (
-                <div style={{ position: 'relative' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, border: `1.5px solid ${sel && !pazSearch ? C.suc : C.brd}`, borderRadius: 10, padding: '10px 12px', background: C.sur }}>
-                    {sel && !pazSearch ? (
-                      <><div style={{ flex: 1 }}><div style={{ fontWeight: 700, fontSize: 14 }}>{sel.nome} {sel.cognome}</div>{sel.telefono && <div style={{ fontSize: 11, color: C.txl }}>{sel.telefono}</div>}</div>
-                        <button onClick={() => { F({ pazienteId: '' }); setPazSearch(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.txl, fontSize: 18, padding: 0 }}>✕</button></>
-                    ) : (
-                      <input autoFocus value={pazSearch} onChange={e => { setPazSearch(e.target.value); if (!e.target.value) F({ pazienteId: '' }); }} placeholder="Cerca per nome o cognome…" style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 14, color: C.txt, outline: 'none', fontFamily: 'inherit' }} />
-                    )}
-                  </div>
-                  {(!sel || pazSearch) && filtered.length > 0 && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: C.sur, border: `1.5px solid ${C.pri}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', marginTop: 3, maxHeight: 200, overflowY: 'auto' }}>
-                      {filtered.slice(0, 20).map(p => (
-                        <div key={p.id} onClick={() => { F({ pazienteId: String(p.id) }); setPazSearch(''); }} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: `1px solid ${C.brd}` }} onMouseEnter={e => e.currentTarget.style.background = C.priL} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                          <div style={{ fontWeight: 700, fontSize: 13 }}>{p.cognome} {p.nome}</div>
-                          {p.telefono && <div style={{ fontSize: 11, color: C.txl }}>{p.telefono}</div>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
+            <SelettorePaziente
+              patients={patients}
+              value={form.pazienteId}
+              onChange={(id) => F({ pazienteId: id })}
+              search={pazSearch}
+              onSearchChange={setPazSearch}
+              autoFocus
+            />
           </Fld>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <Fld label="Data"><Inp type="date" value={form.data} onChange={e => F({ data: e.target.value })} /></Fld>
