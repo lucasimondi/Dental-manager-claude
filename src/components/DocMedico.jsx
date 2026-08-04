@@ -10,6 +10,7 @@ const TIPI = [
   { id: 'certificato', label: '📋 Certificato di visita', desc: 'Certificato attestante la visita effettuata' },
   { id: 'lettera', label: '✉️ Lettera per specialista', desc: 'Referral / lettera di consulenza' },
   { id: 'protocollo', label: '📖 Protocollo post-trattamento', desc: 'Istruzioni da consegnare al paziente' },
+  { id: 'vuoto', label: '📝 Foglio bianco intestato', desc: 'Documento libero da compilare, con intestazione e timbro' },
 ];
 
 // Formula ematica standard proposta come punto di partenza: ogni voce resta
@@ -159,6 +160,11 @@ export default function DocMedico({ paz, si, onClose }) {
     setTestoProtocollo(p.testo);
   };
 
+  // Foglio bianco intestato
+  const [titoloVuoto, setTitoloVuoto] = useState('');
+  const [testoVuoto, setTestoVuoto] = useState('');
+  const [includiPazienteVuoto, setIncludiPazienteVuoto] = useState(true);
+
   const addFarmaco = () => setFarmaci(f => [...f, { farmaco: '', posologia: '', durata: '' }]);
   const updFarmaco = (i, field, val) => setFarmaci(f => f.map((x, j) => j === i ? { ...x, [field]: val } : x));
   const delFarmaco = (i) => setFarmaci(f => f.filter((_, j) => j !== i));
@@ -271,6 +277,31 @@ export default function DocMedico({ paz, si, onClose }) {
     doc.text(`${STUDIO.nome} · ${STUDIO.addr} · P.IVA ${STUDIO.piva}`, W / 2, 287, { align: 'center' });
   };
 
+  // Da chiamare UNA SOLA VOLTA a fine documento, dopo aver generato tutto il
+  // contenuto (con eventuali doc.addPage() già inseriti dove serviva).
+  // Ripete intestazione studio + timbro/firma su OGNI pagina (il timbro non
+  // si sposta mai: stessa posizione, stesso aspetto, identico su ciascun
+  // foglio) e aggiunge "Pagina X di Y" in alto a destra solo se il
+  // documento ha più di una pagina.
+  const finalizzaMultipagina = (doc, W, M) => {
+    const nPagine = doc.internal.getNumberOfPages();
+    for (let p = 1; p <= nPagine; p++) {
+      doc.setPage(p);
+      if (p > 1) {
+        // Sulle pagine successive alla prima ripetiamo solo l'intestazione
+        // studio (senza il box paziente/titolo, già mostrati in pagina 1)
+        intestazione(doc, W, M);
+      }
+      footer(doc, W, M);
+      if (nPagine > 1) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(150, 160, 170);
+        doc.text(`Pagina ${p} di ${nPagine}`, W - M, 12, { align: 'right' });
+      }
+    }
+  };
+
   const generaRicetta = () => {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const W = 210, M = 18;
@@ -295,7 +326,7 @@ export default function DocMedico({ paz, si, onClose }) {
     doc.text('PRESCRIZIONE:', M, y); y += 6;
 
     farmaci.filter(f => f.farmaco.trim()).forEach((f, i) => {
-      if (y > 240) { doc.addPage(); y = 20; }
+      if (y > 240) { doc.addPage(); y = 42; }
       doc.setFillColor(i % 2 === 0 ? 247 : 255, i % 2 === 0 ? 250 : 255, i % 2 === 0 ? 252 : 255);
       const rh = f.durata ? 18 : 13;
       doc.rect(M, y, W - M * 2, rh, 'F');
@@ -322,7 +353,7 @@ export default function DocMedico({ paz, si, onClose }) {
     doc.setTextColor(130, 130, 130);
     doc.text('Ricetta valida 30 giorni dalla data di emissione. · Medico prescrittore: ' + STUDIO.nome, M, y);
 
-    footer(doc, W, M);
+    finalizzaMultipagina(doc, W, M);
     const blob = doc.output('blob');
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -359,7 +390,7 @@ export default function DocMedico({ paz, si, onClose }) {
     voci.forEach((v, i) => {
       const testoWrap = doc.splitTextToSize(v, W - M * 2 - 12);
       const rh = 5.5 + (testoWrap.length - 1) * 4.2 + 3;
-      if (y + rh > 265) { doc.addPage(); y = 20; }
+      if (y + rh > 265) { doc.addPage(); y = 42; }
       doc.setFillColor(i % 2 === 0 ? 247 : 255, i % 2 === 0 ? 250 : 255, i % 2 === 0 ? 252 : 255);
       doc.rect(M, y, W - M * 2, rh, 'F');
       doc.setFont('helvetica', 'normal');
@@ -379,7 +410,7 @@ export default function DocMedico({ paz, si, onClose }) {
 
     if (noteEsami.trim()) {
       y += 3;
-      if (y > 250) { doc.addPage(); y = 20; }
+      if (y > 250) { doc.addPage(); y = 42; }
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9);
       doc.setTextColor(26, 107, 138);
@@ -396,10 +427,10 @@ export default function DocMedico({ paz, si, onClose }) {
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(8);
     doc.setTextColor(130, 130, 130);
-    if (y > 245) { doc.addPage(); y = 20; }
+    if (y > 245) { doc.addPage(); y = 42; }
     doc.text('Medico prescrittore: ' + STUDIO.nome, M, y);
 
-    footer(doc, W, M);
+    finalizzaMultipagina(doc, W, M);
     const blob = doc.output('blob');
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -460,7 +491,7 @@ export default function DocMedico({ paz, si, onClose }) {
     doc.setTextColor(100, 100, 100);
     doc.text(new Date(data + 'T12:00').toLocaleDateString('it-IT'), M, y);
 
-    footer(doc, W, M);
+    finalizzaMultipagina(doc, W, M);
     const blob = doc.output('blob');
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -510,7 +541,7 @@ export default function DocMedico({ paz, si, onClose }) {
     ];
 
     sections.filter(s => s.value).forEach(s => {
-      if (y > 240) { doc.addPage(); y = 20; }
+      if (y > 240) { doc.addPage(); y = 42; }
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
       doc.setTextColor(26, 107, 138);
@@ -530,7 +561,7 @@ export default function DocMedico({ paz, si, onClose }) {
     doc.setFont('helvetica', 'normal');
     doc.text('Distinti saluti,', M, y);
 
-    footer(doc, W, M);
+    finalizzaMultipagina(doc, W, M);
     const blob = doc.output('blob');
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -564,7 +595,7 @@ export default function DocMedico({ paz, si, onClose }) {
     const paragrafi = testoProtocollo.split('\n').filter(p => p.trim() !== '');
     paragrafi.forEach((p) => {
       const lines = doc.splitTextToSize(p, W - M * 2);
-      if (y + lines.length * 5.5 > 235) { doc.addPage(); y = 20; }
+      if (y + lines.length * 5.5 > 235) { doc.addPage(); y = 42; }
       doc.text(lines, M, y);
       y += lines.length * 5.5 + 5;
     });
@@ -573,15 +604,68 @@ export default function DocMedico({ paz, si, onClose }) {
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(8.5);
     doc.setTextColor(130, 130, 130);
-    if (y > 240) { doc.addPage(); y = 20; }
+    if (y > 240) { doc.addPage(); y = 42; }
     doc.text('Per qualsiasi dubbio o sintomo non descritto sopra, non esiti a contattare lo studio.', M, y);
 
-    footer(doc, W, M);
+    finalizzaMultipagina(doc, W, M);
     const blob = doc.output('blob');
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `protocollo_${protocolloId}_${paz.cognome}_${data}.pdf`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    setGenerated(true);
+  };
+
+  const generaVuoto = () => {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const W = 210, M = 18;
+    let y = intestazione(doc, W, M);
+
+    if (titoloVuoto.trim()) {
+      doc.setFillColor(26, 107, 138);
+      doc.rect(M, y, W - M * 2, 9, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.setTextColor(255, 255, 255);
+      doc.text(titoloVuoto.trim().toUpperCase(), W / 2, y + 6, { align: 'center' });
+      y += 13;
+    }
+
+    if (includiPazienteVuoto) {
+      y = pazienteBox(doc, paz, y, W, M);
+      y += 4;
+    } else {
+      // Senza box paziente mostriamo comunque la data in alto a destra,
+      // per un documento libero non necessariamente riferito a un paziente specifico
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(113, 128, 150);
+      doc.text(new Date(data + 'T12:00').toLocaleDateString('it-IT'), W - M, y, { align: 'right' });
+      y += 8;
+    }
+
+    if (testoVuoto.trim()) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10.5);
+      doc.setTextColor(26, 32, 44);
+      const righe = doc.splitTextToSize(testoVuoto.trim(), W - M * 2);
+      righe.forEach((riga) => {
+        if (y > 260) { doc.addPage(); y = 42; }
+        doc.text(riga, M, y);
+        y += 6;
+      });
+    }
+    // Se il testo è vuoto il foglio resta volutamente bianco sotto
+    // l'intestazione, pronto per essere compilato a mano dopo la stampa.
+
+    finalizzaMultipagina(doc, W, M);
+    const blob = doc.output('blob');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `documento_${paz.cognome}_${data}.pdf`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 5000);
     setGenerated(true);
@@ -593,6 +677,7 @@ export default function DocMedico({ paz, si, onClose }) {
     else if (tipo === 'esami') generaEsamiEmatici();
     else if (tipo === 'certificato') generaCertificato();
     else if (tipo === 'lettera') generaLettera();
+    else if (tipo === 'vuoto') generaVuoto();
     else generaProtocollo();
   };
 
@@ -770,6 +855,38 @@ export default function DocMedico({ paz, si, onClose }) {
               <textarea value={testoProtocollo} onChange={e => setTestoProtocollo(e.target.value)} rows={14} style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${C.brd}`, borderRadius: 10, fontSize: 13, color: C.txt, background: C.sur, boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} />
             </Fld>
             <div style={{ fontSize: 11, color: C.txm, marginTop: 4 }}>Ogni paragrafo va su una riga separata (righe vuote per andare a capo nel PDF).</div>
+          </Crd>
+        )}
+
+        {/* ── FOGLIO BIANCO INTESTATO ── */}
+        {tipo === 'vuoto' && (
+          <Crd style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10 }}>📝 Documento libero</div>
+            <button
+              onClick={() => setIncludiPazienteVuoto(v => !v)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 9, width: '100%', textAlign: 'left',
+                padding: '9px 11px', borderRadius: 9, border: `1.5px solid ${includiPazienteVuoto ? C.pri : C.brd}`,
+                background: includiPazienteVuoto ? C.priL : C.sur, cursor: 'pointer', marginBottom: 12,
+              }}
+            >
+              <div style={{
+                flexShrink: 0, width: 16, height: 16, borderRadius: 4,
+                border: `1.5px solid ${includiPazienteVuoto ? C.pri : C.brd}`, background: includiPazienteVuoto ? C.pri : 'transparent',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {includiPazienteVuoto && <Ic n="ok" s={11} c="#fff" />}
+              </div>
+              <span style={{ fontSize: 12.5, color: includiPazienteVuoto ? C.pri : C.txt, fontWeight: 600 }}>Includi nome paziente e data in alto</span>
+            </button>
+
+            <Fld label="Titolo documento (opzionale)">
+              <Inp value={titoloVuoto} onChange={e => setTitoloVuoto(e.target.value)} placeholder="es. Dichiarazione, Nota, Comunicazione..." />
+            </Fld>
+            <Fld label="Contenuto (opzionale — lascia vuoto per un foglio da compilare a mano)">
+              <textarea value={testoVuoto} onChange={e => setTestoVuoto(e.target.value)} rows={14} style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${C.brd}`, borderRadius: 10, fontSize: 13, color: C.txt, background: C.sur, boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} placeholder="Scrivi qui il testo, oppure lascia vuoto per stampare solo intestazione, timbro e spazio bianco..." />
+            </Fld>
+            <div style={{ fontSize: 11, color: C.txm, marginTop: 4 }}>Il PDF avrà comunque intestazione dello studio e timbro/firma, come tutti gli altri documenti — utile per note libere, dichiarazioni o qualunque comunicazione non prevista dagli altri modelli.</div>
           </Crd>
         )}
 
