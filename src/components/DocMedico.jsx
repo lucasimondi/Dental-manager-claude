@@ -326,7 +326,7 @@ export default function DocMedico({ paz, si, onClose }) {
     doc.text('PRESCRIZIONE:', M, y); y += 6;
 
     farmaci.filter(f => f.farmaco.trim()).forEach((f, i) => {
-      if (y > 220) { doc.addPage(); y = 42; }
+      if (y > 220) { doc.addPage(); y = 52; }
       doc.setFillColor(i % 2 === 0 ? 247 : 255, i % 2 === 0 ? 250 : 255, i % 2 === 0 ? 252 : 255);
       const rh = f.durata ? 18 : 13;
       doc.rect(M, y, W - M * 2, rh, 'F');
@@ -390,7 +390,7 @@ export default function DocMedico({ paz, si, onClose }) {
     voci.forEach((v, i) => {
       const testoWrap = doc.splitTextToSize(v, W - M * 2 - 12);
       const rh = 5.5 + (testoWrap.length - 1) * 4.2 + 3;
-      if (y + rh > 220) { doc.addPage(); y = 42; }
+      if (y + rh > 220) { doc.addPage(); y = 52; }
       doc.setFillColor(i % 2 === 0 ? 247 : 255, i % 2 === 0 ? 250 : 255, i % 2 === 0 ? 252 : 255);
       doc.rect(M, y, W - M * 2, rh, 'F');
       doc.setFont('helvetica', 'normal');
@@ -410,7 +410,7 @@ export default function DocMedico({ paz, si, onClose }) {
 
     if (noteEsami.trim()) {
       y += 3;
-      if (y > 220) { doc.addPage(); y = 42; }
+      if (y > 220) { doc.addPage(); y = 52; }
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9);
       doc.setTextColor(26, 107, 138);
@@ -427,7 +427,7 @@ export default function DocMedico({ paz, si, onClose }) {
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(8);
     doc.setTextColor(130, 130, 130);
-    if (y > 220) { doc.addPage(); y = 42; }
+    if (y > 220) { doc.addPage(); y = 52; }
     doc.text('Medico prescrittore: ' + STUDIO.nome, M, y);
 
     finalizzaMultipagina(doc, W, M);
@@ -541,7 +541,7 @@ export default function DocMedico({ paz, si, onClose }) {
     ];
 
     sections.filter(s => s.value).forEach(s => {
-      if (y > 220) { doc.addPage(); y = 42; }
+      if (y > 220) { doc.addPage(); y = 52; }
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
       doc.setTextColor(26, 107, 138);
@@ -595,7 +595,7 @@ export default function DocMedico({ paz, si, onClose }) {
     const paragrafi = testoProtocollo.split('\n').filter(p => p.trim() !== '');
     paragrafi.forEach((p) => {
       const lines = doc.splitTextToSize(p, W - M * 2);
-      if (y + lines.length * 5.5 > 220) { doc.addPage(); y = 42; }
+      if (y + lines.length * 5.5 > 220) { doc.addPage(); y = 52; }
       doc.text(lines, M, y);
       y += lines.length * 5.5 + 5;
     });
@@ -604,7 +604,7 @@ export default function DocMedico({ paz, si, onClose }) {
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(8.5);
     doc.setTextColor(130, 130, 130);
-    if (y > 220) { doc.addPage(); y = 42; }
+    if (y > 220) { doc.addPage(); y = 52; }
     doc.text('Per qualsiasi dubbio o sintomo non descritto sopra, non esiti a contattare lo studio.', M, y);
 
     finalizzaMultipagina(doc, W, M);
@@ -652,7 +652,7 @@ export default function DocMedico({ paz, si, onClose }) {
       doc.setTextColor(26, 32, 44);
       const righe = doc.splitTextToSize(testoVuoto.trim(), W - M * 2);
       righe.forEach((riga) => {
-        if (y > 220) { doc.addPage(); y = 42; }
+        if (y > 220) { doc.addPage(); y = 52; }
         doc.text(riga, M, y);
         y += 6;
       });
