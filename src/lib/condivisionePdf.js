@@ -14,9 +14,19 @@
 
 // Converte un data URL "data:application/pdf;base64,...." in un oggetto File,
 // necessario per navigator.share (non accetta stringhe base64 dirette).
+//
+// ATTENZIONE: jsPDF (doc.output('datauristring')) genera un header NON
+// standard che include un parametro filename, tipo:
+//   data:application/pdf;filename=ricetta.pdf;base64,JVBERi0x...
+// Un regex ingenuo su "data:(.*?);base64" cattura per sbaglio anche il
+// "filename=..." come se fosse parte del MIME type, producendo un File con
+// `type` corrotto — su iOS Safari questo fa sì che navigator.share() scarti
+// silenziosamente l'allegato e mandi solo il testo. Qui isoliamo sempre e
+// solo il vero MIME type (prima del primo ";"), ignorando ogni parametro extra.
 function dataUrlToFile(dataUrl, filename) {
   const [header, base64] = dataUrl.split(',');
-  const mime = header.match(/data:(.*?);base64/)?.[1] || 'application/pdf';
+  const mimeMatch = header.match(/^data:([^;]+)/);
+  const mime = mimeMatch?.[1] || 'application/pdf';
   const binario = atob(base64);
   const bytes = new Uint8Array(binario.length);
   for (let i = 0; i < binario.length; i++) bytes[i] = binario.charCodeAt(i);
