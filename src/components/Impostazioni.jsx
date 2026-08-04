@@ -2,7 +2,7 @@
 import GestioneUtenti from './GestioneUtenti.jsx';
 import React, { useState, useEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Ic, DockIc, DOCK_ICON_STYLES } from './ui';
-import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI, DEF_DOCK_SETTINGS, DEF_AGENDA_SETTINGS } from '../lib/utils';
+import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI, DEF_DOCK_SETTINGS, DEF_AGENDA_SETTINGS, DEF_DOCUMENTI_SETTINGS } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 
 const GIORNI_SETTIMANA = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
@@ -15,6 +15,8 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
   const S = (f) => setSi((s) => ({ ...s, ...f }));
   const agSet = { ...DEF_AGENDA_SETTINGS, ...(si.agenda_settings || {}) };
   const SA = (f) => S({ agenda_settings: { ...agSet, ...f } });
+  const docSet = { ...DEF_DOCUMENTI_SETTINGS, ...(si.documenti_settings || {}) };
+  const SD = (f) => S({ documenti_settings: { ...docSet, ...f } });
   const save = () => { setStudioInfo(si); setToast('Salvato ✓'); };
 
   // ── WhatsApp Business (automazione) ──
@@ -284,6 +286,40 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
         </Fld>
       </Crd>
       <Btn ch="💾 Salva impostazioni agenda" onClick={save} dis={agSet.oraInizio >= agSet.oraFine} full sz="lg" />
+
+      <div style={{ marginTop: 26, marginBottom: 14 }}>
+        <div style={{ fontSize: 20, fontWeight: 800 }}>Archiviazione documenti</div>
+        <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Quali PDF generati restano salvati in scheda paziente (consultabili e cancellabili in seguito). Se disattivato, il documento resta comunque scaricabile/condivisibile ma non ne tieni una copia nell'app.</div>
+      </div>
+      <Crd style={{ marginBottom: 14 }}>
+        {[
+          ['ricetta', '💊 Ricetta medica'],
+          ['esami', '🩸 Prescrizione esami ematici'],
+          ['certificato', '📋 Certificato di visita'],
+          ['lettera', '✉️ Lettera per specialista'],
+          ['protocollo', '📖 Protocollo post-trattamento'],
+          ['vuoto', '📝 Foglio bianco intestato'],
+          ['fattura', '🧾 Fattura'],
+          ['rimborso', '🧾 Rimborso spese'],
+        ].map(([key, label], i, arr) => (
+          <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 2px', borderBottom: i < arr.length - 1 ? `1px solid ${C.brd}` : 'none' }}>
+            <span style={{ fontSize: 13.5, color: C.txt }}>{label}</span>
+            <button
+              onClick={() => SD({ [key]: !docSet[key] })}
+              style={{
+                width: 42, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer', position: 'relative', flexShrink: 0,
+                background: docSet[key] ? C.pri : C.brd, transition: 'background 0.15s',
+              }}
+            >
+              <div style={{
+                width: 18, height: 18, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3,
+                left: docSet[key] ? 21 : 3, transition: 'left 0.15s', boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+              }} />
+            </button>
+          </div>
+        ))}
+      </Crd>
+      <Btn ch="💾 Salva impostazioni documenti" onClick={save} full sz="lg" />
 
       <div style={{ marginTop: 26, marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Menu mobile</div>

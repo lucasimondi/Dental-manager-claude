@@ -5,6 +5,7 @@ import { C, fmt, fmtD, today, SCADENZA_PRESET, addMesi, rilevaRichiamo } from '.
 import PdfView from './PdfView.jsx';
 import DocFiscale from './DocFiscale.jsx';
 import DocMedico from './DocMedico.jsx';
+import { condividiPdf, scaricaPdf, whatsappUrl } from '../lib/condivisionePdf';
 
 const prossimaDataMascherina = (orto) => {
   if (!orto?.dataConsegnaInizio || !orto?.mascherineConsegnate) return null;
@@ -19,6 +20,9 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
   const [pdfPlan, setPdfPlan] = useState(null);
   const [docFiscale, setDocFiscale] = useState(false);
   const [docMedico, setDocMedico] = useState(false);
+  const [archivioDocs, setArchivioDocs] = useState([]); // documenti_medici + documenti_fiscali uniti, ordinati per data
+  const [archivioLoading, setArchivioLoading] = useState(false);
+  const [confirmDelDoc, setConfirmDelDoc] = useState(null); // { tabella, id }
   const [appModal, setAppModal] = useState(false);
   const [waModal, setWaModal] = useState(false);
   const [pagModal, setPagModal] = useState(false);
@@ -102,6 +106,38 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
   };
 
   React.useEffect(() => { loadFoto(); }, [paz.id]);
+  React.useEffect(() => { if (tab === 'doc') loadArchivioDocs(); }, [paz.id]);
+
+  // Archivio documenti generati per questo paziente (medici + fiscali).
+  // Caricato quando si apre la tab Documenti, non subito all'apertura della
+  // scheda, per non fare query inutili se l'utente non ci va mai.
+  const loadArchivioDocs = async () => {
+    setArchivioLoading(true);
+    const [medici, fiscali] = await Promise.all([
+      supabase.from('documenti_medici').select('id, tipo, titolo, data, created_at').eq('paziente_id', paz.id).order('created_at', { ascending: false }),
+      supabase.from('documenti_fiscali').select('id, tipo, numero, data, importo, created_at').eq('paziente_id', paz.id).order('created_at', { ascending: false }),
+    ]);
+    const uniti = [
+      ...(medici.data || []).map(d => ({ ...d, tabella: 'documenti_medici', label: d.titolo || d.tipo })),
+      ...(fiscali.data || []).map(d => ({ ...d, tabella: 'documenti_fiscali', label: `${d.tipo === 'fattura' ? 'Fattura' : 'Rimborso'} n. ${d.numero}` })),
+    ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    setArchivioDocs(uniti);
+    setArchivioLoading(false);
+  };
+
+  const apriDocArchiviato = async (doc) => {
+    const { data } = await supabase.from(doc.tabella).select('pdf_base64').eq('id', doc.id).single();
+    if (!data?.pdf_base64) return;
+    const filename = `${doc.label.replace(/\s+/g, '_')}_${doc.data}.pdf`.toLowerCase();
+    const ok = await condividiPdf(data.pdf_base64, filename, doc.label);
+    if (!ok) scaricaPdf(data.pdf_base64, filename);
+  };
+
+  const eliminaDocArchiviato = async (doc) => {
+    await supabase.from(doc.tabella).delete().eq('id', doc.id);
+    setArchivioDocs(prev => prev.filter(d => !(d.id === doc.id && d.tabella === doc.tabella)));
+    setConfirmDelDoc(null);
+  };
 
   const uploadFoto = async (file) => {
     setFotoLoading(true);
@@ -195,8 +231,8 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
     setPdfPlan(virtuale);
   };
 
-  if (docMedico && features?.documenti !== false) return <DocMedico paz={paz} si={si} onClose={() => setDocMedico(false)} />;
-  if (docFiscale && features?.documenti !== false) return <DocFiscale paz={paz} plans={plans} si={si} onClose={() => setDocFiscale(false)} />;
+  if (docMedico && features?.documenti !== false) return <DocMedico paz={paz} si={si} onClose={() => { setDocMedico(false); loadArchivioDocs(); }} />;
+  if (docFiscale && features?.documenti !== false) return <DocFiscale paz={paz} plans={plans} si={si} onClose={() => { setDocFiscale(false); loadArchivioDocs(); }} />;
   if (pdfPlan) return <PdfView pl={pdfPlan} paz={paz} si={si} features={features} onClose={() => setPdfPlan(null)} />;
 
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
@@ -224,7 +260,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
 
       <div style={{ display: 'flex', background: C.sur, borderBottom: `1px solid ${C.brd}`, flexShrink: 0 }}>
         {TABS.map((t) => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, padding: '11px 4px', background: 'none', border: 'none', borderBottom: `2.5px solid ${tab === t.id ? C.pri : 'transparent'}`, color: tab === t.id ? C.pri : C.txm, fontWeight: tab === t.id ? 700 : 500, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>{t.l}</button>
+          <button key={t.id} onClick={() => { setTab(t.id); if (t.id === 'doc') loadArchivioDocs(); }} style={{ flex: 1, padding: '11px 4px', background: 'none', border: 'none', borderBottom: `2.5px solid ${tab === t.id ? C.pri : 'transparent'}`, color: tab === t.id ? C.pri : C.txm, fontWeight: tab === t.id ? 700 : 500, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>{t.l}</button>
         ))}
       </div>
 
@@ -762,6 +798,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                 <div style={{ fontSize: 12, color: C.txm }}>Passa a Pro o Premium per generare ricette, certificati, lettere e fatture in PDF.</div>
               </div>
             ) : (
+            <>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <button onClick={() => setDocMedico(true)} style={{ background: C.priL, border: `1.5px solid ${C.pri}`, borderRadius: 12, padding: 16, cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ background: C.pri, borderRadius: 8, padding: 8 }}><Ic n="plan" s={20} c="#fff" /></div>
@@ -778,6 +815,52 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                 </div>
               </button>
             </div>
+
+            <div style={{ marginTop: 22 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>📁 Documenti archiviati</div>
+              {archivioLoading && <div style={{ textAlign: 'center', color: C.txl, padding: 20, fontSize: 12.5 }}>Caricamento…</div>}
+              {!archivioLoading && archivioDocs.length === 0 && (
+                <div style={{ textAlign: 'center', color: C.txl, padding: '20px 10px', fontSize: 12.5 }}>
+                  Nessun documento archiviato. I documenti generati vengono salvati qui solo se l'archiviazione è attiva per quel tipo (Impostazioni → Archiviazione documenti).
+                </div>
+              )}
+              {!archivioLoading && archivioDocs.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {archivioDocs.map((doc) => {
+                    const confirming = confirmDelDoc?.id === doc.id && confirmDelDoc?.tabella === doc.tabella;
+                    return (
+                      <Crd key={`${doc.tabella}_${doc.id}`} style={{ padding: 0, overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 12 }}>
+                          <div style={{ background: doc.tabella === 'documenti_fiscali' ? '#E8FAF9' : C.priL, borderRadius: 9, padding: 8, flexShrink: 0 }}>
+                            <Ic n={doc.tabella === 'documenti_fiscali' ? 'eur' : 'plan'} s={16} c={doc.tabella === 'documenti_fiscali' ? C.acc : C.pri} />
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }} onClick={() => apriDocArchiviato(doc)} role="button" tabIndex={0}>
+                            <div style={{ fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{doc.label}</div>
+                            <div style={{ fontSize: 11, color: C.txm, marginTop: 1 }}>{fmtD(doc.data)}{doc.importo != null ? ` · ${fmt(doc.importo)}` : ''}</div>
+                          </div>
+                          <button onClick={() => apriDocArchiviato(doc)} style={{ background: C.priL, border: 'none', borderRadius: 8, padding: 8, cursor: 'pointer', display: 'flex', flexShrink: 0 }}>
+                            <Ic n="srch" s={14} c={C.pri} />
+                          </button>
+                          <button onClick={() => setConfirmDelDoc(confirming ? null : { tabella: doc.tabella, id: doc.id })} style={{ background: C.danL, border: 'none', borderRadius: 8, padding: 8, cursor: 'pointer', display: 'flex', flexShrink: 0 }}>
+                            <Ic n="del" s={14} c={C.dan} />
+                          </button>
+                        </div>
+                        {confirming && (
+                          <div style={{ background: C.danL, padding: '9px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderTop: `1px solid ${C.dan}30` }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: C.dan }}>Eliminare definitivamente questo documento?</span>
+                            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                              <button onClick={() => setConfirmDelDoc(null)} style={{ background: '#fff', border: `1px solid ${C.brd}`, borderRadius: 7, padding: '5px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: C.txm }}>No</button>
+                              <button onClick={() => eliminaDocArchiviato(doc)} style={{ background: C.dan, border: 'none', borderRadius: 7, padding: '5px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#fff' }}>Sì, elimina</button>
+                            </div>
+                          </div>
+                        )}
+                      </Crd>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            </>
             )}
           </div>
         )}

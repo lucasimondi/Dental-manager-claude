@@ -321,3 +321,19 @@ export const DEF_AGENDA_SETTINGS = {
   zoom: 1,
   durataDefault: 45,
 };
+
+// Quali tipi di documento vengono salvati automaticamente nell'archivio
+// (visibile in scheda paziente) quando si genera il PDF. true = archivia,
+// false = solo condividi/scarica senza tenerne una copia. Personalizzabile
+// per tipo dal Setup, così ogni studio decide cosa conservare.
+export const DEF_DOCUMENTI_SETTINGS = {
+  ricetta: true,
+  esami: true,
+  certificato: true,
+  lettera: true,
+  protocollo: false, // istruzioni standard, spesso non serve tenerne archivio
+  vuoto: false, // documento libero/vario, non sempre da archiviare
+  fattura: true,
+  rimborso: true,
+};
+

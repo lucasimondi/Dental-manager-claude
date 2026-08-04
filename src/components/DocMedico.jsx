@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Ic } from './ui';
-import { C, fmt, fmtD, today, VERTICALI_CON_RICETTA } from '../lib/utils';
+import { C, fmt, fmtD, today, VERTICALI_CON_RICETTA, DEF_DOCUMENTI_SETTINGS } from '../lib/utils';
 import { useFormPersistente } from '../lib/useFormPersistente';
+import { supabase } from '../lib/supabase.js';
+import { condividiPdf, scaricaPdf, whatsappUrl } from '../lib/condivisionePdf';
 
 
 const TIPI = [
@@ -115,6 +117,39 @@ export default function DocMedico({ paz, si, onClose }) {
   const [tipo, setTipo] = useState(puoiPrescrivere ? 'ricetta' : 'certificato');
   const [data, setData] = useState(today());
   const [generated, setGenerated] = useState(false);
+
+  // studio_id dell'utente loggato, necessario per salvare correttamente in
+  // documenti_medici (RLS studio-scoped) — non è dentro studioInfo/si,
+  // va letto dalla sessione come fa già Dashboard.jsx.
+  const [studioId, setStudioId] = useState(null);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setStudioId(session?.user?.app_metadata?.studio_id || null);
+    });
+  }, []);
+
+  const docSet = { ...DEF_DOCUMENTI_SETTINGS, ...(si?.documenti_settings || {}) };
+
+  // Documento pronto dopo la generazione: invece di scaricare in automatico,
+  // teniamo qui dataUrl+filename+titolo e mostriamo un pannello di azioni
+  // (Condividi / WhatsApp / Scarica), così l'utente sceglie cosa farne —
+  // ed è anche il punto dove eventualmente lo salviamo in archivio.
+  const [pronto, setPronto] = useState(null); // { dataUrl, filename, titolo, tipoDoc }
+  const [condivisioneStato, setCondivisioneStato] = useState(''); // messaggio di stato per il pannello azioni
+
+  const salvaInArchivioSeAttivo = async (tipoDoc, titolo, dataUrl) => {
+    if (!docSet[tipoDoc]) return; // impostazione disattivata per questo tipo: non archiviamo
+    if (!studioId) return; // sessione non ancora pronta: evitiamo un insert con studio_id mancante
+    await supabase.from('documenti_medici').insert([{
+      studio_id: studioId,
+      paziente_id: paz.id,
+      paziente_nome: `${paz.nome} ${paz.cognome}`,
+      tipo: tipoDoc,
+      titolo,
+      data,
+      pdf_base64: dataUrl,
+    }]);
+  };
 
   // Tutto il contenuto "costoso da riscrivere" dei vari tipi di documento è
   // raggruppato in un unico oggetto persistito in localStorage (scoped per
@@ -401,14 +436,11 @@ export default function DocMedico({ paz, si, onClose }) {
     doc.text('Ricetta valida 30 giorni dalla data di emissione. · Medico prescrittore: ' + STUDIO.nome, M, y);
 
     finalizzaMultipagina(doc, W, M);
-    const blob = doc.output('blob');
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `ricetta_${paz.cognome}_${data}.pdf`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    const dataUrl = doc.output('datauristring');
+    const filename = `ricetta_${paz.cognome}_${data}.pdf`;
+    salvaInArchivioSeAttivo('ricetta', 'Ricetta medica', dataUrl);
     clearContenutoDraft();
+    setPronto({ dataUrl, filename, titolo: 'Ricetta medica', tipoDoc: 'ricetta' });
     setGenerated(true);
   };
 
@@ -479,14 +511,11 @@ export default function DocMedico({ paz, si, onClose }) {
     doc.text('Medico prescrittore: ' + STUDIO.nome, M, y);
 
     finalizzaMultipagina(doc, W, M);
-    const blob = doc.output('blob');
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `esami_ematici_${paz.cognome}_${data}.pdf`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    const dataUrl = doc.output('datauristring');
+    const filename = `esami_ematici_${paz.cognome}_${data}.pdf`;
+    salvaInArchivioSeAttivo('esami', 'Prescrizione esami ematici', dataUrl);
     clearContenutoDraft();
+    setPronto({ dataUrl, filename, titolo: 'Prescrizione esami ematici', tipoDoc: 'esami' });
     setGenerated(true);
   };
 
@@ -541,14 +570,11 @@ export default function DocMedico({ paz, si, onClose }) {
     doc.text(new Date(data + 'T12:00').toLocaleDateString('it-IT'), M, y);
 
     finalizzaMultipagina(doc, W, M);
-    const blob = doc.output('blob');
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `certificato_${paz.cognome}_${data}.pdf`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    const dataUrl = doc.output('datauristring');
+    const filename = `certificato_${paz.cognome}_${data}.pdf`;
+    salvaInArchivioSeAttivo('certificato', 'Certificato di visita', dataUrl);
     clearContenutoDraft();
+    setPronto({ dataUrl, filename, titolo: 'Certificato di visita', tipoDoc: 'certificato' });
     setGenerated(true);
   };
 
@@ -612,14 +638,11 @@ export default function DocMedico({ paz, si, onClose }) {
     doc.text('Distinti saluti,', M, y);
 
     finalizzaMultipagina(doc, W, M);
-    const blob = doc.output('blob');
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `lettera_${paz.cognome}_${data}.pdf`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    const dataUrl = doc.output('datauristring');
+    const filename = `lettera_${paz.cognome}_${data}.pdf`;
+    salvaInArchivioSeAttivo('lettera', 'Lettera per specialista', dataUrl);
     clearContenutoDraft();
+    setPronto({ dataUrl, filename, titolo: 'Lettera per specialista', tipoDoc: 'lettera' });
     setGenerated(true);
   };
 
@@ -659,14 +682,11 @@ export default function DocMedico({ paz, si, onClose }) {
     doc.text('Per qualsiasi dubbio o sintomo non descritto sopra, non esiti a contattare lo studio.', M, y);
 
     finalizzaMultipagina(doc, W, M);
-    const blob = doc.output('blob');
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `protocollo_${protocolloId}_${paz.cognome}_${data}.pdf`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    const dataUrl = doc.output('datauristring');
+    const filename = `protocollo_${protocolloId}_${paz.cognome}_${data}.pdf`;
+    salvaInArchivioSeAttivo('protocollo', titoloProtocollo, dataUrl);
     clearContenutoDraft();
+    setPronto({ dataUrl, filename, titolo: titoloProtocollo, tipoDoc: 'protocollo' });
     setGenerated(true);
   };
 
@@ -713,19 +733,18 @@ export default function DocMedico({ paz, si, onClose }) {
     // l'intestazione, pronto per essere compilato a mano dopo la stampa.
 
     finalizzaMultipagina(doc, W, M);
-    const blob = doc.output('blob');
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `documento_${paz.cognome}_${data}.pdf`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    const dataUrl = doc.output('datauristring');
+    const filename = `documento_${paz.cognome}_${data}.pdf`;
+    salvaInArchivioSeAttivo('vuoto', titoloVuoto.trim() || 'Documento libero', dataUrl);
     clearContenutoDraft();
+    setPronto({ dataUrl, filename, titolo: titoloVuoto.trim() || 'Documento libero', tipoDoc: 'vuoto' });
     setGenerated(true);
   };
 
   const genera = () => {
     setGenerated(false);
+    setPronto(null);
+    setCondivisioneStato('');
     if (tipo === 'ricetta') generaRicetta();
     else if (tipo === 'esami') generaEsamiEmatici();
     else if (tipo === 'certificato') generaCertificato();
@@ -944,15 +963,52 @@ export default function DocMedico({ paz, si, onClose }) {
         )}
 
         {/* GENERA */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          <Btn ch="Annulla" v="sec" onClick={onClose} full />
-          <Btn ch={generated ? '✓ Scaricato — genera di nuovo' : `⬇️ Genera PDF`} onClick={genera} full />
-        </div>
+        {!pronto ? (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            <Btn ch="Annulla" v="sec" onClick={onClose} full />
+            <Btn ch="⬇️ Genera PDF" onClick={genera} full />
+          </div>
+        ) : (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ background: C.sucL, border: `1px solid ${C.suc}`, borderRadius: 10, padding: '11px 14px', marginBottom: 12, textAlign: 'center' }}>
+              <div style={{ fontWeight: 700, color: C.suc }}>✓ {pronto.titolo} pronto</div>
+              {docSet[pronto.tipoDoc] && <div style={{ fontSize: 11, color: C.txm, marginTop: 3 }}>Salvato anche in archivio, scheda paziente</div>}
+            </div>
 
-        {generated && (
-          <div style={{ background: C.sucL, border: `1px solid ${C.suc}`, borderRadius: 10, padding: '11px 14px', marginBottom: 20, textAlign: 'center' }}>
-            <div style={{ fontWeight: 700, color: C.suc }}>✓ PDF generato e scaricato</div>
-            <div style={{ fontSize: 11, color: C.txm, marginTop: 3 }}>Controlla la cartella Download</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <Btn
+                ch="📤 Condividi"
+                onClick={async () => {
+                  setCondivisioneStato('Apertura condivisione…');
+                  const ok = await condividiPdf(pronto.dataUrl, pronto.filename, pronto.titolo);
+                  if (ok) setCondivisioneStato('');
+                  else setCondivisioneStato('Condivisione non disponibile su questo dispositivo — usa Scarica qui sotto.');
+                }}
+                full
+              />
+              {paz.telefono && (
+                <Btn
+                  ch="💬 Invia su WhatsApp"
+                  v="sec"
+                  onClick={() => {
+                    const link = whatsappUrl(paz.telefono, `${pronto.titolo} — ${paz.nome} ${paz.cognome}`);
+                    if (link) window.open(link, '_blank');
+                    setCondivisioneStato('WhatsApp aperto — allega il PDF dal picker di condivisione (pulsante sopra) o dalla cartella Download.');
+                  }}
+                  full
+                />
+              )}
+              <Btn ch="💾 Scarica" v="sec" onClick={() => scaricaPdf(pronto.dataUrl, pronto.filename)} full />
+            </div>
+
+            {condivisioneStato && (
+              <div style={{ fontSize: 11.5, color: C.txm, marginTop: 8, textAlign: 'center' }}>{condivisioneStato}</div>
+            )}
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+              <Btn ch="Chiudi" v="sec" onClick={onClose} full />
+              <Btn ch="↻ Genera un altro documento" v="sec" onClick={() => { setPronto(null); setGenerated(false); setCondivisioneStato(''); }} full />
+            </div>
           </div>
         )}
       </div>
