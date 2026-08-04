@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { jsPDF } from 'jspdf';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Ic } from './ui';
 import { C, fmt, fmtD, today, VERTICALI_CON_RICETTA } from '../lib/utils';
+import { useFormPersistente } from '../lib/useFormPersistente';
 
 
 const TIPI = [
@@ -115,14 +116,49 @@ export default function DocMedico({ paz, si, onClose }) {
   const [data, setData] = useState(today());
   const [generated, setGenerated] = useState(false);
 
-  // Ricetta
-  const [farmaci, setFarmaci] = useState([{ farmaco: '', posologia: '', durata: '' }]);
+  // Tutto il contenuto "costoso da riscrivere" dei vari tipi di documento è
+  // raggruppato in un unico oggetto persistito in localStorage (scoped per
+  // paziente), così se l'app viene ricaricata da zero per schermo spento o
+  // multitasking, il lavoro fatto non si perde. I dati puramente di
+  // navigazione (tipo selezionato, data odierna) restano invece in stato
+  // normale: non serve salvarli, si ripristinano da soli in un attimo.
+  const [cnt, setCnt, clearContenutoDraft] = useFormPersistente(`doc_medico_${paz?.id || 'x'}`, {
+    farmaci: [{ farmaco: '', posologia: '', durata: '' }],
+    esamiSelezionati: ESAMI_EMATICI_STANDARD,
+    esamiExtra: [],
+    noteEsami: '',
+    motivoCert: '',
+    dataVisita: today(),
+    noteCert: '',
+    specialista: '',
+    motivoLettera: '',
+    anamnesi: '',
+    diagnosi: '',
+    richiesta: '',
+    protocolloId: PROTOCOLLI_PREDEFINITI[0].id,
+    titoloProtocollo: PROTOCOLLI_PREDEFINITI[0].label,
+    testoProtocollo: PROTOCOLLI_PREDEFINITI[0].testo,
+    titoloVuoto: '',
+    testoVuoto: '',
+    includiPazienteVuoto: true,
+  });
 
-  // Esami ematici
-  const [esamiSelezionati, setEsamiSelezionati] = useState(() => new Set(ESAMI_EMATICI_STANDARD));
-  const [esamiExtra, setEsamiExtra] = useState([]); // array di stringhe aggiunte a mano
+  // Ricetta
+  const farmaci = cnt.farmaci;
+  const setFarmaci = (updater) => setCnt((c) => ({ ...c, farmaci: typeof updater === 'function' ? updater(c.farmaci) : updater }));
+
+  // Esami ematici (esamiSelezionati è un array in storage, Set a runtime per comodità)
+  const esamiSelezionati = new Set(cnt.esamiSelezionati);
+  const setEsamiSelezionati = (updater) => setCnt((c) => {
+    const prevSet = new Set(c.esamiSelezionati);
+    const nextSet = typeof updater === 'function' ? updater(prevSet) : updater;
+    return { ...c, esamiSelezionati: Array.from(nextSet) };
+  });
+  const esamiExtra = cnt.esamiExtra;
+  const setEsamiExtra = (updater) => setCnt((c) => ({ ...c, esamiExtra: typeof updater === 'function' ? updater(c.esamiExtra) : updater }));
   const [nuovoEsameExtra, setNuovoEsameExtra] = useState('');
-  const [noteEsami, setNoteEsami] = useState('');
+  const noteEsami = cnt.noteEsami;
+  const setNoteEsami = (v) => setCnt((c) => ({ ...c, noteEsami: v }));
   const toggleEsameStandard = (voce) => setEsamiSelezionati(s => {
     const next = new Set(s);
     if (next.has(voce)) next.delete(voce); else next.add(voce);
@@ -137,33 +173,44 @@ export default function DocMedico({ paz, si, onClose }) {
   const delEsameExtra = (i) => setEsamiExtra(e => e.filter((_, j) => j !== i));
 
   // Certificato
-  const [motivoCert, setMotivoCert] = useState('');
-  const [dataVisita, setDataVisita] = useState(today());
-  const [noteCert, setNoteCert] = useState('');
+  const motivoCert = cnt.motivoCert;
+  const setMotivoCert = (v) => setCnt((c) => ({ ...c, motivoCert: v }));
+  const dataVisita = cnt.dataVisita;
+  const setDataVisita = (v) => setCnt((c) => ({ ...c, dataVisita: v }));
+  const noteCert = cnt.noteCert;
+  const setNoteCert = (v) => setCnt((c) => ({ ...c, noteCert: v }));
 
   // Lettera
-  const [specialista, setSpecialista] = useState('');
-  const [motivoLettera, setMotivoLettera] = useState('');
-  const [anamnesi, setAnamnesi] = useState('');
-  const [diagnosi, setDiagnosi] = useState('');
-  const [richiesta, setRichiesta] = useState('');
+  const specialista = cnt.specialista;
+  const setSpecialista = (v) => setCnt((c) => ({ ...c, specialista: v }));
+  const motivoLettera = cnt.motivoLettera;
+  const setMotivoLettera = (v) => setCnt((c) => ({ ...c, motivoLettera: v }));
+  const anamnesi = cnt.anamnesi;
+  const setAnamnesi = (v) => setCnt((c) => ({ ...c, anamnesi: v }));
+  const diagnosi = cnt.diagnosi;
+  const setDiagnosi = (v) => setCnt((c) => ({ ...c, diagnosi: v }));
+  const richiesta = cnt.richiesta;
+  const setRichiesta = (v) => setCnt((c) => ({ ...c, richiesta: v }));
 
   // Protocollo
-  const [protocolloId, setProtocolloId] = useState(PROTOCOLLI_PREDEFINITI[0].id);
-  const [titoloProtocollo, setTitoloProtocollo] = useState(PROTOCOLLI_PREDEFINITI[0].label);
-  const [testoProtocollo, setTestoProtocollo] = useState(PROTOCOLLI_PREDEFINITI[0].testo);
+  const protocolloId = cnt.protocolloId;
+  const titoloProtocollo = cnt.titoloProtocollo;
+  const testoProtocollo = cnt.testoProtocollo;
+  const setTitoloProtocollo = (v) => setCnt((c) => ({ ...c, titoloProtocollo: v }));
+  const setTestoProtocollo = (v) => setCnt((c) => ({ ...c, testoProtocollo: v }));
   const selezionaProtocollo = (id) => {
     const p = PROTOCOLLI_PREDEFINITI.find(x => x.id === id);
     if (!p) return;
-    setProtocolloId(id);
-    setTitoloProtocollo(p.label);
-    setTestoProtocollo(p.testo);
+    setCnt((c) => ({ ...c, protocolloId: id, titoloProtocollo: p.label, testoProtocollo: p.testo }));
   };
 
   // Foglio bianco intestato
-  const [titoloVuoto, setTitoloVuoto] = useState('');
-  const [testoVuoto, setTestoVuoto] = useState('');
-  const [includiPazienteVuoto, setIncludiPazienteVuoto] = useState(true);
+  const titoloVuoto = cnt.titoloVuoto;
+  const setTitoloVuoto = (v) => setCnt((c) => ({ ...c, titoloVuoto: v }));
+  const testoVuoto = cnt.testoVuoto;
+  const setTestoVuoto = (v) => setCnt((c) => ({ ...c, testoVuoto: v }));
+  const includiPazienteVuoto = cnt.includiPazienteVuoto;
+  const setIncludiPazienteVuoto = (updater) => setCnt((c) => ({ ...c, includiPazienteVuoto: typeof updater === 'function' ? updater(c.includiPazienteVuoto) : updater }));
 
   const addFarmaco = () => setFarmaci(f => [...f, { farmaco: '', posologia: '', durata: '' }]);
   const updFarmaco = (i, field, val) => setFarmaci(f => f.map((x, j) => j === i ? { ...x, [field]: val } : x));
@@ -361,6 +408,7 @@ export default function DocMedico({ paz, si, onClose }) {
     a.download = `ricetta_${paz.cognome}_${data}.pdf`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 5000);
+    clearContenutoDraft();
     setGenerated(true);
   };
 
@@ -438,6 +486,7 @@ export default function DocMedico({ paz, si, onClose }) {
     a.download = `esami_ematici_${paz.cognome}_${data}.pdf`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 5000);
+    clearContenutoDraft();
     setGenerated(true);
   };
 
@@ -499,6 +548,7 @@ export default function DocMedico({ paz, si, onClose }) {
     a.download = `certificato_${paz.cognome}_${data}.pdf`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 5000);
+    clearContenutoDraft();
     setGenerated(true);
   };
 
@@ -569,6 +619,7 @@ export default function DocMedico({ paz, si, onClose }) {
     a.download = `lettera_${paz.cognome}_${data}.pdf`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 5000);
+    clearContenutoDraft();
     setGenerated(true);
   };
 
@@ -615,6 +666,7 @@ export default function DocMedico({ paz, si, onClose }) {
     a.download = `protocollo_${protocolloId}_${paz.cognome}_${data}.pdf`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 5000);
+    clearContenutoDraft();
     setGenerated(true);
   };
 
@@ -668,6 +720,7 @@ export default function DocMedico({ paz, si, onClose }) {
     a.download = `documento_${paz.cognome}_${data}.pdf`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 5000);
+    clearContenutoDraft();
     setGenerated(true);
   };
 

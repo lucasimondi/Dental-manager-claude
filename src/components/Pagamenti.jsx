@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, SelettorePaziente } from './ui';
 import { C, uid, fmt, fmtD, today } from '../lib/utils';
+import { useFormPersistente } from '../lib/useFormPersistente';
 import { supabase } from '../lib/supabase.js';
 
 export default function Pagamenti({ patients, payments, setPayments, plans }) {
   const [modal, setModal] = useState(false);
-  const [form, setForm] = useState({ pazienteId: '', data: today(), importo: '', metodo: 'Contanti', nota: '', stato: 'pagato' });
+  const [form, setForm, clearFormDraft] = useFormPersistente('nuovo_pagamento_studio', { pazienteId: '', data: today(), importo: '', metodo: 'Contanti', nota: '', stato: 'pagato' });
   const [pazSearch, setPazSearch] = useState('');
   const [toast, setToast] = useState('');
   const F = (f) => setForm((p) => ({ ...p, ...f }));
@@ -16,7 +17,7 @@ export default function Pagamenti({ patients, payments, setPayments, plans }) {
   const [pagExt, setPagExt] = useState([]);
   const [modalExt, setModalExt] = useState(false);
   const [modalCollab, setModalCollab] = useState(false);
-  const [formExt, setFormExt] = useState({ collaborazione_id: '', collaborazione_nome: '', importo: '', data: today(), metodo: 'Bonifico', note: '' });
+  const [formExt, setFormExt, clearFormExtDraft] = useFormPersistente('nuovo_pagamento_esterno', { collaborazione_id: '', collaborazione_nome: '', importo: '', data: today(), metodo: 'Bonifico', note: '' });
   const [nuovaCollab, setNuovaCollab] = useState('');
   const FE = (f) => setFormExt((p) => ({ ...p, ...f }));
 
@@ -48,7 +49,7 @@ export default function Pagamenti({ patients, payments, setPayments, plans }) {
     if (!formExt.collaborazione_nome || !formExt.importo) return;
     const nuovoPag = { id: Date.now(), ...formExt, importo: Number(formExt.importo) };
     const { error } = await supabase.from('pagamenti_esterni').insert([nuovoPag]);
-    if (!error) { setPagExt(prev => [nuovoPag, ...prev]); setModalExt(false); setToast('Registrato ✓'); }
+    if (!error) { setPagExt(prev => [nuovoPag, ...prev]); setModalExt(false); clearFormExtDraft(); setToast('Registrato ✓'); }
   };
 
   const delExt = async (id) => {
@@ -74,6 +75,7 @@ export default function Pagamenti({ patients, payments, setPayments, plans }) {
     if (!form.pazienteId || !form.importo) return;
     setPayments((p) => [...p, { ...form, id: uid(), pazienteId: Number(form.pazienteId), importo: Number(form.importo) }]);
     setModal(false);
+    clearFormDraft();
     setToast('Registrato ✓');
   };
   const del = (id) => { if (confirm('Eliminare?')) setPayments((p) => p.filter((x) => x.id !== id)); };

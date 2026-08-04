@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase.js';
 import { jsPDF } from 'jspdf';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Ic } from './ui';
 import { C, fmt, fmtD, today } from '../lib/utils';
+import { useFormPersistente } from '../lib/useFormPersistente';
 
 const getNumeroProgressivo = (tipo) => {
   const key = tipo === 'fattura' ? 'dm_fattura_num' : 'dm_rimborso_num';
@@ -37,7 +38,7 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
   const initNum = getNumeroProgressivo('fattura');
   const [numero, setNumero] = useState(String(initNum.num).padStart(3, '0'));
   const [data, setData] = useState(today());
-  const [voci, setVoci] = useState([]);
+  const [voci, setVoci, clearVociDraft] = useFormPersistente(`doc_fiscale_voci_${paz?.id || 'x'}`, []);
   const [nuovaVoce, setNuovaVoce] = useState({ desc: '', importo: '' });
   const [selectedPiani, setSelectedPiani] = useState([]);
   const [iban, setIban] = useState(STUDIO.iban);
@@ -224,6 +225,7 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
       if (tabView === 'archivio') loadArchivio();
     });
 
+    clearVociDraft();
     setGenerated(true);
   };
 
