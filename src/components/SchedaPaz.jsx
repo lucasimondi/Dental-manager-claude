@@ -5,7 +5,7 @@ import { C, fmt, fmtD, today, SCADENZA_PRESET, addMesi, rilevaRichiamo } from '.
 import PdfView from './PdfView.jsx';
 import DocFiscale from './DocFiscale.jsx';
 import DocMedico from './DocMedico.jsx';
-import { condividiPdf, scaricaPdf, whatsappUrl } from '../lib/condivisionePdf';
+import { condividiPdf, scaricaPdf } from '../lib/condivisionePdf';
 
 const prossimaDataMascherina = (orto) => {
   if (!orto?.dataConsegnaInizio || !orto?.mascherineConsegnate) return null;

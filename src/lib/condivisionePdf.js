@@ -89,3 +89,25 @@ export function whatsappUrl(telefono, testo) {
   const numeroIntl = numero.startsWith('+') ? numero.slice(1) : (numero.startsWith('39') ? numero : `39${numero}`);
   return `https://wa.me/${numeroIntl}?text=${encodeURIComponent(testo || '')}`;
 }
+
+/**
+ * "Invia al paziente": non esiste un'API che apra la chat di un contatto
+ * specifico CON l'allegato già pronto — è un limite reale della piattaforma,
+ * non aggirabile lato browser. L'approccio più vicino a "diretto e veloce"
+ * possibile: apriamo prima la chat WhatsApp del paziente (così è già lì,
+ * pronta), e con un piccolo ritardo lanciamo la condivisione nativa del
+ * file — l'utente si ritrova con WhatsApp già in primo piano/tra le scelte
+ * più recenti nel picker, e allega con un tap invece di cercare il contatto.
+ * Ritorna true se la chat si è aperta, false se il paziente non ha un
+ * telefono salvato.
+ */
+export async function inviaAlPaziente(telefono, dataUrl, filename) {
+  const link = whatsappUrl(telefono, '');
+  if (!link) return false;
+  window.open(link, '_blank');
+  // Piccolo ritardo per lasciare che WhatsApp prenda il focus prima di
+  // sovrapporre il picker di condivisione di sistema.
+  await new Promise((r) => setTimeout(r, 600));
+  await condividiPdf(dataUrl, filename);
+  return true;
+}

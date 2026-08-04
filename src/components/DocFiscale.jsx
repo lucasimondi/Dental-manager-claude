@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { jsPDF } from 'jspdf';
-import { Btn, Crd, Fld, Inp, Sel, Modal, Ic } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Modal, Ic, PannelloInvioDocumento } from './ui';
 import { C, fmt, fmtD, today, DEF_DOCUMENTI_SETTINGS } from '../lib/utils';
 import { useFormPersistente } from '../lib/useFormPersistente';
-import { condividiPdf, scaricaPdf, whatsappUrl } from '../lib/condivisionePdf';
 
 const getNumeroProgressivo = (tipo) => {
   const key = tipo === 'fattura' ? 'dm_fattura_num' : 'dm_rimborso_num';
@@ -50,7 +49,6 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
 
   const docSet = { ...DEF_DOCUMENTI_SETTINGS, ...(si?.documenti_settings || {}) };
   const [pronto, setPronto] = useState(null); // { dataUrl, filename, titolo, tipoDoc }
-  const [condivisioneStato, setCondivisioneStato] = useState('');
   const [studioId, setStudioId] = useState(null);
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -465,47 +463,13 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
         )}
 
         {pronto && (
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ background: C.sucL, border: `1px solid ${C.suc}`, borderRadius: 10, padding: '11px 14px', marginBottom: 12, textAlign: 'center' }}>
-              <div style={{ fontWeight: 700, color: C.suc, fontSize: 13 }}>✓ {pronto.titolo} pronto</div>
-              {docSet[pronto.tipoDoc] && <div style={{ fontSize: 11, color: C.txm, marginTop: 3 }}>Salvato anche in Archivio</div>}
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <Btn
-                ch="📤 Condividi"
-                onClick={async () => {
-                  setCondivisioneStato('Apertura condivisione…');
-                  const ok = await condividiPdf(pronto.dataUrl, pronto.filename);
-                  if (ok) setCondivisioneStato('');
-                  else setCondivisioneStato('Condivisione non disponibile su questo dispositivo — usa Scarica qui sotto.');
-                }}
-                full
-              />
-              {paz.telefono && (
-                <Btn
-                  ch="💬 Invia su WhatsApp"
-                  v="sec"
-                  onClick={() => {
-                    const link = whatsappUrl(paz.telefono, `${pronto.titolo} — ${paz.nome} ${paz.cognome}`);
-                    if (link) window.open(link, '_blank');
-                    setCondivisioneStato('WhatsApp aperto — allega il PDF dal picker di condivisione (pulsante sopra) o dalla cartella Download.');
-                  }}
-                  full
-                />
-              )}
-              <Btn ch="💾 Scarica" v="sec" onClick={() => scaricaPdf(pronto.dataUrl, pronto.filename)} full />
-            </div>
-
-            {condivisioneStato && (
-              <div style={{ fontSize: 11.5, color: C.txm, marginTop: 8, textAlign: 'center' }}>{condivisioneStato}</div>
-            )}
-
-            <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-              <Btn ch="Chiudi" v="sec" onClick={onClose} full />
-              <Btn ch="↻ Genera un altro documento" v="sec" onClick={() => { setPronto(null); setGenerated(false); setCondivisioneStato(''); }} full />
-            </div>
-          </div>
+          <PannelloInvioDocumento
+            pronto={pronto}
+            paziente={paz}
+            archiviato={docSet[pronto.tipoDoc]}
+            onChiudi={onClose}
+            onNuovoDocumento={() => { setPronto(null); setGenerated(false); }}
+          />
         )}
         </>
         }
