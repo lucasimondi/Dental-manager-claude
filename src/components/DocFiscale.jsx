@@ -476,7 +476,7 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
                 ch="📤 Condividi"
                 onClick={async () => {
                   setCondivisioneStato('Apertura condivisione…');
-                  const ok = await condividiPdf(pronto.dataUrl, pronto.filename, pronto.titolo);
+                  const ok = await condividiPdf(pronto.dataUrl, pronto.filename);
                   if (ok) setCondivisioneStato('');
                   else setCondivisioneStato('Condivisione non disponibile su questo dispositivo — usa Scarica qui sotto.');
                 }}

@@ -23,6 +23,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
   const [archivioDocs, setArchivioDocs] = useState([]); // documenti_medici + documenti_fiscali uniti, ordinati per data
   const [archivioLoading, setArchivioLoading] = useState(false);
   const [confirmDelDoc, setConfirmDelDoc] = useState(null); // { tabella, id }
+  const [filtroTipoDoc, setFiltroTipoDoc] = useState(null); // null = tutti, altrimenti 'ricetta'|'esami'|...
   const [appModal, setAppModal] = useState(false);
   const [waModal, setWaModal] = useState(false);
   const [pagModal, setPagModal] = useState(false);
@@ -129,7 +130,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
     const { data } = await supabase.from(doc.tabella).select('pdf_base64').eq('id', doc.id).single();
     if (!data?.pdf_base64) return;
     const filename = `${doc.label.replace(/\s+/g, '_')}_${doc.data}.pdf`.toLowerCase();
-    const ok = await condividiPdf(data.pdf_base64, filename, doc.label);
+    const ok = await condividiPdf(data.pdf_base64, filename);
     if (!ok) scaricaPdf(data.pdf_base64, filename);
   };
 
@@ -818,15 +819,49 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
 
             <div style={{ marginTop: 22 }}>
               <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>📁 Documenti archiviati</div>
+              {(() => {
+                const ETICHETTE_TIPO = {
+                  ricetta: '💊 Ricette', esami: '🩸 Esami', certificato: '📋 Certificati', lettera: '✉️ Lettere',
+                  protocollo: '📖 Protocolli', vuoto: '📝 Liberi', fattura: '🧾 Fatture', rimborso: '🧾 Rimborsi',
+                };
+                const tipiPresenti = Array.from(new Set(archivioDocs.map(d => d.tipo)));
+                if (tipiPresenti.length <= 1) return null; // con un solo tipo o nessun documento, i filtri non servono
+                return (
+                  <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginBottom: 12, paddingBottom: 2 }}>
+                    <button
+                      onClick={() => setFiltroTipoDoc(null)}
+                      style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 20, border: `1.5px solid ${!filtroTipoDoc ? C.pri : C.brd}`, background: !filtroTipoDoc ? C.priL : C.sur, color: !filtroTipoDoc ? C.pri : C.txm, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      Tutti ({archivioDocs.length})
+                    </button>
+                    {tipiPresenti.map((t) => {
+                      const n = archivioDocs.filter(d => d.tipo === t).length;
+                      const attivo = filtroTipoDoc === t;
+                      return (
+                        <button
+                          key={t}
+                          onClick={() => setFiltroTipoDoc(attivo ? null : t)}
+                          style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 20, border: `1.5px solid ${attivo ? C.pri : C.brd}`, background: attivo ? C.priL : C.sur, color: attivo ? C.pri : C.txm, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        >
+                          {ETICHETTE_TIPO[t] || t} ({n})
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
               {archivioLoading && <div style={{ textAlign: 'center', color: C.txl, padding: 20, fontSize: 12.5 }}>Caricamento…</div>}
               {!archivioLoading && archivioDocs.length === 0 && (
                 <div style={{ textAlign: 'center', color: C.txl, padding: '20px 10px', fontSize: 12.5 }}>
                   Nessun documento archiviato. I documenti generati vengono salvati qui solo se l'archiviazione è attiva per quel tipo (Impostazioni → Archiviazione documenti).
                 </div>
               )}
-              {!archivioLoading && archivioDocs.length > 0 && (
+              {!archivioLoading && archivioDocs.length > 0 && (() => {
+                const visibili = filtroTipoDoc ? archivioDocs.filter(d => d.tipo === filtroTipoDoc) : archivioDocs;
+                if (visibili.length === 0) return <div style={{ textAlign: 'center', color: C.txl, padding: '20px 10px', fontSize: 12.5 }}>Nessun documento di questo tipo</div>;
+                return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {archivioDocs.map((doc) => {
+                  {visibili.map((doc) => {
                     const confirming = confirmDelDoc?.id === doc.id && confirmDelDoc?.tabella === doc.tabella;
                     return (
                       <Crd key={`${doc.tabella}_${doc.id}`} style={{ padding: 0, overflow: 'hidden' }}>
@@ -858,7 +893,8 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                     );
                   })}
                 </div>
-              )}
+                );
+              })()}
             </div>
             </>
             )}

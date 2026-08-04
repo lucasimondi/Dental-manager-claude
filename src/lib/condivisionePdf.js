@@ -29,8 +29,15 @@ function dataUrlToFile(dataUrl, filename) {
  * "successo" nel senso che il meccanismo ha funzionato), false se il
  * browser non supporta affatto la condivisione di file — in quel caso il
  * chiamante deve ricadere sul download classico.
+ *
+ * IMPORTANTE: non passare mai `text` insieme a `files`. Su molte
+ * implementazioni Android (WhatsApp in particolare) se c'è un testo non
+ * vuoto insieme all'allegato, l'app ricevente privilegia il testo e "perde"
+ * il file vero e proprio — arriva solo il messaggio, non il PDF. Passando
+ * solo `files` (+ eventualmente `title`, che è metadato e non appare come
+ * messaggio) il file arriva sempre correttamente.
  */
-export async function condividiPdf(dataUrl, filename, testoAccompagnamento = '') {
+export async function condividiPdf(dataUrl, filename) {
   const file = dataUrlToFile(dataUrl, filename);
   const canShareFiles = typeof navigator.share === 'function'
     && typeof navigator.canShare === 'function'
@@ -39,11 +46,7 @@ export async function condividiPdf(dataUrl, filename, testoAccompagnamento = '')
   if (!canShareFiles) return false;
 
   try {
-    await navigator.share({
-      files: [file],
-      title: filename,
-      text: testoAccompagnamento || undefined,
-    });
+    await navigator.share({ files: [file] });
     return true;
   } catch (err) {
     // AbortError = l'utente ha chiuso il picker senza scegliere: non è un
