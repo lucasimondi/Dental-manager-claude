@@ -6,9 +6,25 @@ import { C, fmt, fmtD, today, VERTICALI_CON_RICETTA } from '../lib/utils';
 
 const TIPI = [
   { id: 'ricetta', label: '💊 Ricetta medica', desc: 'Prescrizione farmaci e posologia' },
+  { id: 'esami', label: '🩸 Prescrizione esami ematici', desc: 'Richiesta esami del sangue' },
   { id: 'certificato', label: '📋 Certificato di visita', desc: 'Certificato attestante la visita effettuata' },
   { id: 'lettera', label: '✉️ Lettera per specialista', desc: 'Referral / lettera di consulenza' },
   { id: 'protocollo', label: '📖 Protocollo post-trattamento', desc: 'Istruzioni da consegnare al paziente' },
+];
+
+// Formula ematica standard proposta come punto di partenza: ogni voce resta
+// selezionabile/deselezionabile, e se ne possono aggiungere di libere.
+const ESAMI_EMATICI_STANDARD = [
+  'Emocromo completo con formula leucocitaria e conta neutrofili assoluti (ANC)',
+  'PCR',
+  'Procalcitonina',
+  'Azotemia',
+  'Creatinina con eGFR',
+  'Elettroliti: Na, K, Cl, Ca, Mg',
+  'AST, ALT, GGT, Fosfatasi alcalina, Bilirubina totale e frazionata',
+  'LDH',
+  'PT, INR, aPTT',
+  'Lattato ematico',
 ];
 
 // Protocolli predefiniti — punto di partenza, ogni testo resta liberamente
@@ -84,7 +100,7 @@ export default function DocMedico({ paz, si, onClose }) {
   // La ricetta medica richiede l'iscrizione all'Ordine dei Medici e Odontoiatri:
   // disponibile solo per dentisti e medici chirurghi, non per altri professionisti sanitari.
   const puoiPrescrivere = VERTICALI_CON_RICETTA.has(si?.vertical) || !si?.vertical;
-  const tipiDisponibili = puoiPrescrivere ? TIPI : TIPI.filter((t) => t.id !== 'ricetta');
+  const tipiDisponibili = puoiPrescrivere ? TIPI : TIPI.filter((t) => t.id !== 'ricetta' && t.id !== 'esami');
   const STUDIO = {
     nome: si?.nome || 'Studio',
     spec: si?.spec || '',
@@ -100,6 +116,24 @@ export default function DocMedico({ paz, si, onClose }) {
 
   // Ricetta
   const [farmaci, setFarmaci] = useState([{ farmaco: '', posologia: '', durata: '' }]);
+
+  // Esami ematici
+  const [esamiSelezionati, setEsamiSelezionati] = useState(() => new Set(ESAMI_EMATICI_STANDARD));
+  const [esamiExtra, setEsamiExtra] = useState([]); // array di stringhe aggiunte a mano
+  const [nuovoEsameExtra, setNuovoEsameExtra] = useState('');
+  const [noteEsami, setNoteEsami] = useState('');
+  const toggleEsameStandard = (voce) => setEsamiSelezionati(s => {
+    const next = new Set(s);
+    if (next.has(voce)) next.delete(voce); else next.add(voce);
+    return next;
+  });
+  const addEsameExtra = () => {
+    const v = nuovoEsameExtra.trim();
+    if (!v) return;
+    setEsamiExtra(e => [...e, v]);
+    setNuovoEsameExtra('');
+  };
+  const delEsameExtra = (i) => setEsamiExtra(e => e.filter((_, j) => j !== i));
 
   // Certificato
   const [motivoCert, setMotivoCert] = useState('');
@@ -299,6 +333,83 @@ export default function DocMedico({ paz, si, onClose }) {
     setGenerated(true);
   };
 
+  const generaEsamiEmatici = () => {
+    const voci = [...ESAMI_EMATICI_STANDARD.filter(v => esamiSelezionati.has(v)), ...esamiExtra.filter(v => v.trim())];
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const W = 210, M = 18;
+    let y = intestazione(doc, W, M);
+
+    // Titolo
+    doc.setFillColor(26, 107, 138);
+    doc.rect(M, y, W - M * 2, 9, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(255, 255, 255);
+    doc.text('PRESCRIZIONE ESAMI EMATICI', W / 2, y + 6, { align: 'center' });
+    y += 13;
+
+    y = pazienteBox(doc, paz, y, W, M);
+    y += 4;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(26, 107, 138);
+    doc.text('SI PRESCRIVONO I SEGUENTI ESAMI:', M, y); y += 6;
+
+    voci.forEach((v, i) => {
+      const testoWrap = doc.splitTextToSize(v, W - M * 2 - 12);
+      const rh = 5.5 + (testoWrap.length - 1) * 4.2 + 3;
+      if (y + rh > 265) { doc.addPage(); y = 20; }
+      doc.setFillColor(i % 2 === 0 ? 247 : 255, i % 2 === 0 ? 250 : 255, i % 2 === 0 ? 252 : 255);
+      doc.rect(M, y, W - M * 2, rh, 'F');
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(26, 32, 44);
+      doc.text(`${i + 1}.`, M + 3, y + 5.5);
+      doc.text(testoWrap, M + 9, y + 5.5, { lineHeightFactor: 1.3 });
+      y += rh + 2;
+    });
+
+    if (voci.length === 0) {
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(9);
+      doc.setTextColor(150, 150, 150);
+      doc.text('Nessun esame selezionato.', M, y); y += 6;
+    }
+
+    if (noteEsami.trim()) {
+      y += 3;
+      if (y > 250) { doc.addPage(); y = 20; }
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(26, 107, 138);
+      doc.text('NOTE:', M, y); y += 5;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9.5);
+      doc.setTextColor(74, 85, 104);
+      const noteWrap = doc.splitTextToSize(noteEsami.trim(), W - M * 2);
+      doc.text(noteWrap, M, y, { lineHeightFactor: 1.4 });
+      y += noteWrap.length * 4.3;
+    }
+
+    y += 6;
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8);
+    doc.setTextColor(130, 130, 130);
+    if (y > 245) { doc.addPage(); y = 20; }
+    doc.text('Medico prescrittore: ' + STUDIO.nome, M, y);
+
+    footer(doc, W, M);
+    const blob = doc.output('blob');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `esami_ematici_${paz.cognome}_${data}.pdf`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    setGenerated(true);
+  };
+
   const generaCertificato = () => {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const W = 210, M = 18;
@@ -479,6 +590,7 @@ export default function DocMedico({ paz, si, onClose }) {
   const genera = () => {
     setGenerated(false);
     if (tipo === 'ricetta') generaRicetta();
+    else if (tipo === 'esami') generaEsamiEmatici();
     else if (tipo === 'certificato') generaCertificato();
     else if (tipo === 'lettera') generaLettera();
     else generaProtocollo();
@@ -540,6 +652,67 @@ export default function DocMedico({ paz, si, onClose }) {
               </div>
             ))}
             <button onClick={addFarmaco} style={{ width: '100%', padding: '10px', border: `2px dashed ${C.brd}`, borderRadius: 10, background: 'transparent', color: C.pri, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Aggiungi farmaco</button>
+          </Crd>
+        )}
+
+        {/* ── ESAMI EMATICI ── */}
+        {tipo === 'esami' && (
+          <Crd style={{ marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase' }}>🩸 Formula esami ematici</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={() => setEsamiSelezionati(new Set(ESAMI_EMATICI_STANDARD))} style={{ background: 'transparent', border: 'none', color: C.pri, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Tutti</button>
+                <button onClick={() => setEsamiSelezionati(new Set())} style={{ background: 'transparent', border: 'none', color: C.txl, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Nessuno</button>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+              {ESAMI_EMATICI_STANDARD.map((voce) => {
+                const attivo = esamiSelezionati.has(voce);
+                return (
+                  <button
+                    key={voce}
+                    onClick={() => toggleEsameStandard(voce)}
+                    style={{
+                      display: 'flex', alignItems: 'flex-start', gap: 9, textAlign: 'left', width: '100%',
+                      padding: '9px 11px', borderRadius: 9, border: `1.5px solid ${attivo ? C.pri : C.brd}`,
+                      background: attivo ? C.priL : C.sur, cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{
+                      flexShrink: 0, marginTop: 1, width: 16, height: 16, borderRadius: 4,
+                      border: `1.5px solid ${attivo ? C.pri : C.brd}`, background: attivo ? C.pri : 'transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      {attivo && <Ic n="ok" s={11} c="#fff" />}
+                    </div>
+                    <span style={{ fontSize: 12.5, color: attivo ? C.pri : C.txt, fontWeight: attivo ? 600 : 500, lineHeight: 1.35 }}>{voce}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 8 }}>Aggiungi esame extra</div>
+            {esamiExtra.map((v, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 9, padding: '8px 11px', marginBottom: 6 }}>
+                <span style={{ flex: 1, fontSize: 12.5, color: C.txt }}>{v}</span>
+                <button onClick={() => delEsameExtra(i)} style={{ background: C.danL, border: 'none', borderRadius: 6, padding: '3px 7px', cursor: 'pointer' }}><Ic n="x" s={11} c={C.dan} /></button>
+              </div>
+            ))}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Inp
+                value={nuovoEsameExtra}
+                onChange={e => setNuovoEsameExtra(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addEsameExtra(); } }}
+                placeholder="es. Vitamina D, TSH, Ferritina..."
+              />
+              <button onClick={addEsameExtra} style={{ flexShrink: 0, padding: '0 16px', borderRadius: 9, border: 'none', background: C.pri, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+</button>
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <Fld label="Note (opzionale)">
+                <Inp value={noteEsami} onChange={e => setNoteEsami(e.target.value)} placeholder="es. Prelievo a digiuno da almeno 8 ore" />
+              </Fld>
+            </div>
           </Crd>
         )}
 
