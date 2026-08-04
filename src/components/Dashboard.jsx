@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
-import { Crd, Bdg, Modal, Ic, Btn, Fld, Sel, Inp, Txt } from './ui';
+import { Crd, Bdg, Modal, Ic, Btn, Fld, Sel, Inp, Txt, TimePicker } from './ui';
 import { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
 import { C, fmt, fmtD, today } from '../lib/utils';
 
@@ -957,7 +957,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           })()}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <Fld label="Data"><Inp type="date" value={editForm.data} onChange={e => setEditForm(f => ({ ...f, data: e.target.value }))} /></Fld>
-            <Fld label="Ora"><Inp type="time" value={editForm.ora} onChange={e => setEditForm(f => ({ ...f, ora: e.target.value }))} /></Fld>
+            <Fld label="Ora"><TimePicker value={editForm.ora} onChange={(v) => setEditForm(f => ({ ...f, ora: v }))} label="Orario appuntamento" /></Fld>
             <Fld label="Durata">
               <Sel value={editForm.durata} onChange={e => setEditForm(f => ({ ...f, durata: e.target.value }))}>
                 {[15,30,45,60,90,120].map(d => <option key={d} value={d}>{d} min</option>)}

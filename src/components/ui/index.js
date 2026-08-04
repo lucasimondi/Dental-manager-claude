@@ -8,4 +8,5 @@ export { Bdg, Crd, Fld } from './atoms.jsx';
 export { Inp, Sel, Txt } from './inputs.jsx';
 
 export { default as SearchSel } from './SearchSel.jsx';
+export { default as TimePicker } from './TimePicker.jsx';
 export { default as WaAction, waAbilitato, waUrl, apriWaDiretto } from './WaAction.jsx';

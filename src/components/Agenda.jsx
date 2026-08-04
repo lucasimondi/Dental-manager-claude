@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker } from './ui';
 import WaAction, { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
 import { C, uid, fmtD, today, DEF_APP_TYPES, DEF_AGENDA_SETTINGS } from '../lib/utils';
 import { useIsMobile } from '../lib/useIsMobile';
@@ -989,7 +989,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
           </Fld>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <Fld label="Data"><Inp type="date" value={form.data} onChange={e => F({ data: e.target.value })} /></Fld>
-            <Fld label="Ora"><Inp type="time" value={form.ora} onChange={e => F({ ora: e.target.value })} /></Fld>
+            <Fld label="Ora"><TimePicker value={form.ora} onChange={(v) => F({ ora: v })} label="Orario appuntamento" /></Fld>
             <Fld label="Durata">
               <Sel value={form.durata} onChange={e => F({ durata: e.target.value })}>
                 {[15,30,45,60,90,120].map(d => <option key={d} value={d}>{d} min</option>)}
@@ -1086,8 +1086,8 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
             <>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
                 <Fld label="Data"><Inp type="date" value={impForm.dataInizio} onChange={e => IF({ dataInizio: e.target.value, ripetiFino: e.target.value > impForm.ripetiFino ? e.target.value : impForm.ripetiFino })} /></Fld>
-                <Fld label="Dalle"><Inp type="time" value={impForm.oraInizio} onChange={e => IF({ oraInizio: e.target.value })} /></Fld>
-                <Fld label="Alle"><Inp type="time" value={impForm.oraFine} onChange={e => IF({ oraFine: e.target.value })} /></Fld>
+                <Fld label="Dalle"><TimePicker value={impForm.oraInizio} onChange={(v) => IF({ oraInizio: v })} label="Orario inizio" /></Fld>
+                <Fld label="Alle"><TimePicker value={impForm.oraFine} onChange={(v) => IF({ oraFine: v })} label="Orario fine" /></Fld>
               </div>
               {!editImp && (
                 <>

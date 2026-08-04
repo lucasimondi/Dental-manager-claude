@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { supabase } from '../lib/supabase.js';
-import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker } from './ui';
 import { C, fmt, fmtD, today, SCADENZA_PRESET, addMesi, rilevaRichiamo } from '../lib/utils';
 import PdfView from './PdfView.jsx';
 import DocFiscale from './DocFiscale.jsx';
@@ -951,7 +951,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <Fld label="Data"><Inp type="date" value={appForm.data} onChange={e => setAppForm(f => ({ ...f, data: e.target.value }))} /></Fld>
-            <Fld label="Ora"><Inp type="time" value={appForm.ora} onChange={e => setAppForm(f => ({ ...f, ora: e.target.value }))} /></Fld>
+            <Fld label="Ora"><TimePicker value={appForm.ora} onChange={(v) => setAppForm(f => ({ ...f, ora: v }))} label="Orario appuntamento" /></Fld>
             <Fld label="Durata">
               <Sel value={appForm.durata} onChange={e => setAppForm(f => ({ ...f, durata: Number(e.target.value) }))}>
                 {[15, 30, 45, 60, 90, 120].map(d => <option key={d} value={d}>{d} min</option>)}

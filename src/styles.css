@@ -12,6 +12,7 @@ body{margin:0;padding:0;font-family:'Segoe UI',system-ui,-apple-system,sans-seri
 input,select,textarea,button{font-family:inherit;}
 ::-webkit-scrollbar{width:4px;}
 ::-webkit-scrollbar-thumb{background:var(--dm-scroll);border-radius:4px;}
+.tp-col-noscrollbar::-webkit-scrollbar{display:none;}
 input:focus,select:focus,textarea:focus{outline:2px solid var(--dm-pri);outline-offset:1px;}
 @media print{.noprint{display:none!important;}}
 
