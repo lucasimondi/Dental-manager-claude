@@ -42,7 +42,8 @@ export default function PdfViewerModal({ titolo, dataUrl, filename, onClose }) {
   const [errore, setErrore] = useState(false);
   const [erroreDettaglio, setErroreDettaglio] = useState('');
   const [caricamento, setCaricamento] = useState(true);
-  const containerRef = useRef(null);
+  const scrollAreaRef = useRef(null); // contenitore scrollabile, sempre visibile — usato per misurare la larghezza reale
+  const containerRef = useRef(null); // dove vengono appesi i canvas delle pagine
   const pdfDocRef = useRef(null);
 
   useEffect(() => {
@@ -62,11 +63,13 @@ export default function PdfViewerModal({ titolo, dataUrl, filename, onClose }) {
         if (!container) return;
         container.innerHTML = '';
 
-        // Larghezza disponibile reale del contenitore (non dell'intero
-        // schermo, per tenere conto di eventuale padding) — è la base per
-        // calcolare la scala di ogni pagina, così il PDF riempie sempre
-        // la larghezza dello schermo senza mai richiedere scroll orizzontale.
-        const larghezzaDisponibile = container.clientWidth;
+        // Larghezza disponibile reale, misurata dal contenitore scrollabile
+        // SEMPRE VISIBILE (non da quello dove appendiamo i canvas, che resta
+        // display:none finché il caricamento non finisce — misurarla lì
+        // darebbe sempre 0, producendo canvas invisibili senza alcun errore).
+        // Un padding orizzontale di 16px totali (8px per lato, vedi stile del
+        // contenitore) va sottratto per non far traboccare il canvas.
+        const larghezzaDisponibile = Math.max(1, (scrollAreaRef.current?.clientWidth || window.innerWidth) - 16);
 
         for (let numPagina = 1; numPagina <= pdf.numPages; numPagina++) {
           if (annullato) return;
@@ -112,7 +115,7 @@ export default function PdfViewerModal({ titolo, dataUrl, filename, onClose }) {
         </button>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, background: '#525659', overflowY: 'auto', overflowX: 'hidden', padding: '10px 8px' }}>
+      <div ref={scrollAreaRef} style={{ flex: 1, minHeight: 0, background: '#525659', overflowY: 'auto', overflowX: 'hidden', padding: '10px 8px' }}>
         {errore && (
           <div style={{ color: '#fff', fontSize: 13, padding: 20, textAlign: 'center' }}>
             <div>Impossibile visualizzare l'anteprima. Usa Scarica qui sotto.</div>
