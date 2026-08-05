@@ -40,6 +40,7 @@ function dataUrlToBytes(dataUrl) {
  */
 export default function PdfViewerModal({ titolo, dataUrl, filename, onClose }) {
   const [errore, setErrore] = useState(false);
+  const [erroreDettaglio, setErroreDettaglio] = useState('');
   const [caricamento, setCaricamento] = useState(true);
   const containerRef = useRef(null);
   const pdfDocRef = useRef(null);
@@ -50,6 +51,7 @@ export default function PdfViewerModal({ titolo, dataUrl, filename, onClose }) {
     const renderizzaTutto = async () => {
       setCaricamento(true);
       setErrore(false);
+      setErroreDettaglio('');
       try {
         const bytes = dataUrlToBytes(dataUrl);
         const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
@@ -88,7 +90,10 @@ export default function PdfViewerModal({ titolo, dataUrl, filename, onClose }) {
         }
       } catch (err) {
         console.error('PdfViewerModal — errore rendering PDF:', err);
-        if (!annullato) setErrore(true);
+        if (!annullato) {
+          setErroreDettaglio(`${err?.name || 'Errore'}: ${err?.message || String(err)}`);
+          setErrore(true);
+        }
       } finally {
         if (!annullato) setCaricamento(false);
       }
@@ -108,7 +113,16 @@ export default function PdfViewerModal({ titolo, dataUrl, filename, onClose }) {
       </div>
 
       <div style={{ flex: 1, minHeight: 0, background: '#525659', overflowY: 'auto', overflowX: 'hidden', padding: '10px 8px' }}>
-        {errore && <div style={{ color: '#fff', fontSize: 13, padding: 20, textAlign: 'center' }}>Impossibile visualizzare l'anteprima. Usa Scarica qui sotto.</div>}
+        {errore && (
+          <div style={{ color: '#fff', fontSize: 13, padding: 20, textAlign: 'center' }}>
+            <div>Impossibile visualizzare l'anteprima. Usa Scarica qui sotto.</div>
+            {erroreDettaglio && (
+              <div style={{ marginTop: 12, fontSize: 11, color: 'rgba(255,255,255,0.6)', userSelect: 'text', WebkitUserSelect: 'text', wordBreak: 'break-word', background: 'rgba(0,0,0,0.25)', borderRadius: 8, padding: 10, textAlign: 'left' }}>
+                {erroreDettaglio}
+              </div>
+            )}
+          </div>
+        )}
         {caricamento && !errore && <div style={{ color: '#fff', fontSize: 13, textAlign: 'center', paddingTop: 40 }}>Caricamento…</div>}
         <div ref={containerRef} style={{ display: caricamento || errore ? 'none' : 'block' }} />
       </div>
