@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, Btn, PdfViewerModal } from './ui';
+import { Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, Btn } from './ui';
+const PdfViewerModal = React.lazy(() => import('./ui/PdfViewerModal.jsx'));
 import { cercaPazienti } from '../lib/ricercaPazienti';
 import { C, fmt, fmtD, today } from '../lib/utils';
 import { supabase } from '../lib/supabase.js';
@@ -289,12 +290,18 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
       </div>
 
       {docInVisualizzazione && (
-        <PdfViewerModal
-          titolo={docInVisualizzazione.titolo}
-          dataUrl={docInVisualizzazione.dataUrl}
-          filename={docInVisualizzazione.filename}
-          onClose={() => setDocInVisualizzazione(null)}
-        />
+        <React.Suspense fallback={
+          <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.txm, fontSize: 13 }}>
+            Caricamento visualizzatore…
+          </div>
+        }>
+          <PdfViewerModal
+            titolo={docInVisualizzazione.titolo}
+            dataUrl={docInVisualizzazione.dataUrl}
+            filename={docInVisualizzazione.filename}
+            onClose={() => setDocInVisualizzazione(null)}
+          />
+        </React.Suspense>
       )}
 
       {/* MODAL MODIFICA */}

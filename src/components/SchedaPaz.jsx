@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { supabase } from '../lib/supabase.js';
-import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker, PdfViewerModal } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker } from './ui';
+const PdfViewerModal = React.lazy(() => import('./ui/PdfViewerModal.jsx'));
 import { C, fmt, fmtD, today, SCADENZA_PRESET, addMesi, rilevaRichiamo } from '../lib/utils';
 import PdfView from './PdfView.jsx';
 import DocFiscale from './DocFiscale.jsx';
@@ -1268,12 +1269,18 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
       )}
 
       {docInVisualizzazione && (
-        <PdfViewerModal
-          titolo={docInVisualizzazione.titolo}
-          dataUrl={docInVisualizzazione.dataUrl}
-          filename={docInVisualizzazione.filename}
-          onClose={() => setDocInVisualizzazione(null)}
-        />
+        <React.Suspense fallback={
+          <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.txm, fontSize: 13 }}>
+            Caricamento visualizzatore…
+          </div>
+        }>
+          <PdfViewerModal
+            titolo={docInVisualizzazione.titolo}
+            dataUrl={docInVisualizzazione.dataUrl}
+            filename={docInVisualizzazione.filename}
+            onClose={() => setDocInVisualizzazione(null)}
+          />
+        </React.Suspense>
       )}
     </div>
   );
