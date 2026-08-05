@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, Btn } from './ui';
+const PdfViewerModal = React.lazy(() => import('./ui/PdfViewerModal.jsx'));
 import { cercaPazienti } from '../lib/ricercaPazienti';
 import { C, fmt, fmtD, today } from '../lib/utils';
 import { supabase } from '../lib/supabase.js';
+import { scaricaPdf } from '../lib/condivisionePdf';
 
 export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedico }) {
   const [pazModal, setPazModal] = useState(null); // 'fiscale' | 'medico' | null
@@ -15,47 +17,65 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
   const [selDoc, setSelDoc] = useState([]);
   const [editDoc, setEditDoc] = useState(null);
   const [editForm, setEditForm] = useState({});
+  const [docInVisualizzazione, setDocInVisualizzazione] = useState(null);
+  const [caricamentoAnteprima, setCaricamentoAnteprima] = useState(null);
 
   useEffect(() => { loadDocs(); }, []);
 
   const loadDocs = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('documenti_fiscali')
-      .select('id, tipo, numero, data, paziente_nome, paziente_id, importo, created_at')
-      .order('data', { ascending: false });
-    if (data) setDocs(data);
+    const [fiscali, medici] = await Promise.all([
+      supabase.from('documenti_fiscali').select('id, tipo, numero, data, paziente_nome, paziente_id, importo, created_at').order('data', { ascending: false }),
+      supabase.from('documenti_medici').select('id, tipo, titolo, data, paziente_nome, paziente_id, created_at').order('data', { ascending: false }),
+    ]);
+    const uniti = [
+      ...(fiscali.data || []).map(d => ({ ...d, tabella: 'documenti_fiscali' })),
+      ...(medici.data || []).map(d => ({ ...d, tabella: 'documenti_medici', numero: null, importo: null })),
+    ].sort((a, b) => new Date(b.data) - new Date(a.data));
+    setDocs(uniti);
     setLoading(false);
   };
 
   const downloadDoc = async (doc) => {
-    const { data } = await supabase.from('documenti_fiscali').select('pdf_base64').eq('id', doc.id).single();
+    const { data } = await supabase.from(doc.tabella).select('pdf_base64').eq('id', doc.id).single();
     if (!data?.pdf_base64) { alert('PDF non disponibile'); return; }
-    const a = document.createElement('a');
-    a.href = data.pdf_base64;
-    a.download = `${doc.tipo}_${doc.numero}_${doc.paziente_nome.replace(/\s+/g,'_')}_${doc.data}.pdf`.toLowerCase();
-    a.style.display = 'none';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    const nomeBase = doc.tabella === 'documenti_fiscali' ? `${doc.tipo}_${doc.numero}` : (doc.titolo || doc.tipo);
+    const filename = `${nomeBase}_${doc.paziente_nome.replace(/\s+/g,'_')}_${doc.data}.pdf`.toLowerCase();
+    scaricaPdf(data.pdf_base64, filename);
   };
 
-  const deleteDoc = async (id) => {
+  const visualizzaDoc = async (doc) => {
+    setCaricamentoAnteprima(doc.id + doc.tabella);
+    const { data } = await supabase.from(doc.tabella).select('pdf_base64').eq('id', doc.id).single();
+    setCaricamentoAnteprima(null);
+    if (!data?.pdf_base64) { alert('PDF non disponibile'); return; }
+    const nomeBase = doc.tabella === 'documenti_fiscali' ? `${doc.tipo}_${doc.numero}` : (doc.titolo || doc.tipo);
+    const filename = `${nomeBase}_${doc.paziente_nome.replace(/\s+/g,'_')}_${doc.data}.pdf`.toLowerCase();
+    const titolo = doc.tabella === 'documenti_fiscali' ? `${doc.tipo === 'fattura' ? 'Fattura' : 'Rimborso'} n. ${doc.numero}` : (doc.titolo || doc.tipo);
+    setDocInVisualizzazione({ titolo, dataUrl: data.pdf_base64, filename });
+  };
+
+  const deleteDoc = async (doc) => {
     if (!confirm('Eliminare questo documento?')) return;
-    await supabase.from('documenti_fiscali').delete().eq('id', id);
-    setDocs(prev => prev.filter(d => d.id !== id));
+    await supabase.from(doc.tabella).delete().eq('id', doc.id);
+    setDocs(prev => prev.filter(d => !(d.id === doc.id && d.tabella === doc.tabella)));
     setToast('Eliminato ✓');
   };
 
   const deleteSelected = async () => {
     if (!confirm(`Eliminare ${selDoc.length} documento/i?`)) return;
-    for (const id of selDoc) await supabase.from('documenti_fiscali').delete().eq('id', id);
-    setDocs(prev => prev.filter(d => !selDoc.includes(d.id)));
+    for (const key of selDoc) {
+      const doc = docs.find(d => `${d.id}_${d.tabella}` === key);
+      if (doc) await supabase.from(doc.tabella).delete().eq('id', doc.id);
+    }
+    setDocs(prev => prev.filter(d => !selDoc.includes(`${d.id}_${d.tabella}`)));
     setSelDoc([]);
     setToast(`${selDoc.length} documenti eliminati ✓`);
   };
 
   const downloadSelected = async () => {
-    for (const id of selDoc) {
-      const doc = docs.find(d => d.id === id);
+    for (const key of selDoc) {
+      const doc = docs.find(d => `${d.id}_${d.tabella}` === key);
       if (doc) { await downloadDoc(doc); await new Promise(r => setTimeout(r, 400)); }
     }
   };
@@ -73,7 +93,7 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
       paziente_nome: editForm.paziente_nome,
     }).eq('id', editDoc.id);
     if (!error) {
-      setDocs(prev => prev.map(d => d.id === editDoc.id ? { ...d, ...editForm, importo: Number(editForm.importo) } : d));
+      setDocs(prev => prev.map(d => (d.id === editDoc.id && d.tabella === 'documenti_fiscali') ? { ...d, ...editForm, importo: Number(editForm.importo) } : d));
       setEditDoc(null);
       setToast('Aggiornato ✓');
     }
@@ -92,7 +112,10 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
   const anno = today().slice(0, 4);
   const totAnno = docs.filter(d => d.data?.startsWith(anno)).reduce((s, d) => s + Number(d.importo), 0);
 
-  const toggleSel = (id) => setSelDoc(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const toggleSel = (doc) => setSelDoc(prev => {
+    const key = `${doc.id}_${doc.tabella}`;
+    return prev.includes(key) ? prev.filter(x => x !== key) : [...prev, key];
+  });
 
   return (
     <div>
@@ -157,14 +180,31 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
       </div>
 
       {/* FILTRI */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-        <div style={{ display: 'flex', background: C.bg, borderRadius: 9, border: `1px solid ${C.brd}`, overflow: 'hidden', flexShrink: 0 }}>
-          {[['tutti','Tutti'],['fattura','Fatture'],['rimborso','Rimborsi']].map(([id, lbl]) => (
-            <button key={id} onClick={() => setFiltroTipo(id)} style={{ padding: '8px 12px', border: 'none', background: filtroTipo === id ? C.pri : 'transparent', color: filtroTipo === id ? '#fff' : C.txm, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>{lbl}</button>
-          ))}
-        </div>
-        <Inp value={filtroPaz} onChange={e => setFiltroPaz(e.target.value)} placeholder="Cerca paziente…" style={{ flex: 1 }} />
-      </div>
+      {(() => {
+        const ETICHETTE_TIPO = {
+          fattura: '🧾 Fatture', rimborso: '🧾 Rimborsi',
+          ricetta: '💊 Ricette', esami: '🩸 Esami', certificato: '📋 Certificati', lettera: '✉️ Lettere',
+          protocollo: '📖 Protocolli', vuoto: '📝 Liberi',
+        };
+        const tipiPresenti = Array.from(new Set(docs.map(d => d.tipo)));
+        return (
+          <div style={{ display: 'flex', gap: 6, marginBottom: 12, overflowX: 'auto', paddingBottom: 2 }}>
+            <button onClick={() => setFiltroTipo('tutti')} style={{ flexShrink: 0, padding: '8px 14px', borderRadius: 20, border: `1.5px solid ${filtroTipo === 'tutti' ? C.pri : C.brd}`, background: filtroTipo === 'tutti' ? C.pri : C.sur, color: filtroTipo === 'tutti' ? '#fff' : C.txm, fontWeight: 700, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              Tutti ({docs.length})
+            </button>
+            {tipiPresenti.map((t) => {
+              const n = docs.filter(d => d.tipo === t).length;
+              const attivo = filtroTipo === t;
+              return (
+                <button key={t} onClick={() => setFiltroTipo(attivo ? 'tutti' : t)} style={{ flexShrink: 0, padding: '8px 14px', borderRadius: 20, border: `1.5px solid ${attivo ? C.pri : C.brd}`, background: attivo ? C.pri : C.sur, color: attivo ? '#fff' : C.txm, fontWeight: 700, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  {ETICHETTE_TIPO[t] || t} ({n})
+                </button>
+              );
+            })}
+          </div>
+        );
+      })()}
+      <Inp value={filtroPaz} onChange={e => setFiltroPaz(e.target.value)} placeholder="Cerca paziente…" style={{ marginBottom: 12 }} />
 
       {/* AZIONI BATCH */}
       {selDoc.length > 0 && (
@@ -179,7 +219,7 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
       {/* SELEZIONA TUTTI */}
       {docsFiltrati.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-          <button onClick={() => setSelDoc(selDoc.length === docsFiltrati.length ? [] : docsFiltrati.map(d => d.id))}
+          <button onClick={() => setSelDoc(selDoc.length === docsFiltrati.length ? [] : docsFiltrati.map(d => `${d.id}_${d.tabella}`))}
             style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 7, padding: '5px 10px', fontSize: 11, fontWeight: 700, color: C.txm, cursor: 'pointer' }}>
             {selDoc.length === docsFiltrati.length ? 'Deseleziona tutti' : 'Seleziona tutti'}
           </button>
@@ -199,22 +239,27 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {docsFiltrati.map(doc => {
-          const isSel = selDoc.includes(doc.id);
+          const key = `${doc.id}_${doc.tabella}`;
+          const isSel = selDoc.includes(key);
+          const isFiscale = doc.tabella === 'documenti_fiscali';
           const isFattura = doc.tipo === 'fattura';
+          const coloreAccento = isFiscale ? (isFattura ? C.pri : C.pur) : C.acc;
+          const etichetta = isFiscale
+            ? `${isFattura ? '📄' : '🧾'} ${isFattura ? 'Fattura' : 'Rimborso'} n° ${doc.numero}`
+            : `${{ ricetta: '💊', esami: '🩸', certificato: '📋', lettera: '✉️', protocollo: '📖', vuoto: '📝' }[doc.tipo] || '📄'} ${doc.titolo || doc.tipo}`;
+          const caricandoAnteprima = caricamentoAnteprima === key;
           return (
-            <Crd key={doc.id} style={{ border: isSel ? `2px solid ${C.pri}` : `1px solid ${C.brd}`, background: isSel ? C.priL : '#fff', borderLeft: `4px solid ${isFattura ? C.pri : C.pur}` }}>
+            <Crd key={key} style={{ border: isSel ? `2px solid ${C.pri}` : `1px solid ${C.brd}`, background: isSel ? C.priL : '#fff', borderLeft: `4px solid ${coloreAccento}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 {/* Checkbox */}
-                <button onClick={() => toggleSel(doc.id)} style={{ width: 22, height: 22, borderRadius: 6, border: `2px solid ${isSel ? C.pri : C.brd}`, background: isSel ? C.pri : '#fff', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                <button onClick={() => toggleSel(doc)} style={{ width: 22, height: 22, borderRadius: 6, border: `2px solid ${isSel ? C.pri : C.brd}`, background: isSel ? C.pri : '#fff', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                   {isSel && <Ic n="ok" s={11} c="#fff" />}
                 </button>
 
                 {/* Info */}
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => visualizzaDoc(doc)}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: isFattura ? C.pri : C.pur }}>
-                      {isFattura ? '📄' : '🧾'} {isFattura ? 'Fattura' : 'Rimborso'} n° {doc.numero}
-                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: coloreAccento }}>{etichetta}</span>
                   </div>
                   <div style={{ fontSize: 11, color: C.txm, marginTop: 2 }}>{doc.paziente_nome}</div>
                   <div style={{ fontSize: 11, color: C.txl }}>{fmtD(doc.data)}</div>
@@ -222,13 +267,18 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
 
                 {/* Importo e azioni */}
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontWeight: 900, fontSize: 15, color: isFattura ? C.pri : C.pur }}>{fmt(doc.importo)}</div>
+                  {isFiscale && <div style={{ fontWeight: 900, fontSize: 15, color: coloreAccento }}>{fmt(doc.importo)}</div>}
                   <div style={{ display: 'flex', gap: 5, marginTop: 5, justifyContent: 'flex-end' }}>
-                    <button onClick={() => openEdit(doc)} style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 6, padding: '4px 7px', cursor: 'pointer' }}>
-                      <Ic n="edit" s={12} c={C.txm} />
+                    <button onClick={() => visualizzaDoc(doc)} disabled={caricandoAnteprima} style={{ background: C.priL, border: 'none', borderRadius: 6, padding: '4px 7px', cursor: 'pointer', opacity: caricandoAnteprima ? 0.5 : 1 }} title="Visualizza">
+                      <Ic n="eye" s={12} c={C.pri} />
                     </button>
-                    <button onClick={() => downloadDoc(doc)} style={{ background: C.priL, border: 'none', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: C.pri }}>⬇️</button>
-                    <button onClick={() => deleteDoc(doc.id)} style={{ background: C.danL, border: 'none', borderRadius: 6, padding: '4px 7px', cursor: 'pointer' }}>
+                    {isFiscale && (
+                      <button onClick={() => openEdit(doc)} style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 6, padding: '4px 7px', cursor: 'pointer' }}>
+                        <Ic n="edit" s={12} c={C.txm} />
+                      </button>
+                    )}
+                    <button onClick={() => downloadDoc(doc)} style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: C.txm }}>⬇️</button>
+                    <button onClick={() => deleteDoc(doc)} style={{ background: C.danL, border: 'none', borderRadius: 6, padding: '4px 7px', cursor: 'pointer' }}>
                       <Ic n="del" s={12} c={C.dan} />
                     </button>
                   </div>
@@ -238,6 +288,21 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
           );
         })}
       </div>
+
+      {docInVisualizzazione && (
+        <React.Suspense fallback={
+          <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.txm, fontSize: 13 }}>
+            Caricamento visualizzatore…
+          </div>
+        }>
+          <PdfViewerModal
+            titolo={docInVisualizzazione.titolo}
+            dataUrl={docInVisualizzazione.dataUrl}
+            filename={docInVisualizzazione.filename}
+            onClose={() => setDocInVisualizzazione(null)}
+          />
+        </React.Suspense>
+      )}
 
       {/* MODAL MODIFICA */}
       {editDoc && (

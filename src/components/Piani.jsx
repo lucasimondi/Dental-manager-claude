@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, SearchSel, SelettorePaziente } from './ui';
 import { C, uid, fmt, today, SCADENZA_PRESET, addMesi } from '../lib/utils';
+import { useFormPersistente } from '../lib/useFormPersistente';
+import { salvaPosizione, leggiPosizione } from '../lib/posizioneNavigazione';
 import Odontogramma from './Odontogramma.jsx';
 import PdfView from './PdfView.jsx';
 import WaAction, { apriWaDiretto } from './ui/WaAction.jsx';
@@ -8,9 +10,18 @@ import WaAction, { apriWaDiretto } from './ui/WaAction.jsx';
 export default function Piani({ patients, plans, setPlans, pricelist, templates, si, features, initPatId, onClearInitPat, onOpenPaz }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const [modal, setModal] = useState(false);
+
+  // Ricorda se il modale "nuovo piano" era aperto, così se l'app si
+  // ricarica da zero (schermo spento, cambio app) lo ritroviamo aperto con
+  // il contenuto già scritto (gestito separatamente da useFormPersistente).
+  React.useEffect(() => { salvaPosizione({ pianiModaleNuovo: modal }); }, [modal]);
+  React.useEffect(() => {
+    if (leggiPosizione()?.pianiModaleNuovo) setModal(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [pazSearch, setPazSearch] = useState('');
   const ortoVuoto = { attivo: false, mascherineTotali: '', frequenzaSettimane: 2, dataConsegnaInizio: '', mascherineConsegnate: 0, storico: [] };
-  const [form, setForm] = useState({ pazienteId: '', titolo: '', data: today(), voci: [], stato: 'attivo', sconto: 0, scontoTipo: 'pct', scadenzaPagamento: '', ortodonzia: null });
+  const [form, setForm, clearFormDraft] = useFormPersistente('nuovo_piano_cura', { pazienteId: '', titolo: '', data: today(), voci: [], stato: 'attivo', sconto: 0, scontoTipo: 'pct', scadenzaPagamento: '', ortodonzia: null });
   const [nv, setNv] = useState({ prestazione: '', dente: '', prezzo: '' });
   const [selectedDenti, setSelectedDenti] = useState([]);
   const [waModal, setWaModal] = useState(null);
@@ -72,6 +83,7 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
     if (!form.pazienteId || !form.titolo || !form.voci.length) return;
     setPlans((p) => [...p, { ...form, id: uid(), pazienteId: Number(form.pazienteId) }]);
     setModal(false);
+    clearFormDraft();
     setToast('Piano salvato ✓');
   };
 

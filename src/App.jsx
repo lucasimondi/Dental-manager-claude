@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { supabase, DB } from './lib/supabase.js';
 import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_APP_TYPES, DEF_TPL_GENERICO, DEF_APP_TYPES_GENERICO, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, DEF_DOCK_SETTINGS } from './lib/utils';
+import { salvaPosizione, leggiPosizione, pulisciPosizione } from './lib/posizioneNavigazione';
 import MobileDock from './components/MobileDock.jsx';
 import { useIsMobile } from './lib/useIsMobile';
 import { useTheme } from './lib/useTheme';
@@ -138,6 +139,36 @@ export default function App() {
     return () => { cancelled = true; };
   }, [session]);
 
+  // Ripristino della posizione dopo un ricaricamento "a freddo" dell'app
+  // (schermo spento a lungo, cambio app, memoria del telefono che scarica
+  // la pagina in background): se prima di allora l'utente era su una
+  // pagina o dentro la scheda di un paziente con un form in corso, lo
+  // riportiamo esattamente lì. Il contenuto scritto nei form (testo,
+  // farmaci, voci) è già salvato separatamente da useFormPersistente — qui
+  // ricostruiamo solo il "dove eravamo", altrimenti quel testo non
+  // verrebbe mai riletto perché il componente che lo conterrebbe non si
+  // rimonterebbe mai da solo.
+  useEffect(() => {
+    if (dataLoading) return;
+    const pos = leggiPosizione();
+    if (!pos) return;
+    if (pos.page && pos.page !== 'home') setPage(pos.page);
+    if (pos.schedaPazId != null) {
+      const paz = patients.find((p) => String(p.id) === String(pos.schedaPazId));
+      if (paz) setSchedaDashPaz({ paz, tab: pos.schedaPazTab || 'paga' });
+      else pulisciPosizione(['schedaPazId', 'schedaPazTab']); // paziente non più esistente: niente da ripristinare
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataLoading]);
+
+  // Salva la pagina corrente ad ogni cambio, per poterla ripristinare dopo
+  // un ricaricamento a freddo. Evitiamo di scrivere durante il ripristino
+  // stesso (dataLoading true) per non sovrascrivere la posizione appena letta.
+  useEffect(() => {
+    if (dataLoading) return;
+    salvaPosizione({ page });
+  }, [page, dataLoading]);
+
   // Aggiornamento automatico: appointments/patients/payments possono essere scritti
   // anche fuori dal flusso normale dell'app (es. dall'assistente AI, o da un altro
   // dispositivo/utente dello stesso studio) — senza questo, restano visibili solo
@@ -252,7 +283,10 @@ export default function App() {
   };
 
   const goNuovoPiano = (id) => { setInitPatId(id); setPage('piani'); };
-  const goSchedaPaz = (paz, tab = 'paga') => setSchedaDashPaz({ paz, tab });
+  const goSchedaPaz = (paz, tab = 'paga') => {
+    setSchedaDashPaz({ paz, tab });
+    salvaPosizione({ schedaPazId: paz.id, schedaPazTab: tab });
+  };
   const goAgendaPaz = (pazId) => { setAgendaInitPaz(pazId); setPage('agenda'); };
 
   const handleLogout = async () => {
@@ -322,7 +356,7 @@ export default function App() {
           appointments={appointments}
           si={studioInfo}
           features={features}
-          onClose={() => setSchedaDashPaz(null)}
+          onClose={() => { setSchedaDashPaz(null); pulisciPosizione(['schedaPazId', 'schedaPazTab']); }}
           onEdit={() => setSchedaDashPaz(null)}
           onNuovoPiano={(id) => { setSchedaDashPaz(null); goNuovoPiano(id); }}
         />

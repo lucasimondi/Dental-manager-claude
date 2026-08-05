@@ -3,6 +3,7 @@ import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker,
 import WaAction, { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
 import { C, uid, fmtD, today, DEF_APP_TYPES, DEF_AGENDA_SETTINGS } from '../lib/utils';
 import { useIsMobile } from '../lib/useIsMobile';
+import { salvaPosizione, leggiPosizione } from '../lib/posizioneNavigazione';
 
 const WD_SHORT = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
@@ -445,6 +446,15 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const [view, setView] = useState('settimana');
   const [selDay, setSelDay] = useState(today());
   const [modal, setModal] = useState(false);
+
+  // Ricorda se il modale "nuovo appuntamento" era aperto, così se l'app si
+  // ricarica da zero (schermo spento, cambio app) lo ritroviamo aperto con
+  // il contenuto già scritto (gestito separatamente da useFormPersistente).
+  useEffect(() => { salvaPosizione({ agendaModaleNuovo: modal }); }, [modal]);
+  useEffect(() => {
+    if (leggiPosizione()?.agendaModaleNuovo) setModal(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [pazSearch, setPazSearch] = useState('');
   const [toast, setToast] = useState('');
   const [editApp, setEditApp] = useState(null);

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { jsPDF } from 'jspdf';
-import { Btn, Crd, Fld, Inp, Sel, Modal, Ic } from './ui';
-import { C, fmt, fmtD, today } from '../lib/utils';
+import { Btn, Crd, Fld, Inp, Sel, Modal, Ic, PannelloInvioDocumento } from './ui';
+import { C, fmt, fmtD, today, DEF_DOCUMENTI_SETTINGS } from '../lib/utils';
+import { useFormPersistente } from '../lib/useFormPersistente';
 
 const getNumeroProgressivo = (tipo) => {
   const key = tipo === 'fattura' ? 'dm_fattura_num' : 'dm_rimborso_num';
@@ -37,7 +38,7 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
   const initNum = getNumeroProgressivo('fattura');
   const [numero, setNumero] = useState(String(initNum.num).padStart(3, '0'));
   const [data, setData] = useState(today());
-  const [voci, setVoci] = useState([]);
+  const [voci, setVoci, clearVociDraft] = useFormPersistente(`doc_fiscale_voci_${paz?.id || 'x'}`, []);
   const [nuovaVoce, setNuovaVoce] = useState({ desc: '', importo: '' });
   const [selectedPiani, setSelectedPiani] = useState([]);
   const [iban, setIban] = useState(STUDIO.iban);
@@ -45,6 +46,15 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
   const [archivio, setArchivio] = useState([]);
   const [archivioLoading, setArchivioLoading] = useState(false);
   const [selDoc, setSelDoc] = useState([]);
+
+  const docSet = { ...DEF_DOCUMENTI_SETTINGS, ...(si?.documenti_settings || {}) };
+  const [pronto, setPronto] = useState(null); // { dataUrl, filename, titolo, tipoDoc }
+  const [studioId, setStudioId] = useState(null);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setStudioId(session?.user?.app_metadata?.studio_id || null);
+    });
+  }, []);
 
   const loadArchivio = async () => {
     setArchivioLoading(true);
@@ -199,31 +209,31 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
     // salva numero progressivo
     saveNumeroProgressivo(tipo, parseInt(numero), new Date(data + 'T12:00').getFullYear());
 
-    // download
     const nomeFile = `${tipo}_${String(numero).padStart(3,'0')}_${paz.cognome.replace(/\s+/g,'_')}_${data}.pdf`.toLowerCase();
     const pdfBase64 = doc.output('datauristring');
-    const blob = doc.output('blob');
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = nomeFile; a.style.display = 'none';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
 
-    // Salva in Supabase
-    const docRecord = {
-      id: Date.now(),
-      tipo,
-      numero: String(numero).padStart(3, '0'),
-      data,
-      paziente_nome: `${paz.nome} ${paz.cognome}`,
-      paziente_id: paz.id,
-      importo: totale,
-      pdf_base64: pdfBase64,
-    };
-    supabase.from('documenti_fiscali').insert([docRecord]).then(() => {
-      if (tabView === 'archivio') loadArchivio();
-    });
+    // Salva in Supabase solo se l'impostazione per questo tipo di documento
+    // (fattura/rimborso) è attiva dal Setup — l'utente può decidere di non
+    // tenerne archivio pur continuando a generarlo e inviarlo.
+    if (docSet[tipo] && studioId) {
+      const docRecord = {
+        id: Date.now(),
+        studio_id: studioId,
+        tipo,
+        numero: String(numero).padStart(3, '0'),
+        data,
+        paziente_nome: `${paz.nome} ${paz.cognome}`,
+        paziente_id: paz.id,
+        importo: totale,
+        pdf_base64: pdfBase64,
+      };
+      supabase.from('documenti_fiscali').insert([docRecord]).then(() => {
+        if (tabView === 'archivio') loadArchivio();
+      });
+    }
 
+    clearVociDraft();
+    setPronto({ dataUrl: pdfBase64, filename: nomeFile, titolo: tipo === 'fattura' ? 'Fattura' : 'Rimborso spese', tipoDoc: tipo });
     setGenerated(true);
   };
 
@@ -445,18 +455,21 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
           </Crd>
         )}
 
-        {voci.length > 0 && (
+        {voci.length > 0 && !pronto && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
             <Btn ch="Annulla" v="sec" onClick={onClose} full />
-            <Btn ch={generated ? '✓ Scaricato — genera di nuovo' : `⬇️ Genera ${tipo === 'fattura' ? 'Fattura' : 'Rimborso'} PDF`} onClick={generaPdf} full />
+            <Btn ch={`⬇️ Genera ${tipo === 'fattura' ? 'Fattura' : 'Rimborso'} PDF`} onClick={generaPdf} full />
           </div>
         )}
 
-        {generated && (
-          <div style={{ background: C.sucL, border: `1px solid ${C.suc}`, borderRadius: 10, padding: '11px 14px', marginBottom: 20, textAlign: 'center' }}>
-            <div style={{ fontWeight: 700, color: C.suc, fontSize: 13 }}>✓ PDF generato e salvato in archivio</div>
-            <div style={{ fontSize: 11, color: C.txm, marginTop: 3 }}>Controlla la cartella Download · visibile in Archivio</div>
-          </div>
+        {pronto && (
+          <PannelloInvioDocumento
+            pronto={pronto}
+            paziente={paz}
+            archiviato={docSet[pronto.tipoDoc]}
+            onChiudi={onClose}
+            onNuovoDocumento={() => { setPronto(null); setGenerated(false); }}
+          />
         )}
         </>
         }
