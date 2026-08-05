@@ -4,6 +4,7 @@ import { C, uid, fmtD, today } from '../lib/utils';
 import ImportCsvModal from './ImportCsvModal.jsx';
 import DupModal from './DupModal.jsx';
 import SchedaPaz from './SchedaPaz.jsx';
+import { salvaPosizione, pulisciPosizione } from '../lib/posizioneNavigazione';
 
 export default function Pazienti({ patients, setPatients, plans, setPlans, payments, setPayments, appointments, setAppointments, si, features, onNuovoPiano, implants, setImplants, onNuovoAppuntamento, templates }) {
   const [modal, setModal] = useState(false);
@@ -169,7 +170,7 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
       <SchedaPaz
         paz={scheda} plans={plans} setPlans={setPlans} payments={payments} appointments={appointments}
         si={si} features={features} implants={implants} setImplants={setImplants}
-        onClose={() => setScheda(null)}
+        onClose={() => { setScheda(null); pulisciPosizione(['schedaPazId', 'schedaPazTab']); }}
         onEdit={(p) => { setScheda(null); openEdit(p); }}
         onNuovoPiano={(id) => { setScheda(null); onNuovoPiano(id); }}
         setPatients={setPatients}
@@ -272,7 +273,7 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
                 {filtered.length} {filtered.length === 1 ? 'risultato' : 'risultati'}
               </div>
               {filtered.map((p) => (
-                <RigaPaziente key={p.id} p={p} evidenzia={evidenzia} onOpen={() => { setScheda(p); setSearchFocus(false); }} onDelete={() => setConfirmDelId(p.id)} confirming={confirmDelId === p.id} onCancelDelete={() => setConfirmDelId(null)} onConfirmDelete={() => { del(p.id); setConfirmDelId(null); }} />
+                <RigaPaziente key={p.id} p={p} evidenzia={evidenzia} onOpen={() => { setScheda(p); salvaPosizione({ schedaPazId: p.id, schedaPazTab: 'info' }); setSearchFocus(false); }} onDelete={() => setConfirmDelId(p.id)} confirming={confirmDelId === p.id} onCancelDelete={() => setConfirmDelId(null)} onConfirmDelete={() => { del(p.id); setConfirmDelId(null); }} />
               ))}
               {filtered.length === 0 && (
                 <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>
@@ -334,7 +335,7 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
         {filtered.map((p) => (
-          <RigaPaziente key={p.id} p={p} evidenzia={evidenzia} onOpen={() => setScheda(p)} onDelete={() => setConfirmDelId(p.id)} confirming={confirmDelId === p.id} onCancelDelete={() => setConfirmDelId(null)} onConfirmDelete={() => { del(p.id); setConfirmDelId(null); }} />
+          <RigaPaziente key={p.id} p={p} evidenzia={evidenzia} onOpen={() => { setScheda(p); salvaPosizione({ schedaPazId: p.id, schedaPazTab: 'info' }); }} onDelete={() => setConfirmDelId(p.id)} confirming={confirmDelId === p.id} onCancelDelete={() => setConfirmDelId(null)} onConfirmDelete={() => { del(p.id); setConfirmDelId(null); }} />
         ))}
         {filtered.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>Nessun paziente</div>}
       </div>

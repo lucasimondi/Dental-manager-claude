@@ -6,6 +6,7 @@ import PdfView from './PdfView.jsx';
 import DocFiscale from './DocFiscale.jsx';
 import DocMedico from './DocMedico.jsx';
 import { condividiPdf, scaricaPdf } from '../lib/condivisionePdf';
+import { salvaPosizione, leggiPosizione } from '../lib/posizioneNavigazione';
 
 const prossimaDataMascherina = (orto) => {
   if (!orto?.dataConsegnaInizio || !orto?.mascherineConsegnate) return null;
@@ -20,6 +21,32 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
   const [pdfPlan, setPdfPlan] = useState(null);
   const [docFiscale, setDocFiscale] = useState(false);
   const [docMedico, setDocMedico] = useState(false);
+
+  // Ricorda tab attiva e modale documento aperto, così se l'app si ricarica
+  // da zero (schermo spento, cambio app) il ripristino della posizione
+  // riporta l'utente esattamente qui, con il form ancora aperto per
+  // rileggere il contenuto già salvato da useFormPersistente.
+  React.useEffect(() => {
+    salvaPosizione({
+      schedaPazId: paz.id,
+      schedaPazTab: tab,
+      schedaPazModaleDoc: docMedico ? 'medico' : docFiscale ? 'fiscale' : null,
+    });
+  }, [paz.id, tab, docMedico, docFiscale]);
+
+  // Al montaggio, se la posizione salvata indicava un modale documento
+  // aperto per questo stesso paziente, lo riapriamo subito — è il passo
+  // che rende visibile di nuovo il form il cui testo era già stato
+  // ripristinato da useFormPersistente al suo interno.
+  React.useEffect(() => {
+    const pos = leggiPosizione();
+    if (pos?.schedaPazId === paz.id) {
+      if (pos.schedaPazModaleDoc === 'medico') setDocMedico(true);
+      else if (pos.schedaPazModaleDoc === 'fiscale') setDocFiscale(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [archivioDocs, setArchivioDocs] = useState([]); // documenti_medici + documenti_fiscali uniti, ordinati per data
   const [archivioLoading, setArchivioLoading] = useState(false);
   const [confirmDelDoc, setConfirmDelDoc] = useState(null); // { tabella, id }
@@ -882,7 +909,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                             style={{ background: C.priL, border: 'none', borderRadius: 8, padding: 8, cursor: 'pointer', display: 'flex', flexShrink: 0, opacity: caricamentoAnteprima === `${doc.tabella}_${doc.id}` ? 0.5 : 1 }}
                             title="Visualizza documento"
                           >
-                            <Ic n="srch" s={14} c={C.pri} />
+                            <Ic n="eye" s={14} c={C.pri} />
                           </button>
                           <button onClick={() => setConfirmDelDoc(confirming ? null : { tabella: doc.tabella, id: doc.id })} style={{ background: C.danL, border: 'none', borderRadius: 8, padding: 8, cursor: 'pointer', display: 'flex', flexShrink: 0 }}>
                             <Ic n="del" s={14} c={C.dan} />
