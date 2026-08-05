@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
-import * as pdfjsLib from 'pdfjs-dist';
-import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.js?url';
+// Usiamo esplicitamente la build "legacy" di pdf.js: la build standard usa
+// feature JS moderne non pienamente compatibili con Safari iOS meno recenti
+// (è la stessa raccomandazione ufficiale della libreria per compatibilità
+// mobile estesa) — è la causa più probabile per cui l'anteprima falliva
+// silenziosamente su iPhone.
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.js';
+import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.min.js?url';
 import { C } from '../../lib/utils';
 import Ic from './Ic.jsx';
 import Btn from './Btn.jsx';
@@ -81,7 +86,8 @@ export default function PdfViewerModal({ titolo, dataUrl, filename, onClose }) {
           const ctx = canvas.getContext('2d');
           await pagina.render({ canvasContext: ctx, viewport }).promise;
         }
-      } catch {
+      } catch (err) {
+        console.error('PdfViewerModal — errore rendering PDF:', err);
         if (!annullato) setErrore(true);
       } finally {
         if (!annullato) setCaricamento(false);
