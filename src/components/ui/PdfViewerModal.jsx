@@ -73,7 +73,7 @@ export default function PdfViewerModal({ titolo, dataUrl, filename, onClose }) {
           const pagina = await pdf.getPage(numPagina);
           const viewportBase = pagina.getViewport({ scale: 1 });
           const scala = larghezzaDisponibile / viewportBase.width;
-          const viewport = pagina.getViewport({ scale });
+          const viewport = pagina.getViewport({ scale: scala });
 
           const canvas = document.createElement('canvas');
           canvas.width = viewport.width;
