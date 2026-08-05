@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { supabase } from '../lib/supabase.js';
-import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker, PdfViewerModal } from './ui';
 import { C, fmt, fmtD, today, SCADENZA_PRESET, addMesi, rilevaRichiamo } from '../lib/utils';
 import PdfView from './PdfView.jsx';
 import DocFiscale from './DocFiscale.jsx';
@@ -23,6 +23,8 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
   const [archivioDocs, setArchivioDocs] = useState([]); // documenti_medici + documenti_fiscali uniti, ordinati per data
   const [archivioLoading, setArchivioLoading] = useState(false);
   const [confirmDelDoc, setConfirmDelDoc] = useState(null); // { tabella, id }
+  const [docInVisualizzazione, setDocInVisualizzazione] = useState(null); // { titolo, dataUrl, filename }
+  const [caricamentoAnteprima, setCaricamentoAnteprima] = useState(null); // id del doc di cui si sta caricando l'anteprima
   const [filtroTipoDoc, setFiltroTipoDoc] = useState(null); // null = tutti, altrimenti 'ricetta'|'esami'|...
   const [appModal, setAppModal] = useState(false);
   const [waModal, setWaModal] = useState(false);
@@ -126,12 +128,13 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
     setArchivioLoading(false);
   };
 
-  const apriDocArchiviato = async (doc) => {
+  const visualizzaDocArchiviato = async (doc) => {
+    setCaricamentoAnteprima(`${doc.tabella}_${doc.id}`);
     const { data } = await supabase.from(doc.tabella).select('pdf_base64').eq('id', doc.id).single();
+    setCaricamentoAnteprima(null);
     if (!data?.pdf_base64) return;
     const filename = `${doc.label.replace(/\s+/g, '_')}_${doc.data}.pdf`.toLowerCase();
-    const ok = await condividiPdf(data.pdf_base64, filename);
-    if (!ok) scaricaPdf(data.pdf_base64, filename);
+    setDocInVisualizzazione({ titolo: doc.label, dataUrl: data.pdf_base64, filename });
   };
 
   const eliminaDocArchiviato = async (doc) => {
@@ -869,11 +872,16 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                           <div style={{ background: doc.tabella === 'documenti_fiscali' ? '#E8FAF9' : C.priL, borderRadius: 9, padding: 8, flexShrink: 0 }}>
                             <Ic n={doc.tabella === 'documenti_fiscali' ? 'eur' : 'plan'} s={16} c={doc.tabella === 'documenti_fiscali' ? C.acc : C.pri} />
                           </div>
-                          <div style={{ flex: 1, minWidth: 0 }} onClick={() => apriDocArchiviato(doc)} role="button" tabIndex={0}>
-                            <div style={{ fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{doc.label}</div>
+                          <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => visualizzaDocArchiviato(doc)} role="button" tabIndex={0}>
+                            <div style={{ fontWeight: 700, fontSize: 13 }}>{doc.label}</div>
                             <div style={{ fontSize: 11, color: C.txm, marginTop: 1 }}>{fmtD(doc.data)}{doc.importo != null ? ` · ${fmt(doc.importo)}` : ''}</div>
                           </div>
-                          <button onClick={() => apriDocArchiviato(doc)} style={{ background: C.priL, border: 'none', borderRadius: 8, padding: 8, cursor: 'pointer', display: 'flex', flexShrink: 0 }}>
+                          <button
+                            onClick={() => visualizzaDocArchiviato(doc)}
+                            disabled={caricamentoAnteprima === `${doc.tabella}_${doc.id}`}
+                            style={{ background: C.priL, border: 'none', borderRadius: 8, padding: 8, cursor: 'pointer', display: 'flex', flexShrink: 0, opacity: caricamentoAnteprima === `${doc.tabella}_${doc.id}` ? 0.5 : 1 }}
+                            title="Visualizza documento"
+                          >
                             <Ic n="srch" s={14} c={C.pri} />
                           </button>
                           <button onClick={() => setConfirmDelDoc(confirming ? null : { tabella: doc.tabella, id: doc.id })} style={{ background: C.danL, border: 'none', borderRadius: 8, padding: 8, cursor: 'pointer', display: 'flex', flexShrink: 0 }}>
@@ -1230,6 +1238,15 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
             <Btn ch="Salva modifiche" onClick={saveEdit} full />
           </div>
         </Modal>
+      )}
+
+      {docInVisualizzazione && (
+        <PdfViewerModal
+          titolo={docInVisualizzazione.titolo}
+          dataUrl={docInVisualizzazione.dataUrl}
+          filename={docInVisualizzazione.filename}
+          onClose={() => setDocInVisualizzazione(null)}
+        />
       )}
     </div>
   );
