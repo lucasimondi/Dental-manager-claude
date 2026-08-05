@@ -1,33 +1,39 @@
 import React, { useState } from 'react';
 import { C } from '../../lib/utils';
 import Btn from './Btn.jsx';
-import { condividiPdf, scaricaPdf, inviaAlPaziente } from '../../lib/condivisionePdf';
+import { condividiPdf, scaricaPdf, copiaNumero } from '../../lib/condivisionePdf';
 
 /**
  * Pannello azioni dopo la generazione di un documento: un pulsante unico
  * "Invia documento" apre un piccolo menu con le destinazioni disponibili.
- * Oggi copre "il paziente" (se ha un telefono) e "altro contatto/email"
- * (picker di sistema generico). È il punto pensato per crescere in futuro
- * con una vera rubrica di destinatari (altri medici, curanti, ecc.) — quel
- * giorno basterà aggiungere altre righe a `destinatari` sotto, senza
- * toccare il resto del pannello.
+ * Oggi copre "il paziente" (se ha un telefono) e "altro contatto/email".
+ * È il punto pensato per crescere in futuro con una vera rubrica di
+ * destinatari (altri medici, curanti, ecc.) — quel giorno basterà aggiungere
+ * altre righe al menu, senza toccare il resto del pannello.
+ *
+ * Limite di piattaforma da tenere presente: non esiste un modo per aprire
+ * la chat WhatsApp di un contatto specifico CON il file già allegato — né
+ * qui né altrove nel web. In entrambi i casi il click apre lo stesso picker
+ * di condivisione nativo del telefono; scegliendo "il paziente" copiamo
+ * prima il suo numero negli appunti, così nel picker di WhatsApp può
+ * incollarlo nella ricerca contatti invece di scorrere la rubrica.
  */
 export default function PannelloInvioDocumento({ pronto, paziente, archiviato, onChiudi, onNuovoDocumento }) {
   const [menuAperto, setMenuAperto] = useState(false);
   const [stato, setStato] = useState('');
 
-  const inviaGenerico = async () => {
+  const condividi = async (messaggioSuccesso) => {
     setMenuAperto(false);
     setStato('Apertura condivisione…');
     const ok = await condividiPdf(pronto.dataUrl, pronto.filename);
-    setStato(ok ? '' : 'Condivisione non disponibile su questo dispositivo — usa Scarica qui sotto.');
+    setStato(ok ? messaggioSuccesso || '' : 'Condivisione non disponibile su questo dispositivo — usa Scarica qui sotto.');
   };
 
   const inviaPaziente = async () => {
-    setMenuAperto(false);
-    setStato('Apertura chat WhatsApp…');
-    const ok = await inviaAlPaziente(paziente?.telefono, pronto.dataUrl, pronto.filename);
-    setStato(ok ? 'Chat aperta — allega il PDF dal picker di condivisione comparso, scegliendo WhatsApp.' : 'Il paziente non ha un numero di telefono salvato.');
+    const copiato = await copiaNumero(paziente.telefono);
+    await condividi(copiato
+      ? `Numero di ${paziente.nome} copiato (${paziente.telefono}) — scegli WhatsApp e incollalo nella ricerca contatti.`
+      : `Cerca ${paziente.nome} ${paziente.cognome} (${paziente.telefono}) tra i contatti WhatsApp.`);
   };
 
   return (
@@ -54,12 +60,12 @@ export default function PannelloInvioDocumento({ pronto, paziente, archiviato, o
                   <span style={{ fontSize: 18 }}>💬</span>
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 13.5, color: C.txt }}>{paziente.nome} {paziente.cognome}</div>
-                    <div style={{ fontSize: 11, color: C.txl }}>WhatsApp · {paziente.telefono}</div>
+                    <div style={{ fontSize: 11, color: C.txl }}>Copia il numero e apre la condivisione</div>
                   </div>
                 </button>
               )}
               <button
-                onClick={inviaGenerico}
+                onClick={() => condividi('')}
                 style={{ width: '100%', textAlign: 'left', padding: '13px 16px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
               >
                 <span style={{ fontSize: 18 }}>📤</span>

@@ -77,37 +77,40 @@ export function scaricaPdf(dataUrl, filename) {
 }
 
 /**
- * Apre WhatsApp verso il numero del paziente. Nota: WhatsApp Web/App non
- * permette di allegare automaticamente un file da URL esterno per motivi di
- * sicurezza — quindi qui apriamo la chat pronta e, se la condivisione nativa
- * è disponibile, la lanciamo comunque in parallelo così l'utente può
- * scegliere "WhatsApp" dal menù di condivisione e allegare il file lì.
+ * "Invia al paziente": non esiste un'API che apra la chat di un contatto
+ * specifico CON l'allegato già pronto — è un limite reale della
+ * piattaforma, non aggirabile lato browser.
+ *
+ * Un primo tentativo era: aprire prima la chat WhatsApp del paziente con
+ * window.open(), poi lanciare la condivisione nativa dopo un breve ritardo.
+ * Non funziona: su iOS Safari, window.open() verso un link wa.me naviga via
+ * dalla pagina (o passa il controllo all'app WhatsApp), interrompendo
+ * l'esecuzione dello script prima che il setTimeout successivo possa
+ * scattare — la chat resta aperta ma vuota, senza che la condivisione parta
+ * mai. Non c'è un modo affidabile per "riprendere" dopo quella navigazione.
+ *
+ * L'unico percorso realmente funzionante: la condivisione nativa parte
+ * subito, mentre siamo ancora nella pagina. L'utente sceglie "WhatsApp" dal
+ * picker di sistema, e da lì è WhatsApp stesso — non noi — a fargli
+ * scegliere il contatto e ad allegare il file nella chat corretta.
  */
-export function whatsappUrl(telefono, testo) {
-  const numero = (telefono || '').replace(/[^\d+]/g, '');
-  if (!numero) return null;
-  const numeroIntl = numero.startsWith('+') ? numero.slice(1) : (numero.startsWith('39') ? numero : `39${numero}`);
-  return `https://wa.me/${numeroIntl}?text=${encodeURIComponent(testo || '')}`;
+export async function inviaAlPaziente(dataUrl, filename) {
+  return condividiPdf(dataUrl, filename);
 }
 
 /**
- * "Invia al paziente": non esiste un'API che apra la chat di un contatto
- * specifico CON l'allegato già pronto — è un limite reale della piattaforma,
- * non aggirabile lato browser. L'approccio più vicino a "diretto e veloce"
- * possibile: apriamo prima la chat WhatsApp del paziente (così è già lì,
- * pronta), e con un piccolo ritardo lanciamo la condivisione nativa del
- * file — l'utente si ritrova con WhatsApp già in primo piano/tra le scelte
- * più recenti nel picker, e allega con un tap invece di cercare il contatto.
- * Ritorna true se la chat si è aperta, false se il paziente non ha un
- * telefono salvato.
+ * Copia il numero di telefono negli appunti, ripulito da spazi/simboli.
+ * Utile prima di aprire il picker di condivisione: l'utente può incollarlo
+ * nella ricerca contatti di WhatsApp invece di scorrere la rubrica a mano.
+ * Ritorna true se la copia è riuscita.
  */
-export async function inviaAlPaziente(telefono, dataUrl, filename) {
-  const link = whatsappUrl(telefono, '');
-  if (!link) return false;
-  window.open(link, '_blank');
-  // Piccolo ritardo per lasciare che WhatsApp prenda il focus prima di
-  // sovrapporre il picker di condivisione di sistema.
-  await new Promise((r) => setTimeout(r, 600));
-  await condividiPdf(dataUrl, filename);
-  return true;
+export async function copiaNumero(telefono) {
+  const numero = (telefono || '').trim();
+  if (!numero) return false;
+  try {
+    await navigator.clipboard.writeText(numero);
+    return true;
+  } catch {
+    return false;
+  }
 }
