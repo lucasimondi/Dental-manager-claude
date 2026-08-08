@@ -11,7 +11,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
   const [si, setSi] = useState({ ...DEF_STUDIO, ...(studioInfo || {}) });
   const [toast, setToast] = useState('');
   const [tipoModal, setTipoModal] = useState(null);
-  const [tipoForm, setTipoForm] = useState({ nome: '', colore: COLORI_DISPONIBILI[0] });
+  const [tipoForm, setTipoForm] = useState({ nome: '', colore: COLORI_DISPONIBILI[0], durata: '', online_abilitato: false, online_giorni: [1, 2, 3, 4, 5], online_ora_inizio: '09:00', online_ora_fine: '18:00' });
   const S = (f) => setSi((s) => ({ ...s, ...f }));
   const agSet = { ...DEF_AGENDA_SETTINGS, ...(si.agenda_settings || {}) };
   const SA = (f) => S({ agenda_settings: { ...agSet, ...f } });
@@ -26,16 +26,24 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
   const [slug, setSlug] = useState('');
   const [slugSalvato, setSlugSalvato] = useState('');
   const [slugStato, setSlugStato] = useState(''); // '', 'salvando', 'ok', 'occupato', 'errore'
+  const [modalitaPrenotazione, setModalitaPrenotazione] = useState('richiesta');
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       const id = session?.user?.app_metadata?.studio_id;
       if (!id) return;
       setStudioId(id);
-      supabase.from('studios').select('slug').eq('id', id).maybeSingle().then(({ data }) => {
+      supabase.from('studios').select('slug, modalita_prenotazione').eq('id', id).maybeSingle().then(({ data }) => {
         if (data?.slug) { setSlug(data.slug); setSlugSalvato(data.slug); }
+        if (data?.modalita_prenotazione) setModalitaPrenotazione(data.modalita_prenotazione);
       });
     });
   }, []);
+
+  const cambiaModalitaPrenotazione = async (nuova) => {
+    setModalitaPrenotazione(nuova); // ottimistico, l'interazione resta fluida
+    if (!studioId) return;
+    await supabase.from('studios').update({ modalita_prenotazione: nuova }).eq('id', studioId);
+  };
 
   const slugPulito = (v) => v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
@@ -112,7 +120,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
   };
 
   const openNewTipo = () => { setTipoForm({ nome: '', colore: COLORI_DISPONIBILI[Math.floor(Math.random() * COLORI_DISPONIBILI.length)] }); setTipoModal('new'); };
-  const openEditTipo = (t) => { setTipoForm({ ...t }); setTipoModal(t.id); };
+  const openEditTipo = (t) => { setTipoForm({ durata: '', online_abilitato: false, online_giorni: [1, 2, 3, 4, 5], online_ora_inizio: '09:00', online_ora_fine: '18:00', ...t }); setTipoModal(t.id); };
   const saveTipo = () => {
     if (!tipoForm.nome) return;
     if (tipoModal === 'new') setAppTypes((p) => [...p, { ...tipoForm, id: uid() }]);
@@ -364,8 +372,43 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
 
       <div style={{ marginTop: 26, marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Prenotazione online</div>
-        <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Link pubblico da condividere: i pazienti possono inviare una richiesta di appuntamento scegliendo le date preferite. La richiesta va poi confermata a mano dall'Agenda.</div>
+        <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Link pubblico da condividere con i pazienti per fissare un appuntamento.</div>
       </div>
+      <Crd style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 10 }}>Modalità</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <button
+            onClick={() => cambiaModalitaPrenotazione('richiesta')}
+            style={{ display: 'flex', alignItems: 'flex-start', gap: 10, textAlign: 'left', padding: '12px 14px', borderRadius: 10, border: `1.5px solid ${modalitaPrenotazione === 'richiesta' ? C.pri : C.brd}`, background: modalitaPrenotazione === 'richiesta' ? C.priL : C.sur, cursor: 'pointer' }}
+          >
+            <div style={{ flexShrink: 0, marginTop: 2, width: 16, height: 16, borderRadius: '50%', border: `1.5px solid ${modalitaPrenotazione === 'richiesta' ? C.pri : C.brd}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {modalitaPrenotazione === 'richiesta' && <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.pri }} />}
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 13.5, color: C.txt }}>Richiesta</div>
+              <div style={{ fontSize: 11.5, color: C.txm, marginTop: 2 }}>Il paziente indica date preferite, tu confermi a mano dall'Agenda</div>
+            </div>
+          </button>
+          <button
+            onClick={() => cambiaModalitaPrenotazione('diretta')}
+            style={{ display: 'flex', alignItems: 'flex-start', gap: 10, textAlign: 'left', padding: '12px 14px', borderRadius: 10, border: `1.5px solid ${modalitaPrenotazione === 'diretta' ? C.pri : C.brd}`, background: modalitaPrenotazione === 'diretta' ? C.priL : C.sur, cursor: 'pointer' }}
+          >
+            <div style={{ flexShrink: 0, marginTop: 2, width: 16, height: 16, borderRadius: '50%', border: `1.5px solid ${modalitaPrenotazione === 'diretta' ? C.pri : C.brd}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {modalitaPrenotazione === 'diretta' && <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.pri }} />}
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 13.5, color: C.txt }}>Diretta</div>
+              <div style={{ fontSize: 11.5, color: C.txm, marginTop: 2 }}>Il paziente vede gli orari liberi e prenota subito, senza conferma manuale</div>
+            </div>
+          </button>
+        </div>
+        {modalitaPrenotazione === 'diretta' && (
+          <div style={{ fontSize: 11, color: C.txl, marginTop: 10 }}>
+            Per attivarla, apri ogni Tipo Appuntamento che vuoi rendere prenotabile online (qui sopra ↑) e abilita "Prenotabile online".
+          </div>
+        )}
+      </Crd>
+
       <Crd style={{ marginBottom: 14 }}>
         <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 8 }}>Indirizzo del link</div>
         <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
@@ -510,6 +553,56 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
             <div style={{ width: 14, height: 14, borderRadius: 4, background: tipoForm.colore, flexShrink: 0 }} />
             <span style={{ fontSize: 12, fontWeight: 700, color: C.txt }}>{tipoForm.nome || 'Anteprima tipo'}</span>
           </div>
+
+          <Fld label="Durata (minuti)">
+            <Inp
+              type="number" min="5" step="5"
+              value={tipoForm.durata || ''}
+              onChange={(e) => setTipoForm((f) => ({ ...f, durata: e.target.value ? Number(e.target.value) : '' }))}
+              placeholder={`Predefinita studio (${agSet.durataDefault} min)`}
+            />
+          </Fld>
+
+          <div style={{ marginTop: 14, marginBottom: 4 }}>
+            <button
+              onClick={() => setTipoForm((f) => ({ ...f, online_abilitato: !f.online_abilitato }))}
+              style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', textAlign: 'left', padding: '9px 11px', borderRadius: 9, border: `1.5px solid ${tipoForm.online_abilitato ? C.pri : C.brd}`, background: tipoForm.online_abilitato ? C.priL : C.sur, cursor: 'pointer' }}
+            >
+              <div style={{ flexShrink: 0, width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${tipoForm.online_abilitato ? C.pri : C.brd}`, background: tipoForm.online_abilitato ? C.pri : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {tipoForm.online_abilitato && <Ic n="ok" s={11} c="#fff" />}
+              </div>
+              <span style={{ fontSize: 12.5, color: tipoForm.online_abilitato ? C.pri : C.txt, fontWeight: 600 }}>Prenotabile online (modalità diretta)</span>
+            </button>
+          </div>
+
+          {tipoForm.online_abilitato && (
+            <div style={{ background: C.bg, borderRadius: 9, padding: 12, marginBottom: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.txm, marginBottom: 8, textTransform: 'uppercase' }}>Giorni disponibili</div>
+              <div style={{ display: 'flex', gap: 5, marginBottom: 12 }}>
+                {GIORNI_SETTIMANA.map((lbl, wd) => {
+                  const attivo = (tipoForm.online_giorni || []).includes(wd);
+                  return (
+                    <button
+                      key={wd}
+                      onClick={() => setTipoForm((f) => ({ ...f, online_giorni: attivo ? f.online_giorni.filter(g => g !== wd) : [...f.online_giorni, wd] }))}
+                      style={{ flex: 1, padding: '7px 0', borderRadius: 7, border: `1.5px solid ${attivo ? C.pri : C.brd}`, background: attivo ? C.pri : C.sur, color: attivo ? '#fff' : C.txm, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      {lbl}
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Fld label="Dalle">
+                  <Inp type="time" value={tipoForm.online_ora_inizio} onChange={(e) => setTipoForm((f) => ({ ...f, online_ora_inizio: e.target.value }))} />
+                </Fld>
+                <Fld label="Alle">
+                  <Inp type="time" value={tipoForm.online_ora_fine} onChange={(e) => setTipoForm((f) => ({ ...f, online_ora_fine: e.target.value }))} />
+                </Fld>
+              </div>
+            </div>
+          )}
+
           <div style={{ display: 'flex', gap: 7 }}>
             {tipoModal !== 'new' && <Btn ch="Elimina" v="dan" sz="sm" onClick={() => delTipo(tipoModal)} />}
             <Btn ch="Annulla" v="sec" onClick={() => setTipoModal(null)} full />

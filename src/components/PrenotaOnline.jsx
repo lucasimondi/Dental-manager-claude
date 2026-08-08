@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
+import PrenotaDiretta from './PrenotaDiretta.jsx';
 
 const C = {
   bg: '#F7F8FA', sur: '#FFFFFF',
@@ -90,9 +91,9 @@ export default function PrenotaOnline({ slug }) {
 
   useEffect(() => {
     let annullato = false;
-    supabase.from('studios').select('id, nome, attivo').eq('slug', slug).maybeSingle().then(({ data }) => {
+    supabase.rpc('info_studio_pubblico', { p_slug: slug }).then(({ data }) => {
       if (annullato) return;
-      setStudio(data && data.attivo ? data : null);
+      setStudio(data && data.length > 0 ? data[0] : null);
     });
     return () => { annullato = true; };
   }, [slug]);
@@ -149,6 +150,23 @@ export default function PrenotaOnline({ slug }) {
           <div style={{ fontSize: 14, color: C.txm, lineHeight: 1.5 }}>
             {studio.nome} ti contatterà al più presto per confermare data e orario dell'appuntamento.
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Modalità "diretta": slot reali cliccabili, prenotazione immediata.
+  // Componente separato perché il flusso è sostanzialmente diverso
+  // (tipo → slot → conferma, invece di form → date preferite → invio).
+  if (studio.modalita_prenotazione === 'diretta') {
+    return (
+      <div style={{ minHeight: '100dvh', background: C.bg, fontFamily: 'system-ui, -apple-system, sans-serif', padding: '24px 16px 60px' }}>
+        <div style={{ maxWidth: 460, margin: '0 auto' }}>
+          <div style={{ marginBottom: 22, textAlign: 'center' }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: 1 }}>Prenota appuntamento</div>
+            <div style={{ fontSize: 21, fontWeight: 800, color: C.txt, marginTop: 3 }}>{studio.nome}</div>
+          </div>
+          <PrenotaDiretta studio={studio} />
         </div>
       </div>
     );
