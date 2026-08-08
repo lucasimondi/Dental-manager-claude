@@ -4,6 +4,7 @@ import WaAction, { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
 import { C, uid, fmtD, today, DEF_APP_TYPES, DEF_AGENDA_SETTINGS } from '../lib/utils';
 import { useIsMobile } from '../lib/useIsMobile';
 import { salvaPosizione, leggiPosizione } from '../lib/posizioneNavigazione';
+import { supabase } from '../lib/supabase.js';
 
 const WD_SHORT = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
@@ -458,6 +459,28 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const [pazSearch, setPazSearch] = useState('');
   const [toast, setToast] = useState('');
   const [editApp, setEditApp] = useState(null);
+
+  // Richieste di prenotazione arrivate dalla pagina pubblica (nessuna
+  // integrazione live con gli slot: sono solo richieste da rivedere a mano
+  // e trasformare in appuntamento vero, o rifiutare).
+  const [richieste, setRichieste] = useState([]);
+  const [richiesteAperte, setRichiesteAperte] = useState(false);
+  const [richiestaInGestione, setRichiestaInGestione] = useState(null); // id della richiesta che si sta trasformando in appuntamento
+  const caricaRichieste = () => {
+    supabase.from('richieste_prenotazione').select('*').eq('stato', 'nuova').order('created_at', { ascending: false })
+      .then(({ data }) => setRichieste(data || []));
+  };
+  useEffect(() => { caricaRichieste(); }, []);
+
+  const rifiutaRichiesta = async (id) => {
+    await supabase.from('richieste_prenotazione').update({ stato: 'rifiutata' }).eq('id', id);
+    setRichieste(prev => prev.filter(r => r.id !== id));
+  };
+
+  const confermaGestita = async (id) => {
+    await supabase.from('richieste_prenotazione').update({ stato: 'gestita' }).eq('id', id);
+    setRichieste(prev => prev.filter(r => r.id !== id));
+  };
   const [fabOpen, setFabOpen] = useState(false);
   const [vd, setVd] = useState(new Date());
   const wheelRef = useRef(0);
@@ -477,6 +500,17 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const IF = (f) => setImpForm((p) => ({ ...p, ...f }));
 
   const F = (f) => setForm(p => ({ ...p, ...f }));
+
+  const gestisciRichiesta = (r) => {
+    // Pre-compila il modale "nuovo appuntamento" con i dati del richiedente,
+    // così lo studio deve solo scegliere data/ora esatte tra quelle indicate
+    // e confermare — senza dover ricopiare a mano nome/telefono.
+    setPazSearch(`${r.nome} ${r.cognome}`);
+    F({ pazienteId: '', note: [r.motivo, r.note].filter(Boolean).join(' — '), data: r.date_preferite?.[0] || today() });
+    setRichiestaInGestione(r.id);
+    setModal(true);
+    setRichiesteAperte(false);
+  };
 
   useEffect(() => {
     if (initPazienteId) {
@@ -640,6 +674,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
       const nuovi = date.map((d) => ({ ...rest, data: d, id: uid() + Math.floor(Math.random() * 1000), pazienteId: Number(form.pazienteId), durata: Number(form.durata) }));
       setAppointments(p => [...p, ...nuovi]);
       setToast(nuovi.length > 1 ? `${nuovi.length} appuntamenti creati ✓` : 'Salvato ✓');
+      if (richiestaInGestione) { confermaGestita(richiestaInGestione); setRichiestaInGestione(null); }
     }
     setModal(false);
   };
@@ -733,6 +768,23 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
+
+      {richieste.length > 0 && (
+        <button
+          onClick={() => setRichiesteAperte(true)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
+            background: C.priL, border: `1.5px solid ${C.pri}`, borderRadius: 12, padding: '10px 14px',
+            marginBottom: 10, cursor: 'pointer', flexShrink: 0,
+          }}
+        >
+          <span style={{ fontSize: 17 }}>📩</span>
+          <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: C.pri }}>
+            {richieste.length} {richieste.length === 1 ? 'richiesta di prenotazione' : 'richieste di prenotazione'} da gestire
+          </span>
+          <span style={{ color: C.pri }}>›</span>
+        </button>
+      )}
 
       {view === 'giorno' && (
         <DayStrip selDay={selDay} setSelDay={setSelDay} today={t} viewPicker={<ViewPicker view={view} setView={setView} />} />
@@ -1127,6 +1179,45 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
           <Ic n="plus" s={24} c="#fff" />
         </button>
       </div>
+
+      {richiesteAperte && (
+        <Modal title="Richieste di prenotazione" onClose={() => setRichiesteAperte(false)}>
+          {richieste.length === 0 ? (
+            <div style={{ textAlign: 'center', color: C.txl, padding: 30, fontSize: 13 }}>Nessuna richiesta da gestire</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {richieste.map((r) => (
+                <Crd key={r.id} style={{ padding: 14 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: 14, color: C.txt }}>{r.nome} {r.cognome}</div>
+                      <div style={{ fontSize: 12, color: C.txm, marginTop: 2 }}>📞 {r.telefono}{r.email ? ` · ${r.email}` : ''}</div>
+                    </div>
+                    <span style={{ fontSize: 10.5, color: C.txl }}>{new Date(r.created_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                    {(r.date_preferite || []).map((d) => (
+                      <span key={d} style={{ background: C.priL, color: C.pri, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>
+                        {new Date(d + 'T12:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short', weekday: 'short' })}
+                      </span>
+                    ))}
+                  </div>
+                  {(r.motivo || r.note) && (
+                    <div style={{ fontSize: 12, color: C.txm, marginBottom: 10, background: C.bg, borderRadius: 8, padding: '7px 10px' }}>
+                      {r.motivo && <div><b>Motivo:</b> {r.motivo}</div>}
+                      {r.note && <div style={{ marginTop: r.motivo ? 3 : 0 }}>{r.note}</div>}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <Btn ch="📅 Crea appuntamento" onClick={() => gestisciRichiesta(r)} full />
+                    <button onClick={() => rifiutaRichiesta(r.id)} style={{ background: C.danL, border: 'none', borderRadius: 9, padding: '0 14px', color: C.dan, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Rifiuta</button>
+                  </div>
+                </Crd>
+              ))}
+            </div>
+          )}
+        </Modal>
+      )}
     </div>
   );
 }

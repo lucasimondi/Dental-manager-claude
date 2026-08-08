@@ -19,6 +19,47 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
   const SD = (f) => S({ documenti_settings: { ...docSet, ...f } });
   const save = () => { setStudioInfo(si); setToast('Salvato ✓'); };
 
+  // Slug pubblico per il link di prenotazione online: non è parte del blob
+  // studio_info come le altre impostazioni sopra, è una colonna diretta
+  // sulla tabella studios — va caricata/salvata separatamente.
+  const [studioId, setStudioId] = useState(null);
+  const [slug, setSlug] = useState('');
+  const [slugSalvato, setSlugSalvato] = useState('');
+  const [slugStato, setSlugStato] = useState(''); // '', 'salvando', 'ok', 'occupato', 'errore'
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const id = session?.user?.app_metadata?.studio_id;
+      if (!id) return;
+      setStudioId(id);
+      supabase.from('studios').select('slug').eq('id', id).maybeSingle().then(({ data }) => {
+        if (data?.slug) { setSlug(data.slug); setSlugSalvato(data.slug); }
+      });
+    });
+  }, []);
+
+  const slugPulito = (v) => v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+  const salvaSlug = async () => {
+    const pulito = slugPulito(slug);
+    if (!pulito || !studioId) return;
+    setSlugStato('salvando');
+    const { error } = await supabase.from('studios').update({ slug: pulito }).eq('id', studioId);
+    if (error) {
+      // violazione unique constraint = slug già usato da un altro studio
+      setSlugStato(error.code === '23505' ? 'occupato' : 'errore');
+      return;
+    }
+    setSlug(pulito);
+    setSlugSalvato(pulito);
+    setSlugStato('ok');
+  };
+
+  const linkPrenotazione = slugSalvato ? `${window.location.origin}/prenota/${slugSalvato}` : '';
+  const [linkCopiato, setLinkCopiato] = useState(false);
+  const copiaLink = async () => {
+    try { await navigator.clipboard.writeText(linkPrenotazione); setLinkCopiato(true); setTimeout(() => setLinkCopiato(false), 2000); } catch {}
+  };
+
   // ── WhatsApp Business (automazione) ──
   // Tabella separata (whatsapp_config), non fa parte di studioInfo: si legge/scrive
   // direttamente, protetta dalla stessa RLS studio-scoped di tutto il resto.
@@ -320,6 +361,50 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
         ))}
       </Crd>
       <Btn ch="💾 Salva impostazioni documenti" onClick={save} full sz="lg" />
+
+      <div style={{ marginTop: 26, marginBottom: 14 }}>
+        <div style={{ fontSize: 20, fontWeight: 800 }}>Prenotazione online</div>
+        <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Link pubblico da condividere: i pazienti possono inviare una richiesta di appuntamento scegliendo le date preferite. La richiesta va poi confermata a mano dall'Agenda.</div>
+      </div>
+      <Crd style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 8 }}>Indirizzo del link</div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', flex: 1, border: `1.5px solid ${C.brd}`, borderRadius: 10, overflow: 'hidden' }}>
+            <span style={{ padding: '11px 0 11px 12px', fontSize: 13, color: C.txl, whiteSpace: 'nowrap' }}>/prenota/</span>
+            <input
+              value={slug}
+              onChange={(e) => { setSlug(slugPulito(e.target.value)); setSlugStato(''); }}
+              placeholder="nome-studio"
+              style={{ flex: 1, border: 'none', outline: 'none', padding: '11px 12px 11px 0', fontSize: 13, color: C.txt, minWidth: 0 }}
+            />
+          </div>
+          <button
+            onClick={salvaSlug}
+            disabled={!slug || slug === slugSalvato || slugStato === 'salvando'}
+            style={{ padding: '0 16px', borderRadius: 10, border: 'none', background: (!slug || slug === slugSalvato) ? C.brd : C.pri, color: (!slug || slug === slugSalvato) ? C.txl : '#fff', fontWeight: 700, fontSize: 13, cursor: (!slug || slug === slugSalvato) ? 'default' : 'pointer' }}
+          >
+            {slugStato === 'salvando' ? '…' : 'Salva'}
+          </button>
+        </div>
+        {slugStato === 'ok' && <div style={{ fontSize: 11.5, color: C.suc, marginBottom: 8 }}>✓ Indirizzo salvato</div>}
+        {slugStato === 'occupato' && <div style={{ fontSize: 11.5, color: C.dan, marginBottom: 8 }}>Questo indirizzo è già in uso, scegline un altro</div>}
+        {slugStato === 'errore' && <div style={{ fontSize: 11.5, color: C.dan, marginBottom: 8 }}>Errore nel salvataggio, riprova</div>}
+
+        {linkPrenotazione && (
+          <>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 8, marginTop: 6 }}>Link da condividere</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ flex: 1, border: `1.5px solid ${C.brd}`, borderRadius: 10, padding: '11px 12px', fontSize: 12, color: C.txm, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: C.bg }}>
+                {linkPrenotazione}
+              </div>
+              <button onClick={copiaLink} style={{ padding: '0 16px', borderRadius: 10, border: `1.5px solid ${C.brd}`, background: C.sur, color: C.pri, fontWeight: 700, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                {linkCopiato ? '✓ Copiato' : '📋 Copia'}
+              </button>
+            </div>
+            <div style={{ fontSize: 11, color: C.txl, marginTop: 8 }}>Condividilo su WhatsApp, sito web, biglietti da visita, o QR code stampato in studio.</div>
+          </>
+        )}
+      </Crd>
 
       <div style={{ marginTop: 26, marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Menu mobile</div>
