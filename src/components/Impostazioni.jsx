@@ -11,6 +11,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
   const [si, setSi] = useState({ ...DEF_STUDIO, ...(studioInfo || {}) });
   const [toast, setToast] = useState('');
   const [tipoModal, setTipoModal] = useState(null);
+  const [sezione, setSezione] = useState('studio');
   const [tipoForm, setTipoForm] = useState({ nome: '', colore: COLORI_DISPONIBILI[0], durata: '', online_abilitato: false, online_giorni: [1, 2, 3, 4, 5], online_ora_inizio: '09:00', online_ora_fine: '18:00' });
   const S = (f) => setSi((s) => ({ ...s, ...f }));
   const agSet = { ...DEF_AGENDA_SETTINGS, ...(si.agenda_settings || {}) };
@@ -137,6 +138,37 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
   return (
     <div>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
+
+      {/* Navigazione a sezioni: prima era tutto in un unico scroll lunghissimo,
+          scomodo su mobile — ora ogni area si apre da sola, il resto resta
+          fuori dal DOM (nessun costo di render nascosto). */}
+      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginBottom: 16, paddingBottom: 2 }}>
+        {[
+          ['studio', '🏥 Studio'],
+          ['agenda', '📅 Agenda'],
+          ['documenti', '📄 Documenti'],
+          ['prenotazione', '🔗 Prenotazione online'],
+          ['aspetto', '🎨 Aspetto'],
+          ['whatsapp', '💬 WhatsApp'],
+          ['team', '👥 Profilo e team'],
+        ].map(([id, lbl]) => (
+          <button
+            key={id}
+            onClick={() => setSezione(id)}
+            style={{
+              flexShrink: 0, padding: '9px 14px', borderRadius: 20, fontWeight: 700, fontSize: 12.5, cursor: 'pointer',
+              border: `1.5px solid ${sezione === id ? C.pri : C.brd}`,
+              background: sezione === id ? C.pri : C.sur, color: sezione === id ? '#fff' : C.txm,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {lbl}
+          </button>
+        ))}
+      </div>
+
+      {sezione === 'studio' && (
+      <>
       <div style={{ marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Impostazioni Studio</div>
         <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Dati che appaiono sul PDF preventivo</div>
@@ -261,7 +293,11 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
         <Txt value={si.note} onChange={(e) => S({ note: e.target.value })} rows={3} placeholder="Il preventivo è valido 30 giorni…" />
       </Crd>
       <Btn ch="💾 Salva impostazioni" onClick={save} full sz="lg" />
+      </>
+      )}
 
+      {sezione === 'agenda' && (
+      <>
       <div style={{ marginTop: 26, marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Agenda</div>
         <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Tipi di appuntamento e colori associati</div>
@@ -335,8 +371,12 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
         </Fld>
       </Crd>
       <Btn ch="💾 Salva impostazioni agenda" onClick={save} dis={agSet.oraInizio >= agSet.oraFine} full sz="lg" />
+      </>
+      )}
 
-      <div style={{ marginTop: 26, marginBottom: 14 }}>
+      {sezione === 'documenti' && (
+      <>
+      <div style={{ marginTop: 0, marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Archiviazione documenti</div>
         <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Quali PDF generati restano salvati in scheda paziente (consultabili e cancellabili in seguito). Se disattivato, il documento resta comunque scaricabile/condivisibile ma non ne tieni una copia nell'app.</div>
       </div>
@@ -369,8 +409,12 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
         ))}
       </Crd>
       <Btn ch="💾 Salva impostazioni documenti" onClick={save} full sz="lg" />
+      </>
+      )}
 
-      <div style={{ marginTop: 26, marginBottom: 14 }}>
+      {sezione === 'prenotazione' && (
+      <>
+      <div style={{ marginTop: 0, marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Prenotazione online</div>
         <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Link pubblico da condividere con i pazienti per fissare un appuntamento.</div>
       </div>
@@ -448,8 +492,12 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           </>
         )}
       </Crd>
+      </>
+      )}
 
-      <div style={{ marginTop: 26, marginBottom: 14 }}>
+      {sezione === 'aspetto' && (
+      <>
+      <div style={{ marginTop: 0, marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Menu mobile</div>
         <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Stile delle icone nel dock in basso, su telefono</div>
       </div>
@@ -476,8 +524,12 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
         <div style={{ fontSize: 11, color: C.txl, marginTop: 2 }}>"Vivid" è lo stile consigliato — icone a duotono, più riconoscibili al tocco.</div>
       </Crd>
       <Btn ch="💾 Salva impostazioni" onClick={save} full sz="lg" />
+      </>
+      )}
 
-      <div style={{ marginTop: 26, marginBottom: 14 }}>
+      {sezione === 'whatsapp' && (
+      <>
+      <div style={{ marginTop: 0, marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>WhatsApp Business — Automazione</div>
         <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Credenziali per i promemoria automatici e l'assistente AI su WhatsApp</div>
       </div>
@@ -527,6 +579,15 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           </>
         )}
       </Crd>
+      </>
+      )}
+
+      {sezione === 'team' && (
+      <>
+      <ProfiloUtente onNomeChange={onNomeChange} />
+      <GestioneUtenti studioId={studioInfo?.studio_id || '00000000-0000-0000-0000-000000000001'} currentUserId={currentUserId} features={features} />
+      </>
+      )}
 
       {tipoModal && (
         <Modal title={tipoModal === 'new' ? 'Nuovo tipo appuntamento' : 'Modifica tipo'} onClose={() => setTipoModal(null)}>
@@ -610,8 +671,6 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           </div>
         </Modal>
       )}
-    <ProfiloUtente onNomeChange={onNomeChange} />
-    <GestioneUtenti studioId={studioInfo?.studio_id || '00000000-0000-0000-0000-000000000001'} currentUserId={currentUserId} features={features} />
     </div>
   );
 }
