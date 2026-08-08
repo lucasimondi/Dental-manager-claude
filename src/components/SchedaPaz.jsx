@@ -52,6 +52,47 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
   const [archivioLoading, setArchivioLoading] = useState(false);
   const [confirmDelDoc, setConfirmDelDoc] = useState(null); // { tabella, id }
   const [docInVisualizzazione, setDocInVisualizzazione] = useState(null); // { titolo, dataUrl, filename }
+
+  // Privacy / GDPR: export dati ed eliminazione, con log lato server.
+  const [gdprModal, setGdprModal] = useState(null); // 'esporta' | 'elimina' | null
+  const [gdprCaricamento, setGdprCaricamento] = useState(false);
+  const [gdprCancellaFatture, setGdprCancellaFatture] = useState(false);
+  const [gdprEsito, setGdprEsito] = useState(null);
+
+  const eseguiExportGdpr = async () => {
+    setGdprCaricamento(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const studioId = session?.user?.app_metadata?.studio_id;
+    const userId = session?.user?.id;
+    const { data, error } = await supabase.rpc('gdpr_esporta_paziente', {
+      p_paziente_id: paz.id, p_studio_id: studioId, p_eseguita_da: userId,
+    });
+    setGdprCaricamento(false);
+    if (error || !data?.ok) { setToast('Errore durante l\'export'); return; }
+    const blob = new Blob([JSON.stringify(data.dati, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `dati_${paz.cognome}_${paz.nome}.json`.toLowerCase().replace(/\s+/g, '_');
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    setGdprModal(null);
+    setToast('Dati esportati ✓');
+  };
+
+  const eseguiCancellazioneGdpr = async () => {
+    setGdprCaricamento(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const studioId = session?.user?.app_metadata?.studio_id;
+    const userId = session?.user?.id;
+    const { data, error } = await supabase.rpc('gdpr_cancella_paziente', {
+      p_paziente_id: paz.id, p_studio_id: studioId, p_eseguita_da: userId,
+      p_cancella_anche_fatture: gdprCancellaFatture,
+    });
+    setGdprCaricamento(false);
+    if (error || !data?.ok) { setToast('Errore durante la cancellazione'); return; }
+    setGdprEsito(data.dettaglio);
+  };
+
   const [caricamentoAnteprima, setCaricamentoAnteprima] = useState(null); // id del doc di cui si sta caricando l'anteprima
   const [filtroTipoDoc, setFiltroTipoDoc] = useState(null); // null = tutti, altrimenti 'ricetta'|'esami'|...
   const [appModal, setAppModal] = useState(false);
@@ -409,7 +450,87 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                 </div>
               )}
             </Crd>
+
+            {/* PRIVACY / GDPR */}
+            <Crd style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>🔒 Privacy e dati personali</div>
+              <button onClick={() => setGdprModal('esporta')} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '11px 12px', borderRadius: 9, border: `1px solid ${C.brd}`, background: C.sur, cursor: 'pointer', marginBottom: 8 }}>
+                <span style={{ fontSize: 16 }}>📤</span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 12.5, color: C.txt }}>Esporta dati del paziente</div>
+                  <div style={{ fontSize: 10.5, color: C.txl }}>Diritto di accesso — scarica tutti i dati in un file</div>
+                </div>
+              </button>
+              <button onClick={() => { setGdprModal('elimina'); setGdprCancellaFatture(false); setGdprEsito(null); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '11px 12px', borderRadius: 9, border: `1px solid ${C.dan}40`, background: C.danL, cursor: 'pointer' }}>
+                <span style={{ fontSize: 16 }}>🗑️</span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 12.5, color: C.dan }}>Elimina dati del paziente</div>
+                  <div style={{ fontSize: 10.5, color: C.dan }}>Diritto all'oblio — azione permanente</div>
+                </div>
+              </button>
+            </Crd>
           </div>
+        )}
+
+        {gdprModal === 'esporta' && (
+          <Modal title="Esporta dati paziente" onClose={() => setGdprModal(null)}>
+            <div style={{ fontSize: 13, color: C.txm, lineHeight: 1.5, marginBottom: 16 }}>
+              Verrà scaricato un file con tutti i dati che lo studio possiede su <b>{paz.nome} {paz.cognome}</b>: anagrafica, appuntamenti, piani di cura, pagamenti, documenti medici e fiscali.
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Btn ch="Annulla" v="sec" onClick={() => setGdprModal(null)} full />
+              <Btn ch={gdprCaricamento ? 'Esportazione…' : '📤 Esporta'} onClick={eseguiExportGdpr} full />
+            </div>
+          </Modal>
+        )}
+
+        {gdprModal === 'elimina' && (
+          <Modal title="Elimina dati paziente" onClose={() => setGdprModal(null)}>
+            {!gdprEsito ? (
+              <>
+                <div style={{ fontSize: 13, color: C.txt, lineHeight: 1.5, marginBottom: 14 }}>
+                  Stai per eliminare <b>definitivamente</b> anagrafica, appuntamenti, piani di cura, pagamenti e documenti medici di <b>{paz.nome} {paz.cognome}</b>. L'operazione non è reversibile.
+                </div>
+
+                <div style={{ background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 10, padding: 12, marginBottom: 14 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#92400E', marginBottom: 6 }}>⚠️ Documenti fiscali (fatture, rimborsi)</div>
+                  <div style={{ fontSize: 11.5, color: '#78350F', lineHeight: 1.5, marginBottom: 10 }}>
+                    Le fatture di questo paziente sono soggette per legge a un obbligo di conservazione fiscale di 10 anni (art. 2220 c.c.). La decisione di conservarle o eliminarle resta comunque tua.
+                  </div>
+                  <button
+                    onClick={() => setGdprCancellaFatture((v) => !v)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                  >
+                    <div style={{ flexShrink: 0, width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${gdprCancellaFatture ? C.dan : '#92400E'}`, background: gdprCancellaFatture ? C.dan : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {gdprCancellaFatture && <Ic n="ok" s={11} c="#fff" />}
+                    </div>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#92400E' }}>Elimina anche i documenti fiscali</span>
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Btn ch="Annulla" v="sec" onClick={() => setGdprModal(null)} full />
+                  <Btn ch={gdprCaricamento ? 'Eliminazione…' : '🗑️ Elimina definitivamente'} v="dan" onClick={eseguiCancellazioneGdpr} full />
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ background: C.sucL, border: `1px solid ${C.suc}`, borderRadius: 10, padding: 14, marginBottom: 14, textAlign: 'center' }}>
+                  <div style={{ fontWeight: 700, color: C.suc, marginBottom: 4 }}>✓ Dati eliminati</div>
+                  <div style={{ fontSize: 12, color: C.txm }}>L'operazione è stata registrata nel registro privacy dello studio.</div>
+                </div>
+                <div style={{ fontSize: 11.5, color: C.txm, marginBottom: 16 }}>
+                  {Object.entries(gdprEsito.cancellati).filter(([k, v]) => v && k !== 'anagrafica').map(([k, v]) => (
+                    <div key={k}>• {v} {k.replace(/_/g, ' ')} eliminati</div>
+                  ))}
+                  {gdprEsito.non_cancellati?.documenti_fiscali > 0 && (
+                    <div>• {gdprEsito.non_cancellati.documenti_fiscali} documenti fiscali mantenuti per obbligo di legge</div>
+                  )}
+                </div>
+                <Btn ch="Chiudi" onClick={() => { setGdprModal(null); onClose(); }} full />
+              </>
+            )}
+          </Modal>
         )}
 
         {tab === 'piani' && (
