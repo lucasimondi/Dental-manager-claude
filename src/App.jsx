@@ -25,7 +25,7 @@ import Impostazioni from './components/Impostazioni.jsx';
 import MasterDashboard from './components/MasterDashboard.jsx';
 
 export default function App() {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, tema, setTemaVisivo } = useTheme();
   const isMobile = useIsMobile();
   const [session, setSession] = useState(undefined);
   const [dataLoading, setDataLoading] = useState(true);
@@ -391,7 +391,7 @@ export default function App() {
         {page === 'spese' && <Spese />}
         {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} />}
         {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
-        {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} />}
+        {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} tema={tema} setTemaVisivo={setTemaVisivo} />}
       </div>
 
       <AssistenteAI />

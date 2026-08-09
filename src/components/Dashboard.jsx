@@ -320,15 +320,19 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
 
   // SectionToggle rimosso — sostituito da drag-and-drop widgets
 
-  const StatCard = ({ label, value, sub, color = C.pri, bg, onClick, urgent }) => (
-    <div onClick={onClick} style={{ background: bg || (color + '12'), borderRadius: 12, padding: '12px 14px', border: `1px solid ${color}25`, cursor: onClick ? 'pointer' : 'default', position: 'relative' }}>
-      {urgent && <div style={{ position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: '50%', background: C.dan }} />}
-      <div style={{ fontSize: 10, fontWeight: 800, color, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 20, fontWeight: 900, color, lineHeight: 1.1 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: color + 'AA', marginTop: 3 }}>{sub}</div>}
-      {onClick && <div style={{ position: 'absolute', bottom: 8, right: 10, fontSize: 12, color: color + '80' }}>›</div>}
-    </div>
-  );
+  const StatCard = ({ label, value, sub, color = C.pri, bg, onClick, urgent }) => {
+    const isGradient = typeof bg === 'string' && bg.startsWith('linear-gradient');
+    const testoColore = isGradient ? '#fff' : color;
+    return (
+      <div onClick={onClick} style={{ background: bg || (color + '12'), borderRadius: C.radius ?? 12, padding: '12px 14px', border: isGradient ? 'none' : `1px solid ${color}25`, cursor: onClick ? 'pointer' : 'default', position: 'relative' }}>
+        {urgent && <div style={{ position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: '50%', background: C.dan }} />}
+        <div style={{ fontSize: 10, fontWeight: 800, color: isGradient ? 'rgba(255,255,255,0.85)' : color, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{label}</div>
+        <div style={{ fontSize: 20, fontWeight: 900, color: testoColore, lineHeight: 1.1 }}>{value}</div>
+        {sub && <div style={{ fontSize: 11, color: isGradient ? 'rgba(255,255,255,0.85)' : color + 'AA', marginTop: 3 }}>{sub}</div>}
+        {onClick && <div style={{ position: 'absolute', bottom: 8, right: 10, fontSize: 12, color: isGradient ? 'rgba(255,255,255,0.7)' : color + '80' }}>›</div>}
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -833,7 +837,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           <div key="kpi" style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>📊 Statistiche</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <StatCard label="Pazienti totali" value={patients.length} sub={`+${nuoviMese} questo mese`} color={C.pri} />
+              <StatCard label="Pazienti totali" value={patients.length} sub={`+${nuoviMese} questo mese`} color={C.pri} bg={C.gradientPri || undefined} />
               <StatCard label="Tasso accettazione" value={`${tassoAccettazione}%`} sub={`${preventiviAccettati.length}/${preventiviAttesa.length + preventiviAccettati.length + preventiviRifiutati.length} prev.`} color={tassoAccettazione >= 70 ? C.suc : tassoAccettazione >= 40 ? C.war : C.dan} />
               <StatCard label="Valore medio piano" value={fmt(mediaValore)} color={C.pri} />
               {topPrest && <StatCard label="Top prestazione" value={topPrest[0].length > 18 ? topPrest[0].slice(0,16)+'…' : topPrest[0]} sub={`${topPrest[1]}x eseguita`} color={C.acc} />}

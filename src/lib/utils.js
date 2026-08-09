@@ -44,15 +44,64 @@ export const C_DARK = {
   txt: '#E8E6DE', txm: '#8B9296', txl: '#6B7276', brd: '#2A3237',
 };
 
+/* ── TEMI VISIVI ──
+   Un "tema" è un secondo asse rispetto a chiaro/scuro: cambia palette,
+   raggio degli angoli, ombre — non solo i colori. Ogni tema ha comunque
+   una variante chiara e una scura, così il toggle esistente resta valido
+   indipendentemente dal tema scelto. 'default' è il tema attuale gratuito
+   (usa C_LIGHT/C_DARK sopra); gli altri sono acquistabili — vedi
+   TEMI_DISPONIBILI e il modulo temi.js per il catalogo completo. */
+export const TEMA_FINTECH_LIGHT = {
+  ...C_LIGHT,
+  bg: '#F5F6FB', sur: '#FFFFFF',
+  pri: '#5B4FE8', priL: '#EDEBFD', priD: '#3E35B8',
+  acc: '#FF6B9D',
+  suc: '#12B886', sucL: '#E4F9F2',
+  txt: '#181B34', txm: '#666B8F', txl: '#A0A4C4', brd: '#E7E8F5',
+  radius: 20, shadow: '0 8px 24px rgba(91,79,232,0.14)',
+  gradientPri: 'linear-gradient(135deg, #5B4FE8, #8B7FFF)',
+};
+export const TEMA_FINTECH_DARK = {
+  ...C_DARK,
+  bg: '#0E0F1A', sur: '#161829',
+  pri: '#8B7FFF', priL: '#241F42', priD: '#5B4FE8',
+  acc: '#FF6B9D',
+  suc: '#3DDBA8', sucL: '#12241D',
+  txt: '#EDEEFA', txm: '#9FA3C4', txl: '#5C6088', brd: '#242645',
+  radius: 20, shadow: '0 8px 24px rgba(139,127,255,0.18)',
+  gradientPri: 'linear-gradient(135deg, #5B4FE8, #8B7FFF)',
+};
+
+// Estensione dei token di forma per il tema di default, per coerenza con i
+// campi aggiunti dal tema fintech (radius/shadow/gradientPri) — così ogni
+// componente può leggerli sempre da C.xxx senza dover controllare se
+// esistono.
+Object.assign(C_LIGHT, { radius: 14, shadow: 'none', gradientPri: null });
+Object.assign(C_DARK, { radius: 14, shadow: 'none', gradientPri: null });
+
+export const TEMI_DISPONIBILI = [
+  { id: 'default', nome: 'Classico', prezzo: 0, light: C_LIGHT, dark: C_DARK, incluso_in: ['base', 'pro', 'premium'] },
+  { id: 'fintech', nome: 'Fintech', prezzo: 9.99, light: TEMA_FINTECH_LIGHT, dark: TEMA_FINTECH_DARK, incluso_in: ['pro', 'premium'] },
+];
+
+export const TEMA_KEY = 'dm_tema_attivo';
+
 export const THEME_KEY = 'dm_color_mode';
 
 export const C = { ...C_LIGHT };
 
-export const applyTheme = (mode) => {
-  Object.assign(C, mode === 'dark' ? C_DARK : C_LIGHT);
+export const applyTheme = (mode, temaId = null) => {
+  const tema = TEMI_DISPONIBILI.find((t) => t.id === (temaId || getTemaAttivo())) || TEMI_DISPONIBILI[0];
+  Object.assign(C, mode === 'dark' ? tema.dark : tema.light);
   if (typeof document !== 'undefined') {
     document.documentElement.dataset.theme = mode === 'dark' ? 'dark' : 'light';
+    document.documentElement.dataset.tema = tema.id;
   }
+};
+
+export const getTemaAttivo = () => {
+  if (typeof window === 'undefined') return 'default';
+  return window.localStorage.getItem(TEMA_KEY) || 'default';
 };
 
 export const getInitialTheme = () => {

@@ -2,12 +2,12 @@
 import GestioneUtenti from './GestioneUtenti.jsx';
 import React, { useState, useEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Ic, DockIc, DOCK_ICON_STYLES } from './ui';
-import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI, DEF_DOCK_SETTINGS, DEF_AGENDA_SETTINGS, DEF_DOCUMENTI_SETTINGS, STORIA_CLINICA_MODELLO_BASE } from '../lib/utils';
+import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI, DEF_DOCK_SETTINGS, DEF_AGENDA_SETTINGS, DEF_DOCUMENTI_SETTINGS, STORIA_CLINICA_MODELLO_BASE, TEMI_DISPONIBILI } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 
 const GIORNI_SETTIMANA = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 
-export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange, features, theme, toggleTheme }) {
+export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange, features, theme, toggleTheme, tema, setTemaVisivo }) {
   const [si, setSi] = useState({ ...DEF_STUDIO, ...(studioInfo || {}) });
   const [toast, setToast] = useState('');
   const [tipoModal, setTipoModal] = useState(null);
@@ -262,6 +262,28 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
               <Btn ch="Chiaro" sz="sm" v={theme === 'light' ? 'pri' : 'sec'} onClick={() => theme !== 'light' && toggleTheme()} ic="sun" />
               <Btn ch="Scuro" sz="sm" v={theme === 'dark' ? 'pri' : 'sec'} onClick={() => theme !== 'dark' && toggleTheme()} ic="moon" />
             </div>
+          </div>
+        </Crd>
+      )}
+      {setTemaVisivo && (
+        <Crd style={{ marginBottom: 11 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 3 }}>Stile visivo</div>
+          <div style={{ fontSize: 12, color: C.txl, marginBottom: 12 }}>Anteprima — applicato per ora solo alla Dashboard, prima di estenderlo al resto dell'app.</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {TEMI_DISPONIBILI.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTemaVisivo(t.id)}
+                style={{
+                  flex: 1, padding: '10px 0', borderRadius: 10, cursor: 'pointer', fontWeight: 700, fontSize: 12.5,
+                  border: `1.5px solid ${tema === t.id ? C.pri : C.brd}`,
+                  background: tema === t.id ? C.priL : C.sur,
+                  color: tema === t.id ? C.pri : C.txm,
+                }}
+              >
+                {t.nome}{t.prezzo > 0 ? ` · €${t.prezzo}` : ' · Incluso'}
+              </button>
+            ))}
           </div>
         </Crd>
       )}
