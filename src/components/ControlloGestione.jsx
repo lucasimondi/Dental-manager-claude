@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Crd } from './ui';
+import { Crd, Btn, Inp } from './ui';
 import { C, fmt, today } from '../lib/utils';
 import { supabase } from '../lib/supabase.js';
 import { BarChart, Bar, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Line } from 'recharts';
@@ -63,9 +63,61 @@ export default function ControlloGestione({ studioId, patients = [], plans = [],
   const [err, setErr] = useState('');
   const [pagExt, setPagExt] = useState([]);
   const [spese, setSpese] = useState([]);
+  const [budgetVsActual, setBudgetVsActual] = useState(null);
+  const [budgetForm, setBudgetForm] = useState({ incassato_target: '', costi_fissi_target: '', costi_variabili_target: '' });
+  const [budgetLoading, setBudgetLoading] = useState(true);
+  const [budgetSaving, setBudgetSaving] = useState(false);
+  const [budgetMsg, setBudgetMsg] = useState('');
 
   useEffect(() => { load(); }, [periodo]);
   useEffect(() => { loadAux(); }, []);
+  useEffect(() => { loadBudget(); }, [periodo]);
+
+  const loadBudget = async () => {
+    setBudgetLoading(true);
+    const [da, a] = rangePeriodo(periodo);
+    const { data, error } = await supabase.rpc('get_budget_vs_actual', {
+      p_studio_id: studioId,
+      p_data_inizio: da,
+      p_data_fine: a,
+    });
+    if (!error) setBudgetVsActual(data);
+
+    // Precarica il form con il target del mese corrente (solo vista "mese", ha senso editare un mese alla volta)
+    if (periodo === 'mese') {
+      const d = new Date();
+      const { data: riga } = await supabase
+        .from('budget')
+        .select('*')
+        .eq('studio_id', studioId)
+        .eq('anno', d.getFullYear())
+        .eq('mese', d.getMonth() + 1)
+        .maybeSingle();
+      setBudgetForm({
+        incassato_target: riga?.incassato_target ?? '',
+        costi_fissi_target: riga?.costi_fissi_target ?? '',
+        costi_variabili_target: riga?.costi_variabili_target ?? '',
+      });
+    }
+    setBudgetLoading(false);
+  };
+
+  const salvaBudget = async () => {
+    setBudgetSaving(true);
+    setBudgetMsg('');
+    const d = new Date();
+    const { error } = await supabase.from('budget').upsert({
+      studio_id: studioId,
+      anno: d.getFullYear(),
+      mese: d.getMonth() + 1,
+      incassato_target: Number(budgetForm.incassato_target) || 0,
+      costi_fissi_target: Number(budgetForm.costi_fissi_target) || 0,
+      costi_variabili_target: Number(budgetForm.costi_variabili_target) || 0,
+    }, { onConflict: 'studio_id,anno,mese' });
+    setBudgetSaving(false);
+    if (error) setBudgetMsg('Errore: ' + error.message);
+    else { setBudgetMsg('Salvato ✓'); loadBudget(); setTimeout(() => setBudgetMsg(''), 2000); }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -263,6 +315,63 @@ export default function ControlloGestione({ studioId, patients = [], plans = [],
             </div>
           </>
         )}
+      </div>
+
+      {/* ── BUDGET VS CONSUNTIVO ── */}
+      <div>
+        <SectionLabel>🎯 Budget vs consuntivo</SectionLabel>
+        <Crd style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {budgetLoading ? (
+            <div style={{ color: C.txl, fontSize: 13 }}>Caricamento…</div>
+          ) : budgetVsActual && budgetVsActual.mesi_con_budget > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {[
+                { k: 'incassato', label: 'Incassato' },
+                { k: 'costi_fissi', label: 'Costi fissi' },
+                { k: 'costi_variabili', label: 'Costi variabili' },
+                { k: 'margine', label: 'Margine' },
+              ].map(({ k, label }) => {
+                const v = budgetVsActual[k];
+                const buono = k === 'costi_fissi' || k === 'costi_variabili' ? v.diff <= 0 : v.diff >= 0;
+                return (
+                  <div key={k} style={{ background: C.bg, borderRadius: 10, padding: 10 }}>
+                    <div style={{ fontSize: 10, fontWeight: 800, color: C.txl, textTransform: 'uppercase' }}>{label}</div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: C.txt, marginTop: 2 }}>{fmt(v.reale)} <span style={{ fontSize: 11, fontWeight: 600, color: C.txl }}>/ {fmt(v.target)}</span></div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: buono ? C.suc : C.dan, marginTop: 1 }}>
+                      {v.diff >= 0 ? '+' : ''}{fmt(v.diff)}{v.diff_pct != null ? ` (${v.diff_pct >= 0 ? '+' : ''}${v.diff_pct}%)` : ''}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: C.txl }}>Nessun budget impostato per questo periodo. Imposta un target qui sotto.</div>
+          )}
+
+          {periodo === 'mese' && (
+            <div style={{ borderTop: `1px solid ${C.brd}`, paddingTop: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.txm, marginBottom: 8 }}>Imposta target di questo mese</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 8 }}>
+                <div>
+                  <div style={{ fontSize: 10, color: C.txl, marginBottom: 3 }}>Incassato €</div>
+                  <Inp type="number" inputMode="decimal" value={budgetForm.incassato_target} onChange={e => setBudgetForm(f => ({ ...f, incassato_target: e.target.value }))} style={{ padding: '8px 9px', fontSize: 13 }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 10, color: C.txl, marginBottom: 3 }}>Costi fissi €</div>
+                  <Inp type="number" inputMode="decimal" value={budgetForm.costi_fissi_target} onChange={e => setBudgetForm(f => ({ ...f, costi_fissi_target: e.target.value }))} style={{ padding: '8px 9px', fontSize: 13 }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 10, color: C.txl, marginBottom: 3 }}>Costi var. €</div>
+                  <Inp type="number" inputMode="decimal" value={budgetForm.costi_variabili_target} onChange={e => setBudgetForm(f => ({ ...f, costi_variabili_target: e.target.value }))} style={{ padding: '8px 9px', fontSize: 13 }} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Btn ch={budgetSaving ? 'Salvo…' : 'Salva target mese'} onClick={salvaBudget} dis={budgetSaving} sz="sm" />
+                {budgetMsg && <span style={{ fontSize: 12, color: budgetMsg.startsWith('Errore') ? C.dan : C.suc, fontWeight: 700 }}>{budgetMsg}</span>}
+              </div>
+            </div>
+          )}
+        </Crd>
       </div>
 
       {/* ── ECONOMICO DETTAGLIATO ── */}
