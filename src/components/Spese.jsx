@@ -16,7 +16,7 @@ export default function Spese() {
   const [filtroCategoria, setFiltroCategoria] = useState('');
   const [form, setForm] = useState({
     titolo: '', importo: '', data: today(), categoria: 'Altro',
-    note: '', ricorrente: false, frequenza: 'Mensile',
+    note: '', ricorrente: false, frequenza: 'Mensile', tipo_costo: 'variabile',
   });
   const F = (f) => setForm(p => ({ ...p, ...f }));
 
@@ -31,13 +31,13 @@ export default function Spese() {
 
   const openNuova = () => {
     setEditItem(null);
-    setForm({ titolo: '', importo: '', data: today(), categoria: 'Altro', note: '', ricorrente: false, frequenza: 'Mensile' });
+    setForm({ titolo: '', importo: '', data: today(), categoria: 'Altro', note: '', ricorrente: false, frequenza: 'Mensile', tipo_costo: 'variabile' });
     setModal(true);
   };
 
   const openEdit = (s) => {
     setEditItem(s);
-    setForm({ titolo: s.titolo, importo: String(s.importo), data: s.data, categoria: s.categoria || 'Altro', note: s.note || '', ricorrente: s.ricorrente || false, frequenza: s.frequenza || 'Mensile' });
+    setForm({ titolo: s.titolo, importo: String(s.importo), data: s.data, categoria: s.categoria || 'Altro', note: s.note || '', ricorrente: s.ricorrente || false, frequenza: s.frequenza || 'Mensile', tipo_costo: s.tipo_costo || 'variabile' });
     setModal(true);
   };
 
@@ -51,6 +51,7 @@ export default function Spese() {
       note: form.note || '',
       ricorrente: form.ricorrente,
       frequenza: form.frequenza,
+      tipo_costo: form.tipo_costo,
     };
     if (editItem) {
       const { error } = await supabase.from('spese').update(record).eq('id', editItem.id);
@@ -135,7 +136,10 @@ export default function Spese() {
             return (
               <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: `1px solid ${C.brd}` }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13 }}>{s.titolo}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13 }}>{s.titolo}</div>
+                    {s.tipo_costo === 'fisso' && <span style={{ fontSize: 9, fontWeight: 800, color: C.pri, background: C.priL, borderRadius: 5, padding: '1px 5px' }}>FISSO</span>}
+                  </div>
                   <div style={{ fontSize: 11, color: C.txm }}>{s.frequenza} · {fmt(s.importo)} × {moltiplicatore} = <strong>{fmt(Number(s.importo) * moltiplicatore)}/anno</strong></div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -195,9 +199,31 @@ export default function Spese() {
             </Fld>
           </div>
           <Fld label="Categoria">
-            <Sel value={form.categoria} onChange={e => F({ categoria: e.target.value })}>
+            <Sel value={form.categoria} onChange={e => {
+              const cat = e.target.value;
+              const categorieFisse = ['Affitto', 'Personale', 'Utenze', 'Assicurazioni', 'Software'];
+              F({ categoria: cat, tipo_costo: categorieFisse.includes(cat) ? 'fisso' : 'variabile' });
+            }}>
               {CATEGORIE.map(c => <option key={c}>{c}</option>)}
             </Sel>
+          </Fld>
+
+          <Fld label="Tipo di costo (per il Controllo di Gestione)">
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" onClick={() => F({ tipo_costo: 'fisso' })} style={{
+                flex: 1, padding: '9px 0', borderRadius: 9, border: `1.5px solid ${form.tipo_costo === 'fisso' ? C.pri : C.brd}`,
+                background: form.tipo_costo === 'fisso' ? C.priL : '#fff', color: form.tipo_costo === 'fisso' ? C.pri : C.txm,
+                fontWeight: 700, fontSize: 12, cursor: 'pointer',
+              }}>Fisso</button>
+              <button type="button" onClick={() => F({ tipo_costo: 'variabile' })} style={{
+                flex: 1, padding: '9px 0', borderRadius: 9, border: `1.5px solid ${form.tipo_costo === 'variabile' ? C.pri : C.brd}`,
+                background: form.tipo_costo === 'variabile' ? C.priL : '#fff', color: form.tipo_costo === 'variabile' ? C.pri : C.txm,
+                fontWeight: 700, fontSize: 12, cursor: 'pointer',
+              }}>Variabile</button>
+            </div>
+            <div style={{ fontSize: 10, color: C.txl, marginTop: 4 }}>
+              Fisso = non cambia con il numero di pazienti (affitto, personale, utenze). Usato per calcolare il break-even.
+            </div>
           </Fld>
 
           {/* Toggle ricorrente */}
