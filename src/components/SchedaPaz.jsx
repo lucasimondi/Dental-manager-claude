@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { supabase } from '../lib/supabase.js';
-import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker, PadFirma } from './ui';
 const PdfViewerModal = React.lazy(() => import('./ui/PdfViewerModal.jsx'));
 import { C, fmt, fmtD, today, SCADENZA_PRESET, addMesi, rilevaRichiamo } from '../lib/utils';
 import PdfView from './PdfView.jsx';
@@ -53,7 +53,82 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
   const [confirmDelDoc, setConfirmDelDoc] = useState(null); // { tabella, id }
   const [docInVisualizzazione, setDocInVisualizzazione] = useState(null); // { titolo, dataUrl, filename }
 
-  // Privacy / GDPR: export dati ed eliminazione, con log lato server.
+  // Consensi informati: storico firme, modelli disponibili, wizard nuovo consenso.
+  const [consensiStorico, setConsensiStorico] = useState([]);
+  const [consensiCaricamento, setConsensiCaricamento] = useState(false);
+  const [modelliConsenso, setModelliConsenso] = useState([]);
+  const [nuovoConsensoModal, setNuovoConsensoModal] = useState(false);
+  const [consensoStep, setConsensoStep] = useState('scelta'); // scelta | anteprima | firma | link_generato
+  const [modelloSel, setModelloSel] = useState(null);
+  const [collegaPrestazione, setCollegaPrestazione] = useState(''); // "" = generico, altrimenti "planId::voceIndice"
+  const [canaleSel, setCanaleSel] = useState('in_studio');
+  const [firmatoDaNome, setFirmatoDaNome] = useState('');
+  const [linkFirmaGenerato, setLinkFirmaGenerato] = useState('');
+  const [consensoInVisualizzazione, setConsensoInVisualizzazione] = useState(null);
+
+  const caricaConsensi = async () => {
+    setConsensiCaricamento(true);
+    const { data } = await supabase.from('consensi_firmati').select('*').eq('paziente_id', paz.id).order('created_at', { ascending: false });
+    setConsensiStorico(data || []);
+    setConsensiCaricamento(false);
+  };
+
+  const apriNuovoConsenso = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const studioId = session?.user?.app_metadata?.studio_id;
+    const { data } = await supabase.from('consenso_modelli').select('*').eq('studio_id', studioId).eq('attivo', true).order('tipo');
+    setModelliConsenso(data || []);
+    setModelloSel(null);
+    setCollegaPrestazione('');
+    setCanaleSel('in_studio');
+    setFirmatoDaNome(`${paz.nome} ${paz.cognome}`);
+    setLinkFirmaGenerato('');
+    setConsensoStep('scelta');
+    setNuovoConsensoModal(true);
+  };
+
+  const piVoceSel = collegaPrestazione ? (() => {
+    const [planId, idx] = collegaPrestazione.split('::');
+    const piano = plans.find(p => String(p.id) === planId);
+    const voce = piano?.voci?.[Number(idx)];
+    return piano && voce ? { pianoId: piano.id, indice: Number(idx), piano, voce } : null;
+  })() : null;
+
+  const procediAnteprima = () => { if (modelloSel) setConsensoStep('anteprima'); };
+
+  const generaLinkRemoto = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const studioId = session?.user?.app_metadata?.studio_id;
+    const { data } = await supabase.rpc('crea_link_firma_consenso', {
+      p_studio_id: studioId, p_paziente_id: paz.id, p_modello_id: modelloSel.id,
+      p_piano_id: piVoceSel?.pianoId || null, p_voce_indice: piVoceSel?.indice ?? null,
+    });
+    if (data?.ok) {
+      setLinkFirmaGenerato(`${window.location.origin}/firma/${data.token}`);
+      setConsensoStep('link_generato');
+    }
+  };
+
+  const salvaFirmaInStudio = async (firmaPng) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const studioId = session?.user?.app_metadata?.studio_id;
+    const { data } = await supabase.rpc('registra_firma_consenso', {
+      p_studio_id: studioId, p_paziente_id: paz.id,
+      p_titolo: modelloSel.titolo, p_testo: modelloSel.testo, p_firma_png: firmaPng,
+      p_canale: 'in_studio', p_firmato_da_nome: firmatoDaNome,
+      p_piano_id: piVoceSel?.pianoId || null, p_voce_indice: piVoceSel?.indice ?? null,
+      p_modello_id: modelloSel.id,
+    });
+    if (data?.ok) {
+      setNuovoConsensoModal(false);
+      caricaConsensi();
+      setToast('Consenso firmato ✓');
+    } else {
+      setToast('Errore durante la firma');
+    }
+  };
+
+
   const [gdprModal, setGdprModal] = useState(null); // 'esporta' | 'elimina' | null
   const [gdprCaricamento, setGdprCaricamento] = useState(false);
   const [gdprCancellaFatture, setGdprCancellaFatture] = useState(false);
@@ -178,7 +253,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
   };
 
   React.useEffect(() => { loadFoto(); }, [paz.id]);
-  React.useEffect(() => { if (tab === 'doc') loadArchivioDocs(); }, [paz.id]);
+  React.useEffect(() => { if (tab === 'doc') loadArchivioDocs(); if (tab === 'info') caricaConsensi(); }, [paz.id]);
 
   // Archivio documenti generati per questo paziente (medici + fiscali).
   // Caricato quando si apre la tab Documenti, non subito all'apertura della
@@ -333,7 +408,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
 
       <div style={{ display: 'flex', background: C.sur, borderBottom: `1px solid ${C.brd}`, flexShrink: 0 }}>
         {TABS.map((t) => (
-          <button key={t.id} onClick={() => { setTab(t.id); if (t.id === 'doc') loadArchivioDocs(); }} style={{ flex: 1, padding: '11px 4px', background: 'none', border: 'none', borderBottom: `2.5px solid ${tab === t.id ? C.pri : 'transparent'}`, color: tab === t.id ? C.pri : C.txm, fontWeight: tab === t.id ? 700 : 500, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>{t.l}</button>
+          <button key={t.id} onClick={() => { setTab(t.id); if (t.id === 'doc') loadArchivioDocs(); if (t.id === 'info') caricaConsensi(); }} style={{ flex: 1, padding: '11px 4px', background: 'none', border: 'none', borderBottom: `2.5px solid ${tab === t.id ? C.pri : 'transparent'}`, color: tab === t.id ? C.pri : C.txm, fontWeight: tab === t.id ? 700 : 500, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>{t.l}</button>
         ))}
       </div>
 
@@ -451,6 +526,31 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
               )}
             </Crd>
 
+            {/* CONSENSI INFORMATI */}
+            <Crd style={{ marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em' }}>✍️ Consensi informati</div>
+                <button onClick={apriNuovoConsenso} style={{ background: C.priL, border: 'none', borderRadius: 8, padding: '5px 11px', color: C.pri, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>+ Nuovo</button>
+              </div>
+              {consensiCaricamento && <div style={{ textAlign: 'center', color: C.txl, padding: 14, fontSize: 12 }}>Caricamento…</div>}
+              {!consensiCaricamento && consensiStorico.length === 0 && (
+                <div style={{ textAlign: 'center', color: C.txl, padding: '14px 0', fontSize: 12 }}>Nessun consenso ancora firmato</div>
+              )}
+              {!consensiCaricamento && consensiStorico.map((c) => (
+                <div key={c.id} onClick={() => setConsensoInVisualizzazione(c)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: `1px solid ${C.brd}`, cursor: 'pointer' }}>
+                  <span style={{ fontSize: 15 }}>✍️</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 12.5, color: C.txt }}>{c.titolo}</div>
+                    <div style={{ fontSize: 10.5, color: C.txl }}>
+                      {new Date(c.created_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })} · {c.canale === 'in_studio' ? 'In studio' : 'Firma remota'}
+                      {c.piano_id != null && ' · Prestazione specifica'}
+                    </div>
+                  </div>
+                  <span style={{ color: C.txl }}>›</span>
+                </div>
+              ))}
+            </Crd>
+
             {/* PRIVACY / GDPR */}
             <Crd style={{ marginBottom: 10 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>🔒 Privacy e dati personali</div>
@@ -530,6 +630,121 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                 <Btn ch="Chiudi" onClick={() => { setGdprModal(null); onClose(); }} full />
               </>
             )}
+          </Modal>
+        )}
+
+        {nuovoConsensoModal && (
+          <Modal title="Nuovo consenso informato" onClose={() => setNuovoConsensoModal(false)}>
+            {consensoStep === 'scelta' && (
+              <>
+                <Fld label="Modello di consenso">
+                  {modelliConsenso.length === 0 ? (
+                    <div style={{ fontSize: 12.5, color: C.txl, padding: '10px 0' }}>
+                      Nessun modello configurato. Vai in Setup → Privacy GDPR per crearne uno.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                      {modelliConsenso.map((m) => (
+                        <button
+                          key={m.id}
+                          onClick={() => setModelloSel(m)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 9, textAlign: 'left', padding: '10px 12px', borderRadius: 9, border: `1.5px solid ${modelloSel?.id === m.id ? C.pri : C.brd}`, background: modelloSel?.id === m.id ? C.priL : C.sur, cursor: 'pointer' }}
+                        >
+                          <span style={{ fontSize: 15 }}>{m.tipo === 'trattamento_specifico' ? '🦷' : '📄'}</span>
+                          <span style={{ fontWeight: 700, fontSize: 12.5, color: modelloSel?.id === m.id ? C.pri : C.txt }}>{m.titolo}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </Fld>
+
+                {plans.length > 0 && (
+                  <Fld label="Collega a una prestazione specifica (opzionale)">
+                    <Sel value={collegaPrestazione} onChange={(e) => setCollegaPrestazione(e.target.value)}>
+                      <option value="">Consenso generico, non collegato</option>
+                      {plans.map((pl) => pl.voci.map((v, i) => (
+                        <option key={`${pl.id}::${i}`} value={`${pl.id}::${i}`}>{pl.titolo} — {v.prestazione}{v.dente ? ` (dente ${v.dente})` : ''}</option>
+                      )))}
+                    </Sel>
+                  </Fld>
+                )}
+
+                <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                  <Btn ch="Annulla" v="sec" onClick={() => setNuovoConsensoModal(false)} full />
+                  <Btn ch="Avanti" onClick={procediAnteprima} dis={!modelloSel} full />
+                </div>
+              </>
+            )}
+
+            {consensoStep === 'anteprima' && modelloSel && (
+              <>
+                <div style={{ fontWeight: 800, fontSize: 15, color: C.txt, marginBottom: 4 }}>{modelloSel.titolo}</div>
+                {piVoceSel && <div style={{ fontSize: 11.5, color: C.pri, fontWeight: 700, marginBottom: 10 }}>Per: {piVoceSel.voce.prestazione}{piVoceSel.voce.dente ? ` (dente ${piVoceSel.voce.dente})` : ''}</div>}
+                <div style={{ background: C.bg, borderRadius: 10, padding: 12, fontSize: 12.5, color: C.txt, lineHeight: 1.6, maxHeight: 220, overflowY: 'auto', marginBottom: 14, whiteSpace: 'pre-wrap' }}>
+                  {modelloSel.testo}
+                </div>
+
+                <Fld label="Come firma?">
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => setCanaleSel('in_studio')} style={{ flex: 1, padding: '10px 0', borderRadius: 9, border: `1.5px solid ${canaleSel === 'in_studio' ? C.pri : C.brd}`, background: canaleSel === 'in_studio' ? C.priL : C.sur, color: canaleSel === 'in_studio' ? C.pri : C.txm, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>📱 In studio, ora</button>
+                    <button onClick={() => setCanaleSel('remoto')} style={{ flex: 1, padding: '10px 0', borderRadius: 9, border: `1.5px solid ${canaleSel === 'remoto' ? C.pri : C.brd}`, background: canaleSel === 'remoto' ? C.priL : C.sur, color: canaleSel === 'remoto' ? C.pri : C.txm, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>🔗 Link a distanza</button>
+                  </div>
+                </Fld>
+
+                {canaleSel === 'in_studio' && (
+                  <Fld label="Firmato da (se diverso dal paziente, es. genitore/tutore)">
+                    <Inp value={firmatoDaNome} onChange={(e) => setFirmatoDaNome(e.target.value)} />
+                  </Fld>
+                )}
+
+                <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                  <Btn ch="Indietro" v="sec" onClick={() => setConsensoStep('scelta')} full />
+                  <Btn ch={canaleSel === 'in_studio' ? 'Vai alla firma' : 'Genera link'} onClick={() => canaleSel === 'in_studio' ? setConsensoStep('firma') : generaLinkRemoto()} full />
+                </div>
+              </>
+            )}
+
+            {consensoStep === 'firma' && (
+              <>
+                <div style={{ fontSize: 12.5, color: C.txm, marginBottom: 12 }}>Passa il telefono/tablet a {firmatoDaNome || `${paz.nome} ${paz.cognome}`} per la firma.</div>
+                <PadFirma onFirmata={salvaFirmaInStudio} C={C} />
+                <button onClick={() => setConsensoStep('anteprima')} style={{ background: 'none', border: 'none', color: C.txl, fontSize: 12, cursor: 'pointer', marginTop: 12, width: '100%', textAlign: 'center' }}>‹ Indietro</button>
+              </>
+            )}
+
+            {consensoStep === 'link_generato' && (
+              <>
+                <div style={{ background: C.sucL, border: `1px solid ${C.suc}`, borderRadius: 10, padding: 14, marginBottom: 14, textAlign: 'center' }}>
+                  <div style={{ fontWeight: 700, color: C.suc, marginBottom: 4 }}>✓ Link generato</div>
+                  <div style={{ fontSize: 12, color: C.txm }}>Valido 7 giorni, utilizzabile una sola volta</div>
+                </div>
+                <div style={{ background: C.bg, borderRadius: 9, padding: 11, fontSize: 11.5, color: C.txm, wordBreak: 'break-all', marginBottom: 12 }}>{linkFirmaGenerato}</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={async () => { try { await navigator.clipboard.writeText(linkFirmaGenerato); setToast('Link copiato ✓'); } catch {} }}
+                    style={{ flex: 1, padding: '11px 0', borderRadius: 10, border: `1.5px solid ${C.brd}`, background: C.sur, color: C.pri, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+                  >📋 Copia link</button>
+                  <Btn ch="Chiudi" onClick={() => setNuovoConsensoModal(false)} full />
+                </div>
+              </>
+            )}
+          </Modal>
+        )}
+
+        {consensoInVisualizzazione && (
+          <Modal title={consensoInVisualizzazione.titolo} onClose={() => setConsensoInVisualizzazione(null)}>
+            <div style={{ fontSize: 11.5, color: C.txm, marginBottom: 10 }}>
+              Firmato il {new Date(consensoInVisualizzazione.created_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              {consensoInVisualizzazione.firmato_da_nome && ` da ${consensoInVisualizzazione.firmato_da_nome}`}
+            </div>
+            <div style={{ background: C.bg, borderRadius: 10, padding: 12, fontSize: 12, color: C.txt, lineHeight: 1.6, maxHeight: 180, overflowY: 'auto', marginBottom: 14, whiteSpace: 'pre-wrap' }}>
+              {consensoInVisualizzazione.testo}
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.txm, marginBottom: 6 }}>Firma</div>
+            <div style={{ border: `1px solid ${C.brd}`, borderRadius: 9, padding: 8, background: '#fff', marginBottom: 14 }}>
+              <img src={consensoInVisualizzazione.firma_png} alt="Firma" style={{ width: '100%', display: 'block' }} />
+            </div>
+            <Btn ch="Chiudi" v="sec" onClick={() => setConsensoInVisualizzazione(null)} full />
           </Modal>
         )}
 

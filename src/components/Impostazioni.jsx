@@ -48,6 +48,41 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
 
   const slugPulito = (v) => v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
+  // Modelli di consenso informato, usati poi in scheda paziente per la firma.
+  const [modelliConsenso, setModelliConsenso] = useState([]);
+  const [modelloModal, setModelloModal] = useState(null); // 'new' | id | null
+  const [modelloForm, setModelloForm] = useState({ titolo: '', testo: '', tipo: 'generico' });
+
+  const caricaModelliConsenso = async () => {
+    if (!studioId) return;
+    const { data } = await supabase.from('consenso_modelli').select('*').eq('studio_id', studioId).order('created_at', { ascending: false });
+    setModelliConsenso(data || []);
+  };
+  useEffect(() => { if (studioId) caricaModelliConsenso(); }, [studioId]);
+
+  const apriModelloModal = (m) => {
+    setModelloForm(m ? { ...m } : { titolo: '', testo: '', tipo: 'generico' });
+    setModelloModal(m ? m.id : 'new');
+  };
+
+  const salvaModello = async () => {
+    if (!modelloForm.titolo.trim() || !modelloForm.testo.trim()) return;
+    if (modelloModal === 'new') {
+      await supabase.from('consenso_modelli').insert([{ studio_id: studioId, titolo: modelloForm.titolo, testo: modelloForm.testo, tipo: modelloForm.tipo }]);
+    } else {
+      await supabase.from('consenso_modelli').update({ titolo: modelloForm.titolo, testo: modelloForm.testo, tipo: modelloForm.tipo }).eq('id', modelloModal);
+    }
+    setModelloModal(null);
+    caricaModelliConsenso();
+    setToast('Modello salvato ✓');
+  };
+
+  const eliminaModello = async (id) => {
+    await supabase.from('consenso_modelli').update({ attivo: false }).eq('id', id);
+    setModelloModal(null);
+    caricaModelliConsenso();
+  };
+
   const salvaSlug = async () => {
     const pulito = slugPulito(slug);
     if (!pulito || !studioId) return;
@@ -147,6 +182,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           ['studio', '🏥 Studio'],
           ['agenda', '📅 Agenda'],
           ['documenti', '📄 Documenti'],
+          ['privacy', '🔒 Privacy GDPR'],
           ['prenotazione', '🔗 Prenotazione online'],
           ['aspetto', '🎨 Aspetto'],
           ['whatsapp', '💬 WhatsApp'],
@@ -412,6 +448,35 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       </>
       )}
 
+      {sezione === 'privacy' && (
+      <>
+      <div style={{ marginTop: 0, marginBottom: 14 }}>
+        <div style={{ fontSize: 20, fontWeight: 800 }}>Modelli di consenso</div>
+        <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Testi riusabili per i consensi informati: generici per l'uso rapido, o specifici per un singolo trattamento quando serve maggior dettaglio.</div>
+      </div>
+      <Crd style={{ marginBottom: 14 }}>
+        {modelliConsenso.length === 0 && (
+          <div style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessun modello configurato</div>
+        )}
+        {modelliConsenso.map((m, i) => (
+          <button
+            key={m.id}
+            onClick={() => apriModelloModal(m)}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '11px 4px', borderBottom: i < modelliConsenso.length - 1 ? `1px solid ${C.brd}` : 'none', background: 'none', border: 'none', cursor: 'pointer' }}
+          >
+            <span style={{ fontSize: 16 }}>{m.tipo === 'trattamento_specifico' ? '🦷' : '📄'}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: C.txt }}>{m.titolo}</div>
+              <div style={{ fontSize: 10.5, color: C.txl }}>{m.tipo === 'trattamento_specifico' ? 'Trattamento specifico' : 'Generico'}</div>
+            </div>
+            <span style={{ color: C.txl }}>›</span>
+          </button>
+        ))}
+      </Crd>
+      <Btn ch="+ Nuovo modello" onClick={() => apriModelloModal(null)} full sz="lg" />
+      </>
+      )}
+
       {sezione === 'prenotazione' && (
       <>
       <div style={{ marginTop: 0, marginBottom: 14 }}>
@@ -587,6 +652,28 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       <ProfiloUtente onNomeChange={onNomeChange} />
       <GestioneUtenti studioId={studioInfo?.studio_id || '00000000-0000-0000-0000-000000000001'} currentUserId={currentUserId} features={features} />
       </>
+      )}
+
+      {modelloModal && (
+        <Modal title={modelloModal === 'new' ? 'Nuovo modello' : 'Modifica modello'} onClose={() => setModelloModal(null)}>
+          <Fld label="Titolo">
+            <Inp value={modelloForm.titolo} onChange={(e) => setModelloForm((f) => ({ ...f, titolo: e.target.value }))} placeholder="es. Consenso trattamento dati, Consenso impianto..." />
+          </Fld>
+          <Fld label="Tipo">
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setModelloForm((f) => ({ ...f, tipo: 'generico' }))} style={{ flex: 1, padding: '10px 0', borderRadius: 9, border: `1.5px solid ${modelloForm.tipo === 'generico' ? C.pri : C.brd}`, background: modelloForm.tipo === 'generico' ? C.priL : C.sur, color: modelloForm.tipo === 'generico' ? C.pri : C.txm, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>📄 Generico</button>
+              <button onClick={() => setModelloForm((f) => ({ ...f, tipo: 'trattamento_specifico' }))} style={{ flex: 1, padding: '10px 0', borderRadius: 9, border: `1.5px solid ${modelloForm.tipo === 'trattamento_specifico' ? C.pri : C.brd}`, background: modelloForm.tipo === 'trattamento_specifico' ? C.priL : C.sur, color: modelloForm.tipo === 'trattamento_specifico' ? C.pri : C.txm, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>🦷 Per trattamento</button>
+            </div>
+          </Fld>
+          <Fld label="Testo del consenso">
+            <Txt value={modelloForm.testo} onChange={(e) => setModelloForm((f) => ({ ...f, testo: e.target.value }))} rows={10} placeholder="Scrivi qui il testo completo che il paziente leggerà prima di firmare..." />
+          </Fld>
+          <div style={{ display: 'flex', gap: 7 }}>
+            {modelloModal !== 'new' && <Btn ch="Elimina" v="dan" sz="sm" onClick={() => eliminaModello(modelloModal)} />}
+            <Btn ch="Annulla" v="sec" onClick={() => setModelloModal(null)} full />
+            <Btn ch="Salva" onClick={salvaModello} full />
+          </div>
+        </Modal>
       )}
 
       {tipoModal && (

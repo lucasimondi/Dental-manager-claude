@@ -11,6 +11,7 @@ export { default as SearchSel } from './SearchSel.jsx';
 export { default as TimePicker } from './TimePicker.jsx';
 export { default as SelettorePaziente } from './SelettorePaziente.jsx';
 export { default as PannelloInvioDocumento } from './PannelloInvioDocumento.jsx';
+export { default as PadFirma } from './PadFirma.jsx';
 // PdfViewerModal NON è esportato qui apposta: viene importato con React.lazy()
 // direttamente nei componenti che lo usano (SchedaPaz.jsx, ArchivioDocs.jsx),
 // perché include pdf.js (~1MB con worker) e non deve gonfiare il bundle
