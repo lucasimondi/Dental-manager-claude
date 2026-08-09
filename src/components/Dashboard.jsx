@@ -7,9 +7,6 @@ import { BarChart, Bar, LineChart, Line, ComposedChart, XAxis, YAxis, CartesianG
 
 const WIDGETS_DEFAULT = [
   { id: 'agenda',       label: '📅 Agenda oggi',           attivo: true },
-  { id: 'economico',    label: '💰 Pannello economico',     attivo: true },
-  { id: 'kpi',          label: '📊 Statistiche',            attivo: true },
-  { id: 'grafici',      label: '📈 Andamento incassi',      attivo: true },
   { id: 'todo',         label: '✅ Attività e promemoria',  attivo: true },
   { id: 'appuntamenti', label: '📅 Prossimi appuntamenti',  attivo: true },
   { id: 'wa',            label: '💬 Reminder WhatsApp',       attivo: false },
@@ -57,7 +54,7 @@ const saveWidgets = (ws) => {
 const NOMI_F = ['alessia','alice','anna','beatrice','camilla','chiara','claudia','elena','elisa','emma','federica','francesca','giulia','ilaria','laura','lisa','lucia','luisa','mara','maria','marina','martina','monica','paola','roberta','sara','silvia','sofia','valentina','veronica','virginia'];
 const getSaluto = (nome) => { if (!nome) return 'Benvenuto'; const ora = new Date().getHours(); const s = ora < 12 ? 'Buongiorno' : ora < 18 ? 'Buon pomeriggio' : 'Buonasera'; const p = nome.trim().split(' ')[0].toLowerCase(); const fem = NOMI_F.includes(p) || (p.endsWith('a') && !['luca','andrea','mattia','nicola','enea'].includes(p)); return s + ', ' + (fem ? 'cara ' : 'caro ') + nome.trim().split(' ')[0]; };
 
-export default function Dashboard({ patients, appointments, setAppointments, payments, plans, onOpenPaz, appTypes, onGoAgenda, onGoControllo, templates, userName: userNameProp, si, features }) {
+export default function Dashboard({ patients, appointments, setAppointments, payments, plans, onOpenPaz, appTypes, onGoAgenda, templates, userName: userNameProp, si, features }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const t = today();
   const [userName, setUserName] = useState(userNameProp || '');
@@ -807,136 +804,6 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
               <span style={{ fontSize: 11, fontWeight: 700, color: C.suc }}>💳 Incassato oggi</span>
               <span style={{ fontSize: 15, fontWeight: 900, color: C.suc }}>{fmt(hInc)}</span>
             </div>}
-          </div>
-        );
-
-        if (w.id === 'economico') return (
-          <div key="economico" style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>💰 Economico</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-              <StatCard label="Incassato mese" value={fmt(mInc)} sub="solo studio" color={theme.incMese} />
-              <StatCard label={`Incassato ${anno}`} value={fmt(aInc)} sub="solo studio" color={theme.incAnno} />
-              <StatCard label="💼 Incasso mese" value={fmt(incassoLucaMese)} sub={`studio + collab. ${extMese > 0 ? '(+'+fmt(extMese)+')' : ''}`} color={theme.lucaMese} onClick={() => setDetailModal('lucaMese')} />
-              <StatCard label="💼 Incasso anno" value={fmt(incassoLucaAnno)} sub={`studio + collab. ${extAnno > 0 ? '(+'+fmt(extAnno)+')' : ''}`} color={theme.lucaAnno} onClick={() => setDetailModal('lucaAnno')} />
-              <StatCard label="Eseguito da incassare" value={fmt(totEsegDaInc)} color={theme.esegDaInc} onClick={() => setDetailModal('esegDaInc')} urgent={totEsegDaInc > 0} />
-              <StatCard label="Accettato da eseguire" value={fmt(totAccNonEseg)} color={theme.accNonEseg} onClick={() => setDetailModal('accNonEseg')} />
-              <StatCard label="Totale accettati" value={fmt(totAccettati)} sub={`${preventiviAccettati.length} piani`} color={theme.totAccettati} onClick={() => setDetailModal('accettati')} />
-            </div>
-            <div onClick={onGoControllo} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: C.priL, borderRadius: 10, padding: '10px 14px', cursor: onGoControllo ? 'pointer' : 'default' }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: C.pri }}>Margine, costi, break-even e controllo studio →</span>
-              <span style={{ fontSize: 11, fontWeight: 800, color: C.pri }}>Vai al Controllo di Gestione</span>
-            </div>
-          </div>
-        );
-
-        if (w.id === 'kpi') return (
-          <div key="kpi" style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>📊 Statistiche</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <StatCard label="Pazienti totali" value={patients.length} sub={`+${nuoviMese} questo mese`} color={C.pri} />
-              <StatCard label="Tasso accettazione" value={`${tassoAccettazione}%`} sub={`${preventiviAccettati.length}/${preventiviAttesa.length + preventiviAccettati.length + preventiviRifiutati.length} prev.`} color={tassoAccettazione >= 70 ? C.suc : tassoAccettazione >= 40 ? C.war : C.dan} />
-              <StatCard label="Valore medio piano" value={fmt(mediaValore)} color={C.pri} />
-              {topPrest && <StatCard label="Top prestazione" value={topPrest[0].length > 18 ? topPrest[0].slice(0,16)+'…' : topPrest[0]} sub={`${topPrest[1]}x eseguita`} color={C.acc} />}
-            </div>
-          </div>
-        );
-
-        if (w.id === 'grafici') return (
-          <div key="grafici" style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>📈 Andamento incassi</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <Crd>
-                <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 2 }}>Ultimi mesi</div>
-                <div style={{ fontSize: 11, color: C.txl, marginBottom: 8 }}>Incasso mensile e media mobile</div>
-                {andamentoMensile.length === 0 ? (
-                  <div style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessun incasso registrato</div>
-                ) : (
-                  <ResponsiveContainer width="100%" height={200}>
-                    <ComposedChart data={andamentoMensile} margin={{ top: 4, right: 8, left: -22, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={C.brd} vertical={false} />
-                      <XAxis dataKey="mese" tick={{ fontSize: 11, fill: C.txl }} axisLine={{ stroke: C.brd }} tickLine={false} />
-                      <YAxis tick={{ fontSize: 10, fill: C.txl }} axisLine={false} tickLine={false} width={42} />
-                      <Tooltip contentStyle={{ background: C.txt, border: 'none', borderRadius: 8, color: C.sur, fontSize: 12 }} labelStyle={{ color: C.sur }} formatter={(v, n) => [fmt(v), n === 'incasso' ? 'Incasso' : 'Media mobile']} />
-                      <Bar dataKey="incasso" fill={C.priL} radius={[6, 6, 0, 0]} barSize={26} />
-                      <Line dataKey="media" stroke={C.pri} strokeWidth={2.5} dot={{ r: 3, fill: C.pri }} />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                )}
-              </Crd>
-
-              <Crd>
-                <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 2 }}>Dove incasso di più</div>
-                <div style={{ fontSize: 11, color: C.txl, marginBottom: 8 }}>Per tipo prestazione, voci eseguite</div>
-                {incassoPerPrestazione.length === 0 ? (
-                  <div style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessuna prestazione eseguita</div>
-                ) : (
-                  <ResponsiveContainer width="100%" height={Math.max(140, incassoPerPrestazione.length * 34)}>
-                    <BarChart data={incassoPerPrestazione} layout="vertical" margin={{ top: 4, right: 24, left: 4, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={C.brd} horizontal={false} />
-                      <XAxis type="number" tick={{ fontSize: 10, fill: C.txl }} axisLine={false} tickLine={false} />
-                      <YAxis type="category" dataKey="tipo" tick={{ fontSize: 11, fill: C.txt }} axisLine={false} tickLine={false} width={92} />
-                      <Tooltip contentStyle={{ background: C.txt, border: 'none', borderRadius: 8, color: C.sur, fontSize: 12 }} labelStyle={{ color: C.sur }} formatter={(v) => fmt(v)} />
-                      <Bar dataKey="incasso" radius={[0, 6, 6, 0]} barSize={16}>
-                        {incassoPerPrestazione.map((_, i) => <Cell key={i} fill={CHART_PALETTE[i % CHART_PALETTE.length]} />)}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </Crd>
-
-              <Crd>
-                <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 2 }}>Incasso per giorno</div>
-                <div style={{ fontSize: 11, color: C.txl, marginBottom: 8 }}>Aggregato su tutti gli incassi, Lun–Dom</div>
-                <ResponsiveContainer width="100%" height={180}>
-                  <BarChart data={incassoPerGiorno} margin={{ top: 4, right: 8, left: -22, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={C.brd} vertical={false} />
-                    <XAxis dataKey="giorno" tick={{ fontSize: 11, fill: C.txl }} axisLine={{ stroke: C.brd }} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: C.txl }} axisLine={false} tickLine={false} width={42} />
-                    <Tooltip contentStyle={{ background: C.txt, border: 'none', borderRadius: 8, color: C.sur, fontSize: 12 }} labelStyle={{ color: C.sur }} formatter={(v) => fmt(v)} />
-                    <Bar dataKey="incasso" radius={[6, 6, 0, 0]} barSize={28}>
-                      {incassoPerGiorno.map((d, i) => <Cell key={i} fill={d.top ? C.pri : C.priL} />)}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </Crd>
-
-              <Crd>
-                <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 2 }}>Andamento spese</div>
-                <div style={{ fontSize: 11, color: C.txl, marginBottom: 8 }}>Una tantum per mese + quota mensile ricorrenti ({fmt(ricorrentiMensile)}/mese)</div>
-                {speseMensili.length === 0 && ricorrentiMensile === 0 ? (
-                  <div style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessuna spesa registrata</div>
-                ) : (
-                  <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={speseMensili} margin={{ top: 4, right: 8, left: -22, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={C.brd} vertical={false} />
-                      <XAxis dataKey="mese" tick={{ fontSize: 11, fill: C.txl }} axisLine={{ stroke: C.brd }} tickLine={false} />
-                      <YAxis tick={{ fontSize: 10, fill: C.txl }} axisLine={false} tickLine={false} width={42} />
-                      <Tooltip contentStyle={{ background: C.txt, border: 'none', borderRadius: 8, color: C.sur, fontSize: 12 }} labelStyle={{ color: C.sur }} formatter={(v, n) => [fmt(v), n === 'unaTantum' ? 'Una tantum' : 'Ricorrenti (quota mese)']} />
-                      <Bar dataKey="ricorrenti" stackId="s" fill={C.war + '55'} radius={[0, 0, 0, 0]} barSize={26} />
-                      <Bar dataKey="unaTantum" stackId="s" fill={C.dan} radius={[6, 6, 0, 0]} barSize={26} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </Crd>
-
-              {speseCategoria.length > 0 && (
-                <Crd>
-                  <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 2 }}>Dove vanno le spese</div>
-                  <div style={{ fontSize: 11, color: C.txl, marginBottom: 8 }}>Per categoria, ricorrenti proiettate su base annua/12</div>
-                  <ResponsiveContainer width="100%" height={Math.max(140, speseCategoria.length * 34)}>
-                    <BarChart data={speseCategoria} layout="vertical" margin={{ top: 4, right: 24, left: 4, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={C.brd} horizontal={false} />
-                      <XAxis type="number" tick={{ fontSize: 10, fill: C.txl }} axisLine={false} tickLine={false} />
-                      <YAxis type="category" dataKey="categoria" tick={{ fontSize: 11, fill: C.txt }} axisLine={false} tickLine={false} width={92} />
-                      <Tooltip contentStyle={{ background: C.txt, border: 'none', borderRadius: 8, color: C.sur, fontSize: 12 }} labelStyle={{ color: C.sur }} formatter={(v) => fmt(v)} />
-                      <Bar dataKey="tot" radius={[0, 6, 6, 0]} barSize={16}>
-                        {speseCategoria.map((_, i) => <Cell key={i} fill={C.dan} fillOpacity={1 - i * 0.12} />)}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </Crd>
-              )}
-            </div>
           </div>
         );
 
