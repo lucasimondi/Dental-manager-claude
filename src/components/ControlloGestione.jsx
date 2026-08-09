@@ -29,7 +29,16 @@ const KpiCard = ({ label, value, sub, color }) => (
   </Crd>
 );
 
-export default function ControlloGestione({ studioId }) {
+const OpCard = ({ label, value, sub, bg, border, txt, onClick, badge }) => (
+  <div onClick={onClick} style={{ background: bg, borderRadius: 12, padding: 12, border: `1px solid ${border}25`, cursor: onClick ? 'pointer' : 'default', position: 'relative' }}>
+    {badge && <div style={{ position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: '50%', background: C.dan }} />}
+    <div style={{ fontSize: 10, fontWeight: 800, color: txt, textTransform: 'uppercase' }}>{label}</div>
+    <div style={{ fontSize: 22, fontWeight: 900, color: txt, marginTop: 4 }}>{value}</div>
+    {sub && <div style={{ fontSize: 10, color: C.txl }}>{sub}</div>}
+  </div>
+);
+
+export default function ControlloGestione({ studioId, patients = [], plans = [], onOpenPaz, isDentistico = true }) {
   const [periodo, setPeriodo] = useState('mese');
   const [kpi, setKpi] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -51,6 +60,48 @@ export default function ControlloGestione({ studioId }) {
     setLoading(false);
   };
 
+  // ── Controllo operativo (preventivi, richiami, scadenze, ortodonzia) ──
+  // Stessa logica gia' usata in precedenza dentro Dashboard.jsx, spostata
+  // qui perche' concettualmente e' "controllo", non un riepilogo del
+  // giorno. Deriva tutto da plans/patients, nessuna query aggiuntiva.
+  const calcPlanTot = (pl) => {
+    const sub = (pl.voci || []).reduce((s, v) => s + Number(v.prezzo), 0);
+    const sc = Number(pl.sconto) || 0;
+    const scontato = pl.scontoTipo === 'pct' ? sub * (sc / 100) : Math.min(sc, sub);
+    return Math.max(0, sub - scontato);
+  };
+
+  const t = today();
+  const oggiD = new Date(t + 'T12:00');
+  const tra30 = new Date(oggiD); tra30.setDate(tra30.getDate() + 30);
+
+  const preventiviAccettati = plans.filter(pl => pl.stato === 'accettato');
+  const preventiviAttesa = plans.filter(pl => (pl.stato || 'attivo') === 'attivo');
+  const preventiviRifiutati = plans.filter(pl => pl.stato === 'rifiutato');
+
+  const richiamiScaduti = plans.flatMap(pl => { const paz = patients.find(x => x.id === pl.pazienteId); if (!paz) return []; return (pl.voci || []).filter(v => v.richiamoData && new Date(v.richiamoData + 'T12:00') < oggiD).map(v => ({ paz, pl, v })); });
+  const richiamiProssimi = plans.flatMap(pl => { const paz = patients.find(x => x.id === pl.pazienteId); if (!paz) return []; return (pl.voci || []).filter(v => { if (!v.richiamoData) return false; const d = new Date(v.richiamoData + 'T12:00'); return d >= oggiD && d <= tra30; }).map(v => ({ paz, pl, v })); });
+
+  const scadenzePagamento = plans.filter(pl => pl.scadenzaPagamento).map(pl => {
+    const paz = patients.find(x => x.id === pl.pazienteId);
+    if (!paz) return null;
+    return { pl, paz, scadenza: pl.scadenzaPagamento, importo: calcPlanTot(pl) };
+  }).filter(Boolean);
+  const scadenzeScadute = scadenzePagamento.filter(s => new Date(s.scadenza + 'T12:00') < oggiD);
+  const scadenzeProssime = scadenzePagamento.filter(s => { const d = new Date(s.scadenza + 'T12:00'); return d >= oggiD && d <= tra30; });
+
+  const pianiOrto = plans.filter(pl => pl.ortodonzia?.attivo).map(pl => {
+    const paz = patients.find(x => x.id === pl.pazienteId);
+    if (!paz) return null;
+    const orto = pl.ortodonzia;
+    const cons = orto.mascherineConsegnate || 0;
+    const tot2 = Number(orto.mascherineTotali) || 0;
+    const prossima = (() => { if (!orto.dataConsegnaInizio) return null; const ultima = orto.storico?.length > 0 ? orto.storico[orto.storico.length - 1].data : orto.dataConsegnaInizio; const d = new Date(ultima + 'T12:00'); d.setDate(d.getDate() + (orto.frequenzaSettimane || 2) * 7); return d.toISOString().slice(0, 10); })();
+    return { pl, paz, orto, cons, tot: tot2, completato: tot2 > 0 && cons >= tot2, prossima, cambioScaduto: prossima && prossima <= t, inAttesa: !orto.dataConsegnaInizio };
+  }).filter(Boolean);
+
+  const vaiAPiani = () => onOpenPaz && plans.length > 0 && onOpenPaz(patients[0], 'piani');
+
   return (
     <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -70,6 +121,7 @@ export default function ControlloGestione({ studioId }) {
 
       {kpi && !loading && (
         <>
+          <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em' }}>💰 Economico</div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <KpiCard label="Incassato" value={fmt(kpi.incassato)} color={C.suc} />
             <KpiCard label="Costi totali" value={fmt(kpi.costi_totali)} color={C.dan} />
@@ -95,6 +147,49 @@ export default function ControlloGestione({ studioId }) {
           </div>
         </>
       )}
+
+      {/* ── Controllo operativo ── */}
+      <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 6 }}>🎛️ Controllo studio</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <div onClick={vaiAPiani} style={{ background: C.priL, borderRadius: 12, padding: 12, border: `1px solid ${C.pri}25`, cursor: onOpenPaz ? 'pointer' : 'default' }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: C.pri, textTransform: 'uppercase', marginBottom: 8 }}>📋 Preventivi</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ flex: 1, textAlign: 'center', padding: '4px 0', borderRadius: 7, background: 'rgba(124,58,237,0.08)' }}>
+              <div style={{ fontSize: 18, fontWeight: 900, color: C.pur }}>{preventiviAttesa.length}</div>
+              <div style={{ fontSize: 9, color: C.txl }}>attesa</div>
+            </div>
+            <div style={{ flex: 1, textAlign: 'center', padding: '4px 0', borderRadius: 7, background: 'rgba(46,196,182,0.1)' }}>
+              <div style={{ fontSize: 18, fontWeight: 900, color: C.acc }}>{preventiviAccettati.length}</div>
+              <div style={{ fontSize: 9, color: C.txl }}>accettati</div>
+            </div>
+            <div style={{ flex: 1, textAlign: 'center', padding: '4px 0', borderRadius: 7, background: 'rgba(230,57,70,0.08)' }}>
+              <div style={{ fontSize: 18, fontWeight: 900, color: C.dan }}>{preventiviRifiutati.length}</div>
+              <div style={{ fontSize: 9, color: C.txl }}>rifiutati</div>
+            </div>
+          </div>
+        </div>
+
+        <OpCard
+          label="🔔 Richiami" value={richiamiScaduti.length + richiamiProssimi.length}
+          sub={`${richiamiScaduti.length} scaduti · ${richiamiProssimi.length} prossimi`}
+          bg={richiamiScaduti.length > 0 ? C.danL : '#FEF3E2'} border={richiamiScaduti.length > 0 ? C.dan : C.war}
+          txt={richiamiScaduti.length > 0 ? C.dan : C.war} badge={richiamiScaduti.length > 0}
+        />
+        <OpCard
+          label="📆 Scadenze" value={scadenzePagamento.length}
+          sub={`${scadenzeScadute.length} scadute · ${scadenzeProssime.length} prossime`}
+          bg={scadenzeScadute.length > 0 ? C.danL : C.priL} border={scadenzeScadute.length > 0 ? C.dan : C.pri}
+          txt={scadenzeScadute.length > 0 ? C.dan : C.pri} badge={scadenzeScadute.length > 0}
+        />
+        {isDentistico && (
+          <OpCard
+            label="🦷 Ortodonzia" value={pianiOrto.filter(o => !o.completato).length}
+            sub={`${pianiOrto.filter(o => o.cambioScaduto).length} da cambiare · ${pianiOrto.filter(o => o.inAttesa).length} da avviare`}
+            bg={pianiOrto.some(o => o.cambioScaduto) ? C.danL : C.purL} border={pianiOrto.some(o => o.cambioScaduto) ? C.dan : C.pur}
+            txt={pianiOrto.some(o => o.cambioScaduto) ? C.dan : C.pur}
+          />
+        )}
+      </div>
     </div>
   );
 }

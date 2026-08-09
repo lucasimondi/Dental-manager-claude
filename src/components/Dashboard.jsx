@@ -8,7 +8,6 @@ import { BarChart, Bar, LineChart, Line, ComposedChart, XAxis, YAxis, CartesianG
 const WIDGETS_DEFAULT = [
   { id: 'agenda',       label: '📅 Agenda oggi',           attivo: true },
   { id: 'economico',    label: '💰 Pannello economico',     attivo: true },
-  { id: 'controllo',    label: '🎛️ Controllo studio',       attivo: true },
   { id: 'kpi',          label: '📊 Statistiche',            attivo: true },
   { id: 'grafici',      label: '📈 Andamento incassi',      attivo: true },
   { id: 'todo',         label: '✅ Attività e promemoria',  attivo: true },
@@ -58,7 +57,7 @@ const saveWidgets = (ws) => {
 const NOMI_F = ['alessia','alice','anna','beatrice','camilla','chiara','claudia','elena','elisa','emma','federica','francesca','giulia','ilaria','laura','lisa','lucia','luisa','mara','maria','marina','martina','monica','paola','roberta','sara','silvia','sofia','valentina','veronica','virginia'];
 const getSaluto = (nome) => { if (!nome) return 'Benvenuto'; const ora = new Date().getHours(); const s = ora < 12 ? 'Buongiorno' : ora < 18 ? 'Buon pomeriggio' : 'Buonasera'; const p = nome.trim().split(' ')[0].toLowerCase(); const fem = NOMI_F.includes(p) || (p.endsWith('a') && !['luca','andrea','mattia','nicola','enea'].includes(p)); return s + ', ' + (fem ? 'cara ' : 'caro ') + nome.trim().split(' ')[0]; };
 
-export default function Dashboard({ patients, appointments, setAppointments, payments, plans, onOpenPaz, appTypes, onGoAgenda, templates, userName: userNameProp, si, features }) {
+export default function Dashboard({ patients, appointments, setAppointments, payments, plans, onOpenPaz, appTypes, onGoAgenda, onGoControllo, templates, userName: userNameProp, si, features }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const t = today();
   const [userName, setUserName] = useState(userNameProp || '');
@@ -819,12 +818,13 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
               <StatCard label={`Incassato ${anno}`} value={fmt(aInc)} sub="solo studio" color={theme.incAnno} />
               <StatCard label="💼 Incasso mese" value={fmt(incassoLucaMese)} sub={`studio + collab. ${extMese > 0 ? '(+'+fmt(extMese)+')' : ''}`} color={theme.lucaMese} onClick={() => setDetailModal('lucaMese')} />
               <StatCard label="💼 Incasso anno" value={fmt(incassoLucaAnno)} sub={`studio + collab. ${extAnno > 0 ? '(+'+fmt(extAnno)+')' : ''}`} color={theme.lucaAnno} onClick={() => setDetailModal('lucaAnno')} />
-              <StatCard label="💸 Spese mese" value={fmt(speseMese)} color={theme.speseMese} onClick={() => setDetailModal('spese')} />
-              <StatCard label="💸 Spese anno" value={fmt(speseAnnoTotale)} sub={speseRicorrentiAnno > 0 ? `+${fmt(speseRicorrentiAnno)} ricorrenti` : undefined} color={theme.speseAnno} onClick={() => setDetailModal('spese')} />
-              <StatCard label={margineAnno >= 0 ? '✅ Margine stimato' : '⚠️ Margine stimato'} value={`${margineAnno >= 0 ? '+' : ''}${fmt(margineAnno)}`} sub={`incassi - spese ${anno}`} color={margineAnno >= 0 ? theme.margine : theme.speseMese} />
               <StatCard label="Eseguito da incassare" value={fmt(totEsegDaInc)} color={theme.esegDaInc} onClick={() => setDetailModal('esegDaInc')} urgent={totEsegDaInc > 0} />
               <StatCard label="Accettato da eseguire" value={fmt(totAccNonEseg)} color={theme.accNonEseg} onClick={() => setDetailModal('accNonEseg')} />
               <StatCard label="Totale accettati" value={fmt(totAccettati)} sub={`${preventiviAccettati.length} piani`} color={theme.totAccettati} onClick={() => setDetailModal('accettati')} />
+            </div>
+            <div onClick={onGoControllo} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: C.priL, borderRadius: 10, padding: '10px 14px', cursor: onGoControllo ? 'pointer' : 'default' }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: C.pri }}>Margine, costi, break-even e controllo studio →</span>
+              <span style={{ fontSize: 11, fontWeight: 800, color: C.pri }}>Vai al Controllo di Gestione</span>
             </div>
           </div>
         );
@@ -935,50 +935,6 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                     </BarChart>
                   </ResponsiveContainer>
                 </Crd>
-              )}
-            </div>
-          </div>
-        );
-
-        if (w.id === 'controllo') return (
-          <div key="controllo" style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>🎛️ Controllo studio</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <div style={{ background: C.priL, borderRadius: 12, padding: 12, border: `1px solid ${C.pri}25` }}>
-                <div style={{ fontSize: 10, fontWeight: 800, color: C.pri, textTransform: 'uppercase', marginBottom: 8 }}>📋 Preventivi</div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <div onClick={() => setDetailModal('attesa')} style={{ flex: 1, textAlign: 'center', cursor: 'pointer', padding: '4px 0', borderRadius: 7, background: 'rgba(124,58,237,0.08)' }}>
-                    <div style={{ fontSize: 18, fontWeight: 900, color: C.pur }}>{preventiviAttesa.length}</div>
-                    <div style={{ fontSize: 9, color: C.txl }}>attesa</div>
-                  </div>
-                  <div onClick={() => setDetailModal('accettati')} style={{ flex: 1, textAlign: 'center', cursor: 'pointer', padding: '4px 0', borderRadius: 7, background: 'rgba(46,196,182,0.1)' }}>
-                    <div style={{ fontSize: 18, fontWeight: 900, color: C.acc }}>{preventiviAccettati.length}</div>
-                    <div style={{ fontSize: 9, color: C.txl }}>accettati</div>
-                  </div>
-                  <div onClick={() => setDetailModal('rifiutati')} style={{ flex: 1, textAlign: 'center', cursor: 'pointer', padding: '4px 0', borderRadius: 7, background: 'rgba(230,57,70,0.08)' }}>
-                    <div style={{ fontSize: 18, fontWeight: 900, color: C.dan }}>{preventiviRifiutati.length}</div>
-                    <div style={{ fontSize: 9, color: C.txl }}>rifiutati</div>
-                  </div>
-                </div>
-              </div>
-              <div onClick={() => setDetailModal('richiami')} style={{ background: richiamiScaduti.length > 0 ? C.danL : '#FEF3E2', borderRadius: 12, padding: 12, border: `1px solid ${richiamiScaduti.length > 0 ? C.dan : C.war}25`, cursor: 'pointer', position: 'relative' }}>
-                {richiamiScaduti.length > 0 && <div style={{ position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: '50%', background: C.dan }} />}
-                <div style={{ fontSize: 10, fontWeight: 800, color: richiamiScaduti.length > 0 ? C.dan : C.war, textTransform: 'uppercase' }}>🔔 Richiami</div>
-                <div style={{ fontSize: 22, fontWeight: 900, color: richiamiScaduti.length > 0 ? C.dan : C.war, marginTop: 4 }}>{richiamiScaduti.length + richiamiProssimi.length}</div>
-                <div style={{ fontSize: 10, color: C.txl }}>{richiamiScaduti.length} scaduti · {richiamiProssimi.length} prossimi</div>
-              </div>
-              <div onClick={() => setDetailModal('scadenze')} style={{ background: scadenzeScadute.length > 0 ? C.danL : C.priL, borderRadius: 12, padding: 12, border: `1px solid ${scadenzeScadute.length > 0 ? C.dan : C.pri}25`, cursor: 'pointer', position: 'relative' }}>
-                {scadenzeScadute.length > 0 && <div style={{ position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: '50%', background: C.dan }} />}
-                <div style={{ fontSize: 10, fontWeight: 800, color: scadenzeScadute.length > 0 ? C.dan : C.pri, textTransform: 'uppercase' }}>📆 Scadenze</div>
-                <div style={{ fontSize: 22, fontWeight: 900, color: scadenzeScadute.length > 0 ? C.dan : C.pri, marginTop: 4 }}>{scadenzePagamento.length}</div>
-                <div style={{ fontSize: 10, color: C.txl }}>{scadenzeScadute.length} scadute · {scadenzeProssime.length} prossime</div>
-              </div>
-              {isDentistico && (
-              <div onClick={() => setDetailModal('orto')} style={{ background: pianiOrto.some(o => o.cambioScaduto) ? C.danL : C.purL, borderRadius: 12, padding: 12, border: `1px solid ${pianiOrto.some(o => o.cambioScaduto) ? C.dan : C.pur}25`, cursor: 'pointer' }}>
-                <div style={{ fontSize: 10, fontWeight: 800, color: pianiOrto.some(o => o.cambioScaduto) ? C.dan : C.pur, textTransform: 'uppercase' }}>🦷 Ortodonzia</div>
-                <div style={{ fontSize: 22, fontWeight: 900, color: pianiOrto.some(o => o.cambioScaduto) ? C.dan : C.pur, marginTop: 4 }}>{pianiOrto.filter(o => !o.completato).length}</div>
-                <div style={{ fontSize: 10, color: C.txl }}>{pianiOrto.filter(o => o.cambioScaduto).length} da cambiare · {pianiOrto.filter(o => o.inAttesa).length} da avviare</div>
-              </div>
               )}
             </div>
           </div>

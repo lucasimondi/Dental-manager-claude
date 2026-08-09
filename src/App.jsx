@@ -335,8 +335,8 @@ export default function App() {
           {!isMobile && <span style={{ color: 'rgba(255,255,255,0.3)' }}>·</span>}
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: isMobile ? 120 : 'none' }}>{navVisibile.find((n) => n.id === page)?.l}</span>
           {isSuperAdmin && <button onClick={() => setShowMasterDashboard(true)} title="Dashboard Master" style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, padding: '4px 8px', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>🛠️</button>}
-          {/* Su mobile 'Esci' vive nel dock/popup in basso — evita la sovrapposizione con quello in alto */}
-          {!isMobile && <button onClick={handleLogout} title="Esci" style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, padding: '4px 8px', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>Esci</button>}
+          {/* Esci sempre visibile in header (mobile e desktop). Su desktop resta anche nel dock in basso. */}
+          <button onClick={handleLogout} title="Esci" style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, padding: '4px 8px', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>Esci</button>
         </div>
       </div>
 
@@ -364,7 +364,7 @@ export default function App() {
       )}
 
       <div id="app-scroll" style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: 13, paddingBottom: isMobile ? 98 : 78 }}>
-        {page === 'home' && <Dashboard patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} templates={templates} userName={userName} si={studioInfo} features={features} />}
+        {page === 'home' && <Dashboard patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoControllo={() => setPage('controllo')} templates={templates} userName={userName} si={studioInfo} features={features} />}
         {page === 'paz' && (
           <Pazienti
             patients={patients} setPatients={setPatientsSync}
@@ -390,7 +390,7 @@ export default function App() {
         {page === 'listino' && <Listino pricelist={pricelist} setPricelist={setPricelistSync} si={studioInfo} />}
         {page === 'agenda' && <Agenda patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} />}
         {page === 'spese' && <Spese />}
-        {page === 'controllo' && <ControlloGestione studioId={session?.user?.app_metadata?.studio_id} />}
+        {page === 'controllo' && <ControlloGestione studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} onOpenPaz={goSchedaPaz} isDentistico={!studioInfo?.vertical || studioInfo.vertical === 'dentistico'} />}
         {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} />}
         {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
         {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} />}
