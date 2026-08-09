@@ -124,7 +124,7 @@ export default function Proiezioni({ studioId }) {
 
       <div style={{ background: `linear-gradient(135deg, ${C.priD}, ${C.pri})`, borderRadius: 16, padding: '16px 16px 14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, color: '#fff' }}>Proiezioni</div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: '#fff' }}>Budget & Proiezioni</div>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             <button onClick={() => setAnno((a) => a - 1)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 6, color: '#fff', width: 26, height: 26, cursor: 'pointer', fontWeight: 800 }}>‹</button>
             <div style={{ color: '#fff', fontWeight: 800, fontSize: 14, minWidth: 40, textAlign: 'center' }}>{anno}</div>

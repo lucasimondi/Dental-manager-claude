@@ -321,7 +321,6 @@ export const NAV = [
   { id: 'agenda', l: 'Agenda', ic: 'cal' },
   { id: 'spese', l: 'Spese', ic: 'spe' },
   { id: 'controllo', l: 'Controllo', ic: 'plan' },
-  { id: 'proiezioni', l: 'Proiezioni', ic: 'plan' },
   { id: 'archivio', l: 'Documenti', ic: 'plan' },
   { id: 'wa', l: 'WhatsApp', ic: 'wa' },
   { id: 'set', l: 'Setup', ic: 'set' },
