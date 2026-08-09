@@ -222,6 +222,43 @@ export const VERTICALI_DISPONIBILI = [
 // all'Ordine dei Medici e degli Odontoiatri).
 export const VERTICALI_CON_RICETTA = new Set(['medico_chirurgo', 'dentistico']);
 
+// Anamnesi medica standard per i verticali con formazione medica
+// (odontoiatra, medico chirurgo): set fisso, non personalizzabile dallo
+// studio — coerente con l'idea che qui serve un'anamnesi clinica
+// riconosciuta, non una checklist libera. Gli altri verticali usano
+// invece STORIA_CLINICA_MODELLO_BASE, personalizzabile.
+export const ANAMNESI_MEDICA_STANDARD = [
+  { chiave: 'cardiopatie', titolo: 'Cardiopatie / problemi cardiovascolari' },
+  { chiave: 'ipertensione', titolo: 'Ipertensione arteriosa' },
+  { chiave: 'diabete', titolo: 'Diabete' },
+  { chiave: 'epatite', titolo: 'Epatite / malattie del fegato' },
+  { chiave: 'hiv', titolo: 'HIV / immunodeficienza' },
+  { chiave: 'coagulazione', titolo: 'Disturbi della coagulazione' },
+  { chiave: 'respiratorie', titolo: 'Malattie respiratorie (asma, BPCO...)' },
+  { chiave: 'renali', titolo: 'Malattie renali' },
+  { chiave: 'tiroide', titolo: 'Disturbi della tiroide' },
+  { chiave: 'epilessia', titolo: 'Epilessia / disturbi neurologici' },
+  { chiave: 'oncologiche', titolo: 'Patologie oncologiche, pregresse o in corso' },
+  { chiave: 'gravidanza', titolo: 'Gravidanza in corso o allattamento' },
+  { chiave: 'interventi_chirurgici', titolo: 'Interventi chirurgici pregressi' },
+  { chiave: 'protesi_impiantate', titolo: 'Protesi o dispositivi impiantati (pacemaker, protesi articolari...)' },
+  { chiave: 'terapia_anticoagulante', titolo: 'Terapia anticoagulante o antiaggregante in corso' },
+  { chiave: 'fumo', titolo: 'Fumatore' },
+  { chiave: 'alcol', titolo: 'Consumo di alcol' },
+];
+
+// Modello base per la storia clinica modulabile (verticali non medici):
+// punto di partenza generico che lo studio personalizza dal Setup —
+// aggiunge, toglie o rinomina voci a piacere.
+export const STORIA_CLINICA_MODELLO_BASE = [
+  { chiave: 'condizioni_generali', titolo: 'Condizioni di salute generali rilevanti' },
+  { chiave: 'terapie_in_corso', titolo: 'Terapie o trattamenti in corso' },
+  { chiave: 'allergie_note', titolo: 'Allergie note' },
+  { chiave: 'interventi_pregressi', titolo: 'Interventi o traumi pregressi nella zona di interesse' },
+  { chiave: 'dolore_sintomi', titolo: 'Dolore o sintomi attuali da segnalare' },
+];
+
+
 /* ── DEFAULT GENERICI (professionisti non dentistici) ──
    Usati in fase di primo accesso quando lo studio ha un vertical diverso da 'dentistico'.
    Niente terminologia odontoiatrica: il professionista personalizza da qui. */

@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { supabase } from '../lib/supabase.js';
-import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker, PadFirma } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker, PadFirma, FormStoriaClinica } from './ui';
 const PdfViewerModal = React.lazy(() => import('./ui/PdfViewerModal.jsx'));
-import { C, fmt, fmtD, today, SCADENZA_PRESET, addMesi, rilevaRichiamo } from '../lib/utils';
+import { C, fmt, fmtD, today, SCADENZA_PRESET, addMesi, rilevaRichiamo, ANAMNESI_MEDICA_STANDARD, STORIA_CLINICA_MODELLO_BASE } from '../lib/utils';
 import PdfView from './PdfView.jsx';
 import DocFiscale from './DocFiscale.jsx';
 import DocMedico from './DocMedico.jsx';
@@ -123,6 +123,77 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
       setNuovoConsensoModal(false);
       caricaConsensi();
       setToast('Consenso firmato ✓');
+    } else {
+      setToast('Errore durante la firma');
+    }
+  };
+
+  // Anamnesi / storia clinica: set fisso per i verticali con formazione
+  // medica (odontoiatra, medico chirurgo), altrimenti le voci personalizzate
+  // dallo studio (o il modello base, se non ha ancora personalizzato nulla).
+  const usaAnamnesiMedicaStandard = !si?.vertical || si.vertical === 'dentistico' || si.vertical === 'medico_chirurgo';
+  const [storieCliniche, setStorieCliniche] = useState([]);
+  const [storieCaricamento, setStorieCaricamento] = useState(false);
+  const [vociStoriaClinica, setVociStoriaClinica] = useState(usaAnamnesiMedicaStandard ? ANAMNESI_MEDICA_STANDARD : STORIA_CLINICA_MODELLO_BASE);
+  const [nuovaStoriaModal, setNuovaStoriaModal] = useState(false);
+  const [storiaStep, setStoriaStep] = useState('compila'); // compila | canale | firma | link_generato
+  const [storiaCompilata, setStoriaCompilata] = useState(null); // { risposte, farmaci, allergie }
+  const [storiaCanale, setStoriaCanale] = useState('in_studio');
+  const [storiaFirmatoDaNome, setStoriaFirmatoDaNome] = useState('');
+  const [storiaLinkGenerato, setStoriaLinkGenerato] = useState('');
+  const [storiaInVisualizzazione, setStoriaInVisualizzazione] = useState(null);
+
+  const caricaStorieCliniche = async () => {
+    setStorieCaricamento(true);
+    const { data } = await supabase.from('storie_cliniche').select('*').eq('paziente_id', paz.id).not('firma_png', 'is', null).order('created_at', { ascending: false });
+    setStorieCliniche(data || []);
+    setStorieCaricamento(false);
+  };
+
+  const apriNuovaStoria = async () => {
+    if (!usaAnamnesiMedicaStandard) {
+      const { data: { session } } = await supabase.auth.getSession();
+      const studioId = session?.user?.app_metadata?.studio_id;
+      const { data } = await supabase.from('storia_clinica_voci').select('*').eq('studio_id', studioId).eq('attiva', true).order('ordine');
+      setVociStoriaClinica(data && data.length > 0 ? data : STORIA_CLINICA_MODELLO_BASE);
+    }
+    setStoriaCompilata(null);
+    setStoriaCanale('in_studio');
+    setStoriaFirmatoDaNome(`${paz.nome} ${paz.cognome}`);
+    setStoriaLinkGenerato('');
+    setStoriaStep('compila');
+    setNuovaStoriaModal(true);
+  };
+
+  const dopoCompilazioneStoria = (dati) => {
+    setStoriaCompilata(dati);
+    setStoriaStep('canale');
+  };
+
+  const generaLinkStoriaRemota = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const studioId = session?.user?.app_metadata?.studio_id;
+    const { data } = await supabase.rpc('crea_link_storia_clinica', { p_studio_id: studioId, p_paziente_id: paz.id });
+    if (data?.ok) {
+      setStoriaLinkGenerato(`${window.location.origin}/storia-clinica/${data.token}`);
+      setStoriaStep('link_generato');
+    }
+  };
+
+  const salvaFirmaStoriaInStudio = async (firmaPng) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const studioId = session?.user?.app_metadata?.studio_id;
+    const { data } = await supabase.rpc('firma_storia_clinica', {
+      p_studio_id: studioId, p_paziente_id: paz.id,
+      p_risposte: JSON.stringify(storiaCompilata.risposte),
+      p_farmaci: JSON.stringify(storiaCompilata.farmaci),
+      p_allergie: JSON.stringify(storiaCompilata.allergie),
+      p_firma_png: firmaPng, p_firmato_da_nome: storiaFirmatoDaNome,
+    });
+    if (data?.ok) {
+      setNuovaStoriaModal(false);
+      caricaStorieCliniche();
+      setToast('Anamnesi firmata ✓');
     } else {
       setToast('Errore durante la firma');
     }
@@ -253,7 +324,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
   };
 
   React.useEffect(() => { loadFoto(); }, [paz.id]);
-  React.useEffect(() => { if (tab === 'doc') loadArchivioDocs(); if (tab === 'info') caricaConsensi(); }, [paz.id]);
+  React.useEffect(() => { if (tab === 'doc') loadArchivioDocs(); if (tab === 'info') { caricaConsensi(); caricaStorieCliniche(); } }, [paz.id]);
 
   // Archivio documenti generati per questo paziente (medici + fiscali).
   // Caricato quando si apre la tab Documenti, non subito all'apertura della
@@ -408,7 +479,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
 
       <div style={{ display: 'flex', background: C.sur, borderBottom: `1px solid ${C.brd}`, flexShrink: 0 }}>
         {TABS.map((t) => (
-          <button key={t.id} onClick={() => { setTab(t.id); if (t.id === 'doc') loadArchivioDocs(); if (t.id === 'info') caricaConsensi(); }} style={{ flex: 1, padding: '11px 4px', background: 'none', border: 'none', borderBottom: `2.5px solid ${tab === t.id ? C.pri : 'transparent'}`, color: tab === t.id ? C.pri : C.txm, fontWeight: tab === t.id ? 700 : 500, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>{t.l}</button>
+          <button key={t.id} onClick={() => { setTab(t.id); if (t.id === 'doc') loadArchivioDocs(); if (t.id === 'info') { caricaConsensi(); caricaStorieCliniche(); } }} style={{ flex: 1, padding: '11px 4px', background: 'none', border: 'none', borderBottom: `2.5px solid ${tab === t.id ? C.pri : 'transparent'}`, color: tab === t.id ? C.pri : C.txm, fontWeight: tab === t.id ? 700 : 500, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>{t.l}</button>
         ))}
       </div>
 
@@ -524,6 +595,38 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                   ))}
                 </div>
               )}
+            </Crd>
+
+            {/* ANAMNESI / STORIA CLINICA */}
+            <Crd style={{ marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  {usaAnamnesiMedicaStandard ? '🩺 Anamnesi medica' : '📋 Storia clinica'}
+                </div>
+                <button onClick={apriNuovaStoria} style={{ background: C.priL, border: 'none', borderRadius: 8, padding: '5px 11px', color: C.pri, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>+ Nuova</button>
+              </div>
+              {storieCaricamento && <div style={{ textAlign: 'center', color: C.txl, padding: 14, fontSize: 12 }}>Caricamento…</div>}
+              {!storieCaricamento && storieCliniche.length === 0 && (
+                <div style={{ textAlign: 'center', color: C.txl, padding: '14px 0', fontSize: 12 }}>Nessuna {usaAnamnesiMedicaStandard ? 'anamnesi' : 'storia clinica'} ancora compilata</div>
+              )}
+              {!storieCaricamento && storieCliniche.map((s) => {
+                const nSi = (s.risposte || []).filter(r => r.valore === 'si').length;
+                return (
+                  <div key={s.id} onClick={() => setStoriaInVisualizzazione(s)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: `1px solid ${C.brd}`, cursor: 'pointer' }}>
+                    <span style={{ fontSize: 15 }}>{usaAnamnesiMedicaStandard ? '🩺' : '📋'}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 12.5, color: C.txt }}>
+                        {new Date(s.created_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </div>
+                      <div style={{ fontSize: 10.5, color: C.txl }}>
+                        {nSi > 0 ? `${nSi} voci positive` : 'Nessuna voce positiva'} · {s.canale === 'in_studio' ? 'In studio' : 'Firma remota'}
+                      </div>
+                    </div>
+                    {nSi > 0 && <Bdg ch={`⚠️ ${nSi}`} co={C.war} />}
+                    <span style={{ color: C.txl }}>›</span>
+                  </div>
+                );
+              })}
             </Crd>
 
             {/* CONSENSI INFORMATI */}
@@ -745,6 +848,99 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
               <img src={consensoInVisualizzazione.firma_png} alt="Firma" style={{ width: '100%', display: 'block' }} />
             </div>
             <Btn ch="Chiudi" v="sec" onClick={() => setConsensoInVisualizzazione(null)} full />
+          </Modal>
+        )}
+
+        {nuovaStoriaModal && (
+          <Modal title={usaAnamnesiMedicaStandard ? 'Nuova anamnesi' : 'Nuova storia clinica'} onClose={() => setNuovaStoriaModal(false)}>
+            {storiaStep === 'compila' && (
+              <FormStoriaClinica voci={vociStoriaClinica} onCompilato={dopoCompilazioneStoria} C={C} testoBottone="Avanti" />
+            )}
+
+            {storiaStep === 'canale' && (
+              <>
+                <div style={{ fontSize: 12.5, color: C.txm, marginBottom: 14 }}>Compilazione completata. Come si firma?</div>
+                <Fld label="Come firma?">
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => setStoriaCanale('in_studio')} style={{ flex: 1, padding: '10px 0', borderRadius: 9, border: `1.5px solid ${storiaCanale === 'in_studio' ? C.pri : C.brd}`, background: storiaCanale === 'in_studio' ? C.priL : C.sur, color: storiaCanale === 'in_studio' ? C.pri : C.txm, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>📱 In studio, ora</button>
+                    <button onClick={() => setStoriaCanale('remoto')} style={{ flex: 1, padding: '10px 0', borderRadius: 9, border: `1.5px solid ${storiaCanale === 'remoto' ? C.pri : C.brd}`, background: storiaCanale === 'remoto' ? C.priL : C.sur, color: storiaCanale === 'remoto' ? C.pri : C.txm, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>🔗 Link a distanza</button>
+                  </div>
+                </Fld>
+                {storiaCanale === 'remoto' && (
+                  <div style={{ fontSize: 11, color: C.txl, marginBottom: 10 }}>
+                    Attenzione: con il link a distanza il paziente ricompila da capo le voci — le risposte date qui non vengono trasferite. Utile solo se preferisci che sia lui a compilare senza passare dal tuo dispositivo.
+                  </div>
+                )}
+                {storiaCanale === 'in_studio' && (
+                  <Fld label="Firmato da (se diverso dal paziente, es. genitore/tutore)">
+                    <Inp value={storiaFirmatoDaNome} onChange={(e) => setStoriaFirmatoDaNome(e.target.value)} />
+                  </Fld>
+                )}
+                <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                  <Btn ch="Indietro" v="sec" onClick={() => setStoriaStep('compila')} full />
+                  <Btn ch={storiaCanale === 'in_studio' ? 'Vai alla firma' : 'Genera link'} onClick={() => storiaCanale === 'in_studio' ? setStoriaStep('firma') : generaLinkStoriaRemota()} full />
+                </div>
+              </>
+            )}
+
+            {storiaStep === 'firma' && (
+              <>
+                <div style={{ fontSize: 12.5, color: C.txm, marginBottom: 12 }}>Passa il telefono/tablet a {storiaFirmatoDaNome || `${paz.nome} ${paz.cognome}`} per la firma.</div>
+                <PadFirma onFirmata={salvaFirmaStoriaInStudio} C={C} />
+                <button onClick={() => setStoriaStep('canale')} style={{ background: 'none', border: 'none', color: C.txl, fontSize: 12, cursor: 'pointer', marginTop: 12, width: '100%', textAlign: 'center' }}>‹ Indietro</button>
+              </>
+            )}
+
+            {storiaStep === 'link_generato' && (
+              <>
+                <div style={{ background: C.sucL, border: `1px solid ${C.suc}`, borderRadius: 10, padding: 14, marginBottom: 14, textAlign: 'center' }}>
+                  <div style={{ fontWeight: 700, color: C.suc, marginBottom: 4 }}>✓ Link generato</div>
+                  <div style={{ fontSize: 12, color: C.txm }}>Valido 7 giorni, utilizzabile una sola volta</div>
+                </div>
+                <div style={{ background: C.bg, borderRadius: 9, padding: 11, fontSize: 11.5, color: C.txm, wordBreak: 'break-all', marginBottom: 12 }}>{storiaLinkGenerato}</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={async () => { try { await navigator.clipboard.writeText(storiaLinkGenerato); setToast('Link copiato ✓'); } catch {} }}
+                    style={{ flex: 1, padding: '11px 0', borderRadius: 10, border: `1.5px solid ${C.brd}`, background: C.sur, color: C.pri, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+                  >📋 Copia link</button>
+                  <Btn ch="Chiudi" onClick={() => setNuovaStoriaModal(false)} full />
+                </div>
+              </>
+            )}
+          </Modal>
+        )}
+
+        {storiaInVisualizzazione && (
+          <Modal title={usaAnamnesiMedicaStandard ? 'Anamnesi' : 'Storia clinica'} onClose={() => setStoriaInVisualizzazione(null)}>
+            <div style={{ fontSize: 11.5, color: C.txm, marginBottom: 14 }}>
+              Firmato il {new Date(storiaInVisualizzazione.firmato_il || storiaInVisualizzazione.created_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              {storiaInVisualizzazione.firmato_da_nome && ` da ${storiaInVisualizzazione.firmato_da_nome}`}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 14 }}>
+              {(storiaInVisualizzazione.risposte || []).map((r, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '7px 0', borderBottom: `1px solid ${C.brd}` }}>
+                  <span style={{ fontSize: 12, color: C.txt, flex: 1 }}>{r.titolo}{r.note ? ` — ${r.note}` : ''}</span>
+                  <Bdg ch={r.valore === 'si' ? 'Sì' : r.valore === 'no' ? 'No' : 'Non so'} co={r.valore === 'si' ? C.war : r.valore === 'no' ? C.suc : C.txl} />
+                </div>
+              ))}
+            </div>
+            {(storiaInVisualizzazione.farmaci || []).length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.txm, marginBottom: 6 }}>Farmaci</div>
+                {storiaInVisualizzazione.farmaci.map((f, i) => <div key={i} style={{ fontSize: 12, color: C.txt }}>• {f.nome}</div>)}
+              </div>
+            )}
+            {(storiaInVisualizzazione.allergie || []).length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.txm, marginBottom: 6 }}>Allergie</div>
+                {storiaInVisualizzazione.allergie.map((a, i) => <div key={i} style={{ fontSize: 12, color: C.txt }}>• {a.sostanza}</div>)}
+              </div>
+            )}
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.txm, marginBottom: 6 }}>Firma</div>
+            <div style={{ border: `1px solid ${C.brd}`, borderRadius: 9, padding: 8, background: '#fff', marginBottom: 14 }}>
+              <img src={storiaInVisualizzazione.firma_png} alt="Firma" style={{ width: '100%', display: 'block' }} />
+            </div>
+            <Btn ch="Chiudi" v="sec" onClick={() => setStoriaInVisualizzazione(null)} full />
           </Modal>
         )}
 

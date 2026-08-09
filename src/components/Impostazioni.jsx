@@ -2,7 +2,7 @@
 import GestioneUtenti from './GestioneUtenti.jsx';
 import React, { useState, useEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Ic, DockIc, DOCK_ICON_STYLES } from './ui';
-import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI, DEF_DOCK_SETTINGS, DEF_AGENDA_SETTINGS, DEF_DOCUMENTI_SETTINGS } from '../lib/utils';
+import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI, DEF_DOCK_SETTINGS, DEF_AGENDA_SETTINGS, DEF_DOCUMENTI_SETTINGS, STORIA_CLINICA_MODELLO_BASE } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 
 const GIORNI_SETTIMANA = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
@@ -81,6 +81,48 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
     await supabase.from('consenso_modelli').update({ attivo: false }).eq('id', id);
     setModelloModal(null);
     caricaModelliConsenso();
+  };
+
+  // Voci di storia clinica personalizzabili — solo per verticali non
+  // medici (l'anamnesi medica standard è fissa, non compare qui).
+  const usaAnamnesiFissa = !si?.vertical || si.vertical === 'dentistico' || si.vertical === 'medico_chirurgo';
+  const [vociStoriaClinica, setVociStoriaClinica] = useState([]);
+  const [voceModal, setVoceModal] = useState(null); // 'new' | id | null
+  const [voceForm, setVoceForm] = useState({ titolo: '' });
+
+  const caricaVociStoriaClinica = async () => {
+    if (!studioId) return;
+    const { data } = await supabase.from('storia_clinica_voci').select('*').eq('studio_id', studioId).eq('attiva', true).order('ordine');
+    if (data && data.length > 0) setVociStoriaClinica(data);
+    else setVociStoriaClinica(STORIA_CLINICA_MODELLO_BASE.map((v, i) => ({ id: `base_${i}`, ...v, ordine: i })));
+  };
+  useEffect(() => { if (studioId && !usaAnamnesiFissa) caricaVociStoriaClinica(); }, [studioId]);
+
+  const apriVoceModal = (v) => { setVoceForm(v ? { titolo: v.titolo } : { titolo: '' }); setVoceModal(v ? v.id : 'new'); };
+
+  const salvaVoce = async () => {
+    if (!voceForm.titolo.trim()) return;
+    if (voceModal === 'new' || String(voceModal).startsWith('base_')) {
+      const chiave = `voce_${Date.now()}`;
+      await supabase.from('storia_clinica_voci').insert([{ studio_id: studioId, chiave, titolo: voceForm.titolo, ordine: vociStoriaClinica.length }]);
+      // Se stavamo ancora mostrando il modello base, va "promosso" a personalizzazione reale:
+      // le voci base non salvate finora vanno inserite anche loro come righe vere.
+      if (String(voceModal).startsWith('base_')) {
+        const altre = vociStoriaClinica.filter(v => String(v.id).startsWith('base_') && v.id !== voceModal);
+        for (const v of altre) await supabase.from('storia_clinica_voci').insert([{ studio_id: studioId, chiave: v.chiave, titolo: v.titolo, ordine: v.ordine }]);
+      }
+    } else {
+      await supabase.from('storia_clinica_voci').update({ titolo: voceForm.titolo }).eq('id', voceModal);
+    }
+    setVoceModal(null);
+    caricaVociStoriaClinica();
+    setToast('Voce salvata ✓');
+  };
+
+  const eliminaVoce = async (id) => {
+    if (!String(id).startsWith('base_')) await supabase.from('storia_clinica_voci').update({ attiva: false }).eq('id', id);
+    setVoceModal(null);
+    caricaVociStoriaClinica();
   };
 
   const salvaSlug = async () => {
@@ -474,6 +516,28 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
         ))}
       </Crd>
       <Btn ch="+ Nuovo modello" onClick={() => apriModelloModal(null)} full sz="lg" />
+
+      {!usaAnamnesiFissa && (
+        <>
+          <div style={{ marginTop: 26, marginBottom: 14 }}>
+            <div style={{ fontSize: 20, fontWeight: 800 }}>Voci storia clinica</div>
+            <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Personalizza le domande che compaiono nella storia clinica del paziente. Parti dal modello base, aggiungi o togli voci a piacere.</div>
+          </div>
+          <Crd style={{ marginBottom: 14 }}>
+            {vociStoriaClinica.map((v, i) => (
+              <button
+                key={v.id}
+                onClick={() => apriVoceModal(v)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '11px 4px', borderBottom: i < vociStoriaClinica.length - 1 ? `1px solid ${C.brd}` : 'none', background: 'none', border: 'none', cursor: 'pointer' }}
+              >
+                <span style={{ fontSize: 13, fontWeight: 700, color: C.txt, flex: 1 }}>{v.titolo}</span>
+                <span style={{ color: C.txl }}>›</span>
+              </button>
+            ))}
+          </Crd>
+          <Btn ch="+ Nuova voce" onClick={() => apriVoceModal(null)} full sz="lg" />
+        </>
+      )}
       </>
       )}
 
@@ -652,6 +716,19 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       <ProfiloUtente onNomeChange={onNomeChange} />
       <GestioneUtenti studioId={studioInfo?.studio_id || '00000000-0000-0000-0000-000000000001'} currentUserId={currentUserId} features={features} />
       </>
+      )}
+
+      {voceModal && (
+        <Modal title={voceModal === 'new' ? 'Nuova voce' : 'Modifica voce'} onClose={() => setVoceModal(null)}>
+          <Fld label="Testo della domanda">
+            <Inp value={voceForm.titolo} onChange={(e) => setVoceForm({ titolo: e.target.value })} placeholder="es. Allergie note, Terapie in corso..." />
+          </Fld>
+          <div style={{ display: 'flex', gap: 7 }}>
+            {voceModal !== 'new' && <Btn ch="Elimina" v="dan" sz="sm" onClick={() => eliminaVoce(voceModal)} />}
+            <Btn ch="Annulla" v="sec" onClick={() => setVoceModal(null)} full />
+            <Btn ch="Salva" onClick={salvaVoce} full />
+          </div>
+        </Modal>
       )}
 
       {modelloModal && (
