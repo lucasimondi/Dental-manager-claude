@@ -31,14 +31,6 @@ const SectionLabel = ({ children }) => (
   <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 4, marginBottom: 8 }}>{children}</div>
 );
 
-const KpiHero = ({ label, value, sub, color }) => (
-  <div style={{ flex: '1 1 140px', minWidth: 130 }}>
-    <div style={{ fontSize: 10.5, fontWeight: 700, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', letterSpacing: 0.4 }}>{label}</div>
-    <div style={{ fontSize: 24, fontWeight: 900, color: color || '#fff', marginTop: 3 }}>{value}</div>
-    {sub && <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.55)', marginTop: 1 }}>{sub}</div>}
-  </div>
-);
-
 const StatCard = ({ label, value, sub, color, onClick, urgent }) => (
   <Crd onClick={onClick} style={{ padding: 12, cursor: onClick ? 'pointer' : 'default', border: urgent ? `1px solid ${C.dan}40` : undefined }}>
     <div style={{ fontSize: 10, fontWeight: 700, color: C.txl, textTransform: 'uppercase', letterSpacing: 0.2 }}>{label}</div>
@@ -221,14 +213,19 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
   })();
 
   const vaiAPiani = () => onOpenPaz && patients.length > 0 && onOpenPaz(patients[0], 'piani');
+  const [mostraGrafici, setMostraGrafici] = useState(false);
+  const [mostraStat, setMostraStat] = useState(false);
 
   return (
-    <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 18 }}>
+    <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-      {/* ── HERO: KPI principali su sfondo scuro, stile cruscotto direzionale ── */}
+      {/* ── SOMMARIO: Incassi → Costi → Margine, gerarchico, dato reale ── */}
       <div style={{ background: `linear-gradient(135deg, ${C.priD}, ${C.pri})`, borderRadius: 16, padding: '16px 16px 14px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, color: '#fff' }}>Controllo di Gestione</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: '#fff' }}>Sommario</div>
+            <span style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,0.65)', background: 'rgba(255,255,255,0.12)', padding: '2px 7px', borderRadius: 20, textTransform: 'uppercase', letterSpacing: 0.4 }}>Dato reale</span>
+          </div>
           <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.12)', borderRadius: 8, padding: 3 }}>
             {PERIODI.map(p => (
               <button key={p.id} onClick={() => setPeriodo(p.id)} style={{
@@ -240,138 +237,100 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
         </div>
 
         {loading && <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, padding: '10px 0' }}>Calcolo in corso…</div>}
-        {err && <div style={{ color: '#fff', background: 'rgba(0,0,0,0.2)', borderRadius: 8, padding: 10, fontSize: 12 }}>Errore: {err}</div>}
+        {err && <div style={{ color: '#fff', background: 'rgba(0,0,0,0.2)', borderRadius: 8, padding: 10, fontSize: 12, marginTop: 8 }}>Errore: {err}</div>}
 
         {kpi && !loading && (
-          <>
-            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-              <KpiHero label="Incassato" value={fmt(kpi.incassato)} />
-              <KpiHero label="Costi totali" value={fmt(kpi.costi_totali)} />
-              <KpiHero label="Margine" value={fmt(kpi.margine)} color={kpi.margine >= 0 ? '#8CFFB0' : '#FFB0B0'} sub={kpi.marginalita_pct != null ? `${kpi.marginalita_pct}% marginalità` : null} />
-              <KpiHero label="Ticket medio" value={kpi.ticket_medio != null ? fmt(kpi.ticket_medio) : '—'} sub={`${kpi.n_pazienti_paganti} pazienti`} />
+          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {/* Riga Incassi */}
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid rgba(255,255,255,0.15)' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.85)' }}>Incassato</div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: '#fff' }}>{fmt(kpi.incassato)}</div>
             </div>
-
-            <div style={{ marginTop: 14, background: 'rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 12px' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.85)', marginBottom: 3 }}>Break-even</div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 1.5 }}>
-                {kpi.break_even > 0
-                  ? <>Costi fissi: <b style={{ color: '#fff' }}>{fmt(kpi.break_even)}</b>{kpi.incassato >= kpi.break_even
-                      ? ' — superato ✓'
-                      : `, mancano ${fmt(kpi.break_even - kpi.incassato)}`}</>
-                  : 'Nessuna spesa marcata come "fissa". Vai in Spese e classifica affitto, personale ecc. per un break-even reale.'}
+            {/* Riga Costi (sottrazione, visivamente subordinata) */}
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid rgba(255,255,255,0.15)' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.85)' }}>− Costi (fissi + variabili)</div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: 'rgba(255,255,255,0.9)' }}>{fmt(kpi.costi_totali)}</div>
+            </div>
+            {/* Riga Margine, in evidenza */}
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '11px 0 4px' }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#fff' }}>= Margine</div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 25, fontWeight: 900, color: kpi.margine >= 0 ? '#8CFFB0' : '#FFB0B0' }}>{fmt(kpi.margine)}</div>
+                {kpi.marginalita_pct != null && <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.6)' }}>{kpi.marginalita_pct}% marginalità</div>}
               </div>
             </div>
-          </>
+
+            <div style={{ marginTop: 8, background: 'rgba(255,255,255,0.1)', borderRadius: 10, padding: '9px 12px' }}>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', lineHeight: 1.5 }}>
+                {kpi.break_even > 0
+                  ? <>Break-even (costi fissi): <b style={{ color: '#fff' }}>{fmt(kpi.break_even)}</b>{kpi.incassato >= kpi.break_even
+                      ? ' — superato ✓'
+                      : ` · mancano ${fmt(kpi.break_even - kpi.incassato)}`}</>
+                  : 'Nessuna spesa marcata come "fissa" — vai in Spese per un break-even reale.'}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 14, marginTop: 10 }}>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)' }}>Ticket medio <b style={{ color: '#fff' }}>{kpi.ticket_medio != null ? fmt(kpi.ticket_medio) : '—'}</b></div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)' }}>Pazienti paganti <b style={{ color: '#fff' }}>{kpi.n_pazienti_paganti}</b></div>
+            </div>
+          </div>
         )}
       </div>
 
-      {/* ── ECONOMICO DETTAGLIATO ── */}
+      {/* ── DETTAGLIO INCASSI ── */}
       <div>
-        <SectionLabel>💰 Economico dettagliato</SectionLabel>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <StatCard label="Incassato mese" value={fmt(mInc)} sub="solo studio" />
-          <StatCard label={`Incassato ${anno}`} value={fmt(aInc)} sub="solo studio" />
-          <StatCard label="Incasso mese" value={fmt(incassoLucaMese)} sub={`studio + collab.${extMese > 0 ? ' (+' + fmt(extMese) + ')' : ''}`} />
-          <StatCard label="Incasso anno" value={fmt(incassoLucaAnno)} sub={`studio + collab.${extAnno > 0 ? ' (+' + fmt(extAnno) + ')' : ''}`} />
-          <StatCard label="Eseguito da incassare" value={fmt(totEsegDaInc)} color={totEsegDaInc > 0 ? C.dan : C.txt} urgent={totEsegDaInc > 0} />
-          <StatCard label="Accettato da eseguire" value={fmt(totAccNonEseg)} />
-          <StatCard label="Totale preventivi accettati" value={fmt(totAccettati)} sub={`${preventiviAccettati.length} piani`} />
-        </div>
+        <SectionLabel>💵 Dettaglio incassi</SectionLabel>
+        <Crd style={{ padding: 0, overflow: 'hidden' }}>
+          {[
+            { label: 'Incassato dallo studio — mese', value: mInc },
+            { label: 'Incassato dallo studio — anno', value: aInc },
+            { label: `Incassato totale (+ collaboratori) — mese${extMese > 0 ? `, di cui ${fmt(extMese)} collab.` : ''}`, value: incassoLucaMese },
+            { label: `Incassato totale (+ collaboratori) — anno${extAnno > 0 ? `, di cui ${fmt(extAnno)} collab.` : ''}`, value: incassoLucaAnno },
+          ].map((r, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderTop: i > 0 ? `1px solid ${C.brd}` : 'none' }}>
+              <div style={{ fontSize: 12, color: C.txm, maxWidth: '68%' }}>{r.label}</div>
+              <div style={{ fontSize: 14.5, fontWeight: 800, color: C.txt }}>{fmt(r.value)}</div>
+            </div>
+          ))}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderTop: `1px solid ${C.brd}`, background: totEsegDaInc > 0 ? C.danL : C.bg }}>
+            <div style={{ fontSize: 12, color: totEsegDaInc > 0 ? C.dan : C.txm, fontWeight: totEsegDaInc > 0 ? 700 : 400 }}>Eseguito da incassare</div>
+            <div style={{ fontSize: 14.5, fontWeight: 800, color: totEsegDaInc > 0 ? C.dan : C.txt }}>{fmt(totEsegDaInc)}</div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderTop: `1px solid ${C.brd}` }}>
+            <div style={{ fontSize: 12, color: C.txm }}>Accettato da eseguire</div>
+            <div style={{ fontSize: 14.5, fontWeight: 800, color: C.txt }}>{fmt(totAccNonEseg)}</div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderTop: `1px solid ${C.brd}` }}>
+            <div style={{ fontSize: 12, color: C.txm }}>Totale preventivi accettati <span style={{ color: C.txl }}>({preventiviAccettati.length} piani)</span></div>
+            <div style={{ fontSize: 14.5, fontWeight: 800, color: C.txt }}>{fmt(totAccettati)}</div>
+          </div>
+        </Crd>
       </div>
 
-      {/* ── STATISTICHE ── */}
+      {/* ── DETTAGLIO COSTI ── */}
       <div>
-        <SectionLabel>📊 Statistiche</SectionLabel>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <StatCard label="Pazienti totali" value={patients.length} sub={`+${nuoviMese} questo mese`} />
-          <StatCard label="Tasso accettazione" value={`${tassoAccettazione}%`} sub={`${preventiviAccettati.length}/${preventiviAttesa.length + preventiviAccettati.length + preventiviRifiutati.length} preventivi`} color={tassoAccettazione >= 70 ? C.suc : tassoAccettazione >= 40 ? C.war : C.dan} />
-          <StatCard label="Valore medio piano" value={fmt(mediaValore)} />
-          {topPrest && <StatCard label="Top prestazione" value={topPrest[0].length > 18 ? topPrest[0].slice(0, 16) + '…' : topPrest[0]} sub={`${topPrest[1]}x eseguita`} color={C.acc} />}
-        </div>
-      </div>
+        <SectionLabel>💸 Dettaglio costi</SectionLabel>
+        <Crd style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px' }}>
+            <div style={{ fontSize: 12, color: C.txm }}>Costi fissi <span style={{ color: C.txl }}>(affitto, personale, ricorrenti…)</span></div>
+            <div style={{ fontSize: 14.5, fontWeight: 800, color: C.txt }}>{kpi ? fmt(kpi.costi_fissi) : '—'}</div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderTop: `1px solid ${C.brd}` }}>
+            <div style={{ fontSize: 12, color: C.txm }}>Costi variabili <span style={{ color: C.txl }}>(materiali, laboratorio…)</span></div>
+            <div style={{ fontSize: 14.5, fontWeight: 800, color: C.txt }}>{kpi ? fmt(kpi.costi_variabili) : '—'}</div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderTop: `1px solid ${C.brd}`, background: C.bg }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt }}>Totale costi</div>
+            <div style={{ fontSize: 15, fontWeight: 900, color: C.txt }}>{kpi ? fmt(kpi.costi_totali) : '—'}</div>
+          </div>
+        </Crd>
 
-      {/* ── ANDAMENTO ── */}
-      <div>
-        <SectionLabel>📈 Andamento incassi</SectionLabel>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <Crd>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 2 }}>Ultimi mesi</div>
-            <div style={{ fontSize: 11, color: C.txl, marginBottom: 8 }}>Incasso mensile e media mobile</div>
-            {andamentoMensile.length === 0 ? (
-              <div style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessun incasso registrato</div>
-            ) : (
-              <ResponsiveContainer width="100%" height={200}>
-                <ComposedChart data={andamentoMensile} margin={{ top: 4, right: 8, left: -22, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={C.brd} vertical={false} />
-                  <XAxis dataKey="mese" tick={{ fontSize: 11, fill: C.txl }} axisLine={{ stroke: C.brd }} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: C.txl }} axisLine={false} tickLine={false} width={42} />
-                  <Tooltip contentStyle={{ background: C.txt, border: 'none', borderRadius: 8, color: C.sur, fontSize: 12 }} labelStyle={{ color: C.sur }} formatter={(v, n) => [fmt(v), n === 'incasso' ? 'Incasso' : 'Media mobile']} />
-                  <Bar dataKey="incasso" fill={C.priL} radius={[6, 6, 0, 0]} barSize={26} />
-                  <Line dataKey="media" stroke={C.pri} strokeWidth={2.5} dot={{ r: 3, fill: C.pri }} />
-                </ComposedChart>
-              </ResponsiveContainer>
-            )}
-          </Crd>
-
-          <Crd>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 2 }}>Dove incasso di più</div>
-            <div style={{ fontSize: 11, color: C.txl, marginBottom: 8 }}>Per tipo prestazione, voci eseguite</div>
-            {incassoPerPrestazione.length === 0 ? (
-              <div style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessuna prestazione eseguita</div>
-            ) : (
-              <ResponsiveContainer width="100%" height={Math.max(140, incassoPerPrestazione.length * 34)}>
-                <BarChart data={incassoPerPrestazione} layout="vertical" margin={{ top: 4, right: 24, left: 4, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={C.brd} horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10, fill: C.txl }} axisLine={false} tickLine={false} />
-                  <YAxis type="category" dataKey="tipo" tick={{ fontSize: 11, fill: C.txt }} axisLine={false} tickLine={false} width={92} />
-                  <Tooltip contentStyle={{ background: C.txt, border: 'none', borderRadius: 8, color: C.sur, fontSize: 12 }} labelStyle={{ color: C.sur }} formatter={(v) => fmt(v)} />
-                  <Bar dataKey="incasso" radius={[0, 6, 6, 0]} barSize={16}>
-                    {incassoPerPrestazione.map((_, i) => <Cell key={i} fill={CHART_PALETTE[i % CHART_PALETTE.length]} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </Crd>
-
-          <Crd>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 2 }}>Incasso per giorno</div>
-            <div style={{ fontSize: 11, color: C.txl, marginBottom: 8 }}>Aggregato su tutti gli incassi, Lun–Dom</div>
-            <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={incassoPerGiorno} margin={{ top: 4, right: 8, left: -22, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={C.brd} vertical={false} />
-                <XAxis dataKey="giorno" tick={{ fontSize: 11, fill: C.txl }} axisLine={{ stroke: C.brd }} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: C.txl }} axisLine={false} tickLine={false} width={42} />
-                <Tooltip contentStyle={{ background: C.txt, border: 'none', borderRadius: 8, color: C.sur, fontSize: 12 }} labelStyle={{ color: C.sur }} formatter={(v) => fmt(v)} />
-                <Bar dataKey="incasso" radius={[6, 6, 0, 0]} barSize={28}>
-                  {incassoPerGiorno.map((d, i) => <Cell key={i} fill={d.top ? C.pri : C.priL} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </Crd>
-
-          <Crd>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 2 }}>Andamento spese</div>
-            <div style={{ fontSize: 11, color: C.txl, marginBottom: 8 }}>Una tantum per mese + quota mensile ricorrenti ({fmt(ricorrentiMensile)}/mese)</div>
-            {speseMensili.length === 0 && ricorrentiMensile === 0 ? (
-              <div style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessuna spesa registrata</div>
-            ) : (
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={speseMensili} margin={{ top: 4, right: 8, left: -22, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={C.brd} vertical={false} />
-                  <XAxis dataKey="mese" tick={{ fontSize: 11, fill: C.txl }} axisLine={{ stroke: C.brd }} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: C.txl }} axisLine={false} tickLine={false} width={42} />
-                  <Tooltip contentStyle={{ background: C.txt, border: 'none', borderRadius: 8, color: C.sur, fontSize: 12 }} labelStyle={{ color: C.sur }} formatter={(v, n) => [fmt(v), n === 'unaTantum' ? 'Una tantum' : 'Ricorrenti (quota mese)']} />
-                  <Bar dataKey="ricorrenti" stackId="s" fill={C.war + '55'} radius={[0, 0, 0, 0]} barSize={26} />
-                  <Bar dataKey="unaTantum" stackId="s" fill={C.dan} radius={[6, 6, 0, 0]} barSize={26} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </Crd>
-
-          {speseCategoria.length > 0 && (
+        {speseCategoria.length > 0 && (
+          <div style={{ marginTop: 8 }}>
             <Crd>
-              <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 2 }}>Dove vanno le spese</div>
-              <div style={{ fontSize: 11, color: C.txl, marginBottom: 8 }}>Per categoria, ricorrenti proiettate su base annua/12</div>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 2 }}>Per categoria</div>
+              <div style={{ fontSize: 11, color: C.txl, marginBottom: 8 }}>Ricorrenti proiettate su base annua/12</div>
               <ResponsiveContainer width="100%" height={Math.max(140, speseCategoria.length * 34)}>
                 <BarChart data={speseCategoria} layout="vertical" margin={{ top: 4, right: 24, left: 4, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={C.brd} horizontal={false} />
@@ -384,8 +343,8 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
                 </BarChart>
               </ResponsiveContainer>
             </Crd>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* ── CONTROLLO STUDIO (operativo) ── */}
@@ -427,6 +386,113 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
               txt={pianiOrto.some(o => o.cambioScaduto) ? C.dan : C.pur} />
           )}
         </div>
+      </div>
+
+      {/* ── STATISTICHE (collassabile) ── */}
+      <div>
+        <button onClick={() => setMostraStat(v => !v)} style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'none', border: 'none',
+          padding: '4px 0 8px', cursor: 'pointer',
+        }}>
+          <span style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em' }}>📊 Statistiche</span>
+          <span style={{ fontSize: 11, color: C.pri, fontWeight: 700 }}>{mostraStat ? 'Nascondi ▲' : 'Mostra ▼'}</span>
+        </button>
+        {mostraStat && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <StatCard label="Pazienti totali" value={patients.length} sub={`+${nuoviMese} questo mese`} />
+            <StatCard label="Tasso accettazione" value={`${tassoAccettazione}%`} sub={`${preventiviAccettati.length}/${preventiviAttesa.length + preventiviAccettati.length + preventiviRifiutati.length} preventivi`} color={tassoAccettazione >= 70 ? C.suc : tassoAccettazione >= 40 ? C.war : C.dan} />
+            <StatCard label="Valore medio piano" value={fmt(mediaValore)} />
+            {topPrest && <StatCard label="Top prestazione" value={topPrest[0].length > 18 ? topPrest[0].slice(0, 16) + '…' : topPrest[0]} sub={`${topPrest[1]}x eseguita`} color={C.acc} />}
+          </div>
+        )}
+      </div>
+
+      {/* ── GRAFICI (collassabile) ── */}
+      <div>
+        <button onClick={() => setMostraGrafici(v => !v)} style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'none', border: 'none',
+          padding: '4px 0 8px', cursor: 'pointer',
+        }}>
+          <span style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em' }}>📈 Grafici e andamento</span>
+          <span style={{ fontSize: 11, color: C.pri, fontWeight: 700 }}>{mostraGrafici ? 'Nascondi ▲' : 'Mostra ▼'}</span>
+        </button>
+        {mostraGrafici && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <Crd>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 2 }}>Ultimi mesi</div>
+              <div style={{ fontSize: 11, color: C.txl, marginBottom: 8 }}>Incasso mensile e media mobile</div>
+              {andamentoMensile.length === 0 ? (
+                <div style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessun incasso registrato</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={200}>
+                  <ComposedChart data={andamentoMensile} margin={{ top: 4, right: 8, left: -22, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={C.brd} vertical={false} />
+                    <XAxis dataKey="mese" tick={{ fontSize: 11, fill: C.txl }} axisLine={{ stroke: C.brd }} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: C.txl }} axisLine={false} tickLine={false} width={42} />
+                    <Tooltip contentStyle={{ background: C.txt, border: 'none', borderRadius: 8, color: C.sur, fontSize: 12 }} labelStyle={{ color: C.sur }} formatter={(v, n) => [fmt(v), n === 'incasso' ? 'Incasso' : 'Media mobile']} />
+                    <Bar dataKey="incasso" fill={C.priL} radius={[6, 6, 0, 0]} barSize={26} />
+                    <Line dataKey="media" stroke={C.pri} strokeWidth={2.5} dot={{ r: 3, fill: C.pri }} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              )}
+            </Crd>
+
+            <Crd>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 2 }}>Dove incasso di più</div>
+              <div style={{ fontSize: 11, color: C.txl, marginBottom: 8 }}>Per tipo prestazione, voci eseguite</div>
+              {incassoPerPrestazione.length === 0 ? (
+                <div style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessuna prestazione eseguita</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={Math.max(140, incassoPerPrestazione.length * 34)}>
+                  <BarChart data={incassoPerPrestazione} layout="vertical" margin={{ top: 4, right: 24, left: 4, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={C.brd} horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 10, fill: C.txl }} axisLine={false} tickLine={false} />
+                    <YAxis type="category" dataKey="tipo" tick={{ fontSize: 11, fill: C.txt }} axisLine={false} tickLine={false} width={92} />
+                    <Tooltip contentStyle={{ background: C.txt, border: 'none', borderRadius: 8, color: C.sur, fontSize: 12 }} labelStyle={{ color: C.sur }} formatter={(v) => fmt(v)} />
+                    <Bar dataKey="incasso" radius={[0, 6, 6, 0]} barSize={16}>
+                      {incassoPerPrestazione.map((_, i) => <Cell key={i} fill={CHART_PALETTE[i % CHART_PALETTE.length]} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </Crd>
+
+            <Crd>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 2 }}>Incasso per giorno</div>
+              <div style={{ fontSize: 11, color: C.txl, marginBottom: 8 }}>Aggregato su tutti gli incassi, Lun–Dom</div>
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={incassoPerGiorno} margin={{ top: 4, right: 8, left: -22, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={C.brd} vertical={false} />
+                  <XAxis dataKey="giorno" tick={{ fontSize: 11, fill: C.txl }} axisLine={{ stroke: C.brd }} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: C.txl }} axisLine={false} tickLine={false} width={42} />
+                  <Tooltip contentStyle={{ background: C.txt, border: 'none', borderRadius: 8, color: C.sur, fontSize: 12 }} labelStyle={{ color: C.sur }} formatter={(v) => fmt(v)} />
+                  <Bar dataKey="incasso" radius={[6, 6, 0, 0]} barSize={28}>
+                    {incassoPerGiorno.map((d, i) => <Cell key={i} fill={d.top ? C.pri : C.priL} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </Crd>
+
+            <Crd>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 2 }}>Andamento spese</div>
+              <div style={{ fontSize: 11, color: C.txl, marginBottom: 8 }}>Una tantum per mese + quota mensile ricorrenti ({fmt(ricorrentiMensile)}/mese)</div>
+              {speseMensili.length === 0 && ricorrentiMensile === 0 ? (
+                <div style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessuna spesa registrata</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={speseMensili} margin={{ top: 4, right: 8, left: -22, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={C.brd} vertical={false} />
+                    <XAxis dataKey="mese" tick={{ fontSize: 11, fill: C.txl }} axisLine={{ stroke: C.brd }} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: C.txl }} axisLine={false} tickLine={false} width={42} />
+                    <Tooltip contentStyle={{ background: C.txt, border: 'none', borderRadius: 8, color: C.sur, fontSize: 12 }} labelStyle={{ color: C.sur }} formatter={(v, n) => [fmt(v), n === 'unaTantum' ? 'Una tantum' : 'Ricorrenti (quota mese)']} />
+                    <Bar dataKey="ricorrenti" stackId="s" fill={C.war + '55'} radius={[0, 0, 0, 0]} barSize={26} />
+                    <Bar dataKey="unaTantum" stackId="s" fill={C.dan} radius={[6, 6, 0, 0]} barSize={26} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </Crd>
+          </div>
+        )}
       </div>
 
       <div style={{ fontSize: 10, color: C.txl, textAlign: 'center', marginTop: -6 }}>
