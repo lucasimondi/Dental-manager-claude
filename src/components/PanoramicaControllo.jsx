@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Crd } from './ui';
+import { Crd, Modal } from './ui';
 import { C, fmt, today } from '../lib/utils';
 import { supabase } from '../lib/supabase.js';
 import { BarChart, Bar, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Line } from 'recharts';
@@ -48,6 +48,24 @@ const OpCard = ({ label, value, sub, bg, border, txt, onClick, badge }) => (
   </div>
 );
 
+// Riga generica per liste dentro i popup di approfondimento
+const RigaLista = ({ titolo, sotto, valore, valoreColor, onClick }) => (
+  <div onClick={onClick} style={{
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0',
+    borderBottom: `1px solid ${C.brd}`, cursor: onClick ? 'pointer' : 'default',
+  }}>
+    <div style={{ minWidth: 0, flex: 1, paddingRight: 10 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: C.txt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{titolo}</div>
+      {sotto && <div style={{ fontSize: 11, color: C.txl, marginTop: 1 }}>{sotto}</div>}
+    </div>
+    {valore != null && <div style={{ fontSize: 13, fontWeight: 800, color: valoreColor || C.txt, whiteSpace: 'nowrap' }}>{valore}</div>}
+  </div>
+);
+
+const VuotoLista = ({ children }) => (
+  <div style={{ textAlign: 'center', color: C.txl, padding: '24px 0', fontSize: 13 }}>{children || 'Nessun elemento'}</div>
+);
+
 export default function PanoramicaControllo({ studioId, patients = [], plans = [], payments = [], onOpenPaz, isDentistico = true }) {
   const [periodo, setPeriodo] = useState('mese');
   const [kpi, setKpi] = useState(null);
@@ -55,6 +73,7 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
   const [err, setErr] = useState('');
   const [pagExt, setPagExt] = useState([]);
   const [spese, setSpese] = useState([]);
+  const [dettaglio, setDettaglio] = useState(null); // id della voce con popup aperto, o null
 
   useEffect(() => { load(); }, [periodo]);
   useEffect(() => { loadAux(); }, []);
@@ -212,6 +231,17 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
     return Object.entries(map).map(([categoria, tot]) => ({ categoria, tot: Math.round(tot) })).sort((a, b) => b.tot - a.tot).slice(0, 8);
   })();
 
+  // ── Liste dettagliate per i popup di approfondimento ──
+  const [daPer, aPer] = rangePeriodo(periodo);
+  const pagamentiPeriodo = payments.filter(p => p.data && p.data >= daPer && p.data <= aPer).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+  const pagExtPeriodo = pagExt.filter(p => p.data && p.data >= daPer && p.data <= aPer).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+  const speseFissePeriodo = spese.filter(s => s.tipo_costo === 'fisso');
+  const speseVariabiliPeriodo = spese.filter(s => s.tipo_costo === 'variabile' || !s.tipo_costo);
+  const nomePaz = (id) => { const p = patients.find(x => x.id === id); return p ? `${p.nome || ''} ${p.cognome || ''}`.trim() || 'Paziente' : 'Paziente'; };
+  const tuttePrestazioni = Object.entries((() => {
+    const c = {}; plans.forEach(pl => (pl.voci || []).forEach(v => { if (v.eseguita) c[v.prestazione] = (c[v.prestazione] || 0) + 1; })); return c;
+  })()).sort((a, b) => b[1] - a[1]);
+
   const vaiAPiani = () => onOpenPaz && patients.length > 0 && onOpenPaz(patients[0], 'piani');
   const [mostraGrafici, setMostraGrafici] = useState(false);
   const [mostraStat, setMostraStat] = useState(false);
@@ -282,26 +312,31 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
       <div>
         <SectionLabel>💵 Dettaglio incassi</SectionLabel>
         <Crd style={{ padding: 0, overflow: 'hidden' }}>
-          {[
-            { label: 'Incassato dallo studio — mese', value: mInc },
-            { label: 'Incassato dallo studio — anno', value: aInc },
-            { label: `Incassato totale (+ collaboratori) — mese${extMese > 0 ? `, di cui ${fmt(extMese)} collab.` : ''}`, value: incassoLucaMese },
-            { label: `Incassato totale (+ collaboratori) — anno${extAnno > 0 ? `, di cui ${fmt(extAnno)} collab.` : ''}`, value: incassoLucaAnno },
-          ].map((r, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderTop: i > 0 ? `1px solid ${C.brd}` : 'none' }}>
-              <div style={{ fontSize: 12, color: C.txm, maxWidth: '68%' }}>{r.label}</div>
-              <div style={{ fontSize: 14.5, fontWeight: 800, color: C.txt }}>{fmt(r.value)}</div>
-            </div>
-          ))}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderTop: `1px solid ${C.brd}`, background: totEsegDaInc > 0 ? C.danL : C.bg }}>
+          <div onClick={() => setDettaglio('inc_mese_studio')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', cursor: 'pointer' }}>
+            <div style={{ fontSize: 12, color: C.txm, maxWidth: '68%' }}>Incassato dallo studio — mese</div>
+            <div style={{ fontSize: 14.5, fontWeight: 800, color: C.txt }}>{fmt(mInc)}</div>
+          </div>
+          <div onClick={() => setDettaglio('inc_anno_studio')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderTop: `1px solid ${C.brd}`, cursor: 'pointer' }}>
+            <div style={{ fontSize: 12, color: C.txm, maxWidth: '68%' }}>Incassato dallo studio — anno</div>
+            <div style={{ fontSize: 14.5, fontWeight: 800, color: C.txt }}>{fmt(aInc)}</div>
+          </div>
+          <div onClick={() => setDettaglio('inc_mese_tot')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderTop: `1px solid ${C.brd}`, cursor: 'pointer' }}>
+            <div style={{ fontSize: 12, color: C.txm, maxWidth: '68%' }}>Incassato totale (+ collaboratori) — mese{extMese > 0 ? `, di cui ${fmt(extMese)} collab.` : ''}</div>
+            <div style={{ fontSize: 14.5, fontWeight: 800, color: C.txt }}>{fmt(incassoLucaMese)}</div>
+          </div>
+          <div onClick={() => setDettaglio('inc_anno_tot')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderTop: `1px solid ${C.brd}`, cursor: 'pointer' }}>
+            <div style={{ fontSize: 12, color: C.txm, maxWidth: '68%' }}>Incassato totale (+ collaboratori) — anno{extAnno > 0 ? `, di cui ${fmt(extAnno)} collab.` : ''}</div>
+            <div style={{ fontSize: 14.5, fontWeight: 800, color: C.txt }}>{fmt(incassoLucaAnno)}</div>
+          </div>
+          <div onClick={() => setDettaglio('eseguito_da_incassare')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderTop: `1px solid ${C.brd}`, background: totEsegDaInc > 0 ? C.danL : C.bg, cursor: 'pointer' }}>
             <div style={{ fontSize: 12, color: totEsegDaInc > 0 ? C.dan : C.txm, fontWeight: totEsegDaInc > 0 ? 700 : 400 }}>Eseguito da incassare</div>
             <div style={{ fontSize: 14.5, fontWeight: 800, color: totEsegDaInc > 0 ? C.dan : C.txt }}>{fmt(totEsegDaInc)}</div>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderTop: `1px solid ${C.brd}` }}>
+          <div onClick={() => setDettaglio('accettato_da_eseguire')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderTop: `1px solid ${C.brd}`, cursor: 'pointer' }}>
             <div style={{ fontSize: 12, color: C.txm }}>Accettato da eseguire</div>
             <div style={{ fontSize: 14.5, fontWeight: 800, color: C.txt }}>{fmt(totAccNonEseg)}</div>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderTop: `1px solid ${C.brd}` }}>
+          <div onClick={() => setDettaglio('preventivi_accettati')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderTop: `1px solid ${C.brd}`, cursor: 'pointer' }}>
             <div style={{ fontSize: 12, color: C.txm }}>Totale preventivi accettati <span style={{ color: C.txl }}>({preventiviAccettati.length} piani)</span></div>
             <div style={{ fontSize: 14.5, fontWeight: 800, color: C.txt }}>{fmt(totAccettati)}</div>
           </div>
@@ -312,15 +347,15 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
       <div>
         <SectionLabel>💸 Dettaglio costi</SectionLabel>
         <Crd style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px' }}>
+          <div onClick={() => setDettaglio('costi_fissi')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', cursor: 'pointer' }}>
             <div style={{ fontSize: 12, color: C.txm }}>Costi fissi <span style={{ color: C.txl }}>(affitto, personale, ricorrenti…)</span></div>
             <div style={{ fontSize: 14.5, fontWeight: 800, color: C.txt }}>{kpi ? fmt(kpi.costi_fissi) : '—'}</div>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderTop: `1px solid ${C.brd}` }}>
+          <div onClick={() => setDettaglio('costi_variabili')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderTop: `1px solid ${C.brd}`, cursor: 'pointer' }}>
             <div style={{ fontSize: 12, color: C.txm }}>Costi variabili <span style={{ color: C.txl }}>(materiali, laboratorio…)</span></div>
             <div style={{ fontSize: 14.5, fontWeight: 800, color: C.txt }}>{kpi ? fmt(kpi.costi_variabili) : '—'}</div>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderTop: `1px solid ${C.brd}`, background: C.bg }}>
+          <div onClick={() => setDettaglio('costi_totali')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderTop: `1px solid ${C.brd}`, background: C.bg, cursor: 'pointer' }}>
             <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt }}>Totale costi</div>
             <div style={{ fontSize: 15, fontWeight: 900, color: C.txt }}>{kpi ? fmt(kpi.costi_totali) : '—'}</div>
           </div>
@@ -351,7 +386,7 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
       <div>
         <SectionLabel>🎛️ Controllo studio</SectionLabel>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <div onClick={vaiAPiani} style={{ background: C.priL, borderRadius: 12, padding: 12, border: `1px solid ${C.pri}25`, cursor: onOpenPaz ? 'pointer' : 'default' }}>
+          <div onClick={() => setDettaglio('preventivi')} style={{ background: C.priL, borderRadius: 12, padding: 12, border: `1px solid ${C.pri}25`, cursor: 'pointer' }}>
             <div style={{ fontSize: 10, fontWeight: 800, color: C.pri, textTransform: 'uppercase', marginBottom: 8 }}>📋 Preventivi</div>
             <div style={{ display: 'flex', gap: 8 }}>
               <div style={{ flex: 1, textAlign: 'center', padding: '4px 0', borderRadius: 7, background: 'rgba(124,58,237,0.08)' }}>
@@ -372,18 +407,21 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
           <OpCard label="🔔 Richiami" value={richiamiScaduti.length + richiamiProssimi.length}
             sub={`${richiamiScaduti.length} scaduti · ${richiamiProssimi.length} prossimi`}
             bg={richiamiScaduti.length > 0 ? C.danL : '#FEF3E2'} border={richiamiScaduti.length > 0 ? C.dan : C.war}
-            txt={richiamiScaduti.length > 0 ? C.dan : C.war} badge={richiamiScaduti.length > 0} />
+            txt={richiamiScaduti.length > 0 ? C.dan : C.war} badge={richiamiScaduti.length > 0}
+            onClick={() => setDettaglio('richiami')} />
 
           <OpCard label="📆 Scadenze" value={scadenzePagamento.length}
             sub={`${scadenzeScadute.length} scadute · ${scadenzeProssime.length} prossime`}
             bg={scadenzeScadute.length > 0 ? C.danL : C.priL} border={scadenzeScadute.length > 0 ? C.dan : C.pri}
-            txt={scadenzeScadute.length > 0 ? C.dan : C.pri} badge={scadenzeScadute.length > 0} />
+            txt={scadenzeScadute.length > 0 ? C.dan : C.pri} badge={scadenzeScadute.length > 0}
+            onClick={() => setDettaglio('scadenze')} />
 
           {isDentistico && (
             <OpCard label="🦷 Ortodonzia" value={pianiOrto.filter(o => !o.completato).length}
               sub={`${pianiOrto.filter(o => o.cambioScaduto).length} da cambiare · ${pianiOrto.filter(o => o.inAttesa).length} da avviare`}
               bg={pianiOrto.some(o => o.cambioScaduto) ? C.danL : C.purL} border={pianiOrto.some(o => o.cambioScaduto) ? C.dan : C.pur}
-              txt={pianiOrto.some(o => o.cambioScaduto) ? C.dan : C.pur} />
+              txt={pianiOrto.some(o => o.cambioScaduto) ? C.dan : C.pur}
+              onClick={() => setDettaglio('ortodonzia')} />
           )}
         </div>
       </div>
@@ -399,10 +437,10 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
         </button>
         {mostraStat && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <StatCard label="Pazienti totali" value={patients.length} sub={`+${nuoviMese} questo mese`} />
-            <StatCard label="Tasso accettazione" value={`${tassoAccettazione}%`} sub={`${preventiviAccettati.length}/${preventiviAttesa.length + preventiviAccettati.length + preventiviRifiutati.length} preventivi`} color={tassoAccettazione >= 70 ? C.suc : tassoAccettazione >= 40 ? C.war : C.dan} />
-            <StatCard label="Valore medio piano" value={fmt(mediaValore)} />
-            {topPrest && <StatCard label="Top prestazione" value={topPrest[0].length > 18 ? topPrest[0].slice(0, 16) + '…' : topPrest[0]} sub={`${topPrest[1]}x eseguita`} color={C.acc} />}
+            <StatCard label="Pazienti totali" value={patients.length} sub={`+${nuoviMese} questo mese`} onClick={() => setDettaglio('pazienti')} />
+            <StatCard label="Tasso accettazione" value={`${tassoAccettazione}%`} sub={`${preventiviAccettati.length}/${preventiviAttesa.length + preventiviAccettati.length + preventiviRifiutati.length} preventivi`} color={tassoAccettazione >= 70 ? C.suc : tassoAccettazione >= 40 ? C.war : C.dan} onClick={() => setDettaglio('preventivi')} />
+            <StatCard label="Valore medio piano" value={fmt(mediaValore)} onClick={() => setDettaglio('preventivi_accettati')} />
+            {topPrest && <StatCard label="Top prestazione" value={topPrest[0].length > 18 ? topPrest[0].slice(0, 16) + '…' : topPrest[0]} sub={`${topPrest[1]}x eseguita`} color={C.acc} onClick={() => setDettaglio('top_prestazioni')} />}
           </div>
         )}
       </div>
@@ -498,6 +536,219 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
       <div style={{ fontSize: 10, color: C.txl, textAlign: 'center', marginTop: -6 }}>
         Controllo di gestione interno · non sostituisce la contabilità fiscale
       </div>
+
+      {/* ══ POPUP DI APPROFONDIMENTO ══ */}
+
+      {dettaglio === 'preventivi' && (
+        <Modal title="Preventivi" onClose={() => setDettaglio(null)}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+            <div style={{ flex: 1, textAlign: 'center', padding: '8px 0', borderRadius: 10, background: 'rgba(124,58,237,0.08)' }}>
+              <div style={{ fontSize: 20, fontWeight: 900, color: C.pur }}>{preventiviAttesa.length}</div>
+              <div style={{ fontSize: 10, color: C.txl }}>in attesa</div>
+            </div>
+            <div style={{ flex: 1, textAlign: 'center', padding: '8px 0', borderRadius: 10, background: 'rgba(46,196,182,0.1)' }}>
+              <div style={{ fontSize: 20, fontWeight: 900, color: C.acc }}>{preventiviAccettati.length}</div>
+              <div style={{ fontSize: 10, color: C.txl }}>accettati</div>
+            </div>
+            <div style={{ flex: 1, textAlign: 'center', padding: '8px 0', borderRadius: 10, background: 'rgba(230,57,70,0.08)' }}>
+              <div style={{ fontSize: 20, fontWeight: 900, color: C.dan }}>{preventiviRifiutati.length}</div>
+              <div style={{ fontSize: 10, color: C.txl }}>rifiutati</div>
+            </div>
+          </div>
+          <div style={{ fontSize: 12, color: C.txm, marginBottom: 6 }}>Tasso di accettazione: <b style={{ color: C.txt }}>{tassoAccettazione}%</b></div>
+          {[...preventiviAttesa, ...preventiviAccettati].length === 0 ? <VuotoLista>Nessun preventivo</VuotoLista> : (
+            <>
+              {preventiviAttesa.map(pl => (
+                <RigaLista key={pl.id} titolo={nomePaz(pl.pazienteId)} sotto="In attesa" valore={fmt(calcPlanTot(pl))} valoreColor={C.pur}
+                  onClick={() => { setDettaglio(null); onOpenPaz && onOpenPaz(patients.find(p => p.id === pl.pazienteId), 'piani'); }} />
+              ))}
+              {preventiviAccettati.map(pl => (
+                <RigaLista key={pl.id} titolo={nomePaz(pl.pazienteId)} sotto="Accettato" valore={fmt(calcPlanTot(pl))} valoreColor={C.acc}
+                  onClick={() => { setDettaglio(null); onOpenPaz && onOpenPaz(patients.find(p => p.id === pl.pazienteId), 'piani'); }} />
+              ))}
+            </>
+          )}
+        </Modal>
+      )}
+
+      {dettaglio === 'richiami' && (
+        <Modal title="Richiami" onClose={() => setDettaglio(null)}>
+          {richiamiScaduti.length > 0 && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.dan, textTransform: 'uppercase', marginBottom: 4 }}>Scaduti ({richiamiScaduti.length})</div>
+              {richiamiScaduti.map((r, i) => (
+                <RigaLista key={i} titolo={nomePaz(r.paz.id)} sotto={`${r.v.prestazione || 'Richiamo'} · ${new Date(r.v.richiamoData + 'T12:00').toLocaleDateString('it-IT')}`}
+                  onClick={() => { setDettaglio(null); onOpenPaz && onOpenPaz(r.paz, 'piani'); }} />
+              ))}
+            </>
+          )}
+          {richiamiProssimi.length > 0 && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.war, textTransform: 'uppercase', margin: '14px 0 4px' }}>Prossimi 30 giorni ({richiamiProssimi.length})</div>
+              {richiamiProssimi.map((r, i) => (
+                <RigaLista key={i} titolo={nomePaz(r.paz.id)} sotto={`${r.v.prestazione || 'Richiamo'} · ${new Date(r.v.richiamoData + 'T12:00').toLocaleDateString('it-IT')}`}
+                  onClick={() => { setDettaglio(null); onOpenPaz && onOpenPaz(r.paz, 'piani'); }} />
+              ))}
+            </>
+          )}
+          {richiamiScaduti.length === 0 && richiamiProssimi.length === 0 && <VuotoLista>Nessun richiamo</VuotoLista>}
+        </Modal>
+      )}
+
+      {dettaglio === 'scadenze' && (
+        <Modal title="Scadenze pagamento" onClose={() => setDettaglio(null)}>
+          {scadenzeScadute.length > 0 && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.dan, textTransform: 'uppercase', marginBottom: 4 }}>Scadute ({scadenzeScadute.length})</div>
+              {scadenzeScadute.map((s, i) => (
+                <RigaLista key={i} titolo={nomePaz(s.paz.id)} sotto={new Date(s.scadenza + 'T12:00').toLocaleDateString('it-IT')} valore={fmt(s.importo)} valoreColor={C.dan}
+                  onClick={() => { setDettaglio(null); onOpenPaz && onOpenPaz(s.paz, 'piani'); }} />
+              ))}
+            </>
+          )}
+          {scadenzeProssime.length > 0 && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.pri, textTransform: 'uppercase', margin: '14px 0 4px' }}>Prossime 30 giorni ({scadenzeProssime.length})</div>
+              {scadenzeProssime.map((s, i) => (
+                <RigaLista key={i} titolo={nomePaz(s.paz.id)} sotto={new Date(s.scadenza + 'T12:00').toLocaleDateString('it-IT')} valore={fmt(s.importo)}
+                  onClick={() => { setDettaglio(null); onOpenPaz && onOpenPaz(s.paz, 'piani'); }} />
+              ))}
+            </>
+          )}
+          {scadenzePagamento.length === 0 && <VuotoLista>Nessuna scadenza</VuotoLista>}
+        </Modal>
+      )}
+
+      {dettaglio === 'ortodonzia' && (
+        <Modal title="Ortodonzia" onClose={() => setDettaglio(null)}>
+          {pianiOrto.filter(o => !o.completato).length === 0 ? <VuotoLista>Nessun piano ortodontico attivo</VuotoLista> : (
+            pianiOrto.filter(o => !o.completato).map((o, i) => (
+              <RigaLista key={i} titolo={nomePaz(o.paz.id)}
+                sotto={o.inAttesa ? 'Da avviare' : o.cambioScaduto ? `Cambio scaduto · prossimo ${o.prossima ? new Date(o.prossima + 'T12:00').toLocaleDateString('it-IT') : '—'}` : `${o.cons}/${o.tot} mascherine`}
+                valoreColor={o.cambioScaduto ? C.dan : undefined}
+                onClick={() => { setDettaglio(null); onOpenPaz && onOpenPaz(o.paz, 'piani'); }} />
+            ))
+          )}
+        </Modal>
+      )}
+
+      {(dettaglio === 'inc_mese_studio' || dettaglio === 'inc_anno_studio') && (
+        <Modal title={`Incassato dallo studio — ${dettaglio === 'inc_mese_studio' ? 'mese' : 'anno'}`} onClose={() => setDettaglio(null)}>
+          {(() => {
+            const lista = dettaglio === 'inc_mese_studio'
+              ? payments.filter(p => p.data && p.data.startsWith(t.slice(0, 7)))
+              : payments.filter(p => p.data && p.data.startsWith(anno));
+            const ordinata = [...lista].sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+            return ordinata.length === 0 ? <VuotoLista>Nessun incasso registrato</VuotoLista> : ordinata.map((p, i) => (
+              <RigaLista key={i} titolo={nomePaz(p.pazienteId)} sotto={`${p.data ? new Date(p.data + 'T12:00').toLocaleDateString('it-IT') : ''}${p.metodo ? ' · ' + p.metodo : ''}`} valore={fmt(p.importo)} />
+            ));
+          })()}
+        </Modal>
+      )}
+
+      {(dettaglio === 'inc_mese_tot' || dettaglio === 'inc_anno_tot') && (
+        <Modal title={`Incassato totale — ${dettaglio === 'inc_mese_tot' ? 'mese' : 'anno'}`} onClose={() => setDettaglio(null)}>
+          {(() => {
+            const isMese = dettaglio === 'inc_mese_tot';
+            const listaStudio = isMese ? payments.filter(p => p.data && p.data.startsWith(t.slice(0, 7))) : payments.filter(p => p.data && p.data.startsWith(anno));
+            const listaExt = isMese ? pagExt.filter(p => p.data && p.data.startsWith(t.slice(0, 7))) : pagExt.filter(p => p.data && p.data.startsWith(anno));
+            const tutti = [...listaStudio.map(p => ({ ...p, tipo: 'Studio' })), ...listaExt.map(p => ({ ...p, tipo: 'Collaboratore' }))].sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+            return tutti.length === 0 ? <VuotoLista>Nessun incasso registrato</VuotoLista> : tutti.map((p, i) => (
+              <RigaLista key={i} titolo={p.tipo === 'Studio' ? nomePaz(p.pazienteId) : (p.descrizione || 'Collaboratore')} sotto={`${p.tipo}${p.data ? ' · ' + new Date(p.data + 'T12:00').toLocaleDateString('it-IT') : ''}`} valore={fmt(p.importo)} valoreColor={p.tipo === 'Collaboratore' ? C.acc : undefined} />
+            ));
+          })()}
+        </Modal>
+      )}
+
+      {dettaglio === 'eseguito_da_incassare' && (
+        <Modal title="Eseguito da incassare" onClose={() => setDettaglio(null)}>
+          {esegDaInc.length === 0 ? <VuotoLista>Niente da incassare</VuotoLista> : esegDaInc.map((x, i) => (
+            <RigaLista key={i} titolo={nomePaz(x.paz.id)} sotto={`${x.voci.length} prestazioni eseguite`} valore={fmt(x.tot)} valoreColor={C.dan}
+              onClick={() => { setDettaglio(null); onOpenPaz && onOpenPaz(x.paz, 'piani'); }} />
+          ))}
+        </Modal>
+      )}
+
+      {dettaglio === 'accettato_da_eseguire' && (
+        <Modal title="Accettato da eseguire" onClose={() => setDettaglio(null)}>
+          {accNonEseg.length === 0 ? <VuotoLista>Niente in sospeso</VuotoLista> : accNonEseg.map((x, i) => (
+            <RigaLista key={i} titolo={nomePaz(x.paz.id)} sotto={`${x.voci.length} prestazioni da eseguire`} valore={fmt(x.tot)}
+              onClick={() => { setDettaglio(null); onOpenPaz && onOpenPaz(x.paz, 'piani'); }} />
+          ))}
+        </Modal>
+      )}
+
+      {dettaglio === 'preventivi_accettati' && (
+        <Modal title="Preventivi accettati" onClose={() => setDettaglio(null)}>
+          {preventiviAccettati.length === 0 ? <VuotoLista>Nessun preventivo accettato</VuotoLista> : preventiviAccettati.map(pl => (
+            <RigaLista key={pl.id} titolo={nomePaz(pl.pazienteId)} sotto={`${(pl.voci || []).length} voci`} valore={fmt(calcPlanTot(pl))}
+              onClick={() => { setDettaglio(null); onOpenPaz && onOpenPaz(patients.find(p => p.id === pl.pazienteId), 'piani'); }} />
+          ))}
+        </Modal>
+      )}
+
+      {dettaglio === 'costi_fissi' && (
+        <Modal title="Costi fissi" onClose={() => setDettaglio(null)}>
+          <div style={{ fontSize: 11, color: C.txl, marginBottom: 10 }}>Ricorrenti mostrate come quota mensile</div>
+          {speseFissePeriodo.length === 0 ? <VuotoLista>Nessuna spesa fissa registrata</VuotoLista> : speseFissePeriodo
+            .sort((a, b) => (b.data || '').localeCompare(a.data || ''))
+            .map((s, i) => (
+              <RigaLista key={i} titolo={s.descrizione || s.categoria || 'Spesa'} sotto={`${s.categoria || ''}${s.ricorrente ? ` · ricorrente (${s.frequenza || 'Mensile'})` : ` · ${s.data ? new Date(s.data + 'T12:00').toLocaleDateString('it-IT') : ''}`}`}
+                valore={s.ricorrente ? `${fmt(Number(s.importo) / (FREQ_MESI[s.frequenza] || 1))}/mese` : fmt(s.importo)} />
+            ))}
+        </Modal>
+      )}
+
+      {dettaglio === 'costi_variabili' && (
+        <Modal title="Costi variabili" onClose={() => setDettaglio(null)}>
+          {speseVariabiliPeriodo.length === 0 ? <VuotoLista>Nessuna spesa variabile registrata</VuotoLista> : speseVariabiliPeriodo
+            .sort((a, b) => (b.data || '').localeCompare(a.data || ''))
+            .map((s, i) => (
+              <RigaLista key={i} titolo={s.descrizione || s.categoria || 'Spesa'} sotto={`${s.categoria || ''}${s.data ? ' · ' + new Date(s.data + 'T12:00').toLocaleDateString('it-IT') : ''}`} valore={fmt(s.importo)} />
+            ))}
+        </Modal>
+      )}
+
+      {dettaglio === 'costi_totali' && (
+        <Modal title="Tutti i costi" onClose={() => setDettaglio(null)}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+            <div style={{ flex: 1, textAlign: 'center', padding: '8px 0', borderRadius: 10, background: C.bg }}>
+              <div style={{ fontSize: 15, fontWeight: 900, color: C.txt }}>{kpi ? fmt(kpi.costi_fissi) : '—'}</div>
+              <div style={{ fontSize: 10, color: C.txl }}>fissi</div>
+            </div>
+            <div style={{ flex: 1, textAlign: 'center', padding: '8px 0', borderRadius: 10, background: C.bg }}>
+              <div style={{ fontSize: 15, fontWeight: 900, color: C.txt }}>{kpi ? fmt(kpi.costi_variabili) : '—'}</div>
+              <div style={{ fontSize: 10, color: C.txl }}>variabili</div>
+            </div>
+          </div>
+          {[...speseFissePeriodo, ...speseVariabiliPeriodo].length === 0 ? <VuotoLista>Nessuna spesa registrata</VuotoLista> : [...speseFissePeriodo, ...speseVariabiliPeriodo]
+            .sort((a, b) => (b.data || '').localeCompare(a.data || ''))
+            .map((s, i) => (
+              <RigaLista key={i} titolo={s.descrizione || s.categoria || 'Spesa'} sotto={`${s.categoria || ''}${s.ricorrente ? ' · ricorrente' : ''}`} valore={s.ricorrente ? `${fmt(Number(s.importo) / (FREQ_MESI[s.frequenza] || 1))}/mese` : fmt(s.importo)} />
+            ))}
+        </Modal>
+      )}
+
+      {dettaglio === 'pazienti' && (
+        <Modal title="Pazienti" onClose={() => setDettaglio(null)}>
+          <div style={{ fontSize: 12, color: C.txm, marginBottom: 10 }}>{patients.length} totali · +{nuoviMese} questo mese</div>
+          {patients.length === 0 ? <VuotoLista>Nessun paziente</VuotoLista> : [...patients]
+            .sort((a, b) => (b.id || 0) - (a.id || 0))
+            .slice(0, 100)
+            .map((p, i) => (
+              <RigaLista key={i} titolo={`${p.nome || ''} ${p.cognome || ''}`.trim() || 'Paziente'} onClick={() => { setDettaglio(null); onOpenPaz && onOpenPaz(p); }} />
+            ))}
+          {patients.length > 100 && <div style={{ fontSize: 11, color: C.txl, textAlign: 'center', marginTop: 8 }}>Mostrati i primi 100</div>}
+        </Modal>
+      )}
+
+      {dettaglio === 'top_prestazioni' && (
+        <Modal title="Prestazioni eseguite" onClose={() => setDettaglio(null)}>
+          {tuttePrestazioni.length === 0 ? <VuotoLista>Nessuna prestazione eseguita</VuotoLista> : tuttePrestazioni.map(([nome, count], i) => (
+            <RigaLista key={i} titolo={nome} valore={`${count}×`} />
+          ))}
+        </Modal>
+      )}
     </div>
   );
 }
