@@ -218,7 +218,12 @@ export default function App() {
   }, [session]);
 
   useEffect(() => {
-    if ((page === 'wa' && !features.whatsapp) || (page === 'spese' && !features.spese)) setPage('home');
+    if (
+      (page === 'wa' && !features.whatsapp) ||
+      (page === 'spese' && !features.spese) ||
+      (page === 'archivio' && !features.archivio_documenti) ||
+      (page === 'controllo' && !features.controllo_gestione)
+    ) setPage('home');
   }, [page, features]);
 
   const makeSyncSetter = (key, setLocal, onError) => {
@@ -316,7 +321,12 @@ export default function App() {
 
   if (showMasterDashboard) return <MasterDashboard onClose={() => setShowMasterDashboard(false)} />;
 
-  const navVisibile = NAV.filter((n) => (n.id !== 'wa' || features.whatsapp) && (n.id !== 'spese' || features.spese));
+  const navVisibile = NAV.filter((n) =>
+    (n.id !== 'wa' || features.whatsapp) &&
+    (n.id !== 'spese' || features.spese) &&
+    (n.id !== 'archivio' || features.archivio_documenti) &&
+    (n.id !== 'controllo' || features.controllo_gestione)
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: C.bg, overflow: 'hidden' }}>
@@ -404,6 +414,7 @@ export default function App() {
           setPage={setPage}
           dockSettings={{ ...DEF_DOCK_SETTINGS, ...(studioInfo?.dock_settings || {}) }}
           onLogout={handleLogout}
+          features={features}
         />
       ) : (
         <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: C.sur, borderTop: `1px solid ${C.brd}`, display: 'grid', gridTemplateColumns: `repeat(${navVisibile.length + 1},1fr)`, paddingBottom: 'env(safe-area-inset-bottom,0px)', zIndex: 100, boxShadow: '0 -2px 10px rgba(0,0,0,0.07)' }}>

@@ -285,10 +285,18 @@ export const COLORI_DISPONIBILI = [
 /* ── PIANI E FUNZIONALITÀ ──
    Default per piano; ogni studio può avere override individuali (feature_overrides
    su Supabase, impostabili dalla Dashboard Master) che sovrascrivono questi default. */
+// NOTA: max_pazienti/max_utenti sono replicati anche in Supabase (tabella
+// plan_limits) per l'enforcement server-side reale (trigger su patients e
+// studio_users). Se cambi questi numeri, aggiornali anche lì — sono la
+// fonte di verità per il blocco effettivo, questi qui sono solo per il
+// rendering immediato lato client (messaggi di soft-limit, UI).
+// La fatturazione (fatture, rimborsi) è sempre disponibile su ogni piano:
+// è un obbligo fiscale, non una feature a pagamento — per questo non ha
+// un toggle qui.
 export const PIANI_FEATURES_DEFAULT = {
-  base: { whatsapp: false, whatsapp_automatico: false, documenti: false, spese: false, custom_branding: false, max_pazienti: 50, max_utenti: 1, assistente_ai: 'off' },
-  pro: { whatsapp: true, whatsapp_automatico: false, documenti: true, spese: true, custom_branding: false, max_pazienti: null, max_utenti: 3, assistente_ai: 'off' },
-  premium: { whatsapp: true, whatsapp_automatico: false, documenti: true, spese: true, custom_branding: true, max_pazienti: null, max_utenti: null, assistente_ai: 'off' },
+  base: { whatsapp: false, whatsapp_automatico: false, archivio_documenti: false, spese: false, custom_branding: false, controllo_gestione: false, max_pazienti: 60, max_utenti: 1, assistente_ai: 'off' },
+  pro: { whatsapp: true, whatsapp_automatico: false, archivio_documenti: true, spese: true, custom_branding: false, controllo_gestione: false, max_pazienti: null, max_utenti: 3, assistente_ai: 'off' },
+  premium: { whatsapp: true, whatsapp_automatico: false, archivio_documenti: true, spese: true, custom_branding: true, controllo_gestione: true, max_pazienti: null, max_utenti: null, assistente_ai: 'off' },
 };
 
 // Livelli dell'assistente AI, dal più limitato al più completo.
@@ -302,9 +310,10 @@ export const ASSISTENTE_AI_LIVELLI = [
 export const FEATURE_TOGGLES = [
   { id: 'whatsapp', label: 'WhatsApp (manuale)' },
   { id: 'whatsapp_automatico', label: 'WhatsApp Automatico (AI + promemoria)' },
-  { id: 'documenti', label: 'Documenti medici/fiscali' },
+  { id: 'archivio_documenti', label: 'Archivio documenti avanzato (ricerca, export batch)' },
   { id: 'spese', label: 'Spese studio' },
   { id: 'custom_branding', label: 'Branding personalizzato' },
+  { id: 'controllo_gestione', label: 'Controllo di Gestione' },
 ];
 
 export const computeFeatures = (piano, overrides) => {

@@ -2,15 +2,24 @@ import React, { useState } from 'react';
 import { C, NAV_BY_ID, DOCK_MENU_SLOT } from '../lib/utils';
 import { DockIc } from './ui';
 
+// Voci nav gated per piano/feature — id NAV -> chiave in `features`.
+// Se lo studio non ha la feature, la voce sparisce dal dock invece di
+// restare visibile e rimbalzare a Home al tap (redirect già in App.jsx).
+const FEATURE_GATE_BY_NAV_ID = { wa: 'whatsapp', spese: 'spese', archivio: 'archivio_documenti', controllo: 'controllo_gestione' };
+
 /* ── DOCK MOBILE ──
    5 posizioni fisse. Lo slot centrale, se impostato su DOCK_MENU_SLOT (default),
    è un pulsante rialzato che apre un popup con le altre funzioni non presenti nel dock.
    Tutto è guidato da dockSettings (slots/menuItems/iconStyle), configurabile da Setup. */
-export default function MobileDock({ page, setPage, dockSettings, onLogout }) {
+export default function MobileDock({ page, setPage, dockSettings, onLogout, features = {} }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const style = dockSettings?.iconStyle || 'vivid';
   const slots = dockSettings?.slots?.length === 5 ? dockSettings.slots : ['home', 'agenda', DOCK_MENU_SLOT, 'paga', 'wa'];
   const menuItems = dockSettings?.menuItems?.length ? dockSettings.menuItems : ['paz', 'piani', 'listino', 'spese', 'archivio', 'set'];
+  const consentita = (id) => {
+    const gate = FEATURE_GATE_BY_NAV_ID[id];
+    return !gate || features[gate];
+  };
 
   const go = (id) => { setPage(id); setMenuOpen(false); };
 
@@ -33,7 +42,7 @@ export default function MobileDock({ page, setPage, dockSettings, onLogout }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
             {menuItems.map((id) => {
               const item = NAV_BY_ID[id];
-              if (!item) return null;
+              if (!item || !consentita(id)) return null;
               return (
                 <button key={id} onClick={() => go(id)} style={{
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '10px 4px',
@@ -84,7 +93,7 @@ export default function MobileDock({ page, setPage, dockSettings, onLogout }) {
             );
           }
           const item = id === 'esci' ? { l: 'Esci', ic: 'x' } : NAV_BY_ID[id];
-          if (!item) return null;
+          if (!item || (id !== 'esci' && !consentita(id))) return null;
           const active = page === id;
           return (
             <button
