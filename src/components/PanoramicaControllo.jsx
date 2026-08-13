@@ -235,8 +235,26 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
   const [daPer, aPer] = rangePeriodo(periodo);
   const pagamentiPeriodo = payments.filter(p => p.data && p.data >= daPer && p.data <= aPer).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
   const pagExtPeriodo = pagExt.filter(p => p.data && p.data >= daPer && p.data <= aPer).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
-  const speseFissePeriodo = spese.filter(s => s.tipo_costo === 'fisso');
-  const speseVariabiliPeriodo = spese.filter(s => s.tipo_costo === 'variabile' || !s.tipo_costo);
+
+  // Replica ESATTAMENTE la logica di get_kpi_periodo (RPC), così la somma delle righe
+  // nel popup coincide sempre col numero mostrato in alto. Senza questo, il popup
+  // mostrava TUTTE le spese mai registrate (nessun filtro periodo), causando la
+  // discrepanza segnalata dall'utente tra il totale e la somma dell'elenco.
+  const fineMeseCorrente = (() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10); })();
+  const fineEffettiva = aPer < fineMeseCorrente ? aPer : fineMeseCorrente;
+  const nMesiPeriodo = (() => {
+    if (fineEffettiva < daPer) return 0;
+    const d1 = new Date(daPer + 'T12:00'), d2 = new Date(fineEffettiva + 'T12:00');
+    return Math.max(1, (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth()) + 1);
+  })();
+  const contributoSpesaPeriodo = (s) => {
+    if (!s.ricorrente) return (s.data && s.data >= daPer && s.data <= aPer) ? Number(s.importo) : 0;
+    if (!(s.data && s.data <= fineEffettiva && (!s.data_fine || s.data_fine >= daPer) && nMesiPeriodo > 0)) return 0;
+    return (Number(s.importo) / (FREQ_MESI[s.frequenza] || 1)) * nMesiPeriodo;
+  };
+
+  const speseFissePeriodo = spese.filter(s => s.tipo_costo === 'fisso' && contributoSpesaPeriodo(s) > 0);
+  const speseVariabiliPeriodo = spese.filter(s => (s.tipo_costo === 'variabile' || !s.tipo_costo) && contributoSpesaPeriodo(s) > 0);
   const nomePaz = (id) => { const p = patients.find(x => x.id === id); return p ? `${p.nome || ''} ${p.cognome || ''}`.trim() || 'Paziente' : 'Paziente'; };
   const tuttePrestazioni = Object.entries((() => {
     const c = {}; plans.forEach(pl => (pl.voci || []).forEach(v => { if (v.eseguita) c[v.prestazione] = (c[v.prestazione] || 0) + 1; })); return c;
@@ -689,12 +707,12 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
 
       {dettaglio === 'costi_fissi' && (
         <Modal title="Costi fissi" onClose={() => setDettaglio(null)}>
-          <div style={{ fontSize: 11, color: C.txl, marginBottom: 10 }}>Ricorrenti mostrate come quota mensile</div>
+          <div style={{ fontSize: 11, color: C.txl, marginBottom: 10 }}>Ricorrenti mostrate come contributo nel periodo selezionato ({nMesiPeriodo} mes{nMesiPeriodo === 1 ? 'e' : 'i'})</div>
           {speseFissePeriodo.length === 0 ? <VuotoLista>Nessuna spesa fissa registrata</VuotoLista> : speseFissePeriodo
             .sort((a, b) => (b.data || '').localeCompare(a.data || ''))
             .map((s, i) => (
-              <RigaLista key={i} titolo={s.descrizione || s.categoria || 'Spesa'} sotto={`${s.categoria || ''}${s.ricorrente ? ` · ricorrente (${s.frequenza || 'Mensile'})` : ` · ${s.data ? new Date(s.data + 'T12:00').toLocaleDateString('it-IT') : ''}`}`}
-                valore={s.ricorrente ? `${fmt(Number(s.importo) / (FREQ_MESI[s.frequenza] || 1))}/mese` : fmt(s.importo)} />
+              <RigaLista key={i} titolo={s.titolo || s.categoria || 'Spesa'} sotto={`${s.categoria || ''}${s.ricorrente ? ` · ricorrente (${s.frequenza || 'Mensile'})` : ` · ${s.data ? new Date(s.data + 'T12:00').toLocaleDateString('it-IT') : ''}`}`}
+                valore={fmt(contributoSpesaPeriodo(s))} />
             ))}
         </Modal>
       )}
@@ -704,7 +722,7 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
           {speseVariabiliPeriodo.length === 0 ? <VuotoLista>Nessuna spesa variabile registrata</VuotoLista> : speseVariabiliPeriodo
             .sort((a, b) => (b.data || '').localeCompare(a.data || ''))
             .map((s, i) => (
-              <RigaLista key={i} titolo={s.descrizione || s.categoria || 'Spesa'} sotto={`${s.categoria || ''}${s.data ? ' · ' + new Date(s.data + 'T12:00').toLocaleDateString('it-IT') : ''}`} valore={fmt(s.importo)} />
+              <RigaLista key={i} titolo={s.titolo || s.categoria || 'Spesa'} sotto={`${s.categoria || ''}${s.data ? ' · ' + new Date(s.data + 'T12:00').toLocaleDateString('it-IT') : ''}`} valore={fmt(contributoSpesaPeriodo(s))} />
             ))}
         </Modal>
       )}
@@ -724,7 +742,7 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
           {[...speseFissePeriodo, ...speseVariabiliPeriodo].length === 0 ? <VuotoLista>Nessuna spesa registrata</VuotoLista> : [...speseFissePeriodo, ...speseVariabiliPeriodo]
             .sort((a, b) => (b.data || '').localeCompare(a.data || ''))
             .map((s, i) => (
-              <RigaLista key={i} titolo={s.descrizione || s.categoria || 'Spesa'} sotto={`${s.categoria || ''}${s.ricorrente ? ' · ricorrente' : ''}`} valore={s.ricorrente ? `${fmt(Number(s.importo) / (FREQ_MESI[s.frequenza] || 1))}/mese` : fmt(s.importo)} />
+              <RigaLista key={i} titolo={s.titolo || s.categoria || 'Spesa'} sotto={`${s.categoria || ''}${s.ricorrente ? ' · ricorrente' : ''}`} valore={fmt(contributoSpesaPeriodo(s))} />
             ))}
         </Modal>
       )}
