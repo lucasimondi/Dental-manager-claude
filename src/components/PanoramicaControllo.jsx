@@ -299,22 +299,22 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
               <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.85)' }}>− Costi (fissi + variabili)</div>
               <div style={{ fontSize: 17, fontWeight: 800, color: 'rgba(255,255,255,0.9)' }}>{fmt(kpi.costi_totali)}</div>
             </div>
-            {/* Riga Margine, in evidenza */}
+            {/* Riga EBITDA (= Margine di Contribuzione - Costi Fissi), in evidenza */}
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '11px 0 4px' }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#fff' }}>= Margine</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#fff' }}>= EBITDA</div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 25, fontWeight: 900, color: kpi.margine >= 0 ? '#8CFFB0' : '#FFB0B0' }}>{fmt(kpi.margine)}</div>
-                {kpi.marginalita_pct != null && <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.6)' }}>{kpi.marginalita_pct}% marginalità</div>}
+                <div style={{ fontSize: 25, fontWeight: 900, color: kpi.ebitda >= 0 ? '#8CFFB0' : '#FFB0B0' }}>{fmt(kpi.ebitda)}</div>
+                {kpi.ebitda_pct != null && <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.6)' }}>{kpi.ebitda_pct}% sul fatturato</div>}
               </div>
             </div>
 
             <div style={{ marginTop: 8, background: 'rgba(255,255,255,0.1)', borderRadius: 10, padding: '9px 12px' }}>
               <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', lineHeight: 1.5 }}>
-                {kpi.break_even > 0
-                  ? <>Break-even (costi fissi): <b style={{ color: '#fff' }}>{fmt(kpi.break_even)}</b>{kpi.incassato >= kpi.break_even
+                {kpi.break_even != null
+                  ? <>Break-even: <b style={{ color: '#fff' }}>{fmt(kpi.break_even)}</b>{kpi.incassato >= kpi.break_even
                       ? ' — superato ✓'
                       : ` · mancano ${fmt(kpi.break_even - kpi.incassato)}`}</>
-                  : 'Nessuna spesa marcata come "fissa" — vai in Spese per un break-even reale.'}
+                  : (kpi.break_even_nota || 'Break-even non disponibile.')}
               </div>
             </div>
 

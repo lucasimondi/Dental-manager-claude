@@ -54,7 +54,24 @@ const saveWidgets = (ws) => {
 const NOMI_F = ['alessia','alice','anna','beatrice','camilla','chiara','claudia','elena','elisa','emma','federica','francesca','giulia','ilaria','laura','lisa','lucia','luisa','mara','maria','marina','martina','monica','paola','roberta','sara','silvia','sofia','valentina','veronica','virginia'];
 const getSaluto = (nome) => { if (!nome) return 'Benvenuto'; const ora = new Date().getHours(); const s = ora < 12 ? 'Buongiorno' : ora < 18 ? 'Buon pomeriggio' : 'Buonasera'; const p = nome.trim().split(' ')[0].toLowerCase(); const fem = NOMI_F.includes(p) || (p.endsWith('a') && !['luca','andrea','mattia','nicola','enea'].includes(p)); return s + ', ' + (fem ? 'cara ' : 'caro ') + nome.trim().split(' ')[0]; };
 
-export default function Dashboard({ patients, appointments, setAppointments, payments, plans, onOpenPaz, appTypes, onGoAgenda, templates, userName: userNameProp, si, features }) {
+export default function Dashboard({ patients, appointments, setAppointments, payments, plans, onOpenPaz, appTypes, onGoAgenda, templates, userName: userNameProp, si, features, studioId }) {
+  // KPI economici annuali: fonte unica = get_kpi_periodo (stessa RPC usata da
+  // Controllo di Gestione). Prima questo componente calcolava margine/spese
+  // annuali per conto proprio (proiettando OGNI spesa ricorrente al suo intero
+  // valore annuale fin da gennaio, ignorando quanti mesi fossero realmente
+  // trascorsi e la data_fine), producendo un numero diverso — e spesso
+  // fortemente fuorviante nei primi mesi dell'anno — da quello mostrato in
+  // Controllo di Gestione per lo stesso periodo. Rimosso: unica fonte di verità.
+  const [kpiAnno, setKpiAnno] = useState(null);
+  useEffect(() => {
+    if (!studioId) return;
+    const oggi = new Date();
+    const da = new Date(oggi.getFullYear(), 0, 1).toISOString().slice(0, 10);
+    const a = new Date(oggi.getFullYear(), 11, 31).toISOString().slice(0, 10);
+    supabase.rpc('get_kpi_periodo', { p_studio_id: studioId, p_data_inizio: da, p_data_fine: a })
+      .then(({ data, error }) => { if (!error) setKpiAnno(data); });
+  }, [studioId]);
+
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const t = today();
   const [userName, setUserName] = useState(userNameProp || '');
@@ -172,15 +189,16 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   const incassoLucaMese = mInc + extMese;
   const incassoLucaAnno = aInc + extAnno;
 
-  // ── SPESE ──
+  // ── SPESE (solo per la vista mensile "spese registrate", non ricorrenti proiettate) ──
   const speseMese = spese.filter(s => !s.ricorrente && s.data && s.data.startsWith(t.slice(0,7))).reduce((s, x) => s + Number(x.importo), 0);
-  const speseAnnoRegistrate = spese.filter(s => !s.ricorrente && s.data && s.data.startsWith(anno)).reduce((s, x) => s + Number(x.importo), 0);
+  // speseAnnoTotale/margineAnno ora vengono da kpiAnno (RPC get_kpi_periodo), non più
+  // ricalcolati qui — vedi commento sopra su perché il calcolo locale è stato rimosso.
+  const speseAnnoTotale = kpiAnno ? kpiAnno.costi_totali : null;
+  const margineAnno = kpiAnno ? kpiAnno.ebitda : null;
   const speseRicorrentiAnno = spese.filter(s => s.ricorrente).reduce((s, x) => {
     const m = { Mensile: 12, Bimestrale: 6, Trimestrale: 4, Semestrale: 2, Annuale: 1 }[x.frequenza] || 12;
     return s + Number(x.importo) * m;
-  }, 0);
-  const speseAnnoTotale = speseAnnoRegistrate + speseRicorrentiAnno;
-  const margineAnno = incassoLucaAnno - speseAnnoTotale;
+  }, 0); // usata solo come nota informativa "proiezione a regime", non nel totale
 
   const calcPlanTot = (pl) => {
     const sub = pl.voci.reduce((s, v) => s + Number(v.prezzo), 0);
@@ -553,14 +571,14 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
         <Modal title="💸 Spese" onClose={() => setDetailModal(null)} wide>
           <div style={{ background: C.danL, borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span style={{ fontWeight: 700, color: C.dan }}>Proiezione annuale {anno}</span>
-              <span style={{ fontWeight: 900, fontSize: 18, color: C.dan }}>{fmt(speseAnnoTotale)}</span>
+              <span style={{ fontWeight: 700, color: C.dan }}>Costi {anno} (dato reale a oggi)</span>
+              <span style={{ fontWeight: 900, fontSize: 18, color: C.dan }}>{speseAnnoTotale == null ? '—' : fmt(speseAnnoTotale)}</span>
             </div>
-            {speseRicorrentiAnno > 0 && <div style={{ fontSize: 11, color: C.txm }}>Di cui {fmt(speseRicorrentiAnno)} da spese ricorrenti</div>}
+            {speseRicorrentiAnno > 0 && <div style={{ fontSize: 11, color: C.txm }}>Se tutte le ricorrenti attuali restassero invariate un anno intero: {fmt(speseRicorrentiAnno)}/anno a regime</div>}
           </div>
-          {margineAnno !== 0 && (
+          {margineAnno != null && margineAnno !== 0 && (
             <div style={{ background: margineAnno > 0 ? C.sucL : C.danL, borderRadius: 10, padding: '8px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontWeight: 700, color: margineAnno > 0 ? C.suc : C.dan }}>Margine stimato {anno}</span>
+              <span style={{ fontWeight: 700, color: margineAnno > 0 ? C.suc : C.dan }}>EBITDA {anno} (dato reale, stessa fonte di Controllo di Gestione)</span>
               <span style={{ fontWeight: 900, color: margineAnno > 0 ? C.suc : C.dan }}>{margineAnno > 0 ? '+' : ''}{fmt(margineAnno)}</span>
             </div>
           )}

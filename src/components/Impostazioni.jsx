@@ -337,6 +337,36 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           </>
         )}
       </Crd>
+
+      <Crd style={{ marginBottom: 11 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Impostazioni economiche</div>
+        <div style={{ fontSize: 11, color: C.txl, marginBottom: 10 }}>
+          Determina come vengono calcolati i costi variabili in Controllo di Gestione, Dashboard e Assistente AI —
+          fonte unica: modificando qui, si aggiorna automaticamente ovunque nel software.
+        </div>
+        <Fld label="Metodo di calcolo costi variabili">
+          <Sel value={si.costi_variabili_metodo || 'manuale'} onChange={(e) => S({ costi_variabili_metodo: e.target.value })}>
+            <option value="manuale">Somma delle spese taggate "variabile" (default)</option>
+            <option value="percentuale">Percentuale sul fatturato</option>
+          </Sel>
+        </Fld>
+        {si.costi_variabili_metodo === 'percentuale' ? (
+          <>
+            <Fld label="Percentuale costi variabili sul fatturato (%)">
+              <Inp type="number" min="0" max="99" value={si.costi_variabili_percentuale ?? ''} onChange={(e) => S({ costi_variabili_percentuale: e.target.value === '' ? null : Number(e.target.value) })} placeholder="es. 20" />
+            </Fld>
+            <div style={{ fontSize: 10, color: C.txl }}>
+              Con questo metodo il Break-even in Controllo di Gestione viene calcolato correttamente: Costi fissi ÷ (1 − percentuale).
+            </div>
+          </>
+        ) : (
+          <div style={{ fontSize: 10, color: C.txl, background: C.bg, borderRadius: 8, padding: 10 }}>
+            Con questo metodo i costi variabili sono la somma reale delle spese che marchi come "variabile" in
+            Costi/Spese. Il Break-even non è calcolabile matematicamente con questo metodo (i costi variabili
+            non seguono un rapporto fisso col fatturato) — passa a "percentuale sul fatturato" per attivarlo.
+          </div>
+        )}
+      </Crd>
       <Crd style={{ marginBottom: 11 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Timbro professionale e firma</div>
         <div style={{ fontSize: 11, color: C.txl, marginBottom: 10 }}>Usati nei documenti medici (ricette, certificati, lettere) e nei rimborsi spese. Nome, specializzazione, iscrizione e contatti sono già presi dalle sezioni sopra.</div>
