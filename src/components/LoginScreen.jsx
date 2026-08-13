@@ -42,7 +42,7 @@ export default function LoginScreen({ onLogin }) {
           }}>
             <Ic n="tooth" s={28} c="#fff" />
           </div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#1A202C' }}>DentalManager</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#1A202C' }}>Poliedra</div>
           <div style={{ fontSize: 12, color: '#718096', marginTop: 2 }}>Accedi al tuo studio</div>
         </div>
         <form onSubmit={submit}>

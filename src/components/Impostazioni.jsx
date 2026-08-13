@@ -678,7 +678,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           <>
             {!waConfig && (
               <div style={{ background: C.priL, borderRadius: 9, padding: '9px 12px', marginBottom: 14, fontSize: 12, color: C.pri }}>
-                Non ancora configurato. Il Phone Number ID te lo dà chi gestisce l'attivazione (assistenza DentalManager) quando aggiunge il numero del tuo studio.
+                Non ancora configurato. Il Phone Number ID te lo dà chi gestisce l'attivazione (assistenza Poliedra) quando aggiunge il numero del tuo studio.
               </div>
             )}
             {waConfig && (

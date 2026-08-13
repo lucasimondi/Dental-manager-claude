@@ -141,7 +141,7 @@ export default function AssistenteAI() {
           <div style={{ padding: '12px 14px', borderBottom: `1px solid ${C.brd}`, background: C.bg, display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 18 }}>🤖</span>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 13, color: C.txt }}>Assistente DentalManager</div>
+              <div style={{ fontWeight: 700, fontSize: 13, color: C.txt }}>Assistente Poliedra</div>
               <div style={{ fontSize: 10, color: C.txl }}>Chiedimi pazienti, agenda, incassi, richiami…</div>
             </div>
           </div>
