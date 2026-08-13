@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { C } from '../lib/utils';
 import PanoramicaControllo from './PanoramicaControllo.jsx';
 import Proiezioni from './Proiezioni.jsx';
+import Costi from './Costi.jsx';
 
 const TABS = [
   { id: 'panoramica', label: 'Panoramica' },
   { id: 'proiezioni', label: 'Proiezioni' },
+  { id: 'costi', label: 'Costi' },
 ];
 
 // Controllo di Gestione: contenitore unico con sotto-sezioni.
@@ -35,6 +37,7 @@ export default function ControlloGestione(props) {
 
       {tab === 'panoramica' && <PanoramicaControllo {...props} />}
       {tab === 'proiezioni' && <Proiezioni studioId={props.studioId} />}
+      {tab === 'costi' && <Costi studioId={props.studioId} />}
     </div>
   );
 }
