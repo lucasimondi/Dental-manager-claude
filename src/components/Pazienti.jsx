@@ -22,7 +22,7 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
 
   const openEdit = (p) => {
     if (!p && limiteRaggiunto) { setToast(`Hai raggiunto il limite di ${limitePazienti} pazienti del tuo piano. Passa a Pro per pazienti illimitati.`); return; }
-    setForm(p || { nome: '', cognome: '', dataNascita: '', telefono: '', email: '', cf: '', indirizzo: '', note: '' }); setModal(true);
+    setForm(p || { nome: '', cognome: '', dataNascita: '', telefono: '', email: '', cf: '', indirizzo: '', cap: '', comune: '', provincia: '', opposizione_sts: false, note: '' }); setModal(true);
   };
   const save = () => {
     if (!form.nome || !form.cognome) return;
@@ -353,6 +353,20 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
             <Fld label="Email"><Inp type="email" value={form.email || ''} onChange={(e) => F({ email: e.target.value })} /></Fld>
           </div>
           <Fld label="Indirizzo"><Inp value={form.indirizzo || ''} onChange={(e) => F({ indirizzo: e.target.value })} /></Fld>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+            <Fld label="CAP"><Inp value={form.cap || ''} onChange={(e) => F({ cap: e.target.value })} /></Fld>
+            <Fld label="Comune"><Inp value={form.comune || ''} onChange={(e) => F({ comune: e.target.value })} /></Fld>
+            <Fld label="Provincia"><Inp value={form.provincia || ''} onChange={(e) => F({ provincia: e.target.value.toUpperCase().slice(0, 2) })} placeholder="es. MI" /></Fld>
+          </div>
+          {(!si?.regime_fiscale || si.regime_fiscale === 'sanitario_esente_art10') && (
+            <div onClick={() => F({ opposizione_sts: !form.opposizione_sts })} style={{ display: 'flex', alignItems: 'center', gap: 10, background: form.opposizione_sts ? C.warL : C.bg, borderRadius: 10, padding: 10, marginTop: 8, marginBottom: 8, cursor: 'pointer' }}>
+              <input type="checkbox" checked={!!form.opposizione_sts} onChange={() => {}} style={{ width: 16, height: 16 }} />
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.txt }}>Si oppone all'invio dei dati al Sistema Tessera Sanitaria</div>
+                <div style={{ fontSize: 10, color: C.txl }}>Diritto del paziente — se attivo, questa prestazione non verrà inclusa nella trasmissione STS</div>
+              </div>
+            </div>
+          )}
           <Fld label="Note cliniche"><Txt value={form.note || ''} onChange={(e) => F({ note: e.target.value })} /></Fld>
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             <Btn ch="Annulla" v="sec" onClick={() => setModal(false)} full />

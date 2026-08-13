@@ -4,6 +4,7 @@ import { jsPDF } from 'jspdf';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Ic, PannelloInvioDocumento } from './ui';
 import { C, fmt, fmtD, today, DEF_DOCUMENTI_SETTINGS } from '../lib/utils';
 import { useFormPersistente } from '../lib/useFormPersistente';
+import { generaXmlFatturaPA, scaricaXml, speseFatturaPAValida } from '../lib/fatturaPA.js';
 
 const getNumeroProgressivo = (tipo) => {
   const key = tipo === 'fattura' ? 'dm_fattura_num' : 'dm_rimborso_num';
@@ -30,7 +31,18 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
     piva: si?.piva || '',
     cf: si?.piva || '',
     iban: si?.iban || '',
+    regime_fiscale: si?.regime_fiscale || 'sanitario_esente_art10',
+    aliquota_iva: si?.aliquota_iva ?? 22,
+    via: si?.via || '', cap: si?.cap || '', comune: si?.comune || '', provincia: si?.provincia || '',
+    nome_cognome_titolare: si?.nome_cognome_titolare || '',
+    progressivo_invio_sdi: si?.progressivo_invio_sdi || 0,
   };
+  const isSanitario = STUDIO.regime_fiscale === 'sanitario_esente_art10';
+  const dicituraRegime = STUDIO.regime_fiscale === 'ordinario'
+    ? `IVA ${STUDIO.aliquota_iva}% inclusa`
+    : STUDIO.regime_fiscale === 'forfettario'
+      ? "Operazione effettuata ai sensi dell'art. 1, commi 54-89, Legge n. 190/2014 — regime forfettario, non soggetta a IVA"
+      : "Operazione esente IVA ai sensi dell'art. 10, n. 18 del DPR 633/72";
   const [tipo, setTipo] = useState('fattura');
   const [step, setStep] = useState(1); // 1=tipo+voci, 2=anteprima
   const [generated, setGenerated] = useState(false);
@@ -166,16 +178,22 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
 
     // ── TOTALE ──
     y += 3;
+    const ivaImporto = STUDIO.regime_fiscale === 'ordinario' ? Math.round(totale * STUDIO.aliquota_iva) / 100 : 0;
+    const totaleConIva = totale + ivaImporto;
     if (tipo === 'fattura') {
       box(M, y, CW, 7, 240, 248, 255);
       doc.setFontSize(8); doc.setTextColor(74, 85, 104);
-      txt('Operazione esente IVA ai sensi dell\'art. 10, n. 18 del DPR 633/72', M + 3, y + 4.5);
+      txt(dicituraRegime, M + 3, y + 4.5);
       y += 9;
+      if (STUDIO.regime_fiscale === 'ordinario') {
+        txt(`Imponibile € ${totale.toFixed(2)}   +   IVA ${STUDIO.aliquota_iva}% € ${ivaImporto.toFixed(2)}`, M + 3, y + 1);
+        y += 6;
+      }
     }
     box(M, y, CW, 10, 26, 107, 138);
     doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(255, 255, 255);
     txt('TOTALE', M + 3, y + 7);
-    txt(`€ ${totale.toFixed(2)}`, W - M - 3, y + 7, { align: 'right' });
+    txt(`€ ${(tipo === 'fattura' ? totaleConIva : totale).toFixed(2)}`, W - M - 3, y + 7, { align: 'right' });
     y += 14;
 
     // ── NOTE LEGALI + IBAN ──
@@ -235,6 +253,20 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
     clearVociDraft();
     setPronto({ dataUrl: pdfBase64, filename: nomeFile, titolo: tipo === 'fattura' ? 'Fattura' : 'Rimborso spese', tipoDoc: tipo });
     setGenerated(true);
+  };
+
+  const xmlErrori = !isSanitario ? speseFatturaPAValida(STUDIO, paz) : [];
+
+  const generaXml = async () => {
+    if (xmlErrori.length > 0) return;
+    const { xml, nomeFile } = generaXmlFatturaPA(STUDIO, paz, {
+      numero, data,
+      righe: voci.map((v) => ({ descrizione: v.desc, importo: v.importo })),
+    });
+    scaricaXml(xml, nomeFile);
+    if (studioId) {
+      await supabase.from('studio_info').update({ progressivo_invio_sdi: STUDIO.progressivo_invio_sdi + 1 }).eq('studio_id', studioId);
+    }
   };
 
   return (
@@ -440,7 +472,10 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
           )}
           {tipo === 'fattura' && voci.length > 0 && (
             <div style={{ background: C.priL, borderRadius: 8, padding: '7px 10px', marginTop: 6 }}>
-              <div style={{ fontSize: 11, color: C.pri, fontWeight: 600 }}>Esente IVA ai sensi dell'art. 10, n. 18 del DPR 633/72</div>
+              <div style={{ fontSize: 11, color: C.pri, fontWeight: 600 }}>{dicituraRegime}</div>
+              {STUDIO.regime_fiscale === 'ordinario' && (
+                <div style={{ fontSize: 11, color: C.pri, marginTop: 2 }}>Totale con IVA: € {(totale + Math.round(totale * STUDIO.aliquota_iva) / 100).toFixed(2)}</div>
+              )}
             </div>
           )}
         </Crd>
@@ -456,9 +491,21 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
         )}
 
         {voci.length > 0 && !pronto && (
-          <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-            <Btn ch="Annulla" v="sec" onClick={onClose} full />
-            <Btn ch={`⬇️ Genera ${tipo === 'fattura' ? 'Fattura' : 'Rimborso'} PDF`} onClick={generaPdf} full />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Btn ch="Annulla" v="sec" onClick={onClose} full />
+              <Btn ch={`⬇️ Genera ${tipo === 'fattura' ? 'Fattura' : 'Rimborso'} PDF`} onClick={generaPdf} full />
+            </div>
+            {tipo === 'fattura' && !isSanitario && (
+              <>
+                {xmlErrori.length > 0 && (
+                  <div style={{ background: C.danL, color: C.dan, borderRadius: 9, padding: '8px 12px', fontSize: 11 }}>
+                    Per generare l'XML FatturaPA mancano: {xmlErrori.join(', ')}. Completa i dati in Impostazioni Studio e sulla scheda paziente.
+                  </div>
+                )}
+                <Btn ch="📤 Genera anche XML FatturaPA (upload manuale su AdE)" v="sec" onClick={generaXml} dis={xmlErrori.length > 0} full />
+              </>
+            )}
           </div>
         )}
 

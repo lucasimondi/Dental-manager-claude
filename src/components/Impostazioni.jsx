@@ -301,6 +301,43 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
         <Fld label="P.IVA"><Inp value={si.piva} onChange={(e) => S({ piva: e.target.value })} /></Fld>
       </Crd>
       <Crd style={{ marginBottom: 11 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Regime fiscale e fatturazione elettronica</div>
+        <Fld label="Regime fiscale">
+          <Sel value={si.regime_fiscale || 'sanitario_esente_art10'} onChange={(e) => S({ regime_fiscale: e.target.value })}>
+            <option value="sanitario_esente_art10">Sanitario — esente IVA art. 10 DPR 633/72</option>
+            <option value="forfettario">Forfettario (L. 190/2014)</option>
+            <option value="ordinario">Ordinario (IVA applicata)</option>
+          </Sel>
+        </Fld>
+        {si.regime_fiscale === 'sanitario_esente_art10' || !si.regime_fiscale ? (
+          <div style={{ fontSize: 11, color: C.txl, background: C.bg, borderRadius: 8, padding: 10 }}>
+            Corretto per professioni sanitarie vigilate (medico, dentista, psicologo, fisioterapista...).
+            Le fatture restano in formato PDF/cartaceo: dal 2026 la fattura elettronica via SdI è vietata
+            in modo permanente per le prestazioni sanitarie verso privati, a tutela dei dati sanitari
+            (DLgs 81/2025). Resta comunque obbligatorio l'invio dei dati al Sistema Tessera Sanitaria
+            (gestito separatamente, vedi scheda paziente per il diritto di opposizione del paziente).
+          </div>
+        ) : (
+          <>
+            <div style={{ fontSize: 11, color: C.txl, background: C.bg, borderRadius: 8, padding: 10, marginBottom: 10 }}>
+              Non essendo un'attività sanitaria esente, la fattura elettronica via Sistema di Interscambio
+              è obbligatoria. Puoi generare l'XML pronto per l'upload manuale gratuito sul portale
+              "Fatture e Corrispettivi" dell'Agenzia delle Entrate — servono i dati sotto per un XML valido.
+            </div>
+            {si.regime_fiscale === 'ordinario' && (
+              <Fld label="Aliquota IVA %"><Inp type="number" value={si.aliquota_iva ?? 22} onChange={(e) => S({ aliquota_iva: Number(e.target.value) })} /></Fld>
+            )}
+            <Fld label="Nome e cognome titolare (se persona fisica, non ditta)"><Inp value={si.nome_cognome_titolare || ''} onChange={(e) => S({ nome_cognome_titolare: e.target.value })} placeholder="es. Mario Rossi" /></Fld>
+            <Fld label="Via e numero civico"><Inp value={si.via || ''} onChange={(e) => S({ via: e.target.value })} /></Fld>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+              <Fld label="CAP"><Inp value={si.cap || ''} onChange={(e) => S({ cap: e.target.value })} /></Fld>
+              <Fld label="Comune"><Inp value={si.comune || ''} onChange={(e) => S({ comune: e.target.value })} /></Fld>
+              <Fld label="Provincia"><Inp value={si.provincia || ''} onChange={(e) => S({ provincia: e.target.value.toUpperCase().slice(0, 2) })} placeholder="es. MI" /></Fld>
+            </div>
+          </>
+        )}
+      </Crd>
+      <Crd style={{ marginBottom: 11 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Timbro professionale e firma</div>
         <div style={{ fontSize: 11, color: C.txl, marginBottom: 10 }}>Usati nei documenti medici (ricette, certificati, lettere) e nei rimborsi spese. Nome, specializzazione, iscrizione e contatti sono già presi dalle sezioni sopra.</div>
         <Fld label="IBAN (per rimborsi)"><Inp value={si.iban || ''} onChange={(e) => S({ iban: e.target.value })} placeholder="es. IT60X0542811101000000123456" style={{ fontFamily: 'monospace' }} /></Fld>
