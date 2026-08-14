@@ -6,8 +6,8 @@ import { C, fmt, fmtD, today } from '../lib/utils';
 import { supabase } from '../lib/supabase.js';
 import { scaricaPdf } from '../lib/condivisionePdf';
 
-export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedico }) {
-  const [pazModal, setPazModal] = useState(null); // 'fiscale' | 'medico' | null
+export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedico, onApriDocConsenso }) {
+  const [pazModal, setPazModal] = useState(null); // 'fiscale' | 'medico' | 'consenso' | null
   const [pazSearch, setPazSearch] = useState('');
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -131,12 +131,15 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
           <button onClick={() => { setPazModal('fiscale'); setPazSearch(''); }} style={{ background: '#E8FAF9', border: 'none', borderRadius: 9, padding: '8px 12px', color: C.acc, fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
             <Ic n="plus" s={12} c={C.acc} /> Fattura/Rimb.
           </button>
+          <button onClick={() => { setPazModal('consenso'); setPazSearch(''); }} style={{ background: C.priL, border: 'none', borderRadius: 9, padding: '8px 12px', color: C.pri, fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <Ic n="plus" s={12} c={C.pri} /> Consenso
+          </button>
         </div>
       </div>
 
       {/* MODAL SELEZIONA PAZIENTE */}
       {pazModal && (
-        <Modal title={`Seleziona paziente — ${pazModal === 'fiscale' ? 'Fattura/Rimborso' : 'Ricetta/Certificato'}`} onClose={() => setPazModal(null)}>
+        <Modal title={`Seleziona paziente — ${pazModal === 'fiscale' ? 'Fattura/Rimborso' : pazModal === 'consenso' ? 'Consenso informato' : 'Ricetta/Certificato'}`} onClose={() => setPazModal(null)}>
           <Inp autoFocus value={pazSearch} onChange={e => setPazSearch(e.target.value)} placeholder="Cerca per nome, cognome, CF o telefono…" style={{ marginBottom: 12 }} />
           <div style={{ maxHeight: 320, overflowY: 'auto' }}>
             {cercaPazienti(patients, pazSearch)
@@ -146,6 +149,7 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
                   setPazModal(null);
                   if (pazModal === 'fiscale' && onApriDocFiscale) onApriDocFiscale(p);
                   if (pazModal === 'medico' && onApriDocMedico) onApriDocMedico(p);
+                  if (pazModal === 'consenso' && onApriDocConsenso) onApriDocConsenso(p);
                 }} style={{ padding: '11px 12px', cursor: 'pointer', borderBottom: `1px solid ${C.brd}`, borderRadius: 8 }}
                   onMouseEnter={e => e.currentTarget.style.background = C.bg}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
@@ -184,7 +188,7 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
         const ETICHETTE_TIPO = {
           fattura: '🧾 Fatture', rimborso: '🧾 Rimborsi',
           ricetta: '💊 Ricette', esami: '🩸 Esami', certificato: '📋 Certificati', lettera: '✉️ Lettere',
-          protocollo: '📖 Protocolli', vuoto: '📝 Liberi',
+          protocollo: '📖 Protocolli', vuoto: '📝 Liberi', consenso: '✍️ Consensi',
         };
         const tipiPresenti = Array.from(new Set(docs.map(d => d.tipo)));
         return (
@@ -246,7 +250,7 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
           const coloreAccento = isFiscale ? (isFattura ? C.pri : C.pur) : C.acc;
           const etichetta = isFiscale
             ? `${isFattura ? '📄' : '🧾'} ${isFattura ? 'Fattura' : 'Rimborso'} n° ${doc.numero}`
-            : `${{ ricetta: '💊', esami: '🩸', certificato: '📋', lettera: '✉️', protocollo: '📖', vuoto: '📝' }[doc.tipo] || '📄'} ${doc.titolo || doc.tipo}`;
+            : `${{ ricetta: '💊', esami: '🩸', certificato: '📋', lettera: '✉️', protocollo: '📖', vuoto: '📝', consenso: '✍️' }[doc.tipo] || '📄'} ${doc.titolo || doc.tipo}`;
           const caricandoAnteprima = caricamentoAnteprima === key;
           return (
             <Crd key={key} style={{ border: isSel ? `2px solid ${C.pri}` : `1px solid ${C.brd}`, background: isSel ? C.priL : '#fff', borderLeft: `4px solid ${coloreAccento}` }}>

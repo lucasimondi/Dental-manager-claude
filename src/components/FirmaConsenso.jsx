@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
 import PadFirma from './ui/PadFirma.jsx';
+import { generaConsensoPdf, hashConsenso } from '../lib/pdfConsenso';
+import { scaricaPdf } from '../lib/condivisionePdf';
 
 const C = {
   bg: '#F7F8FA', sur: '#FFFFFF',
@@ -22,6 +24,7 @@ export default function FirmaConsenso({ token }) {
   const [firmatoDaNome, setFirmatoDaNome] = useState('');
   const [completato, setCompletato] = useState(false);
   const [invioInCorso, setInvioInCorso] = useState(false);
+  const [pdfFirmato, setPdfFirmato] = useState(null); // { dataUrl, filename } dopo la firma, per il download del paziente
 
   useEffect(() => {
     supabase.rpc('info_link_firma_consenso', { p_token: token }).then(({ data }) => {
@@ -37,15 +40,23 @@ export default function FirmaConsenso({ token }) {
 
   const salvaFirma = async (firmaPng) => {
     setInvioInCorso(true);
+    const dataOraISO = new Date().toISOString();
+    const hash = await hashConsenso({ testo: info.testo, firmaPng, firmatoDaNome, pazienteId: info.paziente_id, studioId: info.studio_id, canale: 'remoto' });
+    const { dataUrl, filename } = generaConsensoPdf({
+      studio: { nome: info.studio_nome || 'Studio', spec: info.studio_spec || '', iscr: info.studio_iscr || '', addr: info.studio_addr1 || '', tel: info.studio_tel || '', email: info.studio_email || '', piva: info.studio_piva || '' },
+      paziente: { nome: info.paziente_nome, cognome: info.paziente_cognome }, titolo: info.titolo, testo: info.testo,
+      firmaPng, firmatoDaNome, canale: 'remoto', dataOraISO, hash,
+    });
     const { data } = await supabase.rpc('registra_firma_consenso', {
       p_studio_id: info.studio_id, p_paziente_id: info.paziente_id,
       p_titolo: info.titolo, p_testo: info.testo, p_firma_png: firmaPng,
       p_canale: 'remoto', p_firmato_da_nome: firmatoDaNome,
       p_piano_id: info.piano_id, p_voce_indice: info.voce_indice,
       p_modello_id: info.modello_id, p_token_link: token,
+      p_pdf_base64: dataUrl, p_hash_verifica: hash,
     });
     setInvioInCorso(false);
-    if (data?.ok) setCompletato(true);
+    if (data?.ok) { setPdfFirmato({ dataUrl, filename }); setCompletato(true); }
     else setErrore('invio_fallito');
   };
 
@@ -77,7 +88,13 @@ export default function FirmaConsenso({ token }) {
         <div style={{ textAlign: 'center', maxWidth: 320 }}>
           <div style={{ fontSize: 40, marginBottom: 14 }}>✓</div>
           <div style={{ fontWeight: 800, fontSize: 19, color: C.txt, marginBottom: 8 }}>Consenso firmato</div>
-          <div style={{ fontSize: 14, color: C.txm, lineHeight: 1.5 }}>Grazie, la firma è stata registrata da {info.studio_nome}.</div>
+          <div style={{ fontSize: 14, color: C.txm, lineHeight: 1.5, marginBottom: pdfFirmato ? 20 : 0 }}>Grazie, la firma è stata registrata da {info.studio_nome}.</div>
+          {pdfFirmato && (
+            <button
+              onClick={() => scaricaPdf(pdfFirmato.dataUrl, pdfFirmato.filename)}
+              style={{ padding: '12px 20px', borderRadius: 12, border: `1.5px solid ${C.brd}`, background: C.sur, color: C.pri, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+            >💾 Scarica una copia del consenso</button>
+          )}
         </div>
       </div>
     );
