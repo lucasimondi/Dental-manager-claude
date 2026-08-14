@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Ic } from './ui';
 import { C, fmt, fmtD, today } from '../lib/utils';
 import { supabase } from '../lib/supabase.js';
+import Spese from './Spese.jsx';
 
 const CATEGORIE = ['Materiali', 'Attrezzature', 'Affitto', 'Personale', 'Utenze', 'Assicurazioni', 'Software', 'Formazione', 'Tasse', 'Altro'];
 const FREQUENZE = ['Mensile', 'Bimestrale', 'Trimestrale', 'Semestrale', 'Annuale'];
@@ -458,113 +459,6 @@ function VistaMacchinari({ studioId, refreshKey, onChanged }) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// Vista Spese semplificata (fisso/variabile, aggiunta rapida)
-// ─────────────────────────────────────────────────────────────────
-function VistaSpeseRapide({ refreshKey, onChanged }) {
-  const [spese, setSpese] = useState([]);
-  const [modal, setModal] = useState(false);
-  const [form, setForm] = useState({ titolo: '', importo: '', data: today(), categoria: 'Altro', tipo_costo: 'variabile', ricorrente: false, frequenza: 'Mensile' });
-
-  const load = async () => {
-    const { data } = await supabase.from('spese').select('*').order('data', { ascending: false }).limit(30);
-    setSpese(data || []);
-  };
-  useEffect(() => { load(); }, [refreshKey]);
-
-  const apriNuova = () => { setForm({ titolo: '', importo: '', data: today(), categoria: 'Altro', tipo_costo: 'variabile', ricorrente: false, frequenza: 'Mensile' }); setModal(true); };
-
-  const salva = async () => {
-    if (!form.titolo || !form.importo) return;
-    await supabase.from('spese').insert([{ id: Date.now(), ...form, importo: Number(form.importo) }]);
-    setModal(false);
-    load();
-    onChanged();
-  };
-
-  const elimina = async (id) => {
-    if (!confirm('Eliminare questa spesa?')) return;
-    await supabase.from('spese').delete().eq('id', id);
-    load();
-    onChanged();
-  };
-
-  const fisse = spese.filter((s) => s.tipo_costo === 'fisso');
-  const variabili = spese.filter((s) => s.tipo_costo !== 'fisso');
-
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
-        <Btn ch="+ Spesa rapida" sz="sm" onClick={apriNuova} />
-      </div>
-
-      <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 6 }}>Costi fissi</div>
-      {fisse.length === 0 && <div style={{ color: C.txl, fontSize: 12, marginBottom: 12 }}>Nessuno</div>}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
-        {fisse.map((s) => (
-          <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 10, padding: '8px 12px' }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 12.5 }}>{s.titolo} {s.ricorrente && <span style={{ fontSize: 9, color: C.pri, fontWeight: 800 }}>🔄 {s.frequenza}</span>}</div>
-              <div style={{ fontSize: 10.5, color: C.txm }}>{fmtD(s.data)} · {s.categoria}</div>
-            </div>
-            <span style={{ fontWeight: 800, fontSize: 13 }}>{fmt(s.importo)}</span>
-            <button onClick={() => elimina(s.id)} style={{ background: C.danL, border: 'none', borderRadius: 6, padding: '4px 7px', cursor: 'pointer' }}><Ic n="del" s={11} c={C.dan} /></button>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 6 }}>Costi variabili</div>
-      {variabili.length === 0 && <div style={{ color: C.txl, fontSize: 12 }}>Nessuno</div>}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {variabili.map((s) => (
-          <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 10, padding: '8px 12px' }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 12.5 }}>{s.titolo}</div>
-              <div style={{ fontSize: 10.5, color: C.txm }}>{fmtD(s.data)} · {s.categoria}</div>
-            </div>
-            <span style={{ fontWeight: 800, fontSize: 13 }}>{fmt(s.importo)}</span>
-            <button onClick={() => elimina(s.id)} style={{ background: C.danL, border: 'none', borderRadius: 6, padding: '4px 7px', cursor: 'pointer' }}><Ic n="del" s={11} c={C.dan} /></button>
-          </div>
-        ))}
-      </div>
-
-      {modal && (
-        <Modal title="+ Spesa rapida" onClose={() => setModal(false)}>
-          <Fld label="Titolo"><Inp value={form.titolo} onChange={(e) => setForm((f) => ({ ...f, titolo: e.target.value }))} autoFocus /></Fld>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <Fld label="Importo €"><Inp type="number" value={form.importo} onChange={(e) => setForm((f) => ({ ...f, importo: e.target.value }))} /></Fld>
-            <Fld label="Data"><Inp type="date" value={form.data} onChange={(e) => setForm((f) => ({ ...f, data: e.target.value }))} /></Fld>
-          </div>
-          <Fld label="Categoria">
-            <Sel value={form.categoria} onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value }))}>
-              {CATEGORIE.map((c) => <option key={c}>{c}</option>)}
-            </Sel>
-          </Fld>
-          <Fld label="Tipo di costo">
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setForm((f) => ({ ...f, tipo_costo: 'fisso' }))} style={{ flex: 1, padding: '8px 0', borderRadius: 9, border: `1.5px solid ${form.tipo_costo === 'fisso' ? C.pri : C.brd}`, background: form.tipo_costo === 'fisso' ? C.priL : '#fff', color: form.tipo_costo === 'fisso' ? C.pri : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Fisso</button>
-              <button onClick={() => setForm((f) => ({ ...f, tipo_costo: 'variabile' }))} style={{ flex: 1, padding: '8px 0', borderRadius: 9, border: `1.5px solid ${form.tipo_costo === 'variabile' ? C.pri : C.brd}`, background: form.tipo_costo === 'variabile' ? C.priL : '#fff', color: form.tipo_costo === 'variabile' ? C.pri : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Variabile</button>
-            </div>
-          </Fld>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <input type="checkbox" checked={form.ricorrente} onChange={(e) => setForm((f) => ({ ...f, ricorrente: e.target.checked }))} />
-            <span style={{ fontSize: 12, color: C.txt }}>Ricorrente</span>
-            {form.ricorrente && (
-              <Sel value={form.frequenza} onChange={(e) => setForm((f) => ({ ...f, frequenza: e.target.value }))} style={{ marginLeft: 'auto', width: 140 }}>
-                {FREQUENZE.map((f) => <option key={f}>{f}</option>)}
-              </Sel>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Btn ch="Annulla" v="sec" onClick={() => setModal(false)} full />
-            <Btn ch="Salva" onClick={salva} dis={!form.titolo || !form.importo} full />
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────
 // Componente principale
 // ─────────────────────────────────────────────────────────────────
 export default function Costi({ studioId }) {
@@ -599,7 +493,7 @@ export default function Costi({ studioId }) {
         ))}
       </div>
 
-      {sub === 'spese' && <VistaSpeseRapide refreshKey={refreshKey} onChanged={bump} />}
+      {sub === 'spese' && <Spese refreshKey={refreshKey} />}
       {sub === 'personale' && <VistaPersonale studioId={studioId} refreshKey={refreshKey} onChanged={bump} />}
       {sub === 'macchinari' && <VistaMacchinari studioId={studioId} refreshKey={refreshKey} onChanged={bump} />}
 

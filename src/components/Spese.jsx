@@ -7,7 +7,7 @@ const CATEGORIE = ['Materiali', 'Attrezzature', 'Affitto', 'Personale', 'Utenze'
 const FREQUENZE = ['Mensile', 'Bimestrale', 'Trimestrale', 'Semestrale', 'Annuale'];
 const MESI = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
 
-export default function Spese() {
+export default function Spese({ refreshKey } = {}) {
   const [spese, setSpese] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
@@ -21,7 +21,7 @@ export default function Spese() {
   });
   const F = (f) => setForm(p => ({ ...p, ...f }));
 
-  useEffect(() => { loadSpese(); }, []);
+  useEffect(() => { loadSpese(); }, [refreshKey]);
 
   const loadSpese = async () => {
     setLoading(true);
@@ -239,8 +239,8 @@ export default function Spese() {
                 fontWeight: 700, fontSize: 12, cursor: 'pointer',
               }}>Variabile</button>
             </div>
-            <div style={{ fontSize: 10, color: C.txl, marginTop: 4 }}>
-              Fisso = non cambia con il numero di pazienti (affitto, personale, utenze). Usato per calcolare il break-even.
+            <div style={{ fontSize: 10, color: C.txl, marginTop: 4, lineHeight: 1.5 }}>
+              <b>Fisso</b>: lo paghi comunque, indipendentemente da quanti pazienti curi (affitto, personale, utenze, assicurazioni, software, rate di macchinari). <b>Variabile</b>: dipende da quanto lavori (materiali, laboratorio odontotecnico, provvigioni). Distinguerli bene serve a calcolare correttamente margine ed EBITDA in Controllo di Gestione.
             </div>
           </Fld>
 
