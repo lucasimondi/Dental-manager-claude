@@ -15,16 +15,27 @@ import { today } from './utils';
 const MESI_LBL = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
 const FREQ_MESI = { Mensile: 1, Bimestrale: 2, Trimestrale: 3, Semestrale: 6, Annuale: 12 };
 
+// Formatta la data LOCALE (anno/mese/giorno del fuso orario del browser) come
+// 'YYYY-MM-DD', senza passare da toISOString(). toISOString() converte sempre
+// in UTC: per chi è in un fuso avanti rispetto a UTC (es. Italia, UTC+1/+2),
+// new Date(anno, mese, giorno).toISOString() fa scivolare indietro di un
+// giorno "1 agosto" -> "31 luglio" e "31 agosto" -> "30 agosto". Il periodo
+// "mese corrente" finiva così per coprire due mesi di calendario invece di
+// uno, raddoppiando (o comunque falsando) il conteggio dei mesi usato per
+// proiettare le spese ricorrenti — bug segnalato dall'utente (costi fissi
+// mostrati a valori doppi rispetto al reale).
+const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 export const rangePeriodo = (id) => {
   const d = new Date();
   if (id === 'mese') {
     const inizio = new Date(d.getFullYear(), d.getMonth(), 1);
     const fine = new Date(d.getFullYear(), d.getMonth() + 1, 0);
-    return [inizio.toISOString().slice(0, 10), fine.toISOString().slice(0, 10)];
+    return [ymd(inizio), ymd(fine)];
   }
   const inizio = new Date(d.getFullYear(), 0, 1);
   const fine = new Date(d.getFullYear(), 11, 31);
-  return [inizio.toISOString().slice(0, 10), fine.toISOString().slice(0, 10)];
+  return [ymd(inizio), ymd(fine)];
 };
 
 const calcPlanTot = (pl) => {
@@ -179,7 +190,7 @@ export function useControlloDati({ studioId, patients = [], plans = [], payments
   // ── Contributo spese nel periodo selezionato (replica esatta di get_kpi_periodo,
   //    così la somma delle righe nel dettaglio coincide sempre col KPI mostrato) ──
   const [daPer, aPer] = rangePeriodo(periodo);
-  const fineMeseCorrente = (() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10); })();
+  const fineMeseCorrente = (() => { const d = new Date(); return ymd(new Date(d.getFullYear(), d.getMonth() + 1, 0)); })();
   const fineEffettiva = aPer < fineMeseCorrente ? aPer : fineMeseCorrente;
   const nMesiPeriodo = (() => {
     if (fineEffettiva < daPer) return 0;
