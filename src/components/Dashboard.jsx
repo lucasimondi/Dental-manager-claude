@@ -78,7 +78,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
     scadenzePagamento, scadenzeScadute, scadenzeProssime,
     pianiOrto,
     nuoviMese, mediaValore, topPrest,
-    andamentoMensile, incassoPerPrestazione, speseMensili,
+    andamentoMensile, incassoPerPrestazione, incassoPerGiorno, speseMensili, speseCategoria,
     spese, calcPlanTot,
   } = useControlloDati({ studioId, patients, plans, payments, periodo: periodoEconomico });
 
@@ -828,6 +828,16 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                 </>
               )}
             </Crd>
+            <Crd style={{ padding: 0, overflow: 'hidden', marginTop: 8 }}>
+              <div onClick={() => setDetailModal('esegDaInc')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', cursor: 'pointer', background: totEsegDaInc > 0 ? C.danL : 'transparent' }}>
+                <span style={{ fontSize: 12, color: totEsegDaInc > 0 ? C.dan : C.txm, fontWeight: totEsegDaInc > 0 ? 700 : 400 }}>💰 Eseguito da incassare</span>
+                <span style={{ fontSize: 13.5, fontWeight: 800, color: totEsegDaInc > 0 ? C.dan : C.txt }}>{fmt(totEsegDaInc)}</span>
+              </div>
+              <div onClick={() => setDetailModal('accNonEseg')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', cursor: 'pointer', borderTop: `1px solid ${C.brd}` }}>
+                <span style={{ fontSize: 12, color: C.txm }}>✓ Accettato da eseguire</span>
+                <span style={{ fontSize: 13.5, fontWeight: 800, color: C.txt }}>{fmt(totAccNonEseg)}</span>
+              </div>
+            </Crd>
           </div>
         );
 
@@ -922,6 +932,20 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                   )}
                 </Crd>
                 <Crd>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 8 }}>Incasso per giorno</div>
+                  <ResponsiveContainer width="100%" height={160}>
+                    <BarChart data={incassoPerGiorno} margin={{ top: 4, right: 8, left: -22, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={C.brd} vertical={false} />
+                      <XAxis dataKey="giorno" tick={{ fontSize: 11, fill: C.txl }} axisLine={{ stroke: C.brd }} tickLine={false} />
+                      <YAxis tick={{ fontSize: 10, fill: C.txl }} axisLine={false} tickLine={false} width={42} />
+                      <Tooltip contentStyle={{ background: C.txt, border: 'none', borderRadius: 8, color: C.sur, fontSize: 12 }} labelStyle={{ color: C.sur }} formatter={(v) => fmt(v)} />
+                      <Bar dataKey="incasso" radius={[6, 6, 0, 0]} barSize={26}>
+                        {incassoPerGiorno.map((d, i) => <Cell key={i} fill={d.top ? C.pri : C.priL} />)}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Crd>
+                <Crd>
                   <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 8 }}>Andamento spese</div>
                   {speseMensili.length === 0 ? (
                     <div style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessuna spesa registrata</div>
@@ -938,6 +962,23 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                     </ResponsiveContainer>
                   )}
                 </Crd>
+                {speseCategoria.length > 0 && (
+                  <Crd>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 2 }}>Spese per categoria</div>
+                    <div style={{ fontSize: 11, color: C.txl, marginBottom: 8 }}>Ricorrenti proiettate su base annua/12</div>
+                    <ResponsiveContainer width="100%" height={Math.max(140, speseCategoria.length * 34)}>
+                      <BarChart data={speseCategoria} layout="vertical" margin={{ top: 4, right: 24, left: 4, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={C.brd} horizontal={false} />
+                        <XAxis type="number" tick={{ fontSize: 10, fill: C.txl }} axisLine={false} tickLine={false} />
+                        <YAxis type="category" dataKey="categoria" tick={{ fontSize: 11, fill: C.txt }} axisLine={false} tickLine={false} width={92} />
+                        <Tooltip contentStyle={{ background: C.txt, border: 'none', borderRadius: 8, color: C.sur, fontSize: 12 }} labelStyle={{ color: C.sur }} formatter={(v) => fmt(v)} />
+                        <Bar dataKey="tot" radius={[0, 6, 6, 0]} barSize={16}>
+                          {speseCategoria.map((_, i) => <Cell key={i} fill={C.dan} fillOpacity={1 - i * 0.12} />)}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </Crd>
+                )}
               </div>
             )}
           </div>
