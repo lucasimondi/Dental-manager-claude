@@ -1,29 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Crd, Modal } from './ui';
-import { C, fmt, today } from '../lib/utils';
-import { supabase } from '../lib/supabase.js';
+import { C, fmt } from '../lib/utils';
 import { BarChart, Bar, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Line } from 'recharts';
+import { useControlloDati } from '../lib/useControlloDati';
 
 const PERIODI = [
   { id: 'mese', label: 'Questo mese' },
   { id: 'anno', label: "Quest'anno" },
 ];
 
-const rangePeriodo = (id) => {
-  const d = new Date();
-  if (id === 'mese') {
-    const inizio = new Date(d.getFullYear(), d.getMonth(), 1);
-    const fine = new Date(d.getFullYear(), d.getMonth() + 1, 0);
-    return [inizio.toISOString().slice(0, 10), fine.toISOString().slice(0, 10)];
-  }
-  const inizio = new Date(d.getFullYear(), 0, 1);
-  const fine = new Date(d.getFullYear(), 11, 31);
-  return [inizio.toISOString().slice(0, 10), fine.toISOString().slice(0, 10)];
-};
-
-const MESI_LBL = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
 const CHART_PALETTE = [C.pri, C.acc, C.war, C.suc, '#7C3AED', C.dan, C.txl];
-const FREQ_MESI = { Mensile: 1, Bimestrale: 2, Trimestrale: 3, Semestrale: 6, Annuale: 12 };
 
 // ── Componenti di presentazione ──────────────────────────────────
 
@@ -68,199 +54,23 @@ const VuotoLista = ({ children }) => (
 
 export default function PanoramicaControllo({ studioId, patients = [], plans = [], payments = [], onOpenPaz, isDentistico = true }) {
   const [periodo, setPeriodo] = useState('mese');
-  const [kpi, setKpi] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState('');
-  const [pagExt, setPagExt] = useState([]);
-  const [spese, setSpese] = useState([]);
   const [dettaglio, setDettaglio] = useState(null); // id della voce con popup aperto, o null
 
-  useEffect(() => { load(); }, [periodo]);
-  useEffect(() => { loadAux(); }, []);
+  const {
+    t, anno, kpi, kpiLoading: loading, kpiErr: err, pagExt,
+    mInc, aInc, extMese, extAnno, incassoLucaMese, incassoLucaAnno,
+    esegDaInc, totEsegDaInc, accNonEseg, totAccNonEseg,
+    preventiviAccettati, preventiviAttesa, preventiviRifiutati, totAccettati, tassoAccettazione,
+    richiamiScaduti, richiamiProssimi,
+    scadenzePagamento, scadenzeScadute, scadenzeProssime,
+    pianiOrto,
+    nuoviMese, mediaValore, topPrest, tuttePrestazioni,
+    andamentoMensile, incassoPerPrestazione, incassoPerGiorno, speseMensili, speseCategoria, ricorrentiMensile,
+    nMesiPeriodo, contributoSpesaPeriodo, speseFissePeriodo, speseVariabiliPeriodo,
+    calcPlanTot,
+  } = useControlloDati({ studioId, patients, plans, payments, periodo });
 
-  const load = async () => {
-    setLoading(true);
-    setErr('');
-    const [da, a] = rangePeriodo(periodo);
-    const { data, error } = await supabase.rpc('get_kpi_periodo', {
-      p_studio_id: studioId,
-      p_data_inizio: da,
-      p_data_fine: a,
-    });
-    if (error) setErr(error.message);
-    else setKpi(data);
-    setLoading(false);
-  };
-
-  const loadAux = async () => {
-    const [{ data: pe }, { data: sp }] = await Promise.all([
-      supabase.from('pagamenti_esterni').select('*'),
-      supabase.from('spese').select('*'),
-    ]);
-    if (pe) setPagExt(pe);
-    if (sp) setSpese(sp);
-  };
-
-  const t = today();
-  const anno = t.slice(0, 4);
-  const oggiD = new Date(t + 'T12:00');
-  const tra30 = new Date(oggiD); tra30.setDate(tra30.getDate() + 30);
-
-  const calcPlanTot = (pl) => {
-    const sub = (pl.voci || []).reduce((s, v) => s + Number(v.prezzo), 0);
-    const sc = Number(pl.sconto) || 0;
-    const scontato = pl.scontoTipo === 'pct' ? sub * (sc / 100) : Math.min(sc, sub);
-    return Math.max(0, sub - scontato);
-  };
-
-  // ── Incassi & margine stimato (vista integrativa, non sostituisce i KPI RPC) ──
-  const mInc = payments.filter(p => p.data && p.data.startsWith(t.slice(0, 7))).reduce((s, p) => s + Number(p.importo), 0);
-  const aInc = payments.filter(p => p.data && p.data.startsWith(anno)).reduce((s, p) => s + Number(p.importo), 0);
-  const extMese = pagExt.filter(p => p.data && p.data.startsWith(t.slice(0, 7))).reduce((s, p) => s + Number(p.importo), 0);
-  const extAnno = pagExt.filter(p => p.data && p.data.startsWith(anno)).reduce((s, p) => s + Number(p.importo), 0);
-  const incassoLucaMese = mInc + extMese;
-  const incassoLucaAnno = aInc + extAnno;
-
-  // ── Eseguito da incassare / accettato da eseguire ──
-  const esegDaInc = patients.map(paz => {
-    const patPlans = plans.filter(pl => pl.pazienteId === paz.id);
-    const voci = patPlans.flatMap(pl => {
-      const subTot = (pl.voci || []).reduce((s, v) => s + Number(v.prezzo), 0);
-      const sc = Number(pl.sconto) || 0;
-      const scontato = pl.scontoTipo === 'pct' ? subTot * (sc / 100) : Math.min(sc, subTot);
-      const fattore = subTot > 0 ? Math.max(0, subTot - scontato) / subTot : 1;
-      return (pl.voci || []).filter(v => v.eseguita && !v.incassata).map(v => ({ ...v, prezzoScontato: Number(v.prezzo) * fattore }));
-    });
-    return { paz, voci, tot: voci.reduce((s, v) => s + v.prezzoScontato, 0) };
-  }).filter(x => x.tot > 0);
-  const totEsegDaInc = esegDaInc.reduce((s, x) => s + x.tot, 0);
-
-  const accNonEseg = patients.map(paz => {
-    const patPlans = plans.filter(pl => pl.pazienteId === paz.id && pl.stato === 'accettato');
-    const voci = patPlans.flatMap(pl => (pl.voci || []).filter(v => !v.eseguita));
-    return { paz, voci, tot: voci.reduce((s, v) => s + Number(v.prezzo), 0) };
-  }).filter(x => x.tot > 0);
-  const totAccNonEseg = accNonEseg.reduce((s, x) => s + x.tot, 0);
-
-  // ── Preventivi & tasso accettazione ──
-  const preventiviAccettati = plans.filter(pl => pl.stato === 'accettato');
-  const preventiviAttesa = plans.filter(pl => (pl.stato || 'attivo') === 'attivo');
-  const preventiviRifiutati = plans.filter(pl => pl.stato === 'rifiutato');
-  const totAccettati = preventiviAccettati.reduce((s, pl) => s + calcPlanTot(pl), 0);
-  const tassoAccettazione = (preventiviAttesa.length + preventiviAccettati.length + preventiviRifiutati.length) > 0
-    ? Math.round(preventiviAccettati.length / (preventiviAttesa.length + preventiviAccettati.length + preventiviRifiutati.length) * 100) : 0;
-
-  // ── Richiami, scadenze, ortodonzia ──
-  const richiamiScaduti = plans.flatMap(pl => { const paz = patients.find(x => x.id === pl.pazienteId); if (!paz) return []; return (pl.voci || []).filter(v => v.richiamoData && new Date(v.richiamoData + 'T12:00') < oggiD).map(v => ({ paz, pl, v })); });
-  const richiamiProssimi = plans.flatMap(pl => { const paz = patients.find(x => x.id === pl.pazienteId); if (!paz) return []; return (pl.voci || []).filter(v => { if (!v.richiamoData) return false; const d = new Date(v.richiamoData + 'T12:00'); return d >= oggiD && d <= tra30; }).map(v => ({ paz, pl, v })); });
-
-  const scadenzePagamento = plans.filter(pl => pl.scadenzaPagamento).map(pl => {
-    const paz = patients.find(x => x.id === pl.pazienteId);
-    if (!paz) return null;
-    return { pl, paz, scadenza: pl.scadenzaPagamento, importo: calcPlanTot(pl) };
-  }).filter(Boolean);
-  const scadenzeScadute = scadenzePagamento.filter(s => new Date(s.scadenza + 'T12:00') < oggiD);
-  const scadenzeProssime = scadenzePagamento.filter(s => { const d = new Date(s.scadenza + 'T12:00'); return d >= oggiD && d <= tra30; });
-
-  const pianiOrto = plans.filter(pl => pl.ortodonzia?.attivo).map(pl => {
-    const paz = patients.find(x => x.id === pl.pazienteId);
-    if (!paz) return null;
-    const orto = pl.ortodonzia;
-    const cons = orto.mascherineConsegnate || 0;
-    const tot2 = Number(orto.mascherineTotali) || 0;
-    const prossima = (() => { if (!orto.dataConsegnaInizio) return null; const ultima = orto.storico?.length > 0 ? orto.storico[orto.storico.length - 1].data : orto.dataConsegnaInizio; const d = new Date(ultima + 'T12:00'); d.setDate(d.getDate() + (orto.frequenzaSettimane || 2) * 7); return d.toISOString().slice(0, 10); })();
-    return { pl, paz, orto, cons, tot: tot2, completato: tot2 > 0 && cons >= tot2, prossima, cambioScaduto: prossima && prossima <= t, inAttesa: !orto.dataConsegnaInizio };
-  }).filter(Boolean);
-
-  // ── Statistiche generali ──
-  const nuoviMese = patients.filter(p => { const d = new Date(Number(p.id)); return !isNaN(d) && d.toISOString().startsWith(t.slice(0, 7)); }).length;
-  const mediaValore = plans.length > 0 ? plans.reduce((s, pl) => s + calcPlanTot(pl), 0) / plans.length : 0;
-  const prestCount = {}; plans.forEach(pl => (pl.voci || []).forEach(v => { if (v.eseguita) prestCount[v.prestazione] = (prestCount[v.prestazione] || 0) + 1; }));
-  const topPrest = Object.entries(prestCount).sort((a, b) => b[1] - a[1])[0];
-
-  // ── Grafici ──
-  const andamentoMensile = (() => {
-    const map = {};
-    payments.forEach(p => { if (!p.data) return; const m = p.data.slice(0, 7); map[m] = (map[m] || 0) + Number(p.importo); });
-    const chiavi = Object.keys(map).sort();
-    const ultime6 = chiavi.slice(-6);
-    return ultime6.map((m, i) => {
-      const finestra = ultime6.slice(Math.max(0, i - 2), i + 1).map(k => map[k]);
-      const media = finestra.reduce((s, x) => s + x, 0) / finestra.length;
-      return { mese: `${MESI_LBL[parseInt(m.slice(5)) - 1]} ${m.slice(2, 4)}`, incasso: Math.round(map[m]), media: Math.round(media) };
-    });
-  })();
-
-  const incassoPerPrestazione = (() => {
-    const map = {};
-    plans.forEach(pl => {
-      const subTot = (pl.voci || []).reduce((s, v) => s + Number(v.prezzo), 0);
-      const sc = Number(pl.sconto) || 0;
-      const scontato = pl.scontoTipo === 'pct' ? subTot * (sc / 100) : Math.min(sc, subTot);
-      const fattore = subTot > 0 ? Math.max(0, subTot - scontato) / subTot : 1;
-      (pl.voci || []).forEach(v => {
-        if (!v.eseguita) return;
-        const nome = v.prestazione || 'Altro';
-        map[nome] = (map[nome] || 0) + Number(v.prezzo) * fattore;
-      });
-    });
-    return Object.entries(map).map(([tipo, incasso]) => ({ tipo, incasso: Math.round(incasso) })).sort((a, b) => b.incasso - a.incasso).slice(0, 6);
-  })();
-
-  const incassoPerGiorno = (() => {
-    const GIORNI_LBL = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
-    const somma = [0, 0, 0, 0, 0, 0, 0];
-    payments.forEach(p => { if (!p.data) return; const d = new Date(p.data + 'T12:00'); somma[d.getDay()] += Number(p.importo); });
-    const ordine = [1, 2, 3, 4, 5, 6, 0];
-    const max = Math.max(...ordine.map(i => somma[i]));
-    return ordine.map(i => ({ giorno: GIORNI_LBL[i], incasso: Math.round(somma[i]), top: somma[i] === max && max > 0 }));
-  })();
-
-  const ricorrentiMensile = spese.filter(s => s.ricorrente).reduce((s, x) => s + Number(x.importo) / (FREQ_MESI[x.frequenza] || 1), 0);
-  const speseMensili = (() => {
-    const map = {};
-    spese.filter(s => !s.ricorrente).forEach(s => { if (!s.data) return; const m = s.data.slice(0, 7); map[m] = (map[m] || 0) + Number(s.importo); });
-    const chiavi = Object.keys(map).sort();
-    const ultime6 = chiavi.slice(-6);
-    return ultime6.map(m => ({ mese: `${MESI_LBL[parseInt(m.slice(5)) - 1]} ${m.slice(2, 4)}`, unaTantum: Math.round(map[m]), ricorrenti: Math.round(ricorrentiMensile) }));
-  })();
-  const speseCategoria = (() => {
-    const map = {};
-    spese.filter(s => !s.ricorrente).forEach(s => { const cat = s.categoria || 'Altro'; map[cat] = (map[cat] || 0) + Number(s.importo); });
-    spese.filter(s => s.ricorrente).forEach(s => { const cat = s.categoria || 'Ricorrenti'; map[cat] = (map[cat] || 0) + Number(s.importo) / (FREQ_MESI[s.frequenza] || 1) * 12; });
-    return Object.entries(map).map(([categoria, tot]) => ({ categoria, tot: Math.round(tot) })).sort((a, b) => b.tot - a.tot).slice(0, 8);
-  })();
-
-  // ── Liste dettagliate per i popup di approfondimento ──
-  const [daPer, aPer] = rangePeriodo(periodo);
-  const pagamentiPeriodo = payments.filter(p => p.data && p.data >= daPer && p.data <= aPer).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
-  const pagExtPeriodo = pagExt.filter(p => p.data && p.data >= daPer && p.data <= aPer).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
-
-  // Replica ESATTAMENTE la logica di get_kpi_periodo (RPC), così la somma delle righe
-  // nel popup coincide sempre col numero mostrato in alto. Senza questo, il popup
-  // mostrava TUTTE le spese mai registrate (nessun filtro periodo), causando la
-  // discrepanza segnalata dall'utente tra il totale e la somma dell'elenco.
-  const fineMeseCorrente = (() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10); })();
-  const fineEffettiva = aPer < fineMeseCorrente ? aPer : fineMeseCorrente;
-  const nMesiPeriodo = (() => {
-    if (fineEffettiva < daPer) return 0;
-    const d1 = new Date(daPer + 'T12:00'), d2 = new Date(fineEffettiva + 'T12:00');
-    return Math.max(1, (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth()) + 1);
-  })();
-  const contributoSpesaPeriodo = (s) => {
-    if (!s.ricorrente) return (s.data && s.data >= daPer && s.data <= aPer) ? Number(s.importo) : 0;
-    if (!(s.data && s.data <= fineEffettiva && (!s.data_fine || s.data_fine >= daPer) && nMesiPeriodo > 0)) return 0;
-    return (Number(s.importo) / (FREQ_MESI[s.frequenza] || 1)) * nMesiPeriodo;
-  };
-
-  const speseFissePeriodo = spese.filter(s => s.tipo_costo === 'fisso' && contributoSpesaPeriodo(s) > 0);
-  const speseVariabiliPeriodo = spese.filter(s => (s.tipo_costo === 'variabile' || !s.tipo_costo) && contributoSpesaPeriodo(s) > 0);
   const nomePaz = (id) => { const p = patients.find(x => x.id === id); return p ? `${p.nome || ''} ${p.cognome || ''}`.trim() || 'Paziente' : 'Paziente'; };
-  const tuttePrestazioni = Object.entries((() => {
-    const c = {}; plans.forEach(pl => (pl.voci || []).forEach(v => { if (v.eseguita) c[v.prestazione] = (c[v.prestazione] || 0) + 1; })); return c;
-  })()).sort((a, b) => b[1] - a[1]);
-
-  const vaiAPiani = () => onOpenPaz && patients.length > 0 && onOpenPaz(patients[0], 'piani');
   const [mostraGrafici, setMostraGrafici] = useState(false);
   const [mostraStat, setMostraStat] = useState(false);
 

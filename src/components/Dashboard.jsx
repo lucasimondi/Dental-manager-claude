@@ -4,12 +4,20 @@ import { Crd, Bdg, Modal, Ic, Btn, Fld, Sel, Inp, Txt, TimePicker } from './ui';
 import { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
 import { C, fmt, fmtD, today } from '../lib/utils';
 import { BarChart, Bar, LineChart, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { useControlloDati } from '../lib/useControlloDati';
 
 const WIDGETS_DEFAULT = [
-  { id: 'agenda',       label: '📅 Agenda oggi',           attivo: true },
-  { id: 'todo',         label: '✅ Attività e promemoria',  attivo: true },
-  { id: 'appuntamenti', label: '📅 Prossimi appuntamenti',  attivo: true },
-  { id: 'wa',            label: '💬 Reminder WhatsApp',       attivo: false },
+  { id: 'agenda',       label: '📅 Agenda oggi',            attivo: true },
+  { id: 'todo',         label: '✅ Attività e promemoria',   attivo: true },
+  { id: 'appuntamenti', label: '📅 Prossimi appuntamenti',   attivo: true },
+  { id: 'wa',           label: '💬 Reminder WhatsApp',       attivo: false },
+  { id: 'economico',    label: '💰 Pannello economico',      attivo: false },
+  { id: 'preventivi',   label: '📋 Preventivi',              attivo: false },
+  { id: 'richiami',     label: '🔔 Richiami',                attivo: false },
+  { id: 'scadenze',     label: '📆 Scadenze pagamento',      attivo: false },
+  { id: 'ortodonzia',   label: '🦷 Ortodonzia',              attivo: false },
+  { id: 'statistiche',  label: '📊 Statistiche',             attivo: false },
+  { id: 'grafici',      label: '📈 Grafici e andamento',     attivo: false },
 ];
 
 const PALETTE = [
@@ -55,22 +63,24 @@ const NOMI_F = ['alessia','alice','anna','beatrice','camilla','chiara','claudia'
 const getSaluto = (nome) => { if (!nome) return 'Benvenuto'; const ora = new Date().getHours(); const s = ora < 12 ? 'Buongiorno' : ora < 18 ? 'Buon pomeriggio' : 'Buonasera'; const p = nome.trim().split(' ')[0].toLowerCase(); const fem = NOMI_F.includes(p) || (p.endsWith('a') && !['luca','andrea','mattia','nicola','enea'].includes(p)); return s + ', ' + (fem ? 'cara ' : 'caro ') + nome.trim().split(' ')[0]; };
 
 export default function Dashboard({ patients, appointments, setAppointments, payments, plans, onOpenPaz, appTypes, onGoAgenda, templates, userName: userNameProp, si, features, studioId }) {
-  // KPI economici annuali: fonte unica = get_kpi_periodo (stessa RPC usata da
-  // Controllo di Gestione). Prima questo componente calcolava margine/spese
-  // annuali per conto proprio (proiettando OGNI spesa ricorrente al suo intero
-  // valore annuale fin da gennaio, ignorando quanti mesi fossero realmente
-  // trascorsi e la data_fine), producendo un numero diverso — e spesso
-  // fortemente fuorviante nei primi mesi dell'anno — da quello mostrato in
-  // Controllo di Gestione per lo stesso periodo. Rimosso: unica fonte di verità.
-  const [kpiAnno, setKpiAnno] = useState(null);
-  useEffect(() => {
-    if (!studioId) return;
-    const oggi = new Date();
-    const da = new Date(oggi.getFullYear(), 0, 1).toISOString().slice(0, 10);
-    const a = new Date(oggi.getFullYear(), 11, 31).toISOString().slice(0, 10);
-    supabase.rpc('get_kpi_periodo', { p_studio_id: studioId, p_data_inizio: da, p_data_fine: a })
-      .then(({ data, error }) => { if (!error) setKpiAnno(data); });
-  }, [studioId]);
+  // Widget economico/operativi (preventivi, richiami, scadenze, ortodonzia,
+  // statistiche, grafici): stessa fonte di calcolo di Controllo di Gestione,
+  // vedi useControlloDati — evita di ricalcolare qui gli stessi numeri con
+  // una logica potenzialmente diversa (era esattamente il problema di
+  // Dashboard/ControlloGestione risolto in precedenza per i KPI economici).
+  const [periodoEconomico, setPeriodoEconomico] = useState('mese');
+  const {
+    kpi: kpiPeriodo, kpiLoading: kpiPeriodoLoading, pagExt,
+    mInc, aInc, extMese, extAnno, incassoLucaMese, incassoLucaAnno,
+    esegDaInc, totEsegDaInc, accNonEseg, totAccNonEseg,
+    preventiviAccettati, preventiviAttesa, preventiviRifiutati, totAccettati, tassoAccettazione,
+    richiamiScaduti, richiamiProssimi,
+    scadenzePagamento, scadenzeScadute, scadenzeProssime,
+    pianiOrto,
+    nuoviMese, mediaValore, topPrest,
+    andamentoMensile, incassoPerPrestazione, speseMensili,
+    spese, calcPlanTot,
+  } = useControlloDati({ studioId, patients, plans, payments, periodo: periodoEconomico });
 
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const t = today();
@@ -87,6 +97,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   const [editApp, setEditApp] = useState(null);
   const [editForm, setEditForm] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [mostraGraficiDash, setMostraGraficiDash] = useState(false);
   const [widgets, setWidgets] = useState(loadWidgets);
   const [theme, setTheme] = useState(loadTheme);
   const [themeTab, setThemeTab] = useState('widgets'); // 'widgets' | 'colori'
@@ -95,24 +106,6 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   const [todoInput, setTodoInput] = useState('');
   const [todoModal, setTodoModal] = useState(false);
   const [todoLoading, setTodoLoading] = useState(false);
-  const [pagExt, setPagExt] = useState([]);
-  const [spese, setSpese] = useState([]);
-
-  useEffect(() => {
-    const loadPagExt = async () => {
-      const { data } = await supabase.from('pagamenti_esterni').select('*');
-      if (data) setPagExt(data);
-    };
-    const loadSpese = async () => {
-      const { data } = await supabase.from('spese').select('*');
-      if (data) setSpese(data);
-    };
-    loadPagExt();
-    loadSpese();
-  }, []);
-
-  const widgetOrder = widgets.filter(w => w.attivo !== false);
-
   useEffect(() => {
     loadTodos();
     // Realtime: aggiorna automaticamente quando cambiano i todo
@@ -181,158 +174,20 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   const domani = (() => { const d = new Date(t + 'T12:00'); d.setDate(d.getDate() + 1); return d.toISOString().slice(0,10); })();
   const domaniApps = appointments.filter(a => a.data === domani).sort((a, b) => a.ora.localeCompare(b.ora));
 
-  const mInc = payments.filter(p => p.data && p.data.startsWith(t.slice(0, 7))).reduce((s, p) => s + Number(p.importo), 0);
-  const aInc = payments.filter(p => p.data && p.data.startsWith(anno)).reduce((s, p) => s + Number(p.importo), 0);
   const hInc = payments.filter(p => p.data === t).reduce((s, p) => s + Number(p.importo), 0);
-  const extMese = pagExt.filter(p => p.data && p.data.startsWith(t.slice(0, 7))).reduce((s, p) => s + Number(p.importo), 0);
-  const extAnno = pagExt.filter(p => p.data && p.data.startsWith(anno)).reduce((s, p) => s + Number(p.importo), 0);
-  const incassoLucaMese = mInc + extMese;
-  const incassoLucaAnno = aInc + extAnno;
-
-  // ── SPESE (solo per la vista mensile "spese registrate", non ricorrenti proiettate) ──
   const speseMese = spese.filter(s => !s.ricorrente && s.data && s.data.startsWith(t.slice(0,7))).reduce((s, x) => s + Number(x.importo), 0);
-  // speseAnnoTotale/margineAnno ora vengono da kpiAnno (RPC get_kpi_periodo), non più
-  // ricalcolati qui — vedi commento sopra su perché il calcolo locale è stato rimosso.
-  const speseAnnoTotale = kpiAnno ? kpiAnno.costi_totali : null;
-  const margineAnno = kpiAnno ? kpiAnno.ebitda : null;
+  const speseAnnoTotale = kpiPeriodo ? kpiPeriodo.costi_totali : null;
+  const margineAnno = kpiPeriodo ? kpiPeriodo.ebitda : null;
   const speseRicorrentiAnno = spese.filter(s => s.ricorrente).reduce((s, x) => {
     const m = { Mensile: 12, Bimestrale: 6, Trimestrale: 4, Semestrale: 2, Annuale: 1 }[x.frequenza] || 12;
     return s + Number(x.importo) * m;
   }, 0); // usata solo come nota informativa "proiezione a regime", non nel totale
 
-  const calcPlanTot = (pl) => {
-    const sub = pl.voci.reduce((s, v) => s + Number(v.prezzo), 0);
-    const sc = Number(pl.sconto) || 0;
-    const scontato = pl.scontoTipo === 'pct' ? sub * (sc / 100) : Math.min(sc, sub);
-    return Math.max(0, sub - scontato);
-  };
-
-  const esegDaInc = patients.map(paz => {
-    const patPlans = plans.filter(pl => pl.pazienteId === paz.id);
-    const voci = patPlans.flatMap(pl => {
-      const subTot = pl.voci.reduce((s, v) => s + Number(v.prezzo), 0);
-      const sc = Number(pl.sconto) || 0;
-      const scontato = pl.scontoTipo === 'pct' ? subTot * (sc / 100) : Math.min(sc, subTot);
-      const fattore = subTot > 0 ? Math.max(0, subTot - scontato) / subTot : 1;
-      return pl.voci.filter(v => v.eseguita && !v.incassata).map(v => ({ ...v, pianoTitolo: pl.titolo, prezzoScontato: Number(v.prezzo) * fattore }));
-    });
-    return { paz, voci, tot: voci.reduce((s, v) => s + v.prezzoScontato, 0) };
-  }).filter(x => x.tot > 0).sort((a, b) => b.tot - a.tot);
-  const totEsegDaInc = esegDaInc.reduce((s, x) => s + x.tot, 0);
-
-  const accNonEseg = patients.map(paz => {
-    const patPlans = plans.filter(pl => pl.pazienteId === paz.id && pl.stato === 'accettato');
-    const voci = patPlans.flatMap(pl => pl.voci.filter(v => !v.eseguita).map(v => ({ ...v, pianoTitolo: pl.titolo })));
-    return { paz, voci, tot: voci.reduce((s, v) => s + Number(v.prezzo), 0) };
-  }).filter(x => x.tot > 0).sort((a, b) => b.tot - a.tot);
-  const totAccNonEseg = accNonEseg.reduce((s, x) => s + x.tot, 0);
-
-  const daEseguire = plans.flatMap(pl => pl.voci.filter(v => !v.eseguita)).length;
-  const preventiviAccettati = plans.filter(pl => pl.stato === 'accettato');
-  const totAccettati = preventiviAccettati.reduce((s, pl) => s + calcPlanTot(pl), 0);
-  const preventiviAttesa = plans.filter(pl => (pl.stato || 'attivo') === 'attivo');
-  const preventiviRifiutati = plans.filter(pl => pl.stato === 'rifiutato');
-  const tassoAccettazione = (preventiviAttesa.length + preventiviAccettati.length + preventiviRifiutati.length) > 0
-    ? Math.round(preventiviAccettati.length / (preventiviAttesa.length + preventiviAccettati.length + preventiviRifiutati.length) * 100) : 0;
-
-  const oggiD = new Date(t + 'T12:00');
-  const tra30 = new Date(oggiD); tra30.setDate(tra30.getDate() + 30);
-  const richiamiScaduti = plans.flatMap(pl => { const paz = patients.find(x => x.id === pl.pazienteId); if (!paz) return []; return pl.voci.filter(v => v.richiamoData && new Date(v.richiamoData + 'T12:00') < oggiD).map(v => ({ paz, pl, v })); });
-  const richiamiProssimi = plans.flatMap(pl => { const paz = patients.find(x => x.id === pl.pazienteId); if (!paz) return []; return pl.voci.filter(v => { if (!v.richiamoData) return false; const d = new Date(v.richiamoData + 'T12:00'); return d >= oggiD && d <= tra30; }).map(v => ({ paz, pl, v })); });
-
-  const scadenzePagamento = plans.filter(pl => pl.scadenzaPagamento).map(pl => {
-    const paz = patients.find(x => x.id === pl.pazienteId);
-    if (!paz) return null;
-    return { pl, paz, scadenza: pl.scadenzaPagamento, importo: calcPlanTot(pl) };
-  }).filter(Boolean).sort((a, b) => a.scadenza.localeCompare(b.scadenza));
-  const scadenzeScadute = scadenzePagamento.filter(s => new Date(s.scadenza + 'T12:00') < oggiD);
-  const scadenzeProssime = scadenzePagamento.filter(s => { const d = new Date(s.scadenza + 'T12:00'); return d >= oggiD && d <= tra30; });
-
   const promemoria = patients.flatMap(paz => (paz.annotazioni || []).filter(a => a.richiamo && !a.richiamo.fatto).map(a => ({ paz, ann: a, richiamo: a.richiamo }))).sort((a, b) => (a.richiamo.data || '').localeCompare(b.richiamo.data || ''));
 
-  // Ortodonzia
-  const pianiOrto = plans.filter(pl => pl.ortodonzia?.attivo).map(pl => {
-    const paz = patients.find(x => x.id === pl.pazienteId);
-    if (!paz) return null;
-    const orto = pl.ortodonzia;
-    const cons = orto.mascherineConsegnate || 0;
-    const tot2 = Number(orto.mascherineTotali) || 0;
-    const prossima = (() => { if (!orto.dataConsegnaInizio) return null; const ultima = orto.storico?.length > 0 ? orto.storico[orto.storico.length-1].data : orto.dataConsegnaInizio; const d = new Date(ultima + 'T12:00'); d.setDate(d.getDate() + (orto.frequenzaSettimane || 2) * 7); return d.toISOString().slice(0,10); })();
-    return { pl, paz, orto, cons, tot: tot2, completato: tot2 > 0 && cons >= tot2, prossima, cambioScaduto: prossima && prossima <= t, inAttesa: !orto.dataConsegnaInizio };
-  }).filter(Boolean);
-
-  // KPI
-  const nuoviMese = patients.filter(p => { const d = new Date(Number(p.id)); return !isNaN(d) && d.toISOString().startsWith(t.slice(0, 7)); }).length;
-  const mediaValore = plans.length > 0 ? plans.reduce((s, pl) => s + calcPlanTot(pl), 0) / plans.length : 0;
-  const prestCount = {}; plans.forEach(pl => pl.voci.forEach(v => { if (v.eseguita) prestCount[v.prestazione] = (prestCount[v.prestazione] || 0) + 1; }));
-  const topPrest = Object.entries(prestCount).sort((a, b) => b[1] - a[1])[0];
-
-  // ── GRAFICI: andamento mensile, incasso per prestazione, incasso per giorno settimana ──
-  const MESI_LBL = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
-  const andamentoMensile = (() => {
-    const map = {};
-    payments.forEach(p => { if (!p.data) return; const m = p.data.slice(0, 7); map[m] = (map[m] || 0) + Number(p.importo); });
-    const chiavi = Object.keys(map).sort();
-    const ultime6 = chiavi.slice(-6);
-    return ultime6.map((m, i) => {
-      const finestra = ultime6.slice(Math.max(0, i - 2), i + 1).map(k => map[k]);
-      const media = finestra.reduce((s, x) => s + x, 0) / finestra.length;
-      return { mese: `${MESI_LBL[parseInt(m.slice(5)) - 1]} ${m.slice(2, 4)}`, incasso: Math.round(map[m]), media: Math.round(media) };
-    });
-  })();
-
   const CHART_PALETTE = [C.pri, C.acc, C.war, C.suc, '#7C3AED', C.dan, C.txl];
-  const incassoPerPrestazione = (() => {
-    const map = {};
-    plans.forEach(pl => {
-      const subTot = pl.voci.reduce((s, v) => s + Number(v.prezzo), 0);
-      const sc = Number(pl.sconto) || 0;
-      const scontato = pl.scontoTipo === 'pct' ? subTot * (sc / 100) : Math.min(sc, subTot);
-      const fattore = subTot > 0 ? Math.max(0, subTot - scontato) / subTot : 1;
-      pl.voci.forEach(v => {
-        if (!v.eseguita) return;
-        const nome = v.prestazione || 'Altro';
-        map[nome] = (map[nome] || 0) + Number(v.prezzo) * fattore;
-      });
-    });
-    return Object.entries(map)
-      .map(([tipo, incasso]) => ({ tipo, incasso: Math.round(incasso) }))
-      .sort((a, b) => b.incasso - a.incasso)
-      .slice(0, 6);
-  })();
-
-  const incassoPerGiorno = (() => {
-    const GIORNI_LBL = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
-    const somma = [0, 0, 0, 0, 0, 0, 0];
-    payments.forEach(p => { if (!p.data) return; const d = new Date(p.data + 'T12:00'); somma[d.getDay()] += Number(p.importo); });
-    const ordine = [1, 2, 3, 4, 5, 6, 0]; // Lun..Dom
-    const max = Math.max(...ordine.map(i => somma[i]));
-    return ordine.map(i => ({ giorno: GIORNI_LBL[i], incasso: Math.round(somma[i]), top: somma[i] === max && max > 0 }));
-  })();
-
-  const FREQ_MESI = { Mensile: 1, Bimestrale: 2, Trimestrale: 3, Semestrale: 6, Annuale: 12 };
-  const ricorrentiMensile = spese.filter(s => s.ricorrente).reduce((s, x) => s + Number(x.importo) / (FREQ_MESI[x.frequenza] || 1), 0);
-  const speseMensili = (() => {
-    const map = {};
-    spese.filter(s => !s.ricorrente).forEach(s => { if (!s.data) return; const m = s.data.slice(0, 7); map[m] = (map[m] || 0) + Number(s.importo); });
-    const chiavi = Object.keys(map).sort();
-    const ultime6 = chiavi.slice(-6);
-    return ultime6.map(m => ({ mese: `${MESI_LBL[parseInt(m.slice(5)) - 1]} ${m.slice(2, 4)}`, unaTantum: Math.round(map[m]), ricorrenti: Math.round(ricorrentiMensile) }));
-  })();
-
-  const speseCategoria = (() => {
-    const map = {};
-    spese.filter(s => !s.ricorrente).forEach(s => { const cat = s.categoria || 'Altro'; map[cat] = (map[cat] || 0) + Number(s.importo); });
-    spese.filter(s => s.ricorrente).forEach(s => { const cat = s.categoria || 'Ricorrenti'; map[cat] = (map[cat] || 0) + Number(s.importo) / (FREQ_MESI[s.frequenza] || 1) * 12; });
-    return Object.entries(map).map(([categoria, tot]) => ({ categoria, tot: Math.round(tot) })).sort((a, b) => b.tot - a.tot).slice(0, 6);
-  })();
-
   const todoAttivi = todoList.filter(x => !x.fatto);
   const todoFatti = todoList.filter(x => x.fatto);
-
-  const MESI = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
-
-  // SectionToggle rimosso — sostituito da drag-and-drop widgets
 
   const StatCard = ({ label, value, sub, color = C.pri, bg, onClick, urgent }) => (
     <div onClick={onClick} style={{ background: bg || (color + '12'), borderRadius: 12, padding: '12px 14px', border: `1px solid ${color}25`, cursor: onClick ? 'pointer' : 'default', position: 'relative' }}>
@@ -941,6 +796,150 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                 );
               })}
             </Crd>
+          </div>
+        );
+
+        if (w.id === 'economico') return (
+          <div key="economico" style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em' }}>💰 Pannello economico</div>
+              <div style={{ display: 'flex', gap: 4, background: C.bg, borderRadius: 8, padding: 3 }}>
+                {[['mese', 'Mese'], ['anno', 'Anno']].map(([id, lbl]) => (
+                  <button key={id} onClick={() => setPeriodoEconomico(id)} style={{ border: 'none', borderRadius: 6, padding: '4px 9px', fontSize: 11, fontWeight: 700, cursor: 'pointer', background: periodoEconomico === id ? C.pri : 'transparent', color: periodoEconomico === id ? '#fff' : C.txm }}>{lbl}</button>
+                ))}
+              </div>
+            </div>
+            <Crd style={{ background: `linear-gradient(135deg, ${C.priD}, ${C.pri})`, border: 'none' }}>
+              {kpiPeriodoLoading && <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>Calcolo in corso…</div>}
+              {kpiPeriodo && !kpiPeriodoLoading && (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '5px 0' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.85)' }}>Incassato</span>
+                    <span style={{ fontSize: 17, fontWeight: 900, color: '#fff' }}>{fmt(kpiPeriodo.incassato)}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '5px 0', borderTop: '1px solid rgba(255,255,255,0.15)' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.85)' }}>− Costi</span>
+                    <span style={{ fontSize: 15, fontWeight: 800, color: 'rgba(255,255,255,0.9)' }}>{fmt(kpiPeriodo.costi_totali)}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '7px 0 0', borderTop: '1px solid rgba(255,255,255,0.15)' }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: '#fff' }}>= EBITDA</span>
+                    <span style={{ fontSize: 20, fontWeight: 900, color: kpiPeriodo.ebitda >= 0 ? '#8CFFB0' : '#FFB0B0' }}>{fmt(kpiPeriodo.ebitda)}</span>
+                  </div>
+                </>
+              )}
+            </Crd>
+          </div>
+        );
+
+        if (w.id === 'preventivi') return (
+          <div key="preventivi" style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>📋 Preventivi</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+              <StatCard label="Attesa" value={preventiviAttesa.length} color={C.pur} onClick={() => setDetailModal('attesa')} />
+              <StatCard label="Accettati" value={preventiviAccettati.length} sub={fmt(totAccettati)} color={C.acc} onClick={() => setDetailModal('accettati')} />
+              <StatCard label="Rifiutati" value={preventiviRifiutati.length} color={C.dan} onClick={() => setDetailModal('rifiutati')} />
+            </div>
+          </div>
+        );
+
+        if (w.id === 'richiami') return (
+          <div key="richiami" style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>🔔 Richiami</div>
+            <StatCard label="Da gestire" value={richiamiScaduti.length + richiamiProssimi.length} sub={`${richiamiScaduti.length} scaduti · ${richiamiProssimi.length} prossimi 30gg`} color={richiamiScaduti.length > 0 ? C.dan : C.pur} urgent={richiamiScaduti.length > 0} onClick={() => setDetailModal('richiami')} />
+          </div>
+        );
+
+        if (w.id === 'scadenze') return (
+          <div key="scadenze" style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>📆 Scadenze pagamento</div>
+            <StatCard label="Totale" value={scadenzePagamento.length} sub={`${scadenzeScadute.length} scadute · ${scadenzeProssime.length} prossime 30gg`} color={scadenzeScadute.length > 0 ? C.dan : C.pri} urgent={scadenzeScadute.length > 0} onClick={() => setDetailModal('scadenze')} />
+          </div>
+        );
+
+        if (w.id === 'ortodonzia') {
+          if (!isDentistico) return null;
+          return (
+            <div key="ortodonzia" style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>🦷 Ortodonzia</div>
+              <StatCard label="Piani attivi" value={pianiOrto.filter(o => !o.completato).length} sub={`${pianiOrto.filter(o => o.cambioScaduto).length} da cambiare · ${pianiOrto.filter(o => o.inAttesa).length} da avviare`} color={pianiOrto.some(o => o.cambioScaduto) ? C.dan : C.pur} urgent={pianiOrto.some(o => o.cambioScaduto)} onClick={() => setDetailModal('orto')} />
+            </div>
+          );
+        }
+
+        if (w.id === 'statistiche') return (
+          <div key="statistiche" style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>📊 Statistiche</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <StatCard label="Pazienti totali" value={patients.length} sub={`+${nuoviMese} questo mese`} />
+              <StatCard label="Tasso accettazione" value={`${tassoAccettazione}%`} color={tassoAccettazione >= 70 ? C.suc : tassoAccettazione >= 40 ? C.war : C.dan} onClick={() => setDetailModal('attesa')} />
+              <StatCard label="Valore medio piano" value={fmt(mediaValore)} />
+              {topPrest && <StatCard label="Top prestazione" value={topPrest[0].length > 18 ? topPrest[0].slice(0, 16) + '…' : topPrest[0]} sub={`${topPrest[1]}x eseguita`} color={C.acc} />}
+            </div>
+          </div>
+        );
+
+        if (w.id === 'grafici') return (
+          <div key="grafici" style={{ marginBottom: 16 }}>
+            <button onClick={() => setMostraGraficiDash(v => !v)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'none', border: 'none', padding: 0, marginBottom: 8, cursor: 'pointer' }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em' }}>📈 Grafici e andamento</span>
+              <span style={{ fontSize: 11, color: C.pri, fontWeight: 700 }}>{mostraGraficiDash ? 'Nascondi ▲' : 'Mostra ▼'}</span>
+            </button>
+            {mostraGraficiDash && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <Crd>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 8 }}>Ultimi mesi</div>
+                  {andamentoMensile.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessun incasso registrato</div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={180}>
+                      <ComposedChart data={andamentoMensile} margin={{ top: 4, right: 8, left: -22, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={C.brd} vertical={false} />
+                        <XAxis dataKey="mese" tick={{ fontSize: 11, fill: C.txl }} axisLine={{ stroke: C.brd }} tickLine={false} />
+                        <YAxis tick={{ fontSize: 10, fill: C.txl }} axisLine={false} tickLine={false} width={42} />
+                        <Tooltip contentStyle={{ background: C.txt, border: 'none', borderRadius: 8, color: C.sur, fontSize: 12 }} labelStyle={{ color: C.sur }} formatter={(v, n) => [fmt(v), n === 'incasso' ? 'Incasso' : 'Media mobile']} />
+                        <Bar dataKey="incasso" fill={C.priL} radius={[6, 6, 0, 0]} barSize={22} />
+                        <Line dataKey="media" stroke={C.pri} strokeWidth={2.5} dot={{ r: 3, fill: C.pri }} />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  )}
+                </Crd>
+                <Crd>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 8 }}>Dove incasso di più</div>
+                  {incassoPerPrestazione.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessuna prestazione eseguita</div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={Math.max(140, incassoPerPrestazione.length * 34)}>
+                      <BarChart data={incassoPerPrestazione} layout="vertical" margin={{ top: 4, right: 24, left: 4, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={C.brd} horizontal={false} />
+                        <XAxis type="number" tick={{ fontSize: 10, fill: C.txl }} axisLine={false} tickLine={false} />
+                        <YAxis type="category" dataKey="tipo" tick={{ fontSize: 11, fill: C.txt }} axisLine={false} tickLine={false} width={92} />
+                        <Tooltip contentStyle={{ background: C.txt, border: 'none', borderRadius: 8, color: C.sur, fontSize: 12 }} labelStyle={{ color: C.sur }} formatter={(v) => fmt(v)} />
+                        <Bar dataKey="incasso" radius={[0, 6, 6, 0]} barSize={16}>
+                          {incassoPerPrestazione.map((_, i) => <Cell key={i} fill={CHART_PALETTE[i % CHART_PALETTE.length]} />)}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </Crd>
+                <Crd>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt, marginBottom: 8 }}>Andamento spese</div>
+                  {speseMensili.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessuna spesa registrata</div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={180}>
+                      <BarChart data={speseMensili} margin={{ top: 4, right: 8, left: -22, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={C.brd} vertical={false} />
+                        <XAxis dataKey="mese" tick={{ fontSize: 11, fill: C.txl }} axisLine={{ stroke: C.brd }} tickLine={false} />
+                        <YAxis tick={{ fontSize: 10, fill: C.txl }} axisLine={false} tickLine={false} width={42} />
+                        <Tooltip contentStyle={{ background: C.txt, border: 'none', borderRadius: 8, color: C.sur, fontSize: 12 }} labelStyle={{ color: C.sur }} formatter={(v, n) => [fmt(v), n === 'unaTantum' ? 'Una tantum' : 'Ricorrenti (quota mese)']} />
+                        <Bar dataKey="ricorrenti" stackId="s" fill={C.war + '55'} radius={[0, 0, 0, 0]} barSize={22} />
+                        <Bar dataKey="unaTantum" stackId="s" fill={C.dan} radius={[6, 6, 0, 0]} barSize={22} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </Crd>
+              </div>
+            )}
           </div>
         );
 
