@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase.js';
 import { C } from '../lib/utils';
 import { Crd, Fld, Inp, Sel, Modal, Toast, Btn, Ic } from './ui';
 
-export default function GestioneUtenti({ studioId, currentUserId, features }) {
+export default function GestioneUtenti({ studioId, currentUserId, features, isStudioAdmin }) {
   const [utenti, setUtenti] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
@@ -57,14 +57,16 @@ export default function GestioneUtenti({ studioId, currentUserId, features }) {
   };
 
   const cambiaRuolo = async (id, ruolo) => {
-    await supabase.from('studio_users').update({ ruolo }).eq('id', id);
+    const { error } = await supabase.from('studio_users').update({ ruolo }).eq('id', id);
+    if (error) { setToast('Errore: ' + error.message); return; }
     setUtenti(prev => prev.map(u => u.id === id ? { ...u, ruolo } : u));
     setToast('Ruolo aggiornato ✓');
   };
 
   const rimuovi = async (id, email) => {
     if (!confirm(`Rimuovere ${email} dallo studio?`)) return;
-    await supabase.from('studio_users').delete().eq('id', id);
+    const { error } = await supabase.from('studio_users').delete().eq('id', id);
+    if (error) { setToast('Errore: ' + error.message); return; }
     setUtenti(prev => prev.filter(u => u.id !== id));
     setToast('Utente rimosso ✓');
   };
@@ -78,11 +80,18 @@ export default function GestioneUtenti({ studioId, currentUserId, features }) {
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={{ fontSize: 14, fontWeight: 800, color: C.txt }}>👥 Utenti studio</div>
-        <button onClick={() => { if (limiteRaggiunto) { setToast(`Limite di ${maxUtenti} utenti raggiunto per il tuo piano.`); return; } setForm({ email: '', nome: '', ruolo: 'utente' }); setInvitaModal(true); }}
-          style={{ background: limiteRaggiunto ? C.bg : C.pri, border: 'none', borderRadius: 9, padding: '8px 14px', color: limiteRaggiunto ? C.txl : '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-          {limiteRaggiunto ? '🔒 Limite raggiunto' : <><Ic n="plus" s={12} c="#fff" /> Invita utente</>}
-        </button>
+        {isStudioAdmin && (
+          <button onClick={() => { if (limiteRaggiunto) { setToast(`Limite di ${maxUtenti} utenti raggiunto per il tuo piano.`); return; } setForm({ email: '', nome: '', ruolo: 'utente' }); setInvitaModal(true); }}
+            style={{ background: limiteRaggiunto ? C.bg : C.pri, border: 'none', borderRadius: 9, padding: '8px 14px', color: limiteRaggiunto ? C.txl : '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+            {limiteRaggiunto ? '🔒 Limite raggiunto' : <><Ic n="plus" s={12} c="#fff" /> Invita utente</>}
+          </button>
+        )}
       </div>
+      {!isStudioAdmin && (
+        <div style={{ fontSize: 11.5, color: C.txm, background: C.bg, borderRadius: 8, padding: '8px 12px', marginBottom: 12 }}>
+          Solo gli admin dello studio possono invitare, cambiare ruolo o rimuovere utenti.
+        </div>
+      )}
       {maxUtenti != null && (
         <div style={{ fontSize: 11, color: limiteRaggiunto ? C.dan : C.txl, marginBottom: 12, marginTop: -8 }}>
           {utenti.length + 1}/{maxUtenti} utenti usati (incluso il titolare) nel piano attuale
@@ -110,7 +119,7 @@ export default function GestioneUtenti({ studioId, currentUserId, features }) {
               <span style={{ fontSize: 10, fontWeight: 700, color: ruolo.color, background: ruolo.color + '18', borderRadius: 5, padding: '2px 7px' }}>{ruolo.label}</span>
               <span style={{ fontSize: 10, fontWeight: 600, color: stato.color }}>{stato.label}</span>
             </div>
-            {!isMe && (
+            {!isMe && isStudioAdmin && (
               <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
                 <select value={u.ruolo} onChange={e => cambiaRuolo(u.id, e.target.value)}
                   style={{ fontSize: 11, padding: '4px 6px', borderRadius: 7, border: `1px solid ${C.brd}`, background: C.sur, cursor: 'pointer' }}>

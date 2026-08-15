@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase';
 
 const GIORNI_SETTIMANA = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 
-export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange, features, theme, toggleTheme }) {
+export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange, features, theme, toggleTheme, isStudioAdmin }) {
   const [si, setSi] = useState({ ...DEF_STUDIO, ...(studioInfo || {}) });
   const [toast, setToast] = useState('');
   const [tipoModal, setTipoModal] = useState(null);
@@ -781,7 +781,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       {sezione === 'team' && (
       <>
       <ProfiloUtente onNomeChange={onNomeChange} />
-      <GestioneUtenti studioId={studioInfo?.studio_id || '00000000-0000-0000-0000-000000000001'} currentUserId={currentUserId} features={features} />
+      <GestioneUtenti studioId={studioInfo?.studio_id || '00000000-0000-0000-0000-000000000001'} currentUserId={currentUserId} features={features} isStudioAdmin={isStudioAdmin} />
       </>
       )}
 

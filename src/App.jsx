@@ -51,6 +51,7 @@ export default function App() {
   const [schedaDashPaz, setSchedaDashPaz] = useState(null);
   const [syncError, setSyncError] = useState(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isStudioAdmin, setIsStudioAdmin] = useState(false);
   const [showMasterDashboard, setShowMasterDashboard] = useState(false);
   const [studioAttivo, setStudioAttivo] = useState(true);
   const [features, setFeatures] = useState(PIANI_FEATURES_DEFAULT.base);
@@ -209,7 +210,7 @@ export default function App() {
   }, [session]);
 
   useEffect(() => {
-    if (!session) { setIsSuperAdmin(false); setStudioAttivo(true); setFeatures(PIANI_FEATURES_DEFAULT.base); return; }
+    if (!session) { setIsSuperAdmin(false); setIsStudioAdmin(false); setStudioAttivo(true); setFeatures(PIANI_FEATURES_DEFAULT.base); return; }
     let cancelled = false;
     (async () => {
       const { data: admin } = await supabase.rpc('is_super_admin');
@@ -222,6 +223,13 @@ export default function App() {
           setStudioAttivo(st ? st.attivo !== false : true);
           setFeatures(computeFeatures(st?.piano || 'base', st?.feature_overrides));
         }
+
+        // Nessuna riga in studio_users per questo utente = titolare originale
+        // dello studio (nessuno lo ha invitato): trattato come admin. Stessa
+        // regola "bootstrap-safe" della funzione is_studio_admin() lato DB,
+        // che è la vera barriera — questo calcolo qui serve solo per l'interfaccia.
+        const { data: mio } = await supabase.from('studio_users').select('ruolo, stato').eq('user_id', session.user.id).eq('studio_id', studioId).maybeSingle();
+        if (!cancelled) setIsStudioAdmin(!mio || (mio.ruolo === 'admin' && mio.stato === 'attivo'));
       }
     })();
     return () => { cancelled = true; };
@@ -233,9 +241,9 @@ export default function App() {
       (page === 'spese' && !features.spese) ||
       (page === 'archivio' && !features.archivio_documenti) ||
       (page === 'controllo' && !features.controllo_gestione) ||
-      (page === 'agenteai' && (!features.assistente_ai || features.assistente_ai === 'off'))
+      (page === 'agenteai' && (!features.assistente_ai || features.assistente_ai === 'off' || !isStudioAdmin))
     ) setPage('home');
-  }, [page, features]);
+  }, [page, features, isStudioAdmin]);
 
   const makeSyncSetter = (key, setLocal, onError) => {
     return (updater) => {
@@ -356,7 +364,8 @@ export default function App() {
     (n.id !== 'wa' || features.whatsapp) &&
     (n.id !== 'spese' || features.spese) &&
     (n.id !== 'archivio' || features.archivio_documenti) &&
-    (n.id !== 'controllo' || features.controllo_gestione)
+    (n.id !== 'controllo' || features.controllo_gestione) &&
+    (n.id !== 'agenteai' || isStudioAdmin)
   );
 
   return (
@@ -438,7 +447,7 @@ export default function App() {
         {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} />}
         {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
         {page === 'agenteai' && <AgenteAISetup features={features} />}
-        {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} />}
+        {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} isStudioAdmin={isStudioAdmin} />}
       </div>
 
       <AssistenteAI />
@@ -450,6 +459,7 @@ export default function App() {
           dockSettings={mergeDockSettings(studioInfo?.dock_settings)}
           onLogout={handleLogout}
           features={features}
+          isStudioAdmin={isStudioAdmin}
         />
       ) : (
         <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: C.sur, borderTop: `1px solid ${C.brd}`, display: 'grid', gridTemplateColumns: `repeat(${navVisibile.length + 1},1fr)`, paddingBottom: 'env(safe-area-inset-bottom,0px)', zIndex: 100, boxShadow: '0 -2px 10px rgba(0,0,0,0.07)' }}>

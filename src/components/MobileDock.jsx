@@ -7,16 +7,20 @@ import { DockIc } from './ui';
 // restare visibile e rimbalzare a Home al tap (redirect già in App.jsx).
 const FEATURE_GATE_BY_NAV_ID = { wa: 'whatsapp', spese: 'spese', archivio: 'archivio_documenti', controllo: 'controllo_gestione' };
 
+// Voci visibili solo a chi ha ruolo admin nello studio (a prescindere dal piano/feature).
+const ADMIN_ONLY_NAV_IDS = new Set(['agenteai']);
+
 /* ── DOCK MOBILE ──
    5 posizioni fisse. Lo slot centrale, se impostato su DOCK_MENU_SLOT (default),
    è un pulsante rialzato che apre un popup con le altre funzioni non presenti nel dock.
    Tutto è guidato da dockSettings (slots/menuItems/iconStyle), configurabile da Setup. */
-export default function MobileDock({ page, setPage, dockSettings, onLogout, features = {} }) {
+export default function MobileDock({ page, setPage, dockSettings, onLogout, features = {}, isStudioAdmin = false }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const style = dockSettings?.iconStyle || 'vivid';
   const slots = dockSettings?.slots?.length === 5 ? dockSettings.slots : DEF_DOCK_SETTINGS.slots;
   const menuItems = dockSettings?.menuItems?.length ? dockSettings.menuItems : DEF_DOCK_SETTINGS.menuItems;
   const consentita = (id) => {
+    if (ADMIN_ONLY_NAV_IDS.has(id) && !isStudioAdmin) return false;
     const gate = FEATURE_GATE_BY_NAV_ID[id];
     return !gate || features[gate];
   };
