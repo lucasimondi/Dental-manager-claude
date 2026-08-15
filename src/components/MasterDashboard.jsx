@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Ic, Toast } from './ui';
-import { C, fmtD, VERTICALI_DISPONIBILI, FEATURE_TOGGLES, PIANI_FEATURES_DEFAULT, computeFeatures, ASSISTENTE_AI_LIVELLI } from '../lib/utils';
+import { C, fmtD, VERTICALI_DISPONIBILI, FEATURE_TOGGLES, PIANI_FEATURES_DEFAULT, computeFeatures, ASSISTENTE_AI_LIVELLI, LIVELLI_AZIONE_AGENTE } from '../lib/utils';
 
 const PIANI = [
   { id: 'base', label: 'Base' },
@@ -222,6 +222,16 @@ export default function MasterDashboard({ onClose }) {
               </>
             );
           })()}
+
+          <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginTop: 16, marginBottom: 8 }}>Tetto autonomia agente AI</div>
+          <div style={{ fontSize: 10, color: C.txl, marginBottom: 8 }}>
+            Limite massimo di autonomia che questo studio può scegliersi dal pannello Agente AI (indipendente dal piano). Lo studio può stare sotto questo tetto, mai superarlo.
+          </div>
+          <Fld label="Tetto massimo per questo studio">
+            <Sel value={form.featureOverrides.agente_azione_max || 'completo'} onChange={(e) => setToggle('agente_azione_max', e.target.value === 'completo' ? undefined : e.target.value)}>
+              {LIVELLI_AZIONE_AGENTE.slice().reverse().map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
+            </Sel>
+          </Fld>
 
           <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginTop: 16, marginBottom: 8 }}>Utenti dello studio</div>
 

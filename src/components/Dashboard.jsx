@@ -167,6 +167,35 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
     setTodoLoading(false);
   };
 
+  // Promemoria "completa dati": scansione deterministica (nessuna chiamata
+  // AI, quindi nessun costo) sugli appuntamenti confermati di ieri — se il
+  // paziente ha un piano di cura con prestazioni non ancora segnate come
+  // eseguite, genera UN promemoria per giorno (dedup per testo, come il bot
+  // Richiami: non ricompare se già presente, anche se l'utente l'ha già
+  // segnato fatto o cancellato).
+  useEffect(() => {
+    if (!appointments?.length || !plans?.length) return;
+    const ieri = new Date(new Date(t + 'T12:00').getTime() - 86400000).toISOString().slice(0, 10);
+    const appuntamentiIeri = appointments.filter(a => a.data === ieri && a.stato === 'confermato');
+    if (appuntamentiIeri.length === 0) return;
+    const idVisti = new Set(appuntamentiIeri.map(a => a.pazienteId).filter(Boolean));
+    const pazientiDaCompletare = [...idVisti].filter(pid =>
+      plans.some(pl => pl.pazienteId === pid && (pl.voci || []).some(v => !v.eseguita))
+    );
+    if (pazientiDaCompletare.length === 0) return;
+
+    const marker = `Completa dati: appuntamenti del ${fmtD(ieri)}`;
+    (async () => {
+      const { data: esistenti } = await supabase.from('todos').select('id').ilike('testo', `%${marker}%`);
+      if (esistenti && esistenti.length > 0) return;
+      const n = pazientiDaCompletare.length;
+      const testo = `🗒️ ${marker} — ${n} pazient${n === 1 ? 'e ha' : 'i hanno'} prestazioni non ancora segnate come eseguite in Piani di Cura.`;
+      const nuova = { id: Date.now(), testo, fatto: false, data: t };
+      const { error } = await supabase.from('todos').insert([nuova]);
+      if (!error) setTodoList(prev => [nuova, ...prev]);
+    })();
+  }, [appointments, plans]);
+
   const addTodo = async () => {
     if (!todoInput.trim()) return;
     const nuova = { id: Date.now(), testo: todoInput.trim(), fatto: false, data: t };

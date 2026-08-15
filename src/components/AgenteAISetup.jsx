@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic } from './ui';
-import { C, TIPI_EFFETTO_AZIONE, TIPI_PARAMETRO_AZIONE } from '../lib/utils';
+import { C, TIPI_EFFETTO_AZIONE, TIPI_PARAMETRO_AZIONE, LIVELLI_AZIONE_AGENTE } from '../lib/utils';
 import { estraiTestoDocumento } from '../lib/estraiTestoDocumento';
 
 const TABS = [
@@ -9,6 +9,7 @@ const TABS = [
   ['faq', '❓ FAQ'],
   ['documenti', '📄 Documenti'],
   ['azioni', '⚡ Azioni'],
+  ['livello', '⚙️ Livello & Costi'],
 ];
 
 // Le tabelle ai_agent_* non hanno una colonna studio_id riempita da un
@@ -56,6 +57,7 @@ export default function AgenteAISetup({ features }) {
       {tab === 'faq' && <TabFaq onToast={setToast} />}
       {tab === 'documenti' && <TabDocumenti onToast={setToast} />}
       {tab === 'azioni' && <TabAzioni onToast={setToast} />}
+      {tab === 'livello' && <TabLivello features={features} onToast={setToast} />}
     </div>
   );
 }
@@ -410,6 +412,102 @@ function TabAzioni({ onToast }) {
             <Btn ch="Salva" onClick={salva} dis={!pronta} full />
           </div>
         </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ── TAB LIVELLO & COSTI ── */
+function TabLivello({ features, onToast }) {
+  const [azione, setAzione] = useState(features?.agente_azione || 'completo');
+  const [saving, setSaving] = useState(false);
+  const ceiling = features?.agente_azione_max || 'completo';
+  const rankCeiling = LIVELLI_AZIONE_AGENTE.find((l) => l.id === ceiling)?.rank ?? 2;
+
+  const [usoLoading, setUsoLoading] = useState(true);
+  const [uso, setUso] = useState({ chat: { chiamate: 0, costo: 0 }, consigli_proattivi: { chiamate: 0, costo: 0 } });
+
+  useEffect(() => {
+    const inizioMese = new Date();
+    inizioMese.setDate(1);
+    const inizioMeseStr = inizioMese.toISOString().slice(0, 10);
+    supabase.from('ai_agent_usage').select('fonte, costo_usd').gte('creato_il', inizioMeseStr).then(({ data }) => {
+      const acc = { chat: { chiamate: 0, costo: 0 }, consigli_proattivi: { chiamate: 0, costo: 0 } };
+      for (const r of (data || [])) {
+        if (!acc[r.fonte]) continue;
+        acc[r.fonte].chiamate += 1;
+        acc[r.fonte].costo += Number(r.costo_usd || 0);
+      }
+      setUso(acc);
+      setUsoLoading(false);
+    });
+  }, []);
+
+  const salva = async (nuovoAzione) => {
+    setSaving(true);
+    const { error } = await supabase.rpc('set_agente_azione', { p_azione: nuovoAzione });
+    setSaving(false);
+    if (error) { onToast('Errore: ' + error.message); return; }
+    setAzione(nuovoAzione);
+    onToast('Livello aggiornato ✓');
+  };
+
+  const costoTotale = uso.chat.costo + uso.consigli_proattivi.costo;
+
+  return (
+    <div>
+      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Livello di autonomia</div>
+      <div style={{ fontSize: 11.5, color: C.txm, marginBottom: 12, lineHeight: 1.5 }}>
+        Controlla quanto l'agente può fare da solo, in chat e nei consigli proattivi — indipendente dal piano.
+        {ceiling !== 'completo' && (
+          <> Per questo studio è impostato un tetto massimo: <b>{LIVELLI_AZIONE_AGENTE.find((l) => l.id === ceiling)?.label}</b>.</>
+        )}
+      </div>
+      {LIVELLI_AZIONE_AGENTE.slice().reverse().map((l) => {
+        const disabilitato = l.rank > rankCeiling;
+        const selezionato = azione === l.id;
+        return (
+          <Crd key={l.id} onClick={() => !disabilitato && !saving && salva(l.id)}
+            style={{ marginBottom: 8, cursor: disabilitato ? 'not-allowed' : 'pointer', opacity: disabilitato ? 0.5 : 1, border: `2px solid ${selezionato ? C.pri : C.brd}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${selezionato ? C.pri : C.brd}`, background: selezionato ? C.pri : 'transparent', flexShrink: 0 }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 13 }}>{l.label}</div>
+                <div style={{ fontSize: 11.5, color: C.txm, marginTop: 2 }}>{l.descr}</div>
+                {disabilitato && <div style={{ fontSize: 10.5, color: C.dan, marginTop: 3 }}>Non disponibile: supera il tetto impostato per questo studio.</div>}
+              </div>
+            </div>
+          </Crd>
+        );
+      })}
+
+      <div style={{ fontSize: 13, fontWeight: 700, marginTop: 22, marginBottom: 6 }}>Costo di questo mese</div>
+      <div style={{ fontSize: 11.5, color: C.txm, marginBottom: 10, lineHeight: 1.5 }}>
+        Stima basata sui token realmente consumati da ogni chiamata a Claude (chat + consigli proattivi).
+      </div>
+      {usoLoading ? (
+        <div style={{ textAlign: 'center', color: C.txl, padding: 20 }}>⏳ Caricamento...</div>
+      ) : (
+        <>
+          <Crd style={{ marginBottom: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.txm }}>Totale stimato</div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: C.pri }}>${costoTotale.toFixed(2)}</div>
+            </div>
+          </Crd>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Crd style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.txm }}>💬 Chat</div>
+              <div style={{ fontSize: 15, fontWeight: 800, marginTop: 2 }}>${uso.chat.costo.toFixed(2)}</div>
+              <div style={{ fontSize: 10.5, color: C.txl }}>{uso.chat.chiamate} chiamate</div>
+            </Crd>
+            <Crd style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.txm }}>🧭 Consigli proattivi</div>
+              <div style={{ fontSize: 15, fontWeight: 800, marginTop: 2 }}>${uso.consigli_proattivi.costo.toFixed(2)}</div>
+              <div style={{ fontSize: 10.5, color: C.txl }}>{uso.consigli_proattivi.chiamate} run</div>
+            </Crd>
+          </div>
+        </>
       )}
     </div>
   );

@@ -332,6 +332,16 @@ export const ASSISTENTE_AI_LIVELLI = [
   { id: 'premium', label: 'Premium (completo, azioni incluse)' },
 ];
 
+// Livello di autonomia dell'agente AI (dial indipendente dal piano/livello
+// assistente_ai): quanto può fare da solo, in chat e nei consigli proattivi.
+// rank: usato per confrontare il livello scelto dallo studio con il tetto
+// massimo impostato dal super admin (agente_azione_max in feature_overrides).
+export const LIVELLI_AZIONE_AGENTE = [
+  { id: 'consulente', rank: 0, label: 'Consulente (solo lettura e consigli)', descr: 'Nessuna azione di scrittura in chat, nessuna scansione commerciale proattiva. Resta attivo per analisi e consigli CFO/marketing.' },
+  { id: 'medio', rank: 1, label: 'Medio (azioni con conferma)', descr: 'Ogni azione di scrittura in chat richiede conferma esplicita. Niente scanner commerciale automatico nei consigli proattivi.' },
+  { id: 'completo', rank: 2, label: 'Completo (attivo)', descr: 'Comportamento pieno: azioni dirette dove previsto, scanner commerciale proattivo incluso.' },
+];
+
 export const FEATURE_TOGGLES = [
   { id: 'whatsapp', label: 'WhatsApp (manuale)' },
   { id: 'whatsapp_automatico', label: 'WhatsApp Automatico (AI + promemoria)' },
