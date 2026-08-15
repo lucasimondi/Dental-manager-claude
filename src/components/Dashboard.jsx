@@ -62,7 +62,7 @@ const saveWidgets = (ws) => {
 const NOMI_F = ['alessia','alice','anna','beatrice','camilla','chiara','claudia','elena','elisa','emma','federica','francesca','giulia','ilaria','laura','lisa','lucia','luisa','mara','maria','marina','martina','monica','paola','roberta','sara','silvia','sofia','valentina','veronica','virginia'];
 const getSaluto = (nome) => { if (!nome) return 'Benvenuto'; const ora = new Date().getHours(); const s = ora < 12 ? 'Buongiorno' : ora < 18 ? 'Buon pomeriggio' : 'Buonasera'; const p = nome.trim().split(' ')[0].toLowerCase(); const fem = NOMI_F.includes(p) || (p.endsWith('a') && !['luca','andrea','mattia','nicola','enea'].includes(p)); return s + ', ' + (fem ? 'cara ' : 'caro ') + nome.trim().split(' ')[0]; };
 
-export default function Dashboard({ patients, appointments, setAppointments, payments, plans, onOpenPaz, appTypes, onGoAgenda, templates, userName: userNameProp, si, features, studioId }) {
+export default function Dashboard({ patients, appointments, setAppointments, payments, plans, richiami = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, templates, userName: userNameProp, si, features, studioId }) {
   // Widget economico/operativi (preventivi, richiami, scadenze, ortodonzia,
   // statistiche, grafici): stessa fonte di calcolo di Controllo di Gestione,
   // vedi useControlloDati — evita di ricalcolare qui gli stessi numeri con
@@ -74,7 +74,6 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
     mInc, aInc, extMese, extAnno, incassoLucaMese, incassoLucaAnno,
     esegDaInc, totEsegDaInc, accNonEseg, totAccNonEseg,
     preventiviAccettati, preventiviAttesa, preventiviRifiutati, totAccettati, tassoAccettazione,
-    richiamiScaduti, richiamiProssimi,
     scadenzePagamento, scadenzeScadute, scadenzeProssime,
     pianiOrto,
     nuoviMese, mediaValore, topPrest,
@@ -514,16 +513,6 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
         </Modal>
       )}
 
-      {detailModal === 'richiami' && (
-        <Modal title="🔔 Richiami" onClose={() => setDetailModal(null)} wide>
-          {richiamiScaduti.length > 0 && <><div style={{ fontSize: 11, fontWeight: 800, color: C.dan, textTransform: 'uppercase', marginBottom: 8 }}>⚠️ Scaduti ({richiamiScaduti.length})</div>
-          {richiamiScaduti.map((r, i) => <Crd key={i} style={{ marginBottom: 7, borderLeft: `3px solid ${C.dan}` }}><div style={{ display: 'flex', justifyContent: 'space-between' }}><div onClick={() => { setDetailModal(null); onOpenPaz(r.paz, 'info'); }} style={{ fontWeight: 700, color: C.pri, cursor: 'pointer', fontSize: 13 }}>{r.paz.nome} {r.paz.cognome} ›</div><span style={{ fontSize: 11, fontWeight: 700, color: C.dan }}>{fmtD(r.v.richiamoData)}</span></div><div style={{ fontSize: 11, color: C.txm }}>{r.v.richiamoTipo || 'Controllo'}</div></Crd>)}</>}
-          {richiamiProssimi.length > 0 && <><div style={{ fontSize: 11, fontWeight: 800, color: C.pur, textTransform: 'uppercase', margin: '12px 0 8px' }}>📅 Prossimi 30gg ({richiamiProssimi.length})</div>
-          {richiamiProssimi.map((r, i) => <Crd key={i} style={{ marginBottom: 7, borderLeft: `3px solid ${C.pur}` }}><div style={{ display: 'flex', justifyContent: 'space-between' }}><div onClick={() => { setDetailModal(null); onOpenPaz(r.paz, 'info'); }} style={{ fontWeight: 700, color: C.pri, cursor: 'pointer', fontSize: 13 }}>{r.paz.nome} {r.paz.cognome} ›</div><span style={{ fontSize: 11, fontWeight: 700, color: C.pur }}>{fmtD(r.v.richiamoData)}</span></div></Crd>)}</>}
-          {richiamiScaduti.length === 0 && richiamiProssimi.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Nessun richiamo 🎉</div>}
-        </Modal>
-      )}
-
       {detailModal === 'scadenze' && (
         <Modal title="📆 Scadenze pagamento" onClose={() => setDetailModal(null)} wide>
           {scadenzePagamento.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Nessuna scadenza impostata</div>}
@@ -852,12 +841,17 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           </div>
         );
 
-        if (w.id === 'richiami') return (
-          <div key="richiami" style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>🔔 Richiami</div>
-            <StatCard label="Da gestire" value={richiamiScaduti.length + richiamiProssimi.length} sub={`${richiamiScaduti.length} scaduti · ${richiamiProssimi.length} prossimi 30gg`} color={richiamiScaduti.length > 0 ? C.dan : C.pur} urgent={richiamiScaduti.length > 0} onClick={() => setDetailModal('richiami')} />
-          </div>
-        );
+        if (w.id === 'richiami') {
+          const t2 = today();
+          const aperti = richiami.filter(r => r.stato === 'da_fare');
+          const scad = aperti.filter(r => r.dataScadenza < t2).length;
+          return (
+            <div key="richiami" style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>🔔 Richiami</div>
+              <StatCard label="Da gestire" value={aperti.length} sub={`${scad} scaduti`} color={scad > 0 ? C.dan : C.pur} urgent={scad > 0} onClick={() => onGoRichiami && onGoRichiami()} />
+            </div>
+          );
+        }
 
         if (w.id === 'scadenze') return (
           <div key="scadenze" style={{ marginBottom: 16 }}>

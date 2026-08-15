@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { supabase, DB } from './lib/supabase.js';
-import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_APP_TYPES, DEF_TPL_GENERICO, DEF_APP_TYPES_GENERICO, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, DEF_DOCK_SETTINGS } from './lib/utils';
+import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_APP_TYPES, DEF_TPL_GENERICO, DEF_APP_TYPES_GENERICO, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, DEF_DOCK_SETTINGS, uid } from './lib/utils';
+import { generaRichiamiBot } from './lib/richiamiBot';
 import { salvaPosizione, leggiPosizione, pulisciPosizione } from './lib/posizioneNavigazione';
 import MobileDock from './components/MobileDock.jsx';
 import { useIsMobile } from './lib/useIsMobile';
@@ -21,6 +22,7 @@ import Spese from './components/Spese.jsx';
 import ArchivioDocs from './components/ArchivioDocs.jsx';
 import Listino from './components/Listino.jsx';
 import Agenda from './components/Agenda.jsx';
+import Richiami from './components/Richiami.jsx';
 import WhatsApp from './components/WhatsApp.jsx';
 import Impostazioni from './components/Impostazioni.jsx';
 import MasterDashboard from './components/MasterDashboard.jsx';
@@ -42,6 +44,7 @@ export default function App() {
   const [userName, setUserName] = useState('');
   const [implants, setImplants] = useState([]);
   const [impegni, setImpegni] = useState([]);
+  const [richiami, setRichiami] = useState([]);
   const [initPatId, setInitPatId] = useState(null);
   const [agendaInitPaz, setAgendaInitPaz] = useState(null);
   const [schedaDashPaz, setSchedaDashPaz] = useState(null);
@@ -86,7 +89,7 @@ export default function App() {
     (async () => {
       setDataLoading(true);
       try {
-        const [p, a, pl, py, pr, tp, at, im, ip, si] = await Promise.all([
+        const [p, a, pl, py, pr, tp, at, im, ip, ri, si] = await Promise.all([
           DB.getAll('dm_p'),
           DB.getAll('dm_a'),
           DB.getAll('dm_pl'),
@@ -96,6 +99,7 @@ export default function App() {
           DB.getAll('dm_at'),
           DB.getAll('dm_im'),
           DB.getAll('dm_ip'),
+          DB.getAll('dm_ri'),
           DB.getStudioInfo(),
         ]);
         if (cancelled) return;
@@ -105,6 +109,7 @@ export default function App() {
         setPayments(py || []);
         setImplants(im || []);
         setImpegni(ip || []);
+        setRichiami(ri || []);
 
         // Determina il vertical PRIMA di seedare, usando 'si' appena arrivato dalla stessa fetch
         // (non ancora salvato in state) — default 'dentistico' se lo studio non l'ha ancora impostato
@@ -194,6 +199,10 @@ export default function App() {
         const ip = await DB.getAll('dm_ip');
         setImpegni(ip || []);
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'richiami' }, async () => {
+        const ri = await DB.getAll('dm_ri');
+        setRichiami(ri || []);
+      })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [session]);
@@ -279,6 +288,26 @@ export default function App() {
   const setAppTypesSync = makeSyncSetter('dm_at', setAppTypes, setSyncError);
   const setImplantsSync = makeSyncSetter('dm_im', setImplants, setSyncError);
   const setImpegniSync = makeSyncSetter('dm_ip', setImpegni, setSyncError);
+  const setRichiamiSync = makeSyncSetter('dm_ri', setRichiami, setSyncError);
+
+  // Scansione automatica del bot Richiami: ogni volta che pazienti, piani,
+  // pagamenti o agenda cambiano (es. si segna un'igiene come eseguita, si
+  // registra un pagamento sospeso), ricalcola le proposte e le applica —
+  // così i richiami restano aggiornati indipendentemente dalla pagina in cui
+  // si trova l'utente, senza bisogno di aprire apposta la sezione Richiami.
+  // La guardia "nulla da cambiare" evita un loop: applicare un array vuoto
+  // di modifiche produrrebbe comunque un nuovo riferimento di stato e
+  // rieseguirebbe l'effetto all'infinito.
+  useEffect(() => {
+    if (dataLoading || !session) return;
+    const { proposte, daRimuovere } = generaRichiamiBot({ patients, plans, payments, appointments, richiami });
+    if (proposte.length === 0 && daRimuovere.length === 0) return;
+    setRichiamiSync((prev) => [
+      ...prev.filter((r) => !daRimuovere.includes(r.id)),
+      ...proposte.map((p) => ({ ...p, id: uid() })),
+    ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataLoading, session, patients, plans, payments, appointments, richiami]);
 
   const setStudioInfoSync = (updaterOrVal) => {
     setStudioInfo((prev) => {
@@ -297,7 +326,7 @@ export default function App() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    setPatients([]); setAppointments([]); setPlans([]); setPayments([]); setImpegni([]);
+    setPatients([]); setAppointments([]); setPlans([]); setPayments([]); setImpegni([]); setRichiami([]);
     setPricelist([]); setTemplates([]); setAppTypes([]); setStudioInfo(DEF_STUDIO); setImplants([]);
     setPage('home');
   };
@@ -374,7 +403,7 @@ export default function App() {
       )}
 
       <div id="app-scroll" style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: 13, paddingBottom: isMobile ? 98 : 78 }}>
-        {page === 'home' && <Dashboard patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} />}
+        {page === 'home' && <Dashboard patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} />}
         {page === 'paz' && (
           <Pazienti
             patients={patients} setPatients={setPatientsSync}
@@ -399,6 +428,7 @@ export default function App() {
         {page === 'paga' && <Pagamenti patients={patients} payments={payments} setPayments={setPaymentsSync} plans={plans} />}
         {page === 'listino' && <Listino pricelist={pricelist} setPricelist={setPricelistSync} si={studioInfo} />}
         {page === 'agenda' && <Agenda patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} />}
+        {page === 'richiami' && <Richiami patients={patients} plans={plans} payments={payments} appointments={appointments} richiami={richiami} setRichiami={setRichiamiSync} templates={templates} features={features} onOpenPaz={goSchedaPaz} />}
         {page === 'spese' && <Spese />}
         {page === 'controllo' && <ControlloGestione studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} payments={payments} appointments={appointments} onOpenPaz={goSchedaPaz} isDentistico={!studioInfo?.vertical || studioInfo.vertical === 'dentistico'} />}
         {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} />}

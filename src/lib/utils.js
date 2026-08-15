@@ -93,6 +93,14 @@ export const SCADENZA_PRESET = [
   { label: '1 anno', mesi: 12 },
 ];
 
+/* ── SEZIONE RICHIAMI: categorie e stati ── */
+export const RICHIAMO_CATEGORIE = {
+  clinico: { label: 'Clinico', icona: '🦷', colore: '#1A6B8A' },
+  preventivo: { label: 'Preventivo in standby', icona: '📋', colore: '#7C3AED' },
+  incasso: { label: 'Incasso in standby', icona: '💶', colore: '#E63946' },
+  generico: { label: 'Generico', icona: '📌', colore: '#5F6B7A' },
+};
+
 /* ── DEFAULT DATA ── */
 export const DEF_PRICE = [
   // ── CHIRURGIA ORALE ──
@@ -328,6 +336,7 @@ export const NAV = [
   { id: 'paga', l: 'Pagamenti', ic: 'pay' },
   { id: 'listino', l: 'Listino', ic: 'list' },
   { id: 'agenda', l: 'Agenda', ic: 'cal' },
+  { id: 'richiami', l: 'Richiami', ic: 'clk' },
   { id: 'spese', l: 'Spese', ic: 'spe' },
   { id: 'controllo', l: 'Controllo', ic: 'plan' },
   { id: 'archivio', l: 'Documenti', ic: 'plan' },
@@ -350,7 +359,7 @@ export const DOCK_MENU_SLOT = '__menu__';
 export const DEF_DOCK_SETTINGS = {
   iconStyle: 'vivid',
   slots: ['home', 'agenda', DOCK_MENU_SLOT, 'paga', 'wa'],
-  menuItems: ['paz', 'piani', 'listino', 'spese', 'archivio', 'set'],
+  menuItems: ['paz', 'piani', 'listino', 'richiami', 'spese', 'archivio', 'set'],
 };
 
 // Tutte le voci disponibili per comporre dock/popup, indicizzate per id (comodo per i <select>)
