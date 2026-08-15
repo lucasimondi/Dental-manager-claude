@@ -8,6 +8,7 @@ import { useControlloDati } from '../lib/useControlloDati';
 
 const WIDGETS_DEFAULT = [
   { id: 'agenda',       label: '📅 Agenda oggi',            attivo: true },
+  { id: 'consigli_ai',  label: '🧭 Consigli AI',              attivo: true },
   { id: 'todo',         label: '✅ Attività e promemoria',   attivo: true },
   { id: 'appuntamenti', label: '📅 Prossimi appuntamenti',   attivo: true },
   { id: 'wa',           label: '💬 Reminder WhatsApp',       attivo: false },
@@ -62,7 +63,7 @@ const saveWidgets = (ws) => {
 const NOMI_F = ['alessia','alice','anna','beatrice','camilla','chiara','claudia','elena','elisa','emma','federica','francesca','giulia','ilaria','laura','lisa','lucia','luisa','mara','maria','marina','martina','monica','paola','roberta','sara','silvia','sofia','valentina','veronica','virginia'];
 const getSaluto = (nome) => { if (!nome) return 'Benvenuto'; const ora = new Date().getHours(); const s = ora < 12 ? 'Buongiorno' : ora < 18 ? 'Buon pomeriggio' : 'Buonasera'; const p = nome.trim().split(' ')[0].toLowerCase(); const fem = NOMI_F.includes(p) || (p.endsWith('a') && !['luca','andrea','mattia','nicola','enea'].includes(p)); return s + ', ' + (fem ? 'cara ' : 'caro ') + nome.trim().split(' ')[0]; };
 
-export default function Dashboard({ patients, appointments, setAppointments, payments, plans, richiami = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, templates, userName: userNameProp, si, features, studioId }) {
+export default function Dashboard({ patients, appointments, setAppointments, payments, plans, richiami = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, templates, userName: userNameProp, si, features, studioId, isStudioAdmin }) {
   // Widget economico/operativi (preventivi, richiami, scadenze, ortodonzia,
   // statistiche, grafici): stessa fonte di calcolo di Controllo di Gestione,
   // vedi useControlloDati — evita di ricalcolare qui gli stessi numeri con
@@ -92,6 +93,51 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
     });
   }, []);
   const anno = t.slice(0, 4);
+
+  // ── Consigli AI: consulente CFO/marketing proattivo, generato in
+  // background (genera-consigli-ai) senza che nessuno apra la chat — stesso
+  // spirito del bot Richiami. Solo per admin dello studio (RLS lo impone
+  // comunque) e solo al livello Premium dell'assistente (è la funzione che
+  // lo genera a deciderlo server-side; qui evitiamo solo la chiamata inutile).
+  const [consigli, setConsigli] = useState([]);
+  const [consigliLoading, setConsigliLoading] = useState(false);
+  const [consigliErr, setConsigliErr] = useState('');
+  const consigliAttivi = isStudioAdmin && features?.assistente_ai === 'premium';
+
+  const rigeneraConsigli = async () => {
+    setConsigliLoading(true);
+    setConsigliErr('');
+    try {
+      const { data, error } = await supabase.functions.invoke('genera-consigli-ai');
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setConsigli(data.consigli || []);
+    } catch (e) {
+      setConsigliErr(e.message || 'Errore nella generazione dei consigli');
+    } finally {
+      setConsigliLoading(false);
+    }
+  };
+
+  const segnaLettoConsiglio = async (id) => {
+    setConsigli((prev) => prev.map((c) => (c.id === id ? { ...c, letto: true } : c)));
+    await supabase.from('ai_agent_consigli').update({ letto: true }).eq('id', id);
+  };
+
+  useEffect(() => {
+    if (!consigliAttivi) return;
+    let cancelled = false;
+    supabase.from('ai_agent_consigli').select('*').order('creato_il', { ascending: false }).limit(4).then(({ data }) => {
+      if (cancelled) return;
+      setConsigli(data || []);
+      const piuRecente = data && data[0] ? new Date(data[0].creato_il) : null;
+      const settimanaFa = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      if (!piuRecente || piuRecente < settimanaFa) rigeneraConsigli();
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [consigliAttivi]);
+
   const [detailModal, setDetailModal] = useState(null);
   const [editApp, setEditApp] = useState(null);
   const [editForm, setEditForm] = useState(null);
@@ -213,7 +259,9 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           {/* TAB WIDGET */}
           {themeTab === 'widgets' && <>
             <div style={{ fontSize: 12, color: C.txm, marginBottom: 12 }}>Trascina ⠿ per riordinare · toggle per attivare/disattivare</div>
-            {widgets.map((w, i) => (
+            {widgets.map((w, i) => {
+              if (w.id === 'consigli_ai' && !consigliAttivi) return null;
+              return (
               <div key={w.id} draggable
                 onDragStart={e => e.dataTransfer.setData('widgetIdx', String(i))}
                 onDragOver={e => e.preventDefault()}
@@ -237,7 +285,8 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                   <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: w.attivo !== false ? 23 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
                 </button>
               </div>
-            ))}
+              );
+            })}
             <button onClick={() => { setWidgets([...WIDGETS_DEFAULT]); saveWidgets([...WIDGETS_DEFAULT]); }} style={{ width: '100%', padding: '9px', marginTop: 8, background: C.danL, border: 'none', borderRadius: 9, color: C.dan, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>↺ Ripristina ordine predefinito</button>
           </>}
 
@@ -668,6 +717,42 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
             </div>}
           </div>
         );
+
+        if (w.id === 'consigli_ai') {
+          if (!consigliAttivi) return null;
+          const nonLetti = consigli.filter((c) => !c.letto);
+          return (
+            <div key="consigli_ai" style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em' }}>🧭 Consigli AI</div>
+                <button onClick={rigeneraConsigli} disabled={consigliLoading} style={{ background: 'none', border: 'none', cursor: consigliLoading ? 'default' : 'pointer', fontSize: 11, fontWeight: 700, color: C.pri, opacity: consigliLoading ? 0.5 : 1 }}>
+                  {consigliLoading ? '⏳ Genero…' : '🔄 Rigenera'}
+                </button>
+              </div>
+              {consigliErr && <div style={{ fontSize: 11, color: C.dan, marginBottom: 8 }}>{consigliErr}</div>}
+              {!consigliLoading && consigli.length === 0 && !consigliErr && (
+                <Crd style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Genero i primi consigli, un attimo…</Crd>
+              )}
+              {!consigliLoading && consigli.length > 0 && nonLetti.length === 0 && (
+                <Crd style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Hai letto tutti i consigli di questa settimana ✓</Crd>
+              )}
+              {nonLetti.map((c) => (
+                <Crd key={c.id} style={{ marginBottom: 8, borderLeft: `3px solid ${c.categoria === 'cfo' ? C.pri : C.pur}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ marginBottom: 5 }}><Bdg ch={c.categoria === 'cfo' ? '💰 CFO' : '📈 Marketing'} co={c.categoria === 'cfo' ? C.pri : C.pur} /></div>
+                      <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 3, color: C.txt }}>{c.titolo}</div>
+                      <div style={{ fontSize: 12, color: C.txm, lineHeight: 1.45 }}>{c.testo}</div>
+                    </div>
+                    <button onClick={() => segnaLettoConsiglio(c.id)} title="Segna come letto" style={{ background: C.sucL, border: 'none', borderRadius: 7, padding: 6, cursor: 'pointer', flexShrink: 0, height: 'fit-content' }}>
+                      <Ic n="ok" s={13} c={C.suc} />
+                    </button>
+                  </div>
+                </Crd>
+              ))}
+            </div>
+          );
+        }
 
         if (w.id === 'todo') return (
           <div key="todo" style={{ marginBottom: 16 }}>
