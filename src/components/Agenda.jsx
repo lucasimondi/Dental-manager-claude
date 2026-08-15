@@ -462,21 +462,6 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const [toast, setToast] = useState('');
   const [editApp, setEditApp] = useState(null);
 
-  // Ricostruisce editApp da form._editId al primo caricamento: se l'app si
-  // è ricaricata da zero mentre si stava modificando un appuntamento
-  // esistente, form._editId è già stato ripristinato da useFormPersistente,
-  // ma editApp no (non viene persistito, va ritrovato tra gli appuntamenti
-  // già caricati). Una volta sola: non deve più intervenire dopo, altrimenti
-  // sovrascriverebbe apriNuovo/apriEdit chiamati dall'utente in seguito.
-  const editRestoredRef = useRef(false);
-  useEffect(() => {
-    if (editRestoredRef.current) return;
-    if (form._editId == null) { editRestoredRef.current = true; return; }
-    if (!appointments || appointments.length === 0) return;
-    setEditApp(appointments.find(a => a.id === form._editId) || null);
-    editRestoredRef.current = true;
-  }, [appointments, form._editId]);
-
   // Richieste di prenotazione arrivate dalla pagina pubblica (nessuna
   // integrazione live con gli slot: sono solo richieste da rivedere a mano
   // e trasformare in appuntamento vero, o rifiutare).
@@ -507,6 +492,22 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   // se l'app si ricarica da zero a metà modifica sappiamo quale riaprire
   // (vedi effetto di ripristino subito sotto).
   const [form, setForm, clearFormDraft] = useFormPersistente('nuovo_appuntamento', { pazienteId: '', data: today(), ora: '09:00', durata: agSet.durataDefault, tipo: tipiList[0]?.nome || 'Visita', colore: tipiList[0]?.colore || C.pri, note: '', stato: 'confermato', ripeti: 'nessuna', ripetiFino: '', _editId: null });
+
+  // Ricostruisce editApp da form._editId al primo caricamento: se l'app si
+  // è ricaricata da zero mentre si stava modificando un appuntamento
+  // esistente, form._editId è già stato ripristinato da useFormPersistente,
+  // ma editApp no (non viene persistito, va ritrovato tra gli appuntamenti
+  // già caricati). Una volta sola: non deve più intervenire dopo, altrimenti
+  // sovrascriverebbe apriNuovo/apriEdit chiamati dall'utente in seguito.
+  const editRestoredRef = useRef(false);
+  useEffect(() => {
+    if (editRestoredRef.current) return;
+    if (form._editId == null) { editRestoredRef.current = true; return; }
+    if (!appointments || appointments.length === 0) return;
+    setEditApp(appointments.find(a => a.id === form._editId) || null);
+    editRestoredRef.current = true;
+  }, [appointments, form._editId]);
+
   const [waModal, setWaModal] = useState(null);
   const [waMsg, setWaMsg] = useState('');
   const [waTplId, setWaTplId] = useState('');
