@@ -1,24 +1,27 @@
 import React, { useState } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Ic } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Ic, Bdg } from './ui';
 import { C, uid, fmt, DEF_PRICE } from '../lib/utils';
+
+const FORM_VUOTO = { cat: 'Igiene', cod: '', nome: '', prezzo: '', richiamoMesi: '' };
 
 export default function Listino({ pricelist, setPricelist, si }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const [modal, setModal] = useState(false);
   const [editItem, setEditItem] = useState(null);
-  const [form, setForm] = useState({ cat: 'Igiene', cod: '', nome: '', prezzo: '' });
+  const [form, setForm] = useState(FORM_VUOTO);
   const [toast, setToast] = useState('');
   const [confirmDelId, setConfirmDelId] = useState(null);
 
   const cats = [...new Set(pricelist.map((p) => p.cat))];
 
-  const openNew = () => { setForm({ cat: 'Igiene', cod: '', nome: '', prezzo: '' }); setEditItem(null); setModal(true); };
-  const openEdit = (item) => { setForm({ ...item, prezzo: String(item.prezzo) }); setEditItem(item); setModal(true); };
+  const openNew = () => { setForm(FORM_VUOTO); setEditItem(null); setModal(true); };
+  const openEdit = (item) => { setForm({ ...FORM_VUOTO, ...item, prezzo: String(item.prezzo), richiamoMesi: item.richiamoMesi != null ? String(item.richiamoMesi) : '' }); setEditItem(item); setModal(true); };
 
   const save = () => {
     if (!form.nome || !form.prezzo) return;
-    if (editItem) setPricelist((p) => p.map((x) => (x.id === editItem.id ? { ...form, prezzo: Number(form.prezzo) } : x)));
-    else setPricelist((p) => [...p, { ...form, id: uid(), prezzo: Number(form.prezzo) }]);
+    const salvata = { ...form, prezzo: Number(form.prezzo), richiamoMesi: form.richiamoMesi === '' ? null : Number(form.richiamoMesi) };
+    if (editItem) setPricelist((p) => p.map((x) => (x.id === editItem.id ? salvata : x)));
+    else setPricelist((p) => [...p, { ...salvata, id: uid() }]);
     setModal(false);
     setToast(editItem ? 'Aggiornata ✓' : 'Aggiunta ✓');
   };
@@ -74,6 +77,7 @@ export default function Listino({ pricelist, setPricelist, si }) {
                   <div onClick={() => openEdit(item)} style={{ display: 'flex', alignItems: 'center', padding: '12px 13px', borderBottom: i < arr.length - 1 || confirming ? `1px solid ${C.brd}` : 'none', gap: 9, cursor: 'pointer' }}>
                     {item.cod && <span style={{ fontFamily: 'monospace', fontSize: 10, background: C.bg, padding: '1px 5px', borderRadius: 3, color: C.txm, flexShrink: 0 }}>{item.cod}</span>}
                     <span style={{ flex: 1, fontWeight: 600, fontSize: 13 }}>{item.nome}</span>
+                    {item.richiamoMesi != null && <span style={{ flexShrink: 0 }}><Bdg ch={`🔔 ${item.richiamoMesi}m`} co={C.pur} /></span>}
                     <span style={{ fontWeight: 800, color: C.pri, flexShrink: 0 }}>{fmt(item.prezzo)}</span>
                     <button onClick={(e) => { e.stopPropagation(); setConfirmDelId(confirming ? null : item.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, flexShrink: 0, display: 'flex' }}>
                       <Ic n="del" s={14} c={C.dan} />
@@ -108,6 +112,10 @@ export default function Listino({ pricelist, setPricelist, si }) {
             <Fld label="Prezzo €"><Inp type="number" inputMode="decimal" value={form.prezzo} onChange={(e) => setForm((f) => ({ ...f, prezzo: e.target.value }))} /></Fld>
           </div>
           <Fld label="Nome prestazione"><Inp value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} /></Fld>
+          <Fld label="Richiamo dopo (mesi)">
+            <Inp type="number" min="0" inputMode="numeric" value={form.richiamoMesi} onChange={(e) => setForm((f) => ({ ...f, richiamoMesi: e.target.value }))} placeholder="Automatico (rilevato dal nome, es. igiene → 6 mesi)" />
+          </Fld>
+          <div style={{ fontSize: 11, color: C.txl, marginTop: -8, marginBottom: 13 }}>Lasciare vuoto per lasciar decidere al bot in base al nome della prestazione. Vale quando questa prestazione viene segnata "eseguita" nella scheda paziente.</div>
           <div style={{ display: 'flex', gap: 7, marginTop: 8 }}>
             <Btn ch="Annulla" v="sec" onClick={() => setModal(false)} full />
             <Btn ch="Salva" onClick={save} full />

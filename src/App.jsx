@@ -394,6 +394,7 @@ export default function App() {
           plans={plans} setPlans={setPlansSync}
           payments={payments}
           appointments={appointments}
+          pricelist={pricelist}
           si={studioInfo}
           features={features}
           onClose={() => { setSchedaDashPaz(null); pulisciPosizione(['schedaPazId', 'schedaPazTab']); }}
@@ -415,6 +416,7 @@ export default function App() {
             setAppointments={setAppointmentsSync}
             onNuovoAppuntamento={goAgendaPaz}
             templates={templates}
+            pricelist={pricelist}
           />
         )}
         {page === 'piani' && (

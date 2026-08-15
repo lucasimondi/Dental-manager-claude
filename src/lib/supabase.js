@@ -57,6 +57,9 @@ const FIELD_MAP = {
     dataScadenza: 'data_scadenza',
     chiaveBot: 'chiave_bot',
   },
+  pricelist: {
+    richiamoMesi: 'richiamo_mesi',
+  },
 };
 
 const toDb = (table, obj) => {

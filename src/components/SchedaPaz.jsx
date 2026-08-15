@@ -18,7 +18,7 @@ const prossimaDataMascherina = (orto) => {
   return d.toISOString().slice(0, 10);
 };
 
-export default function SchedaPaz({ paz, plans, payments, appointments, setAppointments, si, features, onClose, onEdit, onNuovoPiano, setPlans, initTab, implants = [], setImplants, setPatients, onNuovoAppuntamento, templates, setPayments }) {
+export default function SchedaPaz({ paz, plans, payments, appointments, setAppointments, si, features, onClose, onEdit, onNuovoPiano, setPlans, initTab, implants = [], setImplants, setPatients, onNuovoAppuntamento, templates, setPayments, pricelist = [] }) {
   const [tab, setTab] = useState(initTab || 'info');
   const [pdfPlan, setPdfPlan] = useState(null);
   const [docFiscale, setDocFiscale] = useState(false);
@@ -417,9 +417,17 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
       if (j !== i) return v;
       const nowEseguita = !v.eseguita;
       let extra = {};
-      if (nowEseguita) {
-        const r = rilevaRichiamo(v.prestazione);
-        if (r && !v.richiamoData) extra = { richiamoTipo: r.tipo, richiamoData: addMesi(today(), r.mesi) };
+      if (nowEseguita && !v.richiamoData) {
+        // Priorità alla tempistica impostata a mano sulla prestazione nel
+        // listino (Listino.jsx): se il gestore l'ha specificata, vale quella;
+        // altrimenti resta il rilevamento automatico per parola chiave.
+        const voceListino = pricelist.find((pr) => pr.nome === v.prestazione);
+        if (voceListino?.richiamoMesi) {
+          extra = { richiamoTipo: v.prestazione, richiamoData: addMesi(today(), Number(voceListino.richiamoMesi)) };
+        } else {
+          const r = rilevaRichiamo(v.prestazione);
+          if (r) extra = { richiamoTipo: r.tipo, richiamoData: addMesi(today(), r.mesi) };
+        }
       }
       return { ...v, eseguita: nowEseguita, dataEsec: nowEseguita ? today() : null, incassata: nowEseguita ? v.incassata : false, ...extra };
     });
