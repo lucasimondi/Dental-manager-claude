@@ -2,7 +2,7 @@
 import GestioneUtenti from './GestioneUtenti.jsx';
 import React, { useState, useEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Ic, DockIc, DOCK_ICON_STYLES } from './ui';
-import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI, DEF_DOCK_SETTINGS, DEF_AGENDA_SETTINGS, DEF_DOCUMENTI_SETTINGS, STORIA_CLINICA_MODELLO_BASE } from '../lib/utils';
+import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI, DEF_DOCK_SETTINGS, mergeDockSettings, DEF_AGENDA_SETTINGS, DEF_DOCUMENTI_SETTINGS, STORIA_CLINICA_MODELLO_BASE } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 
 const GIORNI_SETTIMANA = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
@@ -705,7 +705,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
               return (
                 <button
                   key={opt.id}
-                  onClick={() => S({ dock_settings: { ...DEF_DOCK_SETTINGS, ...(si.dock_settings || {}), iconStyle: opt.id } })}
+                  onClick={() => S({ dock_settings: { ...mergeDockSettings(si.dock_settings), iconStyle: opt.id } })}
                   style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '12px 6px', borderRadius: 12, border: `1.5px solid ${active ? C.pri : C.brd}`, background: active ? C.priL : C.sur, cursor: 'pointer' }}
                 >
                   <div style={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

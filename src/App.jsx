@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { supabase, DB } from './lib/supabase.js';
-import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_APP_TYPES, DEF_TPL_GENERICO, DEF_APP_TYPES_GENERICO, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, DEF_DOCK_SETTINGS, uid } from './lib/utils';
+import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_APP_TYPES, DEF_TPL_GENERICO, DEF_APP_TYPES_GENERICO, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, mergeDockSettings, uid } from './lib/utils';
 import { generaRichiamiBot } from './lib/richiamiBot';
 import { salvaPosizione, leggiPosizione, pulisciPosizione } from './lib/posizioneNavigazione';
 import MobileDock from './components/MobileDock.jsx';
@@ -447,7 +447,7 @@ export default function App() {
         <MobileDock
           page={page}
           setPage={setPage}
-          dockSettings={{ ...DEF_DOCK_SETTINGS, ...(studioInfo?.dock_settings || {}) }}
+          dockSettings={mergeDockSettings(studioInfo?.dock_settings)}
           onLogout={handleLogout}
           features={features}
         />

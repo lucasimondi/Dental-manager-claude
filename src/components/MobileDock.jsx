@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { C, NAV_BY_ID, DOCK_MENU_SLOT } from '../lib/utils';
+import { C, NAV_BY_ID, DOCK_MENU_SLOT, DEF_DOCK_SETTINGS } from '../lib/utils';
 import { DockIc } from './ui';
 
 // Voci nav gated per piano/feature — id NAV -> chiave in `features`.
@@ -14,8 +14,8 @@ const FEATURE_GATE_BY_NAV_ID = { wa: 'whatsapp', spese: 'spese', archivio: 'arch
 export default function MobileDock({ page, setPage, dockSettings, onLogout, features = {} }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const style = dockSettings?.iconStyle || 'vivid';
-  const slots = dockSettings?.slots?.length === 5 ? dockSettings.slots : ['home', 'agenda', DOCK_MENU_SLOT, 'paga', 'wa'];
-  const menuItems = dockSettings?.menuItems?.length ? dockSettings.menuItems : ['paz', 'piani', 'listino', 'spese', 'archivio', 'set'];
+  const slots = dockSettings?.slots?.length === 5 ? dockSettings.slots : DEF_DOCK_SETTINGS.slots;
+  const menuItems = dockSettings?.menuItems?.length ? dockSettings.menuItems : DEF_DOCK_SETTINGS.menuItems;
   const consentita = (id) => {
     const gate = FEATURE_GATE_BY_NAV_ID[id];
     return !gate || features[gate];

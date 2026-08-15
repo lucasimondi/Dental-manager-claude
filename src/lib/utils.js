@@ -383,6 +383,25 @@ export const DEF_DOCK_SETTINGS = {
 // Tutte le voci disponibili per comporre dock/popup, indicizzate per id (comodo per i <select>)
 export const NAV_BY_ID = Object.fromEntries(NAV.map((n) => [n.id, n]));
 
+// Unisce le impostazioni dock salvate (studio_info.dock_settings) con i
+// default correnti. Una volta che uno studio salva un dock_settings, quel
+// menuItems resta fisso in DB: senza questo "riempi i mancanti", ogni nuova
+// voce di menu aggiunta in futuro (com'è successo con Richiami e Agente AI)
+// resterebbe invisibile per sempre a chi ha già un dock personalizzato,
+// anche dopo un aggiornamento dell'app — stesso problema già risolto per i
+// widget di Dashboard (vedi loadWidgets in Dashboard.jsx).
+export const mergeDockSettings = (saved) => {
+  const s = saved || {};
+  const menuItems = [...(s.menuItems || DEF_DOCK_SETTINGS.menuItems)];
+  DEF_DOCK_SETTINGS.menuItems.forEach((id) => { if (!menuItems.includes(id)) menuItems.push(id); });
+  return {
+    ...DEF_DOCK_SETTINGS,
+    ...s,
+    slots: s.slots?.length === 5 ? s.slots : DEF_DOCK_SETTINGS.slots,
+    menuItems,
+  };
+};
+
 /* ── AGENDA PERSONALIZZABILE ──
    Struttura salvata in studio_info.agenda_settings (jsonb).
    hiddenWeekdays: array di numeri getDay() da nascondere nella vista Settimana
