@@ -736,20 +736,28 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
               {!consigliLoading && consigli.length > 0 && nonLetti.length === 0 && (
                 <Crd style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Hai letto tutti i consigli di questa settimana ✓</Crd>
               )}
-              {nonLetti.map((c) => (
-                <Crd key={c.id} style={{ marginBottom: 8, borderLeft: `3px solid ${c.categoria === 'cfo' ? C.pri : C.pur}` }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ marginBottom: 5 }}><Bdg ch={c.categoria === 'cfo' ? '💰 CFO' : '📈 Marketing'} co={c.categoria === 'cfo' ? C.pri : C.pur} /></div>
-                      <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 3, color: C.txt }}>{c.titolo}</div>
-                      <div style={{ fontSize: 12, color: C.txm, lineHeight: 1.45 }}>{c.testo}</div>
+              {nonLetti.map((c) => {
+                const colore = c.categoria === 'cfo' ? C.pri : c.categoria === 'commerciale' ? C.war : C.pur;
+                const label = c.categoria === 'cfo' ? '💰 CFO' : c.categoria === 'commerciale' ? '🤝 Commerciale' : '📈 Marketing';
+                const paz = c.paziente_id ? patients.find(p => p.id === c.paziente_id) : null;
+                return (
+                  <Crd key={c.id} style={{ marginBottom: 8, borderLeft: `3px solid ${colore}` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ marginBottom: 5 }}><Bdg ch={label} co={colore} /></div>
+                        <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 3, color: C.txt }}>{c.titolo}</div>
+                        <div style={{ fontSize: 12, color: C.txm, lineHeight: 1.45 }}>{c.testo}</div>
+                        {paz && (
+                          <div onClick={() => onOpenPaz(paz, 'info')} style={{ marginTop: 6, fontSize: 12, fontWeight: 700, color: C.pri, cursor: 'pointer' }}>{paz.nome} {paz.cognome} ›</div>
+                        )}
+                      </div>
+                      <button onClick={() => segnaLettoConsiglio(c.id)} title="Segna come letto" style={{ background: C.sucL, border: 'none', borderRadius: 7, padding: 6, cursor: 'pointer', flexShrink: 0, height: 'fit-content' }}>
+                        <Ic n="ok" s={13} c={C.suc} />
+                      </button>
                     </div>
-                    <button onClick={() => segnaLettoConsiglio(c.id)} title="Segna come letto" style={{ background: C.sucL, border: 'none', borderRadius: 7, padding: 6, cursor: 'pointer', flexShrink: 0, height: 'fit-content' }}>
-                      <Ic n="ok" s={13} c={C.suc} />
-                    </button>
-                  </div>
-                </Crd>
-              ))}
+                  </Crd>
+                );
+              })}
             </div>
           );
         }
