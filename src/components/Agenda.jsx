@@ -4,6 +4,7 @@ import WaAction, { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
 import { C, uid, fmtD, today, DEF_APP_TYPES, DEF_AGENDA_SETTINGS } from '../lib/utils';
 import { useIsMobile } from '../lib/useIsMobile';
 import { salvaPosizione, leggiPosizione } from '../lib/posizioneNavigazione';
+import { useFormPersistente } from '../lib/useFormPersistente';
 import { supabase } from '../lib/supabase.js';
 
 const WD_SHORT = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
@@ -448,9 +449,10 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const [selDay, setSelDay] = useState(today());
   const [modal, setModal] = useState(false);
 
-  // Ricorda se il modale "nuovo appuntamento" era aperto, così se l'app si
-  // ricarica da zero (schermo spento, cambio app) lo ritroviamo aperto con
-  // il contenuto già scritto (gestito separatamente da useFormPersistente).
+  // Ricorda se il modale "nuovo/modifica appuntamento" era aperto, così se
+  // l'app si ricarica da zero (schermo spento, cambio app in multitasking)
+  // lo ritroviamo aperto con il contenuto già scritto (il contenuto stesso
+  // è persistito da useFormPersistente su "form", vedi sotto).
   useEffect(() => { salvaPosizione({ agendaModaleNuovo: modal }); }, [modal]);
   useEffect(() => {
     if (leggiPosizione()?.agendaModaleNuovo) setModal(true);
@@ -459,6 +461,21 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const [pazSearch, setPazSearch] = useState('');
   const [toast, setToast] = useState('');
   const [editApp, setEditApp] = useState(null);
+
+  // Ricostruisce editApp da form._editId al primo caricamento: se l'app si
+  // è ricaricata da zero mentre si stava modificando un appuntamento
+  // esistente, form._editId è già stato ripristinato da useFormPersistente,
+  // ma editApp no (non viene persistito, va ritrovato tra gli appuntamenti
+  // già caricati). Una volta sola: non deve più intervenire dopo, altrimenti
+  // sovrascriverebbe apriNuovo/apriEdit chiamati dall'utente in seguito.
+  const editRestoredRef = useRef(false);
+  useEffect(() => {
+    if (editRestoredRef.current) return;
+    if (form._editId == null) { editRestoredRef.current = true; return; }
+    if (!appointments || appointments.length === 0) return;
+    setEditApp(appointments.find(a => a.id === form._editId) || null);
+    editRestoredRef.current = true;
+  }, [appointments, form._editId]);
 
   // Richieste di prenotazione arrivate dalla pagina pubblica (nessuna
   // integrazione live con gli slot: sono solo richieste da rivedere a mano
@@ -485,7 +502,11 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const [vd, setVd] = useState(new Date());
   const wheelRef = useRef(0);
   const touchXRef = useRef(null);
-  const [form, setForm] = useState({ pazienteId: '', data: today(), ora: '09:00', durata: agSet.durataDefault, tipo: tipiList[0]?.nome || 'Visita', colore: tipiList[0]?.colore || C.pri, note: '', stato: 'confermato', ripeti: 'nessuna', ripetiFino: '' });
+  // _editId: null = si sta creando un nuovo appuntamento, altrimenti è l'id
+  // dell'appuntamento in modifica — persistito insieme al resto del form così
+  // se l'app si ricarica da zero a metà modifica sappiamo quale riaprire
+  // (vedi effetto di ripristino subito sotto).
+  const [form, setForm, clearFormDraft] = useFormPersistente('nuovo_appuntamento', { pazienteId: '', data: today(), ora: '09:00', durata: agSet.durataDefault, tipo: tipiList[0]?.nome || 'Visita', colore: tipiList[0]?.colore || C.pri, note: '', stato: 'confermato', ripeti: 'nessuna', ripetiFino: '', _editId: null });
   const [waModal, setWaModal] = useState(null);
   const [waMsg, setWaMsg] = useState('');
   const [waTplId, setWaTplId] = useState('');
@@ -565,16 +586,18 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const apriNuovo = (data, ora) => {
     setPazSearch('');
     setEditApp(null);
-    setForm({ pazienteId: '', data: data || selDay, ora: ora || '09:00', durata: agSet.durataDefault, tipo: tipiList[0]?.nome || 'Visita', colore: tipiList[0]?.colore || C.pri, note: '', stato: 'confermato', ripeti: 'nessuna', ripetiFino: '' });
+    setForm({ pazienteId: '', data: data || selDay, ora: ora || '09:00', durata: agSet.durataDefault, tipo: tipiList[0]?.nome || 'Visita', colore: tipiList[0]?.colore || C.pri, note: '', stato: 'confermato', ripeti: 'nessuna', ripetiFino: '', _editId: null });
     setModal(true);
   };
 
   const apriEdit = (a) => {
     setEditApp(a);
     setPazSearch('');
-    setForm({ pazienteId: String(a.pazienteId), data: a.data, ora: a.ora, durata: a.durata, tipo: a.tipo, colore: a.colore || C.pri, note: a.note || '', stato: a.stato || 'confermato', ripeti: 'nessuna', ripetiFino: '' });
+    setForm({ pazienteId: String(a.pazienteId), data: a.data, ora: a.ora, durata: a.durata, tipo: a.tipo, colore: a.colore || C.pri, note: a.note || '', stato: a.stato || 'confermato', ripeti: 'nessuna', ripetiFino: '', _editId: a.id });
     setModal(true);
   };
+
+  const chiudiModalApp = () => { setModal(false); clearFormDraft(); };
 
   // "Sposta" apre lo stesso editor di Modifica, ma serve come voce distinta nel menu contestuale
   // perché è lì che l'utente pensa di andare quando vuole cambiare data/ora/giorno di un appuntamento
@@ -676,6 +699,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
       setToast(nuovi.length > 1 ? `${nuovi.length} appuntamenti creati ✓` : 'Salvato ✓');
       if (richiestaInGestione) { confermaGestita(richiestaInGestione); setRichiestaInGestione(null); }
     }
+    clearFormDraft();
     setModal(false);
   };
 
@@ -1020,7 +1044,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
 
       {/* MODAL NUOVO/MODIFICA */}
       {modal && (
-        <Modal title={editApp ? '✏️ Modifica appuntamento' : '📅 Nuovo appuntamento'} onClose={() => setModal(false)} wide>
+        <Modal title={editApp ? '✏️ Modifica appuntamento' : '📅 Nuovo appuntamento'} onClose={chiudiModalApp} wide>
           <Fld label="Paziente">
             <SelettorePaziente
               patients={patients}
@@ -1082,8 +1106,8 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
             </Fld>
           )}
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            {editApp && <Btn ch="Elimina" v="dan" onClick={() => { del(editApp.id); setModal(false); }} />}
-            <Btn ch="Annulla" v="sec" onClick={() => setModal(false)} full />
+            {editApp && <Btn ch="Elimina" v="dan" onClick={() => { del(editApp.id); clearFormDraft(); setModal(false); }} />}
+            <Btn ch="Annulla" v="sec" onClick={chiudiModalApp} full />
             <Btn ch={editApp ? 'Aggiorna' : 'Salva'} onClick={save} dis={!form.pazienteId || (!editApp && form.ripeti !== 'nessuna' && !form.ripetiFino)} full />
           </div>
         </Modal>

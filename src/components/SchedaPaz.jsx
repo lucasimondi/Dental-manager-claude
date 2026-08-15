@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { supabase } from '../lib/supabase.js';
-import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker, PadFirma, FormStoriaClinica } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker, PadFirma, FormStoriaClinica, PannelloInvioDocumento } from './ui';
 const PdfViewerModal = React.lazy(() => import('./ui/PdfViewerModal.jsx'));
 import { C, fmt, fmtD, today, SCADENZA_PRESET, addMesi, rilevaRichiamo, ANAMNESI_MEDICA_STANDARD, STORIA_CLINICA_MODELLO_BASE } from '../lib/utils';
+import { generaConsensoPdf, hashConsenso } from '../lib/pdfConsenso';
 import PdfView from './PdfView.jsx';
 import DocFiscale from './DocFiscale.jsx';
 import DocMedico from './DocMedico.jsx';
@@ -58,13 +59,15 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
   const [consensiCaricamento, setConsensiCaricamento] = useState(false);
   const [modelliConsenso, setModelliConsenso] = useState([]);
   const [nuovoConsensoModal, setNuovoConsensoModal] = useState(false);
-  const [consensoStep, setConsensoStep] = useState('scelta'); // scelta | anteprima | firma | link_generato
+  const [consensoStep, setConsensoStep] = useState('scelta'); // scelta | anteprima | firma | pronto | link_generato
   const [modelloSel, setModelloSel] = useState(null);
   const [collegaPrestazione, setCollegaPrestazione] = useState(''); // "" = generico, altrimenti "planId::voceIndice"
   const [canaleSel, setCanaleSel] = useState('in_studio');
   const [firmatoDaNome, setFirmatoDaNome] = useState('');
   const [linkFirmaGenerato, setLinkFirmaGenerato] = useState('');
   const [consensoInVisualizzazione, setConsensoInVisualizzazione] = useState(null);
+  const [consensoPronto, setConsensoPronto] = useState(null); // { dataUrl, filename, titolo } dopo la firma in studio
+  const [firmaInCorso, setFirmaInCorso] = useState(false);
 
   const caricaConsensi = async () => {
     setConsensiCaricamento(true);
@@ -83,6 +86,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
     setCanaleSel('in_studio');
     setFirmatoDaNome(`${paz.nome} ${paz.cognome}`);
     setLinkFirmaGenerato('');
+    setConsensoPronto(null);
     setConsensoStep('scelta');
     setNuovoConsensoModal(true);
   };
@@ -110,19 +114,33 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
   };
 
   const salvaFirmaInStudio = async (firmaPng) => {
+    setFirmaInCorso(true);
     const { data: { session } } = await supabase.auth.getSession();
     const studioId = session?.user?.app_metadata?.studio_id;
+    const dataOraISO = new Date().toISOString();
+    // Il PDF (con testo, firma e codice di verifica) viene generato subito qui
+    // lato client, PRIMA di chiamare la RPC: così può essere archiviato in
+    // documenti_medici nella stessa chiamata che registra la firma, invece di
+    // fare un secondo giro di rete.
+    const hash = await hashConsenso({ testo: modelloSel.testo, firmaPng, firmatoDaNome, pazienteId: paz.id, studioId, canale: 'in_studio' });
+    const { dataUrl, filename } = generaConsensoPdf({
+      studio: { nome: si?.nome || 'Studio', spec: si?.spec || '', iscr: si?.iscr || '', addr: si?.addr1 || '', tel: si?.tel || '', email: si?.email || '', piva: si?.piva || '' },
+      paziente: paz, titolo: modelloSel.titolo, testo: modelloSel.testo, firmaPng, firmatoDaNome, canale: 'in_studio', dataOraISO, hash,
+    });
     const { data } = await supabase.rpc('registra_firma_consenso', {
       p_studio_id: studioId, p_paziente_id: paz.id,
       p_titolo: modelloSel.titolo, p_testo: modelloSel.testo, p_firma_png: firmaPng,
       p_canale: 'in_studio', p_firmato_da_nome: firmatoDaNome,
       p_piano_id: piVoceSel?.pianoId || null, p_voce_indice: piVoceSel?.indice ?? null,
       p_modello_id: modelloSel.id,
+      p_pdf_base64: dataUrl, p_hash_verifica: hash,
     });
+    setFirmaInCorso(false);
     if (data?.ok) {
-      setNuovoConsensoModal(false);
       caricaConsensi();
-      setToast('Consenso firmato ✓');
+      loadArchivioDocs();
+      setConsensoPronto({ dataUrl, filename, titolo: modelloSel.titolo });
+      setConsensoStep('pronto');
     } else {
       setToast('Errore durante la firma');
     }
@@ -324,7 +342,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
   };
 
   React.useEffect(() => { loadFoto(); }, [paz.id]);
-  React.useEffect(() => { if (tab === 'doc') loadArchivioDocs(); if (tab === 'info') { caricaConsensi(); caricaStorieCliniche(); } }, [paz.id]);
+  React.useEffect(() => { if (tab === 'doc') { loadArchivioDocs(); caricaConsensi(); } if (tab === 'info') caricaStorieCliniche(); }, [paz.id]);
 
   // Archivio documenti generati per questo paziente (medici + fiscali).
   // Caricato quando si apre la tab Documenti, non subito all'apertura della
@@ -479,7 +497,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
 
       <div style={{ display: 'flex', background: C.sur, borderBottom: `1px solid ${C.brd}`, flexShrink: 0 }}>
         {TABS.map((t) => (
-          <button key={t.id} onClick={() => { setTab(t.id); if (t.id === 'doc') loadArchivioDocs(); if (t.id === 'info') { caricaConsensi(); caricaStorieCliniche(); } }} style={{ flex: 1, padding: '11px 4px', background: 'none', border: 'none', borderBottom: `2.5px solid ${tab === t.id ? C.pri : 'transparent'}`, color: tab === t.id ? C.pri : C.txm, fontWeight: tab === t.id ? 700 : 500, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>{t.l}</button>
+          <button key={t.id} onClick={() => { setTab(t.id); if (t.id === 'doc') { loadArchivioDocs(); caricaConsensi(); } if (t.id === 'info') caricaStorieCliniche(); }} style={{ flex: 1, padding: '11px 4px', background: 'none', border: 'none', borderBottom: `2.5px solid ${tab === t.id ? C.pri : 'transparent'}`, color: tab === t.id ? C.pri : C.txm, fontWeight: tab === t.id ? 700 : 500, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>{t.l}</button>
         ))}
       </div>
 
@@ -627,31 +645,6 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                   </div>
                 );
               })}
-            </Crd>
-
-            {/* CONSENSI INFORMATI */}
-            <Crd style={{ marginBottom: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em' }}>✍️ Consensi informati</div>
-                <button onClick={apriNuovoConsenso} style={{ background: C.priL, border: 'none', borderRadius: 8, padding: '5px 11px', color: C.pri, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>+ Nuovo</button>
-              </div>
-              {consensiCaricamento && <div style={{ textAlign: 'center', color: C.txl, padding: 14, fontSize: 12 }}>Caricamento…</div>}
-              {!consensiCaricamento && consensiStorico.length === 0 && (
-                <div style={{ textAlign: 'center', color: C.txl, padding: '14px 0', fontSize: 12 }}>Nessun consenso ancora firmato</div>
-              )}
-              {!consensiCaricamento && consensiStorico.map((c) => (
-                <div key={c.id} onClick={() => setConsensoInVisualizzazione(c)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: `1px solid ${C.brd}`, cursor: 'pointer' }}>
-                  <span style={{ fontSize: 15 }}>✍️</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 12.5, color: C.txt }}>{c.titolo}</div>
-                    <div style={{ fontSize: 10.5, color: C.txl }}>
-                      {new Date(c.created_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })} · {c.canale === 'in_studio' ? 'In studio' : 'Firma remota'}
-                      {c.piano_id != null && ' · Prestazione specifica'}
-                    </div>
-                  </div>
-                  <span style={{ color: C.txl }}>›</span>
-                </div>
-              ))}
             </Crd>
 
             {/* PRIVACY / GDPR */}
@@ -811,8 +804,19 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
               <>
                 <div style={{ fontSize: 12.5, color: C.txm, marginBottom: 12 }}>Passa il telefono/tablet a {firmatoDaNome || `${paz.nome} ${paz.cognome}`} per la firma.</div>
                 <PadFirma onFirmata={salvaFirmaInStudio} C={C} />
-                <button onClick={() => setConsensoStep('anteprima')} style={{ background: 'none', border: 'none', color: C.txl, fontSize: 12, cursor: 'pointer', marginTop: 12, width: '100%', textAlign: 'center' }}>‹ Indietro</button>
+                {firmaInCorso && <div style={{ textAlign: 'center', fontSize: 12, color: C.txl, marginTop: 10 }}>Generazione del PDF…</div>}
+                <button onClick={() => setConsensoStep('anteprima')} disabled={firmaInCorso} style={{ background: 'none', border: 'none', color: C.txl, fontSize: 12, cursor: firmaInCorso ? 'default' : 'pointer', marginTop: 12, width: '100%', textAlign: 'center', opacity: firmaInCorso ? 0.5 : 1 }}>‹ Indietro</button>
               </>
+            )}
+
+            {consensoStep === 'pronto' && consensoPronto && (
+              <PannelloInvioDocumento
+                pronto={consensoPronto}
+                paziente={paz}
+                archiviato
+                onChiudi={() => { setNuovoConsensoModal(false); setConsensoPronto(null); }}
+                onNuovoDocumento={() => { setConsensoPronto(null); setModelloSel(null); setConsensoStep('scelta'); }}
+              />
             )}
 
             {consensoStep === 'link_generato' && (
@@ -1355,6 +1359,34 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
         {tab === 'doc' && (
           <div>
             <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>📄 Documenti medici</div>
+
+            {/* CONSENSI INFORMATI — sempre disponibile su ogni piano, a
+                differenza di ricetta/fattura sotto: è un adempimento
+                privacy/GDPR, non una funzione premium. */}
+            <Crd style={{ marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em' }}>✍️ Consensi informati</div>
+                <button onClick={apriNuovoConsenso} style={{ background: C.priL, border: 'none', borderRadius: 8, padding: '5px 11px', color: C.pri, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>+ Nuovo consenso</button>
+              </div>
+              {consensiCaricamento && <div style={{ textAlign: 'center', color: C.txl, padding: 14, fontSize: 12 }}>Caricamento…</div>}
+              {!consensiCaricamento && consensiStorico.length === 0 && (
+                <div style={{ textAlign: 'center', color: C.txl, padding: '14px 0', fontSize: 12 }}>Nessun consenso ancora firmato</div>
+              )}
+              {!consensiCaricamento && consensiStorico.map((c) => (
+                <div key={c.id} onClick={() => setConsensoInVisualizzazione(c)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: `1px solid ${C.brd}`, cursor: 'pointer' }}>
+                  <span style={{ fontSize: 15 }}>✍️</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 12.5, color: C.txt }}>{c.titolo}</div>
+                    <div style={{ fontSize: 10.5, color: C.txl }}>
+                      {new Date(c.created_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })} · {c.canale === 'in_studio' ? 'In studio' : 'Firma remota'}
+                      {c.piano_id != null && ' · Prestazione specifica'}
+                    </div>
+                  </div>
+                  <span style={{ color: C.txl }}>›</span>
+                </div>
+              ))}
+            </Crd>
+
             {(features?.documenti === false) ? (
               <div style={{ background: C.bg, borderRadius: 12, padding: 20, textAlign: 'center' }}>
                 <div style={{ fontSize: 24, marginBottom: 8 }}>🔒</div>
@@ -1385,7 +1417,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
               {(() => {
                 const ETICHETTE_TIPO = {
                   ricetta: '💊 Ricette', esami: '🩸 Esami', certificato: '📋 Certificati', lettera: '✉️ Lettere',
-                  protocollo: '📖 Protocolli', vuoto: '📝 Liberi', fattura: '🧾 Fatture', rimborso: '🧾 Rimborsi',
+                  protocollo: '📖 Protocolli', vuoto: '📝 Liberi', consenso: '✍️ Consensi', fattura: '🧾 Fatture', rimborso: '🧾 Rimborsi',
                 };
                 const tipiPresenti = Array.from(new Set(archivioDocs.map(d => d.tipo)));
                 if (tipiPresenti.length <= 1) return null; // con un solo tipo o nessun documento, i filtri non servono
