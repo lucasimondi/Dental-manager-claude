@@ -93,6 +93,23 @@ export const SCADENZA_PRESET = [
   { label: '1 anno', mesi: 12 },
 ];
 
+/* ── AGENTE AI: azioni personalizzate ──
+   Ogni azione sceglie un "effetto" da questo elenco fisso e sicuro — nessuna
+   esecuzione di codice arbitrario. Solo 'webhook' ha parametri liberi
+   (definiti dallo studio); gli altri riusano scritture già presenti nel
+   gestionale con uno schema fisso, mostrato qui solo a scopo informativo. */
+export const TIPI_EFFETTO_AZIONE = [
+  { id: 'crea_richiamo', label: 'Crea un richiamo', icona: '🔔', descr: 'Aggiunge una voce nella sezione Richiami per il paziente indicato.', parametriFissi: 'paziente_id, categoria, motivo, data_scadenza' },
+  { id: 'crea_promemoria', label: 'Crea un promemoria', icona: '✅', descr: 'Aggiunge un promemoria/todo visibile in Dashboard.', parametriFissi: 'testo, data' },
+  { id: 'nota_paziente', label: 'Aggiungi nota al paziente', icona: '📝', descr: 'Aggiunge un’annotazione con data alla scheda del paziente.', parametriFissi: 'paziente_id, testo' },
+  { id: 'webhook', label: 'Chiama un webhook esterno', icona: '🔗', descr: 'Invia i parametri che definisci a un URL esterno (es. n8n, Zapier, Make) — utile per collegare automazioni esterne, come un futuro invio WhatsApp.', parametriFissi: null },
+];
+export const TIPI_PARAMETRO_AZIONE = [
+  { id: 'string', label: 'Testo' },
+  { id: 'number', label: 'Numero' },
+  { id: 'boolean', label: 'Sì/No' },
+];
+
 /* ── SEZIONE RICHIAMI: categorie e stati ── */
 export const RICHIAMO_CATEGORIE = {
   clinico: { label: 'Clinico', icona: '🦷', colore: '#1A6B8A' },
@@ -341,6 +358,7 @@ export const NAV = [
   { id: 'controllo', l: 'Controllo', ic: 'plan' },
   { id: 'archivio', l: 'Documenti', ic: 'plan' },
   { id: 'wa', l: 'WhatsApp', ic: 'wa' },
+  { id: 'agenteai', l: 'Agente AI', ic: 'bot' },
   { id: 'set', l: 'Setup', ic: 'set' },
 ];
 
@@ -359,7 +377,7 @@ export const DOCK_MENU_SLOT = '__menu__';
 export const DEF_DOCK_SETTINGS = {
   iconStyle: 'vivid',
   slots: ['home', 'agenda', DOCK_MENU_SLOT, 'paga', 'wa'],
-  menuItems: ['paz', 'piani', 'listino', 'richiami', 'spese', 'archivio', 'set'],
+  menuItems: ['paz', 'piani', 'listino', 'richiami', 'spese', 'archivio', 'agenteai', 'set'],
 };
 
 // Tutte le voci disponibili per comporre dock/popup, indicizzate per id (comodo per i <select>)

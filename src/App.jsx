@@ -23,6 +23,7 @@ import ArchivioDocs from './components/ArchivioDocs.jsx';
 import Listino from './components/Listino.jsx';
 import Agenda from './components/Agenda.jsx';
 import Richiami from './components/Richiami.jsx';
+import AgenteAISetup from './components/AgenteAISetup.jsx';
 import WhatsApp from './components/WhatsApp.jsx';
 import Impostazioni from './components/Impostazioni.jsx';
 import MasterDashboard from './components/MasterDashboard.jsx';
@@ -231,7 +232,8 @@ export default function App() {
       (page === 'wa' && !features.whatsapp) ||
       (page === 'spese' && !features.spese) ||
       (page === 'archivio' && !features.archivio_documenti) ||
-      (page === 'controllo' && !features.controllo_gestione)
+      (page === 'controllo' && !features.controllo_gestione) ||
+      (page === 'agenteai' && (!features.assistente_ai || features.assistente_ai === 'off'))
     ) setPage('home');
   }, [page, features]);
 
@@ -435,6 +437,7 @@ export default function App() {
         {page === 'controllo' && <ControlloGestione studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} payments={payments} appointments={appointments} onOpenPaz={goSchedaPaz} isDentistico={!studioInfo?.vertical || studioInfo.vertical === 'dentistico'} />}
         {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} />}
         {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
+        {page === 'agenteai' && <AgenteAISetup features={features} />}
         {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} />}
       </div>
 
