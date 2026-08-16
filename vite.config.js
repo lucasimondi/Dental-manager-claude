@@ -12,7 +12,7 @@ export default defineConfig({
       manifest: {
         name: 'Poliedra',
         short_name: 'Poliedra',
-        description: 'Gestionale per studi dentistici e centri estetici',
+        description: 'Gestionale per studi professionali e sanitari',
         start_url: '/',
         scope: '/',
         display: 'standalone',

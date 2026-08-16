@@ -1,8 +1,15 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase.js';
-import { VERTICALI_DISPONIBILI } from '../lib/utils';
+import { VERTICALI_DISPONIBILI, getLogoSlug } from '../lib/utils';
 import logoDental from '../assets/logo-poliedra-dental-transparent.png';
 import logoSalus from '../assets/logo-poliedra-salus-transparent.png';
+import logoFisio from '../assets/logo-poliedra-fisio-transparent.png';
+import logoMind from '../assets/logo-poliedra-mind-transparent.png';
+import logoWellness from '../assets/logo-poliedra-wellness-transparent.png';
+import logoFit from '../assets/logo-poliedra-fit-transparent.png';
+import logoMedical from '../assets/logo-poliedra-medical-transparent.png';
+
+const LOGO_PER_SLUG = { dental: logoDental, salus: logoSalus, fisio: logoFisio, mind: logoMind, wellness: logoWellness, fit: logoFit, medical: logoMedical };
 
 export default function RegisterScreen({ onBack }) {
   const [step, setStep] = useState(1); // 1=dati studio, 2=credenziali, 3=successo
@@ -63,7 +70,7 @@ export default function RegisterScreen({ onBack }) {
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <img
-            src={form.vertical === 'dentistico' ? logoDental : logoSalus}
+            src={LOGO_PER_SLUG[getLogoSlug(form.vertical)]}
             alt="Poliedra"
             style={{ height: 54, margin: '0 auto 12px', display: 'block' }}
           />

@@ -240,7 +240,7 @@ export default function Spese({ refreshKey } = {}) {
               }}>Variabile</button>
             </div>
             <div style={{ fontSize: 10, color: C.txl, marginTop: 4, lineHeight: 1.5 }}>
-              <b>Fisso</b>: lo paghi comunque, indipendentemente da quanti pazienti curi (affitto, personale, utenze, assicurazioni, software, rate di macchinari). <b>Variabile</b>: dipende da quanto lavori (materiali, laboratorio odontotecnico, provvigioni). Distinguerli bene serve a calcolare correttamente margine ed EBITDA in Controllo di Gestione.
+              <b>Fisso</b>: lo paghi comunque, indipendentemente da quanti pazienti curi (affitto, personale, utenze, assicurazioni, software, rate di macchinari). <b>Variabile</b>: dipende da quanto lavori (materiali, laboratorio esterno, provvigioni). Distinguerli bene serve a calcolare correttamente margine ed EBITDA in Controllo di Gestione.
             </div>
           </Fld>
 

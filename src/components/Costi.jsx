@@ -438,7 +438,7 @@ function VistaMacchinari({ studioId, refreshKey, onChanged }) {
 
       {modal && (
         <Modal title={editItem ? 'Modifica' : '+ Macchinario'} onClose={() => setModal(false)}>
-          <Fld label="Nome"><Inp value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder="es. Riunito odontoiatrico" autoFocus /></Fld>
+          <Fld label="Nome"><Inp value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder="es. Attrezzatura principale" autoFocus /></Fld>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <Fld label="Costo acquisto €"><Inp type="number" value={form.costo_acquisto} onChange={(e) => setForm((f) => ({ ...f, costo_acquisto: e.target.value }))} /></Fld>
             <Fld label="Data acquisto"><Inp type="date" value={form.data_acquisto} onChange={(e) => setForm((f) => ({ ...f, data_acquisto: e.target.value }))} /></Fld>

@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { supabase, DB } from './lib/supabase.js';
-import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, mergeDockSettings, uid } from './lib/utils';
+import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, getLogoSlug, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, mergeDockSettings, uid } from './lib/utils';
 import { generaRichiamiBot } from './lib/richiamiBot';
 import { salvaPosizione, leggiPosizione, pulisciPosizione } from './lib/posizioneNavigazione';
 import MobileDock from './components/MobileDock.jsx';
@@ -10,6 +10,13 @@ import { Ic } from './components/ui';
 import AssistenteAI from './components/AssistenteAI.jsx';
 import logoDentalWhite from './assets/logo-poliedra-dental-outline.png';
 import logoSalusWhite from './assets/logo-poliedra-salus-outline.png';
+import logoFisioWhite from './assets/logo-poliedra-fisio-outline.png';
+import logoMindWhite from './assets/logo-poliedra-mind-outline.png';
+import logoWellnessWhite from './assets/logo-poliedra-wellness-outline.png';
+import logoFitWhite from './assets/logo-poliedra-fit-outline.png';
+import logoMedicalWhite from './assets/logo-poliedra-medical-outline.png';
+
+const LOGO_WHITE_PER_SLUG = { dental: logoDentalWhite, salus: logoSalusWhite, fisio: logoFisioWhite, mind: logoMindWhite, wellness: logoWellnessWhite, fit: logoFitWhite, medical: logoMedicalWhite };
 import LoginScreen from './components/LoginScreen.jsx';
 import LoadingScreen from './components/LoadingScreen.jsx';
 import Dashboard from './components/Dashboard.jsx';
@@ -379,7 +386,7 @@ export default function App() {
           <img src={studioInfo.custom_logo_b64} alt={studioInfo?.nome || 'Logo'} style={{ height: 40, maxWidth: 160, display: 'block', objectFit: 'contain' }} />
         ) : (
           <img
-            src={(!studioInfo?.vertical || studioInfo.vertical === 'dentistico') ? logoDentalWhite : logoSalusWhite}
+            src={LOGO_WHITE_PER_SLUG[getLogoSlug(studioInfo?.vertical)]}
             alt="Poliedra"
             style={{ height: 48, display: 'block' }}
           />

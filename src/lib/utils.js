@@ -278,6 +278,30 @@ export const CATEGORIE_PRESTAZIONI_PER_VERTICAL = {
 export const getCategoriePrestazioni = (vertical) =>
   CATEGORIE_PRESTAZIONI_PER_VERTICAL[vertical] || CATEGORIE_PRESTAZIONI_GENERICO;
 
+/* ── BRAND PER VERTICAL ──
+   Ogni professione ha una propria declinazione del brand Poliedra (logo +
+   sottotitolo), non solo un generico "Salus" per tutto ciò che non è
+   odontoiatria — coerente con l'obiettivo di comunicazione verticale per
+   professione. I file dei loghi vivono in src/assets/logo-poliedra-{slug}-
+   outline.png (bianco, per sfondo scuro) e -transparent.png (teal, per
+   sfondo chiaro); vanno importati staticamente da chi li usa (App.jsx,
+   RegisterScreen.jsx) perché Vite non fa import dinamici da stringa. I
+   vertical senza uno slug dedicato qui sotto usano "salus" (brand
+   generico) — capita per chi è intenzionalmente ampio (professionista
+   sanitario, altro), non ha senso inventare un nome per una categoria
+   catch-all. Aggiungere un vertical con brand proprio è solo questa riga
+   + i due PNG corrispondenti. ── */
+export const LOGO_SLUG_PER_VERTICAL = {
+  dentistico: 'dental',
+  fisioterapista: 'fisio',
+  massofisioterapista: 'fisio',
+  psicologo: 'mind',
+  massaggiatore: 'wellness',
+  personal_trainer: 'fit',
+  medico_chirurgo: 'medical',
+};
+export const getLogoSlug = (vertical) => LOGO_SLUG_PER_VERTICAL[vertical] || 'salus';
+
 // Anamnesi medica standard per i verticali con formazione medica
 // (odontoiatra, medico chirurgo): set fisso, non personalizzabile dallo
 // studio — coerente con l'idea che qui serve un'anamnesi clinica

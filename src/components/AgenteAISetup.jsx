@@ -164,7 +164,7 @@ function TabFaq({ onToast }) {
 
       {modal && (
         <Modal title={editItem ? 'Modifica FAQ' : 'Nuova FAQ'} onClose={() => setModal(false)}>
-          <Fld label="Domanda"><Inp value={form.domanda} onChange={(e) => setForm((f) => ({ ...f, domanda: e.target.value }))} placeholder="es. Fate lo sbiancamento?" /></Fld>
+          <Fld label="Domanda"><Inp value={form.domanda} onChange={(e) => setForm((f) => ({ ...f, domanda: e.target.value }))} placeholder="es. Fate trattamenti la sera?" /></Fld>
           <Fld label="Risposta"><Txt rows={4} value={form.risposta} onChange={(e) => setForm((f) => ({ ...f, risposta: e.target.value }))} /></Fld>
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             <Btn ch="Annulla" v="sec" onClick={() => setModal(false)} full />
@@ -356,7 +356,7 @@ function TabAzioni({ onToast }) {
       {modal && (
         <Modal title={editItem ? 'Modifica azione' : 'Nuova azione'} onClose={() => setModal(false)} wide>
           <Fld label="Nome tecnico (solo minuscole, numeri, underscore)">
-            <Inp value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_') }))} placeholder="es. richiama_dopo_impianto" />
+            <Inp value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_') }))} placeholder="es. richiama_dopo_trattamento" />
           </Fld>
           <Fld label="Descrizione (spiega all'AI quando usarla)">
             <Txt rows={2} value={form.descrizione} onChange={(e) => setForm((f) => ({ ...f, descrizione: e.target.value }))} placeholder="es. Usa questa azione quando il paziente chiede di essere richiamato per un controllo" />
