@@ -72,7 +72,7 @@ export default function Richiami({ patients, plans, payments, appointments, rich
         <div style={{ fontSize: 20, fontWeight: 800 }}>Richiami</div>
         <div style={{ display: 'flex', gap: 7 }}>
           <Btn ch="🔄 Scansiona ora" v="sec" onClick={scansiona} />
-          <Btn ch="+ Richiamo" ic="plus" onClick={() => { setForm({ pazienteId: '', categoria: 'generico', motivo: '', dataScadenza: today() }); setPazSearch(''); setModal(true); }} />
+          <Btn ch="Richiamo" ic="plus" onClick={() => { setForm({ pazienteId: '', categoria: 'generico', motivo: '', dataScadenza: today() }); setPazSearch(''); setModal(true); }} />
         </div>
       </div>
 

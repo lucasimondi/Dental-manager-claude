@@ -145,7 +145,7 @@ function TabFaq({ onToast }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
-        <Btn ch="+ Domanda" ic="plus" onClick={openNew} />
+        <Btn ch="Domanda" ic="plus" onClick={openNew} />
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
         {list.map((f) => (
@@ -328,7 +328,7 @@ function TabAzioni({ onToast }) {
         Le azioni già disponibili nell'assistente (appuntamenti, pagamenti, ecc.) restano invariate. Qui puoi aggiungerne di nuove che l'assistente può eseguire da solo, scegliendo tra effetti sicuri predefiniti.
       </div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
-        <Btn ch="+ Azione" ic="plus" onClick={openNew} />
+        <Btn ch="Azione" ic="plus" onClick={openNew} />
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
         {list.map((a) => {

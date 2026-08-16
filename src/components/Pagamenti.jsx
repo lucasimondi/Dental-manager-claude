@@ -95,8 +95,8 @@ export default function Pagamenti({ patients, payments, setPayments, plans }) {
         <div style={{ fontSize: 20, fontWeight: 800 }}>Pagamenti</div>
         <div style={{ display: 'flex', gap: 7 }}>
           {tabAttiva === 'studio'
-            ? <Btn ch="+ Studio" ic="plus" onClick={() => { setForm({ pazienteId: '', data: today(), importo: '', metodo: 'Contanti', nota: '', stato: 'pagato' }); setPazSearch(''); setModal(true); }} />
-            : <Btn ch="+ Esterno" ic="plus" onClick={() => { setFormExt({ collaborazione_id: '', collaborazione_nome: '', importo: '', data: today(), metodo: 'Bonifico', note: '' }); setModalExt(true); }} />
+            ? <Btn ch="Studio" ic="plus" onClick={() => { setForm({ pazienteId: '', data: today(), importo: '', metodo: 'Contanti', nota: '', stato: 'pagato' }); setPazSearch(''); setModal(true); }} />
+            : <Btn ch="Esterno" ic="plus" onClick={() => { setFormExt({ collaborazione_id: '', collaborazione_nome: '', importo: '', data: today(), metodo: 'Bonifico', note: '' }); setModalExt(true); }} />
           }
         </div>
       </div>
