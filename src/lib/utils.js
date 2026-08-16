@@ -471,10 +471,21 @@ export const COLORI_DISPONIBILI = [
   '#14B8A6', '#A855F7', '#64748B',
 ];
 
-// Categorie di spesa — unica fonte di verità condivisa da Spese.jsx e Costi.jsx
-// (prima duplicata identica nei due file) e dal prompt dell'edge function
-// estrai-spesa-documento, che deve restituire SEMPRE uno di questi valori.
+// Categorie di spesa base — unica fonte di verità condivisa da Spese.jsx e
+// Costi.jsx (prima duplicata identica nei due file) e dal prompt dell'edge
+// function estrai-spesa-documento, che deve restituire SEMPRE uno di questi
+// valori (l'AI non conosce le categorie personalizzate per studio, quelle
+// restano una scelta manuale — vedi mergeCategorieSpesa).
 export const CATEGORIE_SPESA = ['Materiali', 'Attrezzature', 'Affitto', 'Condominio', 'Personale', 'Utenze', 'Assicurazioni', 'Software', 'Formazione', 'Tasse', 'Altro'];
+
+// Unisce le categorie base a quelle personalizzate dallo studio (colonna
+// studio_info.categorie_spesa_custom), mantenendo "Altro" sempre in fondo e
+// senza duplicati (anche se lo studio ne aggiunge una già esistente).
+export const mergeCategorieSpesa = (custom) => {
+  const base = CATEGORIE_SPESA.filter((c) => c !== 'Altro');
+  const extra = (custom || []).filter((c) => c && !base.includes(c));
+  return [...base, ...extra, 'Altro'];
+};
 
 /* ── PIANI E FUNZIONALITÀ ──
    Default per piano; ogni studio può avere override individuali (feature_overrides

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Ic } from './ui';
 import UploadDocumento from './ui/UploadDocumentoSpesa.jsx';
-import { C, fmt, fmtD, today, CATEGORIE_SPESA } from '../lib/utils';
+import { C, fmt, fmtD, today } from '../lib/utils';
+import { useCategorieSpesa } from '../lib/useCategorieSpesa';
 import { supabase } from '../lib/supabase.js';
 
-const CATEGORIE = CATEGORIE_SPESA;
 const FREQUENZE = ['Mensile', 'Bimestrale', 'Trimestrale', 'Semestrale', 'Annuale'];
 const MESI = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
 
@@ -12,8 +12,8 @@ const MESI = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov',
 // spesa condominiale...): precompila esattamente gli stessi campi del form
 // manuale, l'utente controlla/corregge prima di salvare — mai un salvataggio
 // automatico senza revisione.
-function ConfermaEstrazioneSpesa({ estratto, file, studioId, onClose, onSalvato }) {
-  const categoriaValida = CATEGORIE.includes(estratto.categoria) ? estratto.categoria : 'Altro';
+function ConfermaEstrazioneSpesa({ estratto, file, studioId, categorie, onClose, onSalvato }) {
+  const categoriaValida = categorie.includes(estratto.categoria) ? estratto.categoria : 'Altro';
   const [form, setForm] = useState({
     titolo: estratto.titolo || '', importo: estratto.importo || '', data: estratto.data || today(),
     categoria: categoriaValida, tipo_costo: estratto.tipo_costo === 'fisso' ? 'fisso' : 'variabile',
@@ -55,7 +55,7 @@ function ConfermaEstrazioneSpesa({ estratto, file, studioId, onClose, onSalvato 
       </div>
       <Fld label="Categoria">
         <Sel value={form.categoria} onChange={(e) => F({ categoria: e.target.value })}>
-          {CATEGORIE.map((c) => <option key={c}>{c}</option>)}
+          {categorie.map((c) => <option key={c}>{c}</option>)}
         </Sel>
       </Fld>
       <Fld label="Tipo di costo (per il Controllo di Gestione)">
@@ -90,6 +90,9 @@ export default function Spese({ refreshKey, studioId, mostraUpload = true } = {}
   const [toast, setToast] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState('');
   const [estrattoPendente, setEstrattoPendente] = useState(null); // { estratto, file }
+  const [categorieModal, setCategorieModal] = useState(false);
+  const [nuovaCategoria, setNuovaCategoria] = useState('');
+  const { categorie: CATEGORIE, categorieCustom, aggiungiCategoria, rimuoviCategoria } = useCategorieSpesa(studioId);
   const [form, setForm] = useState({
     titolo: '', importo: '', data: today(), categoria: 'Altro',
     note: '', ricorrente: false, frequenza: 'Mensile', tipo_costo: 'variabile',
@@ -255,11 +258,12 @@ export default function Spese({ refreshKey, studioId, mostraUpload = true } = {}
       )}
 
       {/* FILTRO CATEGORIA */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 10, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 4 }}>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 10, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 4, alignItems: 'center' }}>
         <button onClick={() => setFiltroCategoria('')} style={{ padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${!filtroCategoria ? C.pri : C.brd}`, background: !filtroCategoria ? C.pri : '#fff', color: !filtroCategoria ? '#fff' : C.txm, fontWeight: 700, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>Tutte</button>
         {perCategoria.map(({ cat }) => (
           <button key={cat} onClick={() => setFiltroCategoria(cat)} style={{ padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${filtroCategoria === cat ? C.pri : C.brd}`, background: filtroCategoria === cat ? C.pri : '#fff', color: filtroCategoria === cat ? '#fff' : C.txm, fontWeight: 700, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>{cat}</button>
         ))}
+        <button onClick={() => setCategorieModal(true)} title="Gestisci categorie" style={{ padding: '5px 10px', borderRadius: 20, border: `1.5px dashed ${C.brd}`, background: 'transparent', color: C.txl, fontWeight: 700, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>+ Categoria</button>
       </div>
 
       {/* LISTA SPESE */}
@@ -400,9 +404,44 @@ export default function Spese({ refreshKey, studioId, mostraUpload = true } = {}
           estratto={estrattoPendente.estratto}
           file={estrattoPendente.file}
           studioId={studioId}
+          categorie={CATEGORIE}
           onClose={() => setEstrattoPendente(null)}
           onSalvato={() => { setEstrattoPendente(null); loadSpese(); setToast('Spesa aggiunta ✓'); }}
         />
+      )}
+
+      {categorieModal && (
+        <Modal title="Categorie di spesa" onClose={() => setCategorieModal(false)}>
+          <div style={{ fontSize: 11.5, color: C.txm, marginBottom: 14, lineHeight: 1.5 }}>
+            Le categorie base sono fisse (servono anche al riconoscimento automatico dei documenti caricati). Puoi aggiungerne di tue, specifiche per il tuo studio.
+          </div>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+            <Inp value={nuovaCategoria} onChange={(e) => setNuovaCategoria(e.target.value)} placeholder="es. Laboratorio esterno" onKeyDown={(e) => { if (e.key === 'Enter' && nuovaCategoria.trim()) { aggiungiCategoria(nuovaCategoria); setNuovaCategoria(''); } }} />
+            <Btn ch="Aggiungi" onClick={() => { if (nuovaCategoria.trim()) { aggiungiCategoria(nuovaCategoria); setNuovaCategoria(''); } }} dis={!nuovaCategoria.trim()} />
+          </div>
+          {categorieCustom.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: C.txl, textTransform: 'uppercase', marginBottom: 8 }}>Le tue categorie</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {categorieCustom.map((c) => (
+                  <div key={c} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 6px 5px 12px', borderRadius: 20, background: C.priL, color: C.pri, fontWeight: 700, fontSize: 11.5 }}>
+                    {c}
+                    <button onClick={() => rimuoviCategoria(c)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', color: C.pri }}><Ic n="x" s={12} /></button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 800, color: C.txl, textTransform: 'uppercase', marginBottom: 8 }}>Categorie base</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {CATEGORIE.filter((c) => !categorieCustom.includes(c)).map((c) => (
+                <div key={c} style={{ padding: '5px 12px', borderRadius: 20, background: C.bg, color: C.txm, fontWeight: 600, fontSize: 11.5 }}>{c}</div>
+              ))}
+            </div>
+          </div>
+          <Btn ch="Chiudi" v="sec" onClick={() => setCategorieModal(false)} full style={{ marginTop: 16 }} />
+        </Modal>
       )}
     </div>
   );

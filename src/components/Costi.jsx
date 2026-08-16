@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Ic } from './ui';
 import UploadDocumento from './ui/UploadDocumentoSpesa.jsx';
-import { C, fmt, fmtD, today, CATEGORIE_SPESA } from '../lib/utils';
+import { C, fmt, fmtD, today } from '../lib/utils';
+import { useCategorieSpesa } from '../lib/useCategorieSpesa';
 import { supabase } from '../lib/supabase.js';
 import Spese from './Spese.jsx';
 
-const CATEGORIE = CATEGORIE_SPESA;
 const FREQUENZE = ['Mensile', 'Bimestrale', 'Trimestrale', 'Semestrale', 'Annuale'];
 
 // ─────────────────────────────────────────────────────────────────
@@ -82,7 +82,7 @@ function CostoOrarioCard({ studioId, refreshKey }) {
 // ─────────────────────────────────────────────────────────────────
 // Conferma dopo lettura AI: instrada verso Spese / Personale / Macchinari
 // ─────────────────────────────────────────────────────────────────
-function ConfermaEstrazione({ estratto, file, onClose, onSalvato, studioId }) {
+function ConfermaEstrazione({ estratto, file, onClose, onSalvato, studioId, categorie }) {
   const suggerito = estratto.tipo_documento === 'busta_paga' ? 'personale'
     : estratto.tipo_documento === 'fattura_macchinario' ? 'macchinario'
     : 'spesa';
@@ -169,7 +169,7 @@ function ConfermaEstrazione({ estratto, file, onClose, onSalvato, studioId }) {
           </div>
           <Fld label="Categoria">
             <Sel value={formSpesa.categoria} onChange={(e) => setFormSpesa((f) => ({ ...f, categoria: e.target.value }))}>
-              {CATEGORIE.map((c) => <option key={c}>{c}</option>)}
+              {categorie.map((c) => <option key={c}>{c}</option>)}
             </Sel>
           </Fld>
           <Fld label="Tipo di costo">
@@ -404,6 +404,7 @@ export default function Costi({ studioId }) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [estrattoPendente, setEstrattoPendente] = useState(null); // { estratto, file }
   const [toast, setToast] = useState('');
+  const { categorie } = useCategorieSpesa(studioId);
 
   const bump = () => setRefreshKey((k) => k + 1);
 
@@ -440,6 +441,7 @@ export default function Costi({ studioId }) {
           estratto={estrattoPendente.estratto}
           file={estrattoPendente.file}
           studioId={studioId}
+          categorie={categorie}
           onClose={() => setEstrattoPendente(null)}
           onSalvato={() => { setEstrattoPendente(null); bump(); setToast('Salvato ✓'); }}
         />
