@@ -8,6 +8,47 @@ import { supabase } from '../lib/supabase';
 
 const GIORNI_SETTIMANA = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 
+// Estrae i due colori più rappresentativi (non bianco/nero/grigio, cioè quelli
+// che danno l'identità visiva) da un logo caricato come base64, campionando i
+// pixel su un canvas rimpicciolito. Usata solo per pre-compilare i color
+// picker: il risultato resta sempre modificabile a mano dopo l'estrazione.
+function estraiColoriDaLogo(base64) {
+  return new Promise((resolve) => {
+    if (!base64) { resolve(null); return; }
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const size = 64;
+        const canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, size, size);
+        const data = ctx.getImageData(0, 0, size, size).data;
+        const buckets = {};
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+          if (a < 128) continue; // trasparente
+          const max = Math.max(r, g, b), min = Math.min(r, g, b);
+          const lum = (max + min) / 2;
+          const sat = max === min ? 0 : (max - min) / (255 - Math.abs(max + min - 255));
+          if (lum > 240 || lum < 15 || sat < 0.15) continue; // bianco/nero/grigio: quasi sempre sfondo
+          const key = `${Math.round(r / 16)}-${Math.round(g / 16)}-${Math.round(b / 16)}`;
+          if (!buckets[key]) buckets[key] = { r: 0, g: 0, b: 0, n: 0 };
+          buckets[key].r += r; buckets[key].g += g; buckets[key].b += b; buckets[key].n++;
+        }
+        const arr = Object.values(buckets).sort((a, b) => b.n - a.n);
+        if (arr.length === 0) { resolve(null); return; }
+        const toHex = (c) => '#' + [c.r, c.g, c.b].map((s) => Math.round(s / c.n).toString(16).padStart(2, '0')).join('');
+        resolve({ pri: toHex(arr[0]), acc: arr[1] ? toHex(arr[1]) : null });
+      } catch {
+        resolve(null); // es. canvas "tainted" se mai il logo non fosse data-URI
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = base64;
+  });
+}
+
 export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange, features, theme, toggleTheme, isStudioAdmin }) {
   const [si, setSi] = useState({ ...DEF_STUDIO, ...(studioInfo || {}) });
   const [toast, setToast] = useState('');
@@ -399,11 +440,11 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
         </Fld>
       </Crd>
       <Crd style={{ marginBottom: 11 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Personalizzazione (Premium)</div>
-        {!features?.custom_branding ? (
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Logo personalizzato</div>
+        {!features?.custom_logo ? (
           <div style={{ background: C.bg, borderRadius: 12, padding: 18, textAlign: 'center' }}>
             <div style={{ fontSize: 22, marginBottom: 6 }}>🔒</div>
-            <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Disponibile nel piano Premium</div>
+            <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Non disponibile</div>
             <div style={{ fontSize: 12, color: C.txm }}>Carica il tuo logo al posto di quello Poliedra nell'intestazione dell'app.</div>
           </div>
         ) : (
@@ -432,6 +473,50 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
               </div>
             )}
           </Fld>
+        )}
+      </Crd>
+      <Crd style={{ marginBottom: 11 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Colori del brand (Premium)</div>
+        {!features?.custom_colors ? (
+          <div style={{ background: C.bg, borderRadius: 12, padding: 18, textAlign: 'center' }}>
+            <div style={{ fontSize: 22, marginBottom: 6 }}>🔒</div>
+            <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Disponibile nel piano Premium</div>
+            <div style={{ fontSize: 12, color: C.txm }}>Coordina i colori dell'app (header, pulsanti, evidenziazioni) con quelli del tuo logo.</div>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', gap: 16, marginBottom: 12, flexWrap: 'wrap' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input type="color" value={si.custom_colore_primario || C.pri} onChange={(e) => S({ custom_colore_primario: e.target.value })} style={{ width: 34, height: 34, border: `1.5px solid ${C.brd}`, borderRadius: 8, padding: 2, cursor: 'pointer' }} />
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700 }}>Primario</div>
+                  <div style={{ fontSize: 10, color: C.txl }}>Header, pulsanti, nav</div>
+                </div>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input type="color" value={si.custom_colore_accento || C.acc} onChange={(e) => S({ custom_colore_accento: e.target.value })} style={{ width: 34, height: 34, border: `1.5px solid ${C.brd}`, borderRadius: 8, padding: 2, cursor: 'pointer' }} />
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700 }}>Accento</div>
+                  <div style={{ fontSize: 10, color: C.txl }}>Dettagli, evidenziazioni</div>
+                </div>
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Btn
+                ch="🎨 Estrai dal logo"
+                v="sec" sz="sm"
+                dis={!si.custom_logo_b64}
+                onClick={async () => {
+                  const estratti = await estraiColoriDaLogo(si.custom_logo_b64);
+                  if (!estratti) { setToast('Non sono riuscito a leggere i colori del logo'); return; }
+                  S({ custom_colore_primario: estratti.pri, custom_colore_accento: estratti.acc || si.custom_colore_accento });
+                  setToast('Colori estratti dal logo ✓');
+                }}
+              />
+              <Btn ch="Ripristina predefiniti" v="sec" sz="sm" onClick={() => S({ custom_colore_primario: null, custom_colore_accento: null })} />
+            </div>
+            {!si.custom_logo_b64 && <div style={{ fontSize: 10.5, color: C.txl, marginTop: 6 }}>Carica prima un logo qui sopra per poterne estrarre i colori automaticamente.</div>}
+          </>
         )}
       </Crd>
       <Crd style={{ marginBottom: 11 }}>

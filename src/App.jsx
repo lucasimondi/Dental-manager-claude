@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { supabase, DB } from './lib/supabase.js';
-import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, getLogoSlug, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, mergeDockSettings, uid } from './lib/utils';
+import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, getLogoSlug, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, mergeDockSettings, uid, applyBrandColors } from './lib/utils';
 import { generaRichiamiBot } from './lib/richiamiBot';
 import { salvaPosizione, leggiPosizione, pulisciPosizione } from './lib/posizioneNavigazione';
 import MobileDock from './components/MobileDock.jsx';
@@ -62,6 +62,13 @@ export default function App() {
   const [showMasterDashboard, setShowMasterDashboard] = useState(false);
   const [studioAttivo, setStudioAttivo] = useState(true);
   const [features, setFeatures] = useState(PIANI_FEATURES_DEFAULT.base);
+
+  // Colori brand (piano Premium): riapplica pri/priL/priD/acc sopra la palette
+  // di tema ogni volta che cambia il tema (altrimenti il toggle chiaro/scuro li
+  // sovrascriverebbe), i colori salvati dallo studio, o se la feature si disattiva.
+  useEffect(() => {
+    applyBrandColors(theme, features?.custom_colors ? { pri: studioInfo?.custom_colore_primario, acc: studioInfo?.custom_colore_accento } : null);
+  }, [theme, features?.custom_colors, studioInfo?.custom_colore_primario, studioInfo?.custom_colore_accento]);
 
   useEffect(() => {
     // Inizializza sessione — se non risponde entro 3s forza null (no session)
@@ -382,7 +389,7 @@ export default function App() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: C.bg, overflow: 'hidden' }}>
       <div style={{ background: C.priD, padding: '11px 14px', paddingTop: 'max(11px,env(safe-area-inset-top))', display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
-        {features.custom_branding && studioInfo?.custom_logo_b64 ? (
+        {features.custom_logo && studioInfo?.custom_logo_b64 ? (
           <img src={studioInfo.custom_logo_b64} alt={studioInfo?.nome || 'Logo'} style={{ height: 40, maxWidth: 160, display: 'block', objectFit: 'contain' }} />
         ) : (
           <img

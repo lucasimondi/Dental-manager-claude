@@ -55,6 +55,71 @@ export const applyTheme = (mode) => {
   }
 };
 
+/* ── BRAND COLORS (piano Premium): sovrascrivono pri/priL/priD/acc dello
+   studio sopra la palette di tema, riusando lo stesso meccanismo di mutazione
+   in place di C — vedi commento sopra. Le tinte priL/priD si derivano dal
+   colore primario scelto forzando la luminosità (HSL) in un range leggibile
+   (testo bianco su priD, sfondo tenue su priL), qualunque sia la luminosità
+   del colore di partenza — così anche un logo molto chiaro o molto scuro
+   produce comunque un header/bottoni con contrasto sufficiente. */
+const hexToRgb = (hex) => {
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '');
+  return m ? { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) } : null;
+};
+const rgbToHsl = (r, g, b) => {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h, s; const l = (max + min) / 2;
+  if (max === min) { h = s = 0; } else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h /= 6;
+  }
+  return { h, s, l };
+};
+const hslToHex = (h, s, l) => {
+  const hue2rgb = (p, q, t) => {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+  let r, g, b;
+  if (s === 0) { r = g = b = l; } else {
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1 / 3); g = hue2rgb(p, q, h); b = hue2rgb(p, q, h - 1 / 3);
+  }
+  const toHex = (x) => Math.round(x * 255).toString(16).padStart(2, '0');
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+};
+const deriveBrandShades = (hex) => {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return null;
+  const { h, s } = rgbToHsl(rgb.r, rgb.g, rgb.b);
+  const satClamped = Math.max(s, 0.35);
+  return {
+    pri: hex,
+    priL: hslToHex(h, Math.min(satClamped, 0.9), 0.93),
+    priD: hslToHex(h, satClamped, 0.22),
+  };
+};
+
+export const applyBrandColors = (mode, custom) => {
+  const base = mode === 'dark' ? C_DARK : C_LIGHT;
+  C.pri = base.pri; C.priL = base.priL; C.priD = base.priD; C.acc = base.acc;
+  if (custom?.pri) {
+    const shades = deriveBrandShades(custom.pri);
+    if (shades) { C.pri = shades.pri; C.priL = shades.priL; C.priD = shades.priD; }
+  }
+  if (custom?.acc && hexToRgb(custom.acc)) C.acc = custom.acc;
+};
+
 export const getInitialTheme = () => {
   if (typeof window === 'undefined') return 'light';
   return window.localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
@@ -418,9 +483,9 @@ export const COLORI_DISPONIBILI = [
 // è un obbligo fiscale, non una feature a pagamento — per questo non ha
 // un toggle qui.
 export const PIANI_FEATURES_DEFAULT = {
-  base: { whatsapp: false, whatsapp_automatico: false, archivio_documenti: false, spese: false, custom_branding: false, controllo_gestione: false, max_pazienti: 60, max_utenti: 1, assistente_ai: 'off', multi_operatore: false, google_calendar_sync: false },
-  pro: { whatsapp: true, whatsapp_automatico: false, archivio_documenti: true, spese: true, custom_branding: false, controllo_gestione: false, max_pazienti: null, max_utenti: 3, assistente_ai: 'off', multi_operatore: false, google_calendar_sync: false },
-  premium: { whatsapp: true, whatsapp_automatico: false, archivio_documenti: true, spese: true, custom_branding: true, controllo_gestione: true, max_pazienti: null, max_utenti: null, assistente_ai: 'off', multi_operatore: false, google_calendar_sync: false },
+  base: { whatsapp: false, whatsapp_automatico: false, archivio_documenti: false, spese: false, custom_logo: true, custom_colors: false, controllo_gestione: false, max_pazienti: 60, max_utenti: 1, assistente_ai: 'off', multi_operatore: false, google_calendar_sync: false },
+  pro: { whatsapp: true, whatsapp_automatico: false, archivio_documenti: true, spese: true, custom_logo: true, custom_colors: false, controllo_gestione: false, max_pazienti: null, max_utenti: 3, assistente_ai: 'off', multi_operatore: false, google_calendar_sync: false },
+  premium: { whatsapp: true, whatsapp_automatico: false, archivio_documenti: true, spese: true, custom_logo: true, custom_colors: true, controllo_gestione: true, max_pazienti: null, max_utenti: null, assistente_ai: 'off', multi_operatore: false, google_calendar_sync: false },
 };
 
 // Livelli dell'assistente AI, dal più limitato al più completo.
@@ -447,7 +512,8 @@ export const FEATURE_TOGGLES = [
   { id: 'whatsapp_automatico', label: 'WhatsApp Automatico (AI + promemoria)' },
   { id: 'archivio_documenti', label: 'Archivio documenti avanzato (ricerca, export batch)' },
   { id: 'spese', label: 'Spese studio' },
-  { id: 'custom_branding', label: 'Branding personalizzato' },
+  { id: 'custom_logo', label: 'Logo personalizzato' },
+  { id: 'custom_colors', label: 'Colori del brand coordinati col logo' },
   { id: 'controllo_gestione', label: 'Controllo di Gestione' },
   { id: 'multi_operatore', label: 'Multi-agenda / multi-operatore' },
   { id: 'google_calendar_sync', label: 'Sincronizzazione Google Calendar' },
