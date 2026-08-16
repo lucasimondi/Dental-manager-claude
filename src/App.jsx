@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { supabase, DB } from './lib/supabase.js';
 import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_APP_TYPES, DEF_TPL_GENERICO, DEF_APP_TYPES_GENERICO, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, mergeDockSettings, uid } from './lib/utils';
 import { generaRichiamiBot } from './lib/richiamiBot';
@@ -13,20 +13,20 @@ import logoSalusWhite from './assets/logo-poliedra-salus-outline.png';
 import LoginScreen from './components/LoginScreen.jsx';
 import LoadingScreen from './components/LoadingScreen.jsx';
 import Dashboard from './components/Dashboard.jsx';
-import ControlloGestione from './components/ControlloGestione.jsx';
-import Pazienti from './components/Pazienti.jsx';
-import SchedaPaz from './components/SchedaPaz.jsx';
-import Piani from './components/Piani.jsx';
-import Pagamenti from './components/Pagamenti.jsx';
-import Spese from './components/Spese.jsx';
-import ArchivioDocs from './components/ArchivioDocs.jsx';
-import Listino from './components/Listino.jsx';
-import Agenda from './components/Agenda.jsx';
-import Richiami from './components/Richiami.jsx';
-import AgenteAISetup from './components/AgenteAISetup.jsx';
-import WhatsApp from './components/WhatsApp.jsx';
-import Impostazioni from './components/Impostazioni.jsx';
-import MasterDashboard from './components/MasterDashboard.jsx';
+const ControlloGestione = lazy(() => import('./components/ControlloGestione.jsx'));
+const Pazienti = lazy(() => import('./components/Pazienti.jsx'));
+const SchedaPaz = lazy(() => import('./components/SchedaPaz.jsx'));
+const Piani = lazy(() => import('./components/Piani.jsx'));
+const Pagamenti = lazy(() => import('./components/Pagamenti.jsx'));
+const Spese = lazy(() => import('./components/Spese.jsx'));
+const ArchivioDocs = lazy(() => import('./components/ArchivioDocs.jsx'));
+const Listino = lazy(() => import('./components/Listino.jsx'));
+const Agenda = lazy(() => import('./components/Agenda.jsx'));
+const Richiami = lazy(() => import('./components/Richiami.jsx'));
+const AgenteAISetup = lazy(() => import('./components/AgenteAISetup.jsx'));
+const WhatsApp = lazy(() => import('./components/WhatsApp.jsx'));
+const Impostazioni = lazy(() => import('./components/Impostazioni.jsx'));
+const MasterDashboard = lazy(() => import('./components/MasterDashboard.jsx'));
 
 export default function App() {
   const { theme, toggleTheme } = useTheme();
@@ -358,7 +358,11 @@ export default function App() {
     );
   }
 
-  if (showMasterDashboard) return <MasterDashboard onClose={() => setShowMasterDashboard(false)} />;
+  if (showMasterDashboard) return (
+    <Suspense fallback={<LoadingScreen />}>
+      <MasterDashboard onClose={() => setShowMasterDashboard(false)} />
+    </Suspense>
+  );
 
   const navVisibile = NAV.filter((n) =>
     (n.id !== 'wa' || features.whatsapp) &&
@@ -399,55 +403,61 @@ export default function App() {
       )}
 
       {schedaDashPaz && (
-        <SchedaPaz
-          paz={schedaDashPaz.paz}
-          initTab={schedaDashPaz.tab}
-          plans={plans} setPlans={setPlansSync}
-          payments={payments}
-          appointments={appointments}
-          pricelist={pricelist}
-          si={studioInfo}
-          features={features}
-          onClose={() => { setSchedaDashPaz(null); pulisciPosizione(['schedaPazId', 'schedaPazTab']); }}
-          onEdit={() => setSchedaDashPaz(null)}
-          onNuovoPiano={(id) => { setSchedaDashPaz(null); goNuovoPiano(id); }}
-        />
+        <Suspense fallback={null}>
+          <SchedaPaz
+            paz={schedaDashPaz.paz}
+            initTab={schedaDashPaz.tab}
+            plans={plans} setPlans={setPlansSync}
+            payments={payments}
+            appointments={appointments}
+            pricelist={pricelist}
+            si={studioInfo}
+            features={features}
+            onClose={() => { setSchedaDashPaz(null); pulisciPosizione(['schedaPazId', 'schedaPazTab']); }}
+            onEdit={() => setSchedaDashPaz(null)}
+            onNuovoPiano={(id) => { setSchedaDashPaz(null); goNuovoPiano(id); }}
+          />
+        </Suspense>
       )}
 
       <div id="app-scroll" style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: 13, paddingBottom: isMobile ? 98 : 78 }}>
         {page === 'home' && <Dashboard patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} isStudioAdmin={isStudioAdmin} />}
-        {page === 'paz' && (
-          <Pazienti
-            patients={patients} setPatients={setPatientsSync}
-            plans={plans} setPlans={setPlansSync}
-            payments={payments} setPayments={setPaymentsSync} appointments={appointments} si={studioInfo}
-            features={features}
-            onNuovoPiano={goNuovoPiano}
-            implants={implants} setImplants={setImplantsSync}
-            setAppointments={setAppointmentsSync}
-            onNuovoAppuntamento={goAgendaPaz}
-            templates={templates}
-            pricelist={pricelist}
-          />
+        {page !== 'home' && (
+          <Suspense fallback={<LoadingScreen />}>
+            {page === 'paz' && (
+              <Pazienti
+                patients={patients} setPatients={setPatientsSync}
+                plans={plans} setPlans={setPlansSync}
+                payments={payments} setPayments={setPaymentsSync} appointments={appointments} si={studioInfo}
+                features={features}
+                onNuovoPiano={goNuovoPiano}
+                implants={implants} setImplants={setImplantsSync}
+                setAppointments={setAppointmentsSync}
+                onNuovoAppuntamento={goAgendaPaz}
+                templates={templates}
+                pricelist={pricelist}
+              />
+            )}
+            {page === 'piani' && (
+              <Piani
+                patients={patients} plans={plans} setPlans={setPlansSync}
+                pricelist={pricelist} templates={templates} si={studioInfo} features={features}
+                initPatId={initPatId} onClearInitPat={() => setInitPatId(null)}
+                onOpenPaz={goSchedaPaz}
+              />
+            )}
+            {page === 'paga' && <Pagamenti patients={patients} payments={payments} setPayments={setPaymentsSync} plans={plans} />}
+            {page === 'listino' && <Listino pricelist={pricelist} setPricelist={setPricelistSync} si={studioInfo} />}
+            {page === 'agenda' && <Agenda patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} />}
+            {page === 'richiami' && <Richiami patients={patients} plans={plans} payments={payments} appointments={appointments} richiami={richiami} setRichiami={setRichiamiSync} templates={templates} features={features} onOpenPaz={goSchedaPaz} />}
+            {page === 'spese' && <Spese />}
+            {page === 'controllo' && <ControlloGestione studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} payments={payments} appointments={appointments} onOpenPaz={goSchedaPaz} isDentistico={!studioInfo?.vertical || studioInfo.vertical === 'dentistico'} />}
+            {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} />}
+            {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
+            {page === 'agenteai' && <AgenteAISetup features={features} />}
+            {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} isStudioAdmin={isStudioAdmin} />}
+          </Suspense>
         )}
-        {page === 'piani' && (
-          <Piani
-            patients={patients} plans={plans} setPlans={setPlansSync}
-            pricelist={pricelist} templates={templates} si={studioInfo} features={features}
-            initPatId={initPatId} onClearInitPat={() => setInitPatId(null)}
-            onOpenPaz={goSchedaPaz}
-          />
-        )}
-        {page === 'paga' && <Pagamenti patients={patients} payments={payments} setPayments={setPaymentsSync} plans={plans} />}
-        {page === 'listino' && <Listino pricelist={pricelist} setPricelist={setPricelistSync} si={studioInfo} />}
-        {page === 'agenda' && <Agenda patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} />}
-        {page === 'richiami' && <Richiami patients={patients} plans={plans} payments={payments} appointments={appointments} richiami={richiami} setRichiami={setRichiamiSync} templates={templates} features={features} onOpenPaz={goSchedaPaz} />}
-        {page === 'spese' && <Spese />}
-        {page === 'controllo' && <ControlloGestione studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} payments={payments} appointments={appointments} onOpenPaz={goSchedaPaz} isDentistico={!studioInfo?.vertical || studioInfo.vertical === 'dentistico'} />}
-        {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} />}
-        {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
-        {page === 'agenteai' && <AgenteAISetup features={features} />}
-        {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} isStudioAdmin={isStudioAdmin} />}
       </div>
 
       <AssistenteAI />
