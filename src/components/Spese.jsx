@@ -1,19 +1,95 @@
 import React, { useState, useEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Ic } from './ui';
-import { C, fmt, fmtD, today } from '../lib/utils';
+import UploadDocumento from './ui/UploadDocumentoSpesa.jsx';
+import { C, fmt, fmtD, today, CATEGORIE_SPESA } from '../lib/utils';
 import { supabase } from '../lib/supabase.js';
 
-const CATEGORIE = ['Materiali', 'Attrezzature', 'Affitto', 'Personale', 'Utenze', 'Assicurazioni', 'Software', 'Formazione', 'Tasse', 'Altro'];
+const CATEGORIE = CATEGORIE_SPESA;
 const FREQUENZE = ['Mensile', 'Bimestrale', 'Trimestrale', 'Semestrale', 'Annuale'];
 const MESI = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
 
-export default function Spese({ refreshKey } = {}) {
+// Conferma dopo lettura AI di un documento di spesa (bolletta, fattura,
+// spesa condominiale...): precompila esattamente gli stessi campi del form
+// manuale, l'utente controlla/corregge prima di salvare — mai un salvataggio
+// automatico senza revisione.
+function ConfermaEstrazioneSpesa({ estratto, file, studioId, onClose, onSalvato }) {
+  const categoriaValida = CATEGORIE.includes(estratto.categoria) ? estratto.categoria : 'Altro';
+  const [form, setForm] = useState({
+    titolo: estratto.titolo || '', importo: estratto.importo || '', data: estratto.data || today(),
+    categoria: categoriaValida, tipo_costo: estratto.tipo_costo === 'fisso' ? 'fisso' : 'variabile',
+    ricorrente: !!estratto.ricorrente, frequenza: 'Mensile',
+    note: estratto.fornitore ? `Fornitore: ${estratto.fornitore}` : '',
+  });
+  const F = (f) => setForm((p) => ({ ...p, ...f }));
+  const [saving, setSaving] = useState(false);
+
+  const salva = async () => {
+    if (!form.titolo || !form.importo) return;
+    setSaving(true);
+    let documento_path = null;
+    if (file && studioId) {
+      const path = `${studioId}/spesa-${Date.now()}-${file.name}`;
+      const { error: errUpload } = await supabase.storage.from('spese-documenti').upload(path, file);
+      if (!errUpload) documento_path = path;
+    }
+    const { error } = await supabase.from('spese').insert([{
+      id: Date.now(), titolo: form.titolo, importo: Number(form.importo), data: form.data,
+      categoria: form.categoria, note: form.note, ricorrente: form.ricorrente,
+      frequenza: form.frequenza, tipo_costo: form.tipo_costo, documento_path,
+    }]);
+    setSaving(false);
+    if (error) { alert('Errore: ' + error.message); return; }
+    onSalvato();
+  };
+
+  return (
+    <Modal title="Documento letto — conferma" onClose={onClose}>
+      <div style={{ background: C.priL, borderRadius: 10, padding: 10, marginBottom: 12, fontSize: 11, color: C.pri }}>
+        Ho riconosciuto: <b>{(estratto.tipo_documento || 'documento').replace('_', ' ')}</b>
+        {estratto.fornitore ? ` da ${estratto.fornitore}` : ''} — confidenza {estratto.confidenza || 'media'}. Controlla e correggi se serve.
+      </div>
+      <Fld label="Titolo"><Inp value={form.titolo} onChange={(e) => F({ titolo: e.target.value })} autoFocus /></Fld>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <Fld label="Importo €"><Inp type="number" value={form.importo} onChange={(e) => F({ importo: e.target.value })} /></Fld>
+        <Fld label="Data"><Inp type="date" value={form.data} onChange={(e) => F({ data: e.target.value })} /></Fld>
+      </div>
+      <Fld label="Categoria">
+        <Sel value={form.categoria} onChange={(e) => F({ categoria: e.target.value })}>
+          {CATEGORIE.map((c) => <option key={c}>{c}</option>)}
+        </Sel>
+      </Fld>
+      <Fld label="Tipo di costo (per il Controllo di Gestione)">
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => F({ tipo_costo: 'fisso' })} style={{ flex: 1, padding: '8px 0', borderRadius: 9, border: `1.5px solid ${form.tipo_costo === 'fisso' ? C.pri : C.brd}`, background: form.tipo_costo === 'fisso' ? C.priL : '#fff', color: form.tipo_costo === 'fisso' ? C.pri : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Fisso</button>
+          <button onClick={() => F({ tipo_costo: 'variabile' })} style={{ flex: 1, padding: '8px 0', borderRadius: 9, border: `1.5px solid ${form.tipo_costo === 'variabile' ? C.pri : C.brd}`, background: form.tipo_costo === 'variabile' ? C.priL : '#fff', color: form.tipo_costo === 'variabile' ? C.pri : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Variabile</button>
+        </div>
+      </Fld>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <input type="checkbox" checked={form.ricorrente} onChange={(e) => F({ ricorrente: e.target.checked })} />
+        <span style={{ fontSize: 12, color: C.txt }}>Ricorrente</span>
+        {form.ricorrente && (
+          <Sel value={form.frequenza} onChange={(e) => F({ frequenza: e.target.value })} style={{ marginLeft: 'auto', width: 140 }}>
+            {FREQUENZE.map((f) => <option key={f}>{f}</option>)}
+          </Sel>
+        )}
+      </div>
+      <Fld label="Note (opzionale)"><Inp value={form.note} onChange={(e) => F({ note: e.target.value })} /></Fld>
+      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <Btn ch="Annulla" v="sec" onClick={onClose} full />
+        <Btn ch={saving ? 'Salvataggio...' : 'Conferma e salva'} onClick={salva} dis={!form.titolo || !form.importo || saving} full />
+      </div>
+    </Modal>
+  );
+}
+
+export default function Spese({ refreshKey, studioId, mostraUpload = true } = {}) {
   const [spese, setSpese] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [toast, setToast] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState('');
+  const [estrattoPendente, setEstrattoPendente] = useState(null); // { estratto, file }
   const [form, setForm] = useState({
     titolo: '', importo: '', data: today(), categoria: 'Altro',
     note: '', ricorrente: false, frequenza: 'Mensile', tipo_costo: 'variabile',
@@ -124,6 +200,14 @@ export default function Spese({ refreshKey } = {}) {
         <div style={{ fontSize: 20, fontWeight: 800 }}>Spese</div>
         <Btn ch="Nuova spesa" ic="plus" onClick={openNuova} />
       </div>
+
+      {mostraUpload && (
+        <UploadDocumento
+          onEstratto={(estratto, file) => setEstrattoPendente({ estratto, file })}
+          titolo="Carica bolletta, fattura o spesa condominiale"
+          sottotitolo="Foto o PDF — riconosco categoria e importo automaticamente"
+        />
+      )}
 
       {/* KPI CARDS */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
@@ -309,6 +393,16 @@ export default function Spese({ refreshKey } = {}) {
             <Btn ch={editItem ? 'Aggiorna' : 'Salva'} onClick={save} dis={!form.titolo || !form.importo} full />
           </div>
         </Modal>
+      )}
+
+      {estrattoPendente && (
+        <ConfermaEstrazioneSpesa
+          estratto={estrattoPendente.estratto}
+          file={estrattoPendente.file}
+          studioId={studioId}
+          onClose={() => setEstrattoPendente(null)}
+          onSalvato={() => { setEstrattoPendente(null); loadSpese(); setToast('Spesa aggiunta ✓'); }}
+        />
       )}
     </div>
   );

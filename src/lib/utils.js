@@ -471,6 +471,11 @@ export const COLORI_DISPONIBILI = [
   '#14B8A6', '#A855F7', '#64748B',
 ];
 
+// Categorie di spesa — unica fonte di verità condivisa da Spese.jsx e Costi.jsx
+// (prima duplicata identica nei due file) e dal prompt dell'edge function
+// estrai-spesa-documento, che deve restituire SEMPRE uno di questi valori.
+export const CATEGORIE_SPESA = ['Materiali', 'Attrezzature', 'Affitto', 'Condominio', 'Personale', 'Utenze', 'Assicurazioni', 'Software', 'Formazione', 'Tasse', 'Altro'];
+
 /* ── PIANI E FUNZIONALITÀ ──
    Default per piano; ogni studio può avere override individuali (feature_overrides
    su Supabase, impostabili dalla Dashboard Master) che sovrascrivono questi default. */

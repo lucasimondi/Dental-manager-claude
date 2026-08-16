@@ -1,74 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Ic } from './ui';
-import { C, fmt, fmtD, today } from '../lib/utils';
+import UploadDocumento from './ui/UploadDocumentoSpesa.jsx';
+import { C, fmt, fmtD, today, CATEGORIE_SPESA } from '../lib/utils';
 import { supabase } from '../lib/supabase.js';
 import Spese from './Spese.jsx';
 
-const CATEGORIE = ['Materiali', 'Attrezzature', 'Affitto', 'Personale', 'Utenze', 'Assicurazioni', 'Software', 'Formazione', 'Tasse', 'Altro'];
+const CATEGORIE = CATEGORIE_SPESA;
 const FREQUENZE = ['Mensile', 'Bimestrale', 'Trimestrale', 'Semestrale', 'Annuale'];
-
-const SUPABASE_URL = 'https://idklxdqebfceplrualgh.supabase.co';
-
-async function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result.split(',')[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-// ─────────────────────────────────────────────────────────────────
-// Upload + lettura automatica documento (bolletta/fattura/busta paga/fattura macchinario)
-// ─────────────────────────────────────────────────────────────────
-function UploadDocumento({ onEstratto }) {
-  const [loading, setLoading] = useState(false);
-  const [errore, setErrore] = useState('');
-  const inputRef = useRef(null);
-
-  const handleFile = async (file) => {
-    if (!file) return;
-    setErrore('');
-    setLoading(true);
-    try {
-      const base64 = await fileToBase64(file);
-      const { data: { session } } = await supabase.auth.getSession();
-      const resp = await fetch(`${SUPABASE_URL}/functions/v1/estrai-spesa-documento`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ file_base64: base64, media_type: file.type }),
-      });
-      const data = await resp.json();
-      if (!resp.ok || data.error) {
-        setErrore(data.error || 'Non sono riuscito a leggere il documento — puoi comunque inserirlo a mano.');
-        setLoading(false);
-        return;
-      }
-      onEstratto(data.estratto, file);
-    } catch (e) {
-      setErrore('Errore di caricamento: ' + String(e));
-    }
-    setLoading(false);
-  };
-
-  return (
-    <Crd style={{ marginBottom: 14, textAlign: 'center', padding: 18, border: `1.5px dashed ${C.brd}` }}>
-      <input ref={inputRef} type="file" accept="image/*,.pdf" capture="environment" style={{ display: 'none' }}
-        onChange={(e) => { handleFile(e.target.files[0]); e.target.value = ''; }} />
-      {loading ? (
-        <div style={{ color: C.txl, fontSize: 13 }}>⏳ Sto leggendo il documento...</div>
-      ) : (
-        <>
-          <div style={{ fontSize: 28, marginBottom: 6 }}>📄</div>
-          <div style={{ fontWeight: 700, fontSize: 13, color: C.txt, marginBottom: 3 }}>Carica bolletta, fattura o busta paga</div>
-          <div style={{ fontSize: 11, color: C.txl, marginBottom: 10 }}>Foto o PDF — i dati vengono letti automaticamente</div>
-          <Btn ch="Scatta foto o scegli file" ic="send" onClick={() => inputRef.current?.click()} />
-        </>
-      )}
-      {errore && <div style={{ color: C.dan, fontSize: 11, marginTop: 8 }}>{errore}</div>}
-    </Crd>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────────
 // Costo orario dello studio
@@ -493,7 +431,7 @@ export default function Costi({ studioId }) {
         ))}
       </div>
 
-      {sub === 'spese' && <Spese refreshKey={refreshKey} />}
+      {sub === 'spese' && <Spese refreshKey={refreshKey} studioId={studioId} mostraUpload={false} />}
       {sub === 'personale' && <VistaPersonale studioId={studioId} refreshKey={refreshKey} onChanged={bump} />}
       {sub === 'macchinari' && <VistaMacchinari studioId={studioId} refreshKey={refreshKey} onChanged={bump} />}
 
