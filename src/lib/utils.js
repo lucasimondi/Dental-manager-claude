@@ -339,7 +339,8 @@ export const ASSISTENTE_AI_LIVELLI = [
 export const LIVELLI_AZIONE_AGENTE = [
   { id: 'consulente', rank: 0, label: 'Consulente (solo lettura e consigli)', descr: 'Nessuna azione di scrittura in chat, nessuna scansione commerciale proattiva. Resta attivo per analisi e consigli CFO/marketing.' },
   { id: 'medio', rank: 1, label: 'Medio (azioni con conferma)', descr: 'Ogni azione di scrittura in chat richiede conferma esplicita. Niente scanner commerciale automatico nei consigli proattivi.' },
-  { id: 'completo', rank: 2, label: 'Completo (attivo)', descr: 'Comportamento pieno: azioni dirette dove previsto, scanner commerciale proattivo incluso.' },
+  { id: 'su_richiesta', rank: 2, label: 'Su richiesta (esegue solo se richiesto)', descr: 'Esegue subito, senza conferme aggiuntive, le azioni di scrittura che chiedi esplicitamente in chat. Non prende mai iniziativa da solo: niente scanner commerciale automatico nei consigli proattivi.' },
+  { id: 'completo', rank: 3, label: 'Completo (attivo)', descr: 'Comportamento pieno: azioni dirette dove previsto, scanner commerciale proattivo incluso — può anche proporre di sua iniziativa opportunità commerciali nei consigli del giorno.' },
 ];
 
 export const FEATURE_TOGGLES = [

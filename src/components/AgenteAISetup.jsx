@@ -422,7 +422,7 @@ function TabLivello({ features, onToast }) {
   const [azione, setAzione] = useState(features?.agente_azione || 'completo');
   const [saving, setSaving] = useState(false);
   const ceiling = features?.agente_azione_max || 'completo';
-  const rankCeiling = LIVELLI_AZIONE_AGENTE.find((l) => l.id === ceiling)?.rank ?? 2;
+  const rankCeiling = LIVELLI_AZIONE_AGENTE.find((l) => l.id === ceiling)?.rank ?? 3;
 
   const [usoLoading, setUsoLoading] = useState(true);
   const [uso, setUso] = useState({ chat: { chiamate: 0, costo: 0 }, consigli_proattivi: { chiamate: 0, costo: 0 } });
