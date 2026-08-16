@@ -418,9 +418,9 @@ export const COLORI_DISPONIBILI = [
 // è un obbligo fiscale, non una feature a pagamento — per questo non ha
 // un toggle qui.
 export const PIANI_FEATURES_DEFAULT = {
-  base: { whatsapp: false, whatsapp_automatico: false, archivio_documenti: false, spese: false, custom_branding: false, controllo_gestione: false, max_pazienti: 60, max_utenti: 1, assistente_ai: 'off' },
-  pro: { whatsapp: true, whatsapp_automatico: false, archivio_documenti: true, spese: true, custom_branding: false, controllo_gestione: false, max_pazienti: null, max_utenti: 3, assistente_ai: 'off' },
-  premium: { whatsapp: true, whatsapp_automatico: false, archivio_documenti: true, spese: true, custom_branding: true, controllo_gestione: true, max_pazienti: null, max_utenti: null, assistente_ai: 'off' },
+  base: { whatsapp: false, whatsapp_automatico: false, archivio_documenti: false, spese: false, custom_branding: false, controllo_gestione: false, max_pazienti: 60, max_utenti: 1, assistente_ai: 'off', multi_operatore: false, google_calendar_sync: false },
+  pro: { whatsapp: true, whatsapp_automatico: false, archivio_documenti: true, spese: true, custom_branding: false, controllo_gestione: false, max_pazienti: null, max_utenti: 3, assistente_ai: 'off', multi_operatore: false, google_calendar_sync: false },
+  premium: { whatsapp: true, whatsapp_automatico: false, archivio_documenti: true, spese: true, custom_branding: true, controllo_gestione: true, max_pazienti: null, max_utenti: null, assistente_ai: 'off', multi_operatore: false, google_calendar_sync: false },
 };
 
 // Livelli dell'assistente AI, dal più limitato al più completo.
@@ -449,6 +449,8 @@ export const FEATURE_TOGGLES = [
   { id: 'spese', label: 'Spese studio' },
   { id: 'custom_branding', label: 'Branding personalizzato' },
   { id: 'controllo_gestione', label: 'Controllo di Gestione' },
+  { id: 'multi_operatore', label: 'Multi-agenda / multi-operatore' },
+  { id: 'google_calendar_sync', label: 'Sincronizzazione Google Calendar' },
 ];
 
 export const computeFeatures = (piano, overrides) => {
