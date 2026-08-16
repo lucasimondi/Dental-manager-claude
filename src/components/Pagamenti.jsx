@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, SelettorePaziente } from './ui';
 import { C, uid, fmt, fmtD, today } from '../lib/utils';
 import { useFormPersistente } from '../lib/useFormPersistente';
+import { normalizza } from '../lib/ricercaPazienti';
 import { supabase } from '../lib/supabase.js';
 
 export default function Pagamenti({ patients, payments, setPayments, plans }) {
@@ -9,6 +10,7 @@ export default function Pagamenti({ patients, payments, setPayments, plans }) {
   const [form, setForm, clearFormDraft] = useFormPersistente('nuovo_pagamento_studio', { pazienteId: '', data: today(), importo: '', metodo: 'Contanti', nota: '', stato: 'pagato' });
   const [pazSearch, setPazSearch] = useState('');
   const [toast, setToast] = useState('');
+  const [ricerca, setRicerca] = useState('');
   const F = (f) => setForm((p) => ({ ...p, ...f }));
 
   // Collaborazioni esterne
@@ -86,6 +88,13 @@ export default function Pagamenti({ patients, payments, setPayments, plans }) {
   const meseExt = pagExt.filter(p => p.data && p.data.startsWith(today().slice(0, 7))).reduce((s, p) => s + Number(p.importo), 0);
   const selPazSaldo = form.pazienteId ? saldoPaz(form.pazienteId) : null;
 
+  const q = normalizza(ricerca);
+  const paymentsFiltrati = !q ? payments : payments.filter((p) => {
+    const paz = patients.find((x) => x.id === p.pazienteId);
+    return normalizza(`${paz?.nome || ''} ${paz?.cognome || ''} ${p.nota || ''}`).includes(q);
+  });
+  const pagExtFiltrati = !q ? pagExt : pagExt.filter((p) => normalizza(`${p.collaborazione_nome || ''} ${p.note || ''}`).includes(q));
+
   return (
     <div>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
@@ -108,6 +117,23 @@ export default function Pagamenti({ patients, payments, setPayments, plans }) {
         ))}
       </div>
 
+      {/* RICERCA */}
+      <div style={{ position: 'relative', marginBottom: 14 }}>
+        <div style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)' }}><Ic n="srch" s={15} c={C.txl} /></div>
+        <Inp
+          placeholder={tabAttiva === 'studio' ? 'Cerca per paziente o nota…' : 'Cerca per collaborazione o nota…'}
+          value={ricerca}
+          onChange={(e) => setRicerca(e.target.value)}
+          style={{ paddingLeft: 36, paddingRight: ricerca ? 36 : 12 }}
+        />
+        {ricerca && (
+          <button
+            onClick={() => setRicerca('')}
+            style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: C.brd, border: 'none', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: C.txm, fontSize: 12, lineHeight: 1, padding: 0 }}
+          >✕</button>
+        )}
+      </div>
+
       {/* ── TAB STUDIO ── */}
       {tabAttiva === 'studio' && (
         <>
@@ -122,7 +148,7 @@ export default function Pagamenti({ patients, payments, setPayments, plans }) {
             </Crd>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-            {[...payments].reverse().map((pay) => {
+            {[...paymentsFiltrati].reverse().map((pay) => {
               const p = patients.find((x) => x.id === pay.pazienteId);
               const { residuo } = saldoPaz(pay.pazienteId);
               return (
@@ -146,7 +172,7 @@ export default function Pagamenti({ patients, payments, setPayments, plans }) {
                 </Crd>
               );
             })}
-            {payments.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>Nessun pagamento</div>}
+            {paymentsFiltrati.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>{ricerca ? 'Nessun pagamento trovato' : 'Nessun pagamento'}</div>}
           </div>
         </>
       )}
@@ -171,7 +197,7 @@ export default function Pagamenti({ patients, payments, setPayments, plans }) {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-            {pagExt.map((pag) => (
+            {pagExtFiltrati.map((pag) => (
               <Crd key={pag.id}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{ background: C.purL, borderRadius: 9, padding: 8, flexShrink: 0 }}><Ic n="eur" s={16} c={C.pur} /></div>
@@ -187,7 +213,7 @@ export default function Pagamenti({ patients, payments, setPayments, plans }) {
                 </div>
               </Crd>
             ))}
-            {pagExt.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>Nessun pagamento esterno</div>}
+            {pagExtFiltrati.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>{ricerca ? 'Nessun pagamento trovato' : 'Nessun pagamento esterno'}</div>}
           </div>
         </>
       )}

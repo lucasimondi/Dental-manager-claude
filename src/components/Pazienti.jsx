@@ -196,13 +196,6 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
   const preventiviAccettati = plans.filter((pl) => pl.stato === 'accettato' || pl.stato === 'concluso').length;
   const preventiviNonAccettati = plans.filter((pl) => pl.stato === 'rifiutato').length;
   const preventiviAttesa = plans.filter((pl) => (pl.stato || 'attivo') === 'attivo').length;
-  const contaPrestazioni = {};
-  plans.forEach((pl) => pl.voci.forEach((v) => {
-    if (!v.eseguita) return;
-    const k = v.prestazione || '—';
-    contaPrestazioni[k] = (contaPrestazioni[k] || 0) + 1;
-  }));
-  const topPrestazioni = Object.entries(contaPrestazioni).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
@@ -311,26 +304,6 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
             <div style={{ fontSize: 9, color: C.txm, fontWeight: 600, marginTop: 2 }}>Rifiutati</div>
           </Crd>
         </div>
-        {topPrestazioni.length > 0 && (
-          <Crd style={{ padding: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 9 }}>🏆 Prestazioni più eseguite</div>
-            {topPrestazioni.map(([nome, n], i) => {
-              const max = topPrestazioni[0][1];
-              const pct = Math.round((n / max) * 100);
-              return (
-                <div key={nome} style={{ marginBottom: i < topPrestazioni.length - 1 ? 7 : 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: C.txt }}>{i + 1}. {nome}</span>
-                    <span style={{ fontSize: 12, fontWeight: 800, color: C.pri }}>{n}</span>
-                  </div>
-                  <div style={{ background: C.bg, borderRadius: 4, height: 5, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${pct}%`, background: C.pri, borderRadius: 4 }} />
-                  </div>
-                </div>
-              );
-            })}
-          </Crd>
-        )}
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
