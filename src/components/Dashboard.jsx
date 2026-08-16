@@ -290,6 +290,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
             <div style={{ fontSize: 12, color: C.txm, marginBottom: 12 }}>Trascina ⠿ per riordinare · toggle per attivare/disattivare</div>
             {widgets.map((w, i) => {
               if (w.id === 'consigli_ai' && !consigliAttivi) return null;
+              if (w.id === 'ortodonzia' && !isDentistico) return null;
               return (
               <div key={w.id} draggable
                 onDragStart={e => e.dataTransfer.setData('widgetIdx', String(i))}
@@ -432,7 +433,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
             <span style={{ fontWeight: 900, fontSize: 18, color: '#7C3AED' }}>{fmt(incassoLucaMese)}</span>
           </div>
           <div style={{ marginBottom: 10 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.suc, textTransform: 'uppercase', marginBottom: 6 }}>🦷 Studio ({fmt(mInc)})</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.suc, textTransform: 'uppercase', marginBottom: 6 }}>🏠 Studio ({fmt(mInc)})</div>
             {payments.filter(p => p.data && p.data.startsWith(t.slice(0,7))).sort((a,b) => b.data.localeCompare(a.data)).map(pay => {
               const paz = patients.find(x => x.id === pay.pazienteId);
               return <Crd key={pay.id} style={{ marginBottom: 6, borderLeft: `3px solid ${C.suc}` }}>
@@ -465,7 +466,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
             <span style={{ fontWeight: 900, fontSize: 18, color: '#7C3AED' }}>{fmt(incassoLucaAnno)}</span>
           </div>
           <div style={{ marginBottom: 10 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.suc, textTransform: 'uppercase', marginBottom: 6 }}>🦷 Studio ({fmt(aInc)})</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.suc, textTransform: 'uppercase', marginBottom: 6 }}>🏠 Studio ({fmt(aInc)})</div>
             {(() => {
               const mesiStudio = {};
               payments.filter(p => p.data && p.data.startsWith(anno)).forEach(p => { const m = p.data.slice(0,7); mesiStudio[m] = (mesiStudio[m] || 0) + Number(p.importo); });
@@ -846,7 +847,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                   const p = patients.find(x => x.id === a.pazienteId);
                   const co = getColore(a);
                   const hasTel = p?.telefono;
-                  const defMsg = p ? `Gentile ${p.nome},\nricordiamo il suo appuntamento:\n📅 ${fmtD(a.data)} alle ${a.ora}\n🦷 ${a.tipo}\nPer variazioni contattarci entro 24h. Grazie!` : '';
+                  const defMsg = p ? `Gentile ${p.nome},\nricordiamo il suo appuntamento:\n📅 ${fmtD(a.data)} alle ${a.ora}\n📌 ${a.tipo}\nPer variazioni contattarci entro 24h. Grazie!` : '';
                   return (
                     <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: i < domaniApps.length - 1 ? `1px solid ${C.brd}` : 'none' }}>
                       <div style={{ background: co + '20', borderRadius: 7, padding: '3px 7px', textAlign: 'center', flexShrink: 0, borderLeft: `3px solid ${co}` }}>
@@ -871,7 +872,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                   domaniApps.forEach(a => {
                     const p = patients.find(x => x.id === a.pazienteId);
                     if (!p?.telefono) return;
-                    const msg = `Gentile ${p.nome},\nricordiamo il suo appuntamento:\n📅 ${fmtD(a.data)} alle ${a.ora}\n🦷 ${a.tipo}\nPer variazioni contattarci entro 24h. Grazie!`;
+                    const msg = `Gentile ${p.nome},\nricordiamo il suo appuntamento:\n📅 ${fmtD(a.data)} alle ${a.ora}\n📌 ${a.tipo}\nPer variazioni contattarci entro 24h. Grazie!`;
                     setTimeout(() => apriWaDiretto(p.telefono, msg), 500);
                   });
                 }} style={{ width: '100%', marginTop: 10, padding: '9px', background: '#25D366', border: 'none', borderRadius: 9, color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>

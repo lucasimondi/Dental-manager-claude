@@ -103,7 +103,7 @@ export default function Pagamenti({ patients, payments, setPayments, plans }) {
 
       {/* TAB SWITCHER */}
       <div style={{ display: 'flex', background: C.bg, borderRadius: 10, border: `1px solid ${C.brd}`, marginBottom: 14, overflow: 'hidden' }}>
-        {[['studio', '🦷 Studio'], ['esterno', '🤝 Collaborazioni']].map(([id, lbl]) => (
+        {[['studio', '🏠 Studio'], ['esterno', '🤝 Collaborazioni']].map(([id, lbl]) => (
           <button key={id} onClick={() => setTabAttiva(id)} style={{ flex: 1, padding: '10px 0', border: 'none', background: tabAttiva === id ? C.pri : 'transparent', color: tabAttiva === id ? '#fff' : C.txm, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{lbl}</button>
         ))}
       </div>

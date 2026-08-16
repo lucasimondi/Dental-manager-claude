@@ -76,14 +76,25 @@ export const addMesi = (dataStr, mesi) => {
   return d.toISOString().slice(0, 10);
 };
 
-/* ── RICHIAMI CLINICI: rilevamento automatico da nome prestazione ── */
-const RICHIAMO_KEYWORDS = [
-  { match: /igien/i, tipo: 'Igiene orale', mesi: 6 },
-  { match: /implant|impiant/i, tipo: 'Controllo impianto', mesi: 3 },
-];
-export const rilevaRichiamo = (nomePrestazione) => {
+/* ── RICHIAMI CLINICI: rilevamento automatico da nome prestazione ──
+   Parole chiave per riconoscere in automatico che tipo di richiamo proporre
+   quando una prestazione viene segnata come eseguita. Specifiche per
+   vertical: quelle odontoiatriche (igiene/impianto) hanno senso solo per lo
+   studio dentistico, non vanno applicate a un fisioterapista o altro
+   professionista solo perché una sua prestazione contiene per caso una
+   parola simile (es. "impianto" in ortopedia). Ogni nuovo vertical può
+   aggiungere qui il proprio elenco; di default nessuna rilevazione. ── */
+const RICHIAMO_KEYWORDS_PER_VERTICAL = {
+  dentistico: [
+    { match: /igien/i, tipo: 'Igiene orale', mesi: 6 },
+    { match: /implant|impiant/i, tipo: 'Controllo impianto', mesi: 3 },
+  ],
+};
+export const rilevaRichiamo = (nomePrestazione, vertical) => {
   if (!nomePrestazione) return null;
-  const found = RICHIAMO_KEYWORDS.find((k) => k.match.test(nomePrestazione));
+  const isDentistico = !vertical || vertical === 'dentistico';
+  const keywords = RICHIAMO_KEYWORDS_PER_VERTICAL[isDentistico ? 'dentistico' : vertical] || [];
+  const found = keywords.find((k) => k.match.test(nomePrestazione));
   return found ? { tipo: found.tipo, mesi: found.mesi } : null;
 };
 
@@ -112,7 +123,7 @@ export const TIPI_PARAMETRO_AZIONE = [
 
 /* ── SEZIONE RICHIAMI: categorie e stati ── */
 export const RICHIAMO_CATEGORIE = {
-  clinico: { label: 'Clinico', icona: '🦷', colore: '#1A6B8A' },
+  clinico: { label: 'Clinico', icona: '🩺', colore: '#1A6B8A' },
   preventivo: { label: 'Preventivo in standby', icona: '📋', colore: '#7C3AED' },
   incasso: { label: 'Incasso in standby', icona: '💶', colore: '#E63946' },
   generico: { label: 'Generico', icona: '📌', colore: '#5F6B7A' },
@@ -246,6 +257,26 @@ export const VERTICALI_DISPONIBILI = [
 // Verticali abilitati a generare la ricetta medica (richiede iscrizione
 // all'Ordine dei Medici e degli Odontoiatri).
 export const VERTICALI_CON_RICETTA = new Set(['medico_chirurgo', 'dentistico']);
+
+/* ── CATEGORIE PRESTAZIONI PER VERTICAL ──
+   Elenco proposto nel menu "Categoria" quando si aggiunge una voce al
+   listino (Listino.jsx). Ogni vertical ha il proprio elenco pertinente;
+   quelli senza un elenco dedicato usano CATEGORIE_PRESTAZIONI_GENERICO.
+   Per aggiungere un nuovo vertical con categorie su misura basta aggiungere
+   una chiave qui — nessun'altra modifica serve altrove. ── */
+export const CATEGORIE_PRESTAZIONI_GENERICO = ['Visita', 'Trattamento', 'Consulenza', 'Altro'];
+
+export const CATEGORIE_PRESTAZIONI_PER_VERTICAL = {
+  dentistico: ['Igiene', 'Conservativa', 'Endodonzia', 'Protesi', 'Chirurgia', 'Ortodonzia', 'Radiologia', 'Parodontologia', 'Altro'],
+  fisioterapista: ['Valutazione', 'Terapia manuale', 'Rieducazione funzionale', 'Terapie strumentali', 'Altro'],
+  massofisioterapista: ['Valutazione', 'Terapia manuale', 'Rieducazione funzionale', 'Terapie strumentali', 'Altro'],
+  massaggiatore: ['Valutazione', 'Massaggio', 'Trattamento', 'Altro'],
+  psicologo: ['Colloquio', 'Valutazione', 'Percorso terapeutico', 'Altro'],
+  personal_trainer: ['Valutazione', 'Allenamento individuale', 'Allenamento di gruppo', 'Programma', 'Altro'],
+};
+
+export const getCategoriePrestazioni = (vertical) =>
+  CATEGORIE_PRESTAZIONI_PER_VERTICAL[vertical] || CATEGORIE_PRESTAZIONI_GENERICO;
 
 // Anamnesi medica standard per i verticali con formazione medica
 // (odontoiatra, medico chirurgo): set fisso, non personalizzabile dallo

@@ -425,7 +425,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
         if (voceListino?.richiamoMesi) {
           extra = { richiamoTipo: v.prestazione, richiamoData: addMesi(today(), Number(voceListino.richiamoMesi)) };
         } else {
-          const r = rilevaRichiamo(v.prestazione);
+          const r = rilevaRichiamo(v.prestazione, si?.vertical);
           if (r) extra = { richiamoTipo: r.tipo, richiamoData: addMesi(today(), r.mesi) };
         }
       }
@@ -481,7 +481,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
   if (pdfPlan) return <PdfView pl={pdfPlan} paz={paz} si={si} features={features} onClose={() => setPdfPlan(null)} />;
 
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
-  const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'piani', l: '🦷 Piani' }, ...(isDentistico ? [{ id: 'impl', l: '🔩 Impianti' }] : []), { id: 'paga', l: '💰 Pagamenti' }, { id: 'foto', l: '📁 Foto' }, { id: 'doc', l: '📄 Documenti' }, { id: 'app', l: '📅 Agenda' }];
+  const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'piani', l: '📑 Piani' }, ...(isDentistico ? [{ id: 'impl', l: '🔩 Impianti' }] : []), { id: 'paga', l: '💰 Pagamenti' }, { id: 'foto', l: '📁 Foto' }, { id: 'doc', l: '📄 Documenti' }, { id: 'app', l: '📅 Agenda' }];
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
@@ -754,7 +754,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                           onClick={() => setModelloSel(m)}
                           style={{ display: 'flex', alignItems: 'center', gap: 9, textAlign: 'left', padding: '10px 12px', borderRadius: 9, border: `1.5px solid ${modelloSel?.id === m.id ? C.pri : C.brd}`, background: modelloSel?.id === m.id ? C.priL : C.sur, cursor: 'pointer' }}
                         >
-                          <span style={{ fontSize: 15 }}>{m.tipo === 'trattamento_specifico' ? '🦷' : '📄'}</span>
+                          <span style={{ fontSize: 15 }}>{m.tipo === 'trattamento_specifico' ? '📑' : '📄'}</span>
                           <span style={{ fontWeight: 700, fontSize: 12.5, color: modelloSel?.id === m.id ? C.pri : C.txt }}>{m.titolo}</span>
                         </button>
                       ))}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import RegisterScreen from './RegisterScreen.jsx';
-import Ic from './ui/Ic.jsx';
 import { supabase } from '../lib/supabase.js';
+import gemma from '../assets/icon-poliedra-gem.png';
 
 export default function LoginScreen({ onLogin }) {
   const [email, setEmail] = useState('');
@@ -36,12 +36,7 @@ export default function LoginScreen({ onLogin }) {
         maxWidth: 380, boxShadow: '0 10px 40px rgba(0,0,0,0.25)',
       }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div style={{
-            background: '#2EC4B6', borderRadius: 14, width: 54, height: 54, display: 'flex',
-            alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px',
-          }}>
-            <Ic n="tooth" s={28} c="#fff" />
-          </div>
+          <img src={gemma} alt="Poliedra" style={{ width: 60, height: 60, margin: '0 auto 12px', display: 'block' }} />
           <div style={{ fontSize: 20, fontWeight: 800, color: '#1A202C' }}>Poliedra</div>
           <div style={{ fontSize: 12, color: '#718096', marginTop: 2 }}>Accedi al tuo studio</div>
         </div>

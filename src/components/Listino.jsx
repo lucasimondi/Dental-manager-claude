@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Ic, Bdg } from './ui';
-import { C, uid, fmt, DEF_PRICE } from '../lib/utils';
+import { C, uid, fmt, DEF_PRICE, getCategoriePrestazioni } from '../lib/utils';
 
-const FORM_VUOTO = { cat: 'Igiene', cod: '', nome: '', prezzo: '', richiamoMesi: '' };
+const FORM_VUOTO = { cat: '', cod: '', nome: '', prezzo: '', richiamoMesi: '' };
 
 export default function Listino({ pricelist, setPricelist, si }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
+  const categorie = getCategoriePrestazioni(si?.vertical);
   const [modal, setModal] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [form, setForm] = useState(FORM_VUOTO);
@@ -14,8 +15,8 @@ export default function Listino({ pricelist, setPricelist, si }) {
 
   const cats = [...new Set(pricelist.map((p) => p.cat))];
 
-  const openNew = () => { setForm(FORM_VUOTO); setEditItem(null); setModal(true); };
-  const openEdit = (item) => { setForm({ ...FORM_VUOTO, ...item, prezzo: String(item.prezzo), richiamoMesi: item.richiamoMesi != null ? String(item.richiamoMesi) : '' }); setEditItem(item); setModal(true); };
+  const openNew = () => { setForm({ ...FORM_VUOTO, cat: categorie[0] }); setEditItem(null); setModal(true); };
+  const openEdit = (item) => { setForm({ ...FORM_VUOTO, cat: categorie[0], ...item, prezzo: String(item.prezzo), richiamoMesi: item.richiamoMesi != null ? String(item.richiamoMesi) : '' }); setEditItem(item); setModal(true); };
 
   const save = () => {
     if (!form.nome || !form.prezzo) return;
@@ -104,7 +105,7 @@ export default function Listino({ pricelist, setPricelist, si }) {
         <Modal title={editItem ? 'Modifica prestazione' : 'Nuova prestazione'} onClose={() => setModal(false)}>
           <Fld label="Categoria">
             <Sel value={form.cat} onChange={(e) => setForm((f) => ({ ...f, cat: e.target.value }))}>
-              {['Igiene', 'Conservativa', 'Endodonzia', 'Protesi', 'Chirurgia', 'Ortodonzia', 'Radiologia', 'Parodontologia', 'Altro'].map((c) => <option key={c}>{c}</option>)}
+              {categorie.map((c) => <option key={c}>{c}</option>)}
             </Sel>
           </Fld>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>

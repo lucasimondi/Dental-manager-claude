@@ -168,9 +168,13 @@ export default function DocMedico({ paz, si, onClose }) {
     anamnesi: '',
     diagnosi: '',
     richiesta: '',
-    protocolloId: PROTOCOLLI_PREDEFINITI[0].id,
-    titoloProtocollo: PROTOCOLLI_PREDEFINITI[0].label,
-    testoProtocollo: PROTOCOLLI_PREDEFINITI[0].testo,
+    // I protocolli predefiniti qui sotto sono clinicamente specifici per
+    // l'odontoiatria (post-chirurgia orale, implantologia, allineatori):
+    // non ha senso proporli, né tantomeno precompilarli, a uno studio di
+    // un'altra professione — parte vuoto, lo studio scrive il proprio.
+    protocolloId: isDentistico ? PROTOCOLLI_PREDEFINITI[0].id : '',
+    titoloProtocollo: isDentistico ? PROTOCOLLI_PREDEFINITI[0].label : '',
+    testoProtocollo: isDentistico ? PROTOCOLLI_PREDEFINITI[0].testo : '',
     titoloVuoto: '',
     testoVuoto: '',
     includiPazienteVuoto: true,
@@ -912,11 +916,13 @@ export default function DocMedico({ paz, si, onClose }) {
         {tipo === 'protocollo' && (
           <Crd style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10 }}>📖 Protocollo</div>
-            <Fld label="Protocollo predefinito">
-              <Sel value={protocolloId} onChange={e => selezionaProtocollo(e.target.value)}>
-                {PROTOCOLLI_PREDEFINITI.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
-              </Sel>
-            </Fld>
+            {isDentistico && (
+              <Fld label="Protocollo predefinito">
+                <Sel value={protocolloId} onChange={e => selezionaProtocollo(e.target.value)}>
+                  {PROTOCOLLI_PREDEFINITI.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+                </Sel>
+              </Fld>
+            )}
             <Fld label="Titolo documento">
               <Inp value={titoloProtocollo} onChange={e => setTitoloProtocollo(e.target.value)} placeholder="es. Post-chirurgia orale" />
             </Fld>

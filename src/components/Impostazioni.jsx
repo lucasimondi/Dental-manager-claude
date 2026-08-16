@@ -573,7 +573,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
             onClick={() => apriModelloModal(m)}
             style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '11px 4px', borderBottom: i < modelliConsenso.length - 1 ? `1px solid ${C.brd}` : 'none', background: 'none', border: 'none', cursor: 'pointer' }}
           >
-            <span style={{ fontSize: 16 }}>{m.tipo === 'trattamento_specifico' ? '🦷' : '📄'}</span>
+            <span style={{ fontSize: 16 }}>{m.tipo === 'trattamento_specifico' ? '📑' : '📄'}</span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: 13, color: C.txt }}>{m.titolo}</div>
               <div style={{ fontSize: 10.5, color: C.txl }}>{m.tipo === 'trattamento_specifico' ? 'Trattamento specifico' : 'Generico'}</div>
@@ -806,7 +806,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           <Fld label="Tipo">
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => setModelloForm((f) => ({ ...f, tipo: 'generico' }))} style={{ flex: 1, padding: '10px 0', borderRadius: 9, border: `1.5px solid ${modelloForm.tipo === 'generico' ? C.pri : C.brd}`, background: modelloForm.tipo === 'generico' ? C.priL : C.sur, color: modelloForm.tipo === 'generico' ? C.pri : C.txm, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>📄 Generico</button>
-              <button onClick={() => setModelloForm((f) => ({ ...f, tipo: 'trattamento_specifico' }))} style={{ flex: 1, padding: '10px 0', borderRadius: 9, border: `1.5px solid ${modelloForm.tipo === 'trattamento_specifico' ? C.pri : C.brd}`, background: modelloForm.tipo === 'trattamento_specifico' ? C.priL : C.sur, color: modelloForm.tipo === 'trattamento_specifico' ? C.pri : C.txm, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>🦷 Per trattamento</button>
+              <button onClick={() => setModelloForm((f) => ({ ...f, tipo: 'trattamento_specifico' }))} style={{ flex: 1, padding: '10px 0', borderRadius: 9, border: `1.5px solid ${modelloForm.tipo === 'trattamento_specifico' ? C.pri : C.brd}`, background: modelloForm.tipo === 'trattamento_specifico' ? C.priL : C.sur, color: modelloForm.tipo === 'trattamento_specifico' ? C.pri : C.txm, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>📑 Per trattamento</button>
             </div>
           </Fld>
           <Fld label="Testo del consenso">

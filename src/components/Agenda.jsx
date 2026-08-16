@@ -616,7 +616,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const apriWA = (a) => {
     const p = patients.find(x => x.id === a.pazienteId);
     if (!p?.telefono) { alert('Nessun telefono per questo paziente'); return; }
-    const defMsg = `Gentile ${p.nome},\nricordiamo il suo appuntamento:\n📅 ${fmtD(a.data)} alle ${a.ora}\n🦷 ${a.tipo}\nPer variazioni contattarci entro 24h. Grazie!`;
+    const defMsg = `Gentile ${p.nome},\nricordiamo il suo appuntamento:\n📅 ${fmtD(a.data)} alle ${a.ora}\n📌 ${a.tipo}\nPer variazioni contattarci entro 24h. Grazie!`;
     setWaModal(a); setWaTplId(''); setWaMsg(defMsg);
   };
 
