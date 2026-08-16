@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker, SelettorePaziente } from './ui';
 import WaAction, { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
-import { C, uid, fmtD, today, DEF_APP_TYPES, DEF_AGENDA_SETTINGS } from '../lib/utils';
+import { C, uid, fmtD, today, getAppTypesDefault, DEF_AGENDA_SETTINGS } from '../lib/utils';
 import { useIsMobile } from '../lib/useIsMobile';
 import { salvaPosizione, leggiPosizione } from '../lib/posizioneNavigazione';
 import { useFormPersistente } from '../lib/useFormPersistente';
@@ -434,7 +434,7 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
 }
 
 export default function Agenda({ patients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni, setImpegni, si, setStudioInfo }) {
-  const tipiList = appTypes?.length ? appTypes : DEF_APP_TYPES;
+  const tipiList = appTypes?.length ? appTypes : getAppTypesDefault(si?.vertical);
 
   // Setup Agenda: le impostazioni sono condivise a livello di studio (studioInfo.agenda_settings),
   // così tutti i collaboratori vedono la stessa configurazione. localStorage resta solo come

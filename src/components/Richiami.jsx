@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, SelettorePaziente, WaAction } from './ui';
-import { C, fmtD, today, uid, RICHIAMO_CATEGORIE, DEF_TPL } from '../lib/utils';
+import { C, fmtD, today, uid, RICHIAMO_CATEGORIE, DEF_TPL_GENERICO } from '../lib/utils';
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { generaRichiamiBot } from '../lib/richiamiBot';
 
@@ -62,7 +62,7 @@ export default function Richiami({ patients, plans, payments, appointments, rich
     .filter((r) => (mostraFatti ? r.stato === 'fatto' : r.stato === 'da_fare'))
     .sort((a, b) => a.dataScadenza.localeCompare(b.dataScadenza));
 
-  const tplSollecito = templates.find((tp) => tp.nome === 'Sollecito controllo') || DEF_TPL[3];
+  const tplSollecito = templates.find((tp) => tp.nome === 'Sollecito controllo') || DEF_TPL_GENERICO[3];
 
   return (
     <div>

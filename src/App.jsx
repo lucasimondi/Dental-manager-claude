@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { supabase, DB } from './lib/supabase.js';
-import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_APP_TYPES, DEF_TPL_GENERICO, DEF_APP_TYPES_GENERICO, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, mergeDockSettings, uid } from './lib/utils';
+import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, mergeDockSettings, uid } from './lib/utils';
 import { generaRichiamiBot } from './lib/richiamiBot';
 import { salvaPosizione, leggiPosizione, pulisciPosizione } from './lib/posizioneNavigazione';
 import MobileDock from './components/MobileDock.jsx';
@@ -134,7 +134,7 @@ export default function App() {
         } else setTemplates(tp);
 
         if (!at || at.length === 0) {
-          const seeded = await Promise.all((isDentisticoNew ? DEF_APP_TYPES : DEF_APP_TYPES_GENERICO).map((item) => { const { id, ...rest } = item; return DB.insert('dm_at', rest); }));
+          const seeded = await Promise.all(getAppTypesDefault(si?.vertical).map((item) => { const { id, ...rest } = item; return DB.insert('dm_at', rest); }));
           setAppTypes(seeded);
         } else setAppTypes(at);
 

@@ -332,6 +332,50 @@ export const DEF_APP_TYPES_GENERICO = [
   { id: 4, nome: 'Urgenza', colore: '#DC2626' },
 ];
 
+/* ── TIPI APPUNTAMENTO PER VERTICAL ──
+   Precaricati alla prima apertura di un nuovo studio (App.jsx), stesso
+   ruolo di CATEGORIE_PRESTAZIONI_PER_VERTICAL sopra: ogni professione ha
+   nomi di appuntamento pertinenti invece del generico "Prima visita /
+   Trattamento". I vertical senza un elenco dedicato usano
+   DEF_APP_TYPES_GENERICO. Sono solo un punto di partenza: lo studio può
+   rinominarli, cambiarli di colore o aggiungerne altri da Impostazioni. ── */
+export const APP_TYPES_PER_VERTICAL = {
+  fisioterapista: [
+    { id: 1, nome: 'Prima valutazione', colore: '#1A6B8A' },
+    { id: 2, nome: 'Seduta di fisioterapia', colore: '#2EC4B6' },
+    { id: 3, nome: 'Rieducazione funzionale', colore: '#2D9E61' },
+    { id: 4, nome: 'Urgenza', colore: '#DC2626' },
+  ],
+  massofisioterapista: [
+    { id: 1, nome: 'Prima valutazione', colore: '#1A6B8A' },
+    { id: 2, nome: 'Seduta di fisioterapia', colore: '#2EC4B6' },
+    { id: 3, nome: 'Rieducazione funzionale', colore: '#2D9E61' },
+    { id: 4, nome: 'Urgenza', colore: '#DC2626' },
+  ],
+  psicologo: [
+    { id: 1, nome: 'Primo colloquio', colore: '#1A6B8A' },
+    { id: 2, nome: 'Seduta', colore: '#2EC4B6' },
+    { id: 3, nome: 'Colloquio di verifica', colore: '#2D9E61' },
+    { id: 4, nome: 'Urgenza', colore: '#DC2626' },
+  ],
+  massaggiatore: [
+    { id: 1, nome: 'Prima seduta', colore: '#1A6B8A' },
+    { id: 2, nome: 'Massaggio', colore: '#2EC4B6' },
+    { id: 3, nome: 'Trattamento', colore: '#2D9E61' },
+    { id: 4, nome: 'Pacchetto', colore: '#7C3AED' },
+  ],
+  personal_trainer: [
+    { id: 1, nome: 'Valutazione iniziale', colore: '#1A6B8A' },
+    { id: 2, nome: 'Allenamento individuale', colore: '#2EC4B6' },
+    { id: 3, nome: 'Allenamento di gruppo', colore: '#2D9E61' },
+    { id: 4, nome: 'Test / valutazione periodica', colore: '#F4A261' },
+  ],
+};
+
+export const getAppTypesDefault = (vertical) =>
+  vertical === 'dentistico' ? DEF_APP_TYPES
+  : APP_TYPES_PER_VERTICAL[vertical] || DEF_APP_TYPES_GENERICO;
+
 export const COLORI_DISPONIBILI = [
   '#1A6B8A', '#2EC4B6', '#2D9E61', '#7C3AED', '#E63946', '#F4A261',
   '#EC4899', '#DC2626', '#0EA5E9', '#84CC16', '#F59E0B', '#6366F1',
