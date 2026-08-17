@@ -22,13 +22,13 @@ export default function ControlloGestione(props) {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 4, background: C.bg, borderRadius: 10, padding: 4, margin: '0 14px 4px' }}>
+      <div style={{ display: 'flex', gap: 4, background: C.bg, borderRadius: 10, padding: 4, margin: '0 14px 4px', overflowX: 'auto' }}>
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             style={{
-              flex: 1, border: 'none', borderRadius: 7, padding: '8px 10px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+              flexShrink: 0, border: 'none', borderRadius: 7, padding: '8px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
               background: tab === t.id ? C.sur : 'transparent',
               color: tab === t.id ? C.pri : C.txl,
               boxShadow: tab === t.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',

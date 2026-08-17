@@ -84,21 +84,21 @@ function CostiCollegati({ pricelistId, studioId, prezzo }) {
         const m = materiali.find((x) => x.id === c.materiale_id);
         if (!m) return null;
         return (
-          <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0' }}>
-            <span style={{ flex: 1, fontSize: 12 }}>{m.nome}</span>
-            <span style={{ fontSize: 10.5, color: C.txl }}>{fmt(costoUsoMateriale(m))}/uso ×</span>
-            <input type="number" min="0.1" step="0.1" value={c.quantita} onChange={(e) => aggiornaQuantitaMat(c.id, Number(e.target.value) || 1)} style={{ width: 46, border: `1px solid ${C.brd}`, borderRadius: 6, padding: '3px 5px', fontSize: 12, textAlign: 'center' }} />
-            <button onClick={() => rimuoviMateriale(c.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}><Ic n="x" s={12} c={C.dan} /></button>
+          <div key={c.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, padding: '5px 0' }}>
+            <span style={{ flex: '1 1 100px', minWidth: 0, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.nome}</span>
+            <span style={{ fontSize: 10.5, color: C.txl, flexShrink: 0, whiteSpace: 'nowrap' }}>{fmt(costoUsoMateriale(m))}/uso ×</span>
+            <input type="number" min="0.1" step="0.1" value={c.quantita} onChange={(e) => aggiornaQuantitaMat(c.id, Number(e.target.value) || 1)} style={{ width: 46, flexShrink: 0, border: `1px solid ${C.brd}`, borderRadius: 6, padding: '3px 5px', fontSize: 12, textAlign: 'center' }} />
+            <button onClick={() => rimuoviMateriale(c.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, flexShrink: 0 }}><Ic n="x" s={12} c={C.dan} /></button>
           </div>
         );
       })}
       {materialiDisponibili.length > 0 && (
         <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-          <Sel value={nuovoMatId} onChange={(e) => setNuovoMatId(e.target.value)} style={{ flex: 1 }}>
+          <Sel value={nuovoMatId} onChange={(e) => setNuovoMatId(e.target.value)} style={{ flex: 1, minWidth: 0 }}>
             <option value="">+ Aggiungi materiale...</option>
             {materialiDisponibili.map((m) => <option key={m.id} value={m.id}>{m.nome} ({fmt(costoUsoMateriale(m))}/uso)</option>)}
           </Sel>
-          <button onClick={aggiungiMateriale} disabled={!nuovoMatId} style={{ background: nuovoMatId ? C.priL : C.bg, border: 'none', borderRadius: 8, padding: '0 12px', color: nuovoMatId ? C.pri : C.txl, fontWeight: 700, fontSize: 12, cursor: nuovoMatId ? 'pointer' : 'not-allowed' }}>+</button>
+          <button onClick={aggiungiMateriale} disabled={!nuovoMatId} style={{ background: nuovoMatId ? C.priL : C.bg, border: 'none', borderRadius: 8, padding: '0 12px', color: nuovoMatId ? C.pri : C.txl, fontWeight: 700, fontSize: 12, cursor: nuovoMatId ? 'pointer' : 'not-allowed', flexShrink: 0 }}>+</button>
         </div>
       )}
       {materiali.length === 0 && <div style={{ fontSize: 10.5, color: C.txl }}>Nessun materiale in libreria — aggiungili in Controllo → Costi → Materiali.</div>}
@@ -109,21 +109,21 @@ function CostiCollegati({ pricelistId, studioId, prezzo }) {
         if (!m) return null;
         const cu = costoUsoMacchinario(m);
         return (
-          <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0' }}>
-            <span style={{ flex: 1, fontSize: 12 }}>{m.nome}</span>
-            <span style={{ fontSize: 10.5, color: C.txl }}>{cu != null ? `${fmt(cu)}/uso ×` : 'costo/uso non configurato'}</span>
-            <input type="number" min="0.1" step="0.1" value={c.quantita} onChange={(e) => aggiornaQuantitaMacc(c.id, Number(e.target.value) || 1)} style={{ width: 46, border: `1px solid ${C.brd}`, borderRadius: 6, padding: '3px 5px', fontSize: 12, textAlign: 'center' }} />
-            <button onClick={() => rimuoviMacchinario(c.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}><Ic n="x" s={12} c={C.dan} /></button>
+          <div key={c.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, padding: '5px 0' }}>
+            <span style={{ flex: '1 1 100px', minWidth: 0, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.nome}</span>
+            <span style={{ fontSize: 10.5, color: C.txl, flexShrink: 0, whiteSpace: 'nowrap' }}>{cu != null ? `${fmt(cu)}/uso ×` : 'costo/uso non configurato'}</span>
+            <input type="number" min="0.1" step="0.1" value={c.quantita} onChange={(e) => aggiornaQuantitaMacc(c.id, Number(e.target.value) || 1)} style={{ width: 46, flexShrink: 0, border: `1px solid ${C.brd}`, borderRadius: 6, padding: '3px 5px', fontSize: 12, textAlign: 'center' }} />
+            <button onClick={() => rimuoviMacchinario(c.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, flexShrink: 0 }}><Ic n="x" s={12} c={C.dan} /></button>
           </div>
         );
       })}
       {macchinariDisponibili.length > 0 && (
         <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-          <Sel value={nuovoMaccId} onChange={(e) => setNuovoMaccId(e.target.value)} style={{ flex: 1 }}>
+          <Sel value={nuovoMaccId} onChange={(e) => setNuovoMaccId(e.target.value)} style={{ flex: 1, minWidth: 0 }}>
             <option value="">+ Aggiungi macchinario...</option>
             {macchinariDisponibili.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
           </Sel>
-          <button onClick={aggiungiMacchinario} disabled={!nuovoMaccId} style={{ background: nuovoMaccId ? C.priL : C.bg, border: 'none', borderRadius: 8, padding: '0 12px', color: nuovoMaccId ? C.pri : C.txl, fontWeight: 700, fontSize: 12, cursor: nuovoMaccId ? 'pointer' : 'not-allowed' }}>+</button>
+          <button onClick={aggiungiMacchinario} disabled={!nuovoMaccId} style={{ background: nuovoMaccId ? C.priL : C.bg, border: 'none', borderRadius: 8, padding: '0 12px', color: nuovoMaccId ? C.pri : C.txl, fontWeight: 700, fontSize: 12, cursor: nuovoMaccId ? 'pointer' : 'not-allowed', flexShrink: 0 }}>+</button>
         </div>
       )}
       {macchinari.length === 0 && <div style={{ fontSize: 10.5, color: C.txl }}>Nessun macchinario in libreria — aggiungili in Controllo → Costi → Macchinari.</div>}

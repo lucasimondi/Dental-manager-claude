@@ -118,18 +118,21 @@ export default function MarginalitaPrestazioni({ studioId, pricelist = [] }) {
                     {aperta && (
                       <div style={{ padding: '4px 13px 13px', background: C.bg, borderBottom: i < configurate.length - 1 ? `1px solid ${C.brd}` : 'none' }}>
                         {r.matCollegati.map((c) => { const m = materiali.find((x) => x.id === c.materiale_id); if (!m) return null; return (
-                          <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: C.txm, padding: '3px 0' }}>
-                            <span>{m.nome} × {c.quantita}</span><span>{fmt(costoUsoMateriale(m) * c.quantita)}</span>
+                          <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: C.txm, padding: '3px 0' }}>
+                            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.nome} × {c.quantita}</span>
+                            <span style={{ flexShrink: 0 }}>{fmt(costoUsoMateriale(m) * c.quantita)}</span>
                           </div>
                         ); })}
                         {r.maccCollegati.map((c) => { const m = macchinari.find((x) => x.id === c.macchinario_id); const cu = m ? costoUsoMacchinario(m) : null; if (!m || cu == null) return null; return (
-                          <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: C.txm, padding: '3px 0' }}>
-                            <span>{m.nome} × {c.quantita}</span><span>{fmt(cu * c.quantita)}</span>
+                          <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: C.txm, padding: '3px 0' }}>
+                            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.nome} × {c.quantita}</span>
+                            <span style={{ flexShrink: 0 }}>{fmt(cu * c.quantita)}</span>
                           </div>
                         ); })}
                         {r.costoTempo > 0 && (
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: C.txm, padding: '3px 0' }}>
-                            <span>Tempo poltrona ({r.p.durataMinuti} min)</span><span>{fmt(r.costoTempo)}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: C.txm, padding: '3px 0' }}>
+                            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Tempo poltrona ({r.p.durataMinuti} min)</span>
+                            <span style={{ flexShrink: 0 }}>{fmt(r.costoTempo)}</span>
                           </div>
                         )}
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, fontWeight: 800, color: C.txt, marginTop: 6, paddingTop: 6, borderTop: `1px solid ${C.brd}` }}>

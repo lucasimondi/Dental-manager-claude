@@ -46,7 +46,7 @@ function CostoOrarioCard({ studioId, refreshKey }) {
         </div>
         <button onClick={() => setEditConfig(true)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, padding: '6px 10px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>⚙️ Ore</button>
       </div>
-      <div style={{ display: 'flex', gap: 14, marginTop: 12, fontSize: 11, color: 'rgba(255,255,255,0.85)' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, rowGap: 2, marginTop: 12, fontSize: 11, color: 'rgba(255,255,255,0.85)' }}>
         <div>Costi struttura: <b>{fmt(dati.costi_fissi_spese_mensili)}</b>/mese</div>
         <div>Personale: <b>{fmt(dati.costi_personale_mensili)}</b>/mese</div>
         <div>Macchinari: <b>{fmt(dati.costi_macchinari_mensili)}</b>/mese</div>
@@ -543,10 +543,10 @@ export default function Costi({ studioId }) {
 
       <UploadDocumento onEstratto={(estratto, file) => setEstrattoPendente({ estratto, file })} />
 
-      <div style={{ display: 'flex', gap: 4, background: C.bg, borderRadius: 10, padding: 4, marginBottom: 12 }}>
+      <div style={{ display: 'flex', gap: 4, background: C.bg, borderRadius: 10, padding: 4, marginBottom: 12, overflowX: 'auto' }}>
         {SUB_TABS.map((t) => (
           <button key={t.id} onClick={() => setSub(t.id)} style={{
-            flex: 1, border: 'none', borderRadius: 7, padding: '7px 8px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+            flexShrink: 0, border: 'none', borderRadius: 7, padding: '7px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
             background: sub === t.id ? C.sur : 'transparent', color: sub === t.id ? C.pri : C.txl,
             boxShadow: sub === t.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
           }}>{t.label}</button>
