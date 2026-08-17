@@ -886,26 +886,27 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   const appVisibili = appointmentsAgenda.filter(a => giorniVisibili.includes(a.data));
   const appVisibiliConTel = selezionabiliWAMass(appVisibili);
 
+  // Campanella notifiche (richieste di prenotazione da gestire, ecc.): mostrata
+  // in linea con il selettore vista invece che come banner a riga intera, perché
+  // su mobile un banner tra l'header e la griglia rubava spazio verticale
+  // prezioso ogni volta che c'erano richieste in sospeso, "rimpicciolendo"
+  // l'agenda sotto. Il popup con l'elenco resta lo stesso (richiesteAperte).
+  const notificheBell = richieste.length > 0 && (
+    <button
+      onClick={() => setRichiesteAperte(true)}
+      aria-label={`${richieste.length} notifiche`}
+      style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', background: C.priL, border: 'none', cursor: 'pointer', flexShrink: 0 }}
+    >
+      <Ic n="bell" s={15} c={C.pri} />
+      <span style={{ position: 'absolute', top: -3, right: -3, minWidth: 15, height: 15, padding: '0 3px', borderRadius: 8, background: C.dan, color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>
+        {richieste.length}
+      </span>
+    </button>
+  );
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
-
-      {richieste.length > 0 && (
-        <button
-          onClick={() => setRichiesteAperte(true)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
-            background: C.priL, border: `1.5px solid ${C.pri}`, borderRadius: 12, padding: '10px 14px',
-            marginBottom: 10, cursor: 'pointer', flexShrink: 0,
-          }}
-        >
-          <span style={{ fontSize: 17 }}>📩</span>
-          <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: C.pri }}>
-            {richieste.length} {richieste.length === 1 ? 'richiesta di prenotazione' : 'richieste di prenotazione'} da gestire
-          </span>
-          <span style={{ color: C.pri }}>›</span>
-        </button>
-      )}
 
       {features?.multi_operatore && operatori.length > 0 && (
         <div style={{ display: 'flex', gap: 6, marginBottom: 8, overflowX: 'auto', paddingBottom: 2, flexShrink: 0 }}>
@@ -932,7 +933,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       )}
 
       {view === 'giorno' && (
-        <DayStrip selDay={selDay} setSelDay={setSelDay} today={t} viewPicker={<ViewPicker view={view} setView={setView} />} />
+        <DayStrip selDay={selDay} setSelDay={setSelDay} today={t} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{notificheBell}<ViewPicker view={view} setView={setView} /></div>} />
       )}
       {view === 'settimana' && (
         <DayStrip
@@ -941,7 +942,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           today={t}
           highlightSelected={false}
           onWeekChange={(wk) => setSelDay(wk)}
-          viewPicker={<ViewPicker view={view} setView={setView} />}
+          viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{notificheBell}<ViewPicker view={view} setView={setView} /></div>}
         />
       )}
       {view === 'mese' && (
@@ -950,6 +951,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
             <button onClick={() => navMese(-1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>‹</button>
             <span style={{ fontWeight: 700, fontSize: 12 }}>{MESI[vd.getMonth()]} {vd.getFullYear()}</span>
             <button onClick={() => navMese(1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>›</button>
+            {notificheBell}
             <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
           </div>
           <ViewPicker view={view} setView={setView} />
