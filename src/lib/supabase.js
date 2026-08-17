@@ -38,6 +38,7 @@ const FIELD_MAP = {
   appointments: {
     pazienteId: 'paziente_id',
     operatoreId: 'operatore_id',
+    poltronaId: 'poltrona_id',
     googleEventId: 'google_event_id',
     googleCalendarSyncedAt: 'google_calendar_synced_at',
   },

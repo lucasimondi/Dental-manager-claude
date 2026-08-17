@@ -1,6 +1,6 @@
 ﻿import ProfiloUtente from './ProfiloUtente.jsx';
 import GestioneUtenti from './GestioneUtenti.jsx';
-import GestioneOperatori from './GestioneOperatori.jsx';
+import GestioneRisorseAgenda from './GestioneRisorseAgenda.jsx';
 import React, { useState, useEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Ic, DockIc, DOCK_ICON_STYLES } from './ui';
 import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI, DEF_DOCK_SETTINGS, mergeDockSettings, DEF_AGENDA_SETTINGS, DEF_DOCUMENTI_SETTINGS, STORIA_CLINICA_MODELLO_BASE } from '../lib/utils';
@@ -70,17 +70,29 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
   const [slugSalvato, setSlugSalvato] = useState('');
   const [slugStato, setSlugStato] = useState(''); // '', 'salvando', 'ok', 'occupato', 'errore'
   const [modalitaPrenotazione, setModalitaPrenotazione] = useState('richiesta');
+  const [piano, setPiano] = useState(null);
+  const [multiAgendaSalvando, setMultiAgendaSalvando] = useState(false);
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       const id = session?.user?.app_metadata?.studio_id;
       if (!id) return;
       setStudioId(id);
-      supabase.from('studios').select('slug, modalita_prenotazione').eq('id', id).maybeSingle().then(({ data }) => {
+      supabase.from('studios').select('slug, modalita_prenotazione, piano').eq('id', id).maybeSingle().then(({ data }) => {
         if (data?.slug) { setSlug(data.slug); setSlugSalvato(data.slug); }
         if (data?.modalita_prenotazione) setModalitaPrenotazione(data.modalita_prenotazione);
+        if (data?.piano) setPiano(data.piano);
       });
     });
   }, []);
+
+  const toggleMultiAgenda = async (attivo) => {
+    setMultiAgendaSalvando(true);
+    const { error } = await supabase.rpc('set_multi_operatore', { p_attivo: attivo });
+    setMultiAgendaSalvando(false);
+    if (error) { setToast('Errore: ' + error.message); return; }
+    setToast(attivo ? 'Multi-agenda attivata ✓' : 'Multi-agenda disattivata ✓');
+    window.location.reload(); // features viene calcolato all'avvio in App.jsx, un reload lo rilegge subito
+  };
 
   const cambiaModalitaPrenotazione = async (nuova) => {
     setModalitaPrenotazione(nuova); // ottimistico, l'interazione resta fluida
@@ -602,6 +614,40 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
         </Fld>
       </Crd>
       <Btn ch="💾 Salva impostazioni agenda" onClick={save} dis={agSet.oraInizio >= agSet.oraFine} full sz="lg" />
+
+      <div style={{ marginTop: 26, marginBottom: 14 }}>
+        <div style={{ fontSize: 20, fontWeight: 800 }}>Multi-agenda</div>
+        <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Più professionisti e più poltrone, ognuno con la propria agenda filtrabile</div>
+      </div>
+      <Crd style={{ marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13 }}>{features?.multi_operatore ? 'Attiva' : 'Non attiva'}</div>
+            <div style={{ fontSize: 11.5, color: C.txm, marginTop: 2 }}>
+              {features?.multi_operatore
+                ? 'Assegna operatore e poltrona a ogni appuntamento, filtra l\'agenda per ciascuno.'
+                : (piano === 'base' ? 'Disponibile dal piano Pro in su.' : 'Attivala per gestire più professionisti e poltrone in agenda.')}
+            </div>
+          </div>
+          {(piano && piano !== 'base') || features?.multi_operatore ? (
+            <button
+              onClick={() => toggleMultiAgenda(!features?.multi_operatore)}
+              disabled={multiAgendaSalvando || (!features?.multi_operatore && piano === 'base')}
+              style={{ width: 48, height: 26, borderRadius: 13, background: features?.multi_operatore ? C.suc : C.brd, border: 'none', cursor: multiAgendaSalvando ? 'wait' : 'pointer', position: 'relative', flexShrink: 0, opacity: multiAgendaSalvando ? 0.6 : 1 }}
+            >
+              <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: features?.multi_operatore ? 25 : 3, transition: 'left 0.15s' }} />
+            </button>
+          ) : (
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: C.txl, background: C.bg, borderRadius: 20, padding: '5px 10px', flexShrink: 0 }}>🔒 Pro+</span>
+          )}
+        </div>
+      </Crd>
+      {features?.multi_operatore && (
+        <>
+          <GestioneRisorseAgenda tipo="operatori" studioId={studioId} currentUserId={currentUserId} titolareNome={si.nome} features={features} isStudioAdmin={isStudioAdmin} />
+          <GestioneRisorseAgenda tipo="poltrone" studioId={studioId} currentUserId={currentUserId} titolareNome={si.nome} features={features} isStudioAdmin={isStudioAdmin} />
+        </>
+      )}
       </>
       )}
 
@@ -868,7 +914,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       <>
       <ProfiloUtente onNomeChange={onNomeChange} />
       <GestioneUtenti studioId={studioInfo?.studio_id || '00000000-0000-0000-0000-000000000001'} currentUserId={currentUserId} features={features} isStudioAdmin={isStudioAdmin} />
-      <GestioneOperatori studioId={studioInfo?.studio_id || '00000000-0000-0000-0000-000000000001'} currentUserId={currentUserId} titolareNome={si.nome} features={features} isStudioAdmin={isStudioAdmin} />
+      <GestioneRisorseAgenda tipo="operatori" studioId={studioInfo?.studio_id || '00000000-0000-0000-0000-000000000001'} currentUserId={currentUserId} titolareNome={si.nome} features={features} isStudioAdmin={isStudioAdmin} />
       </>
       )}
 

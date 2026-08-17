@@ -42,7 +42,7 @@ const startOfWeek = (d) => {
   return dt;
 };
 
-function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, getOperatore, appPosition, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno, onSwipeDay, selModeWA, selAppIds, toggleSelApp }) {
+function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, getOperatore, getPoltrona, appPosition, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno, onSwipeDay, selModeWA, selAppIds, toggleSelApp }) {
   const containerRef = useRef(null); // unico scroll container
   const resizeRef = useRef(null);
   const [now, setNow] = useState(new Date());
@@ -220,6 +220,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                   const isSelezionabileWA = !!p?.telefono;
                   const isSelected = selAppIds?.includes(a.id);
                   const operatore = getOperatore ? getOperatore(a) : null;
+                  const poltrona = getPoltrona ? getPoltrona(a) : null;
                   return (
                     <div key={a.id} style={{ position: 'absolute', top, left: 2, right: 2, height, background: co, borderRadius: 5, overflow: 'hidden', zIndex: isBeingResized || isBeingMoved ? 10 : 2, borderLeft: `3px solid ${co}DD`, boxShadow: isBeingResized || isBeingMoved ? '0 6px 16px rgba(0,0,0,0.35)' : '0 1px 3px rgba(0,0,0,0.15)', userSelect: 'none', opacity: isBeingMoved ? 0.85 : (selModeWA && !isSelezionabileWA ? 0.35 : 1), outline: isSelected ? '2.5px solid #25D366' : 'none', outlineOffset: -1 }}>
                       {/* Contenuto appuntamento — in modalità selezione tocca per selezionare/deselezionare;
@@ -237,6 +238,9 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                       >
                         {operatore && !selModeWA && (
                           <div title={operatore.nome} style={{ position: 'absolute', top: 3, right: 3, width: 7, height: 7, borderRadius: '50%', background: operatore.colore, border: '1px solid rgba(255,255,255,0.8)' }} />
+                        )}
+                        {poltrona && !selModeWA && (
+                          <div title={poltrona.nome} style={{ position: 'absolute', top: 3, right: operatore ? 13 : 3, width: 7, height: 7, borderRadius: 2, background: poltrona.colore, border: '1px solid rgba(255,255,255,0.8)' }} />
                         )}
                         <div style={{ fontSize: 9, lineHeight: '10px', fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.ora} {p ? `${p.cognome}` : '—'}</div>
                         {height > 28 && <div style={{ fontSize: 8, lineHeight: '9px', color: 'rgba(255,255,255,0.9)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.tipo}</div>}
@@ -478,14 +482,18 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   };
   useEffect(() => { caricaRichieste(); }, []);
 
-  // Operatori: caricati solo se la feature è attiva per lo studio — un unico
-  // filtro qui evita una query inutile per gli studi mono-operatore.
+  // Operatori/poltrone: caricati solo se la feature è attiva per lo studio —
+  // un unico filtro qui evita query inutili per gli studi mono-agenda.
   const [operatori, setOperatori] = useState([]);
   const [filtroOperatore, setFiltroOperatore] = useState('tutti');
+  const [poltrone, setPoltrone] = useState([]);
+  const [filtroPoltrona, setFiltroPoltrona] = useState('tutti');
   useEffect(() => {
     if (!features?.multi_operatore || !si?.studio_id) return;
     supabase.from('operatori').select('*').eq('studio_id', si.studio_id).eq('attivo', true).order('created_at')
       .then(({ data }) => setOperatori(data || []));
+    supabase.from('poltrone').select('*').eq('studio_id', si.studio_id).eq('attivo', true).order('created_at')
+      .then(({ data }) => setPoltrone(data || []));
   }, [features?.multi_operatore, si?.studio_id]);
 
   const rifiutaRichiesta = async (id) => {
@@ -505,7 +513,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   // dell'appuntamento in modifica — persistito insieme al resto del form così
   // se l'app si ricarica da zero a metà modifica sappiamo quale riaprire
   // (vedi effetto di ripristino subito sotto).
-  const [form, setForm, clearFormDraft] = useFormPersistente('nuovo_appuntamento', { pazienteId: '', data: today(), ora: '09:00', durata: agSet.durataDefault, tipo: tipiList[0]?.nome || 'Visita', colore: tipiList[0]?.colore || C.pri, note: '', stato: 'confermato', operatoreId: '', ripeti: 'nessuna', ripetiFino: '', _editId: null });
+  const [form, setForm, clearFormDraft] = useFormPersistente('nuovo_appuntamento', { pazienteId: '', data: today(), ora: '09:00', durata: agSet.durataDefault, tipo: tipiList[0]?.nome || 'Visita', colore: tipiList[0]?.colore || C.pri, note: '', stato: 'confermato', operatoreId: '', poltronaId: '', ripeti: 'nessuna', ripetiFino: '', _editId: null });
 
   // Ricostruisce editApp da form._editId al primo caricamento: se l'app si
   // è ricaricata da zero mentre si stava modificando un appuntamento
@@ -601,14 +609,14 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const apriNuovo = (data, ora) => {
     setPazSearch('');
     setEditApp(null);
-    setForm({ pazienteId: '', data: data || selDay, ora: ora || '09:00', durata: agSet.durataDefault, tipo: tipiList[0]?.nome || 'Visita', colore: tipiList[0]?.colore || C.pri, note: '', stato: 'confermato', operatoreId: filtroOperatore !== 'tutti' ? filtroOperatore : '', ripeti: 'nessuna', ripetiFino: '', _editId: null });
+    setForm({ pazienteId: '', data: data || selDay, ora: ora || '09:00', durata: agSet.durataDefault, tipo: tipiList[0]?.nome || 'Visita', colore: tipiList[0]?.colore || C.pri, note: '', stato: 'confermato', operatoreId: filtroOperatore !== 'tutti' ? filtroOperatore : '', poltronaId: filtroPoltrona !== 'tutti' ? filtroPoltrona : '', ripeti: 'nessuna', ripetiFino: '', _editId: null });
     setModal(true);
   };
 
   const apriEdit = (a) => {
     setEditApp(a);
     setPazSearch('');
-    setForm({ pazienteId: String(a.pazienteId), data: a.data, ora: a.ora, durata: a.durata, tipo: a.tipo, colore: a.colore || C.pri, note: a.note || '', stato: a.stato || 'confermato', operatoreId: a.operatoreId ? String(a.operatoreId) : '', ripeti: 'nessuna', ripetiFino: '', _editId: a.id });
+    setForm({ pazienteId: String(a.pazienteId), data: a.data, ora: a.ora, durata: a.durata, tipo: a.tipo, colore: a.colore || C.pri, note: a.note || '', stato: a.stato || 'confermato', operatoreId: a.operatoreId ? String(a.operatoreId) : '', poltronaId: a.poltronaId ? String(a.poltronaId) : '', ripeti: 'nessuna', ripetiFino: '', _editId: a.id });
     setModal(true);
   };
 
@@ -703,14 +711,15 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const save = () => {
     if (!form.pazienteId) return;
     const operatoreId = form.operatoreId ? Number(form.operatoreId) : null;
+    const poltronaId = form.poltronaId ? Number(form.poltronaId) : null;
     if (editApp) {
       const { ripeti, ripetiFino, ...rest } = form;
-      setAppointments(p => p.map(a => a.id === editApp.id ? { ...a, ...rest, pazienteId: Number(form.pazienteId), durata: Number(form.durata), operatoreId } : a));
+      setAppointments(p => p.map(a => a.id === editApp.id ? { ...a, ...rest, pazienteId: Number(form.pazienteId), durata: Number(form.durata), operatoreId, poltronaId } : a));
       setToast('Aggiornato ✓');
     } else {
       const { ripeti, ripetiFino, ...rest } = form;
       const date = generaDateRipetizione(form.data, ripeti, ripetiFino);
-      const nuovi = date.map((d) => ({ ...rest, data: d, id: uid() + Math.floor(Math.random() * 1000), pazienteId: Number(form.pazienteId), durata: Number(form.durata), operatoreId }));
+      const nuovi = date.map((d) => ({ ...rest, data: d, id: uid() + Math.floor(Math.random() * 1000), pazienteId: Number(form.pazienteId), durata: Number(form.durata), operatoreId, poltronaId }));
       setAppointments(p => [...p, ...nuovi]);
       setToast(nuovi.length > 1 ? `${nuovi.length} appuntamenti creati ✓` : 'Salvato ✓');
       if (richiestaInGestione) { confermaGestita(richiestaInGestione); setRichiestaInGestione(null); }
@@ -798,15 +807,19 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
   const navSettimana = (n) => { const d = new Date(selDay + 'T12:00'); d.setDate(d.getDate() + n * 7); setSelDay(toISO(d)); };
   const navMese = (n) => setVd(v => new Date(v.getFullYear(), v.getMonth() + n, 1));
 
-  // Filtro operatore: non tocca l'array condiviso "appointments" (usato anche altrove,
-  // es. Richiami/Dashboard), agisce solo su cosa viene mostrato/contato qui in Agenda.
+  // Filtro operatore/poltrona: non tocca l'array condiviso "appointments" (usato
+  // anche altrove, es. Richiami/Dashboard), agisce solo su cosa viene mostrato/
+  // contato qui in Agenda. I due filtri si combinano in AND se entrambi impostati.
   const operatoriById = Object.fromEntries(operatori.map(o => [String(o.id), o]));
   const getOperatore = (a) => (a.operatoreId != null ? operatoriById[String(a.operatoreId)] : null);
-  const appointmentsAgenda = (features?.multi_operatore && filtroOperatore !== 'tutti')
-    ? appointments.filter(a => String(a.operatoreId) === String(filtroOperatore))
-    : appointments;
+  const poltroneById = Object.fromEntries(poltrone.map(p => [String(p.id), p]));
+  const getPoltrona = (a) => (a.poltronaId != null ? poltroneById[String(a.poltronaId)] : null);
+  const appointmentsAgenda = !features?.multi_operatore ? appointments : appointments.filter(a =>
+    (filtroOperatore === 'tutti' || String(a.operatoreId) === String(filtroOperatore)) &&
+    (filtroPoltrona === 'tutti' || String(a.poltronaId) === String(filtroPoltrona))
+  );
 
-  const gridProps = { slots, slotH, slotMin, oraInizio, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, appPosition, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp };
+  const gridProps = { slots, slotH, slotMin, oraInizio, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, appPosition, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp };
 
   // Appuntamenti effettivamente visibili nella vista corrente (per il conteggio "Seleziona tutti" e il badge)
   const giorniVisibili = view === 'giorno' ? [selDay] : view === 'settimana' ? weekDays.map(toISO) : [];
@@ -841,6 +854,18 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
             <button key={o.id} onClick={() => setFiltroOperatore(String(o.id))} style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, border: `1.5px solid ${filtroOperatore === String(o.id) ? o.colore : C.brd}`, background: filtroOperatore === String(o.id) ? o.colore + '18' : C.sur, color: filtroOperatore === String(o.id) ? o.colore : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: o.colore, flexShrink: 0 }} />
               {o.nome}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {features?.multi_operatore && poltrone.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, marginBottom: 8, overflowX: 'auto', paddingBottom: 2, flexShrink: 0 }}>
+          <button onClick={() => setFiltroPoltrona('tutti')} style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 20, border: `1.5px solid ${filtroPoltrona === 'tutti' ? C.pri : C.brd}`, background: filtroPoltrona === 'tutti' ? C.priL : C.sur, color: filtroPoltrona === 'tutti' ? C.pri : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>Tutte le poltrone</button>
+          {poltrone.map(p => (
+            <button key={p.id} onClick={() => setFiltroPoltrona(String(p.id))} style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, border: `1.5px solid ${filtroPoltrona === String(p.id) ? p.colore : C.brd}`, background: filtroPoltrona === String(p.id) ? p.colore + '18' : C.sur, color: filtroPoltrona === String(p.id) ? p.colore : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              <div style={{ width: 8, height: 8, borderRadius: 2, background: p.colore, flexShrink: 0 }} />
+              {p.nome}
             </button>
           ))}
         </div>
@@ -1118,13 +1143,25 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
             </div>
             <Inp value={form.tipo} onChange={e => F({ tipo: e.target.value })} placeholder="Personalizza tipo visita" />
           </Fld>
-          {features?.multi_operatore && operatori.length > 0 && (
-            <Fld label="Operatore">
-              <Sel value={form.operatoreId} onChange={e => F({ operatoreId: e.target.value })}>
-                <option value="">Nessuno / non specificato</option>
-                {operatori.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
-              </Sel>
-            </Fld>
+          {features?.multi_operatore && (operatori.length > 0 || poltrone.length > 0) && (
+            <div style={{ display: 'grid', gridTemplateColumns: operatori.length > 0 && poltrone.length > 0 ? '1fr 1fr' : '1fr', gap: 10 }}>
+              {operatori.length > 0 && (
+                <Fld label="Operatore">
+                  <Sel value={form.operatoreId} onChange={e => F({ operatoreId: e.target.value })}>
+                    <option value="">Nessuno</option>
+                    {operatori.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
+                  </Sel>
+                </Fld>
+              )}
+              {poltrone.length > 0 && (
+                <Fld label="Poltrona">
+                  <Sel value={form.poltronaId} onChange={e => F({ poltronaId: e.target.value })}>
+                    <option value="">Nessuna</option>
+                    {poltrone.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                  </Sel>
+                </Fld>
+              )}
+            </div>
           )}
           <Fld label="Note"><Txt value={form.note} onChange={e => F({ note: e.target.value })} /></Fld>
           {!editApp && (

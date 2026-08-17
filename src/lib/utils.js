@@ -531,7 +531,7 @@ export const FEATURE_TOGGLES = [
   { id: 'custom_logo', label: 'Logo personalizzato' },
   { id: 'custom_colors', label: 'Colori del brand coordinati col logo' },
   { id: 'controllo_gestione', label: 'Controllo di Gestione' },
-  { id: 'multi_operatore', label: 'Multi-agenda / multi-operatore' },
+  { id: 'multi_operatore', label: 'Agenda multi-utente e multi-poltrona' },
   { id: 'google_calendar_sync', label: 'Sincronizzazione Google Calendar' },
 ];
 
