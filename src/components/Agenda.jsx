@@ -904,12 +904,12 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     </button>
   );
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      {toast && <Toast msg={toast} onDone={() => setToast('')} />}
-
-      {features?.multi_operatore && operatori.length > 0 && (
-        <div style={{ display: 'flex', gap: 6, marginBottom: 8, overflowX: 'auto', paddingBottom: 2, flexShrink: 0 }}>
+  const haFiltriRisorse = features?.multi_operatore && (operatori.length > 0 || poltrone.length > 0);
+  const filtroAttivo = filtroOperatore !== 'tutti' || filtroPoltrona !== 'tutti';
+  const chipsRisorse = (
+    <>
+      {operatori.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, marginBottom: 8, overflowX: isMobile ? 'visible' : 'auto', flexWrap: isMobile ? 'wrap' : 'nowrap', paddingBottom: isMobile ? 0 : 2 }}>
           <button onClick={() => setFiltroOperatore('tutti')} style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 20, border: `1.5px solid ${filtroOperatore === 'tutti' ? C.pri : C.brd}`, background: filtroOperatore === 'tutti' ? C.priL : C.sur, color: filtroOperatore === 'tutti' ? C.pri : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>Tutti</button>
           {operatori.map(o => (
             <button key={o.id} onClick={() => setFiltroOperatore(String(o.id))} style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, border: `1.5px solid ${filtroOperatore === String(o.id) ? o.colore : C.brd}`, background: filtroOperatore === String(o.id) ? o.colore + '18' : C.sur, color: filtroOperatore === String(o.id) ? o.colore : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
@@ -919,9 +919,8 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           ))}
         </div>
       )}
-
-      {features?.multi_operatore && poltrone.length > 0 && (
-        <div style={{ display: 'flex', gap: 6, marginBottom: 8, overflowX: 'auto', paddingBottom: 2, flexShrink: 0 }}>
+      {poltrone.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, marginBottom: isMobile ? 0 : 8, overflowX: isMobile ? 'visible' : 'auto', flexWrap: isMobile ? 'wrap' : 'nowrap', paddingBottom: isMobile ? 0 : 2 }}>
           <button onClick={() => setFiltroPoltrona('tutti')} style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 20, border: `1.5px solid ${filtroPoltrona === 'tutti' ? C.pri : C.brd}`, background: filtroPoltrona === 'tutti' ? C.priL : C.sur, color: filtroPoltrona === 'tutti' ? C.pri : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>Tutte le poltrone</button>
           {poltrone.map(p => (
             <button key={p.id} onClick={() => setFiltroPoltrona(String(p.id))} style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, border: `1.5px solid ${filtroPoltrona === String(p.id) ? p.colore : C.brd}`, background: filtroPoltrona === String(p.id) ? p.colore + '18' : C.sur, color: filtroPoltrona === String(p.id) ? p.colore : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
@@ -931,9 +930,42 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           ))}
         </div>
       )}
+    </>
+  );
+
+  // Su mobile i filtri operatore/poltrona non stanno più in righe fisse sopra la
+  // griglia (rubavano spazio verticale esattamente come il banner notifiche):
+  // diventano un bottone compatto in linea con campanella/selettore vista, che
+  // apre le stesse chip dentro un popover. Su desktop restano le righe dirette,
+  // più comode con lo spazio orizzontale disponibile.
+  const [filtriAperti, setFiltriAperti] = useState(false);
+  const filtroButton = haFiltriRisorse && (
+    <div style={{ position: 'relative', flexShrink: 0 }}>
+      <button
+        onClick={() => setFiltriAperti(v => !v)}
+        aria-label="Filtra per operatore/poltrona"
+        style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', background: filtroAttivo ? C.priL : C.bg, border: 'none', cursor: 'pointer', flexShrink: 0 }}
+      >
+        <Ic n="filter" s={13} c={filtroAttivo ? C.pri : C.txm} />
+        {filtroAttivo && <span style={{ position: 'absolute', top: -1, right: -1, width: 8, height: 8, borderRadius: '50%', background: C.pri, border: `1.5px solid ${C.sur}` }} />}
+      </button>
+      {filtriAperti && <div onClick={() => setFiltriAperti(false)} style={{ position: 'fixed', inset: 0, zIndex: 34 }} />}
+      {filtriAperti && (
+        <div style={{ position: 'absolute', top: 34, right: 0, background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 12, boxShadow: '0 8px 22px rgba(0,0,0,0.18)', width: 240, maxHeight: 320, overflowY: 'auto', padding: 10, zIndex: 35 }}>
+          {chipsRisorse}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      {toast && <Toast msg={toast} onDone={() => setToast('')} />}
+
+      {haFiltriRisorse && !isMobile && chipsRisorse}
 
       {view === 'giorno' && (
-        <DayStrip selDay={selDay} setSelDay={setSelDay} today={t} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{notificheBell}<ViewPicker view={view} setView={setView} /></div>} />
+        <DayStrip selDay={selDay} setSelDay={setSelDay} today={t} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{notificheBell}{isMobile && filtroButton}<ViewPicker view={view} setView={setView} /></div>} />
       )}
       {view === 'settimana' && (
         <DayStrip
@@ -942,7 +974,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           today={t}
           highlightSelected={false}
           onWeekChange={(wk) => setSelDay(wk)}
-          viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{notificheBell}<ViewPicker view={view} setView={setView} /></div>}
+          viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{notificheBell}{isMobile && filtroButton}<ViewPicker view={view} setView={setView} /></div>}
         />
       )}
       {view === 'mese' && (
@@ -952,6 +984,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
             <span style={{ fontWeight: 700, fontSize: 12 }}>{MESI[vd.getMonth()]} {vd.getFullYear()}</span>
             <button onClick={() => navMese(1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>›</button>
             {notificheBell}
+            {isMobile && filtroButton}
             <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
           </div>
           <ViewPicker view={view} setView={setView} />
