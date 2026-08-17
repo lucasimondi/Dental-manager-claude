@@ -394,7 +394,7 @@ function ViewPicker({ view, setView }) {
   );
 }
 
-function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected = true, viewPicker }) {
+function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected = true, viewPicker, compact }) {
   const scrollRef = useRef(null);
   const [stripBaseWeek, setStripBaseWeek] = useState(() => toISO(startOfWeek(selDay)));
   const settleTimer = useRef(null);
@@ -447,28 +447,32 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
       ? `${MESI[wkMonStart.getMonth()].slice(0, 3)} – ${MESI[wkMonEnd.getMonth()].slice(0, 3)} ${wkMonStart.getFullYear()}`
       : `${MESI[wkMonStart.getMonth()].slice(0, 3)} ${wkMonStart.getFullYear()} – ${MESI[wkMonEnd.getMonth()].slice(0, 3)} ${wkMonEnd.getFullYear()}`;
 
+  // "compact" (mobile): striscia più bassa, per lasciare più spazio verticale
+  // alla griglia oraria sotto — cerchio del giorno e padding ridotti, il
+  // gutter resta 46px (deve coincidere con la colonna ore della griglia).
+  const circleD = compact ? 25 : 30;
   return (
     <div style={{ flexShrink: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px 6px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: compact ? '0 4px 4px' : '0 4px 6px' }}>
         <span style={{ fontSize: 13, fontWeight: 800, color: C.txt, textTransform: 'capitalize' }}>{meseLabel}</span>
         {viewPicker}
       </div>
       {/* Gutter da 46px, identico alla colonna ore della griglia sotto: senza, le colonne di
           questa striscia non coinciderebbero con quelle della griglia (uno sfasamento che
           confonde su quale giorno si sta guardando). */}
-      <div style={{ display: 'flex', marginBottom: 8, borderRadius: 12, background: C.sur, border: `1px solid ${C.brd}`, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', marginBottom: compact ? 6 : 8, borderRadius: 12, background: C.sur, border: `1px solid ${C.brd}`, overflow: 'hidden' }}>
         <div style={{ width: 46, flexShrink: 0, borderRight: `1px solid ${C.brd}` }} />
         <div ref={scrollRef} onScroll={onScroll} style={{ flex: 1, minWidth: 0, display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
           {weeks.map((week, wi) => (
-            <div key={wi} style={{ flex: '0 0 100%', scrollSnapAlign: 'start', display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', padding: '8px 4px' }}>
+            <div key={wi} style={{ flex: '0 0 100%', scrollSnapAlign: 'start', display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', padding: compact ? '5px 4px' : '8px 4px' }}>
               {week.map((d, di) => {
                 const ds = toISO(d);
                 const isToday = ds === t;
                 const isSel = highlightSelected && ds === selDay;
                 return (
-                  <div key={di} onClick={() => setSelDay(ds)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', padding: '2px 0' }}>
-                    <span style={{ fontSize: 9, fontWeight: 700, color: isToday ? C.pri : C.txl, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{WD_SHORT[d.getDay()]}</span>
-                    <span style={{ fontSize: 15, fontWeight: 800, width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isSel ? C.pri : isToday ? C.priL : 'transparent', color: isSel ? '#fff' : isToday ? C.pri : C.txt }}>{d.getDate()}</span>
+                  <div key={di} onClick={() => setSelDay(ds)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: compact ? 2 : 3, cursor: 'pointer', padding: '2px 0' }}>
+                    <span style={{ fontSize: compact ? 8 : 9, fontWeight: 700, color: isToday ? C.pri : C.txl, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{WD_SHORT[d.getDay()]}</span>
+                    <span style={{ fontSize: compact ? 13 : 15, fontWeight: 800, width: circleD, height: circleD, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isSel ? C.pri : isToday ? C.priL : 'transparent', color: isSel ? '#fff' : isToday ? C.pri : C.txt }}>{d.getDate()}</span>
                   </div>
                 );
               })}
@@ -958,6 +962,21 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     </div>
   );
 
+  // Bottone WhatsApp compatto (mobile): l'idle button "Invia WhatsApp" a riga
+  // intera restava lì sempre visibile, sottraendo spazio verticale alla griglia
+  // esattamente come notifiche/filtri. La barra attiva di selezione (che appare
+  // solo durante un invio in corso, transitoria) resta invece a riga intera.
+  const waCompatta = !selModeWA && waAbilitato(features) && (view === 'giorno' || view === 'settimana') && (
+    <button
+      onClick={() => { setSelModeWA(true); setSelAppIds([]); }}
+      disabled={appVisibiliConTel.length === 0}
+      aria-label="Invia WhatsApp"
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', background: appVisibiliConTel.length === 0 ? C.bg : '#E6F9EE', border: 'none', cursor: appVisibiliConTel.length === 0 ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+    >
+      <Ic n="wa" s={14} c={appVisibiliConTel.length === 0 ? C.txl : '#128C7E'} />
+    </button>
+  );
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
@@ -965,7 +984,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       {haFiltriRisorse && !isMobile && chipsRisorse}
 
       {view === 'giorno' && (
-        <DayStrip selDay={selDay} setSelDay={setSelDay} today={t} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{notificheBell}{isMobile && filtroButton}<ViewPicker view={view} setView={setView} /></div>} />
+        <DayStrip selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker view={view} setView={setView} /></div>} />
       )}
       {view === 'settimana' && (
         <DayStrip
@@ -974,7 +993,8 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           today={t}
           highlightSelected={false}
           onWeekChange={(wk) => setSelDay(wk)}
-          viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{notificheBell}{isMobile && filtroButton}<ViewPicker view={view} setView={setView} /></div>}
+          compact={isMobile}
+          viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker view={view} setView={setView} /></div>}
         />
       )}
       {view === 'mese' && (
@@ -991,8 +1011,10 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
         </div>
       )}
 
-      {/* Toolbar invio WhatsApp di massa — solo vista Giorno/Settimana, dove ha senso "tutti gli appuntamenti visibili" */}
-      {(view === 'giorno' || view === 'settimana') && waAbilitato(features) && (
+      {/* Toolbar invio WhatsApp di massa — solo vista Giorno/Settimana, dove ha senso "tutti gli appuntamenti visibili".
+          Su mobile l'idle button è già in alto (icona compatta accanto al selettore vista): questa riga intera
+          compare solo per la barra di selezione attiva (transitoria), non resta lì a occupare spazio in permanenza. */}
+      {(view === 'giorno' || view === 'settimana') && waAbilitato(features) && (!isMobile || selModeWA) && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexShrink: 0 }}>
           {!selModeWA ? (
             <button
