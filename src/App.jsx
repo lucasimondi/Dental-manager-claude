@@ -174,7 +174,10 @@ export default function App() {
     if (dataLoading) return;
     const pos = leggiPosizione();
     if (!pos) return;
-    if (pos.page && pos.page !== 'home') setPage(pos.page);
+    // La pagina NON viene ripristinata: l'app deve sempre aprirsi su Dashboard
+    // (page resta 'home', il suo default), qualunque fosse l'ultima pagina
+    // visitata prima della chiusura/ricarica. Il resto della posizione (scheda
+    // paziente con form in corso) continua a essere ripristinato normalmente.
     if (pos.schedaPazId != null) {
       const paz = patients.find((p) => String(p.id) === String(pos.schedaPazId));
       if (paz) setSchedaDashPaz({ paz, tab: pos.schedaPazTab || 'paga' });
