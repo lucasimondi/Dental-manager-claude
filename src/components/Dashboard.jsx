@@ -7,18 +7,18 @@ import { BarChart, Bar, LineChart, Line, ComposedChart, XAxis, YAxis, CartesianG
 import { useControlloDati } from '../lib/useControlloDati';
 
 const WIDGETS_DEFAULT = [
-  { id: 'agenda',       label: '📅 Agenda oggi',            attivo: true },
-  { id: 'consigli_ai',  label: '🧭 Consigli AI',              attivo: true },
-  { id: 'todo',         label: '✅ Attività e promemoria',   attivo: true },
-  { id: 'appuntamenti', label: '📅 Prossimi appuntamenti',   attivo: true },
-  { id: 'wa',           label: '💬 Reminder WhatsApp',       attivo: false },
-  { id: 'economico',    label: '💰 Pannello economico',      attivo: false },
-  { id: 'preventivi',   label: '📋 Preventivi',              attivo: false },
-  { id: 'richiami',     label: '🔔 Richiami',                attivo: false },
-  { id: 'scadenze',     label: '📆 Scadenze pagamento',      attivo: false },
-  { id: 'ortodonzia',   label: '🦷 Ortodonzia',              attivo: false },
-  { id: 'statistiche',  label: '📊 Statistiche',             attivo: false },
-  { id: 'grafici',      label: '📈 Grafici e andamento',     attivo: false },
+  { id: 'agenda',       ic: 'cal',     label: 'Agenda oggi',            attivo: true },
+  { id: 'consigli_ai',  ic: 'compass', label: 'Consigli AI',            attivo: true },
+  { id: 'todo',         ic: 'okc',     label: 'Attività e promemoria',  attivo: true },
+  { id: 'appuntamenti', ic: 'cal',     label: 'Prossimi appuntamenti',  attivo: true },
+  { id: 'wa',           ic: 'wa',      label: 'Reminder WhatsApp',      attivo: false },
+  { id: 'economico',    ic: 'eur',     label: 'Pannello economico',     attivo: false },
+  { id: 'preventivi',   ic: 'clip',    label: 'Preventivi',             attivo: false },
+  { id: 'richiami',     ic: 'bell',    label: 'Richiami',               attivo: false },
+  { id: 'scadenze',     ic: 'cal',     label: 'Scadenze pagamento',     attivo: false },
+  { id: 'ortodonzia',   ic: 'tooth',   label: 'Ortodonzia',             attivo: false },
+  { id: 'statistiche',  ic: 'chart',   label: 'Statistiche',            attivo: false },
+  { id: 'grafici',      ic: 'trend',   label: 'Grafici e andamento',    attivo: false },
 ];
 
 const PALETTE = [
@@ -50,9 +50,15 @@ const loadWidgets = () => {
   try {
     const saved = JSON.parse(localStorage.getItem('dm_widgets') || 'null');
     if (!saved) return WIDGETS_DEFAULT;
-    const ids = saved.map(w => w.id);
+    // label/ic vengono sempre da WIDGETS_DEFAULT (fonte di verità grafica): solo
+    // attivo/ordine sono personalizzazione dell'utente. Così una vecchia label/icona
+    // salvata in localStorage prima di questa modifica si auto-aggiorna da sola,
+    // invece di restare "congelata" per sempre in quello che l'utente aveva salvato.
+    const byId = Object.fromEntries(WIDGETS_DEFAULT.map(w => [w.id, w]));
+    const merged = saved.filter(w => byId[w.id]).map(w => ({ ...byId[w.id], attivo: w.attivo }));
+    const ids = merged.map(w => w.id);
     const missing = WIDGETS_DEFAULT.filter(w => !ids.includes(w.id));
-    return [...saved, ...missing];
+    return [...merged, ...missing];
   } catch { return WIDGETS_DEFAULT; }
 };
 
@@ -277,11 +283,11 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
     <div>
       {/* ── SETTINGS MODAL ── */}
       {settingsOpen && (
-        <Modal title="⚙️ Personalizza dashboard" onClose={() => setSettingsOpen(false)}>
+        <Modal title={<><Ic n="set" s={15} c={C.txt} /> Personalizza dashboard</>} onClose={() => setSettingsOpen(false)}>
           {/* TAB SWITCHER */}
           <div style={{ display: 'flex', background: C.bg, borderRadius: 9, border: `1px solid ${C.brd}`, marginBottom: 14, overflow: 'hidden' }}>
-            {[['widgets','📦 Widget'],['colori','🎨 Colori card']].map(([id, lbl]) => (
-              <button key={id} onClick={() => setThemeTab(id)} style={{ flex: 1, padding: '9px 0', border: 'none', background: themeTab === id ? C.pri : 'transparent', color: themeTab === id ? '#fff' : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{lbl}</button>
+            {[['widgets','box','Widget'],['colori','palette','Colori card']].map(([id, ic, lbl]) => (
+              <button key={id} onClick={() => setThemeTab(id)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 0', border: 'none', background: themeTab === id ? C.pri : 'transparent', color: themeTab === id ? '#fff' : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}><Ic n={ic} s={12} c="currentColor" />{lbl}</button>
             ))}
           </div>
 
@@ -306,6 +312,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 10px', marginBottom: 6, background: C.bg, borderRadius: 10, border: `1px solid ${C.brd}`, cursor: 'grab', userSelect: 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontSize: 18, color: C.txl }}>⠿</span>
+                  <Ic n={w.ic} s={14} c={w.attivo !== false ? C.txm : C.txl} />
                   <span style={{ fontSize: 13, fontWeight: 600, color: w.attivo !== false ? C.txt : C.txl }}>{w.label}</span>
                 </div>
                 <button onClick={() => {
@@ -324,16 +331,16 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           {themeTab === 'colori' && <>
             <div style={{ fontSize: 12, color: C.txm, marginBottom: 14 }}>Scegli il colore per ogni card del pannello economico.</div>
             {[
-              ['incMese', '📈 Incassato mese'],
-              ['incAnno', '📈 Incassato anno'],
-              ['lucaMese', '💼 Incasso mese'],
-              ['lucaAnno', '💼 Incasso anno'],
-              ['speseMese', '💸 Spese mese'],
-              ['speseAnno', '💸 Spese anno'],
-              ['margine', '✅ Margine stimato'],
-              ['esegDaInc', '💰 Eseguito da incassare'],
-              ['accNonEseg', '✓ Accettato da eseguire'],
-              ['totAccettati', '✓ Totale accettati'],
+              ['incMese', 'Incassato mese'],
+              ['incAnno', 'Incassato anno'],
+              ['lucaMese', 'Incasso mese'],
+              ['lucaAnno', 'Incasso anno'],
+              ['speseMese', 'Spese mese'],
+              ['speseAnno', 'Spese anno'],
+              ['margine', 'Margine stimato'],
+              ['esegDaInc', 'Eseguito da incassare'],
+              ['accNonEseg', 'Accettato da eseguire'],
+              ['totAccettati', 'Totale accettati'],
             ].map(([key, label]) => (
               <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: `1px solid ${C.brd}` }}>
                 <span style={{ fontSize: 13, fontWeight: 600, color: C.txt }}>{label}</span>
@@ -355,7 +362,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
 
       {/* ── MODALS ── */}
       {detailModal === 'attesa' && (
-        <Modal title="⏳ Preventivi in attesa" onClose={() => setDetailModal(null)} wide>
+        <Modal title={<><Ic n="clk" s={15} c={C.txt} /> Preventivi in attesa</>} onClose={() => setDetailModal(null)} wide>
           <div style={{ background: C.purL, borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ fontWeight: 700, color: C.pur }}>{preventiviAttesa.length} preventivi in attesa di risposta</span>
           </div>
@@ -380,7 +387,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
       )}
 
       {detailModal === 'rifiutati' && (
-        <Modal title="✗ Preventivi rifiutati" onClose={() => setDetailModal(null)} wide>
+        <Modal title={<><Ic n="x" s={15} c={C.txt} /> Preventivi rifiutati</>} onClose={() => setDetailModal(null)} wide>
           <div style={{ background: C.danL, borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
             <span style={{ fontWeight: 700, color: C.dan }}>{preventiviRifiutati.length} preventivi non accettati</span>
           </div>
@@ -405,7 +412,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
       )}
 
       {detailModal === 'accettati' && (
-        <Modal title="✓ Piani accettati" onClose={() => setDetailModal(null)} wide>
+        <Modal title={<><Ic n="ok" s={15} c={C.txt} /> Piani accettati</>} onClose={() => setDetailModal(null)} wide>
           <div style={{ background: '#E8FAF9', borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ fontWeight: 700, color: C.acc }}>Totale accettato</span>
             <span style={{ fontWeight: 900, fontSize: 18, color: C.acc }}>{fmt(totAccettati)}</span>
@@ -427,13 +434,13 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
       )}
 
       {detailModal === 'lucaMese' && (
-        <Modal title="💼 Incasso — questo mese" onClose={() => setDetailModal(null)} wide>
+        <Modal title={<><Ic n="brief" s={15} c={C.txt} /> Incasso — questo mese</>} onClose={() => setDetailModal(null)} wide>
           <div style={{ background: '#F5F3FF', borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ fontWeight: 700, color: '#7C3AED' }}>Totale mese</span>
             <span style={{ fontWeight: 900, fontSize: 18, color: '#7C3AED' }}>{fmt(incassoLucaMese)}</span>
           </div>
           <div style={{ marginBottom: 10 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.suc, textTransform: 'uppercase', marginBottom: 6 }}>🏠 Studio ({fmt(mInc)})</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.suc, textTransform: 'uppercase', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="home" s={11} c={C.suc} />Studio ({fmt(mInc)})</div>
             {payments.filter(p => p.data && p.data.startsWith(t.slice(0,7))).sort((a,b) => b.data.localeCompare(a.data)).map(pay => {
               const paz = patients.find(x => x.id === pay.pazienteId);
               return <Crd key={pay.id} style={{ marginBottom: 6, borderLeft: `3px solid ${C.suc}` }}>
@@ -446,7 +453,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
             {payments.filter(p => p.data && p.data.startsWith(t.slice(0,7))).length === 0 && <div style={{ fontSize: 12, color: C.txl, padding: '8px 0' }}>Nessun pagamento studio questo mese</div>}
           </div>
           {extMese > 0 && <div>
-            <div style={{ fontSize: 11, fontWeight: 800, color: '#7C3AED', textTransform: 'uppercase', marginBottom: 6 }}>🤝 Collaborazioni ({fmt(extMese)})</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#7C3AED', textTransform: 'uppercase', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="shake" s={11} c="#7C3AED" />Collaborazioni ({fmt(extMese)})</div>
             {pagExt.filter(p => p.data && p.data.startsWith(t.slice(0,7))).map(pag => (
               <Crd key={pag.id} style={{ marginBottom: 6, borderLeft: '3px solid #7C3AED' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -460,13 +467,13 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
       )}
 
       {detailModal === 'lucaAnno' && (
-        <Modal title={`💼 Incasso — ${anno}`} onClose={() => setDetailModal(null)} wide>
+        <Modal title={<><Ic n="brief" s={15} c={C.txt} /> Incasso — {anno}</>} onClose={() => setDetailModal(null)} wide>
           <div style={{ background: '#F5F3FF', borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ fontWeight: 700, color: '#7C3AED' }}>Totale anno {anno}</span>
             <span style={{ fontWeight: 900, fontSize: 18, color: '#7C3AED' }}>{fmt(incassoLucaAnno)}</span>
           </div>
           <div style={{ marginBottom: 10 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.suc, textTransform: 'uppercase', marginBottom: 6 }}>🏠 Studio ({fmt(aInc)})</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.suc, textTransform: 'uppercase', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="home" s={11} c={C.suc} />Studio ({fmt(aInc)})</div>
             {(() => {
               const mesiStudio = {};
               payments.filter(p => p.data && p.data.startsWith(anno)).forEach(p => { const m = p.data.slice(0,7); mesiStudio[m] = (mesiStudio[m] || 0) + Number(p.importo); });
@@ -482,7 +489,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
             })()}
           </div>
           {extAnno > 0 && <div>
-            <div style={{ fontSize: 11, fontWeight: 800, color: '#7C3AED', textTransform: 'uppercase', marginBottom: 6 }}>🤝 Collaborazioni ({fmt(extAnno)})</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#7C3AED', textTransform: 'uppercase', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="shake" s={11} c="#7C3AED" />Collaborazioni ({fmt(extAnno)})</div>
             {(() => {
               const mesiExt = {};
               pagExt.filter(p => p.data && p.data.startsWith(anno)).forEach(p => { const key = p.collaborazione_nome + '|' + p.data.slice(0,7); mesiExt[key] = (mesiExt[key] || { nome: p.collaborazione_nome, mese: p.data.slice(0,7), tot: 0 }); mesiExt[key].tot += Number(p.importo); });
@@ -501,7 +508,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
       )}
 
       {detailModal === 'spese' && (
-        <Modal title="💸 Spese" onClose={() => setDetailModal(null)} wide>
+        <Modal title={<><Ic n="eur" s={15} c={C.txt} /> Spese</>} onClose={() => setDetailModal(null)} wide>
           <div style={{ background: C.danL, borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <span style={{ fontWeight: 700, color: C.dan }}>Costi {anno} (dato reale a oggi)</span>
@@ -517,7 +524,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           )}
           {spese.filter(s => s.ricorrente).length > 0 && (
             <>
-              <div style={{ fontSize: 11, fontWeight: 800, color: C.war, textTransform: 'uppercase', marginBottom: 8 }}>🔄 Ricorrenti</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.war, textTransform: 'uppercase', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="refresh" s={11} c={C.war} />Ricorrenti</div>
               {spese.filter(s => s.ricorrente).map(s => {
                 const m = { Mensile: 12, Bimestrale: 6, Trimestrale: 4, Semestrale: 2, Annuale: 1 }[s.frequenza] || 12;
                 return <Crd key={s.id} style={{ marginBottom: 6, borderLeft: `3px solid ${C.war}` }}>
@@ -529,7 +536,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
               })}
             </>
           )}
-          <div style={{ fontSize: 11, fontWeight: 800, color: C.dan, textTransform: 'uppercase', margin: '12px 0 8px' }}>📋 Questo mese ({fmt(speseMese)})</div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: C.dan, textTransform: 'uppercase', margin: '12px 0 8px', display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="clip" s={11} c={C.dan} />Questo mese ({fmt(speseMese)})</div>
           {spese.filter(s => !s.ricorrente && s.data && s.data.startsWith(t.slice(0,7))).length === 0
             ? <div style={{ textAlign: 'center', color: C.txl, padding: 16 }}>Nessuna spesa questo mese</div>
             : spese.filter(s => !s.ricorrente && s.data && s.data.startsWith(t.slice(0,7))).map(s => (
@@ -545,7 +552,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
       )}
 
       {detailModal === 'esegDaInc' && (
-        <Modal title="💰 Eseguito da incassare" onClose={() => setDetailModal(null)} wide>
+        <Modal title={<><Ic n="eur" s={15} c={C.txt} /> Eseguito da incassare</>} onClose={() => setDetailModal(null)} wide>
           <div style={{ background: C.danL, borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ fontWeight: 700, color: C.dan }}>Totale da incassare</span>
             <span style={{ fontWeight: 900, fontSize: 18, color: C.dan }}>{fmt(totEsegDaInc)}</span>
@@ -564,12 +571,12 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
               ))}
             </Crd>
           ))}
-          {esegDaInc.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Nessuna prestazione eseguita da incassare 🎉</div>}
+          {esegDaInc.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Nessuna prestazione eseguita da incassare</div>}
         </Modal>
       )}
 
       {detailModal === 'accNonEseg' && (
-        <Modal title="✓ Accettato da eseguire" onClose={() => setDetailModal(null)} wide>
+        <Modal title={<><Ic n="ok" s={15} c={C.txt} /> Accettato da eseguire</>} onClose={() => setDetailModal(null)} wide>
           <div style={{ background: C.purL, borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ fontWeight: 700, color: C.pur }}>Totale accettato da eseguire</span>
             <span style={{ fontWeight: 900, fontSize: 18, color: C.pur }}>{fmt(totAccNonEseg)}</span>
@@ -593,11 +600,11 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
       )}
 
       {detailModal === 'scadenze' && (
-        <Modal title="📆 Scadenze pagamento" onClose={() => setDetailModal(null)} wide>
+        <Modal title={<><Ic n="cal" s={15} c={C.txt} /> Scadenze pagamento</>} onClose={() => setDetailModal(null)} wide>
           {scadenzePagamento.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Nessuna scadenza impostata</div>}
           {scadenzeScadute.length > 0 && (
             <>
-              <div style={{ fontSize: 11, fontWeight: 800, color: C.dan, textTransform: 'uppercase', marginBottom: 8 }}>⚠️ Scadute ({scadenzeScadute.length})</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.dan, textTransform: 'uppercase', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="warn" s={11} c={C.dan} />Scadute ({scadenzeScadute.length})</div>
               {scadenzeScadute.map((s, i) => (
                 <Crd key={i} style={{ marginBottom: 8, borderLeft: `3px solid ${C.dan}` }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -614,7 +621,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           )}
           {scadenzeProssime.length > 0 && (
             <>
-              <div style={{ fontSize: 11, fontWeight: 800, color: C.war, textTransform: 'uppercase', margin: '12px 0 8px' }}>📅 Prossime 30 giorni ({scadenzeProssime.length})</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.war, textTransform: 'uppercase', margin: '12px 0 8px', display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="cal" s={11} c={C.war} />Prossime 30 giorni ({scadenzeProssime.length})</div>
               {scadenzeProssime.map((s, i) => (
                 <Crd key={i} style={{ marginBottom: 8, borderLeft: `3px solid ${C.war}` }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -630,17 +637,17 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
             </>
           )}
           {scadenzeScadute.length === 0 && scadenzeProssime.length === 0 && scadenzePagamento.length > 0 && (
-            <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Tutte le scadenze sono lontane 🎉</div>
+            <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Tutte le scadenze sono lontane</div>
           )}
         </Modal>
       )}
 
       {detailModal === 'orto' && (
-        <Modal title="🦷 Ortodonzia — mascherine" onClose={() => setDetailModal(null)} wide>
+        <Modal title={<><Ic n="tooth" s={15} c={C.txt} /> Ortodonzia — mascherine</>} onClose={() => setDetailModal(null)} wide>
           {pianiOrto.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Nessun piano ortodontico attivo</div>}
           {pianiOrto.filter(o => o.cambioScaduto).length > 0 && (
             <>
-              <div style={{ fontSize: 11, fontWeight: 800, color: C.dan, textTransform: 'uppercase', marginBottom: 8 }}>⚠️ Cambio mascherina scaduto</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.dan, textTransform: 'uppercase', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="warn" s={11} c={C.dan} />Cambio mascherina scaduto</div>
               {pianiOrto.filter(o => o.cambioScaduto).map(o => (
                 <Crd key={o.pl.id} style={{ marginBottom: 8, borderLeft: `3px solid ${C.dan}` }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -648,7 +655,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                       <div onClick={() => { setDetailModal(null); onOpenPaz(o.paz, 'piani'); }} style={{ fontWeight: 700, color: C.pri, cursor: 'pointer', fontSize: 13 }}>{o.paz.nome} {o.paz.cognome} ›</div>
                       <div style={{ fontSize: 11, color: C.txm }}>Mascherina {o.cons}/{o.tot || '?'} · prevista il {fmtD(o.prossima)}</div>
                     </div>
-                    <Bdg ch="⚠️ Scaduto" co={C.dan} />
+                    <Bdg ch={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="warn" s={10} c={C.dan} />Scaduto</span>} co={C.dan} />
                   </div>
                 </Crd>
               ))}
@@ -656,7 +663,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           )}
           {pianiOrto.filter(o => !o.cambioScaduto && !o.completato).length > 0 && (
             <>
-              <div style={{ fontSize: 11, fontWeight: 800, color: C.pur, textTransform: 'uppercase', margin: '12px 0 8px' }}>🔄 In corso</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.pur, textTransform: 'uppercase', margin: '12px 0 8px', display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="refresh" s={11} c={C.pur} />In corso</div>
               {pianiOrto.filter(o => !o.cambioScaduto && !o.completato).map(o => {
                 const pct = o.tot > 0 ? Math.round(o.cons / o.tot * 100) : 0;
                 return (
@@ -667,7 +674,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                     </div>
                     {o.tot > 0 && <div style={{ background: C.bg, borderRadius: 4, height: 6 }}><div style={{ height: '100%', width: `${pct}%`, background: C.pur, borderRadius: 4 }} /></div>}
                     <div style={{ fontSize: 11, color: C.txl, marginTop: 4 }}>
-                      {o.inAttesa ? '⏳ Da avviare' : `Prossimo cambio: ${o.prossima ? fmtD(o.prossima) : '—'}`}
+                      {o.inAttesa ? 'Da avviare' : `Prossimo cambio: ${o.prossima ? fmtD(o.prossima) : '—'}`}
                     </div>
                   </Crd>
                 );
@@ -676,11 +683,11 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           )}
           {pianiOrto.filter(o => o.completato).length > 0 && (
             <>
-              <div style={{ fontSize: 11, fontWeight: 800, color: C.suc, textTransform: 'uppercase', margin: '12px 0 8px' }}>✓ Completati</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.suc, textTransform: 'uppercase', margin: '12px 0 8px', display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="ok" s={11} c={C.suc} />Completati</div>
               {pianiOrto.filter(o => o.completato).map(o => (
                 <Crd key={o.pl.id} style={{ marginBottom: 8, borderLeft: `3px solid ${C.suc}` }}>
                   <div onClick={() => { setDetailModal(null); onOpenPaz(o.paz, 'piani'); }} style={{ fontWeight: 700, color: C.pri, cursor: 'pointer', fontSize: 13 }}>{o.paz.nome} {o.paz.cognome} ›</div>
-                  <div style={{ fontSize: 11, color: C.suc }}>Ciclo di {o.tot} mascherine completato ✓</div>
+                  <div style={{ fontSize: 11, color: C.suc }}>Ciclo di {o.tot} mascherine completato</div>
                 </Crd>
               ))}
             </>
@@ -714,7 +721,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
         if (w.id === 'agenda') return (
           <div key="agenda" style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em' }}>📅 Agenda oggi</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="cal" s={11} c={C.txm} />Agenda oggi</div>
               <button onClick={() => onGoAgenda && onGoAgenda()} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '5px 10px', color: C.pri, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>Apri agenda ›</button>
             </div>
             {todayApps.length === 0 ? (
@@ -742,7 +749,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
               </Crd>
             )}
             {hInc > 0 && <div style={{ marginTop: 6, background: C.sucL, borderRadius: 9, padding: '7px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: C.suc }}>💳 Incassato oggi</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: C.suc, display: 'inline-flex', alignItems: 'center', gap: 5 }}><Ic n="pay" s={12} c={C.suc} />Incassato oggi</span>
               <span style={{ fontSize: 15, fontWeight: 900, color: C.suc }}>{fmt(hInc)}</span>
             </div>}
           </div>
@@ -754,9 +761,9 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           return (
             <div key="consigli_ai" style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em' }}>🧭 Consigli AI</div>
-                <button onClick={rigeneraConsigli} disabled={consigliLoading} style={{ background: 'none', border: 'none', cursor: consigliLoading ? 'default' : 'pointer', fontSize: 11, fontWeight: 700, color: C.pri, opacity: consigliLoading ? 0.5 : 1 }}>
-                  {consigliLoading ? '⏳ Genero…' : '🔄 Rigenera'}
+                <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="compass" s={11} c={C.txm} />Consigli AI</div>
+                <button onClick={rigeneraConsigli} disabled={consigliLoading} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: consigliLoading ? 'default' : 'pointer', fontSize: 11, fontWeight: 700, color: C.pri, opacity: consigliLoading ? 0.5 : 1 }}>
+                  {consigliLoading ? 'Genero…' : <><Ic n="refresh" s={11} c={C.pri} />Rigenera</>}
                 </button>
               </div>
               {consigliErr && <div style={{ fontSize: 11, color: C.dan, marginBottom: 8 }}>{consigliErr}</div>}
@@ -764,11 +771,13 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                 <Crd style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Genero i primi consigli, un attimo…</Crd>
               )}
               {!consigliLoading && consigli.length > 0 && nonLetti.length === 0 && (
-                <Crd style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Hai letto tutti i consigli di questa settimana ✓</Crd>
+                <Crd style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Hai letto tutti i consigli di questa settimana</Crd>
               )}
               {nonLetti.map((c) => {
                 const colore = c.categoria === 'cfo' ? C.pri : c.categoria === 'commerciale' ? C.war : C.pur;
-                const label = c.categoria === 'cfo' ? '💰 CFO' : c.categoria === 'commerciale' ? '🤝 Commerciale' : '📈 Marketing';
+                const labelIc = c.categoria === 'cfo' ? 'eur' : c.categoria === 'commerciale' ? 'shake' : 'trend';
+                const labelTxt = c.categoria === 'cfo' ? 'CFO' : c.categoria === 'commerciale' ? 'Commerciale' : 'Marketing';
+                const label = <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n={labelIc} s={10} c={colore} />{labelTxt}</span>;
                 const paz = c.paziente_id ? patients.find(p => p.id === c.paziente_id) : null;
                 return (
                   <Crd key={c.id} style={{ marginBottom: 8, borderLeft: `3px solid ${colore}` }}>
@@ -794,14 +803,14 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
 
         if (w.id === 'todo') return (
           <div key="todo" style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>✅ Attività e promemoria</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="okc" s={11} c={C.txm} />Attività e promemoria</div>
             <Crd style={{ marginBottom: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span style={{ fontSize: 12, fontWeight: 700 }}>Attività {todoAttivi.length > 0 && <span style={{ background: C.dan, color: '#fff', borderRadius: 8, padding: '1px 6px', fontSize: 10 }}>{todoAttivi.length}</span>}</span>
                 <button onClick={() => setTodoModal(true)} style={{ background: C.pri, border: 'none', borderRadius: 7, padding: '5px 10px', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>+ Aggiungi</button>
               </div>
-              {todoLoading && <div style={{ fontSize: 12, color: C.txl, textAlign: 'center', padding: '8px 0' }}>⏳ Caricamento...</div>}
-              {!todoLoading && todoAttivi.length === 0 && <div style={{ fontSize: 12, color: C.txl, textAlign: 'center', padding: '8px 0' }}>Nessuna attività in sospeso 🎉</div>}
+              {todoLoading && <div style={{ fontSize: 12, color: C.txl, textAlign: 'center', padding: '8px 0' }}>Caricamento...</div>}
+              {!todoLoading && todoAttivi.length === 0 && <div style={{ fontSize: 12, color: C.txl, textAlign: 'center', padding: '8px 0' }}>Nessuna attività in sospeso</div>}
               <div style={{ maxHeight: 220, overflowY: 'auto' }}>
                 {todoAttivi.map(todo => (
                   <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 0', borderBottom: `1px solid ${C.brd}` }}>
@@ -816,7 +825,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
             </Crd>
             {promemoria.length > 0 && (
               <Crd>
-                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>📌 Promemoria {promemoria.filter(p => p.richiamo.data < t).length > 0 && <span style={{ background: C.dan, color: '#fff', borderRadius: 8, padding: '1px 6px', fontSize: 10 }}>{promemoria.filter(p => p.richiamo.data < t).length} scaduti</span>}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="pin" s={11} c={C.txt} />Promemoria {promemoria.filter(p => p.richiamo.data < t).length > 0 && <span style={{ background: C.dan, color: '#fff', borderRadius: 8, padding: '1px 6px', fontSize: 10 }}>{promemoria.filter(p => p.richiamo.data < t).length} scaduti</span>}</div>
                 {promemoria.slice(0, 4).map(({ paz, ann, richiamo }, i) => (
                   <div key={i} style={{ padding: '6px 0', borderBottom: `1px solid ${C.brd}`, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{ flex: 1 }}>
@@ -835,7 +844,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           if (!waAbilitato(features)) return null;
           return (
           <div key="wa" style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>💬 Reminder WhatsApp — domani</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="wa" s={11} c={C.txm} />Reminder WhatsApp — domani</div>
             {domaniApps.length === 0 ? (
               <Crd style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessun appuntamento domani</Crd>
             ) : (
@@ -875,8 +884,8 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                     const msg = `Gentile ${p.nome},\nricordiamo il suo appuntamento:\n📅 ${fmtD(a.data)} alle ${a.ora}\n📌 ${a.tipo}\nPer variazioni contattarci entro 24h. Grazie!`;
                     setTimeout(() => apriWaDiretto(p.telefono, msg), 500);
                   });
-                }} style={{ width: '100%', marginTop: 10, padding: '9px', background: '#25D366', border: 'none', borderRadius: 9, color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
-                  💬 Invia reminder a tutti ({domaniApps.filter(a => patients.find(x => x.id === a.pazienteId)?.telefono).length}/{domaniApps.length})
+                }} style={{ width: '100%', marginTop: 10, padding: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: '#25D366', border: 'none', borderRadius: 9, color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                  <Ic n="wa" s={12} c="#fff" />Invia reminder a tutti ({domaniApps.filter(a => patients.find(x => x.id === a.pazienteId)?.telefono).length}/{domaniApps.length})
                 </button>
               </Crd>
             )}
@@ -886,7 +895,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
 
         if (w.id === 'appuntamenti' && upcoming.length > 0) return (
           <div key="appuntamenti" style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>📅 Prossimi appuntamenti</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="cal" s={11} c={C.txm} />Prossimi appuntamenti</div>
             <Crd>
               {upcoming.map((a, i) => {
                 const p = patients.find(x => x.id === a.pazienteId);
@@ -914,7 +923,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
         if (w.id === 'economico') return (
           <div key="economico" style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em' }}>💰 Pannello economico</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="eur" s={11} c={C.txm} />Pannello economico</div>
               <div style={{ display: 'flex', gap: 4, background: C.bg, borderRadius: 8, padding: 3 }}>
                 {[['mese', 'Mese'], ['anno', 'Anno']].map(([id, lbl]) => (
                   <button key={id} onClick={() => setPeriodoEconomico(id)} style={{ border: 'none', borderRadius: 6, padding: '4px 9px', fontSize: 11, fontWeight: 700, cursor: 'pointer', background: periodoEconomico === id ? C.pri : 'transparent', color: periodoEconomico === id ? '#fff' : C.txm }}>{lbl}</button>
@@ -942,11 +951,11 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
             </Crd>
             <Crd style={{ padding: 0, overflow: 'hidden', marginTop: 8 }}>
               <div onClick={() => setDetailModal('esegDaInc')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', cursor: 'pointer', background: totEsegDaInc > 0 ? C.danL : 'transparent' }}>
-                <span style={{ fontSize: 12, color: totEsegDaInc > 0 ? C.dan : C.txm, fontWeight: totEsegDaInc > 0 ? 700 : 400 }}>💰 Eseguito da incassare</span>
+                <span style={{ fontSize: 12, color: totEsegDaInc > 0 ? C.dan : C.txm, fontWeight: totEsegDaInc > 0 ? 700 : 400, display: 'inline-flex', alignItems: 'center', gap: 5 }}><Ic n="eur" s={11} c={totEsegDaInc > 0 ? C.dan : C.txm} />Eseguito da incassare</span>
                 <span style={{ fontSize: 13.5, fontWeight: 800, color: totEsegDaInc > 0 ? C.dan : C.txt }}>{fmt(totEsegDaInc)}</span>
               </div>
               <div onClick={() => setDetailModal('accNonEseg')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', cursor: 'pointer', borderTop: `1px solid ${C.brd}` }}>
-                <span style={{ fontSize: 12, color: C.txm }}>✓ Accettato da eseguire</span>
+                <span style={{ fontSize: 12, color: C.txm, display: 'inline-flex', alignItems: 'center', gap: 5 }}><Ic n="ok" s={11} c={C.txm} />Accettato da eseguire</span>
                 <span style={{ fontSize: 13.5, fontWeight: 800, color: C.txt }}>{fmt(totAccNonEseg)}</span>
               </div>
             </Crd>
@@ -955,7 +964,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
 
         if (w.id === 'preventivi') return (
           <div key="preventivi" style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>📋 Preventivi</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="clip" s={11} c={C.txm} />Preventivi</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
               <StatCard label="Attesa" value={preventiviAttesa.length} color={C.pur} onClick={() => setDetailModal('attesa')} />
               <StatCard label="Accettati" value={preventiviAccettati.length} sub={fmt(totAccettati)} color={C.acc} onClick={() => setDetailModal('accettati')} />
@@ -970,7 +979,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           const scad = aperti.filter(r => r.dataScadenza < t2).length;
           return (
             <div key="richiami" style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>🔔 Richiami</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="bell" s={11} c={C.txm} />Richiami</div>
               <StatCard label="Da gestire" value={aperti.length} sub={`${scad} scaduti`} color={scad > 0 ? C.dan : C.pur} urgent={scad > 0} onClick={() => onGoRichiami && onGoRichiami()} />
             </div>
           );
@@ -978,7 +987,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
 
         if (w.id === 'scadenze') return (
           <div key="scadenze" style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>📆 Scadenze pagamento</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="cal" s={11} c={C.txm} />Scadenze pagamento</div>
             <StatCard label="Totale" value={scadenzePagamento.length} sub={`${scadenzeScadute.length} scadute · ${scadenzeProssime.length} prossime 30gg`} color={scadenzeScadute.length > 0 ? C.dan : C.pri} urgent={scadenzeScadute.length > 0} onClick={() => setDetailModal('scadenze')} />
           </div>
         );
@@ -987,7 +996,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           if (!isDentistico) return null;
           return (
             <div key="ortodonzia" style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>🦷 Ortodonzia</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="tooth" s={11} c={C.txm} />Ortodonzia</div>
               <StatCard label="Piani attivi" value={pianiOrto.filter(o => !o.completato).length} sub={`${pianiOrto.filter(o => o.cambioScaduto).length} da cambiare · ${pianiOrto.filter(o => o.inAttesa).length} da avviare`} color={pianiOrto.some(o => o.cambioScaduto) ? C.dan : C.pur} urgent={pianiOrto.some(o => o.cambioScaduto)} onClick={() => setDetailModal('orto')} />
             </div>
           );
@@ -995,7 +1004,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
 
         if (w.id === 'statistiche') return (
           <div key="statistiche" style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>📊 Statistiche</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="chart" s={11} c={C.txm} />Statistiche</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               <StatCard label="Pazienti totali" value={patients.length} sub={`+${nuoviMese} questo mese`} />
               <StatCard label="Tasso accettazione" value={`${tassoAccettazione}%`} color={tassoAccettazione >= 70 ? C.suc : tassoAccettazione >= 40 ? C.war : C.dan} onClick={() => setDetailModal('attesa')} />
@@ -1008,7 +1017,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
         if (w.id === 'grafici') return (
           <div key="grafici" style={{ marginBottom: 16 }}>
             <button onClick={() => setMostraGraficiDash(v => !v)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'none', border: 'none', padding: 0, marginBottom: 8, cursor: 'pointer' }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em' }}>📈 Grafici e andamento</span>
+              <span style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="trend" s={11} c={C.txm} />Grafici e andamento</span>
               <span style={{ fontSize: 11, color: C.pri, fontWeight: 700 }}>{mostraGraficiDash ? 'Nascondi ▲' : 'Mostra ▼'}</span>
             </button>
             {mostraGraficiDash && (
@@ -1105,7 +1114,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
       })}
 
       {editApp && editForm && (
-        <Modal title="✏️ Modifica appuntamento" onClose={() => setEditApp(null)}>
+        <Modal title={<><Ic n="edit" s={15} c={C.txt} /> Modifica appuntamento</>} onClose={() => setEditApp(null)}>
           {(() => {
             const p = patients.find(x => x.id === editApp.pazienteId);
             return (
