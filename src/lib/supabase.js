@@ -20,7 +20,7 @@ const TABLE_MAP = {
 };
 
 /* ── CAMPI UI TEMPORANEI DA NON SALVARE SU DB ── */
-const UI_ONLY_FIELDS = new Set(['_presetScadenza']);
+const UI_ONLY_FIELDS = new Set(['_presetScadenza', '_editId']);
 
 /* ── CONVERSIONE CAMPI: app (camelCase) <-> db (snake_case) ── */
 const FIELD_MAP = {
