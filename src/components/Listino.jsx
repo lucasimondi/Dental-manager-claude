@@ -1,8 +1,149 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Ic, Bdg } from './ui';
 import { C, uid, fmt, DEF_PRICE, getCategoriePrestazioni } from '../lib/utils';
+import { supabase } from '../lib/supabase.js';
 
-const FORM_VUOTO = { cat: '', cod: '', nome: '', prezzo: '', richiamoMesi: '' };
+const FORM_VUOTO = { cat: '', cod: '', nome: '', prezzo: '', richiamoMesi: '', durataMinuti: '' };
+
+// Costo di un materiale/macchinario collegato a una prestazione, per singolo
+// utilizzo: stessa formula usata in Costi → Materiali/Macchinari, qui solo
+// riletta per calcolare la marginalità della prestazione.
+const costoUsoMateriale = (m) => Number(m.costo) / Math.max(1, Number(m.resa));
+const costoUsoMacchinario = (m) => {
+  if (!m.utilizzi_stimati_anno) return null;
+  return (Number(m.costo_acquisto) / Math.max(1, Number(m.anni_ammortamento))) / Number(m.utilizzi_stimati_anno) + Number(m.costo_consumabile_uso || 0);
+};
+
+// ─────────────────────────────────────────────────────────────────
+// Costi collegati a una prestazione: materiali/macchinari usati (con
+// quantità) + tempo poltrona, per calcolarne la marginalità reale. Ogni
+// aggiunta/rimozione scrive subito sul DB (come Operatori/Poltrone in
+// Agenda), non fa parte del ciclo salva/annulla della prestazione — solo
+// disponibile modificando una prestazione già esistente (serve un id reale
+// su cui agganciare i collegamenti).
+function CostiCollegati({ pricelistId, studioId, prezzo }) {
+  const [materiali, setMateriali] = useState([]);
+  const [macchinari, setMacchinari] = useState([]);
+  const [collegatiMat, setCollegatiMat] = useState([]);
+  const [collegatiMacc, setCollegatiMacc] = useState([]);
+  const [costoOrario, setCostoOrario] = useState(null);
+  const [nuovoMatId, setNuovoMatId] = useState('');
+  const [nuovoMaccId, setNuovoMaccId] = useState('');
+
+  const carica = async () => {
+    const [{ data: mat }, { data: macc }, { data: cm }, { data: cmc }] = await Promise.all([
+      supabase.from('materiali').select('*').eq('attivo', true).order('nome'),
+      supabase.from('macchinari').select('*').eq('attivo', true).order('nome'),
+      supabase.from('prestazione_materiali').select('*').eq('pricelist_id', pricelistId),
+      supabase.from('prestazione_macchinari').select('*').eq('pricelist_id', pricelistId),
+    ]);
+    setMateriali(mat || []);
+    setMacchinari(macc || []);
+    setCollegatiMat(cm || []);
+    setCollegatiMacc(cmc || []);
+  };
+  useEffect(() => { carica(); }, [pricelistId]);
+  useEffect(() => {
+    if (!studioId) return;
+    supabase.rpc('get_costo_orario', { p_studio_id: studioId }).then(({ data }) => { if (data) setCostoOrario(data.costo_orario); });
+  }, [studioId]);
+
+  const aggiungiMateriale = async () => {
+    if (!nuovoMatId) return;
+    await supabase.from('prestazione_materiali').insert([{ studio_id: studioId, pricelist_id: pricelistId, materiale_id: Number(nuovoMatId), quantita: 1 }]);
+    setNuovoMatId('');
+    carica();
+  };
+  const aggiungiMacchinario = async () => {
+    if (!nuovoMaccId) return;
+    await supabase.from('prestazione_macchinari').insert([{ studio_id: studioId, pricelist_id: pricelistId, macchinario_id: Number(nuovoMaccId), quantita: 1 }]);
+    setNuovoMaccId('');
+    carica();
+  };
+  const aggiornaQuantitaMat = async (id, quantita) => { await supabase.from('prestazione_materiali').update({ quantita }).eq('id', id); carica(); };
+  const aggiornaQuantitaMacc = async (id, quantita) => { await supabase.from('prestazione_macchinari').update({ quantita }).eq('id', id); carica(); };
+  const rimuoviMateriale = async (id) => { await supabase.from('prestazione_materiali').delete().eq('id', id); carica(); };
+  const rimuoviMacchinario = async (id) => { await supabase.from('prestazione_macchinari').delete().eq('id', id); carica(); };
+
+  const materialiDisponibili = materiali.filter((m) => !collegatiMat.some((c) => c.materiale_id === m.id));
+  const macchinariDisponibili = macchinari.filter((m) => !collegatiMacc.some((c) => c.macchinario_id === m.id));
+
+  const costoMateriali = collegatiMat.reduce((s, c) => { const m = materiali.find((x) => x.id === c.materiale_id); return m ? s + costoUsoMateriale(m) * Number(c.quantita) : s; }, 0);
+  const costoMacchinari = collegatiMacc.reduce((s, c) => { const m = macchinari.find((x) => x.id === c.macchinario_id); const cu = m ? costoUsoMacchinario(m) : null; return cu != null ? s + cu * Number(c.quantita) : s; }, 0);
+  const costoTotale = costoMateriali + costoMacchinari;
+  const margine = Number(prezzo || 0) - costoTotale;
+  const marginePct = Number(prezzo) > 0 ? (margine / Number(prezzo)) * 100 : null;
+
+  return (
+    <div style={{ borderTop: `1px solid ${C.brd}`, marginTop: 4, paddingTop: 14, marginBottom: 8 }}>
+      <div style={{ fontSize: 11.5, fontWeight: 700, marginBottom: 2 }}>Costi collegati</div>
+      <div style={{ fontSize: 10.5, color: C.txl, marginBottom: 10 }}>Materiali e macchinari usati per questa prestazione — per la marginalità in Controllo → Marginalità.</div>
+
+      <div style={{ fontSize: 11, fontWeight: 700, color: C.txm, marginBottom: 6 }}>Materiali</div>
+      {collegatiMat.map((c) => {
+        const m = materiali.find((x) => x.id === c.materiale_id);
+        if (!m) return null;
+        return (
+          <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0' }}>
+            <span style={{ flex: 1, fontSize: 12 }}>{m.nome}</span>
+            <span style={{ fontSize: 10.5, color: C.txl }}>{fmt(costoUsoMateriale(m))}/uso ×</span>
+            <input type="number" min="0.1" step="0.1" value={c.quantita} onChange={(e) => aggiornaQuantitaMat(c.id, Number(e.target.value) || 1)} style={{ width: 46, border: `1px solid ${C.brd}`, borderRadius: 6, padding: '3px 5px', fontSize: 12, textAlign: 'center' }} />
+            <button onClick={() => rimuoviMateriale(c.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}><Ic n="x" s={12} c={C.dan} /></button>
+          </div>
+        );
+      })}
+      {materialiDisponibili.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+          <Sel value={nuovoMatId} onChange={(e) => setNuovoMatId(e.target.value)} style={{ flex: 1 }}>
+            <option value="">+ Aggiungi materiale...</option>
+            {materialiDisponibili.map((m) => <option key={m.id} value={m.id}>{m.nome} ({fmt(costoUsoMateriale(m))}/uso)</option>)}
+          </Sel>
+          <button onClick={aggiungiMateriale} disabled={!nuovoMatId} style={{ background: nuovoMatId ? C.priL : C.bg, border: 'none', borderRadius: 8, padding: '0 12px', color: nuovoMatId ? C.pri : C.txl, fontWeight: 700, fontSize: 12, cursor: nuovoMatId ? 'pointer' : 'not-allowed' }}>+</button>
+        </div>
+      )}
+      {materiali.length === 0 && <div style={{ fontSize: 10.5, color: C.txl }}>Nessun materiale in libreria — aggiungili in Controllo → Costi → Materiali.</div>}
+
+      <div style={{ fontSize: 11, fontWeight: 700, color: C.txm, marginTop: 14, marginBottom: 6 }}>Macchinari</div>
+      {collegatiMacc.map((c) => {
+        const m = macchinari.find((x) => x.id === c.macchinario_id);
+        if (!m) return null;
+        const cu = costoUsoMacchinario(m);
+        return (
+          <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0' }}>
+            <span style={{ flex: 1, fontSize: 12 }}>{m.nome}</span>
+            <span style={{ fontSize: 10.5, color: C.txl }}>{cu != null ? `${fmt(cu)}/uso ×` : 'costo/uso non configurato'}</span>
+            <input type="number" min="0.1" step="0.1" value={c.quantita} onChange={(e) => aggiornaQuantitaMacc(c.id, Number(e.target.value) || 1)} style={{ width: 46, border: `1px solid ${C.brd}`, borderRadius: 6, padding: '3px 5px', fontSize: 12, textAlign: 'center' }} />
+            <button onClick={() => rimuoviMacchinario(c.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}><Ic n="x" s={12} c={C.dan} /></button>
+          </div>
+        );
+      })}
+      {macchinariDisponibili.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+          <Sel value={nuovoMaccId} onChange={(e) => setNuovoMaccId(e.target.value)} style={{ flex: 1 }}>
+            <option value="">+ Aggiungi macchinario...</option>
+            {macchinariDisponibili.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
+          </Sel>
+          <button onClick={aggiungiMacchinario} disabled={!nuovoMaccId} style={{ background: nuovoMaccId ? C.priL : C.bg, border: 'none', borderRadius: 8, padding: '0 12px', color: nuovoMaccId ? C.pri : C.txl, fontWeight: 700, fontSize: 12, cursor: nuovoMaccId ? 'pointer' : 'not-allowed' }}>+</button>
+        </div>
+      )}
+      {macchinari.length === 0 && <div style={{ fontSize: 10.5, color: C.txl }}>Nessun macchinario in libreria — aggiungili in Controllo → Costi → Macchinari.</div>}
+
+      {(costoMateriali > 0 || costoMacchinari > 0) && (
+        <div style={{ background: C.bg, borderRadius: 10, padding: 12, marginTop: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: C.txm, marginBottom: 3 }}><span>Costo materiali</span><span>{fmt(costoMateriali)}</span></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: C.txm, marginBottom: 3 }}><span>Costo macchinari</span><span>{fmt(costoMacchinari)}</span></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, fontWeight: 800, color: C.txt, marginTop: 6, paddingTop: 6, borderTop: `1px solid ${C.brd}` }}>
+            <span>Margine</span>
+            <span style={{ color: marginePct == null ? C.txt : marginePct >= 40 ? C.suc : marginePct >= 20 ? C.war : C.dan }}>
+              {fmt(margine)}{marginePct != null && ` (${Math.round(marginePct)}%)`}
+            </span>
+          </div>
+          {costoOrario != null && <div style={{ fontSize: 10, color: C.txl, marginTop: 4 }}>Non include il tempo poltrona — vedi il dettaglio in Controllo → Marginalità (costo orario stimato {fmt(costoOrario)}/h).</div>}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Listino({ pricelist, setPricelist, si }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
@@ -16,11 +157,11 @@ export default function Listino({ pricelist, setPricelist, si }) {
   const cats = [...new Set(pricelist.map((p) => p.cat))];
 
   const openNew = () => { setForm({ ...FORM_VUOTO, cat: categorie[0] }); setEditItem(null); setModal(true); };
-  const openEdit = (item) => { setForm({ ...FORM_VUOTO, cat: categorie[0], ...item, prezzo: String(item.prezzo), richiamoMesi: item.richiamoMesi != null ? String(item.richiamoMesi) : '' }); setEditItem(item); setModal(true); };
+  const openEdit = (item) => { setForm({ ...FORM_VUOTO, cat: categorie[0], ...item, prezzo: String(item.prezzo), richiamoMesi: item.richiamoMesi != null ? String(item.richiamoMesi) : '', durataMinuti: item.durataMinuti != null ? String(item.durataMinuti) : '' }); setEditItem(item); setModal(true); };
 
   const save = () => {
     if (!form.nome || !form.prezzo) return;
-    const salvata = { ...form, prezzo: Number(form.prezzo), richiamoMesi: form.richiamoMesi === '' ? null : Number(form.richiamoMesi) };
+    const salvata = { ...form, prezzo: Number(form.prezzo), richiamoMesi: form.richiamoMesi === '' ? null : Number(form.richiamoMesi), durataMinuti: form.durataMinuti === '' ? null : Number(form.durataMinuti) };
     if (editItem) setPricelist((p) => p.map((x) => (x.id === editItem.id ? salvata : x)));
     else setPricelist((p) => [...p, { ...salvata, id: uid() }]);
     setModal(false);
@@ -117,10 +258,15 @@ export default function Listino({ pricelist, setPricelist, si }) {
             <Inp type="number" min="0" inputMode="numeric" value={form.richiamoMesi} onChange={(e) => setForm((f) => ({ ...f, richiamoMesi: e.target.value }))} placeholder="Automatico (rilevato dal nome, es. igiene → 6 mesi)" />
           </Fld>
           <div style={{ fontSize: 11, color: C.txl, marginTop: -8, marginBottom: 13 }}>Lasciare vuoto per lasciar decidere al bot in base al nome della prestazione. Vale quando questa prestazione viene segnata "eseguita" nella scheda paziente.</div>
+          <Fld label="Durata media (minuti, opzionale)">
+            <Inp type="number" min="0" inputMode="numeric" value={form.durataMinuti} onChange={(e) => setForm((f) => ({ ...f, durataMinuti: e.target.value }))} placeholder="es. 45" />
+          </Fld>
+          <div style={{ fontSize: 11, color: C.txl, marginTop: -8, marginBottom: 13 }}>Usata per stimare il costo del tempo poltrona nella marginalità (Controllo → Marginalità).</div>
           <div style={{ display: 'flex', gap: 7, marginTop: 8 }}>
             <Btn ch="Annulla" v="sec" onClick={() => setModal(false)} full />
             <Btn ch="Salva" onClick={save} full />
           </div>
+          {editItem && <CostiCollegati pricelistId={editItem.id} studioId={si?.studio_id} prezzo={form.prezzo} />}
         </Modal>
       )}
     </div>

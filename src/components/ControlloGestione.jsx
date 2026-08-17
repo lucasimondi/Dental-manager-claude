@@ -4,12 +4,14 @@ import PanoramicaControllo from './PanoramicaControllo.jsx';
 import Proiezioni from './Proiezioni.jsx';
 import Costi from './Costi.jsx';
 import ControlloCockpit from './ControlloCockpit.jsx';
+import MarginalitaPrestazioni from './MarginalitaPrestazioni.jsx';
 
 const TABS = [
   { id: 'panoramica', label: 'Panoramica' },
   { id: 'cockpit', label: 'Cockpit' },
   { id: 'proiezioni', label: 'Proiezioni' },
   { id: 'costi', label: 'Costi' },
+  { id: 'marginalita', label: 'Marginalità' },
 ];
 
 // Controllo di Gestione: contenitore unico con sotto-sezioni.
@@ -41,6 +43,7 @@ export default function ControlloGestione(props) {
       {tab === 'cockpit' && <ControlloCockpit {...props} />}
       {tab === 'proiezioni' && <Proiezioni studioId={props.studioId} />}
       {tab === 'costi' && <Costi studioId={props.studioId} />}
+      {tab === 'marginalita' && <MarginalitaPrestazioni studioId={props.studioId} pricelist={props.pricelist} />}
     </div>
   );
 }

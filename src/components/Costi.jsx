@@ -320,7 +320,7 @@ function VistaMacchinari({ studioId, refreshKey, onChanged }) {
   const [lista, setLista] = useState([]);
   const [modal, setModal] = useState(false);
   const [editItem, setEditItem] = useState(null);
-  const [form, setForm] = useState({ nome: '', costo_acquisto: '', data_acquisto: today(), anni_ammortamento: '5', attivo: true });
+  const [form, setForm] = useState({ nome: '', costo_acquisto: '', data_acquisto: today(), anni_ammortamento: '5', utilizzi_stimati_anno: '', costo_consumabile_uso: '', attivo: true });
 
   const load = async () => {
     const { data } = await supabase.from('macchinari').select('*').order('created_at', { ascending: false });
@@ -328,12 +328,17 @@ function VistaMacchinari({ studioId, refreshKey, onChanged }) {
   };
   useEffect(() => { load(); }, [refreshKey]);
 
-  const apriNuovo = () => { setEditItem(null); setForm({ nome: '', costo_acquisto: '', data_acquisto: today(), anni_ammortamento: '5', attivo: true }); setModal(true); };
-  const apriEdit = (m) => { setEditItem(m); setForm({ nome: m.nome, costo_acquisto: String(m.costo_acquisto), data_acquisto: m.data_acquisto, anni_ammortamento: String(m.anni_ammortamento), attivo: m.attivo }); setModal(true); };
+  const apriNuovo = () => { setEditItem(null); setForm({ nome: '', costo_acquisto: '', data_acquisto: today(), anni_ammortamento: '5', utilizzi_stimati_anno: '', costo_consumabile_uso: '', attivo: true }); setModal(true); };
+  const apriEdit = (m) => { setEditItem(m); setForm({ nome: m.nome, costo_acquisto: String(m.costo_acquisto), data_acquisto: m.data_acquisto, anni_ammortamento: String(m.anni_ammortamento), utilizzi_stimati_anno: m.utilizzi_stimati_anno != null ? String(m.utilizzi_stimati_anno) : '', costo_consumabile_uso: m.costo_consumabile_uso != null ? String(m.costo_consumabile_uso) : '', attivo: m.attivo }); setModal(true); };
 
   const salva = async () => {
     if (!form.nome || !form.costo_acquisto) return;
-    const record = { studio_id: studioId, nome: form.nome, costo_acquisto: Number(form.costo_acquisto), data_acquisto: form.data_acquisto, anni_ammortamento: Number(form.anni_ammortamento), attivo: form.attivo };
+    const record = {
+      studio_id: studioId, nome: form.nome, costo_acquisto: Number(form.costo_acquisto), data_acquisto: form.data_acquisto, anni_ammortamento: Number(form.anni_ammortamento),
+      utilizzi_stimati_anno: form.utilizzi_stimati_anno === '' ? null : Number(form.utilizzi_stimati_anno),
+      costo_consumabile_uso: form.costo_consumabile_uso === '' ? 0 : Number(form.costo_consumabile_uso),
+      attivo: form.attivo,
+    };
     if (editItem) await supabase.from('macchinari').update(record).eq('id', editItem.id);
     else await supabase.from('macchinari').insert([record]);
     setModal(false);
@@ -350,6 +355,14 @@ function VistaMacchinari({ studioId, refreshKey, onChanged }) {
 
   const quotaMensile = (m) => Number(m.costo_acquisto) / (Math.max(Number(m.anni_ammortamento), 1) * 12);
   const totaleMensile = lista.filter((m) => m.attivo).reduce((s, m) => s + quotaMensile(m), 0);
+  // Costo per singolo utilizzo (per la marginalità prestazioni): quota di
+  // ammortamento annuale / utilizzi stimati all'anno + consumabile per uso.
+  // Serve "utilizzi stimati anno" configurato, altrimenti resta indefinito
+  // (non ha senso stimarlo da solo: dipende troppo dal tipo di macchinario).
+  const costoUso = (m) => {
+    if (!m.utilizzi_stimati_anno) return null;
+    return (Number(m.costo_acquisto) / Math.max(1, Number(m.anni_ammortamento))) / Number(m.utilizzi_stimati_anno) + Number(m.costo_consumabile_uso || 0);
+  };
 
   return (
     <div>
@@ -359,14 +372,116 @@ function VistaMacchinari({ studioId, refreshKey, onChanged }) {
       </div>
       {lista.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 20, fontSize: 12 }}>Nessun macchinario registrato</div>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {lista.map((m) => {
+          const cu = costoUso(m);
+          return (
+          <Crd key={m.id} style={{ opacity: m.attivo ? 1 : 0.5 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 13 }}>{m.nome}</div>
+                <div style={{ fontSize: 11, color: C.txm }}>{fmt(m.costo_acquisto)} · {fmtD(m.data_acquisto)} · ammortamento {m.anni_ammortamento} anni{cu != null && ` · ${fmt(cu)}/uso`}</div>
+              </div>
+              <span style={{ fontWeight: 800, color: C.txt, fontSize: 13 }}>{fmt(quotaMensile(m))}/mese</span>
+              <button onClick={() => apriEdit(m)} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '5px 8px', cursor: 'pointer' }}><Ic n="edit" s={13} c={C.pri} /></button>
+              <button onClick={() => elimina(m.id)} style={{ background: C.danL, border: 'none', borderRadius: 7, padding: '5px 8px', cursor: 'pointer' }}><Ic n="del" s={13} c={C.dan} /></button>
+            </div>
+          </Crd>
+          );
+        })}
+      </div>
+
+      {modal && (
+        <Modal title={editItem ? 'Modifica' : '+ Macchinario'} onClose={() => setModal(false)}>
+          <Fld label="Nome"><Inp value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder="es. Stampante 3D" autoFocus /></Fld>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <Fld label="Costo acquisto €"><Inp type="number" value={form.costo_acquisto} onChange={(e) => setForm((f) => ({ ...f, costo_acquisto: e.target.value }))} /></Fld>
+            <Fld label="Data acquisto"><Inp type="date" value={form.data_acquisto} onChange={(e) => setForm((f) => ({ ...f, data_acquisto: e.target.value }))} /></Fld>
+          </div>
+          <Fld label="Anni di ammortamento"><Inp type="number" value={form.anni_ammortamento} onChange={(e) => setForm((f) => ({ ...f, anni_ammortamento: e.target.value }))} /></Fld>
+          <div style={{ borderTop: `1px solid ${C.brd}`, marginTop: 4, paddingTop: 12, marginBottom: 4 }}>
+            <div style={{ fontSize: 11.5, fontWeight: 700, marginBottom: 2 }}>Costo per singolo utilizzo</div>
+            <div style={{ fontSize: 10.5, color: C.txl, marginBottom: 10 }}>Opzionale — per collegarlo a una prestazione nel Listino e calcolarne la marginalità (es. una stampa per corona/mascherina).</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <Fld label="Utilizzi stimati/anno"><Inp type="number" min="0" value={form.utilizzi_stimati_anno} onChange={(e) => setForm((f) => ({ ...f, utilizzi_stimati_anno: e.target.value }))} placeholder="es. 200" /></Fld>
+              <Fld label="Consumabile per uso €"><Inp type="number" min="0" value={form.costo_consumabile_uso} onChange={(e) => setForm((f) => ({ ...f, costo_consumabile_uso: e.target.value }))} placeholder="es. resina" /></Fld>
+            </div>
+            {form.utilizzi_stimati_anno && Number(form.utilizzi_stimati_anno) > 0 && form.anni_ammortamento && (
+              <div style={{ fontSize: 11, color: C.txl, marginTop: -6 }}>
+                Costo per singolo utilizzo: <b style={{ color: C.txm }}>{fmt((Number(form.costo_acquisto || 0) / Math.max(1, Number(form.anni_ammortamento))) / Number(form.utilizzi_stimati_anno) + Number(form.costo_consumabile_uso || 0))}</b>
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, marginBottom: 12 }}>
+            <input type="checkbox" checked={form.attivo} onChange={(e) => setForm((f) => ({ ...f, attivo: e.target.checked }))} />
+            <span style={{ fontSize: 12, color: C.txt }}>In uso (conta nei costi correnti)</span>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn ch="Annulla" v="sec" onClick={() => setModal(false)} full />
+            <Btn ch={editItem ? 'Aggiorna' : 'Salva'} onClick={salva} dis={!form.nome || !form.costo_acquisto} full />
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Vista Materiali — consumabili con "resa": quante prestazioni escono da una
+// confezione (es. tubetto di composito da 5g → 8 otturazioni), così il costo
+// per singolo utilizzo si aggiorna da solo quando cambia il prezzo d'acquisto
+// invece di dover essere ricalcolato a mano ogni volta. Si collegano alle
+// prestazioni del Listino per calcolare la marginalità (vedi Controllo →
+// Marginalità).
+function VistaMateriali({ studioId, refreshKey, onChanged }) {
+  const [lista, setLista] = useState([]);
+  const [modal, setModal] = useState(false);
+  const [editItem, setEditItem] = useState(null);
+  const [form, setForm] = useState({ nome: '', costo: '', resa: '1', unita_misura: '', attivo: true });
+
+  const load = async () => {
+    const { data } = await supabase.from('materiali').select('*').order('created_at', { ascending: false });
+    setLista(data || []);
+  };
+  useEffect(() => { load(); }, [refreshKey]);
+
+  const apriNuovo = () => { setEditItem(null); setForm({ nome: '', costo: '', resa: '1', unita_misura: '', attivo: true }); setModal(true); };
+  const apriEdit = (m) => { setEditItem(m); setForm({ nome: m.nome, costo: String(m.costo), resa: String(m.resa), unita_misura: m.unita_misura || '', attivo: m.attivo }); setModal(true); };
+
+  const salva = async () => {
+    if (!form.nome || !form.costo) return;
+    const record = { studio_id: studioId, nome: form.nome, costo: Number(form.costo), resa: Math.max(1, Number(form.resa) || 1), unita_misura: form.unita_misura || null, attivo: form.attivo };
+    if (editItem) await supabase.from('materiali').update(record).eq('id', editItem.id);
+    else await supabase.from('materiali').insert([record]);
+    setModal(false);
+    load();
+    onChanged();
+  };
+
+  const elimina = async (id) => {
+    if (!confirm('Rimuovere questo materiale? Verrà scollegato dalle prestazioni che lo usano.')) return;
+    await supabase.from('materiali').delete().eq('id', id);
+    load();
+    onChanged();
+  };
+
+  const costoUso = (m) => Number(m.costo) / Math.max(1, Number(m.resa));
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <div style={{ fontSize: 11, color: C.txl }}>Collegali alle prestazioni nel Listino per calcolare la marginalità</div>
+        <Btn ch="+ Materiale" sz="sm" onClick={apriNuovo} />
+      </div>
+      {lista.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 20, fontSize: 12 }}>Nessun materiale registrato</div>}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {lista.map((m) => (
           <Crd key={m.id} style={{ opacity: m.attivo ? 1 : 0.5 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: 13 }}>{m.nome}</div>
-                <div style={{ fontSize: 11, color: C.txm }}>{fmt(m.costo_acquisto)} · {fmtD(m.data_acquisto)} · ammortamento {m.anni_ammortamento} anni</div>
+                <div style={{ fontSize: 11, color: C.txm }}>{fmt(m.costo)}{m.unita_misura ? ` · ${m.unita_misura}` : ''} · resa {m.resa} usi</div>
               </div>
-              <span style={{ fontWeight: 800, color: C.txt, fontSize: 13 }}>{fmt(quotaMensile(m))}/mese</span>
+              <span style={{ fontWeight: 800, color: C.txt, fontSize: 13 }}>{fmt(costoUso(m))}/uso</span>
               <button onClick={() => apriEdit(m)} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '5px 8px', cursor: 'pointer' }}><Ic n="edit" s={13} c={C.pri} /></button>
               <button onClick={() => elimina(m.id)} style={{ background: C.danL, border: 'none', borderRadius: 7, padding: '5px 8px', cursor: 'pointer' }}><Ic n="del" s={13} c={C.dan} /></button>
             </div>
@@ -375,20 +490,25 @@ function VistaMacchinari({ studioId, refreshKey, onChanged }) {
       </div>
 
       {modal && (
-        <Modal title={editItem ? 'Modifica' : '+ Macchinario'} onClose={() => setModal(false)}>
-          <Fld label="Nome"><Inp value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder="es. Attrezzatura principale" autoFocus /></Fld>
+        <Modal title={editItem ? 'Modifica' : '+ Materiale'} onClose={() => setModal(false)}>
+          <Fld label="Nome"><Inp value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder="es. Composito A2" autoFocus /></Fld>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <Fld label="Costo acquisto €"><Inp type="number" value={form.costo_acquisto} onChange={(e) => setForm((f) => ({ ...f, costo_acquisto: e.target.value }))} /></Fld>
-            <Fld label="Data acquisto"><Inp type="date" value={form.data_acquisto} onChange={(e) => setForm((f) => ({ ...f, data_acquisto: e.target.value }))} /></Fld>
+            <Fld label="Costo acquisto €"><Inp type="number" value={form.costo} onChange={(e) => setForm((f) => ({ ...f, costo: e.target.value }))} /></Fld>
+            <Fld label="Unità (opzionale)"><Inp value={form.unita_misura} onChange={(e) => setForm((f) => ({ ...f, unita_misura: e.target.value }))} placeholder="es. tubetto 5g" /></Fld>
           </div>
-          <Fld label="Anni di ammortamento"><Inp type="number" value={form.anni_ammortamento} onChange={(e) => setForm((f) => ({ ...f, anni_ammortamento: e.target.value }))} /></Fld>
+          <Fld label="Resa (quante prestazioni escono da una confezione)">
+            <Inp type="number" min="1" value={form.resa} onChange={(e) => setForm((f) => ({ ...f, resa: e.target.value }))} placeholder="es. 8" />
+          </Fld>
+          {form.costo && form.resa && Number(form.resa) > 0 && (
+            <div style={{ fontSize: 11, color: C.txl, marginTop: -8, marginBottom: 13 }}>Costo per singolo utilizzo: <b style={{ color: C.txm }}>{fmt(Number(form.costo) / Number(form.resa))}</b></div>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <input type="checkbox" checked={form.attivo} onChange={(e) => setForm((f) => ({ ...f, attivo: e.target.checked }))} />
-            <span style={{ fontSize: 12, color: C.txt }}>In uso (conta nei costi correnti)</span>
+            <span style={{ fontSize: 12, color: C.txt }}>Attivo</span>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn ch="Annulla" v="sec" onClick={() => setModal(false)} full />
-            <Btn ch={editItem ? 'Aggiorna' : 'Salva'} onClick={salva} dis={!form.nome || !form.costo_acquisto} full />
+            <Btn ch={editItem ? 'Aggiorna' : 'Salva'} onClick={salva} dis={!form.nome || !form.costo} full />
           </div>
         </Modal>
       )}
@@ -412,6 +532,7 @@ export default function Costi({ studioId }) {
     { id: 'spese', label: 'Spese' },
     { id: 'personale', label: 'Personale' },
     { id: 'macchinari', label: 'Macchinari' },
+    { id: 'materiali', label: 'Materiali' },
   ];
 
   return (
@@ -435,6 +556,7 @@ export default function Costi({ studioId }) {
       {sub === 'spese' && <Spese refreshKey={refreshKey} studioId={studioId} mostraUpload={false} />}
       {sub === 'personale' && <VistaPersonale studioId={studioId} refreshKey={refreshKey} onChanged={bump} />}
       {sub === 'macchinari' && <VistaMacchinari studioId={studioId} refreshKey={refreshKey} onChanged={bump} />}
+      {sub === 'materiali' && <VistaMateriali studioId={studioId} refreshKey={refreshKey} onChanged={bump} />}
 
       {estrattoPendente && (
         <ConfermaEstrazione

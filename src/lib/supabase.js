@@ -63,6 +63,7 @@ const FIELD_MAP = {
   },
   pricelist: {
     richiamoMesi: 'richiamo_mesi',
+    durataMinuti: 'durata_minuti',
   },
 };
 
