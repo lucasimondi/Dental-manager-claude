@@ -276,7 +276,7 @@ export default function App() {
         const nuovi = next.filter((item) => !prevIds.has(item.id));
         if (nuovi.length > 0) {
           (async () => {
-            let falliti = 0;
+            const errori = [];
             for (const item of nuovi) {
               try {
                 const { id: tempId, ...rest } = item;
@@ -284,10 +284,15 @@ export default function App() {
                 setLocal((curr) => curr.map((x) => (x.id === tempId ? { ...x, id: saved.id } : x)));
               } catch (e) {
                 console.error('insert', key, e);
-                falliti++;
+                errori.push(e?.message || String(e));
+                // Non è mai stato salvato sul cloud: toglierlo dallo stato locale invece di
+                // lasciarlo lì come elemento "fantasma", che altrimenti sparirebbe in modo
+                // imprevedibile al primo refresh realtime (es. dopo un'altra modifica andata
+                // a buon fine) confondendo chi lo aveva appena inserito.
+                setLocal((curr) => curr.filter((x) => x.id !== item.id));
               }
             }
-            if (falliti > 0 && onError) onError(`${falliti} elemento/i non salvato/i sul cloud. Controlla i campi obbligatori (es. nome/cognome) e riprova.`);
+            if (errori.length > 0 && onError) onError(`${errori.length} elemento/i non salvato/i sul cloud: ${errori[0]}`);
           })();
         }
 
@@ -465,7 +470,7 @@ export default function App() {
             )}
             {page === 'paga' && <Pagamenti patients={patients} payments={payments} setPayments={setPaymentsSync} plans={plans} />}
             {page === 'listino' && <Listino pricelist={pricelist} setPricelist={setPricelistSync} si={studioInfo} />}
-            {page === 'agenda' && <Agenda patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} />}
+            {page === 'agenda' && <Agenda patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} />}
             {page === 'richiami' && <Richiami patients={patients} plans={plans} payments={payments} appointments={appointments} richiami={richiami} setRichiami={setRichiamiSync} templates={templates} features={features} onOpenPaz={goSchedaPaz} />}
             {page === 'spese' && <Spese studioId={session?.user?.app_metadata?.studio_id} />}
             {page === 'controllo' && <ControlloGestione studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} payments={payments} appointments={appointments} onOpenPaz={goSchedaPaz} isDentistico={!studioInfo?.vertical || studioInfo.vertical === 'dentistico'} />}

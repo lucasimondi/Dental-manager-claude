@@ -1,14 +1,45 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { C } from '../../lib/utils';
 import { cercaPazienti } from '../../lib/ricercaPazienti';
+
+// Riquadro "nessun risultato" con creazione rapida: precompila nome/cognome
+// dal testo cercato (prima parola = nome, resto = cognome), l'utente può
+// correggerli prima di confermare.
+function CreaPazienteInline({ testoIniziale, onCrea }) {
+  const parti = testoIniziale.trim().split(/\s+/);
+  const [nome, setNome] = useState(parti[0] || '');
+  const [cognome, setCognome] = useState(parti.slice(1).join(' ') || '');
+  const puoCreare = nome.trim() && cognome.trim();
+  return (
+    <div style={{ padding: 12 }}>
+      <div style={{ fontSize: 11.5, color: C.txl, marginBottom: 8 }}>Nessun paziente trovato — crea un nuovo paziente:</div>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+        <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome" style={{ flex: 1, minWidth: 0, border: `1px solid ${C.brd}`, borderRadius: 8, padding: '7px 9px', fontSize: 12.5, fontFamily: 'inherit', color: C.txt, background: C.bg }} />
+        <input value={cognome} onChange={(e) => setCognome(e.target.value)} placeholder="Cognome" style={{ flex: 1, minWidth: 0, border: `1px solid ${C.brd}`, borderRadius: 8, padding: '7px 9px', fontSize: 12.5, fontFamily: 'inherit', color: C.txt, background: C.bg }} />
+      </div>
+      <button
+        disabled={!puoCreare}
+        onClick={() => onCrea(nome.trim(), cognome.trim())}
+        style={{ width: '100%', background: puoCreare ? C.pri : C.bg, color: puoCreare ? '#fff' : C.txl, border: 'none', borderRadius: 8, padding: '9px 0', fontWeight: 700, fontSize: 12.5, cursor: puoCreare ? 'pointer' : 'not-allowed' }}
+      >
+        + Crea paziente
+      </button>
+    </div>
+  );
+}
 
 /**
  * Campo di ricerca/selezione paziente riusabile, con matching tollerante
  * (ordine parole libero, refusi, accenti). Sostituisce i blocchi inline
  * duplicati in Agenda, Piani, ArchivioDocs. Mostra il paziente selezionato
  * finché non si tocca per cercarne un altro.
+ *
+ * onCreaPaziente (opzionale): se passato, quando la ricerca non trova nessun
+ * paziente mostra un mini-form "Nome/Cognome" per crearne uno al volo invece
+ * del semplice messaggio "Nessun paziente trovato". Riceve (nome, cognome) e
+ * deve restituire l'id del paziente creato (sincrono).
  */
-export default function SelettorePaziente({ patients, value, onChange, search, onSearchChange, placeholder = 'Cerca per nome o cognome…', maxResults = 20, autoFocus }) {
+export default function SelettorePaziente({ patients, value, onChange, search, onSearchChange, placeholder = 'Cerca per nome o cognome…', maxResults = 20, autoFocus, onCreaPaziente }) {
   const sel = patients.find((p) => String(p.id) === String(value));
   const filtered = search.trim() ? cercaPazienti(patients, search) : patients;
 
@@ -53,8 +84,18 @@ export default function SelettorePaziente({ patients, value, onChange, search, o
         </div>
       )}
       {search.trim() && filtered.length === 0 && (
-        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: C.sur, border: `1.5px solid ${C.brd}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', marginTop: 3, padding: '14px', textAlign: 'center', color: C.txl, fontSize: 12.5 }}>
-          Nessun paziente trovato
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: C.sur, border: `1.5px solid ${C.brd}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', marginTop: 3 }}>
+          {onCreaPaziente ? (
+            <CreaPazienteInline
+              testoIniziale={search}
+              onCrea={(nome, cognome) => {
+                const id = onCreaPaziente(nome, cognome);
+                if (id != null) { onChange(String(id)); onSearchChange(''); }
+              }}
+            />
+          ) : (
+            <div style={{ padding: '14px', textAlign: 'center', color: C.txl, fontSize: 12.5 }}>Nessun paziente trovato</div>
+          )}
         </div>
       )}
     </div>

@@ -35,6 +35,40 @@ const RIPETI_OPZIONI = [
   { id: 'settimanale', label: 'Ogni settimana', giorni: 7 },
   { id: 'due_settimane', label: 'Ogni 2 settimane', giorni: 14 },
 ];
+// Calcola per ogni appuntamento del giorno la colonna e il numero totale di colonne
+// del suo "cluster" di sovrapposizione temporale, così quelli che si sovrappongono
+// (tipicamente operatori/poltrone diversi alla stessa ora, con filtro "Tutti" attivo)
+// si affiancano invece di disegnarsi uno sopra l'altro nascondendosi a vicenda.
+const layoutOverlap = (dayApps) => {
+  const items = dayApps.map((a) => {
+    const [ah, am] = a.ora.split(':').map(Number);
+    const start = (ah || 0) * 60 + (am || 0);
+    const end = start + Math.max(Number(a.durata) || 0, 1);
+    return { a, start, end, col: 0, totalCols: 1 };
+  });
+  let cluster = [];
+  let clusterEnd = -Infinity;
+  const flush = () => {
+    if (cluster.length === 0) return;
+    const colEnds = []; // fine dell'ultimo appuntamento assegnato a ciascuna colonna
+    cluster.forEach((item) => {
+      let idx = colEnds.findIndex((e) => e <= item.start);
+      if (idx === -1) { idx = colEnds.length; colEnds.push(item.end); }
+      else colEnds[idx] = item.end;
+      item.col = idx;
+    });
+    cluster.forEach((item) => { item.totalCols = colEnds.length; });
+    cluster = [];
+  };
+  items.forEach((item) => {
+    if (item.start >= clusterEnd) { flush(); clusterEnd = item.end; }
+    else clusterEnd = Math.max(clusterEnd, item.end);
+    cluster.push(item);
+  });
+  flush();
+  return items;
+};
+
 const startOfWeek = (d) => {
   const dt = new Date(d + 'T12:00');
   const day = dt.getDay();
@@ -210,7 +244,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                     </div>
                   );
                 })}
-                {dayApps.map(a => {
+                {layoutOverlap(dayApps).map(({ a, col, totalCols }) => {
                   const { top, height } = appPosition(a);
                   if (top < 0 || top >= slots.length * slotH) return null;
                   const p = patients.find(x => x.id === a.pazienteId);
@@ -221,8 +255,13 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                   const isSelected = selAppIds?.includes(a.id);
                   const operatore = getOperatore ? getOperatore(a) : null;
                   const poltrona = getPoltrona ? getPoltrona(a) : null;
+                  // Appuntamenti sovrapposti nello stesso slot (es. operatori diversi con filtro
+                  // "Tutti" attivo) si affiancano in colonne invece di disegnarsi uno sopra
+                  // l'altro, così restano tutti visibili e cliccabili.
+                  const widthPct = 100 / totalCols;
+                  const leftPct = col * widthPct;
                   return (
-                    <div key={a.id} style={{ position: 'absolute', top, left: 2, right: 2, height, background: co, borderRadius: 5, overflow: 'hidden', zIndex: isBeingResized || isBeingMoved ? 10 : 2, borderLeft: `3px solid ${co}DD`, boxShadow: isBeingResized || isBeingMoved ? '0 6px 16px rgba(0,0,0,0.35)' : '0 1px 3px rgba(0,0,0,0.15)', userSelect: 'none', opacity: isBeingMoved ? 0.85 : (selModeWA && !isSelezionabileWA ? 0.35 : 1), outline: isSelected ? '2.5px solid #25D366' : 'none', outlineOffset: -1 }}>
+                    <div key={a.id} style={{ position: 'absolute', top, left: `calc(${leftPct}% + 2px)`, width: `calc(${widthPct}% - 4px)`, height, background: co, borderRadius: 5, overflow: 'hidden', zIndex: isBeingResized || isBeingMoved ? 10 : 2, borderLeft: `3px solid ${co}DD`, boxShadow: isBeingResized || isBeingMoved ? '0 6px 16px rgba(0,0,0,0.35)' : '0 1px 3px rgba(0,0,0,0.15)', userSelect: 'none', opacity: isBeingMoved ? 0.85 : (selModeWA && !isSelezionabileWA ? 0.35 : 1), outline: isSelected ? '2.5px solid #25D366' : 'none', outlineOffset: -1 }}>
                       {/* Contenuto appuntamento — in modalità selezione tocca per selezionare/deselezionare;
                           altrimenti trascina per spostare l'orario, tocca/clicca senza muovere per aprire il menu azioni */}
                       <div
@@ -441,7 +480,7 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
   );
 }
 
-export default function Agenda({ patients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni, setImpegni, si, setStudioInfo }) {
+export default function Agenda({ patients, setPatients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni, setImpegni, si, setStudioInfo }) {
   const tipiList = appTypes?.length ? appTypes : getAppTypesDefault(si?.vertical);
 
   // Setup Agenda: le impostazioni sono condivise a livello di studio (studioInfo.agenda_settings),
@@ -622,6 +661,22 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
 
   const chiudiModalApp = () => { setModal(false); clearFormDraft(); };
 
+  // Creazione rapida paziente dal form appuntamento: l'id locale viene generato
+  // subito (stesso pattern usato ovunque nell'app) così il paziente è selezionabile
+  // immediatamente nel campo, senza aspettare il salvataggio sul cloud.
+  const limitePazienti = features?.max_pazienti ?? null;
+  const creaPazienteRapido = (nome, cognome) => {
+    if (!setPatients) return null;
+    if (limitePazienti != null && patients.length >= limitePazienti) {
+      setToast(`Hai raggiunto il limite di ${limitePazienti} pazienti del tuo piano.`);
+      return null;
+    }
+    const id = uid();
+    setPatients((p) => [...p, { nome, cognome, dataNascita: '', telefono: '', email: '', cf: '', indirizzo: '', cap: '', comune: '', provincia: '', opposizione_sts: false, note: '', id }]);
+    setToast(`Paziente ${nome} ${cognome} creato ✓`);
+    return id;
+  };
+
   // "Sposta" apre lo stesso editor di Modifica, ma serve come voce distinta nel menu contestuale
   // perché è lì che l'utente pensa di andare quando vuole cambiare data/ora/giorno di un appuntamento
   // (lo spostamento libero per lo stesso giorno resta comunque disponibile trascinando il blocco).
@@ -710,8 +765,13 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
 
   const save = () => {
     if (!form.pazienteId) return;
-    const operatoreId = form.operatoreId ? Number(form.operatoreId) : null;
-    const poltronaId = form.poltronaId ? Number(form.poltronaId) : null;
+    // form.operatoreId/poltronaId sono persistiti in localStorage (bozza) e possono
+    // riferirsi a una risorsa nel frattempo eliminata o di un'altra sessione: se non
+    // esiste più tra quelle attive caricate ora, la scartiamo silenziosamente invece
+    // di mandare al DB un id non valido e far fallire il salvataggio dell'intero
+    // appuntamento (il vincolo di coerenza studio lo rifiuterebbe).
+    const operatoreId = form.operatoreId && operatori.some(o => String(o.id) === String(form.operatoreId)) ? Number(form.operatoreId) : null;
+    const poltronaId = form.poltronaId && poltrone.some(p => String(p.id) === String(form.poltronaId)) ? Number(form.poltronaId) : null;
     if (editApp) {
       const { ripeti, ripetiFino, ...rest } = form;
       setAppointments(p => p.map(a => a.id === editApp.id ? { ...a, ...rest, pazienteId: Number(form.pazienteId), durata: Number(form.durata), operatoreId, poltronaId } : a));
@@ -1114,6 +1174,7 @@ export default function Agenda({ patients, appointments, setAppointments, appTyp
               search={pazSearch}
               onSearchChange={setPazSearch}
               autoFocus
+              onCreaPaziente={setPatients ? creaPazienteRapido : undefined}
             />
           </Fld>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
