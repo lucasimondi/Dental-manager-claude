@@ -148,17 +148,23 @@ export const DB = {
   async getStudioInfo() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
-    const { data, error } = await supabase.from('studio_info').select('*').eq('user_id', user.id).maybeSingle();
+    const studioId = await getStudioId();
+    if (!studioId) return null;
+    const { data, error } = await supabase.from('studio_info').select('*').eq('studio_id', studioId).maybeSingle();
     if (error) { console.error('DB.getStudioInfo', error); return null; }
     if (!data) return null;
     const { user_id, updated_at, ...rest } = data;
     return rest;
   },
 
+  // studio_info è condivisa da tutti gli utenti dello stesso studio (chiave studio_id,
+  // non user_id): un collaboratore che modifica logo/colori/orari li aggiorna per tutti.
   async setStudioInfo(obj) {
     const { data: { user } } = await supabase.auth.getUser();
-    const payload = { ...obj, user_id: user.id, updated_at: new Date().toISOString() };
-    const { error } = await supabase.from('studio_info').upsert(payload, { onConflict: 'user_id' });
+    const studioId = await getStudioId();
+    if (!studioId) return;
+    const payload = { ...obj, studio_id: studioId, user_id: user.id, updated_at: new Date().toISOString() };
+    const { error } = await supabase.from('studio_info').upsert(payload, { onConflict: 'studio_id' });
     if (error) { console.error('DB.setStudioInfo', error); throw error; }
   },
 };
