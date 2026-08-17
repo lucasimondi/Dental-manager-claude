@@ -816,7 +816,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                   <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 0', borderBottom: `1px solid ${C.brd}` }}>
                     <button onClick={() => toggleTodo(todo.id)} style={{ width: 20, height: 20, borderRadius: 5, border: `2px solid ${C.brd}`, background: '#fff', cursor: 'pointer', flexShrink: 0, padding: 0 }} />
                     <span style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{todo.testo}</span>
-                    <button onClick={() => { const msg = encodeURIComponent('Attività: ' + todo.testo); window.open('https://wa.me/?text=' + msg, '_blank'); }} title="Invia su WhatsApp" style={{ background: '#25D366', border: 'none', borderRadius: 5, padding: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}><Ic n="wa" s={11} c="#fff" /></button>
+                    <button onClick={() => { const msg = encodeURIComponent('Attività: ' + todo.testo); window.open('https://wa.me/?text=' + msg, '_blank'); }} title="Invia su WhatsApp" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, flexShrink: 0 }}><Ic n="wa" s={13} c="#25D366" /></button>
                     <button onClick={() => deleteTodo(todo.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}><Ic n="x" s={11} c={C.dan} /></button>
                   </div>
                 ))}

@@ -47,6 +47,7 @@ export const C_DARK = {
 export const THEME_KEY = 'dm_color_mode';
 
 export const C = { ...C_LIGHT };
+C.header = C.priD;
 
 export const applyTheme = (mode) => {
   Object.assign(C, mode === 'dark' ? C_DARK : C_LIGHT);
@@ -102,6 +103,14 @@ const deriveBrandShades = (hex) => {
   const rgb = hexToRgb(hex);
   if (!rgb) return null;
   const { h, s } = rgbToHsl(rgb.r, rgb.g, rgb.b);
+  if (s === 0) {
+    // Colore acromatico (nero/bianco/grigio): la tonalità è matematicamente
+    // indefinita quando la saturazione è 0 — forzare comunque una saturazione
+    // minima trasformerebbe un nero in un rosso scuro arbitrario (h finisce a
+    // 0 per una scelta implementativa di rgbToHsl). Niente tonalità da
+    // preservare qui: solo scale di grigio.
+    return { pri: hex, priL: hslToHex(0, 0, 0.93), priD: hslToHex(0, 0, 0.22) };
+  }
   const satClamped = Math.max(s, 0.35);
   return {
     pri: hex,
@@ -118,6 +127,24 @@ export const applyBrandColors = (mode, custom) => {
     if (shades) { C.pri = shades.pri; C.priL = shades.priL; C.priD = shades.priD; }
   }
   if (custom?.acc && hexToRgb(custom.acc)) C.acc = custom.acc;
+  C.header = C.priD; // default: l'header segue il colore del brand/tema, sovrascrivibile da applyHeaderColor
+};
+
+const hexToRgba = (hex, alpha) => {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return hex;
+  const a = alpha == null ? 1 : Math.min(1, Math.max(0, alpha));
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${a})`;
+};
+
+// Colore header impostabile a piacere dallo studio (Premium), indipendente dal
+// colore primario del brand — con opacità. Va chiamata DOPO applyBrandColors
+// nello stesso effetto, così "nessun colore personalizzato" ricade sempre sul
+// C.priD già risolto (tema o brand), non su un default fisso.
+export const applyHeaderColor = (custom) => {
+  if (custom?.colore && hexToRgb(custom.colore)) {
+    C.header = hexToRgba(custom.colore, custom.opacita);
+  }
 };
 
 export const getInitialTheme = () => {

@@ -515,7 +515,8 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <Btn
-                ch="🎨 Estrai dal logo"
+                ic="palette"
+                ch="Estrai dal logo"
                 v="sec" sz="sm"
                 dis={!si.custom_logo_b64}
                 onClick={async () => {
@@ -525,9 +526,44 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
                   setToast('Colori estratti dal logo ✓');
                 }}
               />
-              <Btn ch="Ripristina predefiniti" v="sec" sz="sm" onClick={() => S({ custom_colore_primario: null, custom_colore_accento: null })} />
+              <Btn ch="Ripristina predefiniti" v="sec" sz="sm" onClick={() => S({ custom_colore_primario: null, custom_colore_accento: null, header_colore: null, header_opacita: 1 })} />
             </div>
             {!si.custom_logo_b64 && <div style={{ fontSize: 10.5, color: C.txl, marginTop: 6 }}>Carica prima un logo qui sopra per poterne estrarre i colori automaticamente.</div>}
+
+            <div style={{ borderTop: `1px solid ${C.brd}`, marginTop: 16, paddingTop: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 2 }}>Colore header</div>
+              <div style={{ fontSize: 10.5, color: C.txl, marginBottom: 10 }}>Indipendente dal colore primario: scegli tinta e trasparenza della barra in alto.</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input type="color" value={si.header_colore || si.custom_colore_primario || C.priD} onChange={(e) => S({ header_colore: e.target.value })} style={{ width: 34, height: 34, border: `1.5px solid ${C.brd}`, borderRadius: 8, padding: 2, cursor: 'pointer' }} />
+                  <div style={{ fontSize: 11, color: C.txm }}>{si.header_colore ? 'Personalizzato' : 'Usa il colore primario'}</div>
+                </label>
+                {si.header_colore && (
+                  <button onClick={() => S({ header_colore: null })} style={{ background: 'none', border: 'none', color: C.txl, fontSize: 11, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>Rimuovi</button>
+                )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                <span style={{ fontSize: 11, color: C.txm, flexShrink: 0, width: 60 }}>Opacità</span>
+                <input type="range" min={20} max={100} step={5} value={Math.round((si.header_opacita ?? 1) * 100)} onChange={(e) => S({ header_opacita: Number(e.target.value) / 100 })} style={{ flex: 1 }} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: C.txm, width: 36, textAlign: 'right' }}>{Math.round((si.header_opacita ?? 1) * 100)}%</span>
+              </div>
+              <div style={{ borderRadius: 10, overflow: 'hidden', border: `1px solid ${C.brd}` }}>
+                <div style={{ background: C.bg, padding: 10 }}>
+                  <div style={{
+                    background: (() => {
+                      const hex = si.header_colore || si.custom_colore_primario || C.priD;
+                      const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '');
+                      if (!m) return hex;
+                      const [r, g, b] = [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+                      return `rgba(${r}, ${g}, ${b}, ${si.header_opacita ?? 1})`;
+                    })(),
+                    borderRadius: 8, padding: '10px 14px', color: '#fff', fontSize: 12, fontWeight: 700,
+                  }}>
+                    Anteprima header
+                  </div>
+                </div>
+              </div>
+            </div>
           </>
         )}
       </Crd>
@@ -535,7 +571,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
         <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Note legali PDF</div>
         <Txt value={si.note} onChange={(e) => S({ note: e.target.value })} rows={3} placeholder="Il preventivo è valido 30 giorni…" />
       </Crd>
-      <Btn ch="💾 Salva impostazioni" onClick={save} full sz="lg" />
+      <Btn ic="save" ch="Salva impostazioni" onClick={save} full sz="lg" />
       </>
       )}
 
@@ -851,7 +887,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
         </Fld>
         <div style={{ fontSize: 11, color: C.txl, marginTop: 2 }}>"Vivid" è lo stile consigliato — icone a duotono, più riconoscibili al tocco.</div>
       </Crd>
-      <Btn ch="💾 Salva impostazioni" onClick={save} full sz="lg" />
+      <Btn ic="save" ch="Salva impostazioni" onClick={save} full sz="lg" />
       </>
       )}
 
