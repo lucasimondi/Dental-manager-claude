@@ -1,0 +1,642 @@
+<title>Cartella Fisioterapica</title>
+<style>
+  @font-face {
+    font-family: 'SegoeSys';
+    src: local('Segoe UI');
+  }
+
+  :root {
+    --bg: #F7F8FA;
+    --sur: #FFFFFF;
+    --pri: #185FA5;
+    --priL: #E6F1FB;
+    --priD: #0C447C;
+    --suc: #27500A;
+    --sucL: #EAF3DE;
+    --war: #854F0B;
+    --warL: #FDF3E0;
+    --dan: #791F1F;
+    --danL: #FCEBEB;
+    --txt: #1A2433;
+    --txm: #5F6B7A;
+    --txl: #8A93A0;
+    --brd: #DCE1E6;
+    --fisio: #1E9E92;
+    --fisioL: #E3F6F4;
+    --shadow: 0 1px 3px rgba(20,30,45,0.07);
+    --shadow-lg: 0 18px 50px rgba(15,25,40,0.16);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12181C;
+      --sur: #1B2226;
+      --pri: #C9932F;
+      --priL: #2A2318;
+      --priD: #8F6A1F;
+      --suc: #5AB478;
+      --sucL: #16261C;
+      --war: #E0B75B;
+      --warL: #241D10;
+      --dan: #F09595;
+      --danL: #2A1616;
+      --txt: #E8E6DE;
+      --txm: #8B9296;
+      --txl: #6B7276;
+      --brd: #2A3237;
+      --fisio: #3FCABD;
+      --fisioL: #123531;
+      --shadow: 0 1px 3px rgba(0,0,0,0.4);
+      --shadow-lg: 0 18px 50px rgba(0,0,0,0.55);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12181C;
+    --sur: #1B2226;
+    --pri: #C9932F;
+    --priL: #2A2318;
+    --priD: #8F6A1F;
+    --suc: #5AB478;
+    --sucL: #16261C;
+    --war: #E0B75B;
+    --warL: #241D10;
+    --dan: #F09595;
+    --danL: #2A1616;
+    --txt: #E8E6DE;
+    --txm: #8B9296;
+    --txl: #6B7276;
+    --brd: #2A3237;
+    --fisio: #3FCABD;
+    --fisioL: #123531;
+    --shadow: 0 1px 3px rgba(0,0,0,0.4);
+    --shadow-lg: 0 18px 50px rgba(0,0,0,0.55);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--txt);
+    font-family: 'SegoeSys', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 28px 16px 60px;
+  }
+
+  .wrap { max-width: 1180px; margin: 0 auto; }
+
+  /* ── banner ── */
+  .banner {
+    max-width: 760px;
+    margin: 0 auto 30px;
+    text-align: center;
+  }
+  .banner .kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--fisio);
+    background: var(--fisioL);
+    padding: 5px 12px;
+    border-radius: 20px;
+    margin-bottom: 14px;
+  }
+  .banner h1 {
+    font-size: clamp(22px, 3.6vw, 30px);
+    font-weight: 800;
+    margin: 0 0 10px;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  .banner p {
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--txm);
+    margin: 0;
+    text-wrap: balance;
+  }
+  .banner b { color: var(--txt); }
+
+  /* ── device frame ── */
+  .stage {
+    display: flex;
+    justify-content: center;
+  }
+  .phone {
+    width: 100%;
+    max-width: 430px;
+    background: var(--sur);
+    border-radius: 30px;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--brd);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 830px;
+  }
+
+  .app-header {
+    flex-shrink: 0;
+    background: var(--priD);
+    color: #fff;
+    padding: 16px 16px 14px;
+  }
+  .app-header .row1 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .back-arrow {
+    width: 26px; height: 26px;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0.85;
+    flex-shrink: 0;
+  }
+  .patient-id { flex: 1; min-width: 0; }
+  .patient-id .name { font-size: 16px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .patient-id .meta { font-size: 11px; opacity: 0.78; margin-top: 1px; }
+  .header-icons { display: flex; gap: 8px; flex-shrink: 0; }
+  .header-icons .hic {
+    width: 30px; height: 30px; border-radius: 9px;
+    background: rgba(255,255,255,0.14);
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .tabbar {
+    flex-shrink: 0;
+    display: flex;
+    overflow-x: auto;
+    background: var(--sur);
+    border-bottom: 1px solid var(--brd);
+    scrollbar-width: none;
+  }
+  .tabbar::-webkit-scrollbar { display: none; }
+  .tabbtn {
+    flex-shrink: 0;
+    padding: 11px 13px 10px;
+    background: none;
+    border: none;
+    border-bottom: 2.5px solid transparent;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--txm);
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  .tabbtn.active {
+    color: var(--fisio);
+    border-bottom-color: var(--fisio);
+    font-weight: 800;
+  }
+
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 14px 30px;
+  }
+  .content::-webkit-scrollbar { width: 6px; }
+  .content::-webkit-scrollbar-thumb { background: var(--brd); border-radius: 6px; }
+
+  .pane { display: none; }
+  .pane.active { display: block; animation: fade .25s ease; }
+  @media (prefers-reduced-motion: reduce) { .pane.active { animation: none; } }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px);} to { opacity:1; transform:none; } }
+
+  .card {
+    background: var(--sur);
+    border: 1px solid var(--brd);
+    border-radius: 14px;
+    padding: 14px;
+    box-shadow: var(--shadow);
+    margin-bottom: 10px;
+  }
+  .card-title {
+    font-size: 10.5px;
+    font-weight: 800;
+    color: var(--fisio);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .card-title .add {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--fisio);
+    background: var(--fisioL);
+    border: none;
+    border-radius: 7px;
+    padding: 4px 9px;
+    cursor: pointer;
+    text-transform: none;
+    letter-spacing: 0;
+    font-family: inherit;
+  }
+
+  .kv { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--brd); }
+  .kv:last-child { border-bottom: none; }
+  .kv .k { font-size: 10.5px; color: var(--txm); font-weight: 600; flex-shrink: 0; }
+  .kv .v { font-size: 12px; color: var(--txt); text-align: right; }
+
+  .storia-item { border: 1px solid var(--brd); border-radius: 10px; padding: 9px 11px; margin-bottom: 7px; }
+  .storia-item:last-child { margin-bottom: 0; }
+  .storia-item .q { font-size: 11px; font-weight: 700; color: var(--txt); margin-bottom: 3px; }
+  .storia-item .a { font-size: 11.5px; color: var(--txm); line-height: 1.5; }
+  .storia-item.flag { border-color: color-mix(in srgb, var(--war) 45%, transparent); background: var(--warL); }
+  .storia-item.flag .q { color: var(--war); }
+  .storia-item.flag .a { color: var(--txt); }
+
+  /* ROM table */
+  table.rom { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  table.rom th { text-align: left; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--txl); font-weight: 700; padding: 0 4px 6px; }
+  table.rom th.num, table.rom td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.rom td { padding: 7px 4px; border-top: 1px solid var(--brd); }
+  table.rom td.deficit { color: var(--dan); font-weight: 800; }
+  table.rom td.ok { color: var(--suc); font-weight: 800; }
+
+  .nrs-row { display: flex; align-items: center; gap: 10px; margin: 4px 0; }
+  .nrs-label { font-size: 11px; color: var(--txm); width: 92px; flex-shrink: 0; }
+  .nrs-track { flex: 1; height: 7px; border-radius: 4px; background: var(--brd); position: relative; overflow: hidden; }
+  .nrs-fill { height: 100%; border-radius: 4px; }
+  .nrs-val { font-size: 12px; font-weight: 800; width: 34px; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+
+  .test-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--brd); font-size: 11.5px; }
+  .test-row:last-child { border-bottom: none; }
+  .test-row .tn { flex: 1; min-width: 0; color: var(--txt); }
+  .test-row .tr { flex-shrink: 0; }
+  .pill { font-size: 9.5px; font-weight: 800; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+  .pill.neg { background: var(--sucL); color: var(--suc); }
+  .pill.pos { background: var(--danL); color: var(--dan); }
+  .pill.na { background: var(--bg); color: var(--txl); }
+
+  /* body map */
+  .bodymap-wrap { display: flex; gap: 18px; justify-content: center; padding: 4px 0 2px; }
+  .bodymap-col { text-align: center; }
+  .bodymap-col .lbl { font-size: 9.5px; color: var(--txl); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 4px; }
+  .legend { display: flex; gap: 12px; justify-content: center; margin-top: 10px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--txm); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .pain-marker circle:first-child { animation: pulse 2.4s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) { .pain-marker circle:first-child { animation: none; } }
+  @keyframes pulse { 0%,100% { opacity: 0.35; } 50% { opacity: 0.05; } }
+
+  /* goals */
+  .goal { border: 1px solid var(--brd); border-radius: 12px; padding: 11px; margin-bottom: 8px; }
+  .goal:last-child { margin-bottom: 0; }
+  .goal-top { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 3px; }
+  .goal-name { font-size: 12px; font-weight: 700; color: var(--txt); flex: 1; min-width: 0; }
+  .goal-pct { font-size: 12px; font-weight: 800; color: var(--fisio); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .goal-deadline { font-size: 10.5px; color: var(--txl); margin-bottom: 7px; }
+  .goal-bar { height: 6px; border-radius: 4px; background: var(--brd); overflow: hidden; }
+  .goal-bar-fill { height: 100%; background: var(--fisio); border-radius: 4px; }
+
+  /* diary */
+  .diary-item { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--brd); }
+  .diary-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .diary-dot-col { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; padding-top: 3px; }
+  .diary-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fisio); flex-shrink: 0; }
+  .diary-line { width: 1.5px; flex: 1; background: var(--brd); margin-top: 4px; }
+  .diary-body { flex: 1; min-width: 0; }
+  .diary-date { font-size: 9.5px; color: var(--txl); font-weight: 700; margin-bottom: 2px; }
+  .diary-title { font-size: 12px; font-weight: 700; color: var(--txt); margin-bottom: 3px; }
+  .diary-desc { font-size: 11px; color: var(--txm); line-height: 1.5; }
+  .diary-pain { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; margin-top: 5px; color: var(--txm); }
+  .diary-pain b { color: var(--txt); }
+
+  /* home exercises */
+  .ex-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--brd); }
+  .ex-item:last-child { border-bottom: none; }
+  .ex-ico { width: 34px; height: 34px; border-radius: 9px; background: var(--fisioL); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--fisio); }
+  .ex-body { flex: 1; min-width: 0; }
+  .ex-name { font-size: 12px; font-weight: 700; color: var(--txt); }
+  .ex-dose { font-size: 10.5px; color: var(--txm); margin-top: 1px; }
+
+  .placeholder-pane {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--txl);
+  }
+  .placeholder-pane .pic { color: var(--brd); margin-bottom: 10px; }
+  .placeholder-pane .t1 { font-size: 12.5px; font-weight: 700; color: var(--txm); margin-bottom: 4px; }
+  .placeholder-pane .t2 { font-size: 11.5px; line-height: 1.6; max-width: 260px; margin: 0 auto; }
+
+  .footnote {
+    max-width: 640px;
+    margin: 26px auto 0;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--txm);
+  }
+  .footnote b { color: var(--txt); }
+
+  @media (max-width: 480px) {
+    body { padding: 20px 8px 40px; }
+    .phone { height: 78vh; min-height: 620px; border-radius: 22px; }
+  }
+</style>
+
+<div class="wrap">
+  <div class="banner">
+    <span class="kicker">Simulazione &middot; non salvata</span>
+    <h1>Cartella clinica per la fisioterapia</h1>
+    <p>
+      Stessa struttura della scheda paziente già in <b>Poliedra</b> — anagrafica, note, agenda, pagamenti —
+      con le sezioni cliniche riscritte per il percorso riabilitativo: valutazione funzionale, mappa del dolore,
+      obiettivi e diario delle sedute. Tocca le schede in alto per esplorarla.
+    </p>
+  </div>
+
+  <div class="stage">
+    <div class="phone">
+      <div class="app-header">
+        <div class="row1">
+          <div class="back-arrow">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </div>
+          <div class="patient-id">
+            <div class="name">Marco Bellini</div>
+            <div class="meta">34 anni &middot; ricostruzione LCA, ginocchio dx</div>
+          </div>
+          <div class="header-icons">
+            <div class="hic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+            <div class="hic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabbar" id="tabbar">
+        <button class="tabbtn active" data-pane="info">Info</button>
+        <button class="tabbtn" data-pane="valutazione">Valutazione</button>
+        <button class="tabbtn" data-pane="obiettivi">Obiettivi</button>
+        <button class="tabbtn" data-pane="diario">Diario sedute</button>
+        <button class="tabbtn" data-pane="domiciliare">Domiciliare</button>
+        <button class="tabbtn" data-pane="pagamenti">Pagamenti</button>
+        <button class="tabbtn" data-pane="agenda">Agenda</button>
+      </div>
+
+      <div class="content">
+
+        <!-- INFO -->
+        <div class="pane active" id="pane-info">
+          <div class="card">
+            <div class="card-title">Anagrafica</div>
+            <div class="kv"><span class="k">Nascita</span><span class="v">12/03/1991</span></div>
+            <div class="kv"><span class="k">Telefono</span><span class="v">339 012 4477</span></div>
+            <div class="kv"><span class="k">Inviato da</span><span class="v">Dott. F. Rinaldi &ndash; ortopedico</span></div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Storia clinica <button class="add">+ Nuova voce</button></div>
+            <div class="storia-item flag">
+              <div class="q">Dolore o sintomi attuali da segnalare</div>
+              <div class="a">Dolore residuo posteriore al ginocchio in flessione oltre 90&deg;, assente a riposo.</div>
+            </div>
+            <div class="storia-item">
+              <div class="q">Interventi o traumi pregressi nella zona di interesse</div>
+              <div class="a">Ricostruzione LCA con innesto HTT (semitendinoso-gracile), 03/07/2026.</div>
+            </div>
+            <div class="storia-item">
+              <div class="q">Terapie o trattamenti in corso</div>
+              <div class="a">Profilassi antitrombotica, sospesa dal 15/07.</div>
+            </div>
+            <div class="storia-item">
+              <div class="q">Condizioni di salute generali rilevanti</div>
+              <div class="a">Nessuna comorbidit&agrave; rilevante.</div>
+            </div>
+            <div class="storia-item">
+              <div class="q">Allergie note</div>
+              <div class="a">Nessuna.</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Mappa del dolore</div>
+            <div class="bodymap-wrap">
+              <div class="bodymap-col">
+                <svg width="70" height="168" viewBox="0 0 70 168">
+                  <circle cx="35" cy="16" r="12" fill="none" stroke="var(--brd)" stroke-width="2"/>
+                  <rect x="29" y="27" width="12" height="10" rx="3" fill="none" stroke="var(--brd)" stroke-width="2"/>
+                  <path d="M18 40 Q35 33 52 40 L56 78 Q35 86 14 78 Z" fill="none" stroke="var(--brd)" stroke-width="2"/>
+                  <rect x="6" y="42" width="10" height="55" rx="5" fill="none" stroke="var(--brd)" stroke-width="2"/>
+                  <rect x="54" y="42" width="10" height="55" rx="5" fill="none" stroke="var(--brd)" stroke-width="2"/>
+                  <rect x="20" y="82" width="13" height="72" rx="6" fill="none" stroke="var(--brd)" stroke-width="2"/>
+                  <rect x="37" y="82" width="13" height="72" rx="6" fill="none" stroke="var(--brd)" stroke-width="2"/>
+                  <g class="pain-marker">
+                    <circle cx="43.5" cy="119" r="10" fill="var(--dan)" opacity="0.18"/>
+                    <circle cx="43.5" cy="119" r="4.5" fill="var(--dan)"/>
+                  </g>
+                  <g class="pain-marker">
+                    <circle cx="43.5" cy="100" r="7" fill="var(--war)" opacity="0.18"/>
+                    <circle cx="43.5" cy="100" r="3.5" fill="var(--war)"/>
+                  </g>
+                </svg>
+                <div class="lbl">Anteriore</div>
+              </div>
+              <div class="bodymap-col">
+                <svg width="70" height="168" viewBox="0 0 70 168">
+                  <circle cx="35" cy="16" r="12" fill="none" stroke="var(--brd)" stroke-width="2"/>
+                  <rect x="29" y="27" width="12" height="10" rx="3" fill="none" stroke="var(--brd)" stroke-width="2"/>
+                  <path d="M18 40 Q35 33 52 40 L56 78 Q35 86 14 78 Z" fill="none" stroke="var(--brd)" stroke-width="2"/>
+                  <rect x="6" y="42" width="10" height="55" rx="5" fill="none" stroke="var(--brd)" stroke-width="2"/>
+                  <rect x="54" y="42" width="10" height="55" rx="5" fill="none" stroke="var(--brd)" stroke-width="2"/>
+                  <rect x="20" y="82" width="13" height="72" rx="6" fill="none" stroke="var(--brd)" stroke-width="2"/>
+                  <rect x="37" y="82" width="13" height="72" rx="6" fill="none" stroke="var(--brd)" stroke-width="2"/>
+                  <g class="pain-marker">
+                    <circle cx="43.5" cy="112" r="9" fill="var(--dan)" opacity="0.18"/>
+                    <circle cx="43.5" cy="112" r="4" fill="var(--dan)"/>
+                  </g>
+                </svg>
+                <div class="lbl">Posteriore</div>
+              </div>
+            </div>
+            <div class="legend">
+              <div class="legend-item"><span class="dot" style="background:var(--dan)"></span>Dolore 4&ndash;5/10</div>
+              <div class="legend-item"><span class="dot" style="background:var(--war)"></span>Dolore 1&ndash;3/10 (cicatrice)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VALUTAZIONE -->
+        <div class="pane" id="pane-valutazione">
+          <div class="card">
+            <div class="card-title">Valutazione funzionale iniziale &middot; 17/08/2026</div>
+            <table class="rom">
+              <thead><tr><th>ROM ginocchio</th><th class="num">Dx (operato)</th><th class="num">Sx</th></tr></thead>
+              <tbody>
+                <tr><td>Flessione</td><td class="num deficit">95&deg;</td><td class="num">140&deg;</td></tr>
+                <tr><td>Estensione</td><td class="num deficit">&minus;5&deg;</td><td class="num ok">0&deg;</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Forza muscolare &middot; scala MRC 0&ndash;5</div>
+            <table class="rom">
+              <thead><tr><th>Gruppo muscolare</th><th class="num">Dx</th><th class="num">Sx</th></tr></thead>
+              <tbody>
+                <tr><td>Quadricipite</td><td class="num deficit">3/5</td><td class="num ok">5/5</td></tr>
+                <tr><td>Ischiocrurali</td><td class="num deficit">4/5</td><td class="num ok">5/5</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Scala del dolore (NRS)</div>
+            <div class="nrs-row">
+              <div class="nrs-label">A riposo</div>
+              <div class="nrs-track"><div class="nrs-fill" style="width:10%;background:var(--suc)"></div></div>
+              <div class="nrs-val">1/10</div>
+            </div>
+            <div class="nrs-row">
+              <div class="nrs-label">Durante esercizio</div>
+              <div class="nrs-track"><div class="nrs-fill" style="width:40%;background:var(--war)"></div></div>
+              <div class="nrs-val">4/10</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Test ortopedici</div>
+            <div class="test-row"><span class="tn">Lachman test</span><span class="tr"><span class="pill neg">Negativo</span></span></div>
+            <div class="test-row"><span class="tn">Cassetto anteriore</span><span class="tr"><span class="pill neg">Negativo</span></span></div>
+            <div class="test-row"><span class="tn">McMurray test</span><span class="tr"><span class="pill na">Non eseguito</span></span></div>
+          </div>
+        </div>
+
+        <!-- OBIETTIVI -->
+        <div class="pane" id="pane-obiettivi">
+          <div class="card">
+            <div class="card-title">Obiettivi riabilitativi <button class="add">+ Nuovo</button></div>
+            <div class="goal">
+              <div class="goal-top"><span class="goal-name">Cammino senza bastoni in piano</span><span class="goal-pct">70%</span></div>
+              <div class="goal-deadline">Scadenza 07/09/2026</div>
+              <div class="goal-bar"><div class="goal-bar-fill" style="width:70%"></div></div>
+            </div>
+            <div class="goal">
+              <div class="goal-top"><span class="goal-name">Estensione completa ginocchio (0&deg;)</span><span class="goal-pct">60%</span></div>
+              <div class="goal-deadline">Scadenza 31/08/2026</div>
+              <div class="goal-bar"><div class="goal-bar-fill" style="width:60%"></div></div>
+            </div>
+            <div class="goal">
+              <div class="goal-top"><span class="goal-name">Flessione &ge; 120&deg;</span><span class="goal-pct">40%</span></div>
+              <div class="goal-deadline">Scadenza 14/09/2026</div>
+              <div class="goal-bar"><div class="goal-bar-fill" style="width:40%"></div></div>
+            </div>
+            <div class="goal">
+              <div class="goal-top"><span class="goal-name">Ritorno alla corsa leggera</span><span class="goal-pct">10%</span></div>
+              <div class="goal-deadline">Scadenza 09/11/2026</div>
+              <div class="goal-bar"><div class="goal-bar-fill" style="width:10%"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DIARIO -->
+        <div class="pane" id="pane-diario">
+          <div class="card">
+            <div class="card-title">Diario sedute <button class="add">+ Registra seduta</button></div>
+            <div class="diary-item">
+              <div class="diary-dot-col"><div class="diary-dot"></div><div class="diary-line"></div></div>
+              <div class="diary-body">
+                <div class="diary-date">17/08/2026 &middot; seduta 8 &middot; 45 min</div>
+                <div class="diary-title">Mobilizzazione passiva + rinforzo isometrico quadricipite</div>
+                <div class="diary-desc">Buona tolleranza al carico. Lieve gonfiore serale riferito ieri, oggi in regressione.</div>
+                <div class="diary-pain">Dolore <b>2/10</b> &rarr; <b>3/10</b></div>
+              </div>
+            </div>
+            <div class="diary-item">
+              <div class="diary-dot-col"><div class="diary-dot"></div><div class="diary-line"></div></div>
+              <div class="diary-body">
+                <div class="diary-date">14/08/2026 &middot; seduta 7 &middot; 40 min</div>
+                <div class="diary-title">Cyclette senza resistenza (10 min) + core stability</div>
+                <div class="diary-desc">Introdotta cyclette, ROM sufficiente per pedalata completa senza compensi.</div>
+                <div class="diary-pain">Dolore <b>3/10</b> &rarr; <b>2/10</b></div>
+              </div>
+            </div>
+            <div class="diary-item">
+              <div class="diary-dot-col"><div class="diary-dot"></div></div>
+              <div class="diary-body">
+                <div class="diary-date">10/08/2026 &middot; seduta 6 &middot; 50 min</div>
+                <div class="diary-title">Idrokinesiterapia, deambulazione in acqua</div>
+                <div class="diary-desc">Paziente riferisce sensazione di maggiore sicurezza nell'appoggio in acqua.</div>
+                <div class="diary-pain">Dolore <b>4/10</b> &rarr; <b>2/10</b></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DOMICILIARE -->
+        <div class="pane" id="pane-domiciliare">
+          <div class="card">
+            <div class="card-title">Programma domiciliare <button class="add">+ Esercizio</button></div>
+            <div class="ex-item">
+              <div class="ex-ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></div>
+              <div class="ex-body">
+                <div class="ex-name">Estensione passiva (asciugamano sotto il tallone)</div>
+                <div class="ex-dose">3 volte al giorno &middot; 10 minuti</div>
+              </div>
+            </div>
+            <div class="ex-item">
+              <div class="ex-ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+              <div class="ex-body">
+                <div class="ex-name">Contrazioni isometriche del quadricipite</div>
+                <div class="ex-dose">2 volte al giorno &middot; 3 serie &times; 15 ripetizioni</div>
+              </div>
+            </div>
+            <div class="ex-item">
+              <div class="ex-ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M8 7l4-4 4 4M8 17l4 4 4-4"/></svg></div>
+              <div class="ex-body">
+                <div class="ex-name">Pompe di caviglia (prevenzione TVP)</div>
+                <div class="ex-dose">20 ripetizioni ogni ora da svegli</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PAGAMENTI (placeholder, invariato) -->
+        <div class="pane" id="pane-pagamenti">
+          <div class="placeholder-pane">
+            <div class="pic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div>
+            <div class="t1">Pagamenti</div>
+            <div class="t2">Stessa scheda gi&agrave; presente nell'app: piani, incassi e scadenze. Nessuna modifica per questo vertical.</div>
+          </div>
+        </div>
+
+        <!-- AGENDA (placeholder, invariato) -->
+        <div class="pane" id="pane-agenda">
+          <div class="placeholder-pane">
+            <div class="pic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+            <div class="t1">Agenda</div>
+            <div class="t2">Storico e prossimi appuntamenti del paziente, identico al resto dell'app.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="footnote">
+    Le sezioni <b>Storia clinica</b>, <b>Valutazione</b>, <b>Obiettivi</b> e <b>Diario sedute</b> partono da un
+    modello pensato per la fisioterapia, ma restano voci di partenza: lo studio potr&agrave; aggiungere,
+    rinominare o rimuovere campi da Impostazioni &mdash; esattamente come gi&agrave; oggi per la storia clinica
+    degli altri vertical non medici.
+  </div>
+</div>
+
+<script>
+  document.getElementById('tabbar').addEventListener('click', function (e) {
+    var btn = e.target.closest('.tabbtn');
+    if (!btn) return;
+    document.querySelectorAll('.tabbtn').forEach(function (b) { b.classList.remove('active'); });
+    document.querySelectorAll('.pane').forEach(function (p) { p.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById('pane-' + btn.dataset.pane).classList.add('active');
+  });
+</script>
