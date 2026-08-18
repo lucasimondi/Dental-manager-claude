@@ -278,6 +278,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
   const [impConfirmDel, setImpConfirmDel] = useState(null);
   const [foto, setFoto] = useState([]);
   const [fotoLoading, setFotoLoading] = useState(false);
+  const [fotoError, setFotoError] = useState('');
   const [fotoLabelModal, setFotoLabelModal] = useState(null);
   const [fotoLabel, setFotoLabel] = useState('');
   const fileInputRef = useRef(null);
@@ -330,16 +331,24 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
   // ── FOTO PAZIENTE ──
   const loadFoto = async () => {
     setFotoLoading(true);
-    const { data, error } = await supabase.storage.from('patient-files').list(`${paz.id}/`, { sortBy: { column: 'created_at', order: 'desc' } });
-    if (!error && data) {
+    setFotoError('');
+    setFoto([]);
+    try {
+      const { data, error } = await supabase.storage.from('patient-files').list(`${paz.id}/`, { sortBy: { column: 'created_at', order: 'desc' } });
+      if (error) throw error;
       const items = await Promise.all(data.filter(f => f.name !== '.emptyFolderPlaceholder').map(async f => {
-        const { data: { publicUrl } } = supabase.storage.from('patient-files').getPublicUrl(`${paz.id}/${f.name}`);
+        const { data: signedData, error: signingError } = await supabase.storage.from('patient-files').createSignedUrl(`${paz.id}/${f.name}`, 300);
+        if (signingError || !signedData?.signedUrl) throw signingError || new Error('Signed URL unavailable');
         const label = f.name.split('_LABEL_')[1]?.replace(/\.[^.]+$/, '') || f.name;
-        return { name: f.name, url: publicUrl, label };
+        return { name: f.name, url: signedData.signedUrl, label };
       }));
       setFoto(items);
+    } catch {
+      setFoto([]);
+      setFotoError('Impossibile caricare i file protetti. Riprova.');
+    } finally {
+      setFotoLoading(false);
     }
-    setFotoLoading(false);
   };
 
   React.useEffect(() => { loadFoto(); }, [paz.id]);
@@ -588,7 +597,9 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
 
               {fotoLoading && <div style={{ textAlign: 'center', color: C.txl, padding: 16, fontSize: 12 }}>⏳ Caricamento...</div>}
 
-              {!fotoLoading && foto.length === 0 && (
+              {!fotoLoading && fotoError && <div role="alert" style={{ color: C.dan, padding: 12, fontSize: 12 }}>{fotoError}</div>}
+
+              {!fotoLoading && !fotoError && foto.length === 0 && (
                 <label style={{ display: 'block', border: `2px dashed ${C.brd}`, borderRadius: 10, padding: '20px 14px', textAlign: 'center', cursor: 'pointer', background: C.bg }}>
                   <input type="file" accept="image/*,.pdf" multiple style={{ display: 'none' }} onChange={e => { Array.from(e.target.files).forEach(uploadFoto); e.target.value = ''; }} />
                   <div style={{ fontSize: 22, marginBottom: 4 }}>📷</div>
@@ -1333,7 +1344,8 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
               <input ref={fileInputRef} type="file" accept="image/*,.pdf" multiple style={{ display: 'none' }} onChange={e => { Array.from(e.target.files).forEach(uploadFoto); e.target.value = ''; }} />
             </div>
             {fotoLoading && <div style={{ textAlign: 'center', color: C.txl, padding: 16 }}>⏳ Caricamento...</div>}
-            {!fotoLoading && foto.length === 0 && (
+            {!fotoLoading && fotoError && <div role="alert" style={{ color: C.dan, padding: 12, fontSize: 12 }}>{fotoError}</div>}
+            {!fotoLoading && !fotoError && foto.length === 0 && (
               <label style={{ display: 'block', border: `2px dashed ${C.brd}`, borderRadius: 10, padding: '30px 14px', textAlign: 'center', cursor: 'pointer' }}>
                 <input type="file" accept="image/*,.pdf" multiple style={{ display: 'none' }} onChange={e => { Array.from(e.target.files).forEach(uploadFoto); e.target.value = ''; }} />
                 <div style={{ fontSize: 28, marginBottom: 6 }}>📷</div>
