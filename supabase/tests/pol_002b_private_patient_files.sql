@@ -8,6 +8,9 @@ DECLARE
   v_bucket_public boolean;
   v_policy_count integer;
   v_helper_exec_auth boolean;
+  v_helper_exec_anon boolean;
+  v_private_usage_auth boolean;
+  v_private_usage_anon boolean;
 BEGIN
   SELECT public INTO v_bucket_public FROM storage.buckets WHERE id='patient-files';
   IF v_bucket_public IS DISTINCT FROM false THEN
@@ -25,10 +28,27 @@ BEGIN
     RAISE EXCEPTION 'POL-002B: expected four patient-files tenant policies, got %', v_policy_count;
   END IF;
 
-  SELECT has_function_privilege('authenticated','public.pol_002b_can_access_patient_file(text)','EXECUTE')
+  IF to_regprocedure('public.pol_002b_can_access_patient_file(text)') IS NOT NULL THEN
+    RAISE EXCEPTION 'POL-002B: helper must not exist in the exposed public schema';
+  END IF;
+
+  SELECT has_function_privilege('authenticated','private.pol_002b_can_access_patient_file(text)','EXECUTE')
   INTO v_helper_exec_auth;
-  IF v_helper_exec_auth THEN
-    RAISE EXCEPTION 'POL-002B: helper must not be directly executable by authenticated';
+  IF NOT v_helper_exec_auth THEN
+    RAISE EXCEPTION 'POL-002B: authenticated policy evaluation requires helper EXECUTE';
+  END IF;
+
+  SELECT has_function_privilege('anon','private.pol_002b_can_access_patient_file(text)','EXECUTE')
+  INTO v_helper_exec_anon;
+  IF v_helper_exec_anon THEN
+    RAISE EXCEPTION 'POL-002B: anon must not execute the private helper';
+  END IF;
+
+  SELECT has_schema_privilege('authenticated','private','USAGE'),
+         has_schema_privilege('anon','private','USAGE')
+    INTO v_private_usage_auth, v_private_usage_anon;
+  IF NOT v_private_usage_auth OR v_private_usage_anon THEN
+    RAISE EXCEPTION 'POL-002B: unexpected private schema privileges';
   END IF;
 END
 $assertions$;

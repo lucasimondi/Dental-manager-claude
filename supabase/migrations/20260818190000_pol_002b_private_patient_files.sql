@@ -14,8 +14,13 @@ BEGIN
 END
 $preflight$;
 
--- Helper is deliberately non-client-executable. Storage policies call it internally.
-CREATE OR REPLACE FUNCTION public.pol_002b_can_access_patient_file(p_object_name text)
+-- Keep the SECURITY DEFINER helper outside exposed schemas. Authenticated users need
+-- EXECUTE for policy evaluation, but the private schema is not exposed by PostgREST.
+CREATE SCHEMA IF NOT EXISTS private;
+REVOKE ALL ON SCHEMA private FROM PUBLIC, anon;
+GRANT USAGE ON SCHEMA private TO authenticated;
+
+CREATE OR REPLACE FUNCTION private.pol_002b_can_access_patient_file(p_object_name text)
 RETURNS boolean
 LANGUAGE sql
 STABLE
@@ -37,7 +42,8 @@ AS $function$
     );
 $function$;
 
-REVOKE ALL ON FUNCTION public.pol_002b_can_access_patient_file(text) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION private.pol_002b_can_access_patient_file(text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION private.pol_002b_can_access_patient_file(text) TO authenticated;
 
 -- Remove only policies that previously governed this bucket by owner.
 -- Existing owner_access policies are global and are intentionally left in place for other buckets;
@@ -51,32 +57,32 @@ CREATE POLICY patient_files_studio_select
 ON storage.objects FOR SELECT TO authenticated
 USING (
   bucket_id = 'patient-files'
-  AND public.pol_002b_can_access_patient_file(name)
+  AND private.pol_002b_can_access_patient_file(name)
 );
 
 CREATE POLICY patient_files_studio_insert
 ON storage.objects FOR INSERT TO authenticated
 WITH CHECK (
   bucket_id = 'patient-files'
-  AND public.pol_002b_can_access_patient_file(name)
+  AND private.pol_002b_can_access_patient_file(name)
 );
 
 CREATE POLICY patient_files_studio_update
 ON storage.objects FOR UPDATE TO authenticated
 USING (
   bucket_id = 'patient-files'
-  AND public.pol_002b_can_access_patient_file(name)
+  AND private.pol_002b_can_access_patient_file(name)
 )
 WITH CHECK (
   bucket_id = 'patient-files'
-  AND public.pol_002b_can_access_patient_file(name)
+  AND private.pol_002b_can_access_patient_file(name)
 );
 
 CREATE POLICY patient_files_studio_delete
 ON storage.objects FOR DELETE TO authenticated
 USING (
   bucket_id = 'patient-files'
-  AND public.pol_002b_can_access_patient_file(name)
+  AND private.pol_002b_can_access_patient_file(name)
 );
 
 -- Privacy cutover. This must be deployed only together with the application change
