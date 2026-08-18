@@ -43,3 +43,12 @@ Items are derived from the approved audit. None are started.
 
 ## P2 — Progressive TypeScript adoption
 - Establish boundaries and runtime schemas first; migrate incrementally without feature rewrites.
+
+
+## P0 — Confirmed critical hardening (POL-002A)
+- Replace fail-open `is_studio_admin` only after capturing its exact definition and dependencies.
+- Add caller-tenant and active-role authorization to GDPR SECURITY DEFINER RPC without trusting `p_eseguita_da`.
+- Inventory and reduce SECURITY DEFINER EXECUTE surface without breaking verified public flows.
+- Secure `set_updated_at` search path after capturing its exact signature and trigger dependencies.
+- Prove intended access model for `google_calendar_tokens` and `super_admins`; do not add permissive policies.
+- Treat public `patient-files` as P0; design private bucket plus tenant-safe policies and signed URLs before changing production.
