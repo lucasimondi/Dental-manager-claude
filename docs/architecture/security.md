@@ -19,7 +19,7 @@ Never include production patient data in extraction artifacts. Store secrets onl
 
 ## POL-002A verified additions
 
-- Product Owner confirms a fail-open production admin function and insufficient tenant authorization in SECURITY DEFINER GDPR RPC; repository definitions remain unavailable, so fixes are blocked pending sanitized metadata.
+- Verified metadata confirms the fail-open production admin function and insufficient tenant authorization in both SECURITY DEFINER GDPR RPC. A minimal migration and synthetic tests are prepared on the POL-002A branch but remain unapplied.
 - The client also treats missing membership as studio admin for UI gating.
 - `patient-files` is used by the patient-record photo/file flow and generates public URLs. Because clinical images or PDFs may be stored there, this is a P0 confidentiality risk requiring a staged private-bucket/signed-URL migration.
-- No grant, RLS, function or Storage change may be prepared by guessing signatures or policies. See `docs/security/pol-002a-hardening-assessment.md`.
+- Targeted function/grant/search-path changes use the verified identities. Intentionally public flows, policy-less privileged tables and Storage remain unchanged. See `docs/security/pol-002a-hardening-assessment.md` and the function access matrix.
