@@ -1,19 +1,21 @@
 # Current task
 
-- TASK: POL-001
-- TITLE: Repository as Source of Truth
+- TASK: POL-002
+- TITLE: Supabase Production Baseline Capture
 - OWNER: CODEX
-- BRANCH: `chore/POL-001-repository-source-of-truth`
+- BRANCH: `chore/POL-002-supabase-baseline`
 - STATUS: `WAITING_PRODUCT_OWNER`
 
 ## Objective
 
-Make repository documentation sufficient for Codex and Claude Code to work safely and interchangeably, and provide a non-destructive plan for capturing the real Supabase backend.
+Create a verified read-only baseline of the real Supabase backend and identify production objects missing from GitHub.
 
-## Scope completed
+## Progress
 
-Agent rules, current architecture baseline, safety constraints, financial inconsistencies, initial backlog, quality strategy, operational runbooks, Supabase extraction procedure, and handoff were documented. No application code, database, deployment configuration, or production behavior was changed.
+POL-002 entered `IN_PROGRESS` when the Product Owner assigned the task. Phase 1 access discovery was completed without exposing credential values. Safe production metadata access is not available in the current environment, so the production inventory stopped before Phase 2 as required.
 
-## Product Owner decision required
+No production request, SQL query, row read, dump, migration, schema change, Auth action, Storage action, or Edge Function action was performed.
 
-Approve or revise POL-001 documentation and authorize the exact read-only Supabase discovery/extraction actions in `docs/runbooks/migrations.md`. Do not begin POL-002 until approved.
+## Product Owner action required
+
+Provide or authorize the metadata-only access listed in `docs/coordination/pol-002-access-audit.md` and `docs/runbooks/migrations.md`. Once access is available, explicitly authorize resumption of POL-002. POL-003 must not begin.
