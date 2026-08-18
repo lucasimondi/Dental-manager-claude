@@ -3,6 +3,21 @@
 Date: 2026-08-18  
 Baseline: `master` at `58df045d3247b37530137a055f8314b0da6245f2`
 
+## Resumption implementation update
+
+Verified production metadata was supplied by the Tech Lead. The previously blocked items now have `FIX PREPARED` status:
+
+- `is_studio_admin()`: fail-closed replacement prepared;
+- GDPR export/delete: guarded wrappers prepared with JWT tenant equality, active admin membership and executor derived from `auth.uid()`;
+- privileged EXECUTE surface: targeted anon revocations prepared for explicitly classified functions;
+- `set_updated_at`: empty search_path and direct-execute revocation prepared;
+- client admin UI: fail-closed membership check prepared;
+- synthetic security regression test script prepared.
+
+The existing GDPR business bodies are preserved behind renamed, non-client-executable functions. Their scalar return types are obtained from the catalog during migration preflight. The migration aborts before alteration if required identities are absent or set-returning.
+
+The migration and tests have not been executed. Storage, Auth, financial formulas, RLS policies, policy-less privileged tables and production are unchanged.
+
 ## Safety outcome
 
 No production access was attempted. No migration, SQL replacement, grant, policy, Auth change, Storage change, application change, deployment, or production-data access was performed.
