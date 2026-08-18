@@ -1,400 +1,274 @@
--- POL-003 canonical financial engine regression suite.
--- Run only in a disposable local Supabase/PostgreSQL 17 database.
+-- POL-003A synthetic regression suite. All mutations roll back.
 BEGIN;
 
-CREATE FUNCTION pg_temp.assert_num(p_label text, p_actual numeric, p_expected numeric)
-RETURNS void LANGUAGE plpgsql AS $function$
-BEGIN
-  IF p_actual IS NULL OR abs(p_actual - p_expected) > 0.0001 THEN
-    RAISE EXCEPTION 'FAIL %: expected %, got %', p_label, p_expected, p_actual;
+CREATE FUNCTION pg_temp.assert_num(p_label text,p_actual numeric,p_expected numeric)
+RETURNS void LANGUAGE plpgsql AS $f$ BEGIN
+  IF p_actual IS DISTINCT FROM p_expected THEN
+    RAISE EXCEPTION 'FAIL %: expected %, got %',p_label,p_expected,p_actual;
   END IF;
-END
-$function$;
+END $f$;
+CREATE FUNCTION pg_temp.assert_null(p_label text,p_actual numeric)
+RETURNS void LANGUAGE plpgsql AS $f$ BEGIN
+  IF p_actual IS NOT NULL THEN RAISE EXCEPTION 'FAIL %: expected NULL, got %',p_label,p_actual; END IF;
+END $f$;
+CREATE FUNCTION pg_temp.set_claim(p_user uuid,p_studio uuid)
+RETURNS void LANGUAGE plpgsql AS $f$ BEGIN
+  PERFORM set_config('request.jwt.claims',jsonb_build_object(
+    'sub',p_user::text,'role','authenticated','app_metadata',jsonb_build_object('studio_id',p_studio::text)
+  )::text,true);
+END $f$;
 
-CREATE FUNCTION pg_temp.assert_null(p_label text, p_actual numeric)
-RETURNS void LANGUAGE plpgsql AS $function$
-BEGIN
-  IF p_actual IS NOT NULL THEN
-    RAISE EXCEPTION 'FAIL %: expected NULL, got %', p_label, p_actual;
-  END IF;
-END
-$function$;
+-- Contract headers and lines. Scenarios use one isolated synthetic tenant each.
+INSERT INTO public.financial_contracts_v1(studio_id,patient_id,proposal_date,discount_kind,discount_value,source_table,source_id) VALUES
+('10000000-0000-4000-8000-000000000001',101,'2025-01-02','PERCENT',10,'synthetic','pct'),
+('10000000-0000-4000-8000-000000000001',102,'2025-01-03','FIXED',20,'synthetic','fixed'),
+('10000000-0000-4000-8000-000000000002',201,'2025-02-01','NONE',0,'synthetic','advance'),
+('10000000-0000-4000-8000-000000000003',301,'2025-03-01','NONE',0,'synthetic','partial'),
+('10000000-0000-4000-8000-000000000004',401,'2025-04-01','NONE',0,'synthetic','fifo-old'),
+('10000000-0000-4000-8000-000000000004',401,'2025-04-02','NONE',0,'synthetic','fifo-new'),
+('10000000-0000-4000-8000-000000000005',501,'2025-05-01','NONE',0,'synthetic','cancel'),
+('10000000-0000-4000-8000-000000000006',601,'2025-06-01','NONE',0,'synthetic','refund'),
+('10000000-0000-4000-8000-000000000007',701,'2025-07-01','NONE',0,'synthetic','reversals'),
+('10000000-0000-4000-8000-000000000008',801,'2025-08-01','NONE',0,'synthetic','external'),
+('10000000-0000-4000-8000-000000000009',901,'2025-09-01','NONE',0,'synthetic','kpi'),
+('10000000-0000-4000-8000-000000000010',1001,'2025-10-01','NONE',0,'synthetic','tenant-a'),
+('20000000-0000-4000-8000-000000000010',2001,'2025-10-01','NONE',0,'synthetic','tenant-b');
 
-CREATE FUNCTION pg_temp.set_claim(p_user uuid, p_studio uuid)
-RETURNS void LANGUAGE plpgsql AS $function$
-BEGIN
-  PERFORM set_config(
-    'request.jwt.claims',
-    jsonb_build_object(
-      'sub', p_user::text,
-      'role', 'authenticated',
-      'app_metadata', jsonb_build_object('studio_id', p_studio::text)
-    )::text,
-    true
-  );
-END
-$function$;
+INSERT INTO public.financial_contract_lines_v1(studio_id,contract_id,patient_id,service_ref,operator_ref,gross_amount,source_table,source_id,source_line_id)
+SELECT c.studio_id,c.id,c.patient_id,'service',CASE WHEN c.source_id='kpi' THEN 'op-a' END,
+  CASE c.source_id WHEN 'pct' THEN 200 WHEN 'fixed' THEN 100 WHEN 'kpi' THEN 200 WHEN 'tenant-b' THEN 999 ELSE 100 END,
+  'synthetic',c.source_id,'line-1'
+FROM public.financial_contracts_v1 c;
 
--- Scenario contracts. Each scenario has an isolated synthetic tenant so
--- as-of credit balances never bleed into another scenario.
-INSERT INTO public.financial_contracts_v1
-  (studio_id, patient_id, proposal_date, discount_kind, discount_value, source_table, source_id)
-VALUES
-  ('10000000-0000-4000-8000-000000000001', 101, '2025-01-01', 'NONE', 0, 'synthetic_contracts', 'advance'),
-  ('10000000-0000-4000-8000-000000000002', 102, '2025-02-01', 'NONE', 0, 'synthetic_contracts', 'partial-payment'),
-  ('10000000-0000-4000-8000-000000000003', 103, '2025-03-01', 'FIXED', 30, 'synthetic_contracts', 'discount'),
-  ('10000000-0000-4000-8000-000000000004', 104, '2025-04-01', 'NONE', 0, 'synthetic_contracts', 'partial-execution'),
-  ('10000000-0000-4000-8000-000000000005', 105, '2025-05-01', 'NONE', 0, 'synthetic_contracts', 'cancellation'),
-  ('10000000-0000-4000-8000-000000000006', 106, '2025-06-01', 'NONE', 0, 'synthetic_contracts', 'refund'),
-  ('10000000-0000-4000-8000-000000000007', 107, '2025-07-01', 'NONE', 0, 'synthetic_contracts', 'external'),
-  ('10000000-0000-4000-8000-000000000008', 108, '2025-08-01', 'NONE', 0, 'synthetic_contracts', 'cross-period'),
-  ('10000000-0000-4000-8000-000000000009', 109, '2025-10-01', 'NONE', 0, 'synthetic_contracts', 'historic-oct'),
-  ('10000000-0000-4000-8000-000000000009', 109, '2025-11-01', 'NONE', 0, 'synthetic_contracts', 'historic-nov'),
-  ('10000000-0000-4000-8000-000000000010', 110, '2025-12-01', 'NONE', 0, 'synthetic_contracts', 'tenant-a'),
-  ('20000000-0000-4000-8000-000000000010', 210, '2025-12-01', 'NONE', 0, 'synthetic_contracts', 'tenant-b'),
-  ('10000000-0000-4000-8000-000000000011', 111, '2026-01-01', 'NONE', 0, 'synthetic_contracts', 'multi-operator');
+-- Accepted and produced lifecycle events.
+INSERT INTO public.financial_line_events_v1(studio_id,contract_line_id,stage,event_date,direction,fraction,event_kind,operator_ref,source_table,source_id)
+SELECT l.studio_id,l.id,s.stage,
+  CASE c.source_id WHEN 'cancel' THEN DATE '2025-05-05' ELSE c.proposal_date+1 END,
+  1,CASE WHEN c.source_id='kpi' AND s.stage='PRODOTTO' THEN .5 ELSE 1 END,
+  'ORIGINAL',l.operator_ref,'synthetic',c.source_id||'-'||lower(s.stage)
+FROM public.financial_contract_lines_v1 l JOIN public.financial_contracts_v1 c ON c.id=l.contract_id
+CROSS JOIN (VALUES('ACCETTATO'),('PRODOTTO')) s(stage)
+WHERE c.source_id NOT IN ('advance','external')
+  AND NOT (c.source_id='cancel' AND s.stage='PRODOTTO');
 
-INSERT INTO public.financial_contract_lines_v1
-  (studio_id, contract_id, patient_id, service_ref, operator_ref, gross_amount,
-   source_table, source_id, source_line_id)
-SELECT c.studio_id, c.id, c.patient_id, v.service_ref, v.operator_ref, v.gross_amount,
-       'synthetic_lines', c.source_id, v.line_id
+-- Advance is accepted but not produced. External scenario has no production/invoice.
+INSERT INTO public.financial_line_events_v1(studio_id,contract_line_id,stage,event_date,direction,fraction,event_kind,source_table,source_id)
+SELECT l.studio_id,l.id,'ACCETTATO','2025-02-02',1,1,'ORIGINAL','synthetic','advance-accepted'
+FROM public.financial_contract_lines_v1 l JOIN public.financial_contracts_v1 c ON c.id=l.contract_id WHERE c.source_id='advance';
+
+-- Cancellation and production reversal occur now; history is not rewritten.
+INSERT INTO public.financial_line_events_v1(studio_id,contract_line_id,stage,event_date,direction,fraction,event_kind,source_table,source_id)
+SELECT l.studio_id,l.id,'ACCETTATO','2025-05-20',-1,1,'CANCELLATION','synthetic','cancel-event'
+FROM public.financial_contract_lines_v1 l JOIN public.financial_contracts_v1 c ON c.id=l.contract_id WHERE c.source_id='cancel';
+INSERT INTO public.financial_line_events_v1(studio_id,contract_line_id,stage,event_date,direction,fraction,event_kind,source_table,source_id)
+SELECT l.studio_id,l.id,'PRODOTTO','2025-07-20',-1,.2,'PRODUCTION_REVERSAL','synthetic','production-reversal'
+FROM public.financial_contract_lines_v1 l JOIN public.financial_contracts_v1 c ON c.id=l.contract_id WHERE c.source_id='reversals';
+
+-- Invoices: taxable/net VAT and VAT are stored separately; gross is generated.
+INSERT INTO public.financial_invoice_events_v1(studio_id,contract_id,patient_id,event_date,direction,taxable_amount,vat_amount,event_kind,source_table,source_id)
+SELECT c.studio_id,c.id,c.patient_id,c.proposal_date+2,1,
+  CASE c.source_id WHEN 'pct' THEN 180 WHEN 'fixed' THEN 80 WHEN 'fifo-old' THEN 50 WHEN 'fifo-new' THEN 70
+    WHEN 'kpi' THEN 80 WHEN 'tenant-b' THEN 999 ELSE 100 END,
+  CASE c.source_id WHEN 'pct' THEN 18 WHEN 'fixed' THEN 8 WHEN 'fifo-old' THEN 5 WHEN 'fifo-new' THEN 7
+    WHEN 'kpi' THEN 8 WHEN 'tenant-b' THEN 0 ELSE 10 END,
+  'INVOICE','synthetic',c.source_id||'-invoice'
 FROM public.financial_contracts_v1 c
-JOIN (VALUES
-  ('advance', '1', 'service', 'op-a', 100::numeric),
-  ('partial-payment', '1', 'service', 'op-a', 100::numeric),
-  ('discount', '1', 'service-a', 'op-a', 100::numeric),
-  ('discount', '2', 'service-b', 'op-b', 200::numeric),
-  ('partial-execution', '1', 'service-a', 'op-a', 100::numeric),
-  ('partial-execution', '2', 'service-b', 'op-b', 100::numeric),
-  ('cancellation', '1', 'service', 'op-a', 100::numeric),
-  ('refund', '1', 'service', 'op-a', 100::numeric),
-  ('external', '1', 'service', 'op-a', 100::numeric),
-  ('cross-period', '1', 'service', 'op-a', 100::numeric),
-  ('historic-oct', '1', 'service', 'op-a', 200::numeric),
-  ('historic-nov', '1', 'service', 'op-a', 200::numeric),
-  ('tenant-a', '1', 'service', 'op-a', 100::numeric),
-  ('tenant-b', '1', 'service', 'op-b', 999::numeric),
-  ('multi-operator', '1', 'service-a', 'op-a', 100::numeric),
-  ('multi-operator', '2', 'service-b', 'op-b', 200::numeric)
-) AS v(contract_source, line_id, service_ref, operator_ref, gross_amount)
-  ON v.contract_source = c.source_id;
+WHERE c.source_id NOT IN ('advance','cancel','external');
 
--- Acceptance originals for every line.
-INSERT INTO public.financial_line_events_v1
-  (studio_id, contract_line_id, stage, event_date, direction, fraction, event_kind,
-   operator_ref, source_table, source_id, source_line_id)
-SELECT l.studio_id, l.id, 'ACCETTATO', c.proposal_date + 1, 1, 1, 'ORIGINAL',
-       l.operator_ref, 'synthetic_acceptance', c.source_id || '-accept-' || l.source_line_id,
-       l.source_line_id
-FROM public.financial_contract_lines_v1 l
-JOIN public.financial_contracts_v1 c ON c.id = l.contract_id AND c.studio_id = l.studio_id;
+-- Credit note is independent from production reversal.
+INSERT INTO public.financial_invoice_events_v1(studio_id,contract_id,patient_id,event_date,direction,taxable_amount,vat_amount,event_kind,source_table,source_id)
+SELECT c.studio_id,c.id,c.patient_id,'2025-07-21',-1,30,3,'CREDIT_NOTE','synthetic','credit-note'
+FROM public.financial_contracts_v1 c WHERE c.source_id='reversals';
 
--- Production originals, excluding advance, cancellation and the unexecuted
--- second line of the partial-execution scenario.
-INSERT INTO public.financial_line_events_v1
-  (studio_id, contract_line_id, stage, event_date, direction, fraction, event_kind,
-   operator_ref, source_table, source_id, source_line_id)
-SELECT l.studio_id, l.id, 'PRODOTTO',
-       CASE c.source_id WHEN 'cross-period' THEN '2025-08-20'::date ELSE c.proposal_date + 2 END,
-       1, 1, 'ORIGINAL', l.operator_ref,
-       'synthetic_production', c.source_id || '-produce-' || l.source_line_id, l.source_line_id
-FROM public.financial_contract_lines_v1 l
-JOIN public.financial_contracts_v1 c ON c.id = l.contract_id AND c.studio_id = l.studio_id
-WHERE c.source_id NOT IN ('advance', 'cancellation')
-  AND NOT (c.source_id = 'partial-execution' AND l.source_line_id = '2');
+-- Cash events: advances/overpayment, partial, FIFO, refund and external reconciliation.
+INSERT INTO public.financial_payment_events_v1(studio_id,contract_id,patient_id,event_date,direction,amount,event_kind,reconciled,source_table,source_id)
+SELECT c.studio_id,c.id,c.patient_id,d.dt,d.direction,d.amount,d.kind,d.reconciled,'synthetic',d.sid
+FROM (VALUES
+ ('advance',DATE '2025-02-03',1::smallint,150::numeric,'PAYMENT',true,'advance-payment'),
+ ('partial',DATE '2025-03-04',1::smallint,40::numeric,'PAYMENT',true,'partial-payment'),
+ ('fifo-old',DATE '2025-04-10',1::smallint,80::numeric,'PAYMENT',true,'fifo-payment'),
+ ('refund',DATE '2025-06-04',1::smallint,110::numeric,'PAYMENT',true,'refund-original-payment'),
+ ('refund',DATE '2025-06-10',-1::smallint,20::numeric,'REFUND',true,'refund-event'),
+ ('external',DATE '2025-08-03',1::smallint,40::numeric,'EXTERNAL_PAYMENT',false,'external-unreconciled'),
+ ('external',DATE '2025-08-04',1::smallint,60::numeric,'EXTERNAL_PAYMENT',true,'external-reconciled'),
+ ('kpi',DATE '2025-09-05',1::smallint,50::numeric,'PAYMENT',true,'kpi-payment'),
+ ('tenant-a',DATE '2025-10-05',1::smallint,110::numeric,'PAYMENT',true,'tenant-a-payment'),
+ ('tenant-b',DATE '2025-10-05',1::smallint,999::numeric,'PAYMENT',true,'tenant-b-payment')
+) d(contract_ref,dt,direction,amount,kind,reconciled,sid)
+JOIN public.financial_contracts_v1 c ON c.source_id=d.contract_ref;
 
--- Explicit cancellation reverses acceptance in May without inventing a
--- historical restatement or a production reversal.
-INSERT INTO public.financial_line_events_v1
-  (studio_id, contract_line_id, stage, event_date, direction, fraction, event_kind,
-   operator_ref, source_table, source_id, source_line_id)
-SELECT l.studio_id, l.id, 'ACCETTATO', '2025-05-10', -1, 1, 'CANCELLATION',
-       l.operator_ref, 'synthetic_cancellations', 'cancellation-reversal', l.source_line_id
-FROM public.financial_contract_lines_v1 l
-JOIN public.financial_contracts_v1 c ON c.id = l.contract_id AND c.studio_id = l.studio_id
-WHERE c.source_id = 'cancellation';
+-- Explicit allocations override FIFO. Refund allocation is explicitly negative through payment direction.
+INSERT INTO public.financial_payment_allocations_v1(studio_id,payment_event_id,invoice_event_id,contract_id,allocation_method,amount,source_table,source_id)
+SELECT p.studio_id,p.id,i.id,p.contract_id,'EXPLICIT',x.amount,'synthetic',x.sid
+FROM (VALUES
+ ('partial-payment','partial-invoice',40::numeric,'partial-allocation'),
+ ('refund-original-payment','refund-invoice',110::numeric,'refund-payment-allocation'),
+ ('refund-event','refund-invoice',20::numeric,'refund-allocation'),
+ ('tenant-a-payment','tenant-a-invoice',110::numeric,'tenant-a-allocation'),
+ ('tenant-b-payment','tenant-b-invoice',999::numeric,'tenant-b-allocation')
+) x(payment_ref,invoice_ref,amount,sid)
+JOIN public.financial_payment_events_v1 p ON p.source_id=x.payment_ref
+JOIN public.financial_invoice_events_v1 i ON i.source_id=x.invoice_ref AND i.studio_id=p.studio_id;
 
-INSERT INTO public.financial_invoice_events_v1
-  (studio_id, contract_id, patient_id, event_date, direction, amount, event_kind,
-   operator_ref, source_table, source_id, source_line_id)
-SELECT c.studio_id, c.id, c.patient_id, v.event_date, 1, v.amount, 'INVOICE',
-       NULL, 'synthetic_invoices', c.source_id || '-invoice', '1'
-FROM public.financial_contracts_v1 c
-JOIN (VALUES
-  ('partial-payment', '2025-02-05'::date, 100::numeric),
-  ('discount', '2025-03-05'::date, 270::numeric),
-  ('partial-execution', '2025-04-05'::date, 100::numeric),
-  ('refund', '2025-06-05'::date, 100::numeric),
-  ('external', '2025-07-05'::date, 100::numeric),
-  ('cross-period', '2025-08-21'::date, 100::numeric),
-  ('historic-oct', '2025-10-05'::date, 200::numeric),
-  ('historic-nov', '2025-11-05'::date, 200::numeric),
-  ('tenant-a', '2025-12-05'::date, 100::numeric),
-  ('tenant-b', '2025-12-05'::date, 999::numeric),
-  ('multi-operator', '2026-01-05'::date, 300::numeric)
-) AS v(contract_source, event_date, amount) ON v.contract_source = c.source_id;
+-- An explicit pre-invoice plan link is preserved and is not silently FIFO-allocated elsewhere.
+INSERT INTO public.financial_payment_allocations_v1(studio_id,payment_event_id,contract_id,allocation_method,amount,source_table,source_id)
+SELECT p.studio_id,p.id,p.contract_id,'EXPLICIT',150,'synthetic','advance-plan-link'
+FROM public.financial_payment_events_v1 p WHERE p.source_id='advance-payment';
 
-INSERT INTO public.financial_payment_events_v1
-  (studio_id, contract_id, patient_id, event_date, direction, amount, event_kind,
-   reconciled, source_table, source_id)
-SELECT c.studio_id, c.id, c.patient_id, v.event_date, v.direction, v.amount,
-       v.event_kind, v.reconciled, 'synthetic_payments', v.source_id
-FROM public.financial_contracts_v1 c
-JOIN (VALUES
-  ('advance', '2025-01-03'::date, 1::smallint, 100::numeric, 'PAYMENT', true, 'advance-pay'),
-  ('partial-payment', '2025-02-06'::date, 1::smallint, 40::numeric, 'PAYMENT', true, 'partial-pay'),
-  ('discount', '2025-03-06'::date, 1::smallint, 270::numeric, 'PAYMENT', true, 'discount-pay'),
-  ('partial-execution', '2025-04-06'::date, 1::smallint, 50::numeric, 'PAYMENT', true, 'partial-exec-pay'),
-  ('refund', '2025-06-06'::date, 1::smallint, 100::numeric, 'PAYMENT', true, 'refund-pay'),
-  ('refund', '2025-06-20'::date, -1::smallint, 20::numeric, 'REFUND', true, 'refund-reversal'),
-  ('external', '2025-07-06'::date, 1::smallint, 70::numeric, 'EXTERNAL_PAYMENT', true, 'external-reconciled'),
-  ('external', '2025-07-07'::date, 1::smallint, 30::numeric, 'EXTERNAL_PAYMENT', false, 'external-unreconciled'),
-  ('cross-period', '2025-09-05'::date, 1::smallint, 100::numeric, 'PAYMENT', true, 'cross-pay'),
-  ('historic-oct', '2025-10-06'::date, 1::smallint, 200::numeric, 'PAYMENT', true, 'historic-oct-pay'),
-  ('historic-nov', '2025-11-06'::date, 1::smallint, 200::numeric, 'PAYMENT', true, 'historic-nov-pay'),
-  ('tenant-a', '2025-12-06'::date, 1::smallint, 100::numeric, 'PAYMENT', true, 'tenant-a-pay'),
-  ('tenant-b', '2025-12-06'::date, 1::smallint, 999::numeric, 'PAYMENT', true, 'tenant-b-pay'),
-  ('multi-operator', '2026-01-06'::date, 1::smallint, 300::numeric, 'PAYMENT', true, 'multi-pay')
-) AS v(contract_source, event_date, direction, amount, event_kind, reconciled, source_id)
-  ON v.contract_source = c.source_id;
-
-INSERT INTO public.financial_cost_events_v1
-  (studio_id, stage, classification, event_date, direction, amount, operator_ref,
-   cost_version_ref, source_table, source_id)
-VALUES
-  ('10000000-0000-4000-8000-000000000003', 'SOSTENUTO', 'VARIABILE', '2025-03-10', 1, 70, NULL, 'discount-cost-v1', 'synthetic_costs', 'discount-cost'),
-  ('10000000-0000-4000-8000-000000000004', 'SOSTENUTO', 'VARIABILE', '2025-04-10', 1, 20, NULL, 'partial-cost-v1', 'synthetic_costs', 'partial-cost'),
-  ('10000000-0000-4000-8000-000000000009', 'SOSTENUTO', 'VARIABILE', '2025-10-10', 1, 30, NULL, 'material-cost-v1', 'synthetic_costs', 'historic-old'),
-  ('10000000-0000-4000-8000-000000000009', 'SOSTENUTO', 'VARIABILE', '2025-11-10', 1, 50, NULL, 'material-cost-v2', 'synthetic_costs', 'historic-new'),
-  ('10000000-0000-4000-8000-000000000011', 'SOSTENUTO', 'VARIABILE', '2026-01-10', 1, 20, 'op-a', 'operator-a-v1', 'synthetic_costs', 'operator-a-cost'),
-  ('10000000-0000-4000-8000-000000000011', 'SOSTENUTO', 'VARIABILE', '2026-01-10', 1, 50, 'op-b', 'operator-b-v1', 'synthetic_costs', 'operator-b-cost'),
-  ('10000000-0000-4000-8000-000000000012', 'PREVISTO', 'FISSO', '2026-02-01', 1, 120, NULL, 'fixed-v1', 'synthetic_costs', 'zero-predicted'),
-  ('10000000-0000-4000-8000-000000000012', 'IMPEGNATO', 'FISSO', '2026-02-01', 1, 110, NULL, 'fixed-v1', 'synthetic_costs', 'zero-committed'),
-  ('10000000-0000-4000-8000-000000000012', 'SOSTENUTO', 'FISSO', '2026-02-01', 1, 100, NULL, 'fixed-v1', 'synthetic_costs', 'zero-sustained');
-
-INSERT INTO public.financial_hours_v1
-  (studio_id, event_date, scope, operator_ref, productive_hours, source_table, source_id)
-VALUES
-  ('10000000-0000-4000-8000-000000000011', '2026-01-31', 'STRUCTURE', NULL, 30, 'synthetic_hours', 'structure-jan'),
-  ('10000000-0000-4000-8000-000000000011', '2026-01-31', 'OPERATOR', 'op-a', 10, 'synthetic_hours', 'operator-a-jan'),
-  ('10000000-0000-4000-8000-000000000011', '2026-01-31', 'OPERATOR', 'op-b', 20, 'synthetic_hours', 'operator-b-jan');
+-- KPI costs deliberately include excluded EBITDA categories.
+INSERT INTO public.financial_cost_events_v1(studio_id,stage,classification,cost_scope,event_date,direction,amount,operator_ref,cost_version_ref,source_table,source_id) VALUES
+('10000000-0000-4000-8000-000000000009','SOSTENUTO','VARIABILE_ATTRIBUIBILE','STRUCTURE','2025-09-10',1,20,NULL,'v1','synthetic','variable'),
+('10000000-0000-4000-8000-000000000009','SOSTENUTO','FISSO_OPERATIVO','STRUCTURE','2025-09-10',1,30,NULL,'v1','synthetic','fixed'),
+('10000000-0000-4000-8000-000000000009','SOSTENUTO','AMMORTAMENTO_DEPREZZAMENTO','STRUCTURE','2025-09-10',1,25,NULL,'v1','synthetic','depreciation'),
+('10000000-0000-4000-8000-000000000009','PREVISTO','FISSO_OPERATIVO','STRUCTURE','2025-09-01',1,140,NULL,'v1','synthetic','predicted'),
+('10000000-0000-4000-8000-000000000009','IMPEGNATO','FISSO_OPERATIVO','STRUCTURE','2025-09-02',1,130,NULL,'v1','synthetic','committed');
+INSERT INTO public.financial_hours_v1(studio_id,event_date,scope,hour_kind,operator_ref,hours,source_table,source_id) VALUES
+('10000000-0000-4000-8000-000000000009','2025-09-30','STRUCTURE','AVAILABLE',NULL,50,'synthetic','available'),
+('10000000-0000-4000-8000-000000000009','2025-09-30','OPERATOR','WORKED','op-a',12,'synthetic','worked-a'),
+('10000000-0000-4000-8000-000000000009','2025-09-30','OPERATOR','WORKED','op-b',8,'synthetic','worked-b');
 
 SET LOCAL ROLE authenticated;
 
--- Helper invocation requires no caller-supplied studio id; each test changes
--- only trusted JWT claims and active membership is checked server-side.
 DO $tests$
-DECLARE
-  s record;
-  v_count integer;
+DECLARE s record;v_count integer;v_amount numeric;
 BEGIN
-  -- 1. Advance payment before production.
-  PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1', '10000000-0000-4000-8000-000000000001');
-  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-01-01','2025-01-31','NET','PRODOTTO');
-  PERFORM pg_temp.assert_num('advance preventivato', s.preventivato, 100);
-  PERFORM pg_temp.assert_num('advance accettato', s.accettato, 100);
-  PERFORM pg_temp.assert_num('advance prodotto', s.prodotto, 0);
-  PERFORM pg_temp.assert_num('advance fatturato', s.fatturato, 0);
-  PERFORM pg_temp.assert_num('advance incassato', s.incassato, 100);
-  PERFORM pg_temp.assert_num('advance credito prodotto', s.credito_residuo, -100);
-  PERFORM pg_temp.assert_num('advance margine', s.margine_contribuzione, 0);
+  -- Percentage and fixed discounts are separate and proportionally reduce lifecycle values.
+  PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','10000000-0000-4000-8000-000000000001');
+  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-01-01','2025-01-31');
+  PERFORM pg_temp.assert_num('discount gross',s.preventivato_lordo,300);
+  PERFORM pg_temp.assert_num('discount separate',s.sconto,40);
+  PERFORM pg_temp.assert_num('discount net quote',s.preventivato,260);
+  PERFORM pg_temp.assert_num('discount accepted',s.accettato,260);
+  PERFORM pg_temp.assert_num('discount produced',s.prodotto,260);
+  PERFORM pg_temp.assert_num('discount invoice net VAT',s.fatturato_netto_iva,260);
+  PERFORM pg_temp.assert_num('discount invoice VAT',s.fatturato_iva,26);
+  PERFORM pg_temp.assert_num('discount invoice gross',s.fatturato_lordo,286);
 
-  -- 2. Partial payment.
-  PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1', '10000000-0000-4000-8000-000000000002');
-  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-02-01','2025-02-28','NET','PRODOTTO');
-  PERFORM pg_temp.assert_num('partial payment preventivato', s.preventivato, 100);
-  PERFORM pg_temp.assert_num('partial payment accettato', s.accettato, 100);
-  PERFORM pg_temp.assert_num('partial payment prodotto', s.prodotto, 100);
-  PERFORM pg_temp.assert_num('partial payment fatturato', s.fatturato, 100);
-  PERFORM pg_temp.assert_num('partial payment incassato', s.incassato, 40);
-  PERFORM pg_temp.assert_num('partial payment credito', s.credito_residuo, 60);
-  PERFORM pg_temp.assert_num('partial payment margine', s.margine_contribuzione, 100);
+  -- Advance and overpayment affect cash only and remain unallocated customer-favour balance.
+  PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','10000000-0000-4000-8000-000000000002');
+  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-02-01','2025-02-28');
+  PERFORM pg_temp.assert_num('advance accepted',s.accettato,100);
+  PERFORM pg_temp.assert_num('advance product',s.prodotto,0);
+  PERFORM pg_temp.assert_num('advance invoice',s.fatturato_lordo,0);
+  PERFORM pg_temp.assert_num('advance cash',s.incassato,150);
+  PERFORM pg_temp.assert_num('advance portfolio',s.portafoglio_da_eseguire,100);
+  PERFORM pg_temp.assert_num('advance customer credit balance',s.saldo_incassi_non_allocato,150);
+  SELECT count(*) INTO v_count FROM public.financial_payment_allocations_v1 WHERE source_id='advance-plan-link';
+  IF v_count<>1 THEN RAISE EXCEPTION 'FAIL explicit plan allocation link'; END IF;
 
-  -- 3. Fixed discount allocated proportionally across two service lines.
-  PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1', '10000000-0000-4000-8000-000000000003');
-  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-03-01','2025-03-31','NET','PRODOTTO');
-  PERFORM pg_temp.assert_num('discount preventivato net', s.preventivato, 270);
-  PERFORM pg_temp.assert_num('discount preventivato gross', s.preventivato_lordo, 300);
-  PERFORM pg_temp.assert_num('discount accepted', s.accettato, 270);
-  PERFORM pg_temp.assert_num('discount produced', s.prodotto, 270);
-  PERFORM pg_temp.assert_num('discount invoiced', s.fatturato, 270);
-  PERFORM pg_temp.assert_num('discount collected', s.incassato, 270);
-  PERFORM pg_temp.assert_num('discount credit', s.credito_residuo, 0);
-  PERFORM pg_temp.assert_num('discount variable cost', s.costi_variabili, 70);
-  PERFORM pg_temp.assert_num('discount contribution', s.margine_contribuzione, 200);
-  PERFORM pg_temp.assert_num('discount EBITDA', s.ebitda_operativo_gestionale, 200);
-  SELECT count(*) INTO v_count FROM public.get_financial_drilldown_v1('2025-03-01','2025-03-31','PRODOTTO','NET','PRODOTTO');
-  IF v_count <> 2 THEN RAISE EXCEPTION 'FAIL discount drilldown line count: %', v_count; END IF;
+  -- Explicit partial payment.
+  PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','10000000-0000-4000-8000-000000000003');
+  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-03-01','2025-03-31');
+  PERFORM pg_temp.assert_num('partial allocated',s.incassato_allocato,40);
+  PERFORM pg_temp.assert_num('partial receivable gross',s.credito_clienti,70);
+  PERFORM pg_temp.assert_num('partial unallocated',s.saldo_incassi_non_allocato,0);
 
-  -- 4. Partial execution.
-  PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1', '10000000-0000-4000-8000-000000000004');
-  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-04-01','2025-04-30','NET','PRODOTTO');
-  PERFORM pg_temp.assert_num('partial execution preventivato', s.preventivato, 200);
-  PERFORM pg_temp.assert_num('partial execution accettato', s.accettato, 200);
-  PERFORM pg_temp.assert_num('partial execution prodotto', s.prodotto, 100);
-  PERFORM pg_temp.assert_num('partial execution fatturato', s.fatturato, 100);
-  PERFORM pg_temp.assert_num('partial execution incassato', s.incassato, 50);
-  PERFORM pg_temp.assert_num('partial execution credito', s.credito_residuo, 50);
-  PERFORM pg_temp.assert_num('partial execution margin', s.margine_contribuzione, 80);
+  -- FIFO allocates oldest debt first without a client-side checkbox.
+  PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','10000000-0000-4000-8000-000000000004');
+  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-04-01','2025-04-30');
+  PERFORM pg_temp.assert_num('fifo allocated',s.incassato_allocato,80);
+  PERFORM pg_temp.assert_num('fifo remaining receivable',s.credito_clienti,52);
+  SELECT SUM(signed_amount) INTO v_amount FROM private.financial_effective_allocations_v1 a
+    JOIN public.financial_invoice_events_v1 i ON i.id=a.invoice_event_id AND i.studio_id=a.studio_id
+    WHERE a.studio_id='10000000-0000-4000-8000-000000000004' AND i.source_id='fifo-old-invoice';
+  PERFORM pg_temp.assert_num('fifo oldest first',v_amount,55);
 
-  -- 5. Cancellation after acceptance is an explicit acceptance reversal.
-  PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1', '10000000-0000-4000-8000-000000000005');
-  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-05-01','2025-05-31','NET','PRODOTTO');
-  PERFORM pg_temp.assert_num('cancellation preventivato', s.preventivato, 100);
-  PERFORM pg_temp.assert_num('cancellation accepted', s.accettato, 0);
-  PERFORM pg_temp.assert_num('cancellation produced', s.prodotto, 0);
-  PERFORM pg_temp.assert_num('cancellation invoiced', s.fatturato, 0);
-  PERFORM pg_temp.assert_num('cancellation collected', s.incassato, 0);
-  PERFORM pg_temp.assert_num('cancellation credit', s.credito_residuo, 0);
-  PERFORM pg_temp.assert_num('cancellation margin', s.margine_contribuzione, 0);
+  -- Cancellation is a current-period event and does not rewrite original acceptance.
+  PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','10000000-0000-4000-8000-000000000005');
+  SELECT COALESCE(SUM(amount),0) INTO v_amount FROM public.get_financial_drilldown_v1('2025-05-01','2025-05-10','ACCETTATO');
+  PERFORM pg_temp.assert_num('acceptance history retained',v_amount,100);
+  SELECT COALESCE(SUM(amount),0) INTO v_amount FROM public.get_financial_drilldown_v1('2025-05-20','2025-05-20','ACCETTATO');
+  PERFORM pg_temp.assert_num('cancellation current period',v_amount,-100);
+  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-05-01','2025-05-31');
+  PERFORM pg_temp.assert_num('cancelled portfolio',s.portafoglio_da_eseguire,0);
 
-  -- 6. Refund reduces cash and increases residual credit.
-  PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1', '10000000-0000-4000-8000-000000000006');
-  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-06-01','2025-06-30','NET','PRODOTTO');
-  PERFORM pg_temp.assert_num('refund preventivato', s.preventivato, 100);
-  PERFORM pg_temp.assert_num('refund accepted', s.accettato, 100);
-  PERFORM pg_temp.assert_num('refund produced', s.prodotto, 100);
-  PERFORM pg_temp.assert_num('refund invoiced', s.fatturato, 100);
-  PERFORM pg_temp.assert_num('refund collected', s.incassato, 80);
-  PERFORM pg_temp.assert_num('refund credit', s.credito_residuo, 20);
-  PERFORM pg_temp.assert_num('refund margin', s.margine_contribuzione, 100);
+  -- Refund is negative cash and negative explicit allocation; invoice remains unchanged.
+  PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','10000000-0000-4000-8000-000000000006');
+  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-06-01','2025-06-30');
+  PERFORM pg_temp.assert_num('refund cash',s.incassato,90);
+  PERFORM pg_temp.assert_num('refund allocated cash',s.incassato_allocato,90);
+  PERFORM pg_temp.assert_num('refund receivable',s.credito_clienti,20);
 
-  -- 7. External payment counts only after reconciliation.
-  PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1', '10000000-0000-4000-8000-000000000007');
-  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-07-01','2025-07-31','NET','PRODOTTO');
-  PERFORM pg_temp.assert_num('external preventivato', s.preventivato, 100);
-  PERFORM pg_temp.assert_num('external accepted', s.accettato, 100);
-  PERFORM pg_temp.assert_num('external produced', s.prodotto, 100);
-  PERFORM pg_temp.assert_num('external invoiced', s.fatturato, 100);
-  PERFORM pg_temp.assert_num('external collected', s.incassato, 70);
-  PERFORM pg_temp.assert_num('external credit', s.credito_residuo, 30);
-  PERFORM pg_temp.assert_num('external margin', s.margine_contribuzione, 100);
+  -- Credit note and production reversal affect only their respective ledgers.
+  PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','10000000-0000-4000-8000-000000000007');
+  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-07-01','2025-07-31');
+  PERFORM pg_temp.assert_num('production reversal',s.prodotto,80);
+  PERFORM pg_temp.assert_num('credit note net invoice',s.fatturato_netto_iva,70);
+  PERFORM pg_temp.assert_num('credit note gross invoice',s.fatturato_lordo,77);
+  PERFORM pg_temp.assert_num('produced not invoiced',s.prodotto_da_fatturare,10);
+  PERFORM pg_temp.assert_num('credit note receivable',s.credito_clienti,77);
 
-  -- 8. Production and cash in different months; credit is an as-of balance.
-  PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1', '10000000-0000-4000-8000-000000000008');
-  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-08-01','2025-08-31','NET','PRODOTTO');
-  PERFORM pg_temp.assert_num('cross August preventivato', s.preventivato, 100);
-  PERFORM pg_temp.assert_num('cross August accepted', s.accettato, 100);
-  PERFORM pg_temp.assert_num('cross August produced', s.prodotto, 100);
-  PERFORM pg_temp.assert_num('cross August invoiced', s.fatturato, 100);
-  PERFORM pg_temp.assert_num('cross August collected', s.incassato, 0);
-  PERFORM pg_temp.assert_num('cross August credit', s.credito_residuo, 100);
-  PERFORM pg_temp.assert_num('cross August margin', s.margine_contribuzione, 100);
-  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-09-01','2025-09-30','NET','PRODOTTO');
-  PERFORM pg_temp.assert_num('cross September preventivato', s.preventivato, 0);
-  PERFORM pg_temp.assert_num('cross September accepted', s.accettato, 0);
-  PERFORM pg_temp.assert_num('cross September produced', s.prodotto, 0);
-  PERFORM pg_temp.assert_num('cross September invoiced', s.fatturato, 0);
-  PERFORM pg_temp.assert_num('cross September collected', s.incassato, 100);
-  PERFORM pg_temp.assert_num('cross September credit', s.credito_residuo, 0);
-  PERFORM pg_temp.assert_num('cross September margin', s.margine_contribuzione, 0);
+  -- External cash is canonical only after reconciliation.
+  PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','10000000-0000-4000-8000-000000000008');
+  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-08-01','2025-08-31');
+  PERFORM pg_temp.assert_num('external reconciled only',s.incassato,60);
+  PERFORM pg_temp.assert_num('external unallocated balance',s.saldo_incassi_non_allocato,60);
 
-  -- 9. Historical costs remain effective-dated and versioned.
-  PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1', '10000000-0000-4000-8000-000000000009');
-  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-10-01','2025-10-31','NET','PRODOTTO');
-  PERFORM pg_temp.assert_num('historic October preventivato', s.preventivato, 200);
-  PERFORM pg_temp.assert_num('historic October accepted', s.accettato, 200);
-  PERFORM pg_temp.assert_num('historic October produced', s.prodotto, 200);
-  PERFORM pg_temp.assert_num('historic October invoiced', s.fatturato, 200);
-  PERFORM pg_temp.assert_num('historic October collected', s.incassato, 200);
-  PERFORM pg_temp.assert_num('historic October credit', s.credito_residuo, 0);
-  PERFORM pg_temp.assert_num('historic October margin', s.margine_contribuzione, 170);
-  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-11-01','2025-11-30','NET','PRODOTTO');
-  PERFORM pg_temp.assert_num('historic November preventivato', s.preventivato, 200);
-  PERFORM pg_temp.assert_num('historic November accepted', s.accettato, 200);
-  PERFORM pg_temp.assert_num('historic November produced', s.prodotto, 200);
-  PERFORM pg_temp.assert_num('historic November invoiced', s.fatturato, 200);
-  PERFORM pg_temp.assert_num('historic November collected', s.incassato, 200);
-  PERFORM pg_temp.assert_num('historic November credit', s.credito_residuo, 0);
-  PERFORM pg_temp.assert_num('historic November margin', s.margine_contribuzione, 150);
+  -- Three distinct stock metrics; break-even compares production; hour denominators are separate.
+  PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','10000000-0000-4000-8000-000000000009');
+  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-09-01','2025-09-30');
+  PERFORM pg_temp.assert_num('portfolio to execute',s.portafoglio_da_eseguire,100);
+  PERFORM pg_temp.assert_num('produced to invoice',s.prodotto_da_fatturare,20);
+  PERFORM pg_temp.assert_num('customer receivable',s.credito_clienti,38);
+  PERFORM pg_temp.assert_num('variable costs',s.costi_variabili,20);
+  PERFORM pg_temp.assert_num('fixed operating costs',s.costi_fissi_operativi,30);
+  PERFORM pg_temp.assert_num('contribution margin',s.margine_contribuzione,80);
+  PERFORM pg_temp.assert_num('management EBITDA excludes depreciation',s.ebitda_operativo_gestionale,50);
+  PERFORM pg_temp.assert_num('break even',s.break_even,37.5);
+  IF s.break_even_raggiunto IS DISTINCT FROM true THEN RAISE EXCEPTION 'FAIL break-even must compare with production'; END IF;
+  PERFORM pg_temp.assert_num('available hours',s.ore_produttive_disponibili,50);
+  PERFORM pg_temp.assert_num('worked hours',s.ore_effettivamente_lavorate,20);
+  PERFORM pg_temp.assert_num('structure hourly cost',s.costo_orario_struttura,1);
+  PERFORM pg_temp.assert_num('production per worked hour',s.produzione_ora,5);
+  PERFORM pg_temp.assert_num('cash per worked hour',s.incasso_ora,2.5);
+  SELECT COALESCE(SUM(amount),0) INTO v_amount
+  FROM public.get_financial_drilldown_v1('2025-09-01','2025-09-30','PRODOTTO');
+  PERFORM pg_temp.assert_num('snapshot product reconciles to drilldown',v_amount,s.prodotto);
+  SELECT COALESCE(SUM(amount),0) INTO v_amount
+  FROM public.get_financial_drilldown_v1('2025-09-01','2025-09-30','CREDITO_CLIENTI');
+  PERFORM pg_temp.assert_num('snapshot receivable reconciles to drilldown',v_amount,s.credito_clienti);
 
-  -- 10. Two-studio isolation.
-  PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1', '10000000-0000-4000-8000-000000000010');
-  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-12-01','2025-12-31','NET','PRODOTTO');
-  PERFORM pg_temp.assert_num('tenant A preventivato', s.preventivato, 100);
-  PERFORM pg_temp.assert_num('tenant A accepted', s.accettato, 100);
-  PERFORM pg_temp.assert_num('tenant A produced', s.prodotto, 100);
-  PERFORM pg_temp.assert_num('tenant A invoiced', s.fatturato, 100);
-  PERFORM pg_temp.assert_num('tenant A collected', s.incassato, 100);
-  PERFORM pg_temp.assert_num('tenant A credit', s.credito_residuo, 0);
-  PERFORM pg_temp.assert_num('tenant A margin', s.margine_contribuzione, 100);
+  -- Two-tenant isolation.
+  PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','10000000-0000-4000-8000-000000000010');
+  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-10-01','2025-10-31');
+  PERFORM pg_temp.assert_num('tenant A product',s.prodotto,100);
   SELECT count(*) INTO v_count FROM public.financial_contracts_v1;
-  IF v_count <> 1 THEN RAISE EXCEPTION 'FAIL tenant A RLS count: %', v_count; END IF;
-  PERFORM pg_temp.set_claim('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2', '20000000-0000-4000-8000-000000000010');
-  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-12-01','2025-12-31','NET','PRODOTTO');
-  PERFORM pg_temp.assert_num('tenant B preventivato', s.preventivato, 999);
-  PERFORM pg_temp.assert_num('tenant B accepted', s.accettato, 999);
-  PERFORM pg_temp.assert_num('tenant B produced', s.prodotto, 999);
-  PERFORM pg_temp.assert_num('tenant B invoiced', s.fatturato, 999);
-  PERFORM pg_temp.assert_num('tenant B collected', s.incassato, 999);
-  PERFORM pg_temp.assert_num('tenant B credit', s.credito_residuo, 0);
-  PERFORM pg_temp.assert_num('tenant B margin', s.margine_contribuzione, 999);
+  IF v_count<>1 THEN RAISE EXCEPTION 'FAIL tenant A RLS count %',v_count; END IF;
+  PERFORM pg_temp.set_claim('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2','20000000-0000-4000-8000-000000000010');
+  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-10-01','2025-10-31');
+  PERFORM pg_temp.assert_num('tenant B product',s.prodotto,999);
+  SELECT count(*) INTO v_count FROM public.financial_contracts_v1;
+  IF v_count<>1 THEN RAISE EXCEPTION 'FAIL tenant B RLS count %',v_count; END IF;
 
-  -- 11. Multiple operators and hourly denominators.
-  PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1', '10000000-0000-4000-8000-000000000011');
-  SELECT * INTO s FROM public.get_financial_snapshot_v1('2026-01-01','2026-01-31','NET','PRODOTTO');
-  PERFORM pg_temp.assert_num('operators preventivato', s.preventivato, 300);
-  PERFORM pg_temp.assert_num('operators accepted', s.accettato, 300);
-  PERFORM pg_temp.assert_num('operators produced', s.prodotto, 300);
-  PERFORM pg_temp.assert_num('operators invoiced', s.fatturato, 300);
-  PERFORM pg_temp.assert_num('operators collected', s.incassato, 300);
-  PERFORM pg_temp.assert_num('operators credit', s.credito_residuo, 0);
-  PERFORM pg_temp.assert_num('operators margin', s.margine_contribuzione, 230);
-  PERFORM pg_temp.assert_num('operators structure hourly cost', s.costo_orario_struttura, 70.0 / 30.0);
-  PERFORM pg_temp.assert_num('operators operator hourly cost', s.costo_orario_operatore, 70.0 / 30.0);
-  PERFORM pg_temp.assert_num('operators production hour', s.produzione_ora, 10);
-  PERFORM pg_temp.assert_num('operators collection hour', s.incasso_ora, 10);
-  SELECT count(DISTINCT operator_ref) INTO v_count
-  FROM public.get_financial_drilldown_v1('2026-01-01','2026-01-31','PRODOTTO','NET','PRODOTTO');
-  IF v_count <> 2 THEN RAISE EXCEPTION 'FAIL multiple operator drilldown: %', v_count; END IF;
-
-  -- 12. Zero denominators remain NULL, never fabricated as zero.
-  PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1', '10000000-0000-4000-8000-000000000012');
-  SELECT * INTO s FROM public.get_financial_snapshot_v1('2026-02-01','2026-02-28','NET','PRODOTTO');
-  PERFORM pg_temp.assert_num('zero preventivato', s.preventivato, 0);
-  PERFORM pg_temp.assert_num('zero accepted', s.accettato, 0);
-  PERFORM pg_temp.assert_num('zero produced', s.prodotto, 0);
-  PERFORM pg_temp.assert_num('zero invoiced', s.fatturato, 0);
-  PERFORM pg_temp.assert_num('zero collected', s.incassato, 0);
-  PERFORM pg_temp.assert_num('zero credit', s.credito_residuo, 0);
-  PERFORM pg_temp.assert_num('zero margin', s.margine_contribuzione, 0);
-  PERFORM pg_temp.assert_num('zero EBITDA', s.ebitda_operativo_gestionale, -100);
-  PERFORM pg_temp.assert_num('zero predicted cost', s.costi_previsti, 120);
-  PERFORM pg_temp.assert_num('zero committed cost', s.costi_impegnati, 110);
-  PERFORM pg_temp.assert_null('zero contribution pct', s.margine_contribuzione_pct);
-  PERFORM pg_temp.assert_null('zero break even', s.break_even);
-  PERFORM pg_temp.assert_null('zero structure hourly cost', s.costo_orario_struttura);
-  PERFORM pg_temp.assert_null('zero operator hourly cost', s.costo_orario_operatore);
-  PERFORM pg_temp.assert_null('zero production hour', s.produzione_ora);
-  PERFORM pg_temp.assert_null('zero collection hour', s.incasso_ora);
+  -- Zero denominators remain NULL.
+  PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','10000000-0000-4000-8000-000000000011');
+  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-11-01','2025-11-30');
+  PERFORM pg_temp.assert_null('zero break even',s.break_even);
+  PERFORM pg_temp.assert_null('zero structure hourly cost',s.costo_orario_struttura);
+  PERFORM pg_temp.assert_null('zero production hour',s.produzione_ora);
+  PERFORM pg_temp.assert_null('zero cash hour',s.incasso_ora);
 END
 $tests$;
 
 RESET ROLE;
 
--- Static privilege and contract assertions.
 DO $security$
-DECLARE
-  v_policy_count integer;
+DECLARE v_count integer;
 BEGIN
-  SELECT count(*) INTO v_policy_count
-  FROM pg_policies
-  WHERE schemaname = 'public'
-    AND tablename LIKE 'financial_%_v1'
-    AND cmd = 'SELECT'
-    AND 'authenticated' = ANY(roles);
-  IF v_policy_count <> 7 THEN
-    RAISE EXCEPTION 'FAIL expected 7 tenant SELECT policies, got %', v_policy_count;
+  SELECT count(*) INTO v_count FROM pg_policies WHERE schemaname='public'
+    AND tablename LIKE 'financial_%_v1' AND cmd='SELECT' AND 'authenticated'=ANY(roles);
+  IF v_count<>8 THEN RAISE EXCEPTION 'FAIL expected 8 tenant SELECT policies, got %',v_count; END IF;
+  IF has_table_privilege('authenticated','public.financial_contracts_v1','INSERT') THEN
+    RAISE EXCEPTION 'FAIL authenticated direct write';
   END IF;
-  IF has_table_privilege('authenticated', 'public.financial_contracts_v1', 'INSERT') THEN
-    RAISE EXCEPTION 'FAIL authenticated must not write canonical source tables directly';
+  IF has_function_privilege('anon','public.get_financial_snapshot_v1(date,date)','EXECUTE') THEN
+    RAISE EXCEPTION 'FAIL anon snapshot execute';
   END IF;
-  IF has_function_privilege('anon', 'public.get_financial_snapshot_v1(date,date,text,text)', 'EXECUTE') THEN
-    RAISE EXCEPTION 'FAIL anon can execute canonical snapshot';
+  IF NOT has_function_privilege('authenticated','public.get_financial_snapshot_v1(date,date)','EXECUTE') THEN
+    RAISE EXCEPTION 'FAIL authenticated snapshot execute';
   END IF;
-  IF NOT has_function_privilege('authenticated', 'public.get_financial_snapshot_v1(date,date,text,text)', 'EXECUTE') THEN
-    RAISE EXCEPTION 'FAIL authenticated cannot execute canonical snapshot';
+  IF to_regprocedure('public.get_financial_snapshot_v1(date,date,text,text)') IS NOT NULL THEN
+    RAISE EXCEPTION 'FAIL ambiguous quote/credit basis signature remains';
   END IF;
 END
 $security$;

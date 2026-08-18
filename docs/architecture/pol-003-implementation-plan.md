@@ -1,13 +1,13 @@
 # POL-003 — Financial Source of Truth: Implementation Plan
 
-Status: design only. No formula changes authorized in production by this document.
+Status: Product Owner semantics locked in POL-003A and implemented locally. No production change authorized.
 
 ## Objective
 Replace duplicated/ambiguous financial calculations with one canonical server-side financial engine used by all verticals and by the CFO AI.
 
 ## Canonical lifecycle
 Revenue/work lifecycle:
-`PREVENTIVATO -> ACCETTATO -> ESEGUITO/PRODOTTO -> FATTURATO -> INCASSATO -> CREDITO RESIDUO`
+`PREVENTIVATO -> ACCETTATO -> PRODOTTO -> FATTURATO -> INCASSATO`
 
 Cost lifecycle:
 `PREVISTO -> IMPEGNATO -> SOSTENUTO`
@@ -18,7 +18,7 @@ Cost lifecycle:
 - Prodotto: value of services actually delivered in period, recognized by service/execution date.
 - Fatturato: accounting invoice value when invoice exists; never substitute production or cash.
 - Incassato: cash actually received in period, including external payment sources after reconciliation.
-- Credito residuo: collectible accepted/delivered/factured amount minus valid payments/refunds according to the approved recognition model.
+- Replace generic residual credit with portfolio-to-execute, produced-to-invoice, customer receivable and unallocated cash balance as defined in `pol-003a-product-owner-semantics-lock.md`.
 - Fixed cost: recurring/period cost not driven by service volume within the relevant operating range.
 - Variable cost: cost attributable to delivery volume or individual service/operator.
 - Contribution margin: produced revenue minus variable costs attributable to production.

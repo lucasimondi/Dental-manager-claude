@@ -1,6 +1,6 @@
 # POL-003 — Financial Source of Truth
 
-Status: PRODUCT DESIGN / NOT YET IMPLEMENTED
+Status: PRODUCT OWNER SEMANTICS LOCKED IN POL-003A / LOCAL IMPLEMENTATION ONLY
 Owner: Tech Lead + Product Owner
 
 ## Objective
@@ -11,7 +11,9 @@ The current repository documents duplicated and inconsistent logic between SQL a
 ## Canonical lifecycle
 Revenue / clinical-commercial lifecycle:
 
-`PREVENTIVATO → ACCETTATO → ESEGUITO → FATTURATO → INCASSATO → CREDITO RESIDUO`
+`PREVENTIVATO → ACCETTATO → PRODOTTO → FATTURATO → INCASSATO`
+
+Operational balances are distinct: `PORTAFOGLIO_DA_ESEGUIRE`, `PRODOTTO_DA_FATTURARE`, `CREDITO_CLIENTI`, and `SALDO_INCASSI_NON_ALLOCATO`.
 
 Cost lifecycle:
 
@@ -22,7 +24,7 @@ These states must remain analytically distinct. Production is not cash. Invoicin
 ## Canonical measures
 
 ### 1. Preventivato
-Gross value of proposed plans/quotes in the selected period. It is a pipeline/commercial metric, not revenue.
+Net value after commercial discount. Gross proposed value and discount are retained as separate metrics. It is a pipeline/commercial metric, not revenue.
 
 ### 2. Accettato
 Net contractual value accepted by the client/patient after discounts. It is backlog / committed demand, not yet production or cash.
@@ -31,13 +33,13 @@ Net contractual value accepted by the client/patient after discounts. It is back
 Net economic value of services actually performed in the period, after the economically attributable share of discounts, cancellations and reversals.
 
 ### 4. Fatturato
-Value of fiscal documents issued in the period. It must not be used as a synonym for produced revenue or collected cash.
+Value of fiscal documents issued in the period, split into taxable/net-VAT amount, VAT and gross document amount. It must not be used as a synonym for produced revenue or collected cash.
 
 ### 5. Incassato
 Cash/payment value actually received in the period, including integrated external payment sources once reconciled.
 
-### 6. Credito residuo
-Amount due but not yet collected for performed/invoiced/contractually due items, according to the chosen operational rule. It must subtract actual collections and refunds.
+### 6. Operational balances
+Use the four explicit balances defined by POL-003A. A single generic residual-credit metric is prohibited.
 
 ### 7. Costi variabili
 Costs that scale directly with production/service delivery: materials, laboratory, consumables, commissions directly attributable to a service, payment fees where treated as variable, and other explicit variable categories.
@@ -123,10 +125,16 @@ A single period endpoint/RPC should return a typed financial snapshot, for examp
 
 - preventivato
 - accettato
-- prodotto_netto
-- fatturato
+- prodotto
+- fatturato_netto_iva
+- fatturato_iva
+- fatturato_lordo
 - incassato
-- credito_residuo
+- incassato_allocato
+- portafoglio_da_eseguire
+- prodotto_da_fatturare
+- credito_clienti
+- saldo_incassi_non_allocato
 - costi_variabili
 - costi_fissi
 - margine_contribuzione

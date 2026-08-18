@@ -87,7 +87,13 @@ Because their bodies are absent, FIN-001 cannot truthfully state how those outpu
 11. Production/hour and collection/hour have no canonical implementation.
 12. Twelve separate monthly RPC requests are used for yearly actuals in `Proiezioni.jsx`.
 
-## PRODUCT_OWNER_DECISION_REQUIRED
+## Product Owner decisions resolved by POL-003A
+
+POL-003A resolves quote basis, operational credit separation, VAT separation, event-period cancellation/reversal treatment, refund/credit-note/production-reversal separation, explicit-plus-FIFO payment allocation, external-payment reconciliation, management EBITDA exclusions, break-even comparison and hour denominators. The canonical implementation is documented in `pol-003a-product-owner-semantics-lock.md`.
+
+The list below is retained as the historical FIN-001 decision log and is superseded where POL-003A provides an answer.
+
+## Historical PRODUCT_OWNER_DECISION_REQUIRED
 
 - Whether `PREVENTIVATO` is gross before plan discount or net after commercial discount. The two POL-003 design documents conflict; engine v1 therefore requires an explicit quote basis.
 - Which lifecycle basis defines canonical `CREDITO_RESIDUO`: accepted, produced or invoiced. Engine v1 requires the caller to select it explicitly and does not clamp overpayments.
