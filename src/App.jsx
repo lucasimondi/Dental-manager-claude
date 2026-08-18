@@ -244,12 +244,11 @@ export default function App() {
           setFeatures(computeFeatures(st?.piano || 'base', st?.feature_overrides));
         }
 
-        // Nessuna riga in studio_users per questo utente = titolare originale
-        // dello studio (nessuno lo ha invitato): trattato come admin. Stessa
-        // regola "bootstrap-safe" della funzione is_studio_admin() lato DB,
-        // che è la vera barriera — questo calcolo qui serve solo per l'interfaccia.
+        // Fail closed anche nell'interfaccia: i controlli admin sono mostrati
+        // solo quando esiste una membership attiva e coerente con lo studio.
+        // La barriera autorevole resta public.is_studio_admin() lato database.
         const { data: mio } = await supabase.from('studio_users').select('ruolo, stato').eq('user_id', session.user.id).eq('studio_id', studioId).maybeSingle();
-        if (!cancelled) setIsStudioAdmin(!mio || (mio.ruolo === 'admin' && mio.stato === 'attivo'));
+        if (!cancelled) setIsStudioAdmin(!!mio && mio.ruolo === 'admin' && mio.stato === 'attivo');
       }
     })();
     return () => { cancelled = true; };
