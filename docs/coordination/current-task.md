@@ -1,35 +1,49 @@
 # Current task
 
-- TASK: POL-002A
-- TITLE: Critical Security Hardening
+- TASK: POL-002B
+- TITLE: Private Patient Files
 - OWNER: CODEX
-- BRANCH: `security/POL-002A-critical-hardening`
+- BRANCH: `security/POL-002B-private-patient-files-v2`
 - STATUS: `WAITING_PRODUCT_OWNER`
 
 ## Objective
 
-Prepare a minimal, versioned hardening patch for confirmed Supabase authorization issues without modifying production.
+Remove public access to clinical files in Supabase Storage without breaking the existing patient file workflow. Preserve tenant isolation and current legacy `<patient_id>/<filename>` object paths during the first cutover.
 
-## Completed
+## Verified production facts
 
-Using the verified metadata supplied by the Tech Lead, the branch now contains:
+- `patient-files` exists and is currently public.
+- Production currently contains 1 object in the bucket.
+- The object uses the legacy numeric patient-id first path segment and matches an existing `public.patients` row.
+- `patients.id` is bigint and `patients.studio_id` is uuid.
+- Active tenant membership is represented by `public.studio_users(user_id, studio_id, stato)`.
+- The verified pre-task application baseline in `SchedaPaz.jsx` listed/uploaded/deleted under `<patient_id>/` and used `getPublicUrl()` for preview/download.
 
-- a fail-closed `public.is_studio_admin()`;
-- a non-exposed active-admin tenant guard;
-- guarded wrappers for both GDPR SECURITY DEFINER RPCs that preserve the existing scalar return types at migration time and derive the audit executor from `auth.uid()`;
-- targeted EXECUTE revocations for explicitly privileged functions while leaving intentionally public flows unchanged;
-- a secure empty `search_path` and no direct Data API EXECUTE for `set_updated_at`;
-- a fail-closed UI admin check;
-- synthetic SQL security regression tests;
-- a test-only synthetic fixture baseline for disposable local validation;
-- a separate private-bucket compatibility plan for `patient-files`.
+## Prepared on branch
 
-No RLS policy was added to `google_calendar_tokens` or `super_admins`. No Storage or Auth setting was changed.
+- migration `20260818190000_pol_002b_private_patient_files.sql`;
+- four authenticated tenant-scoped Storage policies;
+- non-client-executable authorization helper tied to patient studio + active membership + JWT studio claim;
+- bucket privacy cutover (`public=false`), not applied remotely;
+- SQL regression assertions and behavioral test matrix.
 
-## Validation state
+The migration SQL has been syntax/preflight-tested against the production schema inside an explicit transaction ending in `ROLLBACK`; the bucket remained public after the test. No production state changed.
 
-Local validation is complete on an isolated Supabase/PostgreSQL 17 container using only synthetic data. The migration applied successfully, the SQL security suite passed with transaction rollback, and `npm run build` passed. The disposable database was stopped without backup and removed. Nothing was applied to production.
+## Completed validation
 
-## Product Owner action required
+- `SchedaPaz.jsx` now creates 300-second signed URLs and fails closed when listing or signing fails; list/upload/delete retain the legacy `<patient_id>/<filename>` path.
+- Repository search found no other `patient-files` `getPublicUrl()` call site.
+- The migration, SQL assertions and integration matrix passed on a disposable local Supabase/PostgreSQL 17 stack with synthetic users, patients, memberships and files only.
+- The integration test covered two tenants, a second active member, inactive/missing membership, missing/invalid studio claim, unknown patient, anonymous access, cross-tenant list/sign/upload/update/delete denial, same-tenant signed download, URL expiry and cleanup.
+- Local Supabase database advisors reported no issues; `npm run build`, `git diff --check` and the targeted secret-pattern scan passed.
+- The disposable local stack was stopped with `--no-backup`; no production or remote migration action occurred.
+- The branch was subsequently aligned with current `master` commit `f229e33` (POL-002C) without conflicts; the only inherited changes remove `netlify.toml` and establish Vercel as sole deployment authority.
+- After alignment, the migration, SQL assertions, two-tenant Storage integration test, local database advisors, application build, deployment-authority check, diff check and secret scan were repeated successfully.
 
-Review the migration, synthetic fixture contract, test corrections and local validation record, then approve or reject a PR. Do not merge, deploy or apply the migration remotely.
+## Awaiting Product Owner
+
+Review the branch diff, test evidence and handoff. Production application, deploy, migration execution and merge remain separate explicit gates.
+
+## Production gate
+
+Do not apply the POL-002B migration, deploy application changes, merge, or alter existing Storage objects until local validation is complete and the Product Owner explicitly approves the PR and cutover.
