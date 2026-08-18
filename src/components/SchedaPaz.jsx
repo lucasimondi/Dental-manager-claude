@@ -7,6 +7,7 @@ import { generaConsensoPdf, hashConsenso } from '../lib/pdfConsenso';
 import PdfView from './PdfView.jsx';
 import DocFiscale from './DocFiscale.jsx';
 import DocMedico from './DocMedico.jsx';
+import PhysioCartella from './PhysioCartella.jsx';
 import { condividiPdf, scaricaPdf } from '../lib/condivisionePdf';
 import { salvaPosizione, leggiPosizione } from '../lib/posizioneNavigazione';
 
@@ -481,7 +482,8 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
   if (pdfPlan) return <PdfView pl={pdfPlan} paz={paz} si={si} features={features} onClose={() => setPdfPlan(null)} />;
 
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
-  const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'piani', l: '📑 Piani' }, ...(isDentistico ? [{ id: 'impl', l: '🔩 Impianti' }] : []), { id: 'paga', l: '💰 Pagamenti' }, { id: 'foto', l: '📁 Foto' }, { id: 'doc', l: '📄 Documenti' }, { id: 'app', l: '📅 Agenda' }];
+  const isFisio = si?.vertical === 'fisioterapista' || si?.vertical === 'massofisioterapista';
+  const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'piani', l: '📑 Piani' }, ...(isDentistico ? [{ id: 'impl', l: '🔩 Impianti' }] : []), ...(isFisio ? [{ id: 'fisio', l: '🏃 Fisioterapia' }] : []), { id: 'paga', l: '💰 Pagamenti' }, { id: 'foto', l: '📁 Foto' }, { id: 'doc', l: '📄 Documenti' }, { id: 'app', l: '📅 Agenda' }];
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
@@ -1232,6 +1234,10 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
               );
             })}
           </div>
+        )}
+
+        {tab === 'fisio' && isFisio && (
+          <PhysioCartella paziente_id={paz.id} studio_id={si?.studio_id} />
         )}
 
         {tab === 'paga' && (
