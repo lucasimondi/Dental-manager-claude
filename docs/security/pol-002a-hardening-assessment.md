@@ -2,124 +2,118 @@
 
 Date: 2026-08-18  
 Baseline: `master` at `58df045d3247b37530137a055f8314b0da6245f2`
+Task branch: `security/POL-002A-critical-hardening`
 
-## Resumption implementation update
+## Final verified status
 
-Verified production metadata was supplied by the Tech Lead. The previously blocked items now have `FIX PREPARED` status:
+POL-002A is prepared and locally validated. The Tech Lead supplied verified, read-only Supabase production metadata for PostgreSQL 17, including the affected function identities, relevant definitions and grants. No application rows or Storage objects were queried.
 
-- `is_studio_admin()`: fail-closed replacement prepared;
-- GDPR export/delete: guarded wrappers prepared with JWT tenant equality, active admin membership and executor derived from `auth.uid()`;
-- privileged EXECUTE surface: targeted anon revocations prepared for explicitly classified functions;
-- `set_updated_at`: empty search_path and direct-execute revocation prepared;
-- client admin UI: fail-closed membership check prepared;
-- synthetic security regression test script prepared.
+The branch contains:
 
-The existing GDPR business bodies are preserved behind renamed, non-client-executable functions. Their scalar return types are obtained from the catalog during migration preflight. The migration aborts before alteration if required identities are absent or set-returning.
+- a fail-closed replacement for `public.is_studio_admin()`;
+- a non-client-executable active-admin tenant guard;
+- guarded wrappers for both GDPR SECURITY DEFINER RPCs, with JWT tenant equality, active admin membership and executor identity derived from `auth.uid()`;
+- targeted anonymous EXECUTE revocations for functions whose privileged caller classification was verified;
+- an empty `search_path` and direct Data API EXECUTE revocation for `public.set_updated_at`;
+- a fail-closed client admin UI membership check;
+- transaction-safe synthetic security regression tests and a test-only synthetic fixture baseline;
+- a separate compatibility plan for migrating `patient-files` to private access.
 
-The migration and tests have not been executed. Storage, Auth, financial formulas, RLS policies, policy-less privileged tables and production are unchanged.
+The existing GDPR business bodies are preserved behind renamed functions that are not executable by `PUBLIC`, `anon` or `authenticated`. Their scalar return types are obtained from the PostgreSQL catalog during migration preflight. The migration aborts before alteration if either verified function identity is missing or set-returning.
 
-## Safety outcome
+## Local validation result
 
-No production access was attempted. No migration, SQL replacement, grant, policy, Auth change, Storage change, application change, deployment, or production-data access was performed.
+Validation ran in a disposable, locally isolated Supabase environment using only synthetic data:
 
-A safe patch cannot yet be authored because the repository does not contain the identity arguments, return types, current bodies, ownership, grants, dependencies, policy bindings, or regression fixtures for the affected production objects.
+- Supabase CLI `2.115.0`;
+- Supabase PostgreSQL image `17.6.1.159` / PostgreSQL `17.6`;
+- two fictional tenants, four fictional memberships and two fictional patients;
+- no linked Supabase project, remote database URL, production credential, service-role key, production row or Storage object.
+
+Completed checks:
+
+1. The synthetic fixture loaded successfully into a fresh local database.
+2. `20260818143000_pol_002a_critical_security_hardening.sql` applied successfully with `ON_ERROR_STOP=1`.
+3. `supabase/tests/pol_002a_critical_security.sql` passed completely.
+4. Fail-closed behavior passed for anonymous callers, missing memberships, inactive admins, non-admin users and cross-tenant memberships.
+5. Same-tenant active-admin behavior and both guarded GDPR paths passed.
+6. Trusted GDPR executor handling, financial RPC tenant authorization, intentionally public grants and `set_updated_at` hardening passed.
+7. The synthetic GDPR deletion ran inside the test transaction and was rolled back.
+8. `npm ci --ignore-scripts` and `npm run build` passed.
+
+The disposable database was stopped with `supabase stop --no-backup` and removed after validation. See `docs/security/pol-002a-local-validation.md` for the exact environment and results.
+
+## Production safety outcome
+
+Nothing from POL-002A has been applied to production. No remote migration, SQL statement, grant, policy, Auth setting, Storage setting, deployment or production-data operation was executed. The local validation proves the prepared migration against the verified minimal contracts represented by synthetic fixtures; it is not a substitute for review against the still-unversioned complete production backend.
 
 ## Finding status
 
-### 1. Fail-open admin check — CONFIRMED / FIX BLOCKED
+### 1. Fail-open admin check — CONFIRMED / FIX PREPARED AND LOCALLY VERIFIED
 
-The Product Owner reports production `public.is_studio_admin()` effectively uses `coalesce(membership_check, true)`. The repository contains no function definition.
+Verified production metadata showed `public.is_studio_admin()` used `coalesce(..., true)` and granted EXECUTE to `anon` and `authenticated`. The prepared migration makes every missing or invalid authorization state false and grants direct execution only to `authenticated`.
 
-The client independently mirrors the fail-open behavior in `src/App.jsx`: missing `studio_users` membership is treated as admin for UI gating. This is not the database security boundary, but it confirms the fallback assumption is embedded in application behavior.
+The client independently treated missing `studio_users` membership as admin for UI gating. The branch changes that UI check to fail closed. Database authorization remains the security boundary.
 
-Target behavior is approved: return true only for an authenticated caller with a valid JWT studio claim and an active matching `studio_users` row whose role is `admin`. All missing/invalid states return false.
+Local security tests passed for anonymous, no-membership, inactive-admin, normal-user, valid same-tenant admin and cross-tenant admin cases.
 
-Required before patch: exact function identity arguments, return type, language, current definition, owner, volatility, security mode, search path, grants, dependent policies/functions, and the documented bootstrap path for the original studio owner.
+### 2. GDPR SECURITY DEFINER authorization — CONFIRMED / FIX PREPARED AND LOCALLY VERIFIED
 
-### 2. GDPR SECURITY DEFINER authorization — CONFIRMED / FIX BLOCKED
+Verified production identities are:
 
-The client calls:
-- `gdpr_esporta_paziente(p_paziente_id, p_studio_id, p_eseguita_da)`
-- `gdpr_cancella_paziente(p_paziente_id, p_studio_id, p_eseguita_da, p_cancella_anche_fatture)`
+- `gdpr_esporta_paziente(bigint, uuid, uuid)`;
+- `gdpr_cancella_paziente(bigint, uuid, uuid, boolean)`.
 
-Client code takes `p_eseguita_da` from the session, but caller-controlled input cannot be an authorization boundary. The Product Owner confirms the production functions do not prove caller membership in `p_studio_id`.
+Production metadata confirmed that the original functions trusted caller-supplied tenant and executor values without a verified caller/JWT tenant equality check. The prepared wrappers require an authenticated caller, require the trusted JWT studio to equal `p_studio_id`, require an active admin membership in that studio and pass `auth.uid()` to the preserved business implementation as the executor.
 
-Required target: authenticated caller; valid JWT studio claim; claim equals `p_studio_id`; active membership with an approved role; patient belongs to the same tenant; executor identity derived from `auth.uid()`.
+Local tests passed for anonymous denial, wrong-tenant denial, cross-tenant patient denial, valid same-tenant admin access, trusted executor use and transactional synthetic deletion.
 
-Required before patch: exact overloads, argument types/defaults, return types, complete bodies, audit dependencies, delete/export dependency graph, role requirements, grants, exception contract, and transaction behavior. Replacing these functions without those facts risks data loss or breaking statutory workflows.
+Residual decision: admin-only GDPR semantics must remain explicitly accepted by the Product Owner before production application.
 
-### 3. SECURITY DEFINER execute surface — REQUIRES METADATA
+### 3. SECURITY DEFINER execute surface — PARTIALLY HARDENED / INVENTORY STILL OPEN
 
-The client references 22 RPC names. Repository references are not a complete inventory and do not reveal current EXECUTE grants or internal authorization.
+Verified metadata allowed targeted removal of anonymous EXECUTE from the explicitly privileged `admin_*`, agent/operator-setting and GDPR functions covered by the migration. Intentionally public booking, registration, remote-consent and remote-history flows were deliberately preserved, and their ACL regression check passed locally.
 
-Provisional categories requiring verification:
+The complete production SECURITY DEFINER inventory is still not versioned or fully classified. Every remaining function still requires identity, ownership, ACL, source, search path, dependency, intended-caller and internal-authorization review. Blanket anonymous revocation remains unsafe because some flows intentionally require anonymous invocation.
 
-A — authenticated/privileged candidates: `admin_list_studio_users`, `admin_list_studios`, `admin_update_studio`, `firma_storia_clinica`, `gdpr_cancella_paziente`, `gdpr_esporta_paziente`, `get_costo_orario`, `get_kpi_periodo`, `is_super_admin`, `set_agente_azione`, `set_multi_operatore`, and link-creation functions.
+### 4. `set_updated_at` search path — CONFIRMED / FIX PREPARED AND LOCALLY VERIFIED
 
-B — intentionally public candidates: `info_link_firma_consenso`, `info_link_storia_clinica`, `info_studio_pubblico`, `prenota_slot_pubblico`, `registra_firma_consenso`, `slot_occupati_pubblico`, `tipi_prenotabili_online`, and possibly `register_studio` / remote completion flows. Public intent must be proven; token validation, rate limiting and tenant scoping remain unknown.
+Verified metadata and the Security Advisor confirmed mutable `search_path`. The migration applies an empty search path to every verified `public.set_updated_at` overload and revokes direct execution from `PUBLIC`, `anon` and `authenticated`. PostgreSQL 17 catalog state and ACL assertions passed locally.
 
-C — trigger/internal candidates: `set_updated_at` and every unlisted trigger/helper function. No complete inventory is available.
+### 5. RLS without policies — UNCHANGED / ACCESS MODEL REVIEW REQUIRED
 
-For every public SECURITY DEFINER function, obtain identity signature, owner, ACL, source, search path, dependencies, exposed roles, intended caller, internal authorization, and whether SECURITY DEFINER is necessary. Do not revoke `anon` globally.
+`public.google_calendar_tokens` and `public.super_admins` have RLS enabled with zero policies. This may be intentional for service-side or tightly controlled SECURITY DEFINER access. POL-002A does not add permissive policies merely to silence the advisor.
 
-### 4. set_updated_at search_path — CONFIRMED BY ADVISOR / FIX BLOCKED
+The remaining review must establish their owners, grants, direct callers, function dependencies, service-role use and expected browser-role denial.
 
-Target is an explicit minimal secure search path and schema-qualified references. The repository lacks the function definition, identity signature, owner, trigger dependencies and current grants. Do not replace it until those are captured.
+### 6. `patient-files` public bucket — CONFIRMED P0 / SEPARATE MIGRATION REQUIRED
 
-### 5. RLS without policy — REQUIRES PRODUCT OWNER DECISION
+The patient record uses `patient-files` for images and PDFs and obtains public URLs. These objects may contain identifiable clinical material, so public access remains a confidentiality risk. The frontend currently depends on public URLs, making an immediate private-bucket switch behavior-breaking.
 
-`public.google_calendar_tokens` and `public.super_admins` reportedly have RLS enabled with no policies. This can be correct when access is limited to service-side or tightly authorized SECURITY DEFINER functions.
+POL-002A documents a separate staged plan covering tenant-scoped Storage policies, signed URLs or authorized downloads, two-tenant tests, compatible application deployment, bucket privatization, rollback and monitoring. The bucket remains unchanged in production.
 
-Required evidence: table definitions, RLS forced/enabled state, grants, owners, all direct and function dependencies, server-side callers, service-role usage, and tests showing browser roles cannot access them. Do not add permissive policies merely to clear an advisor warning.
+## Security and regression coverage achieved
 
-### 6. patient-files public bucket — CONFIRMED P0 / MIGRATION DESIGN REQUIRED
+- `is_studio_admin`: anonymous false; no membership false; inactive false; normal user false; correct active admin true; other-studio admin false.
+- GDPR RPC: correct tenant/admin permitted; wrong tenant denied; anonymous denied; caller-supplied executor not trusted; other-tenant patient denied; trusted executor equals `auth.uid()`.
+- Financial regression: wrong-tenant `get_kpi_periodo` and `get_costo_orario` remain denied; correct-tenant calls remain available.
+- Public regression: verified intentional anonymous flow grants remain present.
+- Trigger regression: `set_updated_at` has an empty search path and is not directly executable by Data API roles.
+- Application regression: production Vite build passes.
 
-Repository usage is limited to `src/components/SchedaPaz.jsx`:
-- list objects beneath `<patient_id>/`;
-- upload arbitrary selected files;
-- delete objects;
-- obtain URLs with `getPublicUrl`;
-- render images and PDFs in the patient-record Photos section.
+## Residual risks and open work
 
-The UI calls the objects “foto” and accepts image/PDF extensions. In a healthcare patient record these may contain identifiable clinical images or documents. A public bucket makes possession/guessing/leakage of an object URL sufficient for unauthenticated access. Object paths use patient IDs and timestamp-derived filenames, which are not an authorization control.
+- The full production Supabase schema, functions, grants, RLS, triggers, Storage policies and Edge Functions are still not reproducible from the repository.
+- Synthetic contract coverage cannot prove compatibility with every unversioned production dependency or overload.
+- The complete SECURITY DEFINER exposure and intended-caller inventory remains incomplete.
+- `patient-files` remains public until its separate compatibility migration is approved and deployed safely.
+- `google_calendar_tokens` and `super_admins` still require explicit access-model documentation and verification.
+- Supabase Auth leaked-password protection remains disabled.
+- Physio relationships still use non-composite foreign keys and do not structurally enforce tenant-safe references.
+- The migration preserves GDPR bodies under renamed internal functions; dependencies and operational observability must be reviewed before remote application.
+- Existing dependencies report 10 npm audit findings: 2 moderate, 6 high and 2 critical. Remediation is outside POL-002A.
+- The existing build continues to report pdfjs `eval` and large-chunk warnings.
 
-The frontend depends directly on public URLs. Switching the bucket to private without first replacing URL generation would break previews.
+## Required approval before production
 
-Safe staged path, requiring a separate Product Owner-approved migration:
-1. inventory bucket policies and object metadata only, never object content;
-2. define tenant-scoped Storage policies and a safe path convention that includes/verifies tenant identity;
-3. update reads to short-lived signed URLs or an authorized download endpoint;
-4. test list/upload/read/delete and URL expiry with two synthetic tenants;
-5. deploy compatible application behavior first;
-6. make the bucket private only after compatibility validation;
-7. verify old public URLs no longer work and monitor failures;
-8. define retention, audit, cache and incident procedures.
-
-Do not change the bucket until the complete dependency and rollback plan is approved.
-
-## Required SQL test matrix
-
-Tests cannot be implemented reproducibly until the baseline schema/functions are available. The future migration and tests must land together and use synthetic fixtures only.
-
-`is_studio_admin`: anonymous false; no membership false; inactive false; normal user false; correct active admin true; admin from other studio false.
-
-GDPR RPC: correct tenant/allowed role permitted; wrong tenant denied; anonymous denied; manipulated `p_eseguita_da` denied; patient in other tenant denied; audit executor equals `auth.uid()`.
-
-Financial regression: `get_kpi_periodo` and `get_costo_orario` keep current authorization behavior and cannot be widened.
-
-Public regression: every verified public booking/consent/token flow retains only its intended anonymous capability; internal/trigger functions remain non-callable through the Data API.
-
-## Exact metadata required to resume
-
-Provide sanitized results, not credentials or row data, for:
-- `pg_get_function_identity_arguments`, result type and `pg_get_functiondef` for all public functions;
-- function owner, `prosecdef`, `provolatile`, `proconfig`, ACL and dependencies;
-- routine grants and default privileges;
-- `pg_policies`, RLS enabled/forced flags and table grants;
-- definitions and constraints for `studio_users`, patients, GDPR audit/dependency tables, `google_calendar_tokens`, and `super_admins`;
-- trigger definitions/bindings, especially `set_updated_at`;
-- Storage bucket metadata and Storage policies for `patient-files`;
-- verified intended callers/roles for each SECURITY DEFINER function;
-- current migration-history identifiers.
-
-Raw dumps, secrets, Auth users, patient rows, clinical files and Storage objects must not be supplied or committed.
+Product Owner and Tech Lead must review the prepared migration, synthetic fixture contract, test results, rollback outline, preserved GDPR implementation strategy and admin-only GDPR semantics. A production migration or deployment requires a separate explicit gate. Until then, POL-002A remains prepared and locally verified only.
