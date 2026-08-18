@@ -21,14 +21,15 @@ Using the verified metadata supplied by the Tech Lead, the branch now contains:
 - a secure empty `search_path` and no direct Data API EXECUTE for `set_updated_at`;
 - a fail-closed UI admin check;
 - synthetic SQL security regression tests;
+- a test-only synthetic fixture baseline for disposable local validation;
 - a separate private-bucket compatibility plan for `patient-files`.
 
 No RLS policy was added to `google_calendar_tokens` or `super_admins`. No Storage or Auth setting was changed.
 
 ## Validation state
 
-Repository/static checks are complete. SQL tests were prepared but not executed because this environment has no local Supabase, PostgreSQL client, or isolated synthetic database. Nothing was applied to production.
+Local validation is complete on an isolated Supabase/PostgreSQL 17 container using only synthetic data. The migration applied successfully, the SQL security suite passed with transaction rollback, and `npm run build` passed. The disposable database was stopped without backup and removed. Nothing was applied to production.
 
 ## Product Owner action required
 
-Request Tech Lead review of the migration and fixture contract, execute the tests only in a disposable isolated Supabase environment, and approve or reject a PR. Do not merge, deploy or apply the migration remotely.
+Review the migration, synthetic fixture contract, test corrections and local validation record, then approve or reject a PR. Do not merge, deploy or apply the migration remotely.

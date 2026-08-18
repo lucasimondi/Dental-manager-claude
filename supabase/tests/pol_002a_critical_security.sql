@@ -21,10 +21,19 @@
 \if :{?studio_a}
 \else
   \echo 'Missing synthetic fixture variables; refusing to run'
-  \quit 1
+  SELECT 1 / 0;
 \endif
 
 BEGIN;
+
+-- Make psql fixture variables available inside dollar-quoted DO blocks, where
+-- psql intentionally does not perform variable interpolation.
+SELECT set_config('pol002a.studio_a', :'studio_a', true);
+SELECT set_config('pol002a.studio_b', :'studio_b', true);
+SELECT set_config('pol002a.admin_a', :'admin_a', true);
+SELECT set_config('pol002a.admin_b', :'admin_b', true);
+SELECT set_config('pol002a.patient_a', :'patient_a', true);
+SELECT set_config('pol002a.patient_b', :'patient_b', true);
 
 -- Helpers: set Supabase-compatible claims before SET LOCAL ROLE.
 RESET ROLE;
@@ -35,7 +44,7 @@ SELECT set_config('request.jwt.claims', '{}', true);
 SELECT public.is_studio_admin()::integer AS anonymous_admin \gset
 \if :anonymous_admin
   \echo 'FAIL: anonymous user resolved as admin'
-  \quit 1
+  SELECT 1 / 0;
 \endif
 
 -- anon must not have direct EXECUTE.
@@ -46,7 +55,7 @@ SELECT has_function_privilege(
 )::integer AS anon_admin_execute \gset
 \if :anon_admin_execute
   \echo 'FAIL: anon retains is_studio_admin EXECUTE'
-  \quit 1
+  SELECT 1 / 0;
 \endif
 
 -- Authenticated user with no matching membership.
@@ -65,7 +74,7 @@ SET LOCAL ROLE authenticated;
 SELECT public.is_studio_admin()::integer AS no_membership_admin \gset
 \if :no_membership_admin
   \echo 'FAIL: missing membership resolved as admin'
-  \quit 1
+  SELECT 1 / 0;
 \endif
 
 -- Inactive admin membership.
@@ -84,7 +93,7 @@ SET LOCAL ROLE authenticated;
 SELECT public.is_studio_admin()::integer AS inactive_admin \gset
 \if :inactive_admin
   \echo 'FAIL: inactive membership resolved as admin'
-  \quit 1
+  SELECT 1 / 0;
 \endif
 
 -- Normal user.
@@ -103,7 +112,7 @@ SET LOCAL ROLE authenticated;
 SELECT public.is_studio_admin()::integer AS normal_user_admin \gset
 \if :normal_user_admin
   \echo 'FAIL: normal user resolved as admin'
-  \quit 1
+  SELECT 1 / 0;
 \endif
 
 -- Correct studio admin.
@@ -123,7 +132,7 @@ SELECT public.is_studio_admin()::integer AS correct_admin \gset
 \if :correct_admin
 \else
   \echo 'FAIL: correct active admin was denied'
-  \quit 1
+  SELECT 1 / 0;
 \endif
 
 -- Admin membership in another studio must not authorize studio_a claim.
@@ -142,25 +151,27 @@ SET LOCAL ROLE authenticated;
 SELECT public.is_studio_admin()::integer AS cross_tenant_admin \gset
 \if :cross_tenant_admin
   \echo 'FAIL: cross-tenant admin membership was accepted'
-  \quit 1
+  SELECT 1 / 0;
 \endif
 
 -- GDPR: no-session access must fail.
 RESET ROLE;
 SELECT set_config('request.jwt.claim.sub', '', true);
 SELECT set_config('request.jwt.claims', '{}', true);
-\set ON_ERROR_STOP off
-SELECT public.gdpr_esporta_paziente(
-  :'patient_a'::bigint,
-  :'studio_a'::uuid,
-  :'admin_a'::uuid
-);
-\if :ERROR
-\else
-  \echo 'FAIL: no-session GDPR export was permitted'
-  \quit 1
-\endif
-\set ON_ERROR_STOP on
+DO $test$
+BEGIN
+  BEGIN
+    PERFORM public.gdpr_esporta_paziente(
+      current_setting('pol002a.patient_a')::bigint,
+      current_setting('pol002a.studio_a')::uuid,
+      current_setting('pol002a.admin_a')::uuid
+    );
+  EXCEPTION WHEN insufficient_privilege THEN
+    RETURN;
+  END;
+  RAISE EXCEPTION 'FAIL: no-session GDPR export was permitted';
+END;
+$test$;
 
 -- GDPR: correct tenant and active admin is permitted.
 RESET ROLE;
@@ -182,18 +193,20 @@ SELECT public.gdpr_esporta_paziente(
 );
 
 -- GDPR: supplied studio differing from JWT tenant must fail before any export.
-\set ON_ERROR_STOP off
-SELECT public.gdpr_esporta_paziente(
-  :'patient_b'::bigint,
-  :'studio_b'::uuid,
-  :'admin_a'::uuid
-);
-\if :ERROR
-\else
-  \echo 'FAIL: wrong-tenant GDPR export was permitted'
-  \quit 1
-\endif
-\set ON_ERROR_STOP on
+DO $test$
+BEGIN
+  BEGIN
+    PERFORM public.gdpr_esporta_paziente(
+      current_setting('pol002a.patient_b')::bigint,
+      current_setting('pol002a.studio_b')::uuid,
+      current_setting('pol002a.admin_a')::uuid
+    );
+  EXCEPTION WHEN insufficient_privilege THEN
+    RETURN;
+  END;
+  RAISE EXCEPTION 'FAIL: wrong-tenant GDPR export was permitted';
+END;
+$test$;
 
 -- Manipulating p_eseguita_da must not bypass authorization. The wrapper body
 -- must pass its trusted v_executor instead of the caller argument.
@@ -208,7 +221,7 @@ SELECT (
 \if :trusted_export_executor
 \else
   \echo 'FAIL: GDPR export wrapper lacks trusted executor'
-  \quit 1
+  SELECT 1 / 0;
 \endif
 
 SELECT (
@@ -222,30 +235,29 @@ SELECT (
 \if :trusted_delete_executor
 \else
   \echo 'FAIL: GDPR delete wrapper lacks trusted executor'
-  \quit 1
+  SELECT 1 / 0;
 \endif
 
 -- A patient from another tenant must not be exported under studio_a. Current
 -- business function may raise or return ok=false; either result is denial.
-\set ON_ERROR_STOP off
-SELECT coalesce(
-  (public.gdpr_esporta_paziente(
-    :'patient_b'::bigint,
-    :'studio_a'::uuid,
-    :'admin_b'::uuid
-  ) ->> 'ok')::boolean,
-  false
-)::integer AS cross_tenant_patient_ok
-\gset
-\if :ERROR
-  \echo 'PASS: cross-tenant patient export raised an error'
-\else
-  \if :cross_tenant_patient_ok
-    \echo 'FAIL: patient from another tenant was exported'
-    \quit 1
-  \endif
-\endif
-\set ON_ERROR_STOP on
+DO $test$
+DECLARE
+  v_result jsonb;
+BEGIN
+  BEGIN
+    v_result := public.gdpr_esporta_paziente(
+      current_setting('pol002a.patient_b')::bigint,
+      current_setting('pol002a.studio_a')::uuid,
+      current_setting('pol002a.admin_b')::uuid
+    );
+  EXCEPTION WHEN OTHERS THEN
+    RETURN;
+  END;
+  IF coalesce((v_result ->> 'ok')::boolean, false) THEN
+    RAISE EXCEPTION 'FAIL: patient from another tenant was exported';
+  END IF;
+END;
+$test$;
 
 -- Financial authorization regression: wrong tenant still denied.
 RESET ROLE;
@@ -261,25 +273,33 @@ SELECT set_config(
 );
 SET LOCAL ROLE authenticated;
 
-\set ON_ERROR_STOP off
-SELECT public.get_kpi_periodo(
-  :'studio_b'::uuid,
-  CURRENT_DATE - 30,
-  CURRENT_DATE
-);
-\if :ERROR
-\else
-  \echo 'FAIL: get_kpi_periodo allowed wrong tenant'
-  \quit 1
-\endif
+DO $test$
+BEGIN
+  BEGIN
+    PERFORM public.get_kpi_periodo(
+      current_setting('pol002a.studio_b')::uuid,
+      CURRENT_DATE - 30,
+      CURRENT_DATE
+    );
+  EXCEPTION WHEN insufficient_privilege THEN
+    RETURN;
+  END;
+  RAISE EXCEPTION 'FAIL: get_kpi_periodo allowed wrong tenant';
+END;
+$test$;
 
-SELECT public.get_costo_orario(:'studio_b'::uuid);
-\if :ERROR
-\else
-  \echo 'FAIL: get_costo_orario allowed wrong tenant'
-  \quit 1
-\endif
-\set ON_ERROR_STOP on
+DO $test$
+BEGIN
+  BEGIN
+    PERFORM public.get_costo_orario(
+      current_setting('pol002a.studio_b')::uuid
+    );
+  EXCEPTION WHEN insufficient_privilege THEN
+    RETURN;
+  END;
+  RAISE EXCEPTION 'FAIL: get_costo_orario allowed wrong tenant';
+END;
+$test$;
 
 -- Financial authorization regression: correct tenant remains callable.
 SELECT public.get_kpi_periodo(
@@ -310,14 +330,15 @@ WHERE n.nspname = 'public'
 \if :intended_public_grants
 \else
   \echo 'FAIL: an intended public flow lost anon EXECUTE'
-  \quit 1
+  SELECT 1 / 0;
 \endif
 
 -- Trigger helper must not be directly exposed and must have secure search_path.
 SELECT (
   NOT has_function_privilege('anon', p.oid, 'EXECUTE')
   AND NOT has_function_privilege('authenticated', p.oid, 'EXECUTE')
-  AND coalesce(p.proconfig, ARRAY[]::text[]) @> ARRAY['search_path=']
+  AND coalesce(p.proconfig, ARRAY[]::text[])
+      && ARRAY['search_path=', 'search_path=""']
 )::integer AS set_updated_at_hardened
 FROM pg_proc AS p
 JOIN pg_namespace AS n ON n.oid = p.pronamespace
@@ -328,7 +349,7 @@ LIMIT 1
 \if :set_updated_at_hardened
 \else
   \echo 'FAIL: set_updated_at hardening not present'
-  \quit 1
+  SELECT 1 / 0;
 \endif
 
 -- GDPR delete success is last because it mutates only synthetic fixture data;
