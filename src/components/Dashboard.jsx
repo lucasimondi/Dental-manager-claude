@@ -718,7 +718,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
 
       {todoModal && (
         <Modal title="+ Nuova attività" onClose={() => setTodoModal(false)}>
-          <textarea value={todoInput} onChange={e => setTodoInput(e.target.value)} autoFocus rows={4} placeholder="es. Richiamare Rossi per RX&#10;es. Ordinare viti Nobel 4.3mm" style={{ width: '100%', padding: '11px 12px', border: `1.5px solid ${C.brd}`, borderRadius: 10, fontSize: 13, color: C.txt, background: C.sur, boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }} />
+          <textarea value={todoInput} onChange={e => setTodoInput(e.target.value)} autoFocus rows={4} placeholder={isDentistico ? 'es. Richiamare Rossi per RX&#10;es. Ordinare viti Nobel 4.3mm' : 'es. Richiamare Rossi per controllo&#10;es. Ordinare materiale ambulatorio'} style={{ width: '100%', padding: '11px 12px', border: `1.5px solid ${C.brd}`, borderRadius: 10, fontSize: 13, color: C.txt, background: C.sur, boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }} />
           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
             <Btn ch="Annulla" v="sec" onClick={() => setTodoModal(false)} full />
             <Btn ch="Aggiungi" onClick={() => { addTodo(); setTodoModal(false); }} dis={!todoInput.trim()} full />

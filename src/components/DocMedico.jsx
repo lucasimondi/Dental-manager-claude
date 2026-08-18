@@ -895,7 +895,7 @@ export default function DocMedico({ paz, si, onClose }) {
           <Crd style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10 }}>✉️ Dati lettera</div>
             <Fld label="Destinatario (specialista)">
-              <Inp value={specialista} onChange={e => setSpecialista(e.target.value)} placeholder="es. Dott. Rossi, Chirurgo Maxillo-Facciale..." />
+              <Inp value={specialista} onChange={e => setSpecialista(e.target.value)} placeholder={isDentistico ? 'es. Dott. Rossi, Chirurgo Maxillo-Facciale...' : 'es. Dott. Rossi, Ortopedico...'} />
             </Fld>
             <Fld label="Motivo della consulenza">
               <textarea value={motivoLettera} onChange={e => setMotivoLettera(e.target.value)} rows={2} placeholder={isDentistico ? 'es. Valutazione per implantologia dente 36...' : 'es. Valutazione specialistica per...'} style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${C.brd}`, borderRadius: 10, fontSize: 13, color: C.txt, background: C.sur, boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }} />
@@ -924,7 +924,7 @@ export default function DocMedico({ paz, si, onClose }) {
               </Fld>
             )}
             <Fld label="Titolo documento">
-              <Inp value={titoloProtocollo} onChange={e => setTitoloProtocollo(e.target.value)} placeholder="es. Post-chirurgia orale" />
+              <Inp value={titoloProtocollo} onChange={e => setTitoloProtocollo(e.target.value)} placeholder={isDentistico ? 'es. Post-chirurgia orale' : 'es. Istruzioni post-trattamento'} />
             </Fld>
             <Fld label="Testo istruzioni (modificabile)">
               <textarea value={testoProtocollo} onChange={e => setTestoProtocollo(e.target.value)} rows={14} style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${C.brd}`, borderRadius: 10, fontSize: 13, color: C.txt, background: C.sur, boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} />

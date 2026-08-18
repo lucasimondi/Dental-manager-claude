@@ -16,7 +16,8 @@ const CATEGORIE_FILTRO = [
    (generaRichiamiBot, vedi anche l'effetto automatico in App.jsx) oppure
    creati a mano qui. "Scansiona ora" forza un ricalcolo immediato, utile
    per le condizioni che dipendono solo dal passare dei giorni (standby). */
-export default function Richiami({ patients, plans, payments, appointments, richiami, setRichiami, templates, features, onOpenPaz }) {
+export default function Richiami({ patients, plans, payments, appointments, richiami, setRichiami, templates, features, onOpenPaz, si }) {
+  const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const [filtroCategoria, setFiltroCategoria] = useState('tutte');
   const [mostraFatti, setMostraFatti] = useState(false);
   const [modal, setModal] = useState(false);
@@ -141,7 +142,7 @@ export default function Richiami({ patients, plans, payments, appointments, rich
               {Object.entries(RICHIAMO_CATEGORIE).map(([id, c]) => <option key={id} value={id}>{c.icona} {c.label}</option>)}
             </Sel>
           </Fld>
-          <Fld label="Motivo"><Inp value={form.motivo} onChange={(e) => F({ motivo: e.target.value })} placeholder="es. Richiamare per controllo tartaro" /></Fld>
+          <Fld label="Motivo"><Inp value={form.motivo} onChange={(e) => F({ motivo: e.target.value })} placeholder={isDentistico ? 'es. Richiamare per controllo tartaro' : 'es. Richiamare per controllo periodico'} /></Fld>
           <Fld label="Data richiamo"><Inp type="date" value={form.dataScadenza} onChange={(e) => F({ dataScadenza: e.target.value })} /></Fld>
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             <Btn ch="Annulla" v="sec" onClick={() => setModal(false)} full />

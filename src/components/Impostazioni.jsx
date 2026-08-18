@@ -970,7 +970,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       {modelloModal && (
         <Modal title={modelloModal === 'new' ? 'Nuovo modello' : 'Modifica modello'} onClose={() => setModelloModal(null)}>
           <Fld label="Titolo">
-            <Inp value={modelloForm.titolo} onChange={(e) => setModelloForm((f) => ({ ...f, titolo: e.target.value }))} placeholder="es. Consenso trattamento dati, Consenso impianto..." />
+            <Inp value={modelloForm.titolo} onChange={(e) => setModelloForm((f) => ({ ...f, titolo: e.target.value }))} placeholder={(!si?.vertical || si.vertical === 'dentistico') ? 'es. Consenso trattamento dati, Consenso impianto...' : 'es. Consenso trattamento dati, Consenso specifico...'} />
           </Fld>
           <Fld label="Tipo">
             <div style={{ display: 'flex', gap: 8 }}>

@@ -250,18 +250,18 @@ export default function Listino({ pricelist, setPricelist, si }) {
             </Sel>
           </Fld>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <Fld label="Codice"><Inp value={form.cod || ''} onChange={(e) => setForm((f) => ({ ...f, cod: e.target.value }))} placeholder="D2140" /></Fld>
+            <Fld label="Codice"><Inp value={form.cod || ''} onChange={(e) => setForm((f) => ({ ...f, cod: e.target.value }))} placeholder={isDentistico ? 'D2140' : 'es. 12345'} /></Fld>
             <Fld label="Prezzo €"><Inp type="number" inputMode="decimal" value={form.prezzo} onChange={(e) => setForm((f) => ({ ...f, prezzo: e.target.value }))} /></Fld>
           </div>
           <Fld label="Nome prestazione"><Inp value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} /></Fld>
           <Fld label="Richiamo dopo (mesi)">
-            <Inp type="number" min="0" inputMode="numeric" value={form.richiamoMesi} onChange={(e) => setForm((f) => ({ ...f, richiamoMesi: e.target.value }))} placeholder="Automatico (rilevato dal nome, es. igiene → 6 mesi)" />
+            <Inp type="number" min="0" inputMode="numeric" value={form.richiamoMesi} onChange={(e) => setForm((f) => ({ ...f, richiamoMesi: e.target.value }))} placeholder={isDentistico ? 'Automatico (rilevato dal nome, es. igiene → 6 mesi)' : 'Automatico (rilevato dal nome, es. controllo → 6 mesi)'} />
           </Fld>
           <div style={{ fontSize: 11, color: C.txl, marginTop: -8, marginBottom: 13 }}>Lasciare vuoto per lasciar decidere al bot in base al nome della prestazione. Vale quando questa prestazione viene segnata "eseguita" nella scheda paziente.</div>
           <Fld label="Durata media (minuti, opzionale)">
             <Inp type="number" min="0" inputMode="numeric" value={form.durataMinuti} onChange={(e) => setForm((f) => ({ ...f, durataMinuti: e.target.value }))} placeholder="es. 45" />
           </Fld>
-          <div style={{ fontSize: 11, color: C.txl, marginTop: -8, marginBottom: 13 }}>Usata per stimare il costo del tempo poltrona nella marginalità (Controllo → Marginalità).</div>
+          <div style={{ fontSize: 11, color: C.txl, marginTop: -8, marginBottom: 13 }}>Usata per stimare il costo del tempo {isDentistico ? 'poltrona' : 'postazione'} nella marginalità (Controllo → Marginalità).</div>
           <div style={{ display: 'flex', gap: 7, marginTop: 8 }}>
             <Btn ch="Annulla" v="sec" onClick={() => setModal(false)} full />
             <Btn ch="Salva" onClick={save} full />
