@@ -1,17 +1,36 @@
-# Deployment — current state
+# Deployment — authoritative model
 
-Vercel appears to be the active platform. `vercel.json` defines SPA rewrites and no-cache headers for the entry page. `api/whatsapp-webhook.js` proxies Meta webhook traffic to a hardcoded Supabase Edge Function.
+## Deployment authority
 
-`netlify.toml` is also present, creating hosting ambiguity. Vite builds `dist` and the PWA uses automatic update plus manual vendor chunks.
+Vercel is the sole authoritative hosting and deployment platform for Poliedra.
 
-Known gaps:
-- no GitHub Actions;
-- no required status checks or documented promotion flow;
-- no documented staging/preview environment model;
-- Supabase URLs are hardcoded;
-- Edge Functions are not versioned;
-- Vercel proxy uses CommonJS in a package marked `type: module`, requiring runtime verification;
-- Netlify lacks an explicit SPA fallback;
-- security headers, monitoring, rollback telemetry, and PWA release governance are undocumented.
+- GitHub `master` is the source branch for production promotion.
+- Pull-request/branch previews are expected to run on Vercel.
+- `vercel.json` is the repository deployment configuration for SPA rewrites and entry-page cache control.
+- Netlify is not part of the supported deployment architecture and its repository configuration has been removed under POL-002C.
+- Supabase remains the authoritative backend for database, Auth, Storage and Edge Functions.
 
-Deployment architecture changes require Product Owner approval. POL-001 does not change runtime configuration.
+## Current runtime notes
+
+`api/whatsapp-webhook.js` proxies Meta webhook traffic to a Supabase Edge Function. Vite builds `dist` and the PWA uses automatic update plus manual vendor chunks.
+
+## Promotion model
+
+1. Work happens on a dedicated branch.
+2. Vercel preview is used for application-level verification.
+3. Required tests/review must pass before merge.
+4. Product Owner approval gates production-affecting changes.
+5. Merge to `master` is the only supported application promotion path.
+6. Supabase migrations remain a separate controlled deployment step and must not be implicitly coupled to frontend deployment.
+
+## Remaining gaps
+
+- no GitHub Actions / required repository status checks yet;
+- staging environment model still needs formalization;
+- some Supabase URLs/config remain hardcoded and should move to managed environment configuration;
+- Edge Functions are not fully versioned in this repository;
+- Vercel proxy runtime compatibility requires dedicated verification;
+- security headers, monitoring, rollback telemetry and PWA release governance remain to be completed;
+- deployment rollback procedure needs an automated release checklist.
+
+POL-002C removes deployment ambiguity only. It does not deploy application code or alter Supabase production.
