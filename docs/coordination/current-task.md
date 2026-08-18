@@ -37,6 +37,8 @@ The migration SQL has been syntax/preflight-tested against the production schema
 - The integration test covered two tenants, a second active member, inactive/missing membership, missing/invalid studio claim, unknown patient, anonymous access, cross-tenant list/sign/upload/update/delete denial, same-tenant signed download, URL expiry and cleanup.
 - Local Supabase database advisors reported no issues; `npm run build`, `git diff --check` and the targeted secret-pattern scan passed.
 - The disposable local stack was stopped with `--no-backup`; no production or remote migration action occurred.
+- The branch was subsequently aligned with current `master` commit `f229e33` (POL-002C) without conflicts; the only inherited changes remove `netlify.toml` and establish Vercel as sole deployment authority.
+- After alignment, the migration, SQL assertions, two-tenant Storage integration test, local database advisors, application build, deployment-authority check, diff check and secret scan were repeated successfully.
 
 ## Awaiting Product Owner
 
