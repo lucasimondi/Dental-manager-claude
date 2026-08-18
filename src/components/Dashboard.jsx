@@ -17,6 +17,7 @@ const WIDGETS_DEFAULT = [
   { id: 'richiami',     ic: 'bell',    label: 'Richiami',               attivo: false },
   { id: 'scadenze',     ic: 'cal',     label: 'Scadenze pagamento',     attivo: false },
   { id: 'ortodonzia',   ic: 'tooth',   label: 'Ortodonzia',             attivo: false },
+  { id: 'fisio',        ic: 'pulse',   label: 'Fisioterapia',           attivo: false },
   { id: 'statistiche',  ic: 'chart',   label: 'Statistiche',            attivo: false },
   { id: 'grafici',      ic: 'trend',   label: 'Grafici e andamento',    attivo: false },
 ];
@@ -89,8 +90,27 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   } = useControlloDati({ studioId, patients, plans, payments, periodo: periodoEconomico });
 
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
+  const isFisio = si?.vertical === 'fisioterapista' || si?.vertical === 'massofisioterapista';
   const t = today();
   const [userName, setUserName] = useState(userNameProp || '');
+
+  // Dati physio per il widget "Fisioterapia" — caricati solo per studi del
+  // vertical fisioterapista/massofisioterapista, isolati dal resto del
+  // caricamento dati della Dashboard (nessuna modifica alle query esistenti).
+  const [physioStat, setPhysioStat] = useState({ obiettiviAttivi: 0, seduteOggi: 0, eserciziAttivi: 0 });
+  useEffect(() => {
+    if (!isFisio || !studioId) return;
+    let cancelled = false;
+    (async () => {
+      const [ob, sed, presc] = await Promise.all([
+        supabase.from('physio_obiettivi').select('id', { count: 'exact', head: true }).eq('studio_id', studioId).eq('stato', 'attivo'),
+        supabase.from('physio_diario_sedute').select('id', { count: 'exact', head: true }).eq('studio_id', studioId).eq('data', t),
+        supabase.from('physio_prescrizioni').select('id', { count: 'exact', head: true }).eq('studio_id', studioId).eq('attiva', true),
+      ]);
+      if (!cancelled) setPhysioStat({ obiettiviAttivi: ob.count || 0, seduteOggi: sed.count || 0, eserciziAttivi: presc.count || 0 });
+    })();
+    return () => { cancelled = true; };
+  }, [isFisio, studioId, t]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -297,6 +317,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
             {widgets.map((w, i) => {
               if (w.id === 'consigli_ai' && !consigliAttivi) return null;
               if (w.id === 'ortodonzia' && !isDentistico) return null;
+              if (w.id === 'fisio' && !isFisio) return null;
               return (
               <div key={w.id} draggable
                 onDragStart={e => e.dataTransfer.setData('widgetIdx', String(i))}
@@ -998,6 +1019,20 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
             <div key="ortodonzia" style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="tooth" s={11} c={C.txm} />Ortodonzia</div>
               <StatCard label="Piani attivi" value={pianiOrto.filter(o => !o.completato).length} sub={`${pianiOrto.filter(o => o.cambioScaduto).length} da cambiare · ${pianiOrto.filter(o => o.inAttesa).length} da avviare`} color={pianiOrto.some(o => o.cambioScaduto) ? C.dan : C.pur} urgent={pianiOrto.some(o => o.cambioScaduto)} onClick={() => setDetailModal('orto')} />
+            </div>
+          );
+        }
+
+        if (w.id === 'fisio') {
+          if (!isFisio) return null;
+          return (
+            <div key="fisio" style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="pulse" s={11} c={C.txm} />Fisioterapia</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                <StatCard label="Sedute oggi" value={physioStat.seduteOggi} />
+                <StatCard label="Obiettivi attivi" value={physioStat.obiettiviAttivi} color={C.pri} />
+                <StatCard label="Esercizi assegnati" value={physioStat.eserciziAttivi} color={C.acc} />
+              </div>
             </div>
           );
         }

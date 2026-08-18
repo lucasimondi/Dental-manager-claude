@@ -1237,7 +1237,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
         )}
 
         {tab === 'fisio' && isFisio && (
-          <PhysioCartella paziente_id={paz.id} studio_id={si?.studio_id} />
+          <PhysioCartella paziente_id={paz.id} studio_id={si?.studio_id} paziente={paz} studio={si} />
         )}
 
         {tab === 'paga' && (

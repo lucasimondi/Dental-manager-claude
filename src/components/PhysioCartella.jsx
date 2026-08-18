@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase.js';
 import { Crd, Fld, Ic, Bdg } from './ui';
 import { Inp, Sel, Txt } from './ui/inputs.jsx';
 import { C, fmtD, today } from '../lib/utils';
+import { generaReportPercorso } from '../lib/physioReport';
 
 /* ── CARTELLA FISIOTERAPICA ──
    Componente aggiuntivo montato come tab dedicata in SchedaPaz.jsx per i
@@ -24,7 +25,7 @@ const SUBTABS = [
 
 const fmtNum = (n) => (n === null || n === undefined || n === '' ? '—' : n);
 
-export default function PhysioCartella({ paziente_id, studio_id }) {
+export default function PhysioCartella({ paziente_id, studio_id, paziente, studio }) {
   const [sub, setSub] = useState('valutazione');
   const [valutazioni, setValutazioni] = useState([]);
   const [obiettivi, setObiettivi] = useState([]);
@@ -66,6 +67,15 @@ export default function PhysioCartella({ paziente_id, studio_id }) {
 
   return (
     <div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+        <button
+          onClick={() => generaReportPercorso({ studio, paziente, valutazioni, obiettivi, diario, prescrizioni })}
+          style={{ background: 'none', border: `1.5px solid ${C.brd}`, borderRadius: 9, padding: '7px 13px', fontSize: 12, fontWeight: 700, color: C.txm, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          <Ic n="download" s={13} c={C.txm} /> Report percorso (PDF)
+        </button>
+      </div>
+
       <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginBottom: 14, paddingBottom: 2 }}>
         {SUBTABS.map((t) => (
           <button
