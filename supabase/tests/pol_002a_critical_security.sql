@@ -21,7 +21,7 @@
 \if :{?studio_a}
 \else
   \echo 'Missing synthetic fixture variables; refusing to run'
-  \quit
+  \quit 1
 \endif
 
 BEGIN;
@@ -35,7 +35,7 @@ SELECT set_config('request.jwt.claims', '{}', true);
 SELECT public.is_studio_admin()::integer AS anonymous_admin \gset
 \if :anonymous_admin
   \echo 'FAIL: anonymous user resolved as admin'
-  \quit
+  \quit 1
 \endif
 
 -- anon must not have direct EXECUTE.
@@ -46,7 +46,7 @@ SELECT has_function_privilege(
 )::integer AS anon_admin_execute \gset
 \if :anon_admin_execute
   \echo 'FAIL: anon retains is_studio_admin EXECUTE'
-  \quit
+  \quit 1
 \endif
 
 -- Authenticated user with no matching membership.
@@ -65,7 +65,7 @@ SET LOCAL ROLE authenticated;
 SELECT public.is_studio_admin()::integer AS no_membership_admin \gset
 \if :no_membership_admin
   \echo 'FAIL: missing membership resolved as admin'
-  \quit
+  \quit 1
 \endif
 
 -- Inactive admin membership.
@@ -84,7 +84,7 @@ SET LOCAL ROLE authenticated;
 SELECT public.is_studio_admin()::integer AS inactive_admin \gset
 \if :inactive_admin
   \echo 'FAIL: inactive membership resolved as admin'
-  \quit
+  \quit 1
 \endif
 
 -- Normal user.
@@ -103,7 +103,7 @@ SET LOCAL ROLE authenticated;
 SELECT public.is_studio_admin()::integer AS normal_user_admin \gset
 \if :normal_user_admin
   \echo 'FAIL: normal user resolved as admin'
-  \quit
+  \quit 1
 \endif
 
 -- Correct studio admin.
@@ -123,7 +123,7 @@ SELECT public.is_studio_admin()::integer AS correct_admin \gset
 \if :correct_admin
 \else
   \echo 'FAIL: correct active admin was denied'
-  \quit
+  \quit 1
 \endif
 
 -- Admin membership in another studio must not authorize studio_a claim.
@@ -142,7 +142,7 @@ SET LOCAL ROLE authenticated;
 SELECT public.is_studio_admin()::integer AS cross_tenant_admin \gset
 \if :cross_tenant_admin
   \echo 'FAIL: cross-tenant admin membership was accepted'
-  \quit
+  \quit 1
 \endif
 
 -- GDPR: no-session access must fail.
@@ -158,7 +158,7 @@ SELECT public.gdpr_esporta_paziente(
 \if :ERROR
 \else
   \echo 'FAIL: no-session GDPR export was permitted'
-  \quit
+  \quit 1
 \endif
 \set ON_ERROR_STOP on
 
@@ -191,7 +191,7 @@ SELECT public.gdpr_esporta_paziente(
 \if :ERROR
 \else
   \echo 'FAIL: wrong-tenant GDPR export was permitted'
-  \quit
+  \quit 1
 \endif
 \set ON_ERROR_STOP on
 
@@ -208,7 +208,7 @@ SELECT (
 \if :trusted_export_executor
 \else
   \echo 'FAIL: GDPR export wrapper lacks trusted executor'
-  \quit
+  \quit 1
 \endif
 
 SELECT (
@@ -222,20 +222,28 @@ SELECT (
 \if :trusted_delete_executor
 \else
   \echo 'FAIL: GDPR delete wrapper lacks trusted executor'
-  \quit
+  \quit 1
 \endif
 
 -- A patient from another tenant must not be exported under studio_a. Current
 -- business function may raise or return ok=false; either result is denial.
 \set ON_ERROR_STOP off
-SELECT public.gdpr_esporta_paziente(
-  :'patient_b'::bigint,
-  :'studio_a'::uuid,
-  :'admin_b'::uuid
-);
+SELECT coalesce(
+  (public.gdpr_esporta_paziente(
+    :'patient_b'::bigint,
+    :'studio_a'::uuid,
+    :'admin_b'::uuid
+  ) ->> 'ok')::boolean,
+  false
+)::integer AS cross_tenant_patient_ok
+\gset
 \if :ERROR
+  \echo 'PASS: cross-tenant patient export raised an error'
 \else
-  \echo 'Review returned payload: it must report ok=false for cross-tenant patient'
+  \if :cross_tenant_patient_ok
+    \echo 'FAIL: patient from another tenant was exported'
+    \quit 1
+  \endif
 \endif
 \set ON_ERROR_STOP on
 
@@ -262,16 +270,24 @@ SELECT public.get_kpi_periodo(
 \if :ERROR
 \else
   \echo 'FAIL: get_kpi_periodo allowed wrong tenant'
-  \quit
+  \quit 1
 \endif
 
 SELECT public.get_costo_orario(:'studio_b'::uuid);
 \if :ERROR
 \else
   \echo 'FAIL: get_costo_orario allowed wrong tenant'
-  \quit
+  \quit 1
 \endif
 \set ON_ERROR_STOP on
+
+-- Financial authorization regression: correct tenant remains callable.
+SELECT public.get_kpi_periodo(
+  :'studio_a'::uuid,
+  CURRENT_DATE - 30,
+  CURRENT_DATE
+);
+SELECT public.get_costo_orario(:'studio_a'::uuid);
 
 -- Intentionally-public flow grants remain present. This verifies ACL only;
 -- flow-specific token/booking tests belong to their isolated integration suite.
@@ -294,7 +310,7 @@ WHERE n.nspname = 'public'
 \if :intended_public_grants
 \else
   \echo 'FAIL: an intended public flow lost anon EXECUTE'
-  \quit
+  \quit 1
 \endif
 
 -- Trigger helper must not be directly exposed and must have secure search_path.
@@ -312,7 +328,7 @@ LIMIT 1
 \if :set_updated_at_hardened
 \else
   \echo 'FAIL: set_updated_at hardening not present'
-  \quit
+  \quit 1
 \endif
 
 -- GDPR delete success is last because it mutates only synthetic fixture data;
