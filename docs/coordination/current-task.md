@@ -10,14 +10,25 @@
 
 Prepare a minimal, versioned hardening patch for confirmed Supabase authorization issues without modifying production.
 
-## Result
+## Completed
 
-Repository and client usage were inspected. The authoritative function signatures, return types, bodies, grants, policy definitions, trigger bindings, and Storage policies required for a safe migration are not versioned and no metadata-only production access is available.
+Using the verified metadata supplied by the Tech Lead, the branch now contains:
 
-Creating `CREATE OR REPLACE FUNCTION`, `REVOKE/GRANT`, policy, or regression-test SQL without those definitions would violate the prohibition on inventing database objects and could break public or privileged flows. No migration was created.
+- a fail-closed `public.is_studio_admin()`;
+- a non-exposed active-admin tenant guard;
+- guarded wrappers for both GDPR SECURITY DEFINER RPCs that preserve the existing scalar return types at migration time and derive the audit executor from `auth.uid()`;
+- targeted EXECUTE revocations for explicitly privileged functions while leaving intentionally public flows unchanged;
+- a secure empty `search_path` and no direct Data API EXECUTE for `set_updated_at`;
+- a fail-closed UI admin check;
+- synthetic SQL security regression tests;
+- a separate private-bucket compatibility plan for `patient-files`.
 
-A verified assessment, patient-files dependency analysis, required test matrix, and exact unblock requirements are documented in `docs/security/pol-002a-hardening-assessment.md`.
+No RLS policy was added to `google_calendar_tokens` or `super_admins`. No Storage or Auth setting was changed.
+
+## Validation state
+
+Repository/static checks are complete. SQL tests were prepared but not executed because this environment has no local Supabase, PostgreSQL client, or isolated synthetic database. Nothing was applied to production.
 
 ## Product Owner action required
 
-Provide sanitized metadata-only definitions enumerated in the assessment, then authorize POL-002A to resume. Do not merge, deploy, apply remote migrations, or begin the next task.
+Request Tech Lead review of the migration and fixture contract, execute the tests only in a disposable isolated Supabase environment, and approve or reject a PR. Do not merge, deploy or apply the migration remotely.
