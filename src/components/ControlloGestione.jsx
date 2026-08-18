@@ -42,8 +42,8 @@ export default function ControlloGestione(props) {
       {tab === 'panoramica' && <PanoramicaControllo {...props} />}
       {tab === 'cockpit' && <ControlloCockpit {...props} />}
       {tab === 'proiezioni' && <Proiezioni studioId={props.studioId} />}
-      {tab === 'costi' && <Costi studioId={props.studioId} />}
-      {tab === 'marginalita' && <MarginalitaPrestazioni studioId={props.studioId} pricelist={props.pricelist} />}
+      {tab === 'costi' && <Costi studioId={props.studioId} isDentistico={props.isDentistico} />}
+      {tab === 'marginalita' && <MarginalitaPrestazioni studioId={props.studioId} pricelist={props.pricelist} isDentistico={props.isDentistico} />}
     </div>
   );
 }

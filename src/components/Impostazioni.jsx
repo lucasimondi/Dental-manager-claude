@@ -653,7 +653,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
 
       <div style={{ marginTop: 26, marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Multi-agenda</div>
-        <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Più professionisti e più poltrone, ognuno con la propria agenda filtrabile</div>
+        <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Più professionisti e più {(!si?.vertical || si.vertical === 'dentistico') ? 'poltrone' : 'postazioni'}, ognuno con la propria agenda filtrabile</div>
       </div>
       <Crd style={{ marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
@@ -661,8 +661,8 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
             <div style={{ fontWeight: 700, fontSize: 13 }}>{features?.multi_operatore ? 'Attiva' : 'Non attiva'}</div>
             <div style={{ fontSize: 11.5, color: C.txm, marginTop: 2 }}>
               {features?.multi_operatore
-                ? 'Assegna operatore e poltrona a ogni appuntamento, filtra l\'agenda per ciascuno.'
-                : (piano === 'base' ? 'Disponibile dal piano Pro in su.' : 'Attivala per gestire più professionisti e poltrone in agenda.')}
+                ? `Assegna operatore e ${(!si?.vertical || si.vertical === 'dentistico') ? 'poltrona' : 'postazione'} a ogni appuntamento, filtra l'agenda per ciascuno.`
+                : (piano === 'base' ? 'Disponibile dal piano Pro in su.' : `Attivala per gestire più professionisti e ${(!si?.vertical || si.vertical === 'dentistico') ? 'poltrone' : 'postazioni'} in agenda.`)}
             </div>
           </div>
           {(piano && piano !== 'base') || features?.multi_operatore ? (
@@ -681,7 +681,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       {features?.multi_operatore && (
         <>
           <GestioneRisorseAgenda tipo="operatori" studioId={studioId} currentUserId={currentUserId} titolareNome={si.nome} features={features} isStudioAdmin={isStudioAdmin} />
-          <GestioneRisorseAgenda tipo="poltrone" studioId={studioId} currentUserId={currentUserId} titolareNome={si.nome} features={features} isStudioAdmin={isStudioAdmin} />
+          <GestioneRisorseAgenda tipo="poltrone" studioId={studioId} currentUserId={currentUserId} titolareNome={si.nome} features={features} isStudioAdmin={isStudioAdmin} vertical={si.vertical} />
         </>
       )}
       </>
@@ -948,7 +948,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
 
       {sezione === 'team' && (
       <>
-      <ProfiloUtente onNomeChange={onNomeChange} />
+      <ProfiloUtente onNomeChange={onNomeChange} vertical={si.vertical} />
       <GestioneUtenti studioId={studioInfo?.studio_id || '00000000-0000-0000-0000-000000000001'} currentUserId={currentUserId} features={features} isStudioAdmin={isStudioAdmin} />
       <GestioneRisorseAgenda tipo="operatori" studioId={studioInfo?.studio_id || '00000000-0000-0000-0000-000000000001'} currentUserId={currentUserId} titolareNome={si.nome} features={features} isStudioAdmin={isStudioAdmin} />
       </>

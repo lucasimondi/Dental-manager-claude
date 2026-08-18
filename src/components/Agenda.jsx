@@ -485,6 +485,9 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
 }
 
 export default function Agenda({ patients, setPatients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni, setImpegni, si, setStudioInfo }) {
+  const isDentistico = !si?.vertical || si.vertical === 'dentistico';
+  const labelPoltrona = isDentistico ? 'Poltrona' : 'Postazione';
+  const labelPoltronePlurale = isDentistico ? 'poltrone' : 'postazioni';
   const tipiList = appTypes?.length ? appTypes : getAppTypesDefault(si?.vertical);
 
   // Setup Agenda: le impostazioni sono condivise a livello di studio (studioInfo.agenda_settings),
@@ -925,7 +928,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       )}
       {poltrone.length > 0 && (
         <div style={{ display: 'flex', gap: 6, marginBottom: isMobile ? 0 : 8, overflowX: isMobile ? 'visible' : 'auto', flexWrap: isMobile ? 'wrap' : 'nowrap', paddingBottom: isMobile ? 0 : 2 }}>
-          <button onClick={() => setFiltroPoltrona('tutti')} style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 20, border: `1.5px solid ${filtroPoltrona === 'tutti' ? C.pri : C.brd}`, background: filtroPoltrona === 'tutti' ? C.priL : C.sur, color: filtroPoltrona === 'tutti' ? C.pri : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>Tutte le poltrone</button>
+          <button onClick={() => setFiltroPoltrona('tutti')} style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 20, border: `1.5px solid ${filtroPoltrona === 'tutti' ? C.pri : C.brd}`, background: filtroPoltrona === 'tutti' ? C.priL : C.sur, color: filtroPoltrona === 'tutti' ? C.pri : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>Tutte le {labelPoltronePlurale}</button>
           {poltrone.map(p => (
             <button key={p.id} onClick={() => setFiltroPoltrona(String(p.id))} style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, border: `1.5px solid ${filtroPoltrona === String(p.id) ? p.colore : C.brd}`, background: filtroPoltrona === String(p.id) ? p.colore + '18' : C.sur, color: filtroPoltrona === String(p.id) ? p.colore : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
               <div style={{ width: 8, height: 8, borderRadius: 2, background: p.colore, flexShrink: 0 }} />
@@ -947,7 +950,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     <div style={{ position: 'relative', flexShrink: 0 }}>
       <button
         onClick={() => setFiltriAperti(v => !v)}
-        aria-label="Filtra per operatore/poltrona"
+        aria-label={`Filtra per operatore/${labelPoltrona.toLowerCase()}`}
         style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', background: filtroAttivo ? C.priL : C.bg, border: 'none', cursor: 'pointer', flexShrink: 0 }}
       >
         <Ic n="filter" s={13} c={filtroAttivo ? C.pri : C.txm} />
@@ -1272,7 +1275,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
                 </Fld>
               )}
               {poltrone.length > 0 && (
-                <Fld label="Poltrona">
+                <Fld label={labelPoltrona}>
                   <Sel value={form.poltronaId} onChange={e => F({ poltronaId: e.target.value })}>
                     <option value="">Nessuna</option>
                     {poltrone.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}

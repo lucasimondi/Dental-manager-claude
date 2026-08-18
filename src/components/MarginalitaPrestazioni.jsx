@@ -18,7 +18,8 @@ const SOGLIA_OK = 40;
 const SOGLIA_ATTENZIONE = 20;
 const coloreMargine = (pct) => pct >= SOGLIA_OK ? C.suc : pct >= SOGLIA_ATTENZIONE ? C.war : C.dan;
 
-export default function MarginalitaPrestazioni({ studioId, pricelist = [] }) {
+export default function MarginalitaPrestazioni({ studioId, pricelist = [], isDentistico = true }) {
+  const labelTempoPostazione = isDentistico ? 'Tempo poltrona' : 'Tempo postazione';
   const [materiali, setMateriali] = useState([]);
   const [macchinari, setMacchinari] = useState([]);
   const [collegatiMat, setCollegatiMat] = useState([]);
@@ -93,7 +94,7 @@ export default function MarginalitaPrestazioni({ studioId, pricelist = [] }) {
           </div>
 
           {costoOrario == null && (
-            <div style={{ fontSize: 11, color: C.txl, marginBottom: 12 }}>Il costo del tempo poltrona non è incluso: configura le ore dello studio in Controllo → Costi per aggiungerlo.</div>
+            <div style={{ fontSize: 11, color: C.txl, marginBottom: 12 }}>Il costo del {labelTempoPostazione.toLowerCase()} non è incluso: configura le ore dello studio in Controllo → Costi per aggiungerlo.</div>
           )}
 
           {configurate.length === 0 ? (
@@ -131,7 +132,7 @@ export default function MarginalitaPrestazioni({ studioId, pricelist = [] }) {
                         ); })}
                         {r.costoTempo > 0 && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: C.txm, padding: '3px 0' }}>
-                            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Tempo poltrona ({r.p.durataMinuti} min)</span>
+                            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{labelTempoPostazione} ({r.p.durataMinuti} min)</span>
                             <span style={{ flexShrink: 0 }}>{fmt(r.costoTempo)}</span>
                           </div>
                         )}

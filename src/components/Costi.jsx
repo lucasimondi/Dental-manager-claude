@@ -58,7 +58,7 @@ function CostoOrarioCard({ studioId, refreshKey }) {
       {editConfig && (
         <Modal title="Ore lavorabili dello studio" onClose={() => setEditConfig(false)}>
           <div style={{ fontSize: 11, color: C.txl, marginBottom: 12 }}>
-            Usate per calcolare il costo orario: giorni di apertura a settimana × ore al giorno × numero di poltrone/riuniti in uso contemporaneo.
+            Usate per calcolare il costo orario: giorni di apertura a settimana × ore al giorno × numero di {labelPostazioni} in uso contemporaneo.
           </div>
           <Fld label="Giorni di apertura a settimana">
             <Inp type="number" min="1" max="7" value={config.giorni_settimana} onChange={(e) => setConfig((c) => ({ ...c, giorni_settimana: Number(e.target.value) }))} />
@@ -66,7 +66,7 @@ function CostoOrarioCard({ studioId, refreshKey }) {
           <Fld label="Ore di apertura al giorno">
             <Inp type="number" min="1" value={config.ore_al_giorno} onChange={(e) => setConfig((c) => ({ ...c, ore_al_giorno: Number(e.target.value) }))} />
           </Fld>
-          <Fld label="Numero poltrone/riuniti">
+          <Fld label={`Numero ${labelPostazioni}`}>
             <Inp type="number" min="1" value={config.num_postazioni} onChange={(e) => setConfig((c) => ({ ...c, num_postazioni: Number(e.target.value) }))} />
           </Fld>
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
@@ -519,7 +519,8 @@ function VistaMateriali({ studioId, refreshKey, onChanged }) {
 // ─────────────────────────────────────────────────────────────────
 // Componente principale
 // ─────────────────────────────────────────────────────────────────
-export default function Costi({ studioId }) {
+export default function Costi({ studioId, isDentistico = true }) {
+  const labelPostazioni = isDentistico ? 'poltrone/riuniti' : 'postazioni/sale';
   const [sub, setSub] = useState('spese');
   const [refreshKey, setRefreshKey] = useState(0);
   const [estrattoPendente, setEstrattoPendente] = useState(null); // { estratto, file }

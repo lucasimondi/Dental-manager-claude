@@ -27,8 +27,15 @@ const CONFIG = {
 
 const formVuoto = () => ({ nome: '', ruolo_professionale: '', colore: COLORI_DISPONIBILI[0], user_id: '' });
 
-export default function GestioneRisorseAgenda({ tipo, studioId, currentUserId, titolareNome, features, isStudioAdmin }) {
-  const cfg = CONFIG[tipo] || CONFIG.operatori;
+export default function GestioneRisorseAgenda({ tipo, studioId, currentUserId, titolareNome, features, isStudioAdmin, vertical }) {
+  const isDentistico = !vertical || vertical === 'dentistico';
+  const cfgBase = CONFIG[tipo] || CONFIG.operatori;
+  // "Poltrone" è terminologia odontoiatrica: per gli altri vertical la stessa
+  // risorsa (postazione fisica) prende un nome generico, senza toccare la
+  // tabella né la logica CRUD sottostante (tutto invariato, solo le label).
+  const cfg = (tipo === 'poltrone' && !isDentistico)
+    ? { ...cfgBase, icona: '🚪', titoloPlurale: 'Postazioni', titoloSingolare: 'postazione', placeholderNome: 'es. Sala 1, Box 2...', vuoto: 'Nessuna postazione creata — se non ne aggiungi, l\'agenda non traccia le postazioni fisiche.' }
+    : cfgBase;
   const [risorse, setRisorse] = useState([]);
   const [studioUsers, setStudioUsers] = useState([]);
   const [loading, setLoading] = useState(true);

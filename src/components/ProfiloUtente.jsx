@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabase.js';
 import { C } from '../lib/utils';
 import { Crd, Fld, Inp, Btn, Toast } from './ui';
 
-export default function ProfiloUtente({ onNomeChange }) {
+export default function ProfiloUtente({ onNomeChange, vertical }) {
+  const isDentistico = !vertical || vertical === 'dentistico';
   const [form, setForm] = useState({ nome: '', cognome: '', telefono: '', ruolo_testo: '' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -47,7 +48,7 @@ export default function ProfiloUtente({ onNomeChange }) {
         <Fld label="Cognome"><Inp value={form.cognome} onChange={e => setForm(f => ({ ...f, cognome: e.target.value }))} placeholder="es. Simondi" /></Fld>
       </div>
       <Fld label="Telefono"><Inp value={form.telefono} onChange={e => setForm(f => ({ ...f, telefono: e.target.value }))} placeholder="es. 320 5505397" /></Fld>
-      <Fld label="Ruolo / qualifica"><Inp value={form.ruolo_testo} onChange={e => setForm(f => ({ ...f, ruolo_testo: e.target.value }))} placeholder="es. Medico Odontoiatra" /></Fld>
+      <Fld label="Ruolo / qualifica"><Inp value={form.ruolo_testo} onChange={e => setForm(f => ({ ...f, ruolo_testo: e.target.value }))} placeholder={isDentistico ? 'es. Medico Odontoiatra' : 'es. Fisioterapista'} /></Fld>
       <Btn ch={saving ? 'Salvataggio...' : 'Salva profilo'} onClick={salva} dis={saving} full />
     </Crd>
   );
