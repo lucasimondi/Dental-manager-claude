@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
-import { Crd, Fld, Ic, Bdg } from './ui';
+import { Crd, Fld, Ic, Bdg, Modal } from './ui';
 import { Inp, Sel, Txt } from './ui/inputs.jsx';
 import { C, fmtD, today } from '../lib/utils';
 import { generaReportPercorso } from '../lib/physioReport';
@@ -25,7 +25,19 @@ const SUBTABS = [
 
 const fmtNum = (n) => (n === null || n === undefined || n === '' ? '—' : n);
 
-export default function PhysioCartella({ paziente_id, studio_id, paziente, studio, accessMode = 'full' }) {
+/* POL-RBAC-001A: assignment_type -> [label, matching capability]. CAPABILITY
+   (Setup → Collaboratori) says a user may act as a role; ASSIGNMENT (here)
+   says which patient they may act on. Server-side RLS is authoritative —
+   this list only drives what the picker offers, never grants access. */
+const ASSIGNMENT_TYPES = [
+  ['responsible_physiotherapist', 'Fisioterapista responsabile', 'clinical.physiotherapist'],
+  ['physiotherapist', 'Fisioterapista', 'clinical.physiotherapist'],
+  ['personal_trainer', 'Personal trainer', 'clinical.personal_trainer'],
+  ['massage_therapist', 'Massaggiatore', 'clinical.massage_therapist'],
+];
+const ASSIGNMENT_TYPE_LABEL = Object.fromEntries(ASSIGNMENT_TYPES.map(([id, label]) => [id, label]));
+
+export default function PhysioCartella({ paziente_id, studio_id, paziente, studio, accessMode = 'full', currentUserId, canManageTeam = false }) {
   const fullAccess = accessMode === 'full';
   const [sub, setSub] = useState(fullAccess ? 'valutazione' : 'percorso');
   const [valutazioni, setValutazioni] = useState([]);
@@ -73,6 +85,8 @@ export default function PhysioCartella({ paziente_id, studio_id, paziente, studi
 
   return (
     <div>
+      <SezioneTeam studio_id={studio_id} paziente_id={paziente_id} currentUserId={currentUserId} canManageTeam={canManageTeam} />
+
       {fullAccess && <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
         <button
           onClick={() => generaReportPercorso({ studio, paziente, valutazioni, obiettivi, diario, prescrizioni })}
@@ -574,5 +588,170 @@ function SezioneDomiciliare({ studio_id, paziente_id, prescrizioni, esercizi, on
         </details>
       )}
     </div>
+  );
+}
+
+/* ── TEAM DEL PERCORSO (POL-RBAC-001A) ──
+   Shows who is actively assigned to this patient's care and, for whoever
+   holds studio.manage_members or clinical.physiotherapist, lets them assign
+   or terminate a professional. This is presentation only: every row shown
+   and every action offered here is re-checked server-side by RLS on
+   patient_care_assignments — hiding a button is UX, not security. */
+function SezioneTeam({ studio_id, paziente_id, currentUserId, canManageTeam }) {
+  const [team, setTeam] = useState([]);
+  const [nomi, setNomi] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [manageOpen, setManageOpen] = useState(false);
+  const [assignForm, setAssignForm] = useState(null);
+  const [eleggibili, setEleggibili] = useState([]);
+  const [salvando, setSalvando] = useState(false);
+  const [errore, setErrore] = useState('');
+
+  const ricarica = async () => {
+    setLoading(true);
+    const [{ data: assignments }, { data: utenti }] = await Promise.all([
+      supabase.from('patient_care_assignments').select('*').eq('patient_id', paziente_id).eq('active', true).order('created_at'),
+      supabase.from('studio_users').select('user_id,nome,email').eq('studio_id', studio_id),
+    ]);
+    setTeam(assignments || []);
+    const map = {};
+    (utenti || []).forEach((u) => { if (u.user_id) map[u.user_id] = u.nome || u.email || 'Professionista'; });
+    setNomi(map);
+    setLoading(false);
+  };
+
+  useEffect(() => { if (paziente_id) ricarica(); }, [paziente_id]);
+
+  const apriAssegna = async () => {
+    setErrore('');
+    setAssignForm({ assignment_type: 'personal_trainer', user_id: '' });
+    const { data } = await supabase.from('studio_user_capabilities').select('user_id,capability').eq('studio_id', studio_id);
+    setEleggibili(data || []);
+  };
+
+  const professionistiPer = (assignment_type) => {
+    const entry = ASSIGNMENT_TYPES.find(([id]) => id === assignment_type);
+    const capability = entry ? entry[2] : null;
+    const giaAssegnati = new Set(team.filter((t) => t.assignment_type === assignment_type).map((t) => t.user_id));
+    return eleggibili.filter((e) => e.capability === capability && !giaAssegnati.has(e.user_id));
+  };
+
+  const assegna = async () => {
+    if (!assignForm?.user_id) return;
+    setSalvando(true);
+    setErrore('');
+    const { error } = await supabase.from('patient_care_assignments').insert({
+      studio_id, patient_id: paziente_id, user_id: assignForm.user_id, assignment_type: assignForm.assignment_type,
+    });
+    setSalvando(false);
+    if (error) { setErrore('Assegnazione non riuscita: ' + error.message); return; }
+    setAssignForm(null);
+    ricarica();
+  };
+
+  const termina = async (row) => {
+    if (!confirm(`Terminare l'assegnazione di ${nomi[row.user_id] || 'questo professionista'}?`)) return;
+    const { error } = await supabase.from('patient_care_assignments').update({ active: false }).eq('id', row.id);
+    if (!error) ricarica();
+  };
+
+  const gruppi = ASSIGNMENT_TYPES
+    .map(([id, label]) => ({ id, label, righe: team.filter((t) => t.assignment_type === id) }))
+    .filter((g) => g.righe.length > 0);
+
+  return (
+    <Crd style={{ marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: C.txt }}>👥 Team del percorso</div>
+        {canManageTeam && (
+          <button
+            onClick={() => setManageOpen(true)}
+            style={{ background: 'none', border: `1.5px solid ${C.brd}`, borderRadius: 8, padding: '6px 11px', fontSize: 11.5, fontWeight: 700, color: C.pri, cursor: 'pointer', minHeight: 32 }}
+          >
+            Gestisci team
+          </button>
+        )}
+      </div>
+
+      {loading ? (
+        <div style={{ fontSize: 12, color: C.txl }}>Caricamento…</div>
+      ) : gruppi.length === 0 ? (
+        <div style={{ fontSize: 12, color: C.txl }}>Nessun professionista assegnato</div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+          {gruppi.map((g) => (
+            <div key={g.id}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: C.txm, textTransform: 'uppercase', marginBottom: 3 }}>{g.label}{g.righe.length > 1 ? 'i' : ''}</div>
+              {g.righe.map((r) => (
+                <div key={r.id} style={{ fontSize: 12.5, color: C.txt, padding: '2px 0' }}>
+                  {nomi[r.user_id] || 'Professionista'}
+                  {r.user_id === currentUserId && <span style={{ color: C.pri, fontWeight: 700 }}> (tu)</span>}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {manageOpen && (
+        <Modal title="Team del percorso" onClose={() => { setManageOpen(false); setAssignForm(null); }}>
+          {team.length === 0 && <div style={{ fontSize: 12, color: C.txl, marginBottom: 12 }}>Nessun professionista assegnato</div>}
+
+          {team.map((r) => (
+            <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 0', borderBottom: `1px solid ${C.brd}` }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.txt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nomi[r.user_id] || 'Professionista'}</div>
+                <div style={{ fontSize: 11, color: C.txm }}>{ASSIGNMENT_TYPE_LABEL[r.assignment_type] || r.assignment_type}</div>
+              </div>
+              <button
+                onClick={() => termina(r)}
+                style={{ background: C.danL, border: 'none', borderRadius: 7, padding: '8px 12px', fontSize: 11.5, fontWeight: 700, color: C.dan, cursor: 'pointer', flexShrink: 0, minHeight: 32 }}
+              >
+                Termina
+              </button>
+            </div>
+          ))}
+
+          {!assignForm ? (
+            <button
+              onClick={apriAssegna}
+              style={{ marginTop: 14, width: '100%', minHeight: 44, background: C.pri, border: 'none', borderRadius: 10, padding: '11px 16px', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+            >
+              <Ic n="plus" s={14} c="#fff" /> Assegna professionista
+            </button>
+          ) : (
+            <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.brd}` }}>
+              <Fld label="Responsabilità">
+                <Sel value={assignForm.assignment_type} onChange={(e) => setAssignForm((f) => ({ ...f, assignment_type: e.target.value, user_id: '' }))}>
+                  {ASSIGNMENT_TYPES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                </Sel>
+              </Fld>
+              <Fld label="Professionista">
+                <Sel value={assignForm.user_id} onChange={(e) => setAssignForm((f) => ({ ...f, user_id: e.target.value }))}>
+                  <option value="">— seleziona —</option>
+                  {professionistiPer(assignForm.assignment_type).map((p) => (
+                    <option key={p.user_id} value={p.user_id}>{nomi[p.user_id] || p.user_id}</option>
+                  ))}
+                </Sel>
+              </Fld>
+              {professionistiPer(assignForm.assignment_type).length === 0 && (
+                <div style={{ fontSize: 11.5, color: C.txl, marginBottom: 8 }}>Nessun collaboratore dello studio con questa capability è disponibile (già assegnato o capability non assegnata in Setup → Collaboratori).</div>
+              )}
+              {errore && <div style={{ fontSize: 11.5, color: C.dan, marginBottom: 8 }}>{errore}</div>}
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button onClick={() => setAssignForm(null)} style={{ background: 'none', border: `1px solid ${C.brd}`, borderRadius: 9, padding: '9px 15px', fontSize: 13, fontWeight: 700, color: C.txm, cursor: 'pointer', minHeight: 40 }}>Annulla</button>
+                <button
+                  disabled={salvando || !assignForm.user_id}
+                  onClick={assegna}
+                  style={{ background: C.suc, border: 'none', borderRadius: 9, padding: '9px 15px', fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer', opacity: salvando || !assignForm.user_id ? 0.6 : 1, minHeight: 40 }}
+                >
+                  {salvando ? 'Salvataggio…' : 'Conferma'}
+                </button>
+              </div>
+            </div>
+          )}
+        </Modal>
+      )}
+    </Crd>
   );
 }

@@ -59,8 +59,18 @@ DO $$ BEGIN
   RAISE EXCEPTION 'cross-tenant patient relationship accepted';
 EXCEPTION WHEN insufficient_privilege OR check_violation THEN NULL; END $$;
 
+-- POL-RBAC-001A: capability alone no longer grants patient access for PT/
+-- massage therapist; seed the active assignment this regression already
+-- assumed implicitly (PT1 assigned to patient 101), matching the new
+-- assignment-gated contract validated fully in pol_rbac_001a_patient_care_assignment.sql.
+RESET ROLE;
+INSERT INTO public.patient_care_assignments(studio_id,patient_id,user_id,assignment_type,created_by) VALUES
+ ('10000000-0000-4000-8000-000000000001',101,'a0000000-0000-4000-8000-000000000004','personal_trainer','a0000000-0000-4000-8000-000000000001'),
+ ('10000000-0000-4000-8000-000000000001',101,'a0000000-0000-4000-8000-000000000005','massage_therapist','a0000000-0000-4000-8000-000000000001');
+SET ROLE authenticated;
+
 SELECT set_config('request.jwt.claims','{"sub":"a0000000-0000-4000-8000-000000000004"}',true);
-SELECT pg_temp.assert_true((SELECT count(*) FROM public.physio_piani)=1,'PT reads operational plan');
+SELECT pg_temp.assert_true((SELECT count(*) FROM public.physio_piani)=1,'PT reads operational plan for its assigned patient');
 SELECT pg_temp.assert_true((SELECT count(*) FROM public.physio_valutazioni)=0,'PT cannot read evaluation');
 INSERT INTO public.physio_diario_sedute(studio_id,paziente_id,trattamenti_svolti,created_by)
 VALUES ('10000000-0000-4000-8000-000000000001',101,'Attività PT','a0000000-0000-4000-8000-000000000004');

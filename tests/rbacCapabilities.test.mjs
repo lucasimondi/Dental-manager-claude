@@ -52,3 +52,30 @@ test('operational Fisio UI never queries evaluations or mounts plan editors',()=
   assert.match(source,/fullAccess && sub === 'obiettivi'/);
   assert.match(source,/fullAccess && sub === 'domiciliare'/);
 });
+
+test('POL-RBAC-001A: Team del percorso reads patient-scoped assignments and never sends created_by from the client',()=>{
+  const source=fs.readFileSync('src/components/PhysioCartella.jsx','utf8');
+  assert.match(source,/supabase\.from\('patient_care_assignments'\)\.select\('\*'\)\.eq\('patient_id', ?paziente_id\)\.eq\('active', ?true\)/);
+  const insertBlock=source.match(/supabase\.from\('patient_care_assignments'\)\.insert\(\{[\s\S]*?\}\)/);
+  assert.ok(insertBlock,'assignment insert call is present');
+  assert.doesNotMatch(insertBlock[0],/created_by/,'created_by must be server-enforced, never client-supplied');
+});
+
+test('POL-RBAC-001A: team management actions are gated by canManageTeam, never unconditionally rendered',()=>{
+  const source=fs.readFileSync('src/components/PhysioCartella.jsx','utf8');
+  assert.match(source,/canManageTeam && \(/);
+  assert.match(source,/Gestisci team/);
+  assert.match(source,/Assegna professionista/);
+});
+
+test('POL-RBAC-001A: canManageTeam is derived from capability (physiotherapist/admin), never from assignment or patient count',()=>{
+  const source=fs.readFileSync('src/components/SchedaPaz.jsx','utf8');
+  assert.match(source,/const canManagePhysioTeam = physioFullAccess \|\| isStudioAdmin === true;/);
+  assert.doesNotMatch(source,/canManagePhysioTeam[\s\S]{0,80}patient_care_assignments/);
+});
+
+test('POL-RBAC-001A: assignment picker only offers capability-matching, same-studio collaborators',()=>{
+  const source=fs.readFileSync('src/components/PhysioCartella.jsx','utf8');
+  assert.match(source,/supabase\.from\('studio_user_capabilities'\)\.select\('user_id,capability'\)\.eq\('studio_id', ?studio_id\)/);
+  assert.match(source,/e\.capability === capability && !giaAssegnati\.has\(e\.user_id\)/);
+});

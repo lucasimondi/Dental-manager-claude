@@ -19,7 +19,7 @@ const prossimaDataMascherina = (orto) => {
   return d.toISOString().slice(0, 10);
 };
 
-export default function SchedaPaz({ paz, plans, payments, appointments, setAppointments, si, features, studioMembership, onClose, onEdit, onNuovoPiano, setPlans, initTab, implants = [], setImplants, setPatients, onNuovoAppuntamento, templates, setPayments, pricelist = [] }) {
+export default function SchedaPaz({ paz, plans, payments, appointments, setAppointments, si, features, studioMembership, currentUserId, isStudioAdmin, onClose, onEdit, onNuovoPiano, setPlans, initTab, implants = [], setImplants, setPatients, onNuovoAppuntamento, templates, setPayments, pricelist = [] }) {
   const [tab, setTab] = useState(initTab || 'info');
   const [pdfPlan, setPdfPlan] = useState(null);
   const [docFiscale, setDocFiscale] = useState(false);
@@ -496,6 +496,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
   const physioFullAccess = capabilities.has('clinical.physiotherapist');
   const physioOperationalAccess = capabilities.has('clinical.personal_trainer') || capabilities.has('clinical.massage_therapist');
   const canAccessPhysio = isFisio && (physioFullAccess || physioOperationalAccess);
+  const canManagePhysioTeam = physioFullAccess || isStudioAdmin === true;
   const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'piani', l: '📑 Piani' }, ...(isDentistico ? [{ id: 'impl', l: '🔩 Impianti' }] : []), ...(canAccessPhysio ? [{ id: 'fisio', l: '🏃 Fisioterapia' }] : []), { id: 'paga', l: '💰 Pagamenti' }, { id: 'foto', l: '📁 Foto' }, { id: 'doc', l: '📄 Documenti' }, { id: 'app', l: '📅 Agenda' }];
 
   return (
@@ -1252,7 +1253,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
         )}
 
         {tab === 'fisio' && canAccessPhysio && (
-          <PhysioCartella paziente_id={paz.id} studio_id={si?.studio_id} paziente={paz} studio={si} accessMode={physioFullAccess ? 'full' : 'operational'} />
+          <PhysioCartella paziente_id={paz.id} studio_id={si?.studio_id} paziente={paz} studio={si} accessMode={physioFullAccess ? 'full' : 'operational'} currentUserId={currentUserId} canManageTeam={canManagePhysioTeam} />
         )}
 
         {tab === 'paga' && (

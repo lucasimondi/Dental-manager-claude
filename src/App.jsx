@@ -445,6 +445,8 @@ export default function App() {
             si={studioInfo}
             features={features}
             studioMembership={studioMembership}
+            currentUserId={session?.user?.id}
+            isStudioAdmin={isStudioAdmin}
             onClose={() => { setSchedaDashPaz(null); pulisciPosizione(['schedaPazId', 'schedaPazTab']); }}
             onEdit={() => setSchedaDashPaz(null)}
             onNuovoPiano={(id) => { setSchedaDashPaz(null); goNuovoPiano(id); }}
@@ -463,6 +465,8 @@ export default function App() {
                 payments={payments} setPayments={setPaymentsSync} appointments={appointments} si={studioInfo}
                 features={features}
                 studioMembership={studioMembership}
+                currentUserId={session?.user?.id}
+                isStudioAdmin={isStudioAdmin}
                 onNuovoPiano={goNuovoPiano}
                 implants={implants} setImplants={setImplantsSync}
                 setAppointments={setAppointmentsSync}
