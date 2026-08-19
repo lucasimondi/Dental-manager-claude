@@ -5,22 +5,9 @@ import { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
 import { C, fmt, fmtD, today } from '../lib/utils';
 import { BarChart, Bar, LineChart, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useControlloDati } from '../lib/useControlloDati';
-
-const WIDGETS_DEFAULT = [
-  { id: 'agenda',       ic: 'cal',     label: 'Agenda oggi',            attivo: true },
-  { id: 'consigli_ai',  ic: 'compass', label: 'Consigli AI',            attivo: true },
-  { id: 'todo',         ic: 'okc',     label: 'Attività e promemoria',  attivo: true },
-  { id: 'appuntamenti', ic: 'cal',     label: 'Prossimi appuntamenti',  attivo: true },
-  { id: 'wa',           ic: 'wa',      label: 'Reminder WhatsApp',      attivo: false },
-  { id: 'economico',    ic: 'eur',     label: 'Pannello economico',     attivo: false },
-  { id: 'preventivi',   ic: 'clip',    label: 'Preventivi',             attivo: false },
-  { id: 'richiami',     ic: 'bell',    label: 'Richiami',               attivo: false },
-  { id: 'scadenze',     ic: 'cal',     label: 'Scadenze pagamento',     attivo: false },
-  { id: 'ortodonzia',   ic: 'tooth',   label: 'Ortodonzia',             attivo: false },
-  { id: 'fisio',        ic: 'pulse',   label: 'Fisioterapia',           attivo: false },
-  { id: 'statistiche',  ic: 'chart',   label: 'Statistiche',            attivo: false },
-  { id: 'grafici',      ic: 'trend',   label: 'Grafici e andamento',    attivo: false },
-];
+import WidgetWorkspace from './WidgetWorkspace.jsx';
+import { HOME_WIDGET_REGISTRY, createDefaultHomeLayout, moveHomeWidget, setHomeWidgetSize, setHomeWidgetVisibility } from '../lib/homeWidgetRegistry.js';
+import { loadUserHomeLayout, saveUserHomeLayout } from '../lib/homeLayoutPersistence.js';
 
 const PALETTE = [
   '#1A4E66','#2EC4B6','#2D9E61','#7C3AED','#E63946',
@@ -46,26 +33,6 @@ const loadTheme = () => {
   catch { return THEME_DEFAULT; }
 };
 const saveTheme = (t) => { try { localStorage.setItem('dm_theme', JSON.stringify(t)); } catch {} };
-
-const loadWidgets = () => {
-  try {
-    const saved = JSON.parse(localStorage.getItem('dm_widgets') || 'null');
-    if (!saved) return WIDGETS_DEFAULT;
-    // label/ic vengono sempre da WIDGETS_DEFAULT (fonte di verità grafica): solo
-    // attivo/ordine sono personalizzazione dell'utente. Così una vecchia label/icona
-    // salvata in localStorage prima di questa modifica si auto-aggiorna da sola,
-    // invece di restare "congelata" per sempre in quello che l'utente aveva salvato.
-    const byId = Object.fromEntries(WIDGETS_DEFAULT.map(w => [w.id, w]));
-    const merged = saved.filter(w => byId[w.id]).map(w => ({ ...byId[w.id], attivo: w.attivo }));
-    const ids = merged.map(w => w.id);
-    const missing = WIDGETS_DEFAULT.filter(w => !ids.includes(w.id));
-    return [...merged, ...missing];
-  } catch { return WIDGETS_DEFAULT; }
-};
-
-const saveWidgets = (ws) => {
-  try { localStorage.setItem('dm_widgets', JSON.stringify(ws)); } catch {}
-};
 
 const NOMI_F = ['alessia','alice','anna','beatrice','camilla','chiara','claudia','elena','elisa','emma','federica','francesca','giulia','ilaria','laura','lisa','lucia','luisa','mara','maria','marina','martina','monica','paola','roberta','sara','silvia','sofia','valentina','veronica','virginia'];
 const getSaluto = (nome) => { if (!nome) return 'Benvenuto'; const ora = new Date().getHours(); const s = ora < 12 ? 'Buongiorno' : ora < 18 ? 'Buon pomeriggio' : 'Buonasera'; const p = nome.trim().split(' ')[0].toLowerCase(); const fem = NOMI_F.includes(p) || (p.endsWith('a') && !['luca','andrea','mattia','nicola','enea'].includes(p)); return s + ', ' + (fem ? 'cara ' : 'caro ') + nome.trim().split(' ')[0]; };
@@ -93,6 +60,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   const isFisio = si?.vertical === 'fisioterapista' || si?.vertical === 'massofisioterapista';
   const t = today();
   const [userName, setUserName] = useState(userNameProp || '');
+  const [userId, setUserId] = useState(null);
 
   // Dati physio per il widget "Fisioterapia" — caricati solo per studi del
   // vertical fisioterapista/massofisioterapista, isolati dal resto del
@@ -116,6 +84,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
     supabase.auth.getSession().then(({ data: { session } }) => {
       const m = session?.user?.user_metadata;
       if (m?.nome) setUserName((m.nome + ' ' + (m.cognome || '')).trim());
+      setUserId(session?.user?.id || null);
     });
   }, []);
   const anno = t.slice(0, 4);
@@ -168,11 +137,46 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   const [editApp, setEditApp] = useState(null);
   const [editForm, setEditForm] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [layoutLoading, setLayoutLoading] = useState(false);
+  const [layoutSaving, setLayoutSaving] = useState(false);
+  const [layoutError, setLayoutError] = useState('');
+  const [previewMode, setPreviewMode] = useState('desktop');
   const [mostraGraficiDash, setMostraGraficiDash] = useState(false);
-  const [widgets, setWidgets] = useState(loadWidgets);
+  const [widgets, setWidgets] = useState(createDefaultHomeLayout);
+  const [draftWidgets, setDraftWidgets] = useState(createDefaultHomeLayout);
   const [theme, setTheme] = useState(loadTheme);
   const [themeTab, setThemeTab] = useState('widgets'); // 'widgets' | 'colori'
-  const isOn = (id) => { const w = widgets.find(x => x.id === id); return w ? w.attivo !== false : true; };
+  const isOn = (id) => { const w = widgets.find(x => x.id === id); return w ? w.visible !== false : true; };
+
+  useEffect(() => {
+    if (!studioId || !userId) return;
+    let cancelled = false;
+    setLayoutLoading(true);
+    setLayoutError('');
+    loadUserHomeLayout(supabase, studioId, userId)
+      .then((layout) => { if (!cancelled) { setWidgets(layout); setDraftWidgets(layout); } })
+      .catch(() => { if (!cancelled) setLayoutError('Impossibile caricare la personalizzazione Home'); })
+      .finally(() => { if (!cancelled) setLayoutLoading(false); });
+    return () => { cancelled = true; };
+  }, [studioId, userId]);
+
+  const openHomeCustomizer = () => {
+    setDraftWidgets(widgets.map((item) => ({ ...item })));
+    setLayoutError('');
+    setPreviewMode('desktop');
+    setThemeTab('widgets');
+    setSettingsOpen(true);
+  };
+
+  const saveHomeCustomization = async () => {
+    if (!studioId || !userId) { setLayoutError('Identità studio/utente non disponibile'); return; }
+    setLayoutSaving(true); setLayoutError('');
+    try {
+      const saved = await saveUserHomeLayout(supabase, studioId, userId, draftWidgets);
+      setWidgets(saved); setDraftWidgets(saved); setSettingsOpen(false);
+    } catch { setLayoutError('Salvataggio non riuscito. Nessuna modifica è stata applicata.'); }
+    finally { setLayoutSaving(false); }
+  };
   const [todoList, setTodoList] = useState([]);
   const [todoInput, setTodoInput] = useState('');
   const [todoModal, setTodoModal] = useState(false);
@@ -303,7 +307,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
     <div>
       {/* ── SETTINGS MODAL ── */}
       {settingsOpen && (
-        <Modal title={<><Ic n="set" s={15} c={C.txt} /> Personalizza dashboard</>} onClose={() => setSettingsOpen(false)}>
+        <Modal title={<><Ic n="set" s={15} c={C.txt} /> Personalizza Home</>} onClose={() => setSettingsOpen(false)} wide>
           {/* TAB SWITCHER */}
           <div style={{ display: 'flex', background: C.bg, borderRadius: 9, border: `1px solid ${C.brd}`, marginBottom: 14, overflow: 'hidden' }}>
             {[['widgets','box','Widget'],['colori','palette','Colori card']].map(([id, ic, lbl]) => (
@@ -313,39 +317,43 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
 
           {/* TAB WIDGET */}
           {themeTab === 'widgets' && <>
-            <div style={{ fontSize: 12, color: C.txm, marginBottom: 12 }}>Trascina ⠿ per riordinare · toggle per attivare/disattivare</div>
-            {widgets.map((w, i) => {
-              if (w.id === 'consigli_ai' && !consigliAttivi) return null;
-              if (w.id === 'ortodonzia' && !isDentistico) return null;
-              if (w.id === 'fisio' && !isFisio) return null;
-              return (
-              <div key={w.id} draggable
-                onDragStart={e => e.dataTransfer.setData('widgetIdx', String(i))}
-                onDragOver={e => e.preventDefault()}
-                onDrop={e => {
-                  const from = Number(e.dataTransfer.getData('widgetIdx'));
-                  if (from === i) return;
-                  const next = [...widgets];
-                  const [moved] = next.splice(from, 1);
-                  next.splice(i, 0, moved);
-                  setWidgets(next); saveWidgets(next);
-                }}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 10px', marginBottom: 6, background: C.bg, borderRadius: 10, border: `1px solid ${C.brd}`, cursor: 'grab', userSelect: 'none' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 18, color: C.txl }}>⠿</span>
-                  <Ic n={w.ic} s={14} c={w.attivo !== false ? C.txm : C.txl} />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: w.attivo !== false ? C.txt : C.txl }}>{w.label}</span>
-                </div>
-                <button onClick={() => {
-                  const next = widgets.map(x => x.id === w.id ? { ...x, attivo: x.attivo === false } : x);
-                  setWidgets(next); saveWidgets(next);
-                }} style={{ width: 44, height: 24, borderRadius: 12, background: w.attivo !== false ? C.pri : C.brd, border: 'none', cursor: 'pointer', position: 'relative', flexShrink: 0 }}>
-                  <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: w.attivo !== false ? 23 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-                </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: C.txm }}>Aggiungi o rimuovi widget. Trascina la preview per riordinare e usa S/M/L per ridimensionare.</div>
+              <div style={{ display: 'flex', gap: 4, background: C.bg, borderRadius: 8, padding: 3, flexShrink: 0 }}>
+                {[['desktop','Desktop'],['mobile','Mobile']].map(([id,label]) => <button key={id} type="button" onClick={() => setPreviewMode(id)}
+                  style={{ border: 'none', borderRadius: 6, padding: '5px 9px', cursor: 'pointer', fontSize: 11, fontWeight: 800, background: previewMode===id ? C.pri : 'transparent', color: previewMode===id ? '#fff' : C.txm }}>{label}</button>)}
               </div>
-              );
-            })}
-            <button onClick={() => { setWidgets([...WIDGETS_DEFAULT]); saveWidgets([...WIDGETS_DEFAULT]); }} style={{ width: '100%', padding: '9px', marginTop: 8, background: C.danL, border: 'none', borderRadius: 9, color: C.dan, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>↺ Ripristina ordine predefinito</button>
+            </div>
+            <div style={{ maxHeight: 210, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: 6, marginBottom: 14 }}>
+              {HOME_WIDGET_REGISTRY.map((widget) => {
+                if (widget.id === 'consigli_ai' && !consigliAttivi) return null;
+                if (widget.id === 'ortodonzia' && !isDentistico) return null;
+                if (widget.id === 'fisio' && !isFisio) return null;
+                const item = draftWidgets.find((entry) => entry.id === widget.id);
+                return <div key={widget.id} style={{ display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,padding:'9px 10px',background:C.bg,borderRadius:9,border:`1px solid ${C.brd}` }}>
+                  <div style={{ minWidth:0 }}><div style={{ fontSize:10,color:C.txl,fontWeight:800,textTransform:'uppercase' }}>{widget.category}</div><div style={{ display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:700,color:item?.visible ? C.txt : C.txl }}><Ic n={widget.ic} s={12} c="currentColor" />{widget.label}</div></div>
+                  <button type="button" onClick={() => setDraftWidgets((layout) => setHomeWidgetVisibility(layout,widget.id,!item?.visible))}
+                    style={{ border:'none',borderRadius:8,padding:'6px 9px',cursor:'pointer',fontSize:11,fontWeight:800,background:item?.visible ? C.danL : C.priL,color:item?.visible ? C.dan : C.pri }}>{item?.visible ? 'Rimuovi' : 'Aggiungi'}</button>
+                </div>;
+              })}
+            </div>
+            <WidgetWorkspace layout={draftWidgets} editing previewMode={previewMode}
+              onMove={(source,target) => setDraftWidgets((layout) => moveHomeWidget(layout,source,target))}
+              onResize={(id,size) => setDraftWidgets((layout) => setHomeWidgetSize(layout,id,size))}>
+              {draftWidgets.filter((item) => item.visible).map((item) => {
+                const widget=HOME_WIDGET_REGISTRY.find((entry)=>entry.id===item.id);
+                return widget ? <div key={item.id} style={{ minHeight:72,padding:12,borderRadius:10,background:C.sur,border:`1px solid ${C.brd}` }}>
+                  <div style={{ display:'flex',alignItems:'center',gap:7,fontWeight:800,fontSize:13 }}><Ic n={widget.ic} s={13} c={C.pri} />{widget.label}</div>
+                  <div style={{ fontSize:11,color:C.txl,marginTop:5 }}>Anteprima layout · contenuto invariato</div>
+                </div> : null;
+              })}
+            </WidgetWorkspace>
+            {layoutError && <div role="alert" style={{ marginTop:10,fontSize:12,color:C.dan,fontWeight:700 }}>{layoutError}</div>}
+            <div style={{ display:'flex',gap:8,marginTop:12 }}>
+              <button type="button" onClick={() => setDraftWidgets(createDefaultHomeLayout())} style={{ padding:'9px 12px',background:C.danL,border:'none',borderRadius:9,color:C.dan,fontWeight:700,fontSize:12,cursor:'pointer' }}>↺ Reset al default</button>
+              <button type="button" onClick={() => setSettingsOpen(false)} style={{ marginLeft:'auto',padding:'9px 14px',background:C.bg,border:`1px solid ${C.brd}`,borderRadius:9,color:C.txm,fontWeight:700,fontSize:12,cursor:'pointer' }}>Annulla</button>
+              <button type="button" disabled={layoutSaving || layoutLoading} onClick={saveHomeCustomization} style={{ padding:'9px 16px',background:C.pri,border:'none',borderRadius:9,color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer',opacity:layoutSaving?0.6:1 }}>{layoutSaving ? 'Salvataggio…' : 'Salva Home'}</button>
+            </div>
           </>}
 
           {/* TAB COLORI */}
@@ -732,13 +740,14 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           <div style={{ fontSize: 22, fontWeight: 900, color: C.txt }}>{getSaluto(userName)}</div>
           <div style={{ fontSize: 12, color: C.txl, marginTop: 1 }}>{new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
         </div>
-        <button onClick={() => setSettingsOpen(true)} style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 10, padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, color: C.txm, fontSize: 12, fontWeight: 700 }}>
-          <Ic n="set" s={14} c={C.txm} /> Personalizza
+        <button onClick={openHomeCustomizer} style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 10, padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, color: C.txm, fontSize: 12, fontWeight: 700 }}>
+          <Ic n="set" s={14} c={C.txm} /> Personalizza Home
         </button>
       </div>
 
       {/* ── WIDGET ORDINATI DINAMICAMENTE ── */}
-      {widgets.filter(w => w.attivo !== false).map(w => {
+      <WidgetWorkspace layout={widgets} editing={false} previewMode="desktop" onMove={() => {}} onResize={() => {}}>
+      {widgets.filter(w => w.visible !== false).map(w => {
         if (w.id === 'agenda') return (
           <div key="agenda" style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -1147,6 +1156,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
 
         return null;
       })}
+      </WidgetWorkspace>
 
       {editApp && editForm && (
         <Modal title={<><Ic n="edit" s={15} c={C.txt} /> Modifica appuntamento</>} onClose={() => setEditApp(null)}>
@@ -1189,6 +1199,3 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
     </div>
   );
 }
-
-
-
