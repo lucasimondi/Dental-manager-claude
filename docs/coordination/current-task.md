@@ -1,49 +1,38 @@
 # Current task
 
-- TASK: POL-002B
-- TITLE: Private Patient Files
+- TASK: POL-003A
+- TITLE: Product Owner Semantics Lock
 - OWNER: CODEX
-- BRANCH: `security/POL-002B-private-patient-files-v2`
+- BRANCH: `design/POL-003-financial-source-of-truth`
 - STATUS: `WAITING_PRODUCT_OWNER`
 
 ## Objective
 
-Remove public access to clinical files in Supabase Storage without breaking the existing patient file workflow. Preserve tenant isolation and current legacy `<patient_id>/<filename>` object paths during the first cutover.
+Lock the Product Owner-approved POL-003 semantics into the versioned, tenant-safe server-side canonical engine and regression suite without changing production, deploying, or applying remote migrations.
 
-## Verified production facts
+## Required work
 
-- `patient-files` exists and is currently public.
-- Production currently contains 1 object in the bucket.
-- The object uses the legacy numeric patient-id first path segment and matches an existing `public.patients` row.
-- `patients.id` is bigint and `patients.studio_id` is uuid.
-- Active tenant membership is represented by `public.studio_users(user_id, studio_id, stato)`.
-- The verified pre-task application baseline in `SchedaPaz.jsx` listed/uploaded/deleted under `<patient_id>/` and used `getPublicUrl()` for preview/download.
-
-## Prepared on branch
-
-- migration `20260818190000_pol_002b_private_patient_files.sql`;
-- four authenticated tenant-scoped Storage policies;
-- non-client-executable authorization helper tied to patient studio + active membership + JWT studio claim;
-- bucket privacy cutover (`public=false`), not applied remotely;
-- SQL regression assertions and behavioral test matrix.
-
-The migration SQL has been syntax/preflight-tested against the production schema inside an explicit transaction ending in `ROLLBACK`; the bucket remained public after the test. No production state changed.
-
-## Completed validation
-
-- `SchedaPaz.jsx` now creates 300-second signed URLs and fails closed when listing or signing fails; list/upload/delete retain the legacy `<patient_id>/<filename>` path.
-- Repository search found no other `patient-files` `getPublicUrl()` call site.
-- The migration, SQL assertions and integration matrix passed on a disposable local Supabase/PostgreSQL 17 stack with synthetic users, patients, memberships and files only.
-- The integration test covered two tenants, a second active member, inactive/missing membership, missing/invalid studio claim, unknown patient, anonymous access, cross-tenant list/sign/upload/update/delete denial, same-tenant signed download, URL expiry and cleanup.
-- Local Supabase database advisors reported no issues; `npm run build`, `git diff --check` and the targeted secret-pattern scan passed.
-- The disposable local stack was stopped with `--no-backup`; no production or remote migration action occurred.
-- The branch was subsequently aligned with current `master` commit `f229e33` (POL-002C) without conflicts; the only inherited changes remove `netlify.toml` and establish Vercel as sole deployment authority.
-- After alignment, the migration, SQL assertions, two-tenant Storage integration test, local database advisors, application build, deployment-authority check, diff check and secret scan were repeated successfully.
-
-## Awaiting Product Owner
-
-Review the branch diff, test evidence and handoff. Production application, deploy, migration execution and merge remain separate explicit gates.
+1. Make `PREVENTIVATO` net after discount while retaining gross and discount amounts.
+2. Lock accepted, produced, invoice, cash, allocation, cancellation/reversal, cost, break-even and hour semantics from the Product Owner decision.
+3. Replace generic residual credit with portfolio-to-execute, produced-to-invoice, customer receivable and unallocated cash balance.
+4. Remove ambiguous quote/credit basis parameters and retain server-side deterministic drill-down reconciliation.
+5. Add explicit payment allocation plus deterministic patient-level FIFO for otherwise unallocated positive cash.
+6. Run migration, regression tests, database lint, build, secret scan and diff checks locally only.
+7. Apply the final PR #6 review: never auto-allocate unallocated refunds, expose opening/movements/closing for all four stock metrics, and restrict hourly structure cost to operational fixed structure/base-personnel costs.
 
 ## Production gate
 
-Do not apply the POL-002B migration, deploy application changes, merge, or alter existing Storage objects until local validation is complete and the Product Owner explicitly approves the PR and cutover.
+Do not modify production, apply remote migrations, deploy, or merge. Product Owner approval is required before any production reconciliation, rollout or unresolved financial semantic is selected.
+
+## Completed local evidence
+
+- FIN-001 formula and data-source inventory completed in `docs/architecture/pol-003-fin-001-inventory.md`.
+- Product Owner semantics locked in `docs/architecture/pol-003a-product-owner-semantics-lock.md`.
+- Additive canonical engine v1 updated in migration `20260818190642_pol_003_financial_engine_v1.sql`; it remains disconnected from legacy frontend reads.
+- Synthetic POL-003A regression suite passed on a disposable local Supabase/PostgreSQL 17 instance, including discounts, advance/overpayment, partial and FIFO allocation, cancellation, refund, credit note, production reversal, external reconciliation, separate balances, break-even, hour denominators and two-tenant isolation.
+- Supabase schema lint and advisors reported no issues; application build passed; final diff and secret checks are recorded in the POL-003A handoff.
+- No production or remote migration, deployment or merge was performed.
+
+## Waiting on Product Owner
+
+Review the final POL-003A implementation. All three final review decisions are locked; legacy adapters, frontend cutover, production reconciliation and rollout remain separately gated. Do not begin a new task without Product Owner approval.
