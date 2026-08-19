@@ -4,7 +4,7 @@
 - TITLE: Canonical Costs & Hours
 - OWNER: CODEX
 - BRANCH: `finance/POL-003F-canonical-costs-hours`
-- STATUS: `IN_PROGRESS`
+- STATUS: `WAITING_PRODUCT_OWNER`
 
 ## Objective
 
@@ -59,3 +59,7 @@ These aggregates are evidence for adapter/reconciliation only. Do not hardcode t
 ## Completion gate
 
 No remote cost/hour backfill is authorized by this task. Product Owner must review the local reconciliation and approve a separate controlled production execution.
+
+## Completion state
+
+The restricted adapter, synthetic regressions, read-only shadow query, source inventory and validation evidence are complete on PR #12. All local tests and build passed. Production was not modified; no remote migration, adapter execution, backfill, deployment or merge occurred.
