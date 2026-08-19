@@ -1,38 +1,35 @@
 # Current task
 
-- TASK: POL-003A
-- TITLE: Product Owner Semantics Lock
+- TASK: POL-003B
+- TITLE: Legacy Financial Adapter & Reconciliation
 - OWNER: CODEX
-- BRANCH: `design/POL-003-financial-source-of-truth`
+- BRANCH: `finance/POL-003B-legacy-adapter-reconciliation`
 - STATUS: `WAITING_PRODUCT_OWNER`
 
 ## Objective
 
-Lock the Product Owner-approved POL-003 semantics into the versioned, tenant-safe server-side canonical engine and regression suite without changing production, deploying, or applying remote migrations.
+Map the existing Poliedra financial sources into the POL-003A canonical engine, build deterministic adapters and produce a shadow reconciliation report comparing legacy and canonical figures before any frontend cutover.
+
+## Product Owner authorization
+
+Approved after POL-003A merge and controlled production installation of the additive canonical engine. Production financial_*_v1 tables currently contain zero canonical rows. POL-003B may inspect production metadata and aggregate financial source data read-only, but must not write legacy/canonical production rows, alter frontend KPI reads, deploy application code, or replace legacy RPCs.
 
 ## Required work
 
-1. Make `PREVENTIVATO` net after discount while retaining gross and discount amounts.
-2. Lock accepted, produced, invoice, cash, allocation, cancellation/reversal, cost, break-even and hour semantics from the Product Owner decision.
-3. Replace generic residual credit with portfolio-to-execute, produced-to-invoice, customer receivable and unallocated cash balance.
-4. Remove ambiguous quote/credit basis parameters and retain server-side deterministic drill-down reconciliation.
-5. Add explicit payment allocation plus deterministic patient-level FIFO for otherwise unallocated positive cash.
-6. Run migration, regression tests, database lint, build, secret scan and diff checks locally only.
-7. Apply the final PR #6 review: never auto-allocate unallocated refunds, expose opening/movements/closing for all four stock metrics, and restrict hourly structure cost to operational fixed structure/base-personnel costs.
+1. Inventory authoritative legacy tables/columns/dates for `plans`, `payments`, `documenti_fiscali`, `pagamenti_esterni`, `spese`, `personale`, `materiali`, `macchinari`, `prestazione_materiali`, `prestazione_macchinari`, `pricelist`, `appointments` and relevant configuration.
+2. Define deterministic source-to-canonical mappings for contracts, contract lines, accepted/produced events, invoice events, payment events/allocations, cost events and available/worked hours.
+3. Never infer unavailable historical dates. Classify every mapping as `EXACT`, `DERIVED`, `APPROXIMATION_NOT_ALLOWED`, or `PRODUCT_OWNER_DECISION_REQUIRED`.
+4. Build idempotent adapter SQL in a new migration or versioned adapter module, but do not run it against production.
+5. Use synthetic/local fixtures to test discounts, partial execution/payment, advances, overpayment, cancellation, refunds, notes of credit, external payment reconciliation, historical costs, two tenants and multi-operator data.
+6. Build a read-only shadow reconciliation query/report for production aggregate comparisons. It must not copy patient-identifying data into logs or Git.
+7. Compare at least legacy vs canonical-compatible definitions for preventivato, accepted backlog, produced, invoiced, collected, costs, margin/EBITDA where source evidence permits. Explain every variance; do not force equality where semantics differ.
+8. Do not wire the frontend to POL-003A during this task.
+9. Run build, database tests/lint/advisor, secret scan and diff check. Update handoff and set `WAITING_PRODUCT_OWNER`.
 
 ## Production gate
 
-Do not modify production, apply remote migrations, deploy, or merge. Product Owner approval is required before any production reconciliation, rollout or unresolved financial semantic is selected.
+No production data writes, no remote adapter migration, no frontend cutover, no replacement of legacy RPCs and no deploy. Product Owner approval is required after shadow reconciliation before any canonical backfill or UI switch.
 
-## Completed local evidence
+## Completion state
 
-- FIN-001 formula and data-source inventory completed in `docs/architecture/pol-003-fin-001-inventory.md`.
-- Product Owner semantics locked in `docs/architecture/pol-003a-product-owner-semantics-lock.md`.
-- Additive canonical engine v1 updated in migration `20260818190642_pol_003_financial_engine_v1.sql`; it remains disconnected from legacy frontend reads.
-- Synthetic POL-003A regression suite passed on a disposable local Supabase/PostgreSQL 17 instance, including discounts, advance/overpayment, partial and FIFO allocation, cancellation, refund, credit note, production reversal, external reconciliation, separate balances, break-even, hour denominators and two-tenant isolation.
-- Supabase schema lint and advisors reported no issues; application build passed; final diff and secret checks are recorded in the POL-003A handoff.
-- No production or remote migration, deployment or merge was performed.
-
-## Waiting on Product Owner
-
-Review the final POL-003A implementation. All three final review decisions are locked; legacy adapters, frontend cutover, production reconciliation and rollout remain separately gated. Do not begin a new task without Product Owner approval.
+The verified inventory and classification are complete. A restricted, idempotent and deliberately partial adapter migration, synthetic regression suite, read-only aggregate shadow query, production aggregate report and local validation record are prepared. Production remained read-only and the canonical production tables remained untouched. See `pol-003b-adapter-implementation.md`, `pol-003b-shadow-reconciliation.md` and `pol-003b-local-validation.md`.
