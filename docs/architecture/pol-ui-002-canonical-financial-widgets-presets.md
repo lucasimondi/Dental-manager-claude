@@ -1,6 +1,6 @@
 # POL-UI-002 — Canonical Financial Widgets + Role Presets
 
-Status: PRODUCT_OWNER_APPROVED_DESIGN
+Status: IMPLEMENTED_LOCALLY_WAITING_PRODUCT_OWNER
 
 ## Objective
 
