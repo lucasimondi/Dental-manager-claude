@@ -86,6 +86,7 @@ SELECT c.studio_id,c.id,c.patient_id,d.dt,d.direction,d.amount,d.kind,d.reconcil
 FROM (VALUES
  ('advance',DATE '2025-02-03',1::smallint,150::numeric,'PAYMENT',true,'advance-payment'),
  ('partial',DATE '2025-03-04',1::smallint,40::numeric,'PAYMENT',true,'partial-payment'),
+ ('partial',DATE '2025-07-15',-1::smallint,10::numeric,'REFUND',true,'partial-unallocated-refund'),
  ('fifo-old',DATE '2025-04-10',1::smallint,80::numeric,'PAYMENT',true,'fifo-payment'),
  ('refund',DATE '2025-06-04',1::smallint,110::numeric,'PAYMENT',true,'refund-original-payment'),
  ('refund',DATE '2025-06-10',-1::smallint,20::numeric,'REFUND',true,'refund-event'),
@@ -119,6 +120,7 @@ FROM public.financial_payment_events_v1 p WHERE p.source_id='advance-payment';
 INSERT INTO public.financial_cost_events_v1(studio_id,stage,classification,cost_scope,event_date,direction,amount,operator_ref,cost_version_ref,source_table,source_id) VALUES
 ('10000000-0000-4000-8000-000000000009','SOSTENUTO','VARIABILE_ATTRIBUIBILE','STRUCTURE','2025-09-10',1,20,NULL,'v1','synthetic','variable'),
 ('10000000-0000-4000-8000-000000000009','SOSTENUTO','FISSO_OPERATIVO','STRUCTURE','2025-09-10',1,30,NULL,'v1','synthetic','fixed'),
+('10000000-0000-4000-8000-000000000009','SOSTENUTO','FISSO_OPERATIVO','OPERATOR','2025-09-10',1,20,'op-base','v1','synthetic','base-payroll'),
 ('10000000-0000-4000-8000-000000000009','SOSTENUTO','AMMORTAMENTO_DEPREZZAMENTO','STRUCTURE','2025-09-10',1,25,NULL,'v1','synthetic','depreciation'),
 ('10000000-0000-4000-8000-000000000009','PREVISTO','FISSO_OPERATIVO','STRUCTURE','2025-09-01',1,140,NULL,'v1','synthetic','predicted'),
 ('10000000-0000-4000-8000-000000000009','IMPEGNATO','FISSO_OPERATIVO','STRUCTURE','2025-09-02',1,130,NULL,'v1','synthetic','committed');
@@ -181,6 +183,11 @@ BEGIN
   PERFORM pg_temp.assert_num('cancellation current period',v_amount,-100);
   SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-05-01','2025-05-31');
   PERFORM pg_temp.assert_num('cancelled portfolio',s.portafoglio_da_eseguire,0);
+  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-05-15','2025-05-31');
+  PERFORM pg_temp.assert_num('portfolio opening',s.portafoglio_da_eseguire_apertura,100);
+  PERFORM pg_temp.assert_num('portfolio movement',s.portafoglio_da_eseguire_movimenti,-100);
+  PERFORM pg_temp.assert_num('portfolio closing',s.portafoglio_da_eseguire_chiusura,0);
+  PERFORM pg_temp.assert_num('portfolio headline is closing',s.portafoglio_da_eseguire,s.portafoglio_da_eseguire_chiusura);
 
   -- Refund is negative cash and negative explicit allocation; invoice remains unchanged.
   PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','10000000-0000-4000-8000-000000000006');
@@ -188,6 +195,19 @@ BEGIN
   PERFORM pg_temp.assert_num('refund cash',s.incassato,90);
   PERFORM pg_temp.assert_num('refund allocated cash',s.incassato_allocato,90);
   PERFORM pg_temp.assert_num('refund receivable',s.credito_clienti,20);
+
+  -- Unallocated refund stays negative unallocated cash and never auto-reopens an invoice.
+  PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','10000000-0000-4000-8000-000000000003');
+  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-07-01','2025-07-31');
+  PERFORM pg_temp.assert_num('unallocated refund cash movement',s.incassato,-10);
+  PERFORM pg_temp.assert_num('unallocated refund allocated movement',s.incassato_allocato,0);
+  PERFORM pg_temp.assert_num('receivable opening',s.credito_clienti_apertura,70);
+  PERFORM pg_temp.assert_num('receivable movement',s.credito_clienti_movimenti,0);
+  PERFORM pg_temp.assert_num('receivable closing',s.credito_clienti_chiusura,70);
+  PERFORM pg_temp.assert_num('unallocated cash opening',s.saldo_incassi_non_allocato_apertura,0);
+  PERFORM pg_temp.assert_num('unallocated refund movement',s.saldo_incassi_non_allocato_movimenti,-10);
+  PERFORM pg_temp.assert_num('unallocated cash closing',s.saldo_incassi_non_allocato_chiusura,-10);
+  PERFORM pg_temp.assert_num('unallocated headline is closing',s.saldo_incassi_non_allocato,s.saldo_incassi_non_allocato_chiusura);
 
   -- Credit note and production reversal affect only their respective ledgers.
   PERFORM pg_temp.set_claim('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','10000000-0000-4000-8000-000000000007');
@@ -210,15 +230,19 @@ BEGIN
   PERFORM pg_temp.assert_num('portfolio to execute',s.portafoglio_da_eseguire,100);
   PERFORM pg_temp.assert_num('produced to invoice',s.prodotto_da_fatturare,20);
   PERFORM pg_temp.assert_num('customer receivable',s.credito_clienti,38);
+  PERFORM pg_temp.assert_num('portfolio stock reconciliation',s.portafoglio_da_eseguire_apertura+s.portafoglio_da_eseguire_movimenti,s.portafoglio_da_eseguire_chiusura);
+  PERFORM pg_temp.assert_num('produced-to-invoice stock reconciliation',s.prodotto_da_fatturare_apertura+s.prodotto_da_fatturare_movimenti,s.prodotto_da_fatturare_chiusura);
+  PERFORM pg_temp.assert_num('receivable stock reconciliation',s.credito_clienti_apertura+s.credito_clienti_movimenti,s.credito_clienti_chiusura);
+  PERFORM pg_temp.assert_num('unallocated-cash stock reconciliation',s.saldo_incassi_non_allocato_apertura+s.saldo_incassi_non_allocato_movimenti,s.saldo_incassi_non_allocato_chiusura);
   PERFORM pg_temp.assert_num('variable costs',s.costi_variabili,20);
-  PERFORM pg_temp.assert_num('fixed operating costs',s.costi_fissi_operativi,30);
+  PERFORM pg_temp.assert_num('fixed operating costs',s.costi_fissi_operativi,50);
   PERFORM pg_temp.assert_num('contribution margin',s.margine_contribuzione,80);
-  PERFORM pg_temp.assert_num('management EBITDA excludes depreciation',s.ebitda_operativo_gestionale,50);
-  PERFORM pg_temp.assert_num('break even',s.break_even,37.5);
+  PERFORM pg_temp.assert_num('management EBITDA excludes depreciation',s.ebitda_operativo_gestionale,30);
+  PERFORM pg_temp.assert_num('break even',s.break_even,62.5);
   IF s.break_even_raggiunto IS DISTINCT FROM true THEN RAISE EXCEPTION 'FAIL break-even must compare with production'; END IF;
   PERFORM pg_temp.assert_num('available hours',s.ore_produttive_disponibili,50);
   PERFORM pg_temp.assert_num('worked hours',s.ore_effettivamente_lavorate,20);
-  PERFORM pg_temp.assert_num('structure hourly cost',s.costo_orario_struttura,1);
+  PERFORM pg_temp.assert_num('structure hourly cost includes base payroll but excludes direct variable and depreciation',s.costo_orario_struttura,1);
   PERFORM pg_temp.assert_num('production per worked hour',s.produzione_ora,5);
   PERFORM pg_temp.assert_num('cash per worked hour',s.incasso_ora,2.5);
   SELECT COALESCE(SUM(amount),0) INTO v_amount

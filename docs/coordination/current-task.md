@@ -18,6 +18,7 @@ Lock the Product Owner-approved POL-003 semantics into the versioned, tenant-saf
 4. Remove ambiguous quote/credit basis parameters and retain server-side deterministic drill-down reconciliation.
 5. Add explicit payment allocation plus deterministic patient-level FIFO for otherwise unallocated positive cash.
 6. Run migration, regression tests, database lint, build, secret scan and diff checks locally only.
+7. Apply the final PR #6 review: never auto-allocate unallocated refunds, expose opening/movements/closing for all four stock metrics, and restrict hourly structure cost to operational fixed structure/base-personnel costs.
 
 ## Production gate
 
@@ -34,4 +35,4 @@ Do not modify production, apply remote migrations, deploy, or merge. Product Own
 
 ## Waiting on Product Owner
 
-Review the POL-003A implementation and the remaining explicitly documented decisions before authorizing legacy adapters, frontend cutover, production reconciliation or rollout. Do not begin a new task without Product Owner approval.
+Review the final POL-003A implementation. All three final review decisions are locked; legacy adapters, frontend cutover, production reconciliation and rollout remain separately gated. Do not begin a new task without Product Owner approval.

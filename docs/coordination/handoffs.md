@@ -89,3 +89,18 @@
 - Unresolved issues: unallocated-refund reversal policy, optional stock opening/movement outputs and broader hourly structure-cost category inclusion still require Product Owner decisions; legacy ingestion mapping and old/new reconciliation remain blocked by missing production SQL/backend definitions.
 - Risks: automatic FIFO currently applies only to remaining reconciled positive cash, while refund allocation must be explicit; FIFO is patient-scoped and therefore requires a trustworthy patient identity in future adapters; synthetic tests cannot prove compatibility with unversioned production rows; rollout still requires ingestion, parallel reconciliation, UI cutover and rollback gates.
 - Exact next action: Product Owner and Tech Lead review the locked semantics, migration and local evidence; answer or explicitly defer the three remaining decisions; then authorize or reject the next reconciliation/adapter step. Do not apply remotely, deploy, merge or start another task without explicit approval.
+
+## POL-003A final-review handoff
+
+- Task ID: POL-003A
+- Previous agent: CODEX
+- Branch: `design/POL-003-financial-source-of-truth`
+- Objective: implement the three final Product Owner decisions submitted in the latest review of PR #6.
+- Completed work: prohibited automatic FIFO reversal for unallocated refunds and retained them as signed unallocated cash; added opening, signed period movements and closing outputs plus drill-down modes for all four stock metrics, with unsuffixed headlines equal to closing; narrowed hourly structure cost to fixed operating structure and base-personnel costs while excluding direct variable, depreciation/amortization, interest, tax and extraordinary categories; updated synthetic assertions and documentation.
+- Files changed: `supabase/migrations/20260818190642_pol_003_financial_engine_v1.sql`; `supabase/tests/pol_003_financial_engine.sql`; `docs/architecture/pol-003a-product-owner-semantics-lock.md`; `docs/architecture/pol-003-local-validation.md`; `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`. No application or deployment file changed.
+- Database changes: the unpublished additive migration expands snapshot/drill-down outputs only; no legacy object is modified. Nothing was applied remotely or in production.
+- Tests executed: fresh local Supabase/PostgreSQL 17 fixture and migration; complete SQL regression suite including RLS/two-tenant assertions; database lint; local security/performance advisors; application build; diff check; targeted secret scan; scope review.
+- Test results: migration and the complete synthetic suite passed, including unallocated-refund non-allocation, opening-plus-movements-equals-closing for every stock, headline-equals-closing, hourly-cost inclusion/exclusion, RLS and two-tenant isolation; lint found no schema errors; advisors found no issues; build passed with the existing pdfjs eval and large-chunk warnings; diff and secret checks passed. Production, deployment and merge remain untouched.
+- Unresolved issues: no POL-003A Product Owner semantic remains unresolved. Legacy ingestion and reconciliation still depend on the missing versioned production backend baseline.
+- Risks: snapshot return shape is intentionally expanded and requires coordinated future consumers; FIFO depends on trustworthy patient identity; synthetic validation does not prove legacy production compatibility.
+- Exact next action: Product Owner and Tech Lead review the final commit and validation evidence, then authorize or reject the next adapter/reconciliation action. Do not apply remotely, deploy, merge or start another task without explicit approval.

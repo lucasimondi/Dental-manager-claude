@@ -27,6 +27,8 @@ An explicit plan/service link made before invoicing is preserved and excludes th
 
 Refunds are separate negative cash events. When a refund reverses an invoice allocation, that negative allocation must be explicit. Credit notes do not alter cash, and production reversals do not alter invoices or cash.
 
+An unallocated refund is never auto-FIFO matched against historical invoice allocations. It remains an explicit negative event in `SALDO_INCASSI_NON_ALLOCATO` until a user or authorized system supplies a reconciliation target.
+
 ## Costs and operating metrics
 
 - `MARGINE_CONTRIBUZIONE = PRODOTTO - COSTI_VARIABILI_ATTRIBUIBILI`.
@@ -34,21 +36,18 @@ Refunds are separate negative cash events. When a refund reverses an invoice all
 - Depreciation/amortization, interest, tax and extraordinary classifications are excluded from this EBITDA.
 - `BREAK_EVEN = COSTI_FISSI_OPERATIVI / MARGINE_CONTRIBUZIONE_%`; achievement is compared with `PRODOTTO`.
 - Available productive hours and actually worked clinical hours are distinct event types.
-- `COSTO_ORARIO_STRUTTURA = COSTI_STRUTTURA_OPERATIVI / ORE_PRODUTTIVE_DISPONIBILI`.
+- `COSTO_ORARIO_STRUTTURA = COSTI_FISSI_OPERATIVI_DI_STRUTTURA_E_BASE_PERSONALE / ORE_PRODUTTIVE_DISPONIBILI`.
 - `PRODUZIONE_ORA = PRODOTTO / ORE_EFFETTIVAMENTE_LAVORATE`.
 - `INCASSO_ORA = INCASSATO / ORE_EFFETTIVAMENTE_LAVORATE`.
+
+For hourly structure cost, the numerator includes rent, base payroll and employer cost, leases, software, insurance, base utilities, professional/administrative operating services and equivalent configured fixed operating categories. It excludes patient/service-specific materials, laboratory, per-service commissions, payment fees and other production-attributable variable costs, plus depreciation/amortization, interest, tax and extraordinary items. Any future full-cost hourly metric must use a different name.
 
 Zero or negative denominators yield `NULL`, not a fabricated number.
 
 ## Period and audit rules
 
-Lifecycle flows use event dates inside the requested period. The three operational balance metrics and unallocated cash balance are stocks calculated cumulatively through `p_data_fine`; drill-down includes every contributing source event. Cancellation, credit note, refund and production reversal are recorded in the period in which they occur and never rewrite prior events.
+Lifecycle flows use event dates inside the requested period. Each of the four stock metrics exposes opening value, signed period movements and closing value. The unsuffixed headline equals closing, and `opening + movements = closing` must reconcile exactly. Drill-down accepts `_APERTURA`, `_MOVIMENTI` and `_CHIUSURA` metric suffixes and includes every contributing source event. Cancellation, credit note, refund and production reversal are recorded in the period in which they occur and never rewrite prior events.
 
-## Still requiring Product Owner decision
+## Remaining implementation dependency
 
-- Whether an unallocated refund should itself follow an automatic FIFO reversal rule. POL-003A requires explicit negative allocation, because silently choosing which historical invoice to reopen would invent a policy.
-- Whether stock metrics also need opening/closing movement columns in the public snapshot. The engine currently exposes closing stock and complete drill-down through the end date.
-- Exact legacy-table-to-canonical ingestion mappings and authoritative dates cannot be chosen until the missing production SQL/backend baseline is available.
-- Whether `COSTI_STRUTTURA_OPERATIVI` should include any additional configured operating categories beyond fixed operating and attributable variable structure costs.
-
-These points do not alter the locked formulas implemented here, but they gate legacy ingestion and UI rollout.
+The three Product Owner decisions are fully locked. Exact legacy-table-to-canonical ingestion mappings and authoritative dates still cannot be chosen until the missing production SQL/backend baseline is available; this is an evidence dependency rather than an unresolved financial semantic.

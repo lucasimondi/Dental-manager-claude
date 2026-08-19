@@ -427,7 +427,14 @@ CREATE OR REPLACE FUNCTION public.get_financial_drilldown_v1(
   metric text,source_kind text,source_table text,source_id text,source_line_id text,
   patient_id bigint,operator_ref text,event_date date,amount numeric,formula_version text
 ) LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path TO '' AS $function$
-DECLARE v_studio_id uuid:=private.financial_current_studio_v1();
+DECLARE
+  v_studio_id uuid:=private.financial_current_studio_v1();
+  v_stock_metric text:=regexp_replace(p_metric,'_(APERTURA|MOVIMENTI|CHIUSURA)$','');
+  v_stock_mode text:=CASE
+    WHEN p_metric LIKE '%_APERTURA' THEN 'APERTURA'
+    WHEN p_metric LIKE '%_MOVIMENTI' THEN 'MOVIMENTI'
+    ELSE 'CHIUSURA'
+  END;
 BEGIN
   IF p_data_inizio IS NULL OR p_data_fine IS NULL OR p_data_inizio>p_data_fine THEN
     RAISE EXCEPTION 'POL-003A: invalid period';
@@ -464,42 +471,66 @@ BEGIN
       a.signed_amount,'POL-003A-v1'
     FROM private.financial_effective_allocations_v1 a WHERE a.studio_id=v_studio_id
       AND a.payment_date BETWEEN p_data_inizio AND p_data_fine;
-  ELSIF p_metric IN ('PORTAFOGLIO_DA_ESEGUIRE','PRODOTTO_DA_FATTURARE','CREDITO_CLIENTI','SALDO_INCASSI_NON_ALLOCATO') THEN
-    IF p_metric='PORTAFOGLIO_DA_ESEGUIRE' THEN
+  ELSIF v_stock_metric IN ('PORTAFOGLIO_DA_ESEGUIRE','PRODOTTO_DA_FATTURARE','CREDITO_CLIENTI','SALDO_INCASSI_NON_ALLOCATO') THEN
+    IF v_stock_metric='PORTAFOGLIO_DA_ESEGUIRE' THEN
       RETURN QUERY SELECT p_metric,'ACCEPTED_STOCK',e.source_table,e.source_id,e.source_line_id,v.patient_id,
         COALESCE(e.operator_ref,v.operator_ref),e.event_date,v.net_amount*e.fraction*e.direction,'POL-003A-v1'
       FROM public.financial_line_events_v1 e JOIN private.financial_line_values_v1 v
         ON v.contract_line_id=e.contract_line_id AND v.studio_id=e.studio_id
-      WHERE e.studio_id=v_studio_id AND e.stage='ACCETTATO' AND e.event_date<=p_data_fine;
+      WHERE e.studio_id=v_studio_id AND e.stage='ACCETTATO' AND (
+        (v_stock_mode='APERTURA' AND e.event_date<p_data_inizio)
+        OR (v_stock_mode='MOVIMENTI' AND e.event_date BETWEEN p_data_inizio AND p_data_fine)
+        OR (v_stock_mode='CHIUSURA' AND e.event_date<=p_data_fine));
       RETURN QUERY SELECT p_metric,'PRODUCED_STOCK',e.source_table,e.source_id,e.source_line_id,v.patient_id,
         COALESCE(e.operator_ref,v.operator_ref),e.event_date,-v.net_amount*e.fraction*e.direction,'POL-003A-v1'
       FROM public.financial_line_events_v1 e JOIN private.financial_line_values_v1 v
         ON v.contract_line_id=e.contract_line_id AND v.studio_id=e.studio_id
-      WHERE e.studio_id=v_studio_id AND e.stage='PRODOTTO' AND e.event_date<=p_data_fine;
-    ELSIF p_metric='PRODOTTO_DA_FATTURARE' THEN
+      WHERE e.studio_id=v_studio_id AND e.stage='PRODOTTO' AND (
+        (v_stock_mode='APERTURA' AND e.event_date<p_data_inizio)
+        OR (v_stock_mode='MOVIMENTI' AND e.event_date BETWEEN p_data_inizio AND p_data_fine)
+        OR (v_stock_mode='CHIUSURA' AND e.event_date<=p_data_fine));
+    ELSIF v_stock_metric='PRODOTTO_DA_FATTURARE' THEN
       RETURN QUERY SELECT p_metric,'PRODUCED_STOCK',e.source_table,e.source_id,e.source_line_id,v.patient_id,
         COALESCE(e.operator_ref,v.operator_ref),e.event_date,v.net_amount*e.fraction*e.direction,'POL-003A-v1'
       FROM public.financial_line_events_v1 e JOIN private.financial_line_values_v1 v
         ON v.contract_line_id=e.contract_line_id AND v.studio_id=e.studio_id
-      WHERE e.studio_id=v_studio_id AND e.stage='PRODOTTO' AND e.event_date<=p_data_fine;
+      WHERE e.studio_id=v_studio_id AND e.stage='PRODOTTO' AND (
+        (v_stock_mode='APERTURA' AND e.event_date<p_data_inizio)
+        OR (v_stock_mode='MOVIMENTI' AND e.event_date BETWEEN p_data_inizio AND p_data_fine)
+        OR (v_stock_mode='CHIUSURA' AND e.event_date<=p_data_fine));
       RETURN QUERY SELECT p_metric,'INVOICED_STOCK',e.source_table,e.source_id,e.source_line_id,e.patient_id,e.operator_ref,e.event_date,
         -e.taxable_amount*e.direction,'POL-003A-v1'
-      FROM public.financial_invoice_events_v1 e WHERE e.studio_id=v_studio_id AND e.event_date<=p_data_fine;
-    ELSIF p_metric='CREDITO_CLIENTI' THEN
+      FROM public.financial_invoice_events_v1 e WHERE e.studio_id=v_studio_id AND (
+        (v_stock_mode='APERTURA' AND e.event_date<p_data_inizio)
+        OR (v_stock_mode='MOVIMENTI' AND e.event_date BETWEEN p_data_inizio AND p_data_fine)
+        OR (v_stock_mode='CHIUSURA' AND e.event_date<=p_data_fine));
+    ELSIF v_stock_metric='CREDITO_CLIENTI' THEN
       RETURN QUERY SELECT p_metric,'INVOICE_RECEIVABLE',e.source_table,e.source_id,e.source_line_id,e.patient_id,e.operator_ref,e.event_date,
         e.gross_document_amount*e.direction,'POL-003A-v1'
-      FROM public.financial_invoice_events_v1 e WHERE e.studio_id=v_studio_id AND e.event_date<=p_data_fine;
+      FROM public.financial_invoice_events_v1 e WHERE e.studio_id=v_studio_id AND (
+        (v_stock_mode='APERTURA' AND e.event_date<p_data_inizio)
+        OR (v_stock_mode='MOVIMENTI' AND e.event_date BETWEEN p_data_inizio AND p_data_fine)
+        OR (v_stock_mode='CHIUSURA' AND e.event_date<=p_data_fine));
       RETURN QUERY SELECT p_metric,'ALLOCATED_COLLECTION',a.source_table,a.source_id,NULL::text,a.patient_id,NULL::text,a.payment_date,
         -a.signed_amount,'POL-003A-v1'
-      FROM private.financial_effective_allocations_v1 a WHERE a.studio_id=v_studio_id AND a.payment_date<=p_data_fine;
+      FROM private.financial_effective_allocations_v1 a WHERE a.studio_id=v_studio_id AND (
+        (v_stock_mode='APERTURA' AND a.payment_date<p_data_inizio)
+        OR (v_stock_mode='MOVIMENTI' AND a.payment_date BETWEEN p_data_inizio AND p_data_fine)
+        OR (v_stock_mode='CHIUSURA' AND a.payment_date<=p_data_fine));
     ELSE
       RETURN QUERY SELECT p_metric,'PAYMENT_EVENT',e.source_table,e.source_id,NULL::text,e.patient_id,e.operator_ref,e.event_date,
         e.amount*e.direction,'POL-003A-v1'
-      FROM public.financial_payment_events_v1 e WHERE e.studio_id=v_studio_id AND e.event_date<=p_data_fine
-        AND (e.event_kind<>'EXTERNAL_PAYMENT' OR e.reconciled);
+      FROM public.financial_payment_events_v1 e WHERE e.studio_id=v_studio_id
+        AND (e.event_kind<>'EXTERNAL_PAYMENT' OR e.reconciled) AND (
+          (v_stock_mode='APERTURA' AND e.event_date<p_data_inizio)
+          OR (v_stock_mode='MOVIMENTI' AND e.event_date BETWEEN p_data_inizio AND p_data_fine)
+          OR (v_stock_mode='CHIUSURA' AND e.event_date<=p_data_fine));
       RETURN QUERY SELECT p_metric,'ALLOCATED_COLLECTION',a.source_table,a.source_id,NULL::text,a.patient_id,NULL::text,a.payment_date,
         -a.signed_amount,'POL-003A-v1'
-      FROM private.financial_effective_allocations_v1 a WHERE a.studio_id=v_studio_id AND a.payment_date<=p_data_fine;
+      FROM private.financial_effective_allocations_v1 a WHERE a.studio_id=v_studio_id AND (
+        (v_stock_mode='APERTURA' AND a.payment_date<p_data_inizio)
+        OR (v_stock_mode='MOVIMENTI' AND a.payment_date BETWEEN p_data_inizio AND p_data_fine)
+        OR (v_stock_mode='CHIUSURA' AND a.payment_date<=p_data_fine));
     END IF;
   ELSIF p_metric IN ('COSTI_PREVISTI','COSTI_IMPEGNATI','COSTI_VARIABILI','COSTI_FISSI_OPERATIVI','COSTI_STRUTTURA_OPERATIVI','COSTI_OPERATORE') THEN
     RETURN QUERY SELECT p_metric,'COST_EVENT',e.source_table,e.source_id,NULL::text,e.patient_id,e.operator_ref,e.event_date,
@@ -509,8 +540,8 @@ BEGIN
       (p_metric='COSTI_IMPEGNATI' AND e.stage='IMPEGNATO') OR
       (p_metric='COSTI_VARIABILI' AND e.stage='SOSTENUTO' AND e.classification='VARIABILE_ATTRIBUIBILE') OR
       (p_metric='COSTI_FISSI_OPERATIVI' AND e.stage='SOSTENUTO' AND e.classification='FISSO_OPERATIVO') OR
-      (p_metric='COSTI_STRUTTURA_OPERATIVI' AND e.stage='SOSTENUTO' AND e.cost_scope='STRUCTURE'
-        AND e.classification IN ('VARIABILE_ATTRIBUIBILE','FISSO_OPERATIVO')) OR
+      (p_metric='COSTI_STRUTTURA_OPERATIVI' AND e.stage='SOSTENUTO'
+        AND e.classification='FISSO_OPERATIVO') OR
       (p_metric='COSTI_OPERATORE' AND e.stage='SOSTENUTO' AND e.cost_scope='OPERATOR'
         AND e.classification IN ('VARIABILE_ATTRIBUIBILE','FISSO_OPERATIVO'))
     );
@@ -539,6 +570,10 @@ RETURNS TABLE (
   fatturato_netto_iva numeric,fatturato_iva numeric,fatturato_lordo numeric,
   incassato numeric,incassato_allocato numeric,portafoglio_da_eseguire numeric,
   prodotto_da_fatturare numeric,credito_clienti numeric,saldo_incassi_non_allocato numeric,
+  portafoglio_da_eseguire_apertura numeric,portafoglio_da_eseguire_movimenti numeric,portafoglio_da_eseguire_chiusura numeric,
+  prodotto_da_fatturare_apertura numeric,prodotto_da_fatturare_movimenti numeric,prodotto_da_fatturare_chiusura numeric,
+  credito_clienti_apertura numeric,credito_clienti_movimenti numeric,credito_clienti_chiusura numeric,
+  saldo_incassi_non_allocato_apertura numeric,saldo_incassi_non_allocato_movimenti numeric,saldo_incassi_non_allocato_chiusura numeric,
   costi_previsti numeric,costi_impegnati numeric,costi_fissi_operativi numeric,costi_variabili numeric,
   margine_contribuzione numeric,margine_contribuzione_pct numeric,ebitda_operativo_gestionale numeric,
   break_even numeric,break_even_raggiunto boolean,ore_produttive_disponibili numeric,
@@ -549,6 +584,10 @@ DECLARE
   v_preventivato numeric;v_lordo numeric;v_sconto numeric;v_accettato numeric;v_prodotto numeric;
   v_fatt_net numeric;v_fatt_iva numeric;v_fatt_lordo numeric;v_incassato numeric;v_allocato numeric;
   v_portafoglio numeric;v_da_fatturare numeric;v_credito numeric;v_non_allocato numeric;
+  v_portafoglio_apertura numeric;v_portafoglio_movimenti numeric;
+  v_da_fatturare_apertura numeric;v_da_fatturare_movimenti numeric;
+  v_credito_apertura numeric;v_credito_movimenti numeric;
+  v_non_allocato_apertura numeric;v_non_allocato_movimenti numeric;
   v_previsti numeric;v_impegnati numeric;v_fissi numeric;v_variabili numeric;v_margine numeric;v_ebitda numeric;
   v_costi_struttura numeric;v_ore_disponibili numeric;v_ore_effettive numeric;
 BEGIN
@@ -562,10 +601,18 @@ BEGIN
   SELECT COALESCE(SUM(amount),0) INTO v_fatt_lordo FROM public.get_financial_drilldown_v1(p_data_inizio,p_data_fine,'FATTURATO_LORDO');
   SELECT COALESCE(SUM(amount),0) INTO v_incassato FROM public.get_financial_drilldown_v1(p_data_inizio,p_data_fine,'INCASSATO');
   SELECT COALESCE(SUM(amount),0) INTO v_allocato FROM public.get_financial_drilldown_v1(p_data_inizio,p_data_fine,'INCASSATO_ALLOCATO');
-  SELECT COALESCE(SUM(amount),0) INTO v_portafoglio FROM public.get_financial_drilldown_v1(p_data_inizio,p_data_fine,'PORTAFOGLIO_DA_ESEGUIRE');
-  SELECT COALESCE(SUM(amount),0) INTO v_da_fatturare FROM public.get_financial_drilldown_v1(p_data_inizio,p_data_fine,'PRODOTTO_DA_FATTURARE');
-  SELECT COALESCE(SUM(amount),0) INTO v_credito FROM public.get_financial_drilldown_v1(p_data_inizio,p_data_fine,'CREDITO_CLIENTI');
-  SELECT COALESCE(SUM(amount),0) INTO v_non_allocato FROM public.get_financial_drilldown_v1(p_data_inizio,p_data_fine,'SALDO_INCASSI_NON_ALLOCATO');
+  SELECT COALESCE(SUM(amount),0) INTO v_portafoglio_apertura FROM public.get_financial_drilldown_v1(p_data_inizio,p_data_fine,'PORTAFOGLIO_DA_ESEGUIRE_APERTURA');
+  SELECT COALESCE(SUM(amount),0) INTO v_portafoglio_movimenti FROM public.get_financial_drilldown_v1(p_data_inizio,p_data_fine,'PORTAFOGLIO_DA_ESEGUIRE_MOVIMENTI');
+  SELECT COALESCE(SUM(amount),0) INTO v_portafoglio FROM public.get_financial_drilldown_v1(p_data_inizio,p_data_fine,'PORTAFOGLIO_DA_ESEGUIRE_CHIUSURA');
+  SELECT COALESCE(SUM(amount),0) INTO v_da_fatturare_apertura FROM public.get_financial_drilldown_v1(p_data_inizio,p_data_fine,'PRODOTTO_DA_FATTURARE_APERTURA');
+  SELECT COALESCE(SUM(amount),0) INTO v_da_fatturare_movimenti FROM public.get_financial_drilldown_v1(p_data_inizio,p_data_fine,'PRODOTTO_DA_FATTURARE_MOVIMENTI');
+  SELECT COALESCE(SUM(amount),0) INTO v_da_fatturare FROM public.get_financial_drilldown_v1(p_data_inizio,p_data_fine,'PRODOTTO_DA_FATTURARE_CHIUSURA');
+  SELECT COALESCE(SUM(amount),0) INTO v_credito_apertura FROM public.get_financial_drilldown_v1(p_data_inizio,p_data_fine,'CREDITO_CLIENTI_APERTURA');
+  SELECT COALESCE(SUM(amount),0) INTO v_credito_movimenti FROM public.get_financial_drilldown_v1(p_data_inizio,p_data_fine,'CREDITO_CLIENTI_MOVIMENTI');
+  SELECT COALESCE(SUM(amount),0) INTO v_credito FROM public.get_financial_drilldown_v1(p_data_inizio,p_data_fine,'CREDITO_CLIENTI_CHIUSURA');
+  SELECT COALESCE(SUM(amount),0) INTO v_non_allocato_apertura FROM public.get_financial_drilldown_v1(p_data_inizio,p_data_fine,'SALDO_INCASSI_NON_ALLOCATO_APERTURA');
+  SELECT COALESCE(SUM(amount),0) INTO v_non_allocato_movimenti FROM public.get_financial_drilldown_v1(p_data_inizio,p_data_fine,'SALDO_INCASSI_NON_ALLOCATO_MOVIMENTI');
+  SELECT COALESCE(SUM(amount),0) INTO v_non_allocato FROM public.get_financial_drilldown_v1(p_data_inizio,p_data_fine,'SALDO_INCASSI_NON_ALLOCATO_CHIUSURA');
   SELECT COALESCE(SUM(amount),0) INTO v_previsti FROM public.get_financial_drilldown_v1(p_data_inizio,p_data_fine,'COSTI_PREVISTI');
   SELECT COALESCE(SUM(amount),0) INTO v_impegnati FROM public.get_financial_drilldown_v1(p_data_inizio,p_data_fine,'COSTI_IMPEGNATI');
   SELECT COALESCE(SUM(amount),0) INTO v_fissi FROM public.get_financial_drilldown_v1(p_data_inizio,p_data_fine,'COSTI_FISSI_OPERATIVI');
@@ -576,6 +623,10 @@ BEGIN
   v_margine:=v_prodotto-v_variabili;v_ebitda:=v_margine-v_fissi;
   RETURN QUERY SELECT v_preventivato,v_lordo,v_sconto,v_accettato,v_prodotto,
     v_fatt_net,v_fatt_iva,v_fatt_lordo,v_incassato,v_allocato,v_portafoglio,v_da_fatturare,v_credito,v_non_allocato,
+    v_portafoglio_apertura,v_portafoglio_movimenti,v_portafoglio,
+    v_da_fatturare_apertura,v_da_fatturare_movimenti,v_da_fatturare,
+    v_credito_apertura,v_credito_movimenti,v_credito,
+    v_non_allocato_apertura,v_non_allocato_movimenti,v_non_allocato,
     v_previsti,v_impegnati,v_fissi,v_variabili,v_margine,
     CASE WHEN v_prodotto=0 THEN NULL ELSE v_margine/v_prodotto*100 END,v_ebitda,
     CASE WHEN v_prodotto>0 AND v_margine>0 THEN v_fissi/(v_margine/v_prodotto) ELSE NULL END,

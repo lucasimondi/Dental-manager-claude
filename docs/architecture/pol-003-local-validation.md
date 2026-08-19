@@ -18,7 +18,7 @@ The Product Owner semantics lock was applied to the unpublished additive POL-003
 - `supabase db lint --local --schema public,private --level warning --fail-on error`: no schema errors.
 - `supabase db advisors --local`: no security or performance issues.
 
-Regression coverage includes percentage and fixed discounts, advance, overpayment, explicit partial allocation, patient-level FIFO, current-period cancellation, refund, credit note, production reversal, reconciled/unreconciled external payments, all three operational balance metrics, unallocated cash, break-even against production, available versus worked hours, multiple operators, zero denominators and two-tenant isolation.
+Regression coverage includes percentage and fixed discounts, advance, overpayment, explicit partial allocation, patient-level FIFO, current-period cancellation, allocated and unallocated refunds, credit note, production reversal, reconciled/unreconciled external payments, opening/movements/closing reconciliation for all four stock metrics, break-even against production, operational hourly-cost category inclusion/exclusion, available versus worked hours, multiple operators, zero denominators and two-tenant isolation.
 
 Security assertions verify eight RLS SELECT policies, fail-closed tenant membership, no anonymous RPC execution, no authenticated direct writes and removal of the old ambiguous RPC signature. Snapshot totals reconcile to event-level drill-down records.
 
@@ -33,11 +33,9 @@ Security assertions verify eight RLS SELECT policies, fail-closed tenant members
 
 No production database was queried or modified. No remote migration was applied, no deployment was started and no branch was merged. The disposable local stack was stopped and deleted after validation.
 
-## Residual risks and decisions
+## Residual risks
 
-- `PRODUCT_OWNER_DECISION_REQUIRED`: automatic allocation reversal for an unallocated refund is not defined; POL-003A requires explicit negative allocation.
-- `PRODUCT_OWNER_DECISION_REQUIRED`: whether public snapshots need opening/closing/movement columns in addition to closing stocks.
-- `PRODUCT_OWNER_DECISION_REQUIRED`: whether hourly structure cost should include further configured operating categories.
+- The three final Product Owner decisions are implemented; no POL-003A financial semantic remains marked `PRODUCT_OWNER_DECISION_REQUIRED`.
 - Legacy adapters remain blocked by missing production SQL/backend definitions and cannot safely infer dates or relationships.
 - Synthetic validation proves the new contract but not compatibility with unversioned production data.
 - The canonical source tables intentionally reject direct authenticated writes; a separately reviewed ingestion path is required before rollout.
