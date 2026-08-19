@@ -3,7 +3,8 @@
 - TASK: POL-003D
 - TITLE: Controlled Financial Backfill Reconciliation
 - OWNER: CODEX
-- STATUS: WAITING_IMPLEMENTATION
+- BRANCH: `finance/POL-003D-controlled-backfill-reconciliation`
+- STATUS: `WAITING_PRODUCT_OWNER`
 
 ## Objective
 
@@ -34,3 +35,9 @@ Correct the narrow legacy discount encoding mismatch discovered during the contr
 ## Production state
 
 POL-003B and POL-003C structural migrations are installed. `management_control_mode` exists with default `base`. Canonical financial event tables are empty after verified rollback. Legacy dashboards remain active.
+
+## Completion state
+
+The adapter now normalizes only the verified legacy `eur` encoding to canonical `FIXED`; unknown non-zero discount types still fail closed. The versioned shadow query applies the same proportional fixed-discount allocation. Local PostgreSQL 17 regression, idempotency, two-tenant isolation, shadow reconciliation, lint, advisors, application tests and build are complete.
+
+The aggregate-only production read confirmed, inside a read-only transaction, the revised compatible targets: EUR 6,954 Preventivato, EUR 2,181 Prodotto and EUR 5,102 Incassato. Canonical contracts, lines, line events and payments remain zero. No remote adapter/backfill, migration, application write, deploy, cutover or merge occurred.

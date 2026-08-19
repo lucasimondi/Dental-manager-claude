@@ -11,7 +11,8 @@ legacy_values AS (
  SELECT *,gross_amount-GREATEST(0,LEAST(gross_amount,CASE lower(coalesce(sconto_tipo,''))
  WHEN 'pct' THEN gross_amount*coalesce(sconto,0)/100 WHEN 'percent' THEN gross_amount*coalesce(sconto,0)/100
  WHEN 'fixed' THEN CASE WHEN gross_total=0 THEN 0 ELSE coalesce(sconto,0)*gross_amount/gross_total END
- WHEN 'fisso' THEN CASE WHEN gross_total=0 THEN 0 ELSE coalesce(sconto,0)*gross_amount/gross_total END ELSE 0 END)) net_amount FROM legacy_lines),
+ WHEN 'fisso' THEN CASE WHEN gross_total=0 THEN 0 ELSE coalesce(sconto,0)*gross_amount/gross_total END
+ WHEN 'eur' THEN CASE WHEN gross_total=0 THEN 0 ELSE coalesce(sconto,0)*gross_amount/gross_total END ELSE 0 END)) net_amount FROM legacy_lines),
 legacy AS (
  SELECT coalesce(sum(net_amount)FILTER(WHERE proposal_date BETWEEN x.date_from AND x.date_to),0) preventivato,NULL::numeric accettato,
  coalesce(sum(net_amount)FILTER(WHERE coalesce((item->>'eseguita')::boolean,false) AND coalesce(item->>'dataEsec','')~'^([0-9]{4})-([0-9]{2})-([0-9]{2})$' AND (item->>'dataEsec')::date BETWEEN x.date_from AND x.date_to),0) prodotto
