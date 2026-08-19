@@ -91,6 +91,23 @@ All of the mission's required scenarios passed:
 - Ad hoc RLS/lint sanity: `patient_care_assignments` and `physio_esecuzioni`
   both have `relrowsecurity = true`; policy list confirmed one SELECT/INSERT/
   UPDATE policy each on `patient_care_assignments`, no DELETE policy.
+- Responsive verification at 375/768/1024/1440 px: the live app cannot be
+  driven in this sandbox — its Supabase client is hardcoded to a real
+  project (`src/lib/supabase.js`), and connecting to it would be exactly the
+  "production access" this task's safety rules forbid. Instead, the "Team
+  del percorso" card, "Gestisci team" modal and "Assegna professionista"
+  form were reproduced as static markup using the exact inline styles from
+  `PhysioCartella.jsx`'s `SezioneTeam` and the shared `Crd`/`Fld`/`Modal`
+  components it reuses, then screenshotted headlessly with the sandbox's
+  pre-installed Chromium at all four required widths. Confirmed: single-
+  column stacking with ≥40px touch targets at 375px; the roster groups lay
+  out via `repeat(auto-fit, minmax(160px,1fr))` into 2-3 columns at
+  768/1024/1440px with no overflow; the modal is a full-width bottom sheet
+  on mobile and a centered, width-capped (480px) sheet on desktop — matching
+  the "drawer on mobile, not full-screen on desktop" requirement — with no
+  horizontal scrolling at any width. This validates the CSS actually shipped,
+  not a live end-to-end app session (no auth, no real data, no network calls
+  to Supabase were involved).
 - `git diff --check`: clean. Targeted secret-pattern scan over the full diff
   against the PR #16 branch: no matches (no service-role keys, private keys,
   or other credential patterns).

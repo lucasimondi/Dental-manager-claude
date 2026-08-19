@@ -57,6 +57,22 @@ PT2/Massage1/multi-role/suspended/cross-tenant/revocation/author-spoofing/
 assignment-management-authorization), 4 new Node tests, and a clean Vite
 production build. See `docs/architecture/pol-rbac-001a-local-validation.md`.
 
+Two self-review passes after the initial push (a code-review pass and a
+dedicated security-review pass) each found and fixed one real least-privilege
+issue, both since regression-tested: (1) the `studio_user_capabilities`
+extension for physiotherapists originally exposed every capability row in
+the studio, not just `clinical.*` ones — narrowed with
+`capability LIKE 'clinical.%'`; (2) `patient_care_assignments_select`'s
+"shared patient" branch checked the caller's active assignment but not
+whether the row being read was itself active, letting a teammate see another
+professional's ended assignment and its free-text termination reason —
+fixed by requiring the read row's own `active` flag. The responsive
+"Team del percorso" UI (375/768/1024/1440px) was also verified by
+screenshotting the shipped component's exact markup/styles headlessly (the
+live app cannot be driven in this sandbox without touching the real
+production Supabase project it's hardcoded to, which the safety rules
+forbid) — see the local-validation doc for details and results.
+
 ## Residual risks
 
 - Docker was unavailable in this sandbox, so `supabase db lint`/advisors/
