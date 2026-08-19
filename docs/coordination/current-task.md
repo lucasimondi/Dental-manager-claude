@@ -1,35 +1,36 @@
 # Current task
 
-- TASK: POL-003C
-- TITLE: Management Control Modes
+- TASK: POL-003D
+- TITLE: Controlled Financial Backfill Reconciliation
 - OWNER: CODEX
-- BRANCH: `finance/POL-003C-management-modes`
-- STATUS: `WAITING_PRODUCT_OWNER`
+- STATUS: WAITING_IMPLEMENTATION
 
 ## Objective
 
-Persist the per-studio Base/Advanced management-control presentation mode and prepare UI/selectors that consume only POL-003 canonical metrics, without financial backfill or KPI cutover.
+Correct the narrow legacy discount encoding mismatch discovered during the controlled production backfill gate, revalidate the adapter locally, and prepare a second controlled backfill attempt without cutting over the frontend.
 
-## Product Owner authorization
+## Verified finding
 
-Approved through PR #9 and the explicit POL-003C implementation instruction. Add per-studio Base/Advanced selection and prepare canonical-only UI selectors while keeping every legacy dashboard active. No production backfill, KPI cutover, deploy or remote migration is authorized.
+- Two legacy plans use `sconto_tipo='eur'`.
+- POL-003B currently accepts `pct|percent|fixed|fisso`, therefore those two plans are skipped fail-closed.
+- Legacy application behavior treats `pct` as percentage and any non-`pct` discount type as a fixed amount; therefore `eur` is a verified legacy fixed-euro encoding.
+- The previous shadow values EUR 7,670 Preventivato and EUR 2,597 Prodotto were not valid canonical targets because they did not apply those fixed-euro discounts consistently.
+- Incassato EUR 5,102 reconciled exactly.
+- The attempted production backfill was fully rolled back; canonical financial counts returned to zero.
 
 ## Required work
 
-1. Add `management_control_mode` to the existing tenant-owned studio settings with allowed values `base` and `advanced`, defaulting existing studios to `base`.
-2. Add the selector to Setup and persist it through the existing `studio_info` path.
-3. Define Base and Advanced visibility catalogs over the same canonical POL-003 snapshot RPC.
-4. Never reproduce a financial formula or silently fall back to legacy tables/calculations.
-5. Represent unavailable canonical metrics explicitly as unavailable.
-6. Prepare a canonical management component but do not mount it in the live legacy dashboard.
-7. Test persistence, tenant isolation, mode switching and absence of financial formula duplication.
-8. Run local database tests, application tests/build, secret scan and diff/scope checks.
-9. Update the handoff and set `WAITING_PRODUCT_OWNER`.
+1. Start from current `master` and read AGENTS.md, CLAUDE.md, POL-003A/B/C docs and `docs/architecture/pol-003d-controlled-backfill-findings.md`.
+2. Add the narrow explicit legacy normalization `sconto_tipo='eur' -> FIXED` to the adapter. Do not introduce a generic fallback for unknown discount types.
+3. Update the shadow reconciliation so its compatible Preventivato/Prodotto semantics apply the same verified fixed-euro discount rules as the canonical engine.
+4. Add synthetic regression fixtures for `eur` fixed discounts, including produced lines and proportional discount allocation.
+5. Prove adapter idempotency and two-tenant isolation locally.
+6. Recalculate the expected aggregate targets from source evidence; do not hardcode the old EUR 7,670 / EUR 2,597 values as truth.
+7. Keep ACCETTATO, fiscal invoice/refund semantics, external payments, historical costs, hours and operator attribution blocked.
+8. Build, test, database lint/advisor, secret scan and diff check.
+9. Do not modify production, do not run remote adapter/backfill, do not mount CanonicalManagementView, do not deploy and do not merge.
+10. Push a dedicated branch/PR and end WAITING_PRODUCT_OWNER with the exact new expected canonical aggregates and reconciliation evidence.
 
-## Production gate
+## Production state
 
-No production data writes, remote migration, backfill, frontend KPI cutover, legacy RPC replacement, deploy or merge. Base/Advanced may change only presentation and visibility.
-
-## Completion state
-
-The per-studio constrained setting, Setup selector, canonical-only RPC loader, shared Base/Advanced visibility catalogs, dormant canonical UI component and synthetic tests are complete. Legacy dashboards remain mounted. See `pol-003c-implementation.md` and `pol-003c-local-validation.md`.
+POL-003B and POL-003C structural migrations are installed. `management_control_mode` exists with default `base`. Canonical financial event tables are empty after verified rollback. Legacy dashboards remain active.
