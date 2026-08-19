@@ -66,19 +66,25 @@ The legacy `incassata` line boolean is explicitly non-authoritative for canonica
 
 ### Invoice / fiscal events
 
-Legacy source candidate: `documenti_fiscali`.
+Legacy source candidate: `documenti_fiscali` plus `src/components/DocFiscale.jsx`.
 
-Available fields include `tipo`, `numero`, `data`, `paziente_id`, `importo`, `studio_id`, but no explicit taxable/VAT/gross split in the table metadata.
+Available table fields include `tipo`, `numero`, `data`, `paziente_id`, `importo`, `studio_id`, but no explicit taxable/VAT/gross split.
 
 Current production evidence contains six records and every one is `tipo='rimborso'`.
 
-Therefore:
+Application-code evidence adds two important legacy semantics:
 
-- treating all `documenti_fiscali.importo` as canonical invoice gross or taxable amount is `APPROXIMATION_NOT_ALLOWED`;
-- deriving VAT from `studio_info.aliquota_iva` retrospectively is `APPROXIMATION_NOT_ALLOWED` unless the fiscal regime and historical rate are provably effective for each document;
-- the semantic meaning of `tipo='rimborso'` must be inspected from application code / legacy creation flow before adapter implementation.
+1. `documenti_fiscali.importo` is saved as the pre-VAT line subtotal (`totale`). For ordinary invoices the generated PDF separately displays `totale + IVA`, but the archived database `importo` does not store that gross amount.
+2. When a plan is imported into a fiscal document, the code calculates the plan discount (`finale`) but then populates the fiscal-document rows from each original `v.prezzo`; the calculated discounted total is not applied to those imported line amounts. Therefore an invoice assembled from a discounted plan may not preserve the plan's net commercial value.
 
-`FATTURATO_NETTO_IVA`, `FATTURATO_IVA` and `FATTURATO_LORDO` remain unavailable for historical backfill until this is resolved.
+Consequences:
+
+- for a true legacy `fattura`, `documenti_fiscali.importo` is potentially usable as taxable/pre-VAT subtotal only if the document rows themselves are authoritative; it is not a reliable gross-document amount;
+- reconstructing historical VAT from today's `studio_info.aliquota_iva` is `APPROXIMATION_NOT_ALLOWED` unless historical regime/rate is provably the same on the document date;
+- fiscal documents generated from discounted plans can diverge from canonical produced/accepted net value by design of the old UI;
+- current `tipo='rimborso'` means those six production records cannot be classified as invoice revenue without first determining whether they represent reimbursements to the patient, expense reimbursement documents, or another workflow meaning.
+
+Until those semantics are resolved, `FATTURATO_NETTO_IVA`, `FATTURATO_IVA` and `FATTURATO_LORDO` historical backfill must remain partial/data-quality flagged rather than fabricated.
 
 ### Payment events
 
@@ -166,6 +172,7 @@ Examples:
 - legacy produced gross vs canonical produced net-after-discount will differ by design;
 - legacy cash may include unreconciled `pagamenti_esterni`; canonical cash must not;
 - legacy residual may clamp overpayment to zero; canonical unallocated cash preserves it;
-- legacy break-even may compare against cash; canonical break-even compares against produced value.
+- legacy break-even may compare against cash; canonical break-even compares against produced value;
+- legacy fiscal archive can diverge from PDF gross and from discounted-plan economics because of the old storage/import behavior described above.
 
 Every variance must be categorized as `SEMANTIC_EXPECTED`, `DATA_QUALITY`, `ADAPTER_BUG`, or `UNRESOLVED_SOURCE_SEMANTICS` before any frontend cutover.
