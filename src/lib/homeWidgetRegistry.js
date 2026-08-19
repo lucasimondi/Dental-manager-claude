@@ -58,6 +58,14 @@ export const moveHomeWidget = (layout, sourceId, targetId) => {
   return next.map((item, order) => ({ ...item, order }));
 };
 
+export const moveHomeWidgetByOffset = (layout, id, offset) => {
+  const next = normalizeHomeLayout(layout);
+  const visible = next.filter((item) => item.visible);
+  const sourceIndex = visible.findIndex((item) => item.id === id);
+  const target = visible[sourceIndex + offset];
+  return sourceIndex < 0 || !target ? next : moveHomeWidget(next, id, target.id);
+};
+
 export const setHomeWidgetVisibility = (layout, id, visible) => normalizeHomeLayout(layout)
   .map((item) => item.id === id ? { ...item, visible: Boolean(visible) } : item);
 

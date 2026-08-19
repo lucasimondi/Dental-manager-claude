@@ -164,3 +164,18 @@
 - Unresolved issues: touch-first reordering needs a later accessible control; editable studio-level defaults are not part of this per-user Phase 1; interactive visual regression should be repeated when the Browser runtime is available; production migration/client ordering remains gated.
 - Risks: deploying client before the table migration produces a fail-closed persistence error; current schedule of registry changes must preserve stable widget IDs; layout visibility is not authorization; synthetic RLS tests do not replace staged rollout; existing widget semantics remain legacy until their separately approved migration phases.
 - Exact next action: Product Owner and Tech Lead review PR #13 and decide whether the browser-runtime limitation requires a manual visual pass before approval. Do not apply the migration remotely, deploy, merge or start Phase 2 without explicit Product Owner approval.
+
+## POL-UI-001 pre-merge residual-risk handoff
+
+- Task ID: POL-UI-001
+- Previous agent: CODEX
+- Branch: `ui/POL-UI-001-modular-widget-dashboard`
+- Objective: close touch-first reorder and studio-default inheritance risks before merge without changing widget semantics.
+- Completed work: added accessible 44 px move-up/down controls independent of HTML5 drag/drop; added user → studio → platform resolution; made reset delete the personal override; added an admin-only studio-default action; kept studio and user persistence separate and presentation-only.
+- Files changed: `src/components/Dashboard.jsx`; `src/components/WidgetWorkspace.jsx`; `src/components/WidgetWorkspace.css`; `src/lib/homeWidgetRegistry.js`; `src/lib/homeLayoutPersistence.js`; `tests/homeWidgetRegistry.test.mjs`; `supabase/migrations/20260819174435_pol_ui_001_studio_home_layout_default.sql`; `supabase/tests/pol_ui_001_local_bootstrap.sql`; `supabase/tests/pol_ui_001_user_home_layouts.sql`; `docs/architecture/pol-ui-001-phase-1-implementation.md`; `docs/architecture/pol-ui-001-phase-1-validation.md`; `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- Database changes: one additive migration creates `studio_home_layouts`, keyed by `studio_id`, with active-member SELECT and active-admin writes. The per-user table is unchanged. Nothing was applied remotely.
+- Tests executed: 11 Node tests; clean synthetic migration/RLS regression on Supabase/PostgreSQL `17.6.1.159`; Supabase database lint; production build; targeted secret scan; `git diff --check`; branch/scope/deployment review.
+- Test results: Node 11/11 passed; studio default, personal override, reset, platform fallback resolver, two tenants, non-admin and suspended-user checks passed; lint reported no schema errors; build passed with only pre-existing pdfjs eval and chunk-size warnings; secret/diff/scope checks passed.
+- Unresolved issues: interactive visual regression remains blocked by the recorded Codex browser trust-path issue; deterministic DOM/CSS contracts cover 375/768 touch behavior but do not replace a later device pass.
+- Risks: client deployment must follow both layout migrations; registry IDs must remain stable; layout visibility is presentation, not authorization; synthetic tests do not replace staged rollout.
+- Exact next action: Product Owner and Tech Lead review the updated PR #13. Do not apply migrations remotely, deploy, merge or begin another task without explicit approval.

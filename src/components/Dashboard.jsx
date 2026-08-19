@@ -6,8 +6,8 @@ import { C, fmt, fmtD, today } from '../lib/utils';
 import { BarChart, Bar, LineChart, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useControlloDati } from '../lib/useControlloDati';
 import WidgetWorkspace from './WidgetWorkspace.jsx';
-import { HOME_WIDGET_REGISTRY, createDefaultHomeLayout, moveHomeWidget, setHomeWidgetSize, setHomeWidgetVisibility } from '../lib/homeWidgetRegistry.js';
-import { loadUserHomeLayout, saveUserHomeLayout } from '../lib/homeLayoutPersistence.js';
+import { HOME_WIDGET_REGISTRY, createDefaultHomeLayout, moveHomeWidget, moveHomeWidgetByOffset, setHomeWidgetSize, setHomeWidgetVisibility } from '../lib/homeWidgetRegistry.js';
+import { deleteUserHomeLayout, loadResolvedHomeLayout, saveStudioHomeLayout, saveUserHomeLayout } from '../lib/homeLayoutPersistence.js';
 
 const PALETTE = [
   '#1A4E66','#2EC4B6','#2D9E61','#7C3AED','#E63946',
@@ -144,6 +144,10 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   const [mostraGraficiDash, setMostraGraficiDash] = useState(false);
   const [widgets, setWidgets] = useState(createDefaultHomeLayout);
   const [draftWidgets, setDraftWidgets] = useState(createDefaultHomeLayout);
+  const [layoutSource, setLayoutSource] = useState('platform');
+  const [inheritedLayout, setInheritedLayout] = useState(createDefaultHomeLayout);
+  const [inheritedSource, setInheritedSource] = useState('platform');
+  const [draftInherits, setDraftInherits] = useState(false);
   const [theme, setTheme] = useState(loadTheme);
   const [themeTab, setThemeTab] = useState('widgets'); // 'widgets' | 'colori'
   const isOn = (id) => { const w = widgets.find(x => x.id === id); return w ? w.visible !== false : true; };
@@ -153,8 +157,14 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
     let cancelled = false;
     setLayoutLoading(true);
     setLayoutError('');
-    loadUserHomeLayout(supabase, studioId, userId)
-      .then((layout) => { if (!cancelled) { setWidgets(layout); setDraftWidgets(layout); } })
+    loadResolvedHomeLayout(supabase, studioId, userId)
+      .then(({ layout, source, inheritedLayout: nextInherited, inheritedSource: nextInheritedSource }) => {
+        if (!cancelled) {
+          setWidgets(layout); setDraftWidgets(layout); setLayoutSource(source);
+          setInheritedLayout(nextInherited); setInheritedSource(nextInheritedSource);
+          setDraftInherits(source !== 'user');
+        }
+      })
       .catch(() => { if (!cancelled) setLayoutError('Impossibile caricare la personalizzazione Home'); })
       .finally(() => { if (!cancelled) setLayoutLoading(false); });
     return () => { cancelled = true; };
@@ -162,6 +172,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
 
   const openHomeCustomizer = () => {
     setDraftWidgets(widgets.map((item) => ({ ...item })));
+    setDraftInherits(layoutSource !== 'user');
     setLayoutError('');
     setPreviewMode('desktop');
     setThemeTab('widgets');
@@ -172,9 +183,33 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
     if (!studioId || !userId) { setLayoutError('Identità studio/utente non disponibile'); return; }
     setLayoutSaving(true); setLayoutError('');
     try {
-      const saved = await saveUserHomeLayout(supabase, studioId, userId, draftWidgets);
-      setWidgets(saved); setDraftWidgets(saved); setSettingsOpen(false);
+      if (draftInherits) {
+        await deleteUserHomeLayout(supabase, studioId, userId);
+        const resolved = await loadResolvedHomeLayout(supabase, studioId, userId);
+        setWidgets(resolved.layout); setDraftWidgets(resolved.layout); setLayoutSource(resolved.source);
+        setInheritedLayout(resolved.inheritedLayout); setInheritedSource(resolved.inheritedSource);
+      } else {
+        const saved = await saveUserHomeLayout(supabase, studioId, userId, draftWidgets);
+        setWidgets(saved); setDraftWidgets(saved); setLayoutSource('user');
+      }
+      setSettingsOpen(false);
     } catch { setLayoutError('Salvataggio non riuscito. Nessuna modifica è stata applicata.'); }
+    finally { setLayoutSaving(false); }
+  };
+
+  const resetHomeCustomization = () => {
+    setDraftWidgets(inheritedLayout.map((item) => ({ ...item })));
+    setDraftInherits(true);
+  };
+
+  const saveStudioDefault = async () => {
+    if (!isStudioAdmin || !studioId || !userId) return;
+    setLayoutSaving(true); setLayoutError('');
+    try {
+      const saved = await saveStudioHomeLayout(supabase, studioId, userId, draftWidgets);
+      setInheritedLayout(saved); setInheritedSource('studio');
+      if (draftInherits) { setWidgets(saved); setDraftWidgets(saved); setLayoutSource('studio'); }
+    } catch { setLayoutError('Salvataggio del predefinito studio non riuscito.'); }
     finally { setLayoutSaving(false); }
   };
   const [todoList, setTodoList] = useState([]);
@@ -318,7 +353,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           {/* TAB WIDGET */}
           {themeTab === 'widgets' && <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-              <div style={{ fontSize: 12, color: C.txm }}>Aggiungi o rimuovi widget. Trascina la preview per riordinare e usa S/M/L per ridimensionare.</div>
+              <div style={{ fontSize: 12, color: C.txm }}>Aggiungi o rimuovi widget. Riordina con Sposta su/giù (anche su touch) oppure trascina; usa S/M/L per ridimensionare.</div>
               <div style={{ display: 'flex', gap: 4, background: C.bg, borderRadius: 8, padding: 3, flexShrink: 0 }}>
                 {[['desktop','Desktop'],['mobile','Mobile']].map(([id,label]) => <button key={id} type="button" onClick={() => setPreviewMode(id)}
                   style={{ border: 'none', borderRadius: 6, padding: '5px 9px', cursor: 'pointer', fontSize: 11, fontWeight: 800, background: previewMode===id ? C.pri : 'transparent', color: previewMode===id ? '#fff' : C.txm }}>{label}</button>)}
@@ -332,14 +367,15 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                 const item = draftWidgets.find((entry) => entry.id === widget.id);
                 return <div key={widget.id} style={{ display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,padding:'9px 10px',background:C.bg,borderRadius:9,border:`1px solid ${C.brd}` }}>
                   <div style={{ minWidth:0 }}><div style={{ fontSize:10,color:C.txl,fontWeight:800,textTransform:'uppercase' }}>{widget.category}</div><div style={{ display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:700,color:item?.visible ? C.txt : C.txl }}><Ic n={widget.ic} s={12} c="currentColor" />{widget.label}</div></div>
-                  <button type="button" onClick={() => setDraftWidgets((layout) => setHomeWidgetVisibility(layout,widget.id,!item?.visible))}
+                  <button type="button" onClick={() => { setDraftInherits(false); setDraftWidgets((layout) => setHomeWidgetVisibility(layout,widget.id,!item?.visible)); }}
                     style={{ border:'none',borderRadius:8,padding:'6px 9px',cursor:'pointer',fontSize:11,fontWeight:800,background:item?.visible ? C.danL : C.priL,color:item?.visible ? C.dan : C.pri }}>{item?.visible ? 'Rimuovi' : 'Aggiungi'}</button>
                 </div>;
               })}
             </div>
             <WidgetWorkspace layout={draftWidgets} editing previewMode={previewMode}
-              onMove={(source,target) => setDraftWidgets((layout) => moveHomeWidget(layout,source,target))}
-              onResize={(id,size) => setDraftWidgets((layout) => setHomeWidgetSize(layout,id,size))}>
+              onMove={(source,target) => { setDraftInherits(false); setDraftWidgets((layout) => moveHomeWidget(layout,source,target)); }}
+              onMoveByOffset={(id,offset) => { setDraftInherits(false); setDraftWidgets((layout) => moveHomeWidgetByOffset(layout,id,offset)); }}
+              onResize={(id,size) => { setDraftInherits(false); setDraftWidgets((layout) => setHomeWidgetSize(layout,id,size)); }}>
               {draftWidgets.filter((item) => item.visible).map((item) => {
                 const widget=HOME_WIDGET_REGISTRY.find((entry)=>entry.id===item.id);
                 return widget ? <div key={item.id} style={{ minHeight:72,padding:12,borderRadius:10,background:C.sur,border:`1px solid ${C.brd}` }}>
@@ -349,8 +385,12 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
               })}
             </WidgetWorkspace>
             {layoutError && <div role="alert" style={{ marginTop:10,fontSize:12,color:C.dan,fontWeight:700 }}>{layoutError}</div>}
+            <div style={{ marginTop:10,fontSize:11,color:C.txm }}>
+              {draftInherits ? `Eredita il predefinito ${inheritedSource === 'studio' ? 'dello studio' : 'della piattaforma'}.` : 'Personalizzazione personale: modifica solo la tua presentazione.'}
+            </div>
             <div style={{ display:'flex',gap:8,marginTop:12 }}>
-              <button type="button" onClick={() => setDraftWidgets(createDefaultHomeLayout())} style={{ padding:'9px 12px',background:C.danL,border:'none',borderRadius:9,color:C.dan,fontWeight:700,fontSize:12,cursor:'pointer' }}>↺ Reset al default</button>
+              <button type="button" onClick={resetHomeCustomization} style={{ padding:'9px 12px',background:C.danL,border:'none',borderRadius:9,color:C.dan,fontWeight:700,fontSize:12,cursor:'pointer' }}>↺ Reset al default {inheritedSource === 'studio' ? 'studio' : 'piattaforma'}</button>
+              {isStudioAdmin && <button type="button" disabled={layoutSaving} onClick={saveStudioDefault} style={{ padding:'9px 12px',background:C.priL,border:`1px solid ${C.pri}33`,borderRadius:9,color:C.pri,fontWeight:700,fontSize:12,cursor:'pointer' }}>Salva come default studio</button>}
               <button type="button" onClick={() => setSettingsOpen(false)} style={{ marginLeft:'auto',padding:'9px 14px',background:C.bg,border:`1px solid ${C.brd}`,borderRadius:9,color:C.txm,fontWeight:700,fontSize:12,cursor:'pointer' }}>Annulla</button>
               <button type="button" disabled={layoutSaving || layoutLoading} onClick={saveHomeCustomization} style={{ padding:'9px 16px',background:C.pri,border:'none',borderRadius:9,color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer',opacity:layoutSaving?0.6:1 }}>{layoutSaving ? 'Salvataggio…' : 'Salva Home'}</button>
             </div>

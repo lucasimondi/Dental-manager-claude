@@ -2,12 +2,12 @@ import React, { Children } from 'react';
 import { getHomeWidget, getHomeWidgetIdFromReactKey } from '../lib/homeWidgetRegistry.js';
 import './WidgetWorkspace.css';
 
-export default function WidgetWorkspace({ children, layout, editing, previewMode, onMove, onResize }) {
+export default function WidgetWorkspace({ children, layout, editing, previewMode, onMove, onMoveByOffset, onResize }) {
   const childById = new Map(Children.toArray(children).filter(Boolean).map((child) => [getHomeWidgetIdFromReactKey(child.key), child]));
   return (
     <div className={`home-widget-preview home-widget-preview--${previewMode}`} data-testid="home-widget-preview">
       <div className="home-widget-grid">
-        {layout.filter((item) => item.visible).map((item) => {
+        {layout.filter((item) => item.visible).map((item, index, visibleItems) => {
           const content = childById.get(item.id);
           const widget = getHomeWidget(item.id);
           if (!content || !widget) return null;
@@ -19,6 +19,10 @@ export default function WidgetWorkspace({ children, layout, editing, previewMode
               onDrop={(event) => { if (editing) onMove(event.dataTransfer.getData('text/home-widget-id'), item.id); }}>
               {editing && <div className="home-widget-frame__toolbar">
                 <span className="home-widget-frame__handle" title="Trascina per spostare">⠿ {widget.label}</span>
+                <div className="home-widget-frame__move" aria-label={`Posizione ${widget.label}`}>
+                  <button type="button" disabled={index === 0} onClick={() => onMoveByOffset(item.id, -1)} aria-label={`Sposta su ${widget.label}`}>↑<span>Sposta su</span></button>
+                  <button type="button" disabled={index === visibleItems.length - 1} onClick={() => onMoveByOffset(item.id, 1)} aria-label={`Sposta giù ${widget.label}`}>↓<span>Sposta giù</span></button>
+                </div>
                 {widget.sizes.length > 1 && <div className="home-widget-frame__sizes" aria-label={`Dimensione ${widget.label}`}>
                   {widget.sizes.map((size) => <button key={size} type="button" className={item.size === size ? 'is-active' : ''}
                     onClick={() => onResize(item.id, size)}>{size === 'small' ? 'S' : size === 'medium' ? 'M' : 'L'}</button>)}

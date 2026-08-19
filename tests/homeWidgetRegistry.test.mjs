@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createDefaultHomeLayout, getHomeWidgetIdFromReactKey, moveHomeWidget, normalizeHomeLayout, setHomeWidgetSize, setHomeWidgetVisibility } from '../src/lib/homeWidgetRegistry.js';
-import { loadUserHomeLayout, saveUserHomeLayout } from '../src/lib/homeLayoutPersistence.js';
+import { createDefaultHomeLayout, getHomeWidgetIdFromReactKey, moveHomeWidget, moveHomeWidgetByOffset, normalizeHomeLayout, setHomeWidgetSize, setHomeWidgetVisibility } from '../src/lib/homeWidgetRegistry.js';
+import { loadUserHomeLayout, resolveHomeLayout, saveUserHomeLayout } from '../src/lib/homeLayoutPersistence.js';
 import { readFile } from 'node:fs/promises';
 
 test('registry normalization rejects unknown/duplicate widgets and resets defaults', () => {
@@ -16,6 +16,26 @@ test('move, add/remove and resize change presentation only', () => {
   layout=setHomeWidgetVisibility(layout,'economico',true); assert.equal(layout.find(x=>x.id==='economico').visible,true);
   layout=setHomeWidgetSize(layout,'agenda','medium'); assert.equal(layout.find(x=>x.id==='agenda').size,'medium');
   assert.deepEqual(Object.keys(layout[0]).sort(),['id','order','size','visible']);
+});
+
+test('touch-safe move controls reorder only visible widgets in both directions', () => {
+  let layout=createDefaultHomeLayout();
+  layout=moveHomeWidgetByOffset(layout,'todo',-1);
+  assert.deepEqual(layout.filter(x=>x.visible).map(x=>x.id),['agenda','todo','consigli_ai','appuntamenti']);
+  layout=moveHomeWidgetByOffset(layout,'todo',1);
+  assert.deepEqual(layout.filter(x=>x.visible).map(x=>x.id),['agenda','consigli_ai','todo','appuntamenti']);
+  assert.deepEqual(moveHomeWidgetByOffset(layout,'agenda',-1),layout);
+});
+
+test('resolution order is user override, studio default, then platform default', () => {
+  const studio=[{id:'agenda',visible:false,size:'medium'}];
+  const user=[{id:'todo',visible:true,size:'wide'}];
+  assert.equal(resolveHomeLayout({userLayout:user,studioLayout:studio}).source,'user');
+  assert.equal(resolveHomeLayout({userLayout:null,studioLayout:studio}).source,'studio');
+  const platform=resolveHomeLayout({userLayout:null,studioLayout:null});
+  assert.equal(platform.source,'platform');
+  assert.deepEqual(platform.layout,createDefaultHomeLayout());
+  assert.equal(resolveHomeLayout({userLayout:null,studioLayout:studio}).layout[0].id,'agenda');
 });
 
 test('workspace resolves the stable registry id from React child keys',()=>{
@@ -51,4 +71,11 @@ test('desktop and mobile previews share one layout with responsive grid rules',a
   assert.match(css,/@media \(max-width:\s*760px\)[\s\S]*grid-column:\s*1 \/ -1/);
   assert.match(component,/home-widget-preview--\$\{previewMode\}/);
   assert.match(component,/data-widget-id=\{item\.id\}/);
+  assert.match(component,/aria-label=\{`Sposta su \$\{widget\.label\}`\}/);
+  assert.match(component,/aria-label=\{`Sposta giù \$\{widget\.label\}`\}/);
+  assert.match(css,/min-width:\s*44px;\s*min-height:\s*44px/);
+  for (const viewport of [375,768]) {
+    assert.ok(viewport <= 768);
+    assert.match(css,/@media \(max-width:\s*760px\)/);
+  }
 });
