@@ -23,4 +23,4 @@ Local PostgreSQL/Supabase tests, Node tests, desktop/mobile UI verification, bui
 
 ## Completion state
 
-Phase 1 and the requested residual-risk closure are complete. Accessible move controls work independently of HTML5 drag/drop; resolution is user override → studio default → platform default; reset removes the override. Node tests, Supabase/PostgreSQL 17 migration/RLS regression, database lint, build, secret/diff/scope checks passed. No production write, remote migration, deploy or merge occurred.
+Phase 1 and the requested residual-risk closure are complete. The branch is realigned with `master` commit `c01564c` (POL-003F) without losing either workstream or its handoffs. Accessible move controls work independently of HTML5 drag/drop; resolution is user override → studio default → platform default; reset removes the override. Node tests, Supabase/PostgreSQL 17 migration/RLS regression, database lint, build, secret/diff/scope checks passed after realignment. No production write, remote migration, deploy or PR merge occurred.
