@@ -311,6 +311,7 @@ export const DEF_TPL = [
 ];
 
 export const DEF_STUDIO = {
+  management_control_mode: 'base',
   vertical: 'dentistico',
   nome: 'Dott. Luca Simondi',
   spec: 'Medico Odontoiatra · Chirurgo Orale · Medico Estetico',
@@ -650,4 +651,3 @@ export const DEF_DOCUMENTI_SETTINGS = {
   fattura: true,
   rimborso: true,
 };
-

@@ -1,35 +1,35 @@
 # Current task
 
-- TASK: POL-003B
-- TITLE: Legacy Financial Adapter & Reconciliation
+- TASK: POL-003C
+- TITLE: Management Control Modes
 - OWNER: CODEX
-- BRANCH: `finance/POL-003B-legacy-adapter-reconciliation`
+- BRANCH: `finance/POL-003C-management-modes`
 - STATUS: `WAITING_PRODUCT_OWNER`
 
 ## Objective
 
-Map the existing Poliedra financial sources into the POL-003A canonical engine, build deterministic adapters and produce a shadow reconciliation report comparing legacy and canonical figures before any frontend cutover.
+Persist the per-studio Base/Advanced management-control presentation mode and prepare UI/selectors that consume only POL-003 canonical metrics, without financial backfill or KPI cutover.
 
 ## Product Owner authorization
 
-Approved after POL-003A merge and controlled production installation of the additive canonical engine. Production financial_*_v1 tables currently contain zero canonical rows. POL-003B may inspect production metadata and aggregate financial source data read-only, but must not write legacy/canonical production rows, alter frontend KPI reads, deploy application code, or replace legacy RPCs.
+Approved through PR #9 and the explicit POL-003C implementation instruction. Add per-studio Base/Advanced selection and prepare canonical-only UI selectors while keeping every legacy dashboard active. No production backfill, KPI cutover, deploy or remote migration is authorized.
 
 ## Required work
 
-1. Inventory authoritative legacy tables/columns/dates for `plans`, `payments`, `documenti_fiscali`, `pagamenti_esterni`, `spese`, `personale`, `materiali`, `macchinari`, `prestazione_materiali`, `prestazione_macchinari`, `pricelist`, `appointments` and relevant configuration.
-2. Define deterministic source-to-canonical mappings for contracts, contract lines, accepted/produced events, invoice events, payment events/allocations, cost events and available/worked hours.
-3. Never infer unavailable historical dates. Classify every mapping as `EXACT`, `DERIVED`, `APPROXIMATION_NOT_ALLOWED`, or `PRODUCT_OWNER_DECISION_REQUIRED`.
-4. Build idempotent adapter SQL in a new migration or versioned adapter module, but do not run it against production.
-5. Use synthetic/local fixtures to test discounts, partial execution/payment, advances, overpayment, cancellation, refunds, notes of credit, external payment reconciliation, historical costs, two tenants and multi-operator data.
-6. Build a read-only shadow reconciliation query/report for production aggregate comparisons. It must not copy patient-identifying data into logs or Git.
-7. Compare at least legacy vs canonical-compatible definitions for preventivato, accepted backlog, produced, invoiced, collected, costs, margin/EBITDA where source evidence permits. Explain every variance; do not force equality where semantics differ.
-8. Do not wire the frontend to POL-003A during this task.
-9. Run build, database tests/lint/advisor, secret scan and diff check. Update handoff and set `WAITING_PRODUCT_OWNER`.
+1. Add `management_control_mode` to the existing tenant-owned studio settings with allowed values `base` and `advanced`, defaulting existing studios to `base`.
+2. Add the selector to Setup and persist it through the existing `studio_info` path.
+3. Define Base and Advanced visibility catalogs over the same canonical POL-003 snapshot RPC.
+4. Never reproduce a financial formula or silently fall back to legacy tables/calculations.
+5. Represent unavailable canonical metrics explicitly as unavailable.
+6. Prepare a canonical management component but do not mount it in the live legacy dashboard.
+7. Test persistence, tenant isolation, mode switching and absence of financial formula duplication.
+8. Run local database tests, application tests/build, secret scan and diff/scope checks.
+9. Update the handoff and set `WAITING_PRODUCT_OWNER`.
 
 ## Production gate
 
-No production data writes, no remote adapter migration, no frontend cutover, no replacement of legacy RPCs and no deploy. Product Owner approval is required after shadow reconciliation before any canonical backfill or UI switch.
+No production data writes, remote migration, backfill, frontend KPI cutover, legacy RPC replacement, deploy or merge. Base/Advanced may change only presentation and visibility.
 
 ## Completion state
 
-The verified inventory and classification are complete. A restricted, idempotent and deliberately partial adapter migration, synthetic regression suite, read-only aggregate shadow query, production aggregate report and local validation record are prepared. Production remained read-only and the canonical production tables remained untouched. See `pol-003b-adapter-implementation.md`, `pol-003b-shadow-reconciliation.md` and `pol-003b-local-validation.md`.
+The per-studio constrained setting, Setup selector, canonical-only RPC loader, shared Base/Advanced visibility catalogs, dormant canonical UI component and synthetic tests are complete. Legacy dashboards remain mounted. See `pol-003c-implementation.md` and `pol-003c-local-validation.md`.

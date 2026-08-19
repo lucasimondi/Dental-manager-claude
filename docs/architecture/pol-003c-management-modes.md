@@ -1,6 +1,8 @@
 # POL-003C — Management Control Experience Modes
 
-Status: PRODUCT_OWNER_APPROVED_DESIGN
+Status: IMPLEMENTED_LOCALLY_WAITING_PRODUCT_OWNER
+
+Implementation evidence: `pol-003c-implementation.md` and `pol-003c-local-validation.md`. The legacy dashboards remain active and no production backfill or KPI cutover has occurred.
 
 ## Core architectural rule
 
