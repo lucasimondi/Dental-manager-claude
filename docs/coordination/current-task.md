@@ -16,7 +16,7 @@ Extend the POL-003 canonical financial engine with authoritative cost and capaci
 2. Legacy `spese.tipo_costo='fisso'` maps to canonical fixed operating cost only when the source row is otherwise valid for the period.
 3. Legacy `spese.tipo_costo='variabile'` maps to canonical attributable variable cost only when the source row is otherwise valid for the period.
 4. Preserve recurrence semantics from `spesa_contributo_periodo`: start date, optional end date, frequency and period overlap must be respected. Do not multiply recurring costs naively.
-5. Active `personale.costo_mensile` is an operating fixed/structure cost. Respect `data_inizio`; do not invent a termination date when none exists.
+5. Current `personale.costo_mensile` MUST NOT reconstruct prior months. Personnel cost is canonical only when an explicit authoritative monthly version exists; missing periods remain unavailable.
 6. `macchinari` amortization MUST NOT enter canonical EBITDA or structure hourly cost in POL-003F. Depreciation/amortization remains excluded by the Product Owner semantics lock. Equipment leasing may only enter through an explicit operating expense source, not inferred from `macchinari.costo_acquisto`.
 7. `studio_info.config_orario` is authoritative only for productive capacity: `giorni_settimana * ore_al_giorno * num_postazioni`. Use the existing 4.33 weeks/month convention for month-normalized capacity where needed, and make period semantics deterministic/documented.
 8. Appointments with legacy `stato='confermato'` are NOT authoritative proof of hours actually worked. Do not backfill `ORE_EFFETTIVE` from confirmed appointments. Effective hours remain unavailable until an authoritative completed/worked signal exists or the user records them explicitly.
@@ -62,4 +62,4 @@ No remote cost/hour backfill is authorized by this task. Product Owner must revi
 
 ## Completion state
 
-The restricted adapter, synthetic regressions, read-only shadow query, source inventory and validation evidence are complete on PR #12. All local tests and build passed. Production was not modified; no remote migration, adapter execution, backfill, deployment or merge occurred.
+Corrective work is complete locally: append-only effective-dated personnel cost versions replace current-cost historical projection; unknown historical periods fail closed; historical canonical events and KPIs remain immutable when the legacy current cost changes. All requested local regressions and repository checks passed. Production remains untouched and no remote migration, adapter, backfill, deploy or merge was performed.

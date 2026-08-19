@@ -4,10 +4,11 @@ Validation used the Supabase PostgreSQL 17 image `17.6.1.159` in a disposable lo
 
 ## Results
 
-- POL-003F regression: passed, including one-off/recurring/end-date costs, variable costs, personnel start, two tenants, invalid config, idempotency and period boundaries.
+- POL-003F regression: passed, including one-off/recurring/end-date costs, variable costs, explicit personnel cost versions, two tenants, invalid config, idempotency and period boundaries.
+- Personnel history correction: passed. Explicit versions produced EUR 1,500 for January-March and EUR 1,800 for April; changing the legacy current cost to EUR 2,000 did not alter those events or the EUR 6,300 historical KPI total. A second active collaborator with a current cost but no authoritative versions remained unavailable for all four months. UPDATE/DELETE of a recorded version is blocked.
 - Canonical snapshot: fixed cost EUR 3,620; variable cost EUR 183.333334; contribution margin EUR 4,816.666666; management EBITDA EUR 1,196.666666; available hours 1,039.2; structure hourly cost reconciled. Worked-hour metrics remained unavailable.
 - POL-003D adapter regression and full POL-003A regression: passed unchanged.
-- Synthetic shadow: exact matches for fixed expenses EUR 1,000, personnel EUR 2,000, total fixed EUR 3,000, variable EUR 120 and available hours 1,039.2. One machine, one confirmed appointment and zero worked hours were correctly reported as deliberately non-adapted.
+- Synthetic shadow: exact matches for fixed expenses EUR 1,000, versioned personnel EUR 2,000, total fixed EUR 3,000, variable EUR 120 and available hours 1,039.2. Unknown personnel months were reported separately (zero in this fixture). One machine, one confirmed appointment and zero worked hours were correctly reported as deliberately non-adapted.
 - `plpgsql_check`: zero findings. Supabase database lint: no schema errors. Performance advisor: no issues.
 - Security advisor: only expected findings from deliberately minimal non-RLS synthetic bootstrap tables and local `plpgsql_check`; the restricted adapter added no exposed table or executable API grant.
 - Node tests: 4/4 passed. Vite build: passed with pre-existing warnings. `npm ci` retained 10 pre-existing audit findings (2 moderate, 6 high, 2 critical).
@@ -26,4 +27,4 @@ Expected current-year expense events are 14 (10 recurring monthly contributions 
 
 ## Residual risks
 
-Current personnel cost has no termination or cost-version history; current schedule configuration has no effective dating; generic legacy variable classification does not prove patient/service attribution; unknown recurrence values remain skipped; worked hours lack an authoritative source. Production execution and provenance cleanup require a separate approved runbook and PO gate.
+No authoritative historical personnel cost versions have been captured from production by this task; therefore legacy current costs cannot be back-projected and uncovered periods remain unavailable. Future writes need an approved workflow that appends a version at the first authoritative effective month instead of editing history. Current schedule configuration still has no effective dating; generic legacy variable classification does not prove patient/service attribution; unknown recurrence values remain skipped; worked hours lack an authoritative source. Production execution, any initial version capture, and provenance cleanup require a separate approved runbook and Product Owner gate.

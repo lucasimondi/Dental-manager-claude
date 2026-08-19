@@ -25,13 +25,29 @@ WITH params AS (
     date_trunc('month',LEAST(COALESCE((SELECT data_fine FROM public.spese WHERE id=e.id),e.date_to),e.date_to)),
     interval '1 month') m
   WHERE e.ricorrente
-), legacy_personnel AS (
-  SELECT COALESCE(sum(p.costo_mensile),0) amount
-  FROM public.personale p JOIN params q ON q.studio_id=p.studio_id
-  CROSS JOIN LATERAL generate_series(
-    date_trunc('month',GREATEST(p.data_inizio,q.date_from)),
-    date_trunc('month',q.date_to),interval '1 month') m
-  WHERE p.attivo AND p.data_inizio IS NOT NULL AND p.costo_mensile>=0
+), personnel_versions AS (
+  SELECT v.*,lead(v.valid_from) OVER(PARTITION BY v.studio_id,v.personnel_id ORDER BY v.valid_from) next_from,
+    p.date_from,p.date_to
+  FROM public.financial_personnel_cost_versions_v1 v
+  JOIN params p ON p.studio_id=v.studio_id
+  WHERE v.valid_from<=p.date_to
+), authoritative_personnel AS (
+  SELECT COALESCE(sum(v.monthly_cost),0) amount
+  FROM personnel_versions v CROSS JOIN LATERAL generate_series(
+    date_trunc('month',GREATEST(v.valid_from,v.date_from)),
+    date_trunc('month',LEAST(COALESCE(v.next_from-1,v.date_to),v.date_to)),interval '1 month') m
+), personnel_unavailable AS (
+  WITH expected AS (
+    SELECT p.id,gs.month_start::date month_start,q.studio_id
+    FROM public.personale p JOIN params q ON q.studio_id=p.studio_id
+    CROSS JOIN LATERAL generate_series(
+      date_trunc('month',GREATEST(COALESCE(p.data_inizio,q.date_from),q.date_from)),
+      date_trunc('month',q.date_to),interval '1 month') gs(month_start)
+    WHERE p.attivo AND COALESCE(p.data_inizio,q.date_from)<=q.date_to
+  )
+  SELECT count(*) amount FROM expected e WHERE NOT EXISTS(
+    SELECT 1 FROM public.financial_personnel_cost_versions_v1 v
+    WHERE v.studio_id=e.studio_id AND v.personnel_id=e.id AND v.valid_from<=e.month_start)
 ), legacy_hours AS (
   SELECT CASE WHEN jsonb_typeof(si.config_orario)='object'
       AND (si.config_orario->>'giorni_settimana') ~ '^([0-9]+)([.][0-9]+)?$'
@@ -46,11 +62,11 @@ WITH params AS (
 ), canonical AS (
   SELECT
     COALESCE(sum(amount) FILTER(WHERE source_table='spese' AND classification='FISSO_OPERATIVO'),0) fixed_expense,
-    COALESCE(sum(amount) FILTER(WHERE source_table='personale'),0) personnel,
+    COALESCE(sum(amount) FILTER(WHERE source_table='financial_personnel_cost_versions_v1'),0) personnel,
     COALESCE(sum(amount) FILTER(WHERE classification='VARIABILE_ATTRIBUIBILE'),0) variable
   FROM public.financial_cost_events_v1 c JOIN params p ON p.studio_id=c.studio_id
   WHERE c.event_date BETWEEN p.date_from AND p.date_to
-    AND c.source_table IN ('spese','personale')
+    AND c.source_table IN ('spese','financial_personnel_cost_versions_v1')
 ), canonical_hours AS (
   SELECT COALESCE(sum(hours) FILTER(WHERE hour_kind='AVAILABLE'),0) available,
          COALESCE(sum(hours) FILTER(WHERE hour_kind='WORKED'),0) worked
@@ -61,9 +77,10 @@ WITH params AS (
   SELECT 'COSTI_FISSI_SPESE' metric,
     COALESCE((SELECT sum(amount) FROM legacy_expenses WHERE kind='fisso'),0) legacy_value,
     (SELECT fixed_expense FROM canonical) canonical_value,'EXACT' note
-  UNION ALL SELECT 'COSTI_PERSONALE',(SELECT amount FROM legacy_personnel),(SELECT personnel FROM canonical),'EXACT'
+  UNION ALL SELECT 'COSTI_PERSONALE',(SELECT amount FROM authoritative_personnel),(SELECT personnel FROM canonical),'EXACT'
+  UNION ALL SELECT 'COSTI_PERSONALE_NON_RICOSTRUIBILI',(SELECT amount FROM personnel_unavailable),0,'APPROXIMATION_NOT_ALLOWED'
   UNION ALL SELECT 'COSTI_FISSI_OPERATIVI',
-    COALESCE((SELECT sum(amount) FROM legacy_expenses WHERE kind='fisso'),0)+(SELECT amount FROM legacy_personnel),
+    COALESCE((SELECT sum(amount) FROM legacy_expenses WHERE kind='fisso'),0)+(SELECT amount FROM authoritative_personnel),
     (SELECT fixed_expense+personnel FROM canonical),'EXACT'
   UNION ALL SELECT 'COSTI_VARIABILI',COALESCE((SELECT sum(amount) FROM legacy_expenses WHERE kind='variabile'),0),(SELECT variable FROM canonical),'EXACT'
   UNION ALL SELECT 'ORE_DISPONIBILI',COALESCE((SELECT amount FROM legacy_hours),0),(SELECT available FROM canonical_hours),'EXACT'
