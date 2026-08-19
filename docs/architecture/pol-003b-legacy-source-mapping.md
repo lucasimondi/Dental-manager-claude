@@ -1,6 +1,6 @@
 # POL-003B — Legacy source mapping
 
-Status: production metadata/read-only aggregate evidence captured; no production writes.
+Status: production metadata/read-only aggregate evidence captured; the safe subset is implemented in a restricted, non-executed adapter migration; no production writes. See `pol-003b-adapter-implementation.md` and `pol-003b-shadow-reconciliation.md`.
 
 ## Classification vocabulary
 

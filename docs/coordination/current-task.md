@@ -4,7 +4,7 @@
 - TITLE: Legacy Financial Adapter & Reconciliation
 - OWNER: CODEX
 - BRANCH: `finance/POL-003B-legacy-adapter-reconciliation`
-- STATUS: `IN_PROGRESS`
+- STATUS: `WAITING_PRODUCT_OWNER`
 
 ## Objective
 
@@ -29,3 +29,7 @@ Approved after POL-003A merge and controlled production installation of the addi
 ## Production gate
 
 No production data writes, no remote adapter migration, no frontend cutover, no replacement of legacy RPCs and no deploy. Product Owner approval is required after shadow reconciliation before any canonical backfill or UI switch.
+
+## Completion state
+
+The verified inventory and classification are complete. A restricted, idempotent and deliberately partial adapter migration, synthetic regression suite, read-only aggregate shadow query, production aggregate report and local validation record are prepared. Production remained read-only and the canonical production tables remained untouched. See `pol-003b-adapter-implementation.md`, `pol-003b-shadow-reconciliation.md` and `pol-003b-local-validation.md`.
