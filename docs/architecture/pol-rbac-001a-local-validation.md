@@ -110,6 +110,23 @@ All of the mission's required scenarios passed:
 
 ## Defects found and fixed during local validation
 
+- A dedicated security-review pass (post-push, before Product Owner review)
+  found that `patient_care_assignments_select`'s "shared patient" branch
+  gated on the *caller's* active assignment but did not filter the *row
+  being read* by `active`, so a teammate with any active assignment to a
+  patient could read every historical row for that patient — including
+  another professional's ended assignment, its free-text `reason`, and
+  `ended_by`/`ended_at` — not just the active roster the migration's own
+  comment promised. Fixed by requiring the read row itself to be `active`
+  in that branch; added a regression assertion (an active teammate cannot
+  see another professional's just-ended row) and re-validated the full
+  local suite.
+- Also caught in review: the `studio_user_capabilities` SELECT extension for
+  physiotherapists initially had no capability-prefix filter, letting a
+  physiotherapist read the studio's non-clinical capability rows (who holds
+  `finance.management.read`, `studio.owner`, `studio.manage_members`,
+  `home.front_desk`) — narrowed to `capability LIKE 'clinical.%'` with a
+  negative regression assertion added.
 - `to_regproc()` does not accept a parenthesized signature; preflight check
   fixed to use `to_regprocedure()`.
 - The assignment table's tenant-safety/immutability trigger initially ran

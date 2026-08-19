@@ -160,6 +160,15 @@ SELECT pg_temp.assert_true(
 SELECT set_config('request.jwt.claims','{"sub":"a0000000-0000-4000-8000-000000000004"}',true);
 SELECT pg_temp.assert_true((SELECT count(*) FROM public.physio_piani)=0,'PT1 loses access immediately once the assignment is deactivated');
 
+-- A teammate still actively assigned to Patient A (a6, massage_therapist)
+-- must not see PT1's just-ended row (or its reason/ended_by) through the
+-- "shared patient" roster branch — only the active roster, not history.
+SELECT set_config('request.jwt.claims','{"sub":"a0000000-0000-4000-8000-000000000006"}',true);
+SELECT pg_temp.assert_true(
+  (SELECT count(*) FROM public.patient_care_assignments WHERE patient_id=101 AND user_id='a0000000-0000-4000-8000-000000000004')=0,
+  'an active teammate cannot see another professional''s ended assignment or its reason/ended_by through the shared-patient roster'
+);
+
 -- ── Author spoofing on the new physio_esecuzioni authorship ──────────────
 SELECT set_config('request.jwt.claims','{"sub":"a0000000-0000-4000-8000-000000000005"}',true);
 INSERT INTO public.physio_esecuzioni(studio_id,prescrizione_id,eseguito,created_by)

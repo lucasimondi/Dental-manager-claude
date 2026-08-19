@@ -246,7 +246,10 @@ USING (
   (SELECT public.has_studio_capability_v1(studio_id, 'studio.manage_members'))
   OR (SELECT public.has_studio_capability_v1(studio_id, 'clinical.physiotherapist'))
   OR user_id = (SELECT auth.uid())
-  OR (SELECT public.caller_has_active_patient_assignment_v1(studio_id, patient_id))
+  OR (
+    active
+    AND (SELECT public.caller_has_active_patient_assignment_v1(studio_id, patient_id))
+  )
 );
 
 CREATE POLICY patient_care_assignments_insert ON public.patient_care_assignments
