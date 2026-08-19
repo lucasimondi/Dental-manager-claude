@@ -1,34 +1,38 @@
 # Current task
 
-- TASK: POL-UI-002
-- TITLE: Canonical Financial Widgets + Role Presets
+- TASK: POL-RBAC-001
+- TITLE: Authoritative Tenant Capabilities
 - OWNER: CODEX
-- BRANCH: `ui/POL-UI-002-canonical-financial-widgets-presets`
+- BRANCH: `security/POL-RBAC-001-authoritative-capabilities`
+- BASE REVIEW: `ui/POL-UI-002-canonical-financial-widgets-presets` / PR #15
 - STATUS: `WAITING_PRODUCT_OWNER`
 
 ## Objective
 
-Turn the modular Home into a permission-aware workspace with canonical financial widgets, one shared period context and presentation presets for Titolare, Segreteria and Clinico/Fisio. Preserve the POL-UI-001 personalization hierarchy and use only the POL-003/POL-003F snapshot contract for new financial widgets.
+Extend the existing `admin`/`utente` membership model with explicit tenant-scoped capabilities for owner/admin, front desk, clinician, physiotherapist, personal trainer and massage therapist. Make POL-UI-002 presets and widget access consume only server-authoritative capabilities. Harden Fisio RLS by clinical responsibility without inferring professional roles.
 
 ## Safety boundaries
 
-- New financial widgets read only `get_financial_snapshot_v1`; they contain no financial formulas and no legacy fallback.
-- Active membership, management-control capability and role are evaluated fail closed before the canonical loader is mounted.
-- Layout resolution is user override → studio default → role/vertical preset → platform default.
-- Fisio clinical selectors remain disabled because an authoritative merged Home contract is not available; no legacy Fisio table is queried by the Home.
-- No database migration was added or changed. No production write, remote migration, backfill, deployment or merge occurred.
+- Legacy active `admin` remains owner/management-capable, but never receives clinical access automatically.
+- Legacy active `utente` receives no inferred capability. Front-desk and clinical capabilities require an explicit tenant-scoped assignment.
+- Capability resolution is server-side, active-membership checked and fail closed; suspended or cross-tenant identities resolve no access.
+- Fisio full clinical writes/finalization require `clinical.physiotherapist`. PT and massage therapist can read the authorized operational path and author their own diary entries, but cannot read evaluations or modify physiotherapy plans.
+- No production access, remote migration, backfill, deployment or merge is authorized or performed.
 
 ## Completion state
 
-Implementation and local verification are complete. The canonical widget pack, shared period selector, presets, permission-aware catalog, explicit unavailable states and responsive contracts for 375/768/1024/1440 are implemented. Twenty Node tests, POL-UI-001 migration/RLS regression on an isolated Supabase/PostgreSQL 17 container, database lint and the production build passed. Secret, diff and scope checks passed. The task is waiting for Product Owner review on PR #15.
+The additive capability table, server-side resolver functions, assignment RLS, tenant-safe relationship checks, author-enforcement triggers and replacement Fisio policies are implemented in one migration with synthetic tests. POL-UI-002 now loads capabilities from `get_my_studio_capabilities_v1`; preset and financial access no longer inspect legacy role labels or infer profession from vertical. Setup supports explicit additive assignments. The Fisio UI separates full and operational modes.
 
-## Open decisions and residual risks
+Validation passed: original 20 POL-UI-002 Node tests plus 6 RBAC tests, clean PostgreSQL/Supabase 17 migration and RLS regression for two tenants/suspension/multi-role/negative escalation/all requested profiles, database lint and production build.
 
-- The verified membership model exposes `admin` and generic `utente`; until authoritative clinical/front-desk roles exist, non-admin dental users receive the Segreteria preset and non-admin Fisio users receive the Clinico/Fisio preset. This changes presentation only and requires a future Product Owner-approved role model for finer assignment.
-- Authoritative worked hours remain unavailable, so Produzione/ora and Incasso/ora show `Non disponibile` when the snapshot lacks a positive denominator.
-- No canonical trend series or stable POL-FIS-001 Home selector is consumed.
-- Ten pre-existing dependency audit findings remain outside scope (2 moderate, 6 high, 2 critical); existing pdfjs eval and chunk-size build warnings remain.
+## Residual risks
+
+- `clinical.general` is registered for future vertical contracts but grants no Fisio access.
+- The existing legacy `studio_users` management policies remain an external prerequisite; this migration does not reconstruct unknown production policies.
+- Client deployment must follow the migration. Before it, capability RPC absence makes the new client fail closed.
+- No production capability assignments are inferred or seeded. Product Owner must approve an explicit assignment/rollout plan.
+- Existing dependency advisories and build warnings remain outside scope.
 
 ## Exact next action
 
-Product Owner and Tech Lead review PR #15, validate the permission/preset mapping and decide whether a manual device pass is required. Do not apply migrations remotely, deploy, merge or begin another task without explicit Product Owner approval.
+Product Owner and Tech Lead review the stacked POL-RBAC-001 PR and migration. Validate the explicit role/capability matrix and rollout ordering. Do not apply remotely, deploy, merge POL-RBAC-001 or merge PR #15 without explicit Product Owner approval.

@@ -25,8 +25,9 @@ const SUBTABS = [
 
 const fmtNum = (n) => (n === null || n === undefined || n === '' ? '—' : n);
 
-export default function PhysioCartella({ paziente_id, studio_id, paziente, studio }) {
-  const [sub, setSub] = useState('valutazione');
+export default function PhysioCartella({ paziente_id, studio_id, paziente, studio, accessMode = 'full' }) {
+  const fullAccess = accessMode === 'full';
+  const [sub, setSub] = useState(fullAccess ? 'valutazione' : 'percorso');
   const [valutazioni, setValutazioni] = useState([]);
   const [obiettivi, setObiettivi] = useState([]);
   const [diario, setDiario] = useState([]);
@@ -40,7 +41,7 @@ export default function PhysioCartella({ paziente_id, studio_id, paziente, studi
     setErrore('');
     try {
       const [v, o, d, p, e] = await Promise.all([
-        supabase.from('physio_valutazioni').select('*').eq('paziente_id', paziente_id).order('data', { ascending: false }),
+        fullAccess ? supabase.from('physio_valutazioni').select('*').eq('paziente_id', paziente_id).order('data', { ascending: false }) : Promise.resolve({ data: [], error: null }),
         supabase.from('physio_obiettivi').select('*').eq('paziente_id', paziente_id).order('created_at', { ascending: false }),
         supabase.from('physio_diario_sedute').select('*').eq('paziente_id', paziente_id).order('data', { ascending: false }),
         supabase.from('physio_prescrizioni').select('*, physio_esercizi(nome, categoria, descrizione, istruzioni)').eq('paziente_id', paziente_id).order('created_at', { ascending: false }),
@@ -60,24 +61,29 @@ export default function PhysioCartella({ paziente_id, studio_id, paziente, studi
     }
   };
 
-  useEffect(() => { if (paziente_id) ricarica(); }, [paziente_id]);
+  useEffect(() => { if (paziente_id) ricarica(); }, [paziente_id, accessMode]);
+
+  const subtabs = fullAccess ? SUBTABS : [
+    { id: 'percorso', l: '🧭 Percorso autorizzato' },
+    { id: 'diario', l: '📓 La mia attività' },
+  ];
 
   if (loading) return <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>Caricamento cartella…</div>;
   if (errore) return <div style={{ textAlign: 'center', color: C.dan, padding: 40 }}>{errore}</div>;
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+      {fullAccess && <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
         <button
           onClick={() => generaReportPercorso({ studio, paziente, valutazioni, obiettivi, diario, prescrizioni })}
           style={{ background: 'none', border: `1.5px solid ${C.brd}`, borderRadius: 9, padding: '7px 13px', fontSize: 12, fontWeight: 700, color: C.txm, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
         >
           <Ic n="download" s={13} c={C.txm} /> Report percorso (PDF)
         </button>
-      </div>
+      </div>}
 
       <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginBottom: 14, paddingBottom: 2 }}>
-        {SUBTABS.map((t) => (
+        {subtabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setSub(t.id)}
@@ -92,20 +98,36 @@ export default function PhysioCartella({ paziente_id, studio_id, paziente, studi
         ))}
       </div>
 
-      {sub === 'valutazione' && (
+      {fullAccess && sub === 'valutazione' && (
         <SezioneValutazione studio_id={studio_id} paziente_id={paziente_id} valutazioni={valutazioni} onChange={ricarica} />
       )}
-      {sub === 'obiettivi' && (
+      {fullAccess && sub === 'obiettivi' && (
         <SezioneObiettivi studio_id={studio_id} paziente_id={paziente_id} obiettivi={obiettivi} onChange={ricarica} />
       )}
       {sub === 'diario' && (
         <SezioneDiario studio_id={studio_id} paziente_id={paziente_id} diario={diario} onChange={ricarica} />
       )}
-      {sub === 'domiciliare' && (
+      {fullAccess && sub === 'domiciliare' && (
         <SezioneDomiciliare studio_id={studio_id} paziente_id={paziente_id} prescrizioni={prescrizioni} esercizi={esercizi} onChange={ricarica} />
       )}
+      {!fullAccess && sub === 'percorso' && <SezionePercorsoOperativo obiettivi={obiettivi} prescrizioni={prescrizioni} />}
     </div>
   );
+}
+
+function SezionePercorsoOperativo({ obiettivi, prescrizioni }) {
+  return <div>
+    <Crd style={{ marginBottom: 12 }}>
+      <div style={{ fontSize: 12, fontWeight: 800, color: C.txt, marginBottom: 8 }}>Obiettivi del percorso · sola lettura</div>
+      {obiettivi.length === 0 ? <div style={{ fontSize: 12, color: C.txl }}>Nessun obiettivo disponibile</div>
+        : obiettivi.map((ob) => <div key={ob.id} style={{ padding: '7px 0', borderBottom: `1px solid ${C.brd}`, fontSize: 12, color: C.txm }}>{ob.descrizione}</div>)}
+    </Crd>
+    <Crd>
+      <div style={{ fontSize: 12, fontWeight: 800, color: C.txt, marginBottom: 8 }}>Attività prescritte · sola lettura</div>
+      {prescrizioni.length === 0 ? <div style={{ fontSize: 12, color: C.txl }}>Nessuna attività disponibile</div>
+        : prescrizioni.map((p) => <div key={p.id} style={{ padding: '7px 0', borderBottom: `1px solid ${C.brd}`, fontSize: 12, color: C.txm }}>{p.physio_esercizi?.nome || 'Attività prescritta'}</div>)}
+    </Crd>
+  </div>;
 }
 
 /* ── VALUTAZIONE ──
