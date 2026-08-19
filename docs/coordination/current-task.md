@@ -1,43 +1,61 @@
 # Current task
 
-- TASK: POL-003D
-- TITLE: Controlled Financial Backfill Reconciliation
+- TASK: POL-003F
+- TITLE: Canonical Costs & Hours
 - OWNER: CODEX
-- BRANCH: `finance/POL-003D-controlled-backfill-reconciliation`
-- STATUS: `WAITING_PRODUCT_OWNER`
+- BRANCH: `finance/POL-003F-canonical-costs-hours`
+- STATUS: `IN_PROGRESS`
 
 ## Objective
 
-Correct the narrow legacy discount encoding mismatch discovered during the controlled production backfill gate, revalidate the adapter locally, and prepare a second controlled backfill attempt without cutting over the frontend.
+Extend the POL-003 canonical financial engine with authoritative cost and capacity-hour inputs so BASE management control can calculate margins, EBITDA, break-even and structure hourly cost without reintroducing legacy formulas.
 
-## Verified finding
+## Product Owner semantics locked
 
-- Two legacy plans use `sconto_tipo='eur'`.
-- POL-003B currently accepts `pct|percent|fixed|fisso`, therefore those two plans are skipped fail-closed.
-- Legacy application behavior treats `pct` as percentage and any non-`pct` discount type as a fixed amount; therefore `eur` is a verified legacy fixed-euro encoding.
-- The previous shadow values EUR 7,670 Preventivato and EUR 2,597 Prodotto were not valid canonical targets because they did not apply those fixed-euro discounts consistently.
-- Incassato EUR 5,102 reconciled exactly.
-- The attempted production backfill was fully rolled back; canonical financial counts returned to zero.
+1. There is one canonical financial engine. Do not add client-side financial formulas.
+2. Legacy `spese.tipo_costo='fisso'` maps to canonical fixed operating cost only when the source row is otherwise valid for the period.
+3. Legacy `spese.tipo_costo='variabile'` maps to canonical attributable variable cost only when the source row is otherwise valid for the period.
+4. Preserve recurrence semantics from `spesa_contributo_periodo`: start date, optional end date, frequency and period overlap must be respected. Do not multiply recurring costs naively.
+5. Active `personale.costo_mensile` is an operating fixed/structure cost. Respect `data_inizio`; do not invent a termination date when none exists.
+6. `macchinari` amortization MUST NOT enter canonical EBITDA or structure hourly cost in POL-003F. Depreciation/amortization remains excluded by the Product Owner semantics lock. Equipment leasing may only enter through an explicit operating expense source, not inferred from `macchinari.costo_acquisto`.
+7. `studio_info.config_orario` is authoritative only for productive capacity: `giorni_settimana * ore_al_giorno * num_postazioni`. Use the existing 4.33 weeks/month convention for month-normalized capacity where needed, and make period semantics deterministic/documented.
+8. Appointments with legacy `stato='confermato'` are NOT authoritative proof of hours actually worked. Do not backfill `ORE_EFFETTIVE` from confirmed appointments. Effective hours remain unavailable until an authoritative completed/worked signal exists or the user records them explicitly.
+9. Therefore POL-003F may make `costo_orario_struttura` available from structure costs / available hours, while `produzione_ora` and `incasso_ora` remain unavailable if `ORE_EFFETTIVE=0`.
+10. Missing/ambiguous sources fail closed and are reported, never guessed.
+
+## Verified production evidence (aggregate-only, read-only)
+
+For the current populated studio:
+- `config_orario`: 8 hours/day, 5 days/week, 1 productive station.
+- `spese`: 3 recurring fixed monthly rows totalling EUR 710; 4 non-recurring variable rows totalling EUR 256; 1 recurring variable monthly row totalling EUR 950.
+- Fixed categories currently include Affitto EUR 400, Attrezzature EUR 150, Utenze EUR 160.
+- Variable categories currently include Materiali and Attrezzature.
+- Current-year appointments expose only legacy status `confermato`; this is insufficient to infer hours actually worked.
+
+These aggregates are evidence for adapter/reconciliation only. Do not hardcode them into migrations or tests.
 
 ## Required work
 
-1. Start from current `master` and read AGENTS.md, CLAUDE.md, POL-003A/B/C docs and `docs/architecture/pol-003d-controlled-backfill-findings.md`.
-2. Add the narrow explicit legacy normalization `sconto_tipo='eur' -> FIXED` to the adapter. Do not introduce a generic fallback for unknown discount types.
-3. Update the shadow reconciliation so its compatible Preventivato/Prodotto semantics apply the same verified fixed-euro discount rules as the canonical engine.
-4. Add synthetic regression fixtures for `eur` fixed discounts, including produced lines and proportional discount allocation.
-5. Prove adapter idempotency and two-tenant isolation locally.
-6. Recalculate the expected aggregate targets from source evidence; do not hardcode the old EUR 7,670 / EUR 2,597 values as truth.
-7. Keep ACCETTATO, fiscal invoice/refund semantics, external payments, historical costs, hours and operator attribution blocked.
-8. Build, test, database lint/advisor, secret scan and diff check.
-9. Do not modify production, do not run remote adapter/backfill, do not mount CanonicalManagementView, do not deploy and do not merge.
-10. Push a dedicated branch/PR and end WAITING_PRODUCT_OWNER with the exact new expected canonical aggregates and reconciliation evidence.
+1. Read AGENTS.md, CLAUDE.md, POL-003A/B/C/D/E docs, current canonical migration, `spesa_contributo_periodo`, and existing legacy cost/hour functions.
+2. Inventory `spese`, `personale`, `macchinari`, `studio_info.config_orario`, `financial_cost_events_v1`, `financial_hours_v1` and the COST/HOUR branches of `get_financial_drilldown_v1` / `get_financial_snapshot_v1`.
+3. Implement a restricted, idempotent, tenant-scoped legacy adapter for authoritative costs and available hours only. Installation MUST NOT execute it.
+4. Keep `macchinari` depreciation blocked and report it in reconciliation rather than importing it.
+5. Keep effective worked hours blocked; do not infer them from `appointments.stato='confermato'`.
+6. Define stable source IDs so re-running the adapter produces no duplicates.
+7. Add synthetic tests for: one-off fixed cost, recurring fixed cost, recurring end date, variable cost, active personnel, personnel start date, excluded machinery depreciation, available hours, zero/invalid hour config fail-closed, two tenants, idempotency and period boundaries.
+8. Verify canonical snapshot calculations for fixed costs, variable costs, contribution margin, EBITDA, break-even and structure hourly cost. Verify production/hour and collection/hour remain NULL/unavailable when effective hours are absent.
+9. Produce aggregate-only shadow reconciliation for production sources. No names, notes, documents or patient data.
+10. Run PostgreSQL 17/local Supabase regression, POL-003A/D regressions, database lint/advisors, npm test, npm run build, secret scan and diff check.
+11. Do not apply migration remotely, run production adapter/backfill, modify production data, deploy, activate Advanced, or merge.
+12. Push the branch/PR and finish `WAITING_PRODUCT_OWNER` with exact compatible aggregate targets and blocked-source counts.
 
 ## Production state
 
-POL-003B and POL-003C structural migrations are installed. `management_control_mode` exists with default `base`. Canonical financial event tables are empty after verified rollback. Legacy dashboards remain active.
+- POL-003 through POL-003D are installed.
+- Canonical legacy financial backfill currently contains verified Preventivato EUR 6,954, Prodotto EUR 2,181 and Incassato EUR 5,102.
+- POL-003E BASE canonical overview is deployed on Vercel.
+- Cost and hour canonical event tables are not yet backfilled from legacy sources.
 
-## Completion state
+## Completion gate
 
-The adapter now normalizes only the verified legacy `eur` encoding to canonical `FIXED`; unknown non-zero discount types still fail closed. The versioned shadow query applies the same proportional fixed-discount allocation. Local PostgreSQL 17 regression, idempotency, two-tenant isolation, shadow reconciliation, lint, advisors, application tests and build are complete.
-
-The aggregate-only production read confirmed, inside a read-only transaction, the revised compatible targets: EUR 6,954 Preventivato, EUR 2,181 Prodotto and EUR 5,102 Incassato. Canonical contracts, lines, line events and payments remain zero. No remote adapter/backfill, migration, application write, deploy, cutover or merge occurred.
+No remote cost/hour backfill is authorized by this task. Product Owner must review the local reconciliation and approve a separate controlled production execution.
