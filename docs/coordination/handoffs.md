@@ -150,6 +150,36 @@
 - Risks: synthetic validation cannot prove every production row; a future controlled execution must compare all three revised aggregates and roll back on any mismatch; unknown discount encodings must remain fail closed; migration rollback must restore the prior adapter definition; no frontend cutover is safe before approved backfill and reconciliation gates pass. Existing dependency advisories and build warnings remain outside scope.
 - Exact next action: Product Owner and Tech Lead review the POL-003D PR, migration, revised aggregate evidence and rollback conditions. If explicitly approved, schedule a separately controlled production migration/backfill attempt with exact provenance cleanup and mandatory reconciliation against EUR 6,954 / EUR 2,181 / EUR 5,102. Do not apply remotely, backfill, deploy, mount the canonical dashboard, merge or start another task without that approval.
 
+## POL-UI-001 Phase 1 handoff
+
+- Task ID: POL-UI-001
+- Previous agent: CODEX
+- Branch: `ui/POL-UI-001-modular-widget-dashboard`
+- Objective: implement the approved Phase 1 modular Home foundation with tenant-safe per-user persistence, registry, responsive grid, customization, add/remove, reorder, resize, reset and desktop/mobile preview without changing existing widget semantics.
+- Completed work: replaced local widget-order storage with a normalized registry and Supabase persistence service; created a responsive shared workspace; added native drag/drop and registry-constrained size controls; implemented Personalizza Home with draft/save/cancel, widget catalog, reset and desktop/mobile preview; wrapped the unchanged existing Dashboard widget renderers; added RLS migration, synthetic two-tenant tests and implementation/validation documentation.
+- Files changed: `src/components/Dashboard.jsx`; `src/components/WidgetWorkspace.jsx`; `src/components/WidgetWorkspace.css`; `src/lib/homeWidgetRegistry.js`; `src/lib/homeLayoutPersistence.js`; `tests/homeWidgetRegistry.test.mjs`; `supabase/migrations/20260819150436_pol_ui_001_user_home_layouts.sql`; `supabase/tests/pol_ui_001_local_bootstrap.sql`; `supabase/tests/pol_ui_001_user_home_layouts.sql`; `docs/architecture/pol-ui-001-phase-1-implementation.md`; `docs/architecture/pol-ui-001-phase-1-validation.md`; `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- Database changes: one additive migration creates `public.user_home_layouts` keyed by studio and user, with JSON array/size constraints, RLS on every operation, active membership check, own-user check and authenticated-only grants. Applied only to disposable local PostgreSQL 17 with synthetic rows; nothing remote changed.
+- Tests executed: local bootstrap/migration/RLS SQL regression; Supabase lint and security/performance advisors; `npm test`; `npm run build`; desktop/mobile CSS/DOM contract tests; attempted temporary local browser harness; targeted secret scan; `git diff --check`; application/deployment scope review.
+- Test results: own-user persistence and two-tenant/suspended-membership isolation passed; lint had no errors and performance advisor had no issues; security advisor only flagged synthetic bootstrap `studio_users`; 9/9 Node tests passed; build passed with existing warnings; responsive desktop/mobile contract passed. Interactive Browser control was blocked before navigation by the Codex runtime `trusted code path` error; temporary harness removed.
+- Unresolved issues: touch-first reordering needs a later accessible control; editable studio-level defaults are not part of this per-user Phase 1; interactive visual regression should be repeated when the Browser runtime is available; production migration/client ordering remains gated.
+- Risks: deploying client before the table migration produces a fail-closed persistence error; current schedule of registry changes must preserve stable widget IDs; layout visibility is not authorization; synthetic RLS tests do not replace staged rollout; existing widget semantics remain legacy until their separately approved migration phases.
+- Exact next action: Product Owner and Tech Lead review PR #13 and decide whether the browser-runtime limitation requires a manual visual pass before approval. Do not apply the migration remotely, deploy, merge or start Phase 2 without explicit Product Owner approval.
+
+## POL-UI-001 pre-merge residual-risk handoff
+
+- Task ID: POL-UI-001
+- Previous agent: CODEX
+- Branch: `ui/POL-UI-001-modular-widget-dashboard`
+- Objective: close touch-first reorder and studio-default inheritance risks before merge without changing widget semantics.
+- Completed work: added accessible 44 px move-up/down controls independent of HTML5 drag/drop; added user → studio → platform resolution; made reset delete the personal override; added an admin-only studio-default action; kept studio and user persistence separate and presentation-only.
+- Files changed: `src/components/Dashboard.jsx`; `src/components/WidgetWorkspace.jsx`; `src/components/WidgetWorkspace.css`; `src/lib/homeWidgetRegistry.js`; `src/lib/homeLayoutPersistence.js`; `tests/homeWidgetRegistry.test.mjs`; `supabase/migrations/20260819174435_pol_ui_001_studio_home_layout_default.sql`; `supabase/tests/pol_ui_001_local_bootstrap.sql`; `supabase/tests/pol_ui_001_user_home_layouts.sql`; `docs/architecture/pol-ui-001-phase-1-implementation.md`; `docs/architecture/pol-ui-001-phase-1-validation.md`; `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- Database changes: one additive migration creates `studio_home_layouts`, keyed by `studio_id`, with active-member SELECT and active-admin writes. The per-user table is unchanged. Nothing was applied remotely.
+- Tests executed: 11 Node tests; clean synthetic migration/RLS regression on Supabase/PostgreSQL `17.6.1.159`; Supabase database lint; production build; targeted secret scan; `git diff --check`; branch/scope/deployment review.
+- Test results: Node 11/11 passed; studio default, personal override, reset, platform fallback resolver, two tenants, non-admin and suspended-user checks passed; lint reported no schema errors; build passed with only pre-existing pdfjs eval and chunk-size warnings; secret/diff/scope checks passed.
+- Unresolved issues: interactive visual regression remains blocked by the recorded Codex browser trust-path issue; deterministic DOM/CSS contracts cover 375/768 touch behavior but do not replace a later device pass.
+- Risks: client deployment must follow both layout migrations; registry IDs must remain stable; layout visibility is presentation, not authorization; synthetic tests do not replace staged rollout.
+- Exact next action: Product Owner and Tech Lead review the updated PR #13. Do not apply migrations remotely, deploy, merge or begin another task without explicit approval.
+
 ## POL-003F handoff
 
 - Task ID: POL-003F
@@ -179,3 +209,18 @@
 - Unresolved issues: production has no task-approved authoritative personnel cost-version history; no workflow yet appends future versions when compensation changes; schedule configuration remains non-effective-dated; attributable variable-cost evidence and authoritative worked hours remain unavailable; unknown recurrence values still fail closed.
 - Risks: inventing an initial historical `valid_from` would silently falsify past KPIs; deploying the replacement before an approved version-capture workflow would leave personnel costs unavailable by design; synthetic validation cannot prove every legacy production shape; any future production execution requires ordered migration, aggregate preflight, exact provenance rollback and Product Owner approval.
 - Exact next action: Product Owner and Tech Lead review the corrected PR #12 and approve or reject the temporal contract. If approved, define a separate controlled plan for authoritative first-version capture and future version writes before any remote migration or cost/hour backfill. Do not apply remotely, backfill, deploy or merge under POL-003F.
+
+## POL-UI-001 master realignment handoff
+
+- Task ID: POL-UI-001
+- Previous agent: CODEX
+- Branch: `ui/POL-UI-001-modular-widget-dashboard`
+- Objective: realign PR #13 with current `master` after POL-003F while preserving both workstreams and all coordination history.
+- Completed work: merged `master` commit `c01564c`; resolved only `current-task.md` and `handoffs.md`; kept POL-UI-001 as the active task; retained both POL-UI-001 handoffs and both POL-003F handoffs; verified the POL-003F files match master and the PR delta remains scoped to POL-UI-001.
+- Files changed: merge integration includes the POL-003F files already present on master; conflict resolution changes only `docs/coordination/current-task.md` and `docs/coordination/handoffs.md`. No new application behavior was introduced during realignment.
+- Database changes: no new migration was authored. Existing POL-UI-001 migrations were reapplied only to disposable local Supabase/PostgreSQL 17 with synthetic data. No remote or production database change occurred.
+- Tests executed: POL-UI-001 local bootstrap, both layout migrations and RLS regression; Supabase database lint; 11 Node tests; production build; targeted secret scan; `git diff --check`; final master-delta, deployment and scope review.
+- Test results: migration/RLS passed for user override, studio default, reset, two tenants, non-admin and suspended user; lint reported no schema errors; Node 11/11 passed; build passed with existing pdfjs eval and chunk-size warnings; secret/diff/scope checks passed.
+- Unresolved issues: interactive device visual regression remains desirable when the recorded browser trust-path issue is resolved; no production rollout has been authorized.
+- Risks: both POL-UI layout migrations must precede client rollout; registry IDs must remain stable; layout visibility is not authorization; synthetic tests do not replace staged rollout.
+- Exact next action: Product Owner and Tech Lead review the now-realigned PR #13. Do not apply migrations remotely, deploy, merge or begin another task without explicit approval.
