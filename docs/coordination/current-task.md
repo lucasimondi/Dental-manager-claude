@@ -57,6 +57,27 @@ PT2/Massage1/multi-role/suspended/cross-tenant/revocation/author-spoofing/
 assignment-management-authorization), 4 new Node tests, and a clean Vite
 production build. See `docs/architecture/pol-rbac-001a-local-validation.md`.
 
+**PostgreSQL 16 was preliminary development only.** Per explicit Product
+Owner instruction, the full required checklist (migration chain, POL-RBAC-001
+regression, POL-RBAC-001A assignment regression, RLS two-tenant, assignment/
+revoke, suspended user, author spoofing, cross-tenant, unassigned PT,
+unassigned massage therapist, physiotherapist flow, build, Node test,
+secret/diff/scope check) was re-run unmodified against a genuine
+**PostgreSQL 17.5** engine — Docker and `apt.postgresql.org` are both denied
+by this sandbox's network policy (confirmed with concrete 403s against three
+independent hosts: PGDG apt, Supabase's own Docker image blob storage, and
+plain Docker Hub's blob storage), so PostgreSQL 17.5 was obtained via
+`@electric-sql/pglite` — a real Postgres compiled from unmodified source to
+WASM, distributed on the (allowlisted) npm registry — after an RLS smoke
+test confirmed it enforces roles/policies/`set_config` correctly, not a stub.
+Every item on the list passed on PostgreSQL 17.5 except `supabase db lint`,
+which ran for real but against PostgreSQL 16 (the TCP adapter needed to
+expose PGlite over the wire protocol only supports the PostgreSQL 18 PGlite
+line, confirmed by a hung handshake when forced against 17.5) — flagged
+below as `PRODUCT_OWNER_DECISION_REQUIRED` if a literal PG17 CLI-lint run is
+required before merge. Full engine-by-engine breakdown, transcripts and the
+exact hosts/errors: `docs/architecture/pol-rbac-001a-local-validation.md`.
+
 Two self-review passes after the initial push (a code-review pass and a
 dedicated security-review pass) each found and fixed one real least-privilege
 issue, both since regression-tested: (1) the `studio_user_capabilities`
@@ -75,11 +96,13 @@ forbid) — see the local-validation doc for details and results.
 
 ## Residual risks
 
-- Docker was unavailable in this sandbox, so `supabase db lint`/advisors/
-  `plpgsql_check` could not be run; validated instead against a disposable
-  local PostgreSQL 16 database with `ON_ERROR_STOP=1`. Recommend running the
-  Docker-based Supabase toolchain before merge if available to the next
-  reviewer.
+- `supabase db lint` ran against PostgreSQL 16, not PostgreSQL 17 (see above)
+  — the schema/policy checks it performs are static, not version-dependent,
+  and it reported no errors, but a literal PG17 CLI-lint run needs Docker or
+  PGDG apt access this sandbox's network policy does not grant.
+  `PRODUCT_OWNER_DECISION_REQUIRED` if that's required before merge.
+  Security/performance advisors (Supabase-hosted) remain unavailable in this
+  sandbox for the same reason on either engine.
 - `episode_id` targets `physio_piani`, not a real POL-FIS-001 episode.
   `PRODUCT_OWNER_DECISION_REQUIRED`: when POL-FIS-001 merges and stabilizes,
   decide whether to repoint/rename this column or introduce a mapping
