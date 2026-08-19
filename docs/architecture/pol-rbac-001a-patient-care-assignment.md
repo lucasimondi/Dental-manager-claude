@@ -134,10 +134,14 @@ there. `physio_esercizi` (shared exercise library, no patient linkage) is
 unchanged — it is reference data, not clinical content.
 
 `studio_user_capabilities`'s SELECT policy is extended so a caller with
-`clinical.physiotherapist` can browse teammates' capabilities (previously
-restricted to `studio.manage_members` or one's own row), which the
-"Assegna professionista" picker needs to list eligible collaborators. This
-does not expose more than "this user may act as X in this studio."
+`clinical.physiotherapist` can browse teammates' **clinical.\*** capability
+rows only (previously restricted to `studio.manage_members` or one's own
+row), which the "Assegna professionista" picker needs to list eligible
+collaborators. The extension is capability-prefix-scoped
+(`capability LIKE 'clinical.%'`) so a physiotherapist still cannot see who
+holds `finance.management.read`, `studio.owner`, `studio.manage_members` or
+`home.front_desk` — only `studio.manage_members` sees the full table, as
+before.
 
 ## Membership suspension and multi-role
 

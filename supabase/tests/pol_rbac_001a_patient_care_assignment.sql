@@ -177,7 +177,11 @@ SELECT pg_temp.assert_true((SELECT count(*) FROM public.physio_esecuzioni)=1,'Ma
 SELECT set_config('request.jwt.claims','{"sub":"a0000000-0000-4000-8000-000000000003"}',true);
 SELECT pg_temp.assert_true(
   (SELECT count(*) FROM public.studio_user_capabilities WHERE studio_id='10000000-0000-4000-8000-000000000001')>1,
-  'physiotherapist can browse teammate capabilities to compose a care team'
+  'physiotherapist can browse teammate clinical capabilities to compose a care team'
+);
+SELECT pg_temp.assert_true(
+  (SELECT count(*) FROM public.studio_user_capabilities WHERE capability NOT LIKE 'clinical.%')=0,
+  'physiotherapist cannot see non-clinical capability rows (front desk, finance, admin) beyond least privilege'
 );
 SELECT set_config('request.jwt.claims','{"sub":"a0000000-0000-4000-8000-000000000002"}',true);
 SELECT pg_temp.assert_true(

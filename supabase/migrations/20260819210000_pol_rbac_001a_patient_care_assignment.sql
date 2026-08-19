@@ -43,15 +43,21 @@ END $$;
 -- browse teammates' clinical capabilities to compose a patient's care team
 -- (POL-RBAC-001A "Assegna professionista"), which POL-RBAC-001's original
 -- studio_user_capabilities_select policy did not allow for a non-admin
--- physiotherapist (own row only). Extend it to the same authorization tier
--- used everywhere else a caller manages a patient's team.
+-- physiotherapist (own row only). Extend it only for clinical.* rows — a
+-- physiotherapist needs to see who else is clinical.personal_trainer/
+-- massage_therapist/physiotherapist, not the studio's finance.management.read/
+-- studio.owner/studio.manage_members/home.front_desk assignments, which stay
+-- restricted to studio.manage_members (admin) as before.
 DROP POLICY IF EXISTS studio_user_capabilities_select ON public.studio_user_capabilities;
 CREATE POLICY studio_user_capabilities_select ON public.studio_user_capabilities
 FOR SELECT TO authenticated
 USING (
   (user_id = (SELECT auth.uid()) AND (SELECT public.has_studio_capability_v1(studio_id,capability)))
   OR (SELECT public.has_studio_capability_v1(studio_id, 'studio.manage_members'))
-  OR (SELECT public.has_studio_capability_v1(studio_id, 'clinical.physiotherapist'))
+  OR (
+    capability LIKE 'clinical.%'
+    AND (SELECT public.has_studio_capability_v1(studio_id, 'clinical.physiotherapist'))
+  )
 );
 
 -- ── Assignment table ────────────────────────────────────────────────────
