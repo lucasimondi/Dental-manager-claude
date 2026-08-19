@@ -31,7 +31,7 @@ Legacy source: `plans`.
 
 - `financial_contracts_v1.source_table/source_id`: `EXACT` from `plans` + id.
 - `studio_id`, `patient_id`, proposal date: `EXACT` from `plans.studio_id`, `paziente_id`, `data`.
-- discount: `DERIVED` from `sconto` + `sconto_tipo`, using POL-003A canonical proportional allocation.
+- discount: `DERIVED` from `sconto` + `sconto_tipo`, using POL-003A canonical proportional allocation. Verified encodings are `pct|percent` for percentage and `fixed|fisso|eur` for fixed amount; unknown non-zero encodings fail closed.
 - contract lines: `DERIVED` by stable JSON-array ordinal inside `plans.voci` because no independent legacy line id exists.
 - gross line amount: `EXACT` from `voci[*].prezzo` when numeric and non-negative.
 - service label/reference: `EXACT` textual evidence from `voci[*].prestazione`; canonical durable pricelist FK is `APPROXIMATION_NOT_ALLOWED` unless an unambiguous legacy link exists.

@@ -6,13 +6,15 @@ On 2026-08-19 an aggregate-only query was executed inside `BEGIN TRANSACTION REA
 
 | Metric | Legacy aggregate | Canonical row state | Classification |
 |---|---:|---:|---|
-| Preventivato netto compatible | EUR 7,670 | 0 canonical contracts/lines | `SEMANTIC_EXPECTED_NOT_ADAPTED` |
-| Prodotto compatible (executed lines with a date) | EUR 2,597 | 0 canonical line events | `SEMANTIC_EXPECTED_NOT_ADAPTED` |
+| Preventivato netto compatible | EUR 6,954 | 0 canonical contracts/lines | `SEMANTIC_EXPECTED_NOT_ADAPTED` |
+| Prodotto compatible (executed lines with a date) | EUR 2,181 | 0 canonical line events | `SEMANTIC_EXPECTED_NOT_ADAPTED` |
 | Incassato compatible (positive settled payments) | EUR 5,102 | 0 canonical payment events | `SEMANTIC_EXPECTED_NOT_ADAPTED` |
 | Accettato | unavailable | 0 canonical line events | `APPROXIMATION_NOT_ALLOWED` |
 | Fatturato | unavailable | 0 canonical invoice events | `PRODUCT_OWNER_DECISION_REQUIRED` |
 
 All canonical counts were zero: contracts, lines, lifecycle events, invoices, and payments. The variances therefore confirm the expected pre-backfill state; they are not an adapter defect.
+
+The Preventivato and Prodotto figures above supersede the earlier EUR 7,670 / EUR 2,597 observation. That query had not applied the verified `eur` fixed discounts. POL-003D recalculated the revised targets directly from aggregate source evidence using the canonical proportional fixed-discount rule; no target is hardcoded in the report SQL.
 
 ## Versioned report
 

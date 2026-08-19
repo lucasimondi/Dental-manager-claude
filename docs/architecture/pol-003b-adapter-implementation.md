@@ -10,7 +10,7 @@ The adapter is `SECURITY INVOKER`, requires an explicit non-null `studio_id`, va
 
 | Legacy source | Canonical target | Classification | Rule |
 |---|---|---|---|
-| `plans` | `financial_contracts_v1` | `EXACT`/`DERIVED` | Exact tenant, patient, proposal date and source ID; discount kind normalized only from verified `pct`/`percent`/`fixed`/`fisso`; invalid records fail closed. |
+| `plans` | `financial_contracts_v1` | `EXACT`/`DERIVED` | Exact tenant, patient, proposal date and source ID; discount kind normalized only from verified `pct`/`percent`/`fixed`/`fisso` plus the POL-003D-verified `eur` fixed encoding; invalid or unknown non-zero encodings fail closed. |
 | `plans.voci[]` | `financial_contract_lines_v1` | `EXACT` | Stable JSON ordinality is `source_line_id`; numeric non-negative price and service label are preserved. No pricelist/operator relationship is invented. |
 | `voci[].eseguita` plus valid `dataEsec` | `financial_line_events_v1(PRODOTTO)` | `EXACT`/`DERIVED` | One positive full-fraction event per executed line. Net amount remains calculated by the canonical proportional-discount view. Missing execution dates are skipped. |
 | settled positive `payments` | `financial_payment_events_v1(PAYMENT)` | `EXACT` | Exact tenant, patient, event date and amount. No contract/invoice allocation is invented; any later invoice debt uses the canonical FIFO rules. |
@@ -30,4 +30,6 @@ The adapter returns aggregate inserted/skipped/blocked counters. These counters 
 
 ## Rollback
 
-Before any future execution, rollback means dropping only `private.run_pol_003b_legacy_adapter_v1(uuid)`. After an authorized backfill, canonical rows must be reversed by their exact `(studio_id, source_table, source_id[, source_line_id])` provenance under a separately reviewed runbook; legacy source rows must never be changed.
+Before any future execution, rollback of the original POL-003B installation means dropping only `private.run_pol_003b_legacy_adapter_v1(uuid)`. After an authorized backfill, canonical rows must be reversed by their exact `(studio_id, source_table, source_id[, source_line_id])` provenance under a separately reviewed runbook; legacy source rows must never be changed.
+
+POL-003D replaces the installed adapter definition through `20260819123457_pol_003d_eur_discount_normalization.sql`. The migration does not invoke the function and does not change its grants or security-invoker boundary. Rolling back this definition before execution means restoring the prior versioned POL-003B function body, not editing production manually.
