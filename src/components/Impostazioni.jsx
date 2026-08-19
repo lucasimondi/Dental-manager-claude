@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Ic, DockIc, DOCK_ICON_STYLES } from './ui';
 import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI, DEF_DOCK_SETTINGS, mergeDockSettings, DEF_AGENDA_SETTINGS, DEF_DOCUMENTI_SETTINGS, STORIA_CLINICA_MODELLO_BASE } from '../lib/utils';
 import { supabase } from '../lib/supabase';
+import { normalizeManagementControlMode } from '../lib/canonicalFinancialSelectors';
 
 const GIORNI_SETTIMANA = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 
@@ -48,6 +49,8 @@ function estraiColoriDaLogo(base64) {
     img.src = base64;
   });
 }
+
+
 
 export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange, features, theme, toggleTheme, isStudioAdmin }) {
   const [si, setSi] = useState({ ...DEF_STUDIO, ...(studioInfo || {}) });
@@ -394,6 +397,31 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
 
       <Crd style={{ marginBottom: 11 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Impostazioni economiche</div>
+        <Fld label="Esperienza Controllo di Gestione">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 8 }}>
+            {[
+              { id: 'base', title: 'Base', text: 'Pochi indicatori essenziali, spiegati in modo immediato.' },
+              { id: 'advanced', title: 'Avanzato', text: 'Lifecycle, crediti, margini, ore e drill-down canonici.' },
+            ].map((option) => {
+              const selected = normalizeManagementControlMode(si.management_control_mode) === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => S({ management_control_mode: option.id })}
+                  aria-pressed={selected}
+                  style={{ textAlign: 'left', padding: 12, borderRadius: 10, cursor: 'pointer', border: `1.5px solid ${selected ? C.pri : C.brd}`, background: selected ? C.priL : C.sur, color: C.txt }}
+                >
+                  <div style={{ fontSize: 14, fontWeight: 800 }}>{option.title}</div>
+                  <div style={{ fontSize: 11, color: C.txl, marginTop: 4 }}>{option.text}</div>
+                </button>
+              );
+            })}
+          </div>
+        </Fld>
+        <div style={{ fontSize: 10, color: C.txl, background: C.bg, borderRadius: 8, padding: 10, marginBottom: 12 }}>
+          Questa scelta cambia soltanto profondità e visibilità della futura esperienza canonica. Formule e dati POL-003 restano identici. Le dashboard attuali rimangono attive fino al gate di reconciliation.
+        </div>
         <div style={{ fontSize: 11, color: C.txl, marginBottom: 10 }}>
           Determina come vengono calcolati i costi variabili in Controllo di Gestione, Dashboard e Assistente AI —
           fonte unica: modificando qui, si aggiorna automaticamente ovunque nel software.
@@ -1074,9 +1102,6 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
     </div>
   );
 }
-
-
-
 
 
 
