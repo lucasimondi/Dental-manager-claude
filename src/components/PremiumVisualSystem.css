@@ -1,0 +1,476 @@
+:root {
+  --pol-premium-bg: #eef3f9;
+  --pol-premium-surface: rgba(255,255,255,.90);
+  --pol-premium-ink: #0f172a;
+  --pol-premium-muted: #6b7a90;
+  --pol-premium-line: rgba(15,23,42,.08);
+  --pol-premium-shadow: 0 24px 60px rgba(31,49,78,.14), 0 8px 20px rgba(31,49,78,.08);
+  --pol-premium-shadow-soft: 0 14px 34px rgba(31,49,78,.10), 0 3px 10px rgba(31,49,78,.05);
+  --pol-premium-shadow-hover: 0 30px 68px rgba(31,49,78,.18), 0 12px 26px rgba(31,49,78,.10);
+}
+
+/* POL-UI-003 — visual-only layer. No data/query/permission semantics live here. */
+body:has(.home-widget-grid) {
+  background:
+    radial-gradient(circle at 78% 2%, rgba(99,102,241,.13), transparent 28rem),
+    radial-gradient(circle at 10% 12%, rgba(14,165,233,.10), transparent 26rem),
+    var(--pol-premium-bg) !important;
+}
+
+/* App chrome: darker, more dimensional top bar, matching approved direction. */
+body:has(.home-widget-grid) #root > div > div:first-child {
+  min-height: 68px;
+  padding: 10px 22px !important;
+  background:
+    radial-gradient(circle at 15% -50%, rgba(99,102,241,.42), transparent 36%),
+    linear-gradient(110deg,#0b1220 0%,#111827 42%,#172554 72%,#0f172a 100%) !important;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  box-shadow: 0 18px 44px rgba(15,23,42,.22), inset 0 -1px 0 rgba(255,255,255,.05);
+}
+body:has(.home-widget-grid) #root > div > div:first-child img {
+  filter: drop-shadow(0 7px 14px rgba(0,0,0,.22));
+}
+body:has(.home-widget-grid) #root > div > div:first-child button {
+  border: 1px solid rgba(255,255,255,.12) !important;
+  border-radius: 10px !important;
+  background: rgba(255,255,255,.09) !important;
+  backdrop-filter: blur(12px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+}
+
+body:has(.home-widget-grid) #app-scroll {
+  padding: 26px 28px 92px !important;
+  background: transparent !important;
+  scroll-behavior: smooth;
+}
+
+/* Home hero: greeting, studio name, period + customize/CTA actions.
+   Semantic classNames (Dashboard.jsx) replace the previous positional
+   `#app-scroll > div > div:first-of-type ...` selectors -- easier to read,
+   and immune to unrelated markup reshuffles above/around the hero. */
+.home-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 62px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.home-hero__greeting {
+  font-size: clamp(25px,3vw,32px);
+  font-weight: 950;
+  letter-spacing: -.04em;
+  color: var(--pol-premium-ink);
+}
+.home-hero__meta {
+  margin-top: 5px;
+  color: var(--pol-premium-muted);
+  font-size: 12px;
+  text-transform: capitalize;
+}
+.home-hero__studio { color: var(--pol-premium-ink); font-weight: 700; text-transform: none; }
+.home-hero__actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.home-hero__cta,
+.home-hero__customize {
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 13px;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.home-hero__cta {
+  border: none;
+  color: #fff;
+  background: linear-gradient(135deg,#4f46e5,#2563eb 55%,#0ea5e9);
+  box-shadow: 0 18px 34px rgba(79,70,229,.24);
+}
+.home-hero__customize {
+  border: 1px solid rgba(255,255,255,.85);
+  color: #334155;
+  background: rgba(255,255,255,.78);
+  box-shadow: var(--pol-premium-shadow-soft);
+  backdrop-filter: blur(16px);
+}
+.home-hero__cta:hover,
+.home-hero__customize:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 36px rgba(31,49,78,.14);
+}
+
+/* Quick actions widget: real navigation only (see Dashboard.jsx onNavigate). */
+.home-section-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--pol-premium-muted);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-bottom: 8px;
+}
+.home-quick-actions { margin-bottom: 16px; }
+.home-quick-actions__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+.home-quick-actions__grid button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 64px;
+  padding: 14px 16px;
+  border: 1px solid var(--pol-premium-line);
+  border-radius: 18px;
+  background: linear-gradient(145deg,#fff,#f5f8fc);
+  box-shadow: 0 10px 24px rgba(31,49,78,.06);
+  color: var(--pol-premium-ink);
+  font-weight: 800;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.home-quick-actions__grid button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 32px rgba(31,49,78,.10);
+}
+
+/* Period selector becomes the glass segmented control from the approved mockup. */
+body:has(.home-widget-grid) .home-period-context {
+  position: relative;
+  display: inline-flex;
+  padding: 6px;
+  width: fit-content;
+  margin: 0 0 20px 0;
+  border: 1px solid rgba(255,255,255,.78);
+  border-radius: 16px;
+  background: rgba(255,255,255,.70);
+  box-shadow: var(--pol-premium-shadow-soft), inset 0 1px 0 rgba(255,255,255,.92);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.home-period-context__label { display: none; }
+.home-period-context button {
+  min-height: 38px !important;
+  border: 0 !important;
+  border-radius: 11px !important;
+  padding: 8px 13px !important;
+  background: transparent !important;
+  color: #64748b !important;
+  font-weight: 850 !important;
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease !important;
+}
+.home-period-context button:hover { transform: translateY(-1px); color: #172033 !important; }
+.home-period-context button.is-active {
+  color: #fff !important;
+  background: linear-gradient(135deg,#0f172a,#334155) !important;
+  box-shadow: 0 8px 18px rgba(15,23,42,.22), inset 0 1px 0 rgba(255,255,255,.16) !important;
+}
+
+/* Widget composition: roomy, premium dashboard rhythm. */
+.home-widget-grid {
+  gap: 18px !important;
+  perspective: 1200px;
+  align-items: stretch !important;
+}
+.home-widget-frame {
+  border-radius: 24px !important;
+  transition: transform .22s ease, filter .22s ease;
+}
+.home-widget-frame:not(:has(.canonical-financial-widget)):hover {
+  transform: translateY(-3px);
+  filter: drop-shadow(0 16px 24px rgba(31,49,78,.08));
+}
+.home-widget-frame__content { min-height: 100%; }
+.home-widget-frame__content > div:not(.canonical-financial-widget) {
+  position: relative;
+  min-height: 100%;
+  border-radius: 24px !important;
+}
+
+/* Operational content: glass cards + subtle bevels. */
+.home-widget-frame__content > div:not(.canonical-financial-widget) > div,
+.home-widget-frame__content > div:not(.canonical-financial-widget) > section {
+  border-color: var(--pol-premium-line) !important;
+}
+.home-widget-frame__content [style*="background: #fff"],
+.home-widget-frame__content [style*="background:#fff"],
+.home-widget-frame__content [style*="background: rgb(255, 255, 255)"] {
+  background: linear-gradient(180deg,rgba(255,255,255,.98),rgba(248,251,255,.94)) !important;
+  border-color: rgba(15,23,42,.07) !important;
+  box-shadow: var(--pol-premium-shadow) !important;
+  backdrop-filter: blur(14px);
+}
+
+/* Agenda rows gain the same floating white-card feel as the approved demo. */
+.home-widget-frame__content [style*="border-bottom"] {
+  border-color: rgba(15,23,42,.07) !important;
+}
+.home-widget-frame__content [style*="cursor: pointer"] {
+  transition: transform .16s ease, background .16s ease, box-shadow .16s ease;
+}
+
+/* Stronger section labels. */
+.home-widget-frame__content [style*="text-transform: uppercase"] {
+  letter-spacing: .08em !important;
+  color: #5f6f83 !important;
+}
+
+/* Editing workspace stays premium but clearly editable. */
+.home-widget-preview--mobile {
+  background: linear-gradient(180deg,#f9fbff,#eef3f9) !important;
+  border: 1px solid rgba(99,102,241,.18) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 18px 42px rgba(31,49,78,.10);
+}
+.home-widget-frame__toolbar {
+  border: 1px solid rgba(99,102,241,.16) !important;
+  background: linear-gradient(180deg,rgba(255,255,255,.97),rgba(245,247,255,.92)) !important;
+  box-shadow: 0 8px 24px rgba(57,68,118,.08) !important;
+  color: #475569 !important;
+}
+.home-widget-frame__move button,
+.home-widget-frame__sizes button {
+  border-color: rgba(99,102,241,.14) !important;
+  box-shadow: 0 3px 8px rgba(31,49,78,.05);
+}
+.home-widget-frame__sizes button.is-active {
+  background: linear-gradient(135deg,#4f46e5,#2563eb) !important;
+  border-color: transparent !important;
+  box-shadow: 0 6px 14px rgba(79,70,229,.25);
+}
+
+/* Make legacy statistic tiles feel deliberate rather than flat. */
+.home-widget-frame__content [style*="borderRadius: 12"],
+.home-widget-frame__content [style*="border-radius: 12"] {
+  border-radius: 18px !important;
+}
+
+@media (min-width: 1200px) {
+  body:has(.home-widget-grid) #app-scroll { padding-left: 36px !important; padding-right: 36px !important; }
+  .home-widget-grid { gap: 20px !important; }
+}
+
+@media (max-width: 900px) {
+  body:has(.home-widget-grid) #app-scroll { padding: 20px 18px 104px !important; }
+  body:has(.home-widget-grid) .home-period-context {
+    margin: 0 0 18px 0;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .home-period-context button { flex: 1 1 120px; }
+  .home-widget-grid { gap: 14px !important; }
+}
+
+@media (max-width: 600px) {
+  body:has(.home-widget-grid) { background: #f5f7fb !important; }
+  body:has(.home-widget-grid) #root > div > div:first-child { min-height: 60px; padding: 8px 12px !important; }
+  body:has(.home-widget-grid) #app-scroll { padding: 16px 13px 112px !important; }
+  .home-hero { align-items: flex-start; gap: 12px; }
+  .home-hero__cta, .home-hero__customize { padding: 9px 10px; font-size: 11px; }
+  .home-quick-actions__grid { grid-template-columns: 1fr 1fr; }
+  .home-period-context { border-radius: 14px !important; padding: 5px !important; }
+  .home-period-context button { min-height: 44px !important; padding: 7px 8px !important; font-size: 10px !important; }
+  .home-widget-frame { border-radius: 20px !important; }
+  .home-widget-frame__content > div:not(.canonical-financial-widget) { border-radius: 20px !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-widget-frame,
+  .canonical-financial-widget,
+  .home-period-context button,
+  .home-hero__cta,
+  .home-hero__customize,
+  .premium-sidebar__item,
+  .home-quick-actions__grid button { transition: none !important; }
+}
+
+/* ── PREMIUM SIDEBAR (desktop/tablet-large) ──
+   React only mounts <PremiumSidebar> when !isMobile (>=720px, see
+   useIsMobile.js) -- mobile keeps its existing MobileDock untouched. Icon
+   rail collapse below 1100px mirrors the approved public/premium-demo.html
+   reference exactly, so 1024px matches the design-locked direction. */
+.premium-sidebar {
+  width: 232px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  padding: 22px 16px;
+  color: #cbd5e1;
+  background: linear-gradient(180deg,#111827,#0f172a 58%,#111827);
+  box-shadow: 18px 0 42px rgba(15,23,42,.16);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.premium-sidebar__brand { margin-bottom: 22px; padding: 0 6px; }
+.premium-sidebar__logo { height: 40px; display: block; filter: drop-shadow(0 7px 14px rgba(0,0,0,.22)); }
+.premium-sidebar__nav { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.premium-sidebar__item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 44px;
+  padding: 11px 12px;
+  border-radius: 13px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #cbd5e1;
+  font-weight: 750;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: background .16s ease, transform .16s ease, box-shadow .16s ease, color .16s ease;
+}
+.premium-sidebar__item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.premium-sidebar__item:hover { background: rgba(255,255,255,.06); color: #fff; transform: translateX(2px); }
+.premium-sidebar__item.is-active {
+  background: linear-gradient(135deg,rgba(99,102,241,.30),rgba(14,165,233,.16));
+  color: #fff;
+  border-color: rgba(255,255,255,.08);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10);
+}
+.premium-sidebar__footer {
+  border-top: 1px solid rgba(255,255,255,.08);
+  padding-top: 14px;
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.premium-sidebar__footer-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 9px 12px;
+  border-radius: 11px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  color: #e2e8f0;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background .16s ease;
+}
+.premium-sidebar__footer-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.premium-sidebar__footer-btn:hover { background: rgba(255,255,255,.12); }
+.premium-sidebar__identity { padding: 2px 12px; }
+.premium-sidebar__studio { font-size: 11.5px; font-weight: 800; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.premium-sidebar__user { font-size: 11px; color: #94a3b8; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 1100px) {
+  .premium-sidebar { width: 88px; padding: 18px 8px; }
+  .premium-sidebar__item span,
+  .premium-sidebar__footer-btn span,
+  .premium-sidebar__studio,
+  .premium-sidebar__user { display: none; }
+  .premium-sidebar__item { justify-content: center; padding: 12px 6px; }
+  .premium-sidebar__footer-btn { justify-content: center; }
+  .premium-sidebar__identity { padding: 0; }
+  .premium-sidebar__brand { text-align: center; padding: 0; }
+  .premium-sidebar__logo { height: 30px; margin: 0 auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .premium-sidebar__item { transition: none !important; }
+}
+
+/* ── Agenda oggi / Prossimi appuntamenti — mobile polish ──
+   Grid-based rows (not flex) so the status badge sits in its own fixed
+   column and can never be squeezed/deformed by long patient names or
+   treatment text, at any breakpoint. Default areas reproduce the original
+   desktop layout exactly (badge vertically centered beside a two-line
+   name/treatment stack); the ≤600px override widens the treatment line to
+   full width, the "genuinely mobile-first" layout for smartphone widths. */
+.home-agenda-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "time name badge" "time meta badge";
+  column-gap: 10px;
+  row-gap: 2px;
+  align-items: center;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+.home-agenda-row__time { grid-area: time; min-width: 44px; border-radius: 8px; padding: 4px 8px; text-align: center; }
+.home-agenda-row__time-value { font-size: 13px; font-weight: 900; }
+.home-agenda-row__time-dur { font-size: 9px; opacity: .8; }
+.home-agenda-row__name { grid-area: name; min-width: 0; font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-agenda-row__badge { grid-area: badge; justify-self: end; }
+.home-agenda-row__meta { grid-area: meta; min-width: 0; display: flex; align-items: center; gap: 5px; font-size: 11px; }
+.home-agenda-row__dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.home-agenda-row__type { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.home-upcoming-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  grid-template-areas: "time name badge del" "time meta badge del";
+  column-gap: 10px;
+  row-gap: 2px;
+  align-items: center;
+  padding: 8px 0;
+  cursor: pointer;
+}
+.home-upcoming-row__time { grid-area: time; min-width: 44px; border-radius: 7px; padding: 4px 7px; text-align: center; }
+.home-upcoming-row__date { font-size: 9px; font-weight: 700; }
+.home-upcoming-row__hour { font-size: 12px; font-weight: 800; }
+.home-upcoming-row__name { grid-area: name; min-width: 0; font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-upcoming-row__badge { grid-area: badge; justify-self: end; }
+.home-upcoming-row__meta { grid-area: meta; min-width: 0; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-upcoming-row__del { grid-area: del; opacity: .5; }
+
+@media (max-width: 600px) {
+  .home-agenda-row { grid-template-areas: "time name badge" "time meta meta"; }
+  .home-agenda-row__badge { align-self: start; }
+  .home-upcoming-row { grid-template-areas: "time name badge del" "time meta meta del"; }
+  .home-upcoming-row__badge { align-self: start; }
+}
+
+/* Shared ≥44px touch targets for compact list actions across Home widgets
+   (Agenda link, Prossimi appuntamenti delete, Consigli AI, Attività). */
+.home-list-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 7px;
+  font-weight: 700;
+  font-size: 11px;
+  cursor: pointer;
+}
+.home-list-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  cursor: pointer;
+}
+.home-list-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+.home-list-checkbox span { display: block; width: 20px; height: 20px; border-radius: 5px; background: #fff; }

@@ -21,9 +21,9 @@ test('move, add/remove and resize change presentation only', () => {
 test('touch-safe move controls reorder only visible widgets in both directions', () => {
   let layout=createDefaultHomeLayout();
   layout=moveHomeWidgetByOffset(layout,'todo',-1);
-  assert.deepEqual(layout.filter(x=>x.visible).map(x=>x.id),['agenda','todo','consigli_ai','appuntamenti']);
+  assert.deepEqual(layout.filter(x=>x.visible).map(x=>x.id),['agenda','todo','consigli_ai','appuntamenti','quick_actions']);
   layout=moveHomeWidgetByOffset(layout,'todo',1);
-  assert.deepEqual(layout.filter(x=>x.visible).map(x=>x.id),['agenda','consigli_ai','todo','appuntamenti']);
+  assert.deepEqual(layout.filter(x=>x.visible).map(x=>x.id),['agenda','consigli_ai','todo','appuntamenti','quick_actions']);
   assert.deepEqual(moveHomeWidgetByOffset(layout,'agenda',-1),layout);
 });
 
