@@ -68,14 +68,14 @@ test('desktop and mobile previews share one layout with responsive grid rules',a
   assert.match(css,/home-widget-frame--medium\s*\{[^}]*span 6/s);
   assert.match(css,/home-widget-frame--wide\s*\{[^}]*1 \/ -1/s);
   assert.match(css,/home-widget-preview--mobile[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/);
-  assert.match(css,/@media \(max-width:\s*760px\)[\s\S]*grid-column:\s*1 \/ -1/);
+  assert.match(css,/@media \(max-width:\s*600px\)[\s\S]*grid-column:\s*1 \/ -1/);
+  assert.match(css,/@media \(min-width:\s*601px\) and \(max-width:\s*900px\)[\s\S]*grid-column:\s*span 6/);
   assert.match(component,/home-widget-preview--\$\{previewMode\}/);
   assert.match(component,/data-widget-id=\{item\.id\}/);
   assert.match(component,/aria-label=\{`Sposta su \$\{widget\.label\}`\}/);
   assert.match(component,/aria-label=\{`Sposta giù \$\{widget\.label\}`\}/);
   assert.match(css,/min-width:\s*44px;\s*min-height:\s*44px/);
-  for (const viewport of [375,768]) {
-    assert.ok(viewport <= 768);
-    assert.match(css,/@media \(max-width:\s*760px\)/);
-  }
+  for (const viewport of [375,768,1024,1440]) assert.ok(viewport >= 375);
+  assert.match(css,/@media \(max-width:\s*600px\)/);
+  assert.match(css,/@media \(min-width:\s*601px\) and \(max-width:\s*900px\)/);
 });

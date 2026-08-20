@@ -8,6 +8,9 @@ import { useControlloDati } from '../lib/useControlloDati';
 import WidgetWorkspace from './WidgetWorkspace.jsx';
 import { HOME_WIDGET_REGISTRY, createDefaultHomeLayout, moveHomeWidget, moveHomeWidgetByOffset, setHomeWidgetSize, setHomeWidgetVisibility } from '../lib/homeWidgetRegistry.js';
 import { deleteUserHomeLayout, loadResolvedHomeLayout, saveStudioHomeLayout, saveUserHomeLayout } from '../lib/homeLayoutPersistence.js';
+import CanonicalFinancialWidget from './CanonicalFinancialWidget.jsx';
+import { applyWidgetPermissions, buildHomePermissions, createRolePresetLayout, filterWidgetCatalog, resolveHomePeriod } from '../lib/homeDashboardModel.js';
+import { getHomeFinancialWidget, loadHomeFinancialSnapshot } from '../lib/homeFinancialWidgets.js';
 
 const PALETTE = [
   '#1A4E66','#2EC4B6','#2D9E61','#7C3AED','#E63946',
@@ -37,7 +40,10 @@ const saveTheme = (t) => { try { localStorage.setItem('dm_theme', JSON.stringify
 const NOMI_F = ['alessia','alice','anna','beatrice','camilla','chiara','claudia','elena','elisa','emma','federica','francesca','giulia','ilaria','laura','lisa','lucia','luisa','mara','maria','marina','martina','monica','paola','roberta','sara','silvia','sofia','valentina','veronica','virginia'];
 const getSaluto = (nome) => { if (!nome) return 'Benvenuto'; const ora = new Date().getHours(); const s = ora < 12 ? 'Buongiorno' : ora < 18 ? 'Buon pomeriggio' : 'Buonasera'; const p = nome.trim().split(' ')[0].toLowerCase(); const fem = NOMI_F.includes(p) || (p.endsWith('a') && !['luca','andrea','mattia','nicola','enea'].includes(p)); return s + ', ' + (fem ? 'cara ' : 'caro ') + nome.trim().split(' ')[0]; };
 
-export default function Dashboard({ patients, appointments, setAppointments, payments, plans, richiami = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, templates, userName: userNameProp, si, features, studioId, isStudioAdmin }) {
+export default function Dashboard({ patients, appointments, setAppointments, payments, plans, richiami = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, templates, userName: userNameProp, si, features, studioId, isStudioAdmin, studioMembership }) {
+  const homePermissions = buildHomePermissions({ membership: studioMembership, features, vertical: si?.vertical });
+  const roleLayout = createRolePresetLayout(studioMembership?.ruolo, si?.vertical);
+  const availableWidgetCatalog = filterWidgetCatalog(HOME_WIDGET_REGISTRY, homePermissions);
   // Widget economico/operativi (preventivi, richiami, scadenze, ortodonzia,
   // statistiche, grafici): stessa fonte di calcolo di Controllo di Gestione,
   // vedi useControlloDati — evita di ricalcolare qui gli stessi numeri con
@@ -54,31 +60,13 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
     nuoviMese, mediaValore, topPrest,
     andamentoMensile, incassoPerPrestazione, incassoPerGiorno, speseMensili, speseCategoria,
     spese, calcPlanTot,
-  } = useControlloDati({ studioId, patients, plans, payments, periodo: periodoEconomico });
+  } = useControlloDati({ studioId, patients, plans, payments, periodo: periodoEconomico, enabled: homePermissions.managementControl });
 
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const isFisio = si?.vertical === 'fisioterapista' || si?.vertical === 'massofisioterapista';
   const t = today();
   const [userName, setUserName] = useState(userNameProp || '');
   const [userId, setUserId] = useState(null);
-
-  // Dati physio per il widget "Fisioterapia" — caricati solo per studi del
-  // vertical fisioterapista/massofisioterapista, isolati dal resto del
-  // caricamento dati della Dashboard (nessuna modifica alle query esistenti).
-  const [physioStat, setPhysioStat] = useState({ obiettiviAttivi: 0, seduteOggi: 0, eserciziAttivi: 0 });
-  useEffect(() => {
-    if (!isFisio || !studioId) return;
-    let cancelled = false;
-    (async () => {
-      const [ob, sed, presc] = await Promise.all([
-        supabase.from('physio_obiettivi').select('id', { count: 'exact', head: true }).eq('studio_id', studioId).eq('stato', 'attivo'),
-        supabase.from('physio_diario_sedute').select('id', { count: 'exact', head: true }).eq('studio_id', studioId).eq('data', t),
-        supabase.from('physio_prescrizioni').select('id', { count: 'exact', head: true }).eq('studio_id', studioId).eq('attiva', true),
-      ]);
-      if (!cancelled) setPhysioStat({ obiettiviAttivi: ob.count || 0, seduteOggi: sed.count || 0, eserciziAttivi: presc.count || 0 });
-    })();
-    return () => { cancelled = true; };
-  }, [isFisio, studioId, t]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -148,6 +136,10 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   const [inheritedLayout, setInheritedLayout] = useState(createDefaultHomeLayout);
   const [inheritedSource, setInheritedSource] = useState('platform');
   const [draftInherits, setDraftInherits] = useState(false);
+  const [homePeriodId, setHomePeriodId] = useState('current_month');
+  const [canonicalSnapshot, setCanonicalSnapshot] = useState(null);
+  const [canonicalLoading, setCanonicalLoading] = useState(false);
+  const [canonicalError, setCanonicalError] = useState(null);
   const [theme, setTheme] = useState(loadTheme);
   const [themeTab, setThemeTab] = useState('widgets'); // 'widgets' | 'colori'
   const isOn = (id) => { const w = widgets.find(x => x.id === id); return w ? w.visible !== false : true; };
@@ -157,7 +149,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
     let cancelled = false;
     setLayoutLoading(true);
     setLayoutError('');
-    loadResolvedHomeLayout(supabase, studioId, userId)
+    loadResolvedHomeLayout(supabase, studioId, userId, createRolePresetLayout(studioMembership?.ruolo, si?.vertical))
       .then(({ layout, source, inheritedLayout: nextInherited, inheritedSource: nextInheritedSource }) => {
         if (!cancelled) {
           setWidgets(layout); setDraftWidgets(layout); setLayoutSource(source);
@@ -168,7 +160,28 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
       .catch(() => { if (!cancelled) setLayoutError('Impossibile caricare la personalizzazione Home'); })
       .finally(() => { if (!cancelled) setLayoutLoading(false); });
     return () => { cancelled = true; };
-  }, [studioId, userId]);
+  }, [studioId, userId, studioMembership?.ruolo, si?.vertical]);
+
+  const homePeriod = resolveHomePeriod(homePeriodId);
+  const visibleWidgets = applyWidgetPermissions(widgets, HOME_WIDGET_REGISTRY, homePermissions);
+  const visibleDraftWidgets = applyWidgetPermissions(draftWidgets, HOME_WIDGET_REGISTRY, homePermissions);
+  const hasVisibleFinancialWidget = visibleWidgets.some((item) => item.visible !== false && getHomeFinancialWidget(item.id));
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!homePermissions.managementControl || !hasVisibleFinancialWidget) {
+      setCanonicalSnapshot(null); setCanonicalLoading(false); setCanonicalError(null);
+      return () => { cancelled = true; };
+    }
+    setCanonicalLoading(true); setCanonicalError(null);
+    loadHomeFinancialSnapshot(supabase, { authorized: true, period: resolveHomePeriod(homePeriodId) })
+      .then(({ snapshot, error }) => {
+        if (!cancelled) { setCanonicalSnapshot(snapshot); setCanonicalError(error || null); }
+      })
+      .catch((error) => { if (!cancelled) setCanonicalError(error); })
+      .finally(() => { if (!cancelled) setCanonicalLoading(false); });
+    return () => { cancelled = true; };
+  }, [homePermissions.managementControl, hasVisibleFinancialWidget, homePeriodId]);
 
   const openHomeCustomizer = () => {
     setDraftWidgets(widgets.map((item) => ({ ...item })));
@@ -185,7 +198,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
     try {
       if (draftInherits) {
         await deleteUserHomeLayout(supabase, studioId, userId);
-        const resolved = await loadResolvedHomeLayout(supabase, studioId, userId);
+        const resolved = await loadResolvedHomeLayout(supabase, studioId, userId, roleLayout);
         setWidgets(resolved.layout); setDraftWidgets(resolved.layout); setLayoutSource(resolved.source);
         setInheritedLayout(resolved.inheritedLayout); setInheritedSource(resolved.inheritedSource);
       } else {
@@ -360,7 +373,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
               </div>
             </div>
             <div style={{ maxHeight: 210, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: 6, marginBottom: 14 }}>
-              {HOME_WIDGET_REGISTRY.map((widget) => {
+              {availableWidgetCatalog.map((widget) => {
                 if (widget.id === 'consigli_ai' && !consigliAttivi) return null;
                 if (widget.id === 'ortodonzia' && !isDentistico) return null;
                 if (widget.id === 'fisio' && !isFisio) return null;
@@ -372,11 +385,11 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                 </div>;
               })}
             </div>
-            <WidgetWorkspace layout={draftWidgets} editing previewMode={previewMode}
+            <WidgetWorkspace layout={visibleDraftWidgets} editing previewMode={previewMode}
               onMove={(source,target) => { setDraftInherits(false); setDraftWidgets((layout) => moveHomeWidget(layout,source,target)); }}
               onMoveByOffset={(id,offset) => { setDraftInherits(false); setDraftWidgets((layout) => moveHomeWidgetByOffset(layout,id,offset)); }}
               onResize={(id,size) => { setDraftInherits(false); setDraftWidgets((layout) => setHomeWidgetSize(layout,id,size)); }}>
-              {draftWidgets.filter((item) => item.visible).map((item) => {
+              {visibleDraftWidgets.filter((item) => item.visible).map((item) => {
                 const widget=HOME_WIDGET_REGISTRY.find((entry)=>entry.id===item.id);
                 return widget ? <div key={item.id} style={{ minHeight:72,padding:12,borderRadius:10,background:C.sur,border:`1px solid ${C.brd}` }}>
                   <div style={{ display:'flex',alignItems:'center',gap:7,fontWeight:800,fontSize:13 }}><Ic n={widget.ic} s={13} c={C.pri} />{widget.label}</div>
@@ -386,10 +399,10 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
             </WidgetWorkspace>
             {layoutError && <div role="alert" style={{ marginTop:10,fontSize:12,color:C.dan,fontWeight:700 }}>{layoutError}</div>}
             <div style={{ marginTop:10,fontSize:11,color:C.txm }}>
-              {draftInherits ? `Eredita il predefinito ${inheritedSource === 'studio' ? 'dello studio' : 'della piattaforma'}.` : 'Personalizzazione personale: modifica solo la tua presentazione.'}
+              {draftInherits ? `Eredita il predefinito ${inheritedSource === 'studio' ? 'dello studio' : inheritedSource === 'role' ? 'del ruolo/verticale' : 'della piattaforma'}.` : 'Personalizzazione personale: modifica solo la tua presentazione.'}
             </div>
             <div style={{ display:'flex',gap:8,marginTop:12 }}>
-              <button type="button" onClick={resetHomeCustomization} style={{ padding:'9px 12px',background:C.danL,border:'none',borderRadius:9,color:C.dan,fontWeight:700,fontSize:12,cursor:'pointer' }}>↺ Reset al default {inheritedSource === 'studio' ? 'studio' : 'piattaforma'}</button>
+              <button type="button" onClick={resetHomeCustomization} style={{ padding:'9px 12px',background:C.danL,border:'none',borderRadius:9,color:C.dan,fontWeight:700,fontSize:12,cursor:'pointer' }}>↺ Reset al default {inheritedSource === 'studio' ? 'studio' : inheritedSource === 'role' ? 'ruolo' : 'piattaforma'}</button>
               {isStudioAdmin && <button type="button" disabled={layoutSaving} onClick={saveStudioDefault} style={{ padding:'9px 12px',background:C.priL,border:`1px solid ${C.pri}33`,borderRadius:9,color:C.pri,fontWeight:700,fontSize:12,cursor:'pointer' }}>Salva come default studio</button>}
               <button type="button" onClick={() => setSettingsOpen(false)} style={{ marginLeft:'auto',padding:'9px 14px',background:C.bg,border:`1px solid ${C.brd}`,borderRadius:9,color:C.txm,fontWeight:700,fontSize:12,cursor:'pointer' }}>Annulla</button>
               <button type="button" disabled={layoutSaving || layoutLoading} onClick={saveHomeCustomization} style={{ padding:'9px 16px',background:C.pri,border:'none',borderRadius:9,color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer',opacity:layoutSaving?0.6:1 }}>{layoutSaving ? 'Salvataggio…' : 'Salva Home'}</button>
@@ -785,9 +798,18 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
         </button>
       </div>
 
+      {homePermissions.managementControl && <div className="home-period-context" aria-label="Periodo finanziario Home">
+        <span className="home-period-context__label">Periodo</span>
+        {[['current_month','Mese corrente'],['previous_month','Mese precedente'],['current_year','Anno corrente']].map(([id,label]) => (
+          <button key={id} type="button" className={homePeriodId === id ? 'is-active' : ''} aria-pressed={homePeriodId === id} onClick={() => setHomePeriodId(id)}>{label}</button>
+        ))}
+      </div>}
+
       {/* ── WIDGET ORDINATI DINAMICAMENTE ── */}
-      <WidgetWorkspace layout={widgets} editing={false} previewMode="desktop" onMove={() => {}} onResize={() => {}}>
-      {widgets.filter(w => w.visible !== false).map(w => {
+      <WidgetWorkspace layout={visibleWidgets} editing={false} previewMode="desktop" onMove={() => {}} onResize={() => {}}>
+      {visibleWidgets.filter(w => w.visible !== false).map(w => {
+        const canonicalDefinition = getHomeFinancialWidget(w.id);
+        if (canonicalDefinition) return <CanonicalFinancialWidget key={w.id} widgetId={w.id} snapshot={canonicalSnapshot} period={homePeriod} loading={canonicalLoading} error={canonicalError} />;
         if (w.id === 'agenda') return (
           <div key="agenda" style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -1068,20 +1090,6 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
             <div key="ortodonzia" style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="tooth" s={11} c={C.txm} />Ortodonzia</div>
               <StatCard label="Piani attivi" value={pianiOrto.filter(o => !o.completato).length} sub={`${pianiOrto.filter(o => o.cambioScaduto).length} da cambiare · ${pianiOrto.filter(o => o.inAttesa).length} da avviare`} color={pianiOrto.some(o => o.cambioScaduto) ? C.dan : C.pur} urgent={pianiOrto.some(o => o.cambioScaduto)} onClick={() => setDetailModal('orto')} />
-            </div>
-          );
-        }
-
-        if (w.id === 'fisio') {
-          if (!isFisio) return null;
-          return (
-            <div key="fisio" style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="pulse" s={11} c={C.txm} />Fisioterapia</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-                <StatCard label="Sedute oggi" value={physioStat.seduteOggi} />
-                <StatCard label="Obiettivi attivi" value={physioStat.obiettiviAttivi} color={C.pri} />
-                <StatCard label="Esercizi assegnati" value={physioStat.eserciziAttivi} color={C.acc} />
-              </div>
             </div>
           );
         }

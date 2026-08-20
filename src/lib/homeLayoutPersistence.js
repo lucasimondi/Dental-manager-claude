@@ -1,4 +1,5 @@
 import { createDefaultHomeLayout, normalizeHomeLayout, serializeHomeLayout } from './homeWidgetRegistry.js';
+import { resolveDashboardLayout } from './homeDashboardModel.js';
 
 const requireIdentity = (studioId, userId) => {
   if (!studioId || !userId) throw new Error('Identità studio/utente non disponibile');
@@ -25,23 +26,19 @@ export async function loadStudioHomeLayout(client, studioId) {
   return data ? normalizeHomeLayout(data.layout) : null;
 }
 
-export const resolveHomeLayout = ({ userLayout, studioLayout }) => {
-  if (userLayout) return { layout: normalizeHomeLayout(userLayout), source: 'user' };
-  if (studioLayout) return { layout: normalizeHomeLayout(studioLayout), source: 'studio' };
-  return { layout: createDefaultHomeLayout(), source: 'platform' };
-};
+export const resolveHomeLayout = resolveDashboardLayout;
 
-export async function loadResolvedHomeLayout(client, studioId, userId) {
+export async function loadResolvedHomeLayout(client, studioId, userId, roleLayout = null) {
   requireIdentity(studioId, userId);
   const [userLayout, studioLayout] = await Promise.all([
     loadUserHomeLayout(client, studioId, userId),
     loadStudioHomeLayout(client, studioId),
   ]);
-  const resolved = resolveHomeLayout({ userLayout, studioLayout });
+  const resolved = resolveHomeLayout({ userLayout, studioLayout, roleLayout });
   return {
     ...resolved,
-    inheritedLayout: studioLayout || createDefaultHomeLayout(),
-    inheritedSource: studioLayout ? 'studio' : 'platform',
+    inheritedLayout: studioLayout || roleLayout || createDefaultHomeLayout(),
+    inheritedSource: studioLayout ? 'studio' : roleLayout ? 'role' : 'platform',
   };
 }
 
