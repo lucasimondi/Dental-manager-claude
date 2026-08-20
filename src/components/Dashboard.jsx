@@ -40,7 +40,7 @@ const saveTheme = (t) => { try { localStorage.setItem('dm_theme', JSON.stringify
 const NOMI_F = ['alessia','alice','anna','beatrice','camilla','chiara','claudia','elena','elisa','emma','federica','francesca','giulia','ilaria','laura','lisa','lucia','luisa','mara','maria','marina','martina','monica','paola','roberta','sara','silvia','sofia','valentina','veronica','virginia'];
 const getSaluto = (nome) => { if (!nome) return 'Benvenuto'; const ora = new Date().getHours(); const s = ora < 12 ? 'Buongiorno' : ora < 18 ? 'Buon pomeriggio' : 'Buonasera'; const p = nome.trim().split(' ')[0].toLowerCase(); const fem = NOMI_F.includes(p) || (p.endsWith('a') && !['luca','andrea','mattia','nicola','enea'].includes(p)); return s + ', ' + (fem ? 'cara ' : 'caro ') + nome.trim().split(' ')[0]; };
 
-export default function Dashboard({ patients, appointments, setAppointments, payments, plans, richiami = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, templates, userName: userNameProp, si, features, studioId, isStudioAdmin, studioMembership }) {
+export default function Dashboard({ patients, appointments, setAppointments, payments, plans, richiami = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, onNavigate, templates, userName: userNameProp, si, features, studioId, isStudioAdmin, studioMembership }) {
   const homePermissions = buildHomePermissions({ membership: studioMembership, features, vertical: si?.vertical });
   const roleLayout = createRolePresetLayout(studioMembership?.capabilities);
   const availableWidgetCatalog = filterWidgetCatalog(HOME_WIDGET_REGISTRY, homePermissions);
@@ -788,14 +788,24 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
       )}
 
       {/* ── HEADER ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: C.txt }}>{getSaluto(userName)}</div>
-          <div style={{ fontSize: 12, color: C.txl, marginTop: 1 }}>{new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+      <div className="home-hero">
+        <div className="home-hero__text">
+          <div className="home-hero__greeting">{getSaluto(userName)}</div>
+          <div className="home-hero__meta">
+            {new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            {si?.nome && <span className="home-hero__studio"> · {si.nome}</span>}
+          </div>
         </div>
-        <button onClick={openHomeCustomizer} style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 10, padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, color: C.txm, fontSize: 12, fontWeight: 700 }}>
-          <Ic n="set" s={14} c={C.txm} /> Personalizza Home
-        </button>
+        <div className="home-hero__actions">
+          {onNavigate && (
+            <button className="home-hero__cta" onClick={() => onNavigate('agenda')}>
+              <Ic n="plus" s={13} c="#fff" /> Nuovo appuntamento
+            </button>
+          )}
+          <button className="home-hero__customize" onClick={openHomeCustomizer}>
+            <Ic n="set" s={14} c={C.txm} /> Personalizza Home
+          </button>
+        </div>
       </div>
 
       {homePermissions.managementControl && <div className="home-period-context" aria-label="Periodo finanziario Home">
@@ -810,11 +820,26 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
       {visibleWidgets.filter(w => w.visible !== false).map(w => {
         const canonicalDefinition = getHomeFinancialWidget(w.id);
         if (canonicalDefinition) return <CanonicalFinancialWidget key={w.id} widgetId={w.id} snapshot={canonicalSnapshot} period={homePeriod} loading={canonicalLoading} error={canonicalError} />;
+        if (w.id === 'quick_actions') return (
+          <div key="quick_actions" className="home-quick-actions">
+            <div className="home-section-label"><Ic n="zap" s={11} c={C.txm} />Azioni rapide</div>
+            <div className="home-quick-actions__grid">
+              <button onClick={() => onNavigate && onNavigate('paz')}><Ic n="pz" s={16} c={C.pri} /><span>Pazienti</span></button>
+              <button onClick={() => onGoAgenda ? onGoAgenda() : onNavigate && onNavigate('agenda')}><Ic n="cal" s={16} c={C.pri} /><span>Agenda</span></button>
+              <button onClick={() => onNavigate && onNavigate('piani')}><Ic n="plan" s={16} c={C.pri} /><span>Piani di cura</span></button>
+              <button onClick={() => onNavigate && onNavigate('paga')}><Ic n="pay" s={16} c={C.pri} /><span>Pagamenti</span></button>
+              <button onClick={() => onGoRichiami ? onGoRichiami() : onNavigate && onNavigate('richiami')}><Ic n="bell" s={16} c={C.pri} /><span>Richiami</span></button>
+              {homePermissions.managementControl && (
+                <button onClick={() => onNavigate && onNavigate('controllo')}><Ic n="chart" s={16} c={C.pri} /><span>Controllo di gestione</span></button>
+              )}
+            </div>
+          </div>
+        );
         if (w.id === 'agenda') return (
           <div key="agenda" style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="cal" s={11} c={C.txm} />Agenda oggi</div>
-              <button onClick={() => onGoAgenda && onGoAgenda()} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '5px 10px', color: C.pri, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>Apri agenda ›</button>
+              <button className="home-list-link" onClick={() => onGoAgenda && onGoAgenda()} style={{ background: C.priL, color: C.pri }}>Apri agenda ›</button>
             </div>
             {todayApps.length === 0 ? (
               <Crd style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessun appuntamento oggi</Crd>
@@ -825,16 +850,17 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                   const co = getColore(a);
                   const isPast = a.ora < new Date().toTimeString().slice(0, 5);
                   return (
-                    <div key={a.id} onClick={() => onGoAgenda && onGoAgenda()} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: i < todayApps.length - 1 ? `1px solid ${C.brd}` : 'none', background: isPast ? '#fafafa' : '#fff', cursor: 'pointer' }}>
-                      <div style={{ background: co + '20', borderRadius: 8, padding: '4px 8px', textAlign: 'center', flexShrink: 0, minWidth: 44, borderLeft: `3px solid ${co}` }}>
-                        <div style={{ fontSize: 13, fontWeight: 900, color: co }}>{a.ora}</div>
-                        <div style={{ fontSize: 9, color: co, opacity: 0.8 }}>{a.durata}m</div>
+                    <div key={a.id} onClick={() => onGoAgenda && onGoAgenda()} className="home-agenda-row" style={{ borderBottom: i < todayApps.length - 1 ? `1px solid ${C.brd}` : 'none', background: isPast ? '#fafafa' : '#fff' }}>
+                      <div className="home-agenda-row__time" style={{ background: co + '20', borderLeft: `3px solid ${co}` }}>
+                        <div className="home-agenda-row__time-value" style={{ color: co }}>{a.ora}</div>
+                        <div className="home-agenda-row__time-dur" style={{ color: co }}>{a.durata}m</div>
                       </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: 13, color: isPast ? C.txm : C.txt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p ? `${p.nome} ${p.cognome}` : '—'}</div>
-                        <div style={{ fontSize: 11, color: C.txl, display: 'flex', alignItems: 'center', gap: 5 }}><div style={{ width: 7, height: 7, borderRadius: '50%', background: co }} />{a.tipo}</div>
+                      <div className="home-agenda-row__name" style={{ color: isPast ? C.txm : C.txt }}>{p ? `${p.nome} ${p.cognome}` : '—'}</div>
+                      <div className="home-agenda-row__badge"><Bdg ch={a.stato} co={a.stato === 'confermato' ? C.suc : C.war} /></div>
+                      <div className="home-agenda-row__meta" style={{ color: C.txl }}>
+                        <span className="home-agenda-row__dot" style={{ background: co }} />
+                        <span className="home-agenda-row__type">{a.tipo}</span>
                       </div>
-                      <Bdg ch={a.stato} co={a.stato === 'confermato' ? C.suc : C.war} />
                     </div>
                   );
                 })}
@@ -882,7 +908,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                           <div onClick={() => onOpenPaz(paz, 'info')} style={{ marginTop: 6, fontSize: 12, fontWeight: 700, color: C.pri, cursor: 'pointer' }}>{paz.nome} {paz.cognome} ›</div>
                         )}
                       </div>
-                      <button onClick={() => segnaLettoConsiglio(c.id)} title="Segna come letto" style={{ background: C.sucL, border: 'none', borderRadius: 7, padding: 6, cursor: 'pointer', flexShrink: 0, height: 'fit-content' }}>
+                      <button className="home-list-icon-btn" onClick={() => segnaLettoConsiglio(c.id)} title="Segna come letto" style={{ background: C.sucL }}>
                         <Ic n="ok" s={13} c={C.suc} />
                       </button>
                     </div>
@@ -899,17 +925,17 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
             <Crd style={{ marginBottom: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span style={{ fontSize: 12, fontWeight: 700 }}>Attività {todoAttivi.length > 0 && <span style={{ background: C.dan, color: '#fff', borderRadius: 8, padding: '1px 6px', fontSize: 10 }}>{todoAttivi.length}</span>}</span>
-                <button onClick={() => setTodoModal(true)} style={{ background: C.pri, border: 'none', borderRadius: 7, padding: '5px 10px', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>+ Aggiungi</button>
+                <button className="home-list-link" onClick={() => setTodoModal(true)} style={{ background: C.pri, color: '#fff' }}>+ Aggiungi</button>
               </div>
               {todoLoading && <div style={{ fontSize: 12, color: C.txl, textAlign: 'center', padding: '8px 0' }}>Caricamento...</div>}
               {!todoLoading && todoAttivi.length === 0 && <div style={{ fontSize: 12, color: C.txl, textAlign: 'center', padding: '8px 0' }}>Nessuna attività in sospeso</div>}
               <div style={{ maxHeight: 220, overflowY: 'auto' }}>
                 {todoAttivi.map(todo => (
                   <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 0', borderBottom: `1px solid ${C.brd}` }}>
-                    <button onClick={() => toggleTodo(todo.id)} style={{ width: 20, height: 20, borderRadius: 5, border: `2px solid ${C.brd}`, background: '#fff', cursor: 'pointer', flexShrink: 0, padding: 0 }} />
+                    <button className="home-list-checkbox" onClick={() => toggleTodo(todo.id)}><span style={{ border: `2px solid ${C.brd}` }} /></button>
                     <span style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{todo.testo}</span>
-                    <button onClick={() => { const msg = encodeURIComponent('Attività: ' + todo.testo); window.open('https://wa.me/?text=' + msg, '_blank'); }} title="Invia su WhatsApp" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, flexShrink: 0 }}><Ic n="wa" s={13} c="#25D366" /></button>
-                    <button onClick={() => deleteTodo(todo.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}><Ic n="x" s={11} c={C.dan} /></button>
+                    <button className="home-list-icon-btn" onClick={() => { const msg = encodeURIComponent('Attività: ' + todo.testo); window.open('https://wa.me/?text=' + msg, '_blank'); }} title="Invia su WhatsApp"><Ic n="wa" s={13} c="#25D366" /></button>
+                    <button className="home-list-icon-btn" onClick={() => deleteTodo(todo.id)}><Ic n="x" s={11} c={C.dan} /></button>
                   </div>
                 ))}
               </div>
@@ -992,17 +1018,15 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
               {upcoming.map((a, i) => {
                 const p = patients.find(x => x.id === a.pazienteId);
                 return (
-                  <div key={a.id} onClick={() => apriEditApp(a)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: i < upcoming.length-1 ? `1px solid ${C.brd}` : 'none', cursor: 'pointer' }}>
-                    <div style={{ background: C.priL, borderRadius: 7, padding: '4px 7px', textAlign: 'center', minWidth: 44, flexShrink: 0 }}>
-                      <div style={{ fontSize: 9, color: C.pri, fontWeight: 700 }}>{a.data.slice(8)}/{a.data.slice(5,7)}</div>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: C.priD }}>{a.ora}</div>
+                  <div key={a.id} onClick={() => apriEditApp(a)} className="home-upcoming-row" style={{ borderBottom: i < upcoming.length-1 ? `1px solid ${C.brd}` : 'none' }}>
+                    <div className="home-upcoming-row__time" style={{ background: C.priL }}>
+                      <div className="home-upcoming-row__date" style={{ color: C.pri }}>{a.data.slice(8)}/{a.data.slice(5,7)}</div>
+                      <div className="home-upcoming-row__hour" style={{ color: C.priD }}>{a.ora}</div>
                     </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p ? `${p.nome} ${p.cognome}` : '—'}</div>
-                      <div style={{ fontSize: 11, color: C.txm }}>{a.tipo}</div>
-                    </div>
-                    <Bdg ch={a.stato} co={a.stato === 'confermato' ? C.suc : C.war} />
-                    <button onClick={e => { e.stopPropagation(); eliminaAppuntamentoDiretto(a); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', flexShrink: 0, opacity: 0.5 }} title="Elimina">
+                    <div className="home-upcoming-row__name">{p ? `${p.nome} ${p.cognome}` : '—'}</div>
+                    <div className="home-upcoming-row__badge"><Bdg ch={a.stato} co={a.stato === 'confermato' ? C.suc : C.war} /></div>
+                    <div className="home-upcoming-row__meta" style={{ color: C.txm }}>{a.tipo}</div>
+                    <button className="home-upcoming-row__del home-list-icon-btn" onClick={e => { e.stopPropagation(); eliminaAppuntamentoDiretto(a); }} title="Elimina">
                       <Ic n="del" s={14} c={C.dan} />
                     </button>
                   </div>

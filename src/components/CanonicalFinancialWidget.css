@@ -1,12 +1,71 @@
-.canonical-financial-widget { min-width: 0; overflow: hidden; padding: 14px; border: 1px solid var(--widget-border, #d9e2e7); border-radius: 12px; background: var(--widget-surface, #fff); }
-.canonical-financial-widget__label { color: #52646c; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; overflow-wrap: anywhere; }
-.canonical-financial-widget__period { margin-top: 3px; color: #82939b; font-size: 10px; }
-.canonical-financial-widget__value { margin-top: 10px; color: #1a4e66; font-size: clamp(20px, 4vw, 30px); font-weight: 900; line-height: 1.05; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
-.canonical-financial-widget__state { margin-top: 10px; color: #64757d; font-size: 17px; font-weight: 800; }
-.canonical-financial-widget__reason { margin-top: 5px; color: #82939b; font-size: 10px; line-height: 1.35; }
-.canonical-financial-widget__meta { margin-top: 10px; color: #9aabb2; font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.home-period-context { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 14px; }
-.home-period-context__label { margin-right: 4px; color: #64757d; font-size: 11px; font-weight: 800; }
-.home-period-context button { min-height: 44px; padding: 7px 11px; border: 1px solid #cbd6db; border-radius: 9px; background: #fff; color: #52646c; font-size: 11px; font-weight: 800; cursor: pointer; }
-.home-period-context button.is-active { border-color: #1a4e66; background: #1a4e66; color: #fff; }
-@media (max-width: 600px) { .canonical-financial-widget__value { font-size: 24px; } .home-period-context button { flex: 1 1 100px; } }
+@import './PremiumVisualSystem.css';
+
+.canonical-financial-widget {
+  --premium-a: #4f46e5;
+  --premium-b: #1d4ed8;
+  --premium-c: #0f172a;
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  min-height: 138px;
+  padding: 18px;
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 20px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 86% 18%, rgba(255,255,255,.20), transparent 23%),
+    linear-gradient(145deg,var(--premium-a) 0%,var(--premium-b) 52%,var(--premium-c) 100%);
+  box-shadow: 0 20px 42px rgba(30,41,59,.20), 0 4px 10px rgba(30,41,59,.12), inset 0 1px 0 rgba(255,255,255,.24);
+  transform: translateZ(0);
+  transition: transform .22s ease, box-shadow .22s ease;
+}
+.canonical-financial-widget:hover {
+  transform: translateY(-4px) rotateX(.4deg);
+  box-shadow: 0 28px 58px rgba(30,41,59,.25), 0 8px 16px rgba(30,41,59,.13), inset 0 1px 0 rgba(255,255,255,.28);
+}
+.canonical-financial-widget::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg,rgba(255,255,255,.16),transparent 30%,transparent 72%,rgba(255,255,255,.05));
+}
+.canonical-financial-widget::after {
+  content: '';
+  position: absolute;
+  width: 110px;
+  height: 110px;
+  right: -42px;
+  bottom: -55px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.13);
+  box-shadow: 0 0 0 22px rgba(255,255,255,.035), 0 0 0 44px rgba(255,255,255,.02);
+}
+.canonical-financial-widget[data-canonical-widget*="incass"],
+.canonical-financial-widget[data-canonical-widget*="cash"] { --premium-a:#0f766e; --premium-b:#0d9488; --premium-c:#064e3b; }
+.canonical-financial-widget[data-canonical-widget*="prodot"],
+.canonical-financial-widget[data-canonical-widget*="prevent"] { --premium-a:#2563eb; --premium-b:#3b82f6; --premium-c:#172554; }
+.canonical-financial-widget[data-canonical-widget*="marg"],
+.canonical-financial-widget[data-canonical-widget*="ebitda"] { --premium-a:#7c3aed; --premium-b:#8b5cf6; --premium-c:#312e81; }
+.canonical-financial-widget[data-canonical-widget*="cost"],
+.canonical-financial-widget[data-canonical-widget*="break"] { --premium-a:#d97706; --premium-b:#f59e0b; --premium-c:#92400e; }
+.canonical-financial-widget[data-canonical-widget*="credit"] { --premium-a:#be123c; --premium-b:#e11d48; --premium-c:#881337; }
+
+.canonical-financial-widget__top { position: relative; z-index: 1; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.canonical-financial-widget__label { color: rgba(255,255,255,.88); font-size: 10px; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; overflow-wrap: anywhere; text-shadow: 0 1px 4px rgba(0,0,0,.10); }
+.canonical-financial-widget__period { margin-top: 5px; color: rgba(255,255,255,.62); font-size: 10px; font-weight: 600; }
+.canonical-financial-widget__glyph { position:relative; z-index:1; display:grid; place-items:center; width:38px; height:38px; flex:0 0 38px; border-radius:13px; color:#fff; font-size:17px; font-weight:900; background:linear-gradient(145deg,rgba(255,255,255,.22),rgba(255,255,255,.09)); border:1px solid rgba(255,255,255,.22); box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 8px 18px rgba(0,0,0,.12); backdrop-filter: blur(10px); }
+.canonical-financial-widget__value { position:relative; z-index:1; margin-top: 18px; color: #fff; font-size: clamp(25px, 4vw, 34px); font-weight: 950; letter-spacing:-.035em; line-height: 1; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; text-shadow:0 3px 12px rgba(0,0,0,.16); }
+.canonical-financial-widget__state { position:relative; z-index:1; margin-top: 18px; color: rgba(255,255,255,.90); font-size: 17px; font-weight: 850; }
+.canonical-financial-widget__reason { position:relative; z-index:1; margin-top: 6px; color: rgba(255,255,255,.68); font-size: 10px; line-height: 1.35; }
+.canonical-financial-widget__meta { position:relative; z-index:1; margin-top: 13px; color: rgba(255,255,255,.45); font-size: 8px; font-weight:700; letter-spacing:.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.canonical-financial-widget__accent { position:absolute; left:18px; right:18px; bottom:14px; height:2px; border-radius:999px; opacity:.24; background:linear-gradient(90deg,rgba(255,255,255,.2),rgba(255,255,255,.92),rgba(255,255,255,.08)); transform:scaleX(.58); transform-origin:left center; }
+
+.home-period-context { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 0 0 16px; }
+.home-period-context__label { margin-right: 4px; color: #64748b; font-size: 11px; font-weight: 800; }
+
+@media (max-width: 600px) {
+  .canonical-financial-widget { min-height:122px; padding:16px; border-radius:17px; }
+  .canonical-financial-widget__glyph { width:34px; height:34px; flex-basis:34px; border-radius:11px; }
+  .canonical-financial-widget__value { font-size: 26px; margin-top:14px; }
+}

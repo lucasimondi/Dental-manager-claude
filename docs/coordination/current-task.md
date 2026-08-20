@@ -1,14 +1,33 @@
 # Current task
 
-- TASK: POL-RBAC-001A
-- TITLE: Patient / Care Assignment (authoritative capability + assignment separation)
+- TASK: POL-UI-003
+- TITLE: Premium visual system (sidebar, hero, quick actions, mobile polish)
 - OWNER: CLAUDE
-- PREVIOUS TASK/OWNER: POL-RBAC-001, CODEX, `WAITING_PRODUCT_OWNER` (unchanged; POL-RBAC-001A is a new, additive follow-up task opened directly by the Product Owner directive that started this session, not a takeover of POL-RBAC-001's ownership)
-- BRANCH: `security/POL-RBAC-001-authoritative-capabilities` (same branch/PR #16; POL-RBAC-001A commits are additional commits on top, not a new branch)
-- BASE REVIEW: `master` (retargeted — PR #15/POL-UI-002 was squash-merged to master as commit `1348dd9801dad882ad0a370cbb08e89066af7c31`; PR #16 rebased onto master in this round, see "Rebase onto master" below. No longer stacked on a separate PR.)
+- BRANCH: `ui/POL-UI-003-premium-visual-system`
+- BASE REVIEW: `master` (retargeted; this merge brings `master`'s POL-RBAC-001/POL-RBAC-001A capability model — see history below — into this branch. PR #17.)
 - STATUS: `WAITING_PRODUCT_OWNER`
 
 ## Objective
+
+Apply the Product Owner-approved premium visual direction to the Poliedra Home (desktop/tablet sidebar, hero, quick actions, canonical KPI card styling) while preserving POL-UI-001/POL-UI-002 personalization behavior, POL-RBAC-001/POL-RBAC-001A's capability-based permission model, and all canonical financial contracts unchanged. This round also fixed a Product Owner-flagged mobile layout defect in the Agenda widget and audited touch targets across Home.
+
+## Safety boundaries
+
+- No financial formula, canonical query (`get_financial_snapshot_v1`), RLS, or migration was touched by this task at any point.
+- Permission/capability logic (`buildHomePermissions`, `createRolePresetLayout`, `filterWidgetCatalog`) uses the POL-RBAC-001/POL-RBAC-001A capability-array model exclusively — the pre-RBAC role-string call signature this branch forked with has been reconciled to match `master` during this merge.
+- No production write, remote migration, backfill, deployment or merge occurred.
+
+## Completion state
+
+Visual-only presentation layer (`PremiumVisualSystem.css`, `PremiumSidebar.jsx`) plus a new additive `quick_actions` home widget and a mobile-first grid rebuild of the Agenda/Prossimi-appuntamenti rows are implemented and merged with `master`'s POL-RBAC-001A capability model in this round. Full detail in `docs/architecture/` and the PR #17 description.
+
+## Exact next action
+
+Product Owner reviews PR #17 (now merge-conflict-free against `master`, carrying POL-RBAC-001/POL-RBAC-001A + POL-UI-003 + the mobile polish together). Do not deploy, merge, or begin another task without explicit Product Owner approval.
+
+---
+
+# Historical record: POL-RBAC-001A (completed, merged to master)
 
 Close the residual risk the Product Owner identified in POL-RBAC-001: a
 `clinical.personal_trainer`/`clinical.massage_therapist` capability alone let
@@ -225,3 +244,5 @@ Product Owner and Tech Lead review the stacked POL-RBAC-001 + POL-RBAC-001A
 commits together on PR #16, now incorporating both recorded decisions. Do
 not apply remotely, deploy, merge POL-RBAC-001A/POL-RBAC-001, or merge PR
 #15/#16 without explicit Product Owner approval.
+
+(POL-RBAC-001/POL-RBAC-001A have since merged to `master`; PR #16 is closed. This record is kept for audit history — see "Current task" above for the active task.)

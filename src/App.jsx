@@ -4,6 +4,8 @@ import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault
 import { generaRichiamiBot } from './lib/richiamiBot';
 import { salvaPosizione, leggiPosizione, pulisciPosizione } from './lib/posizioneNavigazione';
 import MobileDock from './components/MobileDock.jsx';
+import PremiumSidebar from './components/PremiumSidebar.jsx';
+import './components/PremiumVisualSystem.css';
 import { useIsMobile } from './lib/useIsMobile';
 import { useTheme } from './lib/useTheme';
 import { Ic } from './components/ui';
@@ -403,8 +405,27 @@ export default function App() {
     (n.id !== 'agenteai' || isStudioAdmin)
   );
 
+  const sidebarLogoSrc = features.custom_logo && studioInfo?.custom_logo_b64
+    ? studioInfo.custom_logo_b64
+    : LOGO_WHITE_PER_SLUG[getLogoSlug(studioInfo?.vertical)];
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: C.bg, overflow: 'hidden' }}>
+    <div className={isMobile ? 'app-shell app-shell--mobile' : 'app-shell app-shell--desktop'} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', height: '100dvh', background: C.bg, overflow: 'hidden' }}>
+      {!isMobile && (
+        <PremiumSidebar
+          nav={navVisibile}
+          page={page}
+          setPage={setPage}
+          logoSrc={sidebarLogoSrc}
+          studioName={studioInfo?.nome}
+          userName={userName}
+          isSuperAdmin={isSuperAdmin}
+          onOpenMasterDashboard={() => setShowMasterDashboard(true)}
+          onLogout={handleLogout}
+        />
+      )}
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, height: '100dvh', overflow: 'hidden' }}>
+      {isMobile && (
       <div style={{ background: C.header, padding: '11px 14px', paddingTop: 'max(11px,env(safe-area-inset-top))', display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
         {features.custom_logo && studioInfo?.custom_logo_b64 ? (
           <img src={studioInfo.custom_logo_b64} alt={studioInfo?.nome || 'Logo'} style={{ height: 40, maxWidth: 160, display: 'block', objectFit: 'contain' }} />
@@ -416,14 +437,12 @@ export default function App() {
           />
         )}
         <div style={{ marginLeft: 'auto', fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-          {userName && !isMobile && <span style={{ color: 'rgba(255,255,255,0.8)', fontWeight: 700 }}>{userName}</span>}
-          {!isMobile && <span style={{ color: 'rgba(255,255,255,0.3)' }}>·</span>}
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: isMobile ? 120 : 'none' }}>{navVisibile.find((n) => n.id === page)?.l}</span>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>{navVisibile.find((n) => n.id === page)?.l}</span>
           {isSuperAdmin && <button onClick={() => setShowMasterDashboard(true)} title="Dashboard Master" style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, padding: '4px 8px', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>🛠️</button>}
-          {/* Esci sempre visibile in header (mobile e desktop). Su desktop resta anche nel dock in basso. */}
           <button onClick={handleLogout} title="Esci" style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, padding: '4px 8px', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>Esci</button>
         </div>
       </div>
+      )}
 
       {syncError && (
         <div style={{ background: C.danL, borderBottom: `2px solid ${C.dan}`, padding: '9px 14px', display: 'flex', alignItems: 'flex-start', gap: 8, flexShrink: 0 }}>
@@ -454,8 +473,8 @@ export default function App() {
         </Suspense>
       )}
 
-      <div id="app-scroll" style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: 13, paddingBottom: isMobile ? 98 : 78 }}>
-        {page === 'home' && <Dashboard patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} />}
+      <div id="app-scroll" style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: 13, paddingBottom: isMobile ? 98 : 28 }}>
+        {page === 'home' && <Dashboard patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} />}
         {page !== 'home' && (
           <Suspense fallback={<LoadingScreen />}>
             {page === 'paz' && (
@@ -499,7 +518,7 @@ export default function App() {
 
       <AssistenteAI />
 
-      {isMobile ? (
+      {isMobile && (
         <MobileDock
           page={page}
           setPage={setPage}
@@ -508,20 +527,8 @@ export default function App() {
           features={features}
           isStudioAdmin={isStudioAdmin}
         />
-      ) : (
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: C.sur, borderTop: `1px solid ${C.brd}`, display: 'grid', gridTemplateColumns: `repeat(${navVisibile.length + 1},1fr)`, paddingBottom: 'env(safe-area-inset-bottom,0px)', zIndex: 100, boxShadow: '0 -2px 10px rgba(0,0,0,0.07)' }}>
-          {navVisibile.map((n) => (
-            <button key={n.id} onClick={() => setPage(n.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '7px 1px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, color: page === n.id ? C.pri : C.txl }}>
-              <div style={{ background: page === n.id ? C.priL : 'transparent', borderRadius: 7, padding: '3px 5px' }}><Ic n={n.ic} s={17} c={page === n.id ? C.pri : C.txl} /></div>
-              <span style={{ fontSize: 8, fontWeight: page === n.id ? 800 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{n.l}</span>
-            </button>
-          ))}
-          <button onClick={() => supabase.auth.signOut()} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '7px 1px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, color: C.txl }}>
-            <div style={{ borderRadius: 7, padding: '3px 5px' }}><Ic n="x" s={17} c={C.txl} /></div>
-            <span style={{ fontSize: 8, fontWeight: 500 }}>Esci</span>
-          </button>
-        </div>
       )}
+      </div>
     </div>
   );
 }
