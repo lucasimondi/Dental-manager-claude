@@ -1,0 +1,128 @@
+:root {
+  --pol-premium-bg: #f4f7fb;
+  --pol-premium-surface: rgba(255,255,255,.92);
+  --pol-premium-ink: #0d1726;
+  --pol-premium-muted: #6f7f90;
+  --pol-premium-line: rgba(15,23,42,.08);
+  --pol-premium-shadow: 0 18px 45px rgba(31,49,78,.10), 0 2px 8px rgba(31,49,78,.05);
+  --pol-premium-shadow-hover: 0 24px 58px rgba(31,49,78,.16), 0 7px 16px rgba(31,49,78,.08);
+}
+
+/* Premium Home canvas — presentation only. */
+body:has(.home-widget-grid) {
+  background:
+    radial-gradient(circle at 78% 2%, rgba(99,102,241,.09), transparent 28rem),
+    radial-gradient(circle at 42% 18%, rgba(14,165,233,.06), transparent 24rem),
+    var(--pol-premium-bg);
+}
+
+/* Header immediately preceding Home period selector. */
+body:has(.home-widget-grid) .home-period-context {
+  position: relative;
+  padding: 7px;
+  width: fit-content;
+  margin: -54px 0 22px auto;
+  border: 1px solid rgba(255,255,255,.75);
+  border-radius: 16px;
+  background: rgba(255,255,255,.78);
+  box-shadow: 0 10px 30px rgba(31,49,78,.08), inset 0 1px 0 rgba(255,255,255,.9);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.home-period-context__label { display: none; }
+.home-period-context button {
+  min-height: 38px !important;
+  border: 0 !important;
+  border-radius: 11px !important;
+  padding: 8px 13px !important;
+  background: transparent !important;
+  color: #718096 !important;
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease !important;
+}
+.home-period-context button:hover { transform: translateY(-1px); color: #172033 !important; }
+.home-period-context button.is-active {
+  color: #fff !important;
+  background: linear-gradient(135deg,#131b2d 0%,#23365c 55%,#101827 100%) !important;
+  box-shadow: 0 8px 18px rgba(15,23,42,.22), inset 0 1px 0 rgba(255,255,255,.16) !important;
+}
+
+.home-widget-grid {
+  gap: 18px !important;
+  perspective: 1200px;
+}
+.home-widget-frame {
+  border-radius: 20px !important;
+  transition: transform .22s ease, filter .22s ease;
+}
+.home-widget-frame:not(:has(.canonical-financial-widget)):hover {
+  transform: translateY(-2px);
+  filter: drop-shadow(0 12px 20px rgba(31,49,78,.07));
+}
+.home-widget-frame__content {
+  min-height: 100%;
+}
+.home-widget-frame__content > div:not(.canonical-financial-widget) {
+  border-radius: 20px !important;
+}
+
+/* Existing cards inside Home get a premium material treatment. */
+.home-widget-frame__content > div:not(.canonical-financial-widget) > div,
+.home-widget-frame__content > div:not(.canonical-financial-widget) > section {
+  border-color: var(--pol-premium-line) !important;
+}
+.home-widget-frame__content [style*="background: rgb(255, 255, 255)"],
+.home-widget-frame__content [style*="background: #fff"],
+.home-widget-frame__content [style*="background:#fff"] {
+  box-shadow: var(--pol-premium-shadow) !important;
+}
+
+/* Agenda and operational cards: brighter glass surface and deeper edges. */
+.home-widget-frame__content > div:not(.canonical-financial-widget) {
+  position: relative;
+}
+.home-widget-frame__content > div:not(.canonical-financial-widget) > div:last-child {
+  border-color: rgba(15,23,42,.07) !important;
+}
+
+/* Editing workspace stays premium but clearly editable. */
+.home-widget-frame__toolbar {
+  border: 1px solid rgba(99,102,241,.16) !important;
+  background: linear-gradient(180deg,rgba(255,255,255,.96),rgba(245,247,255,.92)) !important;
+  box-shadow: 0 8px 24px rgba(57,68,118,.08) !important;
+  color: #475569 !important;
+}
+.home-widget-frame__move button,
+.home-widget-frame__sizes button {
+  border-color: rgba(99,102,241,.14) !important;
+  box-shadow: 0 3px 8px rgba(31,49,78,.05);
+}
+.home-widget-frame__sizes button.is-active {
+  background: linear-gradient(135deg,#4f46e5,#2563eb) !important;
+  border-color: transparent !important;
+  box-shadow: 0 6px 14px rgba(79,70,229,.25);
+}
+
+@media (max-width: 900px) {
+  body:has(.home-widget-grid) .home-period-context {
+    margin: 0 0 18px 0;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .home-period-context button { flex: 1 1 120px; }
+  .home-widget-grid { gap: 14px !important; }
+}
+
+@media (max-width: 600px) {
+  body:has(.home-widget-grid) { background: #f5f7fb; }
+  .home-period-context { border-radius: 14px !important; padding: 5px !important; }
+  .home-period-context button { min-height: 42px !important; padding: 7px 8px !important; font-size: 10px !important; }
+  .home-widget-frame { border-radius: 17px !important; }
+  .home-widget-frame__content > div:not(.canonical-financial-widget) { border-radius: 17px !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-widget-frame,
+  .canonical-financial-widget,
+  .home-period-context button { transition: none !important; }
+}
