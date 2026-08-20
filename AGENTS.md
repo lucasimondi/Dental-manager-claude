@@ -1,6 +1,6 @@
 # Poliedra agent rules
 
-These rules are mandatory for every coding agent, including Codex and Claude Code.
+These rules are mandatory for every coding agent, including Codex, Gemini and Claude Code.
 
 ## Required reading order
 
@@ -10,8 +10,14 @@ Before any work:
 3. Read `docs/coordination/current-task.md`.
 4. Read the architecture documents relevant to the task.
 5. Read the latest entry in `docs/coordination/handoffs.md`.
+6. If the task touches Supabase, schema, migrations, RLS, tenancy or security-sensitive database access, also read:
+   - `docs/runbooks/runbook-sviluppo-sicuro.md`
+   - `docs/runbooks/runbook-rls-nuove-tabelle.md`
+7. If the task touches the Physiotherapy vertical, also read:
+   - `docs/verticals/physio/POLIEDRA_PHYSIO_SCHEMA.md`
+   - the relevant `docs/architecture/pol-fis-*` documents.
 
-Do not rely on chat history as project memory. The repository is the source of truth.
+Do not rely on chat history, Claude Projects, Gemini sessions or another provider's memory as project memory. The repository is the source of truth.
 
 ## Product Master Context
 
@@ -49,6 +55,7 @@ Every handoff must record: task ID, previous agent, branch, objective, completed
 - Treat the publishable Supabase key as public configuration, but never expose service-role keys, database passwords, access tokens, webhook secrets, patient data, or production dumps.
 - Do not use production data in tests.
 - Fail closed when tenant identity or authorization is missing.
+- If two authorization models conflict, do not choose silently: stop with `PRODUCT_OWNER_DECISION_REQUIRED`.
 
 ## Scope discipline
 
