@@ -6,11 +6,22 @@ These rules are mandatory for every coding agent, including Codex and Claude Cod
 
 Before any work:
 1. Read `AGENTS.md`.
-2. Read `docs/coordination/current-task.md`.
-3. Read the architecture documents relevant to the task.
-4. Read the latest entry in `docs/coordination/handoffs.md`.
+2. Read `docs/POLIEDRA_MASTER_CONTEXT.md`.
+3. Read `docs/coordination/current-task.md`.
+4. Read the architecture documents relevant to the task.
+5. Read the latest entry in `docs/coordination/handoffs.md`.
 
 Do not rely on chat history as project memory. The repository is the source of truth.
+
+## Product Master Context
+
+`docs/POLIEDRA_MASTER_CONTEXT.md` contains the stable Product Owner vision, architectural decisions, product roadmap and cross-project constraints.
+
+Do not override it silently. If an implementation requires a conflicting product decision, mark:
+
+`PRODUCT_OWNER_DECISION_REQUIRED`
+
+The Master Context is stable product direction. `docs/coordination/current-task.md` remains the source of truth for the current operational task and branch.
 
 ## Ownership and task control
 
