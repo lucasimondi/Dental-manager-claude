@@ -117,9 +117,9 @@ export default function ControlloCockpit({ studioId, patients = [], plans = [], 
     <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
         <div style={{ fontSize: 11, color: C.txl }}>Cockpit direzionale — stessa fonte dati di ogni altro numero in app</div>
-        <div style={{ display: 'flex', gap: 4, background: C.bg, borderRadius: 8, padding: 3 }}>
+        <div style={{ display: 'flex', gap: 4, background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 8, padding: 3 }}>
           {[['mese', 'Questo mese'], ['anno', "Quest'anno"]].map(([id, lbl]) => (
-            <button key={id} onClick={() => setPeriodo(id)} style={{ border: 'none', borderRadius: 6, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', background: periodo === id ? C.pri : 'transparent', color: periodo === id ? '#fff' : C.txm }}>{lbl}</button>
+            <button key={id} onClick={() => setPeriodo(id)} style={{ border: 'none', borderRadius: 6, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', background: periodo === id ? C.pri : 'transparent', color: periodo === id ? '#fff' : C.txt }}>{lbl}</button>
           ))}
         </div>
       </div>

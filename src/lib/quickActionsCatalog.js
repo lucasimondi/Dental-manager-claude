@@ -61,7 +61,8 @@ export const QUICK_ACTIONS_CATALOG = Object.freeze([
   },
   {
     id: 'richiamo', ic: 'bell', label: 'Richiamo',
-    run: (ctx) => ctx.onGoRichiami ? ctx.onGoRichiami() : ctx.onNavigate('richiami'),
+    workflow: ['navigate:richiami', 'open_new_richiamo_form'],
+    run: (ctx) => ctx.onNavigateNew ? ctx.onNavigateNew('richiami') : (ctx.onGoRichiami ? ctx.onGoRichiami() : ctx.onNavigate('richiami')),
   },
   {
     id: 'controllo_gestione', ic: 'chart', label: 'Controllo di gestione',

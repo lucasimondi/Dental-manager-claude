@@ -61,9 +61,6 @@
 .canonical-financial-widget__meta { position:relative; z-index:1; margin-top: 13px; color: rgba(255,255,255,.45); font-size: 8px; font-weight:700; letter-spacing:.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .canonical-financial-widget__accent { position:absolute; left:18px; right:18px; bottom:14px; height:2px; border-radius:999px; opacity:.24; background:linear-gradient(90deg,rgba(255,255,255,.2),rgba(255,255,255,.92),rgba(255,255,255,.08)); transform:scaleX(.58); transform-origin:left center; }
 
-.home-period-context { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 0 0 16px; }
-.home-period-context__label { margin-right: 4px; color: #64748b; font-size: 11px; font-weight: 800; }
-
 @media (max-width: 600px) {
   .canonical-financial-widget { min-height:122px; padding:16px; border-radius:17px; }
   .canonical-financial-widget__glyph { width:34px; height:34px; flex-basis:34px; border-radius:11px; }
@@ -87,4 +84,38 @@
 .cmv__card:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 @media (max-width: 600px) {
   .cmv__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+}
+
+/* ── Legacy "Pannello economico" Home widget (POL-UX-002 section 7) ──
+   Presentation-only depth pass — reuses the same glass-sheen + accent-ring
+   grammar as .canonical-financial-widget above so this widget stops
+   looking flat next to the rest of Home. No data, formula, or
+   useControlloDati change: only position/overflow/box-shadow/pseudo-
+   elements are added here, background/border stay inline (Dashboard.jsx)
+   since they're already dynamic per theme (C.pri/C.priD). */
+.pol-economico-summary {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 20px 42px rgba(30,41,59,.20), 0 4px 10px rgba(30,41,59,.12), inset 0 1px 0 rgba(255,255,255,.20);
+}
+.pol-economico-summary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg,rgba(255,255,255,.14),transparent 30%,transparent 72%,rgba(255,255,255,.04));
+}
+.pol-economico-summary::after {
+  content: '';
+  position: absolute;
+  width: 90px; height: 90px;
+  right: -34px; bottom: -46px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 0 0 18px rgba(255,255,255,.03);
+  pointer-events: none;
+}
+.pol-economico-detail {
+  border-color: rgba(15,23,42,.09) !important;
+  box-shadow: 0 10px 26px rgba(31,49,78,.09) !important;
 }

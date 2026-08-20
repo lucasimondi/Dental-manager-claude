@@ -393,6 +393,15 @@ export const LOGO_SLUG_PER_VERTICAL = {
   personal_trainer: 'fit',
   medico_chirurgo: 'medical',
 };
+
+// POL-UX-002: etichetta breve del vertical per il lockup di brand testuale
+// "POLIEDRA" + descrittore (sidebar/header) — stessa chiave slug di sopra,
+// non il vertical grezzo, così i due si aggiornano insieme. "salus" è il
+// default per chi non ha uno slug dedicato (vedi commento sopra).
+export const LOGO_SLUG_LABEL = {
+  dental: 'Dental', fisio: 'Physio', mind: 'Mind',
+  wellness: 'Wellness', fit: 'Fit', medical: 'Medical', salus: 'Salus',
+};
 export const getLogoSlug = (vertical) => LOGO_SLUG_PER_VERTICAL[vertical] || 'salus';
 
 // Anamnesi medica standard per i verticali con formazione medica

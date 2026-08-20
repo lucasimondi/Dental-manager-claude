@@ -61,6 +61,7 @@ test('form-opening quick actions call onNavigateNew with the real target page, n
     ['nuovo_paziente_appuntamento', 'paz'],
     ['nuovo_preventivo', 'piani'],
     ['pagamento', 'paga'],
+    ['richiamo', 'richiami'],
   ];
   for (const [id, expectedTarget] of formOpeningActions) {
     const action = getQuickAction(id);
@@ -81,4 +82,18 @@ test('form-opening quick actions fall back to onNavigate when onNavigateNew is u
   let navigateCalledWith = null;
   action.run({ onNavigate: (target) => { navigateCalledWith = target; } });
   assert.equal(navigateCalledWith, 'paz');
+});
+
+// richiamo has a two-level fallback (onNavigateNew -> onGoRichiami ->
+// onNavigate) predating this fix; confirm the full chain still degrades
+// gracefully when onNavigateNew specifically is unavailable.
+test('richiamo falls back to onGoRichiami, then onNavigate, when onNavigateNew is unavailable', () => {
+  const action = getQuickAction('richiamo');
+  let goRichiamiCalled = false;
+  action.run({ onGoRichiami: () => { goRichiamiCalled = true; }, onNavigate: () => { throw new Error('should not reach onNavigate'); } });
+  assert.equal(goRichiamiCalled, true);
+
+  let navigateCalledWith = null;
+  action.run({ onNavigate: (target) => { navigateCalledWith = target; } });
+  assert.equal(navigateCalledWith, 'richiami');
 });

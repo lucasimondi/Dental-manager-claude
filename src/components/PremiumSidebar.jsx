@@ -1,5 +1,5 @@
 import React from 'react';
-import { Ic } from './ui';
+import { Ic, PoliedraBrand } from './ui';
 
 /* POL-UI-003 — premium desktop/tablet-large navigation sidebar.
    Visual-only shell around the app's real navigation: it renders the same
@@ -8,11 +8,15 @@ import { Ic } from './ui';
    the single source of truth (`navVisibile`, `page`, `setPage`). Mobile
    keeps its existing MobileDock; this component only ever mounts when
    `!isMobile`. */
-export default function PremiumSidebar({ nav, page, setPage, logoSrc, studioName, userName, isSuperAdmin, onOpenMasterDashboard, onLogout }) {
+export default function PremiumSidebar({ nav, page, setPage, customLogoSrc, vertical, studioName, userName, onLogout }) {
   return (
     <aside className="premium-sidebar">
       <div className="premium-sidebar__brand">
-        <img src={logoSrc} alt="Poliedra" className="premium-sidebar__logo" />
+        {customLogoSrc ? (
+          <img src={customLogoSrc} alt={studioName || 'Logo'} className="premium-sidebar__logo" />
+        ) : (
+          <PoliedraBrand vertical={vertical} />
+        )}
       </div>
 
       <nav className="premium-sidebar__nav" aria-label="Navigazione principale">
@@ -31,11 +35,6 @@ export default function PremiumSidebar({ nav, page, setPage, logoSrc, studioName
       </nav>
 
       <div className="premium-sidebar__footer">
-        {isSuperAdmin && (
-          <button type="button" className="premium-sidebar__footer-btn" onClick={onOpenMasterDashboard}>
-            <span aria-hidden="true">🛠️</span><span>Dashboard Master</span>
-          </button>
-        )}
         <div className="premium-sidebar__identity">
           {studioName && <div className="premium-sidebar__studio">{studioName}</div>}
           {userName && <div className="premium-sidebar__user">{userName}</div>}
