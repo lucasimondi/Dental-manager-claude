@@ -53,9 +53,16 @@ test('operational Fisio UI never queries evaluations or mounts plan editors',()=
   assert.match(source,/fullAccess && sub === 'domiciliare'/);
 });
 
-test('POL-RBAC-001A: Team del percorso reads patient-scoped assignments and never sends created_by from the client',()=>{
+test('POL-RBAC-001A: Team del percorso reads the data-minimized roster RPC, never selects the base table directly, and never sends created_by from the client',()=>{
   const source=fs.readFileSync('src/components/PhysioCartella.jsx','utf8');
-  assert.match(source,/supabase\.from\('patient_care_assignments'\)\.select\('\*'\)\.eq\('patient_id', ?paziente_id\)\.eq\('active', ?true\)/);
+  // Product Owner decision: a PT/massage teammate must only ever see
+  // identity/role/status (id,user_id,assignment_type,active) for their
+  // patient's active team, never the raw table (which also carries
+  // created_by/timestamps/reason) -- so the roster read must go through
+  // patient_care_team_roster_v1, and the raw table must never be selected
+  // from directly anywhere in this file.
+  assert.match(source,/supabase\.rpc\('patient_care_team_roster_v1', ?\{ ?p_studio_id: ?studio_id, ?p_patient_id: ?paziente_id ?\}\)/);
+  assert.doesNotMatch(source,/supabase\.from\('patient_care_assignments'\)\.select/,'the roster must never be read via a raw table select -- use the data-minimized RPC');
   const insertBlock=source.match(/supabase\.from\('patient_care_assignments'\)\.insert\(\{[\s\S]*?\}\)/);
   assert.ok(insertBlock,'assignment insert call is present');
   assert.doesNotMatch(insertBlock[0],/created_by/,'created_by must be server-enforced, never client-supplied');

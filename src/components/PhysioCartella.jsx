@@ -609,8 +609,13 @@ function SezioneTeam({ studio_id, paziente_id, currentUserId, canManageTeam }) {
 
   const ricarica = async () => {
     setLoading(true);
+    // Data-minimized roster read (server-authoritative): the RPC returns
+    // only id/user_id/assignment_type/active, scoped to this one patient's
+    // active team. Never select from patient_care_assignments directly here
+    // — that table also carries created_by/timestamps/reason, which a
+    // PT/massage teammate must not be able to read (Product Owner decision).
     const [{ data: assignments }, { data: utenti }] = await Promise.all([
-      supabase.from('patient_care_assignments').select('*').eq('patient_id', paziente_id).eq('active', true).order('created_at'),
+      supabase.rpc('patient_care_team_roster_v1', { p_studio_id: studio_id, p_patient_id: paziente_id }),
       supabase.from('studio_users').select('user_id,nome,email').eq('studio_id', studio_id),
     ]);
     setTeam(assignments || []);

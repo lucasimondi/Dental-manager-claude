@@ -160,13 +160,86 @@ SELECT pg_temp.assert_true(
 SELECT set_config('request.jwt.claims','{"sub":"a0000000-0000-4000-8000-000000000004"}',true);
 SELECT pg_temp.assert_true((SELECT count(*) FROM public.physio_piani)=0,'PT1 loses access immediately once the assignment is deactivated');
 
--- A teammate still actively assigned to Patient A (a6, massage_therapist)
--- must not see PT1's just-ended row (or its reason/ended_by) through the
--- "shared patient" roster branch — only the active roster, not history.
+-- ── Roster data minimization (Product Owner decision) ────────────────────
+-- A6 is still actively assigned to Patient A as massage_therapist. Direct
+-- base-table access must now return ONLY their own row (PT1's just-ended
+-- row, and anyone else's, must be invisible) — the raw table grants full
+-- columns (created_by/timestamps/reason), which a PT/massage teammate must
+-- never read, per Product Owner decision.
 SELECT set_config('request.jwt.claims','{"sub":"a0000000-0000-4000-8000-000000000006"}',true);
 SELECT pg_temp.assert_true(
+  (SELECT count(*) FROM public.patient_care_assignments WHERE patient_id=101)=1,
+  'a PT/massage teammate has no raw table access to other professionals'' rows, only their own'
+);
+SELECT pg_temp.assert_true(
   (SELECT count(*) FROM public.patient_care_assignments WHERE patient_id=101 AND user_id='a0000000-0000-4000-8000-000000000004')=0,
-  'an active teammate cannot see another professional''s ended assignment or its reason/ended_by through the shared-patient roster'
+  'an active teammate cannot see another professional''s ended assignment or its reason/ended_by via the base table'
+);
+
+-- The data-minimized roster function is the correct read path instead: it
+-- returns the active team (a3 responsible_physiotherapist + a6 themselves;
+-- PT1/a4 excluded, ended) with exactly id/user_id/assignment_type/active —
+-- identity, role, status — nothing else.
+SELECT pg_temp.assert_true(
+  (SELECT count(*) FROM public.patient_care_team_roster_v1('10000000-0000-4000-8000-000000000001',101))=2,
+  'roster function returns the active team (responsible physiotherapist + self), excluding the ended PT1 row'
+);
+SELECT pg_temp.assert_true(
+  (SELECT bool_and(active) FROM public.patient_care_team_roster_v1('10000000-0000-4000-8000-000000000001',101)),
+  'roster function never returns inactive/ended rows'
+);
+SELECT pg_temp.assert_true(
+  (SELECT count(*) FROM public.patient_care_team_roster_v1('10000000-0000-4000-8000-000000000001',102))=0,
+  'roster function returns nothing for a patient the teammate is not assigned to'
+);
+
+-- Unauthorized callers (front desk, capability-only unassigned PT) get an
+-- empty roster too, even for a patient that does have an active team. The
+-- non-clinical owner is deliberately NOT tested as "denied" here: they hold
+-- studio.manage_members like any active admin and are meant to see the
+-- roster (same tier as the physiotherapist) — that is correct, unrestricted
+-- access, not a gap this decision addresses.
+SELECT set_config('request.jwt.claims','{"sub":"a0000000-0000-4000-8000-000000000002"}',true);
+SELECT pg_temp.assert_true(
+  (SELECT count(*) FROM public.patient_care_team_roster_v1('10000000-0000-4000-8000-000000000001',101))=0,
+  'front desk cannot read the team roster'
+);
+SELECT set_config('request.jwt.claims','{"sub":"a0000000-0000-4000-8000-000000000009"}',true);
+SELECT pg_temp.assert_true(
+  (SELECT count(*) FROM public.patient_care_team_roster_v1('10000000-0000-4000-8000-000000000001',101))=0,
+  'an unassigned PT (capability only) cannot read another patient''s team roster'
+);
+SELECT set_config('request.jwt.claims','{"sub":"a0000000-0000-4000-8000-000000000001"}',true);
+SELECT pg_temp.assert_true(
+  (SELECT count(*) FROM public.patient_care_team_roster_v1('10000000-0000-4000-8000-000000000001',101))=2,
+  'non-clinical owner (studio.manage_members) reads the roster same as physiotherapist -- admin tier, not a PT/massage restriction'
+);
+
+-- Physiotherapist keeps the full contractual view: same active-team count
+-- via the roster function, AND full-row access to the base table (audit
+-- fields included) that a PT/massage teammate no longer has.
+SELECT set_config('request.jwt.claims','{"sub":"a0000000-0000-4000-8000-000000000003"}',true);
+SELECT pg_temp.assert_true(
+  (SELECT count(*) FROM public.patient_care_team_roster_v1('10000000-0000-4000-8000-000000000001',101))=2,
+  'physiotherapist reads the same active roster via the function'
+);
+SELECT pg_temp.assert_true(
+  (SELECT count(*) FROM public.patient_care_assignments WHERE patient_id=101)>=3,
+  'physiotherapist retains full-row base-table access, including the ended PT1 row'
+);
+
+-- ── Suspension re-check on the roster's own authorization helper ─────────
+-- A6's own studio_users membership is now suspended (their assignment row
+-- stays active=true, untouched) — caller_has_active_patient_assignment_v1
+-- must independently fail closed on the caller's membership, not just the
+-- assignment row's active flag.
+RESET ROLE;
+UPDATE public.studio_users SET stato='sospeso' WHERE user_id='a0000000-0000-4000-8000-000000000006';
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claims','{"sub":"a0000000-0000-4000-8000-000000000006"}',true);
+SELECT pg_temp.assert_true(
+  (SELECT count(*) FROM public.patient_care_team_roster_v1('10000000-0000-4000-8000-000000000001',101))=0,
+  'a suspended user cannot use a still-active assignment row to read the team roster'
 );
 
 -- ── Author spoofing on the new physio_esecuzioni authorship ──────────────

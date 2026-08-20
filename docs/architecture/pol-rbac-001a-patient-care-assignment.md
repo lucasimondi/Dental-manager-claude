@@ -44,7 +44,13 @@ studio
 how they are granted (Setup → Collaboratori is untouched); this only decides
 which patients an already-capable user may act on.
 
-### POL-FIS-001 adapter, not a dependency
+### POL-FIS-001 adapter — Product Owner approved, transitional only
+
+**Product Owner decision (recorded verbatim):** *"APPROVATO `episode_id →
+physio_piani` esclusivamente come adapter transitorio fino alla
+stabilizzazione del canonical episode di POL-FIS-001. Documentalo
+esplicitamente come transitional compatibility layer. Non creare un secondo
+modello episodio e non eseguire backfill inventati."*
 
 `episode_id` is nullable and references `physio_piani(id)` — the only
 stable, already-merged concept that plays the "episode/care-path" role in
@@ -52,14 +58,30 @@ this codebase today. POL-FIS-001 (PR #14, physiotherapy clinical core) is
 **not merged** and its `physio_episodes_v1` contract is not stable relative
 to this branch: that PR is based on an earlier point in history and removes
 files (POL-UI-001/POL-003F) this branch depends on, so it cannot be adopted
-as-is without an incompatible rewrite. Per the task's dependency-handling
-instructions, this migration does not depend on POL-FIS-001. All RLS gating
-in this migration operates at **patient granularity only** (`patient_id`);
-`episode_id` is carried as forward-compatible metadata and is not read by any
-policy. When POL-FIS-001's episode contract stabilizes and merges, a
-follow-up migration should repoint/rename this column onto
-`physio_episodes_v1` — flagged here as `PRODUCT_OWNER_DECISION_REQUIRED` for
-that future convergence, not something this task resolves.
+as-is without an incompatible rewrite.
+
+This column is a **TRANSITIONAL COMPATIBILITY LAYER**, nothing more:
+
+- it is not, and must not become, a second episode/care-path model — no
+  parallel schema, no independent lifecycle, no new semantics beyond "points
+  at the nearest existing stand-in for an episode";
+- no episode data is backfilled or invented anywhere in this migration or
+  any test fixture — every `episode_id` in the codebase today is `NULL`;
+  nothing populates it;
+- all RLS gating in this migration operates at **patient granularity only**
+  (`patient_id`); `episode_id` is inert metadata, not read by any policy or
+  function;
+- convergence is mandatory, not optional, once POL-FIS-001 merges and
+  stabilizes: a follow-up migration must repoint/rename this column onto the
+  canonical `physio_episodes_v1` (or successor). This is tracked as future
+  work, not `PRODUCT_OWNER_DECISION_REQUIRED` any more — the Product Owner
+  has already decided the adapter itself is approved; only the mechanics of
+  the eventual convergence migration remain to be designed when POL-FIS-001
+  is ready.
+
+Both the column and the table carry `COMMENT ON ... IS 'TRANSITIONAL
+COMPATIBILITY LAYER ...'` in the migration itself, so this constraint is
+visible directly in `\d+ patient_care_assignments`, not just in this doc.
 
 ### Assignment types
 
@@ -82,6 +104,34 @@ restriction would attach without a schema change.
   `clinical.physiotherapist` — the responsible clinician can build their own
   patient's team without needing an admin for every change
   (`can_manage_patient_assignment_v1`).
+- **Who can read a patient's team roster, and how much**: two tiers, per an
+  explicit Product Owner decision:
+  - `studio.manage_members` and `clinical.physiotherapist` get full-row
+    access to `patient_care_assignments` directly (`patient_care_assignments_select`)
+    — the "vista completa del team previsto dal contratto."
+  - A PT/massage therapist gets **only** the data-minimized
+    `patient_care_team_roster_v1(studio_id, patient_id)` function: it returns
+    `id, user_id, assignment_type, active` — identity, role in the pathway,
+    and status — for the active team of the one patient they are themselves
+    actively assigned to, and nothing else. They have **no** raw SELECT
+    grant on `patient_care_assignments` for other users' rows at all (only
+    their own row, via the `user_id = auth.uid()` branch) — an earlier
+    version of this migration granted them full-row table access when
+    actively assigned to the same patient (including `created_by`,
+    `created_at`/`updated_at`, `ended_at`/`ended_by`, `reason`), which the
+    Product Owner rejected as exceeding "identità professionale, ruolo nel
+    percorso e stato": *"Non devono poter derivare capability globali, altri
+    assignment, altri pazienti o contenuti clinici aggiuntivi tramite il
+    roster."* The function is `SECURITY DEFINER`, so this is a genuine
+    column-level restriction, not a UI convention — a direct API call gets
+    exactly the same four columns regardless of client code.
+  - `caller_has_active_patient_assignment_v1` (used by the roster function's
+    authorization check) also gained an explicit re-check of the caller's
+    own `studio_users.stato = 'attivo'` in this same round — it previously
+    only checked that the caller's assignment row was `active`, which does
+    not by itself prove they aren't suspended; membership must fail closed
+    independently of assignment state, matching every other access path in
+    this migration.
 - **Valid assignment targets**: the target user must have an active
   membership in the same studio and hold the `studio_user_capabilities` row
   matching the assignment type (`patient_assignment_target_eligible_v1`).
@@ -158,15 +208,20 @@ does not grant access to a patient assigned under only one of them.
 
 `PhysioCartella.jsx` gains a "Team del percorso" section (visible in both
 full and operational modes) showing the active roster grouped by
-responsibility, and, for whoever holds `studio.manage_members` or
-`clinical.physiotherapist` (`canManageTeam`, derived in `SchedaPaz.jsx` from
-capability only — never from assignment count or patient data, so the
-POL-UI-002 "capability decides what, not how many patients" boundary holds),
-a "Gestisci team" action to assign or terminate a professional. The picker
-only lists same-studio users whose `studio_user_capabilities` row matches
-the chosen responsibility. Every row shown and every action offered is
-presentation only — hiding "Gestisci team" is UX, not security; the same
-`patient_care_assignments` RLS applies to a direct API call from any role.
+responsibility, read via `patient_care_team_roster_v1` (never a raw
+`patient_care_assignments` select — see "Authorization" above), and, for
+whoever holds `studio.manage_members` or `clinical.physiotherapist`
+(`canManageTeam`, derived in `SchedaPaz.jsx` from capability only — never
+from assignment count or patient data, so the POL-UI-002 "capability decides
+what, not how many patients" boundary holds), a "Gestisci team" action to
+assign or terminate a professional. The picker only lists same-studio users
+whose `studio_user_capabilities` row matches the chosen responsibility.
+Every row shown and every action offered is presentation only — hiding
+"Gestisci team" is UX, not security; the same server-side authorization
+(the roster function's data minimization, and `patient_care_assignments`
+RLS for writes) applies to a direct API call from any role, gated exactly
+the same way for a PT/massage therapist regardless of which client sends
+the request.
 
 `currentUserId`/`isStudioAdmin` are threaded `App.jsx` → `Pazienti.jsx` /
 `SchedaPaz.jsx` → `PhysioCartella.jsx`; no other prop wiring changed.

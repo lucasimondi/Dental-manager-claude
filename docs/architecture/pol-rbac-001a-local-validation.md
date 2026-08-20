@@ -6,6 +6,45 @@ Status: `PASSED_LOCAL_ONLY` — preliminary (PostgreSQL 16) **and** final
 exactly what each one covers; do not read the PostgreSQL 16 section alone as
 the completion gate.
 
+## Product Owner decisions applied this round
+
+Two decisions were requested and recorded verbatim in
+`docs/architecture/pol-rbac-001a-patient-care-assignment.md`:
+
+1. **`episode_id → physio_piani` approved as a transitional compatibility
+   layer only.** The implementation already matched this exactly (nullable,
+   patient-level-only RLS gating, no second episode model, no backfill
+   anywhere) — this was a **documentation-only** change: the migration's
+   table/column comments and header, plus the architecture doc, now use the
+   Product Owner's exact "transitional compatibility layer" framing and
+   record the decision verbatim.
+2. **PT/massage therapist roster visibility restricted to identity/role/
+   status of the active team, with no way to derive global capabilities,
+   other assignments, other patients or clinical content.** The
+   implementation **did not** already satisfy this — checked before touching
+   anything, not assumed. Two real gaps, both fixed:
+   - The "shared teammate" branch of `patient_care_assignments_select`
+     granted full-row SELECT (including `created_by`, `created_at`/
+     `updated_at`, `ended_at`/`ended_by`, `reason`, `episode_id`) to any
+     active teammate on the same patient — a direct API call bypassing the
+     UI could read all of it. Fixed by removing that branch entirely (base
+     table SELECT is now admin/physiotherapist/own-row only) and adding
+     `patient_care_team_roster_v1(studio_id, patient_id)`, a `SECURITY
+     DEFINER` function that returns exactly `id, user_id, assignment_type,
+     active` — a genuine column-level restriction, not a convention, since
+     the function's return type structurally cannot carry the extra columns
+     regardless of caller. `PhysioCartella.jsx` now reads the roster
+     exclusively through this RPC.
+   - While rebuilding this path, found `caller_has_active_patient_assignment_v1`
+     never re-checked the caller's own `studio_users.stato = 'attivo'` — a
+     suspended user whose assignment row was still `active=true` could still
+     pass it. Fixed with a join to `studio_users`, and applied the same
+     membership check to the *listed* rows in the roster function (a
+     suspended team member's still-`active=true` assignment no longer
+     appears as part of "the active team" to anyone).
+   - Both fixes are strictly narrowing (nothing gained access that didn't
+     already have it) and are covered by nine new regression assertions.
+
 ## Why two Postgres engines appear in this document
 
 Prior POL-RBAC-001/POL-UI-002 validation ran against a disposable Supabase
@@ -188,6 +227,11 @@ Supabase-patched build specifically, that remains
 `PRODUCT_OWNER_DECISION_REQUIRED` — see "Residual gap" below.
 
 ### What ran on PostgreSQL 17, mapped to the Product Owner's required list
+
+Re-confirmed after the roster data-minimization and membership-suspension
+fixes above (same seven-file chain, same PostgreSQL 17.5 PGlite engine, same
+transcript shape below — the nine new regression assertions for both fixes
+are included in `pol_rbac_001a_patient_care_assignment.sql` and passed).
 
 All seven files were applied via one persistent PGlite (PostgreSQL 17.5)
 instance, executed in commit order with no edits, `ON_ERROR_STOP`-equivalent

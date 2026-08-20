@@ -19,9 +19,12 @@ BEGIN;
 -- based on an older point in history and removes files this branch depends
 -- on). This migration does not depend on it. The nullable episode_id column
 -- below points at physio_piani — the only stable, already-merged concept
--- that plays the "episode/care-path" role today — as an explicit, isolated
--- adapter. When POL-FIS-001's episode contract stabilizes and merges, a
--- follow-up migration should repoint/rename this column; see
+-- that plays the "episode/care-path" role today — as a TRANSITIONAL
+-- COMPATIBILITY LAYER, approved by Product Owner explicitly as an interim
+-- adapter only: this is not a second episode model and no episode data is
+-- backfilled or invented anywhere in this migration. When POL-FIS-001's
+-- canonical episode contract stabilizes and merges, a follow-up migration
+-- must converge this column onto it (repoint/rename); see
 -- docs/architecture/pol-rbac-001a-patient-care-assignment.md.
 -- ============================================================================
 
@@ -156,11 +159,17 @@ $$;
 REVOKE ALL ON FUNCTION public.patient_assignment_target_eligible_v1(uuid,uuid,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.patient_assignment_target_eligible_v1(uuid,uuid,text) TO authenticated;
 
--- Used only by the assignment SELECT policy below. A self-referencing EXISTS
--- subquery directly in the policy causes Postgres to detect infinite
--- recursion on this table; a SECURITY DEFINER function runs as owner
--- (RLS-exempt) and avoids it, the same pattern already used by every other
--- POL-RBAC-001/POL-RBAC-001A helper.
+-- Used by patient_care_team_roster_v1 below (and, historically, by a wider
+-- SELECT policy branch removed per Product Owner decision — see that
+-- function for the current data-minimized roster contract). A
+-- self-referencing EXISTS subquery directly in a policy on this table
+-- causes Postgres to detect infinite recursion; a SECURITY DEFINER function
+-- runs as owner (RLS-exempt) and avoids it, the same pattern used by every
+-- other POL-RBAC-001/POL-RBAC-001A helper. Also re-checks the caller's own
+-- active membership: an assignment row staying active=true does not by
+-- itself prove the caller isn't suspended — membership must fail closed
+-- independently of assignment state, exactly as physio_patient_in_studio_v1
+-- already does.
 CREATE OR REPLACE FUNCTION public.caller_has_active_patient_assignment_v1(p_studio_id uuid, p_patient_id bigint)
 RETURNS boolean
 LANGUAGE sql
@@ -170,12 +179,52 @@ SET search_path = ''
 AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.patient_care_assignments pca
+    JOIN public.studio_users su ON su.studio_id = pca.studio_id AND su.user_id = pca.user_id
     WHERE pca.studio_id = p_studio_id AND pca.patient_id = p_patient_id
       AND pca.user_id = (SELECT auth.uid()) AND pca.active
+      AND su.stato = 'attivo'
   )
 $$;
 REVOKE ALL ON FUNCTION public.caller_has_active_patient_assignment_v1(uuid,bigint) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.caller_has_active_patient_assignment_v1(uuid,bigint) TO authenticated;
+
+-- Data-minimized team roster, per Product Owner decision: a PT/massage
+-- therapist teammate may see WHO is on the active team for the one patient
+-- they are themselves actively assigned to — identity (user_id, resolved to
+-- a name client-side), role in the pathway (assignment_type) and status
+-- (active) — and nothing else. They must not be able to derive global
+-- capabilities, other assignments, other patients or additional clinical
+-- content through this path. An admin/physiotherapist gets the same
+-- projection here too (this function is the shared roster read path for
+-- everyone), but retains full-row access to the base table separately
+-- (patient_care_assignments_select above) for the "vista completa del
+-- team previsto dal contratto". Listed rows also require the team member's
+-- OWN membership to currently be active — an assignment left active=true
+-- while its holder's studio membership is suspended should not appear as
+-- part of the "active team" either; membership fails closed on both sides
+-- of this read, caller and listed member alike.
+CREATE OR REPLACE FUNCTION public.patient_care_team_roster_v1(p_studio_id uuid, p_patient_id bigint)
+RETURNS TABLE(id bigint, user_id uuid, assignment_type text, active boolean)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT pca.id, pca.user_id, pca.assignment_type, pca.active
+  FROM public.patient_care_assignments pca
+  JOIN public.studio_users su ON su.studio_id = pca.studio_id AND su.user_id = pca.user_id
+  WHERE pca.studio_id = p_studio_id
+    AND pca.patient_id = p_patient_id
+    AND pca.active
+    AND su.stato = 'attivo'
+    AND (
+      public.has_studio_capability_v1(p_studio_id, 'studio.manage_members')
+      OR public.has_studio_capability_v1(p_studio_id, 'clinical.physiotherapist')
+      OR public.caller_has_active_patient_assignment_v1(p_studio_id, p_patient_id)
+    )
+$$;
+REVOKE ALL ON FUNCTION public.patient_care_team_roster_v1(uuid,bigint) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.patient_care_team_roster_v1(uuid,bigint) TO authenticated;
 
 -- ── Server-enforced authorship, tenant-safety and immutability ─────────
 CREATE OR REPLACE FUNCTION public.patient_care_assignments_guard_v1()
@@ -236,20 +285,21 @@ BEFORE INSERT OR UPDATE ON public.patient_care_assignments
 FOR EACH ROW EXECUTE FUNCTION public.patient_care_assignments_guard_v1();
 
 -- ── RLS: assignment table ───────────────────────────────────────────────
--- Read: admins and physiotherapists see the full roster (team visibility for
--- the clinician responsible for the patient); an assigned professional sees
--- their own row and the active roster of any patient they are themselves
--- actively assigned to (coordination context), never the whole tenant.
+-- Read (base table, full row): admins and physiotherapists see the complete
+-- team per the approved contract (audit fields included — team composition
+-- is part of the clinical/managerial record they're responsible for); any
+-- user sees their own row. Per Product Owner decision, a PT/massage
+-- therapist teammate does NOT get raw table access to other professionals'
+-- rows (that would expose created_by/created_at/ended_at/ended_by/reason —
+-- more than "identity, role, status"): their roster view is
+-- patient_care_team_roster_v1() below, a data-minimized, SECURITY DEFINER
+-- projection, not a table grant.
 CREATE POLICY patient_care_assignments_select ON public.patient_care_assignments
 FOR SELECT TO authenticated
 USING (
   (SELECT public.has_studio_capability_v1(studio_id, 'studio.manage_members'))
   OR (SELECT public.has_studio_capability_v1(studio_id, 'clinical.physiotherapist'))
   OR user_id = (SELECT auth.uid())
-  OR (
-    active
-    AND (SELECT public.caller_has_active_patient_assignment_v1(studio_id, patient_id))
-  )
 );
 
 CREATE POLICY patient_care_assignments_insert ON public.patient_care_assignments
@@ -401,8 +451,12 @@ CREATE POLICY physio_esecuzioni_update ON public.physio_esecuzioni FOR UPDATE TO
 );
 
 COMMENT ON TABLE public.patient_care_assignments IS
-  'POL-RBAC-001A explicit patient/episode assignment. Separate from studio_user_capabilities: capability says what a user may do, assignment says which patient they may do it with. episode_id is a nullable adapter onto physio_piani pending POL-FIS-001 episode convergence.';
+  'POL-RBAC-001A explicit patient/episode assignment. Separate from studio_user_capabilities: capability says what a user may do, assignment says which patient they may do it with. episode_id is a TRANSITIONAL COMPATIBILITY LAYER onto physio_piani, approved by Product Owner as an interim adapter only -- not a second episode model. When POL-FIS-001''s canonical clinical episode stabilizes and merges, this column must converge onto it (repoint/rename via a follow-up migration); no data is backfilled or invented in the meantime.';
+COMMENT ON COLUMN public.patient_care_assignments.episode_id IS
+  'Transitional compatibility layer onto physio_piani pending POL-FIS-001 canonical episode convergence. Not read by any RLS policy (gating is patient-level only). Do not build new features assuming this is the final episode model.';
 COMMENT ON FUNCTION public.physio_patient_in_studio_v1(uuid,bigint) IS
   'POL-RBAC-001A: physiotherapist access remains tenant-wide by capability; personal_trainer/massage_therapist access additionally requires an active patient_care_assignments row for that patient.';
+COMMENT ON FUNCTION public.patient_care_team_roster_v1(uuid,bigint) IS
+  'POL-RBAC-001A data-minimized roster read path for PT/massage_therapist teammates (Product Owner decision): identity/role/status only for the active team of one patient they are themselves assigned to, never global capabilities, other assignments, other patients or clinical content. Admin/physiotherapist keep separate full-row access via patient_care_assignments_select for the complete contractual view.';
 
 COMMIT;
