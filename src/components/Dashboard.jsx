@@ -839,7 +839,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           <div key="agenda" style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="cal" s={11} c={C.txm} />Agenda oggi</div>
-              <button onClick={() => onGoAgenda && onGoAgenda()} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '5px 10px', color: C.pri, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>Apri agenda ›</button>
+              <button className="home-list-link" onClick={() => onGoAgenda && onGoAgenda()} style={{ background: C.priL, color: C.pri }}>Apri agenda ›</button>
             </div>
             {todayApps.length === 0 ? (
               <Crd style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessun appuntamento oggi</Crd>
@@ -850,16 +850,17 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                   const co = getColore(a);
                   const isPast = a.ora < new Date().toTimeString().slice(0, 5);
                   return (
-                    <div key={a.id} onClick={() => onGoAgenda && onGoAgenda()} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: i < todayApps.length - 1 ? `1px solid ${C.brd}` : 'none', background: isPast ? '#fafafa' : '#fff', cursor: 'pointer' }}>
-                      <div style={{ background: co + '20', borderRadius: 8, padding: '4px 8px', textAlign: 'center', flexShrink: 0, minWidth: 44, borderLeft: `3px solid ${co}` }}>
-                        <div style={{ fontSize: 13, fontWeight: 900, color: co }}>{a.ora}</div>
-                        <div style={{ fontSize: 9, color: co, opacity: 0.8 }}>{a.durata}m</div>
+                    <div key={a.id} onClick={() => onGoAgenda && onGoAgenda()} className="home-agenda-row" style={{ borderBottom: i < todayApps.length - 1 ? `1px solid ${C.brd}` : 'none', background: isPast ? '#fafafa' : '#fff' }}>
+                      <div className="home-agenda-row__time" style={{ background: co + '20', borderLeft: `3px solid ${co}` }}>
+                        <div className="home-agenda-row__time-value" style={{ color: co }}>{a.ora}</div>
+                        <div className="home-agenda-row__time-dur" style={{ color: co }}>{a.durata}m</div>
                       </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: 13, color: isPast ? C.txm : C.txt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p ? `${p.nome} ${p.cognome}` : '—'}</div>
-                        <div style={{ fontSize: 11, color: C.txl, display: 'flex', alignItems: 'center', gap: 5 }}><div style={{ width: 7, height: 7, borderRadius: '50%', background: co }} />{a.tipo}</div>
+                      <div className="home-agenda-row__name" style={{ color: isPast ? C.txm : C.txt }}>{p ? `${p.nome} ${p.cognome}` : '—'}</div>
+                      <div className="home-agenda-row__badge"><Bdg ch={a.stato} co={a.stato === 'confermato' ? C.suc : C.war} /></div>
+                      <div className="home-agenda-row__meta" style={{ color: C.txl }}>
+                        <span className="home-agenda-row__dot" style={{ background: co }} />
+                        <span className="home-agenda-row__type">{a.tipo}</span>
                       </div>
-                      <Bdg ch={a.stato} co={a.stato === 'confermato' ? C.suc : C.war} />
                     </div>
                   );
                 })}
@@ -907,7 +908,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                           <div onClick={() => onOpenPaz(paz, 'info')} style={{ marginTop: 6, fontSize: 12, fontWeight: 700, color: C.pri, cursor: 'pointer' }}>{paz.nome} {paz.cognome} ›</div>
                         )}
                       </div>
-                      <button onClick={() => segnaLettoConsiglio(c.id)} title="Segna come letto" style={{ background: C.sucL, border: 'none', borderRadius: 7, padding: 6, cursor: 'pointer', flexShrink: 0, height: 'fit-content' }}>
+                      <button className="home-list-icon-btn" onClick={() => segnaLettoConsiglio(c.id)} title="Segna come letto" style={{ background: C.sucL }}>
                         <Ic n="ok" s={13} c={C.suc} />
                       </button>
                     </div>
@@ -924,17 +925,17 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
             <Crd style={{ marginBottom: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span style={{ fontSize: 12, fontWeight: 700 }}>Attività {todoAttivi.length > 0 && <span style={{ background: C.dan, color: '#fff', borderRadius: 8, padding: '1px 6px', fontSize: 10 }}>{todoAttivi.length}</span>}</span>
-                <button onClick={() => setTodoModal(true)} style={{ background: C.pri, border: 'none', borderRadius: 7, padding: '5px 10px', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>+ Aggiungi</button>
+                <button className="home-list-link" onClick={() => setTodoModal(true)} style={{ background: C.pri, color: '#fff' }}>+ Aggiungi</button>
               </div>
               {todoLoading && <div style={{ fontSize: 12, color: C.txl, textAlign: 'center', padding: '8px 0' }}>Caricamento...</div>}
               {!todoLoading && todoAttivi.length === 0 && <div style={{ fontSize: 12, color: C.txl, textAlign: 'center', padding: '8px 0' }}>Nessuna attività in sospeso</div>}
               <div style={{ maxHeight: 220, overflowY: 'auto' }}>
                 {todoAttivi.map(todo => (
                   <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 0', borderBottom: `1px solid ${C.brd}` }}>
-                    <button onClick={() => toggleTodo(todo.id)} style={{ width: 20, height: 20, borderRadius: 5, border: `2px solid ${C.brd}`, background: '#fff', cursor: 'pointer', flexShrink: 0, padding: 0 }} />
+                    <button className="home-list-checkbox" onClick={() => toggleTodo(todo.id)}><span style={{ border: `2px solid ${C.brd}` }} /></button>
                     <span style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{todo.testo}</span>
-                    <button onClick={() => { const msg = encodeURIComponent('Attività: ' + todo.testo); window.open('https://wa.me/?text=' + msg, '_blank'); }} title="Invia su WhatsApp" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, flexShrink: 0 }}><Ic n="wa" s={13} c="#25D366" /></button>
-                    <button onClick={() => deleteTodo(todo.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}><Ic n="x" s={11} c={C.dan} /></button>
+                    <button className="home-list-icon-btn" onClick={() => { const msg = encodeURIComponent('Attività: ' + todo.testo); window.open('https://wa.me/?text=' + msg, '_blank'); }} title="Invia su WhatsApp"><Ic n="wa" s={13} c="#25D366" /></button>
+                    <button className="home-list-icon-btn" onClick={() => deleteTodo(todo.id)}><Ic n="x" s={11} c={C.dan} /></button>
                   </div>
                 ))}
               </div>
@@ -1017,17 +1018,15 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
               {upcoming.map((a, i) => {
                 const p = patients.find(x => x.id === a.pazienteId);
                 return (
-                  <div key={a.id} onClick={() => apriEditApp(a)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: i < upcoming.length-1 ? `1px solid ${C.brd}` : 'none', cursor: 'pointer' }}>
-                    <div style={{ background: C.priL, borderRadius: 7, padding: '4px 7px', textAlign: 'center', minWidth: 44, flexShrink: 0 }}>
-                      <div style={{ fontSize: 9, color: C.pri, fontWeight: 700 }}>{a.data.slice(8)}/{a.data.slice(5,7)}</div>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: C.priD }}>{a.ora}</div>
+                  <div key={a.id} onClick={() => apriEditApp(a)} className="home-upcoming-row" style={{ borderBottom: i < upcoming.length-1 ? `1px solid ${C.brd}` : 'none' }}>
+                    <div className="home-upcoming-row__time" style={{ background: C.priL }}>
+                      <div className="home-upcoming-row__date" style={{ color: C.pri }}>{a.data.slice(8)}/{a.data.slice(5,7)}</div>
+                      <div className="home-upcoming-row__hour" style={{ color: C.priD }}>{a.ora}</div>
                     </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p ? `${p.nome} ${p.cognome}` : '—'}</div>
-                      <div style={{ fontSize: 11, color: C.txm }}>{a.tipo}</div>
-                    </div>
-                    <Bdg ch={a.stato} co={a.stato === 'confermato' ? C.suc : C.war} />
-                    <button onClick={e => { e.stopPropagation(); eliminaAppuntamentoDiretto(a); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', flexShrink: 0, opacity: 0.5 }} title="Elimina">
+                    <div className="home-upcoming-row__name">{p ? `${p.nome} ${p.cognome}` : '—'}</div>
+                    <div className="home-upcoming-row__badge"><Bdg ch={a.stato} co={a.stato === 'confermato' ? C.suc : C.war} /></div>
+                    <div className="home-upcoming-row__meta" style={{ color: C.txm }}>{a.tipo}</div>
+                    <button className="home-upcoming-row__del home-list-icon-btn" onClick={e => { e.stopPropagation(); eliminaAppuntamentoDiretto(a); }} title="Elimina">
                       <Ic n="del" s={14} c={C.dan} />
                     </button>
                   </div>

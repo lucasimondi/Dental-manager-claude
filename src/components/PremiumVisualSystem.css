@@ -383,3 +383,94 @@ body:has(.home-widget-grid) .home-period-context {
 @media (prefers-reduced-motion: reduce) {
   .premium-sidebar__item { transition: none !important; }
 }
+
+/* ── Agenda oggi / Prossimi appuntamenti — mobile polish ──
+   Grid-based rows (not flex) so the status badge sits in its own fixed
+   column and can never be squeezed/deformed by long patient names or
+   treatment text, at any breakpoint. Default areas reproduce the original
+   desktop layout exactly (badge vertically centered beside a two-line
+   name/treatment stack); the ≤600px override widens the treatment line to
+   full width, the "genuinely mobile-first" layout for smartphone widths. */
+.home-agenda-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "time name badge" "time meta badge";
+  column-gap: 10px;
+  row-gap: 2px;
+  align-items: center;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+.home-agenda-row__time { grid-area: time; min-width: 44px; border-radius: 8px; padding: 4px 8px; text-align: center; }
+.home-agenda-row__time-value { font-size: 13px; font-weight: 900; }
+.home-agenda-row__time-dur { font-size: 9px; opacity: .8; }
+.home-agenda-row__name { grid-area: name; min-width: 0; font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-agenda-row__badge { grid-area: badge; justify-self: end; }
+.home-agenda-row__meta { grid-area: meta; min-width: 0; display: flex; align-items: center; gap: 5px; font-size: 11px; }
+.home-agenda-row__dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.home-agenda-row__type { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.home-upcoming-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  grid-template-areas: "time name badge del" "time meta badge del";
+  column-gap: 10px;
+  row-gap: 2px;
+  align-items: center;
+  padding: 8px 0;
+  cursor: pointer;
+}
+.home-upcoming-row__time { grid-area: time; min-width: 44px; border-radius: 7px; padding: 4px 7px; text-align: center; }
+.home-upcoming-row__date { font-size: 9px; font-weight: 700; }
+.home-upcoming-row__hour { font-size: 12px; font-weight: 800; }
+.home-upcoming-row__name { grid-area: name; min-width: 0; font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-upcoming-row__badge { grid-area: badge; justify-self: end; }
+.home-upcoming-row__meta { grid-area: meta; min-width: 0; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-upcoming-row__del { grid-area: del; opacity: .5; }
+
+@media (max-width: 600px) {
+  .home-agenda-row { grid-template-areas: "time name badge" "time meta meta"; }
+  .home-agenda-row__badge { align-self: start; }
+  .home-upcoming-row { grid-template-areas: "time name badge del" "time meta meta del"; }
+  .home-upcoming-row__badge { align-self: start; }
+}
+
+/* Shared ≥44px touch targets for compact list actions across Home widgets
+   (Agenda link, Prossimi appuntamenti delete, Consigli AI, Attività). */
+.home-list-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 7px;
+  font-weight: 700;
+  font-size: 11px;
+  cursor: pointer;
+}
+.home-list-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  cursor: pointer;
+}
+.home-list-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+.home-list-checkbox span { display: block; width: 20px; height: 20px; border-radius: 5px; background: #fff; }
