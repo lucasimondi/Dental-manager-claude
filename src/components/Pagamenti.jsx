@@ -5,7 +5,7 @@ import { useFormPersistente } from '../lib/useFormPersistente';
 import { normalizza } from '../lib/ricercaPazienti';
 import { supabase } from '../lib/supabase.js';
 
-export default function Pagamenti({ patients, payments, setPayments, plans }) {
+export default function Pagamenti({ patients, payments, setPayments, plans, autoOpenNew, onAutoOpenNewHandled }) {
   const [modal, setModal] = useState(false);
   const [form, setForm, clearFormDraft] = useFormPersistente('nuovo_pagamento_studio', { pazienteId: '', data: today(), importo: '', metodo: 'Contanti', nota: '', stato: 'pagato' });
   const [pazSearch, setPazSearch] = useState('');
@@ -24,6 +24,18 @@ export default function Pagamenti({ patients, payments, setPayments, plans }) {
   const FE = (f) => setFormExt((p) => ({ ...p, ...f }));
 
   useEffect(() => { loadCollaborazioni(); loadPagExt(); }, []);
+
+  // Arrivo da un'azione rapida della Home ("Pagamento"): apre subito il vero
+  // modale "Registra pagamento studio" (stesso apri usato dal tasto "Studio +").
+  useEffect(() => {
+    if (autoOpenNew) {
+      setForm({ pazienteId: '', data: today(), importo: '', metodo: 'Contanti', nota: '', stato: 'pagato' });
+      setPazSearch('');
+      setModal(true);
+      onAutoOpenNewHandled && onAutoOpenNewHandled();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenNew]);
 
   const loadCollaborazioni = async () => {
     const { data } = await supabase.from('collaborazioni').select('*').order('nome');

@@ -23,16 +23,16 @@ export const QUICK_ACTIONS_CATALOG = Object.freeze([
   {
     id: 'nuovo_paziente', ic: 'pz', label: '+ Nuovo paziente',
     workflow: ['navigate:paz', 'open_new_patient_form'],
-    run: (ctx) => ctx.onNavigate('paz'),
+    run: (ctx) => ctx.onNavigateNew ? ctx.onNavigateNew('paz') : ctx.onNavigate('paz'),
   },
   {
     id: 'nuovo_paziente_appuntamento', ic: 'pz', label: '+ Paziente e appuntamento',
     workflow: ['open_new_patient_form', 'open_booking_with_patient'],
-    run: (ctx) => ctx.onNavigate('paz'),
+    run: (ctx) => ctx.onNavigateNew ? ctx.onNavigateNew('paz') : ctx.onNavigate('paz'),
   },
   {
     id: 'nuovo_preventivo', ic: 'plan', label: '+ Nuovo preventivo',
-    run: (ctx) => ctx.onNavigate('piani'),
+    run: (ctx) => ctx.onNavigateNew ? ctx.onNavigateNew('piani') : ctx.onNavigate('piani'),
   },
   {
     id: 'nuova_spesa', ic: 'box', label: '+ Nuova spesa',
@@ -42,7 +42,7 @@ export const QUICK_ACTIONS_CATALOG = Object.freeze([
   {
     id: 'pagamento', ic: 'pay', label: 'Pagamento',
     workflow: ['navigate:paga', 'select_patient', 'register_payment'],
-    run: (ctx) => ctx.onNavigate('paga'),
+    run: (ctx) => ctx.onNavigateNew ? ctx.onNavigateNew('paga') : ctx.onNavigate('paga'),
   },
   {
     id: 'nuova_seduta_fisio', ic: 'pulse', label: '+ Seduta Fisio',

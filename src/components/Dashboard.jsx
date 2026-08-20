@@ -41,7 +41,7 @@ const saveTheme = (t) => { try { localStorage.setItem('dm_theme', JSON.stringify
 
 const getSaluto = (nome) => { const ora = new Date().getHours(); const s = ora < 12 ? 'Buongiorno' : ora < 18 ? 'Buon pomeriggio' : 'Buonasera'; if (!nome) return s; return s + ', ' + nome.trim().split(' ')[0]; };
 
-export default function Dashboard({ patients, appointments, setAppointments, payments, plans, richiami = [], impegni = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, onNavigate, templates, userName: userNameProp, si, features, studioId, isStudioAdmin, studioMembership }) {
+export default function Dashboard({ patients, appointments, setAppointments, payments, plans, richiami = [], impegni = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, onNavigate, onNavigateNew, templates, userName: userNameProp, si, features, studioId, isStudioAdmin, studioMembership }) {
   const homePermissions = buildHomePermissions({ membership: studioMembership, features, vertical: si?.vertical });
   const roleLayout = createRolePresetLayout(studioMembership?.capabilities);
   const availableWidgetCatalog = filterWidgetCatalog(HOME_WIDGET_REGISTRY, homePermissions);
@@ -903,7 +903,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
         if (canonicalDefinition) return <CanonicalFinancialWidget key={w.id} widgetId={w.id} snapshot={canonicalSnapshot} period={homePeriod} loading={canonicalLoading} error={canonicalError} />;
         if (w.id === 'quick_actions') {
           const quickActionContext = {
-            onNavigate, onGoAgenda, onGoRichiami,
+            onNavigate, onNavigateNew, onGoAgenda, onGoRichiami,
             openBooking: () => setBookingOpen(true),
             openTodoModal: () => setTodoModal(true),
           };
