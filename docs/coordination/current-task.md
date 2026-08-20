@@ -1,29 +1,39 @@
 # Current task
 
-- TASK: POL-UI-003
-- TITLE: Premium visual system (sidebar, hero, quick actions, mobile polish)
+- TASK: POL-UX-001
+- TITLE: Poliedra Visual System & Dashboard Experience
 - OWNER: CLAUDE
-- BRANCH: `ui/POL-UI-003-premium-visual-system`
-- BASE REVIEW: `master` (retargeted; this merge brings `master`'s POL-RBAC-001/POL-RBAC-001A capability model — see history below — into this branch. PR #17.)
+- BRANCH: `ui/POL-UX-001-visual-system-dashboard-experience`
+- BASE REVIEW: `master` (POL-UI-003 already merged — `7a0c490`)
 - STATUS: `WAITING_PRODUCT_OWNER`
 
 ## Objective
 
-Apply the Product Owner-approved premium visual direction to the Poliedra Home (desktop/tablet sidebar, hero, quick actions, canonical KPI card styling) while preserving POL-UI-001/POL-UI-002 personalization behavior, POL-RBAC-001/POL-RBAC-001A's capability-based permission model, and all canonical financial contracts unchanged. This round also fixed a Product Owner-flagged mobile layout defect in the Agenda widget and audited touch targets across Home.
+Complete the Poliedra UI/UX as an organic design-system mission, not a series of CSS patches: shared design tokens; header/Home visual integration; a real Quick Booking flow with authoritative free-slot computation; customizable quick actions with a workflow contract; a visually unified Pannello Economico on the canonical contract only; and app-wide propagation of the shared card/button primitives — without touching clinical/financial logic, RLS, or migrations.
+
+## Phase A audit — what was found before writing code
+
+No prior POL-UX-001 work and no Gemini-authored branch/commits exist anywhere in this repository (checked `git branch -a`, all remote branches, and `git log` for any UX/Gemini reference) — this was a green-field implementation, not a continuation. Local `master` was found to be a stale, unrelated lineage (zero common history with `origin/master` — `git merge-base` returned empty); the branch was recreated from `origin/master` directly rather than from local `master`. The app's base color token (`C_LIGHT.pri` in `src/lib/utils.js`) was already blue (`#185FA5`), not bordeaux — no hardcoded bordeaux primary was found anywhere in `src/`; if the Product Owner is seeing bordeaux live, it is most likely a per-studio `custom_colore_primario` override (data, not code) that this sandbox cannot inspect (no production access).
 
 ## Safety boundaries
 
-- No financial formula, canonical query (`get_financial_snapshot_v1`), RLS, or migration was touched by this task at any point.
-- Permission/capability logic (`buildHomePermissions`, `createRolePresetLayout`, `filterWidgetCatalog`) uses the POL-RBAC-001/POL-RBAC-001A capability-array model exclusively — the pre-RBAC role-string call signature this branch forked with has been reconciled to match `master` during this merge.
+- No financial formula, canonical query (`get_financial_snapshot_v1`), RLS, or migration was touched. Verified: `git diff origin/master -- src/lib/canonicalFinancialSelectors.js src/lib/homeFinancialWidgets.js src/lib/useControlloDati.js src/lib/homeDashboardModel.js` and `git diff --stat origin/master -- supabase/` are both empty.
+- POL-RBAC-001/POL-RBAC-001A capability model, POL-FIS-001's `PhysioClinicalCore`/`PhysioCartella` split and POL-UI-001/002 personalization hierarchy were not touched this round (`SchedaPaz.jsx`, `PhysioClinicalCore.jsx`, `PhysioCartella.jsx`, `homeDashboardModel.js` all show zero diff against `origin/master`).
 - No production write, remote migration, backfill, deployment or merge occurred.
 
 ## Completion state
 
-Visual-only presentation layer (`PremiumVisualSystem.css`, `PremiumSidebar.jsx`) plus a new additive `quick_actions` home widget and a mobile-first grid rebuild of the Agenda/Prossimi-appuntamenti rows are implemented and merged with `master`'s POL-RBAC-001A capability model in this round. Full detail in `docs/architecture/` and the PR #17 description.
+See the structured POL-UX-001 status report delivered alongside this handoff for the full per-item breakdown (Home/header/greeting/menu/period/booking/slots/personalizzazione/quick actions/widget/Pannello Economico/pagine/responsive/QA/test/regressioni/rischi).
 
 ## Exact next action
 
-Product Owner reviews PR #17 (now merge-conflict-free against `master`, carrying POL-RBAC-001/POL-RBAC-001A + POL-UI-003 + the mobile polish together). Do not deploy, merge, or begin another task without explicit Product Owner approval.
+Product Owner reviews the draft PR for `ui/POL-UX-001-visual-system-dashboard-experience`. Do not deploy, merge, or begin another task without explicit Product Owner approval.
+
+---
+
+# Historical record: POL-UI-003 (completed, merged to master)
+
+Apply the Product Owner-approved premium visual direction to the Poliedra Home (desktop/tablet sidebar, hero, quick actions, canonical KPI card styling) while preserving POL-UI-001/POL-UI-002 personalization behavior, POL-RBAC-001/POL-RBAC-001A's capability-based permission model, and all canonical financial contracts unchanged. Also fixed a Product Owner-flagged mobile layout defect in the Agenda widget and audited touch targets across Home. Merged to `master` as `7a0c490`; PR #17 closed.
 
 ---
 

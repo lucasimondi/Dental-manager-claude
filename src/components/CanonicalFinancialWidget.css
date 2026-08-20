@@ -69,3 +69,22 @@
   .canonical-financial-widget__glyph { width:34px; height:34px; flex-basis:34px; border-radius:11px; }
   .canonical-financial-widget__value { font-size: 26px; margin-top:14px; }
 }
+
+/* ── Pannello Economico (Controllo di Gestione → Panoramica) — reuses the
+   card family above so this page and Home read as one design system. ── */
+.cmv__meta { color: #6b7a90; font-size: 11px; font-weight: 700; margin-bottom: 14px; }
+.cmv__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+.cmv__card {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.cmv__card:disabled { cursor: default; opacity: .72; }
+.cmv__card:not(:disabled):hover { transform: translateY(-4px) rotateX(.4deg); box-shadow: 0 28px 58px rgba(30,41,59,.25), 0 8px 16px rgba(30,41,59,.13), inset 0 1px 0 rgba(255,255,255,.28); }
+.cmv__card:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (max-width: 600px) {
+  .cmv__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+}

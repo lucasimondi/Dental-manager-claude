@@ -1,33 +1,54 @@
 import React from 'react';
-import { C, fmt } from '../lib/utils';
+import { fmt } from '../lib/utils';
 import { createCanonicalManagementModel } from '../lib/canonicalFinancialSelectors';
+import './CanonicalFinancialWidget.css';
 
-// Prepared for the gated POL-003 cutover. It is intentionally not mounted in
-// ControlloGestione while legacy reconciliation is incomplete.
+/* POL-UX-001 section M — Pannello Economico redesign. Presentation only:
+   reuses the exact .canonical-financial-widget gradient system already
+   shipped for Home's canonical KPI cards (CanonicalFinancialWidget.jsx),
+   so Controllo di Gestione's overview and Home read as one design system
+   instead of two. createCanonicalManagementModel/its output are untouched
+   — no financial formula, grouping, or availability logic lives here. */
+const GROUP_ACCENT = {
+  performance: 'finance', margins: 'finance', efficiency: 'ops',
+  trend: 'agenda', lifecycle: 'ops', stocks: 'ops',
+  billing: 'finance', cash: 'finance', costs: 'alert',
+};
+
 export default function CanonicalManagementView({ snapshot, mode, onDrillDown }) {
   const model = createCanonicalManagementModel(snapshot, mode);
   const displayValue = (item) => item.format === 'boolean'
     ? (item.value ? 'Raggiunto' : 'Non raggiunto')
     : fmt(item.value);
   return (
-    <div data-management-mode={model.mode}>
-      <div style={{ fontSize: 11, color: C.txl, marginBottom: 8 }}>
+    <div data-management-mode={model.mode} className="cmv">
+      <div className="cmv__meta">
         Qualità dati: {model.dataQualityStatus} · Formula: {model.formulaVersion || 'non disponibile'}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 10 }}>
+      <div className="cmv__grid">
         {model.metrics.map((item) => (
           <button
             key={item.id}
             type="button"
             disabled={!item.available || !onDrillDown}
             onClick={() => item.available && onDrillDown?.(item.sourceField)}
-            style={{ textAlign: 'left', padding: 12, borderRadius: 10, border: `1px solid ${C.brd}`, background: C.sur, color: C.txt }}
+            className="canonical-financial-widget cmv__card"
+            data-canonical-widget={GROUP_ACCENT[item.group] === 'ops' ? 'incasso' : GROUP_ACCENT[item.group] === 'agenda' ? 'margine' : GROUP_ACCENT[item.group] === 'alert' ? 'costi' : 'prodotto'}
           >
-            <div style={{ fontSize: 11, color: C.txl }}>{item.label}</div>
-            <div style={{ fontSize: 20, fontWeight: 800, marginTop: 4 }}>
-              {item.available ? displayValue(item) : 'Non disponibile'}
+            <div className="canonical-financial-widget__top">
+              <div>
+                <div className="canonical-financial-widget__label">{item.label}</div>
+              </div>
             </div>
-            {!item.available && <div style={{ fontSize: 10, color: C.txl, marginTop: 4 }}>Dato canonico incompleto</div>}
+            {item.available ? (
+              <div className="canonical-financial-widget__value">{displayValue(item)}</div>
+            ) : (
+              <>
+                <div className="canonical-financial-widget__state">Non disponibile</div>
+                <div className="canonical-financial-widget__reason">Dato canonico incompleto</div>
+              </>
+            )}
+            <div className="canonical-financial-widget__accent" aria-hidden="true" />
           </button>
         ))}
       </div>
