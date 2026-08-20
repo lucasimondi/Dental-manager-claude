@@ -27,6 +27,7 @@ export const HOME_WIDGET_REGISTRY = Object.freeze([
   { id: 'fin_ore_disponibili', ic: 'clk', label: 'Ore disponibili', category: 'Finanza canonica', permission: 'management_control', defaultVisible: false, defaultSize: 'small', sizes: ['small', 'medium'] },
   { id: 'fin_produzione_ora', ic: 'pulse', label: 'Produzione/ora', category: 'Finanza canonica', permission: 'management_control', defaultVisible: false, defaultSize: 'small', sizes: ['small', 'medium'] },
   { id: 'fin_incasso_ora', ic: 'eur', label: 'Incasso/ora', category: 'Finanza canonica', permission: 'management_control', defaultVisible: false, defaultSize: 'small', sizes: ['small', 'medium'] },
+  { id: 'quick_actions', ic: 'zap', label: 'Azioni rapide', category: 'Azioni', defaultVisible: true, defaultSize: 'wide', sizes: ['medium', 'wide'] },
 ]);
 
 const registryById = new Map(HOME_WIDGET_REGISTRY.map((widget) => [widget.id, widget]));

@@ -40,7 +40,7 @@ const saveTheme = (t) => { try { localStorage.setItem('dm_theme', JSON.stringify
 const NOMI_F = ['alessia','alice','anna','beatrice','camilla','chiara','claudia','elena','elisa','emma','federica','francesca','giulia','ilaria','laura','lisa','lucia','luisa','mara','maria','marina','martina','monica','paola','roberta','sara','silvia','sofia','valentina','veronica','virginia'];
 const getSaluto = (nome) => { if (!nome) return 'Benvenuto'; const ora = new Date().getHours(); const s = ora < 12 ? 'Buongiorno' : ora < 18 ? 'Buon pomeriggio' : 'Buonasera'; const p = nome.trim().split(' ')[0].toLowerCase(); const fem = NOMI_F.includes(p) || (p.endsWith('a') && !['luca','andrea','mattia','nicola','enea'].includes(p)); return s + ', ' + (fem ? 'cara ' : 'caro ') + nome.trim().split(' ')[0]; };
 
-export default function Dashboard({ patients, appointments, setAppointments, payments, plans, richiami = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, templates, userName: userNameProp, si, features, studioId, isStudioAdmin, studioMembership }) {
+export default function Dashboard({ patients, appointments, setAppointments, payments, plans, richiami = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, onNavigate, templates, userName: userNameProp, si, features, studioId, isStudioAdmin, studioMembership }) {
   const homePermissions = buildHomePermissions({ membership: studioMembership, features, vertical: si?.vertical });
   const roleLayout = createRolePresetLayout(studioMembership?.ruolo, si?.vertical);
   const availableWidgetCatalog = filterWidgetCatalog(HOME_WIDGET_REGISTRY, homePermissions);
@@ -788,14 +788,24 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
       )}
 
       {/* ── HEADER ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: C.txt }}>{getSaluto(userName)}</div>
-          <div style={{ fontSize: 12, color: C.txl, marginTop: 1 }}>{new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+      <div className="home-hero">
+        <div className="home-hero__text">
+          <div className="home-hero__greeting">{getSaluto(userName)}</div>
+          <div className="home-hero__meta">
+            {new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            {si?.nome && <span className="home-hero__studio"> · {si.nome}</span>}
+          </div>
         </div>
-        <button onClick={openHomeCustomizer} style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 10, padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, color: C.txm, fontSize: 12, fontWeight: 700 }}>
-          <Ic n="set" s={14} c={C.txm} /> Personalizza Home
-        </button>
+        <div className="home-hero__actions">
+          {onNavigate && (
+            <button className="home-hero__cta" onClick={() => onNavigate('agenda')}>
+              <Ic n="plus" s={13} c="#fff" /> Nuovo appuntamento
+            </button>
+          )}
+          <button className="home-hero__customize" onClick={openHomeCustomizer}>
+            <Ic n="set" s={14} c={C.txm} /> Personalizza Home
+          </button>
+        </div>
       </div>
 
       {homePermissions.managementControl && <div className="home-period-context" aria-label="Periodo finanziario Home">
@@ -810,6 +820,21 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
       {visibleWidgets.filter(w => w.visible !== false).map(w => {
         const canonicalDefinition = getHomeFinancialWidget(w.id);
         if (canonicalDefinition) return <CanonicalFinancialWidget key={w.id} widgetId={w.id} snapshot={canonicalSnapshot} period={homePeriod} loading={canonicalLoading} error={canonicalError} />;
+        if (w.id === 'quick_actions') return (
+          <div key="quick_actions" className="home-quick-actions">
+            <div className="home-section-label"><Ic n="zap" s={11} c={C.txm} />Azioni rapide</div>
+            <div className="home-quick-actions__grid">
+              <button onClick={() => onNavigate && onNavigate('paz')}><Ic n="pz" s={16} c={C.pri} /><span>Pazienti</span></button>
+              <button onClick={() => onGoAgenda ? onGoAgenda() : onNavigate && onNavigate('agenda')}><Ic n="cal" s={16} c={C.pri} /><span>Agenda</span></button>
+              <button onClick={() => onNavigate && onNavigate('piani')}><Ic n="plan" s={16} c={C.pri} /><span>Piani di cura</span></button>
+              <button onClick={() => onNavigate && onNavigate('paga')}><Ic n="pay" s={16} c={C.pri} /><span>Pagamenti</span></button>
+              <button onClick={() => onGoRichiami ? onGoRichiami() : onNavigate && onNavigate('richiami')}><Ic n="bell" s={16} c={C.pri} /><span>Richiami</span></button>
+              {homePermissions.managementControl && (
+                <button onClick={() => onNavigate && onNavigate('controllo')}><Ic n="chart" s={16} c={C.pri} /><span>Controllo di gestione</span></button>
+              )}
+            </div>
+          </div>
+        );
         if (w.id === 'agenda') return (
           <div key="agenda" style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>

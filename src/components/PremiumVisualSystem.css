@@ -44,36 +44,104 @@ body:has(.home-widget-grid) #app-scroll {
   scroll-behavior: smooth;
 }
 
-/* Home title block: larger, more editorial, with premium spacing. */
-body:has(.home-widget-grid) #app-scroll > div > div:first-of-type {
+/* Home hero: greeting, studio name, period + customize/CTA actions.
+   Semantic classNames (Dashboard.jsx) replace the previous positional
+   `#app-scroll > div > div:first-of-type ...` selectors -- easier to read,
+   and immune to unrelated markup reshuffles above/around the hero. */
+.home-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
   min-height: 62px;
-  margin-bottom: 20px !important;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
 }
-body:has(.home-widget-grid) #app-scroll > div > div:first-of-type > div:first-child > div:first-child {
-  font-size: clamp(25px,3vw,32px) !important;
-  font-weight: 950 !important;
+.home-hero__greeting {
+  font-size: clamp(25px,3vw,32px);
+  font-weight: 950;
   letter-spacing: -.04em;
-  color: var(--pol-premium-ink) !important;
+  color: var(--pol-premium-ink);
 }
-body:has(.home-widget-grid) #app-scroll > div > div:first-of-type > div:first-child > div:nth-child(2) {
-  margin-top: 5px !important;
-  color: var(--pol-premium-muted) !important;
-  font-size: 12px !important;
+.home-hero__meta {
+  margin-top: 5px;
+  color: var(--pol-premium-muted);
+  font-size: 12px;
+  text-transform: capitalize;
 }
-body:has(.home-widget-grid) #app-scroll > div > div:first-of-type > button {
-  min-height: 42px;
-  padding: 10px 14px !important;
-  border: 1px solid rgba(255,255,255,.85) !important;
-  border-radius: 13px !important;
-  color: #334155 !important;
-  background: rgba(255,255,255,.78) !important;
-  box-shadow: var(--pol-premium-shadow-soft) !important;
-  backdrop-filter: blur(16px);
+.home-hero__studio { color: var(--pol-premium-ink); font-weight: 700; text-transform: none; }
+.home-hero__actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.home-hero__cta,
+.home-hero__customize {
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 13px;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   transition: transform .18s ease, box-shadow .18s ease;
 }
-body:has(.home-widget-grid) #app-scroll > div > div:first-of-type > button:hover {
+.home-hero__cta {
+  border: none;
+  color: #fff;
+  background: linear-gradient(135deg,#4f46e5,#2563eb 55%,#0ea5e9);
+  box-shadow: 0 18px 34px rgba(79,70,229,.24);
+}
+.home-hero__customize {
+  border: 1px solid rgba(255,255,255,.85);
+  color: #334155;
+  background: rgba(255,255,255,.78);
+  box-shadow: var(--pol-premium-shadow-soft);
+  backdrop-filter: blur(16px);
+}
+.home-hero__cta:hover,
+.home-hero__customize:hover {
   transform: translateY(-2px);
-  box-shadow: 0 18px 36px rgba(31,49,78,.14) !important;
+  box-shadow: 0 18px 36px rgba(31,49,78,.14);
+}
+
+/* Quick actions widget: real navigation only (see Dashboard.jsx onNavigate). */
+.home-section-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--pol-premium-muted);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-bottom: 8px;
+}
+.home-quick-actions { margin-bottom: 16px; }
+.home-quick-actions__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+.home-quick-actions__grid button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 64px;
+  padding: 14px 16px;
+  border: 1px solid var(--pol-premium-line);
+  border-radius: 18px;
+  background: linear-gradient(145deg,#fff,#f5f8fc);
+  box-shadow: 0 10px 24px rgba(31,49,78,.06);
+  color: var(--pol-premium-ink);
+  font-weight: 800;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.home-quick-actions__grid button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 32px rgba(31,49,78,.10);
 }
 
 /* Period selector becomes the glass segmented control from the approved mockup. */
@@ -206,10 +274,11 @@ body:has(.home-widget-grid) .home-period-context {
   body:has(.home-widget-grid) { background: #f5f7fb !important; }
   body:has(.home-widget-grid) #root > div > div:first-child { min-height: 60px; padding: 8px 12px !important; }
   body:has(.home-widget-grid) #app-scroll { padding: 16px 13px 112px !important; }
-  body:has(.home-widget-grid) #app-scroll > div > div:first-of-type { align-items: flex-start !important; gap: 12px; }
-  body:has(.home-widget-grid) #app-scroll > div > div:first-of-type > button { padding: 9px 10px !important; font-size: 11px !important; }
+  .home-hero { align-items: flex-start; gap: 12px; }
+  .home-hero__cta, .home-hero__customize { padding: 9px 10px; font-size: 11px; }
+  .home-quick-actions__grid { grid-template-columns: 1fr 1fr; }
   .home-period-context { border-radius: 14px !important; padding: 5px !important; }
-  .home-period-context button { min-height: 42px !important; padding: 7px 8px !important; font-size: 10px !important; }
+  .home-period-context button { min-height: 44px !important; padding: 7px 8px !important; font-size: 10px !important; }
   .home-widget-frame { border-radius: 20px !important; }
   .home-widget-frame__content > div:not(.canonical-financial-widget) { border-radius: 20px !important; }
 }
@@ -218,5 +287,99 @@ body:has(.home-widget-grid) .home-period-context {
   .home-widget-frame,
   .canonical-financial-widget,
   .home-period-context button,
-  body:has(.home-widget-grid) #app-scroll > div > div:first-of-type > button { transition: none !important; }
+  .home-hero__cta,
+  .home-hero__customize,
+  .premium-sidebar__item,
+  .home-quick-actions__grid button { transition: none !important; }
+}
+
+/* ── PREMIUM SIDEBAR (desktop/tablet-large) ──
+   React only mounts <PremiumSidebar> when !isMobile (>=720px, see
+   useIsMobile.js) -- mobile keeps its existing MobileDock untouched. Icon
+   rail collapse below 1100px mirrors the approved public/premium-demo.html
+   reference exactly, so 1024px matches the design-locked direction. */
+.premium-sidebar {
+  width: 232px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  padding: 22px 16px;
+  color: #cbd5e1;
+  background: linear-gradient(180deg,#111827,#0f172a 58%,#111827);
+  box-shadow: 18px 0 42px rgba(15,23,42,.16);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.premium-sidebar__brand { margin-bottom: 22px; padding: 0 6px; }
+.premium-sidebar__logo { height: 40px; display: block; filter: drop-shadow(0 7px 14px rgba(0,0,0,.22)); }
+.premium-sidebar__nav { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.premium-sidebar__item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 44px;
+  padding: 11px 12px;
+  border-radius: 13px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #cbd5e1;
+  font-weight: 750;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: background .16s ease, transform .16s ease, box-shadow .16s ease, color .16s ease;
+}
+.premium-sidebar__item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.premium-sidebar__item:hover { background: rgba(255,255,255,.06); color: #fff; transform: translateX(2px); }
+.premium-sidebar__item.is-active {
+  background: linear-gradient(135deg,rgba(99,102,241,.30),rgba(14,165,233,.16));
+  color: #fff;
+  border-color: rgba(255,255,255,.08);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10);
+}
+.premium-sidebar__footer {
+  border-top: 1px solid rgba(255,255,255,.08);
+  padding-top: 14px;
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.premium-sidebar__footer-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 9px 12px;
+  border-radius: 11px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  color: #e2e8f0;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background .16s ease;
+}
+.premium-sidebar__footer-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.premium-sidebar__footer-btn:hover { background: rgba(255,255,255,.12); }
+.premium-sidebar__identity { padding: 2px 12px; }
+.premium-sidebar__studio { font-size: 11.5px; font-weight: 800; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.premium-sidebar__user { font-size: 11px; color: #94a3b8; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 1100px) {
+  .premium-sidebar { width: 88px; padding: 18px 8px; }
+  .premium-sidebar__item span,
+  .premium-sidebar__footer-btn span,
+  .premium-sidebar__studio,
+  .premium-sidebar__user { display: none; }
+  .premium-sidebar__item { justify-content: center; padding: 12px 6px; }
+  .premium-sidebar__footer-btn { justify-content: center; }
+  .premium-sidebar__identity { padding: 0; }
+  .premium-sidebar__brand { text-align: center; padding: 0; }
+  .premium-sidebar__logo { height: 30px; margin: 0 auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .premium-sidebar__item { transition: none !important; }
 }
