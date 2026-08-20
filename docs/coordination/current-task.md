@@ -1,29 +1,33 @@
 # Current task
 
-- TASK: POL-UI-003
-- TITLE: Premium visual system (sidebar, hero, quick actions, mobile polish)
-- OWNER: CLAUDE
-- BRANCH: `ui/POL-UI-003-premium-visual-system`
-- BASE REVIEW: `master` (retargeted; this merge brings `master`'s POL-RBAC-001/POL-RBAC-001A capability model — see history below — into this branch. PR #17.)
+- TASK: POL-FIS-001
+- TITLE: Physiotherapy Clinical Core — episode/session vertical slice
+- OWNER: CODEX (original), realigned onto master by CLAUDE
+- BRANCH: `vertical/POL-FIS-001-physio-clinical-core`
+- BASE REVIEW: `master` (retargeted; this merge brings POL-UI-001/002/003 and POL-RBAC-001/POL-RBAC-001A onto this branch. PR #14.)
 - STATUS: `WAITING_PRODUCT_OWNER`
 
 ## Objective
 
-Apply the Product Owner-approved premium visual direction to the Poliedra Home (desktop/tablet sidebar, hero, quick actions, canonical KPI card styling) while preserving POL-UI-001/POL-UI-002 personalization behavior, POL-RBAC-001/POL-RBAC-001A's capability-based permission model, and all canonical financial contracts unchanged. This round also fixed a Product Owner-flagged mobile layout defect in the Agenda widget and audited touch targets across Home.
+Deliver a safe, daily-use foundation for episode-based physiotherapy records without replacing existing Poliedra systems or touching production.
 
-## Safety boundaries
+## Completed
 
-- No financial formula, canonical query (`get_financial_snapshot_v1`), RLS, or migration was touched by this task at any point.
-- Permission/capability logic (`buildHomePermissions`, `createRolePresetLayout`, `filterWidgetCatalog`) uses the POL-RBAC-001/POL-RBAC-001A capability-array model exclusively — the pre-RBAC role-string call signature this branch forked with has been reconciled to match `master` during this merge.
-- No production write, remote migration, backfill, deployment or merge occurred.
+- FIS-001A audit retained as baseline.
+- Additive episode/RBAC/clinical-history migration, RLS and synthetic tests prepared.
+- Existing Fisio tab now exposes episode overview, progressive anamnesis, body-map snapshots, rapid draft/finalized sessions, amendments and timeline while retaining legacy history.
+- PostgreSQL 17 migration/RLS/regression, Node tests, build, lint, static analysis and scope checks completed locally.
+- Realigned onto `master`: the `fisio` tab now renders `PhysioClinicalCore` (this PR's episode/session UI) gated by `canAccessPhysio` (the capability-based RBAC gate from POL-RBAC-001, replacing the old vertical-only `isFisio` check), and its embedded "Storico precedente" tab now forwards `accessMode`/`currentUserId`/`canManageTeam` to the legacy `PhysioCartella` view so the POL-RBAC-001A "Team del percorso" feature and full/operational access split keep working unchanged.
 
-## Completion state
+## PRODUCT_OWNER_DECISION_REQUIRED — two independent Fisio authorization models
 
-Visual-only presentation layer (`PremiumVisualSystem.css`, `PremiumSidebar.jsx`) plus a new additive `quick_actions` home widget and a mobile-first grid rebuild of the Agenda/Prossimi-appuntamenti rows are implemented and merged with `master`'s POL-RBAC-001A capability model in this round. Full detail in `docs/architecture/` and the PR #17 description.
+This realignment surfaced an architectural collision that was **not** invented or resolved here, only documented: this PR's own migration (`20260819154815_pol_fis_001_clinical_vertical_slice.sql`) introduces `physio_clinical_access_v1`, an **explicit per-user grant table** with its own `private.pol_fis_001_has_capability(studio_id, capability)` check, gating the new episode/anamnesis/body-map/session/timeline tables. This is entirely independent from `master`'s now-authoritative RBAC model (`studio_user_capabilities` from POL-RBAC-001, `patient_care_assignments` from POL-RBAC-001A) that already gates the legacy Fisio tables (`physio_piani`, `physio_obiettivi`, `physio_prescrizioni`, `physio_esecuzioni`) by capability + per-patient assignment.
 
-## Exact next action
+Practical effect: a user's `studio_user_capabilities`/`patient_care_assignments` row does **not** automatically grant or deny access to the new episode/session tables, and vice versa — a user could, for example, hold `clinical.physiotherapist` and an active assignment (full RBAC access to the legacy tables) while having no row in `physio_clinical_access_v1` (denied on the new episode tables), or the reverse. Unifying these into one authorization surface is a real design decision (which table is authoritative, how assignment-level restriction for PT/massage_therapist should apply to episodes) that was deliberately left to the Product Owner rather than picked silently during a conflict-resolution merge. No RLS was modified beyond what was strictly needed to keep the merge textually consistent; both authorization systems are preserved exactly as their respective PRs defined them.
 
-Product Owner reviews PR #17 (now merge-conflict-free against `master`, carrying POL-RBAC-001/POL-RBAC-001A + POL-UI-003 + the mobile polish together). Do not deploy, merge, or begin another task without explicit Product Owner approval.
+## Product Owner gate
+
+Review the vertical slice, the six `PRODUCT_OWNER_DECISION_REQUIRED` items already in `pol-fis-001b-c-vertical-slice.md`, the remaining pilot gaps, and the new authorization-unification decision above. Do not apply the migration remotely, seed permissions, backfill legacy rows, deploy or merge before explicit approval.
 
 ---
 

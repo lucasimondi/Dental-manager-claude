@@ -7,7 +7,7 @@ import { generaConsensoPdf, hashConsenso } from '../lib/pdfConsenso';
 import PdfView from './PdfView.jsx';
 import DocFiscale from './DocFiscale.jsx';
 import DocMedico from './DocMedico.jsx';
-import PhysioCartella from './PhysioCartella.jsx';
+import PhysioClinicalCore from './PhysioClinicalCore.jsx';
 import { condividiPdf, scaricaPdf } from '../lib/condivisionePdf';
 import { salvaPosizione, leggiPosizione } from '../lib/posizioneNavigazione';
 
@@ -1253,7 +1253,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
         )}
 
         {tab === 'fisio' && canAccessPhysio && (
-          <PhysioCartella paziente_id={paz.id} studio_id={si?.studio_id} paziente={paz} studio={si} accessMode={physioFullAccess ? 'full' : 'operational'} currentUserId={currentUserId} canManageTeam={canManagePhysioTeam} />
+          <PhysioClinicalCore paziente_id={paz.id} studio_id={si?.studio_id} paziente={paz} studio={si} accessMode={physioFullAccess ? 'full' : 'operational'} currentUserId={currentUserId} canManageTeam={canManagePhysioTeam} />
         )}
 
         {tab === 'paga' && (
