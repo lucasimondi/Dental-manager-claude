@@ -117,7 +117,7 @@ Legacy source: `spese`.
 - mapping `fisso` -> `FISSO_OPERATIVO`: `DERIVED` only for categories that are actually operational fixed costs under POL-003A.
 - mapping `variabile` -> `VARIABILE_ATTRIBUIBILE`: not automatically valid. A generic variable expense is not necessarily attributable to produced service.
 
-A category-level classification matrix is required before canonical EBITDA backfill. Do not classify missing/unknown categories as variable by fallback.
+POL-003F supersedes the earlier unresolved classification for the verified legacy values: valid `tipo_costo='fisso'` maps to canonical fixed operating cost and valid `tipo_costo='variabile'` maps to attributable variable cost. Unknown types and recurrence encodings still fail closed; no category fallback is allowed.
 
 Recurring expense expansion must preserve effective start/end dates. Historical recurring-month semantics must follow the existing verified period-expansion contract or be reported separately.
 
@@ -126,8 +126,8 @@ Recurring expense expansion must preserve effective start/end dates. Historical 
 Legacy source: `personale`.
 
 - monthly cost, weekly hours, start date and active flag are available.
-- base personnel structure cost can be `DERIVED` into fixed operating structure cost only after defining historical effective periods; there is no explicit end date or cost-version history.
-- using today's monthly cost to rewrite historical months is `APPROXIMATION_NOT_ALLOWED`.
+- POL-003F authorizes active `costo_mensile` as fixed operating structure cost from `data_inizio` onward.
+- no termination date or historical cost version is invented; this limitation remains explicit in reconciliation.
 
 ### Materials / machinery / service links
 
@@ -144,9 +144,9 @@ Future canonical cost events must snapshot the cost version at production time.
 
 Legacy source candidates: `studio_info.config_orario`, `appointments`.
 
-- available structure capacity may be `DERIVED` from versioned/effective schedule configuration only where historical config is known.
+- POL-003F authorizes available structure capacity from current `config_orario` using days/week × hours/day × stations × 4.33 for each selected calendar month; malformed or zero configuration fails closed.
 - appointment duration is not automatically equal to actual worked clinical time.
-- using all booked non-cancelled appointment minutes as historical `ORE_EFFETTIVE`: `APPROXIMATION_NOT_ALLOWED` unless the Product Owner explicitly adopts that operational proxy.
+- confirmed appointments are explicitly not authoritative worked time; importing them as `ORE_EFFETTIVE` remains `APPROXIMATION_NOT_ALLOWED`.
 
 Future workflows should capture actual worked duration directly or derive it from completed session/service events.
 

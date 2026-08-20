@@ -45,7 +45,7 @@ const calcPlanTot = (pl) => {
   return Math.max(0, sub - scontato);
 };
 
-export function useControlloDati({ studioId, patients = [], plans = [], payments = [], periodo = 'mese' }) {
+export function useControlloDati({ studioId, patients = [], plans = [], payments = [], periodo = 'mese', enabled = true }) {
   const [kpi, setKpi] = useState(null);
   const [kpiLoading, setKpiLoading] = useState(true);
   const [kpiErr, setKpiErr] = useState('');
@@ -53,7 +53,7 @@ export function useControlloDati({ studioId, patients = [], plans = [], payments
   const [spese, setSpese] = useState([]);
 
   useEffect(() => {
-    if (!studioId) return;
+    if (!studioId || !enabled) { setKpi(null); setKpiLoading(false); return; }
     setKpiLoading(true);
     setKpiErr('');
     const [da, a] = rangePeriodo(periodo);
@@ -62,12 +62,13 @@ export function useControlloDati({ studioId, patients = [], plans = [], payments
         if (error) setKpiErr(error.message); else setKpi(data);
         setKpiLoading(false);
       });
-  }, [studioId, periodo]);
+  }, [studioId, periodo, enabled]);
 
   useEffect(() => {
+    if (!enabled) { setPagExt([]); setSpese([]); return; }
     supabase.from('pagamenti_esterni').select('*').then(({ data }) => { if (data) setPagExt(data); });
     supabase.from('spese').select('*').then(({ data }) => { if (data) setSpese(data); });
-  }, []);
+  }, [enabled]);
 
   const t = today();
   const anno = t.slice(0, 4);

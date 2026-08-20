@@ -22,7 +22,7 @@ const button = (primary = false) => ({
 const field = { width: '100%', minHeight: 44, boxSizing: 'border-box', border: `1px solid ${C.brd}`, borderRadius: 9, padding: '9px 10px', font: 'inherit', background: '#fff' };
 const card = { background: '#fff', border: `1px solid ${C.brd}`, borderRadius: 14, padding: 14 };
 
-export default function PhysioClinicalCore({ paziente_id, studio_id, paziente, studio }) {
+export default function PhysioClinicalCore({ paziente_id, studio_id, paziente, studio, accessMode, currentUserId, canManageTeam }) {
   const [episodes, setEpisodes] = useState([]);
   const [episodeId, setEpisodeId] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -108,7 +108,7 @@ export default function PhysioClinicalCore({ paziente_id, studio_id, paziente, s
       {tab === 'body' && <BodyMap studioId={studio_id} episodeId={episodeId} maps={detail?.bodyMaps || []} onSaved={refreshDetail} />}
       {tab === 'sessions' && <Sessions studioId={studio_id} episodeId={episodeId} notes={detail?.notes || []} onSaved={refreshDetail} />}
       {tab === 'timeline' && <Timeline detail={detail} />}
-      {tab === 'legacy' && <LegacyPhysioCartella paziente_id={paziente_id} studio_id={studio_id} paziente={paziente} studio={studio} />}
+      {tab === 'legacy' && <LegacyPhysioCartella paziente_id={paziente_id} studio_id={studio_id} paziente={paziente} studio={studio} accessMode={accessMode} currentUserId={currentUserId} canManageTeam={canManageTeam} />}
     </>}
   </div>;
 }

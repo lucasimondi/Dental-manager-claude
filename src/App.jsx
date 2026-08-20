@@ -59,6 +59,7 @@ export default function App() {
   const [syncError, setSyncError] = useState(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isStudioAdmin, setIsStudioAdmin] = useState(false);
+  const [studioMembership, setStudioMembership] = useState(null);
   const [showMasterDashboard, setShowMasterDashboard] = useState(false);
   const [studioAttivo, setStudioAttivo] = useState(true);
   const [features, setFeatures] = useState(PIANI_FEATURES_DEFAULT.base);
@@ -230,7 +231,7 @@ export default function App() {
   }, [session]);
 
   useEffect(() => {
-    if (!session) { setIsSuperAdmin(false); setIsStudioAdmin(false); setStudioAttivo(true); setFeatures(PIANI_FEATURES_DEFAULT.base); return; }
+    if (!session) { setIsSuperAdmin(false); setIsStudioAdmin(false); setStudioMembership(null); setStudioAttivo(true); setFeatures(PIANI_FEATURES_DEFAULT.base); return; }
     let cancelled = false;
     (async () => {
       const { data: admin } = await supabase.rpc('is_super_admin');
@@ -248,7 +249,13 @@ export default function App() {
         // solo quando esiste una membership attiva e coerente con lo studio.
         // La barriera autorevole resta public.is_studio_admin() lato database.
         const { data: mio } = await supabase.from('studio_users').select('ruolo, stato').eq('user_id', session.user.id).eq('studio_id', studioId).maybeSingle();
-        if (!cancelled) setIsStudioAdmin(!!mio && mio.ruolo === 'admin' && mio.stato === 'attivo');
+        const { data: capabilities, error: capabilityError } = mio?.stato === 'attivo'
+          ? await supabase.rpc('get_my_studio_capabilities_v1', { p_studio_id: studioId })
+          : { data: [], error: null };
+        if (!cancelled) {
+          setStudioMembership(mio ? { ...mio, capabilities: !capabilityError && Array.isArray(capabilities) ? capabilities : [] } : null);
+          setIsStudioAdmin(!!mio && mio.ruolo === 'admin' && mio.stato === 'attivo');
+        }
       }
     })();
     return () => { cancelled = true; };
@@ -437,6 +444,9 @@ export default function App() {
             pricelist={pricelist}
             si={studioInfo}
             features={features}
+            studioMembership={studioMembership}
+            currentUserId={session?.user?.id}
+            isStudioAdmin={isStudioAdmin}
             onClose={() => { setSchedaDashPaz(null); pulisciPosizione(['schedaPazId', 'schedaPazTab']); }}
             onEdit={() => setSchedaDashPaz(null)}
             onNuovoPiano={(id) => { setSchedaDashPaz(null); goNuovoPiano(id); }}
@@ -445,7 +455,7 @@ export default function App() {
       )}
 
       <div id="app-scroll" style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: 13, paddingBottom: isMobile ? 98 : 78 }}>
-        {page === 'home' && <Dashboard patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} isStudioAdmin={isStudioAdmin} />}
+        {page === 'home' && <Dashboard patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} />}
         {page !== 'home' && (
           <Suspense fallback={<LoadingScreen />}>
             {page === 'paz' && (
@@ -454,6 +464,9 @@ export default function App() {
                 plans={plans} setPlans={setPlansSync}
                 payments={payments} setPayments={setPaymentsSync} appointments={appointments} si={studioInfo}
                 features={features}
+                studioMembership={studioMembership}
+                currentUserId={session?.user?.id}
+                isStudioAdmin={isStudioAdmin}
                 onNuovoPiano={goNuovoPiano}
                 implants={implants} setImplants={setImplantsSync}
                 setAppointments={setAppointmentsSync}
@@ -512,4 +525,3 @@ export default function App() {
     </div>
   );
 }
-

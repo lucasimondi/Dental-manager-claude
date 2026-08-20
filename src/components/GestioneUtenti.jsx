@@ -3,6 +3,14 @@ import { supabase } from '../lib/supabase.js';
 import { C } from '../lib/utils';
 import { Crd, Fld, Inp, Sel, Modal, Toast, Btn, Ic } from './ui';
 
+const CAPABILITIES = Object.freeze([
+  ['home.front_desk', 'Front desk'],
+  ['clinical.general', 'Clinico'],
+  ['clinical.physiotherapist', 'Fisioterapista'],
+  ['clinical.personal_trainer', 'Personal trainer'],
+  ['clinical.massage_therapist', 'Massaggiatore'],
+]);
+
 export default function GestioneUtenti({ studioId, currentUserId, features, isStudioAdmin }) {
   const [utenti, setUtenti] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -10,17 +18,19 @@ export default function GestioneUtenti({ studioId, currentUserId, features, isSt
   const [invitaModal, setInvitaModal] = useState(false);
   const [form, setForm] = useState({ email: '', nome: '', ruolo: 'utente' });
   const [sending, setSending] = useState(false);
+  const [capabilityRows, setCapabilityRows] = useState([]);
 
   useEffect(() => { loadUtenti(); }, []);
 
   const loadUtenti = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('studio_users')
-      .select('*')
-      .eq('studio_id', studioId)
-      .order('created_at');
+    if (!studioId) { setUtenti([]); setCapabilityRows([]); setLoading(false); return; }
+    const [{ data }, { data: assignments }] = await Promise.all([
+      supabase.from('studio_users').select('*').eq('studio_id', studioId).order('created_at'),
+      supabase.from('studio_user_capabilities').select('studio_id,user_id,capability').eq('studio_id', studioId),
+    ]);
     if (data) setUtenti(data);
+    if (assignments) setCapabilityRows(assignments);
     setLoading(false);
   };
 
@@ -61,6 +71,17 @@ export default function GestioneUtenti({ studioId, currentUserId, features, isSt
     if (error) { setToast('Errore: ' + error.message); return; }
     setUtenti(prev => prev.map(u => u.id === id ? { ...u, ruolo } : u));
     setToast('Ruolo aggiornato ✓');
+  };
+
+  const toggleCapability = async (userId, capability, enabled) => {
+    if (!isStudioAdmin || !studioId || !userId) return;
+    const query = enabled
+      ? supabase.from('studio_user_capabilities').delete().eq('studio_id',studioId).eq('user_id',userId).eq('capability',capability)
+      : supabase.from('studio_user_capabilities').insert({ studio_id:studioId,user_id:userId,capability });
+    const { error } = await query;
+    if (error) { setToast('Capability non aggiornata: ' + error.message); return; }
+    await loadUtenti();
+    setToast('Capability aggiornata ✓');
   };
 
   const rimuovi = async (id, email) => {
@@ -104,8 +125,9 @@ export default function GestioneUtenti({ studioId, currentUserId, features, isSt
         const isMe = u.user_id === currentUserId;
         const ruolo = RUOLI[u.ruolo] || RUOLI.utente;
         const stato = STATI[u.stato] || STATI.invitato;
+        const userCapabilities = new Set(capabilityRows.filter((row) => row.user_id === u.user_id).map((row) => row.capability));
         return (
-          <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: isMe ? C.priL : C.bg, borderRadius: 10, marginBottom: 8, border: `1px solid ${isMe ? C.pri + '30' : C.brd}` }}>
+          <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap:'wrap', padding: '12px 14px', background: isMe ? C.priL : C.bg, borderRadius: 10, marginBottom: 8, border: `1px solid ${isMe ? C.pri + '30' : C.brd}` }}>
             <div style={{ width: 36, height: 36, borderRadius: '50%', background: ruolo.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <span style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{u.nome?.charAt(0)?.toUpperCase() || '?'}</span>
             </div>
@@ -132,6 +154,14 @@ export default function GestioneUtenti({ studioId, currentUserId, features, isSt
                 </button>
               </div>
             )}
+            {isStudioAdmin && u.user_id && <div style={{ flexBasis:'100%',display:'flex',gap:5,flexWrap:'wrap',paddingTop:8,borderTop:`1px solid ${C.brd}` }}>
+              {CAPABILITIES.map(([capability,label]) => {
+                const enabled=userCapabilities.has(capability);
+                return <button key={capability} type="button" aria-pressed={enabled} onClick={()=>toggleCapability(u.user_id,capability,enabled)}
+                  style={{border:`1px solid ${enabled?C.pri:C.brd}`,borderRadius:7,padding:'5px 8px',background:enabled?C.priL:C.sur,color:enabled?C.pri:C.txm,fontSize:10,fontWeight:700,cursor:'pointer'}}>{enabled?'✓ ':''}{label}</button>;
+              })}
+              <div style={{flexBasis:'100%',fontSize:10,color:C.txl}}>Le capability sono additive ed esplicite. Admin non implica accesso clinico.</div>
+            </div>}
           </div>
         );
       })}

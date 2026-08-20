@@ -1,0 +1,12 @@
+.canonical-financial-widget { min-width: 0; overflow: hidden; padding: 14px; border: 1px solid var(--widget-border, #d9e2e7); border-radius: 12px; background: var(--widget-surface, #fff); }
+.canonical-financial-widget__label { color: #52646c; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; overflow-wrap: anywhere; }
+.canonical-financial-widget__period { margin-top: 3px; color: #82939b; font-size: 10px; }
+.canonical-financial-widget__value { margin-top: 10px; color: #1a4e66; font-size: clamp(20px, 4vw, 30px); font-weight: 900; line-height: 1.05; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.canonical-financial-widget__state { margin-top: 10px; color: #64757d; font-size: 17px; font-weight: 800; }
+.canonical-financial-widget__reason { margin-top: 5px; color: #82939b; font-size: 10px; line-height: 1.35; }
+.canonical-financial-widget__meta { margin-top: 10px; color: #9aabb2; font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.home-period-context { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 14px; }
+.home-period-context__label { margin-right: 4px; color: #64757d; font-size: 11px; font-weight: 800; }
+.home-period-context button { min-height: 44px; padding: 7px 11px; border: 1px solid #cbd6db; border-radius: 9px; background: #fff; color: #52646c; font-size: 11px; font-weight: 800; cursor: pointer; }
+.home-period-context button.is-active { border-color: #1a4e66; background: #1a4e66; color: #fff; }
+@media (max-width: 600px) { .canonical-financial-widget__value { font-size: 24px; } .home-period-context button { flex: 1 1 100px; } }
