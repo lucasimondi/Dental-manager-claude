@@ -251,8 +251,11 @@ export default function App() {
         // solo quando esiste una membership attiva e coerente con lo studio.
         // La barriera autorevole resta public.is_studio_admin() lato database.
         const { data: mio } = await supabase.from('studio_users').select('ruolo, stato').eq('user_id', session.user.id).eq('studio_id', studioId).maybeSingle();
+        const { data: capabilities, error: capabilityError } = mio?.stato === 'attivo'
+          ? await supabase.rpc('get_my_studio_capabilities_v1', { p_studio_id: studioId })
+          : { data: [], error: null };
         if (!cancelled) {
-          setStudioMembership(mio || null);
+          setStudioMembership(mio ? { ...mio, capabilities: !capabilityError && Array.isArray(capabilities) ? capabilities : [] } : null);
           setIsStudioAdmin(!!mio && mio.ruolo === 'admin' && mio.stato === 'attivo');
         }
       }
@@ -460,6 +463,9 @@ export default function App() {
             pricelist={pricelist}
             si={studioInfo}
             features={features}
+            studioMembership={studioMembership}
+            currentUserId={session?.user?.id}
+            isStudioAdmin={isStudioAdmin}
             onClose={() => { setSchedaDashPaz(null); pulisciPosizione(['schedaPazId', 'schedaPazTab']); }}
             onEdit={() => setSchedaDashPaz(null)}
             onNuovoPiano={(id) => { setSchedaDashPaz(null); goNuovoPiano(id); }}
@@ -477,6 +483,9 @@ export default function App() {
                 plans={plans} setPlans={setPlansSync}
                 payments={payments} setPayments={setPaymentsSync} appointments={appointments} si={studioInfo}
                 features={features}
+                studioMembership={studioMembership}
+                currentUserId={session?.user?.id}
+                isStudioAdmin={isStudioAdmin}
                 onNuovoPiano={goNuovoPiano}
                 implants={implants} setImplants={setImplantsSync}
                 setAppointments={setAppointmentsSync}

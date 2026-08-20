@@ -19,7 +19,7 @@ const prossimaDataMascherina = (orto) => {
   return d.toISOString().slice(0, 10);
 };
 
-export default function SchedaPaz({ paz, plans, payments, appointments, setAppointments, si, features, onClose, onEdit, onNuovoPiano, setPlans, initTab, implants = [], setImplants, setPatients, onNuovoAppuntamento, templates, setPayments, pricelist = [] }) {
+export default function SchedaPaz({ paz, plans, payments, appointments, setAppointments, si, features, studioMembership, currentUserId, isStudioAdmin, onClose, onEdit, onNuovoPiano, setPlans, initTab, implants = [], setImplants, setPatients, onNuovoAppuntamento, templates, setPayments, pricelist = [] }) {
   const [tab, setTab] = useState(initTab || 'info');
   const [pdfPlan, setPdfPlan] = useState(null);
   const [docFiscale, setDocFiscale] = useState(false);
@@ -492,7 +492,12 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
 
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const isFisio = si?.vertical === 'fisioterapista' || si?.vertical === 'massofisioterapista';
-  const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'piani', l: '📑 Piani' }, ...(isDentistico ? [{ id: 'impl', l: '🔩 Impianti' }] : []), ...(isFisio ? [{ id: 'fisio', l: '🏃 Fisioterapia' }] : []), { id: 'paga', l: '💰 Pagamenti' }, { id: 'foto', l: '📁 Foto' }, { id: 'doc', l: '📄 Documenti' }, { id: 'app', l: '📅 Agenda' }];
+  const capabilities = new Set(studioMembership?.stato === 'attivo' ? (studioMembership?.capabilities || []) : []);
+  const physioFullAccess = capabilities.has('clinical.physiotherapist');
+  const physioOperationalAccess = capabilities.has('clinical.personal_trainer') || capabilities.has('clinical.massage_therapist');
+  const canAccessPhysio = isFisio && (physioFullAccess || physioOperationalAccess);
+  const canManagePhysioTeam = physioFullAccess || isStudioAdmin === true;
+  const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'piani', l: '📑 Piani' }, ...(isDentistico ? [{ id: 'impl', l: '🔩 Impianti' }] : []), ...(canAccessPhysio ? [{ id: 'fisio', l: '🏃 Fisioterapia' }] : []), { id: 'paga', l: '💰 Pagamenti' }, { id: 'foto', l: '📁 Foto' }, { id: 'doc', l: '📄 Documenti' }, { id: 'app', l: '📅 Agenda' }];
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
@@ -1247,8 +1252,8 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
           </div>
         )}
 
-        {tab === 'fisio' && isFisio && (
-          <PhysioCartella paziente_id={paz.id} studio_id={si?.studio_id} paziente={paz} studio={si} />
+        {tab === 'fisio' && canAccessPhysio && (
+          <PhysioCartella paziente_id={paz.id} studio_id={si?.studio_id} paziente={paz} studio={si} accessMode={physioFullAccess ? 'full' : 'operational'} currentUserId={currentUserId} canManageTeam={canManagePhysioTeam} />
         )}
 
         {tab === 'paga' && (

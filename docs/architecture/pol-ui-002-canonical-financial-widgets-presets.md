@@ -110,7 +110,7 @@ Presets seed presentation only.
 Resolution order:
 1. personal layout override;
 2. studio default layout;
-3. role/vertical preset;
+3. authoritative capability preset;
 4. platform default.
 
 A reset should return to the nearest inherited layout, not persist a duplicate copy.

@@ -977,7 +977,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       {sezione === 'team' && (
       <>
       <ProfiloUtente onNomeChange={onNomeChange} vertical={si.vertical} />
-      <GestioneUtenti studioId={studioInfo?.studio_id || '00000000-0000-0000-0000-000000000001'} currentUserId={currentUserId} features={features} isStudioAdmin={isStudioAdmin} />
+      <GestioneUtenti studioId={studioInfo?.studio_id} currentUserId={currentUserId} features={features} isStudioAdmin={isStudioAdmin} />
       <GestioneRisorseAgenda tipo="operatori" studioId={studioInfo?.studio_id || '00000000-0000-0000-0000-000000000001'} currentUserId={currentUserId} titolareNome={si.nome} features={features} isStudioAdmin={isStudioAdmin} />
       </>
       )}
@@ -1102,6 +1102,5 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
     </div>
   );
 }
-
 
 

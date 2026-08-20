@@ -42,7 +42,7 @@ const getSaluto = (nome) => { if (!nome) return 'Benvenuto'; const ora = new Dat
 
 export default function Dashboard({ patients, appointments, setAppointments, payments, plans, richiami = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, onNavigate, templates, userName: userNameProp, si, features, studioId, isStudioAdmin, studioMembership }) {
   const homePermissions = buildHomePermissions({ membership: studioMembership, features, vertical: si?.vertical });
-  const roleLayout = createRolePresetLayout(studioMembership?.ruolo, si?.vertical);
+  const roleLayout = createRolePresetLayout(studioMembership?.capabilities);
   const availableWidgetCatalog = filterWidgetCatalog(HOME_WIDGET_REGISTRY, homePermissions);
   // Widget economico/operativi (preventivi, richiami, scadenze, ortodonzia,
   // statistiche, grafici): stessa fonte di calcolo di Controllo di Gestione,
@@ -149,7 +149,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
     let cancelled = false;
     setLayoutLoading(true);
     setLayoutError('');
-    loadResolvedHomeLayout(supabase, studioId, userId, createRolePresetLayout(studioMembership?.ruolo, si?.vertical))
+    loadResolvedHomeLayout(supabase, studioId, userId, createRolePresetLayout(studioMembership?.capabilities))
       .then(({ layout, source, inheritedLayout: nextInherited, inheritedSource: nextInheritedSource }) => {
         if (!cancelled) {
           setWidgets(layout); setDraftWidgets(layout); setLayoutSource(source);
@@ -160,7 +160,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
       .catch(() => { if (!cancelled) setLayoutError('Impossibile caricare la personalizzazione Home'); })
       .finally(() => { if (!cancelled) setLayoutLoading(false); });
     return () => { cancelled = true; };
-  }, [studioId, userId, studioMembership?.ruolo, si?.vertical]);
+  }, [studioId, userId, JSON.stringify(studioMembership?.capabilities || [])]);
 
   const homePeriod = resolveHomePeriod(homePeriodId);
   const visibleWidgets = applyWidgetPermissions(widgets, HOME_WIDGET_REGISTRY, homePermissions);
