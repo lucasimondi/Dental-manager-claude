@@ -6,7 +6,7 @@ import DupModal from './DupModal.jsx';
 import SchedaPaz from './SchedaPaz.jsx';
 import { salvaPosizione, pulisciPosizione } from '../lib/posizioneNavigazione';
 
-export default function Pazienti({ patients, setPatients, plans, setPlans, payments, setPayments, appointments, setAppointments, si, features, onNuovoPiano, implants, setImplants, onNuovoAppuntamento, templates, pricelist }) {
+export default function Pazienti({ patients, setPatients, plans, setPlans, payments, setPayments, appointments, setAppointments, si, features, studioMembership, currentUserId, isStudioAdmin, onNuovoPiano, implants, setImplants, onNuovoAppuntamento, templates, pricelist }) {
   const [modal, setModal] = useState(false);
   const [importModal, setImportModal] = useState(false);
   const [dupModal, setDupModal] = useState(false);
@@ -169,7 +169,7 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
     return (
       <SchedaPaz
         paz={scheda} plans={plans} setPlans={setPlans} payments={payments} appointments={appointments}
-        si={si} features={features} implants={implants} setImplants={setImplants} pricelist={pricelist}
+        si={si} features={features} studioMembership={studioMembership} currentUserId={currentUserId} isStudioAdmin={isStudioAdmin} implants={implants} setImplants={setImplants} pricelist={pricelist}
         onClose={() => { setScheda(null); pulisciPosizione(['schedaPazId', 'schedaPazTab']); }}
         onEdit={(p) => { setScheda(null); openEdit(p); }}
         onNuovoPiano={(id) => { setScheda(null); onNuovoPiano(id); }}

@@ -5,8 +5,8 @@ import { HOME_WIDGET_REGISTRY } from '../src/lib/homeWidgetRegistry.js';
 import { applyWidgetPermissions, buildHomePermissions, createRolePresetLayout, filterWidgetCatalog, resolveDashboardLayout, resolveHomePeriod } from '../src/lib/homeDashboardModel.js';
 import { loadHomeFinancialSnapshot, selectHomeFinancialMetric } from '../src/lib/homeFinancialWidgets.js';
 
-const admin = { ruolo: 'admin', stato: 'attivo' };
-const user = { ruolo: 'utente', stato: 'attivo' };
+const admin = { ruolo: 'admin', stato: 'attivo', capabilities: ['home.owner','finance.management.read'] };
+const user = { ruolo: 'utente', stato: 'attivo', capabilities: ['home.front_desk'] };
 const enabled = { controllo_gestione: true };
 
 test('financial widgets use only the canonical RPC and contain no frontend formulas or legacy fallback', () => {
@@ -25,16 +25,17 @@ test('shared period context propagates deterministic date boundaries', () => {
 
 test('owner, front desk and clinician/fisio presets expose different jobs-to-be-done', () => {
   const visible = (layout) => layout.filter((item) => item.visible).map((item) => item.id);
-  assert.ok(visible(createRolePresetLayout('admin', 'dentistico')).includes('fin_prodotto'));
-  assert.deepEqual(new Set(visible(createRolePresetLayout('utente', 'dentistico')).slice(0, 3)), new Set(['agenda', 'appuntamenti', 'todo']));
-  assert.deepEqual(new Set(visible(createRolePresetLayout('clinico', 'fisioterapista'))), new Set(['agenda', 'appuntamenti', 'todo']));
+  assert.ok(visible(createRolePresetLayout(['home.owner','finance.management.read'])).includes('fin_prodotto'));
+  assert.deepEqual(new Set(visible(createRolePresetLayout(['home.front_desk'])).slice(0, 3)), new Set(['agenda', 'appuntamenti', 'todo']));
+  assert.deepEqual(new Set(visible(createRolePresetLayout(['clinical.physiotherapist']))), new Set(['agenda', 'appuntamenti', 'todo']));
+  assert.equal(createRolePresetLayout([]), null);
 });
 
 test('layout precedence is user, studio, role, platform and role changes do not overwrite user layout', () => {
   const userLayout = [{ id: 'todo', visible: true, size: 'small' }];
   const studioLayout = [{ id: 'agenda', visible: true, size: 'wide' }];
-  const roleA = createRolePresetLayout('admin', 'dentistico');
-  const roleB = createRolePresetLayout('utente', 'dentistico');
+  const roleA = createRolePresetLayout(['home.owner']);
+  const roleB = createRolePresetLayout(['clinical.physiotherapist']);
   assert.equal(resolveDashboardLayout({ userLayout, studioLayout, roleLayout: roleA }).source, 'user');
   assert.equal(resolveDashboardLayout({ studioLayout, roleLayout: roleA }).source, 'studio');
   assert.equal(resolveDashboardLayout({ roleLayout: roleA }).source, 'role');
@@ -45,7 +46,7 @@ test('layout precedence is user, studio, role, platform and role changes do not 
 test('unauthorized and suspended users cause zero financial backend calls', async () => {
   let calls = 0;
   const client = { rpc: async () => { calls += 1; return { data: [{}], error: null }; } };
-  for (const membership of [user, { ruolo: 'admin', stato: 'sospeso' }, null]) {
+  for (const membership of [user, { ruolo: 'admin', stato: 'sospeso', capabilities:['finance.management.read'] }, { ruolo:'admin',stato:'attivo',capabilities:[] }, null]) {
     const permissions = buildHomePermissions({ membership, features: enabled, vertical: 'dentistico' });
     const result = await loadHomeFinancialSnapshot(client, { authorized: permissions.managementControl, period: resolveHomePeriod('current_month', new Date(2026, 7, 19)) });
     assert.equal(result.skipped, true);
@@ -73,7 +74,7 @@ test('permission-aware catalog is fail closed and tenant membership is evaluated
   const userB = buildHomePermissions({ membership: user, features: enabled, vertical: 'dentistico' });
   assert.ok(filterWidgetCatalog(HOME_WIDGET_REGISTRY, ownerA).some((item) => item.id === 'fin_incassato'));
   assert.ok(!filterWidgetCatalog(HOME_WIDGET_REGISTRY, userB).some((item) => item.id.startsWith('fin_')));
-  assert.ok(applyWidgetPermissions(createRolePresetLayout('admin', 'dentistico'), HOME_WIDGET_REGISTRY, userB).filter((item) => item.visible).every((item) => !item.id.startsWith('fin_')));
+  assert.ok(applyWidgetPermissions(createRolePresetLayout(['home.owner']), HOME_WIDGET_REGISTRY, userB).filter((item) => item.visible).every((item) => !item.id.startsWith('fin_')));
 });
 
 test('responsive contract covers 375, 768, 1024 and 1440 breakpoints', () => {

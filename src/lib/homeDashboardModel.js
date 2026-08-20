@@ -6,14 +6,19 @@ export const HOME_PRESETS = Object.freeze({
   clinician_fisio: Object.freeze(['agenda', 'appuntamenti', 'todo']),
 });
 
-export const normalizeHomeRole = (role, vertical) => {
-  if (role === 'admin') return 'owner';
-  if (['clinico', 'fisioterapista', 'terapista'].includes(role) || ['fisioterapista', 'massofisioterapista'].includes(vertical)) return 'clinician_fisio';
-  return 'front_desk';
+export const normalizeHomeRole = (capabilities = []) => {
+  const effective = new Set(Array.isArray(capabilities) ? capabilities : []);
+  if (effective.has('home.owner')) return 'owner';
+  if (effective.has('clinical.physiotherapist') || effective.has('clinical.personal_trainer')
+    || effective.has('clinical.massage_therapist') || effective.has('clinical.general')) return 'clinician_fisio';
+  if (effective.has('home.front_desk')) return 'front_desk';
+  return null;
 };
 
-export const createRolePresetLayout = (role, vertical) => {
-  const presetIds = new Set(HOME_PRESETS[normalizeHomeRole(role, vertical)] || []);
+export const createRolePresetLayout = (capabilities = []) => {
+  const preset = normalizeHomeRole(capabilities);
+  if (!preset) return null;
+  const presetIds = new Set(HOME_PRESETS[preset] || []);
   return createDefaultHomeLayout().map((item) => ({ ...item, visible: presetIds.has(item.id) }));
 };
 
@@ -26,13 +31,17 @@ export const resolveDashboardLayout = ({ userLayout, studioLayout, roleLayout })
 
 export const buildHomePermissions = ({ membership, features, vertical }) => {
   const active = membership?.stato === 'attivo';
-  const owner = active && membership?.ruolo === 'admin';
+  const capabilities = new Set(active && Array.isArray(membership?.capabilities) ? membership.capabilities : []);
   return Object.freeze({
     activeMember: active,
-    managementControl: owner && features?.controllo_gestione === true,
+    managementControl: capabilities.has('finance.management.read') && features?.controllo_gestione === true,
     physioClinicalSelectors: false,
+    physioFullAccess: capabilities.has('clinical.physiotherapist'),
+    physioOperationalAccess: capabilities.has('clinical.personal_trainer') || capabilities.has('clinical.massage_therapist'),
+    clinicalContent: capabilities.has('clinical.general') || capabilities.has('clinical.physiotherapist')
+      || capabilities.has('clinical.personal_trainer') || capabilities.has('clinical.massage_therapist'),
+    capabilities: Object.freeze([...capabilities]),
     vertical,
-    role: membership?.ruolo || null,
   });
 };
 

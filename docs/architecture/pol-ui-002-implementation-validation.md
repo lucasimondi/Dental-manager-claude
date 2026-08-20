@@ -10,13 +10,13 @@ All visible canonical widgets share one Home period: current month, previous mon
 
 The catalog is filtered before customization and rendering. Resolution order is personal override, studio default, role/vertical preset, then platform default. A role change cannot replace an existing personal or studio layout. Presets only seed visibility/order; they never alter data or formulas.
 
-The current authoritative membership vocabulary has only `admin` and generic `utente`. Consequently, `admin` maps to Titolare; a non-admin dental user maps to Segreteria; a non-admin physiotherapy vertical maps to Clinico/Fisio. A richer role assignment is not invented here.
+POL-RBAC-001 removes role/vertical inference. The Home consumes only the server-returned capability list: owner, front-desk and clinical presets require `home.owner`, `home.front_desk` or an explicit clinical capability respectively. Existing `admin` is mapped server-side only to owner/management capabilities; generic `utente` receives no automatic preset or clinical capability.
 
 The prior ad-hoc Home queries of `physio_obiettivi`, `physio_diario_sedute` and `physio_prescrizioni` were removed. The Fisio registry contract is fail closed until stable POL-FIS-001 selectors are available.
 
 ## Local evidence
 
-- Node: `npm test` — 20/20 passed, including canonical-only source, no fallback, period propagation, all presets, inheritance order, role-change preservation, unauthorized zero-call behavior, two-tenant permission evaluation, unavailable states, four responsive widths and POL-UI-001 regressions.
+- Node: the original 20/20 POL-UI-002 tests plus 6/6 POL-RBAC-001 tests passed, including canonical-only source, no fallback, capability-only presets, inheritance order, capability-change preservation, unauthorized zero-call behavior, unavailable states, four responsive widths and POL-UI-001 regressions.
 - Database: applied the two unchanged POL-UI-001 layout migrations to an ephemeral `public.ecr.aws/supabase/postgres:17.6.1.159` container with only synthetic data; the full layout RLS regression passed for user/studio separation, two tenants, non-admin and suspended membership.
 - Supabase CLI: `supabase db lint --level warning` against the loopback-only disposable database — no schema errors.
 - Build: Vite production build passed from a temporary Linux directory using the committed lockfile. Existing pdfjs eval and large-chunk warnings remain.

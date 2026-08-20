@@ -1,34 +1,227 @@
 # Current task
 
-- TASK: POL-UI-002
-- TITLE: Canonical Financial Widgets + Role Presets
-- OWNER: CODEX
-- BRANCH: `ui/POL-UI-002-canonical-financial-widgets-presets`
+- TASK: POL-RBAC-001A
+- TITLE: Patient / Care Assignment (authoritative capability + assignment separation)
+- OWNER: CLAUDE
+- PREVIOUS TASK/OWNER: POL-RBAC-001, CODEX, `WAITING_PRODUCT_OWNER` (unchanged; POL-RBAC-001A is a new, additive follow-up task opened directly by the Product Owner directive that started this session, not a takeover of POL-RBAC-001's ownership)
+- BRANCH: `security/POL-RBAC-001-authoritative-capabilities` (same branch/PR #16; POL-RBAC-001A commits are additional commits on top, not a new branch)
+- BASE REVIEW: `master` (retargeted — PR #15/POL-UI-002 was squash-merged to master as commit `1348dd9801dad882ad0a370cbb08e89066af7c31`; PR #16 rebased onto master in this round, see "Rebase onto master" below. No longer stacked on a separate PR.)
 - STATUS: `WAITING_PRODUCT_OWNER`
 
 ## Objective
 
-Turn the modular Home into a permission-aware workspace with canonical financial widgets, one shared period context and presentation presets for Titolare, Segreteria and Clinico/Fisio. Preserve the POL-UI-001 personalization hierarchy and use only the POL-003/POL-003F snapshot contract for new financial widgets.
+Close the residual risk the Product Owner identified in POL-RBAC-001: a
+`clinical.personal_trainer`/`clinical.massage_therapist` capability alone let
+a user read every Fisio patient in the tenant. Separate CAPABILITY ("may act
+as X") from ASSIGNMENT ("may act on THIS patient"), add a tenant-safe
+`patient_care_assignments` table, and make PT/massage_therapist Fisio RLS
+require an active assignment. Physiotherapist access stays tenant-wide
+per the already-approved contract. Add a minimal "Team del percorso"
+UI to view/manage a patient's assigned professionals.
+
+## Product Owner decisions (recorded verbatim)
+
+Two open decisions were resolved by the Product Owner and applied in full:
+
+> 1. APPROVATO `episode_id → physio_piani` esclusivamente come adapter
+>    transitorio fino alla stabilizzazione del canonical episode di
+>    POL-FIS-001. Documentalo esplicitamente come transitional compatibility
+>    layer. Non creare un secondo modello episodio e non eseguire backfill
+>    inventati.
+> 2. Per PT e massage therapist approvo la visibilità del roster
+>    esclusivamente sul percorso al quale sono attivamente assegnati,
+>    applicando data minimization: possono vedere nome/identità
+>    professionale, ruolo nel percorso e stato dei membri attivi del team.
+>    Non devono poter derivare capability globali, altri assignment, altri
+>    pazienti o contenuti clinici aggiuntivi tramite il roster. Il
+>    fisioterapista autorizzato può avere la vista completa del team
+>    prevista dal contratto.
+
+**Decision 1 — already satisfied, documentation-only change.** The
+implementation already matched exactly: nullable `episode_id`, patient-level
+RLS gating only, no second episode model, no backfill anywhere. The
+migration's table/column comments, header, and the architecture doc now say
+"TRANSITIONAL COMPATIBILITY LAYER" explicitly, per instruction.
+
+**Decision 2 — did not match, real fix applied (checked before assuming).**
+Two gaps found and closed:
+
+1. `patient_care_assignments_select`'s "shared teammate" branch granted
+   **full-row** SELECT (including `created_by`, timestamps, `ended_by`,
+   `reason`) to any active teammate on the same patient — exceeding
+   "identità, ruolo, stato". Fixed by removing that branch from the base
+   table policy entirely and adding `patient_care_team_roster_v1(studio_id,
+   patient_id)`, a `SECURITY DEFINER` function returning only `id, user_id,
+   assignment_type, active` — a structural column restriction, not a
+   convention. `PhysioCartella.jsx` now reads the roster exclusively through
+   this RPC; a direct API call gets the same four columns regardless of
+   client code.
+2. While rebuilding this, found `caller_has_active_patient_assignment_v1`
+   never re-checked the caller's own `studio_users.stato = 'attivo'` — a
+   suspended user with a still-`active=true` assignment row could still pass
+   it. Fixed with a `studio_users` join; the same membership check now also
+   applies to the *listed* rows in the roster (a suspended member's
+   still-active assignment no longer counts as part of "the active team").
+
+Full detail: `docs/architecture/pol-rbac-001a-patient-care-assignment.md`
+("Authorization" section) and `docs/architecture/pol-rbac-001a-local-validation.md`.
+
+## Rebase onto master (PR #15 squash-merged)
+
+PR #15 (POL-UI-002) was squash-merged to `master` as
+`1348dd9801dad882ad0a370cbb08e89066af7c31`. GitHub then retargeted PR #16
+onto `master`, but its branch still carried the old, now-duplicate
+stacked history (the individual POL-UI-002 commits plus everything
+before them), making it unmergeable against the new `master`.
+
+Before touching anything, confirmed the trees were byte-identical:
+`git diff b9370ad 1348dd9` (old POL-UI-002 branch tip vs. the new squash
+commit on master) produced **zero** output — the squash preserved the
+content exactly. This meant the seven POL-RBAC-001/POL-RBAC-001A commits
+(`b9370ad..0c675e9` on the old history) could be replayed verbatim onto the
+new master with `git rebase --onto origin/master b9370ad
+security/POL-RBAC-001-authoritative-capabilities` — and they applied with
+**zero conflicts**, confirming the prediction.
+
+Verified before pushing:
+- `git diff <pre-rebase-tip> <post-rebase-tip>` — empty. The resulting tree
+  is byte-for-byte identical to before the rebase; nothing was lost,
+  changed, or duplicated by the history rewrite itself.
+- `git merge-base --is-ancestor origin/master HEAD` — true. The branch is
+  now a direct, clean, fast-forwardable stack on `master`.
+- `git diff origin/master..HEAD --stat` — 24 files, all POL-RBAC-001/
+  POL-RBAC-001A-owned (migrations, RLS tests, `PhysioCartella.jsx`,
+  `SchedaPaz.jsx`, docs) plus exactly two pre-existing, intentional
+  touch-ups to POL-UI-002's own files that predate this session (part of
+  the original POL-RBAC-001 commit, not introduced by the rebase):
+  `tests/homeFinancialWidgets.test.mjs` (updated to the capability-array
+  contract `createRolePresetLayout([...])` replaced the old
+  `(ruolo, vertical)` signature) and
+  `docs/architecture/pol-ui-002-implementation-validation.md` (updated
+  prose to describe the capability-based preset resolution). No
+  `CanonicalFinancialWidget`/`homeWidgetRegistry`/`homeLayoutPersistence`
+  or other POL-UI-002 feature file appears in the diff — no duplication.
+- Full required checklist re-run after the rebase, before pushing: 30/30
+  Node tests (20 original POL-UI-002 + 10 POL-RBAC-001/POL-RBAC-001A);
+  PostgreSQL 16 (dev) full migration/regression chain; `supabase db lint`
+  (PG16, no schema errors); **PostgreSQL 17.5 final gate** (PGlite,
+  complete chain incl. the two-tenant/assignment/suspension/roster
+  assertions) — all green; `npm run build` clean; `git diff --check`
+  clean; secret-pattern scan over the full `origin/master..HEAD` diff — no
+  matches.
+
+A local tag `backup/pol-rbac-001a-pre-rebase-0c675e9` was created before
+rewriting, pointing at the pre-rebase tip, purely as a local safety net —
+not pushed, not part of the repository's tracked history.
+
+The push to `origin/security/POL-RBAC-001-authoritative-capabilities` after
+this rebase is **non-fast-forward** (history was rewritten) and uses
+`--force-with-lease`, per explicit Product Owner instruction to realign the
+branch. No merge, deploy, or remote migration was performed.
 
 ## Safety boundaries
 
-- New financial widgets read only `get_financial_snapshot_v1`; they contain no financial formulas and no legacy fallback.
-- Active membership, management-control capability and role are evaluated fail closed before the canonical loader is mounted.
-- Layout resolution is user override → studio default → role/vertical preset → platform default.
-- Fisio clinical selectors remain disabled because an authoritative merged Home contract is not available; no legacy Fisio table is queried by the Home.
-- No database migration was added or changed. No production write, remote migration, backfill, deployment or merge occurred.
+- No automatic patient/professional assignments are inferred or seeded in
+  any migration; only synthetic test fixtures create assignment rows.
+- Assignment authorization requires active membership on both caller and
+  target, in the same tenant; suspended membership denies access even with
+  a matching capability and an active assignment — now enforced on every
+  read path, including the team roster (see decision 2 above).
+- Physiotherapist Fisio access is unchanged (tenant-wide by capability) —
+  not accidentally narrowed by this task.
+- No production access, remote migration, backfill, deployment or merge is
+  authorized or performed.
 
 ## Completion state
 
-Implementation and local verification are complete. The canonical widget pack, shared period selector, presets, permission-aware catalog, explicit unavailable states and responsive contracts for 375/768/1024/1440 are implemented. Twenty Node tests, POL-UI-001 migration/RLS regression on an isolated Supabase/PostgreSQL 17 container, database lint and the production build passed. Secret, diff and scope checks passed. The task is waiting for Product Owner review on PR #15.
+`patient_care_assignments` (additive table), its authorization/eligibility
+helper functions, author-enforcement/immutability trigger and RLS are
+implemented in one migration stacked after POL-RBAC-001's. Redefining
+`physio_patient_in_studio_v1` in place tightens all its existing callers;
+the three Fisio READ policies that previously granted tenant-wide access on
+capability alone are re-scoped to patient level; `physio_esecuzioni` gains
+server-enforced authorship so PT/massage_therapist can record and read their
+own execution log. `studio_user_capabilities` SELECT is extended (clinical.*
+rows only) so a physiotherapist can browse teammate capabilities for the
+"Assegna professionista" picker. `PhysioCartella.jsx` gains a "Team del
+percorso" section and management modal, gated client-side by capability
+(`canManageTeam`) purely for UX — RLS/the roster RPC's own authorization
+check is authoritative. `episode_id` is a nullable, Product-Owner-approved
+transitional compatibility layer onto the existing `physio_piani` table,
+pending POL-FIS-001 convergence — this did not block the tenant/RLS/
+assignment work.
 
-## Open decisions and residual risks
+Validation passed locally: original 20 POL-UI-002 + 6 POL-RBAC-001 Node/SQL
+regressions (with the RBAC fixture updated for the new assignment-gated
+contract), all POL-RBAC-001A SQL assertions — including nine new assertions
+for the decision-2 roster/suspension fix — (Studio A/B, Patient A/B, PT1/
+PT2/Massage1/multi-role/suspended/cross-tenant/revocation/author-spoofing/
+assignment-management-authorization/roster-data-minimization), 4 POL-RBAC-001A
+Node tests (one updated this round for the roster RPC change), and a clean
+Vite production build. See
+`docs/architecture/pol-rbac-001a-local-validation.md`.
 
-- The verified membership model exposes `admin` and generic `utente`; until authoritative clinical/front-desk roles exist, non-admin dental users receive the Segreteria preset and non-admin Fisio users receive the Clinico/Fisio preset. This changes presentation only and requires a future Product Owner-approved role model for finer assignment.
-- Authoritative worked hours remain unavailable, so Produzione/ora and Incasso/ora show `Non disponibile` when the snapshot lacks a positive denominator.
-- No canonical trend series or stable POL-FIS-001 Home selector is consumed.
-- Ten pre-existing dependency audit findings remain outside scope (2 moderate, 6 high, 2 critical); existing pdfjs eval and chunk-size build warnings remain.
+**PostgreSQL 16 was preliminary development only.** Per explicit Product
+Owner instruction, the full required checklist (migration chain, POL-RBAC-001
+regression, POL-RBAC-001A assignment regression, RLS two-tenant, assignment/
+revoke, suspended user, author spoofing, cross-tenant, unassigned PT,
+unassigned massage therapist, physiotherapist flow, build, Node test,
+secret/diff/scope check) was re-run unmodified — including after the
+decision-2 fix above — against a genuine **PostgreSQL 17.5** engine. Docker
+and `apt.postgresql.org` are both denied by this sandbox's network policy
+(confirmed with concrete 403s against three independent hosts: PGDG apt,
+Supabase's own Docker image blob storage, and plain Docker Hub's blob
+storage), so PostgreSQL 17.5 was obtained via `@electric-sql/pglite` — a
+real Postgres compiled from unmodified source to WASM, distributed on the
+(allowlisted) npm registry — after an RLS smoke test confirmed it enforces
+roles/policies/`set_config` correctly, not a stub. Every item on the list
+passed on PostgreSQL 17.5 except `supabase db lint`, which ran for real but
+against PostgreSQL 16 (the TCP adapter needed to expose PGlite over the wire
+protocol only supports the PostgreSQL 18 PGlite line, confirmed by a hung
+handshake when forced against 17.5) — see "Residual risks" below. Full
+engine-by-engine breakdown, transcripts and exact hosts/errors:
+`docs/architecture/pol-rbac-001a-local-validation.md`.
+
+Two self-review passes after the initial push (a code-review pass and a
+dedicated security-review pass) each found and fixed one real least-privilege
+issue, both since regression-tested: (1) the `studio_user_capabilities`
+extension for physiotherapists originally exposed every capability row in
+the studio, not just `clinical.*` ones — narrowed with
+`capability LIKE 'clinical.%'`; (2) `patient_care_assignments_select`'s
+"shared patient" branch checked the caller's active assignment but not
+whether the row being read was itself active — this branch was since removed
+entirely per Product Owner decision 2 above, superseding that earlier fix.
+The responsive "Team del percorso" UI (375/768/1024/1440px) was verified by
+screenshotting the shipped component's exact markup/styles headlessly (the
+live app cannot be driven in this sandbox without touching the real
+production Supabase project it's hardcoded to, which the safety rules
+forbid) — see the local-validation doc for details and results.
+
+## Residual risks
+
+- `supabase db lint` ran against PostgreSQL 16, not PostgreSQL 17 (see
+  above) — the schema/policy checks it performs are static, not
+  version-dependent, and it reported no errors both before and after the
+  decision-2 fix, but a literal PG17 CLI-lint run needs Docker or PGDG apt
+  access this sandbox's network policy does not grant.
+  `PRODUCT_OWNER_DECISION_REQUIRED` if that's required before merge.
+  Security/performance advisors (Supabase-hosted) remain unavailable in this
+  sandbox for the same reason on either engine.
+- Physiotherapist Fisio access remains tenant-wide (unchanged from
+  POL-RBAC-001); the model supports but does not yet implement per-patient
+  restriction for physiotherapists, as the mission anticipated as future
+  work. Not requested by either Product Owner decision in this round.
+- `episode_id`/POL-FIS-001 convergence and the roster visibility tier are
+  now **decided**, not open — removed from this list. When POL-FIS-001
+  merges and stabilizes, a follow-up migration must repoint/rename
+  `episode_id`; that follow-up's exact mechanics remain to be designed then,
+  not a decision blocking this task.
+- Existing dependency advisories (`npm audit`) and pre-existing build
+  warnings remain outside this task's scope, unchanged from prior handoffs.
 
 ## Exact next action
 
-Product Owner and Tech Lead review PR #15, validate the permission/preset mapping and decide whether a manual device pass is required. Do not apply migrations remotely, deploy, merge or begin another task without explicit Product Owner approval.
+Product Owner and Tech Lead review the stacked POL-RBAC-001 + POL-RBAC-001A
+commits together on PR #16, now incorporating both recorded decisions. Do
+not apply remotely, deploy, merge POL-RBAC-001A/POL-RBAC-001, or merge PR
+#15/#16 without explicit Product Owner approval.
