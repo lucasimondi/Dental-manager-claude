@@ -43,6 +43,11 @@ export const createDefaultHomeLayout = () => HOME_WIDGET_REGISTRY.map((widget, o
   size: widget.defaultSize,
 }));
 
+/* POL-UX-001: `config` is an optional, per-widget-instance payload (only
+   the quick_actions widget uses it today, to persist which actions the
+   user chose and in what order — see quickActionsCatalog.js). Omitted
+   entirely when absent so existing layouts and their {id,order,visible,
+   size}-only shape keep working unchanged. */
 export const normalizeHomeLayout = (value) => {
   const raw = Array.isArray(value) ? value : [];
   const seen = new Set();
@@ -51,12 +56,14 @@ export const normalizeHomeLayout = (value) => {
     const widget = item && getHomeWidget(item.id);
     if (!widget || seen.has(widget.id)) continue;
     seen.add(widget.id);
-    normalized.push({
+    const entry = {
       id: widget.id,
       order: normalized.length,
       visible: item.visible !== false && item.attivo !== false,
       size: widget.sizes.includes(item.size) ? item.size : widget.defaultSize,
-    });
+    };
+    if (item.config && typeof item.config === 'object' && !Array.isArray(item.config)) entry.config = item.config;
+    normalized.push(entry);
   }
   for (const fallback of createDefaultHomeLayout()) {
     if (!seen.has(fallback.id)) normalized.push({ ...fallback, order: normalized.length });
@@ -90,4 +97,7 @@ export const setHomeWidgetSize = (layout, id, size) => normalizeHomeLayout(layou
   return item.id === id && widget?.sizes.includes(size) ? { ...item, size } : item;
 });
 
-export const serializeHomeLayout = (layout) => normalizeHomeLayout(layout).map(({ id, order, visible, size }) => ({ id, order, visible, size }));
+export const setHomeWidgetConfig = (layout, id, config) => normalizeHomeLayout(layout).map((item) => item.id === id ? { ...item, config } : item);
+
+export const serializeHomeLayout = (layout) => normalizeHomeLayout(layout).map(({ id, order, visible, size, config }) =>
+  config ? { id, order, visible, size, config } : { id, order, visible, size });

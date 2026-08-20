@@ -5,6 +5,7 @@ import { generaRichiamiBot } from './lib/richiamiBot';
 import { salvaPosizione, leggiPosizione, pulisciPosizione } from './lib/posizioneNavigazione';
 import MobileDock from './components/MobileDock.jsx';
 import PremiumSidebar from './components/PremiumSidebar.jsx';
+import './styles/designTokens.css';
 import './components/PremiumVisualSystem.css';
 import { useIsMobile } from './lib/useIsMobile';
 import { useTheme } from './lib/useTheme';
@@ -426,20 +427,20 @@ export default function App() {
       )}
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, height: '100dvh', overflow: 'hidden' }}>
       {isMobile && (
-      <div style={{ background: C.header, padding: '11px 14px', paddingTop: 'max(11px,env(safe-area-inset-top))', display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
+      <div className="app-mobile-header" style={features.custom_colors && studioInfo?.header_colore ? { background: C.header } : undefined}>
         {features.custom_logo && studioInfo?.custom_logo_b64 ? (
-          <img src={studioInfo.custom_logo_b64} alt={studioInfo?.nome || 'Logo'} style={{ height: 40, maxWidth: 160, display: 'block', objectFit: 'contain' }} />
+          <img src={studioInfo.custom_logo_b64} alt={studioInfo?.nome || 'Logo'} className="app-mobile-header__logo" style={{ maxWidth: 160, objectFit: 'contain' }} />
         ) : (
           <img
             src={LOGO_WHITE_PER_SLUG[getLogoSlug(studioInfo?.vertical)]}
             alt="Poliedra"
-            style={{ height: 48, display: 'block' }}
+            className="app-mobile-header__logo"
           />
         )}
-        <div style={{ marginLeft: 'auto', fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>{navVisibile.find((n) => n.id === page)?.l}</span>
-          {isSuperAdmin && <button onClick={() => setShowMasterDashboard(true)} title="Dashboard Master" style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, padding: '4px 8px', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>🛠️</button>}
-          <button onClick={handleLogout} title="Esci" style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, padding: '4px 8px', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>Esci</button>
+        <div className="app-mobile-header__meta">
+          <span className="app-mobile-header__page">{navVisibile.find((n) => n.id === page)?.l}</span>
+          {isSuperAdmin && <button className="app-mobile-header__btn" onClick={() => setShowMasterDashboard(true)} title="Dashboard Master">🛠️</button>}
+          <button className="app-mobile-header__btn" onClick={handleLogout} title="Esci">Esci</button>
         </div>
       </div>
       )}
@@ -474,7 +475,7 @@ export default function App() {
       )}
 
       <div id="app-scroll" style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: 13, paddingBottom: isMobile ? 98 : 28 }}>
-        {page === 'home' && <Dashboard patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} />}
+        {page === 'home' && <Dashboard patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegni} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} />}
         {page !== 'home' && (
           <Suspense fallback={<LoadingScreen />}>
             {page === 'paz' && (

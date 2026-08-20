@@ -15,7 +15,7 @@ export const Crd = ({ children, style, onClick, ...rest }) => (
     onClick={onClick}
     {...rest}
     style={{
-      background: C.sur, borderRadius: 14, padding: 14, boxShadow: '0 1px 3px rgba(0,0,0,0.07)',
+      background: C.sur, borderRadius: 16, padding: 14, boxShadow: '0 3px 10px rgba(15,23,42,.06)',
       border: `1px solid ${C.brd}`, cursor: onClick ? 'pointer' : 'default', ...(style || {}),
     }}
   >

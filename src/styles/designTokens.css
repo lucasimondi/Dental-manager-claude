@@ -1,0 +1,102 @@
+/* POL-UX-001 — Poliedra shared design tokens.
+   Single source of truth for color, spacing, radius, shadow and typography
+   used by the premium visual system and by every page migrated onto it.
+   Presentation only: no data, query, or permission semantics live here.
+
+   Base blue/indigo direction matches src/lib/utils.js's C_LIGHT.pri
+   (#185FA5) — this file does not introduce a second, competing palette,
+   it formalizes the same direction into reusable custom properties and
+   extends it with the additional stops (indigo/azzurro/turchese/teal)
+   needed for depth, gradients and per-category widget theming. */
+
+:root {
+  /* ── Core surface & ink ── */
+  --pol-bg: #eef3f9;
+  --pol-bg-alt: #f7f9fc;
+  --pol-surface: #ffffff;
+  --pol-surface-glass: rgba(255,255,255,.90);
+  --pol-ink: #0f172a;
+  --pol-ink-muted: #5f6b7a;
+  --pol-ink-faint: #8a93a0;
+  --pol-line: rgba(15,23,42,.08);
+  --pol-line-strong: rgba(15,23,42,.14);
+
+  /* ── Brand blue/indigo (matches C_LIGHT.pri family) ── */
+  --pol-blue-50: #e6f1fb;
+  --pol-blue-500: #185fa5;
+  --pol-blue-600: #0c447c;
+  --pol-blue-700: #0b3a68;
+  --pol-indigo-500: #4f46e5;
+  --pol-indigo-600: #4338ca;
+  --pol-azure-500: #0ea5e9;
+  --pol-azure-600: #0284c7;
+  --pol-turquoise-500: #14b8a6;
+  --pol-turquoise-600: #0d9488;
+  --pol-teal-500: #0f766e;
+  --pol-teal-600: #115e59;
+  --pol-violet-500: #7c3aed;
+  --pol-violet-600: #6d28d9;
+
+  /* ── Semantic (kept in step with C_LIGHT — success/warn/danger) ── */
+  --pol-success: #16a34a;
+  --pol-success-bg: #eaf3de;
+  --pol-warn: #854f0b;
+  --pol-warn-bg: #fdf3e0;
+  --pol-danger: #791f1f;
+  --pol-danger-bg: #fcebeb;
+
+  /* ── Per-category gradient families (section L) ──
+     Same stops CanonicalFinancialWidget.css already ships for financial
+     widgets; formalized here so every widget family can share them. */
+  --pol-cat-finance-a: #2563eb;   --pol-cat-finance-b: #3b82f6;   --pol-cat-finance-c: #172554;
+  --pol-cat-ops-a: #0ea5e9;       --pol-cat-ops-b: #14b8a6;       --pol-cat-ops-c: #0c4a6e;
+  --pol-cat-clinical-a: #0f766e;  --pol-cat-clinical-b: #0d9488;  --pol-cat-clinical-c: #064e3b;
+  --pol-cat-agenda-a: #6366f1;    --pol-cat-agenda-b: #4f46e5;    --pol-cat-agenda-c: #312e81;
+  --pol-cat-alert-a: #d97706;     --pol-cat-alert-b: #f59e0b;     --pol-cat-alert-c: #92400e;
+
+  /* ── Depth ── */
+  --pol-shadow-sm: 0 3px 10px rgba(31,49,78,.06);
+  --pol-shadow: 0 14px 34px rgba(31,49,78,.10), 0 3px 10px rgba(31,49,78,.05);
+  --pol-shadow-lg: 0 24px 60px rgba(31,49,78,.14), 0 8px 20px rgba(31,49,78,.08);
+  --pol-shadow-hover: 0 30px 68px rgba(31,49,78,.18), 0 12px 26px rgba(31,49,78,.10);
+
+  /* ── Radius scale ── */
+  --pol-radius-sm: 10px;
+  --pol-radius-md: 14px;
+  --pol-radius-lg: 18px;
+  --pol-radius-xl: 22px;
+
+  /* ── Spacing scale ── */
+  --pol-space-1: 4px;
+  --pol-space-2: 8px;
+  --pol-space-3: 12px;
+  --pol-space-4: 16px;
+  --pol-space-5: 20px;
+  --pol-space-6: 28px;
+
+  /* ── Typography ── */
+  --pol-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --pol-text-xs: 11px;
+  --pol-text-sm: 13px;
+  --pol-text-md: 15px;
+  --pol-text-lg: 20px;
+  --pol-text-xl: 28px;
+
+  /* ── Touch target floor (section P) ── */
+  --pol-touch-min: 44px;
+}
+
+/* Dark theme: mirrors src/lib/utils.js's C_DARK direction (amber/gold accent
+   on near-black surfaces) so tokens stay correct if a page reads them under
+   [data-theme="dark"] (set by applyTheme() in utils.js). */
+:root[data-theme="dark"] {
+  --pol-bg: #12181c;
+  --pol-bg-alt: #161c20;
+  --pol-surface: #1b2226;
+  --pol-surface-glass: rgba(27,34,38,.90);
+  --pol-ink: #e8e6de;
+  --pol-ink-muted: #8b9296;
+  --pol-ink-faint: #6b7276;
+  --pol-line: rgba(255,255,255,.08);
+  --pol-line-strong: rgba(255,255,255,.14);
+}

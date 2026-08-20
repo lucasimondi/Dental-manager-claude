@@ -22,9 +22,11 @@ export default function Btn({ ch, onClick, v = 'pri', sz = 'md', ic, dis, full }
       disabled={dis}
       style={{
         background: vs.bg, color: vs.co, border: vs.bo || 'none', padding: ss.p, fontSize: ss.fs,
-        borderRadius: 10, cursor: dis ? 'not-allowed' : 'pointer', fontWeight: 700,
+        borderRadius: 11, cursor: dis ? 'not-allowed' : 'pointer', fontWeight: 700,
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-        opacity: dis ? 0.5 : 1, width: full ? '100%' : 'auto',
+        opacity: dis ? 0.5 : 1, width: full ? '100%' : 'auto', minHeight: sz === 'sm' ? 32 : 44,
+        boxShadow: v === 'sec' || v === 'gho' ? 'none' : '0 8px 18px -6px rgba(24,95,165,.35)',
+        transition: 'transform .16s ease, box-shadow .16s ease',
       }}
     >
       {ic && <Ic n={ic} s={sz === 'sm' ? 12 : 14} c="currentColor" />}

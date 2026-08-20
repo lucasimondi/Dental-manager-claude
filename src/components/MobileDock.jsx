@@ -105,7 +105,7 @@ export default function MobileDock({ page, setPage, dockSettings, onLogout, feat
               onClick={() => (id === 'esci' ? onLogout && onLogout() : go(id))}
               style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '6px 2px' }}
             >
-              <div style={{ width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: active ? C.priL : 'transparent' }}>
+              <div style={{ width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: active ? C.priL : 'transparent', boxShadow: active ? `inset 0 0 0 1.5px ${C.pri}55` : 'none' }}>
                 <DockIc n={item.ic} style={style} s={24} c={active ? C.pri : C.txl} />
               </div>
               <span style={{ fontSize: 9.5, fontWeight: active ? 800 : 600, color: active ? C.pri : C.txl, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.l}</span>

@@ -6,11 +6,13 @@ import { C, fmt, fmtD, today } from '../lib/utils';
 import { BarChart, Bar, LineChart, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useControlloDati } from '../lib/useControlloDati';
 import WidgetWorkspace from './WidgetWorkspace.jsx';
-import { HOME_WIDGET_REGISTRY, createDefaultHomeLayout, moveHomeWidget, moveHomeWidgetByOffset, setHomeWidgetSize, setHomeWidgetVisibility } from '../lib/homeWidgetRegistry.js';
+import { HOME_WIDGET_REGISTRY, createDefaultHomeLayout, moveHomeWidget, moveHomeWidgetByOffset, setHomeWidgetConfig, setHomeWidgetSize, setHomeWidgetVisibility } from '../lib/homeWidgetRegistry.js';
 import { deleteUserHomeLayout, loadResolvedHomeLayout, saveStudioHomeLayout, saveUserHomeLayout } from '../lib/homeLayoutPersistence.js';
 import CanonicalFinancialWidget from './CanonicalFinancialWidget.jsx';
 import { applyWidgetPermissions, buildHomePermissions, createRolePresetLayout, filterWidgetCatalog, resolveHomePeriod } from '../lib/homeDashboardModel.js';
 import { getHomeFinancialWidget, loadHomeFinancialSnapshot } from '../lib/homeFinancialWidgets.js';
+import QuickBookingModal from './QuickBookingModal.jsx';
+import { DEFAULT_QUICK_ACTION_IDS, filterQuickActionsCatalog, getQuickAction, resolveQuickActions } from '../lib/quickActionsCatalog.js';
 
 const PALETTE = [
   '#1A4E66','#2EC4B6','#2D9E61','#7C3AED','#E63946',
@@ -37,10 +39,9 @@ const loadTheme = () => {
 };
 const saveTheme = (t) => { try { localStorage.setItem('dm_theme', JSON.stringify(t)); } catch {} };
 
-const NOMI_F = ['alessia','alice','anna','beatrice','camilla','chiara','claudia','elena','elisa','emma','federica','francesca','giulia','ilaria','laura','lisa','lucia','luisa','mara','maria','marina','martina','monica','paola','roberta','sara','silvia','sofia','valentina','veronica','virginia'];
-const getSaluto = (nome) => { if (!nome) return 'Benvenuto'; const ora = new Date().getHours(); const s = ora < 12 ? 'Buongiorno' : ora < 18 ? 'Buon pomeriggio' : 'Buonasera'; const p = nome.trim().split(' ')[0].toLowerCase(); const fem = NOMI_F.includes(p) || (p.endsWith('a') && !['luca','andrea','mattia','nicola','enea'].includes(p)); return s + ', ' + (fem ? 'cara ' : 'caro ') + nome.trim().split(' ')[0]; };
+const getSaluto = (nome) => { const ora = new Date().getHours(); const s = ora < 12 ? 'Buongiorno' : ora < 18 ? 'Buon pomeriggio' : 'Buonasera'; if (!nome) return s; return s + ', ' + nome.trim().split(' ')[0]; };
 
-export default function Dashboard({ patients, appointments, setAppointments, payments, plans, richiami = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, onNavigate, templates, userName: userNameProp, si, features, studioId, isStudioAdmin, studioMembership }) {
+export default function Dashboard({ patients, appointments, setAppointments, payments, plans, richiami = [], impegni = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, onNavigate, templates, userName: userNameProp, si, features, studioId, isStudioAdmin, studioMembership }) {
   const homePermissions = buildHomePermissions({ membership: studioMembership, features, vertical: si?.vertical });
   const roleLayout = createRolePresetLayout(studioMembership?.capabilities);
   const availableWidgetCatalog = filterWidgetCatalog(HOME_WIDGET_REGISTRY, homePermissions);
@@ -125,6 +126,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   const [editApp, setEditApp] = useState(null);
   const [editForm, setEditForm] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [bookingOpen, setBookingOpen] = useState(false);
   const [layoutLoading, setLayoutLoading] = useState(false);
   const [layoutSaving, setLayoutSaving] = useState(false);
   const [layoutError, setLayoutError] = useState('');
@@ -358,7 +360,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
         <Modal title={<><Ic n="set" s={15} c={C.txt} /> Personalizza Home</>} onClose={() => setSettingsOpen(false)} wide>
           {/* TAB SWITCHER */}
           <div style={{ display: 'flex', background: C.bg, borderRadius: 9, border: `1px solid ${C.brd}`, marginBottom: 14, overflow: 'hidden' }}>
-            {[['widgets','box','Widget'],['colori','palette','Colori card']].map(([id, ic, lbl]) => (
+            {[['widgets','box','Widget'],['azioni','zap','Azioni rapide'],['colori','palette','Colori card']].map(([id, ic, lbl]) => (
               <button key={id} onClick={() => setThemeTab(id)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 0', border: 'none', background: themeTab === id ? C.pri : 'transparent', color: themeTab === id ? '#fff' : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}><Ic n={ic} s={12} c="currentColor" />{lbl}</button>
             ))}
           </div>
@@ -408,6 +410,62 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
               <button type="button" disabled={layoutSaving || layoutLoading} onClick={saveHomeCustomization} style={{ padding:'9px 16px',background:C.pri,border:'none',borderRadius:9,color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer',opacity:layoutSaving?0.6:1 }}>{layoutSaving ? 'Salvataggio…' : 'Salva Home'}</button>
             </div>
           </>}
+
+          {/* TAB AZIONI RAPIDE */}
+          {themeTab === 'azioni' && (() => {
+            const qaItem = draftWidgets.find((w) => w.id === 'quick_actions');
+            const chosenIds = qaItem?.config?.actions?.length ? qaItem.config.actions : DEFAULT_QUICK_ACTION_IDS;
+            const allowed = filterQuickActionsCatalog({ permissions: homePermissions, features, vertical: si?.vertical });
+            const allowedIds = new Set(allowed.map((a) => a.id));
+            const active = chosenIds.filter((id) => allowedIds.has(id));
+            const available = allowed.filter((a) => !active.includes(a.id));
+            const updateActions = (nextIds) => { setDraftInherits(false); setDraftWidgets((layout) => setHomeWidgetConfig(layout, 'quick_actions', { actions: nextIds })); };
+            const move = (id, offset) => {
+              const idx = active.indexOf(id);
+              const target = idx + offset;
+              if (target < 0 || target >= active.length) return;
+              const next = [...active];
+              [next[idx], next[target]] = [next[target], next[idx]];
+              updateActions(next);
+            };
+            return (
+              <>
+                <div style={{ fontSize: 12, color: C.txm, marginBottom: 12 }}>Scegli quali azioni rapide mostrare in Home e in che ordine. Le azioni non disponibili per il tuo ruolo/piano non sono elencate.</div>
+                <div style={{ fontSize: 10, color: C.txl, fontWeight: 800, textTransform: 'uppercase', marginBottom: 6 }}>Attive</div>
+                <div style={{ display: 'grid', gap: 6, marginBottom: 14 }}>
+                  {active.length === 0 && <div style={{ fontSize: 12, color: C.txl, padding: '8px 0' }}>Nessuna azione rapida attiva.</div>}
+                  {active.map((id, i) => {
+                    const action = getQuickAction(id);
+                    if (!action) return null;
+                    return (
+                      <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 10px', background: C.bg, borderRadius: 9, border: `1px solid ${C.brd}` }}>
+                        <Ic n={action.ic} s={13} c={C.pri} />
+                        <span style={{ flex: 1, fontSize: 12, fontWeight: 700 }}>{action.label}</span>
+                        <button type="button" disabled={i === 0} onClick={() => move(id, -1)} style={{ minWidth: 32, minHeight: 32, border: `1px solid ${C.brd}`, borderRadius: 7, background: '#fff', cursor: i === 0 ? 'not-allowed' : 'pointer', opacity: i === 0 ? 0.4 : 1 }} aria-label={`Sposta su ${action.label}`}>↑</button>
+                        <button type="button" disabled={i === active.length - 1} onClick={() => move(id, 1)} style={{ minWidth: 32, minHeight: 32, border: `1px solid ${C.brd}`, borderRadius: 7, background: '#fff', cursor: i === active.length - 1 ? 'not-allowed' : 'pointer', opacity: i === active.length - 1 ? 0.4 : 1 }} aria-label={`Sposta giù ${action.label}`}>↓</button>
+                        <button type="button" onClick={() => updateActions(active.filter((x) => x !== id))} style={{ minWidth: 32, minHeight: 32, border: 'none', borderRadius: 7, background: C.danL, color: C.dan, fontWeight: 800, cursor: 'pointer' }} aria-label={`Rimuovi ${action.label}`}>✕</button>
+                      </div>
+                    );
+                  })}
+                </div>
+                {available.length > 0 && <>
+                  <div style={{ fontSize: 10, color: C.txl, fontWeight: 800, textTransform: 'uppercase', marginBottom: 6 }}>Disponibili</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 6 }}>
+                    {available.map((action) => (
+                      <button key={action.id} type="button" onClick={() => updateActions([...active, action.id])}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 10px', background: '#fff', border: `1px solid ${C.brd}`, borderRadius: 9, cursor: 'pointer', fontSize: 12, fontWeight: 700, color: C.txt, textAlign: 'left' }}>
+                        <Ic n={action.ic} s={13} c={C.pri} /><span style={{ flex: 1 }}>{action.label}</span><span style={{ color: C.pri, fontWeight: 800 }}>+</span>
+                      </button>
+                    ))}
+                  </div>
+                </>}
+                <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+                  <button type="button" onClick={() => setSettingsOpen(false)} style={{ marginLeft: 'auto', padding: '9px 14px', background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 9, color: C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Annulla</button>
+                  <button type="button" disabled={layoutSaving || layoutLoading} onClick={saveHomeCustomization} style={{ padding: '9px 16px', background: C.pri, border: 'none', borderRadius: 9, color: '#fff', fontWeight: 800, fontSize: 12, cursor: 'pointer', opacity: layoutSaving ? 0.6 : 1 }}>{layoutSaving ? 'Salvataggio…' : 'Salva Home'}</button>
+                </div>
+              </>
+            );
+          })()}
 
           {/* TAB COLORI */}
           {themeTab === 'colori' && <>
@@ -787,54 +845,80 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
         </Modal>
       )}
 
+      {bookingOpen && (
+        <QuickBookingModal
+          patients={patients} appTypes={appTypes} appointments={appointments} impegni={impegni}
+          si={si} features={features} setAppointments={setAppointments}
+          onClose={() => setBookingOpen(false)}
+        />
+      )}
+
       {/* ── HEADER ── */}
       <div className="home-hero">
         <div className="home-hero__text">
-          <div className="home-hero__greeting">{getSaluto(userName)}</div>
+          <div className="home-hero__greeting">{getSaluto(userName)} <span aria-hidden="true">👋</span></div>
           <div className="home-hero__meta">
-            {new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            {todayApps.length > 0 ? `${todayApps.length} appuntament${todayApps.length === 1 ? 'o' : 'i'} oggi` : 'Nessun appuntamento oggi'}
             {si?.nome && <span className="home-hero__studio"> · {si.nome}</span>}
           </div>
         </div>
         <div className="home-hero__actions">
-          {onNavigate && (
-            <button className="home-hero__cta" onClick={() => onNavigate('agenda')}>
-              <Ic n="plus" s={13} c="#fff" /> Nuovo appuntamento
-            </button>
-          )}
+          <button className="home-hero__cta" onClick={() => setBookingOpen(true)}>
+            <Ic n="plus" s={13} c="#fff" /> Nuovo appuntamento
+          </button>
           <button className="home-hero__customize" onClick={openHomeCustomizer}>
             <Ic n="set" s={14} c={C.txm} /> Personalizza Home
           </button>
         </div>
       </div>
 
-      {homePermissions.managementControl && <div className="home-period-context" aria-label="Periodo finanziario Home">
-        <span className="home-period-context__label">Periodo</span>
-        {[['current_month','Mese corrente'],['previous_month','Mese precedente'],['current_year','Anno corrente']].map(([id,label]) => (
-          <button key={id} type="button" className={homePeriodId === id ? 'is-active' : ''} aria-pressed={homePeriodId === id} onClick={() => setHomePeriodId(id)}>{label}</button>
-        ))}
-      </div>}
+      {homePermissions.managementControl && (() => {
+        const now = new Date(homePeriod.dateFrom + 'T12:00');
+        const meseLabel = homePeriodId === 'current_year' ? 'Anno' : now.toLocaleDateString('it-IT', { month: 'long' });
+        return (
+          <div className="home-period-context" aria-label="Periodo finanziario Home">
+            <span className="home-period-context__label">Periodo</span>
+            <div className="home-period-context__field">
+              <span className="home-period-context__field-label">Mese</span>
+              <Sel value={homePeriodId === 'current_year' ? 'current_month' : homePeriodId} onChange={(e) => setHomePeriodId(e.target.value)} disabled={homePeriodId === 'current_year'}>
+                <option value="current_month">{new Date().toLocaleDateString('it-IT', { month: 'long' })}</option>
+                <option value="previous_month">{new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toLocaleDateString('it-IT', { month: 'long' })}</option>
+              </Sel>
+            </div>
+            <div className="home-period-context__field">
+              <span className="home-period-context__field-label">Anno</span>
+              <Sel value={homePeriodId === 'current_year' ? 'current_year' : 'mese'} onChange={(e) => setHomePeriodId(e.target.value === 'current_year' ? 'current_year' : 'current_month')}>
+                <option value="mese">{new Date().getFullYear()} (per mese)</option>
+                <option value="current_year">Anno intero {new Date().getFullYear()}</option>
+              </Sel>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── WIDGET ORDINATI DINAMICAMENTE ── */}
       <WidgetWorkspace layout={visibleWidgets} editing={false} previewMode="desktop" onMove={() => {}} onResize={() => {}}>
       {visibleWidgets.filter(w => w.visible !== false).map(w => {
         const canonicalDefinition = getHomeFinancialWidget(w.id);
         if (canonicalDefinition) return <CanonicalFinancialWidget key={w.id} widgetId={w.id} snapshot={canonicalSnapshot} period={homePeriod} loading={canonicalLoading} error={canonicalError} />;
-        if (w.id === 'quick_actions') return (
-          <div key="quick_actions" className="home-quick-actions">
-            <div className="home-section-label"><Ic n="zap" s={11} c={C.txm} />Azioni rapide</div>
-            <div className="home-quick-actions__grid">
-              <button onClick={() => onNavigate && onNavigate('paz')}><Ic n="pz" s={16} c={C.pri} /><span>Pazienti</span></button>
-              <button onClick={() => onGoAgenda ? onGoAgenda() : onNavigate && onNavigate('agenda')}><Ic n="cal" s={16} c={C.pri} /><span>Agenda</span></button>
-              <button onClick={() => onNavigate && onNavigate('piani')}><Ic n="plan" s={16} c={C.pri} /><span>Piani di cura</span></button>
-              <button onClick={() => onNavigate && onNavigate('paga')}><Ic n="pay" s={16} c={C.pri} /><span>Pagamenti</span></button>
-              <button onClick={() => onGoRichiami ? onGoRichiami() : onNavigate && onNavigate('richiami')}><Ic n="bell" s={16} c={C.pri} /><span>Richiami</span></button>
-              {homePermissions.managementControl && (
-                <button onClick={() => onNavigate && onNavigate('controllo')}><Ic n="chart" s={16} c={C.pri} /><span>Controllo di gestione</span></button>
-              )}
+        if (w.id === 'quick_actions') {
+          const quickActionContext = {
+            onNavigate, onGoAgenda, onGoRichiami,
+            openBooking: () => setBookingOpen(true),
+            openTodoModal: () => setTodoModal(true),
+          };
+          const activeActions = resolveQuickActions(w.config?.actions, { permissions: homePermissions, features, vertical: si?.vertical });
+          return (
+            <div key="quick_actions" className="home-quick-actions">
+              <div className="home-section-label"><Ic n="zap" s={11} c={C.txm} />Azioni rapide</div>
+              <div className="home-quick-actions__grid">
+                {activeActions.map((action) => (
+                  <button key={action.id} onClick={() => action.run(quickActionContext)}><Ic n={action.ic} s={16} c={C.pri} /><span>{action.label}</span></button>
+                ))}
+              </div>
             </div>
-          </div>
-        );
+          );
+        }
         if (w.id === 'agenda') return (
           <div key="agenda" style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>

@@ -1,12 +1,15 @@
+/* Aliases onto the shared tokens (src/styles/designTokens.css) — kept so the
+   rest of this file's existing --pol-premium-* references don't need to
+   change; new code should prefer the --pol-* tokens directly. */
 :root {
-  --pol-premium-bg: #eef3f9;
-  --pol-premium-surface: rgba(255,255,255,.90);
-  --pol-premium-ink: #0f172a;
-  --pol-premium-muted: #6b7a90;
-  --pol-premium-line: rgba(15,23,42,.08);
-  --pol-premium-shadow: 0 24px 60px rgba(31,49,78,.14), 0 8px 20px rgba(31,49,78,.08);
-  --pol-premium-shadow-soft: 0 14px 34px rgba(31,49,78,.10), 0 3px 10px rgba(31,49,78,.05);
-  --pol-premium-shadow-hover: 0 30px 68px rgba(31,49,78,.18), 0 12px 26px rgba(31,49,78,.10);
+  --pol-premium-bg: var(--pol-bg);
+  --pol-premium-surface: var(--pol-surface-glass);
+  --pol-premium-ink: var(--pol-ink);
+  --pol-premium-muted: var(--pol-ink-muted);
+  --pol-premium-line: var(--pol-line);
+  --pol-premium-shadow: var(--pol-shadow-lg);
+  --pol-premium-shadow-soft: var(--pol-shadow);
+  --pol-premium-shadow-hover: var(--pol-shadow-hover);
 }
 
 /* POL-UI-003 — visual-only layer. No data/query/permission semantics live here. */
@@ -144,37 +147,40 @@ body:has(.home-widget-grid) #app-scroll {
   box-shadow: 0 16px 32px rgba(31,49,78,.10);
 }
 
-/* Period selector becomes the glass segmented control from the approved mockup. */
+/* Period selector: clean Mese/Anno fields (POL-UX-001 section E) — replaces
+   the earlier three-pill "Mese corrente / Mese precedente / Anno corrente"
+   control. High-contrast by construction: solid ink text on a solid
+   surface at every state, not a translucent glass tint (the prior
+   unselected-pill contrast was the reported readability problem). */
 body:has(.home-widget-grid) .home-period-context {
   position: relative;
   display: inline-flex;
-  padding: 6px;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
   width: fit-content;
   margin: 0 0 20px 0;
-  border: 1px solid rgba(255,255,255,.78);
-  border-radius: 16px;
-  background: rgba(255,255,255,.70);
-  box-shadow: var(--pol-premium-shadow-soft), inset 0 1px 0 rgba(255,255,255,.92);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--pol-line-strong);
+  border-radius: var(--pol-radius-lg);
+  background: var(--pol-surface);
+  box-shadow: var(--pol-premium-shadow-soft);
 }
-.home-period-context__label { display: none; }
-.home-period-context button {
-  min-height: 38px !important;
-  border: 0 !important;
-  border-radius: 11px !important;
-  padding: 8px 13px !important;
-  background: transparent !important;
-  color: #64748b !important;
-  font-weight: 850 !important;
-  transition: transform .18s ease, box-shadow .18s ease, background .18s ease !important;
+.home-period-context__label { color: var(--pol-ink-muted); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.home-period-context__field { display: flex; align-items: center; gap: 8px; }
+.home-period-context__field-label { color: var(--pol-ink-muted); font-size: 12px; font-weight: 700; }
+.home-period-context select {
+  min-height: 44px !important;
+  border: 1.5px solid var(--pol-line-strong) !important;
+  border-radius: var(--pol-radius-sm) !important;
+  padding: 8px 12px !important;
+  background: var(--pol-bg-alt) !important;
+  color: var(--pol-ink) !important;
+  font-weight: 750 !important;
+  font-size: 13px !important;
+  cursor: pointer;
 }
-.home-period-context button:hover { transform: translateY(-1px); color: #172033 !important; }
-.home-period-context button.is-active {
-  color: #fff !important;
-  background: linear-gradient(135deg,#0f172a,#334155) !important;
-  box-shadow: 0 8px 18px rgba(15,23,42,.22), inset 0 1px 0 rgba(255,255,255,.16) !important;
-}
+.home-period-context select:disabled { opacity: .5; cursor: not-allowed; }
+.home-period-context select:focus-visible { outline: 2px solid var(--pol-blue-500); outline-offset: 1px; }
 
 /* Widget composition: roomy, premium dashboard rhythm. */
 .home-widget-grid {
@@ -266,7 +272,6 @@ body:has(.home-widget-grid) .home-period-context {
     width: 100%;
     box-sizing: border-box;
   }
-  .home-period-context button { flex: 1 1 120px; }
   .home-widget-grid { gap: 14px !important; }
 }
 
@@ -277,8 +282,7 @@ body:has(.home-widget-grid) .home-period-context {
   .home-hero { align-items: flex-start; gap: 12px; }
   .home-hero__cta, .home-hero__customize { padding: 9px 10px; font-size: 11px; }
   .home-quick-actions__grid { grid-template-columns: 1fr 1fr; }
-  .home-period-context { border-radius: 14px !important; padding: 5px !important; }
-  .home-period-context button { min-height: 44px !important; padding: 7px 8px !important; font-size: 10px !important; }
+  .home-period-context { border-radius: 14px !important; padding: 10px 12px !important; flex-wrap: wrap; gap: 10px; }
   .home-widget-frame { border-radius: 20px !important; }
   .home-widget-frame__content > div:not(.canonical-financial-widget) { border-radius: 20px !important; }
 }
@@ -286,7 +290,6 @@ body:has(.home-widget-grid) .home-period-context {
 @media (prefers-reduced-motion: reduce) {
   .home-widget-frame,
   .canonical-financial-widget,
-  .home-period-context button,
   .home-hero__cta,
   .home-hero__customize,
   .premium-sidebar__item,
@@ -474,3 +477,30 @@ body:has(.home-widget-grid) .home-period-context {
   cursor: pointer;
 }
 .home-list-checkbox span { display: block; width: 20px; height: 20px; border-radius: 5px; background: #fff; }
+
+/* ── POL-UX-001: mobile top header — same dark navy/indigo gradient and
+   depth as .premium-sidebar (the desktop chrome mobile has no room for),
+   so mobile and Home read as one design instead of two. Studio custom
+   header color/opacity (C.header) still applies as a background override
+   via inline style in App.jsx; this class only supplies the default
+   gradient, depth and layout when no custom color is set. */
+.app-mobile-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 12px 16px;
+  padding-top: max(12px, env(safe-area-inset-top));
+  background: linear-gradient(110deg,#0b1220 0%,#111827 42%,#172554 72%,#0f172a 100%);
+  box-shadow: 0 10px 24px rgba(15,23,42,.22), inset 0 -1px 0 rgba(255,255,255,.05);
+}
+.app-mobile-header__logo { height: 36px; display: block; filter: drop-shadow(0 4px 10px rgba(0,0,0,.25)); }
+.app-mobile-header__meta { margin-left: auto; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.app-mobile-header__page { font-size: 11px; font-weight: 700; color: rgba(255,255,255,.62); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; }
+.app-mobile-header__btn {
+  min-width: 44px; min-height: 44px; padding: 0 10px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(255,255,255,.14); border-radius: 10px;
+  background: rgba(255,255,255,.08); color: #fff; font-size: 11px; font-weight: 700;
+  cursor: pointer; flex-shrink: 0;
+}

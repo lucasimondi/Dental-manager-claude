@@ -612,14 +612,21 @@ export const NAV_BY_ID = Object.fromEntries(NAV.map((n) => [n.id, n]));
 // resterebbe invisibile per sempre a chi ha già un dock personalizzato,
 // anche dopo un aggiornamento dell'app — stesso problema già risolto per i
 // widget di Dashboard (vedi loadWidgets in Dashboard.jsx).
+// POL-UX-001: "home" must always be reachable from the dock — a saved
+// custom 5-slot layout that dropped it (e.g. an older client that allowed
+// it, or a manual DB edit) would otherwise leave the user with no way back
+// to Home short of a full reload. Force it back into slot 0 rather than
+// silently discarding the rest of the customization.
 export const mergeDockSettings = (saved) => {
   const s = saved || {};
   const menuItems = [...(s.menuItems || DEF_DOCK_SETTINGS.menuItems)];
   DEF_DOCK_SETTINGS.menuItems.forEach((id) => { if (!menuItems.includes(id)) menuItems.push(id); });
+  let slots = s.slots?.length === 5 ? [...s.slots] : [...DEF_DOCK_SETTINGS.slots];
+  if (!slots.includes('home')) { slots.pop(); slots.unshift('home'); }
   return {
     ...DEF_DOCK_SETTINGS,
     ...s,
-    slots: s.slots?.length === 5 ? s.slots : DEF_DOCK_SETTINGS.slots,
+    slots,
     menuItems,
   };
 };
