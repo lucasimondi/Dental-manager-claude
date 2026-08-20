@@ -7,7 +7,7 @@ import Odontogramma from './Odontogramma.jsx';
 import PdfView from './PdfView.jsx';
 import WaAction, { apriWaDiretto } from './ui/WaAction.jsx';
 
-export default function Piani({ patients, plans, setPlans, pricelist, templates, si, features, initPatId, onClearInitPat, onOpenPaz }) {
+export default function Piani({ patients, plans, setPlans, pricelist, templates, si, features, initPatId, onClearInitPat, onOpenPaz, autoOpenNew, onAutoOpenNewHandled }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const [modal, setModal] = useState(false);
 
@@ -41,6 +41,20 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
       onClearInitPat && onClearInitPat();
     }
   }, [initPatId]);
+
+  // Arrivo da un'azione rapida della Home ("+ Nuovo preventivo"): apre lo
+  // stesso modale "Nuovo" del tasto qui sotto, senza paziente preselezionato
+  // (lo sceglie l'utente nel form, come già previsto da SelettorePaziente).
+  useEffect(() => {
+    if (autoOpenNew) {
+      setForm({ pazienteId: '', titolo: '', data: today(), voci: [], stato: 'attivo', sconto: 0, scontoTipo: 'pct', scadenzaPagamento: '', ortodonzia: null });
+      setNv({ prestazione: '', dente: '', prezzo: '' });
+      setSelectedDenti([]);
+      setModal(true);
+      onAutoOpenNewHandled && onAutoOpenNewHandled();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenNew]);
 
   const kpi = {
     totali: plans.length,

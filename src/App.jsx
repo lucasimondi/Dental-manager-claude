@@ -57,6 +57,12 @@ export default function App() {
   const [impegni, setImpegni] = useState([]);
   const [richiami, setRichiami] = useState([]);
   const [initPatId, setInitPatId] = useState(null);
+  // POL-UX-001 bugfix: Home quick actions "Nuovo paziente"/"Nuovo preventivo"/
+  // "Pagamento" must open the real creation form on arrival, not just land on
+  // the list page. Mirrors the existing initPatId pattern (set target page,
+  // consumer opens its own real modal, then clears it) instead of a second
+  // navigation mechanism.
+  const [autoOpenNew, setAutoOpenNew] = useState(null); // 'paz' | 'piani' | 'paga' | null
   const [agendaInitPaz, setAgendaInitPaz] = useState(null);
   const [schedaDashPaz, setSchedaDashPaz] = useState(null);
   const [syncError, setSyncError] = useState(null);
@@ -362,6 +368,7 @@ export default function App() {
   };
 
   const goNuovoPiano = (id) => { setInitPatId(id); setPage('piani'); };
+  const goNuovoElemento = (target) => { setAutoOpenNew(target); setPage(target); };
   const goSchedaPaz = (paz, tab = 'paga') => {
     setSchedaDashPaz({ paz, tab });
     salvaPosizione({ schedaPazId: paz.id, schedaPazTab: tab });
@@ -475,7 +482,7 @@ export default function App() {
       )}
 
       <div id="app-scroll" style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: 13, paddingBottom: isMobile ? 98 : 28 }}>
-        {page === 'home' && <Dashboard patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegni} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} />}
+        {page === 'home' && <Dashboard patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegni} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} onNavigateNew={goNuovoElemento} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} />}
         {page !== 'home' && (
           <Suspense fallback={<LoadingScreen />}>
             {page === 'paz' && (
@@ -493,6 +500,7 @@ export default function App() {
                 onNuovoAppuntamento={goAgendaPaz}
                 templates={templates}
                 pricelist={pricelist}
+                autoOpenNew={autoOpenNew === 'paz'} onAutoOpenNewHandled={() => setAutoOpenNew(null)}
               />
             )}
             {page === 'piani' && (
@@ -501,9 +509,10 @@ export default function App() {
                 pricelist={pricelist} templates={templates} si={studioInfo} features={features}
                 initPatId={initPatId} onClearInitPat={() => setInitPatId(null)}
                 onOpenPaz={goSchedaPaz}
+                autoOpenNew={autoOpenNew === 'piani'} onAutoOpenNewHandled={() => setAutoOpenNew(null)}
               />
             )}
-            {page === 'paga' && <Pagamenti patients={patients} payments={payments} setPayments={setPaymentsSync} plans={plans} />}
+            {page === 'paga' && <Pagamenti patients={patients} payments={payments} setPayments={setPaymentsSync} plans={plans} autoOpenNew={autoOpenNew === 'paga'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} />}
             {page === 'listino' && <Listino pricelist={pricelist} setPricelist={setPricelistSync} si={studioInfo} />}
             {page === 'agenda' && <Agenda patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} />}
             {page === 'richiami' && <Richiami patients={patients} plans={plans} payments={payments} appointments={appointments} richiami={richiami} setRichiami={setRichiamiSync} templates={templates} features={features} onOpenPaz={goSchedaPaz} si={studioInfo} />}

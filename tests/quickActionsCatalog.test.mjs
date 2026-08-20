@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { QUICK_ACTIONS_CATALOG, DEFAULT_QUICK_ACTION_IDS, resolveQuickActions, filterQuickActionsCatalog } from '../src/lib/quickActionsCatalog.js';
+import { QUICK_ACTIONS_CATALOG, DEFAULT_QUICK_ACTION_IDS, resolveQuickActions, filterQuickActionsCatalog, getQuickAction } from '../src/lib/quickActionsCatalog.js';
 
 const basePermissions = { activeMember: true, managementControl: false };
 
@@ -48,4 +48,37 @@ test('every catalog entry declares a real, callable run handler', () => {
     assert.equal(typeof action.run, 'function', `${action.id} must define run()`);
     assert.ok(action.label && action.ic, `${action.id} must have label and icon`);
   }
+});
+
+// Regression (POST-MERGE bugfix): "Nuovo paziente" / "Nuovo preventivo" /
+// "Pagamento" (and "Paziente e appuntamento") must route through
+// ctx.onNavigateNew — the signal Dashboard.jsx/App.jsx use to actually open
+// the real creation form (Pazienti/Piani/Pagamenti autoOpenNew), not just
+// ctx.onNavigate, which only lands on the list page with no form open.
+test('form-opening quick actions call onNavigateNew with the real target page, not just onNavigate', () => {
+  const formOpeningActions = [
+    ['nuovo_paziente', 'paz'],
+    ['nuovo_paziente_appuntamento', 'paz'],
+    ['nuovo_preventivo', 'piani'],
+    ['pagamento', 'paga'],
+  ];
+  for (const [id, expectedTarget] of formOpeningActions) {
+    const action = getQuickAction(id);
+    assert.ok(action, `${id} must exist in the catalog`);
+    let navigateNewCalledWith = null;
+    let navigateCalled = false;
+    action.run({
+      onNavigateNew: (target) => { navigateNewCalledWith = target; },
+      onNavigate: () => { navigateCalled = true; },
+    });
+    assert.equal(navigateNewCalledWith, expectedTarget, `${id} must call onNavigateNew('${expectedTarget}')`);
+    assert.equal(navigateCalled, false, `${id} must prefer onNavigateNew over onNavigate when both are available`);
+  }
+});
+
+test('form-opening quick actions fall back to onNavigate when onNavigateNew is unavailable', () => {
+  const action = getQuickAction('nuovo_paziente');
+  let navigateCalledWith = null;
+  action.run({ onNavigate: (target) => { navigateCalledWith = target; } });
+  assert.equal(navigateCalledWith, 'paz');
 });

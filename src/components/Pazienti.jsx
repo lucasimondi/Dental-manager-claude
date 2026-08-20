@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Txt, Modal, Toast, Ic } from './ui';
 import { C, uid, fmtD, today } from '../lib/utils';
 import ImportCsvModal from './ImportCsvModal.jsx';
@@ -6,7 +6,7 @@ import DupModal from './DupModal.jsx';
 import SchedaPaz from './SchedaPaz.jsx';
 import { salvaPosizione, pulisciPosizione } from '../lib/posizioneNavigazione';
 
-export default function Pazienti({ patients, setPatients, plans, setPlans, payments, setPayments, appointments, setAppointments, si, features, studioMembership, currentUserId, isStudioAdmin, onNuovoPiano, implants, setImplants, onNuovoAppuntamento, templates, pricelist }) {
+export default function Pazienti({ patients, setPatients, plans, setPlans, payments, setPayments, appointments, setAppointments, si, features, studioMembership, currentUserId, isStudioAdmin, onNuovoPiano, implants, setImplants, onNuovoAppuntamento, templates, pricelist, autoOpenNew, onAutoOpenNewHandled }) {
   const [modal, setModal] = useState(false);
   const [importModal, setImportModal] = useState(false);
   const [dupModal, setDupModal] = useState(false);
@@ -24,6 +24,14 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
     if (!p && limiteRaggiunto) { setToast(`Hai raggiunto il limite di ${limitePazienti} pazienti del tuo piano. Passa a Pro per pazienti illimitati.`); return; }
     setForm(p || { nome: '', cognome: '', dataNascita: '', telefono: '', email: '', cf: '', indirizzo: '', cap: '', comune: '', provincia: '', opposizione_sts: false, note: '' }); setModal(true);
   };
+
+  // Arrivo da un'azione rapida della Home ("+ Nuovo paziente"): apre subito
+  // il vero form di creazione (stesso apri usato dal tasto "+" qui sotto),
+  // rispettando lo stesso limite di piano.
+  useEffect(() => {
+    if (autoOpenNew) { openEdit(); onAutoOpenNewHandled && onAutoOpenNewHandled(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenNew]);
   const save = () => {
     if (!form.nome || !form.cognome) return;
     if (!form.id && limiteRaggiunto) { setToast(`Limite di ${limitePazienti} pazienti raggiunto.`); setModal(false); return; }
