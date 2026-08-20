@@ -5,7 +5,7 @@
 - OWNER: CLAUDE
 - PREVIOUS TASK/OWNER: POL-RBAC-001, CODEX, `WAITING_PRODUCT_OWNER` (unchanged; POL-RBAC-001A is a new, additive follow-up task opened directly by the Product Owner directive that started this session, not a takeover of POL-RBAC-001's ownership)
 - BRANCH: `security/POL-RBAC-001-authoritative-capabilities` (same branch/PR #16; POL-RBAC-001A commits are additional commits on top, not a new branch)
-- BASE REVIEW: `ui/POL-UI-002-canonical-financial-widgets-presets` / PR #15 (unchanged, still stacked; POL-UI-002 preserved intact)
+- BASE REVIEW: `master` (retargeted — PR #15/POL-UI-002 was squash-merged to master as commit `1348dd9801dad882ad0a370cbb08e89066af7c31`; PR #16 rebased onto master in this round, see "Rebase onto master" below. No longer stacked on a separate PR.)
 - STATUS: `WAITING_PRODUCT_OWNER`
 
 ## Objective
@@ -65,6 +65,59 @@ Two gaps found and closed:
 
 Full detail: `docs/architecture/pol-rbac-001a-patient-care-assignment.md`
 ("Authorization" section) and `docs/architecture/pol-rbac-001a-local-validation.md`.
+
+## Rebase onto master (PR #15 squash-merged)
+
+PR #15 (POL-UI-002) was squash-merged to `master` as
+`1348dd9801dad882ad0a370cbb08e89066af7c31`. GitHub then retargeted PR #16
+onto `master`, but its branch still carried the old, now-duplicate
+stacked history (the individual POL-UI-002 commits plus everything
+before them), making it unmergeable against the new `master`.
+
+Before touching anything, confirmed the trees were byte-identical:
+`git diff b9370ad 1348dd9` (old POL-UI-002 branch tip vs. the new squash
+commit on master) produced **zero** output — the squash preserved the
+content exactly. This meant the seven POL-RBAC-001/POL-RBAC-001A commits
+(`b9370ad..0c675e9` on the old history) could be replayed verbatim onto the
+new master with `git rebase --onto origin/master b9370ad
+security/POL-RBAC-001-authoritative-capabilities` — and they applied with
+**zero conflicts**, confirming the prediction.
+
+Verified before pushing:
+- `git diff <pre-rebase-tip> <post-rebase-tip>` — empty. The resulting tree
+  is byte-for-byte identical to before the rebase; nothing was lost,
+  changed, or duplicated by the history rewrite itself.
+- `git merge-base --is-ancestor origin/master HEAD` — true. The branch is
+  now a direct, clean, fast-forwardable stack on `master`.
+- `git diff origin/master..HEAD --stat` — 24 files, all POL-RBAC-001/
+  POL-RBAC-001A-owned (migrations, RLS tests, `PhysioCartella.jsx`,
+  `SchedaPaz.jsx`, docs) plus exactly two pre-existing, intentional
+  touch-ups to POL-UI-002's own files that predate this session (part of
+  the original POL-RBAC-001 commit, not introduced by the rebase):
+  `tests/homeFinancialWidgets.test.mjs` (updated to the capability-array
+  contract `createRolePresetLayout([...])` replaced the old
+  `(ruolo, vertical)` signature) and
+  `docs/architecture/pol-ui-002-implementation-validation.md` (updated
+  prose to describe the capability-based preset resolution). No
+  `CanonicalFinancialWidget`/`homeWidgetRegistry`/`homeLayoutPersistence`
+  or other POL-UI-002 feature file appears in the diff — no duplication.
+- Full required checklist re-run after the rebase, before pushing: 30/30
+  Node tests (20 original POL-UI-002 + 10 POL-RBAC-001/POL-RBAC-001A);
+  PostgreSQL 16 (dev) full migration/regression chain; `supabase db lint`
+  (PG16, no schema errors); **PostgreSQL 17.5 final gate** (PGlite,
+  complete chain incl. the two-tenant/assignment/suspension/roster
+  assertions) — all green; `npm run build` clean; `git diff --check`
+  clean; secret-pattern scan over the full `origin/master..HEAD` diff — no
+  matches.
+
+A local tag `backup/pol-rbac-001a-pre-rebase-0c675e9` was created before
+rewriting, pointing at the pre-rebase tip, purely as a local safety net —
+not pushed, not part of the repository's tracked history.
+
+The push to `origin/security/POL-RBAC-001-authoritative-capabilities` after
+this rebase is **non-fast-forward** (history was rewritten) and uses
+`--force-with-lease`, per explicit Product Owner instruction to realign the
+branch. No merge, deploy, or remote migration was performed.
 
 ## Safety boundaries
 
