@@ -44,7 +44,7 @@ function CanonicalBaseOverview() {
           <div style={{ fontSize: 15, fontWeight: 800, color: C.txt }}>Controllo di Gestione · Base</div>
           <div style={{ fontSize: 11, color: C.txl, marginTop: 2 }}>Fonte finanziaria canonica POL-003</div>
         </div>
-        <div style={{ display: 'flex', gap: 4, background: C.bg, borderRadius: 8, padding: 3 }}>
+        <div style={{ display: 'flex', gap: 4, background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 8, padding: 3 }}>
           {[
             { id: 'mese', label: 'Questo mese' },
             { id: 'anno', label: "Quest'anno" },
@@ -55,7 +55,7 @@ function CanonicalBaseOverview() {
               onClick={() => setPeriodo(item.id)}
               style={{
                 border: 'none', borderRadius: 6, padding: '6px 9px', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                background: periodo === item.id ? C.sur : 'transparent', color: periodo === item.id ? C.pri : C.txl,
+                background: periodo === item.id ? C.pri : 'transparent', color: periodo === item.id ? '#fff' : C.txt,
               }}
             >
               {item.label}

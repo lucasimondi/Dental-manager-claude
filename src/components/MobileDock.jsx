@@ -16,6 +16,7 @@ const ADMIN_ONLY_NAV_IDS = new Set(['agenteai']);
    Tutto è guidato da dockSettings (slots/menuItems/iconStyle), configurabile da Setup. */
 export default function MobileDock({ page, setPage, dockSettings, onLogout, features = {}, isStudioAdmin = false }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPressed, setMenuPressed] = useState(false);
   const style = dockSettings?.iconStyle || 'vivid';
   const slots = dockSettings?.slots?.length === 5 ? dockSettings.slots : DEF_DOCK_SETTINGS.slots;
   const menuItems = dockSettings?.menuItems?.length ? dockSettings.menuItems : DEF_DOCK_SETTINGS.menuItems;
@@ -77,19 +78,26 @@ export default function MobileDock({ page, setPage, dockSettings, onLogout, feat
               <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <button
                   onClick={() => setMenuOpen((v) => !v)}
+                  onPointerDown={() => setMenuPressed(true)}
+                  onPointerUp={() => setMenuPressed(false)}
+                  onPointerLeave={() => setMenuPressed(false)}
                   aria-label="Menu"
+                  aria-expanded={menuOpen}
                   style={{
                     width: 58, height: 58, borderRadius: '50%', position: 'relative', top: -22,
-                    background: `linear-gradient(150deg, ${C.pri}, ${C.priD})`, border: 'none', cursor: 'pointer',
+                    background: `linear-gradient(150deg, ${C.pri}, ${C.priD})`, border: '2px solid rgba(255,255,255,.85)', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: `0 10px 22px ${C.pri}55, 0 0 0 6px ${C.bg}`,
-                    transition: 'transform .25s cubic-bezier(.34,1.56,.64,1)',
+                    boxShadow: menuPressed
+                      ? `0 4px 10px ${C.pri}55, 0 0 0 5px ${C.bg}`
+                      : `0 12px 26px ${C.pri}66, 0 3px 8px rgba(15,23,42,.18), 0 0 0 5px ${C.bg}, inset 0 1px 0 rgba(255,255,255,.35)`,
+                    transform: menuPressed ? 'scale(.92)' : 'scale(1)',
+                    transition: 'transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s ease',
                   }}
                 >
                   {menuOpen ? (
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></svg>
+                    <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round"><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></svg>
                   ) : (
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round"><line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" /></svg>
+                    <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round"><line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" /></svg>
                   )}
                 </button>
                 <span style={{ fontSize: 9, fontWeight: 700, color: menuOpen ? C.pri : C.txl, marginTop: -18 }}>Menu</span>

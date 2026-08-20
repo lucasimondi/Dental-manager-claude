@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, SelettorePaziente, WaAction } from './ui';
 import { C, fmtD, today, uid, RICHIAMO_CATEGORIE, DEF_TPL_GENERICO } from '../lib/utils';
 import { useFormPersistente } from '../lib/useFormPersistente';
@@ -16,7 +16,7 @@ const CATEGORIE_FILTRO = [
    (generaRichiamiBot, vedi anche l'effetto automatico in App.jsx) oppure
    creati a mano qui. "Scansiona ora" forza un ricalcolo immediato, utile
    per le condizioni che dipendono solo dal passare dei giorni (standby). */
-export default function Richiami({ patients, plans, payments, appointments, richiami, setRichiami, templates, features, onOpenPaz, si }) {
+export default function Richiami({ patients, plans, payments, appointments, richiami, setRichiami, templates, features, onOpenPaz, si, autoOpenNew, onAutoOpenNewHandled }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const [filtroCategoria, setFiltroCategoria] = useState('tutte');
   const [mostraFatti, setMostraFatti] = useState(false);
@@ -25,6 +25,18 @@ export default function Richiami({ patients, plans, payments, appointments, rich
   const [toast, setToast] = useState('');
   const [form, setForm, clearFormDraft] = useFormPersistente('nuovo_richiamo', { pazienteId: '', categoria: 'generico', motivo: '', dataScadenza: today() });
   const F = (f) => setForm((p) => ({ ...p, ...f }));
+
+  // Arrivo da un'azione rapida della Home ("Richiamo"): apre subito il vero
+  // modale "Nuovo richiamo" (stesso apri usato dal tasto "+" qui sotto).
+  useEffect(() => {
+    if (autoOpenNew) {
+      setForm({ pazienteId: '', categoria: 'generico', motivo: '', dataScadenza: today() });
+      setPazSearch('');
+      setModal(true);
+      onAutoOpenNewHandled && onAutoOpenNewHandled();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenNew]);
 
   const scansiona = () => {
     const { proposte, daRimuovere } = generaRichiamiBot({ patients, plans, payments, appointments, richiami });

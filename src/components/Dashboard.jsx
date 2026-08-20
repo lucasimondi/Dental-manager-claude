@@ -343,8 +343,18 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   const todoAttivi = todoList.filter(x => !x.fatto);
   const todoFatti = todoList.filter(x => x.fatto);
 
-  const StatCard = ({ label, value, sub, color = C.pri, bg, onClick, urgent }) => (
-    <div onClick={onClick} style={{ background: bg || (color + '12'), borderRadius: 12, padding: '12px 14px', border: `1px solid ${color}25`, cursor: onClick ? 'pointer' : 'default', position: 'relative' }}>
+  // `elevated`: opt-in variant with a more evident surface/border/shadow —
+  // used only where explicitly asked (Preventivi widget, POL-UX-002 section
+  // 11) so the default pastel/flat look other StatCard callers rely on
+  // (Richiami, Scadenze, Ortodonzia, Statistiche) doesn't silently change.
+  const StatCard = ({ label, value, sub, color = C.pri, bg, onClick, urgent, elevated }) => (
+    <div onClick={onClick} style={{
+      background: bg || (elevated ? C.sur : color + '12'),
+      borderRadius: 12, padding: '12px 14px',
+      border: `1px solid ${elevated ? color + '40' : color + '25'}`,
+      boxShadow: elevated ? '0 6px 16px rgba(31,49,78,.08)' : 'none',
+      cursor: onClick ? 'pointer' : 'default', position: 'relative',
+    }}>
       {urgent && <div style={{ position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: '50%', background: C.dan }} />}
       <div style={{ fontSize: 10, fontWeight: 800, color, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{label}</div>
       <div style={{ fontSize: 20, fontWeight: 900, color, lineHeight: 1.1 }}>{value}</div>
@@ -863,40 +873,19 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           </div>
         </div>
         <div className="home-hero__actions">
-          <button className="home-hero__cta" onClick={() => setBookingOpen(true)}>
-            <Ic n="plus" s={13} c="#fff" /> Nuovo appuntamento
-          </button>
           <button className="home-hero__customize" onClick={openHomeCustomizer}>
             <Ic n="set" s={14} c={C.txm} /> Personalizza Home
           </button>
         </div>
       </div>
 
-      {homePermissions.managementControl && (() => {
-        const now = new Date(homePeriod.dateFrom + 'T12:00');
-        const meseLabel = homePeriodId === 'current_year' ? 'Anno' : now.toLocaleDateString('it-IT', { month: 'long' });
-        return (
-          <div className="home-period-context" aria-label="Periodo finanziario Home">
-            <span className="home-period-context__label">Periodo</span>
-            <div className="home-period-context__field">
-              <span className="home-period-context__field-label">Mese</span>
-              <Sel value={homePeriodId === 'current_year' ? 'current_month' : homePeriodId} onChange={(e) => setHomePeriodId(e.target.value)} disabled={homePeriodId === 'current_year'}>
-                <option value="current_month">{new Date().toLocaleDateString('it-IT', { month: 'long' })}</option>
-                <option value="previous_month">{new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toLocaleDateString('it-IT', { month: 'long' })}</option>
-              </Sel>
-            </div>
-            <div className="home-period-context__field">
-              <span className="home-period-context__field-label">Anno</span>
-              <Sel value={homePeriodId === 'current_year' ? 'current_year' : 'mese'} onChange={(e) => setHomePeriodId(e.target.value === 'current_year' ? 'current_year' : 'current_month')}>
-                <option value="mese">{new Date().getFullYear()} (per mese)</option>
-                <option value="current_year">Anno intero {new Date().getFullYear()}</option>
-              </Sel>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* ── WIDGET ORDINATI DINAMICAMENTE ── */}
+      {/* ── WIDGET ORDINATI DINAMICAMENTE ──
+         POL-UX-002 section 6: il selettore globale Mese/Anno è stato
+         rimosso dalla Home. homePeriodId resta 'current_month' di default
+         (mai più cambiato da qui) e continua ad alimentare
+         loadHomeFinancialSnapshot/CanonicalFinancialWidget, che mostrano
+         comunque il proprio periodo nell'header di ogni card — i dati
+         canonici non dipendono da questo controllo rimosso. */}
       <WidgetWorkspace layout={visibleWidgets} editing={false} previewMode="desktop" onMove={() => {}} onResize={() => {}}>
       {visibleWidgets.filter(w => w.visible !== false).map(w => {
         const canonicalDefinition = getHomeFinancialWidget(w.id);
@@ -913,7 +902,10 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
               <div className="home-section-label"><Ic n="zap" s={11} c={C.txm} />Azioni rapide</div>
               <div className="home-quick-actions__grid">
                 {activeActions.map((action) => (
-                  <button key={action.id} onClick={() => action.run(quickActionContext)}><Ic n={action.ic} s={16} c={C.pri} /><span>{action.label}</span></button>
+                  <button key={action.id} onClick={() => action.run(quickActionContext)}>
+                    <span className="home-quick-actions__icon"><Ic n={action.ic} s={17} c={C.pri} /></span>
+                    <span>{action.label}</span>
+                  </button>
                 ))}
               </div>
             </div>
@@ -1124,13 +1116,13 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           <div key="economico" style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="eur" s={11} c={C.txm} />Pannello economico</div>
-              <div style={{ display: 'flex', gap: 4, background: C.bg, borderRadius: 8, padding: 3 }}>
+              <div style={{ display: 'flex', gap: 4, background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 8, padding: 3 }}>
                 {[['mese', 'Mese'], ['anno', 'Anno']].map(([id, lbl]) => (
-                  <button key={id} onClick={() => setPeriodoEconomico(id)} style={{ border: 'none', borderRadius: 6, padding: '4px 9px', fontSize: 11, fontWeight: 700, cursor: 'pointer', background: periodoEconomico === id ? C.pri : 'transparent', color: periodoEconomico === id ? '#fff' : C.txm }}>{lbl}</button>
+                  <button key={id} onClick={() => setPeriodoEconomico(id)} style={{ border: 'none', borderRadius: 6, padding: '4px 9px', fontSize: 11, fontWeight: 700, cursor: 'pointer', background: periodoEconomico === id ? C.pri : 'transparent', color: periodoEconomico === id ? '#fff' : C.txt }}>{lbl}</button>
                 ))}
               </div>
             </div>
-            <Crd style={{ background: `linear-gradient(135deg, ${C.priD}, ${C.pri})`, border: 'none' }}>
+            <Crd className="pol-economico-summary" style={{ background: `linear-gradient(145deg, ${C.priD} 0%, ${C.pri} 60%, #0f172a 100%)`, border: 'none' }}>
               {kpiPeriodoLoading && <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>Calcolo in corso…</div>}
               {kpiPeriodo && !kpiPeriodoLoading && (
                 <>
@@ -1149,7 +1141,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                 </>
               )}
             </Crd>
-            <Crd style={{ padding: 0, overflow: 'hidden', marginTop: 8 }}>
+            <Crd className="pol-economico-detail" style={{ padding: 0, overflow: 'hidden', marginTop: 8 }}>
               <div onClick={() => setDetailModal('esegDaInc')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', cursor: 'pointer', background: totEsegDaInc > 0 ? C.danL : 'transparent' }}>
                 <span style={{ fontSize: 12, color: totEsegDaInc > 0 ? C.dan : C.txm, fontWeight: totEsegDaInc > 0 ? 700 : 400, display: 'inline-flex', alignItems: 'center', gap: 5 }}><Ic n="eur" s={11} c={totEsegDaInc > 0 ? C.dan : C.txm} />Eseguito da incassare</span>
                 <span style={{ fontSize: 13.5, fontWeight: 800, color: totEsegDaInc > 0 ? C.dan : C.txt }}>{fmt(totEsegDaInc)}</span>
@@ -1166,9 +1158,9 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           <div key="preventivi" style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="clip" s={11} c={C.txm} />Preventivi</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-              <StatCard label="Attesa" value={preventiviAttesa.length} color={C.pur} onClick={() => setDetailModal('attesa')} />
-              <StatCard label="Accettati" value={preventiviAccettati.length} sub={fmt(totAccettati)} color={C.acc} onClick={() => setDetailModal('accettati')} />
-              <StatCard label="Rifiutati" value={preventiviRifiutati.length} color={C.dan} onClick={() => setDetailModal('rifiutati')} />
+              <StatCard label="Attesa" value={preventiviAttesa.length} color={C.pur} onClick={() => setDetailModal('attesa')} elevated />
+              <StatCard label="Accettati" value={preventiviAccettati.length} sub={fmt(totAccettati)} color={C.acc} onClick={() => setDetailModal('accettati')} elevated />
+              <StatCard label="Rifiutati" value={preventiviRifiutati.length} color={C.dan} onClick={() => setDetailModal('rifiutati')} elevated />
             </div>
           </div>
         );

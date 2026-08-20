@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { supabase, DB } from './lib/supabase.js';
-import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, getLogoSlug, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, mergeDockSettings, uid, applyBrandColors, applyHeaderColor } from './lib/utils';
+import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, mergeDockSettings, uid, applyBrandColors, applyHeaderColor } from './lib/utils';
 import { generaRichiamiBot } from './lib/richiamiBot';
 import { salvaPosizione, leggiPosizione, pulisciPosizione } from './lib/posizioneNavigazione';
 import MobileDock from './components/MobileDock.jsx';
@@ -9,17 +9,8 @@ import './styles/designTokens.css';
 import './components/PremiumVisualSystem.css';
 import { useIsMobile } from './lib/useIsMobile';
 import { useTheme } from './lib/useTheme';
-import { Ic } from './components/ui';
+import { Ic, PoliedraBrand } from './components/ui';
 import AssistenteAI from './components/AssistenteAI.jsx';
-import logoDentalWhite from './assets/logo-poliedra-dental-outline.png';
-import logoSalusWhite from './assets/logo-poliedra-salus-outline.png';
-import logoFisioWhite from './assets/logo-poliedra-fisio-outline.png';
-import logoMindWhite from './assets/logo-poliedra-mind-outline.png';
-import logoWellnessWhite from './assets/logo-poliedra-wellness-outline.png';
-import logoFitWhite from './assets/logo-poliedra-fit-outline.png';
-import logoMedicalWhite from './assets/logo-poliedra-medical-outline.png';
-
-const LOGO_WHITE_PER_SLUG = { dental: logoDentalWhite, salus: logoSalusWhite, fisio: logoFisioWhite, mind: logoMindWhite, wellness: logoWellnessWhite, fit: logoFitWhite, medical: logoMedicalWhite };
 import LoginScreen from './components/LoginScreen.jsx';
 import LoadingScreen from './components/LoadingScreen.jsx';
 import Dashboard from './components/Dashboard.jsx';
@@ -36,7 +27,6 @@ const Richiami = lazy(() => import('./components/Richiami.jsx'));
 const AgenteAISetup = lazy(() => import('./components/AgenteAISetup.jsx'));
 const WhatsApp = lazy(() => import('./components/WhatsApp.jsx'));
 const Impostazioni = lazy(() => import('./components/Impostazioni.jsx'));
-const MasterDashboard = lazy(() => import('./components/MasterDashboard.jsx'));
 
 export default function App() {
   const { theme, toggleTheme } = useTheme();
@@ -62,14 +52,13 @@ export default function App() {
   // the list page. Mirrors the existing initPatId pattern (set target page,
   // consumer opens its own real modal, then clears it) instead of a second
   // navigation mechanism.
-  const [autoOpenNew, setAutoOpenNew] = useState(null); // 'paz' | 'piani' | 'paga' | null
+  const [autoOpenNew, setAutoOpenNew] = useState(null); // 'paz' | 'piani' | 'paga' | 'richiami' | null
   const [agendaInitPaz, setAgendaInitPaz] = useState(null);
   const [schedaDashPaz, setSchedaDashPaz] = useState(null);
   const [syncError, setSyncError] = useState(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isStudioAdmin, setIsStudioAdmin] = useState(false);
   const [studioMembership, setStudioMembership] = useState(null);
-  const [showMasterDashboard, setShowMasterDashboard] = useState(false);
   const [studioAttivo, setStudioAttivo] = useState(true);
   const [features, setFeatures] = useState(PIANI_FEATURES_DEFAULT.base);
 
@@ -399,12 +388,6 @@ export default function App() {
     );
   }
 
-  if (showMasterDashboard) return (
-    <Suspense fallback={<LoadingScreen />}>
-      <MasterDashboard onClose={() => setShowMasterDashboard(false)} />
-    </Suspense>
-  );
-
   const navVisibile = NAV.filter((n) =>
     (n.id !== 'wa' || features.whatsapp) &&
     (n.id !== 'spese' || features.spese) &&
@@ -413,9 +396,7 @@ export default function App() {
     (n.id !== 'agenteai' || isStudioAdmin)
   );
 
-  const sidebarLogoSrc = features.custom_logo && studioInfo?.custom_logo_b64
-    ? studioInfo.custom_logo_b64
-    : LOGO_WHITE_PER_SLUG[getLogoSlug(studioInfo?.vertical)];
+  const customLogoSrc = features.custom_logo && studioInfo?.custom_logo_b64 ? studioInfo.custom_logo_b64 : null;
 
   return (
     <div className={isMobile ? 'app-shell app-shell--mobile' : 'app-shell app-shell--desktop'} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', height: '100dvh', background: C.bg, overflow: 'hidden' }}>
@@ -424,11 +405,10 @@ export default function App() {
           nav={navVisibile}
           page={page}
           setPage={setPage}
-          logoSrc={sidebarLogoSrc}
+          customLogoSrc={customLogoSrc}
+          vertical={studioInfo?.vertical}
           studioName={studioInfo?.nome}
           userName={userName}
-          isSuperAdmin={isSuperAdmin}
-          onOpenMasterDashboard={() => setShowMasterDashboard(true)}
           onLogout={handleLogout}
         />
       )}
@@ -438,15 +418,10 @@ export default function App() {
         {features.custom_logo && studioInfo?.custom_logo_b64 ? (
           <img src={studioInfo.custom_logo_b64} alt={studioInfo?.nome || 'Logo'} className="app-mobile-header__logo" style={{ maxWidth: 160, objectFit: 'contain' }} />
         ) : (
-          <img
-            src={LOGO_WHITE_PER_SLUG[getLogoSlug(studioInfo?.vertical)]}
-            alt="Poliedra"
-            className="app-mobile-header__logo"
-          />
+          <PoliedraBrand vertical={studioInfo?.vertical} size="sm" />
         )}
         <div className="app-mobile-header__meta">
           <span className="app-mobile-header__page">{navVisibile.find((n) => n.id === page)?.l}</span>
-          {isSuperAdmin && <button className="app-mobile-header__btn" onClick={() => setShowMasterDashboard(true)} title="Dashboard Master">🛠️</button>}
           <button className="app-mobile-header__btn" onClick={handleLogout} title="Esci">Esci</button>
         </div>
       </div>
@@ -515,7 +490,7 @@ export default function App() {
             {page === 'paga' && <Pagamenti patients={patients} payments={payments} setPayments={setPaymentsSync} plans={plans} autoOpenNew={autoOpenNew === 'paga'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} />}
             {page === 'listino' && <Listino pricelist={pricelist} setPricelist={setPricelistSync} si={studioInfo} />}
             {page === 'agenda' && <Agenda patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} />}
-            {page === 'richiami' && <Richiami patients={patients} plans={plans} payments={payments} appointments={appointments} richiami={richiami} setRichiami={setRichiamiSync} templates={templates} features={features} onOpenPaz={goSchedaPaz} si={studioInfo} />}
+            {page === 'richiami' && <Richiami patients={patients} plans={plans} payments={payments} appointments={appointments} richiami={richiami} setRichiami={setRichiamiSync} templates={templates} features={features} onOpenPaz={goSchedaPaz} si={studioInfo} autoOpenNew={autoOpenNew === 'richiami'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} />}
             {page === 'spese' && <Spese studioId={session?.user?.app_metadata?.studio_id} />}
             {page === 'controllo' && <ControlloGestione studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} payments={payments} appointments={appointments} pricelist={pricelist} onOpenPaz={goSchedaPaz} isDentistico={!studioInfo?.vertical || studioInfo.vertical === 'dentistico'} />}
             {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} />}
