@@ -9,7 +9,6 @@ import './styles/designTokens.css';
 import './components/PremiumVisualSystem.css';
 import { useIsMobile } from './lib/useIsMobile';
 import { useTheme } from './lib/useTheme';
-import { Ic, PoliedraBrand } from './components/ui';
 import AssistenteAI from './components/AssistenteAI.jsx';
 import LoginScreen from './components/LoginScreen.jsx';
 import LoadingScreen from './components/LoadingScreen.jsx';
@@ -413,19 +412,13 @@ export default function App() {
         />
       )}
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, height: '100dvh', overflow: 'hidden' }}>
-      {isMobile && (
-      <div className="app-mobile-header" style={features.custom_colors && studioInfo?.header_colore ? { background: C.header } : undefined}>
-        {features.custom_logo && studioInfo?.custom_logo_b64 ? (
-          <img src={studioInfo.custom_logo_b64} alt={studioInfo?.nome || 'Logo'} className="app-mobile-header__logo" style={{ maxWidth: 160, objectFit: 'contain' }} />
-        ) : (
-          <PoliedraBrand vertical={studioInfo?.vertical} size="sm" />
-        )}
-        <div className="app-mobile-header__meta">
-          <span className="app-mobile-header__page">{navVisibile.find((n) => n.id === page)?.l}</span>
-          <button className="app-mobile-header__btn" onClick={handleLogout} title="Esci">Esci</button>
-        </div>
-      </div>
-      )}
+      {/* POL-UI-005: mobile top header (logo/page name/Esci) removed — it cost
+          too much vertical space for no real value on a small screen and kept
+          this wrapper permanently dark (see PremiumVisualSystem.css). The app
+          is now genuinely fullscreen on mobile: #app-scroll below carries
+          safe-area-inset-top itself instead of a header absorbing it, and
+          Esci moved into Impostazioni → Profilo (bottom of that screen).
+          Desktop/tablet keep PremiumSidebar (branding + Esci) untouched. */}
 
       {syncError && (
         <div style={{ background: C.danL, borderBottom: `2px solid ${C.dan}`, padding: '9px 14px', display: 'flex', alignItems: 'flex-start', gap: 8, flexShrink: 0 }}>
@@ -456,7 +449,12 @@ export default function App() {
         </Suspense>
       )}
 
-      <div id="app-scroll" style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: 13, paddingBottom: isMobile ? 98 : 28 }}>
+      <div id="app-scroll" style={{
+        flex: 1, overflowY: 'auto', overscrollBehavior: 'contain',
+        padding: 13,
+        paddingTop: isMobile ? 'calc(13px + env(safe-area-inset-top, 0px))' : 13,
+        paddingBottom: isMobile ? 'calc(96px + env(safe-area-inset-bottom, 0px))' : 28,
+      }}>
         {page === 'home' && <Dashboard patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegni} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} onNavigateNew={goNuovoElemento} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} />}
         {page !== 'home' && (
           <Suspense fallback={<LoadingScreen />}>
@@ -496,7 +494,7 @@ export default function App() {
             {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} />}
             {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
             {page === 'agenteai' && <AgenteAISetup features={features} />}
-            {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} isStudioAdmin={isStudioAdmin} />}
+            {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} isStudioAdmin={isStudioAdmin} onLogout={handleLogout} />}
           </Suspense>
         )}
       </div>

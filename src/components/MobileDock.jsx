@@ -64,18 +64,24 @@ export default function MobileDock({ page, setPage, dockSettings, onLogout, feat
         </div>
       )}
 
-      {/* DOCK — 5 posizioni fisse, più alto e con icone più grandi */}
+      {/* DOCK — POL-UI-005: 5 posizioni fisse, ma senza più una barra piena
+          dietro. Le icone sono "sospese" sul contenuto della Dashboard (che
+          resta visibile e scrollabile dietro/attorno a loro): niente
+          background/border/shadow sul contenitore. Il colore icona (C.txm,
+          non C.txl) e il drop-shadow leggero su ciascuna icona sono quello
+          che garantisce leggibilità senza una superficie piena dietro,
+          qualunque sia il contenuto scorso sotto — vedi item 7 della spec. */}
       <div style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0, height: 84,
-        background: C.sur, borderTop: `1px solid ${C.brd}`,
+        position: 'fixed', bottom: 0, left: 0, right: 0, height: 78,
+        background: 'transparent',
         display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', alignItems: 'center',
         paddingBottom: 'max(10px, env(safe-area-inset-bottom,0px))', zIndex: 100,
-        boxShadow: '0 -2px 10px rgba(0,0,0,0.07)',
+        pointerEvents: 'none',
       }}>
         {slots.map((id, i) => {
           if (id === DOCK_MENU_SLOT) {
             return (
-              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none' }}>
                 <button
                   onClick={() => setMenuOpen((v) => !v)}
                   onPointerDown={() => setMenuPressed(true)}
@@ -84,23 +90,25 @@ export default function MobileDock({ page, setPage, dockSettings, onLogout, feat
                   aria-label="Menu"
                   aria-expanded={menuOpen}
                   style={{
-                    width: 58, height: 58, borderRadius: '50%', position: 'relative', top: -22,
-                    background: `linear-gradient(150deg, ${C.pri}, ${C.priD})`, border: '2px solid rgba(255,255,255,.85)', cursor: 'pointer',
+                    width: 56, height: 56, borderRadius: '50%', position: 'relative', top: -20,
+                    background: `linear-gradient(150deg, ${C.pri}, ${C.priD})`, border: '1.5px solid rgba(255,255,255,.5)', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    backdropFilter: 'blur(14px)',
+                    pointerEvents: 'auto',
                     boxShadow: menuPressed
-                      ? `0 4px 10px ${C.pri}55, 0 0 0 5px ${C.bg}`
-                      : `0 12px 26px ${C.pri}66, 0 3px 8px rgba(15,23,42,.18), 0 0 0 5px ${C.bg}, inset 0 1px 0 rgba(255,255,255,.35)`,
+                      ? `0 4px 12px ${C.pri}55`
+                      : `0 10px 24px ${C.pri}55, 0 3px 8px rgba(15,23,42,.22), inset 0 1px 0 rgba(255,255,255,.35)`,
                     transform: menuPressed ? 'scale(.92)' : 'scale(1)',
                     transition: 'transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s ease',
                   }}
                 >
                   {menuOpen ? (
-                    <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round"><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></svg>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round"><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></svg>
                   ) : (
-                    <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round"><line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" /></svg>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round"><line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" /></svg>
                   )}
                 </button>
-                <span style={{ fontSize: 9, fontWeight: 700, color: menuOpen ? C.pri : C.txl, marginTop: -18 }}>Menu</span>
+                <span style={{ fontSize: 9, fontWeight: 700, color: menuOpen ? C.pri : C.txm, marginTop: -16, filter: `drop-shadow(0 1px 2px ${C.bg}cc)` }}>Menu</span>
               </div>
             );
           }
@@ -111,12 +119,18 @@ export default function MobileDock({ page, setPage, dockSettings, onLogout, feat
             <button
               key={i}
               onClick={() => (id === 'esci' ? onLogout && onLogout() : go(id))}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '6px 2px' }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '6px 2px', pointerEvents: 'auto' }}
             >
-              <div style={{ width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: active ? C.priL : 'transparent', boxShadow: active ? `inset 0 0 0 1.5px ${C.pri}55` : 'none' }}>
-                <DockIc n={item.ic} style={style} s={24} c={active ? C.pri : C.txl} />
+              <div style={{
+                width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: active ? `${C.sur}c8` : 'transparent',
+                border: active ? `1px solid ${C.pri}40` : '1px solid transparent',
+                backdropFilter: active ? 'blur(10px)' : 'none',
+                boxShadow: active ? `0 2px 8px rgba(15,23,42,.10)` : 'none',
+              }}>
+                <DockIc n={item.ic} style={style} s={24} c={active ? C.pri : C.txm} />
               </div>
-              <span style={{ fontSize: 9.5, fontWeight: active ? 800 : 600, color: active ? C.pri : C.txl, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.l}</span>
+              <span style={{ fontSize: 9.5, fontWeight: active ? 800 : 700, color: active ? C.pri : C.txm, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', filter: active ? 'none' : `drop-shadow(0 1px 2px ${C.bg}cc)` }}>{item.l}</span>
             </button>
           );
         })}
