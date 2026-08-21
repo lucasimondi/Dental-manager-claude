@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { C } from '../lib/utils';
 import { Crd, Fld, Inp, Sel, Modal, Toast, Btn, Ic } from './ui';
-import { resolveTeamCapabilities, getCapabilityPresentation } from '../lib/roleLabels';
+import { resolveTeamCapabilities, getOfferableCapabilities, getCapabilityPresentation } from '../lib/roleLabels';
 
 export default function GestioneUtenti({ studioId, currentUserId, features, isStudioAdmin, vertical }) {
   const [utenti, setUtenti] = useState([]);
@@ -12,19 +12,50 @@ export default function GestioneUtenti({ studioId, currentUserId, features, isSt
   const [form, setForm] = useState({ email: '', nome: '', ruolo: 'utente' });
   const [sending, setSending] = useState(false);
   const [capabilityRows, setCapabilityRows] = useState([]);
+  const [labelRows, setLabelRows] = useState([]);
+  const [labelsModal, setLabelsModal] = useState(false);
+  const [labelDrafts, setLabelDrafts] = useState({});
 
   useEffect(() => { loadUtenti(); }, []);
 
   const loadUtenti = async () => {
     setLoading(true);
-    if (!studioId) { setUtenti([]); setCapabilityRows([]); setLoading(false); return; }
-    const [{ data }, { data: assignments }] = await Promise.all([
+    if (!studioId) { setUtenti([]); setCapabilityRows([]); setLabelRows([]); setLoading(false); return; }
+    const [{ data }, { data: assignments }, { data: labels }] = await Promise.all([
       supabase.from('studio_users').select('*').eq('studio_id', studioId).order('created_at'),
       supabase.from('studio_user_capabilities').select('studio_id,user_id,capability').eq('studio_id', studioId),
+      supabase.from('studio_capability_labels').select('capability,custom_label').eq('studio_id', studioId),
     ]);
     if (data) setUtenti(data);
     if (assignments) setCapabilityRows(assignments);
+    if (labels) setLabelRows(labels);
     setLoading(false);
+  };
+
+  // POL-RBAC-002 — purely presentational, keyed by capability only (one
+  // label per studio, not per user). custom_label -> studio_capability_labels
+  // (RLS: read = any active member, write = studio.manage_members via
+  // has_studio_capability_v1 — see the migration for the authoritative
+  // policy; nothing here grants or checks a permission, it only decides
+  // which string to render next to a toggle already gated elsewhere).
+  const customLabelByCapability = Object.fromEntries(labelRows.map((r) => [r.capability, r.custom_label]));
+
+  const saveCapabilityLabel = async (capability, label) => {
+    const trimmed = (label || '').trim();
+    if (!trimmed) { setToast('L\'etichetta non può essere vuota'); return; }
+    const { error } = await supabase.from('studio_capability_labels')
+      .upsert({ studio_id: studioId, capability, custom_label: trimmed }, { onConflict: 'studio_id,capability' });
+    if (error) { setToast('Etichetta non salvata: ' + error.message); return; }
+    await loadUtenti();
+    setToast('Etichetta salvata ✓');
+  };
+
+  const resetCapabilityLabel = async (capability) => {
+    const { error } = await supabase.from('studio_capability_labels')
+      .delete().eq('studio_id', studioId).eq('capability', capability);
+    if (error) { setToast('Etichetta non ripristinata: ' + error.message); return; }
+    await loadUtenti();
+    setToast('Etichetta predefinita ripristinata ✓');
   };
 
   const maxUtenti = features?.max_utenti ?? null; // include il titolare nel conteggio
@@ -94,12 +125,20 @@ export default function GestioneUtenti({ studioId, currentUserId, features, isSt
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={{ fontSize: 14, fontWeight: 800, color: C.txt, display:'flex', alignItems:'center', gap:6 }}><Ic n="users" s={14} c={C.txt} />Team</div>
-        {isStudioAdmin && (
-          <button onClick={() => { if (limiteRaggiunto) { setToast(`Limite di ${maxUtenti} utenti raggiunto per il tuo piano.`); return; } setForm({ email: '', nome: '', ruolo: 'utente' }); setInvitaModal(true); }}
-            style={{ background: limiteRaggiunto ? C.bg : C.pri, border: 'none', borderRadius: 9, padding: '8px 14px', color: limiteRaggiunto ? C.txl : '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-            {limiteRaggiunto ? <><Ic n="lock" s={12} c={C.txl} /> Limite raggiunto</> : <><Ic n="plus" s={12} c="#fff" /> Invita utente</>}
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: 8 }}>
+          {isStudioAdmin && (
+            <button onClick={() => { setLabelDrafts(customLabelByCapability); setLabelsModal(true); }}
+              style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 9, padding: '8px 12px', color: C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Ic n="edit" s={12} c={C.txm} /> Etichette ruoli
+            </button>
+          )}
+          {isStudioAdmin && (
+            <button onClick={() => { if (limiteRaggiunto) { setToast(`Limite di ${maxUtenti} utenti raggiunto per il tuo piano.`); return; } setForm({ email: '', nome: '', ruolo: 'utente' }); setInvitaModal(true); }}
+              style={{ background: limiteRaggiunto ? C.bg : C.pri, border: 'none', borderRadius: 9, padding: '8px 14px', color: limiteRaggiunto ? C.txl : '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              {limiteRaggiunto ? <><Ic n="lock" s={12} c={C.txl} /> Limite raggiunto</> : <><Ic n="plus" s={12} c="#fff" /> Invita utente</>}
+            </button>
+          )}
+        </div>
       </div>
       {!isStudioAdmin && (
         <div style={{ fontSize: 11.5, color: C.txm, background: C.bg, borderRadius: 8, padding: '8px 12px', marginBottom: 12 }}>
@@ -154,7 +193,7 @@ export default function GestioneUtenti({ studioId, currentUserId, features, isSt
               <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
                 {teamCapabilities.map((capability) => {
                   const enabled=userCapabilities.has(capability);
-                  const { label, description } = getCapabilityPresentation(capability, vertical);
+                  const { label, description } = getCapabilityPresentation(capability, vertical, customLabelByCapability[capability]);
                   return <button key={capability} type="button" aria-pressed={enabled} title={description} onClick={()=>toggleCapability(u.user_id,capability,enabled)}
                     style={{border:`1px solid ${enabled?C.pri:C.brd}`,borderRadius:7,padding:'5px 8px',background:enabled?C.priL:C.sur,color:enabled?C.pri:C.txm,fontSize:10,fontWeight:700,cursor:'pointer'}}>{enabled?'✓ ':''}{label}</button>;
                 })}
@@ -186,6 +225,36 @@ export default function GestioneUtenti({ studioId, currentUserId, features, isSt
             <Btn ch="Annulla" v="sec" onClick={() => setInvitaModal(false)} full />
             <Btn ch={sending ? 'Invio...' : 'Invia invito'} onClick={invita} dis={!form.email || !form.nome || sending} full />
           </div>
+        </Modal>
+      )}
+
+      {/* MODAL ETICHETTE RUOLI — POL-RBAC-002: rinomina puramente
+          presentazionale, per capability, non per utente. Non tocca in
+          alcun modo studio_user_capabilities o has_studio_capability_v1. */}
+      {labelsModal && (
+        <Modal title={<><Ic n="edit" s={15} c={C.txt} /> Etichette ruoli</>} onClose={() => setLabelsModal(false)} wide>
+          <div style={{ fontSize: 12, color: C.txm, marginBottom: 14, lineHeight: 1.5 }}>
+            Personalizza come vengono chiamati i ruoli nel tuo studio. Non cambia cosa può fare chi li riceve — solo il nome che vedi in Team.
+          </div>
+          {getOfferableCapabilities(vertical).map((capability) => {
+            const { label: defaultLabel, description } = getCapabilityPresentation(capability, vertical);
+            const hasOverride = !!customLabelByCapability[capability];
+            const draft = labelDrafts[capability] ?? '';
+            return (
+              <div key={capability} style={{ marginBottom: 12 }}>
+                <Fld label={defaultLabel}>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <Inp value={draft} placeholder={defaultLabel}
+                      onChange={(e) => setLabelDrafts((d) => ({ ...d, [capability]: e.target.value }))}
+                      style={{ flex: 1 }} />
+                    <Btn ch="Salva" sz="sm" onClick={() => saveCapabilityLabel(capability, draft)} dis={!draft.trim() || draft.trim() === (customLabelByCapability[capability] || '')} />
+                    {hasOverride && <Btn ch="Ripristina" v="sec" sz="sm" onClick={() => { resetCapabilityLabel(capability); setLabelDrafts((d) => ({ ...d, [capability]: '' })); }} />}
+                  </div>
+                </Fld>
+                <div style={{ fontSize: 10.5, color: C.txl, marginTop: -6 }}>{description}</div>
+              </div>
+            );
+          })}
         </Modal>
       )}
     </div>
