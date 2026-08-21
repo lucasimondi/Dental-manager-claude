@@ -440,7 +440,14 @@ body:has(.home-widget-grid) #app-scroll {
   overflow-y: auto;
   overflow-x: hidden;
 }
-.premium-sidebar__brand { margin-bottom: 22px; padding: 0 6px; }
+.premium-sidebar__brand { margin-bottom: 14px; padding: 0 6px; }
+/* HOTFIX POL-UI-logo-icons-financial-rpc: the sidebar never constrained
+   .premium-sidebar__logo in expanded mode (only the <=1100px collapsed
+   rule below did) — the <img> rendered at the asset's raw intrinsic size,
+   which is why it looked oversized and ate vertical space nav needed.
+   Same original asset, just proportioned; margin-bottom above trimmed
+   too so the brand area doesn't push navigation down unnecessarily. */
+.premium-sidebar__logo { display: block; height: 32px; width: auto; max-width: 100%; object-fit: contain; }
 
 /* ── POL-UX-002 section 4: Poliedra brand lockup (PoliedraBrand.jsx) ──
    Code-rendered wordmark instead of the previous white logo asset (its
@@ -521,7 +528,7 @@ body:has(.home-widget-grid) #app-scroll {
   .premium-sidebar__footer-btn { justify-content: center; }
   .premium-sidebar__identity { padding: 0; }
   .premium-sidebar__brand { text-align: center; padding: 0; }
-  .premium-sidebar__logo { height: 30px; margin: 0 auto; }
+  .premium-sidebar__logo { height: 22px; width: auto; max-width: 100%; margin: 0 auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {

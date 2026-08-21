@@ -303,6 +303,19 @@ BEGIN
     IF SQLERRM NOT LIKE 'POL-003A: access denied%' THEN RAISE; END IF;
   END;
 
+  -- POL-003A fix: CROSS-TENANT — a real, active studio_users member of
+  -- tenant B explicitly names tenant A's p_studio_id (a real studio they
+  -- are NOT a member of, not merely a nonexistent one) -> canonical
+  -- financial access stays DENIED. Proves membership is checked against
+  -- the exact requested studio_id, not "any studio the caller belongs to".
+  PERFORM pg_temp.set_claim_no_studio('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2');
+  BEGIN
+    SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-10-01','2025-10-31','10000000-0000-4000-8000-000000000010');
+    RAISE EXCEPTION 'FAIL POL-003A fix: cross-tenant member was NOT denied';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM NOT LIKE 'POL-003A: access denied%' THEN RAISE; END IF;
+  END;
+
   -- POL-003A fix: old 2-arg call path (no p_studio_id) with JWT claim still
   -- missing stays DENIED exactly as before -> the fix does not silently
   -- widen the pre-existing call path, only the new explicit-studio one.
