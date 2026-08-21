@@ -466,16 +466,22 @@ export default function App() {
       )}
 
       <div id="app-scroll" style={{
-        flex: 1, overflowY: 'auto', overscrollBehavior: 'contain',
+        flex: 1, minWidth: 0, maxWidth: '100%', boxSizing: 'border-box',
+        overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain',
         padding: 13,
         paddingTop: isMobile ? 'calc(13px + env(safe-area-inset-top, 0px))' : 13,
         paddingBottom: isMobile ? 'calc(96px + env(safe-area-inset-bottom, 0px))' : 28,
         // POL-UI-004 Agenda mobile final: the Agenda grid should read as an
         // almost-fullscreen surface, not a page floating inside the app's
-        // usual 13px side gutter. Narrowed only for this page/breakpoint —
-        // every other page keeps the standard padding untouched.
-        paddingLeft: isMobile && page === 'agenda' ? 6 : undefined,
-        paddingRight: isMobile && page === 'agenda' ? 6 : undefined,
+        // usual side gutter. Narrowed only for this page/breakpoint — every
+        // other page keeps the standard mobile inset.
+        // POL-UI-006: the standard mobile inset is a hair wider than
+        // desktop's (15 vs 13) — a small, deliberate safety margin so
+        // content never touches/exceeds the screen edge on real devices,
+        // plus explicit overflow-x:hidden above as a hard backstop: no
+        // page can ever force the whole app to scroll sideways again.
+        paddingLeft: isMobile ? (page === 'agenda' ? 6 : 15) : undefined,
+        paddingRight: isMobile ? (page === 'agenda' ? 6 : 15) : undefined,
       }}>
         {page === 'home' && <Dashboard patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegni} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} onNavigateNew={goNuovoElemento} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} />}
         {page !== 'home' && (
@@ -509,7 +515,7 @@ export default function App() {
             )}
             {page === 'paga' && <Pagamenti patients={patients} payments={payments} setPayments={setPaymentsSync} plans={plans} autoOpenNew={autoOpenNew === 'paga'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} />}
             {page === 'listino' && <Listino pricelist={pricelist} setPricelist={setPricelistSync} si={studioInfo} />}
-            {page === 'agenda' && <Agenda patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} logoSrc={sidebarLogoSrc} studioName={studioInfo?.nome} />}
+            {page === 'agenda' && <Agenda patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} />}
             {page === 'richiami' && <Richiami patients={patients} plans={plans} payments={payments} appointments={appointments} richiami={richiami} setRichiami={setRichiamiSync} templates={templates} features={features} onOpenPaz={goSchedaPaz} si={studioInfo} autoOpenNew={autoOpenNew === 'richiami'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} />}
             {page === 'spese' && <Spese studioId={session?.user?.app_metadata?.studio_id} />}
             {page === 'controllo' && <ControlloGestione studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} payments={payments} appointments={appointments} pricelist={pricelist} onOpenPaz={goSchedaPaz} isDentistico={!studioInfo?.vertical || studioInfo.vertical === 'dentistico'} />}
@@ -531,6 +537,8 @@ export default function App() {
           onLogout={handleLogout}
           features={features}
           isStudioAdmin={isStudioAdmin}
+          logoSrc={sidebarLogoSrc}
+          studioName={studioInfo?.nome}
         />
       )}
       </div>

@@ -14,7 +14,7 @@ const ADMIN_ONLY_NAV_IDS = new Set(['agenteai']);
    5 posizioni fisse. Lo slot centrale, se impostato su DOCK_MENU_SLOT (default),
    è un pulsante rialzato che apre un popup con le altre funzioni non presenti nel dock.
    Tutto è guidato da dockSettings (slots/menuItems/iconStyle), configurabile da Setup. */
-export default function MobileDock({ page, setPage, dockSettings, onLogout, features = {}, isStudioAdmin = false }) {
+export default function MobileDock({ page, setPage, dockSettings, onLogout, features = {}, isStudioAdmin = false, logoSrc, studioName }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPressed, setMenuPressed] = useState(false);
   const style = dockSettings?.iconStyle || 'vivid';
@@ -92,7 +92,7 @@ export default function MobileDock({ page, setPage, dockSettings, onLogout, feat
                   aria-label="Menu"
                   aria-expanded={menuOpen}
                   style={{
-                    width: 56, height: 56, borderRadius: '50%', position: 'relative', top: -20,
+                    width: 56, height: 56, borderRadius: '50%', position: 'relative', top: -22,
                     background: `linear-gradient(150deg, ${C.pri}, ${C.priD})`, border: '1.5px solid rgba(255,255,255,.5)', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     backdropFilter: 'blur(14px)',
@@ -104,8 +104,13 @@ export default function MobileDock({ page, setPage, dockSettings, onLogout, feat
                     transition: 'transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s ease',
                   }}
                 >
-                  {menuOpen ? (
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round"><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></svg>
+                  {/* POL-UI-006: il pulsante centrale del dock è ora il logo
+                      Poliedra (stesso asset già risolto per la sidebar
+                      desktop in base a verticale/logo custom dello studio),
+                      non più un'icona hamburger/X — stessa azione (apre il
+                      popup "Altre funzioni"), stesso aria-label="Menu". */}
+                  {logoSrc ? (
+                    <img src={logoSrc} alt={studioName || 'Poliedra'} style={{ width: 30, height: 30, objectFit: 'contain', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,.25))' }} />
                   ) : (
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round"><line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" /></svg>
                   )}

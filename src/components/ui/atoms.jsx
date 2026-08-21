@@ -24,7 +24,7 @@ export const Crd = ({ children, style, onClick, className, ...rest }) => (
     className={[onClick ? 'pol-card--interactive' : '', className].filter(Boolean).join(' ') || undefined}
     {...rest}
     style={{
-      background: C.sur, borderRadius: 16, padding: 14,
+      background: C.sur, borderRadius: 16, padding: 14, minWidth: 0, maxWidth: '100%', boxSizing: 'border-box',
       boxShadow: '0 1px 2px rgba(15,23,42,.04), 0 8px 20px rgba(15,23,42,.07)',
       border: `1px solid ${C.brd}`, cursor: onClick ? 'pointer' : 'default', ...(style || {}),
     }}

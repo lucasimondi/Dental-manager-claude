@@ -404,7 +404,7 @@ function ViewPicker({ view, setView }) {
   );
 }
 
-function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected = true, viewPicker, compact, oraColW }) {
+function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected = true, viewPicker, compact, oraColW, onPrevWeek, onNextWeek }) {
   const scrollRef = useRef(null);
   const [stripBaseWeek, setStripBaseWeek] = useState(() => toISO(startOfWeek(selDay)));
   const settleTimer = useRef(null);
@@ -464,7 +464,22 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
   return (
     <div style={{ flexShrink: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: compact ? '0 4px 4px' : '0 4px 6px' }}>
-        <span style={{ fontSize: 13, fontWeight: 800, color: C.txt, textTransform: 'capitalize' }}>{meseLabel}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {/* POL-UI-006: controlli espliciti settimana precedente/successiva
+              per desktop, oltre allo scroll/swipe già esistente sulla
+              striscia sotto — stesso pattern già usato dalla vista Mese
+              (frecce ‹/›). Cambiano realmente la settimana mostrata: usano
+              lo stesso navSettimana(n) del gesto di swipe, non un
+              placeholder finto. Non mostrati su mobile (compact), dove lo
+              swipe resta l'interazione primaria. */}
+          {!compact && onPrevWeek && (
+            <button onClick={onPrevWeek} aria-label="Settimana precedente" style={{ background: C.bg, border: 'none', borderRadius: 7, width: 26, height: 26, cursor: 'pointer', fontSize: 15, color: C.txm, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>‹</button>
+          )}
+          <span style={{ fontSize: 13, fontWeight: 800, color: C.txt, textTransform: 'capitalize' }}>{meseLabel}</span>
+          {!compact && onNextWeek && (
+            <button onClick={onNextWeek} aria-label="Settimana successiva" style={{ background: C.bg, border: 'none', borderRadius: 7, width: 26, height: 26, cursor: 'pointer', fontSize: 15, color: C.txm, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>›</button>
+          )}
+        </div>
         {viewPicker}
       </div>
       {/* Gutter da 46px, identico alla colonna ore della griglia sotto: senza, le colonne di
@@ -494,7 +509,7 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
   );
 }
 
-export default function Agenda({ patients, setPatients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni, setImpegni, si, setStudioInfo, logoSrc, studioName }) {
+export default function Agenda({ patients, setPatients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni, setImpegni, si, setStudioInfo }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const labelPoltrona = isDentistico ? 'Poltrona' : 'Postazione';
   const labelPoltronePlurale = isDentistico ? 'poltrone' : 'postazioni';
@@ -1001,23 +1016,13 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
-      {/* Zona superiore leggera al posto del vecchio header mobile: solo il
-          brand mark (logo studio se configurato, altrimenti Poliedra) + il
-          nome pagina, integrati nel contenuto — nessuna barra colorata dietro.
-          Il resto (periodo/data, viste, controlli) resta nella riga DayStrip
-          esistente subito sotto, che già lo mostrava prima di questa modifica. */}
-      {isMobile && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '0 2px 6px', flexShrink: 0 }}>
-          {logoSrc && <img src={logoSrc} alt={studioName || 'Poliedra'} style={{ height: 18, width: 'auto', objectFit: 'contain', flexShrink: 0, filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.12))' }} />}
-          <span style={{ fontSize: 11.5, fontWeight: 800, color: C.txm, letterSpacing: '0.01em' }}>Agenda</span>
-        </div>
-      )}
-
-      {/* Header pieno solo su desktop: su mobile resta la riga brand-mark
-          compatta sopra (già ottimizzata per lo spazio verticale in un round
-          precedente) — qui c'è margine per il trattamento premium standard
-          usato dalle altre pagine, senza duplicare campanella/filtri/WA
-          compatti che restano nella toolbar DayStrip subito sotto. */}
+      {/* POL-UI-006: nessuna struttura superiore su mobile — la Home mobile
+          (il riferimento strutturale per tutte le pagine) non ha più alcun
+          header/brand-row in cima, quindi anche Agenda deve iniziare
+          direttamente col contenuto funzionale (campanella/filtri/WA restano
+          nella toolbar DayStrip subito sotto). Il logo torna solo nel dock
+          mobile condiviso (pulsante centrale), non qui. Su desktop resta il
+          PageHeader pieno, coerente con le altre pagine. */}
       {!isMobile && <PageHeader icon="cal" title="Agenda" />}
 
       {haFiltriRisorse && !isMobile && chipsRisorse}
@@ -1034,6 +1039,8 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           onWeekChange={(wk) => setSelDay(wk)}
           compact={isMobile}
           oraColW={oraColW}
+          onPrevWeek={() => navSettimana(-1)}
+          onNextWeek={() => navSettimana(1)}
           viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker view={view} setView={setView} /></div>}
         />
       )}
