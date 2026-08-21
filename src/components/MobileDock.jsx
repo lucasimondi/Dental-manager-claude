@@ -53,8 +53,8 @@ export default function MobileDock({ page, setPage, dockSettings, onLogout, feat
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '10px 4px',
                   borderRadius: 14, background: page === id ? C.priL : C.bg, border: `1px solid ${C.brd}`, cursor: 'pointer',
                 }}>
-                  <div style={{ width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <DockIc n={item.ic} style={style} s={22} c={C.pri} />
+                  <div style={{ width: 42, height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <DockIc n={item.ic} style={style} s={26} c={C.pri} />
                   </div>
                   <span style={{ fontSize: 9.5, fontWeight: 700, color: C.txt, textAlign: 'center' }}>{item.l}</span>
                 </button>
@@ -64,13 +64,15 @@ export default function MobileDock({ page, setPage, dockSettings, onLogout, feat
         </div>
       )}
 
-      {/* DOCK — POL-UI-005: 5 posizioni fisse, ma senza più una barra piena
-          dietro. Le icone sono "sospese" sul contenuto della Dashboard (che
-          resta visibile e scrollabile dietro/attorno a loro): niente
-          background/border/shadow sul contenitore. Il colore icona (C.txm,
-          non C.txl) e il drop-shadow leggero su ciascuna icona sono quello
-          che garantisce leggibilità senza una superficie piena dietro,
-          qualunque sia il contenuto scorso sotto — vedi item 7 della spec. */}
+      {/* DOCK — POL-UI-005/POL-UI-004 Agenda final: 5 posizioni fisse, senza
+          barra piena dietro. Le icone sono "sospese" sul contenuto (che resta
+          visibile e scrollabile dietro/attorno a loro): niente background/
+          border/shadow sul contenitore. Il colore icona (C.txm, non C.txl) e
+          il drop-shadow leggero su ciascuna icona sono quello che garantisce
+          leggibilità senza una superficie piena dietro, qualunque sia il
+          contenuto scorso sotto. Icone ingrandite (24→28px) e pillola dello
+          stato attivo resa molto più trasparente, per leggere davvero come
+          "floating glass navigation" e non come una piccola barra bianca. */}
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0, height: 78,
         background: 'transparent',
@@ -122,13 +124,13 @@ export default function MobileDock({ page, setPage, dockSettings, onLogout, feat
               style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '6px 2px', pointerEvents: 'auto' }}
             >
               <div style={{
-                width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: active ? `${C.sur}c8` : 'transparent',
-                border: active ? `1px solid ${C.pri}40` : '1px solid transparent',
-                backdropFilter: active ? 'blur(10px)' : 'none',
-                boxShadow: active ? `0 2px 8px rgba(15,23,42,.10)` : 'none',
+                width: 46, height: 46, borderRadius: 13, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: active ? `${C.sur}66` : 'transparent',
+                border: active ? `1px solid ${C.pri}35` : '1px solid transparent',
+                backdropFilter: active ? 'blur(8px)' : 'none',
+                boxShadow: active ? `0 2px 8px rgba(15,23,42,.08)` : 'none',
               }}>
-                <DockIc n={item.ic} style={style} s={24} c={active ? C.pri : C.txm} />
+                <DockIc n={item.ic} style={style} s={28} c={active ? C.pri : C.txm} />
               </div>
               <span style={{ fontSize: 9.5, fontWeight: active ? 800 : 700, color: active ? C.pri : C.txm, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', filter: active ? 'none' : `drop-shadow(0 1px 2px ${C.bg}cc)` }}>{item.l}</span>
             </button>
