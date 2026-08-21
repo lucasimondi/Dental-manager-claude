@@ -282,8 +282,8 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
 
       {/* TAB SWITCHER */}
       <div style={{ display: 'flex', background: C.bg, borderBottom: `1px solid ${C.brd}`, flexShrink: 0 }}>
-        {[['nuovo', '+ Nuovo documento'], ['archivio', '📁 Archivio']].map(([id, lbl]) => (
-          <button key={id} onClick={() => setTabView(id)} style={{ flex: 1, padding: '11px 0', border: 'none', background: 'transparent', borderBottom: tabView === id ? `2px solid ${C.pri}` : '2px solid transparent', color: tabView === id ? C.pri : C.txm, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{lbl}</button>
+        {[['nuovo', null, '+ Nuovo documento'], ['archivio', 'folder', 'Archivio']].map(([id, ic, lbl]) => (
+          <button key={id} onClick={() => setTabView(id)} style={{ flex: 1, padding: '11px 0', border: 'none', background: 'transparent', borderBottom: tabView === id ? `2px solid ${C.pri}` : '2px solid transparent', color: tabView === id ? C.pri : C.txm, fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>{ic && <Ic n={ic} s={12} c={tabView === id ? C.pri : C.txm} />}{lbl}</button>
         ))}
       </div>
 
@@ -292,10 +292,10 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
         {/* ── ARCHIVIO ── */}
         {tabView === 'archivio' && (
           <div>
-            {archivioLoading && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>⏳ Caricamento...</div>}
+            {archivioLoading && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Caricamento...</div>}
             {!archivioLoading && archivio.length === 0 && (
               <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>
-                <div style={{ fontSize: 32, marginBottom: 10 }}>📄</div>
+                <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'center' }}><Ic n="file" s={32} c={C.txl} /></div>
                 <div style={{ fontWeight: 700 }}>Nessun documento salvato</div>
                 <div style={{ fontSize: 12, marginTop: 4 }}>I documenti generati vengono salvati automaticamente</div>
               </div>
@@ -318,16 +318,16 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
                           await new Promise(r => setTimeout(r, 300));
                         }
                       }
-                    }} style={{ flex: 1, background: C.pri, border: 'none', borderRadius: 9, padding: '10px', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-                      ⬇️ Scarica selezionati ({selDoc.length})
+                    }} style={{ flex: 1, background: C.pri, border: 'none', borderRadius: 9, padding: '10px', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                      <Ic n="download" s={13} c="#fff" />Scarica selezionati ({selDoc.length})
                     </button>
                     <button onClick={async () => {
                       if (!confirm(`Eliminare ${selDoc.length} documento/i?`)) return;
                       for (const id of selDoc) await supabase.from('documenti_fiscali').delete().eq('id', id);
                       setSelDoc([]);
                       loadArchivio();
-                    }} style={{ background: C.danL, border: 'none', borderRadius: 9, padding: '10px 14px', color: C.dan, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-                      🗑️
+                    }} style={{ background: C.danL, border: 'none', borderRadius: 9, padding: '10px 14px', color: C.dan, fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                      <Ic n="del" s={14} c={C.dan} />
                     </button>
                   </div>
                 )}
@@ -347,8 +347,8 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
                           {isSel && <Ic n="ok" s={11} c="#fff" />}
                         </button>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, fontSize: 13 }}>
-                            {doc.tipo === 'fattura' ? '📄 Fattura' : '🧾 Rimborso'} n° {doc.numero}
+                          <div style={{ fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <Ic n={doc.tipo === 'fattura' ? 'receipt' : 'bank'} s={12} c={C.txt} />{doc.tipo === 'fattura' ? 'Fattura' : 'Rimborso'} n° {doc.numero}
                           </div>
                           <div style={{ fontSize: 11, color: C.txm }}>{fmtD(doc.data)} · {doc.paziente_nome}</div>
                         </div>
@@ -364,7 +364,7 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
                                 a.style.display = 'none';
                                 document.body.appendChild(a); a.click(); document.body.removeChild(a);
                               }
-                            }} style={{ background: C.priL, border: 'none', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: C.pri }}>⬇️</button>
+                            }} style={{ background: C.priL, border: 'none', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: C.pri, display: 'flex' }}><Ic n="download" s={12} c={C.pri} /></button>
                             <button onClick={async () => {
                               if (!confirm('Eliminare?')) return;
                               await supabase.from('documenti_fiscali').delete().eq('id', doc.id);
@@ -388,9 +388,9 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
         <Crd style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10 }}>Tipo documento</div>
           <div style={{ display: 'flex', gap: 8 }}>
-            {[['fattura', '📄 Fattura', 'Documento fiscale con numero progressivo'], ['rimborso', '🧾 Rimborso spese', 'Nota spese per rimborso assicurativo']].map(([val, lbl, sub]) => (
+            {[['fattura', 'receipt', 'Fattura', 'Documento fiscale con numero progressivo'], ['rimborso', 'bank', 'Rimborso spese', 'Nota spese per rimborso assicurativo']].map(([val, ic, lbl, sub]) => (
               <button key={val} onClick={() => { setTipo(val); setGenerated(false); const n = getNumeroProgressivo(val); setNumero(String(n.num).padStart(3,'0')); }} style={{ flex: 1, padding: 12, borderRadius: 10, border: `2px solid ${tipo === val ? C.pri : C.brd}`, background: tipo === val ? C.priL : C.sur, cursor: 'pointer', textAlign: 'left' }}>
-                <div style={{ fontWeight: 800, fontSize: 14, color: tipo === val ? C.pri : C.txt }}>{lbl}</div>
+                <div style={{ fontWeight: 800, fontSize: 14, color: tipo === val ? C.pri : C.txt, display: 'flex', alignItems: 'center', gap: 6 }}><Ic n={ic} s={13} c={tipo === val ? C.pri : C.txt} />{lbl}</div>
                 <div style={{ fontSize: 10, color: C.txm, marginTop: 3 }}>{sub}</div>
               </button>
             ))}
@@ -484,7 +484,7 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
         {/* IBAN (solo rimborso) */}
         {tipo === 'rimborso' && voci.length > 0 && (
           <Crd style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 8 }}>🏦 IBAN per il rimborso</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}><Ic n="bank" s={11} c={C.txm} />IBAN per il rimborso</div>
             <Inp value={iban} onChange={e => setIban(e.target.value)} placeholder="es. IT60X0542811101000000123456" style={{ fontFamily: 'monospace', fontSize: 13 }} />
             <div style={{ fontSize: 10, color: C.txl, marginTop: 5 }}>Appare nel documento — modificabile per ogni rimborso</div>
           </Crd>
@@ -494,7 +494,7 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
             <div style={{ display: 'flex', gap: 8 }}>
               <Btn ch="Annulla" v="sec" onClick={onClose} full />
-              <Btn ch={`⬇️ Genera ${tipo === 'fattura' ? 'Fattura' : 'Rimborso'} PDF`} onClick={generaPdf} full />
+              <Btn ch={`Genera ${tipo === 'fattura' ? 'Fattura' : 'Rimborso'} PDF`} ic="download" onClick={generaPdf} full />
             </div>
             {tipo === 'fattura' && !isSanitario && (
               <>
@@ -503,7 +503,7 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
                     Per generare l'XML FatturaPA mancano: {xmlErrori.join(', ')}. Completa i dati in Impostazioni Studio e sulla scheda paziente.
                   </div>
                 )}
-                <Btn ch="📤 Genera anche XML FatturaPA (upload manuale su AdE)" v="sec" onClick={generaXml} dis={xmlErrori.length > 0} full />
+                <Btn ch="Genera anche XML FatturaPA (upload manuale su AdE)" ic="upload" v="sec" onClick={generaXml} dis={xmlErrori.length > 0} full />
               </>
             )}
           </div>

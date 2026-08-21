@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { C } from '../../lib/utils';
 import Btn from './Btn.jsx';
+import Ic from './Ic.jsx';
 import { condividiPdf, scaricaPdf, copiaNumero } from '../../lib/condivisionePdf';
 
 /**
@@ -39,12 +40,12 @@ export default function PannelloInvioDocumento({ pronto, paziente, archiviato, o
   return (
     <div style={{ marginBottom: 16 }}>
       <div style={{ background: C.sucL, border: `1px solid ${C.suc}`, borderRadius: 10, padding: '11px 14px', marginBottom: 12, textAlign: 'center' }}>
-        <div style={{ fontWeight: 700, color: C.suc }}>✓ {pronto.titolo} pronto</div>
+        <div style={{ fontWeight: 700, color: C.suc, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><Ic n="okc" s={13} c={C.suc} />{pronto.titolo} pronto</div>
         {archiviato && <div style={{ fontSize: 11, color: C.txm, marginTop: 3 }}>Salvato anche in archivio, scheda paziente</div>}
       </div>
 
       <div style={{ position: 'relative' }}>
-        <Btn ch="📤 Invia documento" onClick={() => setMenuAperto((v) => !v)} full />
+        <Btn ch="Invia documento" ic="send" onClick={() => setMenuAperto((v) => !v)} full />
         {menuAperto && (
           <>
             <div onClick={() => setMenuAperto(false)} style={{ position: 'fixed', inset: 0, zIndex: 998 }} />
@@ -57,7 +58,7 @@ export default function PannelloInvioDocumento({ pronto, paziente, archiviato, o
                   onClick={inviaPaziente}
                   style={{ width: '100%', textAlign: 'left', padding: '13px 16px', background: 'none', border: 'none', borderBottom: `1px solid ${C.brd}`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
                 >
-                  <span style={{ fontSize: 18 }}>💬</span>
+                  <Ic n="phone2" s={17} c={C.pri} />
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 13.5, color: C.txt }}>{paziente.nome} {paziente.cognome}</div>
                     <div style={{ fontSize: 11, color: C.txl }}>Copia il numero e apre la condivisione</div>
@@ -68,7 +69,7 @@ export default function PannelloInvioDocumento({ pronto, paziente, archiviato, o
                 onClick={() => condividi('')}
                 style={{ width: '100%', textAlign: 'left', padding: '13px 16px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
               >
-                <span style={{ fontSize: 18 }}>📤</span>
+                <Ic n="mail" s={17} c={C.txm} />
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 13.5, color: C.txt }}>Altro contatto o email</div>
                   <div style={{ fontSize: 11, color: C.txl }}>Scegli dal menù di condivisione del telefono</div>
@@ -80,7 +81,7 @@ export default function PannelloInvioDocumento({ pronto, paziente, archiviato, o
       </div>
 
       <div style={{ marginTop: 8 }}>
-        <Btn ch="💾 Scarica" v="sec" onClick={() => scaricaPdf(pronto.dataUrl, pronto.filename)} full />
+        <Btn ch="Scarica" ic="download" v="sec" onClick={() => scaricaPdf(pronto.dataUrl, pronto.filename)} full />
       </div>
 
       {stato && (
@@ -89,7 +90,7 @@ export default function PannelloInvioDocumento({ pronto, paziente, archiviato, o
 
       <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
         <Btn ch="Chiudi" v="sec" onClick={onChiudi} full />
-        <Btn ch="↻ Genera un altro documento" v="sec" onClick={onNuovoDocumento} full />
+        <Btn ch="Genera un altro documento" ic="refresh" v="sec" onClick={onNuovoDocumento} full />
       </div>
     </div>
   );

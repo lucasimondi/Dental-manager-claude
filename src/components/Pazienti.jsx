@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Txt, Modal, Toast, Ic, PageHeader, EmptyState } from './ui';
+import { Btn, Crd, Fld, Inp, Txt, Modal, Toast, Ic, StatCard, PageHeader, EmptyState } from './ui';
 import { C, uid, fmtD, today } from '../lib/utils';
 import ImportCsvModal from './ImportCsvModal.jsx';
 import DupModal from './DupModal.jsx';
@@ -219,7 +219,7 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
               </button>
             )}
             <button onClick={() => setImportModal(true)} style={{ background: C.priL, border: 'none', borderRadius: 10, padding: '10px 13px', color: C.pri, fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-              <Ic n="download" s={13} c={C.pri} /> CSV
+              <Ic n="upload" s={13} c={C.pri} /> CSV
             </button>
             <Btn ch={limiteRaggiunto ? 'Limite raggiunto' : 'Nuovo'} ic={limiteRaggiunto ? 'lock' : 'plus'} onClick={() => openEdit()} />
           </>
@@ -245,8 +245,9 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
           {search && (
             <button
               onClick={() => { setSearch(''); }}
-              style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: C.brd, border: 'none', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: C.txm, fontSize: 12, lineHeight: 1, padding: 0 }}
-            >✕</button>
+              aria-label="Cancella ricerca"
+              style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: C.brd, border: 'none', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}
+            ><Ic n="x" s={10} c={C.txm} /></button>
           )}
           {searchFocus && (
             <button
@@ -284,30 +285,18 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
       ) : (
         <>
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>📊 Andamento studio</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}><Ic n="trend" s={12} c={C.txm} />Andamento studio</div>
+        {/* POL-UI-005: was Ic n="pz" on both cards (differentiated only by
+            color) and no icon at all on the bottom three — every KPI now
+            has its own icon. */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9, marginBottom: 9 }}>
-          <Crd style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ background: C.priL, borderRadius: 9, padding: 8, flexShrink: 0 }}><Ic n="pz" s={17} c={C.pri} /></div>
-            <div><div style={{ fontSize: 18, fontWeight: 800 }}>{nuoviMese}</div><div style={{ fontSize: 10, color: C.txm, fontWeight: 600 }}>Nuovi questo mese</div></div>
-          </Crd>
-          <Crd style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ background: '#E8FAF9', borderRadius: 9, padding: 8, flexShrink: 0 }}><Ic n="pz" s={17} c={C.acc} /></div>
-            <div><div style={{ fontSize: 18, fontWeight: 800 }}>{nuoviAnno}</div><div style={{ fontSize: 10, color: C.txm, fontWeight: 600 }}>Nuovi quest'anno</div></div>
-          </Crd>
+          <StatCard icon="pz" value={nuoviMese} label="Nuovi questo mese" color={C.pri} />
+          <StatCard icon="trend" value={nuoviAnno} label="Nuovi quest'anno" color={C.acc} />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 9 }}>
-          <Crd style={{ padding: '10px 8px', textAlign: 'center' }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: C.suc }}>{preventiviAccettati}</div>
-            <div style={{ fontSize: 9, color: C.txm, fontWeight: 600, marginTop: 2 }}>Preventivi accettati</div>
-          </Crd>
-          <Crd style={{ padding: '10px 8px', textAlign: 'center' }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: C.war }}>{preventiviAttesa}</div>
-            <div style={{ fontSize: 9, color: C.txm, fontWeight: 600, marginTop: 2 }}>In attesa</div>
-          </Crd>
-          <Crd style={{ padding: '10px 8px', textAlign: 'center' }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: C.dan }}>{preventiviNonAccettati}</div>
-            <div style={{ fontSize: 9, color: C.txm, fontWeight: 600, marginTop: 2 }}>Rifiutati</div>
-          </Crd>
+          <StatCard icon="okc" value={preventiviAccettati} label="Preventivi accettati" color={C.suc} />
+          <StatCard icon="clk" value={preventiviAttesa} label="In attesa" color={C.war} />
+          <StatCard icon="cross" value={preventiviNonAccettati} label="Rifiutati" color={C.dan} />
         </div>
       </div>
 
@@ -370,8 +359,8 @@ function RigaPaziente({ p, evidenzia, onOpen, onDelete, confirming, onCancelDele
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 700, fontSize: 14 }}>{evidenzia(`${p.nome} ${p.cognome}`)}</div>
           <div style={{ display: 'flex', gap: 10, marginTop: 2, flexWrap: 'wrap' }}>
-            {p.telefono && <span style={{ fontSize: 11, color: C.txm }}>📞 {evidenzia(p.telefono)}</span>}
-            {p.dataNascita && <span style={{ fontSize: 11, color: C.txm }}>🎂 {fmtD(p.dataNascita)}</span>}
+            {p.telefono && <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: C.txm }}><Ic n="ph" s={10} c={C.txl} />{evidenzia(p.telefono)}</span>}
+            {p.dataNascita && <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: C.txm }}><Ic n="cal" s={10} c={C.txl} />{fmtD(p.dataNascita)}</span>}
             {p.cf && <span style={{ fontSize: 11, color: C.txm }}>{evidenzia(p.cf)}</span>}
           </div>
           {p.note && <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: C.war, marginTop: 2 }}><Ic n="warn" s={10} c={C.war} />{p.note.slice(0, 50)}{p.note.length > 50 ? '…' : ''}</div>}

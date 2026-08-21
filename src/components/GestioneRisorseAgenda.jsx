@@ -12,13 +12,13 @@ import { Crd, Fld, Inp, Sel, Modal, Toast, Btn, Ic } from './ui';
    persona: niente user_id/ruolo). */
 const CONFIG = {
   operatori: {
-    tabella: 'operatori', icona: '🩺', titoloPlurale: 'Operatori', titoloSingolare: 'operatore',
+    tabella: 'operatori', icona: 'user', titoloPlurale: 'Operatori', titoloSingolare: 'operatore',
     mostraRuolo: true, mostraAccount: true,
     placeholderNome: 'es. Dott.ssa Anna Bianchi',
     vuoto: "Nessun operatore creato — l'agenda resta unica finché non ne aggiungi almeno uno.",
   },
   poltrone: {
-    tabella: 'poltrone', icona: '🪑', titoloPlurale: 'Poltrone', titoloSingolare: 'poltrona',
+    tabella: 'poltrone', icona: 'chair', titoloPlurale: 'Poltrone', titoloSingolare: 'poltrona',
     mostraRuolo: false, mostraAccount: false,
     placeholderNome: 'es. Poltrona 1, Sala 2...',
     vuoto: 'Nessuna poltrona creata — se non ne aggiungi, l\'agenda non traccia le postazioni fisiche.',
@@ -34,7 +34,7 @@ export default function GestioneRisorseAgenda({ tipo, studioId, currentUserId, t
   // risorsa (postazione fisica) prende un nome generico, senza toccare la
   // tabella né la logica CRUD sottostante (tutto invariato, solo le label).
   const cfg = (tipo === 'poltrone' && !isDentistico)
-    ? { ...cfgBase, icona: '🚪', titoloPlurale: 'Postazioni', titoloSingolare: 'postazione', placeholderNome: 'es. Sala 1, Box 2...', vuoto: 'Nessuna postazione creata — se non ne aggiungi, l\'agenda non traccia le postazioni fisiche.' }
+    ? { ...cfgBase, icona: 'chair', titoloPlurale: 'Postazioni', titoloSingolare: 'postazione', placeholderNome: 'es. Sala 1, Box 2...', vuoto: 'Nessuna postazione creata — se non ne aggiungi, l\'agenda non traccia le postazioni fisiche.' }
     : cfgBase;
   const [risorse, setRisorse] = useState([]);
   const [studioUsers, setStudioUsers] = useState([]);
@@ -101,7 +101,7 @@ export default function GestioneRisorseAgenda({ tipo, studioId, currentUserId, t
       <Crd style={{ marginBottom: 11 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>{cfg.titoloPlurale}</div>
         <div style={{ background: C.bg, borderRadius: 12, padding: 18, textAlign: 'center' }}>
-          <div style={{ fontSize: 22, marginBottom: 6 }}>🔒</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6 }}><Ic n="lock" s={22} c={C.txl} /></div>
           <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Multi-agenda non attiva</div>
           <div style={{ fontSize: 12, color: C.txm }}>Gestisci più professionisti e poltrone con agende separate e assegna gli appuntamenti a ciascuno.</div>
         </div>
@@ -114,7 +114,7 @@ export default function GestioneRisorseAgenda({ tipo, studioId, currentUserId, t
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: C.txt }}>{cfg.icona} {cfg.titoloPlurale}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 14, fontWeight: 800, color: C.txt }}><Ic n={cfg.icona} s={14} c={C.pri} />{cfg.titoloPlurale}</div>
         {isStudioAdmin && (
           <button onClick={apriNuovo}
             style={{ background: C.pri, border: 'none', borderRadius: 9, padding: '8px 14px', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -128,7 +128,7 @@ export default function GestioneRisorseAgenda({ tipo, studioId, currentUserId, t
         </div>
       )}
 
-      {loading && <div style={{ textAlign: 'center', color: C.txl, padding: 20 }}>⏳ Caricamento...</div>}
+      {loading && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: C.txl, padding: 20 }}><Ic n="clk" s={13} c={C.txl} />Caricamento…</div>}
 
       {!loading && risorse.length === 0 && (
         <div style={{ textAlign: 'center', color: C.txl, padding: 30, fontSize: 12.5 }}>{cfg.vuoto}</div>
@@ -170,7 +170,7 @@ export default function GestioneRisorseAgenda({ tipo, studioId, currentUserId, t
       })}
 
       {modal && (
-        <Modal title={modal === 'new' ? `${cfg.icona} Nuova/o ${cfg.titoloSingolare}` : `Modifica ${cfg.titoloSingolare}`} onClose={() => setModal(null)}>
+        <Modal title={modal === 'new' ? `Nuova/o ${cfg.titoloSingolare}` : `Modifica ${cfg.titoloSingolare}`} icon={cfg.icona} onClose={() => setModal(null)}>
           <Fld label="Nome"><Inp value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder={cfg.placeholderNome} autoFocus /></Fld>
           {cfg.mostraRuolo && (
             <Fld label="Ruolo professionale (opzionale)"><Inp value={form.ruolo_professionale} onChange={(e) => setForm((f) => ({ ...f, ruolo_professionale: e.target.value }))} placeholder="es. Igienista, Fisioterapista..." /></Fld>

@@ -1201,8 +1201,8 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           {(() => { const p = patients.find(x => x.id === waModal.pazienteId); return (
             <div style={{ background: C.priL, borderRadius: 9, padding: '9px 12px', marginBottom: 12 }}>
               <div style={{ fontWeight: 700, fontSize: 13 }}>{p?.nome} {p?.cognome}</div>
-              <div style={{ fontSize: 11, color: C.txm }}>📅 {fmtD(waModal.data)} · {waModal.ora} · {waModal.tipo}</div>
-              {p?.telefono && <div style={{ fontSize: 11, color: C.txl }}>📱 {p.telefono}</div>}
+              <div style={{ fontSize: 11, color: C.txm, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="cal" s={11} c={C.txm} />{fmtD(waModal.data)} · {waModal.ora} · {waModal.tipo}</div>
+              {p?.telefono && <div style={{ fontSize: 11, color: C.txl, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="phone2" s={11} c={C.txl} />{p.telefono}</div>}
             </div>
           ); })()}
           {templates?.length > 0 && (
@@ -1450,7 +1450,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                     <div>
                       <div style={{ fontWeight: 800, fontSize: 14, color: C.txt }}>{r.nome} {r.cognome}</div>
-                      <div style={{ fontSize: 12, color: C.txm, marginTop: 2 }}>📞 {r.telefono}{r.email ? ` · ${r.email}` : ''}</div>
+                      <div style={{ fontSize: 12, color: C.txm, marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="ph" s={11} c={C.txm} />{r.telefono}{r.email ? ` · ${r.email}` : ''}</div>
                     </div>
                     <span style={{ fontSize: 10.5, color: C.txl }}>{new Date(r.created_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}</span>
                   </div>
@@ -1468,7 +1468,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
                     </div>
                   )}
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <Btn ch="📅 Crea appuntamento" onClick={() => gestisciRichiesta(r)} full />
+                    <Btn ch="Crea appuntamento" ic="cal" onClick={() => gestisciRichiesta(r)} full />
                     <button onClick={() => rifiutaRichiesta(r.id)} style={{ background: C.danL, border: 'none', borderRadius: 9, padding: '0 14px', color: C.dan, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Rifiuta</button>
                   </div>
                 </Crd>

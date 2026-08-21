@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Ic from './Ic.jsx';
 
 /**
  * Form di compilazione anamnesi/storia clinica: voci con Sì/No/Non so +
@@ -63,7 +64,7 @@ export default function FormStoriaClinica({ voci, onCompilato, C, testoBottone =
         {farmaci.map((f, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, background: C.bg, borderRadius: 8, padding: '7px 10px', marginBottom: 6 }}>
             <span style={{ flex: 1, fontSize: 12.5, color: C.txt }}>{f.nome}</span>
-            <button onClick={() => setFarmaci(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: C.txl, cursor: 'pointer', fontSize: 14 }}>✕</button>
+            <button onClick={() => setFarmaci(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: C.txl, cursor: 'pointer', display: 'flex' }}><Ic n="x" s={12} c={C.txl} /></button>
           </div>
         ))}
         <div style={{ display: 'flex', gap: 8 }}>
@@ -77,7 +78,7 @@ export default function FormStoriaClinica({ voci, onCompilato, C, testoBottone =
         {allergie.map((a, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, background: C.bg, borderRadius: 8, padding: '7px 10px', marginBottom: 6 }}>
             <span style={{ flex: 1, fontSize: 12.5, color: C.txt }}>{a.sostanza}</span>
-            <button onClick={() => setAllergie(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: C.txl, cursor: 'pointer', fontSize: 14 }}>✕</button>
+            <button onClick={() => setAllergie(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: C.txl, cursor: 'pointer', display: 'flex' }}><Ic n="x" s={12} c={C.txl} /></button>
           </div>
         ))}
         <div style={{ display: 'flex', gap: 8 }}>

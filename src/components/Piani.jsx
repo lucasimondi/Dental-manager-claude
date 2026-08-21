@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, SearchSel, SelettorePaziente, PageHeader, EmptyState } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, StatCard, SearchSel, SelettorePaziente, PageHeader, EmptyState } from './ui';
 import { C, uid, fmt, today, SCADENZA_PRESET, addMesi } from '../lib/utils';
+import { useIsMobile } from '../lib/useIsMobile';
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { salvaPosizione, leggiPosizione } from '../lib/posizioneNavigazione';
 import Odontogramma from './Odontogramma.jsx';
@@ -9,6 +10,7 @@ import WaAction, { apriWaDiretto } from './ui/WaAction.jsx';
 
 export default function Piani({ patients, plans, setPlans, pricelist, templates, si, features, initPatId, onClearInitPat, onOpenPaz, autoOpenNew, onAutoOpenNewHandled }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
+  const isMobile = useIsMobile();
   const [modal, setModal] = useState(false);
 
   // Ricorda se il modale "nuovo piano" era aperto, così se l'app si
@@ -165,23 +167,28 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
       <PageHeader icon="plan" title="Piani di cura" actions={
         <Btn ch="Nuovo" ic="plus" onClick={() => { setForm({ pazienteId: '', titolo: '', data: today(), voci: [], stato: 'attivo', sconto: 0, scontoTipo: 'pct', scadenzaPagamento: '', ortodonzia: null }); setNv({ prestazione: '', dente: '', prezzo: '' }); setSelectedDenti([]); setModal(true); }} />
       } />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
-        {[['Totali', kpi.totali, C.pri, 'totali'], ['Attivi', kpi.attivi, C.war, 'attivo'], ['Accettati', kpi.accettati, C.acc, 'accettato'], ['Rifiutati', kpi.rifiutati, C.dan, 'rifiutato'], ['Conclusi', kpi.conclusi, C.suc, 'concluso'], ['In corso', kpi.inCorso, C.pur, 'inCorso']].map(([l, v, co, key]) => (
-          <Crd key={l} onClick={() => { setFiltroModal(key); }} style={{ padding: 11, display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', border: filtro === key ? `2px solid ${co}` : undefined, background: filtro === key ? co + '10' : C.sur, position: 'relative' }}>
-            <div style={{ background: co + '20', borderRadius: 8, padding: 7, flexShrink: 0 }}><Ic n="plan" s={16} c={co} /></div>
-            <div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: filtro === key ? co : C.txt }}>{v}</div>
-              <div style={{ fontSize: 10, color: filtro === key ? co : C.txm, fontWeight: 600 }}>{l}</div>
-            </div>
-            <div style={{ position: 'absolute', top: 4, right: 6, fontSize: 10, color: co, opacity: 0.5 }}>›</div>
-          </Crd>
+      {/* POL-UI-005: each KPI now has a semantically distinct icon (was
+          `Ic n="plan"` on all six, differentiated only by color) — Totali
+          (all plans), Attivi (pulse = ongoing), Accettati (check),
+          Rifiutati (cross), Conclusi (medal = completed), In corso
+          (clock = partially executed). */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
+        {[
+          ['Totali', kpi.totali, C.pri, 'totali', 'brief'],
+          ['Attivi', kpi.attivi, C.war, 'attivo', 'pulse'],
+          ['Accettati', kpi.accettati, C.acc, 'accettato', 'okc'],
+          ['Rifiutati', kpi.rifiutati, C.dan, 'rifiutato', 'cross'],
+          ['Conclusi', kpi.conclusi, C.suc, 'concluso', 'medal'],
+          ['In corso', kpi.inCorso, C.pur, 'inCorso', 'clk'],
+        ].map(([l, v, co, key, ic]) => (
+          <StatCard key={l} icon={ic} value={v} label={l} color={co} active={filtro === key} onClick={() => setFiltroModal(key)} />
         ))}
       </div>
 
       {filtro && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, background: C.priL, borderRadius: 9, padding: '8px 12px' }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: C.pri }}>Filtro: {filtro === 'totali' ? 'Tutti' : filtro === 'inCorso' ? 'In corso' : filtro.charAt(0).toUpperCase() + filtro.slice(1)}</span>
-          <button onClick={() => setFiltro(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.dan, fontWeight: 700, fontSize: 12 }}>✕ Rimuovi</button>
+          <button onClick={() => setFiltro(null)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', color: C.dan, fontWeight: 700, fontSize: 12 }}><Ic n="x" s={11} c={C.dan} />Rimuovi</button>
         </div>
       )}
 
@@ -269,12 +276,12 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
                     <div style={{ fontWeight: 700, color: C.pri, flexShrink: 0, fontSize: 12 }}>{fmt(v.prezzo)}</div>
                   </div>
                   <div style={{ display: 'flex', gap: 5, marginTop: 5 }}>
-                    <button onClick={() => toggleEseguita(pl.id, i)} style={{ flex: 1, padding: '6px 0', borderRadius: 7, border: `1.5px solid ${v.eseguita ? C.suc : C.brd}`, background: v.eseguita ? C.sucL : C.bg, color: v.eseguita ? C.suc : C.txm, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
-                      {v.eseguita ? '✓ Eseguita' : '○ Segna eseguita'}
+                    <button onClick={() => toggleEseguita(pl.id, i)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '6px 0', borderRadius: 7, border: `1.5px solid ${v.eseguita ? C.suc : C.brd}`, background: v.eseguita ? C.sucL : C.bg, color: v.eseguita ? C.suc : C.txm, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
+                      <Ic n={v.eseguita ? 'okc' : 'clk'} s={12} c={v.eseguita ? C.suc : C.txm} />{v.eseguita ? 'Eseguita' : 'Segna eseguita'}
                     </button>
                     {v.eseguita && (
-                      <button onClick={() => toggleIncassata(pl.id, i)} style={{ flex: 1, padding: '6px 0', borderRadius: 7, border: `1.5px solid ${v.incassata ? C.suc : C.dan}`, background: v.incassata ? C.sucL : C.danL, color: v.incassata ? C.suc : C.dan, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
-                        {v.incassata ? '€ Incassata' : '€ Da incassare'}
+                      <button onClick={() => toggleIncassata(pl.id, i)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '6px 0', borderRadius: 7, border: `1.5px solid ${v.incassata ? C.suc : C.dan}`, background: v.incassata ? C.sucL : C.danL, color: v.incassata ? C.suc : C.dan, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
+                        <Ic n="eur" s={12} c={v.incassata ? C.suc : C.dan} />{v.incassata ? 'Incassata' : 'Da incassare'}
                       </button>
                     )}
                   </div>
@@ -285,7 +292,7 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
                 <WaAction features={features} onClick={() => openWA(pl, 'piano')} label="Piano WA" style={{ flex: 'none', background: '#25D366', color: '#fff', borderRadius: 8, padding: '6px 11px', fontSize: 11 }} />
                 <WaAction features={features} onClick={() => openWA(pl, 'preventivo')} label="Prev. WA" style={{ flex: 'none', background: '#128C7E', color: '#fff', borderRadius: 8, padding: '6px 11px', fontSize: 11 }} />
                 <Sel value={pl.stato || 'attivo'} onChange={(e) => setStato(pl.id, e.target.value)} style={{ padding: '6px 8px', fontSize: 11, borderRadius: 8, width: 'auto', flex: 1 }}>
-                  <option value="attivo">Attivo</option><option value="accettato">Accettato ✓</option><option value="rifiutato">Rifiutato ✗</option><option value="concluso">Concluso ✓</option>
+                  <option value="attivo">Attivo</option><option value="accettato">Accettato</option><option value="rifiutato">Rifiutato</option><option value="concluso">Concluso</option>
                 </Sel>
               </div>
             </Crd>
@@ -311,10 +318,10 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
           </div>
           <Fld label="Stato preventivo">
             <div style={{ display: 'flex', gap: 6 }}>
-              {[['attivo', '⏳ In attesa', C.war], ['accettato', '✓ Accettato', C.acc], ['rifiutato', '✗ Non accettato', C.dan]].map(([val, lbl, co]) => {
+              {[['attivo', 'clk', 'In attesa', C.war], ['accettato', 'ok', 'Accettato', C.acc], ['rifiutato', 'x', 'Non accettato', C.dan]].map(([val, ic, lbl, co]) => {
                 const sel = form.stato === val;
                 return (
-                  <button key={val} onClick={() => setForm((f) => ({ ...f, stato: val }))} style={{ flex: 1, padding: '9px 4px', borderRadius: 9, border: `1.5px solid ${sel ? co : C.brd}`, background: sel ? co + '18' : C.sur, color: sel ? co : C.txm, fontWeight: sel ? 800 : 600, fontSize: 11.5, cursor: 'pointer' }}>{lbl}</button>
+                  <button key={val} onClick={() => setForm((f) => ({ ...f, stato: val }))} style={{ flex: 1, padding: '9px 4px', borderRadius: 9, border: `1.5px solid ${sel ? co : C.brd}`, background: sel ? co + '18' : C.sur, color: sel ? co : C.txm, fontWeight: sel ? 800 : 600, fontSize: 11.5, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><Ic n={ic} s={11} c={sel ? co : C.txm} />{lbl}</button>
                 );
               })}
             </div>
@@ -327,7 +334,7 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
                   <button key={p.mesi} onClick={() => setForm((f) => ({ ...f, scadenzaPagamento: addMesi(f.data || today(), p.mesi), _presetScadenza: p.mesi }))} style={{ flex: 1, padding: '7px 4px', borderRadius: 8, border: `1.5px solid ${sel ? C.pri : C.brd}`, background: sel ? C.priL : C.sur, color: sel ? C.pri : C.txm, fontWeight: sel ? 800 : 600, fontSize: 11, cursor: 'pointer' }}>{p.label}</button>
                 );
               })}
-              {form.scadenzaPagamento && <button onClick={() => setForm((f) => ({ ...f, scadenzaPagamento: '', _presetScadenza: null }))} style={{ padding: '7px 10px', borderRadius: 8, border: `1px solid ${C.brd}`, background: C.sur, color: C.txl, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>✕</button>}
+              {form.scadenzaPagamento && <button onClick={() => setForm((f) => ({ ...f, scadenzaPagamento: '', _presetScadenza: null }))} aria-label="Rimuovi scadenza" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '7px 10px', borderRadius: 8, border: `1px solid ${C.brd}`, background: C.sur, color: C.txl, cursor: 'pointer' }}><Ic n="x" s={12} c={C.txl} /></button>}
             </div>
             <Inp type="date" value={form.scadenzaPagamento || ''} onChange={(e) => setForm((f) => ({ ...f, scadenzaPagamento: e.target.value, _presetScadenza: null }))} />
           </Fld>
@@ -338,7 +345,7 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
               <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${form.ortodonzia?.attivo ? C.pur : C.brd}`, background: form.ortodonzia?.attivo ? C.pur : C.sur, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 {form.ortodonzia?.attivo && <Ic n="ok" s={11} c="#fff" />}
               </div>
-              <span style={{ fontSize: 13, fontWeight: 700, color: form.ortodonzia?.attivo ? C.pur : C.txt }}>🦷 Piano ortodontico (mascherine invisibili)</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: form.ortodonzia?.attivo ? C.pur : C.txt }}><Ic n="tooth" s={14} c={form.ortodonzia?.attivo ? C.pur : C.txm} />Piano ortodontico (mascherine invisibili)</span>
             </button>
             {form.ortodonzia?.attivo && (
               <div style={{ marginTop: 12 }}>
@@ -354,7 +361,7 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
                 </div>
                 {form.ortodonzia.mascherineTotali > 0 && (
                   <div style={{ background: '#fff', borderRadius: 8, padding: 10, marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: C.txm }}>⏱️ Durata stimata del trattamento</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: C.txm }}><Ic n="clk" s={12} c={C.txm} />Durata stimata del trattamento</span>
                     <span style={{ fontSize: 14, fontWeight: 900, color: C.pur }}>
                       {(() => { const settimane = Number(form.ortodonzia.mascherineTotali) * form.ortodonzia.frequenzaSettimane; const mesi = Math.round((settimane / 4.345) * 10) / 10; return `~${settimane} sett. (${mesi} mesi)`; })()}
                     </span>
@@ -420,7 +427,7 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
                     <button onClick={() => setForm((f) => ({ ...f, scontoTipo: 'eur' }))} style={{ padding: '8px 12px', border: 'none', background: form.scontoTipo === 'eur' ? C.pri : C.sur, color: form.scontoTipo === 'eur' ? '#fff' : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>€</button>
                   </div>
                   <Inp type="number" inputMode="decimal" min="0" max={form.scontoTipo === 'pct' ? 100 : undefined} value={form.sconto || ''} placeholder={form.scontoTipo === 'pct' ? 'es. 10' : 'es. 50'} onChange={(e) => setForm((f) => ({ ...f, sconto: e.target.value }))} style={{ flex: 1 }} />
-                  {Number(form.sconto) > 0 && <button onClick={() => setForm((f) => ({ ...f, sconto: 0 }))} style={{ background: C.danL, border: 'none', borderRadius: 7, padding: '8px 10px', color: C.dan, fontWeight: 700, fontSize: 11, cursor: 'pointer', flexShrink: 0 }}>✕</button>}
+                  {Number(form.sconto) > 0 && <button onClick={() => setForm((f) => ({ ...f, sconto: 0 }))} aria-label="Rimuovi sconto" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.danL, border: 'none', borderRadius: 7, padding: '8px 10px', color: C.dan, cursor: 'pointer', flexShrink: 0 }}><Ic n="x" s={12} c={C.dan} /></button>}
                 </div>
               </div>
               {(() => {

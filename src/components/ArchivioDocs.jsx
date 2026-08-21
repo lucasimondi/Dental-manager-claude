@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, Btn } from './ui';
+import { Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, Btn, StatCard, PageHeader, EmptyState } from './ui';
 const PdfViewerModal = React.lazy(() => import('./ui/PdfViewerModal.jsx'));
 import { cercaPazienti } from '../lib/ricercaPazienti';
 import { C, fmt, fmtD, today } from '../lib/utils';
 import { supabase } from '../lib/supabase.js';
 import { scaricaPdf } from '../lib/condivisionePdf';
+
+// POL-UI-005: one icon per document type instead of emoji (📄🧾💊🩸📋✉️📖📝✍️) —
+// shared across the filter chips, list rows and edit-modal title below.
+const TIPO_ICON = { fattura: 'receipt', rimborso: 'bank', ricetta: 'pill', esami: 'drop', certificato: 'clip', lettera: 'mail', protocollo: 'book', vuoto: 'file', consenso: 'edit' };
+const TIPO_LABEL = { fattura: 'Fatture', rimborso: 'Rimborsi', ricetta: 'Ricette', esami: 'Esami', certificato: 'Certificati', lettera: 'Lettere', protocollo: 'Protocolli', vuoto: 'Liberi', consenso: 'Consensi' };
 
 export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedico, onApriDocConsenso }) {
   const [pazModal, setPazModal] = useState(null); // 'fiscale' | 'medico' | 'consenso' | null
@@ -121,10 +126,8 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
     <div>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
-      {/* HEADER */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
-        <div style={{ fontSize: 20, fontWeight: 800 }}>📁 Documenti</div>
-        <div style={{ display: 'flex', gap: 6 }}>
+      <PageHeader icon="folder" title="Documenti" actions={
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           <button onClick={() => { setPazModal('medico'); setPazSearch(''); }} style={{ background: C.priL, border: 'none', borderRadius: 9, padding: '8px 12px', color: C.pri, fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
             <Ic n="plus" s={12} c={C.pri} /> Ricetta/Cert.
           </button>
@@ -135,7 +138,7 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
             <Ic n="plus" s={12} c={C.pri} /> Consenso
           </button>
         </div>
-      </div>
+      } />
 
       {/* MODAL SELEZIONA PAZIENTE */}
       {pazModal && (
@@ -150,9 +153,7 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
                   if (pazModal === 'fiscale' && onApriDocFiscale) onApriDocFiscale(p);
                   if (pazModal === 'medico' && onApriDocMedico) onApriDocMedico(p);
                   if (pazModal === 'consenso' && onApriDocConsenso) onApriDocConsenso(p);
-                }} style={{ padding: '11px 12px', cursor: 'pointer', borderBottom: `1px solid ${C.brd}`, borderRadius: 8 }}
-                  onMouseEnter={e => e.currentTarget.style.background = C.bg}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                }} className="pol-hover-row" style={{ padding: '11px 12px', cursor: 'pointer', borderBottom: `1px solid ${C.brd}`, borderRadius: 8 }}>
                   <div style={{ fontWeight: 700, fontSize: 13 }}>{p.cognome} {p.nome}</div>
                   {p.telefono && <div style={{ fontSize: 11, color: C.txl }}>{p.telefono}</div>}
                 </div>
@@ -164,44 +165,28 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
         </Modal>
       )}
 
-      {/* KPI */}
+      {/* POL-UI-005: KPI tiles had no icon at all before — icon chips added,
+          each distinct (was plain colored text). */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
-        <Crd style={{ padding: 12 }}>
-          <div style={{ fontSize: 9, fontWeight: 800, color: C.pri, textTransform: 'uppercase' }}>Fatture</div>
-          <div style={{ fontSize: 18, fontWeight: 900, color: C.pri }}>{fmt(totFatture)}</div>
-          <div style={{ fontSize: 10, color: C.txl }}>{docs.filter(d => d.tipo === 'fattura').length} doc.</div>
-        </Crd>
-        <Crd style={{ padding: 12 }}>
-          <div style={{ fontSize: 9, fontWeight: 800, color: C.pur, textTransform: 'uppercase' }}>Rimborsi</div>
-          <div style={{ fontSize: 18, fontWeight: 900, color: C.pur }}>{fmt(totRimborsi)}</div>
-          <div style={{ fontSize: 10, color: C.txl }}>{docs.filter(d => d.tipo === 'rimborso').length} doc.</div>
-        </Crd>
-        <Crd style={{ padding: 12 }}>
-          <div style={{ fontSize: 9, fontWeight: 800, color: C.suc, textTransform: 'uppercase' }}>{anno}</div>
-          <div style={{ fontSize: 18, fontWeight: 900, color: C.suc }}>{fmt(totAnno)}</div>
-          <div style={{ fontSize: 10, color: C.txl }}>{docs.filter(d => d.data?.startsWith(anno)).length} doc.</div>
-        </Crd>
+        <StatCard icon="receipt" color={C.pri} value={fmt(totFatture)} label={`Fatture · ${docs.filter(d => d.tipo === 'fattura').length} doc.`} />
+        <StatCard icon="bank" color={C.pur} value={fmt(totRimborsi)} label={`Rimborsi · ${docs.filter(d => d.tipo === 'rimborso').length} doc.`} />
+        <StatCard icon="chart" color={C.suc} value={fmt(totAnno)} label={`${anno} · ${docs.filter(d => d.data?.startsWith(anno)).length} doc.`} />
       </div>
 
-      {/* FILTRI */}
+      {/* FILTRI — un'icona per tipo (era emoji: 🧾💊🩸📋✉️📖📝✍️) */}
       {(() => {
-        const ETICHETTE_TIPO = {
-          fattura: '🧾 Fatture', rimborso: '🧾 Rimborsi',
-          ricetta: '💊 Ricette', esami: '🩸 Esami', certificato: '📋 Certificati', lettera: '✉️ Lettere',
-          protocollo: '📖 Protocolli', vuoto: '📝 Liberi', consenso: '✍️ Consensi',
-        };
         const tipiPresenti = Array.from(new Set(docs.map(d => d.tipo)));
         return (
-          <div style={{ display: 'flex', gap: 6, marginBottom: 12, overflowX: 'auto', paddingBottom: 2 }}>
-            <button onClick={() => setFiltroTipo('tutti')} style={{ flexShrink: 0, padding: '8px 14px', borderRadius: 20, border: `1.5px solid ${filtroTipo === 'tutti' ? C.pri : C.brd}`, background: filtroTipo === 'tutti' ? C.pri : C.sur, color: filtroTipo === 'tutti' ? '#fff' : C.txm, fontWeight: 700, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          <div className="pol-tabbar" style={{ marginBottom: 12, paddingBottom: 2 }}>
+            <button onClick={() => setFiltroTipo('tutti')} className={`pol-tab${filtroTipo === 'tutti' ? ' is-active' : ''}`} style={{ background: filtroTipo === 'tutti' ? C.pri : C.sur, color: filtroTipo === 'tutti' ? '#fff' : C.txm, border: `1.5px solid ${filtroTipo === 'tutti' ? C.pri : C.brd}` }}>
               Tutti ({docs.length})
             </button>
             {tipiPresenti.map((t) => {
               const n = docs.filter(d => d.tipo === t).length;
               const attivo = filtroTipo === t;
               return (
-                <button key={t} onClick={() => setFiltroTipo(attivo ? 'tutti' : t)} style={{ flexShrink: 0, padding: '8px 14px', borderRadius: 20, border: `1.5px solid ${attivo ? C.pri : C.brd}`, background: attivo ? C.pri : C.sur, color: attivo ? '#fff' : C.txm, fontWeight: 700, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                  {ETICHETTE_TIPO[t] || t} ({n})
+                <button key={t} onClick={() => setFiltroTipo(attivo ? 'tutti' : t)} className={`pol-tab${attivo ? ' is-active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 5, background: attivo ? C.pri : C.sur, color: attivo ? '#fff' : C.txm, border: `1.5px solid ${attivo ? C.pri : C.brd}` }}>
+                  <Ic n={TIPO_ICON[t] || 'file'} s={12} c={attivo ? '#fff' : C.txm} />{TIPO_LABEL[t] || t} ({n})
                 </button>
               );
             })}
@@ -214,9 +199,9 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
       {selDoc.length > 0 && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 12, padding: '10px 12px', background: C.priL, borderRadius: 10, border: `1px solid ${C.pri}30` }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: C.pri, flex: 1 }}>{selDoc.length} selezionati</span>
-          <button onClick={downloadSelected} style={{ background: C.pri, border: 'none', borderRadius: 8, padding: '6px 12px', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>⬇️ Scarica</button>
-          <button onClick={deleteSelected} style={{ background: C.dan, border: 'none', borderRadius: 8, padding: '6px 12px', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>🗑️ Elimina</button>
-          <button onClick={() => setSelDoc([])} style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 8, padding: '6px 10px', color: C.txm, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>✕</button>
+          <button onClick={downloadSelected} style={{ display: 'flex', alignItems: 'center', gap: 5, background: C.pri, border: 'none', borderRadius: 8, padding: '6px 12px', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}><Ic n="download" s={12} c="#fff" />Scarica</button>
+          <button onClick={deleteSelected} style={{ display: 'flex', alignItems: 'center', gap: 5, background: C.dan, border: 'none', borderRadius: 8, padding: '6px 12px', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}><Ic n="del" s={12} c="#fff" />Elimina</button>
+          <button onClick={() => setSelDoc([])} aria-label="Deseleziona" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 8, padding: '6px 10px', cursor: 'pointer' }}><Ic n="x" s={11} c={C.txm} /></button>
         </div>
       )}
 
@@ -232,13 +217,9 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
       )}
 
       {/* LISTA */}
-      {loading && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>⏳ Caricamento...</div>}
+      {loading && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: C.txl, padding: 30 }}><Ic n="clk" s={13} c={C.txl} />Caricamento…</div>}
       {!loading && docsFiltrati.length === 0 && (
-        <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>
-          <div style={{ fontSize: 32, marginBottom: 10 }}>📄</div>
-          <div style={{ fontWeight: 700 }}>Nessun documento</div>
-          <div style={{ fontSize: 12, marginTop: 4, color: C.txl }}>I documenti generati appaiono qui automaticamente</div>
-        </div>
+        <EmptyState icon="folder" title="Nessun documento" subtitle="I documenti generati appaiono qui automaticamente" />
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -248,9 +229,8 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
           const isFiscale = doc.tabella === 'documenti_fiscali';
           const isFattura = doc.tipo === 'fattura';
           const coloreAccento = isFiscale ? (isFattura ? C.pri : C.pur) : C.acc;
-          const etichetta = isFiscale
-            ? `${isFattura ? '📄' : '🧾'} ${isFattura ? 'Fattura' : 'Rimborso'} n° ${doc.numero}`
-            : `${{ ricetta: '💊', esami: '🩸', certificato: '📋', lettera: '✉️', protocollo: '📖', vuoto: '📝', consenso: '✍️' }[doc.tipo] || '📄'} ${doc.titolo || doc.tipo}`;
+          const iconaEtichetta = TIPO_ICON[doc.tipo] || 'file';
+          const testoEtichetta = isFiscale ? `${isFattura ? 'Fattura' : 'Rimborso'} n° ${doc.numero}` : (doc.titolo || doc.tipo);
           const caricandoAnteprima = caricamentoAnteprima === key;
           return (
             <Crd key={key} style={{ border: isSel ? `2px solid ${C.pri}` : `1px solid ${C.brd}`, background: isSel ? C.priL : '#fff', borderLeft: `4px solid ${coloreAccento}` }}>
@@ -263,7 +243,8 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
                 {/* Info */}
                 <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => visualizzaDoc(doc)}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: coloreAccento }}>{etichetta}</span>
+                    <Ic n={iconaEtichetta} s={13} c={coloreAccento} />
+                    <span style={{ fontSize: 13, fontWeight: 800, color: coloreAccento }}>{testoEtichetta}</span>
                   </div>
                   <div style={{ fontSize: 11, color: C.txm, marginTop: 2 }}>{doc.paziente_nome}</div>
                   <div style={{ fontSize: 11, color: C.txl }}>{fmtD(doc.data)}</div>
@@ -281,7 +262,7 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
                         <Ic n="edit" s={12} c={C.txm} />
                       </button>
                     )}
-                    <button onClick={() => downloadDoc(doc)} style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: C.txm }}>⬇️</button>
+                    <button onClick={() => downloadDoc(doc)} aria-label="Scarica" style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 6, padding: '4px 7px', cursor: 'pointer', display: 'flex' }}><Ic n="download" s={12} c={C.txm} /></button>
                     <button onClick={() => deleteDoc(doc)} style={{ background: C.danL, border: 'none', borderRadius: 6, padding: '4px 7px', cursor: 'pointer' }}>
                       <Ic n="del" s={12} c={C.dan} />
                     </button>
@@ -310,7 +291,7 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
 
       {/* MODAL MODIFICA */}
       {editDoc && (
-        <Modal title={`✏️ Modifica ${editDoc.tipo === 'fattura' ? 'Fattura' : 'Rimborso'} n° ${editDoc.numero}`} onClose={() => setEditDoc(null)}>
+        <Modal title={`Modifica ${editDoc.tipo === 'fattura' ? 'Fattura' : 'Rimborso'} n° ${editDoc.numero}`} icon="edit" onClose={() => setEditDoc(null)}>
           <Fld label="Numero documento">
             <Inp value={editForm.numero} onChange={e => setEditForm(f => ({ ...f, numero: e.target.value }))} />
           </Fld>
@@ -323,8 +304,9 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
           <Fld label="Paziente">
             <Inp value={editForm.paziente_nome} onChange={e => setEditForm(f => ({ ...f, paziente_nome: e.target.value }))} />
           </Fld>
-          <div style={{ background: C.danL, borderRadius: 8, padding: '8px 12px', marginBottom: 10 }}>
-            <div style={{ fontSize: 11, color: C.dan, fontWeight: 700 }}>⚠️ Nota: la modifica aggiorna solo i metadati. Il PDF originale rimane invariato.</div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, background: C.danL, borderRadius: 8, padding: '8px 12px', marginBottom: 10 }}>
+            <Ic n="warn" s={12} c={C.dan} />
+            <div style={{ fontSize: 11, color: C.dan, fontWeight: 700 }}>Nota: la modifica aggiorna solo i metadati. Il PDF originale rimane invariato.</div>
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
             <Btn ch="Annulla" v="sec" onClick={() => setEditDoc(null)} full />

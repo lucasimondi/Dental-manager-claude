@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import Btn from './Btn.jsx';
 import { Crd } from './atoms.jsx';
 import Modal from './Modal.jsx';
+import Ic from './Ic.jsx';
 import { C } from '../../lib/utils';
 import { supabase } from '../../lib/supabase.js';
 
@@ -53,7 +54,7 @@ function ModalWebcam({ onScatta, onClose }) {
   };
 
   return (
-    <Modal title="📷 Scatta con la webcam" onClose={onClose}>
+    <Modal title="Scatta con la webcam" icon="eye" onClose={onClose}>
       {errore ? (
         <div style={{ color: C.dan, fontSize: 12.5, padding: '10px 0' }}>{errore}</div>
       ) : (
@@ -112,15 +113,15 @@ export default function UploadDocumento({ onEstratto, titolo = 'Carica bolletta,
       <input ref={inputRef} type="file" accept="image/*,.pdf" style={{ display: 'none' }}
         onChange={(e) => { handleFile(e.target.files[0]); e.target.value = ''; }} />
       {loading ? (
-        <div style={{ color: C.txl, fontSize: 13 }}>⏳ Sto leggendo il documento...</div>
+        <div style={{ color: C.txl, fontSize: 13 }}>Sto leggendo il documento...</div>
       ) : (
         <>
-          <div style={{ fontSize: 28, marginBottom: 6 }}>📄</div>
+          <div style={{ marginBottom: 6, display: 'flex', justifyContent: 'center' }}><Ic n="file" s={28} c={C.txl} /></div>
           <div style={{ fontWeight: 700, fontSize: 13, color: C.txt, marginBottom: 3 }}>{titolo}</div>
           <div style={{ fontSize: 11, color: C.txl, marginBottom: 10 }}>{sottotitolo}</div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Btn ch="Scatta foto o scegli file" ic="send" onClick={() => inputRef.current?.click()} />
-            <Btn ch="📷 Usa la webcam" v="sec" onClick={() => setWebcamAperta(true)} />
+            <Btn ch="Usa la webcam" ic="eye" v="sec" onClick={() => setWebcamAperta(true)} />
           </div>
         </>
       )}

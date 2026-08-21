@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { C } from '../../lib/utils';
 import { cercaPazienti } from '../../lib/ricercaPazienti';
+import Ic from './Ic.jsx';
 
 // Riquadro "nessun risultato" con creazione rapida: precompila nome/cognome
 // dal testo cercato (prima parola = nome, resto = cognome), l'utente può
@@ -55,7 +56,7 @@ export default function SelettorePaziente({ patients, value, onChange, search, o
               <div style={{ fontWeight: 700, fontSize: 14 }}>{sel.nome} {sel.cognome}</div>
               {sel.telefono && <div style={{ fontSize: 11, color: C.txl }}>{sel.telefono}</div>}
             </div>
-            <button onClick={(e) => { e.stopPropagation(); onChange(''); onSearchChange(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.txl, fontSize: 18, padding: 0 }}>✕</button>
+            <button onClick={(e) => { e.stopPropagation(); onChange(''); onSearchChange(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.txl, padding: 0, display: 'flex' }}><Ic n="x" s={15} c={C.txl} /></button>
           </>
         ) : (
           <input

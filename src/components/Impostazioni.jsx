@@ -2,7 +2,7 @@
 import GestioneUtenti from './GestioneUtenti.jsx';
 import GestioneRisorseAgenda from './GestioneRisorseAgenda.jsx';
 import React, { useState, useEffect, useRef } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Ic, DockIc, DOCK_ICON_STYLES, PageHeader, EmptyState } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Ic, Toggle, DockIc, DOCK_ICON_STYLES, PageHeader, EmptyState } from './ui';
 import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI, DEF_DOCK_SETTINGS, mergeDockSettings, DEF_AGENDA_SETTINGS, DEF_DOCUMENTI_SETTINGS, STORIA_CLINICA_MODELLO_BASE } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { normalizeManagementControlMode } from '../lib/canonicalFinancialSelectors';
@@ -335,9 +335,9 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           {si.iscr && <div style={{ fontSize: 10, color: '#4A90C4' }}>{si.iscr}</div>}
         </div>
         <div style={{ borderTop: `1px solid ${C.brd}`, marginTop: 8, paddingTop: 7, display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap', gap: 5 }}>
-          {si.tel && <span style={{ fontSize: 10, color: C.txm }}>📞 {si.tel}</span>}
-          {si.addr1 && <span style={{ fontSize: 10, color: C.txm }}>📍 {si.addr1}</span>}
-          {si.email && <span style={{ fontSize: 10, color: C.txm }}>✉️ {si.email}</span>}
+          {si.tel && <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: C.txm }}><Ic n="ph" s={9} c={C.txl} />{si.tel}</span>}
+          {si.addr1 && <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: C.txm }}><Ic n="pin" s={9} c={C.txl} />{si.addr1}</span>}
+          {si.email && <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: C.txm }}><Ic n="mail" s={9} c={C.txl} />{si.email}</span>}
         </div>
       </Crd>
       <Crd style={{ marginBottom: 11 }}>
@@ -706,13 +706,13 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
             </div>
           </div>
           {(piano && piano !== 'base') || features?.multi_operatore ? (
-            <button
-              onClick={() => toggleMultiAgenda(!features?.multi_operatore)}
+            <Toggle
+              on={!!features?.multi_operatore}
+              onChange={() => toggleMultiAgenda(!features?.multi_operatore)}
               disabled={multiAgendaSalvando || (!features?.multi_operatore && piano === 'base')}
-              style={{ width: 48, height: 26, borderRadius: 13, background: features?.multi_operatore ? C.suc : C.brd, border: 'none', cursor: multiAgendaSalvando ? 'wait' : 'pointer', position: 'relative', flexShrink: 0, opacity: multiAgendaSalvando ? 0.6 : 1 }}
-            >
-              <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: features?.multi_operatore ? 25 : 3, transition: 'left 0.15s' }} />
-            </button>
+              color={C.suc}
+              ariaLabel="Multi-agenda"
+            />
           ) : (
             <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 700, color: C.txl, background: C.bg, borderRadius: 20, padding: '5px 10px', flexShrink: 0 }}><Ic n="lock" s={10} c={C.txl} />Pro+</span>
           )}
@@ -735,29 +735,18 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       </div>
       <Crd style={{ marginBottom: 14 }}>
         {[
-          ['ricetta', '💊 Ricetta medica'],
-          ['esami', '🩸 Prescrizione esami ematici'],
-          ['certificato', '📋 Certificato di visita'],
-          ['lettera', '✉️ Lettera per specialista'],
-          ['protocollo', '📖 Protocollo post-trattamento'],
-          ['vuoto', '📝 Foglio bianco intestato'],
-          ['fattura', '🧾 Fattura'],
-          ['rimborso', '🧾 Rimborso spese'],
-        ].map(([key, label], i, arr) => (
+          ['ricetta', 'pill', 'Ricetta medica'],
+          ['esami', 'drop', 'Prescrizione esami ematici'],
+          ['certificato', 'clip', 'Certificato di visita'],
+          ['lettera', 'mail', 'Lettera per specialista'],
+          ['protocollo', 'book', 'Protocollo post-trattamento'],
+          ['vuoto', 'file', 'Foglio bianco intestato'],
+          ['fattura', 'receipt', 'Fattura'],
+          ['rimborso', 'bank', 'Rimborso spese'],
+        ].map(([key, ic, label], i, arr) => (
           <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 2px', borderBottom: i < arr.length - 1 ? `1px solid ${C.brd}` : 'none' }}>
-            <span style={{ fontSize: 13.5, color: C.txt }}>{label}</span>
-            <button
-              onClick={() => SD({ [key]: !docSet[key] })}
-              style={{
-                width: 42, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer', position: 'relative', flexShrink: 0,
-                background: docSet[key] ? C.pri : C.brd, transition: 'background 0.15s',
-              }}
-            >
-              <div style={{
-                width: 18, height: 18, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3,
-                left: docSet[key] ? 21 : 3, transition: 'left 0.15s', boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
-              }} />
-            </button>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, color: C.txt }}><Ic n={ic} s={14} c={C.txm} />{label}</span>
+            <Toggle on={!!docSet[key]} onChange={() => SD({ [key]: !docSet[key] })} ariaLabel={label} />
           </div>
         ))}
       </Crd>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
 import PadFirma from './ui/PadFirma.jsx';
 import FormStoriaClinica from './ui/FormStoriaClinica.jsx';
+import Ic from './ui/Ic.jsx';
 import { ANAMNESI_MEDICA_STANDARD, STORIA_CLINICA_MODELLO_BASE } from '../lib/utils';
 
 const C = {
@@ -64,7 +65,7 @@ export default function StoriaClinicaRemota({ token }) {
     return (
       <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.bg, padding: 24, fontFamily: 'system-ui' }}>
         <div style={{ textAlign: 'center', color: C.txm, maxWidth: 320 }}>
-          <div style={{ fontSize: 32, marginBottom: 10 }}>⚠️</div>
+          <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'center' }}><Ic n="warn" s={32} c={C.dan} /></div>
           <div style={{ fontWeight: 700, fontSize: 15, color: C.txt }}>{MESSAGGI_ERRORE[errore] || 'Si è verificato un errore.'}</div>
         </div>
       </div>
@@ -75,7 +76,7 @@ export default function StoriaClinicaRemota({ token }) {
     return (
       <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.bg, padding: 24, fontFamily: 'system-ui' }}>
         <div style={{ textAlign: 'center', maxWidth: 320 }}>
-          <div style={{ fontSize: 40, marginBottom: 14 }}>✓</div>
+          <div style={{ marginBottom: 14, display: 'flex', justifyContent: 'center' }}><Ic n="okc" s={40} c={C.suc} /></div>
           <div style={{ fontWeight: 800, fontSize: 19, color: C.txt, marginBottom: 8 }}>Grazie</div>
           <div style={{ fontSize: 14, color: C.txm, lineHeight: 1.5 }}>La compilazione è stata inviata a {info.studio_nome}.</div>
         </div>

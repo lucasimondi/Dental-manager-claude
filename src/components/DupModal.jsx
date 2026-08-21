@@ -39,7 +39,7 @@ export default function DupModal({ patients, setPatients, onClose }) {
   };
 
   return (
-    <Modal title="⚠️ Pazienti duplicati" onClose={onClose} wide>
+    <Modal title="Pazienti duplicati" icon="warn" iconColor={C.war} onClose={onClose} wide>
       <div style={{ fontSize: 12, color: C.txm, marginBottom: 14, lineHeight: 1.5 }}>
         Trovati <b>{gruppi.length}</b> gruppi di pazienti con nome e cognome uguali. Sono preselezionate le copie da eliminare (viene tenuta quella inserita per prima). Controlla e modifica la selezione se necessario.
       </div>
@@ -56,7 +56,7 @@ export default function DupModal({ patients, setPatients, onClose }) {
                   {sel && <Ic n="ok" s={11} c="#fff" />}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600 }}>{pi === 0 ? '🥇 Primo inserito' : `Copia ${pi + 1}`} {sel ? '— verrà eliminato' : '— verrà mantenuto'}</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>{pi === 0 && <Ic n="medal" s={11} c={C.war} />}{pi === 0 ? 'Primo inserito' : `Copia ${pi + 1}`} {sel ? '— verrà eliminato' : '— verrà mantenuto'}</div>
                   <div style={{ fontSize: 11, color: C.txl }}>{p.telefono || '—'}{p.cf ? ' · ' + p.cf : ''}{p.email ? ' · ' + p.email : ''}</div>
                 </div>
               </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { jsPDF } from 'jspdf';
 import { waAbilitato } from './ui/WaAction.jsx';
+import Ic from './ui/Ic.jsx';
 
 export default function PdfView({ pl, paz, si, features, onClose }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
@@ -222,7 +223,7 @@ export default function PdfView({ pl, paz, si, features, onClose }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 3000, background: '#C8D4E0', display: 'flex', flexDirection: 'column' }}>
       <div style={{ background: '#124E66', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-        <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, padding: '8px 12px', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', flexShrink: 0 }}>← Chiudi</button>
+        <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, padding: '8px 12px', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}><Ic n="back" s={13} c="#fff" />Chiudi</button>
         <span style={{ color: '#fff', fontWeight: 700, fontSize: 14, flex: 1, textAlign: 'center' }}>Anteprima preventivo</span>
       </div>
 
@@ -234,23 +235,23 @@ export default function PdfView({ pl, paz, si, features, onClose }) {
         </button>
         )}
         <button onClick={sendEmail} style={{ flex: '1 1 0', minWidth: 90, background: '#4A5568', border: 'none', borderRadius: 9, padding: '10px 0', color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-          ✉️ Email
+          <Ic n="mail" s={13} c="#fff" />Email
         </button>
         {navigator.share && (
           <button onClick={shareNativo} style={{ flex: '1 1 0', minWidth: 90, background: '#2EC4B6', border: 'none', borderRadius: 9, padding: '10px 0', color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            📤 Condividi
+            <Ic n="send" s={13} c="#fff" />Condividi
           </button>
         )}
         <button onClick={generaPdf} disabled={generating} style={{ flex: '1 1 0', minWidth: 90, background: generating ? '#555' : '#F4A261', border: 'none', borderRadius: 9, padding: '10px 0', color: '#fff', fontWeight: 800, fontSize: 13, cursor: generating ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-          {generating ? '⏳ Attendi…' : '⬇️ Scarica PDF'}
+          <Ic n={generating ? 'clk' : 'download'} s={13} c="#fff" />{generating ? 'Attendi…' : 'Scarica PDF'}
         </button>
       </div>
 
       {pdfMsg && (
         <div style={{ background: pdfMsg.type === 'error' ? '#FDECEA' : '#E8F7EE', borderBottom: `2px solid ${pdfMsg.type === 'error' ? '#E63946' : '#2D9E61'}`, padding: '10px 14px', display: 'flex', alignItems: 'flex-start', gap: 8, flexShrink: 0 }}>
-          <span style={{ fontSize: 16, flexShrink: 0 }}>{pdfMsg.type === 'error' ? '⚠️' : 'ℹ️'}</span>
+          <Ic n={pdfMsg.type === 'error' ? 'warn' : 'help'} s={15} c={pdfMsg.type === 'error' ? '#C53030' : '#236B45'} />
           <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: pdfMsg.type === 'error' ? '#C53030' : '#236B45', lineHeight: 1.4 }}>{pdfMsg.text}</span>
-          <button onClick={() => setPdfMsg(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, flexShrink: 0, color: pdfMsg.type === 'error' ? '#C53030' : '#236B45', fontWeight: 800, fontSize: 14 }}>✕</button>
+          <button onClick={() => setPdfMsg(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, flexShrink: 0, color: pdfMsg.type === 'error' ? '#C53030' : '#236B45', display: 'flex' }}><Ic n="x" s={13} c={pdfMsg.type === 'error' ? '#C53030' : '#236B45'} /></button>
         </div>
       )}
 

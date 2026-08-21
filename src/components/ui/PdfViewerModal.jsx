@@ -132,14 +132,15 @@ export default function PdfViewerModal({ titolo, dataUrl, filename, onClose }) {
 
       <div style={{ display: 'flex', gap: 8, padding: 12, borderTop: `1px solid ${C.brd}`, background: C.sur, flexShrink: 0, paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
         <Btn
-          ch="📤 Condividi"
+          ch="Condividi"
+          ic="send"
           onClick={async () => {
             const ok = await condividiPdf(dataUrl, filename);
             if (!ok) scaricaPdf(dataUrl, filename);
           }}
           full
         />
-        <Btn ch="💾 Scarica" v="sec" onClick={() => scaricaPdf(dataUrl, filename)} full />
+        <Btn ch="Scarica" ic="download" v="sec" onClick={() => scaricaPdf(dataUrl, filename)} full />
       </div>
     </div>,
     document.body

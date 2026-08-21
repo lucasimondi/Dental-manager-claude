@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { C } from '../lib/utils';
-import { Crd, Fld, Inp, Sel, Modal, Toast, Btn, Ic, EmptyState } from './ui';
+import { Crd, Fld, Inp, Sel, Modal, Toast, Btn, Ic, Bdg, EmptyState } from './ui';
 import { resolveTeamCapabilities, getCapabilityPresentation } from '../lib/roleLabels';
 
 export default function GestioneUtenti({ studioId, currentUserId, features, isStudioAdmin, vertical }) {
@@ -139,8 +139,8 @@ export default function GestioneUtenti({ studioId, currentUserId, features, isSt
               <div style={{ fontSize: 11, color: C.txl, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
-              <span style={{ fontSize: 10, fontWeight: 700, color: ruolo.color, background: ruolo.color + '18', borderRadius: 5, padding: '2px 7px' }}>{ruolo.label}</span>
-              <span style={{ fontSize: 10, fontWeight: 600, color: stato.color }}>{stato.label}</span>
+              <Bdg ch={ruolo.label} co={ruolo.color} />
+              <Bdg ch={stato.label} co={stato.color} />
             </div>
             {!isMe && isStudioAdmin && (
               <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
@@ -162,7 +162,7 @@ export default function GestioneUtenti({ studioId, currentUserId, features, isSt
                   const enabled=userCapabilities.has(capability);
                   const { label, description } = getCapabilityPresentation(capability, vertical);
                   return <button key={capability} type="button" aria-pressed={enabled} title={description} onClick={()=>toggleCapability(u.user_id,capability,enabled)}
-                    style={{border:`1px solid ${enabled?C.pri:C.brd}`,borderRadius:7,padding:'5px 8px',background:enabled?C.priL:C.sur,color:enabled?C.pri:C.txm,fontSize:10,fontWeight:700,cursor:'pointer'}}>{enabled?'✓ ':''}{label}</button>;
+                    style={{display:'flex',alignItems:'center',gap:4,border:`1px solid ${enabled?C.pri:C.brd}`,borderRadius:7,padding:'5px 8px',background:enabled?C.priL:C.sur,color:enabled?C.pri:C.txm,fontSize:10,fontWeight:700,cursor:'pointer'}}>{enabled&&<Ic n="ok" s={9} c={C.pri} />}{label}</button>;
                 })}
               </div>
             </div>}

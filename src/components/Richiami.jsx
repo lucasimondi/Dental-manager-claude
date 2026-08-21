@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, SelettorePaziente, WaAction, PageHeader, EmptyState } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, StatCard, SelettorePaziente, WaAction, PageHeader, EmptyState } from './ui';
 import { C, fmtD, today, uid, RICHIAMO_CATEGORIE, DEF_TPL_GENERICO } from '../lib/utils';
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { generaRichiamiBot } from '../lib/richiamiBot';
 
 const CATEGORIE_FILTRO = [
-  { id: 'tutte', label: 'Tutte' },
-  ...Object.entries(RICHIAMO_CATEGORIE).map(([id, c]) => ({ id, label: `${c.icona} ${c.label}` })),
+  { id: 'tutte', label: 'Tutte', icona: null },
+  ...Object.entries(RICHIAMO_CATEGORIE).map(([id, c]) => ({ id, label: c.label, icona: c.icona })),
 ];
 
 /* ── SEZIONE RICHIAMI ──
@@ -89,19 +89,15 @@ export default function Richiami({ patients, plans, payments, appointments, rich
       } />
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-        <Crd style={{ display: 'flex', alignItems: 'center', gap: 11, padding: 12 }}>
-          <div style={{ background: C.danL, borderRadius: 10, padding: 9 }}><Ic n="clk" s={20} c={C.dan} /></div>
-          <div><div style={{ fontSize: 17, fontWeight: 800 }}>{scaduti.length}</div><div style={{ fontSize: 11, color: C.txm, fontWeight: 600 }}>Scaduti</div></div>
-        </Crd>
-        <Crd style={{ display: 'flex', alignItems: 'center', gap: 11, padding: 12 }}>
-          <div style={{ background: C.purL, borderRadius: 10, padding: 9 }}><Ic n="clk" s={20} c={C.pur} /></div>
-          <div><div style={{ fontSize: 17, fontWeight: 800 }}>{prossimi.length}</div><div style={{ fontSize: 11, color: C.txm, fontWeight: 600 }}>Prossimi 30gg</div></div>
-        </Crd>
+        <StatCard icon="warn" color={C.dan} value={scaduti.length} label="Scaduti" />
+        <StatCard icon="clk" color={C.pur} value={prossimi.length} label="Prossimi 30gg" />
       </div>
 
-      <div style={{ display: 'flex', gap: 6, marginBottom: 10, overflowX: 'auto', paddingBottom: 2 }}>
+      <div className="pol-tabbar" style={{ marginBottom: 10, paddingBottom: 2 }}>
         {CATEGORIE_FILTRO.map((c) => (
-          <button key={c.id} onClick={() => setFiltroCategoria(c.id)} style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 20, border: `1.5px solid ${filtroCategoria === c.id ? C.pri : C.brd}`, background: filtroCategoria === c.id ? C.priL : C.sur, color: filtroCategoria === c.id ? C.pri : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>{c.label}</button>
+          <button key={c.id} onClick={() => setFiltroCategoria(c.id)} className={`pol-tab${filtroCategoria === c.id ? ' is-active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 5, background: filtroCategoria === c.id ? C.priL : C.sur, color: filtroCategoria === c.id ? C.pri : C.txm, border: `1.5px solid ${filtroCategoria === c.id ? C.pri : C.brd}` }}>
+            {c.icona && <Ic n={c.icona} s={11} c={filtroCategoria === c.id ? C.pri : C.txm} />}{c.label}
+          </button>
         ))}
       </div>
 
@@ -123,8 +119,8 @@ export default function Richiami({ patients, plans, payments, appointments, rich
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div onClick={() => paz && onOpenPaz(paz, 'info')} style={{ fontWeight: 700, fontSize: 13, color: paz ? C.pri : C.txt, cursor: paz ? 'pointer' : 'default' }}>{paz ? `${paz.nome} ${paz.cognome} ›` : 'Paziente non trovato'}</div>
                   <div style={{ fontSize: 12, color: C.txm, marginTop: 2 }}>{r.motivo || cat.label}</div>
-                  <div style={{ marginTop: 5, display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <Bdg ch={`${cat.icona} ${cat.label}`} co={cat.colore} />
+                  <div style={{ marginTop: 5, display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Ic n={cat.icona} s={11} c={cat.colore} /><Bdg ch={cat.label} co={cat.colore} /></span>
                     <Bdg ch={scaduto ? `scaduto ${fmtD(r.dataScadenza)}` : fmtD(r.dataScadenza)} co={scaduto ? C.dan : C.txm} />
                     {r.origine === 'bot' && <Bdg ch="Bot" co={C.acc} />}
                   </div>
@@ -150,7 +146,7 @@ export default function Richiami({ patients, plans, payments, appointments, rich
           </Fld>
           <Fld label="Categoria">
             <Sel value={form.categoria} onChange={(e) => F({ categoria: e.target.value })}>
-              {Object.entries(RICHIAMO_CATEGORIE).map(([id, c]) => <option key={id} value={id}>{c.icona} {c.label}</option>)}
+              {Object.entries(RICHIAMO_CATEGORIE).map(([id, c]) => <option key={id} value={id}>{c.label}</option>)}
             </Sel>
           </Fld>
           <Fld label="Motivo"><Inp value={form.motivo} onChange={(e) => F({ motivo: e.target.value })} placeholder={isDentistico ? 'es. Richiamare per controllo tartaro' : 'es. Richiamare per controllo periodico'} /></Fld>

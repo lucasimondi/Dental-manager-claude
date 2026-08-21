@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Crd, Modal } from './ui';
+import { Crd, Modal, Ic } from './ui';
 import { C, fmt } from '../lib/utils';
 import { BarChart, Bar, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Line } from 'recharts';
 import { useControlloDati } from '../lib/useControlloDati';
@@ -13,8 +13,8 @@ const CHART_PALETTE = [C.pri, C.acc, C.war, C.suc, '#7C3AED', C.dan, C.txl];
 
 // ── Componenti di presentazione ──────────────────────────────────
 
-const SectionLabel = ({ children }) => (
-  <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 4, marginBottom: 8 }}>{children}</div>
+const SectionLabel = ({ icon, children }) => (
+  <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 4, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>{icon && <Ic n={icon} s={11} c={C.txm} />}{children}</div>
 );
 
 const StatCard = ({ label, value, sub, color, onClick, urgent }) => (
@@ -25,10 +25,10 @@ const StatCard = ({ label, value, sub, color, onClick, urgent }) => (
   </Crd>
 );
 
-const OpCard = ({ label, value, sub, bg, border, txt, onClick, badge }) => (
+const OpCard = ({ icon, label, value, sub, bg, border, txt, onClick, badge }) => (
   <div onClick={onClick} style={{ background: bg, borderRadius: 12, padding: 12, border: `1px solid ${border}25`, cursor: onClick ? 'pointer' : 'default', position: 'relative' }}>
     {badge && <div style={{ position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: '50%', background: C.dan }} />}
-    <div style={{ fontSize: 10, fontWeight: 800, color: txt, textTransform: 'uppercase' }}>{label}</div>
+    <div style={{ fontSize: 10, fontWeight: 800, color: txt, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 5 }}>{icon && <Ic n={icon} s={10} c={txt} />}{label}</div>
     <div style={{ fontSize: 22, fontWeight: 900, color: txt, marginTop: 4 }}>{value}</div>
     {sub && <div style={{ fontSize: 10, color: C.txl }}>{sub}</div>}
   </div>
@@ -138,7 +138,7 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
 
       {/* ── DETTAGLIO INCASSI ── */}
       <div>
-        <SectionLabel>💵 Dettaglio incassi</SectionLabel>
+        <SectionLabel icon="eur">Dettaglio incassi</SectionLabel>
         <Crd style={{ padding: 0, overflow: 'hidden' }}>
           <div onClick={() => setDettaglio('inc_mese_studio')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', cursor: 'pointer' }}>
             <div style={{ fontSize: 12, color: C.txm, maxWidth: '68%' }}>Incassato dallo studio — mese</div>
@@ -173,7 +173,7 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
 
       {/* ── DETTAGLIO COSTI ── */}
       <div>
-        <SectionLabel>💸 Dettaglio costi</SectionLabel>
+        <SectionLabel icon="trend">Dettaglio costi</SectionLabel>
         <Crd style={{ padding: 0, overflow: 'hidden' }}>
           <div onClick={() => setDettaglio('costi_fissi')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', cursor: 'pointer' }}>
             <div style={{ fontSize: 12, color: C.txm }}>Costi fissi <span style={{ color: C.txl }}>(affitto, personale, ricorrenti…)</span></div>
@@ -212,10 +212,10 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
 
       {/* ── CONTROLLO STUDIO (operativo) ── */}
       <div>
-        <SectionLabel>🎛️ Controllo studio</SectionLabel>
+        <SectionLabel icon="tool">Controllo studio</SectionLabel>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           <div onClick={() => setDettaglio('preventivi')} style={{ background: C.priL, borderRadius: 12, padding: 12, border: `1px solid ${C.pri}25`, cursor: 'pointer' }}>
-            <div style={{ fontSize: 10, fontWeight: 800, color: C.pri, textTransform: 'uppercase', marginBottom: 8 }}>📋 Preventivi</div>
+            <div style={{ fontSize: 10, fontWeight: 800, color: C.pri, textTransform: 'uppercase', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="clip" s={10} c={C.pri} />Preventivi</div>
             <div style={{ display: 'flex', gap: 8 }}>
               <div style={{ flex: 1, textAlign: 'center', padding: '4px 0', borderRadius: 7, background: 'rgba(124,58,237,0.08)' }}>
                 <div style={{ fontSize: 18, fontWeight: 900, color: C.pur }}>{preventiviAttesa.length}</div>
@@ -232,20 +232,20 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
             </div>
           </div>
 
-          <OpCard label="🔔 Richiami" value={richiamiScaduti.length + richiamiProssimi.length}
+          <OpCard icon="bell" label="Richiami" value={richiamiScaduti.length + richiamiProssimi.length}
             sub={`${richiamiScaduti.length} scaduti · ${richiamiProssimi.length} prossimi`}
             bg={richiamiScaduti.length > 0 ? C.danL : '#FEF3E2'} border={richiamiScaduti.length > 0 ? C.dan : C.war}
             txt={richiamiScaduti.length > 0 ? C.dan : C.war} badge={richiamiScaduti.length > 0}
             onClick={() => setDettaglio('richiami')} />
 
-          <OpCard label="📆 Scadenze" value={scadenzePagamento.length}
+          <OpCard icon="cal" label="Scadenze" value={scadenzePagamento.length}
             sub={`${scadenzeScadute.length} scadute · ${scadenzeProssime.length} prossime`}
             bg={scadenzeScadute.length > 0 ? C.danL : C.priL} border={scadenzeScadute.length > 0 ? C.dan : C.pri}
             txt={scadenzeScadute.length > 0 ? C.dan : C.pri} badge={scadenzeScadute.length > 0}
             onClick={() => setDettaglio('scadenze')} />
 
           {isDentistico && (
-            <OpCard label="🦷 Ortodonzia" value={pianiOrto.filter(o => !o.completato).length}
+            <OpCard icon="tooth" label="Ortodonzia" value={pianiOrto.filter(o => !o.completato).length}
               sub={`${pianiOrto.filter(o => o.cambioScaduto).length} da cambiare · ${pianiOrto.filter(o => o.inAttesa).length} da avviare`}
               bg={pianiOrto.some(o => o.cambioScaduto) ? C.danL : C.purL} border={pianiOrto.some(o => o.cambioScaduto) ? C.dan : C.pur}
               txt={pianiOrto.some(o => o.cambioScaduto) ? C.dan : C.pur}
@@ -260,7 +260,7 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'none', border: 'none',
           padding: '4px 0 8px', cursor: 'pointer',
         }}>
-          <span style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em' }}>📊 Statistiche</span>
+          <span style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 6 }}><Ic n="chart" s={11} c={C.txm} />Statistiche</span>
           <span style={{ fontSize: 11, color: C.pri, fontWeight: 700 }}>{mostraStat ? 'Nascondi ▲' : 'Mostra ▼'}</span>
         </button>
         {mostraStat && (
@@ -279,7 +279,7 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'none', border: 'none',
           padding: '4px 0 8px', cursor: 'pointer',
         }}>
-          <span style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em' }}>📈 Grafici e andamento</span>
+          <span style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 6 }}><Ic n="trend" s={11} c={C.txm} />Grafici e andamento</span>
           <span style={{ fontSize: 11, color: C.pri, fontWeight: 700 }}>{mostraGrafici ? 'Nascondi ▲' : 'Mostra ▼'}</span>
         </button>
         {mostraGrafici && (
