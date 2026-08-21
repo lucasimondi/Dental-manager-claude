@@ -7,8 +7,9 @@
   --dm-pri:#3B82F6; --dm-txt:#E7ECF3; --dm-scroll:#3A4A63;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-html{background:var(--dm-bg);overscroll-behavior:none;}
-body{margin:0;padding:0;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--dm-bg);color:var(--dm-txt);overscroll-behavior:none;}
+html{background:var(--dm-bg);overscroll-behavior:none;overflow-x:hidden;}
+body{margin:0;padding:0;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--dm-bg);color:var(--dm-txt);overscroll-behavior:none;overflow-x:hidden;max-width:100vw;}
+#root{overflow-x:hidden;max-width:100vw;}
 input,select,textarea,button{font-family:inherit;}
 ::-webkit-scrollbar{width:4px;}
 ::-webkit-scrollbar-thumb{background:var(--dm-scroll);border-radius:4px;}

@@ -199,8 +199,8 @@ export default function Spese({ refreshKey, studioId, mostraUpload = true } = {}
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
       {/* HEADER */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <div style={{ fontSize: 20, fontWeight: 800 }}>Spese</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 20, fontWeight: 800, minWidth: 0 }}>Spese</div>
         <Btn ch="Nuova spesa" ic="plus" onClick={openNuova} />
       </div>
 
@@ -238,8 +238,8 @@ export default function Spese({ refreshKey, studioId, mostraUpload = true } = {}
           {spese.filter(s => s.ricorrente).map(s => {
             const moltiplicatore = { Mensile: 12, Bimestrale: 6, Trimestrale: 4, Semestrale: 2, Annuale: 1 }[s.frequenza] || 12;
             return (
-              <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: `1px solid ${C.brd}` }}>
-                <div style={{ flex: 1 }}>
+              <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 0', borderBottom: `1px solid ${C.brd}` }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     <div style={{ fontWeight: 700, fontSize: 13 }}>{s.titolo}</div>
                     {s.tipo_costo === 'fisso' && <span style={{ fontSize: 9, fontWeight: 800, color: C.pri, background: C.priL, borderRadius: 5, padding: '1px 5px' }}>FISSO</span>}

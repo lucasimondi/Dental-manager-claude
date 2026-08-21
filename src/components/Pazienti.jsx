@@ -205,12 +205,26 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
   const preventiviNonAccettati = plans.filter((pl) => pl.stato === 'rifiutato').length;
   const preventiviAttesa = plans.filter((pl) => (pl.stato || 'attivo') === 'attivo').length;
 
+  // Ultima visita per riga paziente mobile: solo dati già in memoria
+  // (appointments passati alla pagina), nessuna nuova fetch — l'appuntamento
+  // più recente non nel futuro per quel paziente, se esiste.
+  const ultimaVisitaPerPaziente = (id) => {
+    const passati = appointments.filter((a) => String(a.pazienteId) === String(id) && a.data <= oggi);
+    if (passati.length === 0) return null;
+    return passati.reduce((max, a) => (a.data > max ? a.data : max), passati[0].data);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
-      {/* Header + barra di ricerca: sticky in cima anche scrollando la lista */}
-      <div style={{ position: 'sticky', top: -13, zIndex: 20, background: C.bg, marginLeft: -13, marginRight: -13, marginTop: -13, padding: '13px 13px 0' }}>
+      {/* Header + barra di ricerca: sticky in cima anche scrollando la lista.
+          POL-UI-006: era un edge-to-edge hack con margini negativi non
+          compensati (fonte nota di overflow orizzontale mobile) — il colore
+          di sfondo è identico a quello della pagina, quindi restare dentro
+          il normale padding del contenitore è visivamente indistinguibile
+          e molto più sicuro. */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 20, background: C.bg, minWidth: 0, maxWidth: '100%', boxSizing: 'border-box', paddingBottom: 4 }}>
         <PageHeader icon="pz" title="Pazienti" actions={
           <>
             {gruppiDuplicati.length > 0 && (
@@ -274,7 +288,7 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
                 {filtered.length} {filtered.length === 1 ? 'risultato' : 'risultati'}
               </div>
               {filtered.map((p) => (
-                <RigaPaziente key={p.id} p={p} evidenzia={evidenzia} onOpen={() => { setScheda(p); salvaPosizione({ schedaPazId: p.id, schedaPazTab: 'info' }); setSearchFocus(false); }} onDelete={() => setConfirmDelId(p.id)} confirming={confirmDelId === p.id} onCancelDelete={() => setConfirmDelId(null)} onConfirmDelete={() => { del(p.id); setConfirmDelId(null); }} />
+                <RigaPaziente key={p.id} p={p} evidenzia={evidenzia} ultimaVisita={ultimaVisitaPerPaziente(p.id)} onOpen={() => { setScheda(p); salvaPosizione({ schedaPazId: p.id, schedaPazTab: 'info' }); setSearchFocus(false); }} onDelete={() => setConfirmDelId(p.id)} confirming={confirmDelId === p.id} onCancelDelete={() => setConfirmDelId(null)} onConfirmDelete={() => { del(p.id); setConfirmDelId(null); }} />
               ))}
               {filtered.length === 0 && (
                 <EmptyState icon="pz" title={`Nessun paziente trovato per "${search}"`} />
@@ -302,7 +316,7 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
         {filtered.map((p) => (
-          <RigaPaziente key={p.id} p={p} evidenzia={evidenzia} onOpen={() => { setScheda(p); salvaPosizione({ schedaPazId: p.id, schedaPazTab: 'info' }); }} onDelete={() => setConfirmDelId(p.id)} confirming={confirmDelId === p.id} onCancelDelete={() => setConfirmDelId(null)} onConfirmDelete={() => { del(p.id); setConfirmDelId(null); }} />
+          <RigaPaziente key={p.id} p={p} evidenzia={evidenzia} ultimaVisita={ultimaVisitaPerPaziente(p.id)} onOpen={() => { setScheda(p); salvaPosizione({ schedaPazId: p.id, schedaPazTab: 'info' }); }} onDelete={() => setConfirmDelId(p.id)} confirming={confirmDelId === p.id} onCancelDelete={() => setConfirmDelId(null)} onConfirmDelete={() => { del(p.id); setConfirmDelId(null); }} />
         ))}
         {filtered.length === 0 && <EmptyState icon="pz" title="Nessun paziente" />}
       </div>
@@ -349,7 +363,7 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
 
 // Riga paziente riusata sia nella lista normale sia nella modalità ricerca
 // attiva, con evidenziazione opzionale del testo che ha fatto scattare il match.
-function RigaPaziente({ p, evidenzia, onOpen, onDelete, confirming, onCancelDelete, onConfirmDelete }) {
+function RigaPaziente({ p, evidenzia, onOpen, onDelete, confirming, onCancelDelete, onConfirmDelete, ultimaVisita }) {
   return (
     <Crd style={{ padding: 0, overflow: 'hidden' }}>
       <div onClick={onOpen} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: 14, cursor: 'pointer' }}>
@@ -359,8 +373,10 @@ function RigaPaziente({ p, evidenzia, onOpen, onDelete, confirming, onCancelDele
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 700, fontSize: 14 }}>{evidenzia(`${p.nome} ${p.cognome}`)}</div>
           <div style={{ display: 'flex', gap: 10, marginTop: 2, flexWrap: 'wrap' }}>
-            {p.telefono && <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: C.txm }}><Ic n="ph" s={10} c={C.txl} />{evidenzia(p.telefono)}</span>}
+            {p.telefono && <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: C.txm, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}><Ic n="ph" s={10} c={C.txl} />{evidenzia(p.telefono)}</span>}
+            {p.email && <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: C.txm, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}><Ic n="mail" s={10} c={C.txl} />{evidenzia(p.email)}</span>}
             {p.dataNascita && <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: C.txm }}><Ic n="cal" s={10} c={C.txl} />{fmtD(p.dataNascita)}</span>}
+            {ultimaVisita && <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: C.txm }}><Ic n="clk" s={10} c={C.txl} />Ultima visita {fmtD(ultimaVisita)}</span>}
             {p.cf && <span style={{ fontSize: 11, color: C.txm }}>{evidenzia(p.cf)}</span>}
           </div>
           {p.note && <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: C.war, marginTop: 2 }}><Ic n="warn" s={10} c={C.war} />{p.note.slice(0, 50)}{p.note.length > 50 ? '…' : ''}</div>}
