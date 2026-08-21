@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Crd, EmptyState } from './ui';
+import { Crd, EmptyState, Ic } from './ui';
 import { C, fmt, today } from '../lib/utils';
 import { useIsMobile } from '../lib/useIsMobile';
 import { useControlloDati } from '../lib/useControlloDati';
@@ -228,7 +228,7 @@ export default function ControlloCockpit({ studioId, patients = [], plans = [], 
             const col = a.livello === 'critical' ? C.dan : C.war;
             return (
               <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 13px', borderRadius: 10, background: C.bg, border: `1px solid ${C.brd}` }}>
-                <div style={{ width: 24, height: 24, borderRadius: 7, background: col + '22', color: col, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>{a.livello === 'critical' ? '!' : '⚠'}</div>
+                <div style={{ width: 24, height: 24, borderRadius: 7, background: col + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Ic n="warn" s={13} c={col} /></div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: C.txt }}>{a.titolo}</div>
                   <div style={{ fontSize: 12, color: C.txm, marginTop: 2, lineHeight: 1.5 }}>{a.testo}</div>

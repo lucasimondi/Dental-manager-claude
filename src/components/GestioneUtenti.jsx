@@ -144,11 +144,11 @@ export default function GestioneUtenti({ studioId, currentUserId, features, isSt
             </div>
             {!isMe && isStudioAdmin && (
               <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-                <select value={u.ruolo} onChange={e => cambiaRuolo(u.id, e.target.value)}
-                  style={{ fontSize: 11, padding: '4px 6px', borderRadius: 7, border: `1px solid ${C.brd}`, background: C.sur, cursor: 'pointer' }}>
+                <Sel value={u.ruolo} onChange={e => cambiaRuolo(u.id, e.target.value)}
+                  style={{ fontSize: 11, padding: '4px 6px', width: 'auto' }}>
                   <option value="utente">Utente</option>
                   <option value="admin">Admin</option>
-                </select>
+                </Sel>
                 <button onClick={() => rimuovi(u.id, u.email)}
                   style={{ background: C.danL, border: 'none', borderRadius: 7, padding: '5px 7px', cursor: 'pointer' }}>
                   <Ic n="del" s={12} c={C.dan} />

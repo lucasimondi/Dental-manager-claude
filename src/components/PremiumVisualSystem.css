@@ -122,6 +122,40 @@
   .pol-icon-btn:hover:not(:disabled) { transform: none !important; }
 }
 
+/* POL-UI-004 — universal interactive-state floor: every native <button> gets
+   a real hover/active/focus-visible state even on pages/spots that haven't
+   been migrated to the shared Btn component (many small icon/action buttons
+   across SchedaPaz, Impostazioni, Costi, etc. are hand-rolled and always
+   will be — one-off sizes, not worth wrapping in Btn). Filter-only, no
+   transform, so it never fights inline absolute positioning (e.g. Agenda's
+   drag/resize handles). `.pol-btn`/`.pol-icon-btn` are more specific and
+   keep their richer lift treatment on top of this. */
+button:not(:disabled) {
+  transition: filter .14s ease, box-shadow .14s ease;
+}
+button:not(:disabled):hover {
+  filter: brightness(1.05);
+}
+button:not(:disabled):active {
+  filter: brightness(0.96);
+}
+button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  button { transition: none !important; }
+}
+
+/* Same floor for any input/select/textarea still outside the shared
+   Inp/Sel/Txt (.pol-input already has its own richer focus ring). */
+input:not(.pol-input):focus-visible,
+select:not(.pol-input):focus-visible,
+textarea:not(.pol-input):focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+
 /* POL-UI-003 — visual-only layer. No data/query/permission semantics live here. */
 body:has(.home-widget-grid) {
   background:

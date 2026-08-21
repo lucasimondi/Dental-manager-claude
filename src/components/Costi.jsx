@@ -179,8 +179,10 @@ function ConfermaEstrazione({ estratto, file, onClose, onSalvato, studioId, cate
             </div>
           </Fld>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <input type="checkbox" checked={formSpesa.ricorrente} onChange={(e) => setFormSpesa((f) => ({ ...f, ricorrente: e.target.checked }))} />
-            <span style={{ fontSize: 12, color: C.txt }}>Ricorrente</span>
+            <button type="button" onClick={() => setFormSpesa((f) => ({ ...f, ricorrente: !f.ricorrente }))} style={{ flexShrink: 0, width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${formSpesa.ricorrente ? C.pri : C.brd}`, background: formSpesa.ricorrente ? C.pri : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, cursor: 'pointer' }}>
+              {formSpesa.ricorrente && <Ic n="ok" s={11} c="#fff" />}
+            </button>
+            <span onClick={() => setFormSpesa((f) => ({ ...f, ricorrente: !f.ricorrente }))} style={{ fontSize: 12, color: C.txt, cursor: 'pointer' }}>Ricorrente</span>
             {formSpesa.ricorrente && (
               <Sel value={formSpesa.frequenza} onChange={(e) => setFormSpesa((f) => ({ ...f, frequenza: e.target.value }))} style={{ marginLeft: 'auto', width: 140 }}>
                 {FREQUENZE.map((f) => <option key={f}>{f}</option>)}
@@ -299,10 +301,12 @@ function VistaPersonale({ studioId, refreshKey, onChanged }) {
             <Fld label="Costo mensile €"><Inp type="number" value={form.costo_mensile} onChange={(e) => setForm((f) => ({ ...f, costo_mensile: e.target.value }))} /></Fld>
           </div>
           <Fld label="Ore settimanali (opzionale)"><Inp type="number" value={form.ore_settimanali} onChange={(e) => setForm((f) => ({ ...f, ore_settimanali: e.target.value }))} /></Fld>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <input type="checkbox" checked={form.attivo} onChange={(e) => setForm((f) => ({ ...f, attivo: e.target.checked }))} />
+          <button type="button" onClick={() => setForm((f) => ({ ...f, attivo: !f.attivo }))} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+            <div style={{ flexShrink: 0, width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${form.attivo ? C.pri : C.brd}`, background: form.attivo ? C.pri : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {form.attivo && <Ic n="ok" s={11} c="#fff" />}
+            </div>
             <span style={{ fontSize: 12, color: C.txt }}>Attivo (conta nei costi correnti)</span>
-          </div>
+          </button>
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn ch="Annulla" v="sec" onClick={() => setModal(false)} full />
             <Btn ch={editItem ? 'Aggiorna' : 'Salva'} onClick={salva} dis={!form.nome || !form.costo_mensile} full />
@@ -411,10 +415,12 @@ function VistaMacchinari({ studioId, refreshKey, onChanged }) {
               </div>
             )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, marginBottom: 12 }}>
-            <input type="checkbox" checked={form.attivo} onChange={(e) => setForm((f) => ({ ...f, attivo: e.target.checked }))} />
+          <button type="button" onClick={() => setForm((f) => ({ ...f, attivo: !f.attivo }))} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, marginBottom: 12, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+            <div style={{ flexShrink: 0, width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${form.attivo ? C.pri : C.brd}`, background: form.attivo ? C.pri : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {form.attivo && <Ic n="ok" s={11} c="#fff" />}
+            </div>
             <span style={{ fontSize: 12, color: C.txt }}>In uso (conta nei costi correnti)</span>
-          </div>
+          </button>
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn ch="Annulla" v="sec" onClick={() => setModal(false)} full />
             <Btn ch={editItem ? 'Aggiorna' : 'Salva'} onClick={salva} dis={!form.nome || !form.costo_acquisto} full />
@@ -502,10 +508,12 @@ function VistaMateriali({ studioId, refreshKey, onChanged }) {
           {form.costo && form.resa && Number(form.resa) > 0 && (
             <div style={{ fontSize: 11, color: C.txl, marginTop: -8, marginBottom: 13 }}>Costo per singolo utilizzo: <b style={{ color: C.txm }}>{fmt(Number(form.costo) / Number(form.resa))}</b></div>
           )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <input type="checkbox" checked={form.attivo} onChange={(e) => setForm((f) => ({ ...f, attivo: e.target.checked }))} />
+          <button type="button" onClick={() => setForm((f) => ({ ...f, attivo: !f.attivo }))} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+            <div style={{ flexShrink: 0, width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${form.attivo ? C.pri : C.brd}`, background: form.attivo ? C.pri : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {form.attivo && <Ic n="ok" s={11} c="#fff" />}
+            </div>
             <span style={{ fontSize: 12, color: C.txt }}>Attivo</span>
-          </div>
+          </button>
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn ch="Annulla" v="sec" onClick={() => setModal(false)} full />
             <Btn ch={editItem ? 'Aggiorna' : 'Salva'} onClick={salva} dis={!form.nome || !form.costo} full />

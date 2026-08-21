@@ -1382,7 +1382,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           )}
 
           <Fld label="Note (opzionale)"><Txt value={impForm.note} onChange={e => IF({ note: e.target.value })} /></Fld>
-          {impForm.tuttoIlGiorno && impForm.dataFine < impForm.dataInizio && <div style={{ background: C.danL, borderRadius: 8, padding: '8px 12px', marginBottom: 8, fontSize: 12, color: C.dan, fontWeight: 700 }}>⚠️ La data di fine deve essere uguale o successiva alla data di inizio</div>}
+          {impForm.tuttoIlGiorno && impForm.dataFine < impForm.dataInizio && <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: C.danL, borderRadius: 8, padding: '8px 12px', marginBottom: 8, fontSize: 12, color: C.dan, fontWeight: 700 }}><Ic n="warn" s={13} c={C.dan} />La data di fine deve essere uguale o successiva alla data di inizio</div>}
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             {editImp && <Btn ch="Elimina" v="dan" onClick={delImpegno} />}
             <Btn ch="Annulla" v="sec" onClick={() => setImpModal(false)} full />

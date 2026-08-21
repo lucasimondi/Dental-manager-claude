@@ -374,7 +374,7 @@ function RigaPaziente({ p, evidenzia, onOpen, onDelete, confirming, onCancelDele
             {p.dataNascita && <span style={{ fontSize: 11, color: C.txm }}>🎂 {fmtD(p.dataNascita)}</span>}
             {p.cf && <span style={{ fontSize: 11, color: C.txm }}>{evidenzia(p.cf)}</span>}
           </div>
-          {p.note && <div style={{ fontSize: 10, color: C.war, marginTop: 2 }}>⚠️ {p.note.slice(0, 50)}{p.note.length > 50 ? '…' : ''}</div>}
+          {p.note && <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: C.war, marginTop: 2 }}><Ic n="warn" s={10} c={C.war} />{p.note.slice(0, 50)}{p.note.length > 50 ? '…' : ''}</div>}
         </div>
         <button onClick={(e) => { e.stopPropagation(); confirming ? onCancelDelete() : onDelete(); }} style={{ background: C.danL, border: 'none', borderRadius: 8, padding: 8, cursor: 'pointer', display: 'flex', flexShrink: 0 }}>
           <Ic n="del" s={15} c={C.dan} />

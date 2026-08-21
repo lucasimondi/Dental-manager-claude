@@ -549,12 +549,12 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
             {/* NOTE GENERALI (anamnesi/allergie) */}
             <Crd style={{ background: noteGenerale ? `${C.war}14` : C.sur, border: noteGenerale ? `1px solid ${C.war}80` : `1px solid ${C.brd}`, marginBottom: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: noteGenerale ? 7 : 0 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.war, textTransform: 'uppercase' }}>⚠️ Anamnesi / Allergie</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: C.war, textTransform: 'uppercase' }}><Ic n="warn" s={11} c={C.war} />Anamnesi / Allergie</div>
                 <button onClick={() => { setNoteGenerale(paz.note || ''); setNoteModalOpen(true); }} style={{ background: 'none', border: `1px solid ${C.brd}`, borderRadius: 7, padding: '4px 9px', fontSize: 10, fontWeight: 700, color: C.txm, cursor: 'pointer' }}>
                   {noteGenerale ? '✏️ Modifica' : '+ Aggiungi'}
                 </button>
               </div>
-              {noteGenerale && <div style={{ fontSize: 13, color: '#78350F', lineHeight: 1.6 }}>{noteGenerale}</div>}
+              {noteGenerale && <div style={{ fontSize: 13, color: C.war, lineHeight: 1.6 }}>{noteGenerale}</div>}
               {!noteGenerale && <div style={{ fontSize: 11, color: C.txl, marginTop: 4 }}>Nessuna nota generale — tocca per aggiungere allergie, anamnesi, ecc.</div>}
             </Crd>
 
@@ -564,8 +564,8 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em' }}>📝 Annotazioni cliniche</div>
               </div>
               <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                <input value={nuovaAnnotazione} onChange={e => setNuovaAnnotazione(e.target.value)} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && aggiungiAnnotazione()} placeholder="Scrivi una nota clinica..." style={{ flex: 1, padding: '9px 11px', border: `1.5px solid ${C.brd}`, borderRadius: 9, fontSize: 13, color: C.txt, background: C.sur }} />
-                <button onClick={aggiungiAnnotazione} disabled={!nuovaAnnotazione.trim()} style={{ background: C.pri, border: 'none', borderRadius: 9, padding: '9px 14px', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: nuovaAnnotazione.trim() ? 1 : 0.4, whiteSpace: 'nowrap' }}>+ Aggiungi</button>
+                <Inp value={nuovaAnnotazione} onChange={e => setNuovaAnnotazione(e.target.value)} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && aggiungiAnnotazione()} placeholder="Scrivi una nota clinica..." style={{ flex: 1, padding: '9px 11px' }} />
+                <Btn ch="Aggiungi" ic="plus" sz="sm" onClick={aggiungiAnnotazione} dis={!nuovaAnnotazione.trim()} />
               </div>
               {annotazioni.length === 0 && <EmptyState icon="clip" title="Nessuna annotazione" />}
               {annotazioni.map(ann => (
@@ -718,8 +718,8 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                 </div>
 
                 <div style={{ background: `${C.war}14`, border: `1px solid ${C.war}80`, borderRadius: 10, padding: 12, marginBottom: 14 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: C.war, marginBottom: 6 }}>⚠️ Documenti fiscali (fatture, rimborsi)</div>
-                  <div style={{ fontSize: 11.5, color: '#78350F', lineHeight: 1.5, marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: C.war, marginBottom: 6 }}><Ic n="warn" s={13} c={C.war} />Documenti fiscali (fatture, rimborsi)</div>
+                  <div style={{ fontSize: 11.5, color: C.war, lineHeight: 1.5, marginBottom: 10 }}>
                     Le fatture di questo paziente sono soggette per legge a un obbligo di conservazione fiscale di 10 anni (art. 2220 c.c.). La decisione di conservarle o eliminarle resta comunque tua.
                   </div>
                   <button
@@ -1009,7 +1009,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
               return (
                 <Crd key={pl.id} style={{ marginBottom: 12, border: `2px solid ${isSel ? C.pri : terminato ? C.pri + '50' : C.brd}`, background: terminato ? C.priL + '40' : C.sur }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
-                    <button onClick={() => toggleSel(pl.id)} style={{ marginTop: 2, width: 22, height: 22, borderRadius: 6, border: `2px solid ${isSel ? C.pri : C.brd}`, background: isSel ? C.pri : '#fff', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                    <button onClick={() => toggleSel(pl.id)} style={{ marginTop: 2, width: 22, height: 22, borderRadius: 6, border: `2px solid ${isSel ? C.pri : C.brd}`, background: isSel ? C.pri : C.sur, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                       {isSel && <Ic n="ok" s={12} c="#fff" />}
                     </button>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -1182,8 +1182,9 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
             {patImpianti.filter(im => im.dataCorona && new Date(im.dataCorona + 'T12:00') <= new Date(new Date().setDate(new Date().getDate() + 30))).map(im => (
               <div key={im.id} style={{ background: new Date(im.dataCorona + 'T12:00') < new Date() ? C.danL : `${C.war}1A`, borderRadius: 10, padding: '10px 13px', marginBottom: 10, borderLeft: `3px solid ${new Date(im.dataCorona + 'T12:00') < new Date() ? C.dan : C.war}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: new Date(im.dataCorona + 'T12:00') < new Date() ? C.dan : C.war }}>
-                    {new Date(im.dataCorona + 'T12:00') < new Date() ? '⚠️ Carico corona scaduto' : '📅 Carico corona in arrivo'}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 800, color: new Date(im.dataCorona + 'T12:00') < new Date() ? C.dan : C.war }}>
+                    <Ic n={new Date(im.dataCorona + 'T12:00') < new Date() ? 'warn' : 'cal'} s={12} c={new Date(im.dataCorona + 'T12:00') < new Date() ? C.dan : C.war} />
+                    {new Date(im.dataCorona + 'T12:00') < new Date() ? 'Carico corona scaduto' : 'Carico corona in arrivo'}
                   </div>
                   <div style={{ fontSize: 11, color: C.txm }}>Dente {im.dente || '—'} · {im.marca || ''} {im.modello || ''} · previsto {fmtD(im.dataCorona)}</div>
                 </div>
@@ -1607,14 +1608,14 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
 
             {nonEseguito && (
               <div style={{ background: C.danL, borderRadius: 8, padding: '8px 12px', marginBottom: 8 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: C.dan }}>⚠️ Nessuna prestazione eseguita su questo piano</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: C.dan }}><Ic n="warn" s={13} c={C.dan} />Nessuna prestazione eseguita su questo piano</div>
                 <div style={{ fontSize: 11, color: C.dan, marginTop: 3 }}>Il pagamento verrà registrato come anticipo. Le prestazioni andranno segnate come eseguite dal tab Piani.</div>
               </div>
             )}
 
             {isAnticipo && (
               <div style={{ background: `${C.war}1A`, borderRadius: 8, padding: '8px 12px', marginBottom: 8 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: C.war }}>⚠️ Importo superiore all'eseguito ({fmt(eseguitoNonIncassato)})</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: C.war }}><Ic n="warn" s={13} c={C.war} />Importo superiore all'eseguito ({fmt(eseguitoNonIncassato)})</div>
                 <div style={{ fontSize: 11, color: C.war, marginTop: 3 }}>La parte eccedente ({fmt(importoNum - eseguitoNonIncassato)}) verrà registrata come anticipo.</div>
               </div>
             )}
@@ -1684,7 +1685,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
             </Fld>
           )}
           <Fld label="Messaggio">
-            <textarea value={waMsg} onChange={e => setWaMsg(e.target.value)} rows={6} style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${C.brd}`, borderRadius: 10, fontSize: 13, color: C.txt, background: C.sur, boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }} />
+            <Txt value={waMsg} onChange={e => setWaMsg(e.target.value)} rows={6} />
           </Fld>
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             <Btn ch="Annulla" v="sec" onClick={() => setWaModal(false)} full />
@@ -1739,7 +1740,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
       {noteModalOpen && (
         <Modal title="Anamnesi / Allergie / Note generali" icon="clip" onClose={() => setNoteModalOpen(false)}>
           <div style={{ fontSize: 12, color: C.txm, marginBottom: 10 }}>Campo libero per anamnesi, allergie, farmaci abituali, note importanti sul paziente.</div>
-          <textarea value={noteGenerale} onChange={e => setNoteGenerale(e.target.value)} rows={7} placeholder="es. Allergia alla penicillina, diabetico, in terapia con Coumadin..." style={{ width: '100%', padding: '11px 12px', border: `1.5px solid ${C.brd}`, borderRadius: 10, fontSize: 14, color: C.txt, background: C.sur, boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }} />
+          <Txt value={noteGenerale} onChange={e => setNoteGenerale(e.target.value)} rows={7} placeholder="es. Allergia alla penicillina, diabetico, in terapia con Coumadin..." style={{ fontSize: 14 }} />
           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
             <Btn ch="Annulla" v="sec" onClick={() => setNoteModalOpen(false)} full />
             <Btn ch="Salva" onClick={saveNoteGenerale} full />

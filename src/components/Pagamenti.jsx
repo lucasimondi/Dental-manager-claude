@@ -202,7 +202,7 @@ export default function Pagamenti({ patients, payments, setPayments, plans, auto
 
           {/* Gestisci collaborazioni */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
-            <button onClick={() => setModalCollab(true)} style={{ background: C.purL, border: 'none', borderRadius: 8, padding: '7px 12px', color: C.pur, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>⚙️ Gestisci collaborazioni</button>
+            <button onClick={() => setModalCollab(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: C.purL, border: 'none', borderRadius: 8, padding: '7px 12px', color: C.pur, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}><Ic n="set" s={13} c={C.pur} />Gestisci collaborazioni</button>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
