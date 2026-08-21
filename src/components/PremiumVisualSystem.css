@@ -164,26 +164,20 @@ body:has(.home-widget-grid) {
     var(--pol-premium-bg) !important;
 }
 
-/* App chrome: darker, more dimensional top bar, matching approved direction. */
-body:has(.home-widget-grid) #root > div > div:first-child {
-  min-height: 68px;
-  padding: 10px 22px !important;
-  background:
-    radial-gradient(circle at 15% -50%, rgba(99,102,241,.42), transparent 36%),
-    linear-gradient(110deg,#0b1220 0%,#111827 42%,#172554 72%,#0f172a 100%) !important;
-  border-bottom: 1px solid rgba(255,255,255,.08);
-  box-shadow: 0 18px 44px rgba(15,23,42,.22), inset 0 -1px 0 rgba(255,255,255,.05);
-}
-body:has(.home-widget-grid) #root > div > div:first-child img {
-  filter: drop-shadow(0 7px 14px rgba(0,0,0,.22));
-}
-body:has(.home-widget-grid) #root > div > div:first-child button {
-  border: 1px solid rgba(255,255,255,.12) !important;
-  border-radius: 10px !important;
-  background: rgba(255,255,255,.09) !important;
-  backdrop-filter: blur(12px);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
-}
+/* POL-UI-005 — REMOVED a positional `#root > div > div:first-child` rule
+   that used to force a hardcoded dark-navy gradient onto whatever div
+   happens to be the app-shell's first child. That selector was written to
+   restyle the old always-dark mobile header, but it targeted the header's
+   *structural position*, not the header itself — so it painted the whole
+   header+content flex wrapper dark, unconditionally, regardless of
+   `[data-theme]`. #app-scroll (below) sits inside that wrapper with
+   `background: transparent`, so this dark color bled through as the
+   effective Home background in Light Mode too — the real root cause of
+   "Light Mode Home stays dark" on mobile. The mobile header is gone now
+   (App.jsx) and the desktop sidebar has its own dedicated `.premium-sidebar`
+   background, so this rule has no correct target left; deleting it lets the
+   app-shell's own theme-reactive `background: C.bg` (App.jsx inline style)
+   show through instead, on both mobile and desktop. */
 
 body:has(.home-widget-grid) #app-scroll {
   padding: 26px 28px 92px !important;
@@ -402,9 +396,17 @@ body:has(.home-widget-grid) #app-scroll {
 }
 
 @media (max-width: 600px) {
-  body:has(.home-widget-grid) { background: #f5f7fb !important; }
-  body:has(.home-widget-grid) #root > div > div:first-child { min-height: 60px; padding: 8px 12px !important; }
-  body:has(.home-widget-grid) #app-scroll { padding: 16px 13px 112px !important; }
+  /* POL-UI-005 — was a hardcoded #f5f7fb (always-light), unconditioned by
+     [data-theme]; the mobile header rule below it targeted the now-removed
+     positional selector and no longer has anything to style. */
+  body:has(.home-widget-grid) { background: var(--pol-premium-bg) !important; }
+  /* No mobile header any more (App.jsx) — #app-scroll is the first visible
+     surface, so it carries the safe-area-inset-top the header used to
+     absorb. Bottom padding clears the transparent floating dock
+     (MobileDock.jsx) + iOS home-indicator safe area. */
+  body:has(.home-widget-grid) #app-scroll {
+    padding: calc(16px + env(safe-area-inset-top, 0px)) 13px calc(100px + env(safe-area-inset-bottom, 0px)) !important;
+  }
   .home-hero { align-items: flex-start; gap: 12px; }
   .home-hero__customize { padding: 9px 10px; font-size: 11px; }
   .home-quick-actions__grid { grid-template-columns: 1fr 1fr; }
