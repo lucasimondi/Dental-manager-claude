@@ -52,7 +52,7 @@ function estraiColoriDaLogo(base64) {
 
 
 
-export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange, features, theme, toggleTheme, isStudioAdmin }) {
+export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange, features, theme, toggleTheme, isStudioAdmin, onLogout }) {
   const [si, setSi] = useState({ ...DEF_STUDIO, ...(studioInfo || {}) });
   const [toast, setToast] = useState('');
   const firmaInputRef = useRef(null);
@@ -997,6 +997,20 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       <ProfiloUtente onNomeChange={onNomeChange} vertical={si.vertical} />
       <GestioneUtenti studioId={studioInfo?.studio_id} currentUserId={currentUserId} features={features} isStudioAdmin={isStudioAdmin} vertical={studioInfo?.vertical} />
       <GestioneRisorseAgenda tipo="operatori" studioId={studioInfo?.studio_id || '00000000-0000-0000-0000-000000000001'} currentUserId={currentUserId} titolareNome={si.nome} features={features} isStudioAdmin={isStudioAdmin} />
+      {/* POL-UI-005: Esci moved here from the (now-removed) mobile top header —
+          reuses the same handleLogout passed down from App.jsx, no new auth
+          logic. Bottom of the account/profile screen, styled as a secondary
+          account action rather than a primary CTA. */}
+      {onLogout && (
+        <button
+          onClick={onLogout}
+          className="pol-btn"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, width: '100%', marginTop: 18, padding: '13px 0', background: 'none', border: `1.5px solid ${C.brd}`, borderRadius: 12, color: C.dan, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+        >
+          <Ic n="x" s={14} c={C.dan} />
+          Esci
+        </button>
+      )}
       </>
       )}
 
