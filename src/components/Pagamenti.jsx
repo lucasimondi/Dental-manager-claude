@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, SelettorePaziente } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, SelettorePaziente, PageHeader } from './ui';
 import { C, uid, fmt, fmtD, today } from '../lib/utils';
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { normalizza } from '../lib/ricercaPazienti';
@@ -111,21 +111,18 @@ export default function Pagamenti({ patients, payments, setPayments, plans, auto
     <div>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
-      {/* HEADER */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <div style={{ fontSize: 20, fontWeight: 800 }}>Pagamenti</div>
-        <div style={{ display: 'flex', gap: 7 }}>
-          {tabAttiva === 'studio'
-            ? <Btn ch="Studio" ic="plus" onClick={() => { setForm({ pazienteId: '', data: today(), importo: '', metodo: 'Contanti', nota: '', stato: 'pagato' }); setPazSearch(''); setModal(true); }} />
-            : <Btn ch="Esterno" ic="plus" onClick={() => { setFormExt({ collaborazione_id: '', collaborazione_nome: '', importo: '', data: today(), metodo: 'Bonifico', note: '' }); setModalExt(true); }} />
-          }
-        </div>
-      </div>
+      <PageHeader icon="eur" title="Pagamenti" actions={
+        tabAttiva === 'studio'
+          ? <Btn ch="Studio" ic="plus" onClick={() => { setForm({ pazienteId: '', data: today(), importo: '', metodo: 'Contanti', nota: '', stato: 'pagato' }); setPazSearch(''); setModal(true); }} />
+          : <Btn ch="Esterno" ic="plus" onClick={() => { setFormExt({ collaborazione_id: '', collaborazione_nome: '', importo: '', data: today(), metodo: 'Bonifico', note: '' }); setModalExt(true); }} />
+      } />
 
       {/* TAB SWITCHER */}
       <div style={{ display: 'flex', background: C.bg, borderRadius: 10, border: `1px solid ${C.brd}`, marginBottom: 14, overflow: 'hidden' }}>
-        {[['studio', '🏠 Studio'], ['esterno', '🤝 Collaborazioni']].map(([id, lbl]) => (
-          <button key={id} onClick={() => setTabAttiva(id)} style={{ flex: 1, padding: '10px 0', border: 'none', background: tabAttiva === id ? C.pri : 'transparent', color: tabAttiva === id ? '#fff' : C.txm, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{lbl}</button>
+        {[['studio', 'home', 'Studio'], ['esterno', 'shake', 'Collaborazioni']].map(([id, ic, lbl]) => (
+          <button key={id} onClick={() => setTabAttiva(id)} style={{ flex: 1, padding: '10px 0', border: 'none', background: tabAttiva === id ? C.pri : 'transparent', color: tabAttiva === id ? '#fff' : C.txm, fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <Ic n={ic} s={13} c={tabAttiva === id ? '#fff' : C.txm} />{lbl}
+          </button>
         ))}
       </div>
 

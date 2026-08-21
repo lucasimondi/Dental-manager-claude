@@ -10,12 +10,22 @@ export const Bdg = ({ ch, co = C.pri }) => (
   </span>
 );
 
-export const Crd = ({ children, style, onClick, ...rest }) => (
+// POL-UI-004 — shared surface primitive, used across nearly every page
+// (Pazienti, Piani, Pagamenti, Richiami, Agenda, SchedaPaz, Controllo di
+// Gestione, Impostazioni, Fisio...). Upgrading its default depth here is
+// the single highest-leverage way to bring Home's premium surface language
+// app-wide without rewriting each page. `onClick`-bearing cards get the
+// `.pol-card--interactive` hover-lift (see PremiumVisualSystem.css); every
+// value here is C.* (theme-reactive at render time) or a translucent
+// shadow that already reads correctly on both Light and Dark Premium.
+export const Crd = ({ children, style, onClick, className, ...rest }) => (
   <div
     onClick={onClick}
+    className={[onClick ? 'pol-card--interactive' : '', className].filter(Boolean).join(' ') || undefined}
     {...rest}
     style={{
-      background: C.sur, borderRadius: 16, padding: 14, boxShadow: '0 3px 10px rgba(15,23,42,.06)',
+      background: C.sur, borderRadius: 16, padding: 14,
+      boxShadow: '0 1px 2px rgba(15,23,42,.04), 0 8px 20px rgba(15,23,42,.07)',
       border: `1px solid ${C.brd}`, cursor: onClick ? 'pointer' : 'default', ...(style || {}),
     }}
   >

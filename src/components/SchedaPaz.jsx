@@ -874,7 +874,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
               {consensoInVisualizzazione.testo}
             </div>
             <div style={{ fontSize: 11, fontWeight: 700, color: C.txm, marginBottom: 6 }}>Firma</div>
-            <div style={{ border: `1px solid ${C.brd}`, borderRadius: 9, padding: 8, background: '#fff', marginBottom: 14 }}>
+            <div style={{ border: `1px solid ${C.brd}`, borderRadius: 9, padding: 8, background: C.sur, marginBottom: 14 }}>
               <img src={consensoInVisualizzazione.firma_png} alt="Firma" style={{ width: '100%', display: 'block' }} />
             </div>
             <Btn ch="Chiudi" v="sec" onClick={() => setConsensoInVisualizzazione(null)} full />
@@ -967,7 +967,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
               </div>
             )}
             <div style={{ fontSize: 11, fontWeight: 700, color: C.txm, marginBottom: 6 }}>Firma</div>
-            <div style={{ border: `1px solid ${C.brd}`, borderRadius: 9, padding: 8, background: '#fff', marginBottom: 14 }}>
+            <div style={{ border: `1px solid ${C.brd}`, borderRadius: 9, padding: 8, background: C.sur, marginBottom: 14 }}>
               <img src={storiaInVisualizzazione.firma_png} alt="Firma" style={{ width: '100%', display: 'block' }} />
             </div>
             <Btn ch="Chiudi" v="sec" onClick={() => setStoriaInVisualizzazione(null)} full />
@@ -1057,7 +1057,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                           <span style={{ fontSize: 11, fontWeight: 800, color: C.pur }}>{cons}/{tot2 || '?'}</span>
                         </div>
                         {tot2 > 0 && (
-                          <div style={{ background: '#fff', borderRadius: 4, height: 6, overflow: 'hidden', marginBottom: 7 }}>
+                          <div style={{ background: C.bg, borderRadius: 4, height: 6, overflow: 'hidden', marginBottom: 7 }}>
                             <div style={{ height: '100%', width: `${pctOrto}%`, background: completato ? C.suc : C.pur, borderRadius: 4 }} />
                           </div>
                         )}
@@ -1090,7 +1090,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                     <div style={{ background: C.danL, borderRadius: 9, padding: '10px 12px', marginBottom: 8, marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                       <span style={{ fontSize: 12, fontWeight: 700, color: C.dan }}>Eliminare questo piano?</span>
                       <div style={{ display: 'flex', gap: 7, flexShrink: 0 }}>
-                        <button onClick={() => setConfirmDelId(null)} style={{ background: '#fff', border: `1px solid ${C.brd}`, borderRadius: 7, padding: '5px 11px', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: C.txm }}>No</button>
+                        <button onClick={() => setConfirmDelId(null)} style={{ background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 7, padding: '5px 11px', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: C.txm }}>No</button>
                         <button onClick={() => confirmDel(pl.id)} style={{ background: C.dan, border: 'none', borderRadius: 7, padding: '5px 11px', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#fff' }}>Sì, elimina</button>
                       </div>
                     </div>
@@ -1116,7 +1116,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                             </span>
                             <div style={{ display: 'flex', gap: 3 }}>
                               {SCADENZA_PRESET.map((p) => (
-                                <button key={p.mesi} onClick={() => setRichiamo(pl.id, i, v.richiamoTipo || 'Controllo', addMesi(v.dataEsec || today(), p.mesi))} style={{ background: '#fff', border: `1px solid ${C.brd}`, borderRadius: 6, padding: '2px 6px', fontSize: 9, fontWeight: 700, color: C.txm, cursor: 'pointer' }}>{p.label}</button>
+                                <button key={p.mesi} onClick={() => setRichiamo(pl.id, i, v.richiamoTipo || 'Controllo', addMesi(v.dataEsec || today(), p.mesi))} style={{ background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 6, padding: '2px 6px', fontSize: 9, fontWeight: 700, color: C.txm, cursor: 'pointer' }}>{p.label}</button>
                               ))}
                               {v.richiamoData && <button onClick={() => setRichiamo(pl.id, i, '', null)} style={{ background: C.danL, border: 'none', borderRadius: 6, padding: '2px 6px', fontSize: 9, fontWeight: 700, color: C.dan, cursor: 'pointer' }}>✕</button>}
                             </div>
@@ -1241,7 +1241,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                     <div style={{ background: C.danL, borderRadius: 8, padding: '8px 11px', marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: 12, fontWeight: 700, color: C.dan }}>Eliminare questo impianto?</span>
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <button onClick={() => setImpConfirmDel(null)} style={{ background: '#fff', border: `1px solid ${C.brd}`, borderRadius: 6, padding: '4px 9px', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: C.txm }}>No</button>
+                        <button onClick={() => setImpConfirmDel(null)} style={{ background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 6, padding: '4px 9px', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: C.txm }}>No</button>
                         <button onClick={() => { setImplants && setImplants(prev => prev.filter(x => x.id !== im.id)); setImpConfirmDel(null); }} style={{ background: C.dan, border: 'none', borderRadius: 6, padding: '4px 9px', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#fff' }}>Sì, elimina</button>
                       </div>
                     </div>
@@ -1515,7 +1515,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                           <div style={{ background: C.danL, padding: '9px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderTop: `1px solid ${C.dan}30` }}>
                             <span style={{ fontSize: 12, fontWeight: 700, color: C.dan }}>Eliminare definitivamente questo documento?</span>
                             <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                              <button onClick={() => setConfirmDelDoc(null)} style={{ background: '#fff', border: `1px solid ${C.brd}`, borderRadius: 7, padding: '5px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: C.txm }}>No</button>
+                              <button onClick={() => setConfirmDelDoc(null)} style={{ background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 7, padding: '5px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: C.txm }}>No</button>
                               <button onClick={() => eliminaDocArchiviato(doc)} style={{ background: C.dan, border: 'none', borderRadius: 7, padding: '5px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#fff' }}>Sì, elimina</button>
                             </div>
                           </div>

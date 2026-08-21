@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, SearchSel, SelettorePaziente } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, SearchSel, SelettorePaziente, PageHeader } from './ui';
 import { C, uid, fmt, today, SCADENZA_PRESET, addMesi } from '../lib/utils';
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { salvaPosizione, leggiPosizione } from '../lib/posizioneNavigazione';
@@ -162,13 +162,12 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
   return (
     <div>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <div style={{ fontSize: 20, fontWeight: 800 }}>Piani di cura</div>
+      <PageHeader icon="plan" title="Piani di cura" actions={
         <Btn ch="Nuovo" ic="plus" onClick={() => { setForm({ pazienteId: '', titolo: '', data: today(), voci: [], stato: 'attivo', sconto: 0, scontoTipo: 'pct', scadenzaPagamento: '', ortodonzia: null }); setNv({ prestazione: '', dente: '', prezzo: '' }); setSelectedDenti([]); setModal(true); }} />
-      </div>
+      } />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
         {[['Totali', kpi.totali, C.pri, 'totali'], ['Attivi', kpi.attivi, C.war, 'attivo'], ['Accettati', kpi.accettati, C.acc, 'accettato'], ['Rifiutati', kpi.rifiutati, C.dan, 'rifiutato'], ['Conclusi', kpi.conclusi, C.suc, 'concluso'], ['In corso', kpi.inCorso, C.pur, 'inCorso']].map(([l, v, co, key]) => (
-          <Crd key={l} onClick={() => { setFiltroModal(key); }} style={{ padding: 11, display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', border: filtro === key ? `2px solid ${co}` : undefined, background: filtro === key ? co + '10' : '#fff', position: 'relative' }}>
+          <Crd key={l} onClick={() => { setFiltroModal(key); }} style={{ padding: 11, display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', border: filtro === key ? `2px solid ${co}` : undefined, background: filtro === key ? co + '10' : C.sur, position: 'relative' }}>
             <div style={{ background: co + '20', borderRadius: 8, padding: 7, flexShrink: 0 }}><Ic n="plan" s={16} c={co} /></div>
             <div>
               <div style={{ fontSize: 18, fontWeight: 800, color: filtro === key ? co : C.txt }}>{v}</div>
@@ -236,7 +235,7 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
             <Crd key={pl.id} style={{ border: isSel ? `2px solid ${C.pri}` : undefined }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
                 <div style={{ display: 'flex', gap: 8, minWidth: 0, flex: 1 }}>
-                  <button onClick={() => toggleSel(pl.id)} style={{ marginTop: 2, width: 20, height: 20, borderRadius: 6, border: `2px solid ${isSel ? C.pri : C.brd}`, background: isSel ? C.pri : '#fff', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                  <button onClick={() => toggleSel(pl.id)} style={{ marginTop: 2, width: 20, height: 20, borderRadius: 6, border: `2px solid ${isSel ? C.pri : C.brd}`, background: isSel ? C.pri : C.sur, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                     {isSel && <Ic n="ok" s={11} c="#fff" />}
                   </button>
                   <div style={{ minWidth: 0, flex: 1 }}>
@@ -336,7 +335,7 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
           {isDentistico && (
           <div style={{ background: form.ortodonzia?.attivo ? C.purL : C.bg, borderRadius: 10, padding: 11, marginBottom: 11, border: form.ortodonzia?.attivo ? `1.5px solid ${C.pur}40` : 'none' }}>
             <button onClick={() => setForm((f) => ({ ...f, ortodonzia: f.ortodonzia?.attivo ? { ...ortoVuoto } : { ...ortoVuoto, attivo: true } }))} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0, width: '100%' }}>
-              <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${form.ortodonzia?.attivo ? C.pur : C.brd}`, background: form.ortodonzia?.attivo ? C.pur : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${form.ortodonzia?.attivo ? C.pur : C.brd}`, background: form.ortodonzia?.attivo ? C.pur : C.sur, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 {form.ortodonzia?.attivo && <Ic n="ok" s={11} c="#fff" />}
               </div>
               <span style={{ fontSize: 13, fontWeight: 700, color: form.ortodonzia?.attivo ? C.pur : C.txt }}>🦷 Piano ortodontico (mascherine invisibili)</span>

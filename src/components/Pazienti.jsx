@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Txt, Modal, Toast, Ic } from './ui';
+import { Btn, Crd, Fld, Inp, Txt, Modal, Toast, Ic, PageHeader } from './ui';
 import { C, uid, fmtD, today } from '../lib/utils';
 import ImportCsvModal from './ImportCsvModal.jsx';
 import DupModal from './DupModal.jsx';
@@ -211,20 +211,19 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
 
       {/* Header + barra di ricerca: sticky in cima anche scrollando la lista */}
       <div style={{ position: 'sticky', top: -13, zIndex: 20, background: C.bg, marginLeft: -13, marginRight: -13, marginTop: -13, padding: '13px 13px 0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 8 }}>
-          <div style={{ fontSize: 20, fontWeight: 800 }}>Pazienti</div>
-          <div style={{ display: 'flex', gap: 6 }}>
+        <PageHeader icon="pz" title="Pazienti" actions={
+          <>
             {gruppiDuplicati.length > 0 && (
               <button onClick={() => setDupModal(true)} style={{ background: C.danL, border: 'none', borderRadius: 10, padding: '10px 13px', color: C.dan, fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                ⚠️ {gruppiDuplicati.length} dup.
+                <Ic n="warn" s={13} c={C.dan} /> {gruppiDuplicati.length} dup.
               </button>
             )}
             <button onClick={() => setImportModal(true)} style={{ background: C.priL, border: 'none', borderRadius: 10, padding: '10px 13px', color: C.pri, fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-              📥 CSV
+              <Ic n="download" s={13} c={C.pri} /> CSV
             </button>
-            <Btn ch={limiteRaggiunto ? '🔒 Limite raggiunto' : 'Nuovo'} ic={limiteRaggiunto ? undefined : 'plus'} onClick={() => openEdit()} />
-          </div>
-        </div>
+            <Btn ch={limiteRaggiunto ? 'Limite raggiunto' : 'Nuovo'} ic={limiteRaggiunto ? 'lock' : 'plus'} onClick={() => openEdit()} />
+          </>
+        } />
         {limitePazienti != null && (
           <div style={{ fontSize: 11, color: limiteRaggiunto ? C.dan : C.txl, marginBottom: 10, marginTop: -8 }}>
             {patients.length}/{limitePazienti} pazienti usati nel piano attuale{limiteRaggiunto ? ' — passa a Pro per pazienti illimitati' : ''}

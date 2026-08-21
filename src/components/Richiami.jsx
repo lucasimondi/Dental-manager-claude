@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, SelettorePaziente, WaAction } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, SelettorePaziente, WaAction, PageHeader } from './ui';
 import { C, fmtD, today, uid, RICHIAMO_CATEGORIE, DEF_TPL_GENERICO } from '../lib/utils';
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { generaRichiamiBot } from '../lib/richiamiBot';
@@ -81,13 +81,12 @@ export default function Richiami({ patients, plans, payments, appointments, rich
     <div>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 8, flexWrap: 'wrap' }}>
-        <div style={{ fontSize: 20, fontWeight: 800 }}>Richiami</div>
-        <div style={{ display: 'flex', gap: 7 }}>
-          <Btn ch="🔄 Scansiona ora" v="sec" onClick={scansiona} />
+      <PageHeader icon="bell" title="Richiami" actions={
+        <>
+          <Btn ch="Scansiona ora" ic="refresh" v="sec" onClick={scansiona} />
           <Btn ch="Richiamo" ic="plus" onClick={() => { setForm({ pazienteId: '', categoria: 'generico', motivo: '', dataScadenza: today() }); setPazSearch(''); setModal(true); }} />
-        </div>
-      </div>
+        </>
+      } />
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
         <Crd style={{ display: 'flex', alignItems: 'center', gap: 11, padding: 12 }}>
