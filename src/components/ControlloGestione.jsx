@@ -18,7 +18,7 @@ const TABS = [
   { id: 'marginalita', label: 'Marginalità' },
 ];
 
-function CanonicalBaseOverview() {
+function CanonicalBaseOverview({ studioId }) {
   const [periodo, setPeriodo] = useState('mese');
   const [snapshot, setSnapshot] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -29,14 +29,14 @@ function CanonicalBaseOverview() {
     const [dateFrom, dateTo] = rangePeriodo(periodo);
     setLoading(true);
     setError('');
-    loadCanonicalFinancialSnapshot(supabase, dateFrom, dateTo).then(({ snapshot: nextSnapshot, error: nextError }) => {
+    loadCanonicalFinancialSnapshot(supabase, dateFrom, dateTo, studioId).then(({ snapshot: nextSnapshot, error: nextError }) => {
       if (!active) return;
       setSnapshot(nextSnapshot);
       setError(nextError?.message || '');
       setLoading(false);
     });
     return () => { active = false; };
-  }, [periodo]);
+  }, [periodo, studioId]);
 
   return (
     <div style={{ padding: 14 }}>
@@ -113,7 +113,7 @@ export default function ControlloGestione(props) {
         ))}
       </div>
 
-      {tab === 'panoramica' && <CanonicalBaseOverview />}
+      {tab === 'panoramica' && <CanonicalBaseOverview studioId={props.studioId} />}
       {tab === 'cockpit' && <ControlloCockpit {...props} />}
       {tab === 'proiezioni' && <Proiezioni studioId={props.studioId} />}
       {tab === 'costi' && <Costi studioId={props.studioId} isDentistico={props.isDentistico} />}
