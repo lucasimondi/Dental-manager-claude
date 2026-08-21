@@ -51,10 +51,19 @@ const LABELS = {
 
 const FALLBACK_LABEL = { label: 'Accesso specifico', description: 'Permesso attivo non associato al verticale corrente.' };
 
-export const getCapabilityPresentation = (capability, vertical) => {
+// POL-RBAC-002 — customLabel is the studio's own override (from
+// studio_capability_labels, purely presentational, see
+// docs/architecture/pol-ux-002-studio-capability-labels-design.md). It can
+// only ever replace `label`: `description` (what the capability actually
+// does) always stays the vertical-aware default, so a rename can never
+// obscure the real meaning of a permission. An empty/whitespace override is
+// treated as "not set" — the fallback chain is custom -> vertical default ->
+// generic safe label, never a blank control.
+export const getCapabilityPresentation = (capability, vertical, customLabel) => {
   const perVertical = LABELS[capability];
-  if (!perVertical) return FALLBACK_LABEL;
-  return perVertical[vertical] || perVertical.default || FALLBACK_LABEL;
+  const fallback = perVertical ? (perVertical[vertical] || perVertical.default || FALLBACK_LABEL) : FALLBACK_LABEL;
+  const trimmed = typeof customLabel === 'string' ? customLabel.trim() : '';
+  return trimmed ? { ...fallback, label: trimmed } : fallback;
 };
 
 // Capabilities an admin can offer/toggle for this vertical, in a stable,

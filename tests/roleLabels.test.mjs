@@ -64,3 +64,37 @@ test('resolveTeamCapabilities does not duplicate a held capability that is alrea
   const resolved = resolveTeamCapabilities('dentistico', ['clinical.general']);
   assert.equal(resolved.filter((c) => c === 'clinical.general').length, 1);
 });
+
+// POL-RBAC-002 — studio_capability_labels custom label tier (fallback:
+// custom studio label -> vertical default -> generic safe label).
+test('a custom label overrides the vertical default label only', () => {
+  const { label, description } = getCapabilityPresentation('clinical.general', 'dentistico', 'Igienista');
+  assert.equal(label, 'Igienista');
+  // description (what the capability actually does) is never overridden --
+  // a rename can never obscure the real meaning of the permission.
+  assert.equal(description, getCapabilityPresentation('clinical.general', 'dentistico').description);
+});
+
+test('an empty or whitespace-only custom label falls through to the vertical default, not a blank control', () => {
+  const withEmpty = getCapabilityPresentation('clinical.general', 'dentistico', '');
+  const withSpaces = getCapabilityPresentation('clinical.general', 'dentistico', '   ');
+  const withNone = getCapabilityPresentation('clinical.general', 'dentistico');
+  assert.equal(withEmpty.label, DENTAL_LABEL);
+  assert.equal(withSpaces.label, DENTAL_LABEL);
+  assert.equal(withEmpty.label, withNone.label);
+});
+
+test('a custom label never changes which capabilities are offered for a vertical', () => {
+  // Proves labels can't be used to smuggle a cross-vertical capability into
+  // view: getOfferableCapabilities is computed independently of any label.
+  const before = getOfferableCapabilities('dentistico');
+  getCapabilityPresentation('clinical.general', 'dentistico', 'Qualcosa di Fisio');
+  const after = getOfferableCapabilities('dentistico');
+  assert.deepEqual(before, after);
+  assert.ok(!after.includes('clinical.physiotherapist'));
+});
+
+test('a custom label is trimmed before use', () => {
+  const { label } = getCapabilityPresentation('home.front_desk', 'dentistico', '  Reception  ');
+  assert.equal(label, 'Reception');
+});
