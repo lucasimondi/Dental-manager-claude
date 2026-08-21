@@ -126,7 +126,7 @@ export default function Richiami({ patients, plans, payments, appointments, rich
                   <div style={{ marginTop: 5, display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
                     <Bdg ch={`${cat.icona} ${cat.label}`} co={cat.colore} />
                     <Bdg ch={scaduto ? `scaduto ${fmtD(r.dataScadenza)}` : fmtD(r.dataScadenza)} co={scaduto ? C.dan : C.txm} />
-                    {r.origine === 'bot' && <Bdg ch="🤖 bot" co={C.acc} />}
+                    {r.origine === 'bot' && <Bdg ch="Bot" co={C.acc} />}
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>

@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { supabase, DB } from './lib/supabase.js';
-import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, mergeDockSettings, uid, applyBrandColors, applyHeaderColor } from './lib/utils';
+import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, getLogoSlug, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, mergeDockSettings, uid, applyBrandColors, applyHeaderColor } from './lib/utils';
 import { generaRichiamiBot } from './lib/richiamiBot';
 import { salvaPosizione, leggiPosizione, pulisciPosizione } from './lib/posizioneNavigazione';
 import MobileDock from './components/MobileDock.jsx';
@@ -10,6 +10,21 @@ import './components/PremiumVisualSystem.css';
 import { useIsMobile } from './lib/useIsMobile';
 import { useTheme } from './lib/useTheme';
 import AssistenteAI from './components/AssistenteAI.jsx';
+// POL-UI-004 Recovery: restored original Poliedra logo assets (verbatim,
+// same files/mapping used before POL-UX-002 swapped them for a
+// code-rendered wordmark). Root cause of that swap: the wordmark portion of
+// these assets renders as a near-invisible hairline stroke against dark
+// chrome — verified again here, still true. Restoring as directed; the
+// icon mark itself is fully legible, only the "Poliedra" wordmark is faint.
+import logoDentalWhite from './assets/logo-poliedra-dental-outline.png';
+import logoSalusWhite from './assets/logo-poliedra-salus-outline.png';
+import logoFisioWhite from './assets/logo-poliedra-fisio-outline.png';
+import logoMindWhite from './assets/logo-poliedra-mind-outline.png';
+import logoWellnessWhite from './assets/logo-poliedra-wellness-outline.png';
+import logoFitWhite from './assets/logo-poliedra-fit-outline.png';
+import logoMedicalWhite from './assets/logo-poliedra-medical-outline.png';
+
+const LOGO_WHITE_PER_SLUG = { dental: logoDentalWhite, salus: logoSalusWhite, fisio: logoFisioWhite, mind: logoMindWhite, wellness: logoWellnessWhite, fit: logoFitWhite, medical: logoMedicalWhite };
 import LoginScreen from './components/LoginScreen.jsx';
 import LoadingScreen from './components/LoadingScreen.jsx';
 import Dashboard from './components/Dashboard.jsx';
@@ -395,7 +410,9 @@ export default function App() {
     (n.id !== 'agenteai' || isStudioAdmin)
   );
 
-  const customLogoSrc = features.custom_logo && studioInfo?.custom_logo_b64 ? studioInfo.custom_logo_b64 : null;
+  const sidebarLogoSrc = features.custom_logo && studioInfo?.custom_logo_b64
+    ? studioInfo.custom_logo_b64
+    : LOGO_WHITE_PER_SLUG[getLogoSlug(studioInfo?.vertical)];
 
   return (
     <div className={isMobile ? 'app-shell app-shell--mobile' : 'app-shell app-shell--desktop'} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', height: '100dvh', background: C.bg, overflow: 'hidden' }}>
@@ -404,8 +421,7 @@ export default function App() {
           nav={navVisibile}
           page={page}
           setPage={setPage}
-          customLogoSrc={customLogoSrc}
-          vertical={studioInfo?.vertical}
+          logoSrc={sidebarLogoSrc}
           studioName={studioInfo?.nome}
           userName={userName}
           onLogout={handleLogout}
