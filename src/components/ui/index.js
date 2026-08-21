@@ -1,5 +1,7 @@
 export { default as Ic } from './Ic.jsx';
 export { default as PoliedraBrand } from './PoliedraBrand.jsx';
+export { default as PageHeader } from './PageHeader.jsx';
+export { default as EmptyState } from './EmptyState.jsx';
 export { default as DockIc, DOCK_ICON_STYLES } from './DockIc.jsx';
 export { default as Btn } from './Btn.jsx';
 export { default as Modal } from './Modal.jsx';

@@ -12,6 +12,150 @@
   --pol-premium-shadow-hover: var(--pol-shadow-hover);
 }
 
+/* POL-UI-004 — app-wide (not Home-scoped): every interactive Crd (the
+   shared card primitive used across nearly every page) gets a consistent
+   hover-lift, so the "this feels like one product" cue isn't limited to
+   Home's own widgets. */
+.pol-card--interactive {
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+.pol-card--interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(15,23,42,.05), 0 14px 28px rgba(15,23,42,.10);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pol-card--interactive { transition: none !important; }
+}
+
+/* POL-UI-004 — shared Btn primitive: real hover/active/focus-visible states
+   (used by every button across every page, not just Home). */
+.pol-btn {
+  transition: transform .14s ease, box-shadow .14s ease, filter .14s ease;
+}
+.pol-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+.pol-btn:active:not(:disabled) {
+  transform: translateY(0);
+  filter: brightness(0.97);
+}
+.pol-btn:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pol-btn { transition: none !important; }
+  .pol-btn:hover:not(:disabled), .pol-btn:active:not(:disabled) { transform: none !important; }
+}
+
+/* POL-UI-004 — shared Inp/Sel/Txt primitive: a real :focus ring, using the
+   per-render --pol-focus/--pol-focus-ring custom properties the components
+   set inline (so the ring tracks theme + custom brand color). */
+.pol-input {
+  transition: border-color .14s ease, box-shadow .14s ease;
+}
+.pol-input:hover:not(:disabled):not(:focus) {
+  border-color: var(--pol-focus);
+}
+.pol-input:focus {
+  outline: none;
+  border-color: var(--pol-focus);
+  box-shadow: 0 0 0 3px var(--pol-focus-ring);
+}
+.pol-input:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pol-input { transition: none !important; }
+}
+
+/* POL-UI-004 — shared Modal primitive: bottom-sheet on mobile (thumb reach),
+   centered dialog from tablet width up so it never reads as an edge-to-edge
+   sheet stranded in the middle of a wide viewport ("modali fuori viewport"
+   QA check). Only alignment/radius/motion move to CSS — background/size stay
+   inline since they're per-instance (wide prop). */
+.pol-modal-backdrop {
+  align-items: flex-end;
+  animation: pol-modal-fade .18s ease;
+}
+.pol-modal-sheet {
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -8px 30px rgba(15,23,42,.18);
+  animation: pol-modal-slide-up .22s cubic-bezier(.16,1,.3,1);
+}
+@keyframes pol-modal-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pol-modal-slide-up { from { transform: translateY(28px); opacity: .4; } to { transform: translateY(0); opacity: 1; } }
+@media (min-width: 640px) {
+  .pol-modal-backdrop { align-items: center; padding: 24px; }
+  .pol-modal-sheet {
+    border-radius: 18px;
+    box-shadow: 0 24px 60px -12px rgba(15,23,42,.35), 0 4px 14px rgba(15,23,42,.12);
+    animation: pol-modal-pop .18s cubic-bezier(.16,1,.3,1);
+  }
+}
+@keyframes pol-modal-pop { from { transform: translateY(8px) scale(.98); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .pol-modal-backdrop, .pol-modal-sheet { animation: none !important; }
+}
+
+/* POL-UI-004 — small circular icon buttons (Agenda's bell/filter/WhatsApp
+   toggle, nav arrows, etc.): same hover-lift language as .pol-card--interactive
+   and .pol-btn, sized for a 30px touch target instead of a full button. */
+.pol-icon-btn {
+  transition: transform .14s ease, box-shadow .14s ease, filter .14s ease;
+}
+.pol-icon-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+.pol-icon-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+.pol-icon-btn:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pol-icon-btn { transition: none !important; }
+  .pol-icon-btn:hover:not(:disabled) { transform: none !important; }
+}
+
+/* POL-UI-004 — universal interactive-state floor: every native <button> gets
+   a real hover/active/focus-visible state even on pages/spots that haven't
+   been migrated to the shared Btn component (many small icon/action buttons
+   across SchedaPaz, Impostazioni, Costi, etc. are hand-rolled and always
+   will be — one-off sizes, not worth wrapping in Btn). Filter-only, no
+   transform, so it never fights inline absolute positioning (e.g. Agenda's
+   drag/resize handles). `.pol-btn`/`.pol-icon-btn` are more specific and
+   keep their richer lift treatment on top of this. */
+button:not(:disabled) {
+  transition: filter .14s ease, box-shadow .14s ease;
+}
+button:not(:disabled):hover {
+  filter: brightness(1.05);
+}
+button:not(:disabled):active {
+  filter: brightness(0.96);
+}
+button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  button { transition: none !important; }
+}
+
+/* Same floor for any input/select/textarea still outside the shared
+   Inp/Sel/Txt (.pol-input already has its own richer focus ring). */
+input:not(.pol-input):focus-visible,
+select:not(.pol-input):focus-visible,
+textarea:not(.pol-input):focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+
 /* POL-UI-003 — visual-only layer. No data/query/permission semantics live here. */
 body:has(.home-widget-grid) {
   background:

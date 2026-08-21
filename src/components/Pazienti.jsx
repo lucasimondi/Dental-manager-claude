@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Txt, Modal, Toast, Ic } from './ui';
+import { Btn, Crd, Fld, Inp, Txt, Modal, Toast, Ic, PageHeader, EmptyState } from './ui';
 import { C, uid, fmtD, today } from '../lib/utils';
 import ImportCsvModal from './ImportCsvModal.jsx';
 import DupModal from './DupModal.jsx';
@@ -211,20 +211,19 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
 
       {/* Header + barra di ricerca: sticky in cima anche scrollando la lista */}
       <div style={{ position: 'sticky', top: -13, zIndex: 20, background: C.bg, marginLeft: -13, marginRight: -13, marginTop: -13, padding: '13px 13px 0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 8 }}>
-          <div style={{ fontSize: 20, fontWeight: 800 }}>Pazienti</div>
-          <div style={{ display: 'flex', gap: 6 }}>
+        <PageHeader icon="pz" title="Pazienti" actions={
+          <>
             {gruppiDuplicati.length > 0 && (
               <button onClick={() => setDupModal(true)} style={{ background: C.danL, border: 'none', borderRadius: 10, padding: '10px 13px', color: C.dan, fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                ⚠️ {gruppiDuplicati.length} dup.
+                <Ic n="warn" s={13} c={C.dan} /> {gruppiDuplicati.length} dup.
               </button>
             )}
             <button onClick={() => setImportModal(true)} style={{ background: C.priL, border: 'none', borderRadius: 10, padding: '10px 13px', color: C.pri, fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-              📥 CSV
+              <Ic n="download" s={13} c={C.pri} /> CSV
             </button>
-            <Btn ch={limiteRaggiunto ? '🔒 Limite raggiunto' : 'Nuovo'} ic={limiteRaggiunto ? undefined : 'plus'} onClick={() => openEdit()} />
-          </div>
-        </div>
+            <Btn ch={limiteRaggiunto ? 'Limite raggiunto' : 'Nuovo'} ic={limiteRaggiunto ? 'lock' : 'plus'} onClick={() => openEdit()} />
+          </>
+        } />
         {limitePazienti != null && (
           <div style={{ fontSize: 11, color: limiteRaggiunto ? C.dan : C.txl, marginBottom: 10, marginTop: -8 }}>
             {patients.length}/{limitePazienti} pazienti usati nel piano attuale{limiteRaggiunto ? ' — passa a Pro per pazienti illimitati' : ''}
@@ -277,9 +276,7 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
                 <RigaPaziente key={p.id} p={p} evidenzia={evidenzia} onOpen={() => { setScheda(p); salvaPosizione({ schedaPazId: p.id, schedaPazTab: 'info' }); setSearchFocus(false); }} onDelete={() => setConfirmDelId(p.id)} confirming={confirmDelId === p.id} onCancelDelete={() => setConfirmDelId(null)} onConfirmDelete={() => { del(p.id); setConfirmDelId(null); }} />
               ))}
               {filtered.length === 0 && (
-                <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>
-                  Nessun paziente trovato per "{search}"
-                </div>
+                <EmptyState icon="pz" title={`Nessun paziente trovato per "${search}"`} />
               )}
             </>
           )}
@@ -318,13 +315,13 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
         {filtered.map((p) => (
           <RigaPaziente key={p.id} p={p} evidenzia={evidenzia} onOpen={() => { setScheda(p); salvaPosizione({ schedaPazId: p.id, schedaPazTab: 'info' }); }} onDelete={() => setConfirmDelId(p.id)} confirming={confirmDelId === p.id} onCancelDelete={() => setConfirmDelId(null)} onConfirmDelete={() => { del(p.id); setConfirmDelId(null); }} />
         ))}
-        {filtered.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>Nessun paziente</div>}
+        {filtered.length === 0 && <EmptyState icon="pz" title="Nessun paziente" />}
       </div>
       </>
       )}
 
       {modal && (
-        <Modal title={form.id ? 'Modifica paziente' : 'Nuovo paziente'} onClose={() => setModal(false)} wide>
+        <Modal title={form.id ? 'Modifica paziente' : 'Nuovo paziente'} icon="pz" onClose={() => setModal(false)} wide>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <Fld label="Nome"><Inp value={form.nome || ''} onChange={(e) => F({ nome: e.target.value })} /></Fld>
             <Fld label="Cognome"><Inp value={form.cognome || ''} onChange={(e) => F({ cognome: e.target.value })} /></Fld>
@@ -377,7 +374,7 @@ function RigaPaziente({ p, evidenzia, onOpen, onDelete, confirming, onCancelDele
             {p.dataNascita && <span style={{ fontSize: 11, color: C.txm }}>🎂 {fmtD(p.dataNascita)}</span>}
             {p.cf && <span style={{ fontSize: 11, color: C.txm }}>{evidenzia(p.cf)}</span>}
           </div>
-          {p.note && <div style={{ fontSize: 10, color: C.war, marginTop: 2 }}>⚠️ {p.note.slice(0, 50)}{p.note.length > 50 ? '…' : ''}</div>}
+          {p.note && <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: C.war, marginTop: 2 }}><Ic n="warn" s={10} c={C.war} />{p.note.slice(0, 50)}{p.note.length > 50 ? '…' : ''}</div>}
         </div>
         <button onClick={(e) => { e.stopPropagation(); confirming ? onCancelDelete() : onDelete(); }} style={{ background: C.danL, border: 'none', borderRadius: 8, padding: 8, cursor: 'pointer', display: 'flex', flexShrink: 0 }}>
           <Ic n="del" s={15} c={C.dan} />

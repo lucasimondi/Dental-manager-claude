@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
-import { Crd, Fld, Ic, Bdg, Modal } from './ui';
+import { Crd, Fld, Ic, Bdg, Modal, EmptyState } from './ui';
 import { Inp, Sel, Txt } from './ui/inputs.jsx';
 import { C, fmtD, today } from '../lib/utils';
 import { generaReportPercorso } from '../lib/physioReport';
@@ -17,10 +17,10 @@ import { generaReportPercorso } from '../lib/physioReport';
    tab già esistenti in SchedaPaz — non duplicate qui. */
 
 const SUBTABS = [
-  { id: 'valutazione', l: '📈 Valutazione' },
-  { id: 'obiettivi', l: '🎯 Obiettivi' },
-  { id: 'diario', l: '📓 Diario sedute' },
-  { id: 'domiciliare', l: '🏠 Domiciliare' },
+  { id: 'valutazione', l: 'Valutazione', ic: 'trend' },
+  { id: 'obiettivi', l: 'Obiettivi', ic: 'zap' },
+  { id: 'diario', l: 'Diario sedute', ic: 'book' },
+  { id: 'domiciliare', l: 'Domiciliare', ic: 'home' },
 ];
 
 const fmtNum = (n) => (n === null || n === undefined || n === '' ? '—' : n);
@@ -76,8 +76,8 @@ export default function PhysioCartella({ paziente_id, studio_id, paziente, studi
   useEffect(() => { if (paziente_id) ricarica(); }, [paziente_id, accessMode]);
 
   const subtabs = fullAccess ? SUBTABS : [
-    { id: 'percorso', l: '🧭 Percorso autorizzato' },
-    { id: 'diario', l: '📓 La mia attività' },
+    { id: 'percorso', l: 'Percorso autorizzato', ic: 'compass' },
+    { id: 'diario', l: 'La mia attività', ic: 'book' },
   ];
 
   if (loading) return <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>Caricamento cartella…</div>;
@@ -102,11 +102,12 @@ export default function PhysioCartella({ paziente_id, studio_id, paziente, studi
             key={t.id}
             onClick={() => setSub(t.id)}
             style={{
-              flexShrink: 0, padding: '8px 13px', borderRadius: 20, fontSize: 12.5, fontWeight: 700,
+              flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, padding: '8px 13px', borderRadius: 20, fontSize: 12.5, fontWeight: 700,
               border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
               background: sub === t.id ? C.pri : C.bg, color: sub === t.id ? '#fff' : C.txm,
             }}
           >
+            <Ic n={t.ic} s={13} c={sub === t.id ? '#fff' : C.txm} />
             {t.l}
           </button>
         ))}
@@ -232,7 +233,7 @@ function SezioneValutazione({ studio_id, paziente_id, valutazioni, onChange }) {
         </Crd>
       )}
 
-      {valutazioni.length === 0 && !form && <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>Nessuna valutazione registrata</div>}
+      {valutazioni.length === 0 && !form && <EmptyState icon="pulse" title="Nessuna valutazione registrata" />}
 
       {valutazioni.map((v, idx) => {
         const precedente = valutazioni[idx + 1]; // ordinate desc: la successiva nell'array è quella prima nel tempo
@@ -363,7 +364,7 @@ function SezioneObiettivi({ studio_id, paziente_id, obiettivi, onChange }) {
         </Crd>
       )}
 
-      {obiettivi.length === 0 && !form && <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>Nessun obiettivo impostato</div>}
+      {obiettivi.length === 0 && !form && <EmptyState icon="trend" title="Nessun obiettivo impostato" />}
 
       {obiettivi.map((ob) => {
         const pct = progresso(ob);
@@ -458,7 +459,7 @@ function SezioneDiario({ studio_id, paziente_id, diario, onChange }) {
         </Crd>
       )}
 
-      {diario.length === 0 && !form && <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>Nessuna seduta registrata</div>}
+      {diario.length === 0 && !form && <EmptyState icon="book" title="Nessuna seduta registrata" />}
 
       {diario.map((d) => (
         <Crd key={d.id} style={{ marginBottom: 10 }}>
@@ -564,7 +565,7 @@ function SezioneDomiciliare({ studio_id, paziente_id, prescrizioni, esercizi, on
         </Crd>
       )}
 
-      {prescrizioni.filter((p) => p.attiva).length === 0 && !form && <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>Nessun esercizio domiciliare attivo</div>}
+      {prescrizioni.filter((p) => p.attiva).length === 0 && !form && <EmptyState icon="pulse" title="Nessun esercizio domiciliare attivo" />}
 
       {prescrizioni.filter((p) => p.attiva).map((p) => (
         <Crd key={p.id} style={{ marginBottom: 10 }}>
@@ -699,7 +700,7 @@ function SezioneTeam({ studio_id, paziente_id, currentUserId, canManageTeam }) {
       )}
 
       {manageOpen && (
-        <Modal title="Team del percorso" onClose={() => { setManageOpen(false); setAssignForm(null); }}>
+        <Modal title="Team del percorso" icon="users" onClose={() => { setManageOpen(false); setAssignForm(null); }}>
           {team.length === 0 && <div style={{ fontSize: 12, color: C.txl, marginBottom: 12 }}>Nessun professionista assegnato</div>}
 
           {team.map((r) => (

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker, SelettorePaziente } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker, SelettorePaziente, EmptyState } from './ui';
 import WaAction, { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
 import { C, uid, fmtD, today, getAppTypesDefault, DEF_AGENDA_SETTINGS } from '../lib/utils';
 import { useIsMobile } from '../lib/useIsMobile';
@@ -323,9 +323,10 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
         return (
           <div
             onClick={() => setMenuApp(null)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(10,20,40,0.55)', zIndex: 9999, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+            className="pol-modal-backdrop"
+            style={{ position: 'fixed', inset: 0, background: 'rgba(10,20,40,0.55)', zIndex: 9999, display: 'flex', justifyContent: 'center' }}
           >
-            <div onClick={e => e.stopPropagation()} style={{ background: C.sur, borderRadius: '18px 18px 0 0', width: '100%', maxWidth: 480, overflow: 'hidden' }}>
+            <div onClick={e => e.stopPropagation()} className="pol-modal-sheet" style={{ background: C.sur, width: '100%', maxWidth: 480, overflow: 'hidden' }}>
               <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.brd}`, display: 'flex', alignItems: 'center', gap: 9 }}>
                 <div style={{ width: 10, height: 10, borderRadius: '50%', background: co, flexShrink: 0 }} />
                 <div style={{ minWidth: 0 }}>
@@ -460,7 +461,7 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
       {/* Gutter da 46px, identico alla colonna ore della griglia sotto: senza, le colonne di
           questa striscia non coinciderebbero con quelle della griglia (uno sfasamento che
           confonde su quale giorno si sta guardando). */}
-      <div style={{ display: 'flex', marginBottom: compact ? 6 : 8, borderRadius: 12, background: C.sur, border: `1px solid ${C.brd}`, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', marginBottom: compact ? 6 : 8, borderRadius: 12, background: C.sur, border: `1px solid ${C.brd}`, overflow: 'hidden', boxShadow: '0 1px 2px rgba(15,23,42,.04), 0 6px 16px rgba(15,23,42,.06)' }}>
         <div style={{ width: 46, flexShrink: 0, borderRight: `1px solid ${C.brd}` }} />
         <div ref={scrollRef} onScroll={onScroll} style={{ flex: 1, minWidth: 0, display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
           {weeks.map((week, wi) => (
@@ -472,7 +473,7 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
                 return (
                   <div key={di} onClick={() => setSelDay(ds)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: compact ? 2 : 3, cursor: 'pointer', padding: '2px 0' }}>
                     <span style={{ fontSize: compact ? 8 : 9, fontWeight: 700, color: isToday ? C.pri : C.txl, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{WD_SHORT[d.getDay()]}</span>
-                    <span style={{ fontSize: compact ? 13 : 15, fontWeight: 800, width: circleD, height: circleD, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isSel ? C.pri : isToday ? C.priL : 'transparent', color: isSel ? '#fff' : isToday ? C.pri : C.txt }}>{d.getDate()}</span>
+                    <span style={{ fontSize: compact ? 13 : 15, fontWeight: 800, width: circleD, height: circleD, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isSel ? C.pri : isToday ? C.priL : 'transparent', color: isSel ? '#fff' : isToday ? C.pri : C.txt, boxShadow: isSel ? `0 4px 10px -2px ${C.pri}66` : 'none', transition: 'background .14s ease, box-shadow .14s ease' }}>{d.getDate()}</span>
                   </div>
                 );
               })}
@@ -902,7 +903,8 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     <button
       onClick={() => setRichiesteAperte(true)}
       aria-label={`${richieste.length} notifiche`}
-      style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', background: C.priL, border: 'none', cursor: 'pointer', flexShrink: 0 }}
+      className="pol-icon-btn"
+      style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', background: C.priL, border: 'none', cursor: 'pointer', flexShrink: 0, boxShadow: '0 1px 2px rgba(15,23,42,.06), 0 4px 10px rgba(15,23,42,.08)' }}
     >
       <Ic n="bell" s={15} c={C.pri} />
       <span style={{ position: 'absolute', top: -3, right: -3, minWidth: 15, height: 15, padding: '0 3px', borderRadius: 8, background: C.dan, color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>
@@ -951,7 +953,8 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       <button
         onClick={() => setFiltriAperti(v => !v)}
         aria-label={`Filtra per operatore/${labelPoltrona.toLowerCase()}`}
-        style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', background: filtroAttivo ? C.priL : C.bg, border: 'none', cursor: 'pointer', flexShrink: 0 }}
+        className="pol-icon-btn"
+        style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', background: filtroAttivo ? C.priL : C.bg, border: 'none', cursor: 'pointer', flexShrink: 0, boxShadow: '0 1px 2px rgba(15,23,42,.06), 0 4px 10px rgba(15,23,42,.08)' }}
       >
         <Ic n="filter" s={13} c={filtroAttivo ? C.pri : C.txm} />
         {filtroAttivo && <span style={{ position: 'absolute', top: -1, right: -1, width: 8, height: 8, borderRadius: '50%', background: C.pri, border: `1.5px solid ${C.sur}` }} />}
@@ -974,7 +977,8 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       onClick={() => { setSelModeWA(true); setSelAppIds([]); }}
       disabled={appVisibiliConTel.length === 0}
       aria-label="Invia WhatsApp"
-      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', background: appVisibiliConTel.length === 0 ? C.bg : '#E6F9EE', border: 'none', cursor: appVisibiliConTel.length === 0 ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+      className="pol-icon-btn"
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', background: appVisibiliConTel.length === 0 ? C.bg : '#E6F9EE', border: 'none', cursor: appVisibiliConTel.length === 0 ? 'not-allowed' : 'pointer', flexShrink: 0, boxShadow: appVisibiliConTel.length === 0 ? 'none' : '0 1px 2px rgba(15,23,42,.06), 0 4px 10px rgba(15,23,42,.08)' }}
     >
       <Ic n="wa" s={14} c={appVisibiliConTel.length === 0 ? C.txl : '#128C7E'} />
     </button>
@@ -1158,14 +1162,16 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
                 </Crd>
               );
             })}
-            {appointmentsAgenda.filter(a => a.data === selDay).length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 20, fontSize: 13 }}>Nessun appuntamento — tocca un giorno per aggiungerne</div>}
+            {appointmentsAgenda.filter(a => a.data === selDay).length === 0 && (
+              <EmptyState icon="cal" title="Nessun appuntamento" subtitle="Tocca un giorno per aggiungerne uno" />
+            )}
           </div>
         );
       })()}
 
       {/* MODAL WA */}
       {waModal && (
-        <Modal title="💬 Invia WhatsApp" onClose={() => setWaModal(null)}>
+        <Modal title="Invia WhatsApp" icon="wa" iconColor="#25D366" onClose={() => setWaModal(null)}>
           {(() => { const p = patients.find(x => x.id === waModal.pazienteId); return (
             <div style={{ background: C.priL, borderRadius: 9, padding: '9px 12px', marginBottom: 12 }}>
               <div style={{ fontWeight: 700, fontSize: 13 }}>{p?.nome} {p?.cognome}</div>
@@ -1193,7 +1199,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       {waMassModal && (() => {
         const selezionati = appointments.filter(a => selAppIds.includes(a.id));
         return (
-          <Modal title={`💬 Invia a ${selezionati.length} pazient${selezionati.length === 1 ? 'e' : 'i'}`} onClose={() => setWaMassModal(false)}>
+          <Modal title={`Invia a ${selezionati.length} pazient${selezionati.length === 1 ? 'e' : 'i'}`} icon="wa" iconColor="#25D366" onClose={() => setWaMassModal(false)}>
             <div style={{ background: C.priL, borderRadius: 9, padding: '9px 12px', marginBottom: 12, maxHeight: 130, overflowY: 'auto' }}>
               {selezionati.map(a => {
                 const p = patients.find(x => x.id === a.pazienteId);
@@ -1212,8 +1218,9 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
               <Txt value={waMassMsg} onChange={e => setWaMassMsg(e.target.value)} rows={6} />
             </Fld>
             <div style={{ fontSize: 10.5, color: C.txl, marginBottom: 8 }}>Segnaposto disponibili: {'{nome}'} {'{data}'} {'{ora}'} {'{tipo}'} — ogni paziente riceve il messaggio con i propri dati</div>
-            <div style={{ background: '#FFF7E6', borderRadius: 8, padding: '8px 10px', fontSize: 11, color: '#946200', marginBottom: 8 }}>
-              ⚠️ Si apriranno {selezionati.length} finestre WhatsApp in sequenza, una per paziente: conferma l'invio in ciascuna.
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, background: `${C.war}1A`, borderRadius: 8, padding: '8px 10px', fontSize: 11, color: C.war, marginBottom: 8 }}>
+              <Ic n="warn" s={13} c={C.war} />
+              <span>Si apriranno {selezionati.length} finestre WhatsApp in sequenza, una per paziente: conferma l'invio in ciascuna.</span>
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               <Btn ch="Annulla" v="sec" onClick={() => setWaMassModal(false)} full />
@@ -1225,7 +1232,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
 
       {/* MODAL NUOVO/MODIFICA */}
       {modal && (
-        <Modal title={editApp ? '✏️ Modifica appuntamento' : '📅 Nuovo appuntamento'} onClose={chiudiModalApp} wide>
+        <Modal title={editApp ? 'Modifica appuntamento' : 'Nuovo appuntamento'} icon={editApp ? 'edit' : 'cal'} onClose={chiudiModalApp} wide>
           <Fld label="Paziente">
             <SelettorePaziente
               patients={patients}
@@ -1317,7 +1324,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
 
       {/* MODAL IMPEGNO PERSONALE */}
       {impModal && (
-        <Modal title={editImp ? '✏️ Modifica impegno' : '🗓️ Nuovo impegno personale'} onClose={() => setImpModal(false)}>
+        <Modal title={editImp ? 'Modifica impegno' : 'Nuovo impegno personale'} icon={editImp ? 'edit' : 'cal'} onClose={() => setImpModal(false)}>
           <Fld label="Titolo">
             <Inp value={impForm.titolo} onChange={e => IF({ titolo: e.target.value })} placeholder="Es. Ferie, Chiamata commercialista…" autoFocus />
           </Fld>
@@ -1375,7 +1382,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           )}
 
           <Fld label="Note (opzionale)"><Txt value={impForm.note} onChange={e => IF({ note: e.target.value })} /></Fld>
-          {impForm.tuttoIlGiorno && impForm.dataFine < impForm.dataInizio && <div style={{ background: C.danL, borderRadius: 8, padding: '8px 12px', marginBottom: 8, fontSize: 12, color: C.dan, fontWeight: 700 }}>⚠️ La data di fine deve essere uguale o successiva alla data di inizio</div>}
+          {impForm.tuttoIlGiorno && impForm.dataFine < impForm.dataInizio && <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: C.danL, borderRadius: 8, padding: '8px 12px', marginBottom: 8, fontSize: 12, color: C.dan, fontWeight: 700 }}><Ic n="warn" s={13} c={C.dan} />La data di fine deve essere uguale o successiva alla data di inizio</div>}
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             {editImp && <Btn ch="Elimina" v="dan" onClick={delImpegno} />}
             <Btn ch="Annulla" v="sec" onClick={() => setImpModal(false)} full />
@@ -1407,9 +1414,9 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       </div>
 
       {richiesteAperte && (
-        <Modal title="Richieste di prenotazione" onClose={() => setRichiesteAperte(false)}>
+        <Modal title="Richieste di prenotazione" icon="bell" onClose={() => setRichiesteAperte(false)}>
           {richieste.length === 0 ? (
-            <div style={{ textAlign: 'center', color: C.txl, padding: 30, fontSize: 13 }}>Nessuna richiesta da gestire</div>
+            <EmptyState icon="ok" title="Nessuna richiesta da gestire" />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {richieste.map((r) => (

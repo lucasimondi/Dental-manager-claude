@@ -1,8 +1,8 @@
 ﻿import ProfiloUtente from './ProfiloUtente.jsx';
 import GestioneUtenti from './GestioneUtenti.jsx';
 import GestioneRisorseAgenda from './GestioneRisorseAgenda.jsx';
-import React, { useState, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Ic, DockIc, DOCK_ICON_STYLES } from './ui';
+import React, { useState, useEffect, useRef } from 'react';
+import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Ic, DockIc, DOCK_ICON_STYLES, PageHeader, EmptyState } from './ui';
 import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI, DEF_DOCK_SETTINGS, mergeDockSettings, DEF_AGENDA_SETTINGS, DEF_DOCUMENTI_SETTINGS, STORIA_CLINICA_MODELLO_BASE } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { normalizeManagementControlMode } from '../lib/canonicalFinancialSelectors';
@@ -55,6 +55,8 @@ function estraiColoriDaLogo(base64) {
 export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange, features, theme, toggleTheme, isStudioAdmin }) {
   const [si, setSi] = useState({ ...DEF_STUDIO, ...(studioInfo || {}) });
   const [toast, setToast] = useState('');
+  const firmaInputRef = useRef(null);
+  const logoInputRef = useRef(null);
   const [tipoModal, setTipoModal] = useState(null);
   const [sezione, setSezione] = useState('studio');
   const [tipoForm, setTipoForm] = useState({ nome: '', colore: COLORI_DISPONIBILI[0], durata: '', online_abilitato: false, online_giorni: [1, 2, 3, 4, 5], online_ora_inizio: '09:00', online_ora_fine: '18:00' });
@@ -273,30 +275,34 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
     <div>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
+      <PageHeader icon="set" title="Impostazioni" />
+
       {/* Navigazione a sezioni: prima era tutto in un unico scroll lunghissimo,
           scomodo su mobile — ora ogni area si apre da sola, il resto resta
           fuori dal DOM (nessun costo di render nascosto). */}
       <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginBottom: 16, paddingBottom: 2 }}>
         {[
-          ['studio', '🏥 Studio'],
-          ['agenda', '📅 Agenda'],
-          ['documenti', '📄 Documenti'],
-          ['privacy', '🔒 Privacy GDPR'],
-          ['prenotazione', '🔗 Prenotazione online'],
-          ['aspetto', '🎨 Aspetto'],
-          ['whatsapp', '💬 WhatsApp'],
-          ['team', '👥 Profilo e team'],
-        ].map(([id, lbl]) => (
+          ['studio', 'brief', 'Studio'],
+          ['agenda', 'cal', 'Agenda'],
+          ['documenti', 'file', 'Documenti'],
+          ['privacy', 'lock', 'Privacy GDPR'],
+          ['prenotazione', 'link', 'Prenotazione online'],
+          ['aspetto', 'palette', 'Aspetto'],
+          ['whatsapp', 'wa', 'WhatsApp'],
+          ['team', 'users', 'Profilo e team'],
+        ].map(([id, ic, lbl]) => (
           <button
             key={id}
             onClick={() => setSezione(id)}
+            className="pol-btn"
             style={{
-              flexShrink: 0, padding: '9px 14px', borderRadius: 20, fontWeight: 700, fontSize: 12.5, cursor: 'pointer',
+              flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 20, fontWeight: 700, fontSize: 12.5, cursor: 'pointer',
               border: `1.5px solid ${sezione === id ? C.pri : C.brd}`,
               background: sezione === id ? C.pri : C.sur, color: sezione === id ? '#fff' : C.txm,
-              whiteSpace: 'nowrap',
+              whiteSpace: 'nowrap', boxShadow: sezione === id ? `0 4px 10px -3px ${C.pri}66` : 'none',
             }}
           >
+            <Ic n={ic} s={13} c={sezione === id ? '#fff' : C.txm} />
             {lbl}
           </button>
         ))}
@@ -462,8 +468,10 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           ) : (
             <div>
               <input
+                ref={firmaInputRef}
                 type="file"
                 accept="image/png,image/jpeg"
+                style={{ display: 'none' }}
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
@@ -471,10 +479,11 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
                   const reader = new FileReader();
                   reader.onload = () => S({ firma_b64: reader.result });
                   reader.readAsDataURL(file);
+                  e.target.value = '';
                 }}
-                style={{ fontSize: 12 }}
               />
-              <div style={{ fontSize: 10, color: C.txl, marginTop: 4 }}>PNG o JPG, meglio se con sfondo trasparente. Comparirà nel timbro dei documenti medici, nella stessa posizione della firma.</div>
+              <Btn ch="Carica firma" ic="upload" v="sec" sz="sm" onClick={() => firmaInputRef.current?.click()} />
+              <div style={{ fontSize: 10, color: C.txl, marginTop: 6 }}>PNG o JPG, meglio se con sfondo trasparente. Comparirà nel timbro dei documenti medici, nella stessa posizione della firma.</div>
             </div>
           )}
         </Fld>
@@ -483,7 +492,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
         <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Logo personalizzato</div>
         {!features?.custom_logo ? (
           <div style={{ background: C.bg, borderRadius: 12, padding: 18, textAlign: 'center' }}>
-            <div style={{ fontSize: 22, marginBottom: 6 }}>🔒</div>
+            <Ic n="lock" s={22} c={C.txl} />
             <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Non disponibile</div>
             <div style={{ fontSize: 12, color: C.txm }}>Carica il tuo logo al posto di quello Poliedra nell'intestazione dell'app.</div>
           </div>
@@ -497,8 +506,10 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
             ) : (
               <div>
                 <input
+                  ref={logoInputRef}
                   type="file"
                   accept="image/png,image/jpeg"
+                  style={{ display: 'none' }}
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
@@ -506,10 +517,11 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
                     const reader = new FileReader();
                     reader.onload = () => S({ custom_logo_b64: reader.result });
                     reader.readAsDataURL(file);
+                    e.target.value = '';
                   }}
-                  style={{ fontSize: 12 }}
                 />
-                <div style={{ fontSize: 10, color: C.txl, marginTop: 4 }}>PNG o JPG, meglio se con sfondo trasparente. Comparirà al posto del logo Poliedra nell'header scuro dell'app.</div>
+                <Btn ch="Carica logo" ic="upload" v="sec" sz="sm" onClick={() => logoInputRef.current?.click()} />
+                <div style={{ fontSize: 10, color: C.txl, marginTop: 6 }}>PNG o JPG, meglio se con sfondo trasparente. Comparirà al posto del logo Poliedra nell'header scuro dell'app.</div>
               </div>
             )}
           </Fld>
@@ -519,7 +531,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
         <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Colori del brand (Premium)</div>
         {!features?.custom_colors ? (
           <div style={{ background: C.bg, borderRadius: 12, padding: 18, textAlign: 'center' }}>
-            <div style={{ fontSize: 22, marginBottom: 6 }}>🔒</div>
+            <Ic n="lock" s={22} c={C.txl} />
             <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Disponibile nel piano Premium</div>
             <div style={{ fontSize: 12, color: C.txm }}>Coordina i colori dell'app (header, pulsanti, evidenziazioni) con quelli del tuo logo.</div>
           </div>
@@ -617,7 +629,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
             <Ic n="edit" s={12} c={C.txl} />
           </div>
         ))}
-        {appTypes.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 24 }}>Nessun tipo configurato</div>}
+        {appTypes.length === 0 && <EmptyState icon="tag" title="Nessun tipo configurato" />}
       </Crd>
       <Btn ch="+ Nuovo tipo appuntamento" v="sec" onClick={openNewTipo} full />
 
@@ -661,7 +673,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
             <option value={1.6}>Molto grande — più leggibile</option>
           </Sel>
         </Fld>
-        {agSet.oraInizio >= agSet.oraFine && <div style={{ background: C.danL, borderRadius: 8, padding: '8px 12px', marginBottom: 10, fontSize: 12, color: C.dan, fontWeight: 700 }}>⚠️ L'ora di inizio deve essere prima dell'ora di fine</div>}
+        {agSet.oraInizio >= agSet.oraFine && <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: C.danL, borderRadius: 8, padding: '8px 12px', marginBottom: 10, fontSize: 12, color: C.dan, fontWeight: 700 }}><Ic n="warn" s={13} c={C.dan} />L'ora di inizio deve essere prima dell'ora di fine</div>}
         <div style={{ background: C.bg, borderRadius: 9, padding: '9px 12px', marginBottom: 14 }}>
           <div style={{ fontSize: 11, color: C.txm, fontWeight: 700 }}>{String(agSet.oraInizio).padStart(2, '0')}:00 — {String(agSet.oraFine).padStart(2, '0')}:00 · slot da {agSet.slotMin} min · {Math.ceil((agSet.oraFine - agSet.oraInizio) * 60 / agSet.slotMin)} slot totali</div>
         </div>
@@ -677,7 +689,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           <div style={{ fontSize: 10.5, color: C.txl, marginTop: 5 }}>Tocca un giorno per nasconderlo dalla vista Settimana (es. domenica se lo studio è chiuso)</div>
         </Fld>
       </Crd>
-      <Btn ch="💾 Salva impostazioni agenda" onClick={save} dis={agSet.oraInizio >= agSet.oraFine} full sz="lg" />
+      <Btn ch="Salva impostazioni agenda" ic="save" onClick={save} dis={agSet.oraInizio >= agSet.oraFine} full sz="lg" />
 
       <div style={{ marginTop: 26, marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Multi-agenda</div>
@@ -702,7 +714,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
               <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: features?.multi_operatore ? 25 : 3, transition: 'left 0.15s' }} />
             </button>
           ) : (
-            <span style={{ fontSize: 10.5, fontWeight: 700, color: C.txl, background: C.bg, borderRadius: 20, padding: '5px 10px', flexShrink: 0 }}>🔒 Pro+</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 700, color: C.txl, background: C.bg, borderRadius: 20, padding: '5px 10px', flexShrink: 0 }}><Ic n="lock" s={10} c={C.txl} />Pro+</span>
           )}
         </div>
       </Crd>
@@ -749,7 +761,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           </div>
         ))}
       </Crd>
-      <Btn ch="💾 Salva impostazioni documenti" onClick={save} full sz="lg" />
+      <Btn ch="Salva impostazioni documenti" ic="save" onClick={save} full sz="lg" />
       </>
       )}
 
@@ -761,7 +773,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       </div>
       <Crd style={{ marginBottom: 14 }}>
         {modelliConsenso.length === 0 && (
-          <div style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessun modello configurato</div>
+          <EmptyState icon="clip" title="Nessun modello configurato" />
         )}
         {modelliConsenso.map((m, i) => (
           <button
@@ -769,7 +781,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
             onClick={() => apriModelloModal(m)}
             style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '11px 4px', borderBottom: i < modelliConsenso.length - 1 ? `1px solid ${C.brd}` : 'none', background: 'none', border: 'none', cursor: 'pointer' }}
           >
-            <span style={{ fontSize: 16 }}>{m.tipo === 'trattamento_specifico' ? '📑' : '📄'}</span>
+            <Ic n={m.tipo === 'trattamento_specifico' ? 'clip' : 'file'} s={16} c={C.txm} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: 13, color: C.txt }}>{m.titolo}</div>
               <div style={{ fontSize: 10.5, color: C.txl }}>{m.tipo === 'trattamento_specifico' ? 'Trattamento specifico' : 'Generico'}</div>
@@ -876,8 +888,8 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
               <div style={{ flex: 1, border: `1.5px solid ${C.brd}`, borderRadius: 10, padding: '11px 12px', fontSize: 12, color: C.txm, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: C.bg }}>
                 {linkPrenotazione}
               </div>
-              <button onClick={copiaLink} style={{ padding: '0 16px', borderRadius: 10, border: `1.5px solid ${C.brd}`, background: C.sur, color: C.pri, fontWeight: 700, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                {linkCopiato ? '✓ Copiato' : '📋 Copia'}
+              <button onClick={copiaLink} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '0 16px', borderRadius: 10, border: `1.5px solid ${C.brd}`, background: C.sur, color: C.pri, fontWeight: 700, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                <Ic n={linkCopiato ? 'ok' : 'clip'} s={13} c={C.pri} />{linkCopiato ? 'Copiato' : 'Copia'}
               </button>
             </div>
             <div style={{ fontSize: 11, color: C.txl, marginTop: 8 }}>Condividilo su WhatsApp, sito web, biglietti da visita, o QR code stampato in studio.</div>
@@ -928,7 +940,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       <Crd style={{ marginBottom: 14 }}>
         {!features?.whatsapp_automatico ? (
           <div style={{ textAlign: 'center', padding: '20px 10px' }}>
-            <div style={{ fontSize: 28, marginBottom: 8 }}>🔒</div>
+            <Ic n="lock" s={28} c={C.txl} />
             <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 4 }}>Non incluso nel tuo piano</div>
             <div style={{ fontSize: 12.5, color: C.txm, lineHeight: 1.5 }}>
               Promemoria automatici e assistente AI su WhatsApp sono un modulo a parte rispetto
@@ -945,9 +957,9 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
               </div>
             )}
             {waConfig && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: waForm.attivo ? '#E8F5E9' : C.bg, borderRadius: 9, padding: '9px 12px', marginBottom: 14 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: waForm.attivo ? '#2E7D32' : C.txl, flexShrink: 0 }} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: waForm.attivo ? '#2E7D32' : C.txm }}>{waForm.attivo ? 'Configurato e attivo' : 'Configurato ma disattivato'}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: waForm.attivo ? `${C.suc}1A` : C.bg, borderRadius: 9, padding: '9px 12px', marginBottom: 14 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: waForm.attivo ? C.suc : C.txl, flexShrink: 0 }} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: waForm.attivo ? C.suc : C.txm }}>{waForm.attivo ? 'Configurato e attivo' : 'Configurato ma disattivato'}</span>
               </div>
             )}
             <Fld label="Phone Number ID">
@@ -956,12 +968,18 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
             <Fld label="WABA ID (opzionale)">
               <Inp value={waForm.waba_id} onChange={(e) => WF({ waba_id: e.target.value })} placeholder="ID del WhatsApp Business Account" />
             </Fld>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, cursor: 'pointer' }}>
-              <input type="checkbox" checked={waForm.attivo} onChange={(e) => WF({ attivo: e.target.checked })} />
+            <button
+              type="button"
+              onClick={() => WF({ attivo: !waForm.attivo })}
+              style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', textAlign: 'left', padding: '9px 11px', marginBottom: 14, borderRadius: 9, border: `1.5px solid ${waForm.attivo ? C.pri : C.brd}`, background: waForm.attivo ? C.priL : C.sur, cursor: 'pointer' }}
+            >
+              <div style={{ flexShrink: 0, width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${waForm.attivo ? C.pri : C.brd}`, background: waForm.attivo ? C.pri : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {waForm.attivo && <Ic n="ok" s={11} c="#fff" />}
+              </div>
               <span style={{ fontSize: 12.5, fontWeight: 600, color: C.txm }}>Attivo — se spento, l'assistente smette di rispondere su questo numero</span>
-            </label>
+            </button>
             {waMsg && <div style={{ fontSize: 12, color: waMsg.startsWith('Errore') ? C.dan : C.suc, marginBottom: 10, fontWeight: 700 }}>{waMsg}</div>}
-            <Btn ch={waSaving ? 'Salvataggio…' : '💾 Salva'} onClick={saveWaConfig} dis={waSaving} full />
+            <Btn ch={waSaving ? 'Salvataggio…' : 'Salva'} ic={waSaving ? undefined : 'save'} onClick={saveWaConfig} dis={waSaving} full />
             {waConfig && (
               <div style={{ fontSize: 11, color: C.txl, marginTop: 10, wordBreak: 'break-all' }}>
                 URL webhook da incollare nel pannello Meta:<br />
@@ -983,7 +1001,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       )}
 
       {voceModal && (
-        <Modal title={voceModal === 'new' ? 'Nuova voce' : 'Modifica voce'} onClose={() => setVoceModal(null)}>
+        <Modal title={voceModal === 'new' ? 'Nuova voce' : 'Modifica voce'} icon="clip" onClose={() => setVoceModal(null)}>
           <Fld label="Testo della domanda">
             <Inp value={voceForm.titolo} onChange={(e) => setVoceForm({ titolo: e.target.value })} placeholder="es. Allergie note, Terapie in corso..." />
           </Fld>
@@ -996,14 +1014,14 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       )}
 
       {modelloModal && (
-        <Modal title={modelloModal === 'new' ? 'Nuovo modello' : 'Modifica modello'} onClose={() => setModelloModal(null)}>
+        <Modal title={modelloModal === 'new' ? 'Nuovo modello' : 'Modifica modello'} icon="clip" onClose={() => setModelloModal(null)}>
           <Fld label="Titolo">
             <Inp value={modelloForm.titolo} onChange={(e) => setModelloForm((f) => ({ ...f, titolo: e.target.value }))} placeholder={(!si?.vertical || si.vertical === 'dentistico') ? 'es. Consenso trattamento dati, Consenso impianto...' : 'es. Consenso trattamento dati, Consenso specifico...'} />
           </Fld>
           <Fld label="Tipo">
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setModelloForm((f) => ({ ...f, tipo: 'generico' }))} style={{ flex: 1, padding: '10px 0', borderRadius: 9, border: `1.5px solid ${modelloForm.tipo === 'generico' ? C.pri : C.brd}`, background: modelloForm.tipo === 'generico' ? C.priL : C.sur, color: modelloForm.tipo === 'generico' ? C.pri : C.txm, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>📄 Generico</button>
-              <button onClick={() => setModelloForm((f) => ({ ...f, tipo: 'trattamento_specifico' }))} style={{ flex: 1, padding: '10px 0', borderRadius: 9, border: `1.5px solid ${modelloForm.tipo === 'trattamento_specifico' ? C.pri : C.brd}`, background: modelloForm.tipo === 'trattamento_specifico' ? C.priL : C.sur, color: modelloForm.tipo === 'trattamento_specifico' ? C.pri : C.txm, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>📑 Per trattamento</button>
+              <button onClick={() => setModelloForm((f) => ({ ...f, tipo: 'generico' }))} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flex: 1, padding: '10px 0', borderRadius: 9, border: `1.5px solid ${modelloForm.tipo === 'generico' ? C.pri : C.brd}`, background: modelloForm.tipo === 'generico' ? C.priL : C.sur, color: modelloForm.tipo === 'generico' ? C.pri : C.txm, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}><Ic n="file" s={13} c={modelloForm.tipo === 'generico' ? C.pri : C.txm} />Generico</button>
+              <button onClick={() => setModelloForm((f) => ({ ...f, tipo: 'trattamento_specifico' }))} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flex: 1, padding: '10px 0', borderRadius: 9, border: `1.5px solid ${modelloForm.tipo === 'trattamento_specifico' ? C.pri : C.brd}`, background: modelloForm.tipo === 'trattamento_specifico' ? C.priL : C.sur, color: modelloForm.tipo === 'trattamento_specifico' ? C.pri : C.txm, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}><Ic n="clip" s={13} c={modelloForm.tipo === 'trattamento_specifico' ? C.pri : C.txm} />Per trattamento</button>
             </div>
           </Fld>
           <Fld label="Testo del consenso">
@@ -1018,7 +1036,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       )}
 
       {tipoModal && (
-        <Modal title={tipoModal === 'new' ? 'Nuovo tipo appuntamento' : 'Modifica tipo'} onClose={() => setTipoModal(null)}>
+        <Modal title={tipoModal === 'new' ? 'Nuovo tipo appuntamento' : 'Modifica tipo'} icon="tag" onClose={() => setTipoModal(null)}>
           <Fld label="Nome"><Inp value={tipoForm.nome} onChange={(e) => setTipoForm((f) => ({ ...f, nome: e.target.value }))} placeholder="es. Igiene, Urgenza, Controllo…" /></Fld>
           <Fld label="Colore">
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8, marginBottom: 10 }}>

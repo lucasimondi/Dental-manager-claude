@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, SelettorePaziente } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, SelettorePaziente, PageHeader, EmptyState } from './ui';
 import { C, uid, fmt, fmtD, today } from '../lib/utils';
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { normalizza } from '../lib/ricercaPazienti';
@@ -111,21 +111,18 @@ export default function Pagamenti({ patients, payments, setPayments, plans, auto
     <div>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
-      {/* HEADER */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <div style={{ fontSize: 20, fontWeight: 800 }}>Pagamenti</div>
-        <div style={{ display: 'flex', gap: 7 }}>
-          {tabAttiva === 'studio'
-            ? <Btn ch="Studio" ic="plus" onClick={() => { setForm({ pazienteId: '', data: today(), importo: '', metodo: 'Contanti', nota: '', stato: 'pagato' }); setPazSearch(''); setModal(true); }} />
-            : <Btn ch="Esterno" ic="plus" onClick={() => { setFormExt({ collaborazione_id: '', collaborazione_nome: '', importo: '', data: today(), metodo: 'Bonifico', note: '' }); setModalExt(true); }} />
-          }
-        </div>
-      </div>
+      <PageHeader icon="eur" title="Pagamenti" actions={
+        tabAttiva === 'studio'
+          ? <Btn ch="Studio" ic="plus" onClick={() => { setForm({ pazienteId: '', data: today(), importo: '', metodo: 'Contanti', nota: '', stato: 'pagato' }); setPazSearch(''); setModal(true); }} />
+          : <Btn ch="Esterno" ic="plus" onClick={() => { setFormExt({ collaborazione_id: '', collaborazione_nome: '', importo: '', data: today(), metodo: 'Bonifico', note: '' }); setModalExt(true); }} />
+      } />
 
       {/* TAB SWITCHER */}
       <div style={{ display: 'flex', background: C.bg, borderRadius: 10, border: `1px solid ${C.brd}`, marginBottom: 14, overflow: 'hidden' }}>
-        {[['studio', '🏠 Studio'], ['esterno', '🤝 Collaborazioni']].map(([id, lbl]) => (
-          <button key={id} onClick={() => setTabAttiva(id)} style={{ flex: 1, padding: '10px 0', border: 'none', background: tabAttiva === id ? C.pri : 'transparent', color: tabAttiva === id ? '#fff' : C.txm, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{lbl}</button>
+        {[['studio', 'home', 'Studio'], ['esterno', 'shake', 'Collaborazioni']].map(([id, ic, lbl]) => (
+          <button key={id} onClick={() => setTabAttiva(id)} style={{ flex: 1, padding: '10px 0', border: 'none', background: tabAttiva === id ? C.pri : 'transparent', color: tabAttiva === id ? '#fff' : C.txm, fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <Ic n={ic} s={13} c={tabAttiva === id ? '#fff' : C.txm} />{lbl}
+          </button>
         ))}
       </div>
 
@@ -184,7 +181,7 @@ export default function Pagamenti({ patients, payments, setPayments, plans, auto
                 </Crd>
               );
             })}
-            {paymentsFiltrati.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>{ricerca ? 'Nessun pagamento trovato' : 'Nessun pagamento'}</div>}
+            {paymentsFiltrati.length === 0 && <EmptyState icon="eur" title={ricerca ? 'Nessun pagamento trovato' : 'Nessun pagamento'} />}
           </div>
         </>
       )}
@@ -205,7 +202,7 @@ export default function Pagamenti({ patients, payments, setPayments, plans, auto
 
           {/* Gestisci collaborazioni */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
-            <button onClick={() => setModalCollab(true)} style={{ background: C.purL, border: 'none', borderRadius: 8, padding: '7px 12px', color: C.pur, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>⚙️ Gestisci collaborazioni</button>
+            <button onClick={() => setModalCollab(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: C.purL, border: 'none', borderRadius: 8, padding: '7px 12px', color: C.pur, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}><Ic n="set" s={13} c={C.pur} />Gestisci collaborazioni</button>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
@@ -225,14 +222,14 @@ export default function Pagamenti({ patients, payments, setPayments, plans, auto
                 </div>
               </Crd>
             ))}
-            {pagExtFiltrati.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>{ricerca ? 'Nessun pagamento trovato' : 'Nessun pagamento esterno'}</div>}
+            {pagExtFiltrati.length === 0 && <EmptyState icon="eur" title={ricerca ? 'Nessun pagamento trovato' : 'Nessun pagamento esterno'} />}
           </div>
         </>
       )}
 
       {/* MODAL STUDIO */}
       {modal && (
-        <Modal title="Registra pagamento studio" onClose={() => setModal(false)}>
+        <Modal title="Registra pagamento studio" icon="eur" onClose={() => setModal(false)}>
           <Fld label="Paziente">
             <SelettorePaziente
               patients={patients}
@@ -281,7 +278,7 @@ export default function Pagamenti({ patients, payments, setPayments, plans, auto
 
       {/* MODAL ESTERNO */}
       {modalExt && (
-        <Modal title="💼 Registra incasso esterno" onClose={() => setModalExt(false)}>
+        <Modal title="Registra incasso esterno" icon="brief" onClose={() => setModalExt(false)}>
           <Fld label="Collaborazione">
             <Sel value={formExt.collaborazione_id} onChange={(e) => {
               const c = collaborazioni.find(x => String(x.id) === e.target.value);
@@ -293,7 +290,7 @@ export default function Pagamenti({ patients, payments, setPayments, plans, auto
           </Fld>
           {collaborazioni.length === 0 && (
             <div style={{ background: C.purL, borderRadius: 8, padding: '8px 12px', marginBottom: 8, fontSize: 12, color: C.pur }}>
-              Nessuna collaborazione — aggiungila con il tasto "⚙️ Gestisci collaborazioni"
+              Nessuna collaborazione — aggiungila con il tasto "Collaborazioni esterne"
             </div>
           )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -315,12 +312,12 @@ export default function Pagamenti({ patients, payments, setPayments, plans, auto
 
       {/* MODAL GESTISCI COLLABORAZIONI */}
       {modalCollab && (
-        <Modal title="⚙️ Collaborazioni esterne" onClose={() => setModalCollab(false)}>
+        <Modal title="Collaborazioni esterne" icon="set" onClose={() => setModalCollab(false)}>
           <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
             <Inp value={nuovaCollab} onChange={e => setNuovaCollab(e.target.value)} onKeyDown={e => e.key === 'Enter' && addCollab()} placeholder="es. Clinica San Carlo, Guardia medica..." style={{ flex: 1 }} />
             <Btn ch="Aggiungi" onClick={addCollab} dis={!nuovaCollab.trim()} />
           </div>
-          {collaborazioni.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 20 }}>Nessuna collaborazione ancora</div>}
+          {collaborazioni.length === 0 && <EmptyState icon="brief" title="Nessuna collaborazione ancora" />}
           {collaborazioni.map(c => (
             <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: `1px solid ${C.brd}` }}>
               <span style={{ fontWeight: 600, fontSize: 13 }}>{c.nome}</span>

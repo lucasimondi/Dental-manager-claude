@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { C } from '../lib/utils';
+import { PageHeader } from './ui';
 import { supabase } from '../lib/supabase.js';
 import { rangePeriodo } from '../lib/useControlloDati';
 import { loadCanonicalFinancialSnapshot, MANAGEMENT_CONTROL_MODES } from '../lib/canonicalFinancialSelectors';
@@ -83,6 +84,7 @@ export default function ControlloGestione(props) {
 
   return (
     <div>
+      <div style={{ padding: '0 14px' }}><PageHeader icon="chart" title="Controllo di gestione" /></div>
       <div style={{ display: 'flex', gap: 4, background: C.bg, borderRadius: 10, padding: 4, margin: '0 14px 4px', overflowX: 'auto' }}>
         {TABS.map((t) => (
           <button

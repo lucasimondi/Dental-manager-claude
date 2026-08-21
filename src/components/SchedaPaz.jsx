@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { supabase } from '../lib/supabase.js';
-import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker, PadFirma, FormStoriaClinica, PannelloInvioDocumento } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker, PadFirma, FormStoriaClinica, PannelloInvioDocumento, EmptyState } from './ui';
 const PdfViewerModal = React.lazy(() => import('./ui/PdfViewerModal.jsx'));
 import { C, fmt, fmtD, today, SCADENZA_PRESET, addMesi, rilevaRichiamo, ANAMNESI_MEDICA_STANDARD, STORIA_CLINICA_MODELLO_BASE } from '../lib/utils';
 import { generaConsensoPdf, hashConsenso } from '../lib/pdfConsenso';
@@ -497,7 +497,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
   const physioOperationalAccess = capabilities.has('clinical.personal_trainer') || capabilities.has('clinical.massage_therapist');
   const canAccessPhysio = isFisio && (physioFullAccess || physioOperationalAccess);
   const canManagePhysioTeam = physioFullAccess || isStudioAdmin === true;
-  const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'piani', l: '📑 Piani' }, ...(isDentistico ? [{ id: 'impl', l: '🔩 Impianti' }] : []), ...(canAccessPhysio ? [{ id: 'fisio', l: '🏃 Fisioterapia' }] : []), { id: 'paga', l: '💰 Pagamenti' }, { id: 'foto', l: '📁 Foto' }, { id: 'doc', l: '📄 Documenti' }, { id: 'app', l: '📅 Agenda' }];
+  const TABS = [{ id: 'info', l: 'Info', ic: 'clip' }, { id: 'piani', l: 'Piani', ic: 'plan' }, ...(isDentistico ? [{ id: 'impl', l: 'Impianti', ic: 'tooth' }] : []), ...(canAccessPhysio ? [{ id: 'fisio', l: 'Fisioterapia', ic: 'pulse' }] : []), { id: 'paga', l: 'Pagamenti', ic: 'eur' }, { id: 'foto', l: 'Foto', ic: 'ph' }, { id: 'doc', l: 'Documenti', ic: 'file' }, { id: 'app', l: 'Agenda', ic: 'cal' }];
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
@@ -521,7 +521,10 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
 
       <div style={{ display: 'flex', background: C.sur, borderBottom: `1px solid ${C.brd}`, flexShrink: 0 }}>
         {TABS.map((t) => (
-          <button key={t.id} onClick={() => { setTab(t.id); if (t.id === 'doc') { loadArchivioDocs(); caricaConsensi(); } if (t.id === 'info') caricaStorieCliniche(); }} style={{ flex: 1, padding: '11px 4px', background: 'none', border: 'none', borderBottom: `2.5px solid ${tab === t.id ? C.pri : 'transparent'}`, color: tab === t.id ? C.pri : C.txm, fontWeight: tab === t.id ? 700 : 500, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>{t.l}</button>
+          <button key={t.id} onClick={() => { setTab(t.id); if (t.id === 'doc') { loadArchivioDocs(); caricaConsensi(); } if (t.id === 'info') caricaStorieCliniche(); }} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '10px 4px', background: 'none', border: 'none', borderBottom: `2.5px solid ${tab === t.id ? C.pri : 'transparent'}`, color: tab === t.id ? C.pri : C.txm, fontWeight: tab === t.id ? 700 : 500, fontSize: 10.5, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'color .14s ease, border-color .14s ease' }}>
+            <Ic n={t.ic} s={15} c={tab === t.id ? C.pri : C.txm} />
+            {t.l}
+          </button>
         ))}
       </div>
 
@@ -544,14 +547,14 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
               ))}
             </Crd>
             {/* NOTE GENERALI (anamnesi/allergie) */}
-            <Crd style={{ background: noteGenerale ? '#FFFBEB' : C.sur, border: noteGenerale ? '1px solid #FCD34D' : `1px solid ${C.brd}`, marginBottom: 10 }}>
+            <Crd style={{ background: noteGenerale ? `${C.war}14` : C.sur, border: noteGenerale ? `1px solid ${C.war}80` : `1px solid ${C.brd}`, marginBottom: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: noteGenerale ? 7 : 0 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#92400E', textTransform: 'uppercase' }}>⚠️ Anamnesi / Allergie</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: C.war, textTransform: 'uppercase' }}><Ic n="warn" s={11} c={C.war} />Anamnesi / Allergie</div>
                 <button onClick={() => { setNoteGenerale(paz.note || ''); setNoteModalOpen(true); }} style={{ background: 'none', border: `1px solid ${C.brd}`, borderRadius: 7, padding: '4px 9px', fontSize: 10, fontWeight: 700, color: C.txm, cursor: 'pointer' }}>
                   {noteGenerale ? '✏️ Modifica' : '+ Aggiungi'}
                 </button>
               </div>
-              {noteGenerale && <div style={{ fontSize: 13, color: '#78350F', lineHeight: 1.6 }}>{noteGenerale}</div>}
+              {noteGenerale && <div style={{ fontSize: 13, color: C.war, lineHeight: 1.6 }}>{noteGenerale}</div>}
               {!noteGenerale && <div style={{ fontSize: 11, color: C.txl, marginTop: 4 }}>Nessuna nota generale — tocca per aggiungere allergie, anamnesi, ecc.</div>}
             </Crd>
 
@@ -561,10 +564,10 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em' }}>📝 Annotazioni cliniche</div>
               </div>
               <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                <input value={nuovaAnnotazione} onChange={e => setNuovaAnnotazione(e.target.value)} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && aggiungiAnnotazione()} placeholder="Scrivi una nota clinica..." style={{ flex: 1, padding: '9px 11px', border: `1.5px solid ${C.brd}`, borderRadius: 9, fontSize: 13, color: C.txt, background: C.sur }} />
-                <button onClick={aggiungiAnnotazione} disabled={!nuovaAnnotazione.trim()} style={{ background: C.pri, border: 'none', borderRadius: 9, padding: '9px 14px', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: nuovaAnnotazione.trim() ? 1 : 0.4, whiteSpace: 'nowrap' }}>+ Aggiungi</button>
+                <Inp value={nuovaAnnotazione} onChange={e => setNuovaAnnotazione(e.target.value)} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && aggiungiAnnotazione()} placeholder="Scrivi una nota clinica..." style={{ flex: 1, padding: '9px 11px' }} />
+                <Btn ch="Aggiungi" ic="plus" sz="sm" onClick={aggiungiAnnotazione} dis={!nuovaAnnotazione.trim()} />
               </div>
-              {annotazioni.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: '14px 0', fontSize: 12 }}>Nessuna annotazione</div>}
+              {annotazioni.length === 0 && <EmptyState icon="clip" title="Nessuna annotazione" />}
               {annotazioni.map(ann => (
                 <div key={ann.id} style={{ padding: '10px 0', borderBottom: `1px solid ${C.brd}` }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
@@ -651,7 +654,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
               </div>
               {storieCaricamento && <div style={{ textAlign: 'center', color: C.txl, padding: 14, fontSize: 12 }}>Caricamento…</div>}
               {!storieCaricamento && storieCliniche.length === 0 && (
-                <div style={{ textAlign: 'center', color: C.txl, padding: '14px 0', fontSize: 12 }}>Nessuna {usaAnamnesiMedicaStandard ? 'anamnesi' : 'storia clinica'} ancora compilata</div>
+                <EmptyState icon="clip" title={`Nessuna ${usaAnamnesiMedicaStandard ? 'anamnesi' : 'storia clinica'} ancora compilata`} />
               )}
               {!storieCaricamento && storieCliniche.map((s) => {
                 const nSi = (s.risposte || []).filter(r => r.valore === 'si').length;
@@ -695,7 +698,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
         )}
 
         {gdprModal === 'esporta' && (
-          <Modal title="Esporta dati paziente" onClose={() => setGdprModal(null)}>
+          <Modal title="Esporta dati paziente" icon="download" onClose={() => setGdprModal(null)}>
             <div style={{ fontSize: 13, color: C.txm, lineHeight: 1.5, marginBottom: 16 }}>
               Verrà scaricato un file con tutti i dati che lo studio possiede su <b>{paz.nome} {paz.cognome}</b>: anagrafica, appuntamenti, piani di cura, pagamenti, documenti medici e fiscali.
             </div>
@@ -707,26 +710,26 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
         )}
 
         {gdprModal === 'elimina' && (
-          <Modal title="Elimina dati paziente" onClose={() => setGdprModal(null)}>
+          <Modal title="Elimina dati paziente" icon="del" iconColor={C.dan} onClose={() => setGdprModal(null)}>
             {!gdprEsito ? (
               <>
                 <div style={{ fontSize: 13, color: C.txt, lineHeight: 1.5, marginBottom: 14 }}>
                   Stai per eliminare <b>definitivamente</b> anagrafica, appuntamenti, piani di cura, pagamenti e documenti medici di <b>{paz.nome} {paz.cognome}</b>. L'operazione non è reversibile.
                 </div>
 
-                <div style={{ background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 10, padding: 12, marginBottom: 14 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#92400E', marginBottom: 6 }}>⚠️ Documenti fiscali (fatture, rimborsi)</div>
-                  <div style={{ fontSize: 11.5, color: '#78350F', lineHeight: 1.5, marginBottom: 10 }}>
+                <div style={{ background: `${C.war}14`, border: `1px solid ${C.war}80`, borderRadius: 10, padding: 12, marginBottom: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: C.war, marginBottom: 6 }}><Ic n="warn" s={13} c={C.war} />Documenti fiscali (fatture, rimborsi)</div>
+                  <div style={{ fontSize: 11.5, color: C.war, lineHeight: 1.5, marginBottom: 10 }}>
                     Le fatture di questo paziente sono soggette per legge a un obbligo di conservazione fiscale di 10 anni (art. 2220 c.c.). La decisione di conservarle o eliminarle resta comunque tua.
                   </div>
                   <button
                     onClick={() => setGdprCancellaFatture((v) => !v)}
                     style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                   >
-                    <div style={{ flexShrink: 0, width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${gdprCancellaFatture ? C.dan : '#92400E'}`, background: gdprCancellaFatture ? C.dan : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ flexShrink: 0, width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${gdprCancellaFatture ? C.dan : C.war}`, background: gdprCancellaFatture ? C.dan : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {gdprCancellaFatture && <Ic n="ok" s={11} c="#fff" />}
                     </div>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#92400E' }}>Elimina anche i documenti fiscali</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: C.war }}>Elimina anche i documenti fiscali</span>
                   </button>
                 </div>
 
@@ -756,7 +759,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
         )}
 
         {nuovoConsensoModal && (
-          <Modal title="Nuovo consenso informato" onClose={() => setNuovoConsensoModal(false)}>
+          <Modal title="Nuovo consenso informato" icon="clip" onClose={() => setNuovoConsensoModal(false)}>
             {consensoStep === 'scelta' && (
               <>
                 <Fld label="Modello di consenso">
@@ -865,7 +868,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
         )}
 
         {consensoInVisualizzazione && (
-          <Modal title={consensoInVisualizzazione.titolo} onClose={() => setConsensoInVisualizzazione(null)}>
+          <Modal title={consensoInVisualizzazione.titolo} icon="clip" onClose={() => setConsensoInVisualizzazione(null)}>
             <div style={{ fontSize: 11.5, color: C.txm, marginBottom: 10 }}>
               Firmato il {new Date(consensoInVisualizzazione.created_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
               {consensoInVisualizzazione.firmato_da_nome && ` da ${consensoInVisualizzazione.firmato_da_nome}`}
@@ -874,7 +877,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
               {consensoInVisualizzazione.testo}
             </div>
             <div style={{ fontSize: 11, fontWeight: 700, color: C.txm, marginBottom: 6 }}>Firma</div>
-            <div style={{ border: `1px solid ${C.brd}`, borderRadius: 9, padding: 8, background: '#fff', marginBottom: 14 }}>
+            <div style={{ border: `1px solid ${C.brd}`, borderRadius: 9, padding: 8, background: C.sur, marginBottom: 14 }}>
               <img src={consensoInVisualizzazione.firma_png} alt="Firma" style={{ width: '100%', display: 'block' }} />
             </div>
             <Btn ch="Chiudi" v="sec" onClick={() => setConsensoInVisualizzazione(null)} full />
@@ -882,7 +885,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
         )}
 
         {nuovaStoriaModal && (
-          <Modal title={usaAnamnesiMedicaStandard ? 'Nuova anamnesi' : 'Nuova storia clinica'} onClose={() => setNuovaStoriaModal(false)}>
+          <Modal title={usaAnamnesiMedicaStandard ? 'Nuova anamnesi' : 'Nuova storia clinica'} icon="clip" onClose={() => setNuovaStoriaModal(false)}>
             {storiaStep === 'compila' && (
               <FormStoriaClinica voci={vociStoriaClinica} onCompilato={dopoCompilazioneStoria} C={C} testoBottone="Avanti" />
             )}
@@ -941,7 +944,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
         )}
 
         {storiaInVisualizzazione && (
-          <Modal title={usaAnamnesiMedicaStandard ? 'Anamnesi' : 'Storia clinica'} onClose={() => setStoriaInVisualizzazione(null)}>
+          <Modal title={usaAnamnesiMedicaStandard ? 'Anamnesi' : 'Storia clinica'} icon="clip" onClose={() => setStoriaInVisualizzazione(null)}>
             <div style={{ fontSize: 11.5, color: C.txm, marginBottom: 14 }}>
               Firmato il {new Date(storiaInVisualizzazione.firmato_il || storiaInVisualizzazione.created_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
               {storiaInVisualizzazione.firmato_da_nome && ` da ${storiaInVisualizzazione.firmato_da_nome}`}
@@ -967,7 +970,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
               </div>
             )}
             <div style={{ fontSize: 11, fontWeight: 700, color: C.txm, marginBottom: 6 }}>Firma</div>
-            <div style={{ border: `1px solid ${C.brd}`, borderRadius: 9, padding: 8, background: '#fff', marginBottom: 14 }}>
+            <div style={{ border: `1px solid ${C.brd}`, borderRadius: 9, padding: 8, background: C.sur, marginBottom: 14 }}>
               <img src={storiaInVisualizzazione.firma_png} alt="Firma" style={{ width: '100%', display: 'block' }} />
             </div>
             <Btn ch="Chiudi" v="sec" onClick={() => setStoriaInVisualizzazione(null)} full />
@@ -990,7 +993,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
               </div>
             </div>
 
-            {patPlans.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>Nessun piano di cura</div>}
+            {patPlans.length === 0 && <EmptyState icon="plan" title="Nessun piano di cura" />}
             {patPlans.map((pl) => {
               const sub = pl.voci.reduce((s, v) => s + Number(v.prezzo), 0);
               const sc = Number(pl.sconto) || 0;
@@ -1004,9 +1007,9 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
               const statoC = { attivo: C.war, accettato: C.acc, concluso: C.pri, rifiutato: C.dan }[statoEff] || C.war;
 
               return (
-                <Crd key={pl.id} style={{ marginBottom: 12, border: `2px solid ${isSel ? C.pri : terminato ? C.pri + '50' : C.brd}`, background: terminato ? C.priL + '40' : '#fff' }}>
+                <Crd key={pl.id} style={{ marginBottom: 12, border: `2px solid ${isSel ? C.pri : terminato ? C.pri + '50' : C.brd}`, background: terminato ? C.priL + '40' : C.sur }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
-                    <button onClick={() => toggleSel(pl.id)} style={{ marginTop: 2, width: 22, height: 22, borderRadius: 6, border: `2px solid ${isSel ? C.pri : C.brd}`, background: isSel ? C.pri : '#fff', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                    <button onClick={() => toggleSel(pl.id)} style={{ marginTop: 2, width: 22, height: 22, borderRadius: 6, border: `2px solid ${isSel ? C.pri : C.brd}`, background: isSel ? C.pri : C.sur, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                       {isSel && <Ic n="ok" s={12} c="#fff" />}
                     </button>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -1021,7 +1024,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                       <button onClick={() => setPdfPlan(pl)} title="PDF" style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, color: C.pri, fontWeight: 700, fontSize: 10 }}>
                         <Ic n="prt" s={12} c={C.pri} />Stampa PDF
                       </button>
-                      <button onClick={() => openEditPiano(pl)} title="Modifica" style={{ background: '#EDE9FE', border: 'none', borderRadius: 7, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                      <button onClick={() => openEditPiano(pl)} title="Modifica" style={{ background: `${C.pur}20`, border: 'none', borderRadius: 7, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                         <Ic n="edit" s={13} c={C.pur} />
                       </button>
                       <button onClick={(e) => { e.stopPropagation(); delPiano(pl.id); }} title="Elimina" style={{ background: C.danL, border: 'none', borderRadius: 7, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
@@ -1057,7 +1060,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                           <span style={{ fontSize: 11, fontWeight: 800, color: C.pur }}>{cons}/{tot2 || '?'}</span>
                         </div>
                         {tot2 > 0 && (
-                          <div style={{ background: '#fff', borderRadius: 4, height: 6, overflow: 'hidden', marginBottom: 7 }}>
+                          <div style={{ background: C.bg, borderRadius: 4, height: 6, overflow: 'hidden', marginBottom: 7 }}>
                             <div style={{ height: '100%', width: `${pctOrto}%`, background: completato ? C.suc : C.pur, borderRadius: 4 }} />
                           </div>
                         )}
@@ -1090,7 +1093,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                     <div style={{ background: C.danL, borderRadius: 9, padding: '10px 12px', marginBottom: 8, marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                       <span style={{ fontSize: 12, fontWeight: 700, color: C.dan }}>Eliminare questo piano?</span>
                       <div style={{ display: 'flex', gap: 7, flexShrink: 0 }}>
-                        <button onClick={() => setConfirmDelId(null)} style={{ background: '#fff', border: `1px solid ${C.brd}`, borderRadius: 7, padding: '5px 11px', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: C.txm }}>No</button>
+                        <button onClick={() => setConfirmDelId(null)} style={{ background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 7, padding: '5px 11px', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: C.txm }}>No</button>
                         <button onClick={() => confirmDel(pl.id)} style={{ background: C.dan, border: 'none', borderRadius: 7, padding: '5px 11px', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#fff' }}>Sì, elimina</button>
                       </div>
                     </div>
@@ -1116,7 +1119,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                             </span>
                             <div style={{ display: 'flex', gap: 3 }}>
                               {SCADENZA_PRESET.map((p) => (
-                                <button key={p.mesi} onClick={() => setRichiamo(pl.id, i, v.richiamoTipo || 'Controllo', addMesi(v.dataEsec || today(), p.mesi))} style={{ background: '#fff', border: `1px solid ${C.brd}`, borderRadius: 6, padding: '2px 6px', fontSize: 9, fontWeight: 700, color: C.txm, cursor: 'pointer' }}>{p.label}</button>
+                                <button key={p.mesi} onClick={() => setRichiamo(pl.id, i, v.richiamoTipo || 'Controllo', addMesi(v.dataEsec || today(), p.mesi))} style={{ background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 6, padding: '2px 6px', fontSize: 9, fontWeight: 700, color: C.txm, cursor: 'pointer' }}>{p.label}</button>
                               ))}
                               {v.richiamoData && <button onClick={() => setRichiamo(pl.id, i, '', null)} style={{ background: C.danL, border: 'none', borderRadius: 6, padding: '2px 6px', fontSize: 9, fontWeight: 700, color: C.dan, cursor: 'pointer' }}>✕</button>}
                             </div>
@@ -1177,10 +1180,11 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
           <div>
             {/* alert corona in scadenza */}
             {patImpianti.filter(im => im.dataCorona && new Date(im.dataCorona + 'T12:00') <= new Date(new Date().setDate(new Date().getDate() + 30))).map(im => (
-              <div key={im.id} style={{ background: new Date(im.dataCorona + 'T12:00') < new Date() ? C.danL : '#FEF3E2', borderRadius: 10, padding: '10px 13px', marginBottom: 10, borderLeft: `3px solid ${new Date(im.dataCorona + 'T12:00') < new Date() ? C.dan : C.war}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div key={im.id} style={{ background: new Date(im.dataCorona + 'T12:00') < new Date() ? C.danL : `${C.war}1A`, borderRadius: 10, padding: '10px 13px', marginBottom: 10, borderLeft: `3px solid ${new Date(im.dataCorona + 'T12:00') < new Date() ? C.dan : C.war}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: new Date(im.dataCorona + 'T12:00') < new Date() ? C.dan : C.war }}>
-                    {new Date(im.dataCorona + 'T12:00') < new Date() ? '⚠️ Carico corona scaduto' : '📅 Carico corona in arrivo'}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 800, color: new Date(im.dataCorona + 'T12:00') < new Date() ? C.dan : C.war }}>
+                    <Ic n={new Date(im.dataCorona + 'T12:00') < new Date() ? 'warn' : 'cal'} s={12} c={new Date(im.dataCorona + 'T12:00') < new Date() ? C.dan : C.war} />
+                    {new Date(im.dataCorona + 'T12:00') < new Date() ? 'Carico corona scaduto' : 'Carico corona in arrivo'}
                   </div>
                   <div style={{ fontSize: 11, color: C.txm }}>Dente {im.dente || '—'} · {im.marca || ''} {im.modello || ''} · previsto {fmtD(im.dataCorona)}</div>
                 </div>
@@ -1193,7 +1197,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
               </button>
             </div>
 
-            {patImpianti.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>Nessun impianto registrato</div>}
+            {patImpianti.length === 0 && <EmptyState icon="tooth" title="Nessun impianto registrato" />}
 
             {patImpianti.map(im => {
               const hasCorona = !!im.dataCorona;
@@ -1226,7 +1230,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                   </div>
 
                   {/* carico corona */}
-                  <div style={{ background: coronaScaduta ? C.danL : coronaVicina ? '#FEF3E2' : C.sucL, borderRadius: 8, padding: '8px 11px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ background: coronaScaduta ? C.danL : coronaVicina ? `${C.war}1A` : C.sucL, borderRadius: 8, padding: '8px 11px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <div style={{ fontSize: 10, fontWeight: 700, color: C.txm, textTransform: 'uppercase' }}>Carico / Corona prevista</div>
                       <div style={{ fontSize: 13, fontWeight: 800, color: coronaScaduta ? C.dan : coronaVicina ? C.war : C.suc }}>{hasCorona ? fmtD(im.dataCorona) : '— non impostata'}</div>
@@ -1241,7 +1245,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                     <div style={{ background: C.danL, borderRadius: 8, padding: '8px 11px', marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: 12, fontWeight: 700, color: C.dan }}>Eliminare questo impianto?</span>
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <button onClick={() => setImpConfirmDel(null)} style={{ background: '#fff', border: `1px solid ${C.brd}`, borderRadius: 6, padding: '4px 9px', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: C.txm }}>No</button>
+                        <button onClick={() => setImpConfirmDel(null)} style={{ background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 6, padding: '4px 9px', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: C.txm }}>No</button>
                         <button onClick={() => { setImplants && setImplants(prev => prev.filter(x => x.id !== im.id)); setImpConfirmDel(null); }} style={{ background: C.dan, border: 'none', borderRadius: 6, padding: '4px 9px', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#fff' }}>Sì, elimina</button>
                       </div>
                     </div>
@@ -1315,7 +1319,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
               </div>
             )}
             <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 7 }}>Pagamenti registrati</div>
-            {patPay.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: '20px 0' }}>Nessun pagamento registrato</div>}
+            {patPay.length === 0 && <EmptyState icon="eur" title="Nessun pagamento registrato" />}
             {patPay.map((p) => (
               <Crd key={p.id} style={{ marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1329,9 +1333,9 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
               </Crd>
             ))}
             {totDaPagare > 0 && (
-              <Crd style={{ background: '#FEF3E2', border: `1px solid ${C.war}40`, marginTop: 4 }}>
+              <Crd style={{ background: `${C.war}1A`, border: `1px solid ${C.war}40`, marginTop: 4 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#92400E' }}>⏳ Saldo residuo</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: C.war }}>⏳ Saldo residuo</span>
                   <span style={{ fontSize: 17, fontWeight: 900, color: C.dan }}>{fmt(totDaPagare)}</span>
                 </div>
               </Crd>
@@ -1401,7 +1405,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
               </div>
               {consensiCaricamento && <div style={{ textAlign: 'center', color: C.txl, padding: 14, fontSize: 12 }}>Caricamento…</div>}
               {!consensiCaricamento && consensiStorico.length === 0 && (
-                <div style={{ textAlign: 'center', color: C.txl, padding: '14px 0', fontSize: 12 }}>Nessun consenso ancora firmato</div>
+                <EmptyState icon="clip" title="Nessun consenso ancora firmato" />
               )}
               {!consensiCaricamento && consensiStorico.map((c) => (
                 <div key={c.id} onClick={() => setConsensoInVisualizzazione(c)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: `1px solid ${C.brd}`, cursor: 'pointer' }}>
@@ -1434,7 +1438,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                   <div style={{ fontSize: 11, color: C.txm, marginTop: 2 }}>Genera documenti medici in PDF</div>
                 </div>
               </button>
-              <button onClick={() => setDocFiscale(true)} style={{ background: '#E8FAF9', border: `1.5px solid ${C.acc}`, borderRadius: 12, padding: 16, cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button onClick={() => setDocFiscale(true)} style={{ background: `${C.acc}1A`, border: `1.5px solid ${C.acc}`, borderRadius: 12, padding: 16, cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ background: C.acc, borderRadius: 8, padding: 8 }}><Ic n="eur" s={20} c="#fff" /></div>
                 <div>
                   <div style={{ fontWeight: 800, fontSize: 14, color: C.acc }}>Fattura / Rimborso spese</div>
@@ -1484,7 +1488,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
               )}
               {!archivioLoading && archivioDocs.length > 0 && (() => {
                 const visibili = filtroTipoDoc ? archivioDocs.filter(d => d.tipo === filtroTipoDoc) : archivioDocs;
-                if (visibili.length === 0) return <div style={{ textAlign: 'center', color: C.txl, padding: '20px 10px', fontSize: 12.5 }}>Nessun documento di questo tipo</div>;
+                if (visibili.length === 0) return <EmptyState icon="file" title="Nessun documento di questo tipo" />;
                 return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {visibili.map((doc) => {
@@ -1492,7 +1496,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                     return (
                       <Crd key={`${doc.tabella}_${doc.id}`} style={{ padding: 0, overflow: 'hidden' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 12 }}>
-                          <div style={{ background: doc.tabella === 'documenti_fiscali' ? '#E8FAF9' : C.priL, borderRadius: 9, padding: 8, flexShrink: 0 }}>
+                          <div style={{ background: doc.tabella === 'documenti_fiscali' ? `${C.acc}1A` : C.priL, borderRadius: 9, padding: 8, flexShrink: 0 }}>
                             <Ic n={doc.tabella === 'documenti_fiscali' ? 'eur' : 'plan'} s={16} c={doc.tabella === 'documenti_fiscali' ? C.acc : C.pri} />
                           </div>
                           <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => visualizzaDocArchiviato(doc)} role="button" tabIndex={0}>
@@ -1515,7 +1519,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                           <div style={{ background: C.danL, padding: '9px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderTop: `1px solid ${C.dan}30` }}>
                             <span style={{ fontSize: 12, fontWeight: 700, color: C.dan }}>Eliminare definitivamente questo documento?</span>
                             <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                              <button onClick={() => setConfirmDelDoc(null)} style={{ background: '#fff', border: `1px solid ${C.brd}`, borderRadius: 7, padding: '5px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: C.txm }}>No</button>
+                              <button onClick={() => setConfirmDelDoc(null)} style={{ background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 7, padding: '5px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: C.txm }}>No</button>
                               <button onClick={() => eliminaDocArchiviato(doc)} style={{ background: C.dan, border: 'none', borderRadius: 7, padding: '5px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#fff' }}>Sì, elimina</button>
                             </div>
                           </div>
@@ -1539,7 +1543,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                 <Ic n="plus" s={12} c="#fff" /> Nuovo appuntamento
               </button>
             </div>
-            {patApp.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>Nessun appuntamento</div>}
+            {patApp.length === 0 && <EmptyState icon="cal" title="Nessun appuntamento" />}
             {patApp.map((a) => (
               <Crd key={a.id} style={{ marginBottom: 8, borderLeft: `3px solid ${a.data >= today() ? C.pri : C.brd}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1566,7 +1570,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
         const nonEseguito = plSel && importoNum > 0 && eseguitoNonIncassato === 0;
         const isAnticipo = plSel && importoNum > 0 && importoNum > eseguitoNonIncassato && eseguitoNonIncassato > 0;
         return (
-          <Modal title="💳 Registra pagamento" onClose={() => { setPagModal(false); setPagVoceCtx(null); }}>
+          <Modal title="Registra pagamento" icon="eur" onClose={() => { setPagModal(false); setPagVoceCtx(null); }}>
             <div style={{ background: C.priD, borderRadius: 10, padding: 12, marginBottom: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <div><div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>Dovuto</div><div style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{fmt(totDovuto)}</div></div>
@@ -1604,14 +1608,14 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
 
             {nonEseguito && (
               <div style={{ background: C.danL, borderRadius: 8, padding: '8px 12px', marginBottom: 8 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: C.dan }}>⚠️ Nessuna prestazione eseguita su questo piano</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: C.dan }}><Ic n="warn" s={13} c={C.dan} />Nessuna prestazione eseguita su questo piano</div>
                 <div style={{ fontSize: 11, color: C.dan, marginTop: 3 }}>Il pagamento verrà registrato come anticipo. Le prestazioni andranno segnate come eseguite dal tab Piani.</div>
               </div>
             )}
 
             {isAnticipo && (
-              <div style={{ background: '#FEF3E2', borderRadius: 8, padding: '8px 12px', marginBottom: 8 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: C.war }}>⚠️ Importo superiore all'eseguito ({fmt(eseguitoNonIncassato)})</div>
+              <div style={{ background: `${C.war}1A`, borderRadius: 8, padding: '8px 12px', marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: C.war }}><Ic n="warn" s={13} c={C.war} />Importo superiore all'eseguito ({fmt(eseguitoNonIncassato)})</div>
                 <div style={{ fontSize: 11, color: C.war, marginTop: 3 }}>La parte eccedente ({fmt(importoNum - eseguitoNonIncassato)}) verrà registrata come anticipo.</div>
               </div>
             )}
@@ -1660,7 +1664,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
       })()}
 
       {waModal && (
-        <Modal title="💬 Invia WhatsApp" onClose={() => setWaModal(false)}>
+        <Modal title="Invia WhatsApp" icon="wa" iconColor="#25D366" onClose={() => setWaModal(false)}>
           <div style={{ background: C.priL, borderRadius: 9, padding: '9px 12px', marginBottom: 12 }}>
             <div style={{ fontWeight: 700, fontSize: 13 }}>{paz.nome} {paz.cognome}</div>
             {paz.telefono && <div style={{ fontSize: 11, color: C.txl }}>📱 {paz.telefono}</div>}
@@ -1681,7 +1685,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
             </Fld>
           )}
           <Fld label="Messaggio">
-            <textarea value={waMsg} onChange={e => setWaMsg(e.target.value)} rows={6} style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${C.brd}`, borderRadius: 10, fontSize: 13, color: C.txt, background: C.sur, boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }} />
+            <Txt value={waMsg} onChange={e => setWaMsg(e.target.value)} rows={6} />
           </Fld>
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             <Btn ch="Annulla" v="sec" onClick={() => setWaModal(false)} full />
@@ -1695,7 +1699,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
       )}
 
       {appModal && (
-        <Modal title="📅 Nuovo appuntamento" onClose={() => setAppModal(false)}>
+        <Modal title="Nuovo appuntamento" icon="cal" onClose={() => setAppModal(false)}>
           <div style={{ background: C.priL, borderRadius: 9, padding: '9px 12px', marginBottom: 12, fontWeight: 700, fontSize: 13, color: C.pri }}>
             👤 {paz.nome} {paz.cognome}
           </div>
@@ -1734,9 +1738,9 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
       )}
 
       {noteModalOpen && (
-        <Modal title="Anamnesi / Allergie / Note generali" onClose={() => setNoteModalOpen(false)}>
+        <Modal title="Anamnesi / Allergie / Note generali" icon="clip" onClose={() => setNoteModalOpen(false)}>
           <div style={{ fontSize: 12, color: C.txm, marginBottom: 10 }}>Campo libero per anamnesi, allergie, farmaci abituali, note importanti sul paziente.</div>
-          <textarea value={noteGenerale} onChange={e => setNoteGenerale(e.target.value)} rows={7} placeholder="es. Allergia alla penicillina, diabetico, in terapia con Coumadin..." style={{ width: '100%', padding: '11px 12px', border: `1.5px solid ${C.brd}`, borderRadius: 10, fontSize: 14, color: C.txt, background: C.sur, boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }} />
+          <Txt value={noteGenerale} onChange={e => setNoteGenerale(e.target.value)} rows={7} placeholder="es. Allergia alla penicillina, diabetico, in terapia con Coumadin..." style={{ fontSize: 14 }} />
           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
             <Btn ch="Annulla" v="sec" onClick={() => setNoteModalOpen(false)} full />
             <Btn ch="Salva" onClick={saveNoteGenerale} full />
@@ -1745,7 +1749,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
       )}
 
       {ricordaModal && (
-        <Modal title="📌 Crea richiamo" onClose={() => setRicordaModal(null)}>
+        <Modal title="Crea richiamo" icon="bell" onClose={() => setRicordaModal(null)}>
           <div style={{ fontSize: 12, color: C.txm, marginBottom: 12 }}>Il richiamo apparirà in dashboard fino a quando non lo segni come fatto.</div>
           <Fld label="Cosa ricordare">
             <Inp value={ricordaTesto} onChange={e => setRicordaTesto(e.target.value)} placeholder={isDentistico ? `es. Richiamare ${paz.nome} per rx dente 36` : `es. Richiamare ${paz.nome} per il controllo`} />
@@ -1766,7 +1770,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
       )}
 
       {impModal && (
-        <Modal title={impEditId ? 'Modifica impianto' : 'Nuovo impianto'} onClose={() => setImpModal(false)} wide>
+        <Modal title={impEditId ? 'Modifica impianto' : 'Nuovo impianto'} icon="tooth" onClose={() => setImpModal(false)} wide>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <Fld label="Dente"><Inp value={impForm.dente || ''} onChange={e => setImpForm(f => ({ ...f, dente: e.target.value }))} placeholder="es. 36" /></Fld>
             <Fld label="Data inserimento"><Inp type="date" value={impForm.dataInserimento || ''} onChange={e => setImpForm(f => ({ ...f, dataInserimento: e.target.value }))} /></Fld>
@@ -1805,7 +1809,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
       )}
 
       {editPianoModal && editForm && (
-        <Modal title="Modifica piano" onClose={() => setEditPianoModal(null)} wide>
+        <Modal title="Modifica piano" icon="plan" onClose={() => setEditPianoModal(null)} wide>
           <Fld label="Titolo"><Inp value={editForm.titolo} onChange={(e) => setEditForm((f) => ({ ...f, titolo: e.target.value }))} /></Fld>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <Fld label="Data"><Inp type="date" value={editForm.data} onChange={(e) => setEditForm((f) => ({ ...f, data: e.target.value }))} /></Fld>
