@@ -1,5 +1,5 @@
 import React from 'react';
-import { Ic, PoliedraBrand } from './ui';
+import { Ic } from './ui';
 
 /* POL-UI-003 — premium desktop/tablet-large navigation sidebar.
    Visual-only shell around the app's real navigation: it renders the same
@@ -7,16 +7,15 @@ import { Ic, PoliedraBrand } from './ui';
    bottom nav / MobileDock. No routing logic lives here — see App.jsx for
    the single source of truth (`navVisibile`, `page`, `setPage`). Mobile
    keeps its existing MobileDock; this component only ever mounts when
-   `!isMobile`. */
-export default function PremiumSidebar({ nav, page, setPage, customLogoSrc, vertical, studioName, userName, onLogout }) {
+   `!isMobile`.
+   POL-UI-004 Recovery — `logoSrc` is resolved in App.jsx (studio's custom
+   logo, falling back to the original per-vertical Poliedra asset) and
+   rendered directly, restoring the original logo lockup. */
+export default function PremiumSidebar({ nav, page, setPage, logoSrc, studioName, userName, onLogout }) {
   return (
     <aside className="premium-sidebar">
       <div className="premium-sidebar__brand">
-        {customLogoSrc ? (
-          <img src={customLogoSrc} alt={studioName || 'Logo'} className="premium-sidebar__logo" />
-        ) : (
-          <PoliedraBrand vertical={vertical} />
-        )}
+        <img src={logoSrc} alt={studioName || 'Poliedra'} className="premium-sidebar__logo" />
       </div>
 
       <nav className="premium-sidebar__nav" aria-label="Navigazione principale">

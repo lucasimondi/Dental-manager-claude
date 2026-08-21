@@ -76,7 +76,7 @@ const startOfWeek = (d) => {
   return dt;
 };
 
-function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, getOperatore, getPoltrona, appPosition, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno, onSwipeDay, selModeWA, selAppIds, toggleSelApp }) {
+function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, getOperatore, getPoltrona, appPosition, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno, onSwipeDay, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW }) {
   const containerRef = useRef(null); // unico scroll container
   const resizeRef = useRef(null);
   const [now, setNow] = useState(new Date());
@@ -175,8 +175,16 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   const nowTop = (nowMin / slotMin) * slotH;
   const showNowLine = nowMin >= 0 && nowMin <= slots.length * slotMin;
 
+  // Mobile "final": la griglia stessa è la superficie principale (niente
+  // grande card che la contiene) — bordo/raggio/ombra spariscono, resta solo
+  // lo sfondo. Desktop/tablet mantengono il trattamento a card esistente.
   return (
-    <div onTouchStart={onTouchStartSwipe} onTouchEnd={onTouchEndSwipe} style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', border: `1px solid ${C.brd}`, borderRadius: 12, background: C.sur, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+    <div onTouchStart={onTouchStartSwipe} onTouchEnd={onTouchEndSwipe} style={{
+      display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', background: C.sur,
+      border: isMobile ? 'none' : `1px solid ${C.brd}`,
+      borderRadius: isMobile ? 0 : 12,
+      boxShadow: isMobile ? 'none' : '0 1px 3px rgba(0,0,0,0.06)',
+    }}>
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
         {/* Contenitore della griglia — scrolla qui dentro, isolato dal resto della pagina.
@@ -191,12 +199,13 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
 
             <div style={{ display: 'flex', flex: 1 }}>
 
-            {/* Colonna ore — sticky */}
-            <div style={{ width: 46, flexShrink: 0, borderRight: `1.5px solid ${C.brd}`, background: C.bg, position: 'sticky', left: 0, zIndex: 3 }}>
+            {/* Colonna ore — sticky. Compatta su mobile (oraColW), per rubare meno spazio
+                possibile alle 7 colonne giorno; deve restare identica al gutter di DayStrip. */}
+            <div style={{ width: oraColW || 46, flexShrink: 0, borderRight: `1.5px solid ${C.brd}`, background: C.bg, position: 'sticky', left: 0, zIndex: 3 }}>
               {slots.map((slot) => {
                 const isHour = slot.endsWith(':00');
                 return (
-                  <div key={slot} style={{ height: slotH, borderBottom: `1px solid ${isHour ? C.brd : C.brd + '40'}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: 5, paddingTop: 2, boxSizing: 'border-box' }}>
+                  <div key={slot} style={{ height: slotH, borderBottom: `1px solid ${isHour ? C.brd : C.brd + '40'}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: isMobile ? 3 : 5, paddingTop: 2, boxSizing: 'border-box' }}>
                     <span style={{ fontSize: isHour ? 9.5 : 8, color: isHour ? C.txm : C.txl, fontWeight: isHour ? 800 : 500 }}>{isHour ? slot : ''}</span>
                   </div>
                 );
@@ -395,7 +404,7 @@ function ViewPicker({ view, setView }) {
   );
 }
 
-function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected = true, viewPicker, compact }) {
+function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected = true, viewPicker, compact, oraColW }) {
   const scrollRef = useRef(null);
   const [stripBaseWeek, setStripBaseWeek] = useState(() => toISO(startOfWeek(selDay)));
   const settleTimer = useRef(null);
@@ -462,7 +471,7 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
           questa striscia non coinciderebbero con quelle della griglia (uno sfasamento che
           confonde su quale giorno si sta guardando). */}
       <div style={{ display: 'flex', marginBottom: compact ? 6 : 8, borderRadius: 12, background: C.sur, border: `1px solid ${C.brd}`, overflow: 'hidden', boxShadow: '0 1px 2px rgba(15,23,42,.04), 0 6px 16px rgba(15,23,42,.06)' }}>
-        <div style={{ width: 46, flexShrink: 0, borderRight: `1px solid ${C.brd}` }} />
+        <div style={{ width: oraColW || 46, flexShrink: 0, borderRight: `1px solid ${C.brd}` }} />
         <div ref={scrollRef} onScroll={onScroll} style={{ flex: 1, minWidth: 0, display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
           {weeks.map((week, wi) => (
             <div key={wi} style={{ flex: '0 0 100%', scrollSnapAlign: 'start', display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', padding: compact ? '5px 4px' : '8px 4px' }}>
@@ -485,7 +494,7 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
   );
 }
 
-export default function Agenda({ patients, setPatients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni, setImpegni, si, setStudioInfo }) {
+export default function Agenda({ patients, setPatients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni, setImpegni, si, setStudioInfo, logoSrc, studioName }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const labelPoltrona = isDentistico ? 'Poltrona' : 'Postazione';
   const labelPoltronePlurale = isDentistico ? 'poltrone' : 'postazioni';
@@ -887,7 +896,11 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     (filtroPoltrona === 'tutti' || String(a.poltronaId) === String(filtroPoltrona))
   );
 
-  const gridProps = { slots, slotH, slotMin, oraInizio, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, appPosition, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp };
+  // Colonna orari compatta su mobile: deve restare identica tra DayStrip e
+  // GridView (il commento su DayStrip spiega perché) — vedi item 5/2 della
+  // spec "Agenda mobile final": non deve rubare spazio alle 7 colonne.
+  const oraColW = isMobile ? 34 : 46;
+  const gridProps = { slots, slotH, slotMin, oraInizio, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, appPosition, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW };
 
   // Appuntamenti effettivamente visibili nella vista corrente (per il conteggio "Seleziona tutti" e il badge)
   const giorniVisibili = view === 'giorno' ? [selDay] : view === 'settimana' ? weekDays.map(toISO) : [];
@@ -988,10 +1001,22 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
+      {/* Zona superiore leggera al posto del vecchio header mobile: solo il
+          brand mark (logo studio se configurato, altrimenti Poliedra) + il
+          nome pagina, integrati nel contenuto — nessuna barra colorata dietro.
+          Il resto (periodo/data, viste, controlli) resta nella riga DayStrip
+          esistente subito sotto, che già lo mostrava prima di questa modifica. */}
+      {isMobile && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '0 2px 6px', flexShrink: 0 }}>
+          {logoSrc && <img src={logoSrc} alt={studioName || 'Poliedra'} style={{ height: 18, width: 'auto', objectFit: 'contain', flexShrink: 0, filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.12))' }} />}
+          <span style={{ fontSize: 11.5, fontWeight: 800, color: C.txm, letterSpacing: '0.01em' }}>Agenda</span>
+        </div>
+      )}
+
       {haFiltriRisorse && !isMobile && chipsRisorse}
 
       {view === 'giorno' && (
-        <DayStrip selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker view={view} setView={setView} /></div>} />
+        <DayStrip selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} oraColW={oraColW} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker view={view} setView={setView} /></div>} />
       )}
       {view === 'settimana' && (
         <DayStrip
@@ -1001,6 +1026,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           highlightSelected={false}
           onWeekChange={(wk) => setSelDay(wk)}
           compact={isMobile}
+          oraColW={oraColW}
           viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker view={view} setView={setView} /></div>}
         />
       )}

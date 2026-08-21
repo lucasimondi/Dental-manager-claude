@@ -17,6 +17,15 @@ RETURNS void LANGUAGE plpgsql AS $f$ BEGIN
     'sub',p_user::text,'role','authenticated','app_metadata',jsonb_build_object('studio_id',p_studio::text)
   )::text,true);
 END $f$;
+-- POL-003A repro: authenticated JWT with NO app_metadata.studio_id claim at
+-- all (the exact condition that previously made get_financial_snapshot_v1
+-- raise 'access denied' for a legitimate, actively-assigned owner/admin).
+CREATE FUNCTION pg_temp.set_claim_no_studio(p_user uuid)
+RETURNS void LANGUAGE plpgsql AS $f$ BEGIN
+  PERFORM set_config('request.jwt.claims',jsonb_build_object(
+    'sub',p_user::text,'role','authenticated','app_metadata','{}'::jsonb
+  )::text,true);
+END $f$;
 
 -- Contract headers and lines. Scenarios use one isolated synthetic tenant each.
 INSERT INTO public.financial_contracts_v1(studio_id,patient_id,proposal_date,discount_kind,discount_value,source_table,source_id) VALUES
@@ -271,6 +280,39 @@ BEGIN
   PERFORM pg_temp.assert_null('zero structure hourly cost',s.costo_orario_struttura);
   PERFORM pg_temp.assert_null('zero production hour',s.produzione_ora);
   PERFORM pg_temp.assert_null('zero cash hour',s.incasso_ora);
+
+  -- POL-003A fix: AUTHORIZED OWNER/ADMIN, JWT app_metadata.studio_id
+  -- MISSING, explicit p_studio_id supplied and backed by a real active
+  -- studio_users row -> canonical financial access is ALLOWED, and the RLS
+  -- override stays scoped to exactly that one studio (no cross-tenant leak).
+  PERFORM pg_temp.set_claim_no_studio('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1');
+  SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-10-01','2025-10-31','10000000-0000-4000-8000-000000000010');
+  PERFORM pg_temp.assert_num('POL-003A fix: authorized owner, no JWT claim, explicit p_studio_id',s.prodotto,100);
+  SELECT count(*) INTO v_count FROM public.financial_contracts_v1;
+  IF v_count<>1 THEN RAISE EXCEPTION 'FAIL POL-003A fix RLS override count %',v_count; END IF;
+
+  -- POL-003A fix: UNAUTHORIZED USER (no studio_users row at all) explicitly
+  -- naming a real studio's p_studio_id -> canonical financial access stays
+  -- DENIED. Proves the new p_studio_id path cannot be used to bypass the
+  -- studio_users membership boundary.
+  PERFORM pg_temp.set_claim_no_studio('cccccccc-cccc-4ccc-8ccc-cccccccccccc');
+  BEGIN
+    SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-10-01','2025-10-31','10000000-0000-4000-8000-000000000010');
+    RAISE EXCEPTION 'FAIL POL-003A fix: unauthorized user was NOT denied';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM NOT LIKE 'POL-003A: access denied%' THEN RAISE; END IF;
+  END;
+
+  -- POL-003A fix: old 2-arg call path (no p_studio_id) with JWT claim still
+  -- missing stays DENIED exactly as before -> the fix does not silently
+  -- widen the pre-existing call path, only the new explicit-studio one.
+  PERFORM pg_temp.set_claim_no_studio('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1');
+  BEGIN
+    SELECT * INTO s FROM public.get_financial_snapshot_v1('2025-10-01','2025-10-31');
+    RAISE EXCEPTION 'FAIL POL-003A fix: legacy 2-arg call unexpectedly succeeded without a JWT claim';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM NOT LIKE 'POL-003A: access denied%' THEN RAISE; END IF;
+  END;
 END
 $tests$;
 
@@ -285,14 +327,23 @@ BEGIN
   IF has_table_privilege('authenticated','public.financial_contracts_v1','INSERT') THEN
     RAISE EXCEPTION 'FAIL authenticated direct write';
   END IF;
-  IF has_function_privilege('anon','public.get_financial_snapshot_v1(date,date)','EXECUTE') THEN
+  IF has_function_privilege('anon','public.get_financial_snapshot_v1(date,date,uuid)','EXECUTE') THEN
     RAISE EXCEPTION 'FAIL anon snapshot execute';
   END IF;
-  IF NOT has_function_privilege('authenticated','public.get_financial_snapshot_v1(date,date)','EXECUTE') THEN
+  IF NOT has_function_privilege('authenticated','public.get_financial_snapshot_v1(date,date,uuid)','EXECUTE') THEN
     RAISE EXCEPTION 'FAIL authenticated snapshot execute';
   END IF;
   IF to_regprocedure('public.get_financial_snapshot_v1(date,date,text,text)') IS NOT NULL THEN
     RAISE EXCEPTION 'FAIL ambiguous quote/credit basis signature remains';
+  END IF;
+  IF to_regprocedure('public.get_financial_snapshot_v1(date,date)') IS NOT NULL THEN
+    RAISE EXCEPTION 'FAIL old 2-arg snapshot signature was not replaced by the POL-003A fix';
+  END IF;
+  IF has_function_privilege('anon','private.financial_verified_studio_membership_v1(uuid)','EXECUTE') THEN
+    RAISE EXCEPTION 'FAIL anon verified-studio-membership execute';
+  END IF;
+  IF NOT has_function_privilege('authenticated','private.financial_verified_studio_membership_v1(uuid)','EXECUTE') THEN
+    RAISE EXCEPTION 'FAIL authenticated verified-studio-membership execute';
   END IF;
 END
 $security$;

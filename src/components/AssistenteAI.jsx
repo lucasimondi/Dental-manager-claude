@@ -128,7 +128,7 @@ export default function AssistenteAI() {
         }}
         title="Assistente"
       >
-        <span style={{ fontSize: 21 }}>{open ? '✕' : '🤖'}</span>
+        <Ic n={open ? 'x' : 'bot'} s={22} c="#fff" />
       </button>
 
       {open && (
@@ -139,7 +139,9 @@ export default function AssistenteAI() {
           overflow: 'hidden', zIndex: 999,
         }}>
           <div style={{ padding: '12px 14px', borderBottom: `1px solid ${C.brd}`, background: C.bg, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 18 }}>🤖</span>
+            <div style={{ width: 30, height: 30, borderRadius: 9, background: C.priL, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Ic n="bot" s={16} c={C.pri} />
+            </div>
             <div>
               <div style={{ fontWeight: 700, fontSize: 13, color: C.txt }}>Assistente Poliedra</div>
               <div style={{ fontSize: 10, color: C.txl }}>Chiedimi pazienti, agenda, incassi, richiami…</div>

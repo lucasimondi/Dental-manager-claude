@@ -101,13 +101,18 @@ export function createCanonicalManagementModel(snapshot, requestedMode) {
   });
 }
 
-export async function loadCanonicalFinancialSnapshot(supabaseClient, dateFrom, dateTo) {
+export async function loadCanonicalFinancialSnapshot(supabaseClient, dateFrom, dateTo, studioId) {
   if (!supabaseClient || !dateFrom || !dateTo) {
     return { snapshot: null, error: new Error('Canonical financial period is required') };
   }
   const { data, error } = await supabaseClient.rpc(CANONICAL_FINANCIAL_RPC, {
     p_data_inizio: dateFrom,
     p_data_fine: dateTo,
+    // POL-003A: the RPC otherwise resolves the tenant only from the JWT
+    // app_metadata.studio_id claim, which can be missing/stale for an
+    // active studio member. Passing it explicitly lets the RPC verify real
+    // studio_users membership instead (see get_financial_drilldown_v1).
+    ...(studioId ? { p_studio_id: studioId } : {}),
   });
   if (error) return { snapshot: null, error };
   return { snapshot: Array.isArray(data) ? (data[0] || null) : (data || null), error: null };

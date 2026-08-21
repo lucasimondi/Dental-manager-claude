@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { supabase, DB } from './lib/supabase.js';
-import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, mergeDockSettings, uid, applyBrandColors, applyHeaderColor } from './lib/utils';
+import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, getLogoSlug, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, mergeDockSettings, uid, applyBrandColors, applyHeaderColor } from './lib/utils';
 import { generaRichiamiBot } from './lib/richiamiBot';
 import { salvaPosizione, leggiPosizione, pulisciPosizione } from './lib/posizioneNavigazione';
 import MobileDock from './components/MobileDock.jsx';
@@ -9,8 +9,22 @@ import './styles/designTokens.css';
 import './components/PremiumVisualSystem.css';
 import { useIsMobile } from './lib/useIsMobile';
 import { useTheme } from './lib/useTheme';
-import { Ic, PoliedraBrand } from './components/ui';
 import AssistenteAI from './components/AssistenteAI.jsx';
+// POL-UI-004 Recovery: restored original Poliedra logo assets (verbatim,
+// same files/mapping used before POL-UX-002 swapped them for a
+// code-rendered wordmark). Root cause of that swap: the wordmark portion of
+// these assets renders as a near-invisible hairline stroke against dark
+// chrome — verified again here, still true. Restoring as directed; the
+// icon mark itself is fully legible, only the "Poliedra" wordmark is faint.
+import logoDentalWhite from './assets/logo-poliedra-dental-outline.png';
+import logoSalusWhite from './assets/logo-poliedra-salus-outline.png';
+import logoFisioWhite from './assets/logo-poliedra-fisio-outline.png';
+import logoMindWhite from './assets/logo-poliedra-mind-outline.png';
+import logoWellnessWhite from './assets/logo-poliedra-wellness-outline.png';
+import logoFitWhite from './assets/logo-poliedra-fit-outline.png';
+import logoMedicalWhite from './assets/logo-poliedra-medical-outline.png';
+
+const LOGO_WHITE_PER_SLUG = { dental: logoDentalWhite, salus: logoSalusWhite, fisio: logoFisioWhite, mind: logoMindWhite, wellness: logoWellnessWhite, fit: logoFitWhite, medical: logoMedicalWhite };
 import LoginScreen from './components/LoginScreen.jsx';
 import LoadingScreen from './components/LoadingScreen.jsx';
 import Dashboard from './components/Dashboard.jsx';
@@ -396,7 +410,9 @@ export default function App() {
     (n.id !== 'agenteai' || isStudioAdmin)
   );
 
-  const customLogoSrc = features.custom_logo && studioInfo?.custom_logo_b64 ? studioInfo.custom_logo_b64 : null;
+  const sidebarLogoSrc = features.custom_logo && studioInfo?.custom_logo_b64
+    ? studioInfo.custom_logo_b64
+    : LOGO_WHITE_PER_SLUG[getLogoSlug(studioInfo?.vertical)];
 
   return (
     <div className={isMobile ? 'app-shell app-shell--mobile' : 'app-shell app-shell--desktop'} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', height: '100dvh', background: C.bg, overflow: 'hidden' }}>
@@ -405,27 +421,20 @@ export default function App() {
           nav={navVisibile}
           page={page}
           setPage={setPage}
-          customLogoSrc={customLogoSrc}
-          vertical={studioInfo?.vertical}
+          logoSrc={sidebarLogoSrc}
           studioName={studioInfo?.nome}
           userName={userName}
           onLogout={handleLogout}
         />
       )}
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, height: '100dvh', overflow: 'hidden' }}>
-      {isMobile && (
-      <div className="app-mobile-header" style={features.custom_colors && studioInfo?.header_colore ? { background: C.header } : undefined}>
-        {features.custom_logo && studioInfo?.custom_logo_b64 ? (
-          <img src={studioInfo.custom_logo_b64} alt={studioInfo?.nome || 'Logo'} className="app-mobile-header__logo" style={{ maxWidth: 160, objectFit: 'contain' }} />
-        ) : (
-          <PoliedraBrand vertical={studioInfo?.vertical} size="sm" />
-        )}
-        <div className="app-mobile-header__meta">
-          <span className="app-mobile-header__page">{navVisibile.find((n) => n.id === page)?.l}</span>
-          <button className="app-mobile-header__btn" onClick={handleLogout} title="Esci">Esci</button>
-        </div>
-      </div>
-      )}
+      {/* POL-UI-005: mobile top header (logo/page name/Esci) removed — it cost
+          too much vertical space for no real value on a small screen and kept
+          this wrapper permanently dark (see PremiumVisualSystem.css). The app
+          is now genuinely fullscreen on mobile: #app-scroll below carries
+          safe-area-inset-top itself instead of a header absorbing it, and
+          Esci moved into Impostazioni → Profilo (bottom of that screen).
+          Desktop/tablet keep PremiumSidebar (branding + Esci) untouched. */}
 
       {syncError && (
         <div style={{ background: C.danL, borderBottom: `2px solid ${C.dan}`, padding: '9px 14px', display: 'flex', alignItems: 'flex-start', gap: 8, flexShrink: 0 }}>
@@ -456,7 +465,18 @@ export default function App() {
         </Suspense>
       )}
 
-      <div id="app-scroll" style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: 13, paddingBottom: isMobile ? 98 : 28 }}>
+      <div id="app-scroll" style={{
+        flex: 1, overflowY: 'auto', overscrollBehavior: 'contain',
+        padding: 13,
+        paddingTop: isMobile ? 'calc(13px + env(safe-area-inset-top, 0px))' : 13,
+        paddingBottom: isMobile ? 'calc(96px + env(safe-area-inset-bottom, 0px))' : 28,
+        // POL-UI-004 Agenda mobile final: the Agenda grid should read as an
+        // almost-fullscreen surface, not a page floating inside the app's
+        // usual 13px side gutter. Narrowed only for this page/breakpoint —
+        // every other page keeps the standard padding untouched.
+        paddingLeft: isMobile && page === 'agenda' ? 6 : undefined,
+        paddingRight: isMobile && page === 'agenda' ? 6 : undefined,
+      }}>
         {page === 'home' && <Dashboard patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegni} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} onNavigateNew={goNuovoElemento} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} />}
         {page !== 'home' && (
           <Suspense fallback={<LoadingScreen />}>
@@ -489,14 +509,14 @@ export default function App() {
             )}
             {page === 'paga' && <Pagamenti patients={patients} payments={payments} setPayments={setPaymentsSync} plans={plans} autoOpenNew={autoOpenNew === 'paga'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} />}
             {page === 'listino' && <Listino pricelist={pricelist} setPricelist={setPricelistSync} si={studioInfo} />}
-            {page === 'agenda' && <Agenda patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} />}
+            {page === 'agenda' && <Agenda patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} logoSrc={sidebarLogoSrc} studioName={studioInfo?.nome} />}
             {page === 'richiami' && <Richiami patients={patients} plans={plans} payments={payments} appointments={appointments} richiami={richiami} setRichiami={setRichiamiSync} templates={templates} features={features} onOpenPaz={goSchedaPaz} si={studioInfo} autoOpenNew={autoOpenNew === 'richiami'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} />}
             {page === 'spese' && <Spese studioId={session?.user?.app_metadata?.studio_id} />}
             {page === 'controllo' && <ControlloGestione studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} payments={payments} appointments={appointments} pricelist={pricelist} onOpenPaz={goSchedaPaz} isDentistico={!studioInfo?.vertical || studioInfo.vertical === 'dentistico'} />}
             {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} />}
             {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
             {page === 'agenteai' && <AgenteAISetup features={features} />}
-            {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} isStudioAdmin={isStudioAdmin} />}
+            {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} isStudioAdmin={isStudioAdmin} onLogout={handleLogout} />}
           </Suspense>
         )}
       </div>

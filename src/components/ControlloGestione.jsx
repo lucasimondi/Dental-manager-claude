@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { C } from '../lib/utils';
-import { PageHeader } from './ui';
+import { PageHeader, Crd, Ic, EmptyState } from './ui';
 import { supabase } from '../lib/supabase.js';
 import { rangePeriodo } from '../lib/useControlloDati';
 import { loadCanonicalFinancialSnapshot, MANAGEMENT_CONTROL_MODES } from '../lib/canonicalFinancialSelectors';
@@ -18,7 +18,7 @@ const TABS = [
   { id: 'marginalita', label: 'Marginalità' },
 ];
 
-function CanonicalBaseOverview() {
+function CanonicalBaseOverview({ studioId }) {
   const [periodo, setPeriodo] = useState('mese');
   const [snapshot, setSnapshot] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -29,23 +29,20 @@ function CanonicalBaseOverview() {
     const [dateFrom, dateTo] = rangePeriodo(periodo);
     setLoading(true);
     setError('');
-    loadCanonicalFinancialSnapshot(supabase, dateFrom, dateTo).then(({ snapshot: nextSnapshot, error: nextError }) => {
+    loadCanonicalFinancialSnapshot(supabase, dateFrom, dateTo, studioId).then(({ snapshot: nextSnapshot, error: nextError }) => {
       if (!active) return;
       setSnapshot(nextSnapshot);
       setError(nextError?.message || '');
       setLoading(false);
     });
     return () => { active = false; };
-  }, [periodo]);
+  }, [periodo, studioId]);
 
   return (
     <div style={{ padding: 14 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 800, color: C.txt }}>Controllo di Gestione · Base</div>
-          <div style={{ fontSize: 11, color: C.txl, marginTop: 2 }}>Fonte finanziaria canonica POL-003</div>
-        </div>
-        <div style={{ display: 'flex', gap: 4, background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 8, padding: 3 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 11, color: C.txl, fontWeight: 600 }}>Fonte finanziaria canonica POL-003</div>
+        <div style={{ display: 'flex', gap: 4, background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 10, padding: 3 }}>
           {[
             { id: 'mese', label: 'Questo mese' },
             { id: 'anno', label: "Quest'anno" },
@@ -54,9 +51,11 @@ function CanonicalBaseOverview() {
               key={item.id}
               type="button"
               onClick={() => setPeriodo(item.id)}
+              className="pol-btn"
               style={{
-                border: 'none', borderRadius: 6, padding: '6px 9px', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                border: 'none', borderRadius: 7, padding: '7px 12px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer',
                 background: periodo === item.id ? C.pri : 'transparent', color: periodo === item.id ? '#fff' : C.txt,
+                boxShadow: periodo === item.id ? `0 4px 10px -3px ${C.pri}66` : 'none',
               }}
             >
               {item.label}
@@ -65,13 +64,25 @@ function CanonicalBaseOverview() {
         </div>
       </div>
 
-      {loading && <div style={{ color: C.txl, fontSize: 13, padding: '16px 0' }}>Caricamento dati canonici…</div>}
-      {error && <div style={{ color: C.dan, fontSize: 12, padding: 12, border: `1px solid ${C.dan}40`, borderRadius: 10 }}>Dati canonici non disponibili: {error}</div>}
+      {loading && (
+        <Crd style={{ textAlign: 'center', padding: 32, color: C.txl, fontSize: 13 }}>Caricamento dati canonici…</Crd>
+      )}
+      {error && (
+        <Crd style={{ border: `1px solid ${C.dan}40`, background: `${C.dan}0d` }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+            <Ic n="warn" s={16} c={C.dan} />
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.dan }}>Dati canonici non disponibili</div>
+              <div style={{ fontSize: 12, color: C.dan, marginTop: 3, opacity: 0.85 }}>{error}</div>
+            </div>
+          </div>
+        </Crd>
+      )}
       {!loading && !error && snapshot && (
         <CanonicalManagementView snapshot={snapshot} mode={MANAGEMENT_CONTROL_MODES.BASE} />
       )}
       {!loading && !error && !snapshot && (
-        <div style={{ color: C.txl, fontSize: 12, padding: 12 }}>Dati canonici non disponibili.</div>
+        <Crd><EmptyState icon="chart" title="Dati canonici non disponibili" /></Crd>
       )}
     </div>
   );
@@ -102,7 +113,7 @@ export default function ControlloGestione(props) {
         ))}
       </div>
 
-      {tab === 'panoramica' && <CanonicalBaseOverview />}
+      {tab === 'panoramica' && <CanonicalBaseOverview studioId={props.studioId} />}
       {tab === 'cockpit' && <ControlloCockpit {...props} />}
       {tab === 'proiezioni' && <Proiezioni studioId={props.studioId} />}
       {tab === 'costi' && <Costi studioId={props.studioId} isDentistico={props.isDentistico} />}
