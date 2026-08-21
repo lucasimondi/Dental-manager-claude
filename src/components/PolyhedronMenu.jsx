@@ -4,12 +4,12 @@ import { DockIc } from './ui';
 import poliedroGem from '../assets/icon-poliedra-gem.png';
 
 /* ── POLYHEDRON NAVIGATION MENU ──
-   Replaces the entire mobile dock with a single floating 3D menu button (bottom left)
-   that opens a full navigation menu showing ALL authorized destinations.
+   POL-UI-009: FULL MOBILE NAVIGATION
    
-   POL-UI-009: Product Owner decision — FULL MENU ONLY.
-   The polyhedron is positioned bottom-left with safe-area support,
-   and opens a premium floating panel with all available nav items.
+   Single floating 3D menu button (bottom-left) that opens the COMPLETE
+   navigation showing ALL authorized destinations for the current user.
+   
+   NO duplicate routing logic — reuses existing NAV, feature gates, RBAC.
 */
 
 export default function PolyhedronMenu({
@@ -22,9 +22,8 @@ export default function PolyhedronMenu({
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPressed, setMenuPressed] = useState(false);
 
-  // Gate: check if a nav item is accessible to this user.
+  // Reuse existing gate logic from App.jsx
   const canAccess = (navId) => {
-    // Feature gates
     const featureGate = {
       wa: 'whatsapp',
       spese: 'spese',
@@ -32,10 +31,7 @@ export default function PolyhedronMenu({
       controllo: 'controllo_gestione',
     }[navId];
     if (featureGate && !features[featureGate]) return false;
-
-    // Admin-only gates
     if (navId === 'agenteai' && !isStudioAdmin) return false;
-
     return true;
   };
 
@@ -44,12 +40,11 @@ export default function PolyhedronMenu({
     setMenuOpen(false);
   };
 
-  // Filter nav to only authorized items
   const visibleNav = nav.filter((item) => canAccess(item.id));
 
   return (
     <>
-      {/* Scrim: click outside to close */}
+      {/* Scrim + blur backdrop */}
       {menuOpen && (
         <div
           onClick={() => setMenuOpen(false)}
@@ -63,7 +58,7 @@ export default function PolyhedronMenu({
         />
       )}
 
-      {/* Full Navigation Menu Panel */}
+      {/* Premium floating menu panel */}
       {menuOpen && (
         <div
           style={{
@@ -80,7 +75,7 @@ export default function PolyhedronMenu({
             zIndex: 151,
           }}
         >
-          {/* Menu Header */}
+          {/* Header */}
           <div
             style={{
               fontSize: '10.5px',
@@ -94,7 +89,7 @@ export default function PolyhedronMenu({
             Menu
           </div>
 
-          {/* Menu Items */}
+          {/* Navigation items — ALL accessible destinations */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
             {visibleNav.map((item) => (
               <button
@@ -121,8 +116,22 @@ export default function PolyhedronMenu({
                   if (page !== item.id) e.currentTarget.style.background = 'transparent';
                 }}
               >
-                <div style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <DockIc n={item.ic} style="vivid" s={20} c={page === item.id ? C.pri : C.txt} />
+                <div
+                  style={{
+                    width: 24,
+                    height: 24,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <DockIc
+                    n={item.ic}
+                    style="vivid"
+                    s={20}
+                    c={page === item.id ? C.pri : C.txt}
+                  />
                 </div>
                 <span>{item.l}</span>
               </button>
@@ -131,7 +140,7 @@ export default function PolyhedronMenu({
         </div>
       )}
 
-      {/* Polyhedron Menu Button — Bottom Left */}
+      {/* Polyhedron Button — Bottom Left */}
       <button
         onClick={() => setMenuOpen((v) => !v)}
         onPointerDown={() => setMenuPressed(true)}
@@ -157,7 +166,7 @@ export default function PolyhedronMenu({
           transition: 'transform 0.18s cubic-bezier(0.34,1.56,0.64,1)',
         }}
       >
-        {/* Contact shadow ellipse */}
+        {/* Contact shadow */}
         <span
           aria-hidden="true"
           style={{
@@ -166,14 +175,15 @@ export default function PolyhedronMenu({
             width: '26px',
             height: '8px',
             borderRadius: '50%',
-            background: 'radial-gradient(closest-side, rgba(15,23,42,0.30), rgba(15,23,42,0))',
+            background:
+              'radial-gradient(closest-side, rgba(15,23,42,0.30), rgba(15,23,42,0))',
             filter: 'blur(2px)',
             opacity: menuPressed ? 0.55 : 0.85,
             transition: 'opacity 0.18s ease',
           }}
         />
 
-        {/* Polyhedron gem with 3D depth effect */}
+        {/* 3D Polyhedron */}
         <img
           src={poliedroGem}
           alt="Poliedra"
