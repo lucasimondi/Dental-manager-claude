@@ -178,9 +178,16 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   // Mobile "final": la griglia stessa è la superficie principale (niente
   // grande card che la contiene) — bordo/raggio/ombra spariscono, resta solo
   // lo sfondo. Desktop/tablet mantengono il trattamento a card esistente.
+  // POL-UI-007: su mobile anche lo sfondo sparisce (era rimasto C.sur pieno
+  // per errore) — quel rettangolo bianco esteso fino quasi al dock era
+  // esattamente la "barra" percepita dietro al dock, perché C.sur è diverso
+  // dallo sfondo pagina (C.bg, ereditato da #app-scroll) e il confine tra i
+  // due si vedeva proprio in fondo, a ridosso delle icone. Trasparente qui
+  // lascia semplicemente vedere lo stesso sfondo pagina che usano Home e
+  // tutte le altre schermate mobile — nessun'altra modifica alla griglia.
   return (
     <div onTouchStart={onTouchStartSwipe} onTouchEnd={onTouchEndSwipe} style={{
-      display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', background: C.sur,
+      display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', background: isMobile ? 'transparent' : C.sur,
       border: isMobile ? 'none' : `1px solid ${C.brd}`,
       borderRadius: isMobile ? 0 : 12,
       boxShadow: isMobile ? 'none' : '0 1px 3px rgba(0,0,0,0.06)',

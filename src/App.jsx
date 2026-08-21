@@ -537,8 +537,6 @@ export default function App() {
           onLogout={handleLogout}
           features={features}
           isStudioAdmin={isStudioAdmin}
-          logoSrc={sidebarLogoSrc}
-          studioName={studioInfo?.nome}
         />
       )}
       </div>

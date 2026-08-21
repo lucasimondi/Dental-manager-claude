@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { C, NAV_BY_ID, DOCK_MENU_SLOT, DEF_DOCK_SETTINGS } from '../lib/utils';
 import { DockIc } from './ui';
+// POL-UI-007: simbolo geometrico Poliedra (non il logo studio/verticale, che
+// porta anche il wordmark "Poliedra" — illeggibile a 30px e comunque non
+// ammesso qui). Stesso identico asset già usato dalla LoginScreen per il
+// brand mark: nessun nuovo logo creato, nessuna modifica al logo aziendale.
+import poliedroGem from '../assets/icon-poliedra-gem.png';
 
 // Voci nav gated per piano/feature — id NAV -> chiave in `features`.
 // Se lo studio non ha la feature, la voce sparisce dal dock invece di
@@ -14,7 +19,7 @@ const ADMIN_ONLY_NAV_IDS = new Set(['agenteai']);
    5 posizioni fisse. Lo slot centrale, se impostato su DOCK_MENU_SLOT (default),
    è un pulsante rialzato che apre un popup con le altre funzioni non presenti nel dock.
    Tutto è guidato da dockSettings (slots/menuItems/iconStyle), configurabile da Setup. */
-export default function MobileDock({ page, setPage, dockSettings, onLogout, features = {}, isStudioAdmin = false, logoSrc, studioName }) {
+export default function MobileDock({ page, setPage, dockSettings, onLogout, features = {}, isStudioAdmin = false }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPressed, setMenuPressed] = useState(false);
   const style = dockSettings?.iconStyle || 'vivid';
@@ -84,6 +89,18 @@ export default function MobileDock({ page, setPage, dockSettings, onLogout, feat
           if (id === DOCK_MENU_SLOT) {
             return (
               <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none' }}>
+                {/* POL-UI-007: il pulsante centrale non è più un disco pieno
+                    con un'icona sopra — è SOLO il poliedro (icon-poliedra-gem,
+                    lo stesso brand mark della LoginScreen, niente wordmark,
+                    niente hamburger) che galleggia, coerente col resto del
+                    dock dove nessun'altra icona ha una superficie piena
+                    dietro. La profondità 3D viene da due strati: il filtro
+                    drop-shadow multiplo sul PNG stesso (che ha già faccette/
+                    luce/ombra renderizzate) per staccarlo dallo sfondo, più
+                    un'ombra di contatto morbida e sfocata sotto di esso —
+                    lo stesso trucco con cui un'icona app iOS o un oggetto
+                    fisico fotografato sembrano sospesi sopra la superficie,
+                    non un pulsante arcade/neon/plastica. */}
                 <button
                   onClick={() => setMenuOpen((v) => !v)}
                   onPointerDown={() => setMenuPressed(true)}
@@ -92,30 +109,32 @@ export default function MobileDock({ page, setPage, dockSettings, onLogout, feat
                   aria-label="Menu"
                   aria-expanded={menuOpen}
                   style={{
-                    width: 56, height: 56, borderRadius: '50%', position: 'relative', top: -22,
-                    background: `linear-gradient(150deg, ${C.pri}, ${C.priD})`, border: '1.5px solid rgba(255,255,255,.5)', cursor: 'pointer',
+                    width: 60, height: 60, borderRadius: '50%', position: 'relative', top: -14,
+                    background: 'transparent', border: 'none', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    backdropFilter: 'blur(14px)',
                     pointerEvents: 'auto',
-                    boxShadow: menuPressed
-                      ? `0 4px 12px ${C.pri}55`
-                      : `0 10px 24px ${C.pri}55, 0 3px 8px rgba(15,23,42,.22), inset 0 1px 0 rgba(255,255,255,.35)`,
                     transform: menuPressed ? 'scale(.92)' : 'scale(1)',
-                    transition: 'transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s ease',
+                    transition: 'transform .18s cubic-bezier(.34,1.56,.64,1)',
                   }}
                 >
-                  {/* POL-UI-006: il pulsante centrale del dock è ora il logo
-                      Poliedra (stesso asset già risolto per la sidebar
-                      desktop in base a verticale/logo custom dello studio),
-                      non più un'icona hamburger/X — stessa azione (apre il
-                      popup "Altre funzioni"), stesso aria-label="Menu". */}
-                  {logoSrc ? (
-                    <img src={logoSrc} alt={studioName || 'Poliedra'} style={{ width: 30, height: 30, objectFit: 'contain', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,.25))' }} />
-                  ) : (
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round"><line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" /></svg>
-                  )}
+                  <span aria-hidden="true" style={{
+                    position: 'absolute', bottom: 6, width: 26, height: 8, borderRadius: '50%',
+                    background: 'radial-gradient(closest-side, rgba(15,23,42,.30), rgba(15,23,42,0))',
+                    filter: 'blur(2px)', opacity: menuPressed ? 0.55 : 0.85, transition: 'opacity .18s ease',
+                  }} />
+                  <img
+                    src={poliedroGem}
+                    alt="Poliedra"
+                    style={{
+                      width: 34, height: 34, objectFit: 'contain', position: 'relative',
+                      filter: menuOpen
+                        ? `drop-shadow(0 2px 4px rgba(15,23,42,.35)) drop-shadow(0 1px 8px ${C.pri}70)`
+                        : 'drop-shadow(0 5px 7px rgba(15,23,42,.32)) drop-shadow(0 2px 3px rgba(15,23,42,.22)) drop-shadow(0 0 1px rgba(255,255,255,.4))',
+                      transition: 'filter .18s ease',
+                    }}
+                  />
                 </button>
-                <span style={{ fontSize: 9, fontWeight: 700, color: menuOpen ? C.pri : C.txm, marginTop: -16, filter: `drop-shadow(0 1px 2px ${C.bg}cc)` }}>Menu</span>
+                <span style={{ fontSize: 9, fontWeight: 700, color: menuOpen ? C.pri : C.txm, marginTop: -10, filter: `drop-shadow(0 1px 2px ${C.bg}cc)` }}>Menu</span>
               </div>
             );
           }
