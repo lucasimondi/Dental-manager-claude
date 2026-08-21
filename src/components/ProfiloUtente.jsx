@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { C } from '../lib/utils';
-import { Crd, Fld, Inp, Btn, Toast } from './ui';
+import { Crd, Fld, Inp, Btn, Toast, Ic } from './ui';
 
 export default function ProfiloUtente({ onNomeChange, vertical }) {
   const isDentistico = !vertical || vertical === 'dentistico';
@@ -42,7 +42,7 @@ export default function ProfiloUtente({ onNomeChange, vertical }) {
   return (
     <Crd style={{ marginBottom: 16 }}>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
-      <div style={{ fontSize: 14, fontWeight: 800, color: C.txt, marginBottom: 14 }}>👤 Profilo utente</div>
+      <div style={{ fontSize: 14, fontWeight: 800, color: C.txt, marginBottom: 14, display:'flex', alignItems:'center', gap:6 }}><Ic n="user" s={14} c={C.txt} />Profilo utente</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <Fld label="Nome"><Inp value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} placeholder="es. Luca" /></Fld>
         <Fld label="Cognome"><Inp value={form.cognome} onChange={e => setForm(f => ({ ...f, cognome: e.target.value }))} placeholder="es. Simondi" /></Fld>

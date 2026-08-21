@@ -2,16 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { C } from '../lib/utils';
 import { Crd, Fld, Inp, Sel, Modal, Toast, Btn, Ic } from './ui';
+import { resolveTeamCapabilities, getCapabilityPresentation } from '../lib/roleLabels';
 
-const CAPABILITIES = Object.freeze([
-  ['home.front_desk', 'Front desk'],
-  ['clinical.general', 'Clinico'],
-  ['clinical.physiotherapist', 'Fisioterapista'],
-  ['clinical.personal_trainer', 'Personal trainer'],
-  ['clinical.massage_therapist', 'Massaggiatore'],
-]);
-
-export default function GestioneUtenti({ studioId, currentUserId, features, isStudioAdmin }) {
+export default function GestioneUtenti({ studioId, currentUserId, features, isStudioAdmin, vertical }) {
   const [utenti, setUtenti] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
@@ -100,11 +93,11 @@ export default function GestioneUtenti({ studioId, currentUserId, features, isSt
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: C.txt }}>👥 Utenti studio</div>
+        <div style={{ fontSize: 14, fontWeight: 800, color: C.txt, display:'flex', alignItems:'center', gap:6 }}><Ic n="users" s={14} c={C.txt} />Team</div>
         {isStudioAdmin && (
           <button onClick={() => { if (limiteRaggiunto) { setToast(`Limite di ${maxUtenti} utenti raggiunto per il tuo piano.`); return; } setForm({ email: '', nome: '', ruolo: 'utente' }); setInvitaModal(true); }}
             style={{ background: limiteRaggiunto ? C.bg : C.pri, border: 'none', borderRadius: 9, padding: '8px 14px', color: limiteRaggiunto ? C.txl : '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-            {limiteRaggiunto ? '🔒 Limite raggiunto' : <><Ic n="plus" s={12} c="#fff" /> Invita utente</>}
+            {limiteRaggiunto ? <><Ic n="lock" s={12} c={C.txl} /> Limite raggiunto</> : <><Ic n="plus" s={12} c="#fff" /> Invita utente</>}
           </button>
         )}
       </div>
@@ -119,13 +112,15 @@ export default function GestioneUtenti({ studioId, currentUserId, features, isSt
         </div>
       )}
 
-      {loading && <div style={{ textAlign: 'center', color: C.txl, padding: 20 }}>⏳ Caricamento...</div>}
+      {loading && <div style={{ textAlign: 'center', color: C.txl, padding: 20 }}>Caricamento...</div>}
 
       {utenti.map(u => {
         const isMe = u.user_id === currentUserId;
         const ruolo = RUOLI[u.ruolo] || RUOLI.utente;
         const stato = STATI[u.stato] || STATI.invitato;
-        const userCapabilities = new Set(capabilityRows.filter((row) => row.user_id === u.user_id).map((row) => row.capability));
+        const heldCapabilities = capabilityRows.filter((row) => row.user_id === u.user_id).map((row) => row.capability);
+        const userCapabilities = new Set(heldCapabilities);
+        const teamCapabilities = resolveTeamCapabilities(vertical, heldCapabilities);
         return (
           <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap:'wrap', padding: '12px 14px', background: isMe ? C.priL : C.bg, borderRadius: 10, marginBottom: 8, border: `1px solid ${isMe ? C.pri + '30' : C.brd}` }}>
             <div style={{ width: 36, height: 36, borderRadius: '50%', background: ruolo.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -154,13 +149,16 @@ export default function GestioneUtenti({ studioId, currentUserId, features, isSt
                 </button>
               </div>
             )}
-            {isStudioAdmin && u.user_id && <div style={{ flexBasis:'100%',display:'flex',gap:5,flexWrap:'wrap',paddingTop:8,borderTop:`1px solid ${C.brd}` }}>
-              {CAPABILITIES.map(([capability,label]) => {
-                const enabled=userCapabilities.has(capability);
-                return <button key={capability} type="button" aria-pressed={enabled} onClick={()=>toggleCapability(u.user_id,capability,enabled)}
-                  style={{border:`1px solid ${enabled?C.pri:C.brd}`,borderRadius:7,padding:'5px 8px',background:enabled?C.priL:C.sur,color:enabled?C.pri:C.txm,fontSize:10,fontWeight:700,cursor:'pointer'}}>{enabled?'✓ ':''}{label}</button>;
-              })}
-              <div style={{flexBasis:'100%',fontSize:10,color:C.txl}}>Le capability sono additive ed esplicite. Admin non implica accesso clinico.</div>
+            {isStudioAdmin && u.user_id && <div style={{ flexBasis:'100%',display:'flex',flexDirection:'column',gap:8,paddingTop:8,borderTop:`1px solid ${C.brd}` }}>
+              <div style={{fontSize:10,fontWeight:800,color:C.txl,textTransform:'uppercase',letterSpacing:'0.06em'}}>Accessi</div>
+              <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
+                {teamCapabilities.map((capability) => {
+                  const enabled=userCapabilities.has(capability);
+                  const { label, description } = getCapabilityPresentation(capability, vertical);
+                  return <button key={capability} type="button" aria-pressed={enabled} title={description} onClick={()=>toggleCapability(u.user_id,capability,enabled)}
+                    style={{border:`1px solid ${enabled?C.pri:C.brd}`,borderRadius:7,padding:'5px 8px',background:enabled?C.priL:C.sur,color:enabled?C.pri:C.txm,fontSize:10,fontWeight:700,cursor:'pointer'}}>{enabled?'✓ ':''}{label}</button>;
+                })}
+              </div>
             </div>}
           </div>
         );
@@ -168,7 +166,7 @@ export default function GestioneUtenti({ studioId, currentUserId, features, isSt
 
       {/* MODAL INVITA */}
       {invitaModal && (
-        <Modal title="✉️ Invita utente" onClose={() => setInvitaModal(false)}>
+        <Modal title={<><Ic n="mail" s={15} c={C.txt} /> Invita utente</>} onClose={() => setInvitaModal(false)}>
           <div style={{ fontSize: 12, color: C.txm, marginBottom: 14, lineHeight: 1.5 }}>
             L'utente riceverà un'email con il link per accedere allo studio.
           </div>
@@ -180,8 +178,9 @@ export default function GestioneUtenti({ studioId, currentUserId, features, isSt
               <option value="admin">Admin — accesso completo + gestione utenti</option>
             </Sel>
           </Fld>
-          <div style={{ background: C.priL, borderRadius: 8, padding: '9px 12px', marginBottom: 10 }}>
-            <div style={{ fontSize: 11, color: C.pri, fontWeight: 600 }}>📧 Verrà inviata un'email con il link di accesso a {form.email || 'questo indirizzo'}</div>
+          <div style={{ background: C.priL, borderRadius: 8, padding: '9px 12px', marginBottom: 10, display:'flex', alignItems:'flex-start', gap:6 }}>
+            <Ic n="mail" s={12} c={C.pri} />
+            <div style={{ fontSize: 11, color: C.pri, fontWeight: 600 }}>Verrà inviata un'email con il link di accesso a {form.email || 'questo indirizzo'}</div>
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
             <Btn ch="Annulla" v="sec" onClick={() => setInvitaModal(false)} full />

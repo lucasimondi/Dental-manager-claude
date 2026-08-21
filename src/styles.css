@@ -3,8 +3,8 @@
   --dm-pri:#185FA5; --dm-txt:#1A2433; --dm-scroll:#CBD5E0;
 }
 [data-theme="dark"]{
-  --dm-bg:#12181C; --dm-sur:#1B2226; --dm-brd:#2A3237;
-  --dm-pri:#C9932F; --dm-txt:#E8E6DE; --dm-scroll:#3A4247;
+  --dm-bg:#0F172A; --dm-sur:#1B2333; --dm-brd:#26314A;
+  --dm-pri:#3B82F6; --dm-txt:#E7ECF3; --dm-scroll:#3A4A63;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html{background:var(--dm-bg);overscroll-behavior:none;}

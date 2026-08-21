@@ -16,10 +16,12 @@ export const LS = {
 };
 
 /* ── COLORI ── */
-/* ── TEMA: due palette (chiaro "Cartella clinica" / scuro "Turno di sera").
-   C resta lo stesso oggetto mutabile importato ovunque nell'app: applyTheme()
-   ne aggiorna le proprietà in place, così ogni componente che legge C.xxx a
-   render-time vede i nuovi colori senza bisogno di essere riscritto.
+/* ── TEMA: due palette (chiaro "Poliedra Light Premium" / scuro "Poliedra
+   Dark Premium" — POL-UX-002, navy/blue/indigo su entrambi, non due
+   identità di brand diverse). C resta lo stesso oggetto mutabile importato
+   ovunque nell'app: applyTheme() ne aggiorna le proprietà in place, così
+   ogni componente che legge C.xxx a render-time vede i nuovi colori senza
+   bisogno di essere riscritto.
    Tutti i valori restano esadecimali a 6 cifre (mai rgba) perché in alcuni
    punti del codice vengono concatenati con un suffisso alpha, es. C.pri + '30'. ── */
 export const C_LIGHT = {
@@ -33,15 +35,18 @@ export const C_LIGHT = {
   txt: '#1A2433', txm: '#5F6B7A', txl: '#8A93A0', brd: '#DCE1E6',
 };
 
+// Stessa direzione navy/blue/indigo dell'header/sidebar premium (le tinte
+// bg/priD riusano esattamente gli stop del gradiente già spedito in
+// .app-mobile-header/.premium-sidebar) — non un secondo accento a parte.
 export const C_DARK = {
-  bg: '#12181C', sur: '#1B2226',
-  pri: '#C9932F', priL: '#2A2318', priD: '#8F6A1F',
-  acc: '#4FA8C9',
+  bg: '#0F172A', sur: '#1B2333',
+  pri: '#3B82F6', priL: '#1E2A44', priD: '#0B1220',
+  acc: '#38BDF8',
   suc: '#5AB478', sucL: '#16261C',
   war: '#E0B75B',
   dan: '#F09595', danL: '#2A1616',
   pur: '#A79AE0', purL: '#211E33',
-  txt: '#E8E6DE', txm: '#8B9296', txl: '#6B7276', brd: '#2A3237',
+  txt: '#E7ECF3', txm: '#93A0B4', txl: '#66738C', brd: '#26314A',
 };
 
 export const THEME_KEY = 'dm_color_mode';

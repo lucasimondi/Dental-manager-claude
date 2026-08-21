@@ -84,19 +84,79 @@
 
   /* ── Touch target floor (section P) ── */
   --pol-touch-min: 44px;
+
+  /* ── Theme-aware brand primitives (POL-UX-002 section 2) ──
+     Light default here; dark override below. Everything else in
+     --pol-blue-*/--pol-indigo-*/--pol-azure-* etc. stays a fixed numbered
+     scale (used as gradient stops regardless of theme) — these three are
+     the ones that actually need to shift with the theme, so semantic
+     consumers (--brand-* below) read these, not the fixed scale. */
+  --pol-brand-pri: var(--pol-blue-500);
+  --pol-brand-pri-d: var(--pol-blue-600);
+  --pol-brand-acc: var(--pol-turquoise-500);
 }
 
-/* Dark theme: mirrors src/lib/utils.js's C_DARK direction (amber/gold accent
-   on near-black surfaces) so tokens stay correct if a page reads them under
-   [data-theme="dark"] (set by applyTheme() in utils.js). */
+/* ── Semantic token layer (POL-UX-002 section 3) ──
+   Named UI roles, aliased onto the primitives above. Components should
+   prefer these; the --pol-* primitives stay the source of truth so light
+   vs. dark only changes token VALUES (overridden below/above), never which
+   token a component reads — "Dark e Light cambiano i token, non
+   l'architettura". */
+:root {
+  --surface-page: var(--pol-bg);
+  --surface-base: var(--pol-bg-alt);
+  --surface-card: var(--pol-surface);
+  --surface-elevated: var(--pol-surface);
+  --surface-interactive: var(--pol-surface-glass);
+
+  --text-primary: var(--pol-ink);
+  --text-secondary: var(--pol-ink-muted);
+  --text-muted: var(--pol-ink-faint);
+  --text-inverse: #ffffff;
+
+  --brand-primary: var(--pol-brand-pri);
+  --brand-secondary: var(--pol-indigo-500);
+  --brand-accent: var(--pol-brand-acc);
+
+  --border-soft: var(--pol-line);
+  --border-medium: var(--pol-line-strong);
+
+  --shadow-xs: var(--pol-shadow-sm);
+  --shadow-sm: var(--pol-shadow-sm);
+  --shadow-md: var(--pol-shadow);
+  --shadow-lg: var(--pol-shadow-lg);
+
+  --radius-sm: var(--pol-radius-sm);
+  --radius-md: var(--pol-radius-md);
+  --radius-lg: var(--pol-radius-lg);
+  --radius-xl: var(--pol-radius-xl);
+
+  --gradient-brand: linear-gradient(135deg, var(--pol-indigo-500), var(--pol-blue-500) 55%, var(--pol-azure-500));
+  --gradient-card: linear-gradient(150deg,#fff 0%,#f3f7fd 65%,#eef3fb 100%);
+  --gradient-header: linear-gradient(110deg,#0b1220 0%,#111827 42%,#172554 72%,#0f172a 100%);
+
+  --success: var(--pol-success);
+  --warning: var(--pol-warn);
+  --danger: var(--pol-danger);
+  --info: var(--pol-azure-500);
+}
+
+/* Dark theme ("Poliedra Dark Premium" — POL-UX-002 section 2): navy/blue/
+   indigo, mirrors src/lib/utils.js's C_DARK and reuses the exact gradient
+   stops already shipped in .app-mobile-header/.premium-sidebar, so the
+   theme toggle (Impostazioni → Aspetto) and the always-dark app chrome
+   read as the same system instead of two different dark looks. */
 :root[data-theme="dark"] {
-  --pol-bg: #12181c;
-  --pol-bg-alt: #161c20;
-  --pol-surface: #1b2226;
-  --pol-surface-glass: rgba(27,34,38,.90);
-  --pol-ink: #e8e6de;
-  --pol-ink-muted: #8b9296;
-  --pol-ink-faint: #6b7276;
+  --pol-bg: #0f172a;
+  --pol-bg-alt: #0b1220;
+  --pol-surface: #1b2333;
+  --pol-surface-glass: rgba(27,35,51,.90);
+  --pol-ink: #e7ecf3;
+  --pol-ink-muted: #93a0b4;
+  --pol-ink-faint: #66738c;
   --pol-line: rgba(255,255,255,.08);
   --pol-line-strong: rgba(255,255,255,.14);
+  --pol-brand-pri: #3b82f6;
+  --pol-brand-pri-d: #0b1220;
+  --pol-brand-acc: #38bdf8;
 }
