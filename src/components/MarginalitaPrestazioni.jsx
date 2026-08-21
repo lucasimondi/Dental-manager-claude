@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Crd } from './ui';
+import { Crd, EmptyState } from './ui';
 import { C, fmt } from '../lib/utils';
 import { supabase } from '../lib/supabase.js';
 
@@ -70,11 +70,12 @@ export default function MarginalitaPrestazioni({ studioId, pricelist = [], isDen
   return (
     <div style={{ padding: 14 }}>
       {materiali.length === 0 && macchinari.length === 0 ? (
-        <Crd style={{ textAlign: 'center', padding: 24 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>Nessun costo configurato</div>
-          <div style={{ fontSize: 12.5, color: C.txm }}>
-            Aggiungi materiali e macchinari in <b>Controllo → Costi</b>, poi collegali alle prestazioni aprendole dal <b>Listino</b> per vedere qui la marginalità.
-          </div>
+        <Crd>
+          <EmptyState
+            icon="trend"
+            title="Nessun costo configurato"
+            subtitle={<>Aggiungi materiali e macchinari in <b>Controllo → Costi</b>, poi collegali alle prestazioni aprendole dal <b>Listino</b> per vedere qui la marginalità.</>}
+          />
         </Crd>
       ) : (
         <>

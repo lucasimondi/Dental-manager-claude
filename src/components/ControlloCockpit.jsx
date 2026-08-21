@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Crd } from './ui';
+import { Crd, EmptyState } from './ui';
 import { C, fmt, today } from '../lib/utils';
 import { useIsMobile } from '../lib/useIsMobile';
 import { useControlloDati } from '../lib/useControlloDati';
@@ -222,7 +222,7 @@ export default function ControlloCockpit({ studioId, patients = [], plans = [], 
       {/* ALERT PROATTIVI */}
       <Crd>
         <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Alert proattivi</div>
-        {alerts.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: '12px 0', fontSize: 13 }}>Nessun segnale da evidenziare 🎉</div>}
+        {alerts.length === 0 && <EmptyState icon="ok" title="Nessun segnale da evidenziare" />}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {alerts.map((a, i) => {
             const col = a.livello === 'critical' ? C.dan : C.war;

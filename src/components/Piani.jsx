@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, SearchSel, SelettorePaziente, PageHeader } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, SearchSel, SelettorePaziente, PageHeader, EmptyState } from './ui';
 import { C, uid, fmt, today, SCADENZA_PRESET, addMesi } from '../lib/utils';
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { salvaPosizione, leggiPosizione } from '../lib/posizioneNavigazione';
@@ -186,12 +186,12 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
       )}
 
       {filtroModal && (
-        <Modal title={`📋 ${filtroModal === 'totali' ? 'Tutti i piani' : filtroModal === 'inCorso' ? 'In corso' : filtroModal.charAt(0).toUpperCase() + filtroModal.slice(1)}`} onClose={() => setFiltroModal(null)} wide>
+        <Modal title={filtroModal === 'totali' ? 'Tutti i piani' : filtroModal === 'inCorso' ? 'In corso' : filtroModal.charAt(0).toUpperCase() + filtroModal.slice(1)} icon="plan" onClose={() => setFiltroModal(null)} wide>
           <div style={{ marginBottom: 12, display: 'flex', gap: 8 }}>
             <Btn ch="Mostra solo questi" onClick={() => { setFiltro(filtroModal); setFiltroModal(null); }} full />
             <Btn ch="Mostra tutti" v="sec" onClick={() => { setFiltro(null); setFiltroModal(null); }} full />
           </div>
-          {pianiFiltrati(filtroModal).length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Nessun piano in questa categoria</div>}
+          {pianiFiltrati(filtroModal).length === 0 && <EmptyState icon="plan" title="Nessun piano in questa categoria" />}
           {pianiFiltrati(filtroModal).map(pl => {
             const p = patients.find(x => x.id === pl.pazienteId);
             const { finale: tot } = calcTot(pl.voci, pl.sconto || 0, pl.scontoTipo || 'pct');
@@ -291,11 +291,11 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
             </Crd>
           );
         })}
-        {plans.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>Nessun piano di cura</div>}
+        {plans.length === 0 && <EmptyState icon="plan" title="Nessun piano di cura" />}
       </div>
 
       {modal && (
-        <Modal title="Nuovo piano di cura" onClose={() => setModal(false)} wide>
+        <Modal title="Nuovo piano di cura" icon="plan" onClose={() => setModal(false)} wide>
           <Fld label="Paziente">
             <SelettorePaziente
               patients={patients}
@@ -454,7 +454,7 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
       )}
 
       {waModal && (
-        <Modal title="Invia su WhatsApp" onClose={() => setWaModal(null)} wide>
+        <Modal title="Invia su WhatsApp" icon="wa" iconColor="#25D366" onClose={() => setWaModal(null)} wide>
           <div style={{ background: C.bg, borderRadius: 9, padding: 10, marginBottom: 11 }}>
             <div style={{ fontSize: 13, fontWeight: 700 }}>{waModal.paz?.nome} {waModal.paz?.cognome}</div>
           </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, SelettorePaziente, WaAction, PageHeader } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, SelettorePaziente, WaAction, PageHeader, EmptyState } from './ui';
 import { C, fmtD, today, uid, RICHIAMO_CATEGORIE, DEF_TPL_GENERICO } from '../lib/utils';
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { generaRichiamiBot } from '../lib/richiamiBot';
@@ -140,11 +140,11 @@ export default function Richiami({ patients, plans, payments, appointments, rich
             </Crd>
           );
         })}
-        {filtrati.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>{mostraFatti ? 'Nessun richiamo evaso' : 'Nessun richiamo da gestire 🎉'}</div>}
+        {filtrati.length === 0 && <EmptyState icon="bell" title={mostraFatti ? 'Nessun richiamo evaso' : 'Nessun richiamo da gestire'} />}
       </div>
 
       {modal && (
-        <Modal title="📌 Nuovo richiamo" onClose={() => setModal(false)}>
+        <Modal title="Nuovo richiamo" icon="bell" onClose={() => setModal(false)}>
           <Fld label="Paziente">
             <SelettorePaziente patients={patients} value={form.pazienteId} onChange={(id) => F({ pazienteId: id })} search={pazSearch} onSearchChange={setPazSearch} autoFocus />
           </Fld>

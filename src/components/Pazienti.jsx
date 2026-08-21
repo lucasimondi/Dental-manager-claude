@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Txt, Modal, Toast, Ic, PageHeader } from './ui';
+import { Btn, Crd, Fld, Inp, Txt, Modal, Toast, Ic, PageHeader, EmptyState } from './ui';
 import { C, uid, fmtD, today } from '../lib/utils';
 import ImportCsvModal from './ImportCsvModal.jsx';
 import DupModal from './DupModal.jsx';
@@ -276,9 +276,7 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
                 <RigaPaziente key={p.id} p={p} evidenzia={evidenzia} onOpen={() => { setScheda(p); salvaPosizione({ schedaPazId: p.id, schedaPazTab: 'info' }); setSearchFocus(false); }} onDelete={() => setConfirmDelId(p.id)} confirming={confirmDelId === p.id} onCancelDelete={() => setConfirmDelId(null)} onConfirmDelete={() => { del(p.id); setConfirmDelId(null); }} />
               ))}
               {filtered.length === 0 && (
-                <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>
-                  Nessun paziente trovato per "{search}"
-                </div>
+                <EmptyState icon="pz" title={`Nessun paziente trovato per "${search}"`} />
               )}
             </>
           )}
@@ -317,13 +315,13 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
         {filtered.map((p) => (
           <RigaPaziente key={p.id} p={p} evidenzia={evidenzia} onOpen={() => { setScheda(p); salvaPosizione({ schedaPazId: p.id, schedaPazTab: 'info' }); }} onDelete={() => setConfirmDelId(p.id)} confirming={confirmDelId === p.id} onCancelDelete={() => setConfirmDelId(null)} onConfirmDelete={() => { del(p.id); setConfirmDelId(null); }} />
         ))}
-        {filtered.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>Nessun paziente</div>}
+        {filtered.length === 0 && <EmptyState icon="pz" title="Nessun paziente" />}
       </div>
       </>
       )}
 
       {modal && (
-        <Modal title={form.id ? 'Modifica paziente' : 'Nuovo paziente'} onClose={() => setModal(false)} wide>
+        <Modal title={form.id ? 'Modifica paziente' : 'Nuovo paziente'} icon="pz" onClose={() => setModal(false)} wide>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <Fld label="Nome"><Inp value={form.nome || ''} onChange={(e) => F({ nome: e.target.value })} /></Fld>
             <Fld label="Cognome"><Inp value={form.cognome || ''} onChange={(e) => F({ cognome: e.target.value })} /></Fld>

@@ -2,7 +2,7 @@
 import GestioneUtenti from './GestioneUtenti.jsx';
 import GestioneRisorseAgenda from './GestioneRisorseAgenda.jsx';
 import React, { useState, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Ic, DockIc, DOCK_ICON_STYLES } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Ic, DockIc, DOCK_ICON_STYLES, PageHeader, EmptyState } from './ui';
 import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI, DEF_DOCK_SETTINGS, mergeDockSettings, DEF_AGENDA_SETTINGS, DEF_DOCUMENTI_SETTINGS, STORIA_CLINICA_MODELLO_BASE } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { normalizeManagementControlMode } from '../lib/canonicalFinancialSelectors';
@@ -273,30 +273,34 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
     <div>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
+      <PageHeader icon="set" title="Impostazioni" />
+
       {/* Navigazione a sezioni: prima era tutto in un unico scroll lunghissimo,
           scomodo su mobile — ora ogni area si apre da sola, il resto resta
           fuori dal DOM (nessun costo di render nascosto). */}
       <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginBottom: 16, paddingBottom: 2 }}>
         {[
-          ['studio', '🏥 Studio'],
-          ['agenda', '📅 Agenda'],
-          ['documenti', '📄 Documenti'],
-          ['privacy', '🔒 Privacy GDPR'],
-          ['prenotazione', '🔗 Prenotazione online'],
-          ['aspetto', '🎨 Aspetto'],
-          ['whatsapp', '💬 WhatsApp'],
-          ['team', '👥 Profilo e team'],
-        ].map(([id, lbl]) => (
+          ['studio', 'brief', 'Studio'],
+          ['agenda', 'cal', 'Agenda'],
+          ['documenti', 'file', 'Documenti'],
+          ['privacy', 'lock', 'Privacy GDPR'],
+          ['prenotazione', 'link', 'Prenotazione online'],
+          ['aspetto', 'palette', 'Aspetto'],
+          ['whatsapp', 'wa', 'WhatsApp'],
+          ['team', 'users', 'Profilo e team'],
+        ].map(([id, ic, lbl]) => (
           <button
             key={id}
             onClick={() => setSezione(id)}
+            className="pol-btn"
             style={{
-              flexShrink: 0, padding: '9px 14px', borderRadius: 20, fontWeight: 700, fontSize: 12.5, cursor: 'pointer',
+              flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 20, fontWeight: 700, fontSize: 12.5, cursor: 'pointer',
               border: `1.5px solid ${sezione === id ? C.pri : C.brd}`,
               background: sezione === id ? C.pri : C.sur, color: sezione === id ? '#fff' : C.txm,
-              whiteSpace: 'nowrap',
+              whiteSpace: 'nowrap', boxShadow: sezione === id ? `0 4px 10px -3px ${C.pri}66` : 'none',
             }}
           >
+            <Ic n={ic} s={13} c={sezione === id ? '#fff' : C.txm} />
             {lbl}
           </button>
         ))}
@@ -617,7 +621,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
             <Ic n="edit" s={12} c={C.txl} />
           </div>
         ))}
-        {appTypes.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 24 }}>Nessun tipo configurato</div>}
+        {appTypes.length === 0 && <EmptyState icon="tag" title="Nessun tipo configurato" />}
       </Crd>
       <Btn ch="+ Nuovo tipo appuntamento" v="sec" onClick={openNewTipo} full />
 
@@ -761,7 +765,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       </div>
       <Crd style={{ marginBottom: 14 }}>
         {modelliConsenso.length === 0 && (
-          <div style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Nessun modello configurato</div>
+          <EmptyState icon="clip" title="Nessun modello configurato" />
         )}
         {modelliConsenso.map((m, i) => (
           <button
@@ -945,9 +949,9 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
               </div>
             )}
             {waConfig && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: waForm.attivo ? '#E8F5E9' : C.bg, borderRadius: 9, padding: '9px 12px', marginBottom: 14 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: waForm.attivo ? '#2E7D32' : C.txl, flexShrink: 0 }} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: waForm.attivo ? '#2E7D32' : C.txm }}>{waForm.attivo ? 'Configurato e attivo' : 'Configurato ma disattivato'}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: waForm.attivo ? `${C.suc}1A` : C.bg, borderRadius: 9, padding: '9px 12px', marginBottom: 14 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: waForm.attivo ? C.suc : C.txl, flexShrink: 0 }} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: waForm.attivo ? C.suc : C.txm }}>{waForm.attivo ? 'Configurato e attivo' : 'Configurato ma disattivato'}</span>
               </div>
             )}
             <Fld label="Phone Number ID">
@@ -983,7 +987,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       )}
 
       {voceModal && (
-        <Modal title={voceModal === 'new' ? 'Nuova voce' : 'Modifica voce'} onClose={() => setVoceModal(null)}>
+        <Modal title={voceModal === 'new' ? 'Nuova voce' : 'Modifica voce'} icon="clip" onClose={() => setVoceModal(null)}>
           <Fld label="Testo della domanda">
             <Inp value={voceForm.titolo} onChange={(e) => setVoceForm({ titolo: e.target.value })} placeholder="es. Allergie note, Terapie in corso..." />
           </Fld>
@@ -996,7 +1000,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       )}
 
       {modelloModal && (
-        <Modal title={modelloModal === 'new' ? 'Nuovo modello' : 'Modifica modello'} onClose={() => setModelloModal(null)}>
+        <Modal title={modelloModal === 'new' ? 'Nuovo modello' : 'Modifica modello'} icon="clip" onClose={() => setModelloModal(null)}>
           <Fld label="Titolo">
             <Inp value={modelloForm.titolo} onChange={(e) => setModelloForm((f) => ({ ...f, titolo: e.target.value }))} placeholder={(!si?.vertical || si.vertical === 'dentistico') ? 'es. Consenso trattamento dati, Consenso impianto...' : 'es. Consenso trattamento dati, Consenso specifico...'} />
           </Fld>
@@ -1018,7 +1022,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       )}
 
       {tipoModal && (
-        <Modal title={tipoModal === 'new' ? 'Nuovo tipo appuntamento' : 'Modifica tipo'} onClose={() => setTipoModal(null)}>
+        <Modal title={tipoModal === 'new' ? 'Nuovo tipo appuntamento' : 'Modifica tipo'} icon="tag" onClose={() => setTipoModal(null)}>
           <Fld label="Nome"><Inp value={tipoForm.nome} onChange={(e) => setTipoForm((f) => ({ ...f, nome: e.target.value }))} placeholder="es. Igiene, Urgenza, Controllo…" /></Fld>
           <Fld label="Colore">
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8, marginBottom: 10 }}>

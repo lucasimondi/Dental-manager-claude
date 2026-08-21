@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Ic } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Ic, EmptyState } from './ui';
 import UploadDocumento from './ui/UploadDocumentoSpesa.jsx';
 import { C, fmt, fmtD, today } from '../lib/utils';
 import { useCategorieSpesa } from '../lib/useCategorieSpesa';
@@ -44,7 +44,7 @@ function CostoOrarioCard({ studioId, refreshKey }) {
           <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.75)', textTransform: 'uppercase' }}>Costo orario dello studio</div>
           <div style={{ fontSize: 30, fontWeight: 900, color: '#fff', marginTop: 2 }}>{fmt(dati.costo_orario)}<span style={{ fontSize: 14, fontWeight: 700 }}>/ora</span></div>
         </div>
-        <button onClick={() => setEditConfig(true)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, padding: '6px 10px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>⚙️ Ore</button>
+        <button onClick={() => setEditConfig(true)} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, padding: '6px 10px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}><Ic n="clk" s={12} c="#fff" />Ore</button>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, rowGap: 2, marginTop: 12, fontSize: 11, color: 'rgba(255,255,255,0.85)' }}>
         <div>Costi struttura: <b>{fmt(dati.costi_fissi_spese_mensili)}</b>/mese</div>
@@ -56,7 +56,7 @@ function CostoOrarioCard({ studioId, refreshKey }) {
       </div>
 
       {editConfig && (
-        <Modal title="Ore lavorabili dello studio" onClose={() => setEditConfig(false)}>
+        <Modal title="Ore lavorabili dello studio" icon="clk" onClose={() => setEditConfig(false)}>
           <div style={{ fontSize: 11, color: C.txl, marginBottom: 12 }}>
             Usate per calcolare il costo orario: giorni di apertura a settimana × ore al giorno × numero di {labelPostazioni} in uso contemporaneo.
           </div>
@@ -138,7 +138,7 @@ function ConfermaEstrazione({ estratto, file, onClose, onSalvato, studioId, cate
   };
 
   return (
-    <Modal title="Documento letto — conferma" onClose={onClose}>
+    <Modal title="Documento letto — conferma" icon="ok" onClose={onClose}>
       <div style={{ background: C.priL, borderRadius: 10, padding: 10, marginBottom: 12, fontSize: 11, color: C.pri }}>
         Ho riconosciuto: <b>{estratto.tipo_documento?.replace('_', ' ')}</b>
         {estratto.fornitore ? ` da ${estratto.fornitore}` : ''} — confidenza {estratto.confidenza || 'media'}. Controlla e correggi se serve.
@@ -153,7 +153,7 @@ function ConfermaEstrazione({ estratto, file, onClose, onSalvato, studioId, cate
           ].map((d) => (
             <button key={d.id} onClick={() => setDestinazione(d.id)} style={{
               flex: 1, padding: '8px 0', borderRadius: 9, border: `1.5px solid ${destinazione === d.id ? C.pri : C.brd}`,
-              background: destinazione === d.id ? C.priL : '#fff', color: destinazione === d.id ? C.pri : C.txm,
+              background: destinazione === d.id ? C.priL : C.sur, color: destinazione === d.id ? C.pri : C.txm,
               fontWeight: 700, fontSize: 12, cursor: 'pointer',
             }}>{d.label}</button>
           ))}
@@ -174,8 +174,8 @@ function ConfermaEstrazione({ estratto, file, onClose, onSalvato, studioId, cate
           </Fld>
           <Fld label="Tipo di costo">
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setFormSpesa((f) => ({ ...f, tipo_costo: 'fisso' }))} style={{ flex: 1, padding: '8px 0', borderRadius: 9, border: `1.5px solid ${formSpesa.tipo_costo === 'fisso' ? C.pri : C.brd}`, background: formSpesa.tipo_costo === 'fisso' ? C.priL : '#fff', color: formSpesa.tipo_costo === 'fisso' ? C.pri : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Fisso</button>
-              <button onClick={() => setFormSpesa((f) => ({ ...f, tipo_costo: 'variabile' }))} style={{ flex: 1, padding: '8px 0', borderRadius: 9, border: `1.5px solid ${formSpesa.tipo_costo === 'variabile' ? C.pri : C.brd}`, background: formSpesa.tipo_costo === 'variabile' ? C.priL : '#fff', color: formSpesa.tipo_costo === 'variabile' ? C.pri : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Variabile</button>
+              <button onClick={() => setFormSpesa((f) => ({ ...f, tipo_costo: 'fisso' }))} style={{ flex: 1, padding: '8px 0', borderRadius: 9, border: `1.5px solid ${formSpesa.tipo_costo === 'fisso' ? C.pri : C.brd}`, background: formSpesa.tipo_costo === 'fisso' ? C.priL : C.sur, color: formSpesa.tipo_costo === 'fisso' ? C.pri : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Fisso</button>
+              <button onClick={() => setFormSpesa((f) => ({ ...f, tipo_costo: 'variabile' }))} style={{ flex: 1, padding: '8px 0', borderRadius: 9, border: `1.5px solid ${formSpesa.tipo_costo === 'variabile' ? C.pri : C.brd}`, background: formSpesa.tipo_costo === 'variabile' ? C.priL : C.sur, color: formSpesa.tipo_costo === 'variabile' ? C.pri : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Variabile</button>
             </div>
           </Fld>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
@@ -268,7 +268,7 @@ function VistaPersonale({ studioId, refreshKey, onChanged }) {
         <div style={{ fontSize: 13, fontWeight: 700, color: C.txm }}>Totale mensile: <span style={{ color: C.txt }}>{fmt(totaleMensile)}</span></div>
         <Btn ch="+ Persona" sz="sm" onClick={apriNuovo} />
       </div>
-      {lista.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 20, fontSize: 12 }}>Nessun dipendente/collaboratore registrato</div>}
+      {lista.length === 0 && <EmptyState icon="users" title="Nessun dipendente/collaboratore registrato" />}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {lista.map((p) => (
           <Crd key={p.id} style={{ opacity: p.attivo ? 1 : 0.5 }}>
@@ -286,7 +286,7 @@ function VistaPersonale({ studioId, refreshKey, onChanged }) {
       </div>
 
       {modal && (
-        <Modal title={editItem ? 'Modifica' : '+ Persona'} onClose={() => setModal(false)}>
+        <Modal title={editItem ? 'Modifica' : 'Nuova persona'} icon="user" onClose={() => setModal(false)}>
           <Fld label="Nome"><Inp value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} autoFocus /></Fld>
           <Fld label="Ruolo"><Inp value={form.ruolo} onChange={(e) => setForm((f) => ({ ...f, ruolo: e.target.value }))} placeholder="es. Assistente, Igienista..." /></Fld>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -370,7 +370,7 @@ function VistaMacchinari({ studioId, refreshKey, onChanged }) {
         <div style={{ fontSize: 13, fontWeight: 700, color: C.txm }}>Ammortamento mensile: <span style={{ color: C.txt }}>{fmt(totaleMensile)}</span></div>
         <Btn ch="+ Macchinario" sz="sm" onClick={apriNuovo} />
       </div>
-      {lista.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 20, fontSize: 12 }}>Nessun macchinario registrato</div>}
+      {lista.length === 0 && <EmptyState icon="brief" title="Nessun macchinario registrato" />}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {lista.map((m) => {
           const cu = costoUso(m);
@@ -391,7 +391,7 @@ function VistaMacchinari({ studioId, refreshKey, onChanged }) {
       </div>
 
       {modal && (
-        <Modal title={editItem ? 'Modifica' : '+ Macchinario'} onClose={() => setModal(false)}>
+        <Modal title={editItem ? 'Modifica' : 'Nuovo macchinario'} icon="brief" onClose={() => setModal(false)}>
           <Fld label="Nome"><Inp value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder="es. Stampante 3D" autoFocus /></Fld>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <Fld label="Costo acquisto €"><Inp type="number" value={form.costo_acquisto} onChange={(e) => setForm((f) => ({ ...f, costo_acquisto: e.target.value }))} /></Fld>
@@ -472,7 +472,7 @@ function VistaMateriali({ studioId, refreshKey, onChanged }) {
         <div style={{ fontSize: 11, color: C.txl }}>Collegali alle prestazioni nel Listino per calcolare la marginalità</div>
         <Btn ch="+ Materiale" sz="sm" onClick={apriNuovo} />
       </div>
-      {lista.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 20, fontSize: 12 }}>Nessun materiale registrato</div>}
+      {lista.length === 0 && <EmptyState icon="folder" title="Nessun materiale registrato" />}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {lista.map((m) => (
           <Crd key={m.id} style={{ opacity: m.attivo ? 1 : 0.5 }}>
@@ -490,7 +490,7 @@ function VistaMateriali({ studioId, refreshKey, onChanged }) {
       </div>
 
       {modal && (
-        <Modal title={editItem ? 'Modifica' : '+ Materiale'} onClose={() => setModal(false)}>
+        <Modal title={editItem ? 'Modifica' : 'Nuovo materiale'} icon="folder" onClose={() => setModal(false)}>
           <Fld label="Nome"><Inp value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder="es. Composito A2" autoFocus /></Fld>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <Fld label="Costo acquisto €"><Inp type="number" value={form.costo} onChange={(e) => setForm((f) => ({ ...f, costo: e.target.value }))} /></Fld>

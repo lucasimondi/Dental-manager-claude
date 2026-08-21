@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { C } from '../lib/utils';
-import { Crd, Fld, Inp, Sel, Modal, Toast, Btn, Ic } from './ui';
+import { Crd, Fld, Inp, Sel, Modal, Toast, Btn, Ic, EmptyState } from './ui';
 import { resolveTeamCapabilities, getCapabilityPresentation } from '../lib/roleLabels';
 
 export default function GestioneUtenti({ studioId, currentUserId, features, isStudioAdmin, vertical }) {
@@ -95,10 +95,13 @@ export default function GestioneUtenti({ studioId, currentUserId, features, isSt
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={{ fontSize: 14, fontWeight: 800, color: C.txt, display:'flex', alignItems:'center', gap:6 }}><Ic n="users" s={14} c={C.txt} />Team</div>
         {isStudioAdmin && (
-          <button onClick={() => { if (limiteRaggiunto) { setToast(`Limite di ${maxUtenti} utenti raggiunto per il tuo piano.`); return; } setForm({ email: '', nome: '', ruolo: 'utente' }); setInvitaModal(true); }}
-            style={{ background: limiteRaggiunto ? C.bg : C.pri, border: 'none', borderRadius: 9, padding: '8px 14px', color: limiteRaggiunto ? C.txl : '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-            {limiteRaggiunto ? <><Ic n="lock" s={12} c={C.txl} /> Limite raggiunto</> : <><Ic n="plus" s={12} c="#fff" /> Invita utente</>}
-          </button>
+          <Btn
+            ch={limiteRaggiunto ? 'Limite raggiunto' : 'Invita utente'}
+            ic={limiteRaggiunto ? 'lock' : 'plus'}
+            sz="sm"
+            v={limiteRaggiunto ? 'sec' : 'pri'}
+            onClick={() => { if (limiteRaggiunto) { setToast(`Limite di ${maxUtenti} utenti raggiunto per il tuo piano.`); return; } setForm({ email: '', nome: '', ruolo: 'utente' }); setInvitaModal(true); }}
+          />
         )}
       </div>
       {!isStudioAdmin && (
@@ -113,6 +116,9 @@ export default function GestioneUtenti({ studioId, currentUserId, features, isSt
       )}
 
       {loading && <div style={{ textAlign: 'center', color: C.txl, padding: 20 }}>Caricamento...</div>}
+      {!loading && utenti.length === 0 && (
+        <EmptyState icon="users" title="Nessun altro utente" subtitle="Invita colleghi per condividere l'accesso allo studio" />
+      )}
 
       {utenti.map(u => {
         const isMe = u.user_id === currentUserId;
@@ -166,7 +172,7 @@ export default function GestioneUtenti({ studioId, currentUserId, features, isSt
 
       {/* MODAL INVITA */}
       {invitaModal && (
-        <Modal title={<><Ic n="mail" s={15} c={C.txt} /> Invita utente</>} onClose={() => setInvitaModal(false)}>
+        <Modal title="Invita utente" icon="mail" onClose={() => setInvitaModal(false)}>
           <div style={{ fontSize: 12, color: C.txm, marginBottom: 14, lineHeight: 1.5 }}>
             L'utente riceverà un'email con il link per accedere allo studio.
           </div>
