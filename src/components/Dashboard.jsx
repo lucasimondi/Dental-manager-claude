@@ -453,7 +453,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                         <span style={{ flex: 1, fontSize: 12, fontWeight: 700 }}>{action.label}</span>
                         <button type="button" disabled={i === 0} onClick={() => move(id, -1)} style={{ minWidth: 32, minHeight: 32, border: `1px solid ${C.brd}`, borderRadius: 7, background: C.sur, cursor: i === 0 ? 'not-allowed' : 'pointer', opacity: i === 0 ? 0.4 : 1 }} aria-label={`Sposta su ${action.label}`}>↑</button>
                         <button type="button" disabled={i === active.length - 1} onClick={() => move(id, 1)} style={{ minWidth: 32, minHeight: 32, border: `1px solid ${C.brd}`, borderRadius: 7, background: C.sur, cursor: i === active.length - 1 ? 'not-allowed' : 'pointer', opacity: i === active.length - 1 ? 0.4 : 1 }} aria-label={`Sposta giù ${action.label}`}>↓</button>
-                        <button type="button" onClick={() => updateActions(active.filter((x) => x !== id))} style={{ minWidth: 32, minHeight: 32, border: 'none', borderRadius: 7, background: C.danL, color: C.dan, fontWeight: 800, cursor: 'pointer' }} aria-label={`Rimuovi ${action.label}`}>✕</button>
+                        <button type="button" onClick={() => updateActions(active.filter((x) => x !== id))} style={{ minWidth: 32, minHeight: 32, border: 'none', borderRadius: 7, background: C.danL, color: C.dan, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-label={`Rimuovi ${action.label}`}><Ic n="x" s={13} c={C.dan} /></button>
                       </div>
                     );
                   })}

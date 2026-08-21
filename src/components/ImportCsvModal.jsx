@@ -49,14 +49,14 @@ export default function ImportCsvModal({ onClose, onImport }) {
   };
 
   return (
-    <Modal title="📥 Importa pazienti da CSV" onClose={onClose} wide>
+    <Modal title="Importa pazienti da CSV" icon="upload" onClose={onClose} wide>
       <div style={{ fontSize: 12, color: C.txm, marginBottom: 12, lineHeight: 1.5 }}>
         Carica uno o più file CSV esportati da altri gestionali. Il nome viene separato automaticamente in Cognome/Nome.
       </div>
 
       <label style={{ display: 'block', border: `2px dashed ${C.brd}`, borderRadius: 10, padding: '22px 14px', textAlign: 'center', cursor: 'pointer', marginBottom: 14, background: C.bg }}>
         <input type="file" accept=".csv" multiple onChange={(e) => handleFiles(e.target.files)} style={{ display: 'none' }} />
-        <div style={{ fontSize: 28, marginBottom: 6 }}>📄</div>
+        <div style={{ marginBottom: 6, display: 'flex', justifyContent: 'center' }}><Ic n="file" s={28} c={C.pri} /></div>
         <div style={{ fontSize: 13, fontWeight: 700, color: C.pri }}>Tocca per scegliere uno o più file CSV</div>
         <div style={{ fontSize: 11, color: C.txl, marginTop: 3 }}>Puoi selezionare più file insieme</div>
       </label>
@@ -72,7 +72,7 @@ export default function ImportCsvModal({ onClose, onImport }) {
             <div key={f.name} style={{ marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: C.pri, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{f.name} ({f.rows.length})</span>
-                <button onClick={() => removeFile(f.name)} style={{ background: C.danL, border: 'none', borderRadius: 6, padding: '3px 8px', color: C.dan, fontSize: 10, fontWeight: 700, cursor: 'pointer', flexShrink: 0, marginLeft: 8 }}>✕ rimuovi file</button>
+                <button onClick={() => removeFile(f.name)} style={{ background: C.danL, border: 'none', borderRadius: 6, padding: '3px 8px', color: C.dan, fontSize: 10, fontWeight: 700, cursor: 'pointer', flexShrink: 0, marginLeft: 8, display: 'flex', alignItems: 'center', gap: 3 }}><Ic n="x" s={9} c={C.dan} />rimuovi file</button>
               </div>
               <div style={{ maxHeight: 200, overflowY: 'auto', border: `1px solid ${C.brd}`, borderRadius: 8 }}>
                 {f.rows.map((r, i) => (

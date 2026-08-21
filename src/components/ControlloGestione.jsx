@@ -11,11 +11,11 @@ import ControlloCockpit from './ControlloCockpit.jsx';
 import MarginalitaPrestazioni from './MarginalitaPrestazioni.jsx';
 
 const TABS = [
-  { id: 'panoramica', label: 'Panoramica' },
-  { id: 'cockpit', label: 'Cockpit' },
-  { id: 'proiezioni', label: 'Proiezioni' },
-  { id: 'costi', label: 'Costi' },
-  { id: 'marginalita', label: 'Marginalità' },
+  { id: 'panoramica', icon: 'chart', label: 'Panoramica' },
+  { id: 'cockpit', icon: 'tool', label: 'Cockpit' },
+  { id: 'proiezioni', icon: 'trend', label: 'Proiezioni' },
+  { id: 'costi', icon: 'receipt', label: 'Costi' },
+  { id: 'marginalita', icon: 'spark', label: 'Marginalità' },
 ];
 
 function CanonicalBaseOverview({ studioId }) {
@@ -96,18 +96,20 @@ export default function ControlloGestione(props) {
   return (
     <div>
       <div style={{ padding: '0 14px' }}><PageHeader icon="chart" title="Controllo di gestione" /></div>
-      <div style={{ display: 'flex', gap: 4, background: C.bg, borderRadius: 10, padding: 4, margin: '0 14px 4px', overflowX: 'auto' }}>
+      <div className="pol-tabbar" style={{ background: C.bg, borderRadius: 10, padding: 4, margin: '0 14px 4px' }}>
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
+            className={`pol-tab${tab === t.id ? ' is-active' : ''}`}
             style={{
-              flexShrink: 0, border: 'none', borderRadius: 7, padding: '8px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+              flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, border: 'none', borderRadius: 7, padding: '8px 12px', fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap',
               background: tab === t.id ? C.sur : 'transparent',
               color: tab === t.id ? C.pri : C.txl,
               boxShadow: tab === t.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
             }}
           >
+            <Ic n={t.icon} s={12} c={tab === t.id ? C.pri : C.txl} />
             {t.label}
           </button>
         ))}

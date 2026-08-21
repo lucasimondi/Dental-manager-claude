@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
 import PrenotaDiretta from './PrenotaDiretta.jsx';
+import Ic from './ui/Ic.jsx';
 
 const C = {
   bg: '#F7F8FA', sur: '#FFFFFF',
@@ -133,7 +134,7 @@ export default function PrenotaOnline({ slug }) {
     return (
       <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.bg, padding: 24, fontFamily: 'system-ui' }}>
         <div style={{ textAlign: 'center', color: C.txm }}>
-          <div style={{ fontSize: 32, marginBottom: 10 }}>🔍</div>
+          <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'center' }}><Ic n="srch" s={32} c={C.txl} /></div>
           <div style={{ fontWeight: 700, fontSize: 16, color: C.txt }}>Link non valido</div>
           <div style={{ fontSize: 13, marginTop: 4 }}>Lo studio richiesto non è stato trovato.</div>
         </div>
@@ -199,7 +200,7 @@ export default function PrenotaOnline({ slug }) {
               {dateSel.map(iso => (
                 <div key={iso} style={{ background: C.priL, color: C.pri, borderRadius: 20, padding: '5px 10px', fontSize: 11.5, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
                   {new Date(iso + 'T12:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}
-                  <button onClick={() => toggleData(iso)} style={{ background: 'none', border: 'none', color: C.pri, cursor: 'pointer', fontWeight: 800, padding: 0, fontSize: 13 }}>✕</button>
+                  <button onClick={() => toggleData(iso)} style={{ background: 'none', border: 'none', color: C.pri, cursor: 'pointer', padding: 0, display: 'flex' }}><Ic n="x" s={11} c={C.pri} /></button>
                 </div>
               ))}
             </div>

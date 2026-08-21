@@ -668,7 +668,7 @@ function SezioneTeam({ studio_id, paziente_id, currentUserId, canManageTeam }) {
   return (
     <Crd style={{ marginBottom: 14 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
-        <div style={{ fontSize: 12, fontWeight: 800, color: C.txt }}>👥 Team del percorso</div>
+        <div style={{ fontSize: 12, fontWeight: 800, color: C.txt, display: 'flex', alignItems: 'center', gap: 6 }}><Ic n="users" s={12} c={C.txt} />Team del percorso</div>
         {canManageTeam && (
           <button
             onClick={() => setManageOpen(true)}

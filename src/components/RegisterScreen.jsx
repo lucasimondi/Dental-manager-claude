@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { VERTICALI_DISPONIBILI, getLogoSlug } from '../lib/utils';
+import Ic from './ui/Ic.jsx';
 import logoDental from '../assets/logo-poliedra-dental-transparent.png';
 import logoSalus from '../assets/logo-poliedra-salus-transparent.png';
 import logoFisio from '../assets/logo-poliedra-fisio-transparent.png';
@@ -134,7 +135,7 @@ export default function RegisterScreen({ onBack }) {
         {/* Step 3: Successo */}
         {step === 3 && (
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
+            <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center' }}><Ic n="okc" s={48} c="#27500A" /></div>
             <div style={{ fontSize: 18, fontWeight: 800, color: '#1A202C', marginBottom: 8 }}>Studio registrato!</div>
             <div style={{ fontSize: 13, color: '#718096', marginBottom: 24, lineHeight: 1.5 }}>
               Il tuo account è stato creato. Controlla la tua email per confermare l'indirizzo, poi accedi.

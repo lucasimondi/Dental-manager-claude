@@ -65,7 +65,7 @@ export default function SearchSel({ options, value, onChange, placeholder = 'Cer
               }}
             />
             {q && (
-              <button onClick={() => setQ('')} style={{ position: 'absolute', right: 18, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: C.txl, fontSize: 14, padding: 0 }}>✕</button>
+              <button onClick={() => setQ('')} style={{ position: 'absolute', right: 18, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: C.txl, padding: 0, display: 'flex' }}><Ic n="x" s={12} c={C.txl} /></button>
             )}
           </div>
           <div style={{ maxHeight: 240, overflowY: 'auto' }}>

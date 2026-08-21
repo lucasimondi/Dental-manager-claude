@@ -5,11 +5,11 @@ import { C, TIPI_EFFETTO_AZIONE, TIPI_PARAMETRO_AZIONE, LIVELLI_AZIONE_AGENTE } 
 import { estraiTestoDocumento } from '../lib/estraiTestoDocumento';
 
 const TABS = [
-  ['istruzioni', '🧭 Istruzioni'],
-  ['faq', '❓ FAQ'],
-  ['documenti', '📄 Documenti'],
-  ['azioni', '⚡ Azioni'],
-  ['livello', '⚙️ Livello & Costi'],
+  ['istruzioni', 'compass', 'Istruzioni'],
+  ['faq', 'help', 'FAQ'],
+  ['documenti', 'file', 'Documenti'],
+  ['azioni', 'zap', 'Azioni'],
+  ['livello', 'tool', 'Livello & Costi'],
 ];
 
 // Le tabelle ai_agent_* non hanno una colonna studio_id riempita da un
@@ -48,8 +48,8 @@ export default function AgenteAISetup({ features }) {
       </div>
 
       <div style={{ display: 'flex', background: C.bg, borderRadius: 10, border: `1px solid ${C.brd}`, marginBottom: 16, overflow: 'hidden', flexWrap: 'wrap' }}>
-        {TABS.map(([id, lbl]) => (
-          <button key={id} onClick={() => setTab(id)} style={{ flex: 1, minWidth: 100, padding: '10px 6px', border: 'none', background: tab === id ? C.pri : 'transparent', color: tab === id ? '#fff' : C.txm, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{lbl}</button>
+        {TABS.map(([id, ic, lbl]) => (
+          <button key={id} onClick={() => setTab(id)} style={{ flex: 1, minWidth: 100, padding: '10px 6px', border: 'none', background: tab === id ? C.pri : 'transparent', color: tab === id ? '#fff' : C.txm, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><Ic n={ic} s={12} c={tab === id ? '#fff' : C.txm} />{lbl}</button>
         ))}
       </div>
 
@@ -339,8 +339,8 @@ function TabAzioni({ onToast }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 13, fontFamily: 'monospace' }}>{a.nome}</div>
                   <div style={{ fontSize: 12, color: C.txm, marginTop: 3 }}>{a.descrizione}</div>
-                  <div style={{ marginTop: 6, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                    <Bdg ch={`${info?.icona || ''} ${info?.label || a.tipo_effetto}`} co={C.pri} />
+                  <div style={{ marginTop: 6, display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>{info?.icona && <Ic n={info.icona} s={11} c={C.pri} />}<Bdg ch={info?.label || a.tipo_effetto} co={C.pri} /></span>
                     {a.richiede_conferma && <Bdg ch="richiede conferma" co={C.war} />}
                     {!a.attiva && <Bdg ch="disattivata" co={C.txl} />}
                   </div>
@@ -363,7 +363,7 @@ function TabAzioni({ onToast }) {
           </Fld>
           <Fld label="Effetto">
             <Sel value={form.tipo_effetto} onChange={(e) => setForm((f) => ({ ...f, tipo_effetto: e.target.value }))}>
-              {TIPI_EFFETTO_AZIONE.map((t) => <option key={t.id} value={t.id}>{t.icona} {t.label}</option>)}
+              {TIPI_EFFETTO_AZIONE.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
             </Sel>
           </Fld>
           {effettoInfo && <div style={{ fontSize: 11.5, color: C.txm, marginTop: -8, marginBottom: 13 }}>{effettoInfo.descr}</div>}
@@ -486,7 +486,7 @@ function TabLivello({ features, onToast }) {
         Stima basata sui token realmente consumati da ogni chiamata a Claude (chat + consigli proattivi).
       </div>
       {usoLoading ? (
-        <div style={{ textAlign: 'center', color: C.txl, padding: 20 }}>⏳ Caricamento...</div>
+        <div style={{ textAlign: 'center', color: C.txl, padding: 20 }}>Caricamento...</div>
       ) : (
         <>
           <Crd style={{ marginBottom: 10 }}>
@@ -497,12 +497,12 @@ function TabLivello({ features, onToast }) {
           </Crd>
           <div style={{ display: 'flex', gap: 8 }}>
             <Crd style={{ flex: 1 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.txm }}>💬 Chat</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.txm, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="bot" s={11} c={C.txm} />Chat</div>
               <div style={{ fontSize: 15, fontWeight: 800, marginTop: 2 }}>${uso.chat.costo.toFixed(2)}</div>
               <div style={{ fontSize: 10.5, color: C.txl }}>{uso.chat.chiamate} chiamate</div>
             </Crd>
             <Crd style={{ flex: 1 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.txm }}>🧭 Consigli proattivi</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.txm, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="spark" s={11} c={C.txm} />Consigli proattivi</div>
               <div style={{ fontSize: 15, fontWeight: 800, marginTop: 2 }}>${uso.consigli_proattivi.costo.toFixed(2)}</div>
               <div style={{ fontSize: 10.5, color: C.txl }}>{uso.consigli_proattivi.chiamate} run</div>
             </Crd>

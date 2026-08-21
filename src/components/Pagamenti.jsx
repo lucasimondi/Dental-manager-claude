@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, SelettorePaziente, PageHeader, EmptyState } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, StatCard, SelettorePaziente, PageHeader, EmptyState } from './ui';
 import { C, uid, fmt, fmtD, today } from '../lib/utils';
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { normalizza } from '../lib/ricercaPazienti';
@@ -138,8 +138,9 @@ export default function Pagamenti({ patients, payments, setPayments, plans, auto
         {ricerca && (
           <button
             onClick={() => setRicerca('')}
-            style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: C.brd, border: 'none', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: C.txm, fontSize: 12, lineHeight: 1, padding: 0 }}
-          >✕</button>
+            aria-label="Cancella ricerca"
+            style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: C.brd, border: 'none', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}
+          ><Ic n="x" s={10} c={C.txm} /></button>
         )}
       </div>
 
@@ -147,14 +148,8 @@ export default function Pagamenti({ patients, payments, setPayments, plans, auto
       {tabAttiva === 'studio' && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-            <Crd style={{ display: 'flex', alignItems: 'center', gap: 11, padding: 12 }}>
-              <div style={{ background: C.sucL, borderRadius: 10, padding: 9 }}><Ic n="eur" s={20} c={C.suc} /></div>
-              <div><div style={{ fontSize: 17, fontWeight: 800 }}>{fmt(total)}</div><div style={{ fontSize: 11, color: C.txm, fontWeight: 600 }}>Totale studio</div></div>
-            </Crd>
-            <Crd style={{ display: 'flex', alignItems: 'center', gap: 11, padding: 12 }}>
-              <div style={{ background: C.priL, borderRadius: 10, padding: 9 }}><Ic n="clk" s={20} c={C.pri} /></div>
-              <div><div style={{ fontSize: 17, fontWeight: 800 }}>{fmt(mese)}</div><div style={{ fontSize: 11, color: C.txm, fontWeight: 600 }}>Questo mese</div></div>
-            </Crd>
+            <StatCard icon="eur" color={C.suc} value={fmt(total)} label="Totale studio" />
+            <StatCard icon="clk" color={C.pri} value={fmt(mese)} label="Questo mese" />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
             {[...paymentsFiltrati].reverse().map((pay) => {
@@ -190,14 +185,8 @@ export default function Pagamenti({ patients, payments, setPayments, plans, auto
       {tabAttiva === 'esterno' && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-            <Crd style={{ display: 'flex', alignItems: 'center', gap: 11, padding: 12 }}>
-              <div style={{ background: C.purL, borderRadius: 10, padding: 9 }}><Ic n="eur" s={20} c={C.pur} /></div>
-              <div><div style={{ fontSize: 17, fontWeight: 800 }}>{fmt(totalExt)}</div><div style={{ fontSize: 11, color: C.txm, fontWeight: 600 }}>Totale collaborazioni</div></div>
-            </Crd>
-            <Crd style={{ display: 'flex', alignItems: 'center', gap: 11, padding: 12 }}>
-              <div style={{ background: C.priL, borderRadius: 10, padding: 9 }}><Ic n="clk" s={20} c={C.pri} /></div>
-              <div><div style={{ fontSize: 17, fontWeight: 800 }}>{fmt(meseExt)}</div><div style={{ fontSize: 11, color: C.txm, fontWeight: 600 }}>Questo mese</div></div>
-            </Crd>
+            <StatCard icon="eur" color={C.pur} value={fmt(totalExt)} label="Totale collaborazioni" />
+            <StatCard icon="clk" color={C.pri} value={fmt(meseExt)} label="Questo mese" />
           </div>
 
           {/* Gestisci collaborazioni */}

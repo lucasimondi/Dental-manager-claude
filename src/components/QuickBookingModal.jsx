@@ -79,7 +79,7 @@ export default function QuickBookingModal({ patients, appTypes, appointments, im
   };
 
   return (
-    <Modal title={<>📅 Nuovo appuntamento</>} onClose={onClose}>
+    <Modal title="Nuovo appuntamento" icon="cal" onClose={onClose}>
       <Fld label="Paziente">
         {selectedPaziente ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '9px 12px', border: `1px solid ${C.brd}`, borderRadius: 9, background: C.bg }}>

@@ -170,8 +170,8 @@ export default function AssistenteAI() {
 
             {pending && (
               <div style={{ background: C.warL || C.priL, border: `1px solid ${C.war}50`, borderRadius: 12, padding: 11, fontSize: 12 }}>
-                <div style={{ fontWeight: 700, marginBottom: 6, color: C.txt }}>
-                  ⚠️ {AZIONI_LABEL[pending.name] || pending.name}
+                <div style={{ fontWeight: 700, marginBottom: 6, color: C.txt, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Ic n="warn" s={12} c={C.war} />{AZIONI_LABEL[pending.name] || pending.name}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 10 }}>
                   {Object.entries(pending.input || {}).map(([k, v]) => (

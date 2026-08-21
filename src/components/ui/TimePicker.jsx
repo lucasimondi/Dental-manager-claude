@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { C } from '../../lib/utils';
+import Ic from './Ic.jsx';
 
 const ITEM_H = 40; // altezza di ogni riga nella colonna scroll
 
@@ -119,7 +120,7 @@ export default function TimePicker({ value, onChange, label }) {
         }}
       >
         <span>{value || '—:—'}</span>
-        <span style={{ color: C.txl, fontSize: 13 }}>🕐</span>
+        <Ic n="clk" s={13} c={C.txl} />
       </button>
 
       {open && ReactDOM.createPortal(

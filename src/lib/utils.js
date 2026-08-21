@@ -206,11 +206,14 @@ export const SCADENZA_PRESET = [
    esecuzione di codice arbitrario. Solo 'webhook' ha parametri liberi
    (definiti dallo studio); gli altri riusano scritture già presenti nel
    gestionale con uno schema fisso, mostrato qui solo a scopo informativo. */
+// POL-UI-005: icona è una chiave di Ic.jsx (non più un carattere emoji) —
+// i consumer la passano a <Ic n={...}/>; il <select> nativo in AgenteAISetup
+// non può renderla e mostra solo il testo.
 export const TIPI_EFFETTO_AZIONE = [
-  { id: 'crea_richiamo', label: 'Crea un richiamo', icona: '🔔', descr: 'Aggiunge una voce nella sezione Richiami per il paziente indicato.', parametriFissi: 'paziente_id, categoria, motivo, data_scadenza' },
-  { id: 'crea_promemoria', label: 'Crea un promemoria', icona: '✅', descr: 'Aggiunge un promemoria/todo visibile in Dashboard.', parametriFissi: 'testo, data' },
-  { id: 'nota_paziente', label: 'Aggiungi nota al paziente', icona: '📝', descr: 'Aggiunge un’annotazione con data alla scheda del paziente.', parametriFissi: 'paziente_id, testo' },
-  { id: 'webhook', label: 'Chiama un webhook esterno', icona: '🔗', descr: 'Invia i parametri che definisci a un URL esterno (es. n8n, Zapier, Make) — utile per collegare automazioni esterne, come un futuro invio WhatsApp.', parametriFissi: null },
+  { id: 'crea_richiamo', label: 'Crea un richiamo', icona: 'bell', descr: 'Aggiunge una voce nella sezione Richiami per il paziente indicato.', parametriFissi: 'paziente_id, categoria, motivo, data_scadenza' },
+  { id: 'crea_promemoria', label: 'Crea un promemoria', icona: 'okc', descr: 'Aggiunge un promemoria/todo visibile in Dashboard.', parametriFissi: 'testo, data' },
+  { id: 'nota_paziente', label: 'Aggiungi nota al paziente', icona: 'edit', descr: 'Aggiunge un’annotazione con data alla scheda del paziente.', parametriFissi: 'paziente_id, testo' },
+  { id: 'webhook', label: 'Chiama un webhook esterno', icona: 'link', descr: 'Invia i parametri che definisci a un URL esterno (es. n8n, Zapier, Make) — utile per collegare automazioni esterne, come un futuro invio WhatsApp.', parametriFissi: null },
 ];
 export const TIPI_PARAMETRO_AZIONE = [
   { id: 'string', label: 'Testo' },
@@ -218,12 +221,16 @@ export const TIPI_PARAMETRO_AZIONE = [
   { id: 'boolean', label: 'Sì/No' },
 ];
 
-/* ── SEZIONE RICHIAMI: categorie e stati ── */
+/* ── SEZIONE RICHIAMI: categorie e stati ──
+   POL-UI-005: `icona` is an Ic.jsx key (was an emoji character) — every
+   consumer renders it via <Ic n={cat.icona}/>, never interpolates it as
+   text. Only presentation metadata; the `categoria` values stored on
+   richiami rows are the object keys (clinico/preventivo/...), untouched. */
 export const RICHIAMO_CATEGORIE = {
-  clinico: { label: 'Clinico', icona: '🩺', colore: '#1A6B8A' },
-  preventivo: { label: 'Preventivo in standby', icona: '📋', colore: '#7C3AED' },
-  incasso: { label: 'Incasso in standby', icona: '💶', colore: '#E63946' },
-  generico: { label: 'Generico', icona: '📌', colore: '#5F6B7A' },
+  clinico: { label: 'Clinico', icona: 'pulse', colore: '#1A6B8A' },
+  preventivo: { label: 'Preventivo in standby', icona: 'plan', colore: '#7C3AED' },
+  incasso: { label: 'Incasso in standby', icona: 'eur', colore: '#E63946' },
+  generico: { label: 'Generico', icona: 'pin', colore: '#5F6B7A' },
 };
 
 /* ── DEFAULT DATA ── */

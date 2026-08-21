@@ -7,12 +7,12 @@ import { supabase } from '../lib/supabase.js';
 
 
 const TIPI = [
-  { id: 'ricetta', label: '💊 Ricetta medica', desc: 'Prescrizione farmaci e posologia' },
-  { id: 'esami', label: '🩸 Prescrizione esami ematici', desc: 'Richiesta esami del sangue' },
-  { id: 'certificato', label: '📋 Certificato di visita', desc: 'Certificato attestante la visita effettuata' },
-  { id: 'lettera', label: '✉️ Lettera per specialista', desc: 'Referral / lettera di consulenza' },
-  { id: 'protocollo', label: '📖 Protocollo post-trattamento', desc: 'Istruzioni da consegnare al paziente' },
-  { id: 'vuoto', label: '📝 Foglio bianco intestato', desc: 'Documento libero da compilare, con intestazione e timbro' },
+  { id: 'ricetta', icona: 'pill', label: 'Ricetta medica', desc: 'Prescrizione farmaci e posologia' },
+  { id: 'esami', icona: 'drop', label: 'Prescrizione esami ematici', desc: 'Richiesta esami del sangue' },
+  { id: 'certificato', icona: 'clip', label: 'Certificato di visita', desc: 'Certificato attestante la visita effettuata' },
+  { id: 'lettera', icona: 'mail', label: 'Lettera per specialista', desc: 'Referral / lettera di consulenza' },
+  { id: 'protocollo', icona: 'book', label: 'Protocollo post-trattamento', desc: 'Istruzioni da consegnare al paziente' },
+  { id: 'vuoto', icona: 'file', label: 'Foglio bianco intestato', desc: 'Documento libero da compilare, con intestazione e timbro' },
 ];
 
 // Formula ematica standard proposta come punto di partenza: ogni voce resta
@@ -762,7 +762,7 @@ export default function DocMedico({ paz, si, onClose }) {
           <Ic n="back" s={18} c="#fff" />
         </button>
         <div style={{ flex: 1 }}>
-          <div style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>📄 Documenti medici</div>
+          <div style={{ color: '#fff', fontWeight: 800, fontSize: 15, display: 'flex', alignItems: 'center', gap: 7 }}><Ic n="file" s={14} c="#fff" />Documenti medici</div>
           <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }}>{paz.nome} {paz.cognome}</div>
         </div>
       </div>
@@ -774,7 +774,7 @@ export default function DocMedico({ paz, si, onClose }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {tipiDisponibili.map(t => (
               <button key={t.id} onClick={() => { setTipo(t.id); setGenerated(false); }} style={{ padding: '12px 14px', borderRadius: 10, border: `2px solid ${tipo === t.id ? C.pri : C.brd}`, background: tipo === t.id ? C.priL : C.sur, cursor: 'pointer', textAlign: 'left' }}>
-                <div style={{ fontWeight: 800, fontSize: 14, color: tipo === t.id ? C.pri : C.txt }}>{t.label}</div>
+                <div style={{ fontWeight: 800, fontSize: 14, color: tipo === t.id ? C.pri : C.txt, display: 'flex', alignItems: 'center', gap: 7 }}><Ic n={t.icona} s={13} c={tipo === t.id ? C.pri : C.txt} />{t.label}</div>
                 <div style={{ fontSize: 11, color: C.txm, marginTop: 2 }}>{t.desc}</div>
               </button>
             ))}
@@ -791,7 +791,7 @@ export default function DocMedico({ paz, si, onClose }) {
         {/* ── RICETTA ── */}
         {tipo === 'ricetta' && (
           <Crd style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10 }}>💊 Farmaci prescritti</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}><Ic n="pill" s={11} c={C.txm} />Farmaci prescritti</div>
             {farmaci.map((f, i) => (
               <div key={i} style={{ background: C.bg, borderRadius: 10, padding: 12, marginBottom: 10, border: `1px solid ${C.brd}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -817,7 +817,7 @@ export default function DocMedico({ paz, si, onClose }) {
         {tipo === 'esami' && (
           <Crd style={{ marginBottom: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase' }}>🩸 Formula esami ematici</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}><Ic n="drop" s={11} c={C.txm} />Formula esami ematici</div>
               <div style={{ display: 'flex', gap: 6 }}>
                 <button onClick={() => setEsamiSelezionati(new Set(ESAMI_EMATICI_STANDARD))} style={{ background: 'transparent', border: 'none', color: C.pri, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Tutti</button>
                 <button onClick={() => setEsamiSelezionati(new Set())} style={{ background: 'transparent', border: 'none', color: C.txl, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Nessuno</button>
@@ -877,7 +877,7 @@ export default function DocMedico({ paz, si, onClose }) {
         {/* ── CERTIFICATO ── */}
         {tipo === 'certificato' && (
           <Crd style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10 }}>📋 Dati certificato</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}><Ic n="clip" s={11} c={C.txm} />Dati certificato</div>
             <Fld label="Data visita">
               <Inp type="date" value={dataVisita} onChange={e => setDataVisita(e.target.value)} />
             </Fld>
@@ -893,7 +893,7 @@ export default function DocMedico({ paz, si, onClose }) {
         {/* ── LETTERA SPECIALISTA ── */}
         {tipo === 'lettera' && (
           <Crd style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10 }}>✉️ Dati lettera</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}><Ic n="mail" s={11} c={C.txm} />Dati lettera</div>
             <Fld label="Destinatario (specialista)">
               <Inp value={specialista} onChange={e => setSpecialista(e.target.value)} placeholder={isDentistico ? 'es. Dott. Rossi, Chirurgo Maxillo-Facciale...' : 'es. Dott. Rossi, Ortopedico...'} />
             </Fld>
@@ -915,7 +915,7 @@ export default function DocMedico({ paz, si, onClose }) {
         {/* ── PROTOCOLLO POST-TRATTAMENTO ── */}
         {tipo === 'protocollo' && (
           <Crd style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10 }}>📖 Protocollo</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}><Ic n="book" s={11} c={C.txm} />Protocollo</div>
             {isDentistico && (
               <Fld label="Protocollo predefinito">
                 <Sel value={protocolloId} onChange={e => selezionaProtocollo(e.target.value)}>
@@ -936,7 +936,7 @@ export default function DocMedico({ paz, si, onClose }) {
         {/* ── FOGLIO BIANCO INTESTATO ── */}
         {tipo === 'vuoto' && (
           <Crd style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10 }}>📝 Documento libero</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}><Ic n="file" s={11} c={C.txm} />Documento libero</div>
             <button
               onClick={() => setIncludiPazienteVuoto(v => !v)}
               style={{

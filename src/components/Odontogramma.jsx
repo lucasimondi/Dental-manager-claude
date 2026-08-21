@@ -1,5 +1,6 @@
 import React from 'react';
 import { C } from '../lib/utils';
+import { Ic } from './ui';
 
 const ODO_ROWS = [
   [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28],
@@ -52,8 +53,8 @@ export default function Odontogramma({ selected, onChange, onDenteChange }) {
   return (
     <div style={{ background: C.bg, borderRadius: 10, padding: '10px 8px 8px', marginBottom: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
-        <div style={{ fontSize: 11, fontWeight: 800, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em' }}>🦷 Seleziona denti</div>
-        {selected.length > 0 && <button onClick={clearAll} style={{ background: C.danL, border: 'none', borderRadius: 5, padding: '2px 8px', fontSize: 10, color: C.dan, fontWeight: 700, cursor: 'pointer' }}>✕ deseleziona</button>}
+        <div style={{ fontSize: 11, fontWeight: 800, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 6 }}><Ic n="tooth" s={11} c={C.pri} />Seleziona denti</div>
+        {selected.length > 0 && <button onClick={clearAll} style={{ background: C.danL, border: 'none', borderRadius: 5, padding: '2px 8px', fontSize: 10, color: C.dan, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}><Ic n="x" s={9} c={C.dan} />deseleziona</button>}
       </div>
       <div style={{ display: 'flex', justifyContent: 'center', gap: 1, marginBottom: 3 }}>
         <div style={{ flex: 1, textAlign: 'center', fontSize: 8, color: C.txl, fontWeight: 700 }}>Q1 (dx)</div>

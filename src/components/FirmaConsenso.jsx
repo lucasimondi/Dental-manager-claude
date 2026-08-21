@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
 import PadFirma from './ui/PadFirma.jsx';
+import Ic from './ui/Ic.jsx';
 import { generaConsensoPdf, hashConsenso } from '../lib/pdfConsenso';
 import { scaricaPdf } from '../lib/condivisionePdf';
 
@@ -75,7 +76,7 @@ export default function FirmaConsenso({ token }) {
     return (
       <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.bg, padding: 24, fontFamily: 'system-ui' }}>
         <div style={{ textAlign: 'center', color: C.txm, maxWidth: 320 }}>
-          <div style={{ fontSize: 32, marginBottom: 10 }}>⚠️</div>
+          <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'center' }}><Ic n="warn" s={32} c={C.dan} /></div>
           <div style={{ fontWeight: 700, fontSize: 15, color: C.txt }}>{MESSAGGI_ERRORE[errore] || 'Si è verificato un errore.'}</div>
         </div>
       </div>
@@ -86,14 +87,14 @@ export default function FirmaConsenso({ token }) {
     return (
       <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.bg, padding: 24, fontFamily: 'system-ui' }}>
         <div style={{ textAlign: 'center', maxWidth: 320 }}>
-          <div style={{ fontSize: 40, marginBottom: 14 }}>✓</div>
+          <div style={{ marginBottom: 14, display: 'flex', justifyContent: 'center' }}><Ic n="okc" s={40} c={C.suc} /></div>
           <div style={{ fontWeight: 800, fontSize: 19, color: C.txt, marginBottom: 8 }}>Consenso firmato</div>
           <div style={{ fontSize: 14, color: C.txm, lineHeight: 1.5, marginBottom: pdfFirmato ? 20 : 0 }}>Grazie, la firma è stata registrata da {info.studio_nome}.</div>
           {pdfFirmato && (
             <button
               onClick={() => scaricaPdf(pdfFirmato.dataUrl, pdfFirmato.filename)}
-              style={{ padding: '12px 20px', borderRadius: 12, border: `1.5px solid ${C.brd}`, background: C.sur, color: C.pri, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
-            >💾 Scarica una copia del consenso</button>
+              style={{ padding: '12px 20px', borderRadius: 12, border: `1.5px solid ${C.brd}`, background: C.sur, color: C.pri, fontWeight: 700, fontSize: 14, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}
+            ><Ic n="save" s={14} c={C.pri} />Scarica una copia del consenso</button>
           )}
         </div>
       </div>

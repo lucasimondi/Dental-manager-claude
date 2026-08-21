@@ -234,7 +234,7 @@ export default function Spese({ refreshKey, studioId, mostraUpload = true } = {}
       {/* SPESE RICORRENTI */}
       {spese.filter(s => s.ricorrente).length > 0 && (
         <Crd style={{ marginBottom: 14, background: '#FEF3E2', border: `1px solid ${C.war}30` }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: C.war, textTransform: 'uppercase', marginBottom: 8 }}>🔄 Spese fisse/ricorrenti</div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: C.war, textTransform: 'uppercase', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}><Ic n="refresh" s={11} c={C.war} />Spese fisse/ricorrenti</div>
           {spese.filter(s => s.ricorrente).map(s => {
             const moltiplicatore = { Mensile: 12, Bimestrale: 6, Trimestrale: 4, Semestrale: 2, Annuale: 1 }[s.frequenza] || 12;
             return (
@@ -267,7 +267,7 @@ export default function Spese({ refreshKey, studioId, mostraUpload = true } = {}
       </div>
 
       {/* LISTA SPESE */}
-      {loading && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>⏳ Caricamento...</div>}
+      {loading && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Caricamento...</div>}
       {!loading && speseFiltrate.filter(s => !s.ricorrente).length === 0 && (
         <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Nessuna spesa registrata</div>
       )}
@@ -335,7 +335,7 @@ export default function Spese({ refreshKey, studioId, mostraUpload = true } = {}
           {/* Toggle ricorrente */}
           <div style={{ background: form.ricorrente ? '#FEF3E2' : C.bg, borderRadius: 10, padding: 12, marginBottom: 10, border: `1px solid ${form.ricorrente ? C.war : C.brd}` }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: form.ricorrente ? 10 : 0 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: form.ricorrente ? C.war : C.txt }}>🔄 Spesa ricorrente/fissa</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: form.ricorrente ? C.war : C.txt, display: 'flex', alignItems: 'center', gap: 6 }}><Ic n="refresh" s={12} c={form.ricorrente ? C.war : C.txt} />Spesa ricorrente/fissa</span>
               <button onClick={() => F({ ricorrente: !form.ricorrente })} style={{ width: 44, height: 24, borderRadius: 12, background: form.ricorrente ? C.war : C.brd, border: 'none', cursor: 'pointer', position: 'relative' }}>
                 <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: form.ricorrente ? 23 : 3, transition: 'left 0.2s' }} />
               </button>
