@@ -263,7 +263,7 @@ export default function PdfView({ pl, paz, si, features, onClose }) {
             {si.iscr && <div style={{ fontSize: 10, color: '#4A90C4', fontFamily: 'Arial,sans-serif', marginTop: 1 }}>{si.iscr}</div>}
           </div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 12, fontFamily: 'Arial,sans-serif', fontSize: 10, color: '#4A5568', margin: '8px 0', flexWrap: 'wrap' }}>
-            {si.tel && <span>📞 {si.tel}</span>}{si.email && <span>✉️ {si.email}</span>}{si.piva && <span>P.IVA {si.piva}</span>}
+            {si.tel && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="ph" s={10} c="#4A5568" />{si.tel}</span>}{si.email && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="mail" s={10} c="#4A5568" />{si.email}</span>}{si.piva && <span>P.IVA {si.piva}</span>}
           </div>
           <hr style={{ border: 'none', borderTop: '1px solid #CBD5E0', margin: '8px 0' }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', background: '#F7FAFC', borderRadius: 6, padding: '9px 12px', marginBottom: 12, fontFamily: 'Arial,sans-serif' }}>
@@ -284,7 +284,7 @@ export default function PdfView({ pl, paz, si, features, onClose }) {
                     <td style={td}>{v.prestazione}</td>
                     {isDentistico && <td style={{ ...td, width: 55, textAlign: 'center' }}>{v.dente || '—'}</td>}
                     <td style={{ ...td, width: 80, textAlign: 'right' }}>€ {Number(v.prezzo).toFixed(2)}</td>
-                    <td style={{ ...td, width: 90 }}><span style={{ background: v.eseguita ? '#E8F7EE' : '#FEF3E2', color: v.eseguita ? '#2D9E61' : '#E08040', padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 'bold' }}>{v.eseguita ? '✓ Eseguita' : 'Da eseguire'}</span></td>
+                    <td style={{ ...td, width: 90 }}><span style={{ background: v.eseguita ? '#E8F7EE' : '#FEF3E2', color: v.eseguita ? '#2D9E61' : '#E08040', padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: 3 }}>{v.eseguita && <Ic n="ok" s={9} c="#2D9E61" />}{v.eseguita ? 'Eseguita' : 'Da eseguire'}</span></td>
                   </tr>
                 );
               })}
@@ -292,9 +292,9 @@ export default function PdfView({ pl, paz, si, features, onClose }) {
               <tr><td colSpan={isDentistico ? 3 : 2} style={S.tdT}><b>TOTALE</b></td><td colSpan={2} style={{ ...S.tdT, textAlign: 'right' }}><b>{fmtE(tot)}</b></td></tr>
             </tbody>
           </table>
-          {paz?.note && <div style={{ marginTop: 10, background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 4, padding: 9, fontSize: 11, color: '#78350F', fontFamily: 'Arial,sans-serif' }}><b>⚠️ Note:</b> {paz.note}</div>}
+          {paz?.note && <div style={{ marginTop: 10, background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 4, padding: 9, fontSize: 11, color: '#78350F', fontFamily: 'Arial,sans-serif', display: 'flex', alignItems: 'flex-start', gap: 5 }}><Ic n="warn" s={11} c="#78350F" /><span><b>Note:</b> {paz.note}</span></div>}
           <div style={{ marginTop: 16, paddingTop: 8, borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap', gap: 4, fontFamily: 'Arial,sans-serif', fontSize: 10, color: '#4A5568' }}>
-            {si.addr1 && <span>📍 {si.addr1}</span>}{si.addr2 && <span>📍 {si.addr2}</span>}
+            {si.addr1 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="pin" s={10} c="#4A5568" />{si.addr1}</span>}{si.addr2 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="pin" s={10} c="#4A5568" />{si.addr2}</span>}
           </div>
         </div>
       </div>

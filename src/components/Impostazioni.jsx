@@ -280,7 +280,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       {/* Navigazione a sezioni: prima era tutto in un unico scroll lunghissimo,
           scomodo su mobile — ora ogni area si apre da sola, il resto resta
           fuori dal DOM (nessun costo di render nascosto). */}
-      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginBottom: 16, paddingBottom: 2 }}>
+      <div className="pol-tabbar" style={{ marginBottom: 16, paddingBottom: 2 }}>
         {[
           ['studio', 'brief', 'Studio'],
           ['agenda', 'cal', 'Agenda'],
@@ -294,12 +294,11 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           <button
             key={id}
             onClick={() => setSezione(id)}
-            className="pol-btn"
+            className={`pol-tab${sezione === id ? ' is-active' : ''}`}
             style={{
-              flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 20, fontWeight: 700, fontSize: 12.5, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 20, fontWeight: 700, fontSize: 12.5,
               border: `1.5px solid ${sezione === id ? C.pri : C.brd}`,
               background: sezione === id ? C.pri : C.sur, color: sezione === id ? '#fff' : C.txm,
-              whiteSpace: 'nowrap', boxShadow: sezione === id ? `0 4px 10px -3px ${C.pri}66` : 'none',
             }}
           >
             <Ic n={ic} s={13} c={sezione === id ? '#fff' : C.txm} />

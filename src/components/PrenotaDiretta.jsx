@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { slotLiberiRange } from '../lib/slotPrenotazione';
+import Ic from './ui/Ic.jsx';
 
 const C = {
   bg: '#F7F8FA', sur: '#FFFFFF',
@@ -100,7 +101,7 @@ export default function PrenotaDiretta({ studio }) {
   if (tipi.length === 0) {
     return (
       <div style={{ textAlign: 'center', color: C.txm, padding: '40px 20px' }}>
-        <div style={{ fontSize: 32, marginBottom: 10 }}>📅</div>
+        <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'center' }}><Ic n="cal" s={32} c={C.txl} /></div>
         <div style={{ fontWeight: 700, fontSize: 15, color: C.txt }}>Prenotazione diretta non disponibile</div>
         <div style={{ fontSize: 13, marginTop: 4 }}>Contatta lo studio direttamente per fissare un appuntamento.</div>
       </div>

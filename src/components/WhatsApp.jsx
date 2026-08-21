@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Ic, PhStr, SearchSel } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Ic, PhStr, SearchSel, PageHeader } from './ui';
 import { C, uid, fmtD, today } from '../lib/utils';
 
 export default function WhatsApp({ patients, appointments, templates, setTemplates }) {
@@ -59,14 +59,12 @@ export default function WhatsApp({ patients, appointments, templates, setTemplat
   return (
     <div>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
-      <div style={{ marginBottom: 12 }}><div style={{ fontSize: 20, fontWeight: 800 }}>WhatsApp Business</div></div>
-      <div style={{ background: 'linear-gradient(135deg,#25D366,#128C7E)', borderRadius: 12, padding: 13, marginBottom: 13, display: 'flex', alignItems: 'center', gap: 11 }}>
-        <Ic n="wa" s={28} c="#fff" />
-        <div><div style={{ color: '#fff', fontWeight: 800, fontSize: 14 }}>WhatsApp Business</div><div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11 }}>I messaggi si aprono nell'app</div></div>
-      </div>
-      <div style={{ display: 'flex', background: C.sur, borderRadius: 9, border: `1px solid ${C.brd}`, marginBottom: 13, overflow: 'hidden' }}>
-        {[{ id: 'remind', l: '📅 Reminder' }, { id: 'msg', l: '✏️ Messaggio' }, { id: 'tpl', l: '📋 Template' }].map((tb) => (
-          <button key={tb.id} onClick={() => setTab(tb.id)} style={{ flex: 1, padding: '10px 4px', background: tab === tb.id ? C.pri : 'transparent', border: 'none', color: tab === tb.id ? '#fff' : C.txm, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>{tb.l}</button>
+      <PageHeader icon="wa" title="WhatsApp Business" subtitle="I messaggi si aprono nell'app" />
+      <div className="pol-tabbar" style={{ background: C.sur, borderRadius: 9, border: `1px solid ${C.brd}`, marginBottom: 13, padding: 3 }}>
+        {[{ id: 'remind', ic: 'cal', l: 'Reminder' }, { id: 'msg', ic: 'edit', l: 'Messaggio' }, { id: 'tpl', ic: 'clip', l: 'Template' }].map((tb) => (
+          <button key={tb.id} onClick={() => setTab(tb.id)} className={`pol-tab${tab === tb.id ? ' is-active' : ''}`} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '9px 4px', borderRadius: 7, background: tab === tb.id ? C.pri : 'transparent', border: 'none', color: tab === tb.id ? '#fff' : C.txm, fontWeight: 700, fontSize: 11 }}>
+            <Ic n={tb.ic} s={11} c={tab === tb.id ? '#fff' : C.txm} />{tb.l}
+          </button>
         ))}
       </div>
 

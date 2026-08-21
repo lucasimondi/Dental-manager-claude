@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker, SelettorePaziente, EmptyState } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker, SelettorePaziente, EmptyState, PageHeader } from './ui';
 import WaAction, { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
 import { C, uid, fmtD, today, getAppTypesDefault, DEF_AGENDA_SETTINGS } from '../lib/utils';
 import { useIsMobile } from '../lib/useIsMobile';
@@ -1012,6 +1012,13 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           <span style={{ fontSize: 11.5, fontWeight: 800, color: C.txm, letterSpacing: '0.01em' }}>Agenda</span>
         </div>
       )}
+
+      {/* Header pieno solo su desktop: su mobile resta la riga brand-mark
+          compatta sopra (già ottimizzata per lo spazio verticale in un round
+          precedente) — qui c'è margine per il trattamento premium standard
+          usato dalle altre pagine, senza duplicare campanella/filtri/WA
+          compatti che restano nella toolbar DayStrip subito sotto. */}
+      {!isMobile && <PageHeader icon="cal" title="Agenda" />}
 
       {haFiltriRisorse && !isMobile && chipsRisorse}
 
