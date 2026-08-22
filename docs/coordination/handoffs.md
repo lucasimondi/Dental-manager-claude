@@ -404,3 +404,35 @@
 - Unresolved issues / residual scope: WORK MODE (persistent side-panel, §15) is explicitly not implemented this round, per the task's own instruction — only QUICK MODE (the existing command palette) ships; the architecture (`Poliedron.jsx`'s single state/panel, unchanged `PoliedronPanel.jsx`) does not preclude adding a work-mode variant later, but no new API surface for it was added since that would be speculative. Voice input, telemetry, and Poliedra memory remain out of scope, unchanged from POL-AI-001's FUTURE_PHASES. Real iOS Safari device confirmation for `env(safe-area-inset-*)` is not possible in this sandbox (headless Chromium always resolves these to 0px) — the structural CSS-reference check is the honest ceiling of what could be verified here, consistent with this session's established norm for this exact category of limitation.
 - Risks: none introduced. The mobile drag fix and the `avoidBottomRight` type of dead-behavior removal are both strictly-narrowing/correctness fixes verified by both unit tests and live-browser QA; the desktop Edge Dock and prefix navigation are net-new, additive surfaces that don't touch any existing page's business logic beyond the small, backward-compatible `initialFiltroTipo` prop on `ArchivioDocs.jsx` (defaults to its original 'tutti' behavior when omitted).
 - Exact next action: Product Owner reviews the draft PR for `fix/POL-AI-002A-adaptive-poliedron`. Do not deploy, merge, or begin another task without explicit Product Owner approval.
+
+## POL-UI-011 ownership transfer
+
+- Task ID: POL-UI-011
+- Previous agent: CLAUDE (POL-AI-001 was the stale recorded task; its work is merged in `origin/master@e504e52`)
+- Branch: `lucasimondi-hotfix-pol-ui-011-mobile-edge-to-edge-sh`
+- Objective: implement a global mobile edge-to-edge application shell with no retired-dock bottom reservation while preserving floating Poliedron behavior and all business/security semantics.
+- Completed work: Product Owner explicitly authorized this session to replace the stale current-task record and take ownership of POL-UI-011; the branch was confirmed byte-identical to latest `origin/master@e504e52`.
+- Files changed: `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- Database changes: none.
+- Tests executed: none at ownership-transfer time.
+- Test results: not yet applicable.
+- Unresolved issues: mobile shell audit and implementation pending.
+- Risks: none introduced; coordination-only change.
+- Exact next action: audit the required shell/page CSS and dependencies, implement and validate POL-UI-011, then append the complete final handoff and stop at `WAITING_PRODUCT_OWNER`.
+
+## POL-UI-011 mobile edge-to-edge shell
+
+- Task ID: POL-UI-011
+- Previous agent: COPILOT
+- Branch: `lucasimondi-hotfix-pol-ui-011-mobile-edge-to-edge-sh`, based on `origin/master@e504e52`
+- Objective: remove all retired-dock mobile bottom reservation and make the shared Poliedra shell reach the physical viewport edge while Poliedron remains a fixed overlay.
+- Completed work: established explicit `html`/`body`/`#root` height and zero-spacing roots; made the app shell a definite `100dvh` chain; added the `app-main` flex/min-height/overflow contract; made `#app-scroll` a width-safe `flex: 1 1 auto` surface with safe-area-only bottom padding and non-layout `scroll-padding-bottom`; preserved Agenda's dedicated inner scroll while removing its stale 84px dock subtraction; removed Home's three `92px` `!important` padding overrides. No viewport library was added because the existing stack has none and native `100dvh`, `env(safe-area-inset-*)`, flex sizing, and Agenda's existing `ResizeObserver` fully cover the requirement.
+- Files changed: `src/App.jsx`; `src/styles/designTokens.css`; `src/components/PremiumVisualSystem.css`; `src/components/Agenda.jsx`; `tests/mobileShell.test.mjs`; `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- Database changes: none. No Supabase, migration, schema, RLS, RBAC, financial, clinical, routing, Poliedron, or AI behavior change.
+- Tests executed: `npm test`; `npm run build`; `git diff --check`; conflict-marker scan; retired-reservation scan; temporary browser geometry harness (deleted before commit) covering Home, Agenda, Pazienti, Piani, Pagamenti, Documenti, Controllo Gestione, WhatsApp, and Impostazioni at 375x812, 390x844, and 430x932.
+- Test results: 105/105 Node tests pass; production build passes; `git diff --check` passes; no conflict markers; no `92px` padding or Agenda `dockH`/84px reservation remains. Browser geometry: 27/27 page-size combinations pass with `window.innerHeight = visualViewport.height = documentElement.clientHeight = body/root/shell/#app-scroll bottom`, computed mobile bottom padding and margin `0px` in the non-notched harness, no horizontal overflow, last control reachable, Poliedron fixed, and its command panel opening.
+- Unresolved issues: none in POL-UI-011 scope. The build retains pre-existing warnings from `pdfjs-dist` eval, a malformed legacy CSS comment token in `designTokens.css`, and existing large chunks; none is caused by this layout change.
+- Risks: real iPhone Safari remains the release authority, but the implementation uses the requested WebKit-safe definite flex chain and native dynamic viewport/safe-area primitives. The repository's current single AI entry point is Poliedron; the legacy separate `AssistenteAI` button remains intentionally unmounted per merged POL-AI-001 and was not reintroduced.
+- Rollback: revert the POL-UI-011 commit; there is no data or deployment rollback.
+- Deployment impact: frontend bundle only; no deployment performed.
+- Exact next action: Product Owner reviews draft PR #37. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.

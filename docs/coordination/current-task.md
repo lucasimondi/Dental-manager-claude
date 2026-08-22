@@ -4,7 +4,7 @@
 - TITLE: Poliedron Adaptive Interface — Mobile Orb + Desktop Edge Dock + Precise Drag + Prefix Navigation
 - OWNER: CLAUDE
 - BRANCH: `fix/POL-AI-002A-adaptive-poliedron`
-- BASE REVIEW: `master` (POL-AI-001 merged — `e504e52`, squash of PR #35)
+- BASE REVIEW: `master@d95af43` (POL-AI-001 + POL-UI-011 mobile edge-to-edge shell)
 - STATUS: `WAITING_PRODUCT_OWNER`
 - PR: #36 (draft) — https://github.com/lucasimondi/Dental-manager-claude/pull/36
 
@@ -33,6 +33,14 @@ Product Owner reviews the draft PR for `fix/POL-AI-002A-adaptive-poliedron`. Ful
 - Branch: `feature/POL-AI-001-poliedron-universal-interface` — PR #35, squash-merged to `master` as `e504e52`.
 - Objective: first architecture of Poliedron — global Orb, Spotlight-style command panel, provider-independent Model Gateway, deterministic-first intent/search, Action Registry reusing existing workflows, Permission Engine reusing existing RBAC. Revised once more to make Poliedron the app's single AI entry point (AssistenteAI's floating widget unmounted, kept internal for future convergence).
 - Full detail: `docs/coordination/handoffs.md` ("POL-AI-001 Poliedron Universal Operating Interface (Phase 1)" and the two review-round entries that follow it).
+
+---
+
+# Historical record: POL-UI-011 (merged to master)
+
+- Branch: `lucasimondi-hotfix-pol-ui-011-mobile-edge-to-edge-sh` — PR #37, merged to `master` as `d95af43`.
+- Objective: establish the mobile `100dvh` edge-to-edge flex shell and remove the retired dock's global bottom reservation while keeping fixed controls as overlays.
+- Full detail: see `docs/coordination/handoffs.md` ("POL-UI-011 mobile edge-to-edge shell").
 
 ---
 
