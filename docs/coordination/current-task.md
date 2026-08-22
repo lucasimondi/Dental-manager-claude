@@ -6,6 +6,7 @@
 - BRANCH: `claude/whatsapp-agenda-cancel-rql7fg`
 - BASE REVIEW: `master@1faa9bb` (POL-AI-002A merged via PR #36)
 - STATUS: `PR_OPEN_AWAITING_REVIEW`
+- PR: #39 — https://github.com/lucasimondi/Dental-manager-claude/pull/39
 
 ## Objective
 
