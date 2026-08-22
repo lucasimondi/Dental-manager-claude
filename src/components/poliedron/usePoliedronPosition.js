@@ -27,14 +27,15 @@ const persistPosition = (pos) => {
 };
 
 /**
- * usePoliedronPosition({ size, avoidBottomRight })
+ * usePoliedronPosition({ size })
  * `size`: orb diameter in px, used to keep the whole orb inside the
  * viewport (accounting for safe-area insets) rather than just its center.
- * `avoidBottomRight`: px height of a zone to stay clear of in the bottom-
- * right corner (the Agente AI button lives there) when snapping.
+ * Poliedron is the app's only floating AI button (POL-AI-001 review round
+ * 2 — AssistenteAI's own floating widget was unmounted for this reason),
+ * so there is no longer a second corner to reserve when edge-snapping.
  * Returns { style, isDragging, bind, resetPosition }.
  */
-export function usePoliedronPosition({ size = 68, avoidBottomRight = 90, onActivate } = {}) {
+export function usePoliedronPosition({ size = 68, onActivate } = {}) {
   const [pos, setPos] = useState(() => loadStoredPosition() || { xPct: null, yPct: null }); // null = default corner, resolved in style
   const [isDragging, setIsDragging] = useState(false);
   const dragState = useRef(null); // { startX, startY, startXPct, startYPct, moved }
@@ -78,20 +79,14 @@ export function usePoliedronPosition({ size = 68, avoidBottomRight = 90, onActiv
         // automatico ai lati") — vertical position is kept as dragged.
         const centerX = current.left + size / 2;
         const snappedLeft = centerX < w / 2 ? EDGE_MARGIN : w - size - EDGE_MARGIN;
-        let top = current.top;
-        // Stay clear of the Agente AI button's corner when resting on the
-        // right edge near the bottom (§3: "non coprire dock/menu principali").
-        if (snappedLeft > w / 2 && top > h - avoidBottomRight - size) {
-          top = h - avoidBottomRight - size;
-        }
-        const next = { xPct: clampPct(snappedLeft / w), yPct: clampPct(top / h) };
+        const next = { xPct: clampPct(snappedLeft / w), yPct: clampPct(current.top / h) };
         persistPosition(next);
         setPos(next);
       }
       return null;
     });
     setIsDragging(false);
-  }, [size, avoidBottomRight, onPointerMove]);
+  }, [size, onPointerMove]);
 
   const onPointerDown = useCallback((e) => {
     const rect = e.currentTarget.getBoundingClientRect();

@@ -14,7 +14,6 @@ export default function PoliedronOrb({ isMobile, open, onToggle, panelId }) {
   const [pressed, setPressed] = useState(false);
   const { style, isDragging, bind } = usePoliedronPosition({
     size,
-    avoidBottomRight: isMobile ? 90 : 80,
     onActivate: onToggle,
   });
 

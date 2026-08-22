@@ -7,8 +7,19 @@ import { salvaPosizione, leggiPosizione, pulisciPosizione } from './lib/posizion
 // menu) is superseded by Poliedron — the same floating polyhedron concept,
 // evolved into the app's universal command interface (search/navigate/
 // create/analyze), mounted on both mobile and desktop now instead of
-// mobile-only. AssistenteAI is untouched — a separate, already-working
-// chat surface this task does not remove (see final report).
+// mobile-only.
+//
+// Product Owner requirement (POL-AI-001 review round 2): Poliedron must be
+// the single AI entry point in the UI — no second floating AI button.
+// AssistenteAI.jsx (the separate chat widget, previously mounted here
+// alongside Poliedron) is no longer rendered anywhere in the app shell.
+// Its file and internal logic (the tool-confirmation loop for
+// crea_appuntamento/modifica_appuntamento/elimina_appuntamento/
+// registra_pagamento/crea_paziente, all driving the same agente-assistente
+// edge function Poliedron's modelGateway.js also calls) are kept, not
+// deleted — a future round can port that tool-execution loop into
+// Poliedron's ASK/ANALYZE path behind the Model Gateway. See
+// docs/coordination/handoffs.md for the full convergence record.
 import Poliedron from './components/poliedron';
 import { buildHomePermissions } from './lib/homeDashboardModel';
 import PremiumSidebar from './components/PremiumSidebar.jsx';
@@ -16,7 +27,6 @@ import './styles/designTokens.css';
 import './components/PremiumVisualSystem.css';
 import { useIsMobile } from './lib/useIsMobile';
 import { useTheme } from './lib/useTheme';
-import AssistenteAI from './components/AssistenteAI.jsx';
 // POL-UI-004 Recovery: restored original Poliedra logo assets (verbatim,
 // same files/mapping used before POL-UX-002 swapped them for a
 // code-rendered wordmark). Root cause of that swap: the wordmark portion of
@@ -569,8 +579,6 @@ export default function App() {
           </Suspense>
         )}
       </div>
-
-      <AssistenteAI isMobile={isMobile} />
 
       <Poliedron
         isMobile={isMobile}

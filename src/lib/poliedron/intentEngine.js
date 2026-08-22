@@ -1,9 +1,10 @@
 /* POL-AI-001 §9 — deterministic intent engine, provider-independent.
    Most queries never need a model call: a short list of Italian verb/
    keyword patterns already disambiguates SEARCH/NAVIGATE/CREATE/ANALYZE/
-   ASK reliably for the phrasing this app's own users type (mirrors how
-   AssistenteAI's own agente-assistente function is only reached for real
-   free-form questions, not for every keystroke). ANALYZE/ASK still need
+   ASK reliably for the phrasing this app's own users type (mirrors how the
+   underlying agente-assistente function — formerly called directly by
+   AssistenteAI.jsx, now only via Poliedron's modelGateway.js — is only
+   reached for real free-form questions, not for every keystroke). ANALYZE/ASK still need
    poliedraCore to route to the model gateway for the actual answer — this
    module only classifies, it never answers. */
 

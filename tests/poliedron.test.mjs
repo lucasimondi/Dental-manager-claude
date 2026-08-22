@@ -317,3 +317,28 @@ test('provider independence: runModelTask fails closed (no client / no input) in
   const noInput = await runModelTask({ supabaseClient: {} });
   assert.equal(noInput.error, 'MODEL_GATEWAY_EMPTY_INPUT');
 });
+
+// ---------------------------------------------------------------------------
+// Product Owner requirement (POL-AI-001 review round 2): Poliedron must be
+// the app's single AI entry point — no second floating AI button/widget.
+// AssistenteAI's own floating chat widget was unmounted from App.jsx for
+// this reason (its file/logic are kept, not deleted, for a future
+// convergence — see docs/coordination/handoffs.md). These tests guard
+// against either half of that regression: AssistenteAI being re-mounted,
+// or Poliedron being mounted more than once.
+// ---------------------------------------------------------------------------
+
+const APP_SHELL_SOURCE = fs.readFileSync(path.join(__dirname, '..', 'src', 'App.jsx'), 'utf8');
+
+test('single AI entry point: App.jsx does not import AssistenteAI', () => {
+  assert.doesNotMatch(APP_SHELL_SOURCE, /import\s+AssistenteAI\s+from/);
+});
+
+test('single AI entry point: App.jsx does not mount <AssistenteAI', () => {
+  assert.doesNotMatch(APP_SHELL_SOURCE, /<AssistenteAI\b/);
+});
+
+test('single AI entry point: App.jsx mounts <Poliedron exactly once', () => {
+  const mounts = APP_SHELL_SOURCE.match(/<Poliedron\b/g) || [];
+  assert.equal(mounts.length, 1, 'App.jsx must render exactly one <Poliedron> — the app\'s single floating AI launcher');
+});

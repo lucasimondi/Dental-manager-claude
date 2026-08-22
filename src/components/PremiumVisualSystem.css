@@ -494,9 +494,13 @@ body:has(.home-widget-grid) #app-scroll {
 }
 
 @media (max-width: 900px) {
-  /* POL-UI-009: 92px clears the floating poliedro/Agente AI pair (18px
-     offset + 66px poliedro + 8px breathing room) — same value App.jsx uses
-     for every other page's #app-scroll, no dock-sized reservation left. */
+  /* POL-UI-009: 92px clears the floating Poliedron orb (18px offset + 66px
+     orb + 8px breathing room) — same value App.jsx uses for every other
+     page's #app-scroll, no dock-sized reservation left. POL-AI-001 review
+     round 2: Poliedron is now the only floating button in this corner
+     (AssistenteAI's separate widget was unmounted), so this padding no
+     longer needs to clear a second element — value is unchanged since it
+     was already sized to one button's height, not two side by side. */
   body:has(.home-widget-grid) #app-scroll { padding: 20px 18px 92px !important; }
   .home-widget-grid { gap: 14px !important; }
 }
@@ -508,9 +512,10 @@ body:has(.home-widget-grid) #app-scroll {
   body:has(.home-widget-grid) { background: var(--pol-premium-bg) !important; }
   /* No mobile header any more (App.jsx) — #app-scroll is the first visible
      surface, so it carries the safe-area-inset-top the header used to
-     absorb. POL-UI-009: bottom padding clears the two floating buttons
-     (poliedro left, Agente AI right — MobileDock.jsx/AssistenteAI.jsx),
-     not a dock bar any more. */
+     absorb. POL-UI-009: bottom padding clears the floating Poliedron orb,
+     not a dock bar any more (POL-AI-001 review round 2: Poliedron is now
+     the app's single floating AI button — AssistenteAI's separate widget
+     is no longer mounted). */
   body:has(.home-widget-grid) #app-scroll {
     padding: calc(16px + env(safe-area-inset-top, 0px)) 13px calc(92px + env(safe-area-inset-bottom, 0px)) !important;
   }

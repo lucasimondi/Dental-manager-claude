@@ -2,13 +2,15 @@
    CRITICAL constraint from the task: no UI component may call Gemini/
    Claude/OpenAI directly. This is the only place a model call happens.
 
-   §39: an AI integration already exists — AssistenteAI.jsx calls the
-   deployed `agente-assistente` Supabase edge function (no provider SDK in
-   this client at all; the provider choice already lives server-side,
-   behind that function). This gateway adapts that exact call instead of
-   rewriting it, and is the only caller of it for anything Poliedron does —
-   AssistenteAI.jsx itself is untouched and keeps working exactly as before
-   for its own separate chat surface.
+   §39: an AI integration already existed before Poliedron — AssistenteAI.jsx
+   called the deployed `agente-assistente` Supabase edge function (no
+   provider SDK in this client at all; the provider choice already lives
+   server-side, behind that function). This gateway adapts that exact call
+   instead of rewriting it, and is now the ONLY caller of it in the app:
+   POL-AI-001's Product Owner review required Poliedron to be the app's
+   single AI entry point, so AssistenteAI.jsx's own floating widget was
+   unmounted (its file/logic are kept, not deleted — see App.jsx's import
+   comment and docs/coordination/handoffs.md for the convergence record).
 
    §16 router: deterministic search/navigation/action-matching never reaches
    this file at all (intentEngine + searchEngine handle those with zero
