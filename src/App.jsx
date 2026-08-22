@@ -468,6 +468,23 @@ export default function App() {
       <div id="app-scroll" style={{
         flex: 1, minWidth: 0, maxWidth: '100%', boxSizing: 'border-box',
         overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain',
+        // POL-UI-010 (structural): #app-scroll only ever had flex:1 from ITS
+        // OWN parent — it never declared display:flex itself, so its child
+        // was plain block content. Agenda's root relied on height:'100%' to
+        // stretch to #app-scroll's box, and percentage heights inside a
+        // flex-sized-but-not-flex-container ancestor are exactly the class
+        // of thing iOS Safari is known to resolve unreliably (WebKit can
+        // treat the flex item's height as indefinite for descendants'
+        // percentage resolution, even though it renders with a real size) —
+        // this is why the real-device iPhone test still showed a dead strip
+        // after Agenda's own internal flex/ResizeObserver fixes: the chain
+        // was already broken one level above Agenda entirely. Making
+        // #app-scroll itself a column flex container for mobile Agenda lets
+        // Agenda's root use flex:1/minHeight:0 (the same pattern already
+        // relied on everywhere else in Agenda.jsx, verified reliable) instead
+        // of a percentage height — no other page is affected.
+        display: isMobile && page === 'agenda' ? 'flex' : undefined,
+        flexDirection: isMobile && page === 'agenda' ? 'column' : undefined,
         padding: 13,
         paddingTop: isMobile ? 'calc(13px + env(safe-area-inset-top, 0px))' : 13,
         // POL-UI-009: no more mobile dock — the only fixed elements at the
@@ -475,7 +492,16 @@ export default function App() {
         // the Agente AI button, sharing the same baseline. 18px offset +
         // 66px button + 8px breathing room = 92px is the minimum needed so
         // the last content row never sits under either floating button.
-        paddingBottom: isMobile ? 'calc(92px + env(safe-area-inset-bottom, 0px))' : 28,
+        // POL-UI-010: Agenda is the one page whose own content (GridView's
+        // timeline, now filling to max(100%, hours) — see Agenda.jsx) is
+        // designed to run continuously behind the floating poliedro/AI
+        // overlays, not stop short of them. Reserving 92px here would undo
+        // that: it's dead space this page never needs. Every other mobile
+        // page keeps the 92px clearance so its (non-overlay) content never
+        // sits under the floating buttons.
+        paddingBottom: isMobile
+          ? (page === 'agenda' ? 'env(safe-area-inset-bottom, 0px)' : 'calc(92px + env(safe-area-inset-bottom, 0px))')
+          : 28,
         // POL-UI-004 Agenda mobile final: the Agenda grid should read as an
         // almost-fullscreen surface, not a page floating inside the app's
         // usual side gutter. Narrowed only for this page/breakpoint — every

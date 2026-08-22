@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker, SelettorePaziente, EmptyState, PageHeader } from './ui';
 import WaAction, { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
 import { C, uid, fmtD, today, getAppTypesDefault, DEF_AGENDA_SETTINGS } from '../lib/utils';
@@ -76,7 +76,7 @@ const startOfWeek = (d) => {
   return dt;
 };
 
-function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, getOperatore, getPoltrona, appPosition, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno, onSwipeDay, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW }) {
+function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno, onSwipeDay, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW }) {
   const containerRef = useRef(null); // unico scroll container
   const resizeRef = useRef(null);
   const [now, setNow] = useState(new Date());
@@ -86,6 +86,51 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   const [menuApp, setMenuApp] = useState(null); // appuntamento con menu contestuale aperto (WA/Mail/Modifica/Sposta/Elimina)
   const isSettimana = days.length > 1;
 
+  // POL-UI-010 (slot fit): su mobile lo slotH "base" (calcolato dal genitore
+  // su una stima approssimativa di window.innerHeight) non riempie sempre
+  // davvero lo spazio reale del contenitore scrollabile — che invece è
+  // misurabile con precisione, perché containerRef è flex:1/min-height:0
+  // dentro overflow:auto (vedi commento più sotto): la sua altezza dipende
+  // SOLO dal layout dei genitori, mai dal contenuto scrollabile interno.
+  // gridHeight è quindi la vera "availableGridHeight". Misurata con
+  // ResizeObserver (robusta a resize/orientazione/tastiera virtuale), non
+  // con window.innerHeight e sottrazioni indovinate. useLayoutEffect (non
+  // useEffect) per leggerla/applicarla PRIMA del paint, evitando un flash
+  // di slot troppo corti al primo render.
+  const [gridHeight, setGridHeight] = useState(0);
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return undefined;
+    const update = () => setGridHeight(el.clientHeight);
+    update();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', update);
+      return () => window.removeEventListener('resize', update);
+    }
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // effectiveSlotH è l'UNICA altezza-slot usata ovunque su mobile — righe,
+  // posizione/durata appuntamenti, now-line, drag, resize, scroll iniziale —
+  // per non avere metà codice su slotH e metà su un valore diverso. Se il
+  // range orario configurato (slots.length * slotH) è più corto dello
+  // spazio reale disponibile, gli slot si espandono uniformemente fino a
+  // riempirlo; altrimenti resta lo slotH base e la vista scrolla come
+  // sempre. Desktop invariato: usa sempre e solo lo slotH base del padre.
+  const effectiveSlotH = isMobile && gridHeight > 0
+    ? Math.max(slotH, gridHeight / slots.length)
+    : slotH;
+
+  const appPosition = (a) => {
+    const [ah, am] = a.ora.split(':').map(Number);
+    const min = ah * 60 + am - oraInizio * 60; // relativo all'inizio dell'intervallo visibile
+    const top = (min / slotMin) * effectiveSlotH;
+    const height = Math.max((Number(a.durata) / slotMin) * effectiveSlotH - 2, effectiveSlotH * 0.6);
+    return { top, height };
+  };
+
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(timer);
@@ -93,16 +138,16 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
 
   useEffect(() => {
     // Scroll iniziale: vicino all'ora corrente se è dentro l'intervallo visibile, altrimenti in cima
-    const target = showNowLine ? Math.max(0, nowTop - slotH * 2) : 0;
+    const target = showNowLine ? Math.max(0, nowTop - effectiveSlotH * 2) : 0;
     if (containerRef.current) containerRef.current.scrollTop = target;
-  }, [slotH, slotMin, oraInizio]);
+  }, [effectiveSlotH, slotMin, oraInizio]);
 
   // Resize mouse handlers
   useEffect(() => {
     if (!resizing) return;
     const onMove = (e) => {
       const dy = (e.clientY || e.touches?.[0]?.clientY || 0) - resizing.startY;
-      const deltaMins = Math.round(dy / slotH * slotMin / slotMin) * slotMin;
+      const deltaMins = Math.round(dy / effectiveSlotH * slotMin / slotMin) * slotMin;
       const newDurata = Math.max(slotMin, resizing.startDurata + deltaMins);
       setAppointments(prev => prev.map(a => a.id === resizing.id ? { ...a, durata: newDurata } : a));
     };
@@ -117,7 +162,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
       window.removeEventListener('touchmove', onMove);
       window.removeEventListener('touchend', onUp);
     };
-  }, [resizing, slotH, slotMin]);
+  }, [resizing, effectiveSlotH, slotMin]);
 
   // Move (drag) mouse handlers — sposta l'orario trascinando l'intero blocco appuntamento,
   // stesso pattern del resize ma cambia "ora" invece di "durata".
@@ -128,7 +173,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
       const dy = clientY - moving.startY;
       if (!movedRef.current && Math.abs(dy) < 6) return; // soglia minima prima di considerarlo un drag
       movedRef.current = true;
-      const deltaSlots = Math.round(dy / slotH);
+      const deltaSlots = Math.round(dy / effectiveSlotH);
       const deltaMin = deltaSlots * slotMin;
       const [oh, om] = moving.startOra.split(':').map(Number);
       let totMin = Math.max(0, oh * 60 + om + deltaMin);
@@ -146,7 +191,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
       window.removeEventListener('touchmove', onMove);
       window.removeEventListener('touchend', onUp);
     };
-  }, [moving, slotH, slotMin]);
+  }, [moving, effectiveSlotH, slotMin]);
 
   // Swipe orizzontale sulla griglia: solo vista Giorno (days.length === 1), va al giorno
   // successivo/precedente. Ignorato se in corso un resize o uno spostamento di appuntamento,
@@ -172,7 +217,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   };
 
   const nowMin = now.getHours() * 60 + now.getMinutes() - oraInizio * 60;
-  const nowTop = (nowMin / slotMin) * slotH;
+  const nowTop = (nowMin / slotMin) * effectiveSlotH;
   const showNowLine = nowMin >= 0 && nowMin <= slots.length * slotMin;
 
   // Mobile "final": la griglia stessa è la superficie principale (niente
@@ -202,7 +247,15 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
             non l'elemento stesso. È il bug reale dietro lo scroll incoerente di prima:
             dipendeva da quanti appuntamenti/ore c'erano, non era mai stato casuale. */}
         <div ref={containerRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y', overscrollBehavior: 'contain', position: 'relative' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', minHeight: slots.length * slotH }}>
+          {/* POL-UI-010 (slot fit): minHeight ora usa slots.length*effectiveSlotH
+              — coerente con ogni altro uso di effectiveSlotH sopra — invece del
+              precedente max(100%, slots.length*slotH). Quando il range orario è
+              corto, effectiveSlotH si è già espanso per riempire gridHeight, quindi
+              slots.length*effectiveSlotH combacia esattamente con lo spazio
+              disponibile (niente più margine di sicurezza necessario); quando il
+              range è lungo, effectiveSlotH resta lo slotH base e il contenitore
+              scrolla come sempre. Desktop invariato. */}
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: isMobile ? slots.length * effectiveSlotH : slots.length * slotH }}>
 
             <div style={{ display: 'flex', flex: 1 }}>
 
@@ -212,7 +265,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
               {slots.map((slot) => {
                 const isHour = slot.endsWith(':00');
                 return (
-                  <div key={slot} style={{ height: slotH, borderBottom: `1px solid ${isHour ? C.brd : C.brd + '40'}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: isMobile ? 3 : 5, paddingTop: 2, boxSizing: 'border-box' }}>
+                  <div key={slot} style={{ height: effectiveSlotH, borderBottom: `1px solid ${isHour ? C.brd : C.brd + '40'}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: isMobile ? 3 : 5, paddingTop: 2, boxSizing: 'border-box' }}>
                     <span style={{ fontSize: isHour ? 9.5 : 8, color: isHour ? C.txm : C.txl, fontWeight: isHour ? 800 : 500 }}>{isHour ? slot : ''}</span>
                   </div>
                 );
@@ -232,7 +285,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                 {slots.map((slot) => {
                   const isHour = slot.endsWith(':00');
                   return (
-                    <div key={slot} onClick={() => { if (!selModeWA) apriNuovo(ds, slot); }} style={{ height: slotH, borderBottom: `1px solid ${isHour ? C.brd + '60' : C.brd + '25'}`, cursor: selModeWA ? 'default' : 'pointer', boxSizing: 'border-box' }}
+                    <div key={slot} onClick={() => { if (!selModeWA) apriNuovo(ds, slot); }} style={{ height: effectiveSlotH, borderBottom: `1px solid ${isHour ? C.brd + '60' : C.brd + '25'}`, cursor: selModeWA ? 'default' : 'pointer', boxSizing: 'border-box' }}
                       onMouseEnter={e => e.currentTarget.style.background = C.priL + '70'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'} />
                   );
@@ -246,9 +299,9 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                 {dayImpOrari.map(imp => {
                   const inizioMin = orarioInMinutiUI(imp.oraInizio) - oraInizio * 60;
                   const fineMin = orarioInMinutiUI(imp.oraFine || imp.oraInizio) - oraInizio * 60;
-                  const top = (inizioMin / slotMin) * slotH;
-                  const height = Math.max(((fineMin - inizioMin) / slotMin) * slotH, slotH * 0.5);
-                  if (top + height < 0 || top >= slots.length * slotH) return null;
+                  const top = (inizioMin / slotMin) * effectiveSlotH;
+                  const height = Math.max(((fineMin - inizioMin) / slotMin) * effectiveSlotH, effectiveSlotH * 0.5);
+                  if (top + height < 0 || top >= slots.length * effectiveSlotH) return null;
                   const co = imp.colore || TIPO_IMPEGNO.find(x => x.id === imp.tipo)?.colore || C.pri;
                   return (
                     <div key={'imp-' + imp.id} onClick={() => apriEditImpegno(imp)} title={imp.titolo} style={{
@@ -262,7 +315,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                 })}
                 {layoutOverlap(dayApps).map(({ a, col, totalCols }) => {
                   const { top, height } = appPosition(a);
-                  if (top < 0 || top >= slots.length * slotH) return null;
+                  if (top < 0 || top >= slots.length * effectiveSlotH) return null;
                   const p = patients.find(x => x.id === a.pazienteId);
                   const co = getColore(a);
                   const isBeingResized = resizing?.id === a.id;
@@ -669,14 +722,6 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
 
   const getColore = (a) => a.colore || tipiList.find(t => t.nome === a.tipo)?.colore || C.pri;
 
-  const appPosition = (a) => {
-    const [ah, am] = a.ora.split(':').map(Number);
-    const min = ah * 60 + am - oraInizio * 60; // relativo all'inizio dell'intervallo visibile
-    const top = (min / slotMin) * slotH;
-    const height = Math.max((Number(a.durata) / slotMin) * slotH - 2, slotH * 0.6);
-    return { top, height };
-  };
-
   const weekStart = startOfWeek(selDay);
   const weekDaysAll = Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
   // Non nasconde MAI tutti i 7 giorni: se per errore lo studio ha nascosto tutta la settimana, mostra comunque tutto.
@@ -922,7 +967,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   // GridView (il commento su DayStrip spiega perché) — vedi item 5/2 della
   // spec "Agenda mobile final": non deve rubare spazio alle 7 colonne.
   const oraColW = isMobile ? 34 : 46;
-  const gridProps = { slots, slotH, slotMin, oraInizio, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, appPosition, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW };
+  const gridProps = { slots, slotH, slotMin, oraInizio, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW };
 
   // Appuntamenti effettivamente visibili nella vista corrente (per il conteggio "Seleziona tutti" e il badge)
   const giorniVisibili = view === 'giorno' ? [selDay] : view === 'settimana' ? weekDays.map(toISO) : [];
@@ -1020,7 +1065,12 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+    // POL-UI-010 (structural): on mobile, #app-scroll is now itself a column
+    // flex container for this page (App.jsx), so this root uses flex:1 —
+    // pure flexbox sizing, not a percentage height, all the way down. On
+    // desktop #app-scroll is unchanged (not flex), so height:'100%' stays
+    // exactly as before — no desktop behavior change.
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, ...(isMobile ? { flex: 1 } : { height: '100%' }) }}>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
       {/* POL-UI-006: nessuna struttura superiore su mobile — la Home mobile
