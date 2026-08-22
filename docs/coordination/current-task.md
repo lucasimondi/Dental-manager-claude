@@ -6,7 +6,7 @@
 - BRANCH: `lucasimondi-mobile-agenda-v2`
 - BASE: `master@d95af43`
 - STATUS: `WAITING_PRODUCT_OWNER`
-- PR: not opened
+- PR: #38 (draft) — https://github.com/lucasimondi/Dental-manager-claude/pull/38
 
 ## Objective
 
@@ -40,9 +40,12 @@ new raw Git worktree operation was performed.
 
 ## Exact next action
 
-Commit and push the isolated branch, confirm whether Vercel creates a branch
-preview, then the Product Owner tests `/agenda-lab` from a real smartphone.
-Do not connect Supabase, replace `/agenda`, merge, or deploy to production.
+Product Owner opens the authenticated Vercel preview at
+`https://dental-manager-git-lucasimondi-mobile-agenda-v2-acmeproduction.vercel.app/agenda-lab`
+and tests it from a real smartphone. The project currently redirects anonymous
+visitors to Vercel SSO; do not change deployment protection or production
+configuration automatically. Do not connect Supabase, replace `/agenda`,
+merge, or deploy to production.
 
 ---
 
