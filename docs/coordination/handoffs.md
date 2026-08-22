@@ -411,4 +411,4 @@
 - Risks: real iPhone Safari remains the release authority, but the implementation uses the requested WebKit-safe definite flex chain and native dynamic viewport/safe-area primitives. The repository's current single AI entry point is Poliedron; the legacy separate `AssistenteAI` button remains intentionally unmounted per merged POL-AI-001 and was not reintroduced.
 - Rollback: revert the POL-UI-011 commit; there is no data or deployment rollback.
 - Deployment impact: frontend bundle only; no deployment performed.
-- Exact next action: Product Owner reviews the draft PR. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+- Exact next action: Product Owner reviews draft PR #37. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.

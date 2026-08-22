@@ -6,7 +6,7 @@
 - BRANCH: `lucasimondi-hotfix-pol-ui-011-mobile-edge-to-edge-sh`
 - BASE: `origin/master@e504e52`
 - STATUS: `WAITING_PRODUCT_OWNER`
-- PR: pending
+- PR: #37 (draft) — https://github.com/lucasimondi/Dental-manager-claude/pull/37
 
 ## Objective
 
@@ -25,7 +25,7 @@ The Product Owner explicitly authorized this session to take ownership of POL-UI
 
 ## Exact next action
 
-Product Owner reviews the POL-UI-011 draft PR. Do not deploy, merge, or begin another task without explicit Product Owner approval.
+Product Owner reviews draft PR #37. Do not deploy, merge, or begin another task without explicit Product Owner approval.
 
 ---
 
