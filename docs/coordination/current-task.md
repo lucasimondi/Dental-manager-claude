@@ -6,6 +6,8 @@
 - BRANCH: `fix/POL-AI-002B-mobile-dock-center-poliedron`
 - BASE REVIEW: `master@e5b24d4` (POL-AGD-WA-001 merged via PR #39)
 - STATUS: `PR_OPEN_AWAITING_REVIEW`
+- PR: #40 — https://github.com/lucasimondi/Dental-manager-claude/pull/40
+- Preview: https://dental-manager-git-fix-pol-ai-002b-mobile-1d578a-acmeproduction.vercel.app
 
 ## Objective
 
