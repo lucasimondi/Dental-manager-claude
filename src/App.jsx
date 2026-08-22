@@ -86,6 +86,10 @@ export default function App() {
   const [autoOpenNew, setAutoOpenNew] = useState(null); // 'paz' | 'piani' | 'paga' | 'richiami' | null
   const [agendaInitPaz, setAgendaInitPaz] = useState(null);
   const [schedaDashPaz, setSchedaDashPaz] = useState(null);
+  // POL-AI-002A §20 — set by Poliedron's direct "ric"/"fat"/"doc" commands
+  // so ArchivioDocs opens already filtered instead of on its unfiltered
+  // default view; App.jsx never reads it, only threads it through.
+  const [archivioFiltroTipoHint, setArchivioFiltroTipoHint] = useState(null);
   const [syncError, setSyncError] = useState(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isStudioAdmin, setIsStudioAdmin] = useState(false);
@@ -572,7 +576,7 @@ export default function App() {
             {page === 'richiami' && <Richiami patients={patients} plans={plans} payments={payments} appointments={appointments} richiami={richiami} setRichiami={setRichiamiSync} templates={templates} features={features} onOpenPaz={goSchedaPaz} si={studioInfo} autoOpenNew={autoOpenNew === 'richiami'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} />}
             {page === 'spese' && <Spese studioId={session?.user?.app_metadata?.studio_id} />}
             {page === 'controllo' && <ControlloGestione studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} payments={payments} appointments={appointments} pricelist={pricelist} onOpenPaz={goSchedaPaz} isDentistico={!studioInfo?.vertical || studioInfo.vertical === 'dentistico'} />}
-            {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} />}
+            {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} initialFiltroTipo={archivioFiltroTipoHint} />}
             {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
             {page === 'agenteai' && <AgenteAISetup features={features} />}
             {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} isStudioAdmin={isStudioAdmin} onLogout={handleLogout} />}
@@ -591,6 +595,7 @@ export default function App() {
         vertical={studioInfo?.vertical}
         studioId={session?.user?.app_metadata?.studio_id}
         currentPatient={schedaDashPaz?.paz || null}
+        onArchivioFilterHint={setArchivioFiltroTipoHint}
         quickActionCtx={{ permissions: homePermissions, features, vertical: studioInfo?.vertical }}
         supabaseClient={supabase}
       />

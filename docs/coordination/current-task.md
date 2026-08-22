@@ -1,33 +1,37 @@
 # Current task
 
-- TASK: POL-AI-001
-- TITLE: Poliedron Universal Operating Interface
+- TASK: POL-AI-002A
+- TITLE: Poliedron Adaptive Interface — Mobile Orb + Desktop Edge Dock + Precise Drag + Prefix Navigation
 - OWNER: CLAUDE
-- BRANCH: `feature/POL-AI-001-poliedron-universal-interface`
-- BASE REVIEW: `master` (POL-UI-010 already merged — `d1d4024`)
-- STATUS: `WAITING_PRODUCT_OWNER`
-- PR: #35 (draft) — https://github.com/lucasimondi/Dental-manager-claude/pull/35
+- BRANCH: `fix/POL-AI-002A-adaptive-poliedron`
+- BASE REVIEW: `master` (POL-AI-001 merged — `e504e52`, squash of PR #35)
+- STATUS: `IN_PROGRESS`
 
 ## Objective
 
-Implement the first architecture of "Poliedron," Poliedra's native AI operating interface, following the flow USER → POLIEDRON → POLIEDRA AI CORE → SEARCH/NAVIGATION/ACTIONS/DATA → MODEL PROVIDER when needed: a global draggable Orb, a Spotlight-style command panel (search + actions, not chatbot-first), a provider-independent Model Gateway (no direct Gemini/Claude/OpenAI calls from UI/lib code), deterministic-first intent classification and federated search over existing data sources, an Action Registry that reuses existing quick-action/navigation workflows (no duplicated business logic), and a Permission Engine that reuses the existing RBAC/capability model (no second authorization system) — without any database migration, RLS change, or new financial formula.
+Give Poliedron the same identity but different interaction per device: on mobile, a larger (96–108px), precisely-draggable, freely-positionable 3D Orb with a unified safe-bounds model and "where I drop it is where it stays" release behavior; on desktop, a discreet Poliedron Edge Dock (52–60px collapsed) embedded at the left/right screen edge, vertically draggable with magnetic side-switching, expanding on hover/focus. Both mount points open the exact same Poliedron instance (Poliedra AI Core → Search/Navigation/Actions/Model Gateway) — never two AI systems. Also: deterministic prefix/command-alias navigation (explicit `commandAliases`, separate from fuzzy search aliases, exact-match only) for immediate direct-open of real, verified destinations, without any model call.
 
 ## Ownership note (recorded per AGENTS.md handoff rules)
 
-This entry was added mid-session to bring the repository's coordination record in line with an already-in-progress implementation: the POL-AI-001 task specification was issued directly in the working session, and substantial implementation (`src/lib/poliedron/`, `src/components/poliedron/`, `App.jsx` wiring) was already underway before this file was updated to reflect it. No other agent's handoff claimed POL-AI-001 ownership prior to this entry.
-
-POL-UX-001 (previously the recorded current task, status `WAITING_PRODUCT_OWNER`) is moved to the historical section below — it is not abandoned, only no longer the active in-session task; its draft PR still awaits Product Owner review independently of this task.
+POL-AI-001 (previous current task) was reviewed, revised twice (single-AI-entry-point requirement), and merged to `master` by the Product Owner as PR #35 (squash commit `e504e52`) — verified via `git merge-base`/tree-diff against the PR branch tip before starting this task. It is moved to the historical section below. This task was issued directly in-session as a follow-up; no other agent claims ownership of POL-AI-002A.
 
 ## Safety boundaries
 
-- No Supabase migration, RLS policy, or canonical financial formula (`get_financial_snapshot_v1` / `canonicalFinancialSelectors.js`) is touched — see AGENTS.md non-negotiable rules.
-- No second RBAC/authorization model is introduced — the Permission Engine wraps `isQuickActionAllowed` (`quickActionsCatalog.js`) and `buildHomePermissions` (`homeDashboardModel.js`), both already authoritative elsewhere in the app.
-- No direct AI provider SDK/API key is added — `modelGateway.js` is the sole chokepoint and adapts the pre-existing `agente-assistente` Supabase Edge Function invocation already used by `AssistenteAI.jsx`.
-- `MobileDock.jsx` (the POL-UI-009/010 poliedro-opens-nav-menu component) is superseded by the new Poliedron system; `AssistenteAI.jsx` (separate chat widget) is intentionally left untouched — documented as an explicit scope decision, not silently decided.
+- No Supabase migration, RLS policy, or canonical financial formula is touched.
+- No second RBAC/authorization model, no second AI Core/Model Gateway — both mobile Orb and desktop Edge Dock open the one existing `Poliedron` component/state; `modelGateway.js` remains the sole model-call chokepoint, no provider SDK, no new API key.
+- Prefix/command-alias navigation only targets real, verified NAV routes (`src/lib/utils.js`'s `NAV` array) — "Ricette" and "Fatture" are NOT standalone pages in this app (verified: they are document-type filters inside the real `archivio` (Documenti) page, backed by `documenti_fiscali`/`documenti_medici` tables). Their command aliases target `archivio` with a pre-applied `filtroTipo`, not an invented route — see PRODUCT_OWNER_DECISION_REQUIRED in the final report if a dedicated page was actually intended.
 
 ## Exact next action
 
-Product Owner reviews the draft PR (#35) for `feature/POL-AI-001-poliedron-universal-interface`. Full detail: `docs/coordination/handoffs.md` ("POL-AI-001 Poliedron Universal Operating Interface (Phase 1)" entry). Do not deploy, merge, or begin another task without explicit Product Owner approval.
+See `docs/coordination/handoffs.md` for the in-progress/completed record as work proceeds. Do not deploy, merge, or begin another task without explicit Product Owner approval.
+
+---
+
+# Historical record: POL-AI-001 (merged to master)
+
+- Branch: `feature/POL-AI-001-poliedron-universal-interface` — PR #35, squash-merged to `master` as `e504e52`.
+- Objective: first architecture of Poliedron — global Orb, Spotlight-style command panel, provider-independent Model Gateway, deterministic-first intent/search, Action Registry reusing existing workflows, Permission Engine reusing existing RBAC. Revised once more to make Poliedron the app's single AI entry point (AssistenteAI's floating widget unmounted, kept internal for future convergence).
+- Full detail: `docs/coordination/handoffs.md` ("POL-AI-001 Poliedron Universal Operating Interface (Phase 1)" and the two review-round entries that follow it).
 
 ---
 

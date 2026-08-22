@@ -811,6 +811,15 @@ body:has(.home-widget-grid) #app-scroll {
   .poliedron-orb__gem, .poliedron-orb__halo { animation: none !important; }
 }
 
+/* POL-AI-002A §11, §16, §29 — desktop Edge Dock emerge/retreat on hover
+   or focus (§16 "same identity" as the mobile Orb's transform-based idle
+   motion — a translate, not a spin/bounce). `!important` here beats the
+   component's own inline transition (same pattern as the two rules just
+   above), same reduced-motion contract. */
+@media (prefers-reduced-motion: reduce) {
+  .poliedron-edge-dock { transition: none !important; }
+}
+
 /* POL-AI-001 §31 — panel open/close: smooth scale/fade (desktop) or sheet
    slide-up (mobile), reusing the same easing/timing language as the
    existing .pol-modal-* animations elsewhere in this file. */
