@@ -1,30 +1,62 @@
 # Current task
 
-- TASK: POL-AI-002A
-- TITLE: Poliedron Adaptive Interface — Compact Mobile Dock + Desktop Edge Dock + Precise Drag + Prefix Navigation
+- TASK: POL-AGD-WA-001
+- TITLE: Agenda — allow cancelling a WhatsApp send
 - OWNER: CLAUDE
-- BRANCH: `fix/POL-AI-002A-adaptive-poliedron`
-- BASE REVIEW: `master@d95af43` (POL-AI-001 + POL-UI-011 mobile edge-to-edge shell)
-- STATUS: `WAITING_PRODUCT_OWNER`
-- PR: #36 (draft) — https://github.com/lucasimondi/Dental-manager-claude/pull/36
+- BRANCH: `claude/whatsapp-agenda-cancel-rql7fg`
+- BASE REVIEW: `master@1faa9bb` (POL-AI-002A merged via PR #36)
+- STATUS: `IMPLEMENTED_PENDING_PUSH`
 
 ## Objective
 
-Give Poliedron the same identity but different interaction per device. Mobile uses a compact, centered glass navigation dock in exact order Home, Agenda, Poliedron, Pazienti, Setup; its standalone 58–72px polyhedron is docked by default, may detach within dock-aware safe bounds, and magnetically redocks without random edge snapping. The transparent hit area remains at least 44px, with no circular surface, border, background, or halo plate. Desktop keeps only the discreet 56px left/right Edge Dock with vertical drag, intentional side switching, persistence, hover/focus expansion, click, and Ctrl/Cmd+K. Both open the same Phase-1 Poliedron interface and Model Gateway. Exact permitted command aliases direct-open only real destinations without an LLM call; ambiguous/unknown text stays in normal federated search.
+Product Owner reported directly in chat: "Quando clicco il bottone WhatsApp
+sul agenda poi non si può annullare, deve esserci possibilità di annullare"
+(after clicking the WhatsApp button in the Agenda there is no way to cancel;
+there must be a way to cancel).
 
-## Ownership note (recorded per AGENTS.md handoff rules)
+Audit of every WhatsApp entry point in `src/components/Agenda.jsx` found the
+single-patient send (`waModal`) and the pre-send bulk composer (`waMassModal`)
+already had a working "Annulla" button. The one flow with no cancel was the
+bulk "Invia a tutti (N)" action itself: `inviaWAMassivo` scheduled a
+`setTimeout` per selected appointment to open a `wa.me` popup, with no way to
+stop the ones not yet opened once you had committed. Fixed by tracking the
+scheduled timers, adding a persistent "Invio WhatsApp: aperti/totale" bar with
+an "Annulla invio" button that `clearTimeout`s the remaining, not-yet-opened
+sends (already-opened WhatsApp windows cannot be recalled, and the UI does not
+claim otherwise).
 
-POL-AI-001 was merged as `e504e52`. POL-UI-011 was merged as `d95af43` and incorporated into this branch with merge commit `1b320ab`, preserving the existing POL-AI-002A commits `a6113e8` and `2eac136`. The Product Owner then issued the compact-mobile-dock revision implemented in `8a70bda`. Ownership remains POL-AI-002A on this branch.
+## Files changed
+
+- `src/components/Agenda.jsx` — `waBatch` state + `waBatchTimersRef`,
+  rewritten `inviaWAMassivo`, new `annullaWABatch`, and the cancel bar in the
+  render tree.
 
 ## Safety boundaries
 
-- No Supabase migration, RLS policy, or canonical financial formula is touched.
-- No second RBAC/authorization model, no second AI Core/Model Gateway — both mobile Orb and desktop Edge Dock open the one existing `Poliedron` component/state; `modelGateway.js` remains the sole model-call chokepoint, no provider SDK, no new API key.
-- Prefix/command-alias navigation only targets permitted entries from the filtered real navigation index. "Ricette" and "Fatture" remain real `archivio` filters, not invented routes.
+- No Supabase migration, RLS policy, or financial formula touched.
+- No behavior change to the single-send or pre-send-composer flows, which
+  already worked correctly.
+
+## Tests executed
+
+- `npm run build` — clean.
+- `npm test` — 164/164 passing (pre-existing suite, none WhatsApp-specific;
+  no regression).
+- Not manually verified in a live browser (no UI test harness available in
+  this session) — reviewed by tracing every code path from button to
+  `wa.me` open.
 
 ## Exact next action
 
-Product Owner reviews draft PR #36 at the current branch head, including the standalone mobile-polyhedron visual refinement. Do not deploy, merge, or begin another task without explicit Product Owner approval. Status: `WAITING_PRODUCT_OWNER`.
+Push to `claude/whatsapp-agenda-cancel-rql7fg`. No PR was requested by the
+Product Owner in this turn — open one only if asked.
+
+---
+
+# Historical record: POL-AI-002A (merged to master)
+
+- Branch: `fix/POL-AI-002A-adaptive-poliedron` — PR #36, merged to `master` as `1faa9bb`.
+- Objective: Poliedron adaptive interface — compact mobile dock, desktop edge dock, precise drag, prefix navigation. Full detail in `docs/coordination/handoffs.md`.
 
 ---
 

@@ -669,6 +669,12 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   const [waMassModal, setWaMassModal] = useState(false); // modal di composizione messaggio per l'invio di massa
   const [waMassTplId, setWaMassTplId] = useState('');
   const [waMassMsg, setWaMassMsg] = useState('Gentile {nome},\nricordiamo il suo appuntamento il {data} alle {ora} ({tipo}).\nGrazie!');
+  // Invio WhatsApp di massa: una volta premuto "Invia a tutti" le aperture erano
+  // già tutte pianificate e non c'era modo di fermarle. waBatch tiene lo stato
+  // dell'invio in corso (totale/già aperti) per mostrare la barra con "Annulla
+  // invio", che con clearTimeout blocca le aperture non ancora partite.
+  const [waBatch, setWaBatch] = useState(null); // { totale, aperti } oppure null se nessun invio in corso
+  const waBatchTimersRef = useRef([]);
   const [impModal, setImpModal] = useState(false);
   const [editImp, setEditImp] = useState(null);
   const [impForm, setImpForm] = useState({ titolo: '', tipo: 'personale', colore: '', dataInizio: today(), dataFine: today(), tuttoIlGiorno: true, oraInizio: '09:00', oraFine: '10:00', note: '', ripeti: 'no', ripetiFino: today() });
@@ -812,20 +818,40 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
 
   const inviaWAMassivo = () => {
     const selezionati = appointments.filter(a => selAppIds.includes(a.id));
-    selezionati.forEach((a, i) => {
+    waBatchTimersRef.current.forEach(clearTimeout);
+    waBatchTimersRef.current = selezionati.map((a, i) => setTimeout(() => {
       const p = patients.find(x => x.id === a.pazienteId);
-      if (!p?.telefono) return;
-      const msg = waMassMsg
-        .replace(/{nome}/g, `${p.nome} ${p.cognome}`)
-        .replace(/{data}/g, fmtD(a.data)).replace(/{ora}/g, a.ora).replace(/{tipo}/g, a.tipo)
-        .replace(/{totale}/g, '').replace(/{voci}/g, '');
-      setTimeout(() => apriWaDiretto(p.telefono, msg), i * 350);
-    });
-    setToast(`Invio avviato per ${selezionati.length} pazient${selezionati.length === 1 ? 'e' : 'i'} ✓`);
+      if (p?.telefono) {
+        const msg = waMassMsg
+          .replace(/{nome}/g, `${p.nome} ${p.cognome}`)
+          .replace(/{data}/g, fmtD(a.data)).replace(/{ora}/g, a.ora).replace(/{tipo}/g, a.tipo)
+          .replace(/{totale}/g, '').replace(/{voci}/g, '');
+        apriWaDiretto(p.telefono, msg);
+      }
+      setWaBatch(prev => {
+        if (!prev) return prev;
+        const aperti = prev.aperti + 1;
+        return aperti >= prev.totale ? null : { ...prev, aperti };
+      });
+    }, i * 350));
+    setWaBatch({ totale: selezionati.length, aperti: 0 });
     setWaMassModal(false);
     setSelModeWA(false);
     setSelAppIds([]);
   };
+
+  // Ferma le aperture WhatsApp non ancora partite (quelle già aperte restano tali:
+  // clearTimeout non può richiudere una finestra già aperta).
+  const annullaWABatch = () => {
+    waBatchTimersRef.current.forEach(clearTimeout);
+    waBatchTimersRef.current = [];
+    setWaBatch(prev => {
+      if (prev) setToast(`Invio annullato: ${prev.aperti}/${prev.totale} già aperti`);
+      return null;
+    });
+  };
+
+  useEffect(() => () => waBatchTimersRef.current.forEach(clearTimeout), []);
 
   // Genera le date delle occorrenze ripetute (inclusa la prima), fino a ripetiFino incluso.
   // Limite di sicurezza a 104 occorrenze (~2 anni di settimanale) per evitare loop pericolosi
@@ -1071,6 +1097,15 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     // exactly as before — no desktop behavior change.
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, ...(isMobile ? { flex: 1 } : { height: '100%' }) }}>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
+
+      {/* Barra invio WhatsApp di massa in corso — resta finché non sono partite tutte
+          le aperture pianificate, con un bottone per fermare quelle non ancora avviate. */}
+      {waBatch && (
+        <div style={{ position: 'fixed', bottom: 88, left: '50%', transform: 'translateX(-50%)', zIndex: 3000, display: 'flex', alignItems: 'center', gap: 10, background: C.priD, color: '#fff', padding: '9px 10px 9px 16px', borderRadius: 28, fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(0,0,0,0.25)' }}>
+          <span>Invio WhatsApp: {waBatch.aperti}/{waBatch.totale}</span>
+          <button onClick={annullaWABatch} style={{ background: 'rgba(255,255,255,0.18)', border: 'none', borderRadius: 20, padding: '5px 12px', color: '#fff', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>Annulla invio</button>
+        </div>
+      )}
 
       {/* POL-UI-006: nessuna struttura superiore su mobile — la Home mobile
           (il riferimento strutturale per tutte le pagine) non ha più alcun

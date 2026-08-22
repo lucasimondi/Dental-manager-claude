@@ -524,3 +524,22 @@
 - Deployment impact: frontend bundle only; no deployment performed.
 - Product Owner decision required: none.
 - Exact next action: Product Owner reviews updated draft PR #36. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+
+## POL-AGD-WA-001 Agenda — allow cancelling a WhatsApp send
+
+- Task ID: POL-AGD-WA-001 (new task; opened directly from a Product Owner chat report, not from the backlog).
+- Previous agent: none — first work on this branch.
+- Branch: `claude/whatsapp-agenda-cancel-rql7fg`, based on `master@1faa9bb` (POL-AI-002A already merged via PR #36).
+- Objective: Product Owner reported "Quando clicco il bottone WhatsApp sul agenda poi non si può annullare, deve esserci possibilità di annullare" (after clicking the WhatsApp button in the Agenda there's no way to cancel).
+- Investigation: audited every WhatsApp entry point in `src/components/Agenda.jsx`. The single-patient send modal (`waModal`) and the bulk pre-send composer (`waMassModal`) already had a working "Annulla" button that aborts before anything opens. The one uncancellable step was `inviaWAMassivo` itself: once "Invia a tutti (N)" is pressed, it scheduled one `setTimeout` per selected appointment to open a `wa.me` popup 350ms apart, with no way to stop the ones not yet fired.
+- Completed work: added `waBatch` state (`{ totale, aperti }`) and a `waBatchTimersRef` holding the scheduled timer ids. `inviaWAMassivo` now records the timer ids and updates `waBatch` as each send fires; a new `annullaWABatch` function `clearTimeout`s every timer not yet fired and resets the state, with a toast reporting how many were already opened (a window already opened cannot be recalled — the UI does not claim otherwise). A persistent bottom bar ("Invio WhatsApp: aperti/totale" + "Annulla invio" button) renders while a batch is in flight. No change to the single-send or pre-send-composer flows, which already worked correctly.
+- Files changed: `src/components/Agenda.jsx`; `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- Database changes: none. No Supabase, migration, RLS, RBAC, finance, clinical, auth, AI, provider, or production change.
+- Tests executed: `npm test`; `npm run build`.
+- Test results: 164/164 Node tests pass (pre-existing suite; none WhatsApp-specific, no regression). Production build passes with only the pre-existing chunk-size/pdfjs warnings.
+- Unresolved issues: not manually exercised in a live browser in this session (no UI test harness available); verified by tracing every code path from each WhatsApp button to the eventual `wa.me` open.
+- Risks: none identified; change is isolated to the bulk-send scheduling/cancel state, additive to existing behavior.
+- Rollback: revert this commit. No data rollback is required.
+- Deployment impact: frontend bundle only; no deployment performed.
+- Product Owner decision required: none.
+- Exact next action: push to `claude/whatsapp-agenda-cancel-rql7fg`. No PR was requested in this turn — open one only if the Product Owner asks.
