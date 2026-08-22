@@ -5,7 +5,12 @@ export const MOBILE_DOCK_HEIGHT = 64;
 export const MOBILE_DOCK_WIDTH_RATIO = 0.84;
 export const MOBILE_DOCK_MAX_WIDTH = 390;
 export const MOBILE_DOCK_MIN_WIDTH = 292;
-export const MOBILE_ORB_CENTER_ELEVATION = 26 - (1.5 * 96 / 25.4);
+// 26px baseline, minus a cumulative Product Owner-requested downward shift:
+// 1.5mm (earlier revision) + 1mm (this one) = 2.5mm total, converted via the
+// standard 96px/inch (25.4mm/inch) CSS reference. Horizontal position is
+// untouched — centerX already resolves to viewportWidth / 2, verified equal
+// to the Agenda/Pazienti midpoint at 320/375/390/430px (see handoff).
+export const MOBILE_ORB_CENTER_ELEVATION = 26 - (2.5 * 96 / 25.4);
 export const MOBILE_DOCK_PROTECTED_GAP = 10;
 
 const rectAround = (centerX, centerY, width, height) => ({

@@ -1,14 +1,47 @@
 # Current task
 
-- TASK: POL-AGD-WA-001
-- TITLE: Agenda — allow cancelling a WhatsApp send
+- TASK: POL-AI-002B
+- TITLE: Mobile dock — center Poliedron between Agenda/Pazienti, 1mm lower
 - OWNER: CLAUDE
-- BRANCH: `claude/whatsapp-agenda-cancel-rql7fg`
-- BASE REVIEW: `master@1faa9bb` (POL-AI-002A merged via PR #36)
+- BRANCH: `fix/POL-AI-002B-mobile-dock-center-poliedron`
+- BASE REVIEW: `master@e5b24d4` (POL-AGD-WA-001 merged via PR #39)
 - STATUS: `PR_OPEN_AWAITING_REVIEW`
-- PR: #39 — https://github.com/lucasimondi/Dental-manager-claude/pull/39
+- PR: #40 — https://github.com/lucasimondi/Dental-manager-claude/pull/40
+- Preview: https://dental-manager-git-fix-pol-ai-002b-mobile-1d578a-acmeproduction.vercel.app
 
 ## Objective
+
+Product Owner reported the mobile-dock Poliedron orb is not horizontally
+centered between the Agenda and Pazienti dock icons, and asked for it to also
+move 1mm lower — explicitly forbidding any change to its size (width, height,
+scale, icon/container size, padding, proportions, shape, graphics,
+animation, behavior, functionality).
+
+**Investigation (before touching any code):** measured the real, rendered
+mobile dock in a headless Chromium browser (Playwright) at the exact
+`getPoliedronMobileDockLayout`/`PoliedronMobileDock.jsx`/
+`PremiumVisualSystem.css` code already on `master`, at all four required
+breakpoints (320/375/390/430px). Result: the orb's `centerX` was **already**
+equal to the Agenda/Pazienti midpoint at every breakpoint, to within
+0.02–0.03px (float rounding from the CSS grid's fractional track widths —
+not a real asymmetry). Cause: `.poliedron-mobile-dock` uses a 5-column CSS
+grid (`repeat(5, minmax(44px, 1fr))`) with symmetric 8px padding, itself
+centered on the viewport (`left:50%; transform:translateX(-50%)`); the
+portaled `PoliedronOrb`'s docked X position is computed in
+`getPoliedronMobileDockLayout` as `viewportWidth / 2` — the same point.  With
+5 equal-width columns, the middle one (Poliedron's slot) is geometrically
+equidistant from its two neighbors (Agenda, Pazienti) by construction, and
+both the grid and the orb resolve to the same viewport-center X. So no
+horizontal-alignment code change was needed or made — see "Files changed"
+below; only the vertical 1mm shift was implemented, per "apply the minimal
+change needed" and "don't refactor code that isn't broken."
+
+**Vertical shift:** `MOBILE_ORB_CENTER_ELEVATION` in
+`src/lib/poliedron/poliedronMobileDock.js` already encoded a prior PO-approved
+"1.5mm lower" adjustment as `26 - (1.5 * 96 / 25.4)`. Extended the same
+formula to a cumulative 2.5mm (1.5mm + this round's 1mm):
+`26 - (2.5 * 96 / 25.4)`. This only changes `orbCenterY`; it does not touch
+`centerX`, `orbSize`, the dock's own height, or Agenda/Pazienti in any way.
 
 Product Owner reported directly in chat: "Quando clicco il bottone WhatsApp
 sul agenda poi non si può annullare, deve esserci possibilità di annullare"
@@ -28,55 +61,61 @@ claim otherwise).
 
 ## Files changed
 
-- `src/components/Agenda.jsx` — `waBatch` state + `waBatchTimersRef`, cancel
-  bar in the render tree; `inviaWAMassivo`/`annullaWABatch` now delegate the
-  actual timer scheduling/cancellation to the new pure helper below (same
-  behavior, extracted so it is unit-testable without mounting React).
-- `src/lib/waBatchSender.js` (new) — `pianificaInvioWABatch` /
-  `annullaInvioWABatch`, the pure scheduling/cancel logic.
-- `tests/waBatchSender.test.mjs` (new) — dedicated regression coverage for
-  the cancel behavior using Node's built-in fake timers.
+- `src/lib/poliedron/poliedronMobileDock.js` — `MOBILE_ORB_CENTER_ELEVATION`
+  formula extended from `1.5 * 96/25.4` to `2.5 * 96/25.4` (i.e. +1mm lower),
+  plus an explanatory comment. No other export in this file changed.
+- `tests/poliedronAdaptive.test.mjs` — updated the one assertion that encodes
+  the previous "1.5mm" derivation to the new cumulative "2.5mm", matching the
+  source change above.
+
+Nothing else was touched: `PoliedronMobileDock.jsx`, `PremiumVisualSystem.css`
+(`.poliedron-mobile-dock`, `__item`, `__hero-slot`), `poliedronOrbSize.js`,
+`PoliedronOrb.jsx`, desktop `PoliedronEdgeDock.jsx`, and every non-Poliedron
+part of the app are unmodified.
 
 ## Safety boundaries
 
-- No Supabase migration, RLS policy, or financial formula touched.
-- No behavior change to the single-send or pre-send-composer flows, which
-  already worked correctly.
-- No behavior change to the bulk-send flow itself either: the extraction to
-  `waBatchSender.js` is a pure refactor of the already-added fix, same
-  `i * 350` spacing, same state transitions — done only to make the cancel
-  path independently testable.
+- Poliedron's rendered size (`computeMobileOrbSize`, 58–72px clamp), shape,
+  icon asset, animations, drag/redock behavior and click behavior are
+  byte-for-byte unchanged — verified by diff (only the elevation constant's
+  numeric formula changed) and by measurement (orb `width`/`height` identical
+  before/after at all four breakpoints).
+- Agenda and Pazienti dock icons: unmodified files, unmodified positions —
+  measured identical `centerX` before/after this change.
+- Dock height, desktop Poliedron, navigation, AI logic: untouched.
 
 ## Tests executed
 
+- `npm test` — 169/169 passing (168 pre-existing + the one updated assertion
+  above, all green; no new failures).
 - `npm run build` — clean (only the pre-existing chunk-size/pdfjs warnings).
-- `npm test` — 169/169 passing (164 pre-existing + 5 new in
-  `waBatchSender.test.mjs` covering: sequential scheduling with the real
-  `i * delayMs` spacing, `onInviato` progress callback, cancel stopping every
-  not-yet-fired send while leaving already-opened ones alone, cancelling
-  before anything fires, and an empty-batch no-op).
-- Real-browser check (Chromium via Playwright, pre-installed in this
-  sandbox): a temporary local HTML harness imported the actual
-  `src/lib/waBatchSender.js` module (not a reimplementation) and reproduced
-  the exact bar markup/logic used in `Agenda.jsx`, with `window.open` stubbed
-  to record calls instead of really opening WhatsApp. Driven with real DOM
-  clicks and real (unmocked) timers: clicking "Invia a tutti" opened sends
-  1 and 2 (~0ms/350ms) and showed "Invio WhatsApp: 2/4"; clicking "Annulla
-  invio" then waiting 1.5s (well past when sends 3 and 4 would have fired at
-  700ms/1050ms) confirmed no further `window.open` calls, the bar was hidden,
-  and the "Invia a tutti" control was interactive again. The harness file was
-  deleted after the run and is not part of this branch/PR — it never touched
-  Supabase or a real WhatsApp session, consistent with this repo's rule
-  against driving the live app against production Supabase in this sandbox.
-  The full end-to-end flow (patient selection UI → click → live app) was not
-  exercised, since that requires an authenticated session against production
-  Supabase, which this sandbox must not do.
+- Real-browser measurement (Chromium via Playwright, pre-installed in this
+  sandbox): a temporary route (`/__dock-harness` in `src/main.jsx`, plus a
+  throwaway `src/__dockHarness.jsx`) mounted the real, unmodified
+  `PoliedronMobileDock` component with the real CSS, unauthenticated — both
+  fully reverted/deleted after use, not part of any commit. Measured
+  `getBoundingClientRect()` on the real dock buttons and the real portaled
+  orb at exactly 320/375/390/430px, before and after the code change. See
+  the Objective section above for the before-change result (already
+  centered); after the change: orb `centerX` unchanged at each width (160 /
+  187.5 / 195 / 215, i.e. exactly `viewportWidth/2` and equal to the
+  Agenda↔Pazienti midpoint, diff ≤0.03px); orb size unchanged (58×58 / 64×64
+  / 66×66 / 72×72); orb `centerY` moved from 731.66 to 735.44 at every
+  width — a uniform +3.79px shift (1mm at the standard 96px/inch), constant
+  across breakpoints as expected since it doesn't depend on viewport width;
+  Agenda/Pazienti icon centers unchanged.
 
 ## Exact next action
 
 PR opened for Product Owner review; do not merge. See the PR description for
-the full write-up (problem, cause, fix, cancel semantics, test/build
-results).
+the full write-up (problem, investigation finding, fix, verification data).
+
+---
+
+# Historical record: POL-AGD-WA-001 (merged to master)
+
+- Branch: `claude/whatsapp-agenda-cancel-rql7fg` — PR #39, merged to `master` as `e5b24d4`.
+- Objective: allow cancelling an in-progress WhatsApp bulk send in the Agenda. Full detail in `docs/coordination/handoffs.md`.
 
 ---
 
