@@ -6,7 +6,7 @@
 - BRANCH: `lucasimondi-pol-ai-002b-workflows`
 - BASE REVIEW: `master@1faa9bb` (PR #36 merged)
 - STATUS: `WAITING_PRODUCT_OWNER`
-- PR: pending new draft PR creation after the verified implementation commit
+- PR: draft PR #41
 
 ## Objective
 
@@ -25,7 +25,7 @@ The Product Owner explicitly authorized POL-AI-002B as a new task after PR #36 m
 
 ## Exact next action
 
-Product Owner reviews the new POL-AI-002B draft PR. Do not deploy or merge without explicit Product Owner approval.
+Product Owner reviews draft PR #41. Do not deploy or merge without explicit Product Owner approval.
 
 ---
 

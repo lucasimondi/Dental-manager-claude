@@ -559,4 +559,4 @@
 - Rollback: revert the POL-AI-002B commits. No database, data, RLS, deployment, or dependency rollback is required.
 - Deployment impact: frontend bundle only; no deployment performed.
 - Product Owner decision required: none.
-- Exact next action: Product Owner reviews the new POL-AI-002B draft PR. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+- Exact next action: Product Owner reviews draft PR #41. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
