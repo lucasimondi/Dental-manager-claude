@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { clampToBounds, getPoliedronSafeBounds, readSafeAreaInsets, DEFAULT_SAFETY_MARGIN } from '../../lib/poliedron/poliedronSafeBounds.js';
-import { computeDragPosition, fractionFromPosition, positionFromFraction } from '../../lib/poliedron/poliedronDragMath.js';
+import { getPoliedronSafeBounds, readSafeAreaInsets, DEFAULT_SAFETY_MARGIN } from '../../lib/poliedron/poliedronSafeBounds.js';
+import { clampToBounds, computeDragPosition, fractionFromPosition, positionFromFraction } from '../../lib/poliedron/poliedronDragMath.js';
 import {
   applyRedockAttraction,
   getDockProtectionProgress,

@@ -437,6 +437,23 @@
 - Deployment impact: frontend bundle only; no deployment performed.
 - Exact next action: Product Owner reviews draft PR #37. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
 
+## POL-AI-002A Product Owner review round 4 — dragMath-only refactor, additional test coverage, expanded QA
+
+- Task ID: POL-AI-002A (continuation, same branch)
+- Previous agent: CLAUDE
+- Branch: `fix/POL-AI-002A-adaptive-poliedron` — PR #36 (draft, not merged)
+- Objective: Product Owner asked to confirm the shared drag-math refactor, add explicit safe-zone/reclamp tests, reconfirm mobile Orb/desktop Edge Dock/command aliases, and expand browser QA with an off-center grab.
+- Completed work:
+  - Re-exported `clampToBounds` from `poliedronDragMath.js` so the desktop Edge Dock uses the same clamp primitive as mobile; `usePoliedronEdgePosition.js` now applies it to vertical coordinates.
+  - Added explicit bottom safe-zone, inset-heavy home-indicator, out-of-viewport persistence/reclamp, non-alias navigation-result, and alias/real-route consistency tests.
+  - Expanded browser QA with an off-center Orb grab verifying that the grabbed point, rather than the Orb center, tracks the pointer.
+- Files changed: `src/components/poliedron/usePoliedronEdgePosition.js`; `src/lib/poliedron/poliedronDragMath.js`; `tests/poliedronAdaptive.test.mjs`; `docs/coordination/handoffs.md`.
+- Database changes: none.
+- Tests executed: `npm test`; `npm run build`; `git diff --check`; secret scan; Playwright QA at 375/390/430/768/1024/1440 in Light/Dark.
+- Test results at that commit: 147/147 Node tests pass; build/diff/secret checks clean; 12/12 browser viewport-theme combinations and 9/9 command checks pass.
+- Unresolved issues / risks: no new gaps; WORK MODE, voice input, telemetry, and memory remained out of scope.
+- Exact next action at that point: Product Owner re-review. Superseded by the compact-mobile-dock continuation below.
+
 ## POL-AI-002A Product Owner revision — compact mobile dock
 
 - Task ID: POL-AI-002A
@@ -458,11 +475,11 @@
 - Files changed in `8a70bda`: `src/App.jsx`; `src/components/DocFiscale.jsx`; `src/components/DocMedico.jsx`; `src/components/PdfView.jsx`; `src/components/PremiumVisualSystem.css`; `src/components/SchedaPaz.jsx`; `src/components/poliedron/Poliedron.jsx`; `src/components/poliedron/PoliedronMobileDock.jsx` (new); `src/components/poliedron/PoliedronOrb.jsx`; `src/components/poliedron/usePoliedronEdgePosition.js`; `src/components/poliedron/usePoliedronPosition.js`; `src/components/ui/Modal.jsx`; `src/components/ui/PdfViewerModal.jsx`; `src/lib/poliedron/poliedraCore.js`; `src/lib/poliedron/poliedronDragMath.js`; `src/lib/poliedron/poliedronMobileDock.js` (new); `src/lib/poliedron/poliedronOrbSize.js`; `src/lib/poliedron/poliedronSafeBounds.js`; `tests/poliedronAdaptive.test.mjs`. Coordination files are updated in the follow-up handoff commit.
 - Database changes: none. No Supabase, migration, schema, RLS, RBAC, finance, clinical, auth, production, API-key, provider-SDK, or dependency-manifest change.
 - Tests executed: `npm test`; `npm run build`; `git diff --check`; conflict-marker scan; secret-pattern scan; full scope/diff inspection; repeated high-confidence code-review passes; temporary real-Chromium CDP harness (removed before commit).
-- Test results: 158/158 Node tests pass. Production build passes with only the pre-existing `pdfjs-dist` eval warning, existing malformed CSS-comment warning in `designTokens.css`, and existing chunk-size warnings. `git diff --check`, conflict scan, and secret scan pass.
+- Test results: 163/163 Node tests pass after reconciling the concurrent review-round-4 clamp/test commit. Production build passes with only the pre-existing `pdfjs-dist` eval warning, existing malformed CSS-comment warning in `designTokens.css`, and existing chunk-size warnings. `git diff --check`, conflict scan, and secret scan pass.
 - Visual QA: real Chrome 151 covered 375x812, 390x844, and 430x932 in Light and Dark (6/6): exact dock order, 84vw geometry, 64px/999px pill, semantic glass/blur, 90/94/103px centered Orb, tap navigation, active state, command-panel stacking, dock recession/non-interactivity, no horizontal overflow, detached exact release, persisted reload, magnetic redock, and reduced-motion `animation-name:none`. 768, 1024, and 1440 in Light and Dark (6/6) rendered Edge Dock only and verified focus expansion, click, Ctrl+K, panel stacking, no overflow; a dedicated desktop drag verified left/right switch, vertical movement, and persisted `{side, verticalPosition}`. The final attraction-boundary taper/clamp refinement followed this browser matrix and is covered by a dedicated pure continuity regression plus the final full suite/build. Screenshots are session artifacts only, not repository files.
 - Unresolved issues: no implementation blocker. Real hardware remains the final authority for non-zero iOS `env(safe-area-inset-*)`; Chromium verified the CSS/JS contract and zero-inset geometry, while unit tests cover synthetic non-zero safe-area values.
 - Risks: detachable drag intentionally preserves exact outside-zone placement only after applying viewport/dock safe clamps; inside the center magnetic zone it redocks by design. Existing build warnings are unchanged and out of scope.
-- Rollback: revert the coordination handoff commit and `8a70bda`, then revert merge commit `1b320ab` only if POL-UI-011 must also be removed from this branch. No data rollback is required.
+- Rollback: revert the final reconciliation merge, the coordination handoff commit, and `8a70bda`; revert merge commit `1b320ab` only if POL-UI-011 must also be removed from this branch. No data rollback is required.
 - Deployment impact: frontend bundle only; no deploy performed.
 - Product Owner decision required: none. `768px` is documented and tested as Desktop Edge Dock because the authoritative existing breakpoint is `<720px`.
 - Exact next action: Product Owner reviews draft PR #36. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.

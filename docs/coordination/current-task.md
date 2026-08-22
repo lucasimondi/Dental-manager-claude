@@ -24,7 +24,7 @@ POL-AI-001 was merged as `e504e52`. POL-UI-011 was merged as `d95af43` and incor
 
 ## Exact next action
 
-Product Owner reviews draft PR #36 at commit `8a70bda` plus this coordination handoff. Do not deploy, merge, or begin another task without explicit Product Owner approval. Status: `WAITING_PRODUCT_OWNER`.
+Product Owner reviews draft PR #36 at the current branch head, including `8a70bda`, the coordination handoff, and the reconciled review-round-4 clamp/test commit. Do not deploy, merge, or begin another task without explicit Product Owner approval. Status: `WAITING_PRODUCT_OWNER`.
 
 ---
 

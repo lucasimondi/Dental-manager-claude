@@ -13,6 +13,7 @@ import {
 } from '../src/lib/poliedron/poliedronMobileDock.js';
 import { COMMAND_ALIASES, resolveCommandAlias } from '../src/lib/poliedron/commandAliases.js';
 import { NAVIGATION_INDEX } from '../src/lib/poliedron/navigationIndex.js';
+import { classifyIntent, INTENT } from '../src/lib/poliedron/intentEngine.js';
 import { processQuery } from '../src/lib/poliedron/poliedraCore.js';
 import { buildContext } from '../src/lib/poliedron/contextEngine.js';
 import { ACTION_REGISTRY } from '../src/lib/poliedron/actionRegistry.js';
@@ -464,4 +465,72 @@ test('processQuery: a live partial query ("ross") still returns normal search re
   });
   assert.equal(result.directNavigation, undefined);
   assert.ok(result.searchResults.some((g) => g.group === 'PAZIENTI'));
+});
+
+// ---------------------------------------------------------------------------
+// PO round 4 — explicit additional coverage requested by name
+// ---------------------------------------------------------------------------
+
+test('bottom safe zone: dragging the orb all the way to the bottom of the viewport never crosses the safety margin', () => {
+  const bounds = getPoliedronSafeBounds({ viewportWidth: 375, viewportHeight: 812, orbWidth: 100, orbHeight: 100, additionalSafetyMargin: 20 });
+  // Drag toward a pointer position far below the screen — the whole orb's
+  // bounding box (not just its center) must still respect the margin.
+  const pos = computeDragPosition({ pointerX: 100, pointerY: 5000, grabOffsetX: 50, grabOffsetY: 50, bounds });
+  assert.equal(pos.y, bounds.maxY);
+  assert.ok(pos.y + 100 <= 812 - 20); // orb's bottom edge stays inside the safety margin
+});
+
+test('bottom safe zone: an inset-heavy device (home indicator) pushes the bottom limit up further still', () => {
+  const bounds = getPoliedronSafeBounds({
+    viewportWidth: 375, viewportHeight: 812, orbWidth: 100, orbHeight: 100, additionalSafetyMargin: 20,
+    safeAreaInsets: { top: 0, right: 0, bottom: 34, left: 0 },
+  });
+  const pos = computeDragPosition({ pointerX: 100, pointerY: 5000, grabOffsetX: 50, grabOffsetY: 50, bounds });
+  assert.ok(pos.y + 100 <= 812 - 34 - 20); // clears both the safety margin AND the home-indicator inset
+});
+
+test('persisted position out-of-viewport (e.g. saved on a tablet, reopened on a phone) is reclamped to a valid position', () => {
+  const savedOnTablet = getPoliedronSafeBounds({ viewportWidth: 1024, viewportHeight: 1366, orbWidth: 100, orbHeight: 100, additionalSafetyMargin: 20 });
+  // Parked at the extreme bottom-right on the wide/tall device.
+  const frac = fractionFromPosition({ x: savedOnTablet.maxX, y: savedOnTablet.maxY, bounds: savedOnTablet });
+  assert.deepEqual(frac, { xFrac: 1, yFrac: 1 });
+
+  const reopenedOnPhone = getPoliedronSafeBounds({ viewportWidth: 320, viewportHeight: 480, orbWidth: 100, orbHeight: 100, additionalSafetyMargin: 20 }); // small/legacy phone viewport
+  const reclamped = positionFromFraction({ xFrac: frac.xFrac, yFrac: frac.yFrac, bounds: reopenedOnPhone });
+  assert.ok(reclamped.x >= reopenedOnPhone.minX && reclamped.x <= reopenedOnPhone.maxX, 'x must be inside the new, smaller viewport');
+  assert.ok(reclamped.y >= reopenedOnPhone.minY && reclamped.y <= reopenedOnPhone.maxY, 'y must be inside the new, smaller viewport');
+  // 1.0 fraction re-expands to exactly maxX/maxY on the new bounds too.
+  assert.equal(reclamped.x, reopenedOnPhone.maxX);
+  assert.equal(reclamped.y, reopenedOnPhone.maxY);
+});
+
+test('rule 6: an exact unique commandAlias is the ONLY path to direct navigation — a fuzzy/bare NAVIGATE match still returns results, never auto-opens a page', async () => {
+  // "listino" (a real NAV label) has NO registered commandAlias — it
+  // resolves via classifyIntent's bare-label match to NAVIGATE, which
+  // must still surface as a selectable search result, not an automatic
+  // navigation, per the task's own rule: "Nessun fuzzy match deve aprire
+  // autonomamente una pagina."
+  assert.equal(resolveCommandAlias('listino'), null);
+  const intent = classifyIntent('listino', { navigationIndex: NAVIGATION_INDEX });
+  assert.equal(intent.type, INTENT.NAVIGATE); // classifyIntent still recognizes it as nav-shaped...
+  const result = await processQuery({
+    query: 'listino',
+    context: buildContext(),
+    permissions: {},
+    sources: { navigationIndex: NAVIGATION_INDEX, actions: ACTION_REGISTRY },
+  });
+  // ...but processQuery never auto-navigates for it — it's a selectable result.
+  assert.equal(result.directNavigation, undefined);
+  assert.ok(result.searchResults.some((g) => g.group === 'SEZIONI'));
+});
+
+test('rule 6: every real commandAlias key routes through direct navigation, and nothing else in NAVIGATION_INDEX labels does', () => {
+  for (const navItem of NAVIGATION_INDEX) {
+    const bareLabelIsCommandAlias = COMMAND_ALIASES[navItem.label.toLowerCase()] != null;
+    if (bareLabelIsCommandAlias) {
+      // The few sections whose full label IS also a registered command
+      // (e.g. "agenda") must resolve to themselves, never a different page.
+      assert.equal(COMMAND_ALIASES[navItem.label.toLowerCase()].navId, navItem.id);
+    }
+  }
 });

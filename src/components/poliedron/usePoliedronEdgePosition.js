@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getPoliedronSafeBounds } from '../../lib/poliedron/poliedronSafeBounds.js';
-import { decideSideSwitch } from '../../lib/poliedron/poliedronDragMath.js';
+import { decideSideSwitch, clampToBounds } from '../../lib/poliedron/poliedronDragMath.js';
 
 /* POL-AI-002A §9-10 — desktop Edge Dock position model. Unlike the mobile
    Orb (freely positionable, §2-6), desktop Poliedron is constrained to
@@ -85,7 +85,11 @@ export function usePoliedronEdgePosition({ dockWidth = 56, dockHeight = 56, onAc
     ds.moved = true;
     setIsDragging(true);
     const { minY, maxY } = verticalBounds();
-    const top = Math.min(maxY, Math.max(minY, ds.startTop + dy));
+    // Vertical-only equivalent of computeDragPosition: ds.startTop is the
+    // dock's top at grab time, so startTop + dy == pointerY - grabOffsetY
+    // (the two are algebraically identical) — clamped through the same
+    // shared primitive the mobile hook uses, not reimplemented inline.
+    const top = clampToBounds(ds.startTop + dy, minY, maxY);
     setLiveTop(top);
     // §10 — magnetic side switch: only once the user has clearly dragged
     // toward the opposite edge, not on every small horizontal jitter.

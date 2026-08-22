@@ -6,6 +6,12 @@
 
 import { clampToBounds } from './poliedronSafeBounds.js';
 
+// Re-exported so every hook (mobile free-XY, desktop vertical-only) can
+// import all its clamp/snap/reclamp/coordinate primitives from this one
+// module, instead of reaching into poliedronSafeBounds.js piecemeal for
+// clamping specifically.
+export { clampToBounds };
+
 /**
  * computeDragPosition — §2: "position = pointer position - original grab
  * offset", then clamped so the whole bounding box stays inside `bounds`.
