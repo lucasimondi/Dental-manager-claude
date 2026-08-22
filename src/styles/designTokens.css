@@ -9,6 +9,19 @@
    extends it with the additional stops (indigo/azzurro/turchese/teal)
    needed for depth, gradients and per-category widget theming. */
 
+html,
+body,
+#root {
+  height: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+#root {
+  background: var(--pol-bg);
+}
+
 :root {
   /* ── Core surface & ink ── */
   --pol-bg: #eef3f9;

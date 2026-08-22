@@ -437,7 +437,7 @@ export default function App() {
     : LOGO_WHITE_PER_SLUG[getLogoSlug(studioInfo?.vertical)];
 
   return (
-    <div className={isMobile ? 'app-shell app-shell--mobile' : 'app-shell app-shell--desktop'} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', height: '100dvh', background: C.bg, overflow: 'hidden' }}>
+    <div className={isMobile ? 'app-shell app-shell--mobile' : 'app-shell app-shell--desktop'} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', height: '100dvh', minHeight: '100dvh', background: C.bg, overflow: 'hidden' }}>
       {!isMobile && (
         <PremiumSidebar
           nav={navVisibile}
@@ -449,7 +449,7 @@ export default function App() {
           onLogout={handleLogout}
         />
       )}
-      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, height: '100dvh', overflow: 'hidden' }}>
+      <div className="app-main" style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
       {/* POL-UI-005: mobile top header (logo/page name/Esci) removed — it cost
           too much vertical space for no real value on a small screen and kept
           this wrapper permanently dark (see PremiumVisualSystem.css). The app
@@ -488,8 +488,9 @@ export default function App() {
       )}
 
       <div id="app-scroll" style={{
-        flex: 1, minWidth: 0, maxWidth: '100%', boxSizing: 'border-box',
-        overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain',
+        flex: '1 1 auto', minWidth: 0, minHeight: 0, width: '100%', maxWidth: '100%', boxSizing: 'border-box',
+        overflowY: isMobile && page === 'agenda' ? 'hidden' : 'auto',
+        overflowX: 'hidden', overscrollBehavior: 'contain',
         // POL-UI-010 (structural): #app-scroll only ever had flex:1 from ITS
         // OWN parent — it never declared display:flex itself, so its child
         // was plain block content. Agenda's root relied on height:'100%' to
@@ -509,21 +510,11 @@ export default function App() {
         flexDirection: isMobile && page === 'agenda' ? 'column' : undefined,
         padding: 13,
         paddingTop: isMobile ? 'calc(13px + env(safe-area-inset-top, 0px))' : 13,
-        // POL-UI-009: no more mobile dock — the only fixed elements at the
-        // bottom are the 66px poliedro (MOBILE_FLOAT_BOTTOM offset 18px) and
-        // the Agente AI button, sharing the same baseline. 18px offset +
-        // 66px button + 8px breathing room = 92px is the minimum needed so
-        // the last content row never sits under either floating button.
-        // POL-UI-010: Agenda is the one page whose own content (GridView's
-        // timeline, now filling to max(100%, hours) — see Agenda.jsx) is
-        // designed to run continuously behind the floating poliedro/AI
-        // overlays, not stop short of them. Reserving 92px here would undo
-        // that: it's dead space this page never needs. Every other mobile
-        // page keeps the 92px clearance so its (non-overlay) content never
-        // sits under the floating buttons.
-        paddingBottom: isMobile
-          ? (page === 'agenda' ? 'env(safe-area-inset-bottom, 0px)' : 'calc(92px + env(safe-area-inset-bottom, 0px))')
-          : 28,
+        // POL-UI-011: fixed controls overlay the page and never reserve
+        // visible layout height. scroll-padding keeps programmatic focus
+        // targets clear of the 68px orb without creating a bottom strip.
+        paddingBottom: isMobile ? 'env(safe-area-inset-bottom, 0px)' : 28,
+        scrollPaddingBottom: isMobile ? 'calc(94px + env(safe-area-inset-bottom, 0px))' : undefined,
         // POL-UI-004 Agenda mobile final: the Agenda grid should read as an
         // almost-fullscreen surface, not a page floating inside the app's
         // usual side gutter. Narrowed only for this page/breakpoint — every

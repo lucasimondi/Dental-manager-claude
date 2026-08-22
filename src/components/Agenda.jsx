@@ -697,18 +697,17 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
 
   const isMobile = useIsMobile();
   // availH reattivo: ricalcolato a ogni resize/orientazione, non solo al primo render.
-  // Sottrae header app + header agenda + tab switcher + dock (84px mobile / 60px desktop),
-  // così la griglia è sempre tarata sullo spazio reale disponibile, non su un valore fisso.
-  const [availH, setAvailH] = useState(() => (typeof window !== 'undefined' ? Math.max(360, window.innerHeight - 210) : 480));
+  // Fornisce uno slot di base; su mobile il ResizeObserver di GridView misura poi
+  // lo spazio effettivo del contenitore e adatta gli slot senza sottrazioni da dock.
+  const [availH, setAvailH] = useState(() => (typeof window !== 'undefined' ? Math.max(360, window.innerHeight - 126) : 480));
   useEffect(() => {
-    const dockH = isMobile ? 84 : 60;
-    const chrome = 126 + dockH; // header studio + header agenda + tab switcher, misurati empiricamente
+    const chrome = 126; // controlli Agenda sopra la griglia, misurati empiricamente
     const recalc = () => setAvailH(Math.max(360, window.innerHeight - chrome));
     recalc();
     window.addEventListener('resize', recalc);
     window.addEventListener('orientationchange', recalc);
     return () => { window.removeEventListener('resize', recalc); window.removeEventListener('orientationchange', recalc); };
-  }, [isMobile]);
+  }, []);
   // slotH calcolato per far stare l'intervallo scelto (oraInizio-oraFine) nello schermo, poi scalato dal fattore zoom
   const oreVisibili = Math.max(1, oraFine - oraInizio);
   const slotH = Math.max(8, Math.round((availH / (oreVisibili * 60 / slotMin)) * zoom));
