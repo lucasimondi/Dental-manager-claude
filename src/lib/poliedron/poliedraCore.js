@@ -87,7 +87,8 @@ export async function processQuery({ query, context, permissions, sources = {}, 
   // returned instantly. Partial/fuzzy queries never match here (§21) —
   // resolveCommandAlias only accepts an exact, whole-string alias.
   const direct = resolveCommandAlias(q);
-  if (direct) {
+  const directIsPermitted = direct && (sources.navigationIndex || []).some((item) => item.id === direct.navId);
+  if (directIsPermitted) {
     return {
       intent: 'DIRECT_NAVIGATE', entities: { navId: direct.navId, filtroTipo: direct.filtroTipo },
       answer: null, confirmationRequired: false, suggestedActions: [], searchResults: [],

@@ -273,8 +273,8 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
     <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
       {/* HEADER */}
       <div style={{ background: C.priD, padding: '12px 14px', paddingTop: 'max(12px,env(safe-area-inset-top))', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-        <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 8, padding: 8, cursor: 'pointer', display: 'flex' }}>
-          <Ic n="back" s={18} c="#fff" />
+        <button onClick={onClose} aria-label="Indietro" style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 10, padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Ic n="back" s={20} c="#fff" />
         </button>
         <span style={{ color: '#fff', fontWeight: 800, fontSize: 15, flex: 1 }}>Documento fiscale</span>
         <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>{paz.nome} {paz.cognome}</span>

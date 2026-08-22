@@ -13,7 +13,7 @@ import poliedroGem from '../../assets/icon-poliedra-gem.png';
    isMobile prop to branch on. Position/drag logic lives in
    usePoliedronPosition (§34 from POL-AI-001, unchanged principle); this
    component only renders. */
-export default function PoliedronOrb({ open, onToggle, panelId }) {
+export default function PoliedronOrb({ open, onToggle, panelId, interactive = true }) {
   const [size, setSize] = useState(() => computeMobileOrbSize(typeof window !== 'undefined' ? window.innerWidth : 375));
   useEffect(() => {
     const onResize = () => setSize(computeMobileOrbSize(window.innerWidth));
@@ -27,7 +27,7 @@ export default function PoliedronOrb({ open, onToggle, panelId }) {
 
   const symbolSize = Math.round(size * 0.62);
   const [pressed, setPressed] = useState(false);
-  const { style, isDragging, bind } = usePoliedronPosition({
+  const { style, isDragging, isNearDock, bind } = usePoliedronPosition({
     size,
     onActivate: onToggle,
   });
@@ -41,6 +41,8 @@ export default function PoliedronOrb({ open, onToggle, panelId }) {
       aria-label="Apri Poliedron"
       aria-expanded={open}
       aria-controls={panelId}
+      tabIndex={interactive ? 0 : -1}
+      disabled={!interactive}
       style={{
         position: 'fixed', ...style,
         width: size, height: size, borderRadius: '50%', border: 'none', background: 'transparent',
@@ -49,7 +51,7 @@ export default function PoliedronOrb({ open, onToggle, panelId }) {
         transform: pressed && !isDragging ? 'scale(.92)' : 'scale(1)',
         transition: isDragging ? 'none' : 'transform .18s cubic-bezier(.34,1.56,.64,1)',
       }}
-      className="poliedron-orb"
+      className={`poliedron-orb${isNearDock ? ' is-redocking' : ''}`}
     >
       {/* Contact shadow — reads as "floating above the surface" (§1: true
           3D depth, not flat). */}

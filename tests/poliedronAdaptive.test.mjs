@@ -1,9 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { getPoliedronSafeBounds, clampToBounds, DEFAULT_SAFETY_MARGIN } from '../src/lib/poliedron/poliedronSafeBounds.js';
-import { computeDragPosition, decideSnapX, fractionFromPosition, positionFromFraction, decideSideSwitch } from '../src/lib/poliedron/poliedronDragMath.js';
+import { computeDragPosition, fractionFromPosition, positionFromFraction, decideSideSwitch } from '../src/lib/poliedron/poliedronDragMath.js';
 import { computeMobileOrbSize } from '../src/lib/poliedron/poliedronOrbSize.js';
+import {
+  applyRedockAttraction,
+  getDockProtectionProgress,
+  getPoliedronMobileDockLayout,
+  shouldRedock,
+} from '../src/lib/poliedron/poliedronMobileDock.js';
 import { COMMAND_ALIASES, resolveCommandAlias } from '../src/lib/poliedron/commandAliases.js';
 import { NAVIGATION_INDEX } from '../src/lib/poliedron/navigationIndex.js';
 import { processQuery } from '../src/lib/poliedron/poliedraCore.js';
@@ -11,6 +18,11 @@ import { buildContext } from '../src/lib/poliedron/contextEngine.js';
 import { ACTION_REGISTRY } from '../src/lib/poliedron/actionRegistry.js';
 
 const VIEWPORT_375 = { viewportWidth: 375, viewportHeight: 812, orbWidth: 100, orbHeight: 100 };
+const mobileDockSource = readFileSync(new URL('../src/components/poliedron/PoliedronMobileDock.jsx', import.meta.url), 'utf8');
+const mobilePositionSource = readFileSync(new URL('../src/components/poliedron/usePoliedronPosition.js', import.meta.url), 'utf8');
+const premiumCss = readFileSync(new URL('../src/components/PremiumVisualSystem.css', import.meta.url), 'utf8');
+const appSource = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8');
+const mobileBreakpointSource = readFileSync(new URL('../src/lib/useIsMobile.js', import.meta.url), 'utf8');
 
 // ---------------------------------------------------------------------------
 // §25 — mobile: safe clamp top/bottom/left/right
@@ -45,6 +57,14 @@ test('getPoliedronSafeBounds: reserves an optional bottom strip for a future Pol
   assert.equal(withReserve.maxY, without.maxY - 60);
 });
 
+test('getPoliedronSafeBounds: dock protected zone keeps a detached orb above navigation icons', () => {
+  const b = getPoliedronSafeBounds({
+    ...VIEWPORT_375,
+    protectedBottomZone: { top: 730, gap: 10 },
+  });
+  assert.equal(b.maxY, 730 - 100 - 10);
+});
+
 test('clampToBounds: clamps below min and above max, passes through in range', () => {
   assert.equal(clampToBounds(-5, 0, 100), 0);
   assert.equal(clampToBounds(500, 0, 100), 100);
@@ -75,47 +95,6 @@ test('computeDragPosition: clamps the resulting box inside safe bounds without b
   const offscreen = computeDragPosition({ pointerX: -500, pointerY: -500, grabOffsetX: 10, grabOffsetY: 10, bounds });
   assert.equal(offscreen.x, bounds.minX);
   assert.equal(offscreen.y, bounds.minY);
-});
-
-// ---------------------------------------------------------------------------
-// §3, §25 — release: no random relocation, snap threshold, no central snap
-// ---------------------------------------------------------------------------
-
-test('decideSnapX: a release far from both edges is NOT moved — "where I drop it is where it stays"', () => {
-  const bounds = getPoliedronSafeBounds({ ...VIEWPORT_375, additionalSafetyMargin: 20 }); // minX=20, maxX=255
-  const centerX = (bounds.minX + bounds.maxX) / 2;
-  assert.equal(decideSnapX({ x: centerX, bounds, snapThreshold: 48 }), centerX);
-});
-
-test('decideSnapX: a release within the snap threshold of the left edge snaps to minX', () => {
-  const bounds = getPoliedronSafeBounds({ ...VIEWPORT_375, additionalSafetyMargin: 20 });
-  assert.equal(decideSnapX({ x: bounds.minX + 30, bounds, snapThreshold: 48 }), bounds.minX);
-});
-
-test('decideSnapX: a release within the snap threshold of the right edge snaps to maxX', () => {
-  const bounds = getPoliedronSafeBounds({ ...VIEWPORT_375, additionalSafetyMargin: 20 });
-  assert.equal(decideSnapX({ x: bounds.maxX - 30, bounds, snapThreshold: 48 }), bounds.maxX);
-});
-
-test('decideSnapX: a release exactly AT the threshold distance still snaps (inclusive boundary)', () => {
-  const bounds = getPoliedronSafeBounds({ ...VIEWPORT_375, additionalSafetyMargin: 20 });
-  assert.equal(decideSnapX({ x: bounds.minX + 48, bounds, snapThreshold: 48 }), bounds.minX);
-});
-
-test('decideSnapX: a release just past the threshold is left exactly where dropped', () => {
-  const bounds = getPoliedronSafeBounds({ ...VIEWPORT_375, additionalSafetyMargin: 20 });
-  const x = bounds.minX + 49;
-  assert.equal(decideSnapX({ x, bounds, snapThreshold: 48 }), x);
-});
-
-test('decideSnapX with applySnap=false semantics (pointercancel path): caller can skip snapping entirely by never calling it', () => {
-  // pointercancel in the hook never calls decideSnapX at all — verified at
-  // the integration level by the hook itself; this asserts the pure
-  // function has no hidden default that would snap unexpectedly if some
-  // future caller passed a 0 threshold instead of skipping the call.
-  const bounds = getPoliedronSafeBounds({ ...VIEWPORT_375, additionalSafetyMargin: 20 });
-  const x = bounds.minX + 5;
-  assert.equal(decideSnapX({ x, bounds, snapThreshold: 0 }), x);
 });
 
 // ---------------------------------------------------------------------------
@@ -155,20 +134,146 @@ test('resize reclamp: the same fraction stays proportionally in place as the vie
 // §1 — mobile orb size
 // ---------------------------------------------------------------------------
 
-test('computeMobileOrbSize: stays within the 96-108px target at every required breakpoint', () => {
+test('computeMobileOrbSize: stays within the 88-104px target at every required breakpoint', () => {
   for (const w of [375, 390, 430, 768, 1024, 1440]) {
     const size = computeMobileOrbSize(w);
-    assert.ok(size >= 96 && size <= 108, `${w}px -> ${size}px out of range`);
+    assert.ok(size >= 88 && size <= 104, `${w}px -> ${size}px out of range`);
   }
 });
 
 test('computeMobileOrbSize: the narrowest supported device (375px) is not disproportionate — near the lower bound', () => {
-  assert.ok(computeMobileOrbSize(375) <= 100);
+  assert.equal(computeMobileOrbSize(375), 90);
 });
 
-test('computeMobileOrbSize: roughly 1.5x the previous 68px size', () => {
+test('computeMobileOrbSize: implements clamp(88px, 24vw, 104px)', () => {
+  assert.equal(computeMobileOrbSize(390), 94);
+  assert.equal(computeMobileOrbSize(430), 103);
+});
+
+// ---------------------------------------------------------------------------
+// Product Owner revision — compact mobile dock and magnetic redock
+// ---------------------------------------------------------------------------
+
+test('mobile dock has exactly HOME, AGENDA, POLIEDRON, PAZIENTI, SETUP in that order', () => {
+  const ids = [...mobileDockSource.matchAll(/\{ id: '([^']+)'/g)].map((match) => match[1]);
+  assert.deepEqual(ids.slice(0, 5), ['home', 'agenda', '__poliedron__', 'paz', 'set']);
+  assert.equal(ids.slice(0, 5).length, 5);
+});
+
+test('mobile dock exposes only four icon routes plus the central Poliedron hero slot', () => {
+  assert.match(mobileDockSource, /data-slot="poliedron"/);
+  assert.match(mobileDockSource, /aria-label=\{item\.label\}/);
+  assert.match(mobileDockSource, /aria-current=\{active \? 'page'/);
+  assert.match(mobileDockSource, /s=\{22\}/);
+  assert.match(premiumCss, /poliedron-mobile-dock__item\s*\{[\s\S]*width:\s*44px;[\s\S]*height:\s*44px;/);
+});
+
+test('mobile dock uses semantic Light/Dark tokens, glass blur, safe-area bottom, and no layout reservation', () => {
+  assert.match(premiumCss, /\.poliedron-mobile-dock\s*\{[\s\S]*bottom:\s*calc\(16px \+ env\(safe-area-inset-bottom, 0px\)\)/);
+  assert.match(premiumCss, /width:\s*min\(84vw, 390px,/);
+  assert.match(premiumCss, /background:\s*color-mix\(in srgb, var\(--surface-interactive\)/);
+  assert.match(premiumCss, /border:\s*1px solid var\(--border-medium\)/);
+  assert.match(premiumCss, /backdrop-filter:\s*blur\(18px\)/);
+  assert.doesNotMatch(appSource, /paddingBottom:[\s\S]{0,100}(64px|92px|110px|120px)/);
+});
+
+test('mobile dock recedes and becomes non-interactive while the command panel is open', () => {
+  assert.match(mobileDockSource, /open \? ' is-receded'/);
+  assert.match(mobileDockSource, /aria-hidden=\{open \? 'true'/);
+  assert.match(mobileDockSource, /tabIndex=\{open \? -1 : 0\}/);
+  assert.match(premiumCss, /\.poliedron-mobile-dock\.is-receded\s*\{[\s\S]*pointer-events:\s*none;/);
+});
+
+test('mobile primary navigation closes and clears a persisted patient detail overlay', () => {
+  assert.match(appSource, /const navigateFromPoliedron[\s\S]*setSchedaDashPaz\(null\);[\s\S]*pulisciPosizione\(\['schedaPazId', 'schedaPazTab'\]\);[\s\S]*setPage\(nextPage\)/);
+  assert.match(appSource, /<Poliedron[\s\S]*setPage=\{navigateFromPoliedron\}/);
+});
+
+test('mobile layout defaults to a physically centered, elevated docked orb', () => {
   const size = computeMobileOrbSize(390);
-  assert.ok(Math.abs(size - 68 * 1.5) < 15);
+  const layout = getPoliedronMobileDockLayout({ viewportWidth: 390, viewportHeight: 844, orbSize: size });
+  assert.equal(layout.dockedPosition.x + size / 2, 195);
+  assert.equal(
+    layout.dockedPosition.y + size / 2,
+    layout.dockRect.top + layout.dockRect.height / 2 - 26
+  );
+  assert.ok(layout.dockRect.width >= 390 * 0.78 && layout.dockRect.width <= 390 * 0.88);
+});
+
+test('mobile dock and protected zone account for safe-area bottom without overflowing', () => {
+  const size = computeMobileOrbSize(375);
+  const layout = getPoliedronMobileDockLayout({
+    viewportWidth: 375,
+    viewportHeight: 812,
+    orbSize: size,
+    safeAreaInsets: { top: 44, right: 0, bottom: 34, left: 0 },
+  });
+  assert.equal(layout.dockRect.bottom, 812 - 34 - 16);
+  const bounds = getPoliedronSafeBounds({
+    viewportWidth: 375,
+    viewportHeight: 812,
+    orbWidth: size,
+    orbHeight: size,
+    safeAreaInsets: { top: 44, right: 0, bottom: 34, left: 0 },
+    protectedBottomZone: layout.protectedBottomZone,
+  });
+  assert.ok(bounds.maxY + size < layout.dockRect.top);
+});
+
+test('magnetic redock snaps only releases inside the center slot zone', () => {
+  const size = computeMobileOrbSize(390);
+  const layout = getPoliedronMobileDockLayout({ viewportWidth: 390, viewportHeight: 844, orbSize: size });
+  const center = {
+    x: layout.dockedPosition.x + size / 2,
+    y: layout.dockedPosition.y + size / 2,
+  };
+  assert.equal(shouldRedock({ pointerX: center.x, pointerY: center.y, layout }), true);
+  assert.equal(shouldRedock({ pointerX: 24, pointerY: 220, layout }), false);
+});
+
+test('dock protection ramps continuously from docked center to detached safe bounds', () => {
+  const size = computeMobileOrbSize(390);
+  const layout = getPoliedronMobileDockLayout({ viewportWidth: 390, viewportHeight: 844, orbSize: size });
+  const centerY = layout.dockedPosition.y + size / 2;
+  const centerX = layout.dockedPosition.x + size / 2;
+  const innerEdge = layout.redockZone.right;
+  const outerEdge = layout.attractionZone.right;
+  assert.equal(getDockProtectionProgress({ pointerX: centerX, pointerY: centerY, layout }), 0);
+  assert.ok(getDockProtectionProgress({ pointerX: (innerEdge + outerEdge) / 2, pointerY: centerY, layout }) > 0);
+  assert.equal(getDockProtectionProgress({ pointerX: outerEdge + 1, pointerY: centerY, layout }), 1);
+  const position = { x: outerEdge - size / 2, y: layout.protectedBottomZone.top - size - layout.protectedBottomZone.gap };
+  const atBoundary = applyRedockAttraction({ position, pointerX: outerEdge, pointerY: centerY, layout });
+  const justOutside = applyRedockAttraction({ position, pointerX: outerEdge + 0.001, pointerY: centerY, layout });
+  assert.ok(Math.abs(atBoundary.x - justOutside.x) < 0.001);
+  assert.ok(Math.abs(atBoundary.y - justOutside.y) < 0.001);
+});
+
+test('outside the attraction zone a detached drop remains exactly where released with no random edge snap', () => {
+  const size = computeMobileOrbSize(390);
+  const layout = getPoliedronMobileDockLayout({ viewportWidth: 390, viewportHeight: 844, orbSize: size });
+  const released = { x: 133, y: 240 };
+  assert.deepEqual(applyRedockAttraction({
+    position: released,
+    pointerX: 150,
+    pointerY: 280,
+    layout,
+  }), released);
+  assert.doesNotMatch(mobilePositionSource, /decideSnapX/);
+});
+
+test('mobile drag preserves pointerStart, orbStart, grabOffset, capture, cancel, and detached persistence semantics', () => {
+  for (const token of ['pointerStart', 'orbStart', 'grabOffset', 'setPointerCapture', 'releasePointerCapture', 'pointercancel']) {
+    assert.match(mobilePositionSource, new RegExp(token));
+  }
+  assert.match(mobilePositionSource, /mode:\s*'detached'/);
+  assert.match(mobilePositionSource, /positionFromFraction/);
+  assert.match(mobilePositionSource, /persistDocked\(\)/);
+});
+
+test('768px is explicitly desktop mode: the existing <720 breakpoint shows Edge Dock only', () => {
+  assert.match(mobileBreakpointSource, /const BREAKPOINT = 720/);
+  assert.equal(768 < 720, false);
+  assert.match(premiumCss, /@media \(min-width: 720px\)\s*\{[\s\S]*\.poliedron-mobile-dock \{ display: none; \}/);
 });
 
 // ---------------------------------------------------------------------------
@@ -201,6 +306,13 @@ test('desktop vertical clamp: a dock cannot be dragged above the top margin or b
   const bounds = getPoliedronSafeBounds({ viewportWidth: 1440, viewportHeight: 900, orbWidth: 56, orbHeight: 56, additionalSafetyMargin: 20 });
   assert.equal(clampToBounds(-100, bounds.minY, bounds.maxY), bounds.minY);
   assert.equal(clampToBounds(5000, bounds.minY, bounds.maxY), bounds.maxY);
+});
+
+test('desktop Edge Dock persists the required side and verticalPosition shape', () => {
+  const source = readFileSync(new URL('../src/components/poliedron/usePoliedronEdgePosition.js', import.meta.url), 'utf8');
+  assert.match(source, /const next = \{ side, verticalPosition:/);
+  assert.match(source, /parsed\.verticalFrac/); // backward-compatible read of the existing v1 shape
+  assert.match(source, /pendingSwitchAtRelease = shouldSwitch/);
 });
 
 // ---------------------------------------------------------------------------
@@ -249,6 +361,12 @@ test('resolveCommandAlias: paz/paziente/pazienti resolve to Pazienti', () => {
   for (const q of ['paz', 'paziente', 'pazienti']) assert.equal(resolveCommandAlias(q).navId, 'paz');
 });
 
+test('resolveCommandAlias: pre, spe, and doc target verified existing destinations', () => {
+  assert.equal(resolveCommandAlias('pre').navId, 'piani');
+  assert.equal(resolveCommandAlias('spe').navId, 'spese');
+  assert.deepEqual(resolveCommandAlias('doc'), { navId: 'archivio', filtroTipo: 'tutti' });
+});
+
 test('§19 ambiguity: "ric" (Ricette) and "rich" (Richiami) never collide — each resolves to its own real destination', () => {
   const ric = resolveCommandAlias('ric');
   const rich = resolveCommandAlias('rich');
@@ -288,6 +406,42 @@ test('processQuery: an exact command alias resolves instantly, without classifyI
   assert.equal(result.intent, 'DIRECT_NAVIGATE');
   assert.deepEqual(result.directNavigation, { navId: 'paga', filtroTipo: null });
   assert.deepEqual(result.searchResults, []);
+});
+
+test('processQuery: local aliases never touch the model/Supabase gateway', async () => {
+  const throwingClient = new Proxy({}, {
+    get() { throw new Error('model gateway must not be touched for a local alias'); },
+  });
+  const result = await processQuery({
+    query: 'age',
+    context: buildContext(),
+    permissions: {},
+    sources: { navigationIndex: NAVIGATION_INDEX, actions: ACTION_REGISTRY },
+    supabaseClient: throwingClient,
+  });
+  assert.equal(result.directNavigation.navId, 'agenda');
+});
+
+test('processQuery: an exact alias never direct-opens a destination filtered out by permissions', async () => {
+  const navigationIndex = NAVIGATION_INDEX.filter((item) => item.id !== 'spese');
+  const result = await processQuery({
+    query: 'spe',
+    context: buildContext(),
+    permissions: {},
+    sources: { navigationIndex, actions: ACTION_REGISTRY },
+  });
+  assert.equal(result.directNavigation, undefined);
+});
+
+test('processQuery: ambiguous short prefix stays in normal grouped results instead of direct navigation', async () => {
+  const result = await processQuery({
+    query: 'ri',
+    context: buildContext(),
+    permissions: {},
+    sources: { navigationIndex: NAVIGATION_INDEX, actions: ACTION_REGISTRY },
+  });
+  assert.equal(result.directNavigation, undefined);
+  assert.ok(Array.isArray(result.searchResults));
 });
 
 test('processQuery: "ric" resolves with the filtroTipo hint attached for the real archivio route', async () => {

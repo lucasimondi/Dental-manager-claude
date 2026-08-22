@@ -7,7 +7,7 @@ import { decideSideSwitch } from '../../lib/poliedron/poliedronDragMath.js';
    the LEFT or RIGHT screen edge and only drags vertically (§9: "Non
    coordinate X/Y completamente libere" — this avoids collisions with
    tables/agenda/modals/clinical content). State shape (§10):
-   { side: 'right' | 'left', verticalFrac: 0..1 }. verticalFrac is a
+   { side: 'right' | 'left', verticalPosition: 0..1 }. verticalPosition is a
    fraction of the vertical safe range, so it's always reconstructible to
    a valid position on any viewport (§10: "Reclamp su resize"), the same
    principle as the mobile hook's fraction-of-safe-bounds persistence. */
@@ -22,8 +22,16 @@ const loadStored = () => {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if ((parsed?.side === 'left' || parsed?.side === 'right') && typeof parsed?.verticalFrac === 'number') {
-      return { side: parsed.side, verticalFrac: clamp01(parsed.verticalFrac) };
+    if (
+      (parsed?.side === 'left' || parsed?.side === 'right') &&
+      (typeof parsed.verticalPosition === 'number' || typeof parsed.verticalFrac === 'number')
+    ) {
+      const verticalPosition = typeof parsed.verticalPosition === 'number'
+        ? parsed.verticalPosition
+        : parsed.verticalFrac;
+      if (typeof verticalPosition === 'number') {
+        return { side: parsed.side, verticalPosition: clamp01(verticalPosition) };
+      }
     }
   } catch { /* corrupt/unavailable storage: fall back to default */ }
   return null;
@@ -39,7 +47,7 @@ const persist = (state) => {
  * `top`: resolved px offset from the viewport top for the collapsed dock.
  */
 export function usePoliedronEdgePosition({ dockWidth = 56, dockHeight = 56, onActivate } = {}) {
-  const [state, setState] = useState(() => loadStored() || { side: 'right', verticalFrac: 0.6 });
+  const [state, setState] = useState(() => loadStored() || { side: 'right', verticalPosition: 0.6 });
   const [isDragging, setIsDragging] = useState(false);
   const [liveTop, setLiveTop] = useState(null);
   const [pendingSideSwitch, setPendingSideSwitch] = useState(false);
@@ -81,7 +89,9 @@ export function usePoliedronEdgePosition({ dockWidth = 56, dockHeight = 56, onAc
     setLiveTop(top);
     // §10 — magnetic side switch: only once the user has clearly dragged
     // toward the opposite edge, not on every small horizontal jitter.
-    setPendingSideSwitch(decideSideSwitch({ dx, side: ds.side, minDragX: SIDE_SWITCH_MIN_DRAG_X }));
+    const shouldSwitch = decideSideSwitch({ dx, side: ds.side, minDragX: SIDE_SWITCH_MIN_DRAG_X });
+    ds.pendingSwitchAtRelease = shouldSwitch;
+    setPendingSideSwitch(shouldSwitch);
   }, [verticalBounds]);
 
   const onPointerUp = useCallback(() => {
@@ -95,7 +105,7 @@ export function usePoliedronEdgePosition({ dockWidth = 56, dockHeight = 56, onAc
     setLiveTop((currentTop) => {
       if (currentTop != null) {
         const side = ds.pendingSwitchAtRelease ? (ds.side === 'right' ? 'left' : 'right') : ds.side;
-        const next = { side, verticalFrac: topToFrac(currentTop) };
+        const next = { side, verticalPosition: topToFrac(currentTop) };
         persist(next);
         setState(next);
       }
@@ -104,12 +114,6 @@ export function usePoliedronEdgePosition({ dockWidth = 56, dockHeight = 56, onAc
     setIsDragging(false);
     setPendingSideSwitch(false);
   }, [onPointerMove, topToFrac]);
-
-  // Keep dragState's own copy of the latest pendingSideSwitch so onPointerUp
-  // (a stable-ish callback) can read it without depending on render state.
-  useEffect(() => {
-    if (dragState.current) dragState.current.pendingSwitchAtRelease = pendingSideSwitch;
-  }, [pendingSideSwitch]);
 
   const onPointerCancel = useCallback(() => {
     window.removeEventListener('pointermove', onPointerMove);
@@ -133,7 +137,7 @@ export function usePoliedronEdgePosition({ dockWidth = 56, dockHeight = 56, onAc
     window.addEventListener('pointercancel', onPointerCancel);
   }, [onPointerMove, onPointerUp, onPointerCancel, state.side]);
 
-  // Resize: verticalFrac is always re-expandable against fresh bounds.
+  // Resize: verticalPosition is always re-expandable against fresh bounds.
   useEffect(() => {
     const reclamp = () => setState((s) => ({ ...s }));
     window.addEventListener('resize', reclamp);
@@ -141,7 +145,7 @@ export function usePoliedronEdgePosition({ dockWidth = 56, dockHeight = 56, onAc
   }, []);
 
   const resetPosition = useCallback(() => {
-    setState({ side: 'right', verticalFrac: 0.6 });
+    setState({ side: 'right', verticalPosition: 0.6 });
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
   }, []);
 
@@ -150,7 +154,7 @@ export function usePoliedronEdgePosition({ dockWidth = 56, dockHeight = 56, onAc
     onActivate?.();
   }, [onActivate]);
 
-  const top = liveTop != null ? liveTop : fracToTop(state.verticalFrac);
+  const top = liveTop != null ? liveTop : fracToTop(state.verticalPosition);
 
   return {
     side: state.side,

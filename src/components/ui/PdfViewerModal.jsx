@@ -110,7 +110,7 @@ export default function PdfViewerModal({ titolo, dataUrl, filename, onClose }) {
     <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 2000, display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: `1px solid ${C.brd}`, background: C.sur, flexShrink: 0 }}>
         <span style={{ fontWeight: 700, fontSize: 14.5, color: C.txt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{titolo}</span>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: C.txl, flexShrink: 0 }}>
+        <button onClick={onClose} aria-label="Chiudi anteprima documento" style={{ width: 44, height: 44, background: 'none', border: 'none', borderRadius: 10, cursor: 'pointer', padding: 0, color: C.txl, flexShrink: 0, display: 'grid', placeItems: 'center' }}>
           <Ic n="x" s={20} />
         </button>
       </div>

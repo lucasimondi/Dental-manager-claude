@@ -1,4 +1,4 @@
-/* POL-AI-002A §2-3, §10, §25-26 — pure drag/snap/persistence math shared
+/* POL-AI-002A §2-3, §10, §25-26 — pure drag/persistence math shared
    by usePoliedronPosition (mobile, free XY) and usePoliedronEdgePosition
    (desktop, vertical-only + side). Extracted out of the hooks so the
    exact release/snap/reclamp behavior is unit-testable without a DOM or
@@ -18,22 +18,6 @@ export function computeDragPosition({ pointerX, pointerY, grabOffsetX, grabOffse
     x: clampToBounds(pointerX - grabOffsetX, bounds.minX, bounds.maxX),
     y: clampToBounds(pointerY - grabOffsetY, bounds.minY, bounds.maxY),
   };
-}
-
-/**
- * decideSnapX — §3: snap is SECONDARY. Only pulls `x` to the nearest
- * horizontal edge of `bounds` when released within `snapThreshold` of it;
- * otherwise returns `x` completely unchanged ("where I drop it is where
- * it stays"). Never pulls toward the center — a drop at the exact
- * horizontal middle of the safe range is always farther than any
- * reasonable threshold from both edges, so it never snaps.
- */
-export function decideSnapX({ x, bounds, snapThreshold }) {
-  const distLeft = x - bounds.minX;
-  const distRight = bounds.maxX - x;
-  const nearest = Math.min(distLeft, distRight);
-  if (nearest > snapThreshold) return x;
-  return distLeft <= distRight ? bounds.minX : bounds.maxX;
 }
 
 /** Fraction-of-range persistence (§6, §10): always reconstructible to a

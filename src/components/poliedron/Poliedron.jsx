@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import PoliedronOrb from './PoliedronOrb';
 import PoliedronEdgeDock from './PoliedronEdgeDock';
+import PoliedronMobileDock from './PoliedronMobileDock';
 import PoliedronPanel from './PoliedronPanel';
 import { NAVIGATION_INDEX } from '../../lib/poliedron/navigationIndex';
 import { filterNavigationIndex, isActionAllowed } from '../../lib/poliedron/permissionEngine';
@@ -127,7 +127,7 @@ export default function Poliedron({
           discreet edge-anchored dock. Both call the exact same onToggle,
           opening the exact same panel/state below. */}
       {isMobile
-        ? <PoliedronOrb open={open} onToggle={onToggle} panelId={panelId} />
+        ? <PoliedronMobileDock page={page} setPage={setPage} open={open} onToggle={onToggle} panelId={panelId} />
         : <PoliedronEdgeDock open={open} onToggle={onToggle} panelId={panelId} />}
       {open && (
         <PoliedronPanel

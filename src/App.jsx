@@ -439,6 +439,11 @@ export default function App() {
   const sidebarLogoSrc = features.custom_logo && studioInfo?.custom_logo_b64
     ? studioInfo.custom_logo_b64
     : LOGO_WHITE_PER_SLUG[getLogoSlug(studioInfo?.vertical)];
+  const navigateFromPoliedron = (nextPage) => {
+    setSchedaDashPaz(null);
+    pulisciPosizione(['schedaPazId', 'schedaPazTab']);
+    setPage(nextPage);
+  };
 
   return (
     <div className={isMobile ? 'app-shell app-shell--mobile' : 'app-shell app-shell--desktop'} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', height: '100dvh', minHeight: '100dvh', background: C.bg, overflow: 'hidden' }}>
@@ -446,7 +451,7 @@ export default function App() {
         <PremiumSidebar
           nav={navVisibile}
           page={page}
-          setPage={setPage}
+          setPage={navigateFromPoliedron}
           logoSrc={sidebarLogoSrc}
           studioName={studioInfo?.nome}
           userName={userName}
@@ -578,7 +583,7 @@ export default function App() {
       <Poliedron
         isMobile={isMobile}
         page={page}
-        setPage={setPage}
+        setPage={navigateFromPoliedron}
         patients={patients}
         goSchedaPaz={goSchedaPaz}
         features={features}

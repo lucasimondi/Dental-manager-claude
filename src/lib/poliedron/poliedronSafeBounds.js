@@ -6,9 +6,8 @@
    The returned box is where the orb's top-left corner (`x`/`y`) may
    legally sit so that its ENTIRE bounding box — not just its center —
    stays inside the safe area: viewport minus safe-area insets minus an
-   additional visual safety margin minus any reserved bottom navigation
-   strip (none exists in this app today; the parameter is kept for a
-   future Poliedra mobile nav, per §5 "eventuale area riservata"). */
+   additional visual safety margin and, when supplied, a protected bottom
+   zone such as the compact mobile navigation dock. */
 
 export const DEFAULT_SAFETY_MARGIN = 20; // §4 target: 16-24px
 
@@ -19,7 +18,8 @@ export function getPoliedronSafeBounds({
   orbHeight,
   safeAreaInsets = { top: 0, right: 0, bottom: 0, left: 0 },
   additionalSafetyMargin = DEFAULT_SAFETY_MARGIN,
-  bottomReservedExtra = 0, // §5 — reserved height for a future bottom nav strip, 0 today
+  bottomReservedExtra = 0,
+  protectedBottomZone = null,
 }) {
   const insets = {
     top: safeAreaInsets.top || 0,
@@ -34,10 +34,14 @@ export function getPoliedronSafeBounds({
   // fail toward "pinned at the safe minimum" rather than a negative/
   // inverted range that would make every clamp() call misbehave.
   const maxX = Math.max(minX, viewportWidth - orbWidth - insets.right - additionalSafetyMargin);
-  const maxY = Math.max(
+  const naturalMaxY = Math.max(
     minY,
     viewportHeight - orbHeight - insets.bottom - additionalSafetyMargin - bottomReservedExtra
   );
+  const protectedMaxY = protectedBottomZone
+    ? protectedBottomZone.top - orbHeight - (protectedBottomZone.gap || 0)
+    : naturalMaxY;
+  const maxY = Math.max(minY, Math.min(naturalMaxY, protectedMaxY));
 
   return { minX, maxX, minY, maxY };
 }

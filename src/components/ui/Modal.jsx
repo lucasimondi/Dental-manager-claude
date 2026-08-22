@@ -31,7 +31,7 @@ export default function Modal({ title, icon, iconColor, onClose, children, wide 
             {icon && <Ic n={icon} s={16} c={iconColor || C.pri} />}
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
           </span>
-          <button onClick={onClose} className="pol-icon-btn" aria-label="Chiudi" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 8, color: C.txl, flexShrink: 0 }}>
+          <button onClick={onClose} className="pol-icon-btn" aria-label="Chiudi" style={{ width: 44, height: 44, background: 'none', border: 'none', cursor: 'pointer', padding: 0, borderRadius: 10, color: C.txl, flexShrink: 0, display: 'grid', placeItems: 'center' }}>
             <Ic n="x" s={20} />
           </button>
         </div>
