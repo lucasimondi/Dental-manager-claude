@@ -467,7 +467,13 @@ export default function App() {
 
       <div id="app-scroll" style={{
         flex: 1, minWidth: 0, maxWidth: '100%', boxSizing: 'border-box',
-        overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain',
+        // POL-UI-010: Agenda owns its own internal vertical scroll (the
+        // GridView timeline container) — #app-scroll must not also scroll
+        // for this page, or the page and the timeline could both move,
+        // fighting each other / double-scrolling on iOS. Every other mobile
+        // page is unaffected: they still rely on #app-scroll's own scroll.
+        overflowY: isMobile && page === 'agenda' ? 'hidden' : 'auto',
+        overflowX: 'hidden', overscrollBehavior: 'contain',
         // POL-UI-010 (structural): #app-scroll only ever had flex:1 from ITS
         // OWN parent — it never declared display:flex itself, so its child
         // was plain block content. Agenda's root relied on height:'100%' to

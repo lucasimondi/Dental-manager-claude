@@ -1070,7 +1070,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     // pure flexbox sizing, not a percentage height, all the way down. On
     // desktop #app-scroll is unchanged (not flex), so height:'100%' stays
     // exactly as before — no desktop behavior change.
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, ...(isMobile ? { flex: 1 } : { height: '100%' }) }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: isMobile ? 'hidden' : undefined, ...(isMobile ? { flex: 1 } : { height: '100%' }) }}>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
       {/* POL-UI-006: nessuna struttura superiore su mobile — la Home mobile
