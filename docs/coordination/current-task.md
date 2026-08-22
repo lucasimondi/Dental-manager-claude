@@ -1,33 +1,31 @@
 # Current task
 
-- TASK: POL-AI-001
-- TITLE: Poliedron Universal Operating Interface
-- OWNER: CLAUDE
-- BRANCH: `feature/POL-AI-001-poliedron-universal-interface`
-- BASE REVIEW: `master` (POL-UI-010 already merged — `d1d4024`)
+- TASK: POL-UI-011
+- TITLE: Mobile edge-to-edge shell, no bottom dead space
+- OWNER: COPILOT
+- BRANCH: `lucasimondi-hotfix-pol-ui-011-mobile-edge-to-edge-sh`
+- BASE: `origin/master@e504e52`
 - STATUS: `WAITING_PRODUCT_OWNER`
-- PR: #35 (draft) — https://github.com/lucasimondi/Dental-manager-claude/pull/35
+- PR: pending
 
 ## Objective
 
-Implement the first architecture of "Poliedron," Poliedra's native AI operating interface, following the flow USER → POLIEDRON → POLIEDRA AI CORE → SEARCH/NAVIGATION/ACTIONS/DATA → MODEL PROVIDER when needed: a global draggable Orb, a Spotlight-style command panel (search + actions, not chatbot-first), a provider-independent Model Gateway (no direct Gemini/Claude/OpenAI calls from UI/lib code), deterministic-first intent classification and federated search over existing data sources, an Action Registry that reuses existing quick-action/navigation workflows (no duplicated business logic), and a Permission Engine that reuses the existing RBAC/capability model (no second authorization system) — without any database migration, RLS change, or new financial formula.
+Remove the global mobile bottom reservation left by the retired dock and implement one coherent `100dvh`/flex/safe-area application shell so every Poliedra page reaches the physical bottom edge while Poliedron remains an overlay. Preserve routing, business logic, authorization, financial semantics, and AI behavior.
 
 ## Ownership note (recorded per AGENTS.md handoff rules)
 
-This entry was added mid-session to bring the repository's coordination record in line with an already-in-progress implementation: the POL-AI-001 task specification was issued directly in the working session, and substantial implementation (`src/lib/poliedron/`, `src/components/poliedron/`, `App.jsx` wiring) was already underway before this file was updated to reflect it. No other agent's handoff claimed POL-AI-001 ownership prior to this entry.
-
-POL-UX-001 (previously the recorded current task, status `WAITING_PRODUCT_OWNER`) is moved to the historical section below — it is not abandoned, only no longer the active in-session task; its draft PR still awaits Product Owner review independently of this task.
+The Product Owner explicitly authorized this session to take ownership of POL-UI-011 and replace the stale POL-AI-001 current-task record. `origin/master@e504e52` already contains POL-AI-001, so this task starts from the latest merged master without carrying an unmerged PR.
 
 ## Safety boundaries
 
-- No Supabase migration, RLS policy, or canonical financial formula (`get_financial_snapshot_v1` / `canonicalFinancialSelectors.js`) is touched — see AGENTS.md non-negotiable rules.
-- No second RBAC/authorization model is introduced — the Permission Engine wraps `isQuickActionAllowed` (`quickActionsCatalog.js`) and `buildHomePermissions` (`homeDashboardModel.js`), both already authoritative elsewhere in the app.
-- No direct AI provider SDK/API key is added — `modelGateway.js` is the sole chokepoint and adapts the pre-existing `agente-assistente` Supabase Edge Function invocation already used by `AssistenteAI.jsx`.
-- `MobileDock.jsx` (the POL-UI-009/010 poliedro-opens-nav-menu component) is superseded by the new Poliedron system; `AssistenteAI.jsx` (separate chat widget) is intentionally left untouched — documented as an explicit scope decision, not silently decided.
+- No Supabase, schema, migration, RBAC, RLS, financial, clinical, or routing changes.
+- No Polyhedron/Poliedron or AI behavior changes.
+- No new dependency unless repository evidence proves native CSS/web APIs insufficient.
+- Mobile layout only; desktop behavior remains unchanged.
 
 ## Exact next action
 
-Product Owner reviews the draft PR (#35) for `feature/POL-AI-001-poliedron-universal-interface`. Full detail: `docs/coordination/handoffs.md` ("POL-AI-001 Poliedron Universal Operating Interface (Phase 1)" entry). Do not deploy, merge, or begin another task without explicit Product Owner approval.
+Product Owner reviews the POL-UI-011 draft PR. Do not deploy, merge, or begin another task without explicit Product Owner approval.
 
 ---
 
