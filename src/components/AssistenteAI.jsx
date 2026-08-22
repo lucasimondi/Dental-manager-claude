@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase.js';
 import { C } from '../lib/utils';
 import { Ic } from './ui';
 import { generaRicettaPdf } from '../lib/pdfDocs.js';
+import { MOBILE_FLOAT_BOTTOM } from './MobileDock.jsx';
 
 // Etichette leggibili per le azioni che richiedono conferma — mostrate nella
 // scheda di conferma invece del nome tecnico del tool.
@@ -21,7 +22,7 @@ const campoLabel = (k) => ({
   telefono: 'Telefono', email: 'Email',
 }[k] || k);
 
-export default function AssistenteAI() {
+export default function AssistenteAI({ isMobile = false }) {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState([]); // messaggi mostrati in chat: { role, display, apiContent }
   const [input, setInput] = useState('');
@@ -119,21 +120,29 @@ export default function AssistenteAI() {
 
   return (
     <>
+      {/* POL-UI-009: su mobile allineato alla stessa baseline verticale del
+          poliedro (MOBILE_FLOAT_BOTTOM), basso destra — desktop invariato. */}
       <button
         onClick={() => setOpen(o => !o)}
         style={{
-          position: 'fixed', bottom: 74, right: 16, width: 50, height: 50, borderRadius: '50%',
+          position: 'fixed',
+          bottom: isMobile ? MOBILE_FLOAT_BOTTOM : 74,
+          right: isMobile ? 'max(18px, env(safe-area-inset-right, 0px))' : 16,
+          width: isMobile ? 58 : 50, height: isMobile ? 58 : 50, borderRadius: '50%',
           background: C.pri, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.25)', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
         }}
         title="Assistente"
       >
-        <Ic n={open ? 'x' : 'bot'} s={22} c="#fff" />
+        <Ic n={open ? 'x' : 'bot'} s={isMobile ? 24 : 22} c="#fff" />
       </button>
 
       {open && (
         <div style={{
-          position: 'fixed', bottom: 132, right: 16, width: 360, maxWidth: 'calc(100vw - 32px)',
+          position: 'fixed',
+          bottom: isMobile ? 'calc(88px + env(safe-area-inset-bottom, 0px))' : 132,
+          right: isMobile ? 'max(18px, env(safe-area-inset-right, 0px))' : 16,
+          width: 360, maxWidth: 'calc(100vw - 32px)',
           height: 500, maxHeight: 'calc(100vh - 200px)', background: C.sur, border: `1px solid ${C.brd}`,
           borderRadius: 16, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column',
           overflow: 'hidden', zIndex: 999,

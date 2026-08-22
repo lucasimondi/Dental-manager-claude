@@ -891,7 +891,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       <>
       <div style={{ marginTop: 0, marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Menu mobile</div>
-        <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Stile delle icone nel dock in basso, su telefono</div>
+        <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Stile delle icone nel menu del poliedro, su telefono</div>
       </div>
       <Crd style={{ marginBottom: 14 }}>
         <Fld label="Stile icone">
