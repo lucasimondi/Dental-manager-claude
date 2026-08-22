@@ -470,7 +470,12 @@ export default function App() {
         overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain',
         padding: 13,
         paddingTop: isMobile ? 'calc(13px + env(safe-area-inset-top, 0px))' : 13,
-        paddingBottom: isMobile ? 'calc(96px + env(safe-area-inset-bottom, 0px))' : 28,
+        // POL-UI-009: no more mobile dock — the only fixed elements at the
+        // bottom are the 66px poliedro (MOBILE_FLOAT_BOTTOM offset 18px) and
+        // the Agente AI button, sharing the same baseline. 18px offset +
+        // 66px button + 8px breathing room = 92px is the minimum needed so
+        // the last content row never sits under either floating button.
+        paddingBottom: isMobile ? 'calc(92px + env(safe-area-inset-bottom, 0px))' : 28,
         // POL-UI-004 Agenda mobile final: the Agenda grid should read as an
         // almost-fullscreen surface, not a page floating inside the app's
         // usual side gutter. Narrowed only for this page/breakpoint — every
@@ -527,14 +532,13 @@ export default function App() {
         )}
       </div>
 
-      <AssistenteAI />
+      <AssistenteAI isMobile={isMobile} />
 
       {isMobile && (
         <MobileDock
           page={page}
           setPage={setPage}
           dockSettings={mergeDockSettings(studioInfo?.dock_settings)}
-          onLogout={handleLogout}
           features={features}
           isStudioAdmin={isStudioAdmin}
         />

@@ -494,7 +494,10 @@ body:has(.home-widget-grid) #app-scroll {
 }
 
 @media (max-width: 900px) {
-  body:has(.home-widget-grid) #app-scroll { padding: 20px 18px 104px !important; }
+  /* POL-UI-009: 92px clears the floating poliedro/Agente AI pair (18px
+     offset + 66px poliedro + 8px breathing room) — same value App.jsx uses
+     for every other page's #app-scroll, no dock-sized reservation left. */
+  body:has(.home-widget-grid) #app-scroll { padding: 20px 18px 92px !important; }
   .home-widget-grid { gap: 14px !important; }
 }
 
@@ -505,10 +508,11 @@ body:has(.home-widget-grid) #app-scroll {
   body:has(.home-widget-grid) { background: var(--pol-premium-bg) !important; }
   /* No mobile header any more (App.jsx) — #app-scroll is the first visible
      surface, so it carries the safe-area-inset-top the header used to
-     absorb. Bottom padding clears the transparent floating dock
-     (MobileDock.jsx) + iOS home-indicator safe area. */
+     absorb. POL-UI-009: bottom padding clears the two floating buttons
+     (poliedro left, Agente AI right — MobileDock.jsx/AssistenteAI.jsx),
+     not a dock bar any more. */
   body:has(.home-widget-grid) #app-scroll {
-    padding: calc(16px + env(safe-area-inset-top, 0px)) 13px calc(100px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: calc(16px + env(safe-area-inset-top, 0px)) 13px calc(92px + env(safe-area-inset-bottom, 0px)) !important;
   }
   .home-hero { align-items: flex-start; gap: 12px; }
   .home-hero__customize { padding: 9px 10px; font-size: 11px; }
