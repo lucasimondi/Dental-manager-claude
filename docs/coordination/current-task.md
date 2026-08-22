@@ -1,7 +1,7 @@
 # Current task
 
 - TASK: POL-AI-002A
-- TITLE: Poliedron Adaptive Interface — Mobile Orb + Desktop Edge Dock + Precise Drag + Prefix Navigation
+- TITLE: Poliedron Adaptive Interface — Compact Mobile Dock + Desktop Edge Dock + Precise Drag + Prefix Navigation
 - OWNER: CLAUDE
 - BRANCH: `fix/POL-AI-002A-adaptive-poliedron`
 - BASE REVIEW: `master@d95af43` (POL-AI-001 + POL-UI-011 mobile edge-to-edge shell)
@@ -10,21 +10,21 @@
 
 ## Objective
 
-Give Poliedron the same identity but different interaction per device: on mobile, a larger (96–108px), precisely-draggable, freely-positionable 3D Orb with a unified safe-bounds model and "where I drop it is where it stays" release behavior; on desktop, a discreet Poliedron Edge Dock (52–60px collapsed) embedded at the left/right screen edge, vertically draggable with magnetic side-switching, expanding on hover/focus. Both mount points open the exact same Poliedron instance (Poliedra AI Core → Search/Navigation/Actions/Model Gateway) — never two AI systems. Also: deterministic prefix/command-alias navigation (explicit `commandAliases`, separate from fuzzy search aliases, exact-match only) for immediate direct-open of real, verified destinations, without any model call.
+Give Poliedron the same identity but different interaction per device. Mobile uses a compact, centered glass navigation dock in exact order Home, Agenda, Poliedron, Pazienti, Setup; its 88–104px central hero Orb is docked by default, may detach within dock-aware safe bounds, and magnetically redocks without random edge snapping. Desktop keeps only the discreet 56px left/right Edge Dock with vertical drag, intentional side switching, persistence, hover/focus expansion, click, and Ctrl/Cmd+K. Both open the same Phase-1 Poliedron interface and Model Gateway. Exact permitted command aliases direct-open only real destinations without an LLM call; ambiguous/unknown text stays in normal federated search.
 
 ## Ownership note (recorded per AGENTS.md handoff rules)
 
-POL-AI-001 (previous current task) was reviewed, revised twice (single-AI-entry-point requirement), and merged to `master` by the Product Owner as PR #35 (squash commit `e504e52`) — verified via `git merge-base`/tree-diff against the PR branch tip before starting this task. It is moved to the historical section below. This task was issued directly in-session as a follow-up; no other agent claims ownership of POL-AI-002A.
+POL-AI-001 was merged as `e504e52`. POL-UI-011 was merged as `d95af43` and incorporated into this branch with merge commit `1b320ab`, preserving the existing POL-AI-002A commits `a6113e8` and `2eac136`. The Product Owner then issued the compact-mobile-dock revision implemented in `8a70bda`. Ownership remains POL-AI-002A on this branch.
 
 ## Safety boundaries
 
 - No Supabase migration, RLS policy, or canonical financial formula is touched.
 - No second RBAC/authorization model, no second AI Core/Model Gateway — both mobile Orb and desktop Edge Dock open the one existing `Poliedron` component/state; `modelGateway.js` remains the sole model-call chokepoint, no provider SDK, no new API key.
-- Prefix/command-alias navigation only targets real, verified NAV routes (`src/lib/utils.js`'s `NAV` array) — "Ricette" and "Fatture" are NOT standalone pages in this app (verified: they are document-type filters inside the real `archivio` (Documenti) page, backed by `documenti_fiscali`/`documenti_medici` tables). Their command aliases target `archivio` with a pre-applied `filtroTipo`, not an invented route — see PRODUCT_OWNER_DECISION_REQUIRED in the final report if a dedicated page was actually intended.
+- Prefix/command-alias navigation only targets permitted entries from the filtered real navigation index. "Ricette" and "Fatture" remain real `archivio` filters, not invented routes.
 
 ## Exact next action
 
-Product Owner reviews the draft PR for `fix/POL-AI-002A-adaptive-poliedron`. Full detail: `docs/coordination/handoffs.md` ("POL-AI-002A Poliedron Adaptive Interface" entry). Do not deploy, merge, or begin another task without explicit Product Owner approval.
+Product Owner reviews draft PR #36 at commit `8a70bda` plus this coordination handoff. Do not deploy, merge, or begin another task without explicit Product Owner approval. Status: `WAITING_PRODUCT_OWNER`.
 
 ---
 
