@@ -5,7 +5,8 @@
 - OWNER: CLAUDE
 - BRANCH: `feature/POL-AI-001-poliedron-universal-interface`
 - BASE REVIEW: `master` (POL-UI-010 already merged — `d1d4024`)
-- STATUS: `IN_PROGRESS`
+- STATUS: `WAITING_PRODUCT_OWNER`
+- PR: #35 (draft) — https://github.com/lucasimondi/Dental-manager-claude/pull/35
 
 ## Objective
 
@@ -26,7 +27,7 @@ POL-UX-001 (previously the recorded current task, status `WAITING_PRODUCT_OWNER`
 
 ## Exact next action
 
-Finish wiring `Poliedron` into `App.jsx` (remove the now-dead `mergeDockSettings` import left over from the retired `MobileDock` render call), add the unit tests required by the task (intent classification, navigation search, action registry, permission filtering, context binding, partial match, safe fallback, provider independence), run `npm test` / `npm run build` / `git diff --check`, do responsive QA, then commit, push to `feature/POL-AI-001-poliedron-universal-interface`, and open a **draft** PR. Do not merge without explicit Product Owner approval.
+Product Owner reviews the draft PR (#35) for `feature/POL-AI-001-poliedron-universal-interface`. Full detail: `docs/coordination/handoffs.md` ("POL-AI-001 Poliedron Universal Operating Interface (Phase 1)" entry). Do not deploy, merge, or begin another task without explicit Product Owner approval.
 
 ---
 
