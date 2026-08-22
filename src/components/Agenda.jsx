@@ -202,7 +202,18 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
             non l'elemento stesso. È il bug reale dietro lo scroll incoerente di prima:
             dipendeva da quanti appuntamenti/ore c'erano, non era mai stato casuale. */}
         <div ref={containerRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y', overscrollBehavior: 'contain', position: 'relative' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', minHeight: slots.length * slotH }}>
+          {/* POL-UI-010: su mobile la griglia (colonna ore + colonne giorno,
+              colorate per weekend/oggi/sfondo) era alta esattamente
+              slots.length*slotH — cioè solo quanto le ore configurate
+              (oraInizio–oraFine). Su schermi alti con un range orario più
+              corto dell'altezza disponibile, sotto l'ultima riga restava
+              zona vuota (il colore del contenitore scrollabile, non quello
+              della griglia) prima del vero fondo dello schermo. max(100%, …)
+              fa sì che la griglia riempia comunque tutta l'altezza
+              disponibile — le colonne colorate si estendono di conseguenza
+              (stretch flex di default) — restando comunque scrollabile se le
+              ore configurate superano lo spazio visibile. Desktop invariato. */}
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: isMobile ? `max(100%, ${slots.length * slotH}px)` : slots.length * slotH }}>
 
             <div style={{ display: 'flex', flex: 1 }}>
 
