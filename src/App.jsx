@@ -1,9 +1,16 @@
 ﻿import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { supabase, DB } from './lib/supabase.js';
-import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, getLogoSlug, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, mergeDockSettings, uid, applyBrandColors, applyHeaderColor } from './lib/utils';
+import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, getLogoSlug, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, uid, applyBrandColors, applyHeaderColor } from './lib/utils';
 import { generaRichiamiBot } from './lib/richiamiBot';
 import { salvaPosizione, leggiPosizione, pulisciPosizione } from './lib/posizioneNavigazione';
-import MobileDock from './components/MobileDock.jsx';
+// POL-AI-001: MobileDock (the POL-UI-009/010 poliedro-button-opens-full-nav-
+// menu) is superseded by Poliedron — the same floating polyhedron concept,
+// evolved into the app's universal command interface (search/navigate/
+// create/analyze), mounted on both mobile and desktop now instead of
+// mobile-only. AssistenteAI is untouched — a separate, already-working
+// chat surface this task does not remove (see final report).
+import Poliedron from './components/poliedron';
+import { buildHomePermissions } from './lib/homeDashboardModel';
 import PremiumSidebar from './components/PremiumSidebar.jsx';
 import './styles/designTokens.css';
 import './components/PremiumVisualSystem.css';
@@ -410,6 +417,11 @@ export default function App() {
     (n.id !== 'agenteai' || isStudioAdmin)
   );
 
+  // POL-AI-001 §12: the exact capability-based permissions object Dashboard's
+  // own quick actions already compute from — Poliedron's action registry
+  // reuses it (via isQuickActionAllowed) instead of a second RBAC model.
+  const homePermissions = buildHomePermissions({ membership: studioMembership, features, vertical: studioInfo?.vertical });
+
   const sidebarLogoSrc = features.custom_logo && studioInfo?.custom_logo_b64
     ? studioInfo.custom_logo_b64
     : LOGO_WHITE_PER_SLUG[getLogoSlug(studioInfo?.vertical)];
@@ -560,15 +572,20 @@ export default function App() {
 
       <AssistenteAI isMobile={isMobile} />
 
-      {isMobile && (
-        <MobileDock
-          page={page}
-          setPage={setPage}
-          dockSettings={mergeDockSettings(studioInfo?.dock_settings)}
-          features={features}
-          isStudioAdmin={isStudioAdmin}
-        />
-      )}
+      <Poliedron
+        isMobile={isMobile}
+        page={page}
+        setPage={setPage}
+        patients={patients}
+        goSchedaPaz={goSchedaPaz}
+        features={features}
+        isStudioAdmin={isStudioAdmin}
+        vertical={studioInfo?.vertical}
+        studioId={session?.user?.app_metadata?.studio_id}
+        currentPatient={schedaDashPaz?.paz || null}
+        quickActionCtx={{ permissions: homePermissions, features, vertical: studioInfo?.vertical }}
+        supabaseClient={supabase}
+      />
       </div>
     </div>
   );
