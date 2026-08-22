@@ -237,16 +237,25 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
       borderRadius: isMobile ? 0 : 12,
       boxShadow: isMobile ? 'none' : '0 1px 3px rgba(0,0,0,0.06)',
     }}>
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: isMobile ? 'relative' : undefined }}>
 
         {/* Contenitore della griglia — scrolla qui dentro, isolato dal resto della pagina.
-            IMPORTANTE: ogni div con flex:1+overflow:auto in questa catena ha anche
-            min-height:0 esplicito. Senza, su iOS Safari un elemento flex di default
-            si allarga per contenere tutto il suo contenuto invece di rispettare lo
-            spazio assegnato — e a quel punto è la PAGINA a scrollare per compensare,
-            non l'elemento stesso. È il bug reale dietro lo scroll incoerente di prima:
-            dipendeva da quanti appuntamenti/ore c'erano, non era mai stato casuale. */}
-        <div ref={containerRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y', overscrollBehavior: 'contain', position: 'relative' }}>
+            Desktop: flex:1+min-height:0+overflow:auto (ogni link della catena flex
+            documentato altrove come affidabile su iOS Safari — invariato qui).
+            Mobile (POL-UI-010 iOS definitive): niente più flex-basis per l'altezza —
+            questo div diventa position:absolute+inset:0 ancorato al wrapper qui sopra
+            (position:relative), esattamente come Agenda root è ancorato a #app-scroll
+            in App.jsx/Agenda.jsx. Un containing block esplicito non lascia alcuna
+            risoluzione flex/percentuale a WebKit: elimina la classe di bug reale
+            dietro lo scroll incoerente di prima, che dipendeva da quanti
+            appuntamenti/ore c'erano — non era mai stato casuale. */}
+        <div ref={containerRef} style={isMobile ? {
+          position: 'absolute', inset: 0, overflowY: 'auto', overflowX: 'hidden',
+          WebkitOverflowScrolling: 'touch', touchAction: 'pan-y', overscrollBehavior: 'contain',
+        } : {
+          flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden',
+          WebkitOverflowScrolling: 'touch', touchAction: 'pan-y', overscrollBehavior: 'contain', position: 'relative',
+        }}>
           {/* POL-UI-010 (slot fit): minHeight ora usa slots.length*effectiveSlotH
               — coerente con ogni altro uso di effectiveSlotH sopra — invece del
               precedente max(100%, slots.length*slotH). Quando il range orario è
@@ -1065,12 +1074,29 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   );
 
   return (
-    // POL-UI-010 (structural): on mobile, #app-scroll is now itself a column
-    // flex container for this page (App.jsx), so this root uses flex:1 —
-    // pure flexbox sizing, not a percentage height, all the way down. On
-    // desktop #app-scroll is unchanged (not flex), so height:'100%' stays
-    // exactly as before — no desktop behavior change.
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: isMobile ? 'hidden' : undefined, ...(isMobile ? { flex: 1 } : { height: '100%' }) }}>
+    // POL-UI-010 (iOS definitive): on mobile, #app-scroll is position:relative
+    // (App.jsx) and this root anchors to it with position:absolute + inset:0
+    // — an explicit containing block, not a flex-basis or percentage height,
+    // so there is no flex/percentage resolution left for WebKit to get wrong.
+    // Absolutely positioned elements ignore their parent's own padding, so
+    // the padding #app-scroll used to apply for this page (13px side gutter
+    // narrowed to 6px for Agenda, safe-area-aware top, safe-area-only
+    // bottom) is applied here directly instead — identical values, just
+    // relocated. Desktop is untouched: #app-scroll stays a plain block
+    // there, so height:'100%' (the original, pre-POL-UI-010 approach) still
+    // applies and desktop keeps its own padding from #app-scroll unchanged.
+    <div style={{
+      display: 'flex', flexDirection: 'column', minHeight: 0,
+      overflow: isMobile ? 'hidden' : undefined,
+      ...(isMobile
+        ? {
+            position: 'absolute', inset: 0, boxSizing: 'border-box',
+            paddingTop: 'calc(13px + env(safe-area-inset-top, 0px))',
+            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+            paddingLeft: 6, paddingRight: 6,
+          }
+        : { height: '100%' }),
+    }}>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
       {/* POL-UI-006: nessuna struttura superiore su mobile — la Home mobile

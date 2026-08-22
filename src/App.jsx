@@ -467,47 +467,36 @@ export default function App() {
 
       <div id="app-scroll" style={{
         flex: 1, minWidth: 0, maxWidth: '100%', boxSizing: 'border-box',
-        // POL-UI-010: Agenda owns its own internal vertical scroll (the
-        // GridView timeline container) — #app-scroll must not also scroll
-        // for this page, or the page and the timeline could both move,
-        // fighting each other / double-scrolling on iOS. Every other mobile
-        // page is unaffected: they still rely on #app-scroll's own scroll.
+        // POL-UI-010 (iOS definitive): earlier rounds made #app-scroll a
+        // column flex container and Agenda's root flex:1, replacing a
+        // percentage height — but real iPhone testing still showed a dead
+        // strip, meaning a flex-basis-derived height can ALSO be unreliable
+        // on WebKit, not just percentage heights. Switching to an explicit
+        // containing block (position:relative here, position:absolute +
+        // inset:0 on Agenda's root) sidesteps the flex/percentage
+        // resolution algorithm entirely — inset:0 sizes strictly against
+        // this element's padding box, a mechanism with no known WebKit
+        // ambiguity. Absolutely positioned children ignore this element's
+        // own padding, so padding for Agenda is applied on Agenda's own
+        // root instead (see Agenda.jsx) — every other page keeps its
+        // padding/scroll/display exactly as before, unaffected.
+        position: isMobile && page === 'agenda' ? 'relative' : undefined,
         overflowY: isMobile && page === 'agenda' ? 'hidden' : 'auto',
         overflowX: 'hidden', overscrollBehavior: 'contain',
-        // POL-UI-010 (structural): #app-scroll only ever had flex:1 from ITS
-        // OWN parent — it never declared display:flex itself, so its child
-        // was plain block content. Agenda's root relied on height:'100%' to
-        // stretch to #app-scroll's box, and percentage heights inside a
-        // flex-sized-but-not-flex-container ancestor are exactly the class
-        // of thing iOS Safari is known to resolve unreliably (WebKit can
-        // treat the flex item's height as indefinite for descendants'
-        // percentage resolution, even though it renders with a real size) —
-        // this is why the real-device iPhone test still showed a dead strip
-        // after Agenda's own internal flex/ResizeObserver fixes: the chain
-        // was already broken one level above Agenda entirely. Making
-        // #app-scroll itself a column flex container for mobile Agenda lets
-        // Agenda's root use flex:1/minHeight:0 (the same pattern already
-        // relied on everywhere else in Agenda.jsx, verified reliable) instead
-        // of a percentage height — no other page is affected.
-        display: isMobile && page === 'agenda' ? 'flex' : undefined,
-        flexDirection: isMobile && page === 'agenda' ? 'column' : undefined,
-        padding: 13,
-        paddingTop: isMobile ? 'calc(13px + env(safe-area-inset-top, 0px))' : 13,
+        padding: isMobile && page === 'agenda' ? 0 : 13,
+        paddingTop: isMobile && page === 'agenda' ? 0 : (isMobile ? 'calc(13px + env(safe-area-inset-top, 0px))' : 13),
         // POL-UI-009: no more mobile dock — the only fixed elements at the
         // bottom are the 66px poliedro (MOBILE_FLOAT_BOTTOM offset 18px) and
         // the Agente AI button, sharing the same baseline. 18px offset +
         // 66px button + 8px breathing room = 92px is the minimum needed so
         // the last content row never sits under either floating button.
         // POL-UI-010: Agenda is the one page whose own content (GridView's
-        // timeline, now filling to max(100%, hours) — see Agenda.jsx) is
-        // designed to run continuously behind the floating poliedro/AI
-        // overlays, not stop short of them. Reserving 92px here would undo
-        // that: it's dead space this page never needs. Every other mobile
-        // page keeps the 92px clearance so its (non-overlay) content never
-        // sits under the floating buttons.
-        paddingBottom: isMobile
-          ? (page === 'agenda' ? 'env(safe-area-inset-bottom, 0px)' : 'calc(92px + env(safe-area-inset-bottom, 0px))')
-          : 28,
+        // timeline) is designed to run continuously behind the floating
+        // poliedro/AI overlays, not stop short of them — its own padding
+        // (moved to Agenda.jsx's root, see above) already accounts for
+        // this. Every other mobile page keeps the 92px clearance here so
+        // its (non-overlay) content never sits under the floating buttons.
+        paddingBottom: isMobile && page !== 'agenda' ? 'calc(92px + env(safe-area-inset-bottom, 0px))' : (isMobile ? 0 : 28),
         // POL-UI-004 Agenda mobile final: the Agenda grid should read as an
         // almost-fullscreen surface, not a page floating inside the app's
         // usual side gutter. Narrowed only for this page/breakpoint — every
@@ -517,8 +506,8 @@ export default function App() {
         // content never touches/exceeds the screen edge on real devices,
         // plus explicit overflow-x:hidden above as a hard backstop: no
         // page can ever force the whole app to scroll sideways again.
-        paddingLeft: isMobile ? (page === 'agenda' ? 6 : 15) : undefined,
-        paddingRight: isMobile ? (page === 'agenda' ? 6 : 15) : undefined,
+        paddingLeft: isMobile && page === 'agenda' ? 0 : (isMobile ? 15 : undefined),
+        paddingRight: isMobile && page === 'agenda' ? 0 : (isMobile ? 15 : undefined),
       }}>
         {page === 'home' && <Dashboard patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegni} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} onNavigateNew={goNuovoElemento} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} />}
         {page !== 'home' && (
