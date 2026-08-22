@@ -1,3 +1,14 @@
+/* POL-AI-001 (review round 2) — Product Owner requirement: Poliedron must
+   be the app's single AI entry point, so this component is no longer
+   mounted anywhere (App.jsx used to render it alongside Poliedron; that
+   render call was removed). Kept — not deleted — because its
+   tool-confirmation loop (crea_appuntamento/modifica_appuntamento/
+   elimina_appuntamento/registra_pagamento/crea_paziente, all calling the
+   same agente-assistente edge function Poliedron's modelGateway.js also
+   calls) is real, working logic that a future round can port into
+   Poliedron's ASK/ANALYZE conversation path behind the Model Gateway,
+   instead of being rewritten from scratch. See
+   docs/coordination/handoffs.md for the convergence record. */
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { C } from '../lib/utils';

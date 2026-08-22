@@ -1,15 +1,32 @@
 ﻿import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { supabase, DB } from './lib/supabase.js';
-import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, getLogoSlug, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, mergeDockSettings, uid, applyBrandColors, applyHeaderColor } from './lib/utils';
+import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, getLogoSlug, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, uid, applyBrandColors, applyHeaderColor } from './lib/utils';
 import { generaRichiamiBot } from './lib/richiamiBot';
 import { salvaPosizione, leggiPosizione, pulisciPosizione } from './lib/posizioneNavigazione';
-import MobileDock from './components/MobileDock.jsx';
+// POL-AI-001: MobileDock (the POL-UI-009/010 poliedro-button-opens-full-nav-
+// menu) is superseded by Poliedron — the same floating polyhedron concept,
+// evolved into the app's universal command interface (search/navigate/
+// create/analyze), mounted on both mobile and desktop now instead of
+// mobile-only.
+//
+// Product Owner requirement (POL-AI-001 review round 2): Poliedron must be
+// the single AI entry point in the UI — no second floating AI button.
+// AssistenteAI.jsx (the separate chat widget, previously mounted here
+// alongside Poliedron) is no longer rendered anywhere in the app shell.
+// Its file and internal logic (the tool-confirmation loop for
+// crea_appuntamento/modifica_appuntamento/elimina_appuntamento/
+// registra_pagamento/crea_paziente, all driving the same agente-assistente
+// edge function Poliedron's modelGateway.js also calls) are kept, not
+// deleted — a future round can port that tool-execution loop into
+// Poliedron's ASK/ANALYZE path behind the Model Gateway. See
+// docs/coordination/handoffs.md for the full convergence record.
+import Poliedron from './components/poliedron';
+import { buildHomePermissions } from './lib/homeDashboardModel';
 import PremiumSidebar from './components/PremiumSidebar.jsx';
 import './styles/designTokens.css';
 import './components/PremiumVisualSystem.css';
 import { useIsMobile } from './lib/useIsMobile';
 import { useTheme } from './lib/useTheme';
-import AssistenteAI from './components/AssistenteAI.jsx';
 // POL-UI-004 Recovery: restored original Poliedra logo assets (verbatim,
 // same files/mapping used before POL-UX-002 swapped them for a
 // code-rendered wordmark). Root cause of that swap: the wordmark portion of
@@ -410,6 +427,11 @@ export default function App() {
     (n.id !== 'agenteai' || isStudioAdmin)
   );
 
+  // POL-AI-001 §12: the exact capability-based permissions object Dashboard's
+  // own quick actions already compute from — Poliedron's action registry
+  // reuses it (via isQuickActionAllowed) instead of a second RBAC model.
+  const homePermissions = buildHomePermissions({ membership: studioMembership, features, vertical: studioInfo?.vertical });
+
   const sidebarLogoSrc = features.custom_logo && studioInfo?.custom_logo_b64
     ? studioInfo.custom_logo_b64
     : LOGO_WHITE_PER_SLUG[getLogoSlug(studioInfo?.vertical)];
@@ -558,17 +580,20 @@ export default function App() {
         )}
       </div>
 
-      <AssistenteAI isMobile={isMobile} />
-
-      {isMobile && (
-        <MobileDock
-          page={page}
-          setPage={setPage}
-          dockSettings={mergeDockSettings(studioInfo?.dock_settings)}
-          features={features}
-          isStudioAdmin={isStudioAdmin}
-        />
-      )}
+      <Poliedron
+        isMobile={isMobile}
+        page={page}
+        setPage={setPage}
+        patients={patients}
+        goSchedaPaz={goSchedaPaz}
+        features={features}
+        isStudioAdmin={isStudioAdmin}
+        vertical={studioInfo?.vertical}
+        studioId={session?.user?.app_metadata?.studio_id}
+        currentPatient={schedaDashPaz?.paz || null}
+        quickActionCtx={{ permissions: homePermissions, features, vertical: studioInfo?.vertical }}
+        supabaseClient={supabase}
+      />
       </div>
     </div>
   );

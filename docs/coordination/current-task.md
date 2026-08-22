@@ -1,33 +1,42 @@
 # Current task
 
-- TASK: POL-UX-001
-- TITLE: Poliedra Visual System & Dashboard Experience
+- TASK: POL-AI-001
+- TITLE: Poliedron Universal Operating Interface
 - OWNER: CLAUDE
-- BRANCH: `ui/POL-UX-001-visual-system-dashboard-experience`
-- BASE REVIEW: `master` (POL-UI-003 already merged — `7a0c490`)
+- BRANCH: `feature/POL-AI-001-poliedron-universal-interface`
+- BASE REVIEW: `master` (POL-UI-010 already merged — `d1d4024`)
 - STATUS: `WAITING_PRODUCT_OWNER`
+- PR: #35 (draft) — https://github.com/lucasimondi/Dental-manager-claude/pull/35
 
 ## Objective
 
-Complete the Poliedra UI/UX as an organic design-system mission, not a series of CSS patches: shared design tokens; header/Home visual integration; a real Quick Booking flow with authoritative free-slot computation; customizable quick actions with a workflow contract; a visually unified Pannello Economico on the canonical contract only; and app-wide propagation of the shared card/button primitives — without touching clinical/financial logic, RLS, or migrations.
+Implement the first architecture of "Poliedron," Poliedra's native AI operating interface, following the flow USER → POLIEDRON → POLIEDRA AI CORE → SEARCH/NAVIGATION/ACTIONS/DATA → MODEL PROVIDER when needed: a global draggable Orb, a Spotlight-style command panel (search + actions, not chatbot-first), a provider-independent Model Gateway (no direct Gemini/Claude/OpenAI calls from UI/lib code), deterministic-first intent classification and federated search over existing data sources, an Action Registry that reuses existing quick-action/navigation workflows (no duplicated business logic), and a Permission Engine that reuses the existing RBAC/capability model (no second authorization system) — without any database migration, RLS change, or new financial formula.
 
-## Phase A audit — what was found before writing code
+## Ownership note (recorded per AGENTS.md handoff rules)
 
-No prior POL-UX-001 work and no Gemini-authored branch/commits exist anywhere in this repository (checked `git branch -a`, all remote branches, and `git log` for any UX/Gemini reference) — this was a green-field implementation, not a continuation. Local `master` was found to be a stale, unrelated lineage (zero common history with `origin/master` — `git merge-base` returned empty); the branch was recreated from `origin/master` directly rather than from local `master`. The app's base color token (`C_LIGHT.pri` in `src/lib/utils.js`) was already blue (`#185FA5`), not bordeaux — no hardcoded bordeaux primary was found anywhere in `src/`; if the Product Owner is seeing bordeaux live, it is most likely a per-studio `custom_colore_primario` override (data, not code) that this sandbox cannot inspect (no production access).
+This entry was added mid-session to bring the repository's coordination record in line with an already-in-progress implementation: the POL-AI-001 task specification was issued directly in the working session, and substantial implementation (`src/lib/poliedron/`, `src/components/poliedron/`, `App.jsx` wiring) was already underway before this file was updated to reflect it. No other agent's handoff claimed POL-AI-001 ownership prior to this entry.
+
+POL-UX-001 (previously the recorded current task, status `WAITING_PRODUCT_OWNER`) is moved to the historical section below — it is not abandoned, only no longer the active in-session task; its draft PR still awaits Product Owner review independently of this task.
 
 ## Safety boundaries
 
-- No financial formula, canonical query (`get_financial_snapshot_v1`), RLS, or migration was touched. Verified: `git diff origin/master -- src/lib/canonicalFinancialSelectors.js src/lib/homeFinancialWidgets.js src/lib/useControlloDati.js src/lib/homeDashboardModel.js` and `git diff --stat origin/master -- supabase/` are both empty.
-- POL-RBAC-001/POL-RBAC-001A capability model, POL-FIS-001's `PhysioClinicalCore`/`PhysioCartella` split and POL-UI-001/002 personalization hierarchy were not touched this round (`SchedaPaz.jsx`, `PhysioClinicalCore.jsx`, `PhysioCartella.jsx`, `homeDashboardModel.js` all show zero diff against `origin/master`).
-- No production write, remote migration, backfill, deployment or merge occurred.
-
-## Completion state
-
-See the structured POL-UX-001 status report delivered alongside this handoff for the full per-item breakdown (Home/header/greeting/menu/period/booking/slots/personalizzazione/quick actions/widget/Pannello Economico/pagine/responsive/QA/test/regressioni/rischi).
+- No Supabase migration, RLS policy, or canonical financial formula (`get_financial_snapshot_v1` / `canonicalFinancialSelectors.js`) is touched — see AGENTS.md non-negotiable rules.
+- No second RBAC/authorization model is introduced — the Permission Engine wraps `isQuickActionAllowed` (`quickActionsCatalog.js`) and `buildHomePermissions` (`homeDashboardModel.js`), both already authoritative elsewhere in the app.
+- No direct AI provider SDK/API key is added — `modelGateway.js` is the sole chokepoint and adapts the pre-existing `agente-assistente` Supabase Edge Function invocation already used by `AssistenteAI.jsx`.
+- `MobileDock.jsx` (the POL-UI-009/010 poliedro-opens-nav-menu component) is superseded by the new Poliedron system; `AssistenteAI.jsx` (separate chat widget) is intentionally left untouched — documented as an explicit scope decision, not silently decided.
 
 ## Exact next action
 
-Product Owner reviews the draft PR for `ui/POL-UX-001-visual-system-dashboard-experience`. Do not deploy, merge, or begin another task without explicit Product Owner approval.
+Product Owner reviews the draft PR (#35) for `feature/POL-AI-001-poliedron-universal-interface`. Full detail: `docs/coordination/handoffs.md` ("POL-AI-001 Poliedron Universal Operating Interface (Phase 1)" entry). Do not deploy, merge, or begin another task without explicit Product Owner approval.
+
+---
+
+# Historical record: POL-UX-001 (draft PR open, awaiting Product Owner review)
+
+- Branch: `ui/POL-UX-001-visual-system-dashboard-experience`, based on `master@7a0c490` (POL-UI-003 already merged).
+- Objective: complete the Poliedra UI/UX as one organic design-system mission — shared tokens, header/Home visual integration, real Quick Booking with authoritative free-slot computation, customizable quick actions with a workflow contract, a unified Pannello Economico on the canonical contract only, and app-wide propagation of shared card/button primitives — without touching clinical/financial logic, RLS, or migrations.
+- Full detail: see `docs/coordination/handoffs.md` ("POL-UX-001 Poliedra Visual System & Dashboard Experience" entry) for the complete audit, files changed, database impact (none), and test results.
+- Status when superseded as the active task: `WAITING_PRODUCT_OWNER` — draft PR open, not merged. Exact next action unchanged: Product Owner reviews the draft PR; do not deploy or merge without explicit approval.
 
 ---
 

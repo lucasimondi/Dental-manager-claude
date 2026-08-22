@@ -16,9 +16,15 @@ const FEATURE_GATE_BY_NAV_ID = { wa: 'whatsapp', spese: 'spese', archivio: 'arch
 // Voci visibili solo a chi ha ruolo admin nello studio (a prescindere dal piano/feature).
 const ADMIN_ONLY_NAV_IDS = new Set(['agenteai']);
 
-// Baseline verticale condivisa dal poliedro e (in App.jsx/AssistenteAI) dal
-// bottone Agente AI, così i due elementi flottanti restano allineati alla
-// stessa altezza su ogni pagina mobile.
+// Baseline verticale usata dal bottone flottante Agente AI in
+// AssistenteAI.jsx. MobileDock itself is no longer rendered anywhere (POL-
+// AI-001 superseded it with Poliedron); this file survives only because
+// AssistenteAI.jsx still imports this constant. AssistenteAI.jsx's own
+// floating widget is in turn no longer mounted either (POL-AI-001 review
+// round 2 — Poliedron is now the app's single floating AI button), so this
+// baseline currently has no live consumer on screen — kept for when/if
+// AssistenteAI's logic is ported into Poliedron and needs a reference
+// value again.
 export const MOBILE_FLOAT_BOTTOM = 'calc(18px + env(safe-area-inset-bottom, 0px))';
 
 /* ── POLIEDRO MOBILE (POL-UI-009) ──
