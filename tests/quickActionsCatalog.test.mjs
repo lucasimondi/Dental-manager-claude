@@ -62,6 +62,7 @@ test('form-opening quick actions call onNavigateNew with the real target page, n
     ['nuovo_preventivo', 'piani'],
     ['pagamento', 'paga'],
     ['richiamo', 'richiami'],
+    ['nuova_spesa', 'spese'],
   ];
   for (const [id, expectedTarget] of formOpeningActions) {
     const action = getQuickAction(id);

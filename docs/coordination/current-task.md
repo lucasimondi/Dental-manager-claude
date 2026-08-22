@@ -1,30 +1,31 @@
 # Current task
 
-- TASK: POL-AI-002A
-- TITLE: Poliedron Adaptive Interface — Compact Mobile Dock + Desktop Edge Dock + Precise Drag + Prefix Navigation
-- OWNER: CLAUDE
-- BRANCH: `fix/POL-AI-002A-adaptive-poliedron`
-- BASE REVIEW: `master@d95af43` (POL-AI-001 + POL-UI-011 mobile edge-to-edge shell)
+- TASK: POL-AI-002B
+- TITLE: Poliedron Conversational Actions & Workflows
+- OWNER: COPILOT
+- BRANCH: `lucasimondi-pol-ai-002b-workflows`
+- BASE REVIEW: `master@1faa9bb` (PR #36 merged)
 - STATUS: `WAITING_PRODUCT_OWNER`
-- PR: #36 (draft) — https://github.com/lucasimondi/Dental-manager-claude/pull/36
+- PR: pending new draft PR creation after the verified implementation commit
 
 ## Objective
 
-Give Poliedron the same identity but different interaction per device. Mobile uses a compact, centered glass navigation dock in exact order Home, Agenda, Poliedron, Pazienti, Setup; its standalone 58–72px polyhedron is docked by default, may detach within dock-aware safe bounds, and magnetically redocks without random edge snapping. The transparent hit area remains at least 44px, with no circular surface, border, background, or halo plate. Desktop keeps only the discreet 56px left/right Edge Dock with vertical drag, intentional side switching, persistence, hover/focus expansion, click, and Ctrl/Cmd+K. Both open the same Phase-1 Poliedron interface and Model Gateway. Exact permitted command aliases direct-open only real destinations without an LLM call; ambiguous/unknown text stays in normal federated search.
+Restore Poliedron as the app's single conversational AI and action surface. Reuse the existing Model Gateway, Action Registry, permission engine, real navigation map, patient matching, and application workflows. Add permission-filtered, context-aware suggestions and clear Ask/Navigate/Create/Workflow/confirmation/result states. Natural-language prescription requests must open the real Ricetta form, resolve only real permitted patients, prefill only supported fields, and always leave clinical review and submission to the user. Preserve the merged POL-AI-002A mobile dock, standalone polyhedron, desktop Edge Dock, drag, stacking, and responsive behavior.
 
 ## Ownership note (recorded per AGENTS.md handoff rules)
 
-POL-AI-001 was merged as `e504e52`. POL-UI-011 was merged as `d95af43` and incorporated into this branch with merge commit `1b320ab`, preserving the existing POL-AI-002A commits `a6113e8` and `2eac136`. The Product Owner then issued the compact-mobile-dock revision implemented in `8a70bda`. Ownership remains POL-AI-002A on this branch.
+The Product Owner explicitly authorized POL-AI-002B as a new task after PR #36 merged to `master@1faa9bb`. COPILOT owns this branch and has completed the authorized implementation. Ownership now waits with the Product Owner for draft-PR review; no merge or deployment is authorized.
 
 ## Safety boundaries
 
-- No Supabase migration, RLS policy, or canonical financial formula is touched.
-- No second RBAC/authorization model, no second AI Core/Model Gateway — both mobile Orb and desktop Edge Dock open the one existing `Poliedron` component/state; `modelGateway.js` remains the sole model-call chokepoint, no provider SDK, no new API key.
-- Prefix/command-alias navigation only targets permitted entries from the filtered real navigation index. "Ricette" and "Fatture" remain real `archivio` filters, not invented routes.
+- Frontend-only by default: no Supabase migration, RLS/RBAC/auth/financial formula/production change.
+- No second AI Core or provider integration. `modelGateway.js` remains the only Poliedron model-call chokepoint.
+- Navigation and actions must be derived from real permission-filtered registries and existing application workflows; missing authorization fails closed.
+- No clinical action is auto-finalized and no patient, drug, or clinical field is invented.
 
 ## Exact next action
 
-Product Owner reviews draft PR #36 at the current branch head, including the standalone mobile-polyhedron visual refinement. Do not deploy, merge, or begin another task without explicit Product Owner approval. Status: `WAITING_PRODUCT_OWNER`.
+Product Owner reviews the new POL-AI-002B draft PR. Do not deploy or merge without explicit Product Owner approval.
 
 ---
 

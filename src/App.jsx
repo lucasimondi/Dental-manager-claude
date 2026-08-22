@@ -45,6 +45,7 @@ const LOGO_WHITE_PER_SLUG = { dental: logoDentalWhite, salus: logoSalusWhite, fi
 import LoginScreen from './components/LoginScreen.jsx';
 import LoadingScreen from './components/LoadingScreen.jsx';
 import Dashboard from './components/Dashboard.jsx';
+import QuickBookingModal from './components/QuickBookingModal.jsx';
 const ControlloGestione = lazy(() => import('./components/ControlloGestione.jsx'));
 const Pazienti = lazy(() => import('./components/Pazienti.jsx'));
 const SchedaPaz = lazy(() => import('./components/SchedaPaz.jsx'));
@@ -83,13 +84,14 @@ export default function App() {
   // the list page. Mirrors the existing initPatId pattern (set target page,
   // consumer opens its own real modal, then clears it) instead of a second
   // navigation mechanism.
-  const [autoOpenNew, setAutoOpenNew] = useState(null); // 'paz' | 'piani' | 'paga' | 'richiami' | null
+  const [autoOpenNew, setAutoOpenNew] = useState(null); // 'paz' | 'piani' | 'paga' | 'richiami' | 'spese' | null
   const [agendaInitPaz, setAgendaInitPaz] = useState(null);
   const [schedaDashPaz, setSchedaDashPaz] = useState(null);
   // POL-AI-002A §20 — set by Poliedron's direct "ric"/"fat"/"doc" commands
   // so ArchivioDocs opens already filtered instead of on its unfiltered
   // default view; App.jsx never reads it, only threads it through.
   const [archivioFiltroTipoHint, setArchivioFiltroTipoHint] = useState(null);
+  const [poliedronBookingOpen, setPoliedronBookingOpen] = useState(false);
   const [syncError, setSyncError] = useState(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isStudioAdmin, setIsStudioAdmin] = useState(false);
@@ -397,6 +399,12 @@ export default function App() {
     setSchedaDashPaz({ paz, tab });
     salvaPosizione({ schedaPazId: paz.id, schedaPazTab: tab });
   };
+  const openPrescription = ({ patient, drug = '' }) => {
+    if (!patient) return;
+    const documentRequest = { type: 'ricetta', prefill: { farmaco: drug }, requestId: `${Date.now()}-${patient.id}` };
+    setSchedaDashPaz({ paz: patient, tab: 'doc', documentRequest });
+    salvaPosizione({ schedaPazId: patient.id, schedaPazTab: 'doc', schedaPazModaleDoc: 'medico' });
+  };
   const goAgendaPaz = (pazId) => { setAgendaInitPaz(pazId); setPage('agenda'); };
 
   const handleLogout = async () => {
@@ -478,6 +486,7 @@ export default function App() {
       {schedaDashPaz && (
         <Suspense fallback={null}>
           <SchedaPaz
+            key={schedaDashPaz.paz.id}
             paz={schedaDashPaz.paz}
             initTab={schedaDashPaz.tab}
             plans={plans} setPlans={setPlansSync}
@@ -492,6 +501,12 @@ export default function App() {
             onClose={() => { setSchedaDashPaz(null); pulisciPosizione(['schedaPazId', 'schedaPazTab']); }}
             onEdit={() => setSchedaDashPaz(null)}
             onNuovoPiano={(id) => { setSchedaDashPaz(null); goNuovoPiano(id); }}
+            initialDocumentRequest={schedaDashPaz.documentRequest}
+            onDocumentRequestHandled={(requestId) => setSchedaDashPaz((current) =>
+              current?.documentRequest?.requestId === requestId
+                ? { ...current, documentRequest: null }
+                : current
+            )}
           />
         </Suspense>
       )}
@@ -570,7 +585,7 @@ export default function App() {
             {page === 'listino' && <Listino pricelist={pricelist} setPricelist={setPricelistSync} si={studioInfo} />}
             {page === 'agenda' && <Agenda patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} />}
             {page === 'richiami' && <Richiami patients={patients} plans={plans} payments={payments} appointments={appointments} richiami={richiami} setRichiami={setRichiamiSync} templates={templates} features={features} onOpenPaz={goSchedaPaz} si={studioInfo} autoOpenNew={autoOpenNew === 'richiami'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} />}
-            {page === 'spese' && <Spese studioId={session?.user?.app_metadata?.studio_id} />}
+            {page === 'spese' && <Spese studioId={session?.user?.app_metadata?.studio_id} autoOpenNew={autoOpenNew === 'spese'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} />}
             {page === 'controllo' && <ControlloGestione studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} payments={payments} appointments={appointments} pricelist={pricelist} onOpenPaz={goSchedaPaz} isDentistico={!studioInfo?.vertical || studioInfo.vertical === 'dentistico'} />}
             {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} initialFiltroTipo={archivioFiltroTipoHint} />}
             {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
@@ -592,9 +607,26 @@ export default function App() {
         studioId={session?.user?.app_metadata?.studio_id}
         currentPatient={schedaDashPaz?.paz || null}
         onArchivioFilterHint={setArchivioFiltroTipoHint}
+        openPrescription={openPrescription}
+        openNew={goNuovoElemento}
+        openBooking={() => setPoliedronBookingOpen(true)}
         quickActionCtx={{ permissions: homePermissions, features, vertical: studioInfo?.vertical }}
         supabaseClient={supabase}
       />
+      {poliedronBookingOpen && (
+        <Suspense fallback={null}>
+          <QuickBookingModal
+            patients={patients}
+            appTypes={appTypes}
+            appointments={appointments}
+            impegni={impegni}
+            si={studioInfo}
+            features={features}
+            setAppointments={setAppointmentsSync}
+            onClose={() => setPoliedronBookingOpen(false)}
+          />
+        </Suspense>
+      )}
       </div>
     </div>
   );

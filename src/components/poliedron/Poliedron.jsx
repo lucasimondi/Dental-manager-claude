@@ -17,7 +17,7 @@ import { processQuery } from '../../lib/poliedron/poliedraCore';
 export default function Poliedron({
   isMobile, page, setPage, patients, goSchedaPaz,
   features, isStudioAdmin, vertical, studioId, currentPatient,
-  quickActionCtx, supabaseClient, onArchivioFilterHint,
+  quickActionCtx, supabaseClient, onArchivioFilterHint, openPrescription, openNew, openBooking,
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -27,6 +27,7 @@ export default function Poliedron({
   const inputRef = useRef(null);
   const panelId = useId();
   const requestSeq = useRef(0);
+  const previewTimerRef = useRef(null);
 
   const permissionCtx = useMemo(() => ({ features, isStudioAdmin }), [features, isStudioAdmin]);
 
@@ -57,12 +58,14 @@ export default function Poliedron({
   }, [isMobile]);
 
   const close = useCallback(() => {
+    if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+    requestSeq.current += 1;
     setOpen(false);
     setQuery('');
     setState(null);
   }, []);
 
-  const runQuery = useCallback((q) => {
+  const runQuery = useCallback((q, { allowModel = false } = {}) => {
     const seq = ++requestSeq.current;
     setLoading(true);
     processQuery({
@@ -71,6 +74,7 @@ export default function Poliedron({
       permissions: { managementControl: permissionCtx.features?.controllo_gestione === true && !!isStudioAdmin },
       sources: { patients, navigationIndex, actions },
       supabaseClient,
+      allowModel,
     }).then((result) => {
       if (seq !== requestSeq.current) return; // stale response from an earlier keystroke — dropped
       // POL-AI-002A §20, §23 — an exact commandAlias match navigates
@@ -87,30 +91,54 @@ export default function Poliedron({
       setState(result);
       setHighlightedIndex(0);
       setLoading(false);
+    }).catch(() => {
+      if (seq !== requestSeq.current) return;
+      setState({ answer: 'Non riesco a completare la richiesta in questo momento. Riprova.' });
+      setLoading(false);
     });
   }, [context, permissionCtx, isStudioAdmin, patients, navigationIndex, actions, supabaseClient, setPage, onArchivioFilterHint, close]);
 
   useEffect(() => {
     if (!open) return;
-    const t = setTimeout(() => runQuery(query), query ? 150 : 0); // §7 live search, light debounce only while typing
-    return () => clearTimeout(t);
+    previewTimerRef.current = setTimeout(() => runQuery(query), query ? 150 : 0); // §7 live search, light debounce only while typing
+    return () => {
+      if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+    };
   }, [query, open, runQuery]);
+
+  const handleQueryChange = useCallback((value) => {
+    requestSeq.current += 1;
+    setQuery(value);
+    setLoading(false);
+    setState(null);
+    setHighlightedIndex(0);
+  }, []);
 
   const navCtx = useMemo(() => ({
     setPage, goSchedaPaz,
-    onNavigate: setPage, onNavigateNew: (p) => setPage(p),
+    onNavigate: setPage, onNavigateNew: (p) => openNew?.(p),
     onGoAgenda: () => setPage('agenda'), onGoRichiami: () => setPage('richiami'),
-    openBooking: () => setPage('agenda'), openTodoModal: () => {},
-  }), [setPage, goSchedaPaz]);
+    openBooking: () => openBooking?.(), openTodoModal: () => {},
+    openPrescription,
+  }), [setPage, goSchedaPaz, openPrescription, openNew, openBooking]);
 
   const handleSelectResult = useCallback((item) => {
     if (item.kind === 'patient') { goSchedaPaz?.(item.data); close(); return; }
     if (item.kind === 'section') { setPage(item.id); close(); return; }
-    if (item.kind === 'action') { item.data.navigate(navCtx, item.data.entity); close(); }
+    if (item.kind === 'action') {
+      if (item.id === 'prescription.create') {
+        setQuery('ricetta');
+        inputRef.current?.focus();
+        return;
+      }
+      item.data.navigate(navCtx, item.data.entity);
+      close();
+    }
   }, [goSchedaPaz, setPage, navCtx, close]);
 
-  const handleConfirmAction = useCallback((action) => {
-    action.navigate(navCtx, state?.entities?.patientCandidates?.[0]);
+  const handleConfirmAction = useCallback((action, selectedPatient) => {
+    const patient = selectedPatient || state?.entities?.patientCandidates?.[0];
+    action.navigate(navCtx, patient, { drug: state?.entities?.drugText || '' });
     close();
   }, [navCtx, state, close]);
 
@@ -119,6 +147,11 @@ export default function Poliedron({
   }, []);
 
   const onToggle = useCallback(() => setOpen((v) => !v), []);
+  const submitQuery = useCallback(() => {
+    if (!query.trim()) return;
+    if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+    runQuery(query, { allowModel: true });
+  }, [query, runQuery]);
 
   return (
     <>
@@ -134,7 +167,7 @@ export default function Poliedron({
           panelId={panelId}
           isMobile={isMobile}
           query={query}
-          onQueryChange={setQuery}
+          onQueryChange={handleQueryChange}
           state={state}
           loading={loading}
           highlightedIndex={highlightedIndex}
@@ -142,6 +175,7 @@ export default function Poliedron({
           onSelectResult={handleSelectResult}
           onConfirmAction={handleConfirmAction}
           onModifyAction={handleModifyAction}
+          onSubmit={submitQuery}
           onClose={close}
           inputRef={inputRef}
         />

@@ -19,7 +19,7 @@ export const INTENT = Object.freeze({
 });
 
 const NAVIGATE_VERBS = /^(vai|apri|mostra|mostrami|portami|vai a|vai su)\b/i;
-const CREATE_VERBS = /^(nuovo|nuova|crea|aggiungi|inserisci)\b/i;
+const CREATE_VERBS = /^(nuovo|nuova|crea|aggiungi|inserisci|fai|compila)\b/i;
 const UPDATE_VERBS = /^(registra|modifica|aggiorna|segna)\b/i;
 const ANALYZE_HINTS = /\b(quanto|quanti|quante|incassat|fattura|margine|ebitda|break.?even|costi|saturazion)\w*/i;
 const ASK_HINTS = /\?$|^(quali|chi|come mai|perch[ée])\b/i;

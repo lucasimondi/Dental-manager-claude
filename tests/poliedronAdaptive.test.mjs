@@ -347,14 +347,13 @@ test('commandAliases: no duplicate alias across categories (module load already 
   assert.equal(new Set(keys).size, keys.length);
 });
 
-test('resolveCommandAlias: ric -> Ricette lands on the real archivio route, filtered', () => {
-  const r = resolveCommandAlias('ric');
-  assert.deepEqual(r, { navId: 'archivio', filtroTipo: 'ricetta' });
+test('resolveCommandAlias: ric is reserved for the real Ricetta creation workflow', () => {
+  assert.equal(resolveCommandAlias('ric'), null);
 });
 
-test('resolveCommandAlias: rice/ricetta/ricette all resolve to the same destination as "ric"', () => {
+test('resolveCommandAlias: rice/ricetta/ricette never regress to Archivio filtering', () => {
   for (const q of ['rice', 'ricetta', 'ricette']) {
-    assert.deepEqual(resolveCommandAlias(q), { navId: 'archivio', filtroTipo: 'ricetta' });
+    assert.equal(resolveCommandAlias(q), null);
   }
 });
 
@@ -382,12 +381,10 @@ test('resolveCommandAlias: pre, spe, and doc target verified existing destinatio
   assert.deepEqual(resolveCommandAlias('doc'), { navId: 'archivio', filtroTipo: 'tutti' });
 });
 
-test('§19 ambiguity: "ric" (Ricette) and "rich" (Richiami) never collide — each resolves to its own real destination', () => {
-  const ric = resolveCommandAlias('ric');
+test('§19 ambiguity: "ric" starts Ricetta creation while "rich" still direct-opens Richiami', () => {
   const rich = resolveCommandAlias('rich');
-  assert.equal(ric.navId, 'archivio');
+  assert.equal(resolveCommandAlias('ric'), null);
   assert.equal(rich.navId, 'richiami');
-  assert.notDeepEqual(ric, rich);
 });
 
 test('§19 ambiguity: richi/richiamo/richiami all resolve to Richiami, distinctly from ric/rice', () => {
@@ -459,14 +456,16 @@ test('processQuery: ambiguous short prefix stays in normal grouped results inste
   assert.ok(Array.isArray(result.searchResults));
 });
 
-test('processQuery: "ric" resolves with the filtroTipo hint attached for the real archivio route', async () => {
+test('processQuery: "ric" starts the real Ricetta workflow instead of filtering Archivio', async () => {
   const result = await processQuery({
     query: 'ric',
     context: buildContext(),
     permissions: {},
     sources: { navigationIndex: NAVIGATION_INDEX, actions: ACTION_REGISTRY },
   });
-  assert.deepEqual(result.directNavigation, { navId: 'archivio', filtroTipo: 'ricetta' });
+  assert.equal(result.directNavigation, undefined);
+  assert.equal(result.intent, 'WORKFLOW');
+  assert.equal(result.suggestedActions[0].id, 'prescription.create');
 });
 
 test('processQuery: a live partial query ("ross") still returns normal search results, not a direct navigation', async () => {
@@ -518,24 +517,17 @@ test('persisted position out-of-viewport (e.g. saved on a tablet, reopened on a 
   assert.equal(reclamped.y, reopenedOnPhone.maxY);
 });
 
-test('rule 6: an exact unique commandAlias is the ONLY path to direct navigation — a fuzzy/bare NAVIGATE match still returns results, never auto-opens a page', async () => {
-  // "listino" (a real NAV label) has NO registered commandAlias — it
-  // resolves via classifyIntent's bare-label match to NAVIGATE, which
-  // must still surface as a selectable search result, not an automatic
-  // navigation, per the task's own rule: "Nessun fuzzy match deve aprire
-  // autonomamente una pagina."
+test('POL-AI-002B: an exact permitted bare section name direct-opens without a model call', async () => {
   assert.equal(resolveCommandAlias('listino'), null);
   const intent = classifyIntent('listino', { navigationIndex: NAVIGATION_INDEX });
-  assert.equal(intent.type, INTENT.NAVIGATE); // classifyIntent still recognizes it as nav-shaped...
+  assert.equal(intent.type, INTENT.NAVIGATE);
   const result = await processQuery({
     query: 'listino',
     context: buildContext(),
     permissions: {},
     sources: { navigationIndex: NAVIGATION_INDEX, actions: ACTION_REGISTRY },
   });
-  // ...but processQuery never auto-navigates for it — it's a selectable result.
-  assert.equal(result.directNavigation, undefined);
-  assert.ok(result.searchResults.some((g) => g.group === 'SEZIONI'));
+  assert.deepEqual(result.directNavigation, { navId: 'listino', filtroTipo: null });
 });
 
 test('rule 6: every real commandAlias key routes through direct navigation, and nothing else in NAVIGATION_INDEX labels does', () => {

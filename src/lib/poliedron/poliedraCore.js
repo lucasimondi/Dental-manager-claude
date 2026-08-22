@@ -9,6 +9,7 @@ import { federatedSearch, suggestedIdle } from './searchEngine.js';
 import { runModelTask, MODEL_TASK_TYPE } from './modelGateway.js';
 import { resolveCommandAlias } from './commandAliases.js';
 import { cercaPazienti } from '../ricercaPazienti.js';
+import { resolvePrescriptionRequest } from './prescriptionWorkflow.js';
 import {
   loadCanonicalFinancialSnapshot, selectCanonicalMetrics, MANAGEMENT_CONTROL_MODES,
 } from '../canonicalFinancialSelectors.js';
@@ -25,6 +26,16 @@ const METRIC_KEYWORDS = Object.freeze([
   { re: /break.?even/i, id: 'break_even' },
   { re: /fatturat/i, id: 'fatturato_netto_iva' },
   { re: /credito/i, id: 'credito_clienti' },
+]);
+
+const CREATE_ACTION_KEYWORDS = Object.freeze([
+  { re: /\b(?:appuntament|prenotazion)\w*/i, id: 'appointment.create' },
+  { re: /\b(?:paziente|anagrafica)\b/i, id: 'patient.create' },
+  { re: /\b(?:preventiv|piano di cura)\w*/i, id: 'quote.create' },
+  { re: /\b(?:pagament|incass)\w*/i, id: 'payment.create' },
+  { re: /\b(?:richiam|promemoria|follow.?up)\w*/i, id: 'recall.create' },
+  { re: /\b(?:spesa|costo|uscita)\b/i, id: 'expense.create' },
+  { re: /\b(?:documento|certificato|lettera)\b/i, id: 'document.create' },
 ]);
 
 const monthRange = (now = new Date()) => {
@@ -69,13 +80,41 @@ async function resolveAnalyze(entities, context, permissions, supabaseClient) {
  * RLS-scoped to the caller's studio):
  *   { patients, navigationIndex, actions }
  */
-export async function processQuery({ query, context, permissions, sources = {}, supabaseClient } = {}) {
+export async function processQuery({ query, context, permissions, sources = {}, supabaseClient, allowModel = true } = {}) {
   const q = (query || '').trim();
   if (!q) {
     return {
       intent: null, entities: {}, answer: null, confirmationRequired: false,
-      searchResults: suggestedIdle({ actions: sources.actions || [] }),
+      searchResults: suggestedIdle({
+        actions: sources.actions || [],
+        navigationIndex: sources.navigationIndex || [],
+        context,
+      }),
       suggestedActions: [],
+    };
+  }
+
+  const prescriptionRequest = resolvePrescriptionRequest(q, sources.patients || []);
+  if (prescriptionRequest) {
+    const prescriptionAction = (sources.actions || []).find((action) => action.id === 'prescription.create');
+    if (!prescriptionAction) {
+      return {
+        intent: INTENT.CREATE,
+        entities: {},
+        answer: 'Non posso aprire il workflow Ricetta con i permessi e la configurazione attuali.',
+        confirmationRequired: false,
+        suggestedActions: [],
+        searchResults: [],
+      };
+    }
+    return {
+      intent: 'WORKFLOW',
+      entities: prescriptionRequest,
+      answer: null,
+      confirmationRequired: true,
+      selectionRequired: prescriptionRequest.patientCandidates.length !== 1,
+      suggestedActions: [prescriptionAction],
+      searchResults: [],
     };
   }
 
@@ -100,7 +139,25 @@ export async function processQuery({ query, context, permissions, sources = {}, 
   const base = { intent: intent.type, entities: intent.entities, answer: null, confirmationRequired: false, suggestedActions: [] };
 
   if (intent.type === INTENT.NAVIGATE || intent.type === INTENT.SEARCH) {
-    const { groups } = federatedSearch(q, sources);
+    if (intent.type === INTENT.NAVIGATE) {
+      const target = (intent.entities.target || '').toLowerCase();
+      const exact = (sources.navigationIndex || []).find((item) =>
+        item.label.toLowerCase() === target || item.aliases.some((alias) => alias.toLowerCase() === target)
+      );
+      if (exact) {
+        return {
+          ...base,
+          searchResults: [],
+          directNavigation: { navId: exact.id, filtroTipo: null },
+        };
+      }
+    }
+    const { groups, hasResults } = federatedSearch(q, sources);
+    if (!hasResults && allowModel) {
+      const modelResult = await runModelTask({ taskType: MODEL_TASK_TYPE.ASK, input: q, context, supabaseClient });
+      return { ...base, searchResults: [], answer: modelResult.text || 'Non sono riuscito a rispondere in questo momento.' };
+    }
+    if (!hasResults) return { ...base, searchResults: [], awaitingSubmit: true };
     return { ...base, searchResults: groups };
   }
 
@@ -112,9 +169,7 @@ export async function processQuery({ query, context, permissions, sources = {}, 
     const amount = intent.entities.amount ?? extractAmount(intent.entities.raw || q);
     const patientMatches = sources.patients?.length ? cercaPazienti(sources.patients, intent.entities.raw || q).slice(0, 3) : [];
     const relevantActions = sources.actions || [];
-    const isPaymentLike = /pagament|incass/i.test(q);
-    const isPatientLike = /paziente/i.test(q);
-    const actionId = isPaymentLike ? 'payment.create' : isPatientLike ? 'patient.create' : intent.type === INTENT.CREATE ? null : null;
+    const actionId = CREATE_ACTION_KEYWORDS.find(({ re }) => re.test(q))?.id || null;
     const suggested = actionId ? relevantActions.filter((a) => a.id === actionId) : [];
     return {
       ...base,
@@ -126,6 +181,7 @@ export async function processQuery({ query, context, permissions, sources = {}, 
   }
 
   if (intent.type === INTENT.ANALYZE) {
+    if (!allowModel) return { ...base, searchResults: [], awaitingSubmit: true };
     const result = await resolveAnalyze(intent.entities, context, permissions, supabaseClient);
     if (result.needsModel) {
       const modelResult = await runModelTask({ taskType: MODEL_TASK_TYPE.ANSWER, input: q, context, supabaseClient });
@@ -135,6 +191,7 @@ export async function processQuery({ query, context, permissions, sources = {}, 
   }
 
   if (intent.type === INTENT.ASK) {
+    if (!allowModel) return { ...base, searchResults: [], awaitingSubmit: true };
     const modelResult = await runModelTask({ taskType: MODEL_TASK_TYPE.ASK, input: q, context, supabaseClient });
     return { ...base, searchResults: [], answer: modelResult.text || 'Non sono riuscito a rispondere in questo momento.' };
   }

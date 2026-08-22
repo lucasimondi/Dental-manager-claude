@@ -19,6 +19,7 @@
        implemented in Phase 1; no such action exists in this registry yet */
 
 import { getQuickAction } from '../quickActionsCatalog.js';
+import { VERTICALI_CON_RICETTA } from '../utils.js';
 
 const OPEN_ACTIONS = Object.freeze([
   {
@@ -68,6 +69,8 @@ const CREATE_ACTION_MAP = Object.freeze({
   'quote.create': 'nuovo_preventivo',
   'payment.create': 'pagamento',
   'recall.create': 'richiamo',
+  'expense.create': 'nuova_spesa',
+  'document.create': 'documento',
 });
 
 const CREATE_ACTIONS = Object.freeze(
@@ -86,6 +89,24 @@ const CREATE_ACTIONS = Object.freeze(
   })
 );
 
-export const ACTION_REGISTRY = Object.freeze([...OPEN_ACTIONS, ...CREATE_ACTIONS]);
+const WORKFLOW_ACTIONS = Object.freeze([
+  Object.freeze({
+    id: 'prescription.create',
+    label: 'Prepara una ricetta',
+    description: 'Apre il modulo Ricetta reale con il paziente selezionato e i soli campi supportati.',
+    category: 'clinical',
+    kind: 'workflow',
+    riskLevel: 1,
+    confirmationRequired: true,
+    requiresActiveMember: true,
+    verticals: Object.freeze([...VERTICALI_CON_RICETTA]),
+    featureNotFalse: 'documenti',
+    navigate: (ctx, patient, payload = {}) => {
+      if (ctx.openPrescription && patient) ctx.openPrescription({ patient, drug: payload.drug || '' });
+    },
+  }),
+]);
+
+export const ACTION_REGISTRY = Object.freeze([...OPEN_ACTIONS, ...CREATE_ACTIONS, ...WORKFLOW_ACTIONS]);
 
 export const findAction = (id) => ACTION_REGISTRY.find((a) => a.id === id) || null;

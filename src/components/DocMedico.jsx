@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { jsPDF } from 'jspdf';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Ic, PannelloInvioDocumento } from './ui';
 import { C, fmt, fmtD, today, VERTICALI_CON_RICETTA, DEF_DOCUMENTI_SETTINGS } from '../lib/utils';
@@ -14,6 +14,8 @@ const TIPI = [
   { id: 'protocollo', icona: 'book', label: 'Protocollo post-trattamento', desc: 'Istruzioni da consegnare al paziente' },
   { id: 'vuoto', icona: 'file', label: 'Foglio bianco intestato', desc: 'Documento libero da compilare, con intestazione e timbro' },
 ];
+
+const normalizzaFarmaco = (value) => (value || '').trim().toLocaleLowerCase('it-IT');
 
 // Formula ematica standard proposta come punto di partenza: ogni voce resta
 // selezionabile/deselezionabile, e se ne possono aggiungere di libere.
@@ -91,7 +93,7 @@ In caso di allineatore rotto, perso o che non calza più correttamente, contatta
   },
 ];
 
-export default function DocMedico({ paz, si, onClose }) {
+export default function DocMedico({ paz, si, onClose, initialType, initialPrefill, requestId, onInitialRequestHandled }) {
   // Lo studio "reale" di Luca (Studio Simondi): unico caso in cui mostriamo
   // il timbro professionale completo con firma scansionata personale.
   // Per qualsiasi altro studio (anche un altro dentista) usiamo un footer
@@ -113,7 +115,7 @@ export default function DocMedico({ paz, si, onClose }) {
     email: si?.email || '',
     piva: si?.piva || '',
   };
-  const [tipo, setTipo] = useState(puoiPrescrivere ? 'ricetta' : 'certificato');
+  const [tipo, setTipo] = useState(initialType === 'ricetta' && puoiPrescrivere ? 'ricetta' : (puoiPrescrivere ? 'ricetta' : 'certificato'));
   const [data, setData] = useState(today());
   const [generated, setGenerated] = useState(false);
 
@@ -156,7 +158,7 @@ export default function DocMedico({ paz, si, onClose }) {
   // navigazione (tipo selezionato, data odierna) restano invece in stato
   // normale: non serve salvarli, si ripristinano da soli in un attimo.
   const [cnt, setCnt, clearContenutoDraft] = useFormPersistente(`doc_medico_${paz?.id || 'x'}`, {
-    farmaci: [{ farmaco: '', posologia: '', durata: '' }],
+    farmaci: [{ farmaco: initialPrefill?.farmaco?.trim() || '', posologia: '', durata: '' }],
     esamiSelezionati: ESAMI_EMATICI_STANDARD,
     esamiExtra: [],
     noteEsami: '',
@@ -179,6 +181,24 @@ export default function DocMedico({ paz, si, onClose }) {
     testoVuoto: '',
     includiPazienteVuoto: true,
   });
+  const appliedRequestRef = useRef(null);
+  useEffect(() => {
+    if (!requestId || appliedRequestRef.current === requestId) return;
+    appliedRequestRef.current = requestId;
+    const farmaco = initialPrefill?.farmaco?.trim();
+    if (farmaco) {
+      setCnt((current) => {
+        const existing = Array.isArray(current.farmaci) ? current.farmaci : [];
+        if (existing.some((item) => normalizzaFarmaco(item.farmaco) === normalizzaFarmaco(farmaco))) return current;
+        const emptyIndex = existing.findIndex((item) => !item.farmaco?.trim() && !item.posologia?.trim() && !item.durata?.trim());
+        const farmaci = emptyIndex >= 0
+          ? existing.map((item, index) => index === emptyIndex ? { ...item, farmaco } : item)
+          : [...existing, { farmaco, posologia: '', durata: '' }];
+        return { ...current, farmaci };
+      });
+    }
+    onInitialRequestHandled?.(requestId);
+  }, [initialPrefill?.farmaco, requestId, setCnt, onInitialRequestHandled]);
 
   // Ricetta
   const farmaci = cnt.farmaci;

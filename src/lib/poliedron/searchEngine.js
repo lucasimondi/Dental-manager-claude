@@ -71,12 +71,23 @@ export function federatedSearch(query, sources = {}, opts = {}) {
    a small set of frequent actions + "open current context". Kept separate
    from federatedSearch so an empty query never runs the search algorithm
    at all. */
-export function suggestedIdle({ recentActionIds = [], actions = [] } = {}) {
+export function suggestedIdle({ recentActionIds = [], actions = [], navigationIndex = [], context } = {}) {
   const byId = new Map(actions.map((a) => [a.id, a]));
   const recent = recentActionIds.map((id) => byId.get(id)).filter(Boolean);
-  const fallback = actions.filter((a) => a.riskLevel <= 1).slice(0, 4);
-  const items = (recent.length ? recent : fallback).map((a) => ({ kind: 'action', id: a.id, label: a.label, data: a }));
-  return items.length ? [{ group: 'SUGGERITE', items }] : [];
+  const preferredActions = context?.page === 'paz'
+    ? ['prescription.create', 'appointment.create', 'payment.create', 'quote.create']
+    : ['appointment.create', 'patient.create', 'prescription.create', 'payment.create', 'expense.create', 'document.create'];
+  const fallback = preferredActions.map((id) => byId.get(id)).filter(Boolean);
+  const actionItems = (recent.length ? recent : fallback).slice(0, 6)
+    .map((a) => ({ kind: 'action', id: a.id, label: a.label, description: a.description, data: a }));
+  const preferredSections = ['controllo', 'spese', 'agenda', 'paz', 'paga', 'archivio', 'piani', 'richiami'];
+  const sectionById = new Map(navigationIndex.map((item) => [item.id, item]));
+  const sectionItems = preferredSections.map((id) => sectionById.get(id)).filter(Boolean).slice(0, 8)
+    .map((section) => ({ kind: 'section', id: section.id, label: section.label, icon: section.icon, data: section }));
+  return [
+    ...(sectionItems.length ? [{ group: 'APRI UNA SEZIONE', items: sectionItems }] : []),
+    ...(actionItems.length ? [{ group: 'AZIONI E WORKFLOW', items: actionItems }] : []),
+  ];
 }
 
 export { findAction };

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { C } from '../../lib/utils';
 import { Btn, Ic } from '../ui';
 
@@ -11,35 +11,72 @@ import { Btn, Ic } from '../ui';
 export default function PoliedronActionPreview({ entities, suggestedActions, onConfirm, onModify }) {
   const primary = suggestedActions?.[0];
   if (!primary) return null;
-  const patient = entities?.patientCandidates?.[0];
+  const options = entities?.patientOptions || entities?.patientCandidates || [];
+  const initialPatient = entities?.patientCandidates?.length === 1 ? entities.patientCandidates[0] : null;
+  const [selectedPatientId, setSelectedPatientId] = useState(initialPatient?.id || null);
+  const optionKey = useMemo(() => options.map((patient) => patient.id).join('|'), [options]);
+  useEffect(() => {
+    setSelectedPatientId(initialPatient?.id || null);
+  }, [initialPatient?.id, optionKey]);
+  const patient = options.find((candidate) => candidate.id === selectedPatientId) || initialPatient;
+  const isPrescription = primary.id === 'prescription.create';
+  const drugText = entities?.drugText || '';
 
   return (
-    <div style={{ background: C.priL, border: `1px solid ${C.pri}35`, borderRadius: 14, padding: 14, marginTop: 4 }}>
+    <div className="poliedron-workflow-card">
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <Ic n="zap" s={14} c={C.pri} />
-        <span style={{ fontSize: 12.5, fontWeight: 800, color: C.txt, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{primary.label}</span>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12, fontSize: 12.5 }}>
-        {patient && (
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ color: C.txm }}>Paziente</span>
-            <span style={{ fontWeight: 700, color: C.txt }}>{patient.nome} {patient.cognome}</span>
-          </div>
-        )}
-        {entities?.amount != null && (
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ color: C.txm }}>Importo</span>
-            <span style={{ fontWeight: 700, color: C.txt }}>{entities.amount.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}</span>
-          </div>
-        )}
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ color: C.txm }}>Data</span>
-          <span style={{ fontWeight: 700, color: C.txt }}>Oggi</span>
+        <span className="poliedron-workflow-card__icon"><Ic n={isPrescription ? 'pill' : 'zap'} s={15} c={C.pri} /></span>
+        <div>
+          <div className="poliedron-workflow-card__type">{isPrescription ? 'Workflow clinico · revisione richiesta' : 'Conferma azione'}</div>
+          <div className="poliedron-workflow-card__title">{primary.label}</div>
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <Btn ch="Modifica" v="sec" onClick={onModify} />
-        <Btn ch="Conferma" onClick={() => onConfirm(primary)} full />
+
+      {entities?.drugNeedsClarification && (
+        <div className="poliedron-workflow-card__warning" role="status">
+          Hai indicato più alternative per il farmaco (“{entities.requestedDrugText}”). Scrivi un solo farmaco o principio attivo: Poliedron non sceglie al posto tuo.
+        </div>
+      )}
+
+      {!patient && options.length > 0 && !entities?.drugNeedsClarification && (
+        <div className="poliedron-patient-picker">
+          <div className="poliedron-patient-picker__label">{entities?.patientCandidates?.length > 1 ? 'Quale paziente intendi?' : 'Seleziona il paziente'}</div>
+          <div className="poliedron-patient-picker__list">
+            {options.map((candidate) => (
+              <button key={candidate.id} onClick={() => setSelectedPatientId(candidate.id)} className="poliedron-patient-option">
+                <span><strong>{candidate.nome} {candidate.cognome}</strong>{candidate.telefono && <small>{candidate.telefono}</small>}</span>
+                <span aria-hidden="true">›</span>
+              </button>
+            ))}
+          </div>
+          {entities?.patientCandidates?.length === 0 && (
+            <button className="poliedron-text-action" onClick={onModify}>Cerca un altro paziente nel comando</button>
+          )}
+        </div>
+      )}
+
+      {patient && !entities?.drugNeedsClarification && (
+        <div className="poliedron-workflow-summary">
+          <div><span>Paziente</span><strong>{patient.nome} {patient.cognome}</strong></div>
+          {isPrescription && <div><span>Farmaco</span><strong>{drugText || 'Da compilare nel modulo'}</strong></div>}
+        {entities?.amount != null && (
+          <div><span>Importo</span><strong>{entities.amount.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}</strong></div>
+        )}
+          <div><span>Stato</span><strong>Bozza da verificare</strong></div>
+        </div>
+      )}
+
+      {isPrescription && (
+        <p className="poliedron-workflow-card__guardrail">
+          Poliedron apre il modulo Ricetta esistente e precompila solo il nome del farmaco esattamente come scritto. Posologia, durata, validazione clinica e generazione restano a carico del professionista.
+        </p>
+      )}
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+        <Btn ch="Modifica richiesta" v="sec" onClick={onModify} />
+        {patient && !entities?.drugNeedsClarification && (
+          <Btn ch={isPrescription ? 'Apri modulo Ricetta' : 'Conferma'} onClick={() => onConfirm(primary, patient)} full />
+        )}
       </div>
     </div>
   );

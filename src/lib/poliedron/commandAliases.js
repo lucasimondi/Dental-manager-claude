@@ -9,15 +9,14 @@
    a dev-time uniqueness check below catches an accidental duplicate key
    before it can silently shadow another entry.
 
-   §19's exact ambiguity ("ric" for Ricette vs "Richiami" also starting
-   with "ric") is resolved the same way the task itself specifies: "ric"/
-   "rice" belong only to Ricette, "rich"/"richi" only to Richiami — never
-   a shared/overlapping short form.
+   POL-AI-002B removes "ric"/"rice"/"ricetta" from this navigation table:
+   those terms now start the real Ricetta creation workflow through the
+   Action Registry. "rich"/"richi" remain unambiguous Richiami commands.
 
    Every target below was verified against the real NAV array in
    src/lib/utils.js before being registered — see the header comment on
-   each block. "Ricette" and "Fatture" are NOT standalone pages in this
-   app (verified: ArchivioDocs.jsx loads all documents across
+   each block. "Fatture" is NOT a standalone page in this app (verified:
+   ArchivioDocs.jsx loads all documents across
    `documenti_fiscali`/`documenti_medici` and filters them client-side via
    its own `filtroTipo` state, whose values include 'ricetta'/'fattura' —
    there is no dedicated route). Their commands therefore open the real
@@ -25,7 +24,7 @@
    direct-navigation handling and the `initialFiltroTipo` prop threaded
    through App.jsx → ArchivioDocs.jsx) instead of inventing a route. */
 
-// [aliases[], navId, filtroTipo?] — filtroTipo only for the two entries
+// [aliases[], navId, filtroTipo?] — filtroTipo is used for destinations
 // that land pre-filtered inside the real `archivio` page.
 const COMMAND_GROUPS = [
   [['paz', 'paziente', 'pazienti'], 'paz'],
@@ -35,7 +34,6 @@ const COMMAND_GROUPS = [
   [['spe', 'spesa', 'spese'], 'spese'],
   [['rich', 'richi', 'richiamo', 'richiami'], 'richiami'],
   [['doc', 'documento', 'documenti'], 'archivio', 'tutti'],
-  [['ric', 'rice', 'ricetta', 'ricette'], 'archivio', 'ricetta'],
   [['fat', 'fatt', 'fattura', 'fatture'], 'archivio', 'fattura'],
 ];
 

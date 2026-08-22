@@ -30,6 +30,9 @@ export const filterNavigationIndex = (index, permissionCtx) => index.filter((ite
 // the patient already being in the caller's own authorized `patients`
 // list, which is itself RLS-scoped server-side).
 export const isActionAllowed = (action, ctx) => {
+  if (action.requiresActiveMember && ctx.quickActionCtx?.permissions?.activeMember !== true) return false;
+  if (action.verticals && !action.verticals.includes(ctx.quickActionCtx?.vertical || ctx.vertical || 'dentistico')) return false;
+  if (action.featureNotFalse && ctx.features?.[action.featureNotFalse] === false) return false;
   if (action.quickAction) return isQuickActionAllowed(action.quickAction, ctx.quickActionCtx || {});
   if (action.navId) return isNavItemAllowed(action.navId, ctx);
   return true;
