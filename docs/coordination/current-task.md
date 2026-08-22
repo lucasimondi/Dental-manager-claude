@@ -5,7 +5,8 @@
 - OWNER: CLAUDE
 - BRANCH: `fix/POL-AI-002A-adaptive-poliedron`
 - BASE REVIEW: `master` (POL-AI-001 merged — `e504e52`, squash of PR #35)
-- STATUS: `IN_PROGRESS`
+- STATUS: `WAITING_PRODUCT_OWNER`
+- PR: #36 (draft) — https://github.com/lucasimondi/Dental-manager-claude/pull/36
 
 ## Objective
 
@@ -23,7 +24,7 @@ POL-AI-001 (previous current task) was reviewed, revised twice (single-AI-entry-
 
 ## Exact next action
 
-See `docs/coordination/handoffs.md` for the in-progress/completed record as work proceeds. Do not deploy, merge, or begin another task without explicit Product Owner approval.
+Product Owner reviews the draft PR for `fix/POL-AI-002A-adaptive-poliedron`. Full detail: `docs/coordination/handoffs.md` ("POL-AI-002A Poliedron Adaptive Interface" entry). Do not deploy, merge, or begin another task without explicit Product Owner approval.
 
 ---
 
