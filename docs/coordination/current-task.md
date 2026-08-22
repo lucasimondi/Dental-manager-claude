@@ -4,7 +4,7 @@
 - TITLE: Poliedron Conversational Actions & Workflows
 - OWNER: COPILOT
 - BRANCH: `lucasimondi-pol-ai-002b-workflows`
-- BASE REVIEW: `master@1faa9bb` (PR #36 merged)
+- BASE REVIEW: `master@e5b24d4` (PR #39 merged after the original POL-AI-002B implementation)
 - STATUS: `WAITING_PRODUCT_OWNER`
 - PR: draft PR #41
 
@@ -12,9 +12,7 @@
 
 Restore Poliedron as the app's single conversational AI and action surface. Reuse the existing Model Gateway, Action Registry, permission engine, real navigation map, patient matching, and application workflows. Add permission-filtered, context-aware suggestions and clear Ask/Navigate/Create/Workflow/confirmation/result states. Natural-language prescription requests must open the real Ricetta form, resolve only real permitted patients, prefill only supported fields, and always leave clinical review and submission to the user. Preserve the merged POL-AI-002A mobile dock, standalone polyhedron, desktop Edge Dock, drag, stacking, and responsive behavior.
 
-## Ownership note (recorded per AGENTS.md handoff rules)
-
-The Product Owner explicitly authorized POL-AI-002B as a new task after PR #36 merged to `master@1faa9bb`. COPILOT owns this branch and has completed the authorized implementation. Ownership now waits with the Product Owner for draft-PR review; no merge or deployment is authorized.
+The Product Owner explicitly authorized POL-AI-002B as a new task after PR #36 merged to `master@1faa9bb`. COPILOT owns this branch. PR #39 subsequently merged to `master@e5b24d4`; the branch now includes that newer Agenda behavior without rewriting or discarding the completed POL-AI-002B work.
 
 ## Safety boundaries
 
@@ -26,6 +24,21 @@ The Product Owner explicitly authorized POL-AI-002B as a new task after PR #36 m
 ## Exact next action
 
 Product Owner reviews draft PR #41. Do not deploy or merge without explicit Product Owner approval.
+
+---
+
+# Historical record: POL-AGD-WA-001 (merged to master)
+
+- Branch: `claude/whatsapp-agenda-cancel-rql7fg` — PR #39, merged to `master` as `e5b24d4`.
+- Objective: allow an in-progress Agenda WhatsApp bulk send to be cancelled before all scheduled windows open.
+- Full detail: see `docs/coordination/handoffs.md` ("POL-AGD-WA-001 Agenda — allow cancelling a WhatsApp send").
+
+---
+
+# Historical record: POL-AI-002A (merged to master)
+
+- Branch: `fix/POL-AI-002A-adaptive-poliedron` — PR #36, merged to `master` as `1faa9bb`.
+- Objective: Poliedron adaptive interface — compact mobile dock, desktop edge dock, precise drag, prefix navigation. Full detail in `docs/coordination/handoffs.md`.
 
 ---
 
