@@ -475,7 +475,16 @@ export default function App() {
         // the Agente AI button, sharing the same baseline. 18px offset +
         // 66px button + 8px breathing room = 92px is the minimum needed so
         // the last content row never sits under either floating button.
-        paddingBottom: isMobile ? 'calc(92px + env(safe-area-inset-bottom, 0px))' : 28,
+        // POL-UI-010: Agenda is the one page whose own content (GridView's
+        // timeline, now filling to max(100%, hours) — see Agenda.jsx) is
+        // designed to run continuously behind the floating poliedro/AI
+        // overlays, not stop short of them. Reserving 92px here would undo
+        // that: it's dead space this page never needs. Every other mobile
+        // page keeps the 92px clearance so its (non-overlay) content never
+        // sits under the floating buttons.
+        paddingBottom: isMobile
+          ? (page === 'agenda' ? 'env(safe-area-inset-bottom, 0px)' : 'calc(92px + env(safe-area-inset-bottom, 0px))')
+          : 28,
         // POL-UI-004 Agenda mobile final: the Agenda grid should read as an
         // almost-fullscreen surface, not a page floating inside the app's
         // usual side gutter. Narrowed only for this page/breakpoint — every
