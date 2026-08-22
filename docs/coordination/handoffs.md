@@ -483,3 +483,26 @@
 - Deployment impact: frontend bundle only; no deploy performed.
 - Product Owner decision required: none. `768px` is documented and tested as Desktop Edge Dock because the authoritative existing breakpoint is `<720px`.
 - Exact next action: Product Owner reviews draft PR #36. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+
+## POL-AI-002A Product Owner visual refinement — standalone mobile polyhedron
+
+- Task ID: POL-AI-002A (continuation on existing draft PR #36).
+- Previous agent: COPILOT continuation; ownership remained on `fix/POL-AI-002A-adaptive-poliedron`.
+- Branch: `fix/POL-AI-002A-adaptive-poliedron`.
+- Objective: refine only the mobile `<720px` center Poliedron visual so the official polyhedron asset is the visible button, with no circular container, while preserving the dock, navigation, drag/redock architecture, commands, command panel, and desktop Edge Dock exactly.
+- Completed work:
+  - Removed the mobile Orb's gradient circular base, circular halo plate, and highlight layer. The existing official `icon-poliedra-gem.png` now renders as the standalone visible object over a restrained contact shadow.
+  - Made the interaction surface explicitly transparent and borderless with no box shadow or appearance styling. The hit area follows `clamp(58px, 17vw, 72px)`, producing 64px at 375, 66px at 390, and 72px at 430; all remain above the 44px accessibility minimum.
+  - Left `PoliedronMobileDock.jsx`, dock CSS/geometry, navigation, `usePoliedronPosition.js`, mobile dock/redock math, commands, panel behavior, and every desktop Edge Dock file unchanged.
+  - Added regression coverage for the responsive size model, accessible hit target, official asset, transparent interaction surface, full-size standalone gem, and absence of mobile base/halo elements.
+- Files changed: `src/components/poliedron/PoliedronOrb.jsx`; `src/lib/poliedron/poliedronOrbSize.js`; `tests/poliedronAdaptive.test.mjs`; `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- Database changes: none. No Supabase, migration, RLS, RBAC, finance, clinical, auth, AI, provider, production, or dependency change.
+- Tests executed: `npm test`; `npm run build`; `git diff --check`; conflict-marker scan; added-secret/scope inspection; real headless Chrome QA using a temporary exact-component harness that was deleted before commit.
+- Test results: 164/164 Node tests pass. Production build passes with only the pre-existing `pdfjs-dist` eval warning, malformed legacy CSS-comment warning, and chunk-size warnings.
+- Visual QA: 375x812, 390x844, and 430x932 in Light and Dark all pass. Computed transparent hit/visual boxes are 64px, 66px, and 72px; circular base/halo counts are zero; button background is transparent, border width is zero, and box shadow is none. Dock remains 84vw by 64px, navigation order/routes pass, click opens the real Phase-1 panel and recedes the dock, drag persists detached state with no circle, magnetic redock clears detached persistence, safe bounds remain active, and no horizontal overflow occurs. At 768px the existing 56px desktop Edge Dock remains the only launcher.
+- Unresolved issues: none.
+- Risks: the visible asset is portrait-proportioned inside its square transparent hit box, as supplied by the official repository asset; no asset replacement or crop was introduced.
+- Rollback: revert this visual-refinement commit. No data rollback is required.
+- Deployment impact: frontend bundle only; no deployment performed.
+- Product Owner decision required: none.
+- Exact next action: Product Owner reviews updated draft PR #36. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.

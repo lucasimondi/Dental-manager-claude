@@ -20,6 +20,7 @@ import { ACTION_REGISTRY } from '../src/lib/poliedron/actionRegistry.js';
 
 const VIEWPORT_375 = { viewportWidth: 375, viewportHeight: 812, orbWidth: 100, orbHeight: 100 };
 const mobileDockSource = readFileSync(new URL('../src/components/poliedron/PoliedronMobileDock.jsx', import.meta.url), 'utf8');
+const mobileOrbSource = readFileSync(new URL('../src/components/poliedron/PoliedronOrb.jsx', import.meta.url), 'utf8');
 const mobilePositionSource = readFileSync(new URL('../src/components/poliedron/usePoliedronPosition.js', import.meta.url), 'utf8');
 const premiumCss = readFileSync(new URL('../src/components/PremiumVisualSystem.css', import.meta.url), 'utf8');
 const appSource = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8');
@@ -135,20 +136,31 @@ test('resize reclamp: the same fraction stays proportionally in place as the vie
 // §1 — mobile orb size
 // ---------------------------------------------------------------------------
 
-test('computeMobileOrbSize: stays within the 88-104px target at every required breakpoint', () => {
+test('computeMobileOrbSize: stays within the 58-72px standalone-gem target at every required breakpoint', () => {
   for (const w of [375, 390, 430, 768, 1024, 1440]) {
     const size = computeMobileOrbSize(w);
-    assert.ok(size >= 88 && size <= 104, `${w}px -> ${size}px out of range`);
+    assert.ok(size >= 58 && size <= 72, `${w}px -> ${size}px out of range`);
   }
 });
 
-test('computeMobileOrbSize: the narrowest supported device (375px) is not disproportionate — near the lower bound', () => {
-  assert.equal(computeMobileOrbSize(375), 90);
+test('computeMobileOrbSize: remains balanced across the required mobile widths', () => {
+  assert.equal(computeMobileOrbSize(375), 64);
+  assert.equal(computeMobileOrbSize(390), 66);
+  assert.equal(computeMobileOrbSize(430), 72);
 });
 
-test('computeMobileOrbSize: implements clamp(88px, 24vw, 104px)', () => {
-  assert.equal(computeMobileOrbSize(390), 94);
-  assert.equal(computeMobileOrbSize(430), 103);
+test('computeMobileOrbSize: implements clamp(58px, 17vw, 72px) with an accessible hit target', () => {
+  for (const width of [320, 375, 390, 430]) {
+    assert.ok(computeMobileOrbSize(width) >= 44);
+  }
+});
+
+test('mobile Poliedron renders only the official standalone gem on a transparent hit area', () => {
+  assert.match(mobileOrbSource, /import poliedroGem from '\.\.\/\.\.\/assets\/icon-poliedra-gem\.png'/);
+  assert.match(mobileOrbSource, /width: size, height: size, padding: 0, border: 'none', background: 'transparent', boxShadow: 'none'/);
+  assert.match(mobileOrbSource, /width: '100%', height: '100%', objectFit: 'contain'/);
+  assert.doesNotMatch(mobileOrbSource, /poliedron-orb__base/);
+  assert.doesNotMatch(mobileOrbSource, /poliedron-orb__halo/);
 });
 
 // ---------------------------------------------------------------------------

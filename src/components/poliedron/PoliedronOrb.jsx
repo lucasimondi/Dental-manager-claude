@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { C } from '../../lib/utils';
 import { usePoliedronPosition } from './usePoliedronPosition';
 import { computeMobileOrbSize } from '../../lib/poliedron/poliedronOrbSize.js';
 // Same geometric brand mark already approved for the LoginScreen and the
@@ -25,7 +24,6 @@ export default function PoliedronOrb({ open, onToggle, panelId, interactive = tr
     };
   }, []);
 
-  const symbolSize = Math.round(size * 0.62);
   const [pressed, setPressed] = useState(false);
   const { style, isDragging, isNearDock, bind } = usePoliedronPosition({
     size,
@@ -45,7 +43,8 @@ export default function PoliedronOrb({ open, onToggle, panelId, interactive = tr
       disabled={!interactive}
       style={{
         position: 'fixed', ...style,
-        width: size, height: size, borderRadius: '50%', border: 'none', background: 'transparent',
+        width: size, height: size, padding: 0, border: 'none', background: 'transparent', boxShadow: 'none',
+        appearance: 'none',
         cursor: isDragging ? 'grabbing' : 'pointer', zIndex: 1200, touchAction: 'none',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         transform: pressed && !isDragging ? 'scale(.92)' : 'scale(1)',
@@ -53,35 +52,12 @@ export default function PoliedronOrb({ open, onToggle, panelId, interactive = tr
       }}
       className={`poliedron-orb${isNearDock ? ' is-redocking' : ''}`}
     >
-      {/* Contact shadow — reads as "floating above the surface" (§1: true
-          3D depth, not flat). */}
+      {/* A restrained contact shadow gives the standalone gem depth without
+          introducing a visible button surface behind it. */}
       <span aria-hidden="true" style={{
-        position: 'absolute', bottom: size * 0.08, width: size * 0.55, height: size * 0.16, borderRadius: '50%',
-        background: 'radial-gradient(closest-side, rgba(15,23,42,.36), rgba(15,23,42,0))',
-        filter: 'blur(4px)', opacity: pressed ? 0.55 : 0.85, transition: 'opacity .18s ease',
-      }} />
-      {/* Idle glow ring — subtle, brand-colored, static by default; the
-          only motion is the slow halo-pulse class below, gated by
-          prefers-reduced-motion (§31 carried over from POL-AI-001). */}
-      <span aria-hidden="true" className="poliedron-orb__halo" style={{
-        position: 'absolute', inset: -size * 0.09, borderRadius: '50%',
-        background: `radial-gradient(closest-side, ${C.pri}2e, transparent 70%)`,
-        opacity: open ? 1 : 0.6,
-      }} />
-      {/* Gradient base disc — layered material behind the gem mark: a
-          brand-gradient sphere with an offset highlight and a darker rim,
-          giving genuine layered depth instead of a flat icon-on-nothing
-          (§1: gradient layering, highlight, no gaming neon — reuses the
-          existing --gradient-brand token, not a new palette). */}
-      <span aria-hidden="true" className="poliedron-orb__base" style={{
-        position: 'absolute', inset: 0, borderRadius: '50%',
-        background: 'var(--gradient-brand)',
-        boxShadow: `inset 0 -${Math.max(2, size * 0.06)}px ${size * 0.14}px rgba(11,25,55,.38), inset 0 ${size * 0.05}px ${size * 0.12}px rgba(255,255,255,.30), 0 ${size * 0.09}px ${size * 0.22}px rgba(15,23,42,.30)`,
-      }} />
-      <span aria-hidden="true" style={{
-        position: 'absolute', top: size * 0.12, left: size * 0.16, width: size * 0.38, height: size * 0.24, borderRadius: '50%',
-        background: 'radial-gradient(closest-side, rgba(255,255,255,.55), rgba(255,255,255,0))',
-        filter: 'blur(1px)', pointerEvents: 'none',
+        position: 'absolute', bottom: size * 0.01, width: size * 0.58, height: size * 0.12, borderRadius: '50%',
+        background: 'radial-gradient(closest-side, rgba(15,23,42,.30), rgba(15,23,42,0))',
+        filter: 'blur(3px)', opacity: pressed ? 0.45 : 0.68, transition: 'opacity .18s ease',
       }} />
       <img
         src={poliedroGem}
@@ -89,10 +65,10 @@ export default function PoliedronOrb({ open, onToggle, panelId, interactive = tr
         aria-hidden="true"
         draggable={false}
         style={{
-          width: symbolSize, height: symbolSize, objectFit: 'contain', position: 'relative', pointerEvents: 'none',
+          width: '100%', height: '100%', objectFit: 'contain', position: 'relative', pointerEvents: 'none',
           filter: open
-            ? `drop-shadow(0 2px 4px rgba(15,23,42,.4)) drop-shadow(0 1px 14px ${C.pri}90)`
-            : 'drop-shadow(0 4px 8px rgba(15,23,42,.35)) drop-shadow(0 1px 3px rgba(15,23,42,.25)) drop-shadow(0 0 1px rgba(255,255,255,.5))',
+            ? 'drop-shadow(0 5px 8px rgba(15,23,42,.34)) drop-shadow(0 0 8px rgba(25,154,174,.42))'
+            : 'drop-shadow(0 5px 7px rgba(15,23,42,.30)) drop-shadow(0 1px 2px rgba(15,23,42,.22))',
           transition: 'filter .18s ease',
         }}
         className="poliedron-orb__gem"

@@ -10,7 +10,7 @@
 
 ## Objective
 
-Give Poliedron the same identity but different interaction per device. Mobile uses a compact, centered glass navigation dock in exact order Home, Agenda, Poliedron, Pazienti, Setup; its 88–104px central hero Orb is docked by default, may detach within dock-aware safe bounds, and magnetically redocks without random edge snapping. Desktop keeps only the discreet 56px left/right Edge Dock with vertical drag, intentional side switching, persistence, hover/focus expansion, click, and Ctrl/Cmd+K. Both open the same Phase-1 Poliedron interface and Model Gateway. Exact permitted command aliases direct-open only real destinations without an LLM call; ambiguous/unknown text stays in normal federated search.
+Give Poliedron the same identity but different interaction per device. Mobile uses a compact, centered glass navigation dock in exact order Home, Agenda, Poliedron, Pazienti, Setup; its standalone 58–72px polyhedron is docked by default, may detach within dock-aware safe bounds, and magnetically redocks without random edge snapping. The transparent hit area remains at least 44px, with no circular surface, border, background, or halo plate. Desktop keeps only the discreet 56px left/right Edge Dock with vertical drag, intentional side switching, persistence, hover/focus expansion, click, and Ctrl/Cmd+K. Both open the same Phase-1 Poliedron interface and Model Gateway. Exact permitted command aliases direct-open only real destinations without an LLM call; ambiguous/unknown text stays in normal federated search.
 
 ## Ownership note (recorded per AGENTS.md handoff rules)
 
@@ -24,7 +24,7 @@ POL-AI-001 was merged as `e504e52`. POL-UI-011 was merged as `d95af43` and incor
 
 ## Exact next action
 
-Product Owner reviews draft PR #36 at the current branch head, including `8a70bda`, the coordination handoff, and the reconciled review-round-4 clamp/test commit. Do not deploy, merge, or begin another task without explicit Product Owner approval. Status: `WAITING_PRODUCT_OWNER`.
+Product Owner reviews draft PR #36 at the current branch head, including the standalone mobile-polyhedron visual refinement. Do not deploy, merge, or begin another task without explicit Product Owner approval. Status: `WAITING_PRODUCT_OWNER`.
 
 ---
 
