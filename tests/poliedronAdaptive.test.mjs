@@ -9,6 +9,7 @@ import {
   applyRedockAttraction,
   getDockProtectionProgress,
   getPoliedronMobileDockLayout,
+  MOBILE_ORB_CENTER_ELEVATION,
   shouldRedock,
 } from '../src/lib/poliedron/poliedronMobileDock.js';
 import { COMMAND_ALIASES, resolveCommandAlias } from '../src/lib/poliedron/commandAliases.js';
@@ -208,8 +209,9 @@ test('mobile layout defaults to a physically centered, elevated docked orb', () 
   assert.equal(layout.dockedPosition.x + size / 2, 195);
   assert.equal(
     layout.dockedPosition.y + size / 2,
-    layout.dockRect.top + layout.dockRect.height / 2 - 26
+    layout.dockRect.top + layout.dockRect.height / 2 - MOBILE_ORB_CENTER_ELEVATION
   );
+  assert.ok(Math.abs((26 - MOBILE_ORB_CENTER_ELEVATION) - (1.5 * 96 / 25.4)) < 0.001);
   assert.ok(layout.dockRect.width >= 390 * 0.78 && layout.dockRect.width <= 390 * 0.88);
 });
 

@@ -506,3 +506,21 @@
 - Deployment impact: frontend bundle only; no deployment performed.
 - Product Owner decision required: none.
 - Exact next action: Product Owner reviews updated draft PR #36. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+
+## POL-AI-002A Product Owner visual adjustment — mobile polyhedron 1.5 mm lower
+
+- Task ID: POL-AI-002A (continuation on existing draft PR #36).
+- Previous agent: COPILOT continuation; ownership remained on `fix/POL-AI-002A-adaptive-poliedron`.
+- Branch: `fix/POL-AI-002A-adaptive-poliedron`.
+- Objective: move only the docked mobile Poliedron center 1.5 mm lower.
+- Completed work: reduced the shared mobile center elevation by exactly `1.5 * 96 / 25.4` CSS pixels (approximately 5.67px), from 26px to approximately 20.33px. Because the existing docked/redock geometry shares this constant, the resting position and magnetic redock target remain aligned. No size, dock, navigation, drag, command, panel, or desktop code changed.
+- Files changed: `src/lib/poliedron/poliedronMobileDock.js`; `tests/poliedronAdaptive.test.mjs`; `docs/coordination/handoffs.md`.
+- Database changes: none.
+- Tests executed: `npm test`; `npm run build`; `git diff --check`.
+- Test results: 164/164 Node tests pass; production build passes with only the pre-existing warnings; diff check passes.
+- Unresolved issues: none.
+- Risks: none identified; the adjustment is isolated to the shared mobile docked-center Y coordinate.
+- Rollback: revert this adjustment commit. No data rollback is required.
+- Deployment impact: frontend bundle only; no deployment performed.
+- Product Owner decision required: none.
+- Exact next action: Product Owner reviews updated draft PR #36. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
