@@ -5,7 +5,7 @@
 - OWNER: CLAUDE
 - BRANCH: `claude/whatsapp-agenda-cancel-rql7fg`
 - BASE REVIEW: `master@1faa9bb` (POL-AI-002A merged via PR #36)
-- STATUS: `IMPLEMENTED_PENDING_PUSH`
+- STATUS: `PR_OPEN_AWAITING_REVIEW`
 
 ## Objective
 
@@ -27,29 +27,55 @@ claim otherwise).
 
 ## Files changed
 
-- `src/components/Agenda.jsx` — `waBatch` state + `waBatchTimersRef`,
-  rewritten `inviaWAMassivo`, new `annullaWABatch`, and the cancel bar in the
-  render tree.
+- `src/components/Agenda.jsx` — `waBatch` state + `waBatchTimersRef`, cancel
+  bar in the render tree; `inviaWAMassivo`/`annullaWABatch` now delegate the
+  actual timer scheduling/cancellation to the new pure helper below (same
+  behavior, extracted so it is unit-testable without mounting React).
+- `src/lib/waBatchSender.js` (new) — `pianificaInvioWABatch` /
+  `annullaInvioWABatch`, the pure scheduling/cancel logic.
+- `tests/waBatchSender.test.mjs` (new) — dedicated regression coverage for
+  the cancel behavior using Node's built-in fake timers.
 
 ## Safety boundaries
 
 - No Supabase migration, RLS policy, or financial formula touched.
 - No behavior change to the single-send or pre-send-composer flows, which
   already worked correctly.
+- No behavior change to the bulk-send flow itself either: the extraction to
+  `waBatchSender.js` is a pure refactor of the already-added fix, same
+  `i * 350` spacing, same state transitions — done only to make the cancel
+  path independently testable.
 
 ## Tests executed
 
-- `npm run build` — clean.
-- `npm test` — 164/164 passing (pre-existing suite, none WhatsApp-specific;
-  no regression).
-- Not manually verified in a live browser (no UI test harness available in
-  this session) — reviewed by tracing every code path from button to
-  `wa.me` open.
+- `npm run build` — clean (only the pre-existing chunk-size/pdfjs warnings).
+- `npm test` — 169/169 passing (164 pre-existing + 5 new in
+  `waBatchSender.test.mjs` covering: sequential scheduling with the real
+  `i * delayMs` spacing, `onInviato` progress callback, cancel stopping every
+  not-yet-fired send while leaving already-opened ones alone, cancelling
+  before anything fires, and an empty-batch no-op).
+- Real-browser check (Chromium via Playwright, pre-installed in this
+  sandbox): a temporary local HTML harness imported the actual
+  `src/lib/waBatchSender.js` module (not a reimplementation) and reproduced
+  the exact bar markup/logic used in `Agenda.jsx`, with `window.open` stubbed
+  to record calls instead of really opening WhatsApp. Driven with real DOM
+  clicks and real (unmocked) timers: clicking "Invia a tutti" opened sends
+  1 and 2 (~0ms/350ms) and showed "Invio WhatsApp: 2/4"; clicking "Annulla
+  invio" then waiting 1.5s (well past when sends 3 and 4 would have fired at
+  700ms/1050ms) confirmed no further `window.open` calls, the bar was hidden,
+  and the "Invia a tutti" control was interactive again. The harness file was
+  deleted after the run and is not part of this branch/PR — it never touched
+  Supabase or a real WhatsApp session, consistent with this repo's rule
+  against driving the live app against production Supabase in this sandbox.
+  The full end-to-end flow (patient selection UI → click → live app) was not
+  exercised, since that requires an authenticated session against production
+  Supabase, which this sandbox must not do.
 
 ## Exact next action
 
-Push to `claude/whatsapp-agenda-cancel-rql7fg`. No PR was requested by the
-Product Owner in this turn — open one only if asked.
+PR opened for Product Owner review; do not merge. See the PR description for
+the full write-up (problem, cause, fix, cancel semantics, test/build
+results).
 
 ---
 

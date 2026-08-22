@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker, SelettorePaziente, EmptyState, PageHeader } from './ui';
 import WaAction, { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
+import { pianificaInvioWABatch, annullaInvioWABatch } from '../lib/waBatchSender.js';
 import { C, uid, fmtD, today, getAppTypesDefault, DEF_AGENDA_SETTINGS } from '../lib/utils';
 import { useIsMobile } from '../lib/useIsMobile';
 import { salvaPosizione, leggiPosizione } from '../lib/posizioneNavigazione';
@@ -818,22 +819,23 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
 
   const inviaWAMassivo = () => {
     const selezionati = appointments.filter(a => selAppIds.includes(a.id));
-    waBatchTimersRef.current.forEach(clearTimeout);
-    waBatchTimersRef.current = selezionati.map((a, i) => setTimeout(() => {
-      const p = patients.find(x => x.id === a.pazienteId);
-      if (p?.telefono) {
+    annullaInvioWABatch(waBatchTimersRef.current);
+    waBatchTimersRef.current = pianificaInvioWABatch(selezionati, {
+      apri: (a) => {
+        const p = patients.find(x => x.id === a.pazienteId);
+        if (!p?.telefono) return;
         const msg = waMassMsg
           .replace(/{nome}/g, `${p.nome} ${p.cognome}`)
           .replace(/{data}/g, fmtD(a.data)).replace(/{ora}/g, a.ora).replace(/{tipo}/g, a.tipo)
           .replace(/{totale}/g, '').replace(/{voci}/g, '');
         apriWaDiretto(p.telefono, msg);
-      }
-      setWaBatch(prev => {
+      },
+      onInviato: () => setWaBatch(prev => {
         if (!prev) return prev;
         const aperti = prev.aperti + 1;
         return aperti >= prev.totale ? null : { ...prev, aperti };
-      });
-    }, i * 350));
+      }),
+    });
     setWaBatch({ totale: selezionati.length, aperti: 0 });
     setWaMassModal(false);
     setSelModeWA(false);
@@ -843,7 +845,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   // Ferma le aperture WhatsApp non ancora partite (quelle già aperte restano tali:
   // clearTimeout non può richiudere una finestra già aperta).
   const annullaWABatch = () => {
-    waBatchTimersRef.current.forEach(clearTimeout);
+    annullaInvioWABatch(waBatchTimersRef.current);
     waBatchTimersRef.current = [];
     setWaBatch(prev => {
       if (prev) setToast(`Invio annullato: ${prev.aperti}/${prev.totale} già aperti`);
@@ -851,7 +853,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     });
   };
 
-  useEffect(() => () => waBatchTimersRef.current.forEach(clearTimeout), []);
+  useEffect(() => () => annullaInvioWABatch(waBatchTimersRef.current), []);
 
   // Genera le date delle occorrenze ripetute (inclusa la prima), fino a ripetiFino incluso.
   // Limite di sicurezza a 104 occorrenze (~2 anni di settimanale) per evitare loop pericolosi
