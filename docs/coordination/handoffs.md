@@ -524,3 +524,44 @@
 - Deployment impact: frontend bundle only; no deployment performed.
 - Product Owner decision required: none.
 - Exact next action: Product Owner reviews updated draft PR #36. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+
+## POL-AGD-WA-001 Agenda — allow cancelling a WhatsApp send
+
+- Task ID: POL-AGD-WA-001 (new task; opened directly from a Product Owner chat report, not from the backlog).
+- Previous agent: none — first work on this branch.
+- Branch: `claude/whatsapp-agenda-cancel-rql7fg`, based on `master@1faa9bb` (POL-AI-002A already merged via PR #36).
+- Objective: Product Owner reported "Quando clicco il bottone WhatsApp sul agenda poi non si può annullare, deve esserci possibilità di annullare" (after clicking the WhatsApp button in the Agenda there's no way to cancel).
+- Investigation: audited every WhatsApp entry point in `src/components/Agenda.jsx`. The single-patient send modal (`waModal`) and the bulk pre-send composer (`waMassModal`) already had a working "Annulla" button that aborts before anything opens. The one uncancellable step was `inviaWAMassivo` itself: once "Invia a tutti (N)" is pressed, it scheduled one `setTimeout` per selected appointment to open a `wa.me` popup 350ms apart, with no way to stop the ones not yet fired.
+- Completed work: added `waBatch` state (`{ totale, aperti }`) and a `waBatchTimersRef` holding the scheduled timer ids. `inviaWAMassivo` now records the timer ids and updates `waBatch` as each send fires; a new `annullaWABatch` function `clearTimeout`s every timer not yet fired and resets the state, with a toast reporting how many were already opened (a window already opened cannot be recalled — the UI does not claim otherwise). A persistent bottom bar ("Invio WhatsApp: aperti/totale" + "Annulla invio" button) renders while a batch is in flight. No change to the single-send or pre-send-composer flows, which already worked correctly.
+- Files changed: `src/components/Agenda.jsx`; `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- Database changes: none. No Supabase, migration, RLS, RBAC, finance, clinical, auth, AI, provider, or production change.
+- Tests executed: `npm test`; `npm run build`.
+- Test results: 164/164 Node tests pass (pre-existing suite; none WhatsApp-specific, no regression). Production build passes with only the pre-existing chunk-size/pdfjs warnings.
+- Unresolved issues: not manually exercised in a live browser in this session (no UI test harness available); verified by tracing every code path from each WhatsApp button to the eventual `wa.me` open.
+- Risks: none identified; change is isolated to the bulk-send scheduling/cancel state, additive to existing behavior.
+- Rollback: revert this commit. No data rollback is required.
+- Deployment impact: frontend bundle only; no deployment performed.
+- Product Owner decision required: none.
+- Exact next action: push to `claude/whatsapp-agenda-cancel-rql7fg`. No PR was requested in this turn — open one only if the Product Owner asks.
+
+## POL-AGD-WA-001 continuation — dedicated PR, cancel logic made testable, real-browser check
+
+- Task ID: POL-AGD-WA-001 (continuation on the same branch, no new task).
+- Previous agent: same session, continuing directly from the entry above.
+- Branch: `claude/whatsapp-agenda-cancel-rql7fg`, still on `master@1faa9bb`.
+- Objective: Product Owner asked for a dedicated PR for this fix with no further functional changes, a re-run of build/tests, an added test specific to the cancel behavior if useful, and a real browser check of the flow if the environment allows it.
+- Completed work:
+  1. Extracted the timer scheduling/cancellation from `inviaWAMassivo`/`annullaWABatch` into a new pure module, `src/lib/waBatchSender.js` (`pianificaInvioWABatch`, `annullaInvioWABatch`), so it can be unit-tested without mounting React. Behavior is byte-for-byte identical (same `i * 350` spacing, same state machine) — this is a refactor of the code added in this task, not a new feature, and it does not touch any other part of the Agenda or the app.
+  2. Added `tests/waBatchSender.test.mjs` with Node's built-in fake timers (`node:test`'s `t.mock.timers`), covering: sequential scheduling, the `onInviato` progress callback, cancelling mid-batch (some sends already fired, the rest must never fire even after advancing time well past their scheduled moment), cancelling before anything fires, and an empty batch.
+  3. Real-browser verification: this sandbox cannot log into the live app (it is hardcoded to a real production Supabase project — driving it here would violate this repo's own safety rules, same constraint already recorded for POL-RBAC-001A). Instead, built a temporary local HTML page (deleted after the run, never committed) that imported the actual `src/lib/waBatchSender.js` module and reproduced the exact bar markup used in `Agenda.jsx`, with only `window.open` stubbed to record calls instead of opening real WhatsApp windows. Served over a plain local HTTP server and driven with Playwright/Chromium (pre-installed in this environment) using real DOM clicks and real, unmocked timers.
+- Real-browser results: clicking "Invia a tutti" opened sends 1 and 2 (at ~0ms and ~350ms) and the bar showed "Invio WhatsApp: 2/4"; clicking "Annulla invio" and then waiting 1.5s — well past the 700ms/1050ms when sends 3 and 4 were scheduled — confirmed no further `window.open` calls occurred, the cancel bar disappeared, and the "Invia a tutti" control was interactive again (UI returns to a coherent state). This matches the four behaviors the Product Owner asked to keep: the in-progress counter, immediate stop of not-yet-started sends, no attempt to close/recall already-opened WhatsApp windows, and a usable UI afterward.
+- Files changed: `src/components/Agenda.jsx` (now delegates to the new module; no behavior change); `src/lib/waBatchSender.js` (new); `tests/waBatchSender.test.mjs` (new); `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- Database changes: none.
+- Tests executed: `npm test`; `npm run build`; real-browser check as above.
+- Test results: 169/169 Node tests pass (164 pre-existing + 5 new, all green). Production build clean (only pre-existing chunk-size/pdfjs warnings). Real-browser check passed as described; the harness was not part of any commit.
+- Unresolved issues: the single-patient send modal and the pre-send bulk composer were re-audited for regressions and are unchanged in this round — not re-verified in a live browser for the same production-Supabase reason above; reviewed by re-reading the diff and confirming no lines outside the batch-cancel path changed.
+- Risks: none identified. The refactor is behavior-preserving and isolated to the bulk-send cancel path; no other Agenda feature was touched.
+- Rollback: revert this commit (and the prior one on this branch, if reverting the whole fix). No data rollback is required.
+- Deployment impact: frontend bundle only; no deployment performed.
+- Product Owner decision required: none.
+- Exact next action: PR opened for this branch against `master`, not merged. Product Owner reviews; merge only on explicit approval.
