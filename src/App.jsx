@@ -1,21 +1,15 @@
-﻿import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { supabase, DB } from './lib/supabase.js';
-import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, getLogoSlug, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, mergeDockSettings, uid, applyBrandColors, applyHeaderColor } from './lib/utils';
+import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, getLogoSlug, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, mergeDockSettings, uid, applyBrandColors, applyHeaderColor } from './lib/utils.js';
 import { generaRichiamiBot } from './lib/richiamiBot';
 import { salvaPosizione, leggiPosizione, pulisciPosizione } from './lib/posizioneNavigazione';
-import MobileDock from './components/MobileDock.jsx';
+import PolyhedronMenu from './components/PolyhedronMenu.jsx';
 import PremiumSidebar from './components/PremiumSidebar.jsx';
 import './styles/designTokens.css';
 import './components/PremiumVisualSystem.css';
 import { useIsMobile } from './lib/useIsMobile';
 import { useTheme } from './lib/useTheme';
 import AssistenteAI from './components/AssistenteAI.jsx';
-// POL-UI-004 Recovery: restored original Poliedra logo assets (verbatim,
-// same files/mapping used before POL-UX-002 swapped them for a
-// code-rendered wordmark). Root cause of that swap: the wordmark portion of
-// these assets renders as a near-invisible hairline stroke against dark
-// chrome — verified again here, still true. Restoring as directed; the
-// icon mark itself is fully legible, only the "Poliedra" wordmark is faint.
 import logoDentalWhite from './assets/logo-poliedra-dental-outline.png';
 import logoSalusWhite from './assets/logo-poliedra-salus-outline.png';
 import logoFisioWhite from './assets/logo-poliedra-fisio-outline.png';
@@ -25,6 +19,7 @@ import logoFitWhite from './assets/logo-poliedra-fit-outline.png';
 import logoMedicalWhite from './assets/logo-poliedra-medical-outline.png';
 
 const LOGO_WHITE_PER_SLUG = { dental: logoDentalWhite, salus: logoSalusWhite, fisio: logoFisioWhite, mind: logoMindWhite, wellness: logoWellnessWhite, fit: logoFitWhite, medical: logoMedicalWhite };
+
 import LoginScreen from './components/LoginScreen.jsx';
 import LoadingScreen from './components/LoadingScreen.jsx';
 import Dashboard from './components/Dashboard.jsx';
@@ -61,12 +56,7 @@ export default function App() {
   const [impegni, setImpegni] = useState([]);
   const [richiami, setRichiami] = useState([]);
   const [initPatId, setInitPatId] = useState(null);
-  // POL-UX-001 bugfix: Home quick actions "Nuovo paziente"/"Nuovo preventivo"/
-  // "Pagamento" must open the real creation form on arrival, not just land on
-  // the list page. Mirrors the existing initPatId pattern (set target page,
-  // consumer opens its own real modal, then clears it) instead of a second
-  // navigation mechanism.
-  const [autoOpenNew, setAutoOpenNew] = useState(null); // 'paz' | 'piani' | 'paga' | 'richiami' | null
+  const [autoOpenNew, setAutoOpenNew] = useState(null);
   const [agendaInitPaz, setAgendaInitPaz] = useState(null);
   const [schedaDashPaz, setSchedaDashPaz] = useState(null);
   const [syncError, setSyncError] = useState(null);
@@ -76,18 +66,12 @@ export default function App() {
   const [studioAttivo, setStudioAttivo] = useState(true);
   const [features, setFeatures] = useState(PIANI_FEATURES_DEFAULT.base);
 
-  // Colori brand (piano Premium): riapplica pri/priL/priD/acc sopra la palette
-  // di tema ogni volta che cambia il tema (altrimenti il toggle chiaro/scuro li
-  // sovrascriverebbe), i colori salvati dallo studio, o se la feature si disattiva.
-  // Il colore header (con opacità) va applicato DOPO, nello stesso effetto: se
-  // non impostato ricade sul C.priD appena risolto da applyBrandColors sopra.
   useEffect(() => {
     applyBrandColors(theme, features?.custom_colors ? { pri: studioInfo?.custom_colore_primario, acc: studioInfo?.custom_colore_accento } : null);
     applyHeaderColor(features?.custom_colors ? { colore: studioInfo?.header_colore, opacita: studioInfo?.header_opacita } : null);
   }, [theme, features?.custom_colors, studioInfo?.custom_colore_primario, studioInfo?.custom_colore_accento, studioInfo?.header_colore, studioInfo?.header_opacita]);
 
   useEffect(() => {
-    // Inizializza sessione — se non risponde entro 3s forza null (no session)
     let resolved = false;
     const timeout = setTimeout(() => {
       if (!resolved) { resolved = true; setSession(null); }
@@ -143,8 +127,6 @@ export default function App() {
         setImpegni(ip || []);
         setRichiami(ri || []);
 
-        // Determina il vertical PRIMA di seedare, usando 'si' appena arrivato dalla stessa fetch
-        // (non ancora salvato in state) — default 'dentistico' se lo studio non l'ha ancora impostato
         const isDentisticoNew = !si?.vertical || si.vertical === 'dentistico';
 
         if (!pr || pr.length === 0) {
@@ -152,8 +134,6 @@ export default function App() {
             const seeded = await Promise.all(DEF_PRICE.map((item) => { const { id, ...rest } = item; return DB.insert('dm_pr', rest); }));
             setPricelist(seeded);
           } else {
-            // Nessun listino dentale precompilato per verticali non dentistici: il professionista
-            // costruisce il proprio listino da zero (i prezzi variano troppo tra specializzazioni).
             setPricelist([]);
           }
         } else setPricelist(pr);
@@ -177,43 +157,23 @@ export default function App() {
     return () => { cancelled = true; };
   }, [session]);
 
-  // Ripristino della posizione dopo un ricaricamento "a freddo" dell'app
-  // (schermo spento a lungo, cambio app, memoria del telefono che scarica
-  // la pagina in background): se prima di allora l'utente era su una
-  // pagina o dentro la scheda di un paziente con un form in corso, lo
-  // riportiamo esattamente lì. Il contenuto scritto nei form (testo,
-  // farmaci, voci) è già salvato separatamente da useFormPersistente — qui
-  // ricostruiamo solo il "dove eravamo", altrimenti quel testo non
-  // verrebbe mai riletto perché il componente che lo conterrebbe non si
-  // rimonterebbe mai da solo.
   useEffect(() => {
     if (dataLoading) return;
     const pos = leggiPosizione();
     if (!pos) return;
-    // La pagina NON viene ripristinata: l'app deve sempre aprirsi su Dashboard
-    // (page resta 'home', il suo default), qualunque fosse l'ultima pagina
-    // visitata prima della chiusura/ricarica. Il resto della posizione (scheda
-    // paziente con form in corso) continua a essere ripristinato normalmente.
     if (pos.schedaPazId != null) {
       const paz = patients.find((p) => String(p.id) === String(pos.schedaPazId));
       if (paz) setSchedaDashPaz({ paz, tab: pos.schedaPazTab || 'paga' });
-      else pulisciPosizione(['schedaPazId', 'schedaPazTab']); // paziente non più esistente: niente da ripristinare
+      else pulisciPosizione(['schedaPazId', 'schedaPazTab']);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataLoading]);
 
-  // Salva la pagina corrente ad ogni cambio, per poterla ripristinare dopo
-  // un ricaricamento a freddo. Evitiamo di scrivere durante il ripristino
-  // stesso (dataLoading true) per non sovrascrivere la posizione appena letta.
   useEffect(() => {
     if (dataLoading) return;
     salvaPosizione({ page });
   }, [page, dataLoading]);
 
-  // Aggiornamento automatico: appointments/patients/payments possono essere scritti
-  // anche fuori dal flusso normale dell'app (es. dall'assistente AI, o da un altro
-  // dispositivo/utente dello stesso studio) — senza questo, restano visibili solo
-  // dopo un ricaricamento manuale della pagina.
   useEffect(() => {
     if (!session) return;
     const channel = supabase
@@ -257,9 +217,6 @@ export default function App() {
           setFeatures(computeFeatures(st?.piano || 'base', st?.feature_overrides));
         }
 
-        // Fail closed anche nell'interfaccia: i controlli admin sono mostrati
-        // solo quando esiste una membership attiva e coerente con lo studio.
-        // La barriera autorevole resta public.is_studio_admin() lato database.
         const { data: mio } = await supabase.from('studio_users').select('ruolo, stato').eq('user_id', session.user.id).eq('studio_id', studioId).maybeSingle();
         const { data: capabilities, error: capabilityError } = mio?.stato === 'attivo'
           ? await supabase.rpc('get_my_studio_capabilities_v1', { p_studio_id: studioId })
@@ -306,10 +263,6 @@ export default function App() {
               } catch (e) {
                 console.error('insert', key, e);
                 errori.push(e?.message || String(e));
-                // Non è mai stato salvato sul cloud: toglierlo dallo stato locale invece di
-                // lasciarlo lì come elemento "fantasma", che altrimenti sparirebbe in modo
-                // imprevedibile al primo refresh realtime (es. dopo un'altra modifica andata
-                // a buon fine) confondendo chi lo aveva appena inserito.
                 setLocal((curr) => curr.filter((x) => x.id !== item.id));
               }
             }
@@ -343,14 +296,6 @@ export default function App() {
   const setImpegniSync = makeSyncSetter('dm_ip', setImpegni, setSyncError);
   const setRichiamiSync = makeSyncSetter('dm_ri', setRichiami, setSyncError);
 
-  // Scansione automatica del bot Richiami: ogni volta che pazienti, piani,
-  // pagamenti o agenda cambiano (es. si segna un'igiene come eseguita, si
-  // registra un pagamento sospeso), ricalcola le proposte e le applica —
-  // così i richiami restano aggiornati indipendentemente dalla pagina in cui
-  // si trova l'utente, senza bisogno di aprire apposta la sezione Richiami.
-  // La guardia "nulla da cambiare" evita un loop: applicare un array vuoto
-  // di modifiche produrrebbe comunque un nuovo riferimento di stato e
-  // rieseguirebbe l'effetto all'infinito.
   useEffect(() => {
     if (dataLoading || !session) return;
     const { proposte, daRimuovere } = generaRichiamiBot({ patients, plans, payments, appointments, richiami });
@@ -415,7 +360,7 @@ export default function App() {
     : LOGO_WHITE_PER_SLUG[getLogoSlug(studioInfo?.vertical)];
 
   return (
-    <div className={isMobile ? 'app-shell app-shell--mobile' : 'app-shell app-shell--desktop'} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', height: '100dvh', background: C.bg, overflow: 'hidden' }}>
+    <div className={isMobile ? 'app-shell app-shell--mobile' : 'app-shell app-shell--desktop'} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', height: '100dvh', background: C.bg }}>
       {!isMobile && (
         <PremiumSidebar
           nav={navVisibile}
@@ -428,19 +373,11 @@ export default function App() {
         />
       )}
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, height: '100dvh', overflow: 'hidden' }}>
-      {/* POL-UI-005: mobile top header (logo/page name/Esci) removed — it cost
-          too much vertical space for no real value on a small screen and kept
-          this wrapper permanently dark (see PremiumVisualSystem.css). The app
-          is now genuinely fullscreen on mobile: #app-scroll below carries
-          safe-area-inset-top itself instead of a header absorbing it, and
-          Esci moved into Impostazioni → Profilo (bottom of that screen).
-          Desktop/tablet keep PremiumSidebar (branding + Esci) untouched. */}
-
       {syncError && (
         <div style={{ background: C.danL, borderBottom: `2px solid ${C.dan}`, padding: '9px 14px', display: 'flex', alignItems: 'flex-start', gap: 8, flexShrink: 0 }}>
           <span style={{ fontSize: 15, flexShrink: 0 }}>⚠️</span>
           <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: '#C53030', lineHeight: 1.4 }}>{syncError}</span>
-          <button onClick={() => setSyncError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, flexShrink: 0, color: '#C53030', fontWeight: 800, fontSize: 14 }}>✕</button>
+          <button onClick={() => setSyncError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, flexShrink: 0, color: '#C53030', fontWeight: 800, fontSize: 14 }}>×</button>
         </div>
       )}
 
@@ -488,7 +425,7 @@ export default function App() {
         paddingLeft: isMobile ? (page === 'agenda' ? 6 : 15) : undefined,
         paddingRight: isMobile ? (page === 'agenda' ? 6 : 15) : undefined,
       }}>
-        {page === 'home' && <Dashboard patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegni} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} onNavigateNew={goNuovoElemento} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} />}
+        {page === 'home' && <Dashboard patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegni} si={studioInfo} features={features} studioMembership={studioMembership} currentUserId={session?.user?.id} isStudioAdmin={isStudioAdmin} onNuovoPiano={goNuovoPiano} onNuovoElemento={goNuovoElemento} onSchedaPaz={goSchedaPaz} onAgendaPaz={goAgendaPaz} templates={templates} />}
         {page !== 'home' && (
           <Suspense fallback={<LoadingScreen />}>
             {page === 'paz' && (
@@ -520,14 +457,14 @@ export default function App() {
             )}
             {page === 'paga' && <Pagamenti patients={patients} payments={payments} setPayments={setPaymentsSync} plans={plans} autoOpenNew={autoOpenNew === 'paga'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} />}
             {page === 'listino' && <Listino pricelist={pricelist} setPricelist={setPricelistSync} si={studioInfo} />}
-            {page === 'agenda' && <Agenda patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} />}
-            {page === 'richiami' && <Richiami patients={patients} plans={plans} payments={payments} appointments={appointments} richiami={richiami} setRichiami={setRichiamiSync} templates={templates} features={features} onOpenPaz={goSchedaPaz} si={studioInfo} autoOpenNew={autoOpenNew === 'richiami'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} />}
+            {page === 'agenda' && <Agenda patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} features={features} impegni={impegni} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} />}
+            {page === 'richiami' && <Richiami patients={patients} plans={plans} payments={payments} appointments={appointments} richiami={richiami} setRichiami={setRichiamiSync} templates={templates} />}
             {page === 'spese' && <Spese studioId={session?.user?.app_metadata?.studio_id} />}
-            {page === 'controllo' && <ControlloGestione studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} payments={payments} appointments={appointments} pricelist={pricelist} onOpenPaz={goSchedaPaz} isDentistico={!studioInfo?.vertical || studioInfo.vertical === 'dentistico'} />}
+            {page === 'controllo' && <ControlloGestione studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} payments={payments} appointments={appointments} pricelist={pricelist} />}
             {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} />}
             {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
             {page === 'agenteai' && <AgenteAISetup features={features} />}
-            {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} isStudioAdmin={isStudioAdmin} onLogout={handleLogout} />}
+            {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} onLogout={handleLogout} />}
           </Suspense>
         )}
       </div>
@@ -535,7 +472,7 @@ export default function App() {
       <AssistenteAI isMobile={isMobile} />
 
       {isMobile && (
-        <MobileDock
+        <PolyhedronMenu
           page={page}
           setPage={setPage}
           dockSettings={mergeDockSettings(studioInfo?.dock_settings)}
