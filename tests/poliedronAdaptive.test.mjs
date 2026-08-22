@@ -211,7 +211,7 @@ test('mobile layout defaults to a physically centered, elevated docked orb', () 
     layout.dockedPosition.y + size / 2,
     layout.dockRect.top + layout.dockRect.height / 2 - MOBILE_ORB_CENTER_ELEVATION
   );
-  assert.ok(Math.abs((26 - MOBILE_ORB_CENTER_ELEVATION) - (1.5 * 96 / 25.4)) < 0.001);
+  assert.ok(Math.abs((26 - MOBILE_ORB_CENTER_ELEVATION) - (2.5 * 96 / 25.4)) < 0.001);
   assert.ok(layout.dockRect.width >= 390 * 0.78 && layout.dockRect.width <= 390 * 0.88);
 });
 
