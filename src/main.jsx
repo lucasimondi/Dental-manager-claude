@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App.jsx';
-import PrenotaOnline from './components/PrenotaOnline.jsx';
-import FirmaConsenso from './components/FirmaConsenso.jsx';
-import StoriaClinicaRemota from './components/StoriaClinicaRemota.jsx';
 import './styles.css';
+
+const App = lazy(() => import('./App.jsx'));
+const PrenotaOnline = lazy(() => import('./components/PrenotaOnline.jsx'));
+const FirmaConsenso = lazy(() => import('./components/FirmaConsenso.jsx'));
+const StoriaClinicaRemota = lazy(() => import('./components/StoriaClinicaRemota.jsx'));
+const AgendaLab = lazy(() => import('./components/AgendaLab/AgendaLab.jsx'));
 
 // Pagine pubbliche (nessun login richiesto), intercettate qui al vero entry
 // point prima che App venga anche solo montata — così App resta del tutto
@@ -13,11 +15,17 @@ import './styles.css';
 const pathPrenota = window.location.pathname.match(/^\/prenota\/([a-z0-9-]+)\/?$/i);
 const pathFirma = window.location.pathname.match(/^\/firma\/([0-9a-f-]{36})\/?$/i);
 const pathStoriaClinica = window.location.pathname.match(/^\/storia-clinica\/([0-9a-f-]{36})\/?$/i);
+const pathAgendaLab = /^\/agenda-lab\/?$/i.test(window.location.pathname);
 
 let elementoRadice;
-if (pathPrenota) elementoRadice = <PrenotaOnline slug={pathPrenota[1]} />;
+if (pathAgendaLab) elementoRadice = <AgendaLab />;
+else if (pathPrenota) elementoRadice = <PrenotaOnline slug={pathPrenota[1]} />;
 else if (pathFirma) elementoRadice = <FirmaConsenso token={pathFirma[1]} />;
 else if (pathStoriaClinica) elementoRadice = <StoriaClinicaRemota token={pathStoriaClinica[1]} />;
 else elementoRadice = <App />;
 
-ReactDOM.createRoot(document.getElementById('root')).render(elementoRadice);
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <Suspense fallback={<div className="route-loading" aria-label="Caricamento" />}>
+    {elementoRadice}
+  </Suspense>,
+);

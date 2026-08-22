@@ -1,31 +1,62 @@
 # Current task
 
-- TASK: POL-UI-011
-- TITLE: Mobile edge-to-edge shell, no bottom dead space
+- TASK: MOBILE-AGENDA-V2
+- TITLE: Isolated mobile Agenda Lab V2
 - OWNER: COPILOT
-- BRANCH: `lucasimondi-hotfix-pol-ui-011-mobile-edge-to-edge-sh`
-- BASE: `origin/master@e504e52`
+- BRANCH: `lucasimondi-mobile-agenda-v2`
+- BASE: `master@d95af43`
 - STATUS: `WAITING_PRODUCT_OWNER`
-- PR: #37 (draft) — https://github.com/lucasimondi/Dental-manager-claude/pull/37
+- PR: #38 (draft) — https://github.com/lucasimondi/Dental-manager-claude/pull/38
 
 ## Objective
 
-Remove the global mobile bottom reservation left by the retired dock and implement one coherent `100dvh`/flex/safe-area application shell so every Poliedra page reaches the physical bottom edge while Poliedron remains an overlay. Preserve routing, business logic, authorization, financial semantics, and AI behavior.
+Build a premium, touch-first, local-data-only Mobile Agenda V2 at
+`/agenda-lab`, using the installed FullCalendar version as its rendering
+engine. Keep `/agenda`, Supabase, the database, production configuration, and
+the concurrent Poliedron work unchanged.
 
 ## Ownership note (recorded per AGENTS.md handoff rules)
 
-The Product Owner explicitly authorized this session to take ownership of POL-UI-011 and replace the stale POL-AI-001 current-task record. `origin/master@e504e52` already contains POL-AI-001, so this task starts from the latest merged master without carrying an unmerged PR.
+The Product Owner explicitly authorized this task in-session and required it
+to run independently from the concurrent Poliedron session. This Copilot app
+session was already provisioned as a dedicated worktree at
+`copilot-worktrees/Dental-manager-claude/lucasimondi-reimagined-adventure`;
+the main checkout and the separate Poliedron worktree were inspected
+read-only and left untouched. Per workspace policy, the current worktree was
+renamed through the app-native branch tool to
+`lucasimondi-mobile-agenda-v2`; no checkout, switch, stash, reset, clean, or
+new raw Git worktree operation was performed.
 
 ## Safety boundaries
 
-- No Supabase, schema, migration, RBAC, RLS, financial, clinical, or routing changes.
-- No Polyhedron/Poliedron or AI behavior changes.
-- No new dependency unless repository evidence proves native CSS/web APIs insufficient.
-- Mobile layout only; desktop behavior remains unchanged.
+- No Supabase reads/writes, migration, schema, RLS, RBAC, financial, or
+  clinical changes.
+- No Poliedron component, logic, prompt, service, API, animation,
+  configuration, or state/session changes.
+- Do not replace or alter production `/agenda`; `/agenda-lab` is additive.
+- Demo appointments and all create/edit/drag/resize operations remain in
+  React local state.
+- No production deployment, merge, or production configuration change.
 
 ## Exact next action
 
-Product Owner reviews draft PR #37. Do not deploy, merge, or begin another task without explicit Product Owner approval.
+Product Owner opens the authenticated Vercel preview at
+`https://dental-manager-git-lucasimondi-mobile-agenda-v2-acmeproduction.vercel.app/agenda-lab`
+and tests it from a real smartphone. The project currently redirects anonymous
+visitors to Vercel SSO; do not change deployment protection or production
+configuration automatically. Do not connect Supabase, replace `/agenda`,
+merge, or deploy to production.
+
+---
+
+# Historical record: POL-UI-011 (draft PR open, awaiting Product Owner review)
+
+- Branch: `lucasimondi-hotfix-pol-ui-011-mobile-edge-to-edge-sh`
+- Objective: remove the retired mobile-dock reservation and implement a
+  coherent edge-to-edge `100dvh` application shell.
+- Status when superseded as the active task: `WAITING_PRODUCT_OWNER`.
+- Exact next action unchanged: Product Owner reviews draft PR #37; do not
+  deploy or merge without explicit approval.
 
 ---
 

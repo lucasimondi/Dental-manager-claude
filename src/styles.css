@@ -17,5 +17,11 @@ input,select,textarea,button{font-family:inherit;}
 input:focus,select:focus,textarea:focus{outline:2px solid var(--dm-pri);outline-offset:1px;}
 @media print{.noprint{display:none!important;}}
 
+.route-loading{
+  width:36px;height:36px;margin:calc(50dvh - 18px) auto 0;border:3px solid var(--dm-brd);
+  border-top-color:var(--dm-pri);border-radius:50%;animation:route-loading-spin .8s linear infinite;
+}
+@keyframes route-loading-spin{to{transform:rotate(360deg);}}
+@media (prefers-reduced-motion:reduce){.route-loading{animation:none;}}
 
 

@@ -412,3 +412,35 @@
 - Rollback: revert the POL-UI-011 commit; there is no data or deployment rollback.
 - Deployment impact: frontend bundle only; no deployment performed.
 - Exact next action: Product Owner reviews draft PR #37. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+
+## MOBILE-AGENDA-V2 ownership transfer
+
+- Task ID: MOBILE-AGENDA-V2
+- Previous agent: COPILOT (POL-UI-011 remains complete and awaiting Product Owner review on its separate branch/PR)
+- Branch: `lucasimondi-mobile-agenda-v2`, based on `master@d95af43`
+- Objective: build an isolated, premium, touch-first Mobile Agenda V2 at `/agenda-lab` with local demo data and no change to production Agenda, Supabase, or Poliedron.
+- Completed work: Product Owner authorized the task in-session. Confirmed this app session is already a dedicated worktree, separate from both the main checkout and the concurrent `fix/POL-AI-002A-adaptive-poliedron` worktree. Read-only inspection found this worktree clean. Renamed only this session branch through the app-native branch tool; no checkout, switch, stash, reset, clean, or raw worktree operation was used.
+- Files changed: `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- Database changes: none.
+- Tests executed: none at ownership-transfer time.
+- Test results: not yet applicable.
+- Unresolved issues: implementation and validation pending.
+- Risks: the app-managed branch prefix produces `lucasimondi-mobile-agenda-v2` rather than the specification's suggested raw Git name `feature/mobile-agenda-v2`; isolation and task ownership are otherwise exact.
+- Exact next action: audit the installed frontend/routing/design-system primitives, implement and validate `/agenda-lab`, then append the complete handoff and stop at `WAITING_PRODUCT_OWNER`.
+
+## MOBILE-AGENDA-V2 isolated Agenda Lab implementation
+
+- Task ID: MOBILE-AGENDA-V2
+- Previous agent: COPILOT
+- Branch: `lucasimondi-mobile-agenda-v2`, based on `master@d95af43`
+- Objective: provide a separately testable, premium, touch-first FullCalendar Agenda V2 at `/agenda-lab`, with realistic local demo data and no change to production Agenda, Supabase, or Poliedron.
+- Completed work: installed only FullCalendar 6.1.21 core/React/time-grid/interaction packages; added a standalone `/agenda-lab` entry route that lazy-loads before `App` so the lab loads no Supabase/auth/data code; created dynamic yesterday/today/tomorrow healthcare demo events covering 15/30/60/120-minute durations, three-way overlap, and confirmed/pending/waiting/completed/cancelled/no-show states; implemented a custom Poliedra day header, previous/next/today, horizontal swipe guarded from vertical scroll and event manipulation, automatic near-current-time scroll, custom event rendering, local-only long-press drag/drop and resize, slot creation, detail/edit bottom sheets, local toast/haptic feedback, theme toggle, safe areas, accessibility, and responsive edge-to-edge layout. Production `/agenda` and the app navigation remain unchanged; MobileDock was not reused because the current production shell intentionally supersedes it with Poliedron and duplicating navigation would violate scope. Opened draft PR #38 and obtained a successful Vercel branch preview.
+- Files changed: `package.json`; `package-lock.json`; `src/main.jsx`; `src/styles.css`; `src/components/AgendaLab/AgendaLab.jsx`; `src/components/AgendaLab/MobileAgendaHeader.jsx`; `src/components/AgendaLab/AgendaEventContent.jsx`; `src/components/AgendaLab/AgendaAppointmentDrawer.jsx`; `src/components/AgendaLab/demoAgendaData.js`; `src/components/AgendaLab/agendaLab.css`; `tests/agendaLab.test.mjs`; `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- Database changes: none. No Supabase read/write, migration, schema, RLS, RPC, Edge Function, `.env`, or production configuration change. Browser resource inspection on `/agenda-lab` reported zero Supabase resources after route isolation.
+- Tests executed: `npm ci`; `npm test`; `npm run build`; `git diff --check`; explicit changed-path scan for `supabase`, `.env`, production `Agenda.jsx`, and Poliedron files; Agenda Lab source scan for network/database APIs; Edge DevTools device emulation at 320x720, 360x800, 375x812, 390x844, 430x932, 768x1024, 1024x768, 1280x720, and 1440x900 in light mode plus 390x844 dark mode; trusted pointer/touch interaction checks for previous/next/today, horizontal swipe, vertical-scroll discrimination, slot creation with prefilled 13:00-13:30, event detail/edit, drag from 14:00-16:00 to 14:30-16:30, and resize from two hours to two and a half hours.
+- Test results: clean `npm ci` passes with FullCalendar packages pinned consistently to 6.1.21 (the first PR run exposed and prompted correction of a 6.1.19/6.1.21 peer-lock mismatch); 109/109 Node tests pass; Vite production build passes; no lint script exists; diff check and all isolation scans pass. Every emulated viewport matched body/root to the exact viewport dimensions, retained both 44x44 header controls onscreen, kept events inside the viewport, and had no horizontal overflow. Light/dark screenshots are legible; create/edit fields prefill correctly; swipe/today, drag, and resize update local state. Build retains pre-existing `pdfjs-dist` eval, malformed legacy design-token comment, and large-chunk warnings.
+- Unresolved issues: the Vercel preview is ready at `https://dental-manager-git-lucasimondi-mobile-agenda-v2-acmeproduction.vercel.app/agenda-lab`, but anonymous requests redirect to Vercel SSO because deployment protection is enabled. The Product Owner must open it while authenticated or explicitly authorize a deployment-access change; this session did not weaken or modify deployment protection. Real iPhone Safari remains the Product Owner acceptance authority for safe-area and long-press feel.
+- Risks: FullCalendar adds a dedicated lazy Agenda Lab chunk (about 269 kB minified / 79 kB gzip) only when the lab route is opened. The app-managed branch prefix produces `lucasimondi-mobile-agenda-v2` rather than the requested suggested raw name `feature/mobile-agenda-v2`; worktree/session isolation is otherwise exact.
+- Rollback: revert the Agenda Lab commit; no data, database, or deployment rollback is required.
+- Deployment impact: frontend branch-preview bundle only; no production deployment performed.
+- Exact next action: Product Owner reviews draft PR #38 and opens the authenticated preview URL above on a real smartphone. Do not merge, integrate production data, or alter Vercel deployment protection before explicit approval. Status: `WAITING_PRODUCT_OWNER`.
