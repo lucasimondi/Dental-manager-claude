@@ -1,31 +1,46 @@
 # Current task
 
-- TASK: POL-UI-011
-- TITLE: Mobile edge-to-edge shell, no bottom dead space
-- OWNER: COPILOT
-- BRANCH: `lucasimondi-hotfix-pol-ui-011-mobile-edge-to-edge-sh`
-- BASE: `origin/master@e504e52`
+- TASK: POL-AI-002A
+- TITLE: Poliedron Adaptive Interface — Compact Mobile Dock + Desktop Edge Dock + Precise Drag + Prefix Navigation
+- OWNER: CLAUDE
+- BRANCH: `fix/POL-AI-002A-adaptive-poliedron`
+- BASE REVIEW: `master@d95af43` (POL-AI-001 + POL-UI-011 mobile edge-to-edge shell)
 - STATUS: `WAITING_PRODUCT_OWNER`
-- PR: #37 (draft) — https://github.com/lucasimondi/Dental-manager-claude/pull/37
+- PR: #36 (draft) — https://github.com/lucasimondi/Dental-manager-claude/pull/36
 
 ## Objective
 
-Remove the global mobile bottom reservation left by the retired dock and implement one coherent `100dvh`/flex/safe-area application shell so every Poliedra page reaches the physical bottom edge while Poliedron remains an overlay. Preserve routing, business logic, authorization, financial semantics, and AI behavior.
+Give Poliedron the same identity but different interaction per device. Mobile uses a compact, centered glass navigation dock in exact order Home, Agenda, Poliedron, Pazienti, Setup; its standalone 58–72px polyhedron is docked by default, may detach within dock-aware safe bounds, and magnetically redocks without random edge snapping. The transparent hit area remains at least 44px, with no circular surface, border, background, or halo plate. Desktop keeps only the discreet 56px left/right Edge Dock with vertical drag, intentional side switching, persistence, hover/focus expansion, click, and Ctrl/Cmd+K. Both open the same Phase-1 Poliedron interface and Model Gateway. Exact permitted command aliases direct-open only real destinations without an LLM call; ambiguous/unknown text stays in normal federated search.
 
 ## Ownership note (recorded per AGENTS.md handoff rules)
 
-The Product Owner explicitly authorized this session to take ownership of POL-UI-011 and replace the stale POL-AI-001 current-task record. `origin/master@e504e52` already contains POL-AI-001, so this task starts from the latest merged master without carrying an unmerged PR.
+POL-AI-001 was merged as `e504e52`. POL-UI-011 was merged as `d95af43` and incorporated into this branch with merge commit `1b320ab`, preserving the existing POL-AI-002A commits `a6113e8` and `2eac136`. The Product Owner then issued the compact-mobile-dock revision implemented in `8a70bda`. Ownership remains POL-AI-002A on this branch.
 
 ## Safety boundaries
 
-- No Supabase, schema, migration, RBAC, RLS, financial, clinical, or routing changes.
-- No Polyhedron/Poliedron or AI behavior changes.
-- No new dependency unless repository evidence proves native CSS/web APIs insufficient.
-- Mobile layout only; desktop behavior remains unchanged.
+- No Supabase migration, RLS policy, or canonical financial formula is touched.
+- No second RBAC/authorization model, no second AI Core/Model Gateway — both mobile Orb and desktop Edge Dock open the one existing `Poliedron` component/state; `modelGateway.js` remains the sole model-call chokepoint, no provider SDK, no new API key.
+- Prefix/command-alias navigation only targets permitted entries from the filtered real navigation index. "Ricette" and "Fatture" remain real `archivio` filters, not invented routes.
 
 ## Exact next action
 
-Product Owner reviews draft PR #37. Do not deploy, merge, or begin another task without explicit Product Owner approval.
+Product Owner reviews draft PR #36 at the current branch head, including the standalone mobile-polyhedron visual refinement. Do not deploy, merge, or begin another task without explicit Product Owner approval. Status: `WAITING_PRODUCT_OWNER`.
+
+---
+
+# Historical record: POL-AI-001 (merged to master)
+
+- Branch: `feature/POL-AI-001-poliedron-universal-interface` — PR #35, squash-merged to `master` as `e504e52`.
+- Objective: first architecture of Poliedron — global Orb, Spotlight-style command panel, provider-independent Model Gateway, deterministic-first intent/search, Action Registry reusing existing workflows, Permission Engine reusing existing RBAC. Revised once more to make Poliedron the app's single AI entry point (AssistenteAI's floating widget unmounted, kept internal for future convergence).
+- Full detail: `docs/coordination/handoffs.md` ("POL-AI-001 Poliedron Universal Operating Interface (Phase 1)" and the two review-round entries that follow it).
+
+---
+
+# Historical record: POL-UI-011 (merged to master)
+
+- Branch: `lucasimondi-hotfix-pol-ui-011-mobile-edge-to-edge-sh` — PR #37, merged to `master` as `d95af43`.
+- Objective: establish the mobile `100dvh` edge-to-edge flex shell and remove the retired dock's global bottom reservation while keeping fixed controls as overlays.
+- Full detail: see `docs/coordination/handoffs.md` ("POL-UI-011 mobile edge-to-edge shell").
 
 ---
 

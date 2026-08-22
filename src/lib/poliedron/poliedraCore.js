@@ -7,6 +7,7 @@
 import { classifyIntent, INTENT, extractAmount } from './intentEngine.js';
 import { federatedSearch, suggestedIdle } from './searchEngine.js';
 import { runModelTask, MODEL_TASK_TYPE } from './modelGateway.js';
+import { resolveCommandAlias } from './commandAliases.js';
 import { cercaPazienti } from '../ricercaPazienti.js';
 import {
   loadCanonicalFinancialSnapshot, selectCanonicalMetrics, MANAGEMENT_CONTROL_MODES,
@@ -75,6 +76,23 @@ export async function processQuery({ query, context, permissions, sources = {}, 
       intent: null, entities: {}, answer: null, confirmationRequired: false,
       searchResults: suggestedIdle({ actions: sources.actions || [] }),
       suggestedActions: [],
+    };
+  }
+
+  // POL-AI-002A §18-23 — deterministic direct-open command, checked
+  // BEFORE classifyIntent: an exact commandAlias match never reaches the
+  // model, never shows an intermediate results screen, and never risks
+  // classifyIntent's fuzzier NAVIGATE path (which still returns grouped
+  // search results for the user to click, see below) — it's resolved and
+  // returned instantly. Partial/fuzzy queries never match here (§21) —
+  // resolveCommandAlias only accepts an exact, whole-string alias.
+  const direct = resolveCommandAlias(q);
+  const directIsPermitted = direct && (sources.navigationIndex || []).some((item) => item.id === direct.navId);
+  if (directIsPermitted) {
+    return {
+      intent: 'DIRECT_NAVIGATE', entities: { navId: direct.navId, filtroTipo: direct.filtroTipo },
+      answer: null, confirmationRequired: false, suggestedActions: [], searchResults: [],
+      directNavigation: direct,
     };
   }
 

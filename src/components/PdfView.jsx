@@ -223,7 +223,7 @@ export default function PdfView({ pl, paz, si, features, onClose }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 3000, background: '#C8D4E0', display: 'flex', flexDirection: 'column' }}>
       <div style={{ background: '#124E66', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-        <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, padding: '8px 12px', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}><Ic n="back" s={13} c="#fff" />Chiudi</button>
+        <button onClick={onClose} aria-label="Indietro" style={{ minHeight: 44, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 10, padding: '8px 12px', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}><Ic n="back" s={15} c="#fff" />Chiudi</button>
         <span style={{ color: '#fff', fontWeight: 700, fontSize: 14, flex: 1, textAlign: 'center' }}>Anteprima preventivo</span>
       </div>
 

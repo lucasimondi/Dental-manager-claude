@@ -11,13 +11,22 @@ import { scaricaPdf } from '../lib/condivisionePdf';
 const TIPO_ICON = { fattura: 'receipt', rimborso: 'bank', ricetta: 'pill', esami: 'drop', certificato: 'clip', lettera: 'mail', protocollo: 'book', vuoto: 'file', consenso: 'edit' };
 const TIPO_LABEL = { fattura: 'Fatture', rimborso: 'Rimborsi', ricetta: 'Ricette', esami: 'Esami', certificato: 'Certificati', lettera: 'Lettere', protocollo: 'Protocolli', vuoto: 'Liberi', consenso: 'Consensi' };
 
-export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedico, onApriDocConsenso }) {
+// POL-AI-002A §20 — Poliedron's "ric"/"fat" direct commands land here
+// already filtered (see App.jsx's archivioFiltroTipoHint / Poliedron.jsx's
+// onArchivioFilterHint), instead of the unfiltered list — optional and
+// backward compatible, defaults to the page's own original behavior.
+export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedico, onApriDocConsenso, initialFiltroTipo }) {
   const [pazModal, setPazModal] = useState(null); // 'fiscale' | 'medico' | 'consenso' | null
   const [pazSearch, setPazSearch] = useState('');
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
-  const [filtroTipo, setFiltroTipo] = useState('tutti');
+  const [filtroTipo, setFiltroTipo] = useState(initialFiltroTipo || 'tutti');
+
+  // A later, different direct command (e.g. "ric" then, in a later visit
+  // to the panel, "fat") should re-apply even though the page component
+  // itself never unmounts.
+  useEffect(() => { if (initialFiltroTipo) setFiltroTipo(initialFiltroTipo); }, [initialFiltroTipo]);
   const [filtroPaz, setFiltroPaz] = useState('');
   const [selDoc, setSelDoc] = useState([]);
   const [editDoc, setEditDoc] = useState(null);
