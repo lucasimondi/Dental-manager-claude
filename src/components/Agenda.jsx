@@ -178,9 +178,16 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   // Mobile "final": la griglia stessa è la superficie principale (niente
   // grande card che la contiene) — bordo/raggio/ombra spariscono, resta solo
   // lo sfondo. Desktop/tablet mantengono il trattamento a card esistente.
+  // POL-UI-007: su mobile anche lo sfondo sparisce (era rimasto C.sur pieno
+  // per errore) — quel rettangolo bianco esteso fino quasi al dock era
+  // esattamente la "barra" percepita dietro al dock, perché C.sur è diverso
+  // dallo sfondo pagina (C.bg, ereditato da #app-scroll) e il confine tra i
+  // due si vedeva proprio in fondo, a ridosso delle icone. Trasparente qui
+  // lascia semplicemente vedere lo stesso sfondo pagina che usano Home e
+  // tutte le altre schermate mobile — nessun'altra modifica alla griglia.
   return (
     <div onTouchStart={onTouchStartSwipe} onTouchEnd={onTouchEndSwipe} style={{
-      display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', background: C.sur,
+      display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', background: isMobile ? 'transparent' : C.sur,
       border: isMobile ? 'none' : `1px solid ${C.brd}`,
       borderRadius: isMobile ? 0 : 12,
       boxShadow: isMobile ? 'none' : '0 1px 3px rgba(0,0,0,0.06)',
@@ -1432,9 +1439,16 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       )}
 
       {/* PULSANTE FLOTTANTE "Nuovo" — apre un piccolo popup per scegliere Appuntamento o Impegno,
-          stile iOS. A sinistra, alla stessa altezza del pulsante dell'assistente AI (che sta
-          a destra): niente più sovrapposizione tra i due flottanti. */}
-      <div style={{ position: 'fixed', left: 16, bottom: 74, zIndex: 140 }}>
+          stile iOS. Su desktop resta dove sempre (basso sinistra). Su mobile
+          (POL-UI-009) basso sinistra è ora occupato dal poliedro/menu: il
+          FAB si sposta sopra di esso, sullo stesso bordo sinistro, senza
+          sovrapposizioni. */}
+      <div style={{
+        position: 'fixed',
+        left: isMobile ? 'max(18px, env(safe-area-inset-left, 0px))' : 16,
+        bottom: isMobile ? 'calc(94px + env(safe-area-inset-bottom, 0px))' : 74,
+        zIndex: 140,
+      }}>
         {fabOpen && <div onClick={() => setFabOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: -1 }} />}
         {fabOpen && (
           <div style={{ position: 'absolute', bottom: 62, left: 0, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
