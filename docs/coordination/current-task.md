@@ -1,7 +1,7 @@
 # Current task
 
-- TASK: POL-UI-004-AGENDA-FULLSCREEN
-- TITLE: Mobile Agenda floating controls
+- TASK: POL-UI-004-AGENDA-QUICK-HUB
+- TITLE: Mobile Agenda Appointment Quick Action Hub
 - OWNER: COPILOT
 - BRANCH: `lucasimondi-agenda-mobile-fullscreen`
 - BASE: `master`
@@ -9,9 +9,9 @@
 
 ## Objective
 
-Keep the mobile Agenda full-screen while removing its structural header:
-month, filter, WhatsApp, view selector, and week strip float above the
-timeline, which remains the full-height scroll surface underneath.
+Extend the existing dock-aware mobile appointment sheet with contextual
+patient actions and a Poliedron entry point while preserving the full-screen
+Agenda, the floating `+`, MobileDock, desktop behavior, and appointment logic.
 
 ## Completed scope
 
@@ -23,6 +23,14 @@ timeline, which remains the full-height scroll surface underneath.
 - Mobile today styling reduced to the semantic red outline only.
 - Dock-aware mobile appointment action sheet with responsive max-height and
   internal scrolling.
+- Appointment Quick Hub actions for call, patient detail, recall, and optional
+  patient-associated activity creation through the existing application forms.
+- Contextual mini-input that opens the existing singleton Poliedron with the
+  authoritative appointment patient and appointment context.
+- Popup clearance derived from both canonical MobileDock geometry and the
+  unchanged floating `+` geometry.
+- Optional activity association that can be retained, changed, or removed;
+  generic activities and the existing `todos` schema remain supported.
 - Responsive browser measurements at 375x667, 390x844, 393x852, and
   430x932 in light and dark themes.
 - Full test suite and production build.
@@ -36,8 +44,9 @@ timeline, which remains the full-height scroll surface underneath.
 
 ## Exact next action
 
-Product Owner visually verifies the adaptive floating Agenda, dynamic day
-counts, and complete time-range scrolling on the target iPhone.
+Product Owner visually verifies the Quick Hub actions, optional activity
+association, contextual Poliedron flow, and popup clearance on the PR #50
+preview and target iPhone.
 Do not merge or deploy without explicit approval.
 
 ---

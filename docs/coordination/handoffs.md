@@ -1267,3 +1267,23 @@ or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
 - RISKS: the 12px visual gap is menu-specific while dock height and bottom offset remain imported from their canonical source; any future dock geometry change automatically updates the protected zone.
 - ROLLBACK: revert the commit containing this handoff.
 - Exact next action: Product Owner visually verifies the appointment action sheet on the Vercel preview. Do not merge or deploy production without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+
+## POL-UI-004-AGENDA-QUICK-HUB
+
+- Task ID: POL-UI-004-AGENDA-QUICK-HUB.
+- Previous agent: Copilot, continuing PR #50 directly on preserved commit `1031421`.
+- Agent: Copilot.
+- Branch: `lucasimondi-agenda-mobile-fullscreen`.
+- Objective: add a mobile-only appointment Quick Action Hub above both the unchanged floating `+` and MobileDock, reusing existing patient, recall, activity, and singleton Poliedron workflows without changing desktop or appointment logic.
+- COMPLETED_WORK: added `Chiama`, `Scheda`, `Richiamo`, and `Attività` actions to the mobile appointment sheet; wired patient detail and recall through their existing App navigation/form paths; added optional, removable, and changeable patient selection to the existing Home activity modal; preserved generic activities and stored an optional patient association as a backward-compatible patient-name prefix in the existing `todos.testo` field, per the Product Owner decision; added a contextual mini-input that opens the one existing Poliedron instance with the authoritative patient ID and appointment context while retaining its existing query, preview, confirmation, and execution pipeline; reset contextual input between appointments; and extended sheet clearance/max-height to protect the unchanged floating `+` as well as the canonical dock.
+- FILES_CHANGED: `src/App.jsx`; `src/components/Agenda.jsx`; `src/components/Dashboard.jsx`; `src/components/PremiumVisualSystem.css`; `src/components/Richiami.jsx`; `src/components/poliedron/Poliedron.jsx`; `src/lib/appointmentQuickHub.js`; `src/lib/poliedron/contextEngine.js`; `tests/appointmentQuickHub.test.mjs`; `tests/mobileShell.test.mjs`; `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- DATABASE_CHANGES: none. No migration, table, field, policy, RLS, or production data change. The existing nullable-in-practice activity behavior is preserved through the existing text column.
+- DEPLOYMENT_IMPACT: frontend-only behavior on mobile Agenda and the existing activity/recall/Poliedron UI paths; no dependency, environment, backend, migration, or production deployment change.
+- RESPONSIVE_QA: an isolated real Chromium harness rendered the real Agenda and production styles at 375x667, 390x844, 393x852, and 430x932 in both light and dark. Every run measured a 12px sheet-to-floating-`+` gap, an 80px sheet-to-dock gap, a reachable final action after internal scrolling, and zero horizontal overflow. A 375x420 reduced-height keyboard proxy kept the focused Poliedron input inside the scrollable sheet. Browser action checks passed the authoritative patient ID and appointment ID through Scheda, Richiamo, Attività, and Poliedron callbacks.
+- TESTS_EXECUTED: `node --test tests\appointmentQuickHub.test.mjs tests\mobileShell.test.mjs tests\poliedron.test.mjs tests\actionExecutorWorkflowG.test.mjs`; `npm.cmd test`; `npm.cmd run build`; `git diff --check`. No lint script exists.
+- TEST_RESULTS: focused integration/regression suite 91/91 passed; full suite 335/335 passed; Vite production build succeeded with only the pre-existing pdf.js eval, malformed legacy CSS-comment, and chunk-size warnings; diff check clean.
+- UNRESOLVED_ISSUES: none in implementation. Product Owner visual verification on the PR #50 preview and target iPhone remains required.
+- RISKS: optional patient association is intentionally presentation-level in `todos.testo`, not a queryable relation, because the repository contains no proven patient column and the Product Owner explicitly rejected an unproven migration for this task. Future structured activity-patient reporting requires a separate schema decision.
+- ROLLBACK: revert the commit containing this handoff; commit `1031421` remains the preserved dock-aware popup baseline.
+- COMMIT: recorded by the commit containing this handoff.
+- Exact next action: Product Owner visually verifies all Quick Hub actions, optional activity association, contextual Poliedron behavior, and dock/FAB clearance on PR #50. Do not merge or deploy production without explicit approval. Status: `WAITING_PRODUCT_OWNER`.

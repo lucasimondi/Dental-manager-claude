@@ -56,8 +56,10 @@ test('Agenda appointment menu clears the canonical mobile dock and scrolls inter
   assert.match(agenda, /MOBILE_DOCK_BOTTOM,\s*MOBILE_DOCK_HEIGHT/);
   assert.match(agenda, /MOBILE_APPOINTMENT_MENU_DOCK_OFFSET\s*=\s*MOBILE_DOCK_BOTTOM\s*\+\s*MOBILE_DOCK_HEIGHT/);
   assert.match(agenda, /--agenda-mobile-dock-offset/);
-  assert.match(premium, /\.agenda-appointment-menu-backdrop\s*\{[\s\S]*var\(--agenda-mobile-dock-offset\)[\s\S]*safe-area-inset-bottom/);
-  assert.match(premium, /\.agenda-appointment-menu-sheet\s*\{[\s\S]*max-height:\s*calc\([\s\S]*100dvh[\s\S]*var\(--agenda-mobile-dock-offset\)/);
+  assert.match(agenda, /MOBILE_APPOINTMENT_MENU_FAB_OFFSET\s*=\s*MOBILE_AGENDA_FAB_BOTTOM\s*\+\s*MOBILE_AGENDA_FAB_SIZE/);
+  assert.match(agenda, /--agenda-mobile-fab-offset/);
+  assert.match(premium, /\.agenda-appointment-menu-backdrop\s*\{[\s\S]*max\(var\(--agenda-mobile-dock-offset\), var\(--agenda-mobile-fab-offset\)\)[\s\S]*safe-area-inset-bottom/);
+  assert.match(premium, /\.agenda-appointment-menu-sheet\s*\{[\s\S]*max-height:\s*calc\([\s\S]*100dvh[\s\S]*max\(var\(--agenda-mobile-dock-offset\), var\(--agenda-mobile-fab-offset\)\)/);
   assert.match(premium, /\.agenda-appointment-menu-actions\s*\{[\s\S]*overflow-y:\s*auto;[\s\S]*overscroll-behavior:\s*contain;/);
   assert.match(premium, /\.agenda-appointment-menu-safe-area\s*\{[\s\S]*display:\s*none;/);
 });

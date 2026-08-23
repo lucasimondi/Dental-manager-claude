@@ -20,6 +20,7 @@ export default function Poliedron({
   isMobile, page, setPage, patients, plans, payments, pricelist, appointments, richiami, impegni, goSchedaPaz,
   features, isStudioAdmin, vertical, studioId, currentPatient,
   quickActionCtx, supabaseClient, onArchivioFilterHint, openPrescription, openNew, openBooking,
+  externalCommandRequest, onExternalCommandHandled,
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -31,6 +32,7 @@ export default function Poliedron({
   // recoveryActions } once the user has confirmed and execution finished.
   const [actionRunResult, setActionRunResult] = useState(null);
   const [actionRunning, setActionRunning] = useState(false);
+  const [externalContext, setExternalContext] = useState(null);
   const inputRef = useRef(null);
   const panelId = useId();
   const requestSeq = useRef(0);
@@ -49,8 +51,16 @@ export default function Poliedron({
   );
 
   const context = useMemo(
-    () => buildContext({ page, vertical, studioId, currentPatient, isStudioAdmin, features }),
-    [page, vertical, studioId, currentPatient, isStudioAdmin, features]
+    () => buildContext({
+      page,
+      vertical,
+      studioId,
+      currentPatient: externalContext?.patient || currentPatient,
+      currentAppointment: externalContext?.appointment || null,
+      isStudioAdmin,
+      features,
+    }),
+    [page, vertical, studioId, currentPatient, externalContext, isStudioAdmin, features]
   );
 
   // §25 — Cmd/Ctrl+K opens Poliedron from anywhere, desktop only per spec
@@ -75,6 +85,7 @@ export default function Poliedron({
     setQuery('');
     setState(null);
     setActionRunResult(null);
+    setExternalContext(null);
   }, []);
 
   const runQuery = useCallback((q, { allowModel = false } = {}) => {
@@ -158,6 +169,21 @@ export default function Poliedron({
     setActionRunResult(null);
     setHighlightedIndex(0);
   }, []);
+
+  useEffect(() => {
+    const command = externalCommandRequest?.command?.trim();
+    if (!externalCommandRequest?.id || !command || !externalCommandRequest.patient?.id) return;
+    setExternalContext({
+      patient: externalCommandRequest.patient,
+      appointment: externalCommandRequest.appointment || null,
+    });
+    setQuery(command);
+    setState(null);
+    setActionRunResult(null);
+    setHighlightedIndex(0);
+    setOpen(true);
+    onExternalCommandHandled?.(externalCommandRequest.id);
+  }, [externalCommandRequest?.id, onExternalCommandHandled]);
 
   const navCtx = useMemo(() => ({
     setPage, goSchedaPaz,

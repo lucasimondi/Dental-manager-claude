@@ -9,11 +9,16 @@ import { useFormPersistente } from '../lib/useFormPersistente';
 import { supabase } from '../lib/supabase.js';
 import { getVisibleWeekDays } from '../lib/agendaVisibleDays.js';
 import { MOBILE_DOCK_BOTTOM, MOBILE_DOCK_HEIGHT } from '../lib/poliedron/poliedronMobileDock.js';
+import { normalizePhoneForTel } from '../lib/appointmentQuickHub.js';
 
 const WD_SHORT = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
 const toISO = (d) => d.toISOString().slice(0, 10);
 const MOBILE_APPOINTMENT_MENU_DOCK_OFFSET = MOBILE_DOCK_BOTTOM + MOBILE_DOCK_HEIGHT;
+const MOBILE_AGENDA_FAB_GAP_ABOVE_DOCK = 14;
+const MOBILE_AGENDA_FAB_BOTTOM = MOBILE_APPOINTMENT_MENU_DOCK_OFFSET + MOBILE_AGENDA_FAB_GAP_ABOVE_DOCK;
+const MOBILE_AGENDA_FAB_SIZE = 54;
+const MOBILE_APPOINTMENT_MENU_FAB_OFFSET = MOBILE_AGENDA_FAB_BOTTOM + MOBILE_AGENDA_FAB_SIZE;
 const orarioInMinutiUI = (ora) => {
   const [h, m] = (ora || '0:0').split(':').map(Number);
   return (h || 0) * 60 + (m || 0);
@@ -80,7 +85,7 @@ const startOfWeek = (d) => {
   return dt;
 };
 
-function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno, onSwipeDay, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW }) {
+function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno, onSwipeDay, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onOpenRecall, onOpenActivity, onPoliedronCommand }) {
   const containerRef = useRef(null); // unico scroll container
   const resizeRef = useRef(null);
   const [now, setNow] = useState(new Date());
@@ -88,7 +93,14 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   const [moving, setMoving] = useState(null); // { id, startY, startOra }
   const movedRef = useRef(false); // distingue click da drag: true se il mouse si e' spostato oltre la soglia
   const [menuApp, setMenuApp] = useState(null); // appuntamento con menu contestuale aperto (WA/Mail/Modifica/Sposta/Elimina)
+  const [poliedronQuery, setPoliedronQuery] = useState('');
+  const [poliedronSubmitting, setPoliedronSubmitting] = useState(false);
   const isSettimana = days.length > 1;
+
+  useEffect(() => {
+    setPoliedronQuery('');
+    setPoliedronSubmitting(false);
+  }, [menuApp?.id]);
 
   // POL-UI-010 (slot fit): su mobile lo slotH "base" (calcolato dal genitore
   // su una stima approssimativa di window.innerHeight) non riempie sempre
@@ -387,6 +399,21 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
       {menuApp && (() => {
         const p = patients.find(x => x.id === menuApp.pazienteId);
         const co = getColore(menuApp);
+        const phone = normalizePhoneForTel(p?.telefono);
+        const runPatientAction = (action) => {
+          if (!p || !action) return;
+          setMenuApp(null);
+          action(p, menuApp);
+        };
+        const submitPoliedron = () => {
+          const command = poliedronQuery.trim();
+          if (!command || !p || !onPoliedronCommand || poliedronSubmitting) return;
+          setPoliedronSubmitting(true);
+          setMenuApp(null);
+          onPoliedronCommand({ command, patient: p, appointment: menuApp });
+          setPoliedronQuery('');
+          setPoliedronSubmitting(false);
+        };
         const azioni = [
           { id: 'wa', label: 'WhatsApp', ic: 'wa', col: '#25D366', dis: !p?.telefono, onClick: () => { apriWA(menuApp); setMenuApp(null); } },
           { id: 'mail', label: 'Email', ic: 'mail', col: C.pri, dis: !p?.email, onClick: () => { apriMail(menuApp); setMenuApp(null); } },
@@ -406,6 +433,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
               display: 'flex',
               justifyContent: 'center',
               '--agenda-mobile-dock-offset': `${MOBILE_APPOINTMENT_MENU_DOCK_OFFSET}px`,
+              '--agenda-mobile-fab-offset': `${MOBILE_APPOINTMENT_MENU_FAB_OFFSET}px`,
             }}
           >
             <div onClick={e => e.stopPropagation()} className="pol-modal-sheet agenda-appointment-menu-sheet" style={{ background: C.sur, width: '100%', maxWidth: 480, overflow: 'hidden' }}>
@@ -417,6 +445,50 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                 </div>
               </div>
               <div className="agenda-appointment-menu-actions" style={{ padding: 8 }}>
+                {isMobile && (
+                  <>
+                    <div className="agenda-quick-hub-grid">
+                      <button
+                        type="button"
+                        disabled={!phone}
+                        onClick={() => { if (phone) window.location.href = `tel:${phone}`; }}
+                        className="agenda-quick-hub-action"
+                      >
+                        <Ic n="ph" s={17} c={phone ? C.pri : C.txl} />
+                        <span>{phone ? 'Chiama' : 'Numero non disponibile'}</span>
+                      </button>
+                      <button type="button" disabled={!p || !onOpenPatient} onClick={() => runPatientAction(onOpenPatient)} className="agenda-quick-hub-action">
+                        <Ic n="pz" s={17} c={C.pri} /><span>Scheda</span>
+                      </button>
+                      <button type="button" disabled={!p || !onOpenRecall} onClick={() => runPatientAction(onOpenRecall)} className="agenda-quick-hub-action">
+                        <Ic n="bell" s={17} c={C.pur} /><span>Richiamo</span>
+                      </button>
+                      <button type="button" disabled={!p || !onOpenActivity} onClick={() => runPatientAction(onOpenActivity)} className="agenda-quick-hub-action">
+                        <Ic n="ok" s={17} c={C.suc} /><span>Attività</span>
+                      </button>
+                    </div>
+                    <form className="agenda-quick-hub-poliedron" onSubmit={(event) => { event.preventDefault(); submitPoliedron(); }}>
+                      <div className="agenda-quick-hub-poliedron__label"><Ic n="spark" s={13} c={C.pri} />Poliedron</div>
+                      <div className="agenda-quick-hub-poliedron__input-row">
+                        <input
+                          value={poliedronQuery}
+                          onChange={(event) => setPoliedronQuery(event.target.value)}
+                          onFocus={(event) => {
+                            const input = event.currentTarget;
+                            setTimeout(() => input.scrollIntoView({ block: 'center', behavior: 'smooth' }), 50);
+                          }}
+                          placeholder={`Cosa vuoi fare con ${p?.nome || 'il paziente'}?`}
+                          aria-label="Comando contestuale per Poliedron"
+                        />
+                        <button type="submit" disabled={!poliedronQuery.trim() || !p || !onPoliedronCommand || poliedronSubmitting} aria-label="Invia a Poliedron">
+                          <Ic n="send" s={15} c="#fff" />
+                        </button>
+                      </div>
+                      {poliedronSubmitting && <div className="agenda-quick-hub-poliedron__loading">Poliedron sta elaborando…</div>}
+                    </form>
+                    <div className="agenda-quick-hub-divider">Appuntamento</div>
+                  </>
+                )}
                 {azioni.map(az => (
                   <button
                     key={az.id}
@@ -590,7 +662,7 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
   );
 }
 
-export default function Agenda({ patients, setPatients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni, setImpegni, si, setStudioInfo }) {
+export default function Agenda({ patients, setPatients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni, setImpegni, si, setStudioInfo, onOpenPatient, onOpenRecall, onOpenActivity, onPoliedronCommand }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const labelPoltrona = isDentistico ? 'Poltrona' : 'Postazione';
   const labelPoltronePlurale = isDentistico ? 'poltrone' : 'postazioni';
@@ -1038,7 +1110,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   // GridView (il commento su DayStrip spiega perché) — vedi item 5/2 della
   // spec "Agenda mobile final": non deve rubare spazio alle 7 colonne.
   const oraColW = isMobile ? 34 : 46;
-  const gridProps = { slots, slotH, slotMin, oraInizio, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW };
+  const gridProps = { slots, slotH, slotMin, oraInizio, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onOpenRecall, onOpenActivity, onPoliedronCommand };
 
   // Appuntamenti effettivamente visibili nella vista corrente (per il conteggio "Seleziona tutti" e il badge)
   const giorniVisibili = view === 'giorno' ? [selDay] : view === 'settimana' ? weekDays.map(toISO) : [];
@@ -1604,7 +1676,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       <div style={{
         position: 'fixed',
         left: isMobile ? 'max(18px, env(safe-area-inset-left, 0px))' : 16,
-        bottom: isMobile ? 'calc(94px + env(safe-area-inset-bottom, 0px))' : 74,
+        bottom: isMobile ? `calc(${MOBILE_AGENDA_FAB_BOTTOM}px + env(safe-area-inset-bottom, 0px))` : 74,
         zIndex: 140,
       }}>
         {fabOpen && <div onClick={() => setFabOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: -1 }} />}
@@ -1620,7 +1692,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
             </button>
           </div>
         )}
-        <button onClick={() => setFabOpen(v => !v)} aria-label="Nuovo" style={{ width: 54, height: 54, borderRadius: '50%', background: `linear-gradient(150deg, ${C.pri}, ${C.priD})`, border: 'none', boxShadow: `0 8px 20px ${C.pri}55`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transform: fabOpen ? 'rotate(45deg)' : 'none', transition: 'transform .2s ease' }}>
+        <button onClick={() => setFabOpen(v => !v)} aria-label="Nuovo" style={{ width: MOBILE_AGENDA_FAB_SIZE, height: MOBILE_AGENDA_FAB_SIZE, borderRadius: '50%', background: `linear-gradient(150deg, ${C.pri}, ${C.priD})`, border: 'none', boxShadow: `0 8px 20px ${C.pri}55`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transform: fabOpen ? 'rotate(45deg)' : 'none', transition: 'transform .2s ease' }}>
           <Ic n="plus" s={24} c="#fff" />
         </button>
       </div>
