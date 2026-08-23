@@ -101,7 +101,7 @@ export default function PoliedronPanel({
             <PoliedronConversation query={query} answer={state.answer} loading={loading} />
           ) : state?.confirmationRequired ? (
             <PoliedronActionPreview entities={state.entities} suggestedActions={state.suggestedActions} onConfirm={onConfirmAction} onModify={onModifyAction} />
-          ) : state?.intent == null && state?.searchResults?.length ? (
+          ) : (state?.intent == null || state?.suggestionBoard) && state?.searchResults?.length ? (
             <PoliedronSuggestionBoard groups={state.searchResults} onSelect={onSelectResult} />
           ) : state?.searchResults?.length ? (
             <PoliedronSearchResults

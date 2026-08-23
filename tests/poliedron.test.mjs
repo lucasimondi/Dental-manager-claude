@@ -53,16 +53,19 @@ test('classifyIntent: ASK hints route open questions', () => {
   assert.equal(r.type, INTENT.ASK);
 });
 
-test('classifyIntent: a bare section name/alias resolves to NAVIGATE, not SEARCH', () => {
+test('classifyIntent: a bare section name remains SEARCH', () => {
   const r = classifyIntent('pagamenti', { navigationIndex: NAVIGATION_INDEX });
-  assert.equal(r.type, INTENT.NAVIGATE);
-  assert.equal(r.entities.navId, 'paga');
+  assert.equal(r.type, INTENT.SEARCH);
 });
 
-test('classifyIntent: an alias synonym also resolves to NAVIGATE', () => {
+test('classifyIntent: a bare alias synonym remains SEARCH', () => {
   const r = classifyIntent('incassi', { navigationIndex: NAVIGATION_INDEX });
-  assert.equal(r.type, INTENT.NAVIGATE);
-  assert.equal(r.entities.navId, 'paga');
+  assert.equal(r.type, INTENT.SEARCH);
+});
+
+test('classifyIntent: a financial-sounding section alias still suggests before analysis', () => {
+  const r = classifyIntent('costi', { navigationIndex: NAVIGATION_INDEX });
+  assert.equal(r.type, INTENT.SEARCH);
 });
 
 test('classifyIntent: an empty query classifies as null, not a crash', () => {
@@ -269,7 +272,7 @@ test('processQuery: context is used only as a hint for pre-fill, patient still r
 });
 
 test('prescription workflow resolves one real patient and preserves the exact supported drug field', () => {
-  const result = resolvePrescriptionRequest('fai ricetta per Mario Rossi Amoxicillina 875mg', patients);
+  const result = resolvePrescriptionRequest('crea ricetta per Mario Rossi Amoxicillina 875mg', patients);
   assert.deepEqual(result.patientCandidates.map((patient) => patient.id), ['p1']);
   assert.equal(result.drugText, 'Amoxicillina 875mg');
   assert.equal(result.drugNeedsClarification, false);
@@ -277,12 +280,12 @@ test('prescription workflow resolves one real patient and preserves the exact su
 
 test('prescription workflow keeps same-surname matches ambiguous instead of guessing', () => {
   const sameSurname = [...patients, { id: 'p3', nome: 'Anna', cognome: 'Rossi', cf: '', telefono: '' }];
-  const result = resolvePrescriptionRequest('ricetta per Rossi Ibuprofene 600mg', sameSurname);
+  const result = resolvePrescriptionRequest('prepara ricetta per Rossi Ibuprofene 600mg', sameSurname);
   assert.deepEqual(result.patientCandidates.map((patient) => patient.id).sort(), ['p1', 'p3']);
 });
 
 test('prescription workflow refuses to choose between alternative drugs', () => {
-  const result = resolvePrescriptionRequest('fai ricetta per Mario Rossi Amoxicillina oppure Ibuprofene', patients);
+  const result = resolvePrescriptionRequest('crea ricetta per Mario Rossi Amoxicillina oppure Ibuprofene', patients);
   assert.equal(result.drugNeedsClarification, true);
   assert.equal(result.drugText, '');
 });
@@ -293,17 +296,17 @@ test('prescription workflow extracts only the medication segment from natural im
 });
 
 test('prescription workflow uses token boundaries and excludes posology from the drug field', () => {
-  const noFalsePatient = resolvePrescriptionRequest('ricetta per Gianmario Rossi Amoxicillina', patients);
+  const noFalsePatient = resolvePrescriptionRequest('crea ricetta per Gianmario Rossi Amoxicillina', patients);
   assert.equal(noFalsePatient.patientCandidates.length, 0);
-  const withPosology = resolvePrescriptionRequest('ricetta per Mario Rossi Amoxicillina 875mg una compressa ogni 8 ore per 7 giorni', patients);
+  const withPosology = resolvePrescriptionRequest('crea ricetta per Mario Rossi Amoxicillina 875mg una compressa ogni 8 ore per 7 giorni', patients);
   assert.equal(withPosology.drugText, 'Amoxicillina 875mg');
-  const numericPosology = resolvePrescriptionRequest('ricetta per Mario Rossi Ibuprofene 600 mg 2 compresse al giorno', patients);
+  const numericPosology = resolvePrescriptionRequest('crea ricetta per Mario Rossi Ibuprofene 600 mg 2 compresse al giorno', patients);
   assert.equal(numericPosology.drugText, 'Ibuprofene 600 mg');
 });
 
 test('processQuery returns a review-required Ricetta workflow, never direct navigation or finalization', async () => {
   const result = await processQuery({
-    query: 'fai ricetta per Mario Rossi Amoxicillina 875mg',
+    query: 'crea ricetta per Mario Rossi Amoxicillina 875mg',
     context: buildContext(),
     permissions: {},
     sources: { patients, navigationIndex: NAVIGATION_INDEX, actions: ACTION_REGISTRY },

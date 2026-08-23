@@ -118,29 +118,25 @@ export async function processQuery({ query, context, permissions, sources = {}, 
     };
   }
 
-  // POL-AI-002A §18-23 — deterministic direct-open command, checked
-  // BEFORE classifyIntent: an exact commandAlias match never reaches the
-  // model, never shows an intermediate results screen, and never risks
-  // classifyIntent's fuzzier NAVIGATE path (which still returns grouped
-  // search results for the user to click, see below) — it's resolved and
-  // returned instantly. Partial/fuzzy queries never match here (§21) —
-  // resolveCommandAlias only accepts an exact, whole-string alias.
-  const direct = resolveCommandAlias(q);
-  const directIsPermitted = direct && (sources.navigationIndex || []).some((item) => item.id === direct.navId);
-  if (directIsPermitted) {
-    return {
-      intent: 'DIRECT_NAVIGATE', entities: { navId: direct.navId, filtroTipo: direct.filtroTipo },
-      answer: null, confirmationRequired: false, suggestedActions: [], searchResults: [],
-      directNavigation: direct,
-    };
-  }
-
   const intent = classifyIntent(q, { navigationIndex: sources.navigationIndex || [] });
   const base = { intent: intent.type, entities: intent.entities, answer: null, confirmationRequired: false, suggestedActions: [] };
 
   if (intent.type === INTENT.NAVIGATE || intent.type === INTENT.SEARCH) {
     if (intent.type === INTENT.NAVIGATE) {
-      const target = (intent.entities.target || '').toLowerCase();
+      const target = (intent.entities.target || '')
+        .toLowerCase()
+        .replace(/^(?:a|ai|al|alla|alle|allo|in|su|i|il|la|le|lo|gli)\s+/i, '')
+        .trim();
+      const aliasDestination = resolveCommandAlias(target);
+      const aliasIsPermitted = aliasDestination
+        && (sources.navigationIndex || []).some((item) => item.id === aliasDestination.navId);
+      if (aliasIsPermitted) {
+        return {
+          ...base,
+          searchResults: [],
+          directNavigation: aliasDestination,
+        };
+      }
       const exact = (sources.navigationIndex || []).find((item) =>
         item.label.toLowerCase() === target || item.aliases.some((alias) => alias.toLowerCase() === target)
       );
@@ -158,7 +154,14 @@ export async function processQuery({ query, context, permissions, sources = {}, 
       return { ...base, searchResults: [], answer: modelResult.text || 'Non sono riuscito a rispondere in questo momento.' };
     }
     if (!hasResults) return { ...base, searchResults: [], awaitingSubmit: true };
-    return { ...base, searchResults: groups };
+    const hasPatientResults = groups.some((group) => group.group === 'PAZIENTI');
+    const searchResults = hasPatientResults
+      ? groups
+      : groups.map((group) => ({
+          ...group,
+          group: group.group === 'SEZIONI' ? 'APRI UNA SEZIONE' : group.group === 'AZIONI' ? 'AZIONI E WORKFLOW' : group.group,
+        }));
+    return { ...base, searchResults, suggestionBoard: !hasPatientResults };
   }
 
   if (intent.type === INTENT.CREATE || intent.type === INTENT.UPDATE) {

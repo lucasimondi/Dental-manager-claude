@@ -77,9 +77,8 @@ export default function Poliedron({
       allowModel,
     }).then((result) => {
       if (seq !== requestSeq.current) return; // stale response from an earlier keystroke — dropped
-      // POL-AI-002A §20, §23 — an exact commandAlias match navigates
-      // immediately and closes the panel: no intermediate results screen,
-      // no click required, no model call in the loop.
+      // Only intentEngine-confirmed navigation phrases can reach this path.
+      // Bare aliases remain in the panel as ranked suggestions.
       if (result.directNavigation) {
         const { navId, filtroTipo } = result.directNavigation;
         if (navId === 'archivio') onArchivioFilterHint?.(filtroTipo || 'tutti');
@@ -124,17 +123,23 @@ export default function Poliedron({
 
   const handleSelectResult = useCallback((item) => {
     if (item.kind === 'patient') { goSchedaPaz?.(item.data); close(); return; }
-    if (item.kind === 'section') { setPage(item.id); close(); return; }
+    if (item.kind === 'section') {
+      const destination = item.data?.page || item.id;
+      if (destination === 'archivio') onArchivioFilterHint?.(item.data?.filtroTipo || 'tutti');
+      setPage(destination);
+      close();
+      return;
+    }
     if (item.kind === 'action') {
       if (item.id === 'prescription.create') {
-        setQuery('ricetta');
+        setQuery('crea ricetta');
         inputRef.current?.focus();
         return;
       }
       item.data.navigate(navCtx, item.data.entity);
       close();
     }
-  }, [goSchedaPaz, setPage, navCtx, close]);
+  }, [goSchedaPaz, setPage, onArchivioFilterHint, navCtx, close]);
 
   const handleConfirmAction = useCallback((action, selectedPatient) => {
     const patient = selectedPatient || state?.entities?.patientCandidates?.[0];

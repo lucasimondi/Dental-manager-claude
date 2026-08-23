@@ -21,6 +21,7 @@
 
 import { cercaPazienti, normalizza } from '../ricercaPazienti.js';
 import { findAction } from './actionRegistry.js';
+import { resolveCommandAliasSuggestions } from './commandAliases.js';
 
 export const RESULT_GROUP = Object.freeze({
   PATIENTS: 'PAZIENTI',
@@ -53,8 +54,14 @@ export function federatedSearch(query, sources = {}, opts = {}) {
   }
 
   if (q && sources.navigationIndex?.length) {
-    const sections = sources.navigationIndex.filter((n) => matchesNav(n, qNorm)).slice(0, limit);
-    if (sections.length) groups.push({ group: RESULT_GROUP.SECTIONS, items: sections.map((n) => ({ kind: 'section', id: n.id, label: n.label, icon: n.icon, data: n })) });
+    const semantic = resolveCommandAliasSuggestions(q, sources.navigationIndex);
+    const seen = new Set(semantic.map((item) => item.id));
+    const matched = sources.navigationIndex
+      .filter((n) => matchesNav(n, qNorm))
+      .map((n) => ({ kind: 'section', id: n.id, label: n.label, icon: n.icon, data: n }))
+      .filter((item) => !seen.has(item.id));
+    const sections = [...semantic, ...matched].slice(0, limit);
+    if (sections.length) groups.push({ group: RESULT_GROUP.SECTIONS, items: sections });
   }
 
   if (q && sources.actions?.length) {

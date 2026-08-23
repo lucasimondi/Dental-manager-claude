@@ -5,14 +5,14 @@
 - OWNER: COPILOT
 - BRANCH: `lucasimondi-pol-ai-002b-workflows`
 - BASE REVIEW: `master@e5b24d4` (PR #39 merged after the original POL-AI-002B implementation)
-- STATUS: `WAITING_PRODUCT_OWNER`
+- STATUS: `WAITING_PRODUCT_OWNER` — suggest-first input/intent revision complete on existing draft PR #41
 - PR: draft PR #41
 
 ## Objective
 
 Restore Poliedron as the app's single conversational AI and action surface. Reuse the existing Model Gateway, Action Registry, permission engine, real navigation map, patient matching, and application workflows. Add permission-filtered, context-aware suggestions and clear Ask/Navigate/Create/Workflow/confirmation/result states. Natural-language prescription requests must open the real Ricetta form, resolve only real permitted patients, prefill only supported fields, and always leave clinical review and submission to the user. Preserve the merged POL-AI-002A mobile dock, standalone polyhedron, desktop Edge Dock, drag, stacking, and responsive behavior.
 
-The Product Owner explicitly authorized POL-AI-002B as a new task after PR #36 merged to `master@1faa9bb`. COPILOT owns this branch. PR #39 subsequently merged to `master@e5b24d4`; the branch now includes that newer Agenda behavior without rewriting or discarding the completed POL-AI-002B work.
+The Product Owner explicitly authorized POL-AI-002B as a new task after PR #36 merged to `master@1faa9bb`. COPILOT owns this branch. PR #39 subsequently merged to `master@e5b24d4`; the branch includes that newer Agenda behavior. The Product Owner has approved the existing PR #41 visual UI exactly and authorized an input/intent-only revision: bare nouns and aliases must suggest first, while only explicit navigation or operational verbs may execute.
 
 ## Safety boundaries
 
@@ -21,9 +21,13 @@ The Product Owner explicitly authorized POL-AI-002B as a new task after PR #36 m
 - Navigation and actions must be derived from real permission-filtered registries and existing application workflows; missing authorization fails closed.
 - No clinical action is auto-finalized and no patient, drug, or clinical field is invented.
 
+## Completion state
+
+The Product Owner-approved visual UI is unchanged. Bare nouns, entities, section names, and aliases now remain in Poliedron as permission-filtered ranked suggestions. Only explicit navigation verbs may return direct navigation, and only explicit create/update verbs may enter application workflows. Fatture resolves to the real filtered Archivio destination rather than Pagamenti; `ric` shows both permitted Ricette and Richiami; the existing Ricetta, payment, appointment, Action Registry, patient-resolution, medication-prefill, permission, and Model Gateway contracts remain intact.
+
 ## Exact next action
 
-Product Owner reviews draft PR #41. Do not deploy or merge without explicit Product Owner approval.
+Product Owner reviews draft PR #41. Do not deploy or merge without explicit approval.
 
 ---
 

@@ -621,3 +621,42 @@
 - Deployment impact: frontend bundle only through the already-merged Agenda change plus the existing POL-AI-002B work; no deployment performed.
 - Product Owner decision required: none.
 - Exact next action: Product Owner reviews draft PR #41 after GitHub reports it mergeable/clean with required checks green. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+
+## POL-AI-002B Product Owner input/intent revision — suggest first
+
+- Task ID: POL-AI-002B (continuation on existing draft PR #41).
+- Previous agent: COPILOT continuation; ownership remained on `lucasimondi-pol-ai-002b-workflows`.
+- Branch: `lucasimondi-pol-ai-002b-workflows`, containing current `origin/master@e5b24d4`.
+- Objective: preserve the Product Owner-approved Poliedron visual UI exactly while changing input semantics so bare nouns, prefixes, entities, and section names remain permission-filtered suggestions; reserve navigation and application workflows for explicit verbs.
+- Root cause:
+  - `poliedraCore.js` resolved exact `commandAliases` before intent classification and returned `directNavigation`.
+  - `intentEngine.js` promoted exact bare navigation labels/aliases to `NAVIGATE`.
+  - `Poliedron.jsx` correctly executed any returned `directNavigation`, so those two upstream paths closed the panel for bare input.
+  - `prescriptionWorkflow.js` accepted bare `ric`/`ricetta` as create requests.
+  - `navigationIndex.js` incorrectly treated `fattura`/`fatture` as Pagamenti aliases.
+- Completed work:
+  - Removed the bare-alias execution shortcut and the bare-label `NAVIGATE` classification. Exact aliases remain reusable for deterministic target resolution only after an explicit navigation verb.
+  - Added ranked, permission-filtered alias suggestions behind the existing approved suggestion board. Typing dynamically reranks the existing Navigate and Create/Workflow cards without CSS, layout, dock, Orb, or Edge Dock redesign.
+  - Added real virtual destinations for Fatture (`archivio` + `filtroTipo=fattura`) and Ricette (`archivio` + `filtroTipo=ricetta`). Selecting either card applies the existing Archivio filter hint before navigation.
+  - Removed Fatture aliases from Pagamenti. `fat`/`fatture` rank Fatture first; Pagamenti remains a separate concept.
+  - Made `ric` deliberately return both permitted Ricette and Richiami, with Ricette first for `ric`/`ricetta` and Richiami first for `richiamo`.
+  - Gated direct navigation behind `apri`, `vai`, `portami`, `mostra`, or `mostrami`, including Italian articles/prepositions (`vai ai pagamenti`, `vai in agenda`). Explicit Fatture/Ricette navigation retains real Archivio filter metadata.
+  - Gated create/update behavior behind `crea`, `nuovo/a`, `aggiungi`, `inserisci`, `prepara`, `registra`, `modifica`, `aggiorna`, or `segna`. Bare `ricetta Rossi` and `pagamento Rossi` remain non-writing searches.
+  - Preserved the real Action Registry workflows, Quick Booking, patient ambiguity handling, medication-only Ricetta prefill, clinical review/confirmation, permission filtering, request sequencing, and the sole existing `modelGateway.js` fallback. Live deterministic search never calls the model; unresolved submitted questions still use the existing gateway.
+  - Preserved the approved top universal input, “Dove vuoi lavorare?”, Navigate and Create/Workflow sections, premium cards, responsive panel layout, mobile standalone polyhedron/dock/recede behavior, and desktop Edge Dock.
+- Files changed:
+  - Core/ranking: `src/lib/poliedron/commandAliases.js`; `src/lib/poliedron/intentEngine.js`; `src/lib/poliedron/navigationIndex.js`; `src/lib/poliedron/poliedraCore.js`; `src/lib/poliedron/prescriptionWorkflow.js`; `src/lib/poliedron/searchEngine.js`.
+  - Existing UI routing only: `src/components/poliedron/Poliedron.jsx`; `src/components/poliedron/PoliedronPanel.jsx`.
+  - Regression coverage: `tests/poliedron.test.mjs`; `tests/poliedronAdaptive.test.mjs`.
+  - Coordination: `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- Database changes: none. No migration, schema, Supabase, RLS, RBAC, auth, financial formula, clinical storage, production data, or production-state change.
+- Dependency changes: none. A browser runner was installed transiently with `--no-save` for QA; package manifests and lockfile are unchanged.
+- Tests executed: `npm test`; targeted Poliedron tests; `npm run build`; `git diff --check`; conflict-marker scan; added-secret scan; dependency-manifest check; changed-path/scope inspection; real Chrome browser interaction and visual QA through a temporary exact-component harness removed before handoff.
+- Test results: 188/188 Node tests pass. Production build passes with only the unchanged `pdfjs-dist` eval, malformed legacy CSS-comment, and large-chunk warnings.
+- Browser QA: 13/13 Chrome runs pass. The responsive matrix covered 375x812, 390x844, 430x932, 768x1024, 1024x900, and 1440x900 in Light and Dark. Every run verified the approved visual headings/cards, `fat` Fatture suggestion without closure, `ric` Ricette/Richiami ambiguity, Rossi patient result, no navigation side effects, panel bounds, no horizontal overflow, mobile dock recede, and desktop Edge Dock expanded state. A separate real interaction run verified `apri fatture` closes only after explicit navigation and emits `filtroTipo=fattura`, while `crea ricetta per Rossi Amoxicillina 875mg` shows clinical review and invokes the existing prescription handler with only the real patient id and medication text. Screenshots are retained outside the repository in the session artifacts; the harness and Playwright result files were deleted.
+- Unresolved issues: none in this revision's scope.
+- Risks: alias and clinical interpretation remain intentionally conservative. Ambiguous or unsupported language stays inside Poliedron or reaches the existing Model Gateway only after explicit submit rather than guessing or writing.
+- Rollback: revert the suggest-first revision commit. No database, data, RLS, dependency, deployment, or production rollback is required.
+- Deployment impact: frontend bundle only; no deployment performed.
+- Product Owner decision required: none.
+- Exact next action: Product Owner reviews the updated existing draft PR #41. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.

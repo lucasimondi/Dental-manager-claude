@@ -12,7 +12,7 @@ import {
   MOBILE_ORB_CENTER_ELEVATION,
   shouldRedock,
 } from '../src/lib/poliedron/poliedronMobileDock.js';
-import { COMMAND_ALIASES, resolveCommandAlias } from '../src/lib/poliedron/commandAliases.js';
+import { COMMAND_ALIASES, resolveCommandAlias, resolveCommandAliasSuggestions } from '../src/lib/poliedron/commandAliases.js';
 import { NAVIGATION_INDEX } from '../src/lib/poliedron/navigationIndex.js';
 import { classifyIntent, INTENT } from '../src/lib/poliedron/intentEngine.js';
 import { processQuery } from '../src/lib/poliedron/poliedraCore.js';
@@ -347,13 +347,13 @@ test('commandAliases: no duplicate alias across categories (module load already 
   assert.equal(new Set(keys).size, keys.length);
 });
 
-test('resolveCommandAlias: ric is reserved for the real Ricetta creation workflow', () => {
-  assert.equal(resolveCommandAlias('ric'), null);
+test('resolveCommandAlias: ric resolves Ricette only after explicit navigation intent', () => {
+  assert.deepEqual(resolveCommandAlias('ric'), { navId: 'archivio', filtroTipo: 'ricetta' });
 });
 
-test('resolveCommandAlias: rice/ricetta/ricette never regress to Archivio filtering', () => {
+test('resolveCommandAlias: rice/ricetta/ricette target the real filtered Archivio destination', () => {
   for (const q of ['rice', 'ricetta', 'ricette']) {
-    assert.equal(resolveCommandAlias(q), null);
+    assert.deepEqual(resolveCommandAlias(q), { navId: 'archivio', filtroTipo: 'ricetta' });
   }
 });
 
@@ -381,9 +381,10 @@ test('resolveCommandAlias: pre, spe, and doc target verified existing destinatio
   assert.deepEqual(resolveCommandAlias('doc'), { navId: 'archivio', filtroTipo: 'tutti' });
 });
 
-test('§19 ambiguity: "ric" starts Ricetta creation while "rich" still direct-opens Richiami', () => {
+test('§19 ambiguity: "ric" suggestions include Ricette and Richiami without guessing', () => {
   const rich = resolveCommandAlias('rich');
-  assert.equal(resolveCommandAlias('ric'), null);
+  const suggestions = resolveCommandAliasSuggestions('ric', NAVIGATION_INDEX);
+  assert.deepEqual(suggestions.slice(0, 2).map((item) => item.label), ['Ricette', 'Richiami']);
   assert.equal(rich.navId, 'richiami');
 });
 
@@ -408,19 +409,20 @@ test('§21 partial search survives: a patient-name-shaped query never matches a 
   assert.equal(resolveCommandAlias('mario rossi'), null);
 });
 
-test('processQuery: an exact command alias resolves instantly, without classifyIntent/model involvement (§23 "feels fast")', async () => {
+test('processQuery: a bare command alias stays in Poliedron as a ranked suggestion', async () => {
   const result = await processQuery({
     query: 'pag',
     context: buildContext(),
     permissions: {},
     sources: { navigationIndex: NAVIGATION_INDEX, actions: ACTION_REGISTRY },
   });
-  assert.equal(result.intent, 'DIRECT_NAVIGATE');
-  assert.deepEqual(result.directNavigation, { navId: 'paga', filtroTipo: null });
-  assert.deepEqual(result.searchResults, []);
+  assert.equal(result.intent, INTENT.SEARCH);
+  assert.equal(result.directNavigation, undefined);
+  assert.equal(result.searchResults[0].items[0].label, 'Pagamenti');
+  assert.equal(result.suggestionBoard, true);
 });
 
-test('processQuery: local aliases never touch the model/Supabase gateway', async () => {
+test('processQuery: bare local aliases suggest without touching the model gateway', async () => {
   const throwingClient = new Proxy({}, {
     get() { throw new Error('model gateway must not be touched for a local alias'); },
   });
@@ -431,7 +433,8 @@ test('processQuery: local aliases never touch the model/Supabase gateway', async
     sources: { navigationIndex: NAVIGATION_INDEX, actions: ACTION_REGISTRY },
     supabaseClient: throwingClient,
   });
-  assert.equal(result.directNavigation.navId, 'agenda');
+  assert.equal(result.directNavigation, undefined);
+  assert.equal(result.searchResults[0].items[0].label, 'Agenda');
 });
 
 test('processQuery: an exact alias never direct-opens a destination filtered out by permissions', async () => {
@@ -456,7 +459,7 @@ test('processQuery: ambiguous short prefix stays in normal grouped results inste
   assert.ok(Array.isArray(result.searchResults));
 });
 
-test('processQuery: "ric" starts the real Ricetta workflow instead of filtering Archivio', async () => {
+test('processQuery: "ric" suggests both Ricette and Richiami without starting a workflow', async () => {
   const result = await processQuery({
     query: 'ric',
     context: buildContext(),
@@ -464,8 +467,8 @@ test('processQuery: "ric" starts the real Ricetta workflow instead of filtering 
     sources: { navigationIndex: NAVIGATION_INDEX, actions: ACTION_REGISTRY },
   });
   assert.equal(result.directNavigation, undefined);
-  assert.equal(result.intent, 'WORKFLOW');
-  assert.equal(result.suggestedActions[0].id, 'prescription.create');
+  assert.equal(result.intent, INTENT.SEARCH);
+  assert.deepEqual(result.searchResults[0].items.slice(0, 2).map((item) => item.label), ['Ricette', 'Richiami']);
 });
 
 test('processQuery: a live partial query ("ross") still returns normal search results, not a direct navigation', async () => {
@@ -478,6 +481,94 @@ test('processQuery: a live partial query ("ross") still returns normal search re
   });
   assert.equal(result.directNavigation, undefined);
   assert.ok(result.searchResults.some((g) => g.group === 'PAZIENTI'));
+});
+
+test('suggest-first regression matrix: bare aliases never navigate and rank authoritative destinations', async () => {
+  const patients = [{ id: 'p1', nome: 'Mario', cognome: 'Rossi', cf: '', telefono: '' }];
+  const sources = { patients, navigationIndex: NAVIGATION_INDEX, actions: ACTION_REGISTRY };
+  const expectedFirstSuggestion = new Map([
+    ['fat', 'Fatture'],
+    ['fatture', 'Fatture'],
+    ['ricetta', 'Ricette'],
+    ['pag', 'Pagamenti'],
+    ['agenda', 'Agenda'],
+  ]);
+
+  for (const query of ['fat', 'fatture', 'ric', 'ricetta', 'pag', 'agenda', 'pazienti', 'preventivi', 'spese', 'costi', 'documenti', 'richiami']) {
+    const result = await processQuery({ query, context: buildContext(), permissions: {}, sources, allowModel: false });
+    assert.equal(result.directNavigation, undefined, query);
+    assert.equal(result.intent, INTENT.SEARCH, query);
+    if (expectedFirstSuggestion.has(query)) {
+      assert.equal(result.searchResults[0].items[0].label, expectedFirstSuggestion.get(query), query);
+    }
+  }
+
+  const ric = await processQuery({ query: 'ric', context: buildContext(), permissions: {}, sources, allowModel: false });
+  assert.deepEqual(ric.searchResults[0].items.slice(0, 2).map((item) => item.label), ['Ricette', 'Richiami']);
+
+  const patient = await processQuery({ query: 'Rossi', context: buildContext(), permissions: {}, sources, allowModel: false });
+  assert.equal(patient.directNavigation, undefined);
+  assert.equal(patient.searchResults[0].group, 'PAZIENTI');
+  assert.equal(patient.searchResults[0].items[0].label, 'Mario Rossi');
+});
+
+test('explicit navigation regression matrix resolves real permission-filtered destinations', async () => {
+  const sources = { navigationIndex: NAVIGATION_INDEX, actions: ACTION_REGISTRY };
+  const cases = [
+    ['apri fatture', { navId: 'archivio', filtroTipo: 'fattura' }],
+    ['vai ai pagamenti', { navId: 'paga', filtroTipo: null }],
+    ['apri ricette', { navId: 'archivio', filtroTipo: 'ricetta' }],
+    ['apri richiami', { navId: 'richiami', filtroTipo: null }],
+    ['vai in agenda', { navId: 'agenda', filtroTipo: null }],
+  ];
+  for (const [query, destination] of cases) {
+    const result = await processQuery({ query, context: buildContext(), permissions: {}, sources, allowModel: false });
+    assert.equal(result.intent, INTENT.NAVIGATE, query);
+    assert.deepEqual(result.directNavigation, destination, query);
+  }
+});
+
+test('operational verbs gate workflows while noun-plus-patient phrases remain non-writing searches', async () => {
+  const patients = [{ id: 'p1', nome: 'Mario', cognome: 'Rossi', cf: '', telefono: '' }];
+  const sources = { patients, navigationIndex: NAVIGATION_INDEX, actions: ACTION_REGISTRY };
+
+  const prescription = await processQuery({
+    query: 'crea ricetta per Rossi',
+    context: buildContext(),
+    permissions: {},
+    sources,
+    allowModel: false,
+  });
+  assert.equal(prescription.intent, 'WORKFLOW');
+  assert.equal(prescription.suggestedActions[0].id, 'prescription.create');
+
+  const payment = await processQuery({
+    query: 'registra pagamento 300 euro Rossi',
+    context: buildContext(),
+    permissions: {},
+    sources,
+    allowModel: false,
+  });
+  assert.equal(payment.intent, INTENT.UPDATE);
+  assert.equal(payment.suggestedActions[0].id, 'payment.create');
+  assert.equal(payment.entities.amount, 300);
+
+  const appointment = await processQuery({
+    query: 'nuovo appuntamento Rossi domani alle 10',
+    context: buildContext(),
+    permissions: {},
+    sources,
+    allowModel: false,
+  });
+  assert.equal(appointment.intent, INTENT.CREATE);
+  assert.equal(appointment.suggestedActions[0].id, 'appointment.create');
+
+  for (const query of ['ricetta Rossi', 'pagamento Rossi']) {
+    const result = await processQuery({ query, context: buildContext(), permissions: {}, sources, allowModel: false });
+    assert.equal(result.intent, INTENT.SEARCH, query);
+    assert.equal(result.confirmationRequired, false, query);
+    assert.equal(result.directNavigation, undefined, query);
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -517,20 +608,21 @@ test('persisted position out-of-viewport (e.g. saved on a tablet, reopened on a 
   assert.equal(reclamped.y, reopenedOnPhone.maxY);
 });
 
-test('POL-AI-002B: an exact permitted bare section name direct-opens without a model call', async () => {
+test('POL-AI-002B: a permitted bare section name suggests first without a model call', async () => {
   assert.equal(resolveCommandAlias('listino'), null);
   const intent = classifyIntent('listino', { navigationIndex: NAVIGATION_INDEX });
-  assert.equal(intent.type, INTENT.NAVIGATE);
+  assert.equal(intent.type, INTENT.SEARCH);
   const result = await processQuery({
     query: 'listino',
     context: buildContext(),
     permissions: {},
     sources: { navigationIndex: NAVIGATION_INDEX, actions: ACTION_REGISTRY },
   });
-  assert.deepEqual(result.directNavigation, { navId: 'listino', filtroTipo: null });
+  assert.equal(result.directNavigation, undefined);
+  assert.equal(result.searchResults[0].items[0].label, 'Listino');
 });
 
-test('rule 6: every real commandAlias key routes through direct navigation, and nothing else in NAVIGATION_INDEX labels does', () => {
+test('rule 6: command aliases retain real destinations for explicit navigation', () => {
   for (const navItem of NAVIGATION_INDEX) {
     const bareLabelIsCommandAlias = COMMAND_ALIASES[navItem.label.toLowerCase()] != null;
     if (bareLabelIsCommandAlias) {

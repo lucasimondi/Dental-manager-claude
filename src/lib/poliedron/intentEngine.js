@@ -18,10 +18,10 @@ export const INTENT = Object.freeze({
   AUTOMATE: 'AUTOMATE',
 });
 
-const NAVIGATE_VERBS = /^(vai|apri|mostra|mostrami|portami|vai a|vai su)\b/i;
-const CREATE_VERBS = /^(nuovo|nuova|crea|aggiungi|inserisci|fai|compila)\b/i;
+const NAVIGATE_VERBS = /^(?:apri|vai|portami|mostra|mostrami)\b/i;
+const CREATE_VERBS = /^(?:crea|nuovo|nuova|aggiungi|inserisci|prepara)\b/i;
 const UPDATE_VERBS = /^(registra|modifica|aggiorna|segna)\b/i;
-const ANALYZE_HINTS = /\b(quanto|quanti|quante|incassat|fattura|margine|ebitda|break.?even|costi|saturazion)\w*/i;
+const ANALYZE_HINTS = /\b(quanto|quanti|quante|incassat|fatturat|margine|ebitda|break.?even|costi|saturazion)\w*/i;
 const ASK_HINTS = /\?$|^(quali|chi|come mai|perch[ée])\b/i;
 
 // Extracts a plausible amount ("300", "€300", "300 euro", "300,50") from
@@ -34,6 +34,11 @@ export const extractAmount = (text) => {
   if (!m) return null;
   const n = Number(m[1].replace(',', '.'));
   return Number.isFinite(n) ? n : null;
+};
+
+export const hasExplicitOperationalVerb = (query) => {
+  const q = (query || '').trim();
+  return CREATE_VERBS.test(q) || UPDATE_VERBS.test(q);
 };
 
 /**
@@ -61,6 +66,14 @@ export function classifyIntent(query, { navigationIndex = [] } = {}) {
     return { type: INTENT.UPDATE, confidence: 0.8, entities: { raw: rest, amount } };
   }
 
+  const qNorm = q.toLowerCase();
+  const bareNavigationTerm = navigationIndex.some((item) =>
+    item.label.toLowerCase() === qNorm || item.aliases.some((alias) => alias.toLowerCase() === qNorm)
+  );
+  if (bareNavigationTerm) {
+    return { type: INTENT.SEARCH, confidence: 0.75, entities: { raw: q } };
+  }
+
   if (ANALYZE_HINTS.test(q)) {
     return { type: INTENT.ANALYZE, confidence: 0.7, entities: { raw: q } };
   }
@@ -68,13 +81,6 @@ export function classifyIntent(query, { navigationIndex = [] } = {}) {
   if (ASK_HINTS.test(q)) {
     return { type: INTENT.ASK, confidence: 0.6, entities: { raw: q } };
   }
-
-  // Bare navigation match ("pagamenti", "agenda"): a query that matches a
-  // nav label/alias closely and nothing else reads as NAVIGATE too, so
-  // typing a section name jumps straight there instead of only searching.
-  const qNorm = q.toLowerCase();
-  const navHit = navigationIndex.find((n) => n.label.toLowerCase() === qNorm || n.aliases.some((a) => a.toLowerCase() === qNorm));
-  if (navHit) return { type: INTENT.NAVIGATE, confidence: 0.75, entities: { target: q, navId: navHit.id } };
 
   return { type: INTENT.SEARCH, confidence: 0.5, entities: { raw: q } };
 }

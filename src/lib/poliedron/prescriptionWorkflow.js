@@ -1,7 +1,7 @@
 import { normalizza } from '../ricercaPazienti.js';
+import { hasExplicitOperationalVerb } from './intentEngine.js';
 
 const PRESCRIPTION_PATTERN = /\b(?:ric|rice|ricetta|ricette)\b/i;
-const PRESCRIPTION_CREATE_PATTERN = /^(?:(?:fai|fare|crea|compila|prepara|nuova|nuovo)\b.*\b(?:ric|rice|ricetta|ricette)\b|(?:ric|rice|ricetta|ricette)\b(?:\s+(?:per|a|al|alla|con|farmaco|medicinale)\b.*)?$)/i;
 const QUESTION_PATTERN = /^(?:come|cosa|cos['’]?e|perch[ée]|quando|dove|quali?|posso|si pu[oò])\b|\?$/i;
 const DRUG_CONNECTORS = new Set(['con', 'farmaco', 'farmaci', 'medicinale', 'medicinali']);
 const PATIENT_CONTEXT = new Set(['fai', 'fammi', 'crea', 'prepara', 'ricetta', 'per', 'paziente', 'al', 'alla']);
@@ -26,7 +26,7 @@ const patientTokens = (patient) => [patient?.nome, patient?.cognome]
 export const isPrescriptionRequest = (query) => {
   const value = (query || '').trim();
   if (!PRESCRIPTION_PATTERN.test(value) || QUESTION_PATTERN.test(value)) return false;
-  return PRESCRIPTION_CREATE_PATTERN.test(value);
+  return hasExplicitOperationalVerb(value);
 };
 
 const containsTokenSequence = (tokens, sequence) => {
