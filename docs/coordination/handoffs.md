@@ -1184,3 +1184,27 @@ or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
   responsive QA if desired, and decides the authoritative patient-level
   financial contract gate. Do not merge or deploy. Status:
   `WAITING_PRODUCT_OWNER`.
+
+### POL-UI-014 Product Owner checkpoint — POL-FIN-001 dependency
+
+- Product Owner decision: POL-UI-014 is accepted as the current
+  UI/architecture checkpoint. Draft PR #48 must remain open and draft.
+- Scope freeze: do not add financial KPIs, payment-plan logic, temporary
+  financial selectors, migrations, payment/business logic changes, merge, or
+  deploy in PR #48.
+- Dependency handoff:
+
+  > POL-UI-014 is intentionally waiting for POL-FIN-001.
+  > Once POL-FIN-001 is merged, PR #48 must be synchronized with latest master and consume the canonical PatientFinancialSummary contract instead of implementing local financial calculations.
+
+- POL-FIN-001 owns the authoritative contract for totals due, collected,
+  outstanding, scheduled/unscheduled outstanding, overdue amounts, next
+  deadline, payment plans, installments, deadlines, partial payments, and
+  payment allocations.
+- Database changes: none.
+- Files changed by this checkpoint: `docs/coordination/current-task.md` and
+  `docs/coordination/handoffs.md` only.
+- Exact next action: no further implementation in PR #48. Wait for
+  POL-FIN-001 to merge, then synchronize with latest `master` and integrate
+  only its canonical `PatientFinancialSummary` contract. Status:
+  `WAITING_PRODUCT_OWNER`.

@@ -45,9 +45,18 @@ responsive light/dark behavior, and future voice-transcript compatibility.
 
 ## Exact next action
 
-Product Owner reviews draft PR #48, including native-width responsive QA if
-desired, and decides the patient-level financial contract gate. Do not merge
-or deploy without explicit Product Owner approval.
+Keep draft PR #48 open and draft. Do not add financial KPIs, payment-plan
+logic, temporary financial selectors, migrations, merge, or deploy.
+
+## POL-FIN-001 dependency
+
+> POL-UI-014 is intentionally waiting for POL-FIN-001.
+> Once POL-FIN-001 is merged, PR #48 must be synchronized with latest master and consume the canonical PatientFinancialSummary contract instead of implementing local financial calculations.
+
+The Product Owner accepted POL-UI-014 as the current UI/architecture
+checkpoint. The authoritative patient financial contract and all associated
+calculations belong exclusively to POL-FIN-001 on a separate branch from
+latest `origin/master`.
 
 ---
 
