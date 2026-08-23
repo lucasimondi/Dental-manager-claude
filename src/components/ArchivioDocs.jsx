@@ -176,7 +176,7 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
 
       {/* POL-UI-005: KPI tiles had no icon at all before — icon chips added,
           each distinct (was plain colored text). */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
+      <div className="pol-document-stats">
         <StatCard icon="receipt" color={C.pri} value={fmt(totFatture)} label={`Fatture · ${docs.filter(d => d.tipo === 'fattura').length} doc.`} />
         <StatCard icon="bank" color={C.pur} value={fmt(totRimborsi)} label={`Rimborsi · ${docs.filter(d => d.tipo === 'rimborso').length} doc.`} />
         <StatCard icon="chart" color={C.suc} value={fmt(totAnno)} label={`${anno} · ${docs.filter(d => d.data?.startsWith(anno)).length} doc.`} />
