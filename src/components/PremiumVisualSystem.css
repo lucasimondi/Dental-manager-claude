@@ -386,6 +386,49 @@ body:has(.home-widget-grid) #app-scroll {
   background: rgba(27,35,51,.78);
 }
 
+/* POL-UI-013: "Consigli Poliedron" — the Home's first-class Poliedron
+   widget. Subtle brand identity (indigo/violet, the real gem mark also
+   used by the Poliedron orb), not a giant banner — a refined border/wash
+   plus a slightly stronger title than other widgets is enough to read as
+   "more important" without dominating the page. Reuses the existing
+   --pol-indigo-500/--pol-violet-500/--brand-secondary tokens (already the
+   app's indigo/violet-blue family) rather than a new hardcoded palette. */
+.home-poliedron-widget {
+  border-radius: var(--radius-lg);
+  padding: 14px 14px 4px;
+  background: linear-gradient(155deg, rgba(79,70,229,.07), rgba(124,58,237,.04) 60%, transparent);
+  border: 1px solid rgba(79,70,229,.16);
+  box-shadow: var(--shadow-sm);
+}
+.home-poliedron-widget__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.home-poliedron-widget__title { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.home-poliedron-widget__gem { width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; filter: drop-shadow(0 3px 8px rgba(79,70,229,.35)); }
+.home-poliedron-widget__label {
+  font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--pol-indigo-500);
+}
+.home-poliedron-widget__heading { font-size: 14px; font-weight: 900; color: var(--text-primary); line-height: 1.2; }
+.home-poliedron-widget__refresh {
+  display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+  border: none; background: none; cursor: pointer;
+  font-size: 11px; font-weight: 800; color: var(--pol-indigo-500);
+  min-height: 32px; padding: 4px 6px; border-radius: 8px;
+}
+.home-poliedron-widget__refresh:disabled { opacity: .5; cursor: default; }
+.home-poliedron-widget__refresh:hover:not(:disabled) { background: rgba(79,70,229,.09); }
+:root[data-theme="dark"] .home-poliedron-widget {
+  background: linear-gradient(155deg, rgba(99,102,241,.14), rgba(124,58,237,.08) 60%, transparent);
+  border-color: rgba(129,140,248,.28);
+}
+:root[data-theme="dark"] .home-poliedron-widget__label,
+:root[data-theme="dark"] .home-poliedron-widget__refresh { color: #a5b4fc; }
+
 /* Quick actions widget: real navigation only (see Dashboard.jsx onNavigate). */
 .home-section-label {
   display: flex;
@@ -733,7 +776,7 @@ body:has(.home-widget-grid) #app-scroll {
 }
 
 /* Shared ≥44px touch targets for compact list actions across Home widgets
-   (Agenda link, Prossimi appuntamenti delete, Consigli AI, Attività). */
+   (Agenda link, Prossimi appuntamenti delete, Consigli Poliedron, Attività). */
 .home-list-link {
   display: inline-flex;
   align-items: center;

@@ -13,6 +13,7 @@ import { applyWidgetPermissions, buildHomePermissions, createRolePresetLayout, f
 import { getHomeFinancialWidget, loadHomeFinancialSnapshot } from '../lib/homeFinancialWidgets.js';
 import QuickBookingModal from './QuickBookingModal.jsx';
 import { DEFAULT_QUICK_ACTION_IDS, filterQuickActionsCatalog, getQuickAction, resolveQuickActions } from '../lib/quickActionsCatalog.js';
+import poliedroGem from '../assets/icon-poliedra-gem.png';
 
 const PALETTE = [
   '#1A4E66','#2EC4B6','#2D9E61','#7C3AED','#E63946',
@@ -78,7 +79,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   }, []);
   const anno = t.slice(0, 4);
 
-  // ── Consigli AI: consulente CFO/marketing proattivo, generato in
+  // ── Consigli Poliedron: consulente CFO/marketing proattivo, generato in
   // background (genera-consigli-ai) senza che nessuno apra la chat — stesso
   // spirito del bot Richiami. Solo per admin dello studio (RLS lo impone
   // comunque) e solo al livello Premium dell'assistente (è la funzione che
@@ -130,6 +131,18 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   const [layoutLoading, setLayoutLoading] = useState(false);
   const [layoutSaving, setLayoutSaving] = useState(false);
   const [layoutError, setLayoutError] = useState('');
+  // POL-UI-013 root-cause fix: a failed background load of the saved Home
+  // layout must stay visible on the page itself, not only inside the
+  // "Personalizza Home" modal — the modal previously cleared `layoutError`
+  // unconditionally on open (see openHomeCustomizer below), so a load
+  // failure was invisible by the time the user went to check/redo their
+  // personalization, making a real backend failure look like "my changes
+  // don't persist". `loadError` is intentionally separate from the
+  // modal-scoped save error and is only cleared by a load that actually
+  // succeeds (including a manual retry).
+  const [loadError, setLoadError] = useState('');
+  const [homeLayoutReloadToken, setHomeLayoutReloadToken] = useState(0);
+  const retryHomeLayoutLoad = () => setHomeLayoutReloadToken((n) => n + 1);
   const [previewMode, setPreviewMode] = useState('desktop');
   const [mostraGraficiDash, setMostraGraficiDash] = useState(false);
   const [widgets, setWidgets] = useState(createDefaultHomeLayout);
@@ -150,19 +163,19 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
     if (!studioId || !userId) return;
     let cancelled = false;
     setLayoutLoading(true);
-    setLayoutError('');
     loadResolvedHomeLayout(supabase, studioId, userId, createRolePresetLayout(studioMembership?.capabilities))
       .then(({ layout, source, inheritedLayout: nextInherited, inheritedSource: nextInheritedSource }) => {
         if (!cancelled) {
           setWidgets(layout); setDraftWidgets(layout); setLayoutSource(source);
           setInheritedLayout(nextInherited); setInheritedSource(nextInheritedSource);
           setDraftInherits(source !== 'user');
+          setLoadError('');
         }
       })
-      .catch(() => { if (!cancelled) setLayoutError('Impossibile caricare la personalizzazione Home'); })
+      .catch(() => { if (!cancelled) setLoadError('La tua personalizzazione della Home non è stata caricata: potresti vedere il layout predefinito invece del tuo. Riprova.'); })
       .finally(() => { if (!cancelled) setLayoutLoading(false); });
     return () => { cancelled = true; };
-  }, [studioId, userId, JSON.stringify(studioMembership?.capabilities || [])]);
+  }, [studioId, userId, JSON.stringify(studioMembership?.capabilities || []), homeLayoutReloadToken]);
 
   const homePeriod = resolveHomePeriod(homePeriodId);
   const visibleWidgets = applyWidgetPermissions(widgets, HOME_WIDGET_REGISTRY, homePermissions);
@@ -879,6 +892,16 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
         </div>
       </div>
 
+      {/* POL-UI-013: page-level, persistent notice — a failed background
+          load of the saved layout must stay visible here, not only inside
+          the settings modal (see loadError declaration above for why). */}
+      {loadError && (
+        <div role="alert" data-testid="home-layout-load-error" style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: 14, padding: '10px 14px', borderRadius: 12, background: C.danL, border: `1px solid ${C.dan}`, color: C.dan, fontSize: 12, fontWeight: 700 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}><Ic n="warn" s={13} c={C.dan} />{loadError}</span>
+          <button type="button" onClick={retryHomeLayoutLoad} style={{ border: 'none', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 800, background: C.dan, color: '#fff', flexShrink: 0 }}>Riprova</button>
+        </div>
+      )}
+
       {/* ── WIDGET ORDINATI DINAMICAMENTE ──
          POL-UX-002 section 6: il selettore globale Mese/Anno è stato
          rimosso dalla Home. homePeriodId resta 'current_month' di default
@@ -953,11 +976,17 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           if (!consigliAttivi) return null;
           const nonLetti = consigli.filter((c) => !c.letto);
           return (
-            <div key="consigli_ai" style={{ marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="compass" s={11} c={C.txm} />Consigli AI</div>
-                <button onClick={rigeneraConsigli} disabled={consigliLoading} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: consigliLoading ? 'default' : 'pointer', fontSize: 11, fontWeight: 700, color: C.pri, opacity: consigliLoading ? 0.5 : 1 }}>
-                  {consigliLoading ? 'Genero…' : <><Ic n="refresh" s={11} c={C.pri} />Rigenera</>}
+            <div key="consigli_ai" className="home-poliedron-widget" style={{ marginBottom: 16 }}>
+              <div className="home-poliedron-widget__header">
+                <div className="home-poliedron-widget__title">
+                  <img src={poliedroGem} alt="" aria-hidden="true" className="home-poliedron-widget__gem" />
+                  <div>
+                    <div className="home-poliedron-widget__label">Poliedron</div>
+                    <div className="home-poliedron-widget__heading">Consigli Poliedron</div>
+                  </div>
+                </div>
+                <button onClick={rigeneraConsigli} disabled={consigliLoading} className="home-poliedron-widget__refresh">
+                  {consigliLoading ? 'Genero…' : <><Ic n="refresh" s={11} c="currentColor" />Rigenera</>}
                 </button>
               </div>
               {consigliErr && <div style={{ fontSize: 11, color: C.dan, marginBottom: 8 }}>{consigliErr}</div>}
