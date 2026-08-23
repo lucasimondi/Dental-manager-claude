@@ -15,8 +15,8 @@ test('mobile shell uses a definite dynamic viewport flex chain', () => {
   assert.match(premium, /\.app-shell--mobile[\s\S]*height:\s*100dvh;[\s\S]*min-height:\s*100dvh;/);
 });
 
-test('mobile content reserves only the physical safe area', () => {
-  assert.match(app, /paddingBottom:\s*isMobile\s*\?\s*'env\(safe-area-inset-bottom, 0px\)'\s*:\s*28/);
+test('mobile content reserves only the physical safe area outside Agenda', () => {
+  assert.match(app, /paddingBottom:\s*isMobile\s*\?\s*\(page === 'agenda' \? 0 : 'env\(safe-area-inset-bottom, 0px\)'\)\s*:\s*28/);
   assert.match(app, /scrollPaddingBottom:\s*isMobile\s*\?\s*'calc\(94px \+ env\(safe-area-inset-bottom, 0px\)\)'/);
   assert.doesNotMatch(app, /paddingBottom:[\s\S]{0,120}92px/);
   assert.doesNotMatch(premium, /padding[^;\n]*92px/);
@@ -26,6 +26,7 @@ test('mobile content reserves only the physical safe area', () => {
 test('Agenda keeps its own inner scroll while other pages use app-scroll', () => {
   assert.match(app, /overflowY:\s*isMobile && page === 'agenda'\s*\?\s*'hidden'\s*:\s*'auto'/);
   assert.match(app, /display:\s*isMobile && page === 'agenda'\s*\?\s*'flex'/);
+  assert.match(app, /page === 'agenda' \? 0 : 'env\(safe-area-inset-bottom, 0px\)'/);
   assert.doesNotMatch(agenda, /dockH|dock \(84px/);
 });
 

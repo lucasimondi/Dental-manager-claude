@@ -1,51 +1,37 @@
 # Current task
 
-- TASK: POL-AI-005B
-- TITLE: Transactional Action Planner — Phase B (CONFIRM → ACT → VERIFY)
-- OWNER: CLAUDE
-- BRANCH: `feature/POL-AI-005B-confirm-act-verify`
-- BASE: `master` (POL-AI-005A merged as `c442c6f`, PR #46)
-- STATUS: `WAITING_PRODUCT_OWNER` — draft PR open, not merged, not deployed.
+- TASK: POL-UI-004-AGENDA-FULLSCREEN
+- TITLE: Mobile Agenda full-screen viewport fix
+- OWNER: COPILOT
+- BRANCH: `lucasimondi-agenda-mobile-fullscreen`
+- BASE: `master`
+- STATUS: `WAITING_PRODUCT_OWNER` — implementation complete, not merged, not deployed.
 
 ## Objective
 
-Complete the real write path the POL-AI-005A planner deliberately left
-unimplemented: UNDERSTAND → RESOLVE → PLAN → PREVIEW → CONFIRM → ACT →
-VERIFY for the six representative workflows (A–F) the Product Owner
-specified — treatment-item + pending-payment creation, treatment-plan
-creation with dedup, marking items completed, and the two
-unknown-tooth-at-entry variants feeding a live POL-AI-004 Data Health
-signal. Built new `src/lib/domain/treatmentPlanService.js` /
-`paymentService.js` (reusable domain services, extracted from
-`Piani.jsx`/`Pagamenti.jsx`'s canonical business rules) and
-`src/lib/poliedron/planner/actionExecutor.js` (the real sequential/batched
-executor, SUCCESS/PARTIAL/FAILED, no auto-rollback), plus the real
-`PoliedronActionPreviewLevel2.jsx` confirmation UI wired end-to-end through
-`Poliedron.jsx`/`poliedraCore.js`.
+Remove the lower dead strip from the mobile Agenda so its calendar surface
+reaches the real dynamic viewport bottom while preserving the existing
+MobileDock, Poliedron, `+` button, header, controls, and Agenda behavior.
+
+## Completed scope
+
+- Agenda-only mobile shell bottom-padding correction.
+- Regression coverage for the Agenda safe-area exception.
+- Responsive browser measurements at 375x667, 390x844, 393x852, and
+  430x932 in light and dark themes.
+- Full test suite and production build.
 
 ## Safety boundaries
 
-- No schema migration — none was needed or performed.
-- No merge, no deploy without explicit Product Owner approval.
-- All writes route through the new domain services (never a parallel
-  Poliedron-only write path, never raw Supabase calls from the planner/
-  executor); `Poliedron.jsx` is the only place the real `DB` singleton is
-  imported for this feature.
-- Every write is preceded by a fresh re-read (TOCTOU-safe), a fresh
-  permission re-check, and a fresh patient re-resolution (tampered-plan
-  defense-in-depth) — see the POL-AI-005B handoff entry for the full
-  security review.
+- No MobileDock or Poliedron styling/positioning changes.
+- No Agenda business-logic or desktop behavior changes.
+- No schema, RLS, dependency, environment, or production changes.
+- No merge or deploy without explicit Product Owner approval.
 
 ## Exact next action
 
-Product Owner reviews the updated draft PR #47 (branch above), now
-including the Workflow G addendum: the full "Era il 46" complete-missing-
-tooth round-trip (parser → planner → preview → executor → Data Health
-clearing) and the `pickTargetPlanForNewItem` ambiguity hardening — both
-implemented per the Product Owner's own resolution of the three prior
-open decisions. See `docs/coordination/handoffs.md`'s "POL-AI-005B
-Addendum: Workflow G" entry for full detail. Do not merge or deploy
-without explicit approval.
+Product Owner visually verifies the mobile Agenda on the target iPhone.
+Do not merge or deploy without explicit approval.
 
 ---
 

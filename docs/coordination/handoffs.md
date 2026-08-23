@@ -1180,3 +1180,24 @@ or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
 - MERGEABLE_STATE: clean at push time (see the PR's own status check).
 - PRODUCT_OWNER_DECISION_REQUIRED: none new. The three items from the prior handoff entry are now either resolved (decisions 1 and 2, implemented above) or already accepted (decision 3, the patientId re-validation fix, kept unchanged per instruction).
 - Exact next action: Product Owner reviews the updated draft PR #47 — Workflow G's full round-trip, the target-plan hardening, and the extended security review. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+
+## POL-UI-004-AGENDA-FULLSCREEN mobile Agenda viewport completion
+
+- Task ID: POL-UI-004-AGENDA-FULLSCREEN.
+- Previous agent: Claude, whose completed POL-AI-005B task was already `WAITING_PRODUCT_OWNER`; the Product Owner directly authorized this new Agenda task.
+- Agent: Copilot.
+- Branch: `lucasimondi-agenda-mobile-fullscreen`.
+- Objective: make the mobile Agenda calendar surface reach the real dynamic viewport bottom without moving or resizing MobileDock, Poliedron, the `+` button, or changing Agenda behavior.
+- ROOT_CAUSE: the `100dvh` shell and Agenda flex chain were already correct, but mobile `#app-scroll` still applied `padding-bottom: env(safe-area-inset-bottom)`. Agenda owns its own inner scroller while the fixed dock independently applies that same safe-area inset to its bottom offset. The shell padding therefore shortened the Agenda content box before the physical viewport bottom and exposed the shell background as a lower strip.
+- COMPLETED_WORK: made `#app-scroll` use zero bottom layout padding only when the active mobile page is Agenda. Other mobile pages retain physical safe-area padding. Existing `scrollPaddingBottom`, Agenda flex sizing, inner grid scrolling, dock positioning, and desktop layout remain unchanged.
+- FILES_CHANGED: `src/App.jsx`; `tests/mobileShell.test.mjs`; `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- DATABASE_CHANGES: none.
+- DEPLOYMENT_IMPACT: frontend-only layout change; no migration, environment, dependency, or production deployment change.
+- RESPONSIVE_QA: real Chromium harness rendered the real `Agenda.jsx` and production styles at 375x667, 390x844, 393x852, and 430x932 in both light and dark themes. In all eight runs, Agenda bottom and grid-scroller bottom exactly equaled `window.innerHeight`, horizontal overflow was `0`, and body scroll overflow was `0`. The unchanged dock remained 64px high and 16px above the viewport bottom in the harness.
+- TESTS_EXECUTED: `node --test tests\mobileShell.test.mjs tests\agendaSlots.test.mjs`; `npm.cmd test`; `npm.cmd run build`; `git diff --check`.
+- TEST_RESULTS: focused tests 10/10 passed; full suite 325/325 passed; Vite production build succeeded. Build retained pre-existing warnings for the `pdfjs-dist` `eval`, one malformed legacy CSS comment token, and chunk sizes.
+- UNRESOLVED_ISSUES: none in implementation. Product Owner real-device visual verification remains required.
+- RISKS: the browser harness cannot emulate a non-zero hardware safe-area inset, but the corrected branch is explicit and deterministic: Agenda receives zero shell bottom padding while the unchanged fixed dock continues to consume `env(safe-area-inset-bottom)` in its own offset.
+- ROLLBACK: revert the commit containing this handoff; this restores the prior shared mobile safe-area padding behavior.
+- COMMIT: recorded by the commit containing this handoff.
+- Exact next action: Product Owner visually verifies mobile Agenda on the target iPhone. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.

@@ -543,10 +543,12 @@ export default function App() {
         flexDirection: isMobile && page === 'agenda' ? 'column' : undefined,
         padding: 13,
         paddingTop: isMobile ? 'calc(13px + env(safe-area-inset-top, 0px))' : 13,
-        // POL-UI-011: fixed controls overlay the page and never reserve
-        // visible layout height. scroll-padding keeps programmatic focus
-        // targets clear of the 68px orb without creating a bottom strip.
-        paddingBottom: isMobile ? 'env(safe-area-inset-bottom, 0px)' : 28,
+        // Agenda owns an inner scroller and must extend beneath the floating
+        // dock through the physical safe area. Other pages keep the shell's
+        // safe-area padding because their content scrolls here instead.
+        paddingBottom: isMobile
+          ? (page === 'agenda' ? 0 : 'env(safe-area-inset-bottom, 0px)')
+          : 28,
         scrollPaddingBottom: isMobile ? 'calc(94px + env(safe-area-inset-bottom, 0px))' : undefined,
         // POL-UI-004 Agenda mobile final: the Agenda grid should read as an
         // almost-fullscreen surface, not a page floating inside the app's
