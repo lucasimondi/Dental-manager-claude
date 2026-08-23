@@ -1,33 +1,57 @@
 # Current task
 
-- TASK: POL-UI-012
-- TITLE: Mobile Document KPI sizing
+- TASK: POL-AI-004
+- TITLE: Poliedron Proactive Intelligence Engine
 - OWNER: COPILOT
-- BRANCH: `lucasimondi-pol-ui-012-mobile-document-kpis`
-- BASE REVIEW: `master@c82b69a` (PR #41 merged)
+- BRANCH: `lucasimondi-feature-pol-ai-004-proactive-intelligenc`
+- BASE REVIEW: `master@93dfe6a` (PR #43 merged)
 - STATUS: `WAITING_PRODUCT_OWNER`
-- PR: draft PR #42
+- PR: pending new draft PR
 
 ## Objective
 
-Correct the top Documenti KPI cards on mobile so their values remain proportionate and contained at 375px, 390px, and 430px widths. Preserve desktop/tablet presentation and shared `StatCard` behavior elsewhere by scoping the responsive correction to Documenti.
+Build the deterministic, explainable, permission-aware and tenant-safe
+Poliedron Intelligence layer described by the Product Owner specification and
+`docs/mission/POLIEDRA_MISSION.md`. It must scan canonical structured data
+without Model Gateway calls, separate priority from confidence, expose
+patient-level reasons and Studio Data Health, and render grouped findings in
+the approved Poliedron UI.
 
-The Product Owner explicitly authorized POL-UI-012 as a new hotfix after PR #41 merged to `master@c82b69a`. COPILOT owns this dedicated branch.
+The Product Owner explicitly authorized POL-AI-004 through the coordinating
+session after PR #43 merged to `master@93dfe6a`. COPILOT owns this dedicated
+worktree and task.
 
 ## Safety boundaries
 
-- Frontend-only: no Supabase migration, RLS/RBAC/auth/financial formula/production change.
-- No dependency additions or unrelated refactors.
-- Use synthetic/local browser QA only; do not access production data.
-- Keep shared `StatCard` defaults unchanged outside the Documenti page.
+- Read and recommend only: no autonomous contact, booking, WhatsApp, status
+  change, record completion or other write.
+- No Supabase schema, migration, RLS, RBAC, auth, finance formula, production
+  data, production state, deploy or merge change.
+- Reuse already-authorized loaded/query data and existing capability gates;
+  fail closed on missing tenant identity or permission.
+- Use only synthetic/local data for tests and browser QA.
 
 ## Completion state
 
-The top Documenti KPI grid now keeps the existing three-column presentation above 520px and switches to full-width rows on narrow phones. Currency values gain Documenti-scoped overflow protection and tabular numerals; shared `StatCard` defaults and every other caller remain unchanged. Focused and full regression tests, production build, safety/scope checks, and real Chrome QA at 375x812, 390x844, and 430x932 in Light and Dark pass.
+The deterministic intelligence layer, canonical source adapters, transparent
+scoring/confidence, Studio Data Health, bounded tenant/version/fingerprint
+cache, semantic query routing and grouped approved-panel renderer are
+implemented. Clinical facts use exact existing capabilities; assignment-bound
+PT/massage roles fail closed because Poliedron does not have an authoritative
+assigned-patient scope. Scanner discovery makes zero Model Gateway calls and
+performs no writes.
+
+All 225 Node tests pass, including POL-AI-004 A-N, explainability, optional
+field, aggregate determinism, cache, cross-tenant, permission and 5,000-patient
+performance coverage. Production build passes. Real Chrome QA passes at
+390x844, 768x1024 and 1440x900 in Light and Dark with no horizontal overflow,
+mobile dock recede and desktop Edge Dock preserved. Diff, conflict-marker,
+added-secret, dependency-manifest, schema/scope and review gates pass.
 
 ## Exact next action
 
-Product Owner reviews the new POL-UI-012 draft PR after creation. Do not deploy or merge without explicit approval.
+Product Owner reviews the new draft POL-AI-004 PR after creation. Do not
+deploy or merge without explicit approval.
 
 ---
 

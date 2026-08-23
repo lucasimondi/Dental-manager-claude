@@ -10,6 +10,7 @@ import { runModelTask, MODEL_TASK_TYPE } from './modelGateway.js';
 import { resolveCommandAlias } from './commandAliases.js';
 import { cercaPazienti } from '../ricercaPazienti.js';
 import { resolvePrescriptionRequest } from './prescriptionWorkflow.js';
+import { classifyIntelligenceQuery, scanPatientOpportunities } from './intelligence/index.js';
 import {
   loadCanonicalFinancialSnapshot, selectCanonicalMetrics, MANAGEMENT_CONTROL_MODES,
 } from '../canonicalFinancialSelectors.js';
@@ -91,6 +92,25 @@ export async function processQuery({ query, context, permissions, sources = {}, 
         context,
       }),
       suggestedActions: [],
+    };
+  }
+
+  const intelligenceIntent = classifyIntelligenceQuery(q);
+  if (intelligenceIntent) {
+    const intelligence = scanPatientOpportunities({
+      studioId: context?.studioId,
+      vertical: context?.vertical,
+      permissions: permissions?.intelligence,
+      sources,
+    });
+    return {
+      intent: intelligenceIntent.type,
+      entities: intelligenceIntent.entities,
+      answer: null,
+      confirmationRequired: false,
+      suggestedActions: [],
+      searchResults: [],
+      intelligence,
     };
   }
 

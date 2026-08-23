@@ -3,7 +3,7 @@ import PoliedronEdgeDock from './PoliedronEdgeDock';
 import PoliedronMobileDock from './PoliedronMobileDock';
 import PoliedronPanel from './PoliedronPanel';
 import { NAVIGATION_INDEX } from '../../lib/poliedron/navigationIndex';
-import { filterNavigationIndex, isActionAllowed } from '../../lib/poliedron/permissionEngine';
+import { buildIntelligencePermissions, filterNavigationIndex, isActionAllowed } from '../../lib/poliedron/permissionEngine';
 import { ACTION_REGISTRY } from '../../lib/poliedron/actionRegistry';
 import { buildContext } from '../../lib/poliedron/contextEngine';
 import { processQuery } from '../../lib/poliedron/poliedraCore';
@@ -15,7 +15,7 @@ import { processQuery } from '../../lib/poliedron/poliedraCore';
    SAME component's state/panel — never two AI systems (§16 same
    identity, one Poliedra AI Core). */
 export default function Poliedron({
-  isMobile, page, setPage, patients, goSchedaPaz,
+  isMobile, page, setPage, patients, plans, appointments, richiami, impegni, goSchedaPaz,
   features, isStudioAdmin, vertical, studioId, currentPatient,
   quickActionCtx, supabaseClient, onArchivioFilterHint, openPrescription, openNew, openBooking,
 }) {
@@ -35,6 +35,10 @@ export default function Poliedron({
   const actions = useMemo(
     () => ACTION_REGISTRY.filter((a) => isActionAllowed(a, { ...permissionCtx, quickActionCtx })),
     [permissionCtx, quickActionCtx]
+  );
+  const intelligencePermissions = useMemo(
+    () => buildIntelligencePermissions(quickActionCtx?.permissions),
+    [quickActionCtx?.permissions]
   );
 
   const context = useMemo(
@@ -71,8 +75,19 @@ export default function Poliedron({
     processQuery({
       query: q,
       context,
-      permissions: { managementControl: permissionCtx.features?.controllo_gestione === true && !!isStudioAdmin },
-      sources: { patients, navigationIndex, actions },
+      permissions: {
+        managementControl: permissionCtx.features?.controllo_gestione === true && !!isStudioAdmin,
+        intelligence: intelligencePermissions,
+      },
+      sources: {
+        patients,
+        plans,
+        appointments,
+        recalls: richiami,
+        activities: impegni,
+        navigationIndex,
+        actions,
+      },
       supabaseClient,
       allowModel,
     }).then((result) => {
@@ -95,7 +110,7 @@ export default function Poliedron({
       setState({ answer: 'Non riesco a completare la richiesta in questo momento. Riprova.' });
       setLoading(false);
     });
-  }, [context, permissionCtx, isStudioAdmin, patients, navigationIndex, actions, supabaseClient, setPage, onArchivioFilterHint, close]);
+  }, [context, permissionCtx, intelligencePermissions, isStudioAdmin, patients, plans, appointments, richiami, impegni, navigationIndex, actions, supabaseClient, setPage, onArchivioFilterHint, close]);
 
   useEffect(() => {
     if (!open) return;
@@ -122,7 +137,7 @@ export default function Poliedron({
   }), [setPage, goSchedaPaz, openPrescription, openNew, openBooking]);
 
   const handleSelectResult = useCallback((item) => {
-    if (item.kind === 'patient') { goSchedaPaz?.(item.data); close(); return; }
+    if (item.kind === 'patient' || item.kind === 'intelligence-patient') { goSchedaPaz?.(item.data?.patient || item.data); close(); return; }
     if (item.kind === 'section') {
       const destination = item.data?.page || item.id;
       if (destination === 'archivio') onArchivioFilterHint?.(item.data?.filtroTipo || 'tutti');

@@ -325,7 +325,7 @@ export default function App() {
               try {
                 const { id: tempId, ...rest } = item;
                 const saved = await DB.insert(key, rest);
-                setLocal((curr) => curr.map((x) => (x.id === tempId ? { ...x, id: saved.id } : x)));
+                setLocal((curr) => curr.map((x) => (x.id === tempId ? { ...x, ...saved } : x)));
               } catch (e) {
                 console.error('insert', key, e);
                 errori.push(e?.message || String(e));
@@ -600,6 +600,10 @@ export default function App() {
         page={page}
         setPage={navigateFromPoliedron}
         patients={patients}
+        plans={plans}
+        appointments={appointments}
+        richiami={richiami}
+        impegni={impegni}
         goSchedaPaz={goSchedaPaz}
         features={features}
         isStudioAdmin={isStudioAdmin}

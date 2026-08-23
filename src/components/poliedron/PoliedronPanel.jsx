@@ -5,6 +5,7 @@ import PoliedronSearchResults, { countFlatItems, flatItemAt } from './PoliedronS
 import PoliedronActionPreview from './PoliedronActionPreview';
 import PoliedronConversation from './PoliedronConversation';
 import PoliedronSuggestionBoard from './PoliedronSuggestionBoard';
+import PoliedronIntelligenceResults from './PoliedronIntelligenceResults';
 
 /* POL-AI-001 §4-5, §25, §30-32 — the command panel itself. Pure
    presentation + local UI state (query text, keyboard highlight) — all
@@ -97,6 +98,8 @@ export default function PoliedronPanel({
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: isMobile ? '12px 14px' : '14px 16px' }}>
           {loading ? (
             <div className="poliedron-loading-card"><span className="poliedron-loading-card__pulse" />Poliedron sta verificando…</div>
+          ) : state?.intelligence ? (
+            <PoliedronIntelligenceResults intelligence={state.intelligence} onOpenPatient={onSelectResult} />
           ) : state?.answer != null ? (
             <PoliedronConversation query={query} answer={state.answer} loading={loading} />
           ) : state?.confirmationRequired ? (

@@ -684,3 +684,140 @@
 - Deployment impact: frontend CSS/markup bundle only; no deployment performed.
 - Product Owner decision required: none.
 - Exact next action: Product Owner reviews draft PR #42. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+
+## POL-AI-004 Poliedron Proactive Intelligence Engine
+
+- Task ID: POL-AI-004.
+- Previous agent: COPILOT completed POL-UI-012; the Product Owner authorized
+  POL-AI-004 through the coordinating session and transferred ownership to
+  this dedicated worktree.
+- Branch: local app-managed
+  `lucasimondi-feature-pol-ai-004-proactive-intelligenc`, based on
+  `master@93dfe6a` with merged PR #43. The exact requested remote branch is
+  `feature/POL-AI-004-proactive-intelligence`.
+- Objective: implement a reusable deterministic, explainable,
+  permission-aware and tenant-safe Poliedron intelligence layer that audits
+  canonical data, identifies patient opportunities and data-quality gaps,
+  separates priority from confidence, exposes non-clinical Studio Data Health,
+  consumes zero model tokens while scanning, and renders grouped results
+  inside the approved Poliedron UI.
+- Mission alignment: implementation follows
+  `docs/mission/POLIEDRA_MISSION.md`: facts first, deterministic scanners and
+  scoring second, Poliedron presentation third, model interpretation only
+  where it adds language value. The scanner is READ + RECOMMEND only.
+- Completed work:
+  - audited the existing App/DB contracts for patients, plans and plan voices,
+    appointments, recalls, configured prevention/hygiene and activities;
+  - added tenant-filtered, indexed scanners for future appointments,
+    reliably unfinished accepted care, recalls, prevention, explicit/unique
+    patient activities, required workflow completeness and stale quote
+    follow-up;
+  - made missing/ambiguous execution state Data Quality rather than unfinished
+    treatment, and made no-future-appointment evidence supporting only;
+  - added exact transparent weights, confidence and missing-data penalties,
+    human-readable reasons, source/sourceId context, stable grouping and
+    deterministic ordering;
+  - added explicitly non-clinical Studio Data Health, including `Non
+    disponibile` for unauthorized/unevaluable scope rather than a false 100;
+  - added a bounded five-minute in-memory cache keyed by studio, scanner
+    version, date, vertical, permissions and relevant source fingerprint;
+  - added semantic deterministic routing for appointment candidates,
+    callbacks, at-risk/lost patients, unfinished care, no next appointment,
+    incomplete records and Studio Data Health;
+  - added `DA CONTATTARE` / `DATI DA COMPLETARE` patient cards, visible
+    reasons, priority/confidence and `Apri paziente` inside the existing panel;
+  - preserved mobile Orb/dock and desktop Edge Dock architecture with no
+    Poliedron redesign and no scanner write/action path.
+- Permission/security review:
+  - a dedicated security review found that the first implementation collapsed
+    PT/massage `clinicalContent` into tenant-wide facts. Fixed by deriving
+    intelligence permission from exact capabilities: only
+    `clinical.general`/`clinical.physiotherapist` can expose plans; assignment-
+    bound PT/massage capabilities fail closed without authoritative patient
+    scope;
+  - a high-confidence code review found ordinary calendar commitments could
+    become contact recommendations, unrelated recalls could suppress hygiene,
+    unevaluable Data Health could report 100, and UTC date boundaries could
+    shift Italian-day classification. Fixed with explicit open-task state,
+    same-window clinical recall de-duplication, unavailable health state and
+    local calendar-date derivation;
+  - the final correctness pass also found optimistic inserts were not merging
+    authoritative `studio_id`, statusless plans skipped independent execution
+    quality, unrelated clinical recalls could still suppress hygiene, and an
+    undated hygiene record could make chronology ambiguous. Fixed by merging
+    complete saved rows, continuing status-independent checks, requiring an
+    explicit hygiene recall subject, and downgrading ambiguous chronology to
+    Data Quality. The closure pass also made unresolved explicit activity
+    patient IDs fail closed without name fallback and corrected hygiene due
+    today so only strictly past dates are called overdue.
+- Files changed:
+  - wiring/routing/permissions: `src/App.jsx`,
+    `src/lib/poliedron/poliedraCore.js`,
+    `src/lib/poliedron/permissionEngine.js`,
+    `src/components/poliedron/Poliedron.jsx`,
+    `src/components/poliedron/PoliedronPanel.jsx`;
+  - approved-panel result UI:
+    `src/components/poliedron/PoliedronIntelligenceResults.jsx`;
+  - intelligence engine: all files under
+    `src/lib/poliedron/intelligence/`;
+  - regression coverage: `tests/poliedronIntelligence.test.mjs`;
+  - architecture/source/scoring/cache/permission documentation:
+    `docs/architecture/POL-AI-004-proactive-intelligence.md`;
+  - coordination: `docs/coordination/current-task.md`,
+    `docs/coordination/handoffs.md`.
+- Database changes: none. No Supabase schema, migration, RLS, RBAC, auth,
+  financial formula, production data or production state changed.
+- Dependency changes: none. `npm ci --ignore-scripts` restored locked local
+  dependencies after the initial build found Vite absent. `playwright-core`
+  was installed transiently with `--no-save --package-lock=false` for Chrome
+  QA; package manifests and lockfile are unchanged.
+- Tests executed:
+  - focused POL-AI-004/Poliedron suites throughout implementation;
+  - final full `npm test`;
+  - final `npm run build`;
+  - `git diff --check`, conflict-marker scan, added-secret scan,
+    dependency-manifest/schema/scope inspection and `npm audit`;
+  - real Chrome synthetic-component QA at 390x844, 768x1024 and 1440x900 in
+    Light and Dark;
+  - dedicated security review and high-confidence code review.
+- Test results: final full Node suite passes 225/225. It includes all required
+  A-N cases, explainability, complete workflow/no optional-field penalty,
+  deterministic Studio Data Health, tenant/cache separation, capability and
+  5,000-patient indexed performance coverage. The production Vite/PWA build
+  passes. Only the pre-existing `pdfjs-dist` eval warning, malformed legacy
+  CSS comment warning and large-chunk warnings remain.
+- Performance: the 5,000-patient/plans synthetic scan, including future
+  appointment and name-indexed activity data, completes in the observed local
+  range of approximately 0.82–2.36 seconds under concurrent load, below the
+  five-second regression ceiling.
+  Complexity is linear for filtering/indexing/scanning plus `O(K log K)`
+  result ordering; no patient-by-plan or activity-by-patient full nested scan.
+- Browser QA: six of six Chrome cases pass. Every case verifies both result
+  groups, two patient actions, panel/article bounds, no horizontal overflow,
+  and correct theme. 390 verifies the full-screen mobile panel and receded,
+  non-interactive mobile dock; 768/1440 verify desktop panel mode and the
+  existing expanded-state Edge Dock. Screenshots are retained only in session
+  artifacts; the temporary harness and runner files were deleted.
+- Dependency/security result: `npm audit` reports the repository's unchanged
+  existing 9 advisories (2 moderate, 5 high, 2 critical). POL-AI-004 changes
+  no dependency file and adds no package. Diff secret/conflict scans pass.
+- Unresolved issues/limitations:
+  - `impegni_personali` has no canonical patient relation; ordinary calendar
+    items are ignored, and only explicit open-task state plus explicit patient
+    id or one unique exact full name can produce a signal;
+  - PT/massage intelligence remains fail closed until an authoritative
+    assigned-patient scope is available to Poliedron;
+  - prevention requires recorded execution and configured due dates and is
+    currently limited to reliable dental hygiene representation;
+  - cache is browser-process memory only; shared persistent/incremental cache
+    requires a future separately approved server-side design.
+- Risks: the engine reads the same RLS-scoped snapshots already loaded by App
+  and filters exact `studio_id` again. Browser capability checks minimize data
+  but do not replace RLS. No production data was used.
+- Rollback: revert the POL-AI-004 commits. No database, data, migration,
+  dependency, production or deployment rollback is required.
+- Deployment impact: frontend bundle only; no deploy performed.
+- Product Owner decision required: none.
+- Exact next action: Product Owner reviews the new draft POL-AI-004 PR after
+  creation. Do not merge or deploy without explicit approval. Status:
+  `WAITING_PRODUCT_OWNER`.
