@@ -39,3 +39,18 @@ export const isActionAllowed = (action, ctx) => {
 };
 
 export const filterActions = (actions, ctx) => actions.filter((action) => isActionAllowed(action, ctx));
+
+export const buildIntelligencePermissions = (homePermissions = {}) => {
+  const activeMember = homePermissions.activeMember === true;
+  const capabilities = new Set(Array.isArray(homePermissions.capabilities) ? homePermissions.capabilities : []);
+  const tenantWideClinical = capabilities.has('clinical.general') || capabilities.has('clinical.physiotherapist');
+  const tenantWideOperations = capabilities.has('home.owner')
+    || capabilities.has('home.front_desk')
+    || tenantWideClinical;
+  return Object.freeze({
+    activeMember,
+    operations: activeMember && tenantWideOperations,
+    clinical: activeMember && tenantWideClinical,
+    financial: activeMember && homePermissions.managementControl === true,
+  });
+};

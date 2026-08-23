@@ -76,7 +76,7 @@ test('ROOT CAUSE: the background load effect no longer resets draftWidgets/draft
   // Strip `//` line comments before asserting absence — the fix is
   // explained in a comment that necessarily *names* the calls it removed,
   // so a plain substring/regex check must only look at real code.
-  const effectCode = effectBody.split('\n').map((line) => line.replace(/\/\/.*$/, '')).join('\n');
+  const effectCode = effectBody.split(/\r?\n/).map((line) => line.replace(/\/\/.*$/, '')).join('\n');
   // Must still keep `widgets` (the committed, non-editing state) in sync.
   assert.match(effectCode, /setWidgets\(layout\)/);
   // Must NOT touch draftWidgets/draftInherits — those are modal-scoped

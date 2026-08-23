@@ -291,6 +291,13 @@ test('768px is explicitly desktop mode: the existing <720 breakpoint shows Edge 
   assert.match(premiumCss, /@media \(min-width: 720px\)\s*\{[\s\S]*\.poliedron-mobile-dock \{ display: none; \}/);
 });
 
+test('desktop panel animation preserves the translateX centering contract', () => {
+  assert.match(
+    premiumCss,
+    /@keyframes poliedron-panel-pop\s*\{[^}]*translateX\(-50%\)[^}]*\}[^}]*to\s*\{\s*transform:\s*translateX\(-50%\)/s
+  );
+});
+
 // ---------------------------------------------------------------------------
 // §26 — desktop: side switching
 // ---------------------------------------------------------------------------

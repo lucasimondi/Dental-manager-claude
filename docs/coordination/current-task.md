@@ -1,28 +1,77 @@
 # Current task
 
-- TASK: POL-UI-013
-- TITLE: Dashboard modular workspace + Poliedron centrality (Phase 1)
-- OWNER: CLAUDE
-- BRANCH: `feature/POL-UI-013-dashboard-modular-workspace`
-- BASE: `master@93dfe6a` (POL-UI-012 merged)
+- TASK: POL-AI-004
+- TITLE: Poliedron Proactive Intelligence Engine
+- OWNER: COPILOT
+- BRANCH: `lucasimondi-feature-pol-ai-004-proactive-intelligenc`
+- BASE REVIEW: `master@590b8ca` (PR #44 merged)
 - STATUS: `WAITING_PRODUCT_OWNER`
+- PR: draft PR #45
 
 ## Objective
 
-Phase 1 of an app-wide premium workspace redesign, scoped to Dashboard/Home only. Make Poliedron more central on the Dashboard, rename "Consigli AI" to "Consigli Poliedron", fix the Home personalization persistence bug, add real drag & drop + small/medium/large widget sizing, and raise the visual/professional bar — while reusing the existing POL-UI-001/POL-UX-001 widget registry and persistence layer rather than duplicating it.
+Build the deterministic, explainable, permission-aware and tenant-safe
+Poliedron Intelligence layer described by the Product Owner specification and
+`docs/mission/POLIEDRA_MISSION.md`. It must scan canonical structured data
+without Model Gateway calls, separate priority from confidence, expose
+patient-level reasons and Studio Data Health, and render grouped findings in
+the approved Poliedron UI.
 
-The Product Owner authorized POL-UI-013 directly, the same way POL-UI-012 was authorized directly after PR #41 merged.
+The Product Owner explicitly authorized POL-AI-004 through the coordinating
+session after PR #43 merged to `master@93dfe6a`. COPILOT owns this dedicated
+worktree and task.
 
 ## Safety boundaries
 
-- Frontend-only unless a schema change is explicitly PO-approved; no new Supabase migration is authored silently.
-- No RLS/RBAC/auth/financial-formula/canonical-KPI/patient-data/Poliedron-AI-engine change.
-- No page other than Dashboard/Home touched except shared UI primitives when strictly necessary.
-- Do not merge without explicit Product Owner approval.
+- Read and recommend only: no autonomous contact, booking, WhatsApp, status
+  change, record completion or other write.
+- No Supabase schema, migration, RLS, RBAC, auth, finance formula, production
+  data, production state, deploy or merge change.
+- Reuse already-authorized loaded/query data and existing capability gates;
+  fail closed on missing tenant identity or permission.
+- Use only synthetic/local data for tests and browser QA.
+
+## Completion state
+
+The deterministic intelligence layer, canonical source adapters, transparent
+scoring/confidence, Studio Data Health, bounded tenant/version/fingerprint
+cache, semantic query routing and grouped approved-panel renderer are
+implemented. Clinical facts use exact existing capabilities; assignment-bound
+PT/massage roles fail closed because Poliedron does not have an authoritative
+assigned-patient scope. Scanner discovery makes zero Model Gateway calls and
+performs no writes.
+
+PR #45 now contains current `master@590b8ca` and preserves PR #44's modular
+Dashboard workspace, `Consigli Poliedron`, drag/drop, resize and personalization
+race fix. Reconciliation also fixed a CRLF-only PR #44 test failure, narrow
+mobile `Consigli Poliedron` containment, the desktop Poliedron panel animation's
+centering contract, and an over-broad schedule-query intelligence route.
+
+All 258 Node tests pass, including current master and POL-AI-004 A-N,
+Dashboard personalization, explainability, optional
+field, aggregate determinism, cache, cross-tenant, permission and 5,000-patient
+performance coverage. Production build passes. Real Chrome QA passes at
+390x844, 768x1024 and 1440x900 in Light and Dark for both proactive Poliedron
+results and the modular Dashboard/Consigli surface, with no horizontal
+overflow or console errors; mobile dock recede and desktop Edge Dock are
+preserved. Diff, conflict-marker, added-secret, dependency-manifest,
+schema/scope, security and review gates pass.
 
 ## Exact next action
 
-POL-UI-013 (widgets/UI) and POL-UI-013B (production DB audit — tables/RLS already correct) are complete. A third pass, POL-UI-013C, found and fixed the actual application-side root cause: a state race in `Dashboard.jsx`'s background layout-load effect could silently overwrite an in-progress, unsaved "Personalizza Home" edit if the load resolved while the modal was already open. See the "POL-UI-013C Personalization save/load root cause" handoff entry for the full trace, fix, and a short LIVE_QA_SCRIPT for the Product Owner to run against production (this sandbox still does not authenticate into production). Product Owner reviews draft PR #44; do not merge without explicit approval.
+Product Owner reviews draft PR #45. Do not
+deploy or merge without explicit approval.
+
+---
+
+# Historical record: POL-UI-013 (merged to master)
+
+- Branch: `feature/POL-UI-013-dashboard-modular-workspace` — PR #44, merged to
+  `master` as `590b8ca`.
+- Objective: Dashboard modular workspace, `Consigli Poliedron`, touch/mouse
+  drag-and-drop, widget resize and the personalization load/save race fix.
+- Full detail: see `docs/coordination/handoffs.md` ("POL-UI-013 Dashboard
+  modular workspace + Poliedron centrality" and subsequent audit/race entries).
 
 ---
 
