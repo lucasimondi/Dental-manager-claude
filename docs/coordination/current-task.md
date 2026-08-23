@@ -1,66 +1,62 @@
 # Current task
 
-- TASK: POL-AI-004
-- TITLE: Poliedron Proactive Intelligence Engine
-- OWNER: COPILOT
-- BRANCH: `lucasimondi-feature-pol-ai-004-proactive-intelligenc`
-- BASE REVIEW: `master@590b8ca` (PR #44 merged)
-- STATUS: `WAITING_PRODUCT_OWNER`
-- PR: draft PR #45
+- TASK: POL-AI-005A
+- TITLE: Transactional Action Planner — Foundation (Phase A: UNDERSTAND → RESOLVE → PLAN only)
+- OWNER: CLAUDE
+- BRANCH: `feature/POL-AI-005-transactional-action-planner`
+- BASE: `master@ab1bd27` (POL-AI-004 merged as PR #45)
+- STATUS: `IN_PROGRESS`
 
 ## Objective
 
-Build the deterministic, explainable, permission-aware and tenant-safe
-Poliedron Intelligence layer described by the Product Owner specification and
-`docs/mission/POLIEDRA_MISSION.md`. It must scan canonical structured data
-without Model Gateway calls, separate priority from confidence, expose
-patient-level reasons and Studio Data Health, and render grouped findings in
-the approved Poliedron UI.
+Phase A only, per explicit Product Owner scoping: build the read-only
+foundation for a future transactional action planner that lets Poliedron
+turn a natural-language clinical/financial request ("segna devitalizzazione
+16 di Isa Bergese come eseguita") into a structured, non-executing Action
+Plan — deterministic parsing, patient/procedure resolution contracts, a
+tooth model that represents incomplete-but-valid clinical data, and
+planners for representative workflows. Explicitly NOT in scope: CONFIRM →
+ACT → VERIFY, any real committed clinical/payment write, migrations, or
+merge. The Product Owner authorized POL-AI-005A directly, the same way
+POL-AI-004/POL-UI-013 were authorized directly after their predecessors
+merged.
 
-The Product Owner explicitly authorized POL-AI-004 through the coordinating
-session after PR #43 merged to `master@93dfe6a`. COPILOT owns this dedicated
-worktree and task.
+Note: `docs/coordination/current-task.md` still described POL-AI-004 as
+`WAITING_PRODUCT_OWNER` with a draft PR at the time this task started, but
+`ab1bd27`'s commit message ("POL-AI-004: Poliedron proactive intelligence
+engine (#45)", single parent, authored by the Product Owner account) shows
+PR #45 was squash-merged to master — this file simply had not been updated
+to reflect that yet. Corrected below.
 
 ## Safety boundaries
 
-- Read and recommend only: no autonomous contact, booking, WhatsApp, status
-  change, record completion or other write.
-- No Supabase schema, migration, RLS, RBAC, auth, finance formula, production
-  data, production state, deploy or merge change.
-- Reuse already-authorized loaded/query data and existing capability gates;
-  fail closed on missing tenant identity or permission.
-- Use only synthetic/local data for tests and browser QA.
-
-## Completion state
-
-The deterministic intelligence layer, canonical source adapters, transparent
-scoring/confidence, Studio Data Health, bounded tenant/version/fingerprint
-cache, semantic query routing and grouped approved-panel renderer are
-implemented. Clinical facts use exact existing capabilities; assignment-bound
-PT/massage roles fail closed because Poliedron does not have an authoritative
-assigned-patient scope. Scanner discovery makes zero Model Gateway calls and
-performs no writes.
-
-PR #45 now contains current `master@590b8ca` and preserves PR #44's modular
-Dashboard workspace, `Consigli Poliedron`, drag/drop, resize and personalization
-race fix. Reconciliation also fixed a CRLF-only PR #44 test failure, narrow
-mobile `Consigli Poliedron` containment, the desktop Poliedron panel animation's
-centering contract, and an over-broad schedule-query intelligence route.
-
-All 258 Node tests pass, including current master and POL-AI-004 A-N,
-Dashboard personalization, explainability, optional
-field, aggregate determinism, cache, cross-tenant, permission and 5,000-patient
-performance coverage. Production build passes. Real Chrome QA passes at
-390x844, 768x1024 and 1440x900 in Light and Dark for both proactive Poliedron
-results and the modular Dashboard/Consigli surface, with no horizontal
-overflow or console errors; mobile dock recede and desktop Edge Dock are
-preserved. Diff, conflict-marker, added-secret, dependency-manifest,
-schema/scope, security and review gates pass.
+- Phase A is READ + PLAN only: no Supabase writes from any new code, no
+  migration, no schema/RLS/RBAC change, no merge, no deploy.
+- Do not implement CONFIRM/ACT/VERIFY or any real committed write — those
+  are explicitly Phase B.
+- Reuse existing domain/canonical functions and permission gates; do not
+  invent architecture or duplicate financial formulas.
 
 ## Exact next action
 
-Product Owner reviews draft PR #45. Do not
-deploy or merge without explicit approval.
+In progress this session — see the POL-AI-005A handoff entry once filed,
+and `docs/architecture/POL-AI-005A-domain-audit.md` /
+`docs/architecture/POL-AI-005A-planner-foundation.md` for the audit and
+Phase B handoff.
+
+---
+
+# Historical record: POL-AI-004 (merged to master)
+
+- Branch: `lucasimondi-feature-pol-ai-004-proactive-intelligenc` — PR #45,
+  squash-merged to `master` as `ab1bd27`.
+- Objective: deterministic, explainable, permission-aware, tenant-safe
+  Poliedron proactive intelligence layer — canonical source adapters,
+  transparent scoring/confidence, Studio Data Health, bounded cache,
+  semantic query routing, grouped approved-panel renderer. Zero Model
+  Gateway calls for discovery; no writes.
+- Full detail: see `docs/coordination/handoffs.md` ("POL-AI-004..." entries)
+  and `docs/architecture/POL-AI-004-proactive-intelligence.md`.
 
 ---
 
