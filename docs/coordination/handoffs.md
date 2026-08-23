@@ -1180,3 +1180,110 @@ or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
 - MERGEABLE_STATE: clean at push time (see the PR's own status check).
 - PRODUCT_OWNER_DECISION_REQUIRED: none new. The three items from the prior handoff entry are now either resolved (decisions 1 and 2, implemented above) or already accepted (decision 3, the patientId re-validation fix, kept unchanged per instruction).
 - Exact next action: Product Owner reviews the updated draft PR #47 — Workflow G's full round-trip, the target-plan hardening, and the extended security review. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+
+## POL-UI-004-AGENDA-FULLSCREEN mobile Agenda viewport completion
+
+- Task ID: POL-UI-004-AGENDA-FULLSCREEN.
+- Previous agent: Claude, whose completed POL-AI-005B task was already `WAITING_PRODUCT_OWNER`; the Product Owner directly authorized this new Agenda task.
+- Agent: Copilot.
+- Branch: `lucasimondi-agenda-mobile-fullscreen`.
+- Objective: make the mobile Agenda calendar surface reach the real dynamic viewport bottom without moving or resizing MobileDock, Poliedron, the `+` button, or changing Agenda behavior.
+- ROOT_CAUSE: the `100dvh` shell and Agenda flex chain were already correct, but mobile `#app-scroll` still applied `padding-bottom: env(safe-area-inset-bottom)`. Agenda owns its own inner scroller while the fixed dock independently applies that same safe-area inset to its bottom offset. The shell padding therefore shortened the Agenda content box before the physical viewport bottom and exposed the shell background as a lower strip.
+- COMPLETED_WORK: made `#app-scroll` use zero bottom layout padding only when the active mobile page is Agenda. Other mobile pages retain physical safe-area padding. Existing `scrollPaddingBottom`, Agenda flex sizing, inner grid scrolling, dock positioning, and desktop layout remain unchanged.
+- FILES_CHANGED: `src/App.jsx`; `tests/mobileShell.test.mjs`; `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- DATABASE_CHANGES: none.
+- DEPLOYMENT_IMPACT: frontend-only layout change; no migration, environment, dependency, or production deployment change.
+- RESPONSIVE_QA: real Chromium harness rendered the real `Agenda.jsx` and production styles at 375x667, 390x844, 393x852, and 430x932 in both light and dark themes. In all eight runs, Agenda bottom and grid-scroller bottom exactly equaled `window.innerHeight`, horizontal overflow was `0`, and body scroll overflow was `0`. The unchanged dock remained 64px high and 16px above the viewport bottom in the harness.
+- TESTS_EXECUTED: `node --test tests\mobileShell.test.mjs tests\agendaSlots.test.mjs`; `npm.cmd test`; `npm.cmd run build`; `git diff --check`.
+- TEST_RESULTS: focused tests 10/10 passed; full suite 325/325 passed; Vite production build succeeded. Build retained pre-existing warnings for the `pdfjs-dist` `eval`, one malformed legacy CSS comment token, and chunk sizes.
+- UNRESOLVED_ISSUES: none in implementation. Product Owner real-device visual verification remains required.
+- RISKS: the browser harness cannot emulate a non-zero hardware safe-area inset, but the corrected branch is explicit and deterministic: Agenda receives zero shell bottom padding while the unchanged fixed dock continues to consume `env(safe-area-inset-bottom)` in its own offset.
+- ROLLBACK: revert the commit containing this handoff; this restores the prior shared mobile safe-area padding behavior.
+- COMMIT: recorded by the commit containing this handoff.
+- Exact next action: Product Owner visually verifies mobile Agenda on the target iPhone. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+
+## POL-UI-004-AGENDA-FLOATING-CONTROLS
+
+- Task ID: POL-UI-004-AGENDA-FLOATING-CONTROLS.
+- Previous agent: Copilot, continuing immediately after approved commit `8fc48cb`.
+- Agent: Copilot.
+- Branch: `lucasimondi-agenda-mobile-fullscreen`.
+- Objective: remove structural mobile Agenda chrome and float month, filter, WhatsApp, view selector, and week strip above the full-height scrolling timeline.
+- COMPLETED_WORK: the mobile `DayStrip` is now an absolute overlay; its month label, conditional filter/WhatsApp controls, view selector, and week strip use independent translucent token-based surfaces with blur and shadow. The timeline begins at the same top coordinate as the overlay and scrolls beneath it. Desktop rendering and the month view remain structurally unchanged.
+- FILES_CHANGED: `src/components/Agenda.jsx`; `src/components/PremiumVisualSystem.css`; `tests/mobileShell.test.mjs`; `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- DATABASE_CHANGES: none.
+- DEPLOYMENT_IMPACT: frontend-only; no migration, dependency, environment, or production change.
+- RESPONSIVE_QA: real Chromium harness rendered the real Agenda at 375x667, 390x844, 393x852, and 430x932 in light and dark themes. In all eight runs the floating controls and grid shared the same top coordinate, the grid bottom equaled `window.innerHeight`, body and horizontal overflow were both `0`, and the timeline retained its single inner vertical scroller.
+- TESTS_EXECUTED: `npm.cmd test`; `npm.cmd run build`; `git diff --check`.
+- TEST_RESULTS: 326/326 tests passed; Vite build succeeded with only the pre-existing `pdfjs-dist` eval, malformed legacy CSS comment token, and chunk-size warnings.
+- UNRESOLVED_ISSUES: none in implementation; Product Owner visual verification remains required.
+- RISKS: controls intentionally overlay the earliest visible timeline rows, per the requested "reticolo che scorre sotto" behavior.
+- ROLLBACK: revert the commit containing this handoff.
+- COMMIT: recorded by the commit containing this handoff.
+- Exact next action: Product Owner visually verifies the floating controls and under-scrolling grid on iPhone. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+
+## POL-UI-004-AGENDA-V2 specification completion
+
+- Task ID: POL-UI-004-AGENDA-V2.
+- Previous agent: Copilot, continuing from commits `8fc48cb` and `654f862`.
+- Agent: Copilot.
+- Branch: `lucasimondi-agenda-mobile-fullscreen`.
+- Objective: complete the full Product Owner specification for floating mobile Agenda controls, a dynamic day strip, today-only red-ring styling, and complete top/bottom time scrolling.
+- ARCHITECTURE: the custom Agenda grid, not FullCalendar, is the repository implementation. Mobile controls are measured with `ResizeObserver` and absolutely overlaid above the calendar layer. The measured overlay height feeds an internal top spacer; a separate internal bottom spacer clears the unchanged fixed dock. Neither spacer affects the outer page height.
+- DYNAMIC_DAY_SOURCE: new pure helper `getVisibleWeekDays` is the single filtering implementation used by both the week grid and every floating week-strip page. It reads the existing `agenda_settings.hiddenWeekdays`, preserves the existing all-hidden fail-safe, and updates when live studio settings change.
+- COMPLETED_WORK: one-day mode now renders one day; week mode renders exactly the configured 7/6/5/3/1 visible days with no placeholders; columns use dynamic `repeat(week.length, minmax(0, 1fr))`; the shared 34px time gutter and hidden mobile scrollbar keep strip/grid centers aligned; month mode hides the weekly strip and keeps only appropriate floating controls; mobile today styling is a transparent semantic-danger ring and mobile grid columns no longer receive today/weekend background bands.
+- SCROLL: the first configured slot rests fully below the measured overlay at scroll top; the last configured slot can scroll above the dock at scroll bottom; the grid remains the only vertical scroller and continues to the viewport bottom.
+- FILES_CHANGED: `src/components/Agenda.jsx`; `src/components/PremiumVisualSystem.css`; `src/lib/agendaVisibleDays.js`; `tests/agendaVisibleDays.test.mjs`; `tests/mobileShell.test.mjs`; `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- DATABASE_CHANGES: none.
+- DEPLOYMENT_IMPACT: frontend-only; no schema, RLS, dependency, environment, or production deployment change.
+- RESPONSIVE_QA: real Chromium at 375x667, 390x844, 393x852, and 430x932 in light/dark. All eight runs had grid bottom equal to viewport bottom and zero body/horizontal overflow. Today rendered with transparent background and `--danger` border.
+- DYNAMIC_DAY_QA: live settings changes were exercised for 7, 6, 5, 3, and 1 visible days. Strip and grid counts matched in every case, no placeholders remained, and measured column-center deltas were below 1px (maximum 0.8px).
+- VIEW_QA: Week showed the configured dynamic set; Day rendered one strip item and one grid column; Month rendered floating controls without a weekly strip.
+- SCROLL_QA: with configured 06:00–22:00 hours at 390x844, 06:00 was fully below the overlay at scroll top; at maximum scroll, 21:00 ended 53.9px above the unchanged dock.
+- TESTS_EXECUTED: `node --test tests\agendaVisibleDays.test.mjs tests\mobileShell.test.mjs tests\agendaSlots.test.mjs`; `npm.cmd test`; `npm.cmd run build`; `git diff --check`.
+- TEST_RESULTS: focused tests 14/14 passed; full suite 329/329 passed; isolated Vite build succeeded. A first build run concurrent with the QA dev server hit an esbuild process crash; rerunning after stopping that server succeeded. Existing eval/CSS-comment/chunk-size warnings remain unchanged.
+- UNRESOLVED_ISSUES: none in implementation; Product Owner real-device visual verification remains required.
+- RISKS: top and bottom reachability use internal spacers sized from the measured overlay and established dock clearance; no outer Agenda padding was reintroduced.
+- ROLLBACK: revert the commit containing this handoff, then revert `654f862` if the entire floating-UI change must be removed. Commit `8fc48cb` remains the full-screen baseline.
+- COMMIT: recorded by the commit containing this handoff.
+- Exact next action: push the branch, then Product Owner visually verifies the complete mobile Agenda V2 on iPhone. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+
+## POL-UI-004-AGENDA-V2 mobile appointment action sheet clearance
+
+- Task ID: POL-UI-004-AGENDA-V2.
+- Previous agent: Copilot, continuing PR #50 on the existing Agenda branch.
+- Agent: Copilot.
+- Branch: `lucasimondi-agenda-mobile-fullscreen`.
+- Objective: keep the mobile appointment action menu fully visible and reachable above the unchanged floating MobileDock at every supported phone height, without changing desktop or appointment behavior.
+- ROOT_CAUSE: the appointment menu reused the generic viewport-bottom modal sheet. Its internal safe-area spacer protected the physical screen edge but did not account for the independently fixed 64px MobileDock plus its canonical 16px bottom offset, so the final action could sit behind the dock.
+- COMPLETED_WORK: mobile-only appointment menu classes now create a floating sheet whose bottom padding and responsive `max-height` use a CSS custom property derived from the canonical `MOBILE_DOCK_BOTTOM` and `MOBILE_DOCK_HEIGHT` constants. The action list scrolls internally with contained overscroll; the redundant internal mobile safe-area spacer is hidden because the outer dock-aware offset consumes the safe area exactly once. Desktop retains the existing generic modal geometry.
+- FILES_CHANGED: `src/components/Agenda.jsx`; `src/components/PremiumVisualSystem.css`; `tests/mobileShell.test.mjs`; `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- DATABASE_CHANGES: none.
+- DEPLOYMENT_IMPACT: frontend-only mobile geometry; no schema, RLS, dependency, environment, migration, or production deployment change.
+- RESPONSIVE_QA: isolated real Chromium harness with backend fetches blocked rendered the real Agenda menu and production styles at 375x667, 390x844, 393x852, and 430x932 in light and dark. All eight runs measured exactly 12px between sheet bottom and dock top, exposed the final action, retained an internal `overflow-y:auto` action region, provided backdrop closure, and had zero horizontal overflow.
+- TESTS_EXECUTED: `node --test tests\mobileShell.test.mjs tests\agendaVisibleDays.test.mjs tests\agendaSlots.test.mjs tests\waBatchSender.test.mjs`; `npm.cmd test`; `npm.cmd run build`; `git diff --check`. No lint script exists.
+- TEST_RESULTS: focused Agenda suite 20/20 passed; full suite 330/330 passed; Vite production build succeeded with only the pre-existing eval, malformed CSS-comment, and chunk-size warnings.
+- UNRESOLVED_ISSUES: none in implementation; Product Owner real-device visual verification remains required.
+- RISKS: the 12px visual gap is menu-specific while dock height and bottom offset remain imported from their canonical source; any future dock geometry change automatically updates the protected zone.
+- ROLLBACK: revert the commit containing this handoff.
+- Exact next action: Product Owner visually verifies the appointment action sheet on the Vercel preview. Do not merge or deploy production without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+
+## POL-UI-004-AGENDA-QUICK-HUB
+
+- Task ID: POL-UI-004-AGENDA-QUICK-HUB.
+- Previous agent: Copilot, continuing PR #50 directly on preserved commit `1031421`.
+- Agent: Copilot.
+- Branch: `lucasimondi-agenda-mobile-fullscreen`.
+- Objective: add a mobile-only appointment Quick Action Hub above both the unchanged floating `+` and MobileDock, reusing existing patient, recall, activity, and singleton Poliedron workflows without changing desktop or appointment logic.
+- COMPLETED_WORK: added `Chiama`, `Scheda`, `Richiamo`, and `Attività` actions to the mobile appointment sheet; wired patient detail and recall through their existing App navigation/form paths; added optional, removable, and changeable patient selection to the existing Home activity modal; preserved generic activities and stored an optional patient association as a backward-compatible patient-name prefix in the existing `todos.testo` field, per the Product Owner decision; added a contextual mini-input that opens the one existing Poliedron instance with the authoritative patient ID and appointment context while retaining its existing query, preview, confirmation, and execution pipeline; reset contextual input between appointments; and extended sheet clearance/max-height to protect the unchanged floating `+` as well as the canonical dock.
+- FILES_CHANGED: `src/App.jsx`; `src/components/Agenda.jsx`; `src/components/Dashboard.jsx`; `src/components/PremiumVisualSystem.css`; `src/components/Richiami.jsx`; `src/components/poliedron/Poliedron.jsx`; `src/lib/appointmentQuickHub.js`; `src/lib/poliedron/contextEngine.js`; `tests/appointmentQuickHub.test.mjs`; `tests/mobileShell.test.mjs`; `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- DATABASE_CHANGES: none. No migration, table, field, policy, RLS, or production data change. The existing nullable-in-practice activity behavior is preserved through the existing text column.
+- DEPLOYMENT_IMPACT: frontend-only behavior on mobile Agenda and the existing activity/recall/Poliedron UI paths; no dependency, environment, backend, migration, or production deployment change.
+- RESPONSIVE_QA: an isolated real Chromium harness rendered the real Agenda and production styles at 375x667, 390x844, 393x852, and 430x932 in both light and dark. Every run measured a 12px sheet-to-floating-`+` gap, an 80px sheet-to-dock gap, a reachable final action after internal scrolling, and zero horizontal overflow. A 375x420 reduced-height keyboard proxy kept the focused Poliedron input inside the scrollable sheet. Browser action checks passed the authoritative patient ID and appointment ID through Scheda, Richiamo, Attività, and Poliedron callbacks.
+- TESTS_EXECUTED: `node --test tests\appointmentQuickHub.test.mjs tests\mobileShell.test.mjs tests\poliedron.test.mjs tests\actionExecutorWorkflowG.test.mjs`; `npm.cmd test`; `npm.cmd run build`; `git diff --check`. No lint script exists.
+- TEST_RESULTS: focused integration/regression suite 91/91 passed; full suite 335/335 passed; Vite production build succeeded with only the pre-existing pdf.js eval, malformed legacy CSS-comment, and chunk-size warnings; diff check clean.
+- UNRESOLVED_ISSUES: none in implementation. Product Owner visual verification on the PR #50 preview and target iPhone remains required.
+- RISKS: optional patient association is intentionally presentation-level in `todos.testo`, not a queryable relation, because the repository contains no proven patient column and the Product Owner explicitly rejected an unproven migration for this task. Future structured activity-patient reporting requires a separate schema decision.
+- ROLLBACK: revert the commit containing this handoff; commit `1031421` remains the preserved dock-aware popup baseline.
+- COMMIT: recorded by the commit containing this handoff.
+- Exact next action: Product Owner visually verifies all Quick Hub actions, optional activity association, contextual Poliedron behavior, and dock/FAB clearance on PR #50. Do not merge or deploy production without explicit approval. Status: `WAITING_PRODUCT_OWNER`.

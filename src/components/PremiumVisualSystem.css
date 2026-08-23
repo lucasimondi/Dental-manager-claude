@@ -36,6 +36,224 @@
     overflow-x: hidden;
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
+
+  /* Agenda chrome is an overlay, not a header. The timeline remains the
+     full-height page surface and scrolls beneath these independent controls. */
+  .agenda-mobile-floating-controls {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    pointer-events: none;
+  }
+  .agenda-mobile-floating-controls button,
+  .agenda-mobile-floating-controls [role="button"],
+  .agenda-mobile-floating-controls .agenda-floating-interactive,
+  .agenda-mobile-floating-week-strip {
+    pointer-events: auto;
+  }
+  .agenda-mobile-floating-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 4px 4px;
+  }
+  .agenda-mobile-floating-month,
+  .agenda-view-picker,
+  .agenda-mobile-floating-controls .pol-icon-btn {
+    border: 1px solid var(--border-medium) !important;
+    background: color-mix(in srgb, var(--surface-interactive) 88%, transparent) !important;
+    box-shadow: var(--shadow-sm) !important;
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+  }
+  .agenda-mobile-floating-month {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 5px 11px;
+    border-radius: 999px;
+  }
+  .agenda-mobile-floating-week-strip {
+    margin-inline: 0;
+    margin-bottom: 4px !important;
+    border-inline: 0 !important;
+    background: color-mix(in srgb, var(--surface-interactive) 88%, transparent) !important;
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+  }
+  .agenda-mobile-day-item {
+    min-height: var(--pol-touch-min);
+    justify-content: center;
+  }
+  .agenda-mobile-day-number {
+    box-sizing: border-box;
+    border: 2px solid transparent;
+  }
+  .agenda-mobile-day-number.is-today {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
+  }
+  .agenda-mobile-day-number.is-selected:not(.is-today) {
+    border-color: color-mix(in srgb, var(--brand-primary) 42%, transparent);
+    background: color-mix(in srgb, var(--brand-primary) 10%, transparent);
+    color: var(--brand-primary);
+  }
+  .agenda-mobile-selection-toolbar {
+    margin: 0 4px 4px !important;
+    padding: 6px;
+    border: 1px solid var(--border-medium);
+    border-radius: var(--pol-radius-md);
+    background: color-mix(in srgb, var(--surface-interactive) 92%, transparent);
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+  }
+  .agenda-mobile-grid-surface {
+    position: relative;
+    z-index: 0;
+  }
+  .agenda-mobile-calendar-scroller {
+    scrollbar-width: none;
+  }
+  .agenda-mobile-calendar-scroller::-webkit-scrollbar {
+    display: none;
+  }
+  .agenda-mobile-scroll-spacer {
+    flex: 0 0 auto;
+    width: 100%;
+    background: var(--surface-interactive);
+    pointer-events: none;
+  }
+  .agenda-mobile-scroll-spacer--top {
+    height: var(--agenda-mobile-overlay-clearance, 0px);
+  }
+  .agenda-mobile-scroll-spacer--bottom {
+    height: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+  .agenda-mobile-month-surface {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-top: var(--agenda-mobile-overlay-clearance, 0px);
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    scrollbar-gutter: stable;
+  }
+
+  .agenda-appointment-menu-backdrop {
+    box-sizing: border-box;
+    padding:
+      calc(env(safe-area-inset-top, 0px) + 12px)
+      12px
+      calc(max(var(--agenda-mobile-dock-offset), var(--agenda-mobile-fab-offset)) + env(safe-area-inset-bottom, 0px) + 12px);
+  }
+  .agenda-appointment-menu-sheet {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: calc(
+      100dvh
+      - env(safe-area-inset-top, 0px)
+      - max(var(--agenda-mobile-dock-offset), var(--agenda-mobile-fab-offset))
+      - env(safe-area-inset-bottom, 0px)
+      - 24px
+    );
+    border-radius: 18px;
+  }
+  .agenda-appointment-menu-header {
+    flex: 0 0 auto;
+  }
+  .agenda-appointment-menu-actions {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .agenda-appointment-menu-safe-area {
+    display: none;
+  }
+  .agenda-quick-hub-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+    margin-bottom: 9px;
+  }
+  .agenda-quick-hub-action {
+    min-height: var(--pol-touch-min);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 10px;
+    border: 1px solid var(--border-medium);
+    border-radius: var(--pol-radius-md);
+    background: var(--surface-interactive);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 750;
+    text-align: left;
+  }
+  .agenda-quick-hub-action:disabled {
+    opacity: .46;
+  }
+  .agenda-quick-hub-poliedron {
+    margin-bottom: 9px;
+    padding: 9px;
+    border: 1px solid color-mix(in srgb, var(--brand-primary) 28%, var(--border-medium));
+    border-radius: var(--pol-radius-md);
+    background: color-mix(in srgb, var(--brand-primary) 6%, var(--surface-interactive));
+  }
+  .agenda-quick-hub-poliedron__label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 7px;
+    color: var(--brand-primary);
+    font-size: 11px;
+    font-weight: 800;
+  }
+  .agenda-quick-hub-poliedron__input-row {
+    display: flex;
+    gap: 6px;
+  }
+  .agenda-quick-hub-poliedron__input-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 9px 10px;
+    border: 1px solid var(--border-medium);
+    border-radius: 10px;
+    background: var(--surface-interactive);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 12px;
+  }
+  .agenda-quick-hub-poliedron__input-row button {
+    width: var(--pol-touch-min);
+    min-height: var(--pol-touch-min);
+    border: 0;
+    border-radius: 10px;
+    background: var(--brand-primary);
+  }
+  .agenda-quick-hub-poliedron__input-row button:disabled {
+    opacity: .42;
+  }
+  .agenda-quick-hub-poliedron__loading {
+    margin-top: 6px;
+    color: var(--text-secondary);
+    font-size: 11px;
+  }
+  .agenda-quick-hub-divider {
+    margin: 2px 4px 4px;
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
 }
 
 /* POL-UI-004 — app-wide (not Home-scoped): every interactive Crd (the

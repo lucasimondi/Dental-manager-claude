@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase.js';
-import { Crd, Bdg, Modal, Ic, Btn, Fld, Sel, Inp, Txt, TimePicker } from './ui';
+import { Crd, Bdg, Modal, Ic, Btn, Fld, Sel, Inp, Txt, TimePicker, SelettorePaziente } from './ui';
 import { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
 import { C, fmt, fmtD, today } from '../lib/utils';
 import { BarChart, Bar, LineChart, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -15,6 +15,7 @@ import QuickBookingModal from './QuickBookingModal.jsx';
 import { DEFAULT_QUICK_ACTION_IDS, filterQuickActionsCatalog, getQuickAction, resolveQuickActions } from '../lib/quickActionsCatalog.js';
 import poliedroGem from '../assets/icon-poliedra-gem.png';
 import { logHomeLayoutEvent } from '../lib/homeLayoutDiagnostics.js';
+import { buildActivityText } from '../lib/appointmentQuickHub.js';
 
 const PALETTE = [
   '#1A4E66','#2EC4B6','#2D9E61','#7C3AED','#E63946',
@@ -43,7 +44,7 @@ const saveTheme = (t) => { try { localStorage.setItem('dm_theme', JSON.stringify
 
 const getSaluto = (nome) => { const ora = new Date().getHours(); const s = ora < 12 ? 'Buongiorno' : ora < 18 ? 'Buon pomeriggio' : 'Buonasera'; if (!nome) return s; return s + ', ' + nome.trim().split(' ')[0]; };
 
-export default function Dashboard({ patients, appointments, setAppointments, payments, plans, richiami = [], impegni = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, onNavigate, onNavigateNew, templates, userName: userNameProp, si, features, studioId, isStudioAdmin, studioMembership }) {
+export default function Dashboard({ patients, appointments, setAppointments, payments, plans, richiami = [], impegni = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, onNavigate, onNavigateNew, templates, userName: userNameProp, si, features, studioId, isStudioAdmin, studioMembership, activityPatientRequest, onActivityPatientRequestHandled }) {
   const homePermissions = buildHomePermissions({ membership: studioMembership, features, vertical: si?.vertical });
   const roleLayout = createRolePresetLayout(studioMembership?.capabilities);
   const availableWidgetCatalog = filterWidgetCatalog(HOME_WIDGET_REGISTRY, homePermissions);
@@ -289,7 +290,27 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   const [todoList, setTodoList] = useState([]);
   const [todoInput, setTodoInput] = useState('');
   const [todoModal, setTodoModal] = useState(false);
+  const [todoPatientId, setTodoPatientId] = useState('');
+  const [todoPatientSearch, setTodoPatientSearch] = useState('');
   const [todoLoading, setTodoLoading] = useState(false);
+  const openGenericTodoModal = () => {
+    setTodoPatientId('');
+    setTodoPatientSearch('');
+    setTodoModal(true);
+  };
+  const closeTodoModal = () => {
+    setTodoModal(false);
+    setTodoPatientId('');
+    setTodoPatientSearch('');
+  };
+  useEffect(() => {
+    if (!activityPatientRequest?.patient) return;
+    setTodoInput('');
+    setTodoPatientId(String(activityPatientRequest.patient.id));
+    setTodoPatientSearch('');
+    setTodoModal(true);
+    onActivityPatientRequestHandled?.(activityPatientRequest.id);
+  }, [activityPatientRequest?.id]);
   useEffect(() => {
     loadTodos();
     // Realtime: aggiorna automaticamente quando cambiano i todo
@@ -337,9 +358,15 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
 
   const addTodo = async () => {
     if (!todoInput.trim()) return;
-    const nuova = { id: Date.now(), testo: todoInput.trim(), fatto: false, data: t };
+    const patient = patients.find((item) => String(item.id) === String(todoPatientId));
+    const nuova = { id: Date.now(), testo: buildActivityText(todoInput, patient), fatto: false, data: t };
     const { error } = await supabase.from('todos').insert([nuova]);
-    if (!error) { setTodoList(prev => [nuova, ...prev]); setTodoInput(''); }
+    if (!error) {
+      setTodoList(prev => [nuova, ...prev]);
+      setTodoInput('');
+      setTodoPatientId('');
+      setTodoPatientSearch('');
+    }
   };
 
   const toggleTodo = async (id) => {
@@ -905,10 +932,23 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
       )}
 
       {todoModal && (
-        <Modal title="+ Nuova attività" onClose={() => setTodoModal(false)}>
-          <textarea value={todoInput} onChange={e => setTodoInput(e.target.value)} autoFocus rows={4} placeholder={isDentistico ? 'es. Richiamare Rossi per RX&#10;es. Ordinare viti Nobel 4.3mm' : 'es. Richiamare Rossi per controllo&#10;es. Ordinare materiale ambulatorio'} style={{ width: '100%', padding: '11px 12px', border: `1.5px solid ${C.brd}`, borderRadius: 10, fontSize: 13, color: C.txt, background: C.sur, boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }} />
+        <Modal title="+ Nuova attività" onClose={closeTodoModal}>
+          <Fld label="Titolo">
+            <textarea value={todoInput} onChange={e => setTodoInput(e.target.value)} autoFocus rows={4} placeholder={isDentistico ? 'es. Chiamare per preventivo' : 'es. Chiamare per controllo'} style={{ width: '100%', padding: '11px 12px', border: `1.5px solid ${C.brd}`, borderRadius: 10, fontSize: 13, color: C.txt, background: C.sur, boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }} />
+          </Fld>
+          <Fld label="Paziente (opzionale)">
+            <SelettorePaziente
+              patients={patients}
+              value={todoPatientId}
+              onChange={(id) => setTodoPatientId(id || '')}
+              search={todoPatientSearch}
+              onSearchChange={setTodoPatientSearch}
+              placeholder="Nessun paziente"
+            />
+            {todoPatientId && <button type="button" onClick={() => setTodoPatientId('')} style={{ marginTop: 5, padding: 0, border: 0, background: 'none', color: C.txm, fontSize: 11, cursor: 'pointer' }}>Rimuovi associazione</button>}
+          </Fld>
           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-            <Btn ch="Annulla" v="sec" onClick={() => setTodoModal(false)} full />
+            <Btn ch="Annulla" v="sec" onClick={closeTodoModal} full />
             <Btn ch="Aggiungi" onClick={() => { addTodo(); setTodoModal(false); }} dis={!todoInput.trim()} full />
           </div>
         </Modal>
@@ -963,7 +1003,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           const quickActionContext = {
             onNavigate, onNavigateNew, onGoAgenda, onGoRichiami,
             openBooking: () => setBookingOpen(true),
-            openTodoModal: () => setTodoModal(true),
+            openTodoModal: openGenericTodoModal,
           };
           const activeActions = resolveQuickActions(w.config?.actions, { permissions: homePermissions, features, vertical: si?.vertical });
           return (
@@ -1076,7 +1116,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
             <Crd style={{ marginBottom: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span style={{ fontSize: 12, fontWeight: 700 }}>Attività {todoAttivi.length > 0 && <span style={{ background: C.dan, color: '#fff', borderRadius: 8, padding: '1px 6px', fontSize: 10 }}>{todoAttivi.length}</span>}</span>
-                <button className="home-list-link" onClick={() => setTodoModal(true)} style={{ background: C.pri, color: '#fff' }}>+ Aggiungi</button>
+                <button className="home-list-link" onClick={openGenericTodoModal} style={{ background: C.pri, color: '#fff' }}>+ Aggiungi</button>
               </div>
               {todoLoading && <div style={{ fontSize: 12, color: C.txl, textAlign: 'center', padding: '8px 0' }}>Caricamento...</div>}
               {!todoLoading && todoAttivi.length === 0 && <div style={{ fontSize: 12, color: C.txl, textAlign: 'center', padding: '8px 0' }}>Nessuna attività in sospeso</div>}

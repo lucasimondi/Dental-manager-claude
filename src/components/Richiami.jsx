@@ -16,7 +16,7 @@ const CATEGORIE_FILTRO = [
    (generaRichiamiBot, vedi anche l'effetto automatico in App.jsx) oppure
    creati a mano qui. "Scansiona ora" forza un ricalcolo immediato, utile
    per le condizioni che dipendono solo dal passare dei giorni (standby). */
-export default function Richiami({ patients, plans, payments, appointments, richiami, setRichiami, templates, features, onOpenPaz, si, autoOpenNew, onAutoOpenNewHandled }) {
+export default function Richiami({ patients, plans, payments, appointments, richiami, setRichiami, templates, features, onOpenPaz, si, autoOpenNew, onAutoOpenNewHandled, initialPatientRequest, onInitialPatientRequestHandled }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const [filtroCategoria, setFiltroCategoria] = useState('tutte');
   const [mostraFatti, setMostraFatti] = useState(false);
@@ -29,14 +29,16 @@ export default function Richiami({ patients, plans, payments, appointments, rich
   // Arrivo da un'azione rapida della Home ("Richiamo"): apre subito il vero
   // modale "Nuovo richiamo" (stesso apri usato dal tasto "+" qui sotto).
   useEffect(() => {
-    if (autoOpenNew) {
-      setForm({ pazienteId: '', categoria: 'generico', motivo: '', dataScadenza: today() });
+    if (autoOpenNew || initialPatientRequest?.patient) {
+      const patient = initialPatientRequest?.patient;
+      setForm({ pazienteId: patient?.id != null ? String(patient.id) : '', categoria: 'generico', motivo: '', dataScadenza: today() });
       setPazSearch('');
       setModal(true);
-      onAutoOpenNewHandled && onAutoOpenNewHandled();
+      if (autoOpenNew) onAutoOpenNewHandled?.();
+      if (initialPatientRequest?.id) onInitialPatientRequestHandled?.(initialPatientRequest.id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoOpenNew]);
+  }, [autoOpenNew, initialPatientRequest?.id]);
 
   const scansiona = () => {
     const { proposte, daRimuovere } = generaRichiamiBot({ patients, plans, payments, appointments, richiami });

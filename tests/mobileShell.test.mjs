@@ -15,8 +15,8 @@ test('mobile shell uses a definite dynamic viewport flex chain', () => {
   assert.match(premium, /\.app-shell--mobile[\s\S]*height:\s*100dvh;[\s\S]*min-height:\s*100dvh;/);
 });
 
-test('mobile content reserves only the physical safe area', () => {
-  assert.match(app, /paddingBottom:\s*isMobile\s*\?\s*'env\(safe-area-inset-bottom, 0px\)'\s*:\s*28/);
+test('mobile content reserves only the physical safe area outside Agenda', () => {
+  assert.match(app, /paddingBottom:\s*isMobile\s*\?\s*\(page === 'agenda' \? 0 : 'env\(safe-area-inset-bottom, 0px\)'\)\s*:\s*28/);
   assert.match(app, /scrollPaddingBottom:\s*isMobile\s*\?\s*'calc\(94px \+ env\(safe-area-inset-bottom, 0px\)\)'/);
   assert.doesNotMatch(app, /paddingBottom:[\s\S]{0,120}92px/);
   assert.doesNotMatch(premium, /padding[^;\n]*92px/);
@@ -26,7 +26,42 @@ test('mobile content reserves only the physical safe area', () => {
 test('Agenda keeps its own inner scroll while other pages use app-scroll', () => {
   assert.match(app, /overflowY:\s*isMobile && page === 'agenda'\s*\?\s*'hidden'\s*:\s*'auto'/);
   assert.match(app, /display:\s*isMobile && page === 'agenda'\s*\?\s*'flex'/);
+  assert.match(app, /page === 'agenda' \? 0 : 'env\(safe-area-inset-bottom, 0px\)'/);
   assert.doesNotMatch(agenda, /dockH|dock \(84px/);
+});
+
+test('Agenda mobile controls float above the scrolling grid', () => {
+  assert.match(agenda, /agenda-mobile-floating-controls/);
+  assert.match(agenda, /agenda-mobile-floating-month/);
+  assert.match(agenda, /agenda-mobile-floating-week-strip/);
+  assert.match(agenda, /agenda-mobile-grid-surface/);
+  assert.match(premium, /\.agenda-mobile-floating-controls\s*\{[\s\S]*position:\s*absolute;[\s\S]*z-index:\s*30;/);
+  assert.match(premium, /\.agenda-mobile-grid-surface\s*\{[\s\S]*z-index:\s*0;/);
+  assert.match(agenda, /agenda-mobile-scroll-spacer--top/);
+  assert.match(agenda, /agenda-mobile-scroll-spacer--bottom/);
+  assert.match(premium, /\.agenda-mobile-scroll-spacer--top\s*\{[\s\S]*--agenda-mobile-overlay-clearance/);
+  assert.match(premium, /\.agenda-mobile-scroll-spacer--bottom\s*\{[\s\S]*safe-area-inset-bottom/);
+});
+
+test('Agenda day strip follows the grid day source and uses mobile-only today styling', () => {
+  assert.match(agenda, /getVisibleWeekDays\(weekStart, hiddenWeekdays\)/);
+  assert.match(agenda, /getVisibleWeekDays\(ws, hiddenWeekdays\)/);
+  assert.match(agenda, /gridTemplateColumns:\s*`repeat\(\$\{week\.length\}, minmax\(0, 1fr\)\)`/);
+  assert.match(agenda, /agenda-mobile-day-number\$\{isToday \? ' is-today'/);
+  assert.match(agenda, /background:\s*isMobile \? C\.sur : isWeekend \? C\.bg : isToday \? C\.priL : C\.sur/);
+  assert.match(premium, /\.agenda-mobile-day-number\.is-today\s*\{[\s\S]*border-color:\s*var\(--danger\);[\s\S]*background:\s*transparent;/);
+});
+
+test('Agenda appointment menu clears the canonical mobile dock and scrolls internally', () => {
+  assert.match(agenda, /MOBILE_DOCK_BOTTOM,\s*MOBILE_DOCK_HEIGHT/);
+  assert.match(agenda, /MOBILE_APPOINTMENT_MENU_DOCK_OFFSET\s*=\s*MOBILE_DOCK_BOTTOM\s*\+\s*MOBILE_DOCK_HEIGHT/);
+  assert.match(agenda, /--agenda-mobile-dock-offset/);
+  assert.match(agenda, /MOBILE_APPOINTMENT_MENU_FAB_OFFSET\s*=\s*MOBILE_AGENDA_FAB_BOTTOM\s*\+\s*MOBILE_AGENDA_FAB_SIZE/);
+  assert.match(agenda, /--agenda-mobile-fab-offset/);
+  assert.match(premium, /\.agenda-appointment-menu-backdrop\s*\{[\s\S]*max\(var\(--agenda-mobile-dock-offset\), var\(--agenda-mobile-fab-offset\)\)[\s\S]*safe-area-inset-bottom/);
+  assert.match(premium, /\.agenda-appointment-menu-sheet\s*\{[\s\S]*max-height:\s*calc\([\s\S]*100dvh[\s\S]*max\(var\(--agenda-mobile-dock-offset\), var\(--agenda-mobile-fab-offset\)\)/);
+  assert.match(premium, /\.agenda-appointment-menu-actions\s*\{[\s\S]*overflow-y:\s*auto;[\s\S]*overscroll-behavior:\s*contain;/);
+  assert.match(premium, /\.agenda-appointment-menu-safe-area\s*\{[\s\S]*display:\s*none;/);
 });
 
 test('all required mobile pages share the same app-scroll surface', () => {
