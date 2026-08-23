@@ -165,6 +165,13 @@ test('the rendered Consigli Poliedron widget uses the dedicated premium surface 
   assert.match(premiumCss, /var\(--pol-indigo-500\)/);
 });
 
+test('Consigli Poliedron stays contained in a narrow mobile widget frame', () => {
+  assert.match(premiumCss, /\.home-poliedron-widget\s*\{[^}]*box-sizing:\s*border-box/s);
+  assert.match(premiumCss, /\.home-poliedron-widget\s*\{[^}]*max-width:\s*100%/s);
+  assert.match(premiumCss, /\.home-poliedron-widget__title\s*>\s*div\s*\{[^}]*min-width:\s*0/s);
+  assert.match(premiumCss, /\.home-poliedron-widget__heading\s*\{[^}]*overflow-wrap:\s*anywhere/s);
+});
+
 // --- drag & drop is touch-compatible ---
 
 test('WidgetWorkspace supports pointer-based (touch-compatible) reordering alongside native HTML5 drag', () => {

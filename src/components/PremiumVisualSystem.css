@@ -394,6 +394,10 @@ body:has(.home-widget-grid) #app-scroll {
    --pol-indigo-500/--pol-violet-500/--brand-secondary tokens (already the
    app's indigo/violet-blue family) rather than a new hardcoded palette. */
 .home-poliedron-widget {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   border-radius: var(--radius-lg);
   padding: 14px 14px 4px;
   background: linear-gradient(155deg, rgba(79,70,229,.07), rgba(124,58,237,.04) 60%, transparent);
@@ -402,18 +406,20 @@ body:has(.home-widget-grid) #app-scroll {
 }
 .home-poliedron-widget__header {
   display: flex;
+  min-width: 0;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 10px;
 }
 .home-poliedron-widget__title { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.home-poliedron-widget__title > div { min-width: 0; }
 .home-poliedron-widget__gem { width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; filter: drop-shadow(0 3px 8px rgba(79,70,229,.35)); }
 .home-poliedron-widget__label {
   font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase;
   color: var(--pol-indigo-500);
 }
-.home-poliedron-widget__heading { font-size: 14px; font-weight: 900; color: var(--text-primary); line-height: 1.2; }
+.home-poliedron-widget__heading { font-size: 14px; font-weight: 900; color: var(--text-primary); line-height: 1.2; overflow-wrap: anywhere; }
 .home-poliedron-widget__refresh {
   display: flex; align-items: center; gap: 4px; flex-shrink: 0;
   border: none; background: none; cursor: pointer;
@@ -969,7 +975,7 @@ body:has(.home-widget-grid) #app-scroll {
    existing .pol-modal-* animations elsewhere in this file. */
 @keyframes poliedron-panel-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes poliedron-panel-sheet-up { from { transform: translateY(24px); opacity: .4; } to { transform: translateY(0); opacity: 1; } }
-@keyframes poliedron-panel-pop { from { transform: translateY(8px) scale(.98); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes poliedron-panel-pop { from { transform: translateX(-50%) translateY(8px) scale(.98); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
 .poliedron-panel-backdrop { animation: poliedron-panel-fade .18s ease; }
 .poliedron-panel--mobile { animation: poliedron-panel-sheet-up .22s cubic-bezier(.16,1,.3,1); }
 .poliedron-panel--desktop { animation: poliedron-panel-pop .18s cubic-bezier(.16,1,.3,1); }

@@ -5,7 +5,7 @@
 - OWNER: COPILOT
 - BRANCH: `lucasimondi-feature-pol-ai-004-proactive-intelligenc`
 - BASE REVIEW: `master@590b8ca` (PR #44 merged)
-- STATUS: `IN_PROGRESS` (master reconciliation)
+- STATUS: `WAITING_PRODUCT_OWNER`
 - PR: draft PR #45
 
 ## Objective
@@ -41,12 +41,21 @@ PT/massage roles fail closed because Poliedron does not have an authoritative
 assigned-patient scope. Scanner discovery makes zero Model Gateway calls and
 performs no writes.
 
-All 225 Node tests pass, including POL-AI-004 A-N, explainability, optional
+PR #45 now contains current `master@590b8ca` and preserves PR #44's modular
+Dashboard workspace, `Consigli Poliedron`, drag/drop, resize and personalization
+race fix. Reconciliation also fixed a CRLF-only PR #44 test failure, narrow
+mobile `Consigli Poliedron` containment, the desktop Poliedron panel animation's
+centering contract, and an over-broad schedule-query intelligence route.
+
+All 258 Node tests pass, including current master and POL-AI-004 A-N,
+Dashboard personalization, explainability, optional
 field, aggregate determinism, cache, cross-tenant, permission and 5,000-patient
 performance coverage. Production build passes. Real Chrome QA passes at
-390x844, 768x1024 and 1440x900 in Light and Dark with no horizontal overflow,
-mobile dock recede and desktop Edge Dock preserved. Diff, conflict-marker,
-added-secret, dependency-manifest, schema/scope and review gates pass.
+390x844, 768x1024 and 1440x900 in Light and Dark for both proactive Poliedron
+results and the modular Dashboard/Consigli surface, with no horizontal
+overflow or console errors; mobile dock recede and desktop Edge Dock are
+preserved. Diff, conflict-marker, added-secret, dependency-manifest,
+schema/scope, security and review gates pass.
 
 ## Exact next action
 

@@ -961,3 +961,115 @@ Per explicit instruction, this task did **not** authenticate into production. Th
 
 - Product Owner decision required: none for this task — no schema/RLS/RBAC change was needed or made, matching the explicit constraint. The two POL-UI-013B open questions (deployment-history confirmation; how to authorize real production QA) remain open from that entry.
 - Exact next action: Product Owner reviews this finding and PR #44 (now containing POL-UI-013 + the POL-UI-013B audit + this fix), and either runs the live QA script above or authorizes it to be run. Do not merge PR #44 without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+
+## POL-AI-004 reconciliation with current master / merged POL-UI-013
+
+- Task ID: POL-AI-004 continuation on existing draft PR #45.
+- Previous agent: COPILOT; ownership remained on
+`feature/POL-AI-004-proactive-intelligence`.
+- Branch: local app-managed
+`lucasimondi-feature-pol-ai-004-proactive-intelligenc`, tracking exact remote
+PR branch `feature/POL-AI-004-proactive-intelligence`.
+- Base integrated: `origin/master@590b8cafa71ed83a59adb4d6483839d1dfeddbb5`
+(`POL-UI-013: Dashboard modular workspace + Poliedron centrality`, merged PR
+#44).
+- Objective: update the existing PR #45 without rewriting or discarding
+POL-AI-004, preserve all current-master Dashboard personalization work,
+verify combined behavior/security/responsiveness, and return the same draft
+PR to MERGEABLE/CLEAN with green checks.
+- Merge strategy: normal `--no-ff` merge of `origin/master`; no rebase or
+published-history rewrite.
+- Conflicts resolved:
+- `docs/coordination/current-task.md`: kept POL-AI-004 as the active task,
+  updated its reviewed base to `590b8ca`, and retained merged POL-UI-013 as a
+  historical record;
+- `docs/coordination/handoffs.md`: retained the complete POL-AI-004 handoff
+  and all incoming POL-UI-013/POL-UI-013B/POL-UI-013C entries.
+- No source, Dashboard, Poliedron, test or CSS conflict occurred.
+- PR #44 compatibility:
+- immediately after conflict resolution, `Dashboard.jsx`,
+  `WidgetWorkspace.jsx`/CSS, `homeWidgetRegistry.js`,
+  `homeLayoutDiagnostics.js`, `dashboardPersonalization.test.mjs` and
+  `homeLayoutPrecedenceRace.test.mjs` matched `origin/master` exactly;
+- all POL-AI-004 implementation files matched pre-merge PR head `39a11c0`
+  exactly;
+- current Dashboard keeps `Consigli Poliedron` with stable persisted id
+  `consigli_ai`, modular registry/workspace, pointer/native drag, S/M/L
+  resize and the background-load personalization race fix;
+- the combined suite exposed one Windows-only test portability defect:
+  PR #44's comment-stripping assertion split only on LF, so CRLF source made
+  removed calls appear present. It now splits on `\\r?\\n`; product behavior
+  is unchanged;
+- real Chrome then confirmed two UI containment defects in the shipped
+  combined stylesheet: narrow `Consigli Poliedron` content-box overflow and
+  the desktop Poliedron pop animation ending at `transform:none`, which
+  displaced the 768px panel. Fixed with box-sizing/min-width/wrapping
+  containment and a keyframe that preserves `translateX(-50%)`, with focused
+  tests.
+- Intelligence regression:
+- all A-N, explainability, confidence, Studio Data Health, cache,
+  deterministic aggregate and 5,000-patient performance tests remain green;
+- grouped `DA CONTATTARE` / `DATI DA COMPLETARE`, reasons, priority,
+  confidence and `Apri paziente` remain intact;
+- a final review found ordinary schedule questions such as "quali
+  appuntamenti ho oggi?" matched the broad opportunity intent. The router now
+  requires explicit appointment-need/contact language and includes negative
+  schedule-query assertions.
+- Security regression:
+- dedicated security review reports no findings;
+- assignment-bound PT/massage capabilities still fail closed without an
+  authoritative patient scope;
+- treatment-plan facts still require `clinical.general` or
+  `clinical.physiotherapist`;
+- inactive/missing membership and tenant identity fail closed;
+- exact source-row `studio_id` filtering and cross-tenant tests remain green;
+- cache remains tenant/version/date/permission/fingerprint scoped and memory
+  only.
+- Files changed by reconciliation:
+- incoming master files from PR #44, preserved through the merge;
+- conflict resolution:
+  `docs/coordination/current-task.md`,
+  `docs/coordination/handoffs.md`;
+- compatibility fixes:
+  `src/components/PremiumVisualSystem.css`,
+  `src/lib/poliedron/intelligence/queryRouter.js`,
+  `tests/dashboardPersonalization.test.mjs`,
+  `tests/homeLayoutPrecedenceRace.test.mjs`,
+  `tests/poliedronAdaptive.test.mjs`,
+  `tests/poliedronIntelligence.test.mjs`.
+- Database/dependency changes: none. No schema, migration, RLS, RBAC, auth,
+financial formula, package manifest, lockfile, production data or production
+state change.
+- Tests executed:
+- focused combined Dashboard/WidgetWorkspace/Poliedron/intelligence suites;
+- full final `npm test`;
+- final `npm run build`;
+- `git diff --check`, conflict-marker, added-secret, dependency/schema/scope
+  checks;
+- dedicated security and correctness reviews;
+- real Chrome synthetic exact-component QA.
+- Test results: 258/258 Node tests pass, combining all 221 current-master tests
+with POL-AI-004 and reconciliation regressions. Production Vite/PWA build
+passes with only the unchanged `pdfjs-dist` eval, malformed legacy CSS
+comment and large-chunk warnings.
+- Browser QA: 12/12 exact-component Chrome runs pass: Poliedron proactive
+results and Dashboard/WidgetWorkspace surfaces at 390x844, 768x1024 and
+1440x900 in Light and Dark. Every run asserts correct theme, no page or
+component overflow and zero console/page errors. Poliedron runs additionally
+assert both required groups, two patient actions, panel bounds, mobile dock
+recede or desktop Edge Dock. Dashboard runs assert the modular workspace,
+three bounded widget frames and visible `Consigli Poliedron`. Screenshots
+remain only in session artifacts; the temporary harness/server were removed.
+- Unresolved issues: none introduced by the sync. Existing POL-AI-004
+documented limitations and repository dependency advisories remain
+unchanged.
+- Risks: none beyond documented existing limitations. Dashboard behavior
+changes are limited to responsive containment and restoring the intended
+panel-centering transform through its animation.
+- Rollback: revert the reconciliation/follow-up commits to return PR #45 to
+pre-sync head `39a11c0`. No database, data, dependency or deployment rollback
+is required.
+- Deployment impact: frontend bundle only; no deploy performed.
+- Product Owner decision required: none.
+- Exact next action: Product Owner reviews updated draft PR #45. Do not merge
+or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.

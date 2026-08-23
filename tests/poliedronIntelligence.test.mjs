@@ -435,6 +435,10 @@ test('semantic intelligence routing recognizes equivalent questions without one 
   ];
   for (const query of queries) assert.equal(classifyIntelligenceQuery(query)?.type, 'INTELLIGENCE_SCAN', query);
   assert.equal(classifyIntelligenceQuery('apri agenda'), null);
+  assert.equal(classifyIntelligenceQuery('quali appuntamenti ho oggi?'), null);
+  assert.equal(classifyIntelligenceQuery('chi ha appuntamento oggi?'), null);
+  assert.equal(classifyIntelligenceQuery('quali pazienti devono venire all’appuntamento oggi?'), null);
+  assert.equal(classifyIntelligenceQuery('chi deve presentarsi all’appuntamento oggi?'), null);
 });
 
 test('every returned patient and visible group item has at least one human-readable reason', () => {
