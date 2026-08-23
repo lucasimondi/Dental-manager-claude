@@ -683,4 +683,4 @@
 - Rollback: revert the POL-UI-012 commit. No database or data rollback is required.
 - Deployment impact: frontend CSS/markup bundle only; no deployment performed.
 - Product Owner decision required: none.
-- Exact next action: Product Owner reviews the new draft PR. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+- Exact next action: Product Owner reviews draft PR #42. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.

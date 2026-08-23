@@ -6,7 +6,7 @@
 - BRANCH: `lucasimondi-pol-ui-012-mobile-document-kpis`
 - BASE REVIEW: `master@c82b69a` (PR #41 merged)
 - STATUS: `WAITING_PRODUCT_OWNER`
-- PR: new draft PR pending creation
+- PR: draft PR #42
 
 ## Objective
 
