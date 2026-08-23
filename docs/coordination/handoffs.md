@@ -1107,3 +1107,78 @@ or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
 - SCHEMA_CHANGE_REQUIRED: none for the conservative Phase B scope described. BACKEND_CHANGE_REQUIRED: likely, only if true multi-step atomicity is required (see decision 2 above) — not built or decided here.
 - No STOP condition from the task's own §22 list was hit — the audit found the schema already safely supports incomplete-but-valid treatment data, payment linkage does not require a schema change for the scoped Phase B work, and the write-permission model, while a Phase A design choice, is not "unclear."
 - Exact next action: Product Owner reviews `docs/architecture/POL-AI-005A-domain-audit.md` and `docs/architecture/POL-AI-005A-planner-foundation.md`, decides the three PRODUCT_OWNER_DECISION_REQUIRED items, and opens/reviews the draft PR for this branch before any Phase B work begins. Do not merge without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+
+---
+
+## POL-UI-014 Patient Clinical Cockpit
+
+- Task ID: `POL-UI-014`.
+- Previous agent: POL-AI-005A was merged to `master` as `c442c6f`; the Product
+  Owner then explicitly authorized POL-UI-014.
+- Owner: Copilot session `Patient clinical cockpit`.
+- Branch: `lucasimondi-feature-pol-ui-014-patient-clinical-cock`, based on
+  `origin/master@c442c6f`.
+- Objective: make the patient page Poliedra's clinical-operational cockpit,
+  with a patient header, KPIs, anatomical maps, treatment grouping,
+  independent treatment states, multi-select canonical plan handoff,
+  contextual Poliedron preview, Data Health, next appointment, financial
+  availability, unified timeline, and responsive light/dark behavior.
+- Completed work: added a pure tenant-safe cockpit read model and the complete
+  responsive cockpit; enhanced the existing odontogram for status,
+  accessibility, and multi-select; forwarded procedure/teeth drafts into the
+  existing `Piani` reducer; added generic face/body region foundations;
+  extended the singleton Poliedron with patient/anatomical session context,
+  contextual conversation, `TEXT`/`VOICE_TRANSCRIPT` input-source metadata,
+  deterministic POL-AI-005A adaptation, and a non-executing Action Plan
+  preview; added Data Health evidence and fail-closed financial availability.
+- Permission and tenant behavior: cockpit access requires active membership
+  plus a `clinical.*` capability; `isStudioAdmin` alone is insufficient.
+  Prices, financial timeline entries, summary, direct `paga` initialization,
+  payment tab access, and payment rendering require
+  `finance.management.read`. Cockpit rows require the authenticated studio ID,
+  a row studio ID, and exact equality; there is no patient or tenant fallback.
+- Vertical behavior: dental verticals use the canonical 32-tooth FDI map.
+  Non-dental verticals start on Body, hide odontogram treatment creation, do
+  not interpret numeric `dente` metadata as FDI, and do not report a missing
+  tooth as a Data Health defect.
+- Financial behavior: no authoritative patient-level financial contract
+  exists. The cockpit therefore reports `Non disponibile` rather than
+  duplicating the legacy suspended-payment formula.
+  `PRODUCT_OWNER_DECISION_REQUIRED`: approve an authoritative server-side
+  patient financial contract before numeric cockpit KPIs are enabled.
+- Files changed: `src/App.jsx`; `src/components/{Odontogramma,Pazienti,Piani,PatientClinicalCockpit,SchedaPaz}.jsx`;
+  `src/components/PatientClinicalCockpit.css`;
+  `src/components/poliedron/{Poliedron,PoliedronPanel,PoliedronPlannerPreview}.jsx`;
+  `src/lib/patientCockpitModel.js`;
+  `src/lib/poliedron/{contextEngine,contextualActionPlanner,patientChatContext}.js`;
+  `tests/{patientClinicalCockpit,poliedron}.test.mjs`;
+  `docs/architecture/POL-UI-014-patient-clinical-cockpit.md`;
+  `docs/coordination/{current-task,handoffs}.md`.
+- Database changes: none. No migration, schema, RLS, RBAC, function, policy,
+  production query, or production write.
+- Dependency changes: none. Dependency installation restored the existing
+  lockfile state only; manifests are unchanged.
+- Tests executed: targeted `node --test
+  tests/patientClinicalCockpit.test.mjs` (27/27); full `npm test` (313/313);
+  `npm run build`; `git diff --check`; secret-pattern scan over changed
+  implementation/test/architecture files.
+- Test results: all passing. Build has only pre-existing `pdfjs-dist` eval,
+  malformed design-token comment, and large-chunk warnings.
+- Browser QA: PHI-free synthetic fixtures rendered the real cockpit in light
+  and dark mode at the shared browser's fixed 1280x720 viewport. Document
+  width remained exactly 1280 with no overflow; three tooth-13 treatments
+  formed one group with independent states; Data Health rendered one missing
+  tooth issue; selected tooth context updated; selecting 36/37/46 plus
+  Otturazione rendered three distinct preview entries.
+- Unresolved issues: the shared browser canvas cannot resize to native
+  375/390/430/768/1024 widths. Those contracts are covered by responsive CSS
+  and Node regressions, but native-width screenshots remain a manual draft-PR
+  review step.
+- Risks: no database/deployment risk. UI risk is bounded to the patient
+  surface and the existing singleton Poliedron context; closing Poliedron
+  clears the active patient override to prevent stale actions.
+- Rollback: revert the POL-UI-014 commits. No data, database, RLS, deployment,
+  dependency, or production rollback is required.
+- Exact next action: commit and push the reviewed branch, open one draft PR,
+  and wait for Product Owner review. Do not merge or deploy. Status:
+  `IN_PROGRESS`.

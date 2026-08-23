@@ -10,6 +10,8 @@ import DocMedico from './DocMedico.jsx';
 import PhysioCartella from './PhysioCartella.jsx';
 import { condividiPdf, scaricaPdf } from '../lib/condivisionePdf';
 import { salvaPosizione, leggiPosizione } from '../lib/posizioneNavigazione';
+import { buildPatientCockpitModel } from '../lib/patientCockpitModel.js';
+import PatientClinicalCockpit from './PatientClinicalCockpit.jsx';
 
 const prossimaDataMascherina = (orto) => {
   if (!orto?.dataConsegnaInizio || !orto?.mascherineConsegnate) return null;
@@ -19,8 +21,14 @@ const prossimaDataMascherina = (orto) => {
   return d.toISOString().slice(0, 10);
 };
 
-export default function SchedaPaz({ paz, plans, payments, appointments, setAppointments, si, features, studioMembership, currentUserId, isStudioAdmin, onClose, onEdit, onNuovoPiano, setPlans, initTab, initialDocumentRequest, onDocumentRequestHandled, implants = [], setImplants, setPatients, onNuovoAppuntamento, templates, setPayments, pricelist = [] }) {
-  const [tab, setTab] = useState(initTab || 'info');
+export default function SchedaPaz({ paz, plans, payments, appointments, setAppointments, si, studioId, features, studioMembership, currentUserId, isStudioAdmin, onClose, onEdit, onNuovoPiano, setPlans, initTab, initialDocumentRequest, onDocumentRequestHandled, implants = [], setImplants, setPatients, onNuovoAppuntamento, templates, setPayments, pricelist = [] }) {
+  const membershipCapabilities = new Set(studioMembership?.stato === 'attivo' ? (studioMembership?.capabilities || []) : []);
+  const canUseClinicalCockpit = [...membershipCapabilities].some((capability) => capability.startsWith('clinical.'));
+  const canViewPatientFinance = membershipCapabilities.has('finance.management.read');
+  const authorizedInitialTab = (initTab === 'cockpit' && !canUseClinicalCockpit) || (initTab === 'paga' && !canViewPatientFinance)
+    ? 'info'
+    : initTab;
+  const [tab, setTab] = useState(authorizedInitialTab || (canUseClinicalCockpit ? 'cockpit' : 'info'));
   const [pdfPlan, setPdfPlan] = useState(null);
   const [docFiscale, setDocFiscale] = useState(false);
   const [docMedico, setDocMedico] = useState(initialDocumentRequest?.type === 'ricetta');
@@ -504,7 +512,36 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
   const physioOperationalAccess = capabilities.has('clinical.personal_trainer') || capabilities.has('clinical.massage_therapist');
   const canAccessPhysio = isFisio && (physioFullAccess || physioOperationalAccess);
   const canManagePhysioTeam = physioFullAccess || isStudioAdmin === true;
-  const TABS = [{ id: 'info', l: 'Info', ic: 'clip' }, { id: 'piani', l: 'Piani', ic: 'plan' }, ...(isDentistico ? [{ id: 'impl', l: 'Impianti', ic: 'tooth' }] : []), ...(canAccessPhysio ? [{ id: 'fisio', l: 'Fisioterapia', ic: 'pulse' }] : []), { id: 'paga', l: 'Pagamenti', ic: 'eur' }, { id: 'foto', l: 'Foto', ic: 'ph' }, { id: 'doc', l: 'Documenti', ic: 'file' }, { id: 'app', l: 'Agenda', ic: 'cal' }];
+  const cockpitModel = buildPatientCockpitModel({
+    patient: paz,
+    plans,
+    payments,
+    appointments,
+    studioId,
+    vertical: si?.vertical,
+    todayIso: today(),
+  });
+  const TABS = [...(canUseClinicalCockpit ? [{ id: 'cockpit', l: 'Cockpit', ic: 'pulse' }] : []), { id: 'info', l: 'Info', ic: 'clip' }, { id: 'piani', l: 'Piani', ic: 'plan' }, ...(isDentistico ? [{ id: 'impl', l: 'Impianti', ic: 'tooth' }] : []), ...(canAccessPhysio ? [{ id: 'fisio', l: 'Fisioterapia', ic: 'pulse' }] : []), ...(canViewPatientFinance ? [{ id: 'paga', l: 'Pagamenti', ic: 'eur' }] : []), { id: 'foto', l: 'Foto', ic: 'ph' }, { id: 'doc', l: 'Documenti', ic: 'file' }, { id: 'app', l: 'Agenda', ic: 'cal' }];
+
+  if (tab === 'cockpit' && canUseClinicalCockpit) {
+    return (
+      <PatientClinicalCockpit
+        patient={paz}
+        model={cockpitModel}
+        pricelist={pricelist}
+        onClose={onClose}
+        onEdit={onEdit}
+        canViewFinancial={canViewPatientFinance}
+        onToggleTreatment={(treatment) => toggleEseguita(treatment.planId, treatment.itemIndex)}
+        onNewPlan={(draft) => onNuovoPiano(paz.id, draft)}
+        onOpenPlans={() => setTab('piani')}
+        onOpenPayments={canViewPatientFinance ? () => setTab('paga') : undefined}
+        onOpenDocuments={() => { setTab('doc'); loadArchivioDocs(); caricaConsensi(); }}
+        onOpenNotes={() => { setTab('info'); caricaStorieCliniche(); }}
+        onGoAgenda={() => setTab('app')}
+      />
+    );
+  }
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
@@ -1267,7 +1304,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
           <PhysioCartella paziente_id={paz.id} studio_id={si?.studio_id} paziente={paz} studio={si} accessMode={physioFullAccess ? 'full' : 'operational'} currentUserId={currentUserId} canManageTeam={canManagePhysioTeam} />
         )}
 
-        {tab === 'paga' && (
+        {tab === 'paga' && canViewPatientFinance && (
           <div>
             <Crd style={{ marginBottom: 12, background: C.priD, border: 'none' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>

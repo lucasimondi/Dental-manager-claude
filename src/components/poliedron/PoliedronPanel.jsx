@@ -6,6 +6,7 @@ import PoliedronActionPreview from './PoliedronActionPreview';
 import PoliedronConversation from './PoliedronConversation';
 import PoliedronSuggestionBoard from './PoliedronSuggestionBoard';
 import PoliedronIntelligenceResults from './PoliedronIntelligenceResults';
+import PoliedronPlannerPreview from './PoliedronPlannerPreview';
 
 /* POL-AI-001 §4-5, §25, §30-32 — the command panel itself. Pure
    presentation + local UI state (query text, keyboard highlight) — all
@@ -17,7 +18,7 @@ import PoliedronIntelligenceResults from './PoliedronIntelligenceResults';
 export default function PoliedronPanel({
   panelId, isMobile, query, onQueryChange, state, loading,
   highlightedIndex, onHighlightChange, onSelectResult, onConfirmAction, onModifyAction, onSubmit,
-  onClose, inputRef,
+  onClose, inputRef, patientContext, conversation = [],
 }) {
   const containerRef = useRef(null);
 
@@ -95,9 +96,25 @@ export default function PoliedronPanel({
           )}
         </div>
 
+        {patientContext?.patient && (
+          <div className="poliedron-patient-context-bar">
+            <span><Ic n="user" s={11} c="currentColor" />Chat con {patientContext.patient.nome} {patientContext.patient.cognome}</span>
+            {patientContext.anatomicalContext && <span><Ic n="pin" s={11} c="currentColor" />{patientContext.anatomicalContext.label}</span>}
+          </div>
+        )}
+
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: isMobile ? '12px 14px' : '14px 16px' }}>
+          {patientContext?.patient && conversation.length > 0 && (
+            <div className="poliedron-chat-history" aria-label="Cronologia chat della sessione">
+              {conversation.map((message) => (
+                <div key={message.id} className={`poliedron-chat-message poliedron-chat-message--${message.role}`}>{message.content}</div>
+              ))}
+            </div>
+          )}
           {loading ? (
             <div className="poliedron-loading-card"><span className="poliedron-loading-card__pulse" />Poliedron sta verificando…</div>
+          ) : state?.actionPlan ? (
+            <PoliedronPlannerPreview plan={state.actionPlan} />
           ) : state?.intelligence ? (
             <PoliedronIntelligenceResults intelligence={state.intelligence} onOpenPatient={onSelectResult} />
           ) : state?.answer != null ? (

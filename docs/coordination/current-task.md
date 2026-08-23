@@ -1,48 +1,52 @@
 # Current task
 
-- TASK: POL-AI-005A
-- TITLE: Transactional Action Planner — Foundation (Phase A: UNDERSTAND → RESOLVE → PLAN only)
-- OWNER: CLAUDE
-- BRANCH: `feature/POL-AI-005-transactional-action-planner`
-- BASE: `master@ab1bd27` (POL-AI-004 merged as PR #45)
+- TASK: POL-UI-014
+- TITLE: Patient Clinical Cockpit
+- OWNER: COPILOT
+- BRANCH: `lucasimondi-feature-pol-ui-014-patient-clinical-cock`
+- BASE: `origin/master@c442c6f` (POL-AI-005A merged)
 - STATUS: `IN_PROGRESS`
 
 ## Objective
 
-Phase A only, per explicit Product Owner scoping: build the read-only
-foundation for a future transactional action planner that lets Poliedron
-turn a natural-language clinical/financial request ("segna devitalizzazione
-16 di Isa Bergese come eseguita") into a structured, non-executing Action
-Plan — deterministic parsing, patient/procedure resolution contracts, a
-tooth model that represents incomplete-but-valid clinical data, and
-planners for representative workflows. Explicitly NOT in scope: CONFIRM →
-ACT → VERIFY, any real committed clinical/payment write, migrations, or
-merge. The Product Owner authorized POL-AI-005A directly, the same way
-POL-AI-004/POL-UI-013 were authorized directly after their predecessors
-merged.
-
-Note: `docs/coordination/current-task.md` still described POL-AI-004 as
-`WAITING_PRODUCT_OWNER` with a draft PR at the time this task started, but
-`ab1bd27`'s commit message ("POL-AI-004: Poliedron proactive intelligence
-engine (#45)", single parent, authored by the Product Owner account) shows
-PR #45 was squash-merged to master — this file simply had not been updated
-to reflect that yet. Corrected below.
+Redesign the patient page as Poliedra's clinical-operational cockpit while
+reusing the existing treatment, agenda, payment, permission, and Poliedron
+architecture. Deliver the patient header, primary KPIs, clinical maps,
+anatomically grouped treatments with independent completion state,
+multi-select transfer into the canonical plan form, contextual Poliedron
+Action Plan preview, Data Health evidence, appointment and timeline context,
+responsive light/dark behavior, and future voice-transcript compatibility.
 
 ## Safety boundaries
 
-- Phase A is READ + PLAN only: no Supabase writes from any new code, no
-  migration, no schema/RLS/RBAC change, no merge, no deploy.
-- Do not implement CONFIRM/ACT/VERIFY or any real committed write — those
-  are explicitly Phase B.
-- Reuse existing domain/canonical functions and permission gates; do not
-  invent architecture or duplicate financial formulas.
+- No migration, schema, RLS, RBAC, deployment, or production data change.
+- No tenant fallback: cockpit sources require the authenticated studio ID and
+  exact row-tenant equality.
+- Cockpit access requires an active membership with a `clinical.*`
+  capability. Patient financial content and the payment tab require
+  `finance.management.read`.
+- No duplicated treatment or payment write path. Existing `Piani` and
+  `SchedaPaz` reducers remain canonical.
+- Poliedron is preview-only. Do not implement CONFIRM -> ACT -> VERIFY or
+  call the rejecting POL-AI-005A executor.
+- No voice capture, recording, storage, or transcription.
+
+## Validation and impact
+
+- `npm test`: 313/313 passing.
+- `npm run build`: passing with only pre-existing PDF eval, CSS token-comment,
+  and chunk-size warnings.
+- `git diff --check`: clean.
+- PHI-free browser QA: light/dark at 1280px, no horizontal overflow, grouped
+  tooth treatments, Data Health issue, tooth selection, and 36/37/46
+  three-entry multi-select preview.
+- Database/deployment impact: none.
+- Rollback: revert the POL-UI-014 commits; no data or environment rollback.
 
 ## Exact next action
 
-In progress this session — see the POL-AI-005A handoff entry once filed,
-and `docs/architecture/POL-AI-005A-domain-audit.md` /
-`docs/architecture/POL-AI-005A-planner-foundation.md` for the audit and
-Phase B handoff.
+Commit and push the reviewed POL-UI-014 diff, open exactly one draft PR, then
+set this record to `WAITING_PRODUCT_OWNER`. Do not merge or deploy.
 
 ---
 

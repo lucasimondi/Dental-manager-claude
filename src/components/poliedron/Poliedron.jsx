@@ -7,6 +7,8 @@ import { buildIntelligencePermissions, filterNavigationIndex, isActionAllowed } 
 import { ACTION_REGISTRY } from '../../lib/poliedron/actionRegistry';
 import { buildContext } from '../../lib/poliedron/contextEngine';
 import { processQuery } from '../../lib/poliedron/poliedraCore';
+import { POLIEDRON_OPEN_CONTEXT_EVENT } from '../../lib/poliedron/patientChatContext.js';
+import { planContextualPatientAction } from '../../lib/poliedron/contextualActionPlanner.js';
 
 /* POL-AI-001 §33 / POL-AI-002A §16-17 — mounted exactly once by App.jsx,
    survives every page change. This is the only file that talks to the
@@ -15,7 +17,7 @@ import { processQuery } from '../../lib/poliedron/poliedraCore';
    SAME component's state/panel — never two AI systems (§16 same
    identity, one Poliedra AI Core). */
 export default function Poliedron({
-  isMobile, page, setPage, patients, plans, appointments, richiami, impegni, goSchedaPaz,
+  isMobile, page, setPage, patients, plans, payments, pricelist, appointments, richiami, impegni, goSchedaPaz,
   features, isStudioAdmin, vertical, studioId, currentPatient,
   quickActionCtx, supabaseClient, onArchivioFilterHint, openPrescription, openNew, openBooking,
 }) {
@@ -24,6 +26,9 @@ export default function Poliedron({
   const [state, setState] = useState(null);
   const [loading, setLoading] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [patientContext, setPatientContext] = useState(null);
+  const [conversation, setConversation] = useState([]);
+  const [conversationPatientId, setConversationPatientId] = useState(null);
   const inputRef = useRef(null);
   const panelId = useId();
   const requestSeq = useRef(0);
@@ -42,9 +47,35 @@ export default function Poliedron({
   );
 
   const context = useMemo(
-    () => buildContext({ page, vertical, studioId, currentPatient, isStudioAdmin, features }),
-    [page, vertical, studioId, currentPatient, isStudioAdmin, features]
+    () => buildContext({
+      page,
+      vertical,
+      studioId,
+      currentPatient: patientContext?.patient || currentPatient,
+      anatomicalContext: patientContext?.anatomicalContext || null,
+      inputSource: patientContext?.inputSource || 'TEXT',
+      isStudioAdmin,
+      features,
+    }),
+    [page, vertical, studioId, currentPatient, patientContext, isStudioAdmin, features]
   );
+
+  useEffect(() => {
+    const handleOpenContext = (event) => {
+      const detail = event.detail;
+      if (!detail?.patient?.id) return;
+      if (String(conversationPatientId || '') !== String(detail.patient.id)) {
+        setConversation([]);
+        setConversationPatientId(detail.patient.id);
+      }
+      setPatientContext(detail);
+      setQuery('');
+      setState(null);
+      setOpen(true);
+    };
+    window.addEventListener(POLIEDRON_OPEN_CONTEXT_EVENT, handleOpenContext);
+    return () => window.removeEventListener(POLIEDRON_OPEN_CONTEXT_EVENT, handleOpenContext);
+  }, [conversationPatientId]);
 
   // §25 — Cmd/Ctrl+K opens Poliedron from anywhere, desktop only per spec
   // (mobile stays touch-first). Registered at document level so it works
@@ -67,11 +98,37 @@ export default function Poliedron({
     setOpen(false);
     setQuery('');
     setState(null);
+    setPatientContext(null);
   }, []);
 
-  const runQuery = useCallback((q, { allowModel = false } = {}) => {
+  const runQuery = useCallback((q, { allowModel = false, recordConversation = false } = {}) => {
     const seq = ++requestSeq.current;
     setLoading(true);
+    const actionPlan = patientContext?.patient
+      ? planContextualPatientAction(q, {
+          patient: patientContext.patient,
+          anatomicalContext: patientContext.anatomicalContext,
+          patients,
+          plans,
+          payments,
+          pricelist,
+          homePermissions: quickActionCtx?.permissions,
+          studioId,
+        })
+      : null;
+    if (actionPlan) {
+      const result = { actionPlan };
+      setState(result);
+      if (recordConversation) {
+        setConversation((items) => [...items,
+          { id: `user-${Date.now()}`, role: 'user', content: q },
+          { id: `assistant-${Date.now()}-${items.length}`, role: 'assistant', content: 'Ho preparato un Action Plan da verificare. Nessuna modifica è stata eseguita.' },
+        ]);
+      }
+      setHighlightedIndex(0);
+      setLoading(false);
+      return;
+    }
     processQuery({
       query: q,
       context,
@@ -103,6 +160,18 @@ export default function Poliedron({
         return;
       }
       setState(result);
+      if (recordConversation && patientContext?.patient) {
+        const assistantContent = result.answer
+          ?? (result.confirmationRequired
+            ? 'Ho preparato un’anteprima da verificare. Nessuna modifica è stata eseguita.'
+            : result.intelligence
+              ? 'Ho raccolto i segnali disponibili per questo paziente.'
+              : 'Ho analizzato la richiesta nel contesto del paziente.');
+        setConversation((items) => [...items,
+          { id: `user-${Date.now()}`, role: 'user', content: q },
+          { id: `assistant-${Date.now()}-${items.length}`, role: 'assistant', content: assistantContent },
+        ]);
+      }
       setHighlightedIndex(0);
       setLoading(false);
     }).catch(() => {
@@ -110,7 +179,7 @@ export default function Poliedron({
       setState({ answer: 'Non riesco a completare la richiesta in questo momento. Riprova.' });
       setLoading(false);
     });
-  }, [context, permissionCtx, intelligencePermissions, isStudioAdmin, patients, plans, appointments, richiami, impegni, navigationIndex, actions, supabaseClient, setPage, onArchivioFilterHint, close]);
+  }, [context, permissionCtx, intelligencePermissions, isStudioAdmin, patients, plans, payments, pricelist, appointments, richiami, impegni, navigationIndex, actions, supabaseClient, setPage, onArchivioFilterHint, close, patientContext, quickActionCtx?.permissions, studioId]);
 
   useEffect(() => {
     if (!open) return;
@@ -170,7 +239,7 @@ export default function Poliedron({
   const submitQuery = useCallback(() => {
     if (!query.trim()) return;
     if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
-    runQuery(query, { allowModel: true });
+    runQuery(query, { allowModel: true, recordConversation: true });
   }, [query, runQuery]);
 
   return (
@@ -198,6 +267,8 @@ export default function Poliedron({
           onSubmit={submitQuery}
           onClose={close}
           inputRef={inputRef}
+          patientContext={patientContext}
+          conversation={conversation}
         />
       )}
     </>
