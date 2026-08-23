@@ -14,6 +14,7 @@ import { getHomeFinancialWidget, loadHomeFinancialSnapshot } from '../lib/homeFi
 import QuickBookingModal from './QuickBookingModal.jsx';
 import { DEFAULT_QUICK_ACTION_IDS, filterQuickActionsCatalog, getQuickAction, resolveQuickActions } from '../lib/quickActionsCatalog.js';
 import poliedroGem from '../assets/icon-poliedra-gem.png';
+import { logHomeLayoutEvent } from '../lib/homeLayoutDiagnostics.js';
 
 const PALETTE = [
   '#1A4E66','#2EC4B6','#2D9E61','#7C3AED','#E63946',
@@ -163,16 +164,46 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
     if (!studioId || !userId) return;
     let cancelled = false;
     setLayoutLoading(true);
+    logHomeLayoutEvent('HOME_LAYOUT_LOAD_START');
     loadResolvedHomeLayout(supabase, studioId, userId, createRolePresetLayout(studioMembership?.capabilities))
       .then(({ layout, source, inheritedLayout: nextInherited, inheritedSource: nextInheritedSource }) => {
         if (!cancelled) {
-          setWidgets(layout); setDraftWidgets(layout); setLayoutSource(source);
+          // POL-UI-013C root-cause fix: `draftWidgets` is only ever
+          // meaningful while the "Personalizza Home" modal is open, and
+          // `openHomeCustomizer` already re-derives it fresh from `widgets`
+          // every time the modal opens. This effect used to also call
+          // `setDraftWidgets(layout)` here — if this background load
+          // resolved WHILE the modal was already open (e.g. the user
+          // opened it before the initial load finished, or triggered a
+          // manual "Riprova" reload mid-edit), it silently overwrote
+          // whatever the user was actively editing with the just-fetched
+          // server layout, discarding unsaved changes with no warning.
+          // The user would then save the (unintentionally reset) draft
+          // and see their edit "not persist". Only `widgets` (the
+          // committed, non-editing-state truth) needs to stay in sync
+          // with the server here. `draftInherits` is the same story —
+          // it's modal-scoped (drives the Save/Reset branching and label
+          // while editing) and is already recomputed fresh from `widgets`
+          // by `openHomeCustomizer` every time the modal opens, so it
+          // must not be reset here either: doing so could silently flip
+          // an in-progress edit's save target back to "inherit studio
+          // default" mid-session, even after the user had already
+          // started customizing (each edit handler sets it to `false`
+          // first, which this effect could otherwise revert).
+          setWidgets(layout); setLayoutSource(source);
           setInheritedLayout(nextInherited); setInheritedSource(nextInheritedSource);
-          setDraftInherits(source !== 'user');
           setLoadError('');
+          logHomeLayoutEvent('HOME_LAYOUT_LOAD_SOURCE', source);
+          logHomeLayoutEvent('HOME_LAYOUT_NORMALIZED', { widgets: layout.length });
+          logHomeLayoutEvent('HOME_LAYOUT_LOAD_SUCCESS', { widgets: layout.length });
         }
       })
-      .catch(() => { if (!cancelled) setLoadError('La tua personalizzazione della Home non è stata caricata: potresti vedere il layout predefinito invece del tuo. Riprova.'); })
+      .catch(() => {
+        if (!cancelled) {
+          setLoadError('La tua personalizzazione della Home non è stata caricata: potresti vedere il layout predefinito invece del tuo. Riprova.');
+          logHomeLayoutEvent('HOME_LAYOUT_LOAD_ERROR');
+        }
+      })
       .finally(() => { if (!cancelled) setLayoutLoading(false); });
     return () => { cancelled = true; };
   }, [studioId, userId, JSON.stringify(studioMembership?.capabilities || []), homeLayoutReloadToken]);
@@ -210,18 +241,33 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   const saveHomeCustomization = async () => {
     if (!studioId || !userId) { setLayoutError('Identità studio/utente non disponibile'); return; }
     setLayoutSaving(true); setLayoutError('');
+    logHomeLayoutEvent('HOME_LAYOUT_SAVE_START');
     try {
       if (draftInherits) {
         await deleteUserHomeLayout(supabase, studioId, userId);
-        const resolved = await loadResolvedHomeLayout(supabase, studioId, userId, roleLayout);
-        setWidgets(resolved.layout); setDraftWidgets(resolved.layout); setLayoutSource(resolved.source);
-        setInheritedLayout(resolved.inheritedLayout); setInheritedSource(resolved.inheritedSource);
+        try {
+          const resolved = await loadResolvedHomeLayout(supabase, studioId, userId, roleLayout);
+          setWidgets(resolved.layout); setDraftWidgets(resolved.layout); setLayoutSource(resolved.source);
+          setInheritedLayout(resolved.inheritedLayout); setInheritedSource(resolved.inheritedSource);
+        } catch {
+          // POL-UI-013C: the delete above already succeeded — the user's
+          // personal layout really was removed server-side — so a
+          // failure here must not fall through to the generic "no
+          // changes were applied" catch below, which would be false.
+          // Fall back to the inherited layout already held in state
+          // instead of leaving the stale pre-reset draft on screen.
+          setWidgets(inheritedLayout); setDraftWidgets(inheritedLayout); setLayoutSource(inheritedSource);
+        }
       } else {
         const saved = await saveUserHomeLayout(supabase, studioId, userId, draftWidgets);
         setWidgets(saved); setDraftWidgets(saved); setLayoutSource('user');
       }
       setSettingsOpen(false);
-    } catch { setLayoutError('Salvataggio non riuscito. Nessuna modifica è stata applicata.'); }
+      logHomeLayoutEvent('HOME_LAYOUT_SAVE_SUCCESS');
+    } catch {
+      setLayoutError('Salvataggio non riuscito. Nessuna modifica è stata applicata.');
+      logHomeLayoutEvent('HOME_LAYOUT_SAVE_ERROR');
+    }
     finally { setLayoutSaving(false); }
   };
 

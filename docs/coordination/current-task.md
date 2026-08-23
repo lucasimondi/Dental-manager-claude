@@ -22,7 +22,7 @@ The Product Owner authorized POL-UI-013 directly, the same way POL-UI-012 was au
 
 ## Exact next action
 
-POL-UI-013 itself is complete. A follow-up audit (POL-UI-013B) found that `user_home_layouts`/`studio_home_layouts` are **already applied to production** with correct schema/RLS — the original "never applied to production" root cause is superseded; see the "POL-UI-013B Production personalization migration audit — STOPPED, decision required" handoff entry for full detail and the two open Product Owner questions (deployment-history confirmation; how to authorize live production QA, since this sandbox will not authenticate against the real production project). Product Owner reviews the draft PR; do not merge without explicit approval.
+POL-UI-013 (widgets/UI) and POL-UI-013B (production DB audit — tables/RLS already correct) are complete. A third pass, POL-UI-013C, found and fixed the actual application-side root cause: a state race in `Dashboard.jsx`'s background layout-load effect could silently overwrite an in-progress, unsaved "Personalizza Home" edit if the load resolved while the modal was already open. See the "POL-UI-013C Personalization save/load root cause" handoff entry for the full trace, fix, and a short LIVE_QA_SCRIPT for the Product Owner to run against production (this sandbox still does not authenticate into production). Product Owner reviews draft PR #44; do not merge without explicit approval.
 
 ---
 

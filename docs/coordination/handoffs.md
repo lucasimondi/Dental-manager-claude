@@ -740,3 +740,82 @@
   1. The documented root cause in the POL-UI-013 handoff is now known to be outdated: the production tables/RLS already exist and are correct. Please confirm whether they were deployed intentionally (and if so, by what process, so `docs/coordination/handoffs.md` can record the real deployment history instead of the now-superseded "never applied" statement) or whether this is unexpected and needs investigation on your side.
   2. Steps A–F (live Dashboard QA: save/refresh/logout-login/cancel/reset/multitenant/permission checks) require authenticating as a real production user against `idklxdqebfceplrualgh`. This sandbox will not do that without your explicit authorization, given the repository's own established safety precedent. If you want this QA performed by an agent, please either (a) authorize and supervise a session with real production credentials, or (b) perform steps A–F yourself and report back, or (c) provide a disposable/staging Supabase project so an agent can validate the identical schema safely. Whichever you choose, the underlying schema/RLS this session verified is already correct and should support all six scenarios (A–F) as designed, based on the policy definitions read from production.
 - Exact next action: Product Owner reviews this finding and PR #44, decides on the QA-authentication question above, and confirms/corrects the deployment-history record. Do not merge PR #44 or attempt any further production write without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+
+## POL-UI-013C Personalization save/load root cause — application-side race condition found and fixed
+
+- Task ID: POL-UI-013C.
+- Previous agent: this session's own POL-UI-013/POL-UI-013B work (draft PR #44, `feature/POL-UI-013-dashboard-modular-workspace`); Product Owner directly authorized this deeper application-side trace after POL-UI-013B confirmed the database layer (schema/RLS) was already correct in production.
+- Branch: `feature/POL-UI-013-dashboard-modular-workspace` (continuing PR #44). No database, migration, RLS, or RBAC change — per explicit instruction, none was made or attempted.
+
+### SAVE_FLOW
+
+`saveHomeCustomization()` in `src/components/Dashboard.jsx`: triggered by the "Salva Home" button (present on both the Widget tab and the Azioni rapide tab — one shared handler, since both tabs edit the same `draftWidgets` array). Guard: requires `studioId`/`userId`, else sets `layoutError` and returns. Two branches on `draftInherits`:
+- `draftInherits === true` (user has no personal layout, or clicked "Ripristina predefinito"): `deleteUserHomeLayout` removes the user's row, then `loadResolvedHomeLayout` re-resolves to whatever the studio/role/platform default now is.
+- `draftInherits === false` (normal edit): `saveUserHomeLayout(supabase, studioId, userId, draftWidgets)` — upserts `{studio_id, user_id, layout: serializeHomeLayout(draftWidgets), schema_version: 1, updated_at}` onto `user_home_layouts` with `onConflict: 'studio_id,user_id'`, matching the table's real primary key exactly. Local `widgets`/`draftWidgets` state is then set directly from the function's return value (the exact serialized/normalized payload that was sent), not from a second read — so success state is always internally consistent with what was actually upserted. On any thrown error (network/RLS), the outer `catch` sets `layoutError` and the modal stays open (`setSettingsOpen(false)` is only reached on the non-throwing path).
+
+### LOAD_FLOW
+
+A `useEffect` in `Dashboard.jsx`, keyed on `[studioId, userId, JSON.stringify(capabilities), homeLayoutReloadToken]`, calls `loadResolvedHomeLayout` (`src/lib/homeLayoutPersistence.js`), which runs `loadUserHomeLayout` and `loadStudioHomeLayout` in parallel and resolves precedence via `resolveDashboardLayout` (`src/lib/homeDashboardModel.js`): **user layout, if present, wins outright; else studio default; else the role preset computed from the caller's capabilities; else the platform's hard-coded default registry order.** Each loaded layout is passed through `normalizeHomeLayout`, which drops unknown/retired widget ids, falls back any size no longer in a widget's allowed set to that widget's default, and defaults `visible`/`config` safely — so a layout written by an older app version cannot corrupt or discard the whole layout, only the specific entries that no longer make sense. The effect uses the standard React `cancelled` closure-flag pattern, so a stale in-flight request from a prior effect invocation can never overwrite a newer one.
+
+### USER_STUDIO_PRECEDENCE
+
+Verified correct and exactly as intended: `resolveDashboardLayout({userLayout, studioLayout, roleLayout})` returns, in order, `userLayout` if present, else `studioLayout`, else `roleLayout`, else the platform default (`src/lib/homeDashboardModel.js:25-30`). Confirmed both by the pre-existing pure-function test and by a new integration test exercising the real async `loadResolvedHomeLayout` DB path end to end with both a user row and a studio row present simultaneously (user still wins). No inversion, no accidental overwrite of user by studio, found anywhere in this path.
+
+### ROOT_CAUSE
+
+**Confirmed by code inspection, not speculation.** The persistence primitives (registry normalize/move/resize, Supabase load/save, precedence resolution) are all correct — POL-UI-013's existing test suite already proves this in isolation. The actual defect is a **state race in `Dashboard.jsx`'s background load effect**: its success handler unconditionally called both `setWidgets(layout)` **and** `setDraftWidgets(layout)` **and** `setDraftInherits(source !== 'user')`. `draftWidgets`/`draftInherits` are the *live, in-progress edit state* of the "Personalizza Home" modal — meaningful only while the modal is open, and already freshly re-derived from the committed `widgets` by `openHomeCustomizer()` every time the modal opens. If this background load effect resolved **while the modal was already open** — most plausibly because the user opened "Personalizza Home" before the very first page-load's layout fetch had finished (a realistic, ordinary click, not an edge case), or because a manual "Riprova" retry fired while editing — its `.then()` handler silently overwrote whatever the user was actively editing in the modal with the just-fetched server layout, with zero visual indication. A user who kept editing after that reset, or clicked Save without noticing the widget list had snapped back, would then save the **old** layout, not their edit — producing exactly the reported symptom: "I changed my layout, saved, and it doesn't seem to persist." Because this is a timing-dependent UI race, not a data-corruption bug, every existing pure-function/Supabase-mock test passed while this was present — it could only be found by tracing the actual component state flow, as requested.
+
+A second, narrower, related defect was found in the same audit (§5, "verify save success is real"): in the `draftInherits === true` (reset-to-default) branch, if `deleteUserHomeLayout` succeeded but the immediately following `loadResolvedHomeLayout` call then failed (e.g. a transient network blip), the outer `catch` reported "Salvataggio non riuscito. Nessuna modifica è stata applicata." — which was **false**: the delete had already succeeded server-side. This is real but much narrower in practice (only the Reset flow, only on a specific two-call partial failure), not the primary explanation for the general complaint.
+
+### FIX
+
+In `src/components/Dashboard.jsx`'s load effect: removed `setDraftWidgets(layout)` and `setDraftInherits(source !== 'user')` from the load success handler. Only `widgets` (and the inherited-default snapshot `inheritedLayout`/`inheritedSource`, which represents "what Reset restores to," not the user's in-progress edit) is kept in sync with the server in the background. `draftWidgets`/`draftInherits` are now *exclusively* set by `openHomeCustomizer()` (on modal open, already existed), the widget/resize/reorder edit handlers (already existed), and `resetHomeCustomization()`/`saveHomeCustomization()`'s own success paths (already existed) — never by the passive background loader. This makes it structurally impossible for a background reload to discard an open, unsaved edit.
+
+For the second defect: the reset-to-inherit branch's post-delete reload is now wrapped in its own inner `try/catch`; on failure it falls back to the already-known `inheritedLayout`/`inheritedSource` in state (instead of leaving the stale pre-reset draft on screen) and does **not** fall through to the outer catch's "no changes were applied" message, since a real change (the delete) did happen.
+
+### RACE_CONDITIONS
+
+The one confirmed and fixed race is described above (background load vs. open, unsaved modal edit). Audited and found **not** to be a problem: the load effect's own `cancelled`-flag pattern correctly prevents a stale response from a superseded effect invocation from ever overwriting a newer one; `studioId`/`userId`/capabilities changes correctly gate re-fetching without spurious loops (`JSON.stringify` on the capabilities array avoids refiring on same-content-different-reference renders); the Save button is correctly `disabled` while a load is in flight (`layoutSaving || layoutLoading`), preventing a save race against the *initial* unresolved load — the residual race was specifically the *reverse* direction (a late-resolving load reaching into an already-open, already-being-edited modal), which is what this fix closes.
+
+### BACKWARD_COMPATIBILITY
+
+Re-audited every registry widget id against the normalization path: `normalizeHomeLayout` drops any persisted id no longer in `HOME_WIDGET_REGISTRY` (already covered by an existing test) rather than discarding the rest of the layout, and any persisted `size` no longer in a widget's current allowed set falls back to that widget's own default (also already covered). `consigli_ai`'s internal id remains unchanged (see the POL-UI-013 handoff). No change was needed here — confirmed correct, not touched.
+
+### DIAGNOSTICS
+
+Added `src/lib/homeLayoutDiagnostics.js`, exporting `logHomeLayoutEvent(event, detail)`, gated on Vite's `import.meta.env.DEV` (statically stripped from the production bundle's logic, not just runtime-hidden — verified via a passing production `npm run build`). Wired into `Dashboard.jsx` at every stage: `HOME_LAYOUT_LOAD_START`, `HOME_LAYOUT_LOAD_SOURCE` (user/studio/role/platform), `HOME_LAYOUT_NORMALIZED`, `HOME_LAYOUT_LOAD_SUCCESS`, `HOME_LAYOUT_LOAD_ERROR`, `HOME_LAYOUT_SAVE_START`, `HOME_LAYOUT_SAVE_SUCCESS`, `HOME_LAYOUT_SAVE_ERROR`. Only presentation-shape data is logged (widget counts, source label) — never raw studio/user identifiers, patient data, or secrets.
+
+### TESTS
+
+New file `tests/homeLayoutPrecedenceRace.test.mjs` (13 tests, all passing): full A–D precedence matrix through the real async `loadResolvedHomeLayout` path (including the previously-untested role-preset tier), a direct regression test asserting the load effect's code (comments stripped) no longer calls `setDraftWidgets`/`setDraftInherits`, a test confirming `openHomeCustomizer` still re-derives both fresh on open, a test for the reset-to-inherit partial-failure fix (separate inner `catch`), a save-error-is-visible test (J), an E/F save-then-reload round-trip test through the real async path, and diagnostics wiring/gating tests. Combined with the existing `tests/dashboardPersonalization.test.mjs` (18 tests) and `tests/homeWidgetRegistry.test.mjs`'s precedence test, this now covers the Product Owner's full A–J matrix.
+
+### FILES_CHANGED
+
+`src/components/Dashboard.jsx` (load effect + save handler); `src/lib/homeLayoutDiagnostics.js` (new); `tests/homeLayoutPrecedenceRace.test.mjs` (new); `docs/coordination/handoffs.md` (this entry); `docs/coordination/current-task.md`.
+
+- Database changes: **none.** No migration, schema, RLS, or RBAC touched, per explicit instruction.
+- Tests executed: `npm test` (221/221 pass — 208 pre-existing + 13 new); `npm run build` (passes, only pre-existing unrelated warnings); `git status --short` scope check.
+- Unresolved issues: none confirmed. The two findings above are fixed. No further application-side defect was found in the save/load/precedence path after this trace.
+- Risks: none introduced — the fix is a pure removal of two now-unnecessary state writes from a background effect (both already correctly handled elsewhere), plus an additive inner `try/catch`. No behavior change to the successful, non-racing path.
+- Rollback: revert the POL-UI-013C commit. No database or data rollback needed.
+- Deployment impact: frontend bundle only; no deployment performed.
+
+### LIVE_QA_SCRIPT
+
+Per explicit instruction, this task did **not** authenticate into production. The following short script is for the Product Owner (or an authorized session) to run against the real app:
+
+1. Open Home (Dashboard) as a real studio user.
+2. Click **Personalizza Home**.
+3. Move one widget up or down (drag handle or the ↑/↓ buttons).
+4. Resize a different widget (tap S/M/L).
+5. Hide a third widget ("Rimuovi" on its row).
+6. Click **Salva Home**.
+7. Refresh the page (hard refresh, not just re-render).
+8. Verify: the moved widget is in its new position, the resized widget kept its new size, the hidden widget is gone — exactly as left before refresh.
+9. Log out, log back in as the same user.
+10. Verify again: same result as step 8.
+
+**If it fails, report:** (a) the browser DevTools **Console** tab — any red error, especially anything mentioning `user_home_layouts`, `studio_home_layouts`, `406`, `403`, `42501`, or `PGRST`; (b) the **Network** tab, filtered to `user_home_layouts` — the request method (should be `POST` with `Prefer: resolution=merge-duplicates` for the save, `GET` for the load) and its response status/body; (c) whether the page-level red banner ("La tua personalizzazione della Home non è stata caricata…") appeared at any point with a "Riprova" button — if so, that specifically means the *load* failed (distinct from a save failure, which shows its error inside the still-open modal instead). With `import.meta.env.DEV` diagnostics enabled (a local/dev build, not production), the Console will also show `[home-layout] HOME_LAYOUT_...` lines tracing exactly which stage ran and with what source/outcome.
+
+- Product Owner decision required: none for this task — no schema/RLS/RBAC change was needed or made, matching the explicit constraint. The two POL-UI-013B open questions (deployment-history confirmation; how to authorize real production QA) remain open from that entry.
+- Exact next action: Product Owner reviews this finding and PR #44 (now containing POL-UI-013 + the POL-UI-013B audit + this fix), and either runs the live QA script above or authorizes it to be run. Do not merge PR #44 without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
