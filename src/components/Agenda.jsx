@@ -449,7 +449,7 @@ function ViewPicker({ view, setView }) {
   const LABEL = { giorno: 'Giorno', settimana: 'Settimana', mese: 'Mese' };
   return (
     <div style={{ position: 'relative', flexShrink: 0 }}>
-      <button onClick={() => setOpen(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: C.priL, color: C.pri, border: 'none', borderRadius: 14, padding: '5px 8px 5px 11px', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
+      <button className="agenda-view-picker" onClick={() => setOpen(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: C.priL, color: C.pri, border: 'none', borderRadius: 14, padding: '5px 8px 5px 11px', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
         {LABEL[view]}
         <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke={C.pri} strokeWidth="3" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="M6 9l6 6 6-6" /></svg>
       </button>
@@ -523,8 +523,8 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
   // gutter resta 46px (deve coincidere con la colonna ore della griglia).
   const circleD = compact ? 25 : 30;
   return (
-    <div style={{ flexShrink: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: compact ? '0 4px 4px' : '0 4px 6px' }}>
+    <div className={compact ? 'agenda-mobile-floating-controls' : undefined} style={{ flexShrink: 0 }}>
+      <div className={compact ? 'agenda-mobile-floating-toolbar' : undefined} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: compact ? '0 4px 4px' : '0 4px 6px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {/* POL-UI-006: controlli espliciti settimana precedente/successiva
               per desktop, oltre allo scroll/swipe già esistente sulla
@@ -536,7 +536,7 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
           {!compact && onPrevWeek && (
             <button onClick={onPrevWeek} aria-label="Settimana precedente" style={{ background: C.bg, border: 'none', borderRadius: 7, width: 26, height: 26, cursor: 'pointer', fontSize: 15, color: C.txm, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>‹</button>
           )}
-          <span style={{ fontSize: 13, fontWeight: 800, color: C.txt, textTransform: 'capitalize' }}>{meseLabel}</span>
+          <span className={compact ? 'agenda-mobile-floating-month' : undefined} style={{ fontSize: 13, fontWeight: 800, color: C.txt, textTransform: 'capitalize' }}>{meseLabel}</span>
           {!compact && onNextWeek && (
             <button onClick={onNextWeek} aria-label="Settimana successiva" style={{ background: C.bg, border: 'none', borderRadius: 7, width: 26, height: 26, cursor: 'pointer', fontSize: 15, color: C.txm, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>›</button>
           )}
@@ -546,7 +546,7 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
       {/* Gutter da 46px, identico alla colonna ore della griglia sotto: senza, le colonne di
           questa striscia non coinciderebbero con quelle della griglia (uno sfasamento che
           confonde su quale giorno si sta guardando). */}
-      <div style={{ display: 'flex', marginBottom: compact ? 6 : 8, borderRadius: 12, background: C.sur, border: `1px solid ${C.brd}`, overflow: 'hidden', boxShadow: '0 1px 2px rgba(15,23,42,.04), 0 6px 16px rgba(15,23,42,.06)' }}>
+      <div className={compact ? 'agenda-mobile-floating-week-strip' : undefined} style={{ display: 'flex', marginBottom: compact ? 6 : 8, borderRadius: 12, background: C.sur, border: `1px solid ${C.brd}`, overflow: 'hidden', boxShadow: '0 1px 2px rgba(15,23,42,.04), 0 6px 16px rgba(15,23,42,.06)' }}>
         <div style={{ width: oraColW || 46, flexShrink: 0, borderRight: `1px solid ${C.brd}` }} />
         <div ref={scrollRef} onScroll={onScroll} style={{ flex: 1, minWidth: 0, display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
           {weeks.map((week, wi) => (
@@ -1097,7 +1097,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     // pure flexbox sizing, not a percentage height, all the way down. On
     // desktop #app-scroll is unchanged (not flex), so height:'100%' stays
     // exactly as before — no desktop behavior change.
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, ...(isMobile ? { flex: 1 } : { height: '100%' }) }}>
+    <div className={isMobile ? 'agenda-mobile-page' : undefined} style={{ display: 'flex', flexDirection: 'column', minHeight: 0, ...(isMobile ? { flex: 1, position: 'relative' } : { height: '100%' }) }}>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
       {/* Barra invio WhatsApp di massa in corso — resta finché non sono partite tutte
@@ -1195,7 +1195,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
 
       {/* VIEWS */}
       {(view === 'giorno' || view === 'settimana') && (
-        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div className={isMobile ? 'agenda-mobile-grid-surface' : undefined} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {view === 'giorno' && <GridView days={[new Date(selDay + 'T12:00')]} {...gridProps} onSwipeDay={navGiorno} features={features} />}
           {view === 'settimana' && <GridView days={weekDays} {...gridProps} onSwipeDay={navSettimana} features={features} />}
         </div>

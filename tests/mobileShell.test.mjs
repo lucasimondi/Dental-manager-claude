@@ -30,6 +30,15 @@ test('Agenda keeps its own inner scroll while other pages use app-scroll', () =>
   assert.doesNotMatch(agenda, /dockH|dock \(84px/);
 });
 
+test('Agenda mobile controls float above the scrolling grid', () => {
+  assert.match(agenda, /agenda-mobile-floating-controls/);
+  assert.match(agenda, /agenda-mobile-floating-month/);
+  assert.match(agenda, /agenda-mobile-floating-week-strip/);
+  assert.match(agenda, /agenda-mobile-grid-surface/);
+  assert.match(premium, /\.agenda-mobile-floating-controls\s*\{[\s\S]*position:\s*absolute;[\s\S]*z-index:\s*30;/);
+  assert.match(premium, /\.agenda-mobile-grid-surface\s*\{[\s\S]*z-index:\s*0;/);
+});
+
 test('all required mobile pages share the same app-scroll surface', () => {
   for (const page of ['home', 'agenda', 'paz', 'piani', 'paga', 'archivio', 'controllo', 'wa', 'set']) {
     assert.match(app, new RegExp(`page === '${page}'`), `${page} must render inside the shared shell`);

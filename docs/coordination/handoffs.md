@@ -1201,3 +1201,23 @@ or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
 - ROLLBACK: revert the commit containing this handoff; this restores the prior shared mobile safe-area padding behavior.
 - COMMIT: recorded by the commit containing this handoff.
 - Exact next action: Product Owner visually verifies mobile Agenda on the target iPhone. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+
+## POL-UI-004-AGENDA-FLOATING-CONTROLS
+
+- Task ID: POL-UI-004-AGENDA-FLOATING-CONTROLS.
+- Previous agent: Copilot, continuing immediately after approved commit `8fc48cb`.
+- Agent: Copilot.
+- Branch: `lucasimondi-agenda-mobile-fullscreen`.
+- Objective: remove structural mobile Agenda chrome and float month, filter, WhatsApp, view selector, and week strip above the full-height scrolling timeline.
+- COMPLETED_WORK: the mobile `DayStrip` is now an absolute overlay; its month label, conditional filter/WhatsApp controls, view selector, and week strip use independent translucent token-based surfaces with blur and shadow. The timeline begins at the same top coordinate as the overlay and scrolls beneath it. Desktop rendering and the month view remain structurally unchanged.
+- FILES_CHANGED: `src/components/Agenda.jsx`; `src/components/PremiumVisualSystem.css`; `tests/mobileShell.test.mjs`; `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- DATABASE_CHANGES: none.
+- DEPLOYMENT_IMPACT: frontend-only; no migration, dependency, environment, or production change.
+- RESPONSIVE_QA: real Chromium harness rendered the real Agenda at 375x667, 390x844, 393x852, and 430x932 in light and dark themes. In all eight runs the floating controls and grid shared the same top coordinate, the grid bottom equaled `window.innerHeight`, body and horizontal overflow were both `0`, and the timeline retained its single inner vertical scroller.
+- TESTS_EXECUTED: `npm.cmd test`; `npm.cmd run build`; `git diff --check`.
+- TEST_RESULTS: 326/326 tests passed; Vite build succeeded with only the pre-existing `pdfjs-dist` eval, malformed legacy CSS comment token, and chunk-size warnings.
+- UNRESOLVED_ISSUES: none in implementation; Product Owner visual verification remains required.
+- RISKS: controls intentionally overlay the earliest visible timeline rows, per the requested "reticolo che scorre sotto" behavior.
+- ROLLBACK: revert the commit containing this handoff.
+- COMMIT: recorded by the commit containing this handoff.
+- Exact next action: Product Owner visually verifies the floating controls and under-scrolling grid on iPhone. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.

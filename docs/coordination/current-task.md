@@ -1,7 +1,7 @@
 # Current task
 
 - TASK: POL-UI-004-AGENDA-FULLSCREEN
-- TITLE: Mobile Agenda full-screen viewport fix
+- TITLE: Mobile Agenda floating controls
 - OWNER: COPILOT
 - BRANCH: `lucasimondi-agenda-mobile-fullscreen`
 - BASE: `master`
@@ -9,14 +9,15 @@
 
 ## Objective
 
-Remove the lower dead strip from the mobile Agenda so its calendar surface
-reaches the real dynamic viewport bottom while preserving the existing
-MobileDock, Poliedron, `+` button, header, controls, and Agenda behavior.
+Keep the mobile Agenda full-screen while removing its structural header:
+month, filter, WhatsApp, view selector, and week strip float above the
+timeline, which remains the full-height scroll surface underneath.
 
 ## Completed scope
 
 - Agenda-only mobile shell bottom-padding correction.
 - Regression coverage for the Agenda safe-area exception.
+- Floating mobile month/actions/week-strip overlay above the timeline.
 - Responsive browser measurements at 375x667, 390x844, 393x852, and
   430x932 in light and dark themes.
 - Full test suite and production build.
@@ -30,7 +31,8 @@ MobileDock, Poliedron, `+` button, header, controls, and Agenda behavior.
 
 ## Exact next action
 
-Product Owner visually verifies the mobile Agenda on the target iPhone.
+Product Owner visually verifies the floating Agenda controls and scrolling
+timeline on the target iPhone.
 Do not merge or deploy without explicit approval.
 
 ---

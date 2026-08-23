@@ -36,6 +36,51 @@
     overflow-x: hidden;
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
+
+  /* Agenda chrome is an overlay, not a header. The timeline remains the
+     full-height page surface and scrolls beneath these independent controls. */
+  .agenda-mobile-floating-controls {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    pointer-events: none;
+  }
+  .agenda-mobile-floating-controls button,
+  .agenda-mobile-floating-controls [role="button"],
+  .agenda-mobile-floating-week-strip {
+    pointer-events: auto;
+  }
+  .agenda-mobile-floating-toolbar {
+    gap: 8px;
+  }
+  .agenda-mobile-floating-month,
+  .agenda-view-picker,
+  .agenda-mobile-floating-controls .pol-icon-btn {
+    border: 1px solid var(--border-medium) !important;
+    background: color-mix(in srgb, var(--surface-interactive) 88%, transparent) !important;
+    box-shadow: var(--shadow-sm) !important;
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+  }
+  .agenda-mobile-floating-month {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 5px 11px;
+    border-radius: 999px;
+  }
+  .agenda-mobile-floating-week-strip {
+    margin-inline: 4px;
+    background: color-mix(in srgb, var(--surface-interactive) 88%, transparent) !important;
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+  }
+  .agenda-mobile-grid-surface {
+    position: relative;
+    z-index: 0;
+  }
 }
 
 /* POL-UI-004 — app-wide (not Home-scoped): every interactive Crd (the
