@@ -6,7 +6,7 @@
 - BRANCH: `lucasimondi-feature-pol-ai-004-proactive-intelligenc`
 - BASE REVIEW: `master@93dfe6a` (PR #43 merged)
 - STATUS: `WAITING_PRODUCT_OWNER`
-- PR: pending new draft PR
+- PR: draft PR #45
 
 ## Objective
 
@@ -50,7 +50,7 @@ added-secret, dependency-manifest, schema/scope and review gates pass.
 
 ## Exact next action
 
-Product Owner reviews the new draft POL-AI-004 PR after creation. Do not
+Product Owner reviews draft PR #45. Do not
 deploy or merge without explicit approval.
 
 ---
