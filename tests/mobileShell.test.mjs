@@ -37,6 +37,19 @@ test('Agenda mobile controls float above the scrolling grid', () => {
   assert.match(agenda, /agenda-mobile-grid-surface/);
   assert.match(premium, /\.agenda-mobile-floating-controls\s*\{[\s\S]*position:\s*absolute;[\s\S]*z-index:\s*30;/);
   assert.match(premium, /\.agenda-mobile-grid-surface\s*\{[\s\S]*z-index:\s*0;/);
+  assert.match(agenda, /agenda-mobile-scroll-spacer--top/);
+  assert.match(agenda, /agenda-mobile-scroll-spacer--bottom/);
+  assert.match(premium, /\.agenda-mobile-scroll-spacer--top\s*\{[\s\S]*--agenda-mobile-overlay-clearance/);
+  assert.match(premium, /\.agenda-mobile-scroll-spacer--bottom\s*\{[\s\S]*safe-area-inset-bottom/);
+});
+
+test('Agenda day strip follows the grid day source and uses mobile-only today styling', () => {
+  assert.match(agenda, /getVisibleWeekDays\(weekStart, hiddenWeekdays\)/);
+  assert.match(agenda, /getVisibleWeekDays\(ws, hiddenWeekdays\)/);
+  assert.match(agenda, /gridTemplateColumns:\s*`repeat\(\$\{week\.length\}, minmax\(0, 1fr\)\)`/);
+  assert.match(agenda, /agenda-mobile-day-number\$\{isToday \? ' is-today'/);
+  assert.match(agenda, /background:\s*isMobile \? C\.sur : isWeekend \? C\.bg : isToday \? C\.priL : C\.sur/);
+  assert.match(premium, /\.agenda-mobile-day-number\.is-today\s*\{[\s\S]*border-color:\s*var\(--danger\);[\s\S]*background:\s*transparent;/);
 });
 
 test('all required mobile pages share the same app-scroll surface', () => {

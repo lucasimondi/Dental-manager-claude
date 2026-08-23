@@ -1221,3 +1221,29 @@ or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
 - ROLLBACK: revert the commit containing this handoff.
 - COMMIT: recorded by the commit containing this handoff.
 - Exact next action: Product Owner visually verifies the floating controls and under-scrolling grid on iPhone. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+
+## POL-UI-004-AGENDA-V2 specification completion
+
+- Task ID: POL-UI-004-AGENDA-V2.
+- Previous agent: Copilot, continuing from commits `8fc48cb` and `654f862`.
+- Agent: Copilot.
+- Branch: `lucasimondi-agenda-mobile-fullscreen`.
+- Objective: complete the full Product Owner specification for floating mobile Agenda controls, a dynamic day strip, today-only red-ring styling, and complete top/bottom time scrolling.
+- ARCHITECTURE: the custom Agenda grid, not FullCalendar, is the repository implementation. Mobile controls are measured with `ResizeObserver` and absolutely overlaid above the calendar layer. The measured overlay height feeds an internal top spacer; a separate internal bottom spacer clears the unchanged fixed dock. Neither spacer affects the outer page height.
+- DYNAMIC_DAY_SOURCE: new pure helper `getVisibleWeekDays` is the single filtering implementation used by both the week grid and every floating week-strip page. It reads the existing `agenda_settings.hiddenWeekdays`, preserves the existing all-hidden fail-safe, and updates when live studio settings change.
+- COMPLETED_WORK: one-day mode now renders one day; week mode renders exactly the configured 7/6/5/3/1 visible days with no placeholders; columns use dynamic `repeat(week.length, minmax(0, 1fr))`; the shared 34px time gutter and hidden mobile scrollbar keep strip/grid centers aligned; month mode hides the weekly strip and keeps only appropriate floating controls; mobile today styling is a transparent semantic-danger ring and mobile grid columns no longer receive today/weekend background bands.
+- SCROLL: the first configured slot rests fully below the measured overlay at scroll top; the last configured slot can scroll above the dock at scroll bottom; the grid remains the only vertical scroller and continues to the viewport bottom.
+- FILES_CHANGED: `src/components/Agenda.jsx`; `src/components/PremiumVisualSystem.css`; `src/lib/agendaVisibleDays.js`; `tests/agendaVisibleDays.test.mjs`; `tests/mobileShell.test.mjs`; `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- DATABASE_CHANGES: none.
+- DEPLOYMENT_IMPACT: frontend-only; no schema, RLS, dependency, environment, or production deployment change.
+- RESPONSIVE_QA: real Chromium at 375x667, 390x844, 393x852, and 430x932 in light/dark. All eight runs had grid bottom equal to viewport bottom and zero body/horizontal overflow. Today rendered with transparent background and `--danger` border.
+- DYNAMIC_DAY_QA: live settings changes were exercised for 7, 6, 5, 3, and 1 visible days. Strip and grid counts matched in every case, no placeholders remained, and measured column-center deltas were below 1px (maximum 0.8px).
+- VIEW_QA: Week showed the configured dynamic set; Day rendered one strip item and one grid column; Month rendered floating controls without a weekly strip.
+- SCROLL_QA: with configured 06:00–22:00 hours at 390x844, 06:00 was fully below the overlay at scroll top; at maximum scroll, 21:00 ended 53.9px above the unchanged dock.
+- TESTS_EXECUTED: `node --test tests\agendaVisibleDays.test.mjs tests\mobileShell.test.mjs tests\agendaSlots.test.mjs`; `npm.cmd test`; `npm.cmd run build`; `git diff --check`.
+- TEST_RESULTS: focused tests 14/14 passed; full suite 329/329 passed; isolated Vite build succeeded. A first build run concurrent with the QA dev server hit an esbuild process crash; rerunning after stopping that server succeeded. Existing eval/CSS-comment/chunk-size warnings remain unchanged.
+- UNRESOLVED_ISSUES: none in implementation; Product Owner real-device visual verification remains required.
+- RISKS: top and bottom reachability use internal spacers sized from the measured overlay and established dock clearance; no outer Agenda padding was reintroduced.
+- ROLLBACK: revert the commit containing this handoff, then revert `654f862` if the entire floating-UI change must be removed. Commit `8fc48cb` remains the full-screen baseline.
+- COMMIT: recorded by the commit containing this handoff.
+- Exact next action: push the branch, then Product Owner visually verifies the complete mobile Agenda V2 on iPhone. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.

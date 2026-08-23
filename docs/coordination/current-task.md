@@ -18,6 +18,9 @@ timeline, which remains the full-height scroll surface underneath.
 - Agenda-only mobile shell bottom-padding correction.
 - Regression coverage for the Agenda safe-area exception.
 - Floating mobile month/actions/week-strip overlay above the timeline.
+- Dynamic day strip driven by the same hidden-weekday source as the grid.
+- Internal top/bottom scroll range for complete first/last-slot access.
+- Mobile today styling reduced to the semantic red outline only.
 - Responsive browser measurements at 375x667, 390x844, 393x852, and
   430x932 in light and dark themes.
 - Full test suite and production build.
@@ -31,8 +34,8 @@ timeline, which remains the full-height scroll surface underneath.
 
 ## Exact next action
 
-Product Owner visually verifies the floating Agenda controls and scrolling
-timeline on the target iPhone.
+Product Owner visually verifies the adaptive floating Agenda, dynamic day
+counts, and complete time-range scrolling on the target iPhone.
 Do not merge or deploy without explicit approval.
 
 ---

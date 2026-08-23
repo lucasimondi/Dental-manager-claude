@@ -7,6 +7,7 @@ import { useIsMobile } from '../lib/useIsMobile';
 import { salvaPosizione, leggiPosizione } from '../lib/posizioneNavigazione';
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { supabase } from '../lib/supabase.js';
+import { getVisibleWeekDays } from '../lib/agendaVisibleDays.js';
 
 const WD_SHORT = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
@@ -233,7 +234,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   // tutte le altre schermate mobile — nessun'altra modifica alla griglia.
   return (
     <div onTouchStart={onTouchStartSwipe} onTouchEnd={onTouchEndSwipe} style={{
-      display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', background: isMobile ? 'transparent' : C.sur,
+      display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', background: C.sur,
       border: isMobile ? 'none' : `1px solid ${C.brd}`,
       borderRadius: isMobile ? 0 : 12,
       boxShadow: isMobile ? 'none' : '0 1px 3px rgba(0,0,0,0.06)',
@@ -247,7 +248,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
             spazio assegnato — e a quel punto è la PAGINA a scrollare per compensare,
             non l'elemento stesso. È il bug reale dietro lo scroll incoerente di prima:
             dipendeva da quanti appuntamenti/ore c'erano, non era mai stato casuale. */}
-        <div ref={containerRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y', overscrollBehavior: 'contain', position: 'relative' }}>
+        <div ref={containerRef} className={isMobile ? 'agenda-mobile-calendar-scroller' : undefined} style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y', overscrollBehavior: 'contain', position: 'relative' }}>
           {/* POL-UI-010 (slot fit): minHeight ora usa slots.length*effectiveSlotH
               — coerente con ogni altro uso di effectiveSlotH sopra — invece del
               precedente max(100%, slots.length*slotH). Quando il range orario è
@@ -256,13 +257,13 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
               disponibile (niente più margine di sicurezza necessario); quando il
               range è lungo, effectiveSlotH resta lo slotH base e il contenitore
               scrolla come sempre. Desktop invariato. */}
-          <div style={{ display: 'flex', flexDirection: 'column', minHeight: isMobile ? slots.length * effectiveSlotH : slots.length * slotH }}>
-
-            <div style={{ display: 'flex', flex: 1 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: isMobile ? slots.length * effectiveSlotH : slots.length * slotH, background: C.sur }}>
+            {isMobile && <div aria-hidden="true" className="agenda-mobile-scroll-spacer agenda-mobile-scroll-spacer--top" />}
+            <div className="agenda-time-grid" style={{ display: 'flex', flex: 1 }}>
 
             {/* Colonna ore — sticky. Compatta su mobile (oraColW), per rubare meno spazio
                 possibile alle 7 colonne giorno; deve restare identica al gutter di DayStrip. */}
-            <div style={{ width: oraColW || 46, flexShrink: 0, borderRight: `1.5px solid ${C.brd}`, background: C.bg, position: 'sticky', left: 0, zIndex: 3 }}>
+            <div className="agenda-time-gutter" style={{ width: oraColW || 46, flexShrink: 0, borderRight: `1.5px solid ${C.brd}`, background: C.bg, position: 'sticky', left: 0, zIndex: 3 }}>
               {slots.map((slot) => {
                 const isHour = slot.endsWith(':00');
                 return (
@@ -282,7 +283,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
             const isToday = ds === t;
             const isWeekend = d.getDay() === 0 || d.getDay() === 6;
             return (
-              <div key={di} style={{ flex: 1, position: 'relative', borderLeft: di > 0 ? `1.5px solid ${C.brd}` : 'none', background: isWeekend ? C.bg : isToday ? C.priL : C.sur }}>
+              <div className="agenda-grid-day" key={di} style={{ flex: 1, position: 'relative', borderLeft: di > 0 ? `1.5px solid ${C.brd}` : 'none', background: isMobile ? C.sur : isWeekend ? C.bg : isToday ? C.priL : C.sur }}>
                 {slots.map((slot) => {
                   const isHour = slot.endsWith(':00');
                   return (
@@ -376,6 +377,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
           })}
             </div>
             </div>
+            {isMobile && <div aria-hidden="true" className="agenda-mobile-scroll-spacer agenda-mobile-scroll-spacer--bottom" />}
           </div>
         </div>
       </div>
@@ -453,11 +455,11 @@ function ViewPicker({ view, setView }) {
         {LABEL[view]}
         <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke={C.pri} strokeWidth="3" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="M6 9l6 6 6-6" /></svg>
       </button>
-      {open && <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 34 }} />}
+      {open && <div className="agenda-floating-interactive" onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 34 }} />}
       {open && (
-        <div style={{ position: 'absolute', top: 30, right: 0, background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 10, boxShadow: '0 8px 22px rgba(0,0,0,0.18)', width: 126, overflow: 'hidden', zIndex: 35 }}>
+        <div className="agenda-floating-interactive" style={{ position: 'absolute', top: 30, right: 0, background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 10, boxShadow: '0 8px 22px rgba(0,0,0,0.18)', width: 126, overflow: 'hidden', zIndex: 35 }}>
           {['giorno', 'settimana', 'mese'].map((v) => (
-            <div key={v} onClick={() => { setView(v); setOpen(false); }} style={{ padding: '9px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', background: view === v ? C.priL : 'transparent', color: view === v ? C.pri : C.txt }}>{LABEL[v]}</div>
+            <button key={v} onClick={() => { setView(v); setOpen(false); }} style={{ display: 'block', width: '100%', padding: '9px 12px', border: 'none', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', textAlign: 'left', background: view === v ? C.priL : 'transparent', color: view === v ? C.pri : C.txt }}>{LABEL[v]}</button>
           ))}
         </div>
       )}
@@ -465,7 +467,7 @@ function ViewPicker({ view, setView }) {
   );
 }
 
-function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected = true, viewPicker, compact, oraColW, onPrevWeek, onNextWeek }) {
+function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected = true, viewPicker, compact, oraColW, onPrevWeek, onNextWeek, hiddenWeekdays = [], singleDay = false, overlayRef, floatingFooter }) {
   const scrollRef = useRef(null);
   const [stripBaseWeek, setStripBaseWeek] = useState(() => toISO(startOfWeek(selDay)));
   const settleTimer = useRef(null);
@@ -487,11 +489,13 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
 
   const windowStart = new Date(stripBaseWeek + 'T12:00');
   windowStart.setDate(windowStart.getDate() - 14);
-  const weeks = Array.from({ length: 5 }, (_, wi) => {
-    const ws = new Date(windowStart);
-    ws.setDate(ws.getDate() + wi * 7);
-    return Array.from({ length: 7 }, (_, di) => { const d = new Date(ws); d.setDate(d.getDate() + di); return d; });
-  });
+  const weeks = singleDay
+    ? [[new Date(selDay + 'T12:00')]]
+    : Array.from({ length: 5 }, (_, wi) => {
+      const ws = new Date(windowStart);
+      ws.setDate(ws.getDate() + wi * 7);
+      return getVisibleWeekDays(ws, hiddenWeekdays);
+    });
 
   const onScroll = () => {
     if (settleTimer.current) clearTimeout(settleTimer.current);
@@ -499,7 +503,7 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
       const el = scrollRef.current;
       if (!el || !itemWidthRef.current) return;
       const idx = Math.round(el.scrollLeft / itemWidthRef.current);
-      if (idx !== 2) {
+      if (!singleDay && idx !== 2) {
         const nb = new Date(stripBaseWeek + 'T12:00');
         nb.setDate(nb.getDate() + (idx - 2) * 7);
         setStripBaseWeek(toISO(nb));
@@ -523,7 +527,7 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
   // gutter resta 46px (deve coincidere con la colonna ore della griglia).
   const circleD = compact ? 25 : 30;
   return (
-    <div className={compact ? 'agenda-mobile-floating-controls' : undefined} style={{ flexShrink: 0 }}>
+    <div ref={overlayRef} className={compact ? 'agenda-mobile-floating-controls' : undefined} style={{ flexShrink: 0 }}>
       <div className={compact ? 'agenda-mobile-floating-toolbar' : undefined} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: compact ? '0 4px 4px' : '0 4px 6px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {/* POL-UI-006: controlli espliciti settimana precedente/successiva
@@ -548,17 +552,22 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
           confonde su quale giorno si sta guardando). */}
       <div className={compact ? 'agenda-mobile-floating-week-strip' : undefined} style={{ display: 'flex', marginBottom: compact ? 6 : 8, borderRadius: 12, background: C.sur, border: `1px solid ${C.brd}`, overflow: 'hidden', boxShadow: '0 1px 2px rgba(15,23,42,.04), 0 6px 16px rgba(15,23,42,.06)' }}>
         <div style={{ width: oraColW || 46, flexShrink: 0, borderRight: `1px solid ${C.brd}` }} />
-        <div ref={scrollRef} onScroll={onScroll} style={{ flex: 1, minWidth: 0, display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
+        <div ref={scrollRef} onScroll={onScroll} style={{ flex: 1, minWidth: 0, display: 'flex', overflowX: singleDay ? 'hidden' : 'auto', scrollSnapType: singleDay ? 'none' : 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
           {weeks.map((week, wi) => (
-            <div key={wi} style={{ flex: '0 0 100%', scrollSnapAlign: 'start', display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', padding: compact ? '5px 4px' : '8px 4px' }}>
+            <div key={wi} style={{ flex: '0 0 100%', scrollSnapAlign: 'start', display: 'grid', gridTemplateColumns: `repeat(${week.length}, minmax(0, 1fr))`, padding: compact ? '3px 0' : '8px 4px' }}>
               {week.map((d, di) => {
                 const ds = toISO(d);
                 const isToday = ds === t;
                 const isSel = highlightSelected && ds === selDay;
                 return (
-                  <div key={di} onClick={() => setSelDay(ds)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: compact ? 2 : 3, cursor: 'pointer', padding: '2px 0' }}>
-                    <span style={{ fontSize: compact ? 8 : 9, fontWeight: 700, color: isToday ? C.pri : C.txl, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{WD_SHORT[d.getDay()]}</span>
-                    <span style={{ fontSize: compact ? 13 : 15, fontWeight: 800, width: circleD, height: circleD, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isSel ? C.pri : isToday ? C.priL : 'transparent', color: isSel ? '#fff' : isToday ? C.pri : C.txt, boxShadow: isSel ? `0 4px 10px -2px ${C.pri}66` : 'none', transition: 'background .14s ease, box-shadow .14s ease' }}>{d.getDate()}</span>
+                  <div className={compact ? 'agenda-mobile-day-item' : undefined} key={di} onClick={() => setSelDay(ds)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: compact ? 1 : 3, cursor: 'pointer', padding: compact ? 0 : '2px 0' }}>
+                    <span style={{ fontSize: compact ? 8 : 9, fontWeight: 700, color: compact && isToday ? C.dan : isToday ? C.pri : C.txl, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{WD_SHORT[d.getDay()]}</span>
+                    <span
+                      className={compact ? `agenda-mobile-day-number${isToday ? ' is-today' : ''}${isSel && !isToday ? ' is-selected' : ''}` : undefined}
+                      style={{ fontSize: compact ? 13 : 15, fontWeight: 800, width: circleD, height: circleD, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: compact ? 'transparent' : isSel ? C.pri : isToday ? C.priL : 'transparent', color: compact ? (isToday ? C.dan : isSel ? C.pri : C.txt) : isSel ? '#fff' : isToday ? C.pri : C.txt, boxShadow: compact ? 'none' : isSel ? `0 4px 10px -2px ${C.pri}66` : 'none', transition: 'background .14s ease, box-shadow .14s ease' }}
+                    >
+                      {d.getDate()}
+                    </span>
                   </div>
                 );
               })}
@@ -566,6 +575,7 @@ function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected
           ))}
         </div>
       </div>
+      {floatingFooter}
     </div>
   );
 }
@@ -703,6 +713,33 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   }, [initPazienteId]);
 
   const isMobile = useIsMobile();
+  const overlayRef = useRef(null);
+  const [mobileOverlayHeight, setMobileOverlayHeight] = useState(0);
+  useLayoutEffect(() => {
+    if (!isMobile || !overlayRef.current) {
+      setMobileOverlayHeight(0);
+      return undefined;
+    }
+    const overlay = overlayRef.current;
+    const update = () => setMobileOverlayHeight(Math.ceil(overlay.getBoundingClientRect().height));
+    update();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', update);
+      return () => window.removeEventListener('resize', update);
+    }
+    const observer = new ResizeObserver(update);
+    observer.observe(overlay);
+    return () => observer.disconnect();
+  }, [isMobile, view, selModeWA]);
+
+  useEffect(() => {
+    if (!si?.agenda_settings) return;
+    setOraInizio(si.agenda_settings.oraInizio ?? DEF_AGENDA_SETTINGS.oraInizio);
+    setOraFine(si.agenda_settings.oraFine ?? DEF_AGENDA_SETTINGS.oraFine);
+    setSlotMin(si.agenda_settings.slotMin ?? DEF_AGENDA_SETTINGS.slotMin);
+    setZoom(si.agenda_settings.zoom ?? DEF_AGENDA_SETTINGS.zoom);
+    setHiddenWeekdays(si.agenda_settings.hiddenWeekdays || DEF_AGENDA_SETTINGS.hiddenWeekdays);
+  }, [si?.agenda_settings]);
   // availH reattivo: ricalcolato a ogni resize/orientazione, non solo al primo render.
   // Fornisce uno slot di base; su mobile il ResizeObserver di GridView misura poi
   // lo spazio effettivo del contenitore e adatta gli slot senza sottrazioni da dock.
@@ -729,10 +766,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   const getColore = (a) => a.colore || tipiList.find(t => t.nome === a.tipo)?.colore || C.pri;
 
   const weekStart = startOfWeek(selDay);
-  const weekDaysAll = Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
-  // Non nasconde MAI tutti i 7 giorni: se per errore lo studio ha nascosto tutta la settimana, mostra comunque tutto.
-  const weekDaysVisibili = weekDaysAll.filter(d => !hiddenWeekdays.includes(d.getDay()));
-  const weekDays = weekDaysVisibili.length > 0 ? weekDaysVisibili : weekDaysAll;
+  const weekDays = getVisibleWeekDays(weekStart, hiddenWeekdays);
   const t = today();
 
   const apriNuovo = (data, ora) => {
@@ -1066,9 +1100,9 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
         <Ic n="filter" s={13} c={filtroAttivo ? C.pri : C.txm} />
         {filtroAttivo && <span style={{ position: 'absolute', top: -1, right: -1, width: 8, height: 8, borderRadius: '50%', background: C.pri, border: `1.5px solid ${C.sur}` }} />}
       </button>
-      {filtriAperti && <div onClick={() => setFiltriAperti(false)} style={{ position: 'fixed', inset: 0, zIndex: 34 }} />}
+      {filtriAperti && <div className="agenda-floating-interactive" onClick={() => setFiltriAperti(false)} style={{ position: 'fixed', inset: 0, zIndex: 34 }} />}
       {filtriAperti && (
-        <div style={{ position: 'absolute', top: 34, right: 0, background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 12, boxShadow: '0 8px 22px rgba(0,0,0,0.18)', width: 240, maxHeight: 320, overflowY: 'auto', padding: 10, zIndex: 35 }}>
+        <div className="agenda-floating-interactive" style={{ position: 'absolute', top: 34, right: 0, background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 12, boxShadow: '0 8px 22px rgba(0,0,0,0.18)', width: 240, maxHeight: 320, overflowY: 'auto', padding: 10, zIndex: 35 }}>
           {chipsRisorse}
         </div>
       )}
@@ -1091,13 +1125,62 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     </button>
   );
 
+  const waSelectionToolbar = (
+    <div className={isMobile ? 'agenda-mobile-selection-toolbar' : undefined} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexShrink: 0 }}>
+      {!selModeWA ? (
+        <button
+          onClick={() => { setSelModeWA(true); setSelAppIds([]); }}
+          disabled={appVisibiliConTel.length === 0}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, background: appVisibiliConTel.length === 0 ? C.bg : '#E6F9EE', border: 'none', borderRadius: 9, padding: '7px 12px', color: appVisibiliConTel.length === 0 ? C.txl : '#128C7E', fontWeight: 700, fontSize: 11.5, cursor: appVisibiliConTel.length === 0 ? 'not-allowed' : 'pointer' }}
+        >
+          <Ic n="wa" s={13} c={appVisibiliConTel.length === 0 ? C.txl : '#128C7E'} />
+          Invia WhatsApp
+        </button>
+      ) : (
+        <>
+          <button
+            onClick={() => setSelAppIds(selAppIds.length === appVisibiliConTel.length ? [] : appVisibiliConTel.map(a => a.id))}
+            style={{ background: C.bg, border: `1.5px solid ${C.brd}`, borderRadius: 9, padding: '7px 11px', color: C.txm, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}
+          >
+            {selAppIds.length === appVisibiliConTel.length ? 'Deseleziona tutti' : `Seleziona tutti (${appVisibiliConTel.length})`}
+          </button>
+          <div style={{ flex: 1, fontSize: 11.5, color: C.txm, fontWeight: 700 }}>{selAppIds.length} selezionat{selAppIds.length === 1 ? 'o' : 'i'}</div>
+          <button
+            onClick={() => { setSelModeWA(false); setSelAppIds([]); }}
+            style={{ background: 'none', border: 'none', color: C.txl, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', padding: '7px 8px' }}
+          >
+            Annulla
+          </button>
+          <button
+            onClick={() => setWaMassModal(true)}
+            disabled={selAppIds.length === 0}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, background: selAppIds.length === 0 ? C.bg : '#25D366', border: 'none', borderRadius: 9, padding: '7px 12px', color: selAppIds.length === 0 ? C.txl : '#fff', fontWeight: 700, fontSize: 11.5, cursor: selAppIds.length === 0 ? 'not-allowed' : 'pointer' }}
+          >
+            <Ic n="send" s={12} c={selAppIds.length === 0 ? C.txl : '#fff'} />
+            Invia ({selAppIds.length})
+          </button>
+        </>
+      )}
+    </div>
+  );
+
   return (
     // POL-UI-010 (structural): on mobile, #app-scroll is now itself a column
     // flex container for this page (App.jsx), so this root uses flex:1 —
     // pure flexbox sizing, not a percentage height, all the way down. On
     // desktop #app-scroll is unchanged (not flex), so height:'100%' stays
     // exactly as before — no desktop behavior change.
-    <div className={isMobile ? 'agenda-mobile-page' : undefined} style={{ display: 'flex', flexDirection: 'column', minHeight: 0, ...(isMobile ? { flex: 1, position: 'relative' } : { height: '100%' }) }}>
+    <div
+      className={isMobile ? 'agenda-mobile-page' : undefined}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0,
+        ...(isMobile
+          ? { flex: 1, position: 'relative', '--agenda-mobile-overlay-clearance': `${mobileOverlayHeight}px` }
+          : { height: '100%' }),
+      }}
+    >
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
       {/* Barra invio WhatsApp di massa in corso — resta finché non sono partite tutte
@@ -1121,7 +1204,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       {haFiltriRisorse && !isMobile && chipsRisorse}
 
       {view === 'giorno' && (
-        <DayStrip selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} oraColW={oraColW} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker view={view} setView={setView} /></div>} />
+        <DayStrip selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} oraColW={oraColW} singleDay={isMobile} hiddenWeekdays={hiddenWeekdays} overlayRef={isMobile ? overlayRef : undefined} floatingFooter={isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker view={view} setView={setView} /></div>} />
       )}
       {view === 'settimana' && (
         <DayStrip
@@ -1134,10 +1217,26 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           oraColW={oraColW}
           onPrevWeek={() => navSettimana(-1)}
           onNextWeek={() => navSettimana(1)}
+          hiddenWeekdays={hiddenWeekdays}
+          overlayRef={isMobile ? overlayRef : undefined}
+          floatingFooter={isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null}
           viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker view={view} setView={setView} /></div>}
         />
       )}
-      {view === 'mese' && (
+      {view === 'mese' && isMobile && (
+        <div ref={overlayRef} className="agenda-mobile-floating-controls">
+          <div className="agenda-mobile-floating-toolbar">
+            <span className="agenda-mobile-floating-month">{MESI[vd.getMonth()]} {vd.getFullYear()}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {notificheBell}
+              {filtroButton}
+              <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 14, padding: '5px 10px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
+              <ViewPicker view={view} setView={setView} />
+            </div>
+          </div>
+        </div>
+      )}
+      {view === 'mese' && !isMobile && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexShrink: 0 }}>
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
             <button onClick={() => navMese(-1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: C.txm }}>‹</button>
@@ -1154,44 +1253,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       {/* Toolbar invio WhatsApp di massa — solo vista Giorno/Settimana, dove ha senso "tutti gli appuntamenti visibili".
           Su mobile l'idle button è già in alto (icona compatta accanto al selettore vista): questa riga intera
           compare solo per la barra di selezione attiva (transitoria), non resta lì a occupare spazio in permanenza. */}
-      {(view === 'giorno' || view === 'settimana') && waAbilitato(features) && (!isMobile || selModeWA) && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexShrink: 0 }}>
-          {!selModeWA ? (
-            <button
-              onClick={() => { setSelModeWA(true); setSelAppIds([]); }}
-              disabled={appVisibiliConTel.length === 0}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, background: appVisibiliConTel.length === 0 ? C.bg : '#E6F9EE', border: 'none', borderRadius: 9, padding: '7px 12px', color: appVisibiliConTel.length === 0 ? C.txl : '#128C7E', fontWeight: 700, fontSize: 11.5, cursor: appVisibiliConTel.length === 0 ? 'not-allowed' : 'pointer' }}
-            >
-              <Ic n="wa" s={13} c={appVisibiliConTel.length === 0 ? C.txl : '#128C7E'} />
-              Invia WhatsApp
-            </button>
-          ) : (
-            <>
-              <button
-                onClick={() => setSelAppIds(selAppIds.length === appVisibiliConTel.length ? [] : appVisibiliConTel.map(a => a.id))}
-                style={{ background: C.bg, border: `1.5px solid ${C.brd}`, borderRadius: 9, padding: '7px 11px', color: C.txm, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}
-              >
-                {selAppIds.length === appVisibiliConTel.length ? 'Deseleziona tutti' : `Seleziona tutti (${appVisibiliConTel.length})`}
-              </button>
-              <div style={{ flex: 1, fontSize: 11.5, color: C.txm, fontWeight: 700 }}>{selAppIds.length} selezionat{selAppIds.length === 1 ? 'o' : 'i'}</div>
-              <button
-                onClick={() => { setSelModeWA(false); setSelAppIds([]); }}
-                style={{ background: 'none', border: 'none', color: C.txl, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', padding: '7px 8px' }}
-              >
-                Annulla
-              </button>
-              <button
-                onClick={() => setWaMassModal(true)}
-                disabled={selAppIds.length === 0}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, background: selAppIds.length === 0 ? C.bg : '#25D366', border: 'none', borderRadius: 9, padding: '7px 12px', color: selAppIds.length === 0 ? C.txl : '#fff', fontWeight: 700, fontSize: 11.5, cursor: selAppIds.length === 0 ? 'not-allowed' : 'pointer' }}
-              >
-                <Ic n="send" s={12} c={selAppIds.length === 0 ? C.txl : '#fff'} />
-                Invia ({selAppIds.length})
-              </button>
-            </>
-          )}
-        </div>
-      )}
+      {(view === 'giorno' || view === 'settimana') && waAbilitato(features) && !isMobile && waSelectionToolbar}
 
       {/* VIEWS */}
       {(view === 'giorno' || view === 'settimana') && (
@@ -1206,7 +1268,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
         const giorni = new Date(K, mese + 1, 0).getDate();
         const celle = Array(primo === 0 ? 6 : primo - 1).fill(null).concat(Array.from({ length: giorni }, (_, i) => i + 1));
         return (
-          <div>
+          <div className={isMobile ? 'agenda-mobile-month-surface' : undefined}>
             <Crd
               onWheel={e => {
                 const now = Date.now();
