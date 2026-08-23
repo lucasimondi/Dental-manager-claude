@@ -22,15 +22,52 @@ export const COMMAND_INTENT = Object.freeze({
   // current schema/UI represents those yet, so doing so now would be
   // inventing scope, not reusing it.
   COMPLETE_MISSING_TOOTH: 'COMPLETE_MISSING_TOOTH',
+  // POL-FIN-001
+  CREATE_PAYMENT_PLAN: 'CREATE_PAYMENT_PLAN',
+  RECORD_PAYMENT_AGAINST_DEADLINE: 'RECORD_PAYMENT_AGAINST_DEADLINE',
 });
 
-const ITALIAN_NUMBER_WORDS = Object.freeze({ una: 1, un: 1, uno: 1, due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6 });
+const ITALIAN_NUMBER_WORDS = Object.freeze({
+  una: 1, un: 1, uno: 1, due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6, sette: 7, otto: 8, nove: 9, dieci: 10, dodici: 12,
+});
 
 const parseCount = (text) => {
   const t = (text || '').trim().toLowerCase();
   if (ITALIAN_NUMBER_WORDS[t] !== undefined) return ITALIAN_NUMBER_WORDS[t];
   const n = Number(t);
   return Number.isInteger(n) && n > 0 ? n : null;
+};
+
+export const ITALIAN_MONTHS = Object.freeze({
+  gennaio: 1, febbraio: 2, marzo: 3, aprile: 4, maggio: 5, giugno: 6,
+  luglio: 7, agosto: 8, settembre: 9, ottobre: 10, novembre: 11, dicembre: 12,
+});
+
+/** parseExplicitDayMonth("28 agosto") -> { day: 28, month: 8 } | null.
+ *  Deliberately requires BOTH a day and a month name — a bare month name
+ *  ("da settembre") is genuinely ambiguous about which day, and this
+ *  parser refuses to invent one (see commandParser.js's own doc comment:
+ *  narrow and honest, not a general NLU date grammar). A bare month falls
+ *  through to `null` here, so the whole command is not deterministically
+ *  recognized and correctly falls back to the Model Gateway contract. */
+const parseExplicitDayMonth = (text) => {
+  const m = /^(?<day>\d{1,2})\s+(?<month>gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)$/i.exec((text || '').trim());
+  if (!m) return null;
+  const day = Number(m.groups.day);
+  const month = ITALIAN_MONTHS[m.groups.month.toLowerCase()];
+  if (day < 1 || day > 31) return null;
+  return { day, month };
+};
+
+/** resolveStartDateIso(dayMonth, todayIso) -> "YYYY-MM-DD". Picks the
+ *  current year if that day/month hasn't passed yet this year, otherwise
+ *  next year — a deterministic, non-inventive default (never asks which
+ *  year when the day+month is unambiguous relative to "today"). */
+export const resolveStartDateIso = (dayMonth, todayIso) => {
+  const [ty] = todayIso.split('-').map(Number);
+  const pad = (n) => String(n).padStart(2, '0');
+  const candidate = `${ty}-${pad(dayMonth.month)}-${pad(dayMonth.day)}`;
+  return candidate >= todayIso ? candidate : `${ty + 1}-${pad(dayMonth.month)}-${pad(dayMonth.day)}`;
 };
 
 // --- B / E-financial: "[Segna che] <patient> deve pagare <amount> per la
@@ -114,6 +151,83 @@ const parseCreatePlan = (text) => {
   };
 };
 
+// --- POL-FIN-001 F1: "Dividi <amount clause> in <count> rate [mensili]
+// [da|a partire dal <day> <month>]" — CREATE_PAYMENT_PLAN (installments).
+// No patient text at all: like Workflow G, this is always resolved from
+// the app's current-patient context (task §16). `<amount clause>` is
+// either an explicit stated amount ("i 4.000 euro che rimangono") — cross-
+// checked against the canonical outstanding balance at plan time, never
+// trusted blindly — or a bare reference to the canonical balance itself
+// ("il residuo", "il saldo residuo"), which carries no amount of its own
+// and always defers entirely to canonical data. ---
+const PATTERN_CREATE_INSTALLMENT_PLAN = /^dividi\s+(?<amountClause>.+?)\s+in\s+(?<count>[a-zàèéìòù]+|\d+)\s+rate(?:\s+mensil[ei])?(?:\s+(?:da|a\s+partire\s+dal|dal)\s+(?<startText>.+?))?\.?\s*$/i;
+const RESIDUE_REFERENCE_RE = /^il\s+(?:residuo|saldo\s+residuo|importo\s+residuo)(?:\s+del\s+paziente)?$/i;
+
+// `extractAmount` (reused, unmodified — intentEngine.js's AMOUNT_RE only
+// captures up to 2 digits after a `.`/`,`, so "4.000" would otherwise
+// parse as 4.00) — this strips an Italian thousands-separator dot
+// ("4.000" -> "4000") ONLY within this one new command family, never
+// touching intentEngine.js itself or any other caller of extractAmount.
+const stripThousandsSeparator = (text) => (text || '').replace(/(\d)\.(\d{3})(?!\d)/g, '$1$2');
+
+const parseCreateInstallmentPlan = (value) => {
+  const m = PATTERN_CREATE_INSTALLMENT_PLAN.exec(value);
+  if (!m) return null;
+  const count = parseCount(m.groups.count);
+  if (!count) return null;
+  const isResidueReference = RESIDUE_REFERENCE_RE.test(m.groups.amountClause.trim());
+  const statedAmount = isResidueReference ? null : extractAmount(stripThousandsSeparator(m.groups.amountClause));
+  if (!isResidueReference && statedAmount === null) return null; // neither a recognized residue phrase nor a parseable amount
+  const dayMonth = m.groups.startText ? parseExplicitDayMonth(m.groups.startText) : null;
+  if (m.groups.startText && !dayMonth) return null; // an unparseable start clause (e.g. bare month name) aborts deterministic parsing
+  return {
+    commandIntent: COMMAND_INTENT.CREATE_PAYMENT_PLAN,
+    patientText: null,
+    statedAmount,
+    count,
+    startDayMonth: dayMonth,
+    rawText: value,
+  };
+};
+
+// --- POL-FIN-001 F2/F3: recording a payment already received.
+// "<patient> [oggi] mi ha dato <amount>" — patient named in text, no
+// deadline reference (generic recording, resolved against open
+// deadlines at plan time per task §17).
+// "Ha pagato <amount> della rata/scadenza di <ref>" — context patient
+// (like Workflow G), `<ref>` narrows to a specific deadline by month
+// name (task §18's "rata di agosto" example). ---
+const PATTERN_RECORD_PAYMENT_NAMED = /^(?<patient>.+?)\s+(?:oggi\s+)?mi\s+ha\s+dato\s+(?<amountText>.+?)\.?\s*$/i;
+const PATTERN_RECORD_PAYMENT_DEADLINE_REF = /^ha\s+pagato\s+(?<amountText>.+?)\s+dell[a']\s*(?:rata|scadenza)\s+di\s+(?<deadlineRef>.+?)\.?\s*$/i;
+
+const parseRecordPayment = (value) => {
+  let m = PATTERN_RECORD_PAYMENT_DEADLINE_REF.exec(value);
+  if (m) {
+    const amount = extractAmount(stripThousandsSeparator(m.groups.amountText));
+    if (amount === null) return null;
+    return {
+      commandIntent: COMMAND_INTENT.RECORD_PAYMENT_AGAINST_DEADLINE,
+      patientText: null,
+      amount,
+      deadlineRefText: m.groups.deadlineRef.trim(),
+      rawText: value,
+    };
+  }
+  m = PATTERN_RECORD_PAYMENT_NAMED.exec(value);
+  if (m) {
+    const amount = extractAmount(stripThousandsSeparator(m.groups.amountText));
+    if (amount === null) return null;
+    return {
+      commandIntent: COMMAND_INTENT.RECORD_PAYMENT_AGAINST_DEADLINE,
+      patientText: m.groups.patient.trim(),
+      amount,
+      deadlineRefText: null,
+      rawText: value,
+    };
+  }
+  return null;
+};
+
 /**
  * parseCommand(text) -> structured parse | null
  * `null` means: no deterministic command shape matched — the caller
@@ -166,6 +280,12 @@ export function parseCommand(text) {
 
   const completeTooth = parseCompleteMissingTooth(value);
   if (completeTooth) return completeTooth;
+
+  const createInstallmentPlan = parseCreateInstallmentPlan(value);
+  if (createInstallmentPlan) return createInstallmentPlan;
+
+  const recordPayment = parseRecordPayment(value);
+  if (recordPayment) return recordPayment;
 
   return null;
 }

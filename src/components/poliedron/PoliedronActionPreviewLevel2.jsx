@@ -20,7 +20,11 @@ const INTENT_LABEL = Object.freeze({
   RECORD_MULTIPLE_TREATMENTS_AND_PAYMENT: 'Registra più prestazioni e pagamento in sospeso',
   CREATE_TREATMENT_PLAN: 'Crea piano di cura',
   COMPLETE_MISSING_TOOTH: 'Completa elemento dentario mancante',
+  CREATE_PAYMENT_PLAN: 'Crea piano di pagamento',
+  RECORD_PAYMENT_AGAINST_DEADLINE: 'Registra pagamento',
 });
+
+const fmtEur = (n) => Number(n).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
 
 const toothLabel = (tooth) => {
   if (!tooth) return null;
@@ -47,6 +51,8 @@ export default function PoliedronActionPreviewLevel2({ plan, running, result, on
   const toUpdate = plan.steps.filter((s) => s.type === PLAN_STEP_TYPE.MARK_TREATMENT_COMPLETED);
   const payment = plan.steps.find((s) => s.type === PLAN_STEP_TYPE.ENSURE_PENDING_PAYMENT);
   const completeTooth = plan.steps.find((s) => s.type === PLAN_STEP_TYPE.COMPLETE_TREATMENT_TOOTH);
+  const createPaymentPlan = plan.steps.find((s) => s.type === PLAN_STEP_TYPE.CREATE_PAYMENT_PLAN);
+  const recordAllocation = plan.steps.find((s) => s.type === PLAN_STEP_TYPE.RECORD_PAYMENT_ALLOCATION);
   const contextPatientMissing = plan.patientRef?.mechanism === 'context' && plan.patientRef?.status === 'NOT_FOUND';
 
   const canConfirm = !!patient && !plan.blocked && !running && !result;
@@ -116,7 +122,30 @@ export default function PoliedronActionPreviewLevel2({ plan, running, result, on
           )}
 
           {payment && (
-            <div><span>Impatto finanziario</span><strong>{Number(payment.amount).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })} — pagamento in sospeso</strong></div>
+            <div><span>Impatto finanziario</span><strong>{fmtEur(payment.amount)} — pagamento in sospeso</strong></div>
+          )}
+
+          {createPaymentPlan && (
+            <>
+              <div><span>Importo totale</span><strong>{fmtEur(createPaymentPlan.totalAmount)}</strong></div>
+              <div><span>Rate</span><strong>
+                {createPaymentPlan.deadlines.map((d, i) => <div key={i}>{d.dueDate} — {fmtEur(d.amountDue)}</div>)}
+              </strong></div>
+            </>
+          )}
+
+          {recordAllocation && (
+            <>
+              <div><span>Importo pagamento</span><strong>{fmtEur(recordAllocation.amount)}</strong></div>
+              {recordAllocation.targetDeadlineSnapshot ? (
+                <>
+                  <div><span>Scadenza</span><strong>{recordAllocation.targetDeadlineSnapshot.label}{recordAllocation.targetDeadlineSnapshot.dueDate ? ` (${recordAllocation.targetDeadlineSnapshot.dueDate})` : ''} — {fmtEur(recordAllocation.targetDeadlineSnapshot.amountDue)}</strong></div>
+                  <div><span>Residuo dopo il pagamento</span><strong>{fmtEur(Math.max(0, recordAllocation.targetDeadlineSnapshot.remaining - recordAllocation.amount))}</strong></div>
+                </>
+              ) : (
+                <div><span>Allocazione</span><strong>Saldo generale del paziente (nessuna scadenza specifica)</strong></div>
+              )}
+            </>
           )}
 
           {plan.assumptions.length > 0 && (

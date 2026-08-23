@@ -9,12 +9,16 @@
    function in this module ever calls Supabase, and executeActionPlan()
    below is an explicit, tested no-op stub. */
 
-import { COMMAND_INTENT } from './commandParser.js';
+import { COMMAND_INTENT, ITALIAN_MONTHS, resolveStartDateIso } from './commandParser.js';
 import { resolvePatient, resolveContextualPatient, PATIENT_RESOLUTION_STATUS } from './patientResolver.js';
 import { resolveProcedure, PROCEDURE_RESOLUTION_STATUS } from './procedureResolver.js';
 import { createTooth, isToothIncomplete, TOOTH_STATE } from './toothModel.js';
 import { buildIntelligencePermissions } from '../permissionEngine.js';
 import { normalizza } from '../../ricercaPazienti.js';
+import { today } from '../../utils.js';
+import { amountsEqual, roundMoney } from '../../domain/money.js';
+import { PLAN_TYPE, PLAN_STATUS, buildInstallmentDeadlines, deadlineRemainingAmount } from '../../domain/paymentPlanService.js';
+import { computePatientFinancialSummary } from '../../domain/patientFinancialSummary.js';
 
 export const PLAN_STEP_TYPE = Object.freeze({
   RESOLVE_PATIENT: 'RESOLVE_PATIENT',
@@ -29,6 +33,11 @@ export const PLAN_STEP_TYPE = Object.freeze({
   TARGET_PLAN_AMBIGUOUS: 'TARGET_PLAN_AMBIGUOUS', // recorded when a new item would need a target plan and more than one plausible plan exists — see pickTargetPlanForNewItem.
   RESOLVE_INCOMPLETE_TREATMENT: 'RESOLVE_INCOMPLETE_TREATMENT', // records how "Era il 46" resolved: single match / ambiguous / no match / already complete / conflicting value.
   COMPLETE_TREATMENT_TOOTH: 'COMPLETE_TREATMENT_TOOTH', // the actual write step: update ONLY the tooth field on an already-identified existing item.
+  // POL-FIN-001:
+  CHECK_EXISTING_PAYMENT_PLAN: 'CHECK_EXISTING_PAYMENT_PLAN', // records whether the patient already has an ACTIVE payment plan (at most one is the business rule).
+  CREATE_PAYMENT_PLAN: 'CREATE_PAYMENT_PLAN', // the write step: creates one payment_plans row plus its deadlines.
+  RESOLVE_PAYMENT_ALLOCATION: 'RESOLVE_PAYMENT_ALLOCATION', // records how a payment-received command resolved: single open deadline / ambiguous / no deadline (general balance).
+  RECORD_PAYMENT_ALLOCATION: 'RECORD_PAYMENT_ALLOCATION', // the write step: creates the payments row + a payment_allocations row (deadline-linked or general).
 });
 
 export const PRICE_UNRESOLVED = 'PRICE_UNRESOLVED';
@@ -540,16 +549,190 @@ function planCompleteMissingTooth(parsed, context) {
   });
 }
 
+/** Workflow POL-FIN-001/F1 — CREATE_PAYMENT_PLAN ("Dividi ... in N rate").
+ *  Context-resolved patient only (like Workflow G — no patient name in
+ *  this command shape). The target amount to split is ALWAYS the
+ *  canonical `totalUnscheduledOutstanding` from
+ *  `computePatientFinancialSummary` — a stated amount in the command text
+ *  is a cross-check, never the authority (Critical Domain Rule: "the
+ *  system must NOT invent... a payment schedule" starts from trusting
+ *  canonical data, not a spoken number). At most one ACTIVE payment plan
+ *  per patient is enforced here (task §5: "no payment plan / an active
+ *  payment plan / historical plans") — never silently supersedes an
+ *  existing one. */
+function planCreatePaymentPlan(parsed, context) {
+  const patientResolution = resolveContextualPatient(context.currentPatient, context.patients, { studioId: context.studioId });
+  const patientId = patientResolution.status === PATIENT_RESOLUTION_STATUS.RESOLVED ? patientResolution.candidate.id : null;
+  const contextPatientId = context.currentPatient?.id ?? null;
+  const steps = [];
+  const warnings = [];
+  const assumptions = [];
+  const blockingReasons = [];
+
+  const finalize = (confidence) => finalizePlan({
+    intent: parsed.commandIntent, patientText: null, patientResolution, steps, warnings, assumptions, blockingReasons,
+    confidence, homePermissions: context.homePermissions, patientRefMechanism: 'context', patientRefContextId: contextPatientId,
+  });
+
+  if (!patientId) {
+    blockingReasons.push('Nessun paziente in contesto: apri la scheda del paziente e riprova.');
+    return finalize(0.3);
+  }
+
+  const existingActivePlans = (context.paymentPlans || []).filter((p) => String(p.patientId) === String(patientId) && p.status === PLAN_STATUS.ACTIVE);
+  if (existingActivePlans.length > 0) {
+    steps.push(Object.freeze({ type: PLAN_STEP_TYPE.CHECK_EXISTING_PAYMENT_PLAN, found: true, existingPlanId: existingActivePlans[0].id }));
+    blockingReasons.push('Il paziente ha già un piano di pagamento attivo: completalo o annullalo prima di crearne uno nuovo.');
+    return finalize(0.3);
+  }
+  steps.push(Object.freeze({ type: PLAN_STEP_TYPE.CHECK_EXISTING_PAYMENT_PLAN, found: false, existingPlanId: null }));
+
+  const summary = computePatientFinancialSummary(context, patientId, { today: context.today || today() });
+  const canonicalAmount = summary.totalUnscheduledOutstanding;
+
+  if (parsed.statedAmount !== null && !amountsEqual(parsed.statedAmount, canonicalAmount)) {
+    blockingReasons.push(`L'importo indicato (${roundMoney(parsed.statedAmount)} €) non corrisponde al residuo non pianificato risultante dai dati canonici (${canonicalAmount} €).`);
+  }
+  if (canonicalAmount <= 0) {
+    blockingReasons.push('Non c\'è alcun importo residuo non pianificato da suddividere per questo paziente.');
+  }
+
+  const startDateIso = parsed.startDayMonth ? resolveStartDateIso(parsed.startDayMonth, context.today || today()) : (context.today || today());
+
+  let deadlines = [];
+  if (blockingReasons.length === 0) {
+    deadlines = buildInstallmentDeadlines({ totalAmount: canonicalAmount, count: parsed.count, startDate: startDateIso });
+  }
+
+  steps.push(Object.freeze({
+    type: PLAN_STEP_TYPE.CREATE_PAYMENT_PLAN,
+    planType: PLAN_TYPE.INSTALLMENTS,
+    totalAmount: canonicalAmount,
+    count: parsed.count,
+    startDate: startDateIso,
+    deadlines: Object.freeze(deadlines),
+    requiredPermissions: [REQUIRED_PERMISSION.FINANCIAL],
+  }));
+
+  return finalize(blockingReasons.length ? 0.3 : 0.9);
+}
+
+/** Finds this patient's currently-open deadlines (belonging to an ACTIVE
+ *  payment plan, remaining > 0) — the pool `planRecordPaymentAgainstDeadline`
+ *  resolves a payment-received command against. */
+function findOpenDeadlines(context, patientId) {
+  const activePlanIds = new Set((context.paymentPlans || [])
+    .filter((p) => String(p.patientId) === String(patientId) && p.status === PLAN_STATUS.ACTIVE)
+    .map((p) => String(p.id)));
+  return (context.paymentDeadlines || [])
+    .filter((d) => String(d.patientId) === String(patientId) && activePlanIds.has(String(d.paymentPlanId)))
+    .filter((d) => deadlineRemainingAmount(d, context.paymentAllocations || []) > 0);
+}
+
+/** Workflow POL-FIN-001/F2-F3 — RECORD_PAYMENT_AGAINST_DEADLINE ("<patient>
+ *  mi ha dato <amount>" / "Ha pagato <amount> della rata di <ref>").
+ *  Never invents an allocation (task §11): exactly one open deadline ->
+ *  PROPOSE allocating to it; 2+ -> ask; none -> offer the general
+ *  outstanding balance instead. A `deadlineRefText` (month name) narrows
+ *  the candidate pool first; if it matches nothing, this falls back to
+ *  the full open-deadline pool rather than failing outright (task §18's
+ *  own example still expects a sensible outcome even if the "rata di
+ *  agosto" phrasing doesn't exactly match a due date). */
+function planRecordPaymentAgainstDeadline(parsed, context) {
+  let patientResolution;
+  let mechanism;
+  let contextPatientId = null;
+  if (parsed.patientText) {
+    patientResolution = resolvePatient(parsed.patientText, context.patients, { studioId: context.studioId });
+    mechanism = 'text';
+  } else {
+    patientResolution = resolveContextualPatient(context.currentPatient, context.patients, { studioId: context.studioId });
+    mechanism = 'context';
+    contextPatientId = context.currentPatient?.id ?? null;
+  }
+  const patientId = patientResolution.status === PATIENT_RESOLUTION_STATUS.RESOLVED ? patientResolution.candidate.id : null;
+  const steps = [];
+  const warnings = [];
+  const assumptions = [];
+  const blockingReasons = [];
+
+  const finalize = (confidence) => finalizePlan({
+    intent: parsed.commandIntent, patientText: mechanism === 'text' ? parsed.patientText : null, patientResolution,
+    steps, warnings, assumptions, blockingReasons, confidence, homePermissions: context.homePermissions,
+    patientRefMechanism: mechanism, patientRefContextId: contextPatientId,
+  });
+
+  if (!patientId) {
+    blockingReasons.push(mechanism === 'context' ? 'Nessun paziente in contesto: apri la scheda del paziente e riprova.' : `Paziente non risolto (${patientResolution.status}).`);
+    return finalize(0.3);
+  }
+
+  const openDeadlines = findOpenDeadlines(context, patientId);
+  let candidates = openDeadlines;
+  if (parsed.deadlineRefText) {
+    const monthNum = ITALIAN_MONTHS[parsed.deadlineRefText.trim().toLowerCase()];
+    if (monthNum) {
+      const byMonth = openDeadlines.filter((d) => d.dueDate && Number(String(d.dueDate).slice(5, 7)) === monthNum);
+      if (byMonth.length > 0) candidates = byMonth;
+      else warnings.push(`Nessuna scadenza aperta trovata per "${parsed.deadlineRefText}": valutate tutte le scadenze aperte del paziente.`);
+    } else {
+      warnings.push(`Riferimento "${parsed.deadlineRefText}" non riconosciuto: valutate tutte le scadenze aperte del paziente.`);
+    }
+  }
+
+  let resolution;
+  let target = null;
+  if (candidates.length === 0) {
+    resolution = 'NO_DEADLINE';
+  } else if (candidates.length === 1) {
+    resolution = 'SINGLE_MATCH';
+    [target] = candidates;
+  } else {
+    resolution = 'MULTIPLE_MATCH';
+  }
+
+  steps.push(Object.freeze({
+    type: PLAN_STEP_TYPE.RESOLVE_PAYMENT_ALLOCATION,
+    resolution,
+    candidateCount: candidates.length,
+    amount: parsed.amount,
+  }));
+
+  if (resolution === 'MULTIPLE_MATCH') {
+    const describe = (d) => `${d.label || 'scadenza'}${d.dueDate ? ` (${d.dueDate})` : ''} — residuo ${deadlineRemainingAmount(d, context.paymentAllocations || [])} €`;
+    blockingReasons.push(`Ho trovato ${candidates.length} scadenze aperte compatibili: ${candidates.map(describe).join('; ')}. Specifica a quale ti riferisci.`);
+    return finalize(0.4);
+  }
+
+  steps.push(Object.freeze({
+    type: PLAN_STEP_TYPE.RECORD_PAYMENT_ALLOCATION,
+    amount: parsed.amount,
+    targetDeadlineId: target ? target.id : null,
+    targetDeadlineSnapshot: target ? Object.freeze({
+      label: target.label, dueDate: target.dueDate, amountDue: target.amountDue,
+      remaining: deadlineRemainingAmount(target, context.paymentAllocations || []),
+    }) : null,
+    resolution,
+    requiredPermissions: [REQUIRED_PERMISSION.FINANCIAL],
+  }));
+
+  return finalize(0.9);
+}
+
 /**
  * buildActionPlan(parsedCommand, context) -> Action Plan (frozen, plain
  * object; JSON-serializable). `context = { patients, plans, payments,
- * pricelist, homePermissions, studioId, currentPatient }` — the caller's
- * own already-loaded, already-tenant-scoped/authorized data; nothing here
- * fetches anything. `currentPatient` is only used by Workflow G
- * (COMPLETE_MISSING_TOOTH, no patient text in the command) — every other
- * intent still resolves its patient from text. Returns `null` if
- * `parsedCommand` is null (see commandParser.js's model-fallback
- * contract).
+ * pricelist, homePermissions, studioId, currentPatient, paymentPlans,
+ * paymentDeadlines, paymentAllocations, today }` — the caller's own
+ * already-loaded, already-tenant-scoped/authorized data; nothing here
+ * fetches anything. `currentPatient` is used by Workflow G
+ * (COMPLETE_MISSING_TOOTH) and by CREATE_PAYMENT_PLAN — neither has a
+ * patient name in its command shape. `paymentPlans`/`paymentDeadlines`/
+ * `paymentAllocations` (POL-FIN-001) are optional and default to `[]` —
+ * older callers that don't yet load them keep working exactly as before,
+ * they simply never match any payment-plan-shaped command. Returns
+ * `null` if `parsedCommand` is null (see commandParser.js's
+ * model-fallback contract).
  */
 export function buildActionPlan(parsedCommand, context) {
   if (!parsedCommand) return null;
@@ -563,6 +746,10 @@ export function buildActionPlan(parsedCommand, context) {
       return planMarkTreatmentCompleted(parsedCommand, context);
     case COMMAND_INTENT.COMPLETE_MISSING_TOOTH:
       return planCompleteMissingTooth(parsedCommand, context);
+    case COMMAND_INTENT.CREATE_PAYMENT_PLAN:
+      return planCreatePaymentPlan(parsedCommand, context);
+    case COMMAND_INTENT.RECORD_PAYMENT_AGAINST_DEADLINE:
+      return planRecordPaymentAgainstDeadline(parsedCommand, context);
     default:
       return null;
   }

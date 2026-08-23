@@ -13,6 +13,7 @@ import { resolvePrescriptionRequest } from './prescriptionWorkflow.js';
 import { classifyIntelligenceQuery, scanPatientOpportunities } from './intelligence/index.js';
 import { parseCommand } from './planner/commandParser.js';
 import { buildActionPlan } from './planner/actionPlanner.js';
+import { classifyFinancialQuery, answerFinancialQuery } from './financialQueryEngine.js';
 import {
   loadCanonicalFinancialSnapshot, selectCanonicalMetrics, MANAGEMENT_CONTROL_MODES,
 } from '../canonicalFinancialSelectors.js';
@@ -109,10 +110,14 @@ export async function processQuery({ query, context, permissions, sources = {}, 
       patients: sources.patients || [],
       plans: sources.plans || [],
       payments: sources.payments || [],
+      paymentPlans: sources.paymentPlans || [],
+      paymentDeadlines: sources.paymentDeadlines || [],
+      paymentAllocations: sources.paymentAllocations || [],
       pricelist: sources.pricelist || [],
       homePermissions: permissions?.homePermissions || {},
       studioId: context?.studioId,
       currentPatient: context?.currentPatient || null,
+      today: context?.date,
     });
     if (actionPlan) {
       return {
@@ -120,6 +125,30 @@ export async function processQuery({ query, context, permissions, sources = {}, 
         actionPlan, suggestedActions: [], searchResults: [],
       };
     }
+  }
+
+  // POL-FIN-001 §14 — deterministic financial READ queries, checked right
+  // after the (also deterministic, zero-model) write-command parser and
+  // before the intelligence/ASK/Model Gateway fallbacks. Reuses the exact
+  // same canonical `computePatientFinancialSummary` every write path and
+  // every future UI consumer (POL-UI-014) also calls — never a second,
+  // independently-computed number for a chat answer.
+  const financialQuery = classifyFinancialQuery(q);
+  if (financialQuery) {
+    const { answer, needsClarification } = answerFinancialQuery(financialQuery, {
+      patients: sources.patients || [],
+      plans: sources.plans || [],
+      payments: sources.payments || [],
+      paymentPlans: sources.paymentPlans || [],
+      paymentDeadlines: sources.paymentDeadlines || [],
+      paymentAllocations: sources.paymentAllocations || [],
+      studioId: context?.studioId,
+      today: context?.date,
+    });
+    const finalAnswer = needsClarification
+      ? `Più pazienti corrispondono: ${needsClarification.join(', ')}. Specifica il cognome.`
+      : answer;
+    return { intent: 'FINANCIAL_QUERY', entities: {}, answer: finalAnswer, confirmationRequired: false, suggestedActions: [], searchResults: [] };
   }
 
   const intelligenceIntent = classifyIntelligenceQuery(q);
