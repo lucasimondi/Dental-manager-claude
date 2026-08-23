@@ -6,6 +6,7 @@ const ISSUE_KEY_BY_TYPE = Object.freeze({
   [SIGNAL_TYPE.MISSING_PLAN_STATUS]: 'plansWithoutStatus',
   [SIGNAL_TYPE.EMPTY_ACCEPTED_PLAN]: 'acceptedPlansWithoutPerformances',
   [SIGNAL_TYPE.HYGIENE_CONFIGURATION_MISSING]: 'preventionRecordsWithoutConfiguration',
+  [SIGNAL_TYPE.MISSING_TOOTH_REFERENCE]: 'treatmentsWithoutToothReference',
 });
 
 export function calculateStudioDataHealth({
@@ -17,12 +18,13 @@ export function calculateStudioDataHealth({
     plansWithoutStatus: 0,
     acceptedPlansWithoutPerformances: 0,
     preventionRecordsWithoutConfiguration: 0,
+    treatmentsWithoutToothReference: 0,
   };
   for (const result of results) {
     for (const signal of result.signals) {
       const key = ISSUE_KEY_BY_TYPE[signal.type];
       if (!key) continue;
-      const amount = signal.type === SIGNAL_TYPE.MISSING_EXECUTION_STATUS
+      const amount = signal.type === SIGNAL_TYPE.MISSING_EXECUTION_STATUS || signal.type === SIGNAL_TYPE.MISSING_TOOTH_REFERENCE
         ? signal.context?.count || 1
         : 1;
       issues[key] += amount;

@@ -3,6 +3,7 @@ import { C } from '../../lib/utils';
 import { Ic } from '../ui';
 import PoliedronSearchResults, { countFlatItems, flatItemAt } from './PoliedronSearchResults';
 import PoliedronActionPreview from './PoliedronActionPreview';
+import PoliedronActionPreviewLevel2 from './PoliedronActionPreviewLevel2';
 import PoliedronConversation from './PoliedronConversation';
 import PoliedronSuggestionBoard from './PoliedronSuggestionBoard';
 import PoliedronIntelligenceResults from './PoliedronIntelligenceResults';
@@ -17,6 +18,7 @@ import PoliedronIntelligenceResults from './PoliedronIntelligenceResults';
 export default function PoliedronPanel({
   panelId, isMobile, query, onQueryChange, state, loading,
   highlightedIndex, onHighlightChange, onSelectResult, onConfirmAction, onModifyAction, onSubmit,
+  onConfirmActionPlan, actionRunning, actionRunResult,
   onClose, inputRef,
 }) {
   const containerRef = useRef(null);
@@ -102,6 +104,8 @@ export default function PoliedronPanel({
             <PoliedronIntelligenceResults intelligence={state.intelligence} onOpenPatient={onSelectResult} />
           ) : state?.answer != null ? (
             <PoliedronConversation query={query} answer={state.answer} loading={loading} />
+          ) : state?.actionPlan ? (
+            <PoliedronActionPreviewLevel2 plan={state.actionPlan} running={actionRunning} result={actionRunResult} onConfirm={onConfirmActionPlan} onModify={onModifyAction} />
           ) : state?.confirmationRequired ? (
             <PoliedronActionPreview entities={state.entities} suggestedActions={state.suggestedActions} onConfirm={onConfirmAction} onModify={onModifyAction} />
           ) : (state?.intent == null || state?.suggestionBoard) && state?.searchResults?.length ? (

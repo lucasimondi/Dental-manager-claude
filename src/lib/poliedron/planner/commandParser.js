@@ -27,8 +27,15 @@ const parseCount = (text) => {
   return Number.isInteger(n) && n > 0 ? n : null;
 };
 
-// --- B: "Segna che <patient> deve pagare <amount> per la <procedure> del <tooth>" ---
-const PATTERN_TREATMENT_AND_PAYMENT = /^segna\s+che\s+(?<patient>.+?)\s+deve\s+pagare\s+(?<amountText>.+?)\s+per\s+la\s+(?<procedure>.+?)\s+del\s+(?<tooth>\d{1,2})\s*$/i;
+// --- B / E-financial: "[Segna che] <patient> deve pagare <amount> per la
+// <procedure> del <tooth>" OR "... per la <procedure>, non ricordo il
+// dente" (POL-AI-005B §E: "Rossi deve pagare 180 € per la
+// devitalizzazione, non ricordo il dente" — no "Segna che" prefix, no
+// tooth). Both the leading "Segna che" and the trailing tooth clause are
+// optional; the trailing clause is either a known tooth or an explicit
+// "non ricordo il dente" — never both, and the tooth stays genuinely
+// absent (not zero, not invented) when neither is present either. ---
+const PATTERN_TREATMENT_AND_PAYMENT = /^(?:segna\s+che\s+)?(?<patient>.+?)\s+deve\s+pagare\s+(?<amountText>.+?)\s+per\s+la\s+(?<procedure>.+?)(?:\s+del\s+(?<tooth>\d{1,2})|,?\s*non\s+ricordo\s+il\s+dente)?\s*$/i;
 
 // --- A / D: "Segna <procedure> [<tooth>] di <patient> come eseguita[, non ricordo il dente]" ---
 const PATTERN_MARK_COMPLETED = /^segna\s+(?<procedure>.+?)\s+(?:(?<tooth>\d{1,2})\s+)?di\s+(?<patient>.+?)\s+come\s+eseguit[ao](?:,?\s*non\s+ricordo\s+il\s+dente)?\s*$/i;
@@ -76,7 +83,7 @@ export function parseCommand(text) {
     return {
       commandIntent: COMMAND_INTENT.RECORD_TREATMENT_AND_PENDING_PAYMENT,
       patientText: m.groups.patient.trim(),
-      items: [{ procedureText: m.groups.procedure.trim(), toothText: m.groups.tooth }],
+      items: [{ procedureText: m.groups.procedure.trim(), toothText: m.groups.tooth || null }],
       amount: extractAmount(m.groups.amountText),
       executionCompleted: true,
       rawText: value,

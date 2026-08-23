@@ -11,6 +11,8 @@ import { resolveCommandAlias } from './commandAliases.js';
 import { cercaPazienti } from '../ricercaPazienti.js';
 import { resolvePrescriptionRequest } from './prescriptionWorkflow.js';
 import { classifyIntelligenceQuery, scanPatientOpportunities } from './intelligence/index.js';
+import { parseCommand } from './planner/commandParser.js';
+import { buildActionPlan } from './planner/actionPlanner.js';
 import {
   loadCanonicalFinancialSnapshot, selectCanonicalMetrics, MANAGEMENT_CONTROL_MODES,
 } from '../canonicalFinancialSelectors.js';
@@ -93,6 +95,30 @@ export async function processQuery({ query, context, permissions, sources = {}, 
       }),
       suggestedActions: [],
     };
+  }
+
+  // POL-AI-005B: deterministic Level-2 (real write) commands are checked
+  // FIRST — most specific, zero-ambiguity, zero Model Gateway calls (see
+  // commandParser.js's own doc comment). `buildActionPlan` is pure/
+  // read-only: it never writes, only produces a preview the human must
+  // still explicitly confirm (§7 safety boundary) via runActionPlan
+  // (called from Poliedron.jsx, never from here).
+  const parsedCommand = parseCommand(q);
+  if (parsedCommand) {
+    const actionPlan = buildActionPlan(parsedCommand, {
+      patients: sources.patients || [],
+      plans: sources.plans || [],
+      payments: sources.payments || [],
+      pricelist: sources.pricelist || [],
+      homePermissions: permissions?.homePermissions || {},
+      studioId: context?.studioId,
+    });
+    if (actionPlan) {
+      return {
+        intent: 'ACTION_PLAN', entities: {}, answer: null, confirmationRequired: true,
+        actionPlan, suggestedActions: [], searchResults: [],
+      };
+    }
   }
 
   const intelligenceIntent = classifyIntelligenceQuery(q);

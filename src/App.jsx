@@ -253,6 +253,15 @@ export default function App() {
         const py = await DB.getAll('dm_py');
         setPayments(py || []);
       })
+      // POL-AI-005B: Poliedron's action executor writes treatment plans
+      // directly via DB.insert/update ("outside the normal app flow",
+      // exactly what this whole channel exists for per the comment above)
+      // — without this, a Poliedron-confirmed clinical write would only
+      // become visible in Piani.jsx/SchedaPaz after a manual reload.
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'plans' }, async () => {
+        const pl = await DB.getAll('dm_pl');
+        setPlans(pl || []);
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'impegni_personali' }, async () => {
         const ip = await DB.getAll('dm_ip');
         setImpegni(ip || []);
@@ -601,6 +610,8 @@ export default function App() {
         setPage={navigateFromPoliedron}
         patients={patients}
         plans={plans}
+        payments={payments}
+        pricelist={pricelist}
         appointments={appointments}
         richiami={richiami}
         impegni={impegni}

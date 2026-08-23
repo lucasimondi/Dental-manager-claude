@@ -1,48 +1,66 @@
 # Current task
 
-- TASK: POL-AI-005A
-- TITLE: Transactional Action Planner — Foundation (Phase A: UNDERSTAND → RESOLVE → PLAN only)
+- TASK: POL-AI-005B
+- TITLE: Transactional Action Planner — Phase B (CONFIRM → ACT → VERIFY)
 - OWNER: CLAUDE
-- BRANCH: `feature/POL-AI-005-transactional-action-planner`
-- BASE: `master@ab1bd27` (POL-AI-004 merged as PR #45)
-- STATUS: `IN_PROGRESS`
+- BRANCH: `feature/POL-AI-005B-confirm-act-verify`
+- BASE: `master` (POL-AI-005A merged as `c442c6f`, PR #46)
+- STATUS: `WAITING_PRODUCT_OWNER` — draft PR open, not merged, not deployed.
 
 ## Objective
 
-Phase A only, per explicit Product Owner scoping: build the read-only
-foundation for a future transactional action planner that lets Poliedron
-turn a natural-language clinical/financial request ("segna devitalizzazione
-16 di Isa Bergese come eseguita") into a structured, non-executing Action
-Plan — deterministic parsing, patient/procedure resolution contracts, a
-tooth model that represents incomplete-but-valid clinical data, and
-planners for representative workflows. Explicitly NOT in scope: CONFIRM →
-ACT → VERIFY, any real committed clinical/payment write, migrations, or
-merge. The Product Owner authorized POL-AI-005A directly, the same way
-POL-AI-004/POL-UI-013 were authorized directly after their predecessors
-merged.
-
-Note: `docs/coordination/current-task.md` still described POL-AI-004 as
-`WAITING_PRODUCT_OWNER` with a draft PR at the time this task started, but
-`ab1bd27`'s commit message ("POL-AI-004: Poliedron proactive intelligence
-engine (#45)", single parent, authored by the Product Owner account) shows
-PR #45 was squash-merged to master — this file simply had not been updated
-to reflect that yet. Corrected below.
+Complete the real write path the POL-AI-005A planner deliberately left
+unimplemented: UNDERSTAND → RESOLVE → PLAN → PREVIEW → CONFIRM → ACT →
+VERIFY for the six representative workflows (A–F) the Product Owner
+specified — treatment-item + pending-payment creation, treatment-plan
+creation with dedup, marking items completed, and the two
+unknown-tooth-at-entry variants feeding a live POL-AI-004 Data Health
+signal. Built new `src/lib/domain/treatmentPlanService.js` /
+`paymentService.js` (reusable domain services, extracted from
+`Piani.jsx`/`Pagamenti.jsx`'s canonical business rules) and
+`src/lib/poliedron/planner/actionExecutor.js` (the real sequential/batched
+executor, SUCCESS/PARTIAL/FAILED, no auto-rollback), plus the real
+`PoliedronActionPreviewLevel2.jsx` confirmation UI wired end-to-end through
+`Poliedron.jsx`/`poliedraCore.js`.
 
 ## Safety boundaries
 
-- Phase A is READ + PLAN only: no Supabase writes from any new code, no
-  migration, no schema/RLS/RBAC change, no merge, no deploy.
-- Do not implement CONFIRM/ACT/VERIFY or any real committed write — those
-  are explicitly Phase B.
-- Reuse existing domain/canonical functions and permission gates; do not
-  invent architecture or duplicate financial formulas.
+- No schema migration — none was needed or performed.
+- No merge, no deploy without explicit Product Owner approval.
+- All writes route through the new domain services (never a parallel
+  Poliedron-only write path, never raw Supabase calls from the planner/
+  executor); `Poliedron.jsx` is the only place the real `DB` singleton is
+  imported for this feature.
+- Every write is preceded by a fresh re-read (TOCTOU-safe), a fresh
+  permission re-check, and a fresh patient re-resolution (tampered-plan
+  defense-in-depth) — see the POL-AI-005B handoff entry for the full
+  security review.
 
 ## Exact next action
 
-In progress this session — see the POL-AI-005A handoff entry once filed,
-and `docs/architecture/POL-AI-005A-domain-audit.md` /
-`docs/architecture/POL-AI-005A-planner-foundation.md` for the audit and
-Phase B handoff.
+Product Owner reviews the draft PR (branch above) covering the full
+CONFIRM → ACT → VERIFY implementation, the security review, and the one
+honestly-flagged scope gap (the "Era il 46" later-tooth-completion command
+has its domain functions built and unit-tested, but no parser
+pattern/executor wiring yet — see the POL-AI-005B handoff entry's
+`PRODUCT_OWNER_DECISION_REQUIRED` section). Do not merge or deploy without
+explicit approval.
+
+---
+
+# Historical record: POL-AI-005A (merged to master)
+
+- Branch: `feature/POL-AI-005-transactional-action-planner` — PR #46, merged
+  to `master` as `c442c6f`.
+- Objective: Phase A (READ + PLAN only) foundation for the transactional
+  action planner — deterministic command parsing, patient/procedure
+  resolution contracts, a tooth model for incomplete-but-valid clinical
+  data, and non-executing Action Plans for representative workflows. No
+  writes, no CONFIRM/ACT/VERIFY — that became POL-AI-005B (see "Current
+  task" above).
+- Full detail: `docs/architecture/POL-AI-005A-domain-audit.md`,
+  `docs/architecture/POL-AI-005A-planner-foundation.md`, and
+  `docs/coordination/handoffs.md` ("POL-AI-005A..." entries).
 
 ---
 

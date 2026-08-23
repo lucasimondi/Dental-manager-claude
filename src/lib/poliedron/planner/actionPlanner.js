@@ -42,7 +42,13 @@ export const REQUIRED_PERMISSION = Object.freeze({ CLINICAL: 'clinical', FINANCI
 
 const uid = (prefix) => `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 
-const sameProcedureAndTooth = (voce, procedureNormalizedText, tooth) => {
+// POL-AI-005B: exported so the domain-service/executor layer
+// (src/lib/domain/treatmentPlanService.js, actionExecutor.js) re-checks
+// idempotency with the EXACT same rule the planner used to build the
+// preview — a single source of truth for "is this the same treatment
+// item", never two subtly different definitions between plan time and
+// write time.
+export const sameProcedureAndTooth = (voce, procedureNormalizedText, tooth) => {
   if (normalizza(voce.prestazione) !== procedureNormalizedText) return false;
   const voceHasTooth = !!voce.dente;
   if (tooth.state === 'known') return voceHasTooth && String(voce.dente) === tooth.value;
@@ -58,7 +64,7 @@ const sameProcedureAndTooth = (voce, procedureNormalizedText, tooth) => {
  *  against already-persisted `plans` — never against sibling items being
  *  planned in the same request (see §18: two explicit incomplete fillings
  *  must stay two distinct planned items). */
-const findExistingTreatmentItem = (plans, patientId, procedureNormalizedText, tooth) => {
+export const findExistingTreatmentItem = (plans, patientId, procedureNormalizedText, tooth) => {
   for (const plan of plans) {
     if (String(plan.pazienteId) !== String(patientId)) continue;
     const index = (plan.voci || []).findIndex((v) => sameProcedureAndTooth(v, procedureNormalizedText, tooth));
@@ -72,7 +78,7 @@ const findExistingTreatmentItem = (plans, patientId, procedureNormalizedText, to
  *  This is explicitly a best-effort match (see domain audit RISKS —
  *  payments have no structural link to a treatment item), surfaced as a
  *  warning, never used to silently suppress the step. */
-const findLikelyDuplicatePendingPayment = (payments, patientId, amount) => {
+export const findLikelyDuplicatePendingPayment = (payments, patientId, amount) => {
   if (amount === null || amount === undefined) return null;
   return (payments || []).find((p) => String(p.pazienteId) === String(patientId)
     && Number(p.importo) === Number(amount)
@@ -112,7 +118,15 @@ function buildTreatmentItemSteps({ patientId, procedureText, toothText, markComp
   const tooth = createTooth(toothText);
   if (isToothIncomplete(tooth)) assumptions.push(`Dente non specificato per "${procedureText}": registrato come incompleto, non inventato.`);
 
-  const procedureNormalizedText = procRes.normalizedText || normalizza(procedureText);
+  // Match/store by the RESOLVED canonical pricelist name when resolution
+  // succeeded, not the raw query text — otherwise "otturazione" and an
+  // existing item literally stored as "Otturazione composita" (its real
+  // pricelist name) would never recognize each other as the same
+  // treatment, breaking idempotency across equally-valid phrasings that
+  // resolve to the same procedure. Falls back to the raw text only when
+  // NOT_FOUND (nothing canonical to prefer).
+  const canonicalProcedureName = procRes.candidate ? procRes.candidate.nome : procedureText;
+  const procedureNormalizedText = normalizza(canonicalProcedureName);
   const existing = patientId ? findExistingTreatmentItem(plans, patientId, procedureNormalizedText, tooth) : null;
 
   steps.push(Object.freeze({
@@ -125,6 +139,7 @@ function buildTreatmentItemSteps({ patientId, procedureText, toothText, markComp
 
   const procedureRef = Object.freeze({
     text: procedureText,
+    canonicalName: canonicalProcedureName,
     resolutionStatus: procRes.status,
     pricelistItem: procRes.candidate || null,
     price: procRes.candidate ? procRes.candidate.prezzo : PRICE_UNRESOLVED,

@@ -464,12 +464,16 @@ test('complete required workflow state has no false Data Quality penalty and opt
     patients: [{ id: 'p1', studio_id: STUDIO_A, nome: 'Solo', cognome: 'Nome' }],
     plans: [acceptedPlan('p1', {
       stato: 'concluso',
-      voci: [{ prestazione: 'Terapia A', eseguita: true }],
+      // POL-AI-005B: a completed treatment now also requires its tooth on
+      // file to count as fully complete (MISSING_TOOTH_REFERENCE) — `dente`
+      // is set here so this fixture stays genuinely complete under that
+      // expanded bar, not just under the requirements that existed before.
+      voci: [{ prestazione: 'Terapia A', dente: '11', eseguita: true }],
     })],
   });
   assert.equal(result.results.length, 0);
   assert.equal(result.studioDataHealth.score, 100);
-  assert.deepEqual(Object.values(result.studioDataHealth.issues), [0, 0, 0, 0, 0]);
+  assert.deepEqual(Object.values(result.studioDataHealth.issues), [0, 0, 0, 0, 0, 0]);
 });
 
 test('Studio Data Health is non-clinical and deterministic for missing required workflow states', () => {
