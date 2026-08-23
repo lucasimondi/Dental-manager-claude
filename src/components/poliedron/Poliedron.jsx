@@ -10,6 +10,7 @@ import { buildContext } from '../../lib/poliedron/contextEngine';
 import { processQuery } from '../../lib/poliedron/poliedraCore';
 import { runActionPlan } from '../../lib/poliedron/planner/actionExecutor';
 import { DB } from '../../lib/supabase.js';
+import { POLIEDRON_OPEN_CONTEXT_EVENT } from '../../lib/poliedron/patientChatContext.js';
 
 /* POL-AI-001 §33 / POL-AI-002A §16-17 — mounted exactly once by App.jsx,
    survives every page change. This is the only file that talks to the
@@ -60,11 +61,24 @@ export default function Poliedron({
       studioId,
       currentPatient: externalContext?.patient || currentPatient,
       currentAppointment: externalContext?.appointment || null,
+      anatomicalContext: externalContext?.anatomicalContext || null,
+      inputSource: externalContext?.inputSource || 'TEXT',
       isStudioAdmin,
       features,
     }),
     [page, vertical, studioId, currentPatient, externalContext, isStudioAdmin, features]
   );
+
+  useEffect(() => {
+    const openPatientContext = (event) => {
+      const detail = event.detail;
+      if (!detail?.patient?.id) return;
+      setExternalContext(detail);
+      setOpen(true);
+    };
+    window.addEventListener(POLIEDRON_OPEN_CONTEXT_EVENT, openPatientContext);
+    return () => window.removeEventListener(POLIEDRON_OPEN_CONTEXT_EVENT, openPatientContext);
+  }, []);
 
   // §25 — Cmd/Ctrl+K opens Poliedron from anywhere, desktop only per spec
   // (mobile stays touch-first). Registered at document level so it works

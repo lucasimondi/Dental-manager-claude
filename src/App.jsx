@@ -79,6 +79,7 @@ export default function App() {
   const [impegni, setImpegni] = useState([]);
   const [richiami, setRichiami] = useState([]);
   const [initPatId, setInitPatId] = useState(null);
+  const [initPlanDraft, setInitPlanDraft] = useState(null);
   // POL-UX-001 bugfix: Home quick actions "Nuovo paziente"/"Nuovo preventivo"/
   // "Pagamento" must open the real creation form on arrival, not just land on
   // the list page. Mirrors the existing initPatId pattern (set target page,
@@ -405,7 +406,7 @@ export default function App() {
     });
   };
 
-  const goNuovoPiano = (id) => { setInitPatId(id); setPage('piani'); };
+  const goNuovoPiano = (id, draft = null) => { setInitPatId(id); setInitPlanDraft(draft); setPage('piani'); };
   const goNuovoElemento = (target) => { setAutoOpenNew(target); setPage(target); };
   const goSchedaPaz = (paz, tab = 'paga') => {
     setSchedaDashPaz({ paz, tab });
@@ -518,13 +519,14 @@ export default function App() {
             appointments={appointments}
             pricelist={pricelist}
             si={studioInfo}
+            studioId={session?.user?.app_metadata?.studio_id}
             features={features}
             studioMembership={studioMembership}
             currentUserId={session?.user?.id}
             isStudioAdmin={isStudioAdmin}
             onClose={() => { setSchedaDashPaz(null); pulisciPosizione(['schedaPazId', 'schedaPazTab']); }}
             onEdit={() => setSchedaDashPaz(null)}
-            onNuovoPiano={(id) => { setSchedaDashPaz(null); goNuovoPiano(id); }}
+            onNuovoPiano={(id, draft) => { setSchedaDashPaz(null); goNuovoPiano(id, draft); }}
             initialDocumentRequest={schedaDashPaz.documentRequest}
             onDocumentRequestHandled={(requestId) => setSchedaDashPaz((current) =>
               current?.documentRequest?.requestId === requestId
@@ -596,6 +598,7 @@ export default function App() {
                 patients={patients} setPatients={setPatientsSync}
                 plans={plans} setPlans={setPlansSync}
                 payments={payments} setPayments={setPaymentsSync} appointments={appointments} si={studioInfo}
+                studioId={session?.user?.app_metadata?.studio_id}
                 features={features}
                 studioMembership={studioMembership}
                 currentUserId={session?.user?.id}
@@ -613,7 +616,7 @@ export default function App() {
               <Piani
                 patients={patients} plans={plans} setPlans={setPlansSync}
                 pricelist={pricelist} templates={templates} si={studioInfo} features={features}
-                initPatId={initPatId} onClearInitPat={() => setInitPatId(null)}
+                initPatId={initPatId} initDraft={initPlanDraft} onClearInitPat={() => { setInitPatId(null); setInitPlanDraft(null); }}
                 onOpenPaz={goSchedaPaz}
                 autoOpenNew={autoOpenNew === 'piani'} onAutoOpenNewHandled={() => setAutoOpenNew(null)}
               />

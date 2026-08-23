@@ -8,7 +8,7 @@ import Odontogramma from './Odontogramma.jsx';
 import PdfView from './PdfView.jsx';
 import WaAction, { apriWaDiretto } from './ui/WaAction.jsx';
 
-export default function Piani({ patients, plans, setPlans, pricelist, templates, si, features, initPatId, onClearInitPat, onOpenPaz, autoOpenNew, onAutoOpenNewHandled }) {
+export default function Piani({ patients, plans, setPlans, pricelist, templates, si, features, initPatId, initDraft, onClearInitPat, onOpenPaz, autoOpenNew, onAutoOpenNewHandled }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const isMobile = useIsMobile();
   const [modal, setModal] = useState(false);
@@ -37,8 +37,10 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
   useEffect(() => {
     if (initPatId) {
       setForm({ pazienteId: String(initPatId), titolo: '', data: today(), voci: [], stato: 'attivo', sconto: 0, scontoTipo: 'pct', scadenzaPagamento: '', ortodonzia: null });
-      setNv({ prestazione: '', dente: '', prezzo: '' });
-      setSelectedDenti([]);
+      const draftProcedure = initDraft?.procedure || '';
+      const draftItem = pricelist.find((item) => item.nome === draftProcedure);
+      setNv({ prestazione: draftProcedure, dente: '', prezzo: draftItem?.prezzo ?? '' });
+      setSelectedDenti(Array.isArray(initDraft?.teeth) ? initDraft.teeth : []);
       setModal(true);
       onClearInitPat && onClearInitPat();
     }
