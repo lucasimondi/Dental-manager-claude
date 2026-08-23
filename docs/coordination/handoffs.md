@@ -1179,6 +1179,8 @@ or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
   clears the active patient override to prevent stale actions.
 - Rollback: revert the POL-UI-014 commits. No data, database, RLS, deployment,
   dependency, or production rollback is required.
-- Exact next action: commit and push the reviewed branch, open one draft PR,
-  and wait for Product Owner review. Do not merge or deploy. Status:
-  `IN_PROGRESS`.
+- Published: implementation commit `ccfd521`; draft PR #48.
+- Exact next action: Product Owner reviews draft PR #48, performs native-width
+  responsive QA if desired, and decides the authoritative patient-level
+  financial contract gate. Do not merge or deploy. Status:
+  `WAITING_PRODUCT_OWNER`.

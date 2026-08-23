@@ -5,7 +5,7 @@
 - OWNER: COPILOT
 - BRANCH: `lucasimondi-feature-pol-ui-014-patient-clinical-cock`
 - BASE: `origin/master@c442c6f` (POL-AI-005A merged)
-- STATUS: `IN_PROGRESS`
+- STATUS: `WAITING_PRODUCT_OWNER`
 
 ## Objective
 
@@ -45,8 +45,9 @@ responsive light/dark behavior, and future voice-transcript compatibility.
 
 ## Exact next action
 
-Commit and push the reviewed POL-UI-014 diff, open exactly one draft PR, then
-set this record to `WAITING_PRODUCT_OWNER`. Do not merge or deploy.
+Product Owner reviews draft PR #48, including native-width responsive QA if
+desired, and decides the patient-level financial contract gate. Do not merge
+or deploy without explicit Product Owner approval.
 
 ---
 
