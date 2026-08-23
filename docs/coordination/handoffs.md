@@ -1247,3 +1247,23 @@ or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
 - ROLLBACK: revert the commit containing this handoff, then revert `654f862` if the entire floating-UI change must be removed. Commit `8fc48cb` remains the full-screen baseline.
 - COMMIT: recorded by the commit containing this handoff.
 - Exact next action: push the branch, then Product Owner visually verifies the complete mobile Agenda V2 on iPhone. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+
+## POL-UI-004-AGENDA-V2 mobile appointment action sheet clearance
+
+- Task ID: POL-UI-004-AGENDA-V2.
+- Previous agent: Copilot, continuing PR #50 on the existing Agenda branch.
+- Agent: Copilot.
+- Branch: `lucasimondi-agenda-mobile-fullscreen`.
+- Objective: keep the mobile appointment action menu fully visible and reachable above the unchanged floating MobileDock at every supported phone height, without changing desktop or appointment behavior.
+- ROOT_CAUSE: the appointment menu reused the generic viewport-bottom modal sheet. Its internal safe-area spacer protected the physical screen edge but did not account for the independently fixed 64px MobileDock plus its canonical 16px bottom offset, so the final action could sit behind the dock.
+- COMPLETED_WORK: mobile-only appointment menu classes now create a floating sheet whose bottom padding and responsive `max-height` use a CSS custom property derived from the canonical `MOBILE_DOCK_BOTTOM` and `MOBILE_DOCK_HEIGHT` constants. The action list scrolls internally with contained overscroll; the redundant internal mobile safe-area spacer is hidden because the outer dock-aware offset consumes the safe area exactly once. Desktop retains the existing generic modal geometry.
+- FILES_CHANGED: `src/components/Agenda.jsx`; `src/components/PremiumVisualSystem.css`; `tests/mobileShell.test.mjs`; `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- DATABASE_CHANGES: none.
+- DEPLOYMENT_IMPACT: frontend-only mobile geometry; no schema, RLS, dependency, environment, migration, or production deployment change.
+- RESPONSIVE_QA: isolated real Chromium harness with backend fetches blocked rendered the real Agenda menu and production styles at 375x667, 390x844, 393x852, and 430x932 in light and dark. All eight runs measured exactly 12px between sheet bottom and dock top, exposed the final action, retained an internal `overflow-y:auto` action region, provided backdrop closure, and had zero horizontal overflow.
+- TESTS_EXECUTED: `node --test tests\mobileShell.test.mjs tests\agendaVisibleDays.test.mjs tests\agendaSlots.test.mjs tests\waBatchSender.test.mjs`; `npm.cmd test`; `npm.cmd run build`; `git diff --check`. No lint script exists.
+- TEST_RESULTS: focused Agenda suite 20/20 passed; full suite 330/330 passed; Vite production build succeeded with only the pre-existing eval, malformed CSS-comment, and chunk-size warnings.
+- UNRESOLVED_ISSUES: none in implementation; Product Owner real-device visual verification remains required.
+- RISKS: the 12px visual gap is menu-specific while dock height and bottom offset remain imported from their canonical source; any future dock geometry change automatically updates the protected zone.
+- ROLLBACK: revert the commit containing this handoff.
+- Exact next action: Product Owner visually verifies the appointment action sheet on the Vercel preview. Do not merge or deploy production without explicit approval. Status: `WAITING_PRODUCT_OWNER`.

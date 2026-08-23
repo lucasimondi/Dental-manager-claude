@@ -143,6 +143,39 @@
     padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
     scrollbar-gutter: stable;
   }
+
+  .agenda-appointment-menu-backdrop {
+    box-sizing: border-box;
+    padding:
+      calc(env(safe-area-inset-top, 0px) + 12px)
+      12px
+      calc(var(--agenda-mobile-dock-offset) + env(safe-area-inset-bottom, 0px) + 12px);
+  }
+  .agenda-appointment-menu-sheet {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: calc(
+      100dvh
+      - env(safe-area-inset-top, 0px)
+      - var(--agenda-mobile-dock-offset)
+      - env(safe-area-inset-bottom, 0px)
+      - 24px
+    );
+    border-radius: 18px;
+  }
+  .agenda-appointment-menu-header {
+    flex: 0 0 auto;
+  }
+  .agenda-appointment-menu-actions {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .agenda-appointment-menu-safe-area {
+    display: none;
+  }
 }
 
 /* POL-UI-004 — app-wide (not Home-scoped): every interactive Crd (the

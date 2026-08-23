@@ -21,6 +21,8 @@ timeline, which remains the full-height scroll surface underneath.
 - Dynamic day strip driven by the same hidden-weekday source as the grid.
 - Internal top/bottom scroll range for complete first/last-slot access.
 - Mobile today styling reduced to the semantic red outline only.
+- Dock-aware mobile appointment action sheet with responsive max-height and
+  internal scrolling.
 - Responsive browser measurements at 375x667, 390x844, 393x852, and
   430x932 in light and dark themes.
 - Full test suite and production build.

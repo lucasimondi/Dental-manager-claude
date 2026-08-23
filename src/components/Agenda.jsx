@@ -8,10 +8,12 @@ import { salvaPosizione, leggiPosizione } from '../lib/posizioneNavigazione';
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { supabase } from '../lib/supabase.js';
 import { getVisibleWeekDays } from '../lib/agendaVisibleDays.js';
+import { MOBILE_DOCK_BOTTOM, MOBILE_DOCK_HEIGHT } from '../lib/poliedron/poliedronMobileDock.js';
 
 const WD_SHORT = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
 const toISO = (d) => d.toISOString().slice(0, 10);
+const MOBILE_APPOINTMENT_MENU_DOCK_OFFSET = MOBILE_DOCK_BOTTOM + MOBILE_DOCK_HEIGHT;
 const orarioInMinutiUI = (ora) => {
   const [h, m] = (ora || '0:0').split(':').map(Number);
   return (h || 0) * 60 + (m || 0);
@@ -395,18 +397,26 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
         return (
           <div
             onClick={() => setMenuApp(null)}
-            className="pol-modal-backdrop"
-            style={{ position: 'fixed', inset: 0, background: 'rgba(10,20,40,0.55)', zIndex: 9999, display: 'flex', justifyContent: 'center' }}
+            className="pol-modal-backdrop agenda-appointment-menu-backdrop"
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(10,20,40,0.55)',
+              zIndex: 9999,
+              display: 'flex',
+              justifyContent: 'center',
+              '--agenda-mobile-dock-offset': `${MOBILE_APPOINTMENT_MENU_DOCK_OFFSET}px`,
+            }}
           >
-            <div onClick={e => e.stopPropagation()} className="pol-modal-sheet" style={{ background: C.sur, width: '100%', maxWidth: 480, overflow: 'hidden' }}>
-              <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.brd}`, display: 'flex', alignItems: 'center', gap: 9 }}>
+            <div onClick={e => e.stopPropagation()} className="pol-modal-sheet agenda-appointment-menu-sheet" style={{ background: C.sur, width: '100%', maxWidth: 480, overflow: 'hidden' }}>
+              <div className="agenda-appointment-menu-header" style={{ padding: '14px 18px', borderBottom: `1px solid ${C.brd}`, display: 'flex', alignItems: 'center', gap: 9 }}>
                 <div style={{ width: 10, height: 10, borderRadius: '50%', background: co, flexShrink: 0 }} />
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p ? `${p.nome} ${p.cognome}` : 'Paziente'}</div>
                   <div style={{ fontSize: 11.5, color: C.txm }}>{fmtD(menuApp.data)} · {menuApp.ora} · {menuApp.tipo}</div>
                 </div>
               </div>
-              <div style={{ padding: 8 }}>
+              <div className="agenda-appointment-menu-actions" style={{ padding: 8 }}>
                 {azioni.map(az => (
                   <button
                     key={az.id}
@@ -423,7 +433,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                   </button>
                 ))}
               </div>
-              <div style={{ height: 'env(safe-area-inset-bottom,12px)' }} />
+              <div aria-hidden="true" className="agenda-appointment-menu-safe-area" style={{ height: 'env(safe-area-inset-bottom,12px)' }} />
             </div>
           </div>
         );

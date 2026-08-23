@@ -52,6 +52,16 @@ test('Agenda day strip follows the grid day source and uses mobile-only today st
   assert.match(premium, /\.agenda-mobile-day-number\.is-today\s*\{[\s\S]*border-color:\s*var\(--danger\);[\s\S]*background:\s*transparent;/);
 });
 
+test('Agenda appointment menu clears the canonical mobile dock and scrolls internally', () => {
+  assert.match(agenda, /MOBILE_DOCK_BOTTOM,\s*MOBILE_DOCK_HEIGHT/);
+  assert.match(agenda, /MOBILE_APPOINTMENT_MENU_DOCK_OFFSET\s*=\s*MOBILE_DOCK_BOTTOM\s*\+\s*MOBILE_DOCK_HEIGHT/);
+  assert.match(agenda, /--agenda-mobile-dock-offset/);
+  assert.match(premium, /\.agenda-appointment-menu-backdrop\s*\{[\s\S]*var\(--agenda-mobile-dock-offset\)[\s\S]*safe-area-inset-bottom/);
+  assert.match(premium, /\.agenda-appointment-menu-sheet\s*\{[\s\S]*max-height:\s*calc\([\s\S]*100dvh[\s\S]*var\(--agenda-mobile-dock-offset\)/);
+  assert.match(premium, /\.agenda-appointment-menu-actions\s*\{[\s\S]*overflow-y:\s*auto;[\s\S]*overscroll-behavior:\s*contain;/);
+  assert.match(premium, /\.agenda-appointment-menu-safe-area\s*\{[\s\S]*display:\s*none;/);
+});
+
 test('all required mobile pages share the same app-scroll surface', () => {
   for (const page of ['home', 'agenda', 'paz', 'piani', 'paga', 'archivio', 'controllo', 'wa', 'set']) {
     assert.match(app, new RegExp(`page === '${page}'`), `${page} must render inside the shared shell`);
