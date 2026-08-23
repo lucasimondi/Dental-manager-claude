@@ -30,13 +30,20 @@ import { COMMAND_INTENT } from './commandParser.js';
 import { resolvePatient, PATIENT_RESOLUTION_STATUS } from './patientResolver.js';
 import { buildIntelligencePermissions } from '../permissionEngine.js';
 import { normalizza } from '../../ricercaPazienti.js';
+import { amountsEqual } from '../../domain/money.js';
 import {
   buildTreatmentItem, buildNewPlan, markTreatmentItemCompleted, pickTargetPlanForNewItem, setItemTooth,
   loadPatientPlans, createPlan, updatePlan, getPlanById,
 } from '../../domain/treatmentPlanService.js';
 import {
-  buildPendingPayment, findLikelyDuplicatePendingPayment, loadPatientPayments, createPayment,
+  buildPendingPayment, buildCollectedPayment, findLikelyDuplicatePendingPayment, loadPatientPayments, createPayment,
 } from '../../domain/paymentService.js';
+import {
+  PLAN_STATUS, buildNewPaymentPlan, buildDeadlineRows, buildAllocation,
+  loadPatientPaymentPlans, loadPatientDeadlines, loadPatientAllocations,
+  createPaymentPlan, createDeadline, createAllocation, deadlineRemainingAmount,
+} from '../../domain/paymentPlanService.js';
+import { computePatientFinancialSummary } from '../../domain/patientFinancialSummary.js';
 
 export const RUN_OUTCOME = Object.freeze({ SUCCESS: 'SUCCESS', PARTIAL: 'PARTIAL', FAILED: 'FAILED' });
 
@@ -241,6 +248,113 @@ async function runCompleteMissingTooth(plan, { db, patientId }) {
   }
 }
 
+/** POL-FIN-001 — CREATE_PAYMENT_PLAN write. Re-reads canonical financial
+ *  state fresh (TOCTOU: another payment or plan could have landed between
+ *  preview and this confirm) and re-verifies the target amount still
+ *  equals `totalUnscheduledOutstanding` to the cent, and that no OTHER
+ *  active plan has appeared for this patient in the meantime — never
+ *  writes a plan against a stale total. Creates the plan row, then every
+ *  deadline row; if a deadline insert fails partway, the caller reports
+ *  PARTIAL (plan + some deadlines created) rather than a silent gap. */
+async function executeCreatePaymentPlanStep(step, { db, patientId, today: todayIso }) {
+  const [freshPlans, freshPayments, freshPaymentPlans, freshDeadlines, freshAllocations] = await Promise.all([
+    loadPatientPlans(db, patientId), loadPatientPayments(db, patientId), loadPatientPaymentPlans(db, patientId),
+    loadPatientDeadlines(db, patientId), loadPatientAllocations(db, patientId),
+  ]);
+
+  const stillActive = freshPaymentPlans.filter((p) => p.status === PLAN_STATUS.ACTIVE);
+  if (stillActive.length > 0) {
+    throw new Error('Il paziente ha già un piano di pagamento attivo (creato nel frattempo): nessuna scrittura eseguita.');
+  }
+
+  const summary = computePatientFinancialSummary(
+    { plans: freshPlans, payments: freshPayments, paymentPlans: freshPaymentPlans, paymentDeadlines: freshDeadlines, paymentAllocations: freshAllocations },
+    patientId, { today: todayIso },
+  );
+  if (!amountsEqual(summary.totalUnscheduledOutstanding, step.totalAmount)) {
+    throw new Error(`Il residuo non pianificato è cambiato dopo l'anteprima (ora ${summary.totalUnscheduledOutstanding} €, era ${step.totalAmount} €): nessuna scrittura eseguita.`);
+  }
+
+  const planPayload = buildNewPaymentPlan({ patientId, planType: step.planType, totalAmount: step.totalAmount });
+  const createdPlan = await createPaymentPlan(db, planPayload);
+  if (!createdPlan || !amountsEqual(createdPlan.totalAmount, step.totalAmount)) {
+    throw new Error('Verifica post-scrittura fallita: il piano di pagamento non risulta salvato correttamente.');
+  }
+
+  const deadlineRows = buildDeadlineRows({ paymentPlanId: createdPlan.id, patientId, deadlines: step.deadlines });
+  const createdDeadlines = [];
+  for (const row of deadlineRows) {
+    const created = await createDeadline(db, row);
+    if (!created || !amountsEqual(created.amountDue, row.amountDue)) {
+      throw new Error(`Verifica post-scrittura fallita: la rata "${row.label}" non risulta salvata correttamente.`);
+    }
+    createdDeadlines.push(created);
+  }
+
+  return { planId: createdPlan.id, deadlineCount: createdDeadlines.length, verified: true };
+}
+
+async function runCreatePaymentPlan(plan, { db, patientId, today: todayIso }) {
+  const step = plan.steps.find((s) => s.type === PLAN_STEP_TYPE.CREATE_PAYMENT_PLAN);
+  if (!step) {
+    return { outcome: RUN_OUTCOME.FAILED, completedSteps: [], failedStep: { type: PLAN_STEP_TYPE.CHECK_EXISTING_PAYMENT_PLAN, message: 'Nessun piano di pagamento da creare è stato identificato.' }, recoveryActions: ['Ripeti la richiesta.'] };
+  }
+  try {
+    const result = await executeCreatePaymentPlanStep(step, { db, patientId, today: todayIso });
+    return { outcome: RUN_OUTCOME.SUCCESS, completedSteps: [{ type: step.type, result }], failedStep: null, recoveryActions: [] };
+  } catch (error) {
+    return failResult([], step, error.message, ['La creazione del piano di pagamento non è riuscita. Nessuna rata è stata salvata. Ripeti la richiesta.']);
+  }
+}
+
+/** POL-FIN-001 — RECORD_PAYMENT_AGAINST_DEADLINE write. Re-reads the
+ *  target deadline fresh (if any) and fails closed if it is no longer
+ *  open (someone else already completed it since preview — stale/
+ *  conflict, never silently reallocated elsewhere). Creates the real
+ *  `payments` row (stato: 'pagato' — this is money actually received,
+ *  see paymentService.buildCollectedPayment) and the allocation row
+ *  linking it to the deadline, or to nothing (general outstanding
+ *  balance) when `targetDeadlineId` is null. */
+async function executeRecordPaymentAllocationStep(step, { db, patientId }) {
+  if (step.targetDeadlineId) {
+    const freshAllocations = await loadPatientAllocations(db, patientId);
+    const freshDeadlines = await loadPatientDeadlines(db, patientId);
+    const freshTarget = freshDeadlines.find((d) => String(d.id) === String(step.targetDeadlineId));
+    if (!freshTarget) throw new Error('La scadenza selezionata non è più disponibile: nessuna scrittura eseguita.');
+    const remaining = deadlineRemainingAmount(freshTarget, freshAllocations);
+    if (remaining <= 0) {
+      throw new Error('La scadenza selezionata risulta già saldata (probabilmente da un altro utente nel frattempo): nessuna sovrascrittura automatica.');
+    }
+  }
+
+  const paymentPayload = buildCollectedPayment({ pazienteId: patientId, amount: step.amount });
+  const createdPayment = await createPayment(db, paymentPayload);
+  if (!createdPayment || Number(createdPayment.importo) !== Number(step.amount)) {
+    throw new Error('Verifica post-scrittura fallita: il pagamento non risulta salvato correttamente.');
+  }
+
+  const allocationPayload = buildAllocation({ paymentId: createdPayment.id, patientId, paymentDeadlineId: step.targetDeadlineId, amount: step.amount });
+  const createdAllocation = await createAllocation(db, allocationPayload);
+  if (!createdAllocation || !amountsEqual(createdAllocation.amount, step.amount)) {
+    throw new Error('Verifica post-scrittura fallita: l\'allocazione del pagamento non risulta salvata correttamente.');
+  }
+
+  return { paymentId: createdPayment.id, allocationId: createdAllocation.id, targetDeadlineId: step.targetDeadlineId, verified: true };
+}
+
+async function runRecordPaymentAllocation(plan, { db, patientId }) {
+  const step = plan.steps.find((s) => s.type === PLAN_STEP_TYPE.RECORD_PAYMENT_ALLOCATION);
+  if (!step) {
+    return { outcome: RUN_OUTCOME.FAILED, completedSteps: [], failedStep: { type: PLAN_STEP_TYPE.RESOLVE_PAYMENT_ALLOCATION, message: 'Nessuna allocazione di pagamento è stata identificata.' }, recoveryActions: ['Ripeti la richiesta specificando meglio la scadenza.'] };
+  }
+  try {
+    const result = await executeRecordPaymentAllocationStep(step, { db, patientId });
+    return { outcome: RUN_OUTCOME.SUCCESS, completedSteps: [{ type: step.type, result }], failedStep: null, recoveryActions: [] };
+  } catch (error) {
+    return failResult([], step, error.message, ['La registrazione del pagamento non è riuscita. Nessuna scrittura è stata eseguita. Ripeti la richiesta.']);
+  }
+}
+
 const recoveryForFailure = (step, completedSteps) => {
   const clinicalDone = completedSteps.some((s) => s.type === PLAN_STEP_TYPE.MARK_TREATMENT_COMPLETED || s.type === PLAN_STEP_TYPE.ENSURE_TREATMENT_ITEM);
   if (step.type === PLAN_STEP_TYPE.ENSURE_PENDING_PAYMENT && clinicalDone) {
@@ -347,6 +461,12 @@ export async function runActionPlan(plan, context) {
   }
   if (plan.intent === COMMAND_INTENT.COMPLETE_MISSING_TOOTH) {
     return runCompleteMissingTooth(plan, { db, patientId });
+  }
+  if (plan.intent === COMMAND_INTENT.CREATE_PAYMENT_PLAN) {
+    return runCreatePaymentPlan(plan, { db, patientId, today: context.today });
+  }
+  if (plan.intent === COMMAND_INTENT.RECORD_PAYMENT_AGAINST_DEADLINE) {
+    return runRecordPaymentAllocation(plan, { db, patientId });
   }
   return runSequentialPlan(plan, { db, patientId });
 }

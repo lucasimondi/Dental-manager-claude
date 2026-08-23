@@ -7,6 +7,7 @@ import { scanRecalls } from './recallScanner.js';
 import { scanHygiene } from './hygieneScanner.js';
 import { buildActivityIndex } from './activityScanner.js';
 import { scanDataCompleteness } from './dataCompletenessScanner.js';
+import { scanPaymentFinancials } from './paymentFinancialScanner.js';
 import { scoreSignals } from './scoringEngine.js';
 import { calculateStudioDataHealth } from './studioDataHealth.js';
 import {
@@ -90,6 +91,12 @@ export function scanPatientOpportunities({
     appointments: (sources.appointments || []).filter((row) => belongsToTenant(row, studioId)),
     recalls: (sources.recalls || sources.richiami || []).filter((row) => belongsToTenant(row, studioId)),
     activities: (sources.activities || sources.impegni || []).filter((row) => belongsToTenant(row, studioId)),
+    // POL-FIN-001 — canonical financial sources, tenant-filtered exactly
+    // like every other source above (never trusted as pre-scoped).
+    payments: (sources.payments || []).filter((row) => belongsToTenant(row, studioId)),
+    paymentPlans: (sources.paymentPlans || []).filter((row) => belongsToTenant(row, studioId)),
+    paymentDeadlines: (sources.paymentDeadlines || []).filter((row) => belongsToTenant(row, studioId)),
+    paymentAllocations: (sources.paymentAllocations || []).filter((row) => belongsToTenant(row, studioId)),
   };
   const fingerprint = createIntelligenceFingerprint(tenantSources);
   const cacheKey = createIntelligenceCacheKey({ studioId, fingerprint: `${today}|${vertical}|${JSON.stringify(permissions)}|${fingerprint}` });
@@ -137,12 +144,14 @@ export function scanPatientOpportunities({
       signal.type !== SIGNAL_TYPE.HYGIENE_OVERDUE
       || !hasMatchingPreventionRecall(recallSignals, signal)
     ));
+    const financialSignals = scanPaymentFinancials({ patient, sources: tenantSources, today, canReadFinancial });
     const signals = [
       ...treatmentSignals,
       ...recallSignals,
       ...hygieneSignals,
       ...(activityIndex.get(key) || []),
       ...scanDataCompleteness({ plans, canReadClinical }),
+      ...financialSignals,
     ];
     if (!signals.length) continue;
     const scored = scoreSignals(signals);

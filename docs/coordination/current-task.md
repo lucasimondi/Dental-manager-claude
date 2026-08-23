@@ -1,51 +1,77 @@
 # Current task
 
-- TASK: POL-AI-005B
-- TITLE: Transactional Action Planner — Phase B (CONFIRM → ACT → VERIFY)
+- TASK: POL-FIN-001
+- TITLE: Canonical patient financial contract + payment plans, installments,
+  deadlines, partial payments + Poliedron financial integration
 - OWNER: CLAUDE
-- BRANCH: `feature/POL-AI-005B-confirm-act-verify`
-- BASE: `master` (POL-AI-005A merged as `c442c6f`, PR #46)
+- BRANCH: `feature/POL-FIN-001-payment-plans-deadlines`
+- BASE: `master` (POL-AI-005B merged as `9e30d0d`, PR #47)
 - STATUS: `WAITING_PRODUCT_OWNER` — draft PR open, not merged, not deployed.
+- RELATED: PR #48 / POL-UI-014 ("Patient Clinical Cockpit") is OPEN and
+  DRAFT, and depends on this task's contract before it can enable numeric
+  financial cockpit KPIs. POL-FIN-001 does NOT touch PR #48's branch or
+  files. See `docs/architecture/POL-FIN-001-payment-plans-deadlines.md`'s
+  `POL_UI_014_HANDOFF` section for the exact consumption contract.
 
 ## Objective
 
-Complete the real write path the POL-AI-005A planner deliberately left
-unimplemented: UNDERSTAND → RESOLVE → PLAN → PREVIEW → CONFIRM → ACT →
-VERIFY for the six representative workflows (A–F) the Product Owner
-specified — treatment-item + pending-payment creation, treatment-plan
-creation with dedup, marking items completed, and the two
-unknown-tooth-at-entry variants feeding a live POL-AI-004 Data Health
-signal. Built new `src/lib/domain/treatmentPlanService.js` /
-`paymentService.js` (reusable domain services, extracted from
-`Piani.jsx`/`Pagamenti.jsx`'s canonical business rules) and
-`src/lib/poliedron/planner/actionExecutor.js` (the real sequential/batched
-executor, SUCCESS/PARTIAL/FAILED, no auto-rollback), plus the real
-`PoliedronActionPreviewLevel2.jsx` confirmation UI wired end-to-end through
-`Poliedron.jsx`/`poliedraCore.js`.
+Build the authoritative, canonical per-patient financial contract
+(`computePatientFinancialSummary`) plus payment plans (INSTALLMENTS/
+CUSTOM/TREATMENT_PHASES), payment deadlines, and partial-payment
+allocation — all additive, all reusing POL-AI-005B's Poliedron Action
+Planner/Level-2 Preview/Action Executor/permission model/tenant isolation
+model rather than duplicating them. Adds three new tables
+(`payment_plans`/`payment_deadlines`/`payment_allocations`, migration
+authored only, NOT applied), a money-safety module
+(`src/lib/domain/money.js`), the domain service
+`src/lib/domain/paymentPlanService.js`, the canonical selector
+`src/lib/domain/patientFinancialSummary.js`, natural-language
+create-payment-plan/record-payment Poliedron commands, a deterministic
+financial-query engine for read-only questions, and evidence-based
+proactive financial signals (`PAYMENT_OVERDUE`/`PAYMENT_DUE_SOON`/
+`OUTSTANDING_WITHOUT_PAYMENT_PLAN`).
 
 ## Safety boundaries
 
-- No schema migration — none was needed or performed.
-- No merge, no deploy without explicit Product Owner approval.
-- All writes route through the new domain services (never a parallel
-  Poliedron-only write path, never raw Supabase calls from the planner/
-  executor); `Poliedron.jsx` is the only place the real `DB` singleton is
-  imported for this feature.
-- Every write is preceded by a fresh re-read (TOCTOU-safe), a fresh
-  permission re-check, and a fresh patient re-resolution (tampered-plan
-  defense-in-depth) — see the POL-AI-005B handoff entry for the full
-  security review.
+- Migration is authored only — NOT applied to production. See the
+  migration file's own header gate and the architecture doc's
+  `MIGRATION_DECISION` section. STOP before any production apply.
+- No existing table is altered; `Pagamenti.jsx`/`SchedaPaz.jsx` are not
+  modified — nothing currently displayed changes.
+- All writes route through the same TOCTOU-safe Action Planner/Preview/
+  Executor pattern established in POL-AI-005B; Poliedron receives no
+  special database privilege beyond the caller's own permission model.
+- PR #48/POL-UI-014 is explicitly not merged, not modified, and not wired
+  into by this task.
 
 ## Exact next action
 
-Product Owner reviews the updated draft PR #47 (branch above), now
-including the Workflow G addendum: the full "Era il 46" complete-missing-
-tooth round-trip (parser → planner → preview → executor → Data Health
-clearing) and the `pickTargetPlanForNewItem` ambiguity hardening — both
-implemented per the Product Owner's own resolution of the three prior
-open decisions. See `docs/coordination/handoffs.md`'s "POL-AI-005B
-Addendum: Workflow G" entry for full detail. Do not merge or deploy
-without explicit approval.
+Product Owner reviews the draft PR (branch above) and the architecture
+doc's `PRODUCT_OWNER_DECISION_REQUIRED` items — notably: the deliberate
+`totalCollected` divergence from legacy `saldoPaz` (canonical
+`stato='pagato'`-only vs. the legacy quirk), whether CUSTOM/
+TREATMENT_PHASES chat-command creation and standalone
+`CREATE_PAYMENT_DEADLINE`/`UPDATE_PAYMENT_DEADLINE` commands should be
+built now or deferred, the TREATMENT_PHASES per-item execution-trigger
+deferral, and the migration-apply gate itself. Do not merge, deploy, or
+apply the migration without explicit approval.
+
+---
+
+# Historical record: POL-AI-005B (merged to master)
+
+- Branch: `feature/POL-AI-005B-confirm-act-verify` — PR #47, merged to
+  `master` as `9e30d0d`.
+- Objective: complete the real write path the POL-AI-005A planner
+  deliberately left unimplemented: UNDERSTAND → RESOLVE → PLAN → PREVIEW →
+  CONFIRM → ACT → VERIFY for six representative workflows, plus the
+  Workflow-G addendum (the full "Era il 46" complete-missing-tooth
+  round-trip and `pickTargetPlanForNewItem` ambiguity hardening). Built
+  `src/lib/domain/treatmentPlanService.js`/`paymentService.js`,
+  `src/lib/poliedron/planner/actionExecutor.js`, and the real
+  `PoliedronActionPreviewLevel2.jsx` confirmation UI.
+- Full detail: see `docs/coordination/handoffs.md` ("POL-AI-005B..." and
+  "POL-AI-005B Addendum: Workflow G" entries).
 
 ---
 

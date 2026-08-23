@@ -28,6 +28,11 @@ export const SIGNAL_TYPE = Object.freeze({
   // clears automatically the moment the tooth is filled in — no separate
   // signal storage/clearing logic needed.
   MISSING_TOOTH_REFERENCE: 'MISSING_TOOTH_REFERENCE',
+  // POL-FIN-001 §19 — proactive financial signals, derived live from
+  // computePatientFinancialSummary on every scan (never stored).
+  PAYMENT_OVERDUE: 'PAYMENT_OVERDUE',
+  PAYMENT_DUE_SOON: 'PAYMENT_DUE_SOON',
+  OUTSTANDING_WITHOUT_PAYMENT_PLAN: 'OUTSTANDING_WITHOUT_PAYMENT_PLAN',
 });
 
 export const SEVERITY = Object.freeze({

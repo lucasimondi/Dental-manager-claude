@@ -17,7 +17,8 @@ import { DB } from '../../lib/supabase.js';
    SAME component's state/panel — never two AI systems (§16 same
    identity, one Poliedra AI Core). */
 export default function Poliedron({
-  isMobile, page, setPage, patients, plans, payments, pricelist, appointments, richiami, impegni, goSchedaPaz,
+  isMobile, page, setPage, patients, plans, payments, paymentPlans, paymentDeadlines, paymentAllocations,
+  pricelist, appointments, richiami, impegni, goSchedaPaz,
   features, isStudioAdmin, vertical, studioId, currentPatient,
   quickActionCtx, supabaseClient, onArchivioFilterHint, openPrescription, openNew, openBooking,
 }) {
@@ -92,6 +93,9 @@ export default function Poliedron({
         patients,
         plans,
         payments,
+        paymentPlans,
+        paymentDeadlines,
+        paymentAllocations,
         pricelist,
         appointments,
         recalls: richiami,
@@ -122,7 +126,7 @@ export default function Poliedron({
       setState({ answer: 'Non riesco a completare la richiesta in questo momento. Riprova.' });
       setLoading(false);
     });
-  }, [context, permissionCtx, intelligencePermissions, isStudioAdmin, patients, plans, payments, pricelist, appointments, richiami, impegni, navigationIndex, actions, supabaseClient, quickActionCtx, setPage, onArchivioFilterHint, close]);
+  }, [context, permissionCtx, intelligencePermissions, isStudioAdmin, patients, plans, payments, paymentPlans, paymentDeadlines, paymentAllocations, pricelist, appointments, richiami, impegni, navigationIndex, actions, supabaseClient, quickActionCtx, setPage, onArchivioFilterHint, close]);
 
   /** POL-AI-005B §CONFIRM: called only from an explicit user click on the
    *  Level-2 preview's Confirm button — never automatically. Re-loads
@@ -135,12 +139,12 @@ export default function Poliedron({
   const handleConfirmActionPlan = useCallback(async (plan) => {
     setActionRunning(true);
     try {
-      const result = await runActionPlan(plan, { db: DB, patients, homePermissions: quickActionCtx?.permissions || {}, studioId });
+      const result = await runActionPlan(plan, { db: DB, patients, homePermissions: quickActionCtx?.permissions || {}, studioId, today: context.date });
       setActionRunResult(result);
     } finally {
       setActionRunning(false);
     }
-  }, [patients, quickActionCtx, studioId]);
+  }, [patients, quickActionCtx, studioId, context.date]);
 
   useEffect(() => {
     if (!open) return;

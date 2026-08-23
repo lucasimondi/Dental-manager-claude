@@ -70,6 +70,14 @@ export default function App() {
   const [appointments, setAppointments] = useState([]);
   const [plans, setPlans] = useState([]);
   const [payments, setPayments] = useState([]);
+  // POL-FIN-001 — canonical payment-plan/deadline/allocation state, loaded
+  // and kept in sync exactly like plans/payments above. Empty arrays are
+  // safe/expected until the migration is applied (DB.getAll fails closed
+  // to [] on a missing table) — see docs/architecture/
+  // POL-FIN-001-payment-plans-deadlines.md MIGRATION_DECISION.
+  const [paymentPlans, setPaymentPlans] = useState([]);
+  const [paymentDeadlines, setPaymentDeadlines] = useState([]);
+  const [paymentAllocations, setPaymentAllocations] = useState([]);
   const [pricelist, setPricelist] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [studioInfo, setStudioInfo] = useState(DEF_STUDIO);
@@ -144,7 +152,7 @@ export default function App() {
     (async () => {
       setDataLoading(true);
       try {
-        const [p, a, pl, py, pr, tp, at, im, ip, ri, si] = await Promise.all([
+        const [p, a, pl, py, pr, tp, at, im, ip, ri, si, pp, pd, pal] = await Promise.all([
           DB.getAll('dm_p'),
           DB.getAll('dm_a'),
           DB.getAll('dm_pl'),
@@ -156,6 +164,9 @@ export default function App() {
           DB.getAll('dm_ip'),
           DB.getAll('dm_ri'),
           DB.getStudioInfo(),
+          DB.getAll('dm_pp'),
+          DB.getAll('dm_pd'),
+          DB.getAll('dm_pal'),
         ]);
         if (cancelled) return;
         setPatients(p || []);
@@ -165,6 +176,9 @@ export default function App() {
         setImplants(im || []);
         setImpegni(ip || []);
         setRichiami(ri || []);
+        setPaymentPlans(pp || []);
+        setPaymentDeadlines(pd || []);
+        setPaymentAllocations(pal || []);
 
         // Determina il vertical PRIMA di seedare, usando 'si' appena arrivato dalla stessa fetch
         // (non ancora salvato in state) — default 'dentistico' se lo studio non l'ha ancora impostato
@@ -261,6 +275,21 @@ export default function App() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'plans' }, async () => {
         const pl = await DB.getAll('dm_pl');
         setPlans(pl || []);
+      })
+      // POL-FIN-001: same reasoning as `plans` above — Poliedron's
+      // financial executor writes payment_plans/payment_deadlines/
+      // payment_allocations directly via DB.insert.
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_plans' }, async () => {
+        const pp = await DB.getAll('dm_pp');
+        setPaymentPlans(pp || []);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_deadlines' }, async () => {
+        const pd = await DB.getAll('dm_pd');
+        setPaymentDeadlines(pd || []);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_allocations' }, async () => {
+        const pal = await DB.getAll('dm_pal');
+        setPaymentAllocations(pal || []);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'impegni_personali' }, async () => {
         const ip = await DB.getAll('dm_ip');
@@ -611,6 +640,9 @@ export default function App() {
         patients={patients}
         plans={plans}
         payments={payments}
+        paymentPlans={paymentPlans}
+        paymentDeadlines={paymentDeadlines}
+        paymentAllocations={paymentAllocations}
         pricelist={pricelist}
         appointments={appointments}
         richiami={richiami}

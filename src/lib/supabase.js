@@ -17,6 +17,13 @@ const TABLE_MAP = {
   dm_im: 'implants',
   dm_ip: 'impegni_personali',
   dm_ri: 'richiami',
+  // POL-FIN-001 — canonical payment-plan/deadline/allocation tables.
+  // Additive, additional to `plans`/`payments`: see
+  // docs/architecture/POL-FIN-001-payment-plans-deadlines.md. Not applied
+  // to production yet — see the migration's own header for the gate.
+  dm_pp: 'payment_plans',
+  dm_pd: 'payment_deadlines',
+  dm_pal: 'payment_allocations',
 };
 
 /* ── CAMPI UI TEMPORANEI DA NON SALVARE SU DB ── */
@@ -64,6 +71,35 @@ const FIELD_MAP = {
   pricelist: {
     richiamoMesi: 'richiamo_mesi',
     durataMinuti: 'durata_minuti',
+  },
+  // POL-FIN-001 — camelCase domain fields (paymentPlanService.js) <->
+  // snake_case columns (20260824000000_pol_fin_001_payment_plans_deadlines.sql).
+  payment_plans: {
+    studioId: 'studio_id',
+    patientId: 'patient_id',
+    planType: 'plan_type',
+    totalAmount: 'total_amount',
+    linkedTreatmentPlanId: 'linked_treatment_plan_id',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+  },
+  payment_deadlines: {
+    studioId: 'studio_id',
+    patientId: 'patient_id',
+    paymentPlanId: 'payment_plan_id',
+    sequenceIndex: 'sequence_index',
+    amountDue: 'amount_due',
+    dueDate: 'due_date',
+    triggerDescription: 'trigger_description',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+  },
+  payment_allocations: {
+    studioId: 'studio_id',
+    patientId: 'patient_id',
+    paymentId: 'payment_id',
+    paymentDeadlineId: 'payment_deadline_id',
+    createdAt: 'created_at',
   },
 };
 
