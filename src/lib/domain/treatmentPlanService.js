@@ -17,9 +17,17 @@
 
 import { uid, today } from '../utils.js';
 import { normalizza } from '../ricercaPazienti.js';
-import { sameProcedureAndTooth, findExistingTreatmentItem, PRICE_UNRESOLVED } from '../poliedron/planner/actionPlanner.js';
+import {
+  sameProcedureAndTooth, findExistingTreatmentItem, PRICE_UNRESOLVED,
+  pickTargetPlanForNewItem, TARGET_PLAN_STATUS,
+  findIncompleteToothCandidates, findAlreadyAtToothCandidates, findConflictingToothCandidates,
+} from '../poliedron/planner/actionPlanner.js';
 
-export { findExistingTreatmentItem, sameProcedureAndTooth };
+export {
+  findExistingTreatmentItem, sameProcedureAndTooth,
+  pickTargetPlanForNewItem, TARGET_PLAN_STATUS,
+  findIncompleteToothCandidates, findAlreadyAtToothCandidates, findConflictingToothCandidates,
+};
 
 const TREATMENT_PLAN_KEY = 'dm_pl';
 
@@ -74,20 +82,6 @@ export const markTreatmentItemCompleted = (plan, voceIndex) => {
   const tutteEseguite = nuoveVoci.every((v) => v.eseguita);
   const nextPlan = { ...plan, voci: nuoveVoci, stato: tutteEseguite ? 'concluso' : plan.stato };
   return { plan: nextPlan, changed: true };
-};
-
-/** POL-AI-005B new, minimal capability: Piani.jsx has no existing "add an
- *  item to an already-saved plan" UI (verified — only the pre-save
- *  creation modal builds `voci`). Appends to the patient's most-recently-
- *  updated non-`concluso` plan if one exists (the natural "current active
- *  plan"), matching the same voce shape `buildTreatmentItem` produces
- *  during creation — not a parallel model, the same one generalized to an
- *  already-persisted row. */
-export const pickTargetPlanForNewItem = (plans, patientId) => {
-  const candidates = (plans || [])
-    .filter((p) => String(p.pazienteId) === String(patientId) && p.stato !== 'concluso')
-    .sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')));
-  return candidates[0] || null;
 };
 
 /** Later tooth completion (§ "Era il 46"): finds the exact previously-

@@ -38,13 +38,14 @@ executor, SUCCESS/PARTIAL/FAILED, no auto-rollback), plus the real
 
 ## Exact next action
 
-Product Owner reviews the draft PR (branch above) covering the full
-CONFIRM → ACT → VERIFY implementation, the security review, and the one
-honestly-flagged scope gap (the "Era il 46" later-tooth-completion command
-has its domain functions built and unit-tested, but no parser
-pattern/executor wiring yet — see the POL-AI-005B handoff entry's
-`PRODUCT_OWNER_DECISION_REQUIRED` section). Do not merge or deploy without
-explicit approval.
+Product Owner reviews the updated draft PR #47 (branch above), now
+including the Workflow G addendum: the full "Era il 46" complete-missing-
+tooth round-trip (parser → planner → preview → executor → Data Health
+clearing) and the `pickTargetPlanForNewItem` ambiguity hardening — both
+implemented per the Product Owner's own resolution of the three prior
+open decisions. See `docs/coordination/handoffs.md`'s "POL-AI-005B
+Addendum: Workflow G" entry for full detail. Do not merge or deploy
+without explicit approval.
 
 ---
 

@@ -112,6 +112,7 @@ export async function processQuery({ query, context, permissions, sources = {}, 
       pricelist: sources.pricelist || [],
       homePermissions: permissions?.homePermissions || {},
       studioId: context?.studioId,
+      currentPatient: context?.currentPatient || null,
     });
     if (actionPlan) {
       return {

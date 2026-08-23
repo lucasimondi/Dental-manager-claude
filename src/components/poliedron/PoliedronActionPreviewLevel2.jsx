@@ -19,6 +19,7 @@ const INTENT_LABEL = Object.freeze({
   RECORD_TREATMENT_AND_PENDING_PAYMENT: 'Registra prestazione e pagamento in sospeso',
   RECORD_MULTIPLE_TREATMENTS_AND_PAYMENT: 'Registra più prestazioni e pagamento in sospeso',
   CREATE_TREATMENT_PLAN: 'Crea piano di cura',
+  COMPLETE_MISSING_TOOTH: 'Completa elemento dentario mancante',
 });
 
 const toothLabel = (tooth) => {
@@ -45,6 +46,8 @@ export default function PoliedronActionPreviewLevel2({ plan, running, result, on
   const toCreate = plan.steps.filter((s) => s.type === PLAN_STEP_TYPE.ENSURE_TREATMENT_ITEM);
   const toUpdate = plan.steps.filter((s) => s.type === PLAN_STEP_TYPE.MARK_TREATMENT_COMPLETED);
   const payment = plan.steps.find((s) => s.type === PLAN_STEP_TYPE.ENSURE_PENDING_PAYMENT);
+  const completeTooth = plan.steps.find((s) => s.type === PLAN_STEP_TYPE.COMPLETE_TREATMENT_TOOTH);
+  const contextPatientMissing = plan.patientRef?.mechanism === 'context' && plan.patientRef?.status === 'NOT_FOUND';
 
   const canConfirm = !!patient && !plan.blocked && !running && !result;
   const outcome = result ? OUTCOME_META[result.outcome] : null;
@@ -73,7 +76,9 @@ export default function PoliedronActionPreviewLevel2({ plan, running, result, on
         </div>
       )}
 
-      {notFound && candidates.length === 0 && (
+      {contextPatientMissing ? (
+        <div className="poliedron-workflow-card__warning" role="status">Nessun paziente aperto: apri la scheda di un paziente e riprova.</div>
+      ) : notFound && candidates.length === 0 && (
         <div className="poliedron-workflow-card__warning" role="status">Nessun paziente trovato per "{plan.patientRef?.text}".</div>
       )}
       {invalid && (
@@ -98,6 +103,16 @@ export default function PoliedronActionPreviewLevel2({ plan, running, result, on
                 <div key={i}>{s.existingPlanId ? 'Prestazione esistente' : (s.procedureRef.canonicalName || s.procedureRef.text)} → segnata come eseguita</div>
               ))}
             </strong></div>
+          )}
+
+          {completeTooth && (
+            <>
+              <div><span>Prestazione</span><strong>{completeTooth.procedureRef.canonicalName}</strong></div>
+              <div><span>Stato</span><strong>Eseguita</strong></div>
+              <div><span>Elemento attuale</span><strong>{completeTooth.currentTooth || 'Da completare'}</strong></div>
+              <div><span>Nuovo elemento</span><strong>{completeTooth.newTooth.value}</strong></div>
+              <div><span>Azione</span><strong>{completeTooth.expectedOutcome === 'ALREADY_COMPLETE' ? 'Nessuna modifica (già aggiornato)' : 'Aggiorna elemento dentario'}</strong></div>
+            </>
           )}
 
           {payment && (

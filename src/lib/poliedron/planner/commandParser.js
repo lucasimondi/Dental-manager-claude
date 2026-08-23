@@ -16,6 +16,12 @@ export const COMMAND_INTENT = Object.freeze({
   RECORD_TREATMENT_AND_PENDING_PAYMENT: 'RECORD_TREATMENT_AND_PENDING_PAYMENT',
   CREATE_TREATMENT_PLAN: 'CREATE_TREATMENT_PLAN',
   RECORD_MULTIPLE_TREATMENTS_AND_PAYMENT: 'RECORD_MULTIPLE_TREATMENTS_AND_PAYMENT',
+  // POL-AI-005B Workflow G — the tooth-specific instance of the conceptual
+  // "complete missing anatomical context" family. Deliberately not
+  // generalized to other anatomical contexts (face/body) — nothing in the
+  // current schema/UI represents those yet, so doing so now would be
+  // inventing scope, not reusing it.
+  COMPLETE_MISSING_TOOTH: 'COMPLETE_MISSING_TOOTH',
 });
 
 const ITALIAN_NUMBER_WORDS = Object.freeze({ una: 1, un: 1, uno: 1, due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6 });
@@ -36,6 +42,45 @@ const parseCount = (text) => {
 // "non ricordo il dente" — never both, and the tooth stays genuinely
 // absent (not zero, not invented) when neither is present either. ---
 const PATTERN_TREATMENT_AND_PAYMENT = /^(?:segna\s+che\s+)?(?<patient>.+?)\s+deve\s+pagare\s+(?<amountText>.+?)\s+per\s+la\s+(?<procedure>.+?)(?:\s+del\s+(?<tooth>\d{1,2})|,?\s*non\s+ricordo\s+il\s+dente)?\s*$/i;
+
+// --- G: "Era il 46" / "Il dente era il 46" / "Completa con elemento 46" /
+// "Quella <procedure> [che avevo segnato] era [il|sul] <tooth>" — the
+// "complete missing tooth" family (Workflow G). No patient text: this
+// intent is only ever resolved from the app's current-patient context
+// (see actionPlanner.js's planCompleteMissingTooth /
+// patientResolver.js's resolveContextualPatient), never invented from
+// nothing. GENERIC/ELEMENT are tried before PROCEDURE deliberately: their
+// optional prefixes are a closed, exact set ("il dente", "completa con
+// elemento"), so they can only ever match their own shape; PROCEDURE's
+// `.+?` capture is a true catch-all and would otherwise swallow "il
+// dente" or similar filler as if it were a procedure name. ---
+const PATTERN_COMPLETE_TOOTH_GENERIC = /^(?:il\s+dente\s+)?era\s+(?:il\s+|sul\s+|l['’]elemento\s+)?(?<tooth>[^\s.]+)\.?\s*$/i;
+const PATTERN_COMPLETE_TOOTH_ELEMENT = /^completa\s+con\s+elemento\s+(?<tooth>[^\s.]+)\.?\s*$/i;
+const PATTERN_COMPLETE_TOOTH_PROCEDURE = /^(?:quella\s+|la\s+)?(?<procedure>.+?)(?:\s+che\s+avevo\s+segnato)?\s+era\s+(?:il\s+|sul\s+|l['’]elemento\s+)?(?<tooth>[^\s.]+)\.?\s*$/i;
+
+const parseCompleteMissingTooth = (value) => {
+  let m = PATTERN_COMPLETE_TOOTH_GENERIC.exec(value) || PATTERN_COMPLETE_TOOTH_ELEMENT.exec(value);
+  if (m) {
+    return {
+      commandIntent: COMMAND_INTENT.COMPLETE_MISSING_TOOTH,
+      patientText: null,
+      procedureText: null,
+      toothText: m.groups.tooth,
+      rawText: value,
+    };
+  }
+  m = PATTERN_COMPLETE_TOOTH_PROCEDURE.exec(value);
+  if (m) {
+    return {
+      commandIntent: COMMAND_INTENT.COMPLETE_MISSING_TOOTH,
+      patientText: null,
+      procedureText: m.groups.procedure.trim(),
+      toothText: m.groups.tooth,
+      rawText: value,
+    };
+  }
+  return null;
+};
 
 // --- A / D: "Segna <procedure> [<tooth>] di <patient> come eseguita[, non ricordo il dente]" ---
 const PATTERN_MARK_COMPLETED = /^segna\s+(?<procedure>.+?)\s+(?:(?<tooth>\d{1,2})\s+)?di\s+(?<patient>.+?)\s+come\s+eseguit[ao](?:,?\s*non\s+ricordo\s+il\s+dente)?\s*$/i;
@@ -118,6 +163,9 @@ export function parseCommand(text) {
       rawText: value,
     };
   }
+
+  const completeTooth = parseCompleteMissingTooth(value);
+  if (completeTooth) return completeTooth;
 
   return null;
 }

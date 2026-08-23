@@ -66,3 +66,35 @@ export function resolvePatient(patientText, patients = [], { studioId } = {}) {
   }
   return { status: PATIENT_RESOLUTION_STATUS.AMBIGUOUS, candidate: null, candidates: ranked.slice(0, 8) };
 }
+
+/**
+ * resolveContextualPatient(currentPatient, patients, { studioId }) ->
+ *   { status, candidate, candidates }
+ *
+ * POL-AI-005B Workflow G — for commands that name no patient at all
+ * ("Era il 46") and instead rely on "Poliedron already knows the current
+ * patient" (the patient currently open in the app, e.g. SchedaPaz).
+ * Deliberately narrower than `resolvePatient`: it never fuzzy-matches
+ * text, and it never trusts any field on `currentPatient` other than its
+ * `id` — that id is looked up fresh in the caller's own tenant-scoped
+ * `patients` array (same untrusted-hint-then-canonical-recheck pattern
+ * already used for the action-plan-tampering defense in
+ * actionExecutor.js's `checkPreconditions`). If there is no open patient,
+ * or the id no longer resolves in the fresh array (deleted, cross-tenant,
+ * stale), this returns NOT_FOUND — it never falls back to guessing a
+ * patient from free text.
+ */
+export function resolveContextualPatient(currentPatient, patients = [], { studioId } = {}) {
+  if (!currentPatient || currentPatient.id === undefined || currentPatient.id === null) {
+    return { status: PATIENT_RESOLUTION_STATUS.NOT_FOUND, candidate: null, candidates: [] };
+  }
+  const scoped = studioId
+    ? patients.filter((p) => {
+      const rowStudioId = p?.studioId ?? p?.studio_id;
+      return rowStudioId === undefined || rowStudioId === null || String(rowStudioId) === String(studioId);
+    })
+    : patients;
+  const fresh = scoped.find((p) => String(p.id) === String(currentPatient.id));
+  if (!fresh) return { status: PATIENT_RESOLUTION_STATUS.NOT_FOUND, candidate: null, candidates: [] };
+  return { status: PATIENT_RESOLUTION_STATUS.RESOLVED, candidate: fresh, candidates: [fresh] };
+}

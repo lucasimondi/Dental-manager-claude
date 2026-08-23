@@ -25,13 +25,13 @@
    using the exact same buildIntelligencePermissions() the plan preview
    used — not a second definition of what "allowed" means. */
 
-import { PLAN_STEP_TYPE, findExistingTreatmentItem, PRICE_UNRESOLVED } from './actionPlanner.js';
+import { PLAN_STEP_TYPE, findExistingTreatmentItem, TARGET_PLAN_STATUS, PRICE_UNRESOLVED } from './actionPlanner.js';
 import { COMMAND_INTENT } from './commandParser.js';
 import { resolvePatient, PATIENT_RESOLUTION_STATUS } from './patientResolver.js';
 import { buildIntelligencePermissions } from '../permissionEngine.js';
 import { normalizza } from '../../ricercaPazienti.js';
 import {
-  buildTreatmentItem, buildNewPlan, markTreatmentItemCompleted, pickTargetPlanForNewItem,
+  buildTreatmentItem, buildNewPlan, markTreatmentItemCompleted, pickTargetPlanForNewItem, setItemTooth,
   loadPatientPlans, createPlan, updatePlan, getPlanById,
 } from '../../domain/treatmentPlanService.js';
 import {
@@ -82,6 +82,19 @@ function checkPreconditions(plan, { patients, homePermissions, studioId }) {
   if (!patientStillValid) {
     return { ok: false, result: guardrailFailure('PATIENT_NOT_FOUND', 'Il paziente risolto non è più disponibile nei dati correnti.', ['Il paziente potrebbe essere stato eliminato o non è più nel tuo perimetro: ripeti la richiesta.']) };
   }
+  // POL-AI-005B Workflow G: a plan resolved from the app's current-patient
+  // CONTEXT (no patient text at all — e.g. "Era il 46") re-verifies
+  // differently: there is no text to re-resolve, so instead this re-checks
+  // that `entities.patientId` still matches the exact id the context
+  // resolution landed on at plan-build time (`patientRef.contextPatientId`,
+  // frozen into the plan) — the same tampering defense as the text-based
+  // path, adapted to a mechanism that has no text.
+  if (plan.patientRef?.mechanism === 'context') {
+    if (String(plan.patientRef?.contextPatientId ?? '') !== String(patientId)) {
+      return { ok: false, result: guardrailFailure('PATIENT_NOT_FOUND', 'Il paziente non corrisponde più al contesto originale della richiesta: il piano potrebbe essere stato alterato.', ['Ripeti la richiesta da zero.']) };
+    }
+    return { ok: true, patientId };
+  }
   const reResolved = resolvePatient(plan.patientRef?.text, patients, { studioId });
   if (reResolved.status !== PATIENT_RESOLUTION_STATUS.RESOLVED || String(reResolved.candidate.id) !== String(patientId)) {
     return { ok: false, result: guardrailFailure('PATIENT_NOT_FOUND', 'Il paziente non corrisponde più al testo originale della richiesta: il piano potrebbe essere stato alterato.', ['Ripeti la richiesta da zero.']) };
@@ -106,9 +119,19 @@ async function executeEnsureTreatmentItemStep(step, { db, patientId, excludeTarg
     return { skipped: true, reason: 'already-exists', planId: existing.plan.id, voceIndex: existing.voceIndex };
   }
 
-  const target = pickTargetPlanForNewItem(freshPlans, patientId);
+  // TOCTOU defense-in-depth (PO decision 1): re-resolve the target plan
+  // fresh, right before writing — never trust the plan-time snapshot. A
+  // second open plan could have been created between preview and this
+  // exact confirm, turning what was unambiguous at preview time into a
+  // genuine ambiguity now; this must refuse to guess just as firmly as the
+  // plan-time check did, never falling back to "first" or "latest".
+  const targetPlan = pickTargetPlanForNewItem(freshPlans, patientId);
+  if (targetPlan.status === TARGET_PLAN_STATUS.AMBIGUOUS) {
+    throw new Error('Più piani di cura attivi sono comparsi per il paziente dopo l\'anteprima: specifica in quale piano inserire la prestazione e ripeti la richiesta.');
+  }
   const item = buildTreatmentItem({ procedureRef: step.procedureRef, tooth: step.tooth, price: step.procedureRef.price });
-  if (target) {
+  if (targetPlan.status === TARGET_PLAN_STATUS.SINGLE) {
+    const target = targetPlan.plan;
     const updated = await updatePlan(db, target.id, { ...target, voci: [...target.voci, item] });
     const voceIndex = updated?.voci?.length ? updated.voci.length - 1 : -1;
     if (!updated || voceIndex < 0 || updated.voci[voceIndex].prestazione !== item.prestazione) {
@@ -150,6 +173,72 @@ async function executeEnsurePendingPaymentStep(step, { db, patientId }) {
     throw new Error('Verifica post-scrittura fallita: il pagamento non risulta salvato correttamente.');
   }
   return { paymentId: created.id, verified: true };
+}
+
+/** POL-AI-005B Workflow G — the actual "Era il 46" write. Re-reads the
+ *  target plan/item fresh (TOCTOU/stale-preview safety) and re-validates
+ *  every fact the plan relied on before touching anything:
+ *  - the plan still exists and still belongs to the resolved patient
+ *    (defense against a tampered/cross-tenant `existingPlanId`);
+ *  - the item at `existingVoceIndex` still represents the same procedure
+ *    (defense against a tampered `existingVoceIndex`, or the plan having
+ *    changed shape since preview);
+ *  - for `expectedOutcome: 'ALREADY_COMPLETE'` (idempotent repeat), the
+ *    tooth must still be exactly what was already recorded — anything
+ *    else is a genuine conflict (someone changed it to a THIRD value
+ *    between preview and confirm), never silently overwritten;
+ *  - for `expectedOutcome: 'SINGLE_MATCH'` (the real completion), the
+ *    tooth must still be missing — if another actor completed it in the
+ *    meantime, this is a stale-preview conflict, reported as a failure,
+ *    never a silent overwrite.
+ *  Only `dente` is ever touched (via `setItemTooth`) — price/payment/
+ *  procedure/status are untouched by construction, since `setItemTooth`
+ *  itself only ever changes that one field. */
+async function executeCompleteTreatmentToothStep(step, { db, patientId }) {
+  const freshPlan = await getPlanById(db, step.existingPlanId);
+  if (!freshPlan || String(freshPlan.pazienteId) !== String(patientId)) {
+    throw new Error('Il piano di cura non è più disponibile o non appartiene più al paziente risolto: nessuna scrittura eseguita.');
+  }
+  const voce = freshPlan.voci?.[step.existingVoceIndex];
+  if (!voce || normalizza(voce.prestazione) !== step.procedureNormalizedText) {
+    throw new Error('La prestazione non risulta più nella posizione attesa: il piano potrebbe essere cambiato dopo l\'anteprima.');
+  }
+
+  if (step.expectedOutcome === 'ALREADY_COMPLETE') {
+    if (voce.dente === step.newTooth.value) {
+      return { skipped: true, reason: 'already-up-to-date', planId: freshPlan.id, voceIndex: step.existingVoceIndex };
+    }
+    throw new Error(`Il valore dell'elemento dentario è cambiato dopo l'anteprima (ora "${voce.dente || 'vuoto'}"): nessuna sovrascrittura automatica.`);
+  }
+
+  // expectedOutcome === 'SINGLE_MATCH': must still be genuinely incomplete.
+  if (voce.dente) {
+    throw new Error(`Un altro utente ha già completato l'elemento dentario per questa prestazione (ora "${voce.dente}"): nessuna sovrascrittura automatica.`);
+  }
+  const { plan: updatedDraft, changed } = setItemTooth(freshPlan, step.existingVoceIndex, step.newTooth.value);
+  if (!changed) return { skipped: true, reason: 'no-op', planId: freshPlan.id, voceIndex: step.existingVoceIndex };
+  const updated = await updatePlan(db, freshPlan.id, updatedDraft);
+  if (!updated || updated.voci?.[step.existingVoceIndex]?.dente !== step.newTooth.value) {
+    throw new Error('Verifica post-scrittura fallita: elemento dentario non risulta salvato.');
+  }
+  return { planId: updated.id, voceIndex: step.existingVoceIndex, verified: true };
+}
+
+/** Workflow G's own run path — a single COMPLETE_TREATMENT_TOOTH step (or
+ *  none, if the plan was already blocked at plan time by ambiguity/
+ *  invalid-tooth/no-match/conflicting-value — `checkPreconditions` already
+ *  refuses those before this is ever reached). */
+async function runCompleteMissingTooth(plan, { db, patientId }) {
+  const step = plan.steps.find((s) => s.type === PLAN_STEP_TYPE.COMPLETE_TREATMENT_TOOTH);
+  if (!step) {
+    return { outcome: RUN_OUTCOME.FAILED, completedSteps: [], failedStep: { type: PLAN_STEP_TYPE.RESOLVE_INCOMPLETE_TREATMENT, message: 'Nessuna prestazione da completare è stata identificata.' }, recoveryActions: ['Ripeti la richiesta specificando meglio la prestazione o l\'elemento dentario.'] };
+  }
+  try {
+    const result = await executeCompleteTreatmentToothStep(step, { db, patientId });
+    return { outcome: RUN_OUTCOME.SUCCESS, completedSteps: [{ type: step.type, result }], failedStep: null, recoveryActions: [] };
+  } catch (error) {
+    return failResult([], step, error.message, [`Lo step "${step.type}" non è riuscito. Nessuna scrittura è stata eseguita. ${error.message.includes('sovrascrittura') ? 'Verifica lo stato attuale della prestazione e ripeti se necessario.' : 'Ripeti la richiesta.'}`]);
+  }
 }
 
 const recoveryForFailure = (step, completedSteps) => {
@@ -255,6 +344,9 @@ export async function runActionPlan(plan, context) {
 
   if (plan.intent === COMMAND_INTENT.CREATE_TREATMENT_PLAN) {
     return runCreateTreatmentPlan(plan, { db, patientId });
+  }
+  if (plan.intent === COMMAND_INTENT.COMPLETE_MISSING_TOOTH) {
+    return runCompleteMissingTooth(plan, { db, patientId });
   }
   return runSequentialPlan(plan, { db, patientId });
 }

@@ -10,9 +10,9 @@
    below is an explicit, tested no-op stub. */
 
 import { COMMAND_INTENT } from './commandParser.js';
-import { resolvePatient, PATIENT_RESOLUTION_STATUS } from './patientResolver.js';
+import { resolvePatient, resolveContextualPatient, PATIENT_RESOLUTION_STATUS } from './patientResolver.js';
 import { resolveProcedure, PROCEDURE_RESOLUTION_STATUS } from './procedureResolver.js';
-import { createTooth, isToothIncomplete } from './toothModel.js';
+import { createTooth, isToothIncomplete, TOOTH_STATE } from './toothModel.js';
 import { buildIntelligencePermissions } from '../permissionEngine.js';
 import { normalizza } from '../../ricercaPazienti.js';
 
@@ -25,6 +25,10 @@ export const PLAN_STEP_TYPE = Object.freeze({
   CHECK_EXISTING_PENDING_PAYMENT: 'CHECK_EXISTING_PENDING_PAYMENT',
   ENSURE_PENDING_PAYMENT: 'ENSURE_PENDING_PAYMENT',
   VERIFY_REQUIRED_LATER: 'VERIFY_REQUIRED_LATER',
+  // POL-AI-005B Workflow G:
+  TARGET_PLAN_AMBIGUOUS: 'TARGET_PLAN_AMBIGUOUS', // recorded when a new item would need a target plan and more than one plausible plan exists — see pickTargetPlanForNewItem.
+  RESOLVE_INCOMPLETE_TREATMENT: 'RESOLVE_INCOMPLETE_TREATMENT', // records how "Era il 46" resolved: single match / ambiguous / no match / already complete / conflicting value.
+  COMPLETE_TREATMENT_TOOTH: 'COMPLETE_TREATMENT_TOOTH', // the actual write step: update ONLY the tooth field on an already-identified existing item.
 });
 
 export const PRICE_UNRESOLVED = 'PRICE_UNRESOLVED';
@@ -85,6 +89,74 @@ export const findLikelyDuplicatePendingPayment = (payments, patientId, amount) =
     && p.stato !== 'pagato') || null;
 };
 
+export const TARGET_PLAN_STATUS = Object.freeze({ NONE: 'NONE', SINGLE: 'SINGLE', AMBIGUOUS: 'AMBIGUOUS' });
+
+/** POL-AI-005B Workflow-G hardening — explicit Product Owner decision:
+ *  "may use a conservative deterministic rule only when there is exactly
+ *  one clearly appropriate target plan... if multiple plausible plans
+ *  exist, DO NOT choose arbitrarily." This used to silently pick "most
+ *  recently updated" when several open plans existed for the patient —
+ *  exactly the arbitrary-order guess the Product Owner ruled out. It now
+ *  returns a `{status, plan, candidates}` triple — `NONE` (zero open
+ *  plans, caller creates a new one — unambiguous), `SINGLE` (exactly one —
+ *  use it, unambiguous), or `AMBIGUOUS` (two or more — the caller MUST NOT
+ *  write; it must surface `candidates` and ask). No "latest wins" or
+ *  score-based tiebreaker is applied anywhere in this function — that
+ *  would just be the same silent guess wearing a different name. Used both
+ *  at PLAN time (to make an ambiguous plan non-executable before it is
+ *  ever shown) and again at EXECUTE time (TOCTOU: state can change between
+ *  preview and confirm). */
+export const pickTargetPlanForNewItem = (plans, patientId) => {
+  const candidates = (plans || [])
+    .filter((p) => String(p.pazienteId) === String(patientId) && p.stato !== 'concluso');
+  if (candidates.length === 0) return { status: TARGET_PLAN_STATUS.NONE, plan: null, candidates: [] };
+  if (candidates.length === 1) return { status: TARGET_PLAN_STATUS.SINGLE, plan: candidates[0], candidates };
+  return { status: TARGET_PLAN_STATUS.AMBIGUOUS, plan: null, candidates };
+};
+
+/** POL-AI-005B Workflow G — the three candidate buckets
+ *  `planCompleteMissingTooth` needs to decide, without ever guessing, what
+ *  "Era il 46" refers to. All three share the same "completed treatment,
+ *  optionally filtered to one procedure" scope — they differ only in what
+ *  the item's CURRENT `dente` looks like. `procedureNormalizedText` is
+ *  `null` for the generic phrasing ("Era il 46", no procedure named) and
+ *  matches any procedure; a real value (from the PROCEDURE command shape,
+ *  e.g. "la devitalizzazione era il 46") narrows to that procedure only —
+ *  two different incomplete procedures for the same patient are never
+ *  conflated (see the WORKFLOWS_G "different incomplete procedures"
+ *  test). */
+const patientCompletedVoci = (plans, patientId, procedureNormalizedText) => {
+  const results = [];
+  for (const plan of plans || []) {
+    if (String(plan.pazienteId) !== String(patientId)) continue;
+    (plan.voci || []).forEach((voce, voceIndex) => {
+      if (voce.eseguita !== true) return;
+      if (procedureNormalizedText && normalizza(voce.prestazione) !== procedureNormalizedText) return;
+      results.push({ plan, voceIndex, voce });
+    });
+  }
+  return results;
+};
+
+/** Candidates with NO tooth recorded at all — the genuine "missing data"
+ *  case Workflow G exists to complete. */
+export const findIncompleteToothCandidates = (plans, patientId, procedureNormalizedText) =>
+  patientCompletedVoci(plans, patientId, procedureNormalizedText).filter((c) => !c.voce.dente);
+
+/** Candidates whose tooth is ALREADY exactly the value the user just
+ *  supplied — repeating "Era il 46" after it already succeeded lands
+ *  here, not in NO_MATCH, so it can be reported as a safe no-op instead
+ *  of a false "nothing found". */
+export const findAlreadyAtToothCandidates = (plans, patientId, procedureNormalizedText, toothValue) =>
+  patientCompletedVoci(plans, patientId, procedureNormalizedText).filter((c) => c.voce.dente === toothValue);
+
+/** Candidates whose tooth is already a DIFFERENT known value than the one
+ *  just supplied — "Era il 36" after the tooth is already "46" is a
+ *  correction/edit request, never a silent overwrite under the "complete
+ *  missing data" intent (see CONFLICTING_REPEAT in the task spec). */
+export const findConflictingToothCandidates = (plans, patientId, procedureNormalizedText, toothValue) =>
+  patientCompletedVoci(plans, patientId, procedureNormalizedText).filter((c) => c.voce.dente && c.voce.dente !== toothValue);
+
 const resolveProcedureStep = (procedureText, { pricelist }) => {
   const resolution = resolveProcedure(procedureText, pricelist);
   const step = Object.freeze({
@@ -105,6 +177,7 @@ function buildTreatmentItemSteps({ patientId, procedureText, toothText, markComp
   const steps = [];
   const warnings = [];
   const assumptions = [];
+  const blockingReasons = [];
 
   const { step: resolveProcStep, resolution: procRes } = resolveProcedureStep(procedureText, { pricelist });
   steps.push(resolveProcStep);
@@ -146,10 +219,28 @@ function buildTreatmentItemSteps({ patientId, procedureText, toothText, markComp
   });
 
   if (!existing) {
+    // POL-AI-005B Workflow-G hardening (PO decision 1): a brand-new item
+    // needs a target plan to land in. Resolve that NOW, at plan/preview
+    // time — not deferred to execution — so an ambiguous target makes the
+    // whole Action Plan non-confirmable (`blocked`) instead of silently
+    // guessing later. `pickTargetPlanForNewItem` never picks "latest" on
+    // its own; the executor re-checks the same thing again immediately
+    // before writing (TOCTOU: a second open plan could appear between
+    // preview and confirm).
+    const targetPlan = patientId ? pickTargetPlanForNewItem(plans, patientId) : { status: TARGET_PLAN_STATUS.NONE, plan: null, candidates: [] };
+    if (targetPlan.status === TARGET_PLAN_STATUS.AMBIGUOUS) {
+      blockingReasons.push(`Più piani di cura attivi trovati per il paziente: specifica in quale piano inserire "${procedureText}" prima di confermare.`);
+      steps.push(Object.freeze({
+        type: PLAN_STEP_TYPE.TARGET_PLAN_AMBIGUOUS,
+        procedureText,
+        candidatePlanIds: targetPlan.candidates.map((p) => p.id),
+      }));
+    }
     steps.push(Object.freeze({
       type: PLAN_STEP_TYPE.ENSURE_TREATMENT_ITEM,
       procedureRef,
       tooth,
+      targetPlanId: targetPlan.status === TARGET_PLAN_STATUS.SINGLE ? targetPlan.plan.id : null,
       requiredPermissions: [REQUIRED_PERMISSION.CLINICAL],
     }));
   }
@@ -165,7 +256,7 @@ function buildTreatmentItemSteps({ patientId, procedureText, toothText, markComp
     }));
   }
 
-  return { steps, warnings, assumptions, procedureRef, tooth };
+  return { steps, warnings, assumptions, blockingReasons, procedureRef, tooth };
 }
 
 function buildPendingPaymentSteps({ patientId, amount }, { payments }) {
@@ -206,7 +297,10 @@ const permissionWarnings = (steps, homePermissions) => {
   return { requiredPermissions: [...requiredPermissions], warnings, blocked: warnings.length > 0 };
 };
 
-const finalizePlan = ({ intent, patientText, patientResolution, steps, warnings, assumptions, confidence, homePermissions }) => {
+const finalizePlan = ({
+  intent, patientText, patientResolution, steps, warnings, assumptions, confidence, homePermissions,
+  blockingReasons = [], patientRefMechanism = 'text', patientRefContextId = null,
+}) => {
   const patientOk = patientResolution.status === PATIENT_RESOLUTION_STATUS.RESOLVED;
   const patientId = patientOk ? patientResolution.candidate.id : null;
   const allSteps = [Object.freeze({
@@ -218,7 +312,7 @@ const finalizePlan = ({ intent, patientText, patientResolution, steps, warnings,
   if (!patientOk) {
     allSteps.push(Object.freeze({ type: PLAN_STEP_TYPE.VERIFY_REQUIRED_LATER, reason: `Paziente non risolto (${patientResolution.status}).` }));
   }
-  const { requiredPermissions, warnings: permWarnings, blocked } = permissionWarnings(allSteps, homePermissions || {});
+  const { requiredPermissions, warnings: permWarnings, blocked: permBlocked } = permissionWarnings(allSteps, homePermissions || {});
   return Object.freeze({
     actionId: uid('plan'),
     intent,
@@ -227,15 +321,24 @@ const finalizePlan = ({ intent, patientText, patientResolution, steps, warnings,
       status: patientResolution.status,
       candidate: patientResolution.candidate,
       candidates: patientResolution.candidates,
+      // POL-AI-005B Workflow G: 'context' means this patient was resolved
+      // from the app's current-patient context (no name in the command
+      // text at all) — see resolveContextualPatient. `contextPatientId`
+      // freezes the id that resolution actually landed on, so
+      // checkPreconditions can re-verify `entities.patientId` still
+      // matches it rather than trusting either blindly (the same
+      // tampering-defense pattern as the text-based re-resolution).
+      mechanism: patientRefMechanism,
+      contextPatientId: patientRefContextId,
     }),
     entities: Object.freeze({ patientId }),
     steps: Object.freeze(allSteps),
-    warnings: Object.freeze([...warnings, ...permWarnings]),
+    warnings: Object.freeze([...warnings, ...blockingReasons, ...permWarnings]),
     assumptions: Object.freeze(assumptions),
     confidence,
     requiredPermissions: Object.freeze(requiredPermissions),
     requiresConfirmation: true, // Phase A invariant: every plan requires human confirmation before any future executor may act — see §7.
-    blocked,
+    blocked: permBlocked || blockingReasons.length > 0,
   });
 };
 
@@ -249,11 +352,13 @@ function planTreatmentAndPayment(parsed, context) {
   const steps = [];
   const warnings = [];
   const assumptions = [];
+  const blockingReasons = [];
   for (const item of parsed.items) {
     const built = buildTreatmentItemSteps({ patientId, procedureText: item.procedureText, toothText: item.toothText, markCompleted: parsed.executionCompleted }, context);
     steps.push(...built.steps);
     warnings.push(...built.warnings);
     assumptions.push(...built.assumptions);
+    blockingReasons.push(...built.blockingReasons);
   }
   const payment = buildPendingPaymentSteps({ patientId, amount: parsed.amount }, context);
   steps.push(...payment.steps);
@@ -266,6 +371,7 @@ function planTreatmentAndPayment(parsed, context) {
     steps,
     warnings,
     assumptions,
+    blockingReasons,
     confidence: patientResolution.status === PATIENT_RESOLUTION_STATUS.RESOLVED ? 0.9 : 0.4,
     homePermissions: context.homePermissions,
   });
@@ -281,11 +387,13 @@ function planCreateTreatmentPlan(parsed, context) {
   const steps = [];
   const warnings = [];
   const assumptions = [];
+  const blockingReasons = [];
   for (const item of parsed.items) {
     const built = buildTreatmentItemSteps({ patientId, procedureText: item.procedureText, toothText: item.toothText, markCompleted: false }, context);
     steps.push(...built.steps);
     warnings.push(...built.warnings);
     assumptions.push(...built.assumptions);
+    blockingReasons.push(...built.blockingReasons);
     if (built.procedureRef.price === PRICE_UNRESOLVED) warnings.push(`Prezzo non risolto per "${item.procedureText}" — PRICE_UNRESOLVED, non impostato a zero.`);
   }
   return finalizePlan({
@@ -295,6 +403,7 @@ function planCreateTreatmentPlan(parsed, context) {
     steps,
     warnings,
     assumptions,
+    blockingReasons,
     confidence: patientResolution.status === PATIENT_RESOLUTION_STATUS.RESOLVED ? 0.9 : 0.4,
     homePermissions: context.homePermissions,
   });
@@ -316,18 +425,131 @@ function planMarkTreatmentCompleted(parsed, context) {
     steps: built.steps,
     warnings: built.warnings,
     assumptions: built.assumptions,
+    blockingReasons: built.blockingReasons,
     confidence: patientResolution.status === PATIENT_RESOLUTION_STATUS.RESOLVED ? 0.9 : 0.4,
     homePermissions: context.homePermissions,
+  });
+}
+
+/** Workflow G — COMPLETE_MISSING_TOOTH ("Era il 46"). No patient text at
+ *  all: the patient comes ONLY from the app's current-patient context
+ *  (`context.currentPatient`), re-verified against the fresh, tenant-
+ *  scoped `patients` array (see resolveContextualPatient) — never
+ *  invented from thin air. Never touches price/payment/procedure/status;
+ *  the only field this can ever change is `dente` on an item that already
+ *  exists. UPDATE-INCOMPLETE-RECORD, never CREATE-TREATMENT (see
+ *  NO_MATCH below) — this intent creates nothing. */
+function planCompleteMissingTooth(parsed, context) {
+  const patientResolution = resolveContextualPatient(context.currentPatient, context.patients, { studioId: context.studioId });
+  const patientId = patientResolution.status === PATIENT_RESOLUTION_STATUS.RESOLVED ? patientResolution.candidate.id : null;
+  const contextPatientId = context.currentPatient?.id ?? null;
+
+  const steps = [];
+  const warnings = [];
+  const assumptions = [];
+  const blockingReasons = [];
+
+  if (!patientId) {
+    blockingReasons.push('Nessun paziente in contesto: apri la scheda del paziente e riprova.');
+    return finalizePlan({
+      intent: parsed.commandIntent, patientText: null, patientResolution, steps, warnings, assumptions, blockingReasons,
+      confidence: 0.3, homePermissions: context.homePermissions,
+      patientRefMechanism: 'context', patientRefContextId: contextPatientId,
+    });
+  }
+
+  const tooth = createTooth(parsed.toothText);
+  if (tooth.state !== TOOTH_STATE.KNOWN) {
+    blockingReasons.push(`Elemento dentario "${parsed.toothText}" non valido o non riconosciuto: specifica un numero di elemento (11-48).`);
+    return finalizePlan({
+      intent: parsed.commandIntent, patientText: null, patientResolution, steps, warnings, assumptions, blockingReasons,
+      confidence: 0.3, homePermissions: context.homePermissions,
+      patientRefMechanism: 'context', patientRefContextId: contextPatientId,
+    });
+  }
+
+  const procedureNormalizedText = parsed.procedureText ? normalizza(parsed.procedureText) : null;
+  const incomplete = findIncompleteToothCandidates(context.plans, patientId, procedureNormalizedText);
+  const alreadyAtTarget = incomplete.length === 0 ? findAlreadyAtToothCandidates(context.plans, patientId, procedureNormalizedText, tooth.value) : [];
+  const conflicting = (incomplete.length === 0 && alreadyAtTarget.length === 0)
+    ? findConflictingToothCandidates(context.plans, patientId, procedureNormalizedText, tooth.value)
+    : [];
+
+  let resolution; // SINGLE_MATCH | ALREADY_COMPLETE | MULTIPLE_MATCH | CONFLICTING_VALUE | NO_MATCH
+  let target = null;
+
+  if (incomplete.length >= 2) {
+    resolution = 'MULTIPLE_MATCH';
+    const describe = (c) => `${c.voce.prestazione}${c.plan.titolo ? ` (${c.plan.titolo})` : ''}${c.plan.data ? `, ${c.plan.data}` : ''}`;
+    blockingReasons.push(`Ho trovato ${incomplete.length} prestazioni eseguite senza elemento dentario compatibili: ${incomplete.map(describe).join('; ')}. Specifica a quale ti riferisci.`);
+  } else if (incomplete.length === 1) {
+    resolution = 'SINGLE_MATCH';
+    target = incomplete[0];
+  } else if (alreadyAtTarget.length >= 1) {
+    resolution = 'ALREADY_COMPLETE';
+    target = alreadyAtTarget[0];
+    warnings.push(`L'elemento dentario per "${target.voce.prestazione}" è già registrato come ${tooth.value}: nessuna modifica necessaria.`);
+  } else if (conflicting.length >= 1) {
+    resolution = 'CONFLICTING_VALUE';
+    if (conflicting.length === 1) {
+      blockingReasons.push(`Il valore già registrato per "${conflicting[0].voce.prestazione}" è l'elemento ${conflicting[0].voce.dente}, non ${tooth.value}. La correzione di un elemento già noto non è ancora supportata da questo comando: nessuna scrittura eseguita.`);
+    } else {
+      blockingReasons.push(`Sono presenti più prestazioni con un elemento dentario già registrato diverso da ${tooth.value}: specifica la prestazione per procedere.`);
+    }
+  } else {
+    resolution = 'NO_MATCH';
+    blockingReasons.push(parsed.procedureText
+      ? `Nessuna prestazione "${parsed.procedureText}" eseguita con elemento dentario mancante trovata per questo paziente.`
+      : 'Nessuna prestazione eseguita con elemento dentario mancante trovata per questo paziente.');
+  }
+
+  steps.push(Object.freeze({
+    type: PLAN_STEP_TYPE.RESOLVE_INCOMPLETE_TREATMENT,
+    procedureText: parsed.procedureText,
+    tooth,
+    resolution,
+    candidateCount: incomplete.length || alreadyAtTarget.length || conflicting.length,
+  }));
+
+  if (target) {
+    steps.push(Object.freeze({
+      type: PLAN_STEP_TYPE.COMPLETE_TREATMENT_TOOTH,
+      existingPlanId: target.plan.id,
+      existingVoceIndex: target.voceIndex,
+      procedureRef: Object.freeze({ text: target.voce.prestazione, canonicalName: target.voce.prestazione }),
+      procedureNormalizedText: normalizza(target.voce.prestazione),
+      currentTooth: target.voce.dente || null,
+      newTooth: tooth,
+      expectedOutcome: resolution, // 'SINGLE_MATCH' (real write) or 'ALREADY_COMPLETE' (no-op)
+      requiredPermissions: [REQUIRED_PERMISSION.CLINICAL],
+    }));
+  }
+
+  return finalizePlan({
+    intent: parsed.commandIntent,
+    patientText: null,
+    patientResolution,
+    steps,
+    warnings,
+    assumptions,
+    blockingReasons,
+    confidence: resolution === 'SINGLE_MATCH' || resolution === 'ALREADY_COMPLETE' ? 0.9 : 0.4,
+    homePermissions: context.homePermissions,
+    patientRefMechanism: 'context',
+    patientRefContextId: contextPatientId,
   });
 }
 
 /**
  * buildActionPlan(parsedCommand, context) -> Action Plan (frozen, plain
  * object; JSON-serializable). `context = { patients, plans, payments,
- * pricelist, homePermissions, studioId }` — the caller's own already-
- * loaded, already-tenant-scoped/authorized data; nothing here fetches
- * anything. Returns `null` if `parsedCommand` is null (see
- * commandParser.js's model-fallback contract).
+ * pricelist, homePermissions, studioId, currentPatient }` — the caller's
+ * own already-loaded, already-tenant-scoped/authorized data; nothing here
+ * fetches anything. `currentPatient` is only used by Workflow G
+ * (COMPLETE_MISSING_TOOTH, no patient text in the command) — every other
+ * intent still resolves its patient from text. Returns `null` if
+ * `parsedCommand` is null (see commandParser.js's model-fallback
+ * contract).
  */
 export function buildActionPlan(parsedCommand, context) {
   if (!parsedCommand) return null;
@@ -339,6 +561,8 @@ export function buildActionPlan(parsedCommand, context) {
       return planCreateTreatmentPlan(parsedCommand, context);
     case COMMAND_INTENT.MARK_TREATMENT_COMPLETED:
       return planMarkTreatmentCompleted(parsedCommand, context);
+    case COMMAND_INTENT.COMPLETE_MISSING_TOOTH:
+      return planCompleteMissingTooth(parsedCommand, context);
     default:
       return null;
   }
