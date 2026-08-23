@@ -82,7 +82,7 @@ function ConfermaEstrazioneSpesa({ estratto, file, studioId, categorie, onClose,
   );
 }
 
-export default function Spese({ refreshKey, studioId, mostraUpload = true } = {}) {
+export default function Spese({ refreshKey, studioId, mostraUpload = true, autoOpenNew, onAutoOpenNewHandled } = {}) {
   const [spese, setSpese] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
@@ -114,6 +114,14 @@ export default function Spese({ refreshKey, studioId, mostraUpload = true } = {}
     setForm({ titolo: '', importo: '', data: today(), categoria: 'Altro', note: '', ricorrente: false, frequenza: 'Mensile', tipo_costo: 'variabile', haTermine: false, n_rate: '', data_fine: '' });
     setModal(true);
   };
+
+  useEffect(() => {
+    if (autoOpenNew) {
+      openNuova();
+      onAutoOpenNewHandled && onAutoOpenNewHandled();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenNew]);
 
   const openEdit = (s) => {
     setEditItem(s);

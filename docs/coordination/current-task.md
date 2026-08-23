@@ -1,82 +1,41 @@
 # Current task
 
-- TASK: POL-AGD-WA-001
-- TITLE: Agenda — allow cancelling a WhatsApp send
-- OWNER: CLAUDE
-- BRANCH: `claude/whatsapp-agenda-cancel-rql7fg`
-- BASE REVIEW: `master@1faa9bb` (POL-AI-002A merged via PR #36)
-- STATUS: `PR_OPEN_AWAITING_REVIEW`
-- PR: #39 — https://github.com/lucasimondi/Dental-manager-claude/pull/39
+- TASK: POL-AI-002B
+- TITLE: Poliedron Conversational Actions & Workflows
+- OWNER: COPILOT
+- BRANCH: `lucasimondi-pol-ai-002b-workflows`
+- BASE REVIEW: `master@e5b24d4` (PR #39 merged after the original POL-AI-002B implementation)
+- STATUS: `WAITING_PRODUCT_OWNER` — suggest-first input/intent revision complete on existing draft PR #41
+- PR: draft PR #41
 
 ## Objective
 
-Product Owner reported directly in chat: "Quando clicco il bottone WhatsApp
-sul agenda poi non si può annullare, deve esserci possibilità di annullare"
-(after clicking the WhatsApp button in the Agenda there is no way to cancel;
-there must be a way to cancel).
+Restore Poliedron as the app's single conversational AI and action surface. Reuse the existing Model Gateway, Action Registry, permission engine, real navigation map, patient matching, and application workflows. Add permission-filtered, context-aware suggestions and clear Ask/Navigate/Create/Workflow/confirmation/result states. Natural-language prescription requests must open the real Ricetta form, resolve only real permitted patients, prefill only supported fields, and always leave clinical review and submission to the user. Preserve the merged POL-AI-002A mobile dock, standalone polyhedron, desktop Edge Dock, drag, stacking, and responsive behavior.
 
-Audit of every WhatsApp entry point in `src/components/Agenda.jsx` found the
-single-patient send (`waModal`) and the pre-send bulk composer (`waMassModal`)
-already had a working "Annulla" button. The one flow with no cancel was the
-bulk "Invia a tutti (N)" action itself: `inviaWAMassivo` scheduled a
-`setTimeout` per selected appointment to open a `wa.me` popup, with no way to
-stop the ones not yet opened once you had committed. Fixed by tracking the
-scheduled timers, adding a persistent "Invio WhatsApp: aperti/totale" bar with
-an "Annulla invio" button that `clearTimeout`s the remaining, not-yet-opened
-sends (already-opened WhatsApp windows cannot be recalled, and the UI does not
-claim otherwise).
-
-## Files changed
-
-- `src/components/Agenda.jsx` — `waBatch` state + `waBatchTimersRef`, cancel
-  bar in the render tree; `inviaWAMassivo`/`annullaWABatch` now delegate the
-  actual timer scheduling/cancellation to the new pure helper below (same
-  behavior, extracted so it is unit-testable without mounting React).
-- `src/lib/waBatchSender.js` (new) — `pianificaInvioWABatch` /
-  `annullaInvioWABatch`, the pure scheduling/cancel logic.
-- `tests/waBatchSender.test.mjs` (new) — dedicated regression coverage for
-  the cancel behavior using Node's built-in fake timers.
+The Product Owner explicitly authorized POL-AI-002B as a new task after PR #36 merged to `master@1faa9bb`. COPILOT owns this branch. PR #39 subsequently merged to `master@e5b24d4`; the branch includes that newer Agenda behavior. The Product Owner has approved the existing PR #41 visual UI exactly and authorized an input/intent-only revision: bare nouns and aliases must suggest first, while only explicit navigation or operational verbs may execute.
 
 ## Safety boundaries
 
-- No Supabase migration, RLS policy, or financial formula touched.
-- No behavior change to the single-send or pre-send-composer flows, which
-  already worked correctly.
-- No behavior change to the bulk-send flow itself either: the extraction to
-  `waBatchSender.js` is a pure refactor of the already-added fix, same
-  `i * 350` spacing, same state transitions — done only to make the cancel
-  path independently testable.
+- Frontend-only by default: no Supabase migration, RLS/RBAC/auth/financial formula/production change.
+- No second AI Core or provider integration. `modelGateway.js` remains the only Poliedron model-call chokepoint.
+- Navigation and actions must be derived from real permission-filtered registries and existing application workflows; missing authorization fails closed.
+- No clinical action is auto-finalized and no patient, drug, or clinical field is invented.
 
-## Tests executed
+## Completion state
 
-- `npm run build` — clean (only the pre-existing chunk-size/pdfjs warnings).
-- `npm test` — 169/169 passing (164 pre-existing + 5 new in
-  `waBatchSender.test.mjs` covering: sequential scheduling with the real
-  `i * delayMs` spacing, `onInviato` progress callback, cancel stopping every
-  not-yet-fired send while leaving already-opened ones alone, cancelling
-  before anything fires, and an empty-batch no-op).
-- Real-browser check (Chromium via Playwright, pre-installed in this
-  sandbox): a temporary local HTML harness imported the actual
-  `src/lib/waBatchSender.js` module (not a reimplementation) and reproduced
-  the exact bar markup/logic used in `Agenda.jsx`, with `window.open` stubbed
-  to record calls instead of really opening WhatsApp. Driven with real DOM
-  clicks and real (unmocked) timers: clicking "Invia a tutti" opened sends
-  1 and 2 (~0ms/350ms) and showed "Invio WhatsApp: 2/4"; clicking "Annulla
-  invio" then waiting 1.5s (well past when sends 3 and 4 would have fired at
-  700ms/1050ms) confirmed no further `window.open` calls, the bar was hidden,
-  and the "Invia a tutti" control was interactive again. The harness file was
-  deleted after the run and is not part of this branch/PR — it never touched
-  Supabase or a real WhatsApp session, consistent with this repo's rule
-  against driving the live app against production Supabase in this sandbox.
-  The full end-to-end flow (patient selection UI → click → live app) was not
-  exercised, since that requires an authenticated session against production
-  Supabase, which this sandbox must not do.
+The Product Owner-approved visual UI is unchanged. Bare nouns, entities, section names, and aliases now remain in Poliedron as permission-filtered ranked suggestions. Only explicit navigation verbs may return direct navigation, and only explicit create/update verbs may enter application workflows. Fatture resolves to the real filtered Archivio destination rather than Pagamenti; `ric` shows both permitted Ricette and Richiami; the existing Ricetta, payment, appointment, Action Registry, patient-resolution, medication-prefill, permission, and Model Gateway contracts remain intact.
 
 ## Exact next action
 
-PR opened for Product Owner review; do not merge. See the PR description for
-the full write-up (problem, cause, fix, cancel semantics, test/build
-results).
+Product Owner reviews draft PR #41. Do not deploy or merge without explicit approval.
+
+---
+
+# Historical record: POL-AGD-WA-001 (merged to master)
+
+- Branch: `claude/whatsapp-agenda-cancel-rql7fg` — PR #39, merged to `master` as `e5b24d4`.
+- Objective: allow an in-progress Agenda WhatsApp bulk send to be cancelled before all scheduled windows open.
+- Full detail: see `docs/coordination/handoffs.md` ("POL-AGD-WA-001 Agenda — allow cancelling a WhatsApp send").
 
 ---
 

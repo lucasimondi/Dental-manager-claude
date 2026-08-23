@@ -525,6 +525,42 @@
 - Product Owner decision required: none.
 - Exact next action: Product Owner reviews updated draft PR #36. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
 
+## POL-AI-002B Poliedron Conversational Actions & Workflows
+
+- Task ID: POL-AI-002B
+- Previous agent: Product Owner-authorized new task after COPILOT completed POL-AI-002A and PR #36 merged.
+- Branch: `lucasimondi-pol-ai-002b-workflows`, based on `master@1faa9bb` (merged PR #36).
+- Objective: restore Poliedron as the application's single conversational AI and action surface, add premium permission-filtered suggestions, route supported natural-language actions through the existing Action Registry/application workflows, and make Ricetta requests open the real clinical form with safe patient resolution and supported-field-only prefill.
+- Completed work:
+  - Preserved the merged standalone mobile polyhedron/dock, drag/redock behavior, stacking/recede behavior, and desktop Edge Dock. Poliedron remains mounted exactly once.
+  - Added a premium responsive suggestion board with permission-filtered Navigate and Create/Workflow cards for real application sections and Action Registry entries. The panel clearly distinguishes Ask, Navigate, Create, Workflow, confirmation, and result states.
+  - Kept deterministic live search/local navigation fast. Exact safe aliases and permitted section names open locally; explicit unknown/open questions invoke only the existing `modelGateway.js` contract and show the returned answer. No provider SDK or second AI path was added.
+  - Reserved `ric`/`rice`/`ricetta`/`ricette` for the real prescription workflow rather than Archivio filtering while preserving `rich`/`richi` as Richiami aliases.
+  - Added `prescription.create` through the existing Action Registry. Patient matching uses real RLS-scoped patients, exact token-bound full names, safe surname ambiguity, and explicit selection. Alternative drugs are rejected as ambiguous. Medication extraction stops before posology/duration, including numeric dose-frequency wording.
+  - Wired `Poliedron -> App.openPrescription -> SchedaPaz -> DocMedico`. The real Ricetta form receives only the supported medication field; posology and duration remain empty; no clinical data is invented and no document is generated/finalized automatically. The one-time request is consumed after application and patient-specific form state remains isolated.
+  - Routed supported create language (`appuntamento`, `paziente`, `preventivo`/`piano di cura`, `pagamento`, `richiamo`, `spesa`, `documento`) to the matching permitted registry actions. Appointment creation opens the existing `QuickBookingModal`; patient/preventivo/payment/richiamo/spesa actions use the existing application form-opening contract. Generic document creation safely opens the existing document-choice surface rather than guessing a document type.
+  - Made explicit Ask supersede in-flight live previews through request sequencing; stale responses cannot overwrite newer results or loading state.
+  - Added regression coverage for single-AI/model-gateway boundaries, permission filtering, exact navigation, create mapping, prescription parsing/ambiguity/clinical guardrails, stale request handling, real handler wiring, one-shot prefill consumption, and the preserved adaptive dock behavior.
+- Files changed:
+  - Application/workflows: `src/App.jsx`; `src/components/DocMedico.jsx`; `src/components/SchedaPaz.jsx`; `src/components/Spese.jsx`; `src/lib/quickActionsCatalog.js`.
+  - Poliedron UI: `src/components/PremiumVisualSystem.css`; `src/components/poliedron/Poliedron.jsx`; `src/components/poliedron/PoliedronActionPreview.jsx`; `src/components/poliedron/PoliedronPanel.jsx`; `src/components/poliedron/PoliedronSearchResults.jsx`; `src/components/poliedron/PoliedronSuggestionBoard.jsx` (new).
+  - Poliedron core: `src/lib/poliedron/actionRegistry.js`; `src/lib/poliedron/commandAliases.js`; `src/lib/poliedron/intentEngine.js`; `src/lib/poliedron/permissionEngine.js`; `src/lib/poliedron/poliedraCore.js`; `src/lib/poliedron/prescriptionWorkflow.js` (new); `src/lib/poliedron/searchEngine.js`.
+  - Tests/coordination: `tests/poliedron.test.mjs`; `tests/poliedronAdaptive.test.mjs`; `tests/quickActionsCatalog.test.mjs`; `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- Database changes: none. No Supabase migration, schema, RLS, RBAC, auth, financial formula, clinical storage, production data, or deployment change.
+- Dependency changes: none.
+- Tests executed: `npm test`; `npm run build`; `git diff --check`; conflict-marker scan; added-secret scan; changed-path/scope inspection; repeated high-confidence code-review passes; real Chromium browser interaction QA with temporary harnesses removed before commit.
+- Test results: 179/179 Node tests pass. Production build passes. Only pre-existing warnings remain: `pdfjs-dist` eval, malformed legacy CSS-comment syntax in `designTokens.css`, and existing large chunks. Final code review found no remaining high-confidence workflow, race, permission, security, patient-matching, or clinical-prefill defect.
+- Browser QA:
+  - Responsive visual matrix passed at 375x812, 390x844, 430x932, 768x1024, 1024x900, and 1440x900 in Light and Dark: no horizontal overflow; mobile full-screen and desktop bounded panels; 48-50px minimum interactive heights; permitted section/action cards present; existing mobile dock and desktop Edge Dock preserved.
+  - Real interaction QA passed for permission-filtered suggestions, explicit Model Gateway answer, exact prescription, ambiguous Rossi selection, and real `DocMedico` opening.
+  - Final targeted pass after review fixes confirmed natural-language `crea appuntamento` opens the real `QuickBookingModal`; a request containing `Amoxicillina 875mg una compressa ogni 8 ore per 7 giorni` previews and prefills only `Amoxicillina 875mg`; posology and duration are empty; the request is consumed immediately.
+- Unresolved issues: none in POL-AI-002B scope.
+- Risks: patient and drug language is intentionally conservative; unrecognized or ambiguous wording asks for user input rather than guessing. Browser QA uses synthetic patients and a mocked response behind the unchanged Model Gateway contract; no production patient data or provider call was used. Existing build warnings are unchanged and out of scope.
+- Rollback: revert the POL-AI-002B commits. No database, data, RLS, deployment, or dependency rollback is required.
+- Deployment impact: frontend bundle only; no deployment performed.
+- Product Owner decision required: none.
+- Exact next action: Product Owner reviews draft PR #41. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+
 ## POL-AGD-WA-001 Agenda — allow cancelling a WhatsApp send
 
 - Task ID: POL-AGD-WA-001 (new task; opened directly from a Product Owner chat report, not from the backlog).
@@ -565,3 +601,62 @@
 - Deployment impact: frontend bundle only; no deployment performed.
 - Product Owner decision required: none.
 - Exact next action: PR opened for this branch against `master`, not merged. Product Owner reviews; merge only on explicit approval.
+
+## POL-AI-002B reconciliation with current master
+
+- Task ID: POL-AI-002B (draft PR #41 reconciliation).
+- Previous agent: COPILOT; ownership remained on `lucasimondi-pol-ai-002b-workflows`.
+- Branch: `lucasimondi-pol-ai-002b-workflows`.
+- Objective: incorporate current `origin/master@e5b24d4` after PR #39 merged, resolve GitHub's conflicting/dirty state without rewriting POL-AI-002B commits, preserve the newer Agenda WhatsApp batch-cancel behavior, and return draft PR #41 to a clean reviewable state.
+- Completed work: fetched current `origin/master`, merged it with `--no-ff`, and resolved the two documentation-only conflicts in `docs/coordination/current-task.md` and `docs/coordination/handoffs.md`. The active task remains POL-AI-002B while POL-AGD-WA-001 is retained as a merged historical record. The incoming source files match `origin/master` exactly, and every POL-AI-002B implementation/test file matches pre-merge head `6f1c27c` exactly.
+- Files changed by the incoming master merge: `src/components/Agenda.jsx`; `src/lib/waBatchSender.js` (new); `tests/waBatchSender.test.mjs` (new); `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- Conflict resolution files: `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`. No source-code conflict occurred.
+- Database changes: none. No migration, schema, RLS, RBAC, auth, financial formula, clinical storage, production data, dependency, or deployment change.
+- Tests executed: `npm test`; `npm run build`; `git diff --check`; conflict-marker scan; secret-pattern scan; changed-path/scope inspection; exact tree comparisons for incoming Agenda files and pre-merge POL-AI-002B files.
+- Test results: 184/184 Node tests pass, including all 179 POL-AI-002B/pre-existing tests and the five merged Agenda batch-cancel tests. Production build passes with only the unchanged `pdfjs-dist` eval, malformed legacy CSS-comment, and large-chunk warnings. Incoming Agenda files are byte-identical to `origin/master`; POL-AI-002B implementation/test files are byte-identical to pre-merge head `6f1c27c`.
+- GitHub verification: reconciliation merge head `187b901` reports `MERGEABLE/CLEAN`; the required `verify` workflow, Vercel deployment/status, and Netlify deploy preview completed successfully (Netlify header/pages/redirect checks were neutral/skipped as expected).
+- Unresolved issues: none in reconciliation scope.
+- Risks: none introduced by the merge. The only manual resolution was coordination prose; both code lines were preserved exactly from their authoritative parent commits.
+- Rollback: revert the reconciliation merge commit to return to pre-merge POL-AI-002B head `6f1c27c`. No data or deployment rollback is required.
+- Deployment impact: frontend bundle only through the already-merged Agenda change plus the existing POL-AI-002B work; no deployment performed.
+- Product Owner decision required: none.
+- Exact next action: Product Owner reviews draft PR #41 after GitHub reports it mergeable/clean with required checks green. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+
+## POL-AI-002B Product Owner input/intent revision — suggest first
+
+- Task ID: POL-AI-002B (continuation on existing draft PR #41).
+- Previous agent: COPILOT continuation; ownership remained on `lucasimondi-pol-ai-002b-workflows`.
+- Branch: `lucasimondi-pol-ai-002b-workflows`, containing current `origin/master@e5b24d4`.
+- Objective: preserve the Product Owner-approved Poliedron visual UI exactly while changing input semantics so bare nouns, prefixes, entities, and section names remain permission-filtered suggestions; reserve navigation and application workflows for explicit verbs.
+- Root cause:
+  - `poliedraCore.js` resolved exact `commandAliases` before intent classification and returned `directNavigation`.
+  - `intentEngine.js` promoted exact bare navigation labels/aliases to `NAVIGATE`.
+  - `Poliedron.jsx` correctly executed any returned `directNavigation`, so those two upstream paths closed the panel for bare input.
+  - `prescriptionWorkflow.js` accepted bare `ric`/`ricetta` as create requests.
+  - `navigationIndex.js` incorrectly treated `fattura`/`fatture` as Pagamenti aliases.
+- Completed work:
+  - Removed the bare-alias execution shortcut and the bare-label `NAVIGATE` classification. Exact aliases remain reusable for deterministic target resolution only after an explicit navigation verb.
+  - Added ranked, permission-filtered alias suggestions behind the existing approved suggestion board. Typing dynamically reranks the existing Navigate and Create/Workflow cards without CSS, layout, dock, Orb, or Edge Dock redesign.
+  - Added real virtual destinations for Fatture (`archivio` + `filtroTipo=fattura`) and Ricette (`archivio` + `filtroTipo=ricetta`). Selecting either card applies the existing Archivio filter hint before navigation.
+  - Removed Fatture aliases from Pagamenti. `fat`/`fatture` rank Fatture first; Pagamenti remains a separate concept.
+  - Made `ric` deliberately return both permitted Ricette and Richiami, with Ricette first for `ric`/`ricetta` and Richiami first for `richiamo`.
+  - Gated direct navigation behind `apri`, `vai`, `portami`, `mostra`, or `mostrami`, including Italian articles/prepositions (`vai ai pagamenti`, `vai in agenda`). Explicit Fatture/Ricette navigation retains real Archivio filter metadata.
+  - Gated create/update behavior behind `crea`, `nuovo/a`, `aggiungi`, `inserisci`, `prepara`, `registra`, `modifica`, `aggiorna`, or `segna`. Bare `ricetta Rossi` and `pagamento Rossi` remain non-writing searches.
+  - Preserved the real Action Registry workflows, Quick Booking, patient ambiguity handling, medication-only Ricetta prefill, clinical review/confirmation, permission filtering, request sequencing, and the sole existing `modelGateway.js` fallback. Live deterministic search never calls the model; unresolved submitted questions still use the existing gateway.
+  - Preserved the approved top universal input, “Dove vuoi lavorare?”, Navigate and Create/Workflow sections, premium cards, responsive panel layout, mobile standalone polyhedron/dock/recede behavior, and desktop Edge Dock.
+- Files changed:
+  - Core/ranking: `src/lib/poliedron/commandAliases.js`; `src/lib/poliedron/intentEngine.js`; `src/lib/poliedron/navigationIndex.js`; `src/lib/poliedron/poliedraCore.js`; `src/lib/poliedron/prescriptionWorkflow.js`; `src/lib/poliedron/searchEngine.js`.
+  - Existing UI routing only: `src/components/poliedron/Poliedron.jsx`; `src/components/poliedron/PoliedronPanel.jsx`.
+  - Regression coverage: `tests/poliedron.test.mjs`; `tests/poliedronAdaptive.test.mjs`.
+  - Coordination: `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- Database changes: none. No migration, schema, Supabase, RLS, RBAC, auth, financial formula, clinical storage, production data, or production-state change.
+- Dependency changes: none. A browser runner was installed transiently with `--no-save` for QA; package manifests and lockfile are unchanged.
+- Tests executed: `npm test`; targeted Poliedron tests; `npm run build`; `git diff --check`; conflict-marker scan; added-secret scan; dependency-manifest check; changed-path/scope inspection; real Chrome browser interaction and visual QA through a temporary exact-component harness removed before handoff.
+- Test results: 188/188 Node tests pass. Production build passes with only the unchanged `pdfjs-dist` eval, malformed legacy CSS-comment, and large-chunk warnings.
+- Browser QA: 13/13 Chrome runs pass. The responsive matrix covered 375x812, 390x844, 430x932, 768x1024, 1024x900, and 1440x900 in Light and Dark. Every run verified the approved visual headings/cards, `fat` Fatture suggestion without closure, `ric` Ricette/Richiami ambiguity, Rossi patient result, no navigation side effects, panel bounds, no horizontal overflow, mobile dock recede, and desktop Edge Dock expanded state. A separate real interaction run verified `apri fatture` closes only after explicit navigation and emits `filtroTipo=fattura`, while `crea ricetta per Rossi Amoxicillina 875mg` shows clinical review and invokes the existing prescription handler with only the real patient id and medication text. Screenshots are retained outside the repository in the session artifacts; the harness and Playwright result files were deleted.
+- Unresolved issues: none in this revision's scope.
+- Risks: alias and clinical interpretation remain intentionally conservative. Ambiguous or unsupported language stays inside Poliedron or reaches the existing Model Gateway only after explicit submit rather than guessing or writing.
+- Rollback: revert the suggest-first revision commit. No database, data, RLS, dependency, deployment, or production rollback is required.
+- Deployment impact: frontend bundle only; no deployment performed.
+- Product Owner decision required: none.
+- Exact next action: Product Owner reviews the updated existing draft PR #41. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.

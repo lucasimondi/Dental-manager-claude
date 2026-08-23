@@ -37,7 +37,7 @@ export const QUICK_ACTIONS_CATALOG = Object.freeze([
   {
     id: 'nuova_spesa', ic: 'box', label: '+ Nuova spesa',
     feature: 'spese',
-    run: (ctx) => ctx.onNavigate('spese'),
+    run: (ctx) => ctx.onNavigateNew ? ctx.onNavigateNew('spese') : ctx.onNavigate('spese'),
   },
   {
     id: 'pagamento', ic: 'pay', label: 'Pagamento',

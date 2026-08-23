@@ -13,6 +13,7 @@ import { INTENT, classifyIntent, extractAmount } from '../src/lib/poliedron/inte
 import { RESULT_GROUP, federatedSearch, suggestedIdle } from '../src/lib/poliedron/searchEngine.js';
 import { buildContext, inferPatientHint } from '../src/lib/poliedron/contextEngine.js';
 import { processQuery } from '../src/lib/poliedron/poliedraCore.js';
+import { resolvePrescriptionRequest } from '../src/lib/poliedron/prescriptionWorkflow.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -52,16 +53,19 @@ test('classifyIntent: ASK hints route open questions', () => {
   assert.equal(r.type, INTENT.ASK);
 });
 
-test('classifyIntent: a bare section name/alias resolves to NAVIGATE, not SEARCH', () => {
+test('classifyIntent: a bare section name remains SEARCH', () => {
   const r = classifyIntent('pagamenti', { navigationIndex: NAVIGATION_INDEX });
-  assert.equal(r.type, INTENT.NAVIGATE);
-  assert.equal(r.entities.navId, 'paga');
+  assert.equal(r.type, INTENT.SEARCH);
 });
 
-test('classifyIntent: an alias synonym also resolves to NAVIGATE', () => {
+test('classifyIntent: a bare alias synonym remains SEARCH', () => {
   const r = classifyIntent('incassi', { navigationIndex: NAVIGATION_INDEX });
-  assert.equal(r.type, INTENT.NAVIGATE);
-  assert.equal(r.entities.navId, 'paga');
+  assert.equal(r.type, INTENT.SEARCH);
+});
+
+test('classifyIntent: a financial-sounding section alias still suggests before analysis', () => {
+  const r = classifyIntent('costi', { navigationIndex: NAVIGATION_INDEX });
+  assert.equal(r.type, INTENT.SEARCH);
 });
 
 test('classifyIntent: an empty query classifies as null, not a crash', () => {
@@ -154,6 +158,16 @@ test('ACTION_REGISTRY: create actions reuse the existing quickActionsCatalog run
   assert.equal(typeof paymentCreate.quickAction.run, 'function');
 });
 
+test('ACTION_REGISTRY: prescription workflow opens the application handler and never writes directly', () => {
+  const action = findAction('prescription.create');
+  const patient = patients[0];
+  let request = null;
+  action.navigate({ openPrescription: (value) => { request = value; } }, patient, { drug: 'Amoxicillina 875mg' });
+  assert.deepEqual(request, { patient, drug: 'Amoxicillina 875mg' });
+  assert.equal(action.riskLevel, 1);
+  assert.equal(action.confirmationRequired, true);
+});
+
 test('findAction returns null for an unknown action id (safe fallback, no throw)', () => {
   assert.equal(findAction('not.a.real.action'), null);
 });
@@ -199,6 +213,22 @@ test('filterActions: never leaks an action the caller is not permitted to see', 
   assert.ok(!filtered.some((a) => a.navId === 'controllo'));
 });
 
+test('prescription permission gate fails closed for inactive members and unsupported verticals', () => {
+  const action = findAction('prescription.create');
+  assert.equal(isActionAllowed(action, {
+    features: {},
+    quickActionCtx: { permissions: { activeMember: false }, vertical: 'dentistico' },
+  }), false);
+  assert.equal(isActionAllowed(action, {
+    features: {},
+    quickActionCtx: { permissions: { activeMember: true }, vertical: 'fisioterapista' },
+  }), false);
+  assert.equal(isActionAllowed(action, {
+    features: {},
+    quickActionCtx: { permissions: { activeMember: true }, vertical: 'dentistico' },
+  }), true);
+});
+
 test('FEATURE_GATE_BY_NAV_ID / ADMIN_ONLY_NAV_IDS are the single source of truth (no second copy of these gates)', () => {
   assert.equal(FEATURE_GATE_BY_NAV_ID.controllo, 'controllo_gestione');
   assert.ok(ADMIN_ONLY_NAV_IDS.has('agenteai'));
@@ -239,6 +269,127 @@ test('processQuery: context is used only as a hint for pre-fill, patient still r
   });
   assert.equal(result.entities.amount, 300);
   assert.ok(result.confirmationRequired);
+});
+
+test('prescription workflow resolves one real patient and preserves the exact supported drug field', () => {
+  const result = resolvePrescriptionRequest('crea ricetta per Mario Rossi Amoxicillina 875mg', patients);
+  assert.deepEqual(result.patientCandidates.map((patient) => patient.id), ['p1']);
+  assert.equal(result.drugText, 'Amoxicillina 875mg');
+  assert.equal(result.drugNeedsClarification, false);
+});
+
+test('prescription workflow keeps same-surname matches ambiguous instead of guessing', () => {
+  const sameSurname = [...patients, { id: 'p3', nome: 'Anna', cognome: 'Rossi', cf: '', telefono: '' }];
+  const result = resolvePrescriptionRequest('prepara ricetta per Rossi Ibuprofene 600mg', sameSurname);
+  assert.deepEqual(result.patientCandidates.map((patient) => patient.id).sort(), ['p1', 'p3']);
+});
+
+test('prescription workflow refuses to choose between alternative drugs', () => {
+  const result = resolvePrescriptionRequest('crea ricetta per Mario Rossi Amoxicillina oppure Ibuprofene', patients);
+  assert.equal(result.drugNeedsClarification, true);
+  assert.equal(result.drugText, '');
+});
+
+test('prescription workflow extracts only the medication segment from natural imperative wording', () => {
+  const result = resolvePrescriptionRequest('Prepara una ricetta per Mario Rossi con Amoxicillina 875mg', patients);
+  assert.equal(result.drugText, 'Amoxicillina 875mg');
+});
+
+test('prescription workflow uses token boundaries and excludes posology from the drug field', () => {
+  const noFalsePatient = resolvePrescriptionRequest('crea ricetta per Gianmario Rossi Amoxicillina', patients);
+  assert.equal(noFalsePatient.patientCandidates.length, 0);
+  const withPosology = resolvePrescriptionRequest('crea ricetta per Mario Rossi Amoxicillina 875mg una compressa ogni 8 ore per 7 giorni', patients);
+  assert.equal(withPosology.drugText, 'Amoxicillina 875mg');
+  const numericPosology = resolvePrescriptionRequest('crea ricetta per Mario Rossi Ibuprofene 600 mg 2 compresse al giorno', patients);
+  assert.equal(numericPosology.drugText, 'Ibuprofene 600 mg');
+});
+
+test('processQuery returns a review-required Ricetta workflow, never direct navigation or finalization', async () => {
+  const result = await processQuery({
+    query: 'crea ricetta per Mario Rossi Amoxicillina 875mg',
+    context: buildContext(),
+    permissions: {},
+    sources: { patients, navigationIndex: NAVIGATION_INDEX, actions: ACTION_REGISTRY },
+  });
+
+  assert.equal(result.intent, 'WORKFLOW');
+  assert.equal(result.confirmationRequired, true);
+  assert.equal(result.suggestedActions[0].id, 'prescription.create');
+  assert.equal(result.entities.patientCandidates[0].id, 'p1');
+  assert.equal(result.entities.drugText, 'Amoxicillina 875mg');
+  assert.equal(result.directNavigation, undefined);
+});
+
+test('supported create phrases resolve to their exact permitted Action Registry workflow', async () => {
+  const cases = [
+    ['crea appuntamento', 'appointment.create'],
+    ['nuovo paziente', 'patient.create'],
+    ['nuovo preventivo', 'quote.create'],
+    ['registra pagamento', 'payment.create'],
+    ['nuovo richiamo', 'recall.create'],
+    ['nuova spesa', 'expense.create'],
+    ['crea documento', 'document.create'],
+  ];
+  for (const [query, actionId] of cases) {
+    const result = await processQuery({
+      query,
+      context: buildContext(),
+      sources: { patients, navigationIndex: NAVIGATION_INDEX, actions: ACTION_REGISTRY },
+      allowModel: false,
+    });
+    assert.equal(result.suggestedActions[0]?.id, actionId, query);
+  }
+});
+
+test('unknown search invokes the existing model gateway only after explicit submit', async () => {
+  let calls = 0;
+  const supabaseClient = {
+    functions: {
+      invoke: async () => {
+        calls += 1;
+        return { data: { text: 'Risposta dal gateway esistente.' }, error: null };
+      },
+    },
+  };
+  const preview = await processQuery({
+    query: 'spiegami una cosa non indicizzata',
+    context: buildContext(),
+    sources: { patients: [], navigationIndex: [], actions: [] },
+    supabaseClient,
+    allowModel: false,
+  });
+  assert.equal(preview.awaitingSubmit, true);
+  assert.equal(calls, 0);
+  const submitted = await processQuery({
+    query: 'spiegami una cosa non indicizzata',
+    context: buildContext(),
+    sources: { patients: [], navigationIndex: [], actions: [] },
+    supabaseClient,
+    allowModel: true,
+  });
+  assert.equal(submitted.answer, 'Risposta dal gateway esistente.');
+  assert.equal(calls, 1);
+});
+
+test('informational questions mentioning ricetta stay Ask intents and reach the existing model gateway', async () => {
+  let calls = 0;
+  const result = await processQuery({
+    query: 'Come faccio una ricetta?',
+    context: buildContext(),
+    sources: { patients, navigationIndex: NAVIGATION_INDEX, actions: ACTION_REGISTRY },
+    allowModel: true,
+    supabaseClient: {
+      functions: {
+        invoke: async () => {
+          calls += 1;
+          return { data: { text: 'Risposta informativa.' }, error: null };
+        },
+      },
+    },
+  });
+  assert.equal(result.intent, INTENT.ASK);
+  assert.equal(result.answer, 'Risposta informativa.');
+  assert.equal(calls, 1);
 });
 
 // ---------------------------------------------------------------------------
@@ -341,4 +492,29 @@ test('single AI entry point: App.jsx does not mount <AssistenteAI', () => {
 test('single AI entry point: App.jsx mounts <Poliedron exactly once', () => {
   const mounts = APP_SHELL_SOURCE.match(/<Poliedron\b/g) || [];
   assert.equal(mounts.length, 1, 'App.jsx must render exactly one <Poliedron> — the app\'s single floating AI launcher');
+});
+
+test('patient form isolation: App remounts SchedaPaz when the selected patient changes', () => {
+  assert.match(APP_SHELL_SOURCE, /<SchedaPaz\s+key=\{schedaDashPaz\.paz\.id\}/);
+});
+
+test('explicit Ask cancels live preview and query changes invalidate stale results', () => {
+  const source = fs.readFileSync(path.join(POLIEDRON_COMPONENTS_DIR, 'Poliedron.jsx'), 'utf8');
+  assert.match(source, /if \(previewTimerRef\.current\) clearTimeout\(previewTimerRef\.current\);[\s\S]*runQuery\(query, \{ allowModel: true \}\)/);
+  assert.match(source, /const handleQueryChange[\s\S]*requestSeq\.current \+= 1;[\s\S]*setState\(null\)/);
+});
+
+test('Poliedron delegates new-form and appointment creation to App real workflow handlers', () => {
+  const source = fs.readFileSync(path.join(POLIEDRON_COMPONENTS_DIR, 'Poliedron.jsx'), 'utf8');
+  assert.match(source, /onNavigateNew: \(p\) => openNew\?\.\(p\)/);
+  assert.match(source, /openBooking: \(\) => openBooking\?\.\(\)/);
+  assert.match(APP_SHELL_SOURCE, /openNew=\{goNuovoElemento\}/);
+  assert.match(APP_SHELL_SOURCE, /<QuickBookingModal/);
+  assert.match(APP_SHELL_SOURCE, /<Spese[\s\S]*autoOpenNew=\{autoOpenNew === 'spese'\}/);
+});
+
+test('prescription prefill request is consumed after DocMedico applies it', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'DocMedico.jsx'), 'utf8');
+  assert.match(source, /onInitialRequestHandled\?\.\(requestId\)/);
+  assert.match(APP_SHELL_SOURCE, /documentRequest: null/);
 });

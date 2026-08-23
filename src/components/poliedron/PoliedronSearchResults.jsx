@@ -35,7 +35,13 @@ export default function PoliedronSearchResults({ groups, highlightedIndex, onSel
                     {item.kind === 'section' && <DockIc n={item.icon} style="outline" s={14} c={active ? C.pri : C.txm} />}
                     {item.kind === 'action' && <Ic n="zap" s={14} c={active ? C.pri : C.txm} />}
                   </span>
-                  <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: active ? 700 : 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
+                  <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <span style={{ fontSize: 13.5, fontWeight: active ? 700 : 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
+                    {item.description && <span style={{ fontSize: 10.5, color: C.txl, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.description}</span>}
+                  </span>
+                  <span className={`poliedron-result-kind poliedron-result-kind--${item.kind}`}>
+                    {item.kind === 'patient' ? 'Paziente' : item.kind === 'section' ? 'Naviga' : item.data?.kind === 'workflow' ? 'Workflow' : item.data?.riskLevel === 1 ? 'Crea' : 'Azione'}
+                  </span>
                   {item.kind === 'patient' && item.data?.telefono && (
                     <span style={{ fontSize: 11, color: C.txl, flexShrink: 0 }}>{item.data.telefono}</span>
                   )}

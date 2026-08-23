@@ -19,11 +19,11 @@ const prossimaDataMascherina = (orto) => {
   return d.toISOString().slice(0, 10);
 };
 
-export default function SchedaPaz({ paz, plans, payments, appointments, setAppointments, si, features, studioMembership, currentUserId, isStudioAdmin, onClose, onEdit, onNuovoPiano, setPlans, initTab, implants = [], setImplants, setPatients, onNuovoAppuntamento, templates, setPayments, pricelist = [] }) {
+export default function SchedaPaz({ paz, plans, payments, appointments, setAppointments, si, features, studioMembership, currentUserId, isStudioAdmin, onClose, onEdit, onNuovoPiano, setPlans, initTab, initialDocumentRequest, onDocumentRequestHandled, implants = [], setImplants, setPatients, onNuovoAppuntamento, templates, setPayments, pricelist = [] }) {
   const [tab, setTab] = useState(initTab || 'info');
   const [pdfPlan, setPdfPlan] = useState(null);
   const [docFiscale, setDocFiscale] = useState(false);
-  const [docMedico, setDocMedico] = useState(false);
+  const [docMedico, setDocMedico] = useState(initialDocumentRequest?.type === 'ricetta');
 
   // Ricorda tab attiva e modale documento aperto, così se l'app si ricarica
   // da zero (schermo spento, cambio app) il ripristino della posizione
@@ -49,6 +49,13 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  React.useEffect(() => {
+    if (initialDocumentRequest?.type === 'ricetta' && features?.documenti !== false) {
+      setTab('doc');
+      setDocMedico(true);
+    }
+  }, [initialDocumentRequest?.requestId, initialDocumentRequest?.type, features?.documenti]);
 
   const [archivioDocs, setArchivioDocs] = useState([]); // documenti_medici + documenti_fiscali uniti, ordinati per data
   const [archivioLoading, setArchivioLoading] = useState(false);
@@ -486,7 +493,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
     setPdfPlan(virtuale);
   };
 
-  if (docMedico && features?.documenti !== false) return <DocMedico paz={paz} si={si} onClose={() => { setDocMedico(false); loadArchivioDocs(); }} />;
+  if (docMedico && features?.documenti !== false) return <DocMedico paz={paz} si={si} initialType={initialDocumentRequest?.type} initialPrefill={initialDocumentRequest?.prefill} requestId={initialDocumentRequest?.requestId} onInitialRequestHandled={onDocumentRequestHandled} onClose={() => { setDocMedico(false); loadArchivioDocs(); }} />;
   if (docFiscale && features?.documenti !== false) return <DocFiscale paz={paz} plans={plans} si={si} onClose={() => { setDocFiscale(false); loadArchivioDocs(); }} />;
   if (pdfPlan) return <PdfView pl={pdfPlan} paz={paz} si={si} features={features} onClose={() => setPdfPlan(null)} />;
 
