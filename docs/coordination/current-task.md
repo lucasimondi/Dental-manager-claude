@@ -22,7 +22,7 @@ The Product Owner authorized POL-UI-013 directly, the same way POL-UI-012 was au
 
 ## Exact next action
 
-Complete — see the "POL-UI-013 Dashboard modular workspace + Poliedron centrality (Phase 1)" handoff entry in `docs/coordination/handoffs.md` for root cause, fix detail, tests, and the `PRODUCT_OWNER_DECISION_REQUIRED` item (production migration deployment for `user_home_layouts`/`studio_home_layouts`). Product Owner reviews the draft PR; do not merge without explicit approval.
+POL-UI-013 itself is complete. A follow-up audit (POL-UI-013B) found that `user_home_layouts`/`studio_home_layouts` are **already applied to production** with correct schema/RLS — the original "never applied to production" root cause is superseded; see the "POL-UI-013B Production personalization migration audit — STOPPED, decision required" handoff entry for full detail and the two open Product Owner questions (deployment-history confirmation; how to authorize live production QA, since this sandbox will not authenticate against the real production project). Product Owner reviews the draft PR; do not merge without explicit approval.
 
 ---
 
