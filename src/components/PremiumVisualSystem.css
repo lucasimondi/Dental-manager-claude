@@ -200,6 +200,24 @@ button.pol-stat-card:active { transform: translateY(0) scale(.99); }
   .pol-stat-card__icon { width: 32px; height: 32px; border-radius: 10px; }
   .pol-stat-card__value { font-size: 17px; }
 }
+
+/* Documenti keeps the shared StatCard contract, but its currency KPIs need
+   full-width rows on narrow phones instead of three icon-constrained columns. */
+.pol-document-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.pol-document-stats .pol-stat-card__value {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 520px) {
+  .pol-document-stats { grid-template-columns: minmax(0, 1fr); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .pol-stat-card { transition: none !important; }
   button.pol-stat-card:hover { transform: none !important; }

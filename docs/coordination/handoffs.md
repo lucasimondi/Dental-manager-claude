@@ -660,3 +660,27 @@
 - Deployment impact: frontend bundle only; no deployment performed.
 - Product Owner decision required: none.
 - Exact next action: Product Owner reviews the updated existing draft PR #41. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
+
+## POL-UI-012 Mobile Document KPI sizing
+
+- Task ID: POL-UI-012.
+- Previous agent: COPILOT on the merged POL-AI-002B task; Product Owner authorized this new hotfix directly after PR #41 merged.
+- Branch: `lucasimondi-pol-ui-012-mobile-document-kpis`, based on `master@c82b69a`.
+- Objective: correct the three top Documenti KPI tiles so monetary values remain proportionate and contained at 375px, 390px, and 430px without changing tablet/desktop presentation or shared `StatCard` behavior elsewhere.
+- Completed work:
+  - Replaced ArchivioDocs' inline fixed three-column wrapper with a page-scoped `.pol-document-stats` contract.
+  - Preserved three equal `minmax(0, 1fr)` columns above 520px and switched only narrow phones to one full-width KPI row per card, matching the Product Owner's mobile one-column direction.
+  - Added Documenti-scoped `max-width`, `overflow-wrap`, and tabular-number protection for unusually long currency values. The shared `.pol-stat-card` mobile icon, spacing, typography, and all other callers remain unchanged.
+  - Added a focused source/CSS regression test covering the page-scoped class, desktop/tablet columns, narrow-phone column switch, overflow containment, and absence of a global `StatCard` override.
+- Files changed: `src/components/ArchivioDocs.jsx`; `src/components/PremiumVisualSystem.css`; `tests/archivioDocsResponsive.test.mjs`; `docs/coordination/current-task.md`; `docs/coordination/handoffs.md`.
+- Database changes: none. No Supabase, schema, migration, RLS, RBAC, auth, clinical, financial, tenant, production-data, or production-state change.
+- Dependency changes: none. `npm ci --ignore-scripts` restored the existing lockfile dependencies locally after the build reported the repository checkout had no installed Vite binary; manifests and lockfile are unchanged.
+- Tests executed: `node --test tests/archivioDocsResponsive.test.mjs`; `npm test`; `npm run build`; `git diff --check`; conflict-marker scan; added-secret scan; changed-path/scope inspection; real Chrome DevTools device-emulation QA using a temporary local synthetic harness and the shipped `PremiumVisualSystem.css`.
+- Test results: focused tests 2/2 pass; full Node suite 190/190 passes; production Vite build passes. Only the pre-existing `pdfjs-dist` eval warning, malformed legacy CSS-comment warning, large-chunk warnings, and existing npm audit findings remain unchanged and out of scope. Diff, conflict-marker, added-secret, and changed-path checks pass.
+- Browser QA: Chrome passed 375x812, 390x844, and 430x932 in both Light and Dark (six runs). Each exact emulated viewport rendered one KPI column, no page-level horizontal overflow, and all synthetic long currency values and labels inside their card bounds. Theme colors were asserted from computed styles. No production data or remote backend was used; the temporary harness and Chrome profile were removed.
+- Unresolved issues: none in POL-UI-012 scope.
+- Risks: the 520px breakpoint intentionally changes only narrow-phone Documenti KPI layout. Devices above it retain the prior three-column design; shared `StatCard` consumers are unaffected.
+- Rollback: revert the POL-UI-012 commit. No database or data rollback is required.
+- Deployment impact: frontend CSS/markup bundle only; no deployment performed.
+- Product Owner decision required: none.
+- Exact next action: Product Owner reviews the new draft PR. Do not merge or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.

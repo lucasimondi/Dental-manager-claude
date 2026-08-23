@@ -1,33 +1,41 @@
 # Current task
 
-- TASK: POL-AI-002B
-- TITLE: Poliedron Conversational Actions & Workflows
+- TASK: POL-UI-012
+- TITLE: Mobile Document KPI sizing
 - OWNER: COPILOT
-- BRANCH: `lucasimondi-pol-ai-002b-workflows`
-- BASE REVIEW: `master@e5b24d4` (PR #39 merged after the original POL-AI-002B implementation)
-- STATUS: `WAITING_PRODUCT_OWNER` — suggest-first input/intent revision complete on existing draft PR #41
-- PR: draft PR #41
+- BRANCH: `lucasimondi-pol-ui-012-mobile-document-kpis`
+- BASE REVIEW: `master@c82b69a` (PR #41 merged)
+- STATUS: `WAITING_PRODUCT_OWNER`
+- PR: new draft PR pending creation
 
 ## Objective
 
-Restore Poliedron as the app's single conversational AI and action surface. Reuse the existing Model Gateway, Action Registry, permission engine, real navigation map, patient matching, and application workflows. Add permission-filtered, context-aware suggestions and clear Ask/Navigate/Create/Workflow/confirmation/result states. Natural-language prescription requests must open the real Ricetta form, resolve only real permitted patients, prefill only supported fields, and always leave clinical review and submission to the user. Preserve the merged POL-AI-002A mobile dock, standalone polyhedron, desktop Edge Dock, drag, stacking, and responsive behavior.
+Correct the top Documenti KPI cards on mobile so their values remain proportionate and contained at 375px, 390px, and 430px widths. Preserve desktop/tablet presentation and shared `StatCard` behavior elsewhere by scoping the responsive correction to Documenti.
 
-The Product Owner explicitly authorized POL-AI-002B as a new task after PR #36 merged to `master@1faa9bb`. COPILOT owns this branch. PR #39 subsequently merged to `master@e5b24d4`; the branch includes that newer Agenda behavior. The Product Owner has approved the existing PR #41 visual UI exactly and authorized an input/intent-only revision: bare nouns and aliases must suggest first, while only explicit navigation or operational verbs may execute.
+The Product Owner explicitly authorized POL-UI-012 as a new hotfix after PR #41 merged to `master@c82b69a`. COPILOT owns this dedicated branch.
 
 ## Safety boundaries
 
-- Frontend-only by default: no Supabase migration, RLS/RBAC/auth/financial formula/production change.
-- No second AI Core or provider integration. `modelGateway.js` remains the only Poliedron model-call chokepoint.
-- Navigation and actions must be derived from real permission-filtered registries and existing application workflows; missing authorization fails closed.
-- No clinical action is auto-finalized and no patient, drug, or clinical field is invented.
+- Frontend-only: no Supabase migration, RLS/RBAC/auth/financial formula/production change.
+- No dependency additions or unrelated refactors.
+- Use synthetic/local browser QA only; do not access production data.
+- Keep shared `StatCard` defaults unchanged outside the Documenti page.
 
 ## Completion state
 
-The Product Owner-approved visual UI is unchanged. Bare nouns, entities, section names, and aliases now remain in Poliedron as permission-filtered ranked suggestions. Only explicit navigation verbs may return direct navigation, and only explicit create/update verbs may enter application workflows. Fatture resolves to the real filtered Archivio destination rather than Pagamenti; `ric` shows both permitted Ricette and Richiami; the existing Ricetta, payment, appointment, Action Registry, patient-resolution, medication-prefill, permission, and Model Gateway contracts remain intact.
+The top Documenti KPI grid now keeps the existing three-column presentation above 520px and switches to full-width rows on narrow phones. Currency values gain Documenti-scoped overflow protection and tabular numerals; shared `StatCard` defaults and every other caller remain unchanged. Focused and full regression tests, production build, safety/scope checks, and real Chrome QA at 375x812, 390x844, and 430x932 in Light and Dark pass.
 
 ## Exact next action
 
-Product Owner reviews draft PR #41. Do not deploy or merge without explicit approval.
+Product Owner reviews the new POL-UI-012 draft PR after creation. Do not deploy or merge without explicit approval.
+
+---
+
+# Historical record: POL-AI-002B (merged to master)
+
+- Branch: `lucasimondi-pol-ai-002b-workflows` — PR #41, merged to `master` as `c82b69a`.
+- Objective: restore Poliedron as the application's single conversational AI and action surface, including Product Owner-approved suggest-first input semantics.
+- Full detail: see `docs/coordination/handoffs.md` ("POL-AI-002B Poliedron Conversational Actions & Workflows" and subsequent reconciliation/revision entries).
 
 ---
 
