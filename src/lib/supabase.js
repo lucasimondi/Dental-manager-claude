@@ -120,6 +120,24 @@ export const DB = {
     return (data || []).map((r) => fromDb(table, r));
   },
 
+  // POL-AI-005B: fresh single-row read by id, tenant-scoped defense-in-depth
+  // (RLS remains the actual authority) — used for post-write verification
+  // and TOCTOU-safe re-checks immediately before a write, without adding a
+  // second field-mapping implementation next to toDb/fromDb above.
+  async getById(key, id) {
+    const table = TABLE_MAP[key];
+    if (!table || id === undefined || id === null) return null;
+    let q = supabase.from(table).select('*').eq('id', id);
+    if (STUDIO_TABLES.has(table)) {
+      const studioId = await getStudioId();
+      if (!studioId) return null;
+      q = q.eq('studio_id', studioId);
+    }
+    const { data, error } = await q.maybeSingle();
+    if (error) { console.error('DB.getById', table, error); return null; }
+    return data ? fromDb(table, data) : null;
+  },
+
   async insert(key, obj) {
     const table = TABLE_MAP[key];
     const { data: { user } } = await supabase.auth.getUser();

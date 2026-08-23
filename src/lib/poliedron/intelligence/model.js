@@ -22,6 +22,12 @@ export const SIGNAL_TYPE = Object.freeze({
   MISSING_PLAN_STATUS: 'MISSING_PLAN_STATUS',
   EMPTY_ACCEPTED_PLAN: 'EMPTY_ACCEPTED_PLAN',
   HYGIENE_CONFIGURATION_MISSING: 'HYGIENE_CONFIGURATION_MISSING',
+  // POL-AI-005B: a treatment marked eseguita (completed) whose tooth is
+  // still unknown — e.g. "segna devitalizzazione di Rossi come eseguita,
+  // non ricordo il dente". Derived live from `voci` on every scan, so it
+  // clears automatically the moment the tooth is filled in — no separate
+  // signal storage/clearing logic needed.
+  MISSING_TOOTH_REFERENCE: 'MISSING_TOOTH_REFERENCE',
 });
 
 export const SEVERITY = Object.freeze({

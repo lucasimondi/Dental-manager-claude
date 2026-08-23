@@ -7,6 +7,8 @@ import { buildIntelligencePermissions, filterNavigationIndex, isActionAllowed } 
 import { ACTION_REGISTRY } from '../../lib/poliedron/actionRegistry';
 import { buildContext } from '../../lib/poliedron/contextEngine';
 import { processQuery } from '../../lib/poliedron/poliedraCore';
+import { runActionPlan } from '../../lib/poliedron/planner/actionExecutor';
+import { DB } from '../../lib/supabase.js';
 
 /* POL-AI-001 §33 / POL-AI-002A §16-17 — mounted exactly once by App.jsx,
    survives every page change. This is the only file that talks to the
@@ -15,7 +17,7 @@ import { processQuery } from '../../lib/poliedron/poliedraCore';
    SAME component's state/panel — never two AI systems (§16 same
    identity, one Poliedra AI Core). */
 export default function Poliedron({
-  isMobile, page, setPage, patients, plans, appointments, richiami, impegni, goSchedaPaz,
+  isMobile, page, setPage, patients, plans, payments, pricelist, appointments, richiami, impegni, goSchedaPaz,
   features, isStudioAdmin, vertical, studioId, currentPatient,
   quickActionCtx, supabaseClient, onArchivioFilterHint, openPrescription, openNew, openBooking,
 }) {
@@ -24,6 +26,11 @@ export default function Poliedron({
   const [state, setState] = useState(null);
   const [loading, setLoading] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  // POL-AI-005B: outcome of the last runActionPlan() call — null while
+  // idle/previewing, then { outcome, completedSteps, failedStep,
+  // recoveryActions } once the user has confirmed and execution finished.
+  const [actionRunResult, setActionRunResult] = useState(null);
+  const [actionRunning, setActionRunning] = useState(false);
   const inputRef = useRef(null);
   const panelId = useId();
   const requestSeq = useRef(0);
@@ -67,6 +74,7 @@ export default function Poliedron({
     setOpen(false);
     setQuery('');
     setState(null);
+    setActionRunResult(null);
   }, []);
 
   const runQuery = useCallback((q, { allowModel = false } = {}) => {
@@ -78,10 +86,13 @@ export default function Poliedron({
       permissions: {
         managementControl: permissionCtx.features?.controllo_gestione === true && !!isStudioAdmin,
         intelligence: intelligencePermissions,
+        homePermissions: quickActionCtx?.permissions || {},
       },
       sources: {
         patients,
         plans,
+        payments,
+        pricelist,
         appointments,
         recalls: richiami,
         activities: impegni,
@@ -102,6 +113,7 @@ export default function Poliedron({
         close();
         return;
       }
+      setActionRunResult(null);
       setState(result);
       setHighlightedIndex(0);
       setLoading(false);
@@ -110,7 +122,25 @@ export default function Poliedron({
       setState({ answer: 'Non riesco a completare la richiesta in questo momento. Riprova.' });
       setLoading(false);
     });
-  }, [context, permissionCtx, intelligencePermissions, isStudioAdmin, patients, plans, appointments, richiami, impegni, navigationIndex, actions, supabaseClient, setPage, onArchivioFilterHint, close]);
+  }, [context, permissionCtx, intelligencePermissions, isStudioAdmin, patients, plans, payments, pricelist, appointments, richiami, impegni, navigationIndex, actions, supabaseClient, quickActionCtx, setPage, onArchivioFilterHint, close]);
+
+  /** POL-AI-005B §CONFIRM: called only from an explicit user click on the
+   *  Level-2 preview's Confirm button — never automatically. Re-loads
+   *  `patients` fresh is the caller's job in principle, but since this
+   *  component already holds live, subscription-synced `patients`/`plans`/
+   *  `payments` (see App.jsx's postgres_changes channel), the current
+   *  props ARE the freshest available snapshot at click time — passed
+   *  straight through, satisfying runActionPlan's "must not be a stale
+   *  preview snapshot" contract without a redundant extra fetch. */
+  const handleConfirmActionPlan = useCallback(async (plan) => {
+    setActionRunning(true);
+    try {
+      const result = await runActionPlan(plan, { db: DB, patients, homePermissions: quickActionCtx?.permissions || {}, studioId });
+      setActionRunResult(result);
+    } finally {
+      setActionRunning(false);
+    }
+  }, [patients, quickActionCtx, studioId]);
 
   useEffect(() => {
     if (!open) return;
@@ -125,6 +155,7 @@ export default function Poliedron({
     setQuery(value);
     setLoading(false);
     setState(null);
+    setActionRunResult(null);
     setHighlightedIndex(0);
   }, []);
 
@@ -195,6 +226,9 @@ export default function Poliedron({
           onSelectResult={handleSelectResult}
           onConfirmAction={handleConfirmAction}
           onModifyAction={handleModifyAction}
+          onConfirmActionPlan={handleConfirmActionPlan}
+          actionRunning={actionRunning}
+          actionRunResult={actionRunResult}
           onSubmit={submitQuery}
           onClose={close}
           inputRef={inputRef}
