@@ -1,6 +1,20 @@
-export const HOME_WIDGET_REGISTRY = Object.freeze([
+/* POL-UI-013 §5: each entry supports id/title(label)/visible(defaultVisible)/
+   order(assigned by createDefaultHomeLayout)/size(defaultSize)/minSize/
+   maxSize/permission — minSize/maxSize are derived below from `sizes`
+   (already every widget's real allowed range) rather than hand-duplicated,
+   so they can never drift out of sync with it. `sizes` values are
+   internal/persisted ('small'|'medium'|'wide') for backward compatibility
+   with already-saved layouts; the user-facing labels are small/medium/
+   large (see WidgetWorkspace.jsx's S/M/L buttons) — 'wide' is presented
+   as "grande/L", never renamed in the data itself. There is intentionally
+   no `component` field: today each widget's markup is rendered inline in
+   Dashboard.jsx keyed by `id`, not dispatched from a component reference
+   in this registry — documented as a Phase 2 follow-up, not faked here. */
+const withSizeBounds = (widget) => ({ ...widget, minSize: widget.sizes[0], maxSize: widget.sizes[widget.sizes.length - 1] });
+
+const RAW_HOME_WIDGET_REGISTRY = [
   { id: 'agenda', ic: 'cal', label: 'Agenda oggi', category: 'Agenda', defaultVisible: true, defaultSize: 'wide', sizes: ['medium', 'wide'] },
-  { id: 'consigli_ai', ic: 'compass', label: 'Consigli AI', category: 'AI', defaultVisible: true, defaultSize: 'medium', sizes: ['medium', 'wide'] },
+  { id: 'consigli_ai', ic: 'compass', label: 'Consigli Poliedron', category: 'AI', variant: 'poliedron', defaultVisible: true, defaultSize: 'medium', sizes: ['medium', 'wide'] },
   { id: 'todo', ic: 'okc', label: 'Attività e promemoria', category: 'Attività', defaultVisible: true, defaultSize: 'medium', sizes: ['medium', 'wide'] },
   { id: 'appuntamenti', ic: 'cal', label: 'Prossimi appuntamenti', category: 'Agenda', defaultVisible: true, defaultSize: 'medium', sizes: ['medium', 'wide'] },
   { id: 'wa', ic: 'wa', label: 'Reminder WhatsApp', category: 'Comunicazioni', defaultVisible: false, defaultSize: 'medium', sizes: ['medium', 'wide'] },
@@ -28,7 +42,9 @@ export const HOME_WIDGET_REGISTRY = Object.freeze([
   { id: 'fin_produzione_ora', ic: 'pulse', label: 'Produzione/ora', category: 'Finanza canonica', permission: 'management_control', defaultVisible: false, defaultSize: 'small', sizes: ['small', 'medium'] },
   { id: 'fin_incasso_ora', ic: 'eur', label: 'Incasso/ora', category: 'Finanza canonica', permission: 'management_control', defaultVisible: false, defaultSize: 'small', sizes: ['small', 'medium'] },
   { id: 'quick_actions', ic: 'zap', label: 'Azioni rapide', category: 'Azioni', defaultVisible: true, defaultSize: 'wide', sizes: ['medium', 'wide'] },
-]);
+];
+
+export const HOME_WIDGET_REGISTRY = Object.freeze(RAW_HOME_WIDGET_REGISTRY.map(withSizeBounds));
 
 const registryById = new Map(HOME_WIDGET_REGISTRY.map((widget) => [widget.id, widget]));
 

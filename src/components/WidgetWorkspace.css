@@ -1,12 +1,13 @@
 .home-widget-preview { width: 100%; margin: 0 auto; transition: max-width .24s ease, filter .24s ease; }
 .home-widget-preview--mobile { max-width: 390px; padding: 12px; border: 1px solid rgba(99,102,241,.15); border-radius: 24px; background: linear-gradient(160deg,#f9fbff,#eef3fb); box-shadow: 0 22px 52px rgba(31,49,78,.14), inset 0 1px 0 #fff; }
 .home-widget-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 18px; align-items: start; }
-.home-widget-frame { min-width: 0; grid-column: span 6; border-radius: 20px; }
+.home-widget-frame { min-width: 0; grid-column: span 6; border-radius: 20px; transition: opacity .16s ease, transform .16s ease, box-shadow .16s ease; }
+.home-widget-frame--dragging { opacity: .55; transform: scale(.98); box-shadow: 0 18px 40px rgba(79,70,229,.22); z-index: 2; }
 .home-widget-frame--small { grid-column: span 4; }
 .home-widget-frame--medium { grid-column: span 6; }
 .home-widget-frame--wide { grid-column: 1 / -1; }
 .home-widget-frame__toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; margin-bottom: 8px; border: 1px solid rgba(99,102,241,.14); border-radius: 12px; background: rgba(255,255,255,.92); color: #52616f; font-size: 11px; font-weight: 800; box-shadow: 0 8px 20px rgba(31,49,78,.07); backdrop-filter: blur(14px); }
-.home-widget-frame__handle { cursor: grab; user-select: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-widget-frame__handle { cursor: grab; user-select: none; touch-action: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .home-widget-frame__move { display: flex; gap: 5px; margin-left: auto; }
 .home-widget-frame__move button { min-width: 44px; min-height: 44px; padding: 4px 8px; border: 1px solid rgba(99,102,241,.14); border-radius: 10px; background: linear-gradient(180deg,#fff,#f8faff); color: #344a65; font: inherit; cursor: pointer; box-shadow: 0 3px 8px rgba(31,49,78,.05); }
 .home-widget-frame__move button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 7px 14px rgba(31,49,78,.09); }

@@ -1,33 +1,36 @@
 # Current task
 
-- TASK: POL-UI-012
-- TITLE: Mobile Document KPI sizing
-- OWNER: COPILOT
-- BRANCH: `lucasimondi-pol-ui-012-mobile-document-kpis`
-- BASE REVIEW: `master@c82b69a` (PR #41 merged)
+- TASK: POL-UI-013
+- TITLE: Dashboard modular workspace + Poliedron centrality (Phase 1)
+- OWNER: CLAUDE
+- BRANCH: `feature/POL-UI-013-dashboard-modular-workspace`
+- BASE: `master@93dfe6a` (POL-UI-012 merged)
 - STATUS: `WAITING_PRODUCT_OWNER`
-- PR: draft PR #42
 
 ## Objective
 
-Correct the top Documenti KPI cards on mobile so their values remain proportionate and contained at 375px, 390px, and 430px widths. Preserve desktop/tablet presentation and shared `StatCard` behavior elsewhere by scoping the responsive correction to Documenti.
+Phase 1 of an app-wide premium workspace redesign, scoped to Dashboard/Home only. Make Poliedron more central on the Dashboard, rename "Consigli AI" to "Consigli Poliedron", fix the Home personalization persistence bug, add real drag & drop + small/medium/large widget sizing, and raise the visual/professional bar — while reusing the existing POL-UI-001/POL-UX-001 widget registry and persistence layer rather than duplicating it.
 
-The Product Owner explicitly authorized POL-UI-012 as a new hotfix after PR #41 merged to `master@c82b69a`. COPILOT owns this dedicated branch.
+The Product Owner authorized POL-UI-013 directly, the same way POL-UI-012 was authorized directly after PR #41 merged.
 
 ## Safety boundaries
 
-- Frontend-only: no Supabase migration, RLS/RBAC/auth/financial formula/production change.
-- No dependency additions or unrelated refactors.
-- Use synthetic/local browser QA only; do not access production data.
-- Keep shared `StatCard` defaults unchanged outside the Documenti page.
-
-## Completion state
-
-The top Documenti KPI grid now keeps the existing three-column presentation above 520px and switches to full-width rows on narrow phones. Currency values gain Documenti-scoped overflow protection and tabular numerals; shared `StatCard` defaults and every other caller remain unchanged. Focused and full regression tests, production build, safety/scope checks, and real Chrome QA at 375x812, 390x844, and 430x932 in Light and Dark pass.
+- Frontend-only unless a schema change is explicitly PO-approved; no new Supabase migration is authored silently.
+- No RLS/RBAC/auth/financial-formula/canonical-KPI/patient-data/Poliedron-AI-engine change.
+- No page other than Dashboard/Home touched except shared UI primitives when strictly necessary.
+- Do not merge without explicit Product Owner approval.
 
 ## Exact next action
 
-Product Owner reviews the new POL-UI-012 draft PR after creation. Do not deploy or merge without explicit approval.
+POL-UI-013 (widgets/UI) and POL-UI-013B (production DB audit — tables/RLS already correct) are complete. A third pass, POL-UI-013C, found and fixed the actual application-side root cause: a state race in `Dashboard.jsx`'s background layout-load effect could silently overwrite an in-progress, unsaved "Personalizza Home" edit if the load resolved while the modal was already open. See the "POL-UI-013C Personalization save/load root cause" handoff entry for the full trace, fix, and a short LIVE_QA_SCRIPT for the Product Owner to run against production (this sandbox still does not authenticate into production). Product Owner reviews draft PR #44; do not merge without explicit approval.
+
+---
+
+# Historical record: POL-UI-012 (merged to master)
+
+- Branch: `lucasimondi-pol-ui-012-mobile-document-kpis` — PR #42, merged to `master` as `93dfe6a`.
+- Objective: correct the top Documenti KPI cards on mobile so their values remain proportionate and contained at 375px, 390px, and 430px widths, without changing desktop/tablet presentation or shared `StatCard` behavior elsewhere.
+- Full detail: see `docs/coordination/handoffs.md` ("POL-UI-012 Mobile Document KPI sizing").
 
 ---
 
