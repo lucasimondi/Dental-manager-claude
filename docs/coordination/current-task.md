@@ -4,8 +4,8 @@
 - TITLE: Poliedron Proactive Intelligence Engine
 - OWNER: COPILOT
 - BRANCH: `lucasimondi-feature-pol-ai-004-proactive-intelligenc`
-- BASE REVIEW: `master@93dfe6a` (PR #43 merged)
-- STATUS: `WAITING_PRODUCT_OWNER`
+- BASE REVIEW: `master@590b8ca` (PR #44 merged)
+- STATUS: `IN_PROGRESS` (master reconciliation)
 - PR: draft PR #45
 
 ## Objective
@@ -52,6 +52,25 @@ added-secret, dependency-manifest, schema/scope and review gates pass.
 
 Product Owner reviews draft PR #45. Do not
 deploy or merge without explicit approval.
+
+---
+
+# Historical record: POL-UI-013 (merged to master)
+
+- Branch: `feature/POL-UI-013-dashboard-modular-workspace` — PR #44, merged to
+  `master` as `590b8ca`.
+- Objective: Dashboard modular workspace, `Consigli Poliedron`, touch/mouse
+  drag-and-drop, widget resize and the personalization load/save race fix.
+- Full detail: see `docs/coordination/handoffs.md` ("POL-UI-013 Dashboard
+  modular workspace + Poliedron centrality" and subsequent audit/race entries).
+
+---
+
+# Historical record: POL-UI-012 (merged to master)
+
+- Branch: `lucasimondi-pol-ui-012-mobile-document-kpis` — PR #42, merged to `master` as `93dfe6a`.
+- Objective: correct the top Documenti KPI cards on mobile so their values remain proportionate and contained at 375px, 390px, and 430px widths, without changing desktop/tablet presentation or shared `StatCard` behavior elsewhere.
+- Full detail: see `docs/coordination/handoffs.md` ("POL-UI-012 Mobile Document KPI sizing").
 
 ---
 
