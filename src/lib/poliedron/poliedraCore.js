@@ -76,14 +76,22 @@ async function resolveAnalyze(entities, context, permissions, supabaseClient) {
 }
 
 /**
- * processQuery({ query, context, permissions, sources, supabaseClient })
+ * processQuery({ query, context, permissions, sources, conversationHistory, supabaseClient })
  * -> { intent, entities, searchResults, suggestedActions, answer, confirmationRequired }
  * `sources` (already permission-filtered navigation/actions; raw patients
  * list — patient-level filtering is inherent to `patients` already being
  * RLS-scoped to the caller's studio):
  *   { patients, navigationIndex, actions }
  */
-export async function processQuery({ query, context, permissions, sources = {}, supabaseClient, allowModel = true } = {}) {
+export async function processQuery({
+  query,
+  context,
+  permissions,
+  sources = {},
+  conversationHistory = [],
+  supabaseClient,
+  allowModel = true,
+} = {}) {
   const q = (query || '').trim();
   if (!q) {
     return {
@@ -197,8 +205,19 @@ export async function processQuery({ query, context, permissions, sources = {}, 
     }
     const { groups, hasResults } = federatedSearch(q, sources);
     if (!hasResults && allowModel) {
-      const modelResult = await runModelTask({ taskType: MODEL_TASK_TYPE.ASK, input: q, context, supabaseClient });
-      return { ...base, searchResults: [], answer: modelResult.text || 'Non sono riuscito a rispondere in questo momento.' };
+      const modelResult = await runModelTask({
+        taskType: MODEL_TASK_TYPE.ASK,
+        input: q,
+        history: conversationHistory,
+        context,
+        supabaseClient,
+      });
+      return {
+        ...base,
+        searchResults: [],
+        answer: modelResult.text || 'Non sono riuscito a rispondere in questo momento.',
+        modelError: modelResult.error || null,
+      };
     }
     if (!hasResults) return { ...base, searchResults: [], awaitingSubmit: true };
     const hasPatientResults = groups.some((group) => group.group === 'PAZIENTI');
@@ -234,16 +253,38 @@ export async function processQuery({ query, context, permissions, sources = {}, 
     if (!allowModel) return { ...base, searchResults: [], awaitingSubmit: true };
     const result = await resolveAnalyze(intent.entities, context, permissions, supabaseClient);
     if (result.needsModel) {
-      const modelResult = await runModelTask({ taskType: MODEL_TASK_TYPE.ANSWER, input: q, context, supabaseClient });
-      return { ...base, searchResults: [], answer: modelResult.text || 'Non sono riuscito a rispondere in questo momento.' };
+      const modelResult = await runModelTask({
+        taskType: MODEL_TASK_TYPE.ANSWER,
+        input: q,
+        history: conversationHistory,
+        context,
+        supabaseClient,
+      });
+      return {
+        ...base,
+        searchResults: [],
+        answer: modelResult.text || 'Non sono riuscito a rispondere in questo momento.',
+        modelError: modelResult.error || null,
+      };
     }
     return { ...base, searchResults: [], answer: result.answer };
   }
 
   if (intent.type === INTENT.ASK) {
     if (!allowModel) return { ...base, searchResults: [], awaitingSubmit: true };
-    const modelResult = await runModelTask({ taskType: MODEL_TASK_TYPE.ASK, input: q, context, supabaseClient });
-    return { ...base, searchResults: [], answer: modelResult.text || 'Non sono riuscito a rispondere in questo momento.' };
+    const modelResult = await runModelTask({
+      taskType: MODEL_TASK_TYPE.ASK,
+      input: q,
+      history: conversationHistory,
+      context,
+      supabaseClient,
+    });
+    return {
+      ...base,
+      searchResults: [],
+      answer: modelResult.text || 'Non sono riuscito a rispondere in questo momento.',
+      modelError: modelResult.error || null,
+    };
   }
 
   // AUTOMATE: reserved intent, not offered in Phase 1 (§36 — no autonomous

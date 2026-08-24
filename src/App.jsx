@@ -90,6 +90,7 @@ export default function App() {
   const [quickHubRecallRequest, setQuickHubRecallRequest] = useState(null);
   const [quickHubActivityRequest, setQuickHubActivityRequest] = useState(null);
   const [quickHubPoliedronRequest, setQuickHubPoliedronRequest] = useState(null);
+  const [poliedronChatHost, setPoliedronChatHost] = useState(null);
   // POL-AI-002A §20 — set by Poliedron's direct "ric"/"fat"/"doc" commands
   // so ArchivioDocs opens already filtered instead of on its unfiltered
   // default view; App.jsx never reads it, only threads it through.
@@ -537,7 +538,7 @@ export default function App() {
 
       <div id="app-scroll" style={{
         flex: '1 1 auto', minWidth: 0, minHeight: 0, width: '100%', maxWidth: '100%', boxSizing: 'border-box',
-        overflowY: isMobile && page === 'agenda' ? 'hidden' : 'auto',
+        overflowY: page === 'chat' || (isMobile && page === 'agenda') ? 'hidden' : 'auto',
         overflowX: 'hidden', overscrollBehavior: 'contain',
         // POL-UI-010 (structural): #app-scroll only ever had flex:1 from ITS
         // OWN parent — it never declared display:flex itself, so its child
@@ -554,16 +555,16 @@ export default function App() {
         // Agenda's root use flex:1/minHeight:0 (the same pattern already
         // relied on everywhere else in Agenda.jsx, verified reliable) instead
         // of a percentage height — no other page is affected.
-        display: isMobile && page === 'agenda' ? 'flex' : undefined,
-        flexDirection: isMobile && page === 'agenda' ? 'column' : undefined,
-        padding: 13,
-        paddingTop: isMobile ? 'calc(13px + env(safe-area-inset-top, 0px))' : 13,
+        display: page === 'chat' || (isMobile && page === 'agenda') ? 'flex' : undefined,
+        flexDirection: page === 'chat' || (isMobile && page === 'agenda') ? 'column' : undefined,
+        padding: page === 'chat' ? 0 : 13,
+        paddingTop: page === 'chat' ? 0 : (isMobile ? 'calc(13px + env(safe-area-inset-top, 0px))' : 13),
         // Agenda owns an inner scroller and must extend beneath the floating
         // dock through the physical safe area. Other pages keep the shell's
         // safe-area padding because their content scrolls here instead.
         paddingBottom: isMobile
-          ? (page === 'agenda' ? 0 : 'env(safe-area-inset-bottom, 0px)')
-          : 28,
+          ? (page === 'agenda' || page === 'chat' ? 0 : 'env(safe-area-inset-bottom, 0px)')
+          : (page === 'chat' ? 0 : 28),
         scrollPaddingBottom: isMobile ? 'calc(94px + env(safe-area-inset-bottom, 0px))' : undefined,
         // POL-UI-004 Agenda mobile final: the Agenda grid should read as an
         // almost-fullscreen surface, not a page floating inside the app's
@@ -574,8 +575,8 @@ export default function App() {
         // content never touches/exceeds the screen edge on real devices,
         // plus explicit overflow-x:hidden above as a hard backstop: no
         // page can ever force the whole app to scroll sideways again.
-        paddingLeft: isMobile ? (page === 'agenda' ? 6 : 15) : undefined,
-        paddingRight: isMobile ? (page === 'agenda' ? 6 : 15) : undefined,
+        paddingLeft: page === 'chat' ? 0 : (isMobile ? (page === 'agenda' ? 6 : 15) : undefined),
+        paddingRight: page === 'chat' ? 0 : (isMobile ? (page === 'agenda' ? 6 : 15) : undefined),
       }}>
         {page === 'home' && <Dashboard patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegni} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} onNavigateNew={goNuovoElemento} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} activityPatientRequest={quickHubActivityRequest} onActivityPatientRequestHandled={(id) => setQuickHubActivityRequest((current) => current?.id === id ? null : current)} />}
         {page !== 'home' && (
@@ -617,6 +618,7 @@ export default function App() {
             {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
             {page === 'agenteai' && <AgenteAISetup features={features} />}
             {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} isStudioAdmin={isStudioAdmin} onLogout={handleLogout} />}
+            {page === 'chat' && <div ref={setPoliedronChatHost} className="poliedron-chat-host" />}
           </Suspense>
         )}
       </div>
@@ -637,6 +639,7 @@ export default function App() {
         isStudioAdmin={isStudioAdmin}
         vertical={studioInfo?.vertical}
         studioId={session?.user?.app_metadata?.studio_id}
+        userId={session?.user?.id}
         currentPatient={schedaDashPaz?.paz || null}
         onArchivioFilterHint={setArchivioFiltroTipoHint}
         openPrescription={openPrescription}
@@ -646,6 +649,7 @@ export default function App() {
         supabaseClient={supabase}
         externalCommandRequest={quickHubPoliedronRequest}
         onExternalCommandHandled={(id) => setQuickHubPoliedronRequest((current) => current?.id === id ? null : current)}
+        chatHost={poliedronChatHost}
       />
       {poliedronBookingOpen && (
         <Suspense fallback={null}>

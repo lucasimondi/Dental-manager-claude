@@ -19,7 +19,8 @@ export default function PoliedronPanel({
   panelId, isMobile, query, onQueryChange, state, loading,
   highlightedIndex, onHighlightChange, onSelectResult, onConfirmAction, onModifyAction, onSubmit,
   onConfirmActionPlan, actionRunning, actionRunResult,
-  onClose, inputRef,
+  onClose, inputRef, submitDisabled = false, interactionDisabled = false,
+  conversationError = false, onRetryConversation,
 }) {
   const containerRef = useRef(null);
 
@@ -41,7 +42,7 @@ export default function PoliedronPanel({
       const item = flatItemAt(state?.searchResults || [], highlightedIndex);
       if (item) onSelectResult(item);
       else if (state?.suggestedActions?.[0] && !state?.selectionRequired) onConfirmAction(state.suggestedActions[0]);
-      else onSubmit?.();
+      else if (!submitDisabled && !interactionDisabled) onSubmit?.();
     }
   };
 
@@ -81,12 +82,13 @@ export default function PoliedronPanel({
             ref={inputRef}
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
+            disabled={interactionDisabled}
             placeholder="Chiedi o fai qualsiasi cosa…"
             aria-label="Chiedi o fai qualsiasi cosa"
             style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', fontSize: 16, padding: '4px 0', color: C.txt }}
           />
           {query.trim() && (
-            <button className="poliedron-ask-button" onClick={onSubmit} aria-label="Invia a Poliedron">
+            <button className="poliedron-ask-button" onClick={onSubmit} disabled={submitDisabled || interactionDisabled} aria-label="Invia a Poliedron">
               <span>Chiedi</span><Ic n="send" s={12} c="#fff" />
             </button>
           )}
@@ -98,6 +100,12 @@ export default function PoliedronPanel({
         </div>
 
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: isMobile ? '12px 14px' : '14px 16px' }}>
+          {conversationError && (
+            <div className="poliedron-chat__error" role="alert">
+              La cronologia persistente non è disponibile.
+              <button type="button" onClick={onRetryConversation}>Riprova</button>
+            </div>
+          )}
           {loading ? (
             <div className="poliedron-loading-card"><span className="poliedron-loading-card__pulse" />Poliedron sta verificando…</div>
           ) : state?.intelligence ? (

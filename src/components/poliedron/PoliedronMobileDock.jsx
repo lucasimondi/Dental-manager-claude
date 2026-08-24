@@ -8,10 +8,10 @@ export const MOBILE_DOCK_ITEMS = Object.freeze([
   { id: 'agenda', label: 'Agenda', icon: 'cal' },
   { id: '__poliedron__', label: 'Poliedron', icon: null },
   { id: 'paz', label: 'Pazienti', icon: 'pz' },
-  { id: 'set', label: 'Setup', icon: 'set' },
+  { id: 'chat', label: 'Chat', icon: 'chat' },
 ]);
 
-export default function PoliedronMobileDock({ page, setPage, open, onToggle, panelId }) {
+export default function PoliedronMobileDock({ page, setPage, open, onToggle, panelId, unreadCount = 0 }) {
   return (
     <nav
       className={`poliedron-mobile-dock${open ? ' is-receded' : ''}`}
@@ -42,6 +42,11 @@ export default function PoliedronMobileDock({ page, setPage, open, onToggle, pan
             onClick={() => setPage(item.id)}
           >
             <Ic n={item.icon} s={22} />
+            {item.id === 'chat' && unreadCount > 0 && (
+              <span className="poliedron-mobile-dock__badge">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
           </button>
         );
       })}

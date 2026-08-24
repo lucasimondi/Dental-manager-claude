@@ -1,53 +1,51 @@
 # Current task
 
-- TASK: POL-UI-004-AGENDA-QUICK-HUB
-- TITLE: Mobile Agenda Appointment Quick Action Hub
+- TASK: CHAT-POLYEDRON
+- TITLE: Persistent Chat Polyedron
 - OWNER: COPILOT
-- BRANCH: `lucasimondi-agenda-mobile-fullscreen`
+- BRANCH: `lucasimondi-chat-polyedron`
 - BASE: `master`
-- STATUS: `WAITING_PRODUCT_OWNER` — implementation complete, not merged, not deployed.
+- STATUS: `WAITING_PRODUCT_OWNER` — implementation complete and locally
+  validated; not merged, not deployed, and no remote migration was applied.
 
 ## Objective
 
-Extend the existing dock-aware mobile appointment sheet with contextual
-patient actions and a Poliedron entry point while preserving the full-screen
-Agenda, the floating `+`, MobileDock, desktop behavior, and appointment logic.
+Implement Chat as the persistent conversational interface for the one existing
+Polyedron. Reuse the singleton Poliedron orchestration, provider/model gateway,
+context, permission, action, and memory path; persist one continuous primary
+thread per active studio user with fail-closed RLS; expose the same conversation
+through mobile Chat, desktop navigation, and a real unread bell.
 
 ## Completed scope
 
-- Agenda-only mobile shell bottom-padding correction.
-- Regression coverage for the Agenda safe-area exception.
-- Floating mobile month/actions/week-strip overlay above the timeline.
-- Dynamic day strip driven by the same hidden-weekday source as the grid.
-- Internal top/bottom scroll range for complete first/last-slot access.
-- Mobile today styling reduced to the semantic red outline only.
-- Dock-aware mobile appointment action sheet with responsive max-height and
-  internal scrolling.
-- Appointment Quick Hub actions for call, patient detail, recall, and optional
-  patient-associated activity creation through the existing application forms.
-- Contextual mini-input that opens the existing singleton Poliedron with the
-  authoritative appointment patient and appointment context.
-- Popup clearance derived from both canonical MobileDock geometry and the
-  unchanged floating `+` geometry.
-- Optional activity association that can be retained, changed, or removed;
-  generic activities and the existing `todos` schema remain supported.
-- Responsive browser measurements at 375x667, 390x844, 393x852, and
-  430x932 in light and dark themes.
-- Full test suite and production build.
+- Persistent recent history with bounded upward pagination.
+- Studio + user isolation, active-membership enforcement, RLS, indexes, and
+  synthetic cross-user/cross-tenant tests in one additive migration.
+- Same `processQuery` / Model Gateway / `agente-assistente` path as the existing
+  Polyedron; no second chatbot, provider, prompt stack, or orchestration layer.
+- Mobile-first dynamic-viewport Chat, desktop long-conversation layout,
+  keyboard-safe composer, retry/double-submit/slow-response handling, and
+  near-bottom conditional auto-scroll.
+- Real unread/read semantics (`read` never means task completion).
+- Mobile Chat replaces Setup in the five-slot dock. Setup remains explicitly
+  available in the Poliedron navigation menu, per Product Owner decision.
+- Desktop Chat navigation and a global bell open the same primary conversation.
 
 ## Safety boundaries
 
-- No MobileDock or Poliedron styling/positioning changes.
-- No Agenda business-logic or desktop behavior changes.
-- No schema, RLS, dependency, environment, or production changes.
-- No merge or deploy without explicit Product Owner approval.
+- Do not modify Agenda's unrelated booking-request bell semantics.
+- Do not implement reminders, scheduler/cron, proactive message generation,
+  autonomous loops, task completion/snooze, push, email, or SMS.
+- Do not weaken RLS, add tenant fallback, expose provider secrets, duplicate
+  Polyedron, or invent production state.
+- Do not apply migrations remotely, deploy, merge, or use production data.
 
 ## Exact next action
 
-Product Owner visually verifies the Quick Hub actions, optional activity
-association, contextual Poliedron flow, and popup clearance on the PR #50
-preview and target iPhone.
-Do not merge or deploy without explicit approval.
+Product Owner reviews the Chat Polyedron PR, including mobile/desktop
+conversation UX and the additive migration/RLS contract. Do not merge, deploy,
+or apply `20260824030000_chat_polyedron.sql` remotely without explicit Product
+Owner approval.
 
 ---
 
