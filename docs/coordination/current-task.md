@@ -1,5 +1,21 @@
 # Current task
 
+- TASK: POL-AI-005C
+- TITLE: Generic treatment creation intent
+- OWNER: CODEX
+- BRANCH: `feature/POL-AI-005C-generic-treatment-creation`
+- BASE: latest `origin/master` at task start (`0a3d853`)
+- PR: `#55` (draft)
+- STATUS: `WAITING_PRODUCT_OWNER`
+- OBJECTIVE: connect generic add/insert/record treatment language to the existing PLAN → PREVIEW → CONFIRM → ACT → VERIFY pipeline without a parallel write path.
+- DATABASE_CHANGES: none.
+- DEPENDENCY_CHANGES: none.
+- PRODUCT_OWNER_DECISION_REQUIRED: none.
+- VALIDATION: `npm test` 438/438 passed; `npm run build` succeeded with pre-existing warnings; `git diff --check` clean.
+- EXACT_NEXT_ACTION: Product Owner reviews draft PR #55; do not merge or deploy.
+
+## Previous task record (already merged; retained for audit)
+
 - TASK: CHAT-POLYEDRON
 - TITLE: Persistent Chat Polyedron
 - OWNER: COPILOT

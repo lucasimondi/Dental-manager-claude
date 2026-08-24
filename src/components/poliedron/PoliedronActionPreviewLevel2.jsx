@@ -19,14 +19,15 @@ const INTENT_LABEL = Object.freeze({
   RECORD_TREATMENT_AND_PENDING_PAYMENT: 'Registra prestazione e pagamento in sospeso',
   RECORD_MULTIPLE_TREATMENTS_AND_PAYMENT: 'Registra più prestazioni e pagamento in sospeso',
   CREATE_TREATMENT_PLAN: 'Crea piano di cura',
+  ADD_TREATMENT_ITEM: 'Aggiungi prestazione',
   COMPLETE_MISSING_TOOTH: 'Completa elemento dentario mancante',
 });
 
 const toothLabel = (tooth) => {
   if (!tooth) return null;
-  if (tooth.state === 'known') return `dente ${tooth.value}`;
+  if (tooth.state === 'known') return `Elemento ${tooth.value}`;
   if (tooth.state === 'legacy_incomplete') return `dente "${tooth.value}" non riconosciuto`;
-  return 'dente non specificato';
+  return 'Elemento dentario: da completare';
 };
 
 const OUTCOME_META = Object.freeze({

@@ -140,6 +140,7 @@ export default function Poliedron({
       studioId,
       currentPatient: externalContext?.patient || currentPatient,
       currentAppointment: externalContext?.appointment || null,
+      selectedTooth: externalContext?.selectedTooth || null,
       isStudioAdmin,
       features,
     }),
