@@ -111,7 +111,8 @@ test('REGRESSION GUARD: the base .home-poliedron-widget__dots{display:none} rule
   // of which one is inside a media query — the dots were silently hidden
   // on mobile the first time this was written with the order reversed.
   const baseIdx = premiumCss.indexOf('.home-poliedron-widget__dots { display: none; }');
-  const mediaBlockIdx = premiumCss.indexOf("@media (max-width: 719px) {\n  .home-poliedron-widget__track");
+  const mediaBlockMatch = /@media \(max-width: 719px\) \{\r?\n\s*\.home-poliedron-widget__track/.exec(premiumCss);
+  const mediaBlockIdx = mediaBlockMatch?.index ?? -1;
   assert.ok(baseIdx > -1 && mediaBlockIdx > -1, 'expected to find both the base rule and the mobile media block');
   assert.ok(baseIdx < mediaBlockIdx, 'the base display:none rule must come BEFORE the @media override in source order');
 });
@@ -123,16 +124,29 @@ test('Consigli Poliedron cards sit in a scroll-snap track, one card per mobile v
   assert.match(premiumCss, /\.home-poliedron-widget__card \{\s*flex: 0 0 100%;\s*scroll-snap-align: center;/);
 });
 
-// --- 7/8. POLIEDRON BELL (placeholder, same agent) --------------------------
+// --- 7/8. POLIEDRON BELL (real Chat entry point after POL-CHAT-001) --------
+// POL-CHAT-001 merge: POL-UI-015 could only ship the bell as a UI-only
+// placeholder (unreadCount had no producer, the click reopened the quick
+// panel). PR #53 supplies both: the real unread count and the real Chat
+// destination. The approved component and its approved positioning stay.
 
-test('PoliedronBell is a UI-only placeholder: no notification engine, unread defaults to 0 everywhere', () => {
-  assert.match(bellSrc, /unreadCount = 0/);
+test('the bell itself still owns no notification engine — the count is supplied by the conversation layer, not polled here', () => {
   assert.doesNotMatch(bellSrc, /setInterval|fetch\(|supabase/);
-  assert.match(poliedronSrc, /unreadCount = 0,/);
+  assert.match(bellSrc, /unreadCount = 0/); // safe default when no count is passed
+  // the placeholder PROP on the controller is gone: the real value comes from
+  // usePoliedronConversation(), and re-declaring it would freeze it at 0.
+  assert.doesNotMatch(poliedronSrc, /unreadCount = 0,/);
+  assert.match(poliedronSrc, /usePoliedronConversation\(/);
 });
 
-test('the bell opens the SAME Poliedron conversation as the Orb/Edge Dock — same open/onToggle/panelId, never a second agent', () => {
-  assert.match(poliedronSrc, /<PoliedronBell variant=\{isMobile \? 'mobile' : 'desktop'\} open=\{open\} onToggle=\{onToggle\} unreadCount=\{unreadCount\} panelId=\{panelId\} \/>/);
+test('the bell opens the SAME single Poliedron — now its persistent Chat page — carrying the real unread count, never a second agent', () => {
+  assert.match(poliedronSrc, /\{page !== 'chat' && \(\s*<PoliedronBell/);
+  assert.match(poliedronSrc, /variant=\{isMobile \? 'mobile' : 'desktop'\}/);
+  assert.match(poliedronSrc, /unreadCount=\{unreadCount\}/);
+  assert.match(poliedronSrc, /onOpenChat=\{\(\) => setPage\('chat'\)\}/);
+  assert.match(bellSrc, /onClick=\{onOpenChat\}/);
+  // the Chat page is this same instance portalled into App.jsx's host
+  assert.match(poliedronSrc, /ReactDOM\.createPortal\(/);
 });
 
 test('bell positioning never shares vertical space with the mobile dock (fixed above its top edge, not beside it)', () => {
@@ -144,8 +158,16 @@ test('bell positioning never shares vertical space with the mobile dock (fixed a
 test('mobile dock no longer has a Setup/Impostazioni slot; Chat opens the same Poliedron conversation, not a second page', () => {
   assert.doesNotMatch(dockSrc, /id: 'set'/);
   assert.match(dockSrc, /id: 'chat', label: 'Chat', icon: 'chat'/);
-  assert.match(dockSrc, /if \(item\.id === 'chat'\)/);
-  assert.match(dockSrc, /onClick=\{onToggle\}/);
+  // POL-CHAT-001 merge: the placeholder branch that reopened the quick panel
+  // (`if (item.id === 'chat') ... onClick={onToggle}`) is gone. Chat now uses
+  // the same generic navigation path as every other slot — still ONE
+  // Poliedron, because the Chat page is that same instance portalled into
+  // App.jsx's chat host. POL-CHAT-001 §FASE 9: the unread badge lives on the
+  // bell only, so this slot must not carry a duplicate of the same count.
+  assert.doesNotMatch(dockSrc, /if \(item\.id === 'chat'\) \{[\s\S]*onToggle/);
+  assert.match(dockSrc, /onClick=\{\(\) => setPage\(item\.id\)\}/);
+  assert.doesNotMatch(dockSrc, /poliedron-mobile-dock__badge/);
+  assert.match(bellSrc, /poliedron-bell__badge/);
 });
 
 // --- 10/11. IMPOSTAZIONI REACHABLE FROM THE CENTRAL PANEL / DESKTOP SIDEBAR -

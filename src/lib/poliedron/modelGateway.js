@@ -26,19 +26,27 @@ export const MODEL_TASK_TYPE = Object.freeze({
 });
 
 /**
- * runModelTask({ taskType, input, context, allowedTools, supabaseClient })
+ * runModelTask({ taskType, input, history, context, allowedTools, supabaseClient })
  * -> Promise<{ text, error }>
  * `allowedTools` is accepted for forward-compatibility with a future
  * tool-using provider — the current adapter does not pass tool access
  * beyond what agente-assistente already exposes server-side.
  */
-export async function runModelTask({ taskType, input, context, supabaseClient, confirm } = {}) {
+export async function runModelTask({ taskType, input, history = [], context, supabaseClient, confirm } = {}) {
   if (!supabaseClient) return { text: null, error: 'MODEL_GATEWAY_NO_CLIENT' };
   if (!input) return { text: null, error: 'MODEL_GATEWAY_EMPTY_INPUT' };
+  const boundedHistory = history
+    .filter((message) =>
+      (message?.role === 'user' || message?.role === 'assistant')
+      && typeof message?.content === 'string'
+      && message.content.trim()
+    )
+    .slice(-20)
+    .map((message) => ({ role: message.role, content: message.content.trim() }));
   try {
     const { data, error } = await supabaseClient.functions.invoke('agente-assistente', {
       body: {
-        messages: [{ role: 'user', content: input }],
+        messages: [...boundedHistory, { role: 'user', content: input }],
         confirm,
         // Passed through as extra context only — the function's own
         // canonical data access remains the authority; this never

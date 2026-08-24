@@ -601,6 +601,7 @@ export const NAV = [
   { id: 'controllo', l: 'Controllo', ic: 'chart' },
   { id: 'archivio', l: 'Documenti', ic: 'folder' },
   { id: 'wa', l: 'WhatsApp', ic: 'wa' },
+  { id: 'chat', l: 'Chat', ic: 'chat' },
   { id: 'agenteai', l: 'Agente AI', ic: 'bot' },
   { id: 'set', l: 'Setup', ic: 'set' },
 ];

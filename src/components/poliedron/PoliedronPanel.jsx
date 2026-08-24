@@ -14,12 +14,25 @@ import PoliedronIntelligenceResults from './PoliedronIntelligenceResults';
    passed in as `state` (already-computed structured output) by the
    Poliedron container. §5: command bar + results + actions is the
    PRIMARY surface; PoliedronConversation (extended answer) only renders
-   when `state.answer` is present. */
+   when `state.answer` is present.
+
+   POL-CHAT-001 §FASE 4/7/11 — what this panel deliberately does NOT contain:
+   the Chat history. No message list, no previous conversations, no persistent
+   thread, no history preview, and no banner about persistent history being
+   available or unavailable (the removed "La cronologia persistente non è
+   disponibile." block). It shows only the CURRENT request and its answer.
+   The persistent history lives on exactly one surface, the Chat page.
+
+   It is also independent of the Chat backend: it receives no conversation, no
+   conversation error and no retry handler, so a missing/failed
+   `poliedron_conversations` / `poliedron_messages` cannot disable or degrade
+   it — persistence of a panel request is best-effort and handled upstream in
+   Poliedron.jsx. Still ONE Poliedron: same instance, same agent. */
 export default function PoliedronPanel({
   panelId, isMobile, query, onQueryChange, state, loading,
   highlightedIndex, onHighlightChange, onSelectResult, onConfirmAction, onModifyAction, onSubmit,
   onConfirmActionPlan, actionRunning, actionRunResult,
-  onClose, inputRef,
+  onClose, inputRef, submitDisabled = false, interactionDisabled = false,
 }) {
   const containerRef = useRef(null);
 
@@ -41,7 +54,7 @@ export default function PoliedronPanel({
       const item = flatItemAt(state?.searchResults || [], highlightedIndex);
       if (item) onSelectResult(item);
       else if (state?.suggestedActions?.[0] && !state?.selectionRequired) onConfirmAction(state.suggestedActions[0]);
-      else onSubmit?.();
+      else if (!submitDisabled && !interactionDisabled) onSubmit?.();
     }
   };
 
@@ -81,12 +94,13 @@ export default function PoliedronPanel({
             ref={inputRef}
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
+            disabled={interactionDisabled}
             placeholder="Chiedi o fai qualsiasi cosa…"
             aria-label="Chiedi o fai qualsiasi cosa"
             style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', fontSize: 16, padding: '4px 0', color: C.txt }}
           />
           {query.trim() && (
-            <button className="poliedron-ask-button" onClick={onSubmit} aria-label="Invia a Poliedron">
+            <button className="poliedron-ask-button" onClick={onSubmit} disabled={submitDisabled || interactionDisabled} aria-label="Invia a Poliedron">
               <span>Chiedi</span><Ic n="send" s={12} c="#fff" />
             </button>
           )}

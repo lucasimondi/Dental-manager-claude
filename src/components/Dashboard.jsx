@@ -14,7 +14,7 @@ import { getHomeFinancialWidget, loadHomeFinancialSnapshot } from '../lib/homeFi
 import QuickBookingModal from './QuickBookingModal.jsx';
 import { DEFAULT_QUICK_ACTION_IDS, filterQuickActionsCatalog, getQuickAction, resolveQuickActions } from '../lib/quickActionsCatalog.js';
 import poliedroGem from '../assets/icon-poliedra-gem.png';
-import { isHomeLayoutDiagnosticsEnabled, logHomeLayoutEvent } from '../lib/homeLayoutDiagnostics.js';
+import { logHomeLayoutEvent } from '../lib/homeLayoutDiagnostics.js';
 import { buildActivityText } from '../lib/appointmentQuickHub.js';
 import { MOBILE_DOCK_BOTTOM, MOBILE_DOCK_HEIGHT, MOBILE_DOCK_PROTECTED_GAP } from '../lib/poliedron/poliedronMobileDock.js';
 
@@ -225,21 +225,19 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
      discarded instead of overwriting the just-persisted layout. */
   const layoutSaveEpochRef = useRef(0);
 
-  /* POL-UI-015 round 4 — the Product Owner tests exclusively on the Netlify
-     deploy preview, from an iPhone (verified from the project's own edge
-     logs: every preview-#51 request comes from iOS Safari). Three rounds in
-     a row could not tell whether the "Salva Home" click even reached
-     `saveHomeCustomization`, because there was no observable trail in a
-     production build. `homeSaveDiag` is that trail, rendered right under
-     the button and gated on the SAME preview-only switch as the console
-     events, so the Product Owner can read the stage and the chosen save
-     branch straight off the screen on the phone, without a devtools
-     console. It never renders in production. */
-  const diagnosticsEnabled = isHomeLayoutDiagnosticsEnabled();
-  const [homeSaveDiag, setHomeSaveDiag] = useState(null);
+  /* POL-UI-015 round 4 diagnosed the "Salva Home" bug with an on-screen
+     save-state readout under the button, because the Product Owner tests on a
+     phone with no devtools console. That bug is fixed and merged, so
+     POL-CHAT-001 §FASE 13 REMOVES the visual diagnostic block from the UI
+     entirely — no badge, no on-screen state dump, no extra React state.
+
+     What is intentionally kept: the internal, non-sensitive event trail
+     (`logHomeLayoutEvent`), which is gated to dev/deploy-preview hosts, never
+     runs in production, and logs only shape info (counts, source labels,
+     booleans, widget ids). The SAVE LOGIC and the persistence path are
+     untouched — this change is presentational only. */
   const traceHomeSave = (event, detail) => {
     logHomeLayoutEvent(event, detail);
-    if (diagnosticsEnabled) setHomeSaveDiag({ event, detail: detail || null, at: new Date().toLocaleTimeString('it-IT') });
   };
 
   useEffect(() => {
@@ -422,21 +420,6 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
     } catch (error) { setLayoutError(error?.message ? `Salvataggio del predefinito studio non riuscito: ${error.message}` : 'Salvataggio del predefinito studio non riuscito.'); }
     finally { setLayoutSaving(false); }
   };
-  /* POL-UI-015 round 4 §4 — preview/dev-only save-state readout. Renders
-     directly under the "Salva Home" button so the Product Owner can see,
-     on the phone he actually tests with, which branch the save takes and
-     where it stops. `diagnosticsEnabled` is false on every production
-     hostname, so production users never see this block. */
-  const homeSaveDiagBadge = !diagnosticsEnabled ? null : (
-    <div style={{ marginTop: 8, padding: '7px 9px', borderRadius: 8, background: C.bg, border: `1px dashed ${C.brd}`, fontSize: 10.5, lineHeight: 1.45, color: C.txm, fontFamily: 'ui-monospace,SFMono-Regular,Menlo,monospace', wordBreak: 'break-word' }}>
-      <div style={{ fontWeight: 800, color: C.txl, textTransform: 'uppercase', letterSpacing: '0.05em' }}>DEV/PREVIEW · save state</div>
-      <div>ramo: {draftInherits ? 'inherit (elimina layout utente)' : 'user (salva layout utente)'} · fonte: {layoutSource}</div>
-      <div>stato: {layoutSaving ? 'saving' : layoutLoading ? 'loading' : layoutError ? 'error' : 'ready'} · identità: {studioId ? 'studio✓' : 'studio✗'} {userId ? 'utente✓' : 'utente✗'}</div>
-      <div>ultimo evento: {homeSaveDiag ? `${homeSaveDiag.event} (${homeSaveDiag.at})` : 'nessun click registrato'}</div>
-      {homeSaveDiag?.detail && <div>dettaglio: {JSON.stringify(homeSaveDiag.detail)}</div>}
-    </div>
-  );
-
   const [todoList, setTodoList] = useState([]);
   const [todoInput, setTodoInput] = useState('');
   const [todoModal, setTodoModal] = useState(false);
@@ -666,7 +649,6 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                   again look enabled while ignoring clicks. */}
               <button type="button" disabled={layoutSaving} onClick={saveHomeCustomization} style={{ padding:'9px 16px',background:C.pri,border:'none',borderRadius:9,color:'#fff',fontWeight:800,fontSize:12,cursor:layoutSaving?'progress':'pointer',opacity:layoutSaving?0.6:1,flexShrink:0,whiteSpace:'nowrap',minHeight:44 }}>{layoutSaving ? 'Salvataggio…' : 'Salva Home'}</button>
             </div>
-            {homeSaveDiagBadge}
           </>}
 
           {/* TAB AZIONI RAPIDE */}
@@ -723,7 +705,6 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                   <button type="button" disabled={layoutSaving} onClick={saveHomeCustomization} style={{ padding: '9px 16px', background: C.pri, border: 'none', borderRadius: 9, color: '#fff', fontWeight: 800, fontSize: 12, cursor: layoutSaving ? 'progress' : 'pointer', opacity: layoutSaving ? 0.6 : 1, flexShrink: 0, whiteSpace: 'nowrap', minHeight: 44 }}>{layoutSaving ? 'Salvataggio…' : 'Salva Home'}</button>
                 </div>
                 {layoutError && <div role="alert" style={{ marginTop: 10, fontSize: 12, color: C.dan, fontWeight: 700 }}>{layoutError}</div>}
-                {homeSaveDiagBadge}
               </>
             );
           })()}

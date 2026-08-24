@@ -23,6 +23,7 @@ const ALIASES = Object.freeze({
   controllo: ['controllo di gestione', 'gestione', 'economico', 'kpi', 'management control', 'conto economico'],
   archivio: ['documenti', 'archivio documenti', 'files', 'file'],
   wa: ['whatsapp', 'messaggi', 'messaggio'],
+  chat: ['chat polyedron', 'conversazione', 'messaggi polyedron'],
   agenteai: ['assistente ai', 'ai setup', 'configurazione ai'],
   set: ['impostazioni', 'setup', 'configurazione', 'profilo', 'team', 'postazioni'],
 });

@@ -6,12 +6,24 @@ import PoliedronOrb from './PoliedronOrb.jsx';
 /* POL-UI-015 §9-10: `set` (Impostazioni) no longer has a dock slot — it
    moved to the central Poliedron panel's default suggestions (see
    searchEngine.js's suggestedIdle, "APRI UNA SEZIONE"). Its slot is now
-   `chat`: NOT a second page/route and NOT a second Poliedron — it opens
-   the exact same conversation the central button already opens (same
-   `open`/`onToggle`/`panelId`), per the task's own architectural
-   principle. `chat` is handled like `__poliedron__` below rather than
-   through the generic `setPage(item.id)` path every other item uses,
-   since there is no `'chat'` page for App.jsx to navigate to. */
+   `chat`.
+
+   POL-CHAT-001 merge (PR #53 into the merged PR #51): PR #51 could only
+   ship `chat` as a PLACEHOLDER — it called `onToggle`, i.e. it reopened
+   the quick Poliedron panel, because no Chat route existed yet. The real
+   persistent Chat now does exist, so this slot navigates to it through the
+   same generic `setPage(item.id)` path every other dock item uses, and the
+   placeholder branch is gone. This is still ONE Poliedron: the Chat page is
+   a portal host that the single Poliedron instance renders into (see
+   App.jsx's `poliedronChatHost` and Poliedron.jsx's `chatHost`), not a
+   second agent.
+
+   POL-CHAT-001 §FASE 9 — the unread badge is owned by the NOTIFICATION BELL
+   only (`PoliedronBell`, mobile and desktop). This dock slot deliberately
+   carries NO badge: the bell and the dock both point at the same single
+   conversation, so a second badge here would be a duplicate of the same
+   count on the same screen. The dock's approved geometry, position and size
+   are unchanged. */
 export const MOBILE_DOCK_ITEMS = Object.freeze([
   { id: 'home', label: 'Home', icon: 'home' },
   { id: 'agenda', label: 'Agenda', icon: 'cal' },
@@ -36,24 +48,6 @@ export default function PoliedronMobileDock({ page, setPage, open, onToggle, pan
                 document.body
               )}
             </div>
-          );
-        }
-
-        if (item.id === 'chat') {
-          return (
-            <button
-              key={item.id}
-              type="button"
-              className={`poliedron-mobile-dock__item${open ? ' is-active' : ''}`}
-              aria-label={`${item.label} Poliedron`}
-              aria-haspopup="dialog"
-              aria-expanded={open}
-              aria-controls={panelId}
-              tabIndex={open ? -1 : 0}
-              onClick={onToggle}
-            >
-              <Ic n={item.icon} s={22} />
-            </button>
           );
         }
 

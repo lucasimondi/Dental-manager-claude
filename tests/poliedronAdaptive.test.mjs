@@ -174,14 +174,34 @@ test('mobile dock has exactly HOME, AGENDA, POLIEDRON, PAZIENTI, CHAT in that or
   assert.equal(ids.slice(0, 5).length, 5);
 });
 
-test('mobile dock Chat button opens the same Poliedron conversation (onToggle), never a second page/agent', () => {
-  assert.match(mobileDockSource, /if \(item\.id === 'chat'\)/);
-  assert.match(mobileDockSource, /onClick=\{onToggle\}/);
-  assert.doesNotMatch(mobileDockSource, /setPage\('chat'\)/);
+/* POL-CHAT-001 merge: PR #51 shipped the Chat dock slot as a PLACEHOLDER
+   that called `onToggle` (reopening the quick panel) because no Chat route
+   existed yet, and its test pinned exactly that. PR #53 provides the real
+   persistent Chat, so the slot now navigates to the Chat page like every
+   other dock item. The "one Poliedron" principle is unchanged and is
+   re-asserted here: the dock must not mount a Poliedron of its own, and the
+   Chat page is a portal host the single instance renders into. */
+test('mobile dock Chat button opens the real persistent Chat page, not the placeholder quick panel', () => {
+  assert.doesNotMatch(mobileDockSource, /if \(item\.id === 'chat'\)[\s\S]{0,400}onClick=\{onToggle\}/);
+  assert.match(mobileDockSource, /onClick=\{\(\) => setPage\(item\.id\)\}/);
+  const ids = [...mobileDockSource.matchAll(/\{ id: '([^']+)'/g)].map((match) => match[1]);
+  assert.ok(ids.includes('chat'), 'the dock still routes to the chat page id');
+});
+
+/* POL-CHAT-001 §FASE 9: the unread badge belongs to the notification bell
+   only. The dock's Chat slot must NOT duplicate the same count. */
+test('mobile dock carries no duplicate unread badge and mounts no second Poliedron', () => {
+  assert.doesNotMatch(mobileDockSource, /unreadCount/);
+  assert.doesNotMatch(mobileDockSource, /poliedron-mobile-dock__badge/);
+  // The only Poliedron surface the dock mounts is the shared central orb.
+  assert.equal((mobileDockSource.match(/<PoliedronOrb/g) || []).length, 1);
+  assert.doesNotMatch(mobileDockSource, /<Poliedron\b/);
 });
 
 test('mobile dock exposes only four icon routes plus the central Poliedron hero slot', () => {
   assert.match(mobileDockSource, /data-slot="poliedron"/);
+  // POL-CHAT-001 §FASE 9: every slot keeps its plain accessible name; the
+  // unread count is announced by the bell, which owns it.
   assert.match(mobileDockSource, /aria-label=\{item\.label\}/);
   assert.match(mobileDockSource, /aria-current=\{active \? 'page'/);
   assert.match(mobileDockSource, /s=\{22\}/);

@@ -1,15 +1,60 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import ReactDOM from 'react-dom';
 import PoliedronEdgeDock from './PoliedronEdgeDock';
 import PoliedronMobileDock from './PoliedronMobileDock';
 import PoliedronBell from './PoliedronBell';
 import PoliedronPanel from './PoliedronPanel';
+import PoliedronChatPage from './PoliedronChatPage';
+import usePoliedronConversation from './usePoliedronConversation';
 import { NAVIGATION_INDEX } from '../../lib/poliedron/navigationIndex';
 import { buildIntelligencePermissions, filterNavigationIndex, isActionAllowed } from '../../lib/poliedron/permissionEngine';
 import { ACTION_REGISTRY } from '../../lib/poliedron/actionRegistry';
 import { buildContext } from '../../lib/poliedron/contextEngine';
 import { processQuery } from '../../lib/poliedron/poliedraCore';
 import { runActionPlan } from '../../lib/poliedron/planner/actionExecutor';
+import {
+  createChatRequestId,
+  normalizeModelHistory,
+} from '../../lib/poliedron/conversationRepository.js';
+import { describeChatError, resolveChatSurfaceState } from '../../lib/poliedron/chatErrorState.js';
 import { DB } from '../../lib/supabase.js';
+
+const summarizeStructuredResult = (result) => {
+  if (result?.answer) return result.answer;
+  if (result?.directNavigation) return null;
+  if (result?.actionPlan) {
+    const steps = result.actionPlan.steps?.length || 0;
+    const stepNames = (result.actionPlan.steps || [])
+      .map((step) => step.type)
+      .filter(Boolean)
+      .slice(0, 5);
+    return [
+      `Ho preparato un piano d'azione${steps ? ` con ${steps} passaggi` : ''}.`,
+      stepNames.length ? `Passaggi: ${stepNames.join(', ')}.` : '',
+      'Per sicurezza, l’esecuzione richiede sempre una nuova conferma esplicita nella sessione attiva.',
+    ].filter(Boolean).join(' ');
+  }
+  if (result?.intelligence) {
+    const groups = result.intelligence.groups || result.intelligence.results || [];
+    const count = Array.isArray(groups)
+      ? groups.reduce((total, group) => total + (group.items?.length || 0), 0)
+      : 0;
+    return `Ho completato l’analisi sui dati autorevoli disponibili${count ? ` e trovato ${count} elementi` : ''}.`;
+  }
+  if (result?.confirmationRequired) {
+    const actions = (result.suggestedActions || []).map((action) => action.label).filter(Boolean).slice(0, 3);
+    return actions.length
+      ? `Ho preparato la richiesta: ${actions.join(', ')}. L’azione richiede una nuova conferma esplicita nella sessione attiva.`
+      : 'Ho preparato la richiesta. L’azione richiede una nuova conferma esplicita nella sessione attiva.';
+  }
+  const labels = (result?.searchResults || [])
+    .flatMap((group) => group.items || [])
+    .map((item) => item.label)
+    .filter(Boolean)
+    .slice(0, 5);
+  if (labels.length) return `Ho trovato: ${labels.join(', ')}.`;
+  return 'Ho elaborato la richiesta con le funzioni attualmente disponibili a Polyedron.';
+};
 
 /* POL-AI-001 §33 / POL-AI-002A §16-17 — mounted exactly once by App.jsx,
    survives every page change. This is the only file that talks to the
@@ -19,11 +64,15 @@ import { DB } from '../../lib/supabase.js';
    identity, one Poliedra AI Core). */
 export default function Poliedron({
   isMobile, page, setPage, patients, plans, payments, pricelist, appointments, richiami, impegni, goSchedaPaz,
-  features, isStudioAdmin, vertical, studioId, currentPatient,
+  features, isStudioAdmin, vertical, studioId, userId, currentPatient,
   quickActionCtx, supabaseClient, onArchivioFilterHint, openPrescription, openNew, openBooking,
-  externalCommandRequest, onExternalCommandHandled,
-  // POL-UI-015 §7: no producer wired yet anywhere — see PoliedronBell.jsx.
-  unreadCount = 0,
+  externalCommandRequest, onExternalCommandHandled, chatHost,
+  /* POL-CHAT-001 merge: PR #51 declared an `unreadCount = 0` PROP here
+     because §7 explicitly shipped the bell without a notification engine.
+     PR #53 supplies the real producer — the conversation hook below returns
+     an authoritative `unreadCount` from the persisted conversation —
+     so the placeholder prop is deliberately gone: keeping it would shadow
+     the real value and re-freeze the badge at 0. */
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -33,13 +82,44 @@ export default function Poliedron({
   // POL-AI-005B: outcome of the last runActionPlan() call — null while
   // idle/previewing, then { outcome, completedSteps, failedStep,
   // recoveryActions } once the user has confirmed and execution finished.
-  const [actionRunResult, setActionRunResult] = useState(null);
-  const [actionRunning, setActionRunning] = useState(false);
+  const [panelActionRunResult, setPanelActionRunResult] = useState(null);
+  const [panelActionRunning, setPanelActionRunning] = useState(false);
+  const [chatActionRunResult, setChatActionRunResult] = useState(null);
+  const [chatActionRunning, setChatActionRunning] = useState(false);
   const [externalContext, setExternalContext] = useState(null);
+  const [chatStructuredState, setChatStructuredState] = useState(null);
+  const [chatSending, setChatSending] = useState(false);
+  const [chatError, setChatError] = useState('');
   const inputRef = useRef(null);
   const panelId = useId();
   const requestSeq = useRef(0);
   const previewTimerRef = useRef(null);
+  const persistedRequestRef = useRef(false);
+  const actionExecutionRef = useRef(false);
+  const pendingPanelRequestRef = useRef(null);
+  const pendingChatRequestRef = useRef(null);
+  const pageRef = useRef(page);
+  const openRef = useRef(open);
+  const conversationMessagesRef = useRef([]);
+  const {
+    conversation: primaryConversation,
+    messages: conversationMessages,
+    hasOlder: conversationHasOlder,
+    loading: conversationLoading,
+    loadingOlder: conversationLoadingOlder,
+    unreadCount,
+    error: conversationError,
+    errorState: conversationErrorState,
+    loadOlder: loadOlderMessages,
+    appendMessage,
+    setDeliveryStatus,
+    markVisibleMessagesRead,
+    retryInitialization,
+  } = usePoliedronConversation({
+    client: supabaseClient,
+    studioId,
+    userId,
+  });
 
   const permissionCtx = useMemo(() => ({ features, isStudioAdmin }), [features, isStudioAdmin]);
 
@@ -66,6 +146,36 @@ export default function Poliedron({
     [page, vertical, studioId, currentPatient, externalContext, isStudioAdmin, features]
   );
 
+  const processPermissions = useMemo(() => ({
+    managementControl: permissionCtx.features?.controllo_gestione === true && !!isStudioAdmin,
+    intelligence: intelligencePermissions,
+    homePermissions: quickActionCtx?.permissions || {},
+  }), [permissionCtx, intelligencePermissions, isStudioAdmin, quickActionCtx]);
+
+  const processSources = useMemo(() => ({
+    patients,
+    plans,
+    payments,
+    pricelist,
+    appointments,
+    recalls: richiami,
+    activities: impegni,
+    navigationIndex,
+    actions,
+  }), [patients, plans, payments, pricelist, appointments, richiami, impegni, navigationIndex, actions]);
+
+  useEffect(() => {
+    pageRef.current = page;
+  }, [page]);
+
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
+
+  useEffect(() => {
+    conversationMessagesRef.current = conversationMessages;
+  }, [conversationMessages]);
+
   // §25 — Cmd/Ctrl+K opens Poliedron from anywhere, desktop only per spec
   // (mobile stays touch-first). Registered at document level so it works
   // regardless of which page/element currently has focus.
@@ -87,56 +197,193 @@ export default function Poliedron({
     setOpen(false);
     setQuery('');
     setState(null);
-    setActionRunResult(null);
+    setPanelActionRunResult(null);
     setExternalContext(null);
   }, []);
 
-  const runQuery = useCallback((q, { allowModel = false } = {}) => {
-    const seq = ++requestSeq.current;
-    setLoading(true);
+  const processRequest = useCallback((q, { allowModel = false, conversationHistory = [] } = {}) =>
     processQuery({
       query: q,
       context,
-      permissions: {
-        managementControl: permissionCtx.features?.controllo_gestione === true && !!isStudioAdmin,
-        intelligence: intelligencePermissions,
-        homePermissions: quickActionCtx?.permissions || {},
-      },
-      sources: {
-        patients,
-        plans,
-        payments,
-        pricelist,
-        appointments,
-        recalls: richiami,
-        activities: impegni,
-        navigationIndex,
-        actions,
-      },
+      permissions: processPermissions,
+      sources: processSources,
+      conversationHistory,
       supabaseClient,
       allowModel,
-    }).then((result) => {
-      if (seq !== requestSeq.current) return; // stale response from an earlier keystroke — dropped
-      // Only intentEngine-confirmed navigation phrases can reach this path.
-      // Bare aliases remain in the panel as ranked suggestions.
-      if (result.directNavigation) {
-        const { navId, filtroTipo } = result.directNavigation;
-        if (navId === 'archivio') onArchivioFilterHint?.(filtroTipo || 'tutti');
-        setPage(navId);
-        setLoading(false);
-        close();
-        return;
+    }), [context, processPermissions, processSources, supabaseClient]);
+
+  const executePersistedQuery = useCallback(async (
+    q,
+    { retryMessage = null, requestId: retainedRequestId = null, readAssistant = false } = {}
+  ) => {
+    const requestId = retryMessage?.request_id || retainedRequestId || createChatRequestId();
+    let userMessage = retryMessage;
+    if (retryMessage) {
+      userMessage = await setDeliveryStatus(retryMessage.id, 'pending');
+    } else {
+      userMessage = await appendMessage({
+        requestId,
+        role: 'user',
+        content: q,
+        deliveryStatus: 'pending',
+      });
+    }
+
+    try {
+      const result = await processRequest(q, {
+        allowModel: true,
+        conversationHistory: normalizeModelHistory(conversationMessagesRef.current, {
+          excludeRequestId: requestId,
+        }),
+      });
+      if (result.modelError) throw new Error(result.modelError);
+
+      let assistantText = summarizeStructuredResult(result);
+      if (!assistantText && result.directNavigation) {
+        const destination = navigationIndex.find((item) => item.id === result.directNavigation.navId);
+        assistantText = destination ? `Apro ${destination.label}.` : 'Apro la sezione richiesta.';
       }
-      setActionRunResult(null);
-      setState(result);
-      setHighlightedIndex(0);
+      if (assistantText) {
+        await appendMessage({
+          requestId,
+          role: 'assistant',
+          content: assistantText,
+          deliveryStatus: 'sent',
+          readAt: (typeof readAssistant === 'function' ? readAssistant() : readAssistant)
+            ? new Date().toISOString()
+            : null,
+          metadata: { intent: result.intent || null },
+        });
+      }
+      await setDeliveryStatus(userMessage.id, 'sent');
+      return result;
+    } catch (nextError) {
+      await setDeliveryStatus(userMessage.id, 'failed');
+      throw nextError;
+    }
+  }, [appendMessage, navigationIndex, processRequest, setDeliveryStatus]);
+
+  const runPersistedRequest = useCallback(async (q, options = {}) => {
+    if (!primaryConversation?.id) throw new Error('CHAT_CONVERSATION_NOT_READY');
+    if (persistedRequestRef.current) throw new Error('CHAT_REQUEST_IN_PROGRESS');
+    persistedRequestRef.current = true;
+    setChatSending(true);
+    try {
+      return await executePersistedQuery(q, options);
+    } finally {
+      persistedRequestRef.current = false;
+      setChatSending(false);
+    }
+  }, [executePersistedQuery, primaryConversation?.id]);
+
+  const applyQuickResult = useCallback((result) => {
+    if (result.directNavigation) {
+      const { navId, filtroTipo } = result.directNavigation;
+      if (navId === 'archivio') onArchivioFilterHint?.(filtroTipo || 'tutti');
+      setPage(navId);
       setLoading(false);
+      close();
+      return;
+    }
+    setPanelActionRunResult(null);
+    setState(result);
+    setHighlightedIndex(0);
+    setLoading(false);
+  }, [close, onArchivioFilterHint, setPage]);
+
+  const runQuery = useCallback((q, { allowModel = false, persist = false } = {}) => {
+    if (actionExecutionRef.current) return;
+    const seq = ++requestSeq.current;
+    setLoading(true);
+    let retainedRequest = null;
+    if (persist) {
+      retainedRequest = pendingPanelRequestRef.current?.content === q
+        ? pendingPanelRequestRef.current
+        : { content: q, requestId: createChatRequestId() };
+      pendingPanelRequestRef.current = retainedRequest;
+    }
+    const request = persist
+      ? runPersistedRequest(q, {
+          requestId: retainedRequest.requestId,
+          readAssistant: () => requestSeq.current === seq && openRef.current,
+        }).catch((persistError) => {
+          /* POL-CHAT-001 §FASE 11 — the quick panel must answer even when the
+             persistent Chat backend is unavailable. `persist` is already
+             false when we know persistence is down, so this only covers the
+             race where the conversation disappears between the check and the
+             call: persistence is best-effort, answering is not optional. */
+          if (persistError?.message !== 'CHAT_CONVERSATION_NOT_READY') throw persistError;
+          pendingPanelRequestRef.current = null;
+          return processRequest(q, { allowModel: true });
+        })
+      : processRequest(q, { allowModel });
+    request.then((result) => {
+      if (persist && pendingPanelRequestRef.current?.requestId === retainedRequest.requestId) {
+        pendingPanelRequestRef.current = null;
+      }
+      if (seq !== requestSeq.current) return; // stale response from an earlier keystroke — dropped
+      applyQuickResult(result);
     }).catch(() => {
       if (seq !== requestSeq.current) return;
       setState({ answer: 'Non riesco a completare la richiesta in questo momento. Riprova.' });
       setLoading(false);
     });
-  }, [context, permissionCtx, intelligencePermissions, isStudioAdmin, patients, plans, payments, pricelist, appointments, richiami, impegni, navigationIndex, actions, supabaseClient, quickActionCtx, setPage, onArchivioFilterHint, close]);
+  }, [applyQuickResult, processRequest, runPersistedRequest]);
+
+  const runChatMessage = useCallback(async (text, retryMessage = null) => {
+    if (persistedRequestRef.current || actionExecutionRef.current || !primaryConversation?.id) {
+      /* POL-CHAT-001 §FASE 10 — precedence. A real initialization failure is
+         reported as what it is (missing schema / denied permission / no
+         network); "si sta ancora caricando" is said ONLY when the
+         conversation is genuinely still initializing with no error. */
+      const described = conversationErrorState;
+      setChatError(
+        actionExecutionRef.current
+          ? 'Attendi il completamento del piano d’azione in corso.'
+          : primaryConversation?.id
+          ? 'Attendi il completamento della richiesta in corso.'
+          : described
+          ? described.message
+          : conversationLoading
+          ? 'La conversazione si sta ancora caricando. Riprova tra poco.'
+          : 'La Chat non è disponibile in questo momento. Riprova.'
+      );
+      return false;
+    }
+    setChatError('');
+    setChatStructuredState(null);
+    setChatActionRunResult(null);
+    const retainedRequest = retryMessage
+      ? { content: text, requestId: retryMessage.request_id }
+      : pendingChatRequestRef.current?.content === text
+        ? pendingChatRequestRef.current
+        : { content: text, requestId: createChatRequestId() };
+    pendingChatRequestRef.current = retainedRequest;
+    try {
+      const result = await runPersistedRequest(text, {
+        retryMessage,
+        requestId: retainedRequest.requestId,
+        readAssistant: () => pageRef.current === 'chat',
+      });
+      if (pendingChatRequestRef.current?.requestId === retainedRequest.requestId) {
+        pendingChatRequestRef.current = null;
+      }
+      if (result.directNavigation) {
+        const { navId, filtroTipo } = result.directNavigation;
+        if (navId === 'archivio') onArchivioFilterHint?.(filtroTipo || 'tutti');
+        setPage(navId);
+      } else if (!result.answer) {
+        setChatStructuredState(result);
+      }
+      return true;
+    } catch (sendError) {
+      // FASE 10: classify the send failure too, instead of blaming the network
+      // for what may be a permission or schema problem.
+      const described = describeChatError(sendError);
+      setChatError(described?.message || 'Non riesco a completare la richiesta. Riprova.');
+      return false;
+    }
+  }, [conversationErrorState, conversationLoading, onArchivioFilterHint, primaryConversation?.id, runPersistedRequest, setPage]);
 
   /** POL-AI-005B §CONFIRM: called only from an explicit user click on the
    *  Level-2 preview's Confirm button — never automatically. Re-loads
@@ -146,15 +393,28 @@ export default function Poliedron({
    *  props ARE the freshest available snapshot at click time — passed
    *  straight through, satisfying runActionPlan's "must not be a stale
    *  preview snapshot" contract without a redundant extra fetch. */
-  const handleConfirmActionPlan = useCallback(async (plan) => {
-    setActionRunning(true);
+  const executeActionPlan = useCallback(async (plan, setRunning, setResult) => {
+    if (actionExecutionRef.current) return;
+    actionExecutionRef.current = true;
+    setRunning(true);
     try {
       const result = await runActionPlan(plan, { db: DB, patients, homePermissions: quickActionCtx?.permissions || {}, studioId });
-      setActionRunResult(result);
+      setResult(result);
     } finally {
-      setActionRunning(false);
+      actionExecutionRef.current = false;
+      setRunning(false);
     }
   }, [patients, quickActionCtx, studioId]);
+
+  const handleConfirmPanelActionPlan = useCallback(
+    (plan) => executeActionPlan(plan, setPanelActionRunning, setPanelActionRunResult),
+    [executeActionPlan]
+  );
+
+  const handleConfirmChatActionPlan = useCallback(
+    (plan) => executeActionPlan(plan, setChatActionRunning, setChatActionRunResult),
+    [executeActionPlan]
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -165,11 +425,12 @@ export default function Poliedron({
   }, [query, open, runQuery]);
 
   const handleQueryChange = useCallback((value) => {
+    if (actionExecutionRef.current) return;
     requestSeq.current += 1;
     setQuery(value);
     setLoading(false);
     setState(null);
-    setActionRunResult(null);
+    setPanelActionRunResult(null);
     setHighlightedIndex(0);
   }, []);
 
@@ -182,7 +443,7 @@ export default function Poliedron({
     });
     setQuery(command);
     setState(null);
-    setActionRunResult(null);
+    setPanelActionRunResult(null);
     setHighlightedIndex(0);
     setOpen(true);
     onExternalCommandHandled?.(externalCommandRequest.id);
@@ -222,16 +483,59 @@ export default function Poliedron({
     close();
   }, [navCtx, state, close]);
 
+  const handleConfirmChatAction = useCallback((action, selectedPatient) => {
+    const patient = selectedPatient || chatStructuredState?.entities?.patientCandidates?.[0];
+    action.navigate(navCtx, patient, { drug: chatStructuredState?.entities?.drugText || '' });
+    setChatStructuredState(null);
+  }, [navCtx, chatStructuredState]);
+
+  const handleChatSelectResult = useCallback((item) => {
+    if (item.kind === 'patient' || item.kind === 'intelligence-patient') {
+      goSchedaPaz?.(item.data?.patient || item.data);
+      setChatStructuredState(null);
+      return;
+    }
+    if (item.kind === 'section') {
+      const destination = item.data?.page || item.id;
+      if (destination === 'archivio') onArchivioFilterHint?.(item.data?.filtroTipo || 'tutti');
+      setPage(destination);
+      setChatStructuredState(null);
+      return;
+    }
+    if (item.kind === 'action') {
+      item.data.navigate(navCtx, item.data.entity);
+      setChatStructuredState(null);
+    }
+  }, [goSchedaPaz, navCtx, onArchivioFilterHint, setPage]);
+
   const handleModifyAction = useCallback(() => {
     inputRef.current?.focus();
   }, []);
 
   const onToggle = useCallback(() => setOpen((v) => !v), []);
+
+  /* POL-CHAT-001 §FASE 11 — persistence is BEST-EFFORT for the quick panel.
+     The panel's ability to answer must not be coupled to the existence of
+     `poliedron_conversations` / `poliedron_messages`: when the conversation is
+     absent or failed to initialize, the same request runs through the same
+     `processRequest` (same agent, same context engine, same permissions) and
+     is simply not written to the persistent thread. */
+  const chatPersistenceAvailable = Boolean(primaryConversation?.id) && !conversationError;
   const submitQuery = useCallback(() => {
     if (!query.trim()) return;
     if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
-    runQuery(query, { allowModel: true });
-  }, [query, runQuery]);
+    runQuery(query, { allowModel: true, persist: chatPersistenceAvailable });
+  }, [chatPersistenceAvailable, query, runQuery]);
+
+  /* POL-CHAT-001 §FASE 10 — the single precedence rule for the Chat surface
+     (initialization error > generic send error > loading > empty > ready),
+     computed in one place instead of being re-derived by each JSX branch. */
+  const chatSurface = useMemo(() => resolveChatSurfaceState({
+    loading: conversationLoading,
+    conversationError,
+    chatError,
+    messageCount: conversationMessages.length,
+  }), [chatError, conversationError, conversationLoading, conversationMessages.length]);
 
   return (
     <>
@@ -242,10 +546,28 @@ export default function Poliedron({
       {isMobile
         ? <PoliedronMobileDock page={page} setPage={setPage} open={open} onToggle={onToggle} panelId={panelId} />
         : <PoliedronEdgeDock open={open} onToggle={onToggle} panelId={panelId} />}
-      {/* POL-UI-015 §7 — same open/onToggle/panelId as the Orb/Edge Dock
-          above: the bell is one more entry point into the SAME Poliedron
-          conversation, never a second agent or a second open state. */}
-      <PoliedronBell variant={isMobile ? 'mobile' : 'desktop'} open={open} onToggle={onToggle} unreadCount={unreadCount} panelId={panelId} />
+      {/* POL-CHAT-001 merge — FASE 3: PR #51's bell was a placeholder that
+          reopened the quick panel and carried a badge with no producer; PR
+          #53's bell was a real Chat entry point but re-declared its own
+          markup and position. Merged: the approved PoliedronBell component
+          and its approved mobile/desktop positioning are kept (mobile
+          clears the floating dock's top edge, desktop sits top-right away
+          from the Edge Dock), and it now carries the REAL unread count and
+          opens the REAL persistent Chat. Still one Poliedron: the Chat page
+          is this same instance portalled into `chatHost`, not a second
+          agent. Hidden while already on Chat, where the header owns the
+          surface and everything is read by definition. */}
+      {page !== 'chat' && (
+        <PoliedronBell
+          variant={isMobile ? 'mobile' : 'desktop'}
+          unreadCount={unreadCount}
+          onOpenChat={() => setPage('chat')}
+        />
+      )}
+      {/* POL-CHAT-001 §FASE 4/11 — the quick panel receives NO chat-history
+          props: no message list, no persistent thread, no availability banner.
+          `submitDisabled` is tied only to a persisted request of this same
+          panel being in flight, NEVER to the Chat backend being missing. */}
       {open && (
         <PoliedronPanel
           panelId={panelId}
@@ -259,13 +581,40 @@ export default function Poliedron({
           onSelectResult={handleSelectResult}
           onConfirmAction={handleConfirmAction}
           onModifyAction={handleModifyAction}
-          onConfirmActionPlan={handleConfirmActionPlan}
-          actionRunning={actionRunning}
-          actionRunResult={actionRunResult}
+          onConfirmActionPlan={handleConfirmPanelActionPlan}
+          actionRunning={panelActionRunning}
+          actionRunResult={panelActionRunResult}
           onSubmit={submitQuery}
+          submitDisabled={chatSending}
+          interactionDisabled={panelActionRunning || chatActionRunning}
           onClose={close}
           inputRef={inputRef}
         />
+      )}
+      {chatHost && ReactDOM.createPortal(
+        <PoliedronChatPage
+          messages={conversationMessages}
+          loading={conversationLoading}
+          loadingOlder={conversationLoadingOlder}
+          hasOlder={conversationHasOlder}
+          sending={chatSending || panelActionRunning || chatActionRunning}
+          error={chatSurface.message}
+          errorKind={chatSurface.kind}
+          surfaceStatus={chatSurface.status}
+          structuredState={chatStructuredState}
+          onSend={(text) => runChatMessage(text)}
+          onRetry={(message) => runChatMessage(message.content, message)}
+          onRetryInitialization={conversationError ? retryInitialization : null}
+          onLoadOlder={loadOlderMessages}
+          onVisible={markVisibleMessagesRead}
+          onSelectResult={handleChatSelectResult}
+          onConfirmAction={handleConfirmChatAction}
+          onModifyAction={() => setChatStructuredState(null)}
+          onConfirmActionPlan={handleConfirmChatActionPlan}
+          actionRunning={chatActionRunning}
+          actionRunResult={chatActionRunResult}
+        />,
+        chatHost
       )}
     </>
   );

@@ -15,11 +15,16 @@ test('mobile shell uses a definite dynamic viewport flex chain', () => {
   assert.match(premium, /\.app-shell--mobile[\s\S]*height:\s*100dvh;[\s\S]*min-height:\s*100dvh;/);
 });
 
-test('mobile content reserves only the physical safe area outside Agenda', () => {
-  assert.match(app, /paddingBottom:\s*isMobile\s*\?\s*\(page === 'agenda' \? 0 : 'env\(safe-area-inset-bottom, 0px\)'\)\s*:\s*28/);
+test('mobile content reserves only the physical safe area outside contained Agenda and Chat pages', () => {
+  assert.match(app, /page === 'agenda' \|\| page === 'chat' \? 0 : 'env\(safe-area-inset-bottom, 0px\)'/);
   assert.match(app, /scrollPaddingBottom:\s*isMobile\s*\?\s*'calc\(94px \+ env\(safe-area-inset-bottom, 0px\)\)'/);
   assert.doesNotMatch(app, /paddingBottom:[\s\S]{0,120}92px/);
-  assert.doesNotMatch(premium, /padding[^;\n]*92px/);
+  // POL-CHAT-001 merge: the Chat surface legitimately reserves the floating
+  // dock's 92px on its own scroller, so PR #51's blanket "no 92px padding
+  // anywhere" assertion is narrowed to the Home #app-scroll rule it was
+  // actually written about.
+  assert.match(premium, /\.poliedron-chat\s*\{[\s\S]*padding-bottom:\s*calc\(92px \+ env\(safe-area-inset-bottom, 0px\)\)/);
+  assert.doesNotMatch(premium, /body:has\(\.home-widget-grid\) #app-scroll\s*\{[^}]*92px/);
   // POL-UI-015 §3: Home now gets the same zero-inset #app-scroll treatment
   // Agenda already had — this !important rule used to force a fixed inset
   // back onto Home specifically, silently overriding App.jsx's own inline
@@ -39,10 +44,11 @@ test('mobile Home is fullscreen: .home-page owns content padding, .home-hero is 
   assert.match(premium, /@media \(max-width: 600px\) \{[\s\S]*\.home-dock-clearance\s*\{\s*display:\s*block;\s*\}/);
 });
 
-test('Agenda keeps its own inner scroll while other pages use app-scroll', () => {
-  assert.match(app, /overflowY:\s*isMobile && page === 'agenda'\s*\?\s*'hidden'\s*:\s*'auto'/);
-  assert.match(app, /display:\s*isMobile && page === 'agenda'\s*\?\s*'flex'/);
-  assert.match(app, /page === 'agenda' \? 0 : 'env\(safe-area-inset-bottom, 0px\)'/);
+test('Agenda and Chat keep one owned inner scroll while other pages use app-scroll', () => {
+  assert.match(app, /overflowY:\s*page === 'chat' \|\| \(isMobile && page === 'agenda'\) \? 'hidden' : 'auto'/);
+  assert.match(app, /display:\s*page === 'chat' \|\| \(isMobile && page === 'agenda'\) \? 'flex'/);
+  assert.match(app, /page === 'agenda' \|\| page === 'chat' \? 0 : 'env\(safe-area-inset-bottom, 0px\)'/);
+  assert.match(premium, /\.poliedron-chat__messages\s*\{[\s\S]*overflow-y:\s*auto;/);
   assert.doesNotMatch(agenda, /dockH|dock \(84px/);
 });
 
@@ -81,7 +87,7 @@ test('Agenda appointment menu clears the canonical mobile dock and scrolls inter
 });
 
 test('all required mobile pages share the same app-scroll surface', () => {
-  for (const page of ['home', 'agenda', 'paz', 'piani', 'paga', 'archivio', 'controllo', 'wa', 'set']) {
+  for (const page of ['home', 'agenda', 'paz', 'piani', 'paga', 'archivio', 'controllo', 'wa', 'set', 'chat']) {
     assert.match(app, new RegExp(`page === '${page}'`), `${page} must render inside the shared shell`);
   }
 });

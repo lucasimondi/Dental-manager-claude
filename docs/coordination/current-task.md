@@ -1,6 +1,108 @@
 # Current task
 
-- TASK: POL-UI-015
+- TASK: CHAT-POLYEDRON
+- TITLE: Persistent Chat Polyedron
+- OWNER: COPILOT
+- BRANCH: `lucasimondi-chat-polyedron`
+- BASE: `master` — PR #51 (POL-UI-015 Dashboard Premium V2) merged as
+  `36a149759b7d1cf7827d17d4a8648fdb1f999570`, integrated into this branch by
+  a merge commit (POL-CHAT-001 integration).
+- PR: `#53`
+- STATUS: `WAITING_PRODUCT_OWNER_FINAL_QA` — implementation complete, merged
+  onto the POL-UI-015 master, and the single authorized migration
+  `20260824030000_chat_polyedron.sql` is now APPLIED to project
+  `idklxdqebfceplrualgh` and verified with 26 real-database assertions
+  (all rolled back, no residual test data). FASE 4-13 completed: the quick
+  panel no longer carries any Chat history or history banner and no longer
+  depends on the Chat backend; the Chat page is the one persistent-history
+  surface, with classified error states (loading / empty / schema /
+  permission / network / generic) and initialization-error precedence; the
+  unread badge exists only on the bell; the temporary POL-UI-015 on-screen
+  save diagnostics are removed. Not merged, not deployed to production; no
+  other migration was applied. See the POL-CHAT-001 FASE 1-17 handoff entry
+  for the full evidence and for what remains NOT VERIFIABLE (authenticated
+  browser QA on the preview).
+
+## Objective
+
+Implement Chat as the persistent conversational interface for the one existing
+Polyedron. Reuse the singleton Poliedron orchestration, provider/model gateway,
+context, permission, action, and memory path; persist one continuous primary
+thread per active studio user with fail-closed RLS; expose the same conversation
+through mobile Chat, desktop navigation, and a real unread bell.
+
+## Completed scope
+
+- Persistent recent history with bounded upward pagination.
+- Studio + user isolation, active-membership enforcement, RLS, indexes, and
+  synthetic cross-user/cross-tenant tests in one additive migration.
+- Same `processQuery` / Model Gateway / `agente-assistente` path as the existing
+  Polyedron; no second chatbot, provider, prompt stack, or orchestration layer.
+- Mobile-first dynamic-viewport Chat, desktop long-conversation layout,
+  keyboard-safe composer, retry/double-submit/slow-response handling, and
+  near-bottom conditional auto-scroll.
+- Real unread/read semantics (`read` never means task completion).
+- Mobile Chat replaces Setup in the five-slot dock. Setup remains explicitly
+  available in the Poliedron navigation menu, per Product Owner decision.
+- Desktop Chat navigation and a global bell open the same primary conversation.
+
+## Safety boundaries
+
+- Do not modify Agenda's unrelated booking-request bell semantics.
+- Do not implement reminders, scheduler/cron, proactive message generation,
+  autonomous loops, task completion/snooze, push, email, or SMS.
+- Do not weaken RLS, add tenant fallback, expose provider secrets, duplicate
+  Polyedron, or invent production state.
+- Do not apply migrations remotely, deploy, merge, or use production data.
+
+## Exact next action
+
+Product Owner reviews PR #53, including mobile/desktop
+conversation UX and the additive migration/RLS contract. Do not merge, deploy,
+or apply `20260824030000_chat_polyedron.sql` remotely without explicit Product
+Owner approval.
+
+## POL-CHAT-001 — integration of the merged POL-UI-015 master
+
+The new `master` (merge commit `36a1497`) is the source of truth for Dashboard
+Premium V2, persistent Home personalization, the Richiami widget, mobile
+fullscreen Home, the floating hero, dock clearance, the Consigli Poliedron
+carousel, and the STRUCTURE of both the notification bell and the mobile dock.
+This branch remains the source of truth for the persistent Chat itself:
+conversations/messages, unread/read state, the Chat route, the Chat entry in
+the dock, the bell wired to Chat, Chat persistence/Realtime, and the Chat
+migration.
+
+Where the two overlapped, POL-UI-015's approved UI was kept and POL-CHAT-001's
+real behaviour was wired into it:
+
+- **Bell** — POL-UI-015 shipped `PoliedronBell.jsx` as a UI-only placeholder
+  (badge with no producer, click reopened the quick panel). The component, its
+  look and its approved mobile/desktop positioning are kept unchanged; it now
+  receives the real `unreadCount` from `usePoliedronConversation()` and opens
+  the persistent Chat page. PR #53's own separately positioned
+  `.poliedron-notification-bell` markup/CSS was dropped as a duplicate. The
+  bell is hidden while already on Chat.
+- **Mobile dock** — Chat replaces Impostazioni in the five slots (POL-UI-015
+  structure), but the Chat slot no longer calls `onToggle` on the quick panel:
+  it navigates to the real Chat route and carries the unread badge.
+  Impostazioni stays reachable from the central Poliedron panel's default
+  suggestions (`searchEngine.js` preferred sections, from master).
+- **One Poliedron** — the Chat page is the single `Poliedron` instance
+  portalled into `App.jsx`'s `poliedronChatHost`. No second agent, no second
+  open state, no second orchestration path.
+- **App shell padding** — the merged `App.jsx` keeps master's mobile
+  fullscreen rules for Home/Agenda and adds the zero-padding Chat page.
+- **Dashboard persistence** — the new Home persistence and its
+  (still temporary) `HOME_SAVE_*` preview instrumentation from round 4 of
+  POL-UI-015 were NOT modified by this integration; removing or downgrading
+  that instrumentation remains an open POL-UI-015 debt on master.
+
+
+---
+
+# Historical record: POL-UI-015 / Dashboard Premium V2 (merged to master as `36a1497`)
+
 - TITLE: Dashboard premium v2 — personalization persistence root cause,
   Richiami widget, mobile fullscreen, floating dock/hero, Consigli
   carousel, Poliedron bell + Chat entry point, Impostazioni relocation

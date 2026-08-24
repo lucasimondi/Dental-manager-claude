@@ -235,7 +235,7 @@ test('a failed save keeps the modal open with the draft intact and a real reason
 test('diagnostics are enabled on Netlify deploy previews, not only on the dev server', () => {
   assert.ok(diagnosticsSrc.includes('deploy-preview-'), 'preview hosts must enable the trail');
   assert.ok(/import\.meta\.env\?\.DEV/.test(diagnosticsSrc), 'the dev server must stay enabled');
-  assert.ok(diagnosticsSrc.includes('isHomeLayoutDiagnosticsEnabled'), 'the gate must be exported for the UI badge');
+  assert.ok(diagnosticsSrc.includes('isHomeLayoutDiagnosticsEnabled'), 'the gate must stay exported');
   // Sensitive words may appear in the module's own "never log this" comment,
   // so the check is against executable code only.
   const code = diagnosticsSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '').toLowerCase();
@@ -272,11 +272,20 @@ test('the persistence layer logs upsert/read-back stages', async () => {
   }
 });
 
-test('the preview-only save badge never renders in production', () => {
-  assert.ok(dashboardSrc.includes('const homeSaveDiagBadge = !diagnosticsEnabled ? null :'), 'the badge must be gated');
-  assert.ok(dashboardSrc.includes('DEV/PREVIEW'), 'the badge must be labelled as non-production');
-  const badge = dashboardSrc.slice(dashboardSrc.indexOf('const homeSaveDiagBadge'), dashboardSrc.indexOf('const [todoList'));
-  assert.ok(!badge.includes('{studioId}') && !badge.includes('{userId}'), 'the badge must not print identifiers');
+/* POL-CHAT-001 §FASE 13: the temporary on-screen save-state readout that
+   round 4 used to diagnose this bug is REMOVED from the UI. The bug is fixed
+   and merged, so no diagnostic block may reach any user-facing surface. The
+   internal, host-gated console trail asserted above stays. */
+test('the temporary visual save diagnostics are gone from the UI', () => {
+  assert.ok(!dashboardSrc.includes('homeSaveDiagBadge'), 'the on-screen diagnostic block must be removed');
+  assert.ok(!dashboardSrc.includes('DEV/PREVIEW'), 'no DEV/PREVIEW readout may remain in the UI');
+  assert.ok(!dashboardSrc.includes('setHomeSaveDiag'), 'its React state must be removed too');
+  assert.ok(!dashboardSrc.includes('isHomeLayoutDiagnosticsEnabled'), 'the UI no longer needs the visual gate');
+  // ...and the persistence path itself is untouched: the save still logs and
+  // still goes through the same verified read-back helpers.
+  assert.ok(dashboardSrc.includes('logHomeLayoutEvent'), 'the internal trail must survive');
+  assert.ok(dashboardSrc.includes('saveUserHomeLayout') && dashboardSrc.includes('deleteUserHomeLayout'),
+    'the save/delete persistence calls must be untouched');
 });
 
 // ===================================================================
