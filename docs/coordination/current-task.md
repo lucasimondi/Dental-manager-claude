@@ -1,53 +1,60 @@
 # Current task
 
-- TASK: POL-UI-004-AGENDA-QUICK-HUB
-- TITLE: Mobile Agenda Appointment Quick Action Hub
-- OWNER: COPILOT
-- BRANCH: `lucasimondi-agenda-mobile-fullscreen`
-- BASE: `master`
-- STATUS: `WAITING_PRODUCT_OWNER` — implementation complete, not merged, not deployed.
+- TASK: POL-UI-015
+- TITLE: Dashboard premium v2 — personalization persistence root cause,
+  Richiami widget, mobile fullscreen, floating dock/hero, Consigli
+  carousel, Poliedron bell + Chat entry point, Impostazioni relocation
+- OWNER: CLAUDE
+- BRANCH: `feature/POL-UI-015-dashboard-premium-v2`
+- BASE: `master` (POL-UI-004-AGENDA-QUICK-HUB/Agenda Mobile V2 merged as
+  `b65cdba`, PR #50)
+- STATUS: `WAITING_PRODUCT_OWNER` — draft PR open, not merged, not deployed.
 
 ## Objective
 
-Extend the existing dock-aware mobile appointment sheet with contextual
-patient actions and a Poliedron entry point while preserving the full-screen
-Agenda, the floating `+`, MobileDock, desktop behavior, and appointment logic.
-
-## Completed scope
-
-- Agenda-only mobile shell bottom-padding correction.
-- Regression coverage for the Agenda safe-area exception.
-- Floating mobile month/actions/week-strip overlay above the timeline.
-- Dynamic day strip driven by the same hidden-weekday source as the grid.
-- Internal top/bottom scroll range for complete first/last-slot access.
-- Mobile today styling reduced to the semantic red outline only.
-- Dock-aware mobile appointment action sheet with responsive max-height and
-  internal scrolling.
-- Appointment Quick Hub actions for call, patient detail, recall, and optional
-  patient-associated activity creation through the existing application forms.
-- Contextual mini-input that opens the existing singleton Poliedron with the
-  authoritative appointment patient and appointment context.
-- Popup clearance derived from both canonical MobileDock geometry and the
-  unchanged floating `+` geometry.
-- Optional activity association that can be retained, changed, or removed;
-  generic activities and the existing `todos` schema remain supported.
-- Responsive browser measurements at 375x667, 390x844, 393x852, and
-  430x932 in light and dark themes.
-- Full test suite and production build.
+Fix the real Dashboard personalization persistence bug at its root cause,
+build a premium operational Richiami widget, bring mobile Dashboard to the
+same fullscreen principle Agenda already has, turn the greeting block into
+a compact sticky/floating bar with date/time, guarantee the last widget
+always clears the floating dock, redesign Consigli Poliedron as a mobile
+one-card-at-a-time carousel, prepare (UI-only) the Poliedron bell and a
+Chat dock entry point — both reusing the single existing Poliedron agent,
+never a second one — and move Impostazioni out of the mobile dock into the
+central Poliedron panel's default suggestions. Explicitly out of scope:
+any real AI/reminder/notification engine, a second Poliedron, or a real
+Chat implementation — those are future tasks this one only prepares UI/
+navigation for.
 
 ## Safety boundaries
 
-- No MobileDock or Poliedron styling/positioning changes.
-- No Agenda business-logic or desktop behavior changes.
-- No schema, RLS, dependency, environment, or production changes.
+- No schema, RLS, dependency, or production change of any kind.
+- No new AI engine, reminder engine, notification polling, or second
+  Poliedron/chat agent — the bell and dock Chat button are UI-only
+  placeholders that open the SAME existing Poliedron conversation.
+- Agenda, Pazienti, Poliedron's own size/behavior, and the global design
+  system are untouched except where this task explicitly required a
+  shared-rule fix (the mobile Home `!important` padding override).
 - No merge or deploy without explicit Product Owner approval.
 
 ## Exact next action
 
-Product Owner visually verifies the Quick Hub actions, optional activity
-association, contextual Poliedron flow, and popup clearance on the PR #50
-preview and target iPhone.
-Do not merge or deploy without explicit approval.
+Product Owner reviews the draft PR (branch above): the persistence
+root-cause fix, the new Richiami widget, mobile fullscreen/floating hero/
+dock clearance, the Consigli carousel, the bell/Chat placeholders, and the
+Impostazioni relocation. Do not merge or deploy without explicit approval.
+
+---
+
+# Historical record: POL-UI-004-AGENDA-QUICK-HUB / Agenda Mobile V2 (merged to master)
+
+- Branch: `lucasimondi-agenda-mobile-fullscreen` — PR #50, merged to
+  `master` as `b65cdba`.
+- Objective: mobile Agenda fullscreen shell, floating overlay controls,
+  dynamic day strip, dock-aware appointment action sheet, and the
+  Appointment Quick Action Hub (call/patient/recall/activity/contextual
+  Poliedron mini-input).
+- Full detail: see `docs/coordination/handoffs.md` ("POL-UI-004-AGENDA..."
+  entries).
 
 ---
 

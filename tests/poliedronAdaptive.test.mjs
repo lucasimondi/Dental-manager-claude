@@ -168,10 +168,16 @@ test('mobile Poliedron renders only the official standalone gem on a transparent
 // Product Owner revision — compact mobile dock and magnetic redock
 // ---------------------------------------------------------------------------
 
-test('mobile dock has exactly HOME, AGENDA, POLIEDRON, PAZIENTI, SETUP in that order', () => {
+test('mobile dock has exactly HOME, AGENDA, POLIEDRON, PAZIENTI, CHAT in that order (POL-UI-015: Setup moved to the central Poliedron panel)', () => {
   const ids = [...mobileDockSource.matchAll(/\{ id: '([^']+)'/g)].map((match) => match[1]);
-  assert.deepEqual(ids.slice(0, 5), ['home', 'agenda', '__poliedron__', 'paz', 'set']);
+  assert.deepEqual(ids.slice(0, 5), ['home', 'agenda', '__poliedron__', 'paz', 'chat']);
   assert.equal(ids.slice(0, 5).length, 5);
+});
+
+test('mobile dock Chat button opens the same Poliedron conversation (onToggle), never a second page/agent', () => {
+  assert.match(mobileDockSource, /if \(item\.id === 'chat'\)/);
+  assert.match(mobileDockSource, /onClick=\{onToggle\}/);
+  assert.doesNotMatch(mobileDockSource, /setPage\('chat'\)/);
 });
 
 test('mobile dock exposes only four icon routes plus the central Poliedron hero slot', () => {
