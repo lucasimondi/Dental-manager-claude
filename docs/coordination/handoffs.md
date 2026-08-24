@@ -1337,3 +1337,212 @@ or deploy without explicit approval. Status: `WAITING_PRODUCT_OWNER`.
 - COMMIT: recorded by the commit containing this handoff, pushed to the same branch/PR #51 — no new PR opened.
 - BRANCH: `feature/POL-UI-015-dashboard-premium-v2`, PR #51 (draft, unchanged identity).
 - Exact next action: Product Owner re-verifies PR #51 — Richiami widget real visibility, personalization persistence under the real timing race, and the Salva UX contract. Do not merge, do not deploy to production, do not open a new PR. Status: `WAITING_PRODUCT_OWNER`.
+
+## POL-UI-015 handoff round 3 — PR #51 second rejection: real root causes, proven against the live project
+
+- Task ID: POL-UI-015.
+- Previous agent: round 2 (commit `77d64d5`), which the Product Owner rejected a second time.
+- Branch: `feature/POL-UI-015-dashboard-premium-v2` — unchanged. Same PR #51. No new branch, no new PR, no merge, no production deploy.
+- STARTING_HEAD: `77d64d5a3d81fe4faa130271e1ba657cacec7410`.
+- REJECTION_SUMMARY: in preview #51 the Richiami widget still did not appear in the Dashboard, and Personalizza Home still did not really persist. The Product Owner explicitly ruled that previous rounds' QA — which used a fake, `localStorage`-backed Supabase client — does not validate anything.
+
+### Why round 2's QA could not have caught either bug
+
+Round 2's Playwright harness aliased `../lib/supabase.js` to a `localStorage`
+store that started EMPTY. Both defects only manifest for an account that
+already has a saved `user_home_layouts` row, so the harness structurally
+could not reproduce either one and reported a false pass. This round used
+the live project's own data and logs (read only) instead.
+
+### BUG A — ROOT CAUSE (VERIFIED against the live database, read only)
+
+`public.user_home_layouts` holds exactly ONE row, `updated_at
+2026-08-19T19:23:03Z`, whose layout contains an **explicit**
+`{"id":"richiami","size":"small","order":7,"visible":false}` — written by a
+registry generation that predates POL-UX-001 (the row has no
+`quick_actions` entry and none of the canonical financial widgets), i.e.
+before the premium Richiami widget existed. The pipeline then behaves
+exactly as designed and hides it:
+
+`resolveDashboardLayout` gives `userLayout` **absolute** precedence over the
+studio default, the role preset and the platform default → `normalizeHomeLayout`
+preserves the explicit `visible:false`, because its `defaultVisible` fallback
+only applies to registry ids **absent** from the saved layout →
+`applyWidgetPermissions` passes it through → `visibleWidgets.filter(w => w.visible !== false)`
+drops it before the render loop is ever reached.
+
+**Therefore neither round-2 fix could ever reach this account.** Registry
+`defaultVisible: true` and `HOME_PRESETS.owner` gaining `'richiami'` are
+both downstream of a saved user layout and are structurally unreachable
+once one exists. Both were left in place (they are correct for new
+accounts) and were NOT re-applied, per instruction.
+
+Also verified, so they could be ruled out rather than guessed at: the
+account resolves to the `owner` preset (`studio_users.ruolo = 'admin'`,
+`stato = 'attivo'`, and `get_my_studio_capabilities_v1` returns
+`studio.owner, studio.manage_members, finance.management.read, home.owner`
+→ `normalizeHomeRole` → `owner`); `studio_home_layouts` has no row for this
+studio, so the inherited source is `role`; the preview really is round-2
+code (its bundle `/assets/index-CfptvIlz.js` contains the round-2 owner
+preset and the `home-richiami-list` marker); and `richiami` carries no
+`permission`, so `applyWidgetPermissions` never strips it for an owner.
+
+### BUG A — FIX (non-destructive, one-shot, idempotent)
+
+New `migrateSavedHomeLayout` in `src/lib/homeWidgetRegistry.js`, applied on
+the LOAD path (`loadUserHomeLayout`, `loadStudioHomeLayout`), never on save.
+A saved layout that lacks the `quick_actions` sentinel was necessarily
+written before POL-UX-001 and therefore could not express an informed
+choice about the POL-UI-015 Richiami widget; for those layouts only, and
+only for the ids in `POL_UI_015_REDEFAULTED_WIDGET_IDS` (`['richiami']`),
+`visible` is re-defaulted to the registry `defaultVisible`. Everything else
+— every other widget's visibility, order, size and config, and richiami's
+own order and size — is preserved byte-for-byte. Nothing is reset.
+
+Idempotent by construction: the first successful save writes the full
+current registry including `quick_actions`, after which the migration is a
+permanent no-op and a user who then deliberately hides Richiami keeps it
+hidden. No schema change, no migration file, no `schema_version` bump (the
+table's CHECK pins it to 1).
+
+**Verified against the real stored layout** (read only, no write) by running
+that exact jsonb through the real `migrateSavedHomeLayout` →
+`resolveDashboardLayout` → `applyWidgetPermissions` → visible-filter chain
+with the account's real capabilities:
+
+- before: `agenda, consigli_ai, todo, appuntamenti, economico, preventivi, scadenze, quick_actions` — richiami NOT rendered (the reported bug, reproduced from production data)
+- after: same list plus `richiami` — source still `user`, 12 of the 13 stored entries untouched, `richiami` the only one changed.
+
+### BUG B — DECISIVE EVIDENCE (VERIFIED via the project's own edge logs)
+
+Over the window 2026-08-23T13:00Z → 2026-08-24T11:50Z, which contains the
+Product Owner's preview-#51 sessions (8 page loads on
+`deploy-preview-51--soft-maamoul-b7975b.netlify.app` between 00:45 and
+01:24 on 2026-08-24):
+
+- `GET /rest/v1/user_home_layouts` — 132 requests, all HTTP 200
+- `GET /rest/v1/studio_home_layouts` — 132 requests, all HTTP 200
+- `OPTIONS` on each — 10, all 200
+- **`POST` / `PATCH` / `DELETE` on either table — ZERO.**
+
+The single stored row is still stamped 2026-08-19T19:23Z. So the save never
+reached the network at all: this is a **client-side failure before `fetch`**,
+not RLS, not the upsert, not a constraint. Loads arrive in pairs ~300ms
+apart, i.e. the layout load effect runs twice per page load (once with
+`studioMembership === null`, once after `capabilities` arrive).
+
+### BUG B — SUPABASE AUDIT (VERIFIED correct — deliberately NOT changed)
+
+`public.user_home_layouts`: `studio_id uuid NOT NULL`, `user_id uuid NOT NULL`,
+`layout jsonb NOT NULL DEFAULT '[]'`, `schema_version int NOT NULL DEFAULT 1`,
+`updated_at timestamptz NOT NULL DEFAULT now()`. Primary key
+`(studio_id, user_id)` — matches `onConflict: 'studio_id,user_id'` exactly.
+CHECKs: `jsonb_typeof(layout) = 'array'`, `pg_column_size(layout) <= 32768`,
+`schema_version = 1`. No triggers. RLS enabled with four PERMISSIVE policies
+for `authenticated` (own-row SELECT/INSERT/UPDATE/DELETE, each gated on
+`user_id = auth.uid()` AND an active `studio_users` membership), and
+INSERT/SELECT/UPDATE/DELETE granted to `authenticated`. An authenticated
+upsert from this account would succeed. **No schema, RLS, policy, grant or
+migration change was made, and none is needed.**
+
+### BUG B — FIXES
+
+1. **No more false success (§7).** `saveUserHomeLayout` in
+   `src/lib/homeLayoutPersistence.js` used to `return payload.layout` — the
+   caller's own optimistic payload — as soon as the upsert reported no
+   error, so the Dashboard could commit state, close the modal and show
+   success for a write that never landed. It now: UPSERT → check the upsert
+   response → **READ BACK** the `(studio_id, user_id)` record through the
+   normal SELECT path (which also exercises the SELECT RLS policy) →
+   require the row to exist AND its **raw** stored jsonb to equal the raw
+   payload → normalize → return the layout the DATABASE holds. Any failure
+   throws. The comparison is deliberately on the raw jsonb, not on
+   normalized forms: normalization re-appends missing registry ids, so a
+   normalized comparison silently accepts a truncated write (this was found
+   by a test, and the first implementation was corrected because of it).
+   `deleteUserHomeLayout` (Ripristina) and `saveStudioHomeLayout` got the
+   same read-back contract.
+2. **A control that looked enabled but swallowed clicks.** Both "Salva Home"
+   buttons in `src/components/Dashboard.jsx` were
+   `disabled={layoutSaving || layoutLoading}` while their styling only
+   dimmed on `layoutSaving` — during any background layout re-load the
+   primary action of the modal was fully blue, full opacity,
+   `cursor: pointer`, and silently did nothing: no save, no request, no
+   error, modal stays open. That the effect really does re-run after the
+   editor is reachable is visible in the production logs (the paired GETs
+   above). Fixed by deriving `disabled` and its visual signal from the SAME
+   flag (`layoutSaving` only, plus `cursor: progress` and reduced opacity),
+   so saving is always available once the editor has opened on a trusted
+   baseline — the round-2 open-guard already guarantees that.
+3. **A late load can no longer clobber a newer save.** Since Salva is no
+   longer blocked during a background reload, a new `layoutSaveEpochRef` is
+   bumped when a save starts and again when it is confirmed; a load that
+   resolves across a save is discarded (`HOME_LAYOUT_LOAD_STALE`) instead of
+   overwriting the just-persisted layout.
+4. **Real errors are now visible.** The save `catch` reported one fixed
+   sentence regardless of cause; it now surfaces `error.message` (so a
+   read-back failure is distinguishable from an RLS rejection), keeps the
+   modal open, preserves the draft, and allows retry — as does
+   `saveStudioDefault`.
+
+### Richiami product requirements (§8) — state after this round
+
+Available in the Dashboard (BUG A fix) · available in Personalizza Home
+(`filterWidgetCatalog` lists it; it carries no `permission`) · visible by
+default for owner/admin (registry `defaultVisible` + `HOME_PRESETS.owner`,
+now actually reachable) · at most 5 rows in the visible area, internally
+scrollable beyond that (`hasOverflow = aperti.length > 5`,
+`maxHeight: 272, overflowY: 'auto'`) · desktop and mobile: the
+`home-richiami-list` class was referenced in JSX but had **no CSS rule at
+all**, so the scroll area used the browser default (no touch momentum,
+scroll chaining to the page); it is now styled with
+`-webkit-overflow-scrolling: touch`, `overscroll-behavior: contain`, a thin
+scrollbar, and a 48px minimum row height on mobile · no personalization is
+reset to achieve any of this.
+
+### TESTS
+
+New `tests/homeLayoutVerifiedPersistence.test.mjs` (21 tests): save returns
+the DATABASE record and not the payload; upsert error throws and skips the
+read-back; an upsert reporting success with nothing behind it throws; a
+failing read-back throws; a truncated write throws; a silently altered
+write throws; reset is read-back-confirmed; a save is observable by a fresh
+load; source-level guards that the modal closes only after the verified
+save and stays open with the draft on error with the real reason; neither
+Salva button can be disabled while looking enabled; the save-epoch guard;
+registry/owner-preset/permission/catalog availability for richiami; the
+ROOT CAUSE reproduced (a legacy saved layout outranks every default); legacy
+detection; the migration changes only richiami and preserves every other
+entry's visible/size/order; a deliberate modern choice is respected and the
+migration is idempotent; the load path applies it; the max-5/scroll and
+mobile CSS contract.
+
+Four pre-existing test doubles answered every read with a fixed row
+regardless of what had just been written — which is precisely what allowed a
+false success to pass as a save. They were upgraded to behave like the table
+(upsert on the primary key, reads observe writes) in
+`tests/dashboardPersonalization.test.mjs` and `tests/homeWidgetRegistry.test.mjs`;
+three source-regex assertions in `tests/dashboardPremiumV2.test.mjs` and
+`tests/homeLayoutPrecedenceRace.test.mjs` were tightened for the new
+`catch (error)` + `error?.message` behavior. No assertion was weakened.
+
+`npm test` → **386/386 passing**. `npm run build` → clean (only the
+pre-existing large-chunk warning). `git diff --check` → clean.
+
+### REAL PREVIEW QA — **NOT VERIFIABLE**
+
+Authenticated QA on the preview could not be performed and is **not
+claimed**: this environment has no local browser with the Product Owner's
+session, the cloud browser has no authenticated session, and per instruction
+no credentials were requested, extracted or used. Consequently
+**authenticated preview QA, mobile QA at 375px and desktop QA are NOT
+VERIFIABLE in this round.** What IS verified is stated as such above: the
+live database contents, schema, constraints, RLS policies and grants; the
+edge-log request evidence; the preview bundle identity; and the fixed
+pipeline's behaviour executed against the real stored layout.
+
+- DATABASE_CHANGES: **none.** No write of any kind was performed on any table (all SQL was read-only `SELECT`). No clinical or patient data was read or modified.
+- DEPENDENCY_CHANGES: **none.**
+- FILES_CHANGED: `src/lib/homeWidgetRegistry.js`, `src/lib/homeLayoutPersistence.js`, `src/components/Dashboard.jsx`, `src/components/PremiumVisualSystem.css`, `tests/homeLayoutVerifiedPersistence.test.mjs` (new), `tests/dashboardPersonalization.test.mjs`, `tests/homeWidgetRegistry.test.mjs`, `tests/dashboardPremiumV2.test.mjs`, `tests/homeLayoutPrecedenceRace.test.mjs`, `docs/coordination/handoffs.md`, `docs/coordination/current-task.md`.
+- UNRESOLVED / RISKS: (1) authenticated preview/mobile/desktop QA is NOT VERIFIABLE here — the Product Owner must re-test the preview; (2) BUG A's fix rests on a product judgement the Product Owner stated explicitly ("visibile di default per owner/admin", "non resettare tutte le personalizzazioni") — if instead a pre-POL-UI-015 `visible:false` should be honoured as a deliberate user choice, this migration must be reverted and the requirement revisited: `PRODUCT_OWNER_DECISION_REQUIRED`; (3) the read-back adds one extra SELECT per save — negligible, and it is the only way to distinguish a real save from a false one; (4) the exact click that failed in the Product Owner's session cannot be replayed, so the silently-disabled-Salva path is reported as a demonstrated defect in the code and in the production request pattern, not as a replayed reproduction of that specific click.
+- Exact next action: Product Owner re-tests preview #51 after this commit rebuilds — confirm the Richiami widget now appears in the Dashboard without any other personalization changing, and that Personalizza Home now either really persists (verifiable by a reload) or fails with a visible error and stays open. Do not merge, do not deploy to production, do not open a new PR. Status: `WAITING_PRODUCT_OWNER`.

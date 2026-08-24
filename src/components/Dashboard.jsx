@@ -203,14 +203,41 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   const [themeTab, setThemeTab] = useState('widgets'); // 'widgets' | 'colori'
   const isOn = (id) => { const w = widgets.find(x => x.id === id); return w ? w.visible !== false : true; };
 
+  /* POL-UI-015 bugfix round 3 — see the "Salva Home" buttons below. Those
+     buttons used to be `disabled={layoutSaving || layoutLoading}` while
+     their styling only dimmed on `layoutSaving`, so during ANY background
+     re-run of the layout load effect the primary action of the
+     "Personalizza Home" modal looked completely enabled (full opacity,
+     blue, `cursor:pointer`) but silently swallowed every click: no save,
+     no request, no error, modal stays open — exactly the reported
+     "Personalizza Home non salva realmente la configurazione". That the
+     effect really does re-run after the editor is already reachable is
+     visible in the production Supabase edge logs, where every single page
+     load produces TWO sequential `user_home_layouts`/`studio_home_layouts`
+     GET rounds ~300ms apart (run 1 with `studioMembership === null`, run 2
+     once `capabilities` arrive and change this effect's dependency).
+
+     The fix keeps saving always available (the draft is the user's
+     explicit intent and `openHomeCustomizer` already refuses to open on a
+     not-yet-loaded baseline) and instead makes a late background load
+     unable to clobber a newer successful save: each save bumps
+     `layoutSaveEpochRef`, and a load that resolves across a save is
+     discarded instead of overwriting the just-persisted layout. */
+  const layoutSaveEpochRef = useRef(0);
+
   useEffect(() => {
     if (!studioId || !userId) return;
     let cancelled = false;
+    const startEpoch = layoutSaveEpochRef.current;
     setLayoutLoading(true);
     logHomeLayoutEvent('HOME_LAYOUT_LOAD_START');
     loadResolvedHomeLayout(supabase, studioId, userId, createRolePresetLayout(studioMembership?.capabilities))
       .then(({ layout, source, inheritedLayout: nextInherited, inheritedSource: nextInheritedSource }) => {
-        if (!cancelled) {
+        if (!cancelled && layoutSaveEpochRef.current !== startEpoch) {
+          // A save/reset completed while this read was in flight: the
+          // committed state is already newer than this response.
+          logHomeLayoutEvent('HOME_LAYOUT_LOAD_STALE');
+        } else if (!cancelled) {
           // POL-UI-013C root-cause fix: `draftWidgets` is only ever
           // meaningful while the "Personalizza Home" modal is open, and
           // `openHomeCustomizer` already re-derives it fresh from `widgets`
@@ -287,6 +314,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
 
   const saveHomeCustomization = async () => {
     if (!studioId || !userId) { setLayoutError('Identità studio/utente non disponibile'); return; }
+    layoutSaveEpochRef.current += 1;
     setLayoutSaving(true); setLayoutError('');
     logHomeLayoutEvent('HOME_LAYOUT_SAVE_START');
     try {
@@ -309,10 +337,18 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
         const saved = await saveUserHomeLayout(supabase, studioId, userId, draftWidgets);
         setWidgets(saved); setDraftWidgets(saved); setLayoutSource('user');
       }
+      // POL-UI-015 round 3: reached only after `saveUserHomeLayout` /
+      // `deleteUserHomeLayout` confirmed the write with a database
+      // read-back, so closing the modal here really does mean "persisted".
+      layoutSaveEpochRef.current += 1;
       setSettingsOpen(false);
       logHomeLayoutEvent('HOME_LAYOUT_SAVE_SUCCESS');
-    } catch {
-      setLayoutError('Salvataggio non riuscito. Nessuna modifica è stata applicata.');
+    } catch (error) {
+      // POL-UI-015 round 3: surface the real reason (including the new
+      // "salvataggio non confermato dal database" read-back failures)
+      // instead of a single opaque message, and keep the modal open with
+      // the user's draft intact so they can retry.
+      setLayoutError(error?.message ? `Salvataggio non riuscito: ${error.message}` : 'Salvataggio non riuscito. Nessuna modifica è stata applicata.');
       logHomeLayoutEvent('HOME_LAYOUT_SAVE_ERROR');
     }
     finally { setLayoutSaving(false); }
@@ -330,7 +366,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
       const saved = await saveStudioHomeLayout(supabase, studioId, userId, draftWidgets);
       setInheritedLayout(saved); setInheritedSource('studio');
       if (draftInherits) { setWidgets(saved); setDraftWidgets(saved); setLayoutSource('studio'); }
-    } catch { setLayoutError('Salvataggio del predefinito studio non riuscito.'); }
+    } catch (error) { setLayoutError(error?.message ? `Salvataggio del predefinito studio non riuscito: ${error.message}` : 'Salvataggio del predefinito studio non riuscito.'); }
     finally { setLayoutSaving(false); }
   };
   const [todoList, setTodoList] = useState([]);
@@ -547,9 +583,12 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
             </div>
             <div style={{ display:'flex',gap:8,marginTop:12 }}>
               <button type="button" onClick={resetHomeCustomization} style={{ padding:'9px 12px',background:C.danL,border:'none',borderRadius:9,color:C.dan,fontWeight:700,fontSize:12,cursor:'pointer' }}>↺ Reset al default {inheritedSource === 'studio' ? 'studio' : inheritedSource === 'role' ? 'ruolo' : 'piattaforma'}</button>
-              {isStudioAdmin && <button type="button" disabled={layoutSaving} onClick={saveStudioDefault} style={{ padding:'9px 12px',background:C.priL,border:`1px solid ${C.pri}33`,borderRadius:9,color:C.pri,fontWeight:700,fontSize:12,cursor:'pointer' }}>Salva come default studio</button>}
+              {isStudioAdmin && <button type="button" disabled={layoutSaving} onClick={saveStudioDefault} style={{ padding:'9px 12px',background:C.priL,border:`1px solid ${C.pri}33`,borderRadius:9,color:C.pri,fontWeight:700,fontSize:12,cursor:layoutSaving?'progress':'pointer',opacity:layoutSaving?0.6:1 }}>Salva come default studio</button>}
               <button type="button" onClick={() => setSettingsOpen(false)} style={{ marginLeft:'auto',padding:'9px 14px',background:C.bg,border:`1px solid ${C.brd}`,borderRadius:9,color:C.txm,fontWeight:700,fontSize:12,cursor:'pointer' }}>Annulla</button>
-              <button type="button" disabled={layoutSaving || layoutLoading} onClick={saveHomeCustomization} style={{ padding:'9px 16px',background:C.pri,border:'none',borderRadius:9,color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer',opacity:layoutSaving?0.6:1 }}>{layoutSaving ? 'Salvataggio…' : 'Salva Home'}</button>
+              {/* POL-UI-015 round 3: `disabled` and the disabled styling are
+                  now derived from the SAME flag, so this control can never
+                  again look enabled while ignoring clicks. */}
+              <button type="button" disabled={layoutSaving} onClick={saveHomeCustomization} style={{ padding:'9px 16px',background:C.pri,border:'none',borderRadius:9,color:'#fff',fontWeight:800,fontSize:12,cursor:layoutSaving?'progress':'pointer',opacity:layoutSaving?0.6:1 }}>{layoutSaving ? 'Salvataggio…' : 'Salva Home'}</button>
             </div>
           </>}
 
@@ -603,7 +642,8 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                 </>}
                 <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
                   <button type="button" onClick={() => setSettingsOpen(false)} style={{ marginLeft: 'auto', padding: '9px 14px', background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 9, color: C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Annulla</button>
-                  <button type="button" disabled={layoutSaving || layoutLoading} onClick={saveHomeCustomization} style={{ padding: '9px 16px', background: C.pri, border: 'none', borderRadius: 9, color: '#fff', fontWeight: 800, fontSize: 12, cursor: 'pointer', opacity: layoutSaving ? 0.6 : 1 }}>{layoutSaving ? 'Salvataggio…' : 'Salva Home'}</button>
+                  {/* POL-UI-015 round 3: same fix as the Widget tab's Salva button. */}
+                  <button type="button" disabled={layoutSaving} onClick={saveHomeCustomization} style={{ padding: '9px 16px', background: C.pri, border: 'none', borderRadius: 9, color: '#fff', fontWeight: 800, fontSize: 12, cursor: layoutSaving ? 'progress' : 'pointer', opacity: layoutSaving ? 0.6 : 1 }}>{layoutSaving ? 'Salvataggio…' : 'Salva Home'}</button>
                 </div>
               </>
             );

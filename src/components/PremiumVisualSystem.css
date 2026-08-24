@@ -1559,3 +1559,28 @@ body:has(.home-widget-grid) #app-scroll {
   .poliedron-section-chip:hover, .poliedron-action-card:hover { transform: none !important; }
   .poliedron-loading-card__pulse { animation: none !important; }
 }
+
+/* POL-UI-015 round 3 — Richiami Home widget scroll area.
+   Dashboard.jsx already renders this element with `className="home-richiami-list"`
+   but the class had no rule at all, so the "max 5 richiami visibili, poi
+   scrollabile" area relied purely on the inline max-height and got the
+   browser default overflow behaviour: on iOS/Android that means a
+   non-momentum scroll that also chains to the page, and on desktop a
+   scrollbar that overlaps the card's rounded corners. Row height is
+   44px + 1px separator, so 5 rows = 224px; the inline max-height (272px)
+   deliberately leaves a partial 6th row peeking so it is visually obvious
+   the list continues. */
+.home-richiami-list {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.home-richiami-list::-webkit-scrollbar { width: 6px; }
+.home-richiami-list::-webkit-scrollbar-thumb {
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--pol-ink-muted, #64748b) 35%, transparent);
+}
+@media (max-width: 719px) {
+  /* Touch targets stay >=44px on mobile even inside the scroll area. */
+  .home-richiami-list > [role='button'] { min-height: 48px; }
+}

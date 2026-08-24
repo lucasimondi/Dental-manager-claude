@@ -9,14 +9,41 @@
 - BASE: `master` (POL-UI-004-AGENDA-QUICK-HUB/Agenda Mobile V2 merged as
   `b65cdba`, PR #50)
 - STATUS: `WAITING_PRODUCT_OWNER` — draft PR #51 open, not merged, not
-  deployed. Round 1 (commit `c4df202`) was rejected by the Product Owner:
-  the Richiami widget did not appear in the real preview and personalization
-  still did not persist reliably. Round 2 fixed both at their real root
-  causes (registry `defaultVisible` + missing owner role preset entry for
-  Richiami; an editor-open/async-load race for persistence) and verified
-  them with real interactive Playwright/Chromium QA, not just unit tests —
-  see the "POL-UI-015 handoff round 2" entry in `handoffs.md`. Same branch,
-  same PR — no new PR opened.
+  deployed. Round 1 (`c4df202`) and round 2 (`77d64d5`) were BOTH rejected
+  by the Product Owner: in the real preview the Richiami widget still did
+  not appear and Personalizza Home still did not persist. The Product Owner
+  ruled that both rounds' QA — a fake `localStorage`-backed Supabase client
+  — validates nothing.
+
+  Round 3 established both root causes against the LIVE project, read only,
+  and they are not what rounds 1 and 2 assumed:
+
+  - BUG A: the reporting account's saved `user_home_layouts` row (written
+    2026-08-19, before POL-UX-001) carries an EXPLICIT
+    `richiami: visible:false`. `resolveDashboardLayout` gives the user
+    layout absolute precedence and `normalizeHomeLayout`'s `defaultVisible`
+    fallback only applies to ABSENT ids, so round 2's registry default and
+    owner-preset entry are structurally unreachable for that account. Fixed
+    with a narrow, idempotent load-time migration that re-defaults ONLY
+    `richiami` for layouts predating the `quick_actions` sentinel — 12 of
+    the row's 13 entries verified untouched.
+  - BUG B: the project's edge logs show 132 GET requests against
+    `user_home_layouts` and **ZERO** POST/PATCH/DELETE across the Product
+    Owner's test window, and the stored row is still stamped 2026-08-19 — so
+    the save never reached the network. The schema, PK, CHECKs, RLS policies
+    and grants were audited and are correct. Fixed on the client:
+    `saveUserHomeLayout` now UPSERTs, READS THE RECORD BACK, compares the raw
+    stored jsonb and THROWS rather than returning its own payload as a false
+    success; and both "Salva Home" buttons no longer sit `disabled` behind
+    `layoutLoading` while looking fully enabled.
+
+  See the "POL-UI-015 handoff round 3" entry in `handoffs.md` for the full
+  evidence, including what is VERIFIED and what is NOT VERIFIABLE. Same
+  branch, same PR #51 — no new branch, no new PR, no merge, no deploy.
+
+  NOT VERIFIABLE in round 3: authenticated preview QA, mobile QA and desktop
+  QA — no browser with the Product Owner's session is available here and no
+  credentials were requested or used.
 
 ## Objective
 
@@ -46,10 +73,19 @@ navigation for.
 
 ## Exact next action
 
-Product Owner reviews the draft PR (branch above): the persistence
-root-cause fix, the new Richiami widget, mobile fullscreen/floating hero/
-dock clearance, the Consigli carousel, the bell/Chat placeholders, and the
-Impostazioni relocation. Do not merge or deploy without explicit approval.
+Product Owner re-tests preview #51 once it rebuilds from the round-3 commit:
+confirm the Richiami widget now appears in the Dashboard without any other
+personalization changing, and that Personalizza Home either really persists
+(verifiable with a page reload) or fails with a visible error while staying
+open with the draft intact. Do not merge, do not deploy to production, do
+not open a new PR.
+
+Open decision (`PRODUCT_OWNER_DECISION_REQUIRED` if the answer is no): the
+round-3 Richiami fix treats a pre-POL-UI-015 `richiami: visible:false` as a
+stale default rather than a deliberate user choice, per the explicit
+requirement "visibile di default per owner/admin" combined with "non
+resettare tutte le personalizzazioni". If that reading is wrong, the
+migration must be reverted.
 
 ---
 

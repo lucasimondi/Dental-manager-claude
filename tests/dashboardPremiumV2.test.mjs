@@ -238,8 +238,12 @@ test('Salva: on failure, the modal stays open and a real error is shown — neve
   const saveStart = dashboardSrc.indexOf('const saveHomeCustomization');
   const saveEnd = dashboardSrc.indexOf('const resetHomeCustomization');
   const saveBody = dashboardSrc.slice(saveStart, saveEnd);
-  const catchIdx = saveBody.lastIndexOf('catch {');
-  const catchBlock = saveBody.slice(catchIdx, catchIdx + 200);
+  // POL-UI-015 round 3: the outer catch now receives the error so the real
+  // reason (including the new database read-back failures) reaches the user.
+  const catchIdx = saveBody.lastIndexOf('catch (error) {');
+  assert.ok(catchIdx > -1, 'expected the outer save catch to receive the error');
+  const catchBlock = saveBody.slice(catchIdx);
   assert.doesNotMatch(catchBlock, /setSettingsOpen\(false\)/);
   assert.match(catchBlock, /setLayoutError\(/);
+  assert.match(catchBlock, /error\?\.message/);
 });

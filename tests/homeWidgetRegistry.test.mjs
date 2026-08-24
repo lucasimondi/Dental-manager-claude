@@ -46,11 +46,16 @@ test('workspace resolves the stable registry id from React child keys',()=>{
   assert.equal(getHomeWidgetIdFromReactKey('todo'),'todo');
 });
 
+/* POL-UI-015 round 3: saveUserHomeLayout now reads the record back and
+   refuses to report success unless the store really holds what was sent,
+   so this double must remember the write instead of always replaying a
+   fixed row. */
 const fakeClient=(row=null)=>({
   written:null,
+  stored:row,
   from(){ return {
-    select:()=>({eq:()=>({eq:()=>({maybeSingle:async()=>({data:row,error:null})})})}),
-    upsert:async(payload)=>{ fake.written=payload; return {error:null}; },
+    select:()=>({eq:()=>({eq:()=>({maybeSingle:async()=>({data:fake.stored,error:null})})})}),
+    upsert:async(payload)=>{ fake.written=payload; fake.stored={layout:payload.layout}; return {error:null}; },
   }; },
 });
 let fake;

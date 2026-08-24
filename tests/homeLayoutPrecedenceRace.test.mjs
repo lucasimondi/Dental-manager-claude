@@ -105,14 +105,21 @@ test('a failed reload after a successful reset-to-inherit delete does not claim 
   // catch's generic "Salvataggio non riuscito" message.
   const deleteIdx = saveBody.indexOf('deleteUserHomeLayout');
   const innerCatchIdx = saveBody.indexOf('catch {', deleteIdx);
-  const outerCatchIdx = saveBody.lastIndexOf('catch {');
+  const outerCatchIdx = saveBody.lastIndexOf('catch (error) {');
   assert.ok(innerCatchIdx > -1 && innerCatchIdx < outerCatchIdx, 'expected an inner catch around the post-delete reload, separate from the outer save catch');
 });
 
 // --- 9J. save error is visible ---
 
 test('J. save error sets layoutError, rendered as an alert inside the still-open modal', () => {
-  assert.match(dashboardSrc, /catch \{\s*setLayoutError\('Salvataggio non riuscito\. Nessuna modifica è stata applicata\.'\);/);
+  // POL-UI-015 round 3: still a single outer catch that always sets
+  // layoutError, but it now reports the underlying reason rather than one
+  // fixed sentence, so a read-back failure is distinguishable from an RLS
+  // rejection. The generic sentence remains as the fallback.
+  const saveStart = dashboardSrc.indexOf('const saveHomeCustomization');
+  const saveBody = dashboardSrc.slice(saveStart, dashboardSrc.indexOf('const resetHomeCustomization'));
+  assert.match(saveBody, /catch \(error\) \{/);
+  assert.match(saveBody, /setLayoutError\(error\?\.message \? `Salvataggio non riuscito: \$\{error\.message\}` : 'Salvataggio non riuscito\. Nessuna modifica è stata applicata\.'\)/);
   assert.match(dashboardSrc, /\{layoutError && <div role="alert"/);
 });
 
