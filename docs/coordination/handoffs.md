@@ -1762,3 +1762,67 @@ the real stored layout, and the full source audit of the flow.
 - ROLLBACK: `git revert -m 1 <merge commit>` on this branch restores the pre-merge PR #53 state; master is untouched.
 - COMMIT: recorded by the merge commit containing this handoff.
 - Exact next action: Product Owner reviews the updated PR #53 — in particular the bell (approved position, now real unread + real Chat), the mobile dock Chat slot, and that Dashboard Premium V2 behaves on the preview exactly as it did when PR #51 was approved. Do not merge, do not deploy, do not apply `20260824030000_chat_polyedron.sql` remotely without explicit Product Owner approval. Status: `WAITING_PRODUCT_OWNER`.
+
+## POL-CHAT-001 §FASE 1-17 — Chat migration APPLIED, UX separation, error classification, #51 diagnostics removed
+
+- Task ID: POL-CHAT-001 (migration + UX separation round).
+- Agent: Perplexity Computer Agent. Branch: `lucasimondi-chat-polyedron` (unchanged). Pull request: #53 targeting `master` (unchanged — no new branch, no new PR, no merge, no production deploy).
+- Objective: apply the single authorized Chat migration to the real Supabase project, prove it with real database tests, then make the two Polyedron surfaces behave as the Product Owner specified — quick panel WITHOUT any Chat history, Chat page as the ONE persistent-history surface — with classified error states, a single unread badge, and the temporary POL-UI-015 visual diagnostics removed.
+
+### DATABASE_CHANGES (explicitly authorized, one migration only)
+
+- APPLIED to project `idklxdqebfceplrualgh` (the project hardcoded in `src/lib/supabase.js`, i.e. the database the app really uses): `supabase/migrations/20260824030000_chat_polyedron.sql`, registered in `supabase_migrations.schema_migrations` as version `20260824030000` to match the repository file. No other migration was applied, no pre-existing table/policy/function was altered or dropped, and no clinical or patient data was read or modified at any point.
+- PREFLIGHT before applying: zero `poliedron*` objects existed; `studios`, `studio_users`, `auth.users` present; `studio_users(user_id, studio_id, stato)` present; publication `supabase_realtime` present with 5 tables; `20260824030000` not registered; last registered migration `20260821181751 pol_003a_tenant_access_fix`. Identical to the previous audit, so the run proceeded.
+- APPLIED OBJECTS verified by query: 2 tables with `rowsecurity = true`; 7 indexes (`poliedron_conversations_pkey`, `_owner_kind_unique`, `_user_recent_idx`, `poliedron_messages_pkey`, `_recent_idx`, `_request_role_unique`, `_unread_idx`); 5 policies on `authenticated`; 2 functions (`poliedron_messages_guard_v1` SECURITY INVOKER, `poliedron_messages_touch_conversation_v1` SECURITY DEFINER); 2 triggers; `poliedron_messages` added to `supabase_realtime` (now 6 tables).
+- PRIVILEGE DEVIATION FOUND AND CORRECTED: this project carries Supabase's stock `ALTER DEFAULT PRIVILEGES` for the public schema (`anon`/`authenticated`/`service_role` = `arwdDxtm`), so both new tables arrived with ALL privileges already granted to `authenticated` — including DELETE and TRUNCATE, contradicting the append-only contract — and `anon` held USAGE on the sequences. Hardened with `REVOKE ALL … FROM PUBLIC, anon, authenticated` followed by the exact intended re-`GRANT`, on objects created by this migration only. Verified final ACLs: `poliedron_conversations` = `authenticated=ar` (SELECT+INSERT), `poliedron_messages` = `authenticated=arw` (SELECT+INSERT+UPDATE), both sequences `authenticated=rU`, no `anon`/`PUBLIC` grant anywhere. The migration FILE was then updated to contain exactly these revokes, so file and database now match; re-running it is idempotent.
+- END-TO-END HTTP CHECK with the publishable (anon) key: `GET /rest/v1/poliedron_conversations` returned `404 PGRST205` before and returns `401 {"code":"42501"}` after — the tables exist and anonymous access is correctly denied.
+
+### TEST_DB_REALI (FASE 3) — 26/26 PASS, zero residue
+
+Executed as one `DO` block per scenario group with `SET LOCAL ROLE authenticated` plus `set_config('request.jwt.claims', …)`, terminated by `RAISE EXCEPTION 'QA_RESULTS %'` so the whole run rolled back automatically and left no test rows. Real identifiers were used for membership only; no clinical or patient table was read.
+
+t01 select own conversation PASS · t02 get-or-create idempotent PASS · t03a/b other-user isolation PASS · t04 cross-studio isolation PASS (42501) · t05 active membership PASS · t06a/b no membership PASS · t06c/d suspended membership fails closed PASS (42501) · t06e restored membership PASS · t07 user message insert with automatic `read_at` PASS · t08 assistant message unread PASS · t09/t09b unread count + mark read PASS · history readback (2 messages, ordered) PASS · t10a/b/c append-only, `read_at` not rewritable, `sent` irreversible PASS (23514) · t11a/b/c ownership spoofing rejected and update filtered PASS · t12 message idempotency PASS (23505) · t13 touch trigger PASS · t14 realtime publication PASS. Post-run verification: `poliedron_conversations` 0 rows, `poliedron_messages` 0 rows, 2 active memberships, 0 non-active.
+
+A first attempt failed with `42501 new row violates RLS` because synthetic JWT claims lacked `app_metadata.studio_id`, which the PRE-EXISTING `studio_users_select` policy requires; real Supabase JWTs carry it, and both real users were verified to have `raw_app_meta_data.studio_id` set. Claims were corrected, not policies.
+
+### FRONTEND (FASE 4/5/7/9/10/11/13)
+
+- QUICK PANEL (`PoliedronPanel.jsx`, FASE 4/7/11): the `conversationError` banner "La cronologia persistente non è disponibile." and its Retry button are REMOVED, together with the `conversationError` / `onRetryConversation` props. The panel now receives no conversation, no conversation error and no retry handler at all, so it cannot be disabled or degraded by a missing/failed Chat backend. It contains no message list, no previous conversations, no persistent thread and no history preview — only the current request and its answer, plus navigation, workflows, quick actions, Setup and suggestions.
+- PANEL INDEPENDENCE (FASE 11): `submitDisabled` is now `chatSending` only — it is no longer tied to `!primaryConversation?.id`, so the "Chiedi" button stays usable with the Chat tables absent. Persistence became BEST-EFFORT: `submitQuery` passes `persist: chatPersistenceAvailable` (`Boolean(primaryConversation?.id) && !conversationError`), and if the conversation disappears mid-flight the `CHAT_CONVERSATION_NOT_READY` rejection falls back to the same non-persisted `processRequest`. When persistence is available the panel request is still written to the persistent conversation, which the briefing explicitly allows.
+- ERROR CLASSIFICATION (FASE 10, new `src/lib/poliedron/chatErrorState.js`): `classifyChatError` maps real signatures to `schema` (PGRST205/PGRST202/42P01/42703, "schema cache", "does not exist"), `permission` (42501/PGRST301/401/403, "permission denied", JWT), `network` (fetch TypeError/AbortError, "Failed to fetch", timeouts), `identity` (`CHAT_IDENTITY_REQUIRED`, `CHAT_SUPABASE_CLIENT_REQUIRED`) and `generic`; `describeChatError` returns one distinct Italian sentence per class, always `retryable: true`, never echoing raw PostgREST payloads. `resolveChatSurfaceState` encodes the single precedence rule: initialization error > generic send error > loading > empty > ready. The hook exposes `errorState` alongside the raw `error`.
+- CHAT SURFACE (FASE 5/10): `Poliedron.jsx` no longer renders `chatError || (conversationError ? … )`; it renders `chatSurface.message` with `errorKind`/`surfaceStatus`, so an initialization failure OUTRANKS both the loading state and a generic chat error. "La conversazione si sta ancora caricando" is now said only when the conversation is genuinely initializing with no error; failures report their class instead. The Retry button is preserved (`onRetryInitialization`). `PoliedronChatPage` now renders LOADING and EMPTY as two distinct blocks (previously loading rendered nothing, making a failed init look like an empty thread) and never shows the empty state while an error is displayed. Send failures are classified too.
+- BADGE (FASE 9): the unread badge now exists ONLY on `PoliedronBell` (mobile and desktop). `PoliedronMobileDock` lost its duplicate badge, its `unreadCount` prop and the unread variant of its aria-label; the controller no longer passes the count to the dock. No position, size or geometry was changed on either component.
+- SINGLE POLYEDRON (FASE 6): unchanged and re-asserted by tests — one `<Poliedron>` mount, one `usePoliedronConversation()`, one `processQuery`, one `<PoliedronChatPage>` portalled into App.jsx's host, no second provider, prompt stack, context engine or agent.
+- FASE 13: the temporary POL-UI-015 on-screen diagnostic (`homeSaveDiagBadge`, the "DEV/PREVIEW · save state" block and its `homeSaveDiag` React state) is REMOVED from `Dashboard.jsx`. The persistence logic is untouched — `git diff origin/master -- src/components/Dashboard.jsx` contains only the removal of the diagnostic block, its state and its now-unused import. The internal `HOME_SAVE_*` trail via `logHomeLayoutEvent` is kept: it is host-gated (dev/deploy-preview only), never runs in production, and logs only non-sensitive shape info.
+
+### DEPENDENCY_CHANGES
+
+None.
+
+### FILES_CHANGED
+
+`src/lib/poliedron/chatErrorState.js` (new), `src/components/poliedron/Poliedron.jsx`, `src/components/poliedron/PoliedronPanel.jsx`, `src/components/poliedron/PoliedronChatPage.jsx`, `src/components/poliedron/PoliedronMobileDock.jsx`, `src/components/poliedron/usePoliedronConversation.js`, `src/components/Dashboard.jsx`, `supabase/migrations/20260824030000_chat_polyedron.sql`, `tests/poliedronChatSurfaces.test.mjs` (new), `tests/poliedronChat.test.mjs`, `tests/poliedron.test.mjs`, `tests/poliedronAdaptive.test.mjs`, `tests/dashboardPremiumV2.test.mjs`, `tests/homeCustomizerSaveBranch.test.mjs`, `docs/coordination/handoffs.md`, `docs/coordination/current-task.md`.
+
+### TESTS_EXECUTED / TEST_RESULTS
+
+- `npm test`: 428/428 passed (baseline 419; +9 net from the new `tests/poliedronChatSurfaces.test.mjs` covering error classification, precedence, panel/Chat separation, panel independence from the Chat backend, single-Polyedron, entry points and the single badge).
+- `npm run build`: succeeded, only the pre-existing chunk-size and PWA warnings.
+- `git diff --check`: clean.
+- Non-regression for #51: `git diff origin/master` is EMPTY for `src/lib/homeLayoutPersistence.js`, `src/lib/homeLayoutDiagnostics.js`, `src/lib/homeWidgetRegistry.js`, `src/lib/homeDashboardModel.js`, and for `Dashboard.jsx` contains only the FASE 13 diagnostic removal. Dashboard Premium V2, Richiami, Personalizza Home, `homeLayoutPersistence`, mobile fullscreen, mobile hero, Dashboard scroll, the Consigli Polyedron carousel and the approved dock geometry were not otherwise touched.
+- Real-database tests: the 26 assertions above, executed against the live project inside rolled-back transactions.
+
+### NOT VERIFIABLE
+
+- Authenticated browser QA on the PR #53 preview (`deploy-preview-53--soft-maamoul-b7975b.netlify.app`) — no browser holds the Product Owner's session and no credentials were requested or used. Every UI claim in this round is a source-level or automated-test claim, plus real SQL evidence for the database; none of it is a device check at 375x667 / 390x844 / 430x932 / 768x900 / 1440x900.
+- Local execution of `supabase/tests/chat_polyedron_rls.sql`: no PostgreSQL/PGlite in this environment, and its synthetic fixture UUIDs are incompatible with the real database's foreign keys. It was superseded in this round by the 26 real-database assertions.
+- Realtime delivery over a live websocket, keyboard behaviour on a physical iPhone, and logout/login continuity with a real session.
+
+### RISKS
+
+The preview points at the production database (`src/lib/supabase.js` hardcodes the project), so Product Owner QA on the preview writes real Chat rows for his own user; these are private to him by RLS and contain no clinical data. Panel-request persistence is best-effort by design, so a panel question asked while the Chat backend is unreachable will not appear in the Chat history.
+
+### ROLLBACK
+
+Code: revert this commit on the branch. Database: stop Chat writes, remove `poliedron_messages` from `supabase_realtime`, then drop the two additive tables and the two task-owned trigger functions in dependency order. No pre-existing object was modified, so nothing else requires restoration.
+
+- Exact next action: the Product Owner performs the final QA on preview #53 with his own session — central Polyedron button must show NO chat history and NO history banner and must answer normally; Chat (dock, bell, desktop sidebar) must show the same persistent thread surviving navigation, refresh, close/reopen and logout/login; only the bell may carry an unread badge; the Home save must behave exactly as approved in #51 with no DEV/PREVIEW readout on screen. Do not merge, do not deploy to production, do not apply any further migration. Status: `WAITING_PRODUCT_OWNER_FINAL_QA`.

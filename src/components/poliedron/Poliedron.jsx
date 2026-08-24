@@ -16,6 +16,7 @@ import {
   createChatRequestId,
   normalizeModelHistory,
 } from '../../lib/poliedron/conversationRepository.js';
+import { describeChatError, resolveChatSurfaceState } from '../../lib/poliedron/chatErrorState.js';
 import { DB } from '../../lib/supabase.js';
 
 const summarizeStructuredResult = (result) => {
@@ -108,6 +109,7 @@ export default function Poliedron({
     loadingOlder: conversationLoadingOlder,
     unreadCount,
     error: conversationError,
+    errorState: conversationErrorState,
     loadOlder: loadOlderMessages,
     appendMessage,
     setDeliveryStatus,
@@ -304,6 +306,15 @@ export default function Poliedron({
       ? runPersistedRequest(q, {
           requestId: retainedRequest.requestId,
           readAssistant: () => requestSeq.current === seq && openRef.current,
+        }).catch((persistError) => {
+          /* POL-CHAT-001 §FASE 11 — the quick panel must answer even when the
+             persistent Chat backend is unavailable. `persist` is already
+             false when we know persistence is down, so this only covers the
+             race where the conversation disappears between the check and the
+             call: persistence is best-effort, answering is not optional. */
+          if (persistError?.message !== 'CHAT_CONVERSATION_NOT_READY') throw persistError;
+          pendingPanelRequestRef.current = null;
+          return processRequest(q, { allowModel: true });
         })
       : processRequest(q, { allowModel });
     request.then((result) => {
@@ -321,12 +332,21 @@ export default function Poliedron({
 
   const runChatMessage = useCallback(async (text, retryMessage = null) => {
     if (persistedRequestRef.current || actionExecutionRef.current || !primaryConversation?.id) {
+      /* POL-CHAT-001 §FASE 10 — precedence. A real initialization failure is
+         reported as what it is (missing schema / denied permission / no
+         network); "si sta ancora caricando" is said ONLY when the
+         conversation is genuinely still initializing with no error. */
+      const described = conversationErrorState;
       setChatError(
         actionExecutionRef.current
           ? 'Attendi il completamento del piano d’azione in corso.'
           : primaryConversation?.id
           ? 'Attendi il completamento della richiesta in corso.'
-          : 'La conversazione si sta ancora caricando. Riprova tra poco.'
+          : described
+          ? described.message
+          : conversationLoading
+          ? 'La conversazione si sta ancora caricando. Riprova tra poco.'
+          : 'La Chat non è disponibile in questo momento. Riprova.'
       );
       return false;
     }
@@ -356,11 +376,14 @@ export default function Poliedron({
         setChatStructuredState(result);
       }
       return true;
-    } catch {
-      setChatError('Non riesco a completare la richiesta. Controlla la connessione e riprova.');
+    } catch (sendError) {
+      // FASE 10: classify the send failure too, instead of blaming the network
+      // for what may be a permission or schema problem.
+      const described = describeChatError(sendError);
+      setChatError(described?.message || 'Non riesco a completare la richiesta. Riprova.');
       return false;
     }
-  }, [onArchivioFilterHint, primaryConversation?.id, runPersistedRequest, setPage]);
+  }, [conversationErrorState, conversationLoading, onArchivioFilterHint, primaryConversation?.id, runPersistedRequest, setPage]);
 
   /** POL-AI-005B §CONFIRM: called only from an explicit user click on the
    *  Level-2 preview's Confirm button — never automatically. Re-loads
@@ -490,11 +513,29 @@ export default function Poliedron({
   }, []);
 
   const onToggle = useCallback(() => setOpen((v) => !v), []);
+
+  /* POL-CHAT-001 §FASE 11 — persistence is BEST-EFFORT for the quick panel.
+     The panel's ability to answer must not be coupled to the existence of
+     `poliedron_conversations` / `poliedron_messages`: when the conversation is
+     absent or failed to initialize, the same request runs through the same
+     `processRequest` (same agent, same context engine, same permissions) and
+     is simply not written to the persistent thread. */
+  const chatPersistenceAvailable = Boolean(primaryConversation?.id) && !conversationError;
   const submitQuery = useCallback(() => {
     if (!query.trim()) return;
     if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
-    runQuery(query, { allowModel: true, persist: true });
-  }, [query, runQuery]);
+    runQuery(query, { allowModel: true, persist: chatPersistenceAvailable });
+  }, [chatPersistenceAvailable, query, runQuery]);
+
+  /* POL-CHAT-001 §FASE 10 — the single precedence rule for the Chat surface
+     (initialization error > generic send error > loading > empty > ready),
+     computed in one place instead of being re-derived by each JSX branch. */
+  const chatSurface = useMemo(() => resolveChatSurfaceState({
+    loading: conversationLoading,
+    conversationError,
+    chatError,
+    messageCount: conversationMessages.length,
+  }), [chatError, conversationError, conversationLoading, conversationMessages.length]);
 
   return (
     <>
@@ -503,7 +544,7 @@ export default function Poliedron({
           discreet edge-anchored dock. Both call the exact same onToggle,
           opening the exact same panel/state below. */}
       {isMobile
-        ? <PoliedronMobileDock page={page} setPage={setPage} open={open} onToggle={onToggle} panelId={panelId} unreadCount={unreadCount} />
+        ? <PoliedronMobileDock page={page} setPage={setPage} open={open} onToggle={onToggle} panelId={panelId} />
         : <PoliedronEdgeDock open={open} onToggle={onToggle} panelId={panelId} />}
       {/* POL-CHAT-001 merge — FASE 3: PR #51's bell was a placeholder that
           reopened the quick panel and carried a badge with no producer; PR
@@ -523,6 +564,10 @@ export default function Poliedron({
           onOpenChat={() => setPage('chat')}
         />
       )}
+      {/* POL-CHAT-001 §FASE 4/11 — the quick panel receives NO chat-history
+          props: no message list, no persistent thread, no availability banner.
+          `submitDisabled` is tied only to a persisted request of this same
+          panel being in flight, NEVER to the Chat backend being missing. */}
       {open && (
         <PoliedronPanel
           panelId={panelId}
@@ -540,10 +585,8 @@ export default function Poliedron({
           actionRunning={panelActionRunning}
           actionRunResult={panelActionRunResult}
           onSubmit={submitQuery}
-          submitDisabled={chatSending || !primaryConversation?.id}
+          submitDisabled={chatSending}
           interactionDisabled={panelActionRunning || chatActionRunning}
-          conversationError={!!conversationError}
-          onRetryConversation={retryInitialization}
           onClose={close}
           inputRef={inputRef}
         />
@@ -555,7 +598,9 @@ export default function Poliedron({
           loadingOlder={conversationLoadingOlder}
           hasOlder={conversationHasOlder}
           sending={chatSending || panelActionRunning || chatActionRunning}
-          error={chatError || (conversationError ? 'La conversazione non è disponibile in questo momento.' : '')}
+          error={chatSurface.message}
+          errorKind={chatSurface.kind}
+          surfaceStatus={chatSurface.status}
           structuredState={chatStructuredState}
           onSend={(text) => runChatMessage(text)}
           onRetry={(message) => runChatMessage(message.content, message)}

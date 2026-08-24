@@ -118,6 +118,14 @@ test('schema is additive, indexed, append-only, and fails closed by studio membe
   assert.match(migration, /su\.stato = 'attivo'/);
   assert.match(migration, /pc\.user_id = \(SELECT auth\.uid\(\)\)/);
   assert.match(migration, /persisted message identity and content are append-only/);
+  // POL-CHAT-001 §FASE 2: Supabase's stock default privileges grant ALL to
+  // `authenticated` on every new public table, so the privilege hardening must
+  // revoke from authenticated too — otherwise the applied state contradicts
+  // the append-only contract with DELETE/TRUNCATE.
+  assert.match(migration, /REVOKE ALL ON TABLE public\.poliedron_conversations, public\.poliedron_messages\s*\n\s*FROM PUBLIC, anon, authenticated;/);
+  assert.match(migration, /REVOKE ALL ON SEQUENCE[\s\S]{0,140}FROM PUBLIC, anon, authenticated;/);
+  assert.match(migration, /GRANT SELECT, INSERT ON TABLE public\.poliedron_conversations TO authenticated;/);
+  assert.match(migration, /GRANT SELECT, INSERT, UPDATE ON TABLE public\.poliedron_messages TO authenticated;/);
   assert.doesNotMatch(migration, /completed|snoozed/i);
   for (const scenario of ['same-studio user', 'cross-tenant', 'suspended']) {
     assert.match(rlsTest, new RegExp(scenario, 'i'));
@@ -127,7 +135,11 @@ test('schema is additive, indexed, append-only, and fails closed by studio membe
 test('one singleton controller owns quick submits, Chat, persistence, and unread state', () => {
   assert.equal((app.match(/<Poliedron\b/g) || []).length, 1);
   assert.equal((controller.match(/usePoliedronConversation\(/g) || []).length, 1);
-  assert.match(controller, /runQuery\(query, \{ allowModel: true, persist: true \}\)/);
+  // POL-CHAT-001 §FASE 11: persistence is best-effort for the quick panel, so
+  // `persist` is conditional on the conversation actually being available —
+  // never a hard `true` that would couple the panel to the Chat backend.
+  assert.match(controller, /runQuery\(query, \{ allowModel: true, persist: chatPersistenceAvailable \}\)/);
+  assert.match(controller, /const chatPersistenceAvailable = Boolean\(primaryConversation\?\.id\) && !conversationError/);
   assert.match(controller, /persistedRequestRef\.current/);
   assert.match(controller, /pendingPanelRequestRef/);
   assert.match(controller, /pendingChatRequestRef/);

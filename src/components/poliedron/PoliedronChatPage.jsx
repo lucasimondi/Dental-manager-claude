@@ -66,6 +66,8 @@ export default function PoliedronChatPage({
   messages,
   loading,
   loadingOlder,
+  errorKind = null,
+  surfaceStatus = null,
   hasOlder,
   sending,
   error,
@@ -127,7 +129,7 @@ export default function PoliedronChatPage({
   };
 
   return (
-    <section className="poliedron-chat" aria-label="Chat Polyedron">
+    <section className="poliedron-chat" aria-label="Chat Polyedron" data-surface-status={surfaceStatus || undefined}>
       <header className="poliedron-chat__header">
         <span className="poliedron-chat__brand"><Ic n="spark" s={18} /></span>
         <div>
@@ -153,8 +155,20 @@ export default function PoliedronChatPage({
           </button>
         )}
 
-        {!loading && messages.length === 0 && (
-          <div className="poliedron-chat__empty">
+        {/* POL-CHAT-001 §FASE 10 — LOADING, EMPTY and ERROR are three
+            distinct, mutually exclusive states. Previously "loading" rendered
+            nothing at all and a failed initialization looked identical to an
+            empty conversation. */}
+        {loading && messages.length === 0 && (
+          <div className="poliedron-chat__empty" role="status" data-state="loading">
+            <span><Ic n="spark" s={24} /></span>
+            <strong>Carico la conversazione…</strong>
+            <p>Sto recuperando la cronologia persistente della tua Chat.</p>
+          </div>
+        )}
+
+        {!loading && !error && messages.length === 0 && (
+          <div className="poliedron-chat__empty" data-state="empty">
             <span><Ic n="chat" s={24} /></span>
             <strong>Inizia una conversazione</strong>
             <p>Chiedi informazioni, cerca una sezione o usa le funzioni già disponibili a Polyedron.</p>
@@ -208,7 +222,7 @@ export default function PoliedronChatPage({
 
       <div className="poliedron-chat__composer">
         {error && (
-          <div className="poliedron-chat__error" role="alert">
+          <div className="poliedron-chat__error" role="alert" data-kind={errorKind || 'generic'}>
             <span>{error}</span>
             {onRetryInitialization && (
               <button type="button" onClick={onRetryInitialization}>Riprova</button>

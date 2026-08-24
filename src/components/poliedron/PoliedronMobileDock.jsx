@@ -16,7 +16,14 @@ import PoliedronOrb from './PoliedronOrb.jsx';
    placeholder branch is gone. This is still ONE Poliedron: the Chat page is
    a portal host that the single Poliedron instance renders into (see
    App.jsx's `poliedronChatHost` and Poliedron.jsx's `chatHost`), not a
-   second agent. The unread badge reflects the same conversation. */
+   second agent.
+
+   POL-CHAT-001 §FASE 9 — the unread badge is owned by the NOTIFICATION BELL
+   only (`PoliedronBell`, mobile and desktop). This dock slot deliberately
+   carries NO badge: the bell and the dock both point at the same single
+   conversation, so a second badge here would be a duplicate of the same
+   count on the same screen. The dock's approved geometry, position and size
+   are unchanged. */
 export const MOBILE_DOCK_ITEMS = Object.freeze([
   { id: 'home', label: 'Home', icon: 'home' },
   { id: 'agenda', label: 'Agenda', icon: 'cal' },
@@ -25,7 +32,7 @@ export const MOBILE_DOCK_ITEMS = Object.freeze([
   { id: 'chat', label: 'Chat', icon: 'chat' },
 ]);
 
-export default function PoliedronMobileDock({ page, setPage, open, onToggle, panelId, unreadCount = 0 }) {
+export default function PoliedronMobileDock({ page, setPage, open, onToggle, panelId }) {
   return (
     <nav
       className={`poliedron-mobile-dock${open ? ' is-receded' : ''}`}
@@ -50,19 +57,12 @@ export default function PoliedronMobileDock({ page, setPage, open, onToggle, pan
             key={item.id}
             type="button"
             className={`poliedron-mobile-dock__item${active ? ' is-active' : ''}`}
-            aria-label={item.id === 'chat' && unreadCount > 0
-              ? `${item.label}, ${unreadCount} non ${unreadCount === 1 ? 'letto' : 'letti'}`
-              : item.label}
+            aria-label={item.label}
             aria-current={active ? 'page' : undefined}
             tabIndex={open ? -1 : 0}
             onClick={() => setPage(item.id)}
           >
             <Ic n={item.icon} s={22} />
-            {item.id === 'chat' && unreadCount > 0 && (
-              <span className="poliedron-mobile-dock__badge">
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </span>
-            )}
           </button>
         );
       })}

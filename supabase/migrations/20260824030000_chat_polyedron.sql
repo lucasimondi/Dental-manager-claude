@@ -223,8 +223,20 @@ CREATE TRIGGER poliedron_messages_touch_conversation_v1
 AFTER INSERT ON public.poliedron_messages
 FOR EACH ROW EXECUTE FUNCTION public.poliedron_messages_touch_conversation_v1();
 
+-- Privileges. `authenticated` is revoked FIRST, not only PUBLIC/anon: this
+-- project carries Supabase's stock `ALTER DEFAULT PRIVILEGES` for the public
+-- schema (anon/authenticated/service_role = arwdDxtm), so a freshly created
+-- table arrives with ALL privileges already granted to authenticated —
+-- including DELETE and TRUNCATE, which would contradict the append-only
+-- contract these tables are built on, and UPDATE on conversations. Verified
+-- on the live project: without these revokes the applied state was
+-- authenticated=arwdDxtm on both tables and USAGE on the sequences for anon.
+-- RLS would still filter rows, but the privilege grant must match the
+-- contract on its own.
 REVOKE ALL ON TABLE public.poliedron_conversations, public.poliedron_messages
-  FROM PUBLIC, anon;
+  FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON SEQUENCE public.poliedron_conversations_id_seq,
+  public.poliedron_messages_id_seq FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.poliedron_messages_guard_v1(),
   public.poliedron_messages_touch_conversation_v1() FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT ON TABLE public.poliedron_conversations TO authenticated;

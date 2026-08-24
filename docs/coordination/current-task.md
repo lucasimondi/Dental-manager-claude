@@ -8,10 +8,20 @@
   `36a149759b7d1cf7827d17d4a8648fdb1f999570`, integrated into this branch by
   a merge commit (POL-CHAT-001 integration).
 - PR: `#53`
-- STATUS: `WAITING_PRODUCT_OWNER` — implementation complete, rebased onto the
-  merged POL-UI-015 master and locally validated; not merged, not deployed,
-  and no remote migration was applied.
-  validated; not merged, not deployed, and no remote migration was applied.
+- STATUS: `WAITING_PRODUCT_OWNER_FINAL_QA` — implementation complete, merged
+  onto the POL-UI-015 master, and the single authorized migration
+  `20260824030000_chat_polyedron.sql` is now APPLIED to project
+  `idklxdqebfceplrualgh` and verified with 26 real-database assertions
+  (all rolled back, no residual test data). FASE 4-13 completed: the quick
+  panel no longer carries any Chat history or history banner and no longer
+  depends on the Chat backend; the Chat page is the one persistent-history
+  surface, with classified error states (loading / empty / schema /
+  permission / network / generic) and initialization-error precedence; the
+  unread badge exists only on the bell; the temporary POL-UI-015 on-screen
+  save diagnostics are removed. Not merged, not deployed to production; no
+  other migration was applied. See the POL-CHAT-001 FASE 1-17 handoff entry
+  for the full evidence and for what remains NOT VERIFIABLE (authenticated
+  browser QA on the preview).
 
 ## Objective
 

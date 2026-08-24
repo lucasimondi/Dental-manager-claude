@@ -500,7 +500,7 @@ test('patient form isolation: App remounts SchedaPaz when the selected patient c
 
 test('explicit Ask cancels live preview and query changes invalidate stale results', () => {
   const source = fs.readFileSync(path.join(POLIEDRON_COMPONENTS_DIR, 'Poliedron.jsx'), 'utf8');
-  assert.match(source, /if \(previewTimerRef\.current\) clearTimeout\(previewTimerRef\.current\);[\s\S]*runQuery\(query, \{ allowModel: true, persist: true \}\)/);
+  assert.match(source, /if \(previewTimerRef\.current\) clearTimeout\(previewTimerRef\.current\);[\s\S]*runQuery\(query, \{ allowModel: true, persist: chatPersistenceAvailable \}\)/);
   assert.match(source, /const handleQueryChange[\s\S]*requestSeq\.current \+= 1;[\s\S]*setState\(null\)/);
 });
 

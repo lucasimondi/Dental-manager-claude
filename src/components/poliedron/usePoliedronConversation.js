@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { describeChatError } from '../../lib/poliedron/chatErrorState.js';
 import {
   appendConversationMessage,
   countUnreadMessages,
@@ -159,6 +160,12 @@ export default function usePoliedronConversation({ client, studioId, userId }) {
     setInitializationAttempt((attempt) => attempt + 1);
   }, []);
 
+  /* POL-CHAT-001 §FASE 10 — the raw error stays available (callers may log
+     it), but every consumer gets the CLASS of the failure alongside it, so no
+     component has to guess whether "not available" means a missing table, a
+     denied permission or a dead network. */
+  const errorState = useMemo(() => describeChatError(error), [error]);
+
   return {
     conversation,
     messages,
@@ -167,6 +174,7 @@ export default function usePoliedronConversation({ client, studioId, userId }) {
     loadingOlder,
     unreadCount,
     error,
+    errorState,
     setError,
     loadOlder,
     appendMessage,

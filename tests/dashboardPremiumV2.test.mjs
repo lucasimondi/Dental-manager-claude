@@ -159,12 +159,14 @@ test('mobile dock no longer has a Setup/Impostazioni slot; Chat opens the same P
   assert.match(dockSrc, /id: 'chat', label: 'Chat', icon: 'chat'/);
   // POL-CHAT-001 merge: the placeholder branch that reopened the quick panel
   // (`if (item.id === 'chat') ... onClick={onToggle}`) is gone. Chat now uses
-  // the same generic navigation path as every other slot and shows the real
-  // unread badge — still ONE Poliedron, because the Chat page is that same
-  // instance portalled into App.jsx's chat host.
+  // the same generic navigation path as every other slot — still ONE
+  // Poliedron, because the Chat page is that same instance portalled into
+  // App.jsx's chat host. POL-CHAT-001 §FASE 9: the unread badge lives on the
+  // bell only, so this slot must not carry a duplicate of the same count.
   assert.doesNotMatch(dockSrc, /if \(item\.id === 'chat'\) \{[\s\S]*onToggle/);
   assert.match(dockSrc, /onClick=\{\(\) => setPage\(item\.id\)\}/);
-  assert.match(dockSrc, /poliedron-mobile-dock__badge/);
+  assert.doesNotMatch(dockSrc, /poliedron-mobile-dock__badge/);
+  assert.match(bellSrc, /poliedron-bell__badge/);
 });
 
 // --- 10/11. IMPOSTAZIONI REACHABLE FROM THE CENTRAL PANEL / DESKTOP SIDEBAR -

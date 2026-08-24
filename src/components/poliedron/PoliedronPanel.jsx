@@ -14,13 +14,25 @@ import PoliedronIntelligenceResults from './PoliedronIntelligenceResults';
    passed in as `state` (already-computed structured output) by the
    Poliedron container. §5: command bar + results + actions is the
    PRIMARY surface; PoliedronConversation (extended answer) only renders
-   when `state.answer` is present. */
+   when `state.answer` is present.
+
+   POL-CHAT-001 §FASE 4/7/11 — what this panel deliberately does NOT contain:
+   the Chat history. No message list, no previous conversations, no persistent
+   thread, no history preview, and no banner about persistent history being
+   available or unavailable (the removed "La cronologia persistente non è
+   disponibile." block). It shows only the CURRENT request and its answer.
+   The persistent history lives on exactly one surface, the Chat page.
+
+   It is also independent of the Chat backend: it receives no conversation, no
+   conversation error and no retry handler, so a missing/failed
+   `poliedron_conversations` / `poliedron_messages` cannot disable or degrade
+   it — persistence of a panel request is best-effort and handled upstream in
+   Poliedron.jsx. Still ONE Poliedron: same instance, same agent. */
 export default function PoliedronPanel({
   panelId, isMobile, query, onQueryChange, state, loading,
   highlightedIndex, onHighlightChange, onSelectResult, onConfirmAction, onModifyAction, onSubmit,
   onConfirmActionPlan, actionRunning, actionRunResult,
   onClose, inputRef, submitDisabled = false, interactionDisabled = false,
-  conversationError = false, onRetryConversation,
 }) {
   const containerRef = useRef(null);
 
@@ -100,12 +112,6 @@ export default function PoliedronPanel({
         </div>
 
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: isMobile ? '12px 14px' : '14px 16px' }}>
-          {conversationError && (
-            <div className="poliedron-chat__error" role="alert">
-              La cronologia persistente non è disponibile.
-              <button type="button" onClick={onRetryConversation}>Riprova</button>
-            </div>
-          )}
           {loading ? (
             <div className="poliedron-loading-card"><span className="poliedron-loading-card__pulse" />Poliedron sta verificando…</div>
           ) : state?.intelligence ? (

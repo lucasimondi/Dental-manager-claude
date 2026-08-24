@@ -188,11 +188,11 @@ test('mobile dock Chat button opens the real persistent Chat page, not the place
   assert.ok(ids.includes('chat'), 'the dock still routes to the chat page id');
 });
 
-test('mobile dock shows the Chat unread badge without mounting a second Poliedron', () => {
-  assert.match(mobileDockSource, /unreadCount = 0/);
-  assert.match(mobileDockSource, /item\.id === 'chat' && unreadCount > 0/);
-  assert.match(mobileDockSource, /unreadCount > 99 \? '99\+' : unreadCount/);
-  assert.match(mobileDockSource, /poliedron-mobile-dock__badge/);
+/* POL-CHAT-001 §FASE 9: the unread badge belongs to the notification bell
+   only. The dock's Chat slot must NOT duplicate the same count. */
+test('mobile dock carries no duplicate unread badge and mounts no second Poliedron', () => {
+  assert.doesNotMatch(mobileDockSource, /unreadCount/);
+  assert.doesNotMatch(mobileDockSource, /poliedron-mobile-dock__badge/);
   // The only Poliedron surface the dock mounts is the shared central orb.
   assert.equal((mobileDockSource.match(/<PoliedronOrb/g) || []).length, 1);
   assert.doesNotMatch(mobileDockSource, /<Poliedron\b/);
@@ -200,9 +200,9 @@ test('mobile dock shows the Chat unread badge without mounting a second Poliedro
 
 test('mobile dock exposes only four icon routes plus the central Poliedron hero slot', () => {
   assert.match(mobileDockSource, /data-slot="poliedron"/);
-  // POL-CHAT-001 merge: the label falls back to `item.label` and only grows
-  // an unread count for the Chat slot, so the accessible name is never lost.
-  assert.match(mobileDockSource, /aria-label=\{item\.id === 'chat' && unreadCount > 0[\s\S]{0,160}: item\.label\}/);
+  // POL-CHAT-001 §FASE 9: every slot keeps its plain accessible name; the
+  // unread count is announced by the bell, which owns it.
+  assert.match(mobileDockSource, /aria-label=\{item\.label\}/);
   assert.match(mobileDockSource, /aria-current=\{active \? 'page'/);
   assert.match(mobileDockSource, /s=\{22\}/);
   assert.match(premiumCss, /poliedron-mobile-dock__item\s*\{[\s\S]*width:\s*44px;[\s\S]*height:\s*44px;/);
