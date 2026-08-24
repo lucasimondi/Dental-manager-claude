@@ -8,42 +8,54 @@
 - BRANCH: `feature/POL-UI-015-dashboard-premium-v2`
 - BASE: `master` (POL-UI-004-AGENDA-QUICK-HUB/Agenda Mobile V2 merged as
   `b65cdba`, PR #50)
-- STATUS: `WAITING_PRODUCT_OWNER` — draft PR #51 open, not merged, not
-  deployed. Round 1 (`c4df202`) and round 2 (`77d64d5`) were BOTH rejected
-  by the Product Owner: in the real preview the Richiami widget still did
-  not appear and Personalizza Home still did not persist. The Product Owner
-  ruled that both rounds' QA — a fake `localStorage`-backed Supabase client
-  — validates nothing.
+- STATUS: `WAITING_PRODUCT_OWNER_REAL_QA` — PR #51 open, not merged, not
+  deployed. Rounds 1 (`c4df202`), 2 (`77d64d5`) and 3 (`1a82027`) were all
+  rejected. On `1a82027` the Product Owner verified the preview personally:
+  **Richiami OK, Dashboard OK, Personalizza Home STILL DOES NOT SAVE.**
+  BUG A is therefore CLOSED; round 4 touched BUG B only — Richiami, the
+  visual Dashboard, Richiami CSS, fullscreen and Poliedron were not
+  modified.
 
-  Round 3 established both root causes against the LIVE project, read only,
-  and they are not what rounds 1 and 2 assumed:
+  Round 4 found that round 3's own fix was the blocker:
 
-  - BUG A: the reporting account's saved `user_home_layouts` row (written
-    2026-08-19, before POL-UX-001) carries an EXPLICIT
-    `richiami: visible:false`. `resolveDashboardLayout` gives the user
-    layout absolute precedence and `normalizeHomeLayout`'s `defaultVisible`
-    fallback only applies to ABSENT ids, so round 2's registry default and
-    owner-preset entry are structurally unreachable for that account. Fixed
-    with a narrow, idempotent load-time migration that re-defaults ONLY
-    `richiami` for layouts predating the `quick_actions` sentinel — 12 of
-    the row's 13 entries verified untouched.
-  - BUG B: the project's edge logs show 132 GET requests against
-    `user_home_layouts` and **ZERO** POST/PATCH/DELETE across the Product
-    Owner's test window, and the stored row is still stamped 2026-08-19 — so
-    the save never reached the network. The schema, PK, CHECKs, RLS policies
-    and grants were audited and are correct. Fixed on the client:
-    `saveUserHomeLayout` now UPSERTs, READS THE RECORD BACK, compares the raw
-    stored jsonb and THROWS rather than returning its own payload as a false
-    success; and both "Salva Home" buttons no longer sit `disabled` behind
-    `layoutLoading` while looking fully enabled.
+  - The verified read-back compared `JSON.stringify` of the layout sent with
+    `JSON.stringify` of the layout read back. Postgres `jsonb` stores object
+    keys sorted by length then bytewise, so the two strings could never be
+    equal for ANY layout on ANY account. Every save therefore threw
+    "il layout Home persistito non corrisponde a quello inviato" AFTER the
+    write had landed, the modal stayed open and nothing was committed to
+    state. Fixed with a canonical fingerprint that ignores key ORDER while
+    still comparing array order, ids, `visible`, `size`, `config` and
+    length. The UPSERT → READ-BACK → compare → THROW contract is preserved.
+  - `homeLayoutDiagnostics` was gated on `import.meta.env.DEV`, and a
+    Netlify deploy preview is a production build — so the entire diagnostic
+    trail was compiled away in the only environment where the bug
+    reproduces. It is now enabled on deploy-preview/localhost hostnames too,
+    never on production hostnames.
+  - `draftInherits` was audited and is NOT the cause: all five editing
+    handlers clear it, and for the reporting account it is already `false`
+    on open. There is no second, divergent Salva button and no overlay
+    intercepting the click.
+  - The Product Owner's device is an **iPhone** (verified from edge logs).
+    The footer action row now wraps and the primary Salva button is
+    non-shrinking with a 44px touch target; the Azioni rapide tab gained the
+    error alert it was missing.
 
-  See the "POL-UI-015 handoff round 3" entry in `handoffs.md` for the full
-  evidence, including what is VERIFIED and what is NOT VERIFIABLE. Same
-  branch, same PR #51 — no new branch, no new PR, no merge, no deploy.
+  STILL OPEN: the edge logs show ZERO write requests on
+  `user_home_layouts` in the test window, so it is not proven that the click
+  reaches `saveHomeCustomization` on iOS Safari at all. Temporary
+  preview-only instrumentation (`HOME_SAVE_*` events plus an on-screen
+  "DEV/PREVIEW · save state" badge under both Salva buttons, no secrets and
+  no identifiers) was added to settle exactly that on the next real QA. It
+  must be removed or downgraded before merge.
 
-  NOT VERIFIABLE in round 3: authenticated preview QA, mobile QA and desktop
+  See "POL-UI-015 handoff round 4" in `handoffs.md` for the full evidence
+  and the VERIFIED / NOT VERIFIABLE split. Same branch, same PR #51 — no new
+  branch, no new PR, no merge, no deploy.
+
+  NOT VERIFIABLE in round 4: authenticated preview QA, iPhone QA and desktop
   QA — no browser with the Product Owner's session is available here and no
-  credentials were requested or used.
+  credentials were requested or used. `npm test` 410/410, build clean.
 
 ## Objective
 

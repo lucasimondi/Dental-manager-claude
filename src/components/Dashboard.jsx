@@ -14,7 +14,7 @@ import { getHomeFinancialWidget, loadHomeFinancialSnapshot } from '../lib/homeFi
 import QuickBookingModal from './QuickBookingModal.jsx';
 import { DEFAULT_QUICK_ACTION_IDS, filterQuickActionsCatalog, getQuickAction, resolveQuickActions } from '../lib/quickActionsCatalog.js';
 import poliedroGem from '../assets/icon-poliedra-gem.png';
-import { logHomeLayoutEvent } from '../lib/homeLayoutDiagnostics.js';
+import { isHomeLayoutDiagnosticsEnabled, logHomeLayoutEvent } from '../lib/homeLayoutDiagnostics.js';
 import { buildActivityText } from '../lib/appointmentQuickHub.js';
 import { MOBILE_DOCK_BOTTOM, MOBILE_DOCK_HEIGHT, MOBILE_DOCK_PROTECTED_GAP } from '../lib/poliedron/poliedronMobileDock.js';
 
@@ -225,6 +225,23 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
      discarded instead of overwriting the just-persisted layout. */
   const layoutSaveEpochRef = useRef(0);
 
+  /* POL-UI-015 round 4 — the Product Owner tests exclusively on the Netlify
+     deploy preview, from an iPhone (verified from the project's own edge
+     logs: every preview-#51 request comes from iOS Safari). Three rounds in
+     a row could not tell whether the "Salva Home" click even reached
+     `saveHomeCustomization`, because there was no observable trail in a
+     production build. `homeSaveDiag` is that trail, rendered right under
+     the button and gated on the SAME preview-only switch as the console
+     events, so the Product Owner can read the stage and the chosen save
+     branch straight off the screen on the phone, without a devtools
+     console. It never renders in production. */
+  const diagnosticsEnabled = isHomeLayoutDiagnosticsEnabled();
+  const [homeSaveDiag, setHomeSaveDiag] = useState(null);
+  const traceHomeSave = (event, detail) => {
+    logHomeLayoutEvent(event, detail);
+    if (diagnosticsEnabled) setHomeSaveDiag({ event, detail: detail || null, at: new Date().toLocaleTimeString('it-IT') });
+  };
+
   useEffect(() => {
     if (!studioId || !userId) return;
     let cancelled = false;
@@ -312,13 +329,46 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
     setSettingsOpen(true);
   };
 
+  /* POL-UI-015 round 4 §1 — the ids the draft actually changes with respect
+     to the committed layout. Logged (ids only, no patient data, no
+     identifiers) so a "Salva" that reports zero changes is immediately
+     visible as such instead of looking like a failed save. */
+  const changedDraftWidgetIds = () => {
+    const committed = new Map(widgets.map((item) => [item.id, item]));
+    const changed = draftWidgets.filter((item) => {
+      const before = committed.get(item.id);
+      if (!before) return true;
+      return before.visible !== item.visible || before.order !== item.order || before.size !== item.size
+        || JSON.stringify(before.config || null) !== JSON.stringify(item.config || null);
+    }).map((item) => item.id);
+    return changed;
+  };
+
   const saveHomeCustomization = async () => {
-    if (!studioId || !userId) { setLayoutError('Identità studio/utente non disponibile'); return; }
+    // POL-UI-015 round 4: FIRST statement of the handler, before any guard,
+    // so the trail distinguishes "the click never reached this function"
+    // (nothing logged at all — a UI/hit-target problem) from "it ran and
+    // stopped at a specific stage".
+    traceHomeSave('HOME_SAVE_CLICK');
+    traceHomeSave('HOME_SAVE_STATE', {
+      layoutSource,
+      draftInherits,
+      layoutLoading,
+      layoutSaving,
+      studioIdPresent: Boolean(studioId),
+      userIdPresent: Boolean(userId),
+      changedWidgetIds: changedDraftWidgetIds(),
+    });
+    if (!studioId || !userId) {
+      traceHomeSave('HOME_SAVE_ERROR', { stage: 'identity-missing' });
+      setLayoutError('Identità studio/utente non disponibile'); return;
+    }
     layoutSaveEpochRef.current += 1;
     setLayoutSaving(true); setLayoutError('');
     logHomeLayoutEvent('HOME_LAYOUT_SAVE_START');
     try {
       if (draftInherits) {
+        traceHomeSave('HOME_SAVE_BRANCH_INHERIT');
         await deleteUserHomeLayout(supabase, studioId, userId);
         try {
           const resolved = await loadResolvedHomeLayout(supabase, studioId, userId, roleLayout);
@@ -334,6 +384,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           setWidgets(inheritedLayout); setDraftWidgets(inheritedLayout); setLayoutSource(inheritedSource);
         }
       } else {
+        traceHomeSave('HOME_SAVE_BRANCH_USER');
         const saved = await saveUserHomeLayout(supabase, studioId, userId, draftWidgets);
         setWidgets(saved); setDraftWidgets(saved); setLayoutSource('user');
       }
@@ -342,6 +393,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
       // read-back, so closing the modal here really does mean "persisted".
       layoutSaveEpochRef.current += 1;
       setSettingsOpen(false);
+      traceHomeSave('HOME_SAVE_SUCCESS');
       logHomeLayoutEvent('HOME_LAYOUT_SAVE_SUCCESS');
     } catch (error) {
       // POL-UI-015 round 3: surface the real reason (including the new
@@ -349,6 +401,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
       // instead of a single opaque message, and keep the modal open with
       // the user's draft intact so they can retry.
       setLayoutError(error?.message ? `Salvataggio non riuscito: ${error.message}` : 'Salvataggio non riuscito. Nessuna modifica è stata applicata.');
+      traceHomeSave('HOME_SAVE_ERROR', { stage: 'save', message: error?.message || 'unknown' });
       logHomeLayoutEvent('HOME_LAYOUT_SAVE_ERROR');
     }
     finally { setLayoutSaving(false); }
@@ -369,6 +422,21 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
     } catch (error) { setLayoutError(error?.message ? `Salvataggio del predefinito studio non riuscito: ${error.message}` : 'Salvataggio del predefinito studio non riuscito.'); }
     finally { setLayoutSaving(false); }
   };
+  /* POL-UI-015 round 4 §4 — preview/dev-only save-state readout. Renders
+     directly under the "Salva Home" button so the Product Owner can see,
+     on the phone he actually tests with, which branch the save takes and
+     where it stops. `diagnosticsEnabled` is false on every production
+     hostname, so production users never see this block. */
+  const homeSaveDiagBadge = !diagnosticsEnabled ? null : (
+    <div style={{ marginTop: 8, padding: '7px 9px', borderRadius: 8, background: C.bg, border: `1px dashed ${C.brd}`, fontSize: 10.5, lineHeight: 1.45, color: C.txm, fontFamily: 'ui-monospace,SFMono-Regular,Menlo,monospace', wordBreak: 'break-word' }}>
+      <div style={{ fontWeight: 800, color: C.txl, textTransform: 'uppercase', letterSpacing: '0.05em' }}>DEV/PREVIEW · save state</div>
+      <div>ramo: {draftInherits ? 'inherit (elimina layout utente)' : 'user (salva layout utente)'} · fonte: {layoutSource}</div>
+      <div>stato: {layoutSaving ? 'saving' : layoutLoading ? 'loading' : layoutError ? 'error' : 'ready'} · identità: {studioId ? 'studio✓' : 'studio✗'} {userId ? 'utente✓' : 'utente✗'}</div>
+      <div>ultimo evento: {homeSaveDiag ? `${homeSaveDiag.event} (${homeSaveDiag.at})` : 'nessun click registrato'}</div>
+      {homeSaveDiag?.detail && <div>dettaglio: {JSON.stringify(homeSaveDiag.detail)}</div>}
+    </div>
+  );
+
   const [todoList, setTodoList] = useState([]);
   const [todoInput, setTodoInput] = useState('');
   const [todoModal, setTodoModal] = useState(false);
@@ -581,15 +649,24 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
             <div style={{ marginTop:10,fontSize:11,color:C.txm }}>
               {draftInherits ? `Eredita il predefinito ${inheritedSource === 'studio' ? 'dello studio' : inheritedSource === 'role' ? 'del ruolo/verticale' : 'della piattaforma'}.` : 'Personalizzazione personale: modifica solo la tua presentazione.'}
             </div>
-            <div style={{ display:'flex',gap:8,marginTop:12 }}>
+            {/* POL-UI-015 round 4: `flexWrap` + a non-shrinkable primary
+                action. This row holds four buttons and had neither, so on a
+                phone (the Product Owner's actual test device is an iPhone)
+                the browser squeezed every button to min-content and wrapped
+                their labels mid-word, leaving "Salva Home" a sliver next to
+                "Annulla" — a hostile hit target for the modal's primary
+                action. Now the row wraps and the primary action keeps its
+                full width and a 44px touch height. */}
+            <div style={{ display:'flex',gap:8,marginTop:12,flexWrap:'wrap',alignItems:'center' }}>
               <button type="button" onClick={resetHomeCustomization} style={{ padding:'9px 12px',background:C.danL,border:'none',borderRadius:9,color:C.dan,fontWeight:700,fontSize:12,cursor:'pointer' }}>↺ Reset al default {inheritedSource === 'studio' ? 'studio' : inheritedSource === 'role' ? 'ruolo' : 'piattaforma'}</button>
               {isStudioAdmin && <button type="button" disabled={layoutSaving} onClick={saveStudioDefault} style={{ padding:'9px 12px',background:C.priL,border:`1px solid ${C.pri}33`,borderRadius:9,color:C.pri,fontWeight:700,fontSize:12,cursor:layoutSaving?'progress':'pointer',opacity:layoutSaving?0.6:1 }}>Salva come default studio</button>}
               <button type="button" onClick={() => setSettingsOpen(false)} style={{ marginLeft:'auto',padding:'9px 14px',background:C.bg,border:`1px solid ${C.brd}`,borderRadius:9,color:C.txm,fontWeight:700,fontSize:12,cursor:'pointer' }}>Annulla</button>
               {/* POL-UI-015 round 3: `disabled` and the disabled styling are
                   now derived from the SAME flag, so this control can never
                   again look enabled while ignoring clicks. */}
-              <button type="button" disabled={layoutSaving} onClick={saveHomeCustomization} style={{ padding:'9px 16px',background:C.pri,border:'none',borderRadius:9,color:'#fff',fontWeight:800,fontSize:12,cursor:layoutSaving?'progress':'pointer',opacity:layoutSaving?0.6:1 }}>{layoutSaving ? 'Salvataggio…' : 'Salva Home'}</button>
+              <button type="button" disabled={layoutSaving} onClick={saveHomeCustomization} style={{ padding:'9px 16px',background:C.pri,border:'none',borderRadius:9,color:'#fff',fontWeight:800,fontSize:12,cursor:layoutSaving?'progress':'pointer',opacity:layoutSaving?0.6:1,flexShrink:0,whiteSpace:'nowrap',minHeight:44 }}>{layoutSaving ? 'Salvataggio…' : 'Salva Home'}</button>
             </div>
+            {homeSaveDiagBadge}
           </>}
 
           {/* TAB AZIONI RAPIDE */}
@@ -640,11 +717,13 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                     ))}
                   </div>
                 </>}
-                <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+                <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap', alignItems: 'center' }}>
                   <button type="button" onClick={() => setSettingsOpen(false)} style={{ marginLeft: 'auto', padding: '9px 14px', background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 9, color: C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Annulla</button>
                   {/* POL-UI-015 round 3: same fix as the Widget tab's Salva button. */}
-                  <button type="button" disabled={layoutSaving} onClick={saveHomeCustomization} style={{ padding: '9px 16px', background: C.pri, border: 'none', borderRadius: 9, color: '#fff', fontWeight: 800, fontSize: 12, cursor: layoutSaving ? 'progress' : 'pointer', opacity: layoutSaving ? 0.6 : 1 }}>{layoutSaving ? 'Salvataggio…' : 'Salva Home'}</button>
+                  <button type="button" disabled={layoutSaving} onClick={saveHomeCustomization} style={{ padding: '9px 16px', background: C.pri, border: 'none', borderRadius: 9, color: '#fff', fontWeight: 800, fontSize: 12, cursor: layoutSaving ? 'progress' : 'pointer', opacity: layoutSaving ? 0.6 : 1, flexShrink: 0, whiteSpace: 'nowrap', minHeight: 44 }}>{layoutSaving ? 'Salvataggio…' : 'Salva Home'}</button>
                 </div>
+                {layoutError && <div role="alert" style={{ marginTop: 10, fontSize: 12, color: C.dan, fontWeight: 700 }}>{layoutError}</div>}
+                {homeSaveDiagBadge}
               </>
             );
           })()}

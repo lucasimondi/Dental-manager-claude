@@ -1,17 +1,55 @@
 import { createDefaultHomeLayout, migrateSavedHomeLayout, serializeHomeLayout } from './homeWidgetRegistry.js';
 import { resolveDashboardLayout } from './homeDashboardModel.js';
+import { logHomeLayoutEvent } from './homeLayoutDiagnostics.js';
 
 const requireIdentity = (studioId, userId) => {
   if (!studioId || !userId) throw new Error('Identità studio/utente non disponibile');
 };
 
-/* POL-UI-015 bugfix round 3: the read-back below compares the RAW jsonb the
-   database really holds against the raw payload we sent. It deliberately
-   does NOT compare normalized forms: `normalizeHomeLayout` appends any
-   registry id missing from a layout, so two different stored records (a
-   complete one and a truncated one) normalize to the same result — a
-   normalized comparison would silently accept a partial write. */
-const rawLayoutFingerprint = (layout) => JSON.stringify(Array.isArray(layout) ? layout : []);
+/* POL-UI-015 bugfix round 3: the read-back below compares the jsonb the
+   database really holds against the payload we sent. It deliberately does
+   NOT compare normalized forms: `normalizeHomeLayout` appends any registry
+   id missing from a layout, so two different stored records (a complete
+   one and a truncated one) normalize to the same result — a normalized
+   comparison would silently accept a partial write.
+
+   POL-UI-015 bugfix round 4 — ROOT CAUSE of "Personalizza Home non salva
+   ancora" after round 3. Round 3 compared `JSON.stringify(row.layout)`
+   against `JSON.stringify(payload.layout)` directly. Postgres `jsonb` does
+   NOT preserve object key order: it stores keys sorted by (length, then
+   bytewise) and returns them that way. `serializeHomeLayout` emits
+   `{id, order, visible, size[, config]}`, while the very same record read
+   back from the database is `{id, size, order[, config], visible}`.
+   Verified read-only against the real project:
+
+     select '[{"id":"agenda","order":0,"visible":true,"size":"large"}]'::jsonb
+     -> [{"id": "agenda", "size": "large", "order": 0, "visible": true}]
+
+   so the two strings could NEVER be equal, for any layout, on any account.
+   The upsert succeeded and the read-back returned the correct row, and the
+   save then threw "il layout Home persistito non corrisponde a quello
+   inviato" every single time: the modal stayed open, `setWidgets`/
+   `setLayoutSource('user')` never ran, and the personalization looked
+   un-saved. Round 3 had turned a silent no-op into a guaranteed failure.
+
+   The fix is a CANONICAL fingerprint: object keys are sorted recursively
+   on BOTH sides before stringifying, so key order (a storage detail we do
+   not control) is ignored, while everything that matters is still compared
+   exactly and strictly — array order, entry count, ids, `order`, `size`,
+   `visible`, and the whole nested `config`. A truncated, reordered or
+   altered write still fails, which is what the read-back is for. */
+const canonicalize = (value) => {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value && typeof value === 'object') {
+    return Object.keys(value).sort().reduce((out, key) => {
+      out[key] = canonicalize(value[key]);
+      return out;
+    }, {});
+  }
+  return value;
+};
+
+export const canonicalLayoutFingerprint = (layout) => JSON.stringify(canonicalize(Array.isArray(layout) ? layout : []));
 
 const readUserHomeLayoutRow = async (client, studioId, userId) => {
   const { data, error } = await client.from('user_home_layouts')
@@ -96,16 +134,29 @@ export async function saveUserHomeLayout(client, studioId, userId, layout) {
     schema_version: 1,
     updated_at: new Date().toISOString(),
   };
+  const expected = canonicalLayoutFingerprint(payload.layout);
+  logHomeLayoutEvent('HOME_SAVE_UPSERT_START', { widgets: payload.layout.length });
   const { error } = await client.from('user_home_layouts').upsert(payload, { onConflict: 'studio_id,user_id' });
-  if (error) throw error;
+  if (error) {
+    logHomeLayoutEvent('HOME_SAVE_ERROR', { stage: 'upsert', code: error?.code || null });
+    throw error;
+  }
+  logHomeLayoutEvent('HOME_SAVE_UPSERT_OK');
 
   const row = await readUserHomeLayoutRow(client, studioId, userId);
   if (!row) {
+    logHomeLayoutEvent('HOME_SAVE_ERROR', { stage: 'readback-missing' });
     throw new Error('Salvataggio non confermato dal database: nessun layout Home persistito per questo utente.');
   }
-  if (rawLayoutFingerprint(row.layout) !== rawLayoutFingerprint(payload.layout)) {
+  if (canonicalLayoutFingerprint(row.layout) !== expected) {
+    logHomeLayoutEvent('HOME_SAVE_ERROR', {
+      stage: 'readback-mismatch',
+      sentWidgets: payload.layout.length,
+      storedWidgets: Array.isArray(row.layout) ? row.layout.length : 0,
+    });
     throw new Error('Salvataggio non confermato dal database: il layout Home persistito non corrisponde a quello inviato.');
   }
+  logHomeLayoutEvent('HOME_SAVE_READBACK_OK', { widgets: Array.isArray(row.layout) ? row.layout.length : 0 });
   return migrateSavedHomeLayout(row.layout);
 }
 
@@ -134,6 +185,7 @@ export async function saveStudioHomeLayout(client, studioId, userId, layout) {
     updated_by: userId,
     updated_at: new Date().toISOString(),
   };
+  const expected = canonicalLayoutFingerprint(payload.layout);
   const { error } = await client.from('studio_home_layouts').upsert(payload, { onConflict: 'studio_id' });
   if (error) throw error;
 
@@ -142,7 +194,7 @@ export async function saveStudioHomeLayout(client, studioId, userId, layout) {
   if (!row) {
     throw new Error('Salvataggio non confermato dal database: nessun default Home persistito per questo studio.');
   }
-  if (rawLayoutFingerprint(row.layout) !== rawLayoutFingerprint(payload.layout)) {
+  if (canonicalLayoutFingerprint(row.layout) !== expected) {
     throw new Error('Salvataggio non confermato dal database: il default Home persistito non corrisponde a quello inviato.');
   }
   return migrateSavedHomeLayout(row.layout);

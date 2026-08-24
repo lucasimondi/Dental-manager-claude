@@ -53,6 +53,28 @@ const premiumCss = await readFile(new URL('../src/components/PremiumVisualSystem
 
 const KEY = { studioId: 'studio-a', userId: 'user-a' };
 
+/* POL-UI-015 round 4 — why round 3's tests passed while the real save
+   failed 100% of the time: this stand-in stored and returned the payload
+   object as-is, preserving JavaScript key insertion order. Postgres `jsonb`
+   does NOT: it stores object keys sorted by (length, then bytewise) and
+   returns them in that order. Verified read-only on the real project:
+
+     select '[{"id":"agenda","order":0,"visible":true,"size":"large"}]'::jsonb
+     -> [{"id": "agenda", "size": "large", "order": 0, "visible": true}]
+
+   Round 3's read-back compared raw `JSON.stringify` output, so in
+   production the comparison could never match and every save threw. Every
+   write in this file now goes through the same key reordering a real jsonb
+   column applies, so that class of bug cannot pass here again. */
+const jsonbStore = (value) => {
+  if (Array.isArray(value)) return value.map(jsonbStore);
+  if (value && typeof value === 'object') {
+    const keys = Object.keys(value).sort((a, b) => (a.length - b.length) || (a < b ? -1 : a > b ? 1 : 0));
+    return keys.reduce((out, key) => { out[key] = jsonbStore(value[key]); return out; }, {});
+  }
+  return value;
+};
+
 /** Behavioural stand-in for user_home_layouts / studio_home_layouts. */
 const table = ({
   userRow = null, studioRow = null,
@@ -77,7 +99,7 @@ const table = ({
         if (failUpsert) return { error: failUpsert };
         if (dropWrite) return { error: null }; // upsert reports OK, nothing lands
         const layout = mutateWrite ? mutateWrite(payload.layout) : payload.layout;
-        rows[name] = { layout };
+        rows[name] = { layout: jsonbStore(layout) };
         return { error: null };
       },
       delete: () => ({ eq: () => ({ eq: async () => { calls.push(`DELETE ${name}`); rows[name] = null; return { error: null }; } }) }),
@@ -211,8 +233,13 @@ test('saveUserHomeLayout never returns its own payload object', () => {
   assert.match(fn, /const row = await readUserHomeLayoutRow\(/);
   assert.match(fn, /throw new Error\('Salvataggio non confermato dal database/);
   assert.match(fn, /return migrateSavedHomeLayout\(row\.layout\);/);
-  // The comparison must be on the raw stored jsonb, never on normalized forms.
-  assert.match(persistenceSrc, /const rawLayoutFingerprint = /);
+  /* The comparison must be on the STORED jsonb, never on normalized forms —
+     but round 4 replaced round 3's `JSON.stringify` fingerprint with a
+     canonical one, because a jsonb column legitimately returns the same
+     data with its object keys reordered and the raw string comparison
+     therefore failed every single save. */
+  assert.match(persistenceSrc, /export const canonicalLayoutFingerprint = /);
+  assert.doesNotMatch(persistenceSrc, /const rawLayoutFingerprint = /, 'the raw string fingerprint was the round-3 regression');
   assert.doesNotMatch(persistenceSrc, /serializeHomeLayout\(persisted\)/);
 });
 

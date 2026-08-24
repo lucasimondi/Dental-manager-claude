@@ -1546,3 +1546,170 @@ pipeline's behaviour executed against the real stored layout.
 - FILES_CHANGED: `src/lib/homeWidgetRegistry.js`, `src/lib/homeLayoutPersistence.js`, `src/components/Dashboard.jsx`, `src/components/PremiumVisualSystem.css`, `tests/homeLayoutVerifiedPersistence.test.mjs` (new), `tests/dashboardPersonalization.test.mjs`, `tests/homeWidgetRegistry.test.mjs`, `tests/dashboardPremiumV2.test.mjs`, `tests/homeLayoutPrecedenceRace.test.mjs`, `docs/coordination/handoffs.md`, `docs/coordination/current-task.md`.
 - UNRESOLVED / RISKS: (1) authenticated preview/mobile/desktop QA is NOT VERIFIABLE here — the Product Owner must re-test the preview; (2) BUG A's fix rests on a product judgement the Product Owner stated explicitly ("visibile di default per owner/admin", "non resettare tutte le personalizzazioni") — if instead a pre-POL-UI-015 `visible:false` should be honoured as a deliberate user choice, this migration must be reverted and the requirement revisited: `PRODUCT_OWNER_DECISION_REQUIRED`; (3) the read-back adds one extra SELECT per save — negligible, and it is the only way to distinguish a real save from a false one; (4) the exact click that failed in the Product Owner's session cannot be replayed, so the silently-disabled-Salva path is reported as a demonstrated defect in the code and in the production request pattern, not as a replayed reproduction of that specific click.
 - Exact next action: Product Owner re-tests preview #51 after this commit rebuilds — confirm the Richiami widget now appears in the Dashboard without any other personalization changing, and that Personalizza Home now either really persists (verifiable by a reload) or fails with a visible error and stays open. Do not merge, do not deploy to production, do not open a new PR. Status: `WAITING_PRODUCT_OWNER`.
+
+## POL-UI-015 handoff round 4 — PR #51 third rejection: BUG B only, the round-3 regression found
+
+- Task ID: POL-UI-015.
+- Previous agent: round 3 (commit `1a820274de94df1d025d5527eb7958c3d81847b0`).
+- Branch: `feature/POL-UI-015-dashboard-premium-v2` — unchanged. Same PR #51. No new branch, no new PR, no merge, no production deploy.
+- STARTING_HEAD: `1a820274de94df1d025d5527eb7958c3d81847b0`.
+- REJECTION_SUMMARY: the Product Owner verified preview #51 personally on `1a82027`. Result: **Richiami OK, Dashboard OK, Personalizza Home STILL DOES NOT SAVE.** BUG A is therefore CLOSED and out of scope from this round on. Richiami, the visual Dashboard, Richiami CSS, fullscreen and Poliedron were not touched.
+
+### ROOT CAUSE #1 — the round-3 read-back could never succeed (PROVEN, decisive)
+
+Round 3 added a verified read-back: UPSERT → SELECT → compare → throw or
+return the DB record. The comparison was
+`rawLayoutFingerprint = JSON.stringify(layout)` on both sides. **Postgres
+`jsonb` does not preserve object key order** — it stores keys sorted by
+length, then bytewise. Verified read-only on the live project:
+
+```
+select '[{"id":"agenda","order":0,"visible":true,"size":"large"}]'::jsonb
+-> [{"id": "agenda", "size": "large", "order": 0, "visible": true}]
+```
+
+`serializeHomeLayout` emits `{id, order, visible, size[, config]}`, so the
+string sent and the string read back differ for **every layout, on every
+account, on every save**. Consequence: after a write that had actually
+landed, `saveUserHomeLayout` threw *"Salvataggio non confermato dal
+database: il layout Home persistito non corrisponde a quello inviato."*,
+`setWidgets` / `setLayoutSource('user')` / `setSettingsOpen(false)` never
+ran, and the modal stayed open — indistinguishable, from the outside, from
+"it doesn't save". Round 3 converted a silent no-op into a guaranteed hard
+failure. Reproduced end-to-end against the REAL stored layout with a client
+that reproduces jsonb key sorting: before the fix the save THROWS, after the
+fix it resolves with 29 entries and the request pattern `POST` then `GET`.
+
+FIX: `rawLayoutFingerprint` is replaced by an exported
+`canonicalLayoutFingerprint()` that recursively sorts object keys before
+stringifying. Key ORDER is now ignored; **array order, ids, `visible`,
+`size`, `config` and length are all still compared**, so a truncated,
+reordered or altered write still throws. The round-3 contract (UPSERT →
+READ-BACK → compare → THROW, return the DB layout) is preserved intact and
+`saveStudioHomeLayout` uses the same comparison. The upsert + second SELECT
+shape was deliberately NOT changed to `.upsert().select().single()`: the
+second SELECT is what proves the row is readable by the same RLS path the
+app loads through.
+
+### ROOT CAUSE #2 — the diagnostic trail was silent exactly where the bug lives (PROVEN)
+
+`src/lib/homeLayoutDiagnostics.js` gated every event on
+`import.meta.env.DEV`. A Netlify deploy preview is a production `vite
+build`, so `DEV` is false and all events were compiled away in the ONLY
+environment where the defect reproduces. Three rounds had to guess where
+the save stopped. The gate is now "dev server OR deploy-preview/localhost
+hostname", evaluated at runtime; production hostnames never match.
+
+### §3/§4 — instrumentation added (preview/dev only)
+
+`HOME_SAVE_CLICK` and `HOME_SAVE_STATE` are the FIRST statements of
+`saveHomeCustomization`, before the identity guard, so even a click that
+dies immediately is observable. `HOME_SAVE_STATE` carries `layoutSource`,
+`draftInherits`, `layoutLoading`, `layoutSaving`, `studioIdPresent`,
+`userIdPresent`, `changedWidgetIds`. Then
+`HOME_SAVE_BRANCH_USER` / `HOME_SAVE_BRANCH_INHERIT`,
+`HOME_SAVE_UPSERT_START`, `HOME_SAVE_UPSERT_OK`, `HOME_SAVE_READBACK_OK`,
+`HOME_SAVE_SUCCESS`, `HOME_SAVE_ERROR` (stages: `identity-missing`,
+`upsert`, `readback-missing`, `readback-mismatch`, `save`). Identity is
+logged as BOOLEANS only. **No token, email, patient data, PHI or secret is
+logged anywhere**, and a test enforces it against the executable code.
+A dashed "DEV/PREVIEW · save state" panel renders directly under both
+"Salva Home" buttons (branch, source, ready/saving/loading/error, identity
+booleans, last event + timestamp), so the Product Owner can read the state
+on the phone without a console. It cannot render in production.
+
+### §1 — `draftInherits` is NOT the cause (VERIFIED by audit)
+
+All five draft-editing handlers call `setDraftInherits(false)` before
+mutating: toggle visible (Aggiungi/Rimuovi), `onMove`, `onMoveByOffset`,
+`onResize`, and the quick-actions `updateActions`. `openHomeCustomizer` sets
+`draftInherits = (layoutSource !== 'user')`; for the reporting account a
+saved row exists, so `layoutSource === 'user'` and the flag is already
+`false` on open. The branch taken is always `saveUserHomeLayout`, never the
+delete branch. `resetHomeCustomization` is the only place that sets it back
+to `true`, deliberately, and a test pins that there is exactly one such
+call site.
+
+### §2 — there is no second, divergent Salva button (VERIFIED)
+
+Exactly two "Salva Home" controls exist (Widget tab, Azioni rapide tab),
+both `type="button"`, both `disabled={layoutSaving}`, both calling
+`saveHomeCustomization`. No `<form>` is involved, so no implicit submit.
+`Modal.jsx` portals to `document.body` at `zIndex 9999`; the highest
+competing layers are MobileDock (150/151) and Poliedron (1300/1301), neither
+mounted over the modal, and the backdrop only closes on a true self-target
+click. No overlay or `pointer-events` interception exists.
+
+### PO DEVICE — iPhone (VERIFIED from the project's edge logs)
+
+Every preview-#51 request in the window comes from
+`Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 ...) Safari/604.1`. The footer
+action row containing the primary Salva button had neither `flexWrap` nor a
+non-shrinkable primary action, so on a narrow screen the browser could
+squeeze four buttons to min-content and wrap their labels. Both footer rows
+now wrap, and the primary action carries `flexShrink:0`,
+`whiteSpace:'nowrap'` and a 44px minimum touch height. The Azioni rapide
+tab also gained the `layoutError` alert it was missing, so a failure there
+is no longer invisible. Nothing else in the mobile layout was touched.
+
+### §6 — load race (VERIFIED, no change needed)
+
+The round-3 save epoch (`layoutSaveEpochRef` + `HOME_LAYOUT_LOAD_STALE`)
+already discards any load that resolves after a confirmed save, and a load
+starting after the save reads the new record. The load effect still runs
+twice (deps include `JSON.stringify(capabilities)`), which is wasteful but
+cannot overwrite a confirmed save. Deliberately left alone: out of scope.
+
+### STILL UNEXPLAINED — reported honestly
+
+Edge logs for 2026-08-24 11:00–13:05 UTC show **ZERO** POST/PATCH/DELETE on
+`user_home_layouts` / `studio_home_layouts` — only GET pairs from the
+preview — and the single stored row is still stamped
+`2026-08-19 19:23:03Z`. So it is NOT proven that the Product Owner's click
+reached `saveHomeCustomization` at all. What IS proven is that any save that
+did fire could not survive the round-3 read-back. The `HOME_SAVE_CLICK`
+event and the on-screen badge are what will settle whether the click fires
+on iOS Safari; that answer requires the Product Owner's next real QA.
+
+### TESTS
+
+New `tests/homeCustomizerSaveBranch.test.mjs` (24 tests): a jsonb column
+really does reorder our keys and round 3's exact comparison can never pass;
+the canonical fingerprint ignores key order but still rejects truncation,
+array reordering, a flipped `visible`, a changed `size` and a changed
+`config`; a save against a jsonb-behaving table succeeds and is read back;
+all four edit kinds (toggle/resize/reorder/quick-actions config) round-trip;
+a genuinely wrong write still throws; per handler, `layoutSource='role'` +
+edit ⇒ `draftInherits=false` ⇒ UPSERT and never DELETE; a source-level guard
+that every draft-editing handler clears `draftInherits`; `layoutSource='user'`
++ edit ⇒ UPSERT; only an explicit reset reaches the DELETE branch; a failed
+save keeps the modal open, preserves the draft and shows the real reason;
+diagnostics are enabled on deploy previews and log no sensitive field;
+`HOME_SAVE_CLICK` precedes every guard; the badge is gated and prints no
+identifiers; both Salva buttons are touch-sized, non-shrinking and never
+disabled by `layoutLoading`; the payload fits the 32KB column CHECK.
+
+`tests/homeLayoutVerifiedPersistence.test.mjs` — the table double now
+reorders keys exactly like a jsonb column, which is the change that would
+have caught this regression in round 3, and the assertion demanding
+`rawLayoutFingerprint` was inverted to forbid it.
+
+`npm test` → **410/410 passing**. `npm run build` → clean (only the
+pre-existing large-chunk warning). `git diff --check` → clean.
+
+### REAL PREVIEW QA — **NOT VERIFIABLE**
+
+Authenticated QA on preview #51 was again not performed and is **not
+claimed**: no browser with the Product Owner's session is available here, no
+credentials were requested, extracted or used. **Authenticated preview QA,
+iPhone QA and desktop QA are NOT VERIFIABLE in this round.** Verified in
+this round: the jsonb key-ordering behaviour (read-only SQL on the live
+project), the stored row's contents and timestamp, the edge-log request
+pattern and the Product Owner's device, the fixed pipeline executed against
+the real stored layout, and the full source audit of the flow.
+
+- DATABASE_CHANGES: **none.** All SQL was read-only `SELECT`. No clinical or patient data was read or modified. No migration was added, altered or run.
+- DEPENDENCY_CHANGES: **none.**
+- FILES_CHANGED: `src/lib/homeLayoutDiagnostics.js`, `src/lib/homeLayoutPersistence.js`, `src/components/Dashboard.jsx`, `tests/homeCustomizerSaveBranch.test.mjs` (new), `tests/homeLayoutVerifiedPersistence.test.mjs`, `docs/coordination/handoffs.md`, `docs/coordination/current-task.md`.
+- UNRESOLVED / RISKS: (1) it is not proven that the Product Owner's click reaches `saveHomeCustomization` on iOS Safari — the new `HOME_SAVE_CLICK` event and the on-screen badge exist precisely to settle it, and if the badge shows "nessun click registrato" after a tap then the defect is in reaching the handler, not in persistence; (2) the diagnostic events and the badge are TEMPORARY and must be removed or downgraded before this branch is merged; (3) the load effect still runs twice per mount — harmless but wasteful, left out of scope; (4) authenticated QA remains NOT VERIFIABLE here.
+- Exact next action: the Product Owner re-tests preview #51 after this commit rebuilds — Personalizza Home → change something → note what the DEV/PREVIEW badge says → Salva → back to Home → full page refresh → the change must still be there. Do not merge, do not deploy to production, do not open a new PR. Status: `WAITING_PRODUCT_OWNER_REAL_QA`.
