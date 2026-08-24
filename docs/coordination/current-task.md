@@ -4,9 +4,13 @@
 - TITLE: Persistent Chat Polyedron
 - OWNER: COPILOT
 - BRANCH: `lucasimondi-chat-polyedron`
-- BASE: `master`
+- BASE: `master` — PR #51 (POL-UI-015 Dashboard Premium V2) merged as
+  `36a149759b7d1cf7827d17d4a8648fdb1f999570`, integrated into this branch by
+  a merge commit (POL-CHAT-001 integration).
 - PR: `#53`
-- STATUS: `WAITING_PRODUCT_OWNER` — implementation complete and locally
+- STATUS: `WAITING_PRODUCT_OWNER` — implementation complete, rebased onto the
+  merged POL-UI-015 master and locally validated; not merged, not deployed,
+  and no remote migration was applied.
   validated; not merged, not deployed, and no remote migration was applied.
 
 ## Objective
@@ -47,6 +51,158 @@ Product Owner reviews PR #53, including mobile/desktop
 conversation UX and the additive migration/RLS contract. Do not merge, deploy,
 or apply `20260824030000_chat_polyedron.sql` remotely without explicit Product
 Owner approval.
+
+## POL-CHAT-001 — integration of the merged POL-UI-015 master
+
+The new `master` (merge commit `36a1497`) is the source of truth for Dashboard
+Premium V2, persistent Home personalization, the Richiami widget, mobile
+fullscreen Home, the floating hero, dock clearance, the Consigli Poliedron
+carousel, and the STRUCTURE of both the notification bell and the mobile dock.
+This branch remains the source of truth for the persistent Chat itself:
+conversations/messages, unread/read state, the Chat route, the Chat entry in
+the dock, the bell wired to Chat, Chat persistence/Realtime, and the Chat
+migration.
+
+Where the two overlapped, POL-UI-015's approved UI was kept and POL-CHAT-001's
+real behaviour was wired into it:
+
+- **Bell** — POL-UI-015 shipped `PoliedronBell.jsx` as a UI-only placeholder
+  (badge with no producer, click reopened the quick panel). The component, its
+  look and its approved mobile/desktop positioning are kept unchanged; it now
+  receives the real `unreadCount` from `usePoliedronConversation()` and opens
+  the persistent Chat page. PR #53's own separately positioned
+  `.poliedron-notification-bell` markup/CSS was dropped as a duplicate. The
+  bell is hidden while already on Chat.
+- **Mobile dock** — Chat replaces Impostazioni in the five slots (POL-UI-015
+  structure), but the Chat slot no longer calls `onToggle` on the quick panel:
+  it navigates to the real Chat route and carries the unread badge.
+  Impostazioni stays reachable from the central Poliedron panel's default
+  suggestions (`searchEngine.js` preferred sections, from master).
+- **One Poliedron** — the Chat page is the single `Poliedron` instance
+  portalled into `App.jsx`'s `poliedronChatHost`. No second agent, no second
+  open state, no second orchestration path.
+- **App shell padding** — the merged `App.jsx` keeps master's mobile
+  fullscreen rules for Home/Agenda and adds the zero-padding Chat page.
+- **Dashboard persistence** — the new Home persistence and its
+  (still temporary) `HOME_SAVE_*` preview instrumentation from round 4 of
+  POL-UI-015 were NOT modified by this integration; removing or downgrading
+  that instrumentation remains an open POL-UI-015 debt on master.
+
+
+---
+
+# Historical record: POL-UI-015 / Dashboard Premium V2 (merged to master as `36a1497`)
+
+- TITLE: Dashboard premium v2 — personalization persistence root cause,
+  Richiami widget, mobile fullscreen, floating dock/hero, Consigli
+  carousel, Poliedron bell + Chat entry point, Impostazioni relocation
+- OWNER: CLAUDE
+- BRANCH: `feature/POL-UI-015-dashboard-premium-v2`
+- BASE: `master` (POL-UI-004-AGENDA-QUICK-HUB/Agenda Mobile V2 merged as
+  `b65cdba`, PR #50)
+- STATUS: `WAITING_PRODUCT_OWNER_REAL_QA` — PR #51 open, not merged, not
+  deployed. Rounds 1 (`c4df202`), 2 (`77d64d5`) and 3 (`1a82027`) were all
+  rejected. On `1a82027` the Product Owner verified the preview personally:
+  **Richiami OK, Dashboard OK, Personalizza Home STILL DOES NOT SAVE.**
+  BUG A is therefore CLOSED; round 4 touched BUG B only — Richiami, the
+  visual Dashboard, Richiami CSS, fullscreen and Poliedron were not
+  modified.
+
+  Round 4 found that round 3's own fix was the blocker:
+
+  - The verified read-back compared `JSON.stringify` of the layout sent with
+    `JSON.stringify` of the layout read back. Postgres `jsonb` stores object
+    keys sorted by length then bytewise, so the two strings could never be
+    equal for ANY layout on ANY account. Every save therefore threw
+    "il layout Home persistito non corrisponde a quello inviato" AFTER the
+    write had landed, the modal stayed open and nothing was committed to
+    state. Fixed with a canonical fingerprint that ignores key ORDER while
+    still comparing array order, ids, `visible`, `size`, `config` and
+    length. The UPSERT → READ-BACK → compare → THROW contract is preserved.
+  - `homeLayoutDiagnostics` was gated on `import.meta.env.DEV`, and a
+    Netlify deploy preview is a production build — so the entire diagnostic
+    trail was compiled away in the only environment where the bug
+    reproduces. It is now enabled on deploy-preview/localhost hostnames too,
+    never on production hostnames.
+  - `draftInherits` was audited and is NOT the cause: all five editing
+    handlers clear it, and for the reporting account it is already `false`
+    on open. There is no second, divergent Salva button and no overlay
+    intercepting the click.
+  - The Product Owner's device is an **iPhone** (verified from edge logs).
+    The footer action row now wraps and the primary Salva button is
+    non-shrinking with a 44px touch target; the Azioni rapide tab gained the
+    error alert it was missing.
+
+  STILL OPEN: the edge logs show ZERO write requests on
+  `user_home_layouts` in the test window, so it is not proven that the click
+  reaches `saveHomeCustomization` on iOS Safari at all. Temporary
+  preview-only instrumentation (`HOME_SAVE_*` events plus an on-screen
+  "DEV/PREVIEW · save state" badge under both Salva buttons, no secrets and
+  no identifiers) was added to settle exactly that on the next real QA. It
+  must be removed or downgraded before merge.
+
+  See "POL-UI-015 handoff round 4" in `handoffs.md` for the full evidence
+  and the VERIFIED / NOT VERIFIABLE split. Same branch, same PR #51 — no new
+  branch, no new PR, no merge, no deploy.
+
+  NOT VERIFIABLE in round 4: authenticated preview QA, iPhone QA and desktop
+  QA — no browser with the Product Owner's session is available here and no
+  credentials were requested or used. `npm test` 410/410, build clean.
+
+## Objective
+
+Fix the real Dashboard personalization persistence bug at its root cause,
+build a premium operational Richiami widget, bring mobile Dashboard to the
+same fullscreen principle Agenda already has, turn the greeting block into
+a compact sticky/floating bar with date/time, guarantee the last widget
+always clears the floating dock, redesign Consigli Poliedron as a mobile
+one-card-at-a-time carousel, prepare (UI-only) the Poliedron bell and a
+Chat dock entry point — both reusing the single existing Poliedron agent,
+never a second one — and move Impostazioni out of the mobile dock into the
+central Poliedron panel's default suggestions. Explicitly out of scope:
+any real AI/reminder/notification engine, a second Poliedron, or a real
+Chat implementation — those are future tasks this one only prepares UI/
+navigation for.
+
+## Safety boundaries
+
+- No schema, RLS, dependency, or production change of any kind.
+- No new AI engine, reminder engine, notification polling, or second
+  Poliedron/chat agent — the bell and dock Chat button are UI-only
+  placeholders that open the SAME existing Poliedron conversation.
+- Agenda, Pazienti, Poliedron's own size/behavior, and the global design
+  system are untouched except where this task explicitly required a
+  shared-rule fix (the mobile Home `!important` padding override).
+- No merge or deploy without explicit Product Owner approval.
+
+## Exact next action
+
+Product Owner re-tests preview #51 once it rebuilds from the round-3 commit:
+confirm the Richiami widget now appears in the Dashboard without any other
+personalization changing, and that Personalizza Home either really persists
+(verifiable with a page reload) or fails with a visible error while staying
+open with the draft intact. Do not merge, do not deploy to production, do
+not open a new PR.
+
+Open decision (`PRODUCT_OWNER_DECISION_REQUIRED` if the answer is no): the
+round-3 Richiami fix treats a pre-POL-UI-015 `richiami: visible:false` as a
+stale default rather than a deliberate user choice, per the explicit
+requirement "visibile di default per owner/admin" combined with "non
+resettare tutte le personalizzazioni". If that reading is wrong, the
+migration must be reverted.
+
+---
+
+# Historical record: POL-UI-004-AGENDA-QUICK-HUB / Agenda Mobile V2 (merged to master)
+
+- Branch: `lucasimondi-agenda-mobile-fullscreen` — PR #50, merged to
+  `master` as `b65cdba`.
+- Objective: mobile Agenda fullscreen shell, floating overlay controls,
+  dynamic day strip, dock-aware appointment action sheet, and the
+  Appointment Quick Action Hub (call/patient/recall/activity/contextual
+  Poliedron mini-input).
+- Full detail: see `docs/coordination/handoffs.md` ("POL-UI-004-AGENDA..."
+  entries).
 
 ---
 

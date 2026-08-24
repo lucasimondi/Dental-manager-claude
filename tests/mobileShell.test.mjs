@@ -19,8 +19,29 @@ test('mobile content reserves only the physical safe area outside contained Agen
   assert.match(app, /page === 'agenda' \|\| page === 'chat' \? 0 : 'env\(safe-area-inset-bottom, 0px\)'/);
   assert.match(app, /scrollPaddingBottom:\s*isMobile\s*\?\s*'calc\(94px \+ env\(safe-area-inset-bottom, 0px\)\)'/);
   assert.doesNotMatch(app, /paddingBottom:[\s\S]{0,120}92px/);
+  // POL-CHAT-001 merge: the Chat surface legitimately reserves the floating
+  // dock's 92px on its own scroller, so PR #51's blanket "no 92px padding
+  // anywhere" assertion is narrowed to the Home #app-scroll rule it was
+  // actually written about.
   assert.match(premium, /\.poliedron-chat\s*\{[\s\S]*padding-bottom:\s*calc\(92px \+ env\(safe-area-inset-bottom, 0px\)\)/);
-  assert.match(premium, /body:has\(\.home-widget-grid\) #app-scroll\s*\{[\s\S]*env\(safe-area-inset-bottom, 0px\) !important;/);
+  assert.doesNotMatch(premium, /body:has\(\.home-widget-grid\) #app-scroll\s*\{[^}]*92px/);
+  // POL-UI-015 §3: Home now gets the same zero-inset #app-scroll treatment
+  // Agenda already had — this !important rule used to force a fixed inset
+  // back onto Home specifically, silently overriding App.jsx's own inline
+  // padding logic (a plain inline style can never beat a stylesheet
+  // !important), which was the real root cause of Home never reaching the
+  // same edge-to-edge fullscreen Agenda already had. `.home-page` now owns
+  // the actual content padding instead (see the mobile fullscreen test
+  // below).
+  assert.match(premium, /body:has\(\.home-widget-grid\) #app-scroll\s*\{\s*padding:\s*0\s*!important;/);
+});
+
+test('mobile Home is fullscreen: .home-page owns content padding, .home-hero is a sticky/floating bar, dock-clearance spacer is mobile-only', () => {
+  assert.match(app, /paddingTop:\s*isMobile\s*\?\s*\(\(page === 'agenda' \|\| page === 'home'\)\s*\?\s*0\s*:/);
+  assert.match(premium, /\.home-page\s*\{\s*padding:\s*0 15px env\(safe-area-inset-bottom, 0px\);\s*\}/);
+  assert.match(premium, /\.home-hero\s*\{[\s\S]*position:\s*sticky;[\s\S]*top:\s*0;/);
+  assert.match(premium, /\.home-dock-clearance\s*\{\s*display:\s*none;\s*\}/);
+  assert.match(premium, /@media \(max-width: 600px\) \{[\s\S]*\.home-dock-clearance\s*\{\s*display:\s*block;\s*\}/);
 });
 
 test('Agenda and Chat keep one owned inner scroll while other pages use app-scroll', () => {

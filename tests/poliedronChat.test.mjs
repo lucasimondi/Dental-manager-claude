@@ -135,7 +135,10 @@ test('one singleton controller owns quick submits, Chat, persistence, and unread
   assert.match(controller, /summarizeStructuredResult\(result\)/);
   assert.match(controller, /richiede sempre una nuova conferma esplicita nella sessione attiva/);
   assert.match(controller, /ReactDOM\.createPortal\([\s\S]*<PoliedronChatPage/);
-  assert.match(controller, /className=\{`poliedron-notification-bell/);
+  // POL-CHAT-001 merge: the bell is POL-UI-015's approved PoliedronBell
+  // component (approved mobile/desktop position), wired to the real unread
+  // count and to the real persistent Chat route.
+  assert.match(controller, /<PoliedronBell[\s\S]*unreadCount=\{unreadCount\}[\s\S]*onOpenChat=\{\(\) => setPage\('chat'\)\}/);
   assert.doesNotMatch(controller, /functions\.invoke\(/);
   assert.match(controller, /handleConfirmPanelActionPlan/);
   assert.match(controller, /handleConfirmChatActionPlan/);
@@ -159,7 +162,12 @@ test('Chat route is wired on desktop and replaces Setup in the mobile dock while
   assert.match(app, /userId=\{session\?\.user\?\.id\}/);
   assert.match(dock, /\{ id: 'chat', label: 'Chat', icon: 'chat' \}/);
   assert.doesNotMatch(dock, /\{ id: 'set', label: 'Setup'/);
-  assert.match(searchEngine, /const preferredSections = \['set'/);
+  // POL-CHAT-001 merge: PR #53 had put 'set' first in this list; the merged
+  // PR #51 owns the central panel's default suggestions and already lists
+  // 'set' there. The requirement is that Impostazioni stays reachable from
+  // the Poliedron menu once the dock slot became Chat — not a specific
+  // ordering — so master's approved ordering is kept.
+  assert.match(searchEngine, /const preferredSections = \[[^\]]*'set'[^\]]*\]/);
 });
 
 test('Chat UI has one scroller, safe-area/dock clearance, pagination, retry, and conditional near-bottom scroll', () => {

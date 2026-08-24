@@ -2,10 +2,10 @@ import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 
 import ReactDOM from 'react-dom';
 import PoliedronEdgeDock from './PoliedronEdgeDock';
 import PoliedronMobileDock from './PoliedronMobileDock';
+import PoliedronBell from './PoliedronBell';
 import PoliedronPanel from './PoliedronPanel';
 import PoliedronChatPage from './PoliedronChatPage';
 import usePoliedronConversation from './usePoliedronConversation';
-import { Ic } from '../ui';
 import { NAVIGATION_INDEX } from '../../lib/poliedron/navigationIndex';
 import { buildIntelligencePermissions, filterNavigationIndex, isActionAllowed } from '../../lib/poliedron/permissionEngine';
 import { ACTION_REGISTRY } from '../../lib/poliedron/actionRegistry';
@@ -66,6 +66,12 @@ export default function Poliedron({
   features, isStudioAdmin, vertical, studioId, userId, currentPatient,
   quickActionCtx, supabaseClient, onArchivioFilterHint, openPrescription, openNew, openBooking,
   externalCommandRequest, onExternalCommandHandled, chatHost,
+  /* POL-CHAT-001 merge: PR #51 declared an `unreadCount = 0` PROP here
+     because §7 explicitly shipped the bell without a notification engine.
+     PR #53 supplies the real producer — the conversation hook below returns
+     an authoritative `unreadCount` from the persisted conversation —
+     so the placeholder prop is deliberately gone: keeping it would shadow
+     the real value and re-freeze the badge at 0. */
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -499,18 +505,23 @@ export default function Poliedron({
       {isMobile
         ? <PoliedronMobileDock page={page} setPage={setPage} open={open} onToggle={onToggle} panelId={panelId} unreadCount={unreadCount} />
         : <PoliedronEdgeDock open={open} onToggle={onToggle} panelId={panelId} />}
+      {/* POL-CHAT-001 merge — FASE 3: PR #51's bell was a placeholder that
+          reopened the quick panel and carried a badge with no producer; PR
+          #53's bell was a real Chat entry point but re-declared its own
+          markup and position. Merged: the approved PoliedronBell component
+          and its approved mobile/desktop positioning are kept (mobile
+          clears the floating dock's top edge, desktop sits top-right away
+          from the Edge Dock), and it now carries the REAL unread count and
+          opens the REAL persistent Chat. Still one Poliedron: the Chat page
+          is this same instance portalled into `chatHost`, not a second
+          agent. Hidden while already on Chat, where the header owns the
+          surface and everything is read by definition. */}
       {page !== 'chat' && (
-        <button
-          type="button"
-          className={`poliedron-notification-bell${unreadCount ? ' has-unread' : ''}`}
-          onClick={() => setPage('chat')}
-          aria-label={unreadCount ? `${unreadCount} messaggi Polyedron non letti` : 'Apri Chat Polyedron'}
-        >
-          <Ic n="bell" s={18} />
-          {unreadCount > 0 && (
-            <span>{unreadCount > 99 ? '99+' : unreadCount}</span>
-          )}
-        </button>
+        <PoliedronBell
+          variant={isMobile ? 'mobile' : 'desktop'}
+          unreadCount={unreadCount}
+          onOpenChat={() => setPage('chat')}
+        />
       )}
       {open && (
         <PoliedronPanel

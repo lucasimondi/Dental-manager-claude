@@ -1,8 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase.js';
-import { Crd, Bdg, Modal, Ic, Btn, Fld, Sel, Inp, Txt, TimePicker, SelettorePaziente } from './ui';
+import { Crd, Bdg, Modal, Ic, Btn, Fld, Sel, Inp, Txt, TimePicker, SelettorePaziente, EmptyState } from './ui';
 import { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
-import { C, fmt, fmtD, today } from '../lib/utils';
+import { C, fmt, fmtD, today, RICHIAMO_CATEGORIE } from '../lib/utils';
 import { BarChart, Bar, LineChart, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useControlloDati } from '../lib/useControlloDati';
 import WidgetWorkspace from './WidgetWorkspace.jsx';
@@ -14,8 +14,9 @@ import { getHomeFinancialWidget, loadHomeFinancialSnapshot } from '../lib/homeFi
 import QuickBookingModal from './QuickBookingModal.jsx';
 import { DEFAULT_QUICK_ACTION_IDS, filterQuickActionsCatalog, getQuickAction, resolveQuickActions } from '../lib/quickActionsCatalog.js';
 import poliedroGem from '../assets/icon-poliedra-gem.png';
-import { logHomeLayoutEvent } from '../lib/homeLayoutDiagnostics.js';
+import { isHomeLayoutDiagnosticsEnabled, logHomeLayoutEvent } from '../lib/homeLayoutDiagnostics.js';
 import { buildActivityText } from '../lib/appointmentQuickHub.js';
+import { MOBILE_DOCK_BOTTOM, MOBILE_DOCK_HEIGHT, MOBILE_DOCK_PROTECTED_GAP } from '../lib/poliedron/poliedronMobileDock.js';
 
 const PALETTE = [
   '#1A4E66','#2EC4B6','#2D9E61','#7C3AED','#E63946',
@@ -44,7 +45,14 @@ const saveTheme = (t) => { try { localStorage.setItem('dm_theme', JSON.stringify
 
 const getSaluto = (nome) => { const ora = new Date().getHours(); const s = ora < 12 ? 'Buongiorno' : ora < 18 ? 'Buon pomeriggio' : 'Buonasera'; if (!nome) return s; return s + ', ' + nome.trim().split(' ')[0]; };
 
-export default function Dashboard({ patients, appointments, setAppointments, payments, plans, richiami = [], impegni = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, onNavigate, onNavigateNew, templates, userName: userNameProp, si, features, studioId, isStudioAdmin, studioMembership, activityPatientRequest, onActivityPatientRequestHandled }) {
+// POL-UI-015 §4: compact date/time readout for the mobile floating
+// greeting bar only (desktop keeps its existing appointment-count meta
+// line, unchanged). `now` ticks once a minute — enough for a live clock,
+// not so often it triggers unnecessary re-renders of the whole Dashboard.
+const fmtDataOra = (d) => d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
+const fmtOra = (d) => d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+
+export default function Dashboard({ patients, appointments, setAppointments, payments, plans, richiami = [], impegni = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, onNavigate, onNavigateNew, templates, userName: userNameProp, si, features, studioId, currentUserId, isStudioAdmin, studioMembership, activityPatientRequest, onActivityPatientRequestHandled }) {
   const homePermissions = buildHomePermissions({ membership: studioMembership, features, vertical: si?.vertical });
   const roleLayout = createRolePresetLayout(studioMembership?.capabilities);
   const availableWidgetCatalog = filterWidgetCatalog(HOME_WIDGET_REGISTRY, homePermissions);
@@ -70,13 +78,37 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   const isFisio = si?.vertical === 'fisioterapista' || si?.vertical === 'massofisioterapista';
   const t = today();
   const [userName, setUserName] = useState(userNameProp || '');
-  const [userId, setUserId] = useState(null);
+  // POL-UI-015 root-cause fix: `userId` used to be re-fetched from scratch
+  // on every Dashboard mount via its own `supabase.auth.getSession()` call
+  // — a redundant async gap racing against App.jsx's already-authoritative,
+  // continuously up-to-date `session` (kept live via `onAuthStateChange`
+  // for the whole app lifetime, exactly like `studioId` below). Both the
+  // Home-layout load effect and `saveHomeCustomization` require `userId`
+  // to be non-null before they run at all — while that internal fetch was
+  // still pending (or occasionally never resolved, e.g. a mobile tab
+  // resumed from background mid token-refresh), the layout effect kept
+  // returning early and left the platform-default layout on screen. A
+  // user who then opened "Personalizza Home" and saved would overwrite
+  // their real, previously-saved personalization with that default —
+  // exactly the "salvata ma non ripristinata" symptom, amplified on
+  // mobile because backgrounded/resumed tabs make this async gap both
+  // slower and more failure-prone than on a desktop tab that rarely
+  // suspends. `currentUserId` is the same prop name/pattern App.jsx
+  // already passes to Pazienti/SchedaPaz for `session?.user?.id` — no new
+  // state, no new fetch, synchronously available on first render.
+  const userId = currentUserId || null;
+
+  // POL-UI-015 §4: drives the mobile floating greeting bar's live clock.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       const m = session?.user?.user_metadata;
       if (m?.nome) setUserName((m.nome + ' ' + (m.cognome || '')).trim());
-      setUserId(session?.user?.id || null);
     });
   }, []);
   const anno = t.slice(0, 4);
@@ -90,6 +122,16 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   const [consigliLoading, setConsigliLoading] = useState(false);
   const [consigliErr, setConsigliErr] = useState('');
   const consigliAttivi = isStudioAdmin && features?.assistente_ai === 'premium';
+  // POL-UI-015 §6: mobile-only "one card at a time" horizontal carousel —
+  // the snap/swipe itself is native CSS scroll-snap (see .home-poliedron-
+  // widget__track in PremiumVisualSystem.css), this only tracks which dot
+  // to highlight. Unused on desktop, where the CSS rule below is a no-op
+  // and the cards keep stacking vertically exactly as before.
+  const [consigliCarouselIndex, setConsigliCarouselIndex] = useState(0);
+  const onConsigliTrackScroll = (e) => {
+    const el = e.currentTarget;
+    setConsigliCarouselIndex(Math.round(el.scrollLeft / Math.max(1, el.clientWidth)));
+  };
 
   const rigeneraConsigli = async () => {
     setConsigliLoading(true);
@@ -161,14 +203,58 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   const [themeTab, setThemeTab] = useState('widgets'); // 'widgets' | 'colori'
   const isOn = (id) => { const w = widgets.find(x => x.id === id); return w ? w.visible !== false : true; };
 
+  /* POL-UI-015 bugfix round 3 — see the "Salva Home" buttons below. Those
+     buttons used to be `disabled={layoutSaving || layoutLoading}` while
+     their styling only dimmed on `layoutSaving`, so during ANY background
+     re-run of the layout load effect the primary action of the
+     "Personalizza Home" modal looked completely enabled (full opacity,
+     blue, `cursor:pointer`) but silently swallowed every click: no save,
+     no request, no error, modal stays open — exactly the reported
+     "Personalizza Home non salva realmente la configurazione". That the
+     effect really does re-run after the editor is already reachable is
+     visible in the production Supabase edge logs, where every single page
+     load produces TWO sequential `user_home_layouts`/`studio_home_layouts`
+     GET rounds ~300ms apart (run 1 with `studioMembership === null`, run 2
+     once `capabilities` arrive and change this effect's dependency).
+
+     The fix keeps saving always available (the draft is the user's
+     explicit intent and `openHomeCustomizer` already refuses to open on a
+     not-yet-loaded baseline) and instead makes a late background load
+     unable to clobber a newer successful save: each save bumps
+     `layoutSaveEpochRef`, and a load that resolves across a save is
+     discarded instead of overwriting the just-persisted layout. */
+  const layoutSaveEpochRef = useRef(0);
+
+  /* POL-UI-015 round 4 — the Product Owner tests exclusively on the Netlify
+     deploy preview, from an iPhone (verified from the project's own edge
+     logs: every preview-#51 request comes from iOS Safari). Three rounds in
+     a row could not tell whether the "Salva Home" click even reached
+     `saveHomeCustomization`, because there was no observable trail in a
+     production build. `homeSaveDiag` is that trail, rendered right under
+     the button and gated on the SAME preview-only switch as the console
+     events, so the Product Owner can read the stage and the chosen save
+     branch straight off the screen on the phone, without a devtools
+     console. It never renders in production. */
+  const diagnosticsEnabled = isHomeLayoutDiagnosticsEnabled();
+  const [homeSaveDiag, setHomeSaveDiag] = useState(null);
+  const traceHomeSave = (event, detail) => {
+    logHomeLayoutEvent(event, detail);
+    if (diagnosticsEnabled) setHomeSaveDiag({ event, detail: detail || null, at: new Date().toLocaleTimeString('it-IT') });
+  };
+
   useEffect(() => {
     if (!studioId || !userId) return;
     let cancelled = false;
+    const startEpoch = layoutSaveEpochRef.current;
     setLayoutLoading(true);
     logHomeLayoutEvent('HOME_LAYOUT_LOAD_START');
     loadResolvedHomeLayout(supabase, studioId, userId, createRolePresetLayout(studioMembership?.capabilities))
       .then(({ layout, source, inheritedLayout: nextInherited, inheritedSource: nextInheritedSource }) => {
-        if (!cancelled) {
+        if (!cancelled && layoutSaveEpochRef.current !== startEpoch) {
+          // A save/reset completed while this read was in flight: the
+          // committed state is already newer than this response.
+          logHomeLayoutEvent('HOME_LAYOUT_LOAD_STALE');
+        } else if (!cancelled) {
           // POL-UI-013C root-cause fix: `draftWidgets` is only ever
           // meaningful while the "Personalizza Home" modal is open, and
           // `openHomeCustomizer` already re-derives it fresh from `widgets`
@@ -231,6 +317,10 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   }, [homePermissions.managementControl, hasVisibleFinancialWidget, homePeriodId]);
 
   const openHomeCustomizer = () => {
+    // Defense in depth — see the trigger button's own comment for the race
+    // this guard closes (draftWidgets must never start from a stale widgets
+    // snapshot while the real layout is still loading).
+    if (layoutLoading) return;
     setDraftWidgets(widgets.map((item) => ({ ...item })));
     setDraftInherits(layoutSource !== 'user');
     setLayoutError('');
@@ -239,12 +329,46 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
     setSettingsOpen(true);
   };
 
+  /* POL-UI-015 round 4 §1 — the ids the draft actually changes with respect
+     to the committed layout. Logged (ids only, no patient data, no
+     identifiers) so a "Salva" that reports zero changes is immediately
+     visible as such instead of looking like a failed save. */
+  const changedDraftWidgetIds = () => {
+    const committed = new Map(widgets.map((item) => [item.id, item]));
+    const changed = draftWidgets.filter((item) => {
+      const before = committed.get(item.id);
+      if (!before) return true;
+      return before.visible !== item.visible || before.order !== item.order || before.size !== item.size
+        || JSON.stringify(before.config || null) !== JSON.stringify(item.config || null);
+    }).map((item) => item.id);
+    return changed;
+  };
+
   const saveHomeCustomization = async () => {
-    if (!studioId || !userId) { setLayoutError('Identità studio/utente non disponibile'); return; }
+    // POL-UI-015 round 4: FIRST statement of the handler, before any guard,
+    // so the trail distinguishes "the click never reached this function"
+    // (nothing logged at all — a UI/hit-target problem) from "it ran and
+    // stopped at a specific stage".
+    traceHomeSave('HOME_SAVE_CLICK');
+    traceHomeSave('HOME_SAVE_STATE', {
+      layoutSource,
+      draftInherits,
+      layoutLoading,
+      layoutSaving,
+      studioIdPresent: Boolean(studioId),
+      userIdPresent: Boolean(userId),
+      changedWidgetIds: changedDraftWidgetIds(),
+    });
+    if (!studioId || !userId) {
+      traceHomeSave('HOME_SAVE_ERROR', { stage: 'identity-missing' });
+      setLayoutError('Identità studio/utente non disponibile'); return;
+    }
+    layoutSaveEpochRef.current += 1;
     setLayoutSaving(true); setLayoutError('');
     logHomeLayoutEvent('HOME_LAYOUT_SAVE_START');
     try {
       if (draftInherits) {
+        traceHomeSave('HOME_SAVE_BRANCH_INHERIT');
         await deleteUserHomeLayout(supabase, studioId, userId);
         try {
           const resolved = await loadResolvedHomeLayout(supabase, studioId, userId, roleLayout);
@@ -260,13 +384,24 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           setWidgets(inheritedLayout); setDraftWidgets(inheritedLayout); setLayoutSource(inheritedSource);
         }
       } else {
+        traceHomeSave('HOME_SAVE_BRANCH_USER');
         const saved = await saveUserHomeLayout(supabase, studioId, userId, draftWidgets);
         setWidgets(saved); setDraftWidgets(saved); setLayoutSource('user');
       }
+      // POL-UI-015 round 3: reached only after `saveUserHomeLayout` /
+      // `deleteUserHomeLayout` confirmed the write with a database
+      // read-back, so closing the modal here really does mean "persisted".
+      layoutSaveEpochRef.current += 1;
       setSettingsOpen(false);
+      traceHomeSave('HOME_SAVE_SUCCESS');
       logHomeLayoutEvent('HOME_LAYOUT_SAVE_SUCCESS');
-    } catch {
-      setLayoutError('Salvataggio non riuscito. Nessuna modifica è stata applicata.');
+    } catch (error) {
+      // POL-UI-015 round 3: surface the real reason (including the new
+      // "salvataggio non confermato dal database" read-back failures)
+      // instead of a single opaque message, and keep the modal open with
+      // the user's draft intact so they can retry.
+      setLayoutError(error?.message ? `Salvataggio non riuscito: ${error.message}` : 'Salvataggio non riuscito. Nessuna modifica è stata applicata.');
+      traceHomeSave('HOME_SAVE_ERROR', { stage: 'save', message: error?.message || 'unknown' });
       logHomeLayoutEvent('HOME_LAYOUT_SAVE_ERROR');
     }
     finally { setLayoutSaving(false); }
@@ -284,9 +419,24 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
       const saved = await saveStudioHomeLayout(supabase, studioId, userId, draftWidgets);
       setInheritedLayout(saved); setInheritedSource('studio');
       if (draftInherits) { setWidgets(saved); setDraftWidgets(saved); setLayoutSource('studio'); }
-    } catch { setLayoutError('Salvataggio del predefinito studio non riuscito.'); }
+    } catch (error) { setLayoutError(error?.message ? `Salvataggio del predefinito studio non riuscito: ${error.message}` : 'Salvataggio del predefinito studio non riuscito.'); }
     finally { setLayoutSaving(false); }
   };
+  /* POL-UI-015 round 4 §4 — preview/dev-only save-state readout. Renders
+     directly under the "Salva Home" button so the Product Owner can see,
+     on the phone he actually tests with, which branch the save takes and
+     where it stops. `diagnosticsEnabled` is false on every production
+     hostname, so production users never see this block. */
+  const homeSaveDiagBadge = !diagnosticsEnabled ? null : (
+    <div style={{ marginTop: 8, padding: '7px 9px', borderRadius: 8, background: C.bg, border: `1px dashed ${C.brd}`, fontSize: 10.5, lineHeight: 1.45, color: C.txm, fontFamily: 'ui-monospace,SFMono-Regular,Menlo,monospace', wordBreak: 'break-word' }}>
+      <div style={{ fontWeight: 800, color: C.txl, textTransform: 'uppercase', letterSpacing: '0.05em' }}>DEV/PREVIEW · save state</div>
+      <div>ramo: {draftInherits ? 'inherit (elimina layout utente)' : 'user (salva layout utente)'} · fonte: {layoutSource}</div>
+      <div>stato: {layoutSaving ? 'saving' : layoutLoading ? 'loading' : layoutError ? 'error' : 'ready'} · identità: {studioId ? 'studio✓' : 'studio✗'} {userId ? 'utente✓' : 'utente✗'}</div>
+      <div>ultimo evento: {homeSaveDiag ? `${homeSaveDiag.event} (${homeSaveDiag.at})` : 'nessun click registrato'}</div>
+      {homeSaveDiag?.detail && <div>dettaglio: {JSON.stringify(homeSaveDiag.detail)}</div>}
+    </div>
+  );
+
   const [todoList, setTodoList] = useState([]);
   const [todoInput, setTodoInput] = useState('');
   const [todoModal, setTodoModal] = useState(false);
@@ -450,7 +600,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   );
 
   return (
-    <div>
+    <div className="home-page">
       {/* ── SETTINGS MODAL ── */}
       {settingsOpen && (
         <Modal title={<><Ic n="set" s={15} c={C.txt} /> Personalizza Home</>} onClose={() => setSettingsOpen(false)} wide>
@@ -499,12 +649,24 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
             <div style={{ marginTop:10,fontSize:11,color:C.txm }}>
               {draftInherits ? `Eredita il predefinito ${inheritedSource === 'studio' ? 'dello studio' : inheritedSource === 'role' ? 'del ruolo/verticale' : 'della piattaforma'}.` : 'Personalizzazione personale: modifica solo la tua presentazione.'}
             </div>
-            <div style={{ display:'flex',gap:8,marginTop:12 }}>
+            {/* POL-UI-015 round 4: `flexWrap` + a non-shrinkable primary
+                action. This row holds four buttons and had neither, so on a
+                phone (the Product Owner's actual test device is an iPhone)
+                the browser squeezed every button to min-content and wrapped
+                their labels mid-word, leaving "Salva Home" a sliver next to
+                "Annulla" — a hostile hit target for the modal's primary
+                action. Now the row wraps and the primary action keeps its
+                full width and a 44px touch height. */}
+            <div style={{ display:'flex',gap:8,marginTop:12,flexWrap:'wrap',alignItems:'center' }}>
               <button type="button" onClick={resetHomeCustomization} style={{ padding:'9px 12px',background:C.danL,border:'none',borderRadius:9,color:C.dan,fontWeight:700,fontSize:12,cursor:'pointer' }}>↺ Reset al default {inheritedSource === 'studio' ? 'studio' : inheritedSource === 'role' ? 'ruolo' : 'piattaforma'}</button>
-              {isStudioAdmin && <button type="button" disabled={layoutSaving} onClick={saveStudioDefault} style={{ padding:'9px 12px',background:C.priL,border:`1px solid ${C.pri}33`,borderRadius:9,color:C.pri,fontWeight:700,fontSize:12,cursor:'pointer' }}>Salva come default studio</button>}
+              {isStudioAdmin && <button type="button" disabled={layoutSaving} onClick={saveStudioDefault} style={{ padding:'9px 12px',background:C.priL,border:`1px solid ${C.pri}33`,borderRadius:9,color:C.pri,fontWeight:700,fontSize:12,cursor:layoutSaving?'progress':'pointer',opacity:layoutSaving?0.6:1 }}>Salva come default studio</button>}
               <button type="button" onClick={() => setSettingsOpen(false)} style={{ marginLeft:'auto',padding:'9px 14px',background:C.bg,border:`1px solid ${C.brd}`,borderRadius:9,color:C.txm,fontWeight:700,fontSize:12,cursor:'pointer' }}>Annulla</button>
-              <button type="button" disabled={layoutSaving || layoutLoading} onClick={saveHomeCustomization} style={{ padding:'9px 16px',background:C.pri,border:'none',borderRadius:9,color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer',opacity:layoutSaving?0.6:1 }}>{layoutSaving ? 'Salvataggio…' : 'Salva Home'}</button>
+              {/* POL-UI-015 round 3: `disabled` and the disabled styling are
+                  now derived from the SAME flag, so this control can never
+                  again look enabled while ignoring clicks. */}
+              <button type="button" disabled={layoutSaving} onClick={saveHomeCustomization} style={{ padding:'9px 16px',background:C.pri,border:'none',borderRadius:9,color:'#fff',fontWeight:800,fontSize:12,cursor:layoutSaving?'progress':'pointer',opacity:layoutSaving?0.6:1,flexShrink:0,whiteSpace:'nowrap',minHeight:44 }}>{layoutSaving ? 'Salvataggio…' : 'Salva Home'}</button>
             </div>
+            {homeSaveDiagBadge}
           </>}
 
           {/* TAB AZIONI RAPIDE */}
@@ -555,10 +717,13 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
                     ))}
                   </div>
                 </>}
-                <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+                <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap', alignItems: 'center' }}>
                   <button type="button" onClick={() => setSettingsOpen(false)} style={{ marginLeft: 'auto', padding: '9px 14px', background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 9, color: C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Annulla</button>
-                  <button type="button" disabled={layoutSaving || layoutLoading} onClick={saveHomeCustomization} style={{ padding: '9px 16px', background: C.pri, border: 'none', borderRadius: 9, color: '#fff', fontWeight: 800, fontSize: 12, cursor: 'pointer', opacity: layoutSaving ? 0.6 : 1 }}>{layoutSaving ? 'Salvataggio…' : 'Salva Home'}</button>
+                  {/* POL-UI-015 round 3: same fix as the Widget tab's Salva button. */}
+                  <button type="button" disabled={layoutSaving} onClick={saveHomeCustomization} style={{ padding: '9px 16px', background: C.pri, border: 'none', borderRadius: 9, color: '#fff', fontWeight: 800, fontSize: 12, cursor: layoutSaving ? 'progress' : 'pointer', opacity: layoutSaving ? 0.6 : 1, flexShrink: 0, whiteSpace: 'nowrap', minHeight: 44 }}>{layoutSaving ? 'Salvataggio…' : 'Salva Home'}</button>
                 </div>
+                {layoutError && <div role="alert" style={{ marginTop: 10, fontSize: 12, color: C.dan, fontWeight: 700 }}>{layoutError}</div>}
+                {homeSaveDiagBadge}
               </>
             );
           })()}
@@ -962,7 +1127,12 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
         />
       )}
 
-      {/* ── HEADER ── */}
+      {/* ── HEADER ──
+          POL-UI-015 §4/§3: on mobile this becomes a compact, sticky/
+          floating pill (see .home-hero in PremiumVisualSystem.css) — the
+          Dashboard content scrolls beneath it, it is never a solid
+          full-width bar like the removed mobile header. Desktop keeps the
+          exact pre-existing layout/behavior, untouched. */}
       <div className="home-hero">
         <div className="home-hero__text">
           <div className="home-hero__greeting">{getSaluto(userName)} <span aria-hidden="true">👋</span></div>
@@ -970,10 +1140,31 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
             {todayApps.length > 0 ? `${todayApps.length} appuntament${todayApps.length === 1 ? 'o' : 'i'} oggi` : 'Nessun appuntamento oggi'}
             {si?.nome && <span className="home-hero__studio"> · {si.nome}</span>}
           </div>
+          {/* Mobile-only date/time readout (task §4: "Buongiorno + data +
+              ora"); hidden on desktop via CSS, where the meta line above
+              already covers the greeting block's existing content. */}
+          <div className="home-hero__datetime" aria-hidden="true">{fmtDataOra(now)} · {fmtOra(now)}</div>
         </div>
         <div className="home-hero__actions">
-          <button className="home-hero__customize" onClick={openHomeCustomizer}>
-            <Ic n="set" s={14} c={C.txm} /> Personalizza Home
+          {/* POL-UI-015 bugfix round 2 — ROOT CAUSE of "la personalizzazione
+              non si salva": opening this modal while the initial layout
+              load (`layoutLoading`) is still in flight seeds `draftWidgets`
+              from the stale platform-default `widgets` snapshot. The Save
+              button already correctly disables during `layoutLoading` (see
+              below), but by the time it re-enables the real loaded layout
+              has already landed in `widgets` — `draftWidgets` is never
+              resynced while the modal is open (POL-UI-013C's own,
+              deliberate anti-overwrite protection for in-progress edits),
+              so saving at that point silently reverts every OTHER
+              already-saved customization back to its default. Verified live
+              (temporary QA harness): with a saved `wa:true` layout and an
+              artificially delayed load, opening+editing+saving before the
+              load resolved wiped `wa` back to `false` on the real backend.
+              Disabling this button during the same `layoutLoading` window
+              the Save button already respects closes the race at its
+              source — the editor can no longer open with a stale baseline. */}
+          <button className="home-hero__customize" onClick={openHomeCustomizer} disabled={layoutLoading} aria-busy={layoutLoading}>
+            <Ic n="set" s={14} c={C.txm} /> {layoutLoading ? 'Caricamento…' : 'Personalizza Home'}
           </button>
         </div>
       </div>
@@ -1082,30 +1273,39 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
               {!consigliLoading && consigli.length > 0 && nonLetti.length === 0 && (
                 <Crd style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Hai letto tutti i consigli di questa settimana</Crd>
               )}
-              {nonLetti.map((c) => {
-                const colore = c.categoria === 'cfo' ? C.pri : c.categoria === 'commerciale' ? C.war : C.pur;
-                const labelIc = c.categoria === 'cfo' ? 'eur' : c.categoria === 'commerciale' ? 'shake' : 'trend';
-                const labelTxt = c.categoria === 'cfo' ? 'CFO' : c.categoria === 'commerciale' ? 'Commerciale' : 'Marketing';
-                const label = <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n={labelIc} s={10} c={colore} />{labelTxt}</span>;
-                const paz = c.paziente_id ? patients.find(p => p.id === c.paziente_id) : null;
-                return (
-                  <Crd key={c.id} style={{ marginBottom: 8, borderLeft: `3px solid ${colore}` }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ marginBottom: 5 }}><Bdg ch={label} co={colore} /></div>
-                        <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 3, color: C.txt }}>{c.titolo}</div>
-                        <div style={{ fontSize: 12, color: C.txm, lineHeight: 1.45 }}>{c.testo}</div>
-                        {paz && (
-                          <div onClick={() => onOpenPaz(paz, 'info')} style={{ marginTop: 6, fontSize: 12, fontWeight: 700, color: C.pri, cursor: 'pointer' }}>{paz.nome} {paz.cognome} ›</div>
-                        )}
-                      </div>
-                      <button className="home-list-icon-btn" onClick={() => segnaLettoConsiglio(c.id)} title="Segna come letto" style={{ background: C.sucL }}>
-                        <Ic n="ok" s={13} c={C.suc} />
-                      </button>
-                    </div>
-                  </Crd>
-                );
-              })}
+              {nonLetti.length > 0 && (
+                <div className="home-poliedron-widget__track" onScroll={onConsigliTrackScroll}>
+                  {nonLetti.map((c) => {
+                    const colore = c.categoria === 'cfo' ? C.pri : c.categoria === 'commerciale' ? C.war : C.pur;
+                    const labelIc = c.categoria === 'cfo' ? 'eur' : c.categoria === 'commerciale' ? 'shake' : 'trend';
+                    const labelTxt = c.categoria === 'cfo' ? 'CFO' : c.categoria === 'commerciale' ? 'Commerciale' : 'Marketing';
+                    const label = <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n={labelIc} s={10} c={colore} />{labelTxt}</span>;
+                    const paz = c.paziente_id ? patients.find(p => p.id === c.paziente_id) : null;
+                    return (
+                      <Crd key={c.id} className="home-poliedron-widget__card" style={{ marginBottom: 8, borderLeft: `3px solid ${colore}` }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ marginBottom: 5 }}><Bdg ch={label} co={colore} /></div>
+                            <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 3, color: C.txt }}>{c.titolo}</div>
+                            <div style={{ fontSize: 12, color: C.txm, lineHeight: 1.45 }}>{c.testo}</div>
+                            {paz && (
+                              <div onClick={() => onOpenPaz(paz, 'info')} style={{ marginTop: 6, fontSize: 12, fontWeight: 700, color: C.pri, cursor: 'pointer' }}>{paz.nome} {paz.cognome} ›</div>
+                            )}
+                          </div>
+                          <button className="home-list-icon-btn" onClick={() => segnaLettoConsiglio(c.id)} title="Segna come letto" style={{ background: C.sucL }}>
+                            <Ic n="ok" s={13} c={C.suc} />
+                          </button>
+                        </div>
+                      </Crd>
+                    );
+                  })}
+                </div>
+              )}
+              {nonLetti.length > 1 && (
+                <div className="home-poliedron-widget__dots" aria-hidden="true">
+                  {nonLetti.map((c, i) => <span key={c.id} className={`home-poliedron-widget__dot${i === consigliCarouselIndex ? ' is-active' : ''}`} />)}
+                </div>
+              )}
             </div>
           );
         }
@@ -1281,13 +1481,56 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
         );
 
         if (w.id === 'richiami') {
+          // POL-UI-015: premium, operational Richiami widget — real fields
+          // only (paziente/motivo/data/stato/scaduto), nothing invented.
+          // 5 rows visible at once; beyond that the list scrolls internally
+          // instead of growing the Dashboard, per spec §2. "Gestire" reuses
+          // the existing Richiami page/route (Dashboard doesn't own
+          // setRichiami, so it never duplicates the mutation logic already
+          // in Richiami.jsx) — "aprire paziente" reuses the same onOpenPaz
+          // every other widget on this page already calls.
           const t2 = today();
-          const aperti = richiami.filter(r => r.stato === 'da_fare');
+          const aperti = richiami.filter(r => r.stato === 'da_fare').sort((a, b) => a.dataScadenza.localeCompare(b.dataScadenza));
           const scad = aperti.filter(r => r.dataScadenza < t2).length;
+          const hasOverflow = aperti.length > 5;
           return (
             <div key="richiami" style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="bell" s={11} c={C.txm} />Richiami</div>
-              <StatCard label="Da gestire" value={aperti.length} sub={`${scad} scaduti`} color={scad > 0 ? C.dan : C.pur} urgent={scad > 0} onClick={() => onGoRichiami && onGoRichiami()} />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Ic n="bell" s={11} c={C.txm} />Richiami
+                  {aperti.length > 0 && <span style={{ background: scad > 0 ? C.dan : C.pur, color: '#fff', borderRadius: 8, padding: '1px 6px', fontSize: 10 }}>{aperti.length}</span>}
+                </span>
+                {aperti.length > 0 && <button className="home-list-link" onClick={() => onGoRichiami && onGoRichiami()} style={{ background: 'none', color: C.pri, fontWeight: 700 }}>Vedi tutti ›</button>}
+              </div>
+              <Crd style={{ padding: 0, overflow: 'hidden' }}>
+                {aperti.length === 0 ? (
+                  <EmptyState icon="bell" title="Nessun richiamo da gestire" />
+                ) : (
+                  <div className="home-richiami-list" style={hasOverflow ? { maxHeight: 272, overflowY: 'auto' } : undefined}>
+                    {aperti.slice(0, hasOverflow ? undefined : 5).map((r, i, list) => {
+                      const paz = patients.find(p => String(p.id) === String(r.pazienteId));
+                      const cat = RICHIAMO_CATEGORIE[r.categoria] || RICHIAMO_CATEGORIE.generico;
+                      const scaduto = r.dataScadenza < t2;
+                      return (
+                        <div key={r.id} role="button" tabIndex={0}
+                          onClick={() => onGoRichiami && onGoRichiami()}
+                          onKeyDown={(e) => { if (e.key === 'Enter') onGoRichiami && onGoRichiami(); }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 12px', borderBottom: i < list.length - 1 ? `1px solid ${C.brd}` : 'none', borderLeft: `3px solid ${cat.colore}`, cursor: 'pointer', minHeight: 44 }}>
+                          <Ic n={cat.icona} s={13} c={cat.colore} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div onClick={(e) => { e.stopPropagation(); if (paz) onOpenPaz(paz, 'info'); }}
+                              style={{ fontWeight: 700, fontSize: 12, color: paz ? C.pri : C.txt, cursor: paz ? 'pointer' : 'default', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {paz ? `${paz.nome} ${paz.cognome}` : 'Paziente non trovato'}
+                            </div>
+                            <div style={{ fontSize: 11, color: C.txm, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.motivo || cat.label}</div>
+                          </div>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: scaduto ? C.dan : C.txl, flexShrink: 0 }}>{scaduto ? 'Scaduto' : fmtD(r.dataScadenza)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </Crd>
             </div>
           );
         }
@@ -1420,6 +1663,15 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
         return null;
       })}
       </WidgetWorkspace>
+
+      {/* POL-UI-015 §5: dock-clearance spacer — zero-height/no-op above the
+          719px mobile breakpoint (see .home-dock-clearance in
+          PremiumVisualSystem.css), so the last widget above can never end
+          up hidden or unclickable behind the floating mobile dock. Sized
+          from the SAME canonical dock geometry constants Agenda already
+          reuses (poliedronMobileDock.js) plus the physical safe area —
+          never a value hand-tuned for one phone model. */}
+      <div className="home-dock-clearance" style={{ height: `calc(${MOBILE_DOCK_BOTTOM + MOBILE_DOCK_HEIGHT + MOBILE_DOCK_PROTECTED_GAP}px + env(safe-area-inset-bottom, 0px))` }} aria-hidden="true" />
 
       {editApp && editForm && (
         <Modal title={<><Ic n="edit" s={15} c={C.txt} /> Modifica appuntamento</>} onClose={() => setEditApp(null)}>

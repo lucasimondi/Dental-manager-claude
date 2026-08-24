@@ -558,10 +558,21 @@ export default function App() {
         display: page === 'chat' || (isMobile && page === 'agenda') ? 'flex' : undefined,
         flexDirection: page === 'chat' || (isMobile && page === 'agenda') ? 'column' : undefined,
         padding: page === 'chat' ? 0 : 13,
-        paddingTop: page === 'chat' ? 0 : (isMobile ? 'calc(13px + env(safe-area-inset-top, 0px))' : 13),
+        // POL-UI-015 §3: Dashboard follows the same fullscreen principle
+        // Agenda already established — its own floating greeting bar owns
+        // the top safe-area (see Dashboard.jsx's sticky header), so the
+        // outer shell contributes zero top inset for Home too, instead of
+        // the standard frame every other (non-fullscreen) page still keeps.
+        // POL-CHAT-001 merge: Chat is a third fullscreen surface — it owns
+        // its own header/composer insets, so the shell contributes nothing
+        // on any breakpoint, while Home/Agenda keep exactly the POL-UI-015
+        // behaviour that was approved in PR #51.
+        paddingTop: isMobile ? ((page === 'agenda' || page === 'home') ? 0 : (page === 'chat' ? 0 : 'calc(13px + env(safe-area-inset-top, 0px))')) : (page === 'chat' ? 0 : 13),
         // Agenda owns an inner scroller and must extend beneath the floating
-        // dock through the physical safe area. Other pages keep the shell's
-        // safe-area padding because their content scrolls here instead.
+        // dock through the physical safe area. Home scrolls here (normal
+        // document flow) but also owns its own dock-clearance spacer
+        // beneath its last widget (see Dashboard.jsx), so it only needs the
+        // bare physical safe area here, same as every other non-Agenda page.
         paddingBottom: isMobile
           ? (page === 'agenda' || page === 'chat' ? 0 : 'env(safe-area-inset-bottom, 0px)')
           : (page === 'chat' ? 0 : 28),
@@ -575,10 +586,15 @@ export default function App() {
         // content never touches/exceeds the screen edge on real devices,
         // plus explicit overflow-x:hidden above as a hard backstop: no
         // page can ever force the whole app to scroll sideways again.
-        paddingLeft: page === 'chat' ? 0 : (isMobile ? (page === 'agenda' ? 6 : 15) : undefined),
-        paddingRight: page === 'chat' ? 0 : (isMobile ? (page === 'agenda' ? 6 : 15) : undefined),
+        // POL-UI-015 §3: Home gets the same zero left/right inset as
+        // Agenda on mobile — Dashboard.jsx applies its own internal
+        // horizontal padding to widget content, so the outer wrapper shows
+        // no grey framing while cards still keep their own breathing room.
+        // POL-CHAT-001 merge: Chat keeps its zero inset on every breakpoint.
+        paddingLeft: isMobile ? ((page === 'agenda' || page === 'home') ? (page === 'agenda' ? 6 : 0) : (page === 'chat' ? 0 : 15)) : (page === 'chat' ? 0 : undefined),
+        paddingRight: isMobile ? ((page === 'agenda' || page === 'home') ? (page === 'agenda' ? 6 : 0) : (page === 'chat' ? 0 : 15)) : (page === 'chat' ? 0 : undefined),
       }}>
-        {page === 'home' && <Dashboard patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegni} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} onNavigateNew={goNuovoElemento} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} activityPatientRequest={quickHubActivityRequest} onActivityPatientRequestHandled={(id) => setQuickHubActivityRequest((current) => current?.id === id ? null : current)} />}
+        {page === 'home' && <Dashboard patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegni} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} onNavigateNew={goNuovoElemento} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} currentUserId={session?.user?.id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} activityPatientRequest={quickHubActivityRequest} onActivityPatientRequestHandled={(id) => setQuickHubActivityRequest((current) => current?.id === id ? null : current)} />}
         {page !== 'home' && (
           <Suspense fallback={<LoadingScreen />}>
             {page === 'paz' && (
