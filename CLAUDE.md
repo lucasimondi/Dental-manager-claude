@@ -1,18 +1,22 @@
 # Claude Code entry point
 
-Claude Code must follow `AGENTS.md` as the authoritative agent constitution.
+`AGENTS.md` is the authoritative agent constitution for every agent, including Claude Code.
+Read it first and follow it exactly: required reading order, multi-agent pre-flight check,
+concurrency rules, execution workflow, truthfulness labels, Product Owner gates and safety
+rules all live there. This file adds nothing that overrides it and deliberately does not
+restate it.
 
-Before acting, read in order:
-1. `AGENTS.md`
-2. `docs/POLIEDRA_MASTER_CONTEXT.md`
-3. `docs/coordination/current-task.md`
-4. Relevant files under `docs/architecture/`
-5. Latest handoff in `docs/coordination/handoffs.md`
+Claude Code specifics:
 
-`docs/POLIEDRA_MASTER_CONTEXT.md` contains stable Product Owner vision, architectural decisions, roadmap and cross-project constraints.
-
-`docs/coordination/current-task.md` contains the current operational task and branch.
-
-Do not infer state from previous Claude sessions or conversation history. Work only on the recorded task and branch. If ownership is assigned to another agent, stop and request an explicit handoff. Product Owner gates in `AGENTS.md` are mandatory.
-
-If implementation would conflict with the Master Context and the conflict cannot be resolved from repository evidence, record `PRODUCT_OWNER_DECISION_REQUIRED` rather than silently overriding Product Owner direction.
+- Do not infer state from previous Claude sessions or conversation history. The repository is
+  the only project memory.
+- Work only on the task and branch recorded in `docs/coordination/current-task.md`. If
+  ownership belongs to another agent, stop and request an explicit handoff.
+- Claude Code normally carries the heavy implementation load (migrations, frontend, tests).
+  That does not extend its authority: no merge, no production deploy, no remote migration,
+  no backfill without explicit Product Owner approval.
+- If implementation would conflict with `docs/POLIEDRA_MASTER_CONTEXT.md` and the conflict
+  cannot be resolved from repository evidence, record `PRODUCT_OWNER_DECISION_REQUIRED`
+  rather than silently overriding Product Owner direction.
+- For any AI, Chat, activity or notification work, comply with
+  `docs/architecture/POLIEDRON.md`: Poliedron is a single agent.
