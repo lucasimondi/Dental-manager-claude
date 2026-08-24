@@ -8,7 +8,15 @@
 - BRANCH: `feature/POL-UI-015-dashboard-premium-v2`
 - BASE: `master` (POL-UI-004-AGENDA-QUICK-HUB/Agenda Mobile V2 merged as
   `b65cdba`, PR #50)
-- STATUS: `WAITING_PRODUCT_OWNER` — draft PR open, not merged, not deployed.
+- STATUS: `WAITING_PRODUCT_OWNER` — draft PR #51 open, not merged, not
+  deployed. Round 1 (commit `c4df202`) was rejected by the Product Owner:
+  the Richiami widget did not appear in the real preview and personalization
+  still did not persist reliably. Round 2 fixed both at their real root
+  causes (registry `defaultVisible` + missing owner role preset entry for
+  Richiami; an editor-open/async-load race for persistence) and verified
+  them with real interactive Playwright/Chromium QA, not just unit tests —
+  see the "POL-UI-015 handoff round 2" entry in `handoffs.md`. Same branch,
+  same PR — no new PR opened.
 
 ## Objective
 

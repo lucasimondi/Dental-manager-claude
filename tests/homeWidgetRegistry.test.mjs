@@ -19,11 +19,14 @@ test('move, add/remove and resize change presentation only', () => {
 });
 
 test('touch-safe move controls reorder only visible widgets in both directions', () => {
+  // POL-UI-015 bugfix round 2: 'richiami' is now defaultVisible:true (was
+  // silently invisible by default before, a real reported bug), so it now
+  // appears in the default visible set too — expected lists updated.
   let layout=createDefaultHomeLayout();
   layout=moveHomeWidgetByOffset(layout,'todo',-1);
-  assert.deepEqual(layout.filter(x=>x.visible).map(x=>x.id),['agenda','todo','consigli_ai','appuntamenti','quick_actions']);
+  assert.deepEqual(layout.filter(x=>x.visible).map(x=>x.id),['agenda','todo','consigli_ai','appuntamenti','richiami','quick_actions']);
   layout=moveHomeWidgetByOffset(layout,'todo',1);
-  assert.deepEqual(layout.filter(x=>x.visible).map(x=>x.id),['agenda','consigli_ai','todo','appuntamenti','quick_actions']);
+  assert.deepEqual(layout.filter(x=>x.visible).map(x=>x.id),['agenda','consigli_ai','todo','appuntamenti','richiami','quick_actions']);
   assert.deepEqual(moveHomeWidgetByOffset(layout,'agenda',-1),layout);
 });
 

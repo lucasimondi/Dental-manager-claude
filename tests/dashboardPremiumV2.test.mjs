@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { suggestedIdle } from '../src/lib/poliedron/searchEngine.js';
 import { NAVIGATION_INDEX } from '../src/lib/poliedron/navigationIndex.js';
+import { createDefaultHomeLayout, getHomeWidget } from '../src/lib/homeWidgetRegistry.js';
+import { createRolePresetLayout, HOME_PRESETS } from '../src/lib/homeDashboardModel.js';
 
 /* POL-UI-015 — Dashboard premium v2 (persistence root cause, Richiami
    widget, mobile fullscreen, floating hero, dock clearance, Consigli
@@ -158,4 +160,86 @@ test('Impostazioni (set) is offered by the central Poliedron panel default sugge
 test('desktop keeps Impostazioni in the sidebar nav (App.jsx NAV, unchanged) — no change needed there', async () => {
   const utilsSrc = await readFile(new URL('../src/lib/utils.js', import.meta.url), 'utf8');
   assert.match(utilsSrc, /\{ id: 'set', l: 'Setup', ic: 'set' \}/);
+});
+
+// =============================================================================
+// ROUND 2 — Product Owner rejected the first draft PR: the Richiami widget
+// was still invisible in the real preview, and personalization still didn't
+// save. Both were real, found via a proper end-to-end browser QA harness
+// (open editor → toggle → save → reload), not by re-reading the same code.
+// =============================================================================
+
+// --- BUG 1: Richiami widget invisible in the real Dashboard preview --------
+
+test('ROOT CAUSE 1: richiami is defaultVisible so it shows up out of the box, not only when manually added via Personalizza Home', () => {
+  const widget = getHomeWidget('richiami');
+  assert.equal(widget.defaultVisible, true);
+});
+
+test('richiami is visible in the platform-default layout (no role, no saved layout)', () => {
+  const layout = createDefaultHomeLayout();
+  const richiami = layout.find((w) => w.id === 'richiami');
+  assert.equal(richiami.visible, true);
+});
+
+test('ROOT CAUSE 1b: the owner/admin role preset — the Product Owner\'s own likely test account — was missing richiami entirely, hiding an otherwise fully-working widget', () => {
+  assert.ok(HOME_PRESETS.owner.includes('richiami'), 'expected richiami in the owner preset');
+  const ownerLayout = createRolePresetLayout(['home.owner']);
+  const richiami = ownerLayout.find((w) => w.id === 'richiami');
+  assert.equal(richiami.visible, true, 'richiami must be visible for an owner-role Dashboard by default');
+});
+
+test('richiami stays visible by default for front_desk too (already correct, unchanged)', () => {
+  const layout = createRolePresetLayout(['home.front_desk']);
+  assert.equal(layout.find((w) => w.id === 'richiami').visible, true);
+});
+
+// --- BUG 2: personalization still not saving — the open-before-load race ---
+
+test('ROOT CAUSE 2: opening "Personalizza Home" is blocked while the initial layout load is still in flight', () => {
+  // This is the actual exploitable race: draftWidgets used to be seeded
+  // from `widgets` (still the stale platform-default at that point) the
+  // instant the user opened the editor, and — by POL-UI-013C's own
+  // deliberate design — never resynced while the modal stayed open. The
+  // Save button already correctly disabled during layoutLoading, but by
+  // the time it re-enabled, the draft had long since been captured stale.
+  // Saving from there silently reverted every other already-saved
+  // customization back to its default. Verified live via a temporary QA
+  // harness with an artificially delayed load: a pre-saved `wa:true`
+  // layout was wiped back to `false` on the real backend by this exact
+  // sequence before the fix below.
+  const buttonBlock = dashboardSrc.slice(dashboardSrc.indexOf('className="home-hero__customize"') - 50, dashboardSrc.indexOf('className="home-hero__customize"') + 300);
+  assert.match(buttonBlock, /disabled=\{layoutLoading\}/);
+  const openStart = dashboardSrc.indexOf('const openHomeCustomizer');
+  const openBody = dashboardSrc.slice(openStart, openStart + 400);
+  assert.match(openBody, /if \(layoutLoading\) return;/);
+});
+
+test('the load-blocking guard runs before draftWidgets is ever seeded from widgets', () => {
+  const openStart = dashboardSrc.indexOf('const openHomeCustomizer');
+  const openBody = dashboardSrc.slice(openStart, openStart + 400);
+  const guardIdx = openBody.indexOf('if (layoutLoading) return;');
+  const seedIdx = openBody.indexOf('setDraftWidgets(widgets.map');
+  assert.ok(guardIdx > -1 && seedIdx > -1 && guardIdx < seedIdx, 'the layoutLoading guard must run before draftWidgets is seeded');
+});
+
+// --- Salva UX contract (verified already correct, guarded against regressing) -
+
+test('Salva: on success, widgets is updated and the modal closes automatically — before any error path could run', () => {
+  const saveStart = dashboardSrc.indexOf('const saveHomeCustomization');
+  const saveEnd = dashboardSrc.indexOf('const resetHomeCustomization');
+  const saveBody = dashboardSrc.slice(saveStart, saveEnd);
+  const setWidgetsIdx = saveBody.indexOf('setWidgets(saved)');
+  const closeIdx = saveBody.indexOf('setSettingsOpen(false)');
+  assert.ok(setWidgetsIdx > -1 && closeIdx > -1 && setWidgetsIdx < closeIdx, 'expected widgets to update before the modal closes');
+});
+
+test('Salva: on failure, the modal stays open and a real error is shown — never a false success', () => {
+  const saveStart = dashboardSrc.indexOf('const saveHomeCustomization');
+  const saveEnd = dashboardSrc.indexOf('const resetHomeCustomization');
+  const saveBody = dashboardSrc.slice(saveStart, saveEnd);
+  const catchIdx = saveBody.lastIndexOf('catch {');
+  const catchBlock = saveBody.slice(catchIdx, catchIdx + 200);
+  assert.doesNotMatch(catchBlock, /setSettingsOpen\(false\)/);
+  assert.match(catchBlock, /setLayoutError\(/);
 });

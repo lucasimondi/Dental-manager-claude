@@ -273,6 +273,10 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   }, [homePermissions.managementControl, hasVisibleFinancialWidget, homePeriodId]);
 
   const openHomeCustomizer = () => {
+    // Defense in depth — see the trigger button's own comment for the race
+    // this guard closes (draftWidgets must never start from a stale widgets
+    // snapshot while the real layout is still loading).
+    if (layoutLoading) return;
     setDraftWidgets(widgets.map((item) => ({ ...item })));
     setDraftInherits(layoutSource !== 'user');
     setLayoutError('');
@@ -1023,8 +1027,25 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           <div className="home-hero__datetime" aria-hidden="true">{fmtDataOra(now)} · {fmtOra(now)}</div>
         </div>
         <div className="home-hero__actions">
-          <button className="home-hero__customize" onClick={openHomeCustomizer}>
-            <Ic n="set" s={14} c={C.txm} /> Personalizza Home
+          {/* POL-UI-015 bugfix round 2 — ROOT CAUSE of "la personalizzazione
+              non si salva": opening this modal while the initial layout
+              load (`layoutLoading`) is still in flight seeds `draftWidgets`
+              from the stale platform-default `widgets` snapshot. The Save
+              button already correctly disables during `layoutLoading` (see
+              below), but by the time it re-enables the real loaded layout
+              has already landed in `widgets` — `draftWidgets` is never
+              resynced while the modal is open (POL-UI-013C's own,
+              deliberate anti-overwrite protection for in-progress edits),
+              so saving at that point silently reverts every OTHER
+              already-saved customization back to its default. Verified live
+              (temporary QA harness): with a saved `wa:true` layout and an
+              artificially delayed load, opening+editing+saving before the
+              load resolved wiped `wa` back to `false` on the real backend.
+              Disabling this button during the same `layoutLoading` window
+              the Save button already respects closes the race at its
+              source — the editor can no longer open with a stale baseline. */}
+          <button className="home-hero__customize" onClick={openHomeCustomizer} disabled={layoutLoading} aria-busy={layoutLoading}>
+            <Ic n="set" s={14} c={C.txm} /> {layoutLoading ? 'Caricamento…' : 'Personalizza Home'}
           </button>
         </div>
       </div>

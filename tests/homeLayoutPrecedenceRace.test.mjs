@@ -88,7 +88,7 @@ test('ROOT CAUSE: the background load effect no longer resets draftWidgets/draft
 
 test('openHomeCustomizer re-derives draftWidgets/draftInherits fresh from the committed widgets every time the modal opens', () => {
   const openStart = dashboardSrc.indexOf('const openHomeCustomizer');
-  const openBody = dashboardSrc.slice(openStart, openStart + 400);
+  const openBody = dashboardSrc.slice(openStart, openStart + 600);
   assert.match(openBody, /setDraftWidgets\(widgets\.map/);
   assert.match(openBody, /setDraftInherits\(layoutSource !== 'user'\)/);
 });

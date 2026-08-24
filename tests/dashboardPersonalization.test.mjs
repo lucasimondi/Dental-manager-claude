@@ -138,7 +138,7 @@ test('Dashboard.jsx keeps load errors in a state separate from the modal-scoped 
 });
 
 test('openHomeCustomizer does not clear the page-level load error on open (only the modal-scoped save error)', () => {
-  const openFn = dashboardSrc.slice(dashboardSrc.indexOf('const openHomeCustomizer'), dashboardSrc.indexOf('const openHomeCustomizer') + 400);
+  const openFn = dashboardSrc.slice(dashboardSrc.indexOf('const openHomeCustomizer'), dashboardSrc.indexOf('const openHomeCustomizer') + 600);
   assert.match(openFn, /setLayoutError\(''\)/);
   assert.doesNotMatch(openFn, /setLoadError/);
 });
