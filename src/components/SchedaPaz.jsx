@@ -539,6 +539,9 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
         onOpenDocuments={() => { setTab('doc'); loadArchivioDocs(); caricaConsensi(); }}
         onOpenNotes={() => { setTab('info'); caricaStorieCliniche(); }}
         onGoAgenda={() => setTab('app')}
+        onNavigate={(target) => { setTab(target); if (target === 'doc') { loadArchivioDocs(); caricaConsensi(); } if (target === 'info') caricaStorieCliniche(); }}
+        onNewAppointment={() => { if (onNuovoAppuntamento) { onClose(); onNuovoAppuntamento(paz.id); } else { setAppForm({ data: today(), ora: '09:00', durata: 30, tipo: 'Visita di controllo', note: '', stato: 'confermato' }); setAppModal(true); } }}
+        onWhatsApp={() => window.open(`https://wa.me/${String(paz.telefono || '').replace(/\D/g, '')}`, '_blank', 'noopener,noreferrer')}
       />
     );
   }

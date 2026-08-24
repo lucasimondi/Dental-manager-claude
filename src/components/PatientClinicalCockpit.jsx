@@ -58,7 +58,7 @@ function Section({ title, eyebrow, action, children, className = '' }) {
   );
 }
 
-function PatientHeader({ patient, appointments, onEdit, onClose }) {
+function PatientHeader({ patient, appointments, onEdit, onClose, onNewAppointment, onWhatsApp, onOpenDetails }) {
   const age = calculateAge(patient.dataNascita);
   return (
     <header className="patient-cockpit-header">
@@ -74,7 +74,11 @@ function PatientHeader({ patient, appointments, onEdit, onClose }) {
             <span>{patient.stato || 'Paziente attivo'}</span>
           </div>
         </div>
-        <button className="patient-cockpit-secondary-button" onClick={() => onEdit(patient)}><Ic n="edit" s={14} c="currentColor" />Modifica</button>
+        <div className="patient-header-actions">
+          <button className="patient-cockpit-secondary-button" onClick={onNewAppointment}><Ic n="cal" s={14} c="currentColor" />Appuntamento</button>
+          {patient.telefono && <button className="patient-cockpit-icon-button" onClick={onWhatsApp} aria-label="Apri WhatsApp"><Ic n="wa" s={17} c="currentColor" /></button>}
+          <button className="patient-cockpit-icon-button" onClick={onOpenDetails} aria-label="Apri dati paziente"><Ic n="menu" s={17} c="currentColor" /></button>
+        </div>
       </div>
       <div className="patient-cockpit-header__facts">
         <div><span>Contatti</span><strong>{patient.telefono || patient.email || 'Non disponibili'}</strong></div>
@@ -86,21 +90,26 @@ function PatientHeader({ patient, appointments, onEdit, onClose }) {
   );
 }
 
-function PrimaryKpis({ model, canViewFinancial }) {
+function PatientNavigation({ onNavigate, canViewFinancial }) {
+  const items = [['overview', 'Overview'], ['info', 'Clinica'], ['piani', 'Piani'], ['app', 'Agenda'], ...(canViewFinancial ? [['paga', 'Economico']] : []), ['doc', 'Documenti'], ['info', 'Attività']];
+  return <nav className="patient-workspace-nav" aria-label="Sezioni paziente">{items.map(([id, label], index) => <button key={`${id}-${label}`} className={index === 0 ? 'is-active' : ''} onClick={() => id !== 'overview' && onNavigate(id)}>{label}</button>)}</nav>;
+}
+
+function PrimaryKpis({ model, canViewFinancial, onNavigate }) {
   const cards = [
-    ['Da fare', model.treatmentSummary.remaining, 'amber', 'clk'],
-    ['Eseguito', model.treatmentSummary.completed, 'green', 'okc'],
-    ['Da incassare', canViewFinancial && model.financial.available ? fmt(model.financial.outstanding) : 'Non disponibile', 'blue', 'eur'],
-    ['Completezza dati', model.dataHealth.scoreAvailable ? `${model.dataHealth.completenessPercent}%` : 'Non disponibile', 'purple', 'pulse'],
+    ['Clinica', `${model.treatmentSummary.remaining} da fare`, 'amber', 'clk', 'info'],
+    ['Piano di cura', `${model.treatmentSummary.completed} eseguite`, 'green', 'okc', 'piani'],
+    ['Economico', canViewFinancial && model.financial.available ? fmt(model.financial.outstanding) : 'Non disponibile', 'blue', 'eur', canViewFinancial ? 'paga' : null],
+    ['Prossima azione', model.appointments.next ? fmtD(model.appointments.next.data) : 'Da pianificare', 'purple', 'pulse', 'app'],
   ];
   return (
     <div className="patient-cockpit-kpis" aria-label="Indicatori principali paziente">
-      {cards.map(([label, value, tone, icon]) => (
-        <article className={`patient-cockpit-kpi patient-cockpit-kpi--${tone}`} key={label}>
+      {cards.map(([label, value, tone, icon, target]) => (
+        <button className={`patient-cockpit-kpi patient-cockpit-kpi--${tone}`} key={label} onClick={() => target && onNavigate(target)} disabled={!target}>
           <div className="patient-cockpit-kpi__icon"><Ic n={icon} s={17} c="currentColor" /></div>
           <strong>{value}</strong>
           <span>{label}</span>
-        </article>
+        </button>
       ))}
     </div>
   );
@@ -328,15 +337,19 @@ function NextAppointment({ appointment, onGoAgenda }) {
 }
 
 function Timeline({ entries, onOpenNotes, onOpenDocuments }) {
+  const [filter, setFilter] = React.useState('all');
+  const category = (entry) => entry.type === 'payment' ? 'payments' : entry.type === 'appointment' ? 'agenda' : entry.type === 'document' ? 'documents' : entry.type === 'annotation' ? 'communications' : 'clinical';
+  const visible = filter === 'all' ? entries : entries.filter((entry) => category(entry) === filter);
   return (
     <Section
       title="Attività recente"
       eyebrow="Timeline unificata"
       action={<div className="patient-section-actions"><button onClick={onOpenNotes}>Note</button><button onClick={onOpenDocuments}>Documenti</button></div>}
     >
-      {entries.length === 0 ? <div className="patient-cockpit-empty">Nessuna attività recente disponibile.</div> : (
+      <div className="patient-timeline-filters">{[['all','Tutto'],['clinical','Clinica'],['agenda','Agenda'],['payments','Pagamenti'],['documents','Documenti'],['communications','Comunicazioni']].map(([id,label]) => <button key={id} className={filter === id ? 'is-active' : ''} onClick={() => setFilter(id)}>{label}</button>)}</div>
+      {visible.length === 0 ? <div className="patient-cockpit-empty">Nessun evento per questo filtro.</div> : (
         <div className="patient-timeline">
-          {entries.slice(0, 10).map((entry) => (
+          {visible.slice(0, 20).map((entry) => (
             <div className="patient-timeline__entry" key={entry.key}>
               <span className={`patient-timeline__dot patient-timeline__dot--${entry.type}`} />
               <div><strong>{entry.title}</strong><span>{fmtD(entry.date)}{entry.time ? ` · ${entry.time}` : ''}{entry.detail ? ` · ${entry.detail}` : ''}{entry.amount != null ? ` · ${fmt(entry.amount)}` : ''}</span></div>
@@ -346,6 +359,11 @@ function Timeline({ entries, onOpenNotes, onOpenDocuments }) {
       )}
     </Section>
   );
+}
+
+function PatientDetailsDrawer({ patient, onClose, onEdit }) {
+  const rows = [['Nome', patient.nome], ['Cognome', patient.cognome], ['Codice fiscale', patient.cf], ['Data di nascita', patient.dataNascita && fmtD(patient.dataNascita)], ['Sesso', patient.sesso], ['Telefono', patient.telefono], ['Email', patient.email], ['Indirizzo', patient.indirizzo], ['Sistema TS', patient.sistemaTs ?? patient.sistema_ts], ['Assicurazione', patient.assicurazione], ['Privacy / marketing', patient.consensoMarketing ?? patient.consenso_marketing]];
+  return <div className="patient-detail-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}><aside className="patient-details-drawer" role="dialog" aria-modal="true" aria-label="Dati paziente"><div className="patient-treatment-detail__header"><div><div className="patient-cockpit-eyebrow">Dati completi</div><h2>{patient.nome} {patient.cognome}</h2></div><button className="patient-cockpit-icon-button" onClick={onClose}><Ic n="x" s={16} c="currentColor" /></button></div><div className="patient-details-list">{rows.map(([label,value]) => <div key={label}><span>{label}</span><strong>{value === true ? 'Sì' : value === false ? 'No' : value || 'Non disponibile'}</strong></div>)}<button className="patient-cockpit-primary-button" onClick={() => onEdit(patient)}>Modifica dati</button></div></aside></div>;
 }
 
 function TreatmentDetail({ group, onClose, onToggle, onEdit, canViewFinancial }) {
@@ -390,11 +408,15 @@ export default function PatientClinicalCockpit({
   onOpenDocuments,
   onOpenNotes,
   onGoAgenda,
+  onNavigate,
+  onNewAppointment,
+  onWhatsApp,
   canViewFinancial,
 }) {
   const [selectedTeeth, setSelectedTeeth] = React.useState([]);
   const [selectedContext, setSelectedContext] = React.useState(null);
   const [detailGroup, setDetailGroup] = React.useState(null);
+  const [detailsOpen, setDetailsOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (!detailGroup) return;
@@ -404,9 +426,10 @@ export default function PatientClinicalCockpit({
 
   return (
     <div className="patient-cockpit">
-      <PatientHeader patient={patient} appointments={model.appointments} onEdit={onEdit} onClose={onClose} />
+      <PatientHeader patient={patient} appointments={model.appointments} onEdit={onEdit} onClose={onClose} onNewAppointment={onNewAppointment} onWhatsApp={onWhatsApp} onOpenDetails={() => setDetailsOpen(true)} />
+      <PatientNavigation onNavigate={onNavigate} canViewFinancial={canViewFinancial} />
       <main className="patient-cockpit-content">
-        <PrimaryKpis model={model} canViewFinancial={canViewFinancial} />
+        <PrimaryKpis model={model} canViewFinancial={canViewFinancial} onNavigate={onNavigate} />
         <div className="patient-cockpit-layout">
           <div className="patient-cockpit-main-column">
             <ClinicalMap
@@ -432,6 +455,7 @@ export default function PatientClinicalCockpit({
         <Timeline entries={model.timeline.filter((entry) => canViewFinancial || entry.type !== 'payment')} onOpenNotes={onOpenNotes} onOpenDocuments={onOpenDocuments} />
       </main>
       <TreatmentDetail group={detailGroup} onClose={() => setDetailGroup(null)} onToggle={onToggleTreatment} onEdit={onOpenPlans} canViewFinancial={canViewFinancial} />
+      {detailsOpen && <PatientDetailsDrawer patient={patient} onClose={() => setDetailsOpen(false)} onEdit={onEdit} />}
     </div>
   );
 }

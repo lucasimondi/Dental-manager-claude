@@ -64,6 +64,10 @@
 .patient-cockpit-header .patient-cockpit-eyebrow { color: #7dd3fc; }
 
 .patient-cockpit-content { max-width: 1440px; margin: 0 auto; padding: 22px 24px 40px; }
+.patient-header-actions { display: flex; align-items: center; gap: 7px; }
+.patient-workspace-nav { position: sticky; top: 0; z-index: 7; display: flex; gap: 4px; padding: 7px max(16px, calc((100vw - 1440px) / 2 + 24px)); overflow-x: auto; border-bottom: 1px solid var(--border-soft); background: color-mix(in srgb, var(--surface-card) 94%, transparent); backdrop-filter: blur(14px); scrollbar-width: none; }
+.patient-workspace-nav button { min-height: 36px; flex: 0 0 auto; padding: 0 13px; border: 0; border-radius: 9px; color: var(--text-secondary); background: transparent; font-weight: 800; cursor: pointer; }
+.patient-workspace-nav button.is-active { color: var(--brand-primary); background: color-mix(in srgb, var(--brand-primary) 9%, var(--surface-card)); }
 .patient-cockpit-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
 .patient-cockpit-kpi {
   min-width: 0;
@@ -76,7 +80,11 @@
   border-radius: var(--radius-lg);
   background: var(--surface-card);
   box-shadow: var(--shadow-sm);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
+.patient-cockpit-kpi:disabled { cursor: default; }
 
 .patient-cockpit-kpi__icon { grid-row: 1 / 3; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 12px; background: currentColor; }
 .patient-cockpit-kpi__icon svg { filter: brightness(0) invert(1); }
@@ -208,6 +216,9 @@
 .patient-section-actions { display: flex; gap: 5px; }
 .patient-section-actions button { min-height: 36px; padding: 0 10px; border: 1px solid var(--border-soft); border-radius: 9px; color: var(--text-secondary); background: var(--surface-base); font-weight: 800; cursor: pointer; }
 .patient-timeline { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
+.patient-timeline-filters { display: flex; gap: 5px; margin-bottom: 8px; overflow-x: auto; scrollbar-width: none; }
+.patient-timeline-filters button { min-height: 34px; flex: 0 0 auto; padding: 0 10px; border: 1px solid var(--border-soft); border-radius: 999px; color: var(--text-secondary); background: var(--surface-base); font-size: 11px; font-weight: 800; cursor: pointer; }
+.patient-timeline-filters button.is-active { color: #fff; border-color: var(--brand-primary); background: var(--brand-primary); }
 .patient-timeline__entry { min-width: 0; display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-top: 1px solid var(--border-soft); }
 .patient-timeline__dot { width: 10px; height: 10px; flex: 0 0 auto; margin-top: 4px; border-radius: 50%; background: var(--brand-primary); }
 .patient-timeline__dot--treatment { background: var(--pol-turquoise-500); }
@@ -221,6 +232,13 @@
 
 .patient-detail-backdrop { position: fixed; inset: 0; z-index: 20; display: flex; justify-content: flex-end; background: rgba(2,6,23,.46); backdrop-filter: blur(3px); }
 .patient-treatment-detail { width: min(480px, 100%); height: 100%; overflow-y: auto; color: var(--text-primary); background: var(--surface-card); box-shadow: var(--shadow-lg); }
+.patient-details-drawer { width: min(440px, 100%); height: 100%; overflow-y: auto; color: var(--text-primary); background: var(--surface-card); box-shadow: var(--shadow-lg); }
+.patient-details-drawer .patient-cockpit-icon-button { color: var(--text-primary); border-color: var(--border-medium); background: var(--surface-base); }
+.patient-details-list { padding: 16px; }
+.patient-details-list > div { display: grid; grid-template-columns: 135px minmax(0, 1fr); gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border-soft); }
+.patient-details-list span { color: var(--text-muted); font-size: 11px; }
+.patient-details-list strong { overflow-wrap: anywhere; font-size: 12px; }
+.patient-details-list > button { width: 100%; margin-top: 18px; }
 .patient-treatment-detail__header { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; gap: 12px; padding: max(20px, env(safe-area-inset-top)) 20px 16px; border-bottom: 1px solid var(--border-soft); background: var(--surface-card); }
 .patient-treatment-detail__header h2 { margin: 3px 0; }
 .patient-treatment-detail__header span { color: var(--text-secondary); font-size: 11px; }
@@ -280,6 +298,8 @@
   .patient-cockpit-layout { display: flex; flex-direction: column; }
   .patient-cockpit-main-column,
   .patient-cockpit-side-column { width: 100%; }
+  .patient-cockpit-side-column { display: contents; }
+  .patient-cockpit-side-column .patient-poliedron-card { display: none; }
   .patient-cockpit-side-column .patient-poliedron-card { order: 1; }
   .patient-cockpit-side-column > :nth-child(2) { order: 2; }
   .patient-cockpit-side-column > :nth-child(3) { order: 3; }
@@ -293,6 +313,8 @@
   .patient-cockpit-header h1 { font-size: 20px; }
   .patient-cockpit-header__meta span:first-child { display: none; }
   .patient-cockpit-header .patient-cockpit-secondary-button { width: 44px; padding: 0; font-size: 0; }
+  .patient-header-actions .patient-cockpit-secondary-button { display: none; }
+  .patient-workspace-nav { padding-inline: 10px; }
   .patient-cockpit-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .patient-cockpit-kpi { grid-template-columns: 32px 1fr; padding: 12px; column-gap: 8px; }
   .patient-cockpit-kpi__icon { width: 32px; height: 32px; }

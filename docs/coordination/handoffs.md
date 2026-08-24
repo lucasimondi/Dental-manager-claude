@@ -1,5 +1,27 @@
 # Handoffs
 
+## POL-UI-005 handoff
+
+- Task ID: POL-UI-005.
+- Agent: Codex.
+- Branch: `ui/POL-UI-005-patient-workspace`.
+- Objective: implement Patient Workspace 2.0 incrementally without replacing
+  the legacy patient component or duplicating its data/mutation contracts.
+- Completed work: audited the 1,897-line legacy component; reused and aligned
+  POL-UI-014's tenant-safe read model; added compact header, snapshot,
+  navigation, timeline filters, desktop rail, details drawer, responsive shell,
+  quick appointment/WhatsApp actions, and singleton Poliedron patient context.
+- Files changed: see `docs/architecture/POL-UI-005-patient-workspace.md` and the
+  task commits.
+- Database changes: none.
+- Tests: Patient Workspace 27/27 pass; Vite build passes; diff check clean. Full
+  suite retains one baseline POL-UI-015 Dashboard CSS source-order failure.
+- Risks: patient finance remains intentionally unavailable without a canonical
+  per-patient contract; legacy forms remain inside `SchedaPaz.jsx`; authenticated
+  browser QA with high/low-data patients remains a Product Owner preview step.
+- Rollback: revert the task commits; no data rollback.
+- Exact next action: Product Owner review. Do not merge or deploy autonomously.
+
 ## POL-001 handoff
 
 - Task ID: POL-001

@@ -1,5 +1,19 @@
 # Current task
 
+- TASK: POL-UI-005
+- TITLE: Patient Workspace 2.0
+- OWNER: CODEX
+- BRANCH: `ui/POL-UI-005-patient-workspace`
+- BASE: `origin/master@36a1497`
+- STATUS: `WAITING_PRODUCT_OWNER`
+- OBJECTIVE: introduce the modular patient cockpit while preserving every
+  legacy write flow in `SchedaPaz.jsx`.
+- DATABASE: none.
+- NEXT ACTION: Product Owner reviews the branch. Do not merge or deploy without
+  explicit approval.
+
+## Superseded operational record
+
 - TASK: POL-UI-015
 - TITLE: Dashboard premium v2 — personalization persistence root cause,
   Richiami widget, mobile fullscreen, floating dock/hero, Consigli
