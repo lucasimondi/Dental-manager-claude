@@ -88,6 +88,7 @@ export default function PoliedronChatPage({
   const scrollRef = useRef(null);
   const nearBottomRef = useRef(true);
   const initializedRef = useRef(false);
+  const sendDisabled = loading || sending || !draft.trim();
 
   useEffect(() => {
     onVisible?.();
@@ -249,8 +250,10 @@ export default function PoliedronChatPage({
             type="button"
             className="poliedron-chat__send"
             onClick={submit}
-            disabled={loading || sending || !draft.trim()}
+            disabled={sendDisabled}
             aria-label="Invia messaggio"
+            aria-busy={sending}
+            data-sending={sending || undefined}
           >
             <Ic n="send" s={18} c="#fff" />
           </button>

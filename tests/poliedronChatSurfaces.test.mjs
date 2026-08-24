@@ -31,6 +31,25 @@ const dock = read('../src/components/poliedron/PoliedronMobileDock.jsx');
 const bell = read('../src/components/poliedron/PoliedronBell.jsx');
 const hook = read('../src/components/poliedron/usePoliedronConversation.js');
 const app = read('../src/App.jsx');
+const css = read('../src/components/PremiumVisualSystem.css');
+
+test('Chat composer exposes one accessible circular send control through the existing submit path', () => {
+  assert.match(chatPage, /const sendDisabled = loading \|\| sending \|\| !draft\.trim\(\)/);
+  assert.match(chatPage, /className="poliedron-chat__send"[\s\S]*onClick=\{submit\}[\s\S]*disabled=\{sendDisabled\}[\s\S]*aria-label="Invia messaggio"/);
+  assert.match(chatPage, /aria-busy=\{sending\}/);
+  assert.match(chatPage, /<Ic n="send"/);
+  assert.equal((chatPage.match(/onClick=\{submit\}/g) || []).length, 1, 'the button must not create a second send path');
+
+  assert.match(chatPage, /event\.key === 'Enter' && !event\.shiftKey[\s\S]*event\.preventDefault\(\);[\s\S]*submit\(\);/);
+  assert.match(chatPage, /if \(!value \|\| sending \|\| loading\) return;/);
+  assert.match(chatPage, /const accepted = await onSend\(value\)/);
+
+  assert.match(css, /\.poliedron-chat__composer-row\s*\{[\s\S]*align-items:\s*center;/);
+  assert.match(css, /\.poliedron-chat__send\s*\{[\s\S]*border-radius:\s*50%;/);
+  assert.match(css, /\.poliedron-chat__send\s*\{[\s\S]*min-width:\s*46px;[\s\S]*min-height:\s*46px;/);
+  assert.match(css, /@media \(max-width: 719px\)[\s\S]*\.poliedron-chat__send\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/);
+  assert.match(css, /\.poliedron-chat__send\[data-sending="true"\]/);
+});
 
 // ---------------------------------------------------------------- FASE 10 ---
 

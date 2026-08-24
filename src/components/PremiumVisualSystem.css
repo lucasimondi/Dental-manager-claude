@@ -1769,7 +1769,7 @@ body:has(.home-widget-grid) #app-scroll {
 }
 .poliedron-chat__composer-row {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 9px;
 }
 .poliedron-chat__composer textarea {
@@ -1795,8 +1795,10 @@ body:has(.home-widget-grid) #app-scroll {
 .poliedron-chat__send {
   width: 46px;
   height: 46px;
+  min-width: 46px;
+  min-height: 46px;
   border: 0;
-  border-radius: 15px;
+  border-radius: 50%;
   background: linear-gradient(145deg, var(--brand-primary), var(--brand-accent));
   display: inline-flex;
   align-items: center;
@@ -1804,8 +1806,14 @@ body:has(.home-widget-grid) #app-scroll {
   flex-shrink: 0;
   cursor: pointer;
   box-shadow: 0 8px 18px color-mix(in srgb, var(--brand-primary) 24%, transparent);
+  transition: opacity .16s ease, transform .16s ease, box-shadow .16s ease;
 }
 .poliedron-chat__send:disabled { opacity: .45; cursor: default; box-shadow: none; }
+.poliedron-chat__send[data-sending="true"] { opacity: .62; transform: scale(.96); }
+.poliedron-chat__send:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 3px;
+}
 .poliedron-chat__error {
   margin-bottom: 8px;
   padding: 7px 10px;
@@ -1877,10 +1885,11 @@ body:has(.home-widget-grid) #app-scroll {
     padding: 9px 10px calc(9px + env(keyboard-inset-height, 0px));
   }
   .poliedron-chat__composer textarea { resize: none; min-height: 44px; padding: 11px 12px; }
-  .poliedron-chat__send { width: 44px; height: 44px; }
+  .poliedron-chat__send { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .poliedron-chat__typing > span { animation: none !important; }
+  .poliedron-chat__send { transition: none !important; }
 }
 
 /* POL-UI-015 round 3 — Richiami Home widget scroll area.
