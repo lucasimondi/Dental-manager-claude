@@ -5,6 +5,7 @@
 - OWNER: COPILOT
 - BRANCH: `lucasimondi-chat-polyedron`
 - BASE: `master`
+- PR: `#53`
 - STATUS: `WAITING_PRODUCT_OWNER` — implementation complete and locally
   validated; not merged, not deployed, and no remote migration was applied.
 
@@ -42,7 +43,7 @@ through mobile Chat, desktop navigation, and a real unread bell.
 
 ## Exact next action
 
-Product Owner reviews the Chat Polyedron PR, including mobile/desktop
+Product Owner reviews PR #53, including mobile/desktop
 conversation UX and the additive migration/RLS contract. Do not merge, deploy,
 or apply `20260824030000_chat_polyedron.sql` remotely without explicit Product
 Owner approval.
