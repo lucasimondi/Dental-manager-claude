@@ -1,7 +1,13 @@
 import { createDefaultHomeLayout, normalizeHomeLayout } from './homeWidgetRegistry.js';
 
 export const HOME_PRESETS = Object.freeze({
-  owner: Object.freeze(['fin_incassato', 'fin_prodotto', 'fin_margine_contribuzione', 'fin_ebitda', 'fin_break_even', 'fin_costi_fissi', 'fin_costi_variabili', 'fin_costo_orario', 'fin_ore_disponibili', 'agenda', 'todo']),
+  // POL-UI-015 bugfix round 2: 'richiami' added — the new premium Richiami
+  // widget was registered and fully functional but invisible by default
+  // for the owner/admin role (the Product Owner's own likely test
+  // account), since this preset never listed it. front_desk already had
+  // it; clinician_fisio is left as its own narrow, deliberately minimal
+  // clinical scope, unchanged.
+  owner: Object.freeze(['fin_incassato', 'fin_prodotto', 'fin_margine_contribuzione', 'fin_ebitda', 'fin_break_even', 'fin_costi_fissi', 'fin_costi_variabili', 'fin_costo_orario', 'fin_ore_disponibili', 'agenda', 'todo', 'richiami']),
   front_desk: Object.freeze(['agenda', 'appuntamenti', 'todo', 'richiami', 'wa', 'preventivi', 'scadenze']),
   clinician_fisio: Object.freeze(['agenda', 'appuntamenti', 'todo']),
 });

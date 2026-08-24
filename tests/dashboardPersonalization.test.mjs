@@ -20,18 +20,31 @@ const workspaceSrc = await readFile(new URL('../src/components/WidgetWorkspace.j
 const workspaceCss = await readFile(new URL('../src/components/WidgetWorkspace.css', import.meta.url), 'utf8');
 const premiumCss = await readFile(new URL('../src/components/PremiumVisualSystem.css', import.meta.url), 'utf8');
 
-const fakeClient = (row = null, { failLoad = false, failSave = false } = {}) => ({
-  from: () => ({
-    select: () => ({ eq: () => ({ eq: () => ({
-      maybeSingle: async () => failLoad
-        ? { data: null, error: { message: 'relation "public.user_home_layouts" does not exist', code: '42P01' } }
-        : { data: row, error: null },
-    }) }) }),
-    upsert: async () => failSave
-      ? { error: { message: 'relation "public.user_home_layouts" does not exist', code: '42P01' } }
-      : { error: null },
-  }),
-});
+/* POL-UI-015 round 3: this double used to answer every read with a fixed
+   `row` regardless of what had just been written, which let a save be
+   called "persisted" without anything ever storing it. `saveUserHomeLayout`
+   now READS THE RECORD BACK and refuses to report success unless the
+   store really holds it, so the double has to behave like the table it
+   stands for: an upsert on the (studio_id,user_id) primary key that later
+   reads observe. */
+const fakeClient = (row = null, { failLoad = false, failSave = false } = {}) => {
+  let stored = row;
+  return {
+    from: () => ({
+      select: () => ({ eq: () => ({ eq: () => ({
+        maybeSingle: async () => failLoad
+          ? { data: null, error: { message: 'relation "public.user_home_layouts" does not exist', code: '42P01' } }
+          : { data: stored, error: null },
+      }) }) }),
+      upsert: async (payload) => {
+        if (failSave) return { error: { message: 'relation "public.user_home_layouts" does not exist', code: '42P01' } };
+        stored = { layout: payload.layout };
+        return { error: null };
+      },
+      delete: () => ({ eq: () => ({ eq: async () => { stored = null; return { error: null }; } }) }),
+    }),
+  };
+};
 
 // --- personalization save + reload persistence ---
 
@@ -138,7 +151,7 @@ test('Dashboard.jsx keeps load errors in a state separate from the modal-scoped 
 });
 
 test('openHomeCustomizer does not clear the page-level load error on open (only the modal-scoped save error)', () => {
-  const openFn = dashboardSrc.slice(dashboardSrc.indexOf('const openHomeCustomizer'), dashboardSrc.indexOf('const openHomeCustomizer') + 400);
+  const openFn = dashboardSrc.slice(dashboardSrc.indexOf('const openHomeCustomizer'), dashboardSrc.indexOf('const openHomeCustomizer') + 600);
   assert.match(openFn, /setLayoutError\(''\)/);
   assert.doesNotMatch(openFn, /setLoadError/);
 });

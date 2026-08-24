@@ -3,12 +3,21 @@ import ReactDOM from 'react-dom';
 import Ic from '../ui/Ic.jsx';
 import PoliedronOrb from './PoliedronOrb.jsx';
 
+/* POL-UI-015 §9-10: `set` (Impostazioni) no longer has a dock slot — it
+   moved to the central Poliedron panel's default suggestions (see
+   searchEngine.js's suggestedIdle, "APRI UNA SEZIONE"). Its slot is now
+   `chat`: NOT a second page/route and NOT a second Poliedron — it opens
+   the exact same conversation the central button already opens (same
+   `open`/`onToggle`/`panelId`), per the task's own architectural
+   principle. `chat` is handled like `__poliedron__` below rather than
+   through the generic `setPage(item.id)` path every other item uses,
+   since there is no `'chat'` page for App.jsx to navigate to. */
 export const MOBILE_DOCK_ITEMS = Object.freeze([
   { id: 'home', label: 'Home', icon: 'home' },
   { id: 'agenda', label: 'Agenda', icon: 'cal' },
   { id: '__poliedron__', label: 'Poliedron', icon: null },
   { id: 'paz', label: 'Pazienti', icon: 'pz' },
-  { id: 'set', label: 'Setup', icon: 'set' },
+  { id: 'chat', label: 'Chat', icon: 'chat' },
 ]);
 
 export default function PoliedronMobileDock({ page, setPage, open, onToggle, panelId }) {
@@ -27,6 +36,24 @@ export default function PoliedronMobileDock({ page, setPage, open, onToggle, pan
                 document.body
               )}
             </div>
+          );
+        }
+
+        if (item.id === 'chat') {
+          return (
+            <button
+              key={item.id}
+              type="button"
+              className={`poliedron-mobile-dock__item${open ? ' is-active' : ''}`}
+              aria-label={`${item.label} Poliedron`}
+              aria-haspopup="dialog"
+              aria-expanded={open}
+              aria-controls={panelId}
+              tabIndex={open ? -1 : 0}
+              onClick={onToggle}
+            >
+              <Ic n={item.icon} s={22} />
+            </button>
           );
         }
 

@@ -20,7 +20,20 @@ const RAW_HOME_WIDGET_REGISTRY = [
   { id: 'wa', ic: 'wa', label: 'Reminder WhatsApp', category: 'Comunicazioni', defaultVisible: false, defaultSize: 'medium', sizes: ['medium', 'wide'] },
   { id: 'economico', ic: 'eur', label: 'Pannello economico', category: 'Finanza legacy', permission: 'management_control', defaultVisible: false, defaultSize: 'medium', sizes: ['medium', 'wide'] },
   { id: 'preventivi', ic: 'clip', label: 'Preventivi', category: 'Finanza', defaultVisible: false, defaultSize: 'medium', sizes: ['medium', 'wide'] },
-  { id: 'richiami', ic: 'bell', label: 'Richiami', category: 'Pazienti/Clienti', defaultVisible: false, defaultSize: 'small', sizes: ['small', 'medium'] },
+  // POL-UI-015 bugfix round 2: was defaultVisible:false, which combined
+  // with the owner-role preset also excluding it meant this widget's own
+  // rendering was fully correct but it was never actually shown to a
+  // studio owner/admin's Dashboard by default — reported as "il widget
+  // Richiami non compare". Now visible out of the box for any user whose
+  // role doesn't resolve a specific preset too (createRolePresetLayout
+  // returns null -> platform default -> this flag).
+  // POL-UI-015 bugfix round 3: this flag and the owner role preset are
+  // BOTH unreachable for an account that already has a saved personal
+  // layout — `resolveDashboardLayout` gives `userLayout` absolute
+  // precedence, and `normalizeHomeLayout`'s defaultVisible fallback only
+  // applies to widget ids MISSING from that saved layout. See
+  // `migrateSavedHomeLayout` below for the actual root-cause fix.
+  { id: 'richiami', ic: 'bell', label: 'Richiami', category: 'Pazienti/Clienti', defaultVisible: true, defaultSize: 'small', sizes: ['small', 'medium'] },
   { id: 'scadenze', ic: 'cal', label: 'Scadenze pagamento', category: 'Finanza', defaultVisible: false, defaultSize: 'small', sizes: ['small', 'medium'] },
   { id: 'ortodonzia', ic: 'tooth', label: 'Ortodonzia', category: 'Clinica', defaultVisible: false, defaultSize: 'small', sizes: ['small', 'medium'] },
   { id: 'fisio', ic: 'pulse', label: 'Fisioterapia', category: 'Clinica', permission: 'physio_contract', verticals: ['fisioterapista', 'massofisioterapista'], defaultVisible: false, defaultSize: 'medium', sizes: ['medium', 'wide'] },
@@ -85,6 +98,49 @@ export const normalizeHomeLayout = (value) => {
     if (!seen.has(fallback.id)) normalized.push({ ...fallback, order: normalized.length });
   }
   return normalized;
+};
+
+/* POL-UI-015 bugfix round 3 — REAL root cause of "il widget Richiami non
+   compare" in preview #51, proven against the production database (read
+   only): the reporting account's `user_home_layouts` row, last written
+   2026-08-19 (i.e. before this task's branch existed), contains an
+   EXPLICIT `{id:'richiami', visible:false}` entry inherited from the old
+   pre-POL-UI-015 Richiami StatCard. Because `resolveDashboardLayout`
+   returns `{source:'user'}` for any account with a saved layout, and
+   `normalizeHomeLayout` only falls back to `defaultVisible` for ids that
+   are ABSENT, neither round-2 fix (registry `defaultVisible:true`, nor
+   `HOME_PRESETS.owner` gaining `'richiami'`) can ever reach that account.
+   Round 2's browser QA started from an empty fake store, so it never had
+   a pre-existing saved layout and could not observe this.
+
+   The fix must not reset the user's other personalizations, so it is
+   deliberately narrow and one-shot: only layouts written by a registry
+   generation that predates POL-UX-001 — detectable with zero schema
+   change because they cannot contain the `quick_actions` sentinel widget
+   introduced by it — have the widgets listed in
+   `POL_UI_015_REDEFAULTED_WIDGET_IDS` re-defaulted to their registry
+   `defaultVisible`. Every other entry (visibility, order, size, config)
+   is preserved exactly. It is idempotent by construction: the first
+   successful save writes the full current registry, `quick_actions`
+   included, after which this migration is a no-op forever and a user who
+   then deliberately hides Richiami keeps it hidden. `size` is left
+   untouched on purpose — only the visibility the old UI could not have
+   expressed an informed choice about is re-defaulted. */
+export const HOME_LAYOUT_MODERN_SENTINEL_ID = 'quick_actions';
+export const POL_UI_015_REDEFAULTED_WIDGET_IDS = Object.freeze(['richiami']);
+
+export const isLegacySavedHomeLayout = (value) => {
+  const raw = Array.isArray(value) ? value : [];
+  return raw.length > 0 && !raw.some((item) => item && item.id === HOME_LAYOUT_MODERN_SENTINEL_ID);
+};
+
+export const migrateSavedHomeLayout = (value) => {
+  if (!isLegacySavedHomeLayout(value)) return normalizeHomeLayout(value);
+  return normalizeHomeLayout(value.map((item) => {
+    if (!item || !POL_UI_015_REDEFAULTED_WIDGET_IDS.includes(item.id)) return item;
+    const widget = getHomeWidget(item.id);
+    return widget ? { ...item, visible: widget.defaultVisible } : item;
+  }));
 };
 
 export const moveHomeWidget = (layout, sourceId, targetId) => {

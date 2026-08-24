@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import PoliedronEdgeDock from './PoliedronEdgeDock';
 import PoliedronMobileDock from './PoliedronMobileDock';
+import PoliedronBell from './PoliedronBell';
 import PoliedronPanel from './PoliedronPanel';
 import { NAVIGATION_INDEX } from '../../lib/poliedron/navigationIndex';
 import { buildIntelligencePermissions, filterNavigationIndex, isActionAllowed } from '../../lib/poliedron/permissionEngine';
@@ -21,6 +22,8 @@ export default function Poliedron({
   features, isStudioAdmin, vertical, studioId, currentPatient,
   quickActionCtx, supabaseClient, onArchivioFilterHint, openPrescription, openNew, openBooking,
   externalCommandRequest, onExternalCommandHandled,
+  // POL-UI-015 §7: no producer wired yet anywhere — see PoliedronBell.jsx.
+  unreadCount = 0,
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -239,6 +242,10 @@ export default function Poliedron({
       {isMobile
         ? <PoliedronMobileDock page={page} setPage={setPage} open={open} onToggle={onToggle} panelId={panelId} />
         : <PoliedronEdgeDock open={open} onToggle={onToggle} panelId={panelId} />}
+      {/* POL-UI-015 §7 — same open/onToggle/panelId as the Orb/Edge Dock
+          above: the bell is one more entry point into the SAME Poliedron
+          conversation, never a second agent or a second open state. */}
+      <PoliedronBell variant={isMobile ? 'mobile' : 'desktop'} open={open} onToggle={onToggle} unreadCount={unreadCount} panelId={panelId} />
       {open && (
         <PoliedronPanel
           panelId={panelId}

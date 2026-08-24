@@ -19,11 +19,14 @@ test('move, add/remove and resize change presentation only', () => {
 });
 
 test('touch-safe move controls reorder only visible widgets in both directions', () => {
+  // POL-UI-015 bugfix round 2: 'richiami' is now defaultVisible:true (was
+  // silently invisible by default before, a real reported bug), so it now
+  // appears in the default visible set too — expected lists updated.
   let layout=createDefaultHomeLayout();
   layout=moveHomeWidgetByOffset(layout,'todo',-1);
-  assert.deepEqual(layout.filter(x=>x.visible).map(x=>x.id),['agenda','todo','consigli_ai','appuntamenti','quick_actions']);
+  assert.deepEqual(layout.filter(x=>x.visible).map(x=>x.id),['agenda','todo','consigli_ai','appuntamenti','richiami','quick_actions']);
   layout=moveHomeWidgetByOffset(layout,'todo',1);
-  assert.deepEqual(layout.filter(x=>x.visible).map(x=>x.id),['agenda','consigli_ai','todo','appuntamenti','quick_actions']);
+  assert.deepEqual(layout.filter(x=>x.visible).map(x=>x.id),['agenda','consigli_ai','todo','appuntamenti','richiami','quick_actions']);
   assert.deepEqual(moveHomeWidgetByOffset(layout,'agenda',-1),layout);
 });
 
@@ -43,11 +46,16 @@ test('workspace resolves the stable registry id from React child keys',()=>{
   assert.equal(getHomeWidgetIdFromReactKey('todo'),'todo');
 });
 
+/* POL-UI-015 round 3: saveUserHomeLayout now reads the record back and
+   refuses to report success unless the store really holds what was sent,
+   so this double must remember the write instead of always replaying a
+   fixed row. */
 const fakeClient=(row=null)=>({
   written:null,
+  stored:row,
   from(){ return {
-    select:()=>({eq:()=>({eq:()=>({maybeSingle:async()=>({data:row,error:null})})})}),
-    upsert:async(payload)=>{ fake.written=payload; return {error:null}; },
+    select:()=>({eq:()=>({eq:()=>({maybeSingle:async()=>({data:fake.stored,error:null})})})}),
+    upsert:async(payload)=>{ fake.written=payload; fake.stored={layout:payload.layout}; return {error:null}; },
   }; },
 });
 let fake;
