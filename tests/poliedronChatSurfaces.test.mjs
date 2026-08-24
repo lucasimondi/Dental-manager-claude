@@ -49,6 +49,11 @@ test('Chat composer exposes one accessible circular send control through the exi
   assert.match(css, /\.poliedron-chat__send\s*\{[\s\S]*min-width:\s*46px;[\s\S]*min-height:\s*46px;/);
   assert.match(css, /@media \(max-width: 719px\)[\s\S]*\.poliedron-chat__send\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/);
   assert.match(css, /\.poliedron-chat__send\[data-sending="true"\]/);
+  assert.match(css, /\.poliedron-chat__send:disabled\s*\{[\s\S]*opacity:\s*1;[\s\S]*background:\s*linear-gradient/);
+  assert.match(css, /:root\[data-theme="dark"\] \.poliedron-chat__send:disabled/);
+  assert.doesNotMatch(css, /\.poliedron-chat__send:disabled\s*\{[^}]*opacity:\s*(?:0|\.[0-4])\b/);
+  assert.match(css, /\.poliedron-chat__send:hover:not\(:disabled\)/);
+  assert.match(css, /\.poliedron-chat__send:active:not\(:disabled\)/);
 });
 
 // ---------------------------------------------------------------- FASE 10 ---

@@ -1797,19 +1797,60 @@ body:has(.home-widget-grid) #app-scroll {
   height: 46px;
   min-width: 46px;
   min-height: 46px;
-  border: 0;
+  border: 1px solid rgba(255,255,255,.26);
   border-radius: 50%;
-  background: linear-gradient(145deg, var(--brand-primary), var(--brand-accent));
+  background: linear-gradient(145deg, var(--pol-blue-600), var(--pol-turquoise-500));
+  color: #fff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  position: relative;
+  z-index: 1;
   cursor: pointer;
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--brand-primary) 24%, transparent);
-  transition: opacity .16s ease, transform .16s ease, box-shadow .16s ease;
+  box-shadow:
+    0 8px 18px rgba(12,68,124,.28),
+    inset 0 1px 0 rgba(255,255,255,.24);
+  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;
 }
-.poliedron-chat__send:disabled { opacity: .45; cursor: default; box-shadow: none; }
-.poliedron-chat__send[data-sending="true"] { opacity: .62; transform: scale(.96); }
+.poliedron-chat__send:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 11px 22px rgba(12,68,124,.34),
+    inset 0 1px 0 rgba(255,255,255,.3);
+  filter: brightness(1.06);
+}
+.poliedron-chat__send:active:not(:disabled) {
+  transform: translateY(1px) scale(.97);
+  box-shadow:
+    0 4px 10px rgba(12,68,124,.25),
+    inset 0 1px 2px rgba(6,35,64,.24);
+}
+.poliedron-chat__send:disabled {
+  opacity: 1;
+  cursor: default;
+  background: linear-gradient(145deg, #6f8faa, #54758f);
+  border-color: rgba(255,255,255,.32);
+  box-shadow:
+    0 4px 10px rgba(43,66,89,.2),
+    inset 0 1px 0 rgba(255,255,255,.22);
+  filter: saturate(.58);
+}
+.poliedron-chat__send[data-sending="true"] { transform: scale(.96); }
+:root[data-theme="dark"] .poliedron-chat__send {
+  border-color: rgba(255,255,255,.38);
+  box-shadow:
+    0 8px 20px rgba(0,0,0,.42),
+    0 0 0 1px rgba(56,189,248,.14),
+    inset 0 1px 0 rgba(255,255,255,.28);
+}
+:root[data-theme="dark"] .poliedron-chat__send:disabled {
+  background: linear-gradient(145deg, #456987, #34536f);
+  border-color: rgba(255,255,255,.3);
+  box-shadow:
+    0 4px 12px rgba(0,0,0,.34),
+    inset 0 1px 0 rgba(255,255,255,.18);
+}
 .poliedron-chat__send:focus-visible {
   outline: 2px solid var(--brand-primary);
   outline-offset: 3px;
