@@ -111,7 +111,8 @@ test('REGRESSION GUARD: the base .home-poliedron-widget__dots{display:none} rule
   // of which one is inside a media query — the dots were silently hidden
   // on mobile the first time this was written with the order reversed.
   const baseIdx = premiumCss.indexOf('.home-poliedron-widget__dots { display: none; }');
-  const mediaBlockIdx = premiumCss.indexOf("@media (max-width: 719px) {\n  .home-poliedron-widget__track");
+  const mediaBlockMatch = /@media \(max-width: 719px\) \{\r?\n\s*\.home-poliedron-widget__track/.exec(premiumCss);
+  const mediaBlockIdx = mediaBlockMatch?.index ?? -1;
   assert.ok(baseIdx > -1 && mediaBlockIdx > -1, 'expected to find both the base rule and the mobile media block');
   assert.ok(baseIdx < mediaBlockIdx, 'the base display:none rule must come BEFORE the @media override in source order');
 });
