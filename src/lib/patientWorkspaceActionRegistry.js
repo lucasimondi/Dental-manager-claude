@@ -8,6 +8,16 @@ export const PATIENT_WORKSPACE_ACTIONS = Object.freeze({
   CREATE_PRESCRIPTION: { id: 'CREATE_PRESCRIPTION', domain: 'clinical-document', confirmation: true, prototypeOnly: true },
   CREATE_CONSENT: { id: 'CREATE_CONSENT', domain: 'clinical-document', confirmation: true, prototypeOnly: true },
   SEND_CLINICAL_SUMMARY: { id: 'SEND_CLINICAL_SUMMARY', domain: 'communication', confirmation: true, prototypeOnly: true },
+  CREATE_RECALL: { id: 'CREATE_RECALL', domain: 'automation', confirmation: true, prototypeOnly: true },
+  CREATE_FOLLOWUP: { id: 'CREATE_FOLLOWUP', domain: 'automation', confirmation: true, prototypeOnly: true },
+  SUGGEST_TREATMENT: { id: 'SUGGEST_TREATMENT', domain: 'automation', confirmation: true, prototypeOnly: true },
+  CREATE_TASK: { id: 'CREATE_TASK', domain: 'automation', confirmation: true, prototypeOnly: true },
+  SUGGEST_APPOINTMENT: { id: 'SUGGEST_APPOINTMENT', domain: 'automation', confirmation: true, prototypeOnly: true },
+  CHECK_MISSING_STEP: { id: 'CHECK_MISSING_STEP', domain: 'automation', confirmation: false, prototypeOnly: true },
+  NOTIFY_CLINICIAN: { id: 'NOTIFY_CLINICIAN', domain: 'automation', confirmation: false, prototypeOnly: true },
+  REGISTER_PAYMENT: { id: 'REGISTER_PAYMENT', domain: 'financial', confirmation: true, prototypeOnly: true },
+  CREATE_PAYMENT_PLAN: { id: 'CREATE_PAYMENT_PLAN', domain: 'financial', confirmation: true, prototypeOnly: true },
+  UPDATE_PAYMENT_PLAN: { id: 'UPDATE_PAYMENT_PLAN', domain: 'financial', confirmation: true, prototypeOnly: true },
 });
 
 export const getPatientWorkspaceAction = (id) => PATIENT_WORKSPACE_ACTIONS[id] || null;

@@ -9,6 +9,7 @@ const app = fs.readFileSync('src/App.jsx', 'utf8');
 const patientRecord = fs.readFileSync('src/components/SchedaPaz.jsx', 'utf8');
 const css = fs.readFileSync('src/components/PatientWorkspaceV2.css', 'utf8');
 const registry = fs.readFileSync('src/lib/patientWorkspaceActionRegistry.js', 'utf8');
+const domain = fs.readFileSync('src/lib/patientWorkspaceDomain.js', 'utf8');
 
 test('Patient Workspace 2.0 is available only through its isolated demo route', () => {
   assert.match(main, /patient-workspace-v2-demo/);
@@ -18,13 +19,39 @@ test('Patient Workspace 2.0 is available only through its isolated demo route', 
 });
 
 test('preview performs no automatic remote work', () => {
-  for (const source of [component, demo, registry]) {
+  for (const source of [component, demo, registry, domain]) {
     assert.doesNotMatch(source, /supabase/i);
     assert.doesNotMatch(source, /useEffect/);
     assert.doesNotMatch(source, /fetch\s*\(/);
     assert.doesNotMatch(source, /\.storage\b/);
     assert.doesNotMatch(source, /localStorage|sessionStorage|indexedDB/);
   }
+});
+
+test('Round 4 semantic layer exposes canonical entities and PatientWorkspaceContext without DOM coupling', () => {
+  for (const entity of ['PATIENT','CLINICAL_PLAN','CLINICAL_PATHWAY','TREATMENT','ANATOMICAL_SITE','QUOTE','PAYMENT','PAYMENT_PLAN','INSTALLMENT','APPOINTMENT','RECALL','FOLLOWUP','CLINICAL_ALERT','PRESCRIPTION','CONSENT','DOCUMENT','TIMELINE_EVENT','AUTOMATION_RULE']) assert.ok(domain.includes(`'${entity}'`));
+  for (const field of ['activeClinicalPlan','clinicalPlans','treatments','anatomicalContext','alerts','quotes','payments','paymentPlans','installments','appointments','recalls','followups','prescriptions','consents','automationRules','timeline']) assert.ok(domain.includes(`${field}:`));
+  assert.match(domain, /suggestionsAreFacts: false/);
+  assert.doesNotMatch(domain, /document\.|querySelector|innerText/);
+});
+
+test('Round 4 registry includes automation and financial actions', () => {
+  for (const action of ['CREATE_RECALL','CREATE_FOLLOWUP','SUGGEST_TREATMENT','CREATE_TASK','SUGGEST_APPOINTMENT','CHECK_MISSING_STEP','NOTIFY_CLINICIAN','REGISTER_PAYMENT','CREATE_PAYMENT_PLAN','UPDATE_PAYMENT_PLAN']) assert.match(registry, new RegExp(`${action}:`));
+  assert.match(domain, /TRIGGER.*CONDITION.*ACTION/);
+});
+
+test('Round 4 final UX contains centered modals, operational plan, economy, installments and timeline', () => {
+  assert.doesNotMatch(component, /<span>\+<\/span>/);
+  for (const text of ['Piano clinico attivo','/5 completate','Prossima prestazione','Segna eseguita','Piano clinico completato','Nessun piano clinico attivo','Da attenzionare','Automazioni','Situazione economica','Preventivato','Accettato','Registra pagamento','Piano pagamenti','Nuova rateizzazione','INSTALLMENT','Timeline','Piani clinici | Preventivi','Preventivo #2026-014']) assert.ok(component.includes(text), `missing ${text}`);
+  assert.match(component, /pw2-plan-columns/);
+  assert.match(component, /pw2-plan-table/);
+  assert.match(component, /pw2-mini-odontogram/);
+  assert.match(component, /Elemento selezionato/);
+  assert.match(component, /DiscountEditor/);
+  assert.match(css, /align-items:center;justify-content:center/);
+  assert.match(css, /box-shadow:0 7px 16px/);
+  assert.match(css, /grid-template-columns:1fr/);
+  assert.match(css, /env\(safe-area-inset-bottom\)/);
 });
 
 test('Round 3 exposes five compact quick actions and canonical shared action registry', () => {
@@ -43,7 +70,7 @@ test('Round 3 prototypes the plan to quote workflow, sharing and Polyedron confi
 });
 
 test('workspace keeps the required identity, KPI and navigation surfaces', () => {
-  for (const label of ['Piani', 'Eseguito', 'Pagato', 'Da pagare', 'Info', 'Impianti', 'Foto', 'Documenti', 'Agenda']) {
+  for (const label of ['Piani', 'Eseguito', 'Pagato', 'Da pagare', 'Info', 'Timeline', 'Foto', 'Documenti', 'Agenda']) {
     assert.ok(component.includes(label), `missing ${label}`);
   }
   assert.match(component, /filter\(Boolean\)/);
@@ -52,7 +79,7 @@ test('workspace keeps the required identity, KPI and navigation surfaces', () =>
 });
 
 test('Round 2 keeps creation actions distinct and prototype-only', () => {
-  for (const label of ['Aggiungi prestazione', 'Nuovo piano clinico', 'Nuovo preventivo']) {
+  for (const label of ["service: 'Prestazione'", 'Nuovo piano clinico', 'Nuovo preventivo']) {
     assert.ok(component.includes(label), `missing ${label}`);
   }
   for (const kind of ['service', 'plan', 'quote']) assert.match(component, new RegExp(`setQuickCreate\\('${kind}'\\)`));
@@ -63,9 +90,9 @@ test('Round 2 keeps creation actions distinct and prototype-only', () => {
   assert.match(component, /Piano clinico/);
 });
 
-test('clinical situation is treatment-driven and odontogram remains an entry point', () => {
+test('active clinical plan is treatment-driven and odontogram remains an entry point', () => {
   assert.match(component, /clinicalRows = model\.items\.map/);
-  assert.match(component, /Apri piano clinico/);
+  assert.match(component, /Piano clinico attivo/);
   assert.match(component, /Odontogramma/);
   assert.match(component, /Modulo clinico in preparazione/);
   assert.doesNotMatch(component, /tone-indigo|tone-amber|tone-teal|tone-violet|tone-blue/);
