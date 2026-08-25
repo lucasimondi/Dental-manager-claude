@@ -9,6 +9,22 @@ export const ODO_ROWS = [
 const denteW = (n) => { const u = n % 10; return (u === 8 || u === 7 || u === 6) ? 20 : 16; };
 const denteH = (n) => { const u = n % 10; return (u === 8 || u === 7 || u === 6) ? 26 : 22; };
 
+function ToothGlyph({ number, selected, statusColor, upper }) {
+  const posterior = number % 10 >= 4;
+  const fill = selected ? C.pri : statusColor ? `${statusColor}30` : C.sur;
+  const stroke = selected ? C.priD : statusColor || C.brd;
+  const crown = posterior
+    ? 'M7 4 C4 5 3 9 4 14 C5 19 7 21 8 29 C9 35 12 39 15 32 C17 38 20 35 21 29 C22 21 25 19 26 14 C27 9 26 5 23 4 C19 2 18 5 15 5 C12 5 11 2 7 4 Z'
+    : 'M10 4 C6 7 7 14 9 20 C10 24 10 34 13 38 C15 41 17 38 18 34 C20 28 19 23 21 19 C23 13 24 7 20 4 C17 2 13 2 10 4 Z';
+  return (
+    <svg viewBox="0 0 30 44" className={`odontogram-tooth ${upper ? 'is-upper' : 'is-lower'}`} aria-hidden="true">
+      <path d={crown} fill={fill} stroke={stroke} strokeWidth="1.7" />
+      {posterior && <path d="M9 10 C12 13 18 13 21 10 M11 16 C14 18 17 18 20 16" fill="none" stroke={stroke} strokeWidth="1" opacity=".65" />}
+      <text x="15" y="18" textAnchor="middle" fill={selected ? '#fff' : C.txm} fontSize="6.5" fontWeight="800">{number}</text>
+    </svg>
+  );
+}
+
 export default function Odontogramma({
   selected = [],
   onChange = () => {},
@@ -35,7 +51,6 @@ export default function Odontogramma({
           const status = statusByTooth[String(d)] || null;
           const statusColor = status?.remaining > 0 ? C.war : status?.completed > 0 ? C.suc : null;
           const w = denteW(d), h = denteH(d);
-          const br = sup ? `${i < 8 ? 3 : 3}px ${i < 8 ? 3 : 3}px 1px 1px` : `1px 1px ${i < 8 ? 3 : 3}px ${i < 8 ? 3 : 3}px`;
           return (
             <React.Fragment key={d}>
               {i === 8 && <div style={{ width: 2, background: C.pri + '30', alignSelf: 'stretch', borderRadius: 1, margin: '0 1px' }} />}
@@ -48,15 +63,13 @@ export default function Odontogramma({
                 aria-label={`Dente ${d}${status ? `, ${status.total} prestazioni, ${status.remaining} da fare` : ', nessuna prestazione'}`}
                 aria-pressed={sel}
                 style={{
-                  width: `clamp(${w}px, 5.2vw, ${w + 8}px)`, height: `clamp(${h}px, 7vw, ${h + 9}px)`, borderRadius: br,
-                  background: sel ? C.pri : statusColor ? `${statusColor}22` : C.sur,
-                  border: `1.5px solid ${sel ? C.pri : statusColor || C.brd}`, cursor: 'pointer', padding: 0, flexShrink: 1,
-                  display: 'flex', flexDirection: 'column', alignItems: 'center',
-                  justifyContent: sup ? 'flex-end' : 'flex-start', paddingTop: sup ? 0 : 2, paddingBottom: sup ? 2 : 0,
-                  transition: 'background 0.1s,border 0.1s', boxShadow: sel ? `0 0 0 2px ${C.pri}40` : 'none',
+                  width: `clamp(${w + 7}px, 5.4vw, ${w + 16}px)`, height: `clamp(${h + 18}px, 8.5vw, ${h + 27}px)`,
+                  border: 0, cursor: 'pointer', padding: 0, flexShrink: 1, background: 'transparent',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'transform .12s ease', transform: sel ? 'translateY(-2px) scale(1.06)' : 'none',
                 }}
               >
-                <span style={{ fontSize: 6.5, fontWeight: 700, color: sel ? '#fff' : C.txl, lineHeight: 1, userSelect: 'none' }}>{d}</span>
+                <ToothGlyph number={d} selected={sel} statusColor={statusColor} upper={sup} />
               </button>
             </React.Fragment>
           );

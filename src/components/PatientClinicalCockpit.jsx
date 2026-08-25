@@ -42,6 +42,50 @@ const calculateAge = (birthDate) => {
 };
 
 const statusLabel = (treatment) => treatment.completed ? 'Eseguita' : 'Da fare';
+const normalizeSearch = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+function AnatomyGraphic({ kind, side = 'front' }) {
+  if (kind === 'face') return (
+    <svg className="patient-anatomy-svg" viewBox="0 0 220 280" role="img" aria-label="Mappa anatomica del viso">
+      <path className="patient-anatomy-fill" d="M110 18C64 18 42 54 46 105c4 58 28 123 64 139 36-16 60-81 64-139 4-51-18-87-64-87Z" />
+      <path d="M76 104c12-9 25-9 34 0M110 104c9-9 22-9 34 0M110 94v48l-13 10h26M87 175c15 10 31 10 46 0M78 82c12-6 23-6 32-1M110 81c9-5 20-5 32 1" />
+      <circle cx="91" cy="107" r="4"/><circle cx="129" cy="107" r="4"/>
+      <path className="patient-anatomy-zone" d="M66 56Q110 28 154 56L145 82Q110 69 75 82Z" />
+      <path className="patient-anatomy-zone" d="M71 116Q110 96 149 116L142 143Q110 130 78 143Z" />
+      <path className="patient-anatomy-zone" d="M80 164Q110 150 140 164L133 190Q110 202 87 190Z" />
+    </svg>
+  );
+  return (
+    <svg className="patient-anatomy-svg patient-anatomy-svg--body" viewBox="0 0 220 420" role="img" aria-label={`Mappa anatomica corpo ${side === 'front' ? 'frontale' : 'posteriore'}`}>
+      <circle className="patient-anatomy-fill" cx="110" cy="40" r="28" />
+      <path className="patient-anatomy-fill" d="M82 76Q110 62 138 76l18 95-19 84-8 139h-31l-8-113-8 113H51l-8-139-19-84 18-95Z" />
+      <path d="M110 76v177M57 121l53 20 53-20M66 208h88M81 255l29 26 29-26" />
+      <path className="patient-anatomy-zone" d="M63 88Q110 70 157 88l-8 58Q110 128 71 146Z" />
+      <path className="patient-anatomy-zone" d="M69 157Q110 140 151 157l-10 69Q110 240 79 226Z" />
+      <path className="patient-anatomy-zone" d="M49 263h45l4 123H58ZM126 263h45l-9 123h-40Z" />
+    </svg>
+  );
+}
+
+function TreatmentSearch({ pricelist, value, onChange, onPick }) {
+  const q = normalizeSearch(value);
+  const matches = q.length < 2 ? [] : (pricelist || [])
+    .map((item) => ({ item, name: normalizeSearch(item.nome) }))
+    .filter(({ name }) => name.includes(q))
+    .sort((a, b) => Number(!a.name.startsWith(q)) - Number(!b.name.startsWith(q)) || a.name.localeCompare(b.name))
+    .slice(0, 8)
+    .map(({ item }) => item);
+  return (
+    <div className="patient-treatment-search">
+      <label htmlFor="cockpit-treatment-search">Cerca prestazione</label>
+      <input id="cockpit-treatment-search" value={value} onChange={(event) => onChange(event.target.value)} placeholder="Scrivi almeno 2 lettere, es. ott…" autoComplete="off" />
+      {q.length >= 2 && <div className="patient-treatment-search__results">
+        {matches.map((item) => <button key={item.id || item.nome} onClick={() => onPick(item)}><strong>{item.nome}</strong><span>{item.categoria || 'Listino'} · {fmt(Number(item.prezzo || 0))}</span></button>)}
+        {matches.length === 0 && <div>Nessuna prestazione coerente con “{value}”.</div>}
+      </div>}
+    </div>
+  );
+}
 
 function Section({ title, eyebrow, action, children, className = '' }) {
   return (
@@ -58,7 +102,7 @@ function Section({ title, eyebrow, action, children, className = '' }) {
   );
 }
 
-function PatientHeader({ patient, appointments, onEdit, onClose, onNewAppointment, onWhatsApp, onOpenDetails }) {
+function PatientHeader({ patient, appointments, onEdit, onClose, onNewAppointment, onWhatsApp, onCall, onOpenDetails }) {
   const age = calculateAge(patient.dataNascita);
   return (
     <header className="patient-cockpit-header">
@@ -76,6 +120,7 @@ function PatientHeader({ patient, appointments, onEdit, onClose, onNewAppointmen
         </div>
         <div className="patient-header-actions">
           <button className="patient-cockpit-secondary-button" onClick={onNewAppointment}><Ic n="cal" s={14} c="currentColor" />Appuntamento</button>
+          {patient.telefono && <button className="patient-cockpit-icon-button" onClick={onCall} aria-label="Chiama paziente"><Ic n="ph" s={17} c="currentColor" /></button>}
           {patient.telefono && <button className="patient-cockpit-icon-button" onClick={onWhatsApp} aria-label="Apri WhatsApp"><Ic n="wa" s={17} c="currentColor" /></button>}
           <button className="patient-cockpit-icon-button" onClick={onOpenDetails} aria-label="Apri dati paziente"><Ic n="menu" s={17} c="currentColor" /></button>
         </div>
@@ -144,12 +189,14 @@ function ClinicalMap({
   setSelectedContext,
   onSelectGroup,
   pricelist,
-  onStartCanonicalPlan,
+  onAddTreatments,
   dentalApplicable,
 }) {
   const [tab, setTab] = React.useState(dentalApplicable ? 'tooth' : 'body_region');
   const [bodySide, setBodySide] = React.useState('front');
   const [procedure, setProcedure] = React.useState('');
+  const [selectedProcedure, setSelectedProcedure] = React.useState(null);
+  const [saved, setSaved] = React.useState(false);
   const statusByTooth = Object.fromEntries(treatmentGroups
     .filter((group) => group.area.type === ANATOMICAL_AREA_TYPE.TOOTH)
     .map((group) => [group.area.value, {
@@ -158,7 +205,14 @@ function ClinicalMap({
       remaining: group.remainingCount,
     }]));
   const toothContexts = selectedTeeth.map((tooth) => buildAnatomicalContext('tooth', String(tooth), `Elemento ${tooth}`));
-  const preview = buildMultiTreatmentPreview(toothContexts, procedure);
+  const activeContexts = tab === 'tooth' ? toothContexts : selectedContext ? [selectedContext] : [];
+  const preview = buildMultiTreatmentPreview(activeContexts, selectedProcedure?.nome || procedure);
+  const saveTreatments = () => {
+    if (!selectedProcedure || activeContexts.length === 0) return;
+    onAddTreatments({ procedure: selectedProcedure, contexts: activeContexts });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1800);
+  };
 
   return (
     <Section title="Mappa clinica" eyebrow="Contesto anatomico" className="patient-cockpit-map-section">
@@ -187,26 +241,14 @@ function ClinicalMap({
           {selectedTeeth.length > 0 && (
             <div className="patient-multi-action">
               <div className="patient-multi-action__title">{selectedTeeth.length} element{selectedTeeth.length === 1 ? 'o selezionato' : 'i selezionati'}</div>
-              <div className="patient-multi-action__controls">
-                <select value={procedure} onChange={(event) => setProcedure(event.target.value)} aria-label="Prestazione da applicare">
-                  <option value="">Scegli prestazione</option>
-                  {(pricelist || []).map((item) => <option key={item.id || item.nome} value={item.nome}>{item.nome}</option>)}
-                </select>
-                <button className="patient-cockpit-primary-button" disabled={!procedure} onClick={() => onStartCanonicalPlan({ procedure, teeth: selectedTeeth })}>Applica prestazione</button>
-              </div>
-              {preview.length > 0 && (
-                <div className="patient-multi-action__preview" aria-label="Anteprima prestazioni">
-                  {preview.map((item) => <span key={item.anatomicalContext.value}>{item.anatomicalContext.value} → {item.procedure}</span>)}
-                  <small>L'aggiunta prosegue nel flusso Piano di cura esistente; nessuna modifica viene eseguita da questa anteprima.</small>
-                </div>
-              )}
+              <TreatmentSearch pricelist={pricelist} value={procedure} onChange={(value) => { setProcedure(value); setSelectedProcedure(null); }} onPick={(item) => { setSelectedProcedure(item); setProcedure(item.nome); }} />
             </div>
           )}
         </>
       )}
       {tab === 'face_region' && (
         <div className="patient-anatomical-map">
-          <div className="patient-anatomical-silhouette patient-anatomical-silhouette--face" aria-hidden="true"><span /></div>
+            <div className="patient-anatomical-silhouette"><AnatomyGraphic kind="face" /></div>
           <RegionPicker regions={FACE_REGIONS} type="face_region" selectedContext={selectedContext} onSelect={setSelectedContext} />
         </div>
       )}
@@ -217,13 +259,30 @@ function ClinicalMap({
             <button className={bodySide === 'back' ? 'is-active' : ''} onClick={() => setBodySide('back')}>Retro</button>
           </div>
           <div className="patient-anatomical-map">
-            <div className="patient-anatomical-silhouette patient-anatomical-silhouette--body" aria-hidden="true"><span /></div>
+            <div className="patient-anatomical-silhouette"><AnatomyGraphic kind="body" side={bodySide} /></div>
             <RegionPicker regions={BODY_REGIONS[bodySide]} type="body_region" selectedContext={selectedContext} onSelect={setSelectedContext} />
           </div>
         </>
       )}
+      {tab !== 'tooth' && selectedContext && <div className="patient-multi-action"><div className="patient-multi-action__title">Area selezionata: {selectedContext.label}</div><TreatmentSearch pricelist={pricelist} value={procedure} onChange={(value) => { setProcedure(value); setSelectedProcedure(null); }} onPick={(item) => { setSelectedProcedure(item); setProcedure(item.nome); }} /></div>}
+      {activeContexts.length > 0 && selectedProcedure && <div className="patient-save-treatment"><div><strong>{selectedProcedure.nome}</strong><span>{activeContexts.map((item) => item.label).join(', ')}</span></div><button className="patient-cockpit-primary-button" onClick={saveTreatments}>{saved ? 'Salvata ✓' : 'Salva prestazione'}</button></div>}
     </Section>
   );
+}
+
+function QuickActionsBar({ onNewAppointment, onOpenDocuments, onOpenNotes, onOpenPayments, onCreateQuote }) {
+  const [expanded, setExpanded] = React.useState(false);
+  const actions = [
+    ['cal', 'Appuntamento', onNewAppointment],
+    ['plan', 'Preventivo', onCreateQuote],
+    ['doc', 'Consenso', onOpenDocuments],
+    ['file', 'Ricetta', onOpenDocuments],
+    ['eur', 'Fattura', onOpenPayments],
+    ['pay', 'Rimborso', onOpenPayments],
+    ['clip', 'Nota', onOpenNotes],
+  ];
+  const visible = expanded ? actions : actions.slice(0, 4);
+  return <div className="patient-quick-actions"><div><span>Azioni rapide</span><strong>Lo stesso catalogo usato da Poliedron</strong></div><div className="patient-quick-actions__buttons">{visible.map(([icon, label, action]) => <button key={label} onClick={action} disabled={!action}><Ic n={icon} s={14} c="currentColor" />{label}</button>)}<button className="is-more" onClick={() => setExpanded((value) => !value)}>{expanded ? 'Meno' : '+ Azioni'}</button></div></div>;
 }
 
 function TreatmentGroup({ group, onSelect, onToggle }) {
@@ -257,14 +316,14 @@ function TreatmentGroup({ group, onSelect, onToggle }) {
   );
 }
 
-function CarePlan({ groups, onSelect, onToggle, onNewPlan }) {
+function CarePlan({ groups, onSelect, onToggle, onCreateQuote }) {
   const [filter, setFilter] = React.useState('all');
   const visibleGroups = filterTreatmentGroups(groups, filter);
   return (
     <Section
-      title="Piano di cura"
-      eyebrow="Prestazioni raggruppate per area"
-      action={<button className="patient-cockpit-secondary-button" onClick={onNewPlan}><Ic n="plus" s={13} c="currentColor" />Nuovo piano</button>}
+      title="Percorso clinico"
+      eyebrow="Unico e aggiornato nel tempo"
+      action={<button className="patient-cockpit-secondary-button" onClick={onCreateQuote}><Ic n="plan" s={13} c="currentColor" />Crea preventivo</button>}
     >
       <div className="patient-care-filters" aria-label="Filtri piano di cura">
         {[['all', 'Tutto'], ['todo', 'Da fare'], ['done', 'Eseguito']].map(([id, label]) => (
@@ -403,6 +462,7 @@ export default function PatientClinicalCockpit({
   onEdit,
   onToggleTreatment,
   onNewPlan,
+  onAddTreatments,
   onOpenPlans,
   onOpenPayments,
   onOpenDocuments,
@@ -426,9 +486,10 @@ export default function PatientClinicalCockpit({
 
   return (
     <div className="patient-cockpit">
-      <PatientHeader patient={patient} appointments={model.appointments} onEdit={onEdit} onClose={onClose} onNewAppointment={onNewAppointment} onWhatsApp={onWhatsApp} onOpenDetails={() => setDetailsOpen(true)} />
+      <PatientHeader patient={patient} appointments={model.appointments} onEdit={onEdit} onClose={onClose} onNewAppointment={onNewAppointment} onWhatsApp={onWhatsApp} onCall={() => window.location.assign(`tel:${patient.telefono || ''}`)} onOpenDetails={() => setDetailsOpen(true)} />
       <PatientNavigation onNavigate={onNavigate} canViewFinancial={canViewFinancial} />
       <main className="patient-cockpit-content">
+        <QuickActionsBar onNewAppointment={onNewAppointment} onOpenDocuments={onOpenDocuments} onOpenNotes={onOpenNotes} onOpenPayments={onOpenPayments} onCreateQuote={onNewPlan} />
         <PrimaryKpis model={model} canViewFinancial={canViewFinancial} onNavigate={onNavigate} />
         <div className="patient-cockpit-layout">
           <div className="patient-cockpit-main-column">
@@ -440,10 +501,10 @@ export default function PatientClinicalCockpit({
               setSelectedContext={setSelectedContext}
               onSelectGroup={setDetailGroup}
               pricelist={pricelist}
-              onStartCanonicalPlan={onNewPlan}
+              onAddTreatments={onAddTreatments}
               dentalApplicable={model.dentalApplicable}
             />
-            <CarePlan groups={model.treatmentGroups} onSelect={setDetailGroup} onToggle={onToggleTreatment} onNewPlan={onNewPlan} />
+            <CarePlan groups={model.treatmentGroups} onSelect={setDetailGroup} onToggle={onToggleTreatment} onCreateQuote={onNewPlan} />
           </div>
           <div className="patient-cockpit-side-column">
             <PoliedronCard patient={patient} selectedContext={selectedContext} />

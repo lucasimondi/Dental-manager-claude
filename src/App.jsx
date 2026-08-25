@@ -369,6 +369,11 @@ export default function App() {
 
   const makeSyncSetter = (key, setLocal, onError) => {
     return (updater) => {
+      const isNetlifyDeployPreview = typeof window !== 'undefined' && window.location.hostname.includes('--soft-maamoul-b7975b.netlify.app');
+      if (isNetlifyDeployPreview) {
+        setLocal(updater);
+        return;
+      }
       setLocal((prev) => {
         const next = typeof updater === 'function' ? updater(prev) : updater;
         const prevIds = new Set(prev.map((x) => x.id));

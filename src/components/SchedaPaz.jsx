@@ -524,6 +524,32 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
     vertical: si?.vertical,
     todayIso: today(),
   });
+  const addTreatmentsToClinicalPath = ({ procedure, contexts }) => {
+    const newItems = contexts.map((context) => ({
+      prestazione: procedure.nome,
+      prezzo: Number(procedure.prezzo || 0),
+      eseguita: false,
+      incassata: false,
+      dente: context.type === 'tooth' ? context.value : '',
+      anatomicalContext: context,
+      sezione: context.type === 'face_region' ? 'Protocollo di medicina estetica' : context.type === 'body_region' ? 'Percorso clinico corpo' : 'Odontoiatria',
+    }));
+    setPlans((current) => {
+      const canonical = current.find((plan) => String(plan.pazienteId) === String(paz.id) && plan.kind === 'clinical_path');
+      if (canonical) return current.map((plan) => plan.id === canonical.id ? { ...plan, voci: [...(plan.voci || []), ...newItems] } : plan);
+      return [...current, {
+        id: `clinical-path-${paz.id}`,
+        kind: 'clinical_path',
+        titolo: 'Percorso clinico',
+        data: today(),
+        pazienteId: paz.id,
+        stato: 'attivo',
+        sconto: 0,
+        scontoTipo: 'pct',
+        voci: newItems,
+      }];
+    });
+  };
   const TABS = [...(canUseClinicalCockpit ? [{ id: 'cockpit', l: 'Cockpit', ic: 'pulse' }] : []), { id: 'info', l: 'Info', ic: 'clip' }, { id: 'piani', l: 'Piani', ic: 'plan' }, ...(isDentistico ? [{ id: 'impl', l: 'Impianti', ic: 'tooth' }] : []), ...(canAccessPhysio ? [{ id: 'fisio', l: 'Fisioterapia', ic: 'pulse' }] : []), ...(canViewPatientFinance ? [{ id: 'paga', l: 'Pagamenti', ic: 'eur' }] : []), { id: 'foto', l: 'Foto', ic: 'ph' }, { id: 'doc', l: 'Documenti', ic: 'file' }, { id: 'app', l: 'Agenda', ic: 'cal' }];
 
   if (tab === 'cockpit' && canUseClinicalCockpit) {
@@ -537,6 +563,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
         canViewFinancial={canViewPatientFinance}
         onToggleTreatment={(treatment) => toggleEseguita(treatment.planId, treatment.itemIndex)}
         onNewPlan={(draft) => onNuovoPiano(paz.id, draft)}
+        onAddTreatments={addTreatmentsToClinicalPath}
         onOpenPlans={() => setTab('piani')}
         onOpenPayments={canViewPatientFinance ? () => setTab('paga') : undefined}
         onOpenDocuments={() => { setTab('doc'); loadArchivioDocs(); caricaConsensi(); }}

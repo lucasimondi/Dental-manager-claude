@@ -105,6 +105,27 @@ const WORKFLOW_ACTIONS = Object.freeze([
       if (ctx.openPrescription && patient) ctx.openPrescription({ patient, drug: payload.drug || '' });
     },
   }),
+  ...[
+    ['treatment.add', 'Aggiungi prestazione', 'clinical', 2, 'clinical.write'],
+    ['treatment.complete', 'Segna prestazione eseguita', 'clinical', 2, 'clinical.write'],
+    ['quote.create.from-treatments', 'Crea preventivo', 'quote', 1, 'finance.quote.write'],
+    ['consent.create', 'Crea consenso informato', 'document', 1, 'clinical.documents.write'],
+    ['invoice.create', 'Crea fattura', 'finance', 1, 'finance.management.write'],
+    ['refund.create', 'Crea rimborso', 'finance', 1, 'finance.management.write'],
+    ['patient.note.create', 'Aggiungi nota', 'clinical', 1, 'clinical.write'],
+    ['patient.call', 'Chiama paziente', 'communication', 0, null],
+    ['patient.whatsapp', 'Invia WhatsApp', 'communication', 0, null],
+  ].map(([id, label, category, riskLevel, requiredCapability]) => Object.freeze({
+    id,
+    label,
+    description: `${label} nel contesto del paziente aperto.`,
+    category,
+    kind: 'patient-workspace',
+    riskLevel,
+    confirmationRequired: riskLevel >= 2,
+    requiresActiveMember: true,
+    requiredCapability,
+  })),
 ]);
 
 export const ACTION_REGISTRY = Object.freeze([...OPEN_ACTIONS, ...CREATE_ACTIONS, ...WORKFLOW_ACTIONS]);
