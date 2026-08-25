@@ -1,5 +1,17 @@
 # Current task
 
+- TASK: POL-UI-PATIENT-FREEZE-PROD
+- TITLE: Production patient record loading hotfix
+- OWNER: CODEX
+- BRANCH: `hotfix/POL-UI-patient-freeze-prod`
+- BASE: `origin/master` at `96b01c6`
+- STATUS: READY_FOR_PR
+- OBJECTIVE: remove the asynchronous patient-record chunk boundary that can leave PWA clients suspended indefinitely when opening a patient.
+- SCOPE: `src/App.jsx`, one regression assertion, and coordination records only. No database, Dashboard, Agenda, dock, Polyedron, Chat, or Patient Workspace 2.0 changes.
+- NEXT_ACTION: push the branch, open a PR to `master`, and perform authenticated preview smoke QA. Do not merge automatically.
+
+## Previous task record
+
 - TASK: CHAT-POLYEDRON
 - TITLE: Persistent Chat Polyedron
 - OWNER: COPILOT
