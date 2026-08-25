@@ -44,6 +44,8 @@
     top: 0;
     left: 0;
     right: 0;
+    box-sizing: border-box;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 16px);
     z-index: 30;
     pointer-events: none;
   }

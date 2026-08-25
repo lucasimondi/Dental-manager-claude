@@ -528,18 +528,26 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
    Va incollato sulla stessa riga dell'etichetta mese: non aggiunge nessuna riga
    in più, a differenza della vecchia barra a tre tab che occupava spazio prezioso
    sullo schermo del telefono. */
-function ViewPicker({ view, setView }) {
+function ViewPicker({ view, setView, touchSafe = false }) {
   const [open, setOpen] = useState(false);
   const LABEL = { giorno: 'Giorno', settimana: 'Settimana', mese: 'Mese' };
   return (
     <div style={{ position: 'relative', flexShrink: 0 }}>
-      <button className="agenda-view-picker" onClick={() => setOpen(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: C.priL, color: C.pri, border: 'none', borderRadius: 14, padding: '5px 8px 5px 11px', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
-        {LABEL[view]}
-        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke={C.pri} strokeWidth="3" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="M6 9l6 6 6-6" /></svg>
+      <button
+        className={touchSafe ? 'agenda-mobile-touch-target' : 'agenda-view-picker'}
+        onClick={() => setOpen(v => !v)}
+        style={touchSafe
+          ? { display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 44, height: 44, padding: 0, background: 'transparent', border: 'none', cursor: 'pointer' }
+          : { display: 'flex', alignItems: 'center', gap: 4, background: C.priL, color: C.pri, border: 'none', borderRadius: 14, padding: '5px 8px 5px 11px', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
+      >
+        <span className={touchSafe ? 'agenda-view-picker' : undefined} style={touchSafe ? { display: 'flex', alignItems: 'center', gap: 4, borderRadius: 14, padding: '5px 8px 5px 11px', fontSize: 12, fontWeight: 800, pointerEvents: 'none' } : { display: 'contents' }}>
+          {LABEL[view]}
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke={C.pri} strokeWidth="3" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="M6 9l6 6 6-6" /></svg>
+        </span>
       </button>
       {open && <div className="agenda-floating-interactive" onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 34 }} />}
       {open && (
-        <div className="agenda-floating-interactive" style={{ position: 'absolute', top: 30, right: 0, background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 10, boxShadow: '0 8px 22px rgba(0,0,0,0.18)', width: 126, overflow: 'hidden', zIndex: 35 }}>
+        <div className="agenda-floating-interactive" style={{ position: 'absolute', top: touchSafe ? 48 : 30, right: 0, background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 10, boxShadow: '0 8px 22px rgba(0,0,0,0.18)', width: 126, overflow: 'hidden', zIndex: 35 }}>
           {['giorno', 'settimana', 'mese'].map((v) => (
             <button key={v} onClick={() => { setView(v); setOpen(false); }} style={{ display: 'block', width: '100%', padding: '9px 12px', border: 'none', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', textAlign: 'left', background: view === v ? C.priL : 'transparent', color: view === v ? C.pri : C.txt }}>{LABEL[v]}</button>
           ))}
@@ -1176,15 +1184,17 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       <button
         onClick={() => setFiltriAperti(v => !v)}
         aria-label={`Filtra per operatore/${labelPoltrona.toLowerCase()}`}
-        className="pol-icon-btn"
-        style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', background: filtroAttivo ? C.priL : C.bg, border: 'none', cursor: 'pointer', flexShrink: 0, boxShadow: '0 1px 2px rgba(15,23,42,.06), 0 4px 10px rgba(15,23,42,.08)' }}
+        className="agenda-mobile-touch-target"
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, padding: 0, background: 'transparent', border: 'none', cursor: 'pointer', flexShrink: 0 }}
       >
-        <Ic n="filter" s={13} c={filtroAttivo ? C.pri : C.txm} />
-        {filtroAttivo && <span style={{ position: 'absolute', top: -1, right: -1, width: 8, height: 8, borderRadius: '50%', background: C.pri, border: `1.5px solid ${C.sur}` }} />}
+        <span className="pol-icon-btn" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', background: filtroAttivo ? C.priL : C.bg, boxShadow: '0 1px 2px rgba(15,23,42,.06), 0 4px 10px rgba(15,23,42,.08)', pointerEvents: 'none' }}>
+          <Ic n="filter" s={13} c={filtroAttivo ? C.pri : C.txm} />
+          {filtroAttivo && <span style={{ position: 'absolute', top: -1, right: -1, width: 8, height: 8, borderRadius: '50%', background: C.pri, border: `1.5px solid ${C.sur}` }} />}
+        </span>
       </button>
       {filtriAperti && <div className="agenda-floating-interactive" onClick={() => setFiltriAperti(false)} style={{ position: 'fixed', inset: 0, zIndex: 34 }} />}
       {filtriAperti && (
-        <div className="agenda-floating-interactive" style={{ position: 'absolute', top: 34, right: 0, background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 12, boxShadow: '0 8px 22px rgba(0,0,0,0.18)', width: 240, maxHeight: 320, overflowY: 'auto', padding: 10, zIndex: 35 }}>
+        <div className="agenda-floating-interactive" style={{ position: 'absolute', top: 48, right: 0, background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 12, boxShadow: '0 8px 22px rgba(0,0,0,0.18)', width: 240, maxHeight: 320, overflowY: 'auto', padding: 10, zIndex: 35 }}>
           {chipsRisorse}
         </div>
       )}
@@ -1200,10 +1210,12 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       onClick={() => { setSelModeWA(true); setSelAppIds([]); }}
       disabled={appVisibiliConTel.length === 0}
       aria-label="Invia WhatsApp"
-      className="pol-icon-btn"
-      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', background: appVisibiliConTel.length === 0 ? C.bg : '#E6F9EE', border: 'none', cursor: appVisibiliConTel.length === 0 ? 'not-allowed' : 'pointer', flexShrink: 0, boxShadow: appVisibiliConTel.length === 0 ? 'none' : '0 1px 2px rgba(15,23,42,.06), 0 4px 10px rgba(15,23,42,.08)' }}
+      className="agenda-mobile-touch-target"
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, padding: 0, background: 'transparent', border: 'none', cursor: appVisibiliConTel.length === 0 ? 'not-allowed' : 'pointer', flexShrink: 0 }}
     >
-      <Ic n="wa" s={14} c={appVisibiliConTel.length === 0 ? C.txl : '#128C7E'} />
+      <span className="pol-icon-btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', background: appVisibiliConTel.length === 0 ? C.bg : '#E6F9EE', boxShadow: appVisibiliConTel.length === 0 ? 'none' : '0 1px 2px rgba(15,23,42,.06), 0 4px 10px rgba(15,23,42,.08)', pointerEvents: 'none' }}>
+        <Ic n="wa" s={14} c={appVisibiliConTel.length === 0 ? C.txl : '#128C7E'} />
+      </span>
     </button>
   );
 
@@ -1286,7 +1298,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       {haFiltriRisorse && !isMobile && chipsRisorse}
 
       {view === 'giorno' && (
-        <DayStrip selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} oraColW={oraColW} singleDay={isMobile} hiddenWeekdays={hiddenWeekdays} overlayRef={isMobile ? overlayRef : undefined} floatingFooter={isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker view={view} setView={setView} /></div>} />
+        <DayStrip selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} oraColW={oraColW} singleDay={isMobile} hiddenWeekdays={hiddenWeekdays} overlayRef={isMobile ? overlayRef : undefined} floatingFooter={isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker view={view} setView={setView} touchSafe={isMobile} /></div>} />
       )}
       {view === 'settimana' && (
         <DayStrip
@@ -1302,18 +1314,18 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           hiddenWeekdays={hiddenWeekdays}
           overlayRef={isMobile ? overlayRef : undefined}
           floatingFooter={isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null}
-          viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker view={view} setView={setView} /></div>}
+          viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker view={view} setView={setView} touchSafe={isMobile} /></div>}
         />
       )}
       {view === 'mese' && isMobile && (
         <div ref={overlayRef} className="agenda-mobile-floating-controls">
           <div className="agenda-mobile-floating-toolbar">
             <span className="agenda-mobile-floating-month">{MESI[vd.getMonth()]} {vd.getFullYear()}</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
               {notificheBell}
               {filtroButton}
               <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 14, padding: '5px 10px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
-              <ViewPicker view={view} setView={setView} />
+              <ViewPicker view={view} setView={setView} touchSafe />
             </div>
           </div>
         </div>
