@@ -1,6 +1,6 @@
 # Current task
 
-> Superseding task (2026-08-25): **POL-UI-010 follow-up — Agenda mobile floating controls**, owner **CODEX**, branch `hotfix/POL-UI-010-agenda-mobile-full-height`, status `WAITING_PRODUCT_OWNER`. The shared mobile Agenda root now keeps its top toolbar at `safe-area-inset-top + 20px`; button logic, size, desktop/tablet layout, database and deployment architecture are unchanged. Build and targeted regression pass; the full suite retains five pre-existing date-sensitive `agendaSlots` failures because its fixed 2025 fixtures are now in the past. Authenticated manual Agenda QA requires a signed-in preview session.
+> Superseding task (2026-08-25): **POL-UI-010 follow-up — Agenda mobile floating controls**, owner **CODEX**, branch `hotfix/POL-UI-010-agenda-mobile-full-height`, status `WAITING_PRODUCT_OWNER`. The shared mobile Agenda root now keeps its top toolbar at `safe-area-inset-top + 20px`; compact visuals and button logic are unchanged while the mobile hit areas are 44px. Authenticated preview taps and geometry pass at 375×667, 390×844, 430×932 and the unchanged tablet/desktop path at 768×1024. Build and targeted regression pass; the full suite retains five pre-existing date-sensitive `agendaSlots` failures because its fixed 2025 fixtures are now in the past.
 
 - TASK: POL-UX-001
 - TITLE: Poliedra Visual System & Dashboard Experience
