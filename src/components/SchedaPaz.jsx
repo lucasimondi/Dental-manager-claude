@@ -23,7 +23,10 @@ const prossimaDataMascherina = (orto) => {
 
 export default function SchedaPaz({ paz, plans, payments, appointments, setAppointments, si, studioId, features, studioMembership, currentUserId, isStudioAdmin, onClose, onEdit, onNuovoPiano, setPlans, initTab, initialDocumentRequest, onDocumentRequestHandled, implants = [], setImplants, setPatients, onNuovoAppuntamento, templates, setPayments, pricelist = [] }) {
   const membershipCapabilities = new Set(studioMembership?.stato === 'attivo' ? (studioMembership?.capabilities || []) : []);
-  // Le deploy preview Netlify espongono il Cockpit 2.0 per il collaudo UI;\n  // in produzione resta obbligatoria una capability clinical.* attiva.\n  const isNetlifyDeployPreview = typeof window !== 'undefined' && window.location.hostname.startsWith('deploy-preview-');\n  const canUseClinicalCockpit = isNetlifyDeployPreview || [...membershipCapabilities].some((capability) => capability.startsWith('clinical.'));
+  // Le deploy preview Netlify espongono il Cockpit 2.0 per il collaudo UI;
+  // in produzione resta obbligatoria una capability clinical.* attiva.
+  const isNetlifyDeployPreview = typeof window !== 'undefined' && window.location.hostname.includes('--soft-maamoul-b7975b.netlify.app');
+  const canUseClinicalCockpit = isNetlifyDeployPreview || [...membershipCapabilities].some((capability) => capability.startsWith('clinical.'));
   const canViewPatientFinance = membershipCapabilities.has('finance.management.read');
   const authorizedInitialTab = (initTab === 'cockpit' && !canUseClinicalCockpit) || (initTab === 'paga' && !canViewPatientFinance)
     ? 'info'

@@ -144,6 +144,34 @@ export default function App() {
 
   useEffect(() => {
     if (!session) return;
+    const isNetlifyDeployPreview = typeof window !== 'undefined' && window.location.hostname.includes('--soft-maamoul-b7975b.netlify.app');
+    if (isNetlifyDeployPreview) {
+      const previewPatient = {
+        id: 'preview-patient-2-0',
+        nome: 'Mario',
+        cognome: 'Rossi',
+        dataNascita: '1980-05-14',
+        cf: 'RSSMRA80E14H501U',
+        telefono: '+39 333 123 4567',
+        email: 'mario.rossi@example.test',
+        note: 'Paziente dimostrativo per il collaudo della Scheda Paziente 2.0',
+      };
+      setPatients([previewPatient]);
+      setAppointments([]);
+      setPlans([]);
+      setPayments([]);
+      setImplants([]);
+      setImpegni([]);
+      setRichiami([]);
+      setPricelist(DEF_PRICE);
+      setTemplates(DEF_TPL);
+      setAppTypes(getAppTypesDefault('dentistico'));
+      setStudioInfo(DEF_STUDIO);
+      setSchedaDashPaz({ paz: previewPatient, tab: 'cockpit' });
+      setSyncError('Modalità preview 2.0: dati dimostrativi, nessuna scrittura sul cloud.');
+      setDataLoading(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
       setDataLoading(true);
@@ -204,23 +232,7 @@ export default function App() {
         setStudioInfo(si || DEF_STUDIO);
       } catch (err) {
         console.error('Errore caricamento dati cloud:', err);
-        const isNetlifyDeployPreview = typeof window !== 'undefined' && window.location.hostname.includes('--soft-maamoul-b7975b.netlify.app');
-        if (isNetlifyDeployPreview && !cancelled) {
-          const previewPatient = {
-            id: 'preview-patient-2-0',
-            nome: 'Mario',
-            cognome: 'Rossi',
-            dataNascita: '1980-05-14',
-            cf: 'RSSMRA80E14H501U',
-            telefono: '+39 333 123 4567',
-            email: 'mario.rossi@example.test',
-            note: 'Paziente dimostrativo per il collaudo della Scheda Paziente 2.0',
-          };
-          setPatients([previewPatient]);
-          setSchedaDashPaz({ paz: previewPatient, tab: 'cockpit' });
-          setStudioInfo(DEF_STUDIO);
-          setSyncError('Modalità preview: dati cloud non disponibili, caricato un paziente dimostrativo.');
-        }
+        setSyncError(`Errore caricamento dati cloud: ${err?.message || err}`);
       }
       clearTimeout(loadTimeout);
       if (!cancelled) setDataLoading(false);
