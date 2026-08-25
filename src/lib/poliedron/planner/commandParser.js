@@ -15,6 +15,7 @@ export const COMMAND_INTENT = Object.freeze({
   MARK_TREATMENT_COMPLETED: 'MARK_TREATMENT_COMPLETED',
   RECORD_TREATMENT_AND_PENDING_PAYMENT: 'RECORD_TREATMENT_AND_PENDING_PAYMENT',
   CREATE_TREATMENT_PLAN: 'CREATE_TREATMENT_PLAN',
+  ADD_TREATMENT_ITEM: 'ADD_TREATMENT_ITEM',
   RECORD_MULTIPLE_TREATMENTS_AND_PAYMENT: 'RECORD_MULTIPLE_TREATMENTS_AND_PAYMENT',
   // POL-AI-005B Workflow G — the tooth-specific instance of the conceptual
   // "complete missing anatomical context" family. Deliberately not
@@ -114,6 +115,67 @@ const parseCreatePlan = (text) => {
   };
 };
 
+const ADD_TREATMENT_PREFIX = /^(?:aggiungi|inserisci|metti|registra|segna)\s+(?:una?\s+prestazione\s+)?(?:nel\s+piano\s+|al\s+piano\s+)?(?<body>.+?)\s*[.!]?$/i;
+const UNKNOWN_TOOTH_CLAUSE = /,?\s*(?:ma\s+)?non\s+(?:ricordo|so)\s+(?:il\s+)?dente\s*$/i;
+const CURRENT_PATIENT_CLAUSE = /\s+(?:al|per\s+il)\s+paziente\s+che\s+ho\s+aperto\s*$/i;
+const PATIENT_SUFFIX = /\s+(?:a|del|della|di)\s+(?:paziente\s+)?(?<patient>[A-Za-zÀ-ÖØ-öø-ÿ'’ -]+)$/i;
+const TOOTH_SUFFIX = /\s+(?:sul(?:l['’]elemento)?|su|del(?:l['’]elemento)?|dente|elemento)\s+(?<tooth>\d{1,2})\s*$/i;
+const BARE_TEETH_SUFFIX = /\s+(?<teeth>\d{1,2}(?:\s*(?:,|e)\s*\d{1,2})*)\s*$/i;
+const NON_TREATMENT_OBJECT = /^(?:pagamento|paziente|appuntamento|spesa|documento|attivit[aà]|richiamo)(?:\s|$)/i;
+
+const cleanProcedure = (value) => value.trim().replace(/^(?:una?|la|il)\s+/i, '').trim();
+
+/** Generic add/insert/record family. This is deliberately structural:
+ * verbs, patient/tooth clauses and list separators are recognized, while
+ * procedure names remain tenant-canonical free text for procedureResolver. */
+const parseAddTreatment = (text) => {
+  const match = ADD_TREATMENT_PREFIX.exec(text.trim());
+  if (!match) return null;
+  let body = match.groups.body.trim().replace(/[.!]+$/, '').trim();
+  if (NON_TREATMENT_OBJECT.test(body)) return null;
+  const explicitlyUnknownTooth = UNKNOWN_TOOTH_CLAUSE.test(body);
+  body = body.replace(UNKNOWN_TOOTH_CLAUSE, '').trim();
+  body = body.replace(CURRENT_PATIENT_CLAUSE, '').trim();
+
+  let patientText = null;
+  const patientMatch = PATIENT_SUFFIX.exec(body);
+  if (patientMatch) {
+    patientText = patientMatch.groups.patient.trim();
+    body = body.slice(0, patientMatch.index).trim();
+  }
+
+  let sharedTooth = null;
+  const toothMatch = TOOTH_SUFFIX.exec(body);
+  if (toothMatch) {
+    sharedTooth = toothMatch.groups.tooth;
+    body = body.slice(0, toothMatch.index).trim();
+  }
+
+  if (!sharedTooth && !explicitlyUnknownTooth) {
+    const teethMatch = BARE_TEETH_SUFFIX.exec(body);
+    if (teethMatch) {
+      const procedureText = cleanProcedure(body.slice(0, teethMatch.index));
+      const teeth = teethMatch.groups.teeth.split(/\s*(?:,|e)\s*/).filter(Boolean);
+      if (!procedureText || !teeth.length) return null;
+      return {
+        commandIntent: COMMAND_INTENT.ADD_TREATMENT_ITEM,
+        patientText,
+        items: teeth.map((toothText) => ({ procedureText, toothText })),
+        amount: null, executionCompleted: false, rawText: text,
+      };
+    }
+  }
+
+  const procedureParts = body.split(/\s*,\s*|\s+e\s+(?=[A-Za-zÀ-ÖØ-öø-ÿ])/i).map(cleanProcedure).filter(Boolean);
+  if (!procedureParts.length) return null;
+  return {
+    commandIntent: COMMAND_INTENT.ADD_TREATMENT_ITEM,
+    patientText,
+    items: procedureParts.map((procedureText) => ({ procedureText, toothText: sharedTooth })),
+    amount: null, executionCompleted: false, rawText: text,
+  };
+};
+
 /**
  * parseCommand(text) -> structured parse | null
  * `null` means: no deterministic command shape matched — the caller
@@ -166,6 +228,11 @@ export function parseCommand(text) {
 
   const completeTooth = parseCompleteMissingTooth(value);
   if (completeTooth) return completeTooth;
+
+  // Generic verbs are intentionally last: specific existing command
+  // families (especially "segna ... come eseguita") keep precedence.
+  const addTreatment = parseAddTreatment(value);
+  if (addTreatment) return addTreatment;
 
   return null;
 }

@@ -63,19 +63,19 @@ export function scanTreatmentPlans({ plans, hasFuture, today, canReadClinical })
       }));
     }
 
-    // POL-AI-005B: a completed treatment with no tooth on file — e.g. an
-    // AI-recorded "segna ... come eseguita, non ricordo il dente". Derived
+    // POL-AI-005B/005C: a treatment with no tooth on file — whether it was
+    // recorded completed or added as a pending plan item. Derived
     // live from `voci` every scan: filling in the tooth later (updating
     // the same item, never a new one — see treatmentPlanService.js's
     // findIncompleteItemToComplete) makes this clear on the very next
     // scan, with no separate signal state to reconcile.
-    const missingTooth = voices.filter((voice) => voice.eseguita === true && !voice.dente);
+    const missingTooth = voices.filter((voice) => !voice.dente);
     if (missingTooth.length) {
       signals.push(createSignal({
         type: SIGNAL_TYPE.MISSING_TOOTH_REFERENCE,
         taxonomy: SIGNAL_TAXONOMY.DATA_QUALITY,
         severity: SEVERITY.LOW,
-        reason: `${missingTooth.length} ${missingTooth.length === 1 ? 'prestazione eseguita non ha' : 'prestazioni eseguite non hanno'} il dente registrato.`,
+        reason: `${missingTooth.length} ${missingTooth.length === 1 ? 'prestazione non ha' : 'prestazioni non hanno'} il dente registrato.`,
         source: 'treatment_plan',
         sourceId,
         confidence: 1,

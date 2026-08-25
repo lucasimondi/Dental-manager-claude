@@ -1826,3 +1826,19 @@ The preview points at the production database (`src/lib/supabase.js` hardcodes t
 Code: revert this commit on the branch. Database: stop Chat writes, remove `poliedron_messages` from `supabase_realtime`, then drop the two additive tables and the two task-owned trigger functions in dependency order. No pre-existing object was modified, so nothing else requires restoration.
 
 - Exact next action: the Product Owner performs the final QA on preview #53 with his own session — central Polyedron button must show NO chat history and NO history banner and must answer normally; Chat (dock, bell, desktop sidebar) must show the same persistent thread surviving navigation, refresh, close/reopen and logout/login; only the bell may carry an unread badge; the Home save must behave exactly as approved in #51 with no DEV/PREVIEW readout on screen. Do not merge, do not deploy to production, do not apply any further migration. Status: `WAITING_PRODUCT_OWNER_FINAL_QA`.
+- Task ID: POL-AI-005C
+- Agent: Codex
+- Branch: `feature/POL-AI-005C-generic-treatment-creation`
+- Objective: connect generic add/insert/record treatment commands to the existing Level-2 Action Planner/Executor pipeline.
+- Completed work: added deterministic `ADD_TREATMENT_ITEM` parsing; named/current patient resolution; text and visual tooth context; independent multi-procedure/multi-tooth planning; ambiguity/invalid-tooth blocking; canonical target-plan reuse; duplicate no-op behavior; incomplete-tooth preview and Data Health coverage; retained Workflow G round-trip.
+- Files changed: `src/lib/poliedron/planner/commandParser.js`, `src/lib/poliedron/planner/actionPlanner.js`, `src/lib/poliedron/poliedraCore.js`, `src/lib/poliedron/contextEngine.js`, `src/components/poliedron/Poliedron.jsx`, `src/components/poliedron/PoliedronActionPreviewLevel2.jsx`, `src/lib/poliedron/intelligence/treatmentPlanScanner.js`, `tests/genericTreatmentCreation.test.mjs`, `docs/architecture/POL-AI-005C-generic-treatment-creation.md`, `docs/coordination/current-task.md`, `docs/coordination/handoffs.md`.
+- Database changes: none. No migration created or applied.
+- Dependency changes: none. `npm ci` installed the existing lockfile only; package files are unchanged.
+- Tests executed: `npm test`, `npm run build`, `git diff --check`, conflict-marker/dependency/migration/scope checks.
+- Results: 438/438 tests passed. Production build succeeded with only pre-existing duplicate-icon, CSS-comment, pdfjs eval and chunk-size warnings. `git diff --check` clean.
+- Skills: `.poliedra/skills` does not exist on this baseline, so no canonical skill files were available to update.
+- Security: cross-tenant/current-patient mismatch, procedure/patient/plan ambiguity, invalid tooth, duplicate writes, stale preview, permission revocation and plan tampering fail closed; deterministic common commands make zero model calls.
+- Unresolved issues/risks: Patient Clinical Cockpit/PR #48 is not present on this baseline; the engine accepts `selectedTooth` context so that future cockpit can consume it without a second execution system. Existing project build warnings remain outside scope.
+- Rollback: revert the single POL-AI-005C commit. No database or deployment rollback is needed.
+- Product Owner decision required: none.
+- Exact next action: Product Owner reviews the draft PR. Do not merge or deploy. Status: `WAITING_PRODUCT_OWNER`.

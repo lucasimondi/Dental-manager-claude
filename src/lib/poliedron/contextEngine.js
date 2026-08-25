@@ -4,13 +4,14 @@
    for permissions/validation/canonical IDs (§14: those stay server-side
    and inside the existing form components, unchanged by this task). */
 
-export function buildContext({ page, vertical, studioId, currentPatient, currentAppointment, capabilities, isStudioAdmin, features } = {}) {
+export function buildContext({ page, vertical, studioId, currentPatient, currentAppointment, selectedTooth, capabilities, isStudioAdmin, features } = {}) {
   return Object.freeze({
     page: page || null,
     vertical: vertical || 'dentistico',
     studioId: studioId || null,
     currentPatient: currentPatient || null,
     currentAppointment: currentAppointment || null,
+    selectedTooth: selectedTooth || null,
     date: new Date().toISOString().slice(0, 10),
     capabilities: Array.isArray(capabilities) ? capabilities : [],
     isStudioAdmin: !!isStudioAdmin,

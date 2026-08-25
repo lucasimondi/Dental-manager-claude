@@ -121,6 +121,7 @@ export async function processQuery({
       homePermissions: permissions?.homePermissions || {},
       studioId: context?.studioId,
       currentPatient: context?.currentPatient || null,
+      selectedTooth: context?.selectedTooth || null,
     });
     if (actionPlan) {
       return {

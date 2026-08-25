@@ -183,6 +183,7 @@ function buildTreatmentItemSteps({ patientId, procedureText, toothText, markComp
   steps.push(resolveProcStep);
   if (procRes.status === PROCEDURE_RESOLUTION_STATUS.AMBIGUOUS) {
     warnings.push(`Prestazione "${procedureText}" ambigua: più voci di listino corrispondono.`);
+    blockingReasons.push(`Prestazione "${procedureText}" ambigua: scegli una voce canonica prima di confermare.`);
   }
   if (procRes.status === PROCEDURE_RESOLUTION_STATUS.NOT_FOUND) {
     assumptions.push(`Prestazione "${procedureText}" non trovata nel listino: prezzo non risolvibile.`);
@@ -190,6 +191,9 @@ function buildTreatmentItemSteps({ patientId, procedureText, toothText, markComp
 
   const tooth = createTooth(toothText);
   if (isToothIncomplete(tooth)) assumptions.push(`Dente non specificato per "${procedureText}": registrato come incompleto, non inventato.`);
+  if (tooth.state === TOOTH_STATE.LEGACY_INCOMPLETE) {
+    blockingReasons.push(`Elemento dentario "${tooth.value}" non valido: nessuna scrittura consentita.`);
+  }
 
   // Match/store by the RESOLVED canonical pricelist name when resolution
   // succeeded, not the raw query text — otherwise "otturazione" and an
@@ -338,7 +342,7 @@ const finalizePlan = ({
     confidence,
     requiredPermissions: Object.freeze(requiredPermissions),
     requiresConfirmation: true, // Phase A invariant: every plan requires human confirmation before any future executor may act — see §7.
-    blocked: permBlocked || blockingReasons.length > 0,
+    blocked: !patientOk || permBlocked || blockingReasons.length > 0,
   });
 };
 
@@ -406,6 +410,42 @@ function planCreateTreatmentPlan(parsed, context) {
     blockingReasons,
     confidence: patientResolution.status === PATIENT_RESOLUTION_STATUS.RESOLVED ? 0.9 : 0.4,
     homePermissions: context.homePermissions,
+  });
+}
+
+/** Generic treatment insertion. A named patient wins; otherwise the
+ * current patient is resolved canonically. A selected visual tooth is a
+ * hint only and is used solely when the text contains no tooth. */
+function planAddTreatmentItem(parsed, context) {
+  const contextual = !parsed.patientText;
+  const patientResolution = contextual
+    ? resolveContextualPatient(context.currentPatient, context.patients, { studioId: context.studioId })
+    : resolvePatient(parsed.patientText, context.patients, { studioId: context.studioId });
+  const patientId = patientResolution.status === PATIENT_RESOLUTION_STATUS.RESOLVED ? patientResolution.candidate.id : null;
+  const visualTooth = context.selectedTooth ?? null;
+  const steps = [], warnings = [], assumptions = [], blockingReasons = [];
+  for (const item of parsed.items) {
+    const built = buildTreatmentItemSteps({
+      patientId,
+      procedureText: item.procedureText,
+      toothText: item.toothText ?? visualTooth,
+      markCompleted: false,
+    }, context);
+    steps.push(...built.steps);
+    warnings.push(...built.warnings);
+    assumptions.push(...built.assumptions);
+    blockingReasons.push(...built.blockingReasons);
+    if (built.procedureRef.price === PRICE_UNRESOLVED) warnings.push(`Prezzo non risolto per "${item.procedureText}" — PRICE_UNRESOLVED, non inventato.`);
+  }
+  if (visualTooth && parsed.items.every((item) => !item.toothText)) assumptions.push(`Elemento ${visualTooth} ereditato dal contesto visivo; sarà ricontrollato prima dell'esecuzione.`);
+  return finalizePlan({
+    intent: parsed.commandIntent,
+    patientText: parsed.patientText,
+    patientResolution, steps, warnings, assumptions, blockingReasons,
+    confidence: patientResolution.status === PATIENT_RESOLUTION_STATUS.RESOLVED ? 0.9 : 0.4,
+    homePermissions: context.homePermissions,
+    patientRefMechanism: contextual ? 'context' : 'text',
+    patientRefContextId: contextual ? context.currentPatient?.id ?? null : null,
   });
 }
 
@@ -559,6 +599,8 @@ export function buildActionPlan(parsedCommand, context) {
       return planTreatmentAndPayment(parsedCommand, context);
     case COMMAND_INTENT.CREATE_TREATMENT_PLAN:
       return planCreateTreatmentPlan(parsedCommand, context);
+    case COMMAND_INTENT.ADD_TREATMENT_ITEM:
+      return planAddTreatmentItem(parsedCommand, context);
     case COMMAND_INTENT.MARK_TREATMENT_COMPLETED:
       return planMarkTreatmentCompleted(parsedCommand, context);
     case COMMAND_INTENT.COMPLETE_MISSING_TOOTH:
