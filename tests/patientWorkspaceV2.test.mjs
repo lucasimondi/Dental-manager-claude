@@ -121,9 +121,13 @@ test('Round 5 keeps anatomical sites readable and treatment actions state-aware'
   assert.match(component, /data-entity=\{isRecall \? 'RECALL' : 'TREATMENT'\}/);
   assert.match(component, /const primaryActions = \(status\)/);
   assert.match(component, /status === 'Eseguita'[\s\S]*?\['Crea follow-up', 'Crea richiamo'\]/);
-  assert.match(component, /status === 'In corso'[\s\S]*?\['Programma', 'Segna eseguita'\]/);
+  assert.match(component, /status === 'In corso'[\s\S]*?\['Segna eseguita', 'Programma'\]/);
   assert.match(component, /status === 'Richiamo da programmare'[\s\S]*?\['Programma', 'Modifica'\]/);
   assert.match(component, /primaryActions\(item\.status\)\.map/);
+  assert.match(component, /pw2-status-action is-\$\{tone\}/);
+  assert.match(component, /data-status=\{tone\}/);
+  assert.match(css, /Mobile is a dedicated clinical surface/);
+  assert.match(css, /grid-template-columns:minmax\(0,1fr\) 46px/);
   assert.match(css, /@media\(max-width:820px\)/);
   assert.match(css, /@media\(max-width:520px\)/);
 });
