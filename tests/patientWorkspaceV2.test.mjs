@@ -34,6 +34,28 @@ test('workspace keeps the required identity, KPI and navigation surfaces', () =>
   assert.doesNotMatch(component, /<img\b/);
 });
 
+test('Round 2 keeps creation actions distinct and prototype-only', () => {
+  for (const label of ['Aggiungi prestazione', 'Nuovo piano clinico', 'Nuovo preventivo']) {
+    assert.ok(component.includes(label), `missing ${label}`);
+  }
+  for (const kind of ['service', 'plan', 'quote']) assert.match(component, new RegExp(`setQuickCreate\\('${kind}'\\)`));
+  for (const site of ['Dente', 'Quadrante', 'Arcata', 'Generale', 'Nessuna']) assert.ok(component.includes(site));
+  for (const status of ['Proposta', 'Pianificata', 'In corso', 'Eseguita']) assert.ok(component.includes(status));
+  assert.match(component, /Prototype · nessun salvataggio/);
+  assert.match(component, /Preventivo economico/);
+  assert.match(component, /Piano clinico/);
+});
+
+test('clinical situation is treatment-driven and odontogram remains an entry point', () => {
+  assert.match(component, /clinicalRows = model\.items\.map/);
+  assert.match(component, /Apri piano clinico/);
+  assert.match(component, /Odontogramma/);
+  assert.match(component, /Modulo clinico in preparazione/);
+  assert.doesNotMatch(component, /tone-indigo|tone-amber|tone-teal|tone-violet|tone-blue/);
+  assert.match(demo, /Corona zirconia/);
+  assert.match(demo, /stato: 'in_corso'/);
+});
+
 test('responsive CSS covers compact mobile, mobile and tablet without horizontal page overflow', () => {
   assert.match(css, /overflow-x:hidden/);
   assert.match(css, /max-width:375px/);

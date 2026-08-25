@@ -5,11 +5,11 @@
 - OWNER: CODEX
 - BRANCH: `ui/POL-UI-005B-patient-workspace-v2`
 - BASE: `origin/master` at `981724e` (merged PR #58 stable patient record recovery)
-- STATUS: READY_FOR_PR
-- OBJECTIVE: provide a premium, responsive Patient Workspace 2.0 visual preview without changing or mounting it in the production patient-record path.
-- SCOPE: isolated public demo route, pure in-memory preview model, component styling, targeted regression guards, and coordination records only.
+- STATUS: READY_FOR_PR_UPDATE
+- OBJECTIVE: complete Round 2 of the premium, responsive Patient Workspace 2.0 visual preview without changing or mounting it in the production patient-record path.
+- SCOPE: isolated Action Bar prototypes, treatment-driven clinical snapshot, odontogram entry point, demo fixtures, styling, targeted regression guards, and coordination records only.
 - SAFETY: `SchedaPaz.jsx` and `App.jsx` remain byte-for-byte unchanged from `origin/master`; no Supabase, Storage, migration, dependency, or production-route change.
-- NEXT_ACTION: commit, push, open PR to `master`, wait for the Vercel preview, perform public responsive smoke QA, then stop for Product Owner visual review. Do not merge automatically.
+- NEXT_ACTION: commit and push to the existing PR #59, wait for the Vercel preview update, then stop for Product Owner Round 2 visual review. Do not merge automatically.
 
 ## Previous incident record
 

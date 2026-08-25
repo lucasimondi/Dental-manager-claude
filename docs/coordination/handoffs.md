@@ -1865,3 +1865,15 @@ Code: revert this commit on the branch. Database: stop Chat writes, remove `poli
 - Risks: the KPI values in this visual-only preview are derived from synthetic arrays and are not a new financial source of truth. Production wiring must consume the existing authoritative state/canonical source in a later Product Owner-approved task.
 - Rollback: revert the task commit; no database rollback is required.
 - Exact next action: push, open a non-draft PR, wait for the public Vercel preview, smoke-test the isolated route at required widths, then stop at `WAITING_PRODUCT_OWNER_VISUAL_QA`. Do not merge.
+# POL-UI-005B Round 2 — action bar and treatment-driven snapshot
+
+- Task ID: POL-UI-005B Round 2. Agent: Codex. Branch: `ui/POL-UI-005B-patient-workspace-v2`. Existing PR: #59.
+- Objective: extend only the isolated preview with compact creation entry points and a clinically meaningful, treatment-driven snapshot.
+- Completed work: added the separate `+ Prestazione`, `+ Piano`, and `+ Preventivo` Action Bar; search-first Quick Add prototype with conditional dental-element field; distinct clinical-plan and economic-quote concepts; treatment summary `5 da eseguire · 2 eseguite · 1 in corso`; and a premium odontogram placeholder entry point. Removed appointment/note/active-plan duplicates from the clinical snapshot.
+- Files changed: `src/components/PatientWorkspaceV2.jsx`, `src/components/PatientWorkspaceV2.css`, `src/components/PatientWorkspaceV2Demo.jsx`, `tests/patientWorkspaceV2.test.mjs`, and coordination records.
+- Database/dependencies: none. Zero Supabase/Storage queries, subscriptions, migrations, writes, package or lockfile changes.
+- Production isolation: `src/App.jsx` and `src/components/SchedaPaz.jsx` remain unchanged from `origin/master`; the demo is still not connected to the real patient route.
+- Tests: targeted guards 6/6 passed. Full `npm test`: 436/441 passed; the same five date-sensitive Agenda baseline failures remain outside scope. `npm run build` passed with existing warnings. `git diff --check` clean. Local browser QA verified all four drawers/entry points, conditional Dente field, one occurrence each of phone/CF/last visit, no next-appointment duplication, and no desktop horizontal overflow. Responsive CSS explicitly covers 375, 390/430 via the <=520 contract, 768 via <=820, and desktop; automated exact browser resizing was unavailable in the current browser surface.
+- Risks: every create control is a non-persisting prototype. The preview total uses only synthetic fixture arrays and is not a production financial source of truth.
+- Rollback: revert the Round 2 commit; no database rollback.
+- Exact next action: push this commit to PR #59, wait for Vercel to report Ready, then Product Owner reviews the updated preview. Stop before further development or merge.
