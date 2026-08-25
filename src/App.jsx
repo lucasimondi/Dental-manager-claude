@@ -111,6 +111,12 @@ export default function App() {
   }, [theme, features?.custom_colors, studioInfo?.custom_colore_primario, studioInfo?.custom_colore_accento, studioInfo?.header_colore, studioInfo?.header_opacita]);
 
   useEffect(() => {
+    const isNetlifyDeployPreview = typeof window !== 'undefined' && window.location.hostname.includes('--soft-maamoul-b7975b.netlify.app');
+    if (isNetlifyDeployPreview) {
+      setSession({ user: { id: 'preview-user-48', app_metadata: { studio_id: 'preview-studio-48' }, user_metadata: { nome: 'Preview', cognome: 'Poliedra' } } });
+      setUserName('Preview Poliedra');
+      return;
+    }
     // Inizializza sessione — se non risponde entro 3s forza null (no session)
     let resolved = false;
     const timeout = setTimeout(() => {
@@ -141,6 +147,17 @@ export default function App() {
 
   useEffect(() => {
     if (!session) return;
+    const isNetlifyDeployPreview = typeof window !== 'undefined' && window.location.hostname.includes('--soft-maamoul-b7975b.netlify.app');
+    if (isNetlifyDeployPreview) {
+      const previewPatient = { id: 'preview-patient-48', nome: 'Mario', cognome: 'Rossi', dataNascita: '1980-05-14', cf: 'RSSMRA80E14H501U', telefono: '+39 333 123 4567', email: 'mario.rossi@example.test', note: 'Nessuna nota clinica' };
+      setPatients([previewPatient]);
+      setAppointments([]); setPlans([]); setPayments([]); setImplants([]); setImpegni([]); setRichiami([]);
+      setPricelist(DEF_PRICE); setTemplates(DEF_TPL); setAppTypes(getAppTypesDefault('dentistico')); setStudioInfo(DEF_STUDIO);
+      setSchedaDashPaz({ paz: previewPatient, tab: 'info' });
+      setSyncError('Modalità preview #48: dati dimostrativi, nessuna scrittura sul cloud.');
+      setDataLoading(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
       setDataLoading(true);
