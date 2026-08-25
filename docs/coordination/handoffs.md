@@ -1852,3 +1852,16 @@ Code: revert this commit on the branch. Database: stop Chat writes, remove `poli
 - QA limitation: no browser available in this environment has an authenticated production session. Login/list/patient/back/second-patient and rich/empty real-data QA must be completed on the Vercel preview with the Product Owner session before merge.
 - Rollback: revert the hotfix commit to restore the current master patient record. No database rollback.
 - Exact next action: push and open a non-draft PR; do not merge until authenticated preview QA passes.
+# POL-UI-005B — Patient Workspace 2.0 isolated visual foundation
+
+- Task ID: POL-UI-005B. Agent: Codex. Branch: `ui/POL-UI-005B-patient-workspace-v2`. Base: `origin/master` at `981724e`.
+- Objective: implement the approved visual foundation as an isolated preview while preserving the stable production patient record restored by PR #58.
+- Prior-art review: PR #48 was inspected selectively. Only its pure, prop-driven/read-model separation was retained; its broad cockpit integration and automatic clinical/data surfaces were not restored.
+- Completed work: added a premium responsive header, actions, KPI strip with drawers, compact micro-profile, anamnesis/risk state, dynamic clinical summary cards, and the six required navigation tabs. Added synthetic demo data and a dedicated `/patient-workspace-v2-demo` route before the authenticated app mount.
+- Files changed: `src/main.jsx`, `src/components/PatientWorkspaceV2.jsx`, `src/components/PatientWorkspaceV2Demo.jsx`, `src/components/PatientWorkspaceV2.css`, `tests/patientWorkspaceV2.test.mjs`, and coordination records.
+- Production isolation: `src/App.jsx` and `src/components/SchedaPaz.jsx` are unchanged from `origin/master`; the new component is not reachable from the patient list/detail flow. The preview contains no Supabase/Storage client, `fetch`, `useEffect`, subscription, or automatic query.
+- Database/dependencies: none. No schema, migration, RLS, production data, package, or lockfile change.
+- Tests: targeted preview guards 4/4 passed. `npm run build` passed with pre-existing duplicate-icon-key, CSS-comment, pdfjs eval, chunk-size and PWA warnings. Full `npm test`: 434/439 passed; the five failures are the known date-sensitive `tests/agendaSlots.test.mjs` baseline failures and are outside this task. Local browser QA at 1280x720 confirmed the route renders, has no horizontal overflow, and the KPI drawer opens; responsive contracts exist at 375/520/820 breakpoints.
+- Risks: the KPI values in this visual-only preview are derived from synthetic arrays and are not a new financial source of truth. Production wiring must consume the existing authoritative state/canonical source in a later Product Owner-approved task.
+- Rollback: revert the task commit; no database rollback is required.
+- Exact next action: push, open a non-draft PR, wait for the public Vercel preview, smoke-test the isolated route at required widths, then stop at `WAITING_PRODUCT_OWNER_VISUAL_QA`. Do not merge.

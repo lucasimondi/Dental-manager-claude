@@ -1,14 +1,15 @@
 # Current task
 
-- TASK: POL-UI-PATIENT-FREEZE-PROD-2
-- TITLE: Emergency stable patient record rollback
+- TASK: POL-UI-005B
+- TITLE: Patient Workspace 2.0 isolated visual foundation
 - OWNER: CODEX
-- BRANCH: `hotfix/POL-UI-patient-freeze-prod-2`
-- BASE: `origin/master` at `a84b159` (includes merged PR #57)
+- BRANCH: `ui/POL-UI-005B-patient-workspace-v2`
+- BASE: `origin/master` at `981724e` (merged PR #58 stable patient record recovery)
 - STATUS: READY_FOR_PR
-- OBJECTIVE: restore the self-contained legacy patient record and remove all automatic Supabase/effect work from the patient-open path.
-- SCOPE: patient record, the #57 App import rollback, targeted regression guards, and coordination records only.
-- NEXT_ACTION: push, open PR to `master`, wait for Vercel preview, then perform authenticated Product Owner smoke QA. Do not merge automatically.
+- OBJECTIVE: provide a premium, responsive Patient Workspace 2.0 visual preview without changing or mounting it in the production patient-record path.
+- SCOPE: isolated public demo route, pure in-memory preview model, component styling, targeted regression guards, and coordination records only.
+- SAFETY: `SchedaPaz.jsx` and `App.jsx` remain byte-for-byte unchanged from `origin/master`; no Supabase, Storage, migration, dependency, or production-route change.
+- NEXT_ACTION: commit, push, open PR to `master`, wait for the Vercel preview, perform public responsive smoke QA, then stop for Product Owner visual review. Do not merge automatically.
 
 ## Previous incident record
 
