@@ -1,0 +1,39 @@
+.legacy-patient-header {
+  min-height: 104px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: max(16px, env(safe-area-inset-top)) 16px 16px;
+  flex-shrink: 0;
+  color: #fff;
+  background:
+    radial-gradient(circle at 84% 15%, rgba(255,255,255,.18), transparent 20rem),
+    linear-gradient(125deg, #071628 0%, #123e5a 52%, #1c7189 100%);
+  border-bottom: 1px solid rgba(255,255,255,.16);
+  box-shadow: 0 14px 34px rgba(2,18,32,.28), inset 0 1px 0 rgba(255,255,255,.16);
+}
+
+.legacy-patient-header__name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:19px; font-weight:900; letter-spacing:-.01em; text-shadow:0 2px 7px rgba(0,0,0,.22); }
+.legacy-patient-header__meta { margin-top:4px; color:rgba(255,255,255,.67); font:11px/1.2 monospace; }
+.legacy-patient-header__phone { margin-top:5px; color:rgba(255,255,255,.94); font-size:12px; font-weight:750; }
+.legacy-patient-header__actions { display:flex; align-items:center; gap:7px; }
+.legacy-patient-header__icon,.legacy-patient-header__edit { min-height:42px; display:inline-flex; align-items:center; justify-content:center; gap:5px; border:1px solid rgba(255,255,255,.22); border-radius:11px; color:#fff; background:linear-gradient(145deg,rgba(255,255,255,.20),rgba(255,255,255,.07)); box-shadow:0 7px 15px rgba(0,0,0,.18),inset 1px 1px 0 rgba(255,255,255,.18); cursor:pointer; }
+.legacy-patient-header__icon { width:42px; padding:0; }
+.legacy-patient-header__edit { padding:0 12px; font-size:11px; font-weight:850; }
+
+.legacy-info-card { min-height:82px; border-radius:16px !important; background:linear-gradient(145deg,#fff,#edf3f7) !important; box-shadow:0 12px 26px rgba(15,23,42,.10),inset 1px 1px 0 #fff !important; }
+.legacy-info-card__heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.legacy-info-card__heading > div { display:flex; align-items:center; gap:9px; }
+.legacy-info-card__heading strong { color:#173449; font-size:13px; text-transform:uppercase; letter-spacing:.05em; }
+.legacy-info-card__heading > span { color:#557083; font-size:22px; font-weight:500; }
+.legacy-anamnesis-alert { width:34px; height:34px; display:grid; place-items:center; border-radius:10px; box-shadow:0 6px 12px rgba(15,23,42,.14),inset 1px 1px 0 rgba(255,255,255,.75); }
+.legacy-anamnesis-alert.is-danger { color:#b4232f; background:linear-gradient(145deg,#fee2e2,#fecaca); }
+.legacy-anamnesis-alert.is-safe { color:#18734b; background:linear-gradient(145deg,#dcfce7,#bbf7d0); }
+.legacy-anamnesis-card__status { margin-top:11px; color:#405a6a; font-size:12px; font-weight:750; }
+.legacy-anamnesis-card__note { margin-top:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#718493; font-size:11px; }
+
+@media (max-width: 620px) {
+  .legacy-patient-header { min-height:126px; align-items:flex-start; flex-wrap:wrap; padding-inline:12px; }
+  .legacy-patient-header__actions { width:100%; justify-content:flex-end; }
+  .legacy-patient-header__edit { min-width:92px; }
+}

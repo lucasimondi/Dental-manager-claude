@@ -12,6 +12,7 @@ import { condividiPdf, scaricaPdf } from '../lib/condivisionePdf';
 import { salvaPosizione, leggiPosizione } from '../lib/posizioneNavigazione';
 import { buildPatientCockpitModel } from '../lib/patientCockpitModel.js';
 import PatientClinicalCockpit from './PatientClinicalCockpit.jsx';
+import './SchedaPazLegacy.css';
 
 const prossimaDataMascherina = (orto) => {
   if (!orto?.dataConsegnaInizio || !orto?.mascherineConsegnate) return null;
@@ -32,6 +33,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
   const [pdfPlan, setPdfPlan] = useState(null);
   const [docFiscale, setDocFiscale] = useState(false);
   const [docMedico, setDocMedico] = useState(initialDocumentRequest?.type === 'ricetta');
+  const [anagraficaOpen, setAnagraficaOpen] = useState(false);
 
   // Ricorda tab attiva e modale documento aperto, così se l'app si ricarica
   // da zero (schermo spento, cambio app) il ripristino della posizione
@@ -521,7 +523,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
     vertical: si?.vertical,
     todayIso: today(),
   });
-  const TABS = [...(canUseClinicalCockpit ? [{ id: 'cockpit', l: 'Cockpit', ic: 'pulse' }] : []), { id: 'info', l: 'Info', ic: 'clip' }, { id: 'piani', l: 'Piani', ic: 'plan' }, ...(isDentistico ? [{ id: 'impl', l: 'Impianti', ic: 'tooth' }] : []), ...(canAccessPhysio ? [{ id: 'fisio', l: 'Fisioterapia', ic: 'pulse' }] : []), ...(canViewPatientFinance ? [{ id: 'paga', l: 'Pagamenti', ic: 'eur' }] : []), { id: 'foto', l: 'Foto', ic: 'ph' }, { id: 'doc', l: 'Documenti', ic: 'file' }, { id: 'app', l: 'Agenda', ic: 'cal' }];
+  const TABS = [...(canUseClinicalCockpit ? [{ id: 'cockpit', l: 'Cockpit', ic: 'pulse' }] : []), { id: 'info', l: 'Info', ic: 'clip' }, { id: 'piani', l: 'Piani', ic: 'plan' }, ...(isDentistico ? [{ id: 'impl', l: 'Impianti', ic: 'tooth' }] : []), ...(canAccessPhysio ? [{ id: 'fisio', l: 'Fisioterapia', ic: 'pulse' }] : []), ...(canViewPatientFinance ? [{ id: 'paga', l: 'Pagamenti', ic: 'eur' }] : []), { id: 'foto', l: 'Foto', ic: 'camera' }, { id: 'doc', l: 'Documenti', ic: 'file' }, { id: 'app', l: 'Agenda', ic: 'cal' }];
 
   if (tab === 'cockpit' && canUseClinicalCockpit) {
     return (
@@ -545,13 +547,18 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
-      <div style={{ background: C.priD, padding: '12px 14px', paddingTop: 'max(12px,env(safe-area-inset-top))', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-        <button onClick={onClose} aria-label="Indietro" style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 10, padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Ic n="back" s={20} c="#fff" /></button>
+      <div className="legacy-patient-header">
+        <button className="legacy-patient-header__icon" onClick={onClose} aria-label="Indietro"><Ic n="back" s={20} c="#fff" /></button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: '#fff', fontWeight: 800, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{paz.nome} {paz.cognome}</div>
-          {paz.cf && <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, fontFamily: 'monospace' }}>{paz.cf}</div>}
+          <div className="legacy-patient-header__name">{paz.nome} {paz.cognome}</div>
+          {paz.cf && <div className="legacy-patient-header__meta">{paz.cf}</div>}
+          {paz.telefono && <div className="legacy-patient-header__phone">{paz.telefono}</div>}
         </div>
-        <button onClick={() => onEdit(paz)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, padding: '6px 11px', cursor: 'pointer', color: '#fff', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="edit" s={13} c="#fff" />Modifica</button>
+        <div className="legacy-patient-header__actions">
+          {paz.telefono && <button className="legacy-patient-header__icon" onClick={() => window.location.assign(`tel:${paz.telefono}`)} aria-label="Chiama"><Ic n="ph" s={18} c="#fff" /></button>}
+          {paz.telefono && <button className="legacy-patient-header__icon" onClick={() => window.open(`https://wa.me/${String(paz.telefono).replace(/\D/g, '')}`, '_blank', 'noopener,noreferrer')} aria-label="WhatsApp"><Ic n="wa" s={18} c="#fff" /></button>}
+          <button className="legacy-patient-header__edit" onClick={() => onEdit(paz)}><Ic n="edit" s={13} c="#fff" />Modifica</button>
+        </div>
       </div>
 
       <div style={{ background: C.priD, display: 'flex', borderTop: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
@@ -575,31 +582,22 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
       <div style={{ flex: 1, padding: 14, overflowY: 'auto' }}>
         {tab === 'info' && (
           <div>
-            {paz.telefono && (
-              <Crd style={{ marginBottom: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, fontSize: 13 }}><Ic n="ph" s={12} c={C.txm} />{paz.telefono}</div>
-                <PhStr tel={paz.telefono} features={features} />
-              </Crd>
-            )}
-            <Crd style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Anagrafica</div>
-              {[['Nascita', fmtD(paz.dataNascita)], ['C.F.', paz.cf || '—'], ['Indirizzo', paz.indirizzo || '—'], ['Email', paz.email || '—']].map(([l, v]) => (
+            <Crd className="legacy-info-card" style={{ marginBottom: 10 }} onClick={() => setAnagraficaOpen((open) => !open)} role="button" tabIndex={0} aria-expanded={anagraficaOpen}>
+              <div className="legacy-info-card__heading"><div><Ic n="pz" s={18} c={C.pri} /><strong>Anagrafica</strong></div><span>{anagraficaOpen ? '−' : '+'}</span></div>
+              {anagraficaOpen && [['Nascita', fmtD(paz.dataNascita)], ['C.F.', paz.cf || '—'], ['Telefono', paz.telefono || '—'], ['Indirizzo', paz.indirizzo || '—'], ['Email', paz.email || '—']].map(([l, v]) => (
                 <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: `1px solid ${C.brd}`, gap: 10 }}>
                   <span style={{ fontSize: 11, color: C.txm, fontWeight: 600, flexShrink: 0 }}>{l}</span>
                   <span style={{ fontSize: 12, color: C.txt, textAlign: 'right', wordBreak: 'break-word' }}>{v}</span>
                 </div>
               ))}
             </Crd>
-            {/* NOTE GENERALI (anamnesi/allergie) */}
-            <Crd style={{ background: noteGenerale ? `${C.war}14` : C.sur, border: noteGenerale ? `1px solid ${C.war}80` : `1px solid ${C.brd}`, marginBottom: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: noteGenerale ? 7 : 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: C.war, textTransform: 'uppercase' }}><Ic n="warn" s={11} c={C.war} />Anamnesi / Allergie</div>
-                <button onClick={() => { setNoteGenerale(paz.note || ''); setNoteModalOpen(true); }} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: `1px solid ${C.brd}`, borderRadius: 7, padding: '4px 9px', fontSize: 10, fontWeight: 700, color: C.txm, cursor: 'pointer' }}>
-                  {noteGenerale ? <><Ic n="edit" s={10} c={C.txm} />Modifica</> : '+ Aggiungi'}
-                </button>
-              </div>
-              {noteGenerale && <div style={{ fontSize: 13, color: C.war, lineHeight: 1.6 }}>{noteGenerale}</div>}
-              {!noteGenerale && <div style={{ fontSize: 11, color: C.txl, marginTop: 4 }}>Nessuna nota generale — tocca per aggiungere allergie, anamnesi, ecc.</div>}
+
+            <Crd className="legacy-info-card legacy-anamnesis-card" style={{ marginBottom: 10 }} onClick={() => { setTab('doc'); storieCliniche[0] ? setStoriaInVisualizzazione(storieCliniche[0]) : apriNuovaStoria(); }} role="button" tabIndex={0}>
+              {(() => { const latest = storieCliniche[0]; const risks = (latest?.risposte || []).filter((r) => r.valore === 'si').length; const alert = risks > 0 || Boolean(latest?.allergie); return <>
+                <div className="legacy-info-card__heading"><div><Ic n="pulse" s={18} c={C.pri} /><strong>Anamnesi medica</strong></div><span className={`legacy-anamnesis-alert ${alert ? 'is-danger' : 'is-safe'}`}><Ic n="bell" s={17} c="currentColor" /></span></div>
+                <div className="legacy-anamnesis-card__status">{latest ? (alert ? `${risks || 1} elemento da attenzionare` : 'Nessuna controindicazione rilevata') : 'Anamnesi da compilare'}</div>
+                <div className="legacy-anamnesis-card__note">Note: {latest?.note || noteGenerale || 'Nessuna nota clinica'}</div>
+              </>; })()}
             </Crd>
 
             {/* STORICO ANNOTAZIONI CLINICHE */}
@@ -638,7 +636,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
             </Crd>
 
             {/* ── FOTO E DOCUMENTI ── */}
-            <Crd>
+            {false && <Crd>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em' }}><Ic n="folder" s={11} c={C.pri} />Foto e documenti</div>
                 <button onClick={() => fileInputRef.current?.click()} style={{ background: C.pri, border: 'none', borderRadius: 8, padding: '7px 13px', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -686,10 +684,10 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                   ))}
                 </div>
               )}
-            </Crd>
+            </Crd>}
 
             {/* ANAMNESI / STORIA CLINICA */}
-            <Crd style={{ marginBottom: 10 }}>
+            {false && <Crd style={{ marginBottom: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                   <Ic n={usaAnamnesiMedicaStandard ? 'pulse' : 'clip'} s={11} c={C.pri} />{usaAnamnesiMedicaStandard ? 'Anamnesi medica' : 'Storia clinica'}
@@ -718,7 +716,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
                   </div>
                 );
               })}
-            </Crd>
+            </Crd>}
 
             {/* PRIVACY / GDPR */}
             <Crd style={{ marginBottom: 10 }}>
