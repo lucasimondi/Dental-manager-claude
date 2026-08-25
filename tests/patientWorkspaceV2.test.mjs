@@ -41,6 +41,14 @@ test('Round 4 registry includes automation and financial actions', () => {
   assert.match(domain, /TRIGGER.*CONDITION.*ACTION/);
 });
 
+test('payment plan prototype is fully configurable without persistence', () => {
+  for (const token of ['paymentPlanDraft', 'updatePaymentPlan', 'updateInstallment', 'installmentRows', 'paymentPlanReady', 'Conferma configurazione', 'Modifica ancora']) assert.ok(component.includes(token), `missing payment-plan behavior ${token}`);
+  assert.match(component, /Scadenza rata/);
+  assert.match(component, /Importo rata/);
+  assert.match(component, /nessuna persistenza/i);
+  assert.match(css, /pw2-installment-editor/);
+});
+
 test('Round 4 final UX contains centered modals, operational plan, economy, installments and timeline', () => {
   assert.doesNotMatch(component, /<span>\+<\/span>/);
   for (const text of ['Piano clinico attivo','/5 completate','aggiornamento immediato','Segna eseguita','Piano clinico completato','Nessun piano clinico attivo','Da attenzionare','Automazioni','Situazione economica','Preventivato','Accettato','Registra pagamento','Piano pagamenti','Nuova rateizzazione','INSTALLMENT','Timeline','Piani clinici | Preventivi','Preventivo #2026-014']) assert.ok(component.includes(text), `missing ${text}`);
