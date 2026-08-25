@@ -1840,3 +1840,15 @@ Code: revert this commit on the branch. Database: stop Chat writes, remove `poli
 - QA limits: unauthenticated production entry and public deployed assets were inspected. Authenticated patient data was not accessed; real patient clicks (many/few data) and preview console smoke QA require an authenticated session after Vercel creates the PR preview.
 - Rollback: revert the hotfix commit to restore the lazy boundary. No database rollback.
 - Exact next action: push, open a PR to `master`, wait for the Vercel preview, then run authenticated patient-list/detail/back smoke QA. Do not merge automatically.
+# POL-UI-PATIENT-FREEZE-PROD-2 — stable patient record rollback
+
+- Task ID: POL-UI-PATIENT-FREEZE-PROD-2. Agent: Codex. Branch: `hotfix/POL-UI-patient-freeze-prod-2`. Base: `origin/master` at `a84b159`.
+- Incident evidence: production still froze after PR #57 merged, disproving the lazy-chunk hypothesis as the operative root cause. The production `SchedaPaz.jsx` source itself was unchanged by #57 and still mounted a 1,744-line component with automatic Storage and clinical-history Supabase effects on patient open.
+- Recovery decision: exact runtime root cause cannot be proven without an authenticated production session. Per Product Owner instruction, restored `SchedaPaz.jsx` from known self-contained commit `950fbd1`, then added defensive normalization for nullable collections and legacy `plan.voci` rows.
+- PR #57 rollback: restored the lazy patient import in `App.jsx`; the eager-import change was unrelated and increased the main bundle without resolving the incident.
+- Suspended temporarily: automatic patient-file/history/document/consent/Fisio surfaces from the newer patient record. Essential Info, Piani, Pagamenti and Agenda history remain available. No database objects or data changed.
+- Files changed: `src/App.jsx`, `src/components/SchedaPaz.jsx`, `tests/poliedron.test.mjs`, `tests/patientRecordRecovery.test.mjs`, `tests/rbacCapabilities.test.mjs`, and coordination records.
+- Tests/build: targeted recovery tests pass; production build passes and emits the reduced `SchedaPaz` chunk. Full-suite result and final `git diff --check` recorded before commit.
+- QA limitation: no browser available in this environment has an authenticated production session. Login/list/patient/back/second-patient and rich/empty real-data QA must be completed on the Vercel preview with the Product Owner session before merge.
+- Rollback: revert the hotfix commit to restore the current master patient record. No database rollback.
+- Exact next action: push and open a non-draft PR; do not merge until authenticated preview QA passes.

@@ -1,5 +1,17 @@
 # Current task
 
+- TASK: POL-UI-PATIENT-FREEZE-PROD-2
+- TITLE: Emergency stable patient record rollback
+- OWNER: CODEX
+- BRANCH: `hotfix/POL-UI-patient-freeze-prod-2`
+- BASE: `origin/master` at `a84b159` (includes merged PR #57)
+- STATUS: READY_FOR_PR
+- OBJECTIVE: restore the self-contained legacy patient record and remove all automatic Supabase/effect work from the patient-open path.
+- SCOPE: patient record, the #57 App import rollback, targeted regression guards, and coordination records only.
+- NEXT_ACTION: push, open PR to `master`, wait for Vercel preview, then perform authenticated Product Owner smoke QA. Do not merge automatically.
+
+## Previous incident record
+
 - TASK: POL-UI-PATIENT-FREEZE-PROD
 - TITLE: Production patient record loading hotfix
 - OWNER: CODEX
