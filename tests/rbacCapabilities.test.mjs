@@ -77,8 +77,14 @@ test('POL-RBAC-001A: team management actions are gated by canManageTeam, never u
 
 test('POL-RBAC-001A: canManageTeam is derived from capability (physiotherapist/admin), never from assignment or patient count',()=>{
   const source=fs.readFileSync('src/components/SchedaPaz.jsx','utf8');
-  assert.match(source,/const canManagePhysioTeam = physioFullAccess \|\| isStudioAdmin === true;/);
-  assert.doesNotMatch(source,/canManagePhysioTeam[\s\S]{0,80}patient_care_assignments/);
+  if (source.includes('<PhysioCartella')) {
+    assert.match(source,/const canManagePhysioTeam = physioFullAccess \|\| isStudioAdmin === true;/);
+    assert.doesNotMatch(source,/canManagePhysioTeam[\s\S]{0,80}patient_care_assignments/);
+  } else {
+    // Production recovery deliberately suspends the Fisio mount; no hidden
+    // team-management surface or alternative authorization path may remain.
+    assert.doesNotMatch(source,/canManagePhysioTeam|patient_care_assignments/);
+  }
 });
 
 test('POL-RBAC-001A: assignment picker only offers capability-matching, same-studio collaborators',()=>{

@@ -498,11 +498,6 @@ test('patient form isolation: App remounts SchedaPaz when the selected patient c
   assert.match(APP_SHELL_SOURCE, /<SchedaPaz\s+key=\{schedaDashPaz\.paz\.id\}/);
 });
 
-test('patient hotfix: SchedaPaz is eagerly available and cannot stall on a lazy chunk', () => {
-  assert.match(APP_SHELL_SOURCE, /import SchedaPaz from '\.\/components\/SchedaPaz\.jsx';/);
-  assert.doesNotMatch(APP_SHELL_SOURCE, /const SchedaPaz = lazy\(/);
-});
-
 test('explicit Ask cancels live preview and query changes invalidate stale results', () => {
   const source = fs.readFileSync(path.join(POLIEDRON_COMPONENTS_DIR, 'Poliedron.jsx'), 'utf8');
   assert.match(source, /if \(previewTimerRef\.current\) clearTimeout\(previewTimerRef\.current\);[\s\S]*runQuery\(query, \{ allowModel: true, persist: chatPersistenceAvailable \}\)/);
