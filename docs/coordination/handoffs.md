@@ -1877,3 +1877,16 @@ Code: revert this commit on the branch. Database: stop Chat writes, remove `poli
 - Risks: every create control is a non-persisting prototype. The preview total uses only synthetic fixture arrays and is not a production financial source of truth.
 - Rollback: revert the Round 2 commit; no database rollback.
 - Exact next action: push this commit to PR #59, wait for Vercel to report Ready, then Product Owner reviews the updated preview. Stop before further development or merge.
+# POL-UI-005B Round 3 — Clinical Workflow
+
+- Task ID: POL-UI-005B Round 3. Agent: Codex. Branch: `ui/POL-UI-005B-patient-workspace-v2`. Existing PR: #59.
+- Objective: communicate the canonical Visit → Clinical plan → Quote → Share/Print → Acceptance → Execution → Payment flow through contextual next-step CTAs, without an invasive timeline or real persistence.
+- Completed work: expanded the compact Action Bar to five actions; added prescription and consent prototypes; made the clinical summary shareable through an editable WhatsApp preview; implemented an uninterrupted plan-ready → inherited quote composer → quote-ready flow with dynamic partial total; added confirmation language; and added a non-invasive Polyedron interpretation/preview simulation.
+- Shared architecture: added `src/lib/patientWorkspaceActionRegistry.js` with the nine requested canonical action names. UI controls and the Polyedron prototype reference the same descriptive contract; no model or backend integration exists.
+- Files changed: `src/components/PatientWorkspaceV2.jsx`, `src/components/PatientWorkspaceV2.css`, `src/lib/patientWorkspaceActionRegistry.js`, `tests/patientWorkspaceV2.test.mjs`, and coordination records.
+- Database/dependencies: none. Zero Supabase, Storage, migration, subscription, fetch, local/session storage, data write, package or lockfile change.
+- Production isolation: `src/App.jsx` and `src/components/SchedaPaz.jsx` remain unchanged from `origin/master`; the only route remains `/patient-workspace-v2-demo`.
+- Tests: targeted guards 8/8 passed. Full `npm test`: 438/443 passed; the same five date-sensitive Agenda baseline failures remain outside scope. `npm run build` passed with pre-existing warnings. `git diff --check` clean. Browser QA verified the complete plan-to-quote flow, inherited treatments, ready states, explicit confirmation, prescription, consent, share preview, Polyedron preview, no desktop overflow, and one occurrence each of phone/CF/last visit.
+- Responsive compromise: at <=820px the five quick actions use a contained horizontal scroll with scroll-snap; the page itself remains overflow-free. Drawers are full-width on phone. Exact device emulation was unavailable in the browser surface, so breakpoint-specific guards cover 375, 390/430 via <=520, 768 via <=820, and desktop.
+- Rollback: revert the Round 3 commit; no database rollback.
+- Exact next action: push to PR #59, wait for Vercel Ready, then stop for Product Owner Round 3 review. Do not merge or continue into real implementation.

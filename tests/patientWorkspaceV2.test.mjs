@@ -8,6 +8,7 @@ const main = fs.readFileSync('src/main.jsx', 'utf8');
 const app = fs.readFileSync('src/App.jsx', 'utf8');
 const patientRecord = fs.readFileSync('src/components/SchedaPaz.jsx', 'utf8');
 const css = fs.readFileSync('src/components/PatientWorkspaceV2.css', 'utf8');
+const registry = fs.readFileSync('src/lib/patientWorkspaceActionRegistry.js', 'utf8');
 
 test('Patient Workspace 2.0 is available only through its isolated demo route', () => {
   assert.match(main, /patient-workspace-v2-demo/);
@@ -17,12 +18,28 @@ test('Patient Workspace 2.0 is available only through its isolated demo route', 
 });
 
 test('preview performs no automatic remote work', () => {
-  for (const source of [component, demo]) {
+  for (const source of [component, demo, registry]) {
     assert.doesNotMatch(source, /supabase/i);
     assert.doesNotMatch(source, /useEffect/);
     assert.doesNotMatch(source, /fetch\s*\(/);
     assert.doesNotMatch(source, /\.storage\b/);
+    assert.doesNotMatch(source, /localStorage|sessionStorage|indexedDB/);
   }
+});
+
+test('Round 3 exposes five compact quick actions and canonical shared action registry', () => {
+  for (const label of ['Prestazione', 'Piano clinico', 'Preventivo', 'Ricetta', 'Consenso']) assert.ok(component.includes(label));
+  for (const action of ['CREATE_CLINICAL_PLAN', 'ADD_TREATMENT', 'UPDATE_TREATMENT_STATUS', 'CREATE_QUOTE', 'SEND_QUOTE', 'PRINT_QUOTE', 'CREATE_PRESCRIPTION', 'CREATE_CONSENT', 'SEND_CLINICAL_SUMMARY']) {
+    assert.match(registry, new RegExp(`${action}: \\{ id: '${action}'`));
+  }
+  assert.match(component, /PATIENT_WORKSPACE_ACTIONS/);
+});
+
+test('Round 3 prototypes the plan to quote workflow, sharing and Polyedron confirmation', () => {
+  for (const text of ['Piano clinico pronto', 'Genera preventivo →', 'Preventivo pronto', 'Anteprima messaggio', 'Invia WhatsApp', 'Prova con Polyedron', 'Nessuna azione è stata eseguita.', 'Conferma', 'Modifica', 'Annulla']) assert.ok(component.includes(text), `missing ${text}`);
+  assert.match(component, /selectedQuoteItems/);
+  assert.match(component, /setQuoteReady\(true\)/);
+  assert.match(component, /shareMessage/);
 });
 
 test('workspace keeps the required identity, KPI and navigation surfaces', () => {
@@ -42,7 +59,7 @@ test('Round 2 keeps creation actions distinct and prototype-only', () => {
   for (const site of ['Dente', 'Quadrante', 'Arcata', 'Generale', 'Nessuna']) assert.ok(component.includes(site));
   for (const status of ['Proposta', 'Pianificata', 'In corso', 'Eseguita']) assert.ok(component.includes(status));
   assert.match(component, /Prototype · nessun salvataggio/);
-  assert.match(component, /Preventivo economico/);
+  assert.match(component, /Preventivo dal piano clinico/);
   assert.match(component, /Piano clinico/);
 });
 
