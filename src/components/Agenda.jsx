@@ -1091,7 +1091,12 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       ...(isMobile
         ? {
             position: 'absolute', inset: 0, boxSizing: 'border-box',
-            paddingTop: 'calc(13px + env(safe-area-inset-top, 0px))',
+            // The mobile header is intentionally gone, so this root owns the
+            // complete top clearance. Keep the shared toolbar below both the
+            // device safe area and a visible/tappable 20px breathing space;
+            // applying it here moves Week/WA/Filters/View together without
+            // changing their handlers, dimensions or desktop positioning.
+            paddingTop: 'calc(env(safe-area-inset-top, 0px) + 20px)',
             paddingBottom: 'env(safe-area-inset-bottom, 0px)',
             paddingLeft: 6, paddingRight: 6,
           }
