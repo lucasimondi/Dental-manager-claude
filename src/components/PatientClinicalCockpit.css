@@ -13,6 +13,7 @@
 }
 
 .patient-cockpit * { box-sizing: border-box; }
+body:has(.patient-cockpit) .poliedron-mobile-dock { display: none !important; }
 
 .patient-cockpit-header {
   position: sticky;
