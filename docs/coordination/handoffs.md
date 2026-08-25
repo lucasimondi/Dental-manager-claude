@@ -1826,3 +1826,17 @@ The preview points at the production database (`src/lib/supabase.js` hardcodes t
 Code: revert this commit on the branch. Database: stop Chat writes, remove `poliedron_messages` from `supabase_realtime`, then drop the two additive tables and the two task-owned trigger functions in dependency order. No pre-existing object was modified, so nothing else requires restoration.
 
 - Exact next action: the Product Owner performs the final QA on preview #53 with his own session — central Polyedron button must show NO chat history and NO history banner and must answer normally; Chat (dock, bell, desktop sidebar) must show the same persistent thread surviving navigation, refresh, close/reopen and logout/login; only the bell may carry an unread badge; the Home save must behave exactly as approved in #51 with no DEV/PREVIEW readout on screen. Do not merge, do not deploy to production, do not apply any further migration. Status: `WAITING_PRODUCT_OWNER_FINAL_QA`.
+# POL-UI-PATIENT-FREEZE-PROD — production patient record recovery
+
+- Task ID: POL-UI-PATIENT-FREEZE-PROD.
+- Agent: Codex. Branch: `hotfix/POL-UI-patient-freeze-prod`. Base: `origin/master` at `96b01c6`.
+- Objective: restore reliable access to the patient record without changing its UI or clinical/data behavior.
+- Root cause: `App.jsx` loaded `SchedaPaz.jsx` through a separate hashed lazy chunk and wrapped that path in `Suspense fallback={null}`. The deployed PWA therefore had an unrecoverable suspended path when a cached client could not resolve the current patient chunk. Production referenced `SchedaPaz-BUUpwNH6.js`; the hotfix build has no separate `SchedaPaz-*` chunk.
+- Patient Workspace 2.0: not active on `master` or in the inspected production bundle. `PatientClinicalCockpit.jsx` and `patientCockpitModel.js` remain only on `ui/POL-UI-005-patient-workspace`; this incident is not attributed to that workspace.
+- Completed work: replaced the lazy `SchedaPaz` declaration with a static import; added a regression assertion that forbids restoring the patient-detail lazy boundary.
+- Files changed: `src/App.jsx`, `tests/poliedron.test.mjs`, `docs/coordination/current-task.md`, `docs/coordination/handoffs.md`.
+- Database/dependencies: none. No Supabase query, schema, migration, RLS, package, or lockfile change.
+- Tests: targeted patient guard 60/60 passed. Full `npm test`: 428/433 passed; the five failures are the pre-existing date-sensitive `tests/agendaSlots.test.mjs` fixtures returning no slots on the current date and are outside this hotfix. `npm run build`: passed. `git diff --check`: clean.
+- QA limits: unauthenticated production entry and public deployed assets were inspected. Authenticated patient data was not accessed; real patient clicks (many/few data) and preview console smoke QA require an authenticated session after Vercel creates the PR preview.
+- Rollback: revert the hotfix commit to restore the lazy boundary. No database rollback.
+- Exact next action: push, open a PR to `master`, wait for the Vercel preview, then run authenticated patient-list/detail/back smoke QA. Do not merge automatically.
