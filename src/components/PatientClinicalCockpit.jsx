@@ -44,15 +44,25 @@ const calculateAge = (birthDate) => {
 const statusLabel = (treatment) => treatment.completed ? 'Eseguita' : 'Da fare';
 const normalizeSearch = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
-function AnatomyGraphic({ kind, side = 'front' }) {
+function AnatomyGraphic({ kind, side = 'front', selectedContext, onSelect }) {
+  const zone = (value, label) => ({
+    role: 'button', tabIndex: 0, 'aria-label': label,
+    className: `patient-anatomy-zone ${selectedContext?.value === value ? 'is-selected' : ''}`,
+    onClick: () => onSelect(buildAnatomicalContext(kind === 'face' ? 'face_region' : 'body_region', value, label)),
+    onKeyDown: (event) => { if (event.key === 'Enter' || event.key === ' ') onSelect(buildAnatomicalContext(kind === 'face' ? 'face_region' : 'body_region', value, label)); },
+  });
   if (kind === 'face') return (
     <svg className="patient-anatomy-svg" viewBox="0 0 220 280" role="img" aria-label="Mappa anatomica del viso">
       <path className="patient-anatomy-fill" d="M110 18C64 18 42 54 46 105c4 58 28 123 64 139 36-16 60-81 64-139 4-51-18-87-64-87Z" />
       <path d="M76 104c12-9 25-9 34 0M110 104c9-9 22-9 34 0M110 94v48l-13 10h26M87 175c15 10 31 10 46 0M78 82c12-6 23-6 32-1M110 81c9-5 20-5 32 1" />
       <circle cx="91" cy="107" r="4"/><circle cx="129" cy="107" r="4"/>
-      <path className="patient-anatomy-zone" d="M66 56Q110 28 154 56L145 82Q110 69 75 82Z" />
-      <path className="patient-anatomy-zone" d="M71 116Q110 96 149 116L142 143Q110 130 78 143Z" />
-      <path className="patient-anatomy-zone" d="M80 164Q110 150 140 164L133 190Q110 202 87 190Z" />
+      <path {...zone('forehead', 'Fronte')} d="M66 56Q110 28 154 56L145 82Q110 69 75 82Z" />
+      <path {...zone('periocular', 'Area perioculare')} d="M69 91Q90 78 109 93L104 123Q84 129 69 112ZM111 93Q130 78 151 91L151 112Q136 129 116 123Z" />
+      <path {...zone('nose', 'Naso')} d="M101 104h18l9 50-18 12-18-12Z" />
+      <path {...zone('zygomatic', 'Zigomi')} d="M57 120l36-3 9 34-35 18ZM163 120l-36-3-9 34 35 18Z" />
+      <path {...zone('lips', 'Labbra')} d="M82 170Q110 151 138 170Q110 198 82 170Z" />
+      <path {...zone('chin', 'Mento')} d="M85 192Q110 210 135 192L128 224Q110 242 92 224Z" />
+      <path {...zone('jawline', 'Mandibola')} d="M54 157Q65 213 110 244Q155 213 166 157L151 195Q134 229 110 238Q86 229 69 195Z" />
     </svg>
   );
   return (
@@ -60,9 +70,12 @@ function AnatomyGraphic({ kind, side = 'front' }) {
       <circle className="patient-anatomy-fill" cx="110" cy="40" r="28" />
       <path className="patient-anatomy-fill" d="M82 76Q110 62 138 76l18 95-19 84-8 139h-31l-8-113-8 113H51l-8-139-19-84 18-95Z" />
       <path d="M110 76v177M57 121l53 20 53-20M66 208h88M81 255l29 26 29-26" />
-      <path className="patient-anatomy-zone" d="M63 88Q110 70 157 88l-8 58Q110 128 71 146Z" />
-      <path className="patient-anatomy-zone" d="M69 157Q110 140 151 157l-10 69Q110 240 79 226Z" />
-      <path className="patient-anatomy-zone" d="M49 263h45l4 123H58ZM126 263h45l-9 123h-40Z" />
+      <path {...zone(side === 'front' ? 'chest' : 'upper_back', side === 'front' ? 'Torace' : 'Dorso alto')} d="M63 88Q110 70 157 88l-8 58Q110 128 71 146Z" />
+      <path {...zone(side === 'front' ? 'abdomen' : 'lower_back', side === 'front' ? 'Addome' : 'Zona lombare')} d="M69 157Q110 140 151 157l-10 69Q110 240 79 226Z" />
+      <path {...zone(side === 'front' ? 'left_arm' : 'left_shoulder', side === 'front' ? 'Braccio sinistro' : 'Spalla sinistra')} d="M42 82 70 91 56 244 25 224Z" />
+      <path {...zone(side === 'front' ? 'right_arm' : 'right_shoulder', side === 'front' ? 'Braccio destro' : 'Spalla destra')} d="M178 82 150 91 164 244 195 224Z" />
+      <path {...zone(side === 'front' ? 'left_leg' : 'left_leg_back', 'Gamba sinistra')} d="M49 263h45l4 123H58Z" />
+      <path {...zone(side === 'front' ? 'right_leg' : 'right_leg_back', 'Gamba destra')} d="M126 263h45l-9 123h-40Z" />
     </svg>
   );
 }
@@ -248,7 +261,7 @@ function ClinicalMap({
       )}
       {tab === 'face_region' && (
         <div className="patient-anatomical-map">
-            <div className="patient-anatomical-silhouette"><AnatomyGraphic kind="face" /></div>
+            <div className="patient-anatomical-silhouette"><AnatomyGraphic kind="face" selectedContext={selectedContext} onSelect={setSelectedContext} /></div>
           <RegionPicker regions={FACE_REGIONS} type="face_region" selectedContext={selectedContext} onSelect={setSelectedContext} />
         </div>
       )}
@@ -259,7 +272,7 @@ function ClinicalMap({
             <button className={bodySide === 'back' ? 'is-active' : ''} onClick={() => setBodySide('back')}>Retro</button>
           </div>
           <div className="patient-anatomical-map">
-            <div className="patient-anatomical-silhouette"><AnatomyGraphic kind="body" side={bodySide} /></div>
+            <div className="patient-anatomical-silhouette"><AnatomyGraphic kind="body" side={bodySide} selectedContext={selectedContext} onSelect={setSelectedContext} /></div>
             <RegionPicker regions={BODY_REGIONS[bodySide]} type="body_region" selectedContext={selectedContext} onSelect={setSelectedContext} />
           </div>
         </>
@@ -271,18 +284,28 @@ function ClinicalMap({
 }
 
 function QuickActionsBar({ onNewAppointment, onOpenDocuments, onOpenNotes, onOpenPayments, onCreateQuote }) {
-  const [expanded, setExpanded] = React.useState(false);
-  const actions = [
-    ['cal', 'Appuntamento', onNewAppointment],
-    ['plan', 'Preventivo', onCreateQuote],
-    ['doc', 'Consenso', onOpenDocuments],
-    ['file', 'Ricetta', onOpenDocuments],
-    ['eur', 'Fattura', onOpenPayments],
-    ['pay', 'Rimborso', onOpenPayments],
-    ['clip', 'Nota', onOpenNotes],
-  ];
-  const visible = expanded ? actions : actions.slice(0, 4);
-  return <div className="patient-quick-actions"><div><span>Azioni rapide</span><strong>Lo stesso catalogo usato da Poliedron</strong></div><div className="patient-quick-actions__buttons">{visible.map(([icon, label, action]) => <button key={label} onClick={action} disabled={!action}><Ic n={icon} s={14} c="currentColor" />{label}</button>)}<button className="is-more" onClick={() => setExpanded((value) => !value)}>{expanded ? 'Meno' : '+ Azioni'}</button></div></div>;
+  const catalog = React.useMemo(() => [
+    { id: 'appointment', icon: 'cal', label: 'Appuntamento', tone: 'sky', action: onNewAppointment },
+    { id: 'quote', icon: 'plan', label: 'Preventivo', tone: 'violet', action: onCreateQuote },
+    { id: 'consent', icon: 'doc', label: 'Consenso', tone: 'teal', action: onOpenDocuments },
+    { id: 'prescription', icon: 'file', label: 'Ricetta', tone: 'indigo', action: onOpenDocuments },
+    { id: 'invoice', icon: 'eur', label: 'Fattura', tone: 'amber', action: onOpenPayments },
+    { id: 'refund', icon: 'pay', label: 'Rimborso', tone: 'rose', action: onOpenPayments },
+    { id: 'note', icon: 'clip', label: 'Nota', tone: 'slate', action: onOpenNotes },
+  ], [onNewAppointment, onCreateQuote, onOpenDocuments, onOpenPayments, onOpenNotes]);
+  const [editing, setEditing] = React.useState(false);
+  const [configured, setConfigured] = React.useState(() => {
+    try { return JSON.parse(localStorage.getItem('poliedra.patientQuickActions')) || ['appointment', 'quote', 'consent', 'prescription']; } catch { return ['appointment', 'quote', 'consent', 'prescription']; }
+  });
+  React.useEffect(() => { localStorage.setItem('poliedra.patientQuickActions', JSON.stringify(configured)); }, [configured]);
+  const selected = configured.map((id) => catalog.find((item) => item.id === id)).filter(Boolean);
+  const toggle = (id) => setConfigured((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  const move = (id, delta) => setConfigured((current) => { const index = current.indexOf(id); const nextIndex = index + delta; if (index < 0 || nextIndex < 0 || nextIndex >= current.length) return current; const next = [...current]; [next[index], next[nextIndex]] = [next[nextIndex], next[index]]; return next; });
+  return <div className="patient-quick-actions">
+    <div className="patient-quick-actions__intro"><span>Workspace actions</span><strong>Azioni rapide</strong><small>Personalizzate per il tuo lavoro e disponibili anche a Poliedron.</small></div>
+    <div className="patient-quick-actions__buttons">{selected.map((item) => <button className={`tone-${item.tone}`} key={item.id} onClick={item.action} disabled={!item.action}><span><Ic n={item.icon} s={15} c="currentColor" /></span>{item.label}</button>)}<button className="is-more" onClick={() => setEditing(true)}><Ic n="set" s={14} c="currentColor" />Personalizza</button></div>
+    {editing && <div className="patient-action-editor-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setEditing(false)}><div className="patient-action-editor"><div className="patient-action-editor__header"><div><span>Azioni rapide</span><h3>Personalizza il workspace</h3><p>Scegli e ordina le azioni che usi più spesso.</p></div><button onClick={() => setEditing(false)} aria-label="Chiudi"><Ic n="x" s={16} c="currentColor" /></button></div><div className="patient-action-editor__list">{catalog.map((item) => { const active = configured.includes(item.id); const position = configured.indexOf(item.id); return <div key={item.id} className={active ? 'is-active' : ''}><button className="patient-action-editor__toggle" onClick={() => toggle(item.id)}><span className={`tone-${item.tone}`}><Ic n={item.icon} s={15} c="currentColor" /></span><strong>{item.label}</strong><em>{active ? 'Visibile' : 'Nascosta'}</em></button>{active && <div><button onClick={() => move(item.id, -1)} disabled={position === 0}>↑</button><button onClick={() => move(item.id, 1)} disabled={position === configured.length - 1}>↓</button></div>}</div>; })}</div><button className="patient-cockpit-primary-button" onClick={() => setEditing(false)}>Salva configurazione</button></div></div>}
+  </div>;
 }
 
 function TreatmentGroup({ group, onSelect, onToggle }) {
