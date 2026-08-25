@@ -1890,3 +1890,18 @@ Code: revert this commit on the branch. Database: stop Chat writes, remove `poli
 - Responsive compromise: at <=820px the five quick actions use a contained horizontal scroll with scroll-snap; the page itself remains overflow-free. Drawers are full-width on phone. Exact device emulation was unavailable in the browser surface, so breakpoint-specific guards cover 375, 390/430 via <=520, 768 via <=820, and desktop.
 - Rollback: revert the Round 3 commit; no database rollback.
 - Exact next action: push to PR #59, wait for Vercel Ready, then stop for Product Owner Round 3 review. Do not merge or continue into real implementation.
+
+# POL-UI-005B Round 5 — UI fixes and domain audit
+
+- Task ID: POL-UI-005B Round 5. Agent: Codex. Branch: `ui/POL-UI-005B-patient-workspace-v2`. Existing PR: #59.
+- Objective: fix anatomical-site collisions and treatment action/status semantics in the isolated preview, then document the existing patient-domain/data flows without backend changes.
+- Completed work: gave Piano/Preventivo composers stable responsive site columns for General, arch, quadrant and tooth cases; added accessible state-aware `⋯` menus; added non-color-only professional status badges; marked unscheduled recalls as `RECALL`; produced the repository-evidenced canonical-domain audit and migration proposal.
+- Files changed: `src/components/PatientWorkspaceV2.jsx`, `src/components/PatientWorkspaceV2.css`, `tests/patientWorkspaceV2.test.mjs`, `docs/audits/POL-PATIENT-WORKSPACE-DOMAIN-AUDIT.md`, and coordination records.
+- Database/dependencies: none. Audit only. No query against the remote project, schema/migration/RLS/data change, package change, subscription, persistence or production wiring.
+- Production isolation: `src/App.jsx` and `src/components/SchedaPaz.jsx` are unchanged from `origin/master`; the demo remains `/patient-workspace-v2-demo` only.
+- Tests: dedicated guards 12/12 passed. Full `npm test`: 442/447 passed; the same five date-sensitive Agenda baseline failures remain outside scope. `npm run build` passed with pre-existing warnings. `git diff --check` clean.
+- Browser QA: local 1280 viewport has no page overflow (`scrollWidth=innerWidth=1280`); centered 760px composer; all site cases visible in Plan and Quote; context menus verified for Eseguita, Da eseguire, In corso and Richiamo. Breakpoint guards cover 375/390/430 through <=520 and tablet through <=820; exact device resizing remains unavailable in the current browser surface.
+- Audit conclusion: dental `TREATMENT` remains legacy `plans.voci`; plan/quote are not separate aggregates; canonical financial events/allocations already exist and should be reused; payment plans/installments, explicit follow-up, timeline event store and automation-rule persistence are missing.
+- Risks: older operational table DDL/RLS is not fully represented by migrations. The audit labels these claims as repository-evidenced/remote-unverified and recommends a separately approved read-only remote inventory before schema design.
+- Rollback: revert the Round 5 commit; no database rollback.
+- Exact next action: push to PR #59, wait for Vercel Ready, then stop for Product Owner review. Do not implement the audit proposal or merge.

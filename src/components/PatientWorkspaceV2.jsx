@@ -59,10 +59,20 @@ function DetailDrawer({ title, onClose, children }) {
 const QUICK_SERVICES = ['Corona zirconia', 'Implantologia', 'Igiene professionale', 'Otturazione composito', 'Controllo clinico'];
 const PLAN_COMPOSER_ITEMS = [
   { id: 'endo-26', treatment: 'Endodonzia', site: '26', price: 420 },
-  { id: 'rebuild-26', treatment: 'Ricostruzione', site: '26', price: 190 },
-  { id: 'crown-26', treatment: 'Corona zirconia', site: '26', price: 720 },
+  { id: 'rebuild-36', treatment: 'Ricostruzione', site: 'Dente 36', price: 190 },
+  { id: 'crown-arch', treatment: 'Corona zirconia', site: 'Arcata superiore', price: 720 },
+  { id: 'check-quadrant', treatment: 'Controllo parodontale', site: 'Quadrante 3', price: 90 },
   { id: 'hygiene', treatment: 'Igiene', site: 'Generale', price: 110 },
 ];
+
+const statusTone = (status) => status === 'Eseguita' ? 'done' : status === 'In corso' ? 'progress' : status === 'Richiamo da programmare' ? 'recall' : 'todo';
+const contextualActions = (status) => status === 'Eseguita'
+  ? ['Crea follow-up', 'Crea richiamo', 'Apri dettaglio', 'Modifica nota']
+  : status === 'In corso'
+    ? ['Programma', 'Segna eseguita', 'Crea follow-up', 'Modifica', 'Annulla']
+    : status === 'Richiamo da programmare'
+      ? ['Programma', 'Crea follow-up', 'Modifica', 'Annulla']
+      : ['Programma', 'Segna in corso', 'Segna eseguita', 'Crea richiamo', 'Modifica', 'Annulla'];
 
 function DiscountEditor({ type, value, onType, onValue, subtotal, discount, total }) {
   return <div className="pw2-discount"><strong>Sconto</strong><div>{['Nessuno', '%', '€'].map((option) => <button type="button" className={type === option ? 'is-active' : ''} key={option} onClick={() => onType(option)}>{option}</button>)}</div>{type !== 'Nessuno' && <input value={value} inputMode="decimal" onChange={(event) => onValue(event.target.value)} aria-label="Valore sconto" />}<dl><div><dt>Subtotale</dt><dd>{fmt(subtotal)}</dd></div><div><dt>Sconto</dt><dd>− {fmt(discount)}</dd></div><div><dt>Totale finale</dt><dd>{fmt(total)}</dd></div></dl></div>;
@@ -129,6 +139,7 @@ export default function PatientWorkspaceV2({ patient, plans, payments, appointme
   const [quickCreate, setQuickCreate] = useState(null);
   const [tab, setTab] = useState('info');
   const [planFilter, setPlanFilter] = useState('Tutte');
+  const [openTreatmentMenu, setOpenTreatmentMenu] = useState(null);
   const age = yearsOld(patient?.dataNascita);
   const kpis = [
     { id: 'plans', label: 'Piani', value: model.patientPlans.length, icon: 'plan' },
@@ -190,7 +201,7 @@ export default function PatientWorkspaceV2({ patient, plans, payments, appointme
 
       <section className="pw2-attention"><div><span>Da attenzionare</span><strong>Corona 26 non programmata</strong><small>Controllo consigliato entro 4 giorni</small></div><button onClick={() => setQuickCreate('automations')}>Automazioni</button></section>
 
-      <section className="pw2-active-plan" data-entity="CLINICAL_PLAN"><div className="pw2-plan-head"><div><span>Piano clinico attivo</span><h2>Piano 25/08/26</h2><p>{model.completed.length}/5 completate · 40% · Prossima prestazione: Corona 26</p></div><div><button onClick={() => setQuickCreate('share')}>Condividi</button><button onClick={() => setQuickCreate('odontogram')}>Odontogramma</button></div></div><div className="pw2-progress"><span style={{ width: '40%' }} /></div><div className="pw2-plan-filters">{['Tutte','Da fare','In corso','Eseguite'].map((filter) => <button className={planFilter === filter ? 'is-active' : ''} key={filter} onClick={() => setPlanFilter(filter)}>{filter}</button>)}</div><div className="pw2-plan-table"><div className="pw2-plan-columns"><span>Prestazione</span><span>Sede</span><span>Stato</span><span>Prezzo</span><span>Prossimo step</span><span>Azioni</span></div>{visiblePlanRows.map((item) => <article key={item.key}><strong>{item.prestazione}</strong><span>{item.site}</span><span>{item.status}</span><b>{fmt(Number(item.prezzo)||0)}</b><small>{item.status === 'Eseguita' ? 'Completata' : 'Da programmare'}</small><div><button>Segna eseguita</button><button>Programma</button><button aria-label="Altre azioni">⋯</button></div></article>)}</div><footer><span>Le prestazioni eseguite restano nel piano e nella Timeline.</span><button onClick={() => setQuickCreate('quote')}>Genera preventivo →</button></footer></section>
+      <section className="pw2-active-plan" data-entity="CLINICAL_PLAN"><div className="pw2-plan-head"><div><span>Piano clinico attivo</span><h2>Piano 25/08/26</h2><p>{model.completed.length}/5 completate · 40% · Prossima prestazione: Corona 26</p></div><div><button onClick={() => setQuickCreate('share')}>Condividi</button><button onClick={() => setQuickCreate('odontogram')}>Odontogramma</button></div></div><div className="pw2-progress"><span style={{ width: '40%' }} /></div><div className="pw2-plan-filters">{['Tutte','Da fare','In corso','Eseguite'].map((filter) => <button className={planFilter === filter ? 'is-active' : ''} key={filter} onClick={() => setPlanFilter(filter)}>{filter}</button>)}</div><div className="pw2-plan-table"><div className="pw2-plan-columns"><span>Prestazione</span><span>Sede</span><span>Stato</span><span>Prezzo</span><span>Prossimo step</span><span>Azioni</span></div>{visiblePlanRows.map((item) => { const isRecall = item.status === 'Richiamo da programmare'; return <article key={item.key} data-entity={isRecall ? 'RECALL' : 'TREATMENT'}><strong>{item.prestazione}</strong><span className="pw2-site-label">{item.site}</span><span className={`pw2-status-badge is-${statusTone(item.status)}`}><i aria-hidden="true" />{item.status}</span><b>{fmt(Number(item.prezzo)||0)}</b><small>{item.status === 'Eseguita' ? 'Completata' : 'Da programmare'}</small><div className="pw2-row-actions"><button>Segna eseguita</button><button>Programma</button><span className="pw2-context-wrap"><button aria-label={`Altre azioni per ${item.prestazione}`} aria-haspopup="menu" aria-expanded={openTreatmentMenu === item.key} onClick={() => setOpenTreatmentMenu((current) => current === item.key ? null : item.key)}>⋯</button>{openTreatmentMenu === item.key && <span className="pw2-context-menu" role="menu" aria-label={`Azioni ${item.prestazione}`}>{contextualActions(item.status).map((label) => <button role="menuitem" key={label} onClick={() => setOpenTreatmentMenu(null)}>{label}</button>)}</span>}</span></div></article>; })}</div><footer><span>Le prestazioni eseguite restano nel piano e nella Timeline.</span><button onClick={() => setQuickCreate('quote')}>Genera preventivo →</button></footer></section>
 
       <aside className="pw2-plan-completion-contract"><span>Stato finale previsto: ✓ Piano clinico completato · resta nei Piani e nella Timeline.</span><span>Empty state previsto: Nessun piano clinico attivo → Crea Piano clinico.</span></aside>
       <section className="pw2-economy" data-entity="PAYMENT"><div><span>Situazione economica</span><h2>Pagato {fmt(1700)}</h2><p>Residuo {fmt(400)} · 3/5 rate pagate · prossima €500 il 15/09</p></div><button onClick={() => setQuickCreate('economy')}>Dettagli →</button></section>

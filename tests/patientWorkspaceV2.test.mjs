@@ -106,3 +106,16 @@ test('responsive CSS covers compact mobile, mobile and tablet without horizontal
   assert.match(css, /max-width:520px/);
   assert.match(css, /max-width:820px/);
 });
+
+test('Round 5 keeps anatomical sites readable and treatment actions state-aware', () => {
+  for (const site of ['Generale', 'Arcata superiore', 'Quadrante 3', 'Dente 36', "site: '26'"]) assert.ok(component.includes(site), `missing anatomical case ${site}`);
+  assert.match(css, /minmax\(112px,142px\)/);
+  assert.match(css, /overflow-wrap:anywhere/);
+  assert.match(component, /aria-haspopup="menu"/);
+  assert.match(component, /role="menu"/);
+  for (const action of ['Segna in corso', 'Crea richiamo', 'Crea follow-up', 'Apri dettaglio', 'Modifica nota', 'Annulla']) assert.ok(component.includes(action), `missing contextual action ${action}`);
+  for (const tone of ['is-done', 'is-todo', 'is-progress', 'is-recall']) assert.ok(css.includes(tone), `missing status tone ${tone}`);
+  assert.match(component, /data-entity=\{isRecall \? 'RECALL' : 'TREATMENT'\}/);
+  assert.match(css, /@media\(max-width:820px\)/);
+  assert.match(css, /@media\(max-width:520px\)/);
+});
