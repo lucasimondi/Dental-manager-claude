@@ -452,18 +452,25 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
    Va incollato sulla stessa riga dell'etichetta mese: non aggiunge nessuna riga
    in più, a differenza della vecchia barra a tre tab che occupava spazio prezioso
    sullo schermo del telefono. */
-function ViewPicker({ view, setView }) {
+function ViewPicker({ view, setView, touchSafe = false }) {
   const [open, setOpen] = useState(false);
   const LABEL = { giorno: 'Giorno', settimana: 'Settimana', mese: 'Mese' };
   return (
     <div style={{ position: 'relative', flexShrink: 0 }}>
-      <button onClick={() => setOpen(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: C.priL, color: C.pri, border: 'none', borderRadius: 14, padding: '5px 8px 5px 11px', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
-        {LABEL[view]}
-        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke={C.pri} strokeWidth="3" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="M6 9l6 6 6-6" /></svg>
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={touchSafe
+          ? { display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 44, height: 44, padding: 0, background: 'transparent', border: 'none', cursor: 'pointer' }
+          : { display: 'flex', alignItems: 'center', gap: 4, background: C.priL, color: C.pri, border: 'none', borderRadius: 14, padding: '5px 8px 5px 11px', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
+      >
+        <span style={touchSafe ? { display: 'flex', alignItems: 'center', gap: 4, background: C.priL, color: C.pri, borderRadius: 14, padding: '5px 8px 5px 11px', fontSize: 12, fontWeight: 800, pointerEvents: 'none' } : { display: 'contents' }}>
+          {LABEL[view]}
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke={C.pri} strokeWidth="3" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="M6 9l6 6 6-6" /></svg>
+        </span>
       </button>
       {open && <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 34 }} />}
       {open && (
-        <div style={{ position: 'absolute', top: 30, right: 0, background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 10, boxShadow: '0 8px 22px rgba(0,0,0,0.18)', width: 126, overflow: 'hidden', zIndex: 35 }}>
+        <div style={{ position: 'absolute', top: touchSafe ? 42 : 30, right: 0, background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 10, boxShadow: '0 8px 22px rgba(0,0,0,0.18)', width: 126, overflow: 'hidden', zIndex: 35 }}>
           {['giorno', 'settimana', 'mese'].map((v) => (
             <div key={v} onClick={() => { setView(v); setOpen(false); }} style={{ padding: '9px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', background: view === v ? C.priL : 'transparent', color: view === v ? C.pri : C.txt }}>{LABEL[v]}</div>
           ))}
@@ -993,7 +1000,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       onClick={() => setRichiesteAperte(true)}
       aria-label={`${richieste.length} notifiche`}
       className="pol-icon-btn"
-      style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', background: C.priL, border: 'none', cursor: 'pointer', flexShrink: 0, boxShadow: '0 1px 2px rgba(15,23,42,.06), 0 4px 10px rgba(15,23,42,.08)' }}
+      style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: isMobile ? 44 : 30, height: isMobile ? 44 : 30, padding: isMobile ? 7 : 0, boxSizing: 'border-box', borderRadius: '50%', background: C.priL, backgroundClip: isMobile ? 'content-box' : 'border-box', border: 'none', cursor: 'pointer', flexShrink: 0, boxShadow: '0 1px 2px rgba(15,23,42,.06), 0 4px 10px rgba(15,23,42,.08)' }}
     >
       <Ic n="bell" s={15} c={C.pri} />
       <span style={{ position: 'absolute', top: -3, right: -3, minWidth: 15, height: 15, padding: '0 3px', borderRadius: 8, background: C.dan, color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>
@@ -1043,7 +1050,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
         onClick={() => setFiltriAperti(v => !v)}
         aria-label={`Filtra per operatore/${labelPoltrona.toLowerCase()}`}
         className="pol-icon-btn"
-        style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', background: filtroAttivo ? C.priL : C.bg, border: 'none', cursor: 'pointer', flexShrink: 0, boxShadow: '0 1px 2px rgba(15,23,42,.06), 0 4px 10px rgba(15,23,42,.08)' }}
+        style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, padding: 7, boxSizing: 'border-box', borderRadius: '50%', background: filtroAttivo ? C.priL : C.bg, backgroundClip: 'content-box', border: 'none', cursor: 'pointer', flexShrink: 0, boxShadow: '0 1px 2px rgba(15,23,42,.06), 0 4px 10px rgba(15,23,42,.08)' }}
       >
         <Ic n="filter" s={13} c={filtroAttivo ? C.pri : C.txm} />
         {filtroAttivo && <span style={{ position: 'absolute', top: -1, right: -1, width: 8, height: 8, borderRadius: '50%', background: C.pri, border: `1.5px solid ${C.sur}` }} />}
@@ -1067,7 +1074,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       disabled={appVisibiliConTel.length === 0}
       aria-label="Invia WhatsApp"
       className="pol-icon-btn"
-      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', background: appVisibiliConTel.length === 0 ? C.bg : '#E6F9EE', border: 'none', cursor: appVisibiliConTel.length === 0 ? 'not-allowed' : 'pointer', flexShrink: 0, boxShadow: appVisibiliConTel.length === 0 ? 'none' : '0 1px 2px rgba(15,23,42,.06), 0 4px 10px rgba(15,23,42,.08)' }}
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, padding: 7, boxSizing: 'border-box', borderRadius: '50%', background: appVisibiliConTel.length === 0 ? C.bg : '#E6F9EE', backgroundClip: 'content-box', border: 'none', cursor: appVisibiliConTel.length === 0 ? 'not-allowed' : 'pointer', flexShrink: 0, boxShadow: appVisibiliConTel.length === 0 ? 'none' : '0 1px 2px rgba(15,23,42,.06), 0 4px 10px rgba(15,23,42,.08)' }}
     >
       <Ic n="wa" s={14} c={appVisibiliConTel.length === 0 ? C.txl : '#128C7E'} />
     </button>
@@ -1116,7 +1123,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       {haFiltriRisorse && !isMobile && chipsRisorse}
 
       {view === 'giorno' && (
-        <DayStrip selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} oraColW={oraColW} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker view={view} setView={setView} /></div>} />
+        <DayStrip selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} oraColW={oraColW} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker view={view} setView={setView} touchSafe={isMobile} /></div>} />
       )}
       {view === 'settimana' && (
         <DayStrip
@@ -1129,7 +1136,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           oraColW={oraColW}
           onPrevWeek={() => navSettimana(-1)}
           onNextWeek={() => navSettimana(1)}
-          viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker view={view} setView={setView} /></div>}
+          viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker view={view} setView={setView} touchSafe={isMobile} /></div>}
         />
       )}
       {view === 'mese' && (
@@ -1142,7 +1149,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
             {isMobile && filtroButton}
             <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
           </div>
-          <ViewPicker view={view} setView={setView} />
+          <ViewPicker view={view} setView={setView} touchSafe={isMobile} />
         </div>
       )}
 

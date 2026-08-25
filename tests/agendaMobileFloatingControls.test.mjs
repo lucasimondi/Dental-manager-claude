@@ -19,3 +19,10 @@ test('mobile Agenda safe-area clearance stays centralized on the root container'
   );
   assert.match(agendaSource, /position:\s*'absolute', inset:\s*0, boxSizing:\s*'border-box'/);
 });
+
+test('compact mobile controls expose 44px touch targets without enlarging icons', () => {
+  assert.match(agendaSource, /width:\s*44, height:\s*44, padding:\s*7/);
+  assert.match(agendaSource, /minWidth:\s*44, height:\s*44/);
+  assert.match(agendaSource, /<Ic n="filter" s=\{13\}/);
+  assert.match(agendaSource, /<Ic n="wa" s=\{14\}/);
+});
