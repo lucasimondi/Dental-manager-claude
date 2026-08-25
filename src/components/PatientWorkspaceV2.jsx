@@ -25,7 +25,7 @@ const addMonthsISO = (iso, months) => {
 
 export function buildPatientWorkspaceV2Model({ patient, plans = [], payments = [], appointments = [] }) {
   const patientPlans = (Array.isArray(plans) ? plans : []).filter((row) => samePatient(row, patient?.id));
-  const items = patientPlans.flatMap((plan) => safeItems(plan).map((item, index) => ({ ...item, planId: plan.id, key: `${plan.id}-${index}` })));
+  const items = patientPlans.flatMap((plan) => safeItems(plan).map((item, index) => ({ ...item, planId: plan.id, treatmentIndex: index, key: `${plan.id}-${index}` })));
   const completed = items.filter((item) => item.eseguita === true);
   const pending = items.filter((item) => item.eseguita !== true);
   const total = items.reduce((sum, item) => sum + (Number(item.prezzo) || 0), 0);
@@ -154,14 +154,16 @@ function QuickCreateDrawer({ kind, plans, context, onClose, onChangeKind }) {
   </DetailDrawer>;
 }
 
-export default function PatientWorkspaceV2({ patient, plans, payments, appointments, onClose = () => {}, onEdit = () => {} }) {
+export default function PatientWorkspaceV2({ patient, plans, payments, appointments, onClose = () => {}, onEdit = () => {}, onCompleteTreatment = null, integrationMode = false }) {
   const model = useMemo(() => buildPatientWorkspaceV2Model({ patient, plans, payments, appointments }), [patient, plans, payments, appointments]);
   const [drawer, setDrawer] = useState(null);
   const [quickCreate, setQuickCreate] = useState(null);
   const [tab, setTab] = useState('info');
   const [planFilter, setPlanFilter] = useState('Tutte');
   const [openTreatmentMenu, setOpenTreatmentMenu] = useState(null);
-  const [locallyCompleted, setLocallyCompleted] = useState([]);
+  const [locallyCompleted, setLocallyCompletedState] = useState([]);
+  const [savingTreatmentKey, setSavingTreatmentKey] = useState(null);
+  const [integrationError, setIntegrationError] = useState('');
   const age = yearsOld(patient?.dataNascita);
   const kpis = [
     { id: 'plans', label: 'Piani', value: model.patientPlans.length, icon: 'plan' },
@@ -174,12 +176,36 @@ export default function PatientWorkspaceV2({ patient, plans, payments, appointme
     site: item.sede || item.dente || 'Generale',
     status: item.eseguita ? 'Eseguita' : item.stato === 'in_corso' ? 'In corso' : item.statoLabel || 'Da eseguire',
   }));
+  const setLocallyCompleted = (updater) => {
+    const next = typeof updater === 'function' ? updater(locallyCompleted) : updater;
+    const addedKey = next.find((key) => !locallyCompleted.includes(key));
+    const item = clinicalRows.find((row) => row.key === addedKey);
+    if (item && onCompleteTreatment) completeTreatment(item);
+    else setLocallyCompletedState(next);
+  };
   const inProgress = clinicalRows.filter((item) => item.status === 'In corso').length;
   const toDo = clinicalRows.filter((item) => !['In corso', 'Eseguita'].includes(item.status)).length;
   const interactivePlanRows = clinicalRows.slice(0, 5).map((item) => locallyCompleted.includes(item.key) ? { ...item, status: 'Eseguita' } : item);
   const visiblePlanRows = interactivePlanRows.filter((item) => planFilter === 'Tutte' || (planFilter === 'Eseguite' && item.status === 'Eseguita') || (planFilter === 'In corso' && item.status === 'In corso') || (planFilter === 'Da fare' && !['Eseguita','In corso'].includes(item.status)));
   const workspaceContext = useMemo(() => createPatientWorkspaceContext({ patient, activeClinicalPlan: model.activePlans[0], clinicalPlans: model.patientPlans, treatments: clinicalRows, anatomicalContext: clinicalRows.map((item) => ({ type: item.site === 'Generale' ? 'GENERAL' : 'TOOTH', value: item.site })), alerts: [{ type: 'UNSCHEDULED_TREATMENT', severity: 'medium', source: 'TREATMENT', dueAt: '2026-08-29', status: 'OPEN' }], quotes: [{ id: 'quote-014', status: 'SENT', total: 1152 }], payments: model.paidRows, paymentPlans: [{ id: 'pp-1', total: 3000, status: 'ACTIVE' }], installments: [{ amount: 500, due_date: '2026-09-15', status: 'OVERDUE' }], appointments, recalls: [{ type: 'HYGIENE', dueAt: '2027-02-25' }], followups: [], prescriptions: [], consents: [], automationRules: [{ trigger: 'TREATMENT_COMPLETED(HYGIENE)', condition: 'NO_FUTURE_APPOINTMENT(HYGIENE)', action: 'CREATE_RECALL(+6 MONTHS)' }], timeline: [] }), [patient, model.activePlans, model.patientPlans, model.paidRows, clinicalRows, appointments]);
   const tabs = [['info', 'Info'], ['piani', 'Piani'], ['timeline', 'Timeline'], ['foto', 'Foto'], ['doc', 'Documenti'], ['app', 'Agenda']];
+  const completeTreatment = async (item) => {
+    if (item.status === 'Eseguita' || savingTreatmentKey) return;
+    if (!onCompleteTreatment) {
+      setLocallyCompletedState((current) => current.includes(item.key) ? current : [...current, item.key]);
+      return;
+    }
+    setSavingTreatmentKey(item.key);
+    setIntegrationError('');
+    try {
+      await onCompleteTreatment(item);
+      setLocallyCompletedState((current) => current.includes(item.key) ? current : [...current, item.key]);
+    } catch (error) {
+      setIntegrationError(error?.message || 'Impossibile aggiornare la prestazione.');
+    } finally {
+      setSavingTreatmentKey(null);
+    }
+  };
 
   return <div className="pw2-shell">
     <header className="pw2-hero">
@@ -187,7 +213,7 @@ export default function PatientWorkspaceV2({ patient, plans, payments, appointme
       <div className="pw2-hero-top">
         <button className="pw2-back" onClick={onClose} aria-label="Torna indietro"><Ic n="back" s={20} c="currentColor" /></button>
         <div className="pw2-identity">
-          <span className="pw2-eyebrow">Scheda Paziente 2.0 · Preview</span>
+          <span className="pw2-eyebrow">Scheda Paziente 2.0 · {integrationMode ? 'Integrazione protetta' : 'Preview'}</span>
           <h1>{patient?.nome} {patient?.cognome}</h1>
           <div className="pw2-identity-meta">
             {patient?.sesso && <span>{patient.sesso}</span>}
@@ -223,6 +249,7 @@ export default function PatientWorkspaceV2({ patient, plans, payments, appointme
       </button>
 
       <section className="pw2-attention"><div><span>Da attenzionare</span><strong>Corona 26 non programmata</strong><small>Controllo consigliato entro 4 giorni</small></div><button onClick={() => setQuickCreate('automations')}>Automazioni</button></section>
+      {integrationError && <div className="pw2-integration-error" role="alert">{integrationError}</div>}
 
       <section className="pw2-active-plan" data-entity="CLINICAL_PLAN"><div className="pw2-plan-head"><div><span>Piano clinico attivo</span><h2>Piano 25/08/26</h2><p>{model.completed.length + locallyCompleted.length}/5 completate · aggiornamento immediato</p></div><div><button onClick={() => setQuickCreate('share')}>Condividi</button><button onClick={() => setQuickCreate('odontogram')}>Odontogramma</button></div></div><div className="pw2-progress"><span style={{ width: `${Math.min(100, ((model.completed.length + locallyCompleted.length) / 5) * 100)}%` }} /></div><div className="pw2-plan-filters">{['Tutte','Da fare','In corso','Eseguite'].map((filter) => <button className={planFilter === filter ? 'is-active' : ''} key={filter} onClick={() => setPlanFilter(filter)}>{filter}</button>)}</div><div className="pw2-plan-table"><div className="pw2-plan-columns"><span>Prestazione</span><span>Sede</span><span>Stato</span><span>Prezzo</span><span>Prossimo step</span><span>Azioni</span></div>{visiblePlanRows.map((item) => { const isRecall = item.status === 'Richiamo da programmare'; const tone = statusTone(item.status); return <article key={item.key} data-entity={isRecall ? 'RECALL' : 'TREATMENT'} data-status={tone}><strong>{item.prestazione}</strong><span className="pw2-site-label">{item.site}</span><span className={`pw2-status-badge is-${tone}`}><i aria-hidden="true" />{item.status}</span><b>{fmt(Number(item.prezzo)||0)}</b><small>{item.status === 'Eseguita' ? 'Completata' : 'Da programmare'}</small><div className="pw2-row-actions">{primaryActions(item.status).map((label, index) => <button className={index === 0 ? `pw2-status-action is-${tone}` : 'pw2-secondary-action'} key={label} onClick={() => label === 'Segna eseguita' && setLocallyCompleted((current) => current.includes(item.key) ? current : [...current, item.key])}>{label === 'Segna eseguita' ? '✓ Segna eseguita' : label}</button>)}<span className="pw2-context-wrap"><button aria-label={`Altre azioni per ${item.prestazione}`} aria-haspopup="menu" aria-expanded={openTreatmentMenu === item.key} onClick={() => setOpenTreatmentMenu((current) => current === item.key ? null : item.key)}>⋯</button>{openTreatmentMenu === item.key && <span className="pw2-context-menu" role="menu" aria-label={`Azioni ${item.prestazione}`}>{contextualActions(item.status).map((label) => <button role="menuitem" key={label} onClick={() => setOpenTreatmentMenu(null)}>{label}</button>)}</span>}</span></div></article>; })}</div><footer><span>Le prestazioni eseguite restano nel piano e nella Timeline.</span><button onClick={() => setQuickCreate('quote')}>Genera preventivo →</button></footer></section>
 
