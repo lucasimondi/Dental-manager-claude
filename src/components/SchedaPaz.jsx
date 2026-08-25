@@ -561,6 +561,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, setAppoi
         onClose={onClose}
         onEdit={onEdit}
         canViewFinancial={canViewPatientFinance}
+        bodyMapEnabled={!isDentistico || si?.clinical_body_enabled === true}
         onToggleTreatment={(treatment) => toggleEseguita(treatment.planId, treatment.itemIndex)}
         onNewPlan={(draft) => onNuovoPiano(paz.id, draft)}
         onAddTreatments={addTreatmentsToClinicalPath}

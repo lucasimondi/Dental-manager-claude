@@ -13,9 +13,6 @@
 }
 
 .patient-cockpit * { box-sizing: border-box; }
-body:has(.patient-cockpit) .poliedron-mobile-dock { pointer-events:none; border:0; background:transparent; box-shadow:none; backdrop-filter:none; }
-body:has(.patient-cockpit) .poliedron-mobile-dock__item { display:none !important; }
-body:has(.patient-cockpit) .poliedron-mobile-dock__hero-slot { grid-column:3; pointer-events:auto; }
 
 .patient-cockpit-header {
   position: sticky;
@@ -235,6 +232,57 @@ body:has(.patient-cockpit) .poliedron-mobile-dock__hero-slot { grid-column:3; po
 .patient-data-issue { display: flex; align-items: center; justify-content: space-between; gap: 9px; padding: 9px 0; border-bottom: 1px solid var(--border-soft); }
 .patient-data-issue > div { min-width: 0; display: flex; align-items: center; gap: 7px; color: var(--pol-violet-500); font-size: 12px; }
 .patient-data-issue button { flex: 0 0 auto; border: 0; color: var(--pol-violet-500); background: transparent; font-weight: 800; cursor: pointer; }
+
+/* Cockpit: linguaggio visuale neutro, geometrico e coerente. */
+.patient-cockpit-kpi {
+  border-color:#cbd5e1;
+  border-radius:14px;
+  background:linear-gradient(145deg,#ffffff 0%,#eef1f4 58%,#dce1e6 100%);
+  box-shadow:0 10px 22px rgba(15,23,42,.13),inset 1px 1px 0 #fff,inset -1px -1px 0 rgba(100,116,139,.16);
+  color:#475569;
+}
+.patient-cockpit-kpi__icon {
+  border:1px solid #c4cbd3;
+  border-radius:10px;
+  color:#334155;
+  background:linear-gradient(145deg,#f8fafc,#cbd2da);
+  box-shadow:4px 5px 10px rgba(51,65,85,.20),inset 1px 1px 1px #fff;
+}
+.patient-cockpit-kpi__icon svg { filter:none; }
+.patient-cockpit-kpi--amber,.patient-cockpit-kpi--green,.patient-cockpit-kpi--blue,.patient-cockpit-kpi--purple { color:#475569; }
+.patient-quick-actions {
+  border-color:#cbd5e1;
+  border-radius:14px;
+  background:linear-gradient(145deg,#f8fafc,#e2e7ec);
+  box-shadow:0 12px 26px rgba(15,23,42,.12),inset 1px 1px 0 #fff;
+}
+.patient-quick-actions__buttons button,
+.patient-quick-actions__buttons button.is-more {
+  min-height:46px;
+  border:1px solid #bcc5ce;
+  border-radius:10px;
+  color:#273444;
+  background:linear-gradient(145deg,#fff,#dfe4e9);
+  box-shadow:4px 5px 10px rgba(51,65,85,.15),inset 1px 1px 1px #fff;
+}
+.patient-quick-actions__buttons button:hover { border-color:#94a3b8; background:linear-gradient(145deg,#fff,#d4dae0); }
+.patient-quick-actions__buttons button > span,
+.patient-quick-actions__buttons button[class*="tone-"] > span {
+  border:1px solid #c2c9d0;
+  border-radius:7px;
+  color:#3f4d5d;
+  background:linear-gradient(145deg,#f8fafc,#cbd2d9);
+  box-shadow:2px 3px 6px rgba(51,65,85,.16),inset 1px 1px 0 #fff;
+}
+.patient-save-treatment { border-color:#bcc5ce; background:linear-gradient(145deg,#f8fafc,#e1e6eb); box-shadow:inset 1px 1px 0 #fff,0 8px 18px rgba(15,23,42,.10); }
+.patient-save-treatment .patient-cockpit-primary-button {
+  border:1px solid #475569;
+  color:#fff;
+  background:linear-gradient(145deg,#64748b,#273444);
+  box-shadow:0 6px 13px rgba(15,23,42,.28),inset 1px 1px 1px rgba(255,255,255,.25);
+  text-shadow:0 1px 1px rgba(0,0,0,.28);
+}
+.patient-cockpit-tabs button:disabled { opacity:.48; cursor:not-allowed; filter:grayscale(1); }
 .patient-cockpit-section > small { display: block; margin-top: 9px; color: var(--text-muted); line-height: 1.4; }
 .patient-cockpit-positive { display: flex; align-items: center; gap: 7px; color: var(--pol-turquoise-600); font-size: 12px; font-weight: 700; }
 .patient-financial-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }

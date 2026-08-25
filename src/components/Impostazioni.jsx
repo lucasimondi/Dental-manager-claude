@@ -610,6 +610,17 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
         <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Note legali PDF</div>
         <Txt value={si.note} onChange={(e) => S({ note: e.target.value })} rows={3} placeholder="Il preventivo è valido 30 giorni…" />
       </Crd>
+      {isStudioAdmin && (!si.vertical || si.vertical === 'dentistico') && (
+        <Crd style={{ marginBottom: 11 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 800 }}>Mappa clinica del corpo</div>
+              <div style={{ marginTop: 3, color: C.txl, fontSize: 12 }}>Nel dentale è disattivata di default. L’amministratore può abilitarla per gli studi che eseguono anche trattamenti corporei.</div>
+            </div>
+            <Toggle on={si.clinical_body_enabled === true} onChange={() => S({ clinical_body_enabled: si.clinical_body_enabled !== true })} />
+          </div>
+        </Crd>
+      )}
       <Btn ic="save" ch="Salva impostazioni" onClick={save} full sz="lg" />
       </>
       )}

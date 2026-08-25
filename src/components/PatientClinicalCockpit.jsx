@@ -202,6 +202,7 @@ function ClinicalMap({
   pricelist,
   onAddTreatments,
   dentalApplicable,
+  bodyMapEnabled,
 }) {
   const [tab, setTab] = React.useState(dentalApplicable ? 'tooth' : 'body_region');
   const [bodySide, setBodySide] = React.useState('front');
@@ -228,8 +229,8 @@ function ClinicalMap({
   return (
     <Section title="Mappa clinica" eyebrow="Contesto anatomico" className="patient-cockpit-map-section">
       <div className="patient-cockpit-tabs" role="tablist" aria-label="Tipo di mappa clinica">
-        {[...(dentalApplicable ? [['tooth', 'Odontogramma']] : []), ['face_region', 'Viso'], ['body_region', 'Corpo']].map(([id, label]) => (
-          <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'is-active' : ''} onClick={() => setTab(id)}>{label}</button>
+        {[...(dentalApplicable ? [['tooth', 'Odontogramma']] : []), ['face_region', 'Viso'], ['body_region', bodyMapEnabled ? 'Corpo' : 'Corpo · bloccato']].map(([id, label]) => (
+          <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'is-active' : ''} disabled={id === 'body_region' && !bodyMapEnabled} title={id === 'body_region' && !bodyMapEnabled ? 'Attivabile dall’amministratore nel Setup' : undefined} onClick={() => setTab(id)}>{label}</button>
         ))}
       </div>
       {tab === 'tooth' && (
@@ -493,6 +494,7 @@ export default function PatientClinicalCockpit({
   onNewAppointment,
   onWhatsApp,
   canViewFinancial,
+  bodyMapEnabled,
 }) {
   const [selectedTeeth, setSelectedTeeth] = React.useState([]);
   const [selectedContext, setSelectedContext] = React.useState(null);
@@ -524,6 +526,7 @@ export default function PatientClinicalCockpit({
               pricelist={pricelist}
               onAddTreatments={onAddTreatments}
               dentalApplicable={model.dentalApplicable}
+              bodyMapEnabled={bodyMapEnabled}
             />
             <CarePlan groups={model.treatmentGroups} onSelect={setDetailGroup} onToggle={onToggleTreatment} onCreateQuote={onNewPlan} />
           </div>
