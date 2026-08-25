@@ -43,7 +43,7 @@ test('Round 4 registry includes automation and financial actions', () => {
 
 test('Round 4 final UX contains centered modals, operational plan, economy, installments and timeline', () => {
   assert.doesNotMatch(component, /<span>\+<\/span>/);
-  for (const text of ['Piano clinico attivo','/5 completate','Prossima prestazione','Segna eseguita','Piano clinico completato','Nessun piano clinico attivo','Da attenzionare','Automazioni','Situazione economica','Preventivato','Accettato','Registra pagamento','Piano pagamenti','Nuova rateizzazione','INSTALLMENT','Timeline','Piani clinici | Preventivi','Preventivo #2026-014']) assert.ok(component.includes(text), `missing ${text}`);
+  for (const text of ['Piano clinico attivo','/5 completate','aggiornamento immediato','Segna eseguita','Piano clinico completato','Nessun piano clinico attivo','Da attenzionare','Automazioni','Situazione economica','Preventivato','Accettato','Registra pagamento','Piano pagamenti','Nuova rateizzazione','INSTALLMENT','Timeline','Piani clinici | Preventivi','Preventivo #2026-014']) assert.ok(component.includes(text), `missing ${text}`);
   assert.match(component, /pw2-plan-columns/);
   assert.match(component, /pw2-plan-table/);
   assert.match(component, /pw2-mini-odontogram/);
@@ -124,6 +124,9 @@ test('Round 5 keeps anatomical sites readable and treatment actions state-aware'
   assert.match(component, /status === 'In corso'[\s\S]*?\['Segna eseguita', 'Programma'\]/);
   assert.match(component, /status === 'Richiamo da programmare'[\s\S]*?\['Programma', 'Modifica'\]/);
   assert.match(component, /primaryActions\(item\.status\)\.map/);
+  assert.match(component, /setLocallyCompleted/);
+  assert.match(component, /label === 'Segna eseguita'/);
+  assert.match(component, /✓ Segna eseguita/);
   assert.match(component, /pw2-status-action is-\$\{tone\}/);
   assert.match(component, /data-status=\{tone\}/);
   assert.match(css, /Mobile is a dedicated clinical surface/);
