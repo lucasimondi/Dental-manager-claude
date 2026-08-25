@@ -66,6 +66,8 @@
 
 .patient-cockpit-content { max-width: 1440px; margin: 0 auto; padding: 22px 24px 40px; }
 .patient-header-actions { display: flex; align-items: center; gap: 7px; }
+.patient-anagrafica-button { width:auto; padding-inline:11px; gap:6px; }
+.patient-anagrafica-button span { font-size:11px; font-weight:800; }
 .patient-workspace-nav { position: sticky; top: 0; z-index: 7; display: flex; gap: 4px; padding: 7px max(16px, calc((100vw - 1440px) / 2 + 24px)); overflow-x: auto; border-bottom: 1px solid var(--border-soft); background: color-mix(in srgb, var(--surface-card) 94%, transparent); backdrop-filter: blur(14px); scrollbar-width: none; }
 .patient-workspace-nav button { min-height: 36px; flex: 0 0 auto; padding: 0 13px; border: 0; border-radius: 9px; color: var(--text-secondary); background: transparent; font-weight: 800; cursor: pointer; }
 .patient-workspace-nav button.is-active { color: var(--brand-primary); background: color-mix(in srgb, var(--brand-primary) 9%, var(--surface-card)); }
@@ -393,10 +395,13 @@
   .patient-cockpit { background:linear-gradient(180deg,#f8fbff,#edf4fb); }
   .patient-cockpit-header__main { min-height:94px; align-items:flex-start; flex-wrap:wrap; padding-top:max(14px,env(safe-area-inset-top)); }
   .patient-cockpit-header__identity { flex:1 1 calc(100% - 118px); }
-  .patient-header-actions { width:100%; margin-left:53px; margin-top:-4px; }
+  .patient-header-actions { width:100%; display:grid; grid-template-columns:repeat(7,40px); justify-content:end; margin:0; gap:6px; }
   .patient-header-actions .patient-cockpit-icon-button { width:40px;height:40px;border-radius:11px; }
-  .patient-cockpit-header__facts { display:flex; overflow-x:auto; scrollbar-width:none; }
-  .patient-cockpit-header__facts > div { min-width:190px; flex:0 0 190px; }
+  .patient-header-actions .patient-anagrafica-button { width:40px;padding:0; }
+  .patient-anagrafica-button span { display:none; }
+  .patient-cockpit-header__facts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); overflow:visible; }
+  .patient-cockpit-header__facts > div { min-width:0; padding:9px 12px; }
+  .patient-cockpit-header__facts span,.patient-cockpit-header__facts strong { white-space:normal; overflow:visible; text-overflow:clip; line-height:1.25; }
   .patient-workspace-nav { top:0; gap:2px; padding:6px 10px; box-shadow:0 8px 22px rgba(15,23,42,.06); }
   .patient-workspace-nav button { min-height:40px;padding-inline:12px; }
   .patient-cockpit-kpis { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-inline:0; padding:0; overflow:visible; }
@@ -411,6 +416,8 @@
   .patient-cockpit-header__meta span:first-child { display: none; }
   .patient-cockpit-header .patient-cockpit-secondary-button { width: 44px; padding: 0; font-size: 0; }
   .patient-header-actions .patient-cockpit-secondary-button { display: none; }
+  .patient-header-actions { grid-template-columns:repeat(7,minmax(0,1fr)); gap:5px; }
+  .patient-header-actions .patient-cockpit-icon-button { width:100%; min-width:0; }
   .patient-workspace-nav { padding-inline: 10px; }
   .patient-cockpit-kpis { gap: 10px; }
   .patient-cockpit-kpi { min-width:0; grid-template-columns:31px 1fr; padding:11px 9px; column-gap:8px; border-radius:15px; }

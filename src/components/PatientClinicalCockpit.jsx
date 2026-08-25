@@ -113,7 +113,7 @@ function Section({ title, eyebrow, action, children, className = '' }) {
   );
 }
 
-function PatientHeader({ patient, appointments, onEdit, onClose, onNewAppointment, onWhatsApp, onCall, onOpenDetails }) {
+function PatientHeader({ patient, appointments, onEdit, onClose, onNewAppointment, onWhatsApp, onCall, onOpenDetails, onCreateQuote, onOpenDocuments }) {
   const age = calculateAge(patient.dataNascita);
   return (
     <header className="patient-cockpit-header">
@@ -130,10 +130,13 @@ function PatientHeader({ patient, appointments, onEdit, onClose, onNewAppointmen
           </div>
         </div>
         <div className="patient-header-actions">
-          <button className="patient-cockpit-secondary-button" onClick={onNewAppointment}><Ic n="cal" s={14} c="currentColor" />Appuntamento</button>
-          {patient.telefono && <button className="patient-cockpit-icon-button" onClick={onCall} aria-label="Chiama paziente"><Ic n="ph" s={17} c="currentColor" /></button>}
-          {patient.telefono && <button className="patient-cockpit-icon-button" onClick={onWhatsApp} aria-label="Apri WhatsApp"><Ic n="wa" s={17} c="currentColor" /></button>}
-          <button className="patient-cockpit-icon-button" onClick={onOpenDetails} aria-label="Apri dati paziente"><Ic n="menu" s={17} c="currentColor" /></button>
+          {patient.telefono && <button className="patient-cockpit-icon-button" onClick={onCall} aria-label="Chiama" title="Chiama"><Ic n="ph" s={17} c="currentColor" /></button>}
+          {patient.telefono && <button className="patient-cockpit-icon-button" onClick={onWhatsApp} aria-label="WhatsApp" title="WhatsApp"><Ic n="wa" s={17} c="currentColor" /></button>}
+          <button className="patient-cockpit-icon-button" onClick={onNewAppointment} aria-label="Appuntamento" title="Appuntamento"><Ic n="cal" s={17} c="currentColor" /></button>
+          <button className="patient-cockpit-icon-button" onClick={() => onCreateQuote?.()} aria-label="Preventivo" title="Preventivo"><Ic n="plan" s={17} c="currentColor" /></button>
+          <button className="patient-cockpit-icon-button" onClick={onOpenDocuments} aria-label="Consenso" title="Consenso"><Ic n="doc" s={17} c="currentColor" /></button>
+          <button className="patient-cockpit-icon-button" onClick={onOpenDocuments} aria-label="Ricetta" title="Ricetta"><Ic n="pill" s={17} c="currentColor" /></button>
+          <button className="patient-cockpit-icon-button patient-anagrafica-button" onClick={onOpenDetails} aria-label="Anagrafica" title="Anagrafica"><Ic n="user" s={17} c="currentColor" /><span>Anagrafica</span></button>
         </div>
       </div>
       <div className="patient-cockpit-header__facts">
@@ -509,10 +512,9 @@ export default function PatientClinicalCockpit({
 
   return (
     <div className="patient-cockpit">
-      <PatientHeader patient={patient} appointments={model.appointments} onEdit={onEdit} onClose={onClose} onNewAppointment={onNewAppointment} onWhatsApp={onWhatsApp} onCall={() => window.location.assign(`tel:${patient.telefono || ''}`)} onOpenDetails={() => setDetailsOpen(true)} />
+      <PatientHeader patient={patient} appointments={model.appointments} onEdit={onEdit} onClose={onClose} onNewAppointment={onNewAppointment} onWhatsApp={onWhatsApp} onCall={() => window.location.assign(`tel:${patient.telefono || ''}`)} onOpenDetails={() => setDetailsOpen(true)} onCreateQuote={onNewPlan} onOpenDocuments={onOpenDocuments} />
       <PatientNavigation onNavigate={onNavigate} canViewFinancial={canViewFinancial} />
       <main className="patient-cockpit-content">
-        <QuickActionsBar onNewAppointment={onNewAppointment} onOpenDocuments={onOpenDocuments} onOpenNotes={onOpenNotes} onOpenPayments={onOpenPayments} onCreateQuote={onNewPlan} />
         <PrimaryKpis model={model} canViewFinancial={canViewFinancial} onNavigate={onNavigate} />
         <div className="patient-cockpit-layout">
           <div className="patient-cockpit-main-column">
