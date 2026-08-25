@@ -48,7 +48,7 @@ Migration: `supabase/migrations/20260818190642_pol_003_financial_engine_v1.sql`.
 | `financial_cost_events_v1` | Canonical costs | stage/classification/scope and provenance |
 | `financial_hours_v1` | Available/worked hours | structure/operator scope |
 
-Canonical read entry point: `get_financial_snapshot_v1` and frontend selector in `src/lib/financialSnapshot.js`/management components. Legacy ingestion/adaptation is documented and tested in POL-003B migrations/tests. This engine should be reused; no new Patient Workspace financial formula should be created.
+Canonical read entry point: `get_financial_snapshot_v1` and frontend selectors in `src/lib/canonicalFinancialSelectors.js` plus management components. Legacy ingestion/adaptation is documented and tested in POL-003B migrations/tests. This engine should be reused; no new Patient Workspace financial formula should be created.
 
 ### B3. Other canonical/modern objects
 
@@ -64,6 +64,50 @@ Canonical read entry point: `get_financial_snapshot_v1` and frontend selector in
 - RBAC/assignment triggers: capability author guards and `patient_care_assignments_guard_v1` in the corresponding migrations.
 - Polyedron chat triggers: message immutability/read-state guard and conversation touch trigger in `20260824030000_chat_polyedron.sql`.
 - No repository migration proves a canonical dental-treatment trigger, quote workflow trigger, installment trigger, timeline event-store trigger, dental odontogram view, or automation-rule table.
+
+### B5. Named migration-backed database inventory
+
+This inventory is exhaustive for objects directly relevant to Patient Workspace that are evidenced by the checked-in migration set. “Reader/writer” names the repository path, not an assertion about deployed grants.
+
+| Kind / object | Migration evidence | Fields / relation and lifecycle | Repository reader / writer | Verification |
+|---|---|---|---|---|
+| Function `private.financial_current_studio_v1` | POL-003 financial migration | Resolves tenant context used by canonical finance | finance RPCs | `VERIFIED_REPOSITORY` |
+| Functions `private.financial_has_tenant_access_v1`, later `private.financial_verified_studio_membership_v1` | POL-003 / hardening migrations | Membership/tenant authorization guard | finance policies and RPCs | `VERIFIED_REPOSITORY`; deployed version `NOT_VERIFIED_REMOTE` |
+| Function + constraint trigger `private.validate_financial_allocation_v1` / `financial_payment_allocations_v1_validate` | POL-003 | Validates payment allocation target consistency across payment, invoice, contract and line | canonical financial writes | `VERIFIED_REPOSITORY` |
+| Views `private.financial_line_values_v1`, `private.financial_effective_allocations_v1` | POL-003 | Derived contract-line and effective allocation values | snapshot/drilldown RPCs | `VERIFIED_REPOSITORY` |
+| RPCs `public.get_financial_snapshot_v1`, `public.get_financial_drilldown_v1` | POL-003 series | Tenant/patient-scoped canonical financial read models | management UI and `canonicalFinancialSelectors.js` | `VERIFIED_REPOSITORY` |
+| Functions `private.run_pol_003b_legacy_adapter_v1`, `private.run_pol_003f_costs_hours_adapter_v1`, `private.pol_003f_frequency_months_v1` | POL-003B / POL-003F | Idempotent legacy provenance adapters and frequency normalization | migration/test jobs; no Patient Workspace call | `VERIFIED_REPOSITORY` |
+| Personnel append-only guard function/trigger | POL-003 personnel hardening | Prevents mutation of canonical personnel events | canonical finance/event writes | `VERIFIED_REPOSITORY` |
+| Function `private.pol_002b_can_access_patient_file` | POL-002B file security migration | Tenant/patient authorization for protected patient files | storage/file policies | `VERIFIED_REPOSITORY`; storage deployment `NOT_VERIFIED_REMOTE` |
+| Functions `public.is_studio_admin`, `pol_002a_require_studio_admin` and conditional GDPR helpers | POL-002A security migrations | Administrative and GDPR authorization | security policies/RPCs | `VERIFIED_REPOSITORY` |
+| Capability functions and author-guard triggers | POL-RBAC-001 migration | Enforce authoritative capability authorship | `studio_user_capabilities` writes | `VERIFIED_REPOSITORY` |
+| Patient-assignment functions and `patient_care_assignments_guard_v1` | POL-RBAC-001A | Validates tenant, patient and care-team assignment scope | assignment writes / permission reads | `VERIFIED_REPOSITORY` |
+| Function/trigger `poliedron_messages_guard_v1` | Polyedron chat migration | Guards message immutability/read-state and conversation membership | Polyedron chat | `VERIFIED_REPOSITORY` |
+| Function/trigger `poliedron_messages_touch_conversation_v1` | Polyedron chat migration | Updates conversation activity when a message is inserted | Polyedron chat writes | `VERIFIED_REPOSITORY` |
+
+Older tables in B1 and frontend-called RPCs such as `info_link_storia_clinica` and `completa_storia_clinica_remota` have no complete definition in this checkout. Their columns, policies, grants, indexes, publications and deployed function bodies remain explicitly `NOT_VERIFIED_REMOTE`.
+
+### B6. End-to-end frontend flow inventory
+
+| Flow | Entry / reader | Write path | Source of truth and duplication assessment |
+|---|---|---|---|
+| Create clinical plan | `Piani.jsx`, stable `SchedaPaz.jsx` | generic `DB` → `plans` | Legacy `plans`; combines clinical plan and quote, so semantics are duplicated |
+| Add treatment | `Piani.jsx`, catalogue resolution from `pricelist` | read-modify-write of `plans.voci` JSON | Array item is the only treatment record; no stable ID/FK, high concurrency risk |
+| Create/send quote | `Piani.jsx`, PDF/share presentation | updates/presents the same `plans` row; document/share helpers | No separate `QUOTE`; economic intent duplicates clinical plan |
+| Register payment | `Pagamenti.jsx`, stable `SchedaPaz.jsx` | generic `DB` → legacy `payments`; Polyedron has a legacy executor | Legacy operational truth; canonical event/allocation engine exists but Workspace is not wired to it |
+| Payment plan / installment | Round 4 prototype only | none | `MISSING`; UI must not imply persistence |
+| Agenda appointment | `Agenda.jsx`, `QuickBookingModal.jsx` | generic `DB` → `appointments`; realtime refresh in `App.jsx` | Mature legacy path; deployed DDL/RLS `NOT_VERIFIED_REMOTE` |
+| Recall | `Richiami.jsx`, `richiamiBot.js` | generic `DB` → `richiami` | First-class legacy row; proposals/rules are hard-coded and can duplicate manual recalls |
+| Follow-up | Dashboard/todo/activity conventions | generic todo/activity writes where used | No explicit canonical entity or lifecycle; must remain distinct from recall |
+| Timeline / history | stable `SchedaPaz.jsx` and source-specific histories | none as a unified timeline; each source writes independently | Read aggregation only; no `TIMELINE_EVENT` source of truth |
+| Patient record | `SchedaPaz.jsx`, `Pazienti.jsx` | generic `DB` → `patients` and related legacy tables | Stable production path; base DDL/RLS `NOT_VERIFIED_REMOTE` |
+| Odontogram | `Odontogramma.jsx`, patient/plan UI | selection feeds plan voice/tooth fields | UI selector, not persisted clinical tooth-state authority |
+| Medical/fiscal documents | `DocMedico.jsx`, `DocFiscale.jsx`, `ArchivioDocs.jsx` | generic `DB` → `documenti_medici` / `documenti_fiscali`, including base64 PDF | Split legacy stores; metadata/storage lifecycle is duplicated |
+| Prescription | `DocMedico.jsx`, Polyedron prefill/navigation | medical-document write/PDF flow | Document subtype rather than structured prescription truth |
+| Consent | `Impostazioni.jsx`, `FirmaConsenso.jsx`, archive routing | template writes are evidenced; signed-record backend definition is absent | Templates exist; signed consent persistence is `NOT_VERIFIED_REMOTE` |
+| Polyedron | `poliedraCore.js`, planner, action registry, executor, chat components | narrow confirmed legacy plan/payment actions via passed DB adapter; chat tables | Consumes legacy arrays and must not become a second clinical/financial source of truth |
+
+Repository-wide RPC calls also cover registration, consent signing, remote clinical history, public booking and team roster. Where their server definition is absent from migrations, behavior and authorization remain `NOT_VERIFIED_REMOTE`; this audit does not infer them from client call names.
 
 ## C. Canonical entity mapping
 

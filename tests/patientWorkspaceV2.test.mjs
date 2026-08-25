@@ -10,6 +10,7 @@ const patientRecord = fs.readFileSync('src/components/SchedaPaz.jsx', 'utf8');
 const css = fs.readFileSync('src/components/PatientWorkspaceV2.css', 'utf8');
 const registry = fs.readFileSync('src/lib/patientWorkspaceActionRegistry.js', 'utf8');
 const domain = fs.readFileSync('src/lib/patientWorkspaceDomain.js', 'utf8');
+const audit = fs.readFileSync('docs/audits/POL-PATIENT-WORKSPACE-DOMAIN-AUDIT.md', 'utf8');
 
 test('Patient Workspace 2.0 is available only through its isolated demo route', () => {
   assert.match(main, /patient-workspace-v2-demo/);
@@ -116,6 +117,19 @@ test('Round 5 keeps anatomical sites readable and treatment actions state-aware'
   for (const action of ['Segna in corso', 'Crea richiamo', 'Crea follow-up', 'Apri dettaglio', 'Modifica nota', 'Annulla']) assert.ok(component.includes(action), `missing contextual action ${action}`);
   for (const tone of ['is-done', 'is-todo', 'is-progress', 'is-recall']) assert.ok(css.includes(tone), `missing status tone ${tone}`);
   assert.match(component, /data-entity=\{isRecall \? 'RECALL' : 'TREATMENT'\}/);
+  assert.match(component, /const primaryActions = \(status\)/);
+  assert.match(component, /status === 'Eseguita'[\s\S]*?\['Crea follow-up', 'Crea richiamo'\]/);
+  assert.match(component, /status === 'In corso'[\s\S]*?\['Programma', 'Segna eseguita'\]/);
+  assert.match(component, /status === 'Richiamo da programmare'[\s\S]*?\['Programma', 'Modifica'\]/);
+  assert.match(component, /primaryActions\(item\.status\)\.map/);
   assert.match(css, /@media\(max-width:820px\)/);
   assert.match(css, /@media\(max-width:520px\)/);
+});
+
+test('domain audit names verified database objects and maps every required frontend flow', () => {
+  assert.match(audit, /src\/lib\/canonicalFinancialSelectors\.js/);
+  assert.doesNotMatch(audit, /src\/lib\/financialSnapshot\.js/);
+  for (const object of ['financial_current_studio_v1', 'validate_financial_allocation_v1', 'get_financial_snapshot_v1', 'patient_care_assignments_guard_v1', 'poliedron_messages_guard_v1']) assert.ok(audit.includes(object), `missing database object ${object}`);
+  for (const flow of ['Create clinical plan', 'Add treatment', 'Create\/send quote', 'Register payment', 'Payment plan \/ installment', 'Agenda appointment', 'Recall', 'Follow-up', 'Timeline \/ history', 'Patient record', 'Odontogram', 'Medical\/fiscal documents', 'Prescription', 'Consent', 'Polyedron']) assert.match(audit, new RegExp(flow));
+  assert.match(audit, /NOT_VERIFIED_REMOTE/);
 });
