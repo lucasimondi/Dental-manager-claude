@@ -9,6 +9,8 @@ import {
   filterTreatmentGroups,
 } from '../lib/patientCockpitModel.js';
 import { openPoliedronWithPatientContext } from '../lib/poliedron/patientChatContext.js';
+import faceReference from '../assets/clinical/face-reference.png';
+import bodyReference from '../assets/clinical/body-reference.png';
 import './PatientClinicalCockpit.css';
 
 const FACE_REGIONS = [
@@ -53,9 +55,7 @@ function AnatomyGraphic({ kind, side = 'front', selectedContext, onSelect }) {
   });
   if (kind === 'face') return (
     <svg className="patient-anatomy-svg" viewBox="0 0 220 280" role="img" aria-label="Mappa anatomica del viso">
-      <path className="patient-anatomy-fill" d="M110 18C64 18 42 54 46 105c4 58 28 123 64 139 36-16 60-81 64-139 4-51-18-87-64-87Z" />
-      <path d="M76 104c12-9 25-9 34 0M110 104c9-9 22-9 34 0M110 94v48l-13 10h26M87 175c15 10 31 10 46 0M78 82c12-6 23-6 32-1M110 81c9-5 20-5 32 1" />
-      <circle cx="91" cy="107" r="4"/><circle cx="129" cy="107" r="4"/>
+      <image className="patient-anatomy-reference" href={faceReference} x="12" y="5" width="196" height="270" preserveAspectRatio="xMidYMid meet" />
       <path {...zone('forehead', 'Fronte')} d="M66 56Q110 28 154 56L145 82Q110 69 75 82Z" />
       <path {...zone('periocular', 'Area perioculare')} d="M69 91Q90 78 109 93L104 123Q84 129 69 112ZM111 93Q130 78 151 91L151 112Q136 129 116 123Z" />
       <path {...zone('nose', 'Naso')} d="M101 104h18l9 50-18 12-18-12Z" />
@@ -67,9 +67,7 @@ function AnatomyGraphic({ kind, side = 'front', selectedContext, onSelect }) {
   );
   return (
     <svg className="patient-anatomy-svg patient-anatomy-svg--body" viewBox="0 0 220 420" role="img" aria-label={`Mappa anatomica corpo ${side === 'front' ? 'frontale' : 'posteriore'}`}>
-      <circle className="patient-anatomy-fill" cx="110" cy="40" r="28" />
-      <path className="patient-anatomy-fill" d="M82 76Q110 62 138 76l18 95-19 84-8 139h-31l-8-113-8 113H51l-8-139-19-84 18-95Z" />
-      <path d="M110 76v177M57 121l53 20 53-20M66 208h88M81 255l29 26 29-26" />
+      <image className="patient-anatomy-reference" href={bodyReference} x={side === 'front' ? 0 : -220} y="0" width="440" height="420" preserveAspectRatio="none" />
       <path {...zone(side === 'front' ? 'chest' : 'upper_back', side === 'front' ? 'Torace' : 'Dorso alto')} d="M63 88Q110 70 157 88l-8 58Q110 128 71 146Z" />
       <path {...zone(side === 'front' ? 'abdomen' : 'lower_back', side === 'front' ? 'Addome' : 'Zona lombare')} d="M69 157Q110 140 151 157l-10 69Q110 240 79 226Z" />
       <path {...zone(side === 'front' ? 'left_arm' : 'left_shoulder', side === 'front' ? 'Braccio sinistro' : 'Spalla sinistra')} d="M42 82 70 91 56 244 25 224Z" />
@@ -155,7 +153,7 @@ function PatientNavigation({ onNavigate, canViewFinancial }) {
 
 function PrimaryKpis({ model, canViewFinancial, onNavigate }) {
   const cards = [
-    ['Prestazioni da fare', String(model.treatmentSummary.remaining), 'amber', 'clk', 'info'],
+    ['Prestazioni da eseguire', String(model.treatmentSummary.remaining), 'amber', 'clk', 'info'],
     ['Prestazioni eseguite', String(model.treatmentSummary.completed), 'green', 'okc', 'piani'],
     ['Situazione economica', canViewFinancial && model.financial.available ? fmt(model.financial.outstanding) : 'Non disponibile', 'blue', 'eur', canViewFinancial ? 'paga' : null],
     ['Prossima azione', model.appointments.next ? fmtD(model.appointments.next.data) : 'Da pianificare', 'purple', 'pulse', 'app'],
