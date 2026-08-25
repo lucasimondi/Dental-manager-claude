@@ -155,9 +155,9 @@ function PatientNavigation({ onNavigate, canViewFinancial }) {
 
 function PrimaryKpis({ model, canViewFinancial, onNavigate }) {
   const cards = [
-    ['Clinica', `${model.treatmentSummary.remaining} da fare`, 'amber', 'clk', 'info'],
-    ['Piano di cura', `${model.treatmentSummary.completed} eseguite`, 'green', 'okc', 'piani'],
-    ['Economico', canViewFinancial && model.financial.available ? fmt(model.financial.outstanding) : 'Non disponibile', 'blue', 'eur', canViewFinancial ? 'paga' : null],
+    ['Prestazioni da fare', String(model.treatmentSummary.remaining), 'amber', 'clk', 'info'],
+    ['Prestazioni eseguite', String(model.treatmentSummary.completed), 'green', 'okc', 'piani'],
+    ['Situazione economica', canViewFinancial && model.financial.available ? fmt(model.financial.outstanding) : 'Non disponibile', 'blue', 'eur', canViewFinancial ? 'paga' : null],
     ['Prossima azione', model.appointments.next ? fmtD(model.appointments.next.data) : 'Da pianificare', 'purple', 'pulse', 'app'],
   ];
   return (
