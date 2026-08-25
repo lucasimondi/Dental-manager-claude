@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import {
   addTreatmentToPatientPlan,
   completePatientTreatment,
@@ -69,4 +70,22 @@ test('reconciles a verified plan locally without triggering a second remote writ
   const next = replacePersistedPlan(original, verified);
   assert.deepEqual(next[0], verified);
   assert.equal(next[1], original[1]);
+});
+
+test('connected preview is isolated from the stable patient route and requires a session', () => {
+  const main = fs.readFileSync('src/main.jsx', 'utf8');
+  const connected = fs.readFileSync('src/components/PatientWorkspaceV2Connected.jsx', 'utf8');
+  const stablePatientRecord = fs.readFileSync('src/components/SchedaPaz.jsx', 'utf8');
+  assert.match(main, /patient-workspace-v2-connected/);
+  assert.match(connected, /supabase\.auth\.getSession/);
+  assert.match(connected, /completePatientTreatment/);
+  assert.match(connected, /replacePersistedPlan/);
+  assert.doesNotMatch(stablePatientRecord, /PatientWorkspaceV2Connected|patient-workspace-v2-connected/);
+});
+
+test('connected completion carries authoritative plan id and treatment index', () => {
+  const component = fs.readFileSync('src/components/PatientWorkspaceV2.jsx', 'utf8');
+  assert.match(component, /treatmentIndex: index/);
+  assert.match(component, /onCompleteTreatment\(item\)/);
+  assert.match(component, /integrationError/);
 });
