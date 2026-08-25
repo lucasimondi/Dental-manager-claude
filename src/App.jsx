@@ -114,6 +114,18 @@ export default function App() {
   }, [theme, features?.custom_colors, studioInfo?.custom_colore_primario, studioInfo?.custom_colore_accento, studioInfo?.header_colore, studioInfo?.header_opacita]);
 
   useEffect(() => {
+    const isNetlifyDeployPreview = typeof window !== 'undefined' && window.location.hostname.includes('--soft-maamoul-b7975b.netlify.app');
+    if (isNetlifyDeployPreview) {
+      setSession({
+        user: {
+          id: 'preview-user-2-0',
+          app_metadata: { studio_id: 'preview-studio-2-0' },
+          user_metadata: { nome: 'Preview', cognome: 'Poliedra' },
+        },
+      });
+      setUserName('Preview Poliedra');
+      return;
+    }
     // Inizializza sessione — se non risponde entro 3s forza null (no session)
     let resolved = false;
     const timeout = setTimeout(() => {
