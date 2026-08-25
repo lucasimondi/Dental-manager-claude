@@ -121,6 +121,7 @@ test('responsive CSS covers compact mobile, mobile and tablet without horizontal
   assert.match(css, /pw2-shell \*\{min-width:0\}/);
   assert.match(css, /pw2-plan-table\{display:grid;grid-template-columns:1fr/);
   assert.match(css, /pw2-action-bar\{display:grid;grid-template-columns:minmax\(0,1fr\)/);
+  assert.match(css, /justify-content:stretch;justify-items:stretch/);
   assert.match(css, /pw2-plan-filters\{display:grid;grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
 });
 
