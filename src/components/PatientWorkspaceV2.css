@@ -35,7 +35,7 @@
   .pw2-main{padding:14px 12px calc(92px + env(safe-area-inset-bottom))}
   .pw2-action-bar{display:grid;gap:11px;margin:2px 0 14px;padding:14px;border:0;border-radius:20px;background:linear-gradient(145deg,#ffffff 10%,#f0f4ff 68%,#eafaf7);box-shadow:0 12px 28px rgba(34,50,96,.1)}
   .pw2-action-bar>div:first-child{display:flex;min-width:0}.pw2-action-bar>div:first-child small{color:#5263c2}.pw2-action-bar>div:first-child strong{font-size:15px}
-  .pw2-action-buttons{gap:7px}.pw2-action-buttons button{min-height:50px;border:0;border-radius:14px;background:#fff;box-shadow:0 5px 14px rgba(35,52,96,.09);font-size:10px}.pw2-action-buttons button:before{display:inline-grid;place-items:center;width:19px;height:19px;margin-right:5px;border-radius:7px;background:#e9edff;color:#4653be;font-size:14px;content:'+'}.pw2-action-buttons button:nth-child(4):before{content:'Rx';font-size:8px}.pw2-action-buttons button:nth-child(5):before{content:'✓';font-size:10px}
+  .pw2-action-buttons{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.pw2-action-buttons button{grid-column:span 1!important;min-width:0;min-height:50px;border:0;border-radius:14px;background:#fff;box-shadow:0 5px 14px rgba(35,52,96,.09);font-size:11px}.pw2-action-buttons button:first-child{grid-column:1/-1!important;background:linear-gradient(120deg,#4356bc,#5267d0);color:#fff;box-shadow:0 8px 18px rgba(54,75,177,.2)}
   .pw2-micro-profile,.pw2-risk,.pw2-attention{border-radius:16px;box-shadow:0 6px 18px rgba(37,53,91,.05)}
   .pw2-active-plan{margin-top:14px;padding:16px 12px 14px;border:0;border-radius:22px;box-shadow:0 13px 34px rgba(36,51,89,.1)}
   .pw2-plan-head h2{font-size:21px}.pw2-plan-head>div:last-child{overflow:visible}.pw2-plan-head button{flex:1;min-height:42px}
@@ -48,4 +48,5 @@
   .pw2-row-actions>.pw2-context-wrap{width:46px}.pw2-context-wrap>button{width:46px;min-height:50px!important;border-radius:13px!important;font-size:18px!important;background:#f3f5fa!important}
   .pw2-plan-completion-contract{display:none}.pw2-economy{border:0;border-radius:18px;box-shadow:0 8px 22px rgba(36,52,92,.07)}
   .pw2-installment-editor>div{grid-template-columns:1fr 1fr}.pw2-installment-editor b{grid-column:1/-1}.pw2-payment-plan-editor .pw2-form-grid{gap:8px}
+  .pw2-shell,.pw2-hero,.pw2-kpis,.pw2-main,.pw2-action-bar,.pw2-active-plan,.pw2-plan-table,.pw2-plan-table article{width:100%;max-width:100%;min-width:0}.pw2-shell *{min-width:0}.pw2-kpis,.pw2-main{margin-left:0;margin-right:0}.pw2-main{overflow:clip}.pw2-plan-head,.pw2-plan-head>div,.pw2-economy>div{min-width:0}.pw2-plan-head p,.pw2-economy p{overflow-wrap:anywhere}.pw2-drawer-backdrop{width:100vw;max-width:100vw;overflow:hidden}.pw2-drawer{min-width:0}.pw2-drawer-body{overflow-x:hidden}.pw2-payment-plan-editor input,.pw2-payment-plan-editor select{max-width:100%}
 }

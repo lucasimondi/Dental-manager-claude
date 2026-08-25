@@ -116,6 +116,9 @@ test('responsive CSS covers compact mobile, mobile and tablet without horizontal
   assert.match(css, /max-width:820px/);
   assert.match(css, /grid-template-columns:repeat\(6,minmax\(0,1fr\)\)/);
   assert.match(css, /button:nth-last-child\(-n\+2\)\{grid-column:span 3\}/);
+  assert.match(css, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.doesNotMatch(css, /button:before\{[^}]*content:/);
+  assert.match(css, /pw2-shell \*\{min-width:0\}/);
 });
 
 test('Round 5 keeps anatomical sites readable and treatment actions state-aware', () => {
