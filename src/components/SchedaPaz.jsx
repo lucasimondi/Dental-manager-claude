@@ -7,6 +7,7 @@ const DocMedico = lazy(() => import('./DocMedico.jsx'));
 const DocFiscale = lazy(() => import('./DocFiscale.jsx'));
 const PatientPhotos = lazy(() => import('./PatientPhotos.jsx'));
 const PatientImplants = lazy(() => import('./PatientImplants.jsx'));
+const PhysioCartella = lazy(() => import('./PhysioCartella.jsx'));
 const PatientWorkspaceDocuments = lazy(() => import('./PatientWorkspaceDocuments.jsx'));
 const PatientWorkspaceConsentFlow = lazy(() => import('./PatientWorkspaceDocuments.jsx').then((module) => ({ default: module.PatientWorkspaceConsentFlow })));
 
@@ -18,7 +19,7 @@ const prossimaDataMascherina = (orto) => {
   return d.toISOString().slice(0, 10);
 };
 
-export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {}, implants = [], setImplants }) {
+export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {}, implants = [], setImplants, studioMembership, currentUserId, isStudioAdmin }) {
   const [tab, setTab] = useState(initTab || 'info');
   const [documentFlow, setDocumentFlow] = useState(() => initialDocumentRequest?.type === 'ricetta' ? 'ricetta' : null);
   const [documentsReloadToken, setDocumentsReloadToken] = useState(0);
@@ -108,7 +109,13 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
   if (pdfPlan) return <PdfView pl={pdfPlan} paz={paz} si={si} onClose={() => setPdfPlan(null)} />;
 
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
-  const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'piani', l: '🦷 Piani' }, ...(isDentistico ? [{ id: 'impl', l: '🦷 Impianti' }] : []), { id: 'paga', l: '💰 Pagamenti' }, { id: 'foto', l: '📷 Foto' }, { id: 'app', l: '📅 Agenda' }, { id: 'doc', l: '📄 Documenti' }];
+  const isFisio = si?.vertical === 'fisioterapista' || si?.vertical === 'massofisioterapista';
+  const capabilities = new Set(studioMembership?.stato === 'attivo' ? (studioMembership?.capabilities || []) : []);
+  const physioFullAccess = capabilities.has('clinical.physiotherapist');
+  const physioOperationalAccess = capabilities.has('clinical.personal_trainer') || capabilities.has('clinical.massage_therapist');
+  const canAccessPhysio = isFisio && (physioFullAccess || physioOperationalAccess);
+  const canManagePhysioTeam = physioFullAccess || isStudioAdmin === true;
+  const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'piani', l: '🦷 Piani' }, ...(isDentistico ? [{ id: 'impl', l: '🦷 Impianti' }] : []), ...(canAccessPhysio ? [{ id: 'fisio', l: '💪 Fisioterapia' }] : []), { id: 'paga', l: '💰 Pagamenti' }, { id: 'foto', l: '📷 Foto' }, { id: 'app', l: '📅 Agenda' }, { id: 'doc', l: '📄 Documenti' }];
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
@@ -460,6 +467,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
         )}
         {tab === 'foto' && <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento modulo foto…</div>}><PatientPhotos patientId={paz.id} client={documentClient} /></Suspense>}
         {tab === 'impl' && isDentistico && <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento impianti…</div>}><PatientImplants patientId={paz.id} implants={implants} setImplants={setImplants} /></Suspense>}
+        {tab === 'fisio' && canAccessPhysio && <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento cartella fisioterapica…</div>}><PhysioCartella paziente_id={paz.id} studio_id={si?.studio_id} paziente={paz} studio={si} accessMode={physioFullAccess ? 'full' : 'operational'} currentUserId={currentUserId} canManageTeam={canManagePhysioTeam} /></Suspense>}
       </div>
 
       {(documentFlow === 'ricetta' || documentFlow === 'medico') && (

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { Crd, Fld, Ic, Bdg, Modal, EmptyState } from './ui';
 import { Inp, Sel, Txt } from './ui/inputs.jsx';
@@ -24,6 +24,7 @@ const SUBTABS = [
 ];
 
 const fmtNum = (n) => (n === null || n === undefined || n === '' ? '—' : n);
+const withTimeout = (operation, ms = 12000) => Promise.race([operation, new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))]);
 
 /* POL-RBAC-001A: assignment_type -> [label, matching capability]. CAPABILITY
    (Setup → Collaboratori) says a user may act as a role; ASSIGNMENT (here)
@@ -47,18 +48,18 @@ export default function PhysioCartella({ paziente_id, studio_id, paziente, studi
   const [esercizi, setEsercizi] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errore, setErrore] = useState('');
+  const alive = useRef(true);
 
   const ricarica = async () => {
     setLoading(true);
     setErrore('');
     try {
-      const [v, o, d, p, e] = await Promise.all([
-        fullAccess ? supabase.from('physio_valutazioni').select('*').eq('paziente_id', paziente_id).order('data', { ascending: false }) : Promise.resolve({ data: [], error: null }),
-        supabase.from('physio_obiettivi').select('*').eq('paziente_id', paziente_id).order('created_at', { ascending: false }),
-        supabase.from('physio_diario_sedute').select('*').eq('paziente_id', paziente_id).order('data', { ascending: false }),
-        supabase.from('physio_prescrizioni').select('*, physio_esercizi(nome, categoria, descrizione, istruzioni)').eq('paziente_id', paziente_id).order('created_at', { ascending: false }),
-        supabase.from('physio_esercizi').select('id, nome, categoria').eq('studio_id', studio_id).eq('attivo', true).order('nome'),
-      ]);
+      const v = await withTimeout(fullAccess ? supabase.from('physio_valutazioni').select('*').eq('paziente_id', paziente_id).order('data', { ascending: false }) : Promise.resolve({ data: [], error: null }));
+      const o = await withTimeout(supabase.from('physio_obiettivi').select('*').eq('paziente_id', paziente_id).order('created_at', { ascending: false }));
+      const d = await withTimeout(supabase.from('physio_diario_sedute').select('*').eq('paziente_id', paziente_id).order('data', { ascending: false }));
+      const p = await withTimeout(supabase.from('physio_prescrizioni').select('*, physio_esercizi(nome, categoria, descrizione, istruzioni)').eq('paziente_id', paziente_id).order('created_at', { ascending: false }));
+      const e = await withTimeout(supabase.from('physio_esercizi').select('id, nome, categoria').eq('studio_id', studio_id).eq('attivo', true).order('nome'));
+      if (!alive.current) return;
       if (v.error || o.error || d.error || p.error || e.error) {
         setErrore('Errore nel caricamento della cartella fisioterapica.');
       } else {
@@ -68,12 +69,14 @@ export default function PhysioCartella({ paziente_id, studio_id, paziente, studi
         setPrescrizioni(p.data || []);
         setEsercizi(e.data || []);
       }
+    } catch {
+      if (alive.current) setErrore('Errore nel caricamento della cartella fisioterapica. Riprova.');
     } finally {
-      setLoading(false);
+      if (alive.current) setLoading(false);
     }
   };
 
-  useEffect(() => { if (paziente_id) ricarica(); }, [paziente_id, accessMode]);
+  useEffect(() => { alive.current = true; if (paziente_id) ricarica(); return () => { alive.current = false; }; }, [paziente_id, accessMode]);
 
   const subtabs = fullAccess ? SUBTABS : [
     { id: 'percorso', l: 'Percorso autorizzato', ic: 'compass' },

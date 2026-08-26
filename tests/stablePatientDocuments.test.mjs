@@ -74,3 +74,9 @@ test('photos and implants are restored as tab-scoped lazy modules', () => {
   assert.match(app, /implants=\{implants\}/);
   assert.match(app, /setImplants=\{setImplantsSync\}/);
 });
+
+test('physio is lazy, vertical and capability gated', () => {
+  assert.match(stable, /lazy\(\(\) => import\('\.\/PhysioCartella\.jsx'\)\)/);
+  assert.match(stable, /const canAccessPhysio = isFisio && \(physioFullAccess \|\| physioOperationalAccess\)/);
+  assert.match(stable, /tab === 'fisio' && canAccessPhysio/);
+});
