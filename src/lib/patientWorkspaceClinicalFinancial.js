@@ -80,12 +80,14 @@ export async function loadRealPatientWorkspace(client, patientId) {
   };
 }
 
-export function buildClinicalFinancialTimeline({ plans = [], payments = [], appointments = [], documents = [] }) {
+export function buildClinicalFinancialTimeline({ plans = [], payments = [], appointments = [], documents = [], recalls = [] }) {
   const treatments = treatmentsFromPlans(plans);
   return [
-    ...treatments.filter((item) => item.status === TREATMENT_STATUS.COMPLETED).map((item) => ({ id: `done:${item.id}`, occurredAt: item.dataEsec || '', type: 'TREATMENT_COMPLETED', label: item.name, meta: item.price })),
-    ...payments.map((row) => ({ id: `payment:${row.id}`, occurredAt: row.data || '', type: 'PAYMENT_RECORDED', label: 'Pagamento', meta: Number(row.importo) || 0 })),
-    ...appointments.map((row) => ({ id: `appointment:${row.id}`, occurredAt: row.data || '', type: 'APPOINTMENT', label: row.tipo || 'Appuntamento', meta: row.ora || '' })),
-    ...documents.map((row) => ({ id: `document:${row.id}`, occurredAt: row.occurredAt || row.created_at || '', type: row.type || 'DOCUMENT', label: row.label || row.title || 'Documento', meta: '' })),
+    ...plans.map((row) => ({ id: `plan:${row.id}`, occurredAt: row.data || row.created_at || '', type: 'CLINICAL_PLAN', label: row.titolo || 'Piano di cura', meta: '', sourceEntity: 'plans', sourceId: row.id })),
+    ...treatments.filter((item) => item.status === TREATMENT_STATUS.COMPLETED).map((item) => ({ id: `done:${item.id}`, occurredAt: item.dataEsec || '', type: 'TREATMENT_COMPLETED', label: item.name, meta: item.price, sourceEntity: 'plans.voci', sourceId: item.id })),
+    ...payments.map((row) => ({ id: `payment:${row.id}`, occurredAt: row.data || '', type: 'PAYMENT_RECORDED', label: 'Pagamento', meta: Number(row.importo) || 0, sourceEntity: 'payments', sourceId: row.id })),
+    ...appointments.map((row) => ({ id: `appointment:${row.id}`, occurredAt: row.data || '', type: 'APPOINTMENT', label: row.tipo || 'Appuntamento', meta: row.ora || '', sourceEntity: 'appointments', sourceId: row.id })),
+    ...documents.map((row) => ({ id: `document:${row.id}`, occurredAt: row.occurredAt || row.created_at || '', type: row.type || 'DOCUMENT', label: row.label || row.title || 'Documento', meta: '', sourceEntity: row.sourceEntity || 'patient_documents', sourceId: row.id })),
+    ...recalls.map((row) => ({ id: `recall:${row.id}`, occurredAt: row.dataScadenza || row.data_scadenza || '', type: 'RECALL', label: row.motivo || 'Richiamo', meta: row.stato || '', sourceEntity: 'richiami', sourceId: row.id })),
   ].filter((event) => event.occurredAt).sort((a, b) => String(b.occurredAt).localeCompare(String(a.occurredAt)));
 }

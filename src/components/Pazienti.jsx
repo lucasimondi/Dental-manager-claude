@@ -3,7 +3,7 @@ import { Btn, Crd, Fld, Inp, Txt, Modal, Toast, Ic, StatCard, PageHeader, EmptyS
 import { C, uid, fmtD, today } from '../lib/utils';
 import ImportCsvModal from './ImportCsvModal.jsx';
 import DupModal from './DupModal.jsx';
-import SchedaPaz from './SchedaPaz.jsx';
+import PatientWorkspaceBoundary from './PatientWorkspaceBoundary.jsx';
 import { salvaPosizione, pulisciPosizione } from '../lib/posizioneNavigazione';
 
 export default function Pazienti({ patients, setPatients, plans, setPlans, payments, setPayments, appointments, setAppointments, si, features, studioMembership, currentUserId, isStudioAdmin, onNuovoPiano, implants, setImplants, onNuovoAppuntamento, templates, pricelist, autoOpenNew, onAutoOpenNewHandled }) {
@@ -175,7 +175,8 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
 
   if (scheda) {
     return (
-      <SchedaPaz
+      <PatientWorkspaceBoundary
+        key={scheda.id}
         paz={scheda} plans={plans} setPlans={setPlans} payments={payments} appointments={appointments}
         si={si} features={features} studioMembership={studioMembership} currentUserId={currentUserId} isStudioAdmin={isStudioAdmin} implants={implants} setImplants={setImplants} pricelist={pricelist}
         onClose={() => { setScheda(null); pulisciPosizione(['schedaPazId', 'schedaPazTab']); }}

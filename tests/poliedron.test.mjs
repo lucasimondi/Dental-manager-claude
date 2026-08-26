@@ -495,7 +495,7 @@ test('single AI entry point: App.jsx mounts <Poliedron exactly once', () => {
 });
 
 test('patient form isolation: App remounts SchedaPaz when the selected patient changes', () => {
-  assert.match(APP_SHELL_SOURCE, /<SchedaPaz\s+key=\{schedaDashPaz\.paz\.id\}/);
+  assert.match(APP_SHELL_SOURCE, /<PatientWorkspaceBoundary\s+key=\{schedaDashPaz\.paz\.id\}/);
 });
 
 test('explicit Ask cancels live preview and query changes invalidate stale results', () => {
