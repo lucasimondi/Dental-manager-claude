@@ -1,5 +1,128 @@
 # Handoffs
 
+## POL-UI-005B — Round 6 recovery (visual regression fix)
+
+- Task ID: POL-UI-005B. Agent: Claude, on direct, explicit Product Owner instruction naming commit `67fe427` and requiring a forensic diff against its exact parent before any change, with a hard stop on merging, master, or production.
+- Branch: `ui/POL-UI-005B-patient-workspace-v2` (unchanged), PR #59 (unchanged, not merged).
+
+### 1. Forensic diff — parent of `67fe427`
+
+`git log -1 --format="%H %P" 67fe427` → parent is **`c5edc7b`** (the Round 5 tip already on the PR before this session's Round 6). `git diff c5edc7b 67fe427 --stat` touched exactly 5 files: `PatientWorkspaceV2.jsx`, `PatientWorkspaceV2.css`, `tests/patientWorkspaceV2.test.mjs`, and the two coordination docs (`current-task.md`, `handoffs.md`).
+
+### 2. What `67fe427` changed beyond the authorized scope
+
+The JSX diff was clean — every hunk was either the new `ODONTOGRAM_QUADRANTS` markup/constant or the `ECON_TONE`/`INSTALLMENT_TONE`/`kpi.tone` wiring, nothing else. The regression was entirely in the CSS, where 5 declarations went beyond "solo presentazione/stato colore" into structure/layout that the task never authorized:
+
+1. `.pw2-economy h2,.pw2-economy p{display:flex;align-items:center;flex-wrap:wrap}` — changed both elements from the parent's implicit `display:block` to `flex`, which changed how the new color-dot + text wrapped at narrow widths (confirmed: at 390px the dot broke onto its own line above "Residuo € 400.00…", instead of flowing inline with it as in the parent).
+2. `.pw2-economy-grid button{border:1px solid var(...);background:var(...);color:var(...);text-align:left;padding:9px 10px}` — added `text-align:left` and `padding:9px 10px`, neither present in the parent (whose buttons had no `text-align`/`padding` override at all, so they used the browser's centered button default). This visibly re-aligned "Preventivato/Accettato/Eseguito/Pagato/Residuo" from centered to left-aligned in the detail grid.
+3. `.pw2-economy-grid button strong{display:block;margin-top:4px;color:inherit}` — added `margin-top:4px`, not present in the parent.
+4. `.pw2-installments div{border:1px solid var(...);background:var(...);color:var(...)}` — added a `border`, not present in the parent (which had no border on installment chips at all).
+5. `.pw2-installments div small{color:inherit;font-weight:850}` — added `font-weight:850`, not present in the parent.
+
+None of these were requested; they were unintended scope creep introduced while implementing the color scheme in the previous round, not deliberate redesign.
+
+### 3. Regressions identified (confirmed visually, not just by diff)
+
+Using Playwright/Chromium against the actual rendered demo, I swapped in the parent's (`c5edc7b`) exact `PatientWorkspaceV2.jsx`/`.css` as a temporary baseline, screenshotted it, restored `67fe427`'s files and screenshotted again, at 375×667/390×844/430×932/768×1024/1440×900:
+
+- **Situazione economica bar**: at 390×844 the parent wraps "Residuo € 400.00 · 3/5 rate pagate ·" / "prossima €500 il 15/09" as one paragraph starting with the label. `67fe427` instead isolated the new color dot onto its own line above the wrapped text — a real, visible layout regression caused by the `display:flex` change, not a false positive.
+- **Situazione economica detail grid** (the 5-value Preventivato/Accettato/Eseguito/Pagato/Residuo cards): parent centers the label/amount in each card (default button text-align); `67fe427` left-aligned them — a visible, unauthorized alignment change.
+- **Installment chips**: parent renders them as flat, borderless white cards; `67fe427` added a colored border around every chip — a new decorative element the task's "solo colore" instruction did not authorize.
+
+No other section (header, KPI bar structure, quick actions, Da attenzionare, Piano clinico table, ⋯ context menu, modali, Piani/Preventivi archive, Timeline, Polyedron flow, responsive breakpoints) showed any difference in the diff or in side-by-side screenshots — confirmed byte-identical in the diff and pixel-identical in the screenshots at every required breakpoint.
+
+### 4. What was restored
+
+Reverted, in `src/components/PatientWorkspaceV2.css`, exactly the 5 properties above to the parent's absence of them:
+- Removed `.pw2-economy h2,.pw2-economy p{display:flex;...}` entirely; `.pw2-econ-dot` changed from `display:inline-block;...;flex:none` to `display:inline-block;...;vertical-align:middle` so it flows inline within the still-`block` h2/p exactly as the parent's text did, just with a small colored dot ahead of it.
+- `.pw2-economy-grid button` now sets only `border-color`/`background`/`color` (color-only), no `text-align`, no `padding` — restoring the parent's centered default alignment.
+- `.pw2-economy-grid button strong`/`small` now set only `color:inherit` — no `margin-top`, no `display` (redundant with the still-present parent rule), no `opacity`.
+- `.pw2-installments div` now sets only `background`/`color` — no `border`.
+- `.pw2-installments div small` now sets only `color:inherit` — no `font-weight`.
+
+### 5. What was kept from the last task
+
+The two authorized Round 6 features, unchanged:
+1. The 4-quadrant tooth selector (`ODONTOGRAM_QUADRANTS`, `.pw2-odontogram-quadrants`/`.pw2-odontogram-quadrant`/`.pw2-odontogram-teeth`, the `data-anatomical-type="TOOTH"`/`data-anatomical-value` contract) — entirely untouched by this recovery, since the regression was CSS-only and none of it was inside the odontogram's own scope.
+2. The canonical economic color scheme (`--pw2-econ-fg/bg/border` custom properties, `pw2-econ-blue/violet/amber/green/red`, `ECON_TONE`/`INSTALLMENT_TONE`, the KPI `tone` field, the `pw2-econ-dot` markers) — kept in full; only its 5 over-reaching side-effect properties were stripped, the color mapping itself (Preventivato=blu, Accettato=viola, Eseguito=ambra, Pagato=verde, Da pagare/Residuo=rosso) is identical to before.
+
+### 6. Verification
+
+- `npm test` — 451/451, no regressions.
+- `npm run build` — clean.
+- `git diff --check` — clean.
+- Updated `tests/patientWorkspaceV2.test.mjs`: fixed the 2 assertions that referenced the now-removed `border:1px solid var(--pw2-econ-border...)` strings, and added explicit `doesNotMatch` guards against `.pw2-economy h2,.pw2-economy p{display:flex`, `text-align`/`padding` inside `.pw2-economy-grid button{...}`, `margin-top` inside `.pw2-economy-grid button strong{...}`, and any `border:` inside `.pw2-installments div{...}` — so a future round reintroducing the same class of side-effect fails CI immediately.
+- Real-browser side-by-side screenshots (parent baseline vs. `67fe427` regression vs. recovered working tree) at all 5 required breakpoints confirm the recovered state is visually identical to the parent everywhere except the two authorized changes, and that both regressions (dot line-wrap, grid text alignment, installment border) are gone.
+- `git diff --stat` against `App.jsx`/`SchedaPaz.jsx` — empty, confirmed byte-identical to `origin/master`. Static grep for `supabase|useEffect|fetch(|.storage|localStorage|sessionStorage|indexedDB` — no matches.
+
+### Files changed
+
+`src/components/PatientWorkspaceV2.css`, `tests/patientWorkspaceV2.test.mjs`, `docs/coordination/current-task.md`, `docs/coordination/handoffs.md`. No JSX change.
+
+### Database / dependency changes
+
+None.
+
+### Exact next action
+
+Product Owner reviews PR #59 once the preview rebuilds from this recovery commit: confirm the Situazione economica bar, the economy detail grid, and the installment chips now match the pre-`67fe427` layout exactly (aside from color), and that the 4-quadrant odontogram is unaffected. Do not merge, do not implement the audit proposal, do not open a new PR.
+
+---
+
+## POL-UI-005B — Round 6 (KPI/economic color semantics + quadrant odontogram)
+
+- Task ID: POL-UI-005B.
+- Previous agent: Codex (Rounds 1-5, see the branch's own prior handoff history).
+- Agent: Claude, acting on a direct, explicit Product Owner instruction naming PR #59 and branch `ui/POL-UI-005B-patient-workspace-v2` by number/name, including the same safety boundaries already recorded for this task (isolated demo route, zero Supabase/Storage/migration/persistence, no merge). `origin/master`'s own `current-task.md` currently tracks an unrelated, CODEX-owned task (`POL-UI-PATIENT-FREEZE-PROD-2` on `hotfix/POL-UI-patient-freeze-prod-2`) — that record is untouched by this round; this handoff and the branch-local `current-task.md` update are scoped to this PR/branch only, per the Product Owner's explicit direction.
+- Branch: `ui/POL-UI-005B-patient-workspace-v2` (unchanged), PR #59 (unchanged, not merged).
+- Base: unchanged from Round 5 — `origin/master@981724e`.
+
+### Objective
+
+Two targeted UI improvements to the Patient Workspace 2.0 demo, both prototype-only:
+
+1. Replace the flat 20-tooth row in the Quick Add Prestazione "Sede = Dente" picker with a mini odontogram organized into four clearly separated, labeled quadrants (Superiore/Inferiore × destro/sinistro), keeping the `ANATOMICAL_SITE`/`TOOTH`/value semantic contract.
+2. Apply one canonical, sober economic color scheme — Preventivato=blu, Accettato=viola, Eseguito=arancione/ambra, Pagato=verde, Da pagare/Residuo=rosso — consistently across the KPI bar, the Situazione economica bar, the economy detail drawer's five-value grid, and the installment status chips, always paired with the existing text labels (never color-only).
+
+### Completed work
+
+- `src/components/PatientWorkspaceV2.jsx`: added `ODONTOGRAM_QUADRANTS` (4 groups of 5 teeth, reusing the exact prior flat list split into quadrants — no numbering changed) and rebuilt the `siteType === 'Dente'` markup into four `.pw2-odontogram-quadrant` panels inside `.pw2-odontogram-quadrants`, each tooth button `aria-pressed`/`aria-label`d. The outer container keeps `data-entity="ANATOMICAL_SITE"` and now also carries `data-anatomical-type="TOOTH"` and `data-anatomical-value={selectedTooth}` for explicit, testable semantics; `selectedTooth` state and the "Elemento selezionato" text are unchanged in behavior. Added a `tone` field to the four KPI entries (`done`→amber, `paid`→green, `outstanding`→red, `plans` stays neutral) and applied it as a class on each KPI button. Added `ECON_TONE` (Preventivato/Accettato/Eseguito/Pagato/Residuo → the five `pw2-econ-*` classes) applied to `EconomyDetail`'s five-value grid buttons, and `INSTALLMENT_TONE` (PAID/OVERDUE/PENDING → green/red/blue) applied to the installment chips. The main `.pw2-economy` bar's "Pagato"/"Residuo" text now carries a small colored dot (`pw2-econ-dot`) ahead of the existing text label — text is never replaced by color alone.
+- `src/components/PatientWorkspaceV2.css`: removed the old single-row `.pw2-mini-odontogram>div{grid-template-columns:repeat(10/5,1fr)}` rules (Round 4/tablet override) and added a new Round 6 block: `.pw2-mini-odontogram`/`.pw2-odontogram-quadrants`/`.pw2-odontogram-quadrant`/`.pw2-odontogram-teeth` (2×2 grid, bordered/separated quadrant cards, flex-wrapping tooth buttons, `min-width/height:42px` base touch target, `46px` at `min-width:821px` desktop, `44px` at `max-width:520px`, `34×42px` floor at `max-width:375px` with 3-per-row wrap) and the five `--pw2-econ-fg/bg/border` custom-property classes plus the consumer rules (`.pw2-kpis button .pw2-kpi-icon`, `.pw2-economy-grid button`, `.pw2-installments div`, `.pw2-econ-dot`) that read them. Colors reuse the app's already-shipped sober palette (identical fg/bg/border to the existing `is-done`/`is-todo`/`is-progress`/`is-recall` clinical status badges for green/red/amber/violet, plus the pre-existing KPI blue for the blue tone) rather than inventing a new one.
+- `tests/patientWorkspaceV2.test.mjs`: added two Round 6 tests — one asserting the four quadrant labels, the quadrant/teeth CSS classes, the `ANATOMICAL_SITE`/`TOOTH`/value data attributes, the five site alternatives (Dente/Quadrante/Arcata/Generale/Nessuna) are still present, the touch-target and breakpoint CSS, and that no legacy `tone-{indigo,amber,teal,violet,blue}` class name reappears in the component; one asserting the five `--pw2-econ-fg` color definitions, the KPI `tone` wiring, `ECON_TONE`/`INSTALLMENT_TONE` and their `className={...}` usage, the `pw2-econ-dot` markers, that all five economic text labels remain literally present, and the three CSS consumer rules.
+
+### Verification performed
+
+- `npm test` — 451/451 passing (16/16 in `tests/patientWorkspaceV2.test.mjs`, including the two new Round 6 tests), no regressions elsewhere in the suite.
+- `npm run build` — clean production build (pre-existing chunk-size advisory only, unrelated to this change).
+- `git diff --check` — clean, no whitespace errors.
+- `SchedaPaz.jsx` and `App.jsx` — zero diff confirmed (`git diff --stat` against both), and `PatientWorkspaceV2` still does not appear in `App.jsx`/`SchedaPaz.jsx` (grep-verified), and the demo route grep in `src/main.jsx` for `patient-workspace-v2-demo` is unchanged.
+- Static safety grep over `PatientWorkspaceV2.jsx`/`.css` for `supabase|useEffect|fetch(|.storage|localStorage|sessionStorage|indexedDB` — no matches (unchanged from prior rounds).
+- Real browser QA: installed `npm run dev` + Playwright/Chromium locally (dev-only, not persisted — `node_modules` is gitignored and no `package.json`/lockfile change was made) and drove the actual rendered demo at `/patient-workspace-v2-demo`:
+  - Opened Prestazione → Sede = Dente at **375×667, 390×844, 430×932, 768×1024, and 1440×900 desktop**: 4 quadrants render every time (`quadrantCount:4`, `teethCount:20`), tooth-button minimum touch target 41.5–46px across all five viewports, zero horizontal overflow on the odontogram or the page (`overflow:false`, `bodyOverflow:false` at every breakpoint), and tooth selection (`data-anatomical-value`) updates correctly when a different quadrant's tooth is clicked (screenshotted before/after; confirmed via DOM class inspection that the `is-selected`/`aria-pressed` state moves atomically — an initial computed-style read mid-CSS-transition looked ambiguous and was a test-timing artifact only, not a real selection bug, resolved by reading `className`/`aria-pressed` instead of an in-transition `backgroundColor`).
+  - Read back computed KPI icon and `EconomyDetail`/installment colors at the same breakpoints: Eseguito=amber `rgb(255,242,223)`, Pagato=green `rgb(231,245,238)`, Da pagare=red `rgb(250,236,238)` on the KPI bar; Preventivato=blue, Accettato=violet, Eseguito=amber, Pagato=green, Residuo=red on the economy grid, matching the required mapping exactly; installment chips PAID=green/OVERDUE=red/PENDING=blue.
+  - Screenshotted the main KPI bar, the `.pw2-economy` bar (dot + text, no overflow at 390px width), and the full odontogram at every required breakpoint for visual confirmation; no clipping, overlap, or compressed layout observed.
+- NOT independently re-verified in this round (unchanged from Round 5, out of this round's scope): the domain audit's authenticated-QA gaps and the broader canonical-integration open items already on record.
+
+### Files changed
+
+`src/components/PatientWorkspaceV2.jsx`, `src/components/PatientWorkspaceV2.css`, `tests/patientWorkspaceV2.test.mjs`, `docs/coordination/current-task.md`, `docs/coordination/handoffs.md`.
+
+### Database / dependency changes
+
+None. No migration, no Supabase call, no new npm dependency committed (Playwright was installed locally with `--no-save` purely to drive the local QA browser and is not part of the committed tree or `package.json`).
+
+### Unresolved / risks
+
+- Authenticated Product Owner QA on the live Vercel preview (as opposed to this session's local dev-server QA) remains NOT VERIFIABLE here, per standing constraints.
+- Everything else from the Round 5 handoff (domain-audit open items, canonical integration questions) is unchanged and out of this round's scope.
+
+### Exact next action
+
+Product Owner reviews PR #59 once its preview rebuilds from this commit: confirm the four-quadrant tooth picker and the Preventivato/Accettato/Eseguito/Pagato/Residuo color scheme on the real device set. Do not merge, do not implement the audit proposal, do not open a new PR.
+
+---
+
+
 ## POL-001 handoff
 
 - Task ID: POL-001
@@ -1852,3 +1975,56 @@ Code: revert this commit on the branch. Database: stop Chat writes, remove `poli
 - QA limitation: no browser available in this environment has an authenticated production session. Login/list/patient/back/second-patient and rich/empty real-data QA must be completed on the Vercel preview with the Product Owner session before merge.
 - Rollback: revert the hotfix commit to restore the current master patient record. No database rollback.
 - Exact next action: push and open a non-draft PR; do not merge until authenticated preview QA passes.
+# POL-UI-005B — Patient Workspace 2.0 isolated visual foundation
+
+- Task ID: POL-UI-005B. Agent: Codex. Branch: `ui/POL-UI-005B-patient-workspace-v2`. Base: `origin/master` at `981724e`.
+- Objective: implement the approved visual foundation as an isolated preview while preserving the stable production patient record restored by PR #58.
+- Prior-art review: PR #48 was inspected selectively. Only its pure, prop-driven/read-model separation was retained; its broad cockpit integration and automatic clinical/data surfaces were not restored.
+- Completed work: added a premium responsive header, actions, KPI strip with drawers, compact micro-profile, anamnesis/risk state, dynamic clinical summary cards, and the six required navigation tabs. Added synthetic demo data and a dedicated `/patient-workspace-v2-demo` route before the authenticated app mount.
+- Files changed: `src/main.jsx`, `src/components/PatientWorkspaceV2.jsx`, `src/components/PatientWorkspaceV2Demo.jsx`, `src/components/PatientWorkspaceV2.css`, `tests/patientWorkspaceV2.test.mjs`, and coordination records.
+- Production isolation: `src/App.jsx` and `src/components/SchedaPaz.jsx` are unchanged from `origin/master`; the new component is not reachable from the patient list/detail flow. The preview contains no Supabase/Storage client, `fetch`, `useEffect`, subscription, or automatic query.
+- Database/dependencies: none. No schema, migration, RLS, production data, package, or lockfile change.
+- Tests: targeted preview guards 4/4 passed. `npm run build` passed with pre-existing duplicate-icon-key, CSS-comment, pdfjs eval, chunk-size and PWA warnings. Full `npm test`: 434/439 passed; the five failures are the known date-sensitive `tests/agendaSlots.test.mjs` baseline failures and are outside this task. Local browser QA at 1280x720 confirmed the route renders, has no horizontal overflow, and the KPI drawer opens; responsive contracts exist at 375/520/820 breakpoints.
+- Risks: the KPI values in this visual-only preview are derived from synthetic arrays and are not a new financial source of truth. Production wiring must consume the existing authoritative state/canonical source in a later Product Owner-approved task.
+- Rollback: revert the task commit; no database rollback is required.
+- Exact next action: push, open a non-draft PR, wait for the public Vercel preview, smoke-test the isolated route at required widths, then stop at `WAITING_PRODUCT_OWNER_VISUAL_QA`. Do not merge.
+# POL-UI-005B Round 2 — action bar and treatment-driven snapshot
+
+- Task ID: POL-UI-005B Round 2. Agent: Codex. Branch: `ui/POL-UI-005B-patient-workspace-v2`. Existing PR: #59.
+- Objective: extend only the isolated preview with compact creation entry points and a clinically meaningful, treatment-driven snapshot.
+- Completed work: added the separate `+ Prestazione`, `+ Piano`, and `+ Preventivo` Action Bar; search-first Quick Add prototype with conditional dental-element field; distinct clinical-plan and economic-quote concepts; treatment summary `5 da eseguire · 2 eseguite · 1 in corso`; and a premium odontogram placeholder entry point. Removed appointment/note/active-plan duplicates from the clinical snapshot.
+- Files changed: `src/components/PatientWorkspaceV2.jsx`, `src/components/PatientWorkspaceV2.css`, `src/components/PatientWorkspaceV2Demo.jsx`, `tests/patientWorkspaceV2.test.mjs`, and coordination records.
+- Database/dependencies: none. Zero Supabase/Storage queries, subscriptions, migrations, writes, package or lockfile changes.
+- Production isolation: `src/App.jsx` and `src/components/SchedaPaz.jsx` remain unchanged from `origin/master`; the demo is still not connected to the real patient route.
+- Tests: targeted guards 6/6 passed. Full `npm test`: 436/441 passed; the same five date-sensitive Agenda baseline failures remain outside scope. `npm run build` passed with existing warnings. `git diff --check` clean. Local browser QA verified all four drawers/entry points, conditional Dente field, one occurrence each of phone/CF/last visit, no next-appointment duplication, and no desktop horizontal overflow. Responsive CSS explicitly covers 375, 390/430 via the <=520 contract, 768 via <=820, and desktop; automated exact browser resizing was unavailable in the current browser surface.
+- Risks: every create control is a non-persisting prototype. The preview total uses only synthetic fixture arrays and is not a production financial source of truth.
+- Rollback: revert the Round 2 commit; no database rollback.
+- Exact next action: push this commit to PR #59, wait for Vercel to report Ready, then Product Owner reviews the updated preview. Stop before further development or merge.
+# POL-UI-005B Round 3 — Clinical Workflow
+
+- Task ID: POL-UI-005B Round 3. Agent: Codex. Branch: `ui/POL-UI-005B-patient-workspace-v2`. Existing PR: #59.
+- Objective: communicate the canonical Visit → Clinical plan → Quote → Share/Print → Acceptance → Execution → Payment flow through contextual next-step CTAs, without an invasive timeline or real persistence.
+- Completed work: expanded the compact Action Bar to five actions; added prescription and consent prototypes; made the clinical summary shareable through an editable WhatsApp preview; implemented an uninterrupted plan-ready → inherited quote composer → quote-ready flow with dynamic partial total; added confirmation language; and added a non-invasive Polyedron interpretation/preview simulation.
+- Shared architecture: added `src/lib/patientWorkspaceActionRegistry.js` with the nine requested canonical action names. UI controls and the Polyedron prototype reference the same descriptive contract; no model or backend integration exists.
+- Files changed: `src/components/PatientWorkspaceV2.jsx`, `src/components/PatientWorkspaceV2.css`, `src/lib/patientWorkspaceActionRegistry.js`, `tests/patientWorkspaceV2.test.mjs`, and coordination records.
+- Database/dependencies: none. Zero Supabase, Storage, migration, subscription, fetch, local/session storage, data write, package or lockfile change.
+- Production isolation: `src/App.jsx` and `src/components/SchedaPaz.jsx` remain unchanged from `origin/master`; the only route remains `/patient-workspace-v2-demo`.
+- Tests: targeted guards 8/8 passed. Full `npm test`: 438/443 passed; the same five date-sensitive Agenda baseline failures remain outside scope. `npm run build` passed with pre-existing warnings. `git diff --check` clean. Browser QA verified the complete plan-to-quote flow, inherited treatments, ready states, explicit confirmation, prescription, consent, share preview, Polyedron preview, no desktop overflow, and one occurrence each of phone/CF/last visit.
+- Responsive compromise: at <=820px the five quick actions use a contained horizontal scroll with scroll-snap; the page itself remains overflow-free. Drawers are full-width on phone. Exact device emulation was unavailable in the browser surface, so breakpoint-specific guards cover 375, 390/430 via <=520, 768 via <=820, and desktop.
+- Rollback: revert the Round 3 commit; no database rollback.
+- Exact next action: push to PR #59, wait for Vercel Ready, then stop for Product Owner Round 3 review. Do not merge or continue into real implementation.
+
+# POL-UI-005B Round 5 — UI fixes and domain audit
+
+- Task ID: POL-UI-005B Round 5. Agent: Codex. Branch: `ui/POL-UI-005B-patient-workspace-v2`. Existing PR: #59.
+- Objective: fix anatomical-site collisions and treatment action/status semantics in the isolated preview, then document the existing patient-domain/data flows without backend changes.
+- Completed work: gave Piano/Preventivo composers stable responsive site columns for General, arch, quadrant and tooth cases; added accessible state-aware `⋯` menus; added non-color-only professional status badges; marked unscheduled recalls as `RECALL`; produced the repository-evidenced canonical-domain audit and migration proposal.
+- Files changed: `src/components/PatientWorkspaceV2.jsx`, `src/components/PatientWorkspaceV2.css`, `tests/patientWorkspaceV2.test.mjs`, `docs/audits/POL-PATIENT-WORKSPACE-DOMAIN-AUDIT.md`, and coordination records.
+- Database/dependencies: none. Audit only. No query against the remote project, schema/migration/RLS/data change, package change, subscription, persistence or production wiring.
+- Production isolation: `src/App.jsx` and `src/components/SchedaPaz.jsx` are unchanged from `origin/master`; the demo remains `/patient-workspace-v2-demo` only.
+- Tests: dedicated guards 12/12 passed. Full `npm test`: 442/447 passed; the same five date-sensitive Agenda baseline failures remain outside scope. `npm run build` passed with pre-existing warnings. `git diff --check` clean.
+- Browser QA: local 1280 viewport has no page overflow (`scrollWidth=innerWidth=1280`); centered 760px composer; all site cases visible in Plan and Quote; context menus verified for Eseguita, Da eseguire, In corso and Richiamo. Breakpoint guards cover 375/390/430 through <=520 and tablet through <=820; exact device resizing remains unavailable in the current browser surface.
+- Audit conclusion: dental `TREATMENT` remains legacy `plans.voci`; plan/quote are not separate aggregates; canonical financial events/allocations already exist and should be reused; payment plans/installments, explicit follow-up, timeline event store and automation-rule persistence are missing.
+- Risks: older operational table DDL/RLS is not fully represented by migrations. The audit labels these claims as repository-evidenced/remote-unverified and recommends a separately approved read-only remote inventory before schema design.
+- Rollback: revert the Round 5 commit; no database rollback.
+- Exact next action: push to PR #59, wait for Vercel Ready, then stop for Product Owner review. Do not implement the audit proposal or merge.

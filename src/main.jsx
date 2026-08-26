@@ -4,6 +4,7 @@ import App from './App.jsx';
 import PrenotaOnline from './components/PrenotaOnline.jsx';
 import FirmaConsenso from './components/FirmaConsenso.jsx';
 import StoriaClinicaRemota from './components/StoriaClinicaRemota.jsx';
+import PatientWorkspaceV2Demo from './components/PatientWorkspaceV2Demo.jsx';
 import './styles.css';
 
 // Pagine pubbliche (nessun login richiesto), intercettate qui al vero entry
@@ -13,11 +14,13 @@ import './styles.css';
 const pathPrenota = window.location.pathname.match(/^\/prenota\/([a-z0-9-]+)\/?$/i);
 const pathFirma = window.location.pathname.match(/^\/firma\/([0-9a-f-]{36})\/?$/i);
 const pathStoriaClinica = window.location.pathname.match(/^\/storia-clinica\/([0-9a-f-]{36})\/?$/i);
+const pathPatientWorkspaceDemo = window.location.pathname === '/patient-workspace-v2-demo' || window.location.pathname === '/patient-workspace-v2-demo/';
 
 let elementoRadice;
 if (pathPrenota) elementoRadice = <PrenotaOnline slug={pathPrenota[1]} />;
 else if (pathFirma) elementoRadice = <FirmaConsenso token={pathFirma[1]} />;
 else if (pathStoriaClinica) elementoRadice = <StoriaClinicaRemota token={pathStoriaClinica[1]} />;
+else if (pathPatientWorkspaceDemo) elementoRadice = <PatientWorkspaceV2Demo />;
 else elementoRadice = <App />;
 
 ReactDOM.createRoot(document.getElementById('root')).render(elementoRadice);

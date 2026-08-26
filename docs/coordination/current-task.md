@@ -1,14 +1,15 @@
 # Current task
 
-- TASK: POL-UI-PATIENT-FREEZE-PROD-2
-- TITLE: Emergency stable patient record rollback
-- OWNER: CODEX
-- BRANCH: `hotfix/POL-UI-patient-freeze-prod-2`
-- BASE: `origin/master` at `a84b159` (includes merged PR #57)
-- STATUS: READY_FOR_PR
-- OBJECTIVE: restore the self-contained legacy patient record and remove all automatic Supabase/effect work from the patient-open path.
-- SCOPE: patient record, the #57 App import rollback, targeted regression guards, and coordination records only.
-- NEXT_ACTION: push, open PR to `master`, wait for Vercel preview, then perform authenticated Product Owner smoke QA. Do not merge automatically.
+- TASK: POL-UI-005B
+- TITLE: Patient Workspace 2.0 isolated visual foundation
+- OWNER: CLAUDE (Round 6 + Round 6 recovery, direct Product Owner request; previous rounds by CODEX — see handoff below)
+- BRANCH: `ui/POL-UI-005B-patient-workspace-v2`
+- BASE: `origin/master` at `981724e` (merged PR #58 stable patient record recovery)
+- STATUS: READY_FOR_PR_UPDATE
+- OBJECTIVE: Round 6 recovery — commit `67fe427` introduced unauthorized CSS layout side-effects (flex-wrap on the Situazione economica bar, left-align + padding on the economy grid buttons, a margin-top on its `strong`, and a new border on installment chips) alongside the two authorized changes. Reverted every layout side-effect to `67fe427`'s parent (`c5edc7b`) while keeping only the quadrant tooth selector and the canonical economic color scheme.
+- SCOPE (Round 6 recovery): `src/components/PatientWorkspaceV2.css` (surgical revert of the 5 non-color properties listed above) and `tests/patientWorkspaceV2.test.mjs` (updated + added guard assertions) only. No JSX change was needed — the regression was CSS-only.
+- SAFETY: `SchedaPaz.jsx` and `App.jsx` remain byte-for-byte unchanged from `origin/master`; no Supabase, Storage, migration, dependency, effect, fetch, or production-route change. Demo stays isolated on `/patient-workspace-v2-demo`.
+- NEXT_ACTION: commit and push the recovery to the existing PR #59, wait for Vercel/Netlify Ready, then stop for Product Owner review. Do not implement the audit proposal or merge.
 
 ## Previous incident record
 
