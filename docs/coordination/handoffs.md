@@ -2041,3 +2041,12 @@ Code: revert this commit on the branch. Database: stop Chat writes, remove `poli
 - Validation: `npm test` 458/458 passed; `npm run build` passed with pre-existing duplicate icon, pdfjs eval, CSS comment and chunk-size warnings; `git diff --check` clean. Exact final commit/PR/preview are recorded after remote publication.
 - Rollback: revert the task commit. No database rollback.
 - Exact next action: push, open PR to `master`, wait for Vercel preview if configured, then Product Owner QA on the isolated route. Do not merge.
+# POL-UI-005C — PR #61 master realignment validation
+
+- Branch: `ui/POL-UI-005C-patient-docs-prescriptions-consents`; target: latest `origin/master@6de2050`.
+- `git fetch origin` and an explicit single-branch-safe `git fetch origin master:refs/remotes/origin/master` confirmed the remote master SHA. The branch already descended directly from that SHA; `git merge --no-edit origin/master` returned `Already up to date`.
+- Conflicts: none. No source file required conflict resolution and every original PR #61 integration file remains present.
+- Regression verification: Documenti still mounts only for `tab === 'doc'`; metadata excludes `pdf_base64`; PDF is fetched by source/id only on open/print; `DocMedico` stays lazy and receives the current patient/studio; consent templates still come from active `consenso_modelli`; unsupported signature creation remains disabled with the authenticated-contract gap; Context still exposes documents/prescriptions/consents and Timeline retains source-derived events.
+- Stable patient safety: `git diff origin/master...HEAD -- src/App.jsx src/components/SchedaPaz.jsx` is empty. No database, migration, RLS, Storage or patient data operation was performed.
+- Validation: dedicated tests 23/23 passed; full `npm test` 458/458 passed; `npm run build` passed with only pre-existing warnings; `git diff --check` clean.
+- Exact next action: push this documentation-only validation commit, wait for PR #61 Netlify/Vercel checks, smoke-test `/patient-workspace-v2-demo`, confirm mergeability, and do not merge.
