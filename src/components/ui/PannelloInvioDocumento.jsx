@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { C } from '../../lib/utils';
 import Btn from './Btn.jsx';
 import Ic from './Ic.jsx';
 import { condividiPdf, scaricaPdf, copiaNumero } from '../../lib/condivisionePdf';
+
+const PdfViewerModal = lazy(() => import('./PdfViewerModal.jsx'));
 
 /**
  * Pannello azioni dopo la generazione di un documento: un pulsante unico
@@ -22,6 +24,7 @@ import { condividiPdf, scaricaPdf, copiaNumero } from '../../lib/condivisionePdf
 export default function PannelloInvioDocumento({ pronto, paziente, archiviato, onChiudi, onNuovoDocumento }) {
   const [menuAperto, setMenuAperto] = useState(false);
   const [stato, setStato] = useState('');
+  const [anteprimaAperta, setAnteprimaAperta] = useState(false);
 
   const condividi = async (messaggioSuccesso) => {
     setMenuAperto(false);
@@ -42,6 +45,10 @@ export default function PannelloInvioDocumento({ pronto, paziente, archiviato, o
       <div style={{ background: C.sucL, border: `1px solid ${C.suc}`, borderRadius: 10, padding: '11px 14px', marginBottom: 12, textAlign: 'center' }}>
         <div style={{ fontWeight: 700, color: C.suc, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><Ic n="okc" s={13} c={C.suc} />{pronto.titolo} pronto</div>
         {archiviato && <div style={{ fontSize: 11, color: C.txm, marginTop: 3 }}>Salvato anche in archivio, scheda paziente</div>}
+      </div>
+
+      <div style={{ marginBottom: 8 }}>
+        <Btn ch="Apri anteprima" ic="eye" onClick={() => setAnteprimaAperta(true)} full />
       </div>
 
       <div style={{ position: 'relative' }}>
@@ -92,6 +99,12 @@ export default function PannelloInvioDocumento({ pronto, paziente, archiviato, o
         <Btn ch="Chiudi" v="sec" onClick={onChiudi} full />
         <Btn ch="Genera un altro documento" ic="refresh" v="sec" onClick={onNuovoDocumento} full />
       </div>
+
+      {anteprimaAperta && (
+        <Suspense fallback={null}>
+          <PdfViewerModal titolo={pronto.titolo} dataUrl={pronto.dataUrl} filename={pronto.filename} onClose={() => setAnteprimaAperta(false)} />
+        </Suspense>
+      )}
     </div>
   );
 }

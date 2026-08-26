@@ -66,14 +66,27 @@ export async function condividiPdf(dataUrl, filename) {
   }
 }
 
-/** Download classico via link temporaneo — fallback quando la condivisione nativa non c'è. */
+/**
+ * Download classico via link temporaneo — fallback quando la condivisione nativa non c'è.
+ *
+ * Usa sempre un blob: URL, mai il data: URI grezzo direttamente in `href`:
+ * Safari iOS (e diverse WebView Android) ignora o gestisce in modo
+ * inaffidabile l'attributo `download` su un `<a href="data:...">` di
+ * dimensioni non banali — spesso naviga/apre l'anteprima invece di
+ * scaricare il file, che è esattamente il sintomo "su mobile non scarica".
+ * Un blob: URL è l'oggetto che tutti i browser mobili moderni sanno
+ * scaricare in modo affidabile con lo stesso pattern <a download>.
+ */
 export function scaricaPdf(dataUrl, filename) {
+  const file = dataUrlToFile(dataUrl, filename);
+  const url = URL.createObjectURL(file);
   const a = document.createElement('a');
-  a.href = dataUrl;
+  a.href = url;
   a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
 /**

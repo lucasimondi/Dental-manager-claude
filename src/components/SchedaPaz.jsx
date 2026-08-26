@@ -140,9 +140,17 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
         ))}
       </div>
 
-      <div style={{ display: 'flex', background: C.sur, borderBottom: `1px solid ${C.brd}`, flexShrink: 0 }}>
+      <div style={{ display: 'flex', background: C.sur, borderBottom: `1px solid ${C.brd}`, flexShrink: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        {/* Con fino a 10 tab possibili (Fisio/Impianti/Privacy sono condizionali)
+            un flex:1 uguale per tutte le forzava la riga a comprimersi o
+            eccedere la larghezza dello schermo su mobile in portrait, a
+            volte spingendo "Documenti" fuori dall'area visibile senza modo
+            di raggiungerla — bug reale, non solo estetico. Riga a scroll
+            orizzontale con tab a larghezza intrinseca: ogni tab, inclusa
+            Documenti, resta sempre raggiungibile con uno swipe, su qualunque
+            viewport, senza cambiare aspetto/comportamento delle altre tab. */}
         {TABS.map((t) => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, padding: '11px 4px', background: 'none', border: 'none', borderBottom: `2.5px solid ${tab === t.id ? C.pri : 'transparent'}`, color: tab === t.id ? C.pri : C.txm, fontWeight: tab === t.id ? 700 : 500, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>{t.l}</button>
+          <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: '0 0 auto', padding: '11px 10px', background: 'none', border: 'none', borderBottom: `2.5px solid ${tab === t.id ? C.pri : 'transparent'}`, color: tab === t.id ? C.pri : C.txm, fontWeight: tab === t.id ? 700 : 500, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>{t.l}</button>
         ))}
       </div>
 

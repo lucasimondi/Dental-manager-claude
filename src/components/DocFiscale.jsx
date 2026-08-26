@@ -6,6 +6,7 @@ import { C, fmt, fmtD, today, DEF_DOCUMENTI_SETTINGS } from '../lib/utils';
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { generaXmlFatturaPA, scaricaXml, speseFatturaPAValida } from '../lib/fatturaPA.js';
 import { drawFiscalStamp } from '../lib/pdfSignature.js';
+import { scaricaPdf } from '../lib/condivisionePdf';
 
 const getNumeroProgressivo = (tipo) => {
   const key = tipo === 'fattura' ? 'dm_fattura_num' : 'dm_rimborso_num';
@@ -317,11 +318,7 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
                         if (!doc) continue;
                         const { data: full } = await supabase.from('documenti_fiscali').select('pdf_base64').eq('id', id).single();
                         if (full?.pdf_base64) {
-                          const a = document.createElement('a');
-                          a.href = full.pdf_base64;
-                          a.download = `${doc.tipo}_${doc.numero}_${doc.paziente_nome.replace(/\s+/g,'_')}_${doc.data}.pdf`.toLowerCase();
-                          a.style.display = 'none';
-                          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                          scaricaPdf(full.pdf_base64, `${doc.tipo}_${doc.numero}_${doc.paziente_nome.replace(/\s+/g,'_')}_${doc.data}.pdf`.toLowerCase());
                           await new Promise(r => setTimeout(r, 300));
                         }
                       }
@@ -365,11 +362,7 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
                             <button onClick={async () => {
                               const { data: full } = await supabase.from('documenti_fiscali').select('pdf_base64').eq('id', doc.id).single();
                               if (full?.pdf_base64) {
-                                const a = document.createElement('a');
-                                a.href = full.pdf_base64;
-                                a.download = `${doc.tipo}_${doc.numero}_${doc.paziente_nome.replace(/\s+/g,'_')}_${doc.data}.pdf`.toLowerCase();
-                                a.style.display = 'none';
-                                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                                scaricaPdf(full.pdf_base64, `${doc.tipo}_${doc.numero}_${doc.paziente_nome.replace(/\s+/g,'_')}_${doc.data}.pdf`.toLowerCase());
                               }
                             }} style={{ background: C.priL, border: 'none', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: C.pri, display: 'flex' }}><Ic n="download" s={12} c={C.pri} /></button>
                             <button onClick={async () => {
@@ -396,7 +389,17 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
           <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10 }}>Tipo documento</div>
           <div style={{ display: 'flex', gap: 8 }}>
             {[['fattura', 'receipt', 'Fattura', 'Documento fiscale con numero progressivo'], ['rimborso', 'bank', 'Rimborso spese', 'Nota spese per rimborso assicurativo']].map(([val, ic, lbl, sub]) => (
-              <button key={val} onClick={() => { setTipo(val); setGenerated(false); const n = getNumeroProgressivo(val); setNumero(String(n.num).padStart(3,'0')); }} style={{ flex: 1, padding: 12, borderRadius: 10, border: `2px solid ${tipo === val ? C.pri : C.brd}`, background: tipo === val ? C.priL : C.sur, cursor: 'pointer', textAlign: 'left' }}>
+              <button key={val} onClick={() => {
+                if (val === tipo) return;
+                // Cambiare tipo (Fattura ↔ Rimborso) deve ripartire da una
+                // selezione vuota: Fattura e Rimborso sono due documenti
+                // distinti, non due viste sullo stesso elenco voci — senza
+                // questo reset, prestazioni scelte per l'uno restavano
+                // silenziosamente nell'altro (bug reale: "prestazioni non
+                // corrispondenti a quelle selezionate").
+                setTipo(val); setGenerated(false); setVoci([]); setSelectedPiani([]); clearVociDraft();
+                const n = getNumeroProgressivo(val); setNumero(String(n.num).padStart(3,'0'));
+              }} style={{ flex: 1, padding: 12, borderRadius: 10, border: `2px solid ${tipo === val ? C.pri : C.brd}`, background: tipo === val ? C.priL : C.sur, cursor: 'pointer', textAlign: 'left' }}>
                 <div style={{ fontWeight: 800, fontSize: 14, color: tipo === val ? C.pri : C.txt, display: 'flex', alignItems: 'center', gap: 6 }}><Ic n={ic} s={13} c={tipo === val ? C.pri : C.txt} />{lbl}</div>
                 <div style={{ fontSize: 10, color: C.txm, marginTop: 3 }}>{sub}</div>
               </button>

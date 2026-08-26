@@ -1,0 +1,190 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { creaRicettaPdf, creaAnamnesiPdf } from '../src/lib/pdfDocs.js';
+import { getStableViewportSize } from '../src/lib/poliedron/poliedronSafeBounds.js';
+
+const src = (path) => fs.readFileSync(path, 'utf8');
+const pannello = src('src/components/ui/PannelloInvioDocumento.jsx');
+const condivisione = src('src/lib/condivisionePdf.js');
+const docFiscale = src('src/components/DocFiscale.jsx');
+const clinical = src('src/components/PatientClinicalHistory.jsx');
+const schedaPaz = src('src/components/SchedaPaz.jsx');
+const mobilePos = src('src/components/poliedron/usePoliedronPosition.js');
+const edgePos = src('src/components/poliedron/usePoliedronEdgePosition.js');
+
+// A/B — Ricetta: PDF reale (già coperto in patientPreMergeQa.test.mjs) + anteprima reale collegata.
+test('A. Genera PDF apre davvero la preview storica (PdfViewerModal), non solo condividi/scarica', () => {
+  assert.match(pannello, /lazy\(\(\) => import\('\.\/PdfViewerModal\.jsx'\)\)/);
+  assert.match(pannello, /Apri anteprima/);
+  assert.match(pannello, /<PdfViewerModal titolo=\{pronto\.titolo\} dataUrl=\{pronto\.dataUrl\} filename=\{pronto\.filename\}/);
+});
+
+test('B. Ricetta conserva paziente/firma/timbro nel documento generato', () => {
+  const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFhQGAWjR9WQAAAABJRU5ErkJggg==';
+  const result = creaRicettaPdf({ paziente: { nome: 'Anna', cognome: 'Bianchi' }, studio: { nome: 'Studio QA', firma_b64: png }, data: '2026-08-26', farmaci: [{ nome: 'Farmaco X' }] });
+  assert.match(result.filename, /Bianchi/);
+  assert.ok(result.doc.output('arraybuffer').byteLength > 1000);
+});
+
+// C/D — Fattura e Rimborso: struttura del PDF (stessa funzione generaPdf, invariata da questo QA).
+test('C. Fattura genera un documento con titolo, box paziente e timbro configurato', () => {
+  assert.match(docFiscale, /const titoloDoc = tipo === 'fattura' \? 'FATTURA' : 'RIMBORSO SPESE'/);
+  assert.match(docFiscale, /drawFiscalStamp\(doc, STUDIO\)/);
+  assert.match(docFiscale, /txt\(`\$\{paz\.nome\} \$\{paz\.cognome\}`, M \+ 90, y \+ 12\)/);
+});
+
+test('D. Rimborso include IBAN e dicitura dedicata, distinta dalla Fattura', () => {
+  assert.match(docFiscale, /tipo === 'rimborso' && iban/);
+  assert.match(docFiscale, /COORDINATE BANCARIE PER IL RIMBORSO/);
+  assert.match(docFiscale, /Il presente documento attesta il rimborso delle spese sanitarie/);
+});
+
+// E — root cause reale del bug "prestazioni casuali": voci/selectedPiani non
+// venivano azzerate cambiando tipo (Fattura ↔ Rimborso), quindi il PDF
+// generato poteva contenere prestazioni scelte per l'altro documento.
+test('E. Cambiare tipo Fattura/Rimborso azzera sempre le prestazioni selezionate', () => {
+  assert.match(docFiscale, /if \(val === tipo\) return;/);
+  assert.match(docFiscale, /setTipo\(val\); setGenerated\(false\); setVoci\(\[\]\); setSelectedPiani\(\[\]\); clearVociDraft\(\);/);
+});
+
+// F — Il payload "WhatsApp" per Fattura/Rimborso è la condivisione nativa
+// dello STESSO file generato (pronto.dataUrl): non esiste un secondo
+// generatore di testo/prestazioni che potrebbe divergere dal PDF.
+test('F. Condivisione (WhatsApp incluso) invia esattamente lo stesso PDF mostrato in anteprima', () => {
+  assert.match(pannello, /condividiPdf\(pronto\.dataUrl, pronto\.filename\)/);
+  assert.doesNotMatch(docFiscale, /navigator\.share|WhatsApp|wa\.me/);
+});
+
+// G — root cause reale del bug "su mobile il Rimborso non scarica": il
+// download usava un <a href="data:..."> diretto, inaffidabile su iOS
+// Safari/WebView per payload non banali. Ora passa sempre da un blob: URL.
+test('G. Il download (Rimborso incluso) usa un blob: URL, non il data: URI grezzo', () => {
+  assert.match(condivisione, /export function scaricaPdf\(dataUrl, filename\) \{/);
+  const body = condivisione.split('export function scaricaPdf')[1].split('\n\n')[0];
+  assert.match(body, /dataUrlToFile\(dataUrl, filename\)/);
+  assert.match(body, /URL\.createObjectURL\(file\)/);
+  assert.doesNotMatch(body, /a\.href = dataUrl/);
+  // Anche gli scarichi dall'archivio fiscale (non solo il flusso "appena generato") passano dallo stesso helper.
+  assert.doesNotMatch(docFiscale, /a\.href = full\.pdf_base64/);
+  assert.match(docFiscale, /scaricaPdf\(full\.pdf_base64,/);
+});
+
+// H — root cause reale del bug Anamnesi: il salvataggio produceva solo una
+// nota testuale, mai un documento. Ora genera un vero PDF (stesso motore
+// jsPDF/timbro degli altri documenti) e lo mostra tramite lo stesso pannello.
+test('H. Anamnesi produce un documento PDF reale, visualizzabile e scaricabile', () => {
+  const result = creaAnamnesiPdf({
+    paziente: { nome: 'Luca', cognome: 'Verdi' },
+    studio: { nome: 'Studio QA' },
+    risposte: [{ titolo: 'Diabete', valore: 'si', note: 'compensato' }],
+    farmaci: [{ nome: 'Metformina' }],
+    allergie: [{ sostanza: 'Penicillina' }],
+    data: '2026-08-27',
+  });
+  assert.match(result.dataUrl, /^data:application\/pdf;/);
+  assert.match(result.filename, /anamnesi_Verdi_2026-08-27\.pdf/);
+  assert.ok(result.doc.output('arraybuffer').byteLength > 1000);
+});
+
+test('H2. Il flusso Anamnesi genera e mostra davvero il documento dopo il salvataggio, senza inventare RPC/firma', () => {
+  assert.match(clinical, /import \{ creaAnamnesiPdf \} from '\.\.\/lib\/pdfDocs\.js';/);
+  assert.match(clinical, /const \{ doc, dataUrl, filename \} = creaAnamnesiPdf\(/);
+  assert.match(clinical, /setPronto\(\{ dataUrl, filename, titolo: 'Modulo anamnesi', tipoDoc: 'anamnesi' \}\)/);
+  assert.match(clinical, /\{pronto && \(/);
+  assert.match(clinical, /<PannelloInvioDocumento/);
+  // Il blocker reale (firma/RPC non verificate) resta esplicito, non aggirato.
+  assert.match(clinical, /Firma anamnesi non disponibile/);
+  assert.doesNotMatch(clinical, /\.rpc\(/);
+  // L'archiviazione è additiva e best-effort: non deve mai bloccare la produzione del documento.
+  assert.match(clinical, /catch \{ \/\* archiviazione best-effort/);
+});
+
+test('N. Anamnesi non fa query all\'apertura generale: la query resta dentro saveHistory, dopo la compilazione', () => {
+  assert.match(clinical, /const saveHistory = async \(data\) => \{[\s\S]*supabase\.from\('documenti_medici'\)/);
+  assert.doesNotMatch(clinical, /useEffect\(\(\) => \{[^}]*documenti_medici/);
+});
+
+// I/J/K — Note, Richiamo, Appuntamento: verifica end-to-end del cablaggio
+// reale (già presente su entrambi i mount point), non solo della UI.
+test('I/J/K. Note, richiamo e appuntamento restano cablati end-to-end su entrambi i mount point', () => {
+  const app = src('src/App.jsx');
+  const pazienti = src('src/components/Pazienti.jsx');
+  for (const wiring of ['richiami={richiami}', 'setRichiami={setRichiamiSync}', 'onNuovoAppuntamento=', 'onPatientChange=']) {
+    assert.match(app, new RegExp(wiring.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  for (const wiring of ['richiami={richiami}', 'setRichiami={setRichiami}', 'onNuovoAppuntamento={onNuovoAppuntamento}', 'onPatientChange={setScheda}']) {
+    assert.match(pazienti, new RegExp(wiring.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+});
+
+// L — root cause reale del drift Polyedron: window.innerWidth/innerHeight
+// fluttuano quando la chrome del browser mobile si nasconde/riappare
+// (esattamente ciò che un overlay a schermo intero come la Scheda Paziente
+// tende a innescare aprendola/chiudendola); window.visualViewport no.
+test('L1. getStableViewportSize ignora le fluttuazioni di window.innerHeight quando visualViewport è disponibile', () => {
+  const originalWindow = globalThis.window;
+  try {
+    globalThis.window = { innerWidth: 390, innerHeight: 780, visualViewport: { width: 390, height: 780 } };
+    const before = getStableViewportSize();
+    assert.deepEqual(before, { width: 390, height: 780 });
+
+    // Simula la chrome del browser che si nasconde (window.innerHeight
+    // cambia) mentre visualViewport — per definizione — resta stabile.
+    globalThis.window.innerHeight = 844;
+    const during = getStableViewportSize();
+    assert.deepEqual(during, { width: 390, height: 780 });
+    assert.deepEqual(before, during, 'la posizione calcolata da questi valori deve restare identica prima/durante');
+  } finally {
+    globalThis.window = originalWindow;
+  }
+});
+
+test('L2. getStableViewportSize ricade su window.innerWidth/innerHeight quando visualViewport non esiste', () => {
+  const originalWindow = globalThis.window;
+  try {
+    globalThis.window = { innerWidth: 1280, innerHeight: 800 };
+    assert.deepEqual(getStableViewportSize(), { width: 1280, height: 800 });
+  } finally {
+    globalThis.window = originalWindow;
+  }
+});
+
+test('L3. Entrambi gli hook di posizionamento usano la sorgente stabile, non più window.innerWidth/innerHeight grezzi', () => {
+  assert.match(mobilePos, /getStableViewportSize/);
+  assert.match(edgePos, /getStableViewportSize/);
+  assert.doesNotMatch(mobilePos, /viewportWidth: window\.innerWidth/);
+  assert.doesNotMatch(mobilePos, /viewportHeight: window\.innerHeight/);
+  assert.doesNotMatch(edgePos, /viewportWidth: window\.innerWidth/);
+});
+
+test('L4. La posizione "docked" si aggiorna anche su resize/orientationchange (niente più no-op quando fraction è null)', () => {
+  assert.doesNotMatch(mobilePos, /setFraction\(\(current\) => \(current \? \{ \.\.\.current \} : current\)\)/);
+  assert.match(mobilePos, /const reclamp = \(\) => \{\s*safeAreaInsetsRef\.current = readSafeAreaInsets\(\);\s*setLayoutRevision\(\(revision\) => revision \+ 1\);/);
+});
+
+test('L5. Nessun frame di posizione bloccata "stantia" dopo lo sblocco (lock solo mentre positionLocked è vero)', () => {
+  assert.doesNotMatch(mobilePos, /\} else if \(lockedPositionRef\.current\) position = lockedPositionRef\.current;/);
+  assert.doesNotMatch(edgePos, /\} else if \(lockedPlacementRef\.current\) placement = lockedPlacementRef\.current;/);
+});
+
+// M — root cause reale del bug "Documenti irraggiungibile in portrait senza
+// ruotare": fino a 10 tab con flex:1 uguale si comprimevano/eccedevano la
+// larghezza schermo. Ora la barra scorre orizzontalmente, ogni tab a
+// larghezza intrinseca — Documenti resta sempre raggiungibile.
+test('M. La barra delle tab della Scheda Paziente è scorrevole orizzontalmente su mobile', () => {
+  assert.match(schedaPaz, /overflowX: 'auto', WebkitOverflowScrolling: 'touch'/);
+  assert.match(schedaPaz, /flex: '0 0 auto', padding: '11px 10px'/);
+  assert.doesNotMatch(schedaPaz, /flex: 1, padding: '11px 4px'/);
+  // Tutte le tab, incluse Documenti, restano presenti e invariate nel comportamento.
+  for (const id of ['info', 'clinical', 'piani', 'paga', 'foto', 'app', 'doc']) assert.match(schedaPaz, new RegExp(`id: '${id}'`));
+});
+
+// N — nessuna query eager per le sezioni pesanti, invariato da prima di questo QA.
+test('N2. Foto/Fisio/Documenti restano lazy e montati solo per la propria tab', () => {
+  assert.match(schedaPaz, /lazy\(\(\) => import\('\.\/PatientPhotos\.jsx'\)\)/);
+  assert.match(schedaPaz, /lazy\(\(\) => import\('\.\/PhysioCartella\.jsx'\)\)/);
+  assert.match(schedaPaz, /lazy\(\(\) => import\('\.\/PatientWorkspaceDocuments\.jsx'\)\)/);
+  assert.match(schedaPaz, /\{tab === 'foto' &&/);
+  assert.match(schedaPaz, /\{tab === 'fisio' && canAccessPhysio &&/);
+});

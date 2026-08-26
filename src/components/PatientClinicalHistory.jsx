@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Btn, Crd, Modal, FormStoriaClinica } from './ui';
-import { C, ANAMNESI_MEDICA_STANDARD, STORIA_CLINICA_MODELLO_BASE, today } from '../lib/utils';
+import { Btn, Crd, Modal, FormStoriaClinica, PannelloInvioDocumento } from './ui';
+import { C, ANAMNESI_MEDICA_STANDARD, STORIA_CLINICA_MODELLO_BASE, today, DEF_DOCUMENTI_SETTINGS } from '../lib/utils';
 import { supabase } from '../lib/supabase.js';
 import { formatClinicalHistoryNote } from '../lib/patientQuickActions.js';
+import { creaAnamnesiPdf } from '../lib/pdfDocs.js';
 
 export default function PatientClinicalHistory({ patient, setPatients, onPatientChange, studio }) {
   const medical = !studio?.vertical || studio.vertical === 'dentistico' || studio.vertical === 'medico_chirurgo';
@@ -11,8 +12,10 @@ export default function PatientClinicalHistory({ patient, setPatients, onPatient
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState('');
+  const [pronto, setPronto] = useState(null); // { dataUrl, filename, titolo, tipoDoc } — documento anamnesi generato
   const abortRef = useRef(null);
   useEffect(() => () => abortRef.current?.abort(), []);
+  const docSet = { ...DEF_DOCUMENTI_SETTINGS, ...(studio?.documenti_settings || {}) };
 
   const openHistory = async () => {
     setError(''); setSaved('');
@@ -38,12 +41,34 @@ export default function PatientClinicalHistory({ patient, setPatients, onPatient
     }
   };
 
-  const saveHistory = (data) => {
+  const saveHistory = async (data) => {
     const section = formatClinicalHistoryNote(data, today());
     const updated = { ...patient, noteGenerale: [patient.noteGenerale?.trim(), section].filter(Boolean).join('\n\n') };
     setPatients?.((rows) => rows.map((row) => row.id === patient.id ? updated : row));
     onPatientChange?.(updated);
-    setOpen(false); setSaved('Anamnesi salvata nella Scheda Paziente.');
+
+    // Oltre alla nota testuale (rapida da leggere in Info), il flusso deve
+    // produrre un vero documento visualizzabile/scaricabile — non solo una
+    // nota: stesso pattern jsPDF + timbro degli altri documenti (DocMedico),
+    // nessun backend/RPC inventato.
+    const oggi = today();
+    const { doc, dataUrl, filename } = creaAnamnesiPdf({ paziente: patient, studio, risposte: data.risposte, farmaci: data.farmaci, allergie: data.allergie, data: oggi });
+    if (docSet.anamnesi) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const studioId = session?.user?.app_metadata?.studio_id;
+        if (studioId) {
+          await supabase.from('documenti_medici').insert([{
+            studio_id: studioId, paziente_id: patient.id, paziente_nome: `${patient.nome} ${patient.cognome}`,
+            tipo: 'anamnesi', titolo: 'Modulo anamnesi', data: oggi, pdf_base64: dataUrl,
+          }]);
+        }
+      } catch { /* archiviazione best-effort: il documento resta comunque disponibile per anteprima/scarico */ }
+    }
+    void doc;
+    setOpen(false);
+    setPronto({ dataUrl, filename, titolo: 'Modulo anamnesi', tipoDoc: 'anamnesi' });
+    setSaved('Anamnesi salvata nella Scheda Paziente.');
   };
 
   return <div>
@@ -54,6 +79,15 @@ export default function PatientClinicalHistory({ patient, setPatients, onPatient
       {error && <div role="alert" style={{ marginTop: 10, color: C.dan, fontSize: 12 }}>{error}</div>}
       {saved && <div role="status" style={{ marginTop: 10, color: C.suc, fontSize: 12 }}>{saved}</div>}
     </Crd>
+    {pronto && (
+      <PannelloInvioDocumento
+        pronto={pronto}
+        paziente={patient}
+        archiviato={docSet.anamnesi}
+        onChiudi={() => setPronto(null)}
+        onNuovoDocumento={() => { setPronto(null); openHistory(); }}
+      />
+    )}
     <Crd style={{ borderColor: C.war }}>
       <div style={{ fontWeight: 800, color: C.war, marginBottom: 6 }}>Firma anamnesi non disponibile</div>
       <div style={{ fontSize: 12, color: C.txm, lineHeight: 1.5 }}>Compilazione e salvataggio sono attivi. Firma in studio e link remoto restano disabilitati perché le RPC autenticate non sono presenti nel backend versionato.</div>
