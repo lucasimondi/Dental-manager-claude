@@ -9,6 +9,7 @@ const PatientPhotos = lazy(() => import('./PatientPhotos.jsx'));
 const PatientImplants = lazy(() => import('./PatientImplants.jsx'));
 const PhysioCartella = lazy(() => import('./PhysioCartella.jsx'));
 const PatientClinicalHistory = lazy(() => import('./PatientClinicalHistory.jsx'));
+const PatientPrivacy = lazy(() => import('./PatientPrivacy.jsx'));
 const PatientWorkspaceDocuments = lazy(() => import('./PatientWorkspaceDocuments.jsx'));
 const PatientWorkspaceConsentFlow = lazy(() => import('./PatientWorkspaceDocuments.jsx').then((module) => ({ default: module.PatientWorkspaceConsentFlow })));
 
@@ -20,7 +21,7 @@ const prossimaDataMascherina = (orto) => {
   return d.toISOString().slice(0, 10);
 };
 
-export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {}, implants = [], setImplants, studioMembership, currentUserId, isStudioAdmin }) {
+export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {}, implants = [], setImplants, setPatients, studioMembership, currentUserId, isStudioAdmin }) {
   const [tab, setTab] = useState(initTab || 'info');
   const [documentFlow, setDocumentFlow] = useState(() => initialDocumentRequest?.type === 'ricetta' ? 'ricetta' : null);
   const [documentsReloadToken, setDocumentsReloadToken] = useState(0);
@@ -116,7 +117,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
   const physioOperationalAccess = capabilities.has('clinical.personal_trainer') || capabilities.has('clinical.massage_therapist');
   const canAccessPhysio = isFisio && (physioFullAccess || physioOperationalAccess);
   const canManagePhysioTeam = physioFullAccess || isStudioAdmin === true;
-  const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'clinical', l: '🩺 Anamnesi' }, { id: 'piani', l: '🦷 Piani' }, ...(isDentistico ? [{ id: 'impl', l: '🦷 Impianti' }] : []), ...(canAccessPhysio ? [{ id: 'fisio', l: '💪 Fisioterapia' }] : []), { id: 'paga', l: '💰 Pagamenti' }, { id: 'foto', l: '📷 Foto' }, { id: 'app', l: '📅 Agenda' }, { id: 'doc', l: '📄 Documenti' }];
+  const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'clinical', l: '🩺 Anamnesi' }, { id: 'piani', l: '🦷 Piani' }, ...(isDentistico ? [{ id: 'impl', l: '🦷 Impianti' }] : []), ...(canAccessPhysio ? [{ id: 'fisio', l: '💪 Fisioterapia' }] : []), { id: 'paga', l: '💰 Pagamenti' }, { id: 'foto', l: '📷 Foto' }, { id: 'app', l: '📅 Agenda' }, { id: 'doc', l: '📄 Documenti' }, ...(isStudioAdmin ? [{ id: 'privacy', l: '🔒 Privacy' }] : [])];
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
@@ -470,6 +471,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
         {tab === 'impl' && isDentistico && <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento impianti…</div>}><PatientImplants patientId={paz.id} implants={implants} setImplants={setImplants} /></Suspense>}
         {tab === 'fisio' && canAccessPhysio && <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento cartella fisioterapica…</div>}><PhysioCartella paziente_id={paz.id} studio_id={si?.studio_id} paziente={paz} studio={si} accessMode={physioFullAccess ? 'full' : 'operational'} currentUserId={currentUserId} canManageTeam={canManagePhysioTeam} /></Suspense>}
         {tab === 'clinical' && <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento anamnesi…</div>}><PatientClinicalHistory patient={paz} /></Suspense>}
+        {tab === 'privacy' && isStudioAdmin && <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento strumenti privacy…</div>}><PatientPrivacy patient={paz} setPatients={setPatients} client={documentClient} onPatientDeleted={onClose} /></Suspense>}
       </div>
 
       {(documentFlow === 'ricetta' || documentFlow === 'medico') && (

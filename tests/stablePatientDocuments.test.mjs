@@ -89,3 +89,13 @@ test('clinical history entry point is lazy and unsafe signatures stay disabled',
   assert.match(clinical, /disabled/);
   assert.doesNotMatch(clinical, /supabase|\.rpc\(|\.from\(/);
 });
+
+test('GDPR tools use only the verified authenticated RPC contracts', () => {
+  assert.match(stable, /lazy\(\(\) => import\('\.\/PatientPrivacy\.jsx'\)\)/);
+  assert.match(stable, /tab === 'privacy' && isStudioAdmin/);
+  const privacy = fs.readFileSync('src/components/PatientPrivacy.jsx', 'utf8');
+  assert.match(privacy, /rpc\('gdpr_esporta_paziente'/);
+  assert.match(privacy, /rpc\('gdpr_cancella_paziente'/);
+  assert.match(privacy, /p_cancella_anche_fatture/);
+  assert.match(privacy, /withTimeout/);
+});
