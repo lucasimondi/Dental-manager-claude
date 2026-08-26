@@ -99,3 +99,10 @@ test('GDPR tools use only the verified authenticated RPC contracts', () => {
   assert.match(privacy, /p_cancella_anche_fatture/);
   assert.match(privacy, /withTimeout/);
 });
+
+test('historical patient quick actions remain isolated from SchedaPaz mount', () => {
+  assert.match(stable, /lazy\(\(\) => import\('\.\/PatientQuickActions\.jsx'\)\)/);
+  const actions = fs.readFileSync('src/components/PatientQuickActions.jsx', 'utf8');
+  for (const label of ['Note / anamnesi', 'Annotazione / richiamo', 'Nuovo appuntamento', 'Registra pagamento']) assert.match(actions, new RegExp(label));
+  assert.doesNotMatch(actions, /supabase|useEffect/);
+});

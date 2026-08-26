@@ -520,6 +520,8 @@ export default function App() {
             implants={implants}
             setImplants={setImplantsSync}
             setPatients={setPatientsSync}
+            setPayments={setPaymentsSync}
+            onNuovoAppuntamento={goAgendaPaz}
             richiami={richiami}
             pricelist={pricelist}
             si={studioInfo}
