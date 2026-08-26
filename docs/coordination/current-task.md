@@ -2,14 +2,14 @@
 
 - TASK: POL-UI-005B
 - TITLE: Patient Workspace 2.0 isolated visual foundation
-- OWNER: CODEX
+- OWNER: CLAUDE (Round 6, direct Product Owner request; previous rounds by CODEX — see handoff below)
 - BRANCH: `ui/POL-UI-005B-patient-workspace-v2`
 - BASE: `origin/master` at `981724e` (merged PR #58 stable patient record recovery)
 - STATUS: READY_FOR_PR_UPDATE
-- OBJECTIVE: complete Round 5 targeted UI fixes and a repository-only read-only audit for future canonical Patient Workspace integration.
-- SCOPE: anatomical-site layout, state-aware treatment contextual menus, semantic status badges, regression tests, and `docs/audits/POL-PATIENT-WORKSPACE-DOMAIN-AUDIT.md` only.
-- SAFETY: `SchedaPaz.jsx` and `App.jsx` remain byte-for-byte unchanged from `origin/master`; no Supabase, Storage, migration, dependency, or production-route change.
-- NEXT_ACTION: commit and push to the existing PR #59, wait for Vercel Ready, then stop for Product Owner review. Do not implement the audit proposal or merge.
+- OBJECTIVE: Round 6 — quadrant tooth selector for the Prestazione site picker and one canonical economic color scheme (KPI bar + Situazione economica), on top of Round 5's targeted UI fixes and read-only audit.
+- SCOPE (Round 6): `.pw2-mini-odontogram` (Sede = Dente picker), KPI bar, `.pw2-economy` bar, `EconomyDetail` drawer, installment status chips, and their regression tests only.
+- SAFETY: `SchedaPaz.jsx` and `App.jsx` remain byte-for-byte unchanged from `origin/master`; no Supabase, Storage, migration, dependency, effect, fetch, or production-route change. Demo stays isolated on `/patient-workspace-v2-demo`.
+- NEXT_ACTION: commit and push Round 6 to the existing PR #59, wait for Vercel Ready, then stop for Product Owner review. Do not implement the audit proposal or merge.
 
 ## Previous incident record
 

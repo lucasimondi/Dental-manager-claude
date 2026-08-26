@@ -62,6 +62,12 @@ function DetailDrawer({ title, onClose, children }) {
 }
 
 const QUICK_SERVICES = ['Corona zirconia', 'Implantologia', 'Igiene professionale', 'Otturazione composito', 'Controllo clinico'];
+const ODONTOGRAM_QUADRANTS = [
+  { id: 'sup-dx', label: 'Superiore destro', teeth: ['18', '16', '14', '12', '11'] },
+  { id: 'sup-sx', label: 'Superiore sinistro', teeth: ['21', '22', '24', '26', '28'] },
+  { id: 'inf-dx', label: 'Inferiore destro', teeth: ['48', '46', '44', '42', '41'] },
+  { id: 'inf-sx', label: 'Inferiore sinistro', teeth: ['31', '32', '34', '36', '38'] },
+];
 const PLAN_COMPOSER_ITEMS = [
   { id: 'endo-26', treatment: 'Endodonzia', site: '26', price: 420 },
   { id: 'rebuild-36', treatment: 'Ricostruzione', site: 'Dente 36', price: 190 },
@@ -90,9 +96,12 @@ function DiscountEditor({ type, value, onType, onValue, subtotal, discount, tota
   return <div className="pw2-discount"><strong>Sconto</strong><div>{['Nessuno', '%', '€'].map((option) => <button type="button" className={type === option ? 'is-active' : ''} key={option} onClick={() => onType(option)}>{option}</button>)}</div>{type !== 'Nessuno' && <input value={value} inputMode="decimal" onChange={(event) => onValue(event.target.value)} aria-label="Valore sconto" />}<dl><div><dt>Subtotale</dt><dd>{fmt(subtotal)}</dd></div><div><dt>Sconto</dt><dd>− {fmt(discount)}</dd></div><div><dt>Totale finale</dt><dd>{fmt(total)}</dd></div></dl></div>;
 }
 
+const ECON_TONE = { Preventivato: 'pw2-econ-blue', Accettato: 'pw2-econ-violet', Eseguito: 'pw2-econ-amber', Pagato: 'pw2-econ-green', Residuo: 'pw2-econ-red' };
+const INSTALLMENT_TONE = { PAID: 'pw2-econ-green', OVERDUE: 'pw2-econ-red', PENDING: 'pw2-econ-blue' };
+
 function EconomyDetail({ onAction }) {
   const values = [['Preventivato',4800],['Accettato',4200],['Eseguito',2100],['Pagato',1700],['Residuo',400]];
-  return <div className="pw2-economy-detail"><div className="pw2-economy-grid">{values.map(([label,value]) => <button key={label}><small>{label}</small><strong>{fmt(value)}</strong></button>)}</div><section><div className="pw2-subhead"><h3>Pagamenti</h3><button onClick={() => onAction('payment')}>Registra pagamento</button></div>{[['25/08/26','€500','Carta'],['10/08/26','€1.000','Bonifico'],['01/08/26','€200','Contanti']].map((row) => <div className="pw2-payment-row" key={row[0]}><span>{row[0]}</span><strong>{row[1]}</strong><small>{row[2]}</small></div>)}</section><section className="pw2-payment-plan"><div className="pw2-subhead"><h3>Piano pagamenti</h3><button onClick={() => onAction('paymentPlan')}>Modifica piano</button></div><strong>3/5 pagate</strong><span>Prossima: €500 · 15/09/26</span><em>⚠ 1 rata scaduta</em><div className="pw2-installments" data-entity="INSTALLMENT">{[['€500','15/07','PAID'],['€500','15/08','PAID'],['€500','15/09','OVERDUE'],['€500','15/10','PENDING']].map((row) => <div key={row[1]}><b>{row[0]}</b><span>{row[1]}</span><small>{row[2]}</small></div>)}</div></section></div>;
+  return <div className="pw2-economy-detail"><div className="pw2-economy-grid">{values.map(([label,value]) => <button key={label} className={ECON_TONE[label]}><small>{label}</small><strong>{fmt(value)}</strong></button>)}</div><section><div className="pw2-subhead"><h3>Pagamenti</h3><button onClick={() => onAction('payment')}>Registra pagamento</button></div>{[['25/08/26','€500','Carta'],['10/08/26','€1.000','Bonifico'],['01/08/26','€200','Contanti']].map((row) => <div className="pw2-payment-row" key={row[0]}><span>{row[0]}</span><strong>{row[1]}</strong><small>{row[2]}</small></div>)}</section><section className="pw2-payment-plan"><div className="pw2-subhead"><h3>Piano pagamenti</h3><button onClick={() => onAction('paymentPlan')}>Modifica piano</button></div><strong>3/5 pagate</strong><span>Prossima: €500 · 15/09/26</span><em>⚠ 1 rata scaduta</em><div className="pw2-installments" data-entity="INSTALLMENT">{[['€500','15/07','PAID'],['€500','15/08','PAID'],['€500','15/09','OVERDUE'],['€500','15/10','PENDING']].map((row) => <div key={row[1]} className={INSTALLMENT_TONE[row[2]]}><b>{row[0]}</b><span>{row[1]}</span><small>{row[2]}</small></div>)}</div></section></div>;
 }
 
 function PlansArchive({ onOpenQuote }) {
@@ -135,7 +144,18 @@ function QuickCreateDrawer({ kind, plans, context, onClose, onChangeKind }) {
       <label className="pw2-search-field"><span>Prestazione</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="🔍 Cerca prestazione o scrivi liberamente…" /></label>
       <div className="pw2-search-results" aria-label="Risultati prestazioni">{matches.map((item) => <button type="button" key={item} onClick={() => setQuery(item)}><span>{item}</span><small>Seleziona</small></button>)}</div>
       <fieldset><legend>Sede</legend><div className="pw2-choice-grid">{['Dente', 'Quadrante', 'Arcata', 'Generale', 'Nessuna'].map((item) => <button type="button" className={siteType === item ? 'is-active' : ''} key={item} onClick={() => setSiteType(item)}>{item}</button>)}</div></fieldset>
-      {siteType === 'Dente' && <div className="pw2-mini-odontogram" data-entity="ANATOMICAL_SITE"><small>Seleziona elemento</small><div>{['18','16','14','12','11','21','22','24','26','28','48','46','44','42','41','31','32','34','36','38'].map((tooth) => <button type="button" key={tooth} className={selectedTooth === tooth ? 'is-selected' : ''} onClick={() => setSelectedTooth(tooth)}>{tooth}</button>)}</div><strong>Elemento selezionato: {selectedTooth}</strong></div>}
+      {siteType === 'Dente' && <div className="pw2-mini-odontogram" data-entity="ANATOMICAL_SITE" data-anatomical-type="TOOTH" data-anatomical-value={selectedTooth}>
+        <small>Seleziona elemento · odontogramma a 4 quadranti</small>
+        <div className="pw2-odontogram-quadrants">
+          {ODONTOGRAM_QUADRANTS.map((quadrant) => <div className="pw2-odontogram-quadrant" key={quadrant.id} data-quadrant={quadrant.id}>
+            <span className="pw2-odontogram-quadrant-label">{quadrant.label}</span>
+            <div className="pw2-odontogram-teeth" role="group" aria-label={quadrant.label}>
+              {quadrant.teeth.map((tooth) => <button type="button" key={tooth} className={selectedTooth === tooth ? 'is-selected' : ''} aria-pressed={selectedTooth === tooth} aria-label={`Dente ${tooth}`} onClick={() => setSelectedTooth(tooth)}>{tooth}</button>)}
+            </div>
+          </div>)}
+        </div>
+        <strong>Elemento selezionato: {selectedTooth}</strong>
+      </div>}
       <div className="pw2-form-grid"><label><span>Stato</span><select defaultValue="Proposta"><option>Proposta</option><option>Pianificata</option><option>In corso</option><option>Eseguita</option><option>Annullata</option></select></label><label><span>Prezzo</span><input inputMode="decimal" placeholder="€ 0,00" /></label></div>
       <label><span>Piano associato</span><select defaultValue=""><option value="">Nessun piano</option>{plans.map((plan) => <option key={plan.id}>{plan.titolo || 'Piano clinico'}</option>)}</select></label>
       <button className="pw2-prototype-submit" type="button">Anteprima prestazione <small>Prototype · nessun salvataggio</small></button>
@@ -164,10 +184,10 @@ export default function PatientWorkspaceV2({ patient, plans, payments, appointme
   const [locallyCompleted, setLocallyCompleted] = useState([]);
   const age = yearsOld(patient?.dataNascita);
   const kpis = [
-    { id: 'plans', label: 'Piani', value: model.patientPlans.length, icon: 'plan' },
-    { id: 'done', label: 'Eseguito', value: fmt(model.completed.reduce((sum, item) => sum + (Number(item.prezzo) || 0), 0)), icon: 'okc' },
-    { id: 'paid', label: 'Pagato', value: fmt(model.paid), icon: 'eur' },
-    { id: 'outstanding', label: 'Da pagare', value: fmt(model.outstanding), icon: 'clk' },
+    { id: 'plans', label: 'Piani', value: model.patientPlans.length, icon: 'plan', tone: '' },
+    { id: 'done', label: 'Eseguito', value: fmt(model.completed.reduce((sum, item) => sum + (Number(item.prezzo) || 0), 0)), icon: 'okc', tone: 'pw2-econ-amber' },
+    { id: 'paid', label: 'Pagato', value: fmt(model.paid), icon: 'eur', tone: 'pw2-econ-green' },
+    { id: 'outstanding', label: 'Da pagare', value: fmt(model.outstanding), icon: 'clk', tone: 'pw2-econ-red' },
   ];
   const clinicalRows = model.items.map((item) => ({
     ...item,
@@ -206,7 +226,7 @@ export default function PatientWorkspaceV2({ patient, plans, payments, appointme
     </header>
 
     <section className="pw2-kpis" aria-label="Indicatori paziente">
-      {kpis.map((kpi) => <button key={kpi.id} onClick={() => setDrawer(kpi.id)}><span className="pw2-kpi-icon"><Ic n={kpi.icon} s={17} c="currentColor" /></span><span><small>{kpi.label}</small><strong>{kpi.value}</strong></span><span aria-hidden="true">›</span></button>)}
+      {kpis.map((kpi) => <button key={kpi.id} className={kpi.tone} onClick={() => setDrawer(kpi.id)}><span className="pw2-kpi-icon"><Ic n={kpi.icon} s={17} c="currentColor" /></span><span><small>{kpi.label}</small><strong>{kpi.value}</strong></span><span aria-hidden="true">›</span></button>)}
     </section>
 
     <main className="pw2-main">
@@ -227,7 +247,7 @@ export default function PatientWorkspaceV2({ patient, plans, payments, appointme
       <section className="pw2-active-plan" data-entity="CLINICAL_PLAN"><div className="pw2-plan-head"><div><span>Piano clinico attivo</span><h2>Piano 25/08/26</h2><p>{model.completed.length + locallyCompleted.length}/5 completate · aggiornamento immediato</p></div><div><button onClick={() => setQuickCreate('share')}>Condividi</button><button onClick={() => setQuickCreate('odontogram')}>Odontogramma</button></div></div><div className="pw2-progress"><span style={{ width: `${Math.min(100, ((model.completed.length + locallyCompleted.length) / 5) * 100)}%` }} /></div><div className="pw2-plan-filters">{['Tutte','Da fare','In corso','Eseguite'].map((filter) => <button className={planFilter === filter ? 'is-active' : ''} key={filter} onClick={() => setPlanFilter(filter)}>{filter}</button>)}</div><div className="pw2-plan-table"><div className="pw2-plan-columns"><span>Prestazione</span><span>Sede</span><span>Stato</span><span>Prezzo</span><span>Prossimo step</span><span>Azioni</span></div>{visiblePlanRows.map((item) => { const isRecall = item.status === 'Richiamo da programmare'; const tone = statusTone(item.status); return <article key={item.key} data-entity={isRecall ? 'RECALL' : 'TREATMENT'} data-status={tone}><strong>{item.prestazione}</strong><span className="pw2-site-label">{item.site}</span><span className={`pw2-status-badge is-${tone}`}><i aria-hidden="true" />{item.status}</span><b>{fmt(Number(item.prezzo)||0)}</b><small>{item.status === 'Eseguita' ? 'Completata' : 'Da programmare'}</small><div className="pw2-row-actions">{primaryActions(item.status).map((label, index) => <button className={index === 0 ? `pw2-status-action is-${tone}` : 'pw2-secondary-action'} key={label} onClick={() => label === 'Segna eseguita' && setLocallyCompleted((current) => current.includes(item.key) ? current : [...current, item.key])}>{label === 'Segna eseguita' ? '✓ Segna eseguita' : label}</button>)}<span className="pw2-context-wrap"><button aria-label={`Altre azioni per ${item.prestazione}`} aria-haspopup="menu" aria-expanded={openTreatmentMenu === item.key} onClick={() => setOpenTreatmentMenu((current) => current === item.key ? null : item.key)}>⋯</button>{openTreatmentMenu === item.key && <span className="pw2-context-menu" role="menu" aria-label={`Azioni ${item.prestazione}`}>{contextualActions(item.status).map((label) => <button role="menuitem" key={label} onClick={() => setOpenTreatmentMenu(null)}>{label}</button>)}</span>}</span></div></article>; })}</div><footer><span>Le prestazioni eseguite restano nel piano e nella Timeline.</span><button onClick={() => setQuickCreate('quote')}>Genera preventivo →</button></footer></section>
 
       <aside className="pw2-plan-completion-contract"><span>Stato finale previsto: ✓ Piano clinico completato · resta nei Piani e nella Timeline.</span><span>Empty state previsto: Nessun piano clinico attivo → Crea Piano clinico.</span></aside>
-      <section className="pw2-economy" data-entity="PAYMENT"><div><span>Situazione economica</span><h2>Pagato {fmt(1700)}</h2><p>Residuo {fmt(400)} · 3/5 rate pagate · prossima €500 il 15/09</p></div><button onClick={() => setQuickCreate('economy')}>Dettagli →</button></section>
+      <section className="pw2-economy" data-entity="PAYMENT"><div><span>Situazione economica</span><h2><i className="pw2-econ-dot pw2-econ-green" aria-hidden="true" />Pagato {fmt(1700)}</h2><p><i className="pw2-econ-dot pw2-econ-red" aria-hidden="true" />Residuo {fmt(400)} · 3/5 rate pagate · prossima €500 il 15/09</p></div><button onClick={() => setQuickCreate('economy')}>Dettagli →</button></section>
 
       <nav className="pw2-tabs" aria-label="Workspace paziente">{tabs.map(([id, label]) => <button key={id} className={tab === id ? 'is-active' : ''} onClick={() => setTab(id)}>{label}</button>)}</nav>
       {tab === 'piani' ? <PlansArchive onOpenQuote={() => setQuickCreate('quote')} /> : tab === 'timeline' ? <Timeline /> : <section className="pw2-workspace"><div><span>Workspace operativo</span><h3>{tabs.find(([id]) => id === tab)?.[1]}</h3><p>{tab === 'info' ? 'Dati essenziali disponibili nella micro-anagrafica.' : 'Sezione contestuale pronta per il collegamento alle fonti canoniche.'}</p></div><button className="pw2-polyedron-try" onClick={() => setQuickCreate('polyedron')}>Prova con Polyedron</button></section>}

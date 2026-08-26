@@ -150,6 +150,50 @@ test('Round 5 keeps anatomical sites readable and treatment actions state-aware'
   assert.match(css, /@media\(max-width:520px\)/);
 });
 
+test('Round 6 mini odontogram exposes four clearly separated, touch-friendly quadrants', () => {
+  assert.match(component, /const ODONTOGRAM_QUADRANTS = \[/);
+  for (const quadrant of ['Superiore destro', 'Superiore sinistro', 'Inferiore destro', 'Inferiore sinistro']) {
+    assert.ok(component.includes(quadrant), `missing quadrant label ${quadrant}`);
+  }
+  assert.match(component, /pw2-odontogram-quadrants/);
+  assert.match(component, /pw2-odontogram-quadrant/);
+  assert.match(component, /pw2-odontogram-teeth/);
+  assert.match(component, /data-anatomical-type="TOOTH"/);
+  assert.match(component, /data-anatomical-value=\{selectedTooth\}/);
+  assert.match(component, /Elemento selezionato/);
+  assert.doesNotMatch(component, /tone-indigo|tone-amber|tone-teal|tone-violet|tone-blue/);
+  for (const site of ['Dente', 'Quadrante', 'Arcata', 'Generale', 'Nessuna']) assert.ok(component.includes(site), `missing site alternative ${site}`);
+  assert.match(css, /pw2-odontogram-quadrants\{display:grid;grid-template-columns:repeat\(2,1fr\)/);
+  assert.match(css, /pw2-odontogram-teeth button\{/);
+  assert.match(css, /min-width:42px;min-height:42px/);
+  assert.match(css, /@media\(min-width:821px\)\{\.pw2-odontogram-quadrants/);
+  assert.match(css, /@media\(max-width:520px\)\{\.pw2-mini-odontogram/);
+  assert.match(css, /@media\(max-width:375px\)\{\.pw2-odontogram-quadrant/);
+});
+
+test('Round 6 gives the KPI bar and Situazione economica one canonical, text-labeled color scheme', () => {
+  assert.match(css, /\.pw2-econ-blue\{--pw2-econ-fg:#3853b7/);
+  assert.match(css, /\.pw2-econ-violet\{--pw2-econ-fg:#6e4ba0/);
+  assert.match(css, /\.pw2-econ-amber\{--pw2-econ-fg:#985a19/);
+  assert.match(css, /\.pw2-econ-green\{--pw2-econ-fg:#206b50/);
+  assert.match(css, /\.pw2-econ-red\{--pw2-econ-fg:#9b4148/);
+  assert.match(component, /id: 'done'.*tone: 'pw2-econ-amber'/);
+  assert.match(component, /id: 'paid'.*tone: 'pw2-econ-green'/);
+  assert.match(component, /id: 'outstanding'.*tone: 'pw2-econ-red'/);
+  assert.match(component, /const ECON_TONE = \{ Preventivato: 'pw2-econ-blue', Accettato: 'pw2-econ-violet', Eseguito: 'pw2-econ-amber', Pagato: 'pw2-econ-green', Residuo: 'pw2-econ-red' \}/);
+  assert.match(component, /const INSTALLMENT_TONE = \{ PAID: 'pw2-econ-green', OVERDUE: 'pw2-econ-red', PENDING: 'pw2-econ-blue' \}/);
+  assert.match(component, /className=\{kpi\.tone\}/);
+  assert.match(component, /className=\{ECON_TONE\[label\]\}/);
+  assert.match(component, /className=\{INSTALLMENT_TONE\[row\[2\]\]\}/);
+  assert.match(component, /pw2-econ-dot pw2-econ-green/);
+  assert.match(component, /pw2-econ-dot pw2-econ-red/);
+  // text labels stay explicit — color never carries the meaning alone
+  for (const label of ['Preventivato', 'Accettato', 'Eseguito', 'Pagato', 'Residuo']) assert.ok(component.includes(label), `missing textual label ${label}`);
+  assert.match(css, /\.pw2-kpis button \.pw2-kpi-icon\{background:var\(--pw2-econ-bg/);
+  assert.match(css, /\.pw2-economy-grid button\{border:1px solid var\(--pw2-econ-border/);
+  assert.match(css, /\.pw2-installments div\{border:1px solid var\(--pw2-econ-border/);
+});
+
 test('domain audit names verified database objects and maps every required frontend flow', () => {
   assert.match(audit, /src\/lib\/canonicalFinancialSelectors\.js/);
   assert.doesNotMatch(audit, /src\/lib\/financialSnapshot\.js/);
