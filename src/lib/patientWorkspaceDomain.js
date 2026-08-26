@@ -13,7 +13,7 @@ export function createPatientWorkspaceContext(input = {}) {
     clinicalPlans: input.clinicalPlans || [], treatments: input.treatments || [], anatomicalContext: input.anatomicalContext || [],
     alerts: input.alerts || [], quotes: input.quotes || [], payments: input.payments || [], paymentPlans: input.paymentPlans || [],
     installments: input.installments || [], appointments: input.appointments || [], recalls: input.recalls || [], followups: input.followups || [],
-    prescriptions: input.prescriptions || [], consents: input.consents || [], automationRules: input.automationRules || [], timeline: input.timeline || [],
-    provenance: { source: 'synthetic-preview', factsAreAuthoritative: false, suggestionsAreFacts: false },
+    documents: input.documents || [], prescriptions: input.prescriptions || [], consents: input.consents || [], automationRules: input.automationRules || [], timeline: input.timeline || [],
+    provenance: input.provenance || { source: 'synthetic-preview', factsAreAuthoritative: false, suggestionsAreFacts: false },
   });
 }

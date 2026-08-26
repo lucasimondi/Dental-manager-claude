@@ -1,5 +1,19 @@
 # Current task
 
+- TASK: POL-UI-005C
+- TITLE: Patient Workspace documents, prescriptions and consent adapters
+- OWNER: CODEX
+- BRANCH: `ui/POL-UI-005C-patient-docs-prescriptions-consents`
+- BASE: `origin/master` at `6de2050` (merged PR #59)
+- STATUS: PR_61_REALIGNED_AND_VALIDATED
+- OBJECTIVE: connect the isolated Patient Workspace 2.0 to the existing patient document sources, real `DocMedico` prescription workflow, verified consent templates, structured context and read-aggregated timeline without changing the stable production patient route or creating schema.
+- SAFETY: no migration, RLS, Storage, dependency, production route or stable `SchedaPaz.jsx`/`App.jsx` change. Document metadata is loaded only when the Documenti tab opens; PDF/base64 is fetched per click.
+- GAP: signed-consent persistence/link creation is not verifiable from repository migrations or authenticated client code. The template/preview adapter is real, but signing remains disabled and clearly labelled; no backend was invented.
+- REALIGNMENT: fetched and verified `origin/master@6de2050`; the PR branch already had that exact commit as its direct parent, so `git merge origin/master` was a clean no-op with no conflicts. Dedicated tests 23/23, full suite 458/458, build and `git diff --check` passed after verification.
+- NEXT_ACTION: push the validation commit, wait for PR #61 previews/checks, verify the isolated demo and mergeability, then stop. Do not merge.
+
+## Superseded task record
+
 - TASK: POL-UI-005B
 - TITLE: Patient Workspace 2.0 isolated visual foundation
 - OWNER: CLAUDE (Round 6 + Round 6 recovery, direct Product Owner request; previous rounds by CODEX — see handoff below)

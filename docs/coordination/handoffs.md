@@ -2028,3 +2028,25 @@ Code: revert this commit on the branch. Database: stop Chat writes, remove `poli
 - Risks: older operational table DDL/RLS is not fully represented by migrations. The audit labels these claims as repository-evidenced/remote-unverified and recommends a separately approved read-only remote inventory before schema design.
 - Rollback: revert the Round 5 commit; no database rollback.
 - Exact next action: push to PR #59, wait for Vercel Ready, then stop for Product Owner review. Do not implement the audit proposal or merge.
+# POL-UI-005C — patient documents, prescriptions and consents
+
+- Task ID: POL-UI-005C. Agent: Codex. Branch: `ui/POL-UI-005C-patient-docs-prescriptions-consents`. Base: `origin/master@6de2050`.
+- Objective: connect the isolated Patient Workspace 2.0 to real document sources and the existing prescription/consent capabilities without replacing the stable production patient record.
+- Completed: patient-scoped lazy metadata adapter for `documenti_medici` and `documenti_fiscali`; on-demand single-document PDF open/print; compact categorized responsive list; real lazy-loaded `DocMedico` prescription flow with patient/studio prefill and existing archive truth; dosage/notes support added to that existing flow; active `consenso_modelli` selection and patient preview; structured `documents`/`prescriptions`/`consents` context; source-derived Timeline projection; canonical `CREATE_PRESCRIPTION`/`CREATE_CONSENT` adapter contracts.
+- Consent gap: repository evidence proves public token consumption/signature registration (`FirmaConsenso.jsx`) but not authenticated token/link creation or the signed-consent archive schema. Signature submission is disabled with a visible explanation. No table, RPC or fallback persistence was invented.
+- Files changed: `src/components/DocMedico.jsx`, `src/components/PatientWorkspaceV2.jsx`, `src/components/PatientWorkspaceV2Demo.jsx`, `src/components/PatientWorkspaceV2.css`, new `src/components/PatientWorkspaceDocuments.jsx`, `src/lib/patientWorkspaceDomain.js`, `src/lib/patientWorkspaceActionRegistry.js`, new `src/lib/patientWorkspaceDocuments.js`, new tests and audit/coordination docs.
+- Database/dependencies: no database/schema/RLS/Storage change and no package change. `npm ci` used the existing lockfile only.
+- Production isolation: `src/App.jsx` and `src/components/SchedaPaz.jsx` are unchanged from `origin/master`; the integration remains on `/patient-workspace-v2-demo` only.
+- Performance: no document request at Workspace mount; metadata requests start only when the tab component mounts; `pdf_base64` is omitted from metadata queries and fetched one row at a time on click; `DocMedico` is lazy imported; no subscription or automatic Storage query.
+- Validation: `npm test` 458/458 passed; `npm run build` passed with pre-existing duplicate icon, pdfjs eval, CSS comment and chunk-size warnings; `git diff --check` clean. Exact final commit/PR/preview are recorded after remote publication.
+- Rollback: revert the task commit. No database rollback.
+- Exact next action: push, open PR to `master`, wait for Vercel preview if configured, then Product Owner QA on the isolated route. Do not merge.
+# POL-UI-005C — PR #61 master realignment validation
+
+- Branch: `ui/POL-UI-005C-patient-docs-prescriptions-consents`; target: latest `origin/master@6de2050`.
+- `git fetch origin` and an explicit single-branch-safe `git fetch origin master:refs/remotes/origin/master` confirmed the remote master SHA. The branch already descended directly from that SHA; `git merge --no-edit origin/master` returned `Already up to date`.
+- Conflicts: none. No source file required conflict resolution and every original PR #61 integration file remains present.
+- Regression verification: Documenti still mounts only for `tab === 'doc'`; metadata excludes `pdf_base64`; PDF is fetched by source/id only on open/print; `DocMedico` stays lazy and receives the current patient/studio; consent templates still come from active `consenso_modelli`; unsupported signature creation remains disabled with the authenticated-contract gap; Context still exposes documents/prescriptions/consents and Timeline retains source-derived events.
+- Stable patient safety: `git diff origin/master...HEAD -- src/App.jsx src/components/SchedaPaz.jsx` is empty. No database, migration, RLS, Storage or patient data operation was performed.
+- Validation: dedicated tests 23/23 passed; full `npm test` 458/458 passed; `npm run build` passed with only pre-existing warnings; `git diff --check` clean.
+- Exact next action: push this documentation-only validation commit, wait for PR #61 Netlify/Vercel checks, smoke-test `/patient-workspace-v2-demo`, confirm mergeability, and do not merge.

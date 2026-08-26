@@ -93,7 +93,7 @@ In caso di allineatore rotto, perso o che non calza più correttamente, contatta
   },
 ];
 
-export default function DocMedico({ paz, si, onClose, initialType, initialPrefill, requestId, onInitialRequestHandled }) {
+export default function DocMedico({ paz, si, onClose, initialType, initialPrefill, requestId, onInitialRequestHandled, onDocumentSaved }) {
   // Lo studio "reale" di Luca (Studio Simondi): unico caso in cui mostriamo
   // il timbro professionale completo con firma scansionata personale.
   // Per qualsiasi altro studio (anche un altro dentista) usiamo un footer
@@ -140,7 +140,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
   const salvaInArchivioSeAttivo = async (tipoDoc, titolo, dataUrl) => {
     if (!docSet[tipoDoc]) return; // impostazione disattivata per questo tipo: non archiviamo
     if (!studioId) return; // sessione non ancora pronta: evitiamo un insert con studio_id mancante
-    await supabase.from('documenti_medici').insert([{
+    const { data: saved, error } = await supabase.from('documenti_medici').insert([{
       studio_id: studioId,
       paziente_id: paz.id,
       paziente_nome: `${paz.nome} ${paz.cognome}`,
@@ -148,7 +148,8 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
       titolo,
       data,
       pdf_base64: dataUrl,
-    }]);
+    }]).select('id, tipo, titolo, data, paziente_id, created_at').single();
+    if (!error) onDocumentSaved?.(saved);
   };
 
   // Tutto il contenuto "costoso da riscrivere" dei vari tipi di documento è
@@ -158,7 +159,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
   // navigazione (tipo selezionato, data odierna) restano invece in stato
   // normale: non serve salvarli, si ripristinano da soli in un attimo.
   const [cnt, setCnt, clearContenutoDraft] = useFormPersistente(`doc_medico_${paz?.id || 'x'}`, {
-    farmaci: [{ farmaco: initialPrefill?.farmaco?.trim() || '', posologia: '', durata: '' }],
+    farmaci: [{ farmaco: initialPrefill?.farmaco?.trim() || '', dosaggio: '', posologia: '', durata: '', note: '' }],
     esamiSelezionati: ESAMI_EMATICI_STANDARD,
     esamiExtra: [],
     noteEsami: '',
@@ -190,10 +191,10 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
       setCnt((current) => {
         const existing = Array.isArray(current.farmaci) ? current.farmaci : [];
         if (existing.some((item) => normalizzaFarmaco(item.farmaco) === normalizzaFarmaco(farmaco))) return current;
-        const emptyIndex = existing.findIndex((item) => !item.farmaco?.trim() && !item.posologia?.trim() && !item.durata?.trim());
+        const emptyIndex = existing.findIndex((item) => !item.farmaco?.trim() && !item.dosaggio?.trim() && !item.posologia?.trim() && !item.durata?.trim() && !item.note?.trim());
         const farmaci = emptyIndex >= 0
           ? existing.map((item, index) => index === emptyIndex ? { ...item, farmaco } : item)
-          : [...existing, { farmaco, posologia: '', durata: '' }];
+          : [...existing, { farmaco, dosaggio: '', posologia: '', durata: '', note: '' }];
         return { ...current, farmaci };
       });
     }
@@ -269,7 +270,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
   const includiPazienteVuoto = cnt.includiPazienteVuoto;
   const setIncludiPazienteVuoto = (updater) => setCnt((c) => ({ ...c, includiPazienteVuoto: typeof updater === 'function' ? updater(c.includiPazienteVuoto) : updater }));
 
-  const addFarmaco = () => setFarmaci(f => [...f, { farmaco: '', posologia: '', durata: '' }]);
+  const addFarmaco = () => setFarmaci(f => [...f, { farmaco: '', dosaggio: '', posologia: '', durata: '', note: '' }]);
   const updFarmaco = (i, field, val) => setFarmaci(f => f.map((x, j) => j === i ? { ...x, [field]: val } : x));
   const delFarmaco = (i) => setFarmaci(f => f.filter((_, j) => j !== i));
 
@@ -430,22 +431,20 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
     doc.text('PRESCRIZIONE:', M, y); y += 6;
 
     farmaci.filter(f => f.farmaco.trim()).forEach((f, i) => {
-      if (y > 220) { doc.addPage(); y = 52; }
+      const details = [f.dosaggio && `Dosaggio: ${f.dosaggio}`, f.posologia && `Posologia: ${f.posologia}`, f.durata && `Durata: ${f.durata}`, f.note && `Note: ${f.note}`].filter(Boolean);
+      const rh = 10 + details.length * 5;
+      if (y + rh > 220) { doc.addPage(); y = 52; }
       doc.setFillColor(i % 2 === 0 ? 247 : 255, i % 2 === 0 ? 250 : 255, i % 2 === 0 ? 252 : 255);
-      const rh = f.durata ? 18 : 13;
       doc.rect(M, y, W - M * 2, rh, 'F');
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(11);
       doc.setTextColor(26, 32, 44);
       doc.text(`${i + 1}. ${f.farmaco}`, M + 3, y + 7);
-      if (f.posologia) {
+      if (details.length) {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
         doc.setTextColor(74, 85, 104);
-        doc.text(`Posologia: ${f.posologia}`, M + 5, y + 13);
-      }
-      if (f.durata) {
-        doc.text(`Durata: ${f.durata}`, M + 5 + (f.posologia ? 80 : 0), y + 13);
+        details.forEach((line, detailIndex) => doc.text(line, M + 5, y + 13 + detailIndex * 5));
       }
       y += rh + 2;
     });
@@ -821,11 +820,17 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
                 <Fld label="Nome farmaco / principio attivo">
                   <Inp value={f.farmaco} onChange={e => updFarmaco(i, 'farmaco', e.target.value)} placeholder="es. Amoxicillina 875mg, Ibuprofene 600mg..." />
                 </Fld>
+                <Fld label="Dosaggio">
+                  <Inp value={f.dosaggio || ''} onChange={e => updFarmaco(i, 'dosaggio', e.target.value)} placeholder="es. 875 mg + 125 mg" />
+                </Fld>
                 <Fld label="Posologia">
                   <Inp value={f.posologia} onChange={e => updFarmaco(i, 'posologia', e.target.value)} placeholder="es. 1 compressa ogni 8 ore ai pasti" />
                 </Fld>
                 <Fld label="Durata">
                   <Inp value={f.durata} onChange={e => updFarmaco(i, 'durata', e.target.value)} placeholder="es. Per 5 giorni" />
+                </Fld>
+                <Fld label="Note">
+                  <Inp value={f.note || ''} onChange={e => updFarmaco(i, 'note', e.target.value)} placeholder="Indicazioni aggiuntive" />
                 </Fld>
               </div>
             ))}
