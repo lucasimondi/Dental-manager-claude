@@ -64,7 +64,7 @@ const summarizeStructuredResult = (result) => {
    identity, one Poliedra AI Core). */
 export default function Poliedron({
   isMobile, page, setPage, patients, plans, payments, pricelist, appointments, richiami, impegni, goSchedaPaz,
-  features, isStudioAdmin, vertical, studioId, userId, currentPatient,
+  features, isStudioAdmin, vertical, studioId, userId, currentPatient, positionLocked = false,
   quickActionCtx, supabaseClient, onArchivioFilterHint, openPrescription, openNew, openBooking,
   externalCommandRequest, onExternalCommandHandled, chatHost,
   /* POL-CHAT-001 merge: PR #51 declared an `unreadCount = 0` PROP here
@@ -544,8 +544,8 @@ export default function Poliedron({
           discreet edge-anchored dock. Both call the exact same onToggle,
           opening the exact same panel/state below. */}
       {isMobile
-        ? <PoliedronMobileDock page={page} setPage={setPage} open={open} onToggle={onToggle} panelId={panelId} />
-        : <PoliedronEdgeDock open={open} onToggle={onToggle} panelId={panelId} />}
+        ? <PoliedronMobileDock page={page} setPage={setPage} open={open} onToggle={onToggle} panelId={panelId} positionLocked={positionLocked} />
+        : <PoliedronEdgeDock open={open} onToggle={onToggle} panelId={panelId} positionLocked={positionLocked} />}
       {/* POL-CHAT-001 merge — FASE 3: PR #51's bell was a placeholder that
           reopened the quick panel and carried a badge with no producer; PR
           #53's bell was a real Chat entry point but re-declared its own

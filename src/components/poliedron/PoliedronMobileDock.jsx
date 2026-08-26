@@ -32,7 +32,7 @@ export const MOBILE_DOCK_ITEMS = Object.freeze([
   { id: 'chat', label: 'Chat', icon: 'chat' },
 ]);
 
-export default function PoliedronMobileDock({ page, setPage, open, onToggle, panelId }) {
+export default function PoliedronMobileDock({ page, setPage, open, onToggle, panelId, positionLocked }) {
   return (
     <nav
       className={`poliedron-mobile-dock${open ? ' is-receded' : ''}`}
@@ -44,7 +44,7 @@ export default function PoliedronMobileDock({ page, setPage, open, onToggle, pan
           return (
             <div key={item.id} className="poliedron-mobile-dock__hero-slot" data-slot="poliedron">
               {ReactDOM.createPortal(
-                <PoliedronOrb open={open} onToggle={onToggle} panelId={panelId} interactive={!open} />,
+                <PoliedronOrb open={open} onToggle={onToggle} panelId={panelId} interactive={!open} positionLocked={positionLocked} />,
                 document.body
               )}
             </div>

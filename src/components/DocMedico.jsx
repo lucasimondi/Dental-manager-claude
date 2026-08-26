@@ -4,7 +4,6 @@ import { Btn, Crd, Fld, Inp, Sel, Modal, Ic, PannelloInvioDocumento } from './ui
 import { C, fmt, fmtD, today, VERTICALI_CON_RICETTA, DEF_DOCUMENTI_SETTINGS } from '../lib/utils';
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { supabase } from '../lib/supabase.js';
-import { creaRicettaPdf } from '../lib/pdfDocs.js';
 import { applyConfiguredSignature } from '../lib/pdfSignature.js';
 
 
@@ -409,7 +408,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
     }
   };
 
-  const generaRicettaLegacy = () => {
+  const generaRicetta = () => {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const W = 210, M = 18;
     let y = intestazione(doc, W, M);
@@ -461,26 +460,6 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
     finalizzaMultipagina(doc, W, M);
     const dataUrl = doc.output('datauristring');
     const filename = `ricetta_${paz.cognome}_${data}.pdf`;
-    salvaInArchivioSeAttivo('ricetta', 'Ricetta medica', dataUrl);
-    clearContenutoDraft();
-    setPronto({ dataUrl, filename, titolo: 'Ricetta medica', tipoDoc: 'ricetta' });
-    setGenerated(true);
-  };
-
-  // Usa l'unico generatore storico condiviso e già collaudato. La precedente
-  // copia locale era divergente e poteva interrompersi prima di valorizzare
-  // l'anteprima; il componente ora si limita a preparare i dati e il pannello.
-  const generaRicetta = () => {
-    const validi = (farmaci || []).filter((f) => f?.farmaco?.trim());
-    const { dataUrl, filename } = creaRicettaPdf({
-      paziente: paz,
-      studio: si,
-      data,
-      farmaci: validi.map((f) => ({
-        nome: f.farmaco.trim(), dosaggio: f.dosaggio, posologia: f.posologia,
-        durata: f.durata, note: f.note,
-      })),
-    });
     salvaInArchivioSeAttivo('ricetta', 'Ricetta medica', dataUrl);
     clearContenutoDraft();
     setPronto({ dataUrl, filename, titolo: 'Ricetta medica', tipoDoc: 'ricetta' });
@@ -808,7 +787,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
         </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: 14 }}>
+      <div data-document-scroll="true" style={{ flex: 1, overflowY: 'auto', padding: 14, paddingBottom: 'calc(124px + env(safe-area-inset-bottom, 0px))', scrollPaddingBottom: 'calc(124px + env(safe-area-inset-bottom, 0px))' }}>
         {/* TIPO DOCUMENTO */}
         <Crd style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10 }}>Tipo documento</div>

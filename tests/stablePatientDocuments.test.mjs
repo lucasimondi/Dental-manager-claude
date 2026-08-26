@@ -81,13 +81,15 @@ test('physio is lazy, vertical and capability gated', () => {
   assert.match(stable, /tab === 'fisio' && canAccessPhysio/);
 });
 
-test('clinical history entry point is lazy and unsafe signatures stay disabled', () => {
+test('clinical history entry point is lazy/on-demand and only unverified signatures stay disabled', () => {
   assert.match(stable, /lazy\(\(\) => import\('\.\/PatientClinicalHistory\.jsx'\)\)/);
   assert.match(stable, /tab === 'clinical'/);
   const clinical = fs.readFileSync('src/components/PatientClinicalHistory.jsx', 'utf8');
-  assert.match(clinical, /Storia clinica firmata temporaneamente non disponibile/);
-  assert.match(clinical, /disabled/);
-  assert.doesNotMatch(clinical, /supabase|\.rpc\(|\.from\(/);
+  assert.match(clinical, /Nuova anamnesi/);
+  assert.match(clinical, /Firma anamnesi non disponibile/);
+  assert.match(clinical, /const openHistory = async/);
+  assert.match(clinical, /abortSignal\(controller\.signal\)/);
+  assert.doesNotMatch(clinical, /\.rpc\(/);
 });
 
 test('GDPR tools use only the verified authenticated RPC contracts', () => {
@@ -103,6 +105,6 @@ test('GDPR tools use only the verified authenticated RPC contracts', () => {
 test('historical patient quick actions remain isolated from SchedaPaz mount', () => {
   assert.match(stable, /lazy\(\(\) => import\('\.\/PatientQuickActions\.jsx'\)\)/);
   const actions = fs.readFileSync('src/components/PatientQuickActions.jsx', 'utf8');
-  for (const label of ['Note / anamnesi', 'Annotazione / richiamo', 'Nuovo appuntamento', 'Registra pagamento']) assert.match(actions, new RegExp(label));
+  for (const label of ['Note', 'Nuovo richiamo', 'Nuovo appuntamento', 'Registra pagamento']) assert.match(actions, new RegExp(label));
   assert.doesNotMatch(actions, /supabase|useEffect/);
 });

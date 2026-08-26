@@ -30,7 +30,7 @@ const persistDocked = () => {
   try { localStorage.removeItem(STORAGE_KEY); } catch { /* position persistence is optional */ }
 };
 
-export function usePoliedronPosition({ size = 96, additionalSafetyMargin = DEFAULT_SAFETY_MARGIN, onActivate } = {}) {
+export function usePoliedronPosition({ size = 96, additionalSafetyMargin = DEFAULT_SAFETY_MARGIN, onActivate, positionLocked = false } = {}) {
   const [fraction, setFraction] = useState(() => loadStoredFraction());
   const [isDragging, setIsDragging] = useState(false);
   const [livePosition, setLivePosition] = useState(null);
@@ -39,6 +39,10 @@ export function usePoliedronPosition({ size = 96, additionalSafetyMargin = DEFAU
   const dragState = useRef(null);
   const suppressClickRef = useRef(false);
   const safeAreaInsetsRef = useRef({ top: 0, right: 0, bottom: 0, left: 0 });
+  const lockedPositionRef = useRef(null);
+  useEffect(() => {
+    if (!positionLocked) lockedPositionRef.current = null;
+  }, [positionLocked]);
 
   useEffect(() => {
     safeAreaInsetsRef.current = readSafeAreaInsets();
@@ -203,6 +207,10 @@ export function usePoliedronPosition({ size = 96, additionalSafetyMargin = DEFAU
   let position = computeLayout().dockedPosition;
   if (livePosition) position = livePosition;
   else if (fraction) position = positionFromFraction({ ...fraction, bounds: computeBounds() });
+  if (positionLocked) {
+    if (!lockedPositionRef.current) lockedPositionRef.current = position;
+    position = lockedPositionRef.current;
+  } else if (lockedPositionRef.current) position = lockedPositionRef.current;
 
   return {
     style: { left: position.x, top: position.y, right: 'auto', bottom: 'auto' },

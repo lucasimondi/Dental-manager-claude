@@ -523,6 +523,7 @@ export default function App() {
             setPatients={setPatientsSync}
             onPatientChange={(updated) => setSchedaDashPaz((current) => current?.paz?.id === updated.id ? { ...current, paz: updated } : current)}
             setPayments={setPaymentsSync}
+            setRichiami={setRichiamiSync}
             onNuovoAppuntamento={(id) => { setSchedaDashPaz(null); goAgendaPaz(id); }}
             richiami={richiami}
             pricelist={pricelist}
@@ -611,6 +612,7 @@ export default function App() {
                 patients={patients} setPatients={setPatientsSync}
                 plans={plans} setPlans={setPlansSync}
                 payments={payments} setPayments={setPaymentsSync} appointments={appointments} si={studioInfo}
+                richiami={richiami} setRichiami={setRichiamiSync}
                 features={features}
                 studioMembership={studioMembership}
                 currentUserId={session?.user?.id}
@@ -666,6 +668,7 @@ export default function App() {
         studioId={session?.user?.app_metadata?.studio_id}
         userId={session?.user?.id}
         currentPatient={schedaDashPaz?.paz || null}
+        positionLocked={Boolean(schedaDashPaz)}
         onArchivioFilterHint={setArchivioFiltroTipoHint}
         openPrescription={openPrescription}
         openNew={goNuovoElemento}
