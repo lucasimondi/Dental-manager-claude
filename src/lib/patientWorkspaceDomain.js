@@ -15,5 +15,7 @@ export function createPatientWorkspaceContext(input = {}) {
     installments: input.installments || [], appointments: input.appointments || [], recalls: input.recalls || [], followups: input.followups || [],
     documents: input.documents || [], prescriptions: input.prescriptions || [], consents: input.consents || [], automationRules: input.automationRules || [], timeline: input.timeline || [],
     provenance: input.provenance || { source: 'synthetic-preview', factsAreAuthoritative: false, suggestionsAreFacts: false },
+    financial: input.financial || { available: false, snapshot: null },
+    access: input.access || {},
   });
 }

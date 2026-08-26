@@ -2,3 +2,7 @@
   from = "/patient-workspace-v2-demo"
   to = "/index.html"
   status = 200
+[[redirects]]
+  from = "/patient-workspace-v2-real-preview"
+  to = "/index.html"
+  status = 200

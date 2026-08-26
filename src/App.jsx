@@ -48,7 +48,7 @@ import Dashboard from './components/Dashboard.jsx';
 import QuickBookingModal from './components/QuickBookingModal.jsx';
 const ControlloGestione = lazy(() => import('./components/ControlloGestione.jsx'));
 const Pazienti = lazy(() => import('./components/Pazienti.jsx'));
-const SchedaPaz = lazy(() => import('./components/SchedaPaz.jsx'));
+const PatientWorkspaceBoundary = lazy(() => import('./components/PatientWorkspaceBoundary.jsx'));
 const Piani = lazy(() => import('./components/Piani.jsx'));
 const Pagamenti = lazy(() => import('./components/Pagamenti.jsx'));
 const Spese = lazy(() => import('./components/Spese.jsx'));
@@ -509,20 +509,22 @@ export default function App() {
       )}
 
       {schedaDashPaz && (
-        <Suspense fallback={null}>
-          <SchedaPaz
+        <Suspense fallback={<div role="status" style={{ padding: 24 }}>Caricamento scheda paziente…</div>}>
+          <PatientWorkspaceBoundary
             key={schedaDashPaz.paz.id}
             paz={schedaDashPaz.paz}
             initTab={schedaDashPaz.tab}
             plans={plans} setPlans={setPlansSync}
             payments={payments}
             appointments={appointments}
+            richiami={richiami}
             pricelist={pricelist}
             si={studioInfo}
             features={features}
             studioMembership={studioMembership}
             currentUserId={session?.user?.id}
             isStudioAdmin={isStudioAdmin}
+            documentClient={supabase}
             onClose={() => { setSchedaDashPaz(null); pulisciPosizione(['schedaPazId', 'schedaPazTab']); }}
             onEdit={() => setSchedaDashPaz(null)}
             onNuovoPiano={(id) => { setSchedaDashPaz(null); goNuovoPiano(id); }}

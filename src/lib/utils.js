@@ -573,6 +573,7 @@ export const LIVELLI_AZIONE_AGENTE = [
 ];
 
 export const FEATURE_TOGGLES = [
+  { id: 'patientWorkspaceV2', label: 'Scheda Paziente 2.0 (rollout controllato)' },
   { id: 'whatsapp', label: 'WhatsApp (manuale)' },
   { id: 'whatsapp_automatico', label: 'WhatsApp Automatico (AI + promemoria)' },
   { id: 'archivio_documenti', label: 'Archivio documenti avanzato (ricerca, export batch)' },
