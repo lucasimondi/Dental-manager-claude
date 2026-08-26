@@ -1,0 +1,5 @@
+[[redirects]]
+  from = "/patient-workspace-v2-demo"
+  to = "/index.html"
+  status = 200
+
