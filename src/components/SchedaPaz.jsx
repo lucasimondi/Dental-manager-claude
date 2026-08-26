@@ -5,6 +5,8 @@ import PdfView from './PdfView.jsx';
 
 const DocMedico = lazy(() => import('./DocMedico.jsx'));
 const DocFiscale = lazy(() => import('./DocFiscale.jsx'));
+const PatientPhotos = lazy(() => import('./PatientPhotos.jsx'));
+const PatientImplants = lazy(() => import('./PatientImplants.jsx'));
 const PatientWorkspaceDocuments = lazy(() => import('./PatientWorkspaceDocuments.jsx'));
 const PatientWorkspaceConsentFlow = lazy(() => import('./PatientWorkspaceDocuments.jsx').then((module) => ({ default: module.PatientWorkspaceConsentFlow })));
 
@@ -16,7 +18,7 @@ const prossimaDataMascherina = (orto) => {
   return d.toISOString().slice(0, 10);
 };
 
-export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {} }) {
+export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {}, implants = [], setImplants }) {
   const [tab, setTab] = useState(initTab || 'info');
   const [documentFlow, setDocumentFlow] = useState(() => initialDocumentRequest?.type === 'ricetta' ? 'ricetta' : null);
   const [documentsReloadToken, setDocumentsReloadToken] = useState(0);
@@ -105,7 +107,8 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
 
   if (pdfPlan) return <PdfView pl={pdfPlan} paz={paz} si={si} onClose={() => setPdfPlan(null)} />;
 
-  const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'piani', l: '🦷 Piani' }, { id: 'paga', l: '💰 Pagamenti' }, { id: 'app', l: '📅 Agenda' }, { id: 'doc', l: '📄 Documenti' }];
+  const isDentistico = !si?.vertical || si.vertical === 'dentistico';
+  const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'piani', l: '🦷 Piani' }, ...(isDentistico ? [{ id: 'impl', l: '🦷 Impianti' }] : []), { id: 'paga', l: '💰 Pagamenti' }, { id: 'foto', l: '📷 Foto' }, { id: 'app', l: '📅 Agenda' }, { id: 'doc', l: '📄 Documenti' }];
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
@@ -455,6 +458,8 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
             </Suspense>
           </div>
         )}
+        {tab === 'foto' && <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento modulo foto…</div>}><PatientPhotos patientId={paz.id} client={documentClient} /></Suspense>}
+        {tab === 'impl' && isDentistico && <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento impianti…</div>}><PatientImplants patientId={paz.id} implants={implants} setImplants={setImplants} /></Suspense>}
       </div>
 
       {(documentFlow === 'ricetta' || documentFlow === 'medico') && (

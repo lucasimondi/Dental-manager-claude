@@ -65,3 +65,12 @@ test('hotfix does not activate PatientWorkspaceV2', () => {
   assert.doesNotMatch(stable, /PatientWorkspaceV2/);
   assert.match(boundary, /if \(!isPatientWorkspaceV2Enabled\(features\)\) return <SchedaPaz/);
 });
+
+test('photos and implants are restored as tab-scoped lazy modules', () => {
+  assert.match(stable, /lazy\(\(\) => import\('\.\/PatientPhotos\.jsx'\)\)/);
+  assert.match(stable, /lazy\(\(\) => import\('\.\/PatientImplants\.jsx'\)\)/);
+  assert.match(stable, /tab === 'foto'/);
+  assert.match(stable, /tab === 'impl'/);
+  assert.match(app, /implants=\{implants\}/);
+  assert.match(app, /setImplants=\{setImplantsSync\}/);
+});

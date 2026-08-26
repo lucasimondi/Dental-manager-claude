@@ -517,6 +517,8 @@ export default function App() {
             plans={plans} setPlans={setPlansSync}
             payments={payments}
             appointments={appointments}
+            implants={implants}
+            setImplants={setImplantsSync}
             richiami={richiami}
             pricelist={pricelist}
             si={studioInfo}
