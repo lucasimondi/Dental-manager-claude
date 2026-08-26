@@ -68,13 +68,12 @@
 .pw2-econ-green{--pw2-econ-fg:#206b50;--pw2-econ-bg:#e7f5ee;--pw2-econ-border:#c5e5d6}
 .pw2-econ-red{--pw2-econ-fg:#9b4148;--pw2-econ-bg:#faecee;--pw2-econ-border:#efcdd1}
 .pw2-kpis button .pw2-kpi-icon{background:var(--pw2-econ-bg,linear-gradient(145deg,#e3ecff,#e0fbf8));color:var(--pw2-econ-fg,#3853b7)}
-.pw2-econ-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;background:var(--pw2-econ-fg,#667085);flex:none}
-.pw2-economy h2,.pw2-economy p{display:flex;align-items:center;flex-wrap:wrap}
-.pw2-economy-grid button{border:1px solid var(--pw2-econ-border,#dce3ee);background:var(--pw2-econ-bg,#fff);color:var(--pw2-econ-fg,#172033);text-align:left;padding:9px 10px}
-.pw2-economy-grid button small{display:block;color:inherit;opacity:.72}
-.pw2-economy-grid button strong{display:block;margin-top:4px;color:inherit}
-.pw2-installments div{border:1px solid var(--pw2-econ-border,#e6ebf3);background:var(--pw2-econ-bg,#fff);color:var(--pw2-econ-fg,#26324c)}
-.pw2-installments div small{color:inherit;font-weight:850}
+.pw2-econ-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;background:var(--pw2-econ-fg,#667085);vertical-align:middle}
+.pw2-economy-grid button{border-color:var(--pw2-econ-border,#dce3ee);background:var(--pw2-econ-bg,#fff);color:var(--pw2-econ-fg,inherit)}
+.pw2-economy-grid button small{color:inherit}
+.pw2-economy-grid button strong{color:inherit}
+.pw2-installments div{background:var(--pw2-econ-bg,#fff);color:var(--pw2-econ-fg,inherit)}
+.pw2-installments div small{color:inherit}
 @media(min-width:821px){.pw2-odontogram-quadrants{gap:16px}.pw2-odontogram-quadrant{padding:16px}.pw2-odontogram-teeth{gap:9px}.pw2-odontogram-teeth button{min-width:46px;min-height:46px;font-size:12px}}
 @media(max-width:520px){.pw2-mini-odontogram{padding:12px;gap:8px}.pw2-odontogram-quadrants{gap:8px}.pw2-odontogram-quadrant{padding:8px}.pw2-odontogram-teeth{gap:5px}.pw2-odontogram-teeth button{min-width:42px;min-height:44px;font-size:11px}}
 @media(max-width:375px){.pw2-odontogram-quadrant{padding:7px}.pw2-odontogram-quadrants{gap:6px}.pw2-odontogram-teeth button{flex:1 1 26%;min-width:34px;min-height:42px;font-size:10px}}

@@ -1,5 +1,74 @@
 # Handoffs
 
+## POL-UI-005B — Round 6 recovery (visual regression fix)
+
+- Task ID: POL-UI-005B. Agent: Claude, on direct, explicit Product Owner instruction naming commit `67fe427` and requiring a forensic diff against its exact parent before any change, with a hard stop on merging, master, or production.
+- Branch: `ui/POL-UI-005B-patient-workspace-v2` (unchanged), PR #59 (unchanged, not merged).
+
+### 1. Forensic diff — parent of `67fe427`
+
+`git log -1 --format="%H %P" 67fe427` → parent is **`c5edc7b`** (the Round 5 tip already on the PR before this session's Round 6). `git diff c5edc7b 67fe427 --stat` touched exactly 5 files: `PatientWorkspaceV2.jsx`, `PatientWorkspaceV2.css`, `tests/patientWorkspaceV2.test.mjs`, and the two coordination docs (`current-task.md`, `handoffs.md`).
+
+### 2. What `67fe427` changed beyond the authorized scope
+
+The JSX diff was clean — every hunk was either the new `ODONTOGRAM_QUADRANTS` markup/constant or the `ECON_TONE`/`INSTALLMENT_TONE`/`kpi.tone` wiring, nothing else. The regression was entirely in the CSS, where 5 declarations went beyond "solo presentazione/stato colore" into structure/layout that the task never authorized:
+
+1. `.pw2-economy h2,.pw2-economy p{display:flex;align-items:center;flex-wrap:wrap}` — changed both elements from the parent's implicit `display:block` to `flex`, which changed how the new color-dot + text wrapped at narrow widths (confirmed: at 390px the dot broke onto its own line above "Residuo € 400.00…", instead of flowing inline with it as in the parent).
+2. `.pw2-economy-grid button{border:1px solid var(...);background:var(...);color:var(...);text-align:left;padding:9px 10px}` — added `text-align:left` and `padding:9px 10px`, neither present in the parent (whose buttons had no `text-align`/`padding` override at all, so they used the browser's centered button default). This visibly re-aligned "Preventivato/Accettato/Eseguito/Pagato/Residuo" from centered to left-aligned in the detail grid.
+3. `.pw2-economy-grid button strong{display:block;margin-top:4px;color:inherit}` — added `margin-top:4px`, not present in the parent.
+4. `.pw2-installments div{border:1px solid var(...);background:var(...);color:var(...)}` — added a `border`, not present in the parent (which had no border on installment chips at all).
+5. `.pw2-installments div small{color:inherit;font-weight:850}` — added `font-weight:850`, not present in the parent.
+
+None of these were requested; they were unintended scope creep introduced while implementing the color scheme in the previous round, not deliberate redesign.
+
+### 3. Regressions identified (confirmed visually, not just by diff)
+
+Using Playwright/Chromium against the actual rendered demo, I swapped in the parent's (`c5edc7b`) exact `PatientWorkspaceV2.jsx`/`.css` as a temporary baseline, screenshotted it, restored `67fe427`'s files and screenshotted again, at 375×667/390×844/430×932/768×1024/1440×900:
+
+- **Situazione economica bar**: at 390×844 the parent wraps "Residuo € 400.00 · 3/5 rate pagate ·" / "prossima €500 il 15/09" as one paragraph starting with the label. `67fe427` instead isolated the new color dot onto its own line above the wrapped text — a real, visible layout regression caused by the `display:flex` change, not a false positive.
+- **Situazione economica detail grid** (the 5-value Preventivato/Accettato/Eseguito/Pagato/Residuo cards): parent centers the label/amount in each card (default button text-align); `67fe427` left-aligned them — a visible, unauthorized alignment change.
+- **Installment chips**: parent renders them as flat, borderless white cards; `67fe427` added a colored border around every chip — a new decorative element the task's "solo colore" instruction did not authorize.
+
+No other section (header, KPI bar structure, quick actions, Da attenzionare, Piano clinico table, ⋯ context menu, modali, Piani/Preventivi archive, Timeline, Polyedron flow, responsive breakpoints) showed any difference in the diff or in side-by-side screenshots — confirmed byte-identical in the diff and pixel-identical in the screenshots at every required breakpoint.
+
+### 4. What was restored
+
+Reverted, in `src/components/PatientWorkspaceV2.css`, exactly the 5 properties above to the parent's absence of them:
+- Removed `.pw2-economy h2,.pw2-economy p{display:flex;...}` entirely; `.pw2-econ-dot` changed from `display:inline-block;...;flex:none` to `display:inline-block;...;vertical-align:middle` so it flows inline within the still-`block` h2/p exactly as the parent's text did, just with a small colored dot ahead of it.
+- `.pw2-economy-grid button` now sets only `border-color`/`background`/`color` (color-only), no `text-align`, no `padding` — restoring the parent's centered default alignment.
+- `.pw2-economy-grid button strong`/`small` now set only `color:inherit` — no `margin-top`, no `display` (redundant with the still-present parent rule), no `opacity`.
+- `.pw2-installments div` now sets only `background`/`color` — no `border`.
+- `.pw2-installments div small` now sets only `color:inherit` — no `font-weight`.
+
+### 5. What was kept from the last task
+
+The two authorized Round 6 features, unchanged:
+1. The 4-quadrant tooth selector (`ODONTOGRAM_QUADRANTS`, `.pw2-odontogram-quadrants`/`.pw2-odontogram-quadrant`/`.pw2-odontogram-teeth`, the `data-anatomical-type="TOOTH"`/`data-anatomical-value` contract) — entirely untouched by this recovery, since the regression was CSS-only and none of it was inside the odontogram's own scope.
+2. The canonical economic color scheme (`--pw2-econ-fg/bg/border` custom properties, `pw2-econ-blue/violet/amber/green/red`, `ECON_TONE`/`INSTALLMENT_TONE`, the KPI `tone` field, the `pw2-econ-dot` markers) — kept in full; only its 5 over-reaching side-effect properties were stripped, the color mapping itself (Preventivato=blu, Accettato=viola, Eseguito=ambra, Pagato=verde, Da pagare/Residuo=rosso) is identical to before.
+
+### 6. Verification
+
+- `npm test` — 451/451, no regressions.
+- `npm run build` — clean.
+- `git diff --check` — clean.
+- Updated `tests/patientWorkspaceV2.test.mjs`: fixed the 2 assertions that referenced the now-removed `border:1px solid var(--pw2-econ-border...)` strings, and added explicit `doesNotMatch` guards against `.pw2-economy h2,.pw2-economy p{display:flex`, `text-align`/`padding` inside `.pw2-economy-grid button{...}`, `margin-top` inside `.pw2-economy-grid button strong{...}`, and any `border:` inside `.pw2-installments div{...}` — so a future round reintroducing the same class of side-effect fails CI immediately.
+- Real-browser side-by-side screenshots (parent baseline vs. `67fe427` regression vs. recovered working tree) at all 5 required breakpoints confirm the recovered state is visually identical to the parent everywhere except the two authorized changes, and that both regressions (dot line-wrap, grid text alignment, installment border) are gone.
+- `git diff --stat` against `App.jsx`/`SchedaPaz.jsx` — empty, confirmed byte-identical to `origin/master`. Static grep for `supabase|useEffect|fetch(|.storage|localStorage|sessionStorage|indexedDB` — no matches.
+
+### Files changed
+
+`src/components/PatientWorkspaceV2.css`, `tests/patientWorkspaceV2.test.mjs`, `docs/coordination/current-task.md`, `docs/coordination/handoffs.md`. No JSX change.
+
+### Database / dependency changes
+
+None.
+
+### Exact next action
+
+Product Owner reviews PR #59 once the preview rebuilds from this recovery commit: confirm the Situazione economica bar, the economy detail grid, and the installment chips now match the pre-`67fe427` layout exactly (aside from color), and that the 4-quadrant odontogram is unaffected. Do not merge, do not implement the audit proposal, do not open a new PR.
+
+---
+
 ## POL-UI-005B — Round 6 (KPI/economic color semantics + quadrant odontogram)
 
 - Task ID: POL-UI-005B.

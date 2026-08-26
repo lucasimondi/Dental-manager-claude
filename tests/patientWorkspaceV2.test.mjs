@@ -190,8 +190,15 @@ test('Round 6 gives the KPI bar and Situazione economica one canonical, text-lab
   // text labels stay explicit — color never carries the meaning alone
   for (const label of ['Preventivato', 'Accettato', 'Eseguito', 'Pagato', 'Residuo']) assert.ok(component.includes(label), `missing textual label ${label}`);
   assert.match(css, /\.pw2-kpis button \.pw2-kpi-icon\{background:var\(--pw2-econ-bg/);
-  assert.match(css, /\.pw2-economy-grid button\{border:1px solid var\(--pw2-econ-border/);
-  assert.match(css, /\.pw2-installments div\{border:1px solid var\(--pw2-econ-border/);
+  assert.match(css, /\.pw2-economy-grid button\{border-color:var\(--pw2-econ-border/);
+  assert.match(css, /\.pw2-installments div\{background:var\(--pw2-econ-bg/);
+  // color-only guard: the economic scheme must never touch structure/layout already shipped for
+  // the Situazione economica bar, the economy detail grid, or the installment chips.
+  assert.doesNotMatch(css, /\.pw2-economy h2,\.pw2-economy p\{display:flex/);
+  assert.doesNotMatch(css, /\.pw2-economy-grid button\{[^}]*text-align/);
+  assert.doesNotMatch(css, /\.pw2-economy-grid button\{[^}]*padding/);
+  assert.doesNotMatch(css, /\.pw2-economy-grid button strong\{[^}]*margin-top/);
+  assert.doesNotMatch(css, /\.pw2-installments div\{[^}]*border:/);
 });
 
 test('domain audit names verified database objects and maps every required frontend flow', () => {
