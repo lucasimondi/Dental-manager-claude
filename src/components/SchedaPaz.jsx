@@ -4,6 +4,7 @@ import { C, fmt, fmtD, today, SCADENZA_PRESET, addMesi, rilevaRichiamo } from '.
 import PdfView from './PdfView.jsx';
 
 const DocMedico = lazy(() => import('./DocMedico.jsx'));
+const DocFiscale = lazy(() => import('./DocFiscale.jsx'));
 const PatientWorkspaceDocuments = lazy(() => import('./PatientWorkspaceDocuments.jsx'));
 const PatientWorkspaceConsentFlow = lazy(() => import('./PatientWorkspaceDocuments.jsx').then((module) => ({ default: module.PatientWorkspaceConsentFlow })));
 
@@ -445,6 +446,8 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
           <div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
               <Btn ch="Nuova ricetta" v="pri" sz="sm" onClick={() => setDocumentFlow('ricetta')} />
+              <Btn ch="Documento medico" v="sec" sz="sm" onClick={() => setDocumentFlow('medico')} />
+              <Btn ch="Fattura / rimborso" v="sec" sz="sm" onClick={() => setDocumentFlow('fiscale')} />
               <Btn ch="Nuovo consenso" v="sec" sz="sm" onClick={() => setDocumentFlow('consenso')} />
             </div>
             <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento documenti…</div>}>
@@ -454,18 +457,23 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
         )}
       </div>
 
-      {documentFlow === 'ricetta' && (
+      {(documentFlow === 'ricetta' || documentFlow === 'medico') && (
         <Suspense fallback={<div role="status" style={{ position: 'fixed', inset: 0, zIndex: 700, background: C.bg, padding: 24 }}>Caricamento editor ricetta…</div>}>
           <DocMedico
             paz={paz}
             si={si}
-            initialType="ricetta"
-            initialPrefill={initialDocumentRequest?.prefill}
-            requestId={initialDocumentRequest?.requestId}
+            initialType={documentFlow === 'ricetta' ? 'ricetta' : undefined}
+            initialPrefill={documentFlow === 'ricetta' ? initialDocumentRequest?.prefill : undefined}
+            requestId={documentFlow === 'ricetta' ? initialDocumentRequest?.requestId : undefined}
             onInitialRequestHandled={onDocumentRequestHandled}
             onClose={() => { setDocumentFlow(null); onDocumentRequestHandled(initialDocumentRequest?.requestId); }}
             onDocumentSaved={() => { setDocumentsReloadToken((value) => value + 1); setDocumentFlow(null); setTab('doc'); onDocumentRequestHandled(initialDocumentRequest?.requestId); }}
           />
+        </Suspense>
+      )}
+      {documentFlow === 'fiscale' && (
+        <Suspense fallback={<div role="status" style={{ position: 'fixed', inset: 0, zIndex: 700, background: C.bg, padding: 24 }}>Caricamento documento fiscale…</div>}>
+          <DocFiscale paz={paz} plans={plans} si={si} onClose={() => { setDocumentsReloadToken((value) => value + 1); setDocumentFlow(null); setTab('doc'); }} />
         </Suspense>
       )}
       {documentFlow === 'consenso' && (

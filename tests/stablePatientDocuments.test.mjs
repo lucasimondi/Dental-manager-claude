@@ -24,10 +24,18 @@ test('documents remain lazy and PDF/storage are not loaded by SchedaPaz mount', 
 test('real DocMedico receives the current patient and one-shot request payload', () => {
   assert.match(stable, /<DocMedico/);
   assert.match(stable, /paz=\{paz\}/);
-  assert.match(stable, /initialType="ricetta"/);
-  assert.match(stable, /initialPrefill=\{initialDocumentRequest\?\.prefill\}/);
-  assert.match(stable, /requestId=\{initialDocumentRequest\?\.requestId\}/);
+  assert.match(stable, /initialType=\{documentFlow === 'ricetta' \? 'ricetta' : undefined\}/);
+  assert.match(stable, /initialPrefill=\{documentFlow === 'ricetta' \? initialDocumentRequest\?\.prefill : undefined\}/);
+  assert.match(stable, /requestId=\{documentFlow === 'ricetta' \? initialDocumentRequest\?\.requestId : undefined\}/);
   assert.match(stable, /onDocumentRequestHandled/);
+});
+
+test('historical medical and fiscal generators remain lazy and patient-scoped', () => {
+  assert.match(stable, /lazy\(\(\) => import\('\.\/DocMedico\.jsx'\)\)/);
+  assert.match(stable, /lazy\(\(\) => import\('\.\/DocFiscale\.jsx'\)\)/);
+  assert.match(stable, /Documento medico/);
+  assert.match(stable, /Fattura \/ rimborso/);
+  assert.match(stable, /<DocFiscale paz=\{paz\} plans=\{plans\} si=\{si\}/);
 });
 
 test('real consent flow is reused and unsupported signing remains explicit', () => {
