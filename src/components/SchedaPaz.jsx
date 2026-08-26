@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr } from './ui';
 import { C, fmt, fmtD, today, SCADENZA_PRESET, addMesi, rilevaRichiamo } from '../lib/utils';
 import PdfView from './PdfView.jsx';
+
+const DocMedico = lazy(() => import('./DocMedico.jsx'));
+const PatientWorkspaceDocuments = lazy(() => import('./PatientWorkspaceDocuments.jsx'));
+const PatientWorkspaceConsentFlow = lazy(() => import('./PatientWorkspaceDocuments.jsx').then((module) => ({ default: module.PatientWorkspaceConsentFlow })));
 
 const prossimaDataMascherina = (orto) => {
   if (!orto?.dataConsegnaInizio || !orto?.mascherineConsegnate) return null;
@@ -11,8 +15,10 @@ const prossimaDataMascherina = (orto) => {
   return d.toISOString().slice(0, 10);
 };
 
-export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab }) {
+export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {} }) {
   const [tab, setTab] = useState(initTab || 'info');
+  const [documentFlow, setDocumentFlow] = useState(() => initialDocumentRequest?.type === 'ricetta' ? 'ricetta' : null);
+  const [documentsReloadToken, setDocumentsReloadToken] = useState(0);
   const [pdfPlan, setPdfPlan] = useState(null);
   const [selPiani, setSelPiani] = useState([]);
   const [editPianoModal, setEditPianoModal] = useState(null);
@@ -98,7 +104,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
 
   if (pdfPlan) return <PdfView pl={pdfPlan} paz={paz} si={si} onClose={() => setPdfPlan(null)} />;
 
-  const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'piani', l: '🦷 Piani' }, { id: 'paga', l: '💰 Pagamenti' }, { id: 'app', l: '📅 Agenda' }];
+  const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'piani', l: '🦷 Piani' }, { id: 'paga', l: '💰 Pagamenti' }, { id: 'app', l: '📅 Agenda' }, { id: 'doc', l: '📄 Documenti' }];
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
@@ -434,7 +440,39 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
             ))}
           </div>
         )}
+
+        {tab === 'doc' && (
+          <div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+              <Btn ch="Nuova ricetta" v="pri" sz="sm" onClick={() => setDocumentFlow('ricetta')} />
+              <Btn ch="Nuovo consenso" v="sec" sz="sm" onClick={() => setDocumentFlow('consenso')} />
+            </div>
+            <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento documenti…</div>}>
+              <PatientWorkspaceDocuments patientId={paz.id} client={documentClient} reloadToken={documentsReloadToken} />
+            </Suspense>
+          </div>
+        )}
       </div>
+
+      {documentFlow === 'ricetta' && (
+        <Suspense fallback={<div role="status" style={{ position: 'fixed', inset: 0, zIndex: 700, background: C.bg, padding: 24 }}>Caricamento editor ricetta…</div>}>
+          <DocMedico
+            paz={paz}
+            si={si}
+            initialType="ricetta"
+            initialPrefill={initialDocumentRequest?.prefill}
+            requestId={initialDocumentRequest?.requestId}
+            onInitialRequestHandled={onDocumentRequestHandled}
+            onClose={() => { setDocumentFlow(null); onDocumentRequestHandled(initialDocumentRequest?.requestId); }}
+            onDocumentSaved={() => { setDocumentsReloadToken((value) => value + 1); setDocumentFlow(null); setTab('doc'); onDocumentRequestHandled(initialDocumentRequest?.requestId); }}
+          />
+        </Suspense>
+      )}
+      {documentFlow === 'consenso' && (
+        <Suspense fallback={<div role="status" style={{ position: 'fixed', inset: 0, zIndex: 700, background: C.bg, padding: 24 }}>Caricamento modelli consenso…</div>}>
+          <PatientWorkspaceConsentFlow patient={paz} client={documentClient} onClose={() => setDocumentFlow(null)} />
+        </Suspense>
+      )}
 
       {editPianoModal && editForm && (
         <Modal title="Modifica piano" onClose={() => setEditPianoModal(null)} wide>
