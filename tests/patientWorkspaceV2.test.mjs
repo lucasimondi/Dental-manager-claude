@@ -19,9 +19,10 @@ test('Patient Workspace 2.0 is available only through its isolated demo route', 
   assert.doesNotMatch(patientRecord, /PatientWorkspaceV2/);
 });
 
-test('preview performs no automatic remote work', () => {
-  for (const source of [component, demo, registry, domain]) {
-    assert.doesNotMatch(source, /supabase/i);
+test('preview performs remote work only when an explicit patientId activates real mode', () => {
+  assert.match(demo, /if \(!patientId\) return/);
+  assert.match(demo, /loadRealPatientWorkspace/);
+  for (const source of [component, registry, domain]) {
     assert.doesNotMatch(source, /useEffect/);
     assert.doesNotMatch(source, /fetch\s*\(/);
     assert.doesNotMatch(source, /\.storage\b/);
@@ -51,7 +52,7 @@ test('payment plan prototype is fully configurable without persistence', () => {
 
 test('Round 4 final UX contains centered modals, operational plan, economy, installments and timeline', () => {
   assert.doesNotMatch(component, /<span>\+<\/span>/);
-  for (const text of ['Piano clinico attivo','/5 completate','aggiornamento immediato','Segna eseguita','Piano clinico completato','Nessun piano clinico attivo','Da attenzionare','Automazioni','Situazione economica','Preventivato','Accettato','Registra pagamento','Piano pagamenti','Nuova rateizzazione','INSTALLMENT','Timeline','Piani clinici | Preventivi','Preventivo #2026-014']) assert.ok(component.includes(text), `missing ${text}`);
+  for (const text of ['Piano clinico attivo','fonte plans.voci','Segna eseguita','Piano clinico completato','Nessun piano clinico attivo','Da attenzionare','Automazioni','Situazione economica','Preventivato','Accettato','Registra pagamento','Piano pagamenti','Nuova rateizzazione','INSTALLMENT','Timeline','Piani clinici | Preventivi','Preventivo #2026-014']) assert.ok(component.includes(text), `missing ${text}`);
   assert.match(component, /pw2-plan-columns/);
   assert.match(component, /pw2-plan-table/);
   assert.match(component, /pw2-mini-odontogram/);
