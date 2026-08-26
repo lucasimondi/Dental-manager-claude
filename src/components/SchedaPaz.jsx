@@ -8,6 +8,7 @@ const DocFiscale = lazy(() => import('./DocFiscale.jsx'));
 const PatientPhotos = lazy(() => import('./PatientPhotos.jsx'));
 const PatientImplants = lazy(() => import('./PatientImplants.jsx'));
 const PhysioCartella = lazy(() => import('./PhysioCartella.jsx'));
+const PatientClinicalHistory = lazy(() => import('./PatientClinicalHistory.jsx'));
 const PatientWorkspaceDocuments = lazy(() => import('./PatientWorkspaceDocuments.jsx'));
 const PatientWorkspaceConsentFlow = lazy(() => import('./PatientWorkspaceDocuments.jsx').then((module) => ({ default: module.PatientWorkspaceConsentFlow })));
 
@@ -115,7 +116,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
   const physioOperationalAccess = capabilities.has('clinical.personal_trainer') || capabilities.has('clinical.massage_therapist');
   const canAccessPhysio = isFisio && (physioFullAccess || physioOperationalAccess);
   const canManagePhysioTeam = physioFullAccess || isStudioAdmin === true;
-  const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'piani', l: '🦷 Piani' }, ...(isDentistico ? [{ id: 'impl', l: '🦷 Impianti' }] : []), ...(canAccessPhysio ? [{ id: 'fisio', l: '💪 Fisioterapia' }] : []), { id: 'paga', l: '💰 Pagamenti' }, { id: 'foto', l: '📷 Foto' }, { id: 'app', l: '📅 Agenda' }, { id: 'doc', l: '📄 Documenti' }];
+  const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'clinical', l: '🩺 Anamnesi' }, { id: 'piani', l: '🦷 Piani' }, ...(isDentistico ? [{ id: 'impl', l: '🦷 Impianti' }] : []), ...(canAccessPhysio ? [{ id: 'fisio', l: '💪 Fisioterapia' }] : []), { id: 'paga', l: '💰 Pagamenti' }, { id: 'foto', l: '📷 Foto' }, { id: 'app', l: '📅 Agenda' }, { id: 'doc', l: '📄 Documenti' }];
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
@@ -468,6 +469,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
         {tab === 'foto' && <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento modulo foto…</div>}><PatientPhotos patientId={paz.id} client={documentClient} /></Suspense>}
         {tab === 'impl' && isDentistico && <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento impianti…</div>}><PatientImplants patientId={paz.id} implants={implants} setImplants={setImplants} /></Suspense>}
         {tab === 'fisio' && canAccessPhysio && <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento cartella fisioterapica…</div>}><PhysioCartella paziente_id={paz.id} studio_id={si?.studio_id} paziente={paz} studio={si} accessMode={physioFullAccess ? 'full' : 'operational'} currentUserId={currentUserId} canManageTeam={canManagePhysioTeam} /></Suspense>}
+        {tab === 'clinical' && <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento anamnesi…</div>}><PatientClinicalHistory patient={paz} /></Suspense>}
       </div>
 
       {(documentFlow === 'ricetta' || documentFlow === 'medico') && (

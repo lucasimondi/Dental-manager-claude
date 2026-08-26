@@ -80,3 +80,12 @@ test('physio is lazy, vertical and capability gated', () => {
   assert.match(stable, /const canAccessPhysio = isFisio && \(physioFullAccess \|\| physioOperationalAccess\)/);
   assert.match(stable, /tab === 'fisio' && canAccessPhysio/);
 });
+
+test('clinical history entry point is lazy and unsafe signatures stay disabled', () => {
+  assert.match(stable, /lazy\(\(\) => import\('\.\/PatientClinicalHistory\.jsx'\)\)/);
+  assert.match(stable, /tab === 'clinical'/);
+  const clinical = fs.readFileSync('src/components/PatientClinicalHistory.jsx', 'utf8');
+  assert.match(clinical, /Storia clinica firmata temporaneamente non disponibile/);
+  assert.match(clinical, /disabled/);
+  assert.doesNotMatch(clinical, /supabase|\.rpc\(|\.from\(/);
+});
