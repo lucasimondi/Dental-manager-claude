@@ -183,6 +183,7 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
         onEdit={(p) => { setScheda(null); openEdit(p); }}
         onNuovoPiano={(id) => { setScheda(null); onNuovoPiano(id); }}
         setPatients={setPatients}
+        onPatientChange={setScheda}
         setAppointments={setAppointments}
         onNuovoAppuntamento={onNuovoAppuntamento}
         templates={templates}

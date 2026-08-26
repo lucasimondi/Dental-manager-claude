@@ -14,7 +14,7 @@ const fmtD = (d) => (d ? new Date(d + 'T12:00').toLocaleDateString('it-IT') : '-
  * @param {string} params.data - YYYY-MM-DD, data del documento (default: oggi)
  * @returns {string} nome del file scaricato
  */
-export function generaRicettaPdf({ paziente, studio, farmaci, data }) {
+export function creaRicettaPdf({ paziente, studio, farmaci, data }) {
   const oggi = data || new Date().toISOString().slice(0, 10);
   const si = studio || {};
   const paz = paziente || {};
@@ -156,7 +156,8 @@ export function generaRicettaPdf({ paziente, studio, farmaci, data }) {
     doc.text(`P.IVA ${STUDIO.piva}`, tX + tW / 2, tY + 19, { align: 'center', maxWidth: tW - pad * 2 });
 
     try {
-      doc.addImage(si.firma_b64, 'PNG', tX + tW / 2 - 14, tY - 4, 60, 36, undefined, 'FAST');
+      const formato = /^data:image\/jpe?g/i.test(si.firma_b64) ? 'JPEG' : 'PNG';
+      doc.addImage(si.firma_b64, formato, tX + tW / 2 - 14, tY - 4, 60, 36, undefined, 'FAST');
     } catch (e) { /* firma non valida, il timbro resta senza immagine */ }
   } else {
     doc.setFont('helvetica', 'normal');
@@ -175,9 +176,14 @@ export function generaRicettaPdf({ paziente, studio, farmaci, data }) {
   doc.setTextColor(150, 160, 170);
   doc.text(`${STUDIO.nome} · ${STUDIO.addr} · P.IVA ${STUDIO.piva}`, W / 2, 287, { align: 'center' });
 
+  const filename = `ricetta_${(paz.cognome || 'paziente').replace(/\s+/g, '_')}_${oggi}.pdf`;
+  return { doc, dataUrl: doc.output('datauristring'), filename };
+}
+
+export function generaRicettaPdf(params) {
+  const { doc, filename } = creaRicettaPdf(params);
   const blob = doc.output('blob');
   const url = URL.createObjectURL(blob);
-  const filename = `ricetta_${(paz.cognome || 'paziente').replace(/\s+/g, '_')}_${oggi}.pdf`;
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;

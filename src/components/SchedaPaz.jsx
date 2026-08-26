@@ -22,7 +22,7 @@ const prossimaDataMascherina = (orto) => {
   return d.toISOString().slice(0, 10);
 };
 
-export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {}, implants = [], setImplants, setPatients, setPayments, onNuovoAppuntamento, studioMembership, currentUserId, isStudioAdmin }) {
+export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {}, implants = [], setImplants, setPatients, setPayments, onNuovoAppuntamento, onPatientChange, studioMembership, currentUserId, isStudioAdmin }) {
   const [tab, setTab] = useState(initTab || 'info');
   const [documentFlow, setDocumentFlow] = useState(() => initialDocumentRequest?.type === 'ricetta' ? 'ricetta' : null);
   const [documentsReloadToken, setDocumentsReloadToken] = useState(0);
@@ -164,7 +164,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
                 </div>
               ))}
             </Crd>
-            <Suspense fallback={<div role="status" style={{ padding: 12, color: C.txm }}>Caricamento azioni…</div>}><PatientQuickActions patient={paz} setPatients={setPatients} setPayments={setPayments} onNewAppointment={onNuovoAppuntamento} /></Suspense>
+            <Suspense fallback={<div role="status" style={{ padding: 12, color: C.txm }}>Caricamento azioni…</div>}><PatientQuickActions patient={paz} setPatients={setPatients} setPayments={setPayments} onNewAppointment={onNuovoAppuntamento} onPatientChange={onPatientChange} /></Suspense>
             {paz.note && (
               <Crd style={{ background: '#FFFBEB', border: '1px solid #FCD34D' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#92400E', textTransform: 'uppercase', marginBottom: 5 }}>⚠️ Note cliniche</div>

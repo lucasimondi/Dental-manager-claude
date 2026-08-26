@@ -4,6 +4,8 @@ import { Btn, Crd, Fld, Inp, Sel, Modal, Ic, PannelloInvioDocumento } from './ui
 import { C, fmt, fmtD, today, VERTICALI_CON_RICETTA, DEF_DOCUMENTI_SETTINGS } from '../lib/utils';
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { supabase } from '../lib/supabase.js';
+import { creaRicettaPdf } from '../lib/pdfDocs.js';
+import { applyConfiguredSignature } from '../lib/pdfSignature.js';
 
 
 const TIPI = [
@@ -360,7 +362,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
       doc.text(`P.IVA ${STUDIO.piva}`, tX + tW / 2, tY + 19, { align: 'center', maxWidth: tW - pad * 2 });
 
       try {
-        doc.addImage(si.firma_b64, 'PNG', tX + tW / 2 - 14, tY - 4, 60, 36, undefined, 'FAST');
+        applyConfiguredSignature(doc, si.firma_b64, tX + tW / 2 - 14, tY - 4);
       } catch(e) {}
     } else {
       // ── Footer generico per qualsiasi altro studio: nessuna firma personale ──
@@ -407,7 +409,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
     }
   };
 
-  const generaRicetta = () => {
+  const generaRicettaLegacy = () => {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const W = 210, M = 18;
     let y = intestazione(doc, W, M);
@@ -459,6 +461,26 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
     finalizzaMultipagina(doc, W, M);
     const dataUrl = doc.output('datauristring');
     const filename = `ricetta_${paz.cognome}_${data}.pdf`;
+    salvaInArchivioSeAttivo('ricetta', 'Ricetta medica', dataUrl);
+    clearContenutoDraft();
+    setPronto({ dataUrl, filename, titolo: 'Ricetta medica', tipoDoc: 'ricetta' });
+    setGenerated(true);
+  };
+
+  // Usa l'unico generatore storico condiviso e già collaudato. La precedente
+  // copia locale era divergente e poteva interrompersi prima di valorizzare
+  // l'anteprima; il componente ora si limita a preparare i dati e il pannello.
+  const generaRicetta = () => {
+    const validi = (farmaci || []).filter((f) => f?.farmaco?.trim());
+    const { dataUrl, filename } = creaRicettaPdf({
+      paziente: paz,
+      studio: si,
+      data,
+      farmaci: validi.map((f) => ({
+        nome: f.farmaco.trim(), dosaggio: f.dosaggio, posologia: f.posologia,
+        durata: f.durata, note: f.note,
+      })),
+    });
     salvaInArchivioSeAttivo('ricetta', 'Ricetta medica', dataUrl);
     clearContenutoDraft();
     setPronto({ dataUrl, filename, titolo: 'Ricetta medica', tipoDoc: 'ricetta' });
