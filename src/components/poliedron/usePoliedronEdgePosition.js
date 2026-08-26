@@ -46,13 +46,17 @@ const persist = (state) => {
  * Returns { side, top, isDragging, pendingSideSwitch, bind, resetPosition }.
  * `top`: resolved px offset from the viewport top for the collapsed dock.
  */
-export function usePoliedronEdgePosition({ dockWidth = 56, dockHeight = 56, onActivate } = {}) {
+export function usePoliedronEdgePosition({ dockWidth = 56, dockHeight = 56, onActivate, positionLocked = false } = {}) {
   const [state, setState] = useState(() => loadStored() || { side: 'right', verticalPosition: 0.6 });
   const [isDragging, setIsDragging] = useState(false);
   const [liveTop, setLiveTop] = useState(null);
   const [pendingSideSwitch, setPendingSideSwitch] = useState(false);
   const dragState = useRef(null);
   const suppressClickRef = useRef(false);
+  const lockedPlacementRef = useRef(null);
+  useEffect(() => {
+    if (!positionLocked) lockedPlacementRef.current = null;
+  }, [positionLocked]);
 
   const verticalBounds = useCallback(() => {
     const b = getPoliedronSafeBounds({
@@ -158,11 +162,15 @@ export function usePoliedronEdgePosition({ dockWidth = 56, dockHeight = 56, onAc
     onActivate?.();
   }, [onActivate]);
 
-  const top = liveTop != null ? liveTop : fracToTop(state.verticalPosition);
+  let placement = { side: state.side, top: liveTop != null ? liveTop : fracToTop(state.verticalPosition) };
+  if (positionLocked) {
+    if (!lockedPlacementRef.current) lockedPlacementRef.current = placement;
+    placement = lockedPlacementRef.current;
+  } else if (lockedPlacementRef.current) placement = lockedPlacementRef.current;
 
   return {
-    side: state.side,
-    top,
+    side: placement.side,
+    top: placement.top,
     isDragging,
     pendingSideSwitch,
     bind: { onPointerDown, onClick },

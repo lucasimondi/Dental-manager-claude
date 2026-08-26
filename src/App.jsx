@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase, DB } from './lib/supabase.js';
 import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, getLogoSlug, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, uid, applyBrandColors, applyHeaderColor } from './lib/utils';
 import { generaRichiamiBot } from './lib/richiamiBot';
@@ -508,7 +509,7 @@ export default function App() {
         </div>
       )}
 
-      {schedaDashPaz && (
+      {schedaDashPaz && createPortal((
         <Suspense fallback={<div role="status" style={{ padding: 24 }}>Caricamento scheda paziente…</div>}>
           <PatientWorkspaceBoundary
             key={schedaDashPaz.paz.id}
@@ -517,6 +518,13 @@ export default function App() {
             plans={plans} setPlans={setPlansSync}
             payments={payments}
             appointments={appointments}
+            implants={implants}
+            setImplants={setImplantsSync}
+            setPatients={setPatientsSync}
+            onPatientChange={(updated) => setSchedaDashPaz((current) => current?.paz?.id === updated.id ? { ...current, paz: updated } : current)}
+            setPayments={setPaymentsSync}
+            setRichiami={setRichiamiSync}
+            onNuovoAppuntamento={(id) => { setSchedaDashPaz(null); goAgendaPaz(id); }}
             richiami={richiami}
             pricelist={pricelist}
             si={studioInfo}
@@ -536,7 +544,7 @@ export default function App() {
             )}
           />
         </Suspense>
-      )}
+      ), document.body)}
 
       <div id="app-scroll" style={{
         flex: '1 1 auto', minWidth: 0, minHeight: 0, width: '100%', maxWidth: '100%', boxSizing: 'border-box',
@@ -604,6 +612,7 @@ export default function App() {
                 patients={patients} setPatients={setPatientsSync}
                 plans={plans} setPlans={setPlansSync}
                 payments={payments} setPayments={setPaymentsSync} appointments={appointments} si={studioInfo}
+                richiami={richiami} setRichiami={setRichiamiSync}
                 features={features}
                 studioMembership={studioMembership}
                 currentUserId={session?.user?.id}
@@ -659,6 +668,7 @@ export default function App() {
         studioId={session?.user?.app_metadata?.studio_id}
         userId={session?.user?.id}
         currentPatient={schedaDashPaz?.paz || null}
+        positionLocked={Boolean(schedaDashPaz)}
         onArchivioFilterHint={setArchivioFiltroTipoHint}
         openPrescription={openPrescription}
         openNew={goNuovoElemento}

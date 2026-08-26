@@ -12,7 +12,7 @@ import poliedroGem from '../../assets/icon-poliedra-gem.png';
    isMobile prop to branch on. Position/drag logic lives in
    usePoliedronPosition (§34 from POL-AI-001, unchanged principle); this
    component only renders. */
-export default function PoliedronOrb({ open, onToggle, panelId, interactive = true }) {
+export default function PoliedronOrb({ open, onToggle, panelId, interactive = true, positionLocked = false }) {
   const [size, setSize] = useState(() => computeMobileOrbSize(typeof window !== 'undefined' ? window.innerWidth : 375));
   useEffect(() => {
     const onResize = () => setSize(computeMobileOrbSize(window.innerWidth));
@@ -27,7 +27,7 @@ export default function PoliedronOrb({ open, onToggle, panelId, interactive = tr
   const [pressed, setPressed] = useState(false);
   const { style, isDragging, isNearDock, bind } = usePoliedronPosition({
     size,
-    onActivate: onToggle,
+    onActivate: onToggle, positionLocked,
   });
 
   return (

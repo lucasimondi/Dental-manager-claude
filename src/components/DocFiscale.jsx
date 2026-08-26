@@ -5,6 +5,7 @@ import { Btn, Crd, Fld, Inp, Sel, Modal, Ic, PannelloInvioDocumento } from './ui
 import { C, fmt, fmtD, today, DEF_DOCUMENTI_SETTINGS } from '../lib/utils';
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { generaXmlFatturaPA, scaricaXml, speseFatturaPAValida } from '../lib/fatturaPA.js';
+import { drawFiscalStamp } from '../lib/pdfSignature.js';
 
 const getNumeroProgressivo = (tipo) => {
   const key = tipo === 'fattura' ? 'dm_fattura_num' : 'dm_rimborso_num';
@@ -36,6 +37,7 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
     via: si?.via || '', cap: si?.cap || '', comune: si?.comune || '', provincia: si?.provincia || '',
     nome_cognome_titolare: si?.nome_cognome_titolare || '',
     progressivo_invio_sdi: si?.progressivo_invio_sdi || 0,
+    firma_b64: si?.firma_b64 || '',
   };
   const isSanitario = STUDIO.regime_fiscale === 'sanitario_esente_art10';
   const dicituraRegime = STUDIO.regime_fiscale === 'ordinario'
@@ -218,6 +220,11 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
       txt(`Intestato a: ${STUDIO.nome}`, W - M - 3, y + 11, { align: 'right' });
       y += 18;
     }
+
+    // ── TIMBRO/FIRMA CONFIGURATI ──
+    // L'asset proviene esclusivamente dalle impostazioni studio: nessun dato
+    // sintetico e nessuna dipendenza dalla sessione della preview.
+    drawFiscalStamp(doc, STUDIO);
 
     // ── FOOTER ──
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(150, 150, 150);

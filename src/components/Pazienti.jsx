@@ -6,7 +6,7 @@ import DupModal from './DupModal.jsx';
 import PatientWorkspaceBoundary from './PatientWorkspaceBoundary.jsx';
 import { salvaPosizione, pulisciPosizione } from '../lib/posizioneNavigazione';
 
-export default function Pazienti({ patients, setPatients, plans, setPlans, payments, setPayments, appointments, setAppointments, si, features, studioMembership, currentUserId, isStudioAdmin, onNuovoPiano, implants, setImplants, onNuovoAppuntamento, templates, pricelist, autoOpenNew, onAutoOpenNewHandled }) {
+export default function Pazienti({ patients, setPatients, plans, setPlans, payments, setPayments, appointments, setAppointments, richiami, setRichiami, si, features, studioMembership, currentUserId, isStudioAdmin, onNuovoPiano, implants, setImplants, onNuovoAppuntamento, templates, pricelist, autoOpenNew, onAutoOpenNewHandled }) {
   const [modal, setModal] = useState(false);
   const [importModal, setImportModal] = useState(false);
   const [dupModal, setDupModal] = useState(false);
@@ -183,6 +183,9 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
         onEdit={(p) => { setScheda(null); openEdit(p); }}
         onNuovoPiano={(id) => { setScheda(null); onNuovoPiano(id); }}
         setPatients={setPatients}
+        onPatientChange={setScheda}
+        richiami={richiami}
+        setRichiami={setRichiami}
         setAppointments={setAppointments}
         onNuovoAppuntamento={onNuovoAppuntamento}
         templates={templates}

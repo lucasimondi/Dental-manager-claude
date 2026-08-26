@@ -1,7 +1,18 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr } from './ui';
 import { C, fmt, fmtD, today, SCADENZA_PRESET, addMesi, rilevaRichiamo } from '../lib/utils';
 import PdfView from './PdfView.jsx';
+
+const DocMedico = lazy(() => import('./DocMedico.jsx'));
+const DocFiscale = lazy(() => import('./DocFiscale.jsx'));
+const PatientPhotos = lazy(() => import('./PatientPhotos.jsx'));
+const PatientImplants = lazy(() => import('./PatientImplants.jsx'));
+const PhysioCartella = lazy(() => import('./PhysioCartella.jsx'));
+const PatientClinicalHistory = lazy(() => import('./PatientClinicalHistory.jsx'));
+const PatientPrivacy = lazy(() => import('./PatientPrivacy.jsx'));
+const PatientQuickActions = lazy(() => import('./PatientQuickActions.jsx'));
+const PatientWorkspaceDocuments = lazy(() => import('./PatientWorkspaceDocuments.jsx'));
+const PatientWorkspaceConsentFlow = lazy(() => import('./PatientWorkspaceDocuments.jsx').then((module) => ({ default: module.PatientWorkspaceConsentFlow })));
 
 const prossimaDataMascherina = (orto) => {
   if (!orto?.dataConsegnaInizio || !orto?.mascherineConsegnate) return null;
@@ -11,8 +22,10 @@ const prossimaDataMascherina = (orto) => {
   return d.toISOString().slice(0, 10);
 };
 
-export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab }) {
+export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {}, implants = [], setImplants, setPatients, setPayments, richiami = [], setRichiami, onNuovoAppuntamento, onPatientChange, studioMembership, currentUserId, isStudioAdmin }) {
   const [tab, setTab] = useState(initTab || 'info');
+  const [documentFlow, setDocumentFlow] = useState(() => initialDocumentRequest?.type === 'ricetta' ? 'ricetta' : null);
+  const [documentsReloadToken, setDocumentsReloadToken] = useState(0);
   const [pdfPlan, setPdfPlan] = useState(null);
   const [selPiani, setSelPiani] = useState([]);
   const [editPianoModal, setEditPianoModal] = useState(null);
@@ -98,7 +111,14 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
 
   if (pdfPlan) return <PdfView pl={pdfPlan} paz={paz} si={si} onClose={() => setPdfPlan(null)} />;
 
-  const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'piani', l: '🦷 Piani' }, { id: 'paga', l: '💰 Pagamenti' }, { id: 'app', l: '📅 Agenda' }];
+  const isDentistico = !si?.vertical || si.vertical === 'dentistico';
+  const isFisio = si?.vertical === 'fisioterapista' || si?.vertical === 'massofisioterapista';
+  const capabilities = new Set(studioMembership?.stato === 'attivo' ? (studioMembership?.capabilities || []) : []);
+  const physioFullAccess = capabilities.has('clinical.physiotherapist');
+  const physioOperationalAccess = capabilities.has('clinical.personal_trainer') || capabilities.has('clinical.massage_therapist');
+  const canAccessPhysio = isFisio && (physioFullAccess || physioOperationalAccess);
+  const canManagePhysioTeam = physioFullAccess || isStudioAdmin === true;
+  const TABS = [{ id: 'info', l: '📋 Info' }, { id: 'clinical', l: '🩺 Anamnesi' }, { id: 'piani', l: '🦷 Piani' }, ...(isDentistico ? [{ id: 'impl', l: '🦷 Impianti' }] : []), ...(canAccessPhysio ? [{ id: 'fisio', l: '💪 Fisioterapia' }] : []), { id: 'paga', l: '💰 Pagamenti' }, { id: 'foto', l: '📷 Foto' }, { id: 'app', l: '📅 Agenda' }, { id: 'doc', l: '📄 Documenti' }, ...(isStudioAdmin ? [{ id: 'privacy', l: '🔒 Privacy' }] : [])];
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
@@ -144,6 +164,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
                 </div>
               ))}
             </Crd>
+            <Suspense fallback={<div role="status" style={{ padding: 12, color: C.txm }}>Caricamento azioni…</div>}><PatientQuickActions patient={paz} setPatients={setPatients} setPayments={setPayments} richiami={richiami} setRichiami={setRichiami} onNewAppointment={onNuovoAppuntamento} onPatientChange={onPatientChange} /></Suspense>
             {paz.note && (
               <Crd style={{ background: '#FFFBEB', border: '1px solid #FCD34D' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#92400E', textTransform: 'uppercase', marginBottom: 5 }}>⚠️ Note cliniche</div>
@@ -434,7 +455,51 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
             ))}
           </div>
         )}
+
+        {tab === 'doc' && (
+          <div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+              <Btn ch="Nuova ricetta" v="pri" sz="sm" onClick={() => setDocumentFlow('ricetta')} />
+              <Btn ch="Documento medico" v="sec" sz="sm" onClick={() => setDocumentFlow('medico')} />
+              <Btn ch="Fattura / rimborso" v="sec" sz="sm" onClick={() => setDocumentFlow('fiscale')} />
+              <Btn ch="Nuovo consenso" v="sec" sz="sm" onClick={() => setDocumentFlow('consenso')} />
+            </div>
+            <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento documenti…</div>}>
+              <PatientWorkspaceDocuments patientId={paz.id} client={documentClient} reloadToken={documentsReloadToken} />
+            </Suspense>
+          </div>
+        )}
+        {tab === 'foto' && <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento modulo foto…</div>}><PatientPhotos patientId={paz.id} client={documentClient} /></Suspense>}
+        {tab === 'impl' && isDentistico && <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento impianti…</div>}><PatientImplants patientId={paz.id} implants={implants} setImplants={setImplants} /></Suspense>}
+        {tab === 'fisio' && canAccessPhysio && <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento cartella fisioterapica…</div>}><PhysioCartella paziente_id={paz.id} studio_id={si?.studio_id} paziente={paz} studio={si} accessMode={physioFullAccess ? 'full' : 'operational'} currentUserId={currentUserId} canManageTeam={canManagePhysioTeam} /></Suspense>}
+        {tab === 'clinical' && <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento anamnesi…</div>}><PatientClinicalHistory patient={paz} setPatients={setPatients} onPatientChange={onPatientChange} studio={si} /></Suspense>}
+        {tab === 'privacy' && isStudioAdmin && <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento strumenti privacy…</div>}><PatientPrivacy patient={paz} setPatients={setPatients} client={documentClient} onPatientDeleted={onClose} /></Suspense>}
       </div>
+
+      {(documentFlow === 'ricetta' || documentFlow === 'medico') && (
+        <Suspense fallback={<div role="status" style={{ position: 'fixed', inset: 0, zIndex: 700, background: C.bg, padding: 24 }}>Caricamento editor ricetta…</div>}>
+          <DocMedico
+            paz={paz}
+            si={si}
+            initialType={documentFlow === 'ricetta' ? 'ricetta' : undefined}
+            initialPrefill={documentFlow === 'ricetta' ? initialDocumentRequest?.prefill : undefined}
+            requestId={documentFlow === 'ricetta' ? initialDocumentRequest?.requestId : undefined}
+            onInitialRequestHandled={onDocumentRequestHandled}
+            onClose={() => { setDocumentFlow(null); onDocumentRequestHandled(initialDocumentRequest?.requestId); }}
+            onDocumentSaved={() => { setDocumentsReloadToken((value) => value + 1); setDocumentFlow(null); setTab('doc'); onDocumentRequestHandled(initialDocumentRequest?.requestId); }}
+          />
+        </Suspense>
+      )}
+      {documentFlow === 'fiscale' && (
+        <Suspense fallback={<div role="status" style={{ position: 'fixed', inset: 0, zIndex: 700, background: C.bg, padding: 24 }}>Caricamento documento fiscale…</div>}>
+          <DocFiscale paz={paz} plans={plans} si={si} onClose={() => { setDocumentsReloadToken((value) => value + 1); setDocumentFlow(null); setTab('doc'); }} />
+        </Suspense>
+      )}
+      {documentFlow === 'consenso' && (
+        <Suspense fallback={<div role="status" style={{ position: 'fixed', inset: 0, zIndex: 700, background: C.bg, padding: 24 }}>Caricamento modelli consenso…</div>}>
+          <PatientWorkspaceConsentFlow patient={paz} client={documentClient} onClose={() => setDocumentFlow(null)} />
+        </Suspense>
+      )}
 
       {editPianoModal && editForm && (
         <Modal title="Modifica piano" onClose={() => setEditPianoModal(null)} wide>

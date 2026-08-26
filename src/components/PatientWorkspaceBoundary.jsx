@@ -12,7 +12,7 @@ export default function PatientWorkspaceBoundary(props) {
     canonicalFinancial, financialScope, features, studioMembership, currentUserId, isStudioAdmin,
   }), [paz, plans, payments, appointments, pricelist, richiami, documents, canonicalFinancial, financialScope, features, studioMembership, currentUserId, isStudioAdmin]);
 
-  if (!isPatientWorkspaceV2Enabled(features)) return <SchedaPaz {...props} />;
+  if (!isPatientWorkspaceV2Enabled(features)) return <SchedaPaz key={`${paz?.id || 'none'}:${initTab || 'info'}:${initialDocumentRequest?.requestId || 'default'}`} {...props} />;
   return <Suspense fallback={<div role="status" style={{ padding: 24 }}>Caricamento Scheda Paziente 2.0…</div>}>
     <PatientWorkspaceV2
       key={`${paz?.id || 'none'}:${initialDocumentRequest?.requestId || 'default'}`}

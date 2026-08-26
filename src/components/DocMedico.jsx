@@ -4,6 +4,7 @@ import { Btn, Crd, Fld, Inp, Sel, Modal, Ic, PannelloInvioDocumento } from './ui
 import { C, fmt, fmtD, today, VERTICALI_CON_RICETTA, DEF_DOCUMENTI_SETTINGS } from '../lib/utils';
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { supabase } from '../lib/supabase.js';
+import { applyConfiguredSignature } from '../lib/pdfSignature.js';
 
 
 const TIPI = [
@@ -360,7 +361,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
       doc.text(`P.IVA ${STUDIO.piva}`, tX + tW / 2, tY + 19, { align: 'center', maxWidth: tW - pad * 2 });
 
       try {
-        doc.addImage(si.firma_b64, 'PNG', tX + tW / 2 - 14, tY - 4, 60, 36, undefined, 'FAST');
+        applyConfiguredSignature(doc, si.firma_b64, tX + tW / 2 - 14, tY - 4);
       } catch(e) {}
     } else {
       // ── Footer generico per qualsiasi altro studio: nessuna firma personale ──
@@ -786,7 +787,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
         </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: 14 }}>
+      <div data-document-scroll="true" style={{ flex: 1, overflowY: 'auto', padding: 14, paddingBottom: 'calc(124px + env(safe-area-inset-bottom, 0px))', scrollPaddingBottom: 'calc(124px + env(safe-area-inset-bottom, 0px))' }}>
         {/* TIPO DOCUMENTO */}
         <Crd style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10 }}>Tipo documento</div>

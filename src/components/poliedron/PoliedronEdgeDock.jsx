@@ -18,7 +18,7 @@ const LABEL_DELAY_MS = 160; // hysteresis so a fast mouse pass-through doesn't f
 const PLACEHOLDER_DELAY_MS = 900; // "extended hover" — second stage, shows the command-bar placeholder
 const LEAVE_DELAY_MS = 220;
 
-export default function PoliedronEdgeDock({ open, onToggle, panelId }) {
+export default function PoliedronEdgeDock({ open, onToggle, panelId, positionLocked = false }) {
   const [hoverStage, setHoverStage] = useState('collapsed'); // 'collapsed' | 'label' | 'placeholder'
   const labelTimerRef = useRef(null);
   const placeholderTimerRef = useRef(null);
@@ -27,7 +27,7 @@ export default function PoliedronEdgeDock({ open, onToggle, panelId }) {
   const { side, top, isDragging, pendingSideSwitch, bind } = usePoliedronEdgePosition({
     dockWidth: COLLAPSED_SIZE,
     dockHeight: COLLAPSED_SIZE,
-    onActivate: onToggle,
+    onActivate: onToggle, positionLocked,
   });
 
   const clearTimers = () => {
