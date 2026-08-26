@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getPoliedronSafeBounds, readSafeAreaInsets, DEFAULT_SAFETY_MARGIN } from '../../lib/poliedron/poliedronSafeBounds.js';
+import { getPoliedronSafeBounds, getStableViewportSize, readSafeAreaInsets, DEFAULT_SAFETY_MARGIN } from '../../lib/poliedron/poliedronSafeBounds.js';
 import { clampToBounds, computeDragPosition, fractionFromPosition, positionFromFraction } from '../../lib/poliedron/poliedronDragMath.js';
 import {
   applyRedockAttraction,
@@ -49,21 +49,25 @@ export function usePoliedronPosition({ size = 96, additionalSafetyMargin = DEFAU
     setLayoutRevision((revision) => revision + 1);
   }, []);
 
-  const computeLayout = useCallback(() => getPoliedronMobileDockLayout({
-    viewportWidth: window.innerWidth,
-    viewportHeight: window.innerHeight,
-    orbSize: size,
-    safeAreaInsets: safeAreaInsetsRef.current,
-  }), [size]);
+  const computeLayout = useCallback(() => {
+    const { width, height } = getStableViewportSize();
+    return getPoliedronMobileDockLayout({
+      viewportWidth: width,
+      viewportHeight: height,
+      orbSize: size,
+      safeAreaInsets: safeAreaInsetsRef.current,
+    });
+  }, [size]);
 
   const computeBounds = useCallback((protectionProgress = 1) => {
     const layout = computeLayout();
     const dockedZoneTop = layout.dockedPosition.y + size + layout.protectedBottomZone.gap;
     const effectiveProtectedTop = dockedZoneTop +
       (layout.protectedBottomZone.top - dockedZoneTop) * protectionProgress;
+    const { width, height } = getStableViewportSize();
     return getPoliedronSafeBounds({
-      viewportWidth: window.innerWidth,
-      viewportHeight: window.innerHeight,
+      viewportWidth: width,
+      viewportHeight: height,
       orbWidth: size,
       orbHeight: size,
       safeAreaInsets: safeAreaInsetsRef.current,
@@ -178,15 +182,23 @@ export function usePoliedronPosition({ size = 96, additionalSafetyMargin = DEFAU
   }, [onPointerCancel, onPointerMove, onPointerUp]);
 
   useEffect(() => {
+    // Forza sempre un nuovo render (anche quando fraction è già null, cioè
+    // agganciato/docked): un `setFraction` che ritorna lo stesso `null` non
+    // fa ri-renderizzare React, quindi la posizione "docked" restava
+    // congelata alle dimensioni viewport della primissima misurazione finché
+    // qualcos'altro non causava un render — bug reale distinto dal drift
+    // da barra indirizzi (vedi getStableViewportSize), non solo teorico.
     const reclamp = () => {
       safeAreaInsetsRef.current = readSafeAreaInsets();
-      setFraction((current) => (current ? { ...current } : current));
+      setLayoutRevision((revision) => revision + 1);
     };
     window.addEventListener('resize', reclamp);
     window.addEventListener('orientationchange', reclamp);
+    window.visualViewport?.addEventListener('resize', reclamp);
     return () => {
       window.removeEventListener('resize', reclamp);
       window.removeEventListener('orientationchange', reclamp);
+      window.visualViewport?.removeEventListener('resize', reclamp);
       removePointerListeners();
     };
   }, [removePointerListeners]);
@@ -207,10 +219,15 @@ export function usePoliedronPosition({ size = 96, additionalSafetyMargin = DEFAU
   let position = computeLayout().dockedPosition;
   if (livePosition) position = livePosition;
   else if (fraction) position = positionFromFraction({ ...fraction, bounds: computeBounds() });
+  // Nessun frame intermedio con la posizione bloccata stantia dopo lo
+  // sblocco: l'effetto sotto svuota già il ref appena `positionLocked`
+  // torna false, quindi qui basta usare quel valore SOLO mentre è
+  // effettivamente locked — il render successivo a sblocco deve mostrare
+  // subito la posizione fresca, non un frame in più di quella vecchia.
   if (positionLocked) {
     if (!lockedPositionRef.current) lockedPositionRef.current = position;
     position = lockedPositionRef.current;
-  } else if (lockedPositionRef.current) position = lockedPositionRef.current;
+  }
 
   return {
     style: { left: position.x, top: position.y, right: 'auto', bottom: 'auto' },

@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import { applyConfiguredSignature } from './pdfSignature.js';
 
 const fmtD = (d) => (d ? new Date(d + 'T12:00').toLocaleDateString('it-IT') : '-');
 
@@ -177,6 +178,178 @@ export function creaRicettaPdf({ paziente, studio, farmaci, data }) {
   doc.text(`${STUDIO.nome} · ${STUDIO.addr} · P.IVA ${STUDIO.piva}`, W / 2, 287, { align: 'center' });
 
   const filename = `ricetta_${(paz.cognome || 'paziente').replace(/\s+/g, '_')}_${oggi}.pdf`;
+  return { doc, dataUrl: doc.output('datauristring'), filename };
+}
+
+/**
+ * Genera il PDF del modulo anamnesi compilato, con la stessa identica resa
+ * grafica (intestazione, box paziente, timbro/firma) degli altri documenti —
+ * nessun generatore parallelo, stesso layout di `creaRicettaPdf`. La firma
+ * "in studio"/"a distanza" resta un blocker reale non implementato (RPC
+ * autenticate non verificabili nel backend versionato): questo documento è
+ * il resoconto stampabile delle risposte, non un consenso firmato.
+ *
+ * @param {object} params
+ * @param {object} params.paziente - { nome, cognome, data_nascita }
+ * @param {object} params.studio - { nome, spec, iscr, addr1, tel, email, piva, firma_b64 }
+ * @param {Array<{titolo:string, valore:'si'|'no'|'non_so', note?:string}>} params.risposte
+ * @param {Array<{nome:string}>} [params.farmaci]
+ * @param {Array<{sostanza:string}>} [params.allergie]
+ * @param {string} [params.data] - YYYY-MM-DD, data del documento (default: oggi)
+ * @returns {{doc: object, dataUrl: string, filename: string}}
+ */
+export function creaAnamnesiPdf({ paziente, studio, risposte, farmaci, allergie, data }) {
+  const oggi = data || new Date().toISOString().slice(0, 10);
+  const si = studio || {};
+  const paz = paziente || {};
+  const hasFirma = !!si.firma_b64;
+
+  const STUDIO = {
+    nome: si.nome || 'Studio',
+    spec: si.spec || '',
+    iscr: si.iscr || '',
+    addr: si.addr1 || '',
+    tel: si.tel || '',
+    email: si.email || '',
+    piva: si.piva || '',
+  };
+
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const W = 210, M = 18;
+  let y = 18;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(26, 78, 102);
+  doc.text(STUDIO.nome, W / 2, y, { align: 'center' }); y += 6;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(74, 144, 196);
+  doc.text(STUDIO.spec, W / 2, y, { align: 'center' }); y += 5;
+  doc.text(STUDIO.iscr, W / 2, y, { align: 'center' }); y += 5;
+  doc.setTextColor(100, 100, 100);
+  doc.text(`${STUDIO.addr}   |   Tel: ${STUDIO.tel}`, W / 2, y, { align: 'center' }); y += 7;
+  doc.setDrawColor(26, 107, 138);
+  doc.setLineWidth(0.5);
+  doc.line(M, y, W - M, y); y += 8;
+
+  doc.setFillColor(26, 107, 138);
+  doc.rect(M, y, W - M * 2, 9, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(255, 255, 255);
+  doc.text('MODULO ANAMNESI', W / 2, y + 6, { align: 'center' });
+  y += 13;
+
+  doc.setFillColor(245, 247, 250);
+  doc.rect(M, y, W - M * 2, 14, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(113, 128, 150);
+  doc.text('PAZIENTE', M + 3, y + 4);
+  doc.text('DATA', W / 2, y + 4);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.setTextColor(26, 32, 44);
+  doc.text(`${paz.nome || ''} ${paz.cognome || ''}`.trim(), M + 3, y + 11);
+  if (paz.dataNascita || paz.data_nascita) {
+    doc.setFontSize(8);
+    doc.setTextColor(113, 128, 150);
+    doc.text(`Nato/a il ${fmtD(paz.dataNascita || paz.data_nascita)}`, M + 3, y + 16);
+  }
+  doc.setFontSize(11);
+  doc.setTextColor(26, 32, 44);
+  doc.text(new Date(oggi + 'T12:00').toLocaleDateString('it-IT'), W / 2, y + 11);
+  y += (paz.dataNascita || paz.data_nascita ? 22 : 18) + 4;
+
+  const righe = Array.isArray(risposte) ? risposte : [];
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(26, 107, 138);
+  doc.text('ANAMNESI:', M, y); y += 6;
+
+  righe.forEach((r, i) => {
+    const valoreLabel = r.valore === 'si' ? 'Sì' : r.valore === 'no' ? 'No' : 'Non so';
+    const testoWrap = doc.splitTextToSize(`${r.titolo}: ${valoreLabel}${r.note ? ` — ${r.note}` : ''}`, W - M * 2 - 6);
+    const rh = 5.5 + (testoWrap.length - 1) * 4.2 + 3;
+    if (y + rh > 240) { doc.addPage(); y = 20; }
+    doc.setFillColor(i % 2 === 0 ? 247 : 255, i % 2 === 0 ? 250 : 255, i % 2 === 0 ? 252 : 255);
+    doc.rect(M, y, W - M * 2, rh, 'F');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(26, 32, 44);
+    doc.text(testoWrap, M + 3, y + 5.5, { lineHeightFactor: 1.3 });
+    y += rh + 2;
+  });
+  if (righe.length === 0) {
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(9);
+    doc.setTextColor(150, 150, 150);
+    doc.text('Nessuna risposta registrata.', M, y); y += 6;
+  }
+
+  const farmaciList = (farmaci || []).map((f) => f.nome).filter(Boolean);
+  const allergieList = (allergie || []).map((a) => a.sostanza).filter(Boolean);
+  if (farmaciList.length || allergieList.length) {
+    y += 4;
+    if (y > 230) { doc.addPage(); y = 20; }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(26, 107, 138);
+    doc.text('FARMACI E ALLERGIE:', M, y); y += 6;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(74, 85, 104);
+    if (farmaciList.length) { doc.text(`Farmaci: ${farmaciList.join(', ')}`, M, y); y += 5; }
+    if (allergieList.length) { doc.text(`Allergie: ${allergieList.join(', ')}`, M, y); y += 5; }
+  }
+
+  y += 10;
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(8);
+  doc.setTextColor(130, 130, 130);
+  if (y > 240) { doc.addPage(); y = 20; }
+  doc.text('Resoconto compilato in studio. Firma non richiesta su questo documento.', M, y);
+
+  const fY = 228;
+  if (hasFirma) {
+    const tW = 60, tH = 21;
+    const tX = (W - tW) / 2;
+    const tY = fY + 5;
+    doc.setDrawColor(26, 78, 102);
+    doc.setLineWidth(0.8);
+    doc.roundedRect(tX, tY, tW, tH, 2.5, 2.5, 'S');
+    doc.setLineWidth(0.3);
+    doc.roundedRect(tX + 1, tY + 1, tW - 2, tH - 2, 2, 2, 'S');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(4.5);
+    doc.setTextColor(26, 78, 102);
+    doc.text(STUDIO.nome, tX + tW / 2, tY + 4.5, { align: 'center', maxWidth: tW - 6 });
+    doc.setLineWidth(0.2);
+    doc.line(tX + 4, tY + 5.8, tX + tW - 4, tY + 5.8);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(3);
+    doc.text(STUDIO.spec, tX + tW / 2, tY + 8, { align: 'center', maxWidth: tW - 6 });
+    doc.text(STUDIO.iscr, tX + tW / 2, tY + 10.5, { align: 'center', maxWidth: tW - 6 });
+    applyConfiguredSignature(doc, si.firma_b64, tX + tW / 2 - 14, tY - 4);
+  } else {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    const righeFooter = [STUDIO.nome, STUDIO.addr, [STUDIO.tel, STUDIO.email].filter(Boolean).join(' · ')].filter(Boolean);
+    let yy = fY + 8;
+    righeFooter.forEach((r) => { doc.text(r, W / 2, yy, { align: 'center' }); yy += 4; });
+  }
+
+  doc.setDrawColor(200, 210, 220);
+  doc.setLineWidth(0.3);
+  doc.line(M, 283, W - M, 283);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.5);
+  doc.setTextColor(150, 160, 170);
+  doc.text(`${STUDIO.nome} · ${STUDIO.addr} · P.IVA ${STUDIO.piva}`, W / 2, 287, { align: 'center' });
+
+  const filename = `anamnesi_${(paz.cognome || 'paziente').replace(/\s+/g, '_')}_${oggi}.pdf`;
   return { doc, dataUrl: doc.output('datauristring'), filename };
 }
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getPoliedronSafeBounds } from '../../lib/poliedron/poliedronSafeBounds.js';
+import { getPoliedronSafeBounds, getStableViewportSize } from '../../lib/poliedron/poliedronSafeBounds.js';
 import { decideSideSwitch, clampToBounds } from '../../lib/poliedron/poliedronDragMath.js';
 
 /* POL-AI-002A §9-10 — desktop Edge Dock position model. Unlike the mobile
@@ -59,9 +59,10 @@ export function usePoliedronEdgePosition({ dockWidth = 56, dockHeight = 56, onAc
   }, [positionLocked]);
 
   const verticalBounds = useCallback(() => {
+    const { width, height } = getStableViewportSize();
     const b = getPoliedronSafeBounds({
-      viewportWidth: window.innerWidth,
-      viewportHeight: window.innerHeight,
+      viewportWidth: width,
+      viewportHeight: height,
       orbWidth: dockWidth,
       orbHeight: dockHeight,
       additionalSafetyMargin: MARGIN,
@@ -166,7 +167,7 @@ export function usePoliedronEdgePosition({ dockWidth = 56, dockHeight = 56, onAc
   if (positionLocked) {
     if (!lockedPlacementRef.current) lockedPlacementRef.current = placement;
     placement = lockedPlacementRef.current;
-  } else if (lockedPlacementRef.current) placement = lockedPlacementRef.current;
+  }
 
   return {
     side: placement.side,

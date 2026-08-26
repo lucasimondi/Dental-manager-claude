@@ -680,4 +680,5 @@ export const DEF_DOCUMENTI_SETTINGS = {
   vuoto: false, // documento libero/vario, non sempre da archiviare
   fattura: true,
   rimborso: true,
+  anamnesi: true,
 };
