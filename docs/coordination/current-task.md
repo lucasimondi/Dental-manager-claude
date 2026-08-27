@@ -1,20 +1,34 @@
 # Current task
 
+- TASK: POL-DOC-ARCHIVE-OPEN-FIX
+- TITLE: Patient document archive — fix Apri/Stampa showing no document
+- OWNER: CLAUDE, on direct Product Owner report after PR #69 merged (`281f2da`): archived documents now list correctly, but opening/printing one shows no document.
+- BRANCH: `claude/merge-pr-69-master-u1o2fn`
+- BASE: `origin/master@281f2da` (merge PR #69)
+- STATUS: IMPLEMENTED_AWAITING_PRODUCT_OWNER_QA
+- OBJECTIVE: make Apri/Stampa on `PatientWorkspaceDocuments` actually display the archived PDF, without changing the archive list, RLS, schema or lazy-load contract from PR #69.
+- ROOT CAUSE: `openPdf`/`printPdf` called `window.open(dataUrl, …)` directly on the raw `data:` URI returned by `loadPatientDocumentPdf`. Modern Chrome/Edge/Android block top-level navigation to a `data:` URI (anti-phishing measure): the new tab opens but stays blank, with no visible error — exactly "non c'è nessun documento". `openPdf` additionally passed `noopener`, which per spec makes `window.open` always return `null`, so it silently fell back to a download every time instead of showing the PDF.
+- VERIFIED IN PRODUCTION DB (read-only, no data exposed): `documenti_medici`/`documenti_fiscali` both have `pdf_base64` populated on every row (15/15, 7/7) and RLS (`documenti_medici_studio` / `documenti_fiscali_studio`, studio-scoped) is unchanged — the failure is client-side rendering, not missing data or access.
+- FIX: added `apriPdf(dataUrl, filename, { print })` to `src/lib/condivisionePdf.js`, converting the data URI to a `blob:` object URL (the pattern this file and `PdfView.jsx` already use elsewhere for the same class of bug) before calling `window.open`, with a `scaricaPdf` download fallback if the popup is blocked. `PatientWorkspaceDocuments.jsx`'s `openPdf`/`printPdf` now call it instead of using `window.open` directly.
+- SAFETY: no migration, database, RLS, Storage, dependency or financial formula change. Document list/metadata loading (PR #69) untouched.
+- VALIDATION: full suite 515/515; production build passed.
+- EXACT NEXT ACTION: push the branch, open a preview PR, then Product Owner confirms Apri/Stampa actually display an archived document in an authenticated patient record. Do not merge without Product Owner approval.
+
+---
+
+# Previous current task
+
 - TASK: POL-DOC-ARCHIVE
 - TITLE: Patient document archive visibility
 - OWNER: CODEX
 - BRANCH: `fix/POL-DOC-ARCHIVE-patient-documents`
 - BASE: `origin/master@36faf3f`
-- STATUS: IN_PROGRESS
+- STATUS: MERGED (PR #69, merge commit `281f2da`)
 - OBJECTIVE: show the current patient's archived medical and fiscal documents in the stable patient record without loading PDF payloads until requested.
 - ROOT CAUSE: the optional `onDocumentsChange` default was a new function on every render, retriggering the loading effect after every state update. A failure from either archive table also discarded the successful source.
 - SAFETY: no migration, database, RLS, Storage, dependency, financial formula or production-data change.
 - VALIDATION: dedicated document tests 26/26; full suite 515/515; production build passed.
-- EXACT NEXT ACTION: commit, push, open a preview PR, then Product Owner verifies archived documents in an authenticated patient record. Do not merge.
-
----
-
-# Previous current task
+- FOLLOW-UP: merging surfaced a pre-existing, separate bug in Apri/Stampa (see POL-DOC-ARCHIVE-OPEN-FIX above) — not a regression from this task, the `window.open` code path predates it.
 
 - TASK: POL-UI-005C
 - TITLE: Patient Workspace documents, prescriptions and consent adapters

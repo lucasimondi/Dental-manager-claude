@@ -90,6 +90,29 @@ export function scaricaPdf(dataUrl, filename) {
 }
 
 /**
+ * Apre il PDF in una nuova scheda per la visualizzazione (o la stampa, se
+ * `print` è true) usando un blob: URL invece del data: URI grezzo di jsPDF.
+ *
+ * Dalla versione ~89 Chrome/Edge/Android bloccano la navigazione di primo
+ * livello verso un data: URI (misura anti-phishing): la scheda si apre ma
+ * resta vuota, senza nessun errore visibile — esattamente il sintomo "clicco
+ * Apri/Stampa e non c'è nessun documento". Un blob: URL non ha questa
+ * restrizione. Se il browser blocca comunque il popup, ricade sul download
+ * classico già usato altrove in questo file.
+ */
+export function apriPdf(dataUrl, filename, { print = false } = {}) {
+  const file = dataUrlToFile(dataUrl, filename);
+  const url = URL.createObjectURL(file);
+  const popup = window.open(url, '_blank');
+  if (popup) {
+    if (print) popup.addEventListener('load', () => popup.print(), { once: true });
+  } else {
+    scaricaPdf(dataUrl, filename);
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+/**
  * "Invia al paziente": non esiste un'API che apra la chat di un contatto
  * specifico CON l'allegato già pronto — è un limite reale della
  * piattaforma, non aggirabile lato browser.

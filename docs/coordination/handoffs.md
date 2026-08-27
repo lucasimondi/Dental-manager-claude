@@ -1,5 +1,20 @@
 # Handoffs
 
+## POL-DOC-ARCHIVE-OPEN-FIX — Apri/Stampa showed no document after PR #69
+
+- Task ID: POL-DOC-ARCHIVE-OPEN-FIX. Agent: Claude, on direct Product Owner report after merging PR #69 to `master` (`281f2da`): the archive list now populates, but opening or printing a document shows nothing.
+- Branch: `claude/merge-pr-69-master-u1o2fn` from `origin/master@281f2da`.
+- Objective: fix Apri/Stampa so the archived PDF actually displays, without touching the PR #69 list/lazy-load contract.
+- Root cause: `PatientWorkspaceDocuments.jsx`'s `openPdf`/`printPdf` called `window.open()` directly on the raw `data:` URI returned by `loadPatientDocumentPdf`. Chrome/Edge/Android block top-level navigation to a `data:` URI (anti-phishing, since ~Chrome 89): the tab opens but stays blank with no visible error. `openPdf` also passed the `noopener` window feature, which per spec makes `window.open` always return `null` — so "Apri" silently fell back to a background download every time instead of ever showing the PDF, while "Stampa" (no `noopener`) hit the blocked blank-tab case directly. This is a pre-existing bug in code PR #69 did not touch, only newly reachable because PR #69 fixed the list itself.
+- Verified against the real `DentalManager` Supabase project (idklxdqebfceplrualgh), read-only, aggregate counts only — no patient data content was read: `documenti_medici` (15/15 rows) and `documenti_fiscali` (7/7 rows) all have a non-null, non-empty `pdf_base64`; RLS on both tables is a single studio-scoped policy, unchanged and correct. Confirms the failure is purely client-side rendering, not missing PDFs or an RLS regression.
+- Completed: added `apriPdf(dataUrl, filename, { print })` to `src/lib/condivisionePdf.js` — converts the data URI to a `blob:` object URL (the same workaround this file's `scaricaPdf` and `components/PdfView.jsx` already use for this exact class of bug) before calling `window.open`, falling back to `scaricaPdf` if the popup is blocked. `PatientWorkspaceDocuments.jsx` now calls `apriPdf` from both `openPdf` and `printPdf` instead of using `window.open` directly.
+- Files changed: `src/lib/condivisionePdf.js`, `src/components/PatientWorkspaceDocuments.jsx`, and coordination docs.
+- Database changes: none. No schema, migration, RLS, storage or production data changes.
+- Tests: full suite 515/515; production build passed. No dedicated new test was added — the existing `tests/patientWorkspaceDocuments.test.mjs` source-matches `PatientWorkspaceDocuments.jsx` and does not assert the removed `window.open` call, so it isn't a meaningful regression guard for this fix; browser popup/`blob:` URL behavior is not exercisable from the Node test runner used in this repo.
+- Residual risk: authenticated preview QA is required to confirm Apri/Stampa actually render a real archived document end-to-end in a browser (Node tests cannot exercise `window.open`/`blob:` URLs).
+- Rollback: revert this commit; no database rollback required.
+- Exact next action: push the branch, open a preview PR, then Product Owner verifies Apri/Stampa on a patient with archived documents. Do not merge without Product Owner approval.
+
 ## POL-DOC-ARCHIVE — Patient document archive visibility
 
 - Task ID: POL-DOC-ARCHIVE. Owner: CODEX.
