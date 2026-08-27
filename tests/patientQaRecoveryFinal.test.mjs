@@ -118,25 +118,25 @@ test('I/J/K. Note, richiamo e appuntamento restano cablati end-to-end su entramb
   }
 });
 
-// L — root cause reale del drift Polyedron: window.innerWidth/innerHeight
-// fluttuano quando la chrome del browser mobile si nasconde/riappare
-// (esattamente ciò che un overlay a schermo intero come la Scheda Paziente
-// tende a innescare aprendola/chiudendola); window.visualViewport no.
-test('L1. getStableViewportSize ignora le fluttuazioni di window.innerHeight quando visualViewport è disponibile', () => {
+// L — visualViewport è proprio la superficie che varia con chrome/tastiera.
+// La posizione fixed deve usare il layout viewport (documentElement).
+test('L1. getStableViewportSize ignora visualViewport e innerHeight transitori', () => {
   const originalWindow = globalThis.window;
+  const originalDocument = globalThis.document;
   try {
-    globalThis.window = { innerWidth: 390, innerHeight: 780, visualViewport: { width: 390, height: 780 } };
+    globalThis.window = { innerWidth: 390, innerHeight: 844, visualViewport: { width: 390, height: 780 } };
+    globalThis.document = { documentElement: { clientWidth: 390, clientHeight: 844 } };
     const before = getStableViewportSize();
-    assert.deepEqual(before, { width: 390, height: 780 });
+    assert.deepEqual(before, { width: 390, height: 844 });
 
-    // Simula la chrome del browser che si nasconde (window.innerHeight
-    // cambia) mentre visualViewport — per definizione — resta stabile.
-    globalThis.window.innerHeight = 844;
+    globalThis.window.innerHeight = 600;
+    globalThis.window.visualViewport.height = 560;
     const during = getStableViewportSize();
-    assert.deepEqual(during, { width: 390, height: 780 });
+    assert.deepEqual(during, { width: 390, height: 844 });
     assert.deepEqual(before, during, 'la posizione calcolata da questi valori deve restare identica prima/durante');
   } finally {
     globalThis.window = originalWindow;
+    globalThis.document = originalDocument;
   }
 });
 

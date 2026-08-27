@@ -494,7 +494,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
             requestId={documentFlow === 'ricetta' ? initialDocumentRequest?.requestId : undefined}
             onInitialRequestHandled={onDocumentRequestHandled}
             onClose={() => { setDocumentFlow(null); onDocumentRequestHandled(initialDocumentRequest?.requestId); }}
-            onDocumentSaved={() => { setDocumentsReloadToken((value) => value + 1); setDocumentFlow(null); setTab('doc'); onDocumentRequestHandled(initialDocumentRequest?.requestId); }}
+            onDocumentSaved={() => { setDocumentsReloadToken((value) => value + 1); }}
           />
         </Suspense>
       )}
