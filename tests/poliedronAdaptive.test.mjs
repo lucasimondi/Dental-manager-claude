@@ -164,6 +164,17 @@ test('mobile Poliedron renders only the official standalone gem on a transparent
   assert.doesNotMatch(mobileOrbSource, /poliedron-orb__halo/);
 });
 
+test('patient workspace lock makes the mobile Poliedron position truly inert', () => {
+  assert.match(mobilePositionSource, /const onPointerDown[\s\S]*if \(positionLocked\) return;/);
+  assert.match(mobilePositionSource, /\[onPointerCancel, onPointerMove, onPointerUp, positionLocked\]/);
+});
+
+test('mobile browser chrome and keyboard do not trigger Poliedron position recalculation', () => {
+  assert.doesNotMatch(mobilePositionSource, /visualViewport\?\.addEventListener/);
+  assert.doesNotMatch(mobilePositionSource, /visualViewport\?\.removeEventListener/);
+  assert.match(mobilePositionSource, /window\.addEventListener\('orientationchange', reclamp\)/);
+});
+
 // ---------------------------------------------------------------------------
 // Product Owner revision — compact mobile dock and magnetic redock
 // ---------------------------------------------------------------------------

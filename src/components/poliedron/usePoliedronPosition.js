@@ -164,6 +164,11 @@ export function usePoliedronPosition({ size = 96, additionalSafetyMargin = DEFAU
   const onPointerCancel = useCallback((event) => finishDrag(event, true), [finishDrag]);
 
   const onPointerDown = useCallback((event) => {
+    // A locked launcher must be inert, not merely visually frozen. Previously
+    // a drag performed while the patient workspace was open updated and
+    // persisted an invisible detached position; that position then appeared
+    // as a jump as soon as the workspace closed.
+    if (positionLocked) return;
     const rect = event.currentTarget.getBoundingClientRect();
     dragState.current = {
       pointerId: event.pointerId,
@@ -179,7 +184,7 @@ export function usePoliedronPosition({ size = 96, additionalSafetyMargin = DEFAU
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
     window.addEventListener('pointercancel', onPointerCancel);
-  }, [onPointerCancel, onPointerMove, onPointerUp]);
+  }, [onPointerCancel, onPointerMove, onPointerUp, positionLocked]);
 
   useEffect(() => {
     // Forza sempre un nuovo render (anche quando fraction è già null, cioè
@@ -194,11 +199,9 @@ export function usePoliedronPosition({ size = 96, additionalSafetyMargin = DEFAU
     };
     window.addEventListener('resize', reclamp);
     window.addEventListener('orientationchange', reclamp);
-    window.visualViewport?.addEventListener('resize', reclamp);
     return () => {
       window.removeEventListener('resize', reclamp);
       window.removeEventListener('orientationchange', reclamp);
-      window.visualViewport?.removeEventListener('resize', reclamp);
       removePointerListeners();
     };
   }, [removePointerListeners]);

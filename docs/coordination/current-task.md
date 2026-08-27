@@ -1,17 +1,15 @@
 # Current task
 
-- TASK: POL-DOC-MEDICAL-POLYEDRON-FINAL-RECOVERY
+- TASK: POL-UI-016
+- TITLE: Polyedron mobile position stability
 - OWNER: CODEX
-- BRANCH: `hotfix/POL-DOC-medical-polyedron-final-recovery`
-- BASE: `origin/master@30b5fe86a9cf98a325c5e2c85a69f996c882a23d` (merge PR #66; contains merge PR #65)
-- STATUS: IMPLEMENTED_AWAITING_REMOTE_PREVIEW_AND_PRODUCT_OWNER_QA
-- OBJECTIVE: restore the real DocMedico/Ricetta generate → preview → download path and remove the remaining mobile Polyedron autonomous viewport drift without changing fiscal behavior, database, RLS or schema.
-- ROOT CAUSE DOCMEDICO/RICETTA: the successful `documenti_medici` archive callback in `SchedaPaz` immediately set `documentFlow` to null, unmounting DocMedico and its generated PDF action panel before preview/download could be used. The callback now refreshes document metadata only; closing remains an explicit user action.
-- ROOT CAUSE POLYEDRON: PR #66 treated `visualViewport` as stable, but it is the viewport that changes with mobile browser chrome and keyboards. Re-expanding the persisted position against those transient dimensions produced autonomous movement. Fixed-position geometry now uses the layout viewport (`document.documentElement.clientWidth/clientHeight`) with SSR/test fallback.
-- ANAMNESI: audited, unchanged. It remains tab-scoped/lazy, saves only after explicit user action, generates a real PDF and has no unverified remote-signature RPC.
-- SAFETY: no migration, database, RLS, Storage, dependency, financial formula or production-data change. Fattura/Rimborso source is unchanged.
-- VALIDATION: dedicated recovery/Polyedron tests 86/86 passed; full `npm test` 512/512 passed; `git diff --check` clean. `npm run build` is blocked by the local sandbox because esbuild cannot traverse the Windows drive root while resolving `vite.config.js`; this is an environment blocker, not reported as green.
-- EXACT NEXT ACTION: publish the branch, open one PR to master, wait for Vercel preview, then Product Owner performs the required authenticated/mobile checklist. Do not merge.
+- BRANCH: `fix/POL-UI-016-poliedron-stability`
+- BASE: `origin/master@36faf3f`
+- STATUS: IN_PROGRESS
+- OBJECTIVE: prevent the mobile Polyedron launcher from changing its stored position while the patient workspace is open and prevent mobile browser chrome/keyboard viewport changes from triggering position recalculation.
+- DATABASE: none.
+- VALIDATION: targeted Polyedron tests 67/67; full suite 514/514; production build passed.
+- EXACT NEXT ACTION: commit, push, open a preview PR, then Product Owner performs mobile QA. Do not merge or deploy to production without explicit approval.
 
 ---
 
