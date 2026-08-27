@@ -1,8 +1,17 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { fmt, fmtD } from '../lib/utils';
-import { apriPdf } from '../lib/condivisionePdf';
 import { loadPatientDocumentMetadata, loadPatientDocumentPdf } from '../lib/patientWorkspaceDocuments';
+
+// POL-DOC-ARCHIVE-MOBILE-OPEN-FIX: archived-document "Apri"/"Stampa" used to
+// open a new browser tab for the fetched PDF after an async round-trip.
+// Mobile browsers only allow that kind of tab open synchronously inside the
+// original tap's call stack; once that gap is an await away, it is silently
+// blocked with no fallback (desktop is far more lenient, so this only
+// reproduced on phones). PdfViewerModal is the in-app viewer ArchivioDocs and
+// PannelloInvioDocumento already rely on for the exact same reason — it
+// never opens a new tab, so it works identically on mobile and desktop.
+const PdfViewerModal = React.lazy(() => import('./ui/PdfViewerModal.jsx'));
 
 const SECTIONS = [
   ['clinical', 'Documenti clinici'],
@@ -20,6 +29,7 @@ export default function PatientWorkspaceDocuments({ patientId, client = supabase
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState(null);
   const [query, setQuery] = useState('');
+  const [viewer, setViewer] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -45,8 +55,7 @@ export default function PatientWorkspaceDocuments({ patientId, client = supabase
     finally { setBusyId(null); }
   };
 
-  const openPdf = (document) => withPdf(document, (dataUrl) => apriPdf(dataUrl, fileNameFor(document)));
-  const printPdf = (document) => withPdf(document, (dataUrl) => apriPdf(dataUrl, fileNameFor(document), { print: true }));
+  const viewPdf = (document) => withPdf(document, (dataUrl) => setViewer({ titolo: document.title, dataUrl, filename: fileNameFor(document) }));
 
   if (loading) return <section className="pw2-doc-state" aria-live="polite">Caricamento metadati documenti…</section>;
   return <section className="pw2-documents" data-lazy-source="patient-document-metadata">
@@ -59,9 +68,14 @@ export default function PatientWorkspaceDocuments({ patientId, client = supabase
       return <section className="pw2-doc-section" key={category}><h3>{label}<span>{items.length}</span></h3><div className="pw2-doc-list">{items.map((document) => {
         const key = `${document.source}:${document.sourceId}`;
         const busy = busyId === key;
-        return <article key={key}><div><strong>{document.title}</strong><span>{document.type} · {fmtD(document.date)}{document.amount != null ? ` · ${fmt(document.amount)}` : ''}</span></div><div><button disabled={busy} onClick={() => openPdf(document)}>{busy ? 'Caricamento…' : 'Apri'}</button><button disabled={busy} onClick={() => printPdf(document)}>Stampa / PDF</button></div></article>;
+        return <article key={key}><div><strong>{document.title}</strong><span>{document.type} · {fmtD(document.date)}{document.amount != null ? ` · ${fmt(document.amount)}` : ''}</span></div><div><button disabled={busy} onClick={() => viewPdf(document)}>{busy ? 'Caricamento…' : 'Apri'}</button><button disabled={busy} onClick={() => viewPdf(document)}>Stampa / PDF</button></div></article>;
       })}</div></section>;
     })}
+    {viewer && (
+      <Suspense fallback={<div className="pw2-doc-state" aria-live="polite">Caricamento anteprima…</div>}>
+        <PdfViewerModal titolo={viewer.titolo} dataUrl={viewer.dataUrl} filename={viewer.filename} onClose={() => setViewer(null)} />
+      </Suspense>
+    )}
   </section>;
 }
 

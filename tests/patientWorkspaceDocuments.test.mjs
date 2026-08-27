@@ -84,6 +84,15 @@ test('production patient route remains isolated', () => {
   assert.ok(workspaceSource.includes('Scheda Paziente 2.0 · Preview'));
 });
 
+test('archived document Apri/Stampa open the in-app viewer instead of window.open, so mobile popup blocking cannot swallow them', () => {
+  assert.ok(!documentsSource.includes("import { apriPdf }"));
+  assert.ok(!documentsSource.includes('apriPdf('));
+  assert.ok(!documentsSource.includes('window.open'));
+  assert.match(documentsSource, /React\.lazy\(\(\) => import\('\.\/ui\/PdfViewerModal\.jsx'\)\)/);
+  assert.match(documentsSource, /<PdfViewerModal titolo=\{viewer\.titolo\} dataUrl=\{viewer\.dataUrl\} filename=\{viewer\.filename\}/);
+  assert.match(documentsSource, /onClick=\{\(\) => viewPdf\(document\)\}/);
+});
+
 test('mobile document and consent actions remain touch-friendly and safe-area aware', () => {
   const css = readFileSync(new URL('../src/components/PatientWorkspaceV2.css', import.meta.url), 'utf8');
   assert.ok(css.includes('@media(max-width:520px)'));

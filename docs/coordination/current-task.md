@@ -1,18 +1,34 @@
 # Current task
 
+- TASK: POL-DOC-ARCHIVE-MOBILE-OPEN-FIX
+- TITLE: Patient record Documenti/Ricette — Apri/Stampa still didn't open on mobile after POL-DOC-ARCHIVE-OPEN-FIX
+- OWNER: CLAUDE, on direct Product Owner report: in the patient record's Documenti tab, archived documents and ricette list correctly and open/download fine in the general Documenti (archivio) section, but on mobile specifically, opening/printing one from inside the patient record still shows nothing. Desktop works.
+- BRANCH: `claude/mobile-recipes-docs-visibility-v9hk10`
+- BASE: `origin/master@a34b4a0` (merge PR #70, which shipped POL-DOC-ARCHIVE-OPEN-FIX)
+- STATUS: IMPLEMENTED_AWAITING_PRODUCT_OWNER_QA
+- OBJECTIVE: make Apri/Stampa in `PatientWorkspaceDocuments.jsx` (the patient record's Documenti/Ricette tab, mounted by `SchedaPaz.jsx`) actually display the archived PDF on mobile, without touching the archive list/metadata loading, RLS, schema, or the working `ArchivioDocs.jsx` (general Documenti page) behavior.
+- ROOT CAUSE: PR #70's fix made `apriPdf()` convert the `data:` URI to a `blob:` URL before `window.open()`, which fixed the previous data-URI-blocking bug, but `PatientWorkspaceDocuments.jsx` calls it from inside `withPdf()` — an `async` handler that `await`s a Supabase fetch (`loadPatientDocumentPdf`) before ever calling `apriPdf`/`window.open`. Desktop browsers tolerate `window.open()` shortly after an awaited gap tied to a click; mobile Safari/Chrome do not — they require the new-tab open to happen synchronously inside the original tap's call stack, otherwise it is silently blocked with no error and no fallback (`apriPdf`'s null-popup fallback never fires because mobile browsers return a non-null, permanently blank window instead of `null`). This is exactly why the general Documenti page (`ArchivioDocs.jsx`) already worked fine on mobile: its `visualizzaDoc()` also awaits the PDF fetch, but instead of `window.open` it opens the in-app `PdfViewerModal` (a `pdf.js`-based full-screen viewer, no new tab/window involved at all) — the same component `PannelloInvioDocumento.jsx` already uses for the fresh "Genera PDF" preview.
+- FIX: `PatientWorkspaceDocuments.jsx` no longer imports/calls `apriPdf`/`window.open`. Both "Apri" and "Stampa / PDF" now call one `viewPdf(document)` that, once the PDF is fetched, opens the same lazy-loaded `PdfViewerModal` (with its existing Condividi/Scarica actions) used by `ArchivioDocs.jsx` and `PannelloInvioDocumento.jsx` — no new PDF viewer/backend was invented.
+- SAFETY: no migration, database, RLS, Storage, dependency or financial formula change. Document/prescription list, metadata loading, and the general Documenti (`ArchivioDocs.jsx`) page are untouched. `src/lib/condivisionePdf.js`'s `apriPdf`/`scaricaPdf` are untouched and still used elsewhere.
+- VALIDATION: dedicated test 11/11 (`tests/patientWorkspaceDocuments.test.mjs`, new regression test added); full suite 516/516; production build passed; `git diff --check` clean.
+- EXACT NEXT ACTION: push the branch, then Product Owner confirms on an actual phone that Apri/Stampa in the patient record's Documenti tab display an archived document/ricetta. Do not merge without Product Owner approval.
+
+---
+
+# Previous current task
+
 - TASK: POL-DOC-ARCHIVE-OPEN-FIX
 - TITLE: Patient document archive — fix Apri/Stampa showing no document
 - OWNER: CLAUDE, on direct Product Owner report after PR #69 merged (`281f2da`): archived documents now list correctly, but opening/printing one shows no document.
 - BRANCH: `claude/merge-pr-69-master-u1o2fn`
 - BASE: `origin/master@281f2da` (merge PR #69)
-- STATUS: IMPLEMENTED_AWAITING_PRODUCT_OWNER_QA
+- STATUS: MERGED (PR #70, merge commit `a34b4a0`) — fix was real but incomplete: it resolved the desktop `data:` URI blocking, but not the mobile popup-blocking-after-await case. See POL-DOC-ARCHIVE-MOBILE-OPEN-FIX above.
 - OBJECTIVE: make Apri/Stampa on `PatientWorkspaceDocuments` actually display the archived PDF, without changing the archive list, RLS, schema or lazy-load contract from PR #69.
 - ROOT CAUSE: `openPdf`/`printPdf` called `window.open(dataUrl, …)` directly on the raw `data:` URI returned by `loadPatientDocumentPdf`. Modern Chrome/Edge/Android block top-level navigation to a `data:` URI (anti-phishing measure): the new tab opens but stays blank, with no visible error — exactly "non c'è nessun documento". `openPdf` additionally passed `noopener`, which per spec makes `window.open` always return `null`, so it silently fell back to a download every time instead of showing the PDF.
 - VERIFIED IN PRODUCTION DB (read-only, no data exposed): `documenti_medici`/`documenti_fiscali` both have `pdf_base64` populated on every row (15/15, 7/7) and RLS (`documenti_medici_studio` / `documenti_fiscali_studio`, studio-scoped) is unchanged — the failure is client-side rendering, not missing data or access.
 - FIX: added `apriPdf(dataUrl, filename, { print })` to `src/lib/condivisionePdf.js`, converting the data URI to a `blob:` object URL (the pattern this file and `PdfView.jsx` already use elsewhere for the same class of bug) before calling `window.open`, with a `scaricaPdf` download fallback if the popup is blocked. `PatientWorkspaceDocuments.jsx`'s `openPdf`/`printPdf` now call it instead of using `window.open` directly.
 - SAFETY: no migration, database, RLS, Storage, dependency or financial formula change. Document list/metadata loading (PR #69) untouched.
 - VALIDATION: full suite 515/515; production build passed.
-- EXACT NEXT ACTION: push the branch, open a preview PR, then Product Owner confirms Apri/Stampa actually display an archived document in an authenticated patient record. Do not merge without Product Owner approval.
 
 ---
 
