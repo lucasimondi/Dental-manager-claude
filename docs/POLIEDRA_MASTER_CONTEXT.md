@@ -74,6 +74,20 @@ Storage:
 
 ## 5. Modello di lavoro con agenti AI
 
+Poliedra è sviluppata contemporaneamente da più agenti. Le regole operative comuni
+(ordine di lettura, pre-flight check, concorrenza, workflow, veridicità, gate Product
+Owner) sono definite una sola volta in `AGENTS.md` e non sono duplicate qui.
+
+Agenti attualmente operativi sul repository:
+
+- GitHub Copilot;
+- Claude Code;
+- Codex;
+- Perplexity.
+
+Tutti leggono e rispettano la stessa documentazione autoritativa. Nessun agente ha regole
+private che prevalgano su `AGENTS.md`.
+
 ChatGPT:
 - Product Owner assistant;
 - architettura;
@@ -95,6 +109,15 @@ Claude Code:
 Codex:
 - review e task mirati quando disponibile.
 
+GitHub Copilot:
+- implementazione, fix mirati, review;
+- entry point `.github/copilot-instructions.md`.
+
+Perplexity:
+- audit, documentazione, ricerca;
+- implementazione quando gli strumenti disponibili lo consentono;
+- nessun set di regole separato.
+
 Gemini:
 - può lavorare sul codice, ma ogni output deve essere revisionato prima dell'accettazione.
 
@@ -110,6 +133,10 @@ Macro missioni:
 Gli agenti devono proseguire autonomamente fino a `WAITING_PRODUCT_OWNER`, salvo vera `PRODUCT_OWNER_DECISION_REQUIRED`.
 
 ## 6. Workflow Git / deploy
+
+I vincoli operativi di dettaglio (branch, force push, concorrenza fra agenti, checklist di
+completamento) sono in `AGENTS.md`. Qui restano soltanto i vincoli di prodotto e di
+deploy.
 
 Durante sviluppo:
 - non modificare produzione senza approvazione;
@@ -222,7 +249,13 @@ Pagine prioritarie da uniformare:
 6. Setup
 7. Fisio
 
-## 10. POL-UX-001 — missione UX corrente
+## 10. POL-UX-001 — missione UX
+
+Stato al 24 agosto 2026 (`VERIFIED` su repository, commit `b65cdba`): POL-UX-001 non è più
+il task attivo. La sua draft PR resta aperta e non mergiata; il record è in
+`docs/coordination/current-task.md` ("Historical record: POL-UX-001"). Gli obiettivi qui
+elencati restano direzione di prodotto valida, in parte già assorbita da POL-UI-003,
+POL-UI-013 e POL-UI-015.
 
 Obiettivi Product Owner:
 - migliorare header;
@@ -598,6 +631,22 @@ Esempi:
 
 Guardrail: l'AI non finalizza autonomamente atti clinici sensibili; il clinico resta responsabile.
 
+### Poliedron è un unico agente
+
+Principio architetturale non negoziabile: esiste **un solo Poliedron**. Pulsante centrale
+AI, Chat, campanello, attività, moduli del gestionale e future automazioni sono punti di
+accesso allo stesso agente e condividono identità, contesto, memoria, strumenti e
+orchestrazione.
+
+La Chat è un'interfaccia persistente verso lo stesso Poliedron, bidirezionale
+(utente → Poliedron per richieste e comandi; Poliedron → utente per informazioni, conferme,
+attività e futuri alert). Le attività possono generare messaggi in Chat; gli stati previsti
+sono `pending`, `completed`, `snoozed`, `cancelled`, e `read` non equivale a `completed`.
+Il campanello segnala soltanto che Poliedron ha qualcosa che richiede attenzione nella
+conversazione: non è un secondo sistema conversazionale.
+
+Contratto completo e checklist: `docs/architecture/POLIEDRON.md`.
+
 ## 33. Referral / Founder model
 
 Idea da mantenere in roadmap: founder / ambassador / referral partner con tracking segnalazioni e possibile revenue sharing/passivo ricorrente collegato alla rete generata.
@@ -727,6 +776,9 @@ Quando il Product Owner decide, documentare il lock.
 Non:
 - duplicare financial engine;
 - duplicare RBAC;
+- creare un secondo Poliedron, una seconda memoria, un secondo context engine, un secondo
+  orchestration layer o un AI service parallelo;
+- progettare le notifiche come un secondo sistema conversazionale;
 - creare secondo episode Fisio;
 - affidarsi al frontend per sicurezza;
 - inventare dati storici;
@@ -743,6 +795,13 @@ Poliedra non deve diventare “un gestionale con AI”.
 Deve diventare **il sistema operativo intelligente dello studio sanitario**.
 
 ## 44. Priorità immediate
+
+Stato al 24 agosto 2026 (`VERIFIED` su repository): l'elenco riflette la direzione Product
+Owner, non la sequenza esecutiva corrente. I task realmente in volo sono in
+`docs/coordination/current-task.md` e nelle PR aperte (POL-UI-004-AGENDA-QUICK-HUB,
+POL-UI-015, POL-FIN-001, POL-UI-014, POL-FIS-001, POL-RBAC-002). Il riordino delle
+priorità è una decisione Product Owner: `PRODUCT_OWNER_DECISION_REQUIRED` se questo elenco
+deve essere riscritto.
 
 1. completare POL-UX-001;
 2. review Product Owner;
