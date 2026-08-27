@@ -11,12 +11,12 @@ const medicalSource = readFileSync(new URL('../src/components/DocMedico.jsx', im
 const appSource = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8');
 const patientSource = readFileSync(new URL('../src/components/SchedaPaz.jsx', import.meta.url), 'utf8');
 
-function queryResult(data) {
-  const chain = { select: () => chain, eq: () => chain, order: async () => ({ data, error: null }) };
+function queryResult(data, error = null) {
+  const chain = { select: () => chain, eq: () => chain, order: async () => ({ data, error }) };
   return chain;
 }
 
-test('patient document metadata stays patient-scoped, light, sequential and excludes PDFs', async () => {
+test('patient document metadata stays patient-scoped, light and excludes PDFs', async () => {
   const calls = [];
   const client = { from(table) { calls.push(table); return queryResult(table === 'documenti_medici' ? [{ id: 1, tipo: 'ricetta', titolo: 'Ricetta', paziente_id: 7, data: '2026-08-25' }] : []); } };
   const documents = await loadPatientDocumentMetadata(client, 7);
@@ -24,6 +24,25 @@ test('patient document metadata stays patient-scoped, light, sequential and excl
   assert.equal(documents[0].category, 'prescriptions');
   assert.ok(!documentsSource.match(/select\([^)]*pdf_base64[^)]*\).*order/s));
   assert.ok(documentAdapterSource.includes("select('pdf_base64')"));
+});
+
+test('patient archive still shows medical documents when the fiscal source is unavailable', async () => {
+  const medical = [{ id: 3, tipo: 'certificato', titolo: 'Certificato medico', paziente_id: 7, data: '2026-08-26' }];
+  const client = { from(table) { return table === 'documenti_medici' ? queryResult(medical) : queryResult(null, new Error('fiscal unavailable')); } };
+  const documents = await loadPatientDocumentMetadata(client, 7);
+  assert.equal(documents.length, 1);
+  assert.equal(documents[0].title, 'Certificato medico');
+});
+
+test('patient archive reports unavailable only when every document source fails', async () => {
+  const client = { from() { return queryResult(null, new Error('unavailable')); } };
+  await assert.rejects(() => loadPatientDocumentMetadata(client, 7), /unavailable/);
+});
+
+test('default documents callback is stable and cannot restart loading on every render', () => {
+  assert.match(documentsSource, /const EMPTY_DOCUMENTS_CHANGE = \(\) => \{\};/);
+  assert.match(documentsSource, /onDocumentsChange = EMPTY_DOCUMENTS_CHANGE/);
+  assert.doesNotMatch(documentsSource, /onDocumentsChange = \(\) => \{\}/);
 });
 
 test('document tab is lazy and real prescription adapter preassigns the current patient', () => {

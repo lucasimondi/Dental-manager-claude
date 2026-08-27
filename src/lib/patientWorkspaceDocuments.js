@@ -34,17 +34,17 @@ export function mergePatientDocuments(medical = [], fiscal = []) {
 
 export async function loadPatientDocumentMetadata(client, patientId) {
   if (!patientId) return [];
-  const medicalResult = await client.from('documenti_medici')
-    .select(MEDICAL_DOCUMENT_FIELDS)
-    .eq('paziente_id', patientId)
-    .order('data', { ascending: false });
-  if (medicalResult.error) throw medicalResult.error;
-
-  const fiscalResult = await client.from('documenti_fiscali')
-    .select(FISCAL_DOCUMENT_FIELDS)
-    .eq('paziente_id', patientId)
-    .order('data', { ascending: false });
-  if (fiscalResult.error) throw fiscalResult.error;
+  const [medicalResult, fiscalResult] = await Promise.all([
+    client.from('documenti_medici')
+      .select(MEDICAL_DOCUMENT_FIELDS)
+      .eq('paziente_id', patientId)
+      .order('data', { ascending: false }),
+    client.from('documenti_fiscali')
+      .select(FISCAL_DOCUMENT_FIELDS)
+      .eq('paziente_id', patientId)
+      .order('data', { ascending: false }),
+  ]);
+  if (medicalResult.error && fiscalResult.error) throw medicalResult.error;
   return mergePatientDocuments(medicalResult.data || [], fiscalResult.data || []);
 }
 

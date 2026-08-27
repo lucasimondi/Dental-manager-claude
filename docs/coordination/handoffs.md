@@ -1,5 +1,19 @@
 # Handoffs
 
+## POL-DOC-ARCHIVE — Patient document archive visibility
+
+- Task ID: POL-DOC-ARCHIVE. Owner: CODEX.
+- Branch: `fix/POL-DOC-ARCHIVE-patient-documents` from `origin/master@36faf3f`.
+- Objective: restore archived medical/fiscal documents inside the stable patient record, isolated from rejected Polyedron PR #68.
+- Root cause: the default `onDocumentsChange = () => {}` created a new function every render and retriggered the loading effect continuously. Additionally, one failed archive source caused the successful source to be discarded.
+- Completed: introduced a stable no-op callback; loads both metadata sources together; retains the available patient-scoped archive when only one source fails and reports an error only if both fail. PDFs remain lazy and are loaded only on explicit open/print.
+- Files changed: `src/components/PatientWorkspaceDocuments.jsx`, `src/lib/patientWorkspaceDocuments.js`, `tests/patientWorkspaceDocuments.test.mjs`, and coordination docs.
+- Database changes: none. No schema, migration, RLS, storage or production data changes.
+- Tests: dedicated document tests 26/26; full suite 515/515; production build passed.
+- Residual risk: authenticated preview QA is required to confirm the real tenant's archived records and RLS visibility.
+- Rollback: revert the POL-DOC-ARCHIVE commit; no database rollback required.
+- Exact next action: commit, push, open a preview PR, then verify a patient with known medical and fiscal documents. Do not merge without Product Owner approval.
+
 ## POL-UI-005B — Round 6 recovery (visual regression fix)
 
 - Task ID: POL-UI-005B. Agent: Claude, on direct, explicit Product Owner instruction naming commit `67fe427` and requiring a forensic diff against its exact parent before any change, with a hard stop on merging, master, or production.
