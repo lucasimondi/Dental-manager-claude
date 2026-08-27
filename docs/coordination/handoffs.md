@@ -1,5 +1,19 @@
 # Handoffs
 
+## POL-UI-016 — Polyedron mobile position stability
+
+- Task ID: POL-UI-016. Owner: CODEX.
+- Branch: `fix/POL-UI-016-poliedron-stability` from `origin/master@36faf3f`.
+- Objective: isolate the residual mobile Polyedron movement reported after PR #67, before starting the separate document-archive task.
+- Root cause: `positionLocked` froze rendering but did not reject `pointerdown`; an invisible drag could persist a detached position that appeared after leaving the patient workspace. The hook also still subscribed to `visualViewport.resize`, which fires for mobile browser chrome and the virtual keyboard.
+- Completed: locked mode now rejects drag start entirely; the `visualViewport.resize` subscription was removed while real window resize and orientation changes remain supported.
+- Files changed: `src/components/poliedron/usePoliedronPosition.js`, `tests/poliedronAdaptive.test.mjs`, `docs/coordination/current-task.md`, and `docs/coordination/handoffs.md`.
+- Database changes: none. No schema, migration, RLS, storage, clinical data, or production data change.
+- Tests: targeted Polyedron suite 67/67; full suite 514/514; production build passed. Existing build warnings remain unchanged and outside scope.
+- Residual risk: real authenticated iPhone/mobile QA requires the Product Owner preview session and is not claimed locally.
+- Rollback: revert the POL-UI-016 commit; no database rollback is required.
+- Exact next action: commit, push, open a preview PR, then verify on mobile: open patient workspace, open/close modal, focus fields to show the keyboard, leave the workspace, and confirm Polyedron never jumps. Do not merge or deploy to production without explicit Product Owner approval.
+
 ## POL-UI-005B — Round 6 recovery (visual regression fix)
 
 - Task ID: POL-UI-005B. Agent: Claude, on direct, explicit Product Owner instruction naming commit `67fe427` and requiring a forensic diff against its exact parent before any change, with a hard stop on merging, master, or production.
