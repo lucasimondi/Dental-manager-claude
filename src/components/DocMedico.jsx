@@ -137,10 +137,11 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
   // (Condividi / WhatsApp / Scarica), così l'utente sceglie cosa farne —
   // ed è anche il punto dove eventualmente lo salviamo in archivio.
   const [pronto, setPronto] = useState(null); // { dataUrl, filename, titolo, tipoDoc }
+  const [erroreGenerazione, setErroreGenerazione] = useState('');
+  const [archiviato, setArchiviato] = useState(false);
 
   const salvaInArchivioSeAttivo = async (tipoDoc, titolo, dataUrl) => {
-    if (!docSet[tipoDoc]) return; // impostazione disattivata per questo tipo: non archiviamo
-    if (!studioId) return; // sessione non ancora pronta: evitiamo un insert con studio_id mancante
+    if (!docSet[tipoDoc] || !studioId) return false;
     const { data: saved, error } = await supabase.from('documenti_medici').insert([{
       studio_id: studioId,
       paziente_id: paz.id,
@@ -150,7 +151,10 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
       data,
       pdf_base64: dataUrl,
     }]).select('id, tipo, titolo, data, paziente_id, created_at').single();
-    if (!error) onDocumentSaved?.(saved);
+    if (error) return false;
+    setArchiviato(true);
+    onDocumentSaved?.(saved);
+    return true;
   };
 
   // Tutto il contenuto "costoso da riscrivere" dei vari tipi di documento è
@@ -460,7 +464,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
     finalizzaMultipagina(doc, W, M);
     const dataUrl = doc.output('datauristring');
     const filename = `ricetta_${paz.cognome}_${data}.pdf`;
-    salvaInArchivioSeAttivo('ricetta', 'Ricetta medica', dataUrl);
+    void salvaInArchivioSeAttivo('ricetta', 'Ricetta medica', dataUrl);
     clearContenutoDraft();
     setPronto({ dataUrl, filename, titolo: 'Ricetta medica', tipoDoc: 'ricetta' });
     setGenerated(true);
@@ -764,14 +768,20 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
   };
 
   const genera = () => {
+    setErroreGenerazione('');
+    setArchiviato(false);
     setGenerated(false);
     setPronto(null);
-    if (tipo === 'ricetta') generaRicetta();
-    else if (tipo === 'esami') generaEsamiEmatici();
-    else if (tipo === 'certificato') generaCertificato();
-    else if (tipo === 'lettera') generaLettera();
-    else if (tipo === 'vuoto') generaVuoto();
-    else generaProtocollo();
+    try {
+      if (tipo === 'ricetta') generaRicetta();
+      else if (tipo === 'esami') generaEsamiEmatici();
+      else if (tipo === 'certificato') generaCertificato();
+      else if (tipo === 'lettera') generaLettera();
+      else if (tipo === 'vuoto') generaVuoto();
+      else generaProtocollo();
+    } catch {
+      setErroreGenerazione('Non è stato possibile generare il PDF. Controlla i dati inseriti e riprova.');
+    }
   };
 
   return (
@@ -992,6 +1002,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
         )}
 
         {/* GENERA */}
+        {erroreGenerazione && <div role="alert" style={{ color: C.dan, background: C.danL, borderRadius: 8, padding: 10, marginBottom: 10, fontSize: 12 }}>{erroreGenerazione}</div>}
         {!pronto ? (
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
             <Btn ch="Annulla" v="sec" onClick={onClose} full />
@@ -1001,7 +1012,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
           <PannelloInvioDocumento
             pronto={pronto}
             paziente={paz}
-            archiviato={docSet[pronto.tipoDoc]}
+            archiviato={archiviato}
             onChiudi={onClose}
             onNuovoDocumento={() => { setPronto(null); setGenerated(false); }}
           />

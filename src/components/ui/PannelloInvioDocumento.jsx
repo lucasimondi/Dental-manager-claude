@@ -40,6 +40,15 @@ export default function PannelloInvioDocumento({ pronto, paziente, archiviato, o
       : `Cerca ${paziente.nome} ${paziente.cognome} (${paziente.telefono}) tra i contatti WhatsApp.`);
   };
 
+  const scarica = () => {
+    try {
+      scaricaPdf(pronto.dataUrl, pronto.filename);
+      setStato('PDF scaricato.');
+    } catch {
+      setStato('Download non riuscito. Riprova o usa la condivisione.');
+    }
+  };
+
   return (
     <div style={{ marginBottom: 16 }}>
       <div style={{ background: C.sucL, border: `1px solid ${C.suc}`, borderRadius: 10, padding: '11px 14px', marginBottom: 12, textAlign: 'center' }}>
@@ -88,7 +97,7 @@ export default function PannelloInvioDocumento({ pronto, paziente, archiviato, o
       </div>
 
       <div style={{ marginTop: 8 }}>
-        <Btn ch="Scarica" ic="download" v="sec" onClick={() => scaricaPdf(pronto.dataUrl, pronto.filename)} full />
+        <Btn ch="Scarica" ic="download" v="sec" onClick={scarica} full />
       </div>
 
       {stato && (

@@ -48,24 +48,17 @@ export function getPoliedronSafeBounds({
 
 export const clampToBounds = (value, min, max) => Math.min(max, Math.max(min, value));
 
-/* Sorgente stabile per le dimensioni del viewport da usare nel posizionamento
-   dell'Orb. `window.innerWidth/innerHeight` su mobile Safari (e diverse
-   WebView Android) cambiano quando la barra degli indirizzi si nasconde o
-   riappare — cosa che un overlay a schermo intero come la Scheda Paziente
-   tende a innescare aprendosi/chiudendosi. Se il calcolo della posizione
-   "agganciata" (docked) usa quei valori grezzi, la stessa identica
-   posizione logica risulta in coordinate diverse prima/dopo l'apertura,
-   percepito dall'utente come "Polyedron continua a spostarsi" a ogni
-   ciclo apri/chiudi. `window.visualViewport` è pensato apposta per non
-   seguire quelle fluttuazioni di chrome del browser ed è la fonte
-   raccomandata per un posizionamento stabile di elementi fixed; ricade su
-   `window.innerWidth/innerHeight` solo dove `visualViewport` non esiste. */
+/* Usa il layout viewport, non visualViewport. Quest'ultimo cambia per barra
+   browser e tastiera mobile: usarlo per riespandere coordinate persistite
+   sposta l'Orb senza alcun drag. clientWidth/clientHeight restano invece il
+   riferimento del containing block fixed e cambiano per un vero resize o
+   orientationchange. Il fallback copre ambienti senza document (test/SSR). */
 export function getStableViewportSize() {
   if (typeof window === 'undefined') return { width: 0, height: 0 };
-  const vv = window.visualViewport;
+  const root = typeof document !== 'undefined' ? document.documentElement : null;
   return {
-    width: vv?.width || window.innerWidth,
-    height: vv?.height || window.innerHeight,
+    width: root?.clientWidth || window.innerWidth,
+    height: root?.clientHeight || window.innerHeight,
   };
 }
 
