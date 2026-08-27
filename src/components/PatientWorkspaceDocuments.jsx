@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { fmt, fmtD } from '../lib/utils';
-import { scaricaPdf } from '../lib/condivisionePdf';
+import { apriPdf } from '../lib/condivisionePdf';
 import { loadPatientDocumentMetadata, loadPatientDocumentPdf } from '../lib/patientWorkspaceDocuments';
 
 const SECTIONS = [
@@ -45,14 +45,8 @@ export default function PatientWorkspaceDocuments({ patientId, client = supabase
     finally { setBusyId(null); }
   };
 
-  const openPdf = (document) => withPdf(document, (dataUrl) => {
-    const popup = window.open(dataUrl, '_blank', 'noopener,noreferrer');
-    if (!popup) scaricaPdf(dataUrl, fileNameFor(document));
-  });
-  const printPdf = (document) => withPdf(document, (dataUrl) => {
-    const popup = window.open(dataUrl, '_blank');
-    if (popup) popup.addEventListener('load', () => popup.print(), { once: true });
-  });
+  const openPdf = (document) => withPdf(document, (dataUrl) => apriPdf(dataUrl, fileNameFor(document)));
+  const printPdf = (document) => withPdf(document, (dataUrl) => apriPdf(dataUrl, fileNameFor(document), { print: true }));
 
   if (loading) return <section className="pw2-doc-state" aria-live="polite">Caricamento metadati documenti…</section>;
   return <section className="pw2-documents" data-lazy-source="patient-document-metadata">
