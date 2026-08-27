@@ -10,10 +10,11 @@ const SECTIONS = [
   ['consents', 'Consensi'],
   ['fiscal', 'Documenti fiscali'],
 ];
+const EMPTY_DOCUMENTS_CHANGE = () => {};
 
 const fileNameFor = (document) => `${document.type || 'documento'}_${document.date || 'senza-data'}.pdf`.replace(/\s+/g, '_').toLowerCase();
 
-export default function PatientWorkspaceDocuments({ patientId, client = supabase, reloadToken = 0, onDocumentsChange = () => {} }) {
+export default function PatientWorkspaceDocuments({ patientId, client = supabase, reloadToken = 0, onDocumentsChange = EMPTY_DOCUMENTS_CHANGE }) {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

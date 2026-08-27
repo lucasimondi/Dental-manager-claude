@@ -1,17 +1,16 @@
 # Current task
 
-- TASK: POL-DOC-MEDICAL-POLYEDRON-FINAL-RECOVERY
+- TASK: POL-DOC-ARCHIVE
+- TITLE: Patient document archive visibility
 - OWNER: CODEX
-- BRANCH: `hotfix/POL-DOC-medical-polyedron-final-recovery`
-- BASE: `origin/master@30b5fe86a9cf98a325c5e2c85a69f996c882a23d` (merge PR #66; contains merge PR #65)
-- STATUS: IMPLEMENTED_AWAITING_REMOTE_PREVIEW_AND_PRODUCT_OWNER_QA
-- OBJECTIVE: restore the real DocMedico/Ricetta generate → preview → download path and remove the remaining mobile Polyedron autonomous viewport drift without changing fiscal behavior, database, RLS or schema.
-- ROOT CAUSE DOCMEDICO/RICETTA: the successful `documenti_medici` archive callback in `SchedaPaz` immediately set `documentFlow` to null, unmounting DocMedico and its generated PDF action panel before preview/download could be used. The callback now refreshes document metadata only; closing remains an explicit user action.
-- ROOT CAUSE POLYEDRON: PR #66 treated `visualViewport` as stable, but it is the viewport that changes with mobile browser chrome and keyboards. Re-expanding the persisted position against those transient dimensions produced autonomous movement. Fixed-position geometry now uses the layout viewport (`document.documentElement.clientWidth/clientHeight`) with SSR/test fallback.
-- ANAMNESI: audited, unchanged. It remains tab-scoped/lazy, saves only after explicit user action, generates a real PDF and has no unverified remote-signature RPC.
-- SAFETY: no migration, database, RLS, Storage, dependency, financial formula or production-data change. Fattura/Rimborso source is unchanged.
-- VALIDATION: dedicated recovery/Polyedron tests 86/86 passed; full `npm test` 512/512 passed; `git diff --check` clean. `npm run build` is blocked by the local sandbox because esbuild cannot traverse the Windows drive root while resolving `vite.config.js`; this is an environment blocker, not reported as green.
-- EXACT NEXT ACTION: publish the branch, open one PR to master, wait for Vercel preview, then Product Owner performs the required authenticated/mobile checklist. Do not merge.
+- BRANCH: `fix/POL-DOC-ARCHIVE-patient-documents`
+- BASE: `origin/master@36faf3f`
+- STATUS: IN_PROGRESS
+- OBJECTIVE: show the current patient's archived medical and fiscal documents in the stable patient record without loading PDF payloads until requested.
+- ROOT CAUSE: the optional `onDocumentsChange` default was a new function on every render, retriggering the loading effect after every state update. A failure from either archive table also discarded the successful source.
+- SAFETY: no migration, database, RLS, Storage, dependency, financial formula or production-data change.
+- VALIDATION: dedicated document tests 26/26; full suite 515/515; production build passed.
+- EXACT NEXT ACTION: commit, push, open a preview PR, then Product Owner verifies archived documents in an authenticated patient record. Do not merge.
 
 ---
 
