@@ -84,8 +84,14 @@ body,
   --pol-space-2: 8px;
   --pol-space-3: 12px;
   --pol-space-4: 16px;
-  --pol-space-5: 20px;
-  --pol-space-6: 28px;
+  --pol-space-5: 24px;
+  --pol-space-6: 32px;
+
+  /* POL-UI-017 R1 — semantic geometry. Legacy radius aliases above remain
+     stable; new shared primitives use these role-based values. */
+  --pol-radius-control: 10px;
+  --pol-radius-card: 14px;
+  --pol-radius-sheet: 20px;
 
   /* ── Typography ── */
   --pol-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -98,9 +104,17 @@ body,
   /* ── Touch target floor (section P) ── */
   --pol-touch-min: 44px;
 
+  /* Canonical mobile chrome geometry. The dock itself is intentionally not
+     changed by POL-UI-017; normal pages consume these values only to reserve
+     enough physical space beneath their final content. */
+  --pol-mobile-dock-height: 64px;
+  --pol-mobile-dock-bottom: 16px;
+  --pol-mobile-dock-gap: 16px;
+
   /* ── Theme-aware brand primitives (POL-UX-002 section 2) ──
      Light default here; dark override below. Everything else in
-     --pol-blue-*/--pol-indigo-*/--pol-azure-* etc. stays a fixed numbered
+     Numbered blue, indigo and azure palette tokens stay fixed while these
+     semantic brand roles remain theme-aware.
      scale (used as gradient stops regardless of theme) — these three are
      the ones that actually need to shift with the theme, so semantic
      consumers (--brand-* below) read these, not the fixed scale. */
@@ -121,6 +135,7 @@ body,
   --surface-card: var(--pol-surface);
   --surface-elevated: var(--pol-surface);
   --surface-interactive: var(--pol-surface-glass);
+  --surface-overlay: rgba(10,20,40,.55);
 
   --text-primary: var(--pol-ink);
   --text-secondary: var(--pol-ink-muted);
@@ -172,4 +187,186 @@ body,
   --pol-brand-pri: #3b82f6;
   --pol-brand-pri-d: #0b1220;
   --pol-brand-acc: #38bdf8;
+  --surface-overlay: rgba(2,6,23,.72);
 }
+
+/* POL-UI-017 R1 — shared mobile foundation.
+   The React shell chooses mobile mode for portrait phones and coarse-pointer
+   landscape phones. The media query mirrors that contract without user-agent
+   sniffing. Agenda, Chat and Home already own specialized scrolling/clearance
+   and are deliberately excluded from the normal-page padding rule. */
+@media (max-width: 719px), (pointer: coarse) and (max-width: 1024px) and (max-height: 600px) {
+  .app-shell--mobile {
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow: hidden;
+  }
+
+  .app-shell--mobile #app-scroll {
+    min-height: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .app-shell--mobile #app-scroll:not(:has(.agenda-mobile-page)):not(:has(.poliedron-chat-host)):not(:has(.home-widget-grid)) {
+    padding-bottom: calc(
+      var(--pol-mobile-dock-bottom) +
+      var(--pol-mobile-dock-height) +
+      var(--pol-mobile-dock-gap) +
+      env(safe-area-inset-bottom, 0px)
+    ) !important;
+  }
+}
+
+/* Reusable contract for later page migrations. `specialized` lets mature
+   surfaces such as Agenda and Chat keep ownership of their one scroller. */
+.pol-mobile-page-shell {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+}
+.pol-mobile-page-shell--normal {
+  padding-bottom: calc(
+    var(--pol-mobile-dock-bottom) +
+    var(--pol-mobile-dock-height) +
+    var(--pol-mobile-dock-gap) +
+    env(safe-area-inset-bottom, 0px)
+  );
+}
+.pol-mobile-page-shell--specialized {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Shared interaction contract. Icons remain visually compact; only their
+   interactive wrappers receive the 44px floor. */
+.pol-btn,
+.pol-icon-btn,
+.pol-tab,
+.pol-touch-target,
+.pol-search-clear,
+.pol-retry,
+.pol-dismiss,
+.pol-context-action {
+  min-width: var(--pol-touch-min);
+  min-height: var(--pol-touch-min);
+}
+.pol-input { min-height: var(--pol-touch-min); }
+
+/* Shared state primitives. */
+.pol-ui-state {
+  width: 100%;
+  padding: var(--pol-space-6) var(--pol-space-4);
+  border-radius: var(--pol-radius-card);
+  color: var(--text-secondary);
+  text-align: center;
+}
+.pol-ui-state__icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto var(--pol-space-3);
+  border-radius: var(--pol-radius-card);
+  display: grid;
+  place-items: center;
+  background: var(--surface-base);
+}
+.pol-ui-state__title { color: var(--text-primary); font-size: 14px; font-weight: 800; }
+.pol-ui-state__message { margin-top: var(--pol-space-1); font-size: 12px; line-height: 1.5; }
+.pol-ui-state__action { margin-top: var(--pol-space-4); display: flex; justify-content: center; }
+.pol-ui-state--error {
+  border: 1px solid color-mix(in srgb, var(--danger) 24%, transparent);
+  background: color-mix(in srgb, var(--danger) 7%, var(--surface-card));
+}
+.pol-ui-state--loading .pol-ui-state__icon { animation: pol-ui-state-pulse 1.2s ease-in-out infinite; }
+@keyframes pol-ui-state-pulse { 50% { opacity: .48; transform: scale(.96); } }
+@media (prefers-reduced-motion: reduce) {
+  .pol-ui-state--loading .pol-ui-state__icon { animation: none; }
+}
+
+/* Shared Modal contract. Desktop remains a centered dialog. */
+html .pol-modal-backdrop {
+  padding: var(--pol-space-4);
+  align-items: center;
+  background: var(--surface-overlay);
+}
+html .pol-modal-sheet {
+  border-radius: var(--pol-radius-sheet);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden !important;
+}
+html .pol-modal-header { flex: 0 0 auto; }
+html .pol-modal-content {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+html .pol-modal-footer {
+  flex: 0 0 auto;
+  padding: var(--pol-space-3) var(--pol-space-4) calc(var(--pol-space-3) + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--border-soft);
+  background: var(--surface-elevated);
+}
+
+@media (max-width: 719px), (pointer: coarse) and (max-width: 1024px) and (max-height: 600px) {
+  html .pol-modal-backdrop {
+    padding: max(var(--pol-space-2), env(safe-area-inset-top, 0px)) 0 0;
+    align-items: flex-end;
+  }
+  html .pol-modal-sheet {
+    width: 100% !important;
+    max-width: none !important;
+    max-height: calc(100dvh - max(var(--pol-space-2), env(safe-area-inset-top, 0px))) !important;
+    border-radius: var(--pol-radius-sheet) var(--pol-radius-sheet) 0 0;
+  }
+  html .pol-modal-sheet[data-mobile-variant="standard"] {
+    width: calc(100% - (var(--pol-space-3) * 2)) !important;
+    max-height: min(82dvh, 680px) !important;
+    margin-inline: auto;
+    margin-bottom: max(var(--pol-space-2), env(safe-area-inset-bottom, 0px));
+    border-radius: var(--pol-radius-sheet);
+  }
+  html .pol-modal-sheet[data-mobile-variant="fullscreen"] {
+    height: 100dvh;
+    max-height: 100dvh !important;
+    border-radius: 0;
+  }
+  html .pol-modal-content {
+    padding-bottom: calc(var(--pol-space-4) + env(keyboard-inset-height, 0px)) !important;
+  }
+}
+
+/* Shared PageHeader contract. */
+.pol-page-header__back,
+.pol-page-header__overflow-trigger {
+  width: var(--pol-touch-min);
+  height: var(--pol-touch-min);
+  border: 0;
+  border-radius: var(--pol-radius-control);
+  background: var(--surface-base);
+  color: var(--text-secondary);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.pol-page-header__overflow { position: relative; }
+.pol-page-header__overflow[open] .pol-page-header__overflow-trigger { color: var(--brand-primary); }
+.pol-page-header__overflow-menu {
+  position: absolute;
+  top: calc(100% + var(--pol-space-2));
+  right: 0;
+  z-index: 40;
+  width: min(280px, calc(100vw - 32px));
+  padding: var(--pol-space-2);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--pol-radius-card);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-md);
+}
+.pol-page-header__overflow-menu > * { min-height: var(--pol-touch-min); }
+.pol-page-header__overflow-trigger::-webkit-details-marker { display: none; }
