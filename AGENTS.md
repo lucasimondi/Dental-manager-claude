@@ -34,6 +34,17 @@ The Master Context is stable product direction. `docs/coordination/current-task.
 
 Every handoff must record: task ID, previous agent, branch, objective, completed work, files changed, database changes, tests executed, test results, unresolved issues, risks, and exact next action.
 
+## Golden rollback checkpoints
+
+- Branches under `stable/*` are immutable disaster-recovery checkpoints, not development branches.
+- Never commit to, rebase, force-push, delete, rename, or move a `stable/*` branch.
+- Never use a `stable/*` branch as the working branch for a task or PR.
+- Development must start from the latest authorized `master` unless the Product Owner explicitly authorizes a recovery operation.
+- The current Golden Rollback Point is `stable/2026-08-27-full-recovery`, fixed at commit `070b28fd4eae4e2cc397584201d0bb149468fae7`.
+- This checkpoint must never be replaced by a newer one. When a later state is manually verified by the Product Owner as stable, create a new `stable/...` checkpoint and preserve all prior checkpoints.
+- Before any high-risk change (broad recovery, major UI replacement, schema/security change, or other change with material regression risk), identify and preserve the latest Product-Owner-verified stable state before implementation.
+- A rollback to a `stable/*` checkpoint requires explicit Product Owner authorization and must follow `docs/runbooks/rollback.md`.
+
 ## Non-negotiable safety rules
 
 - Never expose, print, commit, or copy secrets.
