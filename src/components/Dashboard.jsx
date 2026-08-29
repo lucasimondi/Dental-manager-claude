@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase.js';
-import { Crd, Bdg, Modal, Ic, Btn, Fld, Sel, Inp, Txt, TimePicker, SelettorePaziente, EmptyState } from './ui';
+import { Crd, Bdg, Modal, Ic, Btn, Fld, Sel, Inp, Txt, TimePicker, SelettorePaziente, EmptyState, Toast } from './ui';
 import { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
 import { C, fmt, fmtD, today, RICHIAMO_CATEGORIE } from '../lib/utils';
 import { BarChart, Bar, LineChart, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -173,6 +173,11 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   const [editForm, setEditForm] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [bookingOpen, setBookingOpen] = useState(false);
+  // Product Owner round 3 — honest placeholder for quick actions whose
+  // real destination doesn't exist yet ("Da incassare"): a brief, real
+  // Toast (same shared component Impostazioni already uses), never a
+  // fake navigation. Reused as-is once the real module ships.
+  const [comingSoonMsg, setComingSoonMsg] = useState('');
   const [layoutLoading, setLayoutLoading] = useState(false);
   const [layoutSaving, setLayoutSaving] = useState(false);
   const [layoutError, setLayoutError] = useState('');
@@ -1164,6 +1169,8 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
         />
       )}
 
+      {comingSoonMsg && <Toast msg={comingSoonMsg} onDone={() => setComingSoonMsg('')} />}
+
       {/* ── HEADER ──
           POL-UI-015 §4/§3: on mobile this becomes a compact, sticky/
           floating pill (see .home-hero in PremiumVisualSystem.css) — the
@@ -1308,6 +1315,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
             onNavigate, onNavigateNew, onGoAgenda, onGoRichiami,
             openBooking: () => setBookingOpen(true),
             openTodoModal: openGenericTodoModal,
+            openComingSoon: (msg) => setComingSoonMsg(msg),
           };
           const activeActions = resolveQuickActions(w.config?.actions, { permissions: homePermissions, features, vertical: si?.vertical });
           /* POL-UI-017 R2 round 2 — the Product Owner asked for the quick-

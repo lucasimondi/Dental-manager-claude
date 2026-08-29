@@ -200,8 +200,11 @@ test('the hero line reports something operational (today\'s appointment count) w
 // no more on-widget "+"/"Altro" expand toggle (Product Owner follow-up)
 // ===========================================================================
 
-test('the catalog itself is untouched by this round: same actions, same default set', () => {
-  assert.equal(QUICK_ACTIONS_CATALOG.length, 12);
+test('the default quick-action set is untouched: round 3 only adds new, addable catalog entries', () => {
+  // Round 3 grew the catalog (Ricetta/Consenso/Da incassare — see
+  // quickActionsCatalog.test.mjs for their own dedicated coverage) but
+  // must not change what shows without explicit configuration.
+  assert.equal(QUICK_ACTIONS_CATALOG.length, 15);
   assert.deepEqual([...DEFAULT_QUICK_ACTION_IDS],
     ['nuovo_appuntamento', 'apri_agenda', 'nuovo_paziente', 'nuovo_preventivo', 'pagamento', 'richiamo']);
 });
@@ -270,6 +273,27 @@ test('Impostazioni reserves floating-dock clearance for its own long/scrollable 
   assert.match(premiumCss, /\.page-dock-clearance \{ display: none; \}/);
   const mobileBlock = round2Css.slice(round2Css.indexOf(MOBILE_MEDIA));
   assert.match(mobileBlock, /\.page-dock-clearance \{ display: block; \}/);
+  // The spacer is rendered once, unconditionally, at the end of the whole
+  // component's JSX — so it applies to EVERY `sezione` tab (Studio, Team,
+  // Azioni rapide, ...), not only the new one.
+  assert.ok(impostazioniSrc.indexOf('className="page-dock-clearance"') > impostazioniSrc.lastIndexOf("sezione === '"),
+    'the clearance spacer must be outside/after every sezione-gated block, not nested inside one');
+});
+
+test('REGRESSION GUARD (round 3 hardening): .page-dock-clearance is declared display:block in BOTH mobile media queries, exact parity with .home-dock-clearance', () => {
+  const legacyBlock = premiumCss.slice(premiumCss.indexOf('@media (max-width: 600px)'), premiumCss.indexOf(MOBILE_MEDIA));
+  assert.match(legacyBlock, /\.home-dock-clearance \{ display: block; \}/);
+  assert.match(legacyBlock, /\.page-dock-clearance \{ display: block; \}/);
+  const canonicalBlock = round2Css.slice(round2Css.indexOf(MOBILE_MEDIA));
+  assert.match(canonicalBlock, /\.home-dock-clearance \{ display: block; \}/);
+  assert.match(canonicalBlock, /\.page-dock-clearance \{ display: block; \}/);
+});
+
+test('"Da incassare" placeholder reuses the shared Toast component, not a new one; never a silent no-op that looks broken', () => {
+  assert.match(dashboardSrc, /import \{ [^}]*\bToast\b[^}]*\} from '\.\/ui';/);
+  assert.match(dashboardSrc, /const \[comingSoonMsg, setComingSoonMsg\] = useState\(''\);/);
+  assert.match(dashboardSrc, /openComingSoon: \(msg\) => setComingSoonMsg\(msg\)/);
+  assert.match(dashboardSrc, /\{comingSoonMsg && <Toast msg=\{comingSoonMsg\} onDone=\{\(\) => setComingSoonMsg\(''\)\} \/>\}/);
 });
 
 test('REGRESSION GUARD: saving quick_actions from Setup can only ever touch that one widget entry — every other widget survives byte-for-byte', () => {

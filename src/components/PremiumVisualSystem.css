@@ -908,6 +908,7 @@ body:has(.home-widget-grid) #app-scroll {
   .home-hero__datetime { display: block; margin-top: 3px; color: var(--pol-premium-muted); font-size: 11px; font-weight: 700; text-transform: capitalize; }
   .home-hero__customize { padding: 9px 10px; font-size: 11px; }
   .home-dock-clearance { display: block; }
+  .page-dock-clearance { display: block; }
   .home-quick-actions__grid { grid-template-columns: 1fr 1fr; }
   .home-widget-frame { border-radius: 20px !important; }
   .home-widget-frame__content > div:not(.canonical-financial-widget) { border-radius: 20px !important; }
