@@ -585,6 +585,7 @@ body:has(.home-widget-grid) #app-scroll {
    for the canonical geometry the spacer's inline height is built from. */
 .home-hero__datetime { display: none; }
 .home-dock-clearance { display: none; }
+.page-dock-clearance { display: none; }
 .home-hero__customize {
   min-height: 44px;
   padding: 10px 14px;
@@ -737,6 +738,10 @@ body:has(.home-widget-grid) #app-scroll {
   cursor: pointer;
   transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
 }
+/* Product Owner round 2 feedback: the filled blue-gradient icon chip read
+   as heavy/dated. Flat, minimal, professional instead — a neutral token
+   surface (theme-aware on its own, no dark override needed) framing the
+   glyph, which already carries the brand color via its own `c` prop. */
 .home-quick-actions__icon {
   display: flex;
   align-items: center;
@@ -745,15 +750,11 @@ body:has(.home-widget-grid) #app-scroll {
   height: 34px;
   flex-shrink: 0;
   border-radius: 11px;
-  background: linear-gradient(150deg, var(--pol-blue-50), #dbeafe);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 2px 6px rgba(24,95,165,.12);
+  background: var(--pol-bg-alt);
+  border: 1px solid var(--pol-line-strong);
 }
 :root[data-theme="dark"] .home-quick-actions__grid button {
   background: linear-gradient(150deg, var(--pol-surface) 0%, var(--pol-bg-alt) 100%);
-}
-:root[data-theme="dark"] .home-quick-actions__icon {
-  background: linear-gradient(150deg, var(--pol-brand-pri-d), var(--pol-line-strong));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 2px 6px rgba(0,0,0,.25);
 }
 .home-quick-actions__grid button:hover {
   transform: translateY(-3px);
@@ -2007,12 +2008,6 @@ body:has(.home-widget-grid) #app-scroll {
 /* ── Surfaces added by this round: mobile-only, hidden everywhere else ── */
 .home-hero__mark { display: none; }
 .home-attention { display: none; }
-/* Desktop shows every quick action at once, so it needs no "Altro".
-   The selector deliberately repeats `.home-quick-actions__grid button`:
-   that rule already declares `display: flex` at (0,1,1), so a bare
-   `.home-quick-actions__more` at (0,1,0) would lose and the toggle would
-   leak onto desktop. */
-.home-quick-actions__grid button.home-quick-actions__more { display: none; }
 
 /* ── Priority-area internals ─────────────────────────────────────────────
    Declared unconditionally (they cost nothing while the section is hidden)
@@ -2089,6 +2084,12 @@ body:has(.home-widget-grid) #app-scroll {
   body:has(.home-widget-grid) #app-scroll { padding: 0 !important; }
   .home-page { padding: 0 15px env(safe-area-inset-bottom, 0px); }
   .home-dock-clearance { display: block; }
+  /* Generic version of the same spacer for other normal (non-Home,
+     non-Agenda/Chat) mobile pages — #app-scroll here only reserves the
+     bare safe-area inset (see App.jsx), so a page whose own content can
+     run long, like Impostazioni's new "Azioni rapide" list below, needs
+     this to keep its last control clear of the floating dock. */
+  .page-dock-clearance { display: block; }
 
   /* ── §1 HERO — compact, branded, one line of genuinely useful info.
      Was: a clamp(25px,3vw,32px) greeting plus a meta line plus a datetime
@@ -2169,25 +2170,12 @@ body:has(.home-widget-grid) #app-scroll {
   .home-attention { display: block; margin-bottom: var(--pol-space-4); }
   .home-attention .home-section-label { margin-bottom: var(--pol-space-2); }
 
-  /* ── §3 QUICK ACTIONS — the first level shows only the most frequent
-     actions; the rest sit behind "Altro". Both the overflow buttons and the
-     toggle exist in the DOM at every breakpoint (so desktop is untouched);
-     only this block collapses them. `--qa-mobile-order` is set per button by
-     Dashboard.jsx from partitionQuickActionsForMobile(), so the phone can
-     surface a different first level WITHOUT reordering the desktop DOM. ── */
+  /* ── §3 QUICK ACTIONS — round 2 follow-up: the Product Owner asked for
+     the set itself to be curated (via "Personalizza azioni rapide" in
+     Impostazioni) rather than an on-widget "+"/"Altro" expand toggle, so
+     this block is now density-only: same two-column grid, no truncation,
+     no CSS `order` manipulation. ── */
   .home-quick-actions__grid { grid-template-columns: 1fr 1fr; gap: var(--pol-space-2); }
-  .home-quick-actions__grid button { order: var(--qa-mobile-order, 0); }
-  .home-quick-actions__grid button[data-quick-action-overflow='true'] { display: none; }
-  .home-quick-actions.is-expanded .home-quick-actions__grid button[data-quick-action-overflow='true'] { display: flex; }
-  /* Same specificity note as the base rule above; `order` additionally has
-     to outrank `.home-quick-actions__grid button { order: … }` (0,1,1) or
-     the toggle would sort to the front of the grid. */
-  .home-quick-actions__grid button.home-quick-actions__more {
-    display: flex;
-    order: 99;
-    border-style: dashed;
-    color: var(--text-secondary);
-  }
 
   /* ── §10 DENSITY — the action tiles were 68px tall with 14/16px padding
      and an 18px radius each; two columns of those pushed everything else

@@ -644,7 +644,7 @@ export default function App() {
             {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} initialFiltroTipo={archivioFiltroTipoHint} />}
             {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
             {page === 'agenteai' && <AgenteAISetup features={features} />}
-            {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} isStudioAdmin={isStudioAdmin} onLogout={handleLogout} />}
+            {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} isStudioAdmin={isStudioAdmin} onLogout={handleLogout} studioMembership={studioMembership} />}
             {page === 'chat' && <div ref={setPoliedronChatHost} className="poliedron-chat-host" />}
           </Suspense>
         )}

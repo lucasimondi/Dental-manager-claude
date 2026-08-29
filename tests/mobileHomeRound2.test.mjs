@@ -7,26 +7,28 @@ import {
   buildHomeAttentionItems, findNextAppointmentToday,
 } from '../src/lib/homeAttention.js';
 import {
-  DEFAULT_QUICK_ACTION_IDS, MOBILE_PRIMARY_QUICK_ACTION_IDS, MOBILE_QUICK_ACTION_PRIMARY_LIMIT,
-  QUICK_ACTIONS_CATALOG, getQuickAction, partitionQuickActionsForMobile, resolveQuickActions,
+  DEFAULT_QUICK_ACTION_IDS, QUICK_ACTIONS_CATALOG, getQuickAction, resolveQuickActions,
 } from '../src/lib/quickActionsCatalog.js';
-import { HOME_WIDGET_REGISTRY, createDefaultHomeLayout } from '../src/lib/homeWidgetRegistry.js';
+import { HOME_WIDGET_REGISTRY, createDefaultHomeLayout, setHomeWidgetConfig } from '../src/lib/homeWidgetRegistry.js';
 import { getMobileShellMode } from '../src/lib/mobileShell.js';
 import { MOBILE_DOCK_BOTTOM, MOBILE_DOCK_HEIGHT, MOBILE_DOCK_PROTECTED_GAP } from '../src/lib/poliedron/poliedronMobileDock.js';
 
 /* POL-UI-017 ROUND 2 — mobile Home and navigation refresh.
 
-   Behavioral facts (the priority-area selector, the quick-action
-   partition, the shell boundaries, the dock geometry) are tested as real
-   units. Facts that are about rendered markup or stylesheet contracts are
-   verified at the source level, the same convention every other Home test
-   in this repo already uses — `npm test` is plain `node --test`, there is
-   no React rendering harness (see package.json). */
+   Behavioral facts (the priority-area selector, the shell boundaries, the
+   dock geometry) are tested as real units. Facts that are about rendered
+   markup or stylesheet contracts are verified at the source level, the
+   same convention every other Home test in this repo already uses —
+   `npm test` is plain `node --test`, there is no React rendering harness
+   (see package.json). */
 
 const dashboardSrc = await readFile(new URL('../src/components/Dashboard.jsx', import.meta.url), 'utf8');
 const premiumCss = await readFile(new URL('../src/components/PremiumVisualSystem.css', import.meta.url), 'utf8');
 const dockSrc = await readFile(new URL('../src/components/poliedron/PoliedronMobileDock.jsx', import.meta.url), 'utf8');
 const bellSrc = await readFile(new URL('../src/components/poliedron/PoliedronBell.jsx', import.meta.url), 'utf8');
+const quickActionsCatalogSrc = await readFile(new URL('../src/lib/quickActionsCatalog.js', import.meta.url), 'utf8');
+const impostazioniSrc = await readFile(new URL('../src/components/Impostazioni.jsx', import.meta.url), 'utf8');
+const appSrc = await readFile(new URL('../src/App.jsx', import.meta.url), 'utf8');
 
 const round2Css = premiumCss.slice(premiumCss.indexOf('POL-UI-017 ROUND 2'));
 
@@ -194,49 +196,9 @@ test('the hero line reports something operational (today\'s appointment count) w
 });
 
 // ===========================================================================
-// §3 — quick actions: most frequent first, the rest behind "Altro"
+// §3 — quick actions: curated via "Personalizza azioni rapide" in Setup,
+// no more on-widget "+"/"Altro" expand toggle (Product Owner follow-up)
 // ===========================================================================
-
-test('the mobile first level surfaces the declared most-frequent actions, all of which already exist', () => {
-  const catalogIds = new Set(QUICK_ACTIONS_CATALOG.map((a) => a.id));
-  for (const id of MOBILE_PRIMARY_QUICK_ACTION_IDS) {
-    assert.ok(catalogIds.has(id), `${id} must already exist in the catalog — no action may be invented`);
-    assert.ok(getQuickAction(id).run, `${id} must keep its existing run handler`);
-  }
-  assert.equal(MOBILE_QUICK_ACTION_PRIMARY_LIMIT, 4);
-});
-
-test('on the platform default set, the phone surfaces appointment/patient/payment/recall and hides the rest', () => {
-  const context = { permissions: { activeMember: true, managementControl: false }, features: {}, vertical: 'dentistico' };
-  const resolved = resolveQuickActions(null, context);
-  const { primary, overflow } = partitionQuickActionsForMobile(resolved, { prioritizeIds: MOBILE_PRIMARY_QUICK_ACTION_IDS });
-  assert.deepEqual(primary.map((a) => a.id), ['nuovo_appuntamento', 'nuovo_paziente', 'pagamento', 'richiamo']);
-  assert.deepEqual(overflow.map((a) => a.id), ['apri_agenda', 'nuovo_preventivo']);
-  // Nothing is lost: primary + overflow is exactly what resolveQuickActions allowed.
-  assert.deepEqual([...primary, ...overflow].map((a) => a.id).sort(), resolved.map((a) => a.id).sort());
-});
-
-test('a user who configured their own quick-action order keeps it verbatim — the heuristic is not applied', () => {
-  const context = { permissions: { activeMember: true, managementControl: false }, features: {}, vertical: 'dentistico' };
-  const chosen = ['task', 'apri_agenda', 'nuovo_preventivo', 'richiamo', 'nuovo_appuntamento'];
-  const resolved = resolveQuickActions(chosen, context);
-  const { primary, overflow } = partitionQuickActionsForMobile(resolved, { prioritizeIds: null });
-  assert.deepEqual(primary.map((a) => a.id), ['task', 'apri_agenda', 'nuovo_preventivo', 'richiamo']);
-  assert.deepEqual(overflow.map((a) => a.id), ['nuovo_appuntamento']);
-  assert.match(dashboardSrc, /const usesDefaultQuickActionOrder = !\(w\.config\?\.actions\?\.length\);/);
-  assert.match(dashboardSrc, /prioritizeIds: usesDefaultQuickActionOrder \? MOBILE_PRIMARY_QUICK_ACTION_IDS : null/);
-});
-
-test('the partition never adds, drops or re-routes an action', () => {
-  const actions = QUICK_ACTIONS_CATALOG.slice(0, 7);
-  const { primary, overflow } = partitionQuickActionsForMobile(actions, { prioritizeIds: MOBILE_PRIMARY_QUICK_ACTION_IDS });
-  assert.equal(primary.length + overflow.length, actions.length);
-  for (const action of [...primary, ...overflow]) {
-    assert.strictEqual(action, getQuickAction(action.id), 'the same catalog object must be handed back, untouched');
-  }
-  assert.deepEqual(partitionQuickActionsForMobile([]), { primary: [], overflow: [] });
-  assert.deepEqual(partitionQuickActionsForMobile(undefined), { primary: [], overflow: [] });
-});
 
 test('the catalog itself is untouched by this round: same actions, same default set', () => {
   assert.equal(QUICK_ACTIONS_CATALOG.length, 12);
@@ -244,49 +206,82 @@ test('the catalog itself is untouched by this round: same actions, same default 
     ['nuovo_appuntamento', 'apri_agenda', 'nuovo_paziente', 'nuovo_preventivo', 'pagamento', 'richiamo']);
 });
 
-test('"Altro" is a real, reachable mobile-only affordance; desktop keeps the full grid', () => {
-  assert.match(dashboardSrc, /className="home-quick-actions__more"/);
-  assert.match(dashboardSrc, /aria-expanded=\{quickActionsExpanded\}/);
-  assert.match(dashboardSrc, /Altro \(\$\{overflowActions\.length\}\)/);
-  assert.match(dashboardSrc, /'Mostra meno'/);
-  // Hidden on desktop; only the mobile block reveals it and collapses the
-  // overflow tiles, so the desktop grid is unchanged.
-  assert.match(round2Css, /\.home-quick-actions__grid button\.home-quick-actions__more \{ display: none; \}/);
-  const mobileBlock = round2Css.slice(round2Css.indexOf(MOBILE_MEDIA));
-  assert.match(mobileBlock, /button\[data-quick-action-overflow='true'\] \{ display: none; \}/);
-  assert.match(mobileBlock, /\.home-quick-actions\.is-expanded [^{]*\{ display: flex; \}/);
-  assert.match(mobileBlock, /\.home-quick-actions__grid button\.home-quick-actions__more \{[^}]*display: flex;[^}]*order: 99;/s);
+test('the mobile progressive-disclosure heuristic (partition/"Altro") is removed as dead code, not just hidden', () => {
+  for (const removed of ['partitionQuickActionsForMobile', 'MOBILE_PRIMARY_QUICK_ACTION_IDS', 'MOBILE_QUICK_ACTION_PRIMARY_LIMIT']) {
+    assert.doesNotMatch(quickActionsCatalogSrc, new RegExp(removed), `${removed} must be gone from the catalog module`);
+    assert.doesNotMatch(dashboardSrc, new RegExp(removed), `${removed} must not be referenced from Home any more`);
+  }
+  assert.doesNotMatch(dashboardSrc, /quickActionsExpanded|home-quick-actions__more|data-quick-action-overflow|qa-mobile-order/,
+    'the on-widget expand toggle and its wiring must be fully gone');
+  assert.doesNotMatch(round2Css, /home-quick-actions__more|data-quick-action-overflow|qa-mobile-order|is-expanded/);
 });
 
-/* Regression guard for a real bug found while writing this round: both
-   "Altro" rules and the overflow rule have to outrank the pre-existing
-   `.home-quick-actions__grid button` rule (0,1,1), which already declares
-   `display: flex`. A bare `.home-quick-actions__more` selector (0,1,0)
-   loses that cascade, leaking the toggle onto desktop and sorting it to
-   the front of the mobile grid. */
-test('CASCADE GUARD: every "Altro"/overflow rule outranks the existing grid-button rule', () => {
-  const rules = round2Css.match(/^[^\n{]*home-quick-actions__more[^\n{]*\{/gm) || [];
-  assert.ok(rules.length >= 2, 'expected a base rule and a mobile rule');
-  for (const rule of rules) {
-    assert.ok(rule.includes('.home-quick-actions__grid button.home-quick-actions__more'),
-      `must keep the higher-specificity selector: ${rule.trim()}`);
-  }
-  const overflowRules = round2Css.match(/^[^\n{]*data-quick-action-overflow[^\n{]*\{/gm) || [];
-  assert.ok(overflowRules.length >= 2);
-  for (const rule of overflowRules) {
-    assert.ok(rule.includes('.home-quick-actions__grid button['), `must be at least as specific: ${rule.trim()}`);
-  }
-  // Belt and braces: the toggle also carries the custom property inline,
-  // so its mobile position never depends on the cascade alone.
-  assert.match(dashboardSrc, /style=\{\{ '--qa-mobile-order': 99 \}\}/);
+test('Home renders every configured, allowed quick action directly — no truncation on any breakpoint', () => {
+  assert.match(dashboardSrc, /const activeActions = resolveQuickActions\(w\.config\?\.actions, \{ permissions: homePermissions, features, vertical: si\?\.vertical \}\);/);
+  assert.match(dashboardSrc, /\{activeActions\.map\(\(action\) => \(/);
+  // Same grid/context contract as before: nothing re-routed.
+  assert.match(dashboardSrc, /onClick=\{\(\) => action\.run\(quickActionContext\)\}/);
 });
 
-test('the mobile first level is reordered by CSS only, so the desktop DOM order is not disturbed', () => {
-  assert.match(dashboardSrc, /'--qa-mobile-order': index/);
+test('Home offers a discreet "Personalizza" entry into Impostazioni instead of an inline expand', () => {
+  const block = dashboardSrc.slice(dashboardSrc.indexOf("key=\"quick_actions\""), dashboardSrc.indexOf('home-quick-actions__grid'));
+  assert.match(block, /onClick=\{\(\) => onNavigate\('set'\)\}/);
+  assert.match(block, /Personalizza/);
+  assert.match(block, /className="home-list-link"/, 'reuses the same discreet link style Agenda/Richiami already use, no new component');
+});
+
+test('the quick-action icon chip no longer uses a filled blue-gradient background — minimal, token-based instead', () => {
+  const start = premiumCss.indexOf('.home-quick-actions__icon {');
+  const iconRule = premiumCss.slice(start, premiumCss.indexOf('}', start) + 1);
+  assert.doesNotMatch(iconRule, /gradient|--pol-blue-50|#dbeafe/);
+  assert.match(iconRule, /var\(--pol-bg-alt\)/);
+  // No dark-only icon override needed any more — the token already adapts.
+  assert.doesNotMatch(premiumCss, /:root\[data-theme="dark"\] \.home-quick-actions__icon/);
+});
+
+// ===========================================================================
+// §3 follow-up — "Personalizza azioni rapide" relocated to Setup
+// (Impostazioni), Product Owner round 2 feedback on the preview
+// ===========================================================================
+
+test('Impostazioni gained a dedicated "Azioni rapide" section, reusing the same persistence path Home uses', () => {
+  assert.match(impostazioniSrc, /\['azioni_rapide', 'zap', 'Azioni rapide'\]/, 'must be a real tab in the section switcher, not a hidden feature');
+  assert.match(impostazioniSrc, /sezione === 'azioni_rapide'/);
+  // Same underlying source of truth as Home's own "Personalizza Home" ->
+  // "Azioni rapide" tab: full-layout load, config patch, full-layout save.
+  // Two entry points, one persisted value — never a second system.
+  assert.match(impostazioniSrc, /loadResolvedHomeLayout\(supabase, studioId, currentUserId, createRolePresetLayout\(studioMembership\?\.capabilities\)\)/);
+  assert.match(impostazioniSrc, /setHomeWidgetConfig\(qaLayout, 'quick_actions', \{ actions: activeQuickActionIds \}\)/);
+  assert.match(impostazioniSrc, /saveUserHomeLayout\(supabase, studioId, currentUserId, nextLayout\)/);
+  // Permission-aware, same as Home: an action gated by capability/feature/
+  // vertical must not be offered here just because Home hides it too.
+  assert.match(impostazioniSrc, /filterQuickActionsCatalog\(\{ permissions: homePermissions, features, vertical: studioInfo\?\.vertical \}\)/);
+});
+
+test('App.jsx passes the real studioMembership into Impostazioni so its permission gating is not stubbed', () => {
+  const line = appSrc.split('\n').find((l) => l.includes('<Impostazioni '));
+  assert.ok(line, 'expected to find the Impostazioni element');
+  assert.match(line, /studioMembership=\{studioMembership\}/);
+});
+
+test('Impostazioni reserves floating-dock clearance for its own long/scrollable content, on the same canonical mobile contract Home uses', () => {
+  assert.match(impostazioniSrc, /className="page-dock-clearance"/);
+  assert.match(impostazioniSrc, /MOBILE_DOCK_BOTTOM \+ MOBILE_DOCK_HEIGHT \+ MOBILE_DOCK_PROTECTED_GAP/);
+  assert.match(premiumCss, /\.page-dock-clearance \{ display: none; \}/);
   const mobileBlock = round2Css.slice(round2Css.indexOf(MOBILE_MEDIA));
-  assert.match(mobileBlock, /\.home-quick-actions__grid button \{ order: var\(--qa-mobile-order, 0\); \}/);
-  // No unconditional `order` on the quick-action grid outside the mobile block.
-  assert.doesNotMatch(round2Css.slice(0, round2Css.indexOf(MOBILE_MEDIA)), /home-quick-actions__grid button \{ order/);
+  assert.match(mobileBlock, /\.page-dock-clearance \{ display: block; \}/);
+});
+
+test('REGRESSION GUARD: saving quick_actions from Setup can only ever touch that one widget entry — every other widget survives byte-for-byte', () => {
+  const before = createDefaultHomeLayout();
+  const after = setHomeWidgetConfig(before, 'quick_actions', { actions: ['task', 'apri_agenda'] });
+  for (const item of before) {
+    if (item.id === 'quick_actions') continue;
+    const match = after.find((x) => x.id === item.id);
+    assert.deepEqual(match, item, `${item.id} must be untouched when only quick_actions is reconfigured`);
+  }
+  const patched = after.find((x) => x.id === 'quick_actions');
+  assert.deepEqual(patched.config?.actions, ['task', 'apri_agenda']);
 });
 
 // ===========================================================================

@@ -91,44 +91,6 @@ export const isQuickActionAllowed = (action, { permissions, features, vertical }
 export const filterQuickActionsCatalog = (context) =>
   QUICK_ACTIONS_CATALOG.filter((action) => isQuickActionAllowed(action, context));
 
-/* POL-UI-017 R2 §3 — mobile progressive disclosure.
-
-   PRESENTATION ONLY. Nothing below adds, removes, renames or re-routes a
-   quick action: QUICK_ACTIONS_CATALOG, every gate and every run() handler
-   are untouched. This only decides which of the ALREADY-RESOLVED, already
-   permitted actions get a first-level slot on a phone and which move
-   behind the "Altro" affordance. Desktop keeps showing all of them. */
-export const MOBILE_QUICK_ACTION_PRIMARY_LIMIT = 4;
-
-/* The Product Owner's declared "most frequent on a phone" set. Every id
-   here already exists in the catalog above — no new action is invented.
-   It is applied ONLY when the user has NOT configured their own
-   quick-action order in "Personalizza Home": an explicit personal order
-   is the user's own statement of what matters most, and is never
-   reshuffled by this heuristic. */
-export const MOBILE_PRIMARY_QUICK_ACTION_IDS = Object.freeze([
-  'nuovo_appuntamento', 'nuovo_paziente', 'pagamento', 'richiamo',
-]);
-
-export const partitionQuickActionsForMobile = (actions, { limit = MOBILE_QUICK_ACTION_PRIMARY_LIMIT, prioritizeIds = null } = {}) => {
-  const list = (Array.isArray(actions) ? actions : []).filter(Boolean);
-  const size = Math.max(0, limit);
-  let ranked = list;
-  if (Array.isArray(prioritizeIds) && prioritizeIds.length) {
-    const rankOf = (action, index) => {
-      const preferred = prioritizeIds.indexOf(action.id);
-      // Non-preferred actions keep their resolved order, always after the
-      // preferred ones — never interleaved.
-      return preferred < 0 ? prioritizeIds.length + index : preferred;
-    };
-    ranked = list
-      .map((action, index) => ({ action, rank: rankOf(action, index) }))
-      .sort((a, b) => a.rank - b.rank)
-      .map((entry) => entry.action);
-  }
-  return { primary: ranked.slice(0, size), overflow: ranked.slice(size) };
-};
-
 /* Resolves the user's chosen quick_actions widget config (ids + order) down
    to the real, allowed, deduplicated action objects to render — falls back
    to DEFAULT_QUICK_ACTION_IDS (filtered by the same gates) when unset. */

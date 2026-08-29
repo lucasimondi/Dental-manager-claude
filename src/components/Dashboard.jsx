@@ -12,7 +12,7 @@ import CanonicalFinancialWidget from './CanonicalFinancialWidget.jsx';
 import { applyWidgetPermissions, buildHomePermissions, createRolePresetLayout, filterWidgetCatalog, resolveHomePeriod } from '../lib/homeDashboardModel.js';
 import { getHomeFinancialWidget, loadHomeFinancialSnapshot } from '../lib/homeFinancialWidgets.js';
 import QuickBookingModal from './QuickBookingModal.jsx';
-import { DEFAULT_QUICK_ACTION_IDS, MOBILE_PRIMARY_QUICK_ACTION_IDS, filterQuickActionsCatalog, getQuickAction, partitionQuickActionsForMobile, resolveQuickActions } from '../lib/quickActionsCatalog.js';
+import { DEFAULT_QUICK_ACTION_IDS, filterQuickActionsCatalog, getQuickAction, resolveQuickActions } from '../lib/quickActionsCatalog.js';
 import poliedroGem from '../assets/icon-poliedra-gem.png';
 import { logHomeLayoutEvent } from '../lib/homeLayoutDiagnostics.js';
 import { buildActivityText } from '../lib/appointmentQuickHub.js';
@@ -202,12 +202,6 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   const [canonicalError, setCanonicalError] = useState(null);
   const [theme, setTheme] = useState(loadTheme);
   const [themeTab, setThemeTab] = useState('widgets'); // 'widgets' | 'colori'
-  /* POL-UI-017 R2 §3 — mobile progressive disclosure for the quick-action
-     grid. Purely presentational and mobile-only (the overflow buttons are
-     rendered on every breakpoint; only the mobile stylesheet collapses
-     them), so desktop Home keeps showing the full grid exactly as before
-     and this flag never touches the persisted quick_actions config. */
-  const [quickActionsExpanded, setQuickActionsExpanded] = useState(false);
   const isOn = (id) => { const w = widgets.find(x => x.id === id); return w ? w.visible !== false : true; };
 
   /* POL-UI-015 bugfix round 3 — see the "Salva Home" buttons below. Those
@@ -1316,47 +1310,30 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
             openTodoModal: openGenericTodoModal,
           };
           const activeActions = resolveQuickActions(w.config?.actions, { permissions: homePermissions, features, vertical: si?.vertical });
-          /* POL-UI-017 R2 §3 — audit result: the resolved set is up to 12
-             actions wide, and its DEFAULT order puts "Pagamento" and
-             "Richiamo" behind "Apri agenda"/"Nuovo preventivo" even though
-             the dock already owns Agenda. On a phone only the most
-             frequent stay at the first level; everything else moves behind
-             an "Altro" affordance.
-             Two invariants: (1) nothing is added, removed or re-routed —
-             `resolveQuickActions` still decides WHAT exists and WHO may
-             see it; (2) a user who set their own order in "Personalizza
-             Home" keeps that order verbatim (prioritizeIds is null then),
-             because an explicit choice outranks any heuristic.
-             Every button is still rendered on every breakpoint: only the
-             mobile stylesheet collapses the overflow ones, so desktop Home
-             is byte-for-byte the same grid as before. */
-          const usesDefaultQuickActionOrder = !(w.config?.actions?.length);
-          const { primary: primaryActions, overflow: overflowActions } = partitionQuickActionsForMobile(activeActions, {
-            prioritizeIds: usesDefaultQuickActionOrder ? MOBILE_PRIMARY_QUICK_ACTION_IDS : null,
-          });
-          const orderedActions = [...primaryActions, ...overflowActions];
-          const renderQuickAction = (action, index, overflow) => (
-            <button key={action.id} type="button" onClick={() => action.run(quickActionContext)}
-              data-quick-action-id={action.id}
-              data-quick-action-overflow={overflow ? 'true' : undefined}
-              style={{ '--qa-mobile-order': index }}>
-              <span className="home-quick-actions__icon"><Ic n={action.ic} s={17} c={C.pri} /></span>
-              <span>{action.label}</span>
-            </button>
-          );
+          /* POL-UI-017 R2 round 2 — the Product Owner asked for the quick-
+             action set itself to be the dynamic, curated thing (via
+             "Personalizza azioni rapide" in Impostazioni, see below) rather
+             than an on-widget "+"/"Altro" expand toggle. The widget now
+             simply renders whatever is configured/allowed — no truncation,
+             no partition, no expand state — and desktop/mobile render the
+             identical grid, exactly as `resolveQuickActions` resolved it. */
           return (
-            <div key="quick_actions" className={`home-quick-actions${quickActionsExpanded ? ' is-expanded' : ''}`}>
-              <div className="home-section-label"><Ic n="zap" s={11} c={C.txm} />Azioni rapide</div>
-              <div className="home-quick-actions__grid">
-                {orderedActions.map((action, index) => renderQuickAction(action, index, index >= primaryActions.length))}
-                {overflowActions.length > 0 && (
-                  <button type="button" className="home-quick-actions__more" data-testid="home-quick-actions-more"
-                    style={{ '--qa-mobile-order': 99 }}
-                    aria-expanded={quickActionsExpanded} onClick={() => setQuickActionsExpanded((open) => !open)}>
-                    <span className="home-quick-actions__icon"><Ic n={quickActionsExpanded ? 'x' : 'plus'} s={17} c={C.pri} /></span>
-                    <span>{quickActionsExpanded ? 'Mostra meno' : `Altro (${overflowActions.length})`}</span>
+            <div key="quick_actions" className="home-quick-actions">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div className="home-section-label" style={{ marginBottom: 0 }}><Ic n="zap" s={11} c={C.txm} />Azioni rapide</div>
+                {onNavigate && (
+                  <button type="button" className="home-list-link" onClick={() => onNavigate('set')} style={{ background: 'none', color: C.pri, fontWeight: 700 }}>
+                    Personalizza ›
                   </button>
                 )}
+              </div>
+              <div className="home-quick-actions__grid">
+                {activeActions.map((action) => (
+                  <button key={action.id} type="button" onClick={() => action.run(quickActionContext)}>
+                    <span className="home-quick-actions__icon"><Ic n={action.ic} s={17} c={C.pri} /></span>
+                    <span>{action.label}</span>
+                  </button>
+                ))}
               </div>
             </div>
           );

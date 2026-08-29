@@ -6,6 +6,11 @@ import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Ic, Toggle, DockIc, DOCK_IC
 import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI, DEF_DOCK_SETTINGS, mergeDockSettings, DEF_AGENDA_SETTINGS, DEF_DOCUMENTI_SETTINGS, STORIA_CLINICA_MODELLO_BASE } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { normalizeManagementControlMode } from '../lib/canonicalFinancialSelectors';
+import { loadResolvedHomeLayout, saveUserHomeLayout } from '../lib/homeLayoutPersistence.js';
+import { setHomeWidgetConfig } from '../lib/homeWidgetRegistry.js';
+import { buildHomePermissions, createRolePresetLayout } from '../lib/homeDashboardModel.js';
+import { DEFAULT_QUICK_ACTION_IDS, filterQuickActionsCatalog, getQuickAction } from '../lib/quickActionsCatalog.js';
+import { MOBILE_DOCK_BOTTOM, MOBILE_DOCK_HEIGHT, MOBILE_DOCK_PROTECTED_GAP } from '../lib/poliedron/poliedronMobileDock.js';
 
 const GIORNI_SETTIMANA = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 
@@ -52,7 +57,7 @@ function estraiColoriDaLogo(base64) {
 
 
 
-export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange, features, theme, toggleTheme, isStudioAdmin, onLogout }) {
+export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange, features, theme, toggleTheme, isStudioAdmin, onLogout, studioMembership }) {
   const [si, setSi] = useState({ ...DEF_STUDIO, ...(studioInfo || {}) });
   const [toast, setToast] = useState('');
   const firmaInputRef = useRef(null);
@@ -103,6 +108,70 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
     setModalitaPrenotazione(nuova); // ottimistico, l'interazione resta fluida
     if (!studioId) return;
     await supabase.from('studios').update({ modalita_prenotazione: nuova }).eq('id', studioId);
+  };
+
+  /* POL-UI-017 R2 round 2 (Product Owner follow-up) — "Personalizza azioni
+     rapide" moved here from an on-widget "+"/"Altro" toggle on Home. This
+     reads/writes the SAME persisted `quick_actions` widget entry Home's
+     "Personalizza Home" modal already edits (identical persistence path:
+     `loadResolvedHomeLayout`/`saveUserHomeLayout` + `setHomeWidgetConfig`),
+     so there is one underlying source of truth with two entry points, not
+     a second customization system. The full resolved layout is loaded (not
+     just quick_actions) so saving here can never drop or reorder any other
+     widget's visibility/size/order — only the `quick_actions.config.actions`
+     entry is touched before writing the layout back. */
+  const [qaLayout, setQaLayout] = useState(null);
+  const [qaIds, setQaIds] = useState(null);
+  const [qaLoading, setQaLoading] = useState(false);
+  const [qaSaving, setQaSaving] = useState(false);
+  const [qaError, setQaError] = useState('');
+  const [qaSaved, setQaSaved] = useState(false);
+
+  useEffect(() => {
+    if (sezione !== 'azioni_rapide' || !studioId || !currentUserId) return;
+    let cancelled = false;
+    setQaLoading(true); setQaError('');
+    loadResolvedHomeLayout(supabase, studioId, currentUserId, createRolePresetLayout(studioMembership?.capabilities))
+      .then(({ layout }) => {
+        if (cancelled) return;
+        setQaLayout(layout);
+        const item = layout.find((w) => w.id === 'quick_actions');
+        setQaIds(item?.config?.actions?.length ? [...item.config.actions] : [...DEFAULT_QUICK_ACTION_IDS]);
+      })
+      .catch(() => { if (!cancelled) setQaError('Impossibile caricare le azioni rapide. Riprova.'); })
+      .finally(() => { if (!cancelled) setQaLoading(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sezione, studioId, currentUserId, JSON.stringify(studioMembership?.capabilities || [])]);
+
+  const homePermissions = buildHomePermissions({ membership: studioMembership, features, vertical: studioInfo?.vertical });
+  const allowedQuickActions = filterQuickActionsCatalog({ permissions: homePermissions, features, vertical: studioInfo?.vertical });
+  const allowedQuickActionIds = new Set(allowedQuickActions.map((a) => a.id));
+  const activeQuickActionIds = (qaIds || []).filter((id) => allowedQuickActionIds.has(id));
+  const availableQuickActions = allowedQuickActions.filter((a) => !activeQuickActionIds.includes(a.id));
+
+  const moveQuickAction = (id, offset) => {
+    const idx = activeQuickActionIds.indexOf(id);
+    const target = idx + offset;
+    if (idx < 0 || target < 0 || target >= activeQuickActionIds.length) return;
+    const next = [...activeQuickActionIds];
+    [next[idx], next[target]] = [next[target], next[idx]];
+    setQaIds(next); setQaSaved(false);
+  };
+  const addQuickAction = (id) => { setQaIds([...activeQuickActionIds, id]); setQaSaved(false); };
+  const removeQuickAction = (id) => { setQaIds(activeQuickActionIds.filter((x) => x !== id)); setQaSaved(false); };
+
+  const saveQuickActions = async () => {
+    if (!studioId || !currentUserId || !qaLayout) return;
+    setQaSaving(true); setQaError(''); setQaSaved(false);
+    try {
+      const nextLayout = setHomeWidgetConfig(qaLayout, 'quick_actions', { actions: activeQuickActionIds });
+      const saved = await saveUserHomeLayout(supabase, studioId, currentUserId, nextLayout);
+      setQaLayout(saved);
+      setQaSaved(true);
+    } catch (error) {
+      setQaError(error?.message ? `Salvataggio non riuscito: ${error.message}` : 'Salvataggio non riuscito. Nessuna modifica è stata applicata.');
+    } finally { setQaSaving(false); }
   };
 
   const slugPulito = (v) => v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -288,6 +357,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           ['privacy', 'lock', 'Privacy GDPR'],
           ['prenotazione', 'link', 'Prenotazione online'],
           ['aspetto', 'palette', 'Aspetto'],
+          ['azioni_rapide', 'zap', 'Azioni rapide'],
           ['whatsapp', 'wa', 'WhatsApp'],
           ['team', 'users', 'Profilo e team'],
         ].map(([id, ic, lbl]) => (
@@ -919,6 +989,56 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       </>
       )}
 
+      {sezione === 'azioni_rapide' && (
+      <>
+      <div style={{ marginTop: 0, marginBottom: 14 }}>
+        <div style={{ fontSize: 20, fontWeight: 800 }}>Azioni rapide</div>
+        <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Scegli quali azioni rapide mostrare in Home e in che ordine. Le azioni non disponibili per il tuo ruolo/piano non sono elencate.</div>
+      </div>
+      <Crd style={{ marginBottom: 14 }}>
+        {qaLoading ? (
+          <div style={{ fontSize: 13, color: C.txl, padding: '8px 0' }}>Caricamento…</div>
+        ) : qaIds === null ? (
+          <div style={{ fontSize: 13, color: C.txl, padding: '8px 0' }}>{qaError || 'Impossibile caricare le azioni rapide.'}</div>
+        ) : (
+          <>
+            <div style={{ fontSize: 10, color: C.txl, fontWeight: 800, textTransform: 'uppercase', marginBottom: 6 }}>Attive</div>
+            <div style={{ display: 'grid', gap: 6, marginBottom: 14 }}>
+              {activeQuickActionIds.length === 0 && <div style={{ fontSize: 12, color: C.txl, padding: '8px 0' }}>Nessuna azione rapida attiva.</div>}
+              {activeQuickActionIds.map((id, i) => {
+                const action = getQuickAction(id);
+                if (!action) return null;
+                return (
+                  <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 10px', background: C.bg, borderRadius: 9, border: `1px solid ${C.brd}` }}>
+                    <Ic n={action.ic} s={13} c={C.pri} />
+                    <span style={{ flex: 1, fontSize: 12, fontWeight: 700 }}>{action.label}</span>
+                    <button type="button" disabled={i === 0} onClick={() => moveQuickAction(id, -1)} style={{ minWidth: 32, minHeight: 32, border: `1px solid ${C.brd}`, borderRadius: 7, background: C.sur, cursor: i === 0 ? 'not-allowed' : 'pointer', opacity: i === 0 ? 0.4 : 1 }} aria-label={`Sposta su ${action.label}`}>↑</button>
+                    <button type="button" disabled={i === activeQuickActionIds.length - 1} onClick={() => moveQuickAction(id, 1)} style={{ minWidth: 32, minHeight: 32, border: `1px solid ${C.brd}`, borderRadius: 7, background: C.sur, cursor: i === activeQuickActionIds.length - 1 ? 'not-allowed' : 'pointer', opacity: i === activeQuickActionIds.length - 1 ? 0.4 : 1 }} aria-label={`Sposta giù ${action.label}`}>↓</button>
+                    <button type="button" onClick={() => removeQuickAction(id)} style={{ minWidth: 32, minHeight: 32, border: 'none', borderRadius: 7, background: C.danL, color: C.dan, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-label={`Rimuovi ${action.label}`}><Ic n="x" s={13} c={C.dan} /></button>
+                  </div>
+                );
+              })}
+            </div>
+            {availableQuickActions.length > 0 && <>
+              <div style={{ fontSize: 10, color: C.txl, fontWeight: 800, textTransform: 'uppercase', marginBottom: 6 }}>Disponibili</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 6, marginBottom: 4 }}>
+                {availableQuickActions.map((action) => (
+                  <button key={action.id} type="button" onClick={() => addQuickAction(action.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 10px', background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 9, cursor: 'pointer', fontSize: 12, fontWeight: 700, color: C.txt, textAlign: 'left' }}>
+                    <Ic n={action.ic} s={13} c={C.pri} /><span style={{ flex: 1 }}>{action.label}</span><span style={{ color: C.pri, fontWeight: 800 }}>+</span>
+                  </button>
+                ))}
+              </div>
+            </>}
+            {qaError && <div role="alert" style={{ marginTop: 10, fontSize: 12, color: C.dan, fontWeight: 700 }}>{qaError}</div>}
+            {qaSaved && !qaError && <div style={{ marginTop: 10, fontSize: 12, color: C.suc, fontWeight: 700 }}>Azioni rapide aggiornate ✓</div>}
+          </>
+        )}
+      </Crd>
+      <Btn ic="save" ch={qaSaving ? 'Salvataggio…' : 'Salva azioni rapide'} onClick={saveQuickActions} dis={qaSaving || qaLoading || qaIds === null} full sz="lg" />
+      </>
+      )}
+
       {sezione === 'whatsapp' && (
       <>
       <div style={{ marginTop: 0, marginBottom: 14 }}>
@@ -1119,6 +1239,11 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           </div>
         </Modal>
       )}
+      {/* Mobile: #app-scroll only reserves the bare safe-area inset for
+          normal pages (see App.jsx) — Impostazioni's own content can run
+          long (e.g. the "Azioni rapide" list above), so it needs the same
+          explicit floating-dock clearance Home already gives itself. */}
+      <div className="page-dock-clearance" style={{ height: `calc(${MOBILE_DOCK_BOTTOM + MOBILE_DOCK_HEIGHT + MOBILE_DOCK_PROTECTED_GAP}px + env(safe-area-inset-bottom, 0px))` }} aria-hidden="true" />
     </div>
   );
 }
