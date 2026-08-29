@@ -178,6 +178,13 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   // Toast (same shared component Impostazioni already uses), never a
   // fake navigation. Reused as-is once the real module ships.
   const [comingSoonMsg, setComingSoonMsg] = useState('');
+  // Product Owner round 4 — "Ricetta" must land directly on DocMedico's
+  // Ricetta tab, not just on the Pazienti list. Home has no current
+  // patient, so a small inline picker (same SelettorePaziente pattern the
+  // "Nuova attività" modal below already uses) is the minimal step still
+  // needed before onOpenPaz(paz, 'doc', { type: 'ricetta' }) can open it.
+  const [ricettaPickerOpen, setRicettaPickerOpen] = useState(false);
+  const [ricettaPickerSearch, setRicettaPickerSearch] = useState('');
   const [layoutLoading, setLayoutLoading] = useState(false);
   const [layoutSaving, setLayoutSaving] = useState(false);
   const [layoutError, setLayoutError] = useState('');
@@ -1161,6 +1168,27 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
         </Modal>
       )}
 
+      {ricettaPickerOpen && (
+        <Modal title={<><Ic n="pill" s={15} c={C.txt} /> Ricetta — scegli paziente</>} onClose={() => { setRicettaPickerOpen(false); setRicettaPickerSearch(''); }}>
+          <Fld label="Paziente">
+            <SelettorePaziente
+              patients={patients}
+              value=""
+              onChange={(id) => {
+                const paz = patients.find((p) => String(p.id) === String(id));
+                if (!paz || !onOpenPaz) return;
+                setRicettaPickerOpen(false);
+                setRicettaPickerSearch('');
+                onOpenPaz(paz, 'doc', { type: 'ricetta' });
+              }}
+              search={ricettaPickerSearch}
+              onSearchChange={setRicettaPickerSearch}
+              placeholder="Cerca paziente…"
+            />
+          </Fld>
+        </Modal>
+      )}
+
       {bookingOpen && (
         <QuickBookingModal
           patients={patients} appTypes={appTypes} appointments={appointments} impegni={impegni}
@@ -1316,6 +1344,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
             openBooking: () => setBookingOpen(true),
             openTodoModal: openGenericTodoModal,
             openComingSoon: (msg) => setComingSoonMsg(msg),
+            openRicettaPicker: () => setRicettaPickerOpen(true),
           };
           const activeActions = resolveQuickActions(w.config?.actions, { permissions: homePermissions, features, vertical: si?.vertical });
           /* POL-UI-017 R2 round 2 — the Product Owner asked for the quick-

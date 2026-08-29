@@ -296,6 +296,30 @@ test('"Da incassare" placeholder reuses the shared Toast component, not a new on
   assert.match(dashboardSrc, /\{comingSoonMsg && <Toast msg=\{comingSoonMsg\} onDone=\{\(\) => setComingSoonMsg\(''\)\} \/>\}/);
 });
 
+// ===========================================================================
+// ROUND 4 — "Ricetta deve aprire il tab ricetta, non paziente"
+// ===========================================================================
+
+test('ROUND 4: Home wires a real patient picker for Ricetta, landing on DocMedico\'s Ricetta tab via the existing initialDocumentRequest mechanism', () => {
+  assert.match(dashboardSrc, /openRicettaPicker: \(\) => setRicettaPickerOpen\(true\)/);
+  assert.match(dashboardSrc, /const \[ricettaPickerOpen, setRicettaPickerOpen\] = useState\(false\);/);
+  const modalBlock = dashboardSrc.slice(dashboardSrc.indexOf('{ricettaPickerOpen && ('), dashboardSrc.indexOf('{bookingOpen && ('));
+  assert.match(modalBlock, /<SelettorePaziente/);
+  // Must call the SAME goSchedaPaz path every other "open this patient at
+  // a specific tab" caller in this file already uses (onOpenPaz), with the
+  // document-request payload that seeds SchedaPaz's existing documentFlow.
+  assert.match(modalBlock, /onOpenPaz\(paz, 'doc', \{ type: 'ricetta' \}\)/);
+});
+
+test('ROUND 4: App.jsx\'s goSchedaPaz forwards an optional documentRequest into the SAME initialDocumentRequest prop SchedaPaz already consumes — no new plumbing invented', () => {
+  assert.match(appSrc, /const goSchedaPaz = \(paz, tab = 'paga', documentRequest = null\) => \{/);
+  assert.match(appSrc, /setSchedaDashPaz\(\{ paz, tab, documentRequest \}\)/);
+  assert.match(appSrc, /initialDocumentRequest=\{schedaDashPaz\.documentRequest\}/);
+  // Every pre-existing goSchedaPaz caller keeps working with its old
+  // 2-argument call unchanged — documentRequest defaults to null.
+  assert.match(appSrc, /onOpenPaz=\{goSchedaPaz\}/);
+});
+
 test('REGRESSION GUARD: saving quick_actions from Setup can only ever touch that one widget entry — every other widget survives byte-for-byte', () => {
   const before = createDefaultHomeLayout();
   const after = setHomeWidgetConfig(before, 'quick_actions', { actions: ['task', 'apri_agenda'] });

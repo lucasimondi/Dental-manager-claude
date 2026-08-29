@@ -40,11 +40,10 @@ test('Product Owner round 3 additions: Ricetta, Consenso, Da incassare exist, re
   // Ricetta reuses the exact icon DocMedico.jsx's own TIPI list already
   // uses for id:'ricetta' — same meaning, no new SVG invented.
   assert.equal(ricetta.ic, 'pill');
-  // Both patient-scoped actions land on Pazienti first, the same fallback
-  // every other patient-scoped action (nuovo_paziente_appuntamento,
-  // nuova_seduta_fisio) already uses — no new routing invented.
+  // Consenso still lands on Pazienti first — same fallback every other
+  // patient-scoped action (nuovo_paziente_appuntamento, nuova_seduta_fisio)
+  // already uses — no new routing invented for it.
   const ctxNavigate = { onNavigate: (id) => id };
-  assert.equal(ricetta.run(ctxNavigate), 'paz');
   assert.equal(consenso.run(ctxNavigate), 'paz');
   // Da incassare is an honest placeholder: it calls the context's
   // openComingSoon hook (never a fake navigation) when present, and is a
@@ -54,6 +53,20 @@ test('Product Owner round 3 additions: Ricetta, Consenso, Da incassare exist, re
   daIncassare.run({ openComingSoon: (msg) => { seenMsg = msg; } });
   assert.ok(seenMsg && seenMsg.toLowerCase().includes('incassare'));
   assert.equal(daIncassare.run({}), undefined, 'must not throw when openComingSoon is not provided');
+});
+
+// Product Owner round 4: "Ricetta deve aprire il tab ricetta, non
+// paziente" — a bare navigate('paz') left the destination one manual step
+// (find the Doc tab, pick the Ricetta type) short of the real target.
+test('ROUND 4: Ricetta opens the patient picker (which then opens DocMedico\'s Ricetta tab directly), not a bare navigate to Pazienti', () => {
+  const ricetta = getQuickAction('ricetta');
+  let pickerOpened = false;
+  const ctx = { openRicettaPicker: () => { pickerOpened = true; }, onNavigate: () => { throw new Error('must not fall through to onNavigate when openRicettaPicker exists'); } };
+  ricetta.run(ctx);
+  assert.equal(pickerOpened, true);
+  // Backward-compatible fallback for any caller that hasn't wired the
+  // picker (there is none today, but the contract must not throw).
+  assert.equal(ricetta.run({ onNavigate: (id) => id }), 'paz');
 });
 
 test('inactive membership sees zero quick actions, fail closed', () => {

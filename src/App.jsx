@@ -409,8 +409,12 @@ export default function App() {
 
   const goNuovoPiano = (id) => { setInitPatId(id); setPage('piani'); };
   const goNuovoElemento = (target) => { setAutoOpenNew(target); setPage(target); };
-  const goSchedaPaz = (paz, tab = 'paga') => {
-    setSchedaDashPaz({ paz, tab });
+  // `documentRequest` reuses the same mechanism SchedaPaz already exposes
+  // for the Poliedron prescription workflow (initialDocumentRequest ->
+  // documentFlow, see SchedaPaz.jsx) — passing { type: 'ricetta' } lands
+  // directly on DocMedico's Ricetta tab instead of the generic Doc tab.
+  const goSchedaPaz = (paz, tab = 'paga', documentRequest = null) => {
+    setSchedaDashPaz({ paz, tab, documentRequest });
     salvaPosizione({ schedaPazId: paz.id, schedaPazTab: tab });
   };
   const requestId = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;

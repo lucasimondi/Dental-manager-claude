@@ -75,17 +75,21 @@ export const QUICK_ACTIONS_CATALOG = Object.freeze([
   },
   /* Product Owner round 3 additions. All three reuse existing, already-
      shipped destinations/icons — no new page, no new clinical/financial
-     logic. Ricetta/Consenso need a patient first, exactly like
-     nuovo_paziente_appuntamento/nuova_seduta_fisio above: they land on
-     Pazienti, from where the existing (unmodified) SchedaPaz "Doc" tab —
-     DocMedico for Ricetta (same 'pill' icon DocMedico's own TIPI list
-     already uses for id:'ricetta'; its own puoiPrescrivere gate is
-     unchanged and still applies), consenso_modelli/PannelloInvioDocumento
-     for Consenso — takes over unchanged. */
+     logic. Ricetta/Consenso need a patient first. */
   {
+    // Product Owner round 4: "Ricetta deve aprire il tab ricetta, non
+    // paziente" — a bare navigate('paz') left the user to find the
+    // patient AND the Doc tab AND the Ricetta type themselves. Home has
+    // no current patient, so a patient still has to be picked — but the
+    // picker now lands directly on DocMedico's Ricetta tab (same 'pill'
+    // icon DocMedico's own TIPI list already uses for id:'ricetta'; its
+    // own puoiPrescrivere gate is unchanged and still applies) via the
+    // SAME initialDocumentRequest -> documentFlow mechanism SchedaPaz
+    // already exposes for the Poliedron prescription workflow — nothing
+    // new was built, only wired to a second caller.
     id: 'ricetta', ic: 'pill', label: 'Ricetta',
-    workflow: ['navigate:paz', 'select_patient', 'open_scheda_doc_tab', 'open_ricetta'],
-    run: (ctx) => ctx.onNavigate('paz'),
+    workflow: ['open_patient_picker', 'open_scheda_doc_tab', 'open_ricetta'],
+    run: (ctx) => ctx.openRicettaPicker ? ctx.openRicettaPicker() : ctx.onNavigate('paz'),
   },
   {
     id: 'consenso', ic: 'edit', label: 'Consenso',
