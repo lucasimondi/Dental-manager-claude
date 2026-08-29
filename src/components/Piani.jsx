@@ -8,8 +8,9 @@ import Odontogramma from './Odontogramma.jsx';
 import PdfView from './PdfView.jsx';
 import WaAction, { apriWaDiretto } from './ui/WaAction.jsx';
 import { allocatedPaymentForItem } from '../lib/domain/planPaymentAllocation.js';
+import { markTreatmentItemCompleted } from '../lib/domain/treatmentPlanService.js';
 
-export default function Piani({ patients, plans, setPlans, payments = [], pricelist, templates, si, features, initPatId, onClearInitPat, onOpenPaz, autoOpenNew, onAutoOpenNewHandled }) {
+export default function Piani({ patients, plans, setPlans, payments = [], setPayments, pricelist, templates, si, features, initPatId, onClearInitPat, onOpenPaz, autoOpenNew, onAutoOpenNewHandled }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const isMobile = useIsMobile();
   const [modal, setModal] = useState(false);
@@ -36,6 +37,8 @@ export default function Piani({ patients, plans, setPlans, payments = [], pricel
   const [filtroModal, setFiltroModal] = useState(null);
   const [editingPlanId, setEditingPlanId] = useState(null);
   const [editItem, setEditItem] = useState({ prestazione: '', dente: '', prezzo: '' });
+  const [quickOffer, setQuickOffer] = useState(null);
+  const [quickPayment, setQuickPayment] = useState(null);
 
   useEffect(() => {
     if (initPatId) {
@@ -106,12 +109,29 @@ export default function Piani({ patients, plans, setPlans, payments = [], pricel
     setToast('Piano salvato ✓');
   };
 
-  const toggleEseguita = (plId, i) => setPlans((p) => p.map((pl) => {
-    if (pl.id !== plId) return pl;
-    const nuoveVoci = pl.voci.map((v, j) => (j === i ? { ...v, eseguita: !v.eseguita, dataEsec: !v.eseguita ? today() : null, incassata: !v.eseguita ? v.incassata : false } : v));
-    const tutteEseguite = nuoveVoci.every((v) => v.eseguita);
-    return { ...pl, voci: nuoveVoci, stato: tutteEseguite ? 'concluso' : (pl.stato === 'concluso' ? 'attivo' : pl.stato) };
-  }));
+  const setExecutionStatus = (plan, itemIndex, executed) => {
+    if (executed) {
+      setPlans((current) => current.map((candidate) => String(candidate.id) === String(plan.id) ? markTreatmentItemCompleted(candidate, itemIndex).plan : candidate));
+      setQuickOffer({ planId: plan.id, itemIndex });
+      return;
+    }
+    setPlans((current) => current.map((candidate) => {
+      if (String(candidate.id) !== String(plan.id)) return candidate;
+      const voci = candidate.voci.map((item, index) => index === itemIndex ? { ...item, eseguita: false, dataEsec: null, incassata: false } : item);
+      return { ...candidate, voci, stato: candidate.stato === 'concluso' ? 'attivo' : candidate.stato };
+    }));
+    setQuickOffer(null);
+  };
+  const openQuickPayment = (plan, itemIndex) => {
+    const item = plan.voci[itemIndex];
+    setQuickPayment({ planId: plan.id, itemIndex, pazienteId: plan.pazienteId, descrizione: item.prestazione, importo: String(item.prezzo || ''), data: today(), metodo: 'Contanti' });
+  };
+  const saveQuickPayment = () => {
+    const amount = Number(quickPayment?.importo);
+    if (!quickPayment || !Number.isFinite(amount) || amount <= 0) return;
+    setPayments?.((current) => [...current, { id: uid(), pazienteId: Number(quickPayment.pazienteId), data: quickPayment.data, importo: amount, metodo: quickPayment.metodo, nota: `Pagamento rapido — ${quickPayment.descrizione}`, stato: 'pagato' }]);
+    setQuickPayment(null); setQuickOffer(null); setToast('Prestazione e pagamento registrati ✓');
+  };
   const toggleIncassata = (plId, i) => setPlans((p) => p.map((pl) => (pl.id === plId ? { ...pl, voci: pl.voci.map((v, j) => (j === i ? { ...v, incassata: !v.incassata } : v)) } : pl)));
   const setStato = (plId, stato) => setPlans((p) => p.map((pl) => (pl.id === plId ? { ...pl, stato } : pl)));
   const del = (id) => { if (confirm('Eliminare piano?')) setPlans((p) => p.filter((pl) => pl.id !== id)); };
@@ -300,15 +320,14 @@ export default function Piani({ patients, plans, setPlans, payments = [], pricel
                     <button type="button" aria-label={`Rimuovi ${v.prestazione}`} onClick={() => removeItemFromPlan(pl, i)} style={{ width: 44, height: 44, display: 'grid', placeItems: 'center', background: C.danL, border: 'none', borderRadius: 8, cursor: 'pointer', flexShrink: 0 }}><Ic n="del" s={14} c={C.dan} /></button>
                   </div>
                   <div style={{ display: 'flex', gap: 5, marginTop: 5 }}>
-                    <button onClick={() => toggleEseguita(pl.id, i)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '6px 0', borderRadius: 7, border: `1.5px solid ${v.eseguita ? C.suc : C.brd}`, background: v.eseguita ? C.sucL : C.bg, color: v.eseguita ? C.suc : C.txm, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
-                      <Ic n={v.eseguita ? 'okc' : 'clk'} s={12} c={v.eseguita ? C.suc : C.txm} />{v.eseguita ? 'Eseguita' : 'Segna eseguita'}
-                    </button>
+                    <Sel aria-label={`Stato ${v.prestazione}`} value={v.eseguita ? 'eseguita' : 'da_eseguire'} onChange={(event) => setExecutionStatus(pl, i, event.target.value === 'eseguita')} style={{ flex: 1, minHeight: 44, padding: '6px 9px', fontSize: 11, borderColor: v.eseguita ? C.suc : C.brd, color: v.eseguita ? C.suc : C.txm }}><option value="da_eseguire">Da eseguire</option><option value="eseguita">Eseguita</option></Sel>
                     {v.eseguita && (
                       <button onClick={() => toggleIncassata(pl.id, i)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '6px 0', borderRadius: 7, border: `1.5px solid ${v.incassata ? C.suc : C.dan}`, background: v.incassata ? C.sucL : C.danL, color: v.incassata ? C.suc : C.dan, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
                         <Ic n="eur" s={12} c={v.incassata ? C.suc : C.dan} />{v.incassata ? 'Incassata' : 'Da incassare'}
                       </button>
                     )}
                   </div>
+                  {quickOffer?.planId === pl.id && quickOffer?.itemIndex === i && v.eseguita && <label className="plan-quick-payment-offer"><input type="checkbox" onChange={(event) => { if (event.target.checked) openQuickPayment(pl, i); }} /> Registra pagamento adesso</label>}
                 </div>
               ))}
               {editingPlanId === pl.id ? (
@@ -491,6 +510,11 @@ export default function Piani({ patients, plans, setPlans, payments = [], pricel
           </div>
         </Modal>
       )}
+      {quickPayment && <Modal title="Registra pagamento" icon="eur" onClose={() => setQuickPayment(null)}>
+        <div className="plan-inline-editor__grid"><Fld label="Importo €"><Inp type="number" min="0" step="0.01" inputMode="decimal" value={quickPayment.importo} onChange={(event) => setQuickPayment((value) => ({ ...value, importo: event.target.value }))} /></Fld><Fld label="Data"><Inp type="date" value={quickPayment.data} onChange={(event) => setQuickPayment((value) => ({ ...value, data: event.target.value }))} /></Fld></div>
+        <Fld label="Metodo"><Sel value={quickPayment.metodo} onChange={(event) => setQuickPayment((value) => ({ ...value, metodo: event.target.value }))}>{['Contanti', 'Carta', 'Bonifico', 'POS', 'Assegno'].map((method) => <option key={method}>{method}</option>)}</Sel></Fld>
+        <div className="plan-inline-editor__actions"><Btn ch="Annulla" v="sec" onClick={() => setQuickPayment(null)} /><Btn ch="Registra pagamento" onClick={saveQuickPayment} /></div>
+      </Modal>}
 
       {waModal && (
         <Modal title="Invia su WhatsApp" icon="wa" iconColor="#25D366" onClose={() => setWaModal(null)} wide>

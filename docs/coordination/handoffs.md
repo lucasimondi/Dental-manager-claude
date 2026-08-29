@@ -1,5 +1,16 @@
 # Handoffs
 
+## POL-FIN-002 — Execution UI and quick payment
+
+- Agent: Codex on `feature/modulo-incassi`.
+- Completed: inline Da eseguire/Eseguita selector backed by the shared `markTreatmentItemCompleted` action; optional post-completion payment form with editable amount/date/method; paid record persisted through the existing App sync setter.
+- Safety: no direct Supabase access, no new financial formula, no migration/dependency change. Undoing execution does not delete payments.
+- Validation: full suite 538/538; production build passed with pre-existing warnings; `git diff --check` clean.
+- External blocker: the requested `agente-assistente` tool is hosted outside this repository. Its authoritative source/schema and deployment authority are unavailable, so no live tool was guessed or mutated.
+- Exact next action: final preview QA for all repository-contained work; no merge without Product Owner approval.
+
+---
+
 ## POL-FIN-002 — Step 5 editable plans and safe removal
 
 - Agent: Codex on `feature/modulo-incassi`.
