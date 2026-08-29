@@ -30,6 +30,7 @@ const quickActionsCatalogSrc = await readFile(new URL('../src/lib/quickActionsCa
 const impostazioniSrc = await readFile(new URL('../src/components/Impostazioni.jsx', import.meta.url), 'utf8');
 const appSrc = await readFile(new URL('../src/App.jsx', import.meta.url), 'utf8');
 const docMedicoSrc = await readFile(new URL('../src/components/DocMedico.jsx', import.meta.url), 'utf8');
+const schedaPazSrc = await readFile(new URL('../src/components/SchedaPaz.jsx', import.meta.url), 'utf8');
 
 const round2Css = premiumCss.slice(premiumCss.indexOf('POL-UI-017 ROUND 2'));
 
@@ -292,9 +293,11 @@ test('REGRESSION GUARD (round 3 hardening): .page-dock-clearance is declared dis
 
 test('"Da incassare" placeholder reuses the shared Toast component, not a new one; never a silent no-op that looks broken', () => {
   assert.match(dashboardSrc, /import \{ [^}]*\bToast\b[^}]*\} from '\.\/ui';/);
-  assert.match(dashboardSrc, /const \[comingSoonMsg, setComingSoonMsg\] = useState\(''\);/);
-  assert.match(dashboardSrc, /openComingSoon: \(msg\) => setComingSoonMsg\(msg\)/);
-  assert.match(dashboardSrc, /\{comingSoonMsg && <Toast msg=\{comingSoonMsg\} onDone=\{\(\) => setComingSoonMsg\(''\)\} \/>\}/);
+  // Round 6 renamed comingSoonMsg -> homeToastMsg, a generic Home toast
+  // state now also used to confirm inline patient creation (see below).
+  assert.match(dashboardSrc, /const \[homeToastMsg, setHomeToastMsg\] = useState\(''\);/);
+  assert.match(dashboardSrc, /openComingSoon: \(msg\) => setHomeToastMsg\(msg\)/);
+  assert.match(dashboardSrc, /\{homeToastMsg && <Toast msg=\{homeToastMsg\} onDone=\{\(\) => setHomeToastMsg\(''\)\} \/>\}/);
 });
 
 // ===========================================================================
@@ -339,6 +342,49 @@ test('ROUND 5: DocMedico scrolls the Farmaci prescritti section into view on ope
   // The selector itself is not hidden or removed — the user can still
   // scroll up and change type.
   assert.match(docMedicoSrc, /tipiDisponibili\.map\(t =>/);
+});
+
+// ===========================================================================
+// ROUND 6 — "il modulo ricetta deve essere aperto piu in alto del dock" +
+// inline "create new patient" in the Ricetta picker
+// ===========================================================================
+
+test('ROUND 6: DocMedico opens ABOVE the floating dock/orb, not underneath it', () => {
+  // Dock: 1100, PoliedronOrb/EdgeDock: 1200, PoliedronPanel: 1300/1301 —
+  // DocMedico must clear all of them. 9999 is the same tier this app's
+  // own Modal.jsx already uses for a real full-screen takeover.
+  assert.match(docMedicoSrc, /zIndex: 9999, display: 'flex', flexDirection: 'column' \}\}>/);
+  assert.doesNotMatch(docMedicoSrc, /zIndex: 500/, 'the old under-the-dock z-index must be gone');
+  // The loading fallback (before DocMedico itself has mounted) must match,
+  // or the dock would briefly cover the spinner then jump behind it.
+  const fallbackBlock = schedaPazSrc.slice(schedaPazSrc.indexOf('Caricamento editor ricetta') - 120, schedaPazSrc.indexOf('Caricamento editor ricetta'));
+  assert.match(fallbackBlock, /zIndex: 9999/);
+});
+
+test('ROUND 6: the Ricetta picker lets you create a brand-new patient inline (name/surname), then opens Ricetta for them immediately', () => {
+  // Reuses SelettorePaziente's own existing onCreaPaziente contract — the
+  // exact same "no results -> create inline" UI/flow Agenda.jsx's
+  // creaPazienteRapido already ships. No new patient-creation UI invented.
+  assert.match(dashboardSrc, /onCreaPaziente=\{setPatients \? creaPazienteRapidoRicetta : undefined\}/);
+  assert.match(dashboardSrc, /const creaPazienteRapidoRicetta = \(nome, cognome\) => \{/);
+  assert.match(dashboardSrc, /const id = uid\(\);/);
+  // Same plan-limit fail-closed guard Agenda.jsx's own creaPazienteRapido
+  // uses — no bypass of the studio's max_pazienti cap via this new path.
+  assert.match(dashboardSrc, /if \(limitePazienti != null && patients\.length >= limitePazienti\) \{/);
+  // The just-created patient must be usable immediately even though
+  // setPatients hasn't flushed into a re-render yet — SelettorePaziente
+  // calls onChange(id) synchronously right after onCreaPaziente returns.
+  assert.match(dashboardSrc, /const ricettaJustCreatedRef = useRef\(null\);/);
+  assert.match(dashboardSrc, /ricettaJustCreatedRef\.current = nuovoPaziente;/);
+  const modalBlock = dashboardSrc.slice(dashboardSrc.indexOf('{ricettaPickerOpen && ('), dashboardSrc.indexOf('{bookingOpen && ('));
+  assert.match(modalBlock, /ricettaJustCreatedRef\.current && String\(ricettaJustCreatedRef\.current\.id\) === String\(id\)/);
+  assert.match(modalBlock, /onOpenPaz\(paz, 'doc', \{ type: 'ricetta' \}\)/);
+});
+
+test('App.jsx passes setPatients into Dashboard, mirroring Agenda/Pazienti — required for the inline patient-creation path to exist at all', () => {
+  const line = appSrc.split('\n').find((l) => l.includes('page === \'home\' && <Dashboard'));
+  assert.ok(line, 'expected to find the Dashboard element');
+  assert.match(line, /setPatients=\{setPatientsSync\}/);
 });
 
 test('REGRESSION GUARD: saving quick_actions from Setup can only ever touch that one widget entry — every other widget survives byte-for-byte', () => {

@@ -801,8 +801,15 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
     }
   };
 
+  // Product Owner: "il modulo ricetta deve essere aperto piu in alto del
+  // dock" — the floating Poliedron dock/orb sit at z-index 1100/1200, so
+  // this screen's old z-index of 500 rendered fully UNDER them, covering
+  // its own content. Raised to the same 9999 tier this app's own
+  // Modal.jsx already uses for a real full-screen takeover, so the dock
+  // never overlaps it, matching the very picker Modal that opens this
+  // screen.
   return (
-    <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 9999, display: 'flex', flexDirection: 'column' }}>
       {/* HEADER */}
       <div style={{ background: C.priD, padding: '12px 14px', paddingTop: 'max(12px,env(safe-area-inset-top))', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
         <button onClick={onClose} aria-label="Indietro" style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 10, padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

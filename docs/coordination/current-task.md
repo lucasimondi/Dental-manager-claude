@@ -1,11 +1,30 @@
 # Current task
 
+- TASK: POL-UI-017 — ROUND 6
+- TITLE: Product Owner follow-up on Round 5 — Ricetta module must open above the dock, plus inline "create new patient" in the Ricetta picker
+- OWNER: CLAUDE, on direct Product Owner feedback
+- BRANCH: `claude/pol-ui-017-mobile-home-r2-3pizhn` (same branch/PR as Rounds 2-5 — PR #74, no new PR opened)
+- BASE: Round 5's own commit `7acd92a` on this branch
+- STATUS: WAITING_PRODUCT_OWNER_POL_UI_017_R6_QA
+- OBJECTIVE: two asks in one message. (1) "il modulo ricetta deve essere aperto piu in alto del dock" — the floating Poliedron dock/orb (z-index 1100/1200) was rendering ABOVE DocMedico (z-index 500), covering its content; Round 5's scroll-position fix didn't address this, it's a stacking-order bug, not a scroll one. (2) The Ricetta patient picker (Round 4) needs a free-text field to create a brand-new patient (name/surname) on the spot, which then creates the patient and opens Ricetta for them immediately.
+- WHAT SHIPPED:
+  - §1 z-index fix — `DocMedico.jsx`'s root overlay raised from `zIndex: 500` to `9999`, the same tier this app's own `Modal.jsx` already uses for a real full-screen takeover — clears the dock (1100), the orb/edge-dock (1200) and the Poliedron command panel (1300/1301). `SchedaPaz.jsx`'s matching Suspense loading fallback ("Caricamento editor ricetta…") raised the same way, so there's no flash of the spinner appearing under the dock before the real screen appears above it.
+  - §2 inline patient creation — the Ricetta picker's `SelettorePaziente` now also receives `onCreaPaziente`, wired to a new `creaPazienteRapidoRicetta(nome, cognome)` in `Dashboard.jsx` that is a straight port of `Agenda.jsx`'s own existing `creaPazienteRapido` (same `uid()`-based optimistic local record, same `features.max_pazienti` plan-limit fail-closed guard, same "no results while typing → inline Nome/Cognome create form" UX `SelettorePaziente` already ships for Agenda/Piani/ArchivioDocs) — no new patient-creation logic invented. Handles the one real subtlety: `SelettorePaziente` calls `onChange(id)` synchronously right after `onCreaPaziente` returns, before the `setPatients` update has flushed into a re-render, so a plain `patients.find(...)` would miss the brand-new record — closed with a `ricettaJustCreatedRef` holding the just-created object for that one call. `App.jsx` now passes `setPatients={setPatientsSync}` into `Dashboard` (previously read-only there) — Dashboard's own toast state was renamed `comingSoonMsg`→`homeToastMsg` since it now also confirms "Paziente ... creato ✓", not only the round-3 "Da incassare" placeholder.
+- FILES CHANGED (round 6): `src/App.jsx`, `src/components/Dashboard.jsx`, `src/components/DocMedico.jsx`, `src/components/SchedaPaz.jsx`, `tests/mobileHomeRound2.test.mjs`, this file, `docs/coordination/handoffs.md`.
+- VALIDATION: full `npm test` 577/577 (3 new assertions); `npm run build` clean; `git diff --check` clean.
+- NOT VERIFIABLE: authenticated runtime/visual QA — same constraint as prior rounds.
+- EXACT NEXT ACTION: Product Owner re-tests the redeployed PR #74 preview — confirms Ricetta opens fully above the dock, and that typing a not-yet-existing patient's name/surname in the picker creates them and opens Ricetta immediately. Do NOT merge/deploy without approval. Do not start Round 7 unprompted.
+
+---
+
+# Previous current task
+
 - TASK: POL-UI-017 — ROUND 5
 - TITLE: Product Owner follow-up on Round 4 — "il tab ricetta deve essere aperto più in alto"
 - OWNER: CLAUDE, on direct Product Owner feedback
 - BRANCH: `claude/pol-ui-017-mobile-home-r2-3pizhn` (same branch/PR as Rounds 2-4 — PR #74, no new PR opened)
 - BASE: Round 4's own commit `0d5a6e8` on this branch
-- STATUS: WAITING_PRODUCT_OWNER_POL_UI_017_R5_QA
+- STATUS: SUPERSEDED BY ROUND 6 ABOVE — round 5's own record kept verbatim below for audit history.
 - OBJECTIVE: Round 4 made "Ricetta" open DocMedico's Ricetta tab directly, but on a phone the actual "Farmaci prescritti" fields sit below two full cards (the 6-option "Tipo documento" selector + "Data documento"), i.e. below the fold — the Product Owner asked for it to open "more toward the top".
 - WHAT SHIPPED: `src/components/DocMedico.jsx` — when it opens with `initialType === 'ricetta'` (true for the Home quick action, the pre-existing "Nuova ricetta" button inside the patient's Doc tab, and the Poliedron prescription workflow — all three set it identically, so all three benefit), a mount-only effect scrolls the "Farmaci prescritti" section into view immediately, so it is the first thing visible under the header instead of requiring a scroll past the type selector. The type selector itself is not hidden or removed — scrolling up still reaches it to change type. No change to any other document type's behavior, no change to persistence/`useFormPersistente`, no change to `puoiPrescrivere` gating.
 - FILES CHANGED (round 5): `src/components/DocMedico.jsx`, `tests/mobileHomeRound2.test.mjs`, this file, `docs/coordination/handoffs.md`.

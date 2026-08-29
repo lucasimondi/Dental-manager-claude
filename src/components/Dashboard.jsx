@@ -2,7 +2,7 @@
 import { supabase } from '../lib/supabase.js';
 import { Crd, Bdg, Modal, Ic, Btn, Fld, Sel, Inp, Txt, TimePicker, SelettorePaziente, EmptyState, Toast } from './ui';
 import { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
-import { C, fmt, fmtD, today, RICHIAMO_CATEGORIE } from '../lib/utils';
+import { C, fmt, fmtD, today, uid, RICHIAMO_CATEGORIE } from '../lib/utils';
 import { BarChart, Bar, LineChart, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useControlloDati } from '../lib/useControlloDati';
 import WidgetWorkspace from './WidgetWorkspace.jsx';
@@ -53,7 +53,7 @@ const getSaluto = (nome) => { const ora = new Date().getHours(); const s = ora <
 const fmtDataOra = (d) => d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
 const fmtOra = (d) => d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 
-export default function Dashboard({ patients, appointments, setAppointments, payments, plans, richiami = [], impegni = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, onNavigate, onNavigateNew, templates, userName: userNameProp, si, features, studioId, currentUserId, isStudioAdmin, studioMembership, activityPatientRequest, onActivityPatientRequestHandled }) {
+export default function Dashboard({ patients, setPatients, appointments, setAppointments, payments, plans, richiami = [], impegni = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, onNavigate, onNavigateNew, templates, userName: userNameProp, si, features, studioId, currentUserId, isStudioAdmin, studioMembership, activityPatientRequest, onActivityPatientRequestHandled }) {
   const homePermissions = buildHomePermissions({ membership: studioMembership, features, vertical: si?.vertical });
   const roleLayout = createRolePresetLayout(studioMembership?.capabilities);
   const availableWidgetCatalog = filterWidgetCatalog(HOME_WIDGET_REGISTRY, homePermissions);
@@ -173,11 +173,11 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   const [editForm, setEditForm] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [bookingOpen, setBookingOpen] = useState(false);
-  // Product Owner round 3 — honest placeholder for quick actions whose
-  // real destination doesn't exist yet ("Da incassare"): a brief, real
-  // Toast (same shared component Impostazioni already uses), never a
-  // fake navigation. Reused as-is once the real module ships.
-  const [comingSoonMsg, setComingSoonMsg] = useState('');
+  // Brief, real Toast (same shared component Impostazioni already uses)
+  // for short-lived Home confirmations — the "Da incassare" honest
+  // placeholder (round 3) and "Paziente creato" (round 6, see
+  // creaPazienteRapidoRicetta below) — never a fake navigation.
+  const [homeToastMsg, setHomeToastMsg] = useState('');
   // Product Owner round 4 — "Ricetta" must land directly on DocMedico's
   // Ricetta tab, not just on the Pazienti list. Home has no current
   // patient, so a small inline picker (same SelettorePaziente pattern the
@@ -185,6 +185,33 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   // needed before onOpenPaz(paz, 'doc', { type: 'ricetta' }) can open it.
   const [ricettaPickerOpen, setRicettaPickerOpen] = useState(false);
   const [ricettaPickerSearch, setRicettaPickerSearch] = useState('');
+  // Product Owner round 6 — the picker's search field must also let the
+  // user create a brand-new patient inline (name/surname only), then open
+  // Ricetta for them immediately. Reuses SelettorePaziente's own existing
+  // onCreaPaziente contract — the exact same "no results -> create inline"
+  // UI Agenda.jsx's own quick-booking form already ships (creaPazienteRapido
+  // there) — no new patient-creation logic invented, same uid()-based
+  // optimistic local record, same plan-limit guard.
+  const limitePazienti = features?.max_pazienti ?? null;
+  // SelettorePaziente calls onChange(id) synchronously right after
+  // onCreaPaziente returns — before the setPatients update above has
+  // flushed into a re-render, so `patients.find(...)` below would not yet
+  // see the brand-new record. Kept in a ref (not state, no extra render)
+  // so the picker's onChange can hand it straight to onOpenPaz.
+  const ricettaJustCreatedRef = useRef(null);
+  const creaPazienteRapidoRicetta = (nome, cognome) => {
+    if (!setPatients) return null;
+    if (limitePazienti != null && patients.length >= limitePazienti) {
+      setHomeToastMsg(`Hai raggiunto il limite di ${limitePazienti} pazienti del tuo piano.`);
+      return null;
+    }
+    const id = uid();
+    const nuovoPaziente = { nome, cognome, dataNascita: '', telefono: '', email: '', cf: '', indirizzo: '', cap: '', comune: '', provincia: '', opposizione_sts: false, note: '', id };
+    ricettaJustCreatedRef.current = nuovoPaziente;
+    setPatients((p) => [...p, nuovoPaziente]);
+    setHomeToastMsg(`Paziente ${nome} ${cognome} creato ✓`);
+    return id;
+  };
   const [layoutLoading, setLayoutLoading] = useState(false);
   const [layoutSaving, setLayoutSaving] = useState(false);
   const [layoutError, setLayoutError] = useState('');
@@ -1175,15 +1202,19 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
               patients={patients}
               value=""
               onChange={(id) => {
-                const paz = patients.find((p) => String(p.id) === String(id));
+                const paz = (ricettaJustCreatedRef.current && String(ricettaJustCreatedRef.current.id) === String(id))
+                  ? ricettaJustCreatedRef.current
+                  : patients.find((p) => String(p.id) === String(id));
                 if (!paz || !onOpenPaz) return;
+                ricettaJustCreatedRef.current = null;
                 setRicettaPickerOpen(false);
                 setRicettaPickerSearch('');
                 onOpenPaz(paz, 'doc', { type: 'ricetta' });
               }}
               search={ricettaPickerSearch}
               onSearchChange={setRicettaPickerSearch}
-              placeholder="Cerca paziente…"
+              placeholder="Cerca paziente, o scrivi nome e cognome per crearne uno nuovo…"
+              onCreaPaziente={setPatients ? creaPazienteRapidoRicetta : undefined}
             />
           </Fld>
         </Modal>
@@ -1197,7 +1228,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
         />
       )}
 
-      {comingSoonMsg && <Toast msg={comingSoonMsg} onDone={() => setComingSoonMsg('')} />}
+      {homeToastMsg && <Toast msg={homeToastMsg} onDone={() => setHomeToastMsg('')} />}
 
       {/* ── HEADER ──
           POL-UI-015 §4/§3: on mobile this becomes a compact, sticky/
@@ -1343,7 +1374,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
             onNavigate, onNavigateNew, onGoAgenda, onGoRichiami,
             openBooking: () => setBookingOpen(true),
             openTodoModal: openGenericTodoModal,
-            openComingSoon: (msg) => setComingSoonMsg(msg),
+            openComingSoon: (msg) => setHomeToastMsg(msg),
             openRicettaPicker: () => setRicettaPickerOpen(true),
           };
           const activeActions = resolveQuickActions(w.config?.actions, { permissions: homePermissions, features, vertical: si?.vertical });
