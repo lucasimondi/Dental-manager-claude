@@ -5,7 +5,7 @@
 - OWNER: CLAUDE, on direct Product Owner feedback
 - BRANCH: `claude/pol-ui-017-mobile-home-r2-3pizhn` (same branch/PR as Rounds 2-5 — PR #74, no new PR opened)
 - BASE: Round 5's own commit `7acd92a` on this branch
-- STATUS: WAITING_PRODUCT_OWNER_POL_UI_017_R6_QA
+- STATUS: MERGED — PR #74 merged to `master` by explicit Product Owner instruction ("mergia in master"), merge commit `bbae1226`. `master` is now at `bbae1226`, containing all of POL-UI-017 Rounds 1-6.
 - OBJECTIVE: two asks in one message. (1) "il modulo ricetta deve essere aperto piu in alto del dock" — the floating Poliedron dock/orb (z-index 1100/1200) was rendering ABOVE DocMedico (z-index 500), covering its content; Round 5's scroll-position fix didn't address this, it's a stacking-order bug, not a scroll one. (2) The Ricetta patient picker (Round 4) needs a free-text field to create a brand-new patient (name/surname) on the spot, which then creates the patient and opens Ricetta for them immediately.
 - WHAT SHIPPED:
   - §1 z-index fix — `DocMedico.jsx`'s root overlay raised from `zIndex: 500` to `9999`, the same tier this app's own `Modal.jsx` already uses for a real full-screen takeover — clears the dock (1100), the orb/edge-dock (1200) and the Poliedron command panel (1300/1301). `SchedaPaz.jsx`'s matching Suspense loading fallback ("Caricamento editor ricetta…") raised the same way, so there's no flash of the spinner appearing under the dock before the real screen appears above it.
@@ -13,7 +13,8 @@
 - FILES CHANGED (round 6): `src/App.jsx`, `src/components/Dashboard.jsx`, `src/components/DocMedico.jsx`, `src/components/SchedaPaz.jsx`, `tests/mobileHomeRound2.test.mjs`, this file, `docs/coordination/handoffs.md`.
 - VALIDATION: full `npm test` 577/577 (3 new assertions); `npm run build` clean; `git diff --check` clean.
 - NOT VERIFIABLE: authenticated runtime/visual QA — same constraint as prior rounds.
-- EXACT NEXT ACTION: Product Owner re-tests the redeployed PR #74 preview — confirms Ricetta opens fully above the dock, and that typing a not-yet-existing patient's name/surname in the picker creates them and opens Ricetta immediately. Do NOT merge/deploy without approval. Do not start Round 7 unprompted.
+- EXACT NEXT ACTION: PR #74 is merged. Product Owner verifies the live behavior in production (or the next preview) at their convenience — confirms Ricetta opens fully above the dock, and that typing a not-yet-existing patient's name/surname in the picker creates them and opens Ricetta immediately. No further POL-UI-017 work is in flight; do not start a Round 7 or any new work on this branch unless explicitly instructed — the branch is merged and its purpose is complete.
+- MERGE NOTE: this session did not independently trigger a production deployment — merging to `master` was performed via explicit Product Owner instruction. Whether Vercel's own GitHub integration auto-deploys `master` to production is a pre-existing project configuration outside this session's control; not separately verified here.
 
 ---
 

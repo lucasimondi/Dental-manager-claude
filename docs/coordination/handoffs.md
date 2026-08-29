@@ -1,5 +1,13 @@
 # Handoffs
 
+## POL-UI-017 — merged to master
+
+PR #74 ("POL-UI-017 R2: mobile Home and navigation refresh", covering Rounds 2-6 on branch `claude/pol-ui-017-mobile-home-r2-3pizhn`) was merged to `master` by explicit Product Owner instruction ("mergia in master"). Merge commit `bbae1226`, merge method: merge commit (not squash/rebase, consistent with this repo's existing history, e.g. PR #73). PR state before merge: `mergeable_state: clean`, all checks green (CI `verify`, Vercel deploy, Netlify deploy preview). `master` is now at `bbae1226`.
+
+This session did not separately trigger a production deployment; whether Vercel's GitHub integration auto-deploys `master` to production is pre-existing project configuration outside this session's scope, not independently verified here.
+
+No new work was started on this branch after the merge — the branch's purpose is complete. Any further POL-UI-017 feedback is a new round on a fresh branch/PR unless the Product Owner says otherwise.
+
 ## POL-UI-017 ROUND 6 — Ricetta above the dock + inline "create new patient"
 
 - Task ID: POL-UI-017 ROUND 6. Agent: Claude, on direct Product Owner feedback on the Round 5 commit. Same branch/PR (`claude/pol-ui-017-mobile-home-r2-3pizhn`, PR #74).
