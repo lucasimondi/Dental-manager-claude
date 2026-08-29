@@ -1,5 +1,18 @@
 # Handoffs
 
+## POL-UI-017 ROUND 4 — "Ricetta deve aprire il tab ricetta, non paziente"
+
+- Task ID: POL-UI-017 ROUND 4. Agent: Claude, on direct Product Owner feedback on the Round 3 commit. Same branch/PR (`claude/pol-ui-017-mobile-home-r2-3pizhn`, PR #74).
+- Base: Round 3's own commit `8cb70f0`.
+- Root cause: the Ricetta quick action (added in Round 3) called `ctx.onNavigate('paz')`, the same "no patient in Home context" fallback used by other patient-scoped actions — but for Ricetta specifically this left the user to find the patient, then the Doc tab, then the Ricetta type manually. Investigated whether SchedaPaz already had a way to open directly to Ricetta and found it does: `initialDocumentRequest` prop (already wired end to end for the Poliedron prescription workflow — `documentFlow` state, `DocMedico`'s `initialType`/`initialPrefill`/`requestId` props, `onDocumentRequestHandled` cleanup) was already threaded through `App.jsx`'s `schedaDashPaz.documentRequest`, just never populated by `goSchedaPaz`'s only caller pattern (2-argument calls).
+- Fix: `goSchedaPaz(paz, tab='paga', documentRequest=null)` gained a 3rd optional argument (default `null`, so every existing call site is unaffected byte-for-byte) forwarded straight into the existing `initialDocumentRequest` prop. Home gained a small inline patient picker (`SelettorePaziente` inside a `Modal`, identical pattern to the pre-existing "Nuova attività" modal) opened by a new `openRicettaPicker` quick-action context hook; picking a patient calls `onOpenPaz(paz, 'doc', { type: 'ricetta' })`, which lands directly on `DocMedico`'s Ricetta tab (its own `puoiPrescrivere` gate untouched).
+- Consenso intentionally left as-is (still navigates to Pazienti) — the Product Owner's feedback named only Ricetta; noted as a candidate for the same treatment rather than silently applying it too.
+- Files changed: `src/App.jsx`, `src/components/Dashboard.jsx`, `src/lib/quickActionsCatalog.js`, `tests/mobileHomeRound2.test.mjs`, `tests/quickActionsCatalog.test.mjs`, coordination docs.
+- Database/schema/RLS/RBAC/financial-formula/Poliedron-engine changes: none.
+- Tests: full `npm test` 573/573 (4 new assertions: Ricetta calls `openRicettaPicker` and falls back safely without it; Dashboard/App.jsx source-level wiring checks). `npm run build` clean. `git diff --check` clean.
+- Not verifiable: authenticated runtime QA — same constraint as prior rounds.
+- Exact next action: push to the same branch/PR #74, no new PR. Product Owner re-tests on the redeployed preview. Do not merge, do not deploy, do not start Round 5 unprompted.
+
 ## POL-UI-017 ROUND 3 — Product Owner live-preview feedback on Round 2 (PR #74)
 
 - Task ID: POL-UI-017 ROUND 3. Agent: Claude, on direct Product Owner feedback after testing the Round 2 preview live. Same branch/PR as Round 2 (`claude/pol-ui-017-mobile-home-r2-3pizhn`, PR #74) — explicitly instructed NOT to open a new PR.

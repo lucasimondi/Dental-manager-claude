@@ -1,11 +1,28 @@
 # Current task
 
+- TASK: POL-UI-017 — ROUND 4
+- TITLE: Product Owner follow-up on Round 3 — "Ricetta deve aprire il tab ricetta, non paziente"
+- OWNER: CLAUDE, on direct Product Owner feedback
+- BRANCH: `claude/pol-ui-017-mobile-home-r2-3pizhn` (same branch/PR as Rounds 2-3 — PR #74, no new PR opened)
+- BASE: Round 3's own commit `8cb70f0` on this branch
+- STATUS: WAITING_PRODUCT_OWNER_POL_UI_017_R4_QA
+- OBJECTIVE: the Ricetta quick action landed only on the Pazienti list (Round 3), leaving the user to find the patient, then the Doc tab, then the Ricetta type manually. Make it land directly on DocMedico's Ricetta tab for the picked patient.
+- WHAT SHIPPED: Home has no current patient, so a pick is still required — but it now goes straight to the target instead of a dead-end list. New inline patient picker (`SelettorePaziente` in a `Modal`, same pattern the existing "Nuova attività" modal already uses), opened via a new `openRicettaPicker` context hook on the Ricetta quick action; on selection it calls `onOpenPaz(paz, 'doc', { type: 'ricetta' })`. `App.jsx`'s `goSchedaPaz` gained an optional 3rd `documentRequest` argument (default `null`, every existing 2-arg call site unaffected) forwarded into the SAME `initialDocumentRequest` prop `SchedaPaz.jsx` already consumes for the Poliedron prescription workflow — this is a second caller into existing, unmodified `SchedaPaz`/`DocMedico` plumbing (including `DocMedico`'s own unchanged `puoiPrescrivere` licensing gate), nothing new was built. Consenso was left unchanged (still navigates to Pazienti) — not raised in this feedback round; same underlying limitation, noted rather than silently changed.
+- FILES CHANGED (round 4): `src/App.jsx`, `src/components/Dashboard.jsx`, `src/lib/quickActionsCatalog.js`, `tests/mobileHomeRound2.test.mjs`, `tests/quickActionsCatalog.test.mjs`, this file, `docs/coordination/handoffs.md`.
+- VALIDATION: full `npm test` 573/573 (4 new assertions); `npm run build` clean; `git diff --check` clean.
+- NOT VERIFIABLE: authenticated runtime/visual QA — same constraint as prior rounds.
+- EXACT NEXT ACTION: Product Owner re-tests the same PR #74 preview once Vercel redeploys — confirms tapping Ricetta, picking a patient, lands directly on the Ricetta form. Do NOT merge/deploy without approval. Do not start Round 5 unprompted.
+
+---
+
+# Previous current task
+
 - TASK: POL-UI-017 — ROUND 3
 - TITLE: Product Owner live-preview feedback on Round 2 — Setup dock clearance hardening, quick-action icon/label fixes, three new quick actions
 - OWNER: CLAUDE, on direct Product Owner feedback after testing the R2 preview
 - BRANCH: `claude/pol-ui-017-mobile-home-r2-3pizhn` (same branch/PR as Round 2 — PR #74, no new PR opened)
 - BASE: Round 2's own commit `94bc651` on this branch
-- STATUS: WAITING_PRODUCT_OWNER_POL_UI_017_R3_QA
+- STATUS: SUPERSEDED BY ROUND 4 ABOVE — round 3's own record kept verbatim below for audit history.
 - OBJECTIVE: a fourth round of Product Owner feedback on the same live PR #74 preview, addressing four points: (1) harden the `.page-dock-clearance` pattern Round 2 already introduced for Impostazioni so it is byte-parallel to `.home-dock-clearance` in both mobile media queries, closing any doubt that a long Setup section could end up under the floating dock; (2) fix the "Documento" quick action rendering with no icon; (3) remove a literal "+" prefix baked into several quick-action labels; (4) add three new quick actions (Ricetta, Consenso, Da incassare) on the same catalog infrastructure.
 - WHAT SHIPPED:
   - §1 Dock clearance hardening — `.page-dock-clearance` was already added in Round 2's own last commit (`94bc651`) and applies unconditionally to Impostazioni (rendered once, outside every `sezione`-gated block, so it covers every Setup tab, not only the new "Azioni rapide" one). Re-verified structurally correct (base `display:none`, `display:block` inside the canonical `(max-width:719px), (pointer:coarse)…` query, no later override resets it) and hardened for full parity: it is now ALSO declared `display:block` inside the legacy `@media (max-width:600px)` block, exactly mirroring `.home-dock-clearance`'s own dual declaration, removing any remaining doubt.
