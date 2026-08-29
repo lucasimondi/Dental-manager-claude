@@ -409,8 +409,12 @@ export default function App() {
 
   const goNuovoPiano = (id) => { setInitPatId(id); setPage('piani'); };
   const goNuovoElemento = (target) => { setAutoOpenNew(target); setPage(target); };
-  const goSchedaPaz = (paz, tab = 'paga') => {
-    setSchedaDashPaz({ paz, tab });
+  // `documentRequest` reuses the same mechanism SchedaPaz already exposes
+  // for the Poliedron prescription workflow (initialDocumentRequest ->
+  // documentFlow, see SchedaPaz.jsx) — passing { type: 'ricetta' } lands
+  // directly on DocMedico's Ricetta tab instead of the generic Doc tab.
+  const goSchedaPaz = (paz, tab = 'paga', documentRequest = null) => {
+    setSchedaDashPaz({ paz, tab, documentRequest });
     salvaPosizione({ schedaPazId: paz.id, schedaPazTab: tab });
   };
   const requestId = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -604,7 +608,7 @@ export default function App() {
         paddingLeft: isMobile ? ((page === 'agenda' || page === 'home') ? (page === 'agenda' ? 6 : 0) : (page === 'chat' ? 0 : 15)) : (page === 'chat' ? 0 : undefined),
         paddingRight: isMobile ? ((page === 'agenda' || page === 'home') ? (page === 'agenda' ? 6 : 0) : (page === 'chat' ? 0 : 15)) : (page === 'chat' ? 0 : undefined),
       }}>
-        {page === 'home' && <Dashboard patients={patients} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegni} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} onNavigateNew={goNuovoElemento} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} currentUserId={session?.user?.id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} activityPatientRequest={quickHubActivityRequest} onActivityPatientRequestHandled={(id) => setQuickHubActivityRequest((current) => current?.id === id ? null : current)} />}
+        {page === 'home' && <Dashboard patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegni} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} onNavigateNew={goNuovoElemento} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} currentUserId={session?.user?.id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} activityPatientRequest={quickHubActivityRequest} onActivityPatientRequestHandled={(id) => setQuickHubActivityRequest((current) => current?.id === id ? null : current)} />}
         {page !== 'home' && (
           <Suspense fallback={<LoadingScreen />}>
             {page === 'paz' && (
@@ -644,7 +648,7 @@ export default function App() {
             {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} initialFiltroTipo={archivioFiltroTipoHint} />}
             {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
             {page === 'agenteai' && <AgenteAISetup features={features} />}
-            {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} isStudioAdmin={isStudioAdmin} onLogout={handleLogout} />}
+            {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} isStudioAdmin={isStudioAdmin} onLogout={handleLogout} studioMembership={studioMembership} />}
             {page === 'chat' && <div ref={setPoliedronChatHost} className="poliedron-chat-host" />}
           </Suspense>
         )}

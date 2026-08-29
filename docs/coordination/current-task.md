@@ -1,11 +1,111 @@
 # Current task
 
+- TASK: POL-UI-017 — ROUND 6
+- TITLE: Product Owner follow-up on Round 5 — Ricetta module must open above the dock, plus inline "create new patient" in the Ricetta picker
+- OWNER: CLAUDE, on direct Product Owner feedback
+- BRANCH: `claude/pol-ui-017-mobile-home-r2-3pizhn` (same branch/PR as Rounds 2-5 — PR #74, no new PR opened)
+- BASE: Round 5's own commit `7acd92a` on this branch
+- STATUS: WAITING_PRODUCT_OWNER_POL_UI_017_R6_QA
+- OBJECTIVE: two asks in one message. (1) "il modulo ricetta deve essere aperto piu in alto del dock" — the floating Poliedron dock/orb (z-index 1100/1200) was rendering ABOVE DocMedico (z-index 500), covering its content; Round 5's scroll-position fix didn't address this, it's a stacking-order bug, not a scroll one. (2) The Ricetta patient picker (Round 4) needs a free-text field to create a brand-new patient (name/surname) on the spot, which then creates the patient and opens Ricetta for them immediately.
+- WHAT SHIPPED:
+  - §1 z-index fix — `DocMedico.jsx`'s root overlay raised from `zIndex: 500` to `9999`, the same tier this app's own `Modal.jsx` already uses for a real full-screen takeover — clears the dock (1100), the orb/edge-dock (1200) and the Poliedron command panel (1300/1301). `SchedaPaz.jsx`'s matching Suspense loading fallback ("Caricamento editor ricetta…") raised the same way, so there's no flash of the spinner appearing under the dock before the real screen appears above it.
+  - §2 inline patient creation — the Ricetta picker's `SelettorePaziente` now also receives `onCreaPaziente`, wired to a new `creaPazienteRapidoRicetta(nome, cognome)` in `Dashboard.jsx` that is a straight port of `Agenda.jsx`'s own existing `creaPazienteRapido` (same `uid()`-based optimistic local record, same `features.max_pazienti` plan-limit fail-closed guard, same "no results while typing → inline Nome/Cognome create form" UX `SelettorePaziente` already ships for Agenda/Piani/ArchivioDocs) — no new patient-creation logic invented. Handles the one real subtlety: `SelettorePaziente` calls `onChange(id)` synchronously right after `onCreaPaziente` returns, before the `setPatients` update has flushed into a re-render, so a plain `patients.find(...)` would miss the brand-new record — closed with a `ricettaJustCreatedRef` holding the just-created object for that one call. `App.jsx` now passes `setPatients={setPatientsSync}` into `Dashboard` (previously read-only there) — Dashboard's own toast state was renamed `comingSoonMsg`→`homeToastMsg` since it now also confirms "Paziente ... creato ✓", not only the round-3 "Da incassare" placeholder.
+- FILES CHANGED (round 6): `src/App.jsx`, `src/components/Dashboard.jsx`, `src/components/DocMedico.jsx`, `src/components/SchedaPaz.jsx`, `tests/mobileHomeRound2.test.mjs`, this file, `docs/coordination/handoffs.md`.
+- VALIDATION: full `npm test` 577/577 (3 new assertions); `npm run build` clean; `git diff --check` clean.
+- NOT VERIFIABLE: authenticated runtime/visual QA — same constraint as prior rounds.
+- EXACT NEXT ACTION: Product Owner re-tests the redeployed PR #74 preview — confirms Ricetta opens fully above the dock, and that typing a not-yet-existing patient's name/surname in the picker creates them and opens Ricetta immediately. Do NOT merge/deploy without approval. Do not start Round 7 unprompted.
+
+---
+
+# Previous current task
+
+- TASK: POL-UI-017 — ROUND 5
+- TITLE: Product Owner follow-up on Round 4 — "il tab ricetta deve essere aperto più in alto"
+- OWNER: CLAUDE, on direct Product Owner feedback
+- BRANCH: `claude/pol-ui-017-mobile-home-r2-3pizhn` (same branch/PR as Rounds 2-4 — PR #74, no new PR opened)
+- BASE: Round 4's own commit `0d5a6e8` on this branch
+- STATUS: SUPERSEDED BY ROUND 6 ABOVE — round 5's own record kept verbatim below for audit history.
+- OBJECTIVE: Round 4 made "Ricetta" open DocMedico's Ricetta tab directly, but on a phone the actual "Farmaci prescritti" fields sit below two full cards (the 6-option "Tipo documento" selector + "Data documento"), i.e. below the fold — the Product Owner asked for it to open "more toward the top".
+- WHAT SHIPPED: `src/components/DocMedico.jsx` — when it opens with `initialType === 'ricetta'` (true for the Home quick action, the pre-existing "Nuova ricetta" button inside the patient's Doc tab, and the Poliedron prescription workflow — all three set it identically, so all three benefit), a mount-only effect scrolls the "Farmaci prescritti" section into view immediately, so it is the first thing visible under the header instead of requiring a scroll past the type selector. The type selector itself is not hidden or removed — scrolling up still reaches it to change type. No change to any other document type's behavior, no change to persistence/`useFormPersistente`, no change to `puoiPrescrivere` gating.
+- FILES CHANGED (round 5): `src/components/DocMedico.jsx`, `tests/mobileHomeRound2.test.mjs`, this file, `docs/coordination/handoffs.md`.
+- VALIDATION: full `npm test` 574/574 (1 new source-level regression test); `npm run build` clean; `git diff --check` clean.
+- NOT VERIFIABLE: authenticated runtime/visual QA — same constraint as prior rounds; the exact scroll offset/feel on a real phone still needs the Product Owner's own device.
+- EXACT NEXT ACTION: Product Owner re-tests the redeployed PR #74 preview — confirms the Ricetta fields appear near the top on open. Do NOT merge/deploy without approval. Do not start Round 6 unprompted.
+
+---
+
+# Previous current task
+
+- TASK: POL-UI-017 — ROUND 4
+- TITLE: Product Owner follow-up on Round 3 — "Ricetta deve aprire il tab ricetta, non paziente"
+- OWNER: CLAUDE, on direct Product Owner feedback
+- BRANCH: `claude/pol-ui-017-mobile-home-r2-3pizhn` (same branch/PR as Rounds 2-3 — PR #74, no new PR opened)
+- BASE: Round 3's own commit `8cb70f0` on this branch
+- STATUS: SUPERSEDED BY ROUND 5 ABOVE — round 4's own record kept verbatim below for audit history.
+- OBJECTIVE: the Ricetta quick action landed only on the Pazienti list (Round 3), leaving the user to find the patient, then the Doc tab, then the Ricetta type manually. Make it land directly on DocMedico's Ricetta tab for the picked patient.
+- WHAT SHIPPED: Home has no current patient, so a pick is still required — but it now goes straight to the target instead of a dead-end list. New inline patient picker (`SelettorePaziente` in a `Modal`, same pattern the existing "Nuova attività" modal already uses), opened via a new `openRicettaPicker` context hook on the Ricetta quick action; on selection it calls `onOpenPaz(paz, 'doc', { type: 'ricetta' })`. `App.jsx`'s `goSchedaPaz` gained an optional 3rd `documentRequest` argument (default `null`, every existing 2-arg call site unaffected) forwarded into the SAME `initialDocumentRequest` prop `SchedaPaz.jsx` already consumes for the Poliedron prescription workflow — this is a second caller into existing, unmodified `SchedaPaz`/`DocMedico` plumbing (including `DocMedico`'s own unchanged `puoiPrescrivere` licensing gate), nothing new was built. Consenso was left unchanged (still navigates to Pazienti) — not raised in this feedback round; same underlying limitation, noted rather than silently changed.
+- FILES CHANGED (round 4): `src/App.jsx`, `src/components/Dashboard.jsx`, `src/lib/quickActionsCatalog.js`, `tests/mobileHomeRound2.test.mjs`, `tests/quickActionsCatalog.test.mjs`, this file, `docs/coordination/handoffs.md`.
+- VALIDATION: full `npm test` 573/573 (4 new assertions); `npm run build` clean; `git diff --check` clean.
+- NOT VERIFIABLE: authenticated runtime/visual QA — same constraint as prior rounds.
+- EXACT NEXT ACTION: Product Owner re-tests the same PR #74 preview once Vercel redeploys — confirms tapping Ricetta, picking a patient, lands directly on the Ricetta form. Do NOT merge/deploy without approval. Do not start Round 5 unprompted.
+
+---
+
+# Previous current task
+
+- TASK: POL-UI-017 — ROUND 3
+- TITLE: Product Owner live-preview feedback on Round 2 — Setup dock clearance hardening, quick-action icon/label fixes, three new quick actions
+- OWNER: CLAUDE, on direct Product Owner feedback after testing the R2 preview
+- BRANCH: `claude/pol-ui-017-mobile-home-r2-3pizhn` (same branch/PR as Round 2 — PR #74, no new PR opened)
+- BASE: Round 2's own commit `94bc651` on this branch
+- STATUS: SUPERSEDED BY ROUND 4 ABOVE — round 3's own record kept verbatim below for audit history.
+- OBJECTIVE: a fourth round of Product Owner feedback on the same live PR #74 preview, addressing four points: (1) harden the `.page-dock-clearance` pattern Round 2 already introduced for Impostazioni so it is byte-parallel to `.home-dock-clearance` in both mobile media queries, closing any doubt that a long Setup section could end up under the floating dock; (2) fix the "Documento" quick action rendering with no icon; (3) remove a literal "+" prefix baked into several quick-action labels; (4) add three new quick actions (Ricetta, Consenso, Da incassare) on the same catalog infrastructure.
+- WHAT SHIPPED:
+  - §1 Dock clearance hardening — `.page-dock-clearance` was already added in Round 2's own last commit (`94bc651`) and applies unconditionally to Impostazioni (rendered once, outside every `sezione`-gated block, so it covers every Setup tab, not only the new "Azioni rapide" one). Re-verified structurally correct (base `display:none`, `display:block` inside the canonical `(max-width:719px), (pointer:coarse)…` query, no later override resets it) and hardened for full parity: it is now ALSO declared `display:block` inside the legacy `@media (max-width:600px)` block, exactly mirroring `.home-dock-clearance`'s own dual declaration, removing any remaining doubt.
+  - §2 Icon fix — `Ic.jsx`'s `ICONS` map has no `doc` key, so the "Documento" quick action (`ic: 'doc'`) silently rendered nothing (not a "+" fallback — `Ic` returns `null` for an unknown key). Changed to `ic: 'file'`, the same generic-document icon `DocMedico.jsx`'s own "Foglio bianco intestato" type already uses for the identical concept. New regression test reads the real `Ic.jsx` icon registry and asserts every catalog `ic` id is a real key, so a future typo'd icon id fails the suite instead of rendering blank.
+  - §3 "+" removed — the "+" the Product Owner saw was NOT an icon-missing fallback (confirmed distinct from §2 by reading the code): it was a literal `'+ '` text prefix baked into several `QUICK_ACTIONS_CATALOG` labels (Nuovo appuntamento, Nuovo paziente, Paziente e appuntamento, Nuovo preventivo, Nuova spesa, Documento, Task). Removed from all of them; the actions/ids/gates/`run()` handlers are unchanged, only the display string.
+  - §4 Three new quick actions, same infrastructure, nothing invented: **Ricetta** (`ic:'pill'`, the exact icon `DocMedico.jsx`'s own TIPI list already uses for `id:'ricetta'`) and **Consenso** (`ic:'edit'`) both land on Pazienti first (`run: (ctx) => ctx.onNavigate('paz')`), the same "patient-scoped, no target patient from Home" fallback `nuovo_paziente_appuntamento`/`nuova_seduta_fisio` already use — from there the existing, unmodified SchedaPaz "Doc" tab (DocMedico for Ricetta, its own `puoiPrescrivere` gate untouched; `consenso_modelli`/`PannelloInvioDocumento` for Consenso) takes over unchanged. **Da incassare** (`ic:'eur'`, the same icon this file's own "Eseguito da incassare" modal already uses for the identical concept) is an explicit, honest placeholder per Product Owner instruction — the real receivables module is separate, still in development, and a doc named `piano-modulo-incassi-da-incassare.md` referenced in the feedback was searched for and does NOT exist in this repository (recorded here for transparency; the Product Owner's own instruction to build a placeholder now stood regardless and did not require that doc). The placeholder calls a new `openComingSoon(msg)` hook on the quick-action context — wired in `Dashboard.jsx` as a small `comingSoonMsg` state rendering the SAME shared `Toast` component `Impostazioni.jsx` already uses (no new UI primitive) — never a fake navigation. None of the three new actions were added to `DEFAULT_QUICK_ACTION_IDS`: they appear in "Personalizza azioni rapide" as addable, exactly like `documento`/`nuova_spesa`/`controllo_gestione` already do, with no change to what shows without configuration.
+- SAFETY BOUNDARIES HONOURED: same as Round 2 (see below) — no schema/RLS/financial-formula/business-logic/Chat-persistence change; `git diff` shows zero changes to the Poliedron engine/dock-geometry files; no widget id added or removed; Home's personalization save/load path untouched. The three new quick actions reuse existing pages/tabs/gates (Pazienti, DocMedico, consenso_modelli) — no new route, no new table, no new RPC.
+- FILES CHANGED (round 3, in addition to round 2's own list below): `src/lib/quickActionsCatalog.js`, `src/components/Dashboard.jsx`, `src/components/PremiumVisualSystem.css`, `tests/mobileHomeRound2.test.mjs`, `tests/quickActionsCatalog.test.mjs`, this file, `docs/coordination/handoffs.md`.
+- VALIDATION: full `npm test` 570/570 (6 new assertions in `quickActionsCatalog.test.mjs`, 4 new in `mobileHomeRound2.test.mjs`); `npm run build` clean; `git diff --check` clean.
+- NOT VERIFIABLE: authenticated runtime/visual QA on a real device or preview — same constraint as Round 2, no authenticated session available here. The dock-clearance hardening and icon fix are argued from source/stylesheet-level regression tests, not a live rendering.
+- EXACT NEXT ACTION: Product Owner re-tests the same PR #74 preview (new commit on the same branch, same URL once Vercel redeploys) — confirms Setup no longer clips under the dock on a real phone, "Documento" shows its icon, no quick action shows a "+", and Ricetta/Consenso/Da incassare appear correctly in "Personalizza azioni rapide". Do NOT merge and do NOT deploy without explicit Product Owner approval. Do not start Round 4 unprompted.
+
+---
+
+# Previous current task
+
+- TASK: POL-UI-017 — ROUND 2
+- TITLE: Mobile Home and navigation refresh (action-first Home, priority area, progressive-disclosure quick actions, dock/bell audit)
+- OWNER: CLAUDE
+- BRANCH: `claude/pol-ui-017-mobile-home-r2-3pizhn`
+- BASE: `origin/master@05ee761` (merge PR #73, POL-UI-017 R1 — mobile foundation and shell)
+- STATUS: SUPERSEDED BY ROUND 3 ABOVE — round 2's own record kept verbatim below for audit history.
+- OBJECTIVE: make the mobile Home an OPERATIONAL HOME rather than a stack of boxes — a compact branded hero, a real "Richiede attenzione" priority area built only from data the Home already holds, quick actions with the most frequent at the first level and the rest behind "Altro", a today-oriented band, and the existing informational/financial widgets demoted to a hierarchically secondary position. Scope is strictly mobile Home + mobile navigation + the visual integration between Home and the dock, built ON TOP of the Round 1 foundation (`MobilePageShell`, `mobileShell.js`, `designTokens.css`) rather than replacing it.
+- WHAT SHIPPED:
+  - §1 Hero — one compact sticky row on mobile (brand gem + greeting + date/time/appointment count) instead of three stacked lines with clamp(25px,3vw,32px) display type.
+  - §2 Priority area — new `.home-attention` page chrome above the widget workspace, driven by the new pure selector `src/lib/homeAttention.js`. Sources, all pre-existing: open/overdue `richiami` (same `stato === 'da_fare'` + `dataScadenza` rule the Richiami widget uses), overdue payment deadlines from `useControlloDati` (only when `homePermissions.managementControl` is true), overdue patient-annotation promemoria, the next not-yet-passed appointment from today's list, and unread Poliedron advice. Capped at 4 rows; empty state is ONE compact "Tutto sotto controllo" line, never a large empty box.
+  - §3 Quick actions — `partitionQuickActionsForMobile()` in `quickActionsCatalog.js` surfaces Nuovo appuntamento / Nuovo paziente / Pagamento / Richiamo first and moves the rest behind an "Altro (N)" toggle, mobile-only. A user who set their own order in Personalizza Home keeps it verbatim.
+  - §4/§5 Hierarchy — mobile-only CSS priority banding on `.home-workspace .home-widget-frame[data-widget-id=…]`: actions (10) → today (20) → operational (30) → overview (40) → deeper detail (50). The persisted layout is untouched; DOM order remains the user's saved order and still decides within each band.
+  - §7 Dock — the active slot's contrast was raised (11%→18% wash, 18%→34% border, plus a small ink bar). BUG FIXED: `.home-dock-clearance`, `.home-page` padding and the compact hero were gated on `@media (max-width: 600px)`, so every coarse-pointer landscape phone (844x390, 852x393, 932x430) and every 601–719px viewport — all of which the React shell already treats as mobile and therefore still shows the floating dock — lost the clearance entirely and rendered the last widget underneath the dock. Home now uses the Round 1 canonical mobile media query.
+  - §8 Bell — was a 40x40 target, below the Round 1 44px touch floor; raised to `var(--pol-touch-min)`. Position, destination, unread architecture and the "no duplicate badge on the dock's Chat slot" rule are unchanged.
+  - §9 Personalizza Home — a discreet 44x44 icon button on mobile (label visually hidden, aria-label/title kept). Save/load logic untouched.
+- SAFETY BOUNDARIES HONOURED: no schema, migration, RLS, RBAC, financial-formula, business-logic or Chat-persistence change. `git diff` shows ZERO changes to `PoliedronOrb.jsx`, `usePoliedronPosition.js`, `usePoliedronEdgePosition.js`, `poliedronDragMath.js`, `poliedronSafeBounds.js`, `poliedronOrbSize.js`, `poliedronMobileDock.js`, `PoliedronMobileDock.jsx` and `PoliedronBell.jsx` — the Poliedron engine, the orb's size/position/drag and the dock's structure/slots/destinations/geometry are all untouched. No new quick action, no new widget id, no new alert for data that does not already exist, no second AI panel. Home's personalization save/load path (`homeLayoutPersistence.js`, the `layoutSaveEpochRef` stale-write guard, `draftInherits` semantics) is byte-for-byte unchanged. Desktop Home is not redesigned: every added surface is `display: none` outside the mobile media query.
+- FILES CHANGED: `src/components/Dashboard.jsx`, `src/components/PremiumVisualSystem.css`, `src/lib/quickActionsCatalog.js`, new `src/lib/homeAttention.js`, new `tests/mobileHomeRound2.test.mjs`, `docs/coordination/current-task.md`, `docs/coordination/handoffs.md`.
+- VALIDATION: new dedicated suite 38/38; full `npm test` 564/564; `npm run build` clean (only the pre-existing chunk-size warnings); `git diff --check` clean.
+- NOT VERIFIABLE: authenticated runtime/visual QA on a real device or preview — no authenticated session is available in this environment and none was requested or used. Responsive behaviour is argued from the stylesheet and the Round 1 shell contract, not from a live rendering.
+- EXACT NEXT ACTION: Product Owner reviews the PR ("POL-UI-017 R2: mobile Home and navigation refresh") and QAs the mobile Home on a real phone at 375x667, 390x844 and 430x932 portrait plus 844x390 landscape. Do NOT merge and do NOT deploy without explicit Product Owner approval.
+
+---
+
+# Previous current task
+
 - TASK: POL-DOC-ARCHIVE-MOBILE-OPEN-FIX
 - TITLE: Patient record Documenti/Ricette — Apri/Stampa still didn't open on mobile after POL-DOC-ARCHIVE-OPEN-FIX
 - OWNER: CLAUDE, on direct Product Owner report: in the patient record's Documenti tab, archived documents and ricette list correctly and open/download fine in the general Documenti (archivio) section, but on mobile specifically, opening/printing one from inside the patient record still shows nothing. Desktop works.
 - BRANCH: `claude/mobile-recipes-docs-visibility-v9hk10`
 - BASE: `origin/master@a34b4a0` (merge PR #70, which shipped POL-DOC-ARCHIVE-OPEN-FIX)
-- STATUS: IMPLEMENTED_AWAITING_PRODUCT_OWNER_QA
+- STATUS: MERGED (PR #71, merge commit `070b28f`) — this file still recorded it as `IMPLEMENTED_AWAITING_PRODUCT_OWNER_QA` long after the merge landed; corrected during POL-UI-017 R2, see the handoff entry for the audit note.
 - OBJECTIVE: make Apri/Stampa in `PatientWorkspaceDocuments.jsx` (the patient record's Documenti/Ricette tab, mounted by `SchedaPaz.jsx`) actually display the archived PDF on mobile, without touching the archive list/metadata loading, RLS, schema, or the working `ArchivioDocs.jsx` (general Documenti page) behavior.
 - ROOT CAUSE: PR #70's fix made `apriPdf()` convert the `data:` URI to a `blob:` URL before `window.open()`, which fixed the previous data-URI-blocking bug, but `PatientWorkspaceDocuments.jsx` calls it from inside `withPdf()` — an `async` handler that `await`s a Supabase fetch (`loadPatientDocumentPdf`) before ever calling `apriPdf`/`window.open`. Desktop browsers tolerate `window.open()` shortly after an awaited gap tied to a click; mobile Safari/Chrome do not — they require the new-tab open to happen synchronously inside the original tap's call stack, otherwise it is silently blocked with no error and no fallback (`apriPdf`'s null-popup fallback never fires because mobile browsers return a non-null, permanently blank window instead of `null`). This is exactly why the general Documenti page (`ArchivioDocs.jsx`) already worked fine on mobile: its `visualizzaDoc()` also awaits the PDF fetch, but instead of `window.open` it opens the in-app `PdfViewerModal` (a `pdf.js`-based full-screen viewer, no new tab/window involved at all) — the same component `PannelloInvioDocumento.jsx` already uses for the fresh "Genera PDF" preview.
 - FIX: `PatientWorkspaceDocuments.jsx` no longer imports/calls `apriPdf`/`window.open`. Both "Apri" and "Stampa / PDF" now call one `viewPdf(document)` that, once the PDF is fetched, opens the same lazy-loaded `PdfViewerModal` (with its existing Condividi/Scarica actions) used by `ArchivioDocs.jsx` and `PannelloInvioDocumento.jsx` — no new PDF viewer/backend was invented.
