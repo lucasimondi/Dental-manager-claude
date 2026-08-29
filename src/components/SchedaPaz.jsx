@@ -2,6 +2,7 @@ import React, { Suspense, lazy, useState } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr } from './ui';
 import { C, fmt, fmtD, today, SCADENZA_PRESET, addMesi, rilevaRichiamo } from '../lib/utils';
 import PdfView from './PdfView.jsx';
+import { aggregateSaldi } from '../lib/domain/incassiMath.js';
 
 const DocMedico = lazy(() => import('./DocMedico.jsx'));
 const DocFiscale = lazy(() => import('./DocFiscale.jsx'));
@@ -22,7 +23,7 @@ const prossimaDataMascherina = (orto) => {
   return d.toISOString().slice(0, 10);
 };
 
-export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {}, implants = [], setImplants, setPatients, setPayments, richiami = [], setRichiami, onNuovoAppuntamento, onPatientChange, studioMembership, currentUserId, isStudioAdmin }) {
+export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {}, implants = [], setImplants, setPatients, setPayments, richiami = [], setRichiami, onNuovoAppuntamento, onPatientChange, studioMembership, currentUserId, isStudioAdmin, saldiPiani = {} }) {
   const [tab, setTab] = useState(initTab || 'info');
   const [documentFlow, setDocumentFlow] = useState(() => initialDocumentRequest?.type === 'ricetta' ? 'ricetta' : null);
   const [documentsReloadToken, setDocumentsReloadToken] = useState(0);
@@ -42,15 +43,18 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
   const patApp = [...(Array.isArray(appointments) ? appointments : []).filter((a) => a?.pazienteId === paz.id)]
     .sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')));
 
-  const totDovuto = patPlans.reduce((s, pl) => {
-    const sub = pl.voci.reduce((a, v) => a + Number(v.prezzo), 0);
-    const sc = Number(pl.sconto) || 0;
-    const scontato = pl.scontoTipo === 'pct' ? sub * (sc / 100) : Math.min(sc, sub);
-    return s + Math.max(0, sub - scontato);
-  }, 0);
-  const totPaid = patPay.reduce((s, p) => s + Number(p.importo), 0);
-  const totDaPagare = Math.max(0, totDovuto - totPaid);
-  const pctPagato = totDovuto > 0 ? Math.min(100, Math.round((totPaid / totDovuto) * 100)) : 0;
+  // POL-FIN-002: "Da incassare" is the canonical saldo_piano (totale_piano -
+  // totale_pagato) computed server-side by get_saldo_piano — never
+  // recomputed here. The parent (App.jsx) fetches it and hands it down as
+  // the saldiPiani prop; this component takes no data-fetching hook and no
+  // direct backend-client import of its own — see
+  // tests/patientRecordRecovery.test.mjs, a regression guard from the
+  // POL-UI-PATIENT-FREEZE-PROD incident.
+  const patPlanIds = patPlans.map((pl) => pl.id);
+  const saldiCaricati = patPlanIds.length === 0 || patPlanIds.every((id) => saldiPiani[id]);
+  const aggSaldi = aggregateSaldi(patPlanIds.map((id) => saldiPiani[id]).filter(Boolean));
+  const totDaPagare = aggSaldi.saldo_piano;
+  const pctPagato = aggSaldi.totale_piano > 0 ? Math.min(100, Math.round((aggSaldi.totale_pagato / aggSaldi.totale_piano) * 100)) : 0;
 
   const toggleEseguita = (plId, i) => setPlans((prev) => prev.map((pl) => {
     if (pl.id !== plId) return pl;
@@ -132,7 +136,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
       </div>
 
       <div style={{ background: C.priD, display: 'flex', borderTop: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
-        {[{ l: 'Piani', v: patPlans.length }, { l: 'Pagato', v: fmt(totPaid) }, { l: 'Da pagare', v: fmt(totDaPagare) }, { l: 'Visite', v: patApp.length }].map((s) => (
+        {[{ l: 'Piani', v: patPlans.length }, { l: 'Pagato', v: saldiCaricati ? fmt(aggSaldi.totale_pagato) : '…' }, { l: 'Da pagare', v: saldiCaricati ? fmt(totDaPagare) : '…' }, { l: 'Visite', v: patApp.length }].map((s) => (
           <div key={s.l} style={{ flex: 1, textAlign: 'center', padding: '8px 2px', borderRight: '1px solid rgba(255,255,255,0.1)' }}>
             <div style={{ color: s.l === 'Da pagare' && totDaPagare > 0 ? '#FCA5A5' : '#fff', fontWeight: 800, fontSize: 12 }}>{s.v}</div>
             <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 9 }}>{s.l}</div>
@@ -376,43 +380,62 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
           <div>
             <Crd style={{ marginBottom: 12, background: C.priD, border: 'none' }}>
               <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Situazione finanziaria</div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <div><div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)' }}>Dovuto totale</div><div style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>{fmt(totDovuto)}</div></div>
-                <div style={{ textAlign: 'center' }}><div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)' }}>Pagato</div><div style={{ fontSize: 16, fontWeight: 800, color: '#86efac' }}>{fmt(totPaid)}</div></div>
-                <div style={{ textAlign: 'right' }}><div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)' }}>Da pagare</div><div style={{ fontSize: 16, fontWeight: 800, color: totDaPagare > 0 ? '#FCA5A5' : '#86efac' }}>{fmt(totDaPagare)}</div></div>
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)' }}>Da incassare</div>
+                <div style={{ fontSize: 26, fontWeight: 900, color: saldiCaricati ? (aggSaldi.saldo_piano > 0 ? '#FCA5A5' : '#86efac') : 'rgba(255,255,255,0.4)' }}>
+                  {saldiCaricati ? fmt(aggSaldi.saldo_piano) : '…'}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                <div style={{ flex: 1, background: 'rgba(255,255,255,0.08)', borderRadius: 8, padding: '8px 10px' }}>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)' }}>Eseguito non pagato</div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: '#FCD34D' }}>{saldiCaricati ? fmt(aggSaldi.eseguito_non_pagato) : '…'}</div>
+                </div>
+                <div style={{ flex: 1, background: 'rgba(255,255,255,0.08)', borderRadius: 8, padding: '8px 10px' }}>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)' }}>Acconto</div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: '#86efac' }}>{saldiCaricati ? fmt(aggSaldi.acconto) : '…'}</div>
+                </div>
               </div>
               <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 6, height: 8, overflow: 'hidden', marginBottom: 4 }}>
                 <div style={{ height: '100%', width: `${pctPagato}%`, background: pctPagato >= 100 ? '#86efac' : '#60a5fa', borderRadius: 6, transition: 'width 0.3s' }} />
               </div>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', textAlign: 'right' }}>{pctPagato}% saldato</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>
+                <span>Eseguito {saldiCaricati ? fmt(aggSaldi.totale_eseguito) : '…'} · Pagato {saldiCaricati ? fmt(aggSaldi.totale_pagato) : '…'}</span>
+                <span>{pctPagato}% saldato</span>
+              </div>
             </Crd>
             {patPlans.length > 0 && (
               <div style={{ marginBottom: 12 }}>
                 <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 7 }}>Dettaglio per piano</div>
                 {patPlans.map((pl) => {
-                  const sub = pl.voci.reduce((s, v) => s + Number(v.prezzo), 0);
-                  const sc = Number(pl.sconto) || 0;
-                  const scontato = pl.scontoTipo === 'pct' ? sub * (sc / 100) : Math.min(sc, sub);
-                  const plTot = Math.max(0, sub - scontato);
-                  const plEseg = pl.voci.filter((v) => v.eseguita).reduce((s, v) => s + Number(v.prezzo), 0);
-                  const plDaFare = pl.voci.filter((v) => !v.eseguita).reduce((s, v) => s + Number(v.prezzo), 0);
+                  const s = saldiPiani[pl.id];
                   return (
                     <Crd key={pl.id} style={{ marginBottom: 8, borderLeft: `3px solid ${C.pri}` }}>
                       <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>{pl.titolo}</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        {[['Totale piano', plTot, C.pri], ['Eseguito', plEseg, C.acc], ['Da eseguire', plDaFare, C.war]].map(([l, v, co]) => (
-                          <div key={l} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ fontSize: 11, color: C.txm }}>{l}</span>
-                            <span style={{ fontSize: 12, fontWeight: 700, color: co }}>{fmt(v)}</span>
-                          </div>
-                        ))}
-                        {scontato > 0 && (
-                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ fontSize: 11, color: C.suc }}>Sconto</span>
-                            <span style={{ fontSize: 12, fontWeight: 700, color: C.suc }}>−{fmt(scontato)}</span>
-                          </div>
-                        )}
-                      </div>
+                      {!s ? (
+                        <div style={{ fontSize: 11, color: C.txl }}>Caricamento saldo…</div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {[['Totale piano', Number(s.totale_piano), C.pri], ['Da incassare', Number(s.saldo_piano), Number(s.saldo_piano) > 0 ? C.dan : C.suc]].map(([l, v, co]) => (
+                            <div key={l} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ fontSize: 11, color: C.txm }}>{l}</span>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: co }}>{fmt(v)}</span>
+                            </div>
+                          ))}
+                          {Number(s.eseguito_non_pagato) > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ fontSize: 11, color: C.txm }}>Eseguito non pagato</span>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: C.war }}>{fmt(Number(s.eseguito_non_pagato))}</span>
+                            </div>
+                          )}
+                          {Number(s.acconto) > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ fontSize: 11, color: C.suc }}>Acconto</span>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: C.suc }}>{fmt(Number(s.acconto))}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </Crd>
                   );
                 })}

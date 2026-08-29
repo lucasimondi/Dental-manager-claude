@@ -96,16 +96,12 @@ export const QUICK_ACTIONS_CATALOG = Object.freeze([
     workflow: ['navigate:paz', 'select_patient', 'open_scheda_doc_tab', 'open_consenso'],
     run: (ctx) => ctx.onNavigate('paz'),
   },
-  /* "Da incassare" — the real receivables view is a separate module still
-     in development (see the Product Owner's own planning note; not yet
-     present as repository evidence, so no destination is invented here).
-     Wired now with its final id/icon/label/gating so enabling it later is
-     a one-line change to `run` only — everything else (catalog entry,
-     Personalizza azioni rapide, Home rendering) already works today. The
-     placeholder is an honest "coming soon" notice, never a fake page. */
+  /* POL-FIN-002: the receivables module now exists. Keep PR #74's action,
+     visual treatment and personalization contract; only replace its
+     temporary honest placeholder with the shipped destination. */
   {
     id: 'da_incassare', ic: 'eur', label: 'Da incassare',
-    run: (ctx) => ctx.openComingSoon ? ctx.openComingSoon('Da incassare — in arrivo') : undefined,
+    run: (ctx) => ctx.onNavigate('incassi'),
   },
 ]);
 

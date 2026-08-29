@@ -4,6 +4,7 @@ import { supabase, DB } from './lib/supabase.js';
 import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, getLogoSlug, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, uid, applyBrandColors, applyHeaderColor } from './lib/utils';
 import { generaRichiamiBot } from './lib/richiamiBot';
 import { salvaPosizione, leggiPosizione, pulisciPosizione } from './lib/posizioneNavigazione';
+import { fetchSaldiPiani } from './lib/domain/incassiService.js';
 // POL-AI-001: MobileDock (the POL-UI-009/010 poliedro-button-opens-full-nav-
 // menu) is superseded by Poliedron — the same floating polyhedron concept,
 // evolved into the app's universal command interface (search/navigate/
@@ -48,6 +49,7 @@ import LoadingScreen from './components/LoadingScreen.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import QuickBookingModal from './components/QuickBookingModal.jsx';
 const ControlloGestione = lazy(() => import('./components/ControlloGestione.jsx'));
+const Incassi = lazy(() => import('./components/Incassi.jsx'));
 const Pazienti = lazy(() => import('./components/Pazienti.jsx'));
 const PatientWorkspaceBoundary = lazy(() => import('./components/PatientWorkspaceBoundary.jsx'));
 const Piani = lazy(() => import('./components/Piani.jsx'));
@@ -88,6 +90,11 @@ export default function App() {
   const [autoOpenNew, setAutoOpenNew] = useState(null); // 'paz' | 'piani' | 'paga' | 'richiami' | 'spese' | null
   const [agendaInitPaz, setAgendaInitPaz] = useState(null);
   const [schedaDashPaz, setSchedaDashPaz] = useState(null);
+  // POL-FIN-002: per-plan receivable balances for the currently-open patient
+  // record, fetched here (App.jsx already does async data loading) and
+  // handed to SchedaPaz as a plain prop — SchedaPaz itself must stay
+  // synchronous/self-contained (tests/patientRecordRecovery.test.mjs).
+  const [saldiPiani, setSaldiPiani] = useState({});
   const [quickHubRecallRequest, setQuickHubRecallRequest] = useState(null);
   const [quickHubActivityRequest, setQuickHubActivityRequest] = useState(null);
   const [quickHubPoliedronRequest, setQuickHubPoliedronRequest] = useState(null);
@@ -229,6 +236,19 @@ export default function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataLoading]);
+
+  // POL-FIN-002: refresh the open patient's per-plan receivable balances
+  // whenever the patient changes or plans/payments are edited underneath
+  // them (new voce, payment registered, plan removed, etc.).
+  useEffect(() => {
+    let active = true;
+    const pazienteId = schedaDashPaz?.paz?.id;
+    if (pazienteId == null) { setSaldiPiani({}); return undefined; }
+    const ids = plans.filter((pl) => pl?.pazienteId === pazienteId).map((pl) => pl.id);
+    if (ids.length === 0) { setSaldiPiani({}); return undefined; }
+    fetchSaldiPiani(ids).then((map) => { if (active) setSaldiPiani(map); });
+    return () => { active = false; };
+  }, [schedaDashPaz?.paz?.id, plans, payments]);
 
   // Salva la pagina corrente ad ogni cambio, per poterla ripristinare dopo
   // un ricaricamento a freddo. Evitiamo di scrivere durante il ripristino
@@ -521,6 +541,7 @@ export default function App() {
             initTab={schedaDashPaz.tab}
             plans={plans} setPlans={setPlansSync}
             payments={payments}
+            saldiPiani={saldiPiani}
             appointments={appointments}
             implants={implants}
             setImplants={setImplantsSync}
@@ -632,7 +653,7 @@ export default function App() {
             )}
             {page === 'piani' && (
               <Piani
-                patients={patients} plans={plans} setPlans={setPlansSync}
+                patients={patients} plans={plans} setPlans={setPlansSync} payments={payments} setPayments={setPaymentsSync}
                 pricelist={pricelist} templates={templates} si={studioInfo} features={features}
                 initPatId={initPatId} onClearInitPat={() => setInitPatId(null)}
                 onOpenPaz={goSchedaPaz}
@@ -640,11 +661,12 @@ export default function App() {
               />
             )}
             {page === 'paga' && <Pagamenti patients={patients} payments={payments} setPayments={setPaymentsSync} plans={plans} autoOpenNew={autoOpenNew === 'paga'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} />}
+            {page === 'incassi' && <Incassi studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} payments={payments} pricelist={pricelist} setPlans={setPlansSync} setPayments={setPaymentsSync} onOpenPaz={goSchedaPaz} />}
             {page === 'listino' && <Listino pricelist={pricelist} setPricelist={setPricelistSync} si={studioInfo} />}
             {page === 'agenda' && <Agenda patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} onOpenPatient={(patient) => goSchedaPaz(patient, 'info')} onOpenRecall={openQuickHubRecall} onOpenActivity={openQuickHubActivity} onPoliedronCommand={openQuickHubPoliedron} />}
             {page === 'richiami' && <Richiami patients={patients} plans={plans} payments={payments} appointments={appointments} richiami={richiami} setRichiami={setRichiamiSync} templates={templates} features={features} onOpenPaz={goSchedaPaz} si={studioInfo} autoOpenNew={autoOpenNew === 'richiami'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} initialPatientRequest={quickHubRecallRequest} onInitialPatientRequestHandled={(id) => setQuickHubRecallRequest((current) => current?.id === id ? null : current)} />}
             {page === 'spese' && <Spese studioId={session?.user?.app_metadata?.studio_id} autoOpenNew={autoOpenNew === 'spese'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} />}
-            {page === 'controllo' && <ControlloGestione studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} payments={payments} appointments={appointments} pricelist={pricelist} onOpenPaz={goSchedaPaz} isDentistico={!studioInfo?.vertical || studioInfo.vertical === 'dentistico'} />}
+            {page === 'controllo' && <ControlloGestione studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} setPlans={setPlansSync} payments={payments} setPayments={setPaymentsSync} appointments={appointments} pricelist={pricelist} onOpenPaz={goSchedaPaz} isDentistico={!studioInfo?.vertical || studioInfo.vertical === 'dentistico'} />}
             {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} initialFiltroTipo={archivioFiltroTipoHint} />}
             {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
             {page === 'agenteai' && <AgenteAISetup features={features} />}

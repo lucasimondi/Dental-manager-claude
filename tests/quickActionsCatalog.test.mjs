@@ -32,7 +32,7 @@ test('no quick action label carries a literal "+" prefix', () => {
   }
 });
 
-test('Product Owner round 3 additions: Ricetta, Consenso, Da incassare exist, reuse existing destinations, invent nothing new', () => {
+test('Product Owner round 3 additions: Ricetta, Consenso, Da incassare exist and reuse real destinations', () => {
   const ricetta = getQuickAction('ricetta');
   const consenso = getQuickAction('consenso');
   const daIncassare = getQuickAction('da_incassare');
@@ -45,14 +45,9 @@ test('Product Owner round 3 additions: Ricetta, Consenso, Da incassare exist, re
   // already uses — no new routing invented for it.
   const ctxNavigate = { onNavigate: (id) => id };
   assert.equal(consenso.run(ctxNavigate), 'paz');
-  // Da incassare is an honest placeholder: it calls the context's
-  // openComingSoon hook (never a fake navigation) when present, and is a
-  // safe no-op when the hook is absent (e.g. the Impostazioni picker,
-  // which never calls .run() at all).
-  let seenMsg = null;
-  daIncassare.run({ openComingSoon: (msg) => { seenMsg = msg; } });
-  assert.ok(seenMsg && seenMsg.toLowerCase().includes('incassare'));
-  assert.equal(daIncassare.run({}), undefined, 'must not throw when openComingSoon is not provided');
+  // POL-FIN-002 shipped the real module: PR #74's existing action now
+  // changes only its handler and navigates to that verified route.
+  assert.equal(daIncassare.run(ctxNavigate), 'incassi');
 });
 
 // Product Owner round 4: "Ricetta deve aprire il tab ricetta, non

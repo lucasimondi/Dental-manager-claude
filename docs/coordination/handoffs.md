@@ -1,5 +1,67 @@
 # Handoffs
 
+## POL-FIN-002 — Execution UI and quick payment
+
+- Agent: Codex on `feature/modulo-incassi`.
+- Completed: inline Da eseguire/Eseguita selector backed by the shared `markTreatmentItemCompleted` action; optional post-completion payment form with editable amount/date/method; paid record persisted through the existing App sync setter.
+- Safety: no direct Supabase access, no new financial formula, no migration/dependency change. Undoing execution does not delete payments.
+- Validation: full suite 538/538; production build passed with pre-existing warnings; `git diff --check` clean.
+- External blocker: the requested `agente-assistente` tool is hosted outside this repository. Its authoritative source/schema and deployment authority are unavailable, so no live tool was guessed or mutated.
+- Exact next action: final preview QA for all repository-contained work; no merge without Product Owner approval.
+
+---
+
+## POL-FIN-002 — Step 5 editable plans and safe removal
+
+- Agent: Codex on `feature/modulo-incassi`.
+- Completed: existing plans accept new free/listino treatment items at any time; each item has a touch-sized remove action. A paid allocation warning is shown before removing an item with collected money, and payment records are never changed or deleted.
+- Allocation detail: `planPaymentAllocation.js` mirrors canonical paid-only FIFO across a patient's plans, respects percentage/fixed plan discounts, then attributes the plan quota by item order solely for the warning. This does not create a nonexistent payment-to-item foreign key.
+- Database/dependencies: none. No migration, RLS, schema, package or lockfile change.
+- Validation: full suite 536/536; production build passed with only pre-existing warnings; `git diff --check` clean.
+- Exact next action: step 6, shared "Segna eseguita" UI action and optional quick-payment handoff; do not guess or modify the live `agente-assistente` tool schema without its authoritative source/contract. No PR or merge without explicit Product Owner approval.
+
+---
+
+## POL-FIN-002 — Step 4 Aggiungi da incassare
+
+- Agent: Codex, continuing the recorded handoff on `feature/modulo-incassi`.
+- Completed: shared Incassi form for an already-loaded pricelist item or a free item; patient selector; amount and execution state; optional contextual payment; live remaining balance. It appends the receivable to the patient's most recent plan, or creates a standard "Prestazioni occasionali" plan when none exists.
+- Architecture: pure/tested `incassiActions.js`; existing `buildNewPlan`; existing App sync setters for `dm_pl`/`dm_py`; no direct Supabase access or duplicated pricelist query. The AI planner's ambiguity-safe target selection remains unchanged because this explicit human workflow has a different approved rule.
+- Database/dependencies: none. No migration, schema, RLS, production-data, package or lockfile change.
+- Validation: full suite 534/534; production build passed with the pre-existing duplicate `chat` icon warning; `git diff --check` clean.
+- Exact next action: implement step 5, keeping plans editable and warning before removing a treatment item whose patient has collected payments. Never delete payment rows silently. Do not open a PR or merge without explicit Product Owner approval.
+
+---
+
+## POL-FIN-002 — Step 3 Incassi section
+
+- Agent: Codex, continuing Claude's recorded handoff on `feature/modulo-incassi` at `6430076`.
+- Completed: one shared `Incassi.jsx` surface exposed as both a direct navigation page and the sixth Controllo di Gestione tab; canonical `get_saldi_aperti_studio` worklist; month/year collected KPI; total open-balance KPI; studio-scoped persisted sorting by balance or age; patient-row navigation to the stable Pagamenti tab; accessible loading/error/empty states and responsive/touch CSS.
+- Files changed: `src/components/Incassi.jsx`, `src/components/ControlloGestione.jsx`, `src/components/PremiumVisualSystem.css`, `src/App.jsx`, `src/lib/utils.js`, `src/lib/domain/incassiService.js`, `tests/incassiSection.test.mjs`, and coordination docs.
+- Database/dependencies: none in this step. No migration, RLS, schema, package or lockfile change. The component consumes the already-applied POL-FIN-002 RPC and contains no plan-balance formula.
+- Validation: dedicated tests 5/5; full suite 531/531; production build passed with pre-existing duplicate `chat` icon, pdfjs eval, dynamic-import and chunk-size warnings; `git diff --check` clean.
+- Scope safety: PR #74's protected `quickActionsCatalog.js` and Impostazioni quick-actions section are untouched. Its overlapping `App.jsx` work is in a separate Home/quick-action area; this step only registers the lazy Incassi page.
+- Exact next action: implement plan §5, "Aggiungi da incassare", reusing the existing treatment-plan service and already-loaded pricelist. Do not open a PR or merge without explicit Product Owner approval.
+
+---
+
+## POL-FIN-002 — Modulo Incassi / Da incassare (saldo piano, eseguito, acconto) — handoff to CODEX
+
+- Task ID: POL-FIN-002. Agent: Claude, direct Product Owner request in-session (plan doc `claude/piano-modulo-incassi-da-incassare.md`, committed on this branch, is the authoritative spec — read it in full before continuing).
+- Branch: `feature/modulo-incassi` from `origin/master@05ee761`.
+- Handoff reason: Claude session token budget reached mid-task, Product Owner asked to switch to Codex. This is an explicit, recorded handoff, not an abandoned task — see `docs/coordination/current-task.md`'s "Current task" section for the full status, exactly what's done vs. not, and the exact next action.
+- Objective: replace the buggy "da incassare" (which showed a plan's executed total without subtracting payments already received) with a canonical three-value model computed server-side: `saldo_piano = totale_piano - totale_pagato_piano`, `eseguito_non_pagato`, `acconto`.
+- Completed and pushed (3 commits on `feature/modulo-incassi`):
+  1. `supabase/migrations/20260829180000_pol_fin_002_incassi_saldo_piano.sql` — new `get_saldo_piano(bigint)`/`get_saldi_aperti_studio(uuid)` RPCs + private views, additive only, applied to production (`idklxdqebfceplrualgh`) after synthetic PGlite validation (19/19 assertions) and a real old-vs-new comparison against Studio Simondi's active plans (reconciled exactly, including the real analogue of the reported Lauretti case). `get_advisors(security)`: no new findings.
+  2. `src/components/SchedaPaz.jsx`, `src/App.jsx`, new `src/lib/domain/incassiService.js`/`incassiMath.js` — scheda paziente's economic widget now uses the three-value model, sourced via a prop from `App.jsx` (NOT fetched inside `SchedaPaz.jsx` itself — see the hard constraint below). 526/526 tests pass, build clean.
+- Database changes: see migration file above; fully additive (`CREATE VIEW`/`CREATE FUNCTION` only, no existing table/column touched), reversible via the `DROP` statements documented in the migration's trailing comment. Already live in production.
+- Tests executed: `npm run build` (clean), `npm test` (526/526). Local-only PGlite migration test (not in repo, session scratchpad — re-derive if needed) and direct `execute_sql` old-vs-new comparison against production (read-only, see current-task.md for the exact query/results).
+- **Hard constraint for whoever continues**: `tests/patientRecordRecovery.test.mjs` forbids `SchedaPaz.jsx` from containing `useEffect`/`supabase.`/`Promise.all` or importing `../lib/supabase` (regression guard from the POL-UI-PATIENT-FREEZE-PROD incident — this component previously hung indefinitely on PWA clients when it did async work itself). Any further data this component needs must be fetched in a parent (`App.jsx`, or `PatientWorkspaceBoundary.jsx`) and passed down as a prop, exactly like `plans`/`payments`/the new `saldiPiani` already are.
+- Unresolved / not started: sections 4-8 of the plan doc (Incassi page/dock entry/Controllo Gestione tab, "Aggiungi da incassare" form, always-editable piani with a removal-with-payments warning, "segna eseguita" UI + new `agente-assistente` AI tool, quick "Registra pagamento" form) — see `docs/coordination/current-task.md` for a detailed breakdown of each, including relevant existing files/functions to reuse (`treatmentPlanService.js`'s `buildNewPlan`/`pickTargetPlanForNewItem`/`markTreatmentItemCompleted`, `src/lib/utils.js`'s `NAV`/`DEF_DOCK_SETTINGS`/`mergeDockSettings`, `ControlloGestione.jsx`'s `TABS`).
+- Risks / open items: (1) the `agente-assistente` edge function's source is not in this repo — its tool schema must be authored against the live deployed function, not guessed; (2) Supabase branching is unavailable on this project's plan (confirmed: `create_branch` → `PaymentRequiredException`), so any further schema/RPC change needs the same local-PGlite-then-production-with-PO-approval path used for step 1, not a real preview branch; (3) no Vercel preview has been deployed/QA'd yet for this branch; (4) `runbook-sviluppo-sicuro.md`/`runbook-rls-nuove-tabelle.md`, referenced by the plan doc, do not exist in this repository (confirmed via `find`) — they live only in the Product Owner's external Claude Project, so this session followed `AGENTS.md`'s own embedded rules plus this repo's real `docs/runbooks/*.md` and migration house style instead.
+- Exact next action: continue with plan doc section 4 (Incassi page) next. Do not merge or open a PR without explicit Product Owner approval — none has been given yet.
+---
+
 ## POL-UI-017 — merged to master
 
 PR #74 ("POL-UI-017 R2: mobile Home and navigation refresh", covering Rounds 2-6 on branch `claude/pol-ui-017-mobile-home-r2-3pizhn`) was merged to `master` by explicit Product Owner instruction ("mergia in master"). Merge commit `bbae1226`, merge method: merge commit (not squash/rebase, consistent with this repo's existing history, e.g. PR #73). PR state before merge: `mergeable_state: clean`, all checks green (CI `verify`, Vercel deploy, Netlify deploy preview). `master` is now at `bbae1226`.

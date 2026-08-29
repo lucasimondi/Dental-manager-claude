@@ -291,12 +291,11 @@ test('REGRESSION GUARD (round 3 hardening): .page-dock-clearance is declared dis
   assert.match(canonicalBlock, /\.page-dock-clearance \{ display: block; \}/);
 });
 
-test('"Da incassare" placeholder reuses the shared Toast component, not a new one; never a silent no-op that looks broken', () => {
+test('shared Home Toast remains available for inline patient creation after Da incassare gains a real route', () => {
   assert.match(dashboardSrc, /import \{ [^}]*\bToast\b[^}]*\} from '\.\/ui';/);
   // Round 6 renamed comingSoonMsg -> homeToastMsg, a generic Home toast
   // state now also used to confirm inline patient creation (see below).
   assert.match(dashboardSrc, /const \[homeToastMsg, setHomeToastMsg\] = useState\(''\);/);
-  assert.match(dashboardSrc, /openComingSoon: \(msg\) => setHomeToastMsg\(msg\)/);
   assert.match(dashboardSrc, /\{homeToastMsg && <Toast msg=\{homeToastMsg\} onDone=\{\(\) => setHomeToastMsg\(''\)\} \/>\}/);
 });
 

@@ -1966,10 +1966,49 @@ body:has(.home-widget-grid) #app-scroll {
   border-radius: 6px;
   background: color-mix(in srgb, var(--pol-ink-muted, #64748b) 35%, transparent);
 }
+
+/* POL-FIN-002 — shared Incassi page/tab. */
+.incassi-page { padding: 0 14px 32px; color: var(--text-primary); }
+.incassi-page.is-embedded { padding-top: 10px; }
+.incassi-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 0 14px; }
+.incassi-period { display: flex; gap: 4px; padding: 3px; border-radius: 10px; background: var(--surface-base); }
+.incassi-sort { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 12px; font-weight: 750; }
+.incassi-sort select { min-height: 44px; border: 1px solid var(--border-medium); border-radius: var(--pol-radius-control); padding: 0 34px 0 12px; background: var(--surface-card); color: var(--text-primary); }
+.incassi-kpis { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin-bottom: 12px; }
+.incassi-kpi { display: grid; gap: 4px; padding: 18px !important; }
+.incassi-kpi span { color: var(--text-secondary); font-size: 12px; font-weight: 800; }
+.incassi-kpi strong { font-size: clamp(22px,4vw,32px); line-height: 1.05; }
+.incassi-kpi small { color: var(--text-muted); font-size: 11px; }
+.incassi-kpi.is-collected strong { color: var(--success); }
+.incassi-kpi.is-outstanding strong,.incassi-row__amount { color: var(--danger); }
+.incassi-worklist { padding: 0 !important; overflow: hidden; }
+.incassi-worklist__header { display: flex; justify-content: space-between; padding: 15px 16px; border-bottom: 1px solid var(--border-soft); }
+.incassi-worklist__header>div { display: flex; align-items: baseline; gap: 8px; }
+.incassi-worklist__header span { color: var(--text-muted); font-size: 11px; }
+.incassi-list { max-height: min(52dvh,560px); overflow-y: auto; overscroll-behavior: contain; }
+.incassi-row { width: 100%; min-height: 60px; padding: 10px 16px; border: 0; border-bottom: 1px solid var(--border-soft); background: transparent; color: inherit; display: flex; align-items: center; justify-content: space-between; gap: 16px; text-align: left; cursor: pointer; }
+.incassi-row:hover { background: var(--surface-interactive); }
+.incassi-row:disabled { cursor: default; opacity: .68; }
+.incassi-row__identity { min-width: 0; display: grid; gap: 3px; }
+.incassi-row__identity strong,.incassi-row__identity small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.incassi-row__identity small { color: var(--text-secondary); font-size: 11px; }
+.incassi-row__amount { flex: none; font-size: 15px; font-weight: 900; }
+.incassi-note { margin: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom,0px)); color: var(--text-muted); font-size: 10.5px; line-height: 1.45; }
+@media (max-width:719px) {
+  .incassi-page { padding-inline: 0; }
+  .incassi-toolbar { align-items: stretch; flex-direction: column; }
+  .incassi-sort { justify-content: space-between; }
+  .incassi-sort select { flex: 1; max-width: 230px; }
+  .incassi-kpis { grid-template-columns: 1fr; }
+  .incassi-list { max-height: none; overflow: visible; }
+}
 @media (max-width: 719px) {
   /* Touch targets stay >=44px on mobile even inside the scroll area. */
   .home-richiami-list > [role='button'] { min-height: 48px; }
 }
+.incassi-source-toggle,.incassi-form-actions{display:flex;gap:8px;margin-bottom:14px}.incassi-source-toggle .pol-tab{flex:1}.incassi-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.incassi-check{display:flex;align-items:center;gap:9px;min-height:44px;font-weight:700;font-size:13px}.incassi-check input{width:20px;height:20px;accent-color:var(--pol-focus,#185fa5)}.incassi-live-balance{display:flex;align-items:center;justify-content:space-between;margin:10px 0 14px;padding:12px;border-radius:10px;background:#fff1f1;color:#b42318}.incassi-live-balance strong{font-size:18px}.incassi-form-error{color:#b42318;font-size:12px;margin:0 0 12px}.incassi-form-actions{margin:0}@media(max-width:600px){.incassi-form-grid{grid-template-columns:1fr}.incassi-toolbar>.pol-btn{width:100%}}
+.plan-add-item{width:100%;min-height:44px;margin-top:10px;border:1.5px dashed var(--pol-border,#d8dee8);border-radius:9px;background:transparent;color:var(--pol-primary,#185fa5);font-weight:800;cursor:pointer}.plan-inline-editor{margin-top:10px;padding:12px;border-radius:10px;background:var(--pol-bg,#f7f8fa)}.plan-inline-editor__grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.plan-inline-editor__actions{display:flex;justify-content:flex-end;gap:8px}@media(max-width:600px){.plan-inline-editor__grid{grid-template-columns:1fr}.plan-inline-editor__actions .pol-btn{flex:1}}
+.plan-quick-payment-offer{display:flex;align-items:center;gap:9px;min-height:44px;margin-top:6px;padding:8px 10px;border-radius:8px;background:#eaf7f1;color:#0f6e56;font-size:12px;font-weight:800}.plan-quick-payment-offer input{width:20px;height:20px;accent-color:#0f6e56}
 
 /* ══════════════════════════════════════════════════════════════════════════
    POL-UI-017 ROUND 2 — mobile Home and navigation refresh
