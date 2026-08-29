@@ -1,5 +1,17 @@
 # Handoffs
 
+## POL-UI-017 ROUND 5 — "il tab ricetta deve essere aperto più in alto"
+
+- Task ID: POL-UI-017 ROUND 5. Agent: Claude, on direct Product Owner feedback on the Round 4 commit. Same branch/PR (`claude/pol-ui-017-mobile-home-r2-3pizhn`, PR #74).
+- Base: Round 4's own commit `0d5a6e8`.
+- Diagnosis: `DocMedico.jsx` renders as a full-viewport fixed overlay (`position:fixed; inset:0`) that already starts at the very top of the screen, so the complaint wasn't about the overlay's own position — it was about content position WITHIN its internal scroll container. When `tipo === 'ricetta'`, the actual "Farmaci prescritti" fields render as the THIRD card, after the full "Tipo documento" 6-option selector and the "Data documento" card — on a phone that pushes the relevant fields below the fold, exactly backwards for a flow (the Ricetta quick action, the "Nuova ricetta" button, or a Poliedron prescription request) that already told the screen which type to use.
+- Fix: added a `farmaciSectionRef` (a plain wrapping `<div>`, since `Crd` is a function component and does not forward refs) around the Farmaci prescritti card, and a mount-only `useEffect` (`initialType !== 'ricetta' || !puoiPrescrivere` guard, empty deps) that calls `farmaciSectionRef.current?.scrollIntoView({ block: 'start' })` once on open. Applies uniformly to every caller that pre-selects Ricetta via `initialType` (Home's quick action, the Doc tab's own "Nuova ricetta" button, Poliedron's prescription workflow) since they all set it identically — no new plumbing needed beyond the ref/effect. The type selector is not hidden, collapsed or removed; scrolling back up still reaches it.
+- Files changed: `src/components/DocMedico.jsx`, `tests/mobileHomeRound2.test.mjs`, coordination docs.
+- Database/schema/RLS/RBAC/financial-formula/Poliedron-engine changes: none. No change to `useFormPersistente` draft persistence, `puoiPrescrivere` licensing gate, or any other document type.
+- Tests: full `npm test` 574/574 (1 new source-level regression test asserting the ref, the guard condition, the mount-only empty-deps effect, and that the type selector itself is still rendered). `npm run build` clean. `git diff --check` clean.
+- Not verifiable: authenticated runtime QA — same constraint as prior rounds; the exact felt scroll offset needs the Product Owner's own phone.
+- Exact next action: push to the same branch/PR #74, no new PR. Product Owner re-tests on the redeployed preview. Do not merge, do not deploy, do not start Round 6 unprompted.
+
 ## POL-UI-017 ROUND 4 — "Ricetta deve aprire il tab ricetta, non paziente"
 
 - Task ID: POL-UI-017 ROUND 4. Agent: Claude, on direct Product Owner feedback on the Round 3 commit. Same branch/PR (`claude/pol-ui-017-mobile-home-r2-3pizhn`, PR #74).

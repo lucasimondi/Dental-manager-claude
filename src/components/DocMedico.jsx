@@ -120,6 +120,23 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
   const [data, setData] = useState(today());
   const [generated, setGenerated] = useState(false);
 
+  // Product Owner: "il tab ricetta deve essere aperto più in alto" — when
+  // this screen opens with the type already decided by the caller
+  // (initialType, e.g. the Home "Ricetta" quick action, the "Nuova
+  // ricetta" button in the patient's Doc tab, or a Poliedron prescription
+  // request), the actual "Farmaci prescritti" fields sit two full cards
+  // (Tipo documento's 6-option list + Data) below the fold on a phone —
+  // exactly the opposite of what picking a specific type up front should
+  // buy the user. Scroll them into view immediately on open so they're the
+  // first thing visible under the header, without hiding or removing the
+  // type selector (still reachable by scrolling up to change type).
+  const farmaciSectionRef = useRef(null);
+  useEffect(() => {
+    if (initialType !== 'ricetta' || !puoiPrescrivere) return;
+    farmaciSectionRef.current?.scrollIntoView({ block: 'start' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // studio_id dell'utente loggato, necessario per salvare correttamente in
   // documenti_medici (RLS studio-scoped) — non è dentro studioInfo/si,
   // va letto dalla sessione come fa già Dashboard.jsx.
@@ -820,6 +837,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
 
         {/* ── RICETTA ── */}
         {tipo === 'ricetta' && (
+          <div ref={farmaciSectionRef}>
           <Crd style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}><Ic n="pill" s={11} c={C.txm} />Farmaci prescritti</div>
             {farmaci.map((f, i) => (
@@ -847,6 +865,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
             ))}
             <button onClick={addFarmaco} style={{ width: '100%', padding: '10px', border: `2px dashed ${C.brd}`, borderRadius: 10, background: 'transparent', color: C.pri, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Aggiungi farmaco</button>
           </Crd>
+          </div>
         )}
 
         {/* ── ESAMI EMATICI ── */}

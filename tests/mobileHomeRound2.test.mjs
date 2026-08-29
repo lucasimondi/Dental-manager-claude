@@ -29,6 +29,7 @@ const bellSrc = await readFile(new URL('../src/components/poliedron/PoliedronBel
 const quickActionsCatalogSrc = await readFile(new URL('../src/lib/quickActionsCatalog.js', import.meta.url), 'utf8');
 const impostazioniSrc = await readFile(new URL('../src/components/Impostazioni.jsx', import.meta.url), 'utf8');
 const appSrc = await readFile(new URL('../src/App.jsx', import.meta.url), 'utf8');
+const docMedicoSrc = await readFile(new URL('../src/components/DocMedico.jsx', import.meta.url), 'utf8');
 
 const round2Css = premiumCss.slice(premiumCss.indexOf('POL-UI-017 ROUND 2'));
 
@@ -318,6 +319,26 @@ test('ROUND 4: App.jsx\'s goSchedaPaz forwards an optional documentRequest into 
   // Every pre-existing goSchedaPaz caller keeps working with its old
   // 2-argument call unchanged — documentRequest defaults to null.
   assert.match(appSrc, /onOpenPaz=\{goSchedaPaz\}/);
+});
+
+// ===========================================================================
+// ROUND 5 — "il tab ricetta deve essere aperto più in alto"
+// ===========================================================================
+
+test('ROUND 5: DocMedico scrolls the Farmaci prescritti section into view on open when the type was already decided by the caller', () => {
+  assert.match(docMedicoSrc, /const farmaciSectionRef = useRef\(null\);/);
+  assert.match(docMedicoSrc, /if \(initialType !== 'ricetta' \|\| !puoiPrescrivere\) return;/);
+  assert.match(docMedicoSrc, /farmaciSectionRef\.current\?\.scrollIntoView\(\{ block: 'start' \}\)/);
+  // The ref must actually be attached to the Farmaci prescritti block, and
+  // the effect must run once on mount (not on every tipo change), or it
+  // would fight the user scrolling back up to change type.
+  assert.match(docMedicoSrc, /<div ref=\{farmaciSectionRef\}>\s*<Crd style=\{\{ marginBottom: 14 \}\}>\s*<div[^>]*>[^<]*<Ic n="pill"[^/]*\/>Farmaci prescritti<\/div>/);
+  const refStart = docMedicoSrc.indexOf('const farmaciSectionRef');
+  const effectBlock = docMedicoSrc.slice(refStart, refStart + 600);
+  assert.match(effectBlock, /\}, \[\]\);/, 'must be an empty-deps mount-only effect');
+  // The selector itself is not hidden or removed — the user can still
+  // scroll up and change type.
+  assert.match(docMedicoSrc, /tipiDisponibili\.map\(t =>/);
 });
 
 test('REGRESSION GUARD: saving quick_actions from Setup can only ever touch that one widget entry — every other widget survives byte-for-byte', () => {

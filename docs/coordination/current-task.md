@@ -1,11 +1,28 @@
 # Current task
 
+- TASK: POL-UI-017 — ROUND 5
+- TITLE: Product Owner follow-up on Round 4 — "il tab ricetta deve essere aperto più in alto"
+- OWNER: CLAUDE, on direct Product Owner feedback
+- BRANCH: `claude/pol-ui-017-mobile-home-r2-3pizhn` (same branch/PR as Rounds 2-4 — PR #74, no new PR opened)
+- BASE: Round 4's own commit `0d5a6e8` on this branch
+- STATUS: WAITING_PRODUCT_OWNER_POL_UI_017_R5_QA
+- OBJECTIVE: Round 4 made "Ricetta" open DocMedico's Ricetta tab directly, but on a phone the actual "Farmaci prescritti" fields sit below two full cards (the 6-option "Tipo documento" selector + "Data documento"), i.e. below the fold — the Product Owner asked for it to open "more toward the top".
+- WHAT SHIPPED: `src/components/DocMedico.jsx` — when it opens with `initialType === 'ricetta'` (true for the Home quick action, the pre-existing "Nuova ricetta" button inside the patient's Doc tab, and the Poliedron prescription workflow — all three set it identically, so all three benefit), a mount-only effect scrolls the "Farmaci prescritti" section into view immediately, so it is the first thing visible under the header instead of requiring a scroll past the type selector. The type selector itself is not hidden or removed — scrolling up still reaches it to change type. No change to any other document type's behavior, no change to persistence/`useFormPersistente`, no change to `puoiPrescrivere` gating.
+- FILES CHANGED (round 5): `src/components/DocMedico.jsx`, `tests/mobileHomeRound2.test.mjs`, this file, `docs/coordination/handoffs.md`.
+- VALIDATION: full `npm test` 574/574 (1 new source-level regression test); `npm run build` clean; `git diff --check` clean.
+- NOT VERIFIABLE: authenticated runtime/visual QA — same constraint as prior rounds; the exact scroll offset/feel on a real phone still needs the Product Owner's own device.
+- EXACT NEXT ACTION: Product Owner re-tests the redeployed PR #74 preview — confirms the Ricetta fields appear near the top on open. Do NOT merge/deploy without approval. Do not start Round 6 unprompted.
+
+---
+
+# Previous current task
+
 - TASK: POL-UI-017 — ROUND 4
 - TITLE: Product Owner follow-up on Round 3 — "Ricetta deve aprire il tab ricetta, non paziente"
 - OWNER: CLAUDE, on direct Product Owner feedback
 - BRANCH: `claude/pol-ui-017-mobile-home-r2-3pizhn` (same branch/PR as Rounds 2-3 — PR #74, no new PR opened)
 - BASE: Round 3's own commit `8cb70f0` on this branch
-- STATUS: WAITING_PRODUCT_OWNER_POL_UI_017_R4_QA
+- STATUS: SUPERSEDED BY ROUND 5 ABOVE — round 4's own record kept verbatim below for audit history.
 - OBJECTIVE: the Ricetta quick action landed only on the Pazienti list (Round 3), leaving the user to find the patient, then the Doc tab, then the Ricetta type manually. Make it land directly on DocMedico's Ricetta tab for the picked patient.
 - WHAT SHIPPED: Home has no current patient, so a pick is still required — but it now goes straight to the target instead of a dead-end list. New inline patient picker (`SelettorePaziente` in a `Modal`, same pattern the existing "Nuova attività" modal already uses), opened via a new `openRicettaPicker` context hook on the Ricetta quick action; on selection it calls `onOpenPaz(paz, 'doc', { type: 'ricetta' })`. `App.jsx`'s `goSchedaPaz` gained an optional 3rd `documentRequest` argument (default `null`, every existing 2-arg call site unaffected) forwarded into the SAME `initialDocumentRequest` prop `SchedaPaz.jsx` already consumes for the Poliedron prescription workflow — this is a second caller into existing, unmodified `SchedaPaz`/`DocMedico` plumbing (including `DocMedico`'s own unchanged `puoiPrescrivere` licensing gate), nothing new was built. Consenso was left unchanged (still navigates to Pazienti) — not raised in this feedback round; same underlying limitation, noted rather than silently changed.
 - FILES CHANGED (round 4): `src/App.jsx`, `src/components/Dashboard.jsx`, `src/lib/quickActionsCatalog.js`, `tests/mobileHomeRound2.test.mjs`, `tests/quickActionsCatalog.test.mjs`, this file, `docs/coordination/handoffs.md`.
