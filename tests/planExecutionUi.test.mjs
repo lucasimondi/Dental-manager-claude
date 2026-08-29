@@ -45,3 +45,35 @@ test('REGRESSION GUARD: toggleEseguita computes the offer from the CURRENT execu
   assert.ok(callSite, 'expected a toggleEseguita call site');
   assert.match(callSite[0], /toggleEseguita\(pl\.id, i, v\.eseguita\)/);
 });
+
+// Product Owner follow-up (payments/incassi architecture audit): "Da
+// incassare"/"Incassata" used to be a purely cosmetic per-item flag,
+// completely disconnected from the real payments table — clicking it never
+// changed what "Incassato"/"Da incassare" showed anywhere else in the app.
+// The button must now perform a real action: marking a voce "Incassata"
+// registers a real payment (moving the canonical saldo_piano), and
+// reverting removes that same payment — in both Piani.jsx and
+// SchedaPaz.jsx, which each keep their own separate rendering of plan
+// items (see the SchedaPaz test above).
+for (const [label, src] of [['Piani.jsx', source], ['SchedaPaz.jsx', schedaPazSource]]) {
+  test(`${label}: the Incassata/Da incassare button performs a real payment action, not a cosmetic flag toggle`, () => {
+    assert.match(src, /const onIncassataClick = \(plan, itemIndex\) => \{/);
+    // Not yet incassata -> opens the same quick-payment form used elsewhere,
+    // never a bare flag flip.
+    assert.match(src, /if \(!item\.incassata\) \{ openQuickPayment\(plan, itemIndex\); return; \}/);
+    // Already incassata -> confirms, then removes the SAME payment that was
+    // created for it (no silent/implicit deletion — see paymentId below).
+    assert.match(src, /confirm\(/);
+    assert.match(src, /Annullare l.{1,2}incasso/);
+    assert.match(src, /current\.filter\(\(payment\) => payment\.id !== paymentId\)/);
+    assert.match(src, /incassata: false, paymentId: null/);
+    // Saving the quick payment must link the created payment back to the
+    // voce (paymentId) and flip incassata to true, so the two states can
+    // never diverge from what get_saldo_piano/get_saldi_aperti_studio show.
+    assert.match(src, /const paymentId = uid\(\);/);
+    assert.match(src, /incassata: true, paymentId/);
+    // Call site uses the new handler, not the old toggle.
+    assert.match(src, /onClick=\{\(\) => onIncassataClick\(pl, i\)\}/);
+    assert.equal(/\btoggleIncassata\b/.test(src), false, `${label} must not keep the old cosmetic toggleIncassata`);
+  });
+}

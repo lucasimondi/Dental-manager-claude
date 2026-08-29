@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabase.js';
 import { today } from './utils';
+import { fetchSaldiApertiStudio } from './domain/incassiService.js';
 
 // Fonte unica di calcolo per tutto ciò che oggi vive in Controllo di Gestione
 // (PanoramicaControllo.jsx) e che Dashboard.jsx vuole poter mostrare come
@@ -51,6 +52,7 @@ export function useControlloDati({ studioId, patients = [], plans = [], payments
   const [kpiErr, setKpiErr] = useState('');
   const [pagExt, setPagExt] = useState([]);
   const [spese, setSpese] = useState([]);
+  const [saldiAperti, setSaldiAperti] = useState([]);
 
   useEffect(() => {
     if (!studioId || !enabled) { setKpi(null); setKpiLoading(false); return; }
@@ -70,6 +72,21 @@ export function useControlloDati({ studioId, patients = [], plans = [], payments
     supabase.from('spese').select('*').then(({ data }) => { if (data) setSpese(data); });
   }, [enabled]);
 
+  // POL-FIN-002 follow-up (Product Owner audit): "Eseguito da incassare"
+  // must be the SAME number shown in Incassi/SchedaPaz — sourced from the
+  // canonical get_saldi_aperti_studio RPC (eseguito_non_pagato), never
+  // recomputed here from the legacy per-item "incassata" flag. Refetched
+  // whenever plans/payments change locally so a payment registered (or
+  // reversed) from Piani/SchedaPaz is reflected here too.
+  useEffect(() => {
+    if (!studioId || !enabled) { setSaldiAperti([]); return undefined; }
+    let active = true;
+    fetchSaldiApertiStudio(studioId)
+      .then((rows) => { if (active) setSaldiAperti(rows || []); })
+      .catch(() => { if (active) setSaldiAperti([]); });
+    return () => { active = false; };
+  }, [studioId, enabled, plans, payments]);
+
   const t = today();
   const anno = t.slice(0, 4);
   const oggiD = new Date(t + 'T12:00');
@@ -83,14 +100,8 @@ export function useControlloDati({ studioId, patients = [], plans = [], payments
   const incassoLucaAnno = aInc + extAnno;
 
   const esegDaInc = patients.map(paz => {
-    const patPlans = plans.filter(pl => pl.pazienteId === paz.id);
-    const voci = patPlans.flatMap(pl => {
-      const subTot = (pl.voci || []).reduce((s, v) => s + Number(v.prezzo), 0);
-      const sc = Number(pl.sconto) || 0;
-      const scontato = pl.scontoTipo === 'pct' ? subTot * (sc / 100) : Math.min(sc, subTot);
-      const fattore = subTot > 0 ? Math.max(0, subTot - scontato) / subTot : 1;
-      return (pl.voci || []).filter(v => v.eseguita && !v.incassata).map(v => ({ ...v, pianoTitolo: pl.titolo, prezzoScontato: Number(v.prezzo) * fattore }));
-    });
+    const righe = saldiAperti.filter(r => String(r.paziente_id) === String(paz.id) && Number(r.eseguito_non_pagato) > 0);
+    const voci = righe.map(r => ({ prestazione: r.titolo || 'Piano', pianoTitolo: r.titolo, prezzoScontato: Number(r.eseguito_non_pagato) }));
     return { paz, voci, tot: voci.reduce((s, v) => s + v.prezzoScontato, 0) };
   }).filter(x => x.tot > 0).sort((a, b) => b.tot - a.tot);
   const totEsegDaInc = esegDaInc.reduce((s, x) => s + x.tot, 0);
@@ -209,7 +220,7 @@ export function useControlloDati({ studioId, patients = [], plans = [], payments
   return {
     t, anno, kpi, kpiLoading, kpiErr, pagExt, spese,
     mInc, aInc, extMese, extAnno, incassoLucaMese, incassoLucaAnno,
-    esegDaInc, totEsegDaInc, accNonEseg, totAccNonEseg,
+    esegDaInc, totEsegDaInc, saldiAperti, accNonEseg, totAccNonEseg,
     preventiviAccettati, preventiviAttesa, preventiviRifiutati, totAccettati, tassoAccettazione,
     richiamiScaduti, richiamiProssimi,
     scadenzePagamento, scadenzeScadute, scadenzeProssime,

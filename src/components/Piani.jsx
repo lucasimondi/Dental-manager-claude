@@ -129,10 +129,31 @@ export default function Piani({ patients, plans, setPlans, payments = [], setPay
   const saveQuickPayment = () => {
     const amount = Number(quickPayment?.importo);
     if (!quickPayment || !Number.isFinite(amount) || amount <= 0) return;
-    setPayments?.((current) => [...current, { id: uid(), pazienteId: Number(quickPayment.pazienteId), data: quickPayment.data, importo: amount, metodo: quickPayment.metodo, nota: `Pagamento rapido — ${quickPayment.descrizione}`, stato: 'pagato' }]);
+    const paymentId = uid();
+    setPayments?.((current) => [...current, { id: paymentId, pazienteId: Number(quickPayment.pazienteId), data: quickPayment.data, importo: amount, metodo: quickPayment.metodo, nota: `Pagamento rapido — ${quickPayment.descrizione}`, stato: 'pagato' }]);
+    // Product Owner follow-up (POL-FIN-002): "Incassata" is not a cosmetic
+    // flag — marking it must actually move the real incassato total, so it
+    // now records which payment it corresponds to, exactly like the button
+    // below does.
+    setPlans((current) => current.map((plan) => (String(plan.id) === String(quickPayment.planId) ? { ...plan, voci: plan.voci.map((item, index) => (index === quickPayment.itemIndex ? { ...item, incassata: true, paymentId } : item)) } : plan)));
     setQuickPayment(null); setQuickOffer(null); setToast('Prestazione e pagamento registrati ✓');
   };
-  const toggleIncassata = (plId, i) => setPlans((p) => p.map((pl) => (pl.id === plId ? { ...pl, voci: pl.voci.map((v, j) => (j === i ? { ...v, incassata: !v.incassata } : v)) } : pl)));
+  // Product Owner follow-up (POL-FIN-002 audit): "Da incassare"/"Incassata"
+  // used to be a purely cosmetic flag, disconnected from the real payments
+  // table — clicking it never changed what "Incassato"/"Da incassare" showed
+  // anywhere else. Now it IS the real action: marking a voce "Incassata"
+  // opens the same quick-payment form used elsewhere and, once saved,
+  // creates a real payment (moving the canonical saldo_piano). Reverting to
+  // "Da incassare" removes that same payment, so the two states always
+  // match what get_saldo_piano/get_saldi_aperti_studio actually show.
+  const onIncassataClick = (plan, itemIndex) => {
+    const item = plan.voci[itemIndex];
+    if (!item.incassata) { openQuickPayment(plan, itemIndex); return; }
+    if (!confirm('Annullare l\'incasso? Il pagamento registrato per questa prestazione verrà eliminato.')) return;
+    const paymentId = item.paymentId;
+    if (paymentId) setPayments?.((current) => current.filter((payment) => payment.id !== paymentId));
+    setPlans((current) => current.map((pl) => (String(pl.id) === String(plan.id) ? { ...pl, voci: pl.voci.map((v, j) => (j === itemIndex ? { ...v, incassata: false, paymentId: null } : v)) } : pl)));
+  };
   const setStato = (plId, stato) => setPlans((p) => p.map((pl) => (pl.id === plId ? { ...pl, stato } : pl)));
   const del = (id) => { if (confirm('Eliminare piano?')) setPlans((p) => p.filter((pl) => pl.id !== id)); };
   const addItemToPlan = (planId) => {
@@ -322,7 +343,7 @@ export default function Piani({ patients, plans, setPlans, payments = [], setPay
                   <div style={{ display: 'flex', gap: 5, marginTop: 5 }}>
                     <Sel aria-label={`Stato ${v.prestazione}`} value={v.eseguita ? 'eseguita' : 'da_eseguire'} onChange={(event) => setExecutionStatus(pl, i, event.target.value === 'eseguita')} style={{ flex: 1, minHeight: 44, padding: '6px 9px', fontSize: 11, borderColor: v.eseguita ? C.suc : C.brd, color: v.eseguita ? C.suc : C.txm }}><option value="da_eseguire">Da eseguire</option><option value="eseguita">Eseguita</option></Sel>
                     {v.eseguita && (
-                      <button onClick={() => toggleIncassata(pl.id, i)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '6px 0', borderRadius: 7, border: `1.5px solid ${v.incassata ? C.suc : C.dan}`, background: v.incassata ? C.sucL : C.danL, color: v.incassata ? C.suc : C.dan, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
+                      <button onClick={() => onIncassataClick(pl, i)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '6px 0', borderRadius: 7, border: `1.5px solid ${v.incassata ? C.suc : C.dan}`, background: v.incassata ? C.sucL : C.danL, color: v.incassata ? C.suc : C.dan, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
                         <Ic n="eur" s={12} c={v.incassata ? C.suc : C.dan} />{v.incassata ? 'Incassata' : 'Da incassare'}
                       </button>
                     )}

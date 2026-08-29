@@ -4,7 +4,7 @@ import { supabase, DB } from './lib/supabase.js';
 import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, getLogoSlug, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, uid, applyBrandColors, applyHeaderColor } from './lib/utils';
 import { generaRichiamiBot } from './lib/richiamiBot';
 import { salvaPosizione, leggiPosizione, pulisciPosizione } from './lib/posizioneNavigazione';
-import { fetchSaldiPiani } from './lib/domain/incassiService.js';
+import { fetchSaldiPiani, fetchSaldiApertiStudio } from './lib/domain/incassiService.js';
 // POL-AI-001: MobileDock (the POL-UI-009/010 poliedro-button-opens-full-nav-
 // menu) is superseded by Poliedron — the same floating polyhedron concept,
 // evolved into the app's universal command interface (search/navigate/
@@ -95,6 +95,10 @@ export default function App() {
   // handed to SchedaPaz as a plain prop — SchedaPaz itself must stay
   // synchronous/self-contained (tests/patientRecordRecovery.test.mjs).
   const [saldiPiani, setSaldiPiani] = useState({});
+  // POL-FIN-002 follow-up: studio-wide open balances (get_saldi_aperti_studio),
+  // the single canonical source richiamiBot uses instead of the legacy
+  // per-item "incassata" flag — see the effect below.
+  const [saldiApertiStudio, setSaldiApertiStudio] = useState([]);
   const [quickHubRecallRequest, setQuickHubRecallRequest] = useState(null);
   const [quickHubActivityRequest, setQuickHubActivityRequest] = useState(null);
   const [quickHubPoliedronRequest, setQuickHubPoliedronRequest] = useState(null);
@@ -249,6 +253,20 @@ export default function App() {
     fetchSaldiPiani(ids).then((map) => { if (active) setSaldiPiani(map); });
     return () => { active = false; };
   }, [schedaDashPaz?.paz?.id, plans, payments]);
+
+  // POL-FIN-002 follow-up: studio-wide open balances, refreshed whenever
+  // plans/payments change locally (a payment registered or reversed from
+  // Piani/SchedaPaz) — feeds richiamiBot below so its "eseguita e non
+  // incassata" reminder always agrees with Dashboard/Incassi/SchedaPaz.
+  useEffect(() => {
+    let active = true;
+    const studioId = session?.user?.app_metadata?.studio_id;
+    if (!studioId) { setSaldiApertiStudio([]); return undefined; }
+    fetchSaldiApertiStudio(studioId)
+      .then((rows) => { if (active) setSaldiApertiStudio(rows || []); })
+      .catch(() => { if (active) setSaldiApertiStudio([]); });
+    return () => { active = false; };
+  }, [session?.user?.app_metadata?.studio_id, plans, payments]);
 
   // Salva la pagina corrente ad ogni cambio, per poterla ripristinare dopo
   // un ricaricamento a freddo. Evitiamo di scrivere durante il ripristino
@@ -410,14 +428,14 @@ export default function App() {
   // rieseguirebbe l'effetto all'infinito.
   useEffect(() => {
     if (dataLoading || !session) return;
-    const { proposte, daRimuovere } = generaRichiamiBot({ patients, plans, payments, appointments, richiami });
+    const { proposte, daRimuovere } = generaRichiamiBot({ patients, plans, payments, appointments, richiami, saldiAperti: saldiApertiStudio });
     if (proposte.length === 0 && daRimuovere.length === 0) return;
     setRichiamiSync((prev) => [
       ...prev.filter((r) => !daRimuovere.includes(r.id)),
       ...proposte.map((p) => ({ ...p, id: uid() })),
     ]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataLoading, session, patients, plans, payments, appointments, richiami]);
+  }, [dataLoading, session, patients, plans, payments, appointments, richiami, saldiApertiStudio]);
 
   const setStudioInfoSync = (updaterOrVal) => {
     setStudioInfo((prev) => {

@@ -1,4 +1,4 @@
-import { today, fmt, fmtD } from './utils';
+import { today, fmt, fmtD } from './utils.js';
 
 // Un richiamo "clinico" già coperto da un appuntamento prenotato entro questa
 // finestra (in giorni, prima o dopo la data target) non deve essere riproposto:
@@ -37,11 +37,17 @@ const hasAppuntamentoVicino = (appointments, pazienteId, dataTarget) => {
  * Pura, senza side effect: chi la chiama decide se e come applicare il
  * risultato allo stato/DB (vedi App.jsx e Richiami.jsx).
  */
-export function generaRichiamiBot({ patients, plans, payments, appointments, richiami }) {
+export function generaRichiamiBot({ patients, plans, payments, appointments, richiami, saldiAperti = [] }) {
   const proposte = [];
   const daRimuovere = [];
   const chiaviEsistenti = new Set(richiami.map((r) => r.chiaveBot).filter(Boolean));
   const pazienteEsiste = (id) => patients.some((p) => String(p.id) === String(id));
+  // POL-FIN-002 follow-up (Product Owner audit): whether a plan still has
+  // "eseguito non incassato" must come from the canonical
+  // get_saldi_aperti_studio RPC (eseguito_non_pagato), never from the
+  // legacy manual "incassata" flag — same source as Dashboard/Incassi/
+  // SchedaPaz, so this reminder never disagrees with what those show.
+  const pianiEseguitoNonPagato = new Set((saldiAperti || []).filter((r) => Number(r.eseguito_non_pagato) > 0).map((r) => String(r.piano_id)));
 
   // 1) Richiami clinici: voci di piano eseguite con richiamo impostato
   //    (rilevato/impostato in SchedaPaz — qui si controlla solo se è già
@@ -93,10 +99,10 @@ export function generaRichiamiBot({ patients, plans, payments, appointments, ric
     });
   });
 
-  // 4) Prestazioni eseguite ma non ancora incassate da troppo tempo
+  // 4) Prestazioni eseguite ma il piano ha ancora eseguito non incassato da troppo tempo
   plans.forEach((pl) => {
     (pl.voci || []).forEach((v, i) => {
-      if (!v.eseguita || v.incassata || !pazienteEsiste(pl.pazienteId)) return;
+      if (!v.eseguita || !pianiEseguitoNonPagato.has(String(pl.id)) || !pazienteEsiste(pl.pazienteId)) return;
       if (giorniDa(v.dataEsec) < STANDBY_ESEGUITA_GIORNI) return;
       const chiave = `plan_voce_incasso:${pl.id}:${i}`;
       if (chiaviEsistenti.has(chiave)) return;
