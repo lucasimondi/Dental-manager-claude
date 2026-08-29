@@ -13,7 +13,7 @@
 
 export const QUICK_ACTIONS_CATALOG = Object.freeze([
   {
-    id: 'nuovo_appuntamento', ic: 'cal', label: '+ Nuovo appuntamento',
+    id: 'nuovo_appuntamento', ic: 'cal', label: 'Nuovo appuntamento',
     run: (ctx) => ctx.openBooking(),
   },
   {
@@ -21,21 +21,21 @@ export const QUICK_ACTIONS_CATALOG = Object.freeze([
     run: (ctx) => ctx.onGoAgenda ? ctx.onGoAgenda() : ctx.onNavigate('agenda'),
   },
   {
-    id: 'nuovo_paziente', ic: 'pz', label: '+ Nuovo paziente',
+    id: 'nuovo_paziente', ic: 'pz', label: 'Nuovo paziente',
     workflow: ['navigate:paz', 'open_new_patient_form'],
     run: (ctx) => ctx.onNavigateNew ? ctx.onNavigateNew('paz') : ctx.onNavigate('paz'),
   },
   {
-    id: 'nuovo_paziente_appuntamento', ic: 'pz', label: '+ Paziente e appuntamento',
+    id: 'nuovo_paziente_appuntamento', ic: 'pz', label: 'Paziente e appuntamento',
     workflow: ['open_new_patient_form', 'open_booking_with_patient'],
     run: (ctx) => ctx.onNavigateNew ? ctx.onNavigateNew('paz') : ctx.onNavigate('paz'),
   },
   {
-    id: 'nuovo_preventivo', ic: 'plan', label: '+ Nuovo preventivo',
+    id: 'nuovo_preventivo', ic: 'plan', label: 'Nuovo preventivo',
     run: (ctx) => ctx.onNavigateNew ? ctx.onNavigateNew('piani') : ctx.onNavigate('piani'),
   },
   {
-    id: 'nuova_spesa', ic: 'box', label: '+ Nuova spesa',
+    id: 'nuova_spesa', ic: 'box', label: 'Nuova spesa',
     feature: 'spese',
     run: (ctx) => ctx.onNavigateNew ? ctx.onNavigateNew('spese') : ctx.onNavigate('spese'),
   },
@@ -45,18 +45,22 @@ export const QUICK_ACTIONS_CATALOG = Object.freeze([
     run: (ctx) => ctx.onNavigateNew ? ctx.onNavigateNew('paga') : ctx.onNavigate('paga'),
   },
   {
-    id: 'nuova_seduta_fisio', ic: 'pulse', label: '+ Seduta Fisio',
+    id: 'nuova_seduta_fisio', ic: 'pulse', label: 'Seduta Fisio',
     verticals: ['fisioterapista', 'massofisioterapista'],
     workflow: ['select_patient', 'select_episode', 'open_quick_session'],
     run: (ctx) => ctx.onNavigate('paz'),
   },
   {
-    id: 'documento', ic: 'doc', label: '+ Documento',
+    // Icon fixed (Product Owner round 3): 'doc' does not exist in Ic.jsx's
+    // icon map, so this silently rendered no icon at all. 'file' is the
+    // same generic-document icon DocMedico.jsx's own "Foglio bianco
+    // intestato" type already uses for the same concept — no new SVG.
+    id: 'documento', ic: 'file', label: 'Documento',
     feature: 'archivio_documenti',
     run: (ctx) => ctx.onNavigate('archivio'),
   },
   {
-    id: 'task', ic: 'okc', label: '+ Task',
+    id: 'task', ic: 'okc', label: 'Task',
     run: (ctx) => ctx.openTodoModal(),
   },
   {
@@ -68,6 +72,36 @@ export const QUICK_ACTIONS_CATALOG = Object.freeze([
     id: 'controllo_gestione', ic: 'chart', label: 'Controllo di gestione',
     capability: 'managementControl',
     run: (ctx) => ctx.onNavigate('controllo'),
+  },
+  /* Product Owner round 3 additions. All three reuse existing, already-
+     shipped destinations/icons — no new page, no new clinical/financial
+     logic. Ricetta/Consenso need a patient first. */
+  {
+    // Product Owner round 4: "Ricetta deve aprire il tab ricetta, non
+    // paziente" — a bare navigate('paz') left the user to find the
+    // patient AND the Doc tab AND the Ricetta type themselves. Home has
+    // no current patient, so a patient still has to be picked — but the
+    // picker now lands directly on DocMedico's Ricetta tab (same 'pill'
+    // icon DocMedico's own TIPI list already uses for id:'ricetta'; its
+    // own puoiPrescrivere gate is unchanged and still applies) via the
+    // SAME initialDocumentRequest -> documentFlow mechanism SchedaPaz
+    // already exposes for the Poliedron prescription workflow — nothing
+    // new was built, only wired to a second caller.
+    id: 'ricetta', ic: 'pill', label: 'Ricetta',
+    workflow: ['open_patient_picker', 'open_scheda_doc_tab', 'open_ricetta'],
+    run: (ctx) => ctx.openRicettaPicker ? ctx.openRicettaPicker() : ctx.onNavigate('paz'),
+  },
+  {
+    id: 'consenso', ic: 'edit', label: 'Consenso',
+    workflow: ['navigate:paz', 'select_patient', 'open_scheda_doc_tab', 'open_consenso'],
+    run: (ctx) => ctx.onNavigate('paz'),
+  },
+  /* POL-FIN-002: the receivables module now exists. Keep PR #74's action,
+     visual treatment and personalization contract; only replace its
+     temporary honest placeholder with the shipped destination. */
+  {
+    id: 'da_incassare', ic: 'eur', label: 'Da incassare',
+    run: (ctx) => ctx.onNavigate('incassi'),
   },
 ]);
 

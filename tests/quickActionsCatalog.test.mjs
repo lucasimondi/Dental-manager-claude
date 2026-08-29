@@ -1,8 +1,68 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { QUICK_ACTIONS_CATALOG, DEFAULT_QUICK_ACTION_IDS, resolveQuickActions, filterQuickActionsCatalog, getQuickAction } from '../src/lib/quickActionsCatalog.js';
 
 const basePermissions = { activeMember: true, managementControl: false };
+
+// POL-UI-017 R2 round 3 — Product Owner caught "Documento" rendering with
+// no icon at all: its catalog entry declared `ic: 'doc'`, a key that does
+// not exist in Ic.jsx's ICONS map, so `Ic` silently returned null (not a
+// visible fallback glyph). `assert.ok(action.ic)` above only checks the
+// field is truthy, never that it resolves to a real icon — this regression
+// guard reads the actual icon registry and checks every declared id is one
+// of its real keys, so a typo'd/renamed icon id fails the suite instead of
+// silently rendering blank.
+const icSrc = await readFile(new URL('../src/components/ui/Ic.jsx', import.meta.url), 'utf8');
+const iconKeys = new Set([...icSrc.matchAll(/^\s{2}(\w+): \(s, c\) => \(/gm)].map((m) => m[1]));
+
+test('REGRESSION GUARD: every catalog icon id is a real key in the Ic.jsx icon registry', () => {
+  assert.ok(iconKeys.size > 20, 'sanity check that the icon registry was actually parsed');
+  for (const action of QUICK_ACTIONS_CATALOG) {
+    assert.ok(iconKeys.has(action.ic), `${action.id} declares ic:'${action.ic}', which does not exist in Ic.jsx and renders nothing`);
+  }
+});
+
+// Product Owner round 3: the literal "+ " prefix baked into several labels
+// read as a stray "+" symbol in the UI — removed from every action, not
+// just the ones the Product Owner happened to point at.
+test('no quick action label carries a literal "+" prefix', () => {
+  for (const action of QUICK_ACTIONS_CATALOG) {
+    assert.ok(!action.label.startsWith('+'), `${action.id} label "${action.label}" must not start with "+"`);
+  }
+});
+
+test('Product Owner round 3 additions: Ricetta, Consenso, Da incassare exist and reuse real destinations', () => {
+  const ricetta = getQuickAction('ricetta');
+  const consenso = getQuickAction('consenso');
+  const daIncassare = getQuickAction('da_incassare');
+  assert.ok(ricetta && consenso && daIncassare, 'all three new actions must be registered');
+  // Ricetta reuses the exact icon DocMedico.jsx's own TIPI list already
+  // uses for id:'ricetta' — same meaning, no new SVG invented.
+  assert.equal(ricetta.ic, 'pill');
+  // Consenso still lands on Pazienti first — same fallback every other
+  // patient-scoped action (nuovo_paziente_appuntamento, nuova_seduta_fisio)
+  // already uses — no new routing invented for it.
+  const ctxNavigate = { onNavigate: (id) => id };
+  assert.equal(consenso.run(ctxNavigate), 'paz');
+  // POL-FIN-002 shipped the real module: PR #74's existing action now
+  // changes only its handler and navigates to that verified route.
+  assert.equal(daIncassare.run(ctxNavigate), 'incassi');
+});
+
+// Product Owner round 4: "Ricetta deve aprire il tab ricetta, non
+// paziente" — a bare navigate('paz') left the destination one manual step
+// (find the Doc tab, pick the Ricetta type) short of the real target.
+test('ROUND 4: Ricetta opens the patient picker (which then opens DocMedico\'s Ricetta tab directly), not a bare navigate to Pazienti', () => {
+  const ricetta = getQuickAction('ricetta');
+  let pickerOpened = false;
+  const ctx = { openRicettaPicker: () => { pickerOpened = true; }, onNavigate: () => { throw new Error('must not fall through to onNavigate when openRicettaPicker exists'); } };
+  ricetta.run(ctx);
+  assert.equal(pickerOpened, true);
+  // Backward-compatible fallback for any caller that hasn't wired the
+  // picker (there is none today, but the contract must not throw).
+  assert.equal(ricetta.run({ onNavigate: (id) => id }), 'paz');
+});
 
 test('inactive membership sees zero quick actions, fail closed', () => {
   const result = filterQuickActionsCatalog({ permissions: { activeMember: false }, features: {}, vertical: 'dentistico' });

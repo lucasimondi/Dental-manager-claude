@@ -120,6 +120,23 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
   const [data, setData] = useState(today());
   const [generated, setGenerated] = useState(false);
 
+  // Product Owner: "il tab ricetta deve essere aperto più in alto" — when
+  // this screen opens with the type already decided by the caller
+  // (initialType, e.g. the Home "Ricetta" quick action, the "Nuova
+  // ricetta" button in the patient's Doc tab, or a Poliedron prescription
+  // request), the actual "Farmaci prescritti" fields sit two full cards
+  // (Tipo documento's 6-option list + Data) below the fold on a phone —
+  // exactly the opposite of what picking a specific type up front should
+  // buy the user. Scroll them into view immediately on open so they're the
+  // first thing visible under the header, without hiding or removing the
+  // type selector (still reachable by scrolling up to change type).
+  const farmaciSectionRef = useRef(null);
+  useEffect(() => {
+    if (initialType !== 'ricetta' || !puoiPrescrivere) return;
+    farmaciSectionRef.current?.scrollIntoView({ block: 'start' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // studio_id dell'utente loggato, necessario per salvare correttamente in
   // documenti_medici (RLS studio-scoped) — non è dentro studioInfo/si,
   // va letto dalla sessione come fa già Dashboard.jsx.
@@ -784,8 +801,15 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
     }
   };
 
+  // Product Owner: "il modulo ricetta deve essere aperto piu in alto del
+  // dock" — the floating Poliedron dock/orb sit at z-index 1100/1200, so
+  // this screen's old z-index of 500 rendered fully UNDER them, covering
+  // its own content. Raised to the same 9999 tier this app's own
+  // Modal.jsx already uses for a real full-screen takeover, so the dock
+  // never overlaps it, matching the very picker Modal that opens this
+  // screen.
   return (
-    <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 9999, display: 'flex', flexDirection: 'column' }}>
       {/* HEADER */}
       <div style={{ background: C.priD, padding: '12px 14px', paddingTop: 'max(12px,env(safe-area-inset-top))', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
         <button onClick={onClose} aria-label="Indietro" style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 10, padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -820,6 +844,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
 
         {/* ── RICETTA ── */}
         {tipo === 'ricetta' && (
+          <div ref={farmaciSectionRef}>
           <Crd style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}><Ic n="pill" s={11} c={C.txm} />Farmaci prescritti</div>
             {farmaci.map((f, i) => (
@@ -847,6 +872,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
             ))}
             <button onClick={addFarmaco} style={{ width: '100%', padding: '10px', border: `2px dashed ${C.brd}`, borderRadius: 10, background: 'transparent', color: C.pri, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Aggiungi farmaco</button>
           </Crd>
+          </div>
         )}
 
         {/* ── ESAMI EMATICI ── */}

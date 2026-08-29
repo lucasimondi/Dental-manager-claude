@@ -585,6 +585,7 @@ body:has(.home-widget-grid) #app-scroll {
    for the canonical geometry the spacer's inline height is built from. */
 .home-hero__datetime { display: none; }
 .home-dock-clearance { display: none; }
+.page-dock-clearance { display: none; }
 .home-hero__customize {
   min-height: 44px;
   padding: 10px 14px;
@@ -737,6 +738,10 @@ body:has(.home-widget-grid) #app-scroll {
   cursor: pointer;
   transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
 }
+/* Product Owner round 2 feedback: the filled blue-gradient icon chip read
+   as heavy/dated. Flat, minimal, professional instead — a neutral token
+   surface (theme-aware on its own, no dark override needed) framing the
+   glyph, which already carries the brand color via its own `c` prop. */
 .home-quick-actions__icon {
   display: flex;
   align-items: center;
@@ -745,15 +750,11 @@ body:has(.home-widget-grid) #app-scroll {
   height: 34px;
   flex-shrink: 0;
   border-radius: 11px;
-  background: linear-gradient(150deg, var(--pol-blue-50), #dbeafe);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 2px 6px rgba(24,95,165,.12);
+  background: var(--pol-bg-alt);
+  border: 1px solid var(--pol-line-strong);
 }
 :root[data-theme="dark"] .home-quick-actions__grid button {
   background: linear-gradient(150deg, var(--pol-surface) 0%, var(--pol-bg-alt) 100%);
-}
-:root[data-theme="dark"] .home-quick-actions__icon {
-  background: linear-gradient(150deg, var(--pol-brand-pri-d), var(--pol-line-strong));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 2px 6px rgba(0,0,0,.25);
 }
 .home-quick-actions__grid button:hover {
   transform: translateY(-3px);
@@ -892,12 +893,22 @@ body:has(.home-widget-grid) #app-scroll {
     -webkit-backdrop-filter: blur(18px);
     box-shadow: 0 8px 24px rgba(31, 49, 78, .06);
   }
-  :root[data-theme="dark"] .home-hero { background: rgba(15, 20, 32, .78); box-shadow: 0 8px 24px rgba(0, 0, 0, .28); }
+  /* POL-UI-017 R2 §12: the hardcoded dark-only override that used to sit
+     here (`background: rgba(15,20,32,.78)`) is REMOVED, not replaced. Its
+     specificity — :root[data-theme="dark"] .home-hero, (0,3,0) — outranked
+     the Round 2 hero rule at the bottom of this file, so in dark mode at
+     <=600px the hero would have kept a hardcoded surface while every other
+     mobile width used the semantic token. The Round 2 rule reads
+     `color-mix(in srgb, var(--surface-card) 86%, transparent)`, and
+     --surface-card already resolves to the dark surface under
+     [data-theme="dark"], so light and dark now differ only in token VALUES
+     — which is exactly the contract this override predated. */
   .home-hero__greeting { font-size: 19px; }
   .home-hero__meta { display: none; }
   .home-hero__datetime { display: block; margin-top: 3px; color: var(--pol-premium-muted); font-size: 11px; font-weight: 700; text-transform: capitalize; }
   .home-hero__customize { padding: 9px 10px; font-size: 11px; }
   .home-dock-clearance { display: block; }
+  .page-dock-clearance { display: block; }
   .home-quick-actions__grid { grid-template-columns: 1fr 1fr; }
   .home-widget-frame { border-radius: 20px !important; }
   .home-widget-frame__content > div:not(.canonical-financial-widget) { border-radius: 20px !important; }
@@ -1998,3 +2009,293 @@ body:has(.home-widget-grid) #app-scroll {
 .incassi-source-toggle,.incassi-form-actions{display:flex;gap:8px;margin-bottom:14px}.incassi-source-toggle .pol-tab{flex:1}.incassi-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.incassi-check{display:flex;align-items:center;gap:9px;min-height:44px;font-weight:700;font-size:13px}.incassi-check input{width:20px;height:20px;accent-color:var(--pol-focus,#185fa5)}.incassi-live-balance{display:flex;align-items:center;justify-content:space-between;margin:10px 0 14px;padding:12px;border-radius:10px;background:#fff1f1;color:#b42318}.incassi-live-balance strong{font-size:18px}.incassi-form-error{color:#b42318;font-size:12px;margin:0 0 12px}.incassi-form-actions{margin:0}@media(max-width:600px){.incassi-form-grid{grid-template-columns:1fr}.incassi-toolbar>.pol-btn{width:100%}}
 .plan-add-item{width:100%;min-height:44px;margin-top:10px;border:1.5px dashed var(--pol-border,#d8dee8);border-radius:9px;background:transparent;color:var(--pol-primary,#185fa5);font-weight:800;cursor:pointer}.plan-inline-editor{margin-top:10px;padding:12px;border-radius:10px;background:var(--pol-bg,#f7f8fa)}.plan-inline-editor__grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.plan-inline-editor__actions{display:flex;justify-content:flex-end;gap:8px}@media(max-width:600px){.plan-inline-editor__grid{grid-template-columns:1fr}.plan-inline-editor__actions .pol-btn{flex:1}}
 .plan-quick-payment-offer{display:flex;align-items:center;gap:9px;min-height:44px;margin-top:6px;padding:8px 10px;border-radius:8px;background:#eaf7f1;color:#0f6e56;font-size:12px;font-weight:800}.plan-quick-payment-offer input{width:20px;height:20px;accent-color:#0f6e56}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   POL-UI-017 ROUND 2 — mobile Home and navigation refresh
+   ─────────────────────────────────────────────────────────────────────────
+   Scope: mobile Home only. Desktop Home is NOT redesigned by this round, so
+   every rule that changes an existing look lives inside the mobile media
+   query below, and every surface this round ADDS is `display: none` by
+   default and only revealed there.
+
+   Two Home media queries now coexist in this file:
+     · the pre-existing `@media (max-width: 600px)` block above, left exactly
+       as it was, and
+     · the Round 1 canonical mobile contract below —
+       `(max-width: 719px), (pointer: coarse) and (max-width: 1024px) and
+       (max-height: 600px)` — the SAME condition src/lib/mobileShell.js's
+       getMobileShellMode() implements in React and designTokens.css already
+       uses for the shared mobile foundation.
+   They are not redundant. Home's mobile styling used to stop at 600px, so
+   every viewport the React shell already treats as mobile between 601px and
+   719px — and, more seriously, EVERY coarse-pointer landscape phone
+   (844x390, 852x393, 932x430) — rendered the desktop-sized hero AND lost
+   `.home-dock-clearance` entirely, leaving the last widget underneath the
+   floating dock. Extending Home onto the canonical contract is that fix.
+
+   Colors: semantic tokens only (--surface-*, --text-*, --border-*,
+   --brand-*, --danger/--warning/--success) or a color-mix() of one, per
+   POL-UX-002 §3 — light and dark change token VALUES, never which token a
+   rule reads. No hardcoded white surface, no dark-only patch-up.
+
+   NOT touched here, by design (POL-UI-017 R2 §6/§7): the Poliedron orb's
+   size, position, drag, animation or identity; the dock's geometry
+   (width/height/bottom/safe-area/backdrop), its five slots or their
+   destinations. The dock rule below only raises ACTIVE-STATE CONTRAST,
+   which this round explicitly asks to audit.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── Surfaces added by this round: mobile-only, hidden everywhere else ── */
+.home-hero__mark { display: none; }
+.home-attention { display: none; }
+
+/* ── Priority-area internals ─────────────────────────────────────────────
+   Declared unconditionally (they cost nothing while the section is hidden)
+   so the mobile block only has to flip `display`. */
+.home-attention__list { display: grid; gap: var(--pol-space-2); margin: 0; padding: 0; list-style: none; }
+.home-attention__item {
+  display: flex;
+  align-items: center;
+  gap: var(--pol-space-3);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--pol-space-2) var(--pol-space-3);
+  border: 1px solid var(--border-soft);
+  border-left: 3px solid var(--brand-primary);
+  border-radius: var(--pol-radius-card);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-xs);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.home-attention__item:active { transform: scale(.99); }
+.home-attention__item:focus-visible { outline: 2px solid var(--brand-primary); outline-offset: 2px; }
+.home-attention__icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: var(--pol-radius-control);
+}
+.home-attention__body { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.home-attention__label {
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-attention__detail {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-attention__chevron { flex-shrink: 0; font-size: 16px; font-weight: 800; color: var(--text-muted); }
+/* The "nothing to flag" state is ONE compact line, never a large empty
+   card — POL-UI-017 R2 §2 explicitly forbids spending the first viewport
+   on an empty box. */
+.home-attention__clear {
+  display: flex;
+  align-items: center;
+  gap: var(--pol-space-2);
+  margin: 0;
+  padding: var(--pol-space-2) var(--pol-space-3);
+  border: 1px solid color-mix(in srgb, var(--success) 22%, transparent);
+  border-radius: var(--pol-radius-control);
+  background: color-mix(in srgb, var(--success) 8%, var(--surface-card));
+  color: var(--success);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+@media (max-width: 719px), (pointer: coarse) and (max-width: 1024px) and (max-height: 600px) {
+  /* ── Shell: the same edge-to-edge treatment the 600px block already gives
+     Home, extended to the full mobile contract. App.jsx already zeroes
+     #app-scroll's inline padding for `page === 'home'`; this beats the
+     `@media (max-width: 900px)` rule further up, which would otherwise
+     re-add a 20px/18px inset on a landscape phone. ── */
+  body:has(.home-widget-grid) #app-scroll { padding: 0 !important; }
+  .home-page { padding: 0 15px env(safe-area-inset-bottom, 0px); }
+  .home-dock-clearance { display: block; }
+  /* Generic version of the same spacer for other normal (non-Home,
+     non-Agenda/Chat) mobile pages — #app-scroll here only reserves the
+     bare safe-area inset (see App.jsx), so a page whose own content can
+     run long, like Impostazioni's new "Azioni rapide" list below, needs
+     this to keep its last control clear of the floating dock. */
+  .page-dock-clearance { display: block; }
+
+  /* ── §1 HERO — compact, branded, one line of genuinely useful info.
+     Was: a clamp(25px,3vw,32px) greeting plus a meta line plus a datetime
+     line stacked in a ~90px sticky block, i.e. a large share of the first
+     viewport on a 375x667 phone before anything operational appeared.
+     Now: brand mark + greeting + date/time/appointment count in a single
+     row, still sticky, still glass, still unmistakably Poliedra. ── */
+  .home-hero {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: var(--pol-space-3);
+    min-height: 0;
+    margin: 0 -15px var(--pol-space-3);
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 15px 10px;
+    background: color-mix(in srgb, var(--surface-card) 86%, transparent);
+    border-bottom: 1px solid var(--border-soft);
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+  .home-hero__mark { display: block; width: 26px; height: 26px; flex-shrink: 0; object-fit: contain; }
+  .home-hero__text { flex: 1; min-width: 0; }
+  .home-hero__greeting {
+    font-size: 17px;
+    font-weight: 900;
+    letter-spacing: -.02em;
+    line-height: 1.2;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .home-hero__meta { display: none; }
+  .home-hero__datetime {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: capitalize;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .home-hero__actions { flex-shrink: 0; }
+  /* §9 — "Personalizza Home" is an occasional setting, not a daily action:
+     on a phone it becomes a discreet 44x44 icon target. The label is only
+     hidden VISUALLY; the button keeps its aria-label and title. */
+  .home-hero__customize {
+    width: var(--pol-touch-min);
+    min-width: var(--pol-touch-min);
+    height: var(--pol-touch-min);
+    min-height: var(--pol-touch-min);
+    padding: 0;
+    justify-content: center;
+    border-radius: var(--pol-radius-control);
+    border: 1px solid var(--border-soft);
+    background: var(--surface-base);
+    color: var(--text-secondary);
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .home-hero__customize-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* ── §2 PRIORITY AREA — revealed here, directly under the hero. ── */
+  .home-attention { display: block; margin-bottom: var(--pol-space-4); }
+  .home-attention .home-section-label { margin-bottom: var(--pol-space-2); }
+
+  /* ── §3 QUICK ACTIONS — round 2 follow-up: the Product Owner asked for
+     the set itself to be curated (via "Personalizza azioni rapide" in
+     Impostazioni) rather than an on-widget "+"/"Altro" expand toggle, so
+     this block is now density-only: same two-column grid, no truncation,
+     no CSS `order` manipulation. ── */
+  .home-quick-actions__grid { grid-template-columns: 1fr 1fr; gap: var(--pol-space-2); }
+
+  /* ── §10 DENSITY — the action tiles were 68px tall with 14/16px padding
+     and an 18px radius each; two columns of those pushed everything else
+     below the fold. Trimmed, still comfortably above the 44px floor. ── */
+  .home-quick-actions__grid button {
+    min-height: 60px;
+    gap: var(--pol-space-2);
+    padding: var(--pol-space-3);
+    border-radius: var(--pol-radius-card);
+    font-size: 12px;
+  }
+  .home-quick-actions__icon { width: 30px; height: 30px; border-radius: var(--pol-radius-control); }
+  .home-widget-grid { gap: var(--pol-space-3) !important; }
+  .home-widget-frame { border-radius: var(--pol-radius-card) !important; }
+  .home-widget-frame__content > div:not(.canonical-financial-widget) { border-radius: var(--pol-radius-card) !important; }
+  .home-poliedron-widget { padding: var(--pol-space-3) var(--pol-space-3) var(--pol-space-1); }
+
+  /* ── §4/§5 PRIORITY BANDING of the existing widgets ──────────────────
+     The persisted layout is NOT modified: DOM order is still the user's
+     saved order, homeWidgetRegistry.js's catalog/order contract is
+     untouched, and every widget stays add/remove/reorder/resize-able. This
+     is a mobile-only VISUAL grouping — actions, then today, then the
+     informational overview, then the heavy deeper-detail widgets. Inside
+     each band the user's own saved order still decides, because CSS
+     `order` preserves document order among equal values.
+     Scoped to `.home-workspace` so the "Personalizza Home" preview — which
+     renders the very same `.home-widget-frame` markup — always shows the
+     saved order unbanded. ── */
+  .home-workspace .home-widget-frame { order: 40; }
+  .home-workspace .home-widget-frame[data-widget-id='quick_actions'] { order: 10; }
+  .home-workspace .home-widget-frame[data-widget-id='agenda'],
+  .home-workspace .home-widget-frame[data-widget-id='appuntamenti'] { order: 20; }
+  .home-workspace .home-widget-frame[data-widget-id='richiami'],
+  .home-workspace .home-widget-frame[data-widget-id='todo'],
+  .home-workspace .home-widget-frame[data-widget-id='consigli_ai'],
+  .home-workspace .home-widget-frame[data-widget-id='wa'] { order: 30; }
+  .home-workspace .home-widget-frame[data-widget-id='economico'],
+  .home-workspace .home-widget-frame[data-widget-id='statistiche'],
+  .home-workspace .home-widget-frame[data-widget-id='grafici'] { order: 50; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-attention__item { transition: none !important; }
+}
+
+/* ── §7 DOCK AUDIT ───────────────────────────────────────────────────────
+   Structure, slot order, destinations, geometry, safe area and the 44x44
+   touch targets are all unchanged (PoliedronMobileDock.jsx and
+   poliedronMobileDock.js are not modified by this round). The audit found
+   ONE real defect: the active slot was signalled by an 11%-alpha wash and
+   an 18%-alpha border over a translucent, blurred dock — close to
+   invisible against a light Home. Same tokens, stronger mix, plus a small
+   ink bar so "where am I" survives low contrast and color-vision
+   deficiency. ── */
+.poliedron-mobile-dock__item.is-active {
+  color: var(--brand-primary);
+  border-color: color-mix(in srgb, var(--brand-primary) 34%, transparent);
+  background: color-mix(in srgb, var(--brand-primary) 18%, transparent);
+}
+.poliedron-mobile-dock__item.is-active::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 14px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  transform: translateX(-50%);
+}
+
+/* ── §8 BELL AUDIT ───────────────────────────────────────────────────────
+   Position, destination, the unread-badge architecture and the "no
+   duplicate badge on the dock's Chat slot" rule are all unchanged. The
+   audit found the bell was a 40x40 target — below the Round 1 44px touch
+   floor POL-UI-017 R2 §8 asks to verify. Raised to the shared token; the
+   look, the glass treatment and the anchor point are otherwise identical. */
+.poliedron-bell {
+  width: var(--pol-touch-min);
+  height: var(--pol-touch-min);
+  min-width: var(--pol-touch-min);
+  min-height: var(--pol-touch-min);
+}

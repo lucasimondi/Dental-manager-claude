@@ -508,7 +508,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
       </div>
 
       {(documentFlow === 'ricetta' || documentFlow === 'medico') && (
-        <Suspense fallback={<div role="status" style={{ position: 'fixed', inset: 0, zIndex: 700, background: C.bg, padding: 24 }}>Caricamento editor ricetta…</div>}>
+        <Suspense fallback={<div role="status" style={{ position: 'fixed', inset: 0, zIndex: 9999, background: C.bg, padding: 24 }}>Caricamento editor ricetta…</div>}>
           <DocMedico
             paz={paz}
             si={si}

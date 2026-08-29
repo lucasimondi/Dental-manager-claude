@@ -1,8 +1,8 @@
 ﻿import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase.js';
-import { Crd, Bdg, Modal, Ic, Btn, Fld, Sel, Inp, Txt, TimePicker, SelettorePaziente, EmptyState } from './ui';
+import { Crd, Bdg, Modal, Ic, Btn, Fld, Sel, Inp, Txt, TimePicker, SelettorePaziente, EmptyState, Toast } from './ui';
 import { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
-import { C, fmt, fmtD, today, RICHIAMO_CATEGORIE } from '../lib/utils';
+import { C, fmt, fmtD, today, uid, RICHIAMO_CATEGORIE } from '../lib/utils';
 import { BarChart, Bar, LineChart, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useControlloDati } from '../lib/useControlloDati';
 import WidgetWorkspace from './WidgetWorkspace.jsx';
@@ -17,6 +17,7 @@ import poliedroGem from '../assets/icon-poliedra-gem.png';
 import { logHomeLayoutEvent } from '../lib/homeLayoutDiagnostics.js';
 import { buildActivityText } from '../lib/appointmentQuickHub.js';
 import { MOBILE_DOCK_BOTTOM, MOBILE_DOCK_HEIGHT, MOBILE_DOCK_PROTECTED_GAP } from '../lib/poliedron/poliedronMobileDock.js';
+import { HOME_ATTENTION_EMPTY_LABEL, buildHomeAttentionItems } from '../lib/homeAttention.js';
 
 const PALETTE = [
   '#1A4E66','#2EC4B6','#2D9E61','#7C3AED','#E63946',
@@ -52,7 +53,7 @@ const getSaluto = (nome) => { const ora = new Date().getHours(); const s = ora <
 const fmtDataOra = (d) => d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
 const fmtOra = (d) => d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 
-export default function Dashboard({ patients, appointments, setAppointments, payments, plans, richiami = [], impegni = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, onNavigate, onNavigateNew, templates, userName: userNameProp, si, features, studioId, currentUserId, isStudioAdmin, studioMembership, activityPatientRequest, onActivityPatientRequestHandled }) {
+export default function Dashboard({ patients, setPatients, appointments, setAppointments, payments, plans, richiami = [], impegni = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, onNavigate, onNavigateNew, templates, userName: userNameProp, si, features, studioId, currentUserId, isStudioAdmin, studioMembership, activityPatientRequest, onActivityPatientRequestHandled }) {
   const homePermissions = buildHomePermissions({ membership: studioMembership, features, vertical: si?.vertical });
   const roleLayout = createRolePresetLayout(studioMembership?.capabilities);
   const availableWidgetCatalog = filterWidgetCatalog(HOME_WIDGET_REGISTRY, homePermissions);
@@ -172,6 +173,45 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   const [editForm, setEditForm] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [bookingOpen, setBookingOpen] = useState(false);
+  // Brief, real Toast (same shared component Impostazioni already uses)
+  // for short-lived Home confirmations — the "Da incassare" honest
+  // placeholder (round 3) and "Paziente creato" (round 6, see
+  // creaPazienteRapidoRicetta below) — never a fake navigation.
+  const [homeToastMsg, setHomeToastMsg] = useState('');
+  // Product Owner round 4 — "Ricetta" must land directly on DocMedico's
+  // Ricetta tab, not just on the Pazienti list. Home has no current
+  // patient, so a small inline picker (same SelettorePaziente pattern the
+  // "Nuova attività" modal below already uses) is the minimal step still
+  // needed before onOpenPaz(paz, 'doc', { type: 'ricetta' }) can open it.
+  const [ricettaPickerOpen, setRicettaPickerOpen] = useState(false);
+  const [ricettaPickerSearch, setRicettaPickerSearch] = useState('');
+  // Product Owner round 6 — the picker's search field must also let the
+  // user create a brand-new patient inline (name/surname only), then open
+  // Ricetta for them immediately. Reuses SelettorePaziente's own existing
+  // onCreaPaziente contract — the exact same "no results -> create inline"
+  // UI Agenda.jsx's own quick-booking form already ships (creaPazienteRapido
+  // there) — no new patient-creation logic invented, same uid()-based
+  // optimistic local record, same plan-limit guard.
+  const limitePazienti = features?.max_pazienti ?? null;
+  // SelettorePaziente calls onChange(id) synchronously right after
+  // onCreaPaziente returns — before the setPatients update above has
+  // flushed into a re-render, so `patients.find(...)` below would not yet
+  // see the brand-new record. Kept in a ref (not state, no extra render)
+  // so the picker's onChange can hand it straight to onOpenPaz.
+  const ricettaJustCreatedRef = useRef(null);
+  const creaPazienteRapidoRicetta = (nome, cognome) => {
+    if (!setPatients) return null;
+    if (limitePazienti != null && patients.length >= limitePazienti) {
+      setHomeToastMsg(`Hai raggiunto il limite di ${limitePazienti} pazienti del tuo piano.`);
+      return null;
+    }
+    const id = uid();
+    const nuovoPaziente = { nome, cognome, dataNascita: '', telefono: '', email: '', cf: '', indirizzo: '', cap: '', comune: '', provincia: '', opposizione_sts: false, note: '', id };
+    ricettaJustCreatedRef.current = nuovoPaziente;
+    setPatients((p) => [...p, nuovoPaziente]);
+    setHomeToastMsg(`Paziente ${nome} ${cognome} creato ✓`);
+    return id;
+  };
   const [layoutLoading, setLayoutLoading] = useState(false);
   const [layoutSaving, setLayoutSaving] = useState(false);
   const [layoutError, setLayoutError] = useState('');
@@ -561,6 +601,61 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
   const CHART_PALETTE = [C.pri, C.acc, C.war, C.suc, '#7C3AED', C.dan, C.txl];
   const todoAttivi = todoList.filter(x => !x.fatto);
   const todoFatti = todoList.filter(x => x.fatto);
+
+  /* ── POL-UI-017 R2 §2 — "Richiede attenzione" ─────────────────────────
+     The mobile Home's priority area. It introduces NO new data: every
+     input below is a value this component already had on screen in one of
+     its widgets, just read once more and ranked.
+       · richiami          — the same `richiami` prop the Richiami widget
+                             renders, filtered by the same `stato === 'da_fare'`
+                             + `dataScadenza` comparison it already uses;
+       · scadenzeScadute   — straight from useControlloDati, which is only
+                             computed at all when `homePermissions.
+                             managementControl` is true (fail-closed: a user
+                             without finance.management.read passes 0 and
+                             the row simply never exists);
+       · promemoria        — the same patient-annotation recalls the
+                             "Attività e promemoria" widget lists;
+       · todayApps         — the same list the Agenda widget renders;
+       · consigli          — the same Poliedron advice rows, only when the
+                             advice feature is actually active for this
+                             studio (`consigliAttivi`).
+     No backend call, no new table, no invented alert. */
+  const isHomeWidgetOnScreen = (id) => visibleWidgets.some((item) => item.id === id && item.visible !== false);
+  const attentionItems = buildHomeAttentionItems({
+    today: t,
+    nowTime: now.toTimeString().slice(0, 5),
+    richiami,
+    todayAppointments: todayApps,
+    overduePlanDeadlines: homePermissions.managementControl ? (scadenzeScadute?.length || 0) : 0,
+    // These two point INTO the page (their destination is a widget, not a
+    // route), so they are only raised when that widget is actually on
+    // screen for this user — a personalization that hides the widget also
+    // removes the row, instead of leaving a tap that goes nowhere.
+    overdueReminders: isHomeWidgetOnScreen('todo') ? promemoria.filter(p => p.richiamo.data < t).length : 0,
+    unreadAdvice: consigliAttivi && isHomeWidgetOnScreen('consigli_ai') ? consigli.filter(c => !c.letto).length : 0,
+    patientNameOfAppointment: (a) => {
+      const p = patients.find(x => x.id === a.pazienteId);
+      return p ? `${p.nome} ${p.cognome}` : '';
+    },
+  });
+
+  /* Every destination here is an EXISTING route/handler already used by
+     another widget on this page — the priority area is an entry point,
+     never a second implementation of Richiami/Agenda/Scadenze. */
+  const scrollToHomeWidget = (id) => {
+    const frame = typeof document === 'undefined' ? null : document.querySelector(`.home-workspace [data-widget-id="${id}"]`);
+    frame?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+  };
+  const runAttentionAction = (action) => {
+    if (action === 'richiami') return onGoRichiami && onGoRichiami();
+    if (action === 'agenda') return onGoAgenda && onGoAgenda();
+    if (action === 'scadenze') return setDetailModal('scadenze');
+    if (action === 'todo') return scrollToHomeWidget('todo');
+    if (action === 'consigli') return scrollToHomeWidget('consigli_ai');
+    return undefined;
+  };
+  const ATTENTION_TONE = { danger: C.dan, warn: C.war, info: C.pri };
 
   // `elevated`: opt-in variant with a more evident surface/border/shadow —
   // used only where explicitly asked (Preventivi widget, POL-UX-002 section
@@ -1100,6 +1195,31 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
         </Modal>
       )}
 
+      {ricettaPickerOpen && (
+        <Modal title={<><Ic n="pill" s={15} c={C.txt} /> Ricetta — scegli paziente</>} onClose={() => { setRicettaPickerOpen(false); setRicettaPickerSearch(''); }}>
+          <Fld label="Paziente">
+            <SelettorePaziente
+              patients={patients}
+              value=""
+              onChange={(id) => {
+                const paz = (ricettaJustCreatedRef.current && String(ricettaJustCreatedRef.current.id) === String(id))
+                  ? ricettaJustCreatedRef.current
+                  : patients.find((p) => String(p.id) === String(id));
+                if (!paz || !onOpenPaz) return;
+                ricettaJustCreatedRef.current = null;
+                setRicettaPickerOpen(false);
+                setRicettaPickerSearch('');
+                onOpenPaz(paz, 'doc', { type: 'ricetta' });
+              }}
+              search={ricettaPickerSearch}
+              onSearchChange={setRicettaPickerSearch}
+              placeholder="Cerca paziente, o scrivi nome e cognome per crearne uno nuovo…"
+              onCreaPaziente={setPatients ? creaPazienteRapidoRicetta : undefined}
+            />
+          </Fld>
+        </Modal>
+      )}
+
       {bookingOpen && (
         <QuickBookingModal
           patients={patients} appTypes={appTypes} appointments={appointments} impegni={impegni}
@@ -1108,6 +1228,8 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
         />
       )}
 
+      {homeToastMsg && <Toast msg={homeToastMsg} onDone={() => setHomeToastMsg('')} />}
+
       {/* ── HEADER ──
           POL-UI-015 §4/§3: on mobile this becomes a compact, sticky/
           floating pill (see .home-hero in PremiumVisualSystem.css) — the
@@ -1115,6 +1237,13 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           full-width bar like the removed mobile header. Desktop keeps the
           exact pre-existing layout/behavior, untouched. */}
       <div className="home-hero">
+        {/* POL-UI-017 R2 §1: the mobile hero must stay recognizably
+            POLIEDRA, not a generic anonymous header. The brand mark is the
+            SAME gem asset the Poliedron orb and the Consigli widget already
+            use (no new asset, no second brand system) and is mobile-only —
+            desktop already carries the brand in the premium sidebar, so
+            showing it twice there would be noise. */}
+        <img src={poliedroGem} alt="" aria-hidden="true" className="home-hero__mark" />
         <div className="home-hero__text">
           <div className="home-hero__greeting">{getSaluto(userName)} <span aria-hidden="true">👋</span></div>
           <div className="home-hero__meta">
@@ -1123,8 +1252,16 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
           </div>
           {/* Mobile-only date/time readout (task §4: "Buongiorno + data +
               ora"); hidden on desktop via CSS, where the meta line above
-              already covers the greeting block's existing content. */}
-          <div className="home-hero__datetime" aria-hidden="true">{fmtDataOra(now)} · {fmtOra(now)}</div>
+              already covers the greeting block's existing content.
+              POL-UI-017 R2 §1: on mobile this single line now also carries
+              today's appointment count — the one genuinely operational
+              fact the (mobile-hidden) meta line above used to own — so the
+              hero says everything useful in ONE compact row instead of
+              stacking a greeting, a meta line and a datetime line. */}
+          <div className="home-hero__datetime" aria-hidden="true">
+            {fmtDataOra(now)} · {fmtOra(now)}
+            {' · '}{todayApps.length > 0 ? `${todayApps.length} appuntament${todayApps.length === 1 ? 'o' : 'i'}` : 'nessun appuntamento'}
+          </div>
         </div>
         <div className="home-hero__actions">
           {/* POL-UI-015 bugfix round 2 — ROOT CAUSE of "la personalizzazione
@@ -1144,8 +1281,17 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
               Disabling this button during the same `layoutLoading` window
               the Save button already respects closes the race at its
               source — the editor can no longer open with a stale baseline. */}
-          <button className="home-hero__customize" onClick={openHomeCustomizer} disabled={layoutLoading} aria-busy={layoutLoading}>
-            <Ic n="set" s={14} c={C.txm} /> {layoutLoading ? 'Caricamento…' : 'Personalizza Home'}
+          {/* POL-UI-017 R2 §9: Home is configured occasionally, not daily,
+              so on mobile this control collapses to a discreet 44x44 icon
+              button (label hidden via CSS, never removed from the
+              accessibility tree — see aria-label) instead of competing
+              with the operational content beneath it. Desktop keeps the
+              full labelled button. Nothing about what it opens, seeds or
+              saves changes. */}
+          <button className="home-hero__customize" disabled={layoutLoading} onClick={openHomeCustomizer} aria-busy={layoutLoading}
+            aria-label={layoutLoading ? 'Caricamento della personalizzazione della Home' : 'Personalizza Home'} title="Personalizza Home">
+            <Ic n="set" s={14} c={C.txm} />
+            <span className="home-hero__customize-label">{layoutLoading ? 'Caricamento…' : 'Personalizza Home'}</span>
           </button>
         </div>
       </div>
@@ -1160,6 +1306,50 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
         </div>
       )}
 
+      {/* ── POL-UI-017 R2 §2 — RICHIEDE ATTENZIONE ──
+          The mobile Home's priority area, rendered ABOVE the widget
+          workspace so the first viewport answers "what needs me?" before
+          anything else. It is page chrome, NOT a widget: it is deliberately
+          absent from HOME_WIDGET_REGISTRY so it can never be reordered,
+          resized, hidden or persisted, and so it cannot perturb the saved
+          layout contract in any way (see §5/§9 — personalization must
+          survive untouched).
+          It is mobile-only by stylesheet (`.home-attention` is
+          display:none above the mobile breakpoints): this round does not
+          redesign desktop Home, and adding a new desktop band would be
+          exactly that.
+          When there is nothing to flag it collapses to ONE compact
+          positive line — never a large empty box (§2). */}
+      <section className="home-attention" aria-label="Richiede attenzione" data-testid="home-attention">
+        {attentionItems.length === 0 ? (
+          <p className="home-attention__clear">
+            <Ic n="ok" s={13} c={C.suc} />{HOME_ATTENTION_EMPTY_LABEL}
+          </p>
+        ) : (
+          <>
+            <div className="home-section-label"><Ic n="warn" s={11} c={C.txm} />Richiede attenzione</div>
+            <ul className="home-attention__list">
+              {attentionItems.map((item) => {
+                const tone = ATTENTION_TONE[item.tone] || C.pri;
+                return (
+                  <li key={item.id}>
+                    <button type="button" className="home-attention__item" data-attention-id={item.id} data-tone={item.tone}
+                      style={{ borderLeftColor: tone }} onClick={() => runAttentionAction(item.action)}>
+                      <span className="home-attention__icon" style={{ background: tone + '1F' }}><Ic n={item.icon} s={14} c={tone} /></span>
+                      <span className="home-attention__body">
+                        <span className="home-attention__label" style={{ color: tone }}>{item.label}</span>
+                        <span className="home-attention__detail">{item.detail}</span>
+                      </span>
+                      <span className="home-attention__chevron" aria-hidden="true">›</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
+      </section>
+
       {/* ── WIDGET ORDINATI DINAMICAMENTE ──
          POL-UX-002 section 6: il selettore globale Mese/Anno è stato
          rimosso dalla Home. homePeriodId resta 'current_month' di default
@@ -1167,6 +1357,14 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
          loadHomeFinancialSnapshot/CanonicalFinancialWidget, che mostrano
          comunque il proprio periodo nell'header di ogni card — i dati
          canonici non dipendono da questo controllo rimosso. */}
+      {/* POL-UI-017 R2 §4/§5 — `.home-workspace` exists only so the mobile
+          priority banding (see `.home-workspace .home-widget-frame
+          [data-widget-id=…]` in PremiumVisualSystem.css) can be scoped to
+          the LIVE Home and can never reach the identical
+          `.home-widget-frame` markup rendered inside the "Personalizza
+          Home" preview — where the user must always see their own saved
+          order, unbanded, or reordering would look broken. */}
+      <div className="home-workspace">
       <WidgetWorkspace layout={visibleWidgets} editing={false} previewMode="desktop" onMove={() => {}} onResize={() => {}}>
       {visibleWidgets.filter(w => w.visible !== false).map(w => {
         const canonicalDefinition = getHomeFinancialWidget(w.id);
@@ -1176,14 +1374,30 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
             onNavigate, onNavigateNew, onGoAgenda, onGoRichiami,
             openBooking: () => setBookingOpen(true),
             openTodoModal: openGenericTodoModal,
+            openComingSoon: (msg) => setHomeToastMsg(msg),
+            openRicettaPicker: () => setRicettaPickerOpen(true),
           };
           const activeActions = resolveQuickActions(w.config?.actions, { permissions: homePermissions, features, vertical: si?.vertical });
+          /* POL-UI-017 R2 round 2 — the Product Owner asked for the quick-
+             action set itself to be the dynamic, curated thing (via
+             "Personalizza azioni rapide" in Impostazioni, see below) rather
+             than an on-widget "+"/"Altro" expand toggle. The widget now
+             simply renders whatever is configured/allowed — no truncation,
+             no partition, no expand state — and desktop/mobile render the
+             identical grid, exactly as `resolveQuickActions` resolved it. */
           return (
             <div key="quick_actions" className="home-quick-actions">
-              <div className="home-section-label"><Ic n="zap" s={11} c={C.txm} />Azioni rapide</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div className="home-section-label" style={{ marginBottom: 0 }}><Ic n="zap" s={11} c={C.txm} />Azioni rapide</div>
+                {onNavigate && (
+                  <button type="button" className="home-list-link" onClick={() => onNavigate('set')} style={{ background: 'none', color: C.pri, fontWeight: 700 }}>
+                    Personalizza ›
+                  </button>
+                )}
+              </div>
               <div className="home-quick-actions__grid">
                 {activeActions.map((action) => (
-                  <button key={action.id} onClick={() => action.run(quickActionContext)}>
+                  <button key={action.id} type="button" onClick={() => action.run(quickActionContext)}>
                     <span className="home-quick-actions__icon"><Ic n={action.ic} s={17} c={C.pri} /></span>
                     <span>{action.label}</span>
                   </button>
@@ -1644,6 +1858,7 @@ export default function Dashboard({ patients, appointments, setAppointments, pay
         return null;
       })}
       </WidgetWorkspace>
+      </div>
 
       {/* POL-UI-015 §5: dock-clearance spacer — zero-height/no-op above the
           719px mobile breakpoint (see .home-dock-clearance in
