@@ -4,6 +4,7 @@ import { supabase, DB } from './lib/supabase.js';
 import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, getLogoSlug, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, uid, applyBrandColors, applyHeaderColor } from './lib/utils';
 import { generaRichiamiBot } from './lib/richiamiBot';
 import { salvaPosizione, leggiPosizione, pulisciPosizione } from './lib/posizioneNavigazione';
+import { fetchSaldiPiani } from './lib/domain/incassiService.js';
 // POL-AI-001: MobileDock (the POL-UI-009/010 poliedro-button-opens-full-nav-
 // menu) is superseded by Poliedron — the same floating polyhedron concept,
 // evolved into the app's universal command interface (search/navigate/
@@ -88,6 +89,11 @@ export default function App() {
   const [autoOpenNew, setAutoOpenNew] = useState(null); // 'paz' | 'piani' | 'paga' | 'richiami' | 'spese' | null
   const [agendaInitPaz, setAgendaInitPaz] = useState(null);
   const [schedaDashPaz, setSchedaDashPaz] = useState(null);
+  // POL-FIN-002: per-plan receivable balances for the currently-open patient
+  // record, fetched here (App.jsx already does async data loading) and
+  // handed to SchedaPaz as a plain prop — SchedaPaz itself must stay
+  // synchronous/self-contained (tests/patientRecordRecovery.test.mjs).
+  const [saldiPiani, setSaldiPiani] = useState({});
   const [quickHubRecallRequest, setQuickHubRecallRequest] = useState(null);
   const [quickHubActivityRequest, setQuickHubActivityRequest] = useState(null);
   const [quickHubPoliedronRequest, setQuickHubPoliedronRequest] = useState(null);
@@ -229,6 +235,19 @@ export default function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataLoading]);
+
+  // POL-FIN-002: refresh the open patient's per-plan receivable balances
+  // whenever the patient changes or plans/payments are edited underneath
+  // them (new voce, payment registered, plan removed, etc.).
+  useEffect(() => {
+    let active = true;
+    const pazienteId = schedaDashPaz?.paz?.id;
+    if (pazienteId == null) { setSaldiPiani({}); return undefined; }
+    const ids = plans.filter((pl) => pl?.pazienteId === pazienteId).map((pl) => pl.id);
+    if (ids.length === 0) { setSaldiPiani({}); return undefined; }
+    fetchSaldiPiani(ids).then((map) => { if (active) setSaldiPiani(map); });
+    return () => { active = false; };
+  }, [schedaDashPaz?.paz?.id, plans, payments]);
 
   // Salva la pagina corrente ad ogni cambio, per poterla ripristinare dopo
   // un ricaricamento a freddo. Evitiamo di scrivere durante il ripristino
@@ -517,6 +536,7 @@ export default function App() {
             initTab={schedaDashPaz.tab}
             plans={plans} setPlans={setPlansSync}
             payments={payments}
+            saldiPiani={saldiPiani}
             appointments={appointments}
             implants={implants}
             setImplants={setImplantsSync}
