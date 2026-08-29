@@ -9,6 +9,7 @@ import Proiezioni from './Proiezioni.jsx';
 import Costi from './Costi.jsx';
 import ControlloCockpit from './ControlloCockpit.jsx';
 import MarginalitaPrestazioni from './MarginalitaPrestazioni.jsx';
+import Incassi from './Incassi.jsx';
 
 const TABS = [
   { id: 'panoramica', icon: 'chart', label: 'Panoramica' },
@@ -16,6 +17,7 @@ const TABS = [
   { id: 'proiezioni', icon: 'trend', label: 'Proiezioni' },
   { id: 'costi', icon: 'receipt', label: 'Costi' },
   { id: 'marginalita', icon: 'spark', label: 'Marginalità' },
+  { id: 'incassi', icon: 'pay', label: 'Incassi' },
 ];
 
 function CanonicalBaseOverview({ studioId }) {
@@ -120,6 +122,7 @@ export default function ControlloGestione(props) {
       {tab === 'proiezioni' && <Proiezioni studioId={props.studioId} />}
       {tab === 'costi' && <Costi studioId={props.studioId} isDentistico={props.isDentistico} />}
       {tab === 'marginalita' && <MarginalitaPrestazioni studioId={props.studioId} pricelist={props.pricelist} isDentistico={props.isDentistico} />}
+      {tab === 'incassi' && <Incassi studioId={props.studioId} patients={props.patients} payments={props.payments} onOpenPaz={props.onOpenPaz} embedded />}
     </div>
   );
 }

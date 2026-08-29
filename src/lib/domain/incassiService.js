@@ -32,6 +32,6 @@ export async function fetchSaldiPiani(pianoIds) {
 export async function fetchSaldiApertiStudio(studioId) {
   if (!studioId) return [];
   const { data, error } = await supabase.rpc('get_saldi_aperti_studio', { p_studio_id: studioId });
-  if (error) { console.error('fetchSaldiApertiStudio', error); return []; }
+  if (error) { console.error('fetchSaldiApertiStudio', error); throw error; }
   return data || [];
 }

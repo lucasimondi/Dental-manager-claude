@@ -1,5 +1,17 @@
 # Handoffs
 
+## POL-FIN-002 — Step 3 Incassi section
+
+- Agent: Codex, continuing Claude's recorded handoff on `feature/modulo-incassi` at `6430076`.
+- Completed: one shared `Incassi.jsx` surface exposed as both a direct navigation page and the sixth Controllo di Gestione tab; canonical `get_saldi_aperti_studio` worklist; month/year collected KPI; total open-balance KPI; studio-scoped persisted sorting by balance or age; patient-row navigation to the stable Pagamenti tab; accessible loading/error/empty states and responsive/touch CSS.
+- Files changed: `src/components/Incassi.jsx`, `src/components/ControlloGestione.jsx`, `src/components/PremiumVisualSystem.css`, `src/App.jsx`, `src/lib/utils.js`, `src/lib/domain/incassiService.js`, `tests/incassiSection.test.mjs`, and coordination docs.
+- Database/dependencies: none in this step. No migration, RLS, schema, package or lockfile change. The component consumes the already-applied POL-FIN-002 RPC and contains no plan-balance formula.
+- Validation: dedicated tests 5/5; full suite 531/531; production build passed with pre-existing duplicate `chat` icon, pdfjs eval, dynamic-import and chunk-size warnings; `git diff --check` clean.
+- Scope safety: PR #74's protected `quickActionsCatalog.js` and Impostazioni quick-actions section are untouched. Its overlapping `App.jsx` work is in a separate Home/quick-action area; this step only registers the lazy Incassi page.
+- Exact next action: implement plan §5, "Aggiungi da incassare", reusing the existing treatment-plan service and already-loaded pricelist. Do not open a PR or merge without explicit Product Owner approval.
+
+---
+
 ## POL-FIN-002 — Modulo Incassi / Da incassare (saldo piano, eseguito, acconto) — handoff to CODEX
 
 - Task ID: POL-FIN-002. Agent: Claude, direct Product Owner request in-session (plan doc `claude/piano-modulo-incassi-da-incassare.md`, committed on this branch, is the authoritative spec — read it in full before continuing).

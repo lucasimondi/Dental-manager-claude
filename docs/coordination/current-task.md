@@ -5,7 +5,7 @@
 - OWNER: CLAUDE (handing off to CODEX — session token budget reached). Direct Product Owner request in-session; plan doc committed at `claude/piano-modulo-incassi-da-incassare.md` on this branch.
 - BRANCH: `feature/modulo-incassi`
 - BASE: `origin/master@05ee761` (merge PR #73)
-- STATUS: IN_PROGRESS — step 1/8 (DB) and step 2/8 (scheda paziente widget) DONE and pushed; steps 3-8 NOT started.
+- STATUS: IN_PROGRESS — steps 1/8 (DB), 2/8 (scheda paziente widget) and 3/8 (sezione Incassi) DONE; steps 4-8 NOT started.
 - OBJECTIVE: fix "da incassare" showing a plan's executed total without subtracting payments already received (reported real case: patient Lauretti Giacomo, plan 1.400€, 700€ eseguito shown as owed while 900€ was already paid — real saldo is 500€). Implement the three-value model (saldo_piano / eseguito_non_pagato / acconto) end to end per `claude/piano-modulo-incassi-da-incassare.md` sections 2-9.
 
 ## Completed so far
@@ -22,9 +22,10 @@
    - New files: `src/lib/domain/incassiService.js` (I/O: `fetchSaldoPiano`/`fetchSaldiPiani`/`fetchSaldiApertiStudio`, imports `supabase`) and `src/lib/domain/incassiMath.js` (pure: `aggregateSaldi`, NO imports — this is what `SchedaPaz.jsx` imports, to respect the regression guard both in letter and spirit).
    - Full test suite 526/526 passing, production build clean (`npm run build`).
 
+3. **"Incassi" section** (§4): implemented once in `src/components/Incassi.jsx` and exposed both as the `incassi` app page/navigation entry and as the sixth tab in `ControlloGestione.jsx`. It reads only `get_saldi_aperti_studio`, shows Incassato for month/year and the canonical total open balance, persists the studio-scoped sort preference, and opens the selected patient's Pagamenti tab. Dedicated tests 5/5; full suite 531/531; build passed.
+
 ## NOT started (remaining sections of `claude/piano-modulo-incassi-da-incassare.md`)
 
-3. **"Incassi" section** (§4): new page/tab with `get_saldi_aperti_studio`, dock entry (`src/lib/utils.js` `NAV`/`DEF_DOCK_SETTINGS.menuItems`, `mergeDockSettings` already forward-compat-handles adding a new nav id for existing studios — see precedent comment there) + tab inside `ControlloGestione.jsx` (`TABS` array, currently 5 entries, no placeholder yet — add a 6th). KPI "Incassato"/"Da incassare", sortable open-balance list (by saldo desc or giorni_apertura desc, persisted preference like other dashboard personalizations), row → navigate to patient's Pagamenti tab.
 4. **"Aggiungi da incassare" form** (§5): listino/libero toggle (reuse the already-loaded `pricelist` prop/array, same one `Listino.jsx`/`Piani.jsx` use — do not requery), "Già eseguita" checkbox, optional contestual payment, auto-create a "contenitore" plan (via `src/lib/domain/treatmentPlanService.js`'s existing `buildNewPlan`) when the patient has none, else add to most recent plan (`pickTargetPlanForNewItem`, already exists in `src/lib/poliedron/planner/actionPlanner.js` and re-exported by `treatmentPlanService.js`).
 5. **Piani always editable + removal warning** (§6): `Piani.jsx` — allow add/remove voce any time; before removing a voce that has associated payments, warn explicitly ("Questa prestazione ha X€ di pagamenti collegati — rimuovendola diventeranno un acconto libero sul piano") and never silently delete the payment row.
 6. **"Segna eseguita" UI + AI tool** (§7): inline UI selector (mini "Da eseguire/Eseguita" on the voce row, optional "Registra pagamento adesso" checkbox) using the existing `markTreatmentItemCompleted` in `treatmentPlanService.js`; new `agente-assistente` tool `segna_prestazione_eseguita` — **the edge function's server-side source is NOT in this repo** (only invoked via `supabase.functions.invoke('agente-assistente', {...})` from `src/lib/poliedron/modelGateway.js`/legacy `src/components/AssistenteAI.jsx`), so the exact tool JSON schema must be authored against the LIVE deployed function, not guessed from this repo. Client-observable confirmation contract: request `{messages, confirm}`, response `{needsConfirmation: {tool_use_id, name, input}, text, messages}` on first call, re-invoke with `{tool_use_id, cancelled}` to confirm/cancel — same pattern as `modifica_appuntamento`/`elimina_appuntamento`. Premium-tier gated per existing convention for other write tools.
@@ -41,7 +42,7 @@
 
 ## Exact next action
 
-Continue with item 3 ("Incassi" section) next, in the order listed above (4-8 depend conceptually on 3-6 but are mostly independent files). Re-read `claude/piano-modulo-incassi-da-incassare.md` in full first. Push commits to `feature/modulo-incassi` incrementally (already has 3 commits: docs, DB migration, scheda paziente widget). Do not merge or open a PR without asking the Product Owner first.
+Continue with item 4 ("Aggiungi da incassare" form) next. Push commits to `feature/modulo-incassi` incrementally. Do not merge or open a PR without asking the Product Owner first.
 
 ---
 
