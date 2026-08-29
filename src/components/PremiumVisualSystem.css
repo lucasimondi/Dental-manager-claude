@@ -1995,3 +1995,4 @@ body:has(.home-widget-grid) #app-scroll {
   /* Touch targets stay >=44px on mobile even inside the scroll area. */
   .home-richiami-list > [role='button'] { min-height: 48px; }
 }
+.incassi-source-toggle,.incassi-form-actions{display:flex;gap:8px;margin-bottom:14px}.incassi-source-toggle .pol-tab{flex:1}.incassi-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.incassi-check{display:flex;align-items:center;gap:9px;min-height:44px;font-weight:700;font-size:13px}.incassi-check input{width:20px;height:20px;accent-color:var(--pol-focus,#185fa5)}.incassi-live-balance{display:flex;align-items:center;justify-content:space-between;margin:10px 0 14px;padding:12px;border-radius:10px;background:#fff1f1;color:#b42318}.incassi-live-balance strong{font-size:18px}.incassi-form-error{color:#b42318;font-size:12px;margin:0 0 12px}.incassi-form-actions{margin:0}@media(max-width:600px){.incassi-form-grid{grid-template-columns:1fr}.incassi-toolbar>.pol-btn{width:100%}}

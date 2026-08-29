@@ -122,7 +122,7 @@ export default function ControlloGestione(props) {
       {tab === 'proiezioni' && <Proiezioni studioId={props.studioId} />}
       {tab === 'costi' && <Costi studioId={props.studioId} isDentistico={props.isDentistico} />}
       {tab === 'marginalita' && <MarginalitaPrestazioni studioId={props.studioId} pricelist={props.pricelist} isDentistico={props.isDentistico} />}
-      {tab === 'incassi' && <Incassi studioId={props.studioId} patients={props.patients} payments={props.payments} onOpenPaz={props.onOpenPaz} embedded />}
+      {tab === 'incassi' && <Incassi studioId={props.studioId} patients={props.patients} plans={props.plans} payments={props.payments} pricelist={props.pricelist} setPlans={props.setPlans} setPayments={props.setPayments} onOpenPaz={props.onOpenPaz} embedded />}
     </div>
   );
 }

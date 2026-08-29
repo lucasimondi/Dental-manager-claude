@@ -1,5 +1,16 @@
 # Handoffs
 
+## POL-FIN-002 — Step 4 Aggiungi da incassare
+
+- Agent: Codex, continuing the recorded handoff on `feature/modulo-incassi`.
+- Completed: shared Incassi form for an already-loaded pricelist item or a free item; patient selector; amount and execution state; optional contextual payment; live remaining balance. It appends the receivable to the patient's most recent plan, or creates a standard "Prestazioni occasionali" plan when none exists.
+- Architecture: pure/tested `incassiActions.js`; existing `buildNewPlan`; existing App sync setters for `dm_pl`/`dm_py`; no direct Supabase access or duplicated pricelist query. The AI planner's ambiguity-safe target selection remains unchanged because this explicit human workflow has a different approved rule.
+- Database/dependencies: none. No migration, schema, RLS, production-data, package or lockfile change.
+- Validation: full suite 534/534; production build passed with the pre-existing duplicate `chat` icon warning; `git diff --check` clean.
+- Exact next action: implement step 5, keeping plans editable and warning before removing a treatment item whose patient has collected payments. Never delete payment rows silently. Do not open a PR or merge without explicit Product Owner approval.
+
+---
+
 ## POL-FIN-002 — Step 3 Incassi section
 
 - Agent: Codex, continuing Claude's recorded handoff on `feature/modulo-incassi` at `6430076`.
