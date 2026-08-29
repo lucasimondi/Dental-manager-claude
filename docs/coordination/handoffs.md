@@ -1,5 +1,16 @@
 # Handoffs
 
+## POL-FIN-002 — Step 5 editable plans and safe removal
+
+- Agent: Codex on `feature/modulo-incassi`.
+- Completed: existing plans accept new free/listino treatment items at any time; each item has a touch-sized remove action. A paid allocation warning is shown before removing an item with collected money, and payment records are never changed or deleted.
+- Allocation detail: `planPaymentAllocation.js` mirrors canonical paid-only FIFO across a patient's plans, respects percentage/fixed plan discounts, then attributes the plan quota by item order solely for the warning. This does not create a nonexistent payment-to-item foreign key.
+- Database/dependencies: none. No migration, RLS, schema, package or lockfile change.
+- Validation: full suite 536/536; production build passed with only pre-existing warnings; `git diff --check` clean.
+- Exact next action: step 6, shared "Segna eseguita" UI action and optional quick-payment handoff; do not guess or modify the live `agente-assistente` tool schema without its authoritative source/contract. No PR or merge without explicit Product Owner approval.
+
+---
+
 ## POL-FIN-002 — Step 4 Aggiungi da incassare
 
 - Agent: Codex, continuing the recorded handoff on `feature/modulo-incassi`.

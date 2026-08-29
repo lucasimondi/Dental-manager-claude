@@ -649,7 +649,7 @@ export default function App() {
             )}
             {page === 'piani' && (
               <Piani
-                patients={patients} plans={plans} setPlans={setPlansSync}
+                patients={patients} plans={plans} setPlans={setPlansSync} payments={payments}
                 pricelist={pricelist} templates={templates} si={studioInfo} features={features}
                 initPatId={initPatId} onClearInitPat={() => setInitPatId(null)}
                 onOpenPaz={goSchedaPaz}

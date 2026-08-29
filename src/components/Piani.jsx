@@ -7,8 +7,9 @@ import { salvaPosizione, leggiPosizione } from '../lib/posizioneNavigazione';
 import Odontogramma from './Odontogramma.jsx';
 import PdfView from './PdfView.jsx';
 import WaAction, { apriWaDiretto } from './ui/WaAction.jsx';
+import { allocatedPaymentForItem } from '../lib/domain/planPaymentAllocation.js';
 
-export default function Piani({ patients, plans, setPlans, pricelist, templates, si, features, initPatId, onClearInitPat, onOpenPaz, autoOpenNew, onAutoOpenNewHandled }) {
+export default function Piani({ patients, plans, setPlans, payments = [], pricelist, templates, si, features, initPatId, onClearInitPat, onOpenPaz, autoOpenNew, onAutoOpenNewHandled }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const isMobile = useIsMobile();
   const [modal, setModal] = useState(false);
@@ -33,6 +34,8 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
   const [selPiani, setSelPiani] = useState([]);
   const [filtro, setFiltro] = useState(null); // null=tutti | 'attivo'|'accettato'|'rifiutato'|'concluso'|'inCorso'
   const [filtroModal, setFiltroModal] = useState(null);
+  const [editingPlanId, setEditingPlanId] = useState(null);
+  const [editItem, setEditItem] = useState({ prestazione: '', dente: '', prezzo: '' });
 
   useEffect(() => {
     if (initPatId) {
@@ -112,6 +115,26 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
   const toggleIncassata = (plId, i) => setPlans((p) => p.map((pl) => (pl.id === plId ? { ...pl, voci: pl.voci.map((v, j) => (j === i ? { ...v, incassata: !v.incassata } : v)) } : pl)));
   const setStato = (plId, stato) => setPlans((p) => p.map((pl) => (pl.id === plId ? { ...pl, stato } : pl)));
   const del = (id) => { if (confirm('Eliminare piano?')) setPlans((p) => p.filter((pl) => pl.id !== id)); };
+  const addItemToPlan = (planId) => {
+    if (!editItem.prestazione.trim()) return;
+    setPlans((current) => current.map((plan) => String(plan.id) === String(planId) ? {
+      ...plan, stato: plan.stato === 'concluso' ? 'attivo' : plan.stato,
+      voci: [...(plan.voci || []), { prestazione: editItem.prestazione.trim(), dente: editItem.dente.trim(), prezzo: Number(editItem.prezzo) || 0, eseguita: false, incassata: false }],
+    } : plan));
+    setEditItem({ prestazione: '', dente: '', prezzo: '' }); setEditingPlanId(null);
+  };
+  const removeItemFromPlan = (plan, itemIndex) => {
+    const allocated = allocatedPaymentForItem(plans, payments, plan.id, itemIndex);
+    const message = allocated > 0
+      ? `Questa prestazione ha ${fmt(allocated)} di pagamenti collegati — rimuovendola diventeranno un acconto libero sul piano. Il pagamento non verrà cancellato. Continuare?`
+      : 'Rimuovere questa prestazione dal piano?';
+    if (!confirm(message)) return;
+    setPlans((current) => current.map((candidate) => {
+      if (String(candidate.id) !== String(plan.id)) return candidate;
+      const voci = (candidate.voci || []).filter((_, index) => index !== itemIndex);
+      return { ...candidate, voci, stato: voci.length > 0 && voci.every((item) => item.eseguita) ? 'concluso' : 'attivo' };
+    }));
+  };
   const selPr = (nome) => { const item = pricelist.find((p) => p.nome === nome); setNv((v) => ({ ...v, prestazione: nome, prezzo: item ? item.prezzo : v.prezzo })); };
 
   const openWA = (pl, mode) => {
@@ -274,6 +297,7 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
                       {v.dataEsec && <div style={{ fontSize: 10, color: C.suc }}>Eseguita il {v.dataEsec}</div>}
                     </div>
                     <div style={{ fontWeight: 700, color: C.pri, flexShrink: 0, fontSize: 12 }}>{fmt(v.prezzo)}</div>
+                    <button type="button" aria-label={`Rimuovi ${v.prestazione}`} onClick={() => removeItemFromPlan(pl, i)} style={{ width: 44, height: 44, display: 'grid', placeItems: 'center', background: C.danL, border: 'none', borderRadius: 8, cursor: 'pointer', flexShrink: 0 }}><Ic n="del" s={14} c={C.dan} /></button>
                   </div>
                   <div style={{ display: 'flex', gap: 5, marginTop: 5 }}>
                     <button onClick={() => toggleEseguita(pl.id, i)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '6px 0', borderRadius: 7, border: `1.5px solid ${v.eseguita ? C.suc : C.brd}`, background: v.eseguita ? C.sucL : C.bg, color: v.eseguita ? C.suc : C.txm, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
@@ -287,6 +311,14 @@ export default function Piani({ patients, plans, setPlans, pricelist, templates,
                   </div>
                 </div>
               ))}
+              {editingPlanId === pl.id ? (
+                <div className="plan-inline-editor">
+                  <Fld label="Prestazione"><Inp value={editItem.prestazione} onChange={(event) => setEditItem((item) => ({ ...item, prestazione: event.target.value }))} placeholder="Descrizione prestazione" /></Fld>
+                  <div className="plan-inline-editor__grid"><Fld label="Dente (opzionale)"><Inp value={editItem.dente} onChange={(event) => setEditItem((item) => ({ ...item, dente: event.target.value }))} /></Fld><Fld label="Prezzo €"><Inp type="number" min="0" step="0.01" inputMode="decimal" value={editItem.prezzo} onChange={(event) => setEditItem((item) => ({ ...item, prezzo: event.target.value }))} /></Fld></div>
+                  <Fld label="Dal listino"><Sel value="" onChange={(event) => { const item = pricelist.find((entry) => entry.nome === event.target.value); if (item) setEditItem({ prestazione: item.nome, dente: '', prezzo: String(item.prezzo) }); }}><option value="">Seleziona…</option>{pricelist.map((item) => <option key={item.id} value={item.nome}>{item.nome} — {fmt(item.prezzo)}</option>)}</Sel></Fld>
+                  <div className="plan-inline-editor__actions"><Btn ch="Annulla" v="sec" sz="sm" onClick={() => setEditingPlanId(null)} /><Btn ch="Aggiungi" sz="sm" onClick={() => addItemToPlan(pl.id)} /></div>
+                </div>
+              ) : <button type="button" className="plan-add-item" onClick={() => { setEditingPlanId(pl.id); setEditItem({ prestazione: '', dente: '', prezzo: '' }); }}>+ Aggiungi prestazione</button>}
               <div style={{ textAlign: 'right', fontWeight: 800, color: C.pri, marginTop: 7, fontSize: 13 }}>Totale: {fmt(tot)}</div>
               <div style={{ marginTop: 9, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 <WaAction features={features} onClick={() => openWA(pl, 'piano')} label="Piano WA" style={{ flex: 'none', background: '#25D366', color: '#fff', borderRadius: 8, padding: '6px 11px', fontSize: 11 }} />

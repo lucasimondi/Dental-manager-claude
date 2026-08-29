@@ -5,7 +5,7 @@
 - OWNER: CLAUDE (handing off to CODEX — session token budget reached). Direct Product Owner request in-session; plan doc committed at `claude/piano-modulo-incassi-da-incassare.md` on this branch.
 - BRANCH: `feature/modulo-incassi`
 - BASE: `origin/master@05ee761` (merge PR #73)
-- STATUS: IN_PROGRESS — steps 1/8 (DB), 2/8 (scheda paziente widget), 3/8 (sezione Incassi) and 4/8 (Aggiungi da incassare) DONE; steps 5-8 NOT started.
+- STATUS: IN_PROGRESS — steps 1/8 through 5/8 DONE; steps 6-8 NOT started.
 - OBJECTIVE: fix "da incassare" showing a plan's executed total without subtracting payments already received (reported real case: patient Lauretti Giacomo, plan 1.400€, 700€ eseguito shown as owed while 900€ was already paid — real saldo is 500€). Implement the three-value model (saldo_piano / eseguito_non_pagato / acconto) end to end per `claude/piano-modulo-incassi-da-incassare.md` sections 2-9.
 
 ## Completed so far
@@ -25,10 +25,10 @@
 3. **"Incassi" section** (§4): implemented once in `src/components/Incassi.jsx` and exposed both as the `incassi` app page/navigation entry and as the sixth tab in `ControlloGestione.jsx`. It reads only `get_saldi_aperti_studio`, shows Incassato for month/year and the canonical total open balance, persists the studio-scoped sort preference, and opens the selected patient's Pagamenti tab. Dedicated tests 5/5; full suite 531/531; build passed.
 
 4. **"Aggiungi da incassare" form** (§5): added to the shared Incassi surface with patient search, already-loaded pricelist/free-item toggle, description/amount, "Già eseguita" default-on, optional contextual collected payment and live remaining balance. A pure `incassiActions.js` helper appends to the patient's most recent plan or creates a normal "Prestazioni occasionali" plan through `buildNewPlan`; it deliberately does not change the AI planner's separate ambiguity-safe `pickTargetPlanForNewItem` contract. The form writes only through App's existing sync setters. Full suite 534/534; production build passed with the pre-existing duplicate `chat` icon warning.
+5. **Piani always editable + removal warning** (§6): every saved plan now exposes "+ Aggiungi prestazione" with free/listino entry and a touch-sized removal control on each item. Removal computes the explanatory collected quota with the canonical patient-to-plan FIFO allocation and proportional plan discount, then item order; if positive it warns that the amount becomes a free advance and explicitly states the payment will not be deleted. Payments are read-only in this flow. Full suite 536/536; build passed.
 
 ## NOT started (remaining sections of `claude/piano-modulo-incassi-da-incassare.md`)
 
-5. **Piani always editable + removal warning** (§6): `Piani.jsx` — allow add/remove voce any time; before removing a voce that has associated payments, warn explicitly ("Questa prestazione ha X€ di pagamenti collegati — rimuovendola diventeranno un acconto libero sul piano") and never silently delete the payment row.
 6. **"Segna eseguita" UI + AI tool** (§7): inline UI selector (mini "Da eseguire/Eseguita" on the voce row, optional "Registra pagamento adesso" checkbox) using the existing `markTreatmentItemCompleted` in `treatmentPlanService.js`; new `agente-assistente` tool `segna_prestazione_eseguita` — **the edge function's server-side source is NOT in this repo** (only invoked via `supabase.functions.invoke('agente-assistente', {...})` from `src/lib/poliedron/modelGateway.js`/legacy `src/components/AssistenteAI.jsx`), so the exact tool JSON schema must be authored against the LIVE deployed function, not guessed from this repo. Client-observable confirmation contract: request `{messages, confirm}`, response `{needsConfirmation: {tool_use_id, name, input}, text, messages}` on first call, re-invoke with `{tool_use_id, cancelled}` to confirm/cancel — same pattern as `modifica_appuntamento`/`elimina_appuntamento`. Premium-tier gated per existing convention for other write tools.
 7. **Quick "Registra pagamento" form** (§8): prefilled importo/metodo('Contanti')/data(oggi), all editable; automatic difference handling is already free once `saldo_piano` exists (just insert into `payments` via existing `DB.insert('dm_py', ...)`/`paymentService.js` pattern with `stato: 'pagato'`, no extra calc needed — the RPC recomputes on next read).
 8. **Final validation**: re-run `get_advisors(security)` after any further migration; Vercel preview manual QA (golden path + edge cases in an actual browser — not done yet, no preview deployed); final `npm test`/`npm run build`; update this file + append a handoff entry per section below when each remaining piece lands.
@@ -43,7 +43,7 @@
 
 ## Exact next action
 
-Continue with item 5 (Piani always editable + removal warning) next. Push commits to `feature/modulo-incassi` incrementally. Do not merge or open a PR without asking the Product Owner first.
+Continue with item 6 ("Segna eseguita" shared UI action, then assess the live-only AI tool boundary) next. Push commits to `feature/modulo-incassi` incrementally. Do not merge or open a PR without asking the Product Owner first.
 
 ---
 
