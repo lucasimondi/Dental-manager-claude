@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useState } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr } from './ui';
-import { C, fmt, fmtD, today, SCADENZA_PRESET, addMesi, rilevaRichiamo } from '../lib/utils';
+import { C, fmt, fmtD, today, uid, SCADENZA_PRESET, addMesi, rilevaRichiamo } from '../lib/utils';
 import PdfView from './PdfView.jsx';
 import { aggregateSaldi } from '../lib/domain/incassiMath.js';
 
@@ -32,6 +32,15 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
   const [editPianoModal, setEditPianoModal] = useState(null);
   const [editForm, setEditForm] = useState(null);
   const [confirmDelId, setConfirmDelId] = useState(null);
+  // POL-FIN-002 follow-up: the "Registra pagamento adesso" offer (Piani.jsx)
+  // never made it into this tab's own, separate plan-item rendering, so
+  // completing a treatment here never offered the quick-payment checkbox —
+  // reported by the Product Owner after merge. Same shape as Piani.jsx's
+  // quickOffer/quickPayment (amount/date/metodo, stato:'pagato'), added
+  // here rather than shared, since this component must stay synchronous/
+  // self-contained (see tests/patientRecordRecovery.test.mjs).
+  const [quickOffer, setQuickOffer] = useState(null);
+  const [quickPayment, setQuickPayment] = useState(null);
 
   // Recovery boundary: legacy rows can contain null/non-array JSON fields.
   // Normalize before render so a single malformed historical row cannot take
@@ -56,21 +65,38 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
   const totDaPagare = aggSaldi.saldo_piano;
   const pctPagato = aggSaldi.totale_piano > 0 ? Math.min(100, Math.round((aggSaldi.totale_pagato / aggSaldi.totale_piano) * 100)) : 0;
 
-  const toggleEseguita = (plId, i) => setPlans((prev) => prev.map((pl) => {
-    if (pl.id !== plId) return pl;
-    const nuoveVoci = pl.voci.map((v, j) => {
-      if (j !== i) return v;
-      const nowEseguita = !v.eseguita;
-      let extra = {};
-      if (nowEseguita) {
-        const r = rilevaRichiamo(v.prestazione);
-        if (r && !v.richiamoData) extra = { richiamoTipo: r.tipo, richiamoData: addMesi(today(), r.mesi) };
-      }
-      return { ...v, eseguita: nowEseguita, dataEsec: nowEseguita ? today() : null, incassata: nowEseguita ? v.incassata : false, ...extra };
-    });
-    const tutteEseguite = nuoveVoci.every((v) => v.eseguita);
-    return { ...pl, voci: nuoveVoci, stato: tutteEseguite ? 'concluso' : (pl.stato === 'concluso' ? 'attivo' : pl.stato) };
-  }));
+  const toggleEseguita = (plId, i, wasEseguita) => {
+    // Computed from the current render's own props, not as a side effect
+    // inside the setPlans updater below — React does not guarantee that
+    // updater function runs synchronously, so setQuickOffer must not
+    // depend on it having already run.
+    const nowEseguita = !wasEseguita;
+    setPlans((prev) => prev.map((pl) => {
+      if (pl.id !== plId) return pl;
+      const nuoveVoci = pl.voci.map((v, j) => {
+        if (j !== i) return v;
+        let extra = {};
+        if (nowEseguita) {
+          const r = rilevaRichiamo(v.prestazione);
+          if (r && !v.richiamoData) extra = { richiamoTipo: r.tipo, richiamoData: addMesi(today(), r.mesi) };
+        }
+        return { ...v, eseguita: nowEseguita, dataEsec: nowEseguita ? today() : null, incassata: nowEseguita ? v.incassata : false, ...extra };
+      });
+      const tutteEseguite = nuoveVoci.every((v) => v.eseguita);
+      return { ...pl, voci: nuoveVoci, stato: tutteEseguite ? 'concluso' : (pl.stato === 'concluso' ? 'attivo' : pl.stato) };
+    }));
+    setQuickOffer(nowEseguita ? { planId: plId, itemIndex: i } : null);
+  };
+  const openQuickPayment = (plan, itemIndex) => {
+    const item = plan.voci[itemIndex];
+    setQuickPayment({ planId: plan.id, itemIndex, pazienteId: plan.pazienteId, descrizione: item.prestazione, importo: String(item.prezzo || ''), data: today(), metodo: 'Contanti' });
+  };
+  const saveQuickPayment = () => {
+    const amount = Number(quickPayment?.importo);
+    if (!quickPayment || !Number.isFinite(amount) || amount <= 0) return;
+    setPayments?.((current) => [...current, { id: uid(), pazienteId: Number(quickPayment.pazienteId), pianoId: quickPayment.planId, data: quickPayment.data, importo: amount, metodo: quickPayment.metodo, nota: `Pagamento rapido — ${quickPayment.descrizione}`, stato: 'pagato' }]);
+    setQuickPayment(null); setQuickOffer(null);
+  };
   const setRichiamo = (plId, i, tipo, data) => setPlans((prev) => prev.map((pl) => (pl.id === plId ? { ...pl, voci: pl.voci.map((v, j) => (j === i ? { ...v, richiamoTipo: tipo, richiamoData: data } : v)) } : pl)));
   const setScadenzaPiano = (plId, data) => setPlans((prev) => prev.map((pl) => (pl.id === plId ? { ...pl, scadenzaPagamento: data } : pl)));
   const avviaConsegnaOrto = (plId, data) => setPlans((prev) => prev.map((pl) => {
@@ -168,7 +194,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
                 </div>
               ))}
             </Crd>
-            <Suspense fallback={<div role="status" style={{ padding: 12, color: C.txm }}>Caricamento azioni…</div>}><PatientQuickActions patient={paz} setPatients={setPatients} setPayments={setPayments} richiami={richiami} setRichiami={setRichiami} onNewAppointment={onNuovoAppuntamento} onPatientChange={onPatientChange} /></Suspense>
+            <Suspense fallback={<div role="status" style={{ padding: 12, color: C.txm }}>Caricamento azioni…</div>}><PatientQuickActions patient={paz} plans={patPlans} setPatients={setPatients} setPayments={setPayments} richiami={richiami} setRichiami={setRichiami} onNewAppointment={onNuovoAppuntamento} onPatientChange={onPatientChange} /></Suspense>
             {paz.note && (
               <Crd style={{ background: '#FFFBEB', border: '1px solid #FCD34D' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#92400E', textTransform: 'uppercase', marginBottom: 5 }}>⚠️ Note cliniche</div>
@@ -328,7 +354,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
                         </div>
                       )}
                       <div style={{ display: 'flex', gap: 5, marginTop: 5 }}>
-                        <button onClick={() => toggleEseguita(pl.id, i)} style={{ flex: 1, padding: '6px 0', borderRadius: 7, border: `1.5px solid ${v.eseguita ? C.suc : C.brd}`, background: v.eseguita ? C.sucL : C.bg, color: v.eseguita ? C.suc : C.txm, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
+                        <button onClick={() => toggleEseguita(pl.id, i, v.eseguita)} style={{ flex: 1, padding: '6px 0', borderRadius: 7, border: `1.5px solid ${v.eseguita ? C.suc : C.brd}`, background: v.eseguita ? C.sucL : C.bg, color: v.eseguita ? C.suc : C.txm, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
                           {v.eseguita ? '✓ Eseguita' : '○ Segna eseguita'}
                         </button>
                         {v.eseguita && (
@@ -337,6 +363,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
                           </button>
                         )}
                       </div>
+                      {quickOffer?.planId === pl.id && quickOffer?.itemIndex === i && v.eseguita && <label className="plan-quick-payment-offer"><input type="checkbox" onChange={(event) => { if (event.target.checked) openQuickPayment(pl, i); }} /> Registra pagamento adesso</label>}
                     </div>
                   ))}
                   {scontato > 0 && <div style={{ fontSize: 11, color: C.suc, textAlign: 'right', marginTop: 5 }}>Sconto: −{fmt(scontato)}</div>}
@@ -579,6 +606,24 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <Btn ch="Annulla" v="sec" onClick={() => setEditPianoModal(null)} full />
             <Btn ch="Salva modifiche" onClick={saveEdit} full />
+          </div>
+        </Modal>
+      )}
+
+      {quickPayment && (
+        <Modal title="Registra pagamento" icon="eur" onClose={() => setQuickPayment(null)}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <Fld label="Importo €"><Inp type="number" min="0" step="0.01" inputMode="decimal" value={quickPayment.importo} onChange={(e) => setQuickPayment((v) => ({ ...v, importo: e.target.value }))} /></Fld>
+            <Fld label="Data"><Inp type="date" value={quickPayment.data} onChange={(e) => setQuickPayment((v) => ({ ...v, data: e.target.value }))} /></Fld>
+          </div>
+          <Fld label="Metodo">
+            <Sel value={quickPayment.metodo} onChange={(e) => setQuickPayment((v) => ({ ...v, metodo: e.target.value }))}>
+              {['Contanti', 'Carta', 'Bonifico', 'POS', 'Assegno'].map((method) => <option key={method}>{method}</option>)}
+            </Sel>
+          </Fld>
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <Btn ch="Annulla" v="sec" onClick={() => setQuickPayment(null)} full />
+            <Btn ch="Registra pagamento" onClick={saveQuickPayment} full />
           </div>
         </Modal>
       )}

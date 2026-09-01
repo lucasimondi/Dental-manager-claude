@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { C } from '../lib/utils';
 import { fetchSaldiApertiStudio } from '../lib/domain/incassiService.js';
 import { Btn, Crd, EmptyState, ErrorState, Fld, Inp, LoadingState, Modal, PageHeader, Sel, SelettorePaziente } from './ui';
-import { addReceivableToLatestPlan, buildContextualPayment } from '../lib/domain/incassiActions.js';
+import UploadDocumento from './ui/UploadDocumentoSpesa.jsx';
+import { addReceivableToLatestPlan, buildContextualPayment, planAssignmentForPatient, unassignedPaymentsForMultiPlanPatients } from '../lib/domain/incassiActions.js';
+import { matchPaymentsToPatients, flagPossibleDuplicates, riepilogoEstrattoConto, buildPaymentsFromEstrattoConto } from '../lib/domain/estrattoContoService.js';
 
 const euro = (value) => Number(value || 0).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
 const today = () => new Date().toISOString().slice(0, 10);
@@ -25,6 +27,10 @@ export default function Incassi({ studioId, patients = [], plans = [], payments 
   const [form, setForm] = useState(emptyForm);
   const [patientSearch, setPatientSearch] = useState('');
   const [formError, setFormError] = useState('');
+  const [assignDraft, setAssignDraft] = useState({});
+  const [estrattoContoOpen, setEstrattoContoOpen] = useState(false);
+  const [estrattoContoRighe, setEstrattoContoRighe] = useState(null);
+  const [estrattoContoPeriodo, setEstrattoContoPeriodo] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -58,6 +64,19 @@ export default function Incassi({ studioId, patients = [], plans = [], payments 
     if (patient) onOpenPaz?.(patient, 'paga');
   };
 
+  // POL-FIN-003 §6 — payments left piano_id unset because the patient had
+  // more than one plan (backfill declined to guess, and no write path
+  // silently infers across plans either). Nothing here is allocated: it's
+  // excluded from every saldo until assigned, one payment at a time.
+  const daAssegnare = useMemo(() => unassignedPaymentsForMultiPlanPatients(payments, plans), [payments, plans]);
+  const daAssegnareTotale = daAssegnare.reduce((sum, payment) => sum + Number(payment.importo || 0), 0);
+  const assignPayment = (paymentId) => {
+    const pianoId = assignDraft[paymentId];
+    if (!pianoId) return;
+    setPayments?.((current) => current.map((payment) => String(payment.id) === String(paymentId) ? { ...payment, pianoId: Number(pianoId) } : payment));
+    setAssignDraft((current) => { const next = { ...current }; delete next[paymentId]; return next; });
+  };
+
   const updateForm = (patch) => setForm((current) => ({ ...current, ...patch }));
   const choosePricelist = (name) => {
     const item = pricelist.find((entry) => entry.nome === name);
@@ -70,9 +89,36 @@ export default function Incassi({ studioId, patients = [], plans = [], payments 
     if (!form.pazienteId || !form.descrizione.trim() || !Number.isFinite(amount) || amount <= 0 || !Number.isFinite(paid) || paid < 0) {
       setFormError('Seleziona il paziente e inserisci descrizione e importi validi.'); return;
     }
-    setPlans?.((current) => addReceivableToLatestPlan(current, { pazienteId: form.pazienteId, descrizione: form.descrizione, importo: amount, eseguita: form.eseguita }));
-    if (paid > 0) setPayments?.((current) => [...current, buildContextualPayment({ pazienteId: form.pazienteId, importo: paid, descrizione: form.descrizione })]);
+    const { plans: updatedPlans, planId } = addReceivableToLatestPlan(plans, { pazienteId: form.pazienteId, descrizione: form.descrizione, importo: amount, eseguita: form.eseguita });
+    setPlans?.(updatedPlans);
+    if (paid > 0) setPayments?.((current) => [...current, buildContextualPayment({ pazienteId: form.pazienteId, importo: paid, descrizione: form.descrizione, pianoId: planId })]);
     closeModal();
+  };
+
+  // POL-FIN-004 — "Leggi estratto conto": upload a bank statement, the AI
+  // extracts incoming-payment rows only (edge function, no server write),
+  // then the operator confirms/corrects patient+piano per row before
+  // anything is registered. Never auto-registers.
+  const closeEstrattoConto = () => { setEstrattoContoOpen(false); setEstrattoContoRighe(null); setEstrattoContoPeriodo(null); };
+  const handleEstrattoContoEstratto = (estratto) => {
+    const matched = matchPaymentsToPatients(estratto.righe, patients);
+    const flagged = flagPossibleDuplicates(matched, payments);
+    setEstrattoContoRighe(flagged.map((riga) => ({ ...riga, selected: Boolean(riga.pazienteId) && !riga.possibileDuplicato, pianoId: '' })));
+    setEstrattoContoPeriodo({ da: estratto.periodo_da, a: estratto.periodo_a });
+  };
+  const updateEstrattoContoRiga = (index, patch) => setEstrattoContoRighe((current) => current.map((riga, i) => (i === index ? { ...riga, ...patch } : riga)));
+  const estrattoContoRigaPronta = (riga) => {
+    if (!riga.pazienteId) return false;
+    const assignment = planAssignmentForPatient(plans, riga.pazienteId);
+    return assignment.mode !== 'choose' || Boolean(riga.pianoId);
+  };
+  const registraEstrattoConto = () => {
+    const selezionate = (estrattoContoRighe || []).filter((riga) => riga.selected && estrattoContoRigaPronta(riga));
+    if (!selezionate.length) return;
+    const nuovi = buildPaymentsFromEstrattoConto(selezionate, plans);
+    setPayments?.((current) => [...current, ...nuovi]);
+    setReloadKey((key) => key + 1);
+    closeEstrattoConto();
   };
 
   return (
@@ -90,13 +136,40 @@ export default function Incassi({ studioId, patients = [], plans = [], payments 
             <option value="giorni">Attesa più lunga</option>
           </select>
         </label>
+        <Btn ch="Leggi estratto conto" ic="file" v="sec" onClick={() => setEstrattoContoOpen(true)} />
         <Btn ch="Aggiungi da incassare" ic="add" onClick={() => setModal(true)} />
       </div>
 
       <div className="incassi-kpis">
         <Crd className="incassi-kpi is-collected"><span>Incassato</span><strong>{euro(collected)}</strong><small>{period === 'mese' ? 'nel mese corrente' : "nell'anno corrente"}</small></Crd>
         <Crd className="incassi-kpi is-outstanding"><span>Da incassare</span><strong>{euro(outstanding)}</strong><small>saldo totale dei piani aperti</small></Crd>
+        {daAssegnare.length > 0 && <Crd className="incassi-kpi is-unassigned"><span>Da assegnare</span><strong>{euro(daAssegnareTotale)}</strong><small>{daAssegnare.length} {daAssegnare.length === 1 ? 'pagamento' : 'pagamenti'} senza piano</small></Crd>}
       </div>
+
+      {daAssegnare.length > 0 && (
+        <Crd className="incassi-worklist incassi-worklist--unassigned">
+          <div className="incassi-worklist__header"><div><strong>Pagamenti da assegnare</strong><span>{daAssegnare.length} {daAssegnare.length === 1 ? 'pagamento' : 'pagamenti'} · {euro(daAssegnareTotale)}</span></div></div>
+          <p className="incassi-note">Il paziente ha più piani e questi pagamenti storici non sono collegati a nessuno: non entrano nel saldo di nessun piano finché non li assegni.</p>
+          <div className="incassi-list incassi-list--unassigned">
+            {daAssegnare.map((payment) => {
+              const patient = patientById.get(String(payment.pazienteId));
+              const patientName = patient ? `${patient.nome || ''} ${patient.cognome || ''}`.trim() : `Paziente #${payment.pazienteId}`;
+              const patientPlans = plans.filter((plan) => String(plan.pazienteId) === String(payment.pazienteId));
+              return (
+                <div className="incassi-unassigned-row" key={payment.id}>
+                  <span className="incassi-row__identity"><strong>{patientName}</strong><small>{payment.data}{payment.nota ? ` · ${payment.nota}` : ''}</small></span>
+                  <span className="incassi-row__amount">{euro(payment.importo)}</span>
+                  <Sel value={assignDraft[payment.id] || ''} onChange={(event) => setAssignDraft((current) => ({ ...current, [payment.id]: event.target.value }))}>
+                    <option value="">Assegna a…</option>
+                    {patientPlans.map((plan) => <option key={plan.id} value={plan.id}>{plan.titolo}</option>)}
+                  </Sel>
+                  <Btn ch="Assegna" sz="sm" onClick={() => assignPayment(payment.id)} dis={!assignDraft[payment.id]} />
+                </div>
+              );
+            })}
+          </div>
+        </Crd>
+      )}
 
       <Crd className="incassi-worklist">
         <div className="incassi-worklist__header"><div><strong>Saldi aperti</strong><span>{rows.length} {rows.length === 1 ? 'piano' : 'piani'}</span></div></div>
@@ -132,6 +205,58 @@ export default function Incassi({ studioId, patients = [], plans = [], payments 
           <div className="incassi-live-balance"><span>Rimane da incassare</span><strong>{euro(Math.max(0, Number(form.importo || 0) - Number(form.pagamento || 0)))}</strong></div>
           {formError && <p className="incassi-form-error" role="alert">{formError}</p>}
           <div className="incassi-form-actions"><Btn ch="Annulla" v="sec" onClick={closeModal} full /><Btn ch="Salva" onClick={saveReceivable} full /></div>
+        </Modal>
+      )}
+      {estrattoContoOpen && (
+        <Modal title="Leggi estratto conto" icon="file" onClose={closeEstrattoConto} wide mobileVariant="sheet">
+          {!estrattoContoRighe && (
+            <UploadDocumento
+              endpoint="estrai-pagamenti-estratto-conto"
+              titolo="Carica estratto conto"
+              sottotitolo="Foto o PDF — riconosco i pagamenti ricevuti, tu confermi a chi collegarli"
+              onEstratto={handleEstrattoContoEstratto}
+            />
+          )}
+          {estrattoContoRighe && (() => {
+            const riepilogo = riepilogoEstrattoConto(estrattoContoRighe, payments, { periodoDa: estrattoContoPeriodo?.da, periodoA: estrattoContoPeriodo?.a });
+            const selezionate = estrattoContoRighe.filter((riga) => riga.selected && estrattoContoRigaPronta(riga));
+            return (
+              <>
+                <div className="incassi-estratto-summary">
+                  <div><span>Periodo</span><strong>{riepilogo.periodoDa || '?'} → {riepilogo.periodoA || '?'}</strong></div>
+                  <div><span>Totale estratto conto</span><strong>{euro(riepilogo.totaleEstrattoConto)}</strong></div>
+                  {riepilogo.totaleRegistratoPeriodo !== null && <div><span>Già registrato in app (stesso periodo)</span><strong>{euro(riepilogo.totaleRegistratoPeriodo)}</strong></div>}
+                </div>
+                {riepilogo.possibiliDuplicati > 0 && <p className="incassi-form-error" role="alert">{riepilogo.possibiliDuplicati} {riepilogo.possibiliDuplicati === 1 ? 'riga sembra' : 'righe sembrano'} già registrate (stesso importo, data vicina) — deselezionate di default, verifica prima di includerle.</p>}
+                <div className="incassi-list incassi-list--estratto-conto">
+                  {estrattoContoRighe.map((riga, index) => {
+                    const assignment = riga.pazienteId ? planAssignmentForPatient(plans, riga.pazienteId) : { mode: 'none' };
+                    const pronta = estrattoContoRigaPronta(riga);
+                    return (
+                      <div className="incassi-estratto-row" key={index}>
+                        <input type="checkbox" checked={riga.selected && pronta} disabled={!pronta} onChange={(event) => updateEstrattoContoRiga(index, { selected: event.target.checked })} />
+                        <span className="incassi-row__identity"><strong>{euro(riga.importo)}</strong><small>{riga.data} · {riga.descrizione}</small>{riga.possibileDuplicato && <small className="incassi-estratto-row__warning">Possibile duplicato</small>}</span>
+                        <Sel value={riga.pazienteId || ''} onChange={(event) => updateEstrattoContoRiga(index, { pazienteId: event.target.value ? Number(event.target.value) : null, pianoId: '' })}>
+                          <option value="">Nessun paziente…</option>
+                          {patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.nome} {patient.cognome}</option>)}
+                        </Sel>
+                        {assignment.mode === 'choose' && (
+                          <Sel value={riga.pianoId || ''} onChange={(event) => updateEstrattoContoRiga(index, { pianoId: event.target.value })}>
+                            <option value="">Seleziona piano…</option>
+                            {assignment.options.map((plan) => <option key={plan.id} value={plan.id}>{plan.titolo}</option>)}
+                          </Sel>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="incassi-form-actions">
+                  <Btn ch="Annulla" v="sec" onClick={closeEstrattoConto} full />
+                  <Btn ch={`Registra selezionati (${selezionate.length})`} onClick={registraEstrattoConto} dis={!selezionate.length} full />
+                </div>
+              </>
+            );
+          })()}
         </Modal>
       )}
     </section>

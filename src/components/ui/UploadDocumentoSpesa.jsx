@@ -70,14 +70,16 @@ function ModalWebcam({ onScatta, onClose }) {
 
 // ─────────────────────────────────────────────────────────────────
 // Upload + lettura automatica documento (bolletta/fattura/busta paga/fattura
-// macchinario/spesa condominiale...) — condiviso da Costi.jsx e Spese.jsx,
-// così l'estrazione AI resta identica ovunque si carichi un documento.
+// macchinario/spesa condominiale/estratto conto...) — condiviso da Costi.jsx,
+// Spese.jsx e Incassi.jsx, così l'estrazione AI resta identica ovunque si
+// carichi un documento. L'endpoint (edge function) è configurabile via prop,
+// default estrai-spesa-documento per non cambiare nulla ai chiamanti storici.
 // Due modi per fornire l'immagine: il file picker nativo (che su mobile
 // propone già scatta/galleria/file se non si forza l'attributo "capture",
 // che invece salterebbe dritto alla fotocamera) e un pulsante dedicato con
 // anteprima webcam live, utile soprattutto su desktop.
 // ─────────────────────────────────────────────────────────────────
-export default function UploadDocumento({ onEstratto, titolo = 'Carica bolletta, fattura o scontrino', sottotitolo = 'Foto o PDF — i dati vengono letti automaticamente' }) {
+export default function UploadDocumento({ onEstratto, titolo = 'Carica bolletta, fattura o scontrino', sottotitolo = 'Foto o PDF — i dati vengono letti automaticamente', endpoint = 'estrai-spesa-documento' }) {
   const [loading, setLoading] = useState(false);
   const [errore, setErrore] = useState('');
   const [webcamAperta, setWebcamAperta] = useState(false);
@@ -90,7 +92,7 @@ export default function UploadDocumento({ onEstratto, titolo = 'Carica bolletta,
     try {
       const base64 = await fileToBase64(file);
       const { data: { session } } = await supabase.auth.getSession();
-      const resp = await fetch(`${SUPABASE_URL}/functions/v1/estrai-spesa-documento`, {
+      const resp = await fetch(`${SUPABASE_URL}/functions/v1/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
         body: JSON.stringify({ file_base64: base64, media_type: file.type }),
