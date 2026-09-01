@@ -4,10 +4,11 @@ import { C, uid, fmt, fmtD, today } from '../lib/utils';
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { normalizza } from '../lib/ricercaPazienti';
 import { supabase } from '../lib/supabase.js';
+import { isActivePlan } from '../lib/domain/incassiActions.js';
 
 export default function Pagamenti({ patients, payments, setPayments, plans, autoOpenNew, onAutoOpenNewHandled }) {
   const [modal, setModal] = useState(false);
-  const [form, setForm, clearFormDraft] = useFormPersistente('nuovo_pagamento_studio', { pazienteId: '', data: today(), importo: '', metodo: 'Contanti', nota: '', stato: 'pagato' });
+  const [form, setForm, clearFormDraft] = useFormPersistente('nuovo_pagamento_studio', { pazienteId: '', data: today(), importo: '', metodo: 'Contanti', nota: '', stato: 'pagato', pianoId: '' });
   const [pazSearch, setPazSearch] = useState('');
   const [toast, setToast] = useState('');
   const [ricerca, setRicerca] = useState('');
@@ -29,7 +30,7 @@ export default function Pagamenti({ patients, payments, setPayments, plans, auto
   // modale "Registra pagamento studio" (stesso apri usato dal tasto "Studio +").
   useEffect(() => {
     if (autoOpenNew) {
-      setForm({ pazienteId: '', data: today(), importo: '', metodo: 'Contanti', nota: '', stato: 'pagato' });
+      setForm({ pazienteId: '', data: today(), importo: '', metodo: 'Contanti', nota: '', stato: 'pagato', pianoId: '' });
       setPazSearch('');
       setModal(true);
       onAutoOpenNewHandled && onAutoOpenNewHandled();
@@ -85,9 +86,17 @@ export default function Pagamenti({ patients, payments, setPayments, plans, auto
     return { dovuto, pagato, residuo: Math.max(0, dovuto - pagato) };
   };
 
+  // POL-FIN-003 §5 — generic payment, no prestazione context: auto-assign
+  // when the patient has exactly one active plan, otherwise require an
+  // explicit choice.
+  const activePlansSel = form.pazienteId ? plans.filter((pl) => pl.pazienteId === Number(form.pazienteId) && isActivePlan(pl)) : [];
+
   const save = () => {
     if (!form.pazienteId || !form.importo) return;
-    setPayments((p) => [...p, { ...form, id: uid(), pazienteId: Number(form.pazienteId), importo: Number(form.importo) }]);
+    if (activePlansSel.length > 1 && !form.pianoId) return;
+    const pianoId = activePlansSel.length === 1 ? activePlansSel[0].id : (activePlansSel.length > 1 ? Number(form.pianoId) : undefined);
+    const { pianoId: _draftPianoId, ...rest } = form;
+    setPayments((p) => [...p, { ...rest, id: uid(), pazienteId: Number(form.pazienteId), importo: Number(form.importo), ...(pianoId !== undefined ? { pianoId } : {}) }]);
     setModal(false);
     clearFormDraft();
     setToast('Registrato ✓');
@@ -113,7 +122,7 @@ export default function Pagamenti({ patients, payments, setPayments, plans, auto
 
       <PageHeader icon="eur" title="Pagamenti" actions={
         tabAttiva === 'studio'
-          ? <Btn ch="Studio" ic="plus" onClick={() => { setForm({ pazienteId: '', data: today(), importo: '', metodo: 'Contanti', nota: '', stato: 'pagato' }); setPazSearch(''); setModal(true); }} />
+          ? <Btn ch="Studio" ic="plus" onClick={() => { setForm({ pazienteId: '', data: today(), importo: '', metodo: 'Contanti', nota: '', stato: 'pagato', pianoId: '' }); setPazSearch(''); setModal(true); }} />
           : <Btn ch="Esterno" ic="plus" onClick={() => { setFormExt({ collaborazione_id: '', collaborazione_nome: '', importo: '', data: today(), metodo: 'Bonifico', note: '' }); setModalExt(true); }} />
       } />
 
@@ -223,12 +232,20 @@ export default function Pagamenti({ patients, payments, setPayments, plans, auto
             <SelettorePaziente
               patients={patients}
               value={form.pazienteId}
-              onChange={(id) => F({ pazienteId: id })}
+              onChange={(id) => F({ pazienteId: id, pianoId: '' })}
               search={pazSearch}
               onSearchChange={setPazSearch}
               autoFocus
             />
           </Fld>
+          {activePlansSel.length > 1 && (
+            <Fld label="Piano">
+              <Sel value={form.pianoId} onChange={(e) => F({ pianoId: e.target.value })}>
+                <option value="">Seleziona piano…</option>
+                {activePlansSel.map((pl) => <option key={pl.id} value={pl.id}>{pl.titolo}</option>)}
+              </Sel>
+            </Fld>
+          )}
           {selPazSaldo && (
             <div style={{ background: C.priD, borderRadius: 10, padding: 11, marginBottom: 11 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -260,7 +277,7 @@ export default function Pagamenti({ patients, payments, setPayments, plans, auto
           <Fld label="Nota"><Inp value={form.nota} onChange={(e) => F({ nota: e.target.value })} /></Fld>
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             <Btn ch="Annulla" v="sec" onClick={() => setModal(false)} full />
-            <Btn ch="Salva" onClick={save} full />
+            <Btn ch="Salva" onClick={save} dis={!form.pazienteId || !form.importo || (activePlansSel.length > 1 && !form.pianoId)} full />
           </div>
         </Modal>
       )}

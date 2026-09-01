@@ -7,7 +7,6 @@ import { salvaPosizione, leggiPosizione } from '../lib/posizioneNavigazione';
 import Odontogramma from './Odontogramma.jsx';
 import PdfView from './PdfView.jsx';
 import WaAction, { apriWaDiretto } from './ui/WaAction.jsx';
-import { allocatedPaymentForItem } from '../lib/domain/planPaymentAllocation.js';
 import { markTreatmentItemCompleted } from '../lib/domain/treatmentPlanService.js';
 
 export default function Piani({ patients, plans, setPlans, payments = [], setPayments, pricelist, templates, si, features, initPatId, onClearInitPat, onOpenPaz, autoOpenNew, onAutoOpenNewHandled }) {
@@ -129,7 +128,7 @@ export default function Piani({ patients, plans, setPlans, payments = [], setPay
   const saveQuickPayment = () => {
     const amount = Number(quickPayment?.importo);
     if (!quickPayment || !Number.isFinite(amount) || amount <= 0) return;
-    setPayments?.((current) => [...current, { id: uid(), pazienteId: Number(quickPayment.pazienteId), data: quickPayment.data, importo: amount, metodo: quickPayment.metodo, nota: `Pagamento rapido — ${quickPayment.descrizione}`, stato: 'pagato' }]);
+    setPayments?.((current) => [...current, { id: uid(), pazienteId: Number(quickPayment.pazienteId), pianoId: quickPayment.planId, data: quickPayment.data, importo: amount, metodo: quickPayment.metodo, nota: `Pagamento rapido — ${quickPayment.descrizione}`, stato: 'pagato' }]);
     setQuickPayment(null); setQuickOffer(null); setToast('Prestazione e pagamento registrati ✓');
   };
   const toggleIncassata = (plId, i) => setPlans((p) => p.map((pl) => (pl.id === plId ? { ...pl, voci: pl.voci.map((v, j) => (j === i ? { ...v, incassata: !v.incassata } : v)) } : pl)));
@@ -144,9 +143,14 @@ export default function Piani({ patients, plans, setPlans, payments = [], setPay
     setEditItem({ prestazione: '', dente: '', prezzo: '' }); setEditingPlanId(null);
   };
   const removeItemFromPlan = (plan, itemIndex) => {
-    const allocated = allocatedPaymentForItem(plans, payments, plan.id, itemIndex);
-    const message = allocated > 0
-      ? `Questa prestazione ha ${fmt(allocated)} di pagamenti collegati — rimuovendola diventeranno un acconto libero sul piano. Il pagamento non verrà cancellato. Continuare?`
+    const totalePagato = (payments || [])
+      .filter((payment) => String(payment.pianoId) === String(plan.id) && String(payment.stato || '').toLowerCase() === 'pagato')
+      .reduce((sum, payment) => sum + Number(payment.importo || 0), 0);
+    const vociResidue = (plan.voci || []).filter((_, index) => index !== itemIndex);
+    const { finale: nuovoTotale } = calcTot(vociResidue, plan.sconto || 0, plan.scontoTipo || 'pct');
+    const eccedenza = Math.max(0, totalePagato - nuovoTotale);
+    const message = eccedenza > 0
+      ? `Il piano ha ${fmt(totalePagato)} di pagamenti collegati — rimuovendo questa prestazione il nuovo totale (${fmt(nuovoTotale)}) sarà inferiore a quanto già incassato: ${fmt(eccedenza)} diventerà un acconto libero sul piano. Il pagamento non verrà cancellato. Continuare?`
       : 'Rimuovere questa prestazione dal piano?';
     if (!confirm(message)) return;
     setPlans((current) => current.map((candidate) => {

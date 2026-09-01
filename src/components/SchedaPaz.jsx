@@ -94,7 +94,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
   const saveQuickPayment = () => {
     const amount = Number(quickPayment?.importo);
     if (!quickPayment || !Number.isFinite(amount) || amount <= 0) return;
-    setPayments?.((current) => [...current, { id: uid(), pazienteId: Number(quickPayment.pazienteId), data: quickPayment.data, importo: amount, metodo: quickPayment.metodo, nota: `Pagamento rapido — ${quickPayment.descrizione}`, stato: 'pagato' }]);
+    setPayments?.((current) => [...current, { id: uid(), pazienteId: Number(quickPayment.pazienteId), pianoId: quickPayment.planId, data: quickPayment.data, importo: amount, metodo: quickPayment.metodo, nota: `Pagamento rapido — ${quickPayment.descrizione}`, stato: 'pagato' }]);
     setQuickPayment(null); setQuickOffer(null);
   };
   const setRichiamo = (plId, i, tipo, data) => setPlans((prev) => prev.map((pl) => (pl.id === plId ? { ...pl, voci: pl.voci.map((v, j) => (j === i ? { ...v, richiamoTipo: tipo, richiamoData: data } : v)) } : pl)));
@@ -202,7 +202,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
                 </div>
               ))}
             </Crd>
-            <Suspense fallback={<div role="status" style={{ padding: 12, color: C.txm }}>Caricamento azioni…</div>}><PatientQuickActions patient={paz} setPatients={setPatients} setPayments={setPayments} richiami={richiami} setRichiami={setRichiami} onNewAppointment={onNuovoAppuntamento} onPatientChange={onPatientChange} /></Suspense>
+            <Suspense fallback={<div role="status" style={{ padding: 12, color: C.txm }}>Caricamento azioni…</div>}><PatientQuickActions patient={paz} plans={patPlans} setPatients={setPatients} setPayments={setPayments} richiami={richiami} setRichiami={setRichiami} onNewAppointment={onNuovoAppuntamento} onPatientChange={onPatientChange} /></Suspense>
             {paz.note && (
               <Crd style={{ background: '#FFFBEB', border: '1px solid #FCD34D' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#92400E', textTransform: 'uppercase', marginBottom: 5 }}>⚠️ Note cliniche</div>
