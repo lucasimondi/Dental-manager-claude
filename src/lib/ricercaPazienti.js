@@ -69,3 +69,25 @@ export function cercaPazienti(patients, query) {
   }
   return risultati.sort((a, b) => b.score - a.score).map((r) => r.p);
 }
+
+/**
+ * Direzione opposta di cercaPazienti: invece di filtrare pazienti per una
+ * query digitata, cerca QUALE paziente è nominato dentro un testo libero
+ * (es. la causale di un bonifico su un estratto conto — "BONIFICO DA MARIO
+ * ROSSI RIF FATTURA 123"). Richiede che sia nome sia cognome del paziente
+ * compaiano come sottostringa nel testo normalizzato (match esatto, non
+ * tollerante — il testo è già pulito dall'estrazione AI, non digitato a
+ * mano). Se più di un paziente qualifica (es. due "Mario Rossi" diversi),
+ * ritorna null: niente inferenza silenziosa in caso di ambiguità, meglio
+ * lasciare la scelta a chi conferma (stesso principio di POL-FIN-003).
+ */
+export function trovaPazienteInTesto(patients, testo) {
+  const t = normalizza(testo);
+  if (!t) return null;
+  const match = (patients || []).filter((p) => {
+    const nome = normalizza(p.nome);
+    const cognome = normalizza(p.cognome);
+    return nome.length >= 2 && cognome.length >= 2 && t.includes(nome) && t.includes(cognome);
+  });
+  return match.length === 1 ? match[0] : null;
+}

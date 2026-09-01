@@ -43,6 +43,19 @@ export function buildContextualPayment({ pazienteId, importo, descrizione, piano
 const INACTIVE_PLAN_STATES = new Set(['concluso', 'rifiutato']);
 export const isActivePlan = (plan) => !INACTIVE_PLAN_STATES.has(plan?.stato);
 
+/** POL-FIN-003/004 — shared decision for a generic, no-prestazione-context
+ *  payment: exactly one active plan -> auto-assign; more than one -> the
+ *  caller must ask the user to choose (no silent inference); zero -> no
+ *  plan to link. One rule, reused by every generic payment entry point
+ *  (patient-record quick action, Pagamenti page, estratto conto import)
+ *  instead of re-deriving it at each call site. */
+export function planAssignmentForPatient(plans, pazienteId) {
+  const activePlans = (plans || []).filter((plan) => String(plan.pazienteId) === String(pazienteId) && isActivePlan(plan));
+  if (activePlans.length === 1) return { mode: 'auto', pianoId: activePlans[0].id };
+  if (activePlans.length > 1) return { mode: 'choose', options: activePlans };
+  return { mode: 'none' };
+}
+
 /** POL-FIN-003 §6 — payments left piano_id unset (never assigned by the
  *  backfill or by any write path, because the patient had more than one
  *  plan) surfaced for manual assignment. Purely derived from the same

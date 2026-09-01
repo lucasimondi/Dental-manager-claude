@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { addReceivableToLatestPlan, buildContextualPayment, isActivePlan, unassignedPaymentsForMultiPlanPatients } from '../src/lib/domain/incassiActions.js';
+import { addReceivableToLatestPlan, buildContextualPayment, isActivePlan, planAssignmentForPatient, unassignedPaymentsForMultiPlanPatients } from '../src/lib/domain/incassiActions.js';
 
 test('creates a normal occasional plan when the patient has none, and returns its id', () => {
   const result = addReceivableToLatestPlan([], { pazienteId: '7', descrizione: 'Igiene', importo: 80, eseguita: true });
@@ -47,4 +47,21 @@ test('unassignedPaymentsForMultiPlanPatients: only piano_id-less payments for pa
   ];
   const result = unassignedPaymentsForMultiPlanPatients(payments, plans);
   assert.deepEqual(result.map((p) => p.id), ['a']);
+});
+
+test('planAssignmentForPatient: auto-assigns the single active plan', () => {
+  const plans = [{ id: 1, pazienteId: 5, stato: 'attivo' }, { id: 2, pazienteId: 5, stato: 'concluso' }];
+  assert.deepEqual(planAssignmentForPatient(plans, 5), { mode: 'auto', pianoId: 1 });
+});
+
+test('planAssignmentForPatient: asks to choose among more than one active plan', () => {
+  const plans = [{ id: 1, pazienteId: 5, stato: 'attivo' }, { id: 2, pazienteId: 5, stato: 'accettato' }];
+  const result = planAssignmentForPatient(plans, 5);
+  assert.equal(result.mode, 'choose');
+  assert.deepEqual(result.options.map((p) => p.id), [1, 2]);
+});
+
+test('planAssignmentForPatient: nothing to link when the patient has no active plan', () => {
+  assert.deepEqual(planAssignmentForPatient([], 5), { mode: 'none' });
+  assert.deepEqual(planAssignmentForPatient([{ id: 1, pazienteId: 5, stato: 'concluso' }], 5), { mode: 'none' });
 });

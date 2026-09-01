@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { C } from '../lib/utils';
 import { fetchSaldiApertiStudio } from '../lib/domain/incassiService.js';
 import { Btn, Crd, EmptyState, ErrorState, Fld, Inp, LoadingState, Modal, PageHeader, Sel, SelettorePaziente } from './ui';
-import { addReceivableToLatestPlan, buildContextualPayment, unassignedPaymentsForMultiPlanPatients } from '../lib/domain/incassiActions.js';
+import UploadDocumento from './ui/UploadDocumentoSpesa.jsx';
+import { addReceivableToLatestPlan, buildContextualPayment, planAssignmentForPatient, unassignedPaymentsForMultiPlanPatients } from '../lib/domain/incassiActions.js';
+import { matchPaymentsToPatients, flagPossibleDuplicates, riepilogoEstrattoConto, buildPaymentsFromEstrattoConto } from '../lib/domain/estrattoContoService.js';
 
 const euro = (value) => Number(value || 0).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
 const today = () => new Date().toISOString().slice(0, 10);
@@ -26,6 +28,9 @@ export default function Incassi({ studioId, patients = [], plans = [], payments 
   const [patientSearch, setPatientSearch] = useState('');
   const [formError, setFormError] = useState('');
   const [assignDraft, setAssignDraft] = useState({});
+  const [estrattoContoOpen, setEstrattoContoOpen] = useState(false);
+  const [estrattoContoRighe, setEstrattoContoRighe] = useState(null);
+  const [estrattoContoPeriodo, setEstrattoContoPeriodo] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -90,6 +95,32 @@ export default function Incassi({ studioId, patients = [], plans = [], payments 
     closeModal();
   };
 
+  // POL-FIN-004 — "Leggi estratto conto": upload a bank statement, the AI
+  // extracts incoming-payment rows only (edge function, no server write),
+  // then the operator confirms/corrects patient+piano per row before
+  // anything is registered. Never auto-registers.
+  const closeEstrattoConto = () => { setEstrattoContoOpen(false); setEstrattoContoRighe(null); setEstrattoContoPeriodo(null); };
+  const handleEstrattoContoEstratto = (estratto) => {
+    const matched = matchPaymentsToPatients(estratto.righe, patients);
+    const flagged = flagPossibleDuplicates(matched, payments);
+    setEstrattoContoRighe(flagged.map((riga) => ({ ...riga, selected: Boolean(riga.pazienteId) && !riga.possibileDuplicato, pianoId: '' })));
+    setEstrattoContoPeriodo({ da: estratto.periodo_da, a: estratto.periodo_a });
+  };
+  const updateEstrattoContoRiga = (index, patch) => setEstrattoContoRighe((current) => current.map((riga, i) => (i === index ? { ...riga, ...patch } : riga)));
+  const estrattoContoRigaPronta = (riga) => {
+    if (!riga.pazienteId) return false;
+    const assignment = planAssignmentForPatient(plans, riga.pazienteId);
+    return assignment.mode !== 'choose' || Boolean(riga.pianoId);
+  };
+  const registraEstrattoConto = () => {
+    const selezionate = (estrattoContoRighe || []).filter((riga) => riga.selected && estrattoContoRigaPronta(riga));
+    if (!selezionate.length) return;
+    const nuovi = buildPaymentsFromEstrattoConto(selezionate, plans);
+    setPayments?.((current) => [...current, ...nuovi]);
+    setReloadKey((key) => key + 1);
+    closeEstrattoConto();
+  };
+
   return (
     <section className={`incassi-page${embedded ? ' is-embedded' : ''}`}>
       {!embedded && <PageHeader icon="pay" title="Incassi" subtitle="Pagamenti ricevuti e saldi ancora aperti" />}
@@ -105,6 +136,7 @@ export default function Incassi({ studioId, patients = [], plans = [], payments 
             <option value="giorni">Attesa più lunga</option>
           </select>
         </label>
+        <Btn ch="Leggi estratto conto" ic="file" v="sec" onClick={() => setEstrattoContoOpen(true)} />
         <Btn ch="Aggiungi da incassare" ic="add" onClick={() => setModal(true)} />
       </div>
 
@@ -173,6 +205,58 @@ export default function Incassi({ studioId, patients = [], plans = [], payments 
           <div className="incassi-live-balance"><span>Rimane da incassare</span><strong>{euro(Math.max(0, Number(form.importo || 0) - Number(form.pagamento || 0)))}</strong></div>
           {formError && <p className="incassi-form-error" role="alert">{formError}</p>}
           <div className="incassi-form-actions"><Btn ch="Annulla" v="sec" onClick={closeModal} full /><Btn ch="Salva" onClick={saveReceivable} full /></div>
+        </Modal>
+      )}
+      {estrattoContoOpen && (
+        <Modal title="Leggi estratto conto" icon="file" onClose={closeEstrattoConto} wide mobileVariant="sheet">
+          {!estrattoContoRighe && (
+            <UploadDocumento
+              endpoint="estrai-pagamenti-estratto-conto"
+              titolo="Carica estratto conto"
+              sottotitolo="Foto o PDF — riconosco i pagamenti ricevuti, tu confermi a chi collegarli"
+              onEstratto={handleEstrattoContoEstratto}
+            />
+          )}
+          {estrattoContoRighe && (() => {
+            const riepilogo = riepilogoEstrattoConto(estrattoContoRighe, payments, { periodoDa: estrattoContoPeriodo?.da, periodoA: estrattoContoPeriodo?.a });
+            const selezionate = estrattoContoRighe.filter((riga) => riga.selected && estrattoContoRigaPronta(riga));
+            return (
+              <>
+                <div className="incassi-estratto-summary">
+                  <div><span>Periodo</span><strong>{riepilogo.periodoDa || '?'} → {riepilogo.periodoA || '?'}</strong></div>
+                  <div><span>Totale estratto conto</span><strong>{euro(riepilogo.totaleEstrattoConto)}</strong></div>
+                  {riepilogo.totaleRegistratoPeriodo !== null && <div><span>Già registrato in app (stesso periodo)</span><strong>{euro(riepilogo.totaleRegistratoPeriodo)}</strong></div>}
+                </div>
+                {riepilogo.possibiliDuplicati > 0 && <p className="incassi-form-error" role="alert">{riepilogo.possibiliDuplicati} {riepilogo.possibiliDuplicati === 1 ? 'riga sembra' : 'righe sembrano'} già registrate (stesso importo, data vicina) — deselezionate di default, verifica prima di includerle.</p>}
+                <div className="incassi-list incassi-list--estratto-conto">
+                  {estrattoContoRighe.map((riga, index) => {
+                    const assignment = riga.pazienteId ? planAssignmentForPatient(plans, riga.pazienteId) : { mode: 'none' };
+                    const pronta = estrattoContoRigaPronta(riga);
+                    return (
+                      <div className="incassi-estratto-row" key={index}>
+                        <input type="checkbox" checked={riga.selected && pronta} disabled={!pronta} onChange={(event) => updateEstrattoContoRiga(index, { selected: event.target.checked })} />
+                        <span className="incassi-row__identity"><strong>{euro(riga.importo)}</strong><small>{riga.data} · {riga.descrizione}</small>{riga.possibileDuplicato && <small className="incassi-estratto-row__warning">Possibile duplicato</small>}</span>
+                        <Sel value={riga.pazienteId || ''} onChange={(event) => updateEstrattoContoRiga(index, { pazienteId: event.target.value ? Number(event.target.value) : null, pianoId: '' })}>
+                          <option value="">Nessun paziente…</option>
+                          {patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.nome} {patient.cognome}</option>)}
+                        </Sel>
+                        {assignment.mode === 'choose' && (
+                          <Sel value={riga.pianoId || ''} onChange={(event) => updateEstrattoContoRiga(index, { pianoId: event.target.value })}>
+                            <option value="">Seleziona piano…</option>
+                            {assignment.options.map((plan) => <option key={plan.id} value={plan.id}>{plan.titolo}</option>)}
+                          </Sel>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="incassi-form-actions">
+                  <Btn ch="Annulla" v="sec" onClick={closeEstrattoConto} full />
+                  <Btn ch={`Registra selezionati (${selezionate.length})`} onClick={registraEstrattoConto} dis={!selezionate.length} full />
+                </div>
+              </>
+            );
+          })()}
         </Modal>
       )}
     </section>

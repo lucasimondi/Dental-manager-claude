@@ -4,7 +4,7 @@ import { C, uid, fmt, fmtD, today } from '../lib/utils';
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { normalizza } from '../lib/ricercaPazienti';
 import { supabase } from '../lib/supabase.js';
-import { isActivePlan } from '../lib/domain/incassiActions.js';
+import { planAssignmentForPatient } from '../lib/domain/incassiActions.js';
 
 export default function Pagamenti({ patients, payments, setPayments, plans, autoOpenNew, onAutoOpenNewHandled }) {
   const [modal, setModal] = useState(false);
@@ -89,12 +89,13 @@ export default function Pagamenti({ patients, payments, setPayments, plans, auto
   // POL-FIN-003 §5 — generic payment, no prestazione context: auto-assign
   // when the patient has exactly one active plan, otherwise require an
   // explicit choice.
-  const activePlansSel = form.pazienteId ? plans.filter((pl) => pl.pazienteId === Number(form.pazienteId) && isActivePlan(pl)) : [];
+  const assignment = form.pazienteId ? planAssignmentForPatient(plans, form.pazienteId) : { mode: 'none' };
+  const activePlansSel = assignment.mode === 'choose' ? assignment.options : [];
 
   const save = () => {
     if (!form.pazienteId || !form.importo) return;
-    if (activePlansSel.length > 1 && !form.pianoId) return;
-    const pianoId = activePlansSel.length === 1 ? activePlansSel[0].id : (activePlansSel.length > 1 ? Number(form.pianoId) : undefined);
+    if (assignment.mode === 'choose' && !form.pianoId) return;
+    const pianoId = assignment.mode === 'auto' ? assignment.pianoId : (assignment.mode === 'choose' ? Number(form.pianoId) : undefined);
     const { pianoId: _draftPianoId, ...rest } = form;
     setPayments((p) => [...p, { ...rest, id: uid(), pazienteId: Number(form.pazienteId), importo: Number(form.importo), ...(pianoId !== undefined ? { pianoId } : {}) }]);
     setModal(false);
