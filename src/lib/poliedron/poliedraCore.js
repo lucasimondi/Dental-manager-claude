@@ -23,6 +23,8 @@ import {
 // guess, so numbers are never invented (§20/§21 — reuse the canonical RPC,
 // no duplicate formula).
 const METRIC_KEYWORDS = Object.freeze([
+  { re: /produzion.*ora|produttivit.*ora/i, id: 'produzione_ora' },
+  { re: /prodott/i, id: 'prodotto' },
   { re: /incassat/i, id: 'incassato' },
   { re: /margine.*contribuzion/i, id: 'margine_contribuzione' },
   { re: /margine|ebitda/i, id: 'ebitda_operativo_gestionale' },
@@ -41,11 +43,11 @@ const CREATE_ACTION_KEYWORDS = Object.freeze([
   { re: /\b(?:documento|certificato|lettera)\b/i, id: 'document.create' },
 ]);
 
-const monthRange = (now = new Date()) => {
+export const financialMonthRange = (now = new Date()) => {
   const from = new Date(now.getFullYear(), now.getMonth(), 1);
   const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  const iso = (d) => d.toISOString().slice(0, 10);
-  return { from: iso(from), to: iso(to) };
+  const localYmd = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  return { from: localYmd(from), to: localYmd(to) };
 };
 
 const fmtEur = (n) => (typeof n === 'number' ? n.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' }) : null);
@@ -61,7 +63,7 @@ async function resolveAnalyze(entities, context, permissions, supabaseClient) {
   if (!supabaseClient) {
     return { answer: 'Dati non disponibili al momento.', confirmationRequired: false };
   }
-  const { from, to } = monthRange();
+  const { from, to } = financialMonthRange();
   const { snapshot, error } = await loadCanonicalFinancialSnapshot(supabaseClient, from, to, context?.studioId);
   if (error || !snapshot) {
     return { answer: 'Dati non disponibili al momento.', confirmationRequired: false };
