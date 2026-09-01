@@ -451,7 +451,7 @@ test('processQuery: a bare command alias stays in Poliedron as a ranked suggesti
   });
   assert.equal(result.intent, INTENT.SEARCH);
   assert.equal(result.directNavigation, undefined);
-  assert.equal(result.searchResults[0].items[0].label, 'Incassi e pagamenti');
+  assert.equal(result.searchResults[0].items[0].label, 'Incassi');
   assert.equal(result.suggestionBoard, true);
 });
 
@@ -523,7 +523,7 @@ test('suggest-first regression matrix: bare aliases never navigate and rank auth
     ['fat', 'Fatture'],
     ['fatture', 'Fatture'],
     ['ricetta', 'Ricette'],
-    ['pag', 'Incassi e pagamenti'],
+    ['pag', 'Incassi'],
     ['agenda', 'Agenda'],
   ]);
 

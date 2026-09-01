@@ -121,7 +121,7 @@ export default function Pagamenti({ patients, payments, setPayments, plans, auto
     <div>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
-      {!embedded && <PageHeader icon="eur" title="Pagamenti" actions={
+      {!embedded && <PageHeader icon="eur" title="Incassi" actions={
         tabAttiva === 'studio'
           ? <Btn ch="Studio" ic="plus" onClick={() => { setForm({ pazienteId: '', data: today(), importo: '', metodo: 'Contanti', nota: '', stato: 'pagato', pianoId: '' }); setPazSearch(''); setModal(true); }} />
           : <Btn ch="Esterno" ic="plus" onClick={() => { setFormExt({ collaborazione_id: '', collaborazione_nome: '', importo: '', data: today(), metodo: 'Bonifico', note: '' }); setModalExt(true); }} />
@@ -228,7 +228,7 @@ export default function Pagamenti({ patients, payments, setPayments, plans, auto
 
       {/* MODAL STUDIO */}
       {modal && (
-        <Modal title="Registra pagamento studio" icon="eur" onClose={() => setModal(false)}>
+        <Modal title="Inserisci incasso" icon="eur" onClose={() => setModal(false)}>
           <Fld label="Paziente">
             <SelettorePaziente
               patients={patients}

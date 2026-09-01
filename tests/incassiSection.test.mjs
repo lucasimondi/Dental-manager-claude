@@ -24,8 +24,8 @@ test('Incassi and Pagamenti share one financial workspace while control keeps th
   assert.match(control, /<Incassi[^>]*embedded/);
 });
 
-test('navigation exposes one combined Incassi e pagamenti destination', () => {
-  assert.match(utils, /\{ id: 'paga', l: 'Incassi e pagamenti', ic: 'pay' \}/);
+test('navigation exposes one Incassi destination', () => {
+  assert.match(utils, /\{ id: 'paga', l: 'Incassi', ic: 'pay' \}/);
   assert.doesNotMatch(utils, /\{ id: 'incassi', l: 'Incassi'/);
   assert.match(utils, /slots: \['home', 'agenda', DOCK_MENU_SLOT, 'paga', 'wa'\]/);
 });
