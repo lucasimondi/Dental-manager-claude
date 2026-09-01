@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { C } from '../lib/utils';
 import { fetchSaldiApertiStudio } from '../lib/domain/incassiService.js';
 import { Btn, Crd, EmptyState, ErrorState, Fld, Inp, LoadingState, Modal, PageHeader, Sel, SelettorePaziente } from './ui';
-import { addReceivableToLatestPlan, buildContextualPayment } from '../lib/domain/incassiActions.js';
+import { addReceivableToLatestPlan, buildContextualPayment, unassignedPaymentsForMultiPlanPatients } from '../lib/domain/incassiActions.js';
 
 const euro = (value) => Number(value || 0).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
 const today = () => new Date().toISOString().slice(0, 10);
@@ -25,6 +25,7 @@ export default function Incassi({ studioId, patients = [], plans = [], payments 
   const [form, setForm] = useState(emptyForm);
   const [patientSearch, setPatientSearch] = useState('');
   const [formError, setFormError] = useState('');
+  const [assignDraft, setAssignDraft] = useState({});
 
   useEffect(() => {
     let active = true;
@@ -58,6 +59,19 @@ export default function Incassi({ studioId, patients = [], plans = [], payments 
     if (patient) onOpenPaz?.(patient, 'paga');
   };
 
+  // POL-FIN-003 §6 — payments left piano_id unset because the patient had
+  // more than one plan (backfill declined to guess, and no write path
+  // silently infers across plans either). Nothing here is allocated: it's
+  // excluded from every saldo until assigned, one payment at a time.
+  const daAssegnare = useMemo(() => unassignedPaymentsForMultiPlanPatients(payments, plans), [payments, plans]);
+  const daAssegnareTotale = daAssegnare.reduce((sum, payment) => sum + Number(payment.importo || 0), 0);
+  const assignPayment = (paymentId) => {
+    const pianoId = assignDraft[paymentId];
+    if (!pianoId) return;
+    setPayments?.((current) => current.map((payment) => String(payment.id) === String(paymentId) ? { ...payment, pianoId: Number(pianoId) } : payment));
+    setAssignDraft((current) => { const next = { ...current }; delete next[paymentId]; return next; });
+  };
+
   const updateForm = (patch) => setForm((current) => ({ ...current, ...patch }));
   const choosePricelist = (name) => {
     const item = pricelist.find((entry) => entry.nome === name);
@@ -70,8 +84,9 @@ export default function Incassi({ studioId, patients = [], plans = [], payments 
     if (!form.pazienteId || !form.descrizione.trim() || !Number.isFinite(amount) || amount <= 0 || !Number.isFinite(paid) || paid < 0) {
       setFormError('Seleziona il paziente e inserisci descrizione e importi validi.'); return;
     }
-    setPlans?.((current) => addReceivableToLatestPlan(current, { pazienteId: form.pazienteId, descrizione: form.descrizione, importo: amount, eseguita: form.eseguita }));
-    if (paid > 0) setPayments?.((current) => [...current, buildContextualPayment({ pazienteId: form.pazienteId, importo: paid, descrizione: form.descrizione })]);
+    const { plans: updatedPlans, planId } = addReceivableToLatestPlan(plans, { pazienteId: form.pazienteId, descrizione: form.descrizione, importo: amount, eseguita: form.eseguita });
+    setPlans?.(updatedPlans);
+    if (paid > 0) setPayments?.((current) => [...current, buildContextualPayment({ pazienteId: form.pazienteId, importo: paid, descrizione: form.descrizione, pianoId: planId })]);
     closeModal();
   };
 
@@ -96,7 +111,33 @@ export default function Incassi({ studioId, patients = [], plans = [], payments 
       <div className="incassi-kpis">
         <Crd className="incassi-kpi is-collected"><span>Incassato</span><strong>{euro(collected)}</strong><small>{period === 'mese' ? 'nel mese corrente' : "nell'anno corrente"}</small></Crd>
         <Crd className="incassi-kpi is-outstanding"><span>Da incassare</span><strong>{euro(outstanding)}</strong><small>saldo totale dei piani aperti</small></Crd>
+        {daAssegnare.length > 0 && <Crd className="incassi-kpi is-unassigned"><span>Da assegnare</span><strong>{euro(daAssegnareTotale)}</strong><small>{daAssegnare.length} {daAssegnare.length === 1 ? 'pagamento' : 'pagamenti'} senza piano</small></Crd>}
       </div>
+
+      {daAssegnare.length > 0 && (
+        <Crd className="incassi-worklist incassi-worklist--unassigned">
+          <div className="incassi-worklist__header"><div><strong>Pagamenti da assegnare</strong><span>{daAssegnare.length} {daAssegnare.length === 1 ? 'pagamento' : 'pagamenti'} · {euro(daAssegnareTotale)}</span></div></div>
+          <p className="incassi-note">Il paziente ha più piani e questi pagamenti storici non sono collegati a nessuno: non entrano nel saldo di nessun piano finché non li assegni.</p>
+          <div className="incassi-list incassi-list--unassigned">
+            {daAssegnare.map((payment) => {
+              const patient = patientById.get(String(payment.pazienteId));
+              const patientName = patient ? `${patient.nome || ''} ${patient.cognome || ''}`.trim() : `Paziente #${payment.pazienteId}`;
+              const patientPlans = plans.filter((plan) => String(plan.pazienteId) === String(payment.pazienteId));
+              return (
+                <div className="incassi-unassigned-row" key={payment.id}>
+                  <span className="incassi-row__identity"><strong>{patientName}</strong><small>{payment.data}{payment.nota ? ` · ${payment.nota}` : ''}</small></span>
+                  <span className="incassi-row__amount">{euro(payment.importo)}</span>
+                  <Sel value={assignDraft[payment.id] || ''} onChange={(event) => setAssignDraft((current) => ({ ...current, [payment.id]: event.target.value }))}>
+                    <option value="">Assegna a…</option>
+                    {patientPlans.map((plan) => <option key={plan.id} value={plan.id}>{plan.titolo}</option>)}
+                  </Sel>
+                  <Btn ch="Assegna" sz="sm" onClick={() => assignPayment(payment.id)} dis={!assignDraft[payment.id]} />
+                </div>
+              );
+            })}
+          </div>
+        </Crd>
+      )}
 
       <Crd className="incassi-worklist">
         <div className="incassi-worklist__header"><div><strong>Saldi aperti</strong><span>{rows.length} {rows.length === 1 ? 'piano' : 'piani'}</span></div></div>

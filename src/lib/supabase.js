@@ -34,6 +34,7 @@ const FIELD_MAP = {
   },
   payments: {
     pazienteId: 'paziente_id',
+    pianoId: 'piano_id',
   },
   appointments: {
     pazienteId: 'paziente_id',
