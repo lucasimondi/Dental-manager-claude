@@ -2290,3 +2290,10 @@ Code: revert this commit on the branch. Database: stop Chat writes, remove `poli
 - NOT VERIFIABLE: authenticated runtime/visual QA. No authenticated Supabase session, preview deployment or device is available in this environment, and no credentials were requested or used. No fake data was created and no auth bypass was attempted. Responsive behaviour at 320x568 / 360x800 / 375x667 / 390x844 / 393x852 / 430x932 / 768x1024 portrait and 844x390 / 852x393 / 932x430 landscape is argued from the stylesheet plus the Round 1 shell contract (and is asserted at the source level in the new suite), NOT from a live rendering. Desktop 1440x900 is argued as unchanged because every added surface is `display: none` outside the mobile media query and the desktop DOM order is untouched — also not visually confirmed.
 - ROLLBACK: revert the Round 2 commits. No database rollback.
 - Exact next action: Product Owner reviews the PR ("POL-UI-017 R2: mobile Home and navigation refresh") and QAs the mobile Home on a real phone. Do NOT merge, do NOT deploy, do NOT start a Round 3. Status: `WAITING_PRODUCT_OWNER_POL_UI_017_R2_QA`.
+# POL-FIN-003 preview correction — canonical adapter pending
+
+- PR #77 initially exposed the real backend state: `get_financial_snapshot_v1` returned `PO_SEMANTICS_LOCKED_LEGACY_ADAPTER_PENDING`, zero Product/Collected and unavailable remaining metrics.
+- The premature Cockpit/Proiezioni cutover commit was reverted in full. No legacy-to-canonical formulas were added.
+- Panoramica now fails safely at the presentation boundary: that exact pending status selects the existing operational `PanoramicaControllo` and shows a visible notice explaining the source. Genuine canonical snapshots continue through `CanonicalManagementView`.
+- No database/RLS/data/production change. Validation: 5/5 targeted, 592/592 full suite, build passed, diff check clean.
+- Next: publish to PR #77, wait for preview and verify authenticated real figures. No merge.

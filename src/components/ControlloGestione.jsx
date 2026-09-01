@@ -10,6 +10,7 @@ import Costi from './Costi.jsx';
 import ControlloCockpit from './ControlloCockpit.jsx';
 import MarginalitaPrestazioni from './MarginalitaPrestazioni.jsx';
 import Incassi from './Incassi.jsx';
+import PanoramicaControllo from './PanoramicaControllo.jsx';
 
 const TABS = [
   { id: 'panoramica', icon: 'chart', label: 'Panoramica' },
@@ -20,7 +21,8 @@ const TABS = [
   { id: 'incassi', icon: 'pay', label: 'Incassi' },
 ];
 
-function CanonicalBaseOverview({ studioId }) {
+function CanonicalBaseOverview(props) {
+  const { studioId } = props;
   const [periodo, setPeriodo] = useState('mese');
   const [snapshot, setSnapshot] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -39,6 +41,19 @@ function CanonicalBaseOverview({ studioId }) {
     });
     return () => { active = false; };
   }, [periodo, studioId]);
+
+  const canonicalAdapterPending = snapshot?.data_quality_status === 'PO_SEMANTICS_LOCKED_LEGACY_ADAPTER_PENDING';
+
+  if (!loading && !error && canonicalAdapterPending) {
+    return (
+      <div>
+        <div style={{ margin: '12px 14px 0', padding: '10px 12px', borderRadius: 10, background: C.warL, border: `1px solid ${C.war}35`, color: C.txm, fontSize: 11.5, lineHeight: 1.45 }}>
+          Vista operativa attiva: la fonte canonica POL-003 non è ancora alimentata. I numeri sotto provengono dal controllo di gestione già in uso e non vengono sostituiti da valori zero.
+        </div>
+        <PanoramicaControllo {...props} />
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: 14 }}>
@@ -117,7 +132,7 @@ export default function ControlloGestione(props) {
         ))}
       </div>
 
-      {tab === 'panoramica' && <CanonicalBaseOverview studioId={props.studioId} />}
+      {tab === 'panoramica' && <CanonicalBaseOverview {...props} />}
       {tab === 'cockpit' && <ControlloCockpit {...props} />}
       {tab === 'proiezioni' && <Proiezioni studioId={props.studioId} />}
       {tab === 'costi' && <Costi studioId={props.studioId} isDentistico={props.isDentistico} />}
