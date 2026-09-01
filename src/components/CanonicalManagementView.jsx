@@ -25,30 +25,23 @@ export default function CanonicalManagementView({ snapshot, mode, onDrillDown })
       <div className="cmv__meta">
         Qualità dati: {model.dataQualityStatus} · Formula: {model.formulaVersion || 'non disponibile'}
       </div>
-      <div className="cmv__grid">
+      <div className="cmv__details">
         {model.metrics.map((item) => (
           <button
             key={item.id}
             type="button"
             disabled={!item.available || !onDrillDown}
             onClick={() => item.available && onDrillDown?.(item.sourceField)}
-            className="canonical-financial-widget cmv__card"
-            data-canonical-widget={GROUP_ACCENT[item.group] === 'ops' ? 'incasso' : GROUP_ACCENT[item.group] === 'agenda' ? 'margine' : GROUP_ACCENT[item.group] === 'alert' ? 'costi' : 'prodotto'}
+            className="cmv-detail"
+            data-tone={GROUP_ACCENT[item.group]}
           >
-            <div className="canonical-financial-widget__top">
-              <div>
-                <div className="canonical-financial-widget__label">{item.label}</div>
-              </div>
-            </div>
+            <span className="cmv-detail__identity"><strong>{item.label}</strong><small>{item.group} · fonte {item.sourceField || 'non disponibile'}</small></span>
             {item.available ? (
-              <div className="canonical-financial-widget__value">{displayValue(item)}</div>
+              <span className="cmv-detail__value">{displayValue(item)}</span>
             ) : (
-              <>
-                <div className="canonical-financial-widget__state">Non disponibile</div>
-                <div className="canonical-financial-widget__reason">Dato canonico incompleto</div>
-              </>
+              <span className="cmv-detail__unavailable">Dato non disponibile</span>
             )}
-            <div className="canonical-financial-widget__accent" aria-hidden="true" />
+            <span className="cmv-detail__arrow" aria-hidden="true">›</span>
           </button>
         ))}
       </div>

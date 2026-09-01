@@ -168,14 +168,12 @@ test('L5. Nessun frame di posizione bloccata "stantia" dopo lo sblocco (lock sol
   assert.doesNotMatch(edgePos, /\} else if \(lockedPlacementRef\.current\) placement = lockedPlacementRef\.current;/);
 });
 
-// M — root cause reale del bug "Documenti irraggiungibile in portrait senza
-// ruotare": fino a 10 tab con flex:1 uguale si comprimevano/eccedevano la
-// larghezza schermo. Ora la barra scorre orizzontalmente, ogni tab a
-// larghezza intrinseca — Documenti resta sempre raggiungibile.
-test('M. La barra delle tab della Scheda Paziente è scorrevole orizzontalmente su mobile', () => {
-  assert.match(schedaPaz, /overflowX: 'auto', WebkitOverflowScrolling: 'touch'/);
-  assert.match(schedaPaz, /flex: '0 0 auto', padding: '11px 10px'/);
-  assert.doesNotMatch(schedaPaz, /flex: 1, padding: '11px 4px'/);
+// M — Product Owner follow-up: every destination must be visible without
+// horizontal scrolling. The responsive grid keeps Documenti reachable and
+// avoids both the former compression and the interim swipe-only solution.
+test('M. Tutte le tab della Scheda Paziente sono visibili in una griglia non scorrevole', () => {
+  assert.match(schedaPaz, /className="patient-record-tabs"/);
+  assert.doesNotMatch(schedaPaz, /overflowX: 'auto', WebkitOverflowScrolling: 'touch'/);
   // Tutte le tab, incluse Documenti, restano presenti e invariate nel comportamento.
   for (const id of ['info', 'clinical', 'piani', 'paga', 'foto', 'app', 'doc']) assert.match(schedaPaz, new RegExp(`id: '${id}'`));
 });

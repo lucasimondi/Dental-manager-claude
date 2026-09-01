@@ -15,7 +15,7 @@ const ALIASES = Object.freeze({
   home: ['dashboard', 'inizio', 'home page'],
   paz: ['pazienti', 'clienti', 'anagrafica', 'cartelle'],
   piani: ['preventivi', 'piano di cura', 'piani di cura', 'preventivo'],
-  paga: ['pagamenti', 'incassi', 'incasso', 'soldi'],
+  paga: ['pagamenti', 'incassi', 'incasso', 'da incassare', 'crediti', 'saldi aperti', 'riscossioni', 'soldi'],
   listino: ['listino prezzi', 'prezzi', 'tariffario', 'tariffe'],
   agenda: ['calendario', 'appuntamenti', 'appuntamento'],
   richiami: ['richiamo', 'promemoria', 'recall', 'follow up'],

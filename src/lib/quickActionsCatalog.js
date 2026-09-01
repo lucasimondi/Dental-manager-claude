@@ -101,7 +101,7 @@ export const QUICK_ACTIONS_CATALOG = Object.freeze([
      temporary honest placeholder with the shipped destination. */
   {
     id: 'da_incassare', ic: 'eur', label: 'Da incassare',
-    run: (ctx) => ctx.onNavigate('incassi'),
+    run: (ctx) => ctx.onNavigate('paga'),
   },
 ]);
 
