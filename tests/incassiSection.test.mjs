@@ -5,6 +5,7 @@ import fs from 'node:fs';
 const read = (path) => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const component = read('src/components/Incassi.jsx');
 const app = read('src/App.jsx');
+const workspace = read('src/components/FinancialWorkspace.jsx');
 const control = read('src/components/ControlloGestione.jsx');
 const utils = read('src/lib/utils.js');
 const css = read('src/components/PremiumVisualSystem.css');
@@ -15,15 +16,17 @@ test('Incassi uses the canonical open-balances RPC client and never recomputes p
   assert.match(component, /row\.saldo_piano/);
 });
 
-test('the same Incassi component is exposed as a page and management-control tab', () => {
-  assert.match(app, /page === 'incassi'.*<Incassi/s);
+test('Incassi and Pagamenti share one financial workspace while control keeps the analytical view', () => {
+  assert.match(app, /page === 'paga' \|\| page === 'incassi'.*<FinancialWorkspace/s);
+  assert.match(workspace, /<Incassi[^>]*embedded/);
+  assert.match(workspace, /<Pagamenti[^>]*embedded/);
   assert.match(control, /id: 'incassi'/);
   assert.match(control, /<Incassi[^>]*embedded/);
 });
 
-test('navigation defaults add Incassi without replacing the five dock slots', () => {
-  assert.match(utils, /\{ id: 'incassi', l: 'Incassi', ic: 'pay' \}/);
-  assert.match(utils, /menuItems: \[[^\]]*'incassi'/s);
+test('navigation exposes one combined Incassi e pagamenti destination', () => {
+  assert.match(utils, /\{ id: 'paga', l: 'Incassi e pagamenti', ic: 'pay' \}/);
+  assert.doesNotMatch(utils, /\{ id: 'incassi', l: 'Incassi'/);
   assert.match(utils, /slots: \['home', 'agenda', DOCK_MENU_SLOT, 'paga', 'wa'\]/);
 });
 

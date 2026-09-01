@@ -47,7 +47,7 @@ test('Product Owner round 3 additions: Ricetta, Consenso, Da incassare exist and
   assert.equal(consenso.run(ctxNavigate), 'paz');
   // POL-FIN-002 shipped the real module: PR #74's existing action now
   // changes only its handler and navigates to that verified route.
-  assert.equal(daIncassare.run(ctxNavigate), 'incassi');
+  assert.equal(daIncassare.run(ctxNavigate), 'paga');
 });
 
 // Product Owner round 4: "Ricetta deve aprire il tab ricetta, non

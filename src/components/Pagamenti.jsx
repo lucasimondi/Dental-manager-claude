@@ -6,7 +6,7 @@ import { normalizza } from '../lib/ricercaPazienti';
 import { supabase } from '../lib/supabase.js';
 import { planAssignmentForPatient } from '../lib/domain/incassiActions.js';
 
-export default function Pagamenti({ patients, payments, setPayments, plans, autoOpenNew, onAutoOpenNewHandled }) {
+export default function Pagamenti({ patients, payments, setPayments, plans, autoOpenNew, onAutoOpenNewHandled, embedded = false }) {
   const [modal, setModal] = useState(false);
   const [form, setForm, clearFormDraft] = useFormPersistente('nuovo_pagamento_studio', { pazienteId: '', data: today(), importo: '', metodo: 'Contanti', nota: '', stato: 'pagato', pianoId: '' });
   const [pazSearch, setPazSearch] = useState('');
@@ -121,11 +121,11 @@ export default function Pagamenti({ patients, payments, setPayments, plans, auto
     <div>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
-      <PageHeader icon="eur" title="Pagamenti" actions={
+      {!embedded && <PageHeader icon="eur" title="Pagamenti" actions={
         tabAttiva === 'studio'
           ? <Btn ch="Studio" ic="plus" onClick={() => { setForm({ pazienteId: '', data: today(), importo: '', metodo: 'Contanti', nota: '', stato: 'pagato', pianoId: '' }); setPazSearch(''); setModal(true); }} />
           : <Btn ch="Esterno" ic="plus" onClick={() => { setFormExt({ collaborazione_id: '', collaborazione_nome: '', importo: '', data: today(), metodo: 'Bonifico', note: '' }); setModalExt(true); }} />
-      } />
+      } />}
 
       {/* TAB SWITCHER */}
       <div style={{ display: 'flex', background: C.bg, borderRadius: 10, border: `1px solid ${C.brd}`, marginBottom: 14, overflow: 'hidden' }}>

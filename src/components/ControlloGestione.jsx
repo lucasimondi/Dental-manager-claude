@@ -20,7 +20,7 @@ const TABS = [
   { id: 'incassi', icon: 'pay', label: 'Incassi' },
 ];
 
-function CanonicalBaseOverview({ studioId }) {
+function CanonicalBaseOverview({ studioId, onDrillDown }) {
   const [periodo, setPeriodo] = useState('mese');
   const [snapshot, setSnapshot] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -81,7 +81,7 @@ function CanonicalBaseOverview({ studioId }) {
         </Crd>
       )}
       {!loading && !error && snapshot && (
-        <CanonicalManagementView snapshot={snapshot} mode={MANAGEMENT_CONTROL_MODES.BASE} />
+        <CanonicalManagementView snapshot={snapshot} mode={MANAGEMENT_CONTROL_MODES.BASE} onDrillDown={onDrillDown} />
       )}
       {!loading && !error && !snapshot && (
         <Crd><EmptyState icon="chart" title="Dati canonici non disponibili" /></Crd>
@@ -103,26 +103,20 @@ export default function ControlloGestione(props) {
         {section !== 'panoramica' && <button type="button" className="management-hub__back" onClick={() => setSection('panoramica')}><Ic n="back" s={14} c={C.pri} /> Panoramica</button>}
       </div>
 
-      {section === 'panoramica' && <>
-        <div className="management-hub__modules">
-          {TABS.filter((item) => item.id !== 'panoramica').map((item) => (
-            <button type="button" key={item.id} onClick={() => setSection(item.id)} className={`management-module is-${item.id}`}>
-              <span className="management-module__icon"><Ic n={item.icon} s={19} c={C.pri} /></span>
-              <span><strong>{item.label}</strong><small>{{ cockpit: 'Indicatori operativi dello studio', proiezioni: 'Trend e scenari futuri', costi: 'Uscite e struttura dei costi', marginalita: 'Redditività delle prestazioni', incassi: 'Saldi aperti e riscossioni' }[item.id]}</small></span>
-              <span aria-hidden="true">›</span>
-            </button>
-          ))}
-        </div>
-        <CanonicalBaseOverview studioId={props.studioId} />
-      </>}
-
-      {section !== 'panoramica' && <div className="management-hub__section" aria-label={active?.label}>
+      <div className="management-layout">
+        <aside className="management-nav" aria-label="Aree controllo di gestione">
+          {TABS.map((item) => <button type="button" key={item.id} className={section === item.id ? 'is-active' : ''} onClick={() => setSection(item.id)}><Ic n={item.icon} s={15} c={section === item.id ? C.pri : C.txm} /><span>{item.label}</span></button>)}
+        </aside>
+        <label className="management-nav-mobile">Area<select value={section} onChange={(event) => setSection(event.target.value)}>{TABS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+        <main className="management-hub__section" aria-label={active?.label}>
+        {section === 'panoramica' && <CanonicalBaseOverview studioId={props.studioId} onDrillDown={(field) => setSection(field?.includes('incass') || field === 'credito_clienti' ? 'incassi' : field?.includes('costi') ? 'costi' : field?.includes('margine') || field?.includes('ebitda') ? 'marginalita' : 'cockpit')} />}
         {section === 'cockpit' && <ControlloCockpit {...props} />}
         {section === 'proiezioni' && <Proiezioni studioId={props.studioId} />}
         {section === 'costi' && <Costi studioId={props.studioId} isDentistico={props.isDentistico} />}
         {section === 'marginalita' && <MarginalitaPrestazioni studioId={props.studioId} pricelist={props.pricelist} isDentistico={props.isDentistico} />}
         {section === 'incassi' && <Incassi studioId={props.studioId} patients={props.patients} plans={props.plans} payments={props.payments} pricelist={props.pricelist} setPlans={props.setPlans} setPayments={props.setPayments} onOpenPaz={props.onOpenPaz} embedded />}
-      </div>}
+        </main>
+      </div>
     </div>
   );
 }
