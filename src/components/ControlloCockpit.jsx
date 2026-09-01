@@ -8,7 +8,7 @@ import { useCockpitDati } from '../lib/useCockpitDati';
 // ─────────────────────────────────────────────────────────────────
 // Tab "Cockpit" di Controllo di Gestione — vista aggiuntiva, non
 // sostituisce nulla di "Panoramica": stessa fonte dati (useControlloDati +
-// snapshot finanziaria canonica POL-003), stile scoped qui dentro, usa i
+// RPC get_kpi_periodo/get_costo_orario), stile scoped qui dentro, usa i
 // token colore di useTheme.js/utils.js (C.*) così light/dark funzionano
 // automaticamente senza una seconda palette. Nessuna scrittura su
 // Supabase in questa tab: Punteggio Salute Studio e Previsione di cassa
@@ -57,9 +57,20 @@ export default function ControlloCockpit({ studioId, patients = [], plans = [], 
   const [simCosto, setSimCosto] = useState(0);
   const [simGiorni, setSimGiorni] = useState(0);
 
-  // POL-003 non espone ancora un motore canonico di simulazione. I controlli
-  // restano pronti, ma nessun valore finanziario viene inventato nel client.
-  const simulazione = null;
+  const simulazione = (() => {
+    if (!kpi || !daPer || !aPer) return null;
+    const giorniPeriodo = Math.max(1, Math.round((new Date(aPer + 'T12:00') - new Date(daPer + 'T12:00')) / 86400000) + 1);
+    // Modello dichiarato: l'aumento prezzi si applica all'incasso attuale a parità
+    // di volume; i giorni extra portano incasso aggiuntivo al ritmo medio
+    // giornaliero attuale e fanno crescere proporzionalmente solo i costi
+    // variabili (materiali/laboratorio), non quelli fissi.
+    const incassoMedioGiorno = kpi.incassato / giorniPeriodo;
+    const incassoProiettato = kpi.incassato * (1 + simPrezzo / 100) + incassoMedioGiorno * simGiorni;
+    const variabiliProiettate = kpi.costi_variabili * (1 + simGiorni / giorniPeriodo);
+    const costiProiettati = kpi.costi_fissi + simCosto + variabiliProiettate;
+    const ebitdaProiettato = incassoProiettato - costiProiettati;
+    return { incassoProiettato, costiProiettati, ebitdaProiettato, delta: ebitdaProiettato - kpi.ebitda };
+  })();
 
   // ── Previsione di cassa 30/60/90gg ──
   // Non è un saldo di conto corrente reale (l'app non lo conosce): è la somma
@@ -139,7 +150,7 @@ export default function ControlloCockpit({ studioId, patients = [], plans = [], 
             <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 10 : 0 }}>
               {[
                 { lbl: 'Incassato', val: fmt(kpi.incassato), col: C.txt },
-                { lbl: '− Costi complessivi', val: kpi.costi_totali == null ? 'Non disponibile' : fmt(kpi.costi_totali), col: C.txm },
+                { lbl: '− Costi', val: fmt(kpi.costi_totali), col: C.txm },
                 { lbl: '= EBITDA', val: fmt(kpi.ebitda), col: kpi.ebitda >= 0 ? C.suc : C.dan },
               ].map((r, i) => (
                 <div key={i} style={{ flex: 1, padding: isMobile ? 0 : '0 12px', borderLeft: !isMobile && i > 0 ? `1px solid ${C.brd}` : 'none' }}>
@@ -189,11 +200,6 @@ export default function ControlloCockpit({ studioId, patients = [], plans = [], 
                 <div style={{ fontSize: 18, fontWeight: 800, color: col }}>{val}</div>
               </div>
             ))}
-          </div>
-        )}
-        {!simulazione && (
-          <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.brd}`, color: C.txm, fontSize: 12, lineHeight: 1.5 }}>
-            Risultato non disponibile: il simulatore verrà riattivato quando avrà un modello canonico basato sulla produzione, separato dagli incassi.
           </div>
         )}
       </Crd>

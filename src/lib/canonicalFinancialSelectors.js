@@ -101,33 +101,6 @@ export function createCanonicalManagementModel(snapshot, requestedMode) {
   });
 }
 
-// Transitional presentation adapter for the existing management-control UI.
-// Every value is copied verbatim from POL-003: deliberately no financial
-// formula is reconstructed in the browser.
-export function adaptCanonicalSnapshotForManagement(snapshot) {
-  if (!snapshot || typeof snapshot !== 'object') return null;
-  return Object.freeze({
-    prodotto: snapshot.prodotto ?? null,
-    incassato: snapshot.incassato ?? null,
-    costi_fissi: snapshot.costi_fissi_operativi ?? null,
-    costi_variabili: snapshot.costi_variabili ?? null,
-    costi_totali: null,
-    margine_contribuzione: snapshot.margine_contribuzione ?? null,
-    margine_contribuzione_pct: snapshot.margine_contribuzione_pct ?? null,
-    ebitda: snapshot.ebitda_operativo_gestionale ?? null,
-    ebitda_pct: null,
-    break_even: snapshot.break_even ?? null,
-    break_even_raggiunto: snapshot.break_even_raggiunto ?? null,
-    ore_produttive_disponibili: snapshot.ore_produttive_disponibili ?? null,
-    ore_effettivamente_lavorate: snapshot.ore_effettivamente_lavorate ?? null,
-    costo_orario_struttura: snapshot.costo_orario_struttura ?? null,
-    produzione_ora: snapshot.produzione_ora ?? null,
-    incasso_ora: snapshot.incasso_ora ?? null,
-    data_quality_status: snapshot.data_quality_status ?? 'CANONICAL_DATA_UNAVAILABLE',
-    formula_version: snapshot.formula_version ?? null,
-  });
-}
-
 export async function loadCanonicalFinancialSnapshot(supabaseClient, dateFrom, dateTo, studioId) {
   if (!supabaseClient || !dateFrom || !dateTo) {
     return { snapshot: null, error: new Error('Canonical financial period is required') };

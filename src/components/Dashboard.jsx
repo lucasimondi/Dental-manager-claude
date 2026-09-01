@@ -1642,7 +1642,7 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
                   </div>
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '5px 0', borderTop: '1px solid rgba(255,255,255,0.15)' }}>
                     <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.85)' }}>− Costi</span>
-                    <span style={{ fontSize: 15, fontWeight: 800, color: 'rgba(255,255,255,0.9)' }}>{kpiPeriodo.costi_totali == null ? 'Non disponibile' : fmt(kpiPeriodo.costi_totali)}</span>
+                    <span style={{ fontSize: 15, fontWeight: 800, color: 'rgba(255,255,255,0.9)' }}>{fmt(kpiPeriodo.costi_totali)}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '7px 0 0', borderTop: '1px solid rgba(255,255,255,0.15)' }}>
                     <span style={{ fontSize: 13, fontWeight: 800, color: '#fff' }}>= EBITDA</span>
