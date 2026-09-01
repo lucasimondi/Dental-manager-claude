@@ -6,7 +6,12 @@ import { normalizza } from '../lib/ricercaPazienti';
 import { supabase } from '../lib/supabase.js';
 import { planAssignmentForPatient } from '../lib/domain/incassiActions.js';
 
-export default function Pagamenti({ patients, payments, setPayments, plans, autoOpenNew, onAutoOpenNewHandled, embedded = false }) {
+// soloEsterno: FinancialWorkspace now shows Incassi.jsx's own unified
+// Incassato/Da incassare view as the primary "Incassi" surface — this
+// component's "Studio" tab would be a duplicate of that, so a caller
+// wanting ONLY the distinct "Collaborazioni esterne" surface (non-patient
+// income) can lock straight to it and hide the switcher entirely.
+export default function Pagamenti({ patients, payments, setPayments, plans, autoOpenNew, onAutoOpenNewHandled, embedded = false, soloEsterno = false }) {
   const [modal, setModal] = useState(false);
   const [form, setForm, clearFormDraft] = useFormPersistente('nuovo_pagamento_studio', { pazienteId: '', data: today(), importo: '', metodo: 'Contanti', nota: '', stato: 'pagato', pianoId: '' });
   const [pazSearch, setPazSearch] = useState('');
@@ -15,7 +20,7 @@ export default function Pagamenti({ patients, payments, setPayments, plans, auto
   const F = (f) => setForm((p) => ({ ...p, ...f }));
 
   // Collaborazioni esterne
-  const [tabAttiva, setTabAttiva] = useState('studio'); // 'studio' | 'esterno'
+  const [tabAttiva, setTabAttiva] = useState(soloEsterno ? 'esterno' : 'studio'); // 'studio' | 'esterno'
   const [collaborazioni, setCollaborazioni] = useState([]);
   const [pagExt, setPagExt] = useState([]);
   const [modalExt, setModalExt] = useState(false);
@@ -128,13 +133,20 @@ export default function Pagamenti({ patients, payments, setPayments, plans, auto
       } />}
 
       {/* TAB SWITCHER */}
-      <div style={{ display: 'flex', background: C.bg, borderRadius: 10, border: `1px solid ${C.brd}`, marginBottom: 14, overflow: 'hidden' }}>
-        {[['studio', 'home', 'Studio'], ['esterno', 'shake', 'Collaborazioni']].map(([id, ic, lbl]) => (
-          <button key={id} onClick={() => setTabAttiva(id)} style={{ flex: 1, padding: '10px 0', border: 'none', background: tabAttiva === id ? C.pri : 'transparent', color: tabAttiva === id ? '#fff' : C.txm, fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            <Ic n={ic} s={13} c={tabAttiva === id ? '#fff' : C.txm} />{lbl}
-          </button>
-        ))}
-      </div>
+      {!soloEsterno && (
+        <div style={{ display: 'flex', background: C.bg, borderRadius: 10, border: `1px solid ${C.brd}`, marginBottom: 14, overflow: 'hidden' }}>
+          {[['studio', 'home', 'Studio'], ['esterno', 'shake', 'Collaborazioni']].map(([id, ic, lbl]) => (
+            <button key={id} onClick={() => setTabAttiva(id)} style={{ flex: 1, padding: '10px 0', border: 'none', background: tabAttiva === id ? C.pri : 'transparent', color: tabAttiva === id ? '#fff' : C.txm, fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <Ic n={ic} s={13} c={tabAttiva === id ? '#fff' : C.txm} />{lbl}
+            </button>
+          ))}
+        </div>
+      )}
+      {soloEsterno && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+          <Btn ch="Aggiungi incasso esterno" ic="plus" onClick={() => { setFormExt({ collaborazione_id: '', collaborazione_nome: '', importo: '', data: today(), metodo: 'Bonifico', note: '' }); setModalExt(true); }} />
+        </div>
+      )}
 
       {/* RICERCA */}
       <div style={{ position: 'relative', marginBottom: 14 }}>
@@ -155,7 +167,7 @@ export default function Pagamenti({ patients, payments, setPayments, plans, auto
       </div>
 
       {/* ── TAB STUDIO ── */}
-      {tabAttiva === 'studio' && (
+      {!soloEsterno && tabAttiva === 'studio' && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
             <StatCard icon="eur" color={C.suc} value={fmt(total)} label="Totale studio" />
@@ -192,7 +204,7 @@ export default function Pagamenti({ patients, payments, setPayments, plans, auto
       )}
 
       {/* ── TAB COLLABORAZIONI ── */}
-      {tabAttiva === 'esterno' && (
+      {(soloEsterno || tabAttiva === 'esterno') && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
             <StatCard icon="eur" color={C.pur} value={fmt(totalExt)} label="Totale collaborazioni" />

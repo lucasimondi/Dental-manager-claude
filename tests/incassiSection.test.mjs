@@ -38,8 +38,46 @@ test('worklist supports persisted sorting, patient payment navigation, and hones
   assert.match(component, /EmptyState/);
 });
 
+// Product Owner follow-up: Incassato/Da incassare must live in the SAME
+// section, both clickable, and a "Da incassare" row must be markable as
+// incassato right there — writing a real payments.piano_id row (never a
+// cosmetic flag), which is what get_saldo_piano/SchedaPaz's own widget
+// read, so this really does "aggiornare il paziente".
+const pagamenti = read('src/components/Pagamenti.jsx');
+
+test('Incassato and Da incassare are one clickable view-switch, not two separate pages', () => {
+  assert.match(component, /const \[activeView, setActiveView\] = useState\('outstanding'\)/);
+  assert.match(component, /onClick=\{\(\) => setActiveView\('collected'\)\}/);
+  assert.match(component, /onClick=\{\(\) => setActiveView\('outstanding'\)\}/);
+  assert.match(component, /activeView === 'outstanding'/);
+  assert.match(component, /activeView === 'collected'/);
+});
+
+test('a "Da incassare" row can be marked incassato right there, and it is a real payment (never a flag)', () => {
+  assert.match(component, /Btn ch="Incassa" ic="eur" sz="sm"/);
+  assert.match(component, /openIncasso\(\{\s*\n\s*pazienteId: String\(row\.paziente_id\), lockedPianoId: row\.piano_id,/);
+  assert.match(component, /stato: 'pagato'/);
+  assert.doesNotMatch(component, /incassata: !v\.incassata/);
+});
+
+test('the incasso button offers a manual amount AND a photo/PDF receipt (AI-assisted, reusing the existing extraction endpoint)', () => {
+  assert.match(component, /endpoint="estrai-pagamenti-estratto-conto"/);
+  assert.match(component, /handleIncassoEstratto/);
+  assert.match(component, /\['manuale', 'Importo manuale'\], \['ricevuta', 'Foto o PDF ricevuta'\]/);
+});
+
+test('Collaborazioni esterne stays reachable as its own surface, locked away from the now-unified Studio list', () => {
+  assert.match(workspace, /soloEsterno/);
+  assert.match(pagamenti, /soloEsterno = false/);
+  assert.match(pagamenti, /!soloEsterno && tabAttiva === 'studio'/);
+  assert.match(pagamenti, /soloEsterno \|\| tabAttiva === 'esterno'/);
+});
+
 test('Incassi remains touch-first and responsive', () => {
   assert.match(css, /\.incassi-sort select \{ min-height: 44px/);
-  assert.match(css, /\.incassi-row \{[^}]*min-height: 60px/s);
+  // Each row is now a container (identity/open button + a per-row "Incassa"
+  // or delete action alongside it) — the 60px touch target lives on the
+  // open button itself, not the outer flex row.
+  assert.match(css, /\.incassi-row__open \{[^}]*min-height: 60px/s);
   assert.match(css, /@media \(max-width:719px\)[\s\S]*\.incassi-kpis \{ grid-template-columns: 1fr/);
 });
