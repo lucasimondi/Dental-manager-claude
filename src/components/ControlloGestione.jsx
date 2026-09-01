@@ -93,36 +93,36 @@ function CanonicalBaseOverview({ studioId }) {
 // POL-003E: solo la Panoramica BASE usa la fonte canonica.
 // Cockpit, Proiezioni, Costi e Marginalità restano invariati; la modalità ADVANCED resta gated.
 export default function ControlloGestione(props) {
-  const [tab, setTab] = useState('panoramica');
+  const [section, setSection] = useState('panoramica');
+  const active = TABS.find((item) => item.id === section);
 
   return (
-    <div>
-      <div style={{ padding: '0 14px' }}><PageHeader icon="chart" title="Controllo di gestione" /></div>
-      <div className="pol-tabbar" style={{ background: C.bg, borderRadius: 10, padding: 4, margin: '0 14px 4px' }}>
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`pol-tab${tab === t.id ? ' is-active' : ''}`}
-            style={{
-              flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, border: 'none', borderRadius: 7, padding: '8px 12px', fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap',
-              background: tab === t.id ? C.sur : 'transparent',
-              color: tab === t.id ? C.pri : C.txl,
-              boxShadow: tab === t.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-            }}
-          >
-            <Ic n={t.icon} s={12} c={tab === t.id ? C.pri : C.txl} />
-            {t.label}
-          </button>
-        ))}
+    <div className="management-hub">
+      <div className="management-hub__header">
+        <PageHeader icon="chart" title="Controllo di gestione" subtitle="Numeri chiave e strumenti operativi dello studio" />
+        {section !== 'panoramica' && <button type="button" className="management-hub__back" onClick={() => setSection('panoramica')}><Ic n="back" s={14} c={C.pri} /> Panoramica</button>}
       </div>
 
-      {tab === 'panoramica' && <CanonicalBaseOverview studioId={props.studioId} />}
-      {tab === 'cockpit' && <ControlloCockpit {...props} />}
-      {tab === 'proiezioni' && <Proiezioni studioId={props.studioId} />}
-      {tab === 'costi' && <Costi studioId={props.studioId} isDentistico={props.isDentistico} />}
-      {tab === 'marginalita' && <MarginalitaPrestazioni studioId={props.studioId} pricelist={props.pricelist} isDentistico={props.isDentistico} />}
-      {tab === 'incassi' && <Incassi studioId={props.studioId} patients={props.patients} plans={props.plans} payments={props.payments} pricelist={props.pricelist} setPlans={props.setPlans} setPayments={props.setPayments} onOpenPaz={props.onOpenPaz} embedded />}
+      {section === 'panoramica' && <>
+        <div className="management-hub__modules">
+          {TABS.filter((item) => item.id !== 'panoramica').map((item) => (
+            <button type="button" key={item.id} onClick={() => setSection(item.id)} className={`management-module is-${item.id}`}>
+              <span className="management-module__icon"><Ic n={item.icon} s={19} c={C.pri} /></span>
+              <span><strong>{item.label}</strong><small>{{ cockpit: 'Indicatori operativi dello studio', proiezioni: 'Trend e scenari futuri', costi: 'Uscite e struttura dei costi', marginalita: 'Redditività delle prestazioni', incassi: 'Saldi aperti e riscossioni' }[item.id]}</small></span>
+              <span aria-hidden="true">›</span>
+            </button>
+          ))}
+        </div>
+        <CanonicalBaseOverview studioId={props.studioId} />
+      </>}
+
+      {section !== 'panoramica' && <div className="management-hub__section" aria-label={active?.label}>
+        {section === 'cockpit' && <ControlloCockpit {...props} />}
+        {section === 'proiezioni' && <Proiezioni studioId={props.studioId} />}
+        {section === 'costi' && <Costi studioId={props.studioId} isDentistico={props.isDentistico} />}
+        {section === 'marginalita' && <MarginalitaPrestazioni studioId={props.studioId} pricelist={props.pricelist} isDentistico={props.isDentistico} />}
+        {section === 'incassi' && <Incassi studioId={props.studioId} patients={props.patients} plans={props.plans} payments={props.payments} pricelist={props.pricelist} setPlans={props.setPlans} setPayments={props.setPayments} onOpenPaz={props.onOpenPaz} embedded />}
+      </div>}
     </div>
   );
 }

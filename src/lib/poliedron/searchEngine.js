@@ -91,9 +91,9 @@ export function suggestedIdle({ recentActionIds = [], actions = [], navigationIn
   // the central Poliedron button's default panel now that the mobile dock
   // no longer has its own Impostazioni slot — listed last since it's a
   // secondary destination, not a priority operational shortcut.
-  const preferredSections = ['controllo', 'spese', 'agenda', 'paz', 'paga', 'archivio', 'piani', 'richiami', 'set'];
+  const preferredSections = ['controllo', 'incassi', 'spese', 'agenda', 'paz', 'paga', 'archivio', 'piani', 'richiami', 'set'];
   const sectionById = new Map(navigationIndex.map((item) => [item.id, item]));
-  const sectionItems = preferredSections.map((id) => sectionById.get(id)).filter(Boolean).slice(0, 9)
+  const sectionItems = preferredSections.map((id) => sectionById.get(id)).filter(Boolean).slice(0, 10)
     .map((section) => ({ kind: 'section', id: section.id, label: section.label, icon: section.icon, data: section }));
   return [
     ...(sectionItems.length ? [{ group: 'APRI UNA SEZIONE', items: sectionItems }] : []),
