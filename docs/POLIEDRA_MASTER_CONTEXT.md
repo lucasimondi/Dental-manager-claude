@@ -598,6 +598,14 @@ Esempi:
 
 Guardrail: l'AI non finalizza autonomamente atti clinici sensibili; il clinico resta responsabile.
 
+### Missione futura — allegati in Poliedron (non ancora pianificata in dettaglio)
+
+Oggi Poliedron è solo testuale: `processQuery`/`poliedraCore.js`/`modelGateway.js` non accettano un allegato (immagine/PDF). La lettura documenti esiste solo isolata in Spese/Costi (`UploadDocumentoSpesa.jsx` + edge function `estrai-spesa-documento`, un documento = un'estrazione, nessuna conversazione).
+
+Caso d'uso che ha originato questa nota (POL-FIN-003, settembre 2026): leggere un estratto conto mensile con più pagamenti, collegarli ai pazienti/piani, confrontare con quanto già registrato. Implementato per ora come widget dedicato in Incassi (stesso pattern di Spese/Costi, non passa da Poliedron) — vedi missione operativa collegata.
+
+Portare la lettura documenti dentro il motore condiviso di Poliedron (allegare un file in chat, non solo un widget isolato) è un cambiamento strutturale che tocca il motore usato da tutte le funzioni AI dell'app — non va fatto incidentalmente dentro un task verticale. Da pianificare come missione a sé quando prioritizzata.
+
 ## 33. Referral / Founder model
 
 Idea da mantenere in roadmap: founder / ambassador / referral partner con tracking segnalazioni e possibile revenue sharing/passivo ricorrente collegato alla rete generata.
