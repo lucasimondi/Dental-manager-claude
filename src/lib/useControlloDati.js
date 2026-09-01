@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabase.js';
 import { today } from './utils';
+import { adaptCanonicalSnapshotForManagement, loadCanonicalFinancialSnapshot } from './canonicalFinancialSelectors';
 
 // Fonte unica di calcolo per tutto ciò che oggi vive in Controllo di Gestione
 // (PanoramicaControllo.jsx) e che Dashboard.jsx vuole poter mostrare come
@@ -8,7 +9,8 @@ import { today } from './utils';
 // richiami, scadenze, ortodonzia, statistiche, grafici, contributo spese nel
 // periodo) era scritta due volte in due componenti diversi — lo stesso
 // problema di "due fonti che possono divergere" già risolto per i KPI
-// economici (get_kpi_periodo). Qui i KPI economici restano dalla RPC;
+// economici. Qui i KPI economici arrivano esclusivamente dalla snapshot
+// canonica POL-003;
 // tutto il resto (derivato da patients/plans/payments, già prop dei
 // chiamanti) è calcolato una sola volta qui.
 
@@ -57,9 +59,9 @@ export function useControlloDati({ studioId, patients = [], plans = [], payments
     setKpiLoading(true);
     setKpiErr('');
     const [da, a] = rangePeriodo(periodo);
-    supabase.rpc('get_kpi_periodo', { p_studio_id: studioId, p_data_inizio: da, p_data_fine: a })
-      .then(({ data, error }) => {
-        if (error) setKpiErr(error.message); else setKpi(data);
+    loadCanonicalFinancialSnapshot(supabase, da, a, studioId)
+      .then(({ snapshot, error }) => {
+        if (error) setKpiErr(error.message); else setKpi(adaptCanonicalSnapshotForManagement(snapshot));
         setKpiLoading(false);
       });
   }, [studioId, periodo, enabled]);
@@ -188,8 +190,8 @@ export function useControlloDati({ studioId, patients = [], plans = [], payments
     return Object.entries(map).map(([categoria, tot]) => ({ categoria, tot: Math.round(tot) })).sort((a, b) => b.tot - a.tot).slice(0, 8);
   })();
 
-  // ── Contributo spese nel periodo selezionato (replica esatta di get_kpi_periodo,
-  //    così la somma delle righe nel dettaglio coincide sempre col KPI mostrato) ──
+  // ── Contributo spese nel periodo selezionato per i soli dettagli operativi.
+  // Non alimenta né ricostruisce i KPI finanziari canonici. ──
   const [daPer, aPer] = rangePeriodo(periodo);
   const fineMeseCorrente = (() => { const d = new Date(); return ymd(new Date(d.getFullYear(), d.getMonth() + 1, 0)); })();
   const fineEffettiva = aPer < fineMeseCorrente ? aPer : fineMeseCorrente;

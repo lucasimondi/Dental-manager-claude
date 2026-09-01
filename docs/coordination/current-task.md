@@ -1,5 +1,20 @@
 # Current task
 
+- TASK: POL-FIN-003 — Management Control canonical alignment
+- TITLE: Align Cockpit and real Projection figures to the POL-003 canonical financial snapshot
+- OWNER: CODEX
+- BRANCH: `feature/POL-FIN-003-management-canonical`
+- BASE: `origin/master@2812d1c`
+- STATUS: IMPLEMENTED_LOCALLY_AWAITING_PUBLICATION
+- SCOPE: `useControlloDati`, Cockpit historical comparison/available hours, and monthly real figures in Proiezioni now read only `get_financial_snapshot_v1` through `canonicalFinancialSelectors.js`. The adapter copies canonical fields verbatim and deliberately leaves combined costs and EBITDA percentage unavailable. Break-even status uses the canonical boolean and not a client comparison against cash collected. Proiezioni separates the existing hypothetical cash scenario from canonical real EBITDA and no longer subtracts incomparable values. The legacy client-side what-if result is disabled pending a canonical production-based simulation model.
+- DATABASE/PRODUCTION: none. No schema, migration, RLS, data, provider, deployment, or production change.
+- VALIDATION: targeted canonical tests 6/6; full suite 593/593; production build passed with pre-existing duplicate-icon/pdfjs/chunk warnings; `git diff --check` clean.
+- EXACT NEXT ACTION: commit only tracked task files, push, open a PR to `master`, wait for the configured preview, perform read-only smoke QA, and stop for Product Owner review. Do not merge or deploy production.
+
+---
+
+# Previous current task
+
 - TASK: POL-FIN-002 (+ follow-up fix)
 - TITLE: Modulo Incassi / Da incassare — MERGED, plus a Product-Owner-reported follow-up fix
 - OWNER: CLAUDE. POL-FIN-002 itself was implemented by a prior Claude session that handed off to CODEX (see the full detailed record preserved below, unedited); this Claude session independently re-verified it end to end before merging, then fixed a Product Owner bug report on top.

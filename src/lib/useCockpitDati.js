@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { supabase } from './supabase.js';
 import { rangePeriodo } from './useControlloDati';
 import { calcolaSaluteStudio, calcolaDsoStimato } from './salutestudio';
+import { adaptCanonicalSnapshotForManagement, loadCanonicalFinancialSnapshot } from './canonicalFinancialSelectors';
 
 // Dati aggiuntivi per la tab Cockpit, sopra a quelli già forniti da
-// useControlloDati: costo orario/ore lavorabili (RPC già esistente
-// get_costo_orario), KPI del mese precedente (stessa RPC get_kpi_periodo,
-// solo con range diverso — nessuna nuova RPC), e i calcoli derivati
+// useControlloDati: KPI del mese precedente dalla stessa snapshot canonica,
+// e i calcoli derivati
 // (occupazione agenda, DSO, punteggio salute studio, alert). Nessuna
 // scrittura: questa tab è puramente di lettura/simulazione.
 
@@ -22,13 +22,7 @@ const meseFa = (dataYMD) => {
 };
 
 export function useCockpitDati({ studioId, kpi, kpiLoading, totEsegDaInc, tassoAccettazione, appointments = [], periodo, daPer, aPer }) {
-  const [costoOrario, setCostoOrario] = useState(null);
   const [kpiMesePrec, setKpiMesePrec] = useState(null);
-
-  useEffect(() => {
-    if (!studioId) return;
-    supabase.rpc('get_costo_orario', { p_studio_id: studioId }).then(({ data, error }) => { if (!error) setCostoOrario(data); });
-  }, [studioId]);
 
   useEffect(() => {
     if (!studioId) return;
@@ -39,18 +33,13 @@ export function useCockpitDati({ studioId, kpi, kpiLoading, totEsegDaInc, tassoA
     const daPrec = meseFa(inizioMeseCorrente);
     const dInizioPrec = new Date(daPrec + 'T12:00');
     const aPrec = `${dInizioPrec.getFullYear()}-${String(dInizioPrec.getMonth() + 1).padStart(2, '0')}-${new Date(dInizioPrec.getFullYear(), dInizioPrec.getMonth() + 1, 0).getDate()}`;
-    supabase.rpc('get_kpi_periodo', { p_studio_id: studioId, p_data_inizio: daPrec, p_data_fine: aPrec })
-      .then(({ data, error }) => { if (!error) setKpiMesePrec(data); });
+    loadCanonicalFinancialSnapshot(supabase, daPrec, aPrec, studioId)
+      .then(({ snapshot, error }) => { if (!error) setKpiMesePrec(adaptCanonicalSnapshotForManagement(snapshot)); });
   }, [studioId]);
 
   // ── Occupazione agenda: ore prenotate nel periodo ÷ ore lavorabili/mese ──
-  // Usa la stessa base oraria di get_costo_orario (giorni apertura × ore ×
-  // poltrone). Per il periodo "anno" moltiplica le ore mensili per il numero
-  // di mesi effettivamente trascorsi, per non confrontare ore di un anno
-  // intero con appuntamenti di 8 mesi.
-  const oreLavorabiliMensili = costoOrario?.ore_lavorabili_mensili || null;
-  const nMesiPeriodoOre = periodo === 'anno' && daPer && aPer ? Math.max(1, Math.round(giorniTraDate(daPer, aPer) / 30.4)) : 1;
-  const oreLavorabiliPeriodo = oreLavorabiliMensili ? oreLavorabiliMensili * nMesiPeriodoOre : null;
+  // Il denominatore arriva verbatim dalla snapshot canonica del periodo.
+  const oreLavorabiliPeriodo = kpi?.ore_produttive_disponibili || null;
   const minutiPrenotati = daPer && aPer
     ? appointments.filter(a => a.data >= daPer && a.data <= aPer && a.stato !== 'annullato').reduce((s, a) => s + (Number(a.durata) || 0), 0)
     : 0;
@@ -61,22 +50,20 @@ export function useCockpitDati({ studioId, kpi, kpiLoading, totEsegDaInc, tassoA
   const dsoGiorni = kpi ? calcolaDsoStimato(totEsegDaInc, kpi.incassato, giorniPeriodo) : null;
 
   const salute = kpi ? calcolaSaluteStudio({
-    ebitdaPct: kpi.ebitda_pct,
-    breakEvenSuperato: kpi.break_even != null ? kpi.incassato >= kpi.break_even : null,
+    breakEvenSuperato: kpi.break_even_raggiunto,
     tassoAccettazione,
     oreOccupatePct,
     dsoGiorni,
   }) : { punteggio: null, fattori: [] };
 
   // Confronto col mese scorso: SOLO sui fattori davvero storicizzati
-  // (EBITDA e break-even, entrambi da get_kpi_periodo su un range passato).
+  // (per ora il break-even, disponibile nella snapshot canonica storica).
   // Tasso accettazione, occupazione agenda e DSO sono sempre calcolati "a
   // oggi": non abbiamo uno snapshot del mese scorso per questi tre, quindi
   // non li includiamo nel confronto invece di riusare per finta il valore
   // di oggi come se fosse storico.
   const saluteMesePrec = kpiMesePrec ? calcolaSaluteStudio({
-    ebitdaPct: kpiMesePrec.ebitda_pct,
-    breakEvenSuperato: kpiMesePrec.break_even != null ? kpiMesePrec.incassato >= kpiMesePrec.break_even : null,
+    breakEvenSuperato: kpiMesePrec.break_even_raggiunto,
   }) : { punteggio: null, fattori: [] };
 
   const deltaSalute = salute.punteggio != null && saluteMesePrec.punteggio != null
@@ -84,7 +71,7 @@ export function useCockpitDati({ studioId, kpi, kpiLoading, totEsegDaInc, tassoA
     : null;
 
   return {
-    costoOrario, kpiMesePrec,
+    costoOrario: kpi ? { costo_orario: kpi.costo_orario_struttura, ore_lavorabili_mensili: kpi.ore_produttive_disponibili } : null, kpiMesePrec,
     oreOccupatePct, dsoGiorni, giorniPeriodo,
     salute, deltaSalute,
   };

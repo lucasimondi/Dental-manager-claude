@@ -107,7 +107,7 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
             {/* Riga Costi (sottrazione, visivamente subordinata) */}
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid rgba(255,255,255,0.15)' }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.85)' }}>− Costi (fissi + variabili)</div>
-              <div style={{ fontSize: 17, fontWeight: 800, color: 'rgba(255,255,255,0.9)' }}>{fmt(kpi.costi_totali)}</div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: 'rgba(255,255,255,0.9)' }}>{kpi.costi_totali == null ? 'Non disponibile' : fmt(kpi.costi_totali)}</div>
             </div>
             {/* Riga EBITDA (= Margine di Contribuzione - Costi Fissi), in evidenza */}
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '11px 0 4px' }}>
@@ -121,16 +121,16 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
             <div style={{ marginTop: 8, background: 'rgba(255,255,255,0.1)', borderRadius: 10, padding: '9px 12px' }}>
               <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', lineHeight: 1.5 }}>
                 {kpi.break_even != null
-                  ? <>Break-even: <b style={{ color: '#fff' }}>{fmt(kpi.break_even)}</b>{kpi.incassato >= kpi.break_even
+                  ? <>Break-even: <b style={{ color: '#fff' }}>{fmt(kpi.break_even)}</b>{kpi.break_even_raggiunto
                       ? ' — superato ✓'
-                      : ` · mancano ${fmt(kpi.break_even - kpi.incassato)}`}</>
+                      : ' — non ancora raggiunto'}</>
                   : (kpi.break_even_nota || 'Break-even non disponibile.')}
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: 14, marginTop: 10 }}>
               <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)' }}>Ticket medio <b style={{ color: '#fff' }}>{kpi.ticket_medio != null ? fmt(kpi.ticket_medio) : '—'}</b></div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)' }}>Pazienti paganti <b style={{ color: '#fff' }}>{kpi.n_pazienti_paganti}</b></div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)' }}>Pazienti paganti <b style={{ color: '#fff' }}>{kpi.n_pazienti_paganti ?? 'Non disponibile'}</b></div>
             </div>
           </div>
         )}
@@ -185,7 +185,7 @@ export default function PanoramicaControllo({ studioId, patients = [], plans = [
           </div>
           <div onClick={() => setDettaglio('costi_totali')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderTop: `1px solid ${C.brd}`, background: C.bg, cursor: 'pointer' }}>
             <div style={{ fontSize: 12.5, fontWeight: 700, color: C.txt }}>Totale costi</div>
-            <div style={{ fontSize: 15, fontWeight: 900, color: C.txt }}>{kpi ? fmt(kpi.costi_totali) : '—'}</div>
+            <div style={{ fontSize: 15, fontWeight: 900, color: C.txt }}>{kpi?.costi_totali == null ? 'Non disponibile' : fmt(kpi.costi_totali)}</div>
           </div>
         </Crd>
 

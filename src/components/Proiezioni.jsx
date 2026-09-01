@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Crd, Btn } from './ui';
 import { C, fmt } from '../lib/utils';
 import { supabase } from '../lib/supabase.js';
+import { loadCanonicalFinancialSnapshot } from '../lib/canonicalFinancialSelectors';
 
 const MESI = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
 
@@ -30,9 +31,8 @@ const MeseCard = ({ label, dirty, mese, riga, realeMese, onChange, aperto, onTog
   const varr = Number(riga.costi_variabili_target) || 0;
   const haTarget = riga.incassato_target !== '' || riga.costi_fissi_target !== '' || riga.costi_variabili_target !== '';
   const margineTarget = haTarget ? inc - fissi - varr : null;
-  const margineReale = realeMese?.margine;
+  const margineReale = realeMese?.ebitda_operativo_gestionale;
   const haReale = margineReale !== undefined && margineReale !== null;
-  const diff = margineTarget != null && haReale ? margineReale - margineTarget : null;
 
   return (
     <Crd style={{ padding: 0, overflow: 'hidden' }}>
@@ -46,22 +46,16 @@ const MeseCard = ({ label, dirty, mese, riga, realeMese, onChange, aperto, onTog
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 9, color: C.txl, textTransform: 'uppercase', fontWeight: 700 }}>Target</div>
+            <div style={{ fontSize: 9, color: C.txl, textTransform: 'uppercase', fontWeight: 700 }}>Scenario cassa</div>
             <div style={{ fontSize: 13, fontWeight: 800, color: margineTarget == null ? C.txl : (margineTarget >= 0 ? C.suc : C.dan) }}>{margineTarget == null ? '—' : fmt(margineTarget)}</div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 9, color: C.txl, textTransform: 'uppercase', fontWeight: 700 }}>Reale</div>
+            <div style={{ fontSize: 9, color: C.txl, textTransform: 'uppercase', fontWeight: 700 }}>EBITDA reale</div>
             <div style={{ fontSize: 13, fontWeight: 800, color: !haReale ? C.txl : (margineReale >= 0 ? C.suc : C.dan) }}>{haReale ? fmt(margineReale) : '—'}</div>
           </div>
           <span style={{ fontSize: 11, color: C.txl }}>{aperto ? '▲' : '▼'}</span>
         </div>
       </button>
-
-      {diff != null && (
-        <div style={{ padding: '0 12px 8px', fontSize: 11, fontWeight: 700, color: diff >= 0 ? C.suc : C.dan }}>
-          {diff >= 0 ? '+' : ''}{fmt(diff)} rispetto al target
-        </div>
-      )}
 
       {aperto && (
         <div style={{ borderTop: `1px solid ${C.brd}`, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -125,8 +119,8 @@ export default function Proiezioni({ studioId }) {
       const ultimoGiorno = new Date(anno, m, 0).getDate();
       const a = `${anno}-${String(m).padStart(2, '0')}-${ultimoGiorno}`;
       promesse.push(
-        supabase.rpc('get_kpi_periodo', { p_studio_id: studioId, p_data_inizio: da, p_data_fine: a })
-          .then(({ data }) => ({ mese: m, data }))
+        loadCanonicalFinancialSnapshot(supabase, da, a, studioId)
+          .then(({ snapshot }) => ({ mese: m, data: snapshot }))
       );
     }
     const risultati = await Promise.all(promesse);
@@ -167,7 +161,7 @@ export default function Proiezioni({ studioId }) {
 
   const totale = (campo) => Object.values(righe).reduce((s, r) => s + (Number(r[campo]) || 0), 0);
   const totaleMargineTarget = totale('incassato_target') - totale('costi_fissi_target') - totale('costi_variabili_target');
-  const totaleMargineReale = Object.values(reale).reduce((s, r) => s + (r?.margine != null ? Number(r.margine) : 0), 0);
+  const totaleMargineReale = Object.values(reale).reduce((s, r) => s + (r?.ebitda_operativo_gestionale != null ? Number(r.ebitda_operativo_gestionale) : 0), 0);
 
   return (
     <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -176,7 +170,7 @@ export default function Proiezioni({ studioId }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <div style={{ fontSize: 15, fontWeight: 800, color: '#fff' }}>Budget {anno}</div>
-            <span style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,0.65)', background: 'rgba(255,255,255,0.12)', padding: '2px 7px', borderRadius: 20, textTransform: 'uppercase', letterSpacing: 0.4 }}>Target vs reale</span>
+            <span style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,0.65)', background: 'rgba(255,255,255,0.12)', padding: '2px 7px', borderRadius: 20, textTransform: 'uppercase', letterSpacing: 0.4 }}>Scenario e consuntivo</span>
           </div>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             <button onClick={() => setAnno((a) => a - 1)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 6, color: '#fff', width: 26, height: 26, cursor: 'pointer', fontWeight: 800 }}>‹</button>
@@ -186,16 +180,16 @@ export default function Proiezioni({ studioId }) {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '8px 0', borderTop: '1px solid rgba(255,255,255,0.15)' }}>
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)' }}>Margine target anno</div>
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)' }}>Risultato di cassa ipotetico</div>
           <div style={{ fontSize: 17, fontWeight: 800, color: '#fff' }}>{fmt(totaleMargineTarget)}</div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '8px 0', borderTop: '1px solid rgba(255,255,255,0.15)' }}>
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)' }}>Margine reale finora</div>
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)' }}>EBITDA gestionale reale finora</div>
           <div style={{ fontSize: 17, fontWeight: 800, color: totaleMargineReale >= 0 ? '#8CFFB0' : '#FFB0B0' }}>{fmt(totaleMargineReale)}</div>
         </div>
 
         <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 8, lineHeight: 1.4 }}>
-          I target sono numeri ipotetici, non toccano le Spese reali. Tocca un mese per modificarlo.
+          Lo scenario di cassa è ipotetico e non viene confrontato direttamente con l’EBITDA reale. Tocca un mese per modificarlo.
         </div>
       </div>
 
