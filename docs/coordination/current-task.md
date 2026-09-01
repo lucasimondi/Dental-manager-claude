@@ -4,7 +4,7 @@
 - TITLE: Valore Prodotto reale dalle prestazioni eseguite, con drill-down piano/paziente senza allocazioni inventate
 - OWNER: GitHub Copilot CLI, su autorizzazione Product Owner inoltrata dal coordinatore `6e5c8e86-f4d4-42df-9855-0e8772357c04`.
 - BRANCH: `lucasimondi-prodotto-incassato-reconciliation`, da `origin/master@97e7267` (contiene PR #82, merge commit `66a014f`).
-- STATUS: READY FOR PR — implementazione e validazione complete; PR e merge autorizzati solo con check verdi e branch mergeable.
+- STATUS: PR OPEN — PR #83; implementazione e validazione complete, merge autorizzato solo con check verdi e branch mergeable.
 - OBJECTIVE: sostituire gli eventi legacy congelati usati da `get_financial_snapshot_v1` per `PRODOTTO`/`INCASSATO` con un read model live canonico da `plans`/`payments`; Prodotto usa esclusivamente `voci[].prezzo` salvato nel piano, sconto proporzionale e `dataEsec`, mai il listino corrente. Il click su Prodotto deve riconciliare prestazioni e pagamenti alla massima granularità autorevole (`payments.piano_id`, altrimenti paziente/non allocato), senza attribuire euro a singole prestazioni.
 - PRODUCT OWNER LOCK: sconto piano distribuito proporzionalmente ai prezzi originali/pre-sconto; arrotondamento monetario in centesimi con largest remainder e spareggio per ordinalità JSON; somma righe esattamente uguale al netto piano. Scostamento = Prodotto - Incassato nel periodo ed è un gap temporale/di incasso, non automaticamente debito.
 - SAFETY: nessuna query o modifica produzione, nessuna migration remota, nessun deploy. RLS e capability `finance.management.read` devono fallire chiuso; input legacy incompleti devono rendere il dato visibilmente non disponibile, mai un totale parziale apparentemente esatto.
@@ -12,7 +12,7 @@
 - COMPLETED: read model live in centesimi con largest remainder; snapshot/drilldown/Incassi riallineati; riconciliazione responsive piano/paziente; fallback fail-closed; capability e membership enforcement; Poliedron/annual/export/Home/Patient Workspace restano sullo snapshot canonico.
 - VALIDATION: SQL PostgreSQL/PGlite isolato PASS; `npm test` 632/632; `npm run build` PASS con soli warning preesistenti; `git diff --check` PASS; browser QA reale 375/768/1024/1440 senza overflow; quattro review sostanziali completate e findings risolti.
 - DATABASE/DEPLOYMENT: migration locale `20260901190000_pol_fin_006_live_prodotto_reconciliation.sql`; non applicata in remoto. Nessun deploy, backfill o dato produzione modificato.
-- EXACT NEXT ACTION: commit con trailer Copilot, push, apertura PR verso `master`, attesa check richiesti, review finale e merge solo se green/mergeable come autorizzato.
+- EXACT NEXT ACTION: attendere i check richiesti di PR #83, verificare diff/mergeability finali e fare merge solo se green come autorizzato.
 
 ---
 
