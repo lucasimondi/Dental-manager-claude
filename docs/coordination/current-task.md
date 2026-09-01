@@ -1,5 +1,20 @@
 # Current task
 
+- TASK: POL-FIN-003 preview correction
+- TITLE: Do not display adapter-pending canonical zeroes as real management figures
+- OWNER: CODEX
+- BRANCH/PR: `feature/POL-FIN-003-management-canonical`, PR #77
+- STATUS: IMPLEMENTED_AWAITING_PREVIEW_QA
+- ROOT CAUSE: the canonical RPC responds successfully but reports `PO_SEMANTICS_LOCKED_LEGACY_ADAPTER_PENDING`; its financial event tables are not populated, so Product/Collected show zero and remaining metrics are unavailable. The attempted Cockpit/Proiezioni cutover was reverted.
+- FIX: when that explicit backend status is returned, Panoramica renders the existing operational management overview and a visible source notice instead of presenting canonical zeroes. Canonical selectors remain formula-free; no silent client financial reconstruction was added.
+- DATABASE/PRODUCTION: no schema, migration, RLS, data, merge or production deployment.
+- VALIDATION: dedicated canonical tests 5/5; full suite 592/592; build passed with pre-existing warnings; `git diff --check` clean.
+- EXACT NEXT ACTION: push the correction to PR #77, wait for Netlify, verify the authenticated Panoramica, then stop for Product Owner review. Do not merge.
+
+---
+
+# Previous current task
+
 - TASK: POL-FIN-002 (+ follow-up fix)
 - TITLE: Modulo Incassi / Da incassare — MERGED, plus a Product-Owner-reported follow-up fix
 - OWNER: CLAUDE. POL-FIN-002 itself was implemented by a prior Claude session that handed off to CODEX (see the full detailed record preserved below, unedited); this Claude session independently re-verified it end to end before merging, then fixed a Product Owner bug report on top.

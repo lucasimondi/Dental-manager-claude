@@ -59,3 +59,10 @@ test('selector module contains no legacy financial source or formula implementat
   }
   assert.equal((source.match(/get_financial_snapshot_v1/g) || []).length, 1);
 });
+
+test('management overview does not present adapter-pending canonical zeros as real figures', async () => {
+  const source = await readFile(new URL('../src/components/ControlloGestione.jsx', import.meta.url), 'utf8');
+  assert.match(source, /PO_SEMANTICS_LOCKED_LEGACY_ADAPTER_PENDING/);
+  assert.match(source, /<PanoramicaControllo \{\.\.\.props\} \/>/);
+  assert.match(source, /non vengono sostituiti da valori zero/);
+});
