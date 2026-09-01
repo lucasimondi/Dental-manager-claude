@@ -17,6 +17,7 @@ test('monthly view keeps a month selector, annual view keeps every month plus a 
   assert.doesNotMatch(component, /\{view === 'year' && <section className="monthly-ledger"/);
   assert.match(component, /view === 'year' && hasTrend/);
   assert.match(component, /ComposedChart data={trendData}/);
+  assert.doesNotMatch(component, /numeric\(snapshot, 'incassato'\) \|\| 0/);
 });
 
 test('rows stay clickable to open a month\'s detail', () => {
@@ -28,6 +29,7 @@ test('the ledger table has a totals footer, like a real spreadsheet', () => {
   assert.match(component, /<tfoot><tr>/);
   assert.match(component, /Totale \{year\}/);
   assert.match(component, /totalValue\('ebitda_operativo_gestionale'\)/);
+  assert.match(component, /values\.every\(\(entry\) => entry != null\)/);
 });
 
 test('the table reads as an excel sheet: gridlines, zebra rows, sticky header, tabular figures', () => {
