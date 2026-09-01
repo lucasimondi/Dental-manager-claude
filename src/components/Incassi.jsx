@@ -21,7 +21,7 @@ const emptyForm = { pazienteId: '', origine: 'listino', prestazione: '', descriz
 // lockedPianoId is set only when opened from a specific "Da incassare" row,
 // so that row's piano is never re-derived/guessed — it's the one the
 // operator picked by clicking that exact balance.
-const emptyIncasso = { pazienteId: '', pianoId: '', lockedPianoId: null, data: today(), importo: '', metodo: 'Contanti', nota: '', source: 'manuale' };
+const emptyIncasso = { pazienteId: '', pianoId: '', lockedPianoId: null, data: today(), importo: '', metodo: 'Contanti', nota: '' };
 
 export default function Incassi({ studioId, patients = [], plans = [], payments = [], pricelist = [], setPlans, setPayments, onOpenPaz, embedded = false, autoOpenNew = false, onAutoOpenNewHandled }) {
   const [rows, setRows] = useState([]);
@@ -132,17 +132,6 @@ export default function Incassi({ studioId, patients = [], plans = [], payments 
   const updateIncasso = (patch) => setIncassoModal((current) => (current ? { ...current, ...patch } : current));
   const incassoAssignment = incassoModal?.pazienteId ? planAssignmentForPatient(plans, incassoModal.pazienteId) : { mode: 'none' };
   const incassoNeedsPlanChoice = !incassoModal?.lockedPianoId && incassoAssignment.mode === 'choose';
-  // Same edge function "Leggi estratto conto" already uses — a single
-  // receipt is just a one-row bank statement, no new AI endpoint needed.
-  // Extraction only ever prefills editable fields; nothing is registered
-  // until the operator reviews and presses Salva.
-  const handleIncassoEstratto = (estratto) => {
-    const riga = estratto?.righe?.[0];
-    updateIncasso({
-      source: 'manuale',
-      ...(riga ? { importo: riga.importo != null ? String(riga.importo) : '', data: riga.data || today(), nota: riga.descrizione || '' } : {}),
-    });
-  };
   const saveIncasso = () => {
     const amount = Number(incassoModal?.importo);
     if (!incassoModal?.pazienteId || !Number.isFinite(amount) || amount <= 0) {
@@ -161,13 +150,25 @@ export default function Incassi({ studioId, patients = [], plans = [], payments 
     closeIncasso();
   };
 
-  // POL-FIN-004 — "Leggi estratto conto": upload a bank statement, the AI
-  // extracts incoming-payment rows only (edge function, no server write),
-  // then the operator confirms/corrects patient+piano per row before
-  // anything is registered. Never auto-registers.
+  // "Allega foto o PDF": upload ANY document (bank statement, single
+  // receipt, other) — the AI extracts incoming-payment rows only (edge
+  // function, no server write), then the operator confirms/corrects
+  // patient+piano before anything is registered. Never auto-registers.
+  // The reader doesn't need to classify the document type up front: a
+  // single receipt just extracts to one row, a bank statement to many, and
+  // the UI routes each case to the form that actually fits it — one row
+  // goes straight into "Registra incasso" (prefilled, patient still to
+  // pick), more than one opens the multi-row review table below.
   const closeEstrattoConto = () => { setEstrattoContoOpen(false); setEstrattoContoRighe(null); setEstrattoContoPeriodo(null); };
   const handleEstrattoContoEstratto = (estratto) => {
-    const matched = matchPaymentsToPatients(estratto.righe, patients);
+    const righe = estratto?.righe || [];
+    if (righe.length <= 1) {
+      const riga = righe[0];
+      closeEstrattoConto();
+      openIncasso(riga ? { importo: riga.importo != null ? String(riga.importo) : '', data: riga.data || today(), nota: riga.descrizione || '' } : {});
+      return;
+    }
+    const matched = matchPaymentsToPatients(righe, patients);
     const flagged = flagPossibleDuplicates(matched, payments);
     setEstrattoContoRighe(flagged.map((riga) => ({ ...riga, selected: Boolean(riga.pazienteId) && !riga.possibileDuplicato, pianoId: '' })));
     setEstrattoContoPeriodo({ da: estratto.periodo_da, a: estratto.periodo_a });
@@ -202,8 +203,8 @@ export default function Incassi({ studioId, patients = [], plans = [], payments 
             <option value="giorni">Attesa più lunga</option>
           </select>
         </label>
-        <Btn ch="Leggi estratto conto" ic="file" v="sec" onClick={() => setEstrattoContoOpen(true)} />
-        <Btn ch="Aggiungi voce da fatturare" ic="add" v="sec" onClick={() => setModal(true)} />
+        <Btn ch="Allega foto o PDF" ic="file" v="sec" onClick={() => setEstrattoContoOpen(true)} />
+        <Btn ch="Registra da incassare" ic="add" v="sec" onClick={() => setModal(true)} />
         <Btn ch="Registra incasso" ic="eur" onClick={() => openIncasso()} />
       </div>
 
@@ -303,7 +304,7 @@ export default function Incassi({ studioId, patients = [], plans = [], payments 
         </Crd>
       )}
       {modal && (
-        <Modal title="Aggiungi da incassare" icon="pay" onClose={closeModal} mobileVariant="sheet">
+        <Modal title="Registra da incassare" icon="pay" onClose={closeModal} mobileVariant="sheet">
           <Fld label="Paziente"><SelettorePaziente patients={patients} value={form.pazienteId} onChange={(pazienteId) => updateForm({ pazienteId })} search={patientSearch} onSearchChange={setPatientSearch} autoFocus /></Fld>
           <div className="incassi-source-toggle">
             {[['listino', 'Dal listino'], ['libero', 'Voce libera']].map(([value, label]) => <button type="button" key={value} className={`pol-tab${form.origine === value ? ' is-active' : ''}`} onClick={() => updateForm({ origine: value, prestazione: '', descrizione: '', importo: '' })}>{label}</button>)}
@@ -330,22 +331,11 @@ export default function Incassi({ studioId, patients = [], plans = [], payments 
               </Sel>
             </Fld>
           )}
-          {/* Product Owner: il tasto incasso deve dare la scelta tra importo
-              manuale o foto/PDF della ricevuta — stessa lettura AI già usata
-              per l'estratto conto, mai una seconda modalità inventata. */}
-          <div className="incassi-source-toggle">
-            {[['manuale', 'Importo manuale'], ['ricevuta', 'Foto o PDF ricevuta']].map(([value, label]) => (
-              <button type="button" key={value} className={`pol-tab${incassoModal.source === value ? ' is-active' : ''}`} onClick={() => updateIncasso({ source: value })}>{label}</button>
-            ))}
-          </div>
-          {incassoModal.source === 'ricevuta' && (
-            <UploadDocumento
-              endpoint="estrai-pagamenti-estratto-conto"
-              titolo="Scatta o carica la ricevuta"
-              sottotitolo="Foto o PDF — leggo importo e data, tu confermi prima di salvare"
-              onEstratto={handleIncassoEstratto}
-            />
-          )}
+          {/* Product Owner follow-up: i tre tasti di Incassi sono ora distinti
+              — "Allega foto o PDF" (lettura AI, apre questo stesso modulo
+              già precompilato quando riconosce un solo pagamento) e
+              "Registra incasso" (importo manuale, qui) non si sovrappongono
+              più in un unico modulo con toggle. */}
           <div className="incassi-form-grid">
             <Fld label="Data"><Inp type="date" value={incassoModal.data} onChange={(event) => updateIncasso({ data: event.target.value })} /></Fld>
             <Fld label="Importo €"><Inp type="number" min="0" step="0.01" inputMode="decimal" value={incassoModal.importo} onChange={(event) => updateIncasso({ importo: event.target.value })} /></Fld>
@@ -361,12 +351,12 @@ export default function Incassi({ studioId, patients = [], plans = [], payments 
         </Modal>
       )}
       {estrattoContoOpen && (
-        <Modal title="Leggi estratto conto" icon="file" onClose={closeEstrattoConto} wide mobileVariant="sheet">
+        <Modal title="Allega foto o PDF" icon="file" onClose={closeEstrattoConto} wide mobileVariant="sheet">
           {!estrattoContoRighe && (
             <UploadDocumento
               endpoint="estrai-pagamenti-estratto-conto"
-              titolo="Carica estratto conto"
-              sottotitolo="Foto o PDF — riconosco i pagamenti ricevuti, tu confermi a chi collegarli"
+              titolo="Scatta o carica il documento"
+              sottotitolo="Estratto conto, ricevuta o altro documento contabile — riconosco i pagamenti ricevuti, tu confermi prima di salvare"
               onEstratto={handleEstrattoContoEstratto}
             />
           )}

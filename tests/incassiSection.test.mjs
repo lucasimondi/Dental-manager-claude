@@ -60,10 +60,28 @@ test('a "Da incassare" row can be marked incassato right there, and it is a real
   assert.doesNotMatch(component, /incassata: !v\.incassata/);
 });
 
-test('the incasso button offers a manual amount AND a photo/PDF receipt (AI-assisted, reusing the existing extraction endpoint)', () => {
+// Product Owner follow-up round 2: three distinct buttons — "Allega foto o
+// PDF" (AI reads the document, whatever it is), "Registra incasso"
+// (manual amount only, no upload toggle inside it any more) and "Registra
+// da incassare" (unchanged "Aggiungi da incassare" behaviour, relabelled).
+// The reader never needs to classify the document up front: one row found
+// routes straight into "Registra incasso" prefilled, more than one opens
+// the existing multi-row review table.
+test('the three Incassi buttons are distinct: allega foto/pdf, registra incasso, registra da incassare', () => {
+  assert.match(component, /Btn ch="Allega foto o PDF" ic="file"/);
+  assert.match(component, /Btn ch="Registra incasso" ic="eur"/);
+  assert.match(component, /Btn ch="Registra da incassare" ic="add"/);
+});
+
+test('a single recognized row routes into Registra incasso prefilled; multiple rows keep the review table; the endpoint is reused, not duplicated', () => {
   assert.match(component, /endpoint="estrai-pagamenti-estratto-conto"/);
-  assert.match(component, /handleIncassoEstratto/);
-  assert.match(component, /\['manuale', 'Importo manuale'\], \['ricevuta', 'Foto o PDF ricevuta'\]/);
+  assert.match(component, /if \(righe\.length <= 1\) \{/);
+  assert.match(component, /openIncasso\(riga \? \{ importo: riga\.importo/);
+  assert.doesNotMatch(component, /handleIncassoEstratto/);
+  // .incassi-source-toggle itself is still used by "Registra da incassare"'s
+  // own, unrelated listino/libero switch — only the incasso-specific
+  // manuale/ricevuta toggle (and its labels) must be gone.
+  assert.doesNotMatch(component, /Importo manuale.*Foto o PDF ricevuta/s);
 });
 
 test('Collaborazioni esterne stays reachable as its own surface, locked away from the now-unified Studio list', () => {
