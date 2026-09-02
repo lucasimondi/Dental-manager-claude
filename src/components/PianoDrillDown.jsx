@@ -169,13 +169,27 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
               </div>
             </div>
 
-            <div style={{ marginTop: 9, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              <button onClick={() => setPdfPlan(pl)} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '6px 9px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: C.pri, fontWeight: 700, fontSize: 11 }}><Ic n="prt" s={12} c={C.pri} />PDF</button>
-              <button onClick={() => openEditPlan(pl)} style={{ background: '#EDE9FE', border: 'none', borderRadius: 7, padding: '6px 9px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: C.pur, fontWeight: 700, fontSize: 11 }}><Ic n="edit" s={12} c={C.pur} />Modifica</button>
-              <button onClick={() => setStato(pl.id, 'accettato')} disabled={stato === 'accettato'} style={{ background: stato === 'accettato' ? C.sucL : C.bg, border: `1px solid ${stato === 'accettato' ? C.suc : C.brd}`, borderRadius: 7, padding: '6px 9px', cursor: stato === 'accettato' ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: C.suc, fontWeight: 700, fontSize: 11 }}><Ic n="ok" s={12} c={C.suc} />Accetta</button>
-              <button onClick={() => setStato(pl.id, 'rifiutato')} disabled={stato === 'rifiutato'} style={{ background: stato === 'rifiutato' ? C.danL : C.bg, border: `1px solid ${stato === 'rifiutato' ? C.dan : C.brd}`, borderRadius: 7, padding: '6px 9px', cursor: stato === 'rifiutato' ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: C.dan, fontWeight: 700, fontSize: 11 }}><Ic n="x" s={12} c={C.dan} />Non accetta</button>
-              <button onClick={() => setIncassoPrefill({ pazienteId: String(pl.pazienteId), lockedPianoId: pl.id, importo: String(tot || ''), nota: pl.titolo })} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '6px 9px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: C.pri, fontWeight: 700, fontSize: 11 }}><Ic n="eur" s={12} c={C.pri} />Incassato</button>
-              <button onClick={() => delPlan(pl.id)} style={{ background: C.danL, border: 'none', borderRadius: 7, padding: '6px 9px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: C.dan, fontWeight: 700, fontSize: 11 }}><Ic n="del" s={12} c={C.dan} />Cancella</button>
+            {/* Product Owner: "i tasti accetta ecc devono essere meno
+                confusionari" — prima erano 6 pulsanti identici in fila.
+                Ora: Accetta/Non accetta è UN controllo a due stati (si
+                capisce a colpo d'occhio che è una scelta sola, non due
+                azioni indipendenti), Incassato resta il pulsante
+                principale ben visibile, e le azioni di servizio
+                (PDF/Modifica/Cancella) diventano piccole icone raggruppate,
+                meno invadenti perché usate meno spesso. */}
+            <div style={{ marginTop: 9, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                <div style={{ display: 'flex', background: C.sur, borderRadius: 8, border: `1.5px solid ${C.brd}`, overflow: 'hidden', flexShrink: 0 }}>
+                  <button onClick={() => setStato(pl.id, 'accettato')} disabled={stato === 'accettato'} style={{ padding: '7px 11px', border: 'none', background: stato === 'accettato' ? C.suc : 'transparent', color: stato === 'accettato' ? '#fff' : C.txm, fontWeight: 700, fontSize: 11, cursor: stato === 'accettato' ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="ok" s={12} c={stato === 'accettato' ? '#fff' : C.txm} />Accetta</button>
+                  <button onClick={() => setStato(pl.id, 'rifiutato')} disabled={stato === 'rifiutato'} style={{ padding: '7px 11px', border: 'none', borderLeft: `1.5px solid ${C.brd}`, background: stato === 'rifiutato' ? C.dan : 'transparent', color: stato === 'rifiutato' ? '#fff' : C.txm, fontWeight: 700, fontSize: 11, cursor: stato === 'rifiutato' ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="x" s={12} c={stato === 'rifiutato' ? '#fff' : C.txm} />Non accetta</button>
+                </div>
+                <button onClick={() => setIncassoPrefill({ pazienteId: String(pl.pazienteId), lockedPianoId: pl.id, importo: String(tot || ''), nota: pl.titolo })} style={{ background: C.pri, border: 'none', borderRadius: 8, padding: '7px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: '#fff', fontWeight: 700, fontSize: 11 }}><Ic n="eur" s={12} c="#fff" />Incassato</button>
+              </div>
+              <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                <button onClick={() => setPdfPlan(pl)} title="Stampa PDF" aria-label="Stampa PDF" style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 7, padding: 7, cursor: 'pointer', display: 'flex' }}><Ic n="prt" s={13} c={C.txm} /></button>
+                <button onClick={() => openEditPlan(pl)} title="Modifica piano" aria-label="Modifica piano" style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 7, padding: 7, cursor: 'pointer', display: 'flex' }}><Ic n="edit" s={13} c={C.txm} /></button>
+                <button onClick={() => delPlan(pl.id)} title="Cancella piano" aria-label="Cancella piano" style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 7, padding: 7, cursor: 'pointer', display: 'flex' }}><Ic n="del" s={13} c={C.dan} /></button>
+              </div>
             </div>
 
             {confirmDelId === pl.id && (
@@ -235,11 +249,17 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
             })()}
 
             {expanded && (
-              <div style={{ marginTop: 10, borderTop: `1px solid ${C.brd}`, paddingTop: 8 }}>
+              <div style={{ marginTop: 10, borderTop: `1px solid ${C.brd}`, paddingTop: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Prestazioni ({pl.voci.length})</div>
                 {pl.voci.map((v, i) => {
                   const isEditing = editingVoce?.planId === pl.id && editingVoce?.index === i;
+                  // Ogni prestazione è la sua PROPRIA card, ben separata dalle
+                  // altre e dal resto del piano (Product Owner: "si capisce
+                  // poco a vista d'occhio quali siano le prestazioni") — bordo
+                  // colorato a sinistra (verde=eseguita, ambra=da eseguire),
+                  // sfondo distinto, numero progressivo.
                   return (
-                    <div key={i} style={{ padding: '8px 0', borderBottom: `1px solid ${C.brd}` }}>
+                    <div key={i} style={{ background: v.eseguita ? C.sucL : C.sur, border: `1px solid ${v.eseguita ? C.suc + '40' : C.brd}`, borderLeft: `4px solid ${v.eseguita ? C.suc : C.war}`, borderRadius: 9, padding: '10px 12px', marginBottom: 8 }}>
                       {isEditing ? (
                         <div className="plan-inline-editor">
                           <Fld label="Prestazione"><Inp value={editVoceForm.prestazione} onChange={(e) => setEditVoceForm((f) => ({ ...f, prestazione: e.target.value }))} /></Fld>
@@ -251,15 +271,16 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
                         </div>
                       ) : (
                         <>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                            <div style={{ width: 20, height: 20, borderRadius: '50%', background: v.eseguita ? C.suc : '#fff', border: `1.5px solid ${v.eseguita ? C.suc : C.brd}`, color: v.eseguita ? '#fff' : C.txm, fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{v.eseguita ? '✓' : i + 1}</div>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 12, fontWeight: 600, color: v.eseguita ? C.txm : C.txt, textDecoration: v.eseguita ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.prestazione}{v.dente ? ` (d.${v.dente})` : ''}</div>
-                              {v.dataEsec && <div style={{ fontSize: 10, color: C.suc }}>Eseguita il {fmtD(v.dataEsec)}</div>}
+                              <div style={{ fontSize: 14, fontWeight: 700, color: v.eseguita ? C.txm : C.txt, textDecoration: v.eseguita ? 'line-through' : 'none' }}>{v.prestazione}{v.dente ? ` (d.${v.dente})` : ''}</div>
+                              {v.dataEsec && <div style={{ fontSize: 10, color: C.suc, fontWeight: 700, marginTop: 1 }}>✓ Eseguita il {fmtD(v.dataEsec)}</div>}
                             </div>
-                            <div style={{ fontWeight: 700, color: C.pri, fontSize: 12, flexShrink: 0 }}>{fmt(v.prezzo)}</div>
+                            <div style={{ fontWeight: 800, color: C.pri, fontSize: 13, flexShrink: 0 }}>{fmt(v.prezzo)}</div>
                           </div>
                           {v.eseguita && (
-                            <div style={{ marginTop: 5, background: v.richiamoData ? C.purL : C.bg, borderRadius: 7, padding: '6px 8px' }}>
+                            <div style={{ marginTop: 6, background: v.richiamoData ? C.purL : '#fff', borderRadius: 7, padding: '6px 8px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, flexWrap: 'wrap' }}>
                                 <span style={{ fontSize: 10, fontWeight: 700, color: v.richiamoData ? C.pur : C.txl }}>🔔 {v.richiamoData ? `${v.richiamoTipo || 'Richiamo'}: ${fmtD(v.richiamoData)}` : 'Nessun richiamo impostato'}</span>
                                 <div style={{ display: 'flex', gap: 3 }}>
@@ -271,8 +292,8 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
                               </div>
                             </div>
                           )}
-                          <div style={{ display: 'flex', gap: 5, marginTop: 5, flexWrap: 'wrap' }}>
-                            <button onClick={() => toggleEseguita(pl, i)} style={{ flex: '1 1 90px', padding: '6px 0', borderRadius: 7, border: `1.5px solid ${v.eseguita ? C.suc : C.brd}`, background: v.eseguita ? C.sucL : C.bg, color: v.eseguita ? C.suc : C.txm, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>{v.eseguita ? '✓ Eseguita' : '○ Segna eseguita'}</button>
+                          <div style={{ display: 'flex', gap: 5, marginTop: 8, flexWrap: 'wrap' }}>
+                            <button onClick={() => toggleEseguita(pl, i)} style={{ flex: '1 1 90px', padding: '6px 0', borderRadius: 7, border: `1.5px solid ${v.eseguita ? C.suc : C.brd}`, background: v.eseguita ? '#fff' : C.bg, color: v.eseguita ? C.suc : C.txm, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>{v.eseguita ? '✓ Eseguita' : '○ Segna eseguita'}</button>
                             <button onClick={() => openEditVoce(pl, i)} style={{ flex: '0 0 auto', padding: '6px 10px', borderRadius: 7, border: 'none', background: '#EDE9FE', color: C.pur, fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="edit" s={12} c={C.pur} />Modifica</button>
                             <button onClick={() => removeItemFromPlan(pl, i)} style={{ flex: '0 0 auto', padding: '6px 10px', borderRadius: 7, border: 'none', background: C.danL, color: C.dan, fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="del" s={12} c={C.dan} />Elimina</button>
                             <button onClick={() => setIncassoPrefill({ pazienteId: String(pl.pazienteId), lockedPianoId: pl.id, importo: String(v.prezzo || ''), nota: v.prestazione })} style={{ flex: '0 0 auto', padding: '6px 10px', borderRadius: 7, border: 'none', background: C.priL, color: C.pri, fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="eur" s={12} c={C.pri} />Incassato</button>
