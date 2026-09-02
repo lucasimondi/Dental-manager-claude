@@ -1,8 +1,8 @@
 import React, { Suspense, lazy, useState } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr } from './ui';
-import { C, fmt, fmtD, today, uid, SCADENZA_PRESET, addMesi, rilevaRichiamo } from '../lib/utils';
-import PdfView from './PdfView.jsx';
+import { Btn, Crd, Bdg, Ic, PhStr } from './ui';
+import { C, fmt, fmtD, today } from '../lib/utils';
 import { aggregateSaldi } from '../lib/domain/incassiMath.js';
+import PianoDrillDown from './PianoDrillDown.jsx';
 
 const DocMedico = lazy(() => import('./DocMedico.jsx'));
 const DocFiscale = lazy(() => import('./DocFiscale.jsx'));
@@ -15,32 +15,10 @@ const PatientQuickActions = lazy(() => import('./PatientQuickActions.jsx'));
 const PatientWorkspaceDocuments = lazy(() => import('./PatientWorkspaceDocuments.jsx'));
 const PatientWorkspaceConsentFlow = lazy(() => import('./PatientWorkspaceDocuments.jsx').then((module) => ({ default: module.PatientWorkspaceConsentFlow })));
 
-const prossimaDataMascherina = (orto) => {
-  if (!orto?.dataConsegnaInizio || !orto?.mascherineConsegnate) return null;
-  const ultima = orto.storico && orto.storico.length > 0 ? orto.storico[orto.storico.length - 1].data : orto.dataConsegnaInizio;
-  const d = new Date(ultima + 'T12:00');
-  d.setDate(d.getDate() + (orto.frequenzaSettimane || 2) * 7);
-  return d.toISOString().slice(0, 10);
-};
-
-export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {}, implants = [], setImplants, setPatients, setPayments, richiami = [], setRichiami, onNuovoAppuntamento, onPatientChange, studioMembership, currentUserId, isStudioAdmin, saldiPiani = {} }) {
+export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {}, implants = [], setImplants, setPatients, setPayments, richiami = [], setRichiami, onNuovoAppuntamento, onPatientChange, studioMembership, currentUserId, isStudioAdmin, saldiPiani = {}, pricelist = [] }) {
   const [tab, setTab] = useState(initTab || 'info');
   const [documentFlow, setDocumentFlow] = useState(() => initialDocumentRequest?.type === 'ricetta' ? 'ricetta' : null);
   const [documentsReloadToken, setDocumentsReloadToken] = useState(0);
-  const [pdfPlan, setPdfPlan] = useState(null);
-  const [selPiani, setSelPiani] = useState([]);
-  const [editPianoModal, setEditPianoModal] = useState(null);
-  const [editForm, setEditForm] = useState(null);
-  const [confirmDelId, setConfirmDelId] = useState(null);
-  // POL-FIN-002 follow-up: the "Registra pagamento adesso" offer (Piani.jsx)
-  // never made it into this tab's own, separate plan-item rendering, so
-  // completing a treatment here never offered the quick-payment checkbox —
-  // reported by the Product Owner after merge. Same shape as Piani.jsx's
-  // quickOffer/quickPayment (amount/date/metodo, stato:'pagato'), added
-  // here rather than shared, since this component must stay synchronous/
-  // self-contained (see tests/patientRecordRecovery.test.mjs).
-  const [quickOffer, setQuickOffer] = useState(null);
-  const [quickPayment, setQuickPayment] = useState(null);
 
   // Recovery boundary: legacy rows can contain null/non-array JSON fields.
   // Normalize before render so a single malformed historical row cannot take
@@ -64,82 +42,6 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
   const aggSaldi = aggregateSaldi(patPlanIds.map((id) => saldiPiani[id]).filter(Boolean));
   const totDaPagare = aggSaldi.saldo_piano;
   const pctPagato = aggSaldi.totale_piano > 0 ? Math.min(100, Math.round((aggSaldi.totale_pagato / aggSaldi.totale_piano) * 100)) : 0;
-
-  const toggleEseguita = (plId, i, wasEseguita) => {
-    // Computed from the current render's own props, not as a side effect
-    // inside the setPlans updater below — React does not guarantee that
-    // updater function runs synchronously, so setQuickOffer must not
-    // depend on it having already run.
-    const nowEseguita = !wasEseguita;
-    setPlans((prev) => prev.map((pl) => {
-      if (pl.id !== plId) return pl;
-      const nuoveVoci = pl.voci.map((v, j) => {
-        if (j !== i) return v;
-        let extra = {};
-        if (nowEseguita) {
-          const r = rilevaRichiamo(v.prestazione);
-          if (r && !v.richiamoData) extra = { richiamoTipo: r.tipo, richiamoData: addMesi(today(), r.mesi) };
-        }
-        return { ...v, eseguita: nowEseguita, dataEsec: nowEseguita ? today() : null, incassata: nowEseguita ? v.incassata : false, ...extra };
-      });
-      const tutteEseguite = nuoveVoci.every((v) => v.eseguita);
-      return { ...pl, voci: nuoveVoci, stato: tutteEseguite ? 'concluso' : (pl.stato === 'concluso' ? 'attivo' : pl.stato) };
-    }));
-    setQuickOffer(nowEseguita ? { planId: plId, itemIndex: i } : null);
-  };
-  const openQuickPayment = (plan, itemIndex) => {
-    const item = plan.voci[itemIndex];
-    setQuickPayment({ planId: plan.id, itemIndex, pazienteId: plan.pazienteId, descrizione: item.prestazione, importo: String(item.prezzo || ''), data: today(), metodo: 'Contanti' });
-  };
-  const saveQuickPayment = () => {
-    const amount = Number(quickPayment?.importo);
-    if (!quickPayment || !Number.isFinite(amount) || amount <= 0) return;
-    setPayments?.((current) => [...current, { id: uid(), pazienteId: Number(quickPayment.pazienteId), pianoId: quickPayment.planId, data: quickPayment.data, importo: amount, metodo: quickPayment.metodo, nota: `Pagamento rapido — ${quickPayment.descrizione}`, stato: 'pagato' }]);
-    setQuickPayment(null); setQuickOffer(null);
-  };
-  const setRichiamo = (plId, i, tipo, data) => setPlans((prev) => prev.map((pl) => (pl.id === plId ? { ...pl, voci: pl.voci.map((v, j) => (j === i ? { ...v, richiamoTipo: tipo, richiamoData: data } : v)) } : pl)));
-  const setScadenzaPiano = (plId, data) => setPlans((prev) => prev.map((pl) => (pl.id === plId ? { ...pl, scadenzaPagamento: data } : pl)));
-  const avviaConsegnaOrto = (plId, data) => setPlans((prev) => prev.map((pl) => {
-    if (pl.id !== plId) return pl;
-    const orto = pl.ortodonzia || {};
-    return { ...pl, ortodonzia: { ...orto, dataConsegnaInizio: data, mascherineConsegnate: 1, storico: [{ n: 1, data }] } };
-  }));
-  const consegnaMascherinaSuccessiva = (plId) => setPlans((prev) => prev.map((pl) => {
-    if (pl.id !== plId) return pl;
-    const orto = pl.ortodonzia || {};
-    const nuovoNum = (orto.mascherineConsegnate || 0) + 1;
-    return { ...pl, ortodonzia: { ...orto, mascherineConsegnate: nuovoNum, storico: [...(orto.storico || []), { n: nuovoNum, data: today() }] } };
-  }));
-  const toggleIncassata = (plId, i) => setPlans((prev) => prev.map((pl) => (pl.id === plId ? { ...pl, voci: pl.voci.map((v, j) => (j === i ? { ...v, incassata: !v.incassata } : v)) } : pl)));
-  const delPiano = (id) => setConfirmDelId((prev) => (prev === id ? null : id));
-  const confirmDel = (id) => { setPlans((p) => p.filter((pl) => pl.id !== id)); setConfirmDelId(null); };
-
-  const openEditPiano = (pl) => { setEditForm({ ...pl, sconto: pl.sconto || 0, scontoTipo: pl.scontoTipo || 'pct' }); setEditPianoModal(pl.id); };
-  const saveEdit = () => {
-    if (!editForm.titolo) return;
-    setPlans((p) => p.map((pl) => (pl.id === editPianoModal ? { ...pl, ...editForm } : pl)));
-    setEditPianoModal(null);
-  };
-  const delVoceEdit = (i) => setEditForm((f) => ({ ...f, voci: f.voci.filter((_, j) => j !== i) }));
-
-  const toggleSel = (id) => setSelPiani((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
-  const selAll = () => setSelPiani(patPlans.map((p) => p.id));
-  const deselAll = () => setSelPiani([]);
-
-  const generaPdfMulti = () => {
-    const pianiSel = patPlans.filter((pl) => selPiani.includes(pl.id));
-    if (!pianiSel.length) return;
-    const vociTot = pianiSel.flatMap((pl) => pl.voci);
-    const totSconti = pianiSel.reduce((s, pl) => {
-      const sub = pl.voci.reduce((a, v) => a + Number(v.prezzo), 0);
-      const sc = Number(pl.sconto) || 0;
-      return s + (pl.scontoTipo === 'pct' ? sub * (sc / 100) : Math.min(sc, sub));
-    }, 0);
-    const virtuale = { id: 'multi', titolo: pianiSel.length === 1 ? pianiSel[0].titolo : `Preventivo combinato (${pianiSel.length} piani)`, data: today(), voci: vociTot, sconto: totSconti, scontoTipo: 'eur', stato: 'attivo', pazienteId: paz.id };
-    setPdfPlan(virtuale);
-  };
-
-  if (pdfPlan) return <PdfView pl={pdfPlan} paz={paz} si={si} onClose={() => setPdfPlan(null)} />;
 
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const isFisio = si?.vertical === 'fisioterapista' || si?.vertical === 'massofisioterapista';
@@ -206,192 +108,21 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
 
         {tab === 'piani' && (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ marginBottom: 10 }}>
               <Btn ch="+ Nuovo piano" v="pri" sz="sm" onClick={() => onNuovoPiano(paz.id)} />
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                {selPiani.length > 0 ? (
-                  <>
-                    <button onClick={deselAll} style={{ fontSize: 11, fontWeight: 700, color: C.txm, background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 7, padding: '5px 9px', cursor: 'pointer' }}>✕ Deseleziona</button>
-                    <button onClick={generaPdfMulti} style={{ fontSize: 11, fontWeight: 700, color: '#fff', background: C.pri, border: 'none', borderRadius: 7, padding: '5px 11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="prt" s={11} c="#fff" />PDF ({selPiani.length})</button>
-                  </>
-                ) : (
-                  <button onClick={selAll} style={{ fontSize: 11, fontWeight: 700, color: C.pri, background: C.priL, border: 'none', borderRadius: 7, padding: '5px 9px', cursor: 'pointer' }}>Seleziona tutti</button>
-                )}
-              </div>
             </div>
-
-            {patPlans.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 40 }}>Nessun piano di cura</div>}
-            {patPlans.map((pl) => {
-              const sub = pl.voci.reduce((s, v) => s + Number(v.prezzo), 0);
-              const sc = Number(pl.sconto) || 0;
-              const scontato = pl.scontoTipo === 'pct' ? sub * (sc / 100) : Math.min(sc, sub);
-              const tot = Math.max(0, sub - scontato);
-              const done = pl.voci.filter((v) => v.eseguita).length;
-              const pct = pl.voci.length ? Math.round((done / pl.voci.length) * 100) : 0;
-              const terminato = pct === 100;
-              const isSel = selPiani.includes(pl.id);
-              const statoEff = terminato ? 'concluso' : (pl.stato || 'attivo');
-              const statoC = { attivo: C.war, accettato: C.acc, concluso: C.suc, rifiutato: C.dan }[statoEff] || C.war;
-
-              return (
-                <Crd key={pl.id} style={{ marginBottom: 12, border: `2px solid ${isSel ? C.pri : terminato ? C.suc + '50' : C.brd}`, background: terminato ? C.sucL + '40' : '#fff' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
-                    <button onClick={() => toggleSel(pl.id)} style={{ marginTop: 2, width: 22, height: 22, borderRadius: 6, border: `2px solid ${isSel ? C.pri : C.brd}`, background: isSel ? C.pri : '#fff', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-                      {isSel && <Ic n="ok" s={12} c="#fff" />}
-                    </button>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pl.titolo}</div>
-                      <div style={{ fontSize: 11, color: C.txm }}>{fmtD(pl.data)}</div>
-                      <div style={{ marginTop: 4, display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
-                        <Bdg ch={terminato ? '✓ Terminato' : statoEff} co={statoC} />
-                        {terminato && <span style={{ fontSize: 10, color: C.suc, fontWeight: 700 }}>Tutte le prestazioni eseguite</span>}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-                      <button onClick={() => setPdfPlan(pl)} title="PDF" style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, color: C.pri, fontWeight: 700, fontSize: 10 }}>
-                        <Ic n="prt" s={12} c={C.pri} />Stampa PDF
-                      </button>
-                      <button onClick={() => openEditPiano(pl)} title="Modifica" style={{ background: '#EDE9FE', border: 'none', borderRadius: 7, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                        <Ic n="edit" s={13} c={C.pur} />
-                      </button>
-                      <button onClick={(e) => { e.stopPropagation(); delPiano(pl.id); }} title="Elimina" style={{ background: C.danL, border: 'none', borderRadius: 7, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                        <Ic n="del" s={13} c={C.dan} />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 10, color: C.txl, fontWeight: 700 }}>💰 Scadenza pagamento:</span>
-                    {pl.scadenzaPagamento ? (
-                      <span style={{ fontSize: 11, fontWeight: 700, color: new Date(pl.scadenzaPagamento) < new Date(today()) ? C.dan : C.pri }}>{fmtD(pl.scadenzaPagamento)}</span>
-                    ) : <span style={{ fontSize: 11, color: C.txl }}>non impostata</span>}
-                    <div style={{ display: 'flex', gap: 3 }}>
-                      {SCADENZA_PRESET.map((p) => (
-                        <button key={p.mesi} onClick={() => setScadenzaPiano(pl.id, addMesi(today(), p.mesi))} style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 6, padding: '2px 6px', fontSize: 9, fontWeight: 700, color: C.txm, cursor: 'pointer' }}>{p.label}</button>
-                      ))}
-                      {pl.scadenzaPagamento && <button onClick={() => setScadenzaPiano(pl.id, '')} style={{ background: C.danL, border: 'none', borderRadius: 6, padding: '2px 6px', fontSize: 9, fontWeight: 700, color: C.dan, cursor: 'pointer' }}>✕</button>}
-                    </div>
-                  </div>
-
-                  {pl.ortodonzia?.attivo && (() => {
-                    const orto = pl.ortodonzia;
-                    const tot2 = Number(orto.mascherineTotali) || 0;
-                    const cons = orto.mascherineConsegnate || 0;
-                    const pctOrto = tot2 > 0 ? Math.min(100, Math.round((cons / tot2) * 100)) : 0;
-                    const prossima = prossimaDataMascherina(orto);
-                    const completato = tot2 > 0 && cons >= tot2;
-                    return (
-                      <div style={{ marginTop: 8, background: C.purL, borderRadius: 9, padding: 10 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                          <span style={{ fontSize: 11, fontWeight: 800, color: C.pur }}>🦷 Mascherine ortodontiche</span>
-                          <span style={{ fontSize: 11, fontWeight: 800, color: C.pur }}>{cons}/{tot2 || '?'}</span>
-                        </div>
-                        {tot2 > 0 && (
-                          <div style={{ background: '#fff', borderRadius: 4, height: 6, overflow: 'hidden', marginBottom: 7 }}>
-                            <div style={{ height: '100%', width: `${pctOrto}%`, background: completato ? C.suc : C.pur, borderRadius: 4 }} />
-                          </div>
-                        )}
-                        {!orto.dataConsegnaInizio ? (
-                          <div>
-                            <div style={{ fontSize: 10, color: C.txm, marginBottom: 6 }}>Imposta la data di consegna della prima mascherina per avviare il conteggio.</div>
-                            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                              <Inp type="date" defaultValue={today()} id={`orto-start-${pl.id}`} style={{ flex: 1, fontSize: 12, padding: '7px 9px' }} />
-                              <button onClick={() => { const inp = document.getElementById(`orto-start-${pl.id}`); avviaConsegnaOrto(pl.id, inp.value || today()); }} style={{ background: C.pur, border: 'none', borderRadius: 7, padding: '8px 12px', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>Avvia</button>
-                            </div>
-                          </div>
-                        ) : completato ? (
-                          <div style={{ fontSize: 11, fontWeight: 700, color: C.suc, textAlign: 'center', padding: '4px 0' }}>✓ Ciclo mascherine completato</div>
-                        ) : (
-                          <div>
-                            <div style={{ fontSize: 10, color: C.txm, marginBottom: 2 }}>Ultima consegnata: <b>n° {cons}</b>{orto.storico?.length > 0 && ` il ${fmtD(orto.storico[orto.storico.length - 1].data)}`}</div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
-                              <span style={{ fontSize: 11, color: prossima && new Date(prossima + 'T12:00') < new Date(today() + 'T12:00') ? C.dan : C.pur, fontWeight: 700 }}>
-                                📅 Prossima: {prossima ? fmtD(prossima) : '—'}
-                              </span>
-                              <button onClick={() => consegnaMascherinaSuccessiva(pl.id)} style={{ background: C.pur, border: 'none', borderRadius: 7, padding: '7px 12px', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>+ Consegna n°{cons + 1}</button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-
-                  {confirmDelId === pl.id && (
-                    <div style={{ background: C.danL, borderRadius: 9, padding: '10px 12px', marginBottom: 8, marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: C.dan }}>Eliminare questo piano?</span>
-                      <div style={{ display: 'flex', gap: 7, flexShrink: 0 }}>
-                        <button onClick={() => setConfirmDelId(null)} style={{ background: '#fff', border: `1px solid ${C.brd}`, borderRadius: 7, padding: '5px 11px', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: C.txm }}>No</button>
-                        <button onClick={() => confirmDel(pl.id)} style={{ background: C.dan, border: 'none', borderRadius: 7, padding: '5px 11px', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#fff' }}>Sì, elimina</button>
-                      </div>
-                    </div>
-                  )}
-
-                  <div style={{ background: C.bg, borderRadius: 5, height: 6, overflow: 'hidden', marginBottom: 4 }}>
-                    <div style={{ height: '100%', width: `${pct}%`, background: terminato ? C.suc : C.pri, borderRadius: 5, transition: 'width 0.3s' }} />
-                  </div>
-                  <div style={{ fontSize: 10, color: C.txm, marginBottom: 10 }}>{done}/{pl.voci.length} eseguite · {pct}%</div>
-
-                  {pl.voci.map((v, i) => (
-                    <div key={i} style={{ padding: '7px 0', borderBottom: `1px solid ${C.brd}` }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: v.eseguita ? C.txm : C.txt, textDecoration: v.eseguita ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.prestazione}{v.dente ? ` (d.${v.dente})` : ''}</span>
-                        <span style={{ fontWeight: 700, color: C.pri, fontSize: 12, flexShrink: 0 }}>{fmt(v.prezzo)}</span>
-                      </div>
-                      {v.dataEsec && <div style={{ fontSize: 10, color: C.suc, marginTop: 1 }}>Eseguita il {fmtD(v.dataEsec)}</div>}
-                      {v.eseguita && (
-                        <div style={{ marginTop: 5, background: v.richiamoData ? C.purL : C.bg, borderRadius: 7, padding: '6px 8px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: 10, fontWeight: 700, color: v.richiamoData ? C.pur : C.txl }}>
-                              🔔 {v.richiamoData ? `${v.richiamoTipo || 'Richiamo'}: ${fmtD(v.richiamoData)}` : 'Nessun richiamo impostato'}
-                            </span>
-                            <div style={{ display: 'flex', gap: 3 }}>
-                              {SCADENZA_PRESET.map((p) => (
-                                <button key={p.mesi} onClick={() => setRichiamo(pl.id, i, v.richiamoTipo || 'Controllo', addMesi(v.dataEsec || today(), p.mesi))} style={{ background: '#fff', border: `1px solid ${C.brd}`, borderRadius: 6, padding: '2px 6px', fontSize: 9, fontWeight: 700, color: C.txm, cursor: 'pointer' }}>{p.label}</button>
-                              ))}
-                              {v.richiamoData && <button onClick={() => setRichiamo(pl.id, i, '', null)} style={{ background: C.danL, border: 'none', borderRadius: 6, padding: '2px 6px', fontSize: 9, fontWeight: 700, color: C.dan, cursor: 'pointer' }}>✕</button>}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      <div style={{ display: 'flex', gap: 5, marginTop: 5 }}>
-                        <button onClick={() => toggleEseguita(pl.id, i, v.eseguita)} style={{ flex: 1, padding: '6px 0', borderRadius: 7, border: `1.5px solid ${v.eseguita ? C.suc : C.brd}`, background: v.eseguita ? C.sucL : C.bg, color: v.eseguita ? C.suc : C.txm, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
-                          {v.eseguita ? '✓ Eseguita' : '○ Segna eseguita'}
-                        </button>
-                        {v.eseguita && (
-                          <button onClick={() => toggleIncassata(pl.id, i)} style={{ flex: 1, padding: '6px 0', borderRadius: 7, border: `1.5px solid ${v.incassata ? C.suc : C.dan}`, background: v.incassata ? C.sucL : C.danL, color: v.incassata ? C.suc : C.dan, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
-                            {v.incassata ? '€ Incassata' : '€ Da incassare'}
-                          </button>
-                        )}
-                      </div>
-                      {quickOffer?.planId === pl.id && quickOffer?.itemIndex === i && v.eseguita && <label className="plan-quick-payment-offer"><input type="checkbox" onChange={(event) => { if (event.target.checked) openQuickPayment(pl, i); }} /> Registra pagamento adesso</label>}
-                    </div>
-                  ))}
-                  {scontato > 0 && <div style={{ fontSize: 11, color: C.suc, textAlign: 'right', marginTop: 5 }}>Sconto: −{fmt(scontato)}</div>}
-                  <div style={{ textAlign: 'right', fontWeight: 800, color: C.pri, marginTop: 4 }}>Totale: {fmt(tot)}</div>
-                </Crd>
-              );
-            })}
-
-            {selPiani.length > 0 && (() => {
-              const pianiSel = patPlans.filter((p) => selPiani.includes(p.id));
-              const totSel = pianiSel.reduce((s, pl) => {
-                const sub = pl.voci.reduce((a, v) => a + Number(v.prezzo), 0);
-                const sc = Number(pl.sconto) || 0;
-                const scontato = pl.scontoTipo === 'pct' ? sub * (sc / 100) : Math.min(sc, sub);
-                return s + Math.max(0, sub - scontato);
-              }, 0);
-              return (
-                <div style={{ position: 'sticky', bottom: 0, background: C.priD, borderRadius: 12, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-                  <div>
-                    <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }}>{selPiani.length} pian{selPiani.length === 1 ? 'o' : 'i'} selezionat{selPiani.length === 1 ? 'o' : 'i'}</div>
-                    <div style={{ color: '#fff', fontWeight: 900, fontSize: 18 }}>{fmt(totSel)}</div>
-                  </div>
-                  <button onClick={generaPdfMulti} style={{ background: C.acc, border: 'none', borderRadius: 9, padding: '10px 16px', color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Ic n="prt" s={15} c="#fff" />Genera PDF
-                  </button>
-                </div>
-              );
-            })()}
+            {/* POL-FIN-007: stessa grafica/tastini della pagina Piani
+                generale (PianoDrillDown.jsx) — qui già scoperto al paziente,
+                nessun elenco pazienti da attraversare. */}
+            <PianoDrillDown
+              plans={patPlans}
+              patients={[paz]}
+              setPlans={setPlans}
+              payments={payments}
+              setPayments={setPayments}
+              pricelist={pricelist}
+              si={si}
+            />
           </div>
         )}
 
@@ -551,82 +282,6 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
         </Suspense>
       )}
 
-      {editPianoModal && editForm && (
-        <Modal title="Modifica piano" onClose={() => setEditPianoModal(null)} wide>
-          <Fld label="Titolo"><Inp value={editForm.titolo} onChange={(e) => setEditForm((f) => ({ ...f, titolo: e.target.value }))} /></Fld>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <Fld label="Data"><Inp type="date" value={editForm.data} onChange={(e) => setEditForm((f) => ({ ...f, data: e.target.value }))} /></Fld>
-            <Fld label="Stato">
-              <Sel value={editForm.stato || 'attivo'} onChange={(e) => setEditForm((f) => ({ ...f, stato: e.target.value }))}>
-                <option value="attivo">Attivo</option><option value="accettato">Accettato ✓</option><option value="rifiutato">Rifiutato ✗</option><option value="concluso">Concluso ✓</option>
-              </Sel>
-            </Fld>
-          </div>
-          <Fld label="Sconto">
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <div style={{ display: 'flex', background: C.bg, borderRadius: 8, border: `1.5px solid ${C.brd}`, overflow: 'hidden', flexShrink: 0 }}>
-                <button onClick={() => setEditForm((f) => ({ ...f, scontoTipo: 'pct' }))} style={{ padding: '8px 12px', border: 'none', background: editForm.scontoTipo === 'pct' ? C.pri : C.sur, color: editForm.scontoTipo === 'pct' ? '#fff' : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>%</button>
-                <button onClick={() => setEditForm((f) => ({ ...f, scontoTipo: 'eur' }))} style={{ padding: '8px 12px', border: 'none', background: editForm.scontoTipo === 'eur' ? C.pri : C.sur, color: editForm.scontoTipo === 'eur' ? '#fff' : C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>€</button>
-              </div>
-              <Inp type="number" value={editForm.sconto || ''} placeholder="0" onChange={(e) => setEditForm((f) => ({ ...f, sconto: e.target.value }))} style={{ flex: 1 }} />
-            </div>
-          </Fld>
-          <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 6 }}>Prestazioni</div>
-          {editForm.voci.map((v, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderBottom: `1px solid ${C.brd}` }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.prestazione}{v.dente ? ` · d.${v.dente}` : ''}</div>
-                <div style={{ fontSize: 11, color: C.txm }}>{fmt(v.prezzo)}</div>
-              </div>
-              <button onClick={() => delVoceEdit(i)} style={{ background: C.danL, border: 'none', borderRadius: 6, padding: '5px 7px', cursor: 'pointer', flexShrink: 0 }}>
-                <Ic n="del" s={12} c={C.dan} />
-              </button>
-            </div>
-          ))}
-          {(() => {
-            const sub = editForm.voci.reduce((s, v) => s + Number(v.prezzo), 0);
-            const sc = Number(editForm.sconto) || 0;
-            const scontato = editForm.scontoTipo === 'pct' ? sub * (sc / 100) : Math.min(sc, sub);
-            const finale = Math.max(0, sub - scontato);
-            return (
-              <div style={{ background: C.priD, borderRadius: 9, padding: '10px 14px', marginTop: 10 }}>
-                {scontato > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>Sconto</span>
-                    <span style={{ color: '#86efac', fontWeight: 700 }}>−{fmt(scontato)}</span>
-                  </div>
-                )}
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#fff', fontWeight: 800 }}>Totale</span>
-                  <span style={{ color: '#fff', fontWeight: 900, fontSize: 17 }}>{fmt(finale)}</span>
-                </div>
-              </div>
-            );
-          })()}
-          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <Btn ch="Annulla" v="sec" onClick={() => setEditPianoModal(null)} full />
-            <Btn ch="Salva modifiche" onClick={saveEdit} full />
-          </div>
-        </Modal>
-      )}
-
-      {quickPayment && (
-        <Modal title="Registra pagamento" icon="eur" onClose={() => setQuickPayment(null)}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <Fld label="Importo €"><Inp type="number" min="0" step="0.01" inputMode="decimal" value={quickPayment.importo} onChange={(e) => setQuickPayment((v) => ({ ...v, importo: e.target.value }))} /></Fld>
-            <Fld label="Data"><Inp type="date" value={quickPayment.data} onChange={(e) => setQuickPayment((v) => ({ ...v, data: e.target.value }))} /></Fld>
-          </div>
-          <Fld label="Metodo">
-            <Sel value={quickPayment.metodo} onChange={(e) => setQuickPayment((v) => ({ ...v, metodo: e.target.value }))}>
-              {['Contanti', 'Carta', 'Bonifico', 'POS', 'Assegno'].map((method) => <option key={method}>{method}</option>)}
-            </Sel>
-          </Fld>
-          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <Btn ch="Annulla" v="sec" onClick={() => setQuickPayment(null)} full />
-            <Btn ch="Registra pagamento" onClick={saveQuickPayment} full />
-          </div>
-        </Modal>
-      )}
     </div>
   );
 }

@@ -2,46 +2,54 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const source = fs.readFileSync(new URL('../src/components/Piani.jsx', import.meta.url), 'utf8');
+// POL-FIN-007: Piani.jsx's and SchedaPaz.jsx's own, separate plan-item
+// rendering (this test file's previous target) were unified into one
+// shared component — Product Owner: "così anche il modulo Piano del
+// paziente deve avere la stessa grafica di piani generale, con tutti i
+// tastini". Both callers now render PianoDrillDown.jsx, so the execution
+// UI regression guards below target that shared component instead.
+const source = fs.readFileSync(new URL('../src/components/PianoDrillDown.jsx', import.meta.url), 'utf8');
 
 test('plan execution UI uses the shared domain completion action', () => {
-  assert.match(source, /markTreatmentItemCompleted\(candidate, itemIndex\)/);
-  assert.match(source, /Da eseguire/); assert.match(source, /Eseguita/);
+  assert.match(source, /markTreatmentItemCompleted\(candidate, index\)/);
+  assert.match(source, /Segna eseguita/); assert.match(source, /Eseguita/);
 });
 
-test('optional quick payment keeps amount date and method editable and records paid state', () => {
-  assert.match(source, /Registra pagamento adesso/);
-  assert.match(source, /quickPayment\.importo/); assert.match(source, /quickPayment\.data/); assert.match(source, /quickPayment\.metodo/);
-  assert.match(source, /stato: 'pagato'/);
+test('marking a prestazione done offers to register the incasso right away, reusing the same IncassoModal everywhere', () => {
+  assert.match(source, /Registra incasso adesso/);
+  assert.match(source, /import IncassoModal from '\.\/IncassoModal\.jsx';/);
+  assert.match(source, /setIncassoPrefill\(\{ pazienteId: String\(pl\.pazienteId\), lockedPianoId: pl\.id, importo: String\(v\.prezzo/);
 });
 
-// Product Owner follow-up: this quick-payment offer was only ever wired
-// into Piani.jsx above — SchedaPaz.jsx has its own separate, older
-// plan-item rendering (a different "Segna eseguita" toggle, kept for the
-// existing richiamo auto-detection side effect) that never got the same
-// checkbox, so completing a treatment from the patient record itself never
-// offered to register the payment. Same source-level convention as above.
-const schedaPazSource = fs.readFileSync(new URL('../src/components/SchedaPaz.jsx', import.meta.url), 'utf8');
-
-test('SchedaPaz\'s own plan-item view also offers the quick-payment checkbox after marking a treatment done', () => {
-  assert.match(schedaPazSource, /Registra pagamento adesso/);
-  assert.match(schedaPazSource, /quickPayment\.importo/); assert.match(schedaPazSource, /quickPayment\.data/); assert.match(schedaPazSource, /quickPayment\.metodo/);
-  assert.match(schedaPazSource, /stato: 'pagato'/);
-  // The richiamo auto-detection side effect (rilevaRichiamo/addMesi) that
-  // makes this toggle different from Piani.jsx's must survive untouched.
-  assert.match(schedaPazSource, /rilevaRichiamo\(v\.prestazione\)/);
+// The richiamo auto-detection side effect (rilevaRichiamo/addMesi) that
+// SchedaPaz.jsx's own older toggle used to have must survive the
+// unification, not be silently dropped.
+test('marking a prestazione done still auto-suggests a richiamo when the procedure name matches a known pattern', () => {
+  assert.match(source, /rilevaRichiamo\(already\.prestazione\)/);
+  assert.match(source, /richiamoTipo: r\.tipo, richiamoData: addMesi\(today\(\), r\.mesi\)/);
 });
 
-test('REGRESSION GUARD: toggleEseguita computes the offer from the CURRENT execution state, not from a side effect inside the setPlans updater', () => {
-  // setPlans's updater function is not guaranteed to run synchronously
-  // (React may defer it), so deriving "did this just become executed" as a
-  // side effect written inside that updater and read right after calling
-  // setPlans would be a real race — nowEseguita must come from the state
-  // already available in this render (the wasEseguita argument), not from
-  // a variable mutated inside the updater callback.
-  assert.match(schedaPazSource, /const toggleEseguita = \(plId, i, wasEseguita\) => \{/);
-  assert.match(schedaPazSource, /const nowEseguita = !wasEseguita;/);
-  const callSite = schedaPazSource.match(/onClick=\{\(\) => toggleEseguita\([^)]*\)\}/);
+test('REGRESSION GUARD: toggleEseguita reads the execution state from the render-time plan, not from inside the setPlans updater', () => {
+  assert.match(source, /const toggleEseguita = \(plan, index\) => \{/);
+  assert.match(source, /const voce = plan\.voci\[index\];/);
+  assert.match(source, /if \(!voce\.eseguita\) \{/);
+  const callSite = source.match(/onClick=\{\(\) => toggleEseguita\([^)]*\)\}/);
   assert.ok(callSite, 'expected a toggleEseguita call site');
-  assert.match(callSite[0], /toggleEseguita\(pl\.id, i, v\.eseguita\)/);
+  assert.match(callSite[0], /toggleEseguita\(pl, i\)/);
+});
+
+// POL-FIN-007: completing the last prestazione must never silently
+// overwrite an accettato/rifiutato decision — "concluso"/"terminato" is a
+// purely computed display label now, never stored back into plan.stato.
+test('REGRESSION GUARD: completing a plan never overwrites its accettato/rifiutato decision', () => {
+  assert.doesNotMatch(source, /stato:\s*tutteEseguite/);
+  assert.doesNotMatch(source, /stato:\s*['"]concluso['"]/);
+  assert.match(source, /isTreatmentPlanCompleted/);
+});
+
+const service = fs.readFileSync(new URL('../src/lib/domain/treatmentPlanService.js', import.meta.url), 'utf8');
+
+test('REGRESSION GUARD: the shared completion action itself never promotes plan.stato to concluso any more', () => {
+  assert.doesNotMatch(service, /stato:\s*tutteEseguite/);
+  assert.match(service, /export const isTreatmentPlanCompleted/);
 });

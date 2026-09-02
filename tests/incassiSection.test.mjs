@@ -53,10 +53,15 @@ test('Incassato and Da incassare are one clickable view-switch, not two separate
   assert.match(component, /activeView === 'collected'/);
 });
 
+// POL-FIN-007: the "Registra incasso" form itself (stato:'pagato' write)
+// moved into the shared IncassoModal.jsx (task: reuse the exact same
+// flow from Piani/SchedaPaz) — Incassi.jsx keeps only the call site.
+const incassoModalComponent = read('src/components/IncassoModal.jsx');
+
 test('a "Da incassare" row can be marked incassato right there, and it is a real payment (never a flag)', () => {
   assert.match(component, /Btn ch="Incassa" ic="eur" sz="sm"/);
   assert.match(component, /openIncasso\(\{\s*\n\s*pazienteId: String\(row\.paziente_id\), lockedPianoId: row\.piano_id,/);
-  assert.match(component, /stato: 'pagato'/);
+  assert.match(incassoModalComponent, /stato: 'pagato'/);
   assert.doesNotMatch(component, /incassata: !v\.incassata/);
 });
 

@@ -3,6 +3,7 @@ import { C, uid } from '../lib/utils';
 import { fetchSaldiApertiStudio } from '../lib/domain/incassiService.js';
 import { Btn, Crd, EmptyState, ErrorState, Fld, Inp, LoadingState, Modal, PageHeader, Sel, SelettorePaziente } from './ui';
 import UploadDocumento from './ui/UploadDocumentoSpesa.jsx';
+import IncassoModal from './IncassoModal.jsx';
 import { addReceivableToLatestPlan, buildContextualPayment, planAssignmentForPatient, unassignedPaymentsForMultiPlanPatients } from '../lib/domain/incassiActions.js';
 import { matchPaymentsToPatients, flagPossibleDuplicates, riepilogoEstrattoConto, buildPaymentsFromEstrattoConto } from '../lib/domain/estrattoContoService.js';
 
@@ -43,8 +44,6 @@ export default function Incassi({ studioId, patients = [], plans = [], payments 
   // top-level tabs/pages a step apart.
   const [activeView, setActiveView] = useState('outstanding'); // 'outstanding' | 'collected'
   const [incassoModal, setIncassoModal] = useState(null);
-  const [incassoError, setIncassoError] = useState('');
-  const [incassoPazSearch, setIncassoPazSearch] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -127,28 +126,8 @@ export default function Incassi({ studioId, patients = [], plans = [], payments 
   // anche" — writing a real payments row with piano_id is what actually
   // moves get_saldo_piano, which is what SchedaPaz's own widget reads, so
   // marking a balance collected here really does update the patient).
-  const openIncasso = (prefill = {}) => { setIncassoModal({ ...emptyIncasso, ...prefill }); setIncassoPazSearch(''); setIncassoError(''); };
-  const closeIncasso = () => { setIncassoModal(null); setIncassoError(''); };
-  const updateIncasso = (patch) => setIncassoModal((current) => (current ? { ...current, ...patch } : current));
-  const incassoAssignment = incassoModal?.pazienteId ? planAssignmentForPatient(plans, incassoModal.pazienteId) : { mode: 'none' };
-  const incassoNeedsPlanChoice = !incassoModal?.lockedPianoId && incassoAssignment.mode === 'choose';
-  const saveIncasso = () => {
-    const amount = Number(incassoModal?.importo);
-    if (!incassoModal?.pazienteId || !Number.isFinite(amount) || amount <= 0) {
-      setIncassoError('Seleziona il paziente e inserisci un importo valido.'); return;
-    }
-    if (incassoNeedsPlanChoice && !incassoModal.pianoId) { setIncassoError('Seleziona il piano a cui collegare l’incasso.'); return; }
-    const pianoId = incassoModal.lockedPianoId != null ? incassoModal.lockedPianoId
-      : incassoAssignment.mode === 'auto' ? incassoAssignment.pianoId
-      : incassoAssignment.mode === 'choose' ? Number(incassoModal.pianoId) : undefined;
-    setPayments?.((current) => [...current, {
-      id: uid(), pazienteId: Number(incassoModal.pazienteId), data: incassoModal.data || today(),
-      importo: amount, metodo: incassoModal.metodo, nota: incassoModal.nota || undefined, stato: 'pagato',
-      ...(pianoId !== undefined && pianoId !== null ? { pianoId } : {}),
-    }]);
-    setReloadKey((key) => key + 1);
-    closeIncasso();
-  };
+  const openIncasso = (prefill = {}) => { setIncassoModal({ ...emptyIncasso, ...prefill }); };
+  const closeIncasso = () => { setIncassoModal(null); };
 
   // "Allega foto o PDF": upload ANY document (bank statement, single
   // receipt, other) — the AI extracts incoming-payment rows only (edge
@@ -319,36 +298,14 @@ export default function Incassi({ studioId, patients = [], plans = [], payments 
         </Modal>
       )}
       {incassoModal && (
-        <Modal title="Registra incasso" icon="eur" onClose={closeIncasso} mobileVariant="sheet">
-          {!incassoModal.lockedPianoId && (
-            <Fld label="Paziente"><SelettorePaziente patients={patients} value={incassoModal.pazienteId} onChange={(pazienteId) => updateIncasso({ pazienteId, pianoId: '' })} search={incassoPazSearch} onSearchChange={setIncassoPazSearch} autoFocus /></Fld>
-          )}
-          {incassoNeedsPlanChoice && (
-            <Fld label="Piano">
-              <Sel value={incassoModal.pianoId} onChange={(event) => updateIncasso({ pianoId: event.target.value })}>
-                <option value="">Seleziona piano…</option>
-                {incassoAssignment.options.map((plan) => <option key={plan.id} value={plan.id}>{plan.titolo}</option>)}
-              </Sel>
-            </Fld>
-          )}
-          {/* Product Owner follow-up: i tre tasti di Incassi sono ora distinti
-              — "Allega foto o PDF" (lettura AI, apre questo stesso modulo
-              già precompilato quando riconosce un solo pagamento) e
-              "Registra incasso" (importo manuale, qui) non si sovrappongono
-              più in un unico modulo con toggle. */}
-          <div className="incassi-form-grid">
-            <Fld label="Data"><Inp type="date" value={incassoModal.data} onChange={(event) => updateIncasso({ data: event.target.value })} /></Fld>
-            <Fld label="Importo €"><Inp type="number" min="0" step="0.01" inputMode="decimal" value={incassoModal.importo} onChange={(event) => updateIncasso({ importo: event.target.value })} /></Fld>
-            <Fld label="Metodo">
-              <Sel value={incassoModal.metodo} onChange={(event) => updateIncasso({ metodo: event.target.value })}>
-                {['Contanti', 'Carta', 'Bonifico', 'POS', 'Assegno'].map((method) => <option key={method}>{method}</option>)}
-              </Sel>
-            </Fld>
-            <Fld label="Nota"><Inp value={incassoModal.nota} onChange={(event) => updateIncasso({ nota: event.target.value })} /></Fld>
-          </div>
-          {incassoError && <p className="incassi-form-error" role="alert">{incassoError}</p>}
-          <div className="incassi-form-actions"><Btn ch="Annulla" v="sec" onClick={closeIncasso} full /><Btn ch="Salva" onClick={saveIncasso} full /></div>
-        </Modal>
+        <IncassoModal
+          prefill={incassoModal}
+          patients={patients}
+          plans={plans}
+          setPayments={setPayments}
+          onClose={closeIncasso}
+          onSaved={() => setReloadKey((key) => key + 1)}
+        />
       )}
       {estrattoContoOpen && (
         <Modal title="Allega foto o PDF" icon="file" onClose={closeEstrattoConto} wide mobileVariant="sheet">
