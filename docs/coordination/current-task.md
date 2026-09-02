@@ -4,14 +4,15 @@
 - TITLE: ogni prestazione dentro un piano espanso è ora una card a sé (bordo colorato per stato eseguito/da eseguire, badge numerato/spunta, nome più grande), non più una riga sottile che si confonde col resto.
 - OWNER: CLAUDE, su feedback diretto del Product Owner dopo il deploy di POL-FIN-007 ("si capisce poco a vista d'occhio quali siano le prestazioni, dobbiamo renderle ben individuabili sempre in piani generali e piano paziente").
 - BRANCH: `feature/pol-fin-007c-prestazioni-visibili`, da `master` (contiene già PR #86).
-- STATUS: implementato, verificato, non ancora mergiato — in attesa di "mergiamo"/"mergia" esplicito.
+- STATUS: MERGED — PR #87, merge commit `59a66911c2e4cb82936795489101de909b7bc8e4`, su esplicita istruzione del Product Owner ("Mergia master").
 - COSA È CAMBIATO: `src/components/PianoDrillDown.jsx` (l'unico componente — condiviso da Piani generale e Piano del paziente, quindi un solo fix li copre entrambi). Ogni riga prestazione: bordo sinistro 4px verde se eseguita/ambra se da eseguire, sfondo distinto dal resto della card, badge circolare con spunta o numero progressivo, nome della prestazione passato da 12px a 14px grassetto. Aggiunta intestazione "Prestazioni (N)" sopra l'elenco quando il piano è espanso, per orientamento immediato.
 - VALIDATION: `npm test` 661/661 (nuovo test source-level dedicato in `tests/planExecutionUi.test.mjs`); `npm run build` pulito.
 - FOLLOW-UP nello stesso giro/branch (PO, dopo aver visto l'anteprima: "i tasti accetta ecc devono essere meno confusionari, inoltre anche la scheda paziente hai tasti per moduli un po scritti piccoli (mobile)"):
   1. `PianoDrillDown.jsx`: i 6 pulsanti allo stesso livello (PDF/Modifica/Accetta/Non accetta/Incassato/Cancella) sostituiti con: Accetta/Non accetta ora è UN controllo segmentato a due stati (pillola unica, non due pulsanti separati), Incassato resta un pulsante pieno ben distinto (azione economica principale), PDF/Modifica/Cancella diventano piccole icone raggruppate senza testo (con title/aria-label), meno invadenti perché usate meno spesso.
   2. `PremiumVisualSystem.css`, `.patient-record-tabs button` su mobile (`max-width:719px`): font-size da 9.5px a 11px, font-weight 800, min-height da 38px a 44px (torna sopra la soglia touch-target di 44px) — i tab Info/Anamnesi/Piani/Pagamenti/Foto/Agenda/Documenti/ecc erano illeggibili su telefono.
 - VALIDATION 2: `npm test` 664/664 (3 nuovi test: segmented control, icone housekeeping, leggibilità tab mobile); `npm run build` pulito.
-- EXACT NEXT ACTION: push del branch e report al Product Owner, in attesa di "mergiamo" esplicito.
+- MERGE: **PR #87** ("POL-FIN-007c: prestazioni ben distinte, tasti Piani meno confusionari, tab mobile leggibili") aperta `feature/pol-fin-007c-prestazioni-visibili` → `master`, mergiata su esplicita istruzione del Product Owner ("Mergia master"). Vercel `success` al momento del merge. Merge commit `59a66911c2e4cb82936795489101de909b7bc8e4`.
+- EXACT NEXT ACTION: Product Owner verifica in produzione (Vercel farà il deploy automatico da questo merge).
 
 ---
 
