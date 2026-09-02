@@ -7,6 +7,7 @@ import Costi from './Costi.jsx';
 import ControlloCockpit from './ControlloCockpit.jsx';
 import MarginalitaPrestazioni from './MarginalitaPrestazioni.jsx';
 import Incassi from './Incassi.jsx';
+import ProdottoReconciliationModal from './ProdottoReconciliationModal.jsx';
 
 const TABS = [
   { id: 'panoramica', icon: 'chart', label: 'Panoramica' },
@@ -25,7 +26,21 @@ function CanonicalBaseOverview({ studioId, onDrillDown }) {
 // Cockpit, Proiezioni, Costi e Marginalità restano invariati; la modalità ADVANCED resta gated.
 export default function ControlloGestione(props) {
   const [section, setSection] = useState('panoramica');
+  const [prodottoPeriod, setProdottoPeriod] = useState(null);
   const active = TABS.find((item) => item.id === section);
+  const openDrillDown = ({ field, ...period }) => {
+    if (field === 'prodotto') {
+      setProdottoPeriod(period);
+      return;
+    }
+    setSection(field?.includes('incass') || field === 'credito_clienti'
+      ? 'incassi'
+      : field?.includes('costi')
+        ? 'costi'
+        : field?.includes('margine') || field?.includes('ebitda')
+          ? 'marginalita'
+          : 'cockpit');
+  };
 
   return (
     <div className="management-hub">
@@ -40,7 +55,7 @@ export default function ControlloGestione(props) {
         </aside>
         <label className="management-nav-mobile">Area<select value={section} onChange={(event) => setSection(event.target.value)}>{TABS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
         <main className="management-hub__section" aria-label={active?.label}>
-        {section === 'panoramica' && <CanonicalBaseOverview studioId={props.studioId} onDrillDown={(field) => setSection(field?.includes('incass') || field === 'credito_clienti' ? 'incassi' : field?.includes('costi') ? 'costi' : field?.includes('margine') || field?.includes('ebitda') ? 'marginalita' : 'cockpit')} />}
+        {section === 'panoramica' && <CanonicalBaseOverview studioId={props.studioId} onDrillDown={openDrillDown} />}
         {section === 'cockpit' && <ControlloCockpit {...props} />}
         {section === 'proiezioni' && <Proiezioni studioId={props.studioId} />}
         {section === 'costi' && <Costi studioId={props.studioId} isDentistico={props.isDentistico} />}
@@ -48,6 +63,14 @@ export default function ControlloGestione(props) {
         {section === 'incassi' && <Incassi studioId={props.studioId} patients={props.patients} plans={props.plans} payments={props.payments} pricelist={props.pricelist} setPlans={props.setPlans} setPayments={props.setPayments} onOpenPaz={props.onOpenPaz} embedded />}
         </main>
       </div>
+      {prodottoPeriod && (
+        <ProdottoReconciliationModal
+          studioId={props.studioId}
+          period={prodottoPeriod}
+          patients={props.patients}
+          onClose={() => setProdottoPeriod(null)}
+        />
+      )}
     </div>
   );
 }

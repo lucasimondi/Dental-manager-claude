@@ -1,0 +1,38 @@
+.prodotto-reconciliation{display:grid;gap:16px;color:var(--text-primary)}
+.prodotto-reconciliation__state{padding:40px 16px;text-align:center;color:var(--text-muted);font-weight:700}
+.prodotto-reconciliation__summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.prodotto-reconciliation__summary>div,.prodotto-reconciliation__group-totals>div{display:grid;gap:4px;padding:14px;border:1px solid var(--border-soft);border-radius:14px;background:var(--surface-base)}
+.prodotto-reconciliation small{color:var(--text-muted);font-size:11px}
+.prodotto-reconciliation__summary strong{font-size:20px;color:var(--brand-primary)}
+.prodotto-reconciliation__explanation{margin:0;padding:12px 14px;border-radius:12px;background:color-mix(in srgb,var(--brand-primary) 9%,var(--surface-card));font-size:12px;line-height:1.55;color:var(--text-secondary)}
+.prodotto-reconciliation__quality{display:grid;gap:5px;padding:13px 14px;border:1px solid color-mix(in srgb,var(--warning) 38%,var(--border-soft));border-radius:12px;background:color-mix(in srgb,var(--warning) 10%,var(--surface-card));font-size:12px;color:var(--text-secondary)}
+.prodotto-reconciliation__groups{display:grid;gap:12px}
+.prodotto-reconciliation__group{overflow:hidden;border:1px solid var(--border-soft);border-radius:16px;background:var(--surface-card);box-shadow:var(--shadow-sm)}
+.prodotto-reconciliation__group>header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border-soft)}
+.prodotto-reconciliation__group h3,.prodotto-reconciliation__list h4{margin:2px 0 0}
+.prodotto-reconciliation__group h3{font-size:15px}
+.prodotto-reconciliation__group>header>span{max-width:190px;padding:5px 8px;border-radius:999px;background:var(--surface-base);color:var(--text-secondary);font-size:10px;font-weight:800;text-align:center}
+.prodotto-reconciliation__group>header>span[data-state="RESIDUAL"],.prodotto-reconciliation__group>header>span[data-state="INCOMPLETE"]{background:color-mix(in srgb,var(--warning) 12%,var(--surface-card));color:var(--warning)}
+.prodotto-reconciliation__group>header>span[data-state="OVERCOLLECTED"],.prodotto-reconciliation__group>header>span[data-state="UNALLOCATED"]{background:color-mix(in srgb,var(--info) 12%,var(--surface-card));color:var(--brand-primary)}
+.prodotto-reconciliation__group>header>span[data-state="RECONCILED"]{background:color-mix(in srgb,var(--success) 12%,var(--surface-card));color:var(--success)}
+.prodotto-reconciliation__group-totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:12px 14px}
+.prodotto-reconciliation__group-totals>div{padding:10px}
+.prodotto-reconciliation__group-totals strong{font-size:14px}
+.prodotto-reconciliation__list{display:grid;padding:0 14px 12px}
+.prodotto-reconciliation__list h4{padding:10px 0 6px;border-top:1px solid var(--border-soft);font-size:12px}
+.prodotto-reconciliation__list article{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--border-soft)}
+.prodotto-reconciliation__list article>div{display:grid;gap:2px;min-width:0}
+.prodotto-reconciliation__list article>div:first-child{flex:1}
+.prodotto-reconciliation__list article>div:last-child{text-align:right;flex-shrink:0}
+.prodotto-reconciliation__list article strong{font-size:12px}
+.prodotto-reconciliation__list article span{color:var(--text-secondary);font-size:11px}
+
+@media(max-width:640px){
+  .prodotto-reconciliation__summary{grid-template-columns:1fr}
+  .prodotto-reconciliation__summary>div{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px}
+  .prodotto-reconciliation__summary strong{font-size:17px;text-align:right}
+  .prodotto-reconciliation__group>header{align-items:center}
+  .prodotto-reconciliation__group-totals{grid-template-columns:1fr}
+  .prodotto-reconciliation__group-totals>div{display:flex;align-items:center;justify-content:space-between}
+  .prodotto-reconciliation__list article{align-items:flex-start}
+}

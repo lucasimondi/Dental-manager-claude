@@ -49,6 +49,12 @@ export default function AnnualFinancialOverview({ studioId, onDrillDown }) {
   }, [studioId, year]);
 
   const selected = view === 'year' ? annual : months[month]?.snapshot;
+  const selectedPeriod = view === 'year'
+    ? { dateFrom: ymd(year, 1, 1), dateTo: ymd(year, 12, 31), label: String(year) }
+    : (() => {
+      const [dateFrom, dateTo] = monthRange(year, month);
+      return { dateFrom, dateTo, label: `${MONTHS[month]} ${year}` };
+    })();
   const openMonth = (index) => {
     setMonth(index);
     setView('month');
@@ -63,17 +69,21 @@ export default function AnnualFinancialOverview({ studioId, onDrillDown }) {
   // charting library/style already used on Dashboard, no new dependency.
   const trendData = useMemo(() => months.map(({ index, snapshot }) => ({
     mese: MONTHS[index].slice(0, 3),
-    incassato: numeric(snapshot, 'incassato') || 0,
-    ebitda: numeric(snapshot, 'ebitda_operativo_gestionale') || 0,
+    incassato: numeric(snapshot, 'incassato'),
+    ebitda: numeric(snapshot, 'ebitda_operativo_gestionale'),
   })), [months]);
-  const hasTrend = trendData.some((point) => point.incassato !== 0 || point.ebitda !== 0);
+  const hasTrend = trendData.some((point) =>
+    (point.incassato != null && point.incassato !== 0)
+    || (point.ebitda != null && point.ebitda !== 0));
 
   // "Le voci devono essere come un excel" — a real spreadsheet always shows
   // the column total, not just twelve rows to sum by eye.
   const LEDGER_FIELDS = ['prodotto', 'incassato', 'costi_fissi_operativi', 'costi_variabili', 'ebitda_operativo_gestionale'];
   const totals = useMemo(() => LEDGER_FIELDS.reduce((acc, field) => {
-    const values = months.map(({ snapshot }) => numeric(snapshot, field)).filter((entry) => entry != null);
-    acc[field] = values.length ? values.reduce((sum, entry) => sum + entry, 0) : null;
+    const values = months.map(({ snapshot }) => numeric(snapshot, field));
+    acc[field] = values.length === MONTHS.length && values.every((entry) => entry != null)
+      ? values.reduce((sum, entry) => sum + entry, 0)
+      : null;
     return acc;
   }, {}), [months]);
   const totalValue = (field) => totals[field] == null ? '—' : fmt(totals[field]);
@@ -100,7 +110,11 @@ export default function AnnualFinancialOverview({ studioId, onDrillDown }) {
     {!loading && error && !annual && <Crd><EmptyState icon="chart" title="Bilancio non disponibile" subtitle={error} /></Crd>}
     {!loading && selected && <div ref={detailRef}>
       <div className="balance-heading"><div><small>{view === 'year' ? 'Bilancio annuale' : 'Bilancio mensile'}</small><h2>{view === 'year' ? year : `${MONTHS[month]} ${year}`}</h2></div><span>Valori dalla fonte finanziaria canonica</span></div>
-      <CanonicalManagementView snapshot={selected} mode={MANAGEMENT_CONTROL_MODES.ADVANCED} onDrillDown={onDrillDown} />
+      <CanonicalManagementView
+        snapshot={selected}
+        mode={MANAGEMENT_CONTROL_MODES.ADVANCED}
+        onDrillDown={(field) => onDrillDown?.({ field, ...selectedPeriod })}
+      />
     </div>}
 
     {!loading && view === 'year' && hasTrend && (

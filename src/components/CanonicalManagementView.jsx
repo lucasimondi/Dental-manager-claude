@@ -26,24 +26,28 @@ export default function CanonicalManagementView({ snapshot, mode, onDrillDown })
         Qualità dati: {model.dataQualityStatus} · Formula: {model.formulaVersion || 'non disponibile'}
       </div>
       <div className="cmv__details">
-        {model.metrics.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            disabled={!item.available || !onDrillDown}
-            onClick={() => item.available && onDrillDown?.(item.sourceField)}
-            className="cmv-detail"
-            data-tone={GROUP_ACCENT[item.group]}
-          >
-            <span className="cmv-detail__identity"><strong>{item.label}</strong><small>{item.group} · fonte {item.sourceField || 'non disponibile'}</small></span>
-            {item.available ? (
-              <span className="cmv-detail__value">{displayValue(item)}</span>
-            ) : (
-              <span className="cmv-detail__unavailable">Dato non disponibile</span>
-            )}
-            <span className="cmv-detail__arrow" aria-hidden="true">›</span>
-          </button>
-        ))}
+        {model.metrics.map((item) => {
+          const canExplainUnavailable = item.id === 'prodotto';
+          const canDrillDown = Boolean(onDrillDown) && (item.available || canExplainUnavailable);
+          return (
+            <button
+              key={item.id}
+              type="button"
+              disabled={!canDrillDown}
+              onClick={() => canDrillDown && onDrillDown?.(item.sourceField)}
+              className="cmv-detail"
+              data-tone={GROUP_ACCENT[item.group]}
+            >
+              <span className="cmv-detail__identity"><strong>{item.label}</strong><small>{item.group} · fonte {item.sourceField || 'non disponibile'}</small></span>
+              {item.available ? (
+                <span className="cmv-detail__value">{displayValue(item)}</span>
+              ) : (
+                <span className="cmv-detail__unavailable">Dato non disponibile</span>
+              )}
+              <span className="cmv-detail__arrow" aria-hidden="true">›</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
