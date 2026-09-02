@@ -169,13 +169,27 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
               </div>
             </div>
 
-            <div style={{ marginTop: 9, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              <button onClick={() => setPdfPlan(pl)} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '6px 9px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: C.pri, fontWeight: 700, fontSize: 11 }}><Ic n="prt" s={12} c={C.pri} />PDF</button>
-              <button onClick={() => openEditPlan(pl)} style={{ background: '#EDE9FE', border: 'none', borderRadius: 7, padding: '6px 9px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: C.pur, fontWeight: 700, fontSize: 11 }}><Ic n="edit" s={12} c={C.pur} />Modifica</button>
-              <button onClick={() => setStato(pl.id, 'accettato')} disabled={stato === 'accettato'} style={{ background: stato === 'accettato' ? C.sucL : C.bg, border: `1px solid ${stato === 'accettato' ? C.suc : C.brd}`, borderRadius: 7, padding: '6px 9px', cursor: stato === 'accettato' ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: C.suc, fontWeight: 700, fontSize: 11 }}><Ic n="ok" s={12} c={C.suc} />Accetta</button>
-              <button onClick={() => setStato(pl.id, 'rifiutato')} disabled={stato === 'rifiutato'} style={{ background: stato === 'rifiutato' ? C.danL : C.bg, border: `1px solid ${stato === 'rifiutato' ? C.dan : C.brd}`, borderRadius: 7, padding: '6px 9px', cursor: stato === 'rifiutato' ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: C.dan, fontWeight: 700, fontSize: 11 }}><Ic n="x" s={12} c={C.dan} />Non accetta</button>
-              <button onClick={() => setIncassoPrefill({ pazienteId: String(pl.pazienteId), lockedPianoId: pl.id, importo: String(tot || ''), nota: pl.titolo })} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '6px 9px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: C.pri, fontWeight: 700, fontSize: 11 }}><Ic n="eur" s={12} c={C.pri} />Incassato</button>
-              <button onClick={() => delPlan(pl.id)} style={{ background: C.danL, border: 'none', borderRadius: 7, padding: '6px 9px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: C.dan, fontWeight: 700, fontSize: 11 }}><Ic n="del" s={12} c={C.dan} />Cancella</button>
+            {/* Product Owner: "i tasti accetta ecc devono essere meno
+                confusionari" — prima erano 6 pulsanti identici in fila.
+                Ora: Accetta/Non accetta è UN controllo a due stati (si
+                capisce a colpo d'occhio che è una scelta sola, non due
+                azioni indipendenti), Incassato resta il pulsante
+                principale ben visibile, e le azioni di servizio
+                (PDF/Modifica/Cancella) diventano piccole icone raggruppate,
+                meno invadenti perché usate meno spesso. */}
+            <div style={{ marginTop: 9, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                <div style={{ display: 'flex', background: C.sur, borderRadius: 8, border: `1.5px solid ${C.brd}`, overflow: 'hidden', flexShrink: 0 }}>
+                  <button onClick={() => setStato(pl.id, 'accettato')} disabled={stato === 'accettato'} style={{ padding: '7px 11px', border: 'none', background: stato === 'accettato' ? C.suc : 'transparent', color: stato === 'accettato' ? '#fff' : C.txm, fontWeight: 700, fontSize: 11, cursor: stato === 'accettato' ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="ok" s={12} c={stato === 'accettato' ? '#fff' : C.txm} />Accetta</button>
+                  <button onClick={() => setStato(pl.id, 'rifiutato')} disabled={stato === 'rifiutato'} style={{ padding: '7px 11px', border: 'none', borderLeft: `1.5px solid ${C.brd}`, background: stato === 'rifiutato' ? C.dan : 'transparent', color: stato === 'rifiutato' ? '#fff' : C.txm, fontWeight: 700, fontSize: 11, cursor: stato === 'rifiutato' ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="x" s={12} c={stato === 'rifiutato' ? '#fff' : C.txm} />Non accetta</button>
+                </div>
+                <button onClick={() => setIncassoPrefill({ pazienteId: String(pl.pazienteId), lockedPianoId: pl.id, importo: String(tot || ''), nota: pl.titolo })} style={{ background: C.pri, border: 'none', borderRadius: 8, padding: '7px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: '#fff', fontWeight: 700, fontSize: 11 }}><Ic n="eur" s={12} c="#fff" />Incassato</button>
+              </div>
+              <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                <button onClick={() => setPdfPlan(pl)} title="Stampa PDF" aria-label="Stampa PDF" style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 7, padding: 7, cursor: 'pointer', display: 'flex' }}><Ic n="prt" s={13} c={C.txm} /></button>
+                <button onClick={() => openEditPlan(pl)} title="Modifica piano" aria-label="Modifica piano" style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 7, padding: 7, cursor: 'pointer', display: 'flex' }}><Ic n="edit" s={13} c={C.txm} /></button>
+                <button onClick={() => delPlan(pl.id)} title="Cancella piano" aria-label="Cancella piano" style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 7, padding: 7, cursor: 'pointer', display: 'flex' }}><Ic n="del" s={13} c={C.dan} /></button>
+              </div>
             </div>
 
             {confirmDelId === pl.id && (

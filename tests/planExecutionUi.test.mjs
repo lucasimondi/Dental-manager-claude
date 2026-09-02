@@ -59,6 +59,24 @@ test('REGRESSION GUARD: the shared completion action itself never promotes plan.
 // gets its own visually distinct card (colored left border by eseguita
 // state, numbered/checkmark badge, larger name), not a plain bordered row
 // blending into the rest of the plan.
+// Product Owner: "i tasti accetta ecc devono essere meno confusionari" —
+// Accetta/Non accetta reads as ONE two-state control (a single segmented
+// pill), Incassato stays a clearly distinct primary action, and the
+// housekeeping actions (PDF/Modifica/Cancella) become small, muted,
+// icon-only buttons instead of six identical-weight buttons in a row.
+test('Accetta/Non accetta is a single segmented control, not two separate buttons among six', () => {
+  assert.match(source, /background: C\.sur, borderRadius: 8, border: `1\.5px solid \$\{C\.brd\}`, overflow: 'hidden'/);
+  assert.match(source, /onClick=\{\(\) => setStato\(pl\.id, 'accettato'\)\}/);
+  assert.match(source, /onClick=\{\(\) => setStato\(pl\.id, 'rifiutato'\)\}/);
+});
+
+test('PDF/Modifica/Cancella are de-emphasized icon-only buttons, not full-weight text buttons', () => {
+  assert.match(source, /title="Stampa PDF" aria-label="Stampa PDF"/);
+  assert.match(source, /title="Modifica piano" aria-label="Modifica piano"/);
+  assert.match(source, /title="Cancella piano" aria-label="Cancella piano"/);
+  assert.doesNotMatch(source, />PDF<\/button>/);
+});
+
 test('each prestazione is its own visually distinct card, not a plain row blending into the plan', () => {
   assert.match(source, /borderLeft: `4px solid \$\{v\.eseguita \? C\.suc : C\.war\}`/);
   assert.match(source, /\{v\.eseguita \? '✓' : i \+ 1\}/);

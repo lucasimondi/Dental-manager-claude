@@ -2490,3 +2490,16 @@ Code: revert this commit on the branch. Database: stop Chat writes, remove `poli
 - TESTS: one new source-level regression test in `tests/planExecutionUi.test.mjs` asserting the colored border, badge, larger name and section heading are present in the component's source. `npm test` 661/661; `npm run build` clean.
 - SAFETY: pure presentational change -- no data model, no RPC, no new prop, no behavior change to any click handler (same `toggleEseguita`/`openEditVoce`/`removeItemFromPlan`/incasso wiring, only the surrounding markup/styles changed).
 - Exact next action: push the branch, report to Product Owner. Not merged -- awaiting explicit "mergiamo"/"mergia".
+
+# POL-FIN-007c follow-up -- meno pulsanti confusi in Piani, tab scheda paziente più leggibili su mobile
+
+- Task ID: POL-FIN-007c (stesso branch `feature/pol-fin-007c-prestazioni-visibili`, secondo giro nella stessa sessione). Agent: Claude.
+- Product Owner feedback (verbatim, Italian), after reviewing the preview deployment: "Ok i tasti accetta ecc devono essere meno confusionari, inoltre anche la scheda paziente hai tasti per moduli un po scritti piccoli (mobile)".
+- **`src/components/PianoDrillDown.jsx`**: the plan-level action row had six buttons at identical visual weight (PDF, Modifica, Accetta, Non accetta, Incassato, Cancella), wrapping awkwardly and reading as six independent choices when two of them (Accetta/Non accetta) are really one decision. Changed to:
+  - Accetta/Non accetta merged into a single two-segment pill control (same visual pattern the app already uses elsewhere for a two-state choice, e.g. the %/€ sconto-type toggle) -- immediately reads as "pick one", filled state shows which one is active.
+  - Incassato stays a full, solid-colored primary button -- it's the money action, kept clearly distinct.
+  - PDF/Modifica/Cancella (used far less often) became small icon-only buttons with `title`/`aria-label` for accessibility, muted background, grouped together and visually de-emphasized relative to the decision/money actions.
+- **`src/components/PremiumVisualSystem.css`**: `.patient-record-tabs button` inside the `max-width:719px` mobile media query was `font-size:9.5px` with `min-height:38px` -- genuinely close to illegible on a phone, and below the 44px touch-target guideline the rest of the app follows. Bumped to `font-size:11px`, `font-weight:800`, `min-height:44px`. This is the SchedaPaz module tab bar (Info/Anamnesi/Piani/Pagamenti/Foto/Agenda/Documenti/Privacy etc.), used across every patient record.
+- TESTS: 3 new -- one asserting the segmented Accetta/Non accetta control markup, one asserting the icon-only housekeeping buttons (and that the old plain-text "PDF</button>" is gone), one parsing the mobile CSS block itself to assert font-size >=11px and min-height >=44px (so a future regression back toward tiny text fails loudly, not just "looks smaller"). `npm test` 664/664; `npm run build` clean.
+- SAFETY: pure presentational changes -- no behavior, no data, no new props; same click handlers (`setStato`, `setPdfPlan`, `openEditPlan`, `delPlan`) wired to the same buttons, just restyled/regrouped.
+- Exact next action: push, report to Product Owner. Not merged -- awaiting explicit "mergiamo"/"mergia".
