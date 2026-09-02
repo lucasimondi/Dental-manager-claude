@@ -8,6 +8,7 @@ const ISSUE_KEY_BY_TYPE = Object.freeze({
   [SIGNAL_TYPE.HYGIENE_CONFIGURATION_MISSING]: 'preventionRecordsWithoutConfiguration',
   [SIGNAL_TYPE.MISSING_TOOTH_REFERENCE]: 'treatmentsWithoutToothReference',
   [SIGNAL_TYPE.PLAN_AWAITING_ACCEPTANCE_DECISION]: 'plansAwaitingAcceptanceDecision',
+  [SIGNAL_TYPE.PLAN_NEVER_STARTED]: 'plansNeverStarted',
 });
 
 export function calculateStudioDataHealth({
@@ -21,6 +22,7 @@ export function calculateStudioDataHealth({
     preventionRecordsWithoutConfiguration: 0,
     treatmentsWithoutToothReference: 0,
     plansAwaitingAcceptanceDecision: 0,
+    plansNeverStarted: 0,
   };
   for (const result of results) {
     for (const signal of result.signals) {

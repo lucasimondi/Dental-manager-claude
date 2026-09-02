@@ -1,0 +1,11 @@
+-- POL-FIN-007b: auto-generated data-health "Attività" (todos) need to name
+-- and link to a single patient so they can be clickable in the UI. Product
+-- Owner: "dobbiamo metterlo chiaro in attività ma chiaro e con la
+-- cliccabili" — each activity about a specific patient should open that
+-- patient's record with one click, which requires knowing WHICH patient.
+--
+-- Additive, nullable, reversible: no RLS change needed. todos_studio's
+-- single ALL-command policy already scopes every SELECT/INSERT/UPDATE/
+-- DELETE by studio_id alone (checked directly against production), so a
+-- new nullable column requires no new policy.
+ALTER TABLE public.todos ADD COLUMN IF NOT EXISTS paziente_id bigint REFERENCES public.patients(id) ON DELETE SET NULL;

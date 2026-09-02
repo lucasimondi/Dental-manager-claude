@@ -18,6 +18,8 @@ import { logHomeLayoutEvent } from '../lib/homeLayoutDiagnostics.js';
 import { buildActivityText } from '../lib/appointmentQuickHub.js';
 import { MOBILE_DOCK_BOTTOM, MOBILE_DOCK_HEIGHT, MOBILE_DOCK_PROTECTED_GAP } from '../lib/poliedron/poliedronMobileDock.js';
 import { HOME_ATTENTION_EMPTY_LABEL, buildHomeAttentionItems } from '../lib/homeAttention.js';
+import { buildDataHealthActivities, ACTIVITY_KIND } from '../lib/domain/dataHealthActivities.js';
+import { getOrCreatePrimaryConversation, appendConversationMessage, createChatRequestId } from '../lib/poliedron/conversationRepository.js';
 
 const PALETTE = [
   '#1A4E66','#2EC4B6','#2D9E61','#7C3AED','#E63946',
@@ -500,34 +502,72 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
     setTodoLoading(false);
   };
 
-  // Promemoria "completa dati": scansione deterministica (nessuna chiamata
-  // AI, quindi nessun costo) sugli appuntamenti confermati di ieri — se il
-  // paziente ha un piano di cura con prestazioni non ancora segnate come
-  // eseguite, genera UN promemoria per giorno (dedup per testo, come il bot
-  // Richiami: non ricompare se già presente, anche se l'utente l'ha già
-  // segnato fatto o cancellato).
+  // Controllo dati automatico (POL-FIN-007): scansione deterministica
+  // (nessuna chiamata AI, nessun costo) su pazienti/piani/appuntamenti —
+  // Product Owner: "deve essere più chiaro, mandarmi notifica in chat, e
+  // dirmi pazienti che non hanno dati aggiornati, inoltre poliedron deve
+  // agire anche quando c'è un piano lì, senza una attività eseguita su
+  // quel piano, così come pazienti che hanno prestazioni in piani che non
+  // vengono teoricamente eseguite". UNA Attività per paziente per problema
+  // (mai più bundle generico "N pazienti…"), sempre con paziente_id per il
+  // click-through, con dedup stabile (dataHealthActivities.js) che
+  // sopravvive anche se il promemoria è già stato segnato fatto o
+  // cancellato — stesso comportamento del bot Richiami. Le nuove Attività
+  // create in questo giro generano anche UNA notifica riassuntiva nella
+  // Chat Poliedron (stessa conversazione persistente del campanellino),
+  // così il controllo non vive solo, silenzioso, nel widget Attività.
   useEffect(() => {
-    if (!appointments?.length || !plans?.length) return;
-    const ieri = new Date(new Date(t + 'T12:00').getTime() - 86400000).toISOString().slice(0, 10);
-    const appuntamentiIeri = appointments.filter(a => a.data === ieri && a.stato === 'confermato');
-    if (appuntamentiIeri.length === 0) return;
-    const idVisti = new Set(appuntamentiIeri.map(a => a.pazienteId).filter(Boolean));
-    const pazientiDaCompletare = [...idVisti].filter(pid =>
-      plans.some(pl => pl.pazienteId === pid && (pl.voci || []).some(v => !v.eseguita))
-    );
-    if (pazientiDaCompletare.length === 0) return;
-
-    const marker = `Completa dati: appuntamenti del ${fmtD(ieri)}`;
+    if (!patients?.length || !plans?.length) return;
+    const entries = buildDataHealthActivities({ patients, plans, appointments, today: t, formatDate: fmtD });
+    if (!entries.length) return;
     (async () => {
-      const { data: esistenti } = await supabase.from('todos').select('id').ilike('testo', `%${marker}%`);
-      if (esistenti && esistenti.length > 0) return;
-      const n = pazientiDaCompletare.length;
-      const testo = `🗒️ ${marker} — ${n} pazient${n === 1 ? 'e ha' : 'i hanno'} prestazioni non ancora segnate come eseguite in Piani di Cura.`;
-      const nuova = { id: Date.now(), testo, fatto: false, data: t };
-      const { error } = await supabase.from('todos').insert([nuova]);
-      if (!error) setTodoList(prev => [nuova, ...prev]);
+      const { data: esistenti } = await supabase.from('todos').select('id, paziente_id, testo');
+      const nuoveEntry = entries.filter((entry) => !(esistenti || []).some((row) =>
+        String(row.paziente_id ?? '') === String(entry.pazienteId) && String(row.testo || '').includes(entry.dedupMarker)
+      ));
+      if (!nuoveEntry.length) return;
+
+      const inserite = [];
+      for (const entry of nuoveEntry) {
+        const nuova = { id: Date.now() + inserite.length, testo: entry.message, fatto: false, data: t, paziente_id: entry.pazienteId };
+        const { error } = await supabase.from('todos').insert([nuova]);
+        if (!error) inserite.push({ entry, nuova });
+      }
+      if (!inserite.length) return;
+      setTodoList((prev) => [...inserite.map((x) => x.nuova), ...prev]);
+
+      // Notifica in Chat Poliedron — best-effort: un problema qui non deve
+      // mai impedire la creazione delle Attività sopra, già andata a buon
+      // fine.
+      if (studioId && currentUserId) {
+        try {
+          const conversation = await getOrCreatePrimaryConversation({ client: supabase, studioId, userId: currentUserId });
+          const KIND_LABEL = {
+            [ACTIVITY_KIND.YESTERDAY_APPOINTMENT_NOT_MARKED]: 'hanno prestazioni non ancora segnate come eseguite dopo l’appuntamento di ieri',
+            [ACTIVITY_KIND.PLAN_AWAITING_ACCEPTANCE_DECISION]: 'hanno un piano con prestazioni già eseguite ma non ancora accettato né rifiutato',
+            [ACTIVITY_KIND.PLAN_NEVER_STARTED]: 'hanno un piano aperto da settimane senza nessuna prestazione eseguita',
+            [ACTIVITY_KIND.STALLED_TREATMENT]: 'hanno un piano che sembra fermo, senza un prossimo appuntamento in agenda',
+          };
+          const perTipo = new Map();
+          for (const { entry } of inserite) {
+            const lista = perTipo.get(entry.kind) || [];
+            if (!lista.includes(entry.patientName)) lista.push(entry.patientName);
+            perTipo.set(entry.kind, lista);
+          }
+          const righe = [...perTipo.entries()].map(([kind, nomi]) => `• ${nomi.join(', ')} ${KIND_LABEL[kind] || kind}`);
+          const content = `🩺 Controllo dati automatico — ${inserite.length} ${inserite.length === 1 ? 'nuova attività' : 'nuove attività'} in Piani di Cura:\n${righe.join('\n')}\n\nDettagli e conferma in Attività, sulla Home.`;
+          await appendConversationMessage({
+            client: supabase,
+            conversationId: conversation.id,
+            requestId: createChatRequestId(),
+            role: 'assistant',
+            content,
+            metadata: { source: 'data_health_scan', count: inserite.length },
+          });
+        } catch { /* la notifica in chat è un extra: le Attività sono già salvate */ }
+      }
     })();
-  }, [appointments, plans]);
+  }, [patients, plans, appointments, studioId, currentUserId]);
 
   const addTodo = async () => {
     if (!todoInput.trim()) return;
@@ -1516,14 +1556,24 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
               {todoLoading && <div style={{ fontSize: 12, color: C.txl, textAlign: 'center', padding: '8px 0' }}>Caricamento...</div>}
               {!todoLoading && todoAttivi.length === 0 && <div style={{ fontSize: 12, color: C.txl, textAlign: 'center', padding: '8px 0' }}>Nessuna attività in sospeso</div>}
               <div style={{ maxHeight: 220, overflowY: 'auto' }}>
-                {todoAttivi.map(todo => (
-                  <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 0', borderBottom: `1px solid ${C.brd}` }}>
-                    <button className="home-list-checkbox" onClick={() => toggleTodo(todo.id)}><span style={{ border: `2px solid ${C.brd}` }} /></button>
-                    <span style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{todo.testo}</span>
-                    <button className="home-list-icon-btn" onClick={() => { const msg = encodeURIComponent('Attività: ' + todo.testo); window.open('https://wa.me/?text=' + msg, '_blank'); }} title="Invia su WhatsApp"><Ic n="wa" s={13} c="#25D366" /></button>
-                    <button className="home-list-icon-btn" onClick={() => deleteTodo(todo.id)}><Ic n="x" s={11} c={C.dan} /></button>
-                  </div>
-                ))}
+                {todoAttivi.map(todo => {
+                  // POL-FIN-007: le Attività generate dal controllo dati
+                  // automatico portano paziente_id — cliccabili per aprire
+                  // subito quel paziente, invece di dover cercarlo a mano.
+                  const todoPaziente = todo.paziente_id != null ? patients.find((p) => String(p.id) === String(todo.paziente_id)) : null;
+                  return (
+                    <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 0', borderBottom: `1px solid ${C.brd}` }}>
+                      <button className="home-list-checkbox" onClick={() => toggleTodo(todo.id)}><span style={{ border: `2px solid ${C.brd}` }} /></button>
+                      {todoPaziente ? (
+                        <button type="button" onClick={() => onOpenPaz(todoPaziente, 'piani')} style={{ flex: 1, fontSize: 12, fontWeight: 600, textAlign: 'left', background: 'none', border: 'none', padding: 0, color: C.pri, cursor: 'pointer', textDecoration: 'underline', textDecorationColor: C.pri + '50' }} title="Apri scheda paziente">{todo.testo}</button>
+                      ) : (
+                        <span style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{todo.testo}</span>
+                      )}
+                      <button className="home-list-icon-btn" onClick={() => { const msg = encodeURIComponent('Attività: ' + todo.testo); window.open('https://wa.me/?text=' + msg, '_blank'); }} title="Invia su WhatsApp"><Ic n="wa" s={13} c="#25D366" /></button>
+                      <button className="home-list-icon-btn" onClick={() => deleteTodo(todo.id)}><Ic n="x" s={11} c={C.dan} /></button>
+                    </div>
+                  );
+                })}
               </div>
               {todoFatti.length > 0 && <div style={{ marginTop: 6, fontSize: 10, color: C.txl, textAlign: 'center' }}>{todoFatti.length} completate</div>}
             </Crd>

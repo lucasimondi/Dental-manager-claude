@@ -36,6 +36,10 @@ export const SIGNAL_TYPE = Object.freeze({
   // plan.stato + voci on every scan, exactly like MISSING_TOOTH_REFERENCE
   // above — clears the instant the operator presses Accetta/Non accetta.
   PLAN_AWAITING_ACCEPTANCE_DECISION: 'PLAN_AWAITING_ACCEPTANCE_DECISION',
+  // POL-FIN-007: a plan with prestazioni on file, none of them ever marked
+  // eseguita, aging well past "just created" — "un piano lì, senza una
+  // attività eseguita su quel piano".
+  PLAN_NEVER_STARTED: 'PLAN_NEVER_STARTED',
 });
 
 export const SEVERITY = Object.freeze({

@@ -109,6 +109,28 @@ export function scanTreatmentPlans({ plans, hasFuture, today, canReadClinical })
       }));
     }
 
+    // POL-FIN-007: "piani ... senza una attività eseguita su quel piano" —
+    // a plan with prestazioni on file but ZERO of them ever marked
+    // eseguita, aging past the point where "not started yet" is still a
+    // reasonable explanation. Skipped for rifiutato plans (a declined plan
+    // has no reason to ever show progress); the 14-day threshold matches
+    // the existing ACCEPTED_QUOTE_FOLLOW_UP convention below.
+    if (voices.length > 0 && executedCount === 0 && status !== 'rifiutato' && status !== 'rejected') {
+      const neverStartedAge = daysSince(plan.data, today);
+      if (neverStartedAge != null && neverStartedAge >= 14) {
+        signals.push(createSignal({
+          type: SIGNAL_TYPE.PLAN_NEVER_STARTED,
+          taxonomy: SIGNAL_TAXONOMY.DATA_QUALITY,
+          severity: SEVERITY.MEDIUM,
+          reason: `Il piano "${plan.titolo || 'senza titolo'}" è aperto da ${neverStartedAge} giorni ma nessuna delle sue ${voices.length} prestazioni risulta eseguita: è ancora in corso o è stato dimenticato?`,
+          source: 'treatment_plan',
+          sourceId,
+          confidence: 0.85,
+          context: { ageDays: neverStartedAge, totalCount: voices.length, planTitle: plan.titolo || null, currentStato: status || null },
+        }));
+      }
+    }
+
     if (ACCEPTED_PLAN_STATES.has(status)) {
       const remaining = voices.filter((voice) => voice.eseguita === false);
       if (remaining.length) {

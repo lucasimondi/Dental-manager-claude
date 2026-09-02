@@ -477,7 +477,7 @@ test('complete required workflow state has no false Data Quality penalty and opt
   });
   assert.equal(result.results.length, 0);
   assert.equal(result.studioDataHealth.score, 100);
-  assert.deepEqual(Object.values(result.studioDataHealth.issues), [0, 0, 0, 0, 0, 0, 0]);
+  assert.deepEqual(Object.values(result.studioDataHealth.issues), [0, 0, 0, 0, 0, 0, 0, 0]);
 });
 
 // POL-FIN-007: Product Owner — "mettiamo una lettura da parte di poliedron,
@@ -530,6 +530,45 @@ test('POL-FIN-007: a pending plan with nothing executed yet is not asked — the
     })],
   });
   assert.ok(!signalsOf(result).some((signal) => signal.type === SIGNAL_TYPE.PLAN_AWAITING_ACCEPTANCE_DECISION));
+});
+
+test('POL-FIN-007: a plan open for weeks with nothing executed at all is flagged as never started', () => {
+  const result = scan({
+    patients: [patient()],
+    plans: [acceptedPlan('p1', {
+      stato: 'attivo',
+      data: '2026-08-01',
+      voci: [{ prestazione: 'Terapia A', eseguita: false }, { prestazione: 'Terapia B', eseguita: false }],
+    })],
+  });
+  const signal = signalsOf(result).find((item) => item.type === SIGNAL_TYPE.PLAN_NEVER_STARTED);
+  assert.ok(signal);
+  assert.equal(signal.context.totalCount, 2);
+  assert.ok(signal.context.ageDays >= 14);
+});
+
+test('POL-FIN-007: a plan just created is never flagged as never-started (no false urgency on day one)', () => {
+  const result = scan({
+    patients: [patient()],
+    plans: [acceptedPlan('p1', {
+      stato: 'attivo',
+      data: TODAY,
+      voci: [{ prestazione: 'Terapia A', eseguita: false }],
+    })],
+  });
+  assert.ok(!signalsOf(result).some((signal) => signal.type === SIGNAL_TYPE.PLAN_NEVER_STARTED));
+});
+
+test('POL-FIN-007: a rifiutato plan is never flagged as never-started — it was declined, not forgotten', () => {
+  const result = scan({
+    patients: [patient()],
+    plans: [acceptedPlan('p1', {
+      stato: 'rifiutato',
+      data: '2026-08-01',
+      voci: [{ prestazione: 'Terapia A', eseguita: false }],
+    })],
+  });
+  assert.ok(!signalsOf(result).some((signal) => signal.type === SIGNAL_TYPE.PLAN_NEVER_STARTED));
 });
 
 test('POL-FIN-007: the studio-wide health count and the "piani da accettare" query both surface the same signal', () => {
