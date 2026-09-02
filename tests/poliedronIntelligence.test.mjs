@@ -463,7 +463,11 @@ test('complete required workflow state has no false Data Quality penalty and opt
   const result = scan({
     patients: [{ id: 'p1', studio_id: STUDIO_A, nome: 'Solo', cognome: 'Nome' }],
     plans: [acceptedPlan('p1', {
-      stato: 'concluso',
+      // POL-FIN-007: 'concluso' is no longer a decided state (it's now a
+      // purely computed display label, never stored) — a genuinely
+      // complete-with-no-issues fixture must be explicitly accettato, or
+      // PLAN_AWAITING_ACCEPTANCE_DECISION would (correctly) fire on it.
+      stato: 'accettato',
       // POL-AI-005B: a completed treatment now also requires its tooth on
       // file to count as fully complete (MISSING_TOOTH_REFERENCE) — `dente`
       // is set here so this fixture stays genuinely complete under that
@@ -473,7 +477,72 @@ test('complete required workflow state has no false Data Quality penalty and opt
   });
   assert.equal(result.results.length, 0);
   assert.equal(result.studioDataHealth.score, 100);
-  assert.deepEqual(Object.values(result.studioDataHealth.issues), [0, 0, 0, 0, 0, 0]);
+  assert.deepEqual(Object.values(result.studioDataHealth.issues), [0, 0, 0, 0, 0, 0, 0]);
+});
+
+// POL-FIN-007: Product Owner — "mettiamo una lettura da parte di poliedron,
+// che vede i piani fatti e chiede se accettati se non accettati in modo da
+// controllare che i dati siano sempre corretti".
+test('POL-FIN-007: a plan with executed work but no accettato/rifiutato decision asks the question', () => {
+  const result = scan({
+    patients: [patient()],
+    plans: [acceptedPlan('p1', {
+      stato: 'attivo',
+      voci: [{ prestazione: 'Terapia A', dente: '11', eseguita: true }],
+    })],
+  });
+  const signal = signalsOf(result).find((item) => item.type === SIGNAL_TYPE.PLAN_AWAITING_ACCEPTANCE_DECISION);
+  assert.ok(signal);
+  assert.equal(signal.taxonomy, SIGNAL_TAXONOMY.DATA_QUALITY);
+  assert.match(signal.reason, /accettato dal paziente/);
+  assert.equal(signal.context.executedCount, 1);
+  assert.equal(signal.context.totalCount, 1);
+});
+
+test('POL-FIN-007: a legacy concluso plan (pre-fix auto-promotion) still gets flagged, not silently trusted', () => {
+  const result = scan({
+    patients: [patient()],
+    plans: [acceptedPlan('p1', {
+      stato: 'concluso',
+      voci: [{ prestazione: 'Terapia A', dente: '11', eseguita: true }],
+    })],
+  });
+  assert.ok(signalsOf(result).some((signal) => signal.type === SIGNAL_TYPE.PLAN_AWAITING_ACCEPTANCE_DECISION));
+});
+
+test('POL-FIN-007: an explicitly rifiutato plan with executed work is not asked again — the decision already stands', () => {
+  const result = scan({
+    patients: [patient()],
+    plans: [acceptedPlan('p1', {
+      stato: 'rifiutato',
+      voci: [{ prestazione: 'Terapia A', dente: '11', eseguita: true }],
+    })],
+  });
+  assert.ok(!signalsOf(result).some((signal) => signal.type === SIGNAL_TYPE.PLAN_AWAITING_ACCEPTANCE_DECISION));
+});
+
+test('POL-FIN-007: a pending plan with nothing executed yet is not asked — there is no work to reconcile', () => {
+  const result = scan({
+    patients: [patient()],
+    plans: [acceptedPlan('p1', {
+      stato: 'attivo',
+      voci: [{ prestazione: 'Terapia A', eseguita: false }],
+    })],
+  });
+  assert.ok(!signalsOf(result).some((signal) => signal.type === SIGNAL_TYPE.PLAN_AWAITING_ACCEPTANCE_DECISION));
+});
+
+test('POL-FIN-007: the studio-wide health count and the "piani da accettare" query both surface the same signal', () => {
+  const result = scan({
+    patients: [patient()],
+    plans: [acceptedPlan('p1', {
+      stato: 'attivo',
+      voci: [{ prestazione: 'Terapia A', dente: '11', eseguita: true }],
+    })],
+  });
+  assert.equal(result.studioDataHealth.issues.plansAwaitingAcceptanceDecision, 1);
+  assert.ok(classifyIntelligenceQuery('quali piani devo accettare?'));
+  assert.ok(classifyIntelligenceQuery('ci sono piani non accettati?'));
 });
 
 test('Studio Data Health is non-clinical and deterministic for missing required workflow states', () => {

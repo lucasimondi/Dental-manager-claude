@@ -3,6 +3,12 @@ const INTELLIGENCE_QUERY_PATTERNS = Object.freeze([
   /\b(?:chi|quali pazient\w*|pazient\w*)\b.*\b(?:devo|dobbiamo|da)\s+(?:contattare|richiamare)\b/i,
   /\b(?:chi|quali)\b.*\b(?:rischiamo di perdere|persi|a rischio|dimenticat)\w*/i,
   /\b(?:cure|terapie|prestazioni|piani?)\b.*\b(?:finire|incomplet|non eseguit|sospes)\w*/i,
+  // POL-FIN-007: "quali piani devo accettare", "piani non accettati",
+  // "controlla l'accettazione dei piani" — surfaces PLAN_AWAITING_
+  // ACCEPTANCE_DECISION the same way the DATA_QUALITY bucket already does
+  // for any other intelligence query, just directly discoverable by name.
+  /\b(?:piani?|preventiv\w*)\b.*\baccett\w*/i,
+
   /\b(?:senza|non ha|non hanno)\b.*\b(?:prossim\w* appuntamento|appuntamento futuro)/i,
   /\b(?:schede?|dati|record|cartelle?)\b.*\b(?:incomplet|mancant|qualit[aà])/i,
   /\b(?:studio data health|data health)\b/i,

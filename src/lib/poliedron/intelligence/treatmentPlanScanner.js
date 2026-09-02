@@ -84,6 +84,31 @@ export function scanTreatmentPlans({ plans, hasFuture, today, canReadClinical })
       }));
     }
 
+    // POL-FIN-007: "Da incassare" (get_saldo_piano/get_saldi_aperti_studio)
+    // now counts only stato='accettato' plans. A plan with real executed
+    // work (voci.eseguita === true) that was never explicitly accettato NOR
+    // rifiutato — including a plan stuck in the legacy 'concluso' state
+    // from before the fix that stopped auto-overwriting stato on
+    // completion — silently drops its whole residual out of every
+    // receivable figure. Flag it as a data-quality question rather than
+    // silently trusting whatever stato happens to be on file, so the
+    // Product Owner's "controllare che i dati siano sempre corretti" is an
+    // ongoing check, not a one-time migration-day fix.
+    const executedCount = voices.filter((voice) => voice.eseguita === true).length;
+    const decided = status === 'accettato' || status === 'accepted' || status === 'rifiutato' || status === 'rejected';
+    if (executedCount > 0 && !decided) {
+      signals.push(createSignal({
+        type: SIGNAL_TYPE.PLAN_AWAITING_ACCEPTANCE_DECISION,
+        taxonomy: SIGNAL_TAXONOMY.DATA_QUALITY,
+        severity: SEVERITY.MEDIUM,
+        reason: `Il piano "${plan.titolo || 'senza titolo'}" ha ${executedCount} ${executedCount === 1 ? 'prestazione eseguita' : 'prestazioni eseguite'} su ${voices.length}, ma non risulta né accettato né rifiutato: è stato accettato dal paziente? Finché non lo confermi con i tasti Accetta/Non accetta, il suo importo non conta in "Da incassare".`,
+        source: 'treatment_plan',
+        sourceId,
+        confidence: 0.9,
+        context: { executedCount, totalCount: voices.length, planTitle: plan.titolo || null, currentStato: status || null },
+      }));
+    }
+
     if (ACCEPTED_PLAN_STATES.has(status)) {
       const remaining = voices.filter((voice) => voice.eseguita === false);
       if (remaining.length) {
