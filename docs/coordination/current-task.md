@@ -1,5 +1,18 @@
 # Current task
 
+- TASK: POL-FIN-007c — Prestazioni visivamente distinte in Piani/Piano paziente
+- TITLE: ogni prestazione dentro un piano espanso è ora una card a sé (bordo colorato per stato eseguito/da eseguire, badge numerato/spunta, nome più grande), non più una riga sottile che si confonde col resto.
+- OWNER: CLAUDE, su feedback diretto del Product Owner dopo il deploy di POL-FIN-007 ("si capisce poco a vista d'occhio quali siano le prestazioni, dobbiamo renderle ben individuabili sempre in piani generali e piano paziente").
+- BRANCH: `feature/pol-fin-007c-prestazioni-visibili`, da `master` (contiene già PR #86).
+- STATUS: implementato, verificato, non ancora mergiato — in attesa di "mergiamo"/"mergia" esplicito.
+- COSA È CAMBIATO: `src/components/PianoDrillDown.jsx` (l'unico componente — condiviso da Piani generale e Piano del paziente, quindi un solo fix li copre entrambi). Ogni riga prestazione: bordo sinistro 4px verde se eseguita/ambra se da eseguire, sfondo distinto dal resto della card, badge circolare con spunta o numero progressivo, nome della prestazione passato da 12px a 14px grassetto. Aggiunta intestazione "Prestazioni (N)" sopra l'elenco quando il piano è espanso, per orientamento immediato.
+- VALIDATION: `npm test` 661/661 (nuovo test source-level dedicato in `tests/planExecutionUi.test.mjs`); `npm run build` pulito.
+- EXACT NEXT ACTION: push del branch e report al Product Owner, in attesa di "mergiamo" esplicito.
+
+---
+
+# Previous current task
+
 - TASK: POL-FIN-007 — Piani unificato (elenco pazienti → piani → prestazioni) + gate accettazione
 - TITLE: "Piani" generico e "Piano del paziente" ora condividono la stessa grafica a drill-down (paziente cercabile → nomi piano con Cancella/Modifica/Accetta/Non accetta/Incassato → prestazioni con Eseguito/Modifica/Elimina/Incassato); "Da incassare" ora conta solo i piani esplicitamente accettati.
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggio verbatim: "in incassi ... in controllo ... sezione piani generica : deve essere un elenco pazienti (che abbiano un piano) con filtro ricerca paziente ... Fai come al solito").

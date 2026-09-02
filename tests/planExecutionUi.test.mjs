@@ -53,3 +53,15 @@ test('REGRESSION GUARD: the shared completion action itself never promotes plan.
   assert.doesNotMatch(service, /stato:\s*tutteEseguite/);
   assert.match(service, /export const isTreatmentPlanCompleted/);
 });
+
+// Product Owner follow-up: "si capisce poco a vista d'occhio quali siano
+// le prestazioni, dobbiamo renderle ben individuabili" — each prestazione
+// gets its own visually distinct card (colored left border by eseguita
+// state, numbered/checkmark badge, larger name), not a plain bordered row
+// blending into the rest of the plan.
+test('each prestazione is its own visually distinct card, not a plain row blending into the plan', () => {
+  assert.match(source, /borderLeft: `4px solid \$\{v\.eseguita \? C\.suc : C\.war\}`/);
+  assert.match(source, /\{v\.eseguita \? '✓' : i \+ 1\}/);
+  assert.match(source, /fontSize: 14, fontWeight: 700, color: v\.eseguita \? C\.txm : C\.txt/);
+  assert.match(source, /Prestazioni \(\{pl\.voci\.length\}\)/);
+});

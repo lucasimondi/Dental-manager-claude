@@ -235,11 +235,17 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
             })()}
 
             {expanded && (
-              <div style={{ marginTop: 10, borderTop: `1px solid ${C.brd}`, paddingTop: 8 }}>
+              <div style={{ marginTop: 10, borderTop: `1px solid ${C.brd}`, paddingTop: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Prestazioni ({pl.voci.length})</div>
                 {pl.voci.map((v, i) => {
                   const isEditing = editingVoce?.planId === pl.id && editingVoce?.index === i;
+                  // Ogni prestazione è la sua PROPRIA card, ben separata dalle
+                  // altre e dal resto del piano (Product Owner: "si capisce
+                  // poco a vista d'occhio quali siano le prestazioni") — bordo
+                  // colorato a sinistra (verde=eseguita, ambra=da eseguire),
+                  // sfondo distinto, numero progressivo.
                   return (
-                    <div key={i} style={{ padding: '8px 0', borderBottom: `1px solid ${C.brd}` }}>
+                    <div key={i} style={{ background: v.eseguita ? C.sucL : C.sur, border: `1px solid ${v.eseguita ? C.suc + '40' : C.brd}`, borderLeft: `4px solid ${v.eseguita ? C.suc : C.war}`, borderRadius: 9, padding: '10px 12px', marginBottom: 8 }}>
                       {isEditing ? (
                         <div className="plan-inline-editor">
                           <Fld label="Prestazione"><Inp value={editVoceForm.prestazione} onChange={(e) => setEditVoceForm((f) => ({ ...f, prestazione: e.target.value }))} /></Fld>
@@ -251,15 +257,16 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
                         </div>
                       ) : (
                         <>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                            <div style={{ width: 20, height: 20, borderRadius: '50%', background: v.eseguita ? C.suc : '#fff', border: `1.5px solid ${v.eseguita ? C.suc : C.brd}`, color: v.eseguita ? '#fff' : C.txm, fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{v.eseguita ? '✓' : i + 1}</div>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 12, fontWeight: 600, color: v.eseguita ? C.txm : C.txt, textDecoration: v.eseguita ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.prestazione}{v.dente ? ` (d.${v.dente})` : ''}</div>
-                              {v.dataEsec && <div style={{ fontSize: 10, color: C.suc }}>Eseguita il {fmtD(v.dataEsec)}</div>}
+                              <div style={{ fontSize: 14, fontWeight: 700, color: v.eseguita ? C.txm : C.txt, textDecoration: v.eseguita ? 'line-through' : 'none' }}>{v.prestazione}{v.dente ? ` (d.${v.dente})` : ''}</div>
+                              {v.dataEsec && <div style={{ fontSize: 10, color: C.suc, fontWeight: 700, marginTop: 1 }}>✓ Eseguita il {fmtD(v.dataEsec)}</div>}
                             </div>
-                            <div style={{ fontWeight: 700, color: C.pri, fontSize: 12, flexShrink: 0 }}>{fmt(v.prezzo)}</div>
+                            <div style={{ fontWeight: 800, color: C.pri, fontSize: 13, flexShrink: 0 }}>{fmt(v.prezzo)}</div>
                           </div>
                           {v.eseguita && (
-                            <div style={{ marginTop: 5, background: v.richiamoData ? C.purL : C.bg, borderRadius: 7, padding: '6px 8px' }}>
+                            <div style={{ marginTop: 6, background: v.richiamoData ? C.purL : '#fff', borderRadius: 7, padding: '6px 8px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, flexWrap: 'wrap' }}>
                                 <span style={{ fontSize: 10, fontWeight: 700, color: v.richiamoData ? C.pur : C.txl }}>🔔 {v.richiamoData ? `${v.richiamoTipo || 'Richiamo'}: ${fmtD(v.richiamoData)}` : 'Nessun richiamo impostato'}</span>
                                 <div style={{ display: 'flex', gap: 3 }}>
@@ -271,8 +278,8 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
                               </div>
                             </div>
                           )}
-                          <div style={{ display: 'flex', gap: 5, marginTop: 5, flexWrap: 'wrap' }}>
-                            <button onClick={() => toggleEseguita(pl, i)} style={{ flex: '1 1 90px', padding: '6px 0', borderRadius: 7, border: `1.5px solid ${v.eseguita ? C.suc : C.brd}`, background: v.eseguita ? C.sucL : C.bg, color: v.eseguita ? C.suc : C.txm, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>{v.eseguita ? '✓ Eseguita' : '○ Segna eseguita'}</button>
+                          <div style={{ display: 'flex', gap: 5, marginTop: 8, flexWrap: 'wrap' }}>
+                            <button onClick={() => toggleEseguita(pl, i)} style={{ flex: '1 1 90px', padding: '6px 0', borderRadius: 7, border: `1.5px solid ${v.eseguita ? C.suc : C.brd}`, background: v.eseguita ? '#fff' : C.bg, color: v.eseguita ? C.suc : C.txm, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>{v.eseguita ? '✓ Eseguita' : '○ Segna eseguita'}</button>
                             <button onClick={() => openEditVoce(pl, i)} style={{ flex: '0 0 auto', padding: '6px 10px', borderRadius: 7, border: 'none', background: '#EDE9FE', color: C.pur, fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="edit" s={12} c={C.pur} />Modifica</button>
                             <button onClick={() => removeItemFromPlan(pl, i)} style={{ flex: '0 0 auto', padding: '6px 10px', borderRadius: 7, border: 'none', background: C.danL, color: C.dan, fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="del" s={12} c={C.dan} />Elimina</button>
                             <button onClick={() => setIncassoPrefill({ pazienteId: String(pl.pazienteId), lockedPianoId: pl.id, importo: String(v.prezzo || ''), nota: v.prestazione })} style={{ flex: '0 0 auto', padding: '6px 10px', borderRadius: 7, border: 'none', background: C.priL, color: C.pri, fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="eur" s={12} c={C.pri} />Incassato</button>
