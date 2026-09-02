@@ -1,14 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, StatCard, SearchSel, SelettorePaziente, PageHeader, EmptyState } from './ui';
+import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, StatCard, SelettorePaziente, PageHeader, EmptyState } from './ui';
 import { C, uid, fmt, today, SCADENZA_PRESET, addMesi } from '../lib/utils';
+import { cercaPazienti } from '../lib/ricercaPazienti';
 import { useIsMobile } from '../lib/useIsMobile';
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { salvaPosizione, leggiPosizione } from '../lib/posizioneNavigazione';
+import { isTreatmentPlanCompleted } from '../lib/domain/treatmentPlanService.js';
 import Odontogramma from './Odontogramma.jsx';
 import PdfView from './PdfView.jsx';
-import WaAction, { apriWaDiretto } from './ui/WaAction.jsx';
-import { markTreatmentItemCompleted } from '../lib/domain/treatmentPlanService.js';
+import PianoDrillDown from './PianoDrillDown.jsx';
 
+/* POL-FIN-007: "sezione piani generica : deve essere un elenco pazienti
+   (che abbiano un piano) con filtro ricerca paziente, questi pazienti
+   devono essere quindi cliccabili e si apre l'elenco dei piani (solo nomi
+   dei piani) che sia poi cliccabile e si aprono le prestazioni" — the flat,
+   every-plan-expanded list this page used to render is now a two-step
+   drill-down: a searchable list of patients who have at least one plan
+   (this file), then PianoDrillDown.jsx (shared with SchedaPaz.jsx's own
+   "Piani" tab) for that patient's plan names → prestazioni. The KPI stat
+   cards and their "browse all matching plans" panel are unchanged — they
+   still summarize/list across every patient at once, a different, still
+   useful view than the new per-patient drill-down. */
 export default function Piani({ patients, plans, setPlans, payments = [], setPayments, pricelist, templates, si, features, initPatId, onClearInitPat, onOpenPaz, autoOpenNew, onAutoOpenNewHandled }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const isMobile = useIsMobile();
@@ -27,17 +39,12 @@ export default function Piani({ patients, plans, setPlans, payments = [], setPay
   const [form, setForm, clearFormDraft] = useFormPersistente('nuovo_piano_cura', { pazienteId: '', titolo: '', data: today(), voci: [], stato: 'attivo', sconto: 0, scontoTipo: 'pct', scadenzaPagamento: '', ortodonzia: null });
   const [nv, setNv] = useState({ prestazione: '', dente: '', prezzo: '' });
   const [selectedDenti, setSelectedDenti] = useState([]);
-  const [waModal, setWaModal] = useState(null);
-  const [waMsg, setWaMsg] = useState('');
   const [pdfPlan, setPdfPlan] = useState(null);
   const [toast, setToast] = useState('');
-  const [selPiani, setSelPiani] = useState([]);
   const [filtro, setFiltro] = useState(null); // null=tutti | 'attivo'|'accettato'|'rifiutato'|'concluso'|'inCorso'
   const [filtroModal, setFiltroModal] = useState(null);
-  const [editingPlanId, setEditingPlanId] = useState(null);
-  const [editItem, setEditItem] = useState({ prestazione: '', dente: '', prezzo: '' });
-  const [quickOffer, setQuickOffer] = useState(null);
-  const [quickPayment, setQuickPayment] = useState(null);
+  const [patSearch, setPatSearch] = useState('');
+  const [selectedPatientId, setSelectedPatientId] = useState(null);
 
   useEffect(() => {
     if (initPatId) {
@@ -68,12 +75,13 @@ export default function Piani({ patients, plans, setPlans, payments = [], setPay
     attivi: plans.filter((p) => (p.stato || 'attivo') === 'attivo').length,
     accettati: plans.filter((p) => p.stato === 'accettato').length,
     rifiutati: plans.filter((p) => p.stato === 'rifiutato').length,
-    conclusi: plans.filter((p) => p.stato === 'concluso').length,
+    conclusi: plans.filter((p) => isTreatmentPlanCompleted(p)).length,
     inCorso: plans.filter((p) => { const d = p.voci.filter((v) => v.eseguita).length; return d > 0 && d < p.voci.length; }).length,
   };
 
   const pianiFiltrati = (stato) => {
     if (stato === 'inCorso') return plans.filter(p => { const d = p.voci.filter(v => v.eseguita).length; return d > 0 && d < p.voci.length; });
+    if (stato === 'concluso') return plans.filter((p) => isTreatmentPlanCompleted(p));
     if (stato === 'totali') return plans;
     return plans.filter(p => (p.stato || 'attivo') === stato);
   };
@@ -108,105 +116,17 @@ export default function Piani({ patients, plans, setPlans, payments = [], setPay
     setToast('Piano salvato ✓');
   };
 
-  const setExecutionStatus = (plan, itemIndex, executed) => {
-    if (executed) {
-      setPlans((current) => current.map((candidate) => String(candidate.id) === String(plan.id) ? markTreatmentItemCompleted(candidate, itemIndex).plan : candidate));
-      setQuickOffer({ planId: plan.id, itemIndex });
-      return;
-    }
-    setPlans((current) => current.map((candidate) => {
-      if (String(candidate.id) !== String(plan.id)) return candidate;
-      const voci = candidate.voci.map((item, index) => index === itemIndex ? { ...item, eseguita: false, dataEsec: null, incassata: false } : item);
-      return { ...candidate, voci, stato: candidate.stato === 'concluso' ? 'attivo' : candidate.stato };
-    }));
-    setQuickOffer(null);
-  };
-  const openQuickPayment = (plan, itemIndex) => {
-    const item = plan.voci[itemIndex];
-    setQuickPayment({ planId: plan.id, itemIndex, pazienteId: plan.pazienteId, descrizione: item.prestazione, importo: String(item.prezzo || ''), data: today(), metodo: 'Contanti' });
-  };
-  const saveQuickPayment = () => {
-    const amount = Number(quickPayment?.importo);
-    if (!quickPayment || !Number.isFinite(amount) || amount <= 0) return;
-    setPayments?.((current) => [...current, { id: uid(), pazienteId: Number(quickPayment.pazienteId), pianoId: quickPayment.planId, data: quickPayment.data, importo: amount, metodo: quickPayment.metodo, nota: `Pagamento rapido — ${quickPayment.descrizione}`, stato: 'pagato' }]);
-    setQuickPayment(null); setQuickOffer(null); setToast('Prestazione e pagamento registrati ✓');
-  };
-  const toggleIncassata = (plId, i) => setPlans((p) => p.map((pl) => (pl.id === plId ? { ...pl, voci: pl.voci.map((v, j) => (j === i ? { ...v, incassata: !v.incassata } : v)) } : pl)));
-  const setStato = (plId, stato) => setPlans((p) => p.map((pl) => (pl.id === plId ? { ...pl, stato } : pl)));
-  const del = (id) => { if (confirm('Eliminare piano?')) setPlans((p) => p.filter((pl) => pl.id !== id)); };
-  const addItemToPlan = (planId) => {
-    if (!editItem.prestazione.trim()) return;
-    setPlans((current) => current.map((plan) => String(plan.id) === String(planId) ? {
-      ...plan, stato: plan.stato === 'concluso' ? 'attivo' : plan.stato,
-      voci: [...(plan.voci || []), { prestazione: editItem.prestazione.trim(), dente: editItem.dente.trim(), prezzo: Number(editItem.prezzo) || 0, eseguita: false, incassata: false }],
-    } : plan));
-    setEditItem({ prestazione: '', dente: '', prezzo: '' }); setEditingPlanId(null);
-  };
-  const removeItemFromPlan = (plan, itemIndex) => {
-    const totalePagato = (payments || [])
-      .filter((payment) => String(payment.pianoId) === String(plan.id) && String(payment.stato || '').toLowerCase() === 'pagato')
-      .reduce((sum, payment) => sum + Number(payment.importo || 0), 0);
-    const vociResidue = (plan.voci || []).filter((_, index) => index !== itemIndex);
-    const { finale: nuovoTotale } = calcTot(vociResidue, plan.sconto || 0, plan.scontoTipo || 'pct');
-    const eccedenza = Math.max(0, totalePagato - nuovoTotale);
-    const message = eccedenza > 0
-      ? `Il piano ha ${fmt(totalePagato)} di pagamenti collegati — rimuovendo questa prestazione il nuovo totale (${fmt(nuovoTotale)}) sarà inferiore a quanto già incassato: ${fmt(eccedenza)} diventerà un acconto libero sul piano. Il pagamento non verrà cancellato. Continuare?`
-      : 'Rimuovere questa prestazione dal piano?';
-    if (!confirm(message)) return;
-    setPlans((current) => current.map((candidate) => {
-      if (String(candidate.id) !== String(plan.id)) return candidate;
-      const voci = (candidate.voci || []).filter((_, index) => index !== itemIndex);
-      return { ...candidate, voci, stato: voci.length > 0 && voci.every((item) => item.eseguita) ? 'concluso' : 'attivo' };
-    }));
-  };
   const selPr = (nome) => { const item = pricelist.find((p) => p.nome === nome); setNv((v) => ({ ...v, prestazione: nome, prezzo: item ? item.prezzo : v.prezzo })); };
-
-  const openWA = (pl, mode) => {
-    const p = patients.find((x) => x.id === pl.pazienteId);
-    const { scontato, finale } = calcTot(pl.voci, pl.sconto || 0, pl.scontoTipo || 'pct');
-    const vociTxt = pl.voci.map((v, i) => `${i + 1}. ${v.prestazione}${v.dente ? ` (d.${v.dente})` : ''} — ${fmt(v.prezzo)}`).join('\n');
-    const scontoTxt = scontato > 0 ? `\n🏷️ Sconto: −${fmt(scontato)}` : '';
-    const nomeStudio = si?.nome || 'Studio';
-    const msg = mode === 'piano'
-      ? `Gentile ${p?.nome || ''} ${p?.cognome || ''},\npiano di cura *${pl.titolo}*:\n\n${vociTxt}${scontoTxt}\n\n💰 *Totale: ${fmt(finale)}*\n\nGrazie, ${nomeStudio}.`
-      : `Gentile ${p?.nome || ''} ${p?.cognome || ''},\nil suo preventivo *${pl.titolo}* è pronto.${scontoTxt}\n\n💰 *Totale: ${fmt(finale)}*\n\nContattarci per confermare.\nGrazie, ${nomeStudio}.`;
-    setWaMsg(msg);
-    setWaModal({ pl, paz: p });
-  };
-  const sendWA = () => {
-    if (!waModal?.paz?.telefono || !waMsg) return;
-    apriWaDiretto(waModal.paz.telefono, waMsg);
-    setWaModal(null);
-  };
-  const fillTpl = (tplId, pl, paz) => {
-    const t = templates.find((x) => x.id === Number(tplId));
-    if (!t) return;
-    const { finale } = calcTot(pl.voci, pl.sconto || 0, pl.scontoTipo || 'pct');
-    const voci = pl.voci.map((v, i) => `${i + 1}. ${v.prestazione}${v.dente ? ` (d.${v.dente})` : ''} — ${fmt(v.prezzo)}`).join('\n');
-    setWaMsg(t.testo.replace(/{nome}/g, `${paz?.nome || ''} ${paz?.cognome || ''}`).replace(/{totale}/g, fmt(finale)).replace(/{voci}/g, voci).replace(/{data}/g, '').replace(/{ora}/g, '').replace(/{tipo}/g, ''));
-  };
-
-  const toggleSel = (id) => setSelPiani((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
-  const generaPdfMulti = (paz) => {
-    const pianiSel = plans.filter((pl) => selPiani.includes(pl.id));
-    if (!pianiSel.length) return;
-    const vociTot = pianiSel.flatMap((pl) => pl.voci);
-    const totSconti = pianiSel.reduce((s, pl) => {
-      const sub = pl.voci.reduce((a, v) => a + Number(v.prezzo), 0);
-      const sc = Number(pl.sconto) || 0;
-      return s + (pl.scontoTipo === 'pct' ? sub * (sc / 100) : Math.min(sc, sub));
-    }, 0);
-    const virtuale = {
-      id: 'multi', titolo: pianiSel.length === 1 ? pianiSel[0].titolo : `Preventivo combinato (${pianiSel.length} piani)`,
-      data: today(), voci: vociTot, sconto: totSconti, scontoTipo: 'eur', stato: 'attivo', pazienteId: paz?.id,
-    };
-    setPdfPlan(virtuale);
-  };
 
   if (pdfPlan) {
     const p = patients.find((x) => x.id === pdfPlan.pazienteId);
     return <PdfView pl={pdfPlan} paz={p} si={si} features={features} onClose={() => setPdfPlan(null)} />;
   }
+
+  const patientsWithPlans = patients.filter((p) => plans.some((pl) => pl.pazienteId === p.id));
+  const patientsFiltered = patSearch.trim() ? cercaPazienti(patientsWithPlans, patSearch) : patientsWithPlans;
+  const selectedPatient = selectedPatientId != null ? patients.find((p) => p.id === selectedPatientId) : null;
+  const selectedPatientPlans = selectedPatientId != null ? plans.filter((pl) => pl.pazienteId === selectedPatientId) : [];
 
   return (
     <div>
@@ -277,84 +197,47 @@ export default function Piani({ patients, plans, setPlans, payments = [], setPay
         </Modal>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {(filtro ? pianiFiltrati(filtro) : plans).map((pl) => {
-          const p = patients.find((x) => x.id === pl.pazienteId);
-          const { sub, scontato, finale: tot } = calcTot(pl.voci, pl.sconto || 0, pl.scontoTipo || 'pct');
-          const done = pl.voci.filter((v) => v.eseguita).length;
-          const pct = pl.voci.length ? Math.round((done / pl.voci.length) * 100) : 0;
-          const statoC = { attivo: C.war, accettato: C.acc, concluso: C.suc, rifiutato: C.dan }[pl.stato || 'attivo'] || C.war;
-          const isSel = selPiani.includes(pl.id);
-          return (
-            <Crd key={pl.id} style={{ border: isSel ? `2px solid ${C.pri}` : undefined }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-                <div style={{ display: 'flex', gap: 8, minWidth: 0, flex: 1 }}>
-                  <button onClick={() => toggleSel(pl.id)} style={{ marginTop: 2, width: 20, height: 20, borderRadius: 6, border: `2px solid ${isSel ? C.pri : C.brd}`, background: isSel ? C.pri : C.sur, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-                    {isSel && <Ic n="ok" s={11} c="#fff" />}
-                  </button>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pl.titolo}</div>
-                    <div style={{ fontSize: 11, color: C.txm }}>
-                      {p && onOpenPaz ? <span onClick={() => onOpenPaz(p, 'piani')} style={{ color: C.pri, cursor: 'pointer', fontWeight: 700, textDecoration: 'underline', textDecorationColor: C.pri + '60' }}>{p.nome} {p.cognome}</span> : `${p?.nome || ''} ${p?.cognome || ''}`}
-                      {' · '}{pl.data}
-                    </div>
-                    <div style={{ marginTop: 6, display: 'flex', gap: 5, flexWrap: 'wrap' }}><Bdg ch={pl.stato || 'attivo'} co={statoC} /></div>
+      {!selectedPatient ? (
+        <>
+          <Fld label="Cerca paziente">
+            <Inp value={patSearch} onChange={(e) => setPatSearch(e.target.value)} placeholder="Nome o cognome…" />
+          </Fld>
+          {patientsFiltered.length === 0 && <EmptyState icon="plan" title="Nessun paziente con un piano di cura" />}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+            {patientsFiltered.map((p) => {
+              const patPlans = plans.filter((pl) => pl.pazienteId === p.id);
+              const totale = patPlans.reduce((s, pl) => s + calcTot(pl.voci, pl.sconto || 0, pl.scontoTipo || 'pct').finale, 0);
+              return (
+                <button key={p.id} type="button" onClick={() => setSelectedPatientId(p.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, textAlign: 'left', background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 10, padding: '11px 14px', cursor: 'pointer' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>{p.nome} {p.cognome}</div>
+                    <div style={{ fontSize: 11, color: C.txm }}>{patPlans.length} {patPlans.length === 1 ? 'piano' : 'piani'}</div>
                   </div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
-                  <button onClick={() => setPdfPlan(pl)} style={{ background: C.priL, border: 'none', borderRadius: 8, padding: '7px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: C.pri, fontWeight: 700, fontSize: 11 }}>
-                    <Ic n="prt" s={13} c={C.pri} />Stampa PDF
-                  </button>
-                  <button onClick={() => del(pl.id)} style={{ background: C.danL, border: 'none', borderRadius: 8, padding: '7px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Ic n="del" s={14} c={C.dan} /></button>
-                </div>
-              </div>
-              <div style={{ background: C.bg, borderRadius: 5, height: 5, overflow: 'hidden', marginBottom: 4 }}>
-                <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? C.suc : C.pri, borderRadius: 5 }} />
-              </div>
-              <div style={{ fontSize: 10, color: C.txm, marginBottom: 10 }}>{done}/{pl.voci.length} eseguite · {pct}%</div>
-              {pl.voci.map((v, i) => (
-                <div key={i} style={{ padding: '7px 0', borderBottom: `1px solid ${C.brd}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: v.eseguita ? C.txm : C.txt, textDecoration: v.eseguita ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.prestazione}</div>
-                      {v.dente && <div style={{ fontSize: 10, color: C.txl }}>Dente: {v.dente}</div>}
-                      {v.dataEsec && <div style={{ fontSize: 10, color: C.suc }}>Eseguita il {v.dataEsec}</div>}
-                    </div>
-                    <div style={{ fontWeight: 700, color: C.pri, flexShrink: 0, fontSize: 12 }}>{fmt(v.prezzo)}</div>
-                    <button type="button" aria-label={`Rimuovi ${v.prestazione}`} onClick={() => removeItemFromPlan(pl, i)} style={{ width: 44, height: 44, display: 'grid', placeItems: 'center', background: C.danL, border: 'none', borderRadius: 8, cursor: 'pointer', flexShrink: 0 }}><Ic n="del" s={14} c={C.dan} /></button>
-                  </div>
-                  <div style={{ display: 'flex', gap: 5, marginTop: 5 }}>
-                    <Sel aria-label={`Stato ${v.prestazione}`} value={v.eseguita ? 'eseguita' : 'da_eseguire'} onChange={(event) => setExecutionStatus(pl, i, event.target.value === 'eseguita')} style={{ flex: 1, minHeight: 44, padding: '6px 9px', fontSize: 11, borderColor: v.eseguita ? C.suc : C.brd, color: v.eseguita ? C.suc : C.txm }}><option value="da_eseguire">Da eseguire</option><option value="eseguita">Eseguita</option></Sel>
-                    {v.eseguita && (
-                      <button onClick={() => toggleIncassata(pl.id, i)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '6px 0', borderRadius: 7, border: `1.5px solid ${v.incassata ? C.suc : C.dan}`, background: v.incassata ? C.sucL : C.danL, color: v.incassata ? C.suc : C.dan, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
-                        <Ic n="eur" s={12} c={v.incassata ? C.suc : C.dan} />{v.incassata ? 'Incassata' : 'Da incassare'}
-                      </button>
-                    )}
-                  </div>
-                  {quickOffer?.planId === pl.id && quickOffer?.itemIndex === i && v.eseguita && <label className="plan-quick-payment-offer"><input type="checkbox" onChange={(event) => { if (event.target.checked) openQuickPayment(pl, i); }} /> Registra pagamento adesso</label>}
-                </div>
-              ))}
-              {editingPlanId === pl.id ? (
-                <div className="plan-inline-editor">
-                  <Fld label="Prestazione"><Inp value={editItem.prestazione} onChange={(event) => setEditItem((item) => ({ ...item, prestazione: event.target.value }))} placeholder="Descrizione prestazione" /></Fld>
-                  <div className="plan-inline-editor__grid"><Fld label="Dente (opzionale)"><Inp value={editItem.dente} onChange={(event) => setEditItem((item) => ({ ...item, dente: event.target.value }))} /></Fld><Fld label="Prezzo €"><Inp type="number" min="0" step="0.01" inputMode="decimal" value={editItem.prezzo} onChange={(event) => setEditItem((item) => ({ ...item, prezzo: event.target.value }))} /></Fld></div>
-                  <Fld label="Dal listino"><Sel value="" onChange={(event) => { const item = pricelist.find((entry) => entry.nome === event.target.value); if (item) setEditItem({ prestazione: item.nome, dente: '', prezzo: String(item.prezzo) }); }}><option value="">Seleziona…</option>{pricelist.map((item) => <option key={item.id} value={item.nome}>{item.nome} — {fmt(item.prezzo)}</option>)}</Sel></Fld>
-                  <div className="plan-inline-editor__actions"><Btn ch="Annulla" v="sec" sz="sm" onClick={() => setEditingPlanId(null)} /><Btn ch="Aggiungi" sz="sm" onClick={() => addItemToPlan(pl.id)} /></div>
-                </div>
-              ) : <button type="button" className="plan-add-item" onClick={() => { setEditingPlanId(pl.id); setEditItem({ prestazione: '', dente: '', prezzo: '' }); }}>+ Aggiungi prestazione</button>}
-              <div style={{ textAlign: 'right', fontWeight: 800, color: C.pri, marginTop: 7, fontSize: 13 }}>Totale: {fmt(tot)}</div>
-              <div style={{ marginTop: 9, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                <WaAction features={features} onClick={() => openWA(pl, 'piano')} label="Piano WA" style={{ flex: 'none', background: '#25D366', color: '#fff', borderRadius: 8, padding: '6px 11px', fontSize: 11 }} />
-                <WaAction features={features} onClick={() => openWA(pl, 'preventivo')} label="Prev. WA" style={{ flex: 'none', background: '#128C7E', color: '#fff', borderRadius: 8, padding: '6px 11px', fontSize: 11 }} />
-                <Sel value={pl.stato || 'attivo'} onChange={(e) => setStato(pl.id, e.target.value)} style={{ padding: '6px 8px', fontSize: 11, borderRadius: 8, width: 'auto', flex: 1 }}>
-                  <option value="attivo">Attivo</option><option value="accettato">Accettato</option><option value="rifiutato">Rifiutato</option><option value="concluso">Concluso</option>
-                </Sel>
-              </div>
-            </Crd>
-          );
-        })}
-        {plans.length === 0 && <EmptyState icon="plan" title="Nessun piano di cura" />}
-      </div>
+                  <div style={{ fontWeight: 800, color: C.pri, fontSize: 13, flexShrink: 0 }}>{fmt(totale)}</div>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      ) : (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+            <button type="button" onClick={() => setSelectedPatientId(null)} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', color: C.pri, fontWeight: 700, fontSize: 12, padding: 0 }}>← Tutti i pazienti</button>
+            {onOpenPaz && <button type="button" onClick={() => onOpenPaz(selectedPatient, 'piani')} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '5px 10px', cursor: 'pointer', color: C.pri, fontWeight: 700, fontSize: 11 }}>Apri scheda paziente →</button>}
+          </div>
+          <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 10 }}>{selectedPatient.nome} {selectedPatient.cognome}</div>
+          <PianoDrillDown
+            plans={selectedPatientPlans}
+            patients={patients}
+            setPlans={setPlans}
+            payments={payments}
+            setPayments={setPayments}
+            pricelist={pricelist}
+            si={si}
+            features={features}
+          />
+        </div>
+      )}
 
       {modal && (
         <Modal title="Nuovo piano di cura" icon="plan" onClose={() => setModal(false)} wide>
@@ -511,30 +394,6 @@ export default function Piani({ patients, plans, setPlans, payments = [], setPay
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn ch="Annulla" v="sec" onClick={() => setModal(false)} full />
             <Btn ch="Salva piano" onClick={save} dis={!form.pazienteId || !form.titolo || !form.voci.length} full />
-          </div>
-        </Modal>
-      )}
-      {quickPayment && <Modal title="Registra pagamento" icon="eur" onClose={() => setQuickPayment(null)}>
-        <div className="plan-inline-editor__grid"><Fld label="Importo €"><Inp type="number" min="0" step="0.01" inputMode="decimal" value={quickPayment.importo} onChange={(event) => setQuickPayment((value) => ({ ...value, importo: event.target.value }))} /></Fld><Fld label="Data"><Inp type="date" value={quickPayment.data} onChange={(event) => setQuickPayment((value) => ({ ...value, data: event.target.value }))} /></Fld></div>
-        <Fld label="Metodo"><Sel value={quickPayment.metodo} onChange={(event) => setQuickPayment((value) => ({ ...value, metodo: event.target.value }))}>{['Contanti', 'Carta', 'Bonifico', 'POS', 'Assegno'].map((method) => <option key={method}>{method}</option>)}</Sel></Fld>
-        <div className="plan-inline-editor__actions"><Btn ch="Annulla" v="sec" onClick={() => setQuickPayment(null)} /><Btn ch="Registra pagamento" onClick={saveQuickPayment} /></div>
-      </Modal>}
-
-      {waModal && (
-        <Modal title="Invia su WhatsApp" icon="wa" iconColor="#25D366" onClose={() => setWaModal(null)} wide>
-          <div style={{ background: C.bg, borderRadius: 9, padding: 10, marginBottom: 11 }}>
-            <div style={{ fontSize: 13, fontWeight: 700 }}>{waModal.paz?.nome} {waModal.paz?.cognome}</div>
-          </div>
-          <Fld label="Template (opzionale)">
-            <Sel onChange={(e) => fillTpl(e.target.value, waModal.pl, waModal.paz)}>
-              <option value="">Messaggio libero</option>
-              {templates.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
-            </Sel>
-          </Fld>
-          <Fld label="Messaggio"><Txt value={waMsg} onChange={(e) => setWaMsg(e.target.value)} rows={9} /></Fld>
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <Btn ch="Annulla" v="sec" onClick={() => setWaModal(null)} full />
-            <Btn ch="Apri WhatsApp" v="wa" ic="wa" onClick={sendWA} dis={!waMsg} full />
           </div>
         </Modal>
       )}

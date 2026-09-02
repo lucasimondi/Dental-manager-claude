@@ -70,19 +70,30 @@ export const buildNewPlan = ({ pazienteId, titolo, voci }) => ({
 /** Idempotent "mark completed" — unlike Piani.jsx's toggleEseguita (which
  *  always flips the boolean, on real user request), this only ever moves
  *  an item from not-completed to completed, exactly reproducing that
- *  function's "turning on" branch (dataEsec stamped, incassata preserved,
- *  plan auto-promoted to 'concluso' once every item is done). Calling it
- *  again on an already-completed item is a genuine no-op, not a second
- *  toggle — this is what makes repeating the same Poliedron command safe. */
+ *  function's "turning on" branch (dataEsec stamped, incassata preserved).
+ *  Calling it again on an already-completed item is a genuine no-op, not a
+ *  second toggle — this is what makes repeating the same Poliedron command
+ *  safe.
+ *
+ *  POL-FIN-007: no longer auto-promotes plan.stato to 'concluso' here.
+ *  stato is now the accettato/rifiutato/attivo decision alone (it gates
+ *  whether the plan counts toward "Da incassare" — get_saldo_piano/
+ *  get_saldi_aperti_studio), and "concluso"/"terminato" is a purely
+ *  computed display label (every voce eseguita) so completing the last
+ *  prestazione of an already-accettato plan can never silently discard
+ *  that acceptance. */
 export const markTreatmentItemCompleted = (plan, voceIndex) => {
   const voce = plan.voci?.[voceIndex];
   if (!voce) return { plan, changed: false };
   if (voce.eseguita === true) return { plan, changed: false };
   const nuoveVoci = plan.voci.map((v, j) => (j === voceIndex ? { ...v, eseguita: true, dataEsec: today() } : v));
-  const tutteEseguite = nuoveVoci.every((v) => v.eseguita);
-  const nextPlan = { ...plan, voci: nuoveVoci, stato: tutteEseguite ? 'concluso' : plan.stato };
-  return { plan: nextPlan, changed: true };
+  return { plan: { ...plan, voci: nuoveVoci }, changed: true };
 };
+
+/** Every voce marked eseguita — the "terminato"/"concluso" display state,
+ *  always derived, never stored back into plan.stato (see
+ *  markTreatmentItemCompleted above). */
+export const isTreatmentPlanCompleted = (plan) => Array.isArray(plan?.voci) && plan.voci.length > 0 && plan.voci.every((v) => v.eseguita);
 
 /** Later tooth completion (§ "Era il 46"): finds the exact previously-
  *  incomplete item (same patient/procedure, tooth still unknown) so it can

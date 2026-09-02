@@ -28,6 +28,18 @@ export const SIGNAL_TYPE = Object.freeze({
   // clears automatically the moment the tooth is filled in — no separate
   // signal storage/clearing logic needed.
   MISSING_TOOTH_REFERENCE: 'MISSING_TOOTH_REFERENCE',
+  // POL-FIN-007: real work was already produced (at least one voce
+  // eseguita) but the plan itself was never explicitly accettato/rifiutato
+  // — under the Product-Owner-confirmed strict gate, get_saldo_piano/
+  // get_saldi_aperti_studio treat it as if it doesn't exist yet ("Da
+  // incassare" stays 0 for it until someone decides). Derived live from
+  // plan.stato + voci on every scan, exactly like MISSING_TOOTH_REFERENCE
+  // above — clears the instant the operator presses Accetta/Non accetta.
+  PLAN_AWAITING_ACCEPTANCE_DECISION: 'PLAN_AWAITING_ACCEPTANCE_DECISION',
+  // POL-FIN-007: a plan with prestazioni on file, none of them ever marked
+  // eseguita, aging well past "just created" — "un piano lì, senza una
+  // attività eseguita su quel piano".
+  PLAN_NEVER_STARTED: 'PLAN_NEVER_STARTED',
 });
 
 export const SEVERITY = Object.freeze({
