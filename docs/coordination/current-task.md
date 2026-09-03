@@ -1,5 +1,20 @@
 # Current task
 
+- TASK: POL-GOV-001-DOC — Consolidazione documentazione governance multi-agent (audit + single source of truth + contratto Polyedron)
+- OWNER: PERPLEXITY, su istruzione diretta del Product Owner.
+- BRANCH: `docs/POL-GOV-001-governance-consolidation`, da `master` aggiornato (commit `a16d43a`).
+- BASE: `origin/master` (129 commit oltre la precedente PR #52 `docs/POL-GOV-001-multi-agent-governance`, rimasta in DRAFT e in conflitto con master).
+- STATUS: PR documentale aperta, `WAITING_PRODUCT_OWNER`. Nessun merge, nessun deploy.
+- SCOPE: solo documentazione e sistema di coordinamento agenti. Nessun codice applicativo, schema DB, migration, deploy o merge toccati.
+- COSA È CAMBIATO: `AGENTS.md` (sezioni multi-agent, pre-flight, concorrenza, workflow, veridicità, Polyedron — preservando Golden rollback checkpoints e safety rules esistenti); nuovo `docs/architecture/POLIEDRON.md` (contratto agente unico, allineato a master @ `a16d43a`); `CLAUDE.md` e nuovo `.github/copilot-instructions.md` resi pointer sottili a `AGENTS.md`; `docs/README.md` (documentation map); `README.md`; `docs/coordination/decisions.md` (D06–D09); `docs/quality/test-strategy.md`; `docs/architecture/chat-polyedron.md` (stato allineato a master).
+- AUDIT: la precedente PR #52 (POL-GOV-001) copriva già gli stessi principi ma era in DRAFT dal 24 agosto, 129 commit indietro e in conflitto con `AGENTS.md`/`POLIEDRA_MASTER_CONTEXT.md` di master. Questa branch riparte da master attuale e riallinea tutto. Raccomandazione: il Product Owner scelga una delle due PR e chiuda l'altra per evitare duplicazione.
+- VALIDATION: diff review + link/reference check. Nessun `npm test`/`npm run build` necessario (modifica solo documentale). `git diff --check` pulito.
+- EXACT NEXT ACTION: Product Owner review; se accetta, merge di questa PR e chiusura della PR #52 (o viceversa). Nessun merge senza autorizzazione esplicita.
+
+---
+
+# Previous current task
+
 - TASK: POL-FIN-007c — Prestazioni visivamente distinte in Piani/Piano paziente
 - TITLE: ogni prestazione dentro un piano espanso è ora una card a sé (bordo colorato per stato eseguito/da eseguire, badge numerato/spunta, nome più grande), non più una riga sottile che si confonde col resto.
 - OWNER: CLAUDE, su feedback diretto del Product Owner dopo il deploy di POL-FIN-007 ("si capisce poco a vista d'occhio quali siano le prestazioni, dobbiamo renderle ben individuabili sempre in piani generali e piano paziente").

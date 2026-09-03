@@ -1,7 +1,11 @@
 # Chat Polyedron
 
-Status: implemented on `lucasimondi-chat-polyedron`; local migration only,
-not applied remotely.
+Status: merged to `master`. Migration
+`supabase/migrations/20260824030000_chat_polyedron.sql` is versioned on `master` (`VERIFIED`
+at commit `a16d43a`). Remote application of the migration to the production Supabase project
+is `NOT VERIFIABLE` from this repository alone. For the architectural invariants (single
+agent, access points, Chat as interface, activities, notifications) see `POLIEDRON.md`; this
+file is the technical record of the Chat implementation.
 
 ## One Polyedron
 
