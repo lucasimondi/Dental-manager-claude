@@ -24,6 +24,17 @@ export default function IncassoModal({ prefill, patients = [], plans = [], setPa
   const assignment = state.pazienteId ? planAssignmentForPatient(plans, state.pazienteId) : { mode: 'none' };
   const needsPlanChoice = !state.lockedPianoId && assignment.mode === 'choose';
 
+  // POL-UI-020: Product Owner — in Pagamenti del paziente, "Registra
+  // pagamento" deve offrire l'opzione di associarlo a prestazione E piano.
+  // Il piano è già gestito sopra (bloccato, auto-assegnato, o scelto qui);
+  // una volta noto, se ha prestazioni si può opzionalmente indicare
+  // quale — riusa lo stesso pattern già in PianoDrillDown (nota = nome
+  // della prestazione), non una seconda associazione strutturata.
+  const resolvedPianoId = state.lockedPianoId != null ? state.lockedPianoId
+    : assignment.mode === 'auto' ? assignment.pianoId
+    : assignment.mode === 'choose' && state.pianoId ? Number(state.pianoId) : null;
+  const resolvedPlan = resolvedPianoId != null ? plans.find((p) => String(p.id) === String(resolvedPianoId)) : null;
+
   const save = () => {
     const amount = Number(state.importo);
     if (!state.pazienteId || !Number.isFinite(amount) || amount <= 0) {
@@ -52,6 +63,19 @@ export default function IncassoModal({ prefill, patients = [], plans = [], setPa
           <Sel value={state.pianoId} onChange={(event) => update({ pianoId: event.target.value })}>
             <option value="">Seleziona piano…</option>
             {assignment.options.map((plan) => <option key={plan.id} value={plan.id}>{plan.titolo}</option>)}
+          </Sel>
+        </Fld>
+      )}
+      {resolvedPlan?.voci?.length > 0 && (
+        <Fld label="Prestazione (opzionale)">
+          <Sel value={state.prestazioneIndex ?? ''} onChange={(event) => {
+            const idx = event.target.value;
+            if (idx === '') { update({ prestazioneIndex: idx }); return; }
+            const voce = resolvedPlan.voci[Number(idx)];
+            update({ prestazioneIndex: idx, nota: voce.prestazione, importo: state.importo || String(voce.prezzo || '') });
+          }}>
+            <option value="">Nessuna specifica — incasso generico sul piano</option>
+            {resolvedPlan.voci.map((v, i) => <option key={i} value={i}>{v.prestazione}{v.dente ? ` (d.${v.dente})` : ''} — {fmt(v.prezzo)}</option>)}
           </Sel>
         </Fld>
       )}

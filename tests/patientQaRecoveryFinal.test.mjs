@@ -181,6 +181,35 @@ test('M. Tutte le sezioni della Scheda Paziente sono raggiungibili senza scroll 
   for (const id of ['info', 'clinical', 'piani', 'paga', 'foto', 'app', 'doc']) assert.match(schedaPaz, new RegExp(`id: '${id}'`));
 });
 
+// POL-UI-020: Product Owner — tasti chiamata/WhatsApp in header, più una
+// croce a 3 stati (bianca=anamnesi mancante, verde=nessun allarme, rossa
+// lampeggiante=allarme) che apre un popup di dettaglio; se in allarme il
+// popup compare già da solo all'apertura della scheda.
+const css2 = fs.readFileSync('src/components/PremiumVisualSystem.css', 'utf8');
+
+test('O. Header scheda paziente ha i tasti chiamata e WhatsApp', () => {
+  assert.match(schedaPaz, /href=\{`tel:\+39\$\{paz\.telefono\.replace\(\/\\D\/g, ''\)\}`\}/);
+  assert.match(schedaPaz, /<WaAction tel=\{paz\.telefono\} features=\{features\} variant="icon"/);
+});
+
+test('O2. La croce anamnesi ha 3 stati (bianca/verde/rossa lampeggiante) derivati dai campi anamnesi reali del paziente', () => {
+  assert.match(schedaPaz, /const anamnesiState = !paz\.anamnesiCompilataIl \? 'mancante' : \(paz\.anamnesiAllarme \? 'allarme' : 'ok'\);/);
+  assert.match(schedaPaz, /className=\{anamnesiState === 'allarme' \? 'anamnesi-cross anamnesi-cross--allarme' : 'anamnesi-cross'\}/);
+  assert.match(css2, /\.anamnesi-cross--allarme\{animation:anamnesi-cross-blink/);
+  assert.match(css2, /@media\(prefers-reduced-motion:reduce\)\{\.anamnesi-cross--allarme\{animation:none\}\}/);
+});
+
+test('O3. In allarme il popup anamnesi si apre da solo all\'apertura della scheda, senza un effetto post-mount vietato in questo file', () => {
+  assert.doesNotMatch(schedaPaz, /useEffect/);
+  assert.match(schedaPaz, /const \[anamnesiPopup, setAnamnesiPopup\] = useState\(\(\) => anamnesiState === 'allarme'\);/);
+});
+
+test('O4. Il popup mostra il contenuto giusto per ciascuno dei 3 stati anamnesi', () => {
+  assert.match(schedaPaz, /Compila anamnesi/);
+  assert.match(schedaPaz, /nessuna condizione a rischio riferita/);
+  assert.match(schedaPaz, /\(paz\.anamnesiAllarmeDettagli \|\| \[\]\)\.map/);
+});
+
 // N — nessuna query eager per le sezioni pesanti, invariato da prima di questo QA.
 test('N2. Foto/Fisio/Documenti restano lazy e montati solo per la propria tab', () => {
   assert.match(schedaPaz, /lazy\(\(\) => import\('\.\/PatientPhotos\.jsx'\)\)/);

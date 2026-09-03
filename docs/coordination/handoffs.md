@@ -2542,3 +2542,47 @@ Code: revert this commit on the branch. Database: stop Chat writes, remove `poli
 - TEST: aggiornati tutti i test che assumevano la vecchia griglia (inclusi due round precedenti nello stesso file) — sia in `tests/incassiPoliedronAndControlUi.test.mjs` sia il test storico "M" in `tests/patientQaRecoveryFinal.test.mjs` (un vincolo Product Owner preesistente: "ogni destinazione dev'essere raggiungibile senza scroll orizzontale" — ancora vero con sidebar/dropdown, aggiornato solo il modo in cui viene verificato). Nessun test cancellato senza sostituzione — ognuno ora verifica la stessa garanzia sulla nuova architettura.
 - VALIDATION: `npm test` 668/668; `npm run build` pulito; `git diff --check` pulito.
 - EXACT NEXT ACTION: push del branch aggiornato `feature/pol-fin-007e-incasso-dock-tab`; PR e merge solo su istruzione esplicita del Product Owner. Non ancora verificato in un vero browser (nessuna sessione autenticata disponibile in questa sandbox) — il Product Owner dovrebbe controllare la preview prima del merge, in particolare che la sidebar desktop e il dropdown mobile si comportino bene su schermi reali.
+
+---
+
+## POL-UI-020 — Header paziente, croce anamnesi, 6 azioni veloci + Spesa, Registra pagamento con prestazione
+
+- REQUEST (verbatim, Product Owner): "dobbiamo inserire i tasti chiamata e WhatsApp in header, in più in header deve comparire una croce bianca quando non c'è anamnesi (poliedron dovrà segnalare le anamnesi mancanti), diventa vedere quando anamnesi non rileva pericoli (allergie, malattie cardiache, oncologiche ecc, tutti le controindicazioni) che diventa rossa lampeggiante nel caso di allarmi anamnesi e compare popup rosso con allarmi (cliccando sulla croce si hanno le info allarme ananmensi) se la croce è verde si clicca e dice nessun allarme anamnesi, se la croce è bianca deve esserci il popup manca anamnesi. I tasti azioni veloci in pazienti devono essere 6 e messi bene impaginati, metti magari spesa (che deve aggiornare sezione spese, e deve essere associata a paziente, quindi l'associazione è facoltativa, il popup nuova spesa è lo stesso di spese va aggiornato se si vuole opzionalmente associarla ad un paziente). In pagamenti di paziente deve esserci tasto registra pagamento (che è sempre lo stesso) metti opzione di associarla a prestazione e piano."
+
+### Bug scoperto durante l'indagine, corretto perché bloccante
+`PatientClinicalHistory.jsx` salvava l'anamnesi su `patient.noteGenerale` — verificato via query diretta su produzione che `patients` non ha MAI avuto una colonna del genere (solo `note`, un campo manuale distinto, popolato da tutt'altro flusso). Ogni "Salva anamnesi" aggiornava solo lo stato React locale; il giro di sincronizzazione di `App.jsx` (`makeSyncSetter` → `DB.update`) inviava comunque un campo inesistente. La richiesta di oggi richiedeva un dato reale da cui derivare bianca/verde/rossa, quindi impossibile costruire la feature sopra un campo fantasma — corretto alla radice invece di aggirarlo.
+
+### Migration (`20260903120000_pol_ui_020_anamnesi_alert_spese_paziente.sql`)
+- `patients.anamnesi_compilata_il` (timestamptz), `anamnesi_nota` (text, sostituisce `noteGenerale`), `anamnesi_allarme` (boolean), `anamnesi_allarme_dettagli` (jsonb).
+- `spese.paziente_id` (bigint, nullable FK a patients).
+- Verificata in `BEGIN...ROLLBACK` prima, poi applicata per davvero. `get_advisors(security)`: 52 WARN + 2 INFO, identico baseline, zero nuovi.
+- `FIELD_MAP.patients` in `src/lib/supabase.js` esteso con i 4 nuovi campi camelCase↔snake_case (`spese` non passa da lì — Spese.jsx fa query dirette con nomi già snake_case).
+
+### 1) Header — chiamata/WhatsApp
+Icone compatte in `SchedaPaz.jsx`, riusano `WaAction`/`waAbilitato` (unico punto app per URL/attivazione WhatsApp, mai una seconda implementazione) e un link `tel:` diretto. `features` ora è tra le prop destrutturate di `SchedaPaz` (prima arrivava solo via `{...props}` spread da `PatientWorkspaceBoundary`, mai letta esplicitamente).
+
+### 2) Header — croce anamnesi a 3 stati + popup
+`anamnesiState` = bianca (mancante) | verde (ok) | rossa lampeggiante (allarme), icona `cross` già presente nel set `Ic` condiviso. Click apre sempre un popup di dettaglio; se in allarme il popup si apre già da solo all'apertura della scheda.
+
+**Vincolo rispettato**: `tests/patientRecordRecovery.test.mjs` vieta `useEffect`/`supabase.`/`Promise.all` in `SchedaPaz.jsx` (guardia dall'incidente POL-UI-PATIENT-FREEZE-PROD). Il popup automatico usa invece un inizializzatore lazy di `useState(() => anamnesiState === 'allarme')` — funziona perché `App.jsx` monta questo componente con `key={paziente.id}`, quindi cambiare paziente smonta/rimonta da zero, niente effetto post-mount necessario.
+
+**Segnale Poliedron** (`src/lib/domain/dataHealthActivities.js`): nuovo `ACTIVITY_KIND.ANAMNESI_MANCANTE`, stesso meccanismo "Dati da completare" già esistente per gli altri controlli. Scoperto SOLO ai pazienti con almeno un piano (stesso criterio degli altri controlli scanner-based) — deliberato: al primo rollout del nuovo campo TUTTI i pazienti storici risulterebbero senza anamnesi, e senza questo filtro Attività si sarebbe riempita di centinaia di voci invece di segnalare quello attuale.
+
+### 3) Azioni veloci paziente — da 4 a 6, griglia
+`PatientQuickActions.jsx`: da pillole flex-wrap a griglia 3×2 di tile icona+etichetta (stesso linguaggio visivo della sidebar sezioni di POL-FIN-007f). Le 6: Note, Richiamo, Appuntamento, Pagamento (invariati), **Spesa** (nuova) e **Nuovo piano** (nuova, riusa `onNuovoPiano` già esistente, stesso schema di "Nuovo appuntamento" — chiude la scheda e apre la creazione piano).
+
+Nuovo `src/components/SpesaModal.jsx`: il form "nuova/modifica spesa" prima viveva SOLO dentro `Spese.jsx` — estratto qui invariato (stessa logica insert/update su `spese`) e riusato da ENTRAMBI i chiamanti: `Spese.jsx` (patient di partenza vuoto, selettore paziente completo) e la nuova azione veloce "Spesa" (patient precompilato al paziente corrente ma rimovibile — riusa `SelettorePaziente`, che ha già la "X" per togliere l'associazione, nessuna UI nuova inventata). `App.jsx` ora passa `patients` a `Spese` (prima non arrivava).
+
+### 4) Pagamenti paziente — tasto "Registra pagamento" con prestazione
+`SchedaPaz.jsx` non aveva NESSUN tasto per aprire `IncassoModal` nel tab Pagamenti — gap pre-esistente, scoperto durante l'indagine. Aggiunto, stesso `IncassoModal` di sempre (nessuna terza implementazione del form incasso).
+
+`IncassoModal.jsx` esteso con un selettore "Prestazione (opzionale)": compare una volta che il piano è noto (bloccato da `lockedPianoId`, auto-assegnato se il paziente ha un solo piano, o scelto dal selettore piano già esistente) e quel piano ha prestazioni. Selezionarne una precompila `nota` (nome prestazione) e `importo` (se vuoto) — stesso identico schema già usato dai tasti "Incassato" per-prestazione in `PianoDrillDown.jsx`, nessuna nuova colonna DB (i pagamenti restano collegati solo a `piano_id`, mai a un indice di riga).
+
+### Validation
+`npm test` 683/683 (nuovi/aggiornati in `tests/patientQaRecoveryFinal.test.mjs`, `tests/patientPreMergeQa.test.mjs`, `tests/dataHealthActivities.test.mjs`, `tests/spesaModal.test.mjs` nuovo, `tests/incassiSection.test.mjs`); `npm run build` pulito; `git diff --check` pulito.
+
+### Non verificabile in questa sessione
+Nessuna sessione browser autenticata disponibile in questa sandbox. In particolare il Product Owner dovrebbe controllare dal vivo: la croce anamnesi sui pazienti reali (sarà bianca sulla maggioranza, dato che il campo è nuovo e nessun paziente storico ha ancora `anamnesi_compilata_il`), il popup automatico su un paziente con un allarme vero, e il layout della griglia 6 azioni su schermi piccoli reali.
+
+### EXACT NEXT ACTION
+Push del branch aggiornato `feature/pol-fin-007e-incasso-dock-tab`; PR e merge solo su istruzione esplicita del Product Owner.

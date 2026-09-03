@@ -2343,6 +2343,13 @@ button.incassi-kpi.is-active { border-color: var(--brand-primary); box-shadow: 0
 .patient-record-nav button{display:flex;align-items:center;gap:9px;min-height:44px;padding:9px 11px;border:0;border-radius:9px;background:transparent;color:var(--text-secondary);font:inherit;font-size:13px;font-weight:750;text-align:left;cursor:pointer;white-space:nowrap}
 .patient-record-nav button.is-active{background:color-mix(in srgb,var(--brand-primary) 11%,transparent);color:var(--brand-primary)}
 .patient-record-nav-mobile{display:none}
+/* POL-UI-020: croce anamnesi in header — bianca/verde/rossa (allarme,
+   lampeggiante). prefers-reduced-motion: la croce resta rossa fissa,
+   comunque distinguibile senza l'animazione. */
+.anamnesi-cross{width:34px;height:34px;border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.anamnesi-cross--allarme{animation:anamnesi-cross-blink 1s ease-in-out infinite}
+@keyframes anamnesi-cross-blink{0%,100%{opacity:1}50%{opacity:.4}}
+@media(prefers-reduced-motion:reduce){.anamnesi-cross--allarme{animation:none}}
 /* POL-FIN-007e: Product Owner — in "Piani" del paziente, la pagina non
    scorreva abbastanza in basso da liberare l'ultimo pulsante ("+ Aggiungi
    prestazione") da sotto il dock mobile fisso (.poliedron-mobile-dock,

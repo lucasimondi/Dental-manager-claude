@@ -547,6 +547,7 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
             [ACTIVITY_KIND.PLAN_AWAITING_ACCEPTANCE_DECISION]: 'hanno un piano con prestazioni già eseguite ma non ancora accettato né rifiutato',
             [ACTIVITY_KIND.PLAN_NEVER_STARTED]: 'hanno un piano aperto da settimane senza nessuna prestazione eseguita',
             [ACTIVITY_KIND.STALLED_TREATMENT]: 'hanno un piano che sembra fermo, senza un prossimo appuntamento in agenda',
+            [ACTIVITY_KIND.ANAMNESI_MANCANTE]: 'non hanno ancora nessuna anamnesi compilata',
           };
           const perTipo = new Map();
           for (const { entry } of inserite) {
@@ -555,7 +556,7 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
             perTipo.set(entry.kind, lista);
           }
           const righe = [...perTipo.entries()].map(([kind, nomi]) => `• ${nomi.join(', ')} ${KIND_LABEL[kind] || kind}`);
-          const content = `🩺 Controllo dati automatico — ${inserite.length} ${inserite.length === 1 ? 'nuova attività' : 'nuove attività'} in Piani di Cura:\n${righe.join('\n')}\n\nDettagli e conferma in Attività, sulla Home.`;
+          const content = `🩺 Controllo dati automatico — ${inserite.length} ${inserite.length === 1 ? 'nuova attività' : 'nuove attività'}:\n${righe.join('\n')}\n\nDettagli e conferma in Attività, sulla Home.`;
           await appendConversationMessage({
             client: supabase,
             conversationId: conversation.id,

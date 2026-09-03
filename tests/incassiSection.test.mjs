@@ -84,6 +84,27 @@ test('the three Incassi buttons are distinct: allega foto/pdf, registra incasso,
 // PianoDrillDown's Incassato buttons) is informational only, kept out of
 // the editable payment fields, and surfaces a clear warning once the plan
 // is already settled or in credit.
+// POL-UI-020: Product Owner — "in Pagamenti di paziente deve esserci
+// tasto registra pagamento (che è sempre lo stesso), metti opzione di
+// associarla a prestazione e piano". Il piano era già gestito
+// (bloccato/auto-assegnato/scelto); aggiunta solo la prestazione,
+// opzionale, una volta che il piano è noto — riusa lo stesso schema
+// nota=nome-prestazione già in PianoDrillDown, non una nuova colonna.
+test('IncassoModal offers an optional prestazione picker once the plan is known, prefilling nota/importo without forcing a choice', () => {
+  assert.match(incassoModalComponent, /const resolvedPianoId = state\.lockedPianoId != null \? state\.lockedPianoId/);
+  assert.match(incassoModalComponent, /resolvedPlan\?\.voci\?\.length > 0/);
+  assert.match(incassoModalComponent, /<option value="">Nessuna specifica — incasso generico sul piano<\/option>/);
+  assert.match(incassoModalComponent, /update\(\{ prestazioneIndex: idx, nota: voce\.prestazione, importo: state\.importo \|\| String\(voce\.prezzo \|\| ''\) \}\);/);
+});
+
+const schedaPazComponent = read('src/components/SchedaPaz.jsx');
+
+test('the patient record Pagamenti tab has a Registra pagamento button opening the same IncassoModal everywhere', () => {
+  assert.match(schedaPazComponent, /import IncassoModal from '\.\/IncassoModal\.jsx';/);
+  assert.match(schedaPazComponent, /Btn ch="\+ Registra pagamento" v="pri" sz="sm" onClick=\{\(\) => setIncassoOpen\(true\)\}/);
+  assert.match(schedaPazComponent, /<IncassoModal\s*\n\s*prefill=\{\{ pazienteId: String\(paz\.id\) \}\}/);
+});
+
 test('IncassoModal shows an already-paid banner and warns before letting a settled plan go further into credit', () => {
   assert.match(incassoModalComponent, /const \{ pianoContext, \.\.\.formPrefill \} = prefill \|\| \{\};/);
   assert.match(incassoModalComponent, /const residuo = pianoContext\.atteso - pianoContext\.giaPagato;/);

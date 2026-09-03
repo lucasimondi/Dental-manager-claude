@@ -1,8 +1,10 @@
 import React, { Suspense, lazy, useState } from 'react';
-import { Btn, Crd, Bdg, Ic, PhStr } from './ui';
+import { Btn, Crd, Bdg, Ic, PhStr, Modal } from './ui';
 import { C, fmt, fmtD, today } from '../lib/utils';
 import { aggregateSaldi } from '../lib/domain/incassiMath.js';
+import WaAction, { waAbilitato } from './ui/WaAction.jsx';
 import PianoDrillDown from './PianoDrillDown.jsx';
+import IncassoModal from './IncassoModal.jsx';
 
 const DocMedico = lazy(() => import('./DocMedico.jsx'));
 const DocFiscale = lazy(() => import('./DocFiscale.jsx'));
@@ -15,9 +17,25 @@ const PatientQuickActions = lazy(() => import('./PatientQuickActions.jsx'));
 const PatientWorkspaceDocuments = lazy(() => import('./PatientWorkspaceDocuments.jsx'));
 const PatientWorkspaceConsentFlow = lazy(() => import('./PatientWorkspaceDocuments.jsx').then((module) => ({ default: module.PatientWorkspaceConsentFlow })));
 
-export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {}, implants = [], setImplants, setPatients, setPayments, richiami = [], setRichiami, onNuovoAppuntamento, onPatientChange, studioMembership, currentUserId, isStudioAdmin, saldiPiani = {}, pricelist = [] }) {
+export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {}, implants = [], setImplants, setPatients, setPayments, richiami = [], setRichiami, onNuovoAppuntamento, onPatientChange, studioMembership, currentUserId, isStudioAdmin, saldiPiani = {}, pricelist = [], features }) {
   const [tab, setTab] = useState(initTab || 'info');
   const [documentFlow, setDocumentFlow] = useState(() => initialDocumentRequest?.type === 'ricetta' ? 'ricetta' : null);
+  // POL-UI-020: Product Owner — la croce in header segnala lo stato
+  // dell'anamnesi: bianca se mai compilata, verde se compilata senza
+  // condizioni a rischio riferite, rossa lampeggiante se ci sono
+  // allarmi (allergie/controindicazioni). "Compare popup rosso con
+  // allarmi" — mostrato automaticamente all'apertura della scheda se in
+  // allarme, non solo al click sulla croce.
+  const anamnesiState = !paz.anamnesiCompilataIl ? 'mancante' : (paz.anamnesiAllarme ? 'allarme' : 'ok');
+  // Questo file è vincolato da una guardia di regressione (dall'incidente
+  // POL-UI-PATIENT-FREEZE-PROD, vedi tests/patientRecordRecovery.test.mjs)
+  // che vieta certi side-effect di mount qui dentro. App.jsx monta questo
+  // componente con `key={paziente.id}`, quindi cambiare paziente smonta e
+  // rimonta da zero — un inizializzatore lazy di useState, valutato una
+  // sola volta al mount, basta per "apri il popup se in allarme quando la
+  // scheda si apre", senza bisogno di un effetto post-mount.
+  const [anamnesiPopup, setAnamnesiPopup] = useState(() => anamnesiState === 'allarme');
+  const [incassoOpen, setIncassoOpen] = useState(false);
   const [documentsReloadToken, setDocumentsReloadToken] = useState(0);
 
   // Recovery boundary: legacy rows can contain null/non-array JSON fields.
@@ -66,13 +84,40 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
-      <div style={{ background: C.priD, padding: '12px 14px', paddingTop: 'max(12px,env(safe-area-inset-top))', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-        <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 8, padding: 8, cursor: 'pointer', display: 'flex' }}><Ic n="back" s={18} c="#fff" /></button>
+      <div style={{ background: C.priD, padding: '12px 14px', paddingTop: 'max(12px,env(safe-area-inset-top))', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 8, padding: 8, cursor: 'pointer', display: 'flex', flexShrink: 0 }}><Ic n="back" s={18} c="#fff" /></button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ color: '#fff', fontWeight: 800, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{paz.nome} {paz.cognome}</div>
           {paz.cf && <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, fontFamily: 'monospace' }}>{paz.cf}</div>}
         </div>
-        <button onClick={() => onEdit(paz)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, padding: '6px 11px', cursor: 'pointer', color: '#fff', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="edit" s={13} c="#fff" />Modifica</button>
+        {/* POL-UI-020: Product Owner — "inserire i tasti chiamata e
+            WhatsApp in header". Icone compatte, riusano l'unico punto della
+            app che decide URL/attivazione WhatsApp (WaAction.jsx) — mai una
+            seconda implementazione del link wa.me. */}
+        {paz.telefono && (
+          <a href={`tel:+39${paz.telefono.replace(/\D/g, '')}`} title="Chiama" aria-label="Chiama" style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, textDecoration: 'none' }}>
+            <Ic n="ph" s={15} c="#fff" />
+          </a>
+        )}
+        {paz.telefono && waAbilitato(features) && (
+          <WaAction tel={paz.telefono} features={features} variant="icon" style={{ width: 34, height: 34, borderRadius: '50%' }} />
+        )}
+        {/* POL-UI-020: croce anamnesi — bianca=mancante, verde=nessun
+            allarme, rossa lampeggiante=allarme (allergie/controindicazioni).
+            Click apre sempre il popup di dettaglio; se in allarme il popup
+            si apre già da solo all'apertura della scheda (vedi
+            anamnesiPopup, inizializzato sopra). */}
+        <button
+          type="button"
+          onClick={() => setAnamnesiPopup(true)}
+          title={anamnesiState === 'mancante' ? 'Anamnesi mancante' : anamnesiState === 'allarme' ? 'Allarme anamnesi' : 'Nessun allarme anamnesi'}
+          aria-label={anamnesiState === 'mancante' ? 'Anamnesi mancante' : anamnesiState === 'allarme' ? 'Allarme anamnesi' : 'Nessun allarme anamnesi'}
+          className={anamnesiState === 'allarme' ? 'anamnesi-cross anamnesi-cross--allarme' : 'anamnesi-cross'}
+          style={{ background: anamnesiState === 'mancante' ? '#fff' : anamnesiState === 'allarme' ? C.dan : C.suc }}
+        >
+          <Ic n="cross" s={16} c={anamnesiState === 'mancante' ? C.priD : '#fff'} />
+        </button>
+        <button onClick={() => onEdit(paz)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, padding: '6px 11px', cursor: 'pointer', color: '#fff', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}><Ic n="edit" s={13} c="#fff" />Modifica</button>
       </div>
 
       <div style={{ background: C.priD, display: 'flex', borderTop: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
@@ -116,7 +161,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
                 </div>
               ))}
             </Crd>
-            <Suspense fallback={<div role="status" style={{ padding: 12, color: C.txm }}>Caricamento azioni…</div>}><PatientQuickActions patient={paz} plans={patPlans} setPatients={setPatients} setPayments={setPayments} richiami={richiami} setRichiami={setRichiami} onNewAppointment={onNuovoAppuntamento} onPatientChange={onPatientChange} /></Suspense>
+            <Suspense fallback={<div role="status" style={{ padding: 12, color: C.txm }}>Caricamento azioni…</div>}><PatientQuickActions patient={paz} plans={patPlans} setPatients={setPatients} setPayments={setPayments} richiami={richiami} setRichiami={setRichiami} onNewAppointment={onNuovoAppuntamento} onNewPlan={onNuovoPiano} onPatientChange={onPatientChange} studioId={si?.studio_id} /></Suspense>
             {paz.note && (
               <Crd style={{ background: '#FFFBEB', border: '1px solid #FCD34D' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#92400E', textTransform: 'uppercase', marginBottom: 5 }}>⚠️ Note cliniche</div>
@@ -148,6 +193,14 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
 
         {tab === 'paga' && (
           <div>
+            {/* POL-UI-020: Product Owner — "in Pagamenti di paziente deve
+                esserci tasto registra pagamento (che è sempre lo stesso),
+                metti opzione di associarla a prestazione e piano" — stesso
+                IncassoModal usato ovunque nell'app, con il nuovo
+                selettore prestazione opzionale (vedi IncassoModal.jsx). */}
+            <div style={{ marginBottom: 10 }}>
+              <Btn ch="+ Registra pagamento" v="pri" sz="sm" onClick={() => setIncassoOpen(true)} />
+            </div>
             <Crd style={{ marginBottom: 12, background: C.priD, border: 'none' }}>
               <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Situazione finanziaria</div>
               <div style={{ marginBottom: 10 }}>
@@ -277,6 +330,43 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
         {tab === 'privacy' && isStudioAdmin && <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento strumenti privacy…</div>}><PatientPrivacy patient={paz} setPatients={setPatients} client={documentClient} onPatientDeleted={onClose} /></Suspense>}
       </div>
       </div>
+
+      {incassoOpen && (
+        <IncassoModal
+          prefill={{ pazienteId: String(paz.id) }}
+          patients={[paz]}
+          plans={patPlans}
+          setPayments={setPayments}
+          onClose={() => setIncassoOpen(false)}
+        />
+      )}
+
+      {anamnesiPopup && (
+        <Modal title={anamnesiState === 'mancante' ? 'Anamnesi mancante' : anamnesiState === 'allarme' ? '⚠️ Allarme anamnesi' : 'Nessun allarme anamnesi'} onClose={() => setAnamnesiPopup(false)}>
+          {anamnesiState === 'mancante' && (
+            <div>
+              <div style={{ fontSize: 13, color: C.txt, lineHeight: 1.6, marginBottom: 14 }}>Non risulta ancora nessuna anamnesi compilata per questo paziente.</div>
+              <Btn ch="Compila anamnesi" onClick={() => { setAnamnesiPopup(false); setTab('clinical'); }} full />
+            </div>
+          )}
+          {anamnesiState === 'ok' && (
+            <div style={{ fontSize: 13, color: C.txt, lineHeight: 1.6 }}>
+              Anamnesi compilata il {fmtD(paz.anamnesiCompilataIl.slice(0, 10))} — nessuna condizione a rischio riferita.
+            </div>
+          )}
+          {anamnesiState === 'allarme' && (
+            <div>
+              <div style={{ fontSize: 13, color: C.dan, fontWeight: 700, marginBottom: 10 }}>Il paziente ha riferito le seguenti condizioni/allergie:</div>
+              {(paz.anamnesiAllarmeDettagli || []).map((d, i) => (
+                <div key={i} style={{ background: C.danL, borderRadius: 9, padding: '9px 12px', marginBottom: 7 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#7F1D1D' }}>{d.titolo}</div>
+                  {d.nota && <div style={{ fontSize: 12, color: '#991B1B', marginTop: 2 }}>{d.nota}</div>}
+                </div>
+              ))}
+            </div>
+          )}
+        </Modal>
+      )}
 
       {(documentFlow === 'ricetta' || documentFlow === 'medico') && (
         <Suspense fallback={<div role="status" style={{ position: 'fixed', inset: 0, zIndex: 9999, background: C.bg, padding: 24 }}>Caricamento editor ricetta…</div>}>

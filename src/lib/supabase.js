@@ -26,6 +26,10 @@ const UI_ONLY_FIELDS = new Set(['_presetScadenza', '_editId']);
 const FIELD_MAP = {
   patients: {
     dataNascita: 'data_nascita',
+    anamnesiCompilataIl: 'anamnesi_compilata_il',
+    anamnesiNota: 'anamnesi_nota',
+    anamnesiAllarme: 'anamnesi_allarme',
+    anamnesiAllarmeDettagli: 'anamnesi_allarme_dettagli',
   },
   plans: {
     pazienteId: 'paziente_id',
