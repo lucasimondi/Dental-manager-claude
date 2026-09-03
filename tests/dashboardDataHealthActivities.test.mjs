@@ -45,3 +45,45 @@ test('the chat notification is best-effort and never blocks or undoes the alread
   assert.ok(setTodoListIndex >= 0 && chatBlockIndex > setTodoListIndex, 'Attività rows must be saved to state before the chat notification is attempted');
   assert.match(source, /\} catch \{ \/\* la notifica in chat è un extra: le Attività sono già salvate \*\/ \}/);
 });
+
+// POL-FIN-007d: Product Owner — "li io ci metto anche attività da svolgere
+// oltre i dati mancanti ... deve essere più chiaro e facile il fatto che
+// siano attività e dati mancanti da completare". Manual todos and
+// auto-generated data-health findings must now be explicitly tagged
+// (todos.origine, migration 20260903100000) and rendered as two clearly
+// separate, distinctly labeled sections — not inferred from paziente_id,
+// which was only ever a reliable signal by accident.
+
+test('every insert is explicitly tagged with its own origine — never left to the DB default alone', () => {
+  assert.match(source, /origine: 'controllo_dati'/);
+  assert.match(source, /origine: 'manuale'/);
+});
+
+test('the widget splits todos by origine, not by paziente_id', () => {
+  assert.match(source, /const isDatiMancanti = \(x\) => x\.origine === 'controllo_dati';/);
+  assert.match(source, /const todoManualiAttivi = todoAttivi\.filter\(\(x\) => !isDatiMancanti\(x\)\);/);
+  assert.match(source, /const todoDatiAttivi = todoAttivi\.filter\(isDatiMancanti\);/);
+});
+
+test('manual and data-health todos render as two visually distinct, separately labeled sections', () => {
+  assert.match(source, />Attività da svolgere /);
+  assert.match(source, /Dati da completare \{todoDatiAttivi\.length/);
+  // The data-health card is visually flagged (warning accent) and explains
+  // itself, so it never reads as just another manual task.
+  assert.match(source, /borderLeft: `3px solid \$\{C\.war\}`/);
+  assert.match(source, /Rilevati automaticamente da Poliedron: piani o appuntamenti con dati mancanti da confermare, non attività aggiunte da te\./);
+});
+
+test('both sections reuse the same row renderer — the split is presentation only, not a duplicated implementation', () => {
+  assert.match(source, /const renderTodoRow = \(todo\) => \{/);
+  assert.match(source, /\{todoManualiAttivi\.map\(renderTodoRow\)\}/);
+  assert.match(source, /\{todoDatiAttivi\.map\(renderTodoRow\)\}/);
+});
+
+const migration = fs.readFileSync(new URL('../supabase/migrations/20260903100000_pol_fin_007d_todos_origine.sql', import.meta.url), 'utf8');
+
+test('REGRESSION GUARD: the origine migration is additive with a safe default, never a breaking schema change', () => {
+  assert.match(migration, /ADD COLUMN IF NOT EXISTS origine text NOT NULL DEFAULT 'manuale'/);
+  assert.match(migration, /CHECK \(origine IN \('manuale', 'controllo_dati'\)\)/);
+  assert.match(migration, /UPDATE public\.todos SET origine = 'controllo_dati' WHERE paziente_id IS NOT NULL;/);
+});

@@ -1,5 +1,22 @@
 # Current task
 
+- TASK: POL-FIN-007d — Attività manuali vs Dati da completare, distinzione esplicita
+- TITLE: la Home "Attività" ora mostra due riquadri chiaramente separati — "Attività da svolgere" (task aggiunti manualmente dall'utente) e "Dati da completare" (segnalazioni automatiche di Poliedron), invece di un unico elenco indistinto.
+- OWNER: CLAUDE, su istruzione diretta del Product Owner dopo il merge di POL-FIN-007c (messaggio verbatim: "Dobbiamo modificare la sezione attività, perché li io ci metto anche attività da svolgere oltre i dati mancanti, come possiamo fare? Deve essere più chiaro e facile il fatto che siano attività e dati mancanti da completare").
+- BRANCH: `feature/pol-fin-007d-attivita-vs-dati-mancanti`, da `master` (contiene già PR #86/#87).
+- CONTESTO: `todos` non aveva alcuna colonna che dicesse esplicitamente se una riga fosse stata aggiunta a mano (`addTodo`) o generata dal controllo dati automatico (l'effetto `buildDataHealthActivities` in `Dashboard.jsx`, POL-FIN-007b). L'unico segnale indiretto era `paziente_id`, valorizzato SOLO dal controllo dati — ma era un'inferenza fragile, non una garanzia (nulla impediva a un futuro todo manuale di riferire anch'esso un paziente).
+- COSA È CAMBIATO (database, produzione, applicato):
+  1. Migration `supabase/migrations/20260903100000_pol_fin_007d_todos_origine.sql` — `todos.origine text NOT NULL DEFAULT 'manuale' CHECK (origine IN ('manuale','controllo_dati'))`, additiva, nessuna RLS toccata (policy `todos_studio` già scoperta solo su `studio_id`). Backfill: `UPDATE todos SET origine='controllo_dati' WHERE paziente_id IS NOT NULL`.
+  2. Verificata PRIMA in una transazione annullata (`BEGIN...ROLLBACK`) su produzione: risultato esatto — 14 righe con `paziente_id` (tutte diventate `controllo_dati`), 26 righe senza (tutte rimaste `manuale`), zero righe manuali con `paziente_id` — cioè la premessa "solo il controllo dati valorizza paziente_id" era vera al 100% sui dati reali, non solo per lettura del codice. Poi applicata per davvero via `apply_migration`, riverificata live con lo stesso identico risultato. `get_advisors(security)`: 54 findings (52 WARN + 2 INFO) — identico al baseline, zero nuovi, nulla su `todos`/`origine`.
+- COSA È CAMBIATO (client, `src/components/Dashboard.jsx`):
+  1. Ogni insert ora tagga esplicitamente `origine` invece di affidarsi solo al default DB: l'effetto controllo dati automatico scrive `origine: 'controllo_dati'`, `addTodo()` (l'unico path manuale) scrive `origine: 'manuale'` — così lo stato locale è corretto subito, senza aspettare il reload realtime.
+  2. Nuovi selettori derivati per origine (`isDatiMancanti`, `todoManualiAttivi`/`todoManualiFatti`/`todoDatiAttivi`/`todoDatiFatti`) — sostituiscono la vecchia divisione unica `todoAttivi`/`todoFatti` (che restano, usate solo per il calcolo).
+  3. Il widget "Attività e promemoria" ora ha DUE riquadri (`Crd`) separati invece di uno: "Attività da svolgere" (badge rosso, bottone "+ Aggiungi", stile invariato dal prima) e "Dati da completare" (badge/bordo ambra `C.war`, icona di avviso, sottotitolo esplicativo "Rilevati automaticamente da Poliedron: piani o appuntamenti con dati mancanti da confermare, non attività aggiunte da te.", sempre visibile anche vuoto per coerenza e per mostrare che il controllo è attivo). Entrambi riusano la STESSA funzione `renderTodoRow` (checkbox/click-through sul paziente/WhatsApp/elimina) — la separazione è solo di presentazione, non una seconda implementazione.
+- VALIDATION: `npm test` 669/669 (5 nuovi test: tagging esplicito dell'`origine`, split per `origine` non per `paziente_id`, due sezioni visivamente distinte, riuso dello stesso row renderer, guardia di regressione sulla migration additiva); `npm run build` pulito; `git diff --check` pulito.
+- EXACT NEXT ACTION: push del branch, PR solo su istruzione esplicita del Product Owner, merge solo su "mergiamo"/"Mergia master" come da convenzione di questa sessione.
+
+---
+
 - TASK: POL-FIN-007c — Prestazioni visivamente distinte in Piani/Piano paziente
 - TITLE: ogni prestazione dentro un piano espanso è ora una card a sé (bordo colorato per stato eseguito/da eseguire, badge numerato/spunta, nome più grande), non più una riga sottile che si confonde col resto.
 - OWNER: CLAUDE, su feedback diretto del Product Owner dopo il deploy di POL-FIN-007 ("si capisce poco a vista d'occhio quali siano le prestazioni, dobbiamo renderle ben individuabili sempre in piani generali e piano paziente").

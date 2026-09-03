@@ -529,7 +529,7 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
 
       const inserite = [];
       for (const entry of nuoveEntry) {
-        const nuova = { id: Date.now() + inserite.length, testo: entry.message, fatto: false, data: t, paziente_id: entry.pazienteId };
+        const nuova = { id: Date.now() + inserite.length, testo: entry.message, fatto: false, data: t, paziente_id: entry.pazienteId, origine: 'controllo_dati' };
         const { error } = await supabase.from('todos').insert([nuova]);
         if (!error) inserite.push({ entry, nuova });
       }
@@ -572,7 +572,7 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
   const addTodo = async () => {
     if (!todoInput.trim()) return;
     const patient = patients.find((item) => String(item.id) === String(todoPatientId));
-    const nuova = { id: Date.now(), testo: buildActivityText(todoInput, patient), fatto: false, data: t };
+    const nuova = { id: Date.now(), testo: buildActivityText(todoInput, patient), fatto: false, data: t, origine: 'manuale' };
     const { error } = await supabase.from('todos').insert([nuova]);
     if (!error) {
       setTodoList(prev => [nuova, ...prev]);
@@ -641,6 +641,17 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
   const CHART_PALETTE = [C.pri, C.acc, C.war, C.suc, '#7C3AED', C.dan, C.txl];
   const todoAttivi = todoList.filter(x => !x.fatto);
   const todoFatti = todoList.filter(x => x.fatto);
+  // POL-FIN-007d: Product Owner — "li io ci metto anche attività da
+  // svolgere oltre i dati mancanti ... deve essere più chiaro e facile il
+  // fatto che siano attività e dati mancanti da completare". Split by the
+  // explicit `origine` column (POL-FIN-007d migration) rather than
+  // inferring it from paziente_id, which only happened to be a reliable
+  // signal by accident.
+  const isDatiMancanti = (x) => x.origine === 'controllo_dati';
+  const todoManualiAttivi = todoAttivi.filter((x) => !isDatiMancanti(x));
+  const todoManualiFatti = todoFatti.filter((x) => !isDatiMancanti(x));
+  const todoDatiAttivi = todoAttivi.filter(isDatiMancanti);
+  const todoDatiFatti = todoFatti.filter(isDatiMancanti);
 
   /* ── POL-UI-017 R2 §2 — "Richiede attenzione" ─────────────────────────
      The mobile Home's priority area. It introduces NO new data: every
@@ -1545,37 +1556,63 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
           );
         }
 
-        if (w.id === 'todo') return (
+        if (w.id === 'todo') {
+          // POL-FIN-007d: shared row renderer — same checkbox/click-through/
+          // WhatsApp/delete behavior for both the manual and the
+          // data-health sections below, so the split is purely visual
+          // grouping, never a second implementation.
+          const renderTodoRow = (todo) => {
+            // POL-FIN-007: le Attività generate dal controllo dati
+            // automatico portano paziente_id — cliccabili per aprire
+            // subito quel paziente, invece di dover cercarlo a mano.
+            const todoPaziente = todo.paziente_id != null ? patients.find((p) => String(p.id) === String(todo.paziente_id)) : null;
+            return (
+              <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 0', borderBottom: `1px solid ${C.brd}` }}>
+                <button className="home-list-checkbox" onClick={() => toggleTodo(todo.id)}><span style={{ border: `2px solid ${C.brd}` }} /></button>
+                {todoPaziente ? (
+                  <button type="button" onClick={() => onOpenPaz(todoPaziente, 'piani')} style={{ flex: 1, fontSize: 12, fontWeight: 600, textAlign: 'left', background: 'none', border: 'none', padding: 0, color: C.pri, cursor: 'pointer', textDecoration: 'underline', textDecorationColor: C.pri + '50' }} title="Apri scheda paziente">{todo.testo}</button>
+                ) : (
+                  <span style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{todo.testo}</span>
+                )}
+                <button className="home-list-icon-btn" onClick={() => { const msg = encodeURIComponent('Attività: ' + todo.testo); window.open('https://wa.me/?text=' + msg, '_blank'); }} title="Invia su WhatsApp"><Ic n="wa" s={13} c="#25D366" /></button>
+                <button className="home-list-icon-btn" onClick={() => deleteTodo(todo.id)}><Ic n="x" s={11} c={C.dan} /></button>
+              </div>
+            );
+          };
+          return (
           <div key="todo" style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="okc" s={11} c={C.txm} />Attività e promemoria</div>
             <Crd style={{ marginBottom: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 700 }}>Attività {todoAttivi.length > 0 && <span style={{ background: C.dan, color: '#fff', borderRadius: 8, padding: '1px 6px', fontSize: 10 }}>{todoAttivi.length}</span>}</span>
+                <span style={{ fontSize: 12, fontWeight: 700 }}>Attività da svolgere {todoManualiAttivi.length > 0 && <span style={{ background: C.dan, color: '#fff', borderRadius: 8, padding: '1px 6px', fontSize: 10 }}>{todoManualiAttivi.length}</span>}</span>
                 <button className="home-list-link" onClick={openGenericTodoModal} style={{ background: C.pri, color: '#fff' }}>+ Aggiungi</button>
               </div>
               {todoLoading && <div style={{ fontSize: 12, color: C.txl, textAlign: 'center', padding: '8px 0' }}>Caricamento...</div>}
-              {!todoLoading && todoAttivi.length === 0 && <div style={{ fontSize: 12, color: C.txl, textAlign: 'center', padding: '8px 0' }}>Nessuna attività in sospeso</div>}
+              {!todoLoading && todoManualiAttivi.length === 0 && <div style={{ fontSize: 12, color: C.txl, textAlign: 'center', padding: '8px 0' }}>Nessuna attività in sospeso</div>}
               <div style={{ maxHeight: 220, overflowY: 'auto' }}>
-                {todoAttivi.map(todo => {
-                  // POL-FIN-007: le Attività generate dal controllo dati
-                  // automatico portano paziente_id — cliccabili per aprire
-                  // subito quel paziente, invece di dover cercarlo a mano.
-                  const todoPaziente = todo.paziente_id != null ? patients.find((p) => String(p.id) === String(todo.paziente_id)) : null;
-                  return (
-                    <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 0', borderBottom: `1px solid ${C.brd}` }}>
-                      <button className="home-list-checkbox" onClick={() => toggleTodo(todo.id)}><span style={{ border: `2px solid ${C.brd}` }} /></button>
-                      {todoPaziente ? (
-                        <button type="button" onClick={() => onOpenPaz(todoPaziente, 'piani')} style={{ flex: 1, fontSize: 12, fontWeight: 600, textAlign: 'left', background: 'none', border: 'none', padding: 0, color: C.pri, cursor: 'pointer', textDecoration: 'underline', textDecorationColor: C.pri + '50' }} title="Apri scheda paziente">{todo.testo}</button>
-                      ) : (
-                        <span style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{todo.testo}</span>
-                      )}
-                      <button className="home-list-icon-btn" onClick={() => { const msg = encodeURIComponent('Attività: ' + todo.testo); window.open('https://wa.me/?text=' + msg, '_blank'); }} title="Invia su WhatsApp"><Ic n="wa" s={13} c="#25D366" /></button>
-                      <button className="home-list-icon-btn" onClick={() => deleteTodo(todo.id)}><Ic n="x" s={11} c={C.dan} /></button>
-                    </div>
-                  );
-                })}
+                {todoManualiAttivi.map(renderTodoRow)}
               </div>
-              {todoFatti.length > 0 && <div style={{ marginTop: 6, fontSize: 10, color: C.txl, textAlign: 'center' }}>{todoFatti.length} completate</div>}
+              {todoManualiFatti.length > 0 && <div style={{ marginTop: 6, fontSize: 10, color: C.txl, textAlign: 'center' }}>{todoManualiFatti.length} completate</div>}
+            </Crd>
+            {/* POL-FIN-007d: separata, con accento ambra e sottotitolo, dai
+                task che l'utente aggiunge lui stesso — stesso meccanismo,
+                ma è chiaro a colpo d'occhio che questi li rileva Poliedron,
+                non l'utente. Sempre visibile (anche vuota) per coerenza col
+                riquadro sopra e per far vedere che il controllo dati è
+                attivo anche quando non trova nulla. */}
+            <Crd style={{ marginBottom: 8, borderLeft: `3px solid ${C.war}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Ic n="warn" s={12} c={C.war} />
+                  Dati da completare {todoDatiAttivi.length > 0 && <span style={{ background: C.war, color: '#fff', borderRadius: 8, padding: '1px 6px', fontSize: 10 }}>{todoDatiAttivi.length}</span>}
+                </span>
+              </div>
+              <div style={{ fontSize: 10, color: C.txl, marginBottom: 8 }}>Rilevati automaticamente da Poliedron: piani o appuntamenti con dati mancanti da confermare, non attività aggiunte da te.</div>
+              {!todoLoading && todoDatiAttivi.length === 0 && <div style={{ fontSize: 12, color: C.txl, textAlign: 'center', padding: '8px 0' }}>Nessun dato da completare</div>}
+              <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+                {todoDatiAttivi.map(renderTodoRow)}
+              </div>
+              {todoDatiFatti.length > 0 && <div style={{ marginTop: 6, fontSize: 10, color: C.txl, textAlign: 'center' }}>{todoDatiFatti.length} completati</div>}
             </Crd>
             {promemoria.length > 0 && (
               <Crd>
@@ -1592,7 +1629,8 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
               </Crd>
             )}
           </div>
-        );
+          );
+        }
 
         if (w.id === 'wa') {
           if (!waAbilitato(features)) return null;
