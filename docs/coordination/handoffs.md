@@ -2640,3 +2640,7 @@ Nuovo componente locale `SezioneComparsa` (freccia rotante ▶, stesso linguaggi
 
 ### EXACT NEXT ACTION
 Push del branch aggiornato `feature/pol-fin-007e-incasso-dock-tab`; PR e merge solo su istruzione esplicita del Product Owner.
+
+## PR #89 merge (POL-FIN-007e/f + POL-UI-020/021)
+
+Product Owner ha risposto "Mergia master". Aperta **PR #89** (`feature/pol-fin-007e-incasso-dock-tab` → `master`), che copre in un unico PR tutti i giri accumulati su questo branch mai ancora mergiati: POL-FIN-007e (fix doppio incasso + scroll oltre il dock), POL-FIN-007f (navigazione paziente sidebar/dropdown), POL-UI-020 (header chiamata/WhatsApp/croce anamnesi, 6 azioni veloci + Spesa, Registra pagamento con prestazione — incluso il fix del bug pre-esistente `noteGenerale` senza colonna DB), POL-UI-020 follow-up (dropdown paziente dismissibile, vera croce anamnesi, WhatsApp centrato), POL-UI-021 (tab Info come landing page scrollabile + doc link Vercel persistente). Check CI: GitHub Action "verify" (`success`), Vercel (`success`), Netlify deploy preview (`success`) — tutti verdi al momento del merge. Mergiata via `merge_pull_request`. Merge commit `ae4bf3ae443fd609a55bd41b52aeb63840c6b68a`. Locale `master` aggiornato e verificato che lo contenga.
