@@ -187,16 +187,34 @@ test('M. Tutte le sezioni della Scheda Paziente sono raggiungibili senza scroll 
 // popup compare già da solo all'apertura della scheda.
 const css2 = fs.readFileSync('src/components/PremiumVisualSystem.css', 'utf8');
 
-test('O. Header scheda paziente ha i tasti chiamata e WhatsApp', () => {
+// POL-UI-020 follow-up: Product Owner — "icona WhatsApp in header
+// pazienti è brutta devi farla bella" (WaAction's icon variant, resized
+// via a style override, had no alignItems/justifyContent so the icon
+// wasn't centered). Replaced with a plain link matching the Chiama
+// button's own circle exactly — same size, same centering, WhatsApp
+// green.
+test('O. Header scheda paziente ha i tasti chiamata e WhatsApp, entrambi cerchi 34px ben centrati', () => {
   assert.match(schedaPaz, /href=\{`tel:\+39\$\{paz\.telefono\.replace\(\/\\D\/g, ''\)\}`\}/);
-  assert.match(schedaPaz, /<WaAction tel=\{paz\.telefono\} features=\{features\} variant="icon"/);
+  assert.match(schedaPaz, /href=\{waUrl\(paz\.telefono\)\}/);
+  assert.match(schedaPaz, /import \{ waAbilitato, waUrl \} from '\.\/ui\/WaAction\.jsx';/);
+  assert.doesNotMatch(schedaPaz, /<WaAction/);
+  const waButton = schedaPaz.match(/href=\{waUrl\(paz\.telefono\)\}[^>]*style=\{\{([^}]*)\}\}/)?.[1] || '';
+  assert.match(waButton, /width: 34, height: 34/);
+  assert.match(waButton, /alignItems: 'center', justifyContent: 'center'/);
 });
 
-test('O2. La croce anamnesi ha 3 stati (bianca/verde/rossa lampeggiante) derivati dai campi anamnesi reali del paziente', () => {
+// POL-UI-020 follow-up: Product Owner — "la croce di anamnesi deve
+// essere una croce come fosse quella della croce rossa" — non più
+// l'icona generica "cross" del set condiviso (usata altrove, es.
+// Pazienti.jsx, con significato di rifiuto/X), ma una vera forma a
+// croce piena disegnata apposta per questo badge.
+test('O2. La croce anamnesi ha 3 stati (bianca/verde/rossa lampeggiante) derivati dai campi anamnesi reali del paziente, disegnata come una vera croce medica', () => {
   assert.match(schedaPaz, /const anamnesiState = !paz\.anamnesiCompilataIl \? 'mancante' : \(paz\.anamnesiAllarme \? 'allarme' : 'ok'\);/);
   assert.match(schedaPaz, /className=\{anamnesiState === 'allarme' \? 'anamnesi-cross anamnesi-cross--allarme' : 'anamnesi-cross'\}/);
   assert.match(css2, /\.anamnesi-cross--allarme\{animation:anamnesi-cross-blink/);
   assert.match(css2, /@media\(prefers-reduced-motion:reduce\)\{\.anamnesi-cross--allarme\{animation:none\}\}/);
+  assert.doesNotMatch(schedaPaz, /<Ic n="cross"/);
+  assert.match(schedaPaz, /<path d="M8 2h8v6h6v8h-6v6H8v-6H2V8h6z"/);
 });
 
 test('O3. In allarme il popup anamnesi si apre da solo all\'apertura della scheda, senza un effetto post-mount vietato in questo file', () => {

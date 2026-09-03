@@ -2,7 +2,7 @@ import React, { Suspense, lazy, useState } from 'react';
 import { Btn, Crd, Bdg, Ic, PhStr, Modal } from './ui';
 import { C, fmt, fmtD, today } from '../lib/utils';
 import { aggregateSaldi } from '../lib/domain/incassiMath.js';
-import WaAction, { waAbilitato } from './ui/WaAction.jsx';
+import { waAbilitato, waUrl } from './ui/WaAction.jsx';
 import PianoDrillDown from './PianoDrillDown.jsx';
 import IncassoModal from './IncassoModal.jsx';
 
@@ -91,31 +91,40 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
           {paz.cf && <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, fontFamily: 'monospace' }}>{paz.cf}</div>}
         </div>
         {/* POL-UI-020: Product Owner — "inserire i tasti chiamata e
-            WhatsApp in header". Icone compatte, riusano l'unico punto della
-            app che decide URL/attivazione WhatsApp (WaAction.jsx) — mai una
-            seconda implementazione del link wa.me. */}
+            WhatsApp in header". Stesso identico cerchio 34px del pulsante
+            Chiama per coerenza visiva; l'URL wa.me resta generato dall'unico
+            punto della app che lo decide (waUrl, in WaAction.jsx) — solo la
+            resa del pulsante è locale, non una seconda logica WhatsApp. */}
         {paz.telefono && (
           <a href={`tel:+39${paz.telefono.replace(/\D/g, '')}`} title="Chiama" aria-label="Chiama" style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, textDecoration: 'none' }}>
             <Ic n="ph" s={15} c="#fff" />
           </a>
         )}
         {paz.telefono && waAbilitato(features) && (
-          <WaAction tel={paz.telefono} features={features} variant="icon" style={{ width: 34, height: 34, borderRadius: '50%' }} />
+          <a href={waUrl(paz.telefono)} target="_blank" rel="noopener noreferrer" title="WhatsApp" aria-label="WhatsApp" style={{ width: 34, height: 34, borderRadius: '50%', background: '#25D366', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, textDecoration: 'none' }}>
+            <Ic n="wa" s={16} c="#fff" />
+          </a>
         )}
         {/* POL-UI-020: croce anamnesi — bianca=mancante, verde=nessun
             allarme, rossa lampeggiante=allarme (allergie/controindicazioni).
             Click apre sempre il popup di dettaglio; se in allarme il popup
             si apre già da solo all'apertura della scheda (vedi
-            anamnesiPopup, inizializzato sopra). */}
+            anamnesiPopup, inizializzato sopra). Product Owner: la croce
+            deve leggersi come una vera croce medica ("croce rossa"), non
+            l'icona generica "cross" del set condiviso (usata altrove, es.
+            Pazienti.jsx, con significato di rifiuto/X) — disegnata qui
+            come forma piena a 5 quadrati, angoli netti, niente contorno. */}
         <button
           type="button"
           onClick={() => setAnamnesiPopup(true)}
           title={anamnesiState === 'mancante' ? 'Anamnesi mancante' : anamnesiState === 'allarme' ? 'Allarme anamnesi' : 'Nessun allarme anamnesi'}
           aria-label={anamnesiState === 'mancante' ? 'Anamnesi mancante' : anamnesiState === 'allarme' ? 'Allarme anamnesi' : 'Nessun allarme anamnesi'}
           className={anamnesiState === 'allarme' ? 'anamnesi-cross anamnesi-cross--allarme' : 'anamnesi-cross'}
-          style={{ background: anamnesiState === 'mancante' ? '#fff' : anamnesiState === 'allarme' ? C.dan : C.suc }}
+          style={{ background: anamnesiState === 'mancante' ? '#fff' : anamnesiState === 'allarme' ? C.dan : C.suc, border: anamnesiState === 'mancante' ? `1.5px solid ${C.brd}` : 'none' }}
         >
-          <Ic n="cross" s={16} c={anamnesiState === 'mancante' ? C.priD : '#fff'} />
+          <svg width={16} height={16} viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 2h8v6h6v8h-6v6H8v-6H2V8h6z" fill={anamnesiState === 'mancante' ? C.dan : '#fff'} />
+          </svg>
         </button>
         <button onClick={() => onEdit(paz)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, padding: '6px 11px', cursor: 'pointer', color: '#fff', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}><Ic n="edit" s={13} c="#fff" />Modifica</button>
       </div>

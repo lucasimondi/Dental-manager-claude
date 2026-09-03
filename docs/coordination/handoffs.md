@@ -2586,3 +2586,32 @@ Nessuna sessione browser autenticata disponibile in questa sandbox. In particola
 
 ### EXACT NEXT ACTION
 Push del branch aggiornato `feature/pol-fin-007e-incasso-dock-tab`; PR e merge solo su istruzione esplicita del Product Owner.
+
+---
+
+## POL-UI-020 follow-up — dropdown paziente chiudibile, croce anamnesi vera, WhatsApp centrata
+
+- REQUEST (verbatim, Product Owner, dopo la preview del giro precedente): "Il tab aggiungi spesa ha su mobile un menu a tendina che elenca i pazienti che però deve essere anche tolto senza selezionare alcun paziente perché copre altro. La croce di anamnesi deve essere una croce come fosse quella della croce rossa quindi non come l'hai fatta tu, inoltre icona WhatsApp in header pazienti è brutta devi farla bella non così"
+
+### 1. SelettorePaziente — dropdown non più bloccante
+Root cause: `{(!sel || search) && filtered.length > 0 && (...)}` — senza un paziente selezionato l'elenco COMPLETO si apriva subito al mount, nessuna condizione di focus/interazione lo governava. Su Spese.jsx (nessun paziente preselezionato di default) e su SpesaModal ogni volta che si toglie l'associazione con la "X" già esistente, il menu restava aperto e senza modo di chiuderlo — su mobile, dentro un modale, copriva i campi sotto.
+
+Fix: nuovo stato `focused` (`onFocus`/`onBlur` sul campo di ricerca), dropdown mostrato solo quando `focused && (!sel || search)`. Il blur ha un delay di 150ms (`blurTimeoutRef`, pulito in un cleanup di `useEffect`) per lasciare il tempo a un click su una voce dell'elenco o sul pulsante "+ Crea paziente" di registrarsi prima che il campo perda il focus e nasconda tutto. Anche il pannello "nessun risultato/crea paziente" ora richiede `focused`, stessa logica.
+
+Componente condiviso da Agenda/Piani/ArchivioDocs/IncassoModal/SpesaModal — il fix è un miglioramento generale, non un patch locale a Spese.
+
+### 2. Croce anamnesi — vera forma a croce, non l'icona generica
+L'icona `Ic n="cross"` (quadrato arrotondato con un + sottile, bordo stroke) non si leggeva come una croce medica. Sostituita in `SchedaPaz.jsx` con un SVG inline disegnato apposta per questo badge: path `M8 2h8v6h6v8h-6v6H8v-6H2V8h6z` — una vera forma a croce piena (5 quadrati, angoli netti, nessun contorno), l'immagine classica della Croce Rossa. **Non toccata** l'icona condivisa `cross` in `Ic.jsx`: è usata anche in `Pazienti.jsx` (StatCard "Rifiutati") con il significato opposto di rifiuto/X — ridefinirla lì avrebbe rotto quel significato altrove.
+
+Colori aggiornati per l'effetto Croce Rossa reale: stato bianco (mancante) ora ha una croce ROSSA su sfondo bianco (prima era blu scuro) — è letteralmente l'emblema della Croce Rossa. Stati verde (ok) e rosso (allarme) restano con croce bianca su sfondo colorato.
+
+### 3. Icona WhatsApp header — ricentrata
+Root cause: `WaAction` in variante `icon` ha uno stile base senza `alignItems`/`justifyContent` — l'override `style={{width:34,height:34,borderRadius:'50%'}}` cambiava le dimensioni del cerchio ma lasciava l'icona interna scentrata (il `padding:6` della variante non basta a centrare senza flex align/justify), risultando visivamente "brutta" come segnalato.
+
+Fix: sostituito con un link diretto (`<a href={waUrl(paz.telefono)} target="_blank">`), identico in struttura al pulsante Chiama appena aggiunto — stesso cerchio 34px, stesso `display:flex;alignItems:center;justifyContent:center`, solo verde WhatsApp invece che translucido. L'URL resta generato da `waUrl()`, l'unica funzione della app che decide il link wa.me — nessuna nuova logica WhatsApp, solo la resa del pulsante è locale a questo header.
+
+### Validation
+`npm test` 686/686 (nuovo `tests/selettorePaziente.test.mjs`; `tests/patientQaRecoveryFinal.test.mjs` aggiornato per il link WhatsApp diretto e la vera croce SVG). `npm run build` pulito. `git diff --check` pulito. Nessuna migration in questo giro — solo componenti client.
+
+### EXACT NEXT ACTION
+Push del branch aggiornato `feature/pol-fin-007e-incasso-dock-tab`; PR e merge solo su istruzione esplicita del Product Owner.
