@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Btn, Fld, Inp, Modal, Sel, SelettorePaziente } from './ui';
-import { uid } from '../lib/utils';
+import { fmt, uid } from '../lib/utils';
 import { planAssignmentForPatient } from '../lib/domain/incassiActions.js';
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -12,7 +12,11 @@ const today = () => new Date().toISOString().slice(0, 10);
    incasso form. Incassi.jsx itself now renders this component too; nothing
    about the resulting payments row (piano_id, stato:'pagato') changed. */
 export default function IncassoModal({ prefill, patients = [], plans = [], setPayments, onClose, onSaved }) {
-  const [state, setState] = useState(() => ({ pazienteId: '', pianoId: '', lockedPianoId: null, data: today(), importo: '', metodo: 'Contanti', nota: '', ...prefill }));
+  // POL-FIN-007e: pianoContext is informational only (atteso/già pagato on
+  // the locked plan, computed by the caller) — kept out of editable form
+  // state so it can't be silently sent as a payment field.
+  const { pianoContext, ...formPrefill } = prefill || {};
+  const [state, setState] = useState(() => ({ pazienteId: '', pianoId: '', lockedPianoId: null, data: today(), importo: '', metodo: 'Contanti', nota: '', ...formPrefill }));
   const [error, setError] = useState('');
   const [pazSearch, setPazSearch] = useState('');
 
@@ -51,6 +55,20 @@ export default function IncassoModal({ prefill, patients = [], plans = [], setPa
           </Sel>
         </Fld>
       )}
+      {pianoContext && (() => {
+        const residuo = pianoContext.atteso - pianoContext.giaPagato;
+        const saldato = residuo <= 0;
+        return (
+          <div style={{ background: saldato ? '#FEF3C7' : '#F1F5F9', border: `1px solid ${saldato ? '#F59E0B' : '#E2E8F0'}`, borderRadius: 8, padding: '8px 10px', marginBottom: 10, fontSize: 12 }}>
+            <div style={{ color: '#334155' }}>Piano: atteso {fmt(pianoContext.atteso)} · già incassato {fmt(pianoContext.giaPagato)}{!saldato && <> · residuo {fmt(residuo)}</>}</div>
+            {saldato && (
+              <div style={{ color: '#92400E', fontWeight: 700, marginTop: 3 }}>
+                ⚠️ Il piano risulta già saldato{residuo < 0 ? ` (in credito di ${fmt(-residuo)})` : ''} — registrando questo incasso andrà ulteriormente in credito.
+              </div>
+            )}
+          </div>
+        );
+      })()}
       <div className="incassi-form-grid">
         <Fld label="Data"><Inp type="date" value={state.data} onChange={(event) => update({ data: event.target.value })} /></Fld>
         <Fld label="Importo €"><Inp type="number" min="0" step="0.01" inputMode="decimal" value={state.importo} onChange={(event) => update({ importo: event.target.value })} /></Fld>

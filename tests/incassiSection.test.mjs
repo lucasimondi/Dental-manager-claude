@@ -78,6 +78,19 @@ test('the three Incassi buttons are distinct: allega foto/pdf, registra incasso,
   assert.match(component, /Btn ch="Registra da incassare" ic="add"/);
 });
 
+// POL-FIN-007e: Product Owner reported a real double-payment on a plan
+// that was already fully paid — the modal gave no indication anything had
+// already been registered. pianoContext (atteso/giaPagato, passed only by
+// PianoDrillDown's Incassato buttons) is informational only, kept out of
+// the editable payment fields, and surfaces a clear warning once the plan
+// is already settled or in credit.
+test('IncassoModal shows an already-paid banner and warns before letting a settled plan go further into credit', () => {
+  assert.match(incassoModalComponent, /const \{ pianoContext, \.\.\.formPrefill \} = prefill \|\| \{\};/);
+  assert.match(incassoModalComponent, /const residuo = pianoContext\.atteso - pianoContext\.giaPagato;/);
+  assert.match(incassoModalComponent, /const saldato = residuo <= 0;/);
+  assert.match(incassoModalComponent, /Il piano risulta già saldato/);
+});
+
 test('a single recognized row routes into Registra incasso prefilled; multiple rows keep the review table; the endpoint is reused, not duplicated', () => {
   assert.match(component, /endpoint="estrai-pagamenti-estratto-conto"/);
   assert.match(component, /if \(righe\.length <= 1\) \{/);

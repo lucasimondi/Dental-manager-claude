@@ -18,7 +18,26 @@ test('plan execution UI uses the shared domain completion action', () => {
 test('marking a prestazione done offers to register the incasso right away, reusing the same IncassoModal everywhere', () => {
   assert.match(source, /Registra incasso adesso/);
   assert.match(source, /import IncassoModal from '\.\/IncassoModal\.jsx';/);
-  assert.match(source, /setIncassoPrefill\(\{ pazienteId: String\(pl\.pazienteId\), lockedPianoId: pl\.id, importo: String\(v\.prezzo/);
+  assert.match(source, /if \(event\.target\.checked\) openIncassoVoce\(pl, v, tot\);/);
+});
+
+// POL-FIN-007e: Product Owner reported a real double-payment — a plan
+// already had €90 registered, and the "Incassato" button still defaulted
+// to the item's full €90 with no awareness of what was already paid,
+// letting a second, duplicate payment through unnoticed. Both Incassato
+// entry points (plan-level and per-prestazione) now compute what's
+// already been paid on THIS plan first, and only ever default to the
+// residual — never blindly re-propose the full amount.
+test('REGRESSION GUARD: Incassato never blindly re-proposes the full amount — it accounts for what the plan already has paid', () => {
+  assert.match(source, /const totalePagatoPiano = \(planId\) => \(payments \|\| \[\]\)/);
+  assert.match(source, /const openIncassoPiano = \(pl, tot\) => \{/);
+  assert.match(source, /const openIncassoVoce = \(pl, v, tot\) => \{/);
+  assert.match(source, /const residuo = Math\.max\(0, tot - giaPagato\);/);
+  assert.match(source, /const importoDefault = Math\.min\(Number\(v\.prezzo\) \|\| 0, residuoPiano\);/);
+  assert.match(source, /pianoContext: \{ atteso: tot, giaPagato \}/);
+  // Both buttons must go through the shared helpers, not a bespoke inline call.
+  assert.match(source, /onClick=\{\(\) => openIncassoPiano\(pl, tot\)\}/);
+  assert.match(source, /onClick=\{\(\) => openIncassoVoce\(pl, v, tot\)\}/);
 });
 
 // The richiamo auto-detection side effect (rilevaRichiamo/addMesi) that

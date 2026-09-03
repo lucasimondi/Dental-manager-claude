@@ -2504,3 +2504,28 @@ Code: revert this commit on the branch. Database: stop Chat writes, remove `poli
 - SAFETY: pure presentational changes -- no behavior, no data, no new props; same click handlers (`setStato`, `setPdfPlan`, `openEditPlan`, `delPlan`) wired to the same buttons, just restyled/regrouped.
 - Exact next action: push, report to Product Owner. Not merged -- awaiting explicit "mergiamo"/"mergia".
 - MERGE: Product Owner replied "Mergia master". Opened **PR #87** (`feature/pol-fin-007c-prestazioni-visibili` -> `master`), covering both POL-FIN-007c rounds (visually distinct prestazioni cards + this accept/reject-control/mobile-tabs follow-up) in one PR, since neither round had been merged yet. Vercel status `success` at merge time. Merged via `merge_pull_request`. Merge commit `59a66911c2e4cb82936795489101de909b7bc8e4`. Local `master` pulled and confirmed to contain it.
+
+---
+
+## POL-FIN-007e — Doppio incasso, scroll oltre il dock, tab troppo ingombranti
+
+- REQUEST (verbatim, Product Owner): "bisogna sistemare alcune cose : ho ad esempio registrato come pagata lamprestazione di Gualfredo Bruno di Clarafond, però c'era Già un pagamento registrato a suo. Nome quindi è andato in credito di 90 euro , inoltre bisogna far win modo che in piani paziente la pagina scorra fino al di sopra del dock altrimenti non si possono aggiungere prestazioni , inoltre la pagina paziente ha questi tasti che portano ai vari sezioni che è un po troppo ingombrante bisogna trovare un modo"
+
+### 1. Doppio incasso reale — dato corretto + prevenuto
+- Trovato paziente id=96 (Gualfredo Bruno di Clarafond) via query diretta su produzione (`patients` ILIKE su nome/cognome). Piano id=15 "Conservativa", un'unica voce "Otturazione" dente 28 da €90. Due `payments` da €90 collegati a `piano_id=15`: id=50 ("Saldo Conservativa", 2026-09-02, preesistente) e id=51 ("Otturazione", 2026-09-03, registrato oggi tramite il nuovo tasto Incassato) — €180 su €90 dovuti.
+- Root cause trovata leggendo `PianoDrillDown.jsx`: sia il tasto Incassato a livello piano sia quello a livello prestazione prefillavano SEMPRE l'importo pieno (`tot`/`v.prezzo`), senza mai controllare i `payments` già collegati a quel piano — a differenza di `removeItemFromPlan`, che quel calcolo lo fa già.
+- Corretto il dato: verificato in `BEGIN...ROLLBACK` (14 righe attese, match esatto), poi `DELETE FROM payments WHERE id=51` applicato per davvero. Il piano torna a saldo zero.
+- Corretta la causa: nuovo helper `totalePagatoPiano(planId)` in `PianoDrillDown.jsx`, riusato da due nuovi helper `openIncassoPiano(pl, tot)`/`openIncassoVoce(pl, v, tot)` che ora entrambi i tasti Incassato chiamano. L'importo prefillato è il RESIDUO (`Math.max(0, atteso - giaPagato)`), mai più l'importo pieno alla cieca — se il residuo è 0 il campo resta vuoto invece di riproporre una cifra. `IncassoModal.jsx` riceve un `pianoContext` informativo (tenuto fuori da `state` — non finisce mai nel payment salvato) e mostra sempre "Piano: atteso €X · già incassato €Y", con un avviso ambra ben visibile se il piano risulta già saldato/in credito PRIMA che l'utente salvi, invece di scoprirlo solo dopo come è successo qui.
+
+### 2. Piani paziente — pagina che non scorreva oltre il dock
+- `.poliedron-mobile-dock` è `position:fixed;z-index:1100` e (commento CSS preesistente) "non contribuisce mai all'altezza del layout" — qualunque pannello scrollabile deve riservare esplicitamente lo spazio sotto o l'ultimo elemento resta coperto/non cliccabile. Il pannello scrollabile di `SchedaPaz.jsx` (`style={{flex:1,padding:14,overflowY:'auto'}}` inline) non lo faceva — "+ Aggiungi prestazione" in un piano espanso finiva dietro il dock.
+- Estratto in una classe `.patient-record-content` (`PremiumVisualSystem.css`), con `padding-bottom:110px` su mobile — stesso identico valore già usato per lo stesso identico problema in `.management-hub`/`.financial-workspace`, nessun nuovo numero magico inventato.
+
+### 3. Scheda paziente — tab troppo ingombranti
+- Un giro precedente (POL-UI-017 R2) aveva deliberatamente sostituito uno scroller orizzontale con una griglia a capo per questa barra (test di regressione: mai `overflow-x`) — quindi tornare allo scroll orizzontale avrebbe contraddetto una decisione prodotto già presa.
+- `TABS` in `SchedaPaz.jsx`: da `{id,l:'📋 Info'}` a `{id,emoji:'📋',label:'Info'}`. Su mobile il testo (`.patient-record-tabs__label`) si nasconde, restano solo le icone (`title`/`aria-label` mantengono il nome completo per l'accessibilità), griglia da `repeat(3,...)` a `repeat(auto-fill,minmax(50px,1fr))` — fino a 4 righe di testo diventano 1-2 righe di icone. Nessuna sezione nascosta, nessuno scroller reintrodotto, touch target 44px invariato.
+- "Impianti" condivideva l'icona 🦷 con "Piani" (indistinguibili una volta ridotte a solo-icona) — assegnata una icona propria 🦴.
+
+- VALIDATION: `npm test` 668/668 (nuovi/aggiornati: guardia di regressione sul residuo Incassato in `tests/planExecutionUi.test.mjs`, banner già-pagato in `tests/incassiSection.test.mjs`, riserva di spazio sotto il dock e compattazione icon-only dei tab in `tests/incassiPoliedronAndControlUi.test.mjs`); `npm run build` pulito; `git diff --check` pulito.
+- NOTA DI CONTINUITÀ: questo branch parte da `master` (contiene PR #87) e NON contiene ancora POL-FIN-007d (split Attività/Dati da completare in Dashboard.jsx), che vive su un branch separato non ancora mergiato — le due PR andranno mergiate indipendentemente, non l'una sull'altra.
+- EXACT NEXT ACTION: push del branch `feature/pol-fin-007e-incasso-dock-tab`; PR e merge solo su istruzione esplicita del Product Owner.
