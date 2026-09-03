@@ -2615,3 +2615,28 @@ Fix: sostituito con un link diretto (`<a href={waUrl(paz.telefono)} target="_bla
 
 ### EXACT NEXT ACTION
 Push del branch aggiornato `feature/pol-fin-007e-incasso-dock-tab`; PR e merge solo su istruzione esplicita del Product Owner.
+
+---
+
+## POL-UI-021 — Tab Info come landing page scrollabile + link Vercel persistente
+
+- REQUEST (verbatim, Product Owner): "Dati cheè sempre lo stesso link possiamo metterlo da qualche parte che sia recuperabile sempre? Inoltre la scheda paziente nel mobile deve essere scrollabile come una landing page, sulla landing page in ordine devono esserci anagrafica ma cliccabile non sempre a vista, il numero di telefono paziente deve essere sotto il nome in header (togli il modulo chiama e whatsapp, ci sono già in header), poi le azioni rapide, quindi deve esserci una finestra anamnesi in cui si denoti un riassunto (se non c'è anamsnei segnalerà di eseguire anamnesi, se c'è e non c'è nulla di noto per complicanze ci sarà una scritta in verde che dirà nessuna problematica da evidenziare, se invece c'è da segnalare la scritta sarà rossa e dirà quale sia il problema, patologia, farmaci ecc), poi ci sarà piani sempre a comparsa, poi ci sarà pagamenti sempre a comparsa, poi ci sarà prossimo appuntamento (se non c'è nessun appuntamento segnalerà nessun appuntamento), poi foto sempre a comparsa, mantieni comunque il menù a tendina. In header le parti da pagare/pagato devono essere cliccabili e portare alla sezione giusta. Le sezioni in pagina info devono essere le stesse delle pagine corrispondenti"
+
+### 0. Link Vercel persistente
+Il branch alias Vercel (`dental-manager-git-<branch>-acmeproduction.vercel.app`) era già stabile — stesso URL ad ogni push sullo stesso branch, il tool ha sempre restituito lo stesso valore in questa sessione. Il problema reale era che non c'era un posto scritto dove recuperarlo senza richiederlo. Nuovo `docs/coordination/preview-links.md` con il link del branch attivo + produzione, da aggiornare quando cambia branch.
+
+### 1-2. Header: telefono sotto il nome, statistiche cliccabili
+- `SchedaPaz.jsx`: il telefono ora è una riga sotto nome/cognome, sopra il C.F. — rimosso `PhStr` (che renderizzava un secondo blocco Chiama/WhatsApp) dal corpo della pagina, import tolto: i pulsanti Chiama/WhatsApp erano già stati aggiunti in header nel giro POL-UI-020.
+- Le 4 celle statistiche header (Piani/Pagato/Da pagare/Visite) sono ora bottoni che chiamano `setTab()` verso piani/paga/paga/app — estese a tutte e 4 per coerenza (il Product Owner ne aveva citate esplicitamente solo 2, ma lasciare le altre due non cliccabili sarebbe stato incoerente visivamente, stesso aspetto ma comportamento diverso).
+
+### 3. Tab Info → landing page scrollabile con sezioni a comparsa
+Nuovo componente locale `SezioneComparsa` (freccia rotante ▶, stesso linguaggio di espansione già usato in `PianoDrillDown.jsx`) per le sezioni chiuse di default. Ordine finale nel tab Info: **Anagrafica** (a comparsa) → **Azioni rapide** (invariate) → **Anamnesi** (card sempre visibile con 3 stati: mancante/verde-ok/rosso-allarme con dettagli) → **Piani** (a comparsa) → **Pagamenti** (a comparsa) → **Prossimo appuntamento** (sempre visibile, non a comparsa — primo futuro o "Nessun appuntamento") → **Foto** (a comparsa) → Note cliniche (invariate). `.patient-record-content` era già `overflow-y:auto`, quindi impilare tutto in un solo tab lo rende scorrevole come una pagina senza toccare altro CSS. La sidebar/dropdown di navigazione a sezioni resta invariata (richiesto esplicitamente: "mantieni comunque il menù a tendina").
+
+### 4. Riuso, non duplicazione
+`renderPianiSection()`/`renderPagamentiSection()` estratte come funzioni locali dentro `SchedaPaz.jsx`, chiamate sia dal tab dedicato (`piani`/`paga`) sia dall'accordion nel tab Info — stesso identico markup in entrambi i posti, verificato nei test che compaiano esattamente 2 volte nel sorgente (mai una terza implementazione nata per errore). La sezione Foto riusa lo stesso `<PatientPhotos .../>` del tab dedicato.
+
+### Validation
+`npm test` 692/692 (6 nuovi test in `tests/patientQaRecoveryFinal.test.mjs`). `npm run build` pulito. `git diff --check` pulito. Nessuna migration — solo componenti client.
+
+### EXACT NEXT ACTION
+Push del branch aggiornato `feature/pol-fin-007e-incasso-dock-tab`; PR e merge solo su istruzione esplicita del Product Owner.

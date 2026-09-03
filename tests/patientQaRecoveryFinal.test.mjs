@@ -228,6 +228,61 @@ test('O4. Il popup mostra il contenuto giusto per ciascuno dei 3 stati anamnesi'
   assert.match(schedaPaz, /\(paz\.anamnesiAllarmeDettagli \|\| \[\]\)\.map/);
 });
 
+// POL-UI-021: Product Owner — "la scheda paziente nel mobile deve essere
+// scrollabile come una landing page" con anagrafica/piani/pagamenti/foto
+// "a comparsa" (chiuse di default), un riassunto anamnesi, il prossimo
+// appuntamento, il telefono sotto il nome in header (via/Chiama/WhatsApp
+// già lì, PhStr rimosso), e le celle statistiche dell'header cliccabili
+// verso la sezione giusta. "Le sezioni in pagina info devono essere le
+// stesse delle pagine corrispondenti" — Piani/Pagamenti riusano le
+// stesse funzioni del tab dedicato, mai una seconda implementazione.
+test('P. Il tab Info è una landing page con Anagrafica/Piani/Pagamenti/Foto a comparsa, chiuse di default', () => {
+  assert.match(schedaPaz, /const \[infoOpen, setInfoOpen\] = useState\(\{ anagrafica: false, piani: false, pagamenti: false, foto: false \}\);/);
+  assert.match(schedaPaz, /function SezioneComparsa\(\{ titolo, badge, aperta, onToggle, children \}\)/);
+  assert.match(schedaPaz, /<SezioneComparsa titolo="Anagrafica" aperta=\{infoOpen\.anagrafica\}/);
+  assert.match(schedaPaz, /<SezioneComparsa titolo="Piani" badge=\{patPlans\.length\} aperta=\{infoOpen\.piani\}/);
+  assert.match(schedaPaz, /<SezioneComparsa titolo="Pagamenti" aperta=\{infoOpen\.pagamenti\}/);
+  assert.match(schedaPaz, /<SezioneComparsa titolo="Foto" aperta=\{infoOpen\.foto\}/);
+});
+
+test('P2. Piani e Pagamenti nel tab Info riusano esattamente le stesse funzioni del tab dedicato, non una seconda implementazione', () => {
+  assert.match(schedaPaz, /const renderPianiSection = \(\) => \(/);
+  assert.match(schedaPaz, /const renderPagamentiSection = \(\) => \(/);
+  const pianiCalls = schedaPaz.match(/renderPianiSection\(\)/g) || [];
+  const pagamentiCalls = schedaPaz.match(/renderPagamentiSection\(\)/g) || [];
+  assert.equal(pianiCalls.length, 2, 'renderPianiSection deve essere chiamata dal tab dedicato E dalla sezione a comparsa in Info, mai altrove');
+  assert.equal(pagamentiCalls.length, 2, 'renderPagamentiSection deve essere chiamata dal tab dedicato E dalla sezione a comparsa in Info, mai altrove');
+  assert.match(schedaPaz, /\{tab === 'piani' && renderPianiSection\(\)\}/);
+  assert.match(schedaPaz, /\{tab === 'paga' && renderPagamentiSection\(\)\}/);
+});
+
+test('P3. Riassunto anamnesi in pagina Info: verde se ok, rosso con i dettagli se in allarme, invito a compilare se mancante', () => {
+  assert.match(schedaPaz, /Nessuna problematica da evidenziare/);
+  assert.match(schedaPaz, /Nessuna anamnesi compilata per questo paziente\./);
+});
+
+test('P4. Prossimo appuntamento mostra il primo futuro o "Nessun appuntamento"', () => {
+  assert.match(schedaPaz, /const prossimoApp = patApp\.filter\(\(a\) => a\.data >= today\(\)\)\.sort\(\(a, b\) => a\.data\.localeCompare\(b\.data\) \|\| a\.ora\.localeCompare\(b\.ora\)\)\[0\];/);
+  assert.match(schedaPaz, />Nessun appuntamento</);
+});
+
+// Product Owner: "il numero di telefono paziente deve essere sotto il
+// nome in header (togli il modulo chiama e whatsapp, ci sono già in
+// header)" — PhStr (che renderizzava un secondo Chiama/WhatsApp) rimosso
+// dal corpo della pagina; il telefono si legge sotto il nome in header,
+// dove i pulsanti Chiama/WhatsApp erano già stati aggiunti in un giro
+// precedente.
+test('P5. Il telefono è sotto il nome in header; PhStr (secondo Chiama/WhatsApp) non è più usato nel corpo della pagina', () => {
+  assert.doesNotMatch(schedaPaz, /PhStr/);
+  const headerNameBlock = schedaPaz.match(/\{paz\.nome\} \{paz\.cognome\}<\/div>[\s\S]{0,200}/)?.[0] || '';
+  assert.match(headerNameBlock, /\{paz\.telefono && <div/);
+});
+
+test('P6. Le celle statistiche dell\'header sono cliccabili e portano al tab giusto', () => {
+  assert.match(schedaPaz, /goTo: 'piani' \}, \{ l: 'Pagato', v: saldiCaricati \? fmt\(aggSaldi\.totale_pagato\) : '…', goTo: 'paga' \}, \{ l: 'Da pagare', v: saldiCaricati \? fmt\(totDaPagare\) : '…', goTo: 'paga' \}, \{ l: 'Visite', v: patApp\.length, goTo: 'app' \}/);
+  assert.match(schedaPaz, /<button key=\{s\.l\} type="button" onClick=\{\(\) => setTab\(s\.goTo\)\}/);
+});
+
 // N — nessuna query eager per le sezioni pesanti, invariato da prima di questo QA.
 test('N2. Foto/Fisio/Documenti restano lazy e montati solo per la propria tab', () => {
   assert.match(schedaPaz, /lazy\(\(\) => import\('\.\/PatientPhotos\.jsx'\)\)/);
