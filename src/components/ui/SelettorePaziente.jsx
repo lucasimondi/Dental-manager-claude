@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { C } from '../../lib/utils';
 import { cercaPazienti } from '../../lib/ricercaPazienti';
 import Ic from './Ic.jsx';
@@ -43,6 +43,20 @@ function CreaPazienteInline({ testoIniziale, onCrea }) {
 export default function SelettorePaziente({ patients, value, onChange, search, onSearchChange, placeholder = 'Cerca per nome o cognome…', maxResults = 20, autoFocus, onCreaPaziente }) {
   const sel = patients.find((p) => String(p.id) === String(value));
   const filtered = search.trim() ? cercaPazienti(patients, search) : patients;
+  // Il campo, appena montato senza un paziente già selezionato, mostrava
+  // subito l'elenco completo — su mobile, dentro un modale, copriva i
+  // campi sotto senza un modo per chiuderlo senza scegliere qualcuno
+  // (Product Owner: "deve essere anche tolto senza selezionare alcun
+  // paziente perché copre altro"). L'elenco ora si apre solo quando il
+  // campo ha davvero il focus (o si sta digitando), e si chiude toccando
+  // altrove — il timeout lascia il tempo al click su una voce/sul
+  // pulsante "crea paziente" di registrarsi prima che il blur lo nasconda.
+  const [focused, setFocused] = useState(false);
+  const blurTimeoutRef = useRef(null);
+  const handleFocus = () => { clearTimeout(blurTimeoutRef.current); setFocused(true); };
+  const handleBlur = () => { blurTimeoutRef.current = setTimeout(() => setFocused(false), 150); };
+  useEffect(() => () => clearTimeout(blurTimeoutRef.current), []);
+  const showDropdown = focused && (!sel || search);
 
   return (
     <div style={{ position: 'relative' }}>
@@ -63,12 +77,14 @@ export default function SelettorePaziente({ patients, value, onChange, search, o
             autoFocus={autoFocus}
             value={search}
             onChange={(e) => { onSearchChange(e.target.value); if (!e.target.value) onChange(''); }}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
             placeholder={placeholder}
             style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 14, color: C.txt, outline: 'none', fontFamily: 'inherit' }}
           />
         )}
       </div>
-      {(!sel || search) && filtered.length > 0 && (
+      {showDropdown && filtered.length > 0 && (
         <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: C.sur, border: `1.5px solid ${C.pri}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', marginTop: 3, maxHeight: 220, overflowY: 'auto' }}>
           {filtered.slice(0, maxResults).map((p) => (
             <div
@@ -84,7 +100,7 @@ export default function SelettorePaziente({ patients, value, onChange, search, o
           ))}
         </div>
       )}
-      {search.trim() && filtered.length === 0 && (
+      {focused && search.trim() && filtered.length === 0 && (
         <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: C.sur, border: `1.5px solid ${C.brd}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', marginTop: 3 }}>
           {onCreaPaziente ? (
             <CreaPazienteInline

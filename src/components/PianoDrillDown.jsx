@@ -88,10 +88,32 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
 
   const setRichiamo = (planId, index, tipo, data) => setPlans((current) => current.map((pl) => (pl.id === planId ? { ...pl, voci: pl.voci.map((v, j) => (j === index ? { ...v, richiamoTipo: tipo, richiamoData: data } : v)) } : pl)));
 
+  // POL-FIN-007e: già usato da removeItemFromPlan per capire se cancellare
+  // una prestazione lascerebbe un'eccedenza — ora riusato anche dai tasti
+  // "Incassato" per sapere quanto è già stato pagato su questo piano prima
+  // di riproporre un importo, invece di ignorarlo (causa diretta di un
+  // doppio incasso reale segnalato dal Product Owner: il piano aveva già
+  // €90 pagati, il tasto "Incassato" sulla prestazione riproponeva
+  // ciecamente altri €90).
+  const totalePagatoPiano = (planId) => (payments || [])
+    .filter((payment) => String(payment.pianoId) === String(planId) && String(payment.stato || '').toLowerCase() === 'pagato')
+    .reduce((sum, payment) => sum + Number(payment.importo || 0), 0);
+
+  const openIncassoPiano = (pl, tot) => {
+    const giaPagato = totalePagatoPiano(pl.id);
+    const residuo = Math.max(0, tot - giaPagato);
+    setIncassoPrefill({ pazienteId: String(pl.pazienteId), lockedPianoId: pl.id, importo: residuo > 0 ? String(residuo) : '', nota: pl.titolo, pianoContext: { atteso: tot, giaPagato } });
+  };
+
+  const openIncassoVoce = (pl, v, tot) => {
+    const giaPagato = totalePagatoPiano(pl.id);
+    const residuoPiano = Math.max(0, tot - giaPagato);
+    const importoDefault = Math.min(Number(v.prezzo) || 0, residuoPiano);
+    setIncassoPrefill({ pazienteId: String(pl.pazienteId), lockedPianoId: pl.id, importo: importoDefault > 0 ? String(importoDefault) : '', nota: v.prestazione, pianoContext: { atteso: tot, giaPagato } });
+  };
+
   const removeItemFromPlan = (plan, index) => {
-    const totalePagato = (payments || [])
-      .filter((payment) => String(payment.pianoId) === String(plan.id) && String(payment.stato || '').toLowerCase() === 'pagato')
-      .reduce((sum, payment) => sum + Number(payment.importo || 0), 0);
+    const totalePagato = totalePagatoPiano(plan.id);
     const vociResidue = (plan.voci || []).filter((_, i) => i !== index);
     const { finale: nuovoTotale } = calcTot(vociResidue, plan.sconto || 0, plan.scontoTipo || 'pct');
     const eccedenza = Math.max(0, totalePagato - nuovoTotale);
@@ -183,7 +205,7 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
                   <button onClick={() => setStato(pl.id, 'accettato')} disabled={stato === 'accettato'} style={{ padding: '7px 11px', border: 'none', background: stato === 'accettato' ? C.suc : 'transparent', color: stato === 'accettato' ? '#fff' : C.txm, fontWeight: 700, fontSize: 11, cursor: stato === 'accettato' ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="ok" s={12} c={stato === 'accettato' ? '#fff' : C.txm} />Accetta</button>
                   <button onClick={() => setStato(pl.id, 'rifiutato')} disabled={stato === 'rifiutato'} style={{ padding: '7px 11px', border: 'none', borderLeft: `1.5px solid ${C.brd}`, background: stato === 'rifiutato' ? C.dan : 'transparent', color: stato === 'rifiutato' ? '#fff' : C.txm, fontWeight: 700, fontSize: 11, cursor: stato === 'rifiutato' ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="x" s={12} c={stato === 'rifiutato' ? '#fff' : C.txm} />Non accetta</button>
                 </div>
-                <button onClick={() => setIncassoPrefill({ pazienteId: String(pl.pazienteId), lockedPianoId: pl.id, importo: String(tot || ''), nota: pl.titolo })} style={{ background: C.pri, border: 'none', borderRadius: 8, padding: '7px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: '#fff', fontWeight: 700, fontSize: 11 }}><Ic n="eur" s={12} c="#fff" />Incassato</button>
+                <button onClick={() => openIncassoPiano(pl, tot)} style={{ background: C.pri, border: 'none', borderRadius: 8, padding: '7px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: '#fff', fontWeight: 700, fontSize: 11 }}><Ic n="eur" s={12} c="#fff" />Incassato</button>
               </div>
               <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                 <button onClick={() => setPdfPlan(pl)} title="Stampa PDF" aria-label="Stampa PDF" style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 7, padding: 7, cursor: 'pointer', display: 'flex' }}><Ic n="prt" s={13} c={C.txm} /></button>
@@ -296,11 +318,11 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
                             <button onClick={() => toggleEseguita(pl, i)} style={{ flex: '1 1 90px', padding: '6px 0', borderRadius: 7, border: `1.5px solid ${v.eseguita ? C.suc : C.brd}`, background: v.eseguita ? '#fff' : C.bg, color: v.eseguita ? C.suc : C.txm, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>{v.eseguita ? '✓ Eseguita' : '○ Segna eseguita'}</button>
                             <button onClick={() => openEditVoce(pl, i)} style={{ flex: '0 0 auto', padding: '6px 10px', borderRadius: 7, border: 'none', background: '#EDE9FE', color: C.pur, fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="edit" s={12} c={C.pur} />Modifica</button>
                             <button onClick={() => removeItemFromPlan(pl, i)} style={{ flex: '0 0 auto', padding: '6px 10px', borderRadius: 7, border: 'none', background: C.danL, color: C.dan, fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="del" s={12} c={C.dan} />Elimina</button>
-                            <button onClick={() => setIncassoPrefill({ pazienteId: String(pl.pazienteId), lockedPianoId: pl.id, importo: String(v.prezzo || ''), nota: v.prestazione })} style={{ flex: '0 0 auto', padding: '6px 10px', borderRadius: 7, border: 'none', background: C.priL, color: C.pri, fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="eur" s={12} c={C.pri} />Incassato</button>
+                            <button onClick={() => openIncassoVoce(pl, v, tot)} style={{ flex: '0 0 auto', padding: '6px 10px', borderRadius: 7, border: 'none', background: C.priL, color: C.pri, fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="eur" s={12} c={C.pri} />Incassato</button>
                           </div>
                           {quickOffer?.planId === pl.id && quickOffer?.itemIndex === i && v.eseguita && (
                             <label className="plan-quick-payment-offer">
-                              <input type="checkbox" onChange={(event) => { if (event.target.checked) setIncassoPrefill({ pazienteId: String(pl.pazienteId), lockedPianoId: pl.id, importo: String(v.prezzo || ''), nota: v.prestazione }); }} /> Registra incasso adesso
+                              <input type="checkbox" onChange={(event) => { if (event.target.checked) openIncassoVoce(pl, v, tot); }} /> Registra incasso adesso
                             </label>
                           )}
                         </>

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Btn, Crd, Modal, FormStoriaClinica, PannelloInvioDocumento } from './ui';
 import { C, ANAMNESI_MEDICA_STANDARD, STORIA_CLINICA_MODELLO_BASE, today, DEF_DOCUMENTI_SETTINGS } from '../lib/utils';
 import { supabase } from '../lib/supabase.js';
-import { formatClinicalHistoryNote } from '../lib/patientQuickActions.js';
+import { formatClinicalHistoryNote, computeAnamnesiAlert } from '../lib/patientQuickActions.js';
 import { creaAnamnesiPdf } from '../lib/pdfDocs.js';
 
 export default function PatientClinicalHistory({ patient, setPatients, onPatientChange, studio }) {
@@ -43,7 +43,18 @@ export default function PatientClinicalHistory({ patient, setPatients, onPatient
 
   const saveHistory = async (data) => {
     const section = formatClinicalHistoryNote(data, today());
-    const updated = { ...patient, noteGenerale: [patient.noteGenerale?.trim(), section].filter(Boolean).join('\n\n') };
+    // POL-UI-020: `patient.noteGenerale` non ha mai avuto una colonna DB
+    // corrispondente — ogni "Salva anamnesi" aggiornava solo lo stato React
+    // locale e spariva al primo refresh. Sostituito con campi reali,
+    // persistiti come ogni altro campo paziente.
+    const { allarme, dettagli } = computeAnamnesiAlert(data);
+    const updated = {
+      ...patient,
+      anamnesiCompilataIl: new Date().toISOString(),
+      anamnesiNota: section,
+      anamnesiAllarme: allarme,
+      anamnesiAllarmeDettagli: dettagli,
+    };
     setPatients?.((rows) => rows.map((row) => row.id === patient.id ? updated : row));
     onPatientChange?.(updated);
 
@@ -74,7 +85,7 @@ export default function PatientClinicalHistory({ patient, setPatients, onPatient
   return <div>
     <Crd style={{ marginBottom: 12 }}>
       <div style={{ fontSize: 12, fontWeight: 800, color: C.pri, marginBottom: 8 }}>Anamnesi / Allergie / Note generali</div>
-      <div style={{ fontSize: 13, color: patient?.noteGenerale ? C.txt : C.txm, whiteSpace: 'pre-wrap' }}>{patient?.noteGenerale || 'Nessuna anamnesi registrata.'}</div>
+      <div style={{ fontSize: 13, color: patient?.anamnesiNota ? C.txt : C.txm, whiteSpace: 'pre-wrap' }}>{patient?.anamnesiNota || 'Nessuna anamnesi registrata.'}</div>
       <div style={{ marginTop: 12 }}><Btn ch={loading ? 'Caricamento…' : 'Nuova anamnesi'} onClick={openHistory} dis={loading} full /></div>
       {error && <div role="alert" style={{ marginTop: 10, color: C.dan, fontSize: 12 }}>{error}</div>}
       {saved && <div role="status" style={{ marginTop: 10, color: C.suc, fontSize: 12 }}>{saved}</div>}

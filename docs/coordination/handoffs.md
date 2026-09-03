@@ -2504,3 +2504,139 @@ Code: revert this commit on the branch. Database: stop Chat writes, remove `poli
 - SAFETY: pure presentational changes -- no behavior, no data, no new props; same click handlers (`setStato`, `setPdfPlan`, `openEditPlan`, `delPlan`) wired to the same buttons, just restyled/regrouped.
 - Exact next action: push, report to Product Owner. Not merged -- awaiting explicit "mergiamo"/"mergia".
 - MERGE: Product Owner replied "Mergia master". Opened **PR #87** (`feature/pol-fin-007c-prestazioni-visibili` -> `master`), covering both POL-FIN-007c rounds (visually distinct prestazioni cards + this accept/reject-control/mobile-tabs follow-up) in one PR, since neither round had been merged yet. Vercel status `success` at merge time. Merged via `merge_pull_request`. Merge commit `59a66911c2e4cb82936795489101de909b7bc8e4`. Local `master` pulled and confirmed to contain it.
+
+---
+
+## POL-FIN-007e — Doppio incasso, scroll oltre il dock, tab troppo ingombranti
+
+- REQUEST (verbatim, Product Owner): "bisogna sistemare alcune cose : ho ad esempio registrato come pagata lamprestazione di Gualfredo Bruno di Clarafond, però c'era Già un pagamento registrato a suo. Nome quindi è andato in credito di 90 euro , inoltre bisogna far win modo che in piani paziente la pagina scorra fino al di sopra del dock altrimenti non si possono aggiungere prestazioni , inoltre la pagina paziente ha questi tasti che portano ai vari sezioni che è un po troppo ingombrante bisogna trovare un modo"
+
+### 1. Doppio incasso reale — dato corretto + prevenuto
+- Trovato paziente id=96 (Gualfredo Bruno di Clarafond) via query diretta su produzione (`patients` ILIKE su nome/cognome). Piano id=15 "Conservativa", un'unica voce "Otturazione" dente 28 da €90. Due `payments` da €90 collegati a `piano_id=15`: id=50 ("Saldo Conservativa", 2026-09-02, preesistente) e id=51 ("Otturazione", 2026-09-03, registrato oggi tramite il nuovo tasto Incassato) — €180 su €90 dovuti.
+- Root cause trovata leggendo `PianoDrillDown.jsx`: sia il tasto Incassato a livello piano sia quello a livello prestazione prefillavano SEMPRE l'importo pieno (`tot`/`v.prezzo`), senza mai controllare i `payments` già collegati a quel piano — a differenza di `removeItemFromPlan`, che quel calcolo lo fa già.
+- Corretto il dato: verificato in `BEGIN...ROLLBACK` (14 righe attese, match esatto), poi `DELETE FROM payments WHERE id=51` applicato per davvero. Il piano torna a saldo zero.
+- Corretta la causa: nuovo helper `totalePagatoPiano(planId)` in `PianoDrillDown.jsx`, riusato da due nuovi helper `openIncassoPiano(pl, tot)`/`openIncassoVoce(pl, v, tot)` che ora entrambi i tasti Incassato chiamano. L'importo prefillato è il RESIDUO (`Math.max(0, atteso - giaPagato)`), mai più l'importo pieno alla cieca — se il residuo è 0 il campo resta vuoto invece di riproporre una cifra. `IncassoModal.jsx` riceve un `pianoContext` informativo (tenuto fuori da `state` — non finisce mai nel payment salvato) e mostra sempre "Piano: atteso €X · già incassato €Y", con un avviso ambra ben visibile se il piano risulta già saldato/in credito PRIMA che l'utente salvi, invece di scoprirlo solo dopo come è successo qui.
+
+### 2. Piani paziente — pagina che non scorreva oltre il dock
+- `.poliedron-mobile-dock` è `position:fixed;z-index:1100` e (commento CSS preesistente) "non contribuisce mai all'altezza del layout" — qualunque pannello scrollabile deve riservare esplicitamente lo spazio sotto o l'ultimo elemento resta coperto/non cliccabile. Il pannello scrollabile di `SchedaPaz.jsx` (`style={{flex:1,padding:14,overflowY:'auto'}}` inline) non lo faceva — "+ Aggiungi prestazione" in un piano espanso finiva dietro il dock.
+- Estratto in una classe `.patient-record-content` (`PremiumVisualSystem.css`), con `padding-bottom:110px` su mobile — stesso identico valore già usato per lo stesso identico problema in `.management-hub`/`.financial-workspace`, nessun nuovo numero magico inventato.
+
+### 3. Scheda paziente — tab troppo ingombranti
+- Un giro precedente (POL-UI-017 R2) aveva deliberatamente sostituito uno scroller orizzontale con una griglia a capo per questa barra (test di regressione: mai `overflow-x`) — quindi tornare allo scroll orizzontale avrebbe contraddetto una decisione prodotto già presa.
+- `TABS` in `SchedaPaz.jsx`: da `{id,l:'📋 Info'}` a `{id,emoji:'📋',label:'Info'}`. Su mobile il testo (`.patient-record-tabs__label`) si nasconde, restano solo le icone (`title`/`aria-label` mantengono il nome completo per l'accessibilità), griglia da `repeat(3,...)` a `repeat(auto-fill,minmax(50px,1fr))` — fino a 4 righe di testo diventano 1-2 righe di icone. Nessuna sezione nascosta, nessuno scroller reintrodotto, touch target 44px invariato.
+- "Impianti" condivideva l'icona 🦷 con "Piani" (indistinguibili una volta ridotte a solo-icona) — assegnata una icona propria 🦴.
+
+- VALIDATION: `npm test` 668/668 (nuovi/aggiornati: guardia di regressione sul residuo Incassato in `tests/planExecutionUi.test.mjs`, banner già-pagato in `tests/incassiSection.test.mjs`, riserva di spazio sotto il dock e compattazione icon-only dei tab in `tests/incassiPoliedronAndControlUi.test.mjs`); `npm run build` pulito; `git diff --check` pulito.
+- NOTA DI CONTINUITÀ: questo branch parte da `master` (contiene PR #87) e NON contiene ancora POL-FIN-007d (split Attività/Dati da completare in Dashboard.jsx), che vive su un branch separato non ancora mergiato — le due PR andranno mergiate indipendentemente, non l'una sull'altra.
+- EXACT NEXT ACTION: push del branch `feature/pol-fin-007e-incasso-dock-tab`; PR e merge solo su istruzione esplicita del Product Owner.
+
+---
+
+## POL-FIN-007f — Navigazione paziente: sidebar/dropdown, non un'altra variante di tab strip
+
+- REQUEST (verbatim, Product Owner, dopo aver visto la compattazione icon-only appena pushata): "Ancora non mi piace la visualizzazione dei tasti in paziente , dobbiamo trovare un modo più funzionale e pro"
+- LETTURA: il problema non era la densità (già ridotta da griglia di testo a icon-only) ma il TIPO di componente — un tab strip, per quanto compatto, non legge come "pro". Prima di disegnare qualcosa di nuovo, cercato nel repo se esisteva già un pattern per "molte sezioni, poco spazio, deve sembrare professionale" — trovato in `ControlloGestione.jsx`: sidebar verticale persistente (icona+etichetta) su desktop, select dropdown nativo su mobile (`.management-nav`/`.management-nav-mobile`), già shippato e presumibilmente già approvato dal Product Owner in un giro precedente.
+- SCELTA: riusare esattamente quel pattern invece di inventarne un terzo — stessa coerenza visiva con il resto dell'app, stesso meccanismo già collaudato, zero rischio di un terzo rifiuto per "non sembra pro" dato che il pattern è già nell'app.
+- IMPLEMENTAZIONE (`SchedaPaz.jsx`): `TABS` passa da `{id,emoji,label}` a `{id,icon,label}` con icone reali dal set `Ic` condiviso in tutta l'app (mai più emoji) — user (Info), pulse (Anamnesi), tooth (Piani), tag (Impianti — prima condivideva l'icona con Piani, ora distinta), zap (Fisioterapia), pay (Pagamenti), folder (Foto — nessuna icona "camera" dedicata nel set esistente), cal (Agenda), file (Documenti), lock (Privacy). Markup: `<nav className="patient-record-tabs">` sostituito da `<div className="patient-record-body">` (riga flex) contenente `<aside className="patient-record-nav">` (bottoni icona+etichetta, sempre visibile testo) e `<label className="patient-record-nav-mobile"><select>...</select></label>` (mobile), entrambi che chiamano lo stesso `setTab(id)` di prima — il resto del componente (tutta la logica delle sezioni, lazy loading, ecc.) invariato.
+- CSS (`PremiumVisualSystem.css`): nuove regole `.patient-record-body`/`.patient-record-nav`/`.patient-record-nav-mobile`, mirror quasi letterale di `.management-nav`/`.management-nav-mobile` ma adattate al layout `position:fixed;display:flex;flex-direction:column` a schermo intero di SchedaPaz (la sidebar è un figlio flex di altezza piena con `overflow-y:auto` proprio, non uno sticky in una pagina con scroll normale). Su mobile (`max-width:719px`): sidebar nascosta, dropdown visibile, stesso identico `padding-bottom:110px` di prima per liberare il dock. `.patient-record-content` guadagna `min-width:0` (ora è un figlio flex in una riga, non più in una colonna).
+- TEST: aggiornati tutti i test che assumevano la vecchia griglia (inclusi due round precedenti nello stesso file) — sia in `tests/incassiPoliedronAndControlUi.test.mjs` sia il test storico "M" in `tests/patientQaRecoveryFinal.test.mjs` (un vincolo Product Owner preesistente: "ogni destinazione dev'essere raggiungibile senza scroll orizzontale" — ancora vero con sidebar/dropdown, aggiornato solo il modo in cui viene verificato). Nessun test cancellato senza sostituzione — ognuno ora verifica la stessa garanzia sulla nuova architettura.
+- VALIDATION: `npm test` 668/668; `npm run build` pulito; `git diff --check` pulito.
+- EXACT NEXT ACTION: push del branch aggiornato `feature/pol-fin-007e-incasso-dock-tab`; PR e merge solo su istruzione esplicita del Product Owner. Non ancora verificato in un vero browser (nessuna sessione autenticata disponibile in questa sandbox) — il Product Owner dovrebbe controllare la preview prima del merge, in particolare che la sidebar desktop e il dropdown mobile si comportino bene su schermi reali.
+
+---
+
+## POL-UI-020 — Header paziente, croce anamnesi, 6 azioni veloci + Spesa, Registra pagamento con prestazione
+
+- REQUEST (verbatim, Product Owner): "dobbiamo inserire i tasti chiamata e WhatsApp in header, in più in header deve comparire una croce bianca quando non c'è anamnesi (poliedron dovrà segnalare le anamnesi mancanti), diventa vedere quando anamnesi non rileva pericoli (allergie, malattie cardiache, oncologiche ecc, tutti le controindicazioni) che diventa rossa lampeggiante nel caso di allarmi anamnesi e compare popup rosso con allarmi (cliccando sulla croce si hanno le info allarme ananmensi) se la croce è verde si clicca e dice nessun allarme anamnesi, se la croce è bianca deve esserci il popup manca anamnesi. I tasti azioni veloci in pazienti devono essere 6 e messi bene impaginati, metti magari spesa (che deve aggiornare sezione spese, e deve essere associata a paziente, quindi l'associazione è facoltativa, il popup nuova spesa è lo stesso di spese va aggiornato se si vuole opzionalmente associarla ad un paziente). In pagamenti di paziente deve esserci tasto registra pagamento (che è sempre lo stesso) metti opzione di associarla a prestazione e piano."
+
+### Bug scoperto durante l'indagine, corretto perché bloccante
+`PatientClinicalHistory.jsx` salvava l'anamnesi su `patient.noteGenerale` — verificato via query diretta su produzione che `patients` non ha MAI avuto una colonna del genere (solo `note`, un campo manuale distinto, popolato da tutt'altro flusso). Ogni "Salva anamnesi" aggiornava solo lo stato React locale; il giro di sincronizzazione di `App.jsx` (`makeSyncSetter` → `DB.update`) inviava comunque un campo inesistente. La richiesta di oggi richiedeva un dato reale da cui derivare bianca/verde/rossa, quindi impossibile costruire la feature sopra un campo fantasma — corretto alla radice invece di aggirarlo.
+
+### Migration (`20260903120000_pol_ui_020_anamnesi_alert_spese_paziente.sql`)
+- `patients.anamnesi_compilata_il` (timestamptz), `anamnesi_nota` (text, sostituisce `noteGenerale`), `anamnesi_allarme` (boolean), `anamnesi_allarme_dettagli` (jsonb).
+- `spese.paziente_id` (bigint, nullable FK a patients).
+- Verificata in `BEGIN...ROLLBACK` prima, poi applicata per davvero. `get_advisors(security)`: 52 WARN + 2 INFO, identico baseline, zero nuovi.
+- `FIELD_MAP.patients` in `src/lib/supabase.js` esteso con i 4 nuovi campi camelCase↔snake_case (`spese` non passa da lì — Spese.jsx fa query dirette con nomi già snake_case).
+
+### 1) Header — chiamata/WhatsApp
+Icone compatte in `SchedaPaz.jsx`, riusano `WaAction`/`waAbilitato` (unico punto app per URL/attivazione WhatsApp, mai una seconda implementazione) e un link `tel:` diretto. `features` ora è tra le prop destrutturate di `SchedaPaz` (prima arrivava solo via `{...props}` spread da `PatientWorkspaceBoundary`, mai letta esplicitamente).
+
+### 2) Header — croce anamnesi a 3 stati + popup
+`anamnesiState` = bianca (mancante) | verde (ok) | rossa lampeggiante (allarme), icona `cross` già presente nel set `Ic` condiviso. Click apre sempre un popup di dettaglio; se in allarme il popup si apre già da solo all'apertura della scheda.
+
+**Vincolo rispettato**: `tests/patientRecordRecovery.test.mjs` vieta `useEffect`/`supabase.`/`Promise.all` in `SchedaPaz.jsx` (guardia dall'incidente POL-UI-PATIENT-FREEZE-PROD). Il popup automatico usa invece un inizializzatore lazy di `useState(() => anamnesiState === 'allarme')` — funziona perché `App.jsx` monta questo componente con `key={paziente.id}`, quindi cambiare paziente smonta/rimonta da zero, niente effetto post-mount necessario.
+
+**Segnale Poliedron** (`src/lib/domain/dataHealthActivities.js`): nuovo `ACTIVITY_KIND.ANAMNESI_MANCANTE`, stesso meccanismo "Dati da completare" già esistente per gli altri controlli. Scoperto SOLO ai pazienti con almeno un piano (stesso criterio degli altri controlli scanner-based) — deliberato: al primo rollout del nuovo campo TUTTI i pazienti storici risulterebbero senza anamnesi, e senza questo filtro Attività si sarebbe riempita di centinaia di voci invece di segnalare quello attuale.
+
+### 3) Azioni veloci paziente — da 4 a 6, griglia
+`PatientQuickActions.jsx`: da pillole flex-wrap a griglia 3×2 di tile icona+etichetta (stesso linguaggio visivo della sidebar sezioni di POL-FIN-007f). Le 6: Note, Richiamo, Appuntamento, Pagamento (invariati), **Spesa** (nuova) e **Nuovo piano** (nuova, riusa `onNuovoPiano` già esistente, stesso schema di "Nuovo appuntamento" — chiude la scheda e apre la creazione piano).
+
+Nuovo `src/components/SpesaModal.jsx`: il form "nuova/modifica spesa" prima viveva SOLO dentro `Spese.jsx` — estratto qui invariato (stessa logica insert/update su `spese`) e riusato da ENTRAMBI i chiamanti: `Spese.jsx` (patient di partenza vuoto, selettore paziente completo) e la nuova azione veloce "Spesa" (patient precompilato al paziente corrente ma rimovibile — riusa `SelettorePaziente`, che ha già la "X" per togliere l'associazione, nessuna UI nuova inventata). `App.jsx` ora passa `patients` a `Spese` (prima non arrivava).
+
+### 4) Pagamenti paziente — tasto "Registra pagamento" con prestazione
+`SchedaPaz.jsx` non aveva NESSUN tasto per aprire `IncassoModal` nel tab Pagamenti — gap pre-esistente, scoperto durante l'indagine. Aggiunto, stesso `IncassoModal` di sempre (nessuna terza implementazione del form incasso).
+
+`IncassoModal.jsx` esteso con un selettore "Prestazione (opzionale)": compare una volta che il piano è noto (bloccato da `lockedPianoId`, auto-assegnato se il paziente ha un solo piano, o scelto dal selettore piano già esistente) e quel piano ha prestazioni. Selezionarne una precompila `nota` (nome prestazione) e `importo` (se vuoto) — stesso identico schema già usato dai tasti "Incassato" per-prestazione in `PianoDrillDown.jsx`, nessuna nuova colonna DB (i pagamenti restano collegati solo a `piano_id`, mai a un indice di riga).
+
+### Validation
+`npm test` 683/683 (nuovi/aggiornati in `tests/patientQaRecoveryFinal.test.mjs`, `tests/patientPreMergeQa.test.mjs`, `tests/dataHealthActivities.test.mjs`, `tests/spesaModal.test.mjs` nuovo, `tests/incassiSection.test.mjs`); `npm run build` pulito; `git diff --check` pulito.
+
+### Non verificabile in questa sessione
+Nessuna sessione browser autenticata disponibile in questa sandbox. In particolare il Product Owner dovrebbe controllare dal vivo: la croce anamnesi sui pazienti reali (sarà bianca sulla maggioranza, dato che il campo è nuovo e nessun paziente storico ha ancora `anamnesi_compilata_il`), il popup automatico su un paziente con un allarme vero, e il layout della griglia 6 azioni su schermi piccoli reali.
+
+### EXACT NEXT ACTION
+Push del branch aggiornato `feature/pol-fin-007e-incasso-dock-tab`; PR e merge solo su istruzione esplicita del Product Owner.
+
+---
+
+## POL-UI-020 follow-up — dropdown paziente chiudibile, croce anamnesi vera, WhatsApp centrata
+
+- REQUEST (verbatim, Product Owner, dopo la preview del giro precedente): "Il tab aggiungi spesa ha su mobile un menu a tendina che elenca i pazienti che però deve essere anche tolto senza selezionare alcun paziente perché copre altro. La croce di anamnesi deve essere una croce come fosse quella della croce rossa quindi non come l'hai fatta tu, inoltre icona WhatsApp in header pazienti è brutta devi farla bella non così"
+
+### 1. SelettorePaziente — dropdown non più bloccante
+Root cause: `{(!sel || search) && filtered.length > 0 && (...)}` — senza un paziente selezionato l'elenco COMPLETO si apriva subito al mount, nessuna condizione di focus/interazione lo governava. Su Spese.jsx (nessun paziente preselezionato di default) e su SpesaModal ogni volta che si toglie l'associazione con la "X" già esistente, il menu restava aperto e senza modo di chiuderlo — su mobile, dentro un modale, copriva i campi sotto.
+
+Fix: nuovo stato `focused` (`onFocus`/`onBlur` sul campo di ricerca), dropdown mostrato solo quando `focused && (!sel || search)`. Il blur ha un delay di 150ms (`blurTimeoutRef`, pulito in un cleanup di `useEffect`) per lasciare il tempo a un click su una voce dell'elenco o sul pulsante "+ Crea paziente" di registrarsi prima che il campo perda il focus e nasconda tutto. Anche il pannello "nessun risultato/crea paziente" ora richiede `focused`, stessa logica.
+
+Componente condiviso da Agenda/Piani/ArchivioDocs/IncassoModal/SpesaModal — il fix è un miglioramento generale, non un patch locale a Spese.
+
+### 2. Croce anamnesi — vera forma a croce, non l'icona generica
+L'icona `Ic n="cross"` (quadrato arrotondato con un + sottile, bordo stroke) non si leggeva come una croce medica. Sostituita in `SchedaPaz.jsx` con un SVG inline disegnato apposta per questo badge: path `M8 2h8v6h6v8h-6v6H8v-6H2V8h6z` — una vera forma a croce piena (5 quadrati, angoli netti, nessun contorno), l'immagine classica della Croce Rossa. **Non toccata** l'icona condivisa `cross` in `Ic.jsx`: è usata anche in `Pazienti.jsx` (StatCard "Rifiutati") con il significato opposto di rifiuto/X — ridefinirla lì avrebbe rotto quel significato altrove.
+
+Colori aggiornati per l'effetto Croce Rossa reale: stato bianco (mancante) ora ha una croce ROSSA su sfondo bianco (prima era blu scuro) — è letteralmente l'emblema della Croce Rossa. Stati verde (ok) e rosso (allarme) restano con croce bianca su sfondo colorato.
+
+### 3. Icona WhatsApp header — ricentrata
+Root cause: `WaAction` in variante `icon` ha uno stile base senza `alignItems`/`justifyContent` — l'override `style={{width:34,height:34,borderRadius:'50%'}}` cambiava le dimensioni del cerchio ma lasciava l'icona interna scentrata (il `padding:6` della variante non basta a centrare senza flex align/justify), risultando visivamente "brutta" come segnalato.
+
+Fix: sostituito con un link diretto (`<a href={waUrl(paz.telefono)} target="_blank">`), identico in struttura al pulsante Chiama appena aggiunto — stesso cerchio 34px, stesso `display:flex;alignItems:center;justifyContent:center`, solo verde WhatsApp invece che translucido. L'URL resta generato da `waUrl()`, l'unica funzione della app che decide il link wa.me — nessuna nuova logica WhatsApp, solo la resa del pulsante è locale a questo header.
+
+### Validation
+`npm test` 686/686 (nuovo `tests/selettorePaziente.test.mjs`; `tests/patientQaRecoveryFinal.test.mjs` aggiornato per il link WhatsApp diretto e la vera croce SVG). `npm run build` pulito. `git diff --check` pulito. Nessuna migration in questo giro — solo componenti client.
+
+### EXACT NEXT ACTION
+Push del branch aggiornato `feature/pol-fin-007e-incasso-dock-tab`; PR e merge solo su istruzione esplicita del Product Owner.
+
+---
+
+## POL-UI-021 — Tab Info come landing page scrollabile + link Vercel persistente
+
+- REQUEST (verbatim, Product Owner): "Dati cheè sempre lo stesso link possiamo metterlo da qualche parte che sia recuperabile sempre? Inoltre la scheda paziente nel mobile deve essere scrollabile come una landing page, sulla landing page in ordine devono esserci anagrafica ma cliccabile non sempre a vista, il numero di telefono paziente deve essere sotto il nome in header (togli il modulo chiama e whatsapp, ci sono già in header), poi le azioni rapide, quindi deve esserci una finestra anamnesi in cui si denoti un riassunto (se non c'è anamsnei segnalerà di eseguire anamnesi, se c'è e non c'è nulla di noto per complicanze ci sarà una scritta in verde che dirà nessuna problematica da evidenziare, se invece c'è da segnalare la scritta sarà rossa e dirà quale sia il problema, patologia, farmaci ecc), poi ci sarà piani sempre a comparsa, poi ci sarà pagamenti sempre a comparsa, poi ci sarà prossimo appuntamento (se non c'è nessun appuntamento segnalerà nessun appuntamento), poi foto sempre a comparsa, mantieni comunque il menù a tendina. In header le parti da pagare/pagato devono essere cliccabili e portare alla sezione giusta. Le sezioni in pagina info devono essere le stesse delle pagine corrispondenti"
+
+### 0. Link Vercel persistente
+Il branch alias Vercel (`dental-manager-git-<branch>-acmeproduction.vercel.app`) era già stabile — stesso URL ad ogni push sullo stesso branch, il tool ha sempre restituito lo stesso valore in questa sessione. Il problema reale era che non c'era un posto scritto dove recuperarlo senza richiederlo. Nuovo `docs/coordination/preview-links.md` con il link del branch attivo + produzione, da aggiornare quando cambia branch.
+
+### 1-2. Header: telefono sotto il nome, statistiche cliccabili
+- `SchedaPaz.jsx`: il telefono ora è una riga sotto nome/cognome, sopra il C.F. — rimosso `PhStr` (che renderizzava un secondo blocco Chiama/WhatsApp) dal corpo della pagina, import tolto: i pulsanti Chiama/WhatsApp erano già stati aggiunti in header nel giro POL-UI-020.
+- Le 4 celle statistiche header (Piani/Pagato/Da pagare/Visite) sono ora bottoni che chiamano `setTab()` verso piani/paga/paga/app — estese a tutte e 4 per coerenza (il Product Owner ne aveva citate esplicitamente solo 2, ma lasciare le altre due non cliccabili sarebbe stato incoerente visivamente, stesso aspetto ma comportamento diverso).
+
+### 3. Tab Info → landing page scrollabile con sezioni a comparsa
+Nuovo componente locale `SezioneComparsa` (freccia rotante ▶, stesso linguaggio di espansione già usato in `PianoDrillDown.jsx`) per le sezioni chiuse di default. Ordine finale nel tab Info: **Anagrafica** (a comparsa) → **Azioni rapide** (invariate) → **Anamnesi** (card sempre visibile con 3 stati: mancante/verde-ok/rosso-allarme con dettagli) → **Piani** (a comparsa) → **Pagamenti** (a comparsa) → **Prossimo appuntamento** (sempre visibile, non a comparsa — primo futuro o "Nessun appuntamento") → **Foto** (a comparsa) → Note cliniche (invariate). `.patient-record-content` era già `overflow-y:auto`, quindi impilare tutto in un solo tab lo rende scorrevole come una pagina senza toccare altro CSS. La sidebar/dropdown di navigazione a sezioni resta invariata (richiesto esplicitamente: "mantieni comunque il menù a tendina").
+
+### 4. Riuso, non duplicazione
+`renderPianiSection()`/`renderPagamentiSection()` estratte come funzioni locali dentro `SchedaPaz.jsx`, chiamate sia dal tab dedicato (`piani`/`paga`) sia dall'accordion nel tab Info — stesso identico markup in entrambi i posti, verificato nei test che compaiano esattamente 2 volte nel sorgente (mai una terza implementazione nata per errore). La sezione Foto riusa lo stesso `<PatientPhotos .../>` del tab dedicato.
+
+### Validation
+`npm test` 692/692 (6 nuovi test in `tests/patientQaRecoveryFinal.test.mjs`). `npm run build` pulito. `git diff --check` pulito. Nessuna migration — solo componenti client.
+
+### EXACT NEXT ACTION
+Push del branch aggiornato `feature/pol-fin-007e-incasso-dock-tab`; PR e merge solo su istruzione esplicita del Product Owner.

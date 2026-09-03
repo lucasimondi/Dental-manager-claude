@@ -27,6 +27,7 @@ export const ACTIVITY_KIND = Object.freeze({
   PLAN_AWAITING_ACCEPTANCE_DECISION: SIGNAL_TYPE.PLAN_AWAITING_ACCEPTANCE_DECISION,
   PLAN_NEVER_STARTED: SIGNAL_TYPE.PLAN_NEVER_STARTED,
   STALLED_TREATMENT: 'STALLED_TREATMENT',
+  ANAMNESI_MANCANTE: 'ANAMNESI_MANCANTE',
 });
 
 const SCANNER_SIGNAL_TYPES = new Set([
@@ -47,6 +48,7 @@ const DEDUP_MARKER_BY_KIND = Object.freeze({
   [ACTIVITY_KIND.PLAN_AWAITING_ACCEPTANCE_DECISION]: 'accettato dal paziente',
   [ACTIVITY_KIND.PLAN_NEVER_STARTED]: 'nessuna prestazione eseguita',
   [ACTIVITY_KIND.STALLED_TREATMENT]: 'sembra ferma da tempo',
+  [ACTIVITY_KIND.ANAMNESI_MANCANTE]: 'nessuna anamnesi risulta compilata',
 });
 
 export const patientDisplayName = (patient) => {
@@ -144,6 +146,34 @@ const buildScannerEntries = ({ patients, plans, appointments, today }) => {
   return entries;
 };
 
+/** POL-UI-020: Product Owner — "poliedron dovrà segnalare le anamnesi
+ *  mancanti". Scoped like the scanner entries above (only patients with
+ *  at least one plan — someone actively in treatment) rather than every
+ *  patient ever created: right after this field ships, EVERY existing
+ *  patient lacks anamnesi_compilata_il, and flagging the studio's entire
+ *  historical patient list at once would flood Attività with noise
+ *  instead of surfacing what's actionable today. */
+const buildAnamnesiMissingEntries = ({ patients, plans }) => {
+  const entries = [];
+  for (const patient of patients || []) {
+    if (patient?.anamnesiCompilataIl) continue;
+    const hasPlan = (plans || []).some((plan) => plan?.pazienteId === patient.id);
+    if (!hasPlan) continue;
+    const name = patientDisplayName(patient);
+    entries.push({
+      pazienteId: patient.id,
+      patientName: name,
+      planId: null,
+      planTitle: null,
+      kind: ACTIVITY_KIND.ANAMNESI_MANCANTE,
+      message: `${name}: nessuna anamnesi risulta compilata.`,
+      dedupMarker: DEDUP_MARKER_BY_KIND[ACTIVITY_KIND.ANAMNESI_MANCANTE],
+      dedupKey: `${ACTIVITY_KIND.ANAMNESI_MANCANTE}:${patient.id}`,
+    });
+  }
+  return entries;
+};
+
 /** Every Attività-worthy data-health entry, one per patient per issue,
  *  each clickable (pazienteId) and ready to become both a todo row and a
  *  chat notification line. `formatDate` defaults to passing the ISO date
@@ -153,5 +183,6 @@ export function buildDataHealthActivities({ patients = [], plans = [], appointme
   return [
     ...buildYesterdayAppointmentEntries({ patients, plans, appointments, today, formatDate }),
     ...buildScannerEntries({ patients, plans, appointments, today }),
+    ...buildAnamnesiMissingEntries({ patients, plans }),
   ];
 }

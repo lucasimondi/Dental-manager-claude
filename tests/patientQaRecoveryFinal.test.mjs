@@ -169,13 +169,118 @@ test('L5. Nessun frame di posizione bloccata "stantia" dopo lo sblocco (lock sol
 });
 
 // M — Product Owner follow-up: every destination must be visible without
-// horizontal scrolling. The responsive grid keeps Documenti reachable and
-// avoids both the former compression and the interim swipe-only solution.
-test('M. Tutte le tab della Scheda Paziente sono visibili in una griglia non scorrevole', () => {
-  assert.match(schedaPaz, /className="patient-record-tabs"/);
+// horizontal scrolling. POL-FIN-007f replaced the grid (itself a previous
+// fix for "troppo ingombrante", then rejected again as not "pro") with a
+// persistent sidebar (desktop) / dropdown selector (mobile) — same
+// no-horizontal-scroll guarantee, different implementation.
+test('M. Tutte le sezioni della Scheda Paziente sono raggiungibili senza scroll orizzontale', () => {
+  assert.match(schedaPaz, /className="patient-record-nav"/);
+  assert.match(schedaPaz, /className="patient-record-nav-mobile"/);
   assert.doesNotMatch(schedaPaz, /overflowX: 'auto', WebkitOverflowScrolling: 'touch'/);
   // Tutte le tab, incluse Documenti, restano presenti e invariate nel comportamento.
   for (const id of ['info', 'clinical', 'piani', 'paga', 'foto', 'app', 'doc']) assert.match(schedaPaz, new RegExp(`id: '${id}'`));
+});
+
+// POL-UI-020: Product Owner — tasti chiamata/WhatsApp in header, più una
+// croce a 3 stati (bianca=anamnesi mancante, verde=nessun allarme, rossa
+// lampeggiante=allarme) che apre un popup di dettaglio; se in allarme il
+// popup compare già da solo all'apertura della scheda.
+const css2 = fs.readFileSync('src/components/PremiumVisualSystem.css', 'utf8');
+
+// POL-UI-020 follow-up: Product Owner — "icona WhatsApp in header
+// pazienti è brutta devi farla bella" (WaAction's icon variant, resized
+// via a style override, had no alignItems/justifyContent so the icon
+// wasn't centered). Replaced with a plain link matching the Chiama
+// button's own circle exactly — same size, same centering, WhatsApp
+// green.
+test('O. Header scheda paziente ha i tasti chiamata e WhatsApp, entrambi cerchi 34px ben centrati', () => {
+  assert.match(schedaPaz, /href=\{`tel:\+39\$\{paz\.telefono\.replace\(\/\\D\/g, ''\)\}`\}/);
+  assert.match(schedaPaz, /href=\{waUrl\(paz\.telefono\)\}/);
+  assert.match(schedaPaz, /import \{ waAbilitato, waUrl \} from '\.\/ui\/WaAction\.jsx';/);
+  assert.doesNotMatch(schedaPaz, /<WaAction/);
+  const waButton = schedaPaz.match(/href=\{waUrl\(paz\.telefono\)\}[^>]*style=\{\{([^}]*)\}\}/)?.[1] || '';
+  assert.match(waButton, /width: 34, height: 34/);
+  assert.match(waButton, /alignItems: 'center', justifyContent: 'center'/);
+});
+
+// POL-UI-020 follow-up: Product Owner — "la croce di anamnesi deve
+// essere una croce come fosse quella della croce rossa" — non più
+// l'icona generica "cross" del set condiviso (usata altrove, es.
+// Pazienti.jsx, con significato di rifiuto/X), ma una vera forma a
+// croce piena disegnata apposta per questo badge.
+test('O2. La croce anamnesi ha 3 stati (bianca/verde/rossa lampeggiante) derivati dai campi anamnesi reali del paziente, disegnata come una vera croce medica', () => {
+  assert.match(schedaPaz, /const anamnesiState = !paz\.anamnesiCompilataIl \? 'mancante' : \(paz\.anamnesiAllarme \? 'allarme' : 'ok'\);/);
+  assert.match(schedaPaz, /className=\{anamnesiState === 'allarme' \? 'anamnesi-cross anamnesi-cross--allarme' : 'anamnesi-cross'\}/);
+  assert.match(css2, /\.anamnesi-cross--allarme\{animation:anamnesi-cross-blink/);
+  assert.match(css2, /@media\(prefers-reduced-motion:reduce\)\{\.anamnesi-cross--allarme\{animation:none\}\}/);
+  assert.doesNotMatch(schedaPaz, /<Ic n="cross"/);
+  assert.match(schedaPaz, /<path d="M8 2h8v6h6v8h-6v6H8v-6H2V8h6z"/);
+});
+
+test('O3. In allarme il popup anamnesi si apre da solo all\'apertura della scheda, senza un effetto post-mount vietato in questo file', () => {
+  assert.doesNotMatch(schedaPaz, /useEffect/);
+  assert.match(schedaPaz, /const \[anamnesiPopup, setAnamnesiPopup\] = useState\(\(\) => anamnesiState === 'allarme'\);/);
+});
+
+test('O4. Il popup mostra il contenuto giusto per ciascuno dei 3 stati anamnesi', () => {
+  assert.match(schedaPaz, /Compila anamnesi/);
+  assert.match(schedaPaz, /nessuna condizione a rischio riferita/);
+  assert.match(schedaPaz, /\(paz\.anamnesiAllarmeDettagli \|\| \[\]\)\.map/);
+});
+
+// POL-UI-021: Product Owner — "la scheda paziente nel mobile deve essere
+// scrollabile come una landing page" con anagrafica/piani/pagamenti/foto
+// "a comparsa" (chiuse di default), un riassunto anamnesi, il prossimo
+// appuntamento, il telefono sotto il nome in header (via/Chiama/WhatsApp
+// già lì, PhStr rimosso), e le celle statistiche dell'header cliccabili
+// verso la sezione giusta. "Le sezioni in pagina info devono essere le
+// stesse delle pagine corrispondenti" — Piani/Pagamenti riusano le
+// stesse funzioni del tab dedicato, mai una seconda implementazione.
+test('P. Il tab Info è una landing page con Anagrafica/Piani/Pagamenti/Foto a comparsa, chiuse di default', () => {
+  assert.match(schedaPaz, /const \[infoOpen, setInfoOpen\] = useState\(\{ anagrafica: false, piani: false, pagamenti: false, foto: false \}\);/);
+  assert.match(schedaPaz, /function SezioneComparsa\(\{ titolo, badge, aperta, onToggle, children \}\)/);
+  assert.match(schedaPaz, /<SezioneComparsa titolo="Anagrafica" aperta=\{infoOpen\.anagrafica\}/);
+  assert.match(schedaPaz, /<SezioneComparsa titolo="Piani" badge=\{patPlans\.length\} aperta=\{infoOpen\.piani\}/);
+  assert.match(schedaPaz, /<SezioneComparsa titolo="Pagamenti" aperta=\{infoOpen\.pagamenti\}/);
+  assert.match(schedaPaz, /<SezioneComparsa titolo="Foto" aperta=\{infoOpen\.foto\}/);
+});
+
+test('P2. Piani e Pagamenti nel tab Info riusano esattamente le stesse funzioni del tab dedicato, non una seconda implementazione', () => {
+  assert.match(schedaPaz, /const renderPianiSection = \(\) => \(/);
+  assert.match(schedaPaz, /const renderPagamentiSection = \(\) => \(/);
+  const pianiCalls = schedaPaz.match(/renderPianiSection\(\)/g) || [];
+  const pagamentiCalls = schedaPaz.match(/renderPagamentiSection\(\)/g) || [];
+  assert.equal(pianiCalls.length, 2, 'renderPianiSection deve essere chiamata dal tab dedicato E dalla sezione a comparsa in Info, mai altrove');
+  assert.equal(pagamentiCalls.length, 2, 'renderPagamentiSection deve essere chiamata dal tab dedicato E dalla sezione a comparsa in Info, mai altrove');
+  assert.match(schedaPaz, /\{tab === 'piani' && renderPianiSection\(\)\}/);
+  assert.match(schedaPaz, /\{tab === 'paga' && renderPagamentiSection\(\)\}/);
+});
+
+test('P3. Riassunto anamnesi in pagina Info: verde se ok, rosso con i dettagli se in allarme, invito a compilare se mancante', () => {
+  assert.match(schedaPaz, /Nessuna problematica da evidenziare/);
+  assert.match(schedaPaz, /Nessuna anamnesi compilata per questo paziente\./);
+});
+
+test('P4. Prossimo appuntamento mostra il primo futuro o "Nessun appuntamento"', () => {
+  assert.match(schedaPaz, /const prossimoApp = patApp\.filter\(\(a\) => a\.data >= today\(\)\)\.sort\(\(a, b\) => a\.data\.localeCompare\(b\.data\) \|\| a\.ora\.localeCompare\(b\.ora\)\)\[0\];/);
+  assert.match(schedaPaz, />Nessun appuntamento</);
+});
+
+// Product Owner: "il numero di telefono paziente deve essere sotto il
+// nome in header (togli il modulo chiama e whatsapp, ci sono già in
+// header)" — PhStr (che renderizzava un secondo Chiama/WhatsApp) rimosso
+// dal corpo della pagina; il telefono si legge sotto il nome in header,
+// dove i pulsanti Chiama/WhatsApp erano già stati aggiunti in un giro
+// precedente.
+test('P5. Il telefono è sotto il nome in header; PhStr (secondo Chiama/WhatsApp) non è più usato nel corpo della pagina', () => {
+  assert.doesNotMatch(schedaPaz, /PhStr/);
+  const headerNameBlock = schedaPaz.match(/\{paz\.nome\} \{paz\.cognome\}<\/div>[\s\S]{0,200}/)?.[0] || '';
+  assert.match(headerNameBlock, /\{paz\.telefono && <div/);
+});
+
+test('P6. Le celle statistiche dell\'header sono cliccabili e portano al tab giusto', () => {
+  assert.match(schedaPaz, /goTo: 'piani' \}, \{ l: 'Pagato', v: saldiCaricati \? fmt\(aggSaldi\.totale_pagato\) : '…', goTo: 'paga' \}, \{ l: 'Da pagare', v: saldiCaricati \? fmt\(totDaPagare\) : '…', goTo: 'paga' \}, \{ l: 'Visite', v: patApp\.length, goTo: 'app' \}/);
+  assert.match(schedaPaz, /<button key=\{s\.l\} type="button" onClick=\{\(\) => setTab\(s\.goTo\)\}/);
 });
 
 // N — nessuna query eager per le sezioni pesanti, invariato da prima di questo QA.

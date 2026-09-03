@@ -143,6 +143,43 @@ test('every entry\'s dedupMarker is a real, literal substring of its own message
   }
 });
 
+// POL-UI-020: Product Owner — "poliedron dovrà segnalare le anamnesi
+// mancanti". Scoped like the other scanner-based checks (only patients
+// with at least one plan) so shipping the new anamnesi fields doesn't
+// instantly flood Attività with every patient who ever existed.
+test('a patient with a plan but no anamnesi compilata surfaces as a clickable, patient-named Attività entry', () => {
+  const entries = buildDataHealthActivities({
+    patients: [patient('p1', { anamnesiCompilataIl: null })],
+    plans: [{ id: 'pl1', pazienteId: 'p1', stato: 'accettato', data: '2026-08-01', voci: [{ prestazione: 'Igiene', eseguita: true, dente: '11' }] }],
+    appointments: [],
+    today: TODAY,
+  });
+  const entry = entries.find((e) => e.kind === ACTIVITY_KIND.ANAMNESI_MANCANTE);
+  assert.ok(entry);
+  assert.equal(entry.pazienteId, 'p1');
+  assert.match(entry.message, /nessuna anamnesi risulta compilata/);
+});
+
+test('a patient with anamnesi already compilata never surfaces ANAMNESI_MANCANTE', () => {
+  const entries = buildDataHealthActivities({
+    patients: [patient('p1', { anamnesiCompilataIl: '2026-08-20T10:00:00.000Z' })],
+    plans: [{ id: 'pl1', pazienteId: 'p1', stato: 'accettato', data: '2026-08-01', voci: [{ prestazione: 'Igiene', eseguita: true, dente: '11' }] }],
+    appointments: [],
+    today: TODAY,
+  });
+  assert.ok(!entries.some((e) => e.kind === ACTIVITY_KIND.ANAMNESI_MANCANTE));
+});
+
+test('a patient with no plans at all never surfaces ANAMNESI_MANCANTE, even without anamnesi — avoids flooding on rollout', () => {
+  const entries = buildDataHealthActivities({
+    patients: [patient('p1', { anamnesiCompilataIl: null })],
+    plans: [],
+    appointments: [],
+    today: TODAY,
+  });
+  assert.ok(!entries.some((e) => e.kind === ACTIVITY_KIND.ANAMNESI_MANCANTE));
+});
+
 test('formatDate is used for the yesterday-appointment message when provided', () => {
   const entries = buildDataHealthActivities({
     patients: [patient('p1')],
