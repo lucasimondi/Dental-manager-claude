@@ -169,10 +169,13 @@ test('L5. Nessun frame di posizione bloccata "stantia" dopo lo sblocco (lock sol
 });
 
 // M — Product Owner follow-up: every destination must be visible without
-// horizontal scrolling. The responsive grid keeps Documenti reachable and
-// avoids both the former compression and the interim swipe-only solution.
-test('M. Tutte le tab della Scheda Paziente sono visibili in una griglia non scorrevole', () => {
-  assert.match(schedaPaz, /className="patient-record-tabs"/);
+// horizontal scrolling. POL-FIN-007f replaced the grid (itself a previous
+// fix for "troppo ingombrante", then rejected again as not "pro") with a
+// persistent sidebar (desktop) / dropdown selector (mobile) — same
+// no-horizontal-scroll guarantee, different implementation.
+test('M. Tutte le sezioni della Scheda Paziente sono raggiungibili senza scroll orizzontale', () => {
+  assert.match(schedaPaz, /className="patient-record-nav"/);
+  assert.match(schedaPaz, /className="patient-record-nav-mobile"/);
   assert.doesNotMatch(schedaPaz, /overflowX: 'auto', WebkitOverflowScrolling: 'touch'/);
   // Tutte le tab, incluse Documenti, restano presenti e invariate nel comportamento.
   for (const id of ['info', 'clinical', 'piani', 'paga', 'foto', 'app', 'doc']) assert.match(schedaPaz, new RegExp(`id: '${id}'`));

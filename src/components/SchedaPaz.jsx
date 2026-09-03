@@ -50,18 +50,19 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
   const physioOperationalAccess = capabilities.has('clinical.personal_trainer') || capabilities.has('clinical.massage_therapist');
   const canAccessPhysio = isFisio && (physioFullAccess || physioOperationalAccess);
   const canManagePhysioTeam = physioFullAccess || isStudioAdmin === true;
-  // POL-FIN-007e: Product Owner — "la pagina paziente ha questi tasti che
-  // portano ai vari sezioni che è un po troppo ingombrante". A previous
-  // round (POL-UI-017 R2) deliberately moved this bar OFF a horizontal
-  // scroller and onto a wrapping grid (tests/incassiPoliedronAndControlUi.
-  // test.mjs asserts it stays a grid, never overflow-x) — so the fix here
-  // is not to bring scrolling back. Instead: emoji and label are split so
-  // mobile can show icon-only buttons (title/aria-label keep the full name
-  // for accessibility), collapsing up to 4 wrapped text rows down to 1-2
-  // icon rows without hiding any section or reintroducing a scroller.
-  // "Impianti" gets its own 🦴 (was the same 🦷 as "Piani" — indistinguishable
-  // once reduced to icon-only).
-  const TABS = [{ id: 'info', emoji: '📋', label: 'Info' }, { id: 'clinical', emoji: '🩺', label: 'Anamnesi' }, { id: 'piani', emoji: '🦷', label: 'Piani' }, ...(isDentistico ? [{ id: 'impl', emoji: '🦴', label: 'Impianti' }] : []), ...(canAccessPhysio ? [{ id: 'fisio', emoji: '💪', label: 'Fisioterapia' }] : []), { id: 'paga', emoji: '💰', label: 'Pagamenti' }, { id: 'foto', emoji: '📷', label: 'Foto' }, { id: 'app', emoji: '📅', label: 'Agenda' }, { id: 'doc', emoji: '📄', label: 'Documenti' }, ...(isStudioAdmin ? [{ id: 'privacy', emoji: '🔒', label: 'Privacy' }] : [])];
+  // POL-FIN-007f: Product Owner, twice now, on the section tabs — first
+  // "troppo ingombrante", then (after an icon-only compaction round) still
+  // "ancora non mi piace... un modo più funzionale e pro". A tab strip
+  // (wrapped grid or icon-only) was never going to read as "pro" no matter
+  // how compact — the pattern this app already uses for the same problem
+  // (many sections, limited width) is ControlloGestione.jsx's persistent
+  // icon+label sidebar on desktop / dropdown selector on mobile
+  // (`.management-nav`/`.management-nav-mobile`). Mirrored here verbatim as
+  // `.patient-record-nav`/`.patient-record-nav-mobile` for visual
+  // consistency with the rest of the app, not a bespoke one-off look.
+  // Real icons (the same Ic set every other module already uses) replace
+  // the emoji now that full labels are always shown, sidebar or dropdown.
+  const TABS = [{ id: 'info', icon: 'user', label: 'Info' }, { id: 'clinical', icon: 'pulse', label: 'Anamnesi' }, { id: 'piani', icon: 'tooth', label: 'Piani' }, ...(isDentistico ? [{ id: 'impl', icon: 'tag', label: 'Impianti' }] : []), ...(canAccessPhysio ? [{ id: 'fisio', icon: 'zap', label: 'Fisioterapia' }] : []), { id: 'paga', icon: 'pay', label: 'Pagamenti' }, { id: 'foto', icon: 'folder', label: 'Foto' }, { id: 'app', icon: 'cal', label: 'Agenda' }, { id: 'doc', icon: 'file', label: 'Documenti' }, ...(isStudioAdmin ? [{ id: 'privacy', icon: 'lock', label: 'Privacy' }] : [])];
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
@@ -83,13 +84,19 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
         ))}
       </div>
 
-      <nav className="patient-record-tabs" aria-label="Sezioni scheda paziente">
-        {TABS.map((t) => (
-          <button key={t.id} className={tab === t.id ? 'is-active' : ''} onClick={() => setTab(t.id)} title={t.label} aria-label={t.label}>
-            <span aria-hidden="true">{t.emoji}</span> <span className="patient-record-tabs__label">{t.label}</span>
-          </button>
-        ))}
-      </nav>
+      <div className="patient-record-body">
+        <aside className="patient-record-nav" aria-label="Sezioni scheda paziente">
+          {TABS.map((t) => (
+            <button type="button" key={t.id} className={tab === t.id ? 'is-active' : ''} onClick={() => setTab(t.id)}>
+              <Ic n={t.icon} s={15} c={tab === t.id ? C.pri : C.txm} /><span>{t.label}</span>
+            </button>
+          ))}
+        </aside>
+        <label className="patient-record-nav-mobile">Sezione
+          <select value={tab} onChange={(event) => setTab(event.target.value)}>
+            {TABS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+          </select>
+        </label>
 
       <div className="patient-record-content">
         {tab === 'info' && (
@@ -268,6 +275,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
         {tab === 'fisio' && canAccessPhysio && <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento cartella fisioterapica…</div>}><PhysioCartella paziente_id={paz.id} studio_id={si?.studio_id} paziente={paz} studio={si} accessMode={physioFullAccess ? 'full' : 'operational'} currentUserId={currentUserId} canManageTeam={canManagePhysioTeam} /></Suspense>}
         {tab === 'clinical' && <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento anamnesi…</div>}><PatientClinicalHistory patient={paz} setPatients={setPatients} onPatientChange={onPatientChange} studio={si} /></Suspense>}
         {tab === 'privacy' && isStudioAdmin && <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento strumenti privacy…</div>}><PatientPrivacy patient={paz} setPatients={setPatients} client={documentClient} onPatientDeleted={onClose} /></Suspense>}
+      </div>
       </div>
 
       {(documentFlow === 'ricetta' || documentFlow === 'medico') && (
