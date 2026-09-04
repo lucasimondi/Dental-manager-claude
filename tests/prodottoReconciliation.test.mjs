@@ -71,9 +71,21 @@ test('Prodotto click carries the exact annual/monthly period into the responsive
 });
 
 test('unavailable Prodotto stays clickable to explain fail-closed data quality', () => {
-  assert.match(canonicalView, /const canExplainUnavailable = item\.id === 'prodotto'/);
+  assert.match(canonicalView, /const canExplainUnavailable = item\.id === 'prodotto' \|\| item\.id === 'costo_orario_struttura'/);
   assert.match(component, /nessun totale parziale viene presentato come definitivo/);
   assert.match(component, /quality_issues/);
+});
+
+test('POL-UI-022: Costo orario struttura stays clickable even when not yet configured, and routes to the editable Costi tab', () => {
+  // canExplainUnavailable above keeps the drill-down button enabled even
+  // when the canonical snapshot has no value for this metric yet (studio
+  // hasn't filled in ore/spese/personale) — otherwise a disabled button
+  // would block the only path to the screen that lets them configure it.
+  assert.match(canonicalView, /item\.id === 'costo_orario_struttura'/);
+  // "costo_orario_struttura" does not contain the substring "costi" (it
+  // contains "costo"), so it needs an explicit branch here or the click
+  // falls through to Cockpit instead of the editable Costi tab.
+  assert.match(management, /field\?\.includes\('costi'\) \|\| field === 'costo_orario_struttura'/);
 });
 
 test('UI explains scostamento without computing or describing it as patient debt', () => {

@@ -27,7 +27,13 @@ export default function CanonicalManagementView({ snapshot, mode, onDrillDown })
       </div>
       <div className="cmv__details">
         {model.metrics.map((item) => {
-          const canExplainUnavailable = item.id === 'prodotto';
+          // POL-UI-022: "Costo orario struttura" resta cliccabile anche
+          // quando la snapshot canonica non lo calcola ancora (parametri
+          // ore/spese/personale non completati) — è l'unico modo per
+          // raggiungere la schermata dove quei parametri si compilano
+          // (Controllo → Costi), altrimenti il tasto disabilitato blocca
+          // chi deve proprio configurarlo per la prima volta.
+          const canExplainUnavailable = item.id === 'prodotto' || item.id === 'costo_orario_struttura';
           const canDrillDown = Boolean(onDrillDown) && (item.available || canExplainUnavailable);
           return (
             <button

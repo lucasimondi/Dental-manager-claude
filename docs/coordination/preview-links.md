@@ -6,7 +6,7 @@ all'ultimo deploy pushato, non serve richiederlo di nuovo dopo ogni commit.
 
 ## Branch attivo
 
-- **`feature/pol-fin-007e-incasso-dock-tab`**: https://dental-manager-git-feature-pol-fin-007e-i-525afa-acmeproduction.vercel.app
+- **`feature/pol-ui-022-costo-orario-cliccabile`**: https://dental-manager-git-feature-pol-ui-022-cos-2c3f26-acmeproduction.vercel.app
 
 ## Produzione (master)
 

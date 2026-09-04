@@ -35,7 +35,11 @@ export default function ControlloGestione(props) {
     }
     setSection(field?.includes('incass') || field === 'credito_clienti'
       ? 'incassi'
-      : field?.includes('costi')
+      // "costo_orario_struttura" non contiene la sottostringa "costi"
+      // (contiene "costo"), quindi va elencato esplicitamente qui sotto —
+      // altrimenti il click sul Costo orario in Panoramica finiva in
+      // Cockpit invece che nella scheda modificabile in Costi.
+      : field?.includes('costi') || field === 'costo_orario_struttura'
         ? 'costi'
         : field?.includes('margine') || field?.includes('ebitda')
           ? 'marginalita'
