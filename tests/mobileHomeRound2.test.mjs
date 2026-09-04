@@ -421,7 +421,7 @@ test('CRITICAL: the banding is presentation only — the persisted registry cont
   // Widget ids, their catalog order and the default layout order are the
   // persisted contract every saved layout is normalized against.
   assert.deepEqual(HOME_WIDGET_REGISTRY.map((w) => w.id), [
-    'agenda', 'consigli_ai', 'todo', 'appuntamenti', 'wa', 'economico', 'preventivi',
+    'agenda', 'consigli_ai', 'poliedron_status', 'todo', 'appuntamenti', 'wa', 'economico', 'preventivi',
     'richiami', 'scadenze', 'ortodonzia', 'fisio', 'statistiche', 'grafici',
     'fin_preventivato', 'fin_accettato', 'fin_prodotto', 'fin_fatturato', 'fin_incassato',
     'fin_credito_clienti', 'fin_costi_fissi', 'fin_costi_variabili', 'fin_margine_contribuzione',

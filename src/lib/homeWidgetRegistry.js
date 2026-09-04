@@ -15,6 +15,15 @@ const withSizeBounds = (widget) => ({ ...widget, minSize: widget.sizes[0], maxSi
 const RAW_HOME_WIDGET_REGISTRY = [
   { id: 'agenda', ic: 'cal', label: 'Agenda oggi', category: 'Agenda', defaultVisible: true, defaultSize: 'wide', sizes: ['medium', 'wide'] },
   { id: 'consigli_ai', ic: 'compass', label: 'Consigli Poliedron', category: 'AI', variant: 'poliedron', defaultVisible: true, defaultSize: 'medium', sizes: ['medium', 'wide'] },
+  // POL-UI-023: Product Owner — "in Dashboard dobbiamo inserire sezione
+  // poliedron cliccabile ... deve darci tutte le info, quindi dati
+  // mancanti, ecc". Distinta da "Consigli Poliedron" (consigli di
+  // business AI-generati) e da "Attività" (elenco todo manuali+auto): qui
+  // Poliedron riassume in tempo reale lo stato dei controlli automatici
+  // sui dati clinici/di piano (anamnesi mancanti, piani da accettare, mai
+  // iniziati, fermi, appuntamenti di ieri non segnati) — sempre aggiornato
+  // anche se le relative Attività sono state segnate fatte/cancellate.
+  { id: 'poliedron_status', ic: 'compass', label: 'Poliedron — Controllo dati', category: 'AI', variant: 'poliedron', defaultVisible: true, defaultSize: 'medium', sizes: ['medium', 'wide'] },
   { id: 'todo', ic: 'okc', label: 'Attività e promemoria', category: 'Attività', defaultVisible: true, defaultSize: 'medium', sizes: ['medium', 'wide'] },
   { id: 'appuntamenti', ic: 'cal', label: 'Prossimi appuntamenti', category: 'Agenda', defaultVisible: true, defaultSize: 'medium', sizes: ['medium', 'wide'] },
   { id: 'wa', ic: 'wa', label: 'Reminder WhatsApp', category: 'Comunicazioni', defaultVisible: false, defaultSize: 'medium', sizes: ['medium', 'wide'] },

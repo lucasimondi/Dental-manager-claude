@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { Crd, Bdg, Modal, Ic, Btn, Fld, Sel, Inp, Txt, TimePicker, SelettorePaziente, EmptyState, Toast } from './ui';
 import { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
@@ -20,6 +20,47 @@ import { MOBILE_DOCK_BOTTOM, MOBILE_DOCK_HEIGHT, MOBILE_DOCK_PROTECTED_GAP } fro
 import { HOME_ATTENTION_EMPTY_LABEL, buildHomeAttentionItems } from '../lib/homeAttention.js';
 import { buildDataHealthActivities, ACTIVITY_KIND } from '../lib/domain/dataHealthActivities.js';
 import { getOrCreatePrimaryConversation, appendConversationMessage, createChatRequestId } from '../lib/poliedron/conversationRepository.js';
+
+// POL-UI-023: unica fonte per la label leggibile di ogni ACTIVITY_KIND —
+// prima viveva solo dentro la useEffect del controllo dati automatico (per
+// comporre la notifica in chat), qui riusata anche dalla nuova sezione
+// "Poliedron" cliccabile in Home, così le due non possono mai raccontare
+// il problema in due modi diversi.
+const DATA_HEALTH_KIND_LABEL = {
+  [ACTIVITY_KIND.YESTERDAY_APPOINTMENT_NOT_MARKED]: 'hanno prestazioni non ancora segnate come eseguite dopo l’appuntamento di ieri',
+  [ACTIVITY_KIND.PLAN_AWAITING_ACCEPTANCE_DECISION]: 'hanno un piano con prestazioni già eseguite ma non ancora accettato né rifiutato',
+  [ACTIVITY_KIND.PLAN_NEVER_STARTED]: 'hanno un piano aperto da settimane senza nessuna prestazione eseguita',
+  [ACTIVITY_KIND.STALLED_TREATMENT]: 'hanno un piano che sembra fermo, senza un prossimo appuntamento in agenda',
+  [ACTIVITY_KIND.ANAMNESI_MANCANTE]: 'non hanno ancora nessuna anamnesi compilata',
+};
+
+// La scheda paziente da aprire cliccando un'entry: anamnesi mancante porta
+// dritti al tab dove si compila, tutto il resto (piani fermi/da accettare/
+// mai iniziati, appuntamento di ieri non segnato) porta al tab Piani, dove
+// quelle azioni si eseguono davvero.
+const DATA_HEALTH_KIND_TAB = {
+  [ACTIVITY_KIND.ANAMNESI_MANCANTE]: 'clinical',
+};
+const dataHealthKindTab = (kind) => DATA_HEALTH_KIND_TAB[kind] || 'piani';
+
+// Intestazione di gruppo (nome breve, terza persona) per la sezione
+// Poliedron cliccabile — diversa dalla frase di DATA_HEALTH_KIND_LABEL
+// sopra, pensata per continuare "Nome Cognome ... ", non per stare da sola
+// come titolo di un gruppo di pazienti.
+const DATA_HEALTH_KIND_TITLE = {
+  [ACTIVITY_KIND.ANAMNESI_MANCANTE]: 'Anamnesi mancante',
+  [ACTIVITY_KIND.PLAN_AWAITING_ACCEPTANCE_DECISION]: 'Piano da accettare o rifiutare',
+  [ACTIVITY_KIND.PLAN_NEVER_STARTED]: 'Piano mai iniziato',
+  [ACTIVITY_KIND.STALLED_TREATMENT]: 'Trattamento fermo',
+  [ACTIVITY_KIND.YESTERDAY_APPOINTMENT_NOT_MARKED]: 'Appuntamento di ieri non segnato',
+};
+const DATA_HEALTH_KIND_ICON = {
+  [ACTIVITY_KIND.ANAMNESI_MANCANTE]: 'book',
+  [ACTIVITY_KIND.PLAN_AWAITING_ACCEPTANCE_DECISION]: 'plan',
+  [ACTIVITY_KIND.PLAN_NEVER_STARTED]: 'warn',
+  [ACTIVITY_KIND.STALLED_TREATMENT]: 'pulse',
+  [ACTIVITY_KIND.YESTERDAY_APPOINTMENT_NOT_MARKED]: 'clk',
+};
 
 const PALETTE = [
   '#1A4E66','#2EC4B6','#2D9E61','#7C3AED','#E63946',
@@ -80,6 +121,18 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const isFisio = si?.vertical === 'fisioterapista' || si?.vertical === 'massofisioterapista';
   const t = today();
+  // POL-UI-023: Product Owner — "in Dashboard dobbiamo inserire sezione
+  // poliedron cliccabile ... deve darci tutte le info, quindi dati
+  // mancanti, ecc". Calcolato live dagli stessi dati che la useEffect qui
+  // sotto già scansiona per generare le Attività/la notifica in chat — non
+  // dipende da cosa è già stato salvato come todo (che può essere segnato
+  // fatto/cancellato pur restando un problema reale), quindi la sezione
+  // riflette sempre lo stato attuale, non solo l'ultima scansione.
+  const dataHealthFindings = useMemo(
+    () => buildDataHealthActivities({ patients, plans, appointments, today: t, formatDate: fmtD }),
+    [patients, plans, appointments, t],
+  );
+  const [poliedronStatusOpen, setPoliedronStatusOpen] = useState(false);
   const [userName, setUserName] = useState(userNameProp || '');
   // POL-UI-015 root-cause fix: `userId` used to be re-fetched from scratch
   // on every Dashboard mount via its own `supabase.auth.getSession()` call
@@ -518,7 +571,7 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
   // così il controllo non vive solo, silenzioso, nel widget Attività.
   useEffect(() => {
     if (!patients?.length || !plans?.length) return;
-    const entries = buildDataHealthActivities({ patients, plans, appointments, today: t, formatDate: fmtD });
+    const entries = dataHealthFindings;
     if (!entries.length) return;
     (async () => {
       const { data: esistenti } = await supabase.from('todos').select('id, paziente_id, testo');
@@ -542,20 +595,13 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
       if (studioId && currentUserId) {
         try {
           const conversation = await getOrCreatePrimaryConversation({ client: supabase, studioId, userId: currentUserId });
-          const KIND_LABEL = {
-            [ACTIVITY_KIND.YESTERDAY_APPOINTMENT_NOT_MARKED]: 'hanno prestazioni non ancora segnate come eseguite dopo l’appuntamento di ieri',
-            [ACTIVITY_KIND.PLAN_AWAITING_ACCEPTANCE_DECISION]: 'hanno un piano con prestazioni già eseguite ma non ancora accettato né rifiutato',
-            [ACTIVITY_KIND.PLAN_NEVER_STARTED]: 'hanno un piano aperto da settimane senza nessuna prestazione eseguita',
-            [ACTIVITY_KIND.STALLED_TREATMENT]: 'hanno un piano che sembra fermo, senza un prossimo appuntamento in agenda',
-            [ACTIVITY_KIND.ANAMNESI_MANCANTE]: 'non hanno ancora nessuna anamnesi compilata',
-          };
           const perTipo = new Map();
           for (const { entry } of inserite) {
             const lista = perTipo.get(entry.kind) || [];
             if (!lista.includes(entry.patientName)) lista.push(entry.patientName);
             perTipo.set(entry.kind, lista);
           }
-          const righe = [...perTipo.entries()].map(([kind, nomi]) => `• ${nomi.join(', ')} ${KIND_LABEL[kind] || kind}`);
+          const righe = [...perTipo.entries()].map(([kind, nomi]) => `• ${nomi.join(', ')} ${DATA_HEALTH_KIND_LABEL[kind] || kind}`);
           const content = `🩺 Controllo dati automatico — ${inserite.length} ${inserite.length === 1 ? 'nuova attività' : 'nuove attività'}:\n${righe.join('\n')}\n\nDettagli e conferma in Attività, sulla Home.`;
           await appendConversationMessage({
             client: supabase,
@@ -568,7 +614,7 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
         } catch { /* la notifica in chat è un extra: le Attività sono già salvate */ }
       }
     })();
-  }, [patients, plans, appointments, studioId, currentUserId]);
+  }, [dataHealthFindings, patients, plans, studioId, currentUserId]);
 
   const addTodo = async () => {
     if (!todoInput.trim()) return;
@@ -1541,6 +1587,63 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
                 <div className="home-poliedron-widget__dots" aria-hidden="true">
                   {nonLetti.map((c, i) => <span key={c.id} className={`home-poliedron-widget__dot${i === consigliCarouselIndex ? ' is-active' : ''}`} />)}
                 </div>
+              )}
+            </div>
+          );
+        }
+
+        if (w.id === 'poliedron_status') {
+          const gruppi = new Map();
+          for (const entry of dataHealthFindings) {
+            const list = gruppi.get(entry.kind) || [];
+            list.push(entry);
+            gruppi.set(entry.kind, list);
+          }
+          return (
+            <div key="poliedron_status" className="home-poliedron-widget" style={{ marginBottom: 16 }}>
+              <div className="home-poliedron-widget__header">
+                <div className="home-poliedron-widget__title">
+                  <img src={poliedroGem} alt="" aria-hidden="true" className="home-poliedron-widget__gem" />
+                  <div>
+                    <div className="home-poliedron-widget__label">Poliedron</div>
+                    <div className="home-poliedron-widget__heading">Controllo dati</div>
+                  </div>
+                </div>
+                {dataHealthFindings.length > 0 && (
+                  <button type="button" onClick={() => setPoliedronStatusOpen((v) => !v)} className="home-poliedron-widget__refresh" aria-expanded={poliedronStatusOpen}>
+                    {dataHealthFindings.length} da controllare
+                    <span aria-hidden="true" style={{ display: 'inline-block', transform: poliedronStatusOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>▶</span>
+                  </button>
+                )}
+              </div>
+              {dataHealthFindings.length === 0 ? (
+                <Crd style={{ textAlign: 'center', color: C.suc, padding: '14px 0', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <Ic n="ok" s={13} c={C.suc} />Nessun dato mancante da controllare
+                </Crd>
+              ) : !poliedronStatusOpen ? (
+                <button type="button" onClick={() => setPoliedronStatusOpen(true)} style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '2px 0', cursor: 'pointer', fontSize: 12, color: C.txm }}>
+                  {[...gruppi.entries()].map(([kind, list]) => `${DATA_HEALTH_KIND_TITLE[kind] || kind} (${list.length})`).join(' · ')} — tocca per vedere pazienti e dettagli
+                </button>
+              ) : (
+                [...gruppi.entries()].map(([kind, list]) => (
+                  <Crd key={kind} style={{ marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                      <Ic n={DATA_HEALTH_KIND_ICON[kind] || 'warn'} s={13} c={C.pri} />
+                      <span style={{ fontSize: 12, fontWeight: 800, color: C.txt }}>{DATA_HEALTH_KIND_TITLE[kind] || kind}</span>
+                      <Bdg ch={list.length} co={C.pri} />
+                    </div>
+                    {list.map((entry) => {
+                      const paz = patients.find((p) => p.id === entry.pazienteId);
+                      return (
+                        <button key={entry.dedupKey} type="button" onClick={() => paz && onOpenPaz(paz, dataHealthKindTab(kind))}
+                          style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: `1px solid ${C.brd}`, padding: '7px 0', cursor: paz ? 'pointer' : 'default', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: paz ? C.pri : C.txt }}>{entry.patientName}{paz ? ' ›' : ''}</span>
+                          <span style={{ fontSize: 11, color: C.txm }}>{entry.message}</span>
+                        </button>
+                      );
+                    })}
+                  </Crd>
+                ))
               )}
             </div>
           );

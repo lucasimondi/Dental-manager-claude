@@ -11,7 +11,7 @@ const FREQUENZE = ['Mensile', 'Bimestrale', 'Trimestrale', 'Semestrale', 'Annual
 // ─────────────────────────────────────────────────────────────────
 // Costo orario dello studio
 // ─────────────────────────────────────────────────────────────────
-function CostoOrarioCard({ studioId, refreshKey }) {
+function CostoOrarioCard({ studioId, refreshKey, labelPostazioni }) {
   const [dati, setDati] = useState(null);
   const [editConfig, setEditConfig] = useState(false);
   const [config, setConfig] = useState({ giorni_settimana: 5, ore_al_giorno: 8, num_postazioni: 1 });
@@ -548,7 +548,7 @@ export default function Costi({ studioId, isDentistico = true }) {
     <div>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
-      <CostoOrarioCard studioId={studioId} refreshKey={refreshKey} />
+      <CostoOrarioCard studioId={studioId} refreshKey={refreshKey} labelPostazioni={labelPostazioni} />
 
       <UploadDocumento onEstratto={(estratto, file) => setEstrattoPendente({ estratto, file })} />
 
