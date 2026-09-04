@@ -2667,3 +2667,6 @@ Merge solo su istruzione esplicita del Product Owner.
 
 ### PR
 **PR #90** aperta (`feature/pol-ui-022-costo-orario-cliccabile` → `master`): https://github.com/lucasimondi/Dental-manager-claude/pull/90 — Product Owner ha chiesto che d'ora in poi la PR venga aperta in automatico ad ogni giro completato (il link va sempre dato subito), senza però mergiare finché non arriva l'istruzione esplicita.
+
+### MERGE
+Product Owner ha risposto "Mergia su pr e dammi sempre link pr di vercel in auto" (due istruzioni permanenti: 1. mergiare quando richiesto, 2. dare sempre anche il link Vercel — preview di PR quando aperta, produzione quando mergiata — senza aspettare che venga richiesto). Check CI verificati verdi (GitHub Action "verify", Vercel, Netlify) prima del merge. Mergiata via `merge_pull_request`. Merge commit `03fe68754fe7e51804a2c96b373d0e58c114db4e`. Locale `master` aggiornato e verificato che lo contenga.

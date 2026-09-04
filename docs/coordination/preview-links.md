@@ -6,7 +6,11 @@ all'ultimo deploy pushato, non serve richiederlo di nuovo dopo ogni commit.
 
 ## Branch attivo
 
-- **`feature/pol-ui-022-costo-orario-cliccabile`**: https://dental-manager-git-feature-pol-ui-022-cos-2c3f26-acmeproduction.vercel.app
+Nessuno al momento — ultimo giro (POL-UI-022) mergiato in `master` via PR #90.
+
+## Regola permanente
+
+Il Product Owner ha chiesto (2026-09-04) di dare **sempre** il link Vercel in automatico ad ogni giro, senza aspettare che venga richiesto: il link di preview della PR quando è aperta una PR, il link di produzione qui sotto quando viene mergiata.
 
 ## Produzione (master)
 
