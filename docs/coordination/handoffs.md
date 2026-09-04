@@ -2644,3 +2644,23 @@ Push del branch aggiornato `feature/pol-fin-007e-incasso-dock-tab`; PR e merge s
 ## PR #89 merge (POL-FIN-007e/f + POL-UI-020/021)
 
 Product Owner ha risposto "Mergia master". Aperta **PR #89** (`feature/pol-fin-007e-incasso-dock-tab` → `master`), che copre in un unico PR tutti i giri accumulati su questo branch mai ancora mergiati: POL-FIN-007e (fix doppio incasso + scroll oltre il dock), POL-FIN-007f (navigazione paziente sidebar/dropdown), POL-UI-020 (header chiamata/WhatsApp/croce anamnesi, 6 azioni veloci + Spesa, Registra pagamento con prestazione — incluso il fix del bug pre-esistente `noteGenerale` senza colonna DB), POL-UI-020 follow-up (dropdown paziente dismissibile, vera croce anamnesi, WhatsApp centrato), POL-UI-021 (tab Info come landing page scrollabile + doc link Vercel persistente). Check CI: GitHub Action "verify" (`success`), Vercel (`success`), Netlify deploy preview (`success`) — tutti verdi al momento del merge. Mergiata via `merge_pull_request`. Merge commit `ae4bf3ae443fd609a55bd41b52aeb63840c6b68a`. Locale `master` aggiornato e verificato che lo contenga.
+
+## POL-UI-022 — Costo orario: sblocco click-through verso la scheda modificabile
+
+Richiesta PO (verbatim): "Costo orario : bisogna che sia cliccabile che è che quindi sia modificabile , con i vari parametri da completare e collegamento a spese". Nuovo branch `feature/pol-ui-022-costo-orario-cliccabile` da `master` (post PR #89).
+
+### Indagine
+Cercato "costo orario" in tutta l'app: il posto dove il Product Owner lo vede è il Pannello economico canonico (`CanonicalManagementView.jsx`, montato dentro `AnnualFinancialOverview.jsx` → Controllo di gestione → Panoramica), dove ogni metrica canonica è un `<button>` drill-down. Trovati due bug distinti sullo stesso percorso, entrambi bloccanti:
+1. **Tasto disabilitato quando serve di più**: `canDrillDown = Boolean(onDrillDown) && (item.available || canExplainUnavailable)` — `canExplainUnavailable` gestiva solo `item.id === 'prodotto'`. `costo_orario_struttura` (letto da `get_financial_snapshot_v1`, verificato in produzione) è `NULL` quando `ore_disponibili` (agenda live nel periodo) è zero — cioè proprio quando lo studio non ha ancora "completato i parametri". Il tasto restava `disabled`, un vicolo cieco: per configurarlo devi cliccarci, ma non puoi cliccarci finché non è configurato.
+2. **Routing per sottostringa non combaciava**: `ControlloGestione.jsx`'s `openDrillDown` faceva `field?.includes('costi') ? 'costi' : ...`. Il sourceField reale è `costo_orario_struttura` — contiene "costo" (con la o), MAI la sottostringa "costi" (con la i). Anche nei rari casi con dato disponibile, il click finiva instradato in Cockpit invece che nella sezione Costi.
+- Verificata anche la destinazione (`Costi.jsx`'s `CostoOrarioCard`, sempre in cima alla sezione Costi): già mostra "Costi struttura/Personale/Macchinari" letti da spese/personale/macchinari (il "collegamento a spese" richiesto) ed è già modificabile via il tasto "Ore" (giorni di apertura/ore al giorno/numero poltrone — "i vari parametri da completare"). `get_costo_orario` (RPC produzione, letta con `pg_get_functiondef`) restituisce sempre un oggetto completo con default sensati (5 giorni, 8 ore, 1 postazione) anche a configurazione vuota — quindi non c'era nulla da costruire lì, solo da renderlo raggiungibile.
+
+### Fix
+- `CanonicalManagementView.jsx`: `canExplainUnavailable = item.id === 'prodotto' || item.id === 'costo_orario_struttura'`.
+- `ControlloGestione.jsx`: `openDrillDown` instrada esplicitamente `field === 'costo_orario_struttura'` verso `costi`, oltre al match per sottostringa preesistente.
+
+### Tests
+`tests/prodottoReconciliation.test.mjs`: aggiornato il test esistente sul `canExplainUnavailable` esteso, aggiunto un nuovo test che verifica sia l'estensione della gate di disponibilità sia il routing esplicito verso `costi`. `npm test` 693/693; `npm run build` pulito; `git diff --check` pulito.
+
+### EXACT NEXT ACTION
+Push del branch `feature/pol-ui-022-costo-orario-cliccabile`; PR e merge solo su istruzione esplicita del Product Owner.
