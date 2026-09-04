@@ -4,7 +4,7 @@
 - TITLE: il tasto "Costo orario struttura" nel Pannello economico (Controllo di gestione → Panoramica) era disabilitato finché il dato canonico non era ancora calcolabile, e anche quando abilitato portava alla sezione sbagliata — mai raggiungibile la scheda dove si compila e si vede il collegamento a spese/personale/macchinari.
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggio verbatim: "Costo orario : bisogna che sia cliccabile che è che quindi sia modificabile , con i vari parametri da completare e collegamento a spese").
 - BRANCH: `feature/pol-ui-022-costo-orario-cliccabile`, da `master` (contiene già PR #89).
-- STATUS: IMPLEMENTATO, non ancora pushato/PR — vedi EXACT NEXT ACTION.
+- STATUS: IMPLEMENTATO, pushato, **PR #90 aperta** (https://github.com/lucasimondi/Dental-manager-claude/pull/90) — merge solo su istruzione esplicita del Product Owner.
 
 - **Causa radice, due bug distinti nello stesso percorso**:
   1. `CanonicalManagementView.jsx` — il tasto drill-down di ogni metrica canonica è `disabled` finché `item.available` è `false` (tranne "Prodotto", unico caso già gestito con `canExplainUnavailable`). `costo_orario_struttura` (da `get_financial_snapshot_v1`) è `NULL`/non disponibile finché `ore_disponibili` (agenda live) è zero per il periodo — cioè esattamente nei casi in cui lo studio deve ancora completare la configurazione. Risultato: il pulsante che porterebbe a completarla era disabilitato proprio quando serviva di più.
@@ -12,7 +12,7 @@
 - **Fix**: (1) `canExplainUnavailable` ora include anche `item.id === 'costo_orario_struttura'`, quindi il tasto resta sempre cliccabile. (2) `openDrillDown` ora instrada esplicitamente `field === 'costo_orario_struttura'` verso la sezione `costi`, oltre al match per sottostringa già esistente.
 - **Destinazione già pronta, non toccata**: `Costi.jsx`'s `CostoOrarioCard` (sempre in cima alla sezione Costi) mostra già "Costi struttura/Personale/Macchinari" (letti da spese/personale/macchinari — il "collegamento a spese" richiesto) ed è già modificabile via il tasto "Ore" (giorni di apertura/ore al giorno/numero poltrone — "i vari parametri da completare"). Verificato via `get_costo_orario` (RPC in produzione): restituisce sempre un oggetto completo con default sensati anche a configurazione vuota, quindi la card non è mai vuota/bloccata una volta raggiunta.
 - VALIDATION: `npm test` 693/693 (2 nuovi/aggiornati test in `tests/prodottoReconciliation.test.mjs`: `canExplainUnavailable` esteso, routing esplicito verso `costi`); `npm run build` pulito; `git diff --check` pulito. Nessuna migration — solo logica di routing/gating lato client, RPC esistenti verificate ma non modificate.
-- EXACT NEXT ACTION: push del branch, PR e merge solo su istruzione esplicita del Product Owner.
+- EXACT NEXT ACTION: merge solo su istruzione esplicita del Product Owner ("mergiamo"/"mergia").
 
 ---
 

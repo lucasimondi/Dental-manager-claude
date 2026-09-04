@@ -2663,4 +2663,7 @@ Cercato "costo orario" in tutta l'app: il posto dove il Product Owner lo vede è
 `tests/prodottoReconciliation.test.mjs`: aggiornato il test esistente sul `canExplainUnavailable` esteso, aggiunto un nuovo test che verifica sia l'estensione della gate di disponibilità sia il routing esplicito verso `costi`. `npm test` 693/693; `npm run build` pulito; `git diff --check` pulito.
 
 ### EXACT NEXT ACTION
-Push del branch `feature/pol-ui-022-costo-orario-cliccabile`; PR e merge solo su istruzione esplicita del Product Owner.
+Merge solo su istruzione esplicita del Product Owner.
+
+### PR
+**PR #90** aperta (`feature/pol-ui-022-costo-orario-cliccabile` → `master`): https://github.com/lucasimondi/Dental-manager-claude/pull/90 — Product Owner ha chiesto che d'ora in poi la PR venga aperta in automatico ad ogni giro completato (il link va sempre dato subito), senza però mergiare finché non arriva l'istruzione esplicita.
