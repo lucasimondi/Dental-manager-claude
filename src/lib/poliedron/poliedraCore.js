@@ -10,6 +10,7 @@ import { runModelTask, MODEL_TASK_TYPE } from './modelGateway.js';
 import { resolveCommandAlias } from './commandAliases.js';
 import { cercaPazienti } from '../ricercaPazienti.js';
 import { resolvePrescriptionRequest } from './prescriptionWorkflow.js';
+import { parseAppointmentRequest } from './planner/appointmentIntent.js';
 import { classifyIntelligenceQuery, scanPatientOpportunities } from './intelligence/index.js';
 import { parseCommand } from './planner/commandParser.js';
 import { buildActionPlan } from './planner/actionPlanner.js';
@@ -171,6 +172,47 @@ export async function processQuery({
       confirmationRequired: true,
       selectionRequired: prescriptionRequest.patientCandidates.length !== 1,
       suggestedActions: [prescriptionAction],
+      searchResults: [],
+    };
+  }
+
+  // POL-AI-006 — appointment booking, real entity pre-fill (§ see
+  // appointmentIntent.js's own header comment for why this exists and why
+  // it still isn't a Level-2 direct write). Checked before classifyIntent
+  // for the same reason the prescription branch above is: its own verb/
+  // noun vocabulary is more specific than intentEngine.js's anchored
+  // CREATE_VERBS, so it must get first refusal rather than risk losing to
+  // a worse-fitting generic classification.
+  const appointmentRequest = parseAppointmentRequest(q);
+  if (appointmentRequest) {
+    const appointmentAction = (sources.actions || []).find((action) => action.id === 'appointment.create');
+    if (!appointmentAction) {
+      return {
+        intent: INTENT.CREATE,
+        entities: {},
+        answer: 'Non posso aprire il modulo Nuovo appuntamento con i permessi e la configurazione attuali.',
+        confirmationRequired: false,
+        suggestedActions: [],
+        searchResults: [],
+      };
+    }
+    const patientCandidates = sources.patients?.length
+      ? cercaPazienti(sources.patients, appointmentRequest.patientText).slice(0, 5)
+      : [];
+    return {
+      intent: 'WORKFLOW',
+      entities: {
+        patientCandidates,
+        patientOptions: patientCandidates.length ? patientCandidates : (sources.patients || []).slice(0, 8),
+        appointmentDate: appointmentRequest.date,
+        appointmentTime: appointmentRequest.time,
+        appointmentDateText: appointmentRequest.dateText,
+        appointmentTimeText: appointmentRequest.timeText,
+      },
+      answer: null,
+      confirmationRequired: true,
+      selectionRequired: patientCandidates.length !== 1,
+      suggestedActions: [appointmentAction],
       searchResults: [],
     };
   }

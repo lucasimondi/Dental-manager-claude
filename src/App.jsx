@@ -49,6 +49,7 @@ import LoadingScreen from './components/LoadingScreen.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import QuickBookingModal from './components/QuickBookingModal.jsx';
 const ControlloGestione = lazy(() => import('./components/ControlloGestione.jsx'));
+const PoliedronHub = lazy(() => import('./components/PoliedronHub.jsx'));
 const FinancialWorkspace = lazy(() => import('./components/FinancialWorkspace.jsx'));
 const Pazienti = lazy(() => import('./components/Pazienti.jsx'));
 const PatientWorkspaceBoundary = lazy(() => import('./components/PatientWorkspaceBoundary.jsx'));
@@ -628,7 +629,7 @@ export default function App() {
         paddingLeft: isMobile ? ((page === 'agenda' || page === 'home') ? (page === 'agenda' ? 6 : 0) : (page === 'chat' ? 0 : 15)) : (page === 'chat' ? 0 : undefined),
         paddingRight: isMobile ? ((page === 'agenda' || page === 'home') ? (page === 'agenda' ? 6 : 0) : (page === 'chat' ? 0 : 15)) : (page === 'chat' ? 0 : undefined),
       }}>
-        {page === 'home' && <Dashboard patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegni} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} onNavigateNew={goNuovoElemento} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} currentUserId={session?.user?.id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} activityPatientRequest={quickHubActivityRequest} onActivityPatientRequestHandled={(id) => setQuickHubActivityRequest((current) => current?.id === id ? null : current)} />}
+        {page === 'home' && <Dashboard patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegni} implants={implants} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} onNavigateNew={goNuovoElemento} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} currentUserId={session?.user?.id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} activityPatientRequest={quickHubActivityRequest} onActivityPatientRequestHandled={(id) => setQuickHubActivityRequest((current) => current?.id === id ? null : current)} />}
         {page !== 'home' && (
           <Suspense fallback={<LoadingScreen />}>
             {page === 'paz' && (
@@ -665,6 +666,7 @@ export default function App() {
             {page === 'richiami' && <Richiami patients={patients} plans={plans} payments={payments} appointments={appointments} richiami={richiami} setRichiami={setRichiamiSync} templates={templates} features={features} onOpenPaz={goSchedaPaz} si={studioInfo} autoOpenNew={autoOpenNew === 'richiami'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} initialPatientRequest={quickHubRecallRequest} onInitialPatientRequestHandled={(id) => setQuickHubRecallRequest((current) => current?.id === id ? null : current)} />}
             {page === 'spese' && <Spese studioId={session?.user?.app_metadata?.studio_id} patients={patients} autoOpenNew={autoOpenNew === 'spese'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} />}
             {page === 'controllo' && <ControlloGestione studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} setPlans={setPlansSync} payments={payments} setPayments={setPaymentsSync} appointments={appointments} pricelist={pricelist} onOpenPaz={goSchedaPaz} isDentistico={!studioInfo?.vertical || studioInfo.vertical === 'dentistico'} />}
+            {page === 'poliedron' && <PoliedronHub patients={patients} plans={plans} appointments={appointments} payments={payments} implants={implants} studioId={session?.user?.app_metadata?.studio_id} isStudioAdmin={isStudioAdmin} features={features} studioMembership={studioMembership} si={studioInfo} onOpenPaz={goSchedaPaz} onNavigate={setPage} />}
             {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} initialFiltroTipo={archivioFiltroTipoHint} />}
             {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
             {page === 'agenteai' && <AgenteAISetup features={features} />}
@@ -696,7 +698,7 @@ export default function App() {
         onArchivioFilterHint={setArchivioFiltroTipoHint}
         openPrescription={openPrescription}
         openNew={goNuovoElemento}
-        openBooking={() => setPoliedronBookingOpen(true)}
+        openBooking={(payload) => setPoliedronBookingOpen(payload || true)}
         quickActionCtx={{ permissions: homePermissions, features, vertical: studioInfo?.vertical }}
         supabaseClient={supabase}
         externalCommandRequest={quickHubPoliedronRequest}
@@ -713,6 +715,9 @@ export default function App() {
             si={studioInfo}
             features={features}
             setAppointments={setAppointmentsSync}
+            initialPazienteId={typeof poliedronBookingOpen === 'object' && poliedronBookingOpen?.patientId != null ? poliedronBookingOpen.patientId : undefined}
+            initialData={typeof poliedronBookingOpen === 'object' ? poliedronBookingOpen?.data : undefined}
+            initialOra={typeof poliedronBookingOpen === 'object' ? poliedronBookingOpen?.ora : undefined}
             onClose={() => setPoliedronBookingOpen(false)}
           />
         </Suspense>

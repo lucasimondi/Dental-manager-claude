@@ -65,7 +65,6 @@ const OPEN_ACTIONS = Object.freeze([
 // and submits it themselves.
 const CREATE_ACTION_MAP = Object.freeze({
   'patient.create': 'nuovo_paziente',
-  'appointment.create': 'nuovo_appuntamento',
   'quote.create': 'nuovo_preventivo',
   'payment.create': 'pagamento',
   'recall.create': 'richiamo',
@@ -89,6 +88,30 @@ const CREATE_ACTIONS = Object.freeze(
   })
 );
 
+// appointment.create is kept out of the generic CREATE_ACTION_MAP above
+// because, unlike the others, it now carries real entity pre-fill
+// (POL-AI-006 — see appointmentIntent.js): when chat recognized a
+// patient/date/time, `navigate` threads them into the SAME
+// QuickBookingModal every other "Nuovo appuntamento" entry point already
+// opens (openBooking payload), instead of always opening it blank. Still
+// riskLevel 1 — the human still picks the final slot and clicks "Conferma
+// appuntamento"; Poliedron never books directly.
+const appointmentQuickAction = getQuickAction('nuovo_appuntamento');
+const APPOINTMENT_ACTION = Object.freeze({
+  id: 'appointment.create',
+  label: appointmentQuickAction.label.replace(/^\+\s*/, ''),
+  description: 'Apre il modulo Nuovo appuntamento, con paziente/data/ora già precompilati quando riconosciuti nella richiesta.',
+  category: 'appointment',
+  riskLevel: 1,
+  confirmationRequired: false,
+  quickAction: appointmentQuickAction,
+  navigate: (ctx, patient, payload = {}) => appointmentQuickAction.run(ctx, {
+    patientId: patient?.id ?? null,
+    data: payload.date || undefined,
+    ora: payload.time || undefined,
+  }),
+});
+
 const WORKFLOW_ACTIONS = Object.freeze([
   Object.freeze({
     id: 'prescription.create',
@@ -107,6 +130,6 @@ const WORKFLOW_ACTIONS = Object.freeze([
   }),
 ]);
 
-export const ACTION_REGISTRY = Object.freeze([...OPEN_ACTIONS, ...CREATE_ACTIONS, ...WORKFLOW_ACTIONS]);
+export const ACTION_REGISTRY = Object.freeze([...OPEN_ACTIONS, ...CREATE_ACTIONS, APPOINTMENT_ACTION, ...WORKFLOW_ACTIONS]);
 
 export const findAction = (id) => ACTION_REGISTRY.find((a) => a.id === id) || null;

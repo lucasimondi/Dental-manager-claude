@@ -158,11 +158,10 @@ test('openHomeCustomizer does not clear the page-level load error on open (only 
 
 // --- Poliedron naming/centrality ---
 
-test('the Home widget registry labels the widget "Consigli Poliedron", keeping its internal id stable for backward compatibility', () => {
-  const widget = getHomeWidget('consigli_ai');
-  assert.equal(widget.label, 'Consigli Poliedron');
-  assert.equal(widget.id, 'consigli_ai'); // must NOT change — already-persisted layouts reference this id
-  assert.equal(widget.variant, 'poliedron');
+test('POL-UI-025: "consigli_ai" was deliberately removed from the Home registry (moved to the dedicated Poliedron page) — normalizeHomeLayout already drops unknown ids gracefully, so this is a safe removal, not a stale reference', () => {
+  assert.equal(getHomeWidget('consigli_ai'), null);
+  const layout = normalizeHomeLayout([{ id: 'consigli_ai', visible: true, size: 'medium' }, { id: 'agenda', visible: true, size: 'wide' }]);
+  assert.ok(!layout.some((item) => item.id === 'consigli_ai'));
 });
 
 test('no generic "Consigli AI" wording remains anywhere in Dashboard.jsx or its stylesheet', () => {

@@ -2670,3 +2670,148 @@ Merge solo su istruzione esplicita del Product Owner.
 
 ### MERGE
 Product Owner ha risposto "Mergia su pr e dammi sempre link pr di vercel in auto" (due istruzioni permanenti: 1. mergiare quando richiesto, 2. dare sempre anche il link Vercel — preview di PR quando aperta, produzione quando mergiata — senza aspettare che venga richiesto). Check CI verificati verdi (GitHub Action "verify", Vercel, Netlify) prima del merge. Mergiata via `merge_pull_request`. Merge commit `03fe68754fe7e51804a2c96b373d0e58c114db4e`. Locale `master` aggiornato e verificato che lo contenga.
+
+## POL-UI-023 — Fix crash "Ore" in Costi + sezione Poliedron cliccabile in Home
+
+Richiesta PO (verbatim): "Quando clicco su costi (ore) non. Carica, inoltre in a Dashboard dobbiamo inserire sezione poliedron cliccabile , deve essere quindi una sezione in cui ci dà tutte le info , quindi dati mancanti , ecc". Nuovo branch `feature/pol-ui-023-costo-orario-fix-poliedron-status` da `master` (post PR #90).
+
+### 1. Bug "Ore" non carica — causa e fix
+Prima ipotesi (scartata dopo verifica): stale deploy/cache PWA, oppure regressione della PR #90 appena mergiata. Verificato invece a livello DB: simulata la RPC `get_costo_orario('00000000-0000-0000-0000-000000000001')` come utente autenticato reale (`SET LOCAL role authenticated` + `request.jwt.claims` da `auth.users`, in transazione annullata) — restituisce dati validi (`costo_orario: 4.1`, `config_orario` presente). Quindi il problema non era la RPC/i dati.
+
+Letto `Costi.jsx` riga per riga: `CostoOrarioCard({ studioId, refreshKey })` — dentro il suo modale "Ore lavorabili dello studio" referenzia `labelPostazioni` (righe con `{labelPostazioni}` e `${labelPostazioni}`), ma quella variabile è `const labelPostazioni = isDentistico ? 'poltrone/riuniti' : 'postazioni/sale';` dentro il componente **genitore** `Costi()` — mai passata come prop, mai nello scope di `CostoOrarioCard`. `ReferenceError: labelPostazioni is not defined` ad ogni singolo click su "Ore" (il modale si apre solo quando `editConfig` diventa `true`, momento in cui il render tenta di leggere quella variabile inesistente) — in QUALSIASI studio, da quando `CostoOrarioCard` esiste, non un effetto collaterale di POL-UI-022 (quel giro ha solo reso la card raggiungibile da un secondo percorso — la Panoramica — più visibile del tab sidebar, facendo notare un bug che c'era già).
+
+Fix: `labelPostazioni` ora è un prop esplicito passato da `Costi` a `CostoOrarioCard`.
+
+### 2. Nuova sezione "Poliedron — Controllo dati" in Home
+Investigato cosa esisteva già in Dashboard.jsx sotto il nome Poliedron: "Consigli Poliedron" (widget `consigli_ai`, consigli di business AI-generati, carosello) e "Attività e promemoria" (widget `todo`, lista piatta di todo manuali + auto-generati dal controllo dati, **senza alcuna distinzione visiva per origine** nonostante `todos.origine` esista in DB — la colonna è scritta ma non letta/filtrata da nessuna parte in Dashboard.jsx). Il controllo dati automatico (`buildDataHealthActivities`, POL-FIN-007) esisteva già come selettore puro ma veniva usato SOLO per inserire righe in `todos` e per una notifica una-tantum in chat — nessuna vista dedicata, sempre aggiornata, di "tutte le info/dati mancanti".
+
+Nuovo widget Home `poliedron_status` ("Poliedron — Controllo dati"), registrato subito dopo `consigli_ai` in `homeWidgetRegistry.js` (`defaultVisible: true`, stesso `variant: 'poliedron'`, stessa taglia/categoria "AI"). Dashboard.jsx: `dataHealthFindings` calcolato con `useMemo` chiamando `buildDataHealthActivities` LIVE (stessi patients/plans/appointments/oggi già in mano al componente) — non dai `todos` salvati, quindi resta accurato anche se un'Attività correlata viene segnata fatta o cancellata pur restando un problema reale sui dati. La useEffect preesistente che genera le Attività/la notifica chat ora riusa lo stesso `dataHealthFindings` invece di richiamare `buildDataHealthActivities` una seconda volta — una sola fonte di verità. Stessa cosa per `KIND_LABEL`: prima viveva solo dentro quella useEffect, ora estratta a costante di modulo `DATA_HEALTH_KIND_LABEL` e riusata da entrambi i punti.
+
+UI: stato vuoto → riga verde "Nessun dato mancante da controllare"; con findings → riga riassuntiva cliccabile ("N da controllare", con freccia che ruota) che espande/comprime gruppi per tipo (Anamnesi mancante / Piano da accettare o rifiutare / Piano mai iniziato / Trattamento fermo / Appuntamento di ieri non segnato — nuove costanti `DATA_HEALTH_KIND_TITLE`/`DATA_HEALTH_KIND_ICON`), ogni paziente elencato è un bottone che apre la sua scheda nel tab giusto (`DATA_HEALTH_KIND_TAB`: anamnesi mancante → `clinical`, tutto il resto → `piani`, via lo stesso `onOpenPaz` già usato ovunque in Dashboard).
+
+### Tests
+`tests/costoOrarioCard.test.mjs` (nuovo): verifica che `labelPostazioni` sia un prop di `CostoOrarioCard`, passato dal chiamante, mai riferito fuori scope. `tests/poliedronStatusWidget.test.mjs` (nuovo): registry entry, calcolo live via `useMemo`/riuso della stessa lista nella useEffect, toggle cliccabile, click-through per tipo, stato vuoto positivo. Aggiornati `tests/homeWidgetRegistry.test.mjs` (assert sul canExplainUnavailable esteso — no, quello era POL-UI-022; qui: liste di widget visibili attese dopo `moveHomeWidgetByOffset` shiftate di una posizione per il nuovo id) e `tests/mobileHomeRound2.test.mjs` (lista id dell'intero registry, contratto "byte-for-byte" — aggiornata per includere `poliedron_status` nella posizione corretta). `npm test` 700/700; `npm run build` pulito; `git diff --check` pulito. Nessuna migration — solo componenti/selettori client, nessuna nuova colonna DB.
+
+### EXACT NEXT ACTION
+Push del branch `feature/pol-ui-023-costo-orario-fix-poliedron-status`; PR aperta in automatico con link dato subito (istruzione permanente del Product Owner); merge solo su istruzione esplicita.
+
+### PR
+**PR #91** aperta: https://github.com/lucasimondi/Dental-manager-claude/pull/91
+
+## POL-UI-024 — Widget "Salute dati gestionale" con percentuale
+
+Richiesta PO (verbatim, molto ricca): "In Dashboard crea widget che dica la salute dei dati gestionale (deve avere una percentuale) e questo viene controllato da poliedron che scannerizza tutti i dati mancanti dei pazienti: anagrafica numero telefono indirizzo codice fiscale mail, inoltre se hanno un piano cura, se sono iniziati i piani e pagamenti, se hanno anamnesi e un doc privacy, se vengono compilati bene i dati prestazioni incassi se hanno fatto impianti bisogna aver compilato il modulo impianti con passaporto imolantare, se è stata caricata panoramica. Se le spese sono aggiornate, i registri pagamenti anche, se ci sono problemi ad incassare in tempo se carichiamo i dati bollette corretti e non a caso, spese condominiali se assicurazione annuale iniziamo così poi se hai dei consigli su scan dimmi". PR #91 ancora aperta (non mergiata) — stesso branch, stesso pattern già usato per PR #89 (più round confluiscono in una PR finché non arriva "mergiamo").
+
+### Investigazione prima di scrivere codice
+Elenco di controlli molto lungo, alcuni banali da tracciare, altri no — verificato prima cosa esiste già:
+- `documenti_medici.tipo` è `text` libero senza CHECK constraint (verificato via `pg_get_constraintdef` sulla tabella in produzione) — si possono riconoscere nuovi valori di `tipo` lato client senza migration.
+- `CATEGORIE_SPESA` (`src/lib/utils.js`) include già **'Condominio'**, **'Assicurazioni'**, **'Utenze'** — i controlli "spese condominiali/assicurazione annuale/bollette" diventano fattibili SUBITO come presenza+recency di una spesa in quella categoria, senza inventare nuove categorie.
+- Il modulo impianti (`PatientImplants.jsx`/tabella `implants`: marca, modello, lotto, diametro, lunghezza) di fatto CONTIENE GIÀ i dati del "passaporto implantare" — nessun campo nuovo serve per quel controllo specifico (solo per "panoramica caricata", vedi sotto).
+- Dashboard.jsx non aveva accesso a `documenti_medici` né a `implants` (a differenza di patients/plans/payments/appointments) — unico vero gap da colmare con un fetch nuovo (solo `documenti_medici`, minimale: `select('paziente_id, tipo')`, mai `pdf_base64`) e una prop in più (`implants`, già in memoria in App.jsx, zero fetch).
+- `spese` e `scadenzeScadute` erano GIÀ calcolati in Dashboard.jsx da `useControlloDati` (per altri widget) — riusati direttamente, nessun fetch duplicato. `spese` lì è gated dietro `management_control`: i 4 controlli spesa-based del punteggio ereditano lo stesso gate (`financialDataAvailable`), esclusi dalla media (non contati come falliti) per chi non ha quel permesso.
+
+### Modulo puro `src/lib/domain/dataHealthScore.js`
+`computeDataHealthScore({ patients, plans, dataHealthFindings, scadenzeScadute, documents, implants, spese, today, financialDataAvailable })` → `{ percentage, checks[] }`.
+
+11 controlli totali:
+- **Per-paziente** (scope: pazienti con ≥1 piano, stesso precedente di `dataHealthActivities.js`): anagrafica completa (telefono+indirizzo+CF+email), anamnesi compilata, documento privacy/consenso presente, piano iniziato, piano deciso (accettato/rifiutato), pagamenti in regola (nessuna scadenza scaduta), passaporto implantare compilato (solo per chi ha ≥1 impianto — marca+modello+lotto su OGNI impianto).
+- **Studio** (attivi solo se `financialDataAvailable`): spese aggiornate (qualsiasi categoria, ultimi 60gg), bollette/Utenze aggiornate (120gg), condominio aggiornato (366gg), assicurazione aggiornata (366gg).
+
+I controlli anamnesi/piano iniziato/piano deciso NON reimplementano la logica — leggono direttamente `dataHealthFindings` (lo stesso array già calcolato per il widget `poliedron_status` del giro precedente, per kind `ANAMNESI_MANCANTE`/`PLAN_NEVER_STARTED`/`PLAN_AWAITING_ACCEPTANCE_DECISION`). Percentuale = media dei pass-rate dei soli controlli `applicable` (con almeno un soggetto idoneo) — uno studio senza pazienti con impianti non viene penalizzato né favorito su quel controllo, semplicemente escluso dalla media.
+
+### Dashboard.jsx / homeWidgetRegistry.js / App.jsx
+Nuovo widget `poliedron_health_score` ("Poliedron — Salute dati gestionale", `defaultVisible: true`, subito dopo `poliedron_status`): percentuale grande colorata (verde ≥80%, ambra 50-79%, rosso <50%) + etichetta di stato + barra di progresso, cliccabile per espandere il dettaglio per controllo; ogni controllo per-paziente ulteriormente cliccabile per vedere/aprire i pazienti mancanti nel tab giusto (`DATA_HEALTH_SCORE_CHECK_TAB`: privacy→`doc`, impianti→`impl`, pagamenti→`paga`, anagrafica→`info`, anamnesi→`clinical`, piano_iniziato/piano_deciso→`piani`); i controlli studio (spese) cliccano invece verso la pagina Spese (`onNavigate('spese')`). App.jsx passa `implants={implants}` (già in stato, mai stato passato a Dashboard prima).
+
+### Consigli per i prossimi giri (come richiesto: "se hai dei consigli su scan dimmi")
+Due controlli citati dal Product Owner restano fuori da questo giro, entrambi spiegati anche in chat:
+1. **"Panoramica caricata"** per chi ha impianti — serve un modo per etichettare un documento come tipo "panoramica" al momento del caricamento (oggi `ArchivioDocs`/`DocMedico` non distinguono una panoramica da un esame generico). Proposta: aggiungere "panoramica" come nuovo tipo selezionabile nel flusso di upload documenti medici — piccola aggiunta, nessuna migration (stesso discorso di `tipo` come testo libero).
+2. **"Bollette caricate corrette e non a caso"** — questo È un controllo di qualità/anomalia (importo fuori range storico, categoria sbagliata, data implausibile), diverso da tutti gli altri controlli spesa qui sopra che sono solo presenza+recency. Serve decidere un'euristica (es. scarto dalla mediana delle bollette precedenti dello stesso studio) prima di poterlo implementare in modo utile e non rumoroso.
+3. **Pesi personalizzabili**: oggi ogni controllo pesa uguale nella media. Se alcuni contano di più per lo studio (es. anamnesi/privacy più critici della sola anagrafica completa), si può introdurre un peso per controllo — non fatto in questo giro per non decidere pesi arbitrari senza input del Product Owner.
+
+### Tests
+`tests/dataHealthScore.test.mjs` (nuovo, 8 test sul modulo puro): punteggio 100% quando tutto è a posto, campi mancanti/anamnesi/privacy/scaduto abbassano il punteggio e elencano il paziente, scope "pazienti attivi" esclude chi non ha piani, controllo impianti applicabile solo a chi ne ha almeno uno, controlli spesa esclusi quando `financialDataAvailable` è false, finestre di recency diverse per categoria, percentuale `null` (non 0 né 100) quando non c'è nulla di applicabile. `tests/poliedronHealthScoreWidget.test.mjs` (nuovo, 6 test sul wiring in Dashboard/App/registry). Aggiornati `tests/homeWidgetRegistry.test.mjs`/`tests/mobileHomeRound2.test.mjs` per il nuovo id nell'ordine del registry. `npm test` 714/714; `npm run build` pulito; `git diff --check` pulito. Nessuna migration.
+
+### EXACT NEXT ACTION
+Push sullo stesso branch/PR #91 (aggiornare la descrizione della PR per coprire anche questo giro); merge solo su istruzione esplicita del Product Owner.
+
+## POL-UI-024 follow-up — BOLLETTE_QUALITA (approvato: "Su quella classifica va bene")
+
+Product Owner ha approvato la logica proposta per "carichiamo i dati bollette corretti e non a caso" (uno dei due punti lasciati come proposta nel giro precedente). Implementato come dodicesimo controllo in `dataHealthScore.js`.
+
+### Logica (esattamente quella proposta e approvata)
+Per ogni spesa categoria 'Utenze', in ordine cronologico, confronto con la **mediana** (non la media — un singolo importo digitato a caso sposterebbe subito la media, molto meno la mediana) delle bollette *precedenti* dello stesso studio:
+- Richiede almeno 3 bollette precedenti per un confronto significativo (`BOLLETTE_QUALITA_MIN_HISTORY = 3`) — sotto quella soglia la riga non viene valutata (né normale né anomala), evita falsi positivi nei primi mesi di uno studio nuovo.
+- Scarto oltre il 50% dalla mediana (`BOLLETTE_QUALITA_MAX_DEVIATION = 0.5`) → probabile errore di inserimento ("a caso") invece che normale variazione stagionale di consumo.
+- Nuovo check `applicable` solo se almeno una riga aveva abbastanza storico da essere valutata; altrimenti escluso dalla media del punteggio come tutti gli altri controlli non applicabili.
+
+### Dashboard.jsx
+Questo controllo non è binario come gli altri controlli studio (spese_aggiornate/bollette/condominio/assicurazione, sempre pass/fail 1-o-0) — può avere N righe valutate di cui M normali. La card del dettaglio ora mostra `passedCount/totalCount` per QUALSIASI controllo con `totalCount > 1` (non solo quelli scope 'patient' come prima), e riserva "OK"/"Da sistemare" ai soli controlli studio genuinamente binari (`totalCount <= 1`).
+
+### Tests
+Due nuovi test in `tests/dataHealthScore.test.mjs`: uno costruisce 5 bollette dove la 4ª rientra nella soglia e la 5ª la sfora nettamente (verificando che solo le righe con ≥3 priori vengano contate come valutate), uno verifica che con troppo poco storico il controllo risulti `applicable: false`. `npm test` 716/716; `npm run build` pulito; `git diff --check` pulito. Nessuna migration.
+
+### EXACT NEXT ACTION
+Push sullo stesso branch/PR #91; merge solo su istruzione esplicita del Product Owner.
+
+## POL-UI-025 — Pagina dedicata "Poliedron"
+
+Product Owner, dopo aver visto i widget `poliedron_status`/`poliedron_health_score` in anteprima: "La sezione poliedron va bene ma deve essere aperta in una sezione dedicata, perché in home poi scorrere così va bene ma troppo incasinato quindi va bene scorrere ma crea una sezione apposita, dammi consigli su come fare, magari una sezione di poliedron dedicata alla salute dei dati, in cui metteremo altre cose cosa dici? Proprio come se fosse una riunione con il nostro manager poliedron, in cui ci sono i punti da chiarire e i consigli". Ho risposto con una proposta di struttura (pagina dedicata con sidebar/dropdown, sezioni Salute dati/Consigli/Da chiarire/Chat, card teaser unica in Home) — Product Owner: "Sì confermo".
+
+### Architettura scelta
+Nuova pagina di primo livello `src/components/PoliedronHub.jsx`, montata da App.jsx su `page === 'poliedron'` (lazy, come le altre pagine), con voce propria in `NAV` (`src/lib/utils.js`) e aggiunta a `DEF_DOCK_SETTINGS.menuItems` per il dock mobile (auto-propagata anche ai dock già personalizzati esistenti, grazie al "riempi i mancanti" già presente in `mergeDockSettings` — stesso meccanismo usato in passato per Richiami/Agente AI).
+
+Riusa **letteralmente** le classi CSS `management-hub`/`management-hub__header`/`management-layout`/`management-nav`/`management-nav-mobile`/`management-hub__section` già scritte per `ControlloGestione.jsx` — zero CSS nuovo per l'impalcatura della pagina, stesso linguaggio visivo.
+
+Quattro sezioni (TABS): **Salute dati** (default), **Consigli**, **Da chiarire**, **Chat** (quest'ultima non è una vera sezione — `{ id: 'chat', ..., external: true }`, click naviga a `page === 'chat'` invece di cambiare `section`).
+
+### Perché i tre widget non potevano semplicemente "spostarsi" così come'erano
+Dashboard.jsx e PoliedronHub.jsx sono montaggi di pagina **mutuamente esclusivi** (App.jsx fa `{page === 'home' && <Dashboard/>}` / `{page === 'poliedron' && <PoliedronHub/>}` — mai entrambi montati insieme). Questo significa che lo STATO di un widget non può "seguirlo" da una pagina all'altra: se Consigli Poliedron avesse continuato a vivere nello stato di Dashboard.jsx, spostare solo la sua UI in PoliedronHub.jsx l'avrebbe reso vuoto (nessun fetch mai eseguito lì). Soluzione: estratto il fetch/stato dei Consigli in un hook condiviso, `src/lib/poliedron/useConsigli.js` (`usePoliedronConsigli({ enabled })` — stesso identico codice di prima, solo spostato fuori dal componente), usato SOLO da PoliedronHub ora (Dashboard non ne ha più bisogno, avendo rimosso anche la riga "consigli non letti" dalla sezione "Richiede attenzione").
+
+`dataHealthFindings`/`dataHealthScore` invece restano calcolati IN ENTRAMBI i posti (Dashboard.jsx per la card teaser + il job in background che genera le Attività/la notifica in chat; PoliedronHub.jsx per il dettaglio completo) — non è duplicazione di LOGICA (la funzione pura resta unica in `dataHealthActivities.js`/`dataHealthScore.js`), solo di INVOCAZIONE, con lo stesso costo già accettato altrove in questa sessione (es. `dataHealthFindings` era già ricalcolato due volte all'interno dello stesso Dashboard.jsx in un giro precedente).
+
+### Contenuto delle sezioni
+- **Salute dati**: percentuale + stato colorato + barra, dettaglio dei 12 controlli (ognuno espandibile per vedere i pazienti mancanti, click-through al tab giusto della scheda). Sotto, "Altri avvisi": i kind di `ACTIVITY_KIND` NON già rappresentati come check del punteggio (`STALLED_TREATMENT`, `YESTERDAY_APPOINTMENT_NOT_MARKED`) — i tre kind già coperti dal punteggio (anamnesi mancante, piano non iniziato, piano non deciso) sono deliberatamente esclusi da questa sezione per non mostrare due volte lo stesso paziente per lo stesso motivo.
+- **Consigli**: contenuto identico a prima (stesso carosello mobile "una card alla volta", stesse classi `home-poliedron-widget__track`/`__card`/`__dots`), solo spostato e ora alimentato da `usePoliedronConsigli`.
+- **Da chiarire**: `dataHealthScore.js`'s check `BOLLETTE_QUALITA` ora espone anche `anomalies` (non solo `passedCount`/`totalCount`) — un array di `{data, importo, baseline, titolo}` per ogni bolletta fuori soglia, così questa sezione può elencare ESATTAMENTE quale bolletta guardare, non solo un conteggio. Nota in fondo alla sezione: altri punti da chiarire si aggiungeranno qui in futuro.
+- **Chat**: solo un tasto di navigazione, nessun contenuto proprio.
+
+### Home (Dashboard.jsx)
+- Rimossi dal registro (`homeWidgetRegistry.js`): `consigli_ai`, `poliedron_status`, `poliedron_health_score`. Rimozione sicura per i layout già salvati — `normalizeHomeLayout` scarta silenziosamente gli id sconosciuti, comportamento già testato fin dal primissimo test del file (mai un riquadro vuoto o un crash per chi aveva questi widget personalizzati).
+- Al loro posto: una card fissa "Poliedron" (stessa filosofia di "Richiede attenzione" — page chrome, MAI un widget riordinabile/nascondibile/rimuovibile dal pannello "Personalizza Home"), che mostra la percentuale live e porta alla nuova pagina con un click.
+- Dashboard.jsx continua a calcolare `dataHealthScore`/`dataHealthFindings` (serve alla card teaser + al job in background esistente) ma non renderizza più nessun dettaglio per-check/per-paziente — quello vive solo in PoliedronHub.jsx.
+- Pulizia conseguente: rimossa la riga "consigli non letti" dalla sezione "Richiede attenzione" (`buildHomeAttentionItems`/`homeAttention.js` NON toccati — semplicemente Dashboard non passa più `unreadAdvice`, che ha un default di 0 già supportato), rimossa la riga morta `widget.id === 'consigli_ai' && !consigliAttivi` nel catalogo di personalizzazione, rimossa la voce CSS morta `[data-widget-id='consigli_ai']` dalla regola di banding mobile (mai più matchabile).
+
+### Tests
+Cancellati `tests/poliedronStatusWidget.test.mjs` e `tests/poliedronHealthScoreWidget.test.mjs` (testavano widget Home ormai rimossi), sostituiti da `tests/poliedronHub.test.mjs` (8 test sulla nuova pagina: rimozione dal registro, card teaser fissa su Home, routing App.jsx/NAV/dock, riuso pattern sidebar, nav Chat esterna, non-duplicazione Salute dati/Altri avvisi, hook Consigli condiviso, dettaglio bollette anomale in Da chiarire). Aggiornati 6 file di test esistenti (`dashboardPersonalization`, `dashboardPremiumV2`, `dataHealthScore`, `homeLayoutVerifiedPersistence`, `homeWidgetRegistry`, `mobileHomeRound2`) per riflettere la rimozione dei 3 widget dal registro — nessuna riscrittura di comportamento testato, solo aggiornamento delle liste/posizioni attese. `npm test` 713/713; `npm run build` pulito (nuovo chunk `PoliedronHub` lazy-caricato correttamente); `git diff --check` pulito. Nessuna migration.
+
+### EXACT NEXT ACTION
+Push sullo stesso branch/PR #91 (aggiornare la descrizione della PR per coprire anche questo giro); merge solo su istruzione esplicita del Product Owner.
+
+---
+
+## POL-AI-006 — Chat: navigazione verso altri moduli + booking appuntamento con pre-fill reale
+
+### Richiesta (verbatim)
+"Ok allora da chat devi comunque dare possibilità di tornare indietro ad altri moduli, inoltre per poliedron : deve essere in grado di segnare un appuntamento in agenda , creare piani , registrare pagamenti , aggiungere prestazioni , creare ricette senza perdite di tempo , ora ho provato con appuntamento ma non riesce risolvi"
+
+### Diagnosi del bug appuntamento
+`intentEngine.js`'s `CREATE_VERBS` è ancorato (`^`) a `crea|nuovo|nuova|aggiungi|inserisci|prepara` — nessuno dei verbi naturali per prenotare ("fissa", "prenota", "metti") ci rientrava. Una richiesta come "Fissa un appuntamento a Mario Rossi domani alle 15" veniva quindi classificata come SEARCH generica (non CREATE), quindi con zero possibilità di azione. Anche quando l'azione `appointment.create` veniva raggiunta per altra via (es. "nuovo appuntamento Rossi"), non esisteva NESSUN riconoscimento di data/ora nel codice — l'azione apriva sempre e solo il modulo Nuovo appuntamento vuoto. Verificato leggendo `poliedraCore.js`, `intentEngine.js`, `actionRegistry.js`, `Poliedron.jsx` end-to-end prima di scrivere qualunque fix.
+
+### Fix — appuntamento
+- Nuovo modulo puro `src/lib/poliedron/planner/appointmentIntent.js` — `parseAppointmentRequest(text, {now})`, stesso spirito deterministico/vocabolario-chiuso di `commandParser.js`/`prescriptionWorkflow.js` (mai un Model Gateway, mai un'invenzione: ritorna `null` se manca verbo+sostantivo o se non resta un riferimento paziente). Riconosce: verbo di prenotazione (fissa/prenota/metti/pianifica/programma/crea/segna/prendi/aggiungi/nuovo/nuova) + "appuntamento"/"prenotazione"; data (oggi/domani/dopodomani, giorno settimana → prossima occorrenza reale calcolata da `Date#getDay()`, data esplicita gg/mm(/aaaa)); ora ("alle HH"/"alle HH:MM"). Tutto il resto (al netto di connettivi) è il riferimento paziente.
+- `poliedraCore.js`: nuovo ramo in `processQuery`, controllato subito dopo il workflow Ricetta esistente (stessa architettura di precedenza deterministica). Risolve il paziente con `cercaPazienti` (già importata, nessuna logica duplicata) e ritorna `{intent:'WORKFLOW', confirmationRequired:true, entities:{appointmentDate, appointmentTime, appointmentDateText, appointmentTimeText, patientCandidates, patientOptions}, suggestedActions:[appointmentAction]}`.
+- `actionRegistry.js`: `appointment.create` estratto dalla mappa generica `CREATE_ACTION_MAP` (che continua a servire patient/quote/payment/recall/expense/document senza pre-fill) in una entry dedicata il cui `navigate(ctx, patient, payload)` inoltra `{patientId, data, ora}` al quick action `nuovo_appuntamento` → `ctx.openBooking(payload)`. Resta `riskLevel: 1` (Fase 1 invariata): apre il modulo reale già compilato, l'utente sceglie lo slot tra quelli VERAMENTE liberi (`computeFreeSlots`, invariato) e conferma lui stesso — Poliedron non scrive mai in agenda direttamente.
+- Sistemata la catena di pass-through del payload, prima rotta a metà: `quickActionsCatalog.js`'s `nuovo_appuntamento.run` ora inoltra il payload (`ctx.openBooking(payload)` invece di `ctx.openBooking()`); `Poliedron.jsx`'s `navCtx.openBooking` idem; `handleConfirmAction`/`handleConfirmChatAction` ora includono `date`/`time` nel payload passato a `action.navigate` (prima solo `drug`, un residuo del solo workflow Ricetta); `App.jsx`'s `openBooking` prop ora accetta il payload e lo inoltra a `QuickBookingModal` come `initialPazienteId`/`initialData`/`initialOra`. `QuickBookingModal.jsx` inizializza `data`/`ora` da questi nuovi prop — l'effetto di riconciliazione già esistente (invariato) scarta comunque `ora` se non è uno slot realmente libero e seleziona il primo slot libero reale: mai una prenotazione in conflitto proposta silenziosamente.
+- `PoliedronActionPreview.jsx`: la preview di conferma ora mostra Data/Ora richiesta per `appointment.create` (prima indistinguibile da qualunque altra creazione — solo "Paziente"/"Stato"), con lo stesso testo di garanzia già usato per la Ricetta.
+
+### Fix — Chat, navigazione verso altri moduli
+`PoliedronChatPage.jsx`: nuovo selettore nell'header (`navItems`/`onNavigate`) verso qualunque voce di `NAVIGATION_INDEX` consentita — stessa lista già filtrata per permessi in `Poliedron.jsx` (nessun secondo elenco). Prima, l'unica uscita da Chat era il dock mobile a 3 destinazioni fisse (Home/Agenda/Pazienti) o aprire il pannello Poliedron per la ricerca; ora c'è un'uscita diretta e sempre visibile verso qualunque sezione consentita, sia mobile che desktop (dove la sidebar persistente era comunque già presente).
+
+### Cosa NON è stato fatto in questo giro (dichiarato, non un'omissione silenziosa)
+"Creare piani, registrare pagamenti, aggiungere prestazioni" via chat ESISTONO GIÀ come scritture dirette reali e funzionanti (`planner/actionPlanner.js` + `planner/actionExecutor.js`, es. "Rossi deve pagare 180€ per la devitalizzazione del 46", "Crea piano di cura per Mario Rossi con otturazione su 26") — ma SOLO con frasi ESATTE di un vocabolario formale (POL-AI-005A/005B) mai mostrato in nessuna UI, quindi in pratica non scopribile da un utente reale che scrive in italiano naturale. "Creare ricette" apre già il modulo Ricetta precompilato (livello 1, stesso trattamento appena dato all'appuntamento). Non è stato toccato oggi: sarebbe un giro a parte, applicando a piani/pagamenti/prestazioni lo stesso trattamento appena fatto per l'appuntamento (riconoscimento più naturale + pre-fill del modulo reale). Notato anche: "Livello di autonomia" in Impostazioni (`set_agente_azione`) è oggi solo UI — nessun punto del codice lo legge per decidere se eseguire "su richiesta" senza conferma aggiuntiva; wire-up reale è un prerequisito se in futuro si vorrà una vera esecuzione automatica invece del solo pre-fill.
+
+### Tests
+Nuovo `tests/poliedronAppointmentBooking.test.mjs` (6 test: parsing deterministico di verbo/paziente/data/ora con casi validi e casi che devono restare `null`; `processQuery` end-to-end fino al WORKFLOW confermabile; pre-fill del payload passato a `openBooking` sia per il caso con dati riconosciuti sia per il caso blank invariato; wiring `QuickBookingModal.jsx`/`App.jsx`; navigazione Chat verso altri moduli). Aggiornati `tests/poliedron.test.mjs` (nuova firma `openBooking: (payload) => ...`) e `tests/poliedronAdaptive.test.mjs` ("nuovo appuntamento Rossi domani alle 10" ora risolve a WORKFLOW con data/ora riconosciute, non più CREATE generico senza data/ora — comportamento migliorato, non solo rinominato). `npm test` 719/719; `npm run build` pulito; `git diff --check` pulito. Nessuna migration.
+
+### EXACT NEXT ACTION
+Push sullo stesso branch/PR #91 (aggiornare la descrizione della PR per coprire anche questo giro); merge solo su istruzione esplicita del Product Owner.

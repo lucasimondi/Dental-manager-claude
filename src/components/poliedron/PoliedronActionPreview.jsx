@@ -20,6 +20,7 @@ export default function PoliedronActionPreview({ entities, suggestedActions, onC
   }, [initialPatient?.id, optionKey]);
   const patient = options.find((candidate) => candidate.id === selectedPatientId) || initialPatient;
   const isPrescription = primary.id === 'prescription.create';
+  const isAppointment = primary.id === 'appointment.create';
   const drugText = entities?.drugText || '';
 
   return (
@@ -59,6 +60,8 @@ export default function PoliedronActionPreview({ entities, suggestedActions, onC
         <div className="poliedron-workflow-summary">
           <div><span>Paziente</span><strong>{patient.nome} {patient.cognome}</strong></div>
           {isPrescription && <div><span>Farmaco</span><strong>{drugText || 'Da compilare nel modulo'}</strong></div>}
+          {isAppointment && <div><span>Data</span><strong>{entities?.appointmentDateText || 'Da scegliere nel modulo'}</strong></div>}
+          {isAppointment && entities?.appointmentTimeText && <div><span>Ora richiesta</span><strong>{entities.appointmentTimeText}</strong></div>}
         {entities?.amount != null && (
           <div><span>Importo</span><strong>{entities.amount.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}</strong></div>
         )}
@@ -71,11 +74,16 @@ export default function PoliedronActionPreview({ entities, suggestedActions, onC
           Poliedron apre il modulo Ricetta esistente e precompila solo il nome del farmaco esattamente come scritto. Posologia, durata, validazione clinica e generazione restano a carico del professionista.
         </p>
       )}
+      {isAppointment && (
+        <p className="poliedron-workflow-card__guardrail">
+          Poliedron apre il modulo Nuovo appuntamento con paziente/data/ora già precompilati quando riconosciuti: verifica lo slot proposto (i soli slot realmente liberi) e conferma tu stesso la prenotazione.
+        </p>
+      )}
 
       <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
         <Btn ch="Modifica richiesta" v="sec" onClick={onModify} />
         {patient && !entities?.drugNeedsClarification && (
-          <Btn ch={isPrescription ? 'Apri modulo Ricetta' : 'Conferma'} onClick={() => onConfirm(primary, patient)} full />
+          <Btn ch={isPrescription ? 'Apri modulo Ricetta' : isAppointment ? 'Apri modulo Appuntamento' : 'Conferma'} onClick={() => onConfirm(primary, patient)} full />
         )}
       </div>
     </div>

@@ -586,6 +586,11 @@ test('operational verbs gate workflows while noun-plus-patient phrases remain no
   assert.equal(payment.suggestedActions[0].id, 'payment.create');
   assert.equal(payment.entities.amount, 300);
 
+  // POL-AI-006: "nuovo appuntamento <patient> <date> alle <time>" now
+  // resolves through the dedicated appointment-booking workflow (real
+  // date/time recognition, see appointmentIntent.js) instead of the
+  // generic CREATE keyword fallback, which only ever found a patient and
+  // silently dropped the date/time the user actually typed.
   const appointment = await processQuery({
     query: 'nuovo appuntamento Rossi domani alle 10',
     context: buildContext(),
@@ -593,8 +598,12 @@ test('operational verbs gate workflows while noun-plus-patient phrases remain no
     sources,
     allowModel: false,
   });
-  assert.equal(appointment.intent, INTENT.CREATE);
+  assert.equal(appointment.intent, 'WORKFLOW');
+  assert.equal(appointment.confirmationRequired, true);
   assert.equal(appointment.suggestedActions[0].id, 'appointment.create');
+  assert.equal(appointment.entities.patientCandidates[0].id, 'p1');
+  assert.match(appointment.entities.appointmentDate, /^\d{4}-\d{2}-\d{2}$/);
+  assert.equal(appointment.entities.appointmentTime, '10:00');
 
   for (const query of ['ricetta Rossi', 'pagamento Rossi']) {
     const result = await processQuery({ query, context: buildContext(), permissions: {}, sources, allowModel: false });
