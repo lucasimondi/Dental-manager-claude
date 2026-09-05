@@ -1732,7 +1732,7 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
                               style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: canExpand || check.scope === 'studio' ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                               <span style={{ fontSize: 12, fontWeight: 600, color: C.txt }}>{check.label}</span>
                               <span style={{ fontSize: 11, fontWeight: 800, color: checkTone, flexShrink: 0 }}>
-                                {check.scope === 'studio' ? (check.passRate === 1 ? 'OK' : 'Da sistemare') : `${check.passedCount}/${check.totalCount}`}
+                                {check.scope === 'studio' && check.totalCount <= 1 ? (check.passRate === 1 ? 'OK' : 'Da sistemare') : `${check.passedCount}/${check.totalCount}`}
                               </span>
                             </button>
                             {isExpanded && (

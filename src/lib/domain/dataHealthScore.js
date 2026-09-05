@@ -28,14 +28,22 @@
    (patients with zero implants are excluded from that check's own
    denominator, not counted as passing or failing it).
 
-   TWO CHECKS THE PRODUCT OWNER ASKED FOR ARE DELIBERATELY NOT HERE YET
-   (see handoffs.md "consigli" for the proposal):
-   - "panoramica caricata" per chi ha impianti — richiede poter etichettare
-     un documento come tipo "panoramica" in fase di caricamento (oggi
-     ArchivioDocs non lo distingue da un esame generico).
-   - "bollette caricate corrette e non a caso" — un controllo di qualità/
-     anomalia sull'importo (fuori range storico ecc.), non solo presenza/
-     recency come gli altri controlli spese qui sotto. */
+   ONE CHECK THE PRODUCT OWNER ASKED FOR IS DELIBERATELY NOT HERE YET
+   (see handoffs.md "consigli" for the proposal): "panoramica caricata" per
+   chi ha impianti — richiede poter etichettare un documento come tipo
+   "panoramica" in fase di caricamento (oggi ArchivioDocs non lo distingue
+   da un esame generico).
+
+   The other one — "carichiamo i dati bollette corretti e non a caso" —
+   IS implemented below (BOLLETTE_QUALITA), per l'approvazione del
+   Product Owner sulla logica proposta ("Su quella classifica va bene"):
+   ogni bolletta (categoria 'Utenze') viene confrontata con la MEDIANA
+   delle bollette precedenti dello stesso studio (richiede almeno 3
+   bollette precedenti per avere un confronto significativo — altrimenti
+   quella riga non viene valutata, non viene contata come anomala);
+   uno scarto oltre il 50% dalla mediana la marca come probabile errore
+   di inserimento ("a caso") invece che come normale variazione di
+   consumo stagionale. */
 
 import { ACTIVITY_KIND, patientDisplayName } from './dataHealthActivities.js';
 
@@ -49,6 +57,7 @@ export const DATA_HEALTH_SCORE_CHECK = Object.freeze({
   IMPIANTI: 'impianti',
   SPESE_AGGIORNATE: 'spese_aggiornate',
   BOLLETTE: 'bollette',
+  BOLLETTE_QUALITA: 'bollette_qualita',
   CONDOMINIO: 'condominio',
   ASSICURAZIONE: 'assicurazione',
 });
@@ -63,6 +72,7 @@ export const DATA_HEALTH_SCORE_CHECK_LABEL = Object.freeze({
   [DATA_HEALTH_SCORE_CHECK.IMPIANTI]: 'Passaporto implantare compilato (marca, modello, lotto)',
   [DATA_HEALTH_SCORE_CHECK.SPESE_AGGIORNATE]: 'Spese registrate di recente',
   [DATA_HEALTH_SCORE_CHECK.BOLLETTE]: 'Bollette (utenze) aggiornate',
+  [DATA_HEALTH_SCORE_CHECK.BOLLETTE_QUALITA]: 'Importi bollette coerenti con lo storico (non a caso)',
   [DATA_HEALTH_SCORE_CHECK.CONDOMINIO]: 'Spese condominiali aggiornate',
   [DATA_HEALTH_SCORE_CHECK.ASSICURAZIONE]: 'Assicurazione annuale aggiornata',
 });
@@ -84,6 +94,41 @@ const speseUpdatedWithin = (spese, categoria, maxDays, todayIso) => (spese || []
   const delta = daysSince(s.data, todayIso);
   return delta >= 0 && delta <= maxDays;
 });
+
+const median = (numbers) => {
+  const sorted = [...numbers].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+};
+
+// Almeno 3 bollette precedenti servono per una mediana significativa —
+// sotto quella soglia la riga non viene valutata (né normale né anomala).
+const BOLLETTE_QUALITA_MIN_HISTORY = 3;
+const BOLLETTE_QUALITA_MAX_DEVIATION = 0.5; // 50% di scarto dalla mediana
+
+/** Confronta ogni spesa di `categoria`, in ordine cronologico, con la
+ *  mediana di quelle precedenti (stesso studio) — non con la media, che
+ *  un singolo importo digitato a caso sposterebbe subito. Restituisce
+ *  quante righe erano valutabili e quante di quelle rientravano nella
+ *  soglia di scarto accettata. */
+const speseQualityVsHistory = (spese, categoria) => {
+  const rows = (spese || [])
+    .filter((s) => s.categoria === categoria && s.data && s.importo != null && !Number.isNaN(Number(s.importo)))
+    .slice()
+    .sort((a, b) => a.data.localeCompare(b.data));
+  let evaluated = 0;
+  let normal = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const priorAmounts = rows.slice(0, i).map((r) => Number(r.importo)).filter((n) => n > 0);
+    if (priorAmounts.length < BOLLETTE_QUALITA_MIN_HISTORY) continue;
+    const baseline = median(priorAmounts);
+    const importo = Number(rows[i].importo);
+    const deviation = baseline > 0 ? Math.abs(importo - baseline) / baseline : (importo === 0 ? 0 : 1);
+    evaluated += 1;
+    if (deviation <= BOLLETTE_QUALITA_MAX_DEVIATION) normal += 1;
+  }
+  return { evaluated, normal };
+};
 
 const makeGroup = () => ({ passed: [], missing: [] });
 
@@ -175,6 +220,18 @@ export function computeDataHealthScore({
         missingPatients: [],
       });
     }
+
+    const bolletteQualita = speseQualityVsHistory(spese, 'Utenze');
+    checks.push({
+      id: DATA_HEALTH_SCORE_CHECK.BOLLETTE_QUALITA,
+      label: DATA_HEALTH_SCORE_CHECK_LABEL[DATA_HEALTH_SCORE_CHECK.BOLLETTE_QUALITA],
+      scope: 'studio',
+      applicable: bolletteQualita.evaluated > 0,
+      passedCount: bolletteQualita.normal,
+      totalCount: bolletteQualita.evaluated,
+      passRate: bolletteQualita.evaluated > 0 ? bolletteQualita.normal / bolletteQualita.evaluated : null,
+      missingPatients: [],
+    });
   }
 
   const applicableChecks = checks.filter((c) => c.applicable);

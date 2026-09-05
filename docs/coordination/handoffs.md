@@ -2733,3 +2733,22 @@ Due controlli citati dal Product Owner restano fuori da questo giro, entrambi sp
 
 ### EXACT NEXT ACTION
 Push sullo stesso branch/PR #91 (aggiornare la descrizione della PR per coprire anche questo giro); merge solo su istruzione esplicita del Product Owner.
+
+## POL-UI-024 follow-up — BOLLETTE_QUALITA (approvato: "Su quella classifica va bene")
+
+Product Owner ha approvato la logica proposta per "carichiamo i dati bollette corretti e non a caso" (uno dei due punti lasciati come proposta nel giro precedente). Implementato come dodicesimo controllo in `dataHealthScore.js`.
+
+### Logica (esattamente quella proposta e approvata)
+Per ogni spesa categoria 'Utenze', in ordine cronologico, confronto con la **mediana** (non la media — un singolo importo digitato a caso sposterebbe subito la media, molto meno la mediana) delle bollette *precedenti* dello stesso studio:
+- Richiede almeno 3 bollette precedenti per un confronto significativo (`BOLLETTE_QUALITA_MIN_HISTORY = 3`) — sotto quella soglia la riga non viene valutata (né normale né anomala), evita falsi positivi nei primi mesi di uno studio nuovo.
+- Scarto oltre il 50% dalla mediana (`BOLLETTE_QUALITA_MAX_DEVIATION = 0.5`) → probabile errore di inserimento ("a caso") invece che normale variazione stagionale di consumo.
+- Nuovo check `applicable` solo se almeno una riga aveva abbastanza storico da essere valutata; altrimenti escluso dalla media del punteggio come tutti gli altri controlli non applicabili.
+
+### Dashboard.jsx
+Questo controllo non è binario come gli altri controlli studio (spese_aggiornate/bollette/condominio/assicurazione, sempre pass/fail 1-o-0) — può avere N righe valutate di cui M normali. La card del dettaglio ora mostra `passedCount/totalCount` per QUALSIASI controllo con `totalCount > 1` (non solo quelli scope 'patient' come prima), e riserva "OK"/"Da sistemare" ai soli controlli studio genuinamente binari (`totalCount <= 1`).
+
+### Tests
+Due nuovi test in `tests/dataHealthScore.test.mjs`: uno costruisce 5 bollette dove la 4ª rientra nella soglia e la 5ª la sfora nettamente (verificando che solo le righe con ≥3 priori vengano contate come valutate), uno verifica che con troppo poco storico il controllo risulti `applicable: false`. `npm test` 716/716; `npm run build` pulito; `git diff --check` pulito. Nessuna migration.
+
+### EXACT NEXT ACTION
+Push sullo stesso branch/PR #91; merge solo su istruzione esplicita del Product Owner.

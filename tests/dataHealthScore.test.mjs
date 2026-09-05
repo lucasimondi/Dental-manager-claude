@@ -119,6 +119,47 @@ test('spese-based studio checks look at recency per category with different wind
   assert.equal(byId[DATA_HEALTH_SCORE_CHECK.ASSICURAZIONE].passRate, 0);
 });
 
+test('BOLLETTE_QUALITA flags a bolletta whose importo deviates from the median of the prior ones, but only once there is enough history to judge', () => {
+  const patients = [basePatient(1)];
+  const plans = [{ id: 10, pazienteId: 1 }];
+  // Product Owner approved this exact logic ("Su quella classifica va
+  // bene"): median of PRIOR bollette (never the average, which one wild
+  // entry would drag along with it), >=3 prior rows needed before a row
+  // counts as evaluated, >50% deviation from that median flags it.
+  const spese = [
+    { categoria: 'Utenze', data: '2026-01-10', importo: 100 },
+    { categoria: 'Utenze', data: '2026-03-10', importo: 110 },
+    { categoria: 'Utenze', data: '2026-05-10', importo: 90 }, // 3rd row: not yet evaluated (needs 3 PRIOR rows)
+    { categoria: 'Utenze', data: '2026-07-10', importo: 105 }, // 4th row: 3 priors exist (median 100) -> within 50% -> normal
+    { categoria: 'Utenze', data: '2026-09-01', importo: 500 }, // 5th row: way off the median of priors -> anomalous
+  ];
+  const result = computeDataHealthScore({
+    patients, plans, dataHealthFindings: [], scadenzeScadute: [],
+    documents: [{ paziente_id: 1, tipo: 'consenso' }], implants: [], spese, today: TODAY,
+    financialDataAvailable: true,
+  });
+  const check = result.checks.find((c) => c.id === DATA_HEALTH_SCORE_CHECK.BOLLETTE_QUALITA);
+  assert.equal(check.applicable, true);
+  assert.equal(check.totalCount, 2); // only rows 4 and 5 had >=3 priors
+  assert.equal(check.passedCount, 1); // row 4 normal, row 5 anomalous
+});
+
+test('BOLLETTE_QUALITA is not applicable at all when there is not enough bollette history to judge anything', () => {
+  const patients = [basePatient(1)];
+  const plans = [{ id: 10, pazienteId: 1 }];
+  const spese = [
+    { categoria: 'Utenze', data: '2026-08-20', importo: 100 },
+    { categoria: 'Utenze', data: '2026-08-25', importo: 105 },
+  ];
+  const result = computeDataHealthScore({
+    patients, plans, dataHealthFindings: [], scadenzeScadute: [],
+    documents: [{ paziente_id: 1, tipo: 'consenso' }], implants: [], spese, today: TODAY,
+    financialDataAvailable: true,
+  });
+  const check = result.checks.find((c) => c.id === DATA_HEALTH_SCORE_CHECK.BOLLETTE_QUALITA);
+  assert.equal(check.applicable, false);
+});
+
 test('with zero active patients and financial data unavailable, there is nothing applicable and percentage is null (not a misleading 0 or 100)', () => {
   const result = computeDataHealthScore({
     patients: [], plans: [], dataHealthFindings: [], scadenzeScadute: [],
