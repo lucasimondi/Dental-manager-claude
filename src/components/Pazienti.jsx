@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Txt, Modal, Toast, Ic, StatCard, PageHeader, EmptyState } from './ui';
-import { C, uid, fmtD, today } from '../lib/utils';
+import { C, uid, fmtD, today, contaPazientiNuovi } from '../lib/utils';
 import ImportCsvModal from './ImportCsvModal.jsx';
 import DupModal from './DupModal.jsx';
 import PatientWorkspaceBoundary from './PatientWorkspaceBoundary.jsx';
@@ -198,13 +198,8 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
   const oggi = today();
   const meseCorrente = oggi.slice(0, 7);
   const annoCorrente = oggi.slice(0, 4);
-  const dataCreazione = (p) => {
-    const tms = Number(p.id);
-    if (!tms || isNaN(tms)) return null;
-    return new Date(tms).toISOString().slice(0, 10);
-  };
-  const nuoviMese = patients.filter((p) => { const d = dataCreazione(p); return d && d.startsWith(meseCorrente); }).length;
-  const nuoviAnno = patients.filter((p) => { const d = dataCreazione(p); return d && d.startsWith(annoCorrente); }).length;
+  const nuoviMese = contaPazientiNuovi(patients, meseCorrente);
+  const nuoviAnno = contaPazientiNuovi(patients, annoCorrente);
   const preventiviAccettati = plans.filter((pl) => pl.stato === 'accettato' || pl.stato === 'concluso').length;
   const preventiviNonAccettati = plans.filter((pl) => pl.stato === 'rifiutato').length;
   const preventiviAttesa = plans.filter((pl) => (pl.stato || 'attivo') === 'attivo').length;

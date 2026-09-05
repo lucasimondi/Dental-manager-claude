@@ -426,7 +426,7 @@ test('CRITICAL: the banding is presentation only — the persisted registry cont
   // persisted contract every saved layout is normalized against.
   assert.deepEqual(HOME_WIDGET_REGISTRY.map((w) => w.id), [
     'agenda', 'todo', 'appuntamenti', 'wa', 'economico', 'preventivi',
-    'richiami', 'scadenze', 'ortodonzia', 'fisio', 'statistiche', 'grafici',
+    'richiami', 'andamento_studio', 'scadenze', 'ortodonzia', 'fisio', 'statistiche', 'grafici',
     'fin_preventivato', 'fin_accettato', 'fin_prodotto', 'fin_fatturato', 'fin_incassato',
     'fin_credito_clienti', 'fin_costi_fissi', 'fin_costi_variabili', 'fin_margine_contribuzione',
     'fin_ebitda', 'fin_break_even', 'fin_costo_orario', 'fin_ore_disponibili',

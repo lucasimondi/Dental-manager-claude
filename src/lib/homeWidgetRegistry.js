@@ -44,6 +44,12 @@ const RAW_HOME_WIDGET_REGISTRY = [
   // applies to widget ids MISSING from that saved layout. See
   // `migrateSavedHomeLayout` below for the actual root-cause fix.
   { id: 'richiami', ic: 'bell', label: 'Richiami', category: 'Pazienti/Clienti', defaultVisible: true, defaultSize: 'small', sizes: ['small', 'medium'] },
+  // POL-UI-026: stessa etichetta/numeri già visibili in cima a Pazienti.jsx
+  // ("Andamento studio" -- nuovi pazienti mese/anno), ora disponibile anche
+  // come widget Home opzionale. defaultVisible:false: nascosto finché
+  // l'utente non lo attiva lui stesso dal pannello di personalizzazione
+  // Home, come già per preventivi/scadenze/statistiche.
+  { id: 'andamento_studio', ic: 'trend', label: 'Andamento studio', category: 'Pazienti/Clienti', defaultVisible: false, defaultSize: 'medium', sizes: ['medium', 'wide'] },
   { id: 'scadenze', ic: 'cal', label: 'Scadenze pagamento', category: 'Finanza', defaultVisible: false, defaultSize: 'small', sizes: ['small', 'medium'] },
   { id: 'ortodonzia', ic: 'tooth', label: 'Ortodonzia', category: 'Clinica', defaultVisible: false, defaultSize: 'small', sizes: ['small', 'medium'] },
   { id: 'fisio', ic: 'pulse', label: 'Fisioterapia', category: 'Clinica', permission: 'physio_contract', verticals: ['fisioterapista', 'massofisioterapista'], defaultVisible: false, defaultSize: 'medium', sizes: ['medium', 'wide'] },

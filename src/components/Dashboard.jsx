@@ -87,7 +87,7 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
     preventiviAccettati, preventiviAttesa, preventiviRifiutati, totAccettati, tassoAccettazione,
     scadenzePagamento, scadenzeScadute, scadenzeProssime,
     pianiOrto,
-    nuoviMese, mediaValore, topPrest,
+    nuoviMese, nuoviAnno, mediaValore, topPrest,
     andamentoMensile, incassoPerPrestazione, incassoPerGiorno, speseMensili, speseCategoria,
     spese, calcPlanTot,
   } = useControlloDati({ studioId, patients, plans, payments, periodo: periodoEconomico, enabled: homePermissions.managementControl });
@@ -1659,6 +1659,16 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
                 <span style={{ fontSize: 13.5, fontWeight: 800, color: C.txt }}>{fmt(totAccNonEseg)}</span>
               </div>
             </Crd>
+          </div>
+        );
+
+        if (w.id === 'andamento_studio') return (
+          <div key="andamento_studio" style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="trend" s={11} c={C.txm} />Andamento studio</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <StatCard label="Nuovi questo mese" value={nuoviMese} color={C.pri} elevated onClick={() => onNavigate && onNavigate('paz')} />
+              <StatCard label="Nuovi quest'anno" value={nuoviAnno} color={C.acc} elevated onClick={() => onNavigate && onNavigate('paz')} />
+            </div>
           </div>
         );
 
