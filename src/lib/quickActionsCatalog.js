@@ -14,7 +14,11 @@
 export const QUICK_ACTIONS_CATALOG = Object.freeze([
   {
     id: 'nuovo_appuntamento', ic: 'cal', label: 'Nuovo appuntamento',
-    run: (ctx) => ctx.openBooking(),
+    // `payload` (optional): { patientId, data, ora } pre-fill recognized by
+    // Poliedron chat (POL-AI-006) — every other caller of this quick
+    // action passes nothing, so ctx.openBooking(undefined) still opens the
+    // form blank exactly as before.
+    run: (ctx, payload) => ctx.openBooking(payload),
   },
   {
     id: 'apri_agenda', ic: 'cal', label: 'Apri agenda',

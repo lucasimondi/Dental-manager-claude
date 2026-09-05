@@ -12,14 +12,19 @@ import { computeFreeSlots } from '../lib/agendaSlots.js';
    agenda data, not a second agenda. Free slots come only from
    computeFreeSlots (real appointments/impegni/agenda_settings) — never
    invented. */
-export default function QuickBookingModal({ patients, appTypes, appointments, impegni = [], si, features, setAppointments, onClose, initialPazienteId = null, onBooked }) {
+export default function QuickBookingModal({ patients, appTypes, appointments, impegni = [], si, features, setAppointments, onClose, initialPazienteId = null, initialData = null, initialOra = null, onBooked }) {
   const agSet = { ...DEF_AGENDA_SETTINGS, ...(si?.agenda_settings || {}) };
   const [query, setQuery] = useState('');
   const [pazienteId, setPazienteId] = useState(initialPazienteId ? String(initialPazienteId) : '');
   const [tipoId, setTipoId] = useState(appTypes?.[0]?.id ? String(appTypes[0].id) : '');
-  const [data, setData] = useState(today());
+  const [data, setData] = useState(initialData || today());
   const [durata, setDurata] = useState(agSet.durataDefault);
-  const [ora, setOra] = useState('');
+  // `initialOra`: a real free slot, or not — the reconciliation effect
+  // below (freeSlots computed from `data`/`durata` just like every other
+  // path into this modal) clears it and picks the nearest actually-free
+  // slot if it isn't, exactly as it already does when the user changes the
+  // date manually. Never books a conflicting slot silently.
+  const [ora, setOra] = useState(initialOra || '');
   const [operatoreId, setOperatoreId] = useState('');
   const [poltronaId, setPoltronaId] = useState('');
   const [note, setNote] = useState('');

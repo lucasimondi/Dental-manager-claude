@@ -83,6 +83,8 @@ export default function PoliedronChatPage({
   onConfirmActionPlan,
   actionRunning,
   actionRunResult,
+  navItems = [],
+  onNavigate,
 }) {
   const [draft, setDraft] = useState('');
   const scrollRef = useRef(null);
@@ -133,10 +135,28 @@ export default function PoliedronChatPage({
     <section className="poliedron-chat" aria-label="Chat Polyedron" data-surface-status={surfaceStatus || undefined}>
       <header className="poliedron-chat__header">
         <span className="poliedron-chat__brand"><Ic n="spark" s={18} /></span>
-        <div>
+        <div className="poliedron-chat__header-text">
           <h1>Chat Polyedron</h1>
           <p>La linea diretta persistente con il tuo Polyedron</p>
         </div>
+        {navItems.length > 0 && (
+          <label className="poliedron-chat__nav">
+            <Ic n="back" s={15} />
+            <select
+              aria-label="Torna a un altro modulo"
+              defaultValue=""
+              onChange={(event) => {
+                const destination = event.target.value;
+                if (destination) onNavigate?.(destination);
+              }}
+            >
+              <option value="" disabled>Altri moduli…</option>
+              {navItems.map((item) => (
+                <option key={item.id} value={item.id}>{item.label}</option>
+              ))}
+            </select>
+          </label>
+        )}
       </header>
 
       <div

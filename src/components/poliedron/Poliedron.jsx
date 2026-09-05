@@ -453,7 +453,7 @@ export default function Poliedron({
     setPage, goSchedaPaz,
     onNavigate: setPage, onNavigateNew: (p) => openNew?.(p),
     onGoAgenda: () => setPage('agenda'), onGoRichiami: () => setPage('richiami'),
-    openBooking: () => openBooking?.(), openTodoModal: () => {},
+    openBooking: (payload) => openBooking?.(payload), openTodoModal: () => {},
     openPrescription,
   }), [setPage, goSchedaPaz, openPrescription, openNew, openBooking]);
 
@@ -479,13 +479,21 @@ export default function Poliedron({
 
   const handleConfirmAction = useCallback((action, selectedPatient) => {
     const patient = selectedPatient || state?.entities?.patientCandidates?.[0];
-    action.navigate(navCtx, patient, { drug: state?.entities?.drugText || '' });
+    action.navigate(navCtx, patient, {
+      drug: state?.entities?.drugText || '',
+      date: state?.entities?.appointmentDate || null,
+      time: state?.entities?.appointmentTime || null,
+    });
     close();
   }, [navCtx, state, close]);
 
   const handleConfirmChatAction = useCallback((action, selectedPatient) => {
     const patient = selectedPatient || chatStructuredState?.entities?.patientCandidates?.[0];
-    action.navigate(navCtx, patient, { drug: chatStructuredState?.entities?.drugText || '' });
+    action.navigate(navCtx, patient, {
+      drug: chatStructuredState?.entities?.drugText || '',
+      date: chatStructuredState?.entities?.appointmentDate || null,
+      time: chatStructuredState?.entities?.appointmentTime || null,
+    });
     setChatStructuredState(null);
   }, [navCtx, chatStructuredState]);
 
@@ -613,6 +621,8 @@ export default function Poliedron({
           onConfirmActionPlan={handleConfirmChatActionPlan}
           actionRunning={chatActionRunning}
           actionRunResult={chatActionRunResult}
+          navItems={navigationIndex.filter((item) => item.id !== 'chat')}
+          onNavigate={setPage}
         />,
         chatHost
       )}

@@ -698,7 +698,7 @@ export default function App() {
         onArchivioFilterHint={setArchivioFiltroTipoHint}
         openPrescription={openPrescription}
         openNew={goNuovoElemento}
-        openBooking={() => setPoliedronBookingOpen(true)}
+        openBooking={(payload) => setPoliedronBookingOpen(payload || true)}
         quickActionCtx={{ permissions: homePermissions, features, vertical: studioInfo?.vertical }}
         supabaseClient={supabase}
         externalCommandRequest={quickHubPoliedronRequest}
@@ -715,6 +715,9 @@ export default function App() {
             si={studioInfo}
             features={features}
             setAppointments={setAppointmentsSync}
+            initialPazienteId={typeof poliedronBookingOpen === 'object' && poliedronBookingOpen?.patientId != null ? poliedronBookingOpen.patientId : undefined}
+            initialData={typeof poliedronBookingOpen === 'object' ? poliedronBookingOpen?.data : undefined}
+            initialOra={typeof poliedronBookingOpen === 'object' ? poliedronBookingOpen?.ora : undefined}
             onClose={() => setPoliedronBookingOpen(false)}
           />
         </Suspense>

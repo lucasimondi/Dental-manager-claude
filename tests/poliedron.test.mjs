@@ -507,7 +507,7 @@ test('explicit Ask cancels live preview and query changes invalidate stale resul
 test('Poliedron delegates new-form and appointment creation to App real workflow handlers', () => {
   const source = fs.readFileSync(path.join(POLIEDRON_COMPONENTS_DIR, 'Poliedron.jsx'), 'utf8');
   assert.match(source, /onNavigateNew: \(p\) => openNew\?\.\(p\)/);
-  assert.match(source, /openBooking: \(\) => openBooking\?\.\(\)/);
+  assert.match(source, /openBooking: \(payload\) => openBooking\?\.\(payload\)/);
   assert.match(APP_SHELL_SOURCE, /openNew=\{goNuovoElemento\}/);
   assert.match(APP_SHELL_SOURCE, /<QuickBookingModal/);
   assert.match(APP_SHELL_SOURCE, /<Spese[\s\S]*autoOpenNew=\{autoOpenNew === 'spese'\}/);
