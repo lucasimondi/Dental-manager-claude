@@ -6,7 +6,7 @@ all'ultimo deploy pushato, non serve richiederlo di nuovo dopo ogni commit.
 
 ## Branch attivo
 
-Nessuno al momento — ultimo giro (POL-UI-022) mergiato in `master` via PR #90.
+- **`feature/pol-ui-023-costo-orario-fix-poliedron-status`** (PR #91, POL-UI-023 + POL-UI-024): https://dental-manager-git-feature-pol-ui-023-cos-2b3bf2-acmeproduction.vercel.app
 
 ## Regola permanente
 
