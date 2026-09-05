@@ -600,6 +600,7 @@ export const NAV = [
   { id: 'richiami', l: 'Richiami', ic: 'clk' },
   { id: 'spese', l: 'Spese', ic: 'spe' },
   { id: 'controllo', l: 'Controllo', ic: 'chart' },
+  { id: 'poliedron', l: 'Poliedron', ic: 'compass' },
   { id: 'archivio', l: 'Documenti', ic: 'folder' },
   { id: 'wa', l: 'WhatsApp', ic: 'wa' },
   { id: 'chat', l: 'Chat', ic: 'chat' },
@@ -622,7 +623,7 @@ export const DOCK_MENU_SLOT = '__menu__';
 export const DEF_DOCK_SETTINGS = {
   iconStyle: 'vivid',
   slots: ['home', 'agenda', DOCK_MENU_SLOT, 'paga', 'wa'],
-  menuItems: ['paz', 'piani', 'incassi', 'listino', 'richiami', 'spese', 'archivio', 'agenteai', 'set'],
+  menuItems: ['paz', 'piani', 'incassi', 'listino', 'richiami', 'spese', 'archivio', 'poliedron', 'agenteai', 'set'],
 };
 
 // Tutte le voci disponibili per comporre dock/popup, indicizzate per id (comodo per i <select>)

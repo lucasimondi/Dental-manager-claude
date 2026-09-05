@@ -109,8 +109,9 @@ const BOLLETTE_QUALITA_MAX_DEVIATION = 0.5; // 50% di scarto dalla mediana
 /** Confronta ogni spesa di `categoria`, in ordine cronologico, con la
  *  mediana di quelle precedenti (stesso studio) — non con la media, che
  *  un singolo importo digitato a caso sposterebbe subito. Restituisce
- *  quante righe erano valutabili e quante di quelle rientravano nella
- *  soglia di scarto accettata. */
+ *  quante righe erano valutabili, quante rientravano nella soglia di
+ *  scarto accettata, e il dettaglio delle righe anomale (per la sezione
+ *  "Da chiarire" — sapere QUALE bolletta guardare, non solo il conteggio). */
 const speseQualityVsHistory = (spese, categoria) => {
   const rows = (spese || [])
     .filter((s) => s.categoria === categoria && s.data && s.importo != null && !Number.isNaN(Number(s.importo)))
@@ -118,6 +119,7 @@ const speseQualityVsHistory = (spese, categoria) => {
     .sort((a, b) => a.data.localeCompare(b.data));
   let evaluated = 0;
   let normal = 0;
+  const anomalies = [];
   for (let i = 0; i < rows.length; i++) {
     const priorAmounts = rows.slice(0, i).map((r) => Number(r.importo)).filter((n) => n > 0);
     if (priorAmounts.length < BOLLETTE_QUALITA_MIN_HISTORY) continue;
@@ -126,8 +128,9 @@ const speseQualityVsHistory = (spese, categoria) => {
     const deviation = baseline > 0 ? Math.abs(importo - baseline) / baseline : (importo === 0 ? 0 : 1);
     evaluated += 1;
     if (deviation <= BOLLETTE_QUALITA_MAX_DEVIATION) normal += 1;
+    else anomalies.push({ data: rows[i].data, importo, baseline: Math.round(baseline * 100) / 100, titolo: rows[i].titolo || null });
   }
-  return { evaluated, normal };
+  return { evaluated, normal, anomalies };
 };
 
 const makeGroup = () => ({ passed: [], missing: [] });
@@ -231,6 +234,7 @@ export function computeDataHealthScore({
       totalCount: bolletteQualita.evaluated,
       passRate: bolletteQualita.evaluated > 0 ? bolletteQualita.normal / bolletteQualita.evaluated : null,
       missingPatients: [],
+      anomalies: bolletteQualita.anomalies,
     });
   }
 

@@ -153,7 +153,11 @@ test('every priority row lands on an EXISTING destination, never a duplicated im
 test('rows that point at a widget are only raised when that widget is actually on this user\'s Home', () => {
   assert.match(dashboardSrc, /const isHomeWidgetOnScreen = \(id\) => visibleWidgets\.some/);
   assert.match(dashboardSrc, /overdueReminders: isHomeWidgetOnScreen\('todo'\) \?/);
-  assert.match(dashboardSrc, /unreadAdvice: consigliAttivi && isHomeWidgetOnScreen\('consigli_ai'\) \?/);
+  // POL-UI-025: the 'consigli' unreadAdvice row was retired along with the
+  // consigli_ai Home widget (moved to PoliedronHub.jsx) — Dashboard no
+  // longer passes unreadAdvice at all, buildHomeAttentionItems' own
+  // default (0) applies.
+  assert.doesNotMatch(dashboardSrc, /unreadAdvice:/);
 });
 
 test('scadenze are only raised for a user who actually holds the management-control capability', () => {
@@ -421,7 +425,7 @@ test('CRITICAL: the banding is presentation only — the persisted registry cont
   // Widget ids, their catalog order and the default layout order are the
   // persisted contract every saved layout is normalized against.
   assert.deepEqual(HOME_WIDGET_REGISTRY.map((w) => w.id), [
-    'agenda', 'consigli_ai', 'poliedron_status', 'poliedron_health_score', 'todo', 'appuntamenti', 'wa', 'economico', 'preventivi',
+    'agenda', 'todo', 'appuntamenti', 'wa', 'economico', 'preventivi',
     'richiami', 'scadenze', 'ortodonzia', 'fisio', 'statistiche', 'grafici',
     'fin_preventivato', 'fin_accettato', 'fin_prodotto', 'fin_fatturato', 'fin_incassato',
     'fin_credito_clienti', 'fin_costi_fissi', 'fin_costi_variabili', 'fin_margine_contribuzione',

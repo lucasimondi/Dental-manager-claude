@@ -331,7 +331,11 @@ test('the migration re-defaults richiami for a legacy layout WITHOUT resetting a
   const after = migrateSavedHomeLayout(before);
 
   assert.equal(after.find((w) => w.id === 'richiami').visible, true, 'richiami becomes visible for owner/admin');
-  assert.equal(after.find((w) => w.id === 'richiami').order, 7, 'in place — position is not reshuffled');
+  // POL-UI-025: 'consigli_ai' was removed from the registry (moved to its
+  // own dedicated Poliedron page), so it no longer appears in
+  // legacySavedLayout() at all — richiami's position among the remaining
+  // legacy-era ids shifts down by one, from 7 to 6.
+  assert.equal(after.find((w) => w.id === 'richiami').order, 6, 'in place — position is not reshuffled');
   assert.equal(after.find((w) => w.id === 'richiami').size, 'small', 'size is left exactly as the user had it');
 
   // Every other user choice is byte-for-byte preserved.

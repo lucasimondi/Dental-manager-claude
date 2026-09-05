@@ -12,24 +12,19 @@
    in this registry — documented as a Phase 2 follow-up, not faked here. */
 const withSizeBounds = (widget) => ({ ...widget, minSize: widget.sizes[0], maxSize: widget.sizes[widget.sizes.length - 1] });
 
+// POL-UI-025: Product Owner, dopo aver visto i widget "Consigli Poliedron",
+// "Poliedron — Controllo dati" e "Poliedron — Salute dati gestionale" tutti
+// e tre scrollare in Home — "deve essere aperta in una sezione dedicata,
+// perché in home poi scorrere così va bene ma troppo incasinato". I tre id
+// sotto sono stati RIMOSSI dal registro (non solo nascosti) e la loro
+// interfaccia si è spostata nella nuova pagina PoliedronHub.jsx. Rimuovere
+// un id dal registro è sicuro per i layout già salvati: normalizeHomeLayout
+// scarta silenziosamente gli id sconosciuti (comportamento già testato fin
+// dal primo test di questo file), quindi nessun utente vede un riquadro
+// vuoto o un crash — l'entry semplicemente sparisce dal suo layout
+// personalizzato, esattamente come un widget rimosso volontariamente.
 const RAW_HOME_WIDGET_REGISTRY = [
   { id: 'agenda', ic: 'cal', label: 'Agenda oggi', category: 'Agenda', defaultVisible: true, defaultSize: 'wide', sizes: ['medium', 'wide'] },
-  { id: 'consigli_ai', ic: 'compass', label: 'Consigli Poliedron', category: 'AI', variant: 'poliedron', defaultVisible: true, defaultSize: 'medium', sizes: ['medium', 'wide'] },
-  // POL-UI-023: Product Owner — "in Dashboard dobbiamo inserire sezione
-  // poliedron cliccabile ... deve darci tutte le info, quindi dati
-  // mancanti, ecc". Distinta da "Consigli Poliedron" (consigli di
-  // business AI-generati) e da "Attività" (elenco todo manuali+auto): qui
-  // Poliedron riassume in tempo reale lo stato dei controlli automatici
-  // sui dati clinici/di piano (anamnesi mancanti, piani da accettare, mai
-  // iniziati, fermi, appuntamenti di ieri non segnati) — sempre aggiornato
-  // anche se le relative Attività sono state segnate fatte/cancellate.
-  { id: 'poliedron_status', ic: 'compass', label: 'Poliedron — Controllo dati', category: 'AI', variant: 'poliedron', defaultVisible: true, defaultSize: 'medium', sizes: ['medium', 'wide'] },
-  // POL-UI-024: Product Owner — "widget che dica la salute dei dati
-  // gestionale (deve avere una percentuale)". Distinto da `poliedron_status`
-  // sopra (che elenca i singoli problemi): questo è il punteggio aggregato
-  // — quanto lo studio è "in regola" sui dati, con il dettaglio per
-  // controllo dentro.
-  { id: 'poliedron_health_score', ic: 'chart', label: 'Poliedron — Salute dati gestionale', category: 'AI', variant: 'poliedron', defaultVisible: true, defaultSize: 'medium', sizes: ['medium', 'wide'] },
   { id: 'todo', ic: 'okc', label: 'Attività e promemoria', category: 'Attività', defaultVisible: true, defaultSize: 'medium', sizes: ['medium', 'wide'] },
   { id: 'appuntamenti', ic: 'cal', label: 'Prossimi appuntamenti', category: 'Agenda', defaultVisible: true, defaultSize: 'medium', sizes: ['medium', 'wide'] },
   { id: 'wa', ic: 'wa', label: 'Reminder WhatsApp', category: 'Comunicazioni', defaultVisible: false, defaultSize: 'medium', sizes: ['medium', 'wide'] },

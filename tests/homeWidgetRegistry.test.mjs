@@ -22,16 +22,16 @@ test('touch-safe move controls reorder only visible widgets in both directions',
   // POL-UI-015 bugfix round 2: 'richiami' is now defaultVisible:true (was
   // silently invisible by default before, a real reported bug), so it now
   // appears in the default visible set too — expected lists updated.
-  // POL-UI-023: new 'poliedron_status' widget (defaultVisible:true, right
-  // after 'consigli_ai' in the registry) shifts the visible-set positions
-  // 'todo' moves through by one — expected lists updated again.
-  // POL-UI-024: new 'poliedron_health_score' widget (defaultVisible:true,
-  // right after 'poliedron_status') shifts them again.
+  // POL-UI-025: 'consigli_ai', 'poliedron_status' and 'poliedron_health_score'
+  // (added by POL-UI-023/024, all defaultVisible:true) were removed from
+  // the registry entirely — their UI moved to the dedicated PoliedronHub.jsx
+  // page — so the visible-set positions are back to what they were before
+  // any of those three existed.
   let layout=createDefaultHomeLayout();
   layout=moveHomeWidgetByOffset(layout,'todo',-1);
-  assert.deepEqual(layout.filter(x=>x.visible).map(x=>x.id),['agenda','consigli_ai','poliedron_status','todo','poliedron_health_score','appuntamenti','richiami','quick_actions']);
+  assert.deepEqual(layout.filter(x=>x.visible).map(x=>x.id),['todo','agenda','appuntamenti','richiami','quick_actions']);
   layout=moveHomeWidgetByOffset(layout,'todo',1);
-  assert.deepEqual(layout.filter(x=>x.visible).map(x=>x.id),['agenda','consigli_ai','poliedron_status','poliedron_health_score','todo','appuntamenti','richiami','quick_actions']);
+  assert.deepEqual(layout.filter(x=>x.visible).map(x=>x.id),['agenda','todo','appuntamenti','richiami','quick_actions']);
   assert.deepEqual(moveHomeWidgetByOffset(layout,'agenda',-1),layout);
 });
 

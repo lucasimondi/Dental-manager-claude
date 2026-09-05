@@ -2752,3 +2752,37 @@ Due nuovi test in `tests/dataHealthScore.test.mjs`: uno costruisce 5 bollette do
 
 ### EXACT NEXT ACTION
 Push sullo stesso branch/PR #91; merge solo su istruzione esplicita del Product Owner.
+
+## POL-UI-025 — Pagina dedicata "Poliedron"
+
+Product Owner, dopo aver visto i widget `poliedron_status`/`poliedron_health_score` in anteprima: "La sezione poliedron va bene ma deve essere aperta in una sezione dedicata, perché in home poi scorrere così va bene ma troppo incasinato quindi va bene scorrere ma crea una sezione apposita, dammi consigli su come fare, magari una sezione di poliedron dedicata alla salute dei dati, in cui metteremo altre cose cosa dici? Proprio come se fosse una riunione con il nostro manager poliedron, in cui ci sono i punti da chiarire e i consigli". Ho risposto con una proposta di struttura (pagina dedicata con sidebar/dropdown, sezioni Salute dati/Consigli/Da chiarire/Chat, card teaser unica in Home) — Product Owner: "Sì confermo".
+
+### Architettura scelta
+Nuova pagina di primo livello `src/components/PoliedronHub.jsx`, montata da App.jsx su `page === 'poliedron'` (lazy, come le altre pagine), con voce propria in `NAV` (`src/lib/utils.js`) e aggiunta a `DEF_DOCK_SETTINGS.menuItems` per il dock mobile (auto-propagata anche ai dock già personalizzati esistenti, grazie al "riempi i mancanti" già presente in `mergeDockSettings` — stesso meccanismo usato in passato per Richiami/Agente AI).
+
+Riusa **letteralmente** le classi CSS `management-hub`/`management-hub__header`/`management-layout`/`management-nav`/`management-nav-mobile`/`management-hub__section` già scritte per `ControlloGestione.jsx` — zero CSS nuovo per l'impalcatura della pagina, stesso linguaggio visivo.
+
+Quattro sezioni (TABS): **Salute dati** (default), **Consigli**, **Da chiarire**, **Chat** (quest'ultima non è una vera sezione — `{ id: 'chat', ..., external: true }`, click naviga a `page === 'chat'` invece di cambiare `section`).
+
+### Perché i tre widget non potevano semplicemente "spostarsi" così come'erano
+Dashboard.jsx e PoliedronHub.jsx sono montaggi di pagina **mutuamente esclusivi** (App.jsx fa `{page === 'home' && <Dashboard/>}` / `{page === 'poliedron' && <PoliedronHub/>}` — mai entrambi montati insieme). Questo significa che lo STATO di un widget non può "seguirlo" da una pagina all'altra: se Consigli Poliedron avesse continuato a vivere nello stato di Dashboard.jsx, spostare solo la sua UI in PoliedronHub.jsx l'avrebbe reso vuoto (nessun fetch mai eseguito lì). Soluzione: estratto il fetch/stato dei Consigli in un hook condiviso, `src/lib/poliedron/useConsigli.js` (`usePoliedronConsigli({ enabled })` — stesso identico codice di prima, solo spostato fuori dal componente), usato SOLO da PoliedronHub ora (Dashboard non ne ha più bisogno, avendo rimosso anche la riga "consigli non letti" dalla sezione "Richiede attenzione").
+
+`dataHealthFindings`/`dataHealthScore` invece restano calcolati IN ENTRAMBI i posti (Dashboard.jsx per la card teaser + il job in background che genera le Attività/la notifica in chat; PoliedronHub.jsx per il dettaglio completo) — non è duplicazione di LOGICA (la funzione pura resta unica in `dataHealthActivities.js`/`dataHealthScore.js`), solo di INVOCAZIONE, con lo stesso costo già accettato altrove in questa sessione (es. `dataHealthFindings` era già ricalcolato due volte all'interno dello stesso Dashboard.jsx in un giro precedente).
+
+### Contenuto delle sezioni
+- **Salute dati**: percentuale + stato colorato + barra, dettaglio dei 12 controlli (ognuno espandibile per vedere i pazienti mancanti, click-through al tab giusto della scheda). Sotto, "Altri avvisi": i kind di `ACTIVITY_KIND` NON già rappresentati come check del punteggio (`STALLED_TREATMENT`, `YESTERDAY_APPOINTMENT_NOT_MARKED`) — i tre kind già coperti dal punteggio (anamnesi mancante, piano non iniziato, piano non deciso) sono deliberatamente esclusi da questa sezione per non mostrare due volte lo stesso paziente per lo stesso motivo.
+- **Consigli**: contenuto identico a prima (stesso carosello mobile "una card alla volta", stesse classi `home-poliedron-widget__track`/`__card`/`__dots`), solo spostato e ora alimentato da `usePoliedronConsigli`.
+- **Da chiarire**: `dataHealthScore.js`'s check `BOLLETTE_QUALITA` ora espone anche `anomalies` (non solo `passedCount`/`totalCount`) — un array di `{data, importo, baseline, titolo}` per ogni bolletta fuori soglia, così questa sezione può elencare ESATTAMENTE quale bolletta guardare, non solo un conteggio. Nota in fondo alla sezione: altri punti da chiarire si aggiungeranno qui in futuro.
+- **Chat**: solo un tasto di navigazione, nessun contenuto proprio.
+
+### Home (Dashboard.jsx)
+- Rimossi dal registro (`homeWidgetRegistry.js`): `consigli_ai`, `poliedron_status`, `poliedron_health_score`. Rimozione sicura per i layout già salvati — `normalizeHomeLayout` scarta silenziosamente gli id sconosciuti, comportamento già testato fin dal primissimo test del file (mai un riquadro vuoto o un crash per chi aveva questi widget personalizzati).
+- Al loro posto: una card fissa "Poliedron" (stessa filosofia di "Richiede attenzione" — page chrome, MAI un widget riordinabile/nascondibile/rimuovibile dal pannello "Personalizza Home"), che mostra la percentuale live e porta alla nuova pagina con un click.
+- Dashboard.jsx continua a calcolare `dataHealthScore`/`dataHealthFindings` (serve alla card teaser + al job in background esistente) ma non renderizza più nessun dettaglio per-check/per-paziente — quello vive solo in PoliedronHub.jsx.
+- Pulizia conseguente: rimossa la riga "consigli non letti" dalla sezione "Richiede attenzione" (`buildHomeAttentionItems`/`homeAttention.js` NON toccati — semplicemente Dashboard non passa più `unreadAdvice`, che ha un default di 0 già supportato), rimossa la riga morta `widget.id === 'consigli_ai' && !consigliAttivi` nel catalogo di personalizzazione, rimossa la voce CSS morta `[data-widget-id='consigli_ai']` dalla regola di banding mobile (mai più matchabile).
+
+### Tests
+Cancellati `tests/poliedronStatusWidget.test.mjs` e `tests/poliedronHealthScoreWidget.test.mjs` (testavano widget Home ormai rimossi), sostituiti da `tests/poliedronHub.test.mjs` (8 test sulla nuova pagina: rimozione dal registro, card teaser fissa su Home, routing App.jsx/NAV/dock, riuso pattern sidebar, nav Chat esterna, non-duplicazione Salute dati/Altri avvisi, hook Consigli condiviso, dettaglio bollette anomale in Da chiarire). Aggiornati 6 file di test esistenti (`dashboardPersonalization`, `dashboardPremiumV2`, `dataHealthScore`, `homeLayoutVerifiedPersistence`, `homeWidgetRegistry`, `mobileHomeRound2`) per riflettere la rimozione dei 3 widget dal registro — nessuna riscrittura di comportamento testato, solo aggiornamento delle liste/posizioni attese. `npm test` 713/713; `npm run build` pulito (nuovo chunk `PoliedronHub` lazy-caricato correttamente); `git diff --check` pulito. Nessuna migration.
+
+### EXACT NEXT ACTION
+Push sullo stesso branch/PR #91 (aggiornare la descrizione della PR per coprire anche questo giro); merge solo su istruzione esplicita del Product Owner.

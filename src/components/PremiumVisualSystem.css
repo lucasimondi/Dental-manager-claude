@@ -2280,7 +2280,6 @@ button.incassi-kpi.is-active { border-color: var(--brand-primary); box-shadow: 0
   .home-workspace .home-widget-frame[data-widget-id='appuntamenti'] { order: 20; }
   .home-workspace .home-widget-frame[data-widget-id='richiami'],
   .home-workspace .home-widget-frame[data-widget-id='todo'],
-  .home-workspace .home-widget-frame[data-widget-id='consigli_ai'],
   .home-workspace .home-widget-frame[data-widget-id='wa'] { order: 30; }
   .home-workspace .home-widget-frame[data-widget-id='economico'],
   .home-workspace .home-widget-frame[data-widget-id='statistiche'],

@@ -22,60 +22,18 @@ import { buildDataHealthActivities, ACTIVITY_KIND } from '../lib/domain/dataHeal
 import { computeDataHealthScore } from '../lib/domain/dataHealthScore.js';
 import { getOrCreatePrimaryConversation, appendConversationMessage, createChatRequestId } from '../lib/poliedron/conversationRepository.js';
 
-// POL-UI-023: unica fonte per la label leggibile di ogni ACTIVITY_KIND —
-// prima viveva solo dentro la useEffect del controllo dati automatico (per
-// comporre la notifica in chat), qui riusata anche dalla nuova sezione
-// "Poliedron" cliccabile in Home, così le due non possono mai raccontare
-// il problema in due modi diversi.
+// Unica fonte per la label leggibile di ogni ACTIVITY_KIND — usata dalla
+// notifica in Chat Poliedron del controllo dati automatico qui sotto. Il
+// dettaglio per-paziente/per-kind cliccabile che un tempo viveva anche qui
+// (widget `poliedron_status`) si è spostato in PoliedronHub.jsx (POL-UI-025
+// — "deve essere aperta in una sezione dedicata, in home... troppo
+// incasinato"), che ha la propria copia di questa stessa etichetta.
 const DATA_HEALTH_KIND_LABEL = {
   [ACTIVITY_KIND.YESTERDAY_APPOINTMENT_NOT_MARKED]: 'hanno prestazioni non ancora segnate come eseguite dopo l’appuntamento di ieri',
   [ACTIVITY_KIND.PLAN_AWAITING_ACCEPTANCE_DECISION]: 'hanno un piano con prestazioni già eseguite ma non ancora accettato né rifiutato',
   [ACTIVITY_KIND.PLAN_NEVER_STARTED]: 'hanno un piano aperto da settimane senza nessuna prestazione eseguita',
   [ACTIVITY_KIND.STALLED_TREATMENT]: 'hanno un piano che sembra fermo, senza un prossimo appuntamento in agenda',
   [ACTIVITY_KIND.ANAMNESI_MANCANTE]: 'non hanno ancora nessuna anamnesi compilata',
-};
-
-// La scheda paziente da aprire cliccando un'entry: anamnesi mancante porta
-// dritti al tab dove si compila, tutto il resto (piani fermi/da accettare/
-// mai iniziati, appuntamento di ieri non segnato) porta al tab Piani, dove
-// quelle azioni si eseguono davvero.
-const DATA_HEALTH_KIND_TAB = {
-  [ACTIVITY_KIND.ANAMNESI_MANCANTE]: 'clinical',
-};
-const dataHealthKindTab = (kind) => DATA_HEALTH_KIND_TAB[kind] || 'piani';
-
-// Stessa idea ma per i controlli del punteggio "Salute dati gestionale"
-// (dataHealthScore.js) — le due mappe sono tenute separate perché gli id
-// non coincidono (kind di dataHealthActivities.js vs check id di
-// dataHealthScore.js), anche quando puntano allo stesso tab.
-const DATA_HEALTH_SCORE_CHECK_TAB = {
-  anagrafica: 'info',
-  anamnesi: 'clinical',
-  privacy: 'doc',
-  piano_iniziato: 'piani',
-  piano_deciso: 'piani',
-  pagamenti: 'paga',
-  impianti: 'impl',
-};
-const dataHealthScoreCheckTab = (checkId) => DATA_HEALTH_SCORE_CHECK_TAB[checkId] || 'info';
-
-// Intestazione di gruppo (nome breve, terza persona) per la sezione
-// Poliedron cliccabile — diversa dalla frase di DATA_HEALTH_KIND_LABEL
-// sopra, pensata per continuare "Nome Cognome ... ", non per stare da sola
-// come titolo di un gruppo di pazienti.
-const DATA_HEALTH_KIND_TITLE = {
-  [ACTIVITY_KIND.ANAMNESI_MANCANTE]: 'Anamnesi mancante',
-  [ACTIVITY_KIND.PLAN_AWAITING_ACCEPTANCE_DECISION]: 'Piano da accettare o rifiutare',
-  [ACTIVITY_KIND.PLAN_NEVER_STARTED]: 'Piano mai iniziato',
-  [ACTIVITY_KIND.STALLED_TREATMENT]: 'Trattamento fermo',
-  [ACTIVITY_KIND.YESTERDAY_APPOINTMENT_NOT_MARKED]: 'Appuntamento di ieri non segnato',
-};
-const DATA_HEALTH_KIND_ICON = {
-  [ACTIVITY_KIND.ANAMNESI_MANCANTE]: 'book',
-  [ACTIVITY_KIND.PLAN_AWAITING_ACCEPTANCE_DECISION]: 'plan',
-  [ACTIVITY_KIND.PLAN_NEVER_STARTED]: 'warn',
-  [ACTIVITY_KIND.STALLED_TREATMENT]: 'pulse',
-  [ACTIVITY_KIND.YESTERDAY_APPOINTMENT_NOT_MARKED]: 'clk',
 };
 
 const PALETTE = [
@@ -137,25 +95,26 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const isFisio = si?.vertical === 'fisioterapista' || si?.vertical === 'massofisioterapista';
   const t = today();
-  // POL-UI-023: Product Owner — "in Dashboard dobbiamo inserire sezione
-  // poliedron cliccabile ... deve darci tutte le info, quindi dati
-  // mancanti, ecc". Calcolato live dagli stessi dati che la useEffect qui
-  // sotto già scansiona per generare le Attività/la notifica in chat — non
-  // dipende da cosa è già stato salvato come todo (che può essere segnato
-  // fatto/cancellato pur restando un problema reale), quindi la sezione
-  // riflette sempre lo stato attuale, non solo l'ultima scansione.
+  // Calcolato live dagli stessi dati che la useEffect qui sotto già
+  // scansiona per generare le Attività/la notifica in chat — non dipende
+  // da cosa è già stato salvato come todo (che può essere segnato
+  // fatto/cancellato pur restando un problema reale). Ancora usato qui
+  // (oltre che dalla useEffect) solo per il punteggio della card
+  // riassuntiva "Poliedron" qui sotto — il dettaglio completo, cliccabile
+  // per controllo/paziente, si trova in PoliedronHub.jsx (POL-UI-025).
   const dataHealthFindings = useMemo(
     () => buildDataHealthActivities({ patients, plans, appointments, today: t, formatDate: fmtD }),
     [patients, plans, appointments, t],
   );
-  const [poliedronStatusOpen, setPoliedronStatusOpen] = useState(false);
 
-  // POL-UI-024: Product Owner — "widget che dica la salute dei dati
-  // gestionale (deve avere una percentuale)". `documenti_medici` non era
-  // già caricato da nessuna parte in Dashboard/App.jsx (a differenza di
-  // patients/plans/payments/appointments) — unico nuovo fetch di questo
-  // giro, solo le due colonne che servono al controllo "documento privacy"
-  // (mai il pdf_base64, che sarebbe enorme e qui inutile).
+  // `documenti_medici` non era già caricato da nessuna parte in
+  // Dashboard/App.jsx (a differenza di patients/plans/payments/
+  // appointments) — unico fetch aggiuntivo, solo le due colonne che
+  // servono al controllo "documento privacy" (mai il pdf_base64, che
+  // sarebbe enorme e qui inutile). Tenuto anche qui (oltre che in
+  // PoliedronHub.jsx, che lo rifà per conto suo essendo una pagina
+  // separata e smontata quando non attiva) solo per la percentuale della
+  // card riassuntiva.
   const [healthScoreDocs, setHealthScoreDocs] = useState([]);
   useEffect(() => {
     if (!studioId) return;
@@ -166,8 +125,6 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
     documents: healthScoreDocs, implants, spese, today: t,
     financialDataAvailable: homePermissions.managementControl,
   }), [patients, plans, dataHealthFindings, scadenzeScadute, healthScoreDocs, implants, spese, t, homePermissions.managementControl]);
-  const [poliedronHealthOpen, setPoliedronHealthOpen] = useState(false);
-  const [expandedHealthCheckId, setExpandedHealthCheckId] = useState(null);
 
   const [userName, setUserName] = useState(userNameProp || '');
   // POL-UI-015 root-cause fix: `userId` used to be re-fetched from scratch
@@ -205,59 +162,10 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
   }, []);
   const anno = t.slice(0, 4);
 
-  // ── Consigli Poliedron: consulente CFO/marketing proattivo, generato in
-  // background (genera-consigli-ai) senza che nessuno apra la chat — stesso
-  // spirito del bot Richiami. Solo per admin dello studio (RLS lo impone
-  // comunque) e solo al livello Premium dell'assistente (è la funzione che
-  // lo genera a deciderlo server-side; qui evitiamo solo la chiamata inutile).
-  const [consigli, setConsigli] = useState([]);
-  const [consigliLoading, setConsigliLoading] = useState(false);
-  const [consigliErr, setConsigliErr] = useState('');
-  const consigliAttivi = isStudioAdmin && features?.assistente_ai === 'premium';
-  // POL-UI-015 §6: mobile-only "one card at a time" horizontal carousel —
-  // the snap/swipe itself is native CSS scroll-snap (see .home-poliedron-
-  // widget__track in PremiumVisualSystem.css), this only tracks which dot
-  // to highlight. Unused on desktop, where the CSS rule below is a no-op
-  // and the cards keep stacking vertically exactly as before.
-  const [consigliCarouselIndex, setConsigliCarouselIndex] = useState(0);
-  const onConsigliTrackScroll = (e) => {
-    const el = e.currentTarget;
-    setConsigliCarouselIndex(Math.round(el.scrollLeft / Math.max(1, el.clientWidth)));
-  };
-
-  const rigeneraConsigli = async () => {
-    setConsigliLoading(true);
-    setConsigliErr('');
-    try {
-      const { data, error } = await supabase.functions.invoke('genera-consigli-ai');
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      setConsigli(data.consigli || []);
-    } catch (e) {
-      setConsigliErr(e.message || 'Errore nella generazione dei consigli');
-    } finally {
-      setConsigliLoading(false);
-    }
-  };
-
-  const segnaLettoConsiglio = async (id) => {
-    setConsigli((prev) => prev.map((c) => (c.id === id ? { ...c, letto: true } : c)));
-    await supabase.from('ai_agent_consigli').update({ letto: true }).eq('id', id);
-  };
-
-  useEffect(() => {
-    if (!consigliAttivi) return;
-    let cancelled = false;
-    supabase.from('ai_agent_consigli').select('*').order('creato_il', { ascending: false }).limit(4).then(({ data }) => {
-      if (cancelled) return;
-      setConsigli(data || []);
-      const piuRecente = data && data[0] ? new Date(data[0].creato_il) : null;
-      const settimanaFa = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      if (!piuRecente || piuRecente < settimanaFa) rigeneraConsigli();
-    });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [consigliAttivi]);
+  // Consigli Poliedron (consulente CFO/marketing proattivo): il widget e
+  // il relativo fetch/stato si sono spostati in PoliedronHub.jsx tramite
+  // `usePoliedronConsigli` (POL-UI-025 — "deve essere aperta in una
+  // sezione dedicata... troppo incasinato"). Home non ne ha più bisogno.
 
   const [detailModal, setDetailModal] = useState(null);
   const [editApp, setEditApp] = useState(null);
@@ -739,11 +647,11 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
                              the row simply never exists);
        · promemoria        — the same patient-annotation recalls the
                              "Attività e promemoria" widget lists;
-       · todayApps         — the same list the Agenda widget renders;
-       · consigli          — the same Poliedron advice rows, only when the
-                             advice feature is actually active for this
-                             studio (`consigliAttivi`).
-     No backend call, no new table, no invented alert. */
+       · todayApps         — the same list the Agenda widget renders.
+     No backend call, no new table, no invented alert.
+     (POL-UI-025: the `unreadAdvice`/'consigli' row this used to raise was
+     retired along with the `consigli_ai` Home widget — Consigli Poliedron
+     now lives only in PoliedronHub.jsx, no longer on Home to scroll to.) */
   const isHomeWidgetOnScreen = (id) => visibleWidgets.some((item) => item.id === id && item.visible !== false);
   const attentionItems = buildHomeAttentionItems({
     today: t,
@@ -751,12 +659,11 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
     richiami,
     todayAppointments: todayApps,
     overduePlanDeadlines: homePermissions.managementControl ? (scadenzeScadute?.length || 0) : 0,
-    // These two point INTO the page (their destination is a widget, not a
-    // route), so they are only raised when that widget is actually on
-    // screen for this user — a personalization that hides the widget also
-    // removes the row, instead of leaving a tap that goes nowhere.
+    // Points INTO the page (its destination is a widget, not a route), so
+    // it is only raised when that widget is actually on screen for this
+    // user — a personalization that hides the widget also removes the
+    // row, instead of leaving a tap that goes nowhere.
     overdueReminders: isHomeWidgetOnScreen('todo') ? promemoria.filter(p => p.richiamo.data < t).length : 0,
-    unreadAdvice: consigliAttivi && isHomeWidgetOnScreen('consigli_ai') ? consigli.filter(c => !c.letto).length : 0,
     patientNameOfAppointment: (a) => {
       const p = patients.find(x => x.id === a.pazienteId);
       return p ? `${p.nome} ${p.cognome}` : '';
@@ -775,7 +682,6 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
     if (action === 'agenda') return onGoAgenda && onGoAgenda();
     if (action === 'scadenze') return setDetailModal('scadenze');
     if (action === 'todo') return scrollToHomeWidget('todo');
-    if (action === 'consigli') return scrollToHomeWidget('consigli_ai');
     return undefined;
   };
   const ATTENTION_TONE = { danger: C.dan, warn: C.war, info: C.pri };
@@ -823,7 +729,6 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
             </div>
             <div style={{ maxHeight: 210, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: 6, marginBottom: 14 }}>
               {availableWidgetCatalog.map((widget) => {
-                if (widget.id === 'consigli_ai' && !consigliAttivi) return null;
                 if (widget.id === 'ortodonzia' && !isDentistico) return null;
                 if (widget.id === 'fisio' && !isFisio) return null;
                 const item = draftWidgets.find((entry) => entry.id === widget.id);
@@ -1473,6 +1378,27 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
         )}
       </section>
 
+      {/* POL-UI-025 — Product Owner, dopo aver visto i due widget Poliedron
+          scrollare in Home: "deve essere aperta in una sezione dedicata...
+          in home troppo incasinato... crea una sezione apposita". Stessa
+          logica della sezione "Richiede attenzione" sopra: page chrome
+          fissa, NON un widget del registro — mai riordinabile/nascondibile,
+          sempre nello stesso punto, un unico punto d'ingresso verso la
+          nuova pagina Poliedron invece di tre card separate da scrollare. */}
+      <button type="button" onClick={() => onNavigate && onNavigate('poliedron')}
+        className="home-poliedron-widget" style={{ marginBottom: 16, width: '100%', textAlign: 'left', cursor: 'pointer', display: 'block', font: 'inherit' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <img src={poliedroGem} alt="" aria-hidden="true" className="home-poliedron-widget__gem" style={{ width: 30, height: 30 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="home-poliedron-widget__label">Poliedron</div>
+            <div className="home-poliedron-widget__heading">
+              {dataHealthScore.percentage == null ? 'Apri Poliedron' : `Salute dati gestionale: ${dataHealthScore.percentage}%`}
+            </div>
+          </div>
+          <span aria-hidden="true" style={{ fontSize: 20, color: C.txm, flexShrink: 0 }}>›</span>
+        </div>
+      </button>
+
       {/* ── WIDGET ORDINATI DINAMICAMENTE ──
          POL-UX-002 section 6: il selettore globale Mese/Anno è stato
          rimosso dalla Home. homePeriodId resta 'current_month' di default
@@ -1566,198 +1492,6 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
             </div>}
           </div>
         );
-
-        if (w.id === 'consigli_ai') {
-          if (!consigliAttivi) return null;
-          const nonLetti = consigli.filter((c) => !c.letto);
-          return (
-            <div key="consigli_ai" className="home-poliedron-widget" style={{ marginBottom: 16 }}>
-              <div className="home-poliedron-widget__header">
-                <div className="home-poliedron-widget__title">
-                  <img src={poliedroGem} alt="" aria-hidden="true" className="home-poliedron-widget__gem" />
-                  <div>
-                    <div className="home-poliedron-widget__label">Poliedron</div>
-                    <div className="home-poliedron-widget__heading">Consigli Poliedron</div>
-                  </div>
-                </div>
-                <button onClick={rigeneraConsigli} disabled={consigliLoading} className="home-poliedron-widget__refresh">
-                  {consigliLoading ? 'Genero…' : <><Ic n="refresh" s={11} c="currentColor" />Rigenera</>}
-                </button>
-              </div>
-              {consigliErr && <div style={{ fontSize: 11, color: C.dan, marginBottom: 8 }}>{consigliErr}</div>}
-              {!consigliLoading && consigli.length === 0 && !consigliErr && (
-                <Crd style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Genero i primi consigli, un attimo…</Crd>
-              )}
-              {!consigliLoading && consigli.length > 0 && nonLetti.length === 0 && (
-                <Crd style={{ textAlign: 'center', color: C.txl, padding: '16px 0', fontSize: 13 }}>Hai letto tutti i consigli di questa settimana</Crd>
-              )}
-              {nonLetti.length > 0 && (
-                <div className="home-poliedron-widget__track" onScroll={onConsigliTrackScroll}>
-                  {nonLetti.map((c) => {
-                    const colore = c.categoria === 'cfo' ? C.pri : c.categoria === 'commerciale' ? C.war : C.pur;
-                    const labelIc = c.categoria === 'cfo' ? 'eur' : c.categoria === 'commerciale' ? 'shake' : 'trend';
-                    const labelTxt = c.categoria === 'cfo' ? 'CFO' : c.categoria === 'commerciale' ? 'Commerciale' : 'Marketing';
-                    const label = <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n={labelIc} s={10} c={colore} />{labelTxt}</span>;
-                    const paz = c.paziente_id ? patients.find(p => p.id === c.paziente_id) : null;
-                    return (
-                      <Crd key={c.id} className="home-poliedron-widget__card" style={{ marginBottom: 8, borderLeft: `3px solid ${colore}` }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ marginBottom: 5 }}><Bdg ch={label} co={colore} /></div>
-                            <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 3, color: C.txt }}>{c.titolo}</div>
-                            <div style={{ fontSize: 12, color: C.txm, lineHeight: 1.45 }}>{c.testo}</div>
-                            {paz && (
-                              <div onClick={() => onOpenPaz(paz, 'info')} style={{ marginTop: 6, fontSize: 12, fontWeight: 700, color: C.pri, cursor: 'pointer' }}>{paz.nome} {paz.cognome} ›</div>
-                            )}
-                          </div>
-                          <button className="home-list-icon-btn" onClick={() => segnaLettoConsiglio(c.id)} title="Segna come letto" style={{ background: C.sucL }}>
-                            <Ic n="ok" s={13} c={C.suc} />
-                          </button>
-                        </div>
-                      </Crd>
-                    );
-                  })}
-                </div>
-              )}
-              {nonLetti.length > 1 && (
-                <div className="home-poliedron-widget__dots" aria-hidden="true">
-                  {nonLetti.map((c, i) => <span key={c.id} className={`home-poliedron-widget__dot${i === consigliCarouselIndex ? ' is-active' : ''}`} />)}
-                </div>
-              )}
-            </div>
-          );
-        }
-
-        if (w.id === 'poliedron_status') {
-          const gruppi = new Map();
-          for (const entry of dataHealthFindings) {
-            const list = gruppi.get(entry.kind) || [];
-            list.push(entry);
-            gruppi.set(entry.kind, list);
-          }
-          return (
-            <div key="poliedron_status" className="home-poliedron-widget" style={{ marginBottom: 16 }}>
-              <div className="home-poliedron-widget__header">
-                <div className="home-poliedron-widget__title">
-                  <img src={poliedroGem} alt="" aria-hidden="true" className="home-poliedron-widget__gem" />
-                  <div>
-                    <div className="home-poliedron-widget__label">Poliedron</div>
-                    <div className="home-poliedron-widget__heading">Controllo dati</div>
-                  </div>
-                </div>
-                {dataHealthFindings.length > 0 && (
-                  <button type="button" onClick={() => setPoliedronStatusOpen((v) => !v)} className="home-poliedron-widget__refresh" aria-expanded={poliedronStatusOpen}>
-                    {dataHealthFindings.length} da controllare
-                    <span aria-hidden="true" style={{ display: 'inline-block', transform: poliedronStatusOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>▶</span>
-                  </button>
-                )}
-              </div>
-              {dataHealthFindings.length === 0 ? (
-                <Crd style={{ textAlign: 'center', color: C.suc, padding: '14px 0', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                  <Ic n="ok" s={13} c={C.suc} />Nessun dato mancante da controllare
-                </Crd>
-              ) : !poliedronStatusOpen ? (
-                <button type="button" onClick={() => setPoliedronStatusOpen(true)} style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '2px 0', cursor: 'pointer', fontSize: 12, color: C.txm }}>
-                  {[...gruppi.entries()].map(([kind, list]) => `${DATA_HEALTH_KIND_TITLE[kind] || kind} (${list.length})`).join(' · ')} — tocca per vedere pazienti e dettagli
-                </button>
-              ) : (
-                [...gruppi.entries()].map(([kind, list]) => (
-                  <Crd key={kind} style={{ marginBottom: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                      <Ic n={DATA_HEALTH_KIND_ICON[kind] || 'warn'} s={13} c={C.pri} />
-                      <span style={{ fontSize: 12, fontWeight: 800, color: C.txt }}>{DATA_HEALTH_KIND_TITLE[kind] || kind}</span>
-                      <Bdg ch={list.length} co={C.pri} />
-                    </div>
-                    {list.map((entry) => {
-                      const paz = patients.find((p) => p.id === entry.pazienteId);
-                      return (
-                        <button key={entry.dedupKey} type="button" onClick={() => paz && onOpenPaz(paz, dataHealthKindTab(kind))}
-                          style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: `1px solid ${C.brd}`, padding: '7px 0', cursor: paz ? 'pointer' : 'default', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: paz ? C.pri : C.txt }}>{entry.patientName}{paz ? ' ›' : ''}</span>
-                          <span style={{ fontSize: 11, color: C.txm }}>{entry.message}</span>
-                        </button>
-                      );
-                    })}
-                  </Crd>
-                ))
-              )}
-            </div>
-          );
-        }
-
-        if (w.id === 'poliedron_health_score') {
-          const { percentage, checks } = dataHealthScore;
-          const tone = percentage == null ? C.txl : percentage >= 80 ? C.suc : percentage >= 50 ? C.war : C.dan;
-          const statusLabel = percentage == null ? 'Dati insufficienti' : percentage >= 80 ? 'Ottima' : percentage >= 50 ? 'Da migliorare' : 'Critica';
-          const applicableChecks = checks.filter((c) => c.applicable);
-          return (
-            <div key="poliedron_health_score" className="home-poliedron-widget" style={{ marginBottom: 16 }}>
-              <div className="home-poliedron-widget__header">
-                <div className="home-poliedron-widget__title">
-                  <img src={poliedroGem} alt="" aria-hidden="true" className="home-poliedron-widget__gem" />
-                  <div>
-                    <div className="home-poliedron-widget__label">Poliedron</div>
-                    <div className="home-poliedron-widget__heading">Salute dati gestionale</div>
-                  </div>
-                </div>
-              </div>
-              {percentage == null ? (
-                <Crd style={{ textAlign: 'center', color: C.txl, padding: '14px 0', fontSize: 13 }}>Non ci sono ancora abbastanza dati per calcolare un punteggio.</Crd>
-              ) : (
-                <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 10 }}>
-                    <div style={{ fontSize: 34, fontWeight: 900, color: tone }}>{percentage}%</div>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: tone }}>{statusLabel}</div>
-                      <div style={{ fontSize: 11, color: C.txm }}>Media di {applicableChecks.length} controlli automatici</div>
-                    </div>
-                  </div>
-                  <div style={{ height: 6, borderRadius: 4, background: C.bg, overflow: 'hidden', marginBottom: 10 }} role="progressbar" aria-valuenow={percentage} aria-valuemin={0} aria-valuemax={100}>
-                    <div style={{ height: '100%', width: `${percentage}%`, background: tone, borderRadius: 4, transition: 'width 0.2s' }} />
-                  </div>
-                  <button type="button" onClick={() => setPoliedronHealthOpen((v) => !v)} style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 12, color: C.txm }}>{poliedronHealthOpen ? 'Nascondi il dettaglio' : 'Vedi il dettaglio per controllo'}</span>
-                    <span aria-hidden="true" style={{ display: 'inline-block', transform: poliedronHealthOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>▶</span>
-                  </button>
-                  {poliedronHealthOpen && (
-                    <div style={{ marginTop: 10 }}>
-                      {applicableChecks.map((check) => {
-                        const checkTone = check.passRate === 1 ? C.suc : check.passRate === 0 ? C.dan : C.war;
-                        const isExpanded = expandedHealthCheckId === check.id;
-                        const canExpand = check.scope === 'patient' && check.missingPatients.length > 0;
-                        return (
-                          <Crd key={check.id} style={{ marginBottom: 6, padding: 10 }}>
-                            <button type="button"
-                              onClick={() => canExpand ? setExpandedHealthCheckId(isExpanded ? null : check.id) : (check.scope === 'studio' && onNavigate ? onNavigate('spese') : undefined)}
-                              style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: canExpand || check.scope === 'studio' ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                              <span style={{ fontSize: 12, fontWeight: 600, color: C.txt }}>{check.label}</span>
-                              <span style={{ fontSize: 11, fontWeight: 800, color: checkTone, flexShrink: 0 }}>
-                                {check.scope === 'studio' && check.totalCount <= 1 ? (check.passRate === 1 ? 'OK' : 'Da sistemare') : `${check.passedCount}/${check.totalCount}`}
-                              </span>
-                            </button>
-                            {isExpanded && (
-                              <div style={{ marginTop: 8 }}>
-                                {check.missingPatients.map((p) => {
-                                  const paz = patients.find((x) => x.id === p.pazienteId);
-                                  return (
-                                    <button key={p.pazienteId} type="button" onClick={() => paz && onOpenPaz(paz, dataHealthScoreCheckTab(check.id))}
-                                      style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: `1px solid ${C.brd}`, padding: '6px 0', cursor: paz ? 'pointer' : 'default', fontSize: 12, fontWeight: 700, color: paz ? C.pri : C.txt }}>
-                                      {p.patientName}{paz ? ' ›' : ''}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </Crd>
-                        );
-                      })}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          );
-        }
 
         if (w.id === 'todo') return (
           <div key="todo" style={{ marginBottom: 16 }}>

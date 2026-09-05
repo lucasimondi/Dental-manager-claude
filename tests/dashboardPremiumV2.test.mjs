@@ -19,6 +19,7 @@ const premiumCss = await readFile(new URL('../src/components/PremiumVisualSystem
 const bellSrc = await readFile(new URL('../src/components/poliedron/PoliedronBell.jsx', import.meta.url), 'utf8');
 const poliedronSrc = await readFile(new URL('../src/components/poliedron/Poliedron.jsx', import.meta.url), 'utf8');
 const dockSrc = await readFile(new URL('../src/components/poliedron/PoliedronMobileDock.jsx', import.meta.url), 'utf8');
+const poliedronHubSrc = await readFile(new URL('../src/components/PoliedronHub.jsx', import.meta.url), 'utf8');
 
 // --- 1. PERSISTENCE ROOT CAUSE FIX -----------------------------------------
 
@@ -118,8 +119,12 @@ test('REGRESSION GUARD: the base .home-poliedron-widget__dots{display:none} rule
 });
 
 test('Consigli Poliedron cards sit in a scroll-snap track, one card per mobile viewport, desktop untouched (no media query = no-op)', () => {
-  assert.match(dashboardSrc, /home-poliedron-widget__track/);
-  assert.match(dashboardSrc, /home-poliedron-widget__card/);
+  // POL-UI-025: Consigli Poliedron moved off Home into its own dedicated
+  // page (PoliedronHub.jsx) — the CSS classes/rules are unchanged and
+  // reused as-is, only the component that renders them moved.
+  assert.match(poliedronHubSrc, /home-poliedron-widget__track/);
+  assert.match(poliedronHubSrc, /home-poliedron-widget__card/);
+  assert.match(dashboardSrc, /home-poliedron-widget__gem/); // the fixed "Poliedron" teaser card on Home still uses the same family
   assert.match(premiumCss, /\.home-poliedron-widget__track \{\s*display: flex;\s*gap: 10px;\s*overflow-x: auto;\s*scroll-snap-type: x mandatory;/);
   assert.match(premiumCss, /\.home-poliedron-widget__card \{\s*flex: 0 0 100%;\s*scroll-snap-align: center;/);
 });

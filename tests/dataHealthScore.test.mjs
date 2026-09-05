@@ -142,6 +142,11 @@ test('BOLLETTE_QUALITA flags a bolletta whose importo deviates from the median o
   assert.equal(check.applicable, true);
   assert.equal(check.totalCount, 2); // only rows 4 and 5 had >=3 priors
   assert.equal(check.passedCount, 1); // row 4 normal, row 5 anomalous
+  // "Da chiarire" needs to know WHICH bolletta to look at, not just a count.
+  assert.equal(check.anomalies.length, 1);
+  assert.equal(check.anomalies[0].data, '2026-09-01');
+  assert.equal(check.anomalies[0].importo, 500);
+  assert.equal(check.anomalies[0].baseline, 102.5);
 });
 
 test('BOLLETTE_QUALITA is not applicable at all when there is not enough bollette history to judge anything', () => {

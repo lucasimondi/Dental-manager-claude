@@ -49,6 +49,7 @@ import LoadingScreen from './components/LoadingScreen.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import QuickBookingModal from './components/QuickBookingModal.jsx';
 const ControlloGestione = lazy(() => import('./components/ControlloGestione.jsx'));
+const PoliedronHub = lazy(() => import('./components/PoliedronHub.jsx'));
 const FinancialWorkspace = lazy(() => import('./components/FinancialWorkspace.jsx'));
 const Pazienti = lazy(() => import('./components/Pazienti.jsx'));
 const PatientWorkspaceBoundary = lazy(() => import('./components/PatientWorkspaceBoundary.jsx'));
@@ -665,6 +666,7 @@ export default function App() {
             {page === 'richiami' && <Richiami patients={patients} plans={plans} payments={payments} appointments={appointments} richiami={richiami} setRichiami={setRichiamiSync} templates={templates} features={features} onOpenPaz={goSchedaPaz} si={studioInfo} autoOpenNew={autoOpenNew === 'richiami'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} initialPatientRequest={quickHubRecallRequest} onInitialPatientRequestHandled={(id) => setQuickHubRecallRequest((current) => current?.id === id ? null : current)} />}
             {page === 'spese' && <Spese studioId={session?.user?.app_metadata?.studio_id} patients={patients} autoOpenNew={autoOpenNew === 'spese'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} />}
             {page === 'controllo' && <ControlloGestione studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} setPlans={setPlansSync} payments={payments} setPayments={setPaymentsSync} appointments={appointments} pricelist={pricelist} onOpenPaz={goSchedaPaz} isDentistico={!studioInfo?.vertical || studioInfo.vertical === 'dentistico'} />}
+            {page === 'poliedron' && <PoliedronHub patients={patients} plans={plans} appointments={appointments} payments={payments} implants={implants} studioId={session?.user?.app_metadata?.studio_id} isStudioAdmin={isStudioAdmin} features={features} studioMembership={studioMembership} si={studioInfo} onOpenPaz={goSchedaPaz} onNavigate={setPage} />}
             {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} initialFiltroTipo={archivioFiltroTipoHint} />}
             {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
             {page === 'agenteai' && <AgenteAISetup features={features} />}
