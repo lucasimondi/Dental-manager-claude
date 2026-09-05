@@ -2694,3 +2694,42 @@ UI: stato vuoto → riga verde "Nessun dato mancante da controllare"; con findin
 
 ### EXACT NEXT ACTION
 Push del branch `feature/pol-ui-023-costo-orario-fix-poliedron-status`; PR aperta in automatico con link dato subito (istruzione permanente del Product Owner); merge solo su istruzione esplicita.
+
+### PR
+**PR #91** aperta: https://github.com/lucasimondi/Dental-manager-claude/pull/91
+
+## POL-UI-024 — Widget "Salute dati gestionale" con percentuale
+
+Richiesta PO (verbatim, molto ricca): "In Dashboard crea widget che dica la salute dei dati gestionale (deve avere una percentuale) e questo viene controllato da poliedron che scannerizza tutti i dati mancanti dei pazienti: anagrafica numero telefono indirizzo codice fiscale mail, inoltre se hanno un piano cura, se sono iniziati i piani e pagamenti, se hanno anamnesi e un doc privacy, se vengono compilati bene i dati prestazioni incassi se hanno fatto impianti bisogna aver compilato il modulo impianti con passaporto imolantare, se è stata caricata panoramica. Se le spese sono aggiornate, i registri pagamenti anche, se ci sono problemi ad incassare in tempo se carichiamo i dati bollette corretti e non a caso, spese condominiali se assicurazione annuale iniziamo così poi se hai dei consigli su scan dimmi". PR #91 ancora aperta (non mergiata) — stesso branch, stesso pattern già usato per PR #89 (più round confluiscono in una PR finché non arriva "mergiamo").
+
+### Investigazione prima di scrivere codice
+Elenco di controlli molto lungo, alcuni banali da tracciare, altri no — verificato prima cosa esiste già:
+- `documenti_medici.tipo` è `text` libero senza CHECK constraint (verificato via `pg_get_constraintdef` sulla tabella in produzione) — si possono riconoscere nuovi valori di `tipo` lato client senza migration.
+- `CATEGORIE_SPESA` (`src/lib/utils.js`) include già **'Condominio'**, **'Assicurazioni'**, **'Utenze'** — i controlli "spese condominiali/assicurazione annuale/bollette" diventano fattibili SUBITO come presenza+recency di una spesa in quella categoria, senza inventare nuove categorie.
+- Il modulo impianti (`PatientImplants.jsx`/tabella `implants`: marca, modello, lotto, diametro, lunghezza) di fatto CONTIENE GIÀ i dati del "passaporto implantare" — nessun campo nuovo serve per quel controllo specifico (solo per "panoramica caricata", vedi sotto).
+- Dashboard.jsx non aveva accesso a `documenti_medici` né a `implants` (a differenza di patients/plans/payments/appointments) — unico vero gap da colmare con un fetch nuovo (solo `documenti_medici`, minimale: `select('paziente_id, tipo')`, mai `pdf_base64`) e una prop in più (`implants`, già in memoria in App.jsx, zero fetch).
+- `spese` e `scadenzeScadute` erano GIÀ calcolati in Dashboard.jsx da `useControlloDati` (per altri widget) — riusati direttamente, nessun fetch duplicato. `spese` lì è gated dietro `management_control`: i 4 controlli spesa-based del punteggio ereditano lo stesso gate (`financialDataAvailable`), esclusi dalla media (non contati come falliti) per chi non ha quel permesso.
+
+### Modulo puro `src/lib/domain/dataHealthScore.js`
+`computeDataHealthScore({ patients, plans, dataHealthFindings, scadenzeScadute, documents, implants, spese, today, financialDataAvailable })` → `{ percentage, checks[] }`.
+
+11 controlli totali:
+- **Per-paziente** (scope: pazienti con ≥1 piano, stesso precedente di `dataHealthActivities.js`): anagrafica completa (telefono+indirizzo+CF+email), anamnesi compilata, documento privacy/consenso presente, piano iniziato, piano deciso (accettato/rifiutato), pagamenti in regola (nessuna scadenza scaduta), passaporto implantare compilato (solo per chi ha ≥1 impianto — marca+modello+lotto su OGNI impianto).
+- **Studio** (attivi solo se `financialDataAvailable`): spese aggiornate (qualsiasi categoria, ultimi 60gg), bollette/Utenze aggiornate (120gg), condominio aggiornato (366gg), assicurazione aggiornata (366gg).
+
+I controlli anamnesi/piano iniziato/piano deciso NON reimplementano la logica — leggono direttamente `dataHealthFindings` (lo stesso array già calcolato per il widget `poliedron_status` del giro precedente, per kind `ANAMNESI_MANCANTE`/`PLAN_NEVER_STARTED`/`PLAN_AWAITING_ACCEPTANCE_DECISION`). Percentuale = media dei pass-rate dei soli controlli `applicable` (con almeno un soggetto idoneo) — uno studio senza pazienti con impianti non viene penalizzato né favorito su quel controllo, semplicemente escluso dalla media.
+
+### Dashboard.jsx / homeWidgetRegistry.js / App.jsx
+Nuovo widget `poliedron_health_score` ("Poliedron — Salute dati gestionale", `defaultVisible: true`, subito dopo `poliedron_status`): percentuale grande colorata (verde ≥80%, ambra 50-79%, rosso <50%) + etichetta di stato + barra di progresso, cliccabile per espandere il dettaglio per controllo; ogni controllo per-paziente ulteriormente cliccabile per vedere/aprire i pazienti mancanti nel tab giusto (`DATA_HEALTH_SCORE_CHECK_TAB`: privacy→`doc`, impianti→`impl`, pagamenti→`paga`, anagrafica→`info`, anamnesi→`clinical`, piano_iniziato/piano_deciso→`piani`); i controlli studio (spese) cliccano invece verso la pagina Spese (`onNavigate('spese')`). App.jsx passa `implants={implants}` (già in stato, mai stato passato a Dashboard prima).
+
+### Consigli per i prossimi giri (come richiesto: "se hai dei consigli su scan dimmi")
+Due controlli citati dal Product Owner restano fuori da questo giro, entrambi spiegati anche in chat:
+1. **"Panoramica caricata"** per chi ha impianti — serve un modo per etichettare un documento come tipo "panoramica" al momento del caricamento (oggi `ArchivioDocs`/`DocMedico` non distinguono una panoramica da un esame generico). Proposta: aggiungere "panoramica" come nuovo tipo selezionabile nel flusso di upload documenti medici — piccola aggiunta, nessuna migration (stesso discorso di `tipo` come testo libero).
+2. **"Bollette caricate corrette e non a caso"** — questo È un controllo di qualità/anomalia (importo fuori range storico, categoria sbagliata, data implausibile), diverso da tutti gli altri controlli spesa qui sopra che sono solo presenza+recency. Serve decidere un'euristica (es. scarto dalla mediana delle bollette precedenti dello stesso studio) prima di poterlo implementare in modo utile e non rumoroso.
+3. **Pesi personalizzabili**: oggi ogni controllo pesa uguale nella media. Se alcuni contano di più per lo studio (es. anamnesi/privacy più critici della sola anagrafica completa), si può introdurre un peso per controllo — non fatto in questo giro per non decidere pesi arbitrari senza input del Product Owner.
+
+### Tests
+`tests/dataHealthScore.test.mjs` (nuovo, 8 test sul modulo puro): punteggio 100% quando tutto è a posto, campi mancanti/anamnesi/privacy/scaduto abbassano il punteggio e elencano il paziente, scope "pazienti attivi" esclude chi non ha piani, controllo impianti applicabile solo a chi ne ha almeno uno, controlli spesa esclusi quando `financialDataAvailable` è false, finestre di recency diverse per categoria, percentuale `null` (non 0 né 100) quando non c'è nulla di applicabile. `tests/poliedronHealthScoreWidget.test.mjs` (nuovo, 6 test sul wiring in Dashboard/App/registry). Aggiornati `tests/homeWidgetRegistry.test.mjs`/`tests/mobileHomeRound2.test.mjs` per il nuovo id nell'ordine del registry. `npm test` 714/714; `npm run build` pulito; `git diff --check` pulito. Nessuna migration.
+
+### EXACT NEXT ACTION
+Push sullo stesso branch/PR #91 (aggiornare la descrizione della PR per coprire anche questo giro); merge solo su istruzione esplicita del Product Owner.

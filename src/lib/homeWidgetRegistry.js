@@ -24,6 +24,12 @@ const RAW_HOME_WIDGET_REGISTRY = [
   // iniziati, fermi, appuntamenti di ieri non segnati) — sempre aggiornato
   // anche se le relative Attività sono state segnate fatte/cancellate.
   { id: 'poliedron_status', ic: 'compass', label: 'Poliedron — Controllo dati', category: 'AI', variant: 'poliedron', defaultVisible: true, defaultSize: 'medium', sizes: ['medium', 'wide'] },
+  // POL-UI-024: Product Owner — "widget che dica la salute dei dati
+  // gestionale (deve avere una percentuale)". Distinto da `poliedron_status`
+  // sopra (che elenca i singoli problemi): questo è il punteggio aggregato
+  // — quanto lo studio è "in regola" sui dati, con il dettaglio per
+  // controllo dentro.
+  { id: 'poliedron_health_score', ic: 'chart', label: 'Poliedron — Salute dati gestionale', category: 'AI', variant: 'poliedron', defaultVisible: true, defaultSize: 'medium', sizes: ['medium', 'wide'] },
   { id: 'todo', ic: 'okc', label: 'Attività e promemoria', category: 'Attività', defaultVisible: true, defaultSize: 'medium', sizes: ['medium', 'wide'] },
   { id: 'appuntamenti', ic: 'cal', label: 'Prossimi appuntamenti', category: 'Agenda', defaultVisible: true, defaultSize: 'medium', sizes: ['medium', 'wide'] },
   { id: 'wa', ic: 'wa', label: 'Reminder WhatsApp', category: 'Comunicazioni', defaultVisible: false, defaultSize: 'medium', sizes: ['medium', 'wide'] },

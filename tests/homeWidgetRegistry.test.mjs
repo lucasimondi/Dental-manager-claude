@@ -25,11 +25,13 @@ test('touch-safe move controls reorder only visible widgets in both directions',
   // POL-UI-023: new 'poliedron_status' widget (defaultVisible:true, right
   // after 'consigli_ai' in the registry) shifts the visible-set positions
   // 'todo' moves through by one — expected lists updated again.
+  // POL-UI-024: new 'poliedron_health_score' widget (defaultVisible:true,
+  // right after 'poliedron_status') shifts them again.
   let layout=createDefaultHomeLayout();
   layout=moveHomeWidgetByOffset(layout,'todo',-1);
-  assert.deepEqual(layout.filter(x=>x.visible).map(x=>x.id),['agenda','consigli_ai','todo','poliedron_status','appuntamenti','richiami','quick_actions']);
+  assert.deepEqual(layout.filter(x=>x.visible).map(x=>x.id),['agenda','consigli_ai','poliedron_status','todo','poliedron_health_score','appuntamenti','richiami','quick_actions']);
   layout=moveHomeWidgetByOffset(layout,'todo',1);
-  assert.deepEqual(layout.filter(x=>x.visible).map(x=>x.id),['agenda','consigli_ai','poliedron_status','todo','appuntamenti','richiami','quick_actions']);
+  assert.deepEqual(layout.filter(x=>x.visible).map(x=>x.id),['agenda','consigli_ai','poliedron_status','poliedron_health_score','todo','appuntamenti','richiami','quick_actions']);
   assert.deepEqual(moveHomeWidgetByOffset(layout,'agenda',-1),layout);
 });
 

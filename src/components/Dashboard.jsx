@@ -19,6 +19,7 @@ import { buildActivityText } from '../lib/appointmentQuickHub.js';
 import { MOBILE_DOCK_BOTTOM, MOBILE_DOCK_HEIGHT, MOBILE_DOCK_PROTECTED_GAP } from '../lib/poliedron/poliedronMobileDock.js';
 import { HOME_ATTENTION_EMPTY_LABEL, buildHomeAttentionItems } from '../lib/homeAttention.js';
 import { buildDataHealthActivities, ACTIVITY_KIND } from '../lib/domain/dataHealthActivities.js';
+import { computeDataHealthScore } from '../lib/domain/dataHealthScore.js';
 import { getOrCreatePrimaryConversation, appendConversationMessage, createChatRequestId } from '../lib/poliedron/conversationRepository.js';
 
 // POL-UI-023: unica fonte per la label leggibile di ogni ACTIVITY_KIND —
@@ -42,6 +43,21 @@ const DATA_HEALTH_KIND_TAB = {
   [ACTIVITY_KIND.ANAMNESI_MANCANTE]: 'clinical',
 };
 const dataHealthKindTab = (kind) => DATA_HEALTH_KIND_TAB[kind] || 'piani';
+
+// Stessa idea ma per i controlli del punteggio "Salute dati gestionale"
+// (dataHealthScore.js) — le due mappe sono tenute separate perché gli id
+// non coincidono (kind di dataHealthActivities.js vs check id di
+// dataHealthScore.js), anche quando puntano allo stesso tab.
+const DATA_HEALTH_SCORE_CHECK_TAB = {
+  anagrafica: 'info',
+  anamnesi: 'clinical',
+  privacy: 'doc',
+  piano_iniziato: 'piani',
+  piano_deciso: 'piani',
+  pagamenti: 'paga',
+  impianti: 'impl',
+};
+const dataHealthScoreCheckTab = (checkId) => DATA_HEALTH_SCORE_CHECK_TAB[checkId] || 'info';
 
 // Intestazione di gruppo (nome breve, terza persona) per la sezione
 // Poliedron cliccabile — diversa dalla frase di DATA_HEALTH_KIND_LABEL
@@ -96,7 +112,7 @@ const getSaluto = (nome) => { const ora = new Date().getHours(); const s = ora <
 const fmtDataOra = (d) => d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
 const fmtOra = (d) => d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 
-export default function Dashboard({ patients, setPatients, appointments, setAppointments, payments, plans, richiami = [], impegni = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, onNavigate, onNavigateNew, templates, userName: userNameProp, si, features, studioId, currentUserId, isStudioAdmin, studioMembership, activityPatientRequest, onActivityPatientRequestHandled }) {
+export default function Dashboard({ patients, setPatients, appointments, setAppointments, payments, plans, richiami = [], impegni = [], implants = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, onNavigate, onNavigateNew, templates, userName: userNameProp, si, features, studioId, currentUserId, isStudioAdmin, studioMembership, activityPatientRequest, onActivityPatientRequestHandled }) {
   const homePermissions = buildHomePermissions({ membership: studioMembership, features, vertical: si?.vertical });
   const roleLayout = createRolePresetLayout(studioMembership?.capabilities);
   const availableWidgetCatalog = filterWidgetCatalog(HOME_WIDGET_REGISTRY, homePermissions);
@@ -133,6 +149,26 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
     [patients, plans, appointments, t],
   );
   const [poliedronStatusOpen, setPoliedronStatusOpen] = useState(false);
+
+  // POL-UI-024: Product Owner — "widget che dica la salute dei dati
+  // gestionale (deve avere una percentuale)". `documenti_medici` non era
+  // già caricato da nessuna parte in Dashboard/App.jsx (a differenza di
+  // patients/plans/payments/appointments) — unico nuovo fetch di questo
+  // giro, solo le due colonne che servono al controllo "documento privacy"
+  // (mai il pdf_base64, che sarebbe enorme e qui inutile).
+  const [healthScoreDocs, setHealthScoreDocs] = useState([]);
+  useEffect(() => {
+    if (!studioId) return;
+    supabase.from('documenti_medici').select('paziente_id, tipo').then(({ data, error }) => { if (!error && data) setHealthScoreDocs(data); });
+  }, [studioId]);
+  const dataHealthScore = useMemo(() => computeDataHealthScore({
+    patients, plans, dataHealthFindings, scadenzeScadute,
+    documents: healthScoreDocs, implants, spese, today: t,
+    financialDataAvailable: homePermissions.managementControl,
+  }), [patients, plans, dataHealthFindings, scadenzeScadute, healthScoreDocs, implants, spese, t, homePermissions.managementControl]);
+  const [poliedronHealthOpen, setPoliedronHealthOpen] = useState(false);
+  const [expandedHealthCheckId, setExpandedHealthCheckId] = useState(null);
+
   const [userName, setUserName] = useState(userNameProp || '');
   // POL-UI-015 root-cause fix: `userId` used to be re-fetched from scratch
   // on every Dashboard mount via its own `supabase.auth.getSession()` call
@@ -1644,6 +1680,80 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
                     })}
                   </Crd>
                 ))
+              )}
+            </div>
+          );
+        }
+
+        if (w.id === 'poliedron_health_score') {
+          const { percentage, checks } = dataHealthScore;
+          const tone = percentage == null ? C.txl : percentage >= 80 ? C.suc : percentage >= 50 ? C.war : C.dan;
+          const statusLabel = percentage == null ? 'Dati insufficienti' : percentage >= 80 ? 'Ottima' : percentage >= 50 ? 'Da migliorare' : 'Critica';
+          const applicableChecks = checks.filter((c) => c.applicable);
+          return (
+            <div key="poliedron_health_score" className="home-poliedron-widget" style={{ marginBottom: 16 }}>
+              <div className="home-poliedron-widget__header">
+                <div className="home-poliedron-widget__title">
+                  <img src={poliedroGem} alt="" aria-hidden="true" className="home-poliedron-widget__gem" />
+                  <div>
+                    <div className="home-poliedron-widget__label">Poliedron</div>
+                    <div className="home-poliedron-widget__heading">Salute dati gestionale</div>
+                  </div>
+                </div>
+              </div>
+              {percentage == null ? (
+                <Crd style={{ textAlign: 'center', color: C.txl, padding: '14px 0', fontSize: 13 }}>Non ci sono ancora abbastanza dati per calcolare un punteggio.</Crd>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 10 }}>
+                    <div style={{ fontSize: 34, fontWeight: 900, color: tone }}>{percentage}%</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: tone }}>{statusLabel}</div>
+                      <div style={{ fontSize: 11, color: C.txm }}>Media di {applicableChecks.length} controlli automatici</div>
+                    </div>
+                  </div>
+                  <div style={{ height: 6, borderRadius: 4, background: C.bg, overflow: 'hidden', marginBottom: 10 }} role="progressbar" aria-valuenow={percentage} aria-valuemin={0} aria-valuemax={100}>
+                    <div style={{ height: '100%', width: `${percentage}%`, background: tone, borderRadius: 4, transition: 'width 0.2s' }} />
+                  </div>
+                  <button type="button" onClick={() => setPoliedronHealthOpen((v) => !v)} style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 12, color: C.txm }}>{poliedronHealthOpen ? 'Nascondi il dettaglio' : 'Vedi il dettaglio per controllo'}</span>
+                    <span aria-hidden="true" style={{ display: 'inline-block', transform: poliedronHealthOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>▶</span>
+                  </button>
+                  {poliedronHealthOpen && (
+                    <div style={{ marginTop: 10 }}>
+                      {applicableChecks.map((check) => {
+                        const checkTone = check.passRate === 1 ? C.suc : check.passRate === 0 ? C.dan : C.war;
+                        const isExpanded = expandedHealthCheckId === check.id;
+                        const canExpand = check.scope === 'patient' && check.missingPatients.length > 0;
+                        return (
+                          <Crd key={check.id} style={{ marginBottom: 6, padding: 10 }}>
+                            <button type="button"
+                              onClick={() => canExpand ? setExpandedHealthCheckId(isExpanded ? null : check.id) : (check.scope === 'studio' && onNavigate ? onNavigate('spese') : undefined)}
+                              style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: canExpand || check.scope === 'studio' ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                              <span style={{ fontSize: 12, fontWeight: 600, color: C.txt }}>{check.label}</span>
+                              <span style={{ fontSize: 11, fontWeight: 800, color: checkTone, flexShrink: 0 }}>
+                                {check.scope === 'studio' ? (check.passRate === 1 ? 'OK' : 'Da sistemare') : `${check.passedCount}/${check.totalCount}`}
+                              </span>
+                            </button>
+                            {isExpanded && (
+                              <div style={{ marginTop: 8 }}>
+                                {check.missingPatients.map((p) => {
+                                  const paz = patients.find((x) => x.id === p.pazienteId);
+                                  return (
+                                    <button key={p.pazienteId} type="button" onClick={() => paz && onOpenPaz(paz, dataHealthScoreCheckTab(check.id))}
+                                      style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: `1px solid ${C.brd}`, padding: '6px 0', cursor: paz ? 'pointer' : 'default', fontSize: 12, fontWeight: 700, color: paz ? C.pri : C.txt }}>
+                                      {p.patientName}{paz ? ' ›' : ''}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </Crd>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           );
