@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabase.js';
-import { today } from './utils';
+import { today, contaPazientiNuovi } from './utils';
 
 // Fonte unica di calcolo per tutto ciò che oggi vive in Controllo di Gestione
 // (PanoramicaControllo.jsx) e che Dashboard.jsx vuole poter mostrare come
@@ -130,7 +130,8 @@ export function useControlloDati({ studioId, patients = [], plans = [], payments
     return { pl, paz, orto, cons, tot: tot2, completato: tot2 > 0 && cons >= tot2, prossima, cambioScaduto: prossima && prossima <= t, inAttesa: !orto.dataConsegnaInizio };
   }).filter(Boolean);
 
-  const nuoviMese = patients.filter(p => { const d = new Date(Number(p.id)); return !isNaN(d) && d.toISOString().startsWith(t.slice(0, 7)); }).length;
+  const nuoviMese = contaPazientiNuovi(patients, t.slice(0, 7));
+  const nuoviAnno = contaPazientiNuovi(patients, t.slice(0, 4));
   const mediaValore = plans.length > 0 ? plans.reduce((s, pl) => s + calcPlanTot(pl), 0) / plans.length : 0;
   const prestCount = {}; plans.forEach(pl => (pl.voci || []).forEach(v => { if (v.eseguita) prestCount[v.prestazione] = (prestCount[v.prestazione] || 0) + 1; }));
   const topPrest = Object.entries(prestCount).sort((a, b) => b[1] - a[1])[0];
@@ -214,7 +215,7 @@ export function useControlloDati({ studioId, patients = [], plans = [], payments
     richiamiScaduti, richiamiProssimi,
     scadenzePagamento, scadenzeScadute, scadenzeProssime,
     pianiOrto,
-    nuoviMese, mediaValore, topPrest, tuttePrestazioni,
+    nuoviMese, nuoviAnno, mediaValore, topPrest, tuttePrestazioni,
     andamentoMensile, incassoPerPrestazione, incassoPerGiorno, speseMensili, speseCategoria, ricorrentiMensile,
     daPer, aPer, nMesiPeriodo, contributoSpesaPeriodo, speseFissePeriodo, speseVariabiliPeriodo,
     calcPlanTot,
