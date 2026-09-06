@@ -88,6 +88,11 @@ export default function App() {
   // consumer opens its own real modal, then clears it) instead of a second
   // navigation mechanism.
   const [autoOpenNew, setAutoOpenNew] = useState(null); // 'paz' | 'piani' | 'paga' | 'richiami' | 'spese' | null
+  // POL-AI-007: optional { pazienteId, importo } pre-fill for the 'paga'
+  // target, recognized by Poliedron chat ("registra un pagamento di 100
+  // euro a Mario Rossi") — every other caller of goNuovoElemento('paga')
+  // passes nothing, so Incassi still opens its form blank exactly as before.
+  const [autoOpenNewPrefill, setAutoOpenNewPrefill] = useState(null);
   const [agendaInitPaz, setAgendaInitPaz] = useState(null);
   const [schedaDashPaz, setSchedaDashPaz] = useState(null);
   // POL-FIN-002: per-plan receivable balances for the currently-open patient
@@ -429,6 +434,17 @@ export default function App() {
 
   const goNuovoPiano = (id) => { setInitPatId(id); setPage('piani'); };
   const goNuovoElemento = (target) => { setAutoOpenNew(target); setPage(target); };
+  // POL-AI-007: Poliedron chat's "payment.create" — same shape as
+  // goNuovoPiano's initPatId pre-fill, just carrying { pazienteId, importo }
+  // into Incassi's own openIncasso(prefill) instead of a single id.
+  const goNuovoPagamento = ({ patientId, amount } = {}) => {
+    setAutoOpenNewPrefill({
+      ...(patientId != null ? { pazienteId: String(patientId) } : {}),
+      ...(amount != null ? { importo: String(amount) } : {}),
+    });
+    setAutoOpenNew('paga');
+    setPage('paga');
+  };
   // `documentRequest` reuses the same mechanism SchedaPaz already exposes
   // for the Poliedron prescription workflow (initialDocumentRequest ->
   // documentFlow, see SchedaPaz.jsx) — passing { type: 'ricetta' } lands
@@ -660,7 +676,7 @@ export default function App() {
                 autoOpenNew={autoOpenNew === 'piani'} onAutoOpenNewHandled={() => setAutoOpenNew(null)}
               />
             )}
-            {(page === 'paga' || page === 'incassi') && <FinancialWorkspace studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} payments={payments} pricelist={pricelist} setPlans={setPlansSync} setPayments={setPaymentsSync} onOpenPaz={goSchedaPaz} autoOpenNew={autoOpenNew === 'paga'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} />}
+            {(page === 'paga' || page === 'incassi') && <FinancialWorkspace studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} payments={payments} pricelist={pricelist} setPlans={setPlansSync} setPayments={setPaymentsSync} onOpenPaz={goSchedaPaz} autoOpenNew={autoOpenNew === 'paga'} autoOpenNewPrefill={autoOpenNew === 'paga' ? autoOpenNewPrefill : null} onAutoOpenNewHandled={() => { setAutoOpenNew(null); setAutoOpenNewPrefill(null); }} />}
             {page === 'listino' && <Listino pricelist={pricelist} setPricelist={setPricelistSync} si={studioInfo} />}
             {page === 'agenda' && <Agenda patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} onOpenPatient={(patient) => goSchedaPaz(patient, 'info')} onOpenRecall={openQuickHubRecall} onOpenActivity={openQuickHubActivity} onPoliedronCommand={openQuickHubPoliedron} />}
             {page === 'richiami' && <Richiami patients={patients} plans={plans} payments={payments} appointments={appointments} richiami={richiami} setRichiami={setRichiamiSync} templates={templates} features={features} onOpenPaz={goSchedaPaz} si={studioInfo} autoOpenNew={autoOpenNew === 'richiami'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} initialPatientRequest={quickHubRecallRequest} onInitialPatientRequestHandled={(id) => setQuickHubRecallRequest((current) => current?.id === id ? null : current)} />}
@@ -698,6 +714,8 @@ export default function App() {
         onArchivioFilterHint={setArchivioFiltroTipoHint}
         openPrescription={openPrescription}
         openNew={goNuovoElemento}
+        openNewPlan={goNuovoPiano}
+        openNewPayment={goNuovoPagamento}
         openBooking={(payload) => setPoliedronBookingOpen(payload || true)}
         quickActionCtx={{ permissions: homePermissions, features, vertical: studioInfo?.vertical }}
         supabaseClient={supabase}

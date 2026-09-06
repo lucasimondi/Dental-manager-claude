@@ -11,6 +11,7 @@ import { resolveCommandAlias } from './commandAliases.js';
 import { cercaPazienti } from '../ricercaPazienti.js';
 import { resolvePrescriptionRequest } from './prescriptionWorkflow.js';
 import { parseAppointmentRequest } from './planner/appointmentIntent.js';
+import { parseCreatePlanRequest, parseRegisterPaymentRequest } from './planner/createIntent.js';
 import { classifyIntelligenceQuery, scanPatientOpportunities } from './intelligence/index.js';
 import { parseCommand } from './planner/commandParser.js';
 import { buildActionPlan } from './planner/actionPlanner.js';
@@ -213,6 +214,65 @@ export async function processQuery({
       confirmationRequired: true,
       selectionRequired: patientCandidates.length !== 1,
       suggestedActions: [appointmentAction],
+      searchResults: [],
+    };
+  }
+
+  // POL-AI-007 — plan/payment creation, real entity pre-fill. Same
+  // precedence reasoning as the appointment branch above: these two
+  // parsers' own verb+noun vocabulary is more specific (and, unlike
+  // cercaPazienti() fed the whole sentence, actually finds the patient —
+  // see createIntent.js's own header comment) than intentEngine.js's
+  // generic CREATE/UPDATE classification, so they get first refusal.
+  const planRequest = parseCreatePlanRequest(q);
+  if (planRequest) {
+    const planAction = (sources.actions || []).find((action) => action.id === 'quote.create');
+    if (!planAction) {
+      return {
+        intent: INTENT.CREATE, entities: {}, answer: 'Non posso aprire il modulo Nuovo piano con i permessi e la configurazione attuali.',
+        confirmationRequired: false, suggestedActions: [], searchResults: [],
+      };
+    }
+    const patientCandidates = sources.patients?.length
+      ? cercaPazienti(sources.patients, planRequest.patientText).slice(0, 5)
+      : [];
+    return {
+      intent: 'WORKFLOW',
+      entities: {
+        patientCandidates,
+        patientOptions: patientCandidates.length ? patientCandidates : (sources.patients || []).slice(0, 8),
+      },
+      answer: null,
+      confirmationRequired: true,
+      selectionRequired: patientCandidates.length !== 1,
+      suggestedActions: [planAction],
+      searchResults: [],
+    };
+  }
+
+  const paymentRequest = parseRegisterPaymentRequest(q);
+  if (paymentRequest) {
+    const paymentAction = (sources.actions || []).find((action) => action.id === 'payment.create');
+    if (!paymentAction) {
+      return {
+        intent: INTENT.CREATE, entities: {}, answer: 'Non posso aprire il modulo Registra pagamento con i permessi e la configurazione attuali.',
+        confirmationRequired: false, suggestedActions: [], searchResults: [],
+      };
+    }
+    const patientCandidates = sources.patients?.length
+      ? cercaPazienti(sources.patients, paymentRequest.patientText).slice(0, 5)
+      : [];
+    return {
+      intent: 'WORKFLOW',
+      entities: {
+        patientCandidates,
+        patientOptions: patientCandidates.length ? patientCandidates : (sources.patients || []).slice(0, 8),
+        amount: paymentRequest.amount,
+      },
+      answer: null,
+      confirmationRequired: true,
+      selectionRequired: patientCandidates.length !== 1,
+      suggestedActions: [paymentAction],
       searchResults: [],
     };
   }

@@ -24,7 +24,7 @@ const emptyForm = { pazienteId: '', origine: 'listino', prestazione: '', descriz
 // operator picked by clicking that exact balance.
 const emptyIncasso = { pazienteId: '', pianoId: '', lockedPianoId: null, data: today(), importo: '', metodo: 'Contanti', nota: '' };
 
-export default function Incassi({ studioId, patients = [], plans = [], payments = [], pricelist = [], setPlans, setPayments, onOpenPaz, embedded = false, autoOpenNew = false, onAutoOpenNewHandled }) {
+export default function Incassi({ studioId, patients = [], plans = [], payments = [], pricelist = [], setPlans, setPayments, onOpenPaz, embedded = false, autoOpenNew = false, autoOpenNewPrefill = null, onAutoOpenNewHandled }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -56,12 +56,16 @@ export default function Incassi({ studioId, patients = [], plans = [], payments 
     return () => { active = false; };
   }, [studioId, reloadKey]);
 
-  // Home quick action ("Pagamento") / FinancialWorkspace's header button
-  // both arrive here the same way every other "+" entry point in this app
-  // does — an autoOpenNew flag the parent clears once consumed.
+  // Home quick action ("Pagamento") / FinancialWorkspace's header button /
+  // Poliedron chat (POL-AI-007, "registra un pagamento di 100€ a Mario
+  // Rossi") all arrive here the same way every other "+" entry point in
+  // this app does — an autoOpenNew flag the parent clears once consumed.
+  // `autoOpenNewPrefill` (optional) carries { pazienteId, importo }
+  // recognized by chat; every other caller passes nothing, so
+  // openIncasso(null) still opens the form blank exactly as before.
   useEffect(() => {
     if (autoOpenNew) {
-      openIncasso();
+      openIncasso(autoOpenNewPrefill || {});
       onAutoOpenNewHandled?.();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

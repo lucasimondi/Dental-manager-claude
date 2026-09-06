@@ -65,8 +65,6 @@ const OPEN_ACTIONS = Object.freeze([
 // and submits it themselves.
 const CREATE_ACTION_MAP = Object.freeze({
   'patient.create': 'nuovo_paziente',
-  'quote.create': 'nuovo_preventivo',
-  'payment.create': 'pagamento',
   'recall.create': 'richiamo',
   'expense.create': 'nuova_spesa',
   'document.create': 'documento',
@@ -112,6 +110,42 @@ const APPOINTMENT_ACTION = Object.freeze({
   }),
 });
 
+// quote.create/payment.create are kept out of the generic CREATE_ACTION_MAP
+// above for the same reason appointment.create is (POL-AI-007 — see
+// createIntent.js's own header comment): when chat recognized a patient
+// (and, for payments, an amount), `navigate` opens the SAME real "Nuovo
+// piano"/"Registra incasso" forms every other entry point already opens —
+// `openNewPlan`/`openNewPayment` reuse App.jsx's existing
+// initPatId/autoOpenNew pre-fill mechanisms, nothing new is invented — with
+// that entity pre-filled, instead of always opening them blank. Still
+// riskLevel 1 — the human still reviews and submits the form themselves;
+// Poliedron never writes a plan or a payment directly.
+const quoteQuickAction = getQuickAction('nuovo_preventivo');
+const QUOTE_ACTION = Object.freeze({
+  id: 'quote.create',
+  label: quoteQuickAction.label.replace(/^\+\s*/, ''),
+  description: 'Apre il modulo Nuovo piano, con paziente già precompilato quando riconosciuto nella richiesta.',
+  category: 'quote',
+  riskLevel: 1,
+  confirmationRequired: false,
+  quickAction: quoteQuickAction,
+  navigate: (ctx, patient) => (patient && ctx.openNewPlan) ? ctx.openNewPlan(patient.id) : quoteQuickAction.run(ctx),
+});
+
+const paymentQuickAction = getQuickAction('pagamento');
+const PAYMENT_ACTION = Object.freeze({
+  id: 'payment.create',
+  label: paymentQuickAction.label.replace(/^\+\s*/, ''),
+  description: 'Apre il modulo Registra pagamento, con paziente/importo già precompilati quando riconosciuti nella richiesta.',
+  category: 'payment',
+  riskLevel: 1,
+  confirmationRequired: false,
+  quickAction: paymentQuickAction,
+  navigate: (ctx, patient, payload = {}) => (ctx.openNewPayment && (patient || payload.amount != null))
+    ? ctx.openNewPayment({ patientId: patient?.id ?? null, amount: payload.amount ?? null })
+    : paymentQuickAction.run(ctx),
+});
+
 const WORKFLOW_ACTIONS = Object.freeze([
   Object.freeze({
     id: 'prescription.create',
@@ -130,6 +164,6 @@ const WORKFLOW_ACTIONS = Object.freeze([
   }),
 ]);
 
-export const ACTION_REGISTRY = Object.freeze([...OPEN_ACTIONS, ...CREATE_ACTIONS, APPOINTMENT_ACTION, ...WORKFLOW_ACTIONS]);
+export const ACTION_REGISTRY = Object.freeze([...OPEN_ACTIONS, ...CREATE_ACTIONS, APPOINTMENT_ACTION, QUOTE_ACTION, PAYMENT_ACTION, ...WORKFLOW_ACTIONS]);
 
 export const findAction = (id) => ACTION_REGISTRY.find((a) => a.id === id) || null;

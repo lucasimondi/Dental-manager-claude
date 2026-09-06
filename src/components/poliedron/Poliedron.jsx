@@ -65,7 +65,7 @@ const summarizeStructuredResult = (result) => {
 export default function Poliedron({
   isMobile, page, setPage, patients, plans, payments, pricelist, appointments, richiami, impegni, goSchedaPaz,
   features, isStudioAdmin, vertical, studioId, userId, currentPatient, positionLocked = false,
-  quickActionCtx, supabaseClient, onArchivioFilterHint, openPrescription, openNew, openBooking,
+  quickActionCtx, supabaseClient, onArchivioFilterHint, openPrescription, openNew, openNewPlan, openNewPayment, openBooking,
   externalCommandRequest, onExternalCommandHandled, chatHost,
   /* POL-CHAT-001 merge: PR #51 declared an `unreadCount = 0` PROP here
      because §7 explicitly shipped the bell without a notification engine.
@@ -455,7 +455,9 @@ export default function Poliedron({
     onGoAgenda: () => setPage('agenda'), onGoRichiami: () => setPage('richiami'),
     openBooking: (payload) => openBooking?.(payload), openTodoModal: () => {},
     openPrescription,
-  }), [setPage, goSchedaPaz, openPrescription, openNew, openBooking]);
+    openNewPlan: (patientId) => openNewPlan?.(patientId),
+    openNewPayment: (payload) => openNewPayment?.(payload),
+  }), [setPage, goSchedaPaz, openPrescription, openNew, openBooking, openNewPlan, openNewPayment]);
 
   const handleSelectResult = useCallback((item) => {
     if (item.kind === 'patient' || item.kind === 'intelligence-patient') { goSchedaPaz?.(item.data?.patient || item.data); close(); return; }
@@ -483,6 +485,7 @@ export default function Poliedron({
       drug: state?.entities?.drugText || '',
       date: state?.entities?.appointmentDate || null,
       time: state?.entities?.appointmentTime || null,
+      amount: state?.entities?.amount ?? null,
     });
     close();
   }, [navCtx, state, close]);
@@ -493,6 +496,7 @@ export default function Poliedron({
       drug: chatStructuredState?.entities?.drugText || '',
       date: chatStructuredState?.entities?.appointmentDate || null,
       time: chatStructuredState?.entities?.appointmentTime || null,
+      amount: chatStructuredState?.entities?.amount ?? null,
     });
     setChatStructuredState(null);
   }, [navCtx, chatStructuredState]);
