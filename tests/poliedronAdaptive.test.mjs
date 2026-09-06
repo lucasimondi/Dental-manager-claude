@@ -575,6 +575,12 @@ test('operational verbs gate workflows while noun-plus-patient phrases remain no
   assert.equal(prescription.intent, 'WORKFLOW');
   assert.equal(prescription.suggestedActions[0].id, 'prescription.create');
 
+  // POL-AI-007: "registra pagamento <amount> Rossi" now resolves through
+  // the dedicated plan/payment workflow (real patient recognition, see
+  // createIntent.js) instead of the generic UPDATE keyword fallback, which
+  // fed the whole remaining sentence to cercaPazienti() and — since
+  // cercaPazienti() requires every token to match the patient — never
+  // actually found "Rossi" behind a leading "pagamento 300 euro".
   const payment = await processQuery({
     query: 'registra pagamento 300 euro Rossi',
     context: buildContext(),
@@ -582,9 +588,11 @@ test('operational verbs gate workflows while noun-plus-patient phrases remain no
     sources,
     allowModel: false,
   });
-  assert.equal(payment.intent, INTENT.UPDATE);
+  assert.equal(payment.intent, 'WORKFLOW');
+  assert.equal(payment.confirmationRequired, true);
   assert.equal(payment.suggestedActions[0].id, 'payment.create');
   assert.equal(payment.entities.amount, 300);
+  assert.equal(payment.entities.patientCandidates[0].id, 'p1');
 
   // POL-AI-006: "nuovo appuntamento <patient> <date> alle <time>" now
   // resolves through the dedicated appointment-booking workflow (real
