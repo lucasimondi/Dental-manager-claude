@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 import { contaPazientiNuovi } from '../src/lib/utils.js';
 import { HOME_WIDGET_REGISTRY, getHomeWidget, createDefaultHomeLayout } from '../src/lib/homeWidgetRegistry.js';
+import { HOME_PRESETS, createRolePresetLayout } from '../src/lib/homeDashboardModel.js';
 
 // POL-UI-026 — Product Owner: "in scheda pazienti c'è una parte superiore
 // che si chiama andamento studio, indica pazienti nuovi ecc ma in realtà è
@@ -94,4 +95,21 @@ test('the registry stays internally consistent after merging preventivi into and
   assert.equal(new Set(HOME_WIDGET_REGISTRY.map((w) => w.id)).size, HOME_WIDGET_REGISTRY.length);
   const layout = createDefaultHomeLayout();
   assert.deepEqual(layout.map((w) => w.order), layout.map((_, i) => i));
+});
+
+// Regression: removing a widget id from the registry without also updating
+// every HOME_PRESETS list that mentions it doesn't crash or duplicate
+// anything visible -- it just silently makes createRolePresetLayout stop
+// matching that entry (presetIds.has(item.id) is always false for a ghost
+// id), so a whole role quietly loses a widget it used to have. Caught here
+// once and for all: front_desk still said 'preventivi' after this exact
+// merge, so no front_desk account ever got 'andamento_studio' by default.
+test('every HOME_PRESETS entry references only widget ids that still exist in the registry', () => {
+  const registryIds = new Set(HOME_WIDGET_REGISTRY.map((w) => w.id));
+  for (const [role, ids] of Object.entries(HOME_PRESETS)) {
+    for (const id of ids) {
+      assert.ok(registryIds.has(id), `HOME_PRESETS.${role} references unknown widget id "${id}"`);
+    }
+  }
+  assert.ok(createRolePresetLayout(['home.front_desk']).find((w) => w.id === 'andamento_studio').visible);
 });
