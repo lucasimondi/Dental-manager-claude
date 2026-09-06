@@ -2815,3 +2815,46 @@ Nuovo `tests/poliedronAppointmentBooking.test.mjs` (6 test: parsing deterministi
 
 ### EXACT NEXT ACTION
 Push sullo stesso branch/PR #91 (aggiornare la descrizione della PR per coprire anche questo giro); merge solo su istruzione esplicita del Product Owner.
+
+---
+
+## POL-UI-026 — Fix "Andamento studio" (nuovi pazienti sempre a zero) + widget Home
+
+### Richiesta (verbatim)
+"In scheda pazienti c'è un a parte superiore che si chiama andamento studio , indica pazienti nuovi ecc ma in realtà è sempre zero , sia mese che anno , vanno contati e segnalati i pazienti nuovi , controlla e fallo funzionare , rendil panche widget per home , visibile a d attivazione in setup"
+
+### Diagnosi (verificata in produzione, sola lettura, prima di scrivere il fix)
+`Pazienti.jsx`'s `dataCreazione(p)` faceva `new Date(Number(p.id))`. Verificato via `information_schema.columns`: `patients.id` è `bigint`, chiave sequenziale del DB (righe reali: id=103, 102, 101...), MAI un timestamp. `new Date(103)` cade nel 1° gennaio 1970 — il confronto con "2026-09"/"2026" non poteva mai combaciare: zero garantito, in ogni studio, da sempre. La vera data di creazione esiste già come colonna reale `patients.created_at` (`timestamp with time zone default now()`), ma `src/lib/supabase.js`'s `fromDb()` la scartava esplicitamente ad ogni singola lettura dal DB (`if (k === 'id' || k === 'user_id' || k === 'created_at') return;`) — non arrivava mai all'app, in nessun punto.
+
+Stesso identico bug trovato con lo stesso `grep`, in un secondo file: `useControlloDati.js`'s `nuoviMese` (che alimenta "Pazienti totali +N questo mese" sia in `Dashboard.jsx` sia — due volte — in `PanoramicaControllo.jsx`) aveva la riga `new Date(Number(p.id))` identica. Corretto una sola volta alla fonte comune, si propaga automaticamente a tutti e tre gli schermi senza toccare `PanoramicaControllo.jsx` (legge lo stesso hook).
+
+### Fix
+- `src/lib/supabase.js`: `fromDb()` non scarta più `created_at`; nuova entry `createdAt: 'created_at'` in `FIELD_MAP.patients` (stesso meccanismo camelCase↔snake_case già usato per gli altri campi patients), aggiunta `'createdAt'` a `UI_ONLY_FIELDS` così non viene mai reinviata in una insert/update — è generata dal DB (`default now()`), mai scritta dall'app.
+- Nuovo helper puro `contaPazientiNuovi(patients, prefissoData)` in `src/lib/utils.js`: un'unica definizione di "nuovo paziente" (filtra su `p.createdAt`, mai su `p.id`), riusata da `Pazienti.jsx`, `useControlloDati.js` (che ora espone anche `nuoviAnno`, prima assente dall'hook) e dal nuovo widget Home.
+- Verificato con numeri reali di produzione (sola lettura, RLS invariata, nessuna scrittura): 2 pazienti creati a settembre 2026, 72 nell'intero 2026 — coerente (lo studio è stato configurato quest'anno, quindi tutti i 72 pazienti risultano "nuovi dell'anno": non un secondo bug, un dato reale).
+- **Nuovo widget Home `andamento_studio`**: "Nuovi questo mese" / "Nuovi quest'anno", cliccabile verso Pazienti. Aggiunto a `homeWidgetRegistry.js` con `defaultVisible: false` — nascosto finché l'utente non lo attiva lui stesso dal pannello di personalizzazione Home, esattamente come già avviene per preventivi/scadenze/statistiche/ecc. ("visibile ad attivazione" richiesto dal Product Owner). Nessun `permission` gate: stessa platea di chi già vede la sezione in Pazienti.jsx, non solo chi ha `management_control`. Deliberatamente NON duplica i tre numeri "Preventivi accettati/in attesa/rifiutati" della sezione originale, che hanno già un proprio widget Home dedicato e separatamente attivabile (`preventivi`) — evita due widget che mostrerebbero la stessa cosa.
+
+### Tests
+Nuovo `tests/andamentoStudioNuoviPazienti.test.mjs` (5 test: `contaPazientiNuovi` con dati di esempio realistici inclusi i casi limite — nessun `createdAt`, array vuoto/undefined; verifica che il vecchio pattern `Number(p.id)`/`new Date(tms)` sia sparito da ogni file coinvolto; wiring `supabase.js` — mapping/UI_ONLY_FIELDS/nessuno scarto di `created_at`; il nuovo widget nel registro con `defaultVisible:false` e nessun `permission` gate; coerenza interna del registro dopo l'aggiunta). Aggiornato `tests/mobileHomeRound2.test.mjs` per includere `andamento_studio` nella lista registry attesa (test esistente, cambio deliberato per la nuova entry). `npm test` 724/724; `npm run build` pulito; `git diff --check` pulito. Nessuna migration — `created_at` è una colonna già esistente, solo mai letta dall'app.
+
+### EXACT NEXT ACTION
+Push del branch, apertura PR automatica con link dato subito (istruzione permanente del Product Owner), merge solo su istruzione esplicita.
+
+---
+
+## POL-UI-026 follow-up — Andamento studio unito a Preventivi, nuovi pazienti cliccabili
+
+### Richiesta (verbatim)
+"Andamento studio deve essere unito a preventivi e chiamarsi andamento studio così indichi i pazienti nuovi (che devono essere elencati cliccando il numero), e indichi quindi il resto : preventivi ecc deve essere bello e pro"
+
+### Cosa è cambiato
+- Il widget Home `preventivi` (Accettati/In attesa/Rifiutati) è stato rimosso dal registro (`homeWidgetRegistry.js`) — non solo nascosto, stesso meccanismo sicuro già usato in POL-UI-025: `normalizeHomeLayout` scarta gli id sconosciuti nei layout già salvati, quindi nessun riquadro vuoto per chi lo aveva già attivato.
+- Il suo contenuto si è spostato dentro un'unica card `andamento_studio` (`defaultSize` passato a `'wide'`): "Pazienti nuovi" (Questo mese/Quest'anno) sopra, un separatore, "Preventivi" (Accettati/In attesa/Rifiutati + percentuale di accettazione) sotto.
+- Colori dei tre preventivi allineati a quelli già usati per lo stesso identico terzetto in `Pazienti.jsx`: Accettati=verde/successo, In attesa=ambra, Rifiutati=rosso — non più il viola/accento generico del vecchio widget isolato. Stessa metrica, stesso significato visivo in ogni punto dell'app.
+- "Pazienti nuovi" ora è davvero cliccabile: apre lo stesso pattern `detailModal` già usato per Accettati/In attesa/Rifiutati/Scadenze/ecc., con l'elenco reale dei pazienti coinvolti (nome cliccabile → scheda paziente, tab Info), ordinati dal più recente. Nuovo helper `pazientiNuoviIn(patients, prefissoData)` in `utils.js`: stesso identico predicato di `contaPazientiNuovi` (il fix del giro precedente), ora esposto anche come lista oltre che come conteggio — così il numero sulla card e l'elenco nel popup non possono mai disallinearsi.
+
+### Tests
+Aggiornato `tests/andamentoStudioNuoviPazienti.test.mjs` con due nuovi test (rimozione di `preventivi` dal registro, click-through e colori semantici del widget unito) e le label aggiornate; aggiornati `tests/mobileHomeRound2.test.mjs` (lista id registro) e `tests/homeLayoutVerifiedPersistence.test.mjs` (`richiami.order` da 6 a 5, un altro id legacy in meno prima di esso). `npm test` 725/725; `npm run build` pulito; `git diff --check` pulito. Nessuna migration.
+
+### EXACT NEXT ACTION
+Push sullo stesso branch/PR #92 (aggiornare la descrizione), merge solo su istruzione esplicita del Product Owner.

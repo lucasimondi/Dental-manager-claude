@@ -29,7 +29,6 @@ const RAW_HOME_WIDGET_REGISTRY = [
   { id: 'appuntamenti', ic: 'cal', label: 'Prossimi appuntamenti', category: 'Agenda', defaultVisible: true, defaultSize: 'medium', sizes: ['medium', 'wide'] },
   { id: 'wa', ic: 'wa', label: 'Reminder WhatsApp', category: 'Comunicazioni', defaultVisible: false, defaultSize: 'medium', sizes: ['medium', 'wide'] },
   { id: 'economico', ic: 'eur', label: 'Pannello economico', category: 'Finanza legacy', permission: 'management_control', defaultVisible: false, defaultSize: 'medium', sizes: ['medium', 'wide'] },
-  { id: 'preventivi', ic: 'clip', label: 'Preventivi', category: 'Finanza', defaultVisible: false, defaultSize: 'medium', sizes: ['medium', 'wide'] },
   // POL-UI-015 bugfix round 2: was defaultVisible:false, which combined
   // with the owner-role preset also excluding it meant this widget's own
   // rendering was fully correct but it was never actually shown to a
@@ -44,6 +43,14 @@ const RAW_HOME_WIDGET_REGISTRY = [
   // applies to widget ids MISSING from that saved layout. See
   // `migrateSavedHomeLayout` below for the actual root-cause fix.
   { id: 'richiami', ic: 'bell', label: 'Richiami', category: 'Pazienti/Clienti', defaultVisible: true, defaultSize: 'small', sizes: ['small', 'medium'] },
+  // POL-UI-026: nuovi pazienti mese/anno (stessa etichetta/numeri già in
+  // cima a Pazienti.jsx), UNITO su richiesta del Product Owner al vecchio
+  // widget separato 'preventivi' (rimosso dal registro, non solo nascosto —
+  // stesso meccanismo sicuro già usato in POL-UI-025 per i widget Poliedron:
+  // normalizeHomeLayout scarta gli id sconosciuti nei layout già salvati).
+  // defaultVisible:false: nascosto finché l'utente non lo attiva lui stesso
+  // dal pannello di personalizzazione Home, come già per scadenze/statistiche.
+  { id: 'andamento_studio', ic: 'trend', label: 'Andamento studio', category: 'Pazienti/Clienti', defaultVisible: false, defaultSize: 'wide', sizes: ['medium', 'wide'] },
   { id: 'scadenze', ic: 'cal', label: 'Scadenze pagamento', category: 'Finanza', defaultVisible: false, defaultSize: 'small', sizes: ['small', 'medium'] },
   { id: 'ortodonzia', ic: 'tooth', label: 'Ortodonzia', category: 'Clinica', defaultVisible: false, defaultSize: 'small', sizes: ['small', 'medium'] },
   { id: 'fisio', ic: 'pulse', label: 'Fisioterapia', category: 'Clinica', permission: 'physio_contract', verticals: ['fisioterapista', 'massofisioterapista'], defaultVisible: false, defaultSize: 'medium', sizes: ['medium', 'wide'] },

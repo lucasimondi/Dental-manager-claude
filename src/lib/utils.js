@@ -159,6 +159,20 @@ export const getInitialTheme = () => {
 
 /* ── UTILS ── */
 export const uid = () => Date.now() + Math.floor(Math.random() * 99999);
+
+// POL-UI-026: "Nuovo paziente in [mese/anno]" deve guardare la sua VERA data
+// di creazione (created_at dal DB, esposta come p.createdAt) — mai `p.id`,
+// che è solo la chiave sequenziale del DB (bigint 1,2,3...), non un
+// timestamp. Trattarla come tale (bug storico: `new Date(Number(p.id))`
+// ricadeva sempre su gennaio 1970) è la causa per cui "Andamento studio"
+// mostrava sempre zero, sia a mese che ad anno. Un'unica definizione,
+// riusata da Pazienti.jsx, useControlloDati.js e dal widget Home.
+// POL-UI-026 follow-up: the Home widget also needs the actual patients
+// (click-through drill-down), not just the count — same predicate, one
+// definition, `contaPazientiNuovi` is just its length.
+export const pazientiNuoviIn = (patients, prefissoData) =>
+  (patients || []).filter((p) => typeof p.createdAt === 'string' && p.createdAt.startsWith(prefissoData));
+export const contaPazientiNuovi = (patients, prefissoData) => pazientiNuoviIn(patients, prefissoData).length;
 export const fmt = (n) => `€ ${Number(n).toFixed(2)}`;
 export const fmtD = (d) => (d ? new Date(d + 'T12:00').toLocaleDateString('it-IT') : '-');
 export const today = () => new Date().toISOString().slice(0, 10);

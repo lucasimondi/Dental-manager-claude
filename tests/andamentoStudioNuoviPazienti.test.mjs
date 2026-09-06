@@ -1,0 +1,115 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+
+import { contaPazientiNuovi } from '../src/lib/utils.js';
+import { HOME_WIDGET_REGISTRY, getHomeWidget, createDefaultHomeLayout } from '../src/lib/homeWidgetRegistry.js';
+import { HOME_PRESETS, createRolePresetLayout } from '../src/lib/homeDashboardModel.js';
+
+// POL-UI-026 — Product Owner: "in scheda pazienti c'è una parte superiore
+// che si chiama andamento studio, indica pazienti nuovi ecc ma in realtà è
+// sempre zero, sia mese che anno... controlla e fallo funzionare, rendilo
+// anche widget per home, visibile ad attivazione in setup".
+//
+// Root cause (confirmed against production): patients.id is a sequential
+// bigint PK (1, 2, 3...), never a timestamp -- but Pazienti.jsx's old
+// `dataCreazione` did `new Date(Number(p.id))`, landing on 1 Jan 1970 for
+// every real patient, so "startsWith(meseCorrente/annoCorrente)" (2026-xx)
+// never matched: always zero. useControlloDati.js's own `nuoviMese` (feeding
+// Dashboard's and PanoramicaControllo's "Pazienti totali +N questo mese")
+// had the exact same bug. The real creation date was always available as
+// the DB's `created_at` column -- src/lib/supabase.js's fromDb() was simply
+// dropping it on every read.
+
+const utilsSrc = fs.readFileSync(new URL('../src/lib/utils.js', import.meta.url), 'utf8');
+const supabaseSrc = fs.readFileSync(new URL('../src/lib/supabase.js', import.meta.url), 'utf8');
+const pazientiSrc = fs.readFileSync(new URL('../src/components/Pazienti.jsx', import.meta.url), 'utf8');
+const controlloDatiSrc = fs.readFileSync(new URL('../src/lib/useControlloDati.js', import.meta.url), 'utf8');
+const dashboardSrc = fs.readFileSync(new URL('../src/components/Dashboard.jsx', import.meta.url), 'utf8');
+
+test('contaPazientiNuovi counts by the real createdAt field, never by id', () => {
+  const patients = [
+    { id: 103, createdAt: '2026-09-01T15:04:15.894094+00:00' }, // this month, this year
+    { id: 100, createdAt: '2026-08-29T16:35:47.468289+00:00' }, // this year, not this month
+    { id: 42, createdAt: '2025-12-01T00:00:00+00:00' },         // neither
+    { id: 1 }, // no createdAt at all (e.g. optimistic pre-insert row) -- never counted, never guessed
+  ];
+  assert.equal(contaPazientiNuovi(patients, '2026-09'), 1);
+  assert.equal(contaPazientiNuovi(patients, '2026'), 2);
+  assert.equal(contaPazientiNuovi(patients, '2025'), 1);
+  assert.equal(contaPazientiNuovi([], '2026'), 0);
+  assert.equal(contaPazientiNuovi(undefined, '2026'), 0);
+});
+
+test('the old id-as-timestamp bug is gone from every call site', () => {
+  assert.doesNotMatch(pazientiSrc, /new Date\(tms\)|Number\(p\.id\)/);
+  assert.doesNotMatch(controlloDatiSrc, /new Date\(Number\(p\.id\)\)/);
+  assert.match(pazientiSrc, /contaPazientiNuovi\(patients, meseCorrente\)/);
+  assert.match(pazientiSrc, /contaPazientiNuovi\(patients, annoCorrente\)/);
+  assert.match(controlloDatiSrc, /contaPazientiNuovi\(patients, t\.slice\(0, 7\)\)/);
+  assert.match(controlloDatiSrc, /contaPazientiNuovi\(patients, t\.slice\(0, 4\)\)/);
+  assert.match(controlloDatiSrc, /\bnuoviAnno\b/);
+});
+
+test('supabase.js surfaces created_at as createdAt (read) and never writes it back (it is DB-managed)', () => {
+  assert.match(supabaseSrc, /createdAt: 'created_at'/);
+  assert.doesNotMatch(supabaseSrc, /k === 'created_at'/);
+  assert.match(supabaseSrc, /UI_ONLY_FIELDS = new Set\(\[[^\]]*'createdAt'[^\]]*\]\)/);
+});
+
+test('Andamento studio is now also an optional Home widget, hidden until the user turns it on themselves', () => {
+  const widget = getHomeWidget('andamento_studio');
+  assert.ok(widget, 'andamento_studio must exist in the registry');
+  assert.equal(widget.defaultVisible, false);
+  assert.ok(!widget.permission, 'no permission gate -- same audience as the Pazienti.jsx section it mirrors');
+  assert.ok(!createDefaultHomeLayout().find((w) => w.id === 'andamento_studio').visible);
+
+  assert.match(dashboardSrc, /w\.id === 'andamento_studio'/);
+  assert.match(dashboardSrc, /label="Questo mese" value=\{nuoviMese\}/);
+  assert.match(dashboardSrc, /label="Quest'anno" value=\{nuoviAnno\}/);
+});
+
+test('Product Owner follow-up: "unito a preventivi... indichi i pazienti nuovi (che devono essere elencati cliccando il numero)" — the separate preventivi widget is gone, merged into one card, nuovi pazienti are click-through', () => {
+  assert.equal(getHomeWidget('preventivi'), null, 'preventivi must no longer exist as a separate widget');
+  assert.doesNotMatch(dashboardSrc, /w\.id === 'preventivi'/);
+
+  // Nuovi pazienti stat cards open a real drill-down list, same
+  // detailModal pattern already used for every preventivi stat below them.
+  assert.match(dashboardSrc, /onClick=\{\(\) => setDetailModal\('nuoviMese'\)\}/);
+  assert.match(dashboardSrc, /onClick=\{\(\) => setDetailModal\('nuoviAnno'\)\}/);
+  assert.match(dashboardSrc, /detailModal === 'nuoviMese' \|\| detailModal === 'nuoviAnno'/);
+  assert.match(dashboardSrc, /pazientiNuoviIn\(patients, today\(\)\.slice\(0, isMese \? 7 : 4\)\)/);
+
+  // Preventivi now lives inside the same widget/card, with the same
+  // semantic colors already used for this exact triple in Pazienti.jsx
+  // (accettati=verde/suc, attesa=ambra/war, rifiutati=rosso/dan) -- not the
+  // old widget's generic purple/accent.
+  const andamentoBlock = dashboardSrc.slice(dashboardSrc.indexOf("if (w.id === 'andamento_studio')"), dashboardSrc.indexOf("if (w.id === 'richiami')"));
+  assert.match(andamentoBlock, /label="Accettati" value=\{preventiviAccettati\.length\} sub=\{fmt\(totAccettati\)\} color=\{C\.suc\}/);
+  assert.match(andamentoBlock, /label="In attesa" value=\{preventiviAttesa\.length\} color=\{C\.war\}/);
+  assert.match(andamentoBlock, /label="Rifiutati" value=\{preventiviRifiutati\.length\} color=\{C\.dan\}/);
+  assert.match(andamentoBlock, /tassoAccettazione/);
+});
+
+test('the registry stays internally consistent after merging preventivi into andamento_studio', () => {
+  assert.equal(new Set(HOME_WIDGET_REGISTRY.map((w) => w.id)).size, HOME_WIDGET_REGISTRY.length);
+  const layout = createDefaultHomeLayout();
+  assert.deepEqual(layout.map((w) => w.order), layout.map((_, i) => i));
+});
+
+// Regression: removing a widget id from the registry without also updating
+// every HOME_PRESETS list that mentions it doesn't crash or duplicate
+// anything visible -- it just silently makes createRolePresetLayout stop
+// matching that entry (presetIds.has(item.id) is always false for a ghost
+// id), so a whole role quietly loses a widget it used to have. Caught here
+// once and for all: front_desk still said 'preventivi' after this exact
+// merge, so no front_desk account ever got 'andamento_studio' by default.
+test('every HOME_PRESETS entry references only widget ids that still exist in the registry', () => {
+  const registryIds = new Set(HOME_WIDGET_REGISTRY.map((w) => w.id));
+  for (const [role, ids] of Object.entries(HOME_PRESETS)) {
+    for (const id of ids) {
+      assert.ok(registryIds.has(id), `HOME_PRESETS.${role} references unknown widget id "${id}"`);
+    }
+  }
+  assert.ok(createRolePresetLayout(['home.front_desk']).find((w) => w.id === 'andamento_studio').visible);
+});

@@ -8,7 +8,12 @@ export const HOME_PRESETS = Object.freeze({
   // it; clinician_fisio is left as its own narrow, deliberately minimal
   // clinical scope, unchanged.
   owner: Object.freeze(['fin_incassato', 'fin_prodotto', 'fin_margine_contribuzione', 'fin_ebitda', 'fin_break_even', 'fin_costi_fissi', 'fin_costi_variabili', 'fin_costo_orario', 'fin_ore_disponibili', 'agenda', 'todo', 'richiami']),
-  front_desk: Object.freeze(['agenda', 'appuntamenti', 'todo', 'richiami', 'wa', 'preventivi', 'scadenze']),
+  // POL-UI-026 follow-up: 'preventivi' was merged into 'andamento_studio'
+  // and removed from the registry — this preset referenced the old id, so
+  // createRolePresetLayout's presetIds.has(item.id) check silently stopped
+  // matching anything for front_desk (front_desk users lost the widget
+  // entirely instead of getting the merged one).
+  front_desk: Object.freeze(['agenda', 'appuntamenti', 'todo', 'richiami', 'wa', 'andamento_studio', 'scadenze']),
   clinician_fisio: Object.freeze(['agenda', 'appuntamenti', 'todo']),
 });
 

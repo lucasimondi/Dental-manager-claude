@@ -20,7 +20,10 @@ const TABLE_MAP = {
 };
 
 /* ── CAMPI UI TEMPORANEI DA NON SALVARE SU DB ── */
-const UI_ONLY_FIELDS = new Set(['_presetScadenza', '_editId']);
+// POL-UI-026: `createdAt` è generato dal DB (default now(), mai scritto
+// dall'app) — esposto in lettura da fromDb sotto, ma non deve mai tornare
+// indietro in una insert/update.
+const UI_ONLY_FIELDS = new Set(['_presetScadenza', '_editId', 'createdAt']);
 
 /* ── CONVERSIONE CAMPI: app (camelCase) <-> db (snake_case) ── */
 const FIELD_MAP = {
@@ -30,6 +33,7 @@ const FIELD_MAP = {
     anamnesiNota: 'anamnesi_nota',
     anamnesiAllarme: 'anamnesi_allarme',
     anamnesiAllarmeDettagli: 'anamnesi_allarme_dettagli',
+    createdAt: 'created_at',
   },
   plans: {
     pazienteId: 'paziente_id',
@@ -92,7 +96,12 @@ const fromDb = (table, row) => {
   Object.entries(map).forEach(([app, db]) => { rev[db] = app; });
   const out = { id: row.id };
   Object.keys(row).forEach((k) => {
-    if (k === 'id' || k === 'user_id' || k === 'created_at') return;
+    // POL-UI-026: `created_at` used to be dropped unconditionally here —
+    // the only place a patient's real creation date could have come from,
+    // which is why "nuovi pazienti" fell back to guessing from `id`
+    // (a sequential bigint PK, not a timestamp) and always read zero. Now
+    // mapped like any other column (see FIELD_MAP.patients.createdAt).
+    if (k === 'id' || k === 'user_id') return;
     const appKey = rev[k] || k;
     out[appKey] = row[k];
   });
