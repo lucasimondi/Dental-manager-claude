@@ -2839,3 +2839,22 @@ Nuovo `tests/andamentoStudioNuoviPazienti.test.mjs` (5 test: `contaPazientiNuovi
 
 ### EXACT NEXT ACTION
 Push del branch, apertura PR automatica con link dato subito (istruzione permanente del Product Owner), merge solo su istruzione esplicita.
+
+---
+
+## POL-UI-026 follow-up — Andamento studio unito a Preventivi, nuovi pazienti cliccabili
+
+### Richiesta (verbatim)
+"Andamento studio deve essere unito a preventivi e chiamarsi andamento studio così indichi i pazienti nuovi (che devono essere elencati cliccando il numero), e indichi quindi il resto : preventivi ecc deve essere bello e pro"
+
+### Cosa è cambiato
+- Il widget Home `preventivi` (Accettati/In attesa/Rifiutati) è stato rimosso dal registro (`homeWidgetRegistry.js`) — non solo nascosto, stesso meccanismo sicuro già usato in POL-UI-025: `normalizeHomeLayout` scarta gli id sconosciuti nei layout già salvati, quindi nessun riquadro vuoto per chi lo aveva già attivato.
+- Il suo contenuto si è spostato dentro un'unica card `andamento_studio` (`defaultSize` passato a `'wide'`): "Pazienti nuovi" (Questo mese/Quest'anno) sopra, un separatore, "Preventivi" (Accettati/In attesa/Rifiutati + percentuale di accettazione) sotto.
+- Colori dei tre preventivi allineati a quelli già usati per lo stesso identico terzetto in `Pazienti.jsx`: Accettati=verde/successo, In attesa=ambra, Rifiutati=rosso — non più il viola/accento generico del vecchio widget isolato. Stessa metrica, stesso significato visivo in ogni punto dell'app.
+- "Pazienti nuovi" ora è davvero cliccabile: apre lo stesso pattern `detailModal` già usato per Accettati/In attesa/Rifiutati/Scadenze/ecc., con l'elenco reale dei pazienti coinvolti (nome cliccabile → scheda paziente, tab Info), ordinati dal più recente. Nuovo helper `pazientiNuoviIn(patients, prefissoData)` in `utils.js`: stesso identico predicato di `contaPazientiNuovi` (il fix del giro precedente), ora esposto anche come lista oltre che come conteggio — così il numero sulla card e l'elenco nel popup non possono mai disallinearsi.
+
+### Tests
+Aggiornato `tests/andamentoStudioNuoviPazienti.test.mjs` con due nuovi test (rimozione di `preventivi` dal registro, click-through e colori semantici del widget unito) e le label aggiornate; aggiornati `tests/mobileHomeRound2.test.mjs` (lista id registro) e `tests/homeLayoutVerifiedPersistence.test.mjs` (`richiami.order` da 6 a 5, un altro id legacy in meno prima di esso). `npm test` 725/725; `npm run build` pulito; `git diff --check` pulito. Nessuna migration.
+
+### EXACT NEXT ACTION
+Push sullo stesso branch/PR #92 (aggiornare la descrizione), merge solo su istruzione esplicita del Product Owner.

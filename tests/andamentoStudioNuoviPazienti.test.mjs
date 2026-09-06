@@ -64,11 +64,33 @@ test('Andamento studio is now also an optional Home widget, hidden until the use
   assert.ok(!createDefaultHomeLayout().find((w) => w.id === 'andamento_studio').visible);
 
   assert.match(dashboardSrc, /w\.id === 'andamento_studio'/);
-  assert.match(dashboardSrc, /label="Nuovi questo mese" value=\{nuoviMese\}/);
-  assert.match(dashboardSrc, /label="Nuovi quest'anno" value=\{nuoviAnno\}/);
+  assert.match(dashboardSrc, /label="Questo mese" value=\{nuoviMese\}/);
+  assert.match(dashboardSrc, /label="Quest'anno" value=\{nuoviAnno\}/);
 });
 
-test('the registry stays internally consistent after adding the new widget', () => {
+test('Product Owner follow-up: "unito a preventivi... indichi i pazienti nuovi (che devono essere elencati cliccando il numero)" — the separate preventivi widget is gone, merged into one card, nuovi pazienti are click-through', () => {
+  assert.equal(getHomeWidget('preventivi'), null, 'preventivi must no longer exist as a separate widget');
+  assert.doesNotMatch(dashboardSrc, /w\.id === 'preventivi'/);
+
+  // Nuovi pazienti stat cards open a real drill-down list, same
+  // detailModal pattern already used for every preventivi stat below them.
+  assert.match(dashboardSrc, /onClick=\{\(\) => setDetailModal\('nuoviMese'\)\}/);
+  assert.match(dashboardSrc, /onClick=\{\(\) => setDetailModal\('nuoviAnno'\)\}/);
+  assert.match(dashboardSrc, /detailModal === 'nuoviMese' \|\| detailModal === 'nuoviAnno'/);
+  assert.match(dashboardSrc, /pazientiNuoviIn\(patients, today\(\)\.slice\(0, isMese \? 7 : 4\)\)/);
+
+  // Preventivi now lives inside the same widget/card, with the same
+  // semantic colors already used for this exact triple in Pazienti.jsx
+  // (accettati=verde/suc, attesa=ambra/war, rifiutati=rosso/dan) -- not the
+  // old widget's generic purple/accent.
+  const andamentoBlock = dashboardSrc.slice(dashboardSrc.indexOf("if (w.id === 'andamento_studio')"), dashboardSrc.indexOf("if (w.id === 'richiami')"));
+  assert.match(andamentoBlock, /label="Accettati" value=\{preventiviAccettati\.length\} sub=\{fmt\(totAccettati\)\} color=\{C\.suc\}/);
+  assert.match(andamentoBlock, /label="In attesa" value=\{preventiviAttesa\.length\} color=\{C\.war\}/);
+  assert.match(andamentoBlock, /label="Rifiutati" value=\{preventiviRifiutati\.length\} color=\{C\.dan\}/);
+  assert.match(andamentoBlock, /tassoAccettazione/);
+});
+
+test('the registry stays internally consistent after merging preventivi into andamento_studio', () => {
   assert.equal(new Set(HOME_WIDGET_REGISTRY.map((w) => w.id)).size, HOME_WIDGET_REGISTRY.length);
   const layout = createDefaultHomeLayout();
   assert.deepEqual(layout.map((w) => w.order), layout.map((_, i) => i));

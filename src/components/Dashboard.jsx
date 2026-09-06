@@ -2,7 +2,7 @@
 import { supabase } from '../lib/supabase.js';
 import { Crd, Bdg, Modal, Ic, Btn, Fld, Sel, Inp, Txt, TimePicker, SelettorePaziente, EmptyState, Toast } from './ui';
 import { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
-import { C, fmt, fmtD, today, uid, RICHIAMO_CATEGORIE } from '../lib/utils';
+import { C, fmt, fmtD, today, uid, RICHIAMO_CATEGORIE, pazientiNuoviIn } from '../lib/utils';
 import { BarChart, Bar, LineChart, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useControlloDati } from '../lib/useControlloDati';
 import WidgetWorkspace from './WidgetWorkspace.jsx';
@@ -866,6 +866,32 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
       )}
 
       {/* ── MODALS ── */}
+      {/* POL-UI-026 follow-up: "i pazienti nuovi... devono essere elencati
+          cliccando il numero" — same detailModal pattern every other
+          Andamento-studio/Preventivi stat already uses below, reusing
+          pazientiNuoviIn (the same predicate contaPazientiNuovi is built
+          on) so this list can never disagree with the count on the card. */}
+      {(detailModal === 'nuoviMese' || detailModal === 'nuoviAnno') && (() => {
+        const isMese = detailModal === 'nuoviMese';
+        const lista = pazientiNuoviIn(patients, today().slice(0, isMese ? 7 : 4))
+          .slice()
+          .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+        const color = isMese ? C.pri : C.acc;
+        return (
+          <Modal title={<><Ic n="pz" s={15} c={C.txt} /> Nuovi pazienti — {isMese ? 'questo mese' : "quest'anno"}</>} onClose={() => setDetailModal(null)} wide>
+            {lista.length === 0 && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Nessun nuovo paziente {isMese ? 'questo mese' : "quest'anno"}</div>}
+            {lista.map((paz) => (
+              <Crd key={paz.id} style={{ marginBottom: 8, borderLeft: `3px solid ${color}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div onClick={() => { setDetailModal(null); onOpenPaz(paz, 'info'); }} style={{ fontWeight: 700, color: C.pri, cursor: 'pointer', fontSize: 13 }}>{paz.nome} {paz.cognome} ›</div>
+                  <span style={{ fontSize: 11, color: C.txm }}>{fmtD(paz.createdAt?.slice(0, 10))}</span>
+                </div>
+              </Crd>
+            ))}
+          </Modal>
+        );
+      })()}
+
       {detailModal === 'attesa' && (
         <Modal title={<><Ic n="clk" s={15} c={C.txt} /> Preventivi in attesa</>} onClose={() => setDetailModal(null)} wide>
           <div style={{ background: C.purL, borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
@@ -1662,24 +1688,37 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
           </div>
         );
 
+        // POL-UI-026 follow-up: Product Owner, dopo aver visto i due widget
+        // separati -- "Andamento studio deve essere unito a preventivi e
+        // chiamarsi andamento studio... indichi i pazienti nuovi (che
+        // devono essere elencati cliccando il numero), e indichi quindi
+        // il resto: preventivi ecc deve essere bello e pro". Un solo
+        // widget, una sola card: nuovi pazienti (cliccabili, elencano i
+        // pazienti veri) sopra, preventivi sotto -- stessi identici numeri
+        // di prima, stesso schema colori semantico già usato in
+        // Pazienti.jsx per lo stesso identico terzetto (accettati=verde,
+        // attesa=ambra, rifiutati=rosso), non più il viola/accento
+        // generico del vecchio widget 'preventivi' isolato.
         if (w.id === 'andamento_studio') return (
           <div key="andamento_studio" style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="trend" s={11} c={C.txm} />Andamento studio</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <StatCard label="Nuovi questo mese" value={nuoviMese} color={C.pri} elevated onClick={() => onNavigate && onNavigate('paz')} />
-              <StatCard label="Nuovi quest'anno" value={nuoviAnno} color={C.acc} elevated onClick={() => onNavigate && onNavigate('paz')} />
-            </div>
-          </div>
-        );
-
-        if (w.id === 'preventivi') return (
-          <div key="preventivi" style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="clip" s={11} c={C.txm} />Preventivi</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-              <StatCard label="Attesa" value={preventiviAttesa.length} color={C.pur} onClick={() => setDetailModal('attesa')} elevated />
-              <StatCard label="Accettati" value={preventiviAccettati.length} sub={fmt(totAccettati)} color={C.acc} onClick={() => setDetailModal('accettati')} elevated />
-              <StatCard label="Rifiutati" value={preventiviRifiutati.length} color={C.dan} onClick={() => setDetailModal('rifiutati')} elevated />
-            </div>
+            <Crd style={{ padding: 14 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: C.txl, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Pazienti nuovi</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <StatCard label="Questo mese" value={nuoviMese} color={C.pri} elevated onClick={() => setDetailModal('nuoviMese')} />
+                <StatCard label="Quest'anno" value={nuoviAnno} color={C.acc} elevated onClick={() => setDetailModal('nuoviAnno')} />
+              </div>
+              <div style={{ height: 1, background: C.brd, margin: '14px -14px' }} />
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ fontSize: 10, fontWeight: 800, color: C.txl, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Preventivi</span>
+                <span style={{ fontSize: 11, fontWeight: 800, color: tassoAccettazione >= 70 ? C.suc : tassoAccettazione >= 40 ? C.war : C.dan }}>{tassoAccettazione}% accettazione</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                <StatCard label="Accettati" value={preventiviAccettati.length} sub={fmt(totAccettati)} color={C.suc} elevated onClick={() => setDetailModal('accettati')} />
+                <StatCard label="In attesa" value={preventiviAttesa.length} color={C.war} elevated onClick={() => setDetailModal('attesa')} />
+                <StatCard label="Rifiutati" value={preventiviRifiutati.length} color={C.dan} elevated onClick={() => setDetailModal('rifiutati')} />
+              </div>
+            </Crd>
           </div>
         );
 
