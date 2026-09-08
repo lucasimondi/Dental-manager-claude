@@ -86,6 +86,28 @@ test('Agenda appointment menu clears the canonical mobile dock and scrolls inter
   assert.match(premium, /\.agenda-appointment-menu-safe-area\s*\{[\s\S]*display:\s*none;/);
 });
 
+// Product Owner: "In agenda quando clicco appuntamento per modificare non
+// scorre fino al di sopra del dock quindi alcuni tasti sono coperti dal
+// dock". Root cause: the shared Modal's default mobileVariant="standard"
+// reserves only a small margin-bottom (a few px + safe-area) below the
+// sheet — nowhere near the floating mobile dock's real footprint (~80-96px)
+// — so the dock's own screen area overlaps the bottom of the sheet instead
+// of sitting in the small gap below it, right where this form's long
+// content (11 fields + Elimina/Annulla/Aggiorna) needs to end. Every other
+// Modal with comparably long, button-terminated content (IncassoModal,
+// "Registra da incassare", "Allega foto o PDF", ProdottoReconciliationModal)
+// already uses mobileVariant="sheet", which reserves no bottom margin at
+// all — the sheet reaches the literal viewport bottom, fully covering the
+// dock behind it (higher z-index + overflow:hidden), so there is no gap
+// left for the dock to overlap.
+test('Agenda Nuovo/Modifica appuntamento modal reaches the viewport bottom on mobile, clearing the dock', () => {
+  assert.match(agenda, /title=\{editApp \? 'Modifica appuntamento' : 'Nuovo appuntamento'\}[\s\S]{0,80}mobileVariant="sheet"/);
+  // The "sheet" variant has no dedicated override in designTokens.css (only
+  // "standard"/"fullscreen" do) — it falls back to the base mobile
+  // .pol-modal-sheet rule, which reserves no margin-bottom at all.
+  assert.doesNotMatch(tokens, /data-mobile-variant="sheet"/);
+});
+
 test('all required mobile pages share the same app-scroll surface', () => {
   for (const page of ['home', 'agenda', 'paz', 'piani', 'paga', 'archivio', 'controllo', 'wa', 'set', 'chat']) {
     assert.match(app, new RegExp(`page === '${page}'`), `${page} must render inside the shared shell`);
