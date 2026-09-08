@@ -1,5 +1,17 @@
 # Current task
 
+- TASK: POL-UI-031 — Impostazioni: pulsante Esci anche in cima alla pagina
+- TITLE: l'unico "Esci" esistente era in fondo alla tab "Profilo e team" di Impostazioni (l'ultima di 9 tab) — diversi tap e uno scroll di distanza dall'apertura della pagina, poco pratico soprattutto ora che serve un logout/login per far ripartire da zero la PWA dopo un aggiornamento (POL-UI-029).
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggio verbatim: "Mettimi un pulsante esci da qualche parte perché così esco e rientro").
+- BRANCH: `feature/pol-ui-031-impostazioni-esci-header`, da `master` (contiene già PR #96).
+- STATUS: IMPLEMENTATO, non ancora pushato — vedi EXACT NEXT ACTION.
+
+- **Fix**: `Impostazioni.jsx` — il tasto Esci esistente in fondo alla tab Profilo (POL-UI-005) resta invariato; aggiunto un secondo punto d'accesso nel `PageHeader` in cima alla pagina (slot `actions`, sempre visibile qualunque tab sia aperta, nessuno scroll/tap di navigazione necessario) — stesso `onLogout` già passato da `App.jsx`, stessa icona/colore "danger" del tasto originale, nessuna nuova logica di autenticazione, solo un secondo ingresso allo stesso identico gesto.
+- VALIDATION: `npm test` 743/743 (nuovo `tests/impostazioniLogout.test.mjs`: verifica il nuovo tasto in header e che quello originale in fondo alla tab Profilo resti intatto); `npm run build` pulito; `git diff --check` pulito. Nessuna migration — solo un componente client.
+- EXACT NEXT ACTION: push del branch, apertura PR, merge solo su istruzione esplicita del Product Owner.
+
+---
+
 - TASK: POL-UI-030 — Fix: modulo "Modifica appuntamento" (POL-UI-027) ora coperto dai controlli flottanti mese/settimana in alto
 - TITLE: la correzione precedente (POL-UI-027, `mobileVariant="sheet"`) fa arrivare il modulo quasi a tutta l'altezza dello schermo per liberare il dock in basso — ma così facendo la sua parte alta finisce nella stessa zona di schermo occupata dai controlli flottanti mese/striscia settimana di Agenda, dando l'impressione che il popup venga coperto da quelli.
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggio verbatim: "Adesso compare troppo in alto il popup di modifica appuntamenti quindi viene coperto da giorni settimana flottanti , prendi bene le misure").

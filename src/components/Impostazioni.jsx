@@ -344,7 +344,21 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
     <div>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
-      <PageHeader icon="set" title="Impostazioni" />
+      {/* POL-UI-031: Product Owner — "mettimi un pulsante esci da qualche
+          parte" — l'unico Esci esistente (sotto, tab Profilo e team) era a
+          diversi tap e uno scroll di distanza dall'apertura di Impostazioni.
+          Stesso handleLogout, nessuna nuova logica: solo un secondo punto
+          d'accesso sempre visibile in cima, qualunque sia la tab aperta. */}
+      <PageHeader icon="set" title="Impostazioni" actions={onLogout && (
+        <button
+          onClick={onLogout}
+          className="pol-btn"
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 13px', background: 'none', border: `1.5px solid ${C.brd}`, borderRadius: 10, color: C.dan, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' }}
+        >
+          <Ic n="x" s={13} c={C.dan} />
+          Esci
+        </button>
+      )} />
 
       {/* Navigazione a sezioni: prima era tutto in un unico scroll lunghissimo,
           scomodo su mobile — ora ogni area si apre da sola, il resto resta
