@@ -501,11 +501,20 @@ export default function App() {
   };
   const goAgendaPaz = (pazId) => { setAgendaInitPaz(pazId); setPage('agenda'); };
 
+  // POL-UI-032: Product Owner — "Neanche uscendo e rientrando... si vedono
+  // le modifiche". Root cause: this was a pure client-side state reset
+  // (sign out + clear React state), never a real page navigation — so it
+  // could never trigger the browser's own service-worker update check
+  // (POL-UI-029), and logging back in just resumed the SAME already-loaded
+  // JS. A real reload is what "esco e rientro" already reads as to a user,
+  // so make it one: state clearing is now moot (a reload wipes it anyway)
+  // but left in place in case the reload is ever slow on a bad connection.
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setPatients([]); setAppointments([]); setPlans([]); setPayments([]); setImpegni([]); setRichiami([]);
     setPricelist([]); setTemplates([]); setAppTypes([]); setStudioInfo(DEF_STUDIO); setImplants([]);
     setPage('home');
+    window.location.reload();
   };
 
   if (session === undefined) return <LoadingScreen />;

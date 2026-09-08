@@ -1,5 +1,19 @@
 # Current task
 
+- TASK: POL-UI-032 — Fix: "esco e rientro" non applicava mai gli aggiornamenti (il logout non ricaricava davvero la pagina)
+- TITLE: dopo POL-UI-029 (banner di aggiornamento PWA) e POL-UI-031 (tasto Esci più raggiungibile), il Product Owner segnala che nemmeno uscendo e rientrando le modifiche compaiono.
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggio verbatim: "Neanche uscendo e rientrando , aggiornando , non si vedono le modifiche").
+- BRANCH: `fix/logout-forces-reload-for-updates`, da `master` (contiene già PR #97).
+- STATUS: IMPLEMENTATO, non ancora pushato — vedi EXACT NEXT ACTION.
+
+- **Causa radice**: `handleLogout` in `App.jsx` era un puro reset di stato lato client (`supabase.auth.signOut()` + svuotamento dello stato React) — MAI una vera navigazione di pagina. Senza una navigazione reale, il browser non rifà mai il controllo "c'è un service worker nuovo?" (esattamente il meccanismo aggiunto in POL-UI-029) — uscire e rientrare restava sulla stessa, identica, sessione JavaScript già in memoria, aggiornamento o meno. Inoltre: la sessione del Product Owner al momento della segnalazione era quasi certamente ancora sul codice PRE-POL-UI-029 (quello senza alcuna logica di rilevamento aggiornamenti) — un problema "dell'uovo e della gallina" che nessuna quantità di logout/login poteva risolvere da solo, serviva un vero reload almeno una volta.
+- **Fix**: una riga — `window.location.reload()` aggiunta alla fine di `handleLogout`, dopo il sign-out. Da ora "Esci" È una vera navigazione di pagina: rifà sempre il fetch di `index.html`/service worker, quindi applica sempre qualunque aggiornamento in sospeso, oltre a essere comunque un logout pulito. Lo svuotamento manuale dello stato React resta (innocuo, il reload lo renderebbe comunque superfluo, ma copre il caso di un reload lento su connessione debole).
+- **Nota per il Product Owner**: questo stesso fix, per applicarsi la prima volta, richiede comunque UN riavvio completo reale (chiudi del tutto l'app e riaprila, non solo uscire/rientrare dall'interno) — dopodiché ogni "Esci" futuro farà da solo esattamente il "controlla e applica aggiornamenti" richiesto.
+- VALIDATION: `npm test` 744/744 (nuovo `tests/logoutForcesReload.test.mjs`); `npm run build` pulito; `git diff --check` pulito. Nessuna migration — solo una riga in un componente client.
+- EXACT NEXT ACTION: push del branch, apertura PR, merge solo su istruzione esplicita del Product Owner.
+
+---
+
 - TASK: POL-UI-031 — Impostazioni: pulsante Esci anche in cima alla pagina
 - TITLE: l'unico "Esci" esistente era in fondo alla tab "Profilo e team" di Impostazioni (l'ultima di 9 tab) — diversi tap e uno scroll di distanza dall'apertura della pagina, poco pratico soprattutto ora che serve un logout/login per far ripartire da zero la PWA dopo un aggiornamento (POL-UI-029).
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggio verbatim: "Mettimi un pulsante esci da qualche parte perché così esco e rientro").
