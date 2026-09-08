@@ -178,6 +178,29 @@
   .agenda-appointment-menu-safe-area {
     display: none;
   }
+  /* POL-UI-030: the "Nuovo/Modifica appuntamento" form modal
+     (mobileVariant="sheet", see POL-UI-027) reaches almost the full
+     viewport height so its own bottom clears the floating mobile dock —
+     but the generic "sheet" variant knows nothing about Agenda's OWN
+     floating month/week-strip controls (.agenda-mobile-floating-controls,
+     z-index 30, absolutely positioned over the grid) sitting at the very
+     top of the same screen: with no top clearance reserved, the sheet's
+     header opened right underneath them, close enough to read as
+     "coperto dai giorni della settimana flottanti". Same technique as the
+     appointment context menu's own dock clearance above — here it's a
+     real measured height (Agenda.jsx's own `mobileOverlayHeight`, the
+     exact ResizeObserver'd height of that overlay, already used for the
+     grid's own top scroll-spacer) fed in via a CSS custom property,
+     never a guessed constant that could drift from the real layout.
+     Selector specificity (2 classes) beats designTokens.css's
+     `html .pol-modal-sheet` base rule (1 class + 1 element), both
+     !important — required since this is a real override, not an addition. */
+  .pol-modal-backdrop.agenda-appointment-form-backdrop {
+    padding-top: calc(var(--agenda-mobile-overlay-clearance-form, 0px) + env(safe-area-inset-top, 0px) + 10px);
+  }
+  .pol-modal-sheet.agenda-appointment-form-sheet {
+    max-height: calc(100dvh - var(--agenda-mobile-overlay-clearance-form, 0px) - env(safe-area-inset-top, 0px) - 10px) !important;
+  }
   .agenda-quick-hub-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -3,7 +3,17 @@ import ReactDOM from 'react-dom';
 import Ic from './Ic.jsx';
 import { C } from '../../lib/utils';
 
-export default function Modal({ title, icon, iconColor, onClose, children, wide, mobileVariant = 'standard', footer }) {
+// POL-UI-030: `backdropClassName`/`sheetClassName`/`backdropStyle` are
+// opt-in escape hatches (default to nothing, zero effect on every existing
+// caller) for the rare case where ONE specific modal instance needs real,
+// measured clearance from something that floats independently over the
+// page behind it — e.g. Agenda's own floating month/week-strip controls,
+// which the generic "sheet"/"standard" mobile variants know nothing about.
+// Mirrors the same technique already used for Agenda's own appointment
+// context menu (agenda-appointment-menu-backdrop/-sheet in
+// PremiumVisualSystem.css), just made reusable instead of that menu
+// building its own one-off backdrop/sheet markup.
+export default function Modal({ title, icon, iconColor, onClose, children, wide, mobileVariant = 'standard', footer, backdropClassName = '', sheetClassName = '', backdropStyle }) {
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -12,15 +22,15 @@ export default function Modal({ title, icon, iconColor, onClose, children, wide,
 
   return ReactDOM.createPortal(
     <div
-      className="pol-modal-backdrop"
+      className={`pol-modal-backdrop${backdropClassName ? ` ${backdropClassName}` : ''}`}
       role="presentation"
       style={{
         position: 'fixed', inset: 0, background: 'rgba(10,20,40,0.55)', zIndex: 9999,
-        display: 'flex', justifyContent: 'center',
+        display: 'flex', justifyContent: 'center', ...backdropStyle,
       }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="pol-modal-sheet" data-mobile-variant={mobileVariant} role="dialog" aria-modal="true" aria-label={title} style={{
+      <div className={`pol-modal-sheet${sheetClassName ? ` ${sheetClassName}` : ''}`} data-mobile-variant={mobileVariant} role="dialog" aria-modal="true" aria-label={title} style={{
         background: C.sur, width: '100%',
         maxWidth: wide ? 700 : 480, maxHeight: 'min(92vh, 92dvh)',
       }}>

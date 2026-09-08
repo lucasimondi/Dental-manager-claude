@@ -1521,7 +1521,11 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
 
       {/* MODAL NUOVO/MODIFICA */}
       {modal && (
-        <Modal title={editApp ? 'Modifica appuntamento' : 'Nuovo appuntamento'} icon={editApp ? 'edit' : 'cal'} onClose={chiudiModalApp} wide mobileVariant="sheet">
+        <Modal
+          title={editApp ? 'Modifica appuntamento' : 'Nuovo appuntamento'} icon={editApp ? 'edit' : 'cal'} onClose={chiudiModalApp} wide mobileVariant="sheet"
+          backdropClassName="agenda-appointment-form-backdrop" sheetClassName="agenda-appointment-form-sheet"
+          backdropStyle={{ '--agenda-mobile-overlay-clearance-form': `${mobileOverlayHeight}px` }}
+        >
           <Fld label="Paziente">
             <SelettorePaziente
               patients={patients}
