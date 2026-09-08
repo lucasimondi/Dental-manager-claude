@@ -626,6 +626,10 @@ body:has(.home-widget-grid) #app-scroll {
   box-shadow: var(--pol-premium-shadow-soft);
   backdrop-filter: blur(16px);
 }
+/* POL-UI-033: "Esci" on mobile Home — desktop already carries it in the
+   always-visible PremiumSidebar, so this stays display:none there (see
+   the mobile media query below for where it actually shows). */
+.home-hero__logout { display: none; }
 .home-hero__customize:hover {
   transform: translateY(-2px);
   box-shadow: 0 18px 36px rgba(31,49,78,.14);
@@ -2264,7 +2268,8 @@ button.incassi-kpi.is-active { border-color: var(--brand-primary); box-shadow: 0
   /* §9 — "Personalizza Home" is an occasional setting, not a daily action:
      on a phone it becomes a discreet 44x44 icon target. The label is only
      hidden VISUALLY; the button keeps its aria-label and title. */
-  .home-hero__customize {
+  .home-hero__customize,
+  .home-hero__logout {
     width: var(--pol-touch-min);
     min-width: var(--pol-touch-min);
     height: var(--pol-touch-min);
@@ -2286,6 +2291,17 @@ button.incassi-kpi.is-active { border-color: var(--brand-primary); box-shadow: 0
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
+  }
+  /* POL-UI-033: Product Owner — "Su mobile non c'è nessun tasto esci, in
+     home intendo". Same discreet 44x44 icon-button treatment as
+     "Personalizza Home" right next to it — reusing that pattern, not a
+     new visual language — but actually shown here (base rule above hides
+     it; only mobile shows it, since desktop already has the sidebar's
+     own Esci). */
+  .home-hero__logout {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
   }
 
   /* ── §2 PRIORITY AREA — revealed here, directly under the hero. ── */

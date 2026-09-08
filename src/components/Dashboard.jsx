@@ -70,7 +70,7 @@ const getSaluto = (nome) => { const ora = new Date().getHours(); const s = ora <
 const fmtDataOra = (d) => d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
 const fmtOra = (d) => d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 
-export default function Dashboard({ patients, setPatients, appointments, setAppointments, payments, plans, richiami = [], impegni = [], implants = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, onNavigate, onNavigateNew, templates, userName: userNameProp, si, features, studioId, currentUserId, isStudioAdmin, studioMembership, activityPatientRequest, onActivityPatientRequestHandled }) {
+export default function Dashboard({ patients, setPatients, appointments, setAppointments, payments, plans, richiami = [], impegni = [], implants = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, onNavigate, onNavigateNew, templates, userName: userNameProp, si, features, studioId, currentUserId, isStudioAdmin, studioMembership, activityPatientRequest, onActivityPatientRequestHandled, onLogout }) {
   const homePermissions = buildHomePermissions({ membership: studioMembership, features, vertical: si?.vertical });
   const roleLayout = createRolePresetLayout(studioMembership?.capabilities);
   const availableWidgetCatalog = filterWidgetCatalog(HOME_WIDGET_REGISTRY, homePermissions);
@@ -1347,6 +1347,15 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
             <Ic n="set" s={14} c={C.txm} />
             <span className="home-hero__customize-label">{layoutLoading ? 'Caricamento…' : 'Personalizza Home'}</span>
           </button>
+          {/* POL-UI-033: mobile-only (see .home-hero__logout in
+              PremiumVisualSystem.css) — desktop already has Esci in the
+              always-visible PremiumSidebar. Same handleLogout from
+              App.jsx, no new auth logic. */}
+          {onLogout && (
+            <button className="home-hero__logout" onClick={onLogout} aria-label="Esci" title="Esci">
+              <Ic n="x" s={14} c={C.dan} />
+            </button>
+          )}
         </div>
       </div>
 

@@ -518,8 +518,9 @@ test('TOUCH CONTRACT: every interactive element this round adds or restyles is a
   const mobileBlock = round2Css.slice(round2Css.indexOf(MOBILE_MEDIA));
   // Priority rows: 56px, comfortably above the floor.
   assert.match(round2Css, /\.home-attention__item \{[^}]*min-height: 56px;/s);
-  // "Personalizza Home" icon button on mobile.
-  assert.match(mobileBlock, /\.home-hero__customize \{[^}]*min-width: var\(--pol-touch-min\);[^}]*min-height: var\(--pol-touch-min\);/s);
+  // "Personalizza Home" icon button on mobile (POL-UI-033: now a combined
+  // selector shared with .home-hero__logout, same touch-target rule).
+  assert.match(mobileBlock, /\.home-hero__customize[\s\S]*?\{[^}]*min-width: var\(--pol-touch-min\);[^}]*min-height: var\(--pol-touch-min\);/s);
   // Quick-action tiles (including "Altro", which shares the grid styling).
   assert.match(mobileBlock, /\.home-quick-actions__grid button \{[^}]*min-height: 60px;/s);
   // The bell was 40x40 — below the Round 1 floor. Raised to the token.
