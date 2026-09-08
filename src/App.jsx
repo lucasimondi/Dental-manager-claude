@@ -110,11 +110,39 @@ export default function App() {
   const [archivioFiltroTipoHint, setArchivioFiltroTipoHint] = useState(null);
   const [poliedronBookingOpen, setPoliedronBookingOpen] = useState(false);
   const [syncError, setSyncError] = useState(null);
+  // POL-UI-029: a PWA installed to the home screen is usually resumed from
+  // background, never a real reload — Product Owner reports of "il fix non
+  // si vede" after a deploy were real fixes that never actually reached
+  // their device, because registerType:'autoUpdate' only takes over on the
+  // NEXT full reload, and nothing here ever asked for one. See main() below
+  // for the registration itself; this banner is the visible half.
+  const [updateReady, setUpdateReady] = useState(null); // () => void, or null
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isStudioAdmin, setIsStudioAdmin] = useState(false);
   const [studioMembership, setStudioMembership] = useState(null);
   const [studioAttivo, setStudioAttivo] = useState(true);
   const [features, setFeatures] = useState(PIANI_FEATURES_DEFAULT.base);
+
+  // POL-UI-029: registers the service worker ourselves (vite.config.js sets
+  // injectRegister:false) instead of the previous bare auto-injected
+  // `navigator.serviceWorker.register(...)` — which never listened for an
+  // update at all. registerType:'autoUpdate' already makes each new service
+  // worker skipWaiting+claim clients as soon as it installs, but with
+  // nothing listening for that, the tab just kept running its old,
+  // already-loaded JS regardless — invisible to a PWA opened from the home
+  // screen, which is resumed from background, never actually reloaded.
+  // `onNeedReload` fires once the new service worker has ALREADY taken
+  // over (safe to reload then, no install race); this banner is the only
+  // thing that decides WHEN — never a silent auto-reload, which could
+  // otherwise drop someone's in-progress form.
+  useEffect(() => {
+    let cancelled = false;
+    import('virtual:pwa-register').then(({ registerSW }) => {
+      if (cancelled) return;
+      registerSW({ onNeedReload: () => setUpdateReady(() => () => window.location.reload()) });
+    }).catch(() => {}); // no SW in this environment (e.g. local dev) — nothing to register
+    return () => { cancelled = true; };
+  }, []);
 
   // Colori brand (piano Premium): riapplica pri/priL/priD/acc sopra la palette
   // di tema ogni volta che cambia il tema (altrimenti il toggle chiaro/scuro li
@@ -546,6 +574,14 @@ export default function App() {
           <span style={{ fontSize: 15, flexShrink: 0 }}>⚠️</span>
           <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: '#C53030', lineHeight: 1.4 }}>{syncError}</span>
           <button onClick={() => setSyncError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, flexShrink: 0, color: '#C53030', fontWeight: 800, fontSize: 14 }}>✕</button>
+        </div>
+      )}
+
+      {updateReady && (
+        <div style={{ background: C.priL, borderBottom: `2px solid ${C.pri}`, padding: `${isMobile ? 'calc(9px + env(safe-area-inset-top, 0px))' : '9px'} 14px 9px`, display: 'flex', alignItems: 'flex-start', gap: 8, flexShrink: 0 }}>
+          <span style={{ fontSize: 15, flexShrink: 0 }}>🔄</span>
+          <button onClick={updateReady} style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 12, fontWeight: 700, color: C.pri, lineHeight: 1.4 }}>Nuova versione disponibile — tocca per aggiornare</button>
+          <button onClick={() => setUpdateReady(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, flexShrink: 0, color: C.pri, fontWeight: 800, fontSize: 14 }}>✕</button>
         </div>
       )}
 
