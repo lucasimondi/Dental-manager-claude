@@ -542,7 +542,7 @@ export default function App() {
           Desktop/tablet keep PremiumSidebar (branding + Esci) untouched. */}
 
       {syncError && (
-        <div style={{ background: C.danL, borderBottom: `2px solid ${C.dan}`, padding: '9px 14px', display: 'flex', alignItems: 'flex-start', gap: 8, flexShrink: 0 }}>
+        <div style={{ background: C.danL, borderBottom: `2px solid ${C.dan}`, padding: `${isMobile ? 'calc(9px + env(safe-area-inset-top, 0px))' : '9px'} 14px 9px`, display: 'flex', alignItems: 'flex-start', gap: 8, flexShrink: 0 }}>
           <span style={{ fontSize: 15, flexShrink: 0 }}>⚠️</span>
           <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: '#C53030', lineHeight: 1.4 }}>{syncError}</span>
           <button onClick={() => setSyncError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, flexShrink: 0, color: '#C53030', fontWeight: 800, fontSize: 14 }}>✕</button>

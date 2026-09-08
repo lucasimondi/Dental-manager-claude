@@ -64,6 +64,7 @@ const FIELD_MAP = {
     tuttoIlGiorno: 'tutto_il_giorno',
     oraInizio: 'ora_inizio',
     oraFine: 'ora_fine',
+    recurrenceId: 'recurrence_id',
   },
   richiami: {
     pazienteId: 'paziente_id',
