@@ -1521,7 +1521,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
 
       {/* MODAL NUOVO/MODIFICA */}
       {modal && (
-        <Modal title={editApp ? 'Modifica appuntamento' : 'Nuovo appuntamento'} icon={editApp ? 'edit' : 'cal'} onClose={chiudiModalApp} wide>
+        <Modal title={editApp ? 'Modifica appuntamento' : 'Nuovo appuntamento'} icon={editApp ? 'edit' : 'cal'} onClose={chiudiModalApp} wide mobileVariant="sheet">
           <Fld label="Paziente">
             <SelettorePaziente
               patients={patients}
