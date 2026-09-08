@@ -108,6 +108,35 @@ test('Agenda Nuovo/Modifica appuntamento modal reaches the viewport bottom on mo
   assert.doesNotMatch(tokens, /data-mobile-variant="sheet"/);
 });
 
+// Product Owner follow-up, after the fix above shipped: "Adesso compare
+// troppo in alto il popup di modifica appuntamenti quindi viene coperto da
+// giorni settimana flottanti" — reaching almost the full viewport height
+// (needed to clear the dock at the bottom) pushed the sheet's own top edge
+// up into the same screen region as Agenda's OWN floating month/week-strip
+// controls (.agenda-mobile-floating-controls, position:absolute, z-index
+// 30). Verified with a document.elementFromPoint() hit-test grid against
+// the real CSS (not just visual screenshots, which read misleadingly here
+// too) that reserving real, MEASURED top clearance — Agenda.jsx's own
+// mobileOverlayHeight, the exact ResizeObserver'd height of that overlay,
+// already used for the grid's own top scroll-spacer, never a guessed
+// constant — fixes it without disturbing the bottom dock clearance.
+test('Agenda Nuovo/Modifica appuntamento modal reserves real top clearance below the floating week-strip controls', () => {
+  const modalUi = readFileSync(new URL('../src/components/ui/Modal.jsx', import.meta.url), 'utf8');
+  assert.match(modalUi, /backdropClassName = '',\s*sheetClassName = '',\s*backdropStyle/);
+  assert.match(modalUi, /className=\{`pol-modal-backdrop\$\{backdropClassName/);
+  assert.match(modalUi, /className=\{`pol-modal-sheet\$\{sheetClassName/);
+
+  assert.match(agenda, /backdropClassName="agenda-appointment-form-backdrop" sheetClassName="agenda-appointment-form-sheet"/);
+  assert.match(agenda, /'--agenda-mobile-overlay-clearance-form':\s*`\$\{mobileOverlayHeight\}px`/);
+
+  // Both override rules must out-specificity designTokens.css's base
+  // `html .pol-modal-backdrop`/`html .pol-modal-sheet` (1 class + 1
+  // element) — combining with the base .pol-modal-* class (2 classes) is
+  // what actually wins; a bare new class alone would silently lose.
+  assert.match(premium, /\.pol-modal-backdrop\.agenda-appointment-form-backdrop\s*\{[\s\S]*padding-top:\s*calc\(var\(--agenda-mobile-overlay-clearance-form/);
+  assert.match(premium, /\.pol-modal-sheet\.agenda-appointment-form-sheet\s*\{[\s\S]*max-height:\s*calc\(100dvh[\s\S]*--agenda-mobile-overlay-clearance-form[\s\S]*!important/);
+});
+
 test('all required mobile pages share the same app-scroll surface', () => {
   for (const page of ['home', 'agenda', 'paz', 'piani', 'paga', 'archivio', 'controllo', 'wa', 'set', 'chat']) {
     assert.match(app, new RegExp(`page === '${page}'`), `${page} must render inside the shared shell`);

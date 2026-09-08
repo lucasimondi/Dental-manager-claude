@@ -7,7 +7,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      injectRegister: 'auto',
+      // POL-UI-029: registered explicitly in src/App.jsx (via
+      // `virtual:pwa-register`) instead of the default auto-injected
+      // script, so an update installing in the background can surface a
+      // "tocca per aggiornare" banner — the default left new deploys
+      // invisible to an already-open PWA (backgrounded/resumed, never a
+      // real reload) until the next full relaunch.
+      injectRegister: false,
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
         name: 'Poliedra',
