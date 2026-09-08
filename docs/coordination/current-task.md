@@ -1,5 +1,18 @@
 # Current task
 
+- TASK: POL-UI-033 — Home mobile: tasto Esci mancante (esisteva solo in Impostazioni)
+- TITLE: il Product Owner, cercando un modo rapido per uscire/rientrare e forzare l'aggiornamento (POL-UI-032), segnala che su mobile in Home non c'è alcun tasto Esci — esiste solo nell'header di Impostazioni (POL-UI-031) e in fondo alla tab Profilo, mai su Home.
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggio verbatim: "Su mobile non c'è nessun tasto esci , in home intendo, e poi non vedo le modifiche , anche esco e riaccedo , aggiorno , ecc non succede niente").
+- BRANCH: `fix/logout-forces-reload-for-updates` (stesso branch del giro precedente POL-UI-032, non ancora mergiato — continua ad accumulare finché non arriva "mergia").
+- STATUS: IMPLEMENTATO, non ancora pushato — vedi EXACT NEXT ACTION.
+
+- **Fix**: nuovo tasto icona 44×44 "Esci" nella barra sticky in cima a Home (`.home-hero__actions`, subito accanto a "Personalizza Home", stesso trattamento icon-only già usato lì) — visibile SOLO su mobile (`display:none` di default, `display:flex` dentro lo stesso media query mobile, selettore combinato con `.home-hero__customize` per ereditare lo stesso target touch 44px): su desktop resta invariato, l'Esci della sidebar è già sempre visibile. Stesso `handleLogout` di `App.jsx` passato in giù come nuovo prop `onLogout` di `Dashboard.jsx` — nessuna nuova logica.
+- **Sul "non vedo le modifiche" nello stesso messaggio**: il fix del giro precedente (POL-UI-032 — logout che ora ricarica davvero la pagina) risolve esattamente questo, ma è ancora sullo stesso branch non mergiato: fino al merge, "esco e rientro"/"aggiorno" restano comportamento vecchio (nessun vero reload) per chiunque sia ancora sulla sessione già aperta — confermato via Vercel che ogni deploy precedente è comunque READY in produzione, il problema è sempre stato lato client (nessuna vera richiesta di ricaricare), mai lato server.
+- VALIDATION: `npm test` 746/746 (nuovo `tests/homeLogoutButton.test.mjs`; aggiornato un regex troppo rigido in `tests/mobileHomeRound2.test.mjs` che assumeva `.home-hero__customize` come selettore isolato — ora tollera il selettore combinato, stesso contratto touch-target verificato); `npm run build` pulito; `git diff --check` pulito. Nessuna migration — solo componenti/CSS client.
+- EXACT NEXT ACTION: push del branch, apertura PR, merge solo su istruzione esplicita del Product Owner — il Product Owner dovrebbe comunque sapere che finché QUESTO merge non è live, nessuno dei due fix (tasto qui + reload al logout) è ancora disponibile: serve prima un vero riavvio completo dell'app (chiudi tutto, riapri) fatto FUORI dall'app stessa, l'unico modo di forzare l'aggiornamento quando il meccanismo di auto-aggiornamento stesso non è ancora quello nuovo.
+
+---
+
 - TASK: POL-UI-032 — Fix: "esco e rientro" non applicava mai gli aggiornamenti (il logout non ricaricava davvero la pagina)
 - TITLE: dopo POL-UI-029 (banner di aggiornamento PWA) e POL-UI-031 (tasto Esci più raggiungibile), il Product Owner segnala che nemmeno uscendo e rientrando le modifiche compaiono.
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggio verbatim: "Neanche uscendo e rientrando , aggiornando , non si vedono le modifiche").
