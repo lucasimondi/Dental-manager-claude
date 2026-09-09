@@ -2,7 +2,7 @@
 import { supabase } from '../lib/supabase.js';
 import { Crd, Bdg, Modal, Ic, Btn, Fld, Sel, Inp, Txt, TimePicker, SelettorePaziente, EmptyState, Toast } from './ui';
 import { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
-import { C, fmt, fmtD, today, uid, RICHIAMO_CATEGORIE, pazientiNuoviIn } from '../lib/utils';
+import { C, fmt, fmtD, today, uid, RICHIAMO_CATEGORIE, TODO_CATEGORIE, pazientiNuoviIn } from '../lib/utils';
 import { BarChart, Bar, LineChart, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useControlloDati } from '../lib/useControlloDati';
 import WidgetWorkspace from './WidgetWorkspace.jsx';
@@ -464,6 +464,7 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
   const [todoModal, setTodoModal] = useState(false);
   const [todoPatientId, setTodoPatientId] = useState('');
   const [todoPatientSearch, setTodoPatientSearch] = useState('');
+  const [todoCategoria, setTodoCategoria] = useState('GENERICO');
   const [todoLoading, setTodoLoading] = useState(false);
   const openGenericTodoModal = () => {
     setTodoPatientId('');
@@ -526,7 +527,7 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
 
       const inserite = [];
       for (const entry of nuoveEntry) {
-        const nuova = { id: Date.now() + inserite.length, testo: entry.message, fatto: false, data: t, paziente_id: entry.pazienteId };
+        const nuova = { id: Date.now() + inserite.length, testo: entry.message, fatto: false, data: t, paziente_id: entry.pazienteId, categoria: entry.kind };
         const { error } = await supabase.from('todos').insert([nuova]);
         if (!error) inserite.push({ entry, nuova });
       }
@@ -563,13 +564,14 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
   const addTodo = async () => {
     if (!todoInput.trim()) return;
     const patient = patients.find((item) => String(item.id) === String(todoPatientId));
-    const nuova = { id: Date.now(), testo: buildActivityText(todoInput, patient), fatto: false, data: t };
+    const nuova = { id: Date.now(), testo: buildActivityText(todoInput, patient), fatto: false, data: t, categoria: todoCategoria };
     const { error } = await supabase.from('todos').insert([nuova]);
     if (!error) {
       setTodoList(prev => [nuova, ...prev]);
       setTodoInput('');
       setTodoPatientId('');
       setTodoPatientSearch('');
+      setTodoCategoria('GENERICO');
     }
   };
 
@@ -1242,6 +1244,11 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
             />
             {todoPatientId && <button type="button" onClick={() => setTodoPatientId('')} style={{ marginTop: 5, padding: 0, border: 0, background: 'none', color: C.txm, fontSize: 11, cursor: 'pointer' }}>Rimuovi associazione</button>}
           </Fld>
+          <Fld label="Categoria">
+            <Sel value={todoCategoria} onChange={(e) => setTodoCategoria(e.target.value)}>
+              {Object.entries(TODO_CATEGORIE).map(([id, cat]) => <option key={id} value={id}>{cat.label}</option>)}
+            </Sel>
+          </Fld>
           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
             <Btn ch="Annulla" v="sec" onClick={closeTodoModal} full />
             <Btn ch="Aggiungi" onClick={() => { addTodo(); setTodoModal(false); }} dis={!todoInput.trim()} full />
@@ -1544,14 +1551,18 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
                   // automatico portano paziente_id — cliccabili per aprire
                   // subito quel paziente, invece di dover cercarlo a mano.
                   const todoPaziente = todo.paziente_id != null ? patients.find((p) => String(p.id) === String(todo.paziente_id)) : null;
+                  const todoCat = todo.categoria ? TODO_CATEGORIE[todo.categoria] : null;
                   return (
                     <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 0', borderBottom: `1px solid ${C.brd}` }}>
                       <button className="home-list-checkbox" onClick={() => toggleTodo(todo.id)}><span style={{ border: `2px solid ${C.brd}` }} /></button>
-                      {todoPaziente ? (
-                        <button type="button" onClick={() => onOpenPaz(todoPaziente, 'piani')} style={{ flex: 1, fontSize: 12, fontWeight: 600, textAlign: 'left', background: 'none', border: 'none', padding: 0, color: C.pri, cursor: 'pointer', textDecoration: 'underline', textDecorationColor: C.pri + '50' }} title="Apri scheda paziente">{todo.testo}</button>
-                      ) : (
-                        <span style={{ flex: 1, fontSize: 12, fontWeight: 600 }}>{todo.testo}</span>
-                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {todoPaziente ? (
+                          <button type="button" onClick={() => onOpenPaz(todoPaziente, 'piani')} style={{ display: 'block', fontSize: 12, fontWeight: 600, textAlign: 'left', background: 'none', border: 'none', padding: 0, color: C.pri, cursor: 'pointer', textDecoration: 'underline', textDecorationColor: C.pri + '50' }} title="Apri scheda paziente">{todo.testo}</button>
+                        ) : (
+                          <span style={{ display: 'block', fontSize: 12, fontWeight: 600 }}>{todo.testo}</span>
+                        )}
+                        {todoCat && <div style={{ marginTop: 3, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n={todoCat.icona} s={9} c={todoCat.colore} /><Bdg ch={todoCat.label} co={todoCat.colore} /></div>}
+                      </div>
                       <button className="home-list-icon-btn" onClick={() => { const msg = encodeURIComponent('Attività: ' + todo.testo); window.open('https://wa.me/?text=' + msg, '_blank'); }} title="Invia su WhatsApp"><Ic n="wa" s={13} c="#25D366" /></button>
                       <button className="home-list-icon-btn" onClick={() => deleteTodo(todo.id)}><Ic n="x" s={11} c={C.dan} /></button>
                     </div>
