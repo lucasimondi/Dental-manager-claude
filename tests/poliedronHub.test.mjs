@@ -47,8 +47,16 @@ test('PoliedronHub reuses the ControlloGestione sidebar/dropdown nav pattern (ma
 });
 
 test('the "Chat" nav entry navigates away instead of switching section (POL-UI-025: one entry point for every Poliedron surface)', () => {
-  assert.match(hubSrc, /\{ id: 'chat', icon: 'chat', label: 'Chat', external: true \}/);
-  assert.match(hubSrc, /if \(item\.external\) \{ onNavigate && onNavigate\('chat'\); return; \}/);
+  assert.match(hubSrc, /\{ id: 'chat', icon: 'chat', label: 'Chat', external: true, page: 'chat' \}/);
+  assert.match(hubSrc, /if \(item\.external\) \{ onNavigate && onNavigate\(item\.page\); return; \}/);
+});
+
+// POL-UI-034: Product Owner, dopo aver visto la nuova sezione Attività:
+// "Dobbiamo mettere il tasto su menu poliedron per attività altrimenti
+// non si trova" — stesso pattern "external" già usato per Chat, generalizzato
+// a un `page` per voce invece del solo 'chat' hardcoded.
+test('the "Attività" nav entry also navigates away, to the new Attività page', () => {
+  assert.match(hubSrc, /\{ id: 'attivita', icon: 'clip', label: 'Attività', external: true, page: 'attivita' \}/);
 });
 
 test('Salute dati: the score breakdown is genuinely clickable per check, and "Altri avvisi" only covers kinds NOT already represented as a score check (no duplicate patient rows)', () => {

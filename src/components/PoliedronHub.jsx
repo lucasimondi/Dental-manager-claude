@@ -39,7 +39,8 @@ const TABS = [
   { id: 'salute', icon: 'compass', label: 'Salute dati' },
   { id: 'consigli', icon: 'trend', label: 'Consigli' },
   { id: 'chiarire', icon: 'warn', label: 'Da chiarire' },
-  { id: 'chat', icon: 'chat', label: 'Chat', external: true },
+  { id: 'attivita', icon: 'clip', label: 'Attività', external: true, page: 'attivita' },
+  { id: 'chat', icon: 'chat', label: 'Chat', external: true, page: 'chat' },
 ];
 
 // POL-UI-034: etichetta/icona per ogni ACTIVITY_KIND vengono ora da
@@ -291,7 +292,7 @@ export default function PoliedronHub({
   }), [patients, plans, dataHealthFindings, scadenzeScadute, healthScoreDocs, implants, spese, t, homePermissions.managementControl]);
 
   const handleTabClick = (item) => {
-    if (item.external) { onNavigate && onNavigate('chat'); return; }
+    if (item.external) { onNavigate && onNavigate(item.page); return; }
     setSection(item.id);
   };
 
