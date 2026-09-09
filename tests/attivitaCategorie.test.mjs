@@ -58,7 +58,7 @@ test('a migration adds the categoria column to public.todos', () => {
 
 test('a dedicated "Attività" page exists, routed from App.jsx and reachable from NAV, mirroring the Richiami pattern', () => {
   assert.match(app, /const Attivita = lazy\(\(\) => import\('\.\/components\/Attivita\.jsx'\)\);/);
-  assert.match(app, /\{page === 'attivita' && <Attivita patients=\{patients\} onOpenPaz=\{goSchedaPaz\} \/>\}/);
+  assert.match(app, /\{page === 'attivita' && <Attivita patients=\{patients\} onOpenPaz=\{goSchedaPaz\} richiami=\{richiami\} setRichiami=\{setRichiamiSync\}/);
   assert.match(utils, /\{ id: 'attivita', l: 'Attività', ic: 'clip' \}/);
 });
 
@@ -67,8 +67,21 @@ test('Attività page filters todos by category and lets the user create/complete
   assert.match(attivita, /supabase\.from\('todos'\)\.insert\(\[nuova\]\)/);
   assert.match(attivita, /supabase\.from\('todos'\)\.update\(\{ fatto: !t\.fatto \}\)\.eq\('id', t\.id\)/);
   assert.match(attivita, /supabase\.from\('todos'\)\.delete\(\)\.eq\('id', id\)/);
-  assert.match(attivita, /filtroCategoria === 'tutte' \|\| t\.categoria === filtroCategoria/);
-  assert.match(attivita, /import \{ C, today, TODO_CATEGORIE \} from '\.\.\/lib\/utils'/);
+  assert.match(attivita, /filtroCategoriaAttivita === 'tutte' \|\| t\.categoria === filtroCategoriaAttivita/);
+  assert.match(attivita, /import \{ C, fmtD, today, uid, TODO_CATEGORIE, RICHIAMO_CATEGORIE, DEF_TPL_GENERICO \} from '\.\.\/lib\/utils'/);
+});
+
+// Product Owner, dopo aver visto una prima versione solo-Attività: "Deve
+// esserci sezione apposita per attività e promemoria, ovvero pagina in cui
+// ci siano tutte le attività per etichette implementabili" — una sola
+// pagina che copra ENTRAMBE, non solo le Attività.
+test('Attività page also has a Promemoria section (same richiami state as the Richiami page), filterable by RICHIAMO_CATEGORIE', () => {
+  assert.match(attivita, /const \[sezione, setSezione\] = useState\('attivita'\)/);
+  assert.match(attivita, /\['attivita', `Attività \(\$\{todoAttive\.length\}\)`\], \['promemoria', `Promemoria \(\$\{richiamiAperti\.length\}\)`\]/);
+  assert.match(attivita, /generaRichiamiBot\(\{ patients, plans, payments, appointments, richiami \}\)/);
+  assert.match(attivita, /filtroCategoriaRichiami === 'tutte' \|\| r\.categoria === filtroCategoriaRichiami/);
+  assert.match(attivita, /setRichiami\(\(prev\) => \[\.\.\.prev, \{/);
+  assert.match(attivita, /RICHIAMO_CATEGORIE\[r\.categoria\] \|\| RICHIAMO_CATEGORIE\.generico/);
 });
 
 test('PoliedronHub reads its avviso label/icon from the shared TODO_CATEGORIE instead of a duplicated local map', () => {
