@@ -26,9 +26,10 @@ test('dedup checks the patient AND the stable per-kind marker, not just free tex
   assert.match(source, /String\(row\.paziente_id \?\? ''\) === String\(entry\.pazienteId\) && String\(row\.testo \|\| ''\)\.includes\(entry\.dedupMarker\)/);
 });
 
-test('a patient-linked Attività row renders as a real clickable control that opens that patient', () => {
+test('every Attività row renders as a real clickable control — patient-linked opens that patient, otherwise opens the Attività page (POL-UI-034: "poi devono essere cliccabili")', () => {
   assert.match(source, /const todoPaziente = todo\.paziente_id != null \? patients\.find\(\(p\) => String\(p\.id\) === String\(todo\.paziente_id\)\) : null;/);
-  assert.match(source, /onClick=\{\(\) => onOpenPaz\(todoPaziente, 'piani'\)\}/);
+  assert.match(source, /const apriTodo = \(\) => \(todoPaziente \? onOpenPaz\(todoPaziente, 'piani'\) : \(onNavigate && onNavigate\('attivita'\)\)\);/);
+  assert.match(source, /<button type="button" onClick=\{apriTodo\}/);
 });
 
 test('new findings also post one summary notification into the persisted Poliedron chat, naming the affected patients', () => {

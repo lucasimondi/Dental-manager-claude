@@ -1556,20 +1556,23 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
                 {todoAttivi.map(todo => {
                   // POL-FIN-007: le Attività generate dal controllo dati
                   // automatico portano paziente_id — cliccabili per aprire
-                  // subito quel paziente, invece di dover cercarlo a mano.
+                  // subito quel paziente. POL-UI-034: anche le altre righe
+                  // (nessun paziente associato) ora sono cliccabili — portano
+                  // alla pagina Attività dedicata, dove c'è più spazio per
+                  // gestirle senza che si perdano tra le tante di Home.
                   const todoPaziente = todo.paziente_id != null ? patients.find((p) => String(p.id) === String(todo.paziente_id)) : null;
                   const todoCat = todo.categoria ? TODO_CATEGORIE[todo.categoria] : null;
+                  const apriTodo = () => (todoPaziente ? onOpenPaz(todoPaziente, 'piani') : (onNavigate && onNavigate('attivita')));
                   return (
-                    <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 0', borderBottom: `1px solid ${C.brd}` }}>
+                    <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: `1px solid ${C.brd}` }}>
                       <button className="home-list-checkbox" onClick={() => toggleTodo(todo.id)}><span style={{ border: `2px solid ${C.brd}` }} /></button>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        {todoPaziente ? (
-                          <button type="button" onClick={() => onOpenPaz(todoPaziente, 'piani')} style={{ display: 'block', fontSize: 12, fontWeight: 600, textAlign: 'left', background: 'none', border: 'none', padding: 0, color: C.pri, cursor: 'pointer', textDecoration: 'underline', textDecorationColor: C.pri + '50' }} title="Apri scheda paziente">{todo.testo}</button>
-                        ) : (
-                          <span style={{ display: 'block', fontSize: 12, fontWeight: 600 }}>{todo.testo}</span>
-                        )}
-                        {todoCat && <div style={{ marginTop: 3, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n={todoCat.icona} s={9} c={todoCat.colore} /><Bdg ch={todoCat.label} co={todoCat.colore} /></div>}
-                      </div>
+                      <button type="button" onClick={apriTodo} title={todoPaziente ? 'Apri scheda paziente' : 'Vedi in Attività'} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}>
+                        <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, fontWeight: 600, color: todoPaziente ? C.pri : C.txt }}>{todo.testo}</span>
+                          {todoCat && <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 3 }}><Ic n={todoCat.icona} s={9} c={todoCat.colore} /><Bdg ch={todoCat.label} co={todoCat.colore} /></span>}
+                        </span>
+                        <span style={{ flexShrink: 0, fontSize: 12, color: C.txl }}>›</span>
+                      </button>
                       <button className="home-list-icon-btn" onClick={() => { const msg = encodeURIComponent('Attività: ' + todo.testo); window.open('https://wa.me/?text=' + msg, '_blank'); }} title="Invia su WhatsApp"><Ic n="wa" s={13} c="#25D366" /></button>
                       <button className="home-list-icon-btn" onClick={() => deleteTodo(todo.id)}><Ic n="x" s={11} c={C.dan} /></button>
                     </div>

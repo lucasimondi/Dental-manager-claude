@@ -43,9 +43,10 @@ test('the manual "+ Nuova attività" modal lets the user pick a categoria, wired
   assert.match(dashboard, /Object\.entries\(TODO_CATEGORIE\)\.map\(\(\[id, cat\]\) => <option key=\{id\} value=\{id\}>\{cat\.label\}<\/option>\)/);
 });
 
-test('the Home "Attività" widget shows a visible category badge on each row that has one', () => {
+test('the Home "Attività" widget shows a visible category badge inline on each row that has one, text truncated to one line', () => {
   assert.match(dashboard, /const todoCat = todo\.categoria \? TODO_CATEGORIE\[todo\.categoria\] : null;/);
-  assert.match(dashboard, /todoCat && <div[\s\S]{0,80}<Ic n=\{todoCat\.icona\}[\s\S]{0,40}<Bdg ch=\{todoCat\.label\} co=\{todoCat\.colore\} \/><\/div>/);
+  assert.match(dashboard, /overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'/);
+  assert.match(dashboard, /todoCat && <span[\s\S]{0,120}<Ic n=\{todoCat\.icona\}[\s\S]{0,40}<Bdg ch=\{todoCat\.label\} co=\{todoCat\.colore\} \/><\/span>/);
 });
 
 // Product Owner: "metti anche il widgets cliccabile che porti alla pagina
