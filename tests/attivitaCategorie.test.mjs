@@ -48,6 +48,14 @@ test('the Home "Attività" widget shows a visible category badge on each row tha
   assert.match(dashboard, /todoCat && <div[\s\S]{0,80}<Ic n=\{todoCat\.icona\}[\s\S]{0,40}<Bdg ch=\{todoCat\.label\} co=\{todoCat\.colore\} \/><\/div>/);
 });
 
+// Product Owner: "metti anche il widgets cliccabile che porti alla pagina
+// attività" — il widget Home "Attività e promemoria" ora ha un link "Vedi
+// tutte" che porta alla nuova pagina dedicata.
+test('the Home "Attività e promemoria" widget header links to the Attività page', () => {
+  assert.match(dashboard, /onClick=\{\(\) => onNavigate\('attivita'\)\}/);
+  assert.match(dashboard, /Vedi tutte ›/);
+});
+
 test('a migration adds the categoria column to public.todos', () => {
   const files = readdirSync(new URL('../supabase/migrations/', import.meta.url));
   const migrationFile = files.find((f) => f.includes('pol_ui_034_todos_categoria'));

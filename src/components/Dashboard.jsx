@@ -1537,7 +1537,14 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
 
         if (w.id === 'todo') return (
           <div key="todo" style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="okc" s={11} c={C.txm} />Attività e promemoria</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 5 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="okc" s={11} c={C.txm} />Attività e promemoria</span>
+              {onNavigate && (
+                <button type="button" className="home-list-link" onClick={() => onNavigate('attivita')} style={{ background: 'none', color: C.pri, fontWeight: 700, textTransform: 'none', letterSpacing: 'normal' }}>
+                  Vedi tutte ›
+                </button>
+              )}
+            </div>
             <Crd style={{ marginBottom: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span style={{ fontSize: 12, fontWeight: 700 }}>Attività {todoAttivi.length > 0 && <span style={{ background: C.dan, color: '#fff', borderRadius: 8, padding: '1px 6px', fontSize: 10 }}>{todoAttivi.length}</span>}</span>
