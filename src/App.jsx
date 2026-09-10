@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, Suspense, lazy } from 'react';
+﻿import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase, DB } from './lib/supabase.js';
 import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, getLogoSlug, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, uid, applyBrandColors, applyHeaderColor } from './lib/utils';
@@ -127,20 +127,27 @@ export default function App() {
   // POL-UI-029: registers the service worker ourselves (vite.config.js sets
   // injectRegister:false) instead of the previous bare auto-injected
   // `navigator.serviceWorker.register(...)` — which never listened for an
-  // update at all. registerType:'autoUpdate' already makes each new service
-  // worker skipWaiting+claim clients as soon as it installs, but with
-  // nothing listening for that, the tab just kept running its old,
-  // already-loaded JS regardless — invisible to a PWA opened from the home
-  // screen, which is resumed from background, never actually reloaded.
-  // `onNeedReload` fires once the new service worker has ALREADY taken
-  // over (safe to reload then, no install race); this banner is the only
-  // thing that decides WHEN — never a silent auto-reload, which could
-  // otherwise drop someone's in-progress form.
+  // update at all. `onNeedReload` fires once the new service worker has
+  // ALREADY taken over (safe to reload then, no install race); this banner
+  // is the only thing that decides WHEN — never a silent auto-reload, which
+  // could otherwise drop someone's in-progress form. registerType:'autoUpdate'
+  // is meant to make each new service worker skipWaiting+claim clients as
+  // soon as it installs — vite.config.js now sets those explicitly (POL-UI-035:
+  // injectRegister:false silently opts back out of the plugin's own default
+  // for them, which was the real reason updates were slow/sometimes never
+  // arrived even after a reload or logout/login).
+  const swRegistrationRef = useRef(null);
+  const checkForUpdate = () => {
+    swRegistrationRef.current?.update().finally(() => window.location.reload());
+  };
   useEffect(() => {
     let cancelled = false;
     import('virtual:pwa-register').then(({ registerSW }) => {
       if (cancelled) return;
-      registerSW({ onNeedReload: () => setUpdateReady(() => () => window.location.reload()) });
+      registerSW({
+        onNeedReload: () => setUpdateReady(() => () => window.location.reload()),
+        onRegisteredSW: (_url, registration) => { swRegistrationRef.current = registration || null; },
+      });
     }).catch(() => {}); // no SW in this environment (e.g. local dev) — nothing to register
     return () => { cancelled = true; };
   }, []);
@@ -733,7 +740,7 @@ export default function App() {
             {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} initialFiltroTipo={archivioFiltroTipoHint} />}
             {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
             {page === 'agenteai' && <AgenteAISetup features={features} />}
-            {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} isStudioAdmin={isStudioAdmin} onLogout={handleLogout} studioMembership={studioMembership} />}
+            {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} isStudioAdmin={isStudioAdmin} onLogout={handleLogout} onCheckUpdate={checkForUpdate} studioMembership={studioMembership} />}
             {page === 'chat' && <div ref={setPoliedronChatHost} className="poliedron-chat-host" />}
           </Suspense>
         )}

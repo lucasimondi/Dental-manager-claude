@@ -10,13 +10,15 @@ const viteConfig = readFileSync(new URL('../vite.config.js', import.meta.url), '
 // via Vercel). Root cause: this app is a PWA (vite-plugin-pwa,
 // registerType:'autoUpdate') registered via the plugin's default bare
 // `navigator.serviceWorker.register(...)` snippet — it never listened for
-// an update at all. The generated service worker DOES skipWaiting+claim
-// clients as soon as a new version installs, but with nothing listening
-// for that on the client, an already-open tab (or, worse, a PWA opened
-// from the home screen — resumed from background, never truly reloaded)
-// just kept running its old, already-loaded JS forever. Every fix in this
+// an update at all, so an already-open tab (or, worse, a PWA opened from
+// the home screen — resumed from background, never truly reloaded) just
+// kept running its old, already-loaded JS forever. Every fix in this
 // session could have been silently invisible to an installed PWA session
-// this way, not just POL-UI-027.
+// this way, not just POL-UI-027. (POL-UI-035 later found the generated
+// service worker did NOT actually skipWaiting+claim clients on its own at
+// this point — see pwaSkipWaitingClientsClaim.test.mjs — but the missing
+// listener here was real and independent: fixing one without the other
+// still wouldn't have delivered updates reliably.)
 test('service worker is registered via virtual:pwa-register with an update-triggered reload, not the bare auto-injected script', () => {
   assert.match(viteConfig, /registerType:\s*'autoUpdate'/);
   assert.match(viteConfig, /injectRegister:\s*false/);

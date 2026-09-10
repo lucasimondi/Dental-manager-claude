@@ -57,7 +57,7 @@ function estraiColoriDaLogo(base64) {
 
 
 
-export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange, features, theme, toggleTheme, isStudioAdmin, onLogout, studioMembership }) {
+export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange, features, theme, toggleTheme, isStudioAdmin, onLogout, onCheckUpdate, studioMembership }) {
   const [si, setSi] = useState({ ...DEF_STUDIO, ...(studioInfo || {}) });
   const [toast, setToast] = useState('');
   const firmaInputRef = useRef(null);
@@ -348,16 +348,36 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           parte" — l'unico Esci esistente (sotto, tab Profilo e team) era a
           diversi tap e uno scroll di distanza dall'apertura di Impostazioni.
           Stesso handleLogout, nessuna nuova logica: solo un secondo punto
-          d'accesso sempre visibile in cima, qualunque sia la tab aperta. */}
-      <PageHeader icon="set" title="Impostazioni" actions={onLogout && (
-        <button
-          onClick={onLogout}
-          className="pol-btn"
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 13px', background: 'none', border: `1.5px solid ${C.brd}`, borderRadius: 10, color: C.dan, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' }}
-        >
-          <Ic n="x" s={13} c={C.dan} />
-          Esci
-        </button>
+          d'accesso sempre visibile in cima, qualunque sia la tab aperta.
+          POL-UI-035: Product Owner — "impiega tanto e qualche volta non
+          [aggiorna]... dobbiamo fare una cosa che piuttosto sia manuale?" —
+          un secondo tasto accanto che forza un controllo aggiornamenti
+          esplicito (registration.update(), che ignora la cache HTTP dello
+          script del service worker) seguito da un reload, come rete di
+          sicurezza indipendente dal rilevamento automatico. */}
+      <PageHeader icon="set" title="Impostazioni" actions={(onLogout || onCheckUpdate) && (
+        <>
+          {onCheckUpdate && (
+            <button
+              onClick={onCheckUpdate}
+              className="pol-btn"
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 13px', background: 'none', border: `1.5px solid ${C.brd}`, borderRadius: 10, color: C.pri, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              <Ic n="refresh" s={13} c={C.pri} />
+              Controlla aggiornamenti
+            </button>
+          )}
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              className="pol-btn"
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 13px', background: 'none', border: `1.5px solid ${C.brd}`, borderRadius: 10, color: C.dan, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              <Ic n="x" s={13} c={C.dan} />
+              Esci
+            </button>
+          )}
+        </>
       )} />
 
       {/* Navigazione a sezioni: prima era tutto in un unico scroll lunghissimo,
