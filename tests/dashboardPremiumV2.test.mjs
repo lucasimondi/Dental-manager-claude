@@ -186,7 +186,7 @@ test('Impostazioni (set) is offered by the central Poliedron panel default sugge
 
 test('desktop keeps Impostazioni in the sidebar nav (App.jsx NAV, unchanged) — no change needed there', async () => {
   const utilsSrc = await readFile(new URL('../src/lib/utils.js', import.meta.url), 'utf8');
-  assert.match(utilsSrc, /\{ id: 'set', l: 'Setup', ic: 'set' \}/);
+  assert.match(utilsSrc, /\{ id: 'set', l: 'Impostazioni', ic: 'set' \}/);
 });
 
 // =============================================================================

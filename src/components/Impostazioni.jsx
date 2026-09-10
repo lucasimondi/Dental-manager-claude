@@ -57,7 +57,7 @@ function estraiColoriDaLogo(base64) {
 
 
 
-export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange, features, theme, toggleTheme, isStudioAdmin, onLogout, studioMembership }) {
+export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange, features, theme, toggleTheme, isStudioAdmin, onLogout, onCheckUpdate, onOpenHomeCustomizer, studioMembership }) {
   const [si, setSi] = useState({ ...DEF_STUDIO, ...(studioInfo || {}) });
   const [toast, setToast] = useState('');
   const firmaInputRef = useRef(null);
@@ -348,16 +348,36 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           parte" — l'unico Esci esistente (sotto, tab Profilo e team) era a
           diversi tap e uno scroll di distanza dall'apertura di Impostazioni.
           Stesso handleLogout, nessuna nuova logica: solo un secondo punto
-          d'accesso sempre visibile in cima, qualunque sia la tab aperta. */}
-      <PageHeader icon="set" title="Impostazioni" actions={onLogout && (
-        <button
-          onClick={onLogout}
-          className="pol-btn"
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 13px', background: 'none', border: `1.5px solid ${C.brd}`, borderRadius: 10, color: C.dan, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' }}
-        >
-          <Ic n="x" s={13} c={C.dan} />
-          Esci
-        </button>
+          d'accesso sempre visibile in cima, qualunque sia la tab aperta.
+          POL-UI-035: Product Owner — "impiega tanto e qualche volta non
+          [aggiorna]... dobbiamo fare una cosa che piuttosto sia manuale?" —
+          un secondo tasto accanto che forza un controllo aggiornamenti
+          esplicito (registration.update(), che ignora la cache HTTP dello
+          script del service worker) seguito da un reload, come rete di
+          sicurezza indipendente dal rilevamento automatico. */}
+      <PageHeader icon="set" title="Impostazioni" actions={(onLogout || onCheckUpdate) && (
+        <>
+          {onCheckUpdate && (
+            <button
+              onClick={onCheckUpdate}
+              className="pol-btn"
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 13px', background: 'none', border: `1.5px solid ${C.brd}`, borderRadius: 10, color: C.pri, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              <Ic n="refresh" s={13} c={C.pri} />
+              Controlla aggiornamenti
+            </button>
+          )}
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              className="pol-btn"
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 13px', background: 'none', border: `1.5px solid ${C.brd}`, borderRadius: 10, color: C.dan, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              <Ic n="x" s={13} c={C.dan} />
+              Esci
+            </button>
+          )}
+        </>
       )} />
 
       {/* Navigazione a sezioni: prima era tutto in un unico scroll lunghissimo,
@@ -366,6 +386,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       <div className="pol-tabbar" style={{ marginBottom: 16, paddingBottom: 2 }}>
         {[
           ['studio', 'brief', 'Studio'],
+          ['home', 'home', 'Home'],
           ['agenda', 'cal', 'Agenda'],
           ['documenti', 'file', 'Documenti'],
           ['privacy', 'lock', 'Privacy GDPR'],
@@ -390,6 +411,26 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           </button>
         ))}
       </div>
+
+      {/* POL-UI-036: Product Owner — "il tasto impostazioni deve essere il
+          tasto setup in cui ci sarà anche personalizzazione home, così è
+          tutto più lineare". L'editor vero e proprio resta dov'è, dentro
+          Dashboard.jsx (già passato per diversi giri di bugfix sul
+          salvataggio — non vale la pena duplicarlo): questo tasto naviga a
+          Home e le chiede di aprirlo, stesso principio già usato per la
+          duplicazione del tasto Esci (POL-UI-031/033). */}
+      {sezione === 'home' && (
+      <>
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 20, fontWeight: 800 }}>Home</div>
+        <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Scegli quali widget mostrare in Home, il loro ordine e la loro dimensione</div>
+      </div>
+      <Crd>
+        <div style={{ fontSize: 13, color: C.txm, marginBottom: 12 }}>L'editor si apre direttamente sulla Home, dove puoi vedere in anteprima ogni modifica mentre la fai.</div>
+        {onOpenHomeCustomizer && <Btn ic="home" ch="Personalizza Home" onClick={onOpenHomeCustomizer} />}
+      </Crd>
+      </>
+      )}
 
       {sezione === 'studio' && (
       <>

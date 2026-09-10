@@ -70,7 +70,7 @@ const getSaluto = (nome) => { const ora = new Date().getHours(); const s = ora <
 const fmtDataOra = (d) => d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
 const fmtOra = (d) => d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 
-export default function Dashboard({ patients, setPatients, appointments, setAppointments, payments, plans, richiami = [], impegni = [], implants = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, onNavigate, onNavigateNew, templates, userName: userNameProp, si, features, studioId, currentUserId, isStudioAdmin, studioMembership, activityPatientRequest, onActivityPatientRequestHandled, onLogout }) {
+export default function Dashboard({ patients, setPatients, appointments, setAppointments, payments, plans, richiami = [], impegni = [], implants = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, onNavigate, onNavigateNew, templates, userName: userNameProp, si, features, studioId, currentUserId, isStudioAdmin, studioMembership, activityPatientRequest, onActivityPatientRequestHandled, onLogout, openHomeCustomizerRequest, onOpenHomeCustomizerRequestHandled }) {
   const homePermissions = buildHomePermissions({ membership: studioMembership, features, vertical: si?.vertical });
   const roleLayout = createRolePresetLayout(studioMembership?.capabilities);
   const availableWidgetCatalog = filterWidgetCatalog(HOME_WIDGET_REGISTRY, homePermissions);
@@ -365,6 +365,17 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
     setThemeTab('widgets');
     setSettingsOpen(true);
   };
+
+  // POL-UI-036: Impostazioni's new "Home" tab navigates here and sets
+  // openHomeCustomizerRequest instead of duplicating this editor — waits
+  // for layoutLoading to clear (openHomeCustomizer bails out while the
+  // saved layout is still loading) instead of silently dropping the
+  // request if it arrives on a fresh Home mount.
+  useEffect(() => {
+    if (!openHomeCustomizerRequest || layoutLoading) return;
+    openHomeCustomizer();
+    onOpenHomeCustomizerRequestHandled?.(openHomeCustomizerRequest);
+  }, [openHomeCustomizerRequest, layoutLoading]);
 
   /* POL-UI-015 round 4 §1 — the ids the draft actually changes with respect
      to the committed layout. Logged (ids only, no patient data, no

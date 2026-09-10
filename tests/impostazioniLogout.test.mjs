@@ -12,7 +12,7 @@ const impostazioni = readFileSync(new URL('../src/components/Impostazioni.jsx', 
 // from App.jsx (via the existing onLogout prop), no new auth logic, no
 // change to the original button.
 test('Impostazioni exposes a logout button in the page header, reusing the existing onLogout handler', () => {
-  const headerIndex = impostazioni.indexOf('<PageHeader icon="set" title="Impostazioni" actions={onLogout &&');
+  const headerIndex = impostazioni.indexOf('<PageHeader icon="set" title="Impostazioni" actions={(onLogout || onCheckUpdate) &&');
   assert.notEqual(headerIndex, -1, 'PageHeader must render the onLogout action inline');
   const nextSectionIndex = impostazioni.indexOf("sezione === 'studio'", headerIndex);
   const headerBlock = impostazioni.slice(headerIndex, nextSectionIndex);

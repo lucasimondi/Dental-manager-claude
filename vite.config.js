@@ -32,6 +32,23 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // POL-UI-035 — Product Owner: "ogni volta prima di recepire
+        // aggiornamenti impiega tanto e qualche volta non li aggiorna".
+        // Root cause: vite-plugin-pwa only auto-sets skipWaiting/clientsClaim
+        // for registerType:'autoUpdate' when injectRegister is 'auto' or
+        // unset (see its source, generateSW branch) — but POL-UI-029 set
+        // injectRegister:false (to register the SW ourselves and show an
+        // update banner), which silently opted back OUT of skipWaiting/
+        // clientsClaim too. Verified live: the deployed sw.js only listened
+        // for a SKIP_WAITING postMessage instead of calling it unconditionally
+        // at install — so a new service worker sat in "waiting" and never
+        // activated until literally every open tab/PWA instance of the app
+        // was closed at once, which a single reload (POL-UI-032) or
+        // logout/login essentially never achieves. Setting these explicitly
+        // restores the behavior registerType:'autoUpdate' is supposed to
+        // have: the new SW takes over as soon as it finishes installing.
+        skipWaiting: true,
+        clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2}'],
         runtimeCaching: [
           {
