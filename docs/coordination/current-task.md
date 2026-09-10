@@ -3,15 +3,15 @@
 - TASK: POL-UI-036 — Impostazioni/Setup: nome coerente + "Personalizza Home" raggiungibile da lì
 - TITLE: dopo aver trovato il nuovo tasto "Controlla aggiornamenti" (POL-UI-035) in Impostazioni, il Product Owner chiede che il tasto nav "Impostazioni"/"Setup" sia un unico concetto con nome coerente, e che ci si possa raggiungere anche "Personalizza Home" da lì, per maggiore linearità.
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggio verbatim: "Ok l'ho trovato , fai così , il tasto impostazioni deve essere il tasto setup in cui ci sarà anche personalizzazione home , così è tutto più lineare").
-- BRANCH: `fix/pwa-skip-waiting-clients-claim` (stesso branch/PR non ancora aperta di POL-UI-035 — nessuna "Mergia" ancora ricevuta per quel giro, quindi questo si accoda lì invece che partire da un master che non ha ancora quel fix).
-- STATUS: IN CORSO — implementato, testato, buildato; non ancora pushato; in attesa di "Mergia" esplicito del Product Owner.
+- BRANCH: `fix/pwa-skip-waiting-clients-claim` (stesso branch/PR di POL-UI-035, mergiati insieme).
+- STATUS: MERGED — PR #100, merge commit `385e45d0ec96d179417fe47400eddb519076cfd8`, su esplicita istruzione del Product Owner ("Ok Mergia in master").
 
 - **Causa della confusione**: `NAV` (`src/lib/utils.js`) aveva `{ id: 'set', l: 'Setup', ... }` — il tasto in sidebar/nav diceva "Setup", ma la pagina che apre (`Impostazioni.jsx`) si intitola "Impostazioni" nel suo `PageHeader` — due nomi diversi per la stessa, identica cosa. Separatamente, "Personalizza Home" era raggiungibile SOLO da un tasto nella hero bar di Home (`Dashboard.jsx`), mai da Impostazioni.
 - **Fix**:
   1. Rinominata la label NAV da `'Setup'` a `'Impostazioni'` — ora coerente con il titolo della pagina, stesso `id: 'set'` (nessun cambio di routing).
   2. Nuova tab "Home" nella tabbar di `Impostazioni.jsx` (`sezione === 'home'`), con un tasto "Personalizza Home" — **non duplica l'editor**: l'editor vero e proprio (drag/resize dei widget, salvataggio per-utente/per-studio, tutto lo stato già passato per diversi round di bugfix del salvataggio in POL-UI-013/015) resta esclusivamente in `Dashboard.jsx`, invariato. Il tasto in Impostazioni naviga a Home e le chiede di aprire lo stesso editor — nuovo stato `openHomeCustomizerRequest`/`setOpenHomeCustomizerRequest` in `App.jsx`, stesso pattern già usato per `activityPatientRequest`. `Dashboard.jsx` ha un nuovo `useEffect` che chiama `openHomeCustomizer()` quando la richiesta arriva, ma aspetta che `layoutLoading` sia `false` (altrimenti `openHomeCustomizer` stesso rifiuta di aprire su un layout ancora in caricamento, e la richiesta andrebbe persa silenziosamente su un mount fresco di Home).
 - VALIDATION: `npm test` 765/765 (nuovo `tests/impostazioniHomeTab.test.mjs`, 4 test; aggiornati `tests/dashboardPremiumV2.test.mjs` e `tests/homeLogoutButton.test.mjs` per la label NAV rinominata e la firma prop di Dashboard più lunga); `npm run build` pulito; `git diff --check` pulito. Nessuna migration.
-- EXACT NEXT ACTION: in attesa che il Product Owner dica "Mergia" (per questo giro e per POL-UI-035, sullo stesso branch).
+- EXACT NEXT ACTION: mergiato. Product Owner verifica in produzione (Vercel farà il deploy automatico da questo merge).
 
 ---
 
@@ -19,7 +19,7 @@
 - TITLE: il Product Owner segnala che gli aggiornamenti impiegano tanto a essere recepiti e qualche volta non arrivano mai, nemmeno uscendo e rientrando (POL-UI-032); chiede se aggiungere un modo manuale.
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggio verbatim: "Allora c'è un problema perché ogni volta prima di recepire aggiornamenti impiega tanto e qualche volta non li aggiorna , tipo adesso sono uscito e rientrato e non mi vede ancora tutto quello aggiornato dobbiamo fare una cosa che piuttosto sia manuale ?").
 - BRANCH: `fix/pwa-skip-waiting-clients-claim`, da `master` (contiene già PR #99).
-- STATUS: IN CORSO — implementato, testato, buildato, verificato empiricamente su una build reale; branch non ancora pushato; in attesa di "Mergia" esplicito del Product Owner.
+- STATUS: MERGED — PR #100, merge commit `385e45d0ec96d179417fe47400eddb519076cfd8`, su esplicita istruzione del Product Owner ("Ok Mergia in master"), insieme a POL-UI-036.
 
 - **Causa radice, verificata direttamente nel sorgente di `vite-plugin-pwa`** (non ipotizzata): il plugin imposta automaticamente `workbox.skipWaiting`/`workbox.clientsClaim` per `registerType:'autoUpdate'` SOLO quando `injectRegister` è `'auto'` o non impostato (`node_modules/vite-plugin-pwa/dist/index.js`, riga ~874: `if ((injectRegister === "auto" || injectRegister == null) && registerType === "autoUpdate")`). POL-UI-029 aveva impostato `injectRegister: false` (per registrare il service worker a mano e mostrare il banner "Nuova versione disponibile") — questo ha silenziosamente disattivato ANCHE skipWaiting/clientsClaim, mai rimessi manualmente. Verificato empiricamente buildando e ispezionando `dist/sw.js` prima del fix: il service worker generato ascoltava solo un messaggio `SKIP_WAITING` (mai inviato automaticamente in questa configurazione) invece di chiamare `self.skipWaiting()` incondizionatamente, e non chiamava mai `clientsClaim()` — quindi un nuovo service worker restava "in attesa" e si attivava solo quando OGNI scheda/istanza PWA aperta veniva chiusa contemporaneamente, cosa che un semplice reload (POL-UI-032) o logout/login quasi mai ottiene davvero. Il commento in `App.jsx` che affermava il contrario ("registerType:'autoUpdate' already makes each new service worker skipWaiting+claim clients as soon as it installs") era sbagliato fin dall'inizio — corretto in questo giro.
 - **Fix**:
@@ -27,7 +27,7 @@
   2. `App.jsx`: nessun cambio di comportamento al banner "Nuova versione disponibile" (resta un tap esplicito, mai un reload automatico che potrebbe interrompere un form in corso) — ma ora, grazie al fix sopra, l'evento `activated`/`onNeedReload` di workbox-window scatta molto prima e in modo affidabile, perché il nuovo service worker si attiva subito invece di aspettare la chiusura di tutte le schede.
   3. **Rete di sicurezza manuale**, su richiesta esplicita del Product Owner ("dobbiamo fare una cosa che piuttosto sia manuale?"): nuovo tasto "Controlla aggiornamenti" nell'header di Impostazioni, accanto a Esci — chiama `registration.update()` (che per specifica ignora sempre la cache HTTP dello script del service worker, quindi forza sempre un controllo reale) seguito da un reload, indipendente dal rilevamento automatico.
 - VALIDATION: `npm test` 761/761 (nuovo `tests/pwaSkipWaitingClientsClaim.test.mjs`, 4 test — incluso uno che verifica direttamente la condizione nel sorgente di `vite-plugin-pwa` che spiega perché serviva il fix; aggiornato `tests/impostazioniLogout.test.mjs` per il nuovo pulsante nell'header, corretto un commento sbagliato in `tests/pwaUpdatePrompt.test.mjs`); `npm run build` pulito, con verifica diretta del contenuto di `dist/sw.js` prima e dopo il fix; `git diff --check` pulito. Nessuna migration.
-- EXACT NEXT ACTION: in attesa che il Product Owner dica "Mergia".
+- EXACT NEXT ACTION: mergiato, insieme a POL-UI-036. Product Owner verifica in produzione (Vercel farà il deploy automatico da questo merge).
 
 ---
 
