@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { Btn, Crd, Fld, Inp, Modal, Toast, Bdg, Ic, StatCard, SelettorePaziente, WaAction, PageHeader, EmptyState, Sel } from './ui';
-import { C, fmtD, today, uid, TODO_CATEGORIE, RICHIAMO_CATEGORIE, DEF_TPL_GENERICO } from '../lib/utils';
+import { C, fmtD, today, uid, TODO_CATEGORIE, todoCategoriaTab, RICHIAMO_CATEGORIE, DEF_TPL_GENERICO } from '../lib/utils';
 import { buildActivityText } from '../lib/appointmentQuickHub.js';
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { generaRichiamiBot } from '../lib/richiamiBot';
@@ -183,7 +183,7 @@ export default function Attivita({ patients, onOpenPaz, richiami, setRichiami, p
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       {paz ? (
-                        <div onClick={() => onOpenPaz(paz, 'piani')} style={{ fontWeight: 700, fontSize: 13, color: C.pri, cursor: 'pointer' }}>{paz.nome} {paz.cognome} ›</div>
+                        <div onClick={() => onOpenPaz(paz, todoCategoriaTab(tItem.categoria))} style={{ fontWeight: 700, fontSize: 13, color: C.pri, cursor: 'pointer' }}>{paz.nome} {paz.cognome} ›</div>
                       ) : null}
                       <div style={{ fontSize: 12, color: C.txt, marginTop: paz ? 2 : 0 }}>{tItem.testo}</div>
                       <div style={{ marginTop: 5, display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>

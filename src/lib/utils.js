@@ -268,6 +268,24 @@ export const TODO_CATEGORIE = {
   GENERICO: { label: 'Generico', icona: 'pin', colore: '#5F6B7A' },
 };
 
+/* POL-UI-037 — Product Owner: "le attività quando ci clicco sopra devono
+   poter essere lette tutte quindi popup che permette di fare quello che
+   dice l'attività direttamente, se anamnesi popup anamnesi, ecc". Ogni
+   riga Attività apre già la scheda paziente come popup (SchedaPaz via
+   onOpenPaz, un portal — vedi App.jsx); mancava solo instradare ogni
+   categoria alla tab giusta invece di aprire sempre "Piani di Cura".
+   Stesso principio già usato da PoliedronHub.jsx per i check del
+   punteggio Salute Dati (`dataHealthScoreCheckTab`) — qui per le
+   categorie di `todos`/Attività. Solo ANAMNESI_MANCANTE ha bisogno di
+   una tab diversa da "piani": le altre 4 automatiche (appuntamento di
+   ieri, piano da accettare/avviare, trattamento fermo) si risolvono
+   tutte dentro Piani di Cura, e le 4 manuali non hanno una tab dedicata
+   più specifica di quella. */
+export const TODO_CATEGORIA_TAB = {
+  ANAMNESI_MANCANTE: 'clinical',
+};
+export const todoCategoriaTab = (categoria) => TODO_CATEGORIA_TAB[categoria] || 'piani';
+
 /* ── DEFAULT DATA ── */
 export const DEF_PRICE = [
   // ── CHIRURGIA ORALE ──

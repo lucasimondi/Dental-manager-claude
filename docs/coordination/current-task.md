@@ -1,5 +1,18 @@
 # Current task
 
+- TASK: POL-UI-037 — Click su un'Attività apre la scheda paziente sulla tab giusta per risolverla
+- TITLE: il Product Owner chiede che cliccare un'Attività apra un popup che permetta di "fare quello che dice l'attività direttamente" — es. un'anamnesi mancante deve aprire il popup anamnesi, non sempre Piani di Cura.
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggio verbatim: "E le attività quando ci clicco sopra devono poter essere lette tutte quindi popup che permette di fare quello che dice l'attività direttamente , se anamnesi popup anamnesi , ecc").
+- BRANCH: `feature/pol-ui-037-activity-click-through-tab`, da `master` (contiene già PR #100).
+- STATUS: IN CORSO — implementato, testato, buildato; non ancora pushato; in attesa di "Mergia" esplicito del Product Owner.
+
+- **Indagine preliminare**: il click su un'Attività già apre la scheda paziente come popup vero e proprio (`onOpenPaz` → `goSchedaPaz` in `App.jsx`, che monta `SchedaPaz` via `createPortal`) — quindi "popup" c'era già. Mancava solo instradare ogni categoria alla TAB giusta dentro quel popup: ogni chiamata `onOpenPaz(paz, ...)` per un'Attività apriva sempre la tab "Piani di Cura" (`'piani'`), a prescindere dalla categoria — quindi un'anamnesi mancante apriva comunque Piani invece della tab "Anamnesi" (`id: 'clinical'` in `SchedaPaz.jsx`). Trovato un precedente già esistente e collaudato per lo stesso problema, ma per un vocabolario diverso: `PoliedronHub.jsx` ha già `dataHealthScoreCheckTab(checkId)` per instradare i check del punteggio Salute Dati (`anamnesi: 'clinical'`, `pagamenti: 'paga'`, ecc.) — stesso principio, replicato qui per `ACTIVITY_KIND`/`categoria` di `todos`.
+- **Fix**: nuovo `TODO_CATEGORIA_TAB`/`todoCategoriaTab(categoria)` in `src/lib/utils.js` — unica fonte, solo `ANAMNESI_MANCANTE → 'clinical'` ha bisogno di una tab diversa da `'piani'` (le altre 4 automatiche si risolvono già dentro Piani di Cura). Sostituito il `'piani'` hardcoded con `todoCategoriaTab(...)` in tutti e tre i punti che aprono la scheda paziente da un'Attività: il widget "Attività" in Home (`Dashboard.jsx`), la lista Attività nella pagina dedicata (`Attivita.jsx`), e "Altri avvisi" in Poliedron → Salute dati (`PoliedronHub.jsx`, stesso `entry.kind`).
+- VALIDATION: `npm test` 770/770 (nuovo `tests/todoCategoriaTab.test.mjs`, 5 test — inclusa una verifica che ogni chiave di `TODO_CATEGORIA_TAB` esista davvero in `TODO_CATEGORIE`, contro refusi futuri; aggiornati `tests/attivitaCategorie.test.mjs` e `tests/dashboardDataHealthActivities.test.mjs` per le firme di import/funzione cambiate); `npm run build` pulito; `git diff --check` pulito. Nessuna migration.
+- EXACT NEXT ACTION: in attesa che il Product Owner dica "Mergia".
+
+---
+
 - TASK: POL-UI-036 — Impostazioni/Setup: nome coerente + "Personalizza Home" raggiungibile da lì
 - TITLE: dopo aver trovato il nuovo tasto "Controlla aggiornamenti" (POL-UI-035) in Impostazioni, il Product Owner chiede che il tasto nav "Impostazioni"/"Setup" sia un unico concetto con nome coerente, e che ci si possa raggiungere anche "Personalizza Home" da lì, per maggiore linearità.
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggio verbatim: "Ok l'ho trovato , fai così , il tasto impostazioni deve essere il tasto setup in cui ci sarà anche personalizzazione home , così è tutto più lineare").

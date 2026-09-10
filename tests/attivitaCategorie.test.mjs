@@ -77,7 +77,7 @@ test('Attività page filters todos by category and lets the user create/complete
   assert.match(attivita, /supabase\.from\('todos'\)\.update\(\{ fatto: !t\.fatto \}\)\.eq\('id', t\.id\)/);
   assert.match(attivita, /supabase\.from\('todos'\)\.delete\(\)\.eq\('id', id\)/);
   assert.match(attivita, /filtroCategoriaAttivita === 'tutte' \|\| t\.categoria === filtroCategoriaAttivita/);
-  assert.match(attivita, /import \{ C, fmtD, today, uid, TODO_CATEGORIE, RICHIAMO_CATEGORIE, DEF_TPL_GENERICO \} from '\.\.\/lib\/utils'/);
+  assert.match(attivita, /import \{ C, fmtD, today, uid, TODO_CATEGORIE, todoCategoriaTab, RICHIAMO_CATEGORIE, DEF_TPL_GENERICO \} from '\.\.\/lib\/utils'/);
 });
 
 // Product Owner, dopo aver visto una prima versione solo-Attività: "Deve

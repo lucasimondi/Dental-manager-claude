@@ -2,7 +2,7 @@
 import { supabase } from '../lib/supabase.js';
 import { Crd, Bdg, Modal, Ic, Btn, Fld, Sel, Inp, Txt, TimePicker, SelettorePaziente, EmptyState, Toast } from './ui';
 import { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
-import { C, fmt, fmtD, today, uid, RICHIAMO_CATEGORIE, TODO_CATEGORIE, pazientiNuoviIn } from '../lib/utils';
+import { C, fmt, fmtD, today, uid, RICHIAMO_CATEGORIE, TODO_CATEGORIE, todoCategoriaTab, pazientiNuoviIn } from '../lib/utils';
 import { BarChart, Bar, LineChart, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useControlloDati } from '../lib/useControlloDati';
 import WidgetWorkspace from './WidgetWorkspace.jsx';
@@ -1573,7 +1573,7 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
                   // gestirle senza che si perdano tra le tante di Home.
                   const todoPaziente = todo.paziente_id != null ? patients.find((p) => String(p.id) === String(todo.paziente_id)) : null;
                   const todoCat = todo.categoria ? TODO_CATEGORIE[todo.categoria] : null;
-                  const apriTodo = () => (todoPaziente ? onOpenPaz(todoPaziente, 'piani') : (onNavigate && onNavigate('attivita')));
+                  const apriTodo = () => (todoPaziente ? onOpenPaz(todoPaziente, todoCategoriaTab(todo.categoria)) : (onNavigate && onNavigate('attivita')));
                   return (
                     <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: `1px solid ${C.brd}` }}>
                       <button className="home-list-checkbox" onClick={() => toggleTodo(todo.id)}><span style={{ border: `2px solid ${C.brd}` }} /></button>
