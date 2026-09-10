@@ -13,10 +13,10 @@ const premium = readFileSync(new URL('../src/components/PremiumVisualSystem.css'
 // home-hero bar, next to "Personalizza Home", reusing the same
 // handleLogout — desktop-hidden (the sidebar already covers it there).
 test('mobile Home exposes a logout button in the sticky hero bar, reusing handleLogout', () => {
-  assert.match(dashboard, /onLogout \}\) \{/);
+  assert.match(dashboard, /onLogout, openHomeCustomizerRequest/);
   assert.match(dashboard, /\{onLogout && \(/);
   assert.match(dashboard, /className="home-hero__logout" onClick=\{onLogout\}/);
-  assert.match(app, /onLogout=\{handleLogout\} \/>\}/);
+  assert.match(app, /onLogout=\{handleLogout\}/);
 });
 
 test('the mobile Home logout button is hidden on desktop (sidebar already has one)', () => {

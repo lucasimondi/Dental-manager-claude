@@ -57,7 +57,7 @@ function estraiColoriDaLogo(base64) {
 
 
 
-export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange, features, theme, toggleTheme, isStudioAdmin, onLogout, onCheckUpdate, studioMembership }) {
+export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange, features, theme, toggleTheme, isStudioAdmin, onLogout, onCheckUpdate, onOpenHomeCustomizer, studioMembership }) {
   const [si, setSi] = useState({ ...DEF_STUDIO, ...(studioInfo || {}) });
   const [toast, setToast] = useState('');
   const firmaInputRef = useRef(null);
@@ -386,6 +386,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       <div className="pol-tabbar" style={{ marginBottom: 16, paddingBottom: 2 }}>
         {[
           ['studio', 'brief', 'Studio'],
+          ['home', 'home', 'Home'],
           ['agenda', 'cal', 'Agenda'],
           ['documenti', 'file', 'Documenti'],
           ['privacy', 'lock', 'Privacy GDPR'],
@@ -410,6 +411,26 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           </button>
         ))}
       </div>
+
+      {/* POL-UI-036: Product Owner — "il tasto impostazioni deve essere il
+          tasto setup in cui ci sarà anche personalizzazione home, così è
+          tutto più lineare". L'editor vero e proprio resta dov'è, dentro
+          Dashboard.jsx (già passato per diversi giri di bugfix sul
+          salvataggio — non vale la pena duplicarlo): questo tasto naviga a
+          Home e le chiede di aprirlo, stesso principio già usato per la
+          duplicazione del tasto Esci (POL-UI-031/033). */}
+      {sezione === 'home' && (
+      <>
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 20, fontWeight: 800 }}>Home</div>
+        <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Scegli quali widget mostrare in Home, il loro ordine e la loro dimensione</div>
+      </div>
+      <Crd>
+        <div style={{ fontSize: 13, color: C.txm, marginBottom: 12 }}>L'editor si apre direttamente sulla Home, dove puoi vedere in anteprima ogni modifica mentre la fai.</div>
+        {onOpenHomeCustomizer && <Btn ic="home" ch="Personalizza Home" onClick={onOpenHomeCustomizer} />}
+      </Crd>
+      </>
+      )}
 
       {sezione === 'studio' && (
       <>

@@ -1,5 +1,20 @@
 # Current task
 
+- TASK: POL-UI-036 — Impostazioni/Setup: nome coerente + "Personalizza Home" raggiungibile da lì
+- TITLE: dopo aver trovato il nuovo tasto "Controlla aggiornamenti" (POL-UI-035) in Impostazioni, il Product Owner chiede che il tasto nav "Impostazioni"/"Setup" sia un unico concetto con nome coerente, e che ci si possa raggiungere anche "Personalizza Home" da lì, per maggiore linearità.
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggio verbatim: "Ok l'ho trovato , fai così , il tasto impostazioni deve essere il tasto setup in cui ci sarà anche personalizzazione home , così è tutto più lineare").
+- BRANCH: `fix/pwa-skip-waiting-clients-claim` (stesso branch/PR non ancora aperta di POL-UI-035 — nessuna "Mergia" ancora ricevuta per quel giro, quindi questo si accoda lì invece che partire da un master che non ha ancora quel fix).
+- STATUS: IN CORSO — implementato, testato, buildato; non ancora pushato; in attesa di "Mergia" esplicito del Product Owner.
+
+- **Causa della confusione**: `NAV` (`src/lib/utils.js`) aveva `{ id: 'set', l: 'Setup', ... }` — il tasto in sidebar/nav diceva "Setup", ma la pagina che apre (`Impostazioni.jsx`) si intitola "Impostazioni" nel suo `PageHeader` — due nomi diversi per la stessa, identica cosa. Separatamente, "Personalizza Home" era raggiungibile SOLO da un tasto nella hero bar di Home (`Dashboard.jsx`), mai da Impostazioni.
+- **Fix**:
+  1. Rinominata la label NAV da `'Setup'` a `'Impostazioni'` — ora coerente con il titolo della pagina, stesso `id: 'set'` (nessun cambio di routing).
+  2. Nuova tab "Home" nella tabbar di `Impostazioni.jsx` (`sezione === 'home'`), con un tasto "Personalizza Home" — **non duplica l'editor**: l'editor vero e proprio (drag/resize dei widget, salvataggio per-utente/per-studio, tutto lo stato già passato per diversi round di bugfix del salvataggio in POL-UI-013/015) resta esclusivamente in `Dashboard.jsx`, invariato. Il tasto in Impostazioni naviga a Home e le chiede di aprire lo stesso editor — nuovo stato `openHomeCustomizerRequest`/`setOpenHomeCustomizerRequest` in `App.jsx`, stesso pattern già usato per `activityPatientRequest`. `Dashboard.jsx` ha un nuovo `useEffect` che chiama `openHomeCustomizer()` quando la richiesta arriva, ma aspetta che `layoutLoading` sia `false` (altrimenti `openHomeCustomizer` stesso rifiuta di aprire su un layout ancora in caricamento, e la richiesta andrebbe persa silenziosamente su un mount fresco di Home).
+- VALIDATION: `npm test` 765/765 (nuovo `tests/impostazioniHomeTab.test.mjs`, 4 test; aggiornati `tests/dashboardPremiumV2.test.mjs` e `tests/homeLogoutButton.test.mjs` per la label NAV rinominata e la firma prop di Dashboard più lunga); `npm run build` pulito; `git diff --check` pulito. Nessuna migration.
+- EXACT NEXT ACTION: in attesa che il Product Owner dica "Mergia" (per questo giro e per POL-UI-035, sullo stesso branch).
+
+---
+
 - TASK: POL-UI-035 — PWA: aggiornamenti lenti/a volte mai applicati, anche dopo logout/login
 - TITLE: il Product Owner segnala che gli aggiornamenti impiegano tanto a essere recepiti e qualche volta non arrivano mai, nemmeno uscendo e rientrando (POL-UI-032); chiede se aggiungere un modo manuale.
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggio verbatim: "Allora c'è un problema perché ogni volta prima di recepire aggiornamenti impiega tanto e qualche volta non li aggiorna , tipo adesso sono uscito e rientrato e non mi vede ancora tutto quello aggiornato dobbiamo fare una cosa che piuttosto sia manuale ?").

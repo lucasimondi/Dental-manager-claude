@@ -103,6 +103,15 @@ export default function App() {
   const [saldiPiani, setSaldiPiani] = useState({});
   const [quickHubRecallRequest, setQuickHubRecallRequest] = useState(null);
   const [quickHubActivityRequest, setQuickHubActivityRequest] = useState(null);
+  // POL-UI-036 — Product Owner: "il tasto impostazioni deve essere il
+  // tasto setup in cui ci sarà anche personalizzazione home, così è tutto
+  // più lineare". "Personalizza Home" stays exactly where it already
+  // lives (Dashboard.jsx owns all of its state/save logic, untouched —
+  // that editor is large and already hardened through several rounds of
+  // bugfixing, not worth duplicating) — Impostazioni gets a button that
+  // navigates to Home and asks it to open the same editor, same pattern
+  // already used for activityPatientRequest below.
+  const [openHomeCustomizerRequest, setOpenHomeCustomizerRequest] = useState(null);
   const [quickHubPoliedronRequest, setQuickHubPoliedronRequest] = useState(null);
   const [poliedronChatHost, setPoliedronChatHost] = useState(null);
   // POL-AI-002A §20 — set by Poliedron's direct "ric"/"fat"/"doc" commands
@@ -698,7 +707,7 @@ export default function App() {
         paddingLeft: isMobile ? ((page === 'agenda' || page === 'home') ? (page === 'agenda' ? 6 : 0) : (page === 'chat' ? 0 : 15)) : (page === 'chat' ? 0 : undefined),
         paddingRight: isMobile ? ((page === 'agenda' || page === 'home') ? (page === 'agenda' ? 6 : 0) : (page === 'chat' ? 0 : 15)) : (page === 'chat' ? 0 : undefined),
       }}>
-        {page === 'home' && <Dashboard patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegni} implants={implants} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} onNavigateNew={goNuovoElemento} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} currentUserId={session?.user?.id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} activityPatientRequest={quickHubActivityRequest} onActivityPatientRequestHandled={(id) => setQuickHubActivityRequest((current) => current?.id === id ? null : current)} onLogout={handleLogout} />}
+        {page === 'home' && <Dashboard patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegni} implants={implants} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} onNavigateNew={goNuovoElemento} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} currentUserId={session?.user?.id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} activityPatientRequest={quickHubActivityRequest} onActivityPatientRequestHandled={(id) => setQuickHubActivityRequest((current) => current?.id === id ? null : current)} onLogout={handleLogout} openHomeCustomizerRequest={openHomeCustomizerRequest} onOpenHomeCustomizerRequestHandled={(id) => setOpenHomeCustomizerRequest((current) => current === id ? null : current)} />}
         {page !== 'home' && (
           <Suspense fallback={<LoadingScreen />}>
             {page === 'paz' && (
@@ -740,7 +749,7 @@ export default function App() {
             {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} initialFiltroTipo={archivioFiltroTipoHint} />}
             {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
             {page === 'agenteai' && <AgenteAISetup features={features} />}
-            {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} isStudioAdmin={isStudioAdmin} onLogout={handleLogout} onCheckUpdate={checkForUpdate} studioMembership={studioMembership} />}
+            {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} isStudioAdmin={isStudioAdmin} onLogout={handleLogout} onCheckUpdate={checkForUpdate} onOpenHomeCustomizer={() => { setPage('home'); setOpenHomeCustomizerRequest(Date.now()); }} studioMembership={studioMembership} />}
             {page === 'chat' && <div ref={setPoliedronChatHost} className="poliedron-chat-host" />}
           </Suspense>
         )}

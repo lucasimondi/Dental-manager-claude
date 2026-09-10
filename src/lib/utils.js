@@ -641,7 +641,7 @@ export const NAV = [
   { id: 'wa', l: 'WhatsApp', ic: 'wa' },
   { id: 'chat', l: 'Chat', ic: 'chat' },
   { id: 'agenteai', l: 'Agente AI', ic: 'bot' },
-  { id: 'set', l: 'Setup', ic: 'set' },
+  { id: 'set', l: 'Impostazioni', ic: 'set' },
 ];
 
 /* ── DOCK MOBILE PERSONALIZZABILE ──
