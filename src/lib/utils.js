@@ -247,6 +247,27 @@ export const RICHIAMO_CATEGORIE = {
   generico: { label: 'Generico', icona: 'pin', colore: '#5F6B7A' },
 };
 
+/* ── SEZIONE ATTIVITÀ: categorie ──
+   POL-UI-034 — Product Owner: "dobbiamo mettere in modo che siano
+   classificate con etichette visibili: tipo ordinare, anamnesi mancante,
+   piano, dati mancanti ecc". Stessa forma di RICHIAMO_CATEGORIE sopra.
+   Le prime 5 chiavi coincidono deliberatamente con i valori di
+   ACTIVITY_KIND (src/lib/domain/dataHealthActivities.js) — i controlli
+   automatici del dato scrivono `entry.kind` così com'è nella colonna
+   `categoria` di `todos`, senza nessuno strato di traduzione. Le ultime 4
+   chiavi esistono solo per le attività create a mano dall'utente. */
+export const TODO_CATEGORIE = {
+  YESTERDAY_APPOINTMENT_NOT_MARKED: { label: 'Appuntamento di ieri non segnato', icona: 'clk', colore: '#F59E0B' },
+  PLAN_AWAITING_ACCEPTANCE_DECISION: { label: 'Piano da accettare', icona: 'plan', colore: '#7C3AED' },
+  PLAN_NEVER_STARTED: { label: 'Piano da avviare', icona: 'plan', colore: '#0EA5E9' },
+  STALLED_TREATMENT: { label: 'Trattamento fermo', icona: 'pulse', colore: '#E63946' },
+  ANAMNESI_MANCANTE: { label: 'Anamnesi mancante', icona: 'clip', colore: '#DC2626' },
+  DA_ORDINARE: { label: 'Da ordinare', icona: 'box', colore: '#F4A261' },
+  DATI_MANCANTI: { label: 'Dati mancanti', icona: 'file', colore: '#64748B' },
+  AMMINISTRATIVO: { label: 'Amministrativo', icona: 'folder', colore: '#1A6B8A' },
+  GENERICO: { label: 'Generico', icona: 'pin', colore: '#5F6B7A' },
+};
+
 /* ── DEFAULT DATA ── */
 export const DEF_PRICE = [
   // ── CHIRURGIA ORALE ──
@@ -612,6 +633,7 @@ export const NAV = [
   { id: 'listino', l: 'Listino', ic: 'list' },
   { id: 'agenda', l: 'Agenda', ic: 'cal' },
   { id: 'richiami', l: 'Richiami', ic: 'clk' },
+  { id: 'attivita', l: 'Attività', ic: 'clip' },
   { id: 'spese', l: 'Spese', ic: 'spe' },
   { id: 'controllo', l: 'Controllo', ic: 'chart' },
   { id: 'poliedron', l: 'Poliedron', ic: 'compass' },
@@ -637,7 +659,7 @@ export const DOCK_MENU_SLOT = '__menu__';
 export const DEF_DOCK_SETTINGS = {
   iconStyle: 'vivid',
   slots: ['home', 'agenda', DOCK_MENU_SLOT, 'paga', 'wa'],
-  menuItems: ['paz', 'piani', 'incassi', 'listino', 'richiami', 'spese', 'archivio', 'poliedron', 'agenteai', 'set'],
+  menuItems: ['paz', 'piani', 'incassi', 'listino', 'richiami', 'attivita', 'spese', 'archivio', 'poliedron', 'agenteai', 'set'],
 };
 
 // Tutte le voci disponibili per comporre dock/popup, indicizzate per id (comodo per i <select>)

@@ -1,0 +1,101 @@
+import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
+import test from 'node:test';
+
+const utils = readFileSync(new URL('../src/lib/utils.js', import.meta.url), 'utf8');
+const dashboard = readFileSync(new URL('../src/components/Dashboard.jsx', import.meta.url), 'utf8');
+const app = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8');
+const attivita = readFileSync(new URL('../src/components/Attivita.jsx', import.meta.url), 'utf8');
+const poliedronHub = readFileSync(new URL('../src/components/PoliedronHub.jsx', import.meta.url), 'utf8');
+const activityKindSrc = readFileSync(new URL('../src/lib/domain/dataHealthActivities.js', import.meta.url), 'utf8');
+
+// Product Owner: "Attività e promemoria: dobbiamo mettere in modo che siano
+// classificate con etichette visibili: tipo ordinare, anamnesi mancante,
+// piano, dati mancanti ecc, e poi deve esserci una sezione attività in modo
+// che sia tutto più chiaro" (POL-UI-034).
+
+test('TODO_CATEGORIE covers every automatic ACTIVITY_KIND plus the manual-only categories, each with label/icona/colore', () => {
+  const kindKeys = [...activityKindSrc.matchAll(/^\s*([A-Z_]+):/gm)].map((m) => m[1]);
+  assert.ok(kindKeys.length >= 5, 'sanity check: ACTIVITY_KIND should have at least 5 entries');
+  const categorieMatch = utils.match(/export const TODO_CATEGORIE = \{[\s\S]*?\n\};/);
+  assert.ok(categorieMatch, 'TODO_CATEGORIE must exist in utils.js');
+  const block = categorieMatch[0];
+  for (const kind of kindKeys) {
+    assert.match(block, new RegExp(`${kind}: \\{ label:`), `TODO_CATEGORIE must have an entry for ACTIVITY_KIND.${kind}`);
+  }
+  for (const manualKey of ['DA_ORDINARE', 'DATI_MANCANTI', 'AMMINISTRATIVO', 'GENERICO']) {
+    assert.match(block, new RegExp(`${manualKey}: \\{ label:`), `TODO_CATEGORIE must have a manual-only ${manualKey} category`);
+  }
+  for (const entry of block.matchAll(/\{ label: '[^']*', icona: '([^']*)', colore: '([^']*)' \}/g)) {
+    assert.match(entry[1], /^[a-z]+$/, 'icona must be a plain Ic.jsx key');
+    assert.match(entry[2], /^#[0-9A-Fa-f]{6}$/, 'colore must be a hex color');
+  }
+});
+
+test('auto-generated data-health todos persist their ACTIVITY_KIND as categoria, no longer discarding entry.kind', () => {
+  assert.match(dashboard, /testo: entry\.message, fatto: false, data: t, paziente_id: entry\.pazienteId, categoria: entry\.kind/);
+});
+
+test('the manual "+ Nuova attività" modal lets the user pick a categoria, wired into addTodo()', () => {
+  assert.match(dashboard, /const \[todoCategoria, setTodoCategoria\] = useState\('GENERICO'\)/);
+  assert.match(dashboard, /testo: buildActivityText\(todoInput, patient\), fatto: false, data: t, categoria: todoCategoria/);
+  assert.match(dashboard, /<Fld label="Categoria">\s*<Sel value=\{todoCategoria\}/);
+  assert.match(dashboard, /Object\.entries\(TODO_CATEGORIE\)\.map\(\(\[id, cat\]\) => <option key=\{id\} value=\{id\}>\{cat\.label\}<\/option>\)/);
+});
+
+test('the Home "Attività" widget shows a visible category badge inline on each row that has one, text truncated to one line', () => {
+  assert.match(dashboard, /const todoCat = todo\.categoria \? TODO_CATEGORIE\[todo\.categoria\] : null;/);
+  assert.match(dashboard, /overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'/);
+  assert.match(dashboard, /todoCat && <span[\s\S]{0,120}<Ic n=\{todoCat\.icona\}[\s\S]{0,40}<Bdg ch=\{todoCat\.label\} co=\{todoCat\.colore\} \/><\/span>/);
+});
+
+// Product Owner: "metti anche il widgets cliccabile che porti alla pagina
+// attività" — il widget Home "Attività e promemoria" ora ha un link "Vedi
+// tutte" che porta alla nuova pagina dedicata.
+test('the Home "Attività e promemoria" widget header links to the Attività page', () => {
+  assert.match(dashboard, /onClick=\{\(\) => onNavigate\('attivita'\)\}/);
+  assert.match(dashboard, /Vedi tutte ›/);
+});
+
+test('a migration adds the categoria column to public.todos', () => {
+  const files = readdirSync(new URL('../supabase/migrations/', import.meta.url));
+  const migrationFile = files.find((f) => f.includes('pol_ui_034_todos_categoria'));
+  assert.ok(migrationFile, 'expected a pol_ui_034 migration adding todos.categoria');
+  const sql = readFileSync(new URL(`../supabase/migrations/${migrationFile}`, import.meta.url), 'utf8');
+  assert.match(sql, /ALTER TABLE public\.todos ADD COLUMN IF NOT EXISTS categoria text;/);
+});
+
+test('a dedicated "Attività" page exists, routed from App.jsx and reachable from NAV, mirroring the Richiami pattern', () => {
+  assert.match(app, /const Attivita = lazy\(\(\) => import\('\.\/components\/Attivita\.jsx'\)\);/);
+  assert.match(app, /\{page === 'attivita' && <Attivita patients=\{patients\} onOpenPaz=\{goSchedaPaz\} richiami=\{richiami\} setRichiami=\{setRichiamiSync\}/);
+  assert.match(utils, /\{ id: 'attivita', l: 'Attività', ic: 'clip' \}/);
+});
+
+test('Attività page filters todos by category and lets the user create/complete/delete them directly against Supabase', () => {
+  assert.match(attivita, /supabase\.from\('todos'\)\.select\('\*'\)/);
+  assert.match(attivita, /supabase\.from\('todos'\)\.insert\(\[nuova\]\)/);
+  assert.match(attivita, /supabase\.from\('todos'\)\.update\(\{ fatto: !t\.fatto \}\)\.eq\('id', t\.id\)/);
+  assert.match(attivita, /supabase\.from\('todos'\)\.delete\(\)\.eq\('id', id\)/);
+  assert.match(attivita, /filtroCategoriaAttivita === 'tutte' \|\| t\.categoria === filtroCategoriaAttivita/);
+  assert.match(attivita, /import \{ C, fmtD, today, uid, TODO_CATEGORIE, RICHIAMO_CATEGORIE, DEF_TPL_GENERICO \} from '\.\.\/lib\/utils'/);
+});
+
+// Product Owner, dopo aver visto una prima versione solo-Attività: "Deve
+// esserci sezione apposita per attività e promemoria, ovvero pagina in cui
+// ci siano tutte le attività per etichette implementabili" — una sola
+// pagina che copra ENTRAMBE, non solo le Attività.
+test('Attività page also has a Promemoria section (same richiami state as the Richiami page), filterable by RICHIAMO_CATEGORIE', () => {
+  assert.match(attivita, /const \[sezione, setSezione\] = useState\('attivita'\)/);
+  assert.match(attivita, /\['attivita', `Attività \(\$\{todoAttive\.length\}\)`\], \['promemoria', `Promemoria \(\$\{richiamiAperti\.length\}\)`\]/);
+  assert.match(attivita, /generaRichiamiBot\(\{ patients, plans, payments, appointments, richiami \}\)/);
+  assert.match(attivita, /filtroCategoriaRichiami === 'tutte' \|\| r\.categoria === filtroCategoriaRichiami/);
+  assert.match(attivita, /setRichiami\(\(prev\) => \[\.\.\.prev, \{/);
+  assert.match(attivita, /RICHIAMO_CATEGORIE\[r\.categoria\] \|\| RICHIAMO_CATEGORIE\.generico/);
+});
+
+test('PoliedronHub reads its avviso label/icon from the shared TODO_CATEGORIE instead of a duplicated local map', () => {
+  assert.doesNotMatch(poliedronHub, /const DATA_HEALTH_KIND_TITLE/);
+  assert.doesNotMatch(poliedronHub, /const DATA_HEALTH_KIND_ICON/);
+  assert.match(poliedronHub, /TODO_CATEGORIE\[kind\]\?\.icona \|\| 'warn'/);
+  assert.match(poliedronHub, /TODO_CATEGORIE\[kind\]\?\.label \|\| kind/);
+});

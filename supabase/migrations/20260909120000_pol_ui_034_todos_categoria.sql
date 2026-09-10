@@ -1,0 +1,11 @@
+-- POL-UI-034: Product Owner — "Attività e promemoria: dobbiamo mettere in
+-- modo che siano classificate con etichette visibili: tipo ordinare,
+-- anamnesi mancante, piano, dati mancanti ecc". Adds a `categoria` column
+-- to `todos` so each activity can carry one of the TODO_CATEGORIE keys
+-- (src/lib/utils.js) — same shape already used by richiami.categoria.
+--
+-- Additive, nullable, reversible: no RLS change needed, same reasoning as
+-- the paziente_id column added by 20260902130000_pol_fin_007b — the
+-- existing todos_studio ALL-command policy already scopes every
+-- SELECT/INSERT/UPDATE/DELETE by studio_id alone.
+ALTER TABLE public.todos ADD COLUMN IF NOT EXISTS categoria text;

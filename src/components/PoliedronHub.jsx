@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { C, fmtD, today } from '../lib/utils';
+import { C, fmtD, today, TODO_CATEGORIE } from '../lib/utils';
 import { PageHeader, Crd, Bdg, Ic } from './ui';
 import { supabase } from '../lib/supabase.js';
 import { useControlloDati } from '../lib/useControlloDati';
@@ -39,22 +39,14 @@ const TABS = [
   { id: 'salute', icon: 'compass', label: 'Salute dati' },
   { id: 'consigli', icon: 'trend', label: 'Consigli' },
   { id: 'chiarire', icon: 'warn', label: 'Da chiarire' },
-  { id: 'chat', icon: 'chat', label: 'Chat', external: true },
+  { id: 'attivita', icon: 'clip', label: 'Attività', external: true, page: 'attivita' },
+  { id: 'chat', icon: 'chat', label: 'Chat', external: true, page: 'chat' },
 ];
 
-// Le stesse due mappe già usate in Dashboard.jsx per il vecchio widget
-// `poliedron_status`, riportate qui perché quel widget non esiste più su
-// Home — nessuna duplicazione di LOGICA (il calcolo resta in
-// dataHealthActivities.js/dataHealthScore.js), solo di questa etichetta
-// di presentazione.
-const DATA_HEALTH_KIND_TITLE = {
-  [ACTIVITY_KIND.STALLED_TREATMENT]: 'Trattamento fermo',
-  [ACTIVITY_KIND.YESTERDAY_APPOINTMENT_NOT_MARKED]: 'Appuntamento di ieri non segnato',
-};
-const DATA_HEALTH_KIND_ICON = {
-  [ACTIVITY_KIND.STALLED_TREATMENT]: 'pulse',
-  [ACTIVITY_KIND.YESTERDAY_APPOINTMENT_NOT_MARKED]: 'clk',
-};
+// POL-UI-034: etichetta/icona per ogni ACTIVITY_KIND vengono ora da
+// TODO_CATEGORIE (src/lib/utils.js) — unica fonte, condivisa con il
+// widget Attività di Home e con la nuova sezione Attività dedicata,
+// invece di una mappa locale duplicata qui.
 // Solo questi due kind: gli altri tre (anamnesi mancante, piano non
 // iniziato, piano non deciso) sono già rappresentati come check del
 // punteggio qui sotto — ripeterli anche qui mostrerebbe lo stesso
@@ -148,8 +140,8 @@ function SaluteDati({ patients, dataHealthScore, dataHealthFindings, onOpenPaz }
             return (
               <Crd key={kind} style={{ marginBottom: 8 }}>
                 <button type="button" onClick={() => setExpandedAvviso(isExpanded ? null : kind)} style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Ic n={DATA_HEALTH_KIND_ICON[kind] || 'warn'} s={13} c={C.pri} />
-                  <span style={{ fontSize: 12, fontWeight: 800, color: C.txt, flex: 1 }}>{DATA_HEALTH_KIND_TITLE[kind] || kind}</span>
+                  <Ic n={TODO_CATEGORIE[kind]?.icona || 'warn'} s={13} c={C.pri} />
+                  <span style={{ fontSize: 12, fontWeight: 800, color: C.txt, flex: 1 }}>{TODO_CATEGORIE[kind]?.label || kind}</span>
                   <Bdg ch={list.length} co={C.pri} />
                 </button>
                 {isExpanded && list.map((entry) => {
@@ -300,7 +292,7 @@ export default function PoliedronHub({
   }), [patients, plans, dataHealthFindings, scadenzeScadute, healthScoreDocs, implants, spese, t, homePermissions.managementControl]);
 
   const handleTabClick = (item) => {
-    if (item.external) { onNavigate && onNavigate('chat'); return; }
+    if (item.external) { onNavigate && onNavigate(item.page); return; }
     setSection(item.id);
   };
 
