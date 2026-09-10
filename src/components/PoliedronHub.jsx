@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { C, fmtD, today, TODO_CATEGORIE } from '../lib/utils';
+import { C, fmtD, today, TODO_CATEGORIE, todoCategoriaTab } from '../lib/utils';
 import { PageHeader, Crd, Bdg, Ic } from './ui';
 import { supabase } from '../lib/supabase.js';
 import { useControlloDati } from '../lib/useControlloDati';
@@ -147,7 +147,7 @@ function SaluteDati({ patients, dataHealthScore, dataHealthFindings, onOpenPaz }
                 {isExpanded && list.map((entry) => {
                   const paz = patients.find((p) => p.id === entry.pazienteId);
                   return (
-                    <button key={entry.dedupKey} type="button" onClick={() => paz && onOpenPaz(paz, 'piani')}
+                    <button key={entry.dedupKey} type="button" onClick={() => paz && onOpenPaz(paz, todoCategoriaTab(entry.kind))}
                       style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: `1px solid ${C.brd}`, padding: '7px 0', marginTop: 8, cursor: paz ? 'pointer' : 'default', display: 'flex', flexDirection: 'column', gap: 2 }}>
                       <span style={{ fontSize: 12, fontWeight: 700, color: paz ? C.pri : C.txt }}>{entry.patientName}{paz ? ' ›' : ''}</span>
                       <span style={{ fontSize: 11, color: C.txm }}>{entry.message}</span>

@@ -28,7 +28,7 @@ test('dedup checks the patient AND the stable per-kind marker, not just free tex
 
 test('every Attività row renders as a real clickable control — patient-linked opens that patient, otherwise opens the Attività page (POL-UI-034: "poi devono essere cliccabili")', () => {
   assert.match(source, /const todoPaziente = todo\.paziente_id != null \? patients\.find\(\(p\) => String\(p\.id\) === String\(todo\.paziente_id\)\) : null;/);
-  assert.match(source, /const apriTodo = \(\) => \(todoPaziente \? onOpenPaz\(todoPaziente, 'piani'\) : \(onNavigate && onNavigate\('attivita'\)\)\);/);
+  assert.match(source, /const apriTodo = \(\) => \(todoPaziente \? onOpenPaz\(todoPaziente, todoCategoriaTab\(todo\.categoria\)\) : \(onNavigate && onNavigate\('attivita'\)\)\);/);
   assert.match(source, /<button type="button" onClick=\{apriTodo\}/);
 });
 
