@@ -161,6 +161,53 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
+  // POL-UI-038 — Product Owner, after POL-UI-035 (skipWaiting/clientsClaim)
+  // still didn't reach them even after a full close+reopen: this is a home-
+  // screen PWA on iOS. WebKit's service-worker update checks for installed
+  // (standalone-display) PWAs are known to be unreliable independent of
+  // skipWaiting/clientsClaim being configured correctly — the SW-lifecycle
+  // path above (`onNeedReload`) can simply never fire on that platform, so
+  // relying on it alone left them with no way to ever see the banner.
+  // This is a second, independent detection path that doesn't depend on
+  // service-worker events at all: it directly re-fetches index.html
+  // (already served with Cache-Control: no-cache, no-store, must-revalidate
+  // — see vercel.json — plus `cache: 'no-store'` here as a client-side
+  // belt-and-suspenders) and compares the hashed entry-script filename Vite
+  // stamps into it against the one this page actually loaded. A mismatch
+  // means a newer build is live, however that reload got missed. Runs once
+  // immediately (covers a cold-launch after the PWA was fully quit — no
+  // prior 'hidden' state exists yet for a visibilitychange to fire from),
+  // then again every time the tab/PWA becomes visible (covers resuming
+  // from background/suspend, the exact case a plain reopen was already
+  // reported not to catch) and on a 10-minute safety interval while open.
+  // Same non-destructive `updateReady` banner as the SW path — still a tap,
+  // never a silent reload that could drop someone's in-progress form.
+  useEffect(() => {
+    const currentScriptSrc = Array.from(document.scripts).map((s) => s.getAttribute('src')).find((src) => src && src.includes('/assets/index-'));
+    if (!currentScriptSrc) return; // dev server or non-standard build output — nothing to compare against
+    let cancelled = false;
+    let updateDetected = false;
+    const checkForNewDeploy = () => {
+      if (cancelled || updateDetected) return;
+      fetch('/index.html', { cache: 'no-store' })
+        .then((res) => res.text())
+        .then((html) => {
+          const match = html.match(/<script[^>]+src="(\/assets\/index-[^"]+\.js)"/);
+          const latestScriptSrc = match?.[1];
+          if (!cancelled && latestScriptSrc && latestScriptSrc !== currentScriptSrc) {
+            updateDetected = true;
+            setUpdateReady(() => () => window.location.reload());
+          }
+        })
+        .catch(() => {}); // offline or transient network error — next trigger retries
+    };
+    checkForNewDeploy();
+    const onVisible = () => { if (document.visibilityState === 'visible') checkForNewDeploy(); };
+    document.addEventListener('visibilitychange', onVisible);
+    const interval = setInterval(checkForNewDeploy, 10 * 60 * 1000);
+    return () => { cancelled = true; document.removeEventListener('visibilitychange', onVisible); clearInterval(interval); };
+  }, []);
+
   // Colori brand (piano Premium): riapplica pri/priL/priD/acc sopra la palette
   // di tema ogni volta che cambia il tema (altrimenti il toggle chiaro/scuro li
   // sovrascriverebbe), i colori salvati dallo studio, o se la feature si disattiva.
