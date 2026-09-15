@@ -434,6 +434,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
               justifyContent: 'center',
               '--agenda-mobile-dock-offset': `${MOBILE_APPOINTMENT_MENU_DOCK_OFFSET}px`,
               '--agenda-mobile-fab-offset': `${MOBILE_APPOINTMENT_MENU_FAB_OFFSET}px`,
+              '--agenda-mobile-overlay-clearance-menu': `${mobileOverlayHeight}px`,
             }}
           >
             <div onClick={e => e.stopPropagation()} className="pol-modal-sheet agenda-appointment-menu-sheet" style={{ background: C.sur, width: '100%', maxWidth: 480, overflow: 'hidden' }}>

@@ -59,3 +59,30 @@ test('Agenda.jsx feeds the real dock/FAB offset constants into the form modal, m
 test('the quick-action menu\'s scrollable actions area is untouched (still the working overflow-y:auto mechanism)', () => {
   assert.match(premiumCss, /\.agenda-appointment-menu-actions\s*\{[^}]*overflow-y:\s*auto;/s);
 });
+
+// Product Owner follow-up, after the fix above shipped: "Il popup adesso è
+// troppo in alto e non è scrollabile. Viene coperto dal dock flottante
+// superiore" — centering the quick-action menu with only 12px of TOP
+// padding against ~148-160px of BOTTOM padding (the dock/FAB clearance) is
+// asymmetric: align-items:center centers within that padded box, which
+// pulls the sheet up toward the top of the screen, into the same region as
+// Agenda's own floating month/week-strip controls
+// (.agenda-mobile-floating-controls) — confirmed empirically in a real
+// headless-Chromium repro that included that real top overlay element, not
+// just the dock. Fixed by reusing the same measured `mobileOverlayHeight`
+// already used for the appointment FORM sheet's top clearance (POL-UI-030),
+// now also feeding the quick-action MENU's backdrop/sheet.
+test('the quick-action menu also reserves real top clearance for the floating month/week-strip controls, not just bottom dock clearance', () => {
+  assert.match(
+    agendaSource,
+    /'--agenda-mobile-dock-offset':\s*`\$\{MOBILE_APPOINTMENT_MENU_DOCK_OFFSET\}px`,\s*\n\s*'--agenda-mobile-fab-offset':\s*`\$\{MOBILE_APPOINTMENT_MENU_FAB_OFFSET\}px`,\s*\n\s*'--agenda-mobile-overlay-clearance-menu':\s*`\$\{mobileOverlayHeight\}px`,/,
+  );
+
+  const menuBackdropRule = premiumCss.match(/\.pol-modal-backdrop\.agenda-appointment-menu-backdrop\s*\{([^}]*)\}/s);
+  assert.ok(menuBackdropRule, 'expected the menu backdrop rule to exist');
+  assert.match(menuBackdropRule[1], /padding:\s*\n\s*calc\(env\(safe-area-inset-top, 0px\) \+ var\(--agenda-mobile-overlay-clearance-menu, 0px\) \+ 12px\)/);
+
+  const menuSheetRule = premiumCss.match(/\.pol-modal-sheet\.agenda-appointment-menu-sheet\s*\{([^}]*)\}/s);
+  assert.ok(menuSheetRule, 'expected the menu sheet rule to exist');
+  assert.match(menuSheetRule[1], /max-height:\s*calc\([\s\S]*?var\(--agenda-mobile-overlay-clearance-menu, 0px\)[\s\S]*?\)\s*!important;/);
+});
