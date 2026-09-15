@@ -146,25 +146,44 @@
     scrollbar-gutter: stable;
   }
 
-  .agenda-appointment-menu-backdrop {
+  /* POL-UI-039: both rules below were silently dead — a single class
+     (`.agenda-appointment-menu-backdrop`/`-sheet`) loses, on specificity
+     alone, to designTokens.css's `html .pol-modal-backdrop`/`html
+     .pol-modal-sheet` base rules (element + class beats class alone), and
+     the sheet's base rule is additionally `!important`. So the dock/FAB
+     clearance below never actually applied: the backdrop's real computed
+     padding-bottom was 0 and the sheet's real computed max-height was
+     designTokens.css's own `100dvh - space-2` — the sheet sat flush to the
+     screen's bottom edge, right where the floating dock lives (verified by
+     reading getComputedStyle in a real headless-Chromium repro, not by
+     source inspection alone). Fixed the same way POL-UI-030 already had to
+     for the appointment FORM sheet just below: a 2-class compound selector
+     plus `!important` on max-height. Also centers the popup vertically AND
+     horizontally per the explicit request ("deve comparire in centro
+     schermo") instead of bottom-anchoring it. */
+  .pol-modal-backdrop.agenda-appointment-menu-backdrop {
     box-sizing: border-box;
+    align-items: center;
     padding:
       calc(env(safe-area-inset-top, 0px) + 12px)
       12px
       calc(max(var(--agenda-mobile-dock-offset), var(--agenda-mobile-fab-offset)) + env(safe-area-inset-bottom, 0px) + 12px);
   }
-  .agenda-appointment-menu-sheet {
+  .pol-modal-sheet.agenda-appointment-menu-sheet {
     display: flex;
     flex-direction: column;
     min-height: 0;
+    width: calc(100% - 24px) !important;
+    max-width: 480px !important;
+    margin-inline: auto;
     max-height: calc(
       100dvh
       - env(safe-area-inset-top, 0px)
       - max(var(--agenda-mobile-dock-offset), var(--agenda-mobile-fab-offset))
       - env(safe-area-inset-bottom, 0px)
       - 24px
-    );
-    border-radius: 18px;
+    ) !important;
+    border-radius: 18px !important;
   }
   .agenda-appointment-menu-header {
     flex: 0 0 auto;
@@ -194,12 +213,29 @@
      never a guessed constant that could drift from the real layout.
      Selector specificity (2 classes) beats designTokens.css's
      `html .pol-modal-sheet` base rule (1 class + 1 element), both
-     !important — required since this is a real override, not an addition. */
+     !important — required since this is a real override, not an addition.
+
+     POL-UI-039: this only ever reserved TOP clearance — the bottom edge
+     was left to the generic mobile rule's `100dvh - space-2`, so the
+     sheet (and its Elimina/Annulla/Aggiorna row, part of the scrollable
+     content, not a fixed footer) could run flush to the screen's bottom
+     edge, right behind the floating dock — the same class of bug just
+     fixed above for the appointment quick-action menu. Now reserves real
+     bottom clearance for the dock/FAB too (same constants Agenda.jsx
+     already feeds the quick-action menu, reused here via the same CSS
+     custom property names) and centers the popup instead of bottom-
+     anchoring it, per the explicit "deve comparire in centro schermo"
+     request. */
   .pol-modal-backdrop.agenda-appointment-form-backdrop {
+    align-items: center;
     padding-top: calc(var(--agenda-mobile-overlay-clearance-form, 0px) + env(safe-area-inset-top, 0px) + 10px);
+    padding-bottom: calc(max(var(--agenda-mobile-dock-offset, 0px), var(--agenda-mobile-fab-offset, 0px)) + env(safe-area-inset-bottom, 0px) + 10px);
   }
   .pol-modal-sheet.agenda-appointment-form-sheet {
-    max-height: calc(100dvh - var(--agenda-mobile-overlay-clearance-form, 0px) - env(safe-area-inset-top, 0px) - 10px) !important;
+    width: calc(100% - 24px) !important;
+    margin-inline: auto;
+    max-height: calc(100dvh - var(--agenda-mobile-overlay-clearance-form, 0px) - env(safe-area-inset-top, 0px) - max(var(--agenda-mobile-dock-offset, 0px), var(--agenda-mobile-fab-offset, 0px)) - env(safe-area-inset-bottom, 0px) - 20px) !important;
+    border-radius: var(--pol-radius-sheet) !important;
   }
   .agenda-quick-hub-grid {
     display: grid;
