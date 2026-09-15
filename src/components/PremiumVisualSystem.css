@@ -160,12 +160,24 @@
      for the appointment FORM sheet just below: a 2-class compound selector
      plus `!important` on max-height. Also centers the popup vertically AND
      horizontally per the explicit request ("deve comparire in centro
-     schermo") instead of bottom-anchoring it. */
+     schermo") instead of bottom-anchoring it.
+
+     POL-UI-039 follow-up: centering with only 12px of TOP padding against
+     ~148-160px of BOTTOM padding (the dock/FAB clearance) is asymmetric —
+     `align-items: center` centers within that padded box, which pulls the
+     sheet up toward the top of the screen, into the same region as
+     Agenda's OWN floating month/week-strip controls
+     (.agenda-mobile-floating-controls, see POL-UI-030 below for why that
+     region needs real reserved space, not a guessed constant). Now reuses
+     the same measured `mobileOverlayHeight` for top clearance here too, so
+     the sheet centers within the actual free space between the two
+     floating overlays instead of within a lopsided box that pushes it
+     into the top one. */
   .pol-modal-backdrop.agenda-appointment-menu-backdrop {
     box-sizing: border-box;
     align-items: center;
     padding:
-      calc(env(safe-area-inset-top, 0px) + 12px)
+      calc(env(safe-area-inset-top, 0px) + var(--agenda-mobile-overlay-clearance-menu, 0px) + 12px)
       12px
       calc(max(var(--agenda-mobile-dock-offset), var(--agenda-mobile-fab-offset)) + env(safe-area-inset-bottom, 0px) + 12px);
   }
@@ -176,13 +188,7 @@
     width: calc(100% - 24px) !important;
     max-width: 480px !important;
     margin-inline: auto;
-    max-height: calc(
-      100dvh
-      - env(safe-area-inset-top, 0px)
-      - max(var(--agenda-mobile-dock-offset), var(--agenda-mobile-fab-offset))
-      - env(safe-area-inset-bottom, 0px)
-      - 24px
-    ) !important;
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - var(--agenda-mobile-overlay-clearance-menu, 0px) - max(var(--agenda-mobile-dock-offset), var(--agenda-mobile-fab-offset)) - env(safe-area-inset-bottom, 0px) - 24px) !important;
     border-radius: 18px !important;
   }
   .agenda-appointment-menu-header {
