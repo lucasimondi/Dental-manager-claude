@@ -100,6 +100,14 @@ test('Agenda appointment menu clears the canonical mobile dock and scrolls inter
 // all — the sheet reaches the literal viewport bottom, fully covering the
 // dock behind it (higher z-index + overflow:hidden), so there is no gap
 // left for the dock to overlap.
+//
+// POL-UI-039: the sheet no longer reaches the literal viewport bottom —
+// see the dedicated .agenda-appointment-form-backdrop/-sheet override
+// below, which now reserves *real* bottom dock/FAB clearance instead of
+// relying on "cover it, don't clear it". This test still holds: it only
+// asserts mobileVariant="sheet" is used (so the generic "standard"
+// variant's much-too-small margin never applies) and that no dedicated
+// designTokens.css override exists to fight with the Agenda-specific one.
 test('Agenda Nuovo/Modifica appuntamento modal reaches the viewport bottom on mobile, clearing the dock', () => {
   assert.match(agenda, /title=\{editApp \? 'Modifica appuntamento' : 'Nuovo appuntamento'\}[\s\S]{0,80}mobileVariant="sheet"/);
   // The "sheet" variant has no dedicated override in designTokens.css (only
