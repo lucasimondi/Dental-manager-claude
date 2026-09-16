@@ -48,21 +48,23 @@ import LoginScreen from './components/LoginScreen.jsx';
 import LoadingScreen from './components/LoadingScreen.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import QuickBookingModal from './components/QuickBookingModal.jsx';
-const ControlloGestione = lazy(() => import('./components/ControlloGestione.jsx'));
-const PoliedronHub = lazy(() => import('./components/PoliedronHub.jsx'));
-const FinancialWorkspace = lazy(() => import('./components/FinancialWorkspace.jsx'));
-const Pazienti = lazy(() => import('./components/Pazienti.jsx'));
-const PatientWorkspaceBoundary = lazy(() => import('./components/PatientWorkspaceBoundary.jsx'));
-const Piani = lazy(() => import('./components/Piani.jsx'));
-const Spese = lazy(() => import('./components/Spese.jsx'));
-const ArchivioDocs = lazy(() => import('./components/ArchivioDocs.jsx'));
-const Listino = lazy(() => import('./components/Listino.jsx'));
-const Agenda = lazy(() => import('./components/Agenda.jsx'));
-const Richiami = lazy(() => import('./components/Richiami.jsx'));
-const Attivita = lazy(() => import('./components/Attivita.jsx'));
-const AgenteAISetup = lazy(() => import('./components/AgenteAISetup.jsx'));
-const WhatsApp = lazy(() => import('./components/WhatsApp.jsx'));
-const Impostazioni = lazy(() => import('./components/Impostazioni.jsx'));
+import RouteErrorBoundary from './components/RouteErrorBoundary.jsx';
+import { lazyWithRetry } from './lib/lazyWithRetry.js';
+const ControlloGestione = lazyWithRetry(() => import('./components/ControlloGestione.jsx'), 'ControlloGestione');
+const PoliedronHub = lazyWithRetry(() => import('./components/PoliedronHub.jsx'), 'PoliedronHub');
+const FinancialWorkspace = lazyWithRetry(() => import('./components/FinancialWorkspace.jsx'), 'FinancialWorkspace');
+const Pazienti = lazyWithRetry(() => import('./components/Pazienti.jsx'), 'Pazienti');
+const PatientWorkspaceBoundary = lazyWithRetry(() => import('./components/PatientWorkspaceBoundary.jsx'), 'PatientWorkspaceBoundary');
+const Piani = lazyWithRetry(() => import('./components/Piani.jsx'), 'Piani');
+const Spese = lazyWithRetry(() => import('./components/Spese.jsx'), 'Spese');
+const ArchivioDocs = lazyWithRetry(() => import('./components/ArchivioDocs.jsx'), 'ArchivioDocs');
+const Listino = lazyWithRetry(() => import('./components/Listino.jsx'), 'Listino');
+const Agenda = lazyWithRetry(() => import('./components/Agenda.jsx'), 'Agenda');
+const Richiami = lazyWithRetry(() => import('./components/Richiami.jsx'), 'Richiami');
+const Attivita = lazyWithRetry(() => import('./components/Attivita.jsx'), 'Attivita');
+const AgenteAISetup = lazyWithRetry(() => import('./components/AgenteAISetup.jsx'), 'AgenteAISetup');
+const WhatsApp = lazyWithRetry(() => import('./components/WhatsApp.jsx'), 'WhatsApp');
+const Impostazioni = lazyWithRetry(() => import('./components/Impostazioni.jsx'), 'Impostazioni');
 
 export default function App() {
   const { theme, toggleTheme } = useTheme();
@@ -612,6 +614,7 @@ export default function App() {
       )}
 
       {schedaDashPaz && createPortal((
+        <RouteErrorBoundary>
         <Suspense fallback={<div role="status" style={{ padding: 24 }}>Caricamento scheda paziente…</div>}>
           <PatientWorkspaceBoundary
             key={schedaDashPaz.paz.id}
@@ -647,6 +650,7 @@ export default function App() {
             )}
           />
         </Suspense>
+        </RouteErrorBoundary>
       ), document.body)}
 
       <div id="app-scroll" style={{
@@ -709,6 +713,7 @@ export default function App() {
       }}>
         {page === 'home' && <Dashboard patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegni} implants={implants} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} onNavigateNew={goNuovoElemento} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} currentUserId={session?.user?.id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} activityPatientRequest={quickHubActivityRequest} onActivityPatientRequestHandled={(id) => setQuickHubActivityRequest((current) => current?.id === id ? null : current)} onLogout={handleLogout} openHomeCustomizerRequest={openHomeCustomizerRequest} onOpenHomeCustomizerRequestHandled={(id) => setOpenHomeCustomizerRequest((current) => current === id ? null : current)} />}
         {page !== 'home' && (
+          <RouteErrorBoundary key={page}>
           <Suspense fallback={<LoadingScreen />}>
             {page === 'paz' && (
               <Pazienti
@@ -752,6 +757,7 @@ export default function App() {
             {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} isStudioAdmin={isStudioAdmin} onLogout={handleLogout} onCheckUpdate={checkForUpdate} onOpenHomeCustomizer={() => { setPage('home'); setOpenHomeCustomizerRequest(Date.now()); }} studioMembership={studioMembership} />}
             {page === 'chat' && <div ref={setPoliedronChatHost} className="poliedron-chat-host" />}
           </Suspense>
+          </RouteErrorBoundary>
         )}
       </div>
 

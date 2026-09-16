@@ -33,7 +33,7 @@ test('Home keeps a single fixed "Poliedron" teaser (page chrome, not a removable
 });
 
 test('App.jsx routes a new "poliedron" page to PoliedronHub, and NAV/mobile dock both know about it', () => {
-  assert.match(appSrc, /const PoliedronHub = lazy\(\(\) => import\('\.\/components\/PoliedronHub\.jsx'\)\);/);
+  assert.match(appSrc, /const PoliedronHub = lazyWithRetry\(\(\) => import\('\.\/components\/PoliedronHub\.jsx'\), 'PoliedronHub'\);/);
   assert.match(appSrc, /page === 'poliedron' && <PoliedronHub/);
   assert.match(utilsSrc, /\{ id: 'poliedron', l: 'Poliedron', ic: 'compass' \}/);
   assert.match(utilsSrc, /menuItems: \[.*'poliedron'.*\]/);
