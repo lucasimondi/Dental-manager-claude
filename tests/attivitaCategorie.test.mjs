@@ -66,7 +66,7 @@ test('a migration adds the categoria column to public.todos', () => {
 });
 
 test('a dedicated "Attività" page exists, routed from App.jsx and reachable from NAV, mirroring the Richiami pattern', () => {
-  assert.match(app, /const Attivita = lazy\(\(\) => import\('\.\/components\/Attivita\.jsx'\)\);/);
+  assert.match(app, /const Attivita = lazyWithRetry\(\(\) => import\('\.\/components\/Attivita\.jsx'\), 'Attivita'\);/);
   assert.match(app, /\{page === 'attivita' && <Attivita patients=\{patients\} onOpenPaz=\{goSchedaPaz\} richiami=\{richiami\} setRichiami=\{setRichiamiSync\}/);
   assert.match(utils, /\{ id: 'attivita', l: 'Attività', ic: 'clip' \}/);
 });
