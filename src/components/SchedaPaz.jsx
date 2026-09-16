@@ -5,6 +5,7 @@ import { aggregateSaldi, totalePagatoPaziente } from '../lib/domain/incassiMath.
 import { waAbilitato, waUrl } from './ui/WaAction.jsx';
 import PianoDrillDown from './PianoDrillDown.jsx';
 import IncassoModal from './IncassoModal.jsx';
+import PazienteFormModal from './PazienteFormModal.jsx';
 
 // POL-UI-021: Product Owner — la scheda paziente su mobile deve scorrere
 // come una landing page, con alcune sezioni "sempre a comparsa" (chiuse
@@ -35,7 +36,7 @@ const PatientQuickActions = lazy(() => import('./PatientQuickActions.jsx'));
 const PatientWorkspaceDocuments = lazy(() => import('./PatientWorkspaceDocuments.jsx'));
 const PatientWorkspaceConsentFlow = lazy(() => import('./PatientWorkspaceDocuments.jsx').then((module) => ({ default: module.PatientWorkspaceConsentFlow })));
 
-export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onEdit, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {}, implants = [], setImplants, setPatients, setPayments, richiami = [], setRichiami, onNuovoAppuntamento, onPatientChange, studioMembership, currentUserId, isStudioAdmin, saldiPiani = {}, pricelist = [], features }) {
+export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {}, implants = [], setImplants, setPatients, setPayments, richiami = [], setRichiami, onNuovoAppuntamento, onPatientChange, studioMembership, currentUserId, isStudioAdmin, saldiPiani = {}, pricelist = [], features }) {
   const [tab, setTab] = useState(initTab || 'info');
   const [documentFlow, setDocumentFlow] = useState(() => initialDocumentRequest?.type === 'ricetta' ? 'ricetta' : null);
   // POL-UI-020: Product Owner — la croce in header segnala lo stato
@@ -54,6 +55,15 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
   // scheda si apre", senza bisogno di un effetto post-mount.
   const [anamnesiPopup, setAnamnesiPopup] = useState(() => anamnesiState === 'allarme');
   const [incassoOpen, setIncassoOpen] = useState(false);
+  // POL-UI-042: "Modifica" used to call an external onEdit(paz) that
+  // App.jsx wired to nothing but closing this very overlay
+  // (onEdit={() => setSchedaDashPaz(null)}) — clicking it just dropped
+  // the operator back wherever they came from (Agenda, if that's where
+  // they'd opened the patient from), reading as "mi porta in agenda".
+  // Self-contained instead, same reusable form Pazienti.jsx's own
+  // Nuovo/Modifica paziente already uses — setPatients/onPatientChange
+  // are already real props here, no new plumbing through App.jsx needed.
+  const [editOpen, setEditOpen] = useState(false);
   const [documentsReloadToken, setDocumentsReloadToken] = useState(0);
   // POL-UI-021: Anagrafica/Piani/Pagamenti/Foto nel tab Info partono
   // chiuse ("cliccabile non sempre a vista" / "sempre a comparsa") — un
@@ -278,7 +288,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
             <path d="M8 2h8v6h6v8h-6v6H8v-6H2V8h6z" fill={anamnesiState === 'mancante' ? C.dan : '#fff'} />
           </svg>
         </button>
-        <button onClick={() => onEdit(paz)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, padding: '6px 11px', cursor: 'pointer', color: '#fff', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}><Ic n="edit" s={13} c="#fff" />Modifica</button>
+        <button onClick={() => setEditOpen(true)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, padding: '6px 11px', cursor: 'pointer', color: '#fff', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}><Ic n="edit" s={13} c="#fff" />Modifica</button>
       </div>
 
       {/* POL-UI-021: Product Owner — "le parti da pagare pagato devono
@@ -448,6 +458,19 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
           plans={patPlans}
           setPayments={setPayments}
           onClose={() => setIncassoOpen(false)}
+        />
+      )}
+
+      {editOpen && (
+        <PazienteFormModal
+          patient={paz}
+          si={si}
+          onSave={(updated) => {
+            setPatients?.((current) => current.map((p) => (p.id === updated.id ? updated : p)));
+            onPatientChange?.(updated);
+            setEditOpen(false);
+          }}
+          onClose={() => setEditOpen(false)}
         />
       )}
 

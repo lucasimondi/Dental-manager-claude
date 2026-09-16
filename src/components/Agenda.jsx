@@ -880,6 +880,16 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   // subito (stesso pattern usato ovunque nell'app) così il paziente è selezionabile
   // immediatamente nel campo, senza aspettare il salvataggio sul cloud.
   const limitePazienti = features?.max_pazienti ?? null;
+  // POL-UI-042: setPatients (=setPatientsSync in App.jsx) salva il nuovo
+  // paziente sul server in background e, appena risponde, sostituisce l'id
+  // temporaneo generato qui con quello reale — silenziosamente, in un
+  // useEffect più sotto. Se lo scambio avviene mentre l'utente sta ancora
+  // compilando il resto dell'appuntamento (caso comune), form.pazienteId
+  // resta puntato sul vecchio id temporaneo e SelettorePaziente non trova
+  // più il paziente ("ti ritorna l'elenco scorrimento"). pendingQuickPatientRef
+  // tiene traccia dell'ultimo paziente creato al volo per poterlo
+  // ri-agganciare al suo id reale non appena compare in patients.
+  const pendingQuickPatientRef = useRef(null);
   const creaPazienteRapido = (nome, cognome) => {
     if (!setPatients) return null;
     if (limitePazienti != null && patients.length >= limitePazienti) {
@@ -889,8 +899,21 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     const id = uid();
     setPatients((p) => [...p, { nome, cognome, dataNascita: '', telefono: '', email: '', cf: '', indirizzo: '', cap: '', comune: '', provincia: '', opposizione_sts: false, note: '', id }]);
     setToast(`Paziente ${nome} ${cognome} creato ✓`);
+    pendingQuickPatientRef.current = { tempId: String(id), nome, cognome };
     return id;
   };
+
+  useEffect(() => {
+    const pending = pendingQuickPatientRef.current;
+    if (!pending) return;
+    if (String(form.pazienteId) !== pending.tempId) { pendingQuickPatientRef.current = null; return; }
+    if (patients.some((p) => String(p.id) === pending.tempId)) return;
+    const reale = patients.find((p) => p.nome === pending.nome && p.cognome === pending.cognome);
+    if (reale) {
+      F({ pazienteId: String(reale.id) });
+      pendingQuickPatientRef.current = null;
+    }
+  }, [patients]);
 
   // "Sposta" apre lo stesso editor di Modifica, ma serve come voce distinta nel menu contestuale
   // perché è lì che l'utente pensa di andare quando vuole cambiare data/ora/giorno di un appuntamento
