@@ -54,12 +54,24 @@ export default function SelettorePaziente({ patients, value, onChange, search, o
   const [focused, setFocused] = useState(false);
   const blurTimeoutRef = useRef(null);
   const handleFocus = () => { clearTimeout(blurTimeoutRef.current); setFocused(true); };
-  const handleBlur = () => { blurTimeoutRef.current = setTimeout(() => setFocused(false), 150); };
+  // Il blur va ascoltato sul contenitore esterno (non solo sull'input di
+  // ricerca): CreaPazienteInline monta i propri campi Nome/Cognome come
+  // elementi DOM diversi, quindi cliccarci dentro genera comunque un blur
+  // dell'input di ricerca. Se il focus si è spostato su un altro elemento
+  // DENTRO questo stesso widget (relatedTarget contenuto nel wrapper), non
+  // va chiuso nulla — altrimenti l'utente non riesce a scrivere nei campi
+  // di creazione rapida perché il blocco si smonta dopo ~150ms. Il
+  // fallback a setTimeout resta necessario per i click su voci/bottoni non
+  // focusabili (relatedTarget è null in quel caso).
+  const handleBlur = (e) => {
+    if (e.relatedTarget && e.currentTarget.contains(e.relatedTarget)) return;
+    blurTimeoutRef.current = setTimeout(() => setFocused(false), 150);
+  };
   useEffect(() => () => clearTimeout(blurTimeoutRef.current), []);
   const showDropdown = focused && (!sel || search);
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative' }} onFocus={handleFocus} onBlur={handleBlur}>
       <div
         style={{ display: 'flex', alignItems: 'center', gap: 8, border: `1.5px solid ${sel && !search ? C.suc : C.brd}`, borderRadius: 10, padding: '10px 12px', background: C.sur, cursor: sel && !search ? 'default' : 'text' }}
         onClick={() => { if (sel && !search) onSearchChange(''); }}
@@ -77,8 +89,6 @@ export default function SelettorePaziente({ patients, value, onChange, search, o
             autoFocus={autoFocus}
             value={search}
             onChange={(e) => { onSearchChange(e.target.value); if (!e.target.value) onChange(''); }}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
             placeholder={placeholder}
             style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 14, color: C.txt, outline: 'none', fontFamily: 'inherit' }}
           />

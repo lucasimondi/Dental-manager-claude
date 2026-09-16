@@ -21,6 +21,11 @@ test('stable patient record keeps the essential patient workflows available', ()
     assert.match(source, new RegExp(`id: ${tab}`));
   }
   assert.match(source, /onClose/);
-  assert.match(source, /onEdit\(paz\)/);
+  // POL-UI-042: "Modifica" now opens the real PazienteFormModal in-place
+  // instead of calling an external onEdit(paz) that actually navigated
+  // away to Agenda.
+  assert.match(source, /onClick=\{\(\) => setEditOpen\(true\)\}/);
+  assert.match(source, /import PazienteFormModal from '\.\/PazienteFormModal\.jsx'/);
+  assert.match(source, /\{editOpen && \(/);
   assert.match(source, /onNuovoPiano\(paz\.id\)/);
 });

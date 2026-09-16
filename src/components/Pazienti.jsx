@@ -1,28 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { Btn, Crd, Fld, Inp, Txt, Modal, Toast, Ic, StatCard, PageHeader, EmptyState } from './ui';
+import { Btn, Crd, Inp, Toast, Ic, StatCard, PageHeader, EmptyState } from './ui';
 import { C, uid, fmtD, today, contaPazientiNuovi } from '../lib/utils';
 import ImportCsvModal from './ImportCsvModal.jsx';
 import DupModal from './DupModal.jsx';
 import PatientWorkspaceBoundary from './PatientWorkspaceBoundary.jsx';
+import PazienteFormModal from './PazienteFormModal.jsx';
 import { salvaPosizione, pulisciPosizione } from '../lib/posizioneNavigazione';
 
 export default function Pazienti({ patients, setPatients, plans, setPlans, payments, setPayments, appointments, setAppointments, richiami, setRichiami, si, features, studioMembership, currentUserId, isStudioAdmin, onNuovoPiano, implants, setImplants, onNuovoAppuntamento, templates, pricelist, autoOpenNew, onAutoOpenNewHandled }) {
-  const [modal, setModal] = useState(false);
+  // POL-UI-042: the modal's own form state now lives inside the reusable
+  // PazienteFormModal (also opened from the patient record's "Modifica"
+  // button, see App.jsx) — this only needs to remember WHICH patient (or
+  // null-for-new, as {}) triggered it. `null` = closed.
+  const [editingPatient, setEditingPatient] = useState(null);
   const [importModal, setImportModal] = useState(false);
   const [dupModal, setDupModal] = useState(false);
-  const [form, setForm] = useState({});
   const [scheda, setScheda] = useState(null);
   const [search, setSearch] = useState('');
   const [searchFocus, setSearchFocus] = useState(false);
   const [toast, setToast] = useState('');
   const [confirmDelId, setConfirmDelId] = useState(null);
-  const F = (f) => setForm((p) => ({ ...p, ...f }));
   const limitePazienti = features?.max_pazienti ?? null;
   const limiteRaggiunto = limitePazienti != null && patients.length >= limitePazienti;
 
   const openEdit = (p) => {
     if (!p && limiteRaggiunto) { setToast(`Hai raggiunto il limite di ${limitePazienti} pazienti del tuo piano. Passa a Pro per pazienti illimitati.`); return; }
-    setForm(p || { nome: '', cognome: '', dataNascita: '', telefono: '', email: '', cf: '', indirizzo: '', cap: '', comune: '', provincia: '', opposizione_sts: false, note: '' }); setModal(true);
+    setEditingPatient(p || {});
   };
 
   // Arrivo da un'azione rapida della Home ("+ Nuovo paziente"): apre subito
@@ -32,12 +35,11 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
     if (autoOpenNew) { openEdit(); onAutoOpenNewHandled && onAutoOpenNewHandled(); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoOpenNew]);
-  const save = () => {
-    if (!form.nome || !form.cognome) return;
-    if (!form.id && limiteRaggiunto) { setToast(`Limite di ${limitePazienti} pazienti raggiunto.`); setModal(false); return; }
+  const save = (form) => {
+    if (!form.id && limiteRaggiunto) { setToast(`Limite di ${limitePazienti} pazienti raggiunto.`); setEditingPatient(null); return; }
     if (form.id) setPatients((p) => p.map((x) => (x.id === form.id ? form : x)));
     else setPatients((p) => [...p, { ...form, id: uid() }]);
-    setModal(false);
+    setEditingPatient(null);
     setToast('Salvato ✓');
   };
   const del = (id) => {
@@ -322,37 +324,13 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
       </>
       )}
 
-      {modal && (
-        <Modal title={form.id ? 'Modifica paziente' : 'Nuovo paziente'} icon="pz" onClose={() => setModal(false)} wide>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <Fld label="Nome"><Inp value={form.nome || ''} onChange={(e) => F({ nome: e.target.value })} /></Fld>
-            <Fld label="Cognome"><Inp value={form.cognome || ''} onChange={(e) => F({ cognome: e.target.value })} /></Fld>
-            <Fld label="Data nascita"><Inp type="date" value={form.dataNascita || ''} onChange={(e) => F({ dataNascita: e.target.value })} /></Fld>
-            <Fld label="Codice fiscale"><Inp value={form.cf || ''} onChange={(e) => F({ cf: e.target.value.toUpperCase() })} /></Fld>
-            <Fld label="Telefono"><Inp type="tel" value={form.telefono || ''} onChange={(e) => F({ telefono: e.target.value })} /></Fld>
-            <Fld label="Email"><Inp type="email" value={form.email || ''} onChange={(e) => F({ email: e.target.value })} /></Fld>
-          </div>
-          <Fld label="Indirizzo"><Inp value={form.indirizzo || ''} onChange={(e) => F({ indirizzo: e.target.value })} /></Fld>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-            <Fld label="CAP"><Inp value={form.cap || ''} onChange={(e) => F({ cap: e.target.value })} /></Fld>
-            <Fld label="Comune"><Inp value={form.comune || ''} onChange={(e) => F({ comune: e.target.value })} /></Fld>
-            <Fld label="Provincia"><Inp value={form.provincia || ''} onChange={(e) => F({ provincia: e.target.value.toUpperCase().slice(0, 2) })} placeholder="es. MI" /></Fld>
-          </div>
-          {(!si?.regime_fiscale || si.regime_fiscale === 'sanitario_esente_art10') && (
-            <div onClick={() => F({ opposizione_sts: !form.opposizione_sts })} style={{ display: 'flex', alignItems: 'center', gap: 10, background: form.opposizione_sts ? C.warL : C.bg, borderRadius: 10, padding: 10, marginTop: 8, marginBottom: 8, cursor: 'pointer' }}>
-              <input type="checkbox" checked={!!form.opposizione_sts} onChange={() => {}} style={{ width: 16, height: 16 }} />
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: C.txt }}>Si oppone all'invio dei dati al Sistema Tessera Sanitaria</div>
-                <div style={{ fontSize: 10, color: C.txl }}>Diritto del paziente — se attivo, questa prestazione non verrà inclusa nella trasmissione STS</div>
-              </div>
-            </div>
-          )}
-          <Fld label="Note cliniche"><Txt value={form.note || ''} onChange={(e) => F({ note: e.target.value })} /></Fld>
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <Btn ch="Annulla" v="sec" onClick={() => setModal(false)} full />
-            <Btn ch="Salva" onClick={save} full />
-          </div>
-        </Modal>
+      {editingPatient && (
+        <PazienteFormModal
+          patient={editingPatient.id ? editingPatient : null}
+          si={si}
+          onSave={save}
+          onClose={() => setEditingPatient(null)}
+        />
       )}
       {importModal && <ImportCsvModal onClose={() => setImportModal(false)} onImport={handleImport} />}
       {dupModal && <DupModal patients={patients} setPatients={setPatients} onClose={() => setDupModal(false)} />}

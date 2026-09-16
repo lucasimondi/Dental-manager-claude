@@ -56,14 +56,26 @@ export function planAssignmentForPatient(plans, pazienteId) {
   return { mode: 'none' };
 }
 
-/** POL-FIN-003 §6 — payments left piano_id unset (never assigned by the
- *  backfill or by any write path, because the patient had more than one
- *  plan) surfaced for manual assignment. Purely derived from the same
- *  payments/plans arrays the app already loads per studio — no separate
- *  query, no formula duplicated server-side (the exclusion from
- *  get_saldo_piano/get_saldi_aperti_studio is a plain `piano_id IS NULL`
- *  filter, not recomputed here). */
-export function unassignedPaymentsForMultiPlanPatients(payments, plans) {
+/** POL-FIN-003 §6 / POL-FIN-008 — payments left piano_id unset surfaced
+ *  for manual assignment. Originally scoped to "patient has more than one
+ *  plan" on the assumption that a single-plan patient's payment would
+ *  always have been auto-assigned already (planAssignmentForPatient
+ *  auto-assigns when exactly one active plan exists) — true for a payment
+ *  made AFTER that plan existed, but not for one made *before* the
+ *  patient had any plan at all: nothing existed yet to auto-assign it to,
+ *  it stays piano_id-NULL forever, and once a first plan is later
+ *  created the patient now has exactly one plan, which the old `> 1`
+ *  check silently treated as "must already be assigned" — invisible to
+ *  this list, never assignable from the UI (Product Owner: registered a
+ *  payment, then created a plan afterwards, and the payments list had no
+ *  way to link the two). Any unassigned payment for a patient who
+ *  currently has at least one plan now qualifies — a patient with zero
+ *  plans genuinely has nothing to assign to yet, so that exclusion stays.
+ *  Purely derived from the same payments/plans arrays the app already
+ *  loads per studio — no separate query, no formula duplicated
+ *  server-side (the exclusion from get_saldo_piano/get_saldi_aperti_studio
+ *  is a plain `piano_id IS NULL` filter, not recomputed here). */
+export function unassignedPaymentsNeedingAssignment(payments, plans) {
   const planCountByPatient = new Map();
   (plans || []).forEach((plan) => {
     const key = String(plan.pazienteId);
@@ -71,6 +83,6 @@ export function unassignedPaymentsForMultiPlanPatients(payments, plans) {
   });
   return (payments || []).filter((payment) => {
     if (payment.pianoId !== undefined && payment.pianoId !== null) return false;
-    return (planCountByPatient.get(String(payment.pazienteId)) || 0) > 1;
+    return (planCountByPatient.get(String(payment.pazienteId)) || 0) > 0;
   });
 }

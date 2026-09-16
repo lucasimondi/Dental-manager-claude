@@ -4,7 +4,7 @@ import { fetchSaldiApertiStudio } from '../lib/domain/incassiService.js';
 import { Btn, Crd, EmptyState, ErrorState, Fld, Inp, LoadingState, Modal, PageHeader, Sel, SelettorePaziente } from './ui';
 import UploadDocumento from './ui/UploadDocumentoSpesa.jsx';
 import IncassoModal from './IncassoModal.jsx';
-import { addReceivableToLatestPlan, buildContextualPayment, planAssignmentForPatient, unassignedPaymentsForMultiPlanPatients } from '../lib/domain/incassiActions.js';
+import { addReceivableToLatestPlan, buildContextualPayment, planAssignmentForPatient, unassignedPaymentsNeedingAssignment } from '../lib/domain/incassiActions.js';
 import { matchPaymentsToPatients, flagPossibleDuplicates, riepilogoEstrattoConto, buildPaymentsFromEstrattoConto } from '../lib/domain/estrattoContoService.js';
 
 const euro = (value) => Number(value || 0).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
@@ -92,11 +92,12 @@ export default function Incassi({ studioId, patients = [], plans = [], payments 
     if (patient) onOpenPaz?.(patient, 'paga');
   };
 
-  // POL-FIN-003 §6 — payments left piano_id unset because the patient had
-  // more than one plan (backfill declined to guess, and no write path
-  // silently infers across plans either). Nothing here is allocated: it's
-  // excluded from every saldo until assigned, one payment at a time.
-  const daAssegnare = useMemo(() => unassignedPaymentsForMultiPlanPatients(payments, plans), [payments, plans]);
+  // POL-FIN-003 §6 / POL-FIN-008 — payments left piano_id unset: either the
+  // patient had more than one plan (backfill declined to guess) or the
+  // payment predates the patient's first plan entirely (nothing existed
+  // yet to auto-assign it to). Nothing here is allocated: it's excluded
+  // from every saldo until assigned, one payment at a time.
+  const daAssegnare = useMemo(() => unassignedPaymentsNeedingAssignment(payments, plans), [payments, plans]);
   const daAssegnareTotale = daAssegnare.reduce((sum, payment) => sum + Number(payment.importo || 0), 0);
   const assignPayment = (paymentId) => {
     const pianoId = assignDraft[paymentId];
@@ -207,7 +208,7 @@ export default function Incassi({ studioId, patients = [], plans = [], payments 
       {activeView === 'outstanding' && daAssegnare.length > 0 && (
         <Crd className="incassi-worklist incassi-worklist--unassigned">
           <div className="incassi-worklist__header"><div><strong>Pagamenti da assegnare</strong><span>{daAssegnare.length} {daAssegnare.length === 1 ? 'pagamento' : 'pagamenti'} · {euro(daAssegnareTotale)}</span></div></div>
-          <p className="incassi-note">Il paziente ha più piani e questi pagamenti storici non sono collegati a nessuno: non entrano nel saldo di nessun piano finché non li assegni.</p>
+          <p className="incassi-note">Questi pagamenti non sono collegati a nessun piano (perché il paziente ne ha più di uno, o perché sono stati registrati prima che esistesse un piano): non entrano nel saldo di nessun piano finché non li assegni.</p>
           <div className="incassi-list incassi-list--unassigned">
             {daAssegnare.map((payment) => {
               const patient = patientById.get(String(payment.pazienteId));

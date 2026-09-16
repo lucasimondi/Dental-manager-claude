@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { addReceivableToLatestPlan, buildContextualPayment, isActivePlan, planAssignmentForPatient, unassignedPaymentsForMultiPlanPatients } from '../src/lib/domain/incassiActions.js';
+import { addReceivableToLatestPlan, buildContextualPayment, isActivePlan, planAssignmentForPatient, unassignedPaymentsNeedingAssignment } from '../src/lib/domain/incassiActions.js';
 
 test('creates a normal occasional plan when the patient has none, and returns its id', () => {
   const result = addReceivableToLatestPlan([], { pazienteId: '7', descrizione: 'Igiene', importo: 80, eseguita: true });
@@ -34,7 +34,7 @@ test('isActivePlan excludes concluso/rifiutato, includes attivo/accettato', () =
   assert.equal(isActivePlan({ stato: 'rifiutato' }), false);
 });
 
-test('unassignedPaymentsForMultiPlanPatients: only piano_id-less payments for patients with >1 plan', () => {
+test('unassignedPaymentsNeedingAssignment: piano_id-less payments for any patient who has at least one plan', () => {
   const plans = [
     { id: 1, pazienteId: 2 }, { id: 2, pazienteId: 2 }, // patient 2: two plans
     { id: 3, pazienteId: 4 }, // patient 4: one plan
@@ -42,11 +42,28 @@ test('unassignedPaymentsForMultiPlanPatients: only piano_id-less payments for pa
   const payments = [
     { id: 'a', pazienteId: 2, importo: 900 }, // no pianoId, patient has 2 plans -> unresolved
     { id: 'b', pazienteId: 2, importo: 300, pianoId: 1 }, // already assigned -> excluded
-    { id: 'c', pazienteId: 4, importo: 150 }, // single-plan patient, no pianoId (should have been auto-backfilled server-side, but even so: not ambiguous) -> excluded
-    { id: 'd', pazienteId: 99, importo: 50 }, // no plans at all -> excluded
+    { id: 'c', pazienteId: 4, importo: 150 }, // single-plan patient, no pianoId -> now included (see below)
+    { id: 'd', pazienteId: 99, importo: 50 }, // no plans at all -> excluded, nothing to assign to yet
   ];
-  const result = unassignedPaymentsForMultiPlanPatients(payments, plans);
-  assert.deepEqual(result.map((p) => p.id), ['a']);
+  const result = unassignedPaymentsNeedingAssignment(payments, plans);
+  assert.deepEqual(result.map((p) => p.id).sort(), ['a', 'c']);
+});
+
+// Product Owner: registered a 50€ payment for a patient with no plans yet,
+// then created a 100€ plan afterwards — the payment (piano_id NULL forever,
+// since planAssignmentForPatient had nothing to auto-assign it to at
+// write time) needs to become assignable now that a plan finally exists.
+// The old `> 1` (multi-plan-only) check wrongly assumed a single-plan
+// patient's unassigned payment must already have been auto-assigned —
+// true for a payment made AFTER the plan existed, never for one made
+// before the patient had any plan at all.
+test('unassignedPaymentsNeedingAssignment: a payment registered before any plan existed becomes assignable once the first plan is created', () => {
+  const payment = { id: 'p1', pazienteId: 7, importo: 50, pianoId: null };
+  // Before any plan exists: nothing to assign to yet, correctly excluded.
+  assert.deepEqual(unassignedPaymentsNeedingAssignment([payment], []), []);
+  // After a first plan is created for the same patient: now assignable.
+  const plans = [{ id: 'plan-1', pazienteId: 7 }];
+  assert.deepEqual(unassignedPaymentsNeedingAssignment([payment], plans).map((p) => p.id), ['p1']);
 });
 
 test('planAssignmentForPatient: auto-assigns the single active plan', () => {
