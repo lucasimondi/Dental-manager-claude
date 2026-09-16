@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { importWithRetry } from '../src/lib/lazyWithRetry.js';
+import { hardReload } from '../src/lib/hardReload.js';
 
 const app = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8');
 const lazyWithRetrySource = readFileSync(new URL('../src/lib/lazyWithRetry.js', import.meta.url), 'utf8');
+const hardReloadSource = readFileSync(new URL('../src/lib/hardReload.js', import.meta.url), 'utf8');
 const routeErrorBoundarySource = readFileSync(new URL('../src/components/RouteErrorBoundary.jsx', import.meta.url), 'utf8');
 
 // Product Owner, right after a same-day round of deploys: "Ora però non
@@ -106,9 +108,10 @@ test('importWithRetry never throws from a broken sessionStorage (private/locked-
 });
 
 test('a RouteErrorBoundary now wraps every Suspense boundary that renders a lazyWithRetry-wrapped component, keyed by page so it resets on navigation', () => {
-  assert.match(routeErrorBoundarySource, /static getDerivedStateFromError\(\)/);
+  assert.match(routeErrorBoundarySource, /static getDerivedStateFromError\(error\)/);
   assert.match(routeErrorBoundarySource, /componentDidCatch\(error\)/);
-  assert.match(routeErrorBoundarySource, /window\.location\.reload\(\)/);
+  assert.match(routeErrorBoundarySource, /onClick=\{\(\) => hardReload\(\)\}/);
+  assert.match(routeErrorBoundarySource, /import \{ hardReload \} from '\.\.\/lib\/hardReload\.js'/);
 
   assert.match(app, /import RouteErrorBoundary from '\.\/components\/RouteErrorBoundary\.jsx'/);
   assert.match(app, /import \{ lazyWithRetry \} from '\.\/lib\/lazyWithRetry\.js'/);
@@ -117,4 +120,83 @@ test('a RouteErrorBoundary now wraps every Suspense boundary that renders a lazy
   assert.match(app, /<RouteErrorBoundary key=\{page\}>\s*\n\s*<Suspense fallback=\{<LoadingScreen \/>\}>/);
   // The SchedaPaz patient-card portal Suspense.
   assert.match(app, /<RouteErrorBoundary>\s*\n\s*<Suspense fallback=\{<div role="status"[\s\S]*?>Caricamento scheda paziente…<\/div>\}>/);
+});
+
+// Follow-up: the Product Owner still hit RouteErrorBoundary's "Qualcosa è
+// andato storto" screen right after the automatic retry should have fixed
+// a stale chunk. Root cause: a plain window.location.reload() can be
+// served entirely by the app's own service worker cache — including the
+// reload's own fetch for index.html and for the failing chunk — without
+// ever reaching the network, so retrying via a plain reload can never
+// break out of the loop if the ACTIVE service worker is the stale one.
+
+test('lazyWithRetry now reloads via hardReload (service-worker + cache clearing), not a plain window.location.reload', () => {
+  assert.match(lazyWithRetrySource, /import \{ hardReload \} from '\.\/hardReload\.js'/);
+  assert.match(lazyWithRetrySource, /await hardReload\(\);/);
+  assert.doesNotMatch(lazyWithRetrySource, /window\.location\.reload\(\)/, 'the raw reload call must live only in hardReload.js');
+});
+
+test('hardReload unregisters every service worker registration and clears every Cache Storage entry before reloading', () => {
+  assert.match(hardReloadSource, /navigator\.serviceWorker\?\.getRegistrations/);
+  assert.match(hardReloadSource, /registration\.unregister\(\)/);
+  assert.match(hardReloadSource, /caches\.keys\(\)/);
+  assert.match(hardReloadSource, /caches\.delete\(key\)/);
+  assert.match(hardReloadSource, /window\.location\.reload\(\);/);
+});
+
+// Node defines `navigator` as a non-writable global (unlike `window`), so
+// a plain `globalThis.navigator = ...` throws — swap it via
+// defineProperty instead, restoring the original descriptor afterwards.
+function withStubbedNavigator(value, fn) {
+  const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  Object.defineProperty(globalThis, 'navigator', { value, configurable: true, writable: true });
+  return fn().finally(() => {
+    if (originalDescriptor) {
+      Object.defineProperty(globalThis, 'navigator', originalDescriptor);
+    } else {
+      delete globalThis.navigator;
+    }
+  });
+}
+
+test('hardReload actually unregisters service workers, clears caches, and reloads — in that order', async () => {
+  const originalWindow = globalThis.window;
+  const originalCaches = globalThis.caches;
+  const calls = [];
+  globalThis.window = { location: { reload: () => calls.push('reload') } };
+  globalThis.caches = {
+    keys: async () => ['cache-a', 'cache-b'],
+    delete: async (key) => { calls.push(`delete-${key}`); },
+  };
+  try {
+    await withStubbedNavigator({
+      serviceWorker: {
+        getRegistrations: async () => [
+          { unregister: async () => { calls.push('unregister-1'); } },
+          { unregister: async () => { calls.push('unregister-2'); } },
+        ],
+      },
+    }, hardReload);
+    assert.equal(calls.filter((c) => c.startsWith('unregister')).length, 2);
+    assert.equal(calls.filter((c) => c.startsWith('delete-cache')).length, 2);
+    assert.equal(calls.at(-1), 'reload', 'reload must happen only after unregister/clear finish');
+  } finally {
+    globalThis.window = originalWindow;
+    globalThis.caches = originalCaches;
+  }
+});
+
+test('hardReload still reloads even if serviceWorker/caches APIs are unavailable or throw', async () => {
+  const originalWindow = globalThis.window;
+  const originalCaches = globalThis.caches;
+  let reloaded = false;
+  globalThis.window = { location: { reload: () => { reloaded = true; } } };
+  globalThis.caches = { keys: async () => { throw new Error('blocked'); }, delete: async () => {} };
+  try {
+    await withStubbedNavigator({ serviceWorker: { getRegistrations: async () => { throw new Error('blocked'); } } }, hardReload);
+    assert.equal(reloaded, true, 'a broken serviceWorker/caches API must never prevent the reload');
+  } finally {
+    globalThis.window = originalWindow;
+    globalThis.caches = originalCaches;
+  }
 });

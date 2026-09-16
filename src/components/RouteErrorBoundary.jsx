@@ -1,4 +1,5 @@
 import React from 'react';
+import { hardReload } from '../lib/hardReload.js';
 
 // POL-UI-040: pairs with lazyWithRetry.js — a rejected lazy import is
 // retried once via a forced reload; if it still fails (a genuinely broken
@@ -7,14 +8,23 @@ import React from 'react';
 // above the app's single Suspense block, so React would just unmount
 // silently with nothing shown but a blank page and a console error. This
 // gives that failure a real, recoverable screen instead.
+//
+// Follow-up: the Product Owner still landed on this screen right after
+// the automatic retry should have fixed a stale chunk — a plain reload
+// was not enough because the service worker itself can serve the same
+// stale cache to the reload's own requests. The "Ricarica" button below
+// now goes through hardReload() (clears the service worker + Cache
+// Storage first) for the same reason, and the caught error's message is
+// shown on screen so the Product Owner can read it out directly instead
+// of only a screenshot of the generic message.
 export default class RouteErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, errorMessage: '' };
   }
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error) {
+    return { hasError: true, errorMessage: error?.message || String(error) };
   }
 
   componentDidCatch(error) {
@@ -36,7 +46,7 @@ export default class RouteErrorBoundary extends React.Component {
               Non è stato possibile caricare questa pagina. Tocca per ricaricare.
             </div>
             <button
-              onClick={() => window.location.reload()}
+              onClick={() => hardReload()}
               style={{
                 padding: '10px 20px', borderRadius: 10, border: 'none', background: '#185FA5',
                 color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
@@ -44,6 +54,11 @@ export default class RouteErrorBoundary extends React.Component {
             >
               Ricarica
             </button>
+            {this.state.errorMessage && (
+              <div style={{ marginTop: 14, fontSize: 10.5, color: '#8A93A0', wordBreak: 'break-word' }}>
+                {this.state.errorMessage}
+              </div>
+            )}
           </div>
         </div>
       );

@@ -1,5 +1,18 @@
 # Current task
 
+- TASK: POL-UI-040 follow-up — il reload automatico non bastava, la schermata "Qualcosa è andato storto" compariva comunque
+- TITLE: subito dopo il merge del fix POL-UI-040, il Product Owner ha mandato uno screenshot che mostra proprio la schermata di errore appena introdotta ("Qualcosa è andato storto... Tocca per ricaricare") — segno che il retry automatico (un reload semplice) NON ha risolto il caricamento del chunk, e il boundary è correttamente intervenuto sulla seconda mancata riuscita.
+- OWNER: CLAUDE, di propria iniziativa dopo aver ricevuto lo screenshot della schermata d'errore come conferma che il fix precedente non bastava.
+- BRANCH: `fix/hard-reload-bypass-service-worker-cache`, da `master` (contiene già PR #104).
+- STATUS: NON MERGED — pushato, in attesa di "Mergia" esplicita del Product Owner.
+
+- **Causa radice del "il reload non basta"**: il service worker di questa app (vite-plugin-pwa, `generateSW`) precache OGNI file JS/CSS/HTML buildato e, una volta attivo, intercetta lui stesso le richieste fetch per quegli URL — comprese quelle di un `window.location.reload()`! Se il service worker ATTIVO è ancora quello vecchio (non ha ancora finito di installarsi/attivarsi sulla versione più recente, o il nuovo deploy ha già eliminato un chunk che la precache vecchia non aveva mai), un semplice reload può essere servito interamente dalla stessa cache vecchia, senza mai toccare la rete — quindi il retry-via-reload di POL-UI-040 non riusciva a rompere il ciclo.
+- **Fix**: nuovo `src/lib/hardReload.js` — `hardReload()` prima de-registra OGNI service worker attivo (`navigator.serviceWorker.getRegistrations()` + `.unregister()`) e cancella OGNI voce della Cache Storage (`caches.keys()` + `.delete()`), POI ricarica la pagina — garantendo che il reload arrivi davvero alla rete, non a una cache disallineata. Sia il retry automatico di `lazyWithRetry.js` sia il tasto "Ricarica" manuale di `RouteErrorBoundary.jsx` (introdotto in POL-UI-040) ora passano da questo stesso helper, così anche un secondo tentativo manuale dopo quello automatico ha una vera possibilità di riuscire. `RouteErrorBoundary` ora mostra anche il messaggio tecnico dell'errore catturato (piccolo testo grigio sotto il tasto), per poterlo leggere/riferire direttamente se il problema si ripresenta.
+- VALIDATION: `npm test` 786/786 (aggiornato `tests/lazyWithRetryChunkLoadFailure.test.mjs` con 4 nuovi test comportamentali su `hardReload` — de-registra i service worker e cancella le cache PRIMA di ricaricare, nell'ordine corretto; non blocca mai il reload anche se le API service-worker/cache falliscono o non esistono; aggiornati i test esistenti per il nuovo import); `npm run build` pulito. Nessuna migration.
+- EXACT NEXT ACTION: in attesa di "Mergia" esplicita del Product Owner — dato il carattere bloccante, mergiare non appena confermato.
+
+---
+
 - TASK: POL-UI-040 — "Ora però non carica il popup mi va in caricamento" (chunk lazy-load bloccato per sempre)
 - TITLE: subito dopo i due merge di POL-UI-039, il Product Owner segnala che ora l'app resta bloccata su una schermata di caricamento generale invece di mostrare il popup — persiste anche dopo aver chiuso del tutto e riaperto l'app.
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggio verbatim: "Ora però non carica il popup mi va in caricamento"; confermato via due domande di chiarimento: è una schermata di caricamento generale, non una rotellina dentro il popup, e persiste anche dopo un riavvio completo dell'app).
