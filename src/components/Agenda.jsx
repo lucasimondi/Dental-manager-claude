@@ -85,7 +85,7 @@ const startOfWeek = (d) => {
   return dt;
 };
 
-function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno, onSwipeDay, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onOpenRecall, onOpenActivity, onPoliedronCommand }) {
+function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno, onSwipeDay, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight }) {
   const containerRef = useRef(null); // unico scroll container
   const resizeRef = useRef(null);
   const [now, setNow] = useState(new Date());
@@ -1119,7 +1119,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   // GridView (il commento su DayStrip spiega perché) — vedi item 5/2 della
   // spec "Agenda mobile final": non deve rubare spazio alle 7 colonne.
   const oraColW = isMobile ? 34 : 46;
-  const gridProps = { slots, slotH, slotMin, oraInizio, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onOpenRecall, onOpenActivity, onPoliedronCommand };
+  const gridProps = { slots, slotH, slotMin, oraInizio, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight };
 
   // Appuntamenti effettivamente visibili nella vista corrente (per il conteggio "Seleziona tutti" e il badge)
   const giorniVisibili = view === 'giorno' ? [selDay] : view === 'settimana' ? weekDays.map(toISO) : [];
