@@ -1,4 +1,5 @@
 import { lazy } from 'react';
+import { hardReload } from './hardReload.js';
 
 // POL-UI-040: Product Owner, right after a same-day round of deploys —
 // "Ora però non carica il popup mi va in caricamento" — persisted even
@@ -17,15 +18,16 @@ import { lazy } from 'react';
 // in-memory state.
 //
 // `lazyWithRetry` wraps a dynamic import factory so a rejected import is
-// retried exactly once via a real `window.location.reload()` — a genuine
-// navigation, which (like POL-UI-032's logout reload) always re-fetches
-// index.html and re-resolves every asset URL from scratch, breaking any
-// stale cache tying the failure to this session. A `sessionStorage` flag
-// keyed by chunk name prevents a reload loop if the failure is NOT
-// transient (e.g. the chunk is genuinely missing) — the second failure is
-// left to reject for real, so the error boundary around Suspense (see
-// RouteErrorBoundary.jsx) can show a real, recoverable error message
-// instead of an infinite spinner.
+// retried exactly once via `hardReload()` (see hardReload.js) — not just a
+// bare page reload, which turned out not to be enough on its own: this
+// app's service worker can intercept even the reload's own requests and
+// serve the same stale cache again. `hardReload()` clears the service
+// worker + Cache Storage first, guaranteeing the reload actually reaches
+// the network. A `sessionStorage` flag keyed by chunk name prevents a
+// reload loop if the failure is NOT transient (e.g. the chunk is
+// genuinely missing) — the second failure is left to reject for real, so
+// the error boundary around Suspense (see RouteErrorBoundary.jsx) can
+// show a real, recoverable error message instead of an infinite spinner.
 // Exported separately so it can be exercised directly in tests without
 // going through React's lazy()/Suspense machinery.
 export async function importWithRetry(factory, chunkName) {
@@ -47,7 +49,7 @@ export async function importWithRetry(factory, chunkName) {
     } catch {
       // Best-effort only — if we can't persist the flag, worst case we retry every time.
     }
-    window.location.reload();
+    await hardReload();
     // The reload replaces this page before this promise would ever need to settle.
     return new Promise(() => {});
   }
