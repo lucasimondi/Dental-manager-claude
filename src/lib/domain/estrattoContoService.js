@@ -3,7 +3,7 @@
    extracts raw rows { data, importo, descrizione } from the uploaded
    document; everything here is deterministic and runs entirely on data
    already loaded client-side (patients/plans/payments) — no I/O, no new
-   query, same principle as incassiActions.js's unassignedPaymentsForMultiPlanPatients. */
+   query, same principle as incassiActions.js's unassignedPaymentsNeedingAssignment. */
 
 import { uid } from '../utils.js';
 import { trovaPazienteInTesto } from '../ricercaPazienti.js';

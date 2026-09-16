@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useState } from 'react';
 import { Btn, Crd, Bdg, Ic, Modal } from './ui';
 import { C, fmt, fmtD, today } from '../lib/utils';
-import { aggregateSaldi } from '../lib/domain/incassiMath.js';
+import { aggregateSaldi, totalePagatoPaziente } from '../lib/domain/incassiMath.js';
 import { waAbilitato, waUrl } from './ui/WaAction.jsx';
 import PianoDrillDown from './PianoDrillDown.jsx';
 import IncassoModal from './IncassoModal.jsx';
@@ -82,7 +82,13 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
   const saldiCaricati = patPlanIds.length === 0 || patPlanIds.every((id) => saldiPiani[id]);
   const aggSaldi = aggregateSaldi(patPlanIds.map((id) => saldiPiani[id]).filter(Boolean));
   const totDaPagare = aggSaldi.saldo_piano;
-  const pctPagato = aggSaldi.totale_piano > 0 ? Math.min(100, Math.round((aggSaldi.totale_pagato / aggSaldi.totale_piano) * 100)) : 0;
+  // POL-FIN-008: "Pagato" (header stat + Situazione finanziaria) means
+  // "money this patient has actually given us", regardless of whether
+  // each payment has been linked to a plan yet — see totalePagatoPaziente.
+  // aggSaldi.totale_pagato stays reserved for the "Da pagare"/% saldato
+  // math below, which is intentionally plan-scoped (get_saldo_piano).
+  const totalePagatoReale = totalePagatoPaziente(patPay);
+  const pctPagato = aggSaldi.totale_piano > 0 ? Math.min(100, Math.round((totalePagatoReale / aggSaldi.totale_piano) * 100)) : 0;
 
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const isFisio = si?.vertical === 'fisioterapista' || si?.vertical === 'massofisioterapista';
@@ -153,7 +159,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
           <div style={{ height: '100%', width: `${pctPagato}%`, background: pctPagato >= 100 ? '#86efac' : '#60a5fa', borderRadius: 6, transition: 'width 0.3s' }} />
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>
-          <span>Eseguito {saldiCaricati ? fmt(aggSaldi.totale_eseguito) : '…'} · Pagato {saldiCaricati ? fmt(aggSaldi.totale_pagato) : '…'}</span>
+          <span>Eseguito {saldiCaricati ? fmt(aggSaldi.totale_eseguito) : '…'} · Pagato {saldiCaricati ? fmt(totalePagatoReale) : '…'}</span>
           <span>{pctPagato}% saldato</span>
         </div>
       </Crd>
@@ -280,7 +286,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
           tutte e 4 le celle per coerenza (stessa apparenza, stesso
           comportamento), non solo le due esplicitamente citate. */}
       <div style={{ background: C.priD, display: 'flex', borderTop: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
-        {[{ l: 'Piani', v: patPlans.length, goTo: 'piani' }, { l: 'Pagato', v: saldiCaricati ? fmt(aggSaldi.totale_pagato) : '…', goTo: 'paga' }, { l: 'Da pagare', v: saldiCaricati ? fmt(totDaPagare) : '…', goTo: 'paga' }, { l: 'Visite', v: patApp.length, goTo: 'app' }].map((s) => (
+        {[{ l: 'Piani', v: patPlans.length, goTo: 'piani' }, { l: 'Pagato', v: saldiCaricati ? fmt(totalePagatoReale) : '…', goTo: 'paga' }, { l: 'Da pagare', v: saldiCaricati ? fmt(totDaPagare) : '…', goTo: 'paga' }, { l: 'Visite', v: patApp.length, goTo: 'app' }].map((s) => (
           <button key={s.l} type="button" onClick={() => setTab(s.goTo)} style={{ flex: 1, textAlign: 'center', padding: '8px 2px', border: 'none', borderRight: '1px solid rgba(255,255,255,0.1)', background: 'none', cursor: 'pointer', font: 'inherit' }}>
             <div style={{ color: s.l === 'Da pagare' && totDaPagare > 0 ? '#FCA5A5' : '#fff', fontWeight: 800, fontSize: 12 }}>{s.v}</div>
             <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 9 }}>{s.l}</div>

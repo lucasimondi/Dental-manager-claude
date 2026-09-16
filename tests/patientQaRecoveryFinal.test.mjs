@@ -279,7 +279,7 @@ test('P5. Il telefono è sotto il nome in header; PhStr (secondo Chiama/WhatsApp
 });
 
 test('P6. Le celle statistiche dell\'header sono cliccabili e portano al tab giusto', () => {
-  assert.match(schedaPaz, /goTo: 'piani' \}, \{ l: 'Pagato', v: saldiCaricati \? fmt\(aggSaldi\.totale_pagato\) : '…', goTo: 'paga' \}, \{ l: 'Da pagare', v: saldiCaricati \? fmt\(totDaPagare\) : '…', goTo: 'paga' \}, \{ l: 'Visite', v: patApp\.length, goTo: 'app' \}/);
+  assert.match(schedaPaz, /goTo: 'piani' \}, \{ l: 'Pagato', v: saldiCaricati \? fmt\(totalePagatoReale\) : '…', goTo: 'paga' \}, \{ l: 'Da pagare', v: saldiCaricati \? fmt\(totDaPagare\) : '…', goTo: 'paga' \}, \{ l: 'Visite', v: patApp\.length, goTo: 'app' \}/);
   assert.match(schedaPaz, /<button key=\{s\.l\} type="button" onClick=\{\(\) => setTab\(s\.goTo\)\}/);
 });
 

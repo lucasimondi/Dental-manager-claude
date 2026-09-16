@@ -21,3 +21,24 @@ export function aggregateSaldi(rows) {
     acconto: acc.acconto + Number(r.acconto || 0),
   }), { ...ZERO_SALDO });
 }
+
+/* POL-FIN-008 — Product Owner: registered a payment before any plan
+   existed for the patient, then created a plan afterwards; the payment
+   never showed up in "Pagato" at all. Root cause: get_saldo_piano's
+   totale_pagato (what aggregateSaldi sums) is PER-PLAN — it only counts
+   payments already linked via payments.piano_id, by definition excluding
+   any payment made before a plan existed to link it to (piano_id stays
+   NULL forever until manually assigned). "Pagato" at the top of the
+   patient record should mean "money this patient has actually given us",
+   full stop — not "money already reconciled against a specific plan
+   line". Same convention Incassi.jsx already uses for its own studio-wide
+   "Incassato" KPI (stato === 'pagato', case-insensitive) — extended here
+   to the single-patient scope instead of inventing a second definition of
+   "paid". Deliberately payments-only (no RPC, no piano_id filter): this is
+   a plain additive sum over data already loaded, not a re-derivation of
+   the get_saldo_piano/FIFO formula that must stay server-side. */
+export function totalePagatoPaziente(payments) {
+  return (payments || [])
+    .filter((payment) => String(payment?.stato || '').toLowerCase() === 'pagato')
+    .reduce((sum, payment) => sum + Number(payment?.importo || 0), 0);
+}
