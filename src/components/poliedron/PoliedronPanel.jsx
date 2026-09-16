@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { C } from '../../lib/utils';
 import { Ic } from '../ui';
 import PoliedronSearchResults, { countFlatItems, flatItemAt } from './PoliedronSearchResults';
@@ -7,6 +7,7 @@ import PoliedronActionPreviewLevel2 from './PoliedronActionPreviewLevel2';
 import PoliedronConversation from './PoliedronConversation';
 import PoliedronSuggestionBoard from './PoliedronSuggestionBoard';
 import PoliedronIntelligenceResults from './PoliedronIntelligenceResults';
+import { computeMobilePanelViewportRect } from '../../lib/poliedron/poliedronPanelViewport.js';
 
 /* POL-AI-001 §4-5, §25, §30-32 — the command panel itself. Pure
    presentation + local UI state (query text, keyboard highlight) — all
@@ -28,6 +29,26 @@ import PoliedronIntelligenceResults from './PoliedronIntelligenceResults';
    `poliedron_conversations` / `poliedron_messages` cannot disable or degrade
    it — persistence of a panel request is best-effort and handled upstream in
    Poliedron.jsx. Still ONE Poliedron: same instance, same agent. */
+// POL-UI-041: on mobile the keyboard opens as soon as the panel mounts
+// (the query input auto-focuses just below). `position: fixed; inset: 0`
+// sizes the container to the LAYOUT viewport, which iOS Safari never
+// shrinks for an on-screen keyboard — the keyboard simply overlaps the
+// bottom of that fixed box instead. The scrollable content area inside
+// still only has as much real scroll range as its own content height, so
+// once the keyboard covers the last quick actions, no amount of
+// scrolling can bring them above the keyboard: dismissing the keyboard
+// (the Product Owner's own workaround) is the only way to see them.
+// `window.visualViewport` (already used elsewhere in this same folder,
+// usePoliedronPosition.js) reports the REAL visible height/offset,
+// shrinking live as the keyboard opens on every browser that matters
+// here including iOS Safari — `env(keyboard-inset-height)` (used
+// elsewhere in this codebase) does not: it's a Chromium/VirtualKeyboard-
+// API-only feature, always 0px on iOS. Sizing the fixed container to the
+// real visual viewport instead of the full layout viewport means the
+// flex column (header fixed, content flex:1 + overflow-y:auto) is always
+// laid out within the space actually visible above the keyboard, so its
+// own scroll range naturally reaches every last action — never covered,
+// never requiring the keyboard to be dismissed first.
 export default function PoliedronPanel({
   panelId, isMobile, query, onQueryChange, state, loading,
   highlightedIndex, onHighlightChange, onSelectResult, onConfirmAction, onModifyAction, onSubmit,
@@ -35,10 +56,23 @@ export default function PoliedronPanel({
   onClose, inputRef, submitDisabled = false, interactionDisabled = false,
 }) {
   const containerRef = useRef(null);
+  const [viewportRect, setViewportRect] = useState(() => computeMobilePanelViewportRect(typeof window !== 'undefined' ? window.visualViewport : null));
 
   useEffect(() => {
     inputRef.current?.focus();
   }, [inputRef]);
+
+  useEffect(() => {
+    if (!isMobile || typeof window === 'undefined' || !window.visualViewport) return undefined;
+    const update = () => setViewportRect(computeMobilePanelViewportRect(window.visualViewport));
+    update();
+    window.visualViewport.addEventListener('resize', update);
+    window.visualViewport.addEventListener('scroll', update);
+    return () => {
+      window.visualViewport.removeEventListener('resize', update);
+      window.visualViewport.removeEventListener('scroll', update);
+    };
+  }, [isMobile]);
 
   const onKeyDown = (e) => {
     if (e.key === 'Escape') { e.preventDefault(); onClose(); return; }
@@ -60,7 +94,13 @@ export default function PoliedronPanel({
 
   const containerStyle = isMobile
     ? {
-        position: 'fixed', inset: 0, zIndex: 1301, display: 'flex', flexDirection: 'column',
+        position: 'fixed',
+        top: viewportRect ? viewportRect.top : 0,
+        left: 0,
+        right: 0,
+        height: viewportRect ? viewportRect.height : undefined,
+        bottom: viewportRect ? undefined : 0,
+        zIndex: 1301, display: 'flex', flexDirection: 'column',
         background: C.sur, paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }
     : {
