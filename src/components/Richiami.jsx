@@ -77,6 +77,24 @@ export default function Richiami({ patients, plans, payments, appointments, rich
     .filter((r) => (mostraFatti ? r.stato === 'fatto' : r.stato === 'da_fare'))
     .sort((a, b) => a.dataScadenza.localeCompare(b.dataScadenza));
 
+  // Product Owner: "sono due capraro... deve generarsi un solo richiamo".
+  // Un paziente può avere più motivi reali insieme (es. un trattamento
+  // clinico E una prestazione da fatturare) — restano righe distinte, ma
+  // raggruppate sotto un'unica card per persona invece di apparire come
+  // schede separate e ripetute, che è quello che leggeva come "duplicato".
+  const gruppiPerPaziente = (() => {
+    const mappa = new Map();
+    filtrati.forEach((r) => {
+      const key = String(r.pazienteId);
+      if (!mappa.has(key)) mappa.set(key, []);
+      mappa.get(key).push(r);
+    });
+    return Array.from(mappa.values()).map((lista) => ({
+      lista,
+      primaScadenza: lista.reduce((min, r) => (r.dataScadenza < min ? r.dataScadenza : min), lista[0].dataScadenza),
+    })).sort((a, b) => a.primaScadenza.localeCompare(b.primaScadenza));
+  })();
+
   const tplSollecito = templates.find((tp) => tp.nome === 'Sollecito controllo') || DEF_TPL_GENERICO[3];
 
   return (
@@ -110,30 +128,41 @@ export default function Richiami({ patients, plans, payments, appointments, rich
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-        {filtrati.map((r) => {
-          const paz = patients.find((p) => String(p.id) === String(r.pazienteId));
-          const cat = RICHIAMO_CATEGORIE[r.categoria] || RICHIAMO_CATEGORIE.generico;
-          const scaduto = r.stato === 'da_fare' && r.dataScadenza < t;
+        {gruppiPerPaziente.map(({ lista }) => {
+          const r0 = lista[0];
+          const paz = patients.find((p) => String(p.id) === String(r0.pazienteId));
           const testoWa = tplSollecito.testo.replace(/\{nome\}/g, paz ? `${paz.nome} ${paz.cognome}` : '');
+          const catPrincipale = RICHIAMO_CATEGORIE[r0.categoria] || RICHIAMO_CATEGORIE.generico;
           return (
-            <Crd key={r.id} style={{ borderLeft: `3px solid ${cat.colore}` }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div onClick={() => paz && onOpenPaz(paz, 'info')} style={{ fontWeight: 700, fontSize: 13, color: paz ? C.pri : C.txt, cursor: paz ? 'pointer' : 'default' }}>{paz ? `${paz.nome} ${paz.cognome} ›` : 'Paziente non trovato'}</div>
-                  <div style={{ fontSize: 12, color: C.txm, marginTop: 2 }}>{r.motivo || cat.label}</div>
-                  <div style={{ marginTop: 5, display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Ic n={cat.icona} s={11} c={cat.colore} /><Bdg ch={cat.label} co={cat.colore} /></span>
-                    <Bdg ch={scaduto ? `scaduto ${fmtD(r.dataScadenza)}` : fmtD(r.dataScadenza)} co={scaduto ? C.dan : C.txm} />
-                    {r.origine === 'bot' && <Bdg ch="Bot" co={C.acc} />}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
-                  {r.stato === 'da_fare'
-                    ? <button onClick={() => segnaFatto(r.id)} style={{ background: C.sucL, border: 'none', borderRadius: 7, padding: '5px 8px', cursor: 'pointer' }} title="Segna fatto"><Ic n="ok" s={13} c={C.suc} /></button>
-                    : <button onClick={() => riapri(r.id)} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '5px 8px', cursor: 'pointer' }} title="Riapri"><Ic n="clk" s={13} c={C.pri} /></button>}
-                  {paz?.telefono && <WaAction tel={paz.telefono} testo={testoWa} features={features} variant="icon" />}
-                  <button onClick={() => elimina(r.id)} style={{ background: C.danL, border: 'none', borderRadius: 7, padding: '5px 8px', cursor: 'pointer' }} title="Elimina"><Ic n="del" s={13} c={C.dan} /></button>
-                </div>
+            <Crd key={r0.pazienteId} style={{ borderLeft: `3px solid ${catPrincipale.colore}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <div onClick={() => paz && onOpenPaz(paz, 'info')} style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 13, color: paz ? C.pri : C.txt, cursor: paz ? 'pointer' : 'default' }}>{paz ? `${paz.nome} ${paz.cognome} ›` : 'Paziente non trovato'}</div>
+                {lista.length > 1 && <Bdg ch={`${lista.length} motivi`} co={C.txm} />}
+                {paz?.telefono && <WaAction tel={paz.telefono} testo={testoWa} features={features} variant="icon" />}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {lista.map((r) => {
+                  const cat = RICHIAMO_CATEGORIE[r.categoria] || RICHIAMO_CATEGORIE.generico;
+                  const scaduto = r.stato === 'da_fare' && r.dataScadenza < t;
+                  return (
+                    <div key={r.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, paddingTop: lista.length > 1 ? 8 : 0, borderTop: lista.indexOf(r) > 0 ? `1px solid ${C.brd}` : 'none' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, color: C.txm }}>{r.motivo || cat.label}</div>
+                        <div style={{ marginTop: 5, display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Ic n={cat.icona} s={11} c={cat.colore} /><Bdg ch={cat.label} co={cat.colore} /></span>
+                          <Bdg ch={scaduto ? `scaduto ${fmtD(r.dataScadenza)}` : fmtD(r.dataScadenza)} co={scaduto ? C.dan : C.txm} />
+                          {r.origine === 'bot' && <Bdg ch="Bot" co={C.acc} />}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+                        {r.stato === 'da_fare'
+                          ? <button onClick={() => segnaFatto(r.id)} style={{ background: C.sucL, border: 'none', borderRadius: 7, padding: '5px 8px', cursor: 'pointer' }} title="Segna fatto"><Ic n="ok" s={13} c={C.suc} /></button>
+                          : <button onClick={() => riapri(r.id)} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '5px 8px', cursor: 'pointer' }} title="Riapri"><Ic n="clk" s={13} c={C.pri} /></button>}
+                        <button onClick={() => elimina(r.id)} style={{ background: C.danL, border: 'none', borderRadius: 7, padding: '5px 8px', cursor: 'pointer' }} title="Elimina"><Ic n="del" s={13} c={C.dan} /></button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </Crd>
           );

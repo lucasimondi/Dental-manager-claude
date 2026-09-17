@@ -240,10 +240,16 @@ export const TIPI_PARAMETRO_AZIONE = [
    consumer renders it via <Ic n={cat.icona}/>, never interpolates it as
    text. Only presentation metadata; the `categoria` values stored on
    richiami rows are the object keys (clinico/preventivo/...), untouched. */
+// Product Owner: "c'è capraro con incasso in standby, ma non è in standby"
+// — "incasso" copriva sia un pagamento davvero sospeso sia una prestazione
+// semplicemente eseguita e non ancora fatturata, due situazioni diverse
+// sotto la stessa etichetta allarmante. "da_fatturare" (sotto) è la seconda:
+// niente di bloccato, solo lavoro amministrativo da chiudere.
 export const RICHIAMO_CATEGORIE = {
   clinico: { label: 'Clinico', icona: 'pulse', colore: '#1A6B8A' },
   preventivo: { label: 'Preventivo in standby', icona: 'plan', colore: '#7C3AED' },
   incasso: { label: 'Incasso in standby', icona: 'eur', colore: '#E63946' },
+  da_fatturare: { label: 'Da fatturare', icona: 'eur', colore: '#F59E0B' },
   generico: { label: 'Generico', icona: 'pin', colore: '#5F6B7A' },
 };
 
