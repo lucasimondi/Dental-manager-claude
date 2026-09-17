@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabase.js';
 import { today, contaPazientiNuovi } from './utils';
+import { calcPlanTot, computeScadenzePagamento } from './domain/scadenzePagamentoService.js';
 
 // Fonte unica di calcolo per tutto ciò che oggi vive in Controllo di Gestione
 // (PanoramicaControllo.jsx) e che Dashboard.jsx vuole poter mostrare come
@@ -36,13 +37,6 @@ export const rangePeriodo = (id) => {
   const inizio = new Date(d.getFullYear(), 0, 1);
   const fine = new Date(d.getFullYear(), 11, 31);
   return [ymd(inizio), ymd(fine)];
-};
-
-const calcPlanTot = (pl) => {
-  const sub = (pl.voci || []).reduce((s, v) => s + Number(v.prezzo), 0);
-  const sc = Number(pl.sconto) || 0;
-  const scontato = pl.scontoTipo === 'pct' ? sub * (sc / 100) : Math.min(sc, sub);
-  return Math.max(0, sub - scontato);
 };
 
 export function useControlloDati({ studioId, patients = [], plans = [], payments = [], periodo = 'mese', enabled = true }) {
@@ -112,11 +106,7 @@ export function useControlloDati({ studioId, patients = [], plans = [], payments
   const richiamiScaduti = plans.flatMap(pl => { const paz = patients.find(x => x.id === pl.pazienteId); if (!paz) return []; return (pl.voci || []).filter(v => v.richiamoData && new Date(v.richiamoData + 'T12:00') < oggiD).map(v => ({ paz, pl, v })); });
   const richiamiProssimi = plans.flatMap(pl => { const paz = patients.find(x => x.id === pl.pazienteId); if (!paz) return []; return (pl.voci || []).filter(v => { if (!v.richiamoData) return false; const d = new Date(v.richiamoData + 'T12:00'); return d >= oggiD && d <= tra30; }).map(v => ({ paz, pl, v })); });
 
-  const scadenzePagamento = plans.filter(pl => pl.scadenzaPagamento).map(pl => {
-    const paz = patients.find(x => x.id === pl.pazienteId);
-    if (!paz) return null;
-    return { pl, paz, scadenza: pl.scadenzaPagamento, importo: calcPlanTot(pl) };
-  }).filter(Boolean).sort((a, b) => a.scadenza.localeCompare(b.scadenza));
+  const scadenzePagamento = computeScadenzePagamento(plans, patients, payments);
   const scadenzeScadute = scadenzePagamento.filter(s => new Date(s.scadenza + 'T12:00') < oggiD);
   const scadenzeProssime = scadenzePagamento.filter(s => { const d = new Date(s.scadenza + 'T12:00'); return d >= oggiD && d <= tra30; });
 
