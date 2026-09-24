@@ -1,3 +1,19 @@
+# Current task — POL-MR-001
+
+- PROGRAM: POLIEDRA MARKET READINESS, avvio autorizzato dal Product Owner il 2026-09-24.
+- OWNER: CODEX.
+- BRANCH: `security/pol-mr-001-tenant-fail-closed`.
+- BASE: `origin/master@9e57cf51fc568e1b9acd78cf853d2217c594105e`, clone isolato.
+- STATUS: WAITING_PRODUCT_OWNER_REVIEW — MR-001 implementato e validato, programma non concluso.
+- OBJECTIVE: inventario, roadmap con gate e primo fix P0 tenant fail-closed.
+- PLAN: `docs/security/POLIEDRA_MARKET_READINESS.md`.
+- SAFETY: checkout Incassi preservato; Golden Rollback remoto verificato; nessuna migration remota, produzione, deploy o merge.
+- VALIDATION: 23/23 regressioni tenant; 838/838 suite completa; build PASS (warning chunk-size); diff check PASS. Nessun test RLS remoto.
+- NEXT: review draft PR MR-001; avviare MR-002 come prossimo branch isolato. Nessun merge o apply remoto senza approvazione esplicita.
+
+---
+
+# Historical current-task records (preserved)
 # Current task
 
 - TASK: POL-FIN-009 — Le scadenze di pagamento non si aggiornavano mai dopo che un piano veniva saldato

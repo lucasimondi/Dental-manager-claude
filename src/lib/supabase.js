@@ -113,23 +113,59 @@ const fromDb = (table, row) => {
 // Tabelle che hanno studio_id
 const STUDIO_TABLES = new Set(['patients','plans','payments','appointments','implants','pricelist','templates','app_types','impegni_personali','richiami']);
 
-// Recupera studio_id dalla sessione corrente
-const getStudioId = async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return null; // nessuna sessione = nessun accesso
-  return session?.user?.app_metadata?.studio_id || '00000000-0000-0000-0000-000000000001';
+// Client-side defense in depth only: RLS remains authoritative. Accept legacy
+// PostgreSQL UUIDs too (no version/variant constraint), never invent a tenant.
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const getTenantContext = async () => {
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    const user = data?.session?.user;
+    const studioId = user?.app_metadata?.studio_id;
+    if (error || !user?.id || typeof studioId !== 'string' || !UUID.test(studioId)) return null;
+    return { studioId, userId: user.id };
+  } catch {
+    return null;
+  }
+};
+
+const tenantRequired = () => Object.assign(
+  new Error('Sessione o studio non disponibile. Accedi nuovamente prima di salvare.'),
+  { code: 'TENANT_CONTEXT_REQUIRED' },
+);
+
+const requireTenantContext = async () => {
+  const context = await getTenantContext();
+  if (!context) throw tenantRequired();
+  return context;
+};
+
+const requireTable = (key) => {
+  const table = TABLE_MAP[key];
+  if (!table || !STUDIO_TABLES.has(table)) throw new Error('Tabella non supportata');
+  return table;
+};
+
+// For inserts/upserts, keep the verified author and session in agreement.
+const requireTenantAuthor = async () => {
+  const context = await requireTenantContext();
+  const { data, error } = await supabase.auth.getUser();
+  const verifiedStudioId = data?.user?.app_metadata?.studio_id;
+  if (error || data?.user?.id !== context.userId
+      || typeof verifiedStudioId !== 'string'
+      || verifiedStudioId.toLowerCase() !== context.studioId.toLowerCase()) {
+    throw tenantRequired();
+  }
+  return context;
 };
 
 export const DB = {
   async getAll(key) {
     const table = TABLE_MAP[key];
-    if (!table) return null;
-    let q = supabase.from(table).select('*').order('id', { ascending: true });
-    if (STUDIO_TABLES.has(table)) {
-      const studioId = await getStudioId();
-      if (!studioId) return []; // no session = no data
-      q = q.eq('studio_id', studioId);
-    }
+    if (!table || !STUDIO_TABLES.has(table)) return null;
+    const context = await getTenantContext();
+    if (!context) return [];
+    const q = supabase.from(table).select('*').order('id', { ascending: true })
+      .eq('studio_id', context.studioId);
     const { data, error } = await q;
     if (error) { console.error('DB.getAll', table, error); return []; }
     return (data || []).map((r) => fromDb(table, r));
@@ -141,49 +177,46 @@ export const DB = {
   // second field-mapping implementation next to toDb/fromDb above.
   async getById(key, id) {
     const table = TABLE_MAP[key];
-    if (!table || id === undefined || id === null) return null;
-    let q = supabase.from(table).select('*').eq('id', id);
-    if (STUDIO_TABLES.has(table)) {
-      const studioId = await getStudioId();
-      if (!studioId) return null;
-      q = q.eq('studio_id', studioId);
-    }
+    if (!table || !STUDIO_TABLES.has(table) || id === undefined || id === null) return null;
+    const context = await getTenantContext();
+    if (!context) return null;
+    const q = supabase.from(table).select('*').eq('id', id)
+      .eq('studio_id', context.studioId);
     const { data, error } = await q.maybeSingle();
     if (error) { console.error('DB.getById', table, error); return null; }
     return data ? fromDb(table, data) : null;
   },
 
   async insert(key, obj) {
-    const table = TABLE_MAP[key];
-    const { data: { user } } = await supabase.auth.getUser();
-    let payload = { ...toDb(table, obj), user_id: user.id };
-    if (STUDIO_TABLES.has(table)) {
-      const studioId = await getStudioId();
-      payload.studio_id = studioId;
-    }
+    const table = requireTable(key);
+    const { studioId, userId } = await requireTenantAuthor();
+    const payload = { ...toDb(table, obj), user_id: userId, studio_id: studioId };
     const { data, error } = await supabase.from(table).insert(payload).select().single();
     if (error) { console.error('DB.insert', table, error); throw error; }
     return fromDb(table, data);
   },
 
   async update(key, id, obj) {
-    const table = TABLE_MAP[key];
+    const table = requireTable(key);
+    const { studioId } = await requireTenantContext();
     const payload = toDb(table, obj);
-    const { error } = await supabase.from(table).update(payload).eq('id', id);
+    // Rows returned by fromDb carry studio_id; never allow a tenant transfer.
+    delete payload.studio_id;
+    const { error } = await supabase.from(table).update(payload).eq('id', id).eq('studio_id', studioId);
     if (error) { console.error('DB.update', table, error); throw error; }
   },
 
   async remove(key, id) {
-    const table = TABLE_MAP[key];
-    const { error } = await supabase.from(table).delete().eq('id', id);
+    const table = requireTable(key);
+    const { studioId } = await requireTenantContext();
+    const { error } = await supabase.from(table).delete().eq('id', id).eq('studio_id', studioId);
     if (error) { console.error('DB.remove', table, error); throw error; }
   },
 
   async getStudioInfo() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
-    const studioId = await getStudioId();
-    if (!studioId) return null;
+    let context;
+    try { context = await requireTenantAuthor(); } catch { return null; }
+    const { studioId } = context;
     const { data, error } = await supabase.from('studio_info').select('*').eq('studio_id', studioId).maybeSingle();
     if (error) { console.error('DB.getStudioInfo', error); return null; }
     if (!data) return null;
@@ -194,10 +227,8 @@ export const DB = {
   // studio_info è condivisa da tutti gli utenti dello stesso studio (chiave studio_id,
   // non user_id): un collaboratore che modifica logo/colori/orari li aggiorna per tutti.
   async setStudioInfo(obj) {
-    const { data: { user } } = await supabase.auth.getUser();
-    const studioId = await getStudioId();
-    if (!studioId) return;
-    const payload = { ...obj, studio_id: studioId, user_id: user.id, updated_at: new Date().toISOString() };
+    const { studioId, userId } = await requireTenantAuthor();
+    const payload = { ...obj, studio_id: studioId, user_id: userId, updated_at: new Date().toISOString() };
     const { error } = await supabase.from('studio_info').upsert(payload, { onConflict: 'studio_id' });
     if (error) { console.error('DB.setStudioInfo', error); throw error; }
   },

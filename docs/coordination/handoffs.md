@@ -2858,3 +2858,18 @@ Aggiornato `tests/andamentoStudioNuoviPazienti.test.mjs` con due nuovi test (rim
 
 ### EXACT NEXT ACTION
 Push sullo stesso branch/PR #92 (aggiornare la descrizione), merge solo su istruzione esplicita del Product Owner.
+
+## POL-MR-001 — POLIEDRA MARKET READINESS / tenant fail-closed (2026-09-24)
+
+- Task/owner: POL-MR-001, CODEX; previous recorded agent CLAUDE (POL-FIN-009 merged); nuovo incarico diretto Product Owner, senza trasferire/modificare il checkout Incassi.
+- Branch: `security/pol-mr-001-tenant-fail-closed`; base remota verificata `9e57cf51fc568e1b9acd78cf853d2217c594105e`; clone isolato nella cartella work della task Codex.
+- Objective: inventario read-only, roadmap e primo fix P0. Piano completo e criteri in `docs/security/POLIEDRA_MARKET_READINESS.md`.
+- Completed: fallback eliminato; letture vuote e scritture rifiutate senza tenant valido prima di chiamare il Data API; update/delete filtrati per studio; insert/upsert con autore/tenant coerenti; payload update non trasferisce studio; UUID legacy espliciti mantenuti.
+- Files changed: `src/lib/supabase.js`, `tests/tenantFailClosed.test.mjs`, `docs/security/POLIEDRA_MARKET_READINESS.md`, `docs/coordination/current-task.md`, questo handoff.
+- Database/deployment changes: NESSUNO. Nessuna interrogazione dati produzione, migration remota, merge o deploy manuale.
+- Tests: Node 24.19.0; 23/23 test regressione adapter, 838/838 full npm test, zero skip; npm run build PASS con warning chunk-size; git diff --check PASS. Contro sorgente originale gli stessi test danno 22 failure/1 pass. Primo build impedito dal sandbox filesystem; build finale eseguita correttamente con permessi locali. Dipendenze installate da lockfile, nessuna modifica package.
+- Unresolved/risks: test SDK stub non provano RLS; nessun QA browser autenticato; core remoto da ricostruire/verificare, bozze sensibili localStorage e scritture non atomiche ancora aperte; contesto React e query dirette da includere nei prossimi gate. Sessioni senza claim ora non possono salvare, intenzionalmente. Docs architetturali storici non sono una fotografia attuale completa.
+- Preservation: checkout Incassi ricontrollato alla fine, HEAD `17c26025938c7c5a0d313a9b82d4304e7278a51a` e stessi cinque file dirty, mai modificato. Golden Rollback remoto verificato a `070b28fd4eae4e2cc397584201d0bb149468fae7`, immutato.
+- Rollback: revert commit MR-001 sul branch dedicato, mai spostare stable; reintroduce il difetto e richiede valutazione.
+- Exact next action: review della draft PR MR-001; prossimo intervento MR-002 inventario schema/core + test isolamento SQL sintetici. Non mergiare, applicare migration remote o modificare produzione senza autorizzazione esplicita.
+- Status: WAITING_PRODUCT_OWNER_REVIEW per MR-001; programma MARKET READINESS aperto.
