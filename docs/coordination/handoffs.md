@@ -2957,3 +2957,11 @@ Revert del commit. Se la migration è già stata applicata: rieseguire il blocco
 
 ### EXACT NEXT ACTION
 Su "Mergia" del Product Owner: merge PR → `apply_migration` POL-WA-002 → deploy Edge Function dal repository → verifica del proxy in produzione (atteso 403 con token errato invece di 500) → aggiornare questo handoff con l'esito.
+
+### POL-WA-002 — esito merge e deploy (2026-09-30)
+- Merge: PR #111 → `master@836ce5a`, su "Mergia" del Product Owner. CI `verify` verde.
+- Database: migration applicata su `idklxdqebfceplrualgh` (`supabase_migrations.schema_migrations`: `20260930211114 pol_wa_002_whatsapp_config_hardening`; corpo identico al file del repository senza `BEGIN`/`COMMIT`). Stato verificato in lettura: 4 policy su `whatsapp_config`, 1 su `whatsapp_messages`, trigger `whatsapp_config_guard`, grant `anon` rimossi, `authenticated` solo SELECT su `whatsapp_messages`.
+- Edge Function: `whatsapp-webhook` v4, `verify_jwt=false`, dal file del repository su master; riletta dopo il deploy.
+- Proxy Vercel: GET con token errato → 403 `Forbidden` dalla Edge Function (prima: 500 `FUNCTION_INVOCATION_FAILED`).
+- Nessun dato toccato (entrambe le tabelle a 0 righe). Nessuno studio ha `whatsapp_automatico` attivo.
+- EXACT NEXT ACTION: nessuna su POL-WA-002; il prossimo incremento (promemoria automatici) richiede autorizzazione del Product Owner.
