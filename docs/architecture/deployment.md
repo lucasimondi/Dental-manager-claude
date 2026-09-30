@@ -12,7 +12,7 @@ Vercel is the sole authoritative hosting and deployment platform for Poliedra.
 
 ## Current runtime notes
 
-`api/whatsapp-webhook.js` proxies Meta webhook traffic to a Supabase Edge Function. Vite builds `dist` and the PWA uses automatic update plus manual vendor chunks.
+`api/whatsapp-webhook.js` proxies Meta webhook traffic to the `whatsapp-webhook` Supabase Edge Function (source and deploy settings in `supabase/functions/whatsapp-webhook/`). Vite builds `dist` and the PWA uses automatic update plus manual vendor chunks.
 
 ## Promotion model
 

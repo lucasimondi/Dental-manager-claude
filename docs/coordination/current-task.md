@@ -1,5 +1,20 @@
 # Current task
 
+- TASK: POL-WA-001 — Automazione WhatsApp: portare nel repository la Edge Function e lo schema già in produzione
+- TITLE: verifica dello stato dell'automazione WhatsApp; la Edge Function `whatsapp-webhook` e le tabelle `whatsapp_config`/`whatsapp_messages` esistevano solo in produzione, senza sorgente né migration nel repository.
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggi verbatim: "Controlla a che punto siamo con automazione whatsapp", poi "Ok" alla proposta di aprire un task per portare nel repository funzione e migration).
+- BRANCH: `claude/whatsapp-automation-status-d2ng12`, da `master@9e57cf5`.
+- STATUS: PUSHED — nessuna PR aperta (non richiesta).
+
+- **Stato rilevato (sola lettura, produzione, 2026-09-30)**: Edge Function `whatsapp-webhook` attiva, v3, `verify_jwt=false`, solo risposta AI in sola lettura ("prossimi appuntamenti"). `whatsapp_config` 0 righe, `whatsapp_messages` 0 righe, nessuno studio con `feature_overrides.whatsapp_automatico=true`, `pg_cron`/`pg_net` non installati: l'automazione non è mai stata attivata. Promemoria automatici: non esistono.
+- **Fatto**: `supabase/functions/whatsapp-webhook/index.ts` (copia fedele della v3 deployata) + `README.md` (impostazioni di deploy, nomi dei secret, mai i valori); `supabase/migrations/20260930120000_pol_wa_001_whatsapp_baseline.sql` (baseline idempotente identica a produzione: colonne, vincoli, indice, RLS studio-scoped; in produzione è un no-op); `supabase/tests/pol_wa_001_whatsapp_rls.sql` (isolamento tra studi, fail-closed senza claim, CHECK `direzione`, `ON DELETE SET NULL`); aggiornati `docs/architecture/overview.md` e `deployment.md`.
+- **Nessun cambio di comportamento**: nessuna modifica a produzione, nessun deploy, nessuna modifica al codice app.
+- VALIDATION: Postgres 16 locale usa e getta: `pol_rbac_001_local_bootstrap.sql` → migration applicata DUE volte (idempotenza) → `pol_wa_001_whatsapp_rls.sql` passa; controllo negativo con RLS disabilitata su `whatsapp_messages` → il test fallisce come atteso. `npm test` 815/815.
+- RISCHI APERTI (non corretti, richiedono decisione): vedi handoff POL-WA-001.
+- EXACT NEXT ACTION: `PRODUCT_OWNER_DECISION_REQUIRED` sui rischi elencati nell'handoff e sulla priorità del prossimo incremento (promemoria automatici via template Meta). Merge solo su istruzione esplicita del Product Owner.
+
+---
+
 - TASK: POL-FIN-009 — Le scadenze di pagamento non si aggiornavano mai dopo che un piano veniva saldato
 - TITLE: il Product Owner segnala che il widget "Scadenze pagamento" (Dashboard/Controllo Gestione) mostra ancora scadenze per Capraro e Savalli, ma aprendo le loro schede risulta che non hanno nulla da pagare.
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggio verbatim: "Mi da due scadenze di pagamento capraro e Savalli ma poi quando si va sulla scheda loro non hanno da pagare").

@@ -4,7 +4,7 @@ This document records the audited as-is architecture at commit `4b2b3b67a18f35d0
 
 Poliedra is a React 18/Vite 5 SPA. `src/App.jsx` is the composition root and currently coordinates authentication, initial full-table data loading, seed behavior, feature entitlements, roles, realtime subscriptions, optimistic CRUD synchronization, navigation, and module rendering.
 
-The browser connects directly to Supabase. `src/lib/supabase.js` provides a partial generic adapter for core tables, while many components also query tables and RPC directly. The repository backend contains only `api/whatsapp-webhook.js`, a Vercel proxy to an external Supabase Edge Function.
+The browser connects directly to Supabase. `src/lib/supabase.js` provides a partial generic adapter for core tables, while many components also query tables and RPC directly. The repository backend contains `api/whatsapp-webhook.js`, a Vercel proxy to the `whatsapp-webhook` Supabase Edge Function, whose source is versioned in `supabase/functions/whatsapp-webhook/` since POL-WA-001. The other deployed Edge Functions are not yet in the repository.
 
 Major modules: dashboard, patients, patient record, agenda, plans, payments, price list, recalls, expenses, documents, settings, users/resources, management control, booking, WhatsApp, AI setup/assistant, super-admin, dental clinical features, and Physio clinical features.
 
