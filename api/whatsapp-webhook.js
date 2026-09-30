@@ -7,10 +7,14 @@
 // IMPORTANTE: il corpo va inoltrato byte per byte, senza passare da nessun parser
 // JSON — altrimenti la firma HMAC (X-Hub-Signature-256) che Meta calcola sul corpo
 // originale non corrisponde più a quella verificata lato Supabase.
+//
+// ESM (POL-WA-002): package.json ha "type": "module", quindi questo file è un modulo
+// ES. La vecchia sintassi CommonJS (module.exports) faceva fallire la funzione a ogni
+// richiesta con FUNCTION_INVOCATION_FAILED.
 
 const TARGET = 'https://idklxdqebfceplrualgh.supabase.co/functions/v1/whatsapp-webhook';
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
 
   if (req.method === 'GET') {
@@ -34,6 +38,6 @@ module.exports = async (req, res) => {
   });
   const text = await r.text();
   res.status(r.status).send(text);
-};
+}
 
-module.exports.config = { api: { bodyParser: false } };
+export const config = { api: { bodyParser: false } };

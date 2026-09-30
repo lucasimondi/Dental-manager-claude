@@ -60,7 +60,9 @@ BEGIN
 EXCEPTION WHEN insufficient_privilege THEN NULL;
 END $$;
 
--- direzione is constrained to in/out.
+-- direzione is constrained to in/out (checked as the table owner: since
+-- POL-WA-002 client roles cannot write the message log at all).
+RESET ROLE;
 DO $$
 BEGIN
   INSERT INTO public.whatsapp_messages(studio_id, telefono, direzione)

@@ -2908,3 +2908,52 @@ Revert del commit. Nessun effetto su produzione (nulla è stato applicato o depl
 
 ### EXACT NEXT ACTION
 Product Owner decide su rischi 1–4 e sulla priorità del prossimo incremento (promemoria automatici). Nessuna PR aperta; aprirla o mergiare solo su istruzione esplicita.
+
+---
+
+## POL-WA-002 — Automazione WhatsApp: permessi del numero, proxy Vercel, limite token AI
+
+- TASK ID: POL-WA-002
+- PREVIOUS AGENT: CLAUDE (POL-WA-001, mergiata come PR #110, `master@cf6a058`).
+- BRANCH: `claude/whatsapp-automation-status-d2ng12`, ripartito da `master@cf6a058`.
+- REQUEST (verbatim, Product Owner): "Mergia e vai con pol wa 002".
+
+### Objective
+Chiudere i rischi 1–4 dell'handoff POL-WA-001 prima che qualunque studio attivi l'automazione.
+
+### Completed work
+1. **Presa di un numero altrui / nessun controllo di ruolo** → `supabase/migrations/20260930150000_pol_wa_002_whatsapp_config_hardening.sql`:
+   - `whatsapp_config`: `_select` (membri dello studio), `_insert`/`_delete` (solo `is_super_admin()`, sempre con `studio_id` = claim), `_update` (super admin o `has_studio_capability_v1(studio_id,'studio.owner')`), trigger `whatsapp_config_guard` (ERRCODE 42501 se un non-super-admin tocca `id`/`studio_id`/`phone_number_id`/`waba_id`/`created_at`; service_role/postgres esenti per la Edge Function e il dashboard).
+   - `whatsapp_messages`: solo `_select` per i membri; `authenticated` perde INSERT/UPDATE/DELETE/TRUNCATE; `anon` perde tutto su entrambe le tabelle.
+   - Il super admin NON ottiene accesso cross-tenant: configura il numero dello studio del proprio claim. Per un altro studio serve il dashboard/SQL (service role) finché non esiste un pannello super admin — scelta deliberata per non introdurre un tenant fallback.
+   - Preflight: `is_super_admin()` e `has_studio_capability_v1(uuid,text)`, verificati presenti in produzione ed eseguibili da `authenticated` (lettura, 2026-09-30).
+2. **Proxy Vercel rotto** (scoperto in questo giro): `GET /api/whatsapp-webhook` su `dental-manager-git-master-acmeproduction.vercel.app` → 500 `FUNCTION_INVOCATION_FAILED`. Causa: `module.exports` in un progetto `"type": "module"`. `api/whatsapp-webhook.js` convertito in `export default` / `export const config`, logica invariata (body grezzo byte per byte, header firma).
+3. **Modello AI**: `claude-sonnet-5` valido. Problema reale diverso: thinking adattivo attivo di default + `max_tokens: 512` → rischio di risposta senza testo. `supabase/functions/whatsapp-webhook/index.ts`: `MAX_TOKENS_AI = 4096`, `output_config: { effort: "low" }` su entrambe le chiamate.
+4. **URL webhook in Impostazioni**: mostrato solo al super admin, costruito come `${window.location.origin}/api/whatsapp-webhook` (il proxy), mai più l'URL Supabase. UI allineata alla RLS (`waPuoModificareNumero`, `waPuoAttivare`; il titolare salva solo `{ attivo }`). `App.jsx` passa `isSuperAdmin`.
+
+### Files changed
+`supabase/migrations/20260930150000_pol_wa_002_whatsapp_config_hardening.sql` (nuovo), `supabase/tests/pol_wa_002_local_bootstrap.sql` (nuovo; stub locale di `super_admins`/`is_super_admin()` identico alla definizione di produzione), `supabase/tests/pol_wa_002_whatsapp_permissions.sql` (nuovo), `supabase/tests/pol_wa_001_whatsapp_rls.sql` (verifica CHECK `direzione` spostata sul ruolo proprietario), `api/whatsapp-webhook.js`, `supabase/functions/whatsapp-webhook/index.ts`, `supabase/functions/whatsapp-webhook/README.md`, `src/components/Impostazioni.jsx`, `src/App.jsx`, `tests/whatsappAutomationHardening.test.mjs` (nuovo), `docs/coordination/current-task.md`, `docs/coordination/handoffs.md`.
+
+### Database changes
+Nessuna applicata finora. Da applicare al merge: la migration POL-WA-002 su `idklxdqebfceplrualgh`. Impatto sui dati: nessuno (0 righe in entrambe le tabelle).
+
+### Deployment impact
+Al merge: deploy Vercel automatico (proxy + UI); deploy manuale della Edge Function `whatsapp-webhook` dal repository con `verify_jwt=false`. Nessun impatto sugli studi (automazione non attiva per nessuno).
+
+### Tests executed / results
+- Postgres 16 locale: `pol_rbac_001_local_bootstrap.sql` → `physio_schema_dati.sql` → POL-RBAC-001 → `pol_wa_002_local_bootstrap.sql` → baseline POL-WA-001 → POL-WA-002 (due volte, idempotente) → `pol_wa_001_whatsapp_rls.sql` PASS → `pol_wa_002_whatsapp_permissions.sql` PASS. `pol_wa_001_whatsapp_rls.sql` passa anche sulla sola baseline.
+- Controllo negativo: stessa catena senza POL-WA-002, con grant `ALL` tipo Supabase → FAIL "studio owner registered a phone number (statement was allowed)".
+- `tests/whatsappAutomationHardening.test.mjs` (4 test): con il vecchio proxy FAIL "module is not defined in ES module scope"; con il nuovo PASS.
+- `npm test` 819/819; `npm run build` pulito; `git diff --check` pulito.
+
+### Unresolved issues / risks
+- Configurare il numero di uno studio diverso da quello del proprio claim richiede ancora il dashboard Supabase (nessun pannello super admin nel repository).
+- `super_admins` / `is_super_admin()` e le altre Edge Function non sono ancora versionati nel repository.
+- La seconda chiamata a Claude nella Edge Function non controlla `resp2.ok`: in caso di errore API l'eccezione viene assorbita (Meta riceve 200) ma il paziente non riceve risposta. Da sistemare nel giro dei promemoria.
+- Storico conversazione, stati di consegna Meta, UI dei messaggi e promemoria automatici: invariati (fuori scope).
+
+### Rollback
+Revert del commit. Se la migration è già stata applicata: rieseguire il blocco policy della baseline POL-WA-001, poi `DROP TRIGGER whatsapp_config_guard`, `DROP FUNCTION public.whatsapp_config_guard()`, `DROP POLICY` delle policy `_select/_insert/_update/_delete`, e ri-`GRANT SELECT, INSERT, UPDATE, DELETE` ad `authenticated` (dettaglio nell'intestazione della migration). Edge Function: ridistribuire la versione di POL-WA-001 (`git show cf6a058:supabase/functions/whatsapp-webhook/index.ts`).
+
+### EXACT NEXT ACTION
+Su "Mergia" del Product Owner: merge PR → `apply_migration` POL-WA-002 → deploy Edge Function dal repository → verifica del proxy in produzione (atteso 403 con token errato invece di 500) → aggiornare questo handoff con l'esito.

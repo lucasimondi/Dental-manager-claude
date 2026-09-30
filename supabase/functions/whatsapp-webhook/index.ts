@@ -116,6 +116,13 @@ ora serve chiamare lo studio direttamente per quello, ma che presto potrà farlo
 
 Tono: cordiale, breve, in italiano (o nella lingua in cui ti scrivono).`;
 
+// claude-sonnet-5 ragiona (adaptive thinking) di default: il ragionamento consuma
+// max_tokens prima del testo. Con il vecchio limite di 512 la risposta poteva restare
+// vuota e il paziente riceveva sempre il testo di ripiego. Effort "low": risposte brevi
+// da chat, ragionamento minimo (POL-WA-002).
+const MODELLO_AI = "claude-sonnet-5";
+const MAX_TOKENS_AI = 4096;
+
 async function rispondiConAI(studioId, nomeStudio, pazienteId, testoMessaggio) {
   const systemPrompt = SYSTEM_PROMPT_PAZIENTE.replace("{{NOME_STUDIO}}", nomeStudio || "il nostro studio");
   const resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -126,8 +133,9 @@ async function rispondiConAI(studioId, nomeStudio, pazienteId, testoMessaggio) {
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-5",
-      max_tokens: 512,
+      model: MODELLO_AI,
+      max_tokens: MAX_TOKENS_AI,
+      output_config: { effort: "low" },
       system: systemPrompt,
       messages: [{ role: "user", content: testoMessaggio }],
       tools: TOOLS_PAZIENTE,
@@ -149,8 +157,9 @@ async function rispondiConAI(studioId, nomeStudio, pazienteId, testoMessaggio) {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-5",
-        max_tokens: 512,
+        model: MODELLO_AI,
+        max_tokens: MAX_TOKENS_AI,
+        output_config: { effort: "low" },
         system: systemPrompt,
         messages: [
           { role: "user", content: testoMessaggio },
