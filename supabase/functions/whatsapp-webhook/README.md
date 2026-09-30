@@ -5,6 +5,11 @@ project, version 3 (last deployed 2026-07-26), copied verbatim into the
 repository by POL-WA-001 on 2026-09-30. Before this, the source existed only
 in Supabase.
 
+POL-WA-002 changes the AI call (`max_tokens` 512 → 4096, `effort: "low"`) so
+the adaptive thinking of `claude-sonnet-5` cannot use up the whole budget and
+leave the patient with the fallback text. That version is deployed to
+production only when POL-WA-002 is merged.
+
 ## Deployment settings (as in production)
 
 - `verify_jwt = false`: Meta calls the webhook without a Supabase JWT. The

@@ -1,5 +1,20 @@
 # Current task
 
+- TASK: POL-WA-002 — Automazione WhatsApp: permessi del numero, proxy Vercel rotto, limite token AI
+- TITLE: messa in sicurezza prima di qualsiasi attivazione, dai rischi rilevati in POL-WA-001.
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggio verbatim: "Mergia e vai con pol wa 002").
+- BRANCH: `claude/whatsapp-automation-status-d2ng12`, ripartito da `master@cf6a058` (PR #110 / POL-WA-001 mergiata).
+- STATUS: PUSHED, PR aperta — non mergiata, migration NON applicata, Edge Function NON deployata (entrambe previste al merge).
+
+- **RLS `whatsapp_config`** (`20260930150000_pol_wa_002_whatsapp_config_hardening.sql`): SELECT ai membri dello studio; INSERT/DELETE solo super admin (sempre nello studio del claim, nessun accesso cross-tenant); UPDATE super admin o titolare (`studio.owner`), con trigger `whatsapp_config_guard` che consente ai non-super-admin di cambiare solo `attivo`. **`whatsapp_messages`**: solo SELECT per i membri, nessuna scrittura client (la scrive solo la Edge Function con service role). Revocati a `anon` tutti i privilegi e a `authenticated` TRUNCATE (bypassa la RLS).
+- **Proxy Vercel `api/whatsapp-webhook.js`**: verificato in produzione che rispondeva 500 `FUNCTION_INVOCATION_FAILED` a ogni richiesta (CommonJS in un progetto `"type": "module"`). Convertito in ESM, comportamento invariato.
+- **Modello AI**: `claude-sonnet-5` è un ID valido. Ma ragiona di default e con `max_tokens: 512` la risposta poteva restare vuota → portato a 4096 con `effort: "low"`.
+- **Impostazioni → WhatsApp Business**: stessi permessi della RLS (numero modificabile solo dal super admin, titolare solo acceso/spento, altri in sola lettura); URL webhook mostrato solo al super admin e via proxy (`/api/whatsapp-webhook`), mai l'URL Supabase grezzo. `App.jsx` passa `isSuperAdmin` a `Impostazioni`.
+- VALIDATION: Postgres 16 locale (bootstrap RBAC + physio + capabilities + baseline POL-WA-001 + POL-WA-002 applicata due volte): `pol_wa_001_whatsapp_rls.sql` e nuovo `pol_wa_002_whatsapp_permissions.sql` passano; controllo negativo senza POL-WA-002 (con grant tipo Supabase) → "studio owner registered a phone number", cioè il test riproduce il problema. Nuovo `tests/whatsappAutomationHardening.test.mjs`: sul vecchio proxy fallisce con "module is not defined in ES module scope" (lo stesso errore di produzione). `npm test` 819/819; `npm run build` pulito; `git diff --check` pulito.
+- EXACT NEXT ACTION: su "Mergia" del Product Owner → merge PR, `apply_migration` POL-WA-002 su `idklxdqebfceplrualgh`, deploy Edge Function `whatsapp-webhook` (`verify_jwt=false`) dal repository, verifica del proxy in produzione (atteso 403 con token errato, non più 500).
+
+---
+
 - TASK: POL-WA-001 — Automazione WhatsApp: portare nel repository la Edge Function e lo schema già in produzione
 - TITLE: verifica dello stato dell'automazione WhatsApp; la Edge Function `whatsapp-webhook` e le tabelle `whatsapp_config`/`whatsapp_messages` esistevano solo in produzione, senza sorgente né migration nel repository.
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggi verbatim: "Controlla a che punto siamo con automazione whatsapp", poi "Ok" alla proposta di aprire un task per portare nel repository funzione e migration).

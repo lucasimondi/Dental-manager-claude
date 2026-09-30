@@ -57,7 +57,7 @@ function estraiColoriDaLogo(base64) {
 
 
 
-export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange, features, theme, toggleTheme, isStudioAdmin, onLogout, onCheckUpdate, onOpenHomeCustomizer, studioMembership }) {
+export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setAppTypes, currentUserId, onNomeChange, features, theme, toggleTheme, isStudioAdmin, isSuperAdmin, onLogout, onCheckUpdate, onOpenHomeCustomizer, studioMembership }) {
   const [si, setSi] = useState({ ...DEF_STUDIO, ...(studioInfo || {}) });
   const [toast, setToast] = useState('');
   const firmaInputRef = useRef(null);
@@ -308,14 +308,22 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
 
   const WF = (f) => setWaForm((p) => ({ ...p, ...f }));
 
+  // POL-WA-002: stessi permessi della RLS su whatsapp_config — il numero lo
+  // registra/cambia solo il super admin; il titolare dello studio può solo
+  // accendere/spegnere l'assistente; gli altri membri vedono e basta.
+  const waPuoModificareNumero = !!isSuperAdmin;
+  const waPuoAttivare = !!isSuperAdmin || (!!isStudioAdmin && !!waConfig);
+
   const saveWaConfig = async () => {
-    if (!waForm.phone_number_id) {
+    if (waPuoModificareNumero && !waForm.phone_number_id) {
       setWaMsg('Serve almeno il Phone Number ID (te lo dà Meta quando aggiunge il numero dello studio alla App).');
       return;
     }
     setWaSaving(true);
     setWaMsg('');
-    const payload = { ...waForm, studio_id: si.studio_id };
+    const payload = waPuoModificareNumero
+      ? { ...waForm, studio_id: si.studio_id }
+      : { attivo: waForm.attivo };
     const { data, error } = waConfig
       ? await supabase.from('whatsapp_config').update(payload).eq('id', waConfig.id).select().single()
       : await supabase.from('whatsapp_config').insert(payload).select().single();
@@ -1116,7 +1124,9 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           <>
             {!waConfig && (
               <div style={{ background: C.priL, borderRadius: 9, padding: '9px 12px', marginBottom: 14, fontSize: 12, color: C.pri }}>
-                Non ancora configurato. Il Phone Number ID te lo dà chi gestisce l'attivazione (assistenza Poliedra) quando aggiunge il numero del tuo studio.
+                {waPuoModificareNumero
+                  ? 'Non ancora configurato. Inserisci il Phone Number ID che Meta assegna al numero dello studio nella App.'
+                  : "Non ancora configurato. Il numero dello studio lo collega l'assistenza Poliedra: contattala per attivarlo."}
               </div>
             )}
             {waConfig && (
@@ -1126,15 +1136,16 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
               </div>
             )}
             <Fld label="Phone Number ID">
-              <Inp value={waForm.phone_number_id} onChange={(e) => WF({ phone_number_id: e.target.value })} placeholder="es. 109876543210987" />
+              <Inp value={waForm.phone_number_id} onChange={(e) => WF({ phone_number_id: e.target.value })} placeholder="es. 109876543210987" disabled={!waPuoModificareNumero} />
             </Fld>
             <Fld label="WABA ID (opzionale)">
-              <Inp value={waForm.waba_id} onChange={(e) => WF({ waba_id: e.target.value })} placeholder="ID del WhatsApp Business Account" />
+              <Inp value={waForm.waba_id} onChange={(e) => WF({ waba_id: e.target.value })} placeholder="ID del WhatsApp Business Account" disabled={!waPuoModificareNumero} />
             </Fld>
             <button
               type="button"
               onClick={() => WF({ attivo: !waForm.attivo })}
-              style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', textAlign: 'left', padding: '9px 11px', marginBottom: 14, borderRadius: 9, border: `1.5px solid ${waForm.attivo ? C.pri : C.brd}`, background: waForm.attivo ? C.priL : C.sur, cursor: 'pointer' }}
+              disabled={!waPuoAttivare}
+              style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', textAlign: 'left', padding: '9px 11px', marginBottom: 14, borderRadius: 9, border: `1.5px solid ${waForm.attivo ? C.pri : C.brd}`, background: waForm.attivo ? C.priL : C.sur, cursor: waPuoAttivare ? 'pointer' : 'default', opacity: waPuoAttivare ? 1 : 0.6 }}
             >
               <div style={{ flexShrink: 0, width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${waForm.attivo ? C.pri : C.brd}`, background: waForm.attivo ? C.pri : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {waForm.attivo && <Ic n="ok" s={11} c="#fff" />}
@@ -1142,11 +1153,14 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
               <span style={{ fontSize: 12.5, fontWeight: 600, color: C.txm }}>Attivo — se spento, l'assistente smette di rispondere su questo numero</span>
             </button>
             {waMsg && <div style={{ fontSize: 12, color: waMsg.startsWith('Errore') ? C.dan : C.suc, marginBottom: 10, fontWeight: 700 }}>{waMsg}</div>}
-            <Btn ch={waSaving ? 'Salvataggio…' : 'Salva'} ic={waSaving ? undefined : 'save'} onClick={saveWaConfig} dis={waSaving} full />
-            {waConfig && (
+            {waPuoAttivare && <Btn ch={waSaving ? 'Salvataggio…' : 'Salva'} ic={waSaving ? undefined : 'save'} onClick={saveWaConfig} dis={waSaving} full />}
+            {!waPuoAttivare && waConfig && (
+              <div style={{ fontSize: 11.5, color: C.txl }}>Solo il titolare dello studio può accendere o spegnere l'assistente.</div>
+            )}
+            {waPuoModificareNumero && (
               <div style={{ fontSize: 11, color: C.txl, marginTop: 10, wordBreak: 'break-all' }}>
-                URL webhook da incollare nel pannello Meta:<br />
-                <code style={{ fontSize: 10.5 }}>https://idklxdqebfceplrualgh.supabase.co/functions/v1/whatsapp-webhook</code>
+                URL webhook da incollare nel pannello Meta (una sola volta per tutta la piattaforma):<br />
+                <code style={{ fontSize: 10.5 }}>{`${window.location.origin}/api/whatsapp-webhook`}</code>
               </div>
             )}
           </>
