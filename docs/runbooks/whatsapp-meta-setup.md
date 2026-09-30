@@ -33,14 +33,24 @@ non promozionali).
    - Token di verifica: lo stesso valore di `WHATSAPP_VERIFY_TOKEN`
    - Dopo "Verifica e salva", sottoscrivere il campo **messages**.
 6. **Modelli**: WhatsApp Manager → Modelli di messaggio → Crea modello, con i testi qui sotto.
+7. **Tech Provider**: per collegare i numeri degli studi con Coexistence (sotto) l'App deve
+   usare l'Embedded Signup di Meta: App → Aggiungi prodotto → *Facebook Login for Business*,
+   configurazione di tipo WhatsApp Embedded Signup, e registrazione dell'App come
+   **Tech Provider** (developers.facebook.com → la tua App → WhatsApp → onboarding Tech Provider).
+   Richiede la verifica dell'azienda (punto 1) e una revisione dell'App da parte di Meta.
 
 ## Per ogni studio che attiva il modulo
 
-1. **Numero dello studio** in WhatsApp Manager → Numeri di telefono → Aggiungi.
-   Il numero non può restare attivo contemporaneamente sull'app WhatsApp o WhatsApp Business
-   del telefono: va migrato o disattivato prima. Nome visualizzato = nome dello studio
-   (anche questo soggetto ad approvazione Meta).
-2. Copiare il **Phone Number ID** (non il numero di telefono).
+1. **Numero dello studio con Coexistence** (disponibile in tutta l'UE, Italia compresa):
+   lo studio **continua a usare WhatsApp Business sul telefono** e lo stesso numero viene
+   collegato anche all'API. Requisiti: app **WhatsApp Business** (non WhatsApp personale),
+   versione 2.24.17 o successiva. Il collegamento si fa con l'Embedded Signup (login Meta +
+   QR code dal telefono), che POL-WA-003 porterà dentro Impostazioni come pulsante
+   "Collega WhatsApp". Limiti noti da verificare sulla documentazione Meta prima dello
+   sviluppo: gruppi e alcune funzioni restano solo sul telefono; throughput ridotto;
+   l'app sul telefono va aperta periodicamente per restare collegata.
+   Alternativa senza Coexistence: numero dedicato solo all'API (non più usabile dal telefono).
+2. Fino al pulsante di POL-WA-003: copiare il **Phone Number ID** (non il numero di telefono).
 3. Attivare il modulo sullo studio (super admin, SQL dal dashboard):
    `update studios set feature_overrides = coalesce(feature_overrides,'{}'::jsonb) || '{"whatsapp_automatico": true}' where id = '<studio_id>';`
 4. Collegare il numero: da Impostazioni → WhatsApp Business, loggati come super admin
