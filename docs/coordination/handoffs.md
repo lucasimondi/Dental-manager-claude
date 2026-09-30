@@ -2858,3 +2858,53 @@ Aggiornato `tests/andamentoStudioNuoviPazienti.test.mjs` con due nuovi test (rim
 
 ### EXACT NEXT ACTION
 Push sullo stesso branch/PR #92 (aggiornare la descrizione), merge solo su istruzione esplicita del Product Owner.
+
+---
+
+## POL-WA-001 — Automazione WhatsApp: Edge Function e schema portati nel repository
+
+- TASK ID: POL-WA-001
+- PREVIOUS AGENT: nessuno (task nuovo). Agente: CLAUDE.
+- BRANCH: `claude/whatsapp-automation-status-d2ng12`, da `master@9e57cf5`.
+- REQUEST (verbatim, Product Owner): "Controlla a che punto siamo con automazione whatsapp"; poi "Ok" alla proposta di portare nel repository la Edge Function e le migration delle due tabelle.
+
+### Objective
+Rendere il repository fonte di verità per l'automazione WhatsApp già esistente in produzione, senza cambiarne il comportamento (AGENTS.md: "Never invent … production state", "Schema and security claims require repository evidence or read-only production extraction").
+
+### Stato rilevato (estrazione in sola lettura dalla produzione, 2026-09-30)
+- Edge Function `whatsapp-webhook`: ACTIVE, v3, deploy 2026-07-26, `verify_jwt=false`. GET: handshake Meta con `WHATSAPP_VERIFY_TOKEN`. POST: config per `phone_number_id` → gate server-side `studios.feature_overrides.whatsapp_automatico === true` → firma HMAC con `WHATSAPP_APP_SECRET` → paziente per ultime 9 cifre del telefono → risposta Claude con un solo tool in sola lettura (`prossimi_appuntamenti_paziente`) → log in/out in `whatsapp_messages`.
+- `whatsapp_config`: 0 righe. `whatsapp_messages`: 0 righe. Studi con `whatsapp_automatico` attivo: 0 (il piano non lo include in nessun livello, `src/lib/utils.js`). `pg_cron`/`pg_net`: non installati. → L'automazione non è mai stata attivata né provata end-to-end con Meta.
+- WhatsApp manuale (wa.me, invio massivo Agenda con annullamento, header scheda paziente): funzionante, invariato.
+
+### Completed work
+- `supabase/functions/whatsapp-webhook/index.ts`: sorgente della v3 deployata, copiata fedelmente da `get_edge_function` (nessuna modifica).
+- `supabase/functions/whatsapp-webhook/README.md`: impostazioni di deploy (`verify_jwt=false`), nomi dei secret richiesti (mai i valori), regola "modificare qui, non nel dashboard".
+- `supabase/migrations/20260930120000_pol_wa_001_whatsapp_baseline.sql`: baseline idempotente delle due tabelle identica a produzione (colonne, default, PK, UNIQUE `phone_number_id`, FK `studios` CASCADE / `patients` SET NULL, CHECK `direzione`, indice `idx_whatsapp_messages_telefono`, RLS abilitata, policy `*_studio` sul claim JWT `app_metadata.studio_id`). In produzione è un no-op. Le posizioni 5–7 di `whatsapp_config` risultano colonne già eliminate in passato: non riprodotte.
+- `supabase/tests/pol_wa_001_whatsapp_rls.sql`: isolamento tra studi in lettura/update/delete/insert su entrambe le tabelle, fail-closed senza claim, CHECK `direzione`, `ON DELETE SET NULL` sul paziente. Solo dati sintetici, ROLLBACK finale.
+- `docs/architecture/overview.md`, `docs/architecture/deployment.md`: aggiornato il riferimento alla funzione ora versionata.
+
+### Files changed
+`supabase/functions/whatsapp-webhook/index.ts` (nuovo), `supabase/functions/whatsapp-webhook/README.md` (nuovo), `supabase/migrations/20260930120000_pol_wa_001_whatsapp_baseline.sql` (nuovo), `supabase/tests/pol_wa_001_whatsapp_rls.sql` (nuovo), `docs/architecture/overview.md`, `docs/architecture/deployment.md`, `docs/coordination/current-task.md`, `docs/coordination/handoffs.md`.
+
+### Database changes
+Nessuna applicata. La migration non è stata eseguita in produzione (non necessario: le tabelle esistono già identiche). Nessun deploy della Edge Function.
+
+### Tests executed / results
+- Postgres 16 locale usa e getta: `supabase/tests/pol_rbac_001_local_bootstrap.sql` → migration applicata due volte (seconda passata: solo NOTICE "already exists, skipping") → `supabase/tests/pol_wa_001_whatsapp_rls.sql`: PASS.
+- Controllo negativo: con RLS disabilitata su `whatsapp_messages` il test fallisce ("studio A sees exactly one message"), quindi il test rileva davvero la regressione.
+- `npm test`: 815/815. Nessun codice app toccato, quindi build non rilevante.
+
+### Unresolved issues / risks (non corretti: fuori scope o richiedono gate del Product Owner)
+1. **Presa di un `phone_number_id` altrui**: qualunque utente autenticato di uno studio può inserire in `whatsapp_config` un `phone_number_id` non ancora registrato (UNIQUE globale, RLS solo per studio). I messaggi in arrivo su quel numero verrebbero instradati allo studio sbagliato. Mitigato oggi dal gate `whatsapp_automatico` (impostabile solo dal super admin) ma non eliminato. Proposta: scrittura di `whatsapp_config` riservata al super admin o a una RPC con capability. → `PRODUCT_OWNER_DECISION_REQUIRED` (cambio RLS).
+2. **Nessun controllo di ruolo**: la policy è solo per studio, non per capability (qualsiasi membro, non solo l'admin, può modificare la config). Stesso gate di sopra.
+3. **Modello AI**: la funzione usa `model: "claude-sonnet-5"`; da verificare che sia un ID valido prima dell'attivazione, altrimenti ogni risposta ricade sul testo di fallback.
+4. **Impostazioni mostra l'URL Supabase grezzo** del webhook invece del proxy Vercel `api/whatsapp-webhook.js`, che esiste proprio per non esporlo.
+5. **Nessuno storico conversazione** nella chiamata AI; notifiche di stato Meta (delivered/read) ignorate; nessuna UI per leggere `whatsapp_messages`.
+6. **Promemoria automatici**: non implementati (serve scheduler — `pg_cron`/`pg_net` o cron Vercel — e invio tramite template approvati Meta).
+7. Le altre Edge Function deployate (`agente-assistente`, `admin-create-studio`, `admin-invite-user`, `estrai-spesa-documento`, `estrai-pagamenti-estratto-conto`, `genera-consigli-ai`) non sono nel repository: stesso problema, fuori scope di questo task.
+
+### Rollback
+Revert del commit. Nessun effetto su produzione (nulla è stato applicato o deployato).
+
+### EXACT NEXT ACTION
+Product Owner decide su rischi 1–4 e sulla priorità del prossimo incremento (promemoria automatici). Nessuna PR aperta; aprirla o mergiare solo su istruzione esplicita.
