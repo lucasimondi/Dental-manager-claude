@@ -2965,3 +2965,36 @@ Su "Mergia" del Product Owner: merge PR → `apply_migration` POL-WA-002 → dep
 - Proxy Vercel: GET con token errato → 403 `Forbidden` dalla Edge Function (prima: 500 `FUNCTION_INVOCATION_FAILED`).
 - Nessun dato toccato (entrambe le tabelle a 0 righe). Nessuno studio ha `whatsapp_automatico` attivo.
 - EXACT NEXT ACTION: nessuna su POL-WA-002; il prossimo incremento (promemoria automatici) richiede autorizzazione del Product Owner.
+
+---
+
+## POL-WA-003a — L'assistente WhatsApp diventa un vero assistente
+
+- TASK ID: POL-WA-003a. PREVIOUS AGENT: CLAUDE (POL-WA-002). BRANCH: `claude/whatsapp-automation-status-d2ng12` da `master@836ce5a`.
+- REQUEST (verbatim): "Ok vai però volgio che sssitente sia proprio assistente" + decisioni del Product Owner sull'agenda ("Propone, lo staff conferma"), sui turni ("Sempre, finché lo staff non interviene"), sulle capacità ("Passa allo staff, Info studio, Richiami, Saldo e pagamenti, Fa assistenza quindi risponde sempre in modo umano, accoglie la persona con le sue esigenze") e sul consenso ("Anagrafica paziente").
+
+### Completed work
+- Migration additiva (dettagli nell'intestazione del file e in `current-task.md`). Scelta chiave: le richieste WhatsApp riusano `richieste_prenotazione` e la lista "Richieste di prenotazione" già presente in Agenda, invece di un secondo flusso.
+- Edge Function: memoria 7 giorni / 30 messaggi; strumenti `info_studio`, `prossimi_appuntamenti_paziente`, `orari_disponibili` (stesso `computeFreeSlots` dell'app), `proponi_richiesta_appuntamento` (verifica slot ancora libero e appartenenza dell'appuntamento al paziente), `saldo_paziente` (RPC service-only), `richiami_paziente`, `passa_allo_staff` (attività `WHATSAPP` + flag conversazione); pausa 4 ore su eco Coexistence dello staff; firma verificata prima di ogni lettura DB; deduplica `wamid`.
+- App: Agenda (badge, tipo, ora, precompilazione, "Gestita"), `TODO_CATEGORIE.WHATSAPP`.
+
+### Files changed
+`supabase/migrations/20261002120000_pol_wa_003a_assistente_whatsapp.sql`, `supabase/functions/whatsapp-webhook/{index.ts,logica.js,agendaSlots.js,README.md}`, `supabase/tests/pol_wa_003a_local_bootstrap.sql`, `supabase/tests/pol_wa_003a_assistente.sql`, `src/components/Agenda.jsx`, `src/lib/utils.js`, `tests/whatsappAssistenteLogica.test.mjs`, `tests/whatsappWebhookFlusso.test.mjs`, `tests/whatsappAutomationHardening.test.mjs`, `docs/coordination/current-task.md`, `docs/coordination/handoffs.md`.
+
+### Database changes
+Nessuna applicata. Da applicare al merge. Tocca una policy RLS esistente (`richieste_prenotazione_insert_pubblico`), solo restringendola.
+
+### Tests executed / results
+`npm test` 839/839; build pulita; catena SQL locale PASS (migration idempotente); controllo negativo FAIL atteso. Prima di scrivere il saldo: verificato in produzione in sola lettura (transazione annullata) che `private.incassi_plan_saldo_v1` risponde con l'override di studio usato da `get_saldi_aperti_studio`.
+
+### Unresolved issues / risks
+- Riconoscimento del paziente solo dal numero (ultime 9 cifre, univoco): è la verifica scelta dal Product Owner; un familiare che usa lo stesso telefono vede i dati di quel paziente.
+- I giorni di chiusura non sono registrati in agenda: l'assistente può proporre un giorno di chiusura (lo staff conferma comunque).
+- Se Meta rimanda come eco anche i messaggi inviati via API, la deduplica per `wamid` li scarta; non verificabile senza Meta configurato.
+- Conferma automatica al paziente quando lo staff salva, consenso in anagrafica e promemoria: 003b.
+
+### Rollback
+Revert del commit; per il DB l'intestazione della migration elenca i DROP (solo oggetti aggiunti) e la vecchia policy di insert. Edge Function: ridistribuire v4 (`git show 836ce5a:supabase/functions/whatsapp-webhook/index.ts`).
+
+### EXACT NEXT ACTION
+"Mergia" del Product Owner → merge, `apply_migration`, deploy (3 file, `verify_jwt=false`), verifica in produzione; poi POL-WA-003b.

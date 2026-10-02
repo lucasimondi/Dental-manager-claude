@@ -53,8 +53,9 @@ test('Edge Function leaves room for adaptive thinking before the reply text', ()
   assert.doesNotMatch(src, /max_tokens:\s*512/);
   const m = src.match(/const MAX_TOKENS_AI = (\d+);/);
   assert.ok(m && Number(m[1]) >= 2048, 'max_tokens too low for a thinking model');
-  assert.equal((src.match(/max_tokens: MAX_TOKENS_AI/g) || []).length, 2, 'both calls use the shared limit');
-  assert.equal((src.match(/output_config: \{ effort: "low" \}/g) || []).length, 2);
+  // POL-WA-003a: one Claude call site, inside the tool loop.
+  assert.match(src, /max_tokens: MAX_TOKENS_AI/);
+  assert.match(src, /output_config: \{ effort: "low" \}/);
 });
 
 test('WhatsApp settings follow the POL-WA-002 permissions and never show the raw Supabase URL', () => {

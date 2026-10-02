@@ -266,6 +266,8 @@ export const TODO_CATEGORIE = {
   DATI_MANCANTI: { label: 'Dati mancanti', icona: 'file', colore: '#64748B' },
   AMMINISTRATIVO: { label: 'Amministrativo', icona: 'folder', colore: '#1A6B8A' },
   GENERICO: { label: 'Generico', icona: 'pin', colore: '#5F6B7A' },
+  // POL-WA-003a: create dall'assistente WhatsApp quando passa una conversazione allo staff.
+  WHATSAPP: { label: 'Da WhatsApp', icona: 'wa', colore: '#25D366' },
 };
 
 /* POL-UI-037 — Product Owner: "le attività quando ci clicco sopra devono

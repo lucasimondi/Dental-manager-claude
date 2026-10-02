@@ -1,5 +1,20 @@
 # Current task
 
+- TASK: POL-WA-003a — L'assistente WhatsApp diventa un vero assistente
+- TITLE: memoria della conversazione, tono umano, informazioni studio, orari liberi reali, richieste di appuntamento (proposte, confermate dallo staff), saldo, richiami, passaggio allo staff, pausa quando lo staff scrive dal telefono (Coexistence).
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggi verbatim: "Non c'è modo quindi di avere il controllo del numero e anche che sia automatico ?", poi "Ok vai però volgio che sssitente sia proprio assistente"; risposte alle domande: agenda "Propone, lo staff conferma"; turni "Sempre, finché lo staff non interviene"; capacità "Passa allo staff, Info studio, Richiami, Saldo e pagamenti, Fa assistenza quindi risponde sempre in modo umano, accoglie la persona con le sue esigenze"; consenso "Anagrafica paziente").
+- BRANCH: `claude/whatsapp-automation-status-d2ng12`, da `master@836ce5a` (contiene anche i commit di sola documentazione POL-WA-002/runbook Meta non ancora in master).
+- STATUS: PUSHED, PR aperta — non mergiata, migration NON applicata, Edge Function NON deployata.
+
+- **Piano a incrementi**: 003a (questo) = cervello dell'assistente + richieste nella lista Agenda. 003b = consenso WhatsApp in anagrafica, promemoria automatici con modello Meta approvato e scheduler, risposte Confermo/Devo spostarlo, conferma al paziente quando lo staff salva. 003c = schermata conversazioni in app (leggere, riprendere l'assistente), richiami inviati in automatico. 003d = pulsante "Collega WhatsApp" (Embedded Signup / Coexistence).
+- **Migration `20261002120000_pol_wa_003a_assistente_whatsapp.sql`** (additiva): baseline idempotente di `richieste_prenotazione` (esisteva solo in produzione) + colonne `origine`, `paziente_id`, `tipo_richiesta`, `appuntamento_id`, `ora_preferita`; policy di insert pubblica ristretta (la pagina pubblica non può più fingersi WhatsApp né collegarsi a pazienti/appuntamenti); `whatsapp_messages.origine`; tabella `whatsapp_conversazioni` (lettura ai membri, aggiornamento solo di `ai_pausa_fino`/`serve_staff`/`motivo_staff`); funzione `whatsapp_saldo_paziente_v1` solo per service_role, stessa sorgente, gate di accettazione e blocco qualità dati di `get_saldi_aperti_studio` (nessuna nuova formula finanziaria).
+- **Edge Function** riscritta (`index.ts` + `logica.js` + copia identica di `agendaSlots.js`): firma verificata prima di leggere il DB, deduplica dei `wamid`, ciclo strumenti (7 strumenti), fallback gentile + attività allo staff se l'AI fallisce.
+- **App**: lista "Richieste di prenotazione" in Agenda con badge WhatsApp, tipo e orario; "Crea appuntamento" precompila paziente e ora; spostamenti/disdette aprono direttamente l'appuntamento; nuova categoria attività `WHATSAPP`.
+- VALIDATION: `npm test` 839/839 (nuovi `tests/whatsappAssistenteLogica.test.mjs` 9 test, `tests/whatsappWebhookFlusso.test.mjs` 11 test end-to-end con Meta/Supabase/Claude simulati); Postgres 16 locale: migration due volte + `supabase/tests/pol_wa_003a_assistente.sql` PASS, controllo negativo con la vecchia policy → FAIL atteso; `npm run build` pulito.
+- EXACT NEXT ACTION: "Mergia" del Product Owner → merge, `apply_migration`, deploy dei 3 file della Edge Function, verifica in produzione. Poi 003b.
+
+---
+
 - TASK: POL-WA-002 — Automazione WhatsApp: permessi del numero, proxy Vercel rotto, limite token AI
 - TITLE: messa in sicurezza prima di qualsiasi attivazione, dai rischi rilevati in POL-WA-001.
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggio verbatim: "Mergia e vai con pol wa 002").
