@@ -785,11 +785,28 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   const F = (f) => setForm(p => ({ ...p, ...f }));
 
   const gestisciRichiesta = (r) => {
+    // POL-WA-003a: le richieste dell'assistente WhatsApp arrivano già col
+    // paziente riconosciuto, l'orario scelto e, per spostamenti/disdette,
+    // l'appuntamento da toccare: si apre direttamente quello in modifica.
+    // Lo staff conferma salvando; al salvataggio la richiesta diventa "gestita".
+    const appEsistente = r.appuntamento_id ? appointments.find((a) => String(a.id) === String(r.appuntamento_id)) : null;
+    if ((r.tipo_richiesta === 'sposta' || r.tipo_richiesta === 'disdici') && appEsistente) {
+      apriEdit(appEsistente);
+      if (r.tipo_richiesta === 'sposta') F({ data: r.date_preferite?.[0] || appEsistente.data, ora: r.ora_preferita || appEsistente.ora });
+      setRichiestaInGestione(r.id);
+      setRichiesteAperte(false);
+      return;
+    }
     // Pre-compila il modale "nuovo appuntamento" con i dati del richiedente,
     // così lo studio deve solo scegliere data/ora esatte tra quelle indicate
     // e confermare — senza dover ricopiare a mano nome/telefono.
-    setPazSearch(`${r.nome} ${r.cognome}`);
-    F({ pazienteId: '', note: [r.motivo, r.note].filter(Boolean).join(' — '), data: r.date_preferite?.[0] || today() });
+    setPazSearch(r.paziente_id ? '' : `${r.nome} ${r.cognome}`);
+    F({
+      pazienteId: r.paziente_id ? String(r.paziente_id) : '',
+      note: [r.motivo, r.note].filter(Boolean).join(' — '),
+      data: r.date_preferite?.[0] || today(),
+      ...(r.ora_preferita ? { ora: r.ora_preferita } : {}),
+    });
     setRichiestaInGestione(r.id);
     setModal(true);
     setRichiesteAperte(false);
@@ -1751,6 +1768,11 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
                 <Crd key={r.id} style={{ padding: 14 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                     <div>
+                      {r.origine === 'whatsapp' && (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#25D3661A', color: '#128C4B', borderRadius: 20, padding: '2px 9px', fontSize: 10.5, fontWeight: 800, marginBottom: 5 }}>
+                          <Ic n="wa" s={11} c="#128C4B" />WhatsApp · {{ prenota: 'Nuovo appuntamento', sposta: 'Spostamento', disdici: 'Disdetta' }[r.tipo_richiesta] || 'Richiesta'}
+                        </div>
+                      )}
                       <div style={{ fontWeight: 800, fontSize: 14, color: C.txt }}>{r.nome} {r.cognome}</div>
                       <div style={{ fontSize: 12, color: C.txm, marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}><Ic n="ph" s={11} c={C.txm} />{r.telefono}{r.email ? ` · ${r.email}` : ''}</div>
                     </div>
@@ -1759,7 +1781,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
                     {(r.date_preferite || []).map((d) => (
                       <span key={d} style={{ background: C.priL, color: C.pri, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>
-                        {new Date(d + 'T12:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short', weekday: 'short' })}
+                        {new Date(d + 'T12:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short', weekday: 'short' })}{r.ora_preferita ? ` · ${r.ora_preferita}` : ''}
                       </span>
                     ))}
                   </div>
@@ -1770,7 +1792,10 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
                     </div>
                   )}
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <Btn ch="Crea appuntamento" ic="cal" onClick={() => gestisciRichiesta(r)} full />
+                    <Btn ch={{ sposta: 'Sposta appuntamento', disdici: 'Apri per disdire' }[r.tipo_richiesta] || 'Crea appuntamento'} ic="cal" onClick={() => gestisciRichiesta(r)} full />
+                    {r.origine === 'whatsapp' && r.tipo_richiesta !== 'prenota' && (
+                      <button onClick={() => confermaGestita(r.id)} style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 9, padding: '0 12px', color: C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Gestita</button>
+                    )}
                     <button onClick={() => rifiutaRichiesta(r.id)} style={{ background: C.danL, border: 'none', borderRadius: 9, padding: '0 14px', color: C.dan, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Rifiuta</button>
                   </div>
                 </Crd>
