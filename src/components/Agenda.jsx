@@ -738,6 +738,15 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     await supabase.from('richieste_prenotazione').update({ stato: 'gestita' }).eq('id', id);
     setRichieste(prev => prev.filter(r => r.id !== id));
   };
+
+  // POL-WA-003b: conferma automatica al paziente per le richieste arrivate da WhatsApp.
+  // Testo fisso composto dal server (whatsapp-webhook/invia), mai testo libero da qui.
+  const inviaConfermaWhatsApp = async (richiesta, extra = {}) => {
+    const { data, error } = await supabase.functions.invoke('whatsapp-webhook/invia', { body: { richiesta_id: richiesta.id, ...extra } });
+    if (error || !data?.ok) setToast('Conferma WhatsApp non inviata: avvisa il paziente per telefono');
+    else if (data.inviato) setToast('Conferma inviata al paziente su WhatsApp ✓');
+    else setToast(`Conferma WhatsApp non inviata: ${data.errore || 'avvisa il paziente per telefono'}`);
+  };
   const [fabOpen, setFabOpen] = useState(false);
   const [vd, setVd] = useState(new Date());
   const wheelRef = useRef(0);
@@ -1058,7 +1067,17 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       const nuovi = date.map((d) => ({ ...rest, data: d, id: uid() + Math.floor(Math.random() * 1000), pazienteId: Number(form.pazienteId), durata: Number(form.durata), operatoreId, poltronaId }));
       setAppointments(p => [...p, ...nuovi]);
       setToast(nuovi.length > 1 ? `${nuovi.length} appuntamenti creati ✓` : 'Salvato ✓');
-      if (richiestaInGestione) { confermaGestita(richiestaInGestione); setRichiestaInGestione(null); }
+    }
+    // POL-WA-003b: la richiesta diventa "gestita" sia per un nuovo appuntamento sia
+    // per uno spostamento/disdetta salvato sull'appuntamento esistente; se arrivava
+    // da WhatsApp, parte la conferma al paziente con data e ora appena salvate.
+    if (richiestaInGestione) {
+      const richiesta = richieste.find((r) => r.id === richiestaInGestione);
+      confermaGestita(richiestaInGestione);
+      setRichiestaInGestione(null);
+      if (richiesta?.origine === 'whatsapp' && (richiesta.tipo_richiesta !== 'disdici' || form.stato === 'annullato')) {
+        inviaConfermaWhatsApp(richiesta, { data: form.data, ora: form.ora });
+      }
     }
     clearFormDraft();
     setModal(false);
@@ -1794,7 +1813,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
                   <div style={{ display: 'flex', gap: 6 }}>
                     <Btn ch={{ sposta: 'Sposta appuntamento', disdici: 'Apri per disdire' }[r.tipo_richiesta] || 'Crea appuntamento'} ic="cal" onClick={() => gestisciRichiesta(r)} full />
                     {r.origine === 'whatsapp' && r.tipo_richiesta !== 'prenota' && (
-                      <button onClick={() => confermaGestita(r.id)} style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 9, padding: '0 12px', color: C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Gestita</button>
+                      <button onClick={() => { confermaGestita(r.id); if (r.tipo_richiesta === 'disdici') inviaConfermaWhatsApp(r); }} style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 9, padding: '0 12px', color: C.txm, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Gestita</button>
                     )}
                     <button onClick={() => rifiutaRichiesta(r.id)} style={{ background: C.danL, border: 'none', borderRadius: 9, padding: '0 14px', color: C.dan, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Rifiuta</button>
                   </div>

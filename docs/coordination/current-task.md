@@ -1,5 +1,20 @@
 # Current task
 
+- TASK: POL-WA-003b — Consenso WhatsApp, promemoria automatici, risposte e conferma al paziente
+- TITLE: consenso in anagrafica; promemoria del giorno prima con modello Meta approvato e scheduler orario; risposte "Confermo"/"Devo spostarlo" registrate; conferma automatica al paziente quando lo staff salva una richiesta arrivata da WhatsApp.
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggio verbatim: "Vai", dopo la proposta del piano 003b; decisione già presa in 003a: consenso "Anagrafica paziente").
+- BRANCH: `claude/whatsapp-automation-status-d2ng12`, da `master@5e674e9` (+ commit di documentazione `c20dda3`).
+- STATUS: PUSHED — PR aperta, in attesa del Product Owner. Nessuna modifica a produzione.
+
+- **Migration `20261004160000_pol_wa_003b_promemoria.sql`** (additiva, senza DROP, rieseguibile): `patients.consenso_whatsapp` (default false) + `consenso_whatsapp_il`; `whatsapp_config.promemoria_attivi` (default false), `promemoria_ora` (default 18), `promemoria_template`, `promemoria_lingua`; tabella `whatsapp_promemoria` (una riga per appuntamento, UNIQUE, lettura ai membri dello studio, nessuna scrittura client); `whatsapp_cron_segreto_valido` solo service_role; segreto dello scheduler generato nel DB e tenuto nel Vault; `whatsapp_programma_promemoria(url)` (nessun ruolo client, URL validato) da chiamare una volta per ambiente.
+- **Edge Function**: nuovo `promemoria.js` + percorsi `/promemoria` (pg_cron, segreto) e `/invia` (app, login staff, lettura della richiesta sotto RLS, testi fissi); risposte ai promemoria registrate; il prompt sa come trattare conferme e spostamenti.
+- **App**: casella consenso nella scheda paziente (con data); Impostazioni → WhatsApp Business: promemoria on/off e ora (titolare), nome modello (super admin); Agenda: dopo il salvataggio di una richiesta WhatsApp parte la conferma al paziente, e le richieste di spostamento/disdetta salvate sull'appuntamento esistente ora diventano "gestite" (prima restavano aperte).
+- VALIDATION: `npm test` 854/854; `npm run build` pulito; Postgres 16 locale: catena 001→002→003a→003b (003b applicata due volte) + `supabase/tests/pol_wa_003b_promemoria.sql` PASS; variante "come produzione" (righe `whatsapp_config` già presenti + Vault simulato prima della migration) PASS, segreto creato una sola volta; controllo negativo senza 003b → FAIL atteso.
+- ORDINE DI RILASCIO (obbligatorio): migration in produzione PRIMA del merge (il frontend scrive `consenso_whatsapp`; Vercel deploya al merge), poi `whatsapp_programma_promemoria('https://idklxdqebfceplrualgh.supabase.co/functions/v1/whatsapp-webhook/promemoria')`, merge, deploy Edge Function (4 file, `verify_jwt=false`).
+- EXACT NEXT ACTION: istruzione del Product Owner ("Mergia") per il rilascio nell'ordine sopra. Lato Meta (Product Owner): approvazione del modello `promemoria_appuntamento` con i pulsanti Confermo / Devo spostarlo.
+
+---
+
 - TASK: POL-UI-046 — Salvataggio delle impostazioni studio: errori visibili invece di "Salvato ✓"
 - TITLE: un salvataggio fallito di `studio_info` finiva solo in console mentre Impostazioni mostrava comunque "Salvato ✓" (causa per cui POL-UI-045 è passato inosservato).
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "Sistema").
@@ -47,14 +62,14 @@
 - TITLE: memoria della conversazione, tono umano, informazioni studio, orari liberi reali, richieste di appuntamento (proposte, confermate dallo staff), saldo, richiami, passaggio allo staff, pausa quando lo staff scrive dal telefono (Coexistence).
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggi verbatim: "Non c'è modo quindi di avere il controllo del numero e anche che sia automatico ?", poi "Ok vai però volgio che sssitente sia proprio assistente"; risposte alle domande: agenda "Propone, lo staff conferma"; turni "Sempre, finché lo staff non interviene"; capacità "Passa allo staff, Info studio, Richiami, Saldo e pagamenti, Fa assistenza quindi risponde sempre in modo umano, accoglie la persona con le sue esigenze"; consenso "Anagrafica paziente").
 - BRANCH: `claude/whatsapp-automation-status-d2ng12`, da `master@836ce5a` (contiene anche i commit di sola documentazione POL-WA-002/runbook Meta non ancora in master).
-- STATUS: PUSHED, PR aperta — non mergiata, migration NON applicata, Edge Function NON deployata.
+- STATUS: MERGED — PR #112, merge commit `5e674e91df2436725400806edd1cdb1b5a00adab`, su istruzione del Product Owner ("Mergia"). Migration applicata in produzione (a passi, vedi handoff), Edge Function `whatsapp-webhook` v5 deployata, proxy verificato.
 
 - **Piano a incrementi**: 003a (questo) = cervello dell'assistente + richieste nella lista Agenda. 003b = consenso WhatsApp in anagrafica, promemoria automatici con modello Meta approvato e scheduler, risposte Confermo/Devo spostarlo, conferma al paziente quando lo staff salva. 003c = schermata conversazioni in app (leggere, riprendere l'assistente), richiami inviati in automatico. 003d = pulsante "Collega WhatsApp" (Embedded Signup / Coexistence).
 - **Migration `20261002120000_pol_wa_003a_assistente_whatsapp.sql`** (additiva): baseline idempotente di `richieste_prenotazione` (esisteva solo in produzione) + colonne `origine`, `paziente_id`, `tipo_richiesta`, `appuntamento_id`, `ora_preferita`; policy di insert pubblica ristretta (la pagina pubblica non può più fingersi WhatsApp né collegarsi a pazienti/appuntamenti); `whatsapp_messages.origine`; tabella `whatsapp_conversazioni` (lettura ai membri, aggiornamento solo di `ai_pausa_fino`/`serve_staff`/`motivo_staff`); funzione `whatsapp_saldo_paziente_v1` solo per service_role, stessa sorgente, gate di accettazione e blocco qualità dati di `get_saldi_aperti_studio` (nessuna nuova formula finanziaria).
 - **Edge Function** riscritta (`index.ts` + `logica.js` + copia identica di `agendaSlots.js`): firma verificata prima di leggere il DB, deduplica dei `wamid`, ciclo strumenti (7 strumenti), fallback gentile + attività allo staff se l'AI fallisce.
 - **App**: lista "Richieste di prenotazione" in Agenda con badge WhatsApp, tipo e orario; "Crea appuntamento" precompila paziente e ora; spostamenti/disdette aprono direttamente l'appuntamento; nuova categoria attività `WHATSAPP`.
 - VALIDATION: `npm test` 839/839 (nuovi `tests/whatsappAssistenteLogica.test.mjs` 9 test, `tests/whatsappWebhookFlusso.test.mjs` 11 test end-to-end con Meta/Supabase/Claude simulati); Postgres 16 locale: migration due volte + `supabase/tests/pol_wa_003a_assistente.sql` PASS, controllo negativo con la vecchia policy → FAIL atteso; `npm run build` pulito.
-- EXACT NEXT ACTION: "Mergia" del Product Owner → merge, `apply_migration`, deploy dei 3 file della Edge Function, verifica in produzione. Poi 003b.
+- EXACT NEXT ACTION: nessuna su 003a. Prossimo: POL-WA-003b (consenso in anagrafica, promemoria con modello Meta, risposte Confermo/Devo spostarlo, conferma al paziente), da autorizzare dal Product Owner; la parte Meta (verifica azienda, Tech Provider, approvazione modello) è a carico del Product Owner.
 
 ---
 

@@ -64,7 +64,11 @@ test('WhatsApp settings follow the POL-WA-002 permissions and never show the raw
   assert.match(src, /\/api\/whatsapp-webhook/);
   assert.match(src, /const waPuoModificareNumero = !!isSuperAdmin;/);
   assert.match(src, /disabled=\{!waPuoModificareNumero\}/);
-  // A studio owner saves only the on/off flag, never the number binding.
-  assert.match(src, /:\s*\{ attivo: waForm\.attivo \}/);
+  // A studio owner saves only the on/off flag and the reminder settings
+  // (POL-WA-003b), never the number binding or the Meta template name.
+  const payloadTitolare = src.match(/:\s*(\{ attivo: waForm\.attivo[^}]*\})/);
+  assert.ok(payloadTitolare, 'owner save payload not found');
+  assert.match(payloadTitolare[1], /promemoria_attivi: waForm\.promemoria_attivi, promemoria_ora: Number\(waForm\.promemoria_ora\) \}$/);
+  assert.doesNotMatch(payloadTitolare[1], /phone_number_id|waba_id|promemoria_template/);
   assert.match(read('src/App.jsx'), /<Impostazioni [^\n]*isSuperAdmin=\{isSuperAdmin\}/);
 });

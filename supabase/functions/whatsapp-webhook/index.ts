@@ -16,10 +16,15 @@
 //   pausa su quella conversazione per PAUSA_STAFF_ORE;
 // - tono umano e accogliente.
 //
-// GET: handshake di verifica Meta. POST: messaggi in arrivo, firma HMAC verificata.
+// Percorsi:
+// - GET  /whatsapp-webhook             handshake di verifica Meta
+// - POST /whatsapp-webhook             messaggi in arrivo da Meta (firma HMAC)
+// - POST /whatsapp-webhook/promemoria  job orario di pg_cron (segreto nel Vault) — POL-WA-003b
+// - POST /whatsapp-webhook/invia       conferma al paziente dall'app dello staff (login utente) — POL-WA-003b
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { computeFreeSlots } from "./agendaSlots.js";
+import { eseguiPromemoria } from "./promemoria.js";
 import {
   RISPOSTA_DI_RIPIEGO,
   STORICO_MAX_GIORNI,
@@ -27,18 +32,22 @@ import {
   costruisciStorico,
   dataOggiStudio,
   descriviData,
+  esitoRispostaPromemoria,
   estraiEventi,
   filtraSlotOggi,
   inPausa,
   minutiAdessoStudio,
+  normalizzaTelefono,
   pausaFinoA,
   promptDiSistema,
+  testoConfermaStaff,
   validaDataDisponibilita,
   validaRichiesta,
 } from "./logica.js";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 
 // Una sola App Meta per tutta la piattaforma (gestita da Luca): questi 3 valori sono
@@ -85,6 +94,27 @@ async function inviaMessaggioTesto(phoneNumberId, telefonoDestinatario, testo) {
   });
   const data = await resp.json().catch(() => ({}));
   if (!resp.ok) console.error("Errore invio WhatsApp:", JSON.stringify(data));
+  return data;
+}
+
+// Modello approvato da Meta: unico modo per scrivere per primi al paziente (promemoria).
+async function inviaTemplate({ phoneNumberId, telefono, template, lingua, parametri }) {
+  const resp = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      to: telefono,
+      type: "template",
+      template: {
+        name: template,
+        language: { code: lingua || "it" },
+        components: [{ type: "body", parameters: parametri.map((t) => ({ type: "text", text: String(t) })) }],
+      },
+    }),
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) console.error("Errore invio modello WhatsApp:", JSON.stringify(data));
   return data;
 }
 
@@ -401,6 +431,8 @@ async function gestisciEvento(evento, studioId) {
     direzione: "in", origine: "paziente", tipo: "text", contenuto: evento.testo, wa_message_id: evento.waId,
   });
 
+  await registraRispostaPromemoria(studioId, evento);
+
   if (inPausa(conversazione)) return; // sta rispondendo lo staff dal telefono
 
   const { data: studio } = await admin.from("studios").select("nome").eq("id", studioId).maybeSingle();
@@ -423,9 +455,112 @@ async function gestisciEvento(evento, studioId) {
   });
 }
 
+// Risposta del paziente a un promemoria: il pulsante porta l'id del messaggio a cui
+// risponde; senza, si usa l'ultimo promemoria (36 ore) ancora senza risposta.
+async function registraRispostaPromemoria(studioId, evento) {
+  const esito = esitoRispostaPromemoria(evento.testo);
+  let promemoria = null;
+  if (evento.rispostaA) {
+    const { data } = await admin.from("whatsapp_promemoria").select("id, risposta")
+      .eq("studio_id", studioId).eq("wa_message_id", evento.rispostaA).maybeSingle();
+    promemoria = data;
+  }
+  if (!promemoria && esito) {
+    const da = new Date(Date.now() - 36 * 3600000).toISOString();
+    const { data } = await admin.from("whatsapp_promemoria").select("id, risposta")
+      .eq("studio_id", studioId).eq("telefono", evento.telefono).eq("stato", "inviato").is("risposta", null)
+      .gte("inviato_il", da).order("inviato_il", { ascending: false }).limit(1);
+    promemoria = data?.[0] || null;
+  }
+  if (!promemoria || promemoria.risposta) return;
+  await admin.from("whatsapp_promemoria")
+    .update({ risposta: esito || "altro", risposto_il: new Date().toISOString() })
+    .eq("id", promemoria.id);
+}
+
+// ── Job dei promemoria (pg_cron) ───────────────────────────────────────
+async function gestisciPromemoria(req) {
+  const segreto = req.headers.get("x-cron-secret") || "";
+  const { data: valido } = await admin.rpc("whatsapp_cron_segreto_valido", { p_segreto: segreto });
+  if (valido !== true) return new Response("Forbidden", { status: 403 });
+  const esito = await eseguiPromemoria({ admin, inviaTemplate });
+  return Response.json(esito);
+}
+
+// ── Conferma dallo staff (app) ─────────────────────────────────────────
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+const rispostaJson = (corpo, status = 200) => Response.json(corpo, { status, headers: CORS });
+const RE_DATA_ISO = /^\d{4}-\d{2}-\d{2}$/;
+const RE_ORA_HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+async function gestisciInvioStaff(req) {
+  const authorization = req.headers.get("authorization") || "";
+  if (!authorization.startsWith("Bearer ")) return rispostaJson({ errore: "accesso richiesto" }, 401);
+  // Client con il login dell'utente: la RLS di richieste_prenotazione limita la
+  // lettura alle richieste del suo studio.
+  const utente = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: authorization } } });
+  const { data: auth } = await utente.auth.getUser();
+  if (!auth?.user) return rispostaJson({ errore: "accesso richiesto" }, 401);
+
+  let corpo;
+  try {
+    corpo = await req.json();
+  } catch {
+    return rispostaJson({ errore: "richiesta non valida" }, 400);
+  }
+  const { data: richiesta } = await utente.from("richieste_prenotazione")
+    .select("id, studio_id, nome, telefono, origine, tipo_richiesta, date_preferite, ora_preferita")
+    .eq("id", corpo?.richiesta_id).maybeSingle();
+  if (!richiesta) return rispostaJson({ errore: "richiesta non trovata" }, 404);
+  if (richiesta.origine !== "whatsapp") return rispostaJson({ errore: "la richiesta non arriva da WhatsApp" }, 400);
+
+  const tipo = richiesta.tipo_richiesta;
+  const data = tipo === "disdici" ? richiesta.date_preferite?.[0] : corpo.data;
+  const ora = tipo === "disdici" ? richiesta.ora_preferita : corpo.ora;
+  if (!RE_DATA_ISO.test(data || "") || !RE_ORA_HHMM.test(ora || "")) return rispostaJson({ errore: "data o ora non valide" }, 400);
+
+  const { data: config } = await admin.from("whatsapp_config").select("phone_number_id, attivo")
+    .eq("studio_id", richiesta.studio_id).maybeSingle();
+  const { data: studio } = await admin.from("studios").select("nome, feature_overrides").eq("id", richiesta.studio_id).maybeSingle();
+  if (!config?.attivo || studio?.feature_overrides?.whatsapp_automatico !== true) {
+    return rispostaJson({ ok: true, inviato: false, errore: "WhatsApp non attivo per lo studio" });
+  }
+  const telefono = normalizzaTelefono(richiesta.telefono);
+  if (!telefono) return rispostaJson({ ok: true, inviato: false, errore: "numero non valido" });
+
+  const testo = testoConfermaStaff({ tipo, nome: richiesta.nome, nomeStudio: studio?.nome, data, ora });
+  const invio = await inviaMessaggioTesto(config.phone_number_id, telefono, testo);
+  const waId = invio?.messages?.[0]?.id || null;
+  await admin.from("whatsapp_messages").insert({
+    studio_id: richiesta.studio_id, telefono, direzione: "out", origine: "sistema", tipo: "text",
+    contenuto: testo, wa_message_id: waId, stato: waId ? "inviato" : "errore",
+  });
+  // Fuori dalla finestra di 24 ore dall'ultimo messaggio del paziente Meta rifiuta il testo libero.
+  return rispostaJson({ ok: true, inviato: !!waId, errore: waId ? null : "messaggio non consegnato: conferma al paziente per telefono" });
+}
+
 // ── Entry point ─────────────────────────────────────────────────────────
 Deno.serve(async (req) => {
   const url = new URL(req.url);
+
+  if (url.pathname.endsWith("/promemoria")) {
+    if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+    return await gestisciPromemoria(req);
+  }
+  if (url.pathname.endsWith("/invia")) {
+    if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+    if (req.method !== "POST") return rispostaJson({ errore: "metodo non consentito" }, 405);
+    try {
+      return await gestisciInvioStaff(req);
+    } catch (e) {
+      console.error("Errore invio staff:", String(e));
+      return rispostaJson({ errore: "errore interno" }, 500);
+    }
+  }
 
   if (req.method === "GET") {
     const mode = url.searchParams.get("hub.mode");

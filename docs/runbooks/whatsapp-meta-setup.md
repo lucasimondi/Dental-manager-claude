@@ -2,8 +2,11 @@
 
 Operatore: Product Owner (unico gestore della App Meta della piattaforma).
 Stato al 2026-09-30: codice pronto per la ricezione e la risposta ai messaggi (POL-WA-001/002).
-I promemoria automatici (POL-WA-003) non esistono ancora. Questa pagina prepara la parte
-Meta, che richiede giorni di approvazione e si può avviare in parallelo.
+Aggiornamento POL-WA-003b: il codice dei promemoria automatici è pronto. Usa il modello
+`promemoria_appuntamento` qui sotto (nome modificabile dal super admin in Impostazioni →
+WhatsApp Business); finché Meta non lo approva, gli invii finiscono in errore e restano
+visibili in `whatsapp_promemoria`. Questa pagina prepara la parte Meta, che richiede
+giorni di approvazione e si può avviare in parallelo.
 
 ## Perché servono i modelli
 
@@ -83,11 +86,13 @@ Piè di pagina (facoltativo): `Messaggio automatico dello studio`
 > Per spostarlo risponda a questo messaggio o chiami lo studio.
 
 Utile se in anagrafica il nome non è affidabile. Stessi pulsanti.
+**Attenzione**: il codice di POL-WA-003b invia sempre 4 parametri (nome, studio, quando, ora),
+quindi oggi funziona solo con `promemoria_appuntamento`. Usare la variante breve richiede
+una modifica al codice.
 
 ## Consenso dei pazienti
 
 Meta e il GDPR richiedono che il paziente abbia accettato di ricevere messaggi WhatsApp
-dallo studio. Oggi l'app non registra questo consenso: è un prerequisito di POL-WA-003
-(campo di consenso in anagrafica, promemoria inviati solo a chi l'ha dato).
-`PRODUCT_OWNER_DECISION_REQUIRED`: testo del consenso e dove raccoglierlo
-(anamnesi, consensi firmati o anagrafica).
+dallo studio. Decisione del Product Owner (POL-WA-003a): **in anagrafica**. Da POL-WA-003b
+la scheda paziente ha la casella "Acconsente a ricevere messaggi WhatsApp dallo studio"
+(con data); i promemoria partono solo per chi l'ha spuntata. Di default è spenta.
