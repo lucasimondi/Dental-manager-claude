@@ -1,5 +1,20 @@
 # Current task
 
+- TASK: POL-WA-003b — Consenso WhatsApp, promemoria automatici, risposte e conferma al paziente
+- TITLE: consenso in anagrafica; promemoria del giorno prima con modello Meta approvato e scheduler orario; risposte "Confermo"/"Devo spostarlo" registrate; conferma automatica al paziente quando lo staff salva una richiesta arrivata da WhatsApp.
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggio verbatim: "Vai", dopo la proposta del piano 003b; decisione già presa in 003a: consenso "Anagrafica paziente").
+- BRANCH: `claude/whatsapp-automation-status-d2ng12`, da `master@5e674e9` (+ commit di documentazione `c20dda3`).
+- STATUS: PUSHED — PR aperta, in attesa del Product Owner. Nessuna modifica a produzione.
+
+- **Migration `20261004120000_pol_wa_003b_promemoria.sql`** (additiva, senza DROP, rieseguibile): `patients.consenso_whatsapp` (default false) + `consenso_whatsapp_il`; `whatsapp_config.promemoria_attivi` (default false), `promemoria_ora` (default 18), `promemoria_template`, `promemoria_lingua`; tabella `whatsapp_promemoria` (una riga per appuntamento, UNIQUE, lettura ai membri dello studio, nessuna scrittura client); `whatsapp_cron_segreto_valido` solo service_role; segreto dello scheduler generato nel DB e tenuto nel Vault; `whatsapp_programma_promemoria(url)` (nessun ruolo client, URL validato) da chiamare una volta per ambiente.
+- **Edge Function**: nuovo `promemoria.js` + percorsi `/promemoria` (pg_cron, segreto) e `/invia` (app, login staff, lettura della richiesta sotto RLS, testi fissi); risposte ai promemoria registrate; il prompt sa come trattare conferme e spostamenti.
+- **App**: casella consenso nella scheda paziente (con data); Impostazioni → WhatsApp Business: promemoria on/off e ora (titolare), nome modello (super admin); Agenda: dopo il salvataggio di una richiesta WhatsApp parte la conferma al paziente, e le richieste di spostamento/disdetta salvate sull'appuntamento esistente ora diventano "gestite" (prima restavano aperte).
+- VALIDATION: `npm test` 854/854; `npm run build` pulito; Postgres 16 locale: catena 001→002→003a→003b (003b applicata due volte) + `supabase/tests/pol_wa_003b_promemoria.sql` PASS; variante "come produzione" (righe `whatsapp_config` già presenti + Vault simulato prima della migration) PASS, segreto creato una sola volta; controllo negativo senza 003b → FAIL atteso.
+- ORDINE DI RILASCIO (obbligatorio): migration in produzione PRIMA del merge (il frontend scrive `consenso_whatsapp`; Vercel deploya al merge), poi `whatsapp_programma_promemoria('https://idklxdqebfceplrualgh.supabase.co/functions/v1/whatsapp-webhook/promemoria')`, merge, deploy Edge Function (4 file, `verify_jwt=false`).
+- EXACT NEXT ACTION: istruzione del Product Owner ("Mergia") per il rilascio nell'ordine sopra. Lato Meta (Product Owner): approvazione del modello `promemoria_appuntamento` con i pulsanti Confermo / Devo spostarlo.
+
+---
+
 - TASK: POL-WA-003a — L'assistente WhatsApp diventa un vero assistente
 - TITLE: memoria della conversazione, tono umano, informazioni studio, orari liberi reali, richieste di appuntamento (proposte, confermate dallo staff), saldo, richiami, passaggio allo staff, pausa quando lo staff scrive dal telefono (Coexistence).
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggi verbatim: "Non c'è modo quindi di avere il controllo del numero e anche che sia automatico ?", poi "Ok vai però volgio che sssitente sia proprio assistente"; risposte alle domande: agenda "Propone, lo staff conferma"; turni "Sempre, finché lo staff non interviene"; capacità "Passa allo staff, Info studio, Richiami, Saldo e pagamenti, Fa assistenza quindi risponde sempre in modo umano, accoglie la persona con le sue esigenze"; consenso "Anagrafica paziente").

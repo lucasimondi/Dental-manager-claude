@@ -34,6 +34,8 @@ const FIELD_MAP = {
     anamnesiAllarme: 'anamnesi_allarme',
     anamnesiAllarmeDettagli: 'anamnesi_allarme_dettagli',
     createdAt: 'created_at',
+    consensoWhatsapp: 'consenso_whatsapp',
+    consensoWhatsappIl: 'consenso_whatsapp_il',
   },
   plans: {
     pazienteId: 'paziente_id',

@@ -45,6 +45,19 @@ export default function PazienteFormModal({ patient, si, onSave, onClose }) {
           </div>
         </div>
       )}
+      {/* POL-WA-003b: consenso ai messaggi WhatsApp automatici (promemoria). Senza,
+          lo studio non invia nulla per primo; l'assistente risponde comunque se è il
+          paziente a scrivere. Data registrata al momento della spunta. */}
+      <div onClick={() => F({ consensoWhatsapp: !form.consensoWhatsapp, consensoWhatsappIl: form.consensoWhatsapp ? null : new Date().toISOString() })} style={{ display: 'flex', alignItems: 'center', gap: 10, background: form.consensoWhatsapp ? '#25D3661A' : C.bg, borderRadius: 10, padding: 10, marginTop: 8, marginBottom: 8, cursor: 'pointer' }}>
+        <input type="checkbox" checked={!!form.consensoWhatsapp} onChange={() => {}} style={{ width: 16, height: 16 }} />
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.txt }}>Acconsente a ricevere messaggi WhatsApp dallo studio</div>
+          <div style={{ fontSize: 10, color: C.txl }}>
+            Promemoria degli appuntamenti e comunicazioni di servizio
+            {form.consensoWhatsapp && form.consensoWhatsappIl ? ` — dato il ${new Date(form.consensoWhatsappIl).toLocaleDateString('it-IT')}` : ''}
+          </div>
+        </div>
+      </div>
       <Fld label="Note cliniche"><Txt value={form.note || ''} onChange={(e) => F({ note: e.target.value })} /></Fld>
       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
         <Btn ch="Annulla" v="sec" onClick={onClose} full />

@@ -278,7 +278,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
   // Tabella separata (whatsapp_config), non fa parte di studioInfo: si legge/scrive
   // direttamente, protetta dalla stessa RLS studio-scoped di tutto il resto.
   const [waConfig, setWaConfig] = useState(null); // riga esistente (null finché non caricata/creata)
-  const [waForm, setWaForm] = useState({ phone_number_id: '', waba_id: '', attivo: true });
+  const [waForm, setWaForm] = useState({ phone_number_id: '', waba_id: '', attivo: true, promemoria_attivi: false, promemoria_ora: 18, promemoria_template: 'promemoria_appuntamento' });
   const [waLoading, setWaLoading] = useState(true);
   const [waSaving, setWaSaving] = useState(false);
   const [waMsg, setWaMsg] = useState('');
@@ -299,6 +299,9 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           phone_number_id: data.phone_number_id || '',
           waba_id: data.waba_id || '',
           attivo: data.attivo !== false,
+          promemoria_attivi: data.promemoria_attivi === true,
+          promemoria_ora: data.promemoria_ora ?? 18,
+          promemoria_template: data.promemoria_template || 'promemoria_appuntamento',
         });
       }
       setWaLoading(false);
@@ -323,7 +326,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
     setWaMsg('');
     const payload = waPuoModificareNumero
       ? { ...waForm, studio_id: si.studio_id }
-      : { attivo: waForm.attivo };
+      : { attivo: waForm.attivo, promemoria_attivi: waForm.promemoria_attivi, promemoria_ora: Number(waForm.promemoria_ora) };
     const { data, error } = waConfig
       ? await supabase.from('whatsapp_config').update(payload).eq('id', waConfig.id).select().single()
       : await supabase.from('whatsapp_config').insert(payload).select().single();
@@ -1152,6 +1155,36 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
               </div>
               <span style={{ fontSize: 12.5, fontWeight: 600, color: C.txm }}>Attivo — se spento, l'assistente smette di rispondere su questo numero</span>
             </button>
+            {/* POL-WA-003b: promemoria automatici del giorno prima, solo ai pazienti
+                con consenso WhatsApp in anagrafica, con il modello approvato da Meta. */}
+            {waConfig && (
+              <div style={{ border: `1px solid ${C.brd}`, borderRadius: 10, padding: '10px 12px', marginBottom: 14 }}>
+                <button
+                  type="button"
+                  onClick={() => WF({ promemoria_attivi: !waForm.promemoria_attivi })}
+                  disabled={!waPuoAttivare}
+                  style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', textAlign: 'left', padding: 0, marginBottom: 8, border: 'none', background: 'none', cursor: waPuoAttivare ? 'pointer' : 'default', opacity: waPuoAttivare ? 1 : 0.6 }}
+                >
+                  <div style={{ flexShrink: 0, width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${waForm.promemoria_attivi ? C.pri : C.brd}`, background: waForm.promemoria_attivi ? C.pri : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {waForm.promemoria_attivi && <Ic n="ok" s={11} c="#fff" />}
+                  </div>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: C.txt }}>Promemoria automatici il giorno prima</span>
+                </button>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <Fld label="Ora di invio">
+                    <Sel value={waForm.promemoria_ora} onChange={(e) => WF({ promemoria_ora: Number(e.target.value) })} disabled={!waPuoAttivare}>
+                      {Array.from({ length: 14 }, (_, i) => i + 8).map((h) => <option key={h} value={h}>{`${String(h).padStart(2, '0')}:00`}</option>)}
+                    </Sel>
+                  </Fld>
+                  <Fld label="Modello Meta">
+                    <Inp value={waForm.promemoria_template} onChange={(e) => WF({ promemoria_template: e.target.value.trim() })} disabled={!waPuoModificareNumero} />
+                  </Fld>
+                </div>
+                <div style={{ fontSize: 11, color: C.txl, lineHeight: 1.45 }}>
+                  Partono solo ai pazienti con la spunta "Acconsente a ricevere messaggi WhatsApp" in anagrafica. Le risposte "Confermo" o "Devo spostarlo" le gestisce l'assistente.
+                </div>
+              </div>
+            )}
             {waMsg && <div style={{ fontSize: 12, color: waMsg.startsWith('Errore') ? C.dan : C.suc, marginBottom: 10, fontWeight: 700 }}>{waMsg}</div>}
             {waPuoAttivare && <Btn ch={waSaving ? 'Salvataggio…' : 'Salva'} ic={waSaving ? undefined : 'save'} onClick={saveWaConfig} dis={waSaving} full />}
             {!waPuoAttivare && waConfig && (

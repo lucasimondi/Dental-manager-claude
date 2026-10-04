@@ -4,6 +4,8 @@ import { readFileSync } from 'node:fs';
 import {
   costruisciStorico, dataOggiStudio, estraiEventi, filtraSlotOggi, inPausa, pausaFinoA,
   promptDiSistema, testoDaMessaggio, validaDataDisponibilita, validaRichiesta, minutiAdessoStudio,
+  dataDomaniStudio, oraAdessoStudio, normalizzaTelefono, parametriPromemoria, testoPromemoria,
+  esitoRispostaPromemoria, testoConfermaStaff,
 } from '../supabase/functions/whatsapp-webhook/logica.js';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
@@ -40,8 +42,8 @@ test('extracts patient messages and Coexistence staff echoes from one webhook', 
     }],
   };
   assert.deepEqual(estraiEventi(payload), [
-    { tipo: 'messaggio', phoneNumberId: 'P1', telefono: '393331112222', testo: 'Buongiorno', waId: 'wamid.1' },
-    { tipo: 'messaggio', phoneNumberId: 'P1', telefono: '393331112222', testo: 'Confermo', waId: 'wamid.2' },
+    { tipo: 'messaggio', phoneNumberId: 'P1', telefono: '393331112222', testo: 'Buongiorno', waId: 'wamid.1', rispostaA: null },
+    { tipo: 'messaggio', phoneNumberId: 'P1', telefono: '393331112222', testo: 'Confermo', waId: 'wamid.2', rispostaA: null },
     { tipo: 'eco_staff', phoneNumberId: 'P1', telefono: '393331112222', testo: 'Ci penso io', waId: 'wamid.3' },
   ]);
   assert.deepEqual(estraiEventi({}), []);
@@ -108,4 +110,65 @@ test('system prompt carries the Product Owner rules', () => {
   assert.match(p, /112/);
   const ignoto = promptDiSistema({ nomeStudio: 'X', oggiIso: '2026-10-02', paziente: null });
   assert.match(ignoto, /NON corrisponde a un paziente/);
+});
+
+// ── POL-WA-003b ─────────────────────────────────────────────────────────
+test('tomorrow and the current hour follow the studio time zone', () => {
+  // 22:30 UTC on 31 Oct = 23:30 on 31 Oct in Rome (CET after the switch)
+  const t = new Date('2026-10-31T22:30:00Z');
+  assert.equal(dataDomaniStudio(t), '2026-11-01');
+  assert.equal(oraAdessoStudio(t), 23);
+  // 23:30 UTC on 1 Oct is already 2 Oct in Rome, so tomorrow is 3 Oct
+  assert.equal(dataDomaniStudio(new Date('2026-10-01T23:30:00Z')), '2026-10-03');
+  assert.equal(oraAdessoStudio(new Date('2026-10-01T23:30:00Z')), 1);
+});
+
+test('phone numbers from the patient record become Meta format or null', () => {
+  assert.equal(normalizzaTelefono('+39 333 111 2222'), '393331112222');
+  assert.equal(normalizzaTelefono('0039 333-111-2222'), '393331112222');
+  assert.equal(normalizzaTelefono('333 1112222'), '393331112222');
+  assert.equal(normalizzaTelefono('+41 79 123 45 67'), '41791234567');
+  assert.equal(normalizzaTelefono('02 1234567'), null);
+  assert.equal(normalizzaTelefono(''), null);
+  assert.equal(normalizzaTelefono(null), null);
+  assert.equal(normalizzaTelefono('1234567890123456'), null);
+});
+
+test('reminder parameters match the Meta template text', () => {
+  const p = parametriPromemoria({ nome: 'Mario', nomeStudio: 'Studio Bianchi', data: '2026-10-05', ora: '09:30' });
+  assert.deepEqual(p, ['Mario', 'Studio Bianchi', 'domani, lunedì 5 ottobre', '09:30']);
+  assert.equal(
+    testoPromemoria(p),
+    'Gentile Mario, le ricordiamo il suo appuntamento presso Studio Bianchi per domani, lunedì 5 ottobre alle ore 09:30. Se non può venire, ci avvisi rispondendo a questo messaggio o chiamando lo studio. Grazie.',
+  );
+  assert.deepEqual(parametriPromemoria({ data: '2026-10-05', ora: '09:30' }).slice(0, 2), ['gentile paziente', 'il nostro studio']);
+});
+
+test('reminder replies are classified without guessing', () => {
+  for (const t of ['Confermo', 'confermato!', 'Ok', 'ok grazie', 'Va bene', 'Sì', 'si, a domani', 'Ci sarò 👍']) {
+    assert.equal(esitoRispostaPromemoria(t), 'confermato', t);
+  }
+  for (const t of ['Devo spostarlo', 'Posso cambiare orario?', 'Non posso venire', 'non riesco', 'vorrei disdire... anzi disdico', 'Annullo']) {
+    assert.equal(esitoRispostaPromemoria(t), 'da_spostare', t);
+  }
+  for (const t of ['Okkupato', 'Simone', 'A che ora apre lo studio?', '', null]) {
+    assert.equal(esitoRispostaPromemoria(t), null, String(t));
+  }
+});
+
+test('staff confirmation texts are fixed per request type', () => {
+  const base = { nome: 'Mario', nomeStudio: 'Studio Bianchi', data: '2026-10-05', ora: '09:30' };
+  assert.equal(testoConfermaStaff({ ...base, tipo: 'prenota' }),
+    "Gentile Mario, le confermiamo l'appuntamento di lunedì 5 ottobre alle 09:30. A presto! Lo studio Studio Bianchi");
+  assert.match(testoConfermaStaff({ ...base, tipo: 'sposta' }), /l'appuntamento è stato spostato a lunedì 5 ottobre alle 09:30/);
+  assert.match(testoConfermaStaff({ ...base, tipo: 'disdici' }), /abbiamo annullato il suo appuntamento di lunedì 5 ottobre alle 09:30/);
+  assert.match(testoConfermaStaff({ tipo: 'prenota', data: '2026-10-05', ora: '09:30' }), /^Buongiorno, .*Lo studio$/);
+});
+
+test('button replies keep the id of the reminder they answer', () => {
+  const [e] = estraiEventi({ entry: [{ changes: [{ field: 'messages', value: { metadata: { phone_number_id: 'P1' }, messages: [
+    { from: '393331112222', id: 'wamid.9', type: 'button', button: { text: 'Confermo' }, context: { id: 'wamid.promemoria' } },
+  ] } }] }] });
+  assert.equal(e.rispostaA, 'wamid.promemoria');
+  assert.equal(e.testo, 'Confermo');
 });
