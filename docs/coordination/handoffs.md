@@ -3082,3 +3082,49 @@ Revert del commit. Se la migration è applicata: `ALTER TABLE public.studio_info
 ### EXACT NEXT ACTION
 Product Owner: verifica della lista iniziale; su istruzione, PR → merge → `apply_migration` POL-UI-044 → verifica in produzione.
 
+### Aggiornamento POL-UI-044 (merge)
+- Su richiesta del PO ("I farmaci li metti in un menu a scomparsa") le scorciatoie sono in un menu "Farmaci frequenti (N)" chiuso di default (commit `be287a0`).
+- Migration POL-UI-044 applicata su `idklxdqebfceplrualgh` PRIMA del merge, verificata: `farmaci_preferiti jsonb`, CHECK presente, 0 studi con lista personalizzata.
+- PR #114 mergiata (`master@9272006`).
+
+---
+
+## POL-UI-045 — Colonna `studio_info.documenti_settings` mancante in produzione
+
+- TASK ID: POL-UI-045
+- PREVIOUS AGENT: CLAUDE (POL-UI-044, PR #114, `master@9272006`).
+- BRANCH: `claude/recipe-form-quick-actions-mobile-l8464o`, ripartito da `master@9272006`.
+- REQUEST (verbatim, Product Owner): "Fai" (alla proposta di aggiungere la colonna mancante).
+
+### Objective
+Far funzionare il salvataggio di Impostazioni → Documenti ("Archiviazione documenti").
+
+### Completed work
+1. Diagnosi in sola lettura: `documenti_settings` assente da `public.studio_info` in produzione; l'app la include nell'upsert di `studio_info` → errore di colonna sconosciuta, gestito solo con `console.error` (il toast "Salvato ✓" compariva comunque).
+2. Migration `supabase/migrations/20261004150000_pol_ui_045_documenti_settings.sql` (colonna jsonb nullable + CHECK oggetto), applicata in produzione e verificata.
+3. Test: `supabase/tests/pol_ui_045_documenti_settings.sql`, `tests/studioInfoColumns.test.mjs`.
+
+### Files changed
+`supabase/migrations/20261004150000_pol_ui_045_documenti_settings.sql`, `supabase/tests/pol_ui_045_documenti_settings.sql`, `tests/studioInfoColumns.test.mjs`, `docs/coordination/current-task.md`, `docs/coordination/handoffs.md`.
+
+### Database changes
+APPLICATA in produzione (`idklxdqebfceplrualgh`, 2026-10-04): `ALTER TABLE public.studio_info ADD COLUMN documenti_settings jsonb` + `studio_info_documenti_settings_check`. Nessun dato modificato (tutti gli studi NULL = predefiniti).
+
+### Deployment impact
+Nessun deploy necessario: il frontend già in produzione usa la colonna, ora esistente.
+
+### Tests executed / results
+- `npm test` 849/849 PASS.
+- Postgres 16 locale: senza migration il test SQL fallisce ("column documenti_settings does not exist"); con migration applicata due volte PASS, insieme a POL-UI-044.
+- `tests/studioInfoColumns.test.mjs` senza il file di migration FAIL: "campi salvati senza colonna in studio_info: documenti_settings".
+
+### Unresolved issues / risks
+- `DB.setStudioInfo` registra gli errori solo in console e Impostazioni mostra "Salvato ✓" anche se il salvataggio fallisce: un errore futuro resterebbe invisibile. Non corretto (fuori scope).
+- `studio_info` non ha una migration di creazione nel repository: l'elenco colonne del test è una fotografia di produzione da aggiornare se lo schema cambia fuori dalle migration.
+
+### Rollback
+`ALTER TABLE public.studio_info DROP CONSTRAINT IF EXISTS studio_info_documenti_settings_check; ALTER TABLE public.studio_info DROP COLUMN IF EXISTS documenti_settings;` (le preferenze tornano ai predefiniti e il salvataggio torna a fallire).
+
+### EXACT NEXT ACTION
+PR + merge su istruzione del Product Owner; verifica manuale del salvataggio delle levette.
+
