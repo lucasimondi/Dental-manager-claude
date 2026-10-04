@@ -6,7 +6,7 @@ import Ic from './Ic.jsx';
 // Riquadro "nessun risultato" con creazione rapida: precompila nome/cognome
 // dal testo cercato (prima parola = nome, resto = cognome), l'utente può
 // correggerli prima di confermare.
-function CreaPazienteInline({ testoIniziale, onCrea }) {
+function CreaPazienteInline({ testoIniziale, onCrea, label = '+ Crea paziente' }) {
   const parti = testoIniziale.trim().split(/\s+/);
   const [nome, setNome] = useState(parti[0] || '');
   const [cognome, setCognome] = useState(parti.slice(1).join(' ') || '');
@@ -23,7 +23,7 @@ function CreaPazienteInline({ testoIniziale, onCrea }) {
         onClick={() => onCrea(nome.trim(), cognome.trim())}
         style={{ width: '100%', background: puoCreare ? C.pri : C.bg, color: puoCreare ? '#fff' : C.txl, border: 'none', borderRadius: 8, padding: '9px 0', fontWeight: 700, fontSize: 12.5, cursor: puoCreare ? 'pointer' : 'not-allowed' }}
       >
-        + Crea paziente
+        {label}
       </button>
     </div>
   );
@@ -38,9 +38,10 @@ function CreaPazienteInline({ testoIniziale, onCrea }) {
  * onCreaPaziente (opzionale): se passato, quando la ricerca non trova nessun
  * paziente mostra un mini-form "Nome/Cognome" per crearne uno al volo invece
  * del semplice messaggio "Nessun paziente trovato". Riceve (nome, cognome) e
- * deve restituire l'id del paziente creato (sincrono).
+ * deve restituire l'id del paziente creato (sincrono). creaLabel (opzionale)
+ * cambia solo il testo del pulsante di conferma.
  */
-export default function SelettorePaziente({ patients, value, onChange, search, onSearchChange, placeholder = 'Cerca per nome o cognome…', maxResults = 20, autoFocus, onCreaPaziente }) {
+export default function SelettorePaziente({ patients, value, onChange, search, onSearchChange, placeholder = 'Cerca per nome o cognome…', maxResults = 20, autoFocus, onCreaPaziente, creaLabel }) {
   const sel = patients.find((p) => String(p.id) === String(value));
   const filtered = search.trim() ? cercaPazienti(patients, search) : patients;
   // Il campo, appena montato senza un paziente già selezionato, mostrava
@@ -115,6 +116,7 @@ export default function SelettorePaziente({ patients, value, onChange, search, o
           {onCreaPaziente ? (
             <CreaPazienteInline
               testoIniziale={search}
+              label={creaLabel}
               onCrea={(nome, cognome) => {
                 const id = onCreaPaziente(nome, cognome);
                 if (id != null) { onChange(String(id)); onSearchChange(''); }

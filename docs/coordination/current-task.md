@@ -1,5 +1,20 @@
 # Current task
 
+- TASK: POL-UI-043 — Azione rapida "Ricetta": form completo in alto su mobile, con ricerca/creazione paziente integrata
+- TITLE: dalla Home, "Ricetta" apriva un modale "scegli paziente" che su mobile compariva come foglio in basso, e solo dopo la scelta si arrivava al form.
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "Il form ricetta quando lo richiamo da azioni rapide deve comparire in alto nello schermo mobile e non in basso, inoltre deve comparire gia il form completo con in più la parte di ricerca paziente o la creazione istantanea con nome e cognome e il salva del paziente se non presente").
+- BRANCH: `claude/recipe-form-quick-actions-mobile-l8464o`, da `master@836ce5a`.
+- STATUS: PUSHED — nessuna PR aperta (non richiesta).
+
+- **Dashboard.jsx**: l'azione rapida apre subito `DocMedico` (lazy, a schermo intero dall'alto, z-index 9999 sopra il dock) con `initialType="ricetta"`; niente più `Modal`. Il `SelettorePaziente` è passato a `DocMedico` come `pazienteSelector`; creazione al volo invariata (`creaPazienteRapidoRicetta`, stesso limite `max_pazienti`), pulsante etichettato "Salva paziente".
+- **DocMedico.jsx**: nuova prop opzionale `pazienteSelector` → card "Paziente" subito sopra "Farmaci prescritti", ed è quella a essere portata in cima all'apertura. `paz` può essere null finché non si sceglie: il form è compilabile, "Genera PDF" mostra "Seleziona o crea il paziente prima di generare il PDF." Gli altri chiamanti (SchedaPaz, PatientWorkspaceV2) non passano la prop: comportamento invariato.
+- **SelettorePaziente.jsx**: prop opzionale `creaLabel` (default "+ Crea paziente", invariato altrove).
+- VALIDATION: `npm test` 820/820; `npm run build` pulito; `git diff --check` pulito; verifica visiva Playwright 390×844 su harness temporaneo (non committato): form in alto, card Paziente + farmaci visibili, blocco generazione senza paziente, creazione "Luca Bianchi" → selezionato e nome nell'intestazione, avviso rimosso.
+- DB / DEPLOY: nessuna modifica al database; solo frontend (deploy Vercel al merge).
+- EXACT NEXT ACTION: verifica manuale del Product Owner su mobile; PR/merge solo su istruzione esplicita.
+
+---
+
 - TASK: POL-WA-002 — Automazione WhatsApp: permessi del numero, proxy Vercel rotto, limite token AI
 - TITLE: messa in sicurezza prima di qualsiasi attivazione, dai rischi rilevati in POL-WA-001.
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggio verbatim: "Mergia e vai con pol wa 002").

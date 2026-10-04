@@ -307,15 +307,29 @@ test('shared Home Toast remains available for inline patient creation after Da i
 // ROUND 4 — "Ricetta deve aprire il tab ricetta, non paziente"
 // ===========================================================================
 
-test('ROUND 4: Home wires a real patient picker for Ricetta, landing on DocMedico\'s Ricetta tab via the existing initialDocumentRequest mechanism', () => {
+test('ROUND 4 (rev. azioni rapide mobile): Home "Ricetta" opens the full DocMedico Ricetta form immediately, with the patient picker inside it', () => {
   assert.match(dashboardSrc, /openRicettaPicker: \(\) => setRicettaPickerOpen\(true\)/);
   assert.match(dashboardSrc, /const \[ricettaPickerOpen, setRicettaPickerOpen\] = useState\(false\);/);
+  assert.match(dashboardSrc, /const DocMedico = React\.lazy\(\(\) => import\('\.\/DocMedico\.jsx'\)\);/);
   const modalBlock = dashboardSrc.slice(dashboardSrc.indexOf('{ricettaPickerOpen && ('), dashboardSrc.indexOf('{bookingOpen && ('));
-  assert.match(modalBlock, /<SelettorePaziente/);
-  // Must call the SAME goSchedaPaz path every other "open this patient at
-  // a specific tab" caller in this file already uses (onOpenPaz), with the
-  // document-request payload that seeds SchedaPaz's existing documentFlow.
-  assert.match(modalBlock, /onOpenPaz\(paz, 'doc', \{ type: 'ricetta' \}\)/);
+  // No bottom-sheet Modal in between any more: the full-screen form (top
+  // of the screen on mobile) is the very first thing the action shows.
+  assert.doesNotMatch(modalBlock, /<Modal\b/);
+  assert.match(modalBlock, /<DocMedico\s+paz=\{ricettaPaz\}/);
+  assert.match(modalBlock, /initialType="ricetta"/);
+  assert.match(modalBlock, /pazienteSelector=\{\(\s*<SelettorePaziente/);
+  assert.match(modalBlock, /value=\{ricettaPazienteId\}/);
+  assert.match(modalBlock, /creaLabel="Salva paziente"/);
+});
+
+test('DocMedico accepts a caller-supplied patient picker and blocks PDF generation until a patient is chosen', () => {
+  assert.match(docMedicoSrc, /onDocumentSaved, pazienteSelector \}\) \{/);
+  assert.match(docMedicoSrc, /\{pazienteSelector && \(\s*<div ref=\{pazienteSectionRef\}>/);
+  // The patient card sits right above the Farmaci section, so scrolling it
+  // to the top shows patient + prescription fields together.
+  assert.ok(docMedicoSrc.indexOf('{pazienteSelector && (') < docMedicoSrc.indexOf('<div ref={farmaciSectionRef}>'));
+  assert.match(docMedicoSrc, /if \(!paz\) \{\s*setErroreGenerazione\('Seleziona o crea il paziente prima di generare il PDF\.'\);/);
+  assert.match(docMedicoSrc, /\{paz \? `\$\{paz\.nome\} \$\{paz\.cognome\}` : 'Nessun paziente selezionato'\}/);
 });
 
 test('ROUND 4: App.jsx\'s goSchedaPaz forwards an optional documentRequest into the SAME initialDocumentRequest prop SchedaPaz already consumes — no new plumbing invented', () => {
@@ -334,7 +348,7 @@ test('ROUND 4: App.jsx\'s goSchedaPaz forwards an optional documentRequest into 
 test('ROUND 5: DocMedico scrolls the Farmaci prescritti section into view on open when the type was already decided by the caller', () => {
   assert.match(docMedicoSrc, /const farmaciSectionRef = useRef\(null\);/);
   assert.match(docMedicoSrc, /if \(initialType !== 'ricetta' \|\| !puoiPrescrivere\) return;/);
-  assert.match(docMedicoSrc, /farmaciSectionRef\.current\?\.scrollIntoView\(\{ block: 'start' \}\)/);
+  assert.match(docMedicoSrc, /\(pazienteSectionRef\.current \|\| farmaciSectionRef\.current\)\?\.scrollIntoView\(\{ block: 'start' \}\)/);
   // The ref must actually be attached to the Farmaci prescritti block, and
   // the effect must run once on mount (not on every tipo change), or it
   // would fight the user scrolling back up to change type.
@@ -364,7 +378,7 @@ test('ROUND 6: DocMedico opens ABOVE the floating dock/orb, not underneath it', 
   assert.match(fallbackBlock, /zIndex: 9999/);
 });
 
-test('ROUND 6: the Ricetta picker lets you create a brand-new patient inline (name/surname), then opens Ricetta for them immediately', () => {
+test('ROUND 6: the Ricetta patient picker lets you create a brand-new patient inline (name/surname) and use it right away', () => {
   // Reuses SelettorePaziente's own existing onCreaPaziente contract — the
   // exact same "no results -> create inline" UI/flow Agenda.jsx's
   // creaPazienteRapido already ships. No new patient-creation UI invented.
@@ -380,8 +394,7 @@ test('ROUND 6: the Ricetta picker lets you create a brand-new patient inline (na
   assert.match(dashboardSrc, /const ricettaJustCreatedRef = useRef\(null\);/);
   assert.match(dashboardSrc, /ricettaJustCreatedRef\.current = nuovoPaziente;/);
   const modalBlock = dashboardSrc.slice(dashboardSrc.indexOf('{ricettaPickerOpen && ('), dashboardSrc.indexOf('{bookingOpen && ('));
-  assert.match(modalBlock, /ricettaJustCreatedRef\.current && String\(ricettaJustCreatedRef\.current\.id\) === String\(id\)/);
-  assert.match(modalBlock, /onOpenPaz\(paz, 'doc', \{ type: 'ricetta' \}\)/);
+  assert.match(modalBlock, /ricettaJustCreatedRef\.current && String\(ricettaJustCreatedRef\.current\.id\) === String\(ricettaPazienteId\)/);
 });
 
 test('App.jsx passes setPatients into Dashboard, mirroring Agenda/Pazienti — required for the inline patient-creation path to exist at all', () => {
