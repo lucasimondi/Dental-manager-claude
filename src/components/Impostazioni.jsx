@@ -1,9 +1,10 @@
 ﻿import ProfiloUtente from './ProfiloUtente.jsx';
 import GestioneUtenti from './GestioneUtenti.jsx';
 import GestioneRisorseAgenda from './GestioneRisorseAgenda.jsx';
+import FarmaciPreferitiSettings from './FarmaciPreferitiSettings.jsx';
 import React, { useState, useEffect, useRef } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Ic, Toggle, DockIc, DOCK_ICON_STYLES, PageHeader, EmptyState } from './ui';
-import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI, DEF_DOCK_SETTINGS, mergeDockSettings, DEF_AGENDA_SETTINGS, DEF_DOCUMENTI_SETTINGS, STORIA_CLINICA_MODELLO_BASE } from '../lib/utils';
+import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI, VERTICALI_CON_RICETTA, DEF_DOCK_SETTINGS, mergeDockSettings, DEF_AGENDA_SETTINGS, DEF_DOCUMENTI_SETTINGS, STORIA_CLINICA_MODELLO_BASE } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { normalizeManagementControlMode } from '../lib/canonicalFinancialSelectors';
 import { loadResolvedHomeLayout, saveUserHomeLayout } from '../lib/homeLayoutPersistence.js';
@@ -71,6 +72,13 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
   const docSet = { ...DEF_DOCUMENTI_SETTINGS, ...(si.documenti_settings || {}) };
   const SD = (f) => S({ documenti_settings: { ...docSet, ...f } });
   const save = () => { setStudioInfo(si); setToast('Salvato ✓'); };
+  // POL-UI-044: le scorciatoie farmaci si salvano subito, solo quel campo —
+  // non trascinano con sé altre modifiche non ancora salvate della pagina.
+  const salvaFarmaciPreferiti = (lista) => {
+    S({ farmaci_preferiti: lista });
+    setStudioInfo((prev) => ({ ...prev, farmaci_preferiti: lista }));
+    setToast('Scorciatoie salvate ✓');
+  };
 
   // Slug pubblico per il link di prenotazione online: non è parte del blob
   // studio_info come le altre impostazioni sopra, è una colonna diretta
@@ -883,6 +891,11 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
         ))}
       </Crd>
       <Btn ch="Salva impostazioni documenti" ic="save" onClick={save} full sz="lg" />
+      {(VERTICALI_CON_RICETTA.has(si.vertical) || !si.vertical) && (
+        <div style={{ marginTop: 22 }}>
+          <FarmaciPreferitiSettings si={si} onSalva={salvaFarmaciPreferiti} />
+        </div>
+      )}
       </>
       )}
 

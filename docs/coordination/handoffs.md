@@ -3040,3 +3040,46 @@ Revert del commit. Nessun effetto su database.
 ### EXACT NEXT ACTION
 Verifica manuale del Product Owner su mobile; apertura PR/merge solo su istruzione esplicita.
 
+---
+
+## POL-UI-044 — Scorciatoie per i farmaci più usati nella Ricetta
+
+- TASK ID: POL-UI-044
+- PREVIOUS AGENT: CLAUDE (POL-UI-043, mergiata come PR #113, `master@8d1cccd`; master attuale `5e674e9` dopo PR #112).
+- BRANCH: `claude/recipe-form-quick-actions-mobile-l8464o`, ripartito da `master@5e674e9`.
+- REQUEST (verbatim, Product Owner): "Ok adesso creiamo delle scorciatoie per i farmaci più utilizzati come possiamo fare ?" → "Nel database dello studio, lista iniziale bene aggiungi Enteroboulardi , zitromax, toradol, Xanax, pantoprazolo 20 mg, e poi il tool per aggiungerli".
+
+### Objective
+Pulsanti per i farmaci più usati nella Ricetta, con lista condivisa a livello di studio e gestibile dall'app.
+
+### Completed work
+1. Migration `supabase/migrations/20261004120000_pol_ui_044_farmaci_preferiti.sql`: `studio_info.farmaci_preferiti jsonb` nullable + CHECK (array, max 60). Preflight su `studio_info(studio_id)`. Nessuna modifica a RLS/grant.
+2. `src/lib/farmaciPreferiti.js`: `FARMACI_PREFERITI_DEFAULT` (Amoxicillina 1 g, Augmentin 875/125, Clindamicina 300, Zitromax 500, Ibuprofene 600, Paracetamolo 1000, Ketoprofene sale di lisina 80, Toradol 10, Pantoprazolo 20, Enteroboulardi, Xanax 0,25, Clorexidina 0,20%), `normalizzaFarmacoPreferito`, `normalizzaListaFarmaciPreferiti`, `resolveFarmaciPreferiti` (salvata → altrimenti iniziale solo per odontoiatria), `applicaFarmacoPreferito`.
+3. `src/components/DocMedico.jsx`: pulsanti scorciatoia nella card "Farmaci prescritti".
+4. `src/components/FarmaciPreferitiSettings.jsx` (nuovo) + `src/components/Impostazioni.jsx`: gestione in Impostazioni → Documenti, salvataggio immediato con `setStudioInfo(prev => ({ ...prev, farmaci_preferiti }))`.
+5. Test: `tests/farmaciPreferiti.test.mjs` (7), `supabase/tests/pol_ui_044_farmaci_preferiti.sql`.
+
+### Files changed
+`supabase/migrations/20261004120000_pol_ui_044_farmaci_preferiti.sql`, `supabase/tests/pol_ui_044_farmaci_preferiti.sql`, `src/lib/farmaciPreferiti.js`, `src/components/FarmaciPreferitiSettings.jsx`, `src/components/DocMedico.jsx`, `src/components/Impostazioni.jsx`, `tests/farmaciPreferiti.test.mjs`, `docs/coordination/current-task.md`, `docs/coordination/handoffs.md`.
+
+### Database changes
+Da applicare al merge su `idklxdqebfceplrualgh`: migration POL-UI-044 (una colonna nullable, nessun dato modificato: tutti gli studi partono da NULL = lista iniziale).
+
+### Deployment impact
+Applicare la migration prima/insieme al deploy Vercel: senza la colonna, il salvataggio di una scorciatoia fallirebbe (l'upsert di `studio_info` include il campo). Lettura e uso della lista iniziale funzionano anche senza migration.
+
+### Tests executed / results
+- `npm test` 847/847 PASS; `npm run build` OK.
+- Postgres 16 locale: `pol_003c_local_bootstrap.sql` → migration POL-UI-044 due volte → `pol_ui_044_farmaci_preferiti.sql` PASS (NULL iniziale, rifiuto non-array e >60, persistenza nello studio del claim, nessuna scrittura cross-tenant). Negativi: senza migration FAIL (colonna assente); senza CHECK FAIL "non-array value accepted".
+- Playwright 390×844 (harness temporaneo rimosso): Zitromax e Pantoprazolo aggiunti con tutti i campi, pulsanti marcati ✓; editor: aggiunta "Metronidazolo 250 mg" e spostamento su salvati correttamente.
+
+### Unresolved issues / risks
+- Dosaggi e posologie della lista iniziale sono un punto di partenza: vanno verificati dal Product Owner (modificabili da Impostazioni). "Enteroboulardi" inserito con il nome indicato e posologia generica, senza dosaggio.
+- Con 12 scorciatoie i pulsanti occupano circa mezzo schermo su mobile sopra il primo farmaco.
+
+### Rollback
+Revert del commit. Se la migration è applicata: `ALTER TABLE public.studio_info DROP CONSTRAINT IF EXISTS studio_info_farmaci_preferiti_check; ALTER TABLE public.studio_info DROP COLUMN IF EXISTS farmaci_preferiti;` (si perdono solo le liste personalizzate).
+
+### EXACT NEXT ACTION
+Product Owner: verifica della lista iniziale; su istruzione, PR → merge → `apply_migration` POL-UI-044 → verifica in produzione.
+
