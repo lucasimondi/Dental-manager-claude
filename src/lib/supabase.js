@@ -196,7 +196,9 @@ export const DB = {
   async setStudioInfo(obj) {
     const { data: { user } } = await supabase.auth.getUser();
     const studioId = await getStudioId();
-    if (!studioId) return;
+    // Fail closed: senza studio non c'è nulla da salvare, e il chiamante
+    // deve saperlo invece di credere che sia andato a buon fine.
+    if (!user || !studioId) throw new Error('Sessione o studio non identificati');
     const payload = { ...obj, studio_id: studioId, user_id: user.id, updated_at: new Date().toISOString() };
     const { error } = await supabase.from('studio_info').upsert(payload, { onConflict: 'studio_id' });
     if (error) { console.error('DB.setStudioInfo', error); throw error; }

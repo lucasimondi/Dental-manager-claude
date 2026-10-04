@@ -471,13 +471,25 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataLoading, session, patients, plans, payments, appointments, richiami]);
 
-  const setStudioInfoSync = (updaterOrVal) => {
+  // POL-UI-046: un salvataggio fallito non deve più passare inosservato
+  // (POL-UI-045: per mesi le impostazioni Documenti fallivano solo in
+  // console mentre Impostazioni mostrava "Salvato ✓"). Restituisce una
+  // Promise<boolean> con l'esito reale; in caso di errore mostra il banner
+  // di sincronizzazione e riporta lo stato locale a prima della modifica
+  // (solo se nel frattempo non è cambiato altro). Non rifiuta mai: i
+  // chiamanti che ignorano il risultato non generano unhandled rejection.
+  const setStudioInfoSync = (updaterOrVal) => new Promise((resolve) => {
     setStudioInfo((prev) => {
       const next = typeof updaterOrVal === 'function' ? updaterOrVal(prev) : updaterOrVal;
-      DB.setStudioInfo(next).catch((e) => console.error('Errore salvataggio studio info', e));
+      DB.setStudioInfo(next).then(() => resolve(true), (e) => {
+        console.error('Errore salvataggio studio info', e);
+        setSyncError(`Impostazioni dello studio NON salvate: ${e?.message || e}`);
+        setStudioInfo((curr) => (curr === next ? prev : curr));
+        resolve(false);
+      });
       return next;
     });
-  };
+  });
 
   const goNuovoPiano = (id) => { setInitPatId(id); setPage('piani'); };
   const goNuovoElemento = (target) => { setAutoOpenNew(target); setPage(target); };

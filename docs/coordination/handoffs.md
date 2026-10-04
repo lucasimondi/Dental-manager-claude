@@ -3128,3 +3128,45 @@ Nessun deploy necessario: il frontend già in produzione usa la colonna, ora esi
 ### EXACT NEXT ACTION
 PR + merge su istruzione del Product Owner; verifica manuale del salvataggio delle levette.
 
+---
+
+## POL-UI-046 — Salvataggio delle impostazioni studio: errori visibili
+
+- TASK ID: POL-UI-046
+- PREVIOUS AGENT: CLAUDE (POL-UI-045, stessa PR #115).
+- BRANCH: `claude/recipe-form-quick-actions-mobile-l8464o` (PR #115).
+- REQUEST (verbatim, Product Owner): "Sistema" (al rischio segnalato in POL-UI-045: errori di salvataggio solo in console e "Salvato ✓" sempre).
+
+### Objective
+Rendere visibile ogni salvataggio fallito delle impostazioni dello studio e non confermare mai un salvataggio non avvenuto.
+
+### Completed work
+1. `src/App.jsx`: `setStudioInfoSync` → `Promise<boolean>`; su errore `setSyncError(...)` (banner esistente) + ripristino dello stato locale se invariato nel frattempo; mai `reject`.
+2. `src/lib/supabase.js`: `DB.setStudioInfo` lancia `Sessione o studio non identificati` invece di ritornare in silenzio.
+3. `src/components/Impostazioni.jsx`: `save` e `salvaFarmaciPreferiti` attendono l'esito; toast "Salvato ✓" / "Non salvato — riprova"; scorciatoie ripristinate se il salvataggio fallisce.
+4. Test: `tests/studioInfoSaveErrors.test.mjs` (3), `tests/farmaciPreferiti.test.mjs` aggiornato.
+
+### Files changed
+`src/App.jsx`, `src/lib/supabase.js`, `src/components/Impostazioni.jsx`, `tests/studioInfoSaveErrors.test.mjs`, `tests/farmaciPreferiti.test.mjs`, `docs/coordination/current-task.md`, `docs/coordination/handoffs.md`.
+
+### Database changes
+Nessuna.
+
+### Deployment impact
+Solo frontend (deploy Vercel al merge).
+
+### Tests executed / results
+- `npm test` 852/852 PASS; con App/supabase/Impostazioni riportati alla versione precedente i 3 nuovi test FAIL.
+- `npm run build` OK.
+- Playwright 390×844 (harness temporaneo rimosso): salvataggio che fallisce → "Non salvato — riprova"; che riesce → "Salvato ✓"; nessun toast prima della risposta; una sola chiamata.
+
+### Unresolved issues / risks
+- Il banner rosso in App non è stato visto in un browser (richiede login): coperto da test sul sorgente.
+- Gli altri dati (pazienti, appuntamenti…) usavano già il banner: invariati.
+
+### Rollback
+Revert del commit.
+
+### EXACT NEXT ACTION
+Merge della PR #115 su istruzione del Product Owner.
+

@@ -62,7 +62,7 @@ test('POL-UI-044: DocMedico mostra le scorciatoie nella card Farmaci prescritti'
 
 test('POL-UI-044: Impostazioni → Documenti gestisce le scorciatoie e salva solo quel campo', () => {
   assert.match(impostazioniSrc, /<FarmaciPreferitiSettings si=\{si\} onSalva=\{salvaFarmaciPreferiti\} \/>/);
-  assert.match(impostazioniSrc, /setStudioInfo\(\(prev\) => \(\{ \.\.\.prev, farmaci_preferiti: lista \}\)\);/);
+  assert.match(impostazioniSrc, /await setStudioInfo\(\(prev\) => \(\{ \.\.\.prev, farmaci_preferiti: lista \}\)\);/);
   assert.match(impostazioniSrc, /\(VERTICALI_CON_RICETTA\.has\(si\.vertical\) \|\| !si\.vertical\) && \(/);
   for (const azione of ['Aggiungi farmaco', 'Salva scorciatoia', 'Sposta su', 'Sposta giù', 'Modifica', 'Elimina', 'Ripristina lista iniziale']) {
     assert.ok(settingsSrc.includes(azione), `manca l'azione ${azione}`);
