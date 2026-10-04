@@ -6,12 +6,55 @@
 - BRANCH: `claude/whatsapp-automation-status-d2ng12`, da `master@5e674e9` (+ commit di documentazione `c20dda3`).
 - STATUS: PUSHED — PR aperta, in attesa del Product Owner. Nessuna modifica a produzione.
 
-- **Migration `20261004120000_pol_wa_003b_promemoria.sql`** (additiva, senza DROP, rieseguibile): `patients.consenso_whatsapp` (default false) + `consenso_whatsapp_il`; `whatsapp_config.promemoria_attivi` (default false), `promemoria_ora` (default 18), `promemoria_template`, `promemoria_lingua`; tabella `whatsapp_promemoria` (una riga per appuntamento, UNIQUE, lettura ai membri dello studio, nessuna scrittura client); `whatsapp_cron_segreto_valido` solo service_role; segreto dello scheduler generato nel DB e tenuto nel Vault; `whatsapp_programma_promemoria(url)` (nessun ruolo client, URL validato) da chiamare una volta per ambiente.
+- **Migration `20261004160000_pol_wa_003b_promemoria.sql`** (additiva, senza DROP, rieseguibile): `patients.consenso_whatsapp` (default false) + `consenso_whatsapp_il`; `whatsapp_config.promemoria_attivi` (default false), `promemoria_ora` (default 18), `promemoria_template`, `promemoria_lingua`; tabella `whatsapp_promemoria` (una riga per appuntamento, UNIQUE, lettura ai membri dello studio, nessuna scrittura client); `whatsapp_cron_segreto_valido` solo service_role; segreto dello scheduler generato nel DB e tenuto nel Vault; `whatsapp_programma_promemoria(url)` (nessun ruolo client, URL validato) da chiamare una volta per ambiente.
 - **Edge Function**: nuovo `promemoria.js` + percorsi `/promemoria` (pg_cron, segreto) e `/invia` (app, login staff, lettura della richiesta sotto RLS, testi fissi); risposte ai promemoria registrate; il prompt sa come trattare conferme e spostamenti.
 - **App**: casella consenso nella scheda paziente (con data); Impostazioni → WhatsApp Business: promemoria on/off e ora (titolare), nome modello (super admin); Agenda: dopo il salvataggio di una richiesta WhatsApp parte la conferma al paziente, e le richieste di spostamento/disdetta salvate sull'appuntamento esistente ora diventano "gestite" (prima restavano aperte).
 - VALIDATION: `npm test` 854/854; `npm run build` pulito; Postgres 16 locale: catena 001→002→003a→003b (003b applicata due volte) + `supabase/tests/pol_wa_003b_promemoria.sql` PASS; variante "come produzione" (righe `whatsapp_config` già presenti + Vault simulato prima della migration) PASS, segreto creato una sola volta; controllo negativo senza 003b → FAIL atteso.
 - ORDINE DI RILASCIO (obbligatorio): migration in produzione PRIMA del merge (il frontend scrive `consenso_whatsapp`; Vercel deploya al merge), poi `whatsapp_programma_promemoria('https://idklxdqebfceplrualgh.supabase.co/functions/v1/whatsapp-webhook/promemoria')`, merge, deploy Edge Function (4 file, `verify_jwt=false`).
 - EXACT NEXT ACTION: istruzione del Product Owner ("Mergia") per il rilascio nell'ordine sopra. Lato Meta (Product Owner): approvazione del modello `promemoria_appuntamento` con i pulsanti Confermo / Devo spostarlo.
+
+---
+
+- TASK: POL-UI-046 — Salvataggio delle impostazioni studio: errori visibili invece di "Salvato ✓"
+- TITLE: un salvataggio fallito di `studio_info` finiva solo in console mentre Impostazioni mostrava comunque "Salvato ✓" (causa per cui POL-UI-045 è passato inosservato).
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "Sistema").
+- BRANCH: `claude/recipe-form-quick-actions-mobile-l8464o` (stessa PR #115 di POL-UI-045, ancora aperta).
+- STATUS: MERGED — PR #115 (`master@a3de15e`), su istruzione del Product Owner ("Mergia"). Nessuna modifica al database.
+
+- **App.jsx `setStudioInfoSync`**: restituisce `Promise<boolean>` con l'esito reale; in caso di errore mostra il banner rosso di sincronizzazione già esistente ("Impostazioni dello studio NON salvate: …") e riporta lo stato locale a prima (solo se non è cambiato altro). Non rifiuta mai.
+- **`DB.setStudioInfo`**: senza sessione o studio ora lancia un errore (prima `return` silenzioso = falso successo).
+- **Impostazioni**: "Salvato ✓" solo a salvataggio riuscito, altrimenti "Non salvato — riprova"; le scorciatoie farmaci tornano alla lista precedente se il salvataggio fallisce.
+- VALIDATION: `npm test` 852/852 (3 nuovi test FAIL con il codice precedente); build OK; Playwright 390×844 su harness temporaneo (rimosso): con errore toast "Non salvato — riprova", con successo "Salvato ✓", nessun toast prima della risposta. Il banner di App non è verificabile senza login: coperto dai test sul sorgente.
+- EXACT NEXT ACTION: verifica manuale del Product Owner (salvare una levetta in Impostazioni → Documenti e ricaricare; provare il menu "Farmaci frequenti" nella Ricetta). Nessun lavoro aperto su questo branch.
+
+---
+
+- TASK: POL-UI-045 — Colonna `studio_info.documenti_settings` mancante in produzione
+- TITLE: le levette di Impostazioni → Documenti ("Archiviazione documenti") non venivano mai salvate: l'app scriveva una colonna inesistente e l'upsert falliva in silenzio.
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "Fai", in risposta alla proposta di aggiungere la colonna mancante).
+- BRANCH: `claude/recipe-form-quick-actions-mobile-l8464o`, ripartito da `master@9272006` (PR #114 mergiata).
+- STATUS: MERGED — PR #115 (`master@a3de15e`); migration POL-UI-045 applicata in produzione prima del merge (colonna nullable, nessun dato toccato), verificata.
+
+- **Evidenza**: lettura `information_schema.columns` in produzione (2026-10-04): `documenti_settings` assente, mentre `Impostazioni.jsx` la salva con `S({ documenti_settings: ... })` e `DB.setStudioInfo` fa upsert dell'intero oggetto. Tutti gli altri campi salvati da Impostazioni esistono.
+- **Migration** `20261004150000_pol_ui_045_documenti_settings.sql`: `documenti_settings jsonb` nullable + CHECK oggetto JSON. NULL = `DEF_DOCUMENTI_SETTINGS`. Nessuna policy/grant.
+- **Regressione**: `tests/studioInfoColumns.test.mjs` confronta ogni campo `S({ campo: … })` di Impostazioni con le colonne di produzione (fotografia 2026-10-04) + le colonne aggiunte dalle migration.
+- VALIDATION: `npm test` 849/849; Postgres 16 locale: test SQL FAIL senza migration ("column does not exist"), PASS con migration applicata due volte; il nuovo test JS senza la migration FAIL indicando proprio `documenti_settings`. Produzione: colonna presente (jsonb) dopo l'apply.
+- EXACT NEXT ACTION: nessuna (mergiata). Verifica manuale: cambiare una levetta in Impostazioni → Documenti, salvare, ricaricare l'app.
+
+---
+
+- TASK: POL-UI-044 — Scorciatoie per i farmaci più usati nella Ricetta
+- TITLE: pulsanti nel form Ricetta che aggiungono il farmaco già compilato; lista per studio gestibile da Impostazioni → Documenti.
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "Ok adesso creiamo delle scorciatoie per i farmaci più utilizzati come possiamo fare ?", poi "Nel database dello studio, lista iniziale bene aggiungi Enteroboulardi , zitromax, toradol, Xanax, pantoprazolo 20 mg, e poi il tool per aggiungerli").
+- BRANCH: `claude/recipe-form-quick-actions-mobile-l8464o`, ripartito da `master@5e674e9` (PR #113 già mergiata).
+- STATUS: MERGED — PR #114 (`master@9272006`); migration POL-UI-044 applicata in produzione (`idklxdqebfceplrualgh`, 2026-10-04) PRIMA del merge, verificata (colonna jsonb + CHECK, 0 studi con lista personalizzata).
+
+- **DB (gate PO approvato: "Nel database dello studio")**: `20261004120000_pol_ui_044_farmaci_preferiti.sql` aggiunge `studio_info.farmaci_preferiti jsonb` (NULL = lista iniziale; CHECK array ≤ 60). Nessuna policy/grant toccati: la RLS esistente di `studio_info` copre la colonna.
+- **`src/lib/farmaciPreferiti.js`**: lista iniziale odontoiatrica (12 voci, incluse Enteroboulardi, Zitromax, Toradol, Xanax, Pantoprazolo 20 mg), normalizzazione, `resolveFarmaciPreferiti`, `applicaFarmacoPreferito`.
+- **DocMedico**: menu a scomparsa "Farmaci frequenti (N)" in cima a "Farmaci prescritti" (chiuso di default, su richiesta del PO: "I farmaci li metti in un menu a scomparsa"); un tocco su un farmaco riempie la prima riga vuota o ne aggiunge una e richiude il menu; il farmaco già presente diventa verde ✓ e non si duplica.
+- **Impostazioni → Documenti** (solo professioni che prescrivono): nuovo `FarmaciPreferitiSettings` — aggiungi, modifica, elimina (con conferma), riordina ↑↓, ripristina lista iniziale. Salvataggio immediato del solo campo `farmaci_preferiti`.
+- VALIDATION: `npm test` 847/847; `npm run build` OK; Postgres 16 locale: migration ×2 (idempotente) + `pol_ui_044_farmaci_preferiti.sql` PASS; controlli negativi (senza migration / senza CHECK) FAIL come atteso; Playwright 390×844 su harness temporaneo (rimosso).
+- EXACT NEXT ACTION: PR su istruzione del Product Owner; al merge `apply_migration` POL-UI-044 su `idklxdqebfceplrualgh` PRIMA che il frontend salvi la colonna (altrimenti l'upsert di studio_info fallisce solo quando si salva una scorciatoia).
 
 ---
 
@@ -34,7 +77,7 @@
 - TITLE: dalla Home, "Ricetta" apriva un modale "scegli paziente" che su mobile compariva come foglio in basso, e solo dopo la scelta si arrivava al form.
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "Il form ricetta quando lo richiamo da azioni rapide deve comparire in alto nello schermo mobile e non in basso, inoltre deve comparire gia il form completo con in più la parte di ricerca paziente o la creazione istantanea con nome e cognome e il salva del paziente se non presente").
 - BRANCH: `claude/recipe-form-quick-actions-mobile-l8464o`, da `master@836ce5a`.
-- STATUS: PUSHED — nessuna PR aperta (non richiesta).
+- STATUS: MERGED — PR #113 (`master@8d1cccd`), su istruzione del Product Owner ("Allora Mergia prima poi facciamo il resto").
 
 - **Dashboard.jsx**: l'azione rapida apre subito `DocMedico` (lazy, a schermo intero dall'alto, z-index 9999 sopra il dock) con `initialType="ricetta"`; niente più `Modal`. Il `SelettorePaziente` è passato a `DocMedico` come `pazienteSelector`; creazione al volo invariata (`creaPazienteRapidoRicetta`, stesso limite `max_pazienti`), pulsante etichettato "Salva paziente".
 - **DocMedico.jsx**: nuova prop opzionale `pazienteSelector` → card "Paziente" subito sopra "Farmaci prescritti", ed è quella a essere portata in cima all'apertura. `paz` può essere null finché non si sceglie: il form è compilabile, "Genera PDF" mostra "Seleziona o crea il paziente prima di generare il PDF." Gli altri chiamanti (SchedaPaz, PatientWorkspaceV2) non passano la prop: comportamento invariato.

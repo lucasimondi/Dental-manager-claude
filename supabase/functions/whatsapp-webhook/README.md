@@ -71,7 +71,7 @@ End-to-end behaviour (Meta, Supabase and Claude simulated) is tested by
 - Deploy all four files (`index.ts`, `logica.js`, `promemoria.js`, `agendaSlots.js`).
 - Public entry point: `api/whatsapp-webhook.js` (Vercel) forwards the raw body.
 - Requires migrations `20261002120000_pol_wa_003a_assistente_whatsapp.sql` and
-  `20261004120000_pol_wa_003b_promemoria.sql`.
+  `20261004160000_pol_wa_003b_promemoria.sql`.
 
 ## Required project secrets (names only, never commit values)
 

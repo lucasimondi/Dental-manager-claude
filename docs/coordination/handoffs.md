@@ -3054,7 +3054,7 @@ Verifica manuale del Product Owner su mobile; apertura PR/merge solo su istruzio
 - Owner: CLAUDE, su istruzione del Product Owner ("Vai"). Branch `claude/whatsapp-automation-status-d2ng12` da `master@5e674e9`.
 
 ### Files changed
-`supabase/migrations/20261004120000_pol_wa_003b_promemoria.sql` (nuovo), `supabase/functions/whatsapp-webhook/{index.ts,logica.js,promemoria.js (nuovo),README.md}`, `supabase/tests/pol_wa_003b_promemoria.sql` (nuovo), `src/components/{Agenda.jsx,Impostazioni.jsx,PazienteFormModal.jsx}`, `src/lib/supabase.js`, `tests/{whatsappAssistenteLogica,whatsappWebhookFlusso,whatsappAutomationHardening}.test.mjs`, `docs/runbooks/whatsapp-meta-setup.md`, `docs/coordination/current-task.md`, `docs/coordination/handoffs.md`.
+`supabase/migrations/20261004160000_pol_wa_003b_promemoria.sql` (nuovo), `supabase/functions/whatsapp-webhook/{index.ts,logica.js,promemoria.js (nuovo),README.md}`, `supabase/tests/pol_wa_003b_promemoria.sql` (nuovo), `src/components/{Agenda.jsx,Impostazioni.jsx,PazienteFormModal.jsx}`, `src/lib/supabase.js`, `tests/{whatsappAssistenteLogica,whatsappWebhookFlusso,whatsappAutomationHardening}.test.mjs`, `docs/runbooks/whatsapp-meta-setup.md`, `docs/coordination/current-task.md`, `docs/coordination/handoffs.md`.
 
 ### Comportamento
 - **Consenso** (decisione PO "Anagrafica paziente"): casella in scheda paziente, con data; default spento. Nessun promemoria senza consenso.
@@ -3081,3 +3081,141 @@ Vedi intestazione della migration (unschedule, drop funzioni/tabella/colonne, de
 
 ### EXACT NEXT ACTION
 Su "Mergia": migration in produzione a passi (prima del merge) → verifica → registrazione in `schema_migrations` → `SELECT public.whatsapp_programma_promemoria('https://idklxdqebfceplrualgh.supabase.co/functions/v1/whatsapp-webhook/promemoria')` → merge → deploy Edge Function 4 file `verify_jwt=false` → verifica proxy 403.
+
+---
+
+## POL-UI-044 — Scorciatoie per i farmaci più usati nella Ricetta
+
+- TASK ID: POL-UI-044
+- PREVIOUS AGENT: CLAUDE (POL-UI-043, mergiata come PR #113, `master@8d1cccd`; master attuale `5e674e9` dopo PR #112).
+- BRANCH: `claude/recipe-form-quick-actions-mobile-l8464o`, ripartito da `master@5e674e9`.
+- REQUEST (verbatim, Product Owner): "Ok adesso creiamo delle scorciatoie per i farmaci più utilizzati come possiamo fare ?" → "Nel database dello studio, lista iniziale bene aggiungi Enteroboulardi , zitromax, toradol, Xanax, pantoprazolo 20 mg, e poi il tool per aggiungerli".
+
+### Objective
+Pulsanti per i farmaci più usati nella Ricetta, con lista condivisa a livello di studio e gestibile dall'app.
+
+### Completed work
+1. Migration `supabase/migrations/20261004120000_pol_ui_044_farmaci_preferiti.sql`: `studio_info.farmaci_preferiti jsonb` nullable + CHECK (array, max 60). Preflight su `studio_info(studio_id)`. Nessuna modifica a RLS/grant.
+2. `src/lib/farmaciPreferiti.js`: `FARMACI_PREFERITI_DEFAULT` (Amoxicillina 1 g, Augmentin 875/125, Clindamicina 300, Zitromax 500, Ibuprofene 600, Paracetamolo 1000, Ketoprofene sale di lisina 80, Toradol 10, Pantoprazolo 20, Enteroboulardi, Xanax 0,25, Clorexidina 0,20%), `normalizzaFarmacoPreferito`, `normalizzaListaFarmaciPreferiti`, `resolveFarmaciPreferiti` (salvata → altrimenti iniziale solo per odontoiatria), `applicaFarmacoPreferito`.
+3. `src/components/DocMedico.jsx`: menu a scomparsa "Farmaci frequenti (N)" nella card "Farmaci prescritti", chiuso di default e richiuso dopo la scelta (PO: "I farmaci li metti in un menu a scomparsa").
+4. `src/components/FarmaciPreferitiSettings.jsx` (nuovo) + `src/components/Impostazioni.jsx`: gestione in Impostazioni → Documenti, salvataggio immediato con `setStudioInfo(prev => ({ ...prev, farmaci_preferiti }))`.
+5. Test: `tests/farmaciPreferiti.test.mjs` (7), `supabase/tests/pol_ui_044_farmaci_preferiti.sql`.
+
+### Files changed
+`supabase/migrations/20261004120000_pol_ui_044_farmaci_preferiti.sql`, `supabase/tests/pol_ui_044_farmaci_preferiti.sql`, `src/lib/farmaciPreferiti.js`, `src/components/FarmaciPreferitiSettings.jsx`, `src/components/DocMedico.jsx`, `src/components/Impostazioni.jsx`, `tests/farmaciPreferiti.test.mjs`, `docs/coordination/current-task.md`, `docs/coordination/handoffs.md`.
+
+### Database changes
+Da applicare al merge su `idklxdqebfceplrualgh`: migration POL-UI-044 (una colonna nullable, nessun dato modificato: tutti gli studi partono da NULL = lista iniziale).
+
+### Deployment impact
+Applicare la migration prima/insieme al deploy Vercel: senza la colonna, il salvataggio di una scorciatoia fallirebbe (l'upsert di `studio_info` include il campo). Lettura e uso della lista iniziale funzionano anche senza migration.
+
+### Tests executed / results
+- `npm test` 847/847 PASS; `npm run build` OK.
+- Postgres 16 locale: `pol_003c_local_bootstrap.sql` → migration POL-UI-044 due volte → `pol_ui_044_farmaci_preferiti.sql` PASS (NULL iniziale, rifiuto non-array e >60, persistenza nello studio del claim, nessuna scrittura cross-tenant). Negativi: senza migration FAIL (colonna assente); senza CHECK FAIL "non-array value accepted".
+- Playwright 390×844 (harness temporaneo rimosso): Zitromax e Pantoprazolo aggiunti con tutti i campi, pulsanti marcati ✓; editor: aggiunta "Metronidazolo 250 mg" e spostamento su salvati correttamente.
+
+### Unresolved issues / risks
+- Dosaggi e posologie della lista iniziale sono un punto di partenza: vanno verificati dal Product Owner (modificabili da Impostazioni). "Enteroboulardi" inserito con il nome indicato e posologia generica, senza dosaggio.
+
+### Rollback
+Revert del commit. Se la migration è applicata: `ALTER TABLE public.studio_info DROP CONSTRAINT IF EXISTS studio_info_farmaci_preferiti_check; ALTER TABLE public.studio_info DROP COLUMN IF EXISTS farmaci_preferiti;` (si perdono solo le liste personalizzate).
+
+### EXACT NEXT ACTION
+Product Owner: verifica della lista iniziale; su istruzione, PR → merge → `apply_migration` POL-UI-044 → verifica in produzione.
+
+### Aggiornamento POL-UI-044 (merge)
+- Su richiesta del PO ("I farmaci li metti in un menu a scomparsa") le scorciatoie sono in un menu "Farmaci frequenti (N)" chiuso di default (commit `be287a0`).
+- Migration POL-UI-044 applicata su `idklxdqebfceplrualgh` PRIMA del merge, verificata: `farmaci_preferiti jsonb`, CHECK presente, 0 studi con lista personalizzata.
+- PR #114 mergiata (`master@9272006`).
+
+---
+
+## POL-UI-045 — Colonna `studio_info.documenti_settings` mancante in produzione
+
+- TASK ID: POL-UI-045
+- PREVIOUS AGENT: CLAUDE (POL-UI-044, PR #114, `master@9272006`).
+- BRANCH: `claude/recipe-form-quick-actions-mobile-l8464o`, ripartito da `master@9272006`.
+- REQUEST (verbatim, Product Owner): "Fai" (alla proposta di aggiungere la colonna mancante).
+
+### Objective
+Far funzionare il salvataggio di Impostazioni → Documenti ("Archiviazione documenti").
+
+### Completed work
+1. Diagnosi in sola lettura: `documenti_settings` assente da `public.studio_info` in produzione; l'app la include nell'upsert di `studio_info` → errore di colonna sconosciuta, gestito solo con `console.error` (il toast "Salvato ✓" compariva comunque).
+2. Migration `supabase/migrations/20261004150000_pol_ui_045_documenti_settings.sql` (colonna jsonb nullable + CHECK oggetto), applicata in produzione e verificata.
+3. Test: `supabase/tests/pol_ui_045_documenti_settings.sql`, `tests/studioInfoColumns.test.mjs`.
+
+### Files changed
+`supabase/migrations/20261004150000_pol_ui_045_documenti_settings.sql`, `supabase/tests/pol_ui_045_documenti_settings.sql`, `tests/studioInfoColumns.test.mjs`, `docs/coordination/current-task.md`, `docs/coordination/handoffs.md`.
+
+### Database changes
+APPLICATA in produzione (`idklxdqebfceplrualgh`, 2026-10-04): `ALTER TABLE public.studio_info ADD COLUMN documenti_settings jsonb` + `studio_info_documenti_settings_check`. Nessun dato modificato (tutti gli studi NULL = predefiniti).
+
+### Deployment impact
+Nessun deploy necessario: il frontend già in produzione usa la colonna, ora esistente.
+
+### Tests executed / results
+- `npm test` 849/849 PASS.
+- Postgres 16 locale: senza migration il test SQL fallisce ("column documenti_settings does not exist"); con migration applicata due volte PASS, insieme a POL-UI-044.
+- `tests/studioInfoColumns.test.mjs` senza il file di migration FAIL: "campi salvati senza colonna in studio_info: documenti_settings".
+
+### Unresolved issues / risks
+- `DB.setStudioInfo` registra gli errori solo in console e Impostazioni mostra "Salvato ✓" anche se il salvataggio fallisce: un errore futuro resterebbe invisibile. Non corretto (fuori scope).
+- `studio_info` non ha una migration di creazione nel repository: l'elenco colonne del test è una fotografia di produzione da aggiornare se lo schema cambia fuori dalle migration.
+
+### Rollback
+`ALTER TABLE public.studio_info DROP CONSTRAINT IF EXISTS studio_info_documenti_settings_check; ALTER TABLE public.studio_info DROP COLUMN IF EXISTS documenti_settings;` (le preferenze tornano ai predefiniti e il salvataggio torna a fallire).
+
+### EXACT NEXT ACTION
+PR + merge su istruzione del Product Owner; verifica manuale del salvataggio delle levette.
+
+---
+
+## POL-UI-046 — Salvataggio delle impostazioni studio: errori visibili
+
+- TASK ID: POL-UI-046
+- PREVIOUS AGENT: CLAUDE (POL-UI-045, stessa PR #115).
+- BRANCH: `claude/recipe-form-quick-actions-mobile-l8464o` (PR #115).
+- REQUEST (verbatim, Product Owner): "Sistema" (al rischio segnalato in POL-UI-045: errori di salvataggio solo in console e "Salvato ✓" sempre).
+
+### Objective
+Rendere visibile ogni salvataggio fallito delle impostazioni dello studio e non confermare mai un salvataggio non avvenuto.
+
+### Completed work
+1. `src/App.jsx`: `setStudioInfoSync` → `Promise<boolean>`; su errore `setSyncError(...)` (banner esistente) + ripristino dello stato locale se invariato nel frattempo; mai `reject`.
+2. `src/lib/supabase.js`: `DB.setStudioInfo` lancia `Sessione o studio non identificati` invece di ritornare in silenzio.
+3. `src/components/Impostazioni.jsx`: `save` e `salvaFarmaciPreferiti` attendono l'esito; toast "Salvato ✓" / "Non salvato — riprova"; scorciatoie ripristinate se il salvataggio fallisce.
+4. Test: `tests/studioInfoSaveErrors.test.mjs` (3), `tests/farmaciPreferiti.test.mjs` aggiornato.
+
+### Files changed
+`src/App.jsx`, `src/lib/supabase.js`, `src/components/Impostazioni.jsx`, `tests/studioInfoSaveErrors.test.mjs`, `tests/farmaciPreferiti.test.mjs`, `docs/coordination/current-task.md`, `docs/coordination/handoffs.md`.
+
+### Database changes
+Nessuna.
+
+### Deployment impact
+Solo frontend (deploy Vercel al merge).
+
+### Tests executed / results
+- `npm test` 852/852 PASS; con App/supabase/Impostazioni riportati alla versione precedente i 3 nuovi test FAIL.
+- `npm run build` OK.
+- Playwright 390×844 (harness temporaneo rimosso): salvataggio che fallisce → "Non salvato — riprova"; che riesce → "Salvato ✓"; nessun toast prima della risposta; una sola chiamata.
+
+### Unresolved issues / risks
+- Il banner rosso in App non è stato visto in un browser (richiede login): coperto da test sul sorgente.
+- Gli altri dati (pazienti, appuntamenti…) usavano già il banner: invariati.
+
+### Rollback
+Revert del commit.
+
+### EXACT NEXT ACTION
+Merge della PR #115 su istruzione del Product Owner.
+
+### Aggiornamento POL-UI-045 / POL-UI-046 (merge)
+- PR #115 mergiata su istruzione del Product Owner ("Mergia"): `master@a3de15e`. CI `verify` verde sul commit `c4aabdb`.
+- Database: nessuna azione residua (migration POL-UI-045 già applicata e verificata prima del merge; POL-UI-046 senza modifiche al database).
+- Deploy: Vercel automatico al merge (non verificato da Claude).
+- EXACT NEXT ACTION: verifica manuale del Product Owner; nessun lavoro aperto su `claude/recipe-form-quick-actions-mobile-l8464o`.
+
+- Versione della migration: rinominata da `20261004120000` a `20261004160000` dopo il merge di master, che ha portato `20261004120000_pol_ui_044_farmaci_preferiti.sql` con la stessa versione (in produzione POL-UI-044 è registrata come `20261004135514`, nessun conflitto lì).

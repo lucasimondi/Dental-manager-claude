@@ -5,6 +5,7 @@ import { C, fmt, fmtD, today, VERTICALI_CON_RICETTA, DEF_DOCUMENTI_SETTINGS } fr
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { supabase } from '../lib/supabase.js';
 import { applyConfiguredSignature } from '../lib/pdfSignature.js';
+import { applicaFarmacoPreferito, resolveFarmaciPreferiti } from '../lib/farmaciPreferiti.js';
 
 
 const TIPI = [
@@ -306,6 +307,12 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
   const addFarmaco = () => setFarmaci(f => [...f, { farmaco: '', dosaggio: '', posologia: '', durata: '', note: '' }]);
   const updFarmaco = (i, field, val) => setFarmaci(f => f.map((x, j) => j === i ? { ...x, [field]: val } : x));
   const delFarmaco = (i) => setFarmaci(f => f.filter((_, j) => j !== i));
+  // POL-UI-044: scorciatoie dello studio (Impostazioni → Documenti).
+  const farmaciPreferiti = resolveFarmaciPreferiti(si);
+  // Product Owner: "I farmaci li metti in un menu a scomparsa" — chiuso di
+  // default, si richiude dopo aver scelto un farmaco.
+  const [menuPreferitiAperto, setMenuPreferitiAperto] = useState(false);
+  const giaInRicetta = (nome) => farmaci.some((f) => f.farmaco?.trim().toLowerCase() === nome.trim().toLowerCase());
 
   const intestazione = (doc, W, M) => {
     let y = 18;
@@ -873,6 +880,39 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
           <div ref={farmaciSectionRef}>
           <Crd style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}><Ic n="pill" s={11} c={C.txm} />Farmaci prescritti</div>
+            {farmaciPreferiti.length > 0 && (
+              <div data-farmaci-preferiti="true" style={{ marginBottom: 12 }}>
+                <button
+                  type="button"
+                  onClick={() => setMenuPreferitiAperto((v) => !v)}
+                  aria-expanded={menuPreferitiAperto}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${menuPreferitiAperto ? C.pri : C.brd}`, background: menuPreferitiAperto ? C.priL : C.sur, color: C.pri, fontSize: 13, fontWeight: 800, cursor: 'pointer' }}
+                >
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><Ic n="pill" s={13} c={C.pri} />Farmaci frequenti ({farmaciPreferiti.length})</span>
+                  <span aria-hidden="true" style={{ display: 'inline-block', transform: menuPreferitiAperto ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}>▾</span>
+                </button>
+                {menuPreferitiAperto && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                  {farmaciPreferiti.map((fp) => {
+                    const aggiunto = giaInRicetta(fp.farmaco);
+                    return (
+                      <button
+                        key={fp.id}
+                        type="button"
+                        onClick={() => { setFarmaci((f) => applicaFarmacoPreferito(f, fp)); setMenuPreferitiAperto(false); }}
+                        disabled={aggiunto}
+                        aria-pressed={aggiunto}
+                        title={[fp.dosaggio, fp.posologia, fp.durata].filter(Boolean).join(' · ')}
+                        style={{ padding: '7px 11px', borderRadius: 999, border: `1.5px solid ${aggiunto ? C.suc : C.brd}`, background: aggiunto ? C.sucL : C.sur, color: aggiunto ? C.suc : C.pri, fontSize: 12.5, fontWeight: 700, cursor: aggiunto ? 'default' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                      >
+                        {aggiunto ? <Ic n="ok" s={11} c={C.suc} /> : '+'} {fp.farmaco}
+                      </button>
+                    );
+                  })}
+                </div>
+                )}
+              </div>
+            )}
             {farmaci.map((f, i) => (
               <div key={i} style={{ background: C.bg, borderRadius: 10, padding: 12, marginBottom: 10, border: `1px solid ${C.brd}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>

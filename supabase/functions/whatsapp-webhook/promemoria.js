@@ -1,5 +1,5 @@
 // Promemoria automatici degli appuntamenti (POL-WA-003b).
-// Chiamato ogni ora da pg_cron (vedi migration 20261004120000_pol_wa_003b_promemoria.sql):
+// Chiamato ogni ora da pg_cron (vedi migration 20261004160000_pol_wa_003b_promemoria.sql):
 // per gli studi con promemoria attivi, all'ora scelta dallo studio, invia il modello
 // Meta approvato ai pazienti con consenso WhatsApp che hanno un appuntamento domani.
 // Non dipende da Deno: riceve il client e l'invio come parametri, così è testabile.

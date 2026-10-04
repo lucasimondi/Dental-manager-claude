@@ -1,6 +1,6 @@
 -- POL-WA-003b: permissions of the reminder objects. Synthetic data, rolled back.
 -- Order: the POL-WA-003a chain (see pol_wa_003a_local_bootstrap.sql), then
--- 20261004120000_pol_wa_003b_promemoria.sql (twice, to prove it re-runs), then this file.
+-- 20261004160000_pol_wa_003b_promemoria.sql (twice, to prove it re-runs), then this file.
 BEGIN;
 
 CREATE OR REPLACE FUNCTION pg_temp.assert_true(condition boolean, message text)

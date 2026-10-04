@@ -1,9 +1,10 @@
 ﻿import ProfiloUtente from './ProfiloUtente.jsx';
 import GestioneUtenti from './GestioneUtenti.jsx';
 import GestioneRisorseAgenda from './GestioneRisorseAgenda.jsx';
+import FarmaciPreferitiSettings from './FarmaciPreferitiSettings.jsx';
 import React, { useState, useEffect, useRef } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Ic, Toggle, DockIc, DOCK_ICON_STYLES, PageHeader, EmptyState } from './ui';
-import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI, DEF_DOCK_SETTINGS, mergeDockSettings, DEF_AGENDA_SETTINGS, DEF_DOCUMENTI_SETTINGS, STORIA_CLINICA_MODELLO_BASE } from '../lib/utils';
+import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI, VERTICALI_CON_RICETTA, DEF_DOCK_SETTINGS, mergeDockSettings, DEF_AGENDA_SETTINGS, DEF_DOCUMENTI_SETTINGS, STORIA_CLINICA_MODELLO_BASE } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { normalizeManagementControlMode } from '../lib/canonicalFinancialSelectors';
 import { loadResolvedHomeLayout, saveUserHomeLayout } from '../lib/homeLayoutPersistence.js';
@@ -70,7 +71,25 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
   const SA = (f) => S({ agenda_settings: { ...agSet, ...f } });
   const docSet = { ...DEF_DOCUMENTI_SETTINGS, ...(si.documenti_settings || {}) };
   const SD = (f) => S({ documenti_settings: { ...docSet, ...f } });
-  const save = () => { setStudioInfo(si); setToast('Salvato ✓'); };
+  // POL-UI-046: "Salvato ✓" solo se il database ha davvero salvato.
+  const ERRORE_SALVATAGGIO = 'Non salvato — riprova';
+  const save = async () => {
+    const ok = await setStudioInfo(si);
+    setToast(ok === false ? ERRORE_SALVATAGGIO : 'Salvato ✓');
+  };
+  // POL-UI-044: le scorciatoie farmaci si salvano subito, solo quel campo —
+  // non trascinano con sé altre modifiche non ancora salvate della pagina.
+  const salvaFarmaciPreferiti = async (lista) => {
+    const precedente = si.farmaci_preferiti;
+    S({ farmaci_preferiti: lista });
+    const ok = await setStudioInfo((prev) => ({ ...prev, farmaci_preferiti: lista }));
+    if (ok === false) {
+      S({ farmaci_preferiti: precedente });
+      setToast(ERRORE_SALVATAGGIO);
+      return;
+    }
+    setToast('Scorciatoie salvate ✓');
+  };
 
   // Slug pubblico per il link di prenotazione online: non è parte del blob
   // studio_info come le altre impostazioni sopra, è una colonna diretta
@@ -886,6 +905,11 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
         ))}
       </Crd>
       <Btn ch="Salva impostazioni documenti" ic="save" onClick={save} full sz="lg" />
+      {(VERTICALI_CON_RICETTA.has(si.vertical) || !si.vertical) && (
+        <div style={{ marginTop: 22 }}>
+          <FarmaciPreferitiSettings si={si} onSalva={salvaFarmaciPreferiti} />
+        </div>
+      )}
       </>
       )}
 
