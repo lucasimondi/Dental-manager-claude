@@ -1,5 +1,20 @@
 # Current task
 
+- TASK: POL-UI-044 — Scorciatoie per i farmaci più usati nella Ricetta
+- TITLE: pulsanti nel form Ricetta che aggiungono il farmaco già compilato; lista per studio gestibile da Impostazioni → Documenti.
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "Ok adesso creiamo delle scorciatoie per i farmaci più utilizzati come possiamo fare ?", poi "Nel database dello studio, lista iniziale bene aggiungi Enteroboulardi , zitromax, toradol, Xanax, pantoprazolo 20 mg, e poi il tool per aggiungerli").
+- BRANCH: `claude/recipe-form-quick-actions-mobile-l8464o`, ripartito da `master@5e674e9` (PR #113 già mergiata).
+- STATUS: PUSHED — nessuna PR aperta; migration NON applicata.
+
+- **DB (gate PO approvato: "Nel database dello studio")**: `20261004120000_pol_ui_044_farmaci_preferiti.sql` aggiunge `studio_info.farmaci_preferiti jsonb` (NULL = lista iniziale; CHECK array ≤ 60). Nessuna policy/grant toccati: la RLS esistente di `studio_info` copre la colonna.
+- **`src/lib/farmaciPreferiti.js`**: lista iniziale odontoiatrica (12 voci, incluse Enteroboulardi, Zitromax, Toradol, Xanax, Pantoprazolo 20 mg), normalizzazione, `resolveFarmaciPreferiti`, `applicaFarmacoPreferito`.
+- **DocMedico**: menu a scomparsa "Farmaci frequenti (N)" in cima a "Farmaci prescritti" (chiuso di default, su richiesta del PO: "I farmaci li metti in un menu a scomparsa"); un tocco su un farmaco riempie la prima riga vuota o ne aggiunge una e richiude il menu; il farmaco già presente diventa verde ✓ e non si duplica.
+- **Impostazioni → Documenti** (solo professioni che prescrivono): nuovo `FarmaciPreferitiSettings` — aggiungi, modifica, elimina (con conferma), riordina ↑↓, ripristina lista iniziale. Salvataggio immediato del solo campo `farmaci_preferiti`.
+- VALIDATION: `npm test` 847/847; `npm run build` OK; Postgres 16 locale: migration ×2 (idempotente) + `pol_ui_044_farmaci_preferiti.sql` PASS; controlli negativi (senza migration / senza CHECK) FAIL come atteso; Playwright 390×844 su harness temporaneo (rimosso).
+- EXACT NEXT ACTION: PR su istruzione del Product Owner; al merge `apply_migration` POL-UI-044 su `idklxdqebfceplrualgh` PRIMA che il frontend salvi la colonna (altrimenti l'upsert di studio_info fallisce solo quando si salva una scorciatoia).
+
+---
+
 - TASK: POL-WA-003a — L'assistente WhatsApp diventa un vero assistente
 - TITLE: memoria della conversazione, tono umano, informazioni studio, orari liberi reali, richieste di appuntamento (proposte, confermate dallo staff), saldo, richiami, passaggio allo staff, pausa quando lo staff scrive dal telefono (Coexistence).
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggi verbatim: "Non c'è modo quindi di avere il controllo del numero e anche che sia automatico ?", poi "Ok vai però volgio che sssitente sia proprio assistente"; risposte alle domande: agenda "Propone, lo staff conferma"; turni "Sempre, finché lo staff non interviene"; capacità "Passa allo staff, Info studio, Richiami, Saldo e pagamenti, Fa assistenza quindi risponde sempre in modo umano, accoglie la persona con le sue esigenze"; consenso "Anagrafica paziente").
@@ -19,7 +34,7 @@
 - TITLE: dalla Home, "Ricetta" apriva un modale "scegli paziente" che su mobile compariva come foglio in basso, e solo dopo la scelta si arrivava al form.
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "Il form ricetta quando lo richiamo da azioni rapide deve comparire in alto nello schermo mobile e non in basso, inoltre deve comparire gia il form completo con in più la parte di ricerca paziente o la creazione istantanea con nome e cognome e il salva del paziente se non presente").
 - BRANCH: `claude/recipe-form-quick-actions-mobile-l8464o`, da `master@836ce5a`.
-- STATUS: PUSHED — nessuna PR aperta (non richiesta).
+- STATUS: MERGED — PR #113 (`master@8d1cccd`), su istruzione del Product Owner ("Allora Mergia prima poi facciamo il resto").
 
 - **Dashboard.jsx**: l'azione rapida apre subito `DocMedico` (lazy, a schermo intero dall'alto, z-index 9999 sopra il dock) con `initialType="ricetta"`; niente più `Modal`. Il `SelettorePaziente` è passato a `DocMedico` come `pazienteSelector`; creazione al volo invariata (`creaPazienteRapidoRicetta`, stesso limite `max_pazienti`), pulsante etichettato "Salva paziente".
 - **DocMedico.jsx**: nuova prop opzionale `pazienteSelector` → card "Paziente" subito sopra "Farmaci prescritti", ed è quella a essere portata in cima all'apertura. `paz` può essere null finché non si sceglie: il form è compilabile, "Genera PDF" mostra "Seleziona o crea il paziente prima di generare il PDF." Gli altri chiamanti (SchedaPaz, PatientWorkspaceV2) non passano la prop: comportamento invariato.
