@@ -3170,3 +3170,9 @@ Revert del commit.
 ### EXACT NEXT ACTION
 Merge della PR #115 su istruzione del Product Owner.
 
+### Aggiornamento POL-UI-045 / POL-UI-046 (merge)
+- PR #115 mergiata su istruzione del Product Owner ("Mergia"): `master@a3de15e`. CI `verify` verde sul commit `c4aabdb`.
+- Database: nessuna azione residua (migration POL-UI-045 già applicata e verificata prima del merge; POL-UI-046 senza modifiche al database).
+- Deploy: Vercel automatico al merge (non verificato da Claude).
+- EXACT NEXT ACTION: verifica manuale del Product Owner; nessun lavoro aperto su `claude/recipe-form-quick-actions-mobile-l8464o`.
+
