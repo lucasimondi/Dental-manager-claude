@@ -1,5 +1,16 @@
 # Current task
 
+- TASK: POL-AI-010 — Poliedron diventa il modo di usare il software scrivendo in chat
+- TITLE: tutto il gestionale comandabile dalla chat di Poliedron, "come se lo dicessi a una persona"; poi lo stesso Poliedron anche su WhatsApp (POL-WA-004).
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "dobbiamo rendere la chat con poliedron la modalità per poter eseguire comandi all'interno del software, poliedron deve poter fare tutto sul software, in modo che io debba solo più scrivere in chat per fare le cose , avere tutto ciò di cui posso aver bisogno , comprese generazioni documenti , tutto"; poi "Vai" sul piano). Decisioni: scritture con riepilogo e conferma ("come se lo dicessi ad una persona"), operazioni irreversibili "Anche in chat, doppia conferma", priorità "Agenda, Pazienti e clinica, Documenti, Piani e pagamenti".
+- BRANCH: `claude/whatsapp-automation-status-d2ng12` (unico branch assegnato alla sessione), da `master@e6e8357`.
+- PIANO: (0) versionare `agente-assistente` (copia fedele della v24 di produzione) — QUESTO PASSO; (1) chat di Poliedron = assistente con conferme in chat, aggiornamento dell'app dopo ogni azione, Agenda completa; (2) Pazienti e clinica; (3) Documenti; (4) Piani e pagamenti (riuso POL-AI-005B, semantica finanziaria invariata); (5) irreversibili con doppia conferma; (6) Poliedron su WhatsApp. Una PR per passo, produzione solo su "Mergia".
+- STATUS (passo 0): PUSHED — PR aperta. Nessuna modifica a produzione né al comportamento.
+- VALIDATION: `npm test` 871/871 (nuovo `tests/agenteAssistenteBaseline.test.mjs`: sessione obbligatoria, tool sempre con il client dell'utente, service role solo per le 4 letture di configurazione filtrate per studio, studio dal token, gate di piano lato server); controllo negativo (tool eseguito col service role) → FAIL atteso.
+- EXACT NEXT ACTION: passo 1 (Agenda), che parte correggendo i difetti rilevati nel passo 0 (vedi handoff).
+
+---
+
 - TASK: POL-WA-003b — Consenso WhatsApp, promemoria automatici, risposte e conferma al paziente
 - TITLE: consenso in anagrafica; promemoria del giorno prima con modello Meta approvato e scheduler orario; risposte "Confermo"/"Devo spostarlo" registrate; conferma automatica al paziente quando lo staff salva una richiesta arrivata da WhatsApp.
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggio verbatim: "Vai", dopo la proposta del piano 003b; decisione già presa in 003a: consenso "Anagrafica paziente").
