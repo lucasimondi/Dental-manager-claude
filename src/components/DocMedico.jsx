@@ -94,7 +94,13 @@ In caso di allineatore rotto, perso o che non calza più correttamente, contatta
   },
 ];
 
-export default function DocMedico({ paz, si, onClose, initialType, initialPrefill, requestId, onInitialRequestHandled, onDocumentSaved }) {
+// `pazienteSelector` (opzionale): quando la schermata si apre senza un
+// paziente già deciso (azione rapida "Ricetta" dalla Home), il chiamante
+// passa qui il proprio campo di ricerca/creazione paziente, mostrato in una
+// card "Paziente" subito sopra i campi del documento. In quel caso `paz`
+// può essere null finché l'utente non sceglie o crea il paziente: il form
+// è già compilabile, solo "Genera PDF" resta bloccato.
+export default function DocMedico({ paz, si, onClose, initialType, initialPrefill, requestId, onInitialRequestHandled, onDocumentSaved, pazienteSelector }) {
   // Lo studio "reale" di Luca (Studio Simondi): unico caso in cui mostriamo
   // il timbro professionale completo con firma scansionata personale.
   // Per qualsiasi altro studio (anche un altro dentista) usiamo un footer
@@ -130,10 +136,13 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
   // buy the user. Scroll them into view immediately on open so they're the
   // first thing visible under the header, without hiding or removing the
   // type selector (still reachable by scrolling up to change type).
+  // Con la card "Paziente" presente, è quella (subito sopra i farmaci) a
+  // dover comparire per prima in alto.
   const farmaciSectionRef = useRef(null);
+  const pazienteSectionRef = useRef(null);
   useEffect(() => {
     if (initialType !== 'ricetta' || !puoiPrescrivere) return;
-    farmaciSectionRef.current?.scrollIntoView({ block: 'start' });
+    (pazienteSectionRef.current || farmaciSectionRef.current)?.scrollIntoView({ block: 'start' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -156,6 +165,8 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
   const [pronto, setPronto] = useState(null); // { dataUrl, filename, titolo, tipoDoc }
   const [erroreGenerazione, setErroreGenerazione] = useState('');
   const [archiviato, setArchiviato] = useState(false);
+  // L'avviso "seleziona il paziente" non ha più senso appena ne viene scelto uno.
+  useEffect(() => { if (paz) setErroreGenerazione(''); }, [paz?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const salvaInArchivioSeAttivo = async (tipoDoc, titolo, dataUrl) => {
     if (!docSet[tipoDoc] || !studioId) return false;
@@ -785,6 +796,11 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
   };
 
   const genera = () => {
+    if (!paz) {
+      setErroreGenerazione('Seleziona o crea il paziente prima di generare il PDF.');
+      pazienteSectionRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      return;
+    }
     setErroreGenerazione('');
     setArchiviato(false);
     setGenerated(false);
@@ -817,7 +833,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
         </button>
         <div style={{ flex: 1 }}>
           <div style={{ color: '#fff', fontWeight: 800, fontSize: 15, display: 'flex', alignItems: 'center', gap: 7 }}><Ic n="file" s={14} c="#fff" />Documenti medici</div>
-          <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }}>{paz.nome} {paz.cognome}</div>
+          <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }}>{paz ? `${paz.nome} ${paz.cognome}` : 'Nessun paziente selezionato'}</div>
         </div>
       </div>
 
@@ -841,6 +857,16 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
             <Inp type="date" value={data} onChange={e => setData(e.target.value)} />
           </Fld>
         </Crd>
+
+        {/* PAZIENTE (solo se il chiamante non ne ha già scelto uno) */}
+        {pazienteSelector && (
+          <div ref={pazienteSectionRef}>
+            <Crd style={{ marginBottom: 14, position: 'relative', zIndex: 2 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}><Ic n="pz" s={11} c={C.txm} />Paziente</div>
+              {pazienteSelector}
+            </Crd>
+          </div>
+        )}
 
         {/* ── RICETTA ── */}
         {tipo === 'ricetta' && (
