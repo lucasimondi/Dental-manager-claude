@@ -3219,3 +3219,13 @@ Merge della PR #115 su istruzione del Product Owner.
 - EXACT NEXT ACTION: verifica manuale del Product Owner; nessun lavoro aperto su `claude/recipe-form-quick-actions-mobile-l8464o`.
 
 - Versione della migration: rinominata da `20261004120000` a `20261004160000` dopo il merge di master, che ha portato `20261004120000_pol_ui_044_farmaci_preferiti.sql` con la stessa versione (in produzione POL-UI-044 è registrata come `20261004135514`, nessun conflitto lì).
+
+### POL-WA-003b — esito merge e deploy (2026-10-04)
+- Prima del merge: master integrato nel branch (conflitti solo nei documenti di coordinamento, tenute entrambe le voci); migration rinominata in `20261004160000` per la collisione con POL-UI-044. CI `verify` verde, `npm test` 866/866.
+- **Database (prima del merge)**: applicata con `execute_sql` in 5 passi senza DROP: (A) colonne `patients.consenso_whatsapp*` e `whatsapp_config.promemoria_*` + CHECK; (B) tabella `whatsapp_promemoria` + indici + RLS + policy SELECT + REVOKE/GRANT; (C) `whatsapp_cron_segreto_valido`; (D) estensioni `pg_cron` 1.6.4 e `pg_net` 0.20.3, segreto `whatsapp_cron_secret` generato nel DB (valore mai letto né stampato); (E) `whatsapp_programma_promemoria` + chiamata con l'URL di produzione → job `whatsapp-promemoria` (id 1, `7 * * * *`, attivo). Registrata `20261004160000 pol_wa_003b_promemoria` in `schema_migrations`.
+- **Verifica** (lettura): colonne presenti; `whatsapp_promemoria` con RLS, policy `whatsapp_promemoria_select`, `authenticated` solo SELECT, `anon` nulla; segreto: `service_role` sì, `authenticated` no; programmazione del job: nessun ruolo client né `service_role`; un solo segreto nel Vault.
+- **Merge**: PR #117 → `master@e6e8357`.
+- **Edge Function**: `whatsapp-webhook` v6 (`verify_jwt=false`), 4 file da master; contenuto riletto dopo il deploy, identico al repository file per file.
+- **Prove in produzione** (chiamate dal DB con `pg_net`): `/promemoria` con segreto errato → 403; `/invia` senza login → 401 `accesso richiesto`; `/promemoria` con il segreto del Vault → 200 `{"ora":16,"domani":"2026-10-05","studi":0,"inviati":0,"saltati":0,"errori":0}` (nessuno studio con promemoria attivi: nessun invio).
+- Proxy Vercel non verificabile da questo ambiente (il proxy di rete della sessione rifiuta la connessione); il file `api/whatsapp-webhook.js` non è cambiato in questo incremento.
+
