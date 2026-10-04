@@ -2998,3 +2998,45 @@ Revert del commit; per il DB l'intestazione della migration elenca i DROP (solo 
 
 ### EXACT NEXT ACTION
 "Mergia" del Product Owner → merge, `apply_migration`, deploy (3 file, `verify_jwt=false`), verifica in produzione; poi POL-WA-003b.
+
+---
+
+## POL-UI-043 — Azione rapida "Ricetta": form completo in alto su mobile
+
+- TASK ID: POL-UI-043
+- PREVIOUS AGENT: CLAUDE (POL-WA-002, mergiata come PR #111, `master@836ce5a`).
+- BRANCH: `claude/recipe-form-quick-actions-mobile-l8464o`, da `master@836ce5a`.
+- REQUEST (verbatim, Product Owner): "Il form ricetta quando lo richiamo da azioni rapide deve comparire in alto nello schermo mobile e non in basso, inoltre deve comparire gia il form completo con in più la parte di ricerca paziente o la creazione istantanea con nome e cognome e il salva del paziente se non presente".
+
+### Objective
+L'azione rapida "Ricetta" della Home deve aprire direttamente il form ricetta completo, in alto su mobile, con la ricerca paziente o la creazione rapida (nome + cognome, "Salva paziente") dentro il form.
+
+### Completed work
+1. `src/components/Dashboard.jsx`: il blocco `{ricettaPickerOpen && ...}` ora monta `DocMedico` (lazy + Suspense, stesso fallback z-index 9999 di SchedaPaz) invece del `Modal` "scegli paziente". Stato nuovo `ricettaPazienteId`; il paziente si risolve da `patients` con fallback su `ricettaJustCreatedRef` (paziente appena creato). Chiusura azzera stato, ricerca e ref.
+2. `src/components/DocMedico.jsx`: prop opzionale `pazienteSelector` (card "Paziente" prima dei farmaci, target dello scroll iniziale); `paz` null-safe nell'intestazione; `genera()` bloccato senza paziente con messaggio; avviso rimosso alla selezione del paziente.
+3. `src/components/ui/SelettorePaziente.jsx`: prop opzionale `creaLabel`.
+4. `tests/mobileHomeRound2.test.mjs`: test ROUND 4/5/6 aggiornati al nuovo flusso + nuovo test sul selettore in DocMedico.
+
+### Files changed
+`src/components/Dashboard.jsx`, `src/components/DocMedico.jsx`, `src/components/ui/SelettorePaziente.jsx`, `tests/mobileHomeRound2.test.mjs`, `docs/coordination/current-task.md`, `docs/coordination/handoffs.md`.
+
+### Database changes
+Nessuna.
+
+### Deployment impact
+Solo frontend: deploy Vercel automatico al merge.
+
+### Tests executed / results
+- `npm test` 820/820 PASS; `npm run build` OK; `git diff --check` OK.
+- Playwright (Chromium, 390×844, harness temporaneo rimosso prima del commit): form aperto in alto con card Paziente e Farmaci; "Genera PDF" senza paziente → avviso; ricerca "Luca Bianchi" senza risultati → Nome/Cognome precompilati + "Salva paziente" → paziente selezionato, nome nell'intestazione, avviso rimosso.
+
+### Unresolved issues / risks
+- Il paziente creato al volo viene salvato su Supabase in modo asincrono (`setPatientsSync`, come in Agenda): se si genera il PDF nell'istante stesso della creazione, l'archiviazione in `documenti_medici` potrebbe precedere l'inserimento del paziente. In pratica improbabile (prima vanno compilati i farmaci); comportamento identico al flusso precedente.
+- Dopo la generazione non si viene più portati in scheda paziente: il documento resta nell'archivio del paziente come per gli altri flussi DocMedico.
+
+### Rollback
+Revert del commit. Nessun effetto su database.
+
+### EXACT NEXT ACTION
+Verifica manuale del Product Owner su mobile; apertura PR/merge solo su istruzione esplicita.
+

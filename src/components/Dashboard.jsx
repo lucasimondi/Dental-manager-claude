@@ -22,6 +22,10 @@ import { buildDataHealthActivities, ACTIVITY_KIND } from '../lib/domain/dataHeal
 import { computeDataHealthScore } from '../lib/domain/dataHealthScore.js';
 import { getOrCreatePrimaryConversation, appendConversationMessage, createChatRequestId } from '../lib/poliedron/conversationRepository.js';
 
+// Lazy come in SchedaPaz/PatientWorkspaceV2: jsPDF entra nel bundle solo
+// quando si apre davvero la ricetta.
+const DocMedico = React.lazy(() => import('./DocMedico.jsx'));
+
 // Unica fonte per la label leggibile di ogni ACTIVITY_KIND — usata dalla
 // notifica in Chat Poliedron del controllo dati automatico qui sotto. Il
 // dettaglio per-paziente/per-kind cliccabile che un tempo viveva anche qui
@@ -179,11 +183,17 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
   const [homeToastMsg, setHomeToastMsg] = useState('');
   // Product Owner round 4 — "Ricetta" must land directly on DocMedico's
   // Ricetta tab, not just on the Pazienti list. Home has no current
-  // patient, so a small inline picker (same SelettorePaziente pattern the
-  // "Nuova attività" modal below already uses) is the minimal step still
-  // needed before onOpenPaz(paz, 'doc', { type: 'ricetta' }) can open it.
+  // patient, so the patient is picked with the same SelettorePaziente
+  // pattern the "Nuova attività" modal below already uses.
+  // Product Owner (azioni rapide su mobile): il vecchio modale "scegli
+  // paziente" compariva come foglio in BASSO allo schermo, e solo dopo la
+  // scelta si apriva la ricetta. Ora l'azione apre subito la ricetta
+  // completa (DocMedico, a schermo intero dall'alto) con in testa la card
+  // "Paziente": ricerca, oppure creazione al volo con nome e cognome +
+  // "Salva paziente" se non esiste ancora.
   const [ricettaPickerOpen, setRicettaPickerOpen] = useState(false);
   const [ricettaPickerSearch, setRicettaPickerSearch] = useState('');
+  const [ricettaPazienteId, setRicettaPazienteId] = useState('');
   // Product Owner round 6 — the picker's search field must also let the
   // user create a brand-new patient inline (name/surname only), then open
   // Ricetta for them immediately. Reuses SelettorePaziente's own existing
@@ -196,7 +206,7 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
   // onCreaPaziente returns — before the setPatients update above has
   // flushed into a re-render, so `patients.find(...)` below would not yet
   // see the brand-new record. Kept in a ref (not state, no extra render)
-  // so the picker's onChange can hand it straight to onOpenPaz.
+  // so the Ricetta screen can use it straight away.
   const ricettaJustCreatedRef = useRef(null);
   const creaPazienteRapidoRicetta = (nome, cognome) => {
     if (!setPatients) return null;
@@ -1267,30 +1277,39 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
         </Modal>
       )}
 
-      {ricettaPickerOpen && (
-        <Modal title={<><Ic n="pill" s={15} c={C.txt} /> Ricetta — scegli paziente</>} onClose={() => { setRicettaPickerOpen(false); setRicettaPickerSearch(''); }}>
-          <Fld label="Paziente">
-            <SelettorePaziente
-              patients={patients}
-              value=""
-              onChange={(id) => {
-                const paz = (ricettaJustCreatedRef.current && String(ricettaJustCreatedRef.current.id) === String(id))
-                  ? ricettaJustCreatedRef.current
-                  : patients.find((p) => String(p.id) === String(id));
-                if (!paz || !onOpenPaz) return;
-                ricettaJustCreatedRef.current = null;
-                setRicettaPickerOpen(false);
-                setRicettaPickerSearch('');
-                onOpenPaz(paz, 'doc', { type: 'ricetta' });
-              }}
-              search={ricettaPickerSearch}
-              onSearchChange={setRicettaPickerSearch}
-              placeholder="Cerca paziente, o scrivi nome e cognome per crearne uno nuovo…"
-              onCreaPaziente={setPatients ? creaPazienteRapidoRicetta : undefined}
+      {ricettaPickerOpen && (() => {
+        const ricettaPaz = !ricettaPazienteId ? null
+          : (patients.find((p) => String(p.id) === String(ricettaPazienteId))
+            || (ricettaJustCreatedRef.current && String(ricettaJustCreatedRef.current.id) === String(ricettaPazienteId) ? ricettaJustCreatedRef.current : null));
+        const chiudiRicetta = () => {
+          ricettaJustCreatedRef.current = null;
+          setRicettaPickerOpen(false);
+          setRicettaPickerSearch('');
+          setRicettaPazienteId('');
+        };
+        return (
+          <React.Suspense fallback={<div role="status" style={{ position: 'fixed', inset: 0, zIndex: 9999, background: C.bg, padding: 24 }}>Caricamento editor ricetta…</div>}>
+            <DocMedico
+              paz={ricettaPaz}
+              si={si}
+              initialType="ricetta"
+              onClose={chiudiRicetta}
+              pazienteSelector={(
+                <SelettorePaziente
+                  patients={patients}
+                  value={ricettaPazienteId}
+                  onChange={(id) => setRicettaPazienteId(id ? String(id) : '')}
+                  search={ricettaPickerSearch}
+                  onSearchChange={setRicettaPickerSearch}
+                  placeholder="Cerca paziente, o scrivi nome e cognome per crearne uno nuovo…"
+                  onCreaPaziente={setPatients ? creaPazienteRapidoRicetta : undefined}
+                  creaLabel="Salva paziente"
+                />
+              )}
             />
-          </Fld>
-        </Modal>
-      )}
+          </React.Suspense>
+        );
+      })()}
 
       {bookingOpen && (
         <QuickBookingModal
