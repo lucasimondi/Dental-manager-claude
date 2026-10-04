@@ -774,6 +774,7 @@ export default function App() {
       </div>
 
       <Poliedron
+        onAgendaChanged={async () => setAppointments(await DB.getAll('dm_a', { throwOnError: true }))}
         isMobile={isMobile}
         page={page}
         setPage={navigateFromPoliedron}

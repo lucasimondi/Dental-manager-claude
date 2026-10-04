@@ -123,7 +123,7 @@ const getStudioId = async () => {
 };
 
 export const DB = {
-  async getAll(key) {
+  async getAll(key, { throwOnError = false } = {}) {
     const table = TABLE_MAP[key];
     if (!table) return null;
     let q = supabase.from(table).select('*').order('id', { ascending: true });
@@ -133,7 +133,7 @@ export const DB = {
       q = q.eq('studio_id', studioId);
     }
     const { data, error } = await q;
-    if (error) { console.error('DB.getAll', table, error); return []; }
+    if (error) { if (throwOnError) throw error; console.error('DB.getAll', table, error); return []; }
     return (data || []).map((r) => fromDb(table, r));
   },
 

@@ -1,3 +1,4 @@
+import PoliedronModelConfirmation from './PoliedronModelConfirmation';
 import React, { useEffect, useRef, useState } from 'react';
 import { C } from '../../lib/utils';
 import { Ic } from '../ui';
@@ -50,7 +51,7 @@ import { computeMobilePanelViewportRect } from '../../lib/poliedron/poliedronPan
 // own scroll range naturally reaches every last action — never covered,
 // never requiring the keyboard to be dismissed first.
 export default function PoliedronPanel({
-  panelId, isMobile, query, onQueryChange, state, loading,
+  onModelConfirmation, panelId, isMobile, query, onQueryChange, state, loading,
   highlightedIndex, onHighlightChange, onSelectResult, onConfirmAction, onModifyAction, onSubmit,
   onConfirmActionPlan, actionRunning, actionRunResult,
   onClose, inputRef, submitDisabled = false, interactionDisabled = false,
@@ -154,6 +155,8 @@ export default function PoliedronPanel({
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: isMobile ? '12px 14px' : '14px 16px' }}>
           {loading ? (
             <div className="poliedron-loading-card"><span className="poliedron-loading-card__pulse" />Poliedron sta verificando…</div>
+          ) : state?.modelConfirmation ? (
+            <PoliedronModelConfirmation pending={state.modelConfirmation} busy={interactionDisabled} onDecision={onModelConfirmation} />
           ) : state?.intelligence ? (
             <PoliedronIntelligenceResults intelligence={state.intelligence} onOpenPatient={onSelectResult} />
           ) : state?.answer != null ? (

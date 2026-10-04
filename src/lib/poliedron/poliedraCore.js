@@ -109,6 +109,20 @@ export async function processQuery({
     };
   }
 
+  // Explicit agenda requests and their conversational follow-ups use the same
+  // authenticated gateway. Never call a model during keystroke previews.
+  const agendaRequest = /appuntament|prenot|sposta.*visita|annulla.*visita/i.test(q)
+    || conversationHistory.slice(-2).some(m => /appuntament|prenot/i.test(m.content || ''));
+  const preliminaryIntent = classifyIntent(q, { navigationIndex: sources.navigationIndex || [] });
+  const dedicatedRoute = [INTENT.NAVIGATE, INTENT.ANALYZE].includes(preliminaryIntent.type)
+    || resolvePrescriptionRequest(q, sources.patients || [])
+    || parseCreatePlanRequest(q) || parseRegisterPaymentRequest(q);
+  if (agendaRequest && allowModel && !dedicatedRoute && !classifyIntelligenceQuery(q) && !parseCommand(q)) {
+    const result = await runModelTask({ taskType: MODEL_TASK_TYPE.ASK, input: q, history: conversationHistory, context, supabaseClient });
+    return { intent: 'AGENDA', answer: result.text, modelError: result.error,
+      modelConfirmation: result.raw?.needsConfirmation || null, searchResults: [], suggestedActions: [] };
+  }
+
   // POL-AI-005B: deterministic Level-2 (real write) commands are checked
   // FIRST — most specific, zero-ambiguity, zero Model Gateway calls (see
   // commandParser.js's own doc comment). `buildActionPlan` is pure/
@@ -321,6 +335,7 @@ export async function processQuery({
         searchResults: [],
         answer: modelResult.text || 'Non sono riuscito a rispondere in questo momento.',
         modelError: modelResult.error || null,
+        modelConfirmation: modelResult.raw?.needsConfirmation || null,
       };
     }
     if (!hasResults) return { ...base, searchResults: [], awaitingSubmit: true };
@@ -369,6 +384,7 @@ export async function processQuery({
         searchResults: [],
         answer: modelResult.text || 'Non sono riuscito a rispondere in questo momento.',
         modelError: modelResult.error || null,
+        modelConfirmation: modelResult.raw?.needsConfirmation || null,
       };
     }
     return { ...base, searchResults: [], answer: result.answer };
@@ -388,6 +404,7 @@ export async function processQuery({
       searchResults: [],
       answer: modelResult.text || 'Non sono riuscito a rispondere in questo momento.',
       modelError: modelResult.error || null,
+        modelConfirmation: modelResult.raw?.needsConfirmation || null,
     };
   }
 

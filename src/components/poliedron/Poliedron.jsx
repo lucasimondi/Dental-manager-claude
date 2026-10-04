@@ -10,6 +10,7 @@ import { NAVIGATION_INDEX } from '../../lib/poliedron/navigationIndex';
 import { buildIntelligencePermissions, filterNavigationIndex, isActionAllowed } from '../../lib/poliedron/permissionEngine';
 import { ACTION_REGISTRY } from '../../lib/poliedron/actionRegistry';
 import { buildContext } from '../../lib/poliedron/contextEngine';
+import { runModelTask } from '../../lib/poliedron/modelGateway.js';
 import { processQuery } from '../../lib/poliedron/poliedraCore';
 import { runActionPlan } from '../../lib/poliedron/planner/actionExecutor';
 import {
@@ -66,7 +67,7 @@ export default function Poliedron({
   isMobile, page, setPage, patients, plans, payments, pricelist, appointments, richiami, impegni, goSchedaPaz,
   features, isStudioAdmin, vertical, studioId, userId, currentPatient, positionLocked = false,
   quickActionCtx, supabaseClient, onArchivioFilterHint, openPrescription, openNew, openNewPlan, openNewPayment, openBooking,
-  externalCommandRequest, onExternalCommandHandled, chatHost,
+  externalCommandRequest, onExternalCommandHandled, chatHost, onAgendaChanged,
   /* POL-CHAT-001 merge: PR #51 declared an `unreadCount = 0` PROP here
      because §7 explicitly shipped the bell without a notification engine.
      PR #53 supplies the real producer — the conversation hook below returns
@@ -372,7 +373,7 @@ export default function Poliedron({
         const { navId, filtroTipo } = result.directNavigation;
         if (navId === 'archivio') onArchivioFilterHint?.(filtroTipo || 'tutti');
         setPage(navId);
-      } else if (!result.answer) {
+      } else if (!result.answer || result.modelConfirmation) {
         setChatStructuredState(result);
       }
       return true;
@@ -384,6 +385,40 @@ export default function Poliedron({
       return false;
     }
   }, [conversationErrorState, conversationLoading, onArchivioFilterHint, primaryConversation?.id, runPersistedRequest, setPage]);
+
+  const consumedConfirmations = useRef(new Set());
+  const confirmationIdentity = useRef('');
+  confirmationIdentity.current = `${studioId}:${userId}`;
+  useEffect(() => {
+    setState(null); setChatStructuredState(null);
+    consumedConfirmations.current.clear();
+  }, [studioId, userId]);
+  const handleModelConfirmation = useCallback(async (pending, cancelled, isChat) => {
+    if (actionExecutionRef.current || consumedConfirmations.current.has(pending.token)) return;
+    consumedConfirmations.current.add(pending.token);
+    actionExecutionRef.current = true;
+    setChatActionRunning(true);
+    const show = isChat ? setChatStructuredState : setState;
+    const identity = confirmationIdentity.current;
+    show(null);
+    let text;
+    try {
+      const response = await runModelTask({ supabaseClient, confirm: { token: pending.token, cancelled } });
+      if (identity !== confirmationIdentity.current) return;
+      text = response.error ? 'Esito non disponibile. Controlla l’agenda prima di riprovare.' : response.text;
+      try { await onAgendaChanged?.(); } catch { text += '\nImpossibile aggiornare la schermata: ricarica l’agenda.'; }
+      if (identity !== confirmationIdentity.current) return;
+      // Outcome is authoritative even if saving chat history subsequently fails.
+      show({ answer: text });
+      if (primaryConversation?.id) {
+        try { await appendMessage({ requestId: createChatRequestId(), role: 'assistant', content: text, deliveryStatus: 'sent', readAt: new Date().toISOString() }); }
+        catch { show({ answer: text + '\nEsito non salvato nella cronologia.' }); }
+      }
+    } finally {
+      actionExecutionRef.current = false;
+      setChatActionRunning(false);
+    }
+  }, [supabaseClient, onAgendaChanged, primaryConversation?.id, appendMessage]);
 
   /** POL-AI-005B §CONFIRM: called only from an explicit user click on the
    *  Level-2 preview's Confirm button — never automatically. Re-loads
@@ -582,6 +617,7 @@ export default function Poliedron({
           panel being in flight, NEVER to the Chat backend being missing. */}
       {open && (
         <PoliedronPanel
+          onModelConfirmation={(p, cancel) => handleModelConfirmation(p, cancel, false)}
           panelId={panelId}
           isMobile={isMobile}
           query={query}
@@ -613,6 +649,7 @@ export default function Poliedron({
           error={chatSurface.message}
           errorKind={chatSurface.kind}
           surfaceStatus={chatSurface.status}
+          onModelConfirmation={(p, cancel) => handleModelConfirmation(p, cancel, true)}
           structuredState={chatStructuredState}
           onSend={(text) => runChatMessage(text)}
           onRetry={(message) => runChatMessage(message.content, message)}

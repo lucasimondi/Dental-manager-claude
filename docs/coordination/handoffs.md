@@ -3247,3 +3247,16 @@ Merge della PR #115 su istruzione del Product Owner.
 - Rollback: nessuno necessario (solo file nel repository).
 - EXACT NEXT ACTION: passo 1 (Agenda), partendo dai difetti 1-5.
 
+
+
+### POL-AI-010 step 1 — CODEX implementation, 2026-10-04
+- Previous agent: CLAUDE, step 0 (#118), next action explicitly Agenda. Owner transferred to CODEX by Product Owner “vai” and “continua”.
+- Branch: codex/pol-ai-010-agenda, isolated from 0dae6e4; existing local finance changes untouched.
+- Objective: agenda through the existing Poliedron chat with server-authored confirmation, actual IDs, slot checks and UI refresh.
+- Completed: signed/expiring proposals; current plan/membership recheck; user-scoped atomic RPC, unique replay claim, stale update and conflict checks; soft cancellation; shared availability calculator; preview in both chat surfaces; explicit refresh and uncertain-outcome messaging.
+- Files: Poliedron controller/panel/chat/new confirmation card, model gateway/core, App refresh, optional DB read error propagation, shared agenda slots and re-exports, Edge handler plus agenda/confirmation modules, migration and synthetic SQL fixture/tests, Node behaviour/handler tests, architecture/runbook document.
+- Database: NEW migration 20261004160708_pol_ai_010_action_claims.sql only LOCAL. No existing schema/RLS changed, no remote writes.
+- Validation: initial suite 871/871 and build passed; added handler tests 4/4 and helper/routing tests 9/9. Final non-bundler suite 861/861; targeted shared/helper tests 30/30. PostgreSQL 17.4 synthetic SQL suite passed. See architecture document for exact chronology and remaining final-head checks.
+- Risks/unresolved: browser QA blocked by automatic approval-review usage exhaustion; final CI/staging smoke and real multi-connection contention test pending. Short global table locks have 2s timeout. Model write coverage is deliberately limited to reviewed agenda actions in this step; other legacy AI writes remain unavailable while deterministic module workflows remain.
+- Rollback/deploy order: docs/architecture/POL-AI-010-agenda.md. No production release, merge or remote migration performed.
+- Exact next action: draft PR stacked on #118; complete listed validation gates before requesting release approval.

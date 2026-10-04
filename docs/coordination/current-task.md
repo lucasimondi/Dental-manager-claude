@@ -1,4 +1,9 @@
 # Current task
+- ACTIVE OWNER: CODEX — Product Owner instructed “vai” after approving step 1 (Agenda, server-validated confirmation, refresh and tests), 2026-10-04.
+- ACTIVE BRANCH: `codex/pol-ai-010-agenda`, isolated checkout based on PR #118 `0dae6e4`; step 0 remains a separate unmerged prerequisite.
+- STATUS: step 1 implementation ready for draft review. Final CI, visual QA, staging end-to-end and multi-connection contention validation pending; see `docs/architecture/POL-AI-010-agenda.md`. No remote migration, production deployment or merge authorized.
+- CHECKPOINT: immutable `stable/2026-08-27-full-recovery@070b28fd4eae4e2cc397584201d0bb149468fae7` preserved.
+
 
 - TASK: POL-AI-010 — Poliedron diventa il modo di usare il software scrivendo in chat
 - TITLE: tutto il gestionale comandabile dalla chat di Poliedron, "come se lo dicessi a una persona"; poi lo stesso Poliedron anche su WhatsApp (POL-WA-004).

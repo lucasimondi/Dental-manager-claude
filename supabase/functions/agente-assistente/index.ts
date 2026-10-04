@@ -17,6 +17,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+import { signProposal, verifyProposal, claimProposal, studioToday } from "./confirmation.js";
+import { AGENDA_WRITES, prepareAgenda, executeAgenda, agendaAvailability } from "./agenda.js";
+
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
@@ -33,6 +36,11 @@ const PREZZO_INPUT_PER_TOKEN = 3 / 1_000_000;
 const PREZZO_OUTPUT_PER_TOKEN = 15 / 1_000_000;
 
 const TOOLS = [
+  {
+    name: 'disponibilita_agenda',
+    description: 'Legge gli orari liberi reali e gli operatori attivi. Usalo per trovare disponibilità e ID operatore; non inventare slot.',
+    input_schema: { type: 'object', properties: { data: { type: 'string' }, durata: { type: 'integer' }, operatore_id: { type: 'integer' } } },
+  },
   {
     name: "cerca_pazienti",
     description: "Cerca pazienti dello studio per nome, cognome, telefono o contenuto delle note. Puoi cercare per nome e cognome insieme, in qualsiasi ordine (es. 'Mario Rossi' o 'Rossi Mario' trovano lo stesso paziente). Max 15 risultati.",
@@ -412,6 +420,10 @@ async function eseguiAzionePersonalizzata(supabase, azione, input, studioId) {
 }
 
 async function eseguiTool(supabase, name, input, studioId, userId, azioniPersonalizzate) {
+  if (name === 'disponibilita_agenda') {
+    try { return await agendaAvailability(supabase, input, studioId); }
+    catch (error) { return { error: error.message }; }
+  }
   if (name.startsWith("azione_")) {
     const slug = name.slice("azione_".length);
     const azione = (azioniPersonalizzate || []).find((a) => a.nome === slug);
@@ -433,12 +445,12 @@ async function eseguiTool(supabase, name, input, studioId, userId, azioniPersona
   }
 
   if (name === "appuntamenti") {
-    const oggi = new Date().toISOString().slice(0, 10);
+    const oggi = studioToday();
     const da = input.da || oggi;
     const a = input.a || da;
     let query = supabase
       .from("appointments")
-      .select("data, ora, durata, tipo, stato, note, patients(nome, cognome, telefono)")
+      .select("id, paziente_id, operatore_id, data, ora, durata, tipo, stato, note, patients(nome, cognome, telefono)")
       .gte("data", da)
       .lte("data", a)
       .order("data", { ascending: true })
@@ -456,7 +468,7 @@ async function eseguiTool(supabase, name, input, studioId, userId, azioniPersona
     }
     return {
       risultati: risultati.map((r) => ({
-        data: r.data, ora: r.ora, durata: r.durata, tipo: r.tipo, stato: r.stato, note: r.note,
+        id: r.id, paziente_id: r.paziente_id, operatore_id: r.operatore_id, data: r.data, ora: r.ora, durata: r.durata, tipo: r.tipo, stato: r.stato, note: r.note,
         paziente: r.patients ? `${r.patients.nome} ${r.patients.cognome}` : null,
         telefono: r.patients?.telefono || null,
       })),
@@ -464,7 +476,7 @@ async function eseguiTool(supabase, name, input, studioId, userId, azioniPersona
   }
 
   if (name === "situazione_economica") {
-    const oggi = new Date().toISOString().slice(0, 10);
+    const oggi = studioToday();
     const primoDelMese = oggi.slice(0, 8) + "01";
     const da = input.da || primoDelMese;
     const a = input.a || oggi;
@@ -501,7 +513,7 @@ async function eseguiTool(supabase, name, input, studioId, userId, azioniPersona
   }
 
   if (name === "kpi_controllo_gestione") {
-    const oggi = new Date().toISOString().slice(0, 10);
+    const oggi = studioToday();
     const primoDelMese = oggi.slice(0, 8) + "01";
     const da = input.da || primoDelMese;
     const a = input.a || oggi;
@@ -603,7 +615,7 @@ async function eseguiTool(supabase, name, input, studioId, userId, azioniPersona
       .insert({
         paziente_id: input.paziente_id,
         titolo: input.titolo,
-        data: new Date().toISOString().slice(0, 10),
+        data: studioToday(),
         voci,
         stato: "attivo",
         sconto: input.sconto || 0,
@@ -753,7 +765,7 @@ async function eseguiTool(supabase, name, input, studioId, userId, azioniPersona
       .from("payments")
       .insert({
         paziente_id: input.paziente_id, importo: input.importo,
-        data: input.data || new Date().toISOString().slice(0, 10),
+        data: input.data || studioToday(),
         metodo: input.metodo || null, nota: input.nota || null,
         stato: "pagato", studio_id: studioId, user_id: userId,
       })
@@ -1041,7 +1053,7 @@ serve(async (req) => {
       });
     }
 
-    const TOOL_SOLO_LETTURA = new Set(["cerca_pazienti", "appuntamenti", "situazione_economica", "kpi_controllo_gestione", "andamento_kpi", "richiami", "storico_paziente", "catalogo_prestazioni"]);
+    const TOOL_SOLO_LETTURA = new Set(["disponibilita_agenda", "cerca_pazienti", "appuntamenti", "situazione_economica", "kpi_controllo_gestione", "andamento_kpi", "richiami", "storico_paziente", "catalogo_prestazioni"]);
 
     // Filtrate manualmente per studioId qui (invece di affidarsi alla RLS, che
     // ora per queste tabelle richiede anche il ruolo admin): supabaseAdmin
@@ -1077,8 +1089,10 @@ serve(async (req) => {
     // riguarda cosa lo studio ha PAGATO; questo riguarda quanto l'agente
     // può fare DA SOLO. Vive in feature_overrides come le altre chiavi.
     const RANK_AZIONE = { consulente: 0, medio: 1, su_richiesta: 2, completo: 3 };
-    const azioneScelta = studio.feature_overrides?.agente_azione ?? "completo";
-    const azioneMax = studio.feature_overrides?.agente_azione_max ?? "completo";
+    const rawScelta = studio.feature_overrides?.agente_azione ?? "completo";
+    const rawMax = studio.feature_overrides?.agente_azione_max ?? "completo";
+    const azioneScelta = Object.hasOwn(RANK_AZIONE, rawScelta) ? rawScelta : 'consulente';
+    const azioneMax = Object.hasOwn(RANK_AZIONE, rawMax) ? rawMax : 'consulente';
     const agenteAzione = (RANK_AZIONE[azioneScelta] ?? 3) <= (RANK_AZIONE[azioneMax] ?? 3) ? azioneScelta : azioneMax;
 
     let toolsFinali = toolsPerLivello;
@@ -1091,6 +1105,21 @@ serve(async (req) => {
         if (!TOOL_SOLO_LETTURA.has(t.name)) confermeFinali.add(t.name);
       }
     }
+
+    // Step 1 exposes only reviewed agenda writes. Other writes retain their
+    // existing deterministic app workflows until their dedicated steps.
+    toolsFinali = toolsFinali.filter(t => TOOL_SOLO_LETTURA.has(t.name) || AGENDA_WRITES.has(t.name));
+    toolsFinali = toolsFinali.map(t => AGENDA_WRITES.has(t.name) ? {
+      ...t,
+      description: t.name === 'elimina_appuntamento'
+        ? 'Annulla un appuntamento conservando lo storico. Richiede conferma. Prima cercalo con appuntamenti.'
+        : 'Prepara un appuntamento da creare o modificare; nessuna scrittura prima della conferma. Cerca prima paziente o appuntamento. Chiedi chiarimenti per ambiguità. Non indovinare ID.',
+      input_schema: { ...t.input_schema, properties: { ...t.input_schema.properties, operatore_id: { type: 'integer', description: 'ID operatore già noto; ometti se non assegnato.' } } },
+    } : t);
+    const allowedNames = new Set(toolsFinali.map(t => t.name));
+    const observed = { patients: new Set(), appointments: new Set() };
+    const membership = await supabase.from('studio_users').select('user_id').eq('studio_id', studioId).eq('user_id', user.id).eq('stato', 'attivo').maybeSingle();
+    if (membership.error || !membership.data) throw new Error('Accesso allo studio non consentito');
 
     const oggiInfo = new Date().toLocaleDateString("it-IT", {
       weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "Europe/Rome",
@@ -1122,34 +1151,23 @@ per calcolare date relative ("domani", "martedì prossimo", "tra due settimane",
 dedurre o assumere altre date, e non sbagliare mai l'anno.${noteLivello}${noteAzione}`;
 
     const { messages, confirm } = await req.json();
-
-    let convo = [...messages];
-    let finalText = "";
-    const MAX_TURNS = 5;
-
-    if (confirm && confirm.tool_use_id) {
-      const lastMsg = convo[convo.length - 1];
-      const pendingBlocks = lastMsg && lastMsg.role === "assistant" && Array.isArray(lastMsg.content)
-        ? lastMsg.content.filter((b) => b.type === "tool_use")
-        : [];
-      const target = pendingBlocks.find((b) => b.id === confirm.tool_use_id);
-      if (target) {
-        const cancellato = !!confirm.cancelled;
-        const result = cancellato
-          ? { annullato: true, messaggio: "L'utente ha scelto di NON procedere con questa azione." }
-          : await eseguiTool(supabase, target.name, target.input || {}, studioId, user.id, azioniAttive);
-        const toolResults = pendingBlocks.map((b) => ({
-          type: "tool_result",
-          tool_use_id: b.id,
-          content: JSON.stringify(
-            b.id === confirm.tool_use_id
-              ? result
-              : { annullato: true, messaggio: "Turno annullato: azione non confermata singolarmente." }
-          ),
-        }));
-        convo.push({ role: "user", content: toolResults });
+    const json = (value) => new Response(JSON.stringify(value), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (confirm) {
+      const proposal = await verifyProposal(confirm.token, SUPABASE_SERVICE_ROLE_KEY, { userId: user.id, studioId, allowedNames });
+      if (confirm.cancelled === true) {
+        await claimProposal(supabase, proposal);
+        return json({ text: 'Operazione annullata. Nessuna modifica eseguita.' });
+      }
+      try {
+        return json(await executeAgenda(supabase, proposal));
+      } catch (error) {
+        return json({ text: 'Operazione non confermata: ' + error.message + ' Controlla l’agenda prima di inviare una nuova richiesta.', changed: ['appointments'], uncertain: true });
       }
     }
+    if (!Array.isArray(messages) || messages.length > 21 || messages.some(m => !['user', 'assistant'].includes(m.role) || typeof m.content !== 'string' || m.content.length > 16000)) throw new Error('Messaggi non validi');
+    let convo = messages;
+    let finalText = '';
+    const MAX_TURNS = 8;
 
     for (let turn = 0; turn < MAX_TURNS; turn++) {
       const resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -1161,8 +1179,8 @@ dedurre o assumere altre date, e non sbagliare mai l'anno.${noteLivello}${noteAz
         },
         body: JSON.stringify({
           model: "claude-sonnet-5",
-          max_tokens: 1024,
-          system: systemPrompt,
+          max_tokens: 4096,
+          system: systemPrompt + '\nREGOLE OPERATIVE PRIORITARIE: le scritture disponibili riguardano solo appuntamenti e richiedono sempre conferma. Non dichiarare una scrittura completata. Gli altri documenti, pagamenti e modifiche vanno eseguiti nei moduli esistenti. Se il paziente o appuntamento è ambiguo, chiedi quale prima di preparare la proposta. Non inventare ID. eliminare un appuntamento significa annullarlo conservando lo storico.',
           messages: convo,
           tools: toolsFinali,
         }),
@@ -1189,34 +1207,30 @@ dedurre o assumere altre date, e non sbagliare mai l'anno.${noteLivello}${noteAz
       const textBlocks = data.content.filter((b) => b.type === "text").map((b) => b.text).join("\n");
 
       if (toolUses.length === 0) {
-        finalText = textBlocks;
+        finalText = textBlocks || "Non ho ottenuto una risposta completa. Nessuna modifica eseguita; riprova.";
         break;
       }
 
       convo.push({ role: "assistant", content: data.content });
 
-      const daConfermareList = toolUses.filter(
-        (tu) => confermeFinali.has(tu.name) && !(confirm && confirm.tool_use_id === tu.id)
-      );
-      const daConfermare = daConfermareList[0];
-      if (daConfermare) {
-        return new Response(
-          JSON.stringify({
-            needsConfirmation: { tool_use_id: daConfermare.id, name: daConfermare.name, input: daConfermare.input },
-            text: textBlocks,
-            messages: convo,
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
       const toolResults = [];
       for (const tu of toolUses) {
-        const cancellato = confirm && confirm.tool_use_id === tu.id && confirm.cancelled;
-        const result = cancellato
-          ? { annullato: true, messaggio: "L'utente ha scelto di NON procedere con questa azione." }
-          : await eseguiTool(supabase, tu.name, tu.input || {}, studioId, user.id, azioniAttive);
-        toolResults.push({ type: "tool_result", tool_use_id: tu.id, content: JSON.stringify(result) });
+        let result;
+        if (!allowedNames.has(tu.name)) {
+          result = { error: 'Strumento non consentito' };
+        } else if (AGENDA_WRITES.has(tu.name)) {
+          try {
+            const agenda = await prepareAgenda(supabase, tu.name, tu.input || {}, studioId, observed);
+            const proposal = { id: crypto.randomUUID(), userId: user.id, studioId, name: tu.name, agenda, expiresAt: Date.now() + 10 * 60 * 1000 };
+            const token = await signProposal(proposal, SUPABASE_SERVICE_ROLE_KEY);
+            return json({ text: 'Controlla il riepilogo prima di confermare.', needsConfirmation: { token, summary: agenda.summary, expiresAt: proposal.expiresAt } });
+          } catch (error) { result = { error: error.message }; }
+        } else {
+          result = await eseguiTool(supabase, tu.name, tu.input || {}, studioId, user.id, azioniAttive);
+          if (tu.name === 'cerca_pazienti') for (const p of result.risultati || []) observed.patients.add(p.id);
+          if (tu.name === 'appuntamenti') for (const a of result.risultati || []) observed.appointments.add(a.id);
+        }
+        toolResults.push({ type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify(result) });
       }
       convo.push({ role: "user", content: toolResults });
 
