@@ -1,10 +1,38 @@
 # Current task
 
+- TASK: POL-UI-046 — Salvataggio delle impostazioni studio: errori visibili invece di "Salvato ✓"
+- TITLE: un salvataggio fallito di `studio_info` finiva solo in console mentre Impostazioni mostrava comunque "Salvato ✓" (causa per cui POL-UI-045 è passato inosservato).
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "Sistema").
+- BRANCH: `claude/recipe-form-quick-actions-mobile-l8464o` (stessa PR #115 di POL-UI-045, ancora aperta).
+- STATUS: PUSHED nella PR #115 — non mergiata. Nessuna modifica al database.
+
+- **App.jsx `setStudioInfoSync`**: restituisce `Promise<boolean>` con l'esito reale; in caso di errore mostra il banner rosso di sincronizzazione già esistente ("Impostazioni dello studio NON salvate: …") e riporta lo stato locale a prima (solo se non è cambiato altro). Non rifiuta mai.
+- **`DB.setStudioInfo`**: senza sessione o studio ora lancia un errore (prima `return` silenzioso = falso successo).
+- **Impostazioni**: "Salvato ✓" solo a salvataggio riuscito, altrimenti "Non salvato — riprova"; le scorciatoie farmaci tornano alla lista precedente se il salvataggio fallisce.
+- VALIDATION: `npm test` 852/852 (3 nuovi test FAIL con il codice precedente); build OK; Playwright 390×844 su harness temporaneo (rimosso): con errore toast "Non salvato — riprova", con successo "Salvato ✓", nessun toast prima della risposta. Il banner di App non è verificabile senza login: coperto dai test sul sorgente.
+- EXACT NEXT ACTION: merge della PR #115 su istruzione del Product Owner.
+
+---
+
+- TASK: POL-UI-045 — Colonna `studio_info.documenti_settings` mancante in produzione
+- TITLE: le levette di Impostazioni → Documenti ("Archiviazione documenti") non venivano mai salvate: l'app scriveva una colonna inesistente e l'upsert falliva in silenzio.
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "Fai", in risposta alla proposta di aggiungere la colonna mancante).
+- BRANCH: `claude/recipe-form-quick-actions-mobile-l8464o`, ripartito da `master@9272006` (PR #114 mergiata).
+- STATUS: PUSHED, PR #115 aperta — migration POL-UI-045 GIÀ APPLICATA in produzione (colonna nullable, nessun dato toccato; serviva a sbloccare subito il salvataggio).
+
+- **Evidenza**: lettura `information_schema.columns` in produzione (2026-10-04): `documenti_settings` assente, mentre `Impostazioni.jsx` la salva con `S({ documenti_settings: ... })` e `DB.setStudioInfo` fa upsert dell'intero oggetto. Tutti gli altri campi salvati da Impostazioni esistono.
+- **Migration** `20261004150000_pol_ui_045_documenti_settings.sql`: `documenti_settings jsonb` nullable + CHECK oggetto JSON. NULL = `DEF_DOCUMENTI_SETTINGS`. Nessuna policy/grant.
+- **Regressione**: `tests/studioInfoColumns.test.mjs` confronta ogni campo `S({ campo: … })` di Impostazioni con le colonne di produzione (fotografia 2026-10-04) + le colonne aggiunte dalle migration.
+- VALIDATION: `npm test` 849/849; Postgres 16 locale: test SQL FAIL senza migration ("column does not exist"), PASS con migration applicata due volte; il nuovo test JS senza la migration FAIL indicando proprio `documenti_settings`. Produzione: colonna presente (jsonb) dopo l'apply.
+- EXACT NEXT ACTION: PR + merge su istruzione del Product Owner (la migration è già in produzione; il merge porta solo file di migration, test e documenti). Verifica manuale: cambiare una levetta in Impostazioni → Documenti, salvare, ricaricare l'app.
+
+---
+
 - TASK: POL-UI-044 — Scorciatoie per i farmaci più usati nella Ricetta
 - TITLE: pulsanti nel form Ricetta che aggiungono il farmaco già compilato; lista per studio gestibile da Impostazioni → Documenti.
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "Ok adesso creiamo delle scorciatoie per i farmaci più utilizzati come possiamo fare ?", poi "Nel database dello studio, lista iniziale bene aggiungi Enteroboulardi , zitromax, toradol, Xanax, pantoprazolo 20 mg, e poi il tool per aggiungerli").
 - BRANCH: `claude/recipe-form-quick-actions-mobile-l8464o`, ripartito da `master@5e674e9` (PR #113 già mergiata).
-- STATUS: PUSHED — nessuna PR aperta; migration NON applicata.
+- STATUS: MERGED — PR #114 (`master@9272006`); migration POL-UI-044 applicata in produzione (`idklxdqebfceplrualgh`, 2026-10-04) PRIMA del merge, verificata (colonna jsonb + CHECK, 0 studi con lista personalizzata).
 
 - **DB (gate PO approvato: "Nel database dello studio")**: `20261004120000_pol_ui_044_farmaci_preferiti.sql` aggiunge `studio_info.farmaci_preferiti jsonb` (NULL = lista iniziale; CHECK array ≤ 60). Nessuna policy/grant toccati: la RLS esistente di `studio_info` copre la colonna.
 - **`src/lib/farmaciPreferiti.js`**: lista iniziale odontoiatrica (12 voci, incluse Enteroboulardi, Zitromax, Toradol, Xanax, Pantoprazolo 20 mg), normalizzazione, `resolveFarmaciPreferiti`, `applicaFarmacoPreferito`.

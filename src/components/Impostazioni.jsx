@@ -71,12 +71,23 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
   const SA = (f) => S({ agenda_settings: { ...agSet, ...f } });
   const docSet = { ...DEF_DOCUMENTI_SETTINGS, ...(si.documenti_settings || {}) };
   const SD = (f) => S({ documenti_settings: { ...docSet, ...f } });
-  const save = () => { setStudioInfo(si); setToast('Salvato ✓'); };
+  // POL-UI-046: "Salvato ✓" solo se il database ha davvero salvato.
+  const ERRORE_SALVATAGGIO = 'Non salvato — riprova';
+  const save = async () => {
+    const ok = await setStudioInfo(si);
+    setToast(ok === false ? ERRORE_SALVATAGGIO : 'Salvato ✓');
+  };
   // POL-UI-044: le scorciatoie farmaci si salvano subito, solo quel campo —
   // non trascinano con sé altre modifiche non ancora salvate della pagina.
-  const salvaFarmaciPreferiti = (lista) => {
+  const salvaFarmaciPreferiti = async (lista) => {
+    const precedente = si.farmaci_preferiti;
     S({ farmaci_preferiti: lista });
-    setStudioInfo((prev) => ({ ...prev, farmaci_preferiti: lista }));
+    const ok = await setStudioInfo((prev) => ({ ...prev, farmaci_preferiti: lista }));
+    if (ok === false) {
+      S({ farmaci_preferiti: precedente });
+      setToast(ERRORE_SALVATAGGIO);
+      return;
+    }
     setToast('Scorciatoie salvate ✓');
   };
 
