@@ -3055,7 +3055,7 @@ Pulsanti per i farmaci più usati nella Ricetta, con lista condivisa a livello d
 ### Completed work
 1. Migration `supabase/migrations/20261004120000_pol_ui_044_farmaci_preferiti.sql`: `studio_info.farmaci_preferiti jsonb` nullable + CHECK (array, max 60). Preflight su `studio_info(studio_id)`. Nessuna modifica a RLS/grant.
 2. `src/lib/farmaciPreferiti.js`: `FARMACI_PREFERITI_DEFAULT` (Amoxicillina 1 g, Augmentin 875/125, Clindamicina 300, Zitromax 500, Ibuprofene 600, Paracetamolo 1000, Ketoprofene sale di lisina 80, Toradol 10, Pantoprazolo 20, Enteroboulardi, Xanax 0,25, Clorexidina 0,20%), `normalizzaFarmacoPreferito`, `normalizzaListaFarmaciPreferiti`, `resolveFarmaciPreferiti` (salvata → altrimenti iniziale solo per odontoiatria), `applicaFarmacoPreferito`.
-3. `src/components/DocMedico.jsx`: pulsanti scorciatoia nella card "Farmaci prescritti".
+3. `src/components/DocMedico.jsx`: menu a scomparsa "Farmaci frequenti (N)" nella card "Farmaci prescritti", chiuso di default e richiuso dopo la scelta (PO: "I farmaci li metti in un menu a scomparsa").
 4. `src/components/FarmaciPreferitiSettings.jsx` (nuovo) + `src/components/Impostazioni.jsx`: gestione in Impostazioni → Documenti, salvataggio immediato con `setStudioInfo(prev => ({ ...prev, farmaci_preferiti }))`.
 5. Test: `tests/farmaciPreferiti.test.mjs` (7), `supabase/tests/pol_ui_044_farmaci_preferiti.sql`.
 
@@ -3075,7 +3075,6 @@ Applicare la migration prima/insieme al deploy Vercel: senza la colonna, il salv
 
 ### Unresolved issues / risks
 - Dosaggi e posologie della lista iniziale sono un punto di partenza: vanno verificati dal Product Owner (modificabili da Impostazioni). "Enteroboulardi" inserito con il nome indicato e posologia generica, senza dosaggio.
-- Con 12 scorciatoie i pulsanti occupano circa mezzo schermo su mobile sopra il primo farmaco.
 
 ### Rollback
 Revert del commit. Se la migration è applicata: `ALTER TABLE public.studio_info DROP CONSTRAINT IF EXISTS studio_info_farmaci_preferiti_check; ALTER TABLE public.studio_info DROP COLUMN IF EXISTS farmaci_preferiti;` (si perdono solo le liste personalizzate).

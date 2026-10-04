@@ -8,7 +8,7 @@
 
 - **DB (gate PO approvato: "Nel database dello studio")**: `20261004120000_pol_ui_044_farmaci_preferiti.sql` aggiunge `studio_info.farmaci_preferiti jsonb` (NULL = lista iniziale; CHECK array ≤ 60). Nessuna policy/grant toccati: la RLS esistente di `studio_info` copre la colonna.
 - **`src/lib/farmaciPreferiti.js`**: lista iniziale odontoiatrica (12 voci, incluse Enteroboulardi, Zitromax, Toradol, Xanax, Pantoprazolo 20 mg), normalizzazione, `resolveFarmaciPreferiti`, `applicaFarmacoPreferito`.
-- **DocMedico**: pulsanti "Scorciatoie" in cima a "Farmaci prescritti"; un tocco riempie la prima riga vuota o ne aggiunge una; il farmaco già presente diventa verde ✓ e non si duplica.
+- **DocMedico**: menu a scomparsa "Farmaci frequenti (N)" in cima a "Farmaci prescritti" (chiuso di default, su richiesta del PO: "I farmaci li metti in un menu a scomparsa"); un tocco su un farmaco riempie la prima riga vuota o ne aggiunge una e richiude il menu; il farmaco già presente diventa verde ✓ e non si duplica.
 - **Impostazioni → Documenti** (solo professioni che prescrivono): nuovo `FarmaciPreferitiSettings` — aggiungi, modifica, elimina (con conferma), riordina ↑↓, ripristina lista iniziale. Salvataggio immediato del solo campo `farmaci_preferiti`.
 - VALIDATION: `npm test` 847/847; `npm run build` OK; Postgres 16 locale: migration ×2 (idempotente) + `pol_ui_044_farmaci_preferiti.sql` PASS; controlli negativi (senza migration / senza CHECK) FAIL come atteso; Playwright 390×844 su harness temporaneo (rimosso).
 - EXACT NEXT ACTION: PR su istruzione del Product Owner; al merge `apply_migration` POL-UI-044 su `idklxdqebfceplrualgh` PRIMA che il frontend salvi la colonna (altrimenti l'upsert di studio_info fallisce solo quando si salva una scorciatoia).

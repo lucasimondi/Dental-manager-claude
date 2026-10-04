@@ -52,7 +52,11 @@ test('POL-UI-044: applicare una scorciatoia riempie la prima riga vuota, poi agg
 test('POL-UI-044: DocMedico mostra le scorciatoie nella card Farmaci prescritti', () => {
   assert.match(docMedicoSrc, /import \{ applicaFarmacoPreferito, resolveFarmaciPreferiti \} from '\.\.\/lib\/farmaciPreferiti\.js';/);
   assert.match(docMedicoSrc, /const farmaciPreferiti = resolveFarmaciPreferiti\(si\);/);
-  assert.match(docMedicoSrc, /onClick=\{\(\) => setFarmaci\(\(f\) => applicaFarmacoPreferito\(f, fp\)\)\}/);
+  assert.match(docMedicoSrc, /onClick=\{\(\) => \{ setFarmaci\(\(f\) => applicaFarmacoPreferito\(f, fp\)\); setMenuPreferitiAperto\(false\); \}\}/);
+  // Menu a scomparsa: chiuso di default, lista visibile solo da aperto.
+  assert.match(docMedicoSrc, /const \[menuPreferitiAperto, setMenuPreferitiAperto\] = useState\(false\);/);
+  assert.match(docMedicoSrc, /aria-expanded=\{menuPreferitiAperto\}/);
+  assert.match(docMedicoSrc, /\{menuPreferitiAperto && \(\s*<div[^>]*>\s*\{farmaciPreferiti\.map/);
   assert.ok(docMedicoSrc.indexOf('data-farmaci-preferiti') > docMedicoSrc.indexOf('Farmaci prescritti</div>'));
 });
 
