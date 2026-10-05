@@ -3322,3 +3322,14 @@ Merge della PR #115 su istruzione del Product Owner.
 - Gate PO: nuova migration (tabella + trigger su `appointments` + pubblicazione realtime di `richiami`) e deploy funzione v27 → solo su "Mergia". Ordine: migration → funzione → merge.
 - Aggiunto su richiesta del PO ("Aggiungi ripristina poi Mergia"): pulsante "Ripristina" nel registro (`poliedron_ripristina_v1`, stessa migration). SQL locale PASS; `npm test` 903/903; build OK.
 - EXACT NEXT ACTION: rilascio autorizzato ("poi Mergia"): migration → funzione v27 → merge.
+
+### POL-AI-010 passo 2c — esito rilascio (2026-10-05)
+- Su "Aggiungi ripristina poi Mergia": CI `verify` verde sulla PR #121 → merge (`master@9077670`).
+- **Database (applicato)**: tabella `poliedron_attivita` con RLS e indici; funzione e trigger `appointments_richiamo_annullato`; recupero degli annullati futuri.
+- **Edge Function**: `agente-assistente` v27, riletta: 5 file identici al repository.
+- **NON ancora applicato** (lo strumento SQL chiede una conferma per le istruzioni di cancellazione contenute nella funzione e scade dopo 60 s):
+  - corpo completo di `poliedron_ripristina_v1`: in produzione c'è un segnaposto con la stessa firma e gli stessi permessi che risponde "Ripristino non ancora disponibile";
+  - `ALTER PUBLICATION supabase_realtime ADD TABLE public.richiami` (non indispensabile: l'app ricarica i richiami dopo ogni azione);
+  - registrazione della versione `20261005170000` in `supabase_migrations.schema_migrations`.
+  Da applicare con l'approvazione del Product Owner, oppure dall'editor SQL di Supabase copiando le due sezioni dal file `supabase/migrations/20261005170000_pol_ai_010_registro_annullati.sql`.
+- EXACT NEXT ACTION: completare i tre punti sopra; poi passo 3 (Documenti).
