@@ -23,10 +23,13 @@ import { fetchSaldiPiani } from './lib/domain/incassiService.js';
 // Poliedron's ASK/ANALYZE path behind the Model Gateway. See
 // docs/coordination/handoffs.md for the full convergence record.
 import Poliedron from './components/poliedron';
+import { isPoliedronAppPath } from './lib/poliedron/phoneApp.js';
+import usePhoneViewport from './components/poliedron/usePhoneViewport.js';
 import { buildHomePermissions } from './lib/homeDashboardModel';
 import PremiumSidebar from './components/PremiumSidebar.jsx';
 import './styles/designTokens.css';
 import './components/PremiumVisualSystem.css';
+import './components/poliedron/PoliedronPhone.css';
 import { useIsMobile } from './lib/useIsMobile';
 import { useTheme } from './lib/useTheme';
 // POL-UI-004 Recovery: restored original Poliedra logo assets (verbatim,
@@ -67,11 +70,13 @@ const WhatsApp = lazyWithRetry(() => import('./components/WhatsApp.jsx'), 'Whats
 const Impostazioni = lazyWithRetry(() => import('./components/Impostazioni.jsx'), 'Impostazioni');
 
 export default function App() {
+  const [phoneApp] = useState(() => isPoliedronAppPath(window.location.pathname));
+  const phoneViewportStyle = usePhoneViewport(phoneApp);
   const { theme, toggleTheme } = useTheme();
   const isMobile = useIsMobile();
   const [session, setSession] = useState(undefined);
   const [dataLoading, setDataLoading] = useState(true);
-  const [page, setPage] = useState('home');
+  const [page, setPage] = useState(() => phoneApp ? 'chat' : 'home');
   const [patients, setPatients] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [plans, setPlans] = useState([]);
@@ -274,7 +279,7 @@ export default function App() {
   // verrebbe mai riletto perché il componente che lo conterrebbe non si
   // rimonterebbe mai da solo.
   useEffect(() => {
-    if (dataLoading) return;
+    if (dataLoading || phoneApp) return;
     const pos = leggiPosizione();
     if (!pos) return;
     // La pagina NON viene ripristinata: l'app deve sempre aprirsi su Dashboard
@@ -306,7 +311,7 @@ export default function App() {
   // un ricaricamento a freddo. Evitiamo di scrivere durante il ripristino
   // stesso (dataLoading true) per non sovrascrivere la posizione appena letta.
   useEffect(() => {
-    if (dataLoading) return;
+    if (dataLoading || phoneApp) return;
     salvaPosizione({ page });
   }, [page, dataLoading]);
 
@@ -549,7 +554,7 @@ export default function App() {
   };
 
   if (session === undefined) return <LoadingScreen />;
-  if (session === null) return <LoginScreen onLogin={() => {}} />;
+  if (session === null) return <LoginScreen onLogin={() => {}} brand={phoneApp ? 'Poliedron' : 'Poliedra'} />;
   if (dataLoading) return <LoadingScreen />;
 
   if (!studioAttivo && !isSuperAdmin) {
@@ -588,8 +593,8 @@ export default function App() {
   };
 
   return (
-    <div className={isMobile ? 'app-shell app-shell--mobile' : 'app-shell app-shell--desktop'} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', height: '100dvh', minHeight: '100dvh', background: C.bg, overflow: 'hidden' }}>
-      {!isMobile && (
+    <div className={`${isMobile ? 'app-shell app-shell--mobile' : 'app-shell app-shell--desktop'}${phoneApp ? ' poliedron-phone-app' : ''}`} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', height: '100dvh', minHeight: '100dvh', background: C.bg, overflow: 'hidden', ...phoneViewportStyle }}>
+      {!isMobile && !(phoneApp && page === 'chat') && (
         <PremiumSidebar
           nav={navVisibile}
           page={page}
@@ -601,6 +606,7 @@ export default function App() {
         />
       )}
       <div className="app-main" style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
+      {phoneApp && page !== 'chat' && <button className="poliedron-return" type="button" onClick={() => navigateFromPoliedron('chat')}>← Torna a Poliedron</button>}
       {/* POL-UI-005: mobile top header (logo/page name/Esci) removed — it cost
           too much vertical space for no real value on a small screen and kept
           this wrapper permanently dark (see PremiumVisualSystem.css). The app
@@ -774,6 +780,7 @@ export default function App() {
       </div>
 
       <Poliedron
+        phoneApp={phoneApp}
         onDataChanged={async (changed, records) => {
           // POL-AI-010: show the rows Poliedron just wrote immediately (returned by
           // the server), then reload only the tables its action touched.
