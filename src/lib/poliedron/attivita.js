@@ -17,10 +17,10 @@ export const etichettaAttivita = (azione) => ETICHETTE[azione] || 'Azione';
 // first line: show only the details below the label.
 export const dettaglioAttivita = (riepilogo) => String(riepilogo || '').replace(/^Fatto\.\s*/, '').split('\n').slice(1).join('\n');
 
-// Actions the database can undo (poliedron_ripristina_v1). A new patient is not:
-// other records may already depend on it.
+// Actions the database can undo (poliedron_ripristina_v1) without deleting
+// anything. A new patient and an agenda block are corrected in their modules.
 const RIPRISTINABILI = new Set(['crea_appuntamento', 'modifica_appuntamento', 'elimina_appuntamento', 'modifica_paziente',
-  'aggiungi_nota_paziente', 'crea_richiamo', 'crea_promemoria', 'crea_impegno_personale']);
+  'aggiungi_nota_paziente', 'crea_richiamo', 'crea_promemoria']);
 
 // Ids already undone, from the 'ripristino' rows pointing back at them.
 export const idsRipristinati = (rows) => new Set((rows || []).map((r) => r.ripristino_di).filter(Boolean));
