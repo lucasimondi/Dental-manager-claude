@@ -606,6 +606,13 @@ Caso d'uso che ha originato questa nota (POL-FIN-003, settembre 2026): leggere u
 
 Portare la lettura documenti dentro il motore condiviso di Poliedron (allegare un file in chat, non solo un widget isolato) è un cambiamento strutturale che tocca il motore usato da tutte le funzioni AI dell'app — non va fatto incidentalmente dentro un task verticale. Da pianificare come missione a sé quando prioritizzata.
 
+
+### Decisione Product Owner — squadra di assistenti Poliedron (5 ottobre 2026)
+
+Direzione futura richiesta: chat con assistenti AI come utenti/contatti, ciascuno specializzato nella propria area; gruppi tematici creati dall'utente, nei quali gli assistenti ragionano insieme e collaborano su obiettivi condivisi; Clinic Manager con ruolo di gestione e coordinamento, capace di interrogare autonomamente gli specialisti necessari e integrare i contributi nella risposta.
+
+È una nuova direzione di prodotto, non una descrizione di funzionalità già implementate. Estende la precedente visione di un unico assistente conversazionale mantenendo Poliedron come esperienza unificata e i vincoli di fonti autorevoli, permessi e isolamento. Non autorizza migration, deploy o implementazione nel task corrente. Dettagli e proposte da valutare: [Poliedron — squadra di assistenti](architecture/poliedron-team-vision.md).
+
 ## 33. Referral / Founder model
 
 Idea da mantenere in roadmap: founder / ambassador / referral partner con tracking segnalazioni e possibile revenue sharing/passivo ricorrente collegato alla rete generata.
