@@ -1,3 +1,12 @@
+# Parallel task — POL-AI-TEAM-001
+- OWNER: CODEX, authorized by Product Owner 2026-10-05: "Leggi la 123 e inizia a costruire senza andare in conflitto con ciò che sta facendo in altra sezione".
+- BRANCH: `codex/poliedron-team-foundation`, from `master@ea83464`.
+- STATUS: WAITING_PRODUCT_OWNER — 16/16 dedicated tests, 919/919 full tests, Vite build PASS; inactive foundation ready for separate draft PR.
+- SCOPE: isolated, inactive team domain module + behavioural tests + dedicated architecture/handoff. PR #123 is product input, not a branch to overwrite.
+- CONCURRENT OWNER: CLAUDE retains POL-AI-010 and its branch. No ownership transfer; no changes to App, chat/controller, gateway/core, Edge Functions, database, migrations, PWA, deployment or Master Context.
+- Coordination documents: append/prepend only; retain existing active-owner block. Resolve future doc-only overlap by retaining both task records.
+- EXACT NEXT ACTION: review dedicated draft PR; coordinate server read-only adapter and UI integration with CLAUDE before shared-file changes. No merge/deploy authorized.
+
 # Current task
 - ACTIVE OWNER: CLAUDE — handoff from CODEX by explicit Product Owner instruction (2026-10-05, verbatim: "Guarda cosa ha fatto code, ha fatto la 118 e ora 119 , e poi continua", then "Continua").
 - ACTIVE BRANCH: `claude/whatsapp-automation-status-d2ng12` (PR #118). Step 1 (PR #119 by Codex, `codex/pol-ai-010-agenda`) reviewed and brought into this branch, with three follow-up fixes (see handoff "POL-AI-010 passo 1 — revisione e presa in carico").
