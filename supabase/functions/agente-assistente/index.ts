@@ -31,10 +31,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Prezzo standard (non promozionale) di claude-sonnet-5 per token, usato per
-// stimare il costo reale di ogni chiamata e loggarlo in ai_agent_usage.
-const PREZZO_INPUT_PER_TOKEN = 3 / 1_000_000;
-const PREZZO_OUTPUT_PER_TOKEN = 15 / 1_000_000;
+// Prezzo di listino di claude-sonnet-5 per token, usato per stimare il costo
+// reale di ogni chiamata e loggarlo in ai_agent_usage. Con il prompt caching
+// la lettura dalla cache costa 0,1x e la scrittura 1,25x dell'input.
+const PREZZO_INPUT_PER_TOKEN = 2 / 1_000_000;
+const PREZZO_OUTPUT_PER_TOKEN = 10 / 1_000_000;
+const PREZZO_CACHE_READ_PER_TOKEN = PREZZO_INPUT_PER_TOKEN * 0.1;
+const PREZZO_CACHE_WRITE_PER_TOKEN = PREZZO_INPUT_PER_TOKEN * 1.25;
 
 const TOOLS = [
   {
@@ -865,22 +868,18 @@ FUNZIONALITÀ ATTIVE:
 ## Modello di permessi (vale per ogni azione, se hai accesso ad azioni)
 
 - LETTURA: libera, sempre filtrata per studio. Nessuna conferma richiesta.
-- SCRITTURA A ESECUZIONE DIRETTA (appuntamenti, impegni personali, promemoria, note paziente,
-  ricette mediche, azioni personalizzate senza conferma): esegui subito, senza chiedere
-  conferma prima.
-- SCRITTURA CHE RICHIEDE CONFERMA (cancellazione appuntamento, pagamento, nuovo paziente, e
-  ogni azione personalizzata marcata "richiede conferma" nel pannello Agente AI): prepari,
-  mostri il riepilogo, chiedi conferma esplicita, ed esegui solo dopo conferma.
-- VIETATO SEMPRE: cancellazioni permanenti al di fuori del tool dedicato, transazioni
-  finanziarie reali, invii massivi senza conferma.
+- SCRITTURA: quando la richiesta è chiara la esegui subito, senza chiedere conferma. Il
+  sistema la esegue solo se i dati sono validi e non ci sono conflitti, e mostra all'utente
+  il riepilogo di cosa è stato fatto. Se c'è un dubbio (paziente ambiguo, dato mancante,
+  possibile doppione) chiedi prima di scrivere.
+- VIETATO SEMPRE: cancellazioni permanenti, transazioni finanziarie reali, invii massivi.
 
 ## Conflitti di orario in agenda
 
-Se provi a creare un appuntamento in uno slot già occupato (da un altro appuntamento O da un
-impegno personale come ferie/chiamate), il sistema blocca la creazione e te lo segnala. NON
-cancellare, spostare o modificare l'appuntamento/impegno esistente di tua iniziativa: spiega
-il conflitto all'utente e chiedi come procedere. Solo se l'utente conferma esplicitamente di
-voler sovrapporre comunque, richiama il tool con forza_sovrapposizione=true.
+Se l'orario richiesto è occupato (da un altro appuntamento O da un impegno personale come
+ferie/chiamate), il sistema non scrive nulla e te lo segnala con gli orari liberi del giorno.
+NON spostare o annullare l'appuntamento/impegno esistente di tua iniziativa e non forzare mai
+la sovrapposizione: spiega il conflitto in una riga e proponi gli orari liberi.
 
 ## Controllo di gestione
 
@@ -1033,11 +1032,28 @@ serve(async (req) => {
       });
     }
 
-    const { data: studio, error: errStudio } = await supabase
-      .from("studios")
-      .select("nome, piano, feature_overrides, ai_trial_ends_at, vertical")
-      .eq("id", studioId)
-      .single();
+    // Tutte le letture iniziali partono insieme: studio, appartenenza attiva e
+    // configurazione dell'agente non dipendono l'una dall'altra. Le azioni
+    // personalizzate si usano solo nel livello premium (filtrate sotto).
+    const [
+      { data: studio, error: errStudio },
+      membership,
+      { data: config }, { data: faq }, { data: documenti }, { data: azioniPersonalizzate },
+    ] = await Promise.all([
+      supabase
+        .from("studios")
+        .select("nome, piano, feature_overrides, ai_trial_ends_at, vertical")
+        .eq("id", studioId)
+        .single(),
+      supabase.from('studio_users').select('user_id').eq('studio_id', studioId).eq('user_id', user.id).eq('stato', 'attivo').maybeSingle(),
+      // Filtrate manualmente per studioId qui (invece di affidarsi alla RLS, che
+      // ora per queste tabelle richiede anche il ruolo admin): supabaseAdmin
+      // bypassa RLS per intero, quindi l'isolamento tra studi lo garantiamo noi.
+      supabaseAdmin.from("ai_agent_config").select("system_prompt").eq("studio_id", studioId).maybeSingle(),
+      supabaseAdmin.from("ai_agent_faq").select("domanda, risposta").eq("studio_id", studioId).order("ordine", { ascending: true }),
+      supabaseAdmin.from("ai_agent_documenti").select("nome, testo").eq("studio_id", studioId),
+      supabaseAdmin.from("ai_agent_actions").select("nome, descrizione, tipo_effetto, parametri, config, richiede_conferma").eq("studio_id", studioId).eq("attiva", true),
+    ]);
     if (errStudio || !studio) {
       return new Response(JSON.stringify({ error: "Studio non trovato" }), {
         status: 404,
@@ -1057,22 +1073,11 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    if (membership.error || !membership.data) throw new Error('Accesso allo studio non consentito');
 
     const TOOL_SOLO_LETTURA = new Set(["scheda_paziente", "disponibilita_agenda", "cerca_pazienti", "appuntamenti", "situazione_economica", "kpi_controllo_gestione", "andamento_kpi", "richiami", "storico_paziente", "catalogo_prestazioni"]);
 
-    // Filtrate manualmente per studioId qui (invece di affidarsi alla RLS, che
-    // ora per queste tabelle richiede anche il ruolo admin): supabaseAdmin
-    // bypassa RLS per intero, quindi l'isolamento tra studi lo garantiamo noi.
-    const [{ data: config }, { data: faq }, { data: documenti }, { data: azioniPersonalizzate }] = await Promise.all([
-      supabaseAdmin.from("ai_agent_config").select("system_prompt").eq("studio_id", studioId).maybeSingle(),
-      supabaseAdmin.from("ai_agent_faq").select("domanda, risposta").eq("studio_id", studioId).order("ordine", { ascending: true }),
-      supabaseAdmin.from("ai_agent_documenti").select("nome, testo").eq("studio_id", studioId),
-      livello === "premium"
-        ? supabaseAdmin.from("ai_agent_actions").select("nome, descrizione, tipo_effetto, parametri, config, richiede_conferma").eq("studio_id", studioId).eq("attiva", true)
-        : Promise.resolve({ data: [] }),
-    ]);
-
-    const azioniAttive = azioniPersonalizzate || [];
+    const azioniAttive = livello === "premium" ? (azioniPersonalizzate || []) : [];
     const azioniTools = azioniAttive.map((a) => ({
       name: "azione_" + a.nome,
       description: a.descrizione,
@@ -1125,43 +1130,70 @@ serve(async (req) => {
     toolsFinali = toolsFinali.map(t => AGENDA_WRITES.has(t.name) ? {
       ...t,
       description: t.name === 'elimina_appuntamento'
-        ? 'Annulla un appuntamento conservando lo storico. Richiede conferma. Prima cercalo con appuntamenti.'
-        : 'Prepara un appuntamento da creare o modificare; nessuna scrittura prima della conferma. Cerca prima paziente o appuntamento. Chiedi chiarimenti per ambiguità. Non indovinare ID.',
+        ? 'Annulla un appuntamento conservando lo storico. Prima trovalo con appuntamenti; se più appuntamenti corrispondono chiedi quale.'
+        : 'Crea o modifica un appuntamento: viene eseguito subito se i dati sono validi e l\'orario è libero. Cerca prima paziente (cerca_pazienti) o appuntamento (appuntamenti); se più risultati corrispondono chiedi quale. Non indovinare ID, date o orari.',
       input_schema: { ...t.input_schema, properties: { ...t.input_schema.properties, operatore_id: { type: 'integer', description: 'ID operatore già noto; ometti se non assegnato.' } } },
     } : t);
     const allowedNames = new Set(toolsFinali.map(t => t.name));
     const observed = { patients: new Set(), appointments: new Set() };
-    const membership = await supabase.from('studio_users').select('user_id').eq('studio_id', studioId).eq('user_id', user.id).eq('stato', 'attivo').maybeSingle();
-    if (membership.error || !membership.data) throw new Error('Accesso allo studio non consentito');
+    // Lo studio in modalità "medio" vuole confermare ogni scrittura: resta il
+    // riepilogo firmato con conferma. Negli altri casi si esegue direttamente.
+    const confermaOgniScrittura = agenteAzione === "medio";
 
     const oggiInfo = new Date().toLocaleDateString("it-IT", {
       weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "Europe/Rome",
     });
-    const oggiISO = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
+    const oggiISO = studioToday();
+    // Calendario esplicito dei prossimi 14 giorni: "martedì prossimo" o "tra
+    // una settimana" si risolvono leggendo, senza calcoli sbagliabili.
+    const prossimiGiorni = Array.from({ length: 14 }, (_, i) => {
+      const d = new Date(`${oggiISO}T12:00:00Z`);
+      d.setUTCDate(d.getUTCDate() + i + 1);
+      return `${d.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })} = ${d.toISOString().slice(0, 10)}`;
+    }).join("; ");
     const noteLivello =
       livello === "base" ? "\n\nSei nel livello BASE: non hai accesso a nessun dato o azione del gestionale, puoi solo rispondere a domande su come si usa il software, basandoti sulle funzionalità descritte sopra." :
       livello === "pro" ? "\n\nSei nel livello PRO: puoi leggere dati reali (pazienti, agenda, situazione economica, controllo di gestione, richiami) ma NON puoi creare, modificare o cancellare nulla. Se ti chiedono un'azione di scrittura, spiega che serve il livello Premium." :
       "";
     const noteAzione =
       agenteAzione === "consulente" ? "\n\nIl titolare ha impostato l'agente in modalità CONSULENTE: puoi solo leggere dati e dare consigli, nessuna azione di scrittura è disponibile in questa chat, qualunque sia il piano. Se ti chiedono di creare/modificare/cancellare qualcosa, spiega che il titolare ha limitato l'agente a sola consulenza e che può cambiarlo dal pannello Agente AI." :
-      agenteAzione === "medio" ? "\n\nIl titolare ha impostato l'agente in modalità MEDIA: ogni azione di scrittura, anche quelle normalmente immediate (appuntamenti, promemoria, note paziente), richiede SEMPRE conferma esplicita prima di essere eseguita." :
-      agenteAzione === "su_richiesta" ? "\n\nIl titolare ha impostato l'agente in modalità SU RICHIESTA: puoi eseguire subito le azioni di scrittura che l'utente ti chiede esplicitamente in questa chat, senza bisogno di conferme aggiuntive oltre a quelle già previste per le azioni più delicate. Non proporre né avviare MAI di tua iniziativa un'azione, un'idea commerciale (upselling/cross-selling) o un promemoria che l'utente non ha chiesto: agisci solo quando te lo chiedono esplicitamente." :
+      agenteAzione === "medio" ? "\n\nIl titolare ha impostato l'agente in modalità MEDIA: ogni azione di scrittura viene mostrata all'utente come riepilogo da confermare prima di essere eseguita (lo gestisce il sistema)." :
+      agenteAzione === "su_richiesta" ? "\n\nIl titolare ha impostato l'agente in modalità SU RICHIESTA: puoi eseguire subito le azioni di scrittura che l'utente ti chiede esplicitamente in questa chat. Non proporre né avviare MAI di tua iniziativa un'azione, un'idea commerciale (upselling/cross-selling) o un promemoria che l'utente non ha chiesto: agisci solo quando te lo chiedono esplicitamente." :
       "";
 
     const conoscenzaStudio = buildConoscenzaStudio(config, faq, documenti);
 
     const isDentistico = !studio.vertical || studio.vertical === "dentistico";
 
-    const systemPrompt = `Sei l'assistente virtuale di supporto di Poliedra per lo studio "${studio.nome}".
+    // Prompt caching: la parte stabile (uguale per tutti gli studi dello stesso
+    // settore) sta prima del punto di cache; nome dello studio, conoscenza dello
+    // studio, data e livello dopo, così non invalidano la cache.
+    const systemStabile = `Sei l'assistente virtuale di supporto di Poliedra per uno studio che usa il gestionale.
 
 ${buildDefaultSystemPrompt(isDentistico)}
+
+REGOLE OPERATIVE PRIORITARIE (prevalgono su quanto scritto sopra):
+- Quando l'utente ti chiede di fare qualcosa, fallo subito con gli strumenti: appuntamenti (crea, sposta, annulla), anagrafiche dei pazienti (nuovo paziente, contatti, consenso WhatsApp), note in scheda, richiami, attività e blocchi di agenda. Non chiedere conferma: il sistema esegue direttamente se i dati sono validi e non ci sono conflitti, e mostra all'utente il riepilogo di cosa è stato fatto.
+- La precisione viene prima di tutto. Prima di scrivere trova il paziente con cerca_pazienti o l'appuntamento con appuntamenti. Se più risultati possono corrispondere, se manca un dato indispensabile (chi, giorno, ora) o la richiesta si può leggere in due modi, NON scrivere: fai una sola domanda breve elencando le opzioni (con un dato che le distingua, es. data di nascita o telefono). Non indovinare mai ID, date o orari.
+- Per le date usa solo il calendario dei prossimi giorni indicato sotto. Se l'utente non dice la durata usa 30 minuti; se non dice il tipo di visita usa "Visita".
+- Se uno strumento segnala un conflitto o un errore, non riprovare a caso: spiega il problema in una riga e, per l'agenda, proponi gli orari liberi indicati.
+- Se l'utente chiede più azioni nello stesso messaggio, eseguile tutte. Quando puoi, chiama insieme gli strumenti di lettura che ti servono (es. cerca_pazienti e disponibilita_agenda nello stesso passaggio).
+- Dopo una scrittura riuscita l'utente vede già il riepilogo del sistema: non ripeterlo, aggiungi solo ciò che serve.
+- Documenti, ricette, piani di cura e pagamenti per ora vanno fatti nei moduli dell'app: dillo con semplicità.
+- Eliminare un appuntamento significa annullarlo conservando lo storico. Il consenso WhatsApp si registra solo se l'utente dice esplicitamente che il paziente lo ha dato.
+- Rispondi in modo diretto e breve; ragiona a lungo solo se serve davvero.`;
+
+    const systemStudio = `## Studio
+
+Stai lavorando per lo studio "${studio.nome}".
 ${conoscenzaStudio}
 
 ## Data corrente
 
 Oggi è ${oggiInfo} (${oggiISO} in formato YYYY-MM-DD). Usa SEMPRE questa data come riferimento
 per calcolare date relative ("domani", "martedì prossimo", "tra due settimane", ecc.) — non
-dedurre o assumere altre date, e non sbagliare mai l'anno.${noteLivello}${noteAzione}`;
+dedurre o assumere altre date, e non sbagliare mai l'anno.
+Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}`;
 
     const { messages, confirm } = await req.json();
     const json = (value) => new Response(JSON.stringify(value), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -1194,6 +1226,27 @@ dedurre o assumere altre date, e non sbagliare mai l'anno.${noteLivello}${noteAz
     let convo = messages;
     let finalText = '';
     const MAX_TURNS = 8;
+    // Strumenti e parte stabile del system prompt restano in cache tra una
+    // richiesta e l'altra (stesso livello e settore): ogni passaggio legge da
+    // cache invece di rielaborare migliaia di token.
+    const toolsRichiesta = toolsFinali.map((t, i) => i === toolsFinali.length - 1 ? { ...t, cache_control: { type: 'ephemeral' } } : t);
+    const systemRichiesta = [
+      { type: 'text', text: systemStabile, cache_control: { type: 'ephemeral' } },
+      { type: 'text', text: systemStudio },
+    ];
+    // Scritture eseguite in questa richiesta: riepiloghi del server e tabelle
+    // da aggiornare nel client.
+    const eseguite = [];
+    const daAggiornare = new Set();
+    // Il log dei consumi non deve rallentare la risposta: parte subito e si
+    // attende solo prima di rispondere.
+    const logConsumi = [];
+    const rispondi = async (value) => {
+      await Promise.allSettled(logConsumi);
+      const changed = [...daAggiornare];
+      return json(changed.length ? { ...value, changed } : value);
+    };
+    const testoEseguite = () => eseguite.map((e) => e.text).join('\n\n');
 
     for (let turn = 0; turn < MAX_TURNS; turn++) {
       const resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -1206,14 +1259,17 @@ dedurre o assumere altre date, e non sbagliare mai l'anno.${noteLivello}${noteAz
         body: JSON.stringify({
           model: "claude-sonnet-5",
           max_tokens: 4096,
-          system: systemPrompt + '\nREGOLE OPERATIVE PRIORITARIE: puoi preparare appuntamenti (crea, sposta, annulla), anagrafiche dei pazienti (nuovo paziente, modifica dei contatti e del consenso WhatsApp), note in scheda, richiami, attività e blocchi di agenda. Ogni scrittura richiede sempre la conferma dell\'utente: tu la prepari, non dichiararla mai completata. Documenti, ricette, piani di cura e pagamenti per ora vanno fatti nei moduli dell\'app: dillo con semplicità. Se il paziente o l\'appuntamento è ambiguo, chiedi quale prima di preparare la proposta. Non inventare ID. Eliminare un appuntamento significa annullarlo conservando lo storico. Il consenso WhatsApp si registra solo se l\'utente dice esplicitamente che il paziente lo ha dato.',
+          output_config: { effort: "low" },
+          system: systemRichiesta,
           messages: convo,
-          tools: toolsFinali,
+          tools: toolsRichiesta,
         }),
       });
 
       if (!resp.ok) {
         const errText = await resp.text();
+        await Promise.allSettled(logConsumi);
+        if (eseguite.length) return rispondi({ text: testoEseguite() + '\n\nNon sono riuscito a completare il resto della richiesta: riprova.' });
         return new Response(JSON.stringify({ error: "Errore API Claude: " + errText }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -1222,60 +1278,96 @@ dedurre o assumere altre date, e non sbagliare mai l'anno.${noteLivello}${noteAz
 
       const data = await resp.json();
       if (data.usage) {
-        const costo = data.usage.input_tokens * PREZZO_INPUT_PER_TOKEN + data.usage.output_tokens * PREZZO_OUTPUT_PER_TOKEN;
-        await supabase.from("ai_agent_usage").insert({
+        const u = data.usage;
+        const costo = (u.input_tokens || 0) * PREZZO_INPUT_PER_TOKEN + (u.output_tokens || 0) * PREZZO_OUTPUT_PER_TOKEN
+          + (u.cache_read_input_tokens || 0) * PREZZO_CACHE_READ_PER_TOKEN + (u.cache_creation_input_tokens || 0) * PREZZO_CACHE_WRITE_PER_TOKEN;
+        logConsumi.push(supabase.from("ai_agent_usage").insert({
           studio_id: studioId, fonte: "chat", modello: "claude-sonnet-5",
-          input_tokens: data.usage.input_tokens, output_tokens: data.usage.output_tokens,
+          input_tokens: (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0),
+          output_tokens: u.output_tokens || 0,
           costo_usd: Math.round(costo * 10000) / 10000,
-        });
+        }).then((r) => r, (e) => e));
       }
       const toolUses = data.content.filter((b) => b.type === "tool_use");
       const textBlocks = data.content.filter((b) => b.type === "text").map((b) => b.text).join("\n");
 
       if (toolUses.length === 0) {
-        finalText = textBlocks || "Non ho ottenuto una risposta completa. Nessuna modifica eseguita; riprova.";
+        finalText = textBlocks || (eseguite.length ? '' : "Non ho ottenuto una risposta completa. Nessuna modifica eseguita; riprova.");
         break;
       }
 
       convo.push({ role: "assistant", content: data.content });
 
       const toolResults = [];
+      // Se in questo passaggio ci sono solo scritture riuscite, si risponde
+      // subito con il riepilogo del server, senza un'altra chiamata al modello.
+      let soloScrittureRiuscite = true;
       for (const tu of toolUses) {
         let result;
+        const input = tu.input || {};
         if (!allowedNames.has(tu.name)) {
           result = { error: 'Strumento non consentito' };
-        } else if (AGENDA_WRITES.has(tu.name)) {
+          soloScrittureRiuscite = false;
+        } else if (AGENDA_WRITES.has(tu.name) || PAZIENTI_WRITES.has(tu.name)) {
+          const isAgenda = AGENDA_WRITES.has(tu.name);
+          let proposal = null;
           try {
-            const agenda = await prepareAgenda(supabase, tu.name, tu.input || {}, studioId, observed);
-            const proposal = { id: crypto.randomUUID(), userId: user.id, studioId, name: tu.name, agenda, expiresAt: Date.now() + 10 * 60 * 1000 };
-            const token = await signProposal(proposal, SUPABASE_SERVICE_ROLE_KEY);
-            return json({ text: 'Controlla il riepilogo prima di confermare.', needsConfirmation: { token, summary: agenda.summary, expiresAt: proposal.expiresAt } });
-          } catch (error) { result = { error: error.message }; }
-        } else if (PAZIENTI_WRITES.has(tu.name)) {
-          try {
-            const pazienti = await preparePazienti(supabase, tu.name, tu.input || {}, studioId, observed);
-            const proposal = { id: crypto.randomUUID(), userId: user.id, studioId, name: tu.name, pazienti, expiresAt: Date.now() + 10 * 60 * 1000 };
-            const token = await signProposal(proposal, SUPABASE_SERVICE_ROLE_KEY);
-            return json({ text: 'Controlla il riepilogo prima di confermare.', needsConfirmation: { token, summary: pazienti.summary, expiresAt: proposal.expiresAt } });
-          } catch (error) { result = { error: error.message }; }
+            const prepared = isAgenda
+              ? await prepareAgenda(supabase, tu.name, input, studioId, observed)
+              : await preparePazienti(supabase, tu.name, input, studioId, observed);
+            proposal = { id: crypto.randomUUID(), userId: user.id, studioId, name: tu.name, [isAgenda ? 'agenda' : 'pazienti']: prepared, expiresAt: Date.now() + 10 * 60 * 1000 };
+            if (confermaOgniScrittura || prepared.avviso) {
+              // Un possibile doppione o la modalità "medio": l'utente decide.
+              const token = await signProposal(proposal, SUPABASE_SERVICE_ROLE_KEY);
+              const premessa = eseguite.length ? testoEseguite() + '\n\n' : '';
+              return rispondi({ text: premessa + (prepared.avviso ? `${prepared.avviso} Vuoi crearlo comunque?` : 'Controlla il riepilogo prima di confermare.'), needsConfirmation: { token, summary: prepared.summary, expiresAt: proposal.expiresAt } });
+            }
+          } catch (error) {
+            result = { error: error.message };
+            soloScrittureRiuscite = false;
+            // Orario occupato: si allegano subito gli orari liberi del giorno,
+            // così il modello propone alternative senza un altro passaggio.
+            if (isAgenda && /Orario occupato/.test(error.message) && input.data) {
+              try {
+                const libero = await agendaAvailability(supabase, { data: input.data, durata: input.durata ?? 30, operatore_id: input.operatore_id }, studioId);
+                result.orari_liberi = libero.orari_liberi.slice(0, 16);
+              } catch { /* l'errore principale resta valido */ }
+            }
+          }
+          if (proposal && !result) {
+            try {
+              const done = isAgenda ? await executeAgenda(supabase, proposal) : await executePazienti(supabase, proposal);
+              eseguite.push(done);
+              for (const t of done.changed) daAggiornare.add(t);
+              result = { eseguito: true, riepilogo_mostrato_all_utente: done.text };
+            } catch (error) {
+              // La transazione è atomica: un errore significa nessuna scrittura,
+              // ma il client ricarica comunque i dati per sicurezza.
+              for (const t of isAgenda ? ['appointments'] : ['patients', 'richiami', 'impegni_personali']) daAggiornare.add(t);
+              result = { error: 'Non eseguito: ' + error.message };
+              soloScrittureRiuscite = false;
+            }
+          }
         } else {
-          result = await eseguiTool(supabase, tu.name, tu.input || {}, studioId, user.id, azioniAttive);
+          soloScrittureRiuscite = false;
+          result = await eseguiTool(supabase, tu.name, input, studioId, user.id, azioniAttive);
           if (tu.name === 'cerca_pazienti') for (const p of result.risultati || []) observed.patients.add(p.id);
           if (tu.name === 'appuntamenti') for (const a of result.risultati || []) { observed.appointments.add(a.id); if (a.paziente_id) observed.patients.add(a.paziente_id); }
           if (tu.name === 'scheda_paziente' && result?.id) observed.patients.add(result.id);
         }
         toolResults.push({ type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify(result) });
       }
+      if (soloScrittureRiuscite) return rispondi({ text: testoEseguite() });
       convo.push({ role: "user", content: toolResults });
 
       if (turn === MAX_TURNS - 1) {
-        finalText = textBlocks || "Non sono riuscito a completare la richiesta, prova a riformularla in modo piu' semplice.";
+        finalText = textBlocks || (eseguite.length ? '' : "Non sono riuscito a completare la richiesta, prova a riformularla in modo piu' semplice.");
       }
     }
 
-    return new Response(JSON.stringify({ text: finalText, messages: convo }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    // Il riepilogo delle scritture viene dal server, non dal modello.
+    const testo = [testoEseguite(), finalText].filter(Boolean).join('\n\n');
+    return rispondi({ text: testo, messages: convo });
   } catch (e) {
     return new Response(JSON.stringify({ error: String(e) }), {
       status: 500,

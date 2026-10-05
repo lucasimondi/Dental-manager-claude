@@ -77,3 +77,19 @@ test('explicit agenda submission exposes the signed preview; typing does not cal
   await processQuery({query:'Sposta appuntamento Rossi a domani',supabaseClient:client,allowModel:false});
   assert.equal(calls,1);
 });
+test('patient commands go to Poliedron only when the studio agent may write; the result carries what changed', async () => {
+  let calls=0;
+  const client={functions:{invoke:async()=>{calls++;return{data:{text:'Fatto. Nota aggiunta',changed:['patients']}};}}};
+  const premium={features:{assistente_ai:'premium'}};
+  for (const query of ['Aggiungi una nota a Mario Rossi: allergico','Ricordami di chiamare il laboratorio domani','Metti ferie dal 10 al 15 agosto','Il telefono di Mario Rossi è 333111']) {
+    const result=await processQuery({query,context:premium,supabaseClient:client});
+    assert.equal(result.intent,'AGENT',query);assert.deepEqual(result.dataChanged,['patients']);
+  }
+  assert.equal(calls,4);
+  // Consulente, plans and payments and keystroke previews never reach the agent.
+  await processQuery({query:'Aggiungi una nota a Mario Rossi',context:{features:{assistente_ai:'premium',agente_azione:'consulente'}},supabaseClient:client});
+  await processQuery({query:'Aggiungi una nota a Mario Rossi',context:{features:{assistente_ai:'pro'}},supabaseClient:client});
+  await processQuery({query:'Registra un pagamento di 100 euro per Mario Rossi',context:premium,supabaseClient:client});
+  await processQuery({query:'Aggiungi una nota a Mario Rossi',context:premium,supabaseClient:client,allowModel:false});
+  assert.equal(calls,4);
+});

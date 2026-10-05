@@ -206,8 +206,8 @@ export default function Poliedron({
     setExternalContext(null);
   }, []);
 
-  const processRequest = useCallback((q, { allowModel = false, conversationHistory = [] } = {}) =>
-    processQuery({
+  const processRequest = useCallback(async (q, { allowModel = false, conversationHistory = [] } = {}) => {
+    const result = await processQuery({
       query: q,
       context,
       permissions: processPermissions,
@@ -215,7 +215,15 @@ export default function Poliedron({
       conversationHistory,
       supabaseClient,
       allowModel,
-    }), [context, processPermissions, processSources, supabaseClient]);
+    });
+    // POL-AI-010: Poliedron executes clear, conflict-free writes directly;
+    // refresh exactly what changed so agenda and patient views stay current.
+    if (result?.dataChanged?.length) {
+      try { await onDataChanged?.(result.dataChanged); }
+      catch { return { ...result, answer: `${result.answer || ''}\nImpossibile aggiornare la schermata: ricarica la pagina.` }; }
+    }
+    return result;
+  }, [context, processPermissions, processSources, supabaseClient, onDataChanged]);
 
   const executePersistedQuery = useCallback(async (
     q,
