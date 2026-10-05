@@ -3320,4 +3320,5 @@ Merge della PR #115 su istruzione del Product Owner.
 - Owner: CLAUDE. Prova del Product Owner dopo la v26: "mi ha detto di averlo annullato ma rimane in agenda con un altro colore … l'agenda si aggiorna ma non subito". Decisione PO (scelta "Registro più nascosti"): "quando non vengono rifissati vanno nei richiami da fare. Non rimane in agenda ma ci sarà traccia di attività poliedron con elenco di tutto ciò che ha fatto"; poi "Quando vengono rifissati va via dai non fissati quindi dai richiami".
 - Dettagli: `docs/architecture/POL-AI-010-pazienti.md` § Passo 2c.
 - Gate PO: nuova migration (tabella + trigger su `appointments` + pubblicazione realtime di `richiami`) e deploy funzione v27 → solo su "Mergia". Ordine: migration → funzione → merge.
-- EXACT NEXT ACTION: "Mergia" del Product Owner.
+- Aggiunto su richiesta del PO ("Aggiungi ripristina poi Mergia"): pulsante "Ripristina" nel registro (`poliedron_ripristina_v1`, stessa migration). SQL locale PASS; `npm test` 903/903; build OK.
+- EXACT NEXT ACTION: rilascio autorizzato ("poi Mergia"): migration → funzione v27 → merge.

@@ -13,6 +13,7 @@ import { buildContext } from '../../lib/poliedron/contextEngine';
 import { runModelTask } from '../../lib/poliedron/modelGateway.js';
 import { decisioneConferma } from '../../lib/poliedron/confirmationReply.js';
 import { processQuery } from '../../lib/poliedron/poliedraCore';
+import { tabelleDopoRipristino } from '../../lib/poliedron/attivita.js';
 import { runActionPlan } from '../../lib/poliedron/planner/actionExecutor';
 import {
   createChatRequestId,
@@ -457,11 +458,16 @@ export default function Poliedron({
   const loadPoliedronActivity = useCallback(async () => {
     if (!supabaseClient || !studioId) return [];
     const { data, error } = await supabaseClient.from('poliedron_attivita')
-      .select('id, azione, riepilogo, tabella, record_id, created_at')
+      .select('id, azione, riepilogo, tabella, record_id, ripristino_di, created_at')
       .eq('studio_id', studioId).order('created_at', { ascending: false }).limit(100);
     if (error) throw error;
     return data || [];
   }, [supabaseClient, studioId]);
+  const restorePoliedronActivity = useCallback(async (row) => {
+    const { data: tabella, error } = await supabaseClient.rpc('poliedron_ripristina_v1', { p_attivita: row.id, p_studio: studioId });
+    if (error) throw new Error(error.message);
+    Promise.resolve(onDataChanged?.(tabelleDopoRipristino(tabella))).catch((e) => console.warn('Poliedron: aggiornamento dei dati non riuscito', e));
+  }, [supabaseClient, studioId, onDataChanged]);
 
   /** POL-AI-005B §CONFIRM: called only from an explicit user click on the
    *  Level-2 preview's Confirm button — never automatically. Re-loads
@@ -708,6 +714,7 @@ export default function Poliedron({
           navItems={navigationIndex.filter((item) => item.id !== 'chat')}
           onNavigate={setPage}
           loadActivity={loadPoliedronActivity}
+          restoreActivity={restorePoliedronActivity}
         />,
         chatHost
       )}

@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { etichettaAttivita, dettaglioAttivita } from '../src/lib/poliedron/attivita.js';
+import { etichettaAttivita, dettaglioAttivita, idsRipristinati, puoRipristinare, tabelleDopoRipristino } from '../src/lib/poliedron/attivita.js';
 
 test('activity labels and details come from the server summary', () => {
   assert.equal(etichettaAttivita('elimina_appuntamento'), 'Appuntamento annullato');
@@ -17,4 +17,18 @@ test('cancelled appointments are hidden from the agenda grid and the dashboard d
   const dashboard = readFileSync(new URL('../src/components/Dashboard.jsx', import.meta.url), 'utf8');
   assert.match(dashboard, /a\.data === t && a\.stato !== 'annullato'/);
   assert.match(dashboard, /a\.data === domani && a\.stato !== 'annullato'/);
+});
+
+test('Ripristina is offered once, only for undoable actions; agenda undo refreshes recalls too', () => {
+  const rows = [
+    { id: 'a', azione: 'elimina_appuntamento' },
+    { id: 'b', azione: 'crea_paziente' },
+    { id: 'c', azione: 'aggiungi_nota_paziente' },
+    { id: 'u', azione: 'ripristino', ripristino_di: 'c' },
+  ];
+  const done = idsRipristinati(rows);
+  assert.deepEqual([...done], ['c']);
+  assert.deepEqual(rows.map((r) => puoRipristinare(r, done)), [true, false, false, false]);
+  assert.deepEqual(tabelleDopoRipristino('appointments'), ['appointments', 'richiami']);
+  assert.deepEqual(tabelleDopoRipristino('todos'), ['todos']);
 });

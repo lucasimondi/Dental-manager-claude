@@ -430,6 +430,9 @@ function registraAttivita(supabase, proposal, done) {
     id: proposal.id, studio_id: proposal.studioId, user_id: proposal.userId, azione: proposal.name,
     riepilogo: String(done.text || '').slice(0, 4000), tabella: done.changed?.[0] ?? null,
     record_id: done.appointmentId ?? done.recordId ?? null,
+    // Before/after, so the studio can undo the action from the log ("Ripristina").
+    prima: proposal.agenda ? proposal.agenda.before : proposal.pazienti?.before ?? null,
+    dopo: proposal.agenda ? { ...proposal.agenda.after, id: done.appointmentId } : proposal.pazienti?.dati ?? null,
   }).then((r) => { if (r.error) console.error('poliedron_attivita', r.error.message); return r; }, (e) => e);
 }
 

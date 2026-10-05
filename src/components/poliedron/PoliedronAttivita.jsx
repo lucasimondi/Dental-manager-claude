@@ -1,15 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { Ic } from '../ui';
-import { etichettaAttivita, dettaglioAttivita } from '../../lib/poliedron/attivita.js';
+import { etichettaAttivita, dettaglioAttivita, idsRipristinati, puoRipristinare } from '../../lib/poliedron/attivita.js';
 
 // POL-AI-010: "Attività di Poliedron" — everything Poliedron executed in this
-// studio, newest first. Read-only: the rows are written by the server together
-// with each action and cannot be edited or deleted.
+// studio, newest first. The rows are written by the server together with each
+// action and cannot be edited or deleted; "Ripristina" undoes one action in the
+// database (itself logged as a new row).
 const giorno = (iso) => new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Rome' }).format(new Date(iso));
 const ora = (iso) => new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Rome' }).format(new Date(iso));
 
-export default function PoliedronAttivita({ load, onClose }) {
+export default function PoliedronAttivita({ load, onRestore, onClose }) {
   const [state, setState] = useState({ loading: true, rows: [], error: null });
+  const [reloadKey, setReloadKey] = useState(0);
+  // { id, phase: 'confirm' | 'running' | 'error', message }
+  const [restore, setRestore] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -17,7 +21,19 @@ export default function PoliedronAttivita({ load, onClose }) {
       .then((rows) => { if (active) setState({ loading: false, rows: rows || [], error: null }); })
       .catch(() => { if (active) setState({ loading: false, rows: [], error: 'Non riesco a caricare le attività. Riprova.' }); });
     return () => { active = false; };
-  }, [load]);
+  }, [load, reloadKey]);
+
+  const ripristinati = idsRipristinati(state.rows);
+  const eseguiRipristino = async (row) => {
+    setRestore({ id: row.id, phase: 'running' });
+    try {
+      await onRestore(row);
+      setRestore(null);
+      setReloadKey((k) => k + 1);
+    } catch (error) {
+      setRestore({ id: row.id, phase: 'error', message: error?.message || 'Ripristino non riuscito.' });
+    }
+  };
 
   let ultimoGiorno = '';
   return (
@@ -42,7 +58,27 @@ export default function PoliedronAttivita({ load, onClose }) {
                 <time dateTime={r.created_at}>{ora(r.created_at)}</time>
                 <div>
                   <strong>{etichettaAttivita(r.azione)}</strong>
-                  <p style={{ whiteSpace: 'pre-wrap' }}>{dettaglioAttivita(r.riepilogo)}</p>
+                  <p style={{ whiteSpace: 'pre-wrap' }}>{r.azione === 'ripristino' ? r.riepilogo : dettaglioAttivita(r.riepilogo)}</p>
+                  {ripristinati.has(r.id) && <small>Ripristinata</small>}
+                  {onRestore && puoRipristinare(r, ripristinati) && (
+                    restore?.id === r.id && restore.phase === 'confirm' ? (
+                      <span className="poliedron-attivita__restore">
+                        <button type="button" onClick={() => eseguiRipristino(r)}>Conferma ripristino</button>
+                        <button type="button" onClick={() => setRestore(null)}>No</button>
+                      </span>
+                    ) : (
+                      <span className="poliedron-attivita__restore">
+                        <button
+                          type="button"
+                          disabled={restore?.phase === 'running'}
+                          onClick={() => setRestore({ id: r.id, phase: 'confirm' })}
+                        >
+                          {restore?.id === r.id && restore.phase === 'running' ? 'Ripristino…' : 'Ripristina'}
+                        </button>
+                      </span>
+                    )
+                  )}
+                  {restore?.id === r.id && restore.phase === 'error' && <p role="alert">{restore.message}</p>}
                 </div>
               </div>
             </li>

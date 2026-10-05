@@ -77,5 +77,12 @@ richiami da fare", "Quando vengono rifissati va via dai non fissati quindi dai r
   subito, poi ricarica in background senza ritardare la risposta.
 - Chat: pulsante "Attività di Poliedron" con l'elenco per giorno; Richiami e Attività
   mostrano l'etichetta "Da rifissare".
+- **Ripristina** (PO: "Aggiungi ripristina"): `poliedron_ripristina_v1(p_attivita, p_studio)`,
+  SECURITY INVOKER, una transazione, solo se il dato è ancora come l'ha lasciato Poliedron:
+  appuntamento creato → rimosso; modificato/annullato → stato precedente (stessi controlli
+  di disponibilità e data dell'agenda; il richiamo "da rifissare" si chiude); scheda
+  paziente → valori precedenti; nota → tolta se è ancora l'ultima; richiamo, attività,
+  blocco agenda creati → rimossi. Nuovo paziente: non ripristinabile da qui. Il ripristino
+  è una nuova riga del registro (`ripristino_di`, indice unico: una sola volta).
 - Validazione: SQL locale (catena completa + `supabase/tests/pol_ai_010_registro.sql`) PASS;
   `npm test` 902/902; build OK.

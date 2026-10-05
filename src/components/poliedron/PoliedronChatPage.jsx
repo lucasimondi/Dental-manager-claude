@@ -90,6 +90,7 @@ export default function PoliedronChatPage({
   navItems = [],
   onNavigate,
   loadActivity,
+  restoreActivity,
 }) {
   const [draft, setDraft] = useState('');
   const [showActivity, setShowActivity] = useState(false);
@@ -176,7 +177,7 @@ export default function PoliedronChatPage({
       </header>
 
       {showActivity && loadActivity && (
-        <PoliedronAttivita load={loadActivity} onClose={() => setShowActivity(false)} />
+        <PoliedronAttivita load={loadActivity} onRestore={restoreActivity} onClose={() => setShowActivity(false)} />
       )}
 
       <div
