@@ -1,3 +1,12 @@
+# Documentation task — POLIEDRON-TEAM-VISION (2026-10-05)
+- OWNER: CODEX, su istruzione Product Owner: "Inseriscila in repository".
+- BRANCH: `codex/poliedron-team-vision`, da `master`.
+- SCOPE: registrare assistenti verticali come contatti, gruppi tematici collaborativi e Clinic Manager coordinatore; aggiornare Master Context. Solo documentazione.
+- STATUS: documentazione completata; draft PR per revisione. Nessuna implementazione, migration, modifica database o deploy.
+- VALIDATION: controllo di contenuto e diff limitato ai quattro documenti del task; nessun test applicativo necessario.
+- ROLLBACK: chiudere la PR senza merge; dopo un eventuale merge, revert dei commit documentali.
+- NEXT ACTION: revisione Product Owner della PR; implementazione da pianificare separatamente. POL-AI-010 resta assegnato a CLAUDE, invariato nel blocco seguente.
+
 # Current task
 - ACTIVE OWNER: CLAUDE — handoff from CODEX by explicit Product Owner instruction (2026-10-05, verbatim: "Guarda cosa ha fatto code, ha fatto la 118 e ora 119 , e poi continua", then "Continua").
 - ACTIVE BRANCH: `claude/whatsapp-automation-status-d2ng12` (PR #118). Step 1 (PR #119 by Codex, `codex/pol-ai-010-agenda`) reviewed and brought into this branch, with three follow-up fixes (see handoff "POL-AI-010 passo 1 — revisione e presa in carico").
