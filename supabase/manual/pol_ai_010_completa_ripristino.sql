@@ -1,7 +1,40 @@
 -- POL-AI-010 passo 2c: completamento in produzione (editor SQL di Supabase).
--- Sostituisce il segnaposto di poliedron_ripristina_v1, pubblica i richiami in tempo reale
--- e registra la migration. Identico a supabase/migrations/20261005170000_pol_ai_010_registro_annullati.sql.
+-- Installa il ripristino (funzione ausiliaria + principale, al posto del segnaposto),
+-- registra la migration e pubblica i richiami in tempo reale.
+-- Identico a supabase/migrations/20261005170000_pol_ai_010_registro_annullati.sql.
 BEGIN;
+CREATE FUNCTION public.poliedron_ripristina_rimuovi_v1(p_azione text, p_record bigint, p_dopo jsonb, p_studio uuid)
+RETURNS void LANGUAGE plpgsql SECURITY INVOKER SET search_path = '' SET lock_timeout = '2s' AS $$
+DECLARE
+  cur jsonb;
+  n integer;
+BEGIN
+  CASE p_azione
+  WHEN 'crea_appuntamento' THEN
+    SELECT to_jsonb(x) INTO cur FROM public.appointments x WHERE id = p_record AND studio_id = p_studio FOR UPDATE;
+    IF cur IS NULL OR NOT (cur @> (p_dopo - 'id')) THEN
+      RAISE EXCEPTION 'L''appuntamento è stato cambiato dopo Poliedron: controllalo in agenda';
+    END IF;
+    DELETE FROM public.appointments WHERE id = p_record AND studio_id = p_studio;
+  WHEN 'crea_richiamo' THEN
+    DELETE FROM public.richiami WHERE id = p_record AND studio_id = p_studio AND stato = 'da_fare';
+    GET DIAGNOSTICS n = ROW_COUNT;
+    IF n = 0 THEN RAISE EXCEPTION 'Il richiamo è già stato gestito'; END IF;
+  WHEN 'crea_promemoria' THEN
+    DELETE FROM public.todos WHERE id = p_record AND studio_id = p_studio AND fatto IS NOT TRUE;
+    GET DIAGNOSTICS n = ROW_COUNT;
+    IF n = 0 THEN RAISE EXCEPTION 'L''attività è già stata completata o tolta'; END IF;
+  WHEN 'crea_impegno_personale' THEN
+    DELETE FROM public.impegni_personali WHERE id = p_record AND studio_id = p_studio;
+    GET DIAGNOSTICS n = ROW_COUNT;
+    IF n = 0 THEN RAISE EXCEPTION 'Il blocco agenda non c''è più'; END IF;
+  ELSE
+    RAISE EXCEPTION 'Questa azione non si può ripristinare da qui';
+  END CASE;
+END $$;
+REVOKE ALL ON FUNCTION public.poliedron_ripristina_rimuovi_v1(text, bigint, jsonb, uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.poliedron_ripristina_rimuovi_v1(text, bigint, jsonb, uuid) TO authenticated;
+
 CREATE OR REPLACE FUNCTION public.poliedron_ripristina_v1(p_attivita uuid, p_studio uuid)
 RETURNS text LANGUAGE plpgsql SECURITY INVOKER SET search_path = '' SET lock_timeout = '2s' AS $$
 DECLARE
@@ -24,12 +57,6 @@ BEGIN
   titolo := split_part(regexp_replace(a.riepilogo, '^Fatto\.\s*', ''), E'\n', 1);
 
   CASE a.azione
-  WHEN 'crea_appuntamento' THEN
-    SELECT to_jsonb(x) INTO cur FROM public.appointments x WHERE id = a.record_id AND studio_id = p_studio FOR UPDATE;
-    IF cur IS NULL OR NOT (cur @> (a.dopo - 'id')) THEN
-      RAISE EXCEPTION 'L''appuntamento è stato cambiato dopo Poliedron: controllalo in agenda';
-    END IF;
-    DELETE FROM public.appointments WHERE id = a.record_id AND studio_id = p_studio;
   WHEN 'modifica_appuntamento', 'elimina_appuntamento' THEN
     -- Same checks as any agenda write (unchanged since, free slot, future date).
     PERFORM public.poliedron_execute_agenda_v1(v_id, p_studio, a.dopo, a.prima);
@@ -53,20 +80,8 @@ BEGIN
       AND annotazioni -> (jsonb_array_length(annotazioni) - 1) ->> 'testo' = a.dopo->>'testo';
     GET DIAGNOSTICS n = ROW_COUNT;
     IF n = 0 THEN RAISE EXCEPTION 'La nota non è più l''ultima della scheda: rimuovila a mano'; END IF;
-  WHEN 'crea_richiamo' THEN
-    DELETE FROM public.richiami WHERE id = a.record_id AND studio_id = p_studio AND stato = 'da_fare';
-    GET DIAGNOSTICS n = ROW_COUNT;
-    IF n = 0 THEN RAISE EXCEPTION 'Il richiamo è già stato gestito'; END IF;
-  WHEN 'crea_promemoria' THEN
-    DELETE FROM public.todos WHERE id = a.record_id AND studio_id = p_studio AND fatto IS NOT TRUE;
-    GET DIAGNOSTICS n = ROW_COUNT;
-    IF n = 0 THEN RAISE EXCEPTION 'L''attività è già stata completata o tolta'; END IF;
-  WHEN 'crea_impegno_personale' THEN
-    DELETE FROM public.impegni_personali WHERE id = a.record_id AND studio_id = p_studio;
-    GET DIAGNOSTICS n = ROW_COUNT;
-    IF n = 0 THEN RAISE EXCEPTION 'Il blocco agenda non c''è più'; END IF;
   ELSE
-    RAISE EXCEPTION 'Questa azione non si può ripristinare da qui';
+    PERFORM public.poliedron_ripristina_rimuovi_v1(a.azione, a.record_id, a.dopo, p_studio);
   END CASE;
 
   IF a.azione NOT IN ('modifica_appuntamento', 'elimina_appuntamento', 'modifica_paziente') THEN
