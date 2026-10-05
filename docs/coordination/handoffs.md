@@ -3290,3 +3290,12 @@ Merge della PR #115 su istruzione del Product Owner.
 - Rischi: la migration contiene `DROP CONSTRAINT` (ricreato subito): in produzione via MCP applicarla a passi, come la 003a.
 - EXACT NEXT ACTION: revisione PR #118 (passi 0+1+2); poi passo 3 (Documenti).
 
+### POL-AI-010 passi 0-2 — esito rilascio (2026-10-05)
+- Ordine seguito (prima il backend, poi il frontend): migration → funzione → merge.
+- **Database** (`execute_sql` a passi): tabella `poliedron_action_claims` + RLS + policy di insert; `poliedron_execute_agenda_v1`; vincolo `todos_origine_check` ampliato (DROP e ADD nella stessa istruzione); `poliedron_execute_pazienti_v1`. Prima: verificato che nessun appuntamento abbia orari non validi (126 righe, 0 anomalie). Verifica: corpo delle due funzioni identico ai file (md5 `6735075b…`, `96e10609…`), nessuna SECURITY DEFINER, `anon` senza EXECUTE, `authenticated` con EXECUTE; claims con RLS, `authenticated` solo INSERT. Registrate `20261004160708 pol_ai_010_action_claims` e `20261005120000 pol_ai_010_pazienti` in `schema_migrations`.
+- **Impostazioni studi**: "Studio Simondi" e "Cuore" con `assistente_ai = premium`, autonomia non impostata (= completo) → scritture dalla chat attive; gli altri studi senza assistente.
+- **Edge Function** `agente-assistente` v25 (`verify_jwt=true`): `index.ts`, `agenda.js`, `confirmation.js`, `pazienti.js` + `_shared/agendaSlots.js`; riletta dopo il deploy, i 5 file identici al repository. Senza login → 401.
+- **Merge**: PR #118 → `master@ba941d0` (CI `verify` verde). Vercel pubblica il frontend.
+- Rollback: ridistribuire la v24 (`git show 0dae6e4:supabase/functions/agente-assistente/index.ts`) e fare il revert del merge; le migration possono restare.
+- EXACT NEXT ACTION: prova di 5 minuti del Product Owner nella chat di Poliedron (agenda, spostamento, annullamento, nota, vista da telefono); poi passo 3 (Documenti).
+
