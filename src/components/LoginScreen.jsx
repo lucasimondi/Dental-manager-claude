@@ -3,7 +3,7 @@ import RegisterScreen from './RegisterScreen.jsx';
 import { supabase } from '../lib/supabase.js';
 import gemma from '../assets/icon-poliedra-gem.png';
 
-export default function LoginScreen({ onLogin }) {
+export default function LoginScreen({ onLogin, brand = 'Poliedra' }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [err, setErr] = useState('');
@@ -37,7 +37,7 @@ export default function LoginScreen({ onLogin }) {
       }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <img src={gemma} alt="Poliedra" style={{ width: 60, height: 60, margin: '0 auto 12px', display: 'block' }} />
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#1A202C' }}>Poliedra</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#1A202C' }}>{brand}</div>
           <div style={{ fontSize: 12, color: '#718096', marginTop: 2 }}>Accedi al tuo studio</div>
         </div>
         <form onSubmit={submit}>

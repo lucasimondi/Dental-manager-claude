@@ -66,6 +66,7 @@ const summarizeStructuredResult = (result) => {
    SAME component's state/panel — never two AI systems (§16 same
    identity, one Poliedra AI Core). */
 export default function Poliedron({
+  phoneApp = false,
   isMobile, page, setPage, patients, plans, payments, pricelist, appointments, richiami, impegni, goSchedaPaz,
   features, isStudioAdmin, vertical, studioId, userId, currentPatient, positionLocked = false,
   quickActionCtx, supabaseClient, onArchivioFilterHint, openPrescription, openNew, openNewPlan, openNewPayment, openBooking,
@@ -647,9 +648,9 @@ export default function Poliedron({
           gets the large freely-positionable Orb, desktop gets the
           discreet edge-anchored dock. Both call the exact same onToggle,
           opening the exact same panel/state below. */}
-      {isMobile
+      {!(phoneApp && page === 'chat') && (isMobile
         ? <PoliedronMobileDock page={page} setPage={setPage} open={open} onToggle={onToggle} panelId={panelId} positionLocked={positionLocked} />
-        : <PoliedronEdgeDock open={open} onToggle={onToggle} panelId={panelId} positionLocked={positionLocked} />}
+        : <PoliedronEdgeDock open={open} onToggle={onToggle} panelId={panelId} positionLocked={positionLocked} />)}
       {/* POL-CHAT-001 merge — FASE 3: PR #51's bell was a placeholder that
           reopened the quick panel and carried a badge with no producer; PR
           #53's bell was a real Chat entry point but re-declared its own
@@ -698,6 +699,7 @@ export default function Poliedron({
       )}
       {chatHost && ReactDOM.createPortal(
         <PoliedronChatPage
+          phoneApp={phoneApp}
           messages={conversationMessages}
           loading={conversationLoading}
           loadingOlder={conversationLoadingOlder}

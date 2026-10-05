@@ -7,6 +7,19 @@ import StoriaClinicaRemota from './components/StoriaClinicaRemota.jsx';
 import PatientWorkspaceV2Demo from './components/PatientWorkspaceV2Demo.jsx';
 import PatientWorkspaceRealPreview from './components/PatientWorkspaceRealPreview.jsx';
 import './styles.css';
+import { isPoliedronAppPath } from './lib/poliedron/phoneApp.js';
+
+// Also restores install identity if the offline SW serves the shared HTML shell.
+if (isPoliedronAppPath(window.location.pathname)) {
+  document.title = 'Poliedron';
+  document.querySelectorAll('link[rel="manifest"]').forEach((link, index) => {
+    if (index > 0) link.remove();
+    else link.href = '/poliedron.webmanifest';
+  });
+  document.querySelector('meta[name="apple-mobile-web-app-title"]')?.setAttribute('content', 'Poliedron');
+  document.querySelector('link[rel="apple-touch-icon"]')?.setAttribute('href', '/poliedron-180.png');
+}
+
 
 // Pagine pubbliche (nessun login richiesto), intercettate qui al vero entry
 // point prima che App venga anche solo montata — così App resta del tutto

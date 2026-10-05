@@ -13,6 +13,17 @@
 - Coordination documents: append/prepend only; retain existing active-owner block. Resolve future doc-only overlap by retaining both task records.
 - EXACT NEXT ACTION: review dedicated draft PR; coordinate server read-only adapter and UI integration with CLAUDE before shared-file changes. No merge/deploy authorized.
 
+# Completed — POL-AI-010-PWA (2026-10-05, merged as PR #124; team entry added to its phone menu by POL-AI-TEAM-002)
+- ACTIVE OWNER: CODEX — transferred by Product Owner: “Allora vai costruisci bene che funzioni che sia fluido”.
+- ACTIVE BRANCH: `codex/poliedron-phone-app`, from `master@ea834644`.
+- OBJECTIVE: dedicated installable Poliedron entry, existing conversation/permissions/activity log, mobile keyboard, immediate composer feedback and Italian dictation. User prioritizes this before documents.
+- STATUS: WAITING_PRODUCT_OWNER — PR #124 revised to WhatsApp-inspired mobile layout; 909/909 unit tests, build, 8 full-App responsive browser cases + empty/error states PASS. GitHub Actions and Vercel preview succeeded on a1759f6. Physical device smoke remains the release gate.
+- BOUNDARY: frontend only; no production writes, remote migrations, deployment, merge, financial/security semantics changes. Push delivery requires a separate backend increment and is not represented as available.
+- CHECKPOINT: `stable/2026-08-27-full-recovery@070b28fd4eae4e2cc397584201d0bb149468fae7` preserved.
+- EXACT NEXT ACTION: physical iPhone/Android smoke → explicit PO merge approval (recheck current head CI before merge). Background push remains the next backend increment.
+
+---
+
 # Current task
 - ACTIVE OWNER: CLAUDE — handoff from CODEX by explicit Product Owner instruction (2026-10-05, verbatim: "Guarda cosa ha fatto code, ha fatto la 118 e ora 119 , e poi continua", then "Continua").
 - ACTIVE BRANCH: `claude/whatsapp-automation-status-d2ng12` (PR #118). Step 1 (PR #119 by Codex, `codex/pol-ai-010-agenda`) reviewed and brought into this branch, with three follow-up fixes (see handoff "POL-AI-010 passo 1 — revisione e presa in carico").

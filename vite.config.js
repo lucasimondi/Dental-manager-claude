@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { resolve } from 'node:path';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
@@ -14,7 +15,7 @@ export default defineConfig({
       // invisible to an already-open PWA (backgrounded/resumed, never a
       // real reload) until the next full relaunch.
       injectRegister: false,
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'poliedron.webmanifest', 'poliedron-*.png'],
       manifest: {
         name: 'Poliedra',
         short_name: 'Poliedra',
@@ -68,10 +69,25 @@ export default defineConfig({
         ],
       },
     }),
+    {
+      name: 'poliedron-install-identity',
+      enforce: 'post',
+      transformIndexHtml: {
+        order: 'post',
+        handler(html, context) {
+          if (!context.filename.replaceAll('\\', '/').endsWith('/poliedron/index.html')) return html;
+          // vite-plugin-pwa injects the main app's manifest into every entry.
+          // This install must have its own identity and launch URL.
+          return html.replace(/<link\b[^>]*rel=["']manifest["'][^>]*>/g, '')
+            .replace('</head>', '<link rel="manifest" href="/poliedron.webmanifest"/></head>');
+        },
+      },
+    },
   ],
   build: {
     outDir: 'dist', // cache bust 155200,
     rollupOptions: {
+      input: { main: resolve('index.html'), poliedron: resolve('poliedron/index.html') },
       output: {
         manualChunks: {
           supabase: ['@supabase/supabase-js'],

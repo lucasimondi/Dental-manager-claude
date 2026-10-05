@@ -10,6 +10,7 @@ import {
 // read-only consultation; the Clinic Manager (and every group) consults them
 // and integrates their opinions. Actions stay with Poliedron's main chat.
 const SPECIALISTS = TEAM_ASSISTANTS.filter((a) => a.id !== 'clinic-manager');
+const INITIALS = { 'clinic-manager': 'CM', agenda: 'AG', clinical: 'CL', marketing: 'MK', finance: 'FI', documents: 'DO' };
 const nameOf = (id) => TEAM_ASSISTANTS.find((a) => a.id === id)?.label || id;
 const storage = () => { try { return window.localStorage; } catch { return null; } };
 const newId = () => (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`);
@@ -122,7 +123,7 @@ export default function PoliedronTeam({ studioId, userId, ask, onClose }) {
           {contacts.map((c) => (
             <li key={contactKey(c)}>
               <button type="button" onClick={() => setActiveKey(contactKey(c))}>
-                <span className="poliedron-team__avatar" data-kind={c.kind}>{c.kind === 'group' ? <Ic n="users" s={15} /> : c.label.replace('Assistente ', '').slice(0, 2)}</span>
+                <span className="poliedron-team__avatar" data-kind={c.kind}>{c.kind === 'group' ? <Ic n="users" s={15} /> : INITIALS[c.id] || c.label.slice(0, 2)}</span>
                 <span>
                   <strong>{c.label}</strong>
                   <small>{c.kind === 'group' ? `Gruppo · ${c.assistantIds.map(nameOf).join(', ')}` : c.description}</small>

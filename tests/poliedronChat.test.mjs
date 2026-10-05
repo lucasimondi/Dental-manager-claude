@@ -189,8 +189,10 @@ test('Chat UI has one scroller, safe-area/dock clearance, pagination, retry, and
   assert.match(chatPage, /Carica messaggi precedenti/);
   assert.match(chatPage, /onRetry\(message\)/);
   assert.match(chatPage, /if \(!value \|\| sending \|\| loading\) return/);
-  assert.match(chatPage, /const accepted = await onSend\(value\)/);
-  assert.match(chatPage, /if \(accepted !== false\) setDraft\(''\)/);
+  assert.match(chatPage, /await submitChatDraft\(\{/);
+  assert.match(chatPage, /text: value, lock: submitLock, send: onSend/);
+  assert.match(chatPage, /clear: \(\) => setDraft\(''\)/);
+  assert.match(chatPage, /restore: \(original\) => setDraft/);
   assert.match(css, /\.poliedron-chat\s*\{[\s\S]*padding-top:\s*env\(safe-area-inset-top/);
   assert.match(css, /padding-bottom:\s*calc\(92px \+ env\(safe-area-inset-bottom/);
   assert.match(css, /\.poliedron-chat__messages\s*\{[\s\S]*overflow-y:\s*auto;/);
