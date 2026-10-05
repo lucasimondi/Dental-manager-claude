@@ -2,7 +2,7 @@ import { getTeamAssistant } from './catalog.js';
 
 // Pure domain contracts. No provider, database, persistence, tool execution,
 // automatic routing by keywords, or production imports in this first slice.
-export const TEAM_LIMITS = Object.freeze({ specialists: 3, objectiveChars: 2000, responseChars: 6000 });
+export const TEAM_LIMITS = Object.freeze({ specialists: 5, objectiveChars: 2000, responseChars: 6000 });
 const fail = (code) => { throw new Error(code); };
 const requiredText = (value, max, code) => {
   if (typeof value !== 'string' || !value.trim() || value.trim().length > max) fail(code);

@@ -6,6 +6,7 @@ import PoliedronActionPreviewLevel2 from './PoliedronActionPreviewLevel2';
 import PoliedronIntelligenceResults from './PoliedronIntelligenceResults';
 import PoliedronSearchResults from './PoliedronSearchResults';
 import PoliedronAttivita from './PoliedronAttivita';
+import PoliedronTeam from './PoliedronTeam';
 
 const NEAR_BOTTOM_PX = 120;
 
@@ -91,9 +92,12 @@ export default function PoliedronChatPage({
   onNavigate,
   loadActivity,
   restoreActivity,
+  askTeam,
+  teamIdentity,
 }) {
   const [draft, setDraft] = useState('');
   const [showActivity, setShowActivity] = useState(false);
+  const [showTeam, setShowTeam] = useState(false);
   const scrollRef = useRef(null);
   const nearBottomRef = useRef(true);
   const initializedRef = useRef(false);
@@ -138,6 +142,19 @@ export default function PoliedronChatPage({
     if (accepted !== false) setDraft('');
   };
 
+  if (showTeam && askTeam) {
+    return (
+      <section className="poliedron-chat" aria-label="Team di Poliedron">
+        <PoliedronTeam
+          studioId={teamIdentity?.studioId}
+          userId={teamIdentity?.userId}
+          ask={askTeam}
+          onClose={() => setShowTeam(false)}
+        />
+      </section>
+    );
+  }
+
   return (
     <section className="poliedron-chat" aria-label="Chat Polyedron" data-surface-status={surfaceStatus || undefined}>
       <header className="poliedron-chat__header">
@@ -146,6 +163,15 @@ export default function PoliedronChatPage({
           <h1>Chat Polyedron</h1>
           <p>La linea diretta persistente con il tuo Polyedron</p>
         </div>
+        {askTeam && (
+          <button
+            type="button"
+            className="poliedron-chat__activity-toggle"
+            onClick={() => setShowTeam(true)}
+          >
+            Team
+          </button>
+        )}
         {loadActivity && (
           <button
             type="button"

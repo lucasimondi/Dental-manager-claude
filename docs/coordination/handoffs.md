@@ -3350,3 +3350,12 @@ Merge della PR #115 su istruzione del Product Owner.
 - Risks: do not call the current write-capable Edge Function once per specialist. Do not treat frontend plans as tokens or opinions as verified facts. Future shared-file integration must be coordinated with POL-AI-010 owner.
 - Rollback: close draft before merge or revert this isolated commit; no data rollback.
 - EXACT NEXT ACTION: review this separate draft; implement read-only specialist adapter through the existing Model Gateway only after coordinating shared-file scope with CLAUDE. Preserve both coordination task blocks if another branch edits the same docs.
+
+### POL-AI-TEAM-002 — team di Poliedron attivo in chat (2026-10-05)
+- Owner: CLAUDE, handoff of draft #125 from CODEX by explicit PO instruction ("Guarda la bozza 125 e miglioriamo", "Sì ma mettiamo anche marketing, clinico…").
+- Branch: `claude/whatsapp-automation-status-d2ng12`, base master@ea83464 + Codex 99f6e25.
+- Completed: Marketing specialist; server team mode in `agente-assistente` (read-only tools per role ∩ chat tools, Clinic Manager `consulta_specialisti` in parallel with timeout and attribution, groups with objective); "Team" contacts and groups in Chat Polyedron (device storage). Details in `docs/architecture/poliedron-team-foundation.md`.
+- Tests: `npm test` 931/931; `npm run build` PASS.
+- Database/deployment: none yet. No migration. Function deploy waits for "Mergia".
+- Risks: cost — a Clinic Manager answer can use up to 1 + N specialist loops; bounded by 2 consultations/request and 4 turns/specialist. Financial data visibility follows the existing chat tools (no new exposure).
+- EXACT NEXT ACTION: PO "Mergia" → deploy + merge; then decide DB persistence of groups and further specialists.

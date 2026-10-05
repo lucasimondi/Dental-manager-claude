@@ -10,7 +10,7 @@ const response = (request, extra = {}) => ({ ...request, status: 'ok', text: 'Co
 const collect = (p, responses, authorize = () => true) => collectTeamContributions({ plan: p, responses, authorize });
 
 test('roles are immutable descriptors without permission or tool grants', () => {
-  assert.equal(TEAM_ASSISTANTS.length, 5);
+  assert.equal(TEAM_ASSISTANTS.length, 6);
   assert.equal(getTeamAssistant('missing'), null);
   for (const item of TEAM_ASSISTANTS) {
     assert.equal(item.mode, 'advisory');
@@ -37,7 +37,7 @@ test('groups reject empty, duplicate, unknown and coordinator members', () => {
   for (const assistantIds of [[], ['agenda', 'agenda'], ['unknown'], ['clinic-manager']]) {
     assert.throws(() => defineTeamGroup(definition({ assistantIds })), /TEAM_/);
   }
-  assert.throws(() => defineTeamGroup(definition({ assistantIds: ['agenda', 'finance', 'clinical', 'documents'] })), /TEAM_SPECIALIST_LIMIT/);
+  assert.throws(() => defineTeamGroup(definition({ assistantIds: ['agenda', 'finance', 'clinical', 'documents', 'marketing', 'agenda'] })), /TEAM_SPECIALIST_LIMIT/);
 });
 test('cross-tenant and cross-user groups cannot produce a plan', () => {
   assert.throws(() => plan({ studioId: 'studio-b' }), /TEAM_OWNER_MISMATCH/);

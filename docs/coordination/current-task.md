@@ -1,4 +1,10 @@
-# Parallel task — POL-AI-TEAM-001
+# Current task — POL-AI-TEAM-002 (team di Poliedron attivo in chat)
+- OWNER: CLAUDE — Product Owner handoff 2026-10-05 ("Guarda la bozza 125 e miglioriamo", then "Sì ma mettiamo anche marketing, clinico e poi dimmi tu, voglio già creare di questa sera questa cosa").
+- BRANCH: `claude/whatsapp-automation-status-d2ng12` (includes Codex commit 99f6e25 from #125).
+- STATUS: implemented and tested locally; deploy of `agente-assistente` and merge wait for the PO's "Mergia".
+- EXACT NEXT ACTION: on "Mergia" deploy the function (index.ts, agenda.js, confirmation.js, pazienti.js, team.js, ../_shared/agendaSlots.js), verify, merge.
+
+# Parallel task — POL-AI-TEAM-001 (superseded by POL-AI-TEAM-002)
 - OWNER: CODEX, authorized by Product Owner 2026-10-05: "Leggi la 123 e inizia a costruire senza andare in conflitto con ciò che sta facendo in altra sezione".
 - BRANCH: `codex/poliedron-team-foundation`, from `master@ea83464`.
 - STATUS: WAITING_PRODUCT_OWNER — 16/16 dedicated tests, 919/919 full tests, Vite build PASS; inactive foundation ready for separate draft PR.

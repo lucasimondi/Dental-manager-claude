@@ -10,5 +10,6 @@ export const TEAM_ASSISTANTS = Object.freeze([
   role('finance', 'Assistente Finanza', 'finance', 'Interpreta esclusivamente metriche finanziarie canoniche.'),
   role('clinical', 'Assistente Clinico', 'clinical', 'Supporta il professionista senza finalizzare atti clinici.'),
   role('documents', 'Assistente Documenti', 'documents', 'Supporta documentazione autorizzata e segnala dati mancanti.'),
+  role('marketing', 'Assistente Marketing', 'marketing', 'Fidelizzazione, richiami e campagne nel rispetto di deontologia e consensi.'),
 ]);
 export const getTeamAssistant = (id) => TEAM_ASSISTANTS.find((assistant) => assistant.id === id) || null;

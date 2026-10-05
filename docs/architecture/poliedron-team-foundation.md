@@ -87,3 +87,33 @@ Esiti finali della suite completa/build nel handoff.
 Nessuna migration, scrittura remota, merge o deploy. Nessun nuovo import in
 produzione: il comportamento corrente resta identico. Rollback: chiudere la
 bozza oppure revert del commit di questa PR; nessuna operazione sui dati.
+
+## POL-AI-TEAM-002 — team attivo in chat (2026-10-05)
+
+Product Owner: "Sì ma mettiamo anche marketing, clinico e poi dimmi tu, voglio
+già creare di questa sera questa cosa". Presa in carico da CLAUDE della bozza
+#125 (Codex) su istruzione del PO.
+
+- **Assistenti**: Clinic Manager, Agenda, Clinico, Marketing, Finanza, Documenti
+  (`src/lib/poliedron/team/catalog.js` lato app, `supabase/functions/agente-assistente/team.js`
+  lato server; un test verifica che gli ID coincidano).
+- **Server** (`agente-assistente`, campo `team` della richiesta): ogni membro del
+  team riceve solo strumenti di **lettura**, intersecati con quelli che piano,
+  autonomia e utente hanno già in chat; nessuna scrittura, nessuna conferma,
+  nessuna riga nel registro azioni. Lo specialista ha solo i propri strumenti.
+  Il Clinic Manager legge e ha lo strumento `consulta_specialisti`: consulti in
+  parallelo, solo membri del gruppo, senza doppioni, massimo 2 consultazioni per
+  richiesta, 45 s per specialista; i pareri tornano attribuiti (`team.pareri`)
+  con stato `ok`/`non_disponibile`. Richieste team non valide falliscono prima
+  di chiamare il modello.
+- **App**: pulsante "Team" nella Chat Polyedron → contatti (Clinic Manager,
+  specialisti, gruppi), conversazione per contatto, "Nuovo gruppo" con nome,
+  obiettivo e specialisti; i pareri dei singoli specialisti sono apribili sotto
+  la risposta del Clinic Manager. Le azioni restano a Poliedron nella chat
+  principale.
+- **Persistenza**: gruppi e conversazioni del team per ora restano sul
+  dispositivo (localStorage per studio+utente). Salvarli nel database richiede
+  una tabella con RLS: decisione del PO.
+- **Test**: `tests/agenteTeamFlow.test.mjs` (handler reale: strumenti per ruolo,
+  rifiuto delle scritture, consulti attribuiti, gruppi, parziali, PRO/consulente/
+  BASE, richieste non valide) e `tests/poliedronTeamThreads.test.mjs`.
