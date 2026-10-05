@@ -470,6 +470,14 @@ export default function Poliedron({
     Promise.resolve(onDataChanged?.(tabelleDopoRipristino(tabella))).catch((e) => console.warn('Poliedron: aggiornamento dei dati non riuscito', e));
   }, [supabaseClient, studioId, onDataChanged]);
 
+  // POL-AI-TEAM-002: the Poliedron team (Clinic Manager and specialists),
+  // read-only consultation through the same authenticated gateway.
+  const askTeam = useCallback(async ({ team, input, history }) => {
+    const result = await runModelTask({ taskType: 'ASK', input, history, team, context, supabaseClient });
+    return { text: result.text, error: result.error, pareri: result.raw?.team?.pareri || [] };
+  }, [context, supabaseClient]);
+  const teamIdentity = useMemo(() => ({ studioId, userId }), [studioId, userId]);
+
   /** POL-AI-005B §CONFIRM: called only from an explicit user click on the
    *  Level-2 preview's Confirm button — never automatically. Re-loads
    *  `patients` fresh is the caller's job in principle, but since this
@@ -717,6 +725,8 @@ export default function Poliedron({
           onNavigate={setPage}
           loadActivity={loadPoliedronActivity}
           restoreActivity={restorePoliedronActivity}
+          askTeam={askTeam}
+          teamIdentity={teamIdentity}
         />,
         chatHost
       )}

@@ -6,6 +6,7 @@ import PoliedronActionPreviewLevel2 from './PoliedronActionPreviewLevel2';
 import PoliedronIntelligenceResults from './PoliedronIntelligenceResults';
 import PoliedronSearchResults from './PoliedronSearchResults';
 import PoliedronAttivita from './PoliedronAttivita';
+import PoliedronTeam from './PoliedronTeam';
 import PoliedronInstall from './PoliedronInstall.jsx';
 import useChatDictation from './useChatDictation.js';
 import { submitChatDraft } from '../../lib/poliedron/phoneApp.js';
@@ -99,9 +100,12 @@ export default function PoliedronChatPage({
   onNavigate,
   loadActivity,
   restoreActivity,
+  askTeam,
+  teamIdentity,
 }) {
   const [draft, setDraft] = useState('');
   const [showActivity, setShowActivity] = useState(false);
+  const [showTeam, setShowTeam] = useState(false);
   const [awayFromBottom, setAwayFromBottom] = useState(false);
   const menuRef = useRef(null);
   const [pendingUser, setPendingUser] = useState(null);
@@ -225,6 +229,19 @@ export default function PoliedronChatPage({
     });
   };
 
+  if (showTeam && askTeam) {
+    return (
+      <section className={`poliedron-chat${phoneApp ? ' poliedron-chat--phone' : ''}`} aria-label="Team di Poliedron">
+        <PoliedronTeam
+          studioId={teamIdentity?.studioId}
+          userId={teamIdentity?.userId}
+          ask={askTeam}
+          onClose={() => setShowTeam(false)}
+        />
+      </section>
+    );
+  }
+
   return (
     <section className={`poliedron-chat${phoneApp ? ' poliedron-chat--phone' : ''}`} aria-label="Chat Poliedron" data-surface-status={surfaceStatus || undefined}>
       <header className="poliedron-chat__header">
@@ -233,10 +250,20 @@ export default function PoliedronChatPage({
           <h1>{phoneApp ? 'Poliedron' : 'Chat Poliedron'}</h1>
           <p>{!online ? 'Connessione assente' : sending ? 'Sto verificando…' : 'Assistente dello studio'}</p>
         </div>
+        {!phoneApp && askTeam && (
+          <button
+            type="button"
+            className="poliedron-chat__activity-toggle"
+            onClick={() => setShowTeam(true)}
+          >
+            Team
+          </button>
+        )}
         {phoneApp && (
           <details ref={menuRef} className="poliedron-chat__options">
             <summary aria-label="Opzioni chat"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></summary>
             <div className="poliedron-chat__options-panel">
+              {askTeam && <button type="button" onClick={() => { menuRef.current.open = false; setShowTeam(true); }}>Team di Poliedron</button>}
               {loadActivity && <button type="button" onClick={() => { setShowActivity((v) => !v); menuRef.current.open = false; }} aria-pressed={showActivity}>Registro attività</button>}
               <PoliedronInstall />
               {navItems.length > 0 && <nav aria-label="Moduli dello studio">

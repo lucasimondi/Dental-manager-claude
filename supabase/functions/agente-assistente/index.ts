@@ -20,6 +20,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { signProposal, verifyProposal, claimProposal, studioToday } from "./confirmation.js";
 import { AGENDA_WRITES, prepareAgenda, executeAgenda, agendaAvailability } from "./agenda.js";
 import { PAZIENTI_WRITES, PAZIENTI_TOOLS, preparePazienti, executePazienti, schedaPaziente } from "./pazienti.js";
+import { leggiRichiestaTeam, strumentiSpecialista, toolConsulta, leggiConsulti, eseguiConsulti, promptTeam, contestoGruppo, CONSULTA_SPECIALISTI } from "./team.js";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -1208,8 +1209,16 @@ per calcolare date relative ("domani", "martedì prossimo", "tra due settimane",
 dedurre o assumere altre date, e non sbagliare mai l'anno.
 Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}`;
 
-    const { messages, confirm } = await req.json();
+    const { messages, confirm, team } = await req.json();
     const json = (value) => new Response(JSON.stringify(value), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    // POL-AI-TEAM-002: Clinic Manager e specialisti, sempre in sola lettura.
+    let richiestaTeam = null;
+    try {
+      richiestaTeam = leggiRichiestaTeam(team);
+    } catch (error) {
+      return json({ error: error.message });
+    }
+    if (richiestaTeam && confirm) return json({ error: 'Il team di Poliedron non esegue azioni da confermare.' });
     if (confirm) {
       let proposal;
       try {
@@ -1246,11 +1255,26 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}`;
     // Strumenti e parte stabile del system prompt restano in cache tra una
     // richiesta e l'altra (stesso livello e settore): ogni passaggio legge da
     // cache invece di rielaborare migliaia di token.
-    const toolsRichiesta = toolsFinali.map((t, i) => i === toolsFinali.length - 1 ? { ...t, cache_control: { type: 'ephemeral' } } : t);
-    const systemRichiesta = [
-      { type: 'text', text: systemStabile, cache_control: { type: 'ephemeral' } },
-      { type: 'text', text: systemStudio },
+    const conCache = (tools) => tools.map((t, i) => i === tools.length - 1 ? { ...t, cache_control: { type: 'ephemeral' } } : t);
+    const systemDi = (stabile, dinamico) => [
+      { type: 'text', text: stabile, cache_control: { type: 'ephemeral' } },
+      { type: 'text', text: dinamico },
     ];
+    // Il team vede solo strumenti di lettura già consentiti a questo utente in
+    // questa chat: nessun assistente può vedere o fare più dell'utente.
+    const strumentiLettura = toolsFinali.filter((t) => TOOL_SOLO_LETTURA.has(t.name));
+    const promptBase = buildDefaultSystemPrompt(isDentistico);
+    let strumenti = toolsFinali;
+    let permessi = allowedNames;
+    let systemRichiesta = systemDi(systemStabile, systemStudio);
+    if (richiestaTeam) {
+      strumenti = richiestaTeam.assistente === 'clinic-manager'
+        ? [...strumentiLettura, toolConsulta(richiestaTeam.membri)]
+        : strumentiSpecialista(richiestaTeam.assistente, strumentiLettura);
+      permessi = new Set(strumenti.map((t) => t.name));
+      systemRichiesta = systemDi(promptTeam(richiestaTeam.assistente, promptBase), systemStudio + contestoGruppo(richiestaTeam));
+    }
+    const toolsRichiesta = conCache(strumenti);
     // Scritture eseguite in questa richiesta: riepiloghi del server e tabelle
     // da aggiornare nel client.
     const eseguite = [];
@@ -1266,7 +1290,8 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}`;
     };
     const testoEseguite = () => eseguite.map((e) => e.text).join('\n\n');
 
-    for (let turn = 0; turn < MAX_TURNS; turn++) {
+    // Una chiamata al modello, con il consumo registrato in background.
+    const chiamaClaude = async (system, messaggi, tools, signal) => {
       const resp = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
@@ -1278,22 +1303,13 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}`;
           model: "claude-sonnet-5",
           max_tokens: 4096,
           output_config: { effort: "low" },
-          system: systemRichiesta,
-          messages: convo,
-          tools: toolsRichiesta,
+          system,
+          messages: messaggi,
+          ...(tools.length ? { tools } : {}),
         }),
+        signal,
       });
-
-      if (!resp.ok) {
-        const errText = await resp.text();
-        await Promise.allSettled(logConsumi);
-        if (eseguite.length) return rispondi({ text: testoEseguite() + '\n\nNon sono riuscito a completare il resto della richiesta: riprova.' });
-        return new Response(JSON.stringify({ error: "Errore API Claude: " + errText }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
+      if (!resp.ok) return { ok: false, errText: await resp.text() };
       const data = await resp.json();
       if (data.usage) {
         const u = data.usage;
@@ -1306,6 +1322,57 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}`;
           costo_usd: Math.round(costo * 10000) / 10000,
         }).then((r) => r, (e) => e));
       }
+      return { ok: true, data };
+    };
+
+    // Uno specialista consultato dal Clinic Manager: ciclo breve, solo i suoi
+    // strumenti di lettura, interrotto allo scadere del tempo massimo.
+    const consultaSpecialista = async (specialista, domanda, signal) => {
+      const tools = strumentiSpecialista(specialista, strumentiLettura);
+      const nomi = new Set(tools.map((t) => t.name));
+      const system = systemDi(
+        promptTeam(specialista, promptBase),
+        systemStudio + `\n\nTi consulta il Clinic Manager dello studio${richiestaTeam?.obiettivo ? ` per l'obiettivo: ${richiestaTeam.obiettivo}` : ''}. Rispondi con il tuo parere per lui.`,
+      );
+      const conv = [{ role: 'user', content: domanda }];
+      for (let t = 0; t < 4; t++) {
+        const r = await chiamaClaude(system, conv, conCache(tools), signal);
+        if (!r.ok) return null;
+        const usi = r.data.content.filter((b) => b.type === 'tool_use');
+        const testo = r.data.content.filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+        if (!usi.length) return testo;
+        if (signal.aborted) return null;
+        conv.push({ role: 'assistant', content: r.data.content });
+        const risultati = await Promise.all(usi.map(async (tu) => {
+          let out;
+          try {
+            out = nomi.has(tu.name) ? await eseguiTool(supabase, tu.name, tu.input || {}, studioId, user.id, []) : { error: 'Strumento non consentito' };
+          } catch (error) {
+            out = { error: error.message };
+          }
+          return { type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify(out) };
+        }));
+        conv.push({ role: 'user', content: risultati });
+      }
+      return null;
+    };
+    const pareriTeam = [];
+    let consultazioni = 0;
+
+    for (let turn = 0; turn < MAX_TURNS; turn++) {
+      const risposta = await chiamaClaude(systemRichiesta, convo, toolsRichiesta);
+
+      if (!risposta.ok) {
+        const errText = risposta.errText;
+        await Promise.allSettled(logConsumi);
+        if (eseguite.length) return rispondi({ text: testoEseguite() + '\n\nNon sono riuscito a completare il resto della richiesta: riprova.' });
+        return new Response(JSON.stringify({ error: "Errore API Claude: " + errText }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const data = risposta.data;
       const toolUses = data.content.filter((b) => b.type === "tool_use");
       const textBlocks = data.content.filter((b) => b.type === "text").map((b) => b.text).join("\n");
 
@@ -1323,9 +1390,19 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}`;
       for (const tu of toolUses) {
         let result;
         const input = tu.input || {};
-        if (!allowedNames.has(tu.name)) {
+        if (!permessi.has(tu.name)) {
           result = { error: 'Strumento non consentito' };
           soloScrittureRiuscite = false;
+        } else if (tu.name === CONSULTA_SPECIALISTI) {
+          soloScrittureRiuscite = false;
+          const consulti = leggiConsulti(input, richiestaTeam?.membri || []);
+          if (!consulti.length) result = { error: 'Nessuno specialista valido da consultare' };
+          else if (++consultazioni > 2) result = { error: 'Hai già consultato il team due volte: rispondi con i pareri raccolti.' };
+          else {
+            const pareri = await eseguiConsulti(consulti, consultaSpecialista);
+            pareriTeam.push(...pareri);
+            result = { pareri, nota: 'Sono pareri degli specialisti, non fatti verificati: integrali conservando le divergenze e i dati mancanti.' };
+          }
         } else if (AGENDA_WRITES.has(tu.name) || PAZIENTI_WRITES.has(tu.name)) {
           const isAgenda = AGENDA_WRITES.has(tu.name);
           let proposal = null;
@@ -1387,7 +1464,7 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}`;
 
     // Il riepilogo delle scritture viene dal server, non dal modello.
     const testo = [testoEseguite(), finalText].filter(Boolean).join('\n\n');
-    return rispondi({ text: testo, messages: convo });
+    return rispondi({ text: testo, messages: convo, ...(richiestaTeam ? { team: { assistente: richiestaTeam.assistente, pareri: pareriTeam } } : {}) });
   } catch (e) {
     return new Response(JSON.stringify({ error: String(e) }), {
       status: 500,

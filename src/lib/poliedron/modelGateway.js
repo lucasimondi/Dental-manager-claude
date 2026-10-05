@@ -32,7 +32,7 @@ export const MODEL_TASK_TYPE = Object.freeze({
  * tool-using provider — the current adapter does not pass tool access
  * beyond what agente-assistente already exposes server-side.
  */
-export async function runModelTask({ taskType, input, history = [], context, supabaseClient, confirm } = {}) {
+export async function runModelTask({ taskType, input, history = [], context, supabaseClient, confirm, team } = {}) {
   if (!supabaseClient) return { text: null, error: 'MODEL_GATEWAY_NO_CLIENT' };
   if (!input && !confirm) return { text: null, error: 'MODEL_GATEWAY_EMPTY_INPUT' };
   const boundedHistory = history
@@ -48,6 +48,9 @@ export async function runModelTask({ taskType, input, history = [], context, sup
       body: {
         ...(!confirm ? { messages: [...boundedHistory, { role: 'user', content: input }] } : {}),
         confirm,
+        // POL-AI-TEAM-002: Clinic Manager / specialist consultation. The
+        // server validates it and gives the team read-only tools only.
+        ...(team ? { team } : {}),
         // Passed through as extra context only — the function's own
         // canonical data access remains the authority; this never
         // substitutes for it (see contextEngine.js §14).

@@ -1,4 +1,19 @@
-# Current task — POL-AI-010-PWA (2026-10-05)
+# Current task — POL-AI-TEAM-002 (team di Poliedron attivo in chat)
+- OWNER: CLAUDE — Product Owner handoff 2026-10-05 ("Guarda la bozza 125 e miglioriamo", then "Sì ma mettiamo anche marketing, clinico e poi dimmi tu, voglio già creare di questa sera questa cosa").
+- BRANCH: `claude/whatsapp-automation-status-d2ng12` (includes Codex commit 99f6e25 from #125).
+- STATUS: implemented and tested locally; deploy of `agente-assistente` and merge wait for the PO's "Mergia".
+- EXACT NEXT ACTION: on "Mergia" deploy the function (index.ts, agenda.js, confirmation.js, pazienti.js, team.js, ../_shared/agendaSlots.js), verify, merge.
+
+# Parallel task — POL-AI-TEAM-001 (superseded by POL-AI-TEAM-002)
+- OWNER: CODEX, authorized by Product Owner 2026-10-05: "Leggi la 123 e inizia a costruire senza andare in conflitto con ciò che sta facendo in altra sezione".
+- BRANCH: `codex/poliedron-team-foundation`, from `master@ea83464`.
+- STATUS: WAITING_PRODUCT_OWNER — 16/16 dedicated tests, 919/919 full tests, Vite build PASS; inactive foundation ready for separate draft PR.
+- SCOPE: isolated, inactive team domain module + behavioural tests + dedicated architecture/handoff. PR #123 is product input, not a branch to overwrite.
+- CONCURRENT OWNER: CLAUDE retains POL-AI-010 and its branch. No ownership transfer; no changes to App, chat/controller, gateway/core, Edge Functions, database, migrations, PWA, deployment or Master Context.
+- Coordination documents: append/prepend only; retain existing active-owner block. Resolve future doc-only overlap by retaining both task records.
+- EXACT NEXT ACTION: review dedicated draft PR; coordinate server read-only adapter and UI integration with CLAUDE before shared-file changes. No merge/deploy authorized.
+
+# Completed — POL-AI-010-PWA (2026-10-05, merged as PR #124; team entry added to its phone menu by POL-AI-TEAM-002)
 - ACTIVE OWNER: CODEX — transferred by Product Owner: “Allora vai costruisci bene che funzioni che sia fluido”.
 - ACTIVE BRANCH: `codex/poliedron-phone-app`, from `master@ea834644`.
 - OBJECTIVE: dedicated installable Poliedron entry, existing conversation/permissions/activity log, mobile keyboard, immediate composer feedback and Italian dictation. User prioritizes this before documents.

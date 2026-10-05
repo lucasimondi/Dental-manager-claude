@@ -3336,6 +3336,30 @@ Merge della PR #115 su istruzione del Product Owner.
 - Aggiornamento: dopo il "Riprova"/"Fallo tu" del PO, ogni tentativo di creare la funzione completa via MCP è scaduto (controllo di sicurezza dello strumento sulle istruzioni di cancellazione, la cui conferma non arriva al PO). Non è stato aggirato. Il ripristino è ora diviso in `poliedron_ripristina_rimuovi_v1` (rimozione di ciò che Poliedron ha creato) e `poliedron_ripristina_v1` (controlli, agenda, scheda, nota, registro): stesso comportamento, SQL locale PASS. In produzione resta il segnaposto; script pronto: `supabase/manual/pol_ai_010_completa_ripristino.sql` (editor SQL di Supabase).
 - **Completato (2026-10-05)** su "Fallo tu… trova un modo": il ripristino non cancella più nulla (scelta più sicura, resta lo storico): appuntamento creato → `annullato` (senza richiamo "da rifissare", flag di transazione `poliedron.ripristino`), richiamo creato → `annullato`, attività → `fatto`; modifiche di agenda/scheda e nota → ripristinate come prima; blocco agenda → si toglie dall'agenda (non dal registro). Così non scatta il controllo di sicurezza dello strumento sulle cancellazioni. Applicati in produzione: `poliedron_ripristina_v1` e `richiamo_appuntamento_annullato` (md5 identici al file), `richiami` nella pubblicazione realtime, versione `20261005170000` registrata. Nessuna SECURITY DEFINER; `anon` senza EXECUTE. Script manuale rimosso. SQL locale PASS.
 
+
+### POL-AI-TEAM-001 — isolated team foundation (2026-10-05)
+- Owner: CODEX; Product Owner explicitly authorized starting PR #123 implementation without conflicts with the other session. No ownership transfer from CLAUDE on POL-AI-010.
+- Previous agent: documentation by CODEX in draft #123; concurrent operational owner CLAUDE remains unchanged.
+- Branch: `codex/poliedron-team-foundation`, base `master@ea83464`.
+- Objective: first executable domain foundation for specialists, thematic groups and Clinic Manager consultation planning, isolated from ongoing chat/document/PWA work.
+- Completed: immutable role descriptors, validated owned group definitions, bounded explicit consultation plans, required authorization integration callback, attributed complete/partial contributions, stale/cross-owner response rejection, access revocation suppression, no executable actions.
+- Files: `src/lib/poliedron/team/catalog.js`, `src/lib/poliedron/team/consultation.js`, `tests/poliedronTeamFoundation.test.mjs`, `docs/architecture/poliedron-team-foundation.md`, coordination current-task and this handoff. Shared operational owner blocks preserved.
+- Database/deployment: none; no migration, remote data access, provider call, merge or deploy. No production imports; no UI behavior change.
+- Tests: dedicated `node --test tests/poliedronTeamFoundation.test.mjs` 16/16 PASS; `npm test` 919/919 PASS; `npm run build` PASS (existing >500kB chunk warning); `git diff --check` PASS. Synthetic fixtures only; no production patient data. No UI QA needed for inactive pure module.
+- Unresolved: actual provider orchestration, effective timeout/cost limits, knowledge sources, server permissions, read-only gateway adapter, contacts/group UI and persistence are not implemented. Contract checks are not independent server authorization.
+- Risks: do not call the current write-capable Edge Function once per specialist. Do not treat frontend plans as tokens or opinions as verified facts. Future shared-file integration must be coordinated with POL-AI-010 owner.
+- Rollback: close draft before merge or revert this isolated commit; no data rollback.
+- EXACT NEXT ACTION: review this separate draft; implement read-only specialist adapter through the existing Model Gateway only after coordinating shared-file scope with CLAUDE. Preserve both coordination task blocks if another branch edits the same docs.
+
+### POL-AI-TEAM-002 — team di Poliedron attivo in chat (2026-10-05)
+- Owner: CLAUDE, handoff of draft #125 from CODEX by explicit PO instruction ("Guarda la bozza 125 e miglioriamo", "Sì ma mettiamo anche marketing, clinico…").
+- Branch: `claude/whatsapp-automation-status-d2ng12`, base master@ea83464 + Codex 99f6e25.
+- Completed: Marketing specialist; server team mode in `agente-assistente` (read-only tools per role ∩ chat tools, Clinic Manager `consulta_specialisti` in parallel with timeout and attribution, groups with objective); "Team" contacts and groups in Chat Polyedron (device storage). Details in `docs/architecture/poliedron-team-foundation.md`.
+- Tests: `npm test` 931/931; `npm run build` PASS.
+- Database/deployment: none yet. No migration. Function deploy waits for "Mergia".
+- Risks: cost — a Clinic Manager answer can use up to 1 + N specialist loops; bounded by 2 consultations/request and 4 turns/specialist. Financial data visibility follows the existing chat tools (no new exposure).
+- EXACT NEXT ACTION: PO "Mergia" → deploy + merge; then decide DB persistence of groups and further specialists.
+
 ### POL-AI-010-PWA — CODEX: dedicated phone app (2026-10-05)
 - Task/owner transfer: previous owner CLAUDE, previous steps merged through #122. Product Owner explicitly instructed CODEX to build the dedicated phone app (“Allora vai costruisci bene che funzioni che sia fluido”). Owner CODEX, branch `codex/poliedron-phone-app`, base `master@ea834644`.
 - Objective: Home-screen Poliedron icon, direct full-screen existing chat, fluid composer/keyboard and Italian dictation, before documents. This increment does not ship background push.
