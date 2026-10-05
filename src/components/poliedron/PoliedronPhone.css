@@ -1,0 +1,38 @@
+.poliedron-chat__brand img { object-fit: contain; }
+.poliedron-chat__composer textarea { min-width: 0; font-size: 16px; resize: none; }
+.poliedron-chat__mic {
+  display: grid; place-items: center; flex-shrink: 0;
+  width: 44px; height: 44px; border: 1px solid var(--border-subtle);
+  border-radius: 50%; color: var(--brand-primary); background: var(--surface-interactive); cursor: pointer;
+}
+.poliedron-chat__mic[aria-pressed="true"] { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+.poliedron-chat__mic:disabled { opacity: .5; cursor: default; }
+.poliedron-chat__mic:focus-visible, .poliedron-install button:focus-visible { outline: 3px solid var(--brand-accent); outline-offset: 2px; }
+.poliedron-chat__notice { padding: 8px 2px; color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+.poliedron-chat--phone { padding: 0; background: var(--surface-page); }
+.poliedron-chat--phone .poliedron-chat__header {
+  box-sizing: border-box; flex-wrap: wrap; padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 10px;
+  gap: 8px; backdrop-filter: none; background: var(--surface-elevated);
+}
+.poliedron-chat--phone .poliedron-chat__header-text { flex: 1; min-width: 110px; }
+.poliedron-chat--phone .poliedron-chat__header h1 { font-size: 18px; }
+.poliedron-chat--phone .poliedron-chat__header p { font-size: 11px; }
+.poliedron-chat--phone .poliedron-chat__nav { flex-basis: 100%; justify-content: flex-end; }
+.poliedron-chat--phone .poliedron-chat__nav select { max-width: 100%; min-height: 30px; }
+.poliedron-chat--phone .poliedron-chat__messages { overscroll-behavior-y: contain; padding-bottom: 20px; }
+.poliedron-chat--phone .poliedron-chat__bubble { font-size: 15px; line-height: 1.55; overflow-wrap: anywhere; }
+.poliedron-chat--phone .poliedron-chat__composer {
+  padding: 10px max(12px, calc((100% - 920px) / 2)) calc(10px + env(safe-area-inset-bottom, 0px));
+  background: var(--surface-elevated); backdrop-filter: none;
+}
+.poliedron-phone-app .poliedron-chat-host { background: var(--surface-page); }
+.poliedron-return { min-height: 44px; padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px; text-align: left; border: 0; color: var(--brand-primary); background: var(--surface-elevated); font: inherit; font-weight: 600; cursor: pointer; flex-shrink: 0; }
+.poliedron-install { position: relative; }
+.poliedron-install button { min-height: 44px; padding: 0 10px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-interactive); color: var(--brand-primary); font: inherit; font-size: 12px; cursor: pointer; }
+.poliedron-install__help { position: fixed; top: calc(82px + env(safe-area-inset-top, 0px)); left: 12px; right: 12px; max-width: 420px; margin: auto; padding: 18px; background: var(--surface-elevated); border: 1px solid var(--border-subtle); border-radius: 18px; box-shadow: 0 12px 35px #0f172a26; color: var(--text-primary); z-index: 10; font-size: 14px; line-height: 1.5; }
+.poliedron-install__help p { font-size: 14px !important; }
+@media (max-width: 719px) {
+  .poliedron-chat__composer textarea { font-size: 16px; }
+  .poliedron-chat--phone { padding-top: 0; padding-bottom: 0; }
+  .poliedron-chat--phone .poliedron-chat__activity-toggle { min-height: 44px; font-size: 12px; padding: 0 10px; }
+}

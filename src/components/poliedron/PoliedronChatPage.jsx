@@ -6,6 +6,10 @@ import PoliedronActionPreviewLevel2 from './PoliedronActionPreviewLevel2';
 import PoliedronIntelligenceResults from './PoliedronIntelligenceResults';
 import PoliedronSearchResults from './PoliedronSearchResults';
 import PoliedronAttivita from './PoliedronAttivita';
+import PoliedronInstall from './PoliedronInstall.jsx';
+import useChatDictation from './useChatDictation.js';
+import { submitChatDraft } from '../../lib/poliedron/phoneApp.js';
+import poliedroGem from '../../assets/icon-poliedra-gem.png';
 
 const NEAR_BOTTOM_PX = 120;
 
@@ -67,6 +71,7 @@ function StructuredResult({
 }
 
 export default function PoliedronChatPage({
+  phoneApp = false,
   messages,
   loading,
   loadingOlder,
@@ -94,13 +99,36 @@ export default function PoliedronChatPage({
 }) {
   const [draft, setDraft] = useState('');
   const [showActivity, setShowActivity] = useState(false);
+  const [pendingUser, setPendingUser] = useState(null);
+  const [composerError, setComposerError] = useState('');
+  const [online, setOnline] = useState(() => navigator.onLine !== false);
+  const submitLock = useRef(false);
+  const textareaRef = useRef(null);
+  const dictation = useChatDictation({ draft, setDraft });
   const scrollRef = useRef(null);
   const nearBottomRef = useRef(true);
   const initializedRef = useRef(false);
-  const sendDisabled = loading || sending || !draft.trim();
+  const sendDisabled = loading || sending || !draft.trim() || !online || Boolean(pendingUser) || dictation.listening;
 
   useEffect(() => {
-    onVisible?.();
+    const update = () => setOnline(navigator.onLine !== false);
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); };
+  }, []);
+
+  useEffect(() => {
+    const input = textareaRef.current;
+    if (!input) return;
+    input.style.height = 'auto';
+    input.style.height = `${Math.min(120, input.scrollHeight)}px`;
+  }, [draft]);
+
+  useEffect(() => {
+    const mark = () => { if (!document.hidden) onVisible?.(); };
+    mark();
+    document.addEventListener('visibilitychange', mark);
+    return () => document.removeEventListener('visibilitychange', mark);
   }, [messages.length, onVisible]);
 
   useEffect(() => {
@@ -110,7 +138,7 @@ export default function PoliedronChatPage({
       element.scrollTop = element.scrollHeight;
       initializedRef.current = true;
     }
-  }, [messages.length, sending, structuredState]);
+  }, [messages.length, sending, structuredState, pendingUser]);
 
   const handleScroll = () => {
     const element = scrollRef.current;
@@ -134,18 +162,28 @@ export default function PoliedronChatPage({
   const submit = async () => {
     const value = draft.trim();
     if (!value || sending || loading) return;
-    const accepted = await onSend(value);
-    if (accepted !== false) setDraft('');
+    if (!online || dictation.listening) return;
+    setComposerError('');
+    nearBottomRef.current = true;
+    await submitChatDraft({
+      text: value, lock: submitLock, send: onSend,
+      clear: () => setDraft(''),
+      restore: (original) => setDraft((current) => current || original),
+      pending: (content) => setPendingUser({ content, afterId: messages.at(-1)?.id ?? 0 }),
+      done: () => setPendingUser(null),
+      fail: () => setComposerError('Invio non completato. Controlla la conversazione prima di riprovare.'),
+    });
   };
 
   return (
-    <section className="poliedron-chat" aria-label="Chat Polyedron" data-surface-status={surfaceStatus || undefined}>
+    <section className={`poliedron-chat${phoneApp ? ' poliedron-chat--phone' : ''}`} aria-label="Chat Poliedron" data-surface-status={surfaceStatus || undefined}>
       <header className="poliedron-chat__header">
-        <span className="poliedron-chat__brand"><Ic n="spark" s={18} /></span>
+        <span className="poliedron-chat__brand"><img src={poliedroGem} width="40" height="40" alt="" /></span>
         <div className="poliedron-chat__header-text">
-          <h1>Chat Polyedron</h1>
-          <p>La linea diretta persistente con il tuo Polyedron</p>
+          <h1>{phoneApp ? 'Poliedron' : 'Chat Poliedron'}</h1>
+          <p>{online ? 'Il tuo studio, in una conversazione' : 'Connessione assente'}</p>
         </div>
+        {phoneApp && <PoliedronInstall />}
         {loadActivity && (
           <button
             type="button"
@@ -153,7 +191,7 @@ export default function PoliedronChatPage({
             aria-pressed={showActivity}
             onClick={() => setShowActivity((v) => !v)}
           >
-            Attività di Poliedron
+            {phoneApp ? 'Attività' : 'Attività di Poliedron'}
           </button>
         )}
         {navItems.length > 0 && (
@@ -213,7 +251,7 @@ export default function PoliedronChatPage({
           <div className="poliedron-chat__empty" data-state="empty">
             <span><Ic n="chat" s={24} /></span>
             <strong>Inizia una conversazione</strong>
-            <p>Chiedi informazioni, cerca una sezione o usa le funzioni già disponibili a Polyedron.</p>
+            <p>Scrivi cosa vuoi fare. Puoi gestire appuntamenti, pazienti, note e richiami.</p>
           </div>
         )}
 
@@ -232,10 +270,10 @@ export default function PoliedronChatPage({
                 {message.role === 'user' && message.delivery_status === 'pending' && (
                   sending
                     ? <span>Invio…</span>
-                    : <button type="button" onClick={() => onRetry(message)}>Riprova</button>
+                    : <button type="button" onClick={() => onRetry(message)} disabled={!online || Boolean(pendingUser)}>Riprova</button>
                 )}
                 {message.delivery_status === 'failed' && (
-                  <button type="button" onClick={() => onRetry(message)} disabled={sending}>
+                  <button type="button" onClick={() => onRetry(message)} disabled={sending || !online || Boolean(pendingUser)}>
                     Riprova
                   </button>
                 )}
@@ -243,6 +281,12 @@ export default function PoliedronChatPage({
             </div>
           </article>
         ))}
+
+        {pendingUser && !messages.some((message) => message.id > pendingUser.afterId && message.role === 'user' && message.content === pendingUser.content) && (
+          <article className="poliedron-chat__message is-user is-pending" aria-label="Messaggio in invio">
+            <div className="poliedron-chat__bubble"><div>{pendingUser.content}</div><footer>Invio…</footer></div>
+          </article>
+        )}
 
         <StructuredResult
           onModelConfirmation={onModelConfirmation}
@@ -255,15 +299,17 @@ export default function PoliedronChatPage({
           actionRunResult={actionRunResult}
         />
 
-        {sending && (
+        {(sending || pendingUser) && (
           <div className="poliedron-chat__typing">
             <span /><span /><span />
-            <small>Polyedron sta verificando…</small>
+            <small>Poliedron sta verificando…</small>
           </div>
         )}
       </div>
 
       <div className="poliedron-chat__composer">
+        {!online && <div className="poliedron-chat__notice" role="status">Sei offline. Il messaggio resta qui: invialo quando torna la connessione.</div>}
+        {(composerError || dictation.notice || dictation.listening) && <div className="poliedron-chat__notice" role="status">{composerError || dictation.notice || 'Ti ascolto… Tocca di nuovo il microfono per terminare.'}</div>}
         {error && (
           <div className="poliedron-chat__error" role="alert" data-kind={errorKind || 'generic'}>
             <span>{error}</span>
@@ -274,20 +320,25 @@ export default function PoliedronChatPage({
         )}
         <div className="poliedron-chat__composer-row">
           <textarea
+            ref={textareaRef}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.shiftKey) {
+              if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
                 event.preventDefault();
                 submit();
               }
             }}
             rows={1}
             maxLength={16000}
-            placeholder="Scrivi a Polyedron…"
-            aria-label="Messaggio per Polyedron"
+            placeholder="Scrivi o detta a Poliedron…"
+            aria-label="Messaggio per Poliedron"
+            enterKeyHint="send"
             disabled={loading}
           />
+          <button type="button" className="poliedron-chat__mic" onClick={dictation.toggle} disabled={loading || sending || Boolean(pendingUser) || !online} aria-label={dictation.listening ? 'Termina dettatura' : 'Detta messaggio'} aria-pressed={dictation.listening}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/></svg>
+          </button>
           <button
             type="button"
             className="poliedron-chat__send"
