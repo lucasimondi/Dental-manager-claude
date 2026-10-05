@@ -3310,3 +3310,8 @@ Merge della PR #115 su istruzione del Product Owner.
 - Nessuna migration. Validazione: `npm test` 899/899, `npm run build` OK.
 - Rilascio (solo su "Mergia"): deploy `agente-assistente` v26 (stessi file + `_shared/agendaSlots.js`), poi merge (Vercel). Rollback: ridistribuire la v25 (`git show ba941d0:supabase/functions/agente-assistente/`) e revert del merge.
 - EXACT NEXT ACTION: "Mergia" del Product Owner → deploy v26 → merge; poi passo 3 (Documenti).
+
+### POL-AI-010 passo 2b — esito rilascio (2026-10-05)
+- Su "Mergia" del Product Owner: CI `verify` verde sulla PR #120 → deploy `agente-assistente` v26 (`verify_jwt=true`; `index.ts`, `agenda.js`, `confirmation.js`, `pazienti.js` + `_shared/agendaSlots.js`), riletta dopo il deploy: 5 file identici al repository → merge PR #120 (`master@534a740`). Nessuna migration.
+- Rollback: ridistribuire la v25 (`git show ba941d0:supabase/functions/agente-assistente/…`) e revert del merge.
+- EXACT NEXT ACTION: prova del Product Owner in chat (velocità, esecuzione diretta, domanda in caso di ambiguità, orari liberi su conflitto); poi passo 3 (Documenti).
