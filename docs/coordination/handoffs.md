@@ -3290,3 +3290,23 @@ Merge della PR #115 su istruzione del Product Owner.
 - Rischi: la migration contiene `DROP CONSTRAINT` (ricreato subito): in produzione via MCP applicarla a passi, come la 003a.
 - EXACT NEXT ACTION: revisione PR #118 (passi 0+1+2); poi passo 3 (Documenti).
 
+### POL-AI-010 passi 0-2 — esito rilascio (2026-10-05)
+- Ordine seguito (prima il backend, poi il frontend): migration → funzione → merge.
+- **Database** (`execute_sql` a passi): tabella `poliedron_action_claims` + RLS + policy di insert; `poliedron_execute_agenda_v1`; vincolo `todos_origine_check` ampliato (DROP e ADD nella stessa istruzione); `poliedron_execute_pazienti_v1`. Prima: verificato che nessun appuntamento abbia orari non validi (126 righe, 0 anomalie). Verifica: corpo delle due funzioni identico ai file (md5 `6735075b…`, `96e10609…`), nessuna SECURITY DEFINER, `anon` senza EXECUTE, `authenticated` con EXECUTE; claims con RLS, `authenticated` solo INSERT. Registrate `20261004160708 pol_ai_010_action_claims` e `20261005120000 pol_ai_010_pazienti` in `schema_migrations`.
+- **Impostazioni studi**: "Studio Simondi" e "Cuore" con `assistente_ai = premium`, autonomia non impostata (= completo) → scritture dalla chat attive; gli altri studi senza assistente.
+- **Edge Function** `agente-assistente` v25 (`verify_jwt=true`): `index.ts`, `agenda.js`, `confirmation.js`, `pazienti.js` + `_shared/agendaSlots.js`; riletta dopo il deploy, i 5 file identici al repository. Senza login → 401.
+- **Merge**: PR #118 → `master@ba941d0` (CI `verify` verde). Vercel pubblica il frontend.
+- Rollback: ridistribuire la v24 (`git show 0dae6e4:supabase/functions/agente-assistente/index.ts`) e fare il revert del merge; le migration possono restare.
+- EXACT NEXT ACTION: prova di 5 minuti del Product Owner nella chat di Poliedron (agenda, spostamento, annullamento, nota, vista da telefono); poi passo 3 (Documenti).
+
+
+### POL-AI-010 passo 2b — Esecuzione diretta e velocità (2026-10-05)
+- Owner: CLAUDE. Istruzione del Product Owner (testuale): "È ancora troppo lento , se non ci sono conflitti non chiederei conferme , ma deve essere molto preciso".
+- **Senza conferma quando è tutto chiaro**: appuntamenti (crea, sposta, annulla conservando lo storico), anagrafiche, note, richiami, attività e blocchi di agenda vengono eseguiti subito dalla stessa RPC atomica dei passi 1-2 (claim nuovo per ogni scrittura). Il testo mostrato all'utente è il riepilogo del server ("Fatto. Appuntamento creato…"), non quello del modello. Se un passaggio del modello contiene solo scritture riuscite si risponde subito, senza un'altra chiamata al modello.
+- **Precisione**: niente scrittura con ID non letti nella stessa richiesta, dati non validi o orario occupato; per un orario occupato il modello riceve subito gli orari liberi reali e propone alternative. Prompt: una sola domanda breve quando paziente/giorno/ora sono ambigui; calendario esplicito dei prossimi 14 giorni nel prompt per "martedì prossimo". Conferma rimasta solo per un possibile paziente doppione e per gli studi in autonomia "medio".
+- **Velocità**: `output_config.effort = "low"`; prompt caching su strumenti e parte stabile del system prompt (nome studio, conoscenza, data e livello dopo il punto di cache); letture iniziali in parallelo (studio, appartenenza, configurazione); log dei consumi fuori dal percorso critico; costo stimato con i prezzi di listino e i token in cache.
+- **Client**: le richieste di creazione/modifica su pazienti e agenda ("aggiungi una nota…", "ricordami…", "ferie dal…", "il telefono di X è…") vanno a Poliedron quando lo studio ha l'assistente premium e autonomia diversa da consulente; ricette, piani, pagamenti, spese e documenti restano nei loro moduli. Dopo ogni risposta l'app ricarica esattamente le tabelle cambiate.
+- File: `supabase/functions/agente-assistente/{index.ts,agenda.js,pazienti.js,README.md}`, `src/lib/poliedron/poliedraCore.js`, `src/components/poliedron/Poliedron.jsx`, test `agenteAgendaFlow`, `agentePazientiFlow`, `agenteAgenda`.
+- Nessuna migration. Validazione: `npm test` 899/899, `npm run build` OK.
+- Rilascio (solo su "Mergia"): deploy `agente-assistente` v26 (stessi file + `_shared/agendaSlots.js`), poi merge (Vercel). Rollback: ridistribuire la v25 (`git show ba941d0:supabase/functions/agente-assistente/`) e revert del merge.
+- EXACT NEXT ACTION: "Mergia" del Product Owner → deploy v26 → merge; poi passo 3 (Documenti).

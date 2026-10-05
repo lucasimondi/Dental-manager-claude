@@ -1,7 +1,8 @@
 # Current task
 - ACTIVE OWNER: CLAUDE — handoff from CODEX by explicit Product Owner instruction (2026-10-05, verbatim: "Guarda cosa ha fatto code, ha fatto la 118 e ora 119 , e poi continua", then "Continua").
 - ACTIVE BRANCH: `claude/whatsapp-automation-status-d2ng12` (PR #118). Step 1 (PR #119 by Codex, `codex/pol-ai-010-agenda`) reviewed and brought into this branch, with three follow-up fixes (see handoff "POL-AI-010 passo 1 — revisione e presa in carico").
-- STATUS: steps 0+1+2 ready for review in PR #118 (step 2 = Pazienti e clinica, `docs/architecture/POL-AI-010-pazienti.md`). No remote migration, production deployment or merge authorized.
+- STATUS: steps 0+1+2 MERGED (PR #118, `master@ba941d0`) and released on Product Owner instruction ("Mergia"), 2026-10-05: migrations applied, `agente-assistente` v25 deployed. 
+- STATUS step 2b (direct execution + speed, PO: "se non ci sono conflitti non chiederei conferme, ma deve essere molto preciso"): PUSHED on the active branch, PR open, not deployed. Waiting for "Mergia" → deploy `agente-assistente` v26 → merge.
 
 # Current task (previous owner block, kept for history)
 - ACTIVE OWNER (until 2026-10-05): CODEX — Product Owner instructed “vai” after approving step 1 (Agenda, server-validated confirmation, refresh and tests), 2026-10-04.

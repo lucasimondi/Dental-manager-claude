@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 import { fileURLToPath } from 'node:url';
-let handler, script, calls, database, user, plan, rpcCalls, claims;
+let handler, script, calls, database, user, plan, autonomia, rpcCalls, claims;
 const day='2099-10-04';
 class Query {
   constructor(table){this.table=table;this.filters=[];this.mode='many';}
@@ -21,7 +21,7 @@ class Query {
       }
       return{data:null,error:null};
     }
-    let rows=this.table==='studios'?[{id:'s1',nome:'Studio test',feature_overrides:{assistente_ai:plan}}]:database[this.table]||[];
+    let rows=this.table==='studios'?[{id:'s1',nome:'Studio test',feature_overrides:{assistente_ai:plan,agente_azione:autonomia}}]:database[this.table]||[];
     rows=rows.filter(r=>this.filters.every(f=>f(r)));
     return{data:this.mode==='one'?rows[0]||null:rows,error:null};
   }).then(resolve,reject);}
@@ -44,19 +44,50 @@ test.before(async()=>{
   await import('data:text/javascript;base64,'+Buffer.from(bundled.outputFiles[0].text).toString('base64'));
 });
 test.beforeEach(()=>{
-  script=[];calls=[];rpcCalls=[];claims=new Set();plan='premium';user={id:'u1',app_metadata:{studio_id:'s1'}};
+  script=[];calls=[];rpcCalls=[];claims=new Set();plan='premium';autonomia='completo';user={id:'u1',app_metadata:{studio_id:'s1'}};
   database={studio_users:[{user_id:'u1',studio_id:'s1',stato:'attivo'}],patients:[{id:1,nome:'Mario',cognome:'Test',studio_id:'s1'}],appointments:[],impegni_personali:[]};
 });
 async function request(body,auth=true){const response=await handler(new Request('https://local.test',{method:'POST',headers:auth?{Authorization:'Bearer test'}:{},body:JSON.stringify(body)}));return{status:response.status,...await response.json()};}
+// The studio's "medio" autonomy keeps the signed preview + confirmation flow.
 async function preview(){
+  autonomia='medio';
   script.push(use('cerca_pazienti',{query:'Mario Test'}),use('crea_appuntamento',{paziente_id:1,data:day,ora:'09:00',tipo:'Controllo'}));
   return request({messages:[{role:'user',content:'Prenota Mario Test'}]});
 }
-test('actual handler: lookup → signed preview → explicit confirmation → single RPC, no model call after confirmation',async()=>{
+test('clear request without conflicts: lookup → executed directly by one RPC, server summary, no extra model call',async()=>{
+  script.push(use('cerca_pazienti',{query:'Mario Test'}),use('crea_appuntamento',{paziente_id:1,data:day,ora:'09:00',tipo:'Controllo'}));
+  const done=await request({messages:[{role:'user',content:'Prenota Mario Test'}]});
+  assert.equal(done.needsConfirmation,undefined);
+  assert.match(done.text,/^Fatto\. Appuntamento creato\nPaziente: Mario Test/);
+  assert.deepEqual(done.changed,['appointments']);
+  assert.equal(rpcCalls.length,1);assert.equal(rpcCalls[0].name,'poliedron_execute_agenda_v1');
+  assert.equal(rpcCalls[0].args.p_after.paziente_id,1);assert.equal(calls.length,2,'no model call after the write');
+});
+test('speed settings: low effort, cached tools and stable system prompt, volatile data after the cache point',async()=>{
+  script.push(say('ok'));
+  await request({messages:[{role:'user',content:'ciao'}]});
+  const body=calls[0];
+  assert.deepEqual(body.output_config,{effort:'low'});
+  assert.deepEqual(body.tools.at(-1).cache_control,{type:'ephemeral'});
+  assert.deepEqual(body.system[0].cache_control,{type:'ephemeral'});
+  assert.doesNotMatch(body.system[0].text,/Studio test|\d{4}-\d{2}-\d{2}/);
+  assert.match(body.system[1].text,/Studio test/);assert.match(body.system[1].text,/Prossimi giorni: /);
+});
+test('occupied slot: nothing written, the model receives the conflict with real free slots',async()=>{
+  database.appointments=[{id:9,studio_id:'s1',data:day,ora:'09:00',durata:30,tipo:'Igiene',stato:'confermato',paziente_id:2}];
+  script.push(use('cerca_pazienti',{query:'Mario Test'}),use('crea_appuntamento',{paziente_id:1,data:day,ora:'09:00',tipo:'Controllo'}),say('Alle 9 è occupato: va bene alle 9:30?'));
+  const result=await request({messages:[{role:'user',content:'Prenota Mario Test alle 9'}]});
+  assert.equal(rpcCalls.length,0);assert.equal(result.changed,undefined);
+  const toolResult=JSON.parse(calls[2].messages.at(-1).content[0].content);
+  assert.match(toolResult.error,/Orario occupato/);
+  assert.ok(toolResult.orari_liberi.includes('09:30')&&!toolResult.orari_liberi.includes('09:00'));
+  assert.match(result.text,/9:30/);
+});
+test('medio autonomy: signed preview → explicit confirmation → single RPC, no model call after confirmation',async()=>{
   const result=await preview();assert.ok(result.needsConfirmation?.token);assert.equal(rpcCalls.length,0);
   assert.match(result.needsConfirmation.summary,/Mario Test/);
   const done=await request({confirm:{token:result.needsConfirmation.token}});
-  assert.match(done.text,/Operazione completata/);assert.equal(rpcCalls.length,1);assert.equal(calls.length,2);
+  assert.match(done.text,/^Fatto\. Appuntamento creato/);assert.equal(rpcCalls.length,1);assert.equal(calls.length,2);
   assert.equal(rpcCalls[0].args.p_after.paziente_id,1);
   const repeat=await request({confirm:{token:result.needsConfirmation.token}});
   assert.equal(repeat.uncertain,true);assert.equal(claims.size,1);

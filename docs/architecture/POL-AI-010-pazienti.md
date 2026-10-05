@@ -44,3 +44,12 @@ esplicitamente; disponibili solo dove piano (`premium`) e autonomia permettono s
 Dopo il passo 1: migration a passi → deploy `agente-assistente` (cartella con
 `agenda.js`, `pazienti.js`, `confirmation.js`, `agendaSlots.js` + `_shared/agendaSlots.js`).
 Rollback: ridistribuire la funzione del passo 1; `DROP FUNCTION poliedron_execute_pazienti_v1`.
+
+## Passo 2b — esecuzione diretta (2026-10-05)
+
+Su indicazione del Product Owner le scritture chiare e senza conflitti non chiedono più
+conferma: il server valida, esegue con la stessa RPC atomica e risponde con il proprio
+riepilogo ("Fatto. …"). Restano con riepilogo e conferma: possibile paziente doppione e
+studi con autonomia "medio". Errori, ID non letti e orari occupati non scrivono nulla:
+il modello chiede all'utente (con gli orari liberi reali, per l'agenda). Dettagli in
+`supabase/functions/agente-assistente/README.md`.

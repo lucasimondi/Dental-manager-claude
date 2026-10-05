@@ -1,7 +1,9 @@
 // POL-AI-010 step 2 — patient record and clinical organisation from Poliedron.
-// Same contract as agenda.js: the model only PREPARES; the server builds the
-// canonical data and a readable summary; the write happens after the user's
-// confirmation, in one transaction (poliedron_execute_pazienti_v1).
+// Same contract as agenda.js: the server validates and builds the canonical
+// data and a readable summary from the model's request; the write happens in
+// one transaction (poliedron_execute_pazienti_v1). Step 2b: executed directly
+// when nothing needs checking; a possible duplicate (`avviso`) or the studio's
+// "medio" autonomy still go through the signed confirmation.
 import { studioToday } from './confirmation.js';
 
 export const PAZIENTI_WRITES = new Set([
@@ -17,7 +19,7 @@ const TABELLA = {
 const CAMPI_ANAGRAFICA = ['telefono', 'email', 'indirizzo', 'cap', 'comune', 'provincia', 'data_nascita', 'cf', 'consenso_whatsapp'];
 const CATEGORIE_RICHIAMO = ['clinico', 'preventivo', 'incasso', 'generico'];
 const TIPI_IMPEGNO = ['personale', 'ferie', 'chiamata', 'altro'];
-const PREPARA = 'Prepara la proposta; nessuna scrittura prima della conferma dell\'utente. Cerca prima il paziente con cerca_pazienti e chiedi quale in caso di omonimia. Non inventare ID.';
+const PREPARA = 'Eseguito subito se i dati sono validi. Cerca prima il paziente con cerca_pazienti; se più pazienti corrispondono chiedi quale. Non inventare ID.';
 
 export const PAZIENTI_TOOLS = [
   {
@@ -165,8 +167,9 @@ export async function preparePazienti(client, name, input = {}, studioId, observ
     const { data: omonimi } = await client.from('patients').select('id')
       .eq('studio_id', studioId).ilike('nome', dati.nome).ilike('cognome', dati.cognome).limit(3);
     const righe = Object.entries(dati).filter(([k]) => !['nome', 'cognome'].includes(k)).map(([k, v]) => `${ETICHETTE[k]}: ${valore(k, v)}`);
-    const avviso = omonimi?.length ? `\nAttenzione: in anagrafica c'è già un paziente ${dati.nome} ${dati.cognome}.` : '';
-    return { dati, before: null, summary: `Nuovo paziente\n${dati.nome} ${dati.cognome}${righe.length ? `\n${righe.join('\n')}` : ''}${avviso}` };
+    const avviso = omonimi?.length ? `Attenzione: in anagrafica c'è già un paziente ${dati.nome} ${dati.cognome}.` : null;
+    const corpo = `${dati.nome} ${dati.cognome}${righe.length ? `\n${righe.join('\n')}` : ''}`;
+    return { dati, before: null, avviso, summary: `Nuovo paziente\n${corpo}${avviso ? `\n${avviso}` : ''}`, done: `Paziente creato\n${corpo}` };
   }
 
   if (name === 'crea_impegno_personale') {
@@ -181,7 +184,8 @@ export async function preparePazienti(client, name, input = {}, studioId, observ
     const dati = { titolo, tipo, data_inizio: inizio, data_fine: fine, tutto_il_giorno: tutto,
       ora_inizio: tutto ? null : input.ora_inizio, ora_fine: tutto ? null : input.ora_fine, note: testo(input.note, 1000, 'Note') };
     const quando = fine !== inizio ? `dal ${descriviData(inizio)} al ${descriviData(fine)}` : descriviData(inizio);
-    return { dati, before: null, summary: `Blocca l'agenda: ${titolo} (${tipo})\n${quando}, ${tutto ? 'tutto il giorno' : `dalle ${dati.ora_inizio} alle ${dati.ora_fine}`}` };
+    const corpo = `${titolo} (${tipo})\n${quando}, ${tutto ? 'tutto il giorno' : `dalle ${dati.ora_inizio} alle ${dati.ora_fine}`}`;
+    return { dati, before: null, summary: `Blocca l'agenda: ${corpo}`, done: `Agenda bloccata: ${corpo}` };
   }
 
   if (name === 'crea_promemoria') {
@@ -190,10 +194,12 @@ export async function preparePazienti(client, name, input = {}, studioId, observ
     if (input.data != null && !dataValida(input.data)) throw new Error('Data non valida');
     let chi = null;
     if (input.paziente_id != null) chi = await pazienteOsservato(client, input.paziente_id, studioId, observed);
+    const corpo = `${t}${input.data ? `\nEntro: ${descriviData(input.data)}` : ''}${chi ? `\nPaziente: ${chi.nome} ${chi.cognome}` : ''}`;
     return {
       dati: { testo: t, data: input.data ?? null, paziente_id: chi?.id ?? null },
       before: null,
-      summary: `Nuova attività: ${t}${input.data ? `\nEntro: ${descriviData(input.data)}` : ''}${chi ? `\nPaziente: ${chi.nome} ${chi.cognome}` : ''}`,
+      summary: `Nuova attività: ${corpo}`,
+      done: `Attività creata: ${corpo}`,
     };
   }
 
@@ -208,17 +214,19 @@ export async function preparePazienti(client, name, input = {}, studioId, observ
     if (!campi.length) throw new Error('Nessun dato da cambiare rispetto alla scheda attuale.');
     const before = Object.fromEntries(campi.map((k) => [k, paz[k] ?? null]));
     const cambi = Object.fromEntries(campi.map((k) => [k, dati[k]]));
+    const corpo = campi.map((k) => `${ETICHETTE[k]}: ${valore(k, paz[k])} → ${valore(k, dati[k])}`).join('\n');
     return {
       dati: { paziente_id: paz.id, ...cambi },
       before,
-      summary: `Aggiorna la scheda di ${chi}\n${campi.map((k) => `${ETICHETTE[k]}: ${valore(k, paz[k])} → ${valore(k, dati[k])}`).join('\n')}`,
+      summary: `Aggiorna la scheda di ${chi}\n${corpo}`,
+      done: `Scheda di ${chi} aggiornata\n${corpo}`,
     };
   }
 
   if (name === 'aggiungi_nota_paziente') {
     const t = testo(input.testo, 2000, 'Nota');
     if (!t) throw new Error('Testo della nota obbligatorio');
-    return { dati: { paziente_id: paz.id, testo: t }, before: null, summary: `Nota nella scheda di ${chi}\n"${t}"` };
+    return { dati: { paziente_id: paz.id, testo: t }, before: null, summary: `Nota nella scheda di ${chi}\n"${t}"`, done: `Nota aggiunta nella scheda di ${chi}\n"${t}"` };
   }
 
   if (name === 'crea_richiamo') {
@@ -226,10 +234,12 @@ export async function preparePazienti(client, name, input = {}, studioId, observ
     if (!CATEGORIE_RICHIAMO.includes(categoria)) throw new Error('Categoria del richiamo non valida');
     if (!dataValida(input.data_scadenza) || input.data_scadenza < oggi) throw new Error('Data del richiamo non valida o passata');
     const motivo = testo(input.motivo, 300, 'Motivo');
+    const corpo = `${motivo || 'Richiamo'} (${categoria}), entro ${descriviData(input.data_scadenza)}`;
     return {
       dati: { paziente_id: paz.id, categoria, motivo, data_scadenza: input.data_scadenza },
       before: null,
-      summary: `Richiamo per ${chi}\n${motivo || 'Richiamo'} (${categoria}), entro ${descriviData(input.data_scadenza)}`,
+      summary: `Richiamo per ${chi}\n${corpo}`,
+      done: `Richiamo creato per ${chi}\n${corpo}`,
     };
   }
 
@@ -242,7 +252,7 @@ export async function executePazienti(client, proposal) {
     p_dati: proposal.pazienti.dati, p_before: proposal.pazienti.before,
   });
   if (error) throw new Error(error.message);
-  return { text: `Fatto.\n${proposal.pazienti.summary}`, changed: [TABELLA[proposal.name]], recordId: data };
+  return { text: `Fatto. ${proposal.pazienti.done || proposal.pazienti.summary}`, changed: [TABELLA[proposal.name]], recordId: data };
 }
 
 export async function schedaPaziente(client, input, studioId) {

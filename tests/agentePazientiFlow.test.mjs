@@ -84,24 +84,47 @@ async function request(body) {
 }
 const toolNames = (i = 0) => calls[i].tools.map((t) => t.name);
 
-test('patient update: lookup → summary with before/after → confirm → one RPC with only the changed fields', async () => {
+test('patient update: lookup → executed directly, one RPC with only the changed fields, before/after summary', async () => {
   script.push(use('cerca_pazienti', { query: 'Mario Rossi' }), use('modifica_paziente', { paziente_id: 1, telefono: '333 1112222', consenso_whatsapp: true }));
-  const preview = await request({ messages: [{ role: 'user', content: 'Mario Rossi ha dato il consenso WhatsApp, il suo numero è 333 1112222' }] });
-  assert.ok(preview.needsConfirmation?.token);
-  assert.match(preview.needsConfirmation.summary, /Aggiorna la scheda di Mario Rossi/);
-  assert.match(preview.needsConfirmation.summary, /Telefono: — → 333 1112222/);
-  assert.match(preview.needsConfirmation.summary, /Consenso WhatsApp: no → sì/);
-  assert.equal(rpcCalls.length, 0, 'nothing written before confirmation');
-
-  const done = await request({ confirm: { token: preview.needsConfirmation.token } });
-  assert.match(done.text, /^Fatto\./);
+  const done = await request({ messages: [{ role: 'user', content: 'Mario Rossi ha dato il consenso WhatsApp, il suo numero è 333 1112222' }] });
+  assert.equal(done.needsConfirmation, undefined);
+  assert.match(done.text, /^Fatto\. Scheda di Mario Rossi aggiornata/);
+  assert.match(done.text, /Telefono: — → 333 1112222/);
+  assert.match(done.text, /Consenso WhatsApp: no → sì/);
   assert.deepEqual(done.changed, ['patients']);
   assert.equal(rpcCalls.length, 1);
   assert.equal(rpcCalls[0].name, 'poliedron_execute_pazienti_v1');
   assert.equal(rpcCalls[0].args.p_azione, 'modifica_paziente');
   assert.deepEqual(rpcCalls[0].args.p_dati, { paziente_id: 1, telefono: '333 1112222', consenso_whatsapp: true });
   assert.deepEqual(rpcCalls[0].args.p_before, { telefono: null, consenso_whatsapp: false });
-  assert.equal(calls.length, 2, 'no model call after confirmation');
+  assert.equal(calls.length, 2, 'no model call after the write');
+});
+
+test('several clear actions in one message are all executed, each by its own atomic RPC', async () => {
+  script.push(
+    use('cerca_pazienti', { query: 'Mario Rossi' }),
+    { content: [
+      { type: 'tool_use', id: 'a', name: 'aggiungi_nota_paziente', input: { paziente_id: 1, testo: 'Allergico alla penicillina' } },
+      { type: 'tool_use', id: 'b', name: 'crea_richiamo', input: { paziente_id: 1, data_scadenza: '2099-04-01', motivo: 'Igiene' } },
+    ] },
+  );
+  const done = await request({ messages: [{ role: 'user', content: 'Nota allergia penicillina a Mario Rossi e richiamo igiene ad aprile 2099' }] });
+  assert.equal(rpcCalls.length, 2);
+  assert.notEqual(rpcCalls[0].args.p_id, rpcCalls[1].args.p_id, 'each write has its own claim id');
+  assert.match(done.text, /Nota aggiunta nella scheda di Mario Rossi[\s\S]*Richiamo creato per Mario Rossi/);
+  assert.deepEqual(done.changed.sort(), ['patients', 'richiami']);
+  assert.equal(calls.length, 2);
+});
+
+test('medio autonomy keeps the summary + confirmation before any write', async () => {
+  autonomia = 'medio';
+  script.push(use('cerca_pazienti', { query: 'Mario' }), use('aggiungi_nota_paziente', { paziente_id: 1, testo: 'Nota' }));
+  const preview = await request({ messages: [{ role: 'user', content: 'Nota per Mario' }] });
+  assert.ok(preview.needsConfirmation?.token);
+  assert.equal(rpcCalls.length, 0);
+  const done = await request({ confirm: { token: preview.needsConfirmation.token } });
+  assert.match(done.text, /^Fatto\. Nota aggiunta/);
+  assert.equal(rpcCalls.length, 1);
 });
 
 test('new patient: duplicate name is flagged in the summary, never silently created', async () => {
@@ -109,6 +132,8 @@ test('new patient: duplicate name is flagged in the summary, never silently crea
   const preview = await request({ messages: [{ role: 'user', content: 'Crea il paziente Mario Rossi' }] });
   assert.match(preview.needsConfirmation.summary, /Nuovo paziente\nMario Rossi/);
   assert.match(preview.needsConfirmation.summary, /c'è già un paziente Mario Rossi/);
+  assert.match(preview.text, /Vuoi crearlo comunque\?/);
+  assert.equal(rpcCalls.length, 0, 'a possible duplicate is never created without the user deciding');
   const cancel = await request({ confirm: { token: preview.needsConfirmation.token, cancelled: true } });
   assert.match(cancel.text, /Nessuna modifica/);
   assert.equal(rpcCalls.length, 0);
@@ -143,6 +168,7 @@ test('plan and autonomy gates: pro and consulente get no patient writes; premium
 });
 
 test('a patient confirmation issued before a downgrade writes nothing afterwards', async () => {
+  autonomia = 'medio';
   script.push(use('cerca_pazienti', { query: 'Mario' }), use('crea_promemoria', { testo: 'Chiamare Mario', paziente_id: 1 }));
   const preview = await request({ messages: [{ role: 'user', content: 'Ricordami di chiamare Mario' }] });
   assert.match(preview.needsConfirmation.summary, /Nuova attività: Chiamare Mario\nPaziente: Mario Rossi/);

@@ -64,9 +64,12 @@ export async function prepareAgenda(client, name, input, studioId, observed) {
   let operator = null;
   if (after.operatore_id) operator = await one(client.from('operatori').select('id, nome').eq('studio_id', studioId).eq('id', after.operatore_id).eq('attivo', true));
   await checkAvailability(client, after, studioId);
-  const label = name === 'crea_appuntamento' ? 'Crea appuntamento' : after.stato === 'annullato' ? 'Annulla appuntamento (conserva lo storico)' : 'Modifica appuntamento';
+  const [label, doneLabel] = name === 'crea_appuntamento' ? ['Crea appuntamento', 'Appuntamento creato']
+    : after.stato === 'annullato' ? ['Annulla appuntamento (conserva lo storico)', 'Appuntamento annullato (lo storico resta)']
+    : ['Modifica appuntamento', 'Appuntamento modificato'];
   const detail = (r) => `${r.data} alle ${r.ora.slice(0,5)}, ${r.durata} minuti, ${r.tipo}`;
-  return { before, after, summary: `${label}\nPaziente: ${patient.nome} ${patient.cognome}\n${before ? `Prima: ${detail(before)}\n` : ''}Dopo: ${detail(after)}\nStato: ${after.stato}\nOperatore: ${operator?.nome || 'non assegnato'}${after.note ? `\nNote: ${after.note}` : ''}` };
+  const body = `Paziente: ${patient.nome} ${patient.cognome}\n${before ? `Prima: ${detail(before)}\n` : ''}Dopo: ${detail(after)}\nStato: ${after.stato}\nOperatore: ${operator?.nome || 'non assegnato'}${after.note ? `\nNote: ${after.note}` : ''}`;
+  return { before, after, summary: `${label}\n${body}`, done: `${doneLabel}\n${body}` };
 }
 export async function checkAvailability(client, row, studioId) {
   if (row.stato === 'annullato') return;
@@ -84,5 +87,5 @@ export async function executeAgenda(client, proposal) {
   });
   if (error?.code === '23505') throw new Error('Questa conferma è già stata utilizzata');
   if (error) throw new Error(error.message);
-  return { text: `Operazione completata.\n${proposal.agenda.summary}`, changed: ['appointments'], appointmentId: data };
+  return { text: `Fatto. ${proposal.agenda.done || proposal.agenda.summary}`, changed: ['appointments'], appointmentId: data };
 }
