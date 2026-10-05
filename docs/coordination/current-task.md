@@ -2,10 +2,10 @@
 - ACTIVE OWNER: CODEX — transferred by Product Owner: “Allora vai costruisci bene che funzioni che sia fluido”.
 - ACTIVE BRANCH: `codex/poliedron-phone-app`, from `master@ea834644`.
 - OBJECTIVE: dedicated installable Poliedron entry, existing conversation/permissions/activity log, mobile keyboard, immediate composer feedback and Italian dictation. User prioritizes this before documents.
-- STATUS: VALIDATED — 909/909 tests, build and responsive synthetic browser QA pass; preparing draft PR.
+- STATUS: WAITING_PRODUCT_OWNER — draft PR #124, 909/909 local tests, build and responsive synthetic browser QA pass. Vercel preview ready; GitHub Actions initially queued.
 - BOUNDARY: frontend only; no production writes, remote migrations, deployment, merge, financial/security semantics changes. Push delivery requires a separate backend increment and is not represented as available.
 - CHECKPOINT: `stable/2026-08-27-full-recovery@070b28fd4eae4e2cc397584201d0bb149468fae7` preserved.
-- EXACT NEXT ACTION: Product Owner review and release approval; real iPhone/staging smoke. Background push is the next backend increment.
+- EXACT NEXT ACTION: review PR #124 and test the Vercel preview on iPhone; before approved merge verify CI. Background push is the next backend increment.
 
 ---
 
