@@ -55,6 +55,8 @@ DECLARE
 BEGIN
   BEGIN
     IF NEW.stato = 'annullato' AND OLD.stato IS DISTINCT FROM 'annullato'
+      -- An undo of an appointment Poliedron created is not a cancellation to rebook.
+      AND coalesce(current_setting('poliedron.ripristino', true), '') <> 'on'
       AND NEW.paziente_id IS NOT NULL AND NEW.data >= oggi
       AND NOT EXISTS (SELECT 1 FROM public.appointments a WHERE a.studio_id = NEW.studio_id
         AND a.paziente_id = NEW.paziente_id AND a.id <> NEW.id AND a.data >= oggi
@@ -97,8 +99,10 @@ WHERE a.stato = 'annullato' AND a.paziente_id IS NOT NULL AND a.data >= (now() A
 
 -- "Ripristina": undo one Poliedron action in a single transaction, as the caller
 -- (RLS applies), only if the record is still exactly as Poliedron left it.
--- Recorded as a new 'ripristino' row; the unique index makes a second undo fail
--- and roll back.
+-- Nothing is ever deleted: what Poliedron created is closed (appointment
+-- 'annullato', recall 'annullato', activity done), changes are reverted. A block
+-- in the agenda is removed by hand from the agenda. Recorded as a new
+-- 'ripristino' row; the unique index makes a second undo fail and roll back.
 CREATE FUNCTION public.poliedron_ripristina_v1(p_attivita uuid, p_studio uuid)
 RETURNS text LANGUAGE plpgsql SECURITY INVOKER SET search_path = '' SET lock_timeout = '2s' AS $$
 DECLARE
@@ -126,7 +130,9 @@ BEGIN
     IF cur IS NULL OR NOT (cur @> (a.dopo - 'id')) THEN
       RAISE EXCEPTION 'L''appuntamento è stato cambiato dopo Poliedron: controllalo in agenda';
     END IF;
-    DELETE FROM public.appointments WHERE id = a.record_id AND studio_id = p_studio;
+    PERFORM set_config('poliedron.ripristino', 'on', true);
+    UPDATE public.appointments SET stato = 'annullato' WHERE id = a.record_id AND studio_id = p_studio;
+    PERFORM set_config('poliedron.ripristino', 'off', true);
   WHEN 'modifica_appuntamento', 'elimina_appuntamento' THEN
     -- Same checks as any agenda write (unchanged since, free slot, future date).
     PERFORM public.poliedron_execute_agenda_v1(v_id, p_studio, a.dopo, a.prima);
@@ -151,17 +157,13 @@ BEGIN
     GET DIAGNOSTICS n = ROW_COUNT;
     IF n = 0 THEN RAISE EXCEPTION 'La nota non è più l''ultima della scheda: rimuovila a mano'; END IF;
   WHEN 'crea_richiamo' THEN
-    DELETE FROM public.richiami WHERE id = a.record_id AND studio_id = p_studio AND stato = 'da_fare';
+    UPDATE public.richiami SET stato = 'annullato' WHERE id = a.record_id AND studio_id = p_studio AND stato = 'da_fare';
     GET DIAGNOSTICS n = ROW_COUNT;
     IF n = 0 THEN RAISE EXCEPTION 'Il richiamo è già stato gestito'; END IF;
   WHEN 'crea_promemoria' THEN
-    DELETE FROM public.todos WHERE id = a.record_id AND studio_id = p_studio AND fatto IS NOT TRUE;
+    UPDATE public.todos SET fatto = true WHERE id = a.record_id AND studio_id = p_studio AND fatto IS NOT TRUE;
     GET DIAGNOSTICS n = ROW_COUNT;
-    IF n = 0 THEN RAISE EXCEPTION 'L''attività è già stata completata o tolta'; END IF;
-  WHEN 'crea_impegno_personale' THEN
-    DELETE FROM public.impegni_personali WHERE id = a.record_id AND studio_id = p_studio;
-    GET DIAGNOSTICS n = ROW_COUNT;
-    IF n = 0 THEN RAISE EXCEPTION 'Il blocco agenda non c''è più'; END IF;
+    IF n = 0 THEN RAISE EXCEPTION 'L''attività è già stata completata'; END IF;
   ELSE
     RAISE EXCEPTION 'Questa azione non si può ripristinare da qui';
   END CASE;

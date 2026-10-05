@@ -69,7 +69,8 @@ DO $$ DECLARE v bigint; dopo jsonb; BEGIN
   v := public.poliedron_execute_agenda_v1('50000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', NULL, dopo);
   PERFORM pg_temp.log('50000000-0000-0000-0000-000000000001', 'crea_appuntamento', 'appointments', v, NULL, dopo || jsonb_build_object('id', v), 'Fatto. Appuntamento creato' || E'\n' || 'Paziente: Mario Rossi');
   PERFORM pg_temp.check(public.poliedron_ripristina_v1('50000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001') = 'appointments', 'undo returns the table');
-  PERFORM pg_temp.check(NOT EXISTS (SELECT 1 FROM public.appointments WHERE id = v), 'created appointment removed');
+  PERFORM pg_temp.check((SELECT stato = 'annullato' FROM public.appointments WHERE id = v), 'created appointment closed, never deleted');
+  PERFORM pg_temp.check(NOT EXISTS (SELECT 1 FROM public.richiami WHERE chiave_bot = 'annullato:' || v), 'an undo is not a cancellation to rebook');
   PERFORM pg_temp.check((SELECT riepilogo = 'Ripristinato: Appuntamento creato' FROM public.poliedron_attivita WHERE ripristino_di = '50000000-0000-0000-0000-000000000001'), 'undo logged');
 END $$;
 SELECT pg_temp.expect_error($q$SELECT public.poliedron_ripristina_v1('50000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001')$q$, '%già ripristinata%');
@@ -102,7 +103,7 @@ END $$;
 SELECT pg_temp.expect_error($q$SELECT public.poliedron_ripristina_v1('50000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000001')$q$, '%cambiata dopo Poliedron%');
 SELECT pg_temp.check((SELECT telefono = '444' FROM public.patients WHERE id = 1), 'refused undo wrote nothing');
 
--- 6d. Note, recall, activity and agenda block created by Poliedron are removed.
+-- 6d. Note removed; recall and activity created by Poliedron closed (never deleted).
 DO $$ DECLARE r bigint; t bigint; i bigint; BEGIN
   PERFORM public.poliedron_execute_pazienti_v1('50000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000001', 'aggiungi_nota_paziente', '{"paziente_id":1,"testo":"da togliere"}');
   PERFORM pg_temp.log('50000000-0000-0000-0000-000000000006', 'aggiungi_nota_paziente', 'patients', 1, NULL, '{"paziente_id":1,"testo":"da togliere"}', 'Fatto. Nota');
@@ -111,16 +112,16 @@ DO $$ DECLARE r bigint; t bigint; i bigint; BEGIN
   r := public.poliedron_execute_pazienti_v1('50000000-0000-0000-0000-000000000007', '00000000-0000-0000-0000-000000000001', 'crea_richiamo', jsonb_build_object('paziente_id', 1, 'data_scadenza', current_date + 30));
   PERFORM pg_temp.log('50000000-0000-0000-0000-000000000007', 'crea_richiamo', 'richiami', r, NULL, '{}', 'Fatto. Richiamo');
   PERFORM public.poliedron_ripristina_v1('50000000-0000-0000-0000-000000000007', '00000000-0000-0000-0000-000000000001');
-  PERFORM pg_temp.check(NOT EXISTS (SELECT 1 FROM public.richiami WHERE id = r), 'recall removed');
+  PERFORM pg_temp.check((SELECT stato = 'annullato' FROM public.richiami WHERE id = r), 'recall closed');
   t := public.poliedron_execute_pazienti_v1('50000000-0000-0000-0000-000000000008', '00000000-0000-0000-0000-000000000001', 'crea_promemoria', '{"testo":"tmp"}');
   PERFORM pg_temp.log('50000000-0000-0000-0000-000000000008', 'crea_promemoria', 'todos', t, NULL, '{}', 'Fatto. Attività');
   PERFORM public.poliedron_ripristina_v1('50000000-0000-0000-0000-000000000008', '00000000-0000-0000-0000-000000000001');
-  PERFORM pg_temp.check(NOT EXISTS (SELECT 1 FROM public.todos WHERE id = t), 'todo removed');
+  PERFORM pg_temp.check((SELECT fatto FROM public.todos WHERE id = t), 'todo closed');
   i := public.poliedron_execute_pazienti_v1('50000000-0000-0000-0000-000000000009', '00000000-0000-0000-0000-000000000001', 'crea_impegno_personale', jsonb_build_object('titolo', 'Ferie', 'data_inizio', current_date + 40));
   PERFORM pg_temp.log('50000000-0000-0000-0000-000000000009', 'crea_impegno_personale', 'impegni_personali', i, NULL, '{}', 'Fatto. Agenda bloccata');
-  PERFORM public.poliedron_ripristina_v1('50000000-0000-0000-0000-000000000009', '00000000-0000-0000-0000-000000000001');
-  PERFORM pg_temp.check(NOT EXISTS (SELECT 1 FROM public.impegni_personali WHERE id = i), 'block removed');
 END $$;
+-- An agenda block is removed by hand from the agenda, not from the log.
+SELECT pg_temp.expect_error($q$SELECT public.poliedron_ripristina_v1('50000000-0000-0000-0000-000000000009', '00000000-0000-0000-0000-000000000001')$q$, '%non si può ripristinare%');
 -- An undo row and a new patient are not undoable from here.
 SELECT pg_temp.expect_error($q$SELECT public.poliedron_ripristina_v1((SELECT id FROM public.poliedron_attivita WHERE ripristino_di IS NOT NULL LIMIT 1), '00000000-0000-0000-0000-000000000001')$q$, '%non si può ripristinare%');
 RESET ROLE;
