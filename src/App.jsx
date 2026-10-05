@@ -774,7 +774,11 @@ export default function App() {
       </div>
 
       <Poliedron
-        onAgendaChanged={async () => setAppointments(await DB.getAll('dm_a', { throwOnError: true }))}
+        onDataChanged={async (changed) => {
+          // POL-AI-010: reload only the tables a confirmed Poliedron action touched.
+          const reload = { appointments: ['dm_a', setAppointments], patients: ['dm_p', setPatients], richiami: ['dm_ri', setRichiami], impegni_personali: ['dm_ip', setImpegni] };
+          await Promise.all(changed.filter((t) => reload[t]).map(async (t) => reload[t][1](await DB.getAll(reload[t][0], { throwOnError: true }))));
+        }}
         isMobile={isMobile}
         page={page}
         setPage={navigateFromPoliedron}

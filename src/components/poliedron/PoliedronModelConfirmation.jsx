@@ -8,8 +8,8 @@ export default function PoliedronModelConfirmation({ pending, busy, onDecision }
     setUsed(true);
     onDecision?.(pending, cancelled);
   };
-  return <section aria-label="Conferma operazione agenda" style={{ padding: 16, border: '1px solid #c7d2fe', borderRadius: 16, background: '#f5f7ff', overflowWrap: 'anywhere' }}>
-    <h3 style={{ marginTop: 0 }}>Controlla l’appuntamento</h3>
+  return <section aria-label="Conferma operazione" style={{ padding: 16, border: '1px solid #c7d2fe', borderRadius: 16, background: '#f5f7ff', overflowWrap: 'anywhere' }}>
+    <h3 style={{ marginTop: 0 }}>Controlla prima di confermare</h3>
     <p style={{ whiteSpace: 'pre-wrap' }}>{pending.summary}</p>
     <p>Nessuna modifica finché non confermi.</p>
     {expired && <p role="status">Conferma scaduta. Ripeti la richiesta.</p>}

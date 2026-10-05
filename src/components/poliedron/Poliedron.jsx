@@ -68,7 +68,7 @@ export default function Poliedron({
   isMobile, page, setPage, patients, plans, payments, pricelist, appointments, richiami, impegni, goSchedaPaz,
   features, isStudioAdmin, vertical, studioId, userId, currentPatient, positionLocked = false,
   quickActionCtx, supabaseClient, onArchivioFilterHint, openPrescription, openNew, openNewPlan, openNewPayment, openBooking,
-  externalCommandRequest, onExternalCommandHandled, chatHost, onAgendaChanged,
+  externalCommandRequest, onExternalCommandHandled, chatHost, onDataChanged,
   /* POL-CHAT-001 merge: PR #51 declared an `unreadCount = 0` PROP here
      because §7 explicitly shipped the bell without a notification engine.
      PR #53 supplies the real producer — the conversation hook below returns
@@ -419,8 +419,11 @@ export default function Poliedron({
     try {
       const response = await runModelTask({ supabaseClient, confirm: { token: pending.token, cancelled } });
       if (identity !== confirmationIdentity.current) return;
-      text = response.error ? 'Esito non disponibile. Controlla l’agenda prima di riprovare.' : response.text;
-      try { await onAgendaChanged?.(); } catch { text += '\nImpossibile aggiornare la schermata: ricarica l’agenda.'; }
+      text = response.error ? 'Esito non disponibile. Controlla i dati nell’app prima di riprovare.' : response.text;
+      // POL-AI-010: refresh exactly what the confirmed action changed (agenda,
+      // patients, recalls, commitments); unknown outcome → refresh them all.
+      const changed = response.raw?.changed || (response.error ? ['appointments', 'patients', 'richiami', 'impegni_personali'] : []);
+      try { if (!cancelled && changed.length) await onDataChanged?.(changed); } catch { text += '\nImpossibile aggiornare la schermata: ricarica la pagina.'; }
       if (identity !== confirmationIdentity.current) return;
       // Outcome is authoritative even if saving chat history subsequently fails.
       show({ answer: text });
@@ -432,7 +435,7 @@ export default function Poliedron({
       actionExecutionRef.current = false;
       setChatActionRunning(false);
     }
-  }, [supabaseClient, onAgendaChanged, primaryConversation?.id, appendMessage]);
+  }, [supabaseClient, onDataChanged, primaryConversation?.id, appendMessage]);
   modelConfirmationRef.current = handleModelConfirmation;
 
   /** POL-AI-005B §CONFIRM: called only from an explicit user click on the

@@ -19,6 +19,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import { signProposal, verifyProposal, claimProposal, studioToday } from "./confirmation.js";
 import { AGENDA_WRITES, prepareAgenda, executeAgenda, agendaAvailability } from "./agenda.js";
+import { PAZIENTI_WRITES, PAZIENTI_TOOLS, preparePazienti, executePazienti, schedaPaziente } from "./pazienti.js";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -420,6 +421,10 @@ async function eseguiAzionePersonalizzata(supabase, azione, input, studioId) {
 }
 
 async function eseguiTool(supabase, name, input, studioId, userId, azioniPersonalizzate) {
+  if (name === 'scheda_paziente') {
+    try { return await schedaPaziente(supabase, input, studioId); }
+    catch (error) { return { error: error.message }; }
+  }
   if (name === 'disponibilita_agenda') {
     try { return await agendaAvailability(supabase, input, studioId); }
     catch (error) { return { error: error.message }; }
@@ -1053,7 +1058,7 @@ serve(async (req) => {
       });
     }
 
-    const TOOL_SOLO_LETTURA = new Set(["disponibilita_agenda", "cerca_pazienti", "appuntamenti", "situazione_economica", "kpi_controllo_gestione", "andamento_kpi", "richiami", "storico_paziente", "catalogo_prestazioni"]);
+    const TOOL_SOLO_LETTURA = new Set(["scheda_paziente", "disponibilita_agenda", "cerca_pazienti", "appuntamenti", "situazione_economica", "kpi_controllo_gestione", "andamento_kpi", "richiami", "storico_paziente", "catalogo_prestazioni"]);
 
     // Filtrate manualmente per studioId qui (invece di affidarsi alla RLS, che
     // ora per queste tabelle richiede anche il ruolo admin): supabaseAdmin
@@ -1108,7 +1113,15 @@ serve(async (req) => {
 
     // Step 1 exposes only reviewed agenda writes. Other writes retain their
     // existing deterministic app workflows until their dedicated steps.
-    toolsFinali = toolsFinali.filter(t => TOOL_SOLO_LETTURA.has(t.name) || AGENDA_WRITES.has(t.name));
+    // Step 2 adds the reviewed patient/clinical-organisation writes, only where
+    // plan and autonomy already allow writes (never for base/pro/consulente).
+    const scrittureAmmesse = toolsFinali.some(t => !TOOL_SOLO_LETTURA.has(t.name));
+    const lettureAmmesse = toolsFinali.some(t => t.name === 'cerca_pazienti');
+    toolsFinali = toolsFinali.filter(t => (TOOL_SOLO_LETTURA.has(t.name) || AGENDA_WRITES.has(t.name)) && !PAZIENTI_WRITES.has(t.name));
+    toolsFinali = [
+      ...toolsFinali,
+      ...PAZIENTI_TOOLS.filter(t => (t.name === 'scheda_paziente' && lettureAmmesse) || (PAZIENTI_WRITES.has(t.name) && scrittureAmmesse)),
+    ];
     toolsFinali = toolsFinali.map(t => AGENDA_WRITES.has(t.name) ? {
       ...t,
       description: t.name === 'elimina_appuntamento'
@@ -1164,6 +1177,13 @@ dedurre o assumere altre date, e non sbagliare mai l'anno.${noteLivello}${noteAz
         await claimProposal(supabase, proposal);
         return json({ text: 'Operazione annullata. Nessuna modifica eseguita.' });
       }
+      if (proposal.pazienti) {
+        try {
+          return json(await executePazienti(supabase, proposal));
+        } catch (error) {
+          return json({ text: 'Operazione non confermata: ' + error.message + ' Controlla la scheda prima di inviare una nuova richiesta.', changed: ['patients', 'richiami', 'impegni_personali'], uncertain: true });
+        }
+      }
       try {
         return json(await executeAgenda(supabase, proposal));
       } catch (error) {
@@ -1186,7 +1206,7 @@ dedurre o assumere altre date, e non sbagliare mai l'anno.${noteLivello}${noteAz
         body: JSON.stringify({
           model: "claude-sonnet-5",
           max_tokens: 4096,
-          system: systemPrompt + '\nREGOLE OPERATIVE PRIORITARIE: le scritture disponibili riguardano solo appuntamenti e richiedono sempre conferma. Non dichiarare una scrittura completata. Gli altri documenti, pagamenti e modifiche vanno eseguiti nei moduli esistenti. Se il paziente o appuntamento è ambiguo, chiedi quale prima di preparare la proposta. Non inventare ID. eliminare un appuntamento significa annullarlo conservando lo storico.',
+          system: systemPrompt + '\nREGOLE OPERATIVE PRIORITARIE: puoi preparare appuntamenti (crea, sposta, annulla), anagrafiche dei pazienti (nuovo paziente, modifica dei contatti e del consenso WhatsApp), note in scheda, richiami, attività e blocchi di agenda. Ogni scrittura richiede sempre la conferma dell\'utente: tu la prepari, non dichiararla mai completata. Documenti, ricette, piani di cura e pagamenti per ora vanno fatti nei moduli dell\'app: dillo con semplicità. Se il paziente o l\'appuntamento è ambiguo, chiedi quale prima di preparare la proposta. Non inventare ID. Eliminare un appuntamento significa annullarlo conservando lo storico. Il consenso WhatsApp si registra solo se l\'utente dice esplicitamente che il paziente lo ha dato.',
           messages: convo,
           tools: toolsFinali,
         }),
@@ -1231,10 +1251,18 @@ dedurre o assumere altre date, e non sbagliare mai l'anno.${noteLivello}${noteAz
             const token = await signProposal(proposal, SUPABASE_SERVICE_ROLE_KEY);
             return json({ text: 'Controlla il riepilogo prima di confermare.', needsConfirmation: { token, summary: agenda.summary, expiresAt: proposal.expiresAt } });
           } catch (error) { result = { error: error.message }; }
+        } else if (PAZIENTI_WRITES.has(tu.name)) {
+          try {
+            const pazienti = await preparePazienti(supabase, tu.name, tu.input || {}, studioId, observed);
+            const proposal = { id: crypto.randomUUID(), userId: user.id, studioId, name: tu.name, pazienti, expiresAt: Date.now() + 10 * 60 * 1000 };
+            const token = await signProposal(proposal, SUPABASE_SERVICE_ROLE_KEY);
+            return json({ text: 'Controlla il riepilogo prima di confermare.', needsConfirmation: { token, summary: pazienti.summary, expiresAt: proposal.expiresAt } });
+          } catch (error) { result = { error: error.message }; }
         } else {
           result = await eseguiTool(supabase, tu.name, tu.input || {}, studioId, user.id, azioniAttive);
           if (tu.name === 'cerca_pazienti') for (const p of result.risultati || []) observed.patients.add(p.id);
-          if (tu.name === 'appuntamenti') for (const a of result.risultati || []) observed.appointments.add(a.id);
+          if (tu.name === 'appuntamenti') for (const a of result.risultati || []) { observed.appointments.add(a.id); if (a.paziente_id) observed.patients.add(a.paziente_id); }
+          if (tu.name === 'scheda_paziente' && result?.id) observed.patients.add(result.id);
         }
         toolResults.push({ type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify(result) });
       }
