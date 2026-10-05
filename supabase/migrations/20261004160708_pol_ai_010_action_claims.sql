@@ -75,11 +75,11 @@ BEGIN
   ) THEN RAISE EXCEPTION 'Orario occupato. Scegli un altro orario'; END IF;
   INSERT INTO public.poliedron_action_claims(id, studio_id, user_id) VALUES (p_id, p_studio, auth.uid());
   IF previous.id IS NULL THEN
-    -- Existing appointments.id is bigint with NO default (read-only metadata
-    -- verified 2026-10-04). Derive a JS-safe 52-bit ID from the proposal UUID;
-    -- a PK collision aborts the transaction, never overwrites a record.
-    INSERT INTO public.appointments(id, paziente_id, data, ora, durata, tipo, stato, note, operatore_id, studio_id, user_id)
-    VALUES (('x' || substr(md5(p_id::text),1,13))::bit(52)::bigint, proposed.paziente_id, proposed.data, proposed.ora, proposed.durata, proposed.tipo, proposed.stato, proposed.note, proposed.operatore_id, p_studio, auth.uid()) RETURNING id INTO saved_id;
+    -- appointments.id is GENERATED ALWAYS AS IDENTITY in production
+    -- (information_schema shows no column_default for identity columns):
+    -- the database assigns it, exactly as the app's own inserts do.
+    INSERT INTO public.appointments(paziente_id, data, ora, durata, tipo, stato, note, operatore_id, studio_id, user_id)
+    VALUES (proposed.paziente_id, proposed.data, proposed.ora, proposed.durata, proposed.tipo, proposed.stato, proposed.note, proposed.operatore_id, p_studio, auth.uid()) RETURNING id INTO saved_id;
   ELSE
     UPDATE public.appointments SET paziente_id=proposed.paziente_id, data=proposed.data, ora=proposed.ora,
       durata=proposed.durata, tipo=proposed.tipo, stato=proposed.stato, note=proposed.note, operatore_id=proposed.operatore_id
