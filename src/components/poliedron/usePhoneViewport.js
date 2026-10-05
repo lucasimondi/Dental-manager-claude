@@ -9,7 +9,10 @@ export default function usePhoneViewport(enabled) {
     let frame;
     const update = () => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => setBounds(phoneViewport(viewport)));
+      frame = requestAnimationFrame(() => {
+        const next = phoneViewport(viewport);
+        if (next) setBounds(next);
+      });
     };
     update();
     viewport.addEventListener('resize', update);
@@ -20,5 +23,5 @@ export default function usePhoneViewport(enabled) {
       viewport.removeEventListener('scroll', update);
     };
   }, [enabled]);
-  return enabled && bounds ? { height: bounds.height, minHeight: bounds.height, position: 'fixed', top: bounds.top, left: 0, right: 0 } : {};
+  return enabled && bounds ? { '--poliedron-viewport-height': `${bounds.height}px`, height: bounds.height, minHeight: bounds.height, position: 'fixed', top: bounds.top, left: 0, right: 0 } : {};
 }

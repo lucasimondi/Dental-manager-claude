@@ -9,22 +9,6 @@
 .poliedron-chat__mic:disabled { opacity: .5; cursor: default; }
 .poliedron-chat__mic:focus-visible, .poliedron-install button:focus-visible { outline: 3px solid var(--brand-accent); outline-offset: 2px; }
 .poliedron-chat__notice { padding: 8px 2px; color: var(--text-muted); font-size: 12px; line-height: 1.5; }
-.poliedron-chat--phone { padding: 0; background: var(--surface-page); }
-.poliedron-chat--phone .poliedron-chat__header {
-  box-sizing: border-box; flex-wrap: wrap; padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 10px;
-  gap: 8px; backdrop-filter: none; background: var(--surface-elevated);
-}
-.poliedron-chat--phone .poliedron-chat__header-text { flex: 1; min-width: 110px; }
-.poliedron-chat--phone .poliedron-chat__header h1 { font-size: 18px; }
-.poliedron-chat--phone .poliedron-chat__header p { font-size: 11px; }
-.poliedron-chat--phone .poliedron-chat__nav { flex-basis: 100%; justify-content: flex-end; }
-.poliedron-chat--phone .poliedron-chat__nav select { max-width: 100%; min-height: 30px; }
-.poliedron-chat--phone .poliedron-chat__messages { overscroll-behavior-y: contain; padding-bottom: 20px; }
-.poliedron-chat--phone .poliedron-chat__bubble { font-size: 15px; line-height: 1.55; overflow-wrap: anywhere; }
-.poliedron-chat--phone .poliedron-chat__composer {
-  padding: 10px max(12px, calc((100% - 920px) / 2)) calc(10px + env(safe-area-inset-bottom, 0px));
-  background: var(--surface-elevated); backdrop-filter: none;
-}
 .poliedron-phone-app .poliedron-chat-host { background: var(--surface-page); }
 .poliedron-return { min-height: 44px; padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px; text-align: left; border: 0; color: var(--brand-primary); background: var(--surface-elevated); font: inherit; font-weight: 600; cursor: pointer; flex-shrink: 0; }
 .poliedron-install { position: relative; }
@@ -33,6 +17,51 @@
 .poliedron-install__help p { font-size: 14px !important; }
 @media (max-width: 719px) {
   .poliedron-chat__composer textarea { font-size: 16px; }
-  .poliedron-chat--phone { padding-top: 0; padding-bottom: 0; }
-  .poliedron-chat--phone .poliedron-chat__activity-toggle { min-height: 44px; font-size: 12px; padding: 0 10px; }
+  .poliedron-chat.poliedron-chat--phone { padding-top: 0; padding-bottom: 0; }
+  .poliedron-chat.poliedron-chat--phone .poliedron-chat__activity-toggle { min-height: 44px; font-size: 12px; padding: 0 10px; }
+}
+/* Scoped specificity also survives CanonicalFinancialWidget re-importing
+   PremiumVisualSystem after these rules. Keep the manager dock clearance out.
+   The list owns scrolling; the shell, header and input never scroll away. */
+.poliedron-chat__timeline { position: relative; display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; min-width: 0; overflow: hidden; }
+.poliedron-chat__latest { position: absolute; right: 16px; bottom: 12px; width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid var(--border-subtle); border-radius: 50%; background: var(--surface-elevated); color: var(--brand-primary); box-shadow: 0 3px 12px #0f172a20; cursor: pointer; }
+.poliedron-chat.poliedron-chat--phone { padding: 0; background: var(--surface-page); min-width: 0; flex: 1 1 0; height: auto; isolation: isolate; }
+.poliedron-chat.poliedron-chat--phone .poliedron-chat__header { position: relative; flex-wrap: nowrap; min-height: calc(64px + env(safe-area-inset-top, 0px)); padding: calc(8px + env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) 8px max(12px, env(safe-area-inset-left, 0px)); gap: 10px; }
+.poliedron-chat.poliedron-chat--phone .poliedron-chat__brand { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; background: var(--surface-interactive); box-shadow: none; }
+.poliedron-chat.poliedron-chat--phone .poliedron-chat__brand img { width: 36px; height: 36px; }
+.poliedron-chat.poliedron-chat--phone .poliedron-chat__header-text { min-width: 0; }
+.poliedron-chat.poliedron-chat--phone .poliedron-chat__header h1 { font-size: 17px; line-height: 1.3; }
+.poliedron-chat.poliedron-chat--phone .poliedron-chat__header p { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.poliedron-chat__options { flex: 0 0 44px; }
+.poliedron-chat__options summary { list-style: none; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; color: var(--text-primary); cursor: pointer; }
+.poliedron-chat__options summary::-webkit-details-marker { display: none; }
+.poliedron-chat__options summary:focus-visible, .poliedron-chat__latest:focus-visible { outline: 3px solid var(--brand-accent); outline-offset: -3px; }
+.poliedron-chat__options[open] summary { background: var(--surface-interactive); }
+.poliedron-chat__options-panel { position: absolute; top: calc(100% - 4px); right: max(8px, env(safe-area-inset-right, 0px)); width: min(280px, calc(100% - 16px)); max-height: min(440px, calc(var(--poliedron-viewport-height, 100dvh) - 90px)); overflow-y: auto; overscroll-behavior: contain; padding: 8px; border: 1px solid var(--border-subtle); border-radius: 16px; background: var(--surface-elevated); box-shadow: 0 8px 30px #0f172a26; }
+.poliedron-chat__options-panel button { display: block; width: 100%; min-height: 44px; text-align: left; padding: 10px 12px; border: 0; border-radius: 8px; background: transparent; font: inherit; font-size: 14px; color: var(--text-primary); cursor: pointer; }
+.poliedron-chat__options-panel button:hover { background: var(--surface-interactive); }
+.poliedron-chat__options-panel small { display: block; padding: 12px 12px 6px; font-size: 11px; color: var(--text-muted); }
+.poliedron-chat__options-panel nav { margin-top: 6px; border-top: 1px solid var(--border-subtle); }
+.poliedron-chat.poliedron-chat--phone .poliedron-chat__messages { padding: 16px max(12px, env(safe-area-inset-right, 0px), calc((100% - 900px) / 2)) 18px max(12px, env(safe-area-inset-left, 0px), calc((100% - 900px) / 2)); gap: 8px; scrollbar-gutter: auto; background: radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--brand-accent) 5%, transparent), transparent 65%), var(--surface-page); }
+.poliedron-chat.poliedron-chat--phone .poliedron-chat__message { flex: 0 0 auto; width: auto; max-width: min(88%, 680px); gap: 0; }
+.poliedron-chat.poliedron-chat--phone .poliedron-chat__avatar { display: none; }
+.poliedron-chat.poliedron-chat--phone .poliedron-chat__bubble { padding: 9px 12px 6px; border-radius: 4px 16px 16px 16px; font-size: 16px; line-height: 1.45; box-shadow: 0 1px 2px #0f172a0d; }
+.poliedron-chat.poliedron-chat--phone .is-user .poliedron-chat__bubble { border-radius: 16px 4px 16px 16px; background: color-mix(in srgb, var(--brand-primary) 12%, var(--surface-elevated)); color: var(--text-primary); box-shadow: 0 1px 2px #0f172a0d; }
+.poliedron-chat.poliedron-chat--phone .poliedron-chat__bubble footer, .poliedron-chat.poliedron-chat--phone .poliedron-chat__message.is-user .poliedron-chat__bubble footer { font-size: 11px; color: var(--text-muted); }
+.poliedron-chat.poliedron-chat--phone .poliedron-chat__bubble footer button { min-height: 44px; }
+.poliedron-chat__date { align-self: center; padding: 5px 10px; margin: 8px 0; border-radius: 8px; color: var(--text-muted); background: var(--surface-elevated); font-size: 11px; box-shadow: 0 1px 2px #0f172a0d; }
+.poliedron-chat.poliedron-chat--phone .poliedron-chat__messages > :not(.poliedron-chat__message) { flex-shrink: 0; max-width: 100%; min-width: 0; overflow-wrap: anywhere; }
+.poliedron-chat.poliedron-chat--phone .poliedron-chat__composer { border-top: 0; padding: 8px max(10px, env(safe-area-inset-right, 0px), calc((100% - 900px) / 2)) calc(8px + env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px), calc((100% - 900px) / 2)); background: var(--surface-page); }
+.poliedron-chat.poliedron-chat--phone .poliedron-chat__composer-row { gap: 6px; align-items: flex-end; }
+.poliedron-chat.poliedron-chat--phone .poliedron-chat__composer textarea { border-radius: 24px; padding: 11px 14px; min-height: 46px; background: var(--surface-elevated); font-size: 16px; }
+.poliedron-chat.poliedron-chat--phone .poliedron-chat__mic, .poliedron-chat.poliedron-chat--phone .poliedron-chat__send { width: 46px; height: 46px; min-width: 46px; min-height: 46px; box-shadow: none; margin: 0; }
+.poliedron-chat.poliedron-chat--phone .poliedron-chat__notice, .poliedron-chat.poliedron-chat--phone .poliedron-chat__error { max-height: 80px; overflow-y: auto; font-size: 12px; }
+.poliedron-chat.poliedron-chat--phone .poliedron-attivita { flex: 0 1 auto; max-height: 40%; margin: 8px 12px; min-height: 0; overflow-wrap: anywhere; }
+.poliedron-chat.poliedron-chat--phone .poliedron-attivita button { min-height: 44px; }
+.poliedron-phone-app .poliedron-chat-host { flex: 1 1 0; height: auto; min-height: 0; }
+.poliedron-install__help { top: auto; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); max-height: calc(var(--poliedron-viewport-height, 100dvh) - 90px); overflow-y: auto; }
+@media (max-height: 440px) {
+  .poliedron-chat.poliedron-chat--phone .poliedron-chat__header { min-height: calc(52px + env(safe-area-inset-top, 0px)); padding-top: calc(4px + env(safe-area-inset-top, 0px)); padding-bottom: 4px; }
+  .poliedron-chat.poliedron-chat--phone .poliedron-chat__header p { display: none; }
+  .poliedron-chat.poliedron-chat--phone .poliedron-chat__composer textarea { max-height: 80px; }
 }

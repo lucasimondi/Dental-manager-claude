@@ -98,3 +98,24 @@ Use generic lock-screen text and fetch detail only after login. Do not replace
 this with Realtime while the page is open or with browser notifications generated
 from client-owned business changes. Coordinate with the existing action log and
 appointment/recall sources; do not invent a second event history.
+
+
+## Mobile layout revision — WhatsApp reference (2026-10-05)
+
+Product Owner rejected the first mobile layout and requested WhatsApp as the principal reference. The dedicated entry now uses one 64px header, an overflow menu for installation/activity/allowed modules, compact message bubbles with dates and readable timestamps, a growing composer with 46px touch controls, and a latest-message button. No extra chat engine or dependency was introduced; Chatscope's MIT React chat toolkit and WhatsApp's official messaging page were consulted as references. Poliedra's existing blue palette remains.
+
+Full App browser QA uncovered a concrete regression missed by isolated Chat QA: `CanonicalFinancialWidget.css` imports `PremiumVisualSystem.css` again, after phone styles, restoring the manager's 92px bottom dock padding. Dedicated phone selectors now have enough specificity to survive that import. The browser check requires the composer bottom to equal the viewport bottom, rather than merely remain inside it. The list uses an explicit flex chain and preserves its latest position across input/viewport resizing while allowing the reader to browse history. Invalid pinch-zoom viewport readings keep the last valid bounds.
+
+### Reproducible browser checks
+
+With Playwright and its Chromium installed in the development environment (optional QA tooling, no production dependency), run:
+
+```sh
+node tests/browser/poliedron-mobile.cjs
+```
+
+The runner starts its own local Vite server, renders the real App/portal/styles with `tests/fixtures/poliedron-phone-app.jsx`, substitutes synthetic session/data/model replies, and blocks every non-local request. The temporary HTML is removed on completion; screenshots go to the OS temporary directory, configurable with `POLIEDRON_QA_OUTPUT`. A custom browser can be selected with `POLIEDRON_CHROMIUM_EXECUTABLE`; serverless Chromium arguments can optionally come from `POLIEDRON_CHROMIUM_PACKAGE`. Run only one instance at a time (port 5177). No business records or production credentials are used.
+
+Validation: Chromium 153 at 320×568, 375×812, 390×844, 430×932, 844×390, 768×1024, 1024×768 and 1440×900. Assertions cover header/composer bounds, absence of the 92px gap and horizontal overflow, long/multiline messages, menu/Escape/activity, latest-message scroll, synthetic model send/persistence and preservation of the next draft, a 330px visual viewport with the layout viewport intact, offline sending, editable simulated dictation without automatic sending, install help, module navigation/return, and separate empty/schema-error states. Phone and keyboard screenshots were visually inspected.
+
+Limits: Chromium simulation is not an iPhone/Android hardware test or an authenticated backend smoke test. Real Safari keyboard, microphone permissions, installed safe-area behavior and provider latency still require device verification before release. Push remains a separate backend increment. Frontend release/merge still requires explicit Product Owner approval under AGENTS.md.

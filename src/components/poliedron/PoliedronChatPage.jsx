@@ -13,6 +13,9 @@ import poliedroGem from '../../assets/icon-poliedra-gem.png';
 
 const NEAR_BOTTOM_PX = 120;
 
+const dayLabel = (value) => value ? new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(value)) : '';
+const dayKey = (value) => value ? new Date(value).toLocaleDateString('it-IT') : '';
+
 const formatTime = (value) => {
   if (!value) return '';
   return new Intl.DateTimeFormat('it-IT', {
@@ -99,6 +102,8 @@ export default function PoliedronChatPage({
 }) {
   const [draft, setDraft] = useState('');
   const [showActivity, setShowActivity] = useState(false);
+  const [awayFromBottom, setAwayFromBottom] = useState(false);
+  const menuRef = useRef(null);
   const [pendingUser, setPendingUser] = useState(null);
   const [composerError, setComposerError] = useState('');
   const [online, setOnline] = useState(() => navigator.onLine !== false);
@@ -108,6 +113,7 @@ export default function PoliedronChatPage({
   const scrollRef = useRef(null);
   const nearBottomRef = useRef(true);
   const initializedRef = useRef(false);
+  const listHeightRef = useRef(null);
   const sendDisabled = loading || sending || !draft.trim() || !online || Boolean(pendingUser) || dictation.listening;
 
   useEffect(() => {
@@ -140,11 +146,55 @@ export default function PoliedronChatPage({
     }
   }, [messages.length, sending, structuredState, pendingUser]);
 
+  // A keyboard or a growing input changes the available list height. Keep
+  // the latest message visible only when the reader was already at the end.
+  useEffect(() => {
+    const element = scrollRef.current;
+    if (!element || !window.ResizeObserver) return undefined;
+    const observer = new ResizeObserver(() => {
+      if (nearBottomRef.current) element.scrollTop = element.scrollHeight;
+      listHeightRef.current = element.clientHeight;
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!phoneApp) return undefined;
+    const closeOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) menuRef.current.open = false;
+    };
+    const escape = (event) => {
+      if (event.key === 'Escape' && menuRef.current?.open) {
+        menuRef.current.open = false;
+        menuRef.current.querySelector('summary')?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', closeOutside);
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOutside);
+      document.removeEventListener('keydown', escape);
+    };
+  }, [phoneApp]);
+
+  const jumpToLatest = () => {
+    nearBottomRef.current = true;
+    setAwayFromBottom(false);
+    const element = scrollRef.current;
+    if (element) element.scrollTop = element.scrollHeight;
+  };
+
   const handleScroll = () => {
     const element = scrollRef.current;
     if (!element) return;
+    if (listHeightRef.current !== element.clientHeight && nearBottomRef.current) {
+      element.scrollTop = element.scrollHeight;
+    }
+    listHeightRef.current = element.clientHeight;
     nearBottomRef.current =
       element.scrollHeight - element.scrollTop - element.clientHeight <= NEAR_BOTTOM_PX;
+    setAwayFromBottom(!nearBottomRef.current);
   };
 
   const loadOlder = async () => {
@@ -164,7 +214,7 @@ export default function PoliedronChatPage({
     if (!value || sending || loading) return;
     if (!online || dictation.listening) return;
     setComposerError('');
-    nearBottomRef.current = true;
+    jumpToLatest();
     await submitChatDraft({
       text: value, lock: submitLock, send: onSend,
       clear: () => setDraft(''),
@@ -181,10 +231,22 @@ export default function PoliedronChatPage({
         <span className="poliedron-chat__brand"><img src={poliedroGem} width="40" height="40" alt="" /></span>
         <div className="poliedron-chat__header-text">
           <h1>{phoneApp ? 'Poliedron' : 'Chat Poliedron'}</h1>
-          <p>{online ? 'Il tuo studio, in una conversazione' : 'Connessione assente'}</p>
+          <p>{!online ? 'Connessione assente' : sending ? 'Sto verificando…' : 'Assistente dello studio'}</p>
         </div>
-        {phoneApp && <PoliedronInstall />}
-        {loadActivity && (
+        {phoneApp && (
+          <details ref={menuRef} className="poliedron-chat__options">
+            <summary aria-label="Opzioni chat"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></summary>
+            <div className="poliedron-chat__options-panel">
+              {loadActivity && <button type="button" onClick={() => { setShowActivity((v) => !v); menuRef.current.open = false; }} aria-pressed={showActivity}>Registro attività</button>}
+              <PoliedronInstall />
+              {navItems.length > 0 && <nav aria-label="Moduli dello studio">
+                <small>Apri nello studio</small>
+                {navItems.map((item) => <button key={item.id} type="button" onClick={() => { menuRef.current.open = false; onNavigate?.(item.id); }}>{item.label}</button>)}
+              </nav>}
+            </div>
+          </details>
+        )}
+        {!phoneApp && loadActivity && (
           <button
             type="button"
             className="poliedron-chat__activity-toggle"
@@ -194,7 +256,7 @@ export default function PoliedronChatPage({
             {phoneApp ? 'Attività' : 'Attività di Poliedron'}
           </button>
         )}
-        {navItems.length > 0 && (
+        {!phoneApp && navItems.length > 0 && (
           <label className="poliedron-chat__nav">
             <Ic n="back" s={15} />
             <select
@@ -218,6 +280,7 @@ export default function PoliedronChatPage({
         <PoliedronAttivita load={loadActivity} onRestore={restoreActivity} onClose={() => setShowActivity(false)} />
       )}
 
+      <div className="poliedron-chat__timeline">
       <div
         ref={scrollRef}
         className="poliedron-chat__messages"
@@ -255,7 +318,9 @@ export default function PoliedronChatPage({
           </div>
         )}
 
-        {messages.map((message) => (
+        {messages.map((message, index) => (
+          <React.Fragment key={message.id}>
+          {phoneApp && dayKey(message.created_at) !== dayKey(messages[index - 1]?.created_at) && <div className="poliedron-chat__date"><time dateTime={message.created_at}>{dayLabel(message.created_at)}</time></div>}
           <article
             key={message.id}
             className={`poliedron-chat__message is-${message.role}${message.delivery_status === 'failed' ? ' is-failed' : ''}`}
@@ -280,6 +345,7 @@ export default function PoliedronChatPage({
               </footer>
             </div>
           </article>
+          </React.Fragment>
         ))}
 
         {pendingUser && !messages.some((message) => message.id > pendingUser.afterId && message.role === 'user' && message.content === pendingUser.content) && (
@@ -305,6 +371,8 @@ export default function PoliedronChatPage({
             <small>Poliedron sta verificando…</small>
           </div>
         )}
+      </div>
+      {awayFromBottom && <button type="button" className="poliedron-chat__latest" onClick={jumpToLatest} aria-label="Vai agli ultimi messaggi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>}
       </div>
 
       <div className="poliedron-chat__composer">
@@ -342,6 +410,7 @@ export default function PoliedronChatPage({
           <button
             type="button"
             className="poliedron-chat__send"
+            onPointerDown={(event) => { if (event.pointerType !== 'mouse' && document.activeElement === textareaRef.current) event.preventDefault(); }}
             onClick={submit}
             disabled={sendDisabled}
             aria-label="Invia messaggio"
