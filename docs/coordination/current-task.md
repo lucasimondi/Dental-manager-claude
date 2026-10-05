@@ -2,10 +2,10 @@
 - ACTIVE OWNER: CODEX — transferred by Product Owner: “Allora vai costruisci bene che funzioni che sia fluido”.
 - ACTIVE BRANCH: `codex/poliedron-phone-app`, from `master@ea834644`.
 - OBJECTIVE: dedicated installable Poliedron entry, existing conversation/permissions/activity log, mobile keyboard, immediate composer feedback and Italian dictation. User prioritizes this before documents.
-- STATUS: WAITING_PRODUCT_OWNER — PR #124 revised to WhatsApp-inspired mobile layout; 909/909 unit tests, build, 8 full-App responsive browser cases + empty/error states PASS. GitHub Actions and Vercel preview succeeded on a1759f6. Physical device smoke remains the release gate.
-- BOUNDARY: frontend only; no production writes, remote migrations, deployment, merge, financial/security semantics changes. Push delivery requires a separate backend increment and is not represented as available.
+- STATUS: RELEASED — Product Owner authorized publication with “Manda” (2026-10-06 Europe/Rome). PR #124 merged as b20d0733fdcf835bfca4d13048ee10f90791a87d; exact-head CI passed and Vercel deployment succeeded. Physical-phone/authenticated smoke remains unverified, as disclosed before approval.
+- BOUNDARY: frontend-only merge/release authorized. No database/RLS/financial/Edge changes. Push delivery remains a separate backend increment.
 - CHECKPOINT: `stable/2026-08-27-full-recovery@070b28fd4eae4e2cc397584201d0bb149468fae7` preserved.
-- EXACT NEXT ACTION: physical iPhone/Android smoke → explicit PO merge approval (recheck current head CI before merge). Background push remains the next backend increment.
+- EXACT NEXT ACTION: PO smoke on the installed app/phone (keyboard, dictation, menu). Future push delivery and documents remain separate scoped increments.
 
 ---
 

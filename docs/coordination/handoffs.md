@@ -3361,3 +3361,13 @@ Merge della PR #115 su istruzione del Product Owner.
 - EXACT NEXT ACTION: verify new PR #124 Vercel preview/CI, physical phone smoke, then explicit Product Owner merge approval. Preview branch URL remains https://dental-manager-git-codex-poliedron-phone-app-acmeproduction.vercel.app/poliedron/.
 
 - Remote verification: runtime revision `a1759f6373bd1450058217e5749d861ac696ff8b` exactly matches the locally tested Git tree. GitHub Actions POL-003E CI run `37379120054` completed successfully; Vercel deployment status success. Updated branch preview is ready. Remaining next action: physical-device smoke and explicit PO merge approval; no merge/deploy to production performed.
+
+
+### POL-AI-010-PWA — release authorized and completed (2026-10-06 Europe/Rome)
+- Owner CODEX; task branch `codex/poliedron-phone-app`. Product Owner instructed “Manda” after reviewing the corrected layout and the disclosed physical-device limitations; this authorizes the frontend merge/release.
+- Exact PR head `5cba8299beacfbc8c889fc2f30c2faa233195952`: POL-003E CI run `37379298717` completed successfully; Vercel preview success. No base movement/conflict before merge; PR #123 untouched.
+- PR #124 marked ready then merged with an expected-head lease: merge `b20d0733fdcf835bfca4d13048ee10f90791a87d` on master. Production Vercel deployment `GeMNxWSgrwFhQZ6oK3bPhsMVATWq` status success.
+- Runtime validation remains 909/909 Node tests, build and full-App synthetic responsive/browser checks from the previous handoff. No database migration, RLS, financial, Edge Function or business-record writes. Immutable checkpoint preserved.
+- Anonymous HTTP smoke of the repository-documented git-master alias reached Vercel's sign-in protection, so it does not verify the app's live login/manifest. No authenticated production session was used. Real iPhone/Android installation, keyboard/microphone permissions and backend smoke remain unverified; no claim otherwise.
+- Release record committed to the task branch after the authorized merge; runtime release is the master merge above. Rollback: revert merge b20d0733 with parent 1; no business data rollback.
+- EXACT NEXT ACTION: PO opens the usual app origin + `/poliedron/`, performs phone/installed smoke. Push and documents require their own increments.
