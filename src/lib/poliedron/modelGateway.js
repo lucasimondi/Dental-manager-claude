@@ -34,7 +34,7 @@ export const MODEL_TASK_TYPE = Object.freeze({
  */
 export async function runModelTask({ taskType, input, history = [], context, supabaseClient, confirm } = {}) {
   if (!supabaseClient) return { text: null, error: 'MODEL_GATEWAY_NO_CLIENT' };
-  if (!input) return { text: null, error: 'MODEL_GATEWAY_EMPTY_INPUT' };
+  if (!input && !confirm) return { text: null, error: 'MODEL_GATEWAY_EMPTY_INPUT' };
   const boundedHistory = history
     .filter((message) =>
       (message?.role === 'user' || message?.role === 'assistant')
@@ -46,7 +46,7 @@ export async function runModelTask({ taskType, input, history = [], context, sup
   try {
     const { data, error } = await supabaseClient.functions.invoke('agente-assistente', {
       body: {
-        messages: [...boundedHistory, { role: 'user', content: input }],
+        ...(!confirm ? { messages: [...boundedHistory, { role: 'user', content: input }] } : {}),
         confirm,
         // Passed through as extra context only — the function's own
         // canonical data access remains the authority; this never

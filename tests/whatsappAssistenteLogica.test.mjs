@@ -10,12 +10,10 @@ import {
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 
-test('the Edge Function slot calculator is byte-identical to the app one', () => {
-  assert.equal(
-    read('supabase/functions/whatsapp-webhook/agendaSlots.js'),
-    read('src/lib/agendaSlots.js'),
-    'copy src/lib/agendaSlots.js into supabase/functions/whatsapp-webhook/ after changing it',
-  );
+test('Edge Function and app share the same authoritative slot calculator', async () => {
+  const edge = await import('../supabase/functions/whatsapp-webhook/agendaSlots.js');
+  const app = await import('../src/lib/agendaSlots.js');
+  assert.equal(edge.computeFreeSlots, app.computeFreeSlots);
 });
 
 test('dates are computed in the studio time zone, not UTC', () => {

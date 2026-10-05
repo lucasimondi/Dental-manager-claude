@@ -1,3 +1,4 @@
+import PoliedronModelConfirmation from './PoliedronModelConfirmation';
 import React, { useEffect, useRef, useState } from 'react';
 import { Ic } from '../ui';
 import PoliedronActionPreview from './PoliedronActionPreview';
@@ -16,7 +17,7 @@ const formatTime = (value) => {
 };
 
 function StructuredResult({
-  state,
+  state, onModelConfirmation,
   onSelectResult,
   onConfirmAction,
   onModifyAction,
@@ -25,6 +26,8 @@ function StructuredResult({
   actionRunResult,
 }) {
   if (!state) return null;
+  if (state.modelConfirmation) return <PoliedronModelConfirmation pending={state.modelConfirmation} busy={actionRunning} onDecision={onModelConfirmation} />;
+  if (state.answer) return <p role="status" style={{ whiteSpace: 'pre-wrap' }}>{state.answer}</p>;
   if (state.intelligence) {
     return <PoliedronIntelligenceResults intelligence={state.intelligence} onOpenPatient={onSelectResult} />;
   }
@@ -71,7 +74,7 @@ export default function PoliedronChatPage({
   hasOlder,
   sending,
   error,
-  structuredState,
+  structuredState, onModelConfirmation,
   onSend,
   onRetry,
   onRetryInitialization,
@@ -224,6 +227,7 @@ export default function PoliedronChatPage({
         ))}
 
         <StructuredResult
+          onModelConfirmation={onModelConfirmation}
           state={structuredState}
           onSelectResult={onSelectResult}
           onConfirmAction={onConfirmAction}

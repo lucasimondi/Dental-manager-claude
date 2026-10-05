@@ -3219,3 +3219,74 @@ Merge della PR #115 su istruzione del Product Owner.
 - EXACT NEXT ACTION: verifica manuale del Product Owner; nessun lavoro aperto su `claude/recipe-form-quick-actions-mobile-l8464o`.
 
 - Versione della migration: rinominata da `20261004120000` a `20261004160000` dopo il merge di master, che ha portato `20261004120000_pol_ui_044_farmaci_preferiti.sql` con la stessa versione (in produzione POL-UI-044 è registrata come `20261004135514`, nessun conflitto lì).
+
+### POL-WA-003b — esito merge e deploy (2026-10-04)
+- Prima del merge: master integrato nel branch (conflitti solo nei documenti di coordinamento, tenute entrambe le voci); migration rinominata in `20261004160000` per la collisione con POL-UI-044. CI `verify` verde, `npm test` 866/866.
+- **Database (prima del merge)**: applicata con `execute_sql` in 5 passi senza DROP: (A) colonne `patients.consenso_whatsapp*` e `whatsapp_config.promemoria_*` + CHECK; (B) tabella `whatsapp_promemoria` + indici + RLS + policy SELECT + REVOKE/GRANT; (C) `whatsapp_cron_segreto_valido`; (D) estensioni `pg_cron` 1.6.4 e `pg_net` 0.20.3, segreto `whatsapp_cron_secret` generato nel DB (valore mai letto né stampato); (E) `whatsapp_programma_promemoria` + chiamata con l'URL di produzione → job `whatsapp-promemoria` (id 1, `7 * * * *`, attivo). Registrata `20261004160000 pol_wa_003b_promemoria` in `schema_migrations`.
+- **Verifica** (lettura): colonne presenti; `whatsapp_promemoria` con RLS, policy `whatsapp_promemoria_select`, `authenticated` solo SELECT, `anon` nulla; segreto: `service_role` sì, `authenticated` no; programmazione del job: nessun ruolo client né `service_role`; un solo segreto nel Vault.
+- **Merge**: PR #117 → `master@e6e8357`.
+- **Edge Function**: `whatsapp-webhook` v6 (`verify_jwt=false`), 4 file da master; contenuto riletto dopo il deploy, identico al repository file per file.
+- **Prove in produzione** (chiamate dal DB con `pg_net`): `/promemoria` con segreto errato → 403; `/invia` senza login → 401 `accesso richiesto`; `/promemoria` con il segreto del Vault → 200 `{"ora":16,"domani":"2026-10-05","studi":0,"inviati":0,"saltati":0,"errori":0}` (nessuno studio con promemoria attivi: nessun invio).
+- Proxy Vercel non verificabile da questo ambiente (il proxy di rete della sessione rifiuta la connessione); il file `api/whatsapp-webhook.js` non è cambiato in questo incremento.
+
+### POL-AI-010 passo 0 — `agente-assistente` nel repository (2026-10-04)
+- Owner: CLAUDE, su istruzione del Product Owner ("Vai"). Branch `claude/whatsapp-automation-status-d2ng12`.
+- Fatto: `supabase/functions/agente-assistente/index.ts` = copia fedele della versione 24 di produzione (letta in sola lettura, `verify_jwt=true`, file unico); `README.md` (strumenti, gate, protocollo di conferma, accesso ai dati, nomi dei secret); `tests/agenteAssistenteBaseline.test.mjs`. Nessun cambio di comportamento, nessun deploy.
+- Stato reale rilevato:
+  - È già un assistente con 18 strumenti (lettura, scritture dirette, scritture con conferma) più le azioni personalizzate dello studio; gate di piano (`assistente_ai`: off/base/pro/premium) e quadrante di autonomia (`agente_azione`) lato server.
+  - I dati passano sempre dalla sessione dell'utente (RLS). Il service role serve solo a 4 letture di configurazione `ai_agent_*`, filtrate a mano per `studio_id`.
+  - Poliedron (unico ingresso AI dell'app) lo chiama solo per le domande aperte e **non gestisce** `needsConfirmation` né il `pdf_data` della ricetta: lo faceva solo `AssistenteAI.jsx`, smontato da POL-AI-001. Le scritture con conferma oggi dalla chat non arrivano mai a compimento; le scritture dirette (crea/modifica appuntamento, impegni, promemoria, note) sì.
+- Difetti da correggere nei passi successivi (non toccati qui, il passo 0 è una copia fedele):
+  1. `appuntamenti` non restituisce l'id degli appuntamenti: `modifica_appuntamento`/`elimina_appuntamento` non hanno un id affidabile (rischio di modificare l'appuntamento sbagliato se il modello indovina un numero). **Priorità alta, primo intervento del passo 1.**
+  2. Il percorso `confirm` esegue lo strumento indicato nella cronologia mandata dal client senza ricontrollare che sia tra quelli permessi da piano/autonomia (aggiramento del gate commerciale; non dei permessi, perché la RLS resta applicata).
+  3. `max_tokens: 1024` con `claude-sonnet-5`, che ragiona di default: risposte potenzialmente vuote (stesso problema corretto in POL-WA-002 per WhatsApp).
+  4. "Oggi" calcolato in UTC (`toISOString`) in `appuntamenti`/`situazione_economica`/`registra_pagamento`: vicino a mezzanotte usa il giorno sbagliato.
+  5. `crea_appuntamento`: il controllo dei conflitti non esclude gli appuntamenti annullati e non considera l'operatore; non usa lo stesso calcolo degli slot dell'app (`agendaSlots.js`).
+  6. `situazione_economica` e `richiami` ricalcolano totali e richiami da `plans.voci` invece di usare il motore finanziario canonico e la tabella `richiami` (possibile disallineamento con quanto mostra l'app). Da trattare nel passo 4 con gate finanziario.
+  7. Le azioni personalizzate di tipo webhook chiamano un URL configurato dall'amministratore dello studio dal server della piattaforma: da valutare se limitarle (solo https, nessun indirizzo interno).
+- Rollback: nessuno necessario (solo file nel repository).
+- EXACT NEXT ACTION: passo 1 (Agenda), partendo dai difetti 1-5.
+
+
+
+### POL-AI-010 step 1 — CODEX implementation, 2026-10-04
+- Previous agent: CLAUDE, step 0 (#118), next action explicitly Agenda. Owner transferred to CODEX by Product Owner “vai” and “continua”.
+- Branch: codex/pol-ai-010-agenda, isolated from 0dae6e4; existing local finance changes untouched.
+- Objective: agenda through the existing Poliedron chat with server-authored confirmation, actual IDs, slot checks and UI refresh.
+- Completed: signed/expiring proposals; current plan/membership recheck; user-scoped atomic RPC, unique replay claim, stale update and conflict checks; soft cancellation; shared availability calculator; preview in both chat surfaces; explicit refresh and uncertain-outcome messaging.
+- Files: Poliedron controller/panel/chat/new confirmation card, model gateway/core, App refresh, optional DB read error propagation, shared agenda slots and re-exports, Edge handler plus agenda/confirmation modules, migration and synthetic SQL fixture/tests, Node behaviour/handler tests, architecture/runbook document.
+- Database: NEW migration 20261004160708_pol_ai_010_action_claims.sql only LOCAL. No existing schema/RLS changed, no remote writes.
+- Validation: initial suite 871/871 and build passed; added handler tests 4/4 and helper/routing tests 9/9. Final non-bundler suite 861/861; targeted shared/helper tests 30/30. PostgreSQL 17.4 synthetic SQL suite passed. See architecture document for exact chronology and remaining final-head checks.
+- Risks/unresolved: browser QA blocked by automatic approval-review usage exhaustion; final CI/staging smoke and real multi-connection contention test pending. Short global table locks have 2s timeout. Model write coverage is deliberately limited to reviewed agenda actions in this step; other legacy AI writes remain unavailable while deterministic module workflows remain.
+- Rollback/deploy order: docs/architecture/POL-AI-010-agenda.md. No production release, merge or remote migration performed.
+- Exact next action: draft PR stacked on #118; complete listed validation gates before requesting release approval.
+
+### POL-AI-010 passo 1 — revisione e presa in carico (2026-10-05)
+- Owner: CLAUDE, su istruzione del Product Owner ("Guarda cosa ha fatto code, ha fatto la 118 e ora 119 , e poi continua"; "Continua"). Il passo 1 era stato implementato da CODEX nella PR #119 (`codex/pol-ai-010-agenda`, commit `8b48319`, base temporanea sul branch della #118).
+- La mia bozza del passo 1 (non committata) si sovrapponeva alla #119: messa da parte (`git stash`), non usata.
+- **Revisione della #119**:
+  - `npm test` 884/884 e build OK sul suo commit.
+  - Test SQL (`pol_ai_010_fixture` → migration → `pol_ai_010_agenda`) PASS su Postgres 16 locale pulito.
+  - Verificati in produzione, in sola lettura, i presupposti della migration: `appointments.id` senza default, `ora` testo, `operatore_id` bigint, tabella `operatori` con `attivo`, `authenticated` con UPDATE su `appointments` e `impegni_personali` (serve al `LOCK TABLE`), policy SELECT su `studio_users` per lo studio del token, `poliedron_action_claims` assente.
+  - Impianto corretto: proposta firmata lato server (HMAC, 10 minuti), nessun tool preso dalla cronologia del client, ricontrollo di piano, autonomia e appartenenza allo studio alla conferma, scrittura atomica `SECURITY INVOKER` con controllo dei conflitti e delle modifiche concorrenti, anti-replay, "elimina" = annulla conservando lo storico.
+- **Correzioni aggiunte**:
+  1. "Come se lo dicessi a una persona": con una conferma in sospeso, rispondere in chat "sì / ok / confermo / procedi" o "no / annulla / non procedere" equivale ai pulsanti (`src/lib/poliedron/confirmationReply.js`, solo corrispondenza dell'intero messaggio; `tests/poliedronConfirmationReply.test.mjs`).
+  2. Conferma scaduta, non valida o non più permessa dal piano: risposta chiara "… Nessuna modifica eseguita." invece di un errore generico 500. `tests/agenteAgendaFlow.test.mjs` aggiornato di conseguenza; il fail-closed resta verificato (nessuna chiamata RPC).
+  3. README di `whatsapp-webhook`: dal passo 1 `agendaSlots.js` riesporta `../_shared/agendaSlots.js`, che va incluso nel prossimo deploy (la v6 in produzione contiene ancora la vecchia copia autonoma).
+- **Da sapere prima del rilascio** (non bloccanti, già in parte segnalati da Codex):
+  - `LOCK TABLE ... SHARE ROW EXCLUSIVE` su `appointments` e `impegni_personali` è globale, non per studio: per qualche millisecondo blocca anche le scritture di agenda degli altri studi (`lock_timeout` 2 s). Va bene ai volumi attuali; alternativa futura: lock consultivo per studio e data.
+  - `poliedron_action_claims` cresce senza pulizia: va aggiunta una pulizia periodica (es. righe più vecchie di 30 giorni) in un passo successivo.
+  - Le scritture AI non di agenda (nuovo paziente, pagamento, nota, promemoria, impegno, ricetta, proposta) sono escluse dal modello finché non arrivano i loro passi. Nell'app restano i moduli esistenti.
+- `npm test` 888/888; `npm run build` OK.
+- EXACT NEXT ACTION: revisione del Product Owner della PR #118 (ora passi 0+1); al "Mergia": migration `20261004160708` in produzione a passi, deploy di `agente-assistente` (cartella + `_shared/agendaSlots.js`), poi QA. Intanto: passo 2 (Pazienti e clinica).
+- **Correzione bloccante trovata dopo la presa in carico**: in produzione `appointments.id` è `GENERATED ALWAYS AS IDENTITY` (`information_schema.column_default` è nullo per le colonne identity, da cui la lettura errata "nessun default"). La funzione `poliedron_execute_agenda_v1` inseriva un id esplicito: ogni appuntamento creato da Poliedron sarebbe fallito con `cannot insert a non-DEFAULT value into column "id"`. Ora l'id lo assegna il database, come per gli inserimenti dell'app. La fixture `pol_ai_010_fixture.sql` riproduce le colonne identity di produzione (`appointments` ALWAYS, `impegni_personali` BY DEFAULT). Controllo negativo: migration originale + fixture corretta → FAIL con lo stesso errore che avrebbe dato la produzione; migration corretta → PASS.
+
+### POL-AI-010 passo 2 — Pazienti e clinica (2026-10-05)
+- Owner: CLAUDE (stessa istruzione del Product Owner: "Continua").
+- Da Poliedron, con riepilogo e conferma: nuovo paziente (avviso omonimi), modifica di contatti/indirizzo/data di nascita/codice fiscale/consenso WhatsApp (solo campi cambiati, controllo concorrenza), nota datata in scheda (append nel database), richiamo, attività, blocco agenda; lettura `scheda_paziente`. Dettagli in `docs/architecture/POL-AI-010-pazienti.md`.
+- File: `supabase/functions/agente-assistente/{pazienti.js (nuovo),index.ts,README.md}`, `supabase/migrations/20261005120000_pol_ai_010_pazienti.sql`, `supabase/tests/pol_ai_010_pazienti_fixture.sql`, `supabase/tests/pol_ai_010_pazienti.sql`, `tests/agentePazientiFlow.test.mjs`, `src/App.jsx` (aggiornamento dei soli dati cambiati), `src/components/poliedron/{Poliedron.jsx,PoliedronModelConfirmation.jsx}`.
+- **Difetto di produzione corretto qui**: `todos_origine_check` rifiutava le attività dell'assistente WhatsApp (origine `whatsapp`), quindi il "passa allo staff" di POL-WA-003a non creava mai l'attività (errore ignorato nel codice). La migration amplia il vincolo.
+- Validazione: `npm test` 893/893, build OK; SQL locale PASS (migration ×2) con controlli negativi; flussi Edge 5/5 con controllo negativo.
+- Rischi: la migration contiene `DROP CONSTRAINT` (ricreato subito): in produzione via MCP applicarla a passi, come la 003a.
+- EXACT NEXT ACTION: revisione PR #118 (passi 0+1+2); poi passo 3 (Documenti).
+
