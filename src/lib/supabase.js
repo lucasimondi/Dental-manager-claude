@@ -123,6 +123,13 @@ const getStudioId = async () => {
 };
 
 export const DB = {
+  // POL-AI-010: map a row returned by an Edge Function to the app shape, so a
+  // Poliedron write can be shown at once without re-reading the whole table.
+  fromRow(key, row) {
+    const table = TABLE_MAP[key];
+    return table && row ? fromDb(table, row) : null;
+  },
+
   async getAll(key, { throwOnError = false } = {}) {
     const table = TABLE_MAP[key];
     if (!table) return null;

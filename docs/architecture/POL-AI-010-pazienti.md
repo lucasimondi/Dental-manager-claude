@@ -53,3 +53,36 @@ riepilogo ("Fatto. …"). Restano con riepilogo e conferma: possibile paziente d
 studi con autonomia "medio". Errori, ID non letti e orari occupati non scrivono nulla:
 il modello chiede all'utente (con gli orari liberi reali, per l'agenda). Dettagli in
 `supabase/functions/agente-assistente/README.md`.
+
+## Passo 2c — annullati fuori dall'agenda, richiami "da rifissare", registro (2026-10-05)
+
+Indicazioni del Product Owner: "Non rimane in agenda ma ci sarà traccia di attività
+poliedron con elenco di tutto ciò che ha fatto", "quando non vengono rifissati vanno nei
+richiami da fare", "Quando vengono rifissati va via dai non fissati quindi dai richiami".
+
+- Agenda e liste del giorno della Dashboard non mostrano più gli appuntamenti annullati
+  (qualunque origine). Restano nel database e nello storico.
+- Migration `20261005170000_pol_ai_010_registro_annullati.sql`:
+  - trigger `appointments_richiamo_annullato` (SECURITY INVOKER): annullamento di un
+    appuntamento futuro senza altri appuntamenti futuri del paziente → richiamo
+    `origine = 'annullamento'`, "Da rifissare: …", chiave `annullato:<id>`; nuovo
+    appuntamento futuro (o annullamento revocato) → richiamo chiuso (`fatto`). Un errore del
+    richiamo non blocca mai la scrittura in agenda. Recupero degli annullati futuri esistenti.
+  - tabella `poliedron_attivita` (RLS: lettura membri attivi dello studio; inserimento solo
+    dell'utente per un'azione da lui reclamata, FK su `poliedron_action_claims`; nessun
+    update/delete).
+  - `richiami` aggiunta alla pubblicazione realtime (l'app già la ascolta).
+- Edge function: ogni azione eseguita (diretta o confermata) scrive la riga nel registro;
+  le scritture di agenda restituiscono la riga scritta (`records`) così l'app la mostra
+  subito, poi ricarica in background senza ritardare la risposta.
+- Chat: pulsante "Attività di Poliedron" con l'elenco per giorno; Richiami e Attività
+  mostrano l'etichetta "Da rifissare".
+- **Ripristina** (PO: "Aggiungi ripristina"): `poliedron_ripristina_v1(p_attivita, p_studio)`,
+  SECURITY INVOKER, una transazione, solo se il dato è ancora come l'ha lasciato Poliedron:
+  appuntamento creato → rimosso; modificato/annullato → stato precedente (stessi controlli
+  di disponibilità e data dell'agenda; il richiamo "da rifissare" si chiude); scheda
+  paziente → valori precedenti; nota → tolta se è ancora l'ultima; richiamo, attività,
+  blocco agenda creati → rimossi. Nuovo paziente: non ripristinabile da qui. Il ripristino
+  è una nuova riga del registro (`ripristino_di`, indice unico: una sola volta).
+- Validazione: SQL locale (catena completa + `supabase/tests/pol_ai_010_registro.sql`) PASS;
+  `npm test` 902/902; build OK.

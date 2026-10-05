@@ -65,7 +65,7 @@ export async function prepareAgenda(client, name, input, studioId, observed) {
   if (after.operatore_id) operator = await one(client.from('operatori').select('id, nome').eq('studio_id', studioId).eq('id', after.operatore_id).eq('attivo', true));
   await checkAvailability(client, after, studioId);
   const [label, doneLabel] = name === 'crea_appuntamento' ? ['Crea appuntamento', 'Appuntamento creato']
-    : after.stato === 'annullato' ? ['Annulla appuntamento (conserva lo storico)', 'Appuntamento annullato (lo storico resta)']
+    : after.stato === 'annullato' ? ['Annulla appuntamento (conserva lo storico)', 'Appuntamento annullato: tolto dall\'agenda (se non viene rifissato lo trovi nei Richiami)']
     : ['Modifica appuntamento', 'Appuntamento modificato'];
   const detail = (r) => `${r.data} alle ${r.ora.slice(0,5)}, ${r.durata} minuti, ${r.tipo}`;
   const body = `Paziente: ${patient.nome} ${patient.cognome}\n${before ? `Prima: ${detail(before)}\n` : ''}Dopo: ${detail(after)}\nStato: ${after.stato}\nOperatore: ${operator?.nome || 'non assegnato'}${after.note ? `\nNote: ${after.note}` : ''}`;
@@ -87,5 +87,7 @@ export async function executeAgenda(client, proposal) {
   });
   if (error?.code === '23505') throw new Error('Questa conferma è già stata utilizzata');
   if (error) throw new Error(error.message);
-  return { text: `Fatto. ${proposal.agenda.done || proposal.agenda.summary}`, changed: ['appointments'], appointmentId: data };
+  // A cancellation (or a new booking) can open/close a "da rifissare" recall in the database.
+  return { text: `Fatto. ${proposal.agenda.done || proposal.agenda.summary}`, changed: ['appointments', 'richiami'], appointmentId: data,
+    records: { appointments: [{ ...proposal.agenda.after, id: data }] } };
 }

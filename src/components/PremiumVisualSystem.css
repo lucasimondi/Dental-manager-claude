@@ -1721,6 +1721,75 @@ body:has(.home-widget-grid) #app-scroll {
   background: var(--surface-base);
   color: var(--text-muted);
 }
+.poliedron-chat__activity-toggle {
+  flex-shrink: 0;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-base);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.poliedron-chat__activity-toggle[aria-pressed="true"] {
+  color: var(--text-primary, inherit);
+  border-color: currentColor;
+}
+.poliedron-attivita {
+  margin: 0 16px 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-base);
+  max-height: 45vh;
+  overflow-y: auto;
+}
+.poliedron-attivita > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.poliedron-attivita > header button {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.poliedron-attivita ol { list-style: none; margin: 0; padding: 0; }
+.poliedron-attivita h3 {
+  margin: 10px 0 4px;
+  font-size: 12px;
+  text-transform: capitalize;
+  color: var(--text-muted);
+}
+.poliedron-attivita__item {
+  display: flex;
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border-subtle);
+}
+.poliedron-attivita__item time { font-size: 12px; color: var(--text-muted); min-width: 40px; }
+.poliedron-attivita__item p { margin: 2px 0 0; font-size: 13px; color: var(--text-muted); }
+.poliedron-attivita__item small { display: inline-block; margin-top: 2px; font-size: 12px; color: var(--text-muted); font-weight: 700; }
+.poliedron-attivita__restore { display: inline-flex; gap: 6px; margin-top: 4px; }
+.poliedron-attivita__restore button {
+  padding: 3px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-base);
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.poliedron-attivita__restore button:disabled { opacity: 0.5; cursor: default; }
 .poliedron-chat__nav select {
   border: none;
   background: transparent;

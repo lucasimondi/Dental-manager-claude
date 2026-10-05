@@ -143,7 +143,7 @@ export async function processQuery({
   if ((agendaRequest || agentWriteRequest) && allowModel && !dedicatedRoute && !classifyIntelligenceQuery(q) && !parseCommand(q)) {
     const result = await runModelTask({ taskType: MODEL_TASK_TYPE.ASK, input: q, history: conversationHistory, context, supabaseClient });
     return { intent: agendaRequest ? 'AGENDA' : 'AGENT', answer: result.text, modelError: result.error,
-      modelConfirmation: result.raw?.needsConfirmation || null, dataChanged: result.raw?.changed || null,
+      modelConfirmation: result.raw?.needsConfirmation || null, dataChanged: result.raw?.changed || null, dataRecords: result.raw?.records || null,
       searchResults: [], suggestedActions: [] };
   }
 
@@ -361,6 +361,7 @@ export async function processQuery({
         modelError: modelResult.error || null,
         modelConfirmation: modelResult.raw?.needsConfirmation || null,
         dataChanged: modelResult.raw?.changed || null,
+        dataRecords: modelResult.raw?.records || null,
       };
     }
     if (!hasResults) return { ...base, searchResults: [], awaitingSubmit: true };
@@ -411,6 +412,7 @@ export async function processQuery({
         modelError: modelResult.error || null,
         modelConfirmation: modelResult.raw?.needsConfirmation || null,
         dataChanged: modelResult.raw?.changed || null,
+        dataRecords: modelResult.raw?.records || null,
       };
     }
     return { ...base, searchResults: [], answer: result.answer };
@@ -432,6 +434,7 @@ export async function processQuery({
       modelError: modelResult.error || null,
         modelConfirmation: modelResult.raw?.needsConfirmation || null,
         dataChanged: modelResult.raw?.changed || null,
+        dataRecords: modelResult.raw?.records || null,
     };
   }
 

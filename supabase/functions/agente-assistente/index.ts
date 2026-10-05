@@ -423,6 +423,19 @@ async function eseguiAzionePersonalizzata(supabase, azione, input, studioId) {
   return { error: "Tipo di effetto sconosciuto: " + azione.tipo_effetto };
 }
 
+// POL-AI-010: every write executed by Poliedron leaves a readable trace in the
+// studio's "Attività di Poliedron" (same id as the claim the RPC consumed).
+function registraAttivita(supabase, proposal, done) {
+  return supabase.from('poliedron_attivita').insert({
+    id: proposal.id, studio_id: proposal.studioId, user_id: proposal.userId, azione: proposal.name,
+    riepilogo: String(done.text || '').slice(0, 4000), tabella: done.changed?.[0] ?? null,
+    record_id: done.appointmentId ?? done.recordId ?? null,
+    // Before/after, so the studio can undo the action from the log ("Ripristina").
+    prima: proposal.agenda ? proposal.agenda.before : proposal.pazienti?.before ?? null,
+    dopo: proposal.agenda ? { ...proposal.agenda.after, id: done.appointmentId } : proposal.pazienti?.dati ?? null,
+  }).then((r) => { if (r.error) console.error('poliedron_attivita', r.error.message); return r; }, (e) => e);
+}
+
 async function eseguiTool(supabase, name, input, studioId, userId, azioniPersonalizzate) {
   if (name === 'scheda_paziente') {
     try { return await schedaPaziente(supabase, input, studioId); }
@@ -1211,13 +1224,17 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}`;
       }
       if (proposal.pazienti) {
         try {
-          return json(await executePazienti(supabase, proposal));
+          const done = await executePazienti(supabase, proposal);
+          await registraAttivita(supabase, proposal, done);
+          return json(done);
         } catch (error) {
           return json({ text: 'Operazione non confermata: ' + error.message + ' Controlla la scheda prima di inviare una nuova richiesta.', changed: ['patients', 'richiami', 'impegni_personali'], uncertain: true });
         }
       }
       try {
-        return json(await executeAgenda(supabase, proposal));
+        const done = await executeAgenda(supabase, proposal);
+        await registraAttivita(supabase, proposal, done);
+        return json(done);
       } catch (error) {
         return json({ text: 'Operazione non confermata: ' + error.message + ' Controlla l’agenda prima di inviare una nuova richiesta.', changed: ['appointments'], uncertain: true });
       }
@@ -1238,13 +1255,14 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}`;
     // da aggiornare nel client.
     const eseguite = [];
     const daAggiornare = new Set();
+    const righeScritte = {};
     // Il log dei consumi non deve rallentare la risposta: parte subito e si
     // attende solo prima di rispondere.
     const logConsumi = [];
     const rispondi = async (value) => {
       await Promise.allSettled(logConsumi);
       const changed = [...daAggiornare];
-      return json(changed.length ? { ...value, changed } : value);
+      return json(changed.length ? { ...value, changed, records: righeScritte } : value);
     };
     const testoEseguite = () => eseguite.map((e) => e.text).join('\n\n');
 
@@ -1339,6 +1357,8 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}`;
               const done = isAgenda ? await executeAgenda(supabase, proposal) : await executePazienti(supabase, proposal);
               eseguite.push(done);
               for (const t of done.changed) daAggiornare.add(t);
+              for (const [t, rows] of Object.entries(done.records || {})) righeScritte[t] = [...(righeScritte[t] || []), ...rows];
+              logConsumi.push(registraAttivita(supabase, proposal, done));
               result = { eseguito: true, riepilogo_mostrato_all_utente: done.text };
             } catch (error) {
               // La transazione è atomica: un errore significa nessuna scrittura,
