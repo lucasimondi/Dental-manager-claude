@@ -1169,10 +1169,12 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   const getOperatore = (a) => (a.operatoreId != null ? operatoriById[String(a.operatoreId)] : null);
   const poltroneById = Object.fromEntries(poltrone.map(p => [String(p.id), p]));
   const getPoltrona = (a) => (a.poltronaId != null ? poltroneById[String(a.poltronaId)] : null);
-  const appointmentsAgenda = !features?.multi_operatore ? appointments : appointments.filter(a =>
+  // POL-AI-010: gli appuntamenti annullati non occupano più l'agenda (restano
+  // nello storico del paziente; se non rifissati finiscono nei Richiami).
+  const appointmentsAgenda = appointments.filter(a => a.stato !== 'annullato' && (!features?.multi_operatore || (
     (filtroOperatore === 'tutti' || String(a.operatoreId) === String(filtroOperatore)) &&
     (filtroPoltrona === 'tutti' || String(a.poltronaId) === String(filtroPoltrona))
-  );
+  )));
 
   // Colonna orari compatta su mobile: deve restare identica tra DayStrip e
   // GridView (il commento su DayStrip spiega perché) — vedi item 5/2 della

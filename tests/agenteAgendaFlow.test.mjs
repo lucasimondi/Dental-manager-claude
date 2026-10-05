@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 import { fileURLToPath } from 'node:url';
-let handler, script, calls, database, user, plan, autonomia, rpcCalls, claims;
+let handler, script, calls, database, user, plan, autonomia, rpcCalls, claims, inserts;
 const day='2099-10-04';
 class Query {
   constructor(table){this.table=table;this.filters=[];this.mode='many';}
@@ -12,7 +12,7 @@ class Query {
   gte(k,v){this.filters.push(r=>r[k]>=v);return this;}
   lte(k,v){this.filters.push(r=>r[k]<=v);return this;}
   maybeSingle(){this.mode='one';return this;} single(){this.mode='one';return this;}
-  insert(row){this.inserted=row;return this;}
+  insert(row){this.inserted=row;inserts.push({table:this.table,row});return this;}
   then(resolve,reject){return Promise.resolve().then(()=>{
     if(this.inserted){
       if(this.table==='poliedron_action_claims'){
@@ -44,7 +44,7 @@ test.before(async()=>{
   await import('data:text/javascript;base64,'+Buffer.from(bundled.outputFiles[0].text).toString('base64'));
 });
 test.beforeEach(()=>{
-  script=[];calls=[];rpcCalls=[];claims=new Set();plan='premium';autonomia='completo';user={id:'u1',app_metadata:{studio_id:'s1'}};
+  script=[];calls=[];rpcCalls=[];claims=new Set();inserts=[];plan='premium';autonomia='completo';user={id:'u1',app_metadata:{studio_id:'s1'}};
   database={studio_users:[{user_id:'u1',studio_id:'s1',stato:'attivo'}],patients:[{id:1,nome:'Mario',cognome:'Test',studio_id:'s1'}],appointments:[],impegni_personali:[]};
 });
 async function request(body,auth=true){const response=await handler(new Request('https://local.test',{method:'POST',headers:auth?{Authorization:'Bearer test'}:{},body:JSON.stringify(body)}));return{status:response.status,...await response.json()};}
@@ -59,8 +59,14 @@ test('clear request without conflicts: lookup → executed directly by one RPC, 
   const done=await request({messages:[{role:'user',content:'Prenota Mario Test'}]});
   assert.equal(done.needsConfirmation,undefined);
   assert.match(done.text,/^Fatto\. Appuntamento creato\nPaziente: Mario Test/);
-  assert.deepEqual(done.changed,['appointments']);
+  assert.deepEqual(done.changed,['appointments','richiami']);
+  assert.equal(done.records.appointments[0].id,123,'written row returned for an instant agenda update');
+  assert.equal(done.records.appointments[0].data,day);
   assert.equal(rpcCalls.length,1);assert.equal(rpcCalls[0].name,'poliedron_execute_agenda_v1');
+  const log=inserts.filter(i=>i.table==='poliedron_attivita');
+  assert.equal(log.length,1,'every executed action is logged');
+  assert.equal(log[0].row.id,rpcCalls[0].args.p_id);assert.equal(log[0].row.azione,'crea_appuntamento');
+  assert.equal(log[0].row.record_id,123);assert.match(log[0].row.riepilogo,/Appuntamento creato/);
   assert.equal(rpcCalls[0].args.p_after.paziente_id,1);assert.equal(calls.length,2,'no model call after the write');
 });
 test('speed settings: low effort, cached tools and stable system prompt, volatile data after the cache point',async()=>{
@@ -88,6 +94,7 @@ test('medio autonomy: signed preview → explicit confirmation → single RPC, n
   assert.match(result.needsConfirmation.summary,/Mario Test/);
   const done=await request({confirm:{token:result.needsConfirmation.token}});
   assert.match(done.text,/^Fatto\. Appuntamento creato/);assert.equal(rpcCalls.length,1);assert.equal(calls.length,2);
+  assert.equal(inserts.filter(i=>i.table==='poliedron_attivita').length,1,'confirmed action logged too');
   assert.equal(rpcCalls[0].args.p_after.paziente_id,1);
   const repeat=await request({confirm:{token:result.needsConfirmation.token}});
   assert.equal(repeat.uncertain,true);assert.equal(claims.size,1);
@@ -114,4 +121,13 @@ test('appointment lookup supplies its real ID and model-proposed unknown tools c
   const history=calls[1].messages.at(-1).content[0].content;
   assert.equal(JSON.parse(history).risultati[0].id,17);
   assert.equal(rpcCalls.length,0);
+});
+test('cancelling: soft cancel through the RPC, label says it leaves the agenda and goes to Richiami',async()=>{
+  database.appointments=[{id:17,studio_id:'s1',data:day,ora:'09:00',durata:30,tipo:'Controllo',stato:'confermato',note:null,operatore_id:null,paziente_id:1,patients:{nome:'Mario',cognome:'Test'}}];
+  script.push(use('appuntamenti',{da:day}),use('elimina_appuntamento',{appuntamento_id:17}));
+  const done=await request({messages:[{role:'user',content:'Annulla l\'appuntamento di Mario Test'}]});
+  assert.equal(rpcCalls[0].args.p_after.stato,'annullato');
+  assert.match(done.text,/Appuntamento annullato: tolto dall'agenda \(se non viene rifissato lo trovi nei Richiami\)/);
+  assert.deepEqual(done.changed,['appointments','richiami']);
+  assert.equal(done.records.appointments[0].stato,'annullato');
 });

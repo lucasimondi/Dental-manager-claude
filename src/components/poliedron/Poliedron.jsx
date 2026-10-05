@@ -219,8 +219,11 @@ export default function Poliedron({
     // POL-AI-010: Poliedron executes clear, conflict-free writes directly;
     // refresh exactly what changed so agenda and patient views stay current.
     if (result?.dataChanged?.length) {
-      try { await onDataChanged?.(result.dataChanged); }
-      catch { return { ...result, answer: `${result.answer || ''}\nImpossibile aggiornare la schermata: ricarica la pagina.` }; }
+      // The written rows are applied at once; the reconciling reload runs in the
+      // background so the answer is never held back by it.
+      Promise.resolve(onDataChanged?.(result.dataChanged, result.dataRecords)).catch((error) => {
+        console.warn('Poliedron: aggiornamento dei dati non riuscito', error);
+      });
     }
     return result;
   }, [context, processPermissions, processSources, supabaseClient, onDataChanged]);
@@ -431,7 +434,11 @@ export default function Poliedron({
       // POL-AI-010: refresh exactly what the confirmed action changed (agenda,
       // patients, recalls, commitments); unknown outcome → refresh them all.
       const changed = response.raw?.changed || (response.error ? ['appointments', 'patients', 'richiami', 'impegni_personali'] : []);
-      try { if (!cancelled && changed.length) await onDataChanged?.(changed); } catch { text += '\nImpossibile aggiornare la schermata: ricarica la pagina.'; }
+      if (!cancelled && changed.length) {
+        Promise.resolve(onDataChanged?.(changed, response.raw?.records)).catch((error) => {
+          console.warn('Poliedron: aggiornamento dei dati non riuscito', error);
+        });
+      }
       if (identity !== confirmationIdentity.current) return;
       // Outcome is authoritative even if saving chat history subsequently fails.
       show({ answer: text });
@@ -445,6 +452,16 @@ export default function Poliedron({
     }
   }, [supabaseClient, onDataChanged, primaryConversation?.id, appendMessage]);
   modelConfirmationRef.current = handleModelConfirmation;
+
+  // POL-AI-010: "Attività di Poliedron" — read-only log of the executed actions.
+  const loadPoliedronActivity = useCallback(async () => {
+    if (!supabaseClient || !studioId) return [];
+    const { data, error } = await supabaseClient.from('poliedron_attivita')
+      .select('id, azione, riepilogo, tabella, record_id, created_at')
+      .eq('studio_id', studioId).order('created_at', { ascending: false }).limit(100);
+    if (error) throw error;
+    return data || [];
+  }, [supabaseClient, studioId]);
 
   /** POL-AI-005B §CONFIRM: called only from an explicit user click on the
    *  Level-2 preview's Confirm button — never automatically. Re-loads
@@ -690,6 +707,7 @@ export default function Poliedron({
           actionRunResult={chatActionRunResult}
           navItems={navigationIndex.filter((item) => item.id !== 'chat')}
           onNavigate={setPage}
+          loadActivity={loadPoliedronActivity}
         />,
         chatHost
       )}

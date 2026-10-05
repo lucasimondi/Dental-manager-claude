@@ -5,6 +5,7 @@ import PoliedronActionPreview from './PoliedronActionPreview';
 import PoliedronActionPreviewLevel2 from './PoliedronActionPreviewLevel2';
 import PoliedronIntelligenceResults from './PoliedronIntelligenceResults';
 import PoliedronSearchResults from './PoliedronSearchResults';
+import PoliedronAttivita from './PoliedronAttivita';
 
 const NEAR_BOTTOM_PX = 120;
 
@@ -88,8 +89,10 @@ export default function PoliedronChatPage({
   actionRunResult,
   navItems = [],
   onNavigate,
+  loadActivity,
 }) {
   const [draft, setDraft] = useState('');
+  const [showActivity, setShowActivity] = useState(false);
   const scrollRef = useRef(null);
   const nearBottomRef = useRef(true);
   const initializedRef = useRef(false);
@@ -142,6 +145,16 @@ export default function PoliedronChatPage({
           <h1>Chat Polyedron</h1>
           <p>La linea diretta persistente con il tuo Polyedron</p>
         </div>
+        {loadActivity && (
+          <button
+            type="button"
+            className="poliedron-chat__activity-toggle"
+            aria-pressed={showActivity}
+            onClick={() => setShowActivity((v) => !v)}
+          >
+            Attività di Poliedron
+          </button>
+        )}
         {navItems.length > 0 && (
           <label className="poliedron-chat__nav">
             <Ic n="back" s={15} />
@@ -161,6 +174,10 @@ export default function PoliedronChatPage({
           </label>
         )}
       </header>
+
+      {showActivity && loadActivity && (
+        <PoliedronAttivita load={loadActivity} onClose={() => setShowActivity(false)} />
+      )}
 
       <div
         ref={scrollRef}

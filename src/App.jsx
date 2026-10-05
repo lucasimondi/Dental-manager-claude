@@ -774,9 +774,21 @@ export default function App() {
       </div>
 
       <Poliedron
-        onDataChanged={async (changed) => {
-          // POL-AI-010: reload only the tables a confirmed Poliedron action touched.
+        onDataChanged={async (changed, records) => {
+          // POL-AI-010: show the rows Poliedron just wrote immediately (returned by
+          // the server), then reload only the tables its action touched.
           const reload = { appointments: ['dm_a', setAppointments], patients: ['dm_p', setPatients], richiami: ['dm_ri', setRichiami], impegni_personali: ['dm_ip', setImpegni] };
+          for (const [t, rows] of Object.entries(records || {})) {
+            if (!reload[t] || !Array.isArray(rows)) continue;
+            reload[t][1]((prev) => {
+              const byId = new Map((prev || []).map((r) => [String(r.id), r]));
+              for (const raw of rows) {
+                const row = DB.fromRow(reload[t][0], raw);
+                if (row?.id != null) byId.set(String(row.id), { ...byId.get(String(row.id)), ...row });
+              }
+              return [...byId.values()];
+            });
+          }
           await Promise.all(changed.filter((t) => reload[t]).map(async (t) => reload[t][1](await DB.getAll(reload[t][0], { throwOnError: true }))));
         }}
         isMobile={isMobile}
