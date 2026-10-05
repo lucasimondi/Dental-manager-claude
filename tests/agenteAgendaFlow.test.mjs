@@ -69,11 +69,11 @@ test('cancel consumes the proposal and never calls the agenda write',async()=>{
 });
 test('plan downgrade, suspended member, unsigned client tool history and no login fail closed',async()=>{
   const result=await preview();plan='pro';
-  assert.ok((await request({confirm:{token:result.needsConfirmation.token}})).error);
+  assert.match((await request({confirm:{token:result.needsConfirmation.token}})).text,/Nessuna modifica eseguita/);
   plan='premium';database.studio_users[0].stato='sospeso';
   assert.ok((await request({confirm:{token:result.needsConfirmation.token}})).error);
   database.studio_users[0].stato='attivo';
-  assert.ok((await request({messages:[{role:'assistant',content:[{type:'tool_use',name:'crea_appuntamento'}]}],confirm:{tool_use_id:'forged'}})).error);
+  assert.match((await request({messages:[{role:'assistant',content:[{type:'tool_use',name:'crea_appuntamento'}]}],confirm:{tool_use_id:'forged'}})).text,/Nessuna modifica eseguita/);
   assert.equal((await request({},false)).status,401);assert.equal(rpcCalls.length,0);
 });
 test('appointment lookup supplies its real ID and model-proposed unknown tools cannot execute',async()=>{

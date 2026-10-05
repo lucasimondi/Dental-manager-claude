@@ -3260,3 +3260,23 @@ Merge della PR #115 su istruzione del Product Owner.
 - Risks/unresolved: browser QA blocked by automatic approval-review usage exhaustion; final CI/staging smoke and real multi-connection contention test pending. Short global table locks have 2s timeout. Model write coverage is deliberately limited to reviewed agenda actions in this step; other legacy AI writes remain unavailable while deterministic module workflows remain.
 - Rollback/deploy order: docs/architecture/POL-AI-010-agenda.md. No production release, merge or remote migration performed.
 - Exact next action: draft PR stacked on #118; complete listed validation gates before requesting release approval.
+
+### POL-AI-010 passo 1 — revisione e presa in carico (2026-10-05)
+- Owner: CLAUDE, su istruzione del Product Owner ("Guarda cosa ha fatto code, ha fatto la 118 e ora 119 , e poi continua"; "Continua"). Il passo 1 era stato implementato da CODEX nella PR #119 (`codex/pol-ai-010-agenda`, commit `8b48319`, base temporanea sul branch della #118).
+- La mia bozza del passo 1 (non committata) si sovrapponeva alla #119: messa da parte (`git stash`), non usata.
+- **Revisione della #119**:
+  - `npm test` 884/884 e build OK sul suo commit.
+  - Test SQL (`pol_ai_010_fixture` → migration → `pol_ai_010_agenda`) PASS su Postgres 16 locale pulito.
+  - Verificati in produzione, in sola lettura, i presupposti della migration: `appointments.id` senza default, `ora` testo, `operatore_id` bigint, tabella `operatori` con `attivo`, `authenticated` con UPDATE su `appointments` e `impegni_personali` (serve al `LOCK TABLE`), policy SELECT su `studio_users` per lo studio del token, `poliedron_action_claims` assente.
+  - Impianto corretto: proposta firmata lato server (HMAC, 10 minuti), nessun tool preso dalla cronologia del client, ricontrollo di piano, autonomia e appartenenza allo studio alla conferma, scrittura atomica `SECURITY INVOKER` con controllo dei conflitti e delle modifiche concorrenti, anti-replay, "elimina" = annulla conservando lo storico.
+- **Correzioni aggiunte**:
+  1. "Come se lo dicessi a una persona": con una conferma in sospeso, rispondere in chat "sì / ok / confermo / procedi" o "no / annulla / non procedere" equivale ai pulsanti (`src/lib/poliedron/confirmationReply.js`, solo corrispondenza dell'intero messaggio; `tests/poliedronConfirmationReply.test.mjs`).
+  2. Conferma scaduta, non valida o non più permessa dal piano: risposta chiara "… Nessuna modifica eseguita." invece di un errore generico 500. `tests/agenteAgendaFlow.test.mjs` aggiornato di conseguenza; il fail-closed resta verificato (nessuna chiamata RPC).
+  3. README di `whatsapp-webhook`: dal passo 1 `agendaSlots.js` riesporta `../_shared/agendaSlots.js`, che va incluso nel prossimo deploy (la v6 in produzione contiene ancora la vecchia copia autonoma).
+- **Da sapere prima del rilascio** (non bloccanti, già in parte segnalati da Codex):
+  - `LOCK TABLE ... SHARE ROW EXCLUSIVE` su `appointments` e `impegni_personali` è globale, non per studio: per qualche millisecondo blocca anche le scritture di agenda degli altri studi (`lock_timeout` 2 s). Va bene ai volumi attuali; alternativa futura: lock consultivo per studio e data.
+  - `poliedron_action_claims` cresce senza pulizia: va aggiunta una pulizia periodica (es. righe più vecchie di 30 giorni) in un passo successivo.
+  - Le scritture AI non di agenda (nuovo paziente, pagamento, nota, promemoria, impegno, ricetta, proposta) sono escluse dal modello finché non arrivano i loro passi. Nell'app restano i moduli esistenti.
+- `npm test` 888/888; `npm run build` OK.
+- EXACT NEXT ACTION: revisione del Product Owner della PR #118 (ora passi 0+1); al "Mergia": migration `20261004160708` in produzione a passi, deploy di `agente-assistente` (cartella + `_shared/agendaSlots.js`), poi QA. Intanto: passo 2 (Pazienti e clinica).
+

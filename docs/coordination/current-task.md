@@ -1,5 +1,10 @@
 # Current task
-- ACTIVE OWNER: CODEX — Product Owner instructed “vai” after approving step 1 (Agenda, server-validated confirmation, refresh and tests), 2026-10-04.
+- ACTIVE OWNER: CLAUDE — handoff from CODEX by explicit Product Owner instruction (2026-10-05, verbatim: "Guarda cosa ha fatto code, ha fatto la 118 e ora 119 , e poi continua", then "Continua").
+- ACTIVE BRANCH: `claude/whatsapp-automation-status-d2ng12` (PR #118). Step 1 (PR #119 by Codex, `codex/pol-ai-010-agenda`) reviewed and brought into this branch, with three follow-up fixes (see handoff "POL-AI-010 passo 1 — revisione e presa in carico").
+- STATUS: steps 0+1 ready for review in PR #118. No remote migration, production deployment or merge authorized.
+
+# Current task (previous owner block, kept for history)
+- ACTIVE OWNER (until 2026-10-05): CODEX — Product Owner instructed “vai” after approving step 1 (Agenda, server-validated confirmation, refresh and tests), 2026-10-04.
 - ACTIVE BRANCH: `codex/pol-ai-010-agenda`, isolated checkout based on PR #118 `0dae6e4`; step 0 remains a separate unmerged prerequisite.
 - STATUS: step 1 implementation ready for draft review. Final CI, visual QA, staging end-to-end and multi-connection contention validation pending; see `docs/architecture/POL-AI-010-agenda.md`. No remote migration, production deployment or merge authorized.
 - CHECKPOINT: immutable `stable/2026-08-27-full-recovery@070b28fd4eae4e2cc397584201d0bb149468fae7` preserved.

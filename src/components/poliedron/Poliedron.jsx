@@ -11,6 +11,7 @@ import { buildIntelligencePermissions, filterNavigationIndex, isActionAllowed } 
 import { ACTION_REGISTRY } from '../../lib/poliedron/actionRegistry';
 import { buildContext } from '../../lib/poliedron/contextEngine';
 import { runModelTask } from '../../lib/poliedron/modelGateway.js';
+import { decisioneConferma } from '../../lib/poliedron/confirmationReply.js';
 import { processQuery } from '../../lib/poliedron/poliedraCore';
 import { runActionPlan } from '../../lib/poliedron/planner/actionExecutor';
 import {
@@ -89,6 +90,9 @@ export default function Poliedron({
   const [chatActionRunning, setChatActionRunning] = useState(false);
   const [externalContext, setExternalContext] = useState(null);
   const [chatStructuredState, setChatStructuredState] = useState(null);
+  const chatStructuredStateRef = useRef(null);
+  chatStructuredStateRef.current = chatStructuredState;
+  const modelConfirmationRef = useRef(null);
   const [chatSending, setChatSending] = useState(false);
   const [chatError, setChatError] = useState('');
   const inputRef = useRef(null);
@@ -352,6 +356,16 @@ export default function Poliedron({
       return false;
     }
     setChatError('');
+    // POL-AI-010: a typed "sì" / "no" decides the pending confirmation, like the buttons.
+    const pendingConfirmation = !retryMessage ? chatStructuredStateRef.current?.modelConfirmation : null;
+    const decisione = pendingConfirmation ? decisioneConferma(text) : null;
+    if (decisione) {
+      try {
+        await appendMessage({ requestId: createChatRequestId(), role: 'user', content: text, deliveryStatus: 'sent' });
+      } catch { /* the decision itself must not depend on chat history */ }
+      await modelConfirmationRef.current?.(pendingConfirmation, decisione === 'annulla', true);
+      return true;
+    }
     setChatStructuredState(null);
     setChatActionRunResult(null);
     const retainedRequest = retryMessage
@@ -384,7 +398,7 @@ export default function Poliedron({
       setChatError(described?.message || 'Non riesco a completare la richiesta. Riprova.');
       return false;
     }
-  }, [conversationErrorState, conversationLoading, onArchivioFilterHint, primaryConversation?.id, runPersistedRequest, setPage]);
+  }, [appendMessage, conversationErrorState, conversationLoading, onArchivioFilterHint, primaryConversation?.id, runPersistedRequest, setPage]);
 
   const consumedConfirmations = useRef(new Set());
   const confirmationIdentity = useRef('');
@@ -419,6 +433,7 @@ export default function Poliedron({
       setChatActionRunning(false);
     }
   }, [supabaseClient, onAgendaChanged, primaryConversation?.id, appendMessage]);
+  modelConfirmationRef.current = handleModelConfirmation;
 
   /** POL-AI-005B §CONFIRM: called only from an explicit user click on the
    *  Level-2 preview's Confirm button — never automatically. Re-loads

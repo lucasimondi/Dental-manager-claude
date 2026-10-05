@@ -1153,7 +1153,13 @@ dedurre o assumere altre date, e non sbagliare mai l'anno.${noteLivello}${noteAz
     const { messages, confirm } = await req.json();
     const json = (value) => new Response(JSON.stringify(value), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     if (confirm) {
-      const proposal = await verifyProposal(confirm.token, SUPABASE_SERVICE_ROLE_KEY, { userId: user.id, studioId, allowedNames });
+      let proposal;
+      try {
+        proposal = await verifyProposal(confirm.token, SUPABASE_SERVICE_ROLE_KEY, { userId: user.id, studioId, allowedNames });
+      } catch (error) {
+        // Expired/invalid/no-longer-allowed: nothing was written; say so plainly.
+        return json({ text: `${error.message} Nessuna modifica eseguita.` });
+      }
       if (confirm.cancelled === true) {
         await claimProposal(supabase, proposal);
         return json({ text: 'Operazione annullata. Nessuna modifica eseguita.' });
