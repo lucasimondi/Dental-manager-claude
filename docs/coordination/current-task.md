@@ -1,3 +1,13 @@
+# Current task — POL-AI-011 (salvare nella scheda il file allegato in Chat)
+- TASK: POL-AI-011 — il file allegato in Chat Poliedron si salva nella scheda del paziente.
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "Salvare file nella scheda", scelto tra i prossimi passi proposti).
+- BRANCH: `claude/software-startup-speed-ugqqcf`, ripartito da `master@81c72b0` (PR #133 di POL-PERF-001/POL-AI-008/POL-AI-009 mergiata, deploy Vercel di produzione READY su `81c72b0`).
+- STATUS: PUSHED + PR aperta, in attesa del Product Owner per il merge. Nessuna modifica al database né alle Edge Function.
+- COSA: pulsante "Salva nella scheda" sul file allegato; oppure "salvalo nella scheda di Mario Rossi" (nessuna chiamata al modello). Scheda di conferma con il paziente (preselezionato solo se il nome è univoco, altrimenti ricerca); nulla si salva senza "Salva nella scheda". Il file va nella sezione **Foto** della scheda: archivio privato `patient-files`, percorso `<id>/<data>_LABEL_<nome>` come `PatientPhotos.jsx`, con il login dell'utente e le regole POL-002B già in produzione (verificate in sola lettura: bucket privato, 4 policy per studio, nessun limite di tipo/dimensione). Dopo il salvataggio, messaggio in chat "Ho salvato … nella scheda di … (sezione Foto)".
+- VALIDATION: `npm test` 976/976 (nuovo `tests/poliedronSalvaAllegato.test.mjs`, 6 test); `npm run build` OK; Chromium 390×844 su harness temporaneo (rimosso): pulsante sul file, ricerca "rossi" → 2 risultati, scelta, "Salva" disattivato finché non si sceglie, caricamento in `patient-files/12/…_LABEL_referto.pdf` con `upsert:false`, messaggio di conferma; nessun overflow né errore JS.
+- NON VERIFICATO: caricamento reale con un login (serve la prova del Product Owner).
+- EXACT NEXT ACTION: "Mergia" del Product Owner; poi prova: allegare un referto, "salvalo nella scheda di …", aprire la scheda → Foto.
+
 # Parallel task — POL-AI-010-ICON (2026-10-06)
 - OWNER: CODEX; previous icon proposer CODEX. PO approved the phone-icon design: “Ok, produci”.
 - BRANCH: `codex/poliedron-app-icon`, from `master@239c8db`.

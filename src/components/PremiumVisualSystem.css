@@ -2063,6 +2063,50 @@ body:has(.home-widget-grid) #app-scroll {
   align-items: center;
   gap: 9px;
 }
+/* POL-AI-011: salva il file allegato nella scheda del paziente. */
+.poliedron-save {
+  margin: 8px 0;
+  padding: 12px;
+  border: 1px solid var(--border-medium);
+  border-radius: 12px;
+  background: var(--surface-card, #fff);
+  color: var(--text-primary, #1a202c);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13.5px;
+}
+.poliedron-save p { margin: 0; }
+.poliedron-save__title { display: flex; gap: 8px; align-items: flex-start; overflow-wrap: anywhere; }
+.poliedron-save__selected { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.poliedron-save input[type="search"] {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 42px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-medium);
+  border-radius: 10px;
+  font-size: 15px;
+  background: transparent;
+  color: inherit;
+}
+.poliedron-save__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.poliedron-save__list button { width: 100%; text-align: left; }
+.poliedron-save__empty { color: var(--text-muted, #718096); }
+.poliedron-save button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-medium);
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.poliedron-save button:disabled { opacity: .5; cursor: default; }
+.poliedron-save__actions { display: flex; justify-content: flex-end; gap: 8px; }
+.poliedron-save__actions .is-primary { background: var(--pol-blue-600, #185FA5); border-color: transparent; color: #fff; font-weight: 700; }
+
 /* POL-AI-009: memoria di Poliedron. */
 .poliedron-chat__memory-toggle {
   width: 40px;

@@ -21,10 +21,18 @@ import {
 } from '../../lib/poliedron/conversationRepository.js';
 import { describeChatError, resolveChatSurfaceState } from '../../lib/poliedron/chatErrorState.js';
 import { attachmentMetadata, attachmentPayload, prepareAttachment } from '../../lib/poliedron/chatAttachment.js';
+import { saveAttachmentToPatient } from '../../lib/poliedron/attachmentToPatient.js';
 import { DB } from '../../lib/supabase.js';
 
 const summarizeStructuredResult = (result) => {
   if (result?.answer) return result.answer;
+  // POL-AI-011: the save card itself asks for the patient and the confirmation.
+  if (result?.attachmentSave) {
+    const [only] = result.attachmentSave.candidates || [];
+    return result.attachmentSave.candidates?.length === 1
+      ? `Confermi di salvare il file nella scheda di ${[only.nome, only.cognome].filter(Boolean).join(' ')}?`
+      : 'Scegli il paziente e conferma per salvare il file nella sua scheda.';
+  }
   if (result?.directNavigation) return null;
   if (result?.actionPlan) {
     const steps = result.actionPlan.steps?.length || 0;
@@ -111,6 +119,7 @@ export default function Poliedron({
   // request_id; dopo un ricaricamento della pagina va riallegato.
   const [chatAttachment, setChatAttachment] = useState(null);
   const [chatAttachmentPreparing, setChatAttachmentPreparing] = useState(false);
+  const [chatAttachmentSaving, setChatAttachmentSaving] = useState(false);
   const attachmentsByRequestRef = useRef(new Map());
   const pageRef = useRef(page);
   const openRef = useRef(open);
@@ -465,6 +474,35 @@ export default function Poliedron({
     }
   }, [appendMessage, chatAttachment, conversationErrorState, conversationLoading, onArchivioFilterHint, openPreparedDocument, primaryConversation?.id, runPersistedRequest, setPage]);
 
+  // POL-AI-011: the attached file goes into the patient's "Foto" section
+  // (private patient-files storage, studio RLS) only after the confirmation.
+  const requestSaveAttachment = useCallback(() => {
+    setChatError('');
+    setChatStructuredState({ attachmentSave: { candidates: [] } });
+  }, []);
+  const saveChatAttachment = useCallback(async (patient) => {
+    if (!patient || chatAttachmentSaving) return;
+    const attachment = chatAttachment;
+    setChatAttachmentSaving(true);
+    let text;
+    try {
+      await saveAttachmentToPatient(supabaseClient, patient.id, attachment);
+      text = `Ho salvato "${attachment.name}" nella scheda di ${[patient.nome, patient.cognome].filter(Boolean).join(' ')} (sezione Foto).`;
+    } catch (saveError) {
+      setChatAttachmentSaving(false);
+      setChatError(saveError?.message || 'Salvataggio non riuscito. Riprova.');
+      return;
+    }
+    setChatAttachmentSaving(false);
+    setChatStructuredState({ answer: text });
+    if (primaryConversation?.id) {
+      try {
+        await appendMessage({ requestId: createChatRequestId(), role: 'assistant', content: text, deliveryStatus: 'sent', readAt: new Date().toISOString() });
+        setChatStructuredState(null);
+      } catch { /* the save happened: the status line above stays visible */ }
+    }
+  }, [appendMessage, chatAttachment, chatAttachmentSaving, primaryConversation?.id, supabaseClient]);
+
   const attachChatFile = useCallback(async (file) => {
     if (!file) return;
     setChatError('');
@@ -782,6 +820,10 @@ export default function Poliedron({
           attachmentPreparing={chatAttachmentPreparing}
           onAttachFile={attachChatFile}
           onRemoveAttachment={() => setChatAttachment(null)}
+          onRequestSaveAttachment={requestSaveAttachment}
+          onSaveAttachment={saveChatAttachment}
+          onCancelSaveAttachment={() => setChatStructuredState(null)}
+          attachmentSaving={chatAttachmentSaving}
           memoryClient={supabaseClient}
           onRetryInitialization={conversationError ? retryInitialization : null}
           onLoadOlder={loadOlderMessages}
