@@ -1,3 +1,11 @@
+# Parallel task — POL-AI-010-ICON (2026-10-06)
+- OWNER: CODEX; previous icon proposer CODEX. PO approved the phone-icon design: “Ok, produci”.
+- BRANCH: `codex/poliedron-app-icon`, from `master@239c8db`.
+- SCOPE: exact approved artwork exported for iPhone/Android; dedicated PWA manifest, entry and fallback icon only. Preserve root Poliedra identity, old assets and concurrent team work.
+- STATUS: READY_FOR_REVIEW — 939/939 tests and build PASS; opaque dimensions, small-size/circular/rounded visual QA and build precache verified. No merge or production deployment authorized.
+- CHECKPOINT: `stable/2026-08-27-full-recovery@070b28fd4eae4e2cc397584201d0bb149468fae7` untouched.
+- NEXT: separate PR review and PO release approval; physical iPhone/Android installation after release remains outstanding.
+
 # Current task — POL-AI-TEAM-002 (team di Poliedron attivo in chat)
 - OWNER: CLAUDE — Product Owner handoff 2026-10-05 ("Guarda la bozza 125 e miglioriamo", then "Sì ma mettiamo anche marketing, clinico e poi dimmi tu, voglio già creare di questa sera questa cosa").
 - BRANCH: `claude/whatsapp-automation-status-d2ng12` (includes Codex commit 99f6e25 from #125).

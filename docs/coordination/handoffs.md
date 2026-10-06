@@ -3385,3 +3385,13 @@ Merge della PR #115 su istruzione del Product Owner.
 - EXACT NEXT ACTION: verify new PR #124 Vercel preview/CI, physical phone smoke, then explicit Product Owner merge approval. Preview branch URL remains https://dental-manager-git-codex-poliedron-phone-app-acmeproduction.vercel.app/poliedron/.
 
 - Remote verification: runtime revision `a1759f6373bd1450058217e5749d861ac696ff8b` exactly matches the locally tested Git tree. GitHub Actions POL-003E CI run `37379120054` completed successfully; Vercel deployment status success. Updated branch preview is ready. Remaining next action: physical-device smoke and explicit PO merge approval; no merge/deploy to production performed.
+
+### POL-AI-010-ICON — CODEX: approved phone icon production (2026-10-06)
+- Owner/previous agent: CODEX/CODEX. PO approved the proposed icon: “Ok, produci”. Branch `codex/poliedron-app-icon`, base `master@239c8db`. Concurrent CLAUDE team work preserved; no ownership transfer. Immutable golden checkpoint untouched.
+- Objective/completed: exact approved blue/turquoise gem exported to 180/192/512px opaque RGB PNGs and maskable 512px; versioned URLs connected to dedicated manifest, HTML and offline bootstrap. Old icon files and root Poliedra identity unchanged.
+- Files: four `public/poliedron-v2-*.png`, `public/poliedron.webmanifest`, `poliedron/index.html`, `src/main.jsx`, export script, icon tests, icon architecture and coordination docs.
+- Database/security/deployment: none; no schema, RLS, auth, tenant, financial, Edge, secrets or production writes. Only a separate frontend review branch. No merge authorized or performed.
+- Tests/results: `npm test` 939/939 PASS, build PASS (existing bundle warning), `git diff --check` PASS; exact RGB opacity/dimensions and install/fallback identity tests PASS. All v2 icons in build and Workbox precache. 60px, circular and rounded mask previews visually inspected: gem readable and not cut off.
+- Risks/unresolved: physical iPhone/Android install, OS icon refresh and authenticated production smoke not performed. Existing app performance/backend/voice functionality is outside this icon increment; no new claims about them.
+- Rollback: revert frontend commit to old manifest/HTML/bootstrap references; old assets retained, no business data affected.
+- EXACT NEXT ACTION: separate PR review → PO release approval → CI/Vercel verification → fresh physical phone installation checks.

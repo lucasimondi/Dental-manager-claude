@@ -10,17 +10,17 @@
   "theme_color": "#185FA5",
   "icons": [
     {
-      "src": "/poliedron-192.png",
+      "src": "/poliedron-v2-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/poliedron-512.png",
+      "src": "/poliedron-v2-512.png",
       "sizes": "512x512",
       "type": "image/png"
     },
     {
-      "src": "/poliedron-maskable-512.png",
+      "src": "/poliedron-v2-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
