@@ -3264,3 +3264,48 @@ Revert del commit.
 
 ### EXACT NEXT ACTION
 Product Owner: PR/merge su istruzione; decisione sulla cache locale dei dati.
+
+---
+
+## POL-AI-008 — Documenti in Poliedron: allegare un PDF o una foto in Chat (Fase 1)
+
+- TASK ID: POL-AI-008
+- PREVIOUS AGENT: CLAUDE (POL-PERF-001, stesso branch).
+- BRANCH: `claude/software-startup-speed-ugqqcf`, da `master@e6e8357`.
+- REQUEST (verbatim, Product Owner): "Lavora al prossimo passo di poliedron , dovrebbe essere documenti".
+
+### Objective
+Prima fase della "Missione futura — allegati in Poliedron" (Master Context §32): allegare un file nella Chat e farlo leggere al motore condiviso, senza un widget isolato.
+
+### Completed work
+1. `agente-assistente` (prima solo in produzione) portata nel repository: v28 verbatim in un commit dedicato (`supabase/functions/agente-assistente/`, `supabase/functions/_shared/agendaSlots.js`), con README.
+2. Server: `allegato.js` (`validaAllegato`, `messaggiConAllegato`, `senzaDatiAllegato`) e 3 punti in `index.ts`: lettura di `allegato`, rifiuto con `confirm`/`team`, blocco `document`/`image` con `cache_control` nell'ultimo messaggio utente, risposta senza i byte del file.
+3. Client: `src/lib/poliedron/chatAttachment.js` (tipi, limiti, riduzione foto 2048 px JPEG, metadata senza contenuto); `modelGateway.runModelTask({ attachment })` → `body.allegato`; `processQuery({ attachment })` va direttamente al modello; `Poliedron.jsx` tiene il file in memoria (anche per "Riprova"), salva solo `metadata.allegato`; `PoliedronChatPage.jsx` graffetta, chip, nome del file nel messaggio; icona `attach` in `Ic.jsx`; stili in `PremiumVisualSystem.css`.
+4. Revisione del diff: con un file non si riusa mai la richiesta in sospeso (altrimenti il messaggio salvato avrebbe mostrato il nome del file precedente).
+
+### Files changed
+`supabase/functions/agente-assistente/{index.ts,confirmation.js,agenda.js,pazienti.js,team.js,allegato.js,README.md}`, `supabase/functions/_shared/agendaSlots.js`, `src/lib/poliedron/chatAttachment.js` (nuovo), `src/lib/poliedron/modelGateway.js`, `src/lib/poliedron/poliedraCore.js`, `src/components/poliedron/Poliedron.jsx`, `src/components/poliedron/PoliedronChatPage.jsx`, `src/components/ui/Ic.jsx`, `src/components/PremiumVisualSystem.css`, `tests/poliedronAllegati.test.mjs` (nuovo), `tests/poliedronChatSurfaces.test.mjs`, `docs/POLIEDRA_MASTER_CONTEXT.md` (stato della missione §32), `docs/architecture/deployment.md`, `docs/coordination/current-task.md`, `docs/coordination/handoffs.md`.
+
+### Database changes
+Nessuna. `poliedron_messages.metadata` (jsonb ≤ 8 KB, già esistente) contiene `{ allegato: { nome, tipo, dimensione } }`.
+
+### Deployment impact
+- Edge Function `agente-assistente`: **da deployare PRIMA del merge** (retrocompatibile: senza `allegato` si comporta come la v28). Non deployata da Claude.
+- Frontend: Vercel al merge.
+
+### Tests executed / results
+- `npm test` 880/880 PASS (11 nuovi; 1 asserzione aggiornata: il pulsante Invia ora è attivo anche con il solo file).
+- `npm run build` OK; `index.ts` analizzato con esbuild (sintassi OK; Deno non installato).
+- Chromium 390×844, harness temporaneo rimosso (vera `PoliedronChatPage` + vera `prepareAttachment`): foto PNG 4000×3000 → JPEG 153 kB; invio solo file con testo predefinito; PDF + testo; `.txt` → "Formato non supportato"; rimozione; larghezza 390 senza overflow; nessun errore JS.
+
+### Unresolved issues / risks
+- Risposta reale del modello su un file non verificata (serve il deploy).
+- Limite della richiesta HTTP alle Edge Functions non documentato da Supabase (solo 250 MB di memoria): PDF limitati a 6 MB per prudenza.
+- Gli errori del server sull'allegato (rari, il client controlla prima) arrivano come errore generico di invio.
+- `PRODUCT_OWNER_DECISION_REQUIRED` per le fasi successive: salvare il file nell'archivio del paziente (bucket privato + RLS), ricordarlo nei messaggi successivi, più file per messaggio.
+
+### Rollback
+Frontend: revert del commit POL-AI-008. Funzione: rideploy della v28 (= primo commit POL-AI-008, verbatim).
+
+### EXACT NEXT ACTION
+Product Owner: istruzione per deploy di `agente-assistente`, poi PR/merge; prova reale con un referto e una foto.

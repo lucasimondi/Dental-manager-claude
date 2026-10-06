@@ -1883,6 +1883,66 @@ body:has(.home-widget-grid) #app-scroll {
   align-items: center;
   gap: 9px;
 }
+/* POL-AI-008: allegato al messaggio (PDF o foto). */
+.poliedron-chat__attach {
+  width: 40px;
+  height: 46px;
+  min-width: 40px;
+  border: 1px solid var(--border-medium);
+  border-radius: 12px;
+  background: var(--surface-card, #fff);
+  color: var(--text-secondary, #4a5568);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.poliedron-chat__attach:disabled { opacity: .5; cursor: default; }
+.poliedron-chat__attachment {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--border-medium);
+  border-radius: 10px;
+  background: var(--surface-card, #fff);
+  color: var(--text-primary, #1a202c);
+  font-size: 13px;
+  min-width: 0;
+}
+.poliedron-chat__attachment-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.poliedron-chat__attachment small { color: var(--text-secondary, #718096); flex-shrink: 0; }
+.poliedron-chat__attachment button {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.poliedron-chat__attachment-tag {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  font-size: 12px;
+  opacity: .85;
+  overflow-wrap: anywhere;
+}
 .poliedron-chat__composer textarea {
   flex: 1;
   min-height: 46px;

@@ -17,6 +17,7 @@ import {
   normalizeModelHistory,
 } from '../../lib/poliedron/conversationRepository.js';
 import { describeChatError, resolveChatSurfaceState } from '../../lib/poliedron/chatErrorState.js';
+import { attachmentMetadata, attachmentPayload, prepareAttachment } from '../../lib/poliedron/chatAttachment.js';
 import { DB } from '../../lib/supabase.js';
 
 const summarizeStructuredResult = (result) => {
@@ -98,6 +99,12 @@ export default function Poliedron({
   const actionExecutionRef = useRef(false);
   const pendingPanelRequestRef = useRef(null);
   const pendingChatRequestRef = useRef(null);
+  // POL-AI-008: file allegato al prossimo messaggio della Chat. Resta solo in
+  // memoria (mai salvato): per riprovare un invio fallito lo si ritrova qui
+  // per request_id; dopo un ricaricamento della pagina va riallegato.
+  const [chatAttachment, setChatAttachment] = useState(null);
+  const [chatAttachmentPreparing, setChatAttachmentPreparing] = useState(false);
+  const attachmentsByRequestRef = useRef(new Map());
   const pageRef = useRef(page);
   const openRef = useRef(open);
   const conversationMessagesRef = useRef([]);
@@ -201,7 +208,7 @@ export default function Poliedron({
     setExternalContext(null);
   }, []);
 
-  const processRequest = useCallback((q, { allowModel = false, conversationHistory = [] } = {}) =>
+  const processRequest = useCallback((q, { allowModel = false, conversationHistory = [], attachment = null } = {}) =>
     processQuery({
       query: q,
       context,
@@ -210,11 +217,12 @@ export default function Poliedron({
       conversationHistory,
       supabaseClient,
       allowModel,
+      attachment: attachmentPayload(attachment),
     }), [context, processPermissions, processSources, supabaseClient]);
 
   const executePersistedQuery = useCallback(async (
     q,
-    { retryMessage = null, requestId: retainedRequestId = null, readAssistant = false } = {}
+    { retryMessage = null, requestId: retainedRequestId = null, readAssistant = false, attachment = null } = {}
   ) => {
     const requestId = retryMessage?.request_id || retainedRequestId || createChatRequestId();
     let userMessage = retryMessage;
@@ -226,6 +234,7 @@ export default function Poliedron({
         role: 'user',
         content: q,
         deliveryStatus: 'pending',
+        ...(attachment ? { metadata: { allegato: attachmentMetadata(attachment) } } : {}),
       });
     }
 
@@ -235,6 +244,7 @@ export default function Poliedron({
         conversationHistory: normalizeModelHistory(conversationMessagesRef.current, {
           excludeRequestId: requestId,
         }),
+        attachment,
       });
       if (result.modelError) throw new Error(result.modelError);
 
@@ -350,21 +360,36 @@ export default function Poliedron({
       );
       return false;
     }
+    const attachment = retryMessage
+      ? attachmentsByRequestRef.current.get(retryMessage.request_id) || null
+      : chatAttachment;
+    if (retryMessage?.metadata?.allegato && !attachment) {
+      setChatError(`Il file "${retryMessage.metadata.allegato.nome || 'allegato'}" non è più disponibile: allegalo di nuovo e reinvia il messaggio.`);
+      return false;
+    }
     setChatError('');
     setChatStructuredState(null);
     setChatActionRunResult(null);
     const retainedRequest = retryMessage
       ? { content: text, requestId: retryMessage.request_id }
-      : pendingChatRequestRef.current?.content === text
+      // POL-AI-008: con un file allegato mai riusare la richiesta in sospeso —
+      // il messaggio già salvato mostrerebbe il nome del file precedente.
+      : !attachment && pendingChatRequestRef.current?.content === text
         ? pendingChatRequestRef.current
         : { content: text, requestId: createChatRequestId() };
     pendingChatRequestRef.current = retainedRequest;
+    if (attachment) {
+      attachmentsByRequestRef.current.set(retainedRequest.requestId, attachment);
+      if (!retryMessage) setChatAttachment(null);
+    }
     try {
       const result = await runPersistedRequest(text, {
         retryMessage,
         requestId: retainedRequest.requestId,
         readAssistant: () => pageRef.current === 'chat',
+        attachment,
       });
+      attachmentsByRequestRef.current.delete(retainedRequest.requestId);
       if (pendingChatRequestRef.current?.requestId === retainedRequest.requestId) {
         pendingChatRequestRef.current = null;
       }
@@ -383,7 +408,21 @@ export default function Poliedron({
       setChatError(described?.message || 'Non riesco a completare la richiesta. Riprova.');
       return false;
     }
-  }, [conversationErrorState, conversationLoading, onArchivioFilterHint, primaryConversation?.id, runPersistedRequest, setPage]);
+  }, [chatAttachment, conversationErrorState, conversationLoading, onArchivioFilterHint, primaryConversation?.id, runPersistedRequest, setPage]);
+
+  const attachChatFile = useCallback(async (file) => {
+    if (!file) return;
+    setChatError('');
+    setChatAttachmentPreparing(true);
+    try {
+      setChatAttachment(await prepareAttachment(file));
+    } catch (attachError) {
+      setChatAttachment(null);
+      setChatError(attachError?.message || 'Non riesco ad allegare questo file.');
+    } finally {
+      setChatAttachmentPreparing(false);
+    }
+  }, []);
 
   /** POL-AI-005B §CONFIRM: called only from an explicit user click on the
    *  Level-2 preview's Confirm button — never automatically. Re-loads
@@ -616,6 +655,10 @@ export default function Poliedron({
           structuredState={chatStructuredState}
           onSend={(text) => runChatMessage(text)}
           onRetry={(message) => runChatMessage(message.content, message)}
+          attachment={chatAttachment}
+          attachmentPreparing={chatAttachmentPreparing}
+          onAttachFile={attachChatFile}
+          onRemoveAttachment={() => setChatAttachment(null)}
           onRetryInitialization={conversationError ? retryInitialization : null}
           onLoadOlder={loadOlderMessages}
           onVisible={markVisibleMessagesRead}

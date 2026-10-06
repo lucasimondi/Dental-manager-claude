@@ -606,6 +606,8 @@ Caso d'uso che ha originato questa nota (POL-FIN-003, settembre 2026): leggere u
 
 Portare la lettura documenti dentro il motore condiviso di Poliedron (allegare un file in chat, non solo un widget isolato) è un cambiamento strutturale che tocca il motore usato da tutte le funzioni AI dell'app — non va fatto incidentalmente dentro un task verticale. Da pianificare come missione a sé quando prioritizzata.
 
+Stato (ottobre 2026): prioritizzata dal Product Owner ("prossimo passo di poliedron … documenti"). Fase 1 = POL-AI-008: un PDF o una foto allegati a un messaggio della Chat, letti dal modello solo in quel messaggio e mai salvati. Restano da decidere per le fasi successive: salvataggio del file nell'archivio del paziente, file ricordato nei messaggi successivi, più file per messaggio.
+
 ## 33. Referral / Founder model
 
 Idea da mantenere in roadmap: founder / ambassador / referral partner con tracking segnalazioni e possibile revenue sharing/passivo ricorrente collegato alla rete generata.

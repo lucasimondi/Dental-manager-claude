@@ -95,6 +95,7 @@ export async function processQuery({
   conversationHistory = [],
   supabaseClient,
   allowModel = true,
+  attachment = null,
 } = {}) {
   const q = (query || '').trim();
   if (!q) {
@@ -106,6 +107,27 @@ export async function processQuery({
         context,
       }),
       suggestedActions: [],
+    };
+  }
+
+  // POL-AI-008: a message with a file attached always goes to the model
+  // with the file — the deterministic routes below read only text and would
+  // answer without ever looking at the document.
+  if (attachment) {
+    const base = { intent: INTENT.ASK, entities: {}, answer: null, confirmationRequired: false, suggestedActions: [], searchResults: [] };
+    if (!allowModel) return { ...base, awaitingSubmit: true };
+    const modelResult = await runModelTask({
+      taskType: MODEL_TASK_TYPE.ASK,
+      input: q,
+      history: conversationHistory,
+      context,
+      supabaseClient,
+      attachment,
+    });
+    return {
+      ...base,
+      answer: modelResult.text || 'Non sono riuscito a leggere il file in questo momento.',
+      modelError: modelResult.error || null,
     };
   }
 

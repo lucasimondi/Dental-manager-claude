@@ -20,6 +20,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { signProposal, verifyProposal, claimProposal, studioToday } from "./confirmation.js";
 import { AGENDA_WRITES, prepareAgenda, executeAgenda, agendaAvailability } from "./agenda.js";
 import { PAZIENTI_WRITES, PAZIENTI_TOOLS, preparePazienti, executePazienti, schedaPaziente } from "./pazienti.js";
+import { validaAllegato, messaggiConAllegato, senzaDatiAllegato } from "./allegato.js";
 import { leggiRichiestaTeam, strumentiSpecialista, toolConsulta, leggiConsulti, eseguiConsulti, promptTeam, contestoGruppo, CONSULTA_SPECIALISTI } from "./team.js";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
@@ -1209,7 +1210,7 @@ per calcolare date relative ("domani", "martedì prossimo", "tra due settimane",
 dedurre o assumere altre date, e non sbagliare mai l'anno.
 Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}`;
 
-    const { messages, confirm, team } = await req.json();
+    const { messages, confirm, team, allegato: allegatoRichiesta } = await req.json();
     const json = (value) => new Response(JSON.stringify(value), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     // POL-AI-TEAM-002: Clinic Manager e specialisti, sempre in sola lettura.
     let richiestaTeam = null;
@@ -1219,6 +1220,16 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}`;
       return json({ error: error.message });
     }
     if (richiestaTeam && confirm) return json({ error: 'Il team di Poliedron non esegue azioni da confermare.' });
+    // POL-AI-008: un file allegato al messaggio corrente (letto, mai salvato).
+    let allegato = null;
+    if (allegatoRichiesta != null) {
+      if (confirm || richiestaTeam) return json({ error: 'Gli allegati si possono inviare solo in un messaggio normale della chat.' });
+      try {
+        allegato = validaAllegato(allegatoRichiesta);
+      } catch (error) {
+        return json({ error: error.message });
+      }
+    }
     if (confirm) {
       let proposal;
       try {
@@ -1250,6 +1261,13 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}`;
     }
     if (!Array.isArray(messages) || messages.length > 21 || messages.some(m => !['user', 'assistant'].includes(m.role) || typeof m.content !== 'string' || m.content.length > 16000)) throw new Error('Messaggi non validi');
     let convo = messages;
+    if (allegato) {
+      try {
+        convo = messaggiConAllegato(messages, allegato);
+      } catch (error) {
+        return json({ error: error.message });
+      }
+    }
     let finalText = '';
     const MAX_TURNS = 8;
     // Strumenti e parte stabile del system prompt restano in cache tra una
@@ -1464,7 +1482,7 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}`;
 
     // Il riepilogo delle scritture viene dal server, non dal modello.
     const testo = [testoEseguite(), finalText].filter(Boolean).join('\n\n');
-    return rispondi({ text: testo, messages: convo, ...(richiestaTeam ? { team: { assistente: richiestaTeam.assistente, pareri: pareriTeam } } : {}) });
+    return rispondi({ text: testo, messages: allegato ? senzaDatiAllegato(convo) : convo, ...(richiestaTeam ? { team: { assistente: richiestaTeam.assistente, pareri: pareriTeam } } : {}) });
   } catch (e) {
     return new Response(JSON.stringify({ error: String(e) }), {
       status: 500,

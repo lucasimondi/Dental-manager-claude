@@ -1,5 +1,22 @@
 # Current task
 
+- TASK: POL-AI-008 — Documenti in Poliedron: allegare un PDF o una foto in Chat (Fase 1)
+- TITLE: prima fase della "Missione futura — allegati in Poliedron" (Master Context §32): in Chat Poliedron si allega un PDF o una foto, Poliedron lo legge e risponde. Il file non viene salvato.
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "Lavora al prossimo passo di poliedron , dovrebbe essere documenti").
+- BRANCH: `claude/software-startup-speed-ugqqcf` (stesso branch di POL-PERF-001, commit separati), da `master@e6e8357`.
+- STATUS: PUSHED — nessuna PR aperta (non richiesta). **Edge Function NON deployata**, nessuna modifica al database.
+
+- **Edge Function `agente-assistente` portata nel repository**: copia verbatim della v28 di produzione (commit dedicato), poi modificata. `supabase/functions/_shared/agendaSlots.js` è quello deployato (diverso da `src/lib/agendaSlots.js`, non toccato).
+- **Server** (`allegato.js` + 3 punti in `index.ts`): campo opzionale `allegato: { nome, media_type, data }`; PDF ≤ 6 MB, foto JPEG/PNG/WebP/GIF ≤ 5 MB; rifiutato con `confirm`/`team`; diventa un blocco `document`/`image` (in cache) solo nell'ultimo messaggio dell'utente; la risposta non rimanda indietro il file. Il controllo dei messaggi di testo è invariato.
+- **App**: graffetta nel composer della Chat, chip con nome/dimensione e "Rimuovi"; si può inviare il solo file (testo predefinito); foto sempre ridotte a lato lungo 2048 px JPEG (anche HEIC dove il browser lo apre); nel database solo `metadata.allegato = { nome, tipo, dimensione }`; il messaggio mostra il nome del file; "Riprova" funziona finché il file è in memoria, altrimenti chiede di riallegarlo. Un messaggio con file va sempre al modello (le scorciatoie deterministiche leggono solo testo).
+- VALIDATION: `npm test` 880/880 (nuovo `tests/poliedronAllegati.test.mjs`, 11 test; aggiornata 1 asserzione in `poliedronChatSurfaces` per l'invio del solo file); `npm run build` OK; `index.ts` analizzato con esbuild (sintassi OK; Deno non disponibile). Chromium 390×844 su harness temporaneo (rimosso) con la vera pagina Chat e la vera preparazione file: foto 4000×3000 → JPEG 153 kB; invio del solo file; PDF + testo con Invio; `.txt` rifiutato; rimozione; nessun overflow, nessun errore JS.
+- NON VERIFICATO: risposta reale del modello su un file (richiede il deploy della funzione).
+- ORDINE DI RILASCIO (obbligatorio): 1) deploy di `agente-assistente` da questa cartella (+ `_shared/agendaSlots.js`, `verify_jwt=true`) — retrocompatibile; 2) poi merge del frontend. Al contrario, la versione attuale ignorerebbe il file e risponderebbe senza averlo letto.
+- LIMITI DELLA FASE 1: il file vale solo per il messaggio in cui è allegato (le domande successive vedono la risposta, non il file); un file per messaggio; nessun salvataggio nell'archivio del paziente; solo Chat (non il pannello rapido).
+- EXACT NEXT ACTION: Product Owner: istruzione per deploy della funzione e poi PR/merge; prova reale con un referto/una foto.
+
+---
+
 - TASK: POL-PERF-001 — Avvio dell'app più veloce (download iniziale ridotto)
 - TITLE: all'apertura l'app scaricava ed eseguiva grafici (recharts) e librerie PDF (jsPDF) anche per la sola schermata di login/Home.
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "Vorrei che si aprisse più velocemente tipo immediato il software cosa possiamo fare ?").

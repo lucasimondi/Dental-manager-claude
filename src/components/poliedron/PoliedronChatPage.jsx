@@ -4,6 +4,7 @@ import PoliedronActionPreview from './PoliedronActionPreview';
 import PoliedronActionPreviewLevel2 from './PoliedronActionPreviewLevel2';
 import PoliedronIntelligenceResults from './PoliedronIntelligenceResults';
 import PoliedronSearchResults from './PoliedronSearchResults';
+import { ATTACHMENT_ACCEPT, ATTACHMENT_ONLY_TEXT, formatAttachmentSize } from '../../lib/poliedron/chatAttachment.js';
 
 const NEAR_BOTTOM_PX = 120;
 
@@ -83,6 +84,10 @@ export default function PoliedronChatPage({
   onConfirmActionPlan,
   actionRunning,
   actionRunResult,
+  attachment = null,
+  attachmentPreparing = false,
+  onAttachFile,
+  onRemoveAttachment,
   navItems = [],
   onNavigate,
 }) {
@@ -90,7 +95,8 @@ export default function PoliedronChatPage({
   const scrollRef = useRef(null);
   const nearBottomRef = useRef(true);
   const initializedRef = useRef(false);
-  const sendDisabled = loading || sending || !draft.trim();
+  const fileInputRef = useRef(null);
+  const sendDisabled = loading || sending || attachmentPreparing || (!draft.trim() && !attachment);
 
   useEffect(() => {
     onVisible?.();
@@ -125,7 +131,9 @@ export default function PoliedronChatPage({
   };
 
   const submit = async () => {
-    const value = draft.trim();
+    // POL-AI-008: un file senza testo parte con una richiesta predefinita.
+    const value = draft.trim() || (attachment ? ATTACHMENT_ONLY_TEXT : '');
+    if (attachmentPreparing) return;
     if (!value || sending || loading) return;
     const accepted = await onSend(value);
     if (accepted !== false) setDraft('');
@@ -206,6 +214,12 @@ export default function PoliedronChatPage({
             )}
             <div className="poliedron-chat__bubble">
               <div>{message.content}</div>
+              {message.metadata?.allegato && (
+                <div className="poliedron-chat__attachment-tag">
+                  <Ic n="attach" s={12} />
+                  <span>{message.metadata.allegato.nome || 'File allegato'}</span>
+                </div>
+              )}
               <footer>
                 <time dateTime={message.created_at}>{formatTime(message.created_at)}</time>
                 {message.role === 'user' && message.delivery_status === 'pending' && (
@@ -250,7 +264,46 @@ export default function PoliedronChatPage({
             )}
           </div>
         )}
+        {(attachment || attachmentPreparing) && (
+          <div className="poliedron-chat__attachment" aria-live="polite">
+            <Ic n="file" s={15} />
+            <span className="poliedron-chat__attachment-name">
+              {attachmentPreparing ? 'Preparo il file…' : attachment.name}
+            </span>
+            {attachment && !attachmentPreparing && (
+              <>
+                <small>{formatAttachmentSize(attachment.size)}</small>
+                <button type="button" onClick={onRemoveAttachment} disabled={sending} aria-label="Rimuovi allegato">
+                  <Ic n="x" s={14} />
+                </button>
+              </>
+            )}
+          </div>
+        )}
         <div className="poliedron-chat__composer-row">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ATTACHMENT_ACCEPT}
+            hidden
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = '';
+              if (file) onAttachFile?.(file);
+            }}
+          />
+          {onAttachFile && (
+            <button
+              type="button"
+              className="poliedron-chat__attach"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading || sending || attachmentPreparing}
+              aria-label="Allega un PDF o una foto"
+              title="Allega un PDF o una foto"
+            >
+              <Ic n="attach" s={18} />
+            </button>
+          )}
           <textarea
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
@@ -262,7 +315,7 @@ export default function PoliedronChatPage({
             }}
             rows={1}
             maxLength={16000}
-            placeholder="Scrivi a Polyedron…"
+            placeholder={attachment ? 'Cosa vuoi sapere dal file?' : 'Scrivi a Polyedron…'}
             aria-label="Messaggio per Polyedron"
             disabled={loading}
           />
