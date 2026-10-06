@@ -6,7 +6,9 @@ import { patientChatKey, whatsappLink, patientName, patientInitials } from '../.
 
 // A chat with a patient, WhatsApp style: the message is written here and sent
 // through the studio's WhatsApp (wa.me), only with the patient's consent and a
-// phone number. What was sent stays in this conversation on the device.
+// phone number. Consent is NOT required for now (PO 2026-10-06): a missing
+// WhatsApp consent only shows a reminder; how to handle consent is a pending
+// decision. What was sent stays in this conversation on the device.
 const formatTime = (value) => (value ? new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit' }).format(new Date(value)) : '');
 const newId = () => (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`);
 
@@ -14,16 +16,15 @@ export function PatientAvatar({ patient }) {
   return <span className="poliedron-team__avatar" data-kind="patient" aria-hidden="true">{patientInitials(patient)}</span>;
 }
 
-export default function PatientThread({ patient, team, onBack }) {
+export default function PatientThread({ patient, team, onBack, onOpenPatient }) {
   const key = patientChatKey(patient.id);
   const thread = team.state.threads[key] || [];
   const [draft, setDraft] = useState('');
   const scrollRef = useRef(null);
   const dictation = useChatDictation({ draft, setDraft });
   const link = whatsappLink(patient.telefono, '');
-  const blocked = !link ? 'Il paziente non ha un numero di telefono in scheda.'
-    : !patient.consensoWhatsapp ? 'Manca il consenso WhatsApp del paziente: registralo nella scheda prima di scrivergli.'
-    : null;
+  const blocked = !link ? 'Il paziente non ha un numero di telefono in scheda.' : null;
+  const reminder = !blocked && !patient.consensoWhatsapp ? 'Consenso WhatsApp non registrato in scheda.' : null;
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -47,6 +48,11 @@ export default function PatientThread({ patient, team, onBack }) {
           <h1>{patientName(patient)}</h1>
           <p>{patient.telefono ? `WhatsApp · ${patient.telefono}` : 'Nessun telefono in scheda'}</p>
         </div>
+        {onOpenPatient && (
+          <button type="button" className="poliedron-wa__header-action" onClick={() => onOpenPatient(patient)} aria-label={`Apri la scheda di ${patientName(patient)}`}>
+            <Ic n="file" s={18} /><span>Scheda</span>
+          </button>
+        )}
       </header>
       <div className="poliedron-chat__timeline">
         <div ref={scrollRef} className="poliedron-chat__messages" aria-live="polite">
@@ -68,8 +74,8 @@ export default function PatientThread({ patient, team, onBack }) {
         </div>
       </div>
       <div className="poliedron-chat__composer">
-        {(blocked || dictation.notice || dictation.listening) && (
-          <div className="poliedron-chat__notice" role="status">{blocked || dictation.notice || 'Ti ascolto… Tocca di nuovo il microfono per terminare.'}</div>
+        {(blocked || reminder || dictation.notice || dictation.listening) && (
+          <div className="poliedron-chat__notice" role="status">{blocked || dictation.notice || (dictation.listening ? 'Ti ascolto… Tocca di nuovo il microfono per terminare.' : reminder)}</div>
         )}
         <div className="poliedron-chat__composer-row">
           <textarea

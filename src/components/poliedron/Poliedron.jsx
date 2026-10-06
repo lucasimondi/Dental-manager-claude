@@ -841,6 +841,7 @@ export default function Poliedron({
           askTeam={askTeam}
           teamIdentity={teamIdentity}
           patients={patients}
+          onOpenPatient={goSchedaPaz ? (patient) => goSchedaPaz(patient, 'info') : undefined}
         />,
         chatHost
       )}
