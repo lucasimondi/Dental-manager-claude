@@ -96,3 +96,26 @@ Meta e il GDPR richiedono che il paziente abbia accettato di ricevere messaggi W
 dallo studio. Decisione del Product Owner (POL-WA-003a): **in anagrafica**. Da POL-WA-003b
 la scheda paziente ha la casella "Acconsente a ricevere messaggi WhatsApp dallo studio"
 (con data); i promemoria partono solo per chi l'ha spuntata. Di default è spenta.
+
+
+## POL-WA-003d — Embedded Signup / Coexistence
+
+Poliedra now has a self-service **Collega WhatsApp Business** flow. Do not migrate or
+disconnect a number that must remain usable in the WhatsApp Business mobile app.
+
+Meta setup required before enabling the button in production:
+
+1. In the Meta app create an **Embedded Signup configuration** for WhatsApp Business App
+   onboarding / Coexistence and note its Configuration ID.
+2. Configure the production domain in the Meta app and complete the permissions/review
+   Meta requires for Embedded Signup.
+3. Vercel browser env: `VITE_META_APP_ID`, `VITE_META_WHATSAPP_CONFIG_ID`.
+4. Vercel server-only env: `META_APP_ID`, `META_APP_SECRET`, `SUPABASE_ANON_KEY`,
+   `SUPABASE_URL` (optional: code defaults to the production project URL).
+5. Never put `META_APP_SECRET` or a permanent WhatsApp access token in a VITE_ variable.
+6. The callback exchanges Meta's one-time code server-side and writes WABA/Phone Number ID
+   through Supabase using the signed-in user's JWT, so existing RLS remains the authority.
+
+The signup UI requests `featureType: whatsapp_business_app_onboarding` and listens only
+to Meta origins for `WA_EMBEDDED_SIGNUP` session events. If Meta does not return both IDs,
+the callback fails closed rather than guessing/attaching the wrong number.
