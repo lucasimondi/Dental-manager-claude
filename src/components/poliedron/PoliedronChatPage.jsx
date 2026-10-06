@@ -13,6 +13,21 @@ import { submitChatDraft } from '../../lib/poliedron/phoneApp.js';
 import poliedroGem from '../../assets/icon-poliedra-gem.png';
 
 const NEAR_BOTTOM_PX = 120;
+const NARROW_QUERY = '(max-width: 719px)';
+
+// On a phone-width screen the header keeps one row: title plus a ⋮ menu.
+function useNarrowScreen() {
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && Boolean(window.matchMedia?.(NARROW_QUERY).matches));
+  useEffect(() => {
+    const query = window.matchMedia?.(NARROW_QUERY);
+    if (!query) return undefined;
+    const update = () => setNarrow(query.matches);
+    update();
+    query.addEventListener?.('change', update);
+    return () => query.removeEventListener?.('change', update);
+  }, []);
+  return narrow;
+}
 
 const dayLabel = (value) => value ? new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(value)) : '';
 const dayKey = (value) => value ? new Date(value).toLocaleDateString('it-IT') : '';
@@ -108,6 +123,7 @@ export default function PoliedronChatPage({
   const [showTeam, setShowTeam] = useState(false);
   const [awayFromBottom, setAwayFromBottom] = useState(false);
   const menuRef = useRef(null);
+  const compact = useNarrowScreen() || phoneApp;
   const [pendingUser, setPendingUser] = useState(null);
   const [composerError, setComposerError] = useState('');
   const [online, setOnline] = useState(() => navigator.onLine !== false);
@@ -164,7 +180,7 @@ export default function PoliedronChatPage({
   }, []);
 
   useEffect(() => {
-    if (!phoneApp) return undefined;
+    if (!compact) return undefined;
     const closeOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) menuRef.current.open = false;
     };
@@ -180,7 +196,7 @@ export default function PoliedronChatPage({
       document.removeEventListener('pointerdown', closeOutside);
       document.removeEventListener('keydown', escape);
     };
-  }, [phoneApp]);
+  }, [compact]);
 
   const jumpToLatest = () => {
     nearBottomRef.current = true;
@@ -231,7 +247,7 @@ export default function PoliedronChatPage({
 
   if (showTeam && askTeam) {
     return (
-      <section className={`poliedron-chat${phoneApp ? ' poliedron-chat--phone' : ''}`} aria-label="Team di Poliedron">
+      <section className={`poliedron-chat poliedron-chat--team${phoneApp ? ' poliedron-chat--phone' : ''}`} aria-label="Team di Poliedron">
         <PoliedronTeam
           studioId={teamIdentity?.studioId}
           userId={teamIdentity?.userId}
@@ -250,22 +266,22 @@ export default function PoliedronChatPage({
           <h1>{phoneApp ? 'Poliedron' : 'Chat Poliedron'}</h1>
           <p>{!online ? 'Connessione assente' : sending ? 'Sto verificando…' : 'Assistente dello studio'}</p>
         </div>
-        {!phoneApp && askTeam && (
+        {!compact && askTeam && (
           <button
             type="button"
             className="poliedron-chat__activity-toggle"
             onClick={() => setShowTeam(true)}
           >
-            Team
+            <Ic n="users" s={15} /> Team
           </button>
         )}
-        {phoneApp && (
+        {compact && (
           <details ref={menuRef} className="poliedron-chat__options">
             <summary aria-label="Opzioni chat"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></summary>
             <div className="poliedron-chat__options-panel">
               {askTeam && <button type="button" onClick={() => { menuRef.current.open = false; setShowTeam(true); }}>Team di Poliedron</button>}
               {loadActivity && <button type="button" onClick={() => { setShowActivity((v) => !v); menuRef.current.open = false; }} aria-pressed={showActivity}>Registro attività</button>}
-              <PoliedronInstall />
+              {phoneApp && <PoliedronInstall />}
               {navItems.length > 0 && <nav aria-label="Moduli dello studio">
                 <small>Apri nello studio</small>
                 {navItems.map((item) => <button key={item.id} type="button" onClick={() => { menuRef.current.open = false; onNavigate?.(item.id); }}>{item.label}</button>)}
@@ -273,17 +289,17 @@ export default function PoliedronChatPage({
             </div>
           </details>
         )}
-        {!phoneApp && loadActivity && (
+        {!compact && loadActivity && (
           <button
             type="button"
             className="poliedron-chat__activity-toggle"
             aria-pressed={showActivity}
             onClick={() => setShowActivity((v) => !v)}
           >
-            {phoneApp ? 'Attività' : 'Attività di Poliedron'}
+            Attività di Poliedron
           </button>
         )}
-        {!phoneApp && navItems.length > 0 && (
+        {!compact && navItems.length > 0 && (
           <label className="poliedron-chat__nav">
             <Ic n="back" s={15} />
             <select
