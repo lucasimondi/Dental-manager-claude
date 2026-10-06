@@ -21,6 +21,7 @@ import { signProposal, verifyProposal, claimProposal, studioToday } from "./conf
 import { AGENDA_WRITES, prepareAgenda, executeAgenda, agendaAvailability } from "./agenda.js";
 import { PAZIENTI_WRITES, PAZIENTI_TOOLS, preparePazienti, executePazienti, schedaPaziente } from "./pazienti.js";
 import { PAGAMENTI_WRITES, PAGAMENTI_TOOLS, preparePagamenti, executePagamenti } from "./pagamenti.js";
+import { PIANI_WRITES, PIANI_TOOLS, preparePiani, executePiani } from "./piani.js";
 import { validaAllegato, messaggiConAllegato, senzaDatiAllegato } from "./allegato.js";
 import { STRUMENTI_MEMORIA, STRUMENTO_RICETTA, normalizzaMemoria, sezioneMemoria, sezioneFarmaciFrequenti, normalizzaRicetta, documentoRicetta } from "./memoria.js";
 import { leggiRichiestaTeam, strumentiSpecialista, toolConsulta, leggiConsulti, eseguiConsulti, promptTeam, contestoGruppo, CONSULTA_SPECIALISTI } from "./team.js";
@@ -427,6 +428,20 @@ async function eseguiAzionePersonalizzata(supabase, azione, input, studioId) {
   return { error: "Tipo di effetto sconosciuto: " + azione.tipo_effetto };
 }
 
+// POL-AI-010 passo 4: pagamenti (4a) e piani di cura (4b) si scrivono SEMPRE
+// dopo la conferma dell'utente (decisione del Product Owner), qualunque sia
+// l'autonomia dello studio: il ciclo degli strumenti propone solo il
+// riepilogo firmato, la scrittura avviene nel percorso di conferma.
+const SEMPRE_CONFERMA = [
+  { chiave: 'pagamenti', writes: PAGAMENTI_WRITES, prepara: preparePagamenti, esegui: executePagamenti,
+    invito: 'Controlla il riepilogo e conferma per registrare il pagamento.', domanda: 'Vuoi registrarlo comunque?',
+    errore: 'Pagamento non registrato: ', controlla: 'i pagamenti del paziente' },
+  { chiave: 'piani', writes: PIANI_WRITES, prepara: preparePiani, esegui: executePiani,
+    invito: 'Controlla il riepilogo e conferma.', domanda: 'Vuoi procedere comunque?',
+    errore: 'Piano di cura non aggiornato: ', controlla: 'i piani di cura del paziente' },
+];
+const dominioSempreConferma = (nome) => SEMPRE_CONFERMA.find((d) => d.writes.has(nome));
+
 // POL-AI-010: every write executed by Poliedron leaves a readable trace in the
 // studio's "Attività di Poliedron" (same id as the claim the RPC consumed).
 // Tabelle ammesse da poliedron_attivita.tabella (CHECK della migration
@@ -441,8 +456,8 @@ function registraAttivita(supabase, proposal, done) {
     riepilogo: String(done.text || '').slice(0, 4000), tabella: TABELLE_ATTIVITA.has(tabella) ? tabella : null,
     record_id: done.appointmentId ?? done.recordId ?? null,
     // Before/after, so the studio can undo the action from the log ("Ripristina").
-    prima: proposal.agenda ? proposal.agenda.before : proposal.pazienti?.before ?? null,
-    dopo: proposal.agenda ? { ...proposal.agenda.after, id: done.appointmentId } : proposal.pazienti?.dati ?? (proposal.pagamenti ? { ...proposal.pagamenti.dati, id: done.recordId } : null),
+    prima: proposal.agenda ? proposal.agenda.before : proposal.pazienti?.before ?? (proposal.piani?.prima !== undefined ? { [proposal.piani.azione === 'stato' ? 'stato' : 'voci']: proposal.piani.prima } : null),
+    dopo: proposal.agenda ? { ...proposal.agenda.after, id: done.appointmentId } : proposal.pazienti?.dati ?? (proposal.pagamenti ? { ...proposal.pagamenti.dati, id: done.recordId } : proposal.piani ? { ...proposal.piani.dati, id: done.recordId } : null),
   }).then((r) => { if (r.error) console.error('poliedron_attivita', r.error.message); return r; }, (e) => e);
 }
 
@@ -1157,9 +1172,9 @@ serve(async (req) => {
     toolsFinali = [
       ...toolsFinali,
       ...PAZIENTI_TOOLS.filter(t => (t.name === 'scheda_paziente' && lettureAmmesse) || (PAZIENTI_WRITES.has(t.name) && scrittureAmmesse)),
-      // POL-AI-010 passo 4a: pagamenti, solo dove le scritture sono ammesse e
-      // sempre con conferma (vedi il ciclo degli strumenti).
-      ...(scrittureAmmesse ? PAGAMENTI_TOOLS : []),
+      // POL-AI-010 passo 4: pagamenti e piani di cura, solo dove le scritture
+      // sono ammesse e sempre con conferma (vedi il ciclo degli strumenti).
+      ...(scrittureAmmesse ? [...PAGAMENTI_TOOLS, ...PIANI_TOOLS] : []),
     ];
     toolsFinali = toolsFinali.map(t => AGENDA_WRITES.has(t.name) ? {
       ...t,
@@ -1175,7 +1190,7 @@ serve(async (req) => {
     if (memoriaAttiva) toolsFinali = [...toolsFinali, ...STRUMENTI_MEMORIA];
     if (prescrive && lettureAmmesse) toolsFinali = [...toolsFinali, STRUMENTO_RICETTA];
     const allowedNames = new Set(toolsFinali.map(t => t.name));
-    const observed = { patients: new Set(), appointments: new Set() };
+    const observed = { patients: new Set(), appointments: new Set(), plans: new Set() };
     // Lo studio in modalità "medio" vuole confermare ogni scrittura: resta il
     // riepilogo firmato con conferma. Negli altri casi si esegue direttamente.
     const confermaOgniScrittura = agenteAzione === "medio";
@@ -1219,7 +1234,7 @@ REGOLE OPERATIVE PRIORITARIE (prevalgono su quanto scritto sopra):
 - Se uno strumento segnala un conflitto o un errore, non riprovare a caso: spiega il problema in una riga e, per l'agenda, proponi gli orari liberi indicati.
 - Se l'utente chiede più azioni nello stesso messaggio, eseguile tutte. Quando puoi, chiama insieme gli strumenti di lettura che ti servono (es. cerca_pazienti e disponibilita_agenda nello stesso passaggio).
 - Dopo una scrittura riuscita l'utente vede già il riepilogo del sistema: non ripeterlo, aggiungi solo ciò che serve.
-- Le ricette le prepari con prepara_ricetta, quando è tra i tuoi strumenti: il modulo si apre già compilato e il medico lo controlla e lo genera. I pagamenti li registri con registra_pagamento_paziente: l'utente vede un riepilogo e conferma lui. Altri documenti e i piani di cura per ora vanno fatti nei moduli dell'app: dillo con semplicità.
+- Le ricette le prepari con prepara_ricetta, quando è tra i tuoi strumenti: il modulo si apre già compilato e il medico lo controlla e lo genera. I pagamenti li registri con registra_pagamento_paziente; preventivi e piani di cura li gestisci con crea_piano_cura (anche per le proposte commerciali), aggiorna_stato_piano e segna_prestazione_eseguita (trova prima il piano con storico_paziente): l'utente vede un riepilogo e conferma lui. Altri documenti (certificati, lettere, fatture) per ora vanno fatti nei moduli dell'app: dillo con semplicità.
 - Hai una memoria per ogni utente (sezione "Cosa ricordi di questo utente"): usala, e salva con ricorda ciò che l'utente ti chiede di ricordare o che ti corregge e vale anche in futuro.
 - Eliminare un appuntamento significa annullarlo conservando lo storico. Il consenso WhatsApp si registra solo se l'utente dice esplicitamente che il paziente lo ha dato.
 - Rispondi in modo diretto e breve; ragiona a lungo solo se serve davvero.`;
@@ -1268,13 +1283,14 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
         await claimProposal(supabase, proposal);
         return json({ text: 'Operazione annullata. Nessuna modifica eseguita.' });
       }
-      if (proposal.pagamenti) {
+      const dominio = SEMPRE_CONFERMA.find((d) => proposal[d.chiave]);
+      if (dominio) {
         try {
-          const done = await executePagamenti(supabase, proposal);
+          const done = await dominio.esegui(supabase, proposal);
           await registraAttivita(supabase, proposal, done);
           return json(done);
         } catch (error) {
-          return json({ text: 'Pagamento non registrato: ' + error.message + ' Controlla i pagamenti del paziente prima di inviare una nuova richiesta.', changed: ['payments'], uncertain: true });
+          return json({ text: dominio.errore + error.message + ` Controlla ${dominio.controlla} prima di inviare una nuova richiesta.`, changed: [dominio.chiave === 'piani' ? 'plans' : 'payments'], uncertain: true });
         }
       }
       if (proposal.pazienti) {
@@ -1459,16 +1475,17 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
             pareriTeam.push(...pareri);
             result = { pareri, nota: 'Sono pareri degli specialisti, non fatti verificati: integrali conservando le divergenze e i dati mancanti.' };
           }
-        } else if (PAGAMENTI_WRITES.has(tu.name)) {
-          // POL-AI-010 passo 4a: un pagamento non si esegue mai direttamente,
-          // si propone sempre il riepilogo firmato da confermare.
+        } else if (dominioSempreConferma(tu.name)) {
+          // POL-AI-010 passo 4: pagamenti e piani di cura non si eseguono mai
+          // direttamente, si propone sempre il riepilogo firmato da confermare.
+          const dominio = dominioSempreConferma(tu.name);
           soloScrittureRiuscite = false;
           try {
-            const prepared = await preparePagamenti(supabase, tu.name, input, studioId, observed);
-            const proposal = { id: crypto.randomUUID(), userId: user.id, studioId, name: tu.name, pagamenti: prepared, expiresAt: Date.now() + 10 * 60 * 1000 };
+            const prepared = await dominio.prepara(supabase, tu.name, input, studioId, observed);
+            const proposal = { id: crypto.randomUUID(), userId: user.id, studioId, name: tu.name, [dominio.chiave]: prepared, expiresAt: Date.now() + 10 * 60 * 1000 };
             const token = await signProposal(proposal, SUPABASE_SERVICE_ROLE_KEY);
             const premessa = eseguite.length ? testoEseguite() + '\n\n' : '';
-            return rispondi({ text: premessa + (prepared.avviso ? `${prepared.avviso} Vuoi registrarlo comunque?` : 'Controlla il riepilogo e conferma per registrare il pagamento.'), needsConfirmation: { token, summary: prepared.summary, expiresAt: proposal.expiresAt } });
+            return rispondi({ text: premessa + (prepared.avviso ? `${prepared.avviso} ${dominio.domanda}` : dominio.invito), needsConfirmation: { token, summary: prepared.summary, expiresAt: proposal.expiresAt } });
           } catch (error) {
             result = { error: error.message };
           }
@@ -1548,6 +1565,7 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
           if (tu.name === 'cerca_pazienti') for (const p of result.risultati || []) observed.patients.add(p.id);
           if (tu.name === 'appuntamenti') for (const a of result.risultati || []) { observed.appointments.add(a.id); if (a.paziente_id) observed.patients.add(a.paziente_id); }
           if (tu.name === 'scheda_paziente' && result?.id) observed.patients.add(result.id);
+          if (tu.name === 'storico_paziente') for (const p of result?.piani || []) observed.plans.add(p.id);
         }
         toolResults.push({ type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify(result) });
       }

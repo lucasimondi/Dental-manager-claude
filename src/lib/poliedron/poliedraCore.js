@@ -106,6 +106,11 @@ const PATIENT_DATA_RE = /\b(?:telefono|cellulare|numero|e-?mail|indirizzo|codice
 const MODULE_ONLY_RE = /preventiv|piano di cura|pagament|incass|spes[ae]|cost[oi]\b|uscit|document|certificat|lettera|ricett|fattur/i;
 // POL-AI-010 passo 4a: "Mario Rossi ha pagato 120 euro con carta".
 const PAID_RE = /\b(?:ha|hanno)\s+(?:pagato|versato|saldato|lasciato)\b[^?]*\d/i;
+// POL-AI-010 passo 4b: preventivi e piani di cura ("fai un preventivo…",
+// "Rossi ha accettato il preventivo", "segna eseguita l'igiene di Bianchi").
+const PLAN_WORD_RE = /\b(?:preventiv\w*|pian[oi] di cur[ae]|piano)\b/i;
+const PLAN_ACTION_RE = /\b(?:crea|fai|fare|prepara\w*|nuov[oa]|accett\w*|rifiut\w*|non accett\w*|eseguit[ao]|segna\w*|aggiungi\w*)\b/i;
+const EXECUTED_RE = /\b(?:segna\w*|metti\w*)\b[^?]*\beseguit[ao]\b/i;
 const AUTONOMY_RANK = { consulente: 0, medio: 1, su_richiesta: 2, completo: 3 };
 
 // Mirrors the server gate in agente-assistente: premium plan and an autonomy
@@ -198,9 +203,11 @@ export async function processQuery({
   // POL-AI-010 passo 4a: with the agent allowed to write, a patient payment
   // is prepared by Poliedron and registered only after the user confirms the
   // summary (server-side, always). Otherwise the "Registra incasso" form opens.
-  const agentPaymentRequest = agentCanWrite(context) && !/\?\s*$/.test(q)
-    && Boolean(parseRegisterPaymentRequest(q) || PAID_RE.test(q));
-  if (agentPaymentRequest && allowModel) {
+  // Passo 4b: same rule for treatment plans and quotes.
+  const agentFinanceRequest = agentCanWrite(context) && !/\?\s*$/.test(q)
+    && Boolean(parseRegisterPaymentRequest(q) || PAID_RE.test(q)
+      || parseCreatePlanRequest(q) || (PLAN_WORD_RE.test(q) && PLAN_ACTION_RE.test(q)) || EXECUTED_RE.test(q));
+  if (agentFinanceRequest && allowModel) {
     const result = await runModelTask({ taskType: MODEL_TASK_TYPE.ASK, input: q, history: conversationHistory, context, supabaseClient });
     return { intent: 'AGENT', answer: result.text, modelError: result.error,
       modelConfirmation: result.raw?.needsConfirmation || null, dataChanged: result.raw?.changed || null, dataRecords: result.raw?.records || null,

@@ -34,6 +34,15 @@ session (RLS `payments_studio`); the existing triggers feed the financial ledger
 when `stato = 'pagato'`. Plan link as in the app (one open plan → automatic, several
 → ask, none → NULL); same amount on the same day → warning in the summary. Not
 undoable from the activity log (the ledger has no reversals): corrected in Incassi.
+From step 4b, quotes and treatment plans (`piani.js`): `crea_piano_cura` (items from
+the price list, one per tooth, optional discount `pct`|`eur`), `aggiorna_stato_piano`
+(attivo / accettato / rifiutato; "concluso" is never stored) and
+`segna_prestazione_eseguita` (today, recall as the app's `rilevaRichiamo`). Same rule:
+**always** a signed summary, then claim + one write with the user's session (RLS
+`plans_studio`). Changes to an existing plan are written only if the plan is still as
+shown in the summary (`stato`/`voci` filter), and items are never reordered or removed:
+the ledger trigger `pol_003b_sync_plan_trg` reads them by position and has no reversals.
+Plan ids must come from `storico_paziente` in the same request.
 Any ID the model writes against must come from a read in the same request. Read tools include real availability and
 operator listing. Other domain writes remain in existing deterministic workflows
 and will be integrated in subsequent steps. No permanent deletion or forced overlap.
@@ -66,6 +75,8 @@ The folder below was re-imported from production v28 (identical to the code abov
   agenda and patient tools, Poliedron team (read-only).
 - `pagamenti.js` (POL-AI-010 passo 4a): payments from chat, always confirmed.
   Tested by `tests/agentePagamenti.test.mjs`.
+- `piani.js` (POL-AI-010 passo 4b): quotes and treatment plans from chat, always
+  confirmed. Tested by `tests/agentePiani.test.mjs`.
 - `allegato.js` (POL-AI-008): pure logic for a PDF/photo attached to a chat message.
   Tested by `tests/poliedronAllegati.test.mjs`.
 - `memoria.js` (POL-AI-009): memory tools (`ricorda`, `dimentica`), the prompt sections

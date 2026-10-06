@@ -10,6 +10,9 @@ const ETICHETTE = {
   crea_promemoria: 'Attività',
   crea_impegno_personale: 'Agenda bloccata',
   registra_pagamento_paziente: 'Pagamento registrato',
+  crea_piano_cura: 'Piano di cura creato',
+  aggiorna_stato_piano: 'Piano di cura aggiornato',
+  segna_prestazione_eseguita: 'Prestazione eseguita',
   ripristino: 'Ripristino',
 };
 
