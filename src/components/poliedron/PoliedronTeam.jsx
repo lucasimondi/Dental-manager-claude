@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Ic } from '../ui';
 import { TEAM_ASSISTANTS } from '../../lib/poliedron/team/catalog.js';
+import useChatDictation from './useChatDictation.js';
 import {
   loadTeamState, saveTeamState, teamContacts, contactKey, addGroup, removeGroup,
   appendMessage, teamRequestFor, threadHistory,
@@ -71,6 +72,7 @@ export default function PoliedronTeam({ studioId, userId, ask, onClose }) {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const scrollRef = useRef(null);
+  const dictation = useChatDictation({ draft, setDraft });
 
   useEffect(() => { setState(loadTeamState(storage(), studioId, userId)); }, [studioId, userId]);
   useEffect(() => { saveTeamState(storage(), studioId, userId, state); }, [state, studioId, userId]);
@@ -111,97 +113,121 @@ export default function PoliedronTeam({ studioId, userId, ask, onClose }) {
     }
   };
 
+  const header = (title, subtitle, onBack, backLabel, avatar) => (
+    <header className="poliedron-chat__header poliedron-team__header">
+      <button type="button" className="poliedron-team__back" onClick={onBack} aria-label={backLabel}><Ic n="back" s={18} /></button>
+      {avatar}
+      <div className="poliedron-chat__header-text">
+        <h1>{title}</h1>
+        <p>{subtitle}</p>
+      </div>
+    </header>
+  );
+  const avatarOf = (c) => (
+    <span className="poliedron-team__avatar" data-kind={c.kind} aria-hidden="true">
+      {c.kind === 'group' ? <Ic n="users" s={16} /> : INITIALS[c.id] || c.label.slice(0, 2)}
+    </span>
+  );
+
   if (!active) {
     return (
-      <section className="poliedron-team" aria-label="Team di Poliedron">
-        <header className="poliedron-team__bar">
-          <strong><Ic n="spark" s={15} /> Team di Poliedron</strong>
-          <button type="button" onClick={onClose}>Torna a Poliedron</button>
-        </header>
-        <p className="poliedron-team__intro">Assistenti specializzati: leggono i dati dello studio e danno pareri. Le azioni (agenda, pazienti…) le esegue Poliedron nella chat principale.</p>
-        <ul className="poliedron-team__contacts">
-          {contacts.map((c) => (
-            <li key={contactKey(c)}>
-              <button type="button" onClick={() => setActiveKey(contactKey(c))}>
-                <span className="poliedron-team__avatar" data-kind={c.kind}>{c.kind === 'group' ? <Ic n="users" s={15} /> : INITIALS[c.id] || c.label.slice(0, 2)}</span>
-                <span>
-                  <strong>{c.label}</strong>
-                  <small>{c.kind === 'group' ? `Gruppo · ${c.assistantIds.map(nameOf).join(', ')}` : c.description}</small>
-                </span>
-              </button>
-              {c.kind === 'group' && (
-                <button type="button" className="poliedron-team__remove" aria-label={`Elimina il gruppo ${c.label}`} onClick={() => setState((s) => removeGroup(s, c.id))}>Elimina</button>
-              )}
-            </li>
-          ))}
-        </ul>
-        {creating ? (
-          <GroupForm
-            onCancel={() => setCreating(false)}
-            onCreate={(data) => {
-              const id = newId();
-              setState((s) => addGroup(s, data, { studioId, userId, id }));
-              setCreating(false);
-              setActiveKey(`group:${id}`);
-            }}
-          />
-        ) : (
-          <button type="button" className="poliedron-team__new" onClick={() => setCreating(true)}>+ Nuovo gruppo</button>
-        )}
-      </section>
+      <>
+        {header('Team di Poliedron', 'Specialisti in sola lettura · pareri', onClose, 'Torna alla chat di Poliedron',
+          <span className="poliedron-team__avatar" data-kind="team" aria-hidden="true"><Ic n="users" s={16} /></span>)}
+        <div className="poliedron-team__body">
+          <div className="poliedron-team__inner">
+            <p className="poliedron-team__intro">Leggono i dati dello studio e ti danno un parere. Le azioni (agenda, pazienti…) le fa Poliedron nella chat principale.</p>
+            <ul className="poliedron-team__contacts">
+              {contacts.map((c) => (
+                <li key={contactKey(c)}>
+                  <button type="button" onClick={() => setActiveKey(contactKey(c))}>
+                    {avatarOf(c)}
+                    <span className="poliedron-team__contact-text">
+                      <strong>{c.label}</strong>
+                      <small>{c.kind === 'group' ? `Gruppo · ${c.assistantIds.map(nameOf).join(', ')}` : c.description}</small>
+                    </span>
+                    <span className="poliedron-team__chevron" aria-hidden="true">›</span>
+                  </button>
+                  {c.kind === 'group' && (
+                    <button type="button" className="poliedron-team__remove" aria-label={`Elimina il gruppo ${c.label}`} onClick={() => setState((s) => removeGroup(s, c.id))}>Elimina</button>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {creating ? (
+              <GroupForm
+                onCancel={() => setCreating(false)}
+                onCreate={(data) => {
+                  const id = newId();
+                  setState((s) => addGroup(s, data, { studioId, userId, id }));
+                  setCreating(false);
+                  setActiveKey(`group:${id}`);
+                }}
+              />
+            ) : (
+              <button type="button" className="poliedron-team__new" onClick={() => setCreating(true)}>+ Nuovo gruppo</button>
+            )}
+          </div>
+        </div>
+      </>
     );
   }
 
+  const coordinated = active.kind === 'group' || active.id === 'clinic-manager';
   return (
-    <section className="poliedron-team is-thread" aria-label={`Chat con ${active.label}`}>
-      <header className="poliedron-team__bar">
-        <button type="button" onClick={() => setActiveKey(null)} aria-label="Torna ai contatti del team"><Ic n="back" s={15} /> Team</button>
-        <strong>{active.label}</strong>
-        <small>{active.kind === 'group' ? active.assistantIds.map(nameOf).join(', ') : 'Sola lettura · pareri'}</small>
-      </header>
-      <div ref={scrollRef} className="poliedron-chat__messages" aria-live="polite">
-        {!thread.length && (
-          <div className="poliedron-chat__empty" data-state="empty">
-            <span><Ic n="chat" s={24} /></span>
-            <strong>{active.kind === 'group' ? `Gruppo: ${active.description}` : active.description}</strong>
-            <p>{active.kind === 'group' || active.id === 'clinic-manager'
-              ? 'Il Clinic Manager consulta gli specialisti utili e ti dà una risposta unica.'
-              : 'Fai una domanda: risponde con i dati reali dello studio, senza modificare nulla.'}</p>
-          </div>
-        )}
-        {thread.map((m) => (
-          <article key={m.id} className={`poliedron-chat__message is-${m.role}${m.failed ? ' is-failed' : ''}`}>
-            {m.role !== 'user' && <span className="poliedron-chat__avatar"><Ic n="spark" s={13} /></span>}
-            <div className="poliedron-chat__bubble">
-              <div style={{ whiteSpace: 'pre-wrap' }}>{m.content}</div>
-              <Pareri pareri={m.pareri} />
-              {m.failed && <footer><span>Non inviato: riprova.</span></footer>}
+    <>
+      {header(active.label, active.kind === 'group' ? active.assistantIds.map(nameOf).join(', ') : 'Sola lettura · pareri',
+        () => setActiveKey(null), 'Torna ai contatti del team', avatarOf(active))}
+      <div className="poliedron-chat__timeline">
+        <div ref={scrollRef} className="poliedron-chat__messages" aria-live="polite">
+          {!thread.length && (
+            <div className="poliedron-chat__empty" data-state="empty">
+              <span><Ic n="chat" s={24} /></span>
+              <strong>{active.kind === 'group' ? `Obiettivo: ${active.description}` : active.description}</strong>
+              <p>{coordinated
+                ? 'Il Clinic Manager consulta gli specialisti utili e ti dà una risposta unica.'
+                : 'Fai una domanda: risponde con i dati reali dello studio, senza modificare nulla.'}</p>
             </div>
-          </article>
-        ))}
-        {sending && (
-          <div className="poliedron-chat__typing">
-            <span /><span /><span />
-            <small>{active.kind === 'group' || active.id === 'clinic-manager' ? 'Il Clinic Manager consulta il team…' : `${active.label} sta analizzando…`}</small>
-          </div>
-        )}
+          )}
+          {thread.map((m) => (
+            <article key={m.id} className={`poliedron-chat__message is-${m.role}${m.failed ? ' is-failed' : ''}`}>
+              {m.role !== 'user' && <span className="poliedron-chat__avatar"><Ic n="spark" s={13} /></span>}
+              <div className="poliedron-chat__bubble">
+                <div style={{ whiteSpace: 'pre-wrap' }}>{m.content}</div>
+                <Pareri pareri={m.pareri} />
+                {m.failed && <footer><span>Non inviato: riprova.</span></footer>}
+              </div>
+            </article>
+          ))}
+          {sending && (
+            <div className="poliedron-chat__typing">
+              <span /><span /><span />
+              <small>{coordinated ? 'Il Clinic Manager consulta il team…' : `${active.label} sta analizzando…`}</small>
+            </div>
+          )}
+        </div>
       </div>
       <div className="poliedron-chat__composer">
+        {(dictation.notice || dictation.listening) && <div className="poliedron-chat__notice" role="status">{dictation.notice || 'Ti ascolto… Tocca di nuovo il microfono per terminare.'}</div>}
         <div className="poliedron-chat__composer-row">
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); } }}
             rows={1}
             maxLength={16000}
             placeholder={`Scrivi a ${active.label}…`}
             aria-label={`Messaggio per ${active.label}`}
+            enterKeyHint="send"
           />
-          <button type="button" className="poliedron-chat__send" onClick={send} disabled={sending || !draft.trim()} aria-label="Invia messaggio" aria-busy={sending}>
+          <button type="button" className="poliedron-chat__mic" onClick={dictation.toggle} disabled={sending} aria-label={dictation.listening ? 'Termina dettatura' : 'Detta messaggio'} aria-pressed={dictation.listening}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/></svg>
+          </button>
+          <button type="button" className="poliedron-chat__send" onClick={send} disabled={sending || dictation.listening || !draft.trim()} aria-label="Invia messaggio" aria-busy={sending}>
             <Ic n="send" s={18} c="#fff" />
           </button>
         </div>
       </div>
-    </section>
+    </>
   );
 }

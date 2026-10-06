@@ -1790,51 +1790,62 @@ body:has(.home-widget-grid) #app-scroll {
   cursor: pointer;
 }
 .poliedron-attivita__restore button:disabled { opacity: 0.5; cursor: default; }
-/* POL-AI-TEAM-002 — Team di Poliedron: contatti, gruppi e conversazioni. */
-.poliedron-team { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow-y: auto; }
-.poliedron-team.is-thread { overflow: hidden; }
-.poliedron-team__bar {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
-  border-bottom: 1px solid var(--border-subtle);
+/* POL-AI-TEAM-002 — Team di Poliedron: stessa intestazione e stessa
+   struttura della chat (header, area che scorre, composer), così telefono,
+   app Poliedron e desktop restano allineati senza spazi o pulsanti sparsi. */
+.poliedron-chat__header { position: relative; }
+.poliedron-chat__header .poliedron-chat__activity-toggle { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; color: var(--text-primary); background: var(--surface-elevated); }
+.poliedron-team__back {
+  flex: 0 0 40px; width: 40px; height: 40px; display: grid; place-items: center;
+  border: 0; border-radius: 50%; background: transparent; color: var(--text-primary); cursor: pointer;
 }
-.poliedron-team__bar > strong { flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: 6px; }
-.poliedron-team__bar small { color: var(--text-muted); font-size: 12px; flex-basis: 100%; }
-.poliedron-team__bar button, .poliedron-team__new, .poliedron-team__form-actions button, .poliedron-team__remove {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 7px 10px; border-radius: 10px; border: 1px solid var(--border-subtle);
-  background: var(--surface-base); color: inherit; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+.poliedron-team__back:hover, .poliedron-team__back:focus-visible { background: var(--surface-interactive); outline: none; }
+.poliedron-team__avatar {
+  width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--brand-primary) 12%, var(--surface-elevated)); color: var(--brand-primary);
+  font-weight: 800; font-size: 13px; letter-spacing: .02em;
 }
-.poliedron-team__intro { margin: 12px 16px 4px; font-size: 13px; color: var(--text-muted); }
-.poliedron-team__contacts { list-style: none; margin: 0; padding: 4px 16px; }
-.poliedron-team__contacts li { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border-subtle); }
+.poliedron-team__avatar[data-kind="team"], .poliedron-team__avatar[data-kind="group"] { background: linear-gradient(145deg, var(--brand-primary), var(--brand-accent)); color: #fff; }
+.poliedron-team__header .poliedron-chat__header-text p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.poliedron-team__body { flex: 1 1 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.poliedron-team__inner { max-width: 720px; margin: 0 auto; padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px)); box-sizing: border-box; }
+.poliedron-team__intro { margin: 4px 4px 12px; font-size: 13px; line-height: 1.45; color: var(--text-muted); }
+.poliedron-team__contacts {
+  list-style: none; margin: 0; padding: 0; overflow: hidden;
+  border: 1px solid var(--border-subtle); border-radius: 16px; background: var(--surface-elevated);
+}
+.poliedron-team__contacts li { display: flex; align-items: center; gap: 8px; padding-right: 10px; }
+.poliedron-team__contacts li + li { border-top: 1px solid var(--border-subtle); }
 .poliedron-team__contacts li > button:first-child {
-  flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 12px 0;
+  flex: 1; min-width: 0; min-height: 64px; display: flex; align-items: center; gap: 12px; padding: 10px 6px 10px 14px;
   border: none; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
 }
-.poliedron-team__contacts strong { display: block; font-size: 14px; }
-.poliedron-team__contacts small { display: block; font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.poliedron-team__contacts span:last-child { min-width: 0; }
-.poliedron-team__avatar {
-  width: 38px; height: 38px; flex-shrink: 0; border-radius: 12px;
-  display: inline-flex; align-items: center; justify-content: center;
-  background: var(--surface-muted, rgba(24, 95, 165, 0.1)); color: var(--accent, #185FA5);
-  font-weight: 800; font-size: 13px; text-transform: uppercase;
+.poliedron-team__contacts li > button:first-child:hover { background: var(--surface-interactive); }
+.poliedron-team__contact-text { flex: 1; min-width: 0; }
+.poliedron-team__contact-text strong { display: block; font-size: 15px; line-height: 1.3; }
+.poliedron-team__contact-text small { display: block; font-size: 12.5px; line-height: 1.35; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.poliedron-team__chevron { color: var(--text-muted); font-size: 22px; line-height: 1; }
+.poliedron-team__new, .poliedron-team__form-actions button, .poliedron-team__remove {
+  min-height: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--border-subtle);
+  background: var(--surface-elevated); color: var(--brand-primary); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
 }
-.poliedron-team__new { margin: 12px 16px; align-self: flex-start; }
-.poliedron-team__form { display: flex; flex-direction: column; gap: 8px; margin: 12px 16px; padding: 12px; border: 1px solid var(--border-subtle); border-radius: 12px; }
+.poliedron-team__remove { min-height: 36px; font-size: 12px; color: var(--text-muted); }
+.poliedron-team__new { display: block; width: 100%; margin-top: 12px; }
+.poliedron-team__form { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; padding: 14px; border: 1px solid var(--border-subtle); border-radius: 16px; background: var(--surface-elevated); }
 .poliedron-team__form input, .poliedron-team__form textarea {
-  font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 10px;
-  border: 1px solid var(--border-subtle); background: var(--surface-base); color: inherit;
+  font: inherit; font-size: 16px; padding: 10px 12px; border-radius: 12px;
+  border: 1px solid var(--border-subtle); background: var(--surface-page); color: inherit; resize: none;
 }
-.poliedron-team__form fieldset { border: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; }
-.poliedron-team__form legend { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
-.poliedron-team__form label { font-size: 13px; display: inline-flex; align-items: center; gap: 4px; }
+.poliedron-team__form fieldset { border: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px 12px; }
+.poliedron-team__form legend { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+.poliedron-team__form label { font-size: 14px; display: flex; align-items: center; gap: 8px; min-height: 40px; }
 .poliedron-team__form p { margin: 0; font-size: 13px; color: var(--danger, #b42318); }
 .poliedron-team__form-actions { display: flex; gap: 8px; }
+.poliedron-team__form-actions button[type="submit"] { background: var(--brand-primary); border-color: var(--brand-primary); color: #fff; }
 .poliedron-team__pareri { margin-top: 8px; font-size: 13px; }
-.poliedron-team__pareri summary { cursor: pointer; font-weight: 700; color: var(--text-muted); }
-.poliedron-team__pareri div { margin-top: 6px; }
+.poliedron-team__pareri summary { cursor: pointer; font-weight: 700; color: var(--brand-primary); }
+.poliedron-team__pareri div { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-subtle); }
 .poliedron-team__pareri p { margin: 2px 0 0; }
 .poliedron-chat__nav select {
   border: none;
