@@ -150,3 +150,9 @@ PO: il tasto Pazienti portava al gestionale (doppione di Studio); ricerca verame
 - Dock: Chat · Agenda · **Pazienti (rubrica dentro Poliedron)** · Richiami · Studio. La rubrica elenca i pazienti in ordine alfabetico con ricerca; ogni paziente ha **Chat** (WhatsApp dello studio) e **Scheda** (apre la scheda paziente sopra la chat).
 - Ricerca dell'elenco chat: pazienti (con Chat/Scheda), chat, messaggi dentro le chat e sezioni dello studio ("Nello studio"). X per cancellare il testo.
 - Mentre si scrive in una ricerca il dock si nasconde e ricompare a tastiera chiusa.
+
+### Consenso WhatsApp: non obbligatorio per ora (2026-10-06)
+PO: "Non rendere obbligatorio il consenso per scrivere al paziente, cerchiamo più in là un modo, ricordati".
+- La chat con il paziente blocca solo se manca il telefono; senza consenso mostra un promemoria ("Consenso WhatsApp non registrato in scheda") ma permette l'invio.
+- In alto nella chat del paziente c'è **Scheda** per aprire la sua scheda.
+- **PENDING_PO_DECISION — consenso WhatsApp nella chat pazienti**: definire come gestirlo (es. richiesta di consenso al primo messaggio, registrazione rapida dalla chat, regole per i messaggi di servizio). Da riprendere con il PO prima dell'invio diretto via WhatsApp Business.

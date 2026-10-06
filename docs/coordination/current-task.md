@@ -27,6 +27,7 @@
 - NEXT: merge PR #130 with expected-head guard, verify Vercel production deployment; physical iPhone/Android installation remains outstanding. No manual backend deployment needed.
 
 # Current task — POL-AI-TEAM-002 (team di Poliedron attivo in chat)
+- PENDING_PO_DECISION (PO 2026-10-06, "cerchiamo più in là un modo, ricordati"): gestione del consenso WhatsApp per scrivere ai pazienti dalla chat Poliedron. Oggi non è obbligatorio (solo promemoria). Vedi docs/architecture/poliedron-team-foundation.md.
 - OWNER: CLAUDE — Product Owner handoff 2026-10-05 ("Guarda la bozza 125 e miglioriamo", then "Sì ma mettiamo anche marketing, clinico e poi dimmi tu, voglio già creare di questa sera questa cosa").
 - BRANCH: `claude/whatsapp-automation-status-d2ng12` (includes Codex commit 99f6e25 from #125).
 - STATUS: implemented and tested locally; deploy of `agente-assistente` and merge wait for the PO's "Mergia".

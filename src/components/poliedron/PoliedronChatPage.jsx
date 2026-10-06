@@ -826,7 +826,7 @@ export default function PoliedronChatPage({
       {activeChat && (
         <div className="poliedron-wa__pane">
           {poliedronOpen ? poliedronPane : activePatient ? (
-            <PatientThread key={activeChat} patient={activePatient} team={team} onBack={compact ? () => setOpenChat(null) : null} />
+            <PatientThread key={activeChat} patient={activePatient} team={team} onBack={compact ? () => setOpenChat(null) : null} onOpenPatient={onOpenPatient} />
           ) : activeContact ? (
             <TeamThread
               key={activeChat}

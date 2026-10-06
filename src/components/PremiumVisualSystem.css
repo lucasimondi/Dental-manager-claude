@@ -1858,6 +1858,10 @@ body:has(.home-widget-grid) #app-scroll {
   background: color-mix(in srgb, var(--brand-accent) 16%, var(--surface-elevated));
   border-color: color-mix(in srgb, var(--brand-accent) 50%, transparent); color: var(--brand-primary);
 }
+.poliedron-wa__header-action {
+  flex-shrink: 0; min-height: 40px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px;
+  border: 0; border-radius: 20px; background: var(--surface-interactive); color: var(--brand-primary); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+}
 .poliedron-wa__clear { flex-shrink: 0; width: 22px; height: 22px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: color-mix(in srgb, var(--text-primary) 40%, transparent); cursor: pointer; }
 .poliedron-wa__search input::-webkit-search-cancel-button { display: none; }
 .poliedron-wa__patient { cursor: default; }
