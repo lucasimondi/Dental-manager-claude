@@ -6,7 +6,8 @@ import PoliedronActionPreviewLevel2 from './PoliedronActionPreviewLevel2';
 import PoliedronIntelligenceResults from './PoliedronIntelligenceResults';
 import PoliedronSearchResults from './PoliedronSearchResults';
 import PoliedronAttivita from './PoliedronAttivita';
-import PoliedronTeam from './PoliedronTeam';
+import { useTeamState, TeamThread, TeamAvatar, GroupForm } from './PoliedronTeam';
+import { contactKey } from '../../lib/poliedron/team/threads.js';
 import PoliedronInstall from './PoliedronInstall.jsx';
 import useChatDictation from './useChatDictation.js';
 import { submitChatDraft } from '../../lib/poliedron/phoneApp.js';
@@ -120,10 +121,17 @@ export default function PoliedronChatPage({
 }) {
   const [draft, setDraft] = useState('');
   const [showActivity, setShowActivity] = useState(false);
-  const [showTeam, setShowTeam] = useState(false);
+  // WhatsApp-style: a list of chats (Poliedron, team, groups); on a phone the
+  // list and the open chat are two screens, on a computer two panes.
+  const [openChat, setOpenChat] = useState(null);
+  const [creatingGroup, setCreatingGroup] = useState(false);
+  const team = useTeamState(teamIdentity?.studioId, teamIdentity?.userId);
   const [awayFromBottom, setAwayFromBottom] = useState(false);
   const menuRef = useRef(null);
   const compact = useNarrowScreen() || phoneApp;
+  const activeChat = openChat || (compact ? null : 'poliedron');
+  const activeContact = activeChat && activeChat !== 'poliedron' ? team.contacts.find((c) => contactKey(c) === activeChat) : null;
+  const poliedronOpen = activeChat === 'poliedron';
   const [pendingUser, setPendingUser] = useState(null);
   const [composerError, setComposerError] = useState('');
   const [online, setOnline] = useState(() => navigator.onLine !== false);
@@ -148,14 +156,23 @@ export default function PoliedronChatPage({
     if (!input) return;
     input.style.height = 'auto';
     input.style.height = `${Math.min(120, input.scrollHeight)}px`;
-  }, [draft]);
+  }, [draft, poliedronOpen]);
 
   useEffect(() => {
+    if (!poliedronOpen) return undefined;
     const mark = () => { if (!document.hidden) onVisible?.(); };
     mark();
     document.addEventListener('visibilitychange', mark);
     return () => document.removeEventListener('visibilitychange', mark);
-  }, [messages.length, onVisible]);
+  }, [messages.length, onVisible, poliedronOpen]);
+
+  // Opening Poliedron's chat always starts from the latest message.
+  useEffect(() => {
+    if (!poliedronOpen) return;
+    initializedRef.current = false;
+    nearBottomRef.current = true;
+    setAwayFromBottom(false);
+  }, [poliedronOpen]);
 
   useEffect(() => {
     const element = scrollRef.current;
@@ -164,7 +181,7 @@ export default function PoliedronChatPage({
       element.scrollTop = element.scrollHeight;
       initializedRef.current = true;
     }
-  }, [messages.length, sending, structuredState, pendingUser]);
+  }, [messages.length, sending, structuredState, pendingUser, poliedronOpen]);
 
   // A keyboard or a growing input changes the available list height. Keep
   // the latest message visible only when the reader was already at the end.
@@ -177,17 +194,18 @@ export default function PoliedronChatPage({
     });
     observer.observe(element);
     return () => observer.disconnect();
-  }, []);
+  }, [poliedronOpen]);
 
   useEffect(() => {
-    if (!compact) return undefined;
+    const openMenus = () => [...document.querySelectorAll('details.poliedron-chat__options[open]')];
     const closeOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) menuRef.current.open = false;
+      for (const menu of openMenus()) if (!menu.contains(event.target)) menu.open = false;
     };
     const escape = (event) => {
-      if (event.key === 'Escape' && menuRef.current?.open) {
-        menuRef.current.open = false;
-        menuRef.current.querySelector('summary')?.focus();
+      if (event.key !== 'Escape') return;
+      for (const menu of openMenus()) {
+        menu.open = false;
+        menu.querySelector('summary')?.focus();
       }
     };
     document.addEventListener('pointerdown', closeOutside);
@@ -196,7 +214,7 @@ export default function PoliedronChatPage({
       document.removeEventListener('pointerdown', closeOutside);
       document.removeEventListener('keydown', escape);
     };
-  }, [compact]);
+  }, []);
 
   const jumpToLatest = () => {
     nearBottomRef.current = true;
@@ -245,50 +263,104 @@ export default function PoliedronChatPage({
     });
   };
 
-  if (showTeam && askTeam) {
-    return (
-      <section className={`poliedron-chat poliedron-chat--team${phoneApp ? ' poliedron-chat--phone' : ''}`} aria-label="Team di Poliedron">
-        <PoliedronTeam
-          studioId={teamIdentity?.studioId}
-          userId={teamIdentity?.userId}
-          ask={askTeam}
-          onClose={() => setShowTeam(false)}
-        />
-      </section>
-    );
-  }
+  const closeMenus = () => {
+    for (const menu of document.querySelectorAll('details.poliedron-chat__options[open]')) menu.open = false;
+  };
+  const install = phoneApp ? <PoliedronInstall /> : <PoliedronInstall href="/poliedron/?installa=1" />;
+  const optionsMenu = (
+    <details ref={menuRef} className="poliedron-chat__options">
+      <summary aria-label="Opzioni chat"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></summary>
+      <div className="poliedron-chat__options-panel">
+        {loadActivity && <button type="button" onClick={() => { closeMenus(); setOpenChat('poliedron'); setShowActivity((v) => !poliedronOpen || !v); }} aria-pressed={showActivity}>Registro attività</button>}
+        {install}
+        {navItems.length > 0 && <nav aria-label="Moduli dello studio">
+          <small>Apri nello studio</small>
+          {navItems.map((item) => <button key={item.id} type="button" onClick={() => { closeMenus(); onNavigate?.(item.id); }}>{item.label}</button>)}
+        </nav>}
+      </div>
+    </details>
+  );
+  const time = (value) => {
+    if (!value) return '';
+    const d = new Date(value);
+    return d.toDateString() === new Date().toDateString()
+      ? formatTime(value)
+      : new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: '2-digit' }).format(d);
+  };
+  const lastPoliedron = messages.at(-1);
+  const rows = [
+    { key: 'poliedron', label: 'Poliedron', avatar: <span className="poliedron-wa__gem"><img src={poliedroGem} width="48" height="48" alt="" /></span>,
+      preview: lastPoliedron ? `${lastPoliedron.role === 'user' ? 'Tu: ' : ''}${lastPoliedron.content}` : 'Assistente dello studio: agenda, pazienti, richiami', at: lastPoliedron?.created_at },
+    ...(askTeam ? team.contacts.map((c) => {
+      const last = (team.state.threads[contactKey(c)] || []).at(-1);
+      return {
+        key: contactKey(c), label: c.label, avatar: <TeamAvatar contact={c} />,
+        preview: last ? `${last.role === 'user' ? 'Tu: ' : ''}${last.content}` : c.kind === 'group' ? `Gruppo · ${c.description}` : c.description,
+        at: last?.at,
+      };
+    }) : []),
+  ];
 
-  return (
-    <section className={`poliedron-chat${phoneApp ? ' poliedron-chat--phone' : ''}`} aria-label="Chat Poliedron" data-surface-status={surfaceStatus || undefined}>
+  const chatList = (
+    <aside className="poliedron-wa__list" aria-label="Elenco chat">
       <header className="poliedron-chat__header">
         <span className="poliedron-chat__brand"><img src={poliedroGem} width="40" height="40" alt="" /></span>
         <div className="poliedron-chat__header-text">
-          <h1>{phoneApp ? 'Poliedron' : 'Chat Poliedron'}</h1>
-          <p>{!online ? 'Connessione assente' : sending ? 'Sto verificando…' : 'Assistente dello studio'}</p>
+          <h1>{phoneApp ? 'Poliedron' : 'Chat'}</h1>
+          <p>Poliedron e il suo team</p>
         </div>
-        {!compact && askTeam && (
-          <button
-            type="button"
-            className="poliedron-chat__activity-toggle"
-            onClick={() => setShowTeam(true)}
-          >
-            <Ic n="users" s={15} /> Team
+        {askTeam && (
+          <button type="button" className="poliedron-wa__icon-button" aria-label="Nuovo gruppo" onClick={() => setCreatingGroup((v) => !v)}>
+            <Ic n="plus" s={20} />
           </button>
         )}
-        {compact && (
-          <details ref={menuRef} className="poliedron-chat__options">
-            <summary aria-label="Opzioni chat"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></summary>
-            <div className="poliedron-chat__options-panel">
-              {askTeam && <button type="button" onClick={() => { menuRef.current.open = false; setShowTeam(true); }}>Team di Poliedron</button>}
-              {loadActivity && <button type="button" onClick={() => { setShowActivity((v) => !v); menuRef.current.open = false; }} aria-pressed={showActivity}>Registro attività</button>}
-              {phoneApp && <PoliedronInstall />}
-              {navItems.length > 0 && <nav aria-label="Moduli dello studio">
-                <small>Apri nello studio</small>
-                {navItems.map((item) => <button key={item.id} type="button" onClick={() => { menuRef.current.open = false; onNavigate?.(item.id); }}>{item.label}</button>)}
-              </nav>}
-            </div>
-          </details>
+        {(compact || !poliedronOpen) && optionsMenu}
+      </header>
+      <div className="poliedron-wa__rows">
+        {creatingGroup && (
+          <div className="poliedron-wa__form">
+            <GroupForm
+              onCancel={() => setCreatingGroup(false)}
+              onCreate={(data) => { const key = team.createGroup(data); setCreatingGroup(false); setOpenChat(key); }}
+            />
+          </div>
         )}
+        <ul>
+          {rows.map((row) => (
+            <li key={row.key}>
+              <button
+                type="button"
+                className="poliedron-wa__row"
+                aria-label={`Chat con ${row.label}`}
+                aria-current={activeChat === row.key ? 'true' : undefined}
+                onClick={() => setOpenChat(row.key)}
+              >
+                {row.avatar}
+                <span className="poliedron-wa__row-text">
+                  <span className="poliedron-wa__row-top">
+                    <strong>{row.label}</strong>
+                    {row.at && <time dateTime={row.at}>{time(row.at)}</time>}
+                  </span>
+                  <small>{row.preview}</small>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </aside>
+  );
+
+  const poliedronPane = (
+    <>
+      <header className="poliedron-chat__header">
+        {compact && <button type="button" className="poliedron-wa__back" onClick={() => setOpenChat(null)} aria-label="Torna alle chat"><Ic n="back" s={20} /></button>}
+        <span className="poliedron-chat__brand"><img src={poliedroGem} width="40" height="40" alt="" /></span>
+        <div className="poliedron-chat__header-text">
+          <h1>Poliedron</h1>
+          <p>{!online ? 'Connessione assente' : sending ? 'Sto verificando…' : 'Assistente dello studio'}</p>
+        </div>
+        {compact && optionsMenu}
         {!compact && loadActivity && (
           <button
             type="button"
@@ -299,24 +371,7 @@ export default function PoliedronChatPage({
             Attività di Poliedron
           </button>
         )}
-        {!compact && navItems.length > 0 && (
-          <label className="poliedron-chat__nav">
-            <Ic n="back" s={15} />
-            <select
-              aria-label="Torna a un altro modulo"
-              defaultValue=""
-              onChange={(event) => {
-                const destination = event.target.value;
-                if (destination) onNavigate?.(destination);
-              }}
-            >
-              <option value="" disabled>Altri moduli…</option>
-              {navItems.map((item) => (
-                <option key={item.id} value={item.id}>{item.label}</option>
-              ))}
-            </select>
-          </label>
-        )}
+        {!compact && optionsMenu}
       </header>
 
       {showActivity && loadActivity && (
@@ -464,6 +519,30 @@ export default function PoliedronChatPage({
           </button>
         </div>
       </div>
+    </>
+  );
+
+  return (
+    <section
+      className={`poliedron-chat poliedron-wa${compact ? ' poliedron-chat--phone is-compact' : ''}`}
+      aria-label="Chat Poliedron"
+      data-surface-status={surfaceStatus || undefined}
+    >
+      {(!compact || !activeChat) && chatList}
+      {activeChat && (
+        <div className="poliedron-wa__pane">
+          {poliedronOpen ? poliedronPane : activeContact ? (
+            <TeamThread
+              key={activeChat}
+              contact={activeContact}
+              team={team}
+              ask={askTeam}
+              onBack={compact ? () => setOpenChat(null) : null}
+              onDeleteGroup={(id) => { team.deleteGroup(id); setOpenChat(null); }}
+            />
+          ) : null}
+        </div>
+      )}
     </section>
   );
 }

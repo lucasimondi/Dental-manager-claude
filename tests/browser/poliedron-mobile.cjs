@@ -107,6 +107,8 @@ const { chromium: pw } = require("playwright");
       const errors = [];
       page.on("pageerror", (e) => errors.push(e.message));
       await page.goto("http://127.0.0.1:5177/__phone-qa.html");
+      // WhatsApp-style: the app opens on the chat list; Poliedron is a chat.
+      await page.getByRole("button", { name: "Chat con Poliedron" }).click();
       await page.locator(".poliedron-chat__message").last().waitFor();
       await page.waitForTimeout(200);
       const bounds = () =>
@@ -243,6 +245,7 @@ const { chromium: pw } = require("playwright");
         await page
           .getByRole("button", { name: "← Torna a Poliedron", exact: true })
           .click();
+        await page.getByRole("button", { name: "Chat con Poliedron" }).click();
         await page.locator(".poliedron-chat__message").last().waitFor();
         await input.fill("");
         await page.screenshot({ path: path.join(output, "phone.png") });
@@ -273,6 +276,7 @@ const { chromium: pw } = require("playwright");
         window.__QA_SCENARIO__ = value;
       }, scenario);
       await page.goto("http://127.0.0.1:5177/__phone-qa.html");
+      await page.getByRole("button", { name: "Chat con Poliedron" }).click();
       if (scenario === "empty")
         await page.locator('[data-state="empty"]').waitFor();
       else {

@@ -117,3 +117,9 @@ già creare di questa sera questa cosa". Presa in carico da CLAUDE della bozza
 - **Test**: `tests/agenteTeamFlow.test.mjs` (handler reale: strumenti per ruolo,
   rifiuto delle scritture, consulti attribuiti, gruppi, parziali, PRO/consulente/
   BASE, richieste non valide) e `tests/poliedronTeamThreads.test.mjs`.
+
+### Chat come WhatsApp (2026-10-06)
+PO: "Deve essere come WhatsApp, dove ci sono le chat con i contatti e io vado nella chat e comunico"; "manca la possibilità di installare la chat direttamente in home"; "deve essere tutto schermo".
+- La pagina Chat si apre sull'elenco delle chat: Poliedron, Clinic Manager, specialisti e gruppi, ciascuno con ultimo messaggio e ora; "+" crea un gruppo. Su telefono elenco e conversazione sono due schermate a tutto schermo (freccia indietro); su computer due colonne.
+- Su telefono la barra di navigazione in basso è nascosta nella Chat; i moduli sono nel menu ⋮ insieme a "Registro attività" e "Installa Poliedron sul telefono" (dal gestionale apre l'app `/poliedron/` con le istruzioni di installazione).
+- Il test mobile `tests/browser/poliedron-mobile.cjs` ora apre la chat di Poliedron dall'elenco.

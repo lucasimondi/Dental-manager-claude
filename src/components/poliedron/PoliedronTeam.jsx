@@ -3,20 +3,44 @@ import { Ic } from '../ui';
 import { TEAM_ASSISTANTS } from '../../lib/poliedron/team/catalog.js';
 import useChatDictation from './useChatDictation.js';
 import {
-  loadTeamState, saveTeamState, teamContacts, contactKey, addGroup, removeGroup,
+  loadTeamState, saveTeamState, teamContacts, addGroup, removeGroup,
   appendMessage, teamRequestFor, threadHistory,
 } from '../../lib/poliedron/team/threads.js';
 
-// POL-AI-TEAM-002: the Poliedron team as chat contacts. Specialists answer in
-// read-only consultation; the Clinic Manager (and every group) consults them
-// and integrates their opinions. Actions stay with Poliedron's main chat.
+// POL-AI-TEAM-002: the Poliedron team as chat contacts, WhatsApp style.
+// Specialists answer in read-only consultation; the Clinic Manager (and every
+// group) consults them and integrates their opinions. Actions stay with
+// Poliedron's own chat.
 const SPECIALISTS = TEAM_ASSISTANTS.filter((a) => a.id !== 'clinic-manager');
 const INITIALS = { 'clinic-manager': 'CM', agenda: 'AG', clinical: 'CL', marketing: 'MK', finance: 'FI', documents: 'DO' };
-const nameOf = (id) => TEAM_ASSISTANTS.find((a) => a.id === id)?.label || id;
+export const nameOf = (id) => TEAM_ASSISTANTS.find((a) => a.id === id)?.label || id;
 const storage = () => { try { return window.localStorage; } catch { return null; } };
 const newId = () => (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`);
 
-function GroupForm({ onCreate, onCancel }) {
+/** Team contacts, groups and conversations of this studio/user (device storage). */
+export function useTeamState(studioId, userId) {
+  const [state, setState] = useState(() => loadTeamState(storage(), studioId, userId));
+  useEffect(() => { setState(loadTeamState(storage(), studioId, userId)); }, [studioId, userId]);
+  useEffect(() => { saveTeamState(storage(), studioId, userId, state); }, [state, studioId, userId]);
+  const contacts = useMemo(() => teamContacts(state), [state]);
+  const createGroup = (data) => {
+    const id = newId();
+    setState((s) => addGroup(s, data, { studioId, userId, id }));
+    return `group:${id}`;
+  };
+  const deleteGroup = (id) => setState((s) => removeGroup(s, id));
+  return { state, setState, contacts, createGroup, deleteGroup };
+}
+
+export function TeamAvatar({ contact }) {
+  return (
+    <span className="poliedron-team__avatar" data-kind={contact.kind} aria-hidden="true">
+      {contact.kind === 'group' ? <Ic n="users" s={18} /> : INITIALS[contact.id] || contact.label.slice(0, 2)}
+    </span>
+  );
+}
+
+export function GroupForm({ onCreate, onCancel }) {
   const [title, setTitle] = useState('');
   const [objective, setObjective] = useState('');
   const [members, setMembers] = useState([]);
@@ -65,44 +89,39 @@ function Pareri({ pareri }) {
   );
 }
 
-export default function PoliedronTeam({ studioId, userId, ask, onClose }) {
-  const [state, setState] = useState(() => loadTeamState(storage(), studioId, userId));
-  const [activeKey, setActiveKey] = useState(null);
-  const [creating, setCreating] = useState(false);
+const formatTime = (value) => (value ? new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit' }).format(new Date(value)) : '');
+
+/** One conversation with a team contact: header, messages, composer. */
+export function TeamThread({ contact, team, ask, onBack, onDeleteGroup }) {
+  const key = contact.kind === 'group' ? `group:${contact.id}` : `assistant:${contact.id}`;
+  const thread = team.state.threads[key] || [];
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const scrollRef = useRef(null);
   const dictation = useChatDictation({ draft, setDraft });
-
-  useEffect(() => { setState(loadTeamState(storage(), studioId, userId)); }, [studioId, userId]);
-  useEffect(() => { saveTeamState(storage(), studioId, userId, state); }, [state, studioId, userId]);
-
-  const contacts = useMemo(() => teamContacts(state), [state]);
-  const active = contacts.find((c) => contactKey(c) === activeKey) || null;
-  const thread = active ? state.threads[activeKey] || [] : [];
+  const coordinated = contact.kind === 'group' || contact.id === 'clinic-manager';
 
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [thread.length, sending, activeKey]);
+  }, [thread.length, sending, key]);
 
   const send = async () => {
     const text = draft.trim();
-    if (!text || sending || !active) return;
-    const key = activeKey;
-    const history = threadHistory(state.threads[key]);
+    if (!text || sending) return;
+    const history = threadHistory(thread);
     setDraft('');
     setSending(true);
-    setState((s) => appendMessage(s, key, { id: newId(), role: 'user', content: text, at: new Date().toISOString() }));
+    team.setState((s) => appendMessage(s, key, { id: newId(), role: 'user', content: text, at: new Date().toISOString() }));
     try {
-      const result = await ask({ team: teamRequestFor(active), input: text, history });
+      const result = await ask({ team: teamRequestFor(contact), input: text, history });
       if (result?.error || !result?.text) throw new Error(result?.error || 'Nessuna risposta');
-      setState((s) => appendMessage(s, key, {
+      team.setState((s) => appendMessage(s, key, {
         id: newId(), role: 'assistant', content: result.text, at: new Date().toISOString(),
         pareri: result.pareri?.length ? result.pareri : undefined,
       }));
     } catch {
-      setState((s) => {
+      team.setState((s) => {
         const t = [...(s.threads[key] || [])];
         if (t.length) t[t.length - 1] = { ...t[t.length - 1], failed: true };
         return { ...s, threads: { ...s.threads, [key]: t } };
@@ -113,77 +132,32 @@ export default function PoliedronTeam({ studioId, userId, ask, onClose }) {
     }
   };
 
-  const header = (title, subtitle, onBack, backLabel, avatar) => (
-    <header className="poliedron-chat__header poliedron-team__header">
-      <button type="button" className="poliedron-team__back" onClick={onBack} aria-label={backLabel}><Ic n="back" s={18} /></button>
-      {avatar}
-      <div className="poliedron-chat__header-text">
-        <h1>{title}</h1>
-        <p>{subtitle}</p>
-      </div>
-    </header>
-  );
-  const avatarOf = (c) => (
-    <span className="poliedron-team__avatar" data-kind={c.kind} aria-hidden="true">
-      {c.kind === 'group' ? <Ic n="users" s={16} /> : INITIALS[c.id] || c.label.slice(0, 2)}
-    </span>
-  );
-
-  if (!active) {
-    return (
-      <>
-        {header('Team di Poliedron', 'Specialisti in sola lettura · pareri', onClose, 'Torna alla chat di Poliedron',
-          <span className="poliedron-team__avatar" data-kind="team" aria-hidden="true"><Ic n="users" s={16} /></span>)}
-        <div className="poliedron-team__body">
-          <div className="poliedron-team__inner">
-            <p className="poliedron-team__intro">Leggono i dati dello studio e ti danno un parere. Le azioni (agenda, pazienti…) le fa Poliedron nella chat principale.</p>
-            <ul className="poliedron-team__contacts">
-              {contacts.map((c) => (
-                <li key={contactKey(c)}>
-                  <button type="button" onClick={() => setActiveKey(contactKey(c))}>
-                    {avatarOf(c)}
-                    <span className="poliedron-team__contact-text">
-                      <strong>{c.label}</strong>
-                      <small>{c.kind === 'group' ? `Gruppo · ${c.assistantIds.map(nameOf).join(', ')}` : c.description}</small>
-                    </span>
-                    <span className="poliedron-team__chevron" aria-hidden="true">›</span>
-                  </button>
-                  {c.kind === 'group' && (
-                    <button type="button" className="poliedron-team__remove" aria-label={`Elimina il gruppo ${c.label}`} onClick={() => setState((s) => removeGroup(s, c.id))}>Elimina</button>
-                  )}
-                </li>
-              ))}
-            </ul>
-            {creating ? (
-              <GroupForm
-                onCancel={() => setCreating(false)}
-                onCreate={(data) => {
-                  const id = newId();
-                  setState((s) => addGroup(s, data, { studioId, userId, id }));
-                  setCreating(false);
-                  setActiveKey(`group:${id}`);
-                }}
-              />
-            ) : (
-              <button type="button" className="poliedron-team__new" onClick={() => setCreating(true)}>+ Nuovo gruppo</button>
-            )}
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  const coordinated = active.kind === 'group' || active.id === 'clinic-manager';
   return (
     <>
-      {header(active.label, active.kind === 'group' ? active.assistantIds.map(nameOf).join(', ') : 'Sola lettura · pareri',
-        () => setActiveKey(null), 'Torna ai contatti del team', avatarOf(active))}
+      <header className="poliedron-chat__header">
+        {onBack && <button type="button" className="poliedron-wa__back" onClick={onBack} aria-label="Torna alle chat"><Ic n="back" s={20} /></button>}
+        <TeamAvatar contact={contact} />
+        <div className="poliedron-chat__header-text">
+          <h1>{contact.label}</h1>
+          <p>{sending ? (coordinated ? 'Consulta il team…' : 'Sta analizzando…') : contact.kind === 'group' ? contact.assistantIds.map(nameOf).join(', ') : 'Sola lettura · pareri'}</p>
+        </div>
+        {contact.kind === 'group' && onDeleteGroup && (
+          <button
+            type="button"
+            className="poliedron-wa__icon-button"
+            aria-label={`Elimina il gruppo ${contact.label}`}
+            onClick={() => { if (window.confirm(`Eliminare il gruppo "${contact.label}" e la sua conversazione?`)) onDeleteGroup(contact.id); }}
+          >
+            <Ic n="del" s={18} />
+          </button>
+        )}
+      </header>
       <div className="poliedron-chat__timeline">
         <div ref={scrollRef} className="poliedron-chat__messages" aria-live="polite">
           {!thread.length && (
             <div className="poliedron-chat__empty" data-state="empty">
-              <span><Ic n="chat" s={24} /></span>
-              <strong>{active.kind === 'group' ? `Obiettivo: ${active.description}` : active.description}</strong>
+              <span><TeamAvatar contact={contact} /></span>
+              <strong>{contact.kind === 'group' ? `Obiettivo: ${contact.description}` : contact.description}</strong>
               <p>{coordinated
                 ? 'Il Clinic Manager consulta gli specialisti utili e ti dà una risposta unica.'
                 : 'Fai una domanda: risponde con i dati reali dello studio, senza modificare nulla.'}</p>
@@ -195,14 +169,17 @@ export default function PoliedronTeam({ studioId, userId, ask, onClose }) {
               <div className="poliedron-chat__bubble">
                 <div style={{ whiteSpace: 'pre-wrap' }}>{m.content}</div>
                 <Pareri pareri={m.pareri} />
-                {m.failed && <footer><span>Non inviato: riprova.</span></footer>}
+                <footer>
+                  <time dateTime={m.at}>{formatTime(m.at)}</time>
+                  {m.failed && <span>Non inviato: riprova.</span>}
+                </footer>
               </div>
             </article>
           ))}
           {sending && (
             <div className="poliedron-chat__typing">
               <span /><span /><span />
-              <small>{coordinated ? 'Il Clinic Manager consulta il team…' : `${active.label} sta analizzando…`}</small>
+              <small>{coordinated ? 'Il Clinic Manager consulta il team…' : `${contact.label} sta analizzando…`}</small>
             </div>
           )}
         </div>
@@ -216,8 +193,8 @@ export default function PoliedronTeam({ studioId, userId, ask, onClose }) {
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); } }}
             rows={1}
             maxLength={16000}
-            placeholder={`Scrivi a ${active.label}…`}
-            aria-label={`Messaggio per ${active.label}`}
+            placeholder={`Scrivi a ${contact.label}…`}
+            aria-label={`Messaggio per ${contact.label}`}
             enterKeyHint="send"
           />
           <button type="button" className="poliedron-chat__mic" onClick={dictation.toggle} disabled={sending} aria-label={dictation.listening ? 'Termina dettatura' : 'Detta messaggio'} aria-pressed={dictation.listening}>

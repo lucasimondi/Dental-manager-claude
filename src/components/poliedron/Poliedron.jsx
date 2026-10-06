@@ -648,7 +648,7 @@ export default function Poliedron({
           gets the large freely-positionable Orb, desktop gets the
           discreet edge-anchored dock. Both call the exact same onToggle,
           opening the exact same panel/state below. */}
-      {!(phoneApp && page === 'chat') && (isMobile
+      {!(page === 'chat' && (phoneApp || isMobile)) && (isMobile
         ? <PoliedronMobileDock page={page} setPage={setPage} open={open} onToggle={onToggle} panelId={panelId} positionLocked={positionLocked} />
         : <PoliedronEdgeDock open={open} onToggle={onToggle} panelId={panelId} positionLocked={positionLocked} />)}
       {/* POL-CHAT-001 merge — FASE 3: PR #51's bell was a placeholder that
