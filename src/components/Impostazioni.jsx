@@ -2,6 +2,7 @@
 import GestioneUtenti from './GestioneUtenti.jsx';
 import GestioneRisorseAgenda from './GestioneRisorseAgenda.jsx';
 import FarmaciPreferitiSettings from './FarmaciPreferitiSettings.jsx';
+import WhatsAppEmbeddedSignup from './WhatsAppEmbeddedSignup.jsx';
 import React, { useState, useEffect, useRef } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Ic, Toggle, DockIc, DOCK_ICON_STYLES, PageHeader, EmptyState } from './ui';
 import { C, uid, DEF_STUDIO, COLORI_DISPONIBILI, VERTICALI_DISPONIBILI, VERTICALI_CON_RICETTA, DEF_DOCK_SETTINGS, mergeDockSettings, DEF_AGENDA_SETTINGS, DEF_DOCUMENTI_SETTINGS, STORIA_CLINICA_MODELLO_BASE } from '../lib/utils';
@@ -1151,10 +1152,23 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           <>
             {!waConfig && (
               <div style={{ background: C.priL, borderRadius: 9, padding: '9px 12px', marginBottom: 14, fontSize: 12, color: C.pri }}>
-                {waPuoModificareNumero
-                  ? 'Non ancora configurato. Inserisci il Phone Number ID che Meta assegna al numero dello studio nella App.'
-                  : "Non ancora configurato. Il numero dello studio lo collega l'assistenza Poliedra: contattala per attivarlo."}
+                Collega il numero WhatsApp Business dello studio senza scollegarlo dall'app sul telefono.
               </div>
+            )}
+            {waPuoModificareNumero && (
+              <WhatsAppEmbeddedSignup
+                studioId={si.studio_id}
+                onConnected={(config) => {
+                  setWaConfig(config);
+                  setWaForm((prev) => ({
+                    ...prev,
+                    phone_number_id: config.phone_number_id || prev.phone_number_id,
+                    waba_id: config.waba_id || prev.waba_id,
+                    attivo: config.attivo !== false,
+                  }));
+                  setWaMsg('WhatsApp Business collegato ✓');
+                }}
+              />
             )}
             {waConfig && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: waForm.attivo ? `${C.suc}1A` : C.bg, borderRadius: 9, padding: '9px 12px', marginBottom: 14 }}>

@@ -99,6 +99,22 @@ async function resolveAnalyze(entities, context, permissions, supabaseClient) {
   return { answer: `${metric.label} (${from} — ${to}): ${value}`, confirmationRequired: false };
 }
 
+const AGENT_ACTION_RE = /\b(?:ricordami|promemoria|ferie|blocca|impegn[oi]|consenso|sposta|anticipa|posticipa|disdic\w*|richiam\w*|annota\w*|nota)\b/i;
+const PATIENT_DATA_RE = /\b(?:telefono|cellulare|numero|e-?mail|indirizzo|codice fiscale)\b.*(?:\s(?:è|e')\s|\bdiventa\b|\bnuov[oa]\b|:)/i;
+// Domains still served by their dedicated modules (POL-AI-010 steps 3-4).
+const MODULE_ONLY_RE = /preventiv|piano di cura|pagament|incass|spes[ae]|cost[oi]\b|uscit|document|certificat|lettera|ricett|fattur/i;
+const AUTONOMY_RANK = { consulente: 0, medio: 1, su_richiesta: 2, completo: 3 };
+
+// Mirrors the server gate in agente-assistente: premium plan and an autonomy
+// level above "consulente" (studio choice capped by the super-admin ceiling).
+// The server re-checks everything; this only decides where the request goes.
+export function agentCanWrite(context) {
+  const f = context?.features || {};
+  if (f.assistente_ai !== 'premium') return false;
+  const rank = (v) => AUTONOMY_RANK[v ?? 'completo'] ?? 0;
+  return Math.min(rank(f.agente_azione), rank(f.agente_azione_max)) > 0;
+}
+
 /**
  * processQuery({ query, context, permissions, sources, conversationHistory, supabaseClient })
  * -> { intent, entities, searchResults, suggestedActions, answer, confirmationRequired }
@@ -148,8 +164,33 @@ export async function processQuery({
       ...base,
       answer: modelResult.text || 'Non sono riuscito a leggere il file in questo momento.',
       modelError: modelResult.error || null,
+      modelConfirmation: modelResult.raw?.needsConfirmation || null,
+      dataChanged: modelResult.raw?.changed || null,
+      dataRecords: modelResult.raw?.records || null,
       documentRequest: documentRequestFromModel(modelResult),
     };
+  }
+
+  // Explicit agenda requests and their conversational follow-ups use the same
+  // authenticated gateway. Never call a model during keystroke previews.
+  const agendaRequest = /appuntament|prenot|sposta.*visita|annulla.*visita/i.test(q)
+    || conversationHistory.slice(-2).some(m => /appuntament|prenot/i.test(m.content || ''));
+  const preliminaryIntent = classifyIntent(q, { navigationIndex: sources.navigationIndex || [] });
+  // POL-AI-010: when the studio's agent may write, patient and agenda commands
+  // ("aggiungi una nota…", "ricordami…", "ferie dal…") are executed by Poliedron
+  // instead of opening a form. Prescriptions, plans and payments keep their
+  // dedicated workflows until their own steps.
+  const agentWriteRequest = agentCanWrite(context) && !MODULE_ONLY_RE.test(q) && (
+    [INTENT.CREATE, INTENT.UPDATE].includes(preliminaryIntent.type) || AGENT_ACTION_RE.test(q) || PATIENT_DATA_RE.test(q)
+  );
+  const dedicatedRoute = [INTENT.NAVIGATE, INTENT.ANALYZE].includes(preliminaryIntent.type)
+    || resolvePrescriptionRequest(q, sources.patients || [])
+    || parseCreatePlanRequest(q) || parseRegisterPaymentRequest(q);
+  if ((agendaRequest || agentWriteRequest) && allowModel && !dedicatedRoute && !classifyIntelligenceQuery(q) && !parseCommand(q)) {
+    const result = await runModelTask({ taskType: MODEL_TASK_TYPE.ASK, input: q, history: conversationHistory, context, supabaseClient });
+    return { intent: agendaRequest ? 'AGENDA' : 'AGENT', answer: result.text, modelError: result.error,
+      modelConfirmation: result.raw?.needsConfirmation || null, dataChanged: result.raw?.changed || null, dataRecords: result.raw?.records || null,
+      searchResults: [], suggestedActions: [] };
   }
 
   // POL-AI-005B: deterministic Level-2 (real write) commands are checked
@@ -386,6 +427,9 @@ export async function processQuery({
         searchResults: [],
         answer: modelResult.text || 'Non sono riuscito a rispondere in questo momento.',
         modelError: modelResult.error || null,
+        modelConfirmation: modelResult.raw?.needsConfirmation || null,
+        dataChanged: modelResult.raw?.changed || null,
+        dataRecords: modelResult.raw?.records || null,
         documentRequest: documentRequestFromModel(modelResult),
       };
     }
@@ -435,6 +479,9 @@ export async function processQuery({
         searchResults: [],
         answer: modelResult.text || 'Non sono riuscito a rispondere in questo momento.',
         modelError: modelResult.error || null,
+        modelConfirmation: modelResult.raw?.needsConfirmation || null,
+        dataChanged: modelResult.raw?.changed || null,
+        dataRecords: modelResult.raw?.records || null,
         documentRequest: documentRequestFromModel(modelResult),
       };
     }
@@ -455,6 +502,9 @@ export async function processQuery({
       searchResults: [],
       answer: modelResult.text || 'Non sono riuscito a rispondere in questo momento.',
       modelError: modelResult.error || null,
+      modelConfirmation: modelResult.raw?.needsConfirmation || null,
+      dataChanged: modelResult.raw?.changed || null,
+      dataRecords: modelResult.raw?.records || null,
       documentRequest: documentRequestFromModel(modelResult),
     };
   }

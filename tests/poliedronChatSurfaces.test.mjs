@@ -43,7 +43,8 @@ test('Chat composer exposes one accessible circular send control through the exi
 
   assert.match(chatPage, /event\.key === 'Enter' && !event\.shiftKey[\s\S]*event\.preventDefault\(\);[\s\S]*submit\(\);/);
   assert.match(chatPage, /if \(!value \|\| sending \|\| loading\) return;/);
-  assert.match(chatPage, /const accepted = await onSend\(value\)/);
+  assert.match(chatPage, /await submitChatDraft\(\{/);
+  assert.match(chatPage, /text: value, lock: submitLock, send: onSend/);
 
   assert.match(css, /\.poliedron-chat__composer-row\s*\{[\s\S]*align-items:\s*center;/);
   assert.match(css, /\.poliedron-chat__send\s*\{[\s\S]*border-radius:\s*50%;/);

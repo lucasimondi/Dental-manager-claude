@@ -123,7 +123,14 @@ const getStudioId = async () => {
 };
 
 export const DB = {
-  async getAll(key) {
+  // POL-AI-010: map a row returned by an Edge Function to the app shape, so a
+  // Poliedron write can be shown at once without re-reading the whole table.
+  fromRow(key, row) {
+    const table = TABLE_MAP[key];
+    return table && row ? fromDb(table, row) : null;
+  },
+
+  async getAll(key, { throwOnError = false } = {}) {
     const table = TABLE_MAP[key];
     if (!table) return null;
     let q = supabase.from(table).select('*').order('id', { ascending: true });
@@ -133,7 +140,7 @@ export const DB = {
       q = q.eq('studio_id', studioId);
     }
     const { data, error } = await q;
-    if (error) { console.error('DB.getAll', table, error); return []; }
+    if (error) { if (throwOnError) throw error; console.error('DB.getAll', table, error); return []; }
     return (data || []).map((r) => fromDb(table, r));
   },
 

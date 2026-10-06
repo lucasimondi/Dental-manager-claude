@@ -23,10 +23,13 @@ import { fetchSaldiPiani } from './lib/domain/incassiService.js';
 // Poliedron's ASK/ANALYZE path behind the Model Gateway. See
 // docs/coordination/handoffs.md for the full convergence record.
 import Poliedron from './components/poliedron';
+import { isPoliedronAppPath } from './lib/poliedron/phoneApp.js';
+import usePhoneViewport from './components/poliedron/usePhoneViewport.js';
 import { buildHomePermissions } from './lib/homeDashboardModel';
 import PremiumSidebar from './components/PremiumSidebar.jsx';
 import './styles/designTokens.css';
 import './components/PremiumVisualSystem.css';
+import './components/poliedron/PoliedronPhone.css';
 import { useIsMobile } from './lib/useIsMobile';
 import { useTheme } from './lib/useTheme';
 // POL-UI-004 Recovery: restored original Poliedra logo assets (verbatim,
@@ -67,11 +70,15 @@ const WhatsApp = lazyWithRetry(() => import('./components/WhatsApp.jsx'), 'Whats
 const Impostazioni = lazyWithRetry(() => import('./components/Impostazioni.jsx'), 'Impostazioni');
 
 export default function App() {
+  const [phoneApp] = useState(() => isPoliedronAppPath(window.location.pathname));
   const { theme, toggleTheme } = useTheme();
   const isMobile = useIsMobile();
   const [session, setSession] = useState(undefined);
   const [dataLoading, setDataLoading] = useState(true);
-  const [page, setPage] = useState('home');
+  const [page, setPage] = useState(() => phoneApp ? 'chat' : 'home');
+  // The keyboard-aware viewport is for the chat only: every other page of the
+  // Poliedron app (agenda, pazienti…) is laid out exactly like the studio app.
+  const phoneViewportStyle = usePhoneViewport(phoneApp && page === 'chat');
   const [patients, setPatients] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [plans, setPlans] = useState([]);
@@ -274,7 +281,7 @@ export default function App() {
   // verrebbe mai riletto perché il componente che lo conterrebbe non si
   // rimonterebbe mai da solo.
   useEffect(() => {
-    if (dataLoading) return;
+    if (dataLoading || phoneApp) return;
     const pos = leggiPosizione();
     if (!pos) return;
     // La pagina NON viene ripristinata: l'app deve sempre aprirsi su Dashboard
@@ -306,7 +313,7 @@ export default function App() {
   // un ricaricamento a freddo. Evitiamo di scrivere durante il ripristino
   // stesso (dataLoading true) per non sovrascrivere la posizione appena letta.
   useEffect(() => {
-    if (dataLoading) return;
+    if (dataLoading || phoneApp) return;
     salvaPosizione({ page });
   }, [page, dataLoading]);
 
@@ -551,7 +558,7 @@ export default function App() {
   };
 
   if (session === undefined) return <LoadingScreen />;
-  if (session === null) return <LoginScreen onLogin={() => {}} />;
+  if (session === null) return <LoginScreen onLogin={() => {}} brand={phoneApp ? 'Poliedron' : 'Poliedra'} />;
   if (dataLoading) return <LoadingScreen />;
 
   if (!studioAttivo && !isSuperAdmin) {
@@ -590,8 +597,8 @@ export default function App() {
   };
 
   return (
-    <div className={isMobile ? 'app-shell app-shell--mobile' : 'app-shell app-shell--desktop'} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', height: '100dvh', minHeight: '100dvh', background: C.bg, overflow: 'hidden' }}>
-      {!isMobile && (
+    <div className={`${isMobile ? 'app-shell app-shell--mobile' : 'app-shell app-shell--desktop'}${phoneApp ? ' poliedron-phone-app' : ''}`} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', height: '100dvh', minHeight: '100dvh', background: C.bg, overflow: 'hidden', ...phoneViewportStyle }}>
+      {!isMobile && !(phoneApp && page === 'chat') && (
         <PremiumSidebar
           nav={navVisibile}
           page={page}
@@ -688,7 +695,10 @@ export default function App() {
         // of a percentage height — no other page is affected.
         display: page === 'chat' || (isMobile && page === 'agenda') ? 'flex' : undefined,
         flexDirection: page === 'chat' || (isMobile && page === 'agenda') ? 'column' : undefined,
-        padding: page === 'chat' ? 0 : 13,
+        // Longhand paddings only: mixing the `padding` shorthand with
+        // paddingTop let React re-apply 13px on top when moving from Chat
+        // (padding 0) to Agenda/Home (paddingTop 0 unchanged), shifting the
+        // Agenda down in the Poliedron app.
         // POL-UI-015 §3: Dashboard follows the same fullscreen principle
         // Agenda already established — its own floating greeting bar owns
         // the top safe-area (see Dashboard.jsx's sticky header), so the
@@ -722,8 +732,8 @@ export default function App() {
         // horizontal padding to widget content, so the outer wrapper shows
         // no grey framing while cards still keep their own breathing room.
         // POL-CHAT-001 merge: Chat keeps its zero inset on every breakpoint.
-        paddingLeft: isMobile ? ((page === 'agenda' || page === 'home') ? (page === 'agenda' ? 6 : 0) : (page === 'chat' ? 0 : 15)) : (page === 'chat' ? 0 : undefined),
-        paddingRight: isMobile ? ((page === 'agenda' || page === 'home') ? (page === 'agenda' ? 6 : 0) : (page === 'chat' ? 0 : 15)) : (page === 'chat' ? 0 : undefined),
+        paddingLeft: isMobile ? ((page === 'agenda' || page === 'home') ? (page === 'agenda' ? 6 : 0) : (page === 'chat' ? 0 : 15)) : (page === 'chat' ? 0 : 13),
+        paddingRight: isMobile ? ((page === 'agenda' || page === 'home') ? (page === 'agenda' ? 6 : 0) : (page === 'chat' ? 0 : 15)) : (page === 'chat' ? 0 : 13),
       }}>
         {page === 'home' && <Dashboard patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegni} implants={implants} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} onNavigateNew={goNuovoElemento} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} currentUserId={session?.user?.id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} activityPatientRequest={quickHubActivityRequest} onActivityPatientRequestHandled={(id) => setQuickHubActivityRequest((current) => current?.id === id ? null : current)} onLogout={handleLogout} openHomeCustomizerRequest={openHomeCustomizerRequest} onOpenHomeCustomizerRequestHandled={(id) => setOpenHomeCustomizerRequest((current) => current === id ? null : current)} />}
         {page !== 'home' && (
@@ -776,6 +786,24 @@ export default function App() {
       </div>
 
       <Poliedron
+        phoneApp={phoneApp}
+        onDataChanged={async (changed, records) => {
+          // POL-AI-010: show the rows Poliedron just wrote immediately (returned by
+          // the server), then reload only the tables its action touched.
+          const reload = { appointments: ['dm_a', setAppointments], patients: ['dm_p', setPatients], richiami: ['dm_ri', setRichiami], impegni_personali: ['dm_ip', setImpegni] };
+          for (const [t, rows] of Object.entries(records || {})) {
+            if (!reload[t] || !Array.isArray(rows)) continue;
+            reload[t][1]((prev) => {
+              const byId = new Map((prev || []).map((r) => [String(r.id), r]));
+              for (const raw of rows) {
+                const row = DB.fromRow(reload[t][0], raw);
+                if (row?.id != null) byId.set(String(row.id), { ...byId.get(String(row.id)), ...row });
+              }
+              return [...byId.values()];
+            });
+          }
+          await Promise.all(changed.filter((t) => reload[t]).map(async (t) => reload[t][1](await DB.getAll(reload[t][0], { throwOnError: true }))));
+        }}
         isMobile={isMobile}
         page={page}
         setPage={navigateFromPoliedron}

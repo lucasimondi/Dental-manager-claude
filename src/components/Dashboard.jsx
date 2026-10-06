@@ -617,7 +617,7 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
   };
 
   // ── CALCOLI ──
-  const todayApps = appointments.filter(a => a.data === t).sort((a, b) => a.ora.localeCompare(b.ora));
+  const todayApps = appointments.filter(a => a.data === t && a.stato !== 'annullato').sort((a, b) => a.ora.localeCompare(b.ora));
   const upcoming = [...appointments].filter(a => a.data > t).sort((a, b) => a.data.localeCompare(b.data) || a.ora.localeCompare(b.ora)).slice(0, 8);
 
   const apriEditApp = (a) => {
@@ -641,7 +641,7 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
     setAppointments(prev => prev.filter(x => x.id !== a.id));
   };
   const domani = (() => { const d = new Date(t + 'T12:00'); d.setDate(d.getDate() + 1); return d.toISOString().slice(0,10); })();
-  const domaniApps = appointments.filter(a => a.data === domani).sort((a, b) => a.ora.localeCompare(b.ora));
+  const domaniApps = appointments.filter(a => a.data === domani && a.stato !== 'annullato').sort((a, b) => a.ora.localeCompare(b.ora));
 
   const hInc = payments.filter(p => p.data === t).reduce((s, p) => s + Number(p.importo), 0);
   const speseMese = spese.filter(s => !s.ricorrente && s.data && s.data.startsWith(t.slice(0,7))).reduce((s, x) => s + Number(x.importo), 0);

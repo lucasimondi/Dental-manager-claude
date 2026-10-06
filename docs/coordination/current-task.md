@@ -1,4 +1,61 @@
+# Parallel task — POL-AI-010-ICON (2026-10-06)
+- OWNER: CODEX; previous icon proposer CODEX. PO approved the phone-icon design: “Ok, produci”.
+- BRANCH: `codex/poliedron-app-icon`, from `master@239c8db`.
+- SCOPE: exact approved artwork exported for iPhone/Android; dedicated PWA manifest, entry and fallback icon only. Preserve root Poliedra identity, old assets and concurrent team work.
+- STATUS: RELEASE_AUTHORIZED — PO “Mergia e collega”, 2026-10-06. PR #130 head cae545b: GitHub Actions and Vercel preview success; 939/939 local tests/build PASS. Icon already wired to dedicated install manifest, HTML and offline fallback.
+- CHECKPOINT: `stable/2026-08-27-full-recovery@070b28fd4eae4e2cc397584201d0bb149468fae7` untouched.
+- NEXT: merge PR #130 with expected-head guard, verify Vercel production deployment; physical iPhone/Android installation remains outstanding. No manual backend deployment needed.
+
+# Current task — POL-AI-TEAM-002 (team di Poliedron attivo in chat)
+- OWNER: CLAUDE — Product Owner handoff 2026-10-05 ("Guarda la bozza 125 e miglioriamo", then "Sì ma mettiamo anche marketing, clinico e poi dimmi tu, voglio già creare di questa sera questa cosa").
+- BRANCH: `claude/whatsapp-automation-status-d2ng12` (includes Codex commit 99f6e25 from #125).
+- STATUS: implemented and tested locally; deploy of `agente-assistente` and merge wait for the PO's "Mergia".
+- EXACT NEXT ACTION: on "Mergia" deploy the function (index.ts, agenda.js, confirmation.js, pazienti.js, team.js, ../_shared/agendaSlots.js), verify, merge.
+
+# Parallel task — POL-AI-TEAM-001 (superseded by POL-AI-TEAM-002)
+- OWNER: CODEX, authorized by Product Owner 2026-10-05: "Leggi la 123 e inizia a costruire senza andare in conflitto con ciò che sta facendo in altra sezione".
+- BRANCH: `codex/poliedron-team-foundation`, from `master@ea83464`.
+- STATUS: WAITING_PRODUCT_OWNER — 16/16 dedicated tests, 919/919 full tests, Vite build PASS; inactive foundation ready for separate draft PR.
+- SCOPE: isolated, inactive team domain module + behavioural tests + dedicated architecture/handoff. PR #123 is product input, not a branch to overwrite.
+- CONCURRENT OWNER: CLAUDE retains POL-AI-010 and its branch. No ownership transfer; no changes to App, chat/controller, gateway/core, Edge Functions, database, migrations, PWA, deployment or Master Context.
+- Coordination documents: append/prepend only; retain existing active-owner block. Resolve future doc-only overlap by retaining both task records.
+- EXACT NEXT ACTION: review dedicated draft PR; coordinate server read-only adapter and UI integration with CLAUDE before shared-file changes. No merge/deploy authorized.
+
+# Completed — POL-AI-010-PWA (2026-10-05, merged as PR #124; team entry added to its phone menu by POL-AI-TEAM-002)
+- ACTIVE OWNER: CODEX — transferred by Product Owner: “Allora vai costruisci bene che funzioni che sia fluido”.
+- ACTIVE BRANCH: `codex/poliedron-phone-app`, from `master@ea834644`.
+- OBJECTIVE: dedicated installable Poliedron entry, existing conversation/permissions/activity log, mobile keyboard, immediate composer feedback and Italian dictation. User prioritizes this before documents.
+- STATUS: WAITING_PRODUCT_OWNER — PR #124 revised to WhatsApp-inspired mobile layout; 909/909 unit tests, build, 8 full-App responsive browser cases + empty/error states PASS. GitHub Actions and Vercel preview succeeded on a1759f6. Physical device smoke remains the release gate.
+- BOUNDARY: frontend only; no production writes, remote migrations, deployment, merge, financial/security semantics changes. Push delivery requires a separate backend increment and is not represented as available.
+- CHECKPOINT: `stable/2026-08-27-full-recovery@070b28fd4eae4e2cc397584201d0bb149468fae7` preserved.
+- EXACT NEXT ACTION: physical iPhone/Android smoke → explicit PO merge approval (recheck current head CI before merge). Background push remains the next backend increment.
+
+---
+
 # Current task
+- ACTIVE OWNER: CLAUDE — handoff from CODEX by explicit Product Owner instruction (2026-10-05, verbatim: "Guarda cosa ha fatto code, ha fatto la 118 e ora 119 , e poi continua", then "Continua").
+- ACTIVE BRANCH: `claude/whatsapp-automation-status-d2ng12` (PR #118). Step 1 (PR #119 by Codex, `codex/pol-ai-010-agenda`) reviewed and brought into this branch, with three follow-up fixes (see handoff "POL-AI-010 passo 1 — revisione e presa in carico").
+- STATUS: steps 0+1+2 MERGED (PR #118, `master@ba941d0`) and released on Product Owner instruction ("Mergia"), 2026-10-05: migrations applied, `agente-assistente` v25 deployed. 
+- STATUS step 2b (direct execution + speed, PO: "se non ci sono conflitti non chiederei conferme, ma deve essere molto preciso"): MERGED (PR #120, `master@534a740`) and released on "Mergia", 2026-10-05: `agente-assistente` v26 deployed. Next: step 3 (Documenti).
+- STATUS step 2c: MERGED (PR #121) and fully released: `agente-assistente` v27, migration `20261005170000` applied and recorded (undo without deletions). Follow-up PR for the undo variant pending merge. Next: step 3 (Documenti).
+
+# Current task (previous owner block, kept for history)
+- ACTIVE OWNER (until 2026-10-05): CODEX — Product Owner instructed “vai” after approving step 1 (Agenda, server-validated confirmation, refresh and tests), 2026-10-04.
+- ACTIVE BRANCH: `codex/pol-ai-010-agenda`, isolated checkout based on PR #118 `0dae6e4`; step 0 remains a separate unmerged prerequisite.
+- STATUS: step 1 implementation ready for draft review. Final CI, visual QA, staging end-to-end and multi-connection contention validation pending; see `docs/architecture/POL-AI-010-agenda.md`. No remote migration, production deployment or merge authorized.
+- CHECKPOINT: immutable `stable/2026-08-27-full-recovery@070b28fd4eae4e2cc397584201d0bb149468fae7` preserved.
+
+
+- TASK: POL-AI-010 — Poliedron diventa il modo di usare il software scrivendo in chat
+- TITLE: tutto il gestionale comandabile dalla chat di Poliedron, "come se lo dicessi a una persona"; poi lo stesso Poliedron anche su WhatsApp (POL-WA-004).
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "dobbiamo rendere la chat con poliedron la modalità per poter eseguire comandi all'interno del software, poliedron deve poter fare tutto sul software, in modo che io debba solo più scrivere in chat per fare le cose , avere tutto ciò di cui posso aver bisogno , comprese generazioni documenti , tutto"; poi "Vai" sul piano). Decisioni: scritture con riepilogo e conferma ("come se lo dicessi ad una persona"), operazioni irreversibili "Anche in chat, doppia conferma", priorità "Agenda, Pazienti e clinica, Documenti, Piani e pagamenti".
+- BRANCH: `claude/whatsapp-automation-status-d2ng12` (unico branch assegnato alla sessione), da `master@e6e8357`.
+- PIANO: (0) versionare `agente-assistente` (copia fedele della v24 di produzione) — QUESTO PASSO; (1) chat di Poliedron = assistente con conferme in chat, aggiornamento dell'app dopo ogni azione, Agenda completa; (2) Pazienti e clinica; (3) Documenti; (4) Piani e pagamenti (riuso POL-AI-005B, semantica finanziaria invariata); (5) irreversibili con doppia conferma; (6) Poliedron su WhatsApp. Una PR per passo, produzione solo su "Mergia".
+- STATUS (passo 0): PUSHED — PR aperta. Nessuna modifica a produzione né al comportamento.
+- VALIDATION: `npm test` 871/871 (nuovo `tests/agenteAssistenteBaseline.test.mjs`: sessione obbligatoria, tool sempre con il client dell'utente, service role solo per le 4 letture di configurazione filtrate per studio, studio dal token, gate di piano lato server); controllo negativo (tool eseguito col service role) → FAIL atteso.
+- EXACT NEXT ACTION: passo 1 (Agenda), che parte correggendo i difetti rilevati nel passo 0 (vedi handoff).
+
+---
 
 - TASK: POL-AI-009 — Poliedron ricorda, prepara le ricette e impara dalle comunicazioni
 - TITLE: memoria per utente; ricetta completa preparata da Poliedron in chat e aperta nel modulo Ricetta da verificare; posologie imparate dalle ricette generate; file allegato che resta in uso.
@@ -58,12 +115,14 @@
 - BRANCH: `claude/whatsapp-automation-status-d2ng12`, da `master@5e674e9` (+ commit di documentazione `c20dda3`).
 - STATUS: MERGED — PR #117 (`master@e6e8357`). Lo stato dei passi di rilascio sotto non è stato verificato in questa sessione.
 
+- STATUS: MERGED — PR #117, merge commit `e6e8357`, su istruzione del Product Owner ("Mergia"). Migration applicata in produzione prima del merge, scheduler attivo, Edge Function `whatsapp-webhook` v6 deployata.
+
 - **Migration `20261004160000_pol_wa_003b_promemoria.sql`** (additiva, senza DROP, rieseguibile): `patients.consenso_whatsapp` (default false) + `consenso_whatsapp_il`; `whatsapp_config.promemoria_attivi` (default false), `promemoria_ora` (default 18), `promemoria_template`, `promemoria_lingua`; tabella `whatsapp_promemoria` (una riga per appuntamento, UNIQUE, lettura ai membri dello studio, nessuna scrittura client); `whatsapp_cron_segreto_valido` solo service_role; segreto dello scheduler generato nel DB e tenuto nel Vault; `whatsapp_programma_promemoria(url)` (nessun ruolo client, URL validato) da chiamare una volta per ambiente.
 - **Edge Function**: nuovo `promemoria.js` + percorsi `/promemoria` (pg_cron, segreto) e `/invia` (app, login staff, lettura della richiesta sotto RLS, testi fissi); risposte ai promemoria registrate; il prompt sa come trattare conferme e spostamenti.
 - **App**: casella consenso nella scheda paziente (con data); Impostazioni → WhatsApp Business: promemoria on/off e ora (titolare), nome modello (super admin); Agenda: dopo il salvataggio di una richiesta WhatsApp parte la conferma al paziente, e le richieste di spostamento/disdetta salvate sull'appuntamento esistente ora diventano "gestite" (prima restavano aperte).
 - VALIDATION: `npm test` 854/854; `npm run build` pulito; Postgres 16 locale: catena 001→002→003a→003b (003b applicata due volte) + `supabase/tests/pol_wa_003b_promemoria.sql` PASS; variante "come produzione" (righe `whatsapp_config` già presenti + Vault simulato prima della migration) PASS, segreto creato una sola volta; controllo negativo senza 003b → FAIL atteso.
 - ORDINE DI RILASCIO (obbligatorio): migration in produzione PRIMA del merge (il frontend scrive `consenso_whatsapp`; Vercel deploya al merge), poi `whatsapp_programma_promemoria('https://idklxdqebfceplrualgh.supabase.co/functions/v1/whatsapp-webhook/promemoria')`, merge, deploy Edge Function (4 file, `verify_jwt=false`).
-- EXACT NEXT ACTION: istruzione del Product Owner ("Mergia") per il rilascio nell'ordine sopra. Lato Meta (Product Owner): approvazione del modello `promemoria_appuntamento` con i pulsanti Confermo / Devo spostarlo.
+- EXACT NEXT ACTION: nessuna su 003b. Lato Meta (Product Owner): approvazione del modello `promemoria_appuntamento` con i pulsanti Confermo / Devo spostarlo; poi, per ogni studio, numero collegato, consenso dei pazienti spuntato e promemoria accesi in Impostazioni. Prossimi incrementi: 003c (conversazioni in app, richiami automatici), 003d ("Collega WhatsApp").
 
 ---
 

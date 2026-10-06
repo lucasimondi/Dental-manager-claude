@@ -103,13 +103,14 @@ test('QuickBookingModal and its App.jsx wiring accept a pre-filled patient/date/
 test('Chat gives a direct way back to any other allowed module (Product Owner: "da chat devi comunque dare possibilità di tornare indietro ad altri moduli")', () => {
   const chatPageSrc = fs.readFileSync(new URL('../src/components/poliedron/PoliedronChatPage.jsx', import.meta.url), 'utf8');
   assert.match(chatPageSrc, /navItems = \[\],\s*\n\s*onNavigate,/);
-  assert.match(chatPageSrc, /className="poliedron-chat__nav"/);
-  assert.match(chatPageSrc, /onNavigate\?\.\(destination\)/);
+  // WhatsApp-style chat: every allowed module is in the ⋮ menu of the chat list and of each chat.
+  assert.match(chatPageSrc, /<nav aria-label="Moduli dello studio">/);
+  assert.match(chatPageSrc, /onNavigate\?\.\(item\.id\)/);
 
   const controllerSrc = fs.readFileSync(new URL('../src/components/poliedron/Poliedron.jsx', import.meta.url), 'utf8');
   assert.match(controllerSrc, /navItems=\{navigationIndex\.filter\(\(item\) => item\.id !== 'chat'\)\}/);
   assert.match(controllerSrc, /onNavigate=\{setPage\}/);
 
   const cssSrc = fs.readFileSync(new URL('../src/components/PremiumVisualSystem.css', import.meta.url), 'utf8');
-  assert.match(cssSrc, /\.poliedron-chat__nav \{/);
+  assert.match(cssSrc, /\.poliedron-chat__options-panel nav|\.poliedron-chat__nav \{/);
 });

@@ -1721,6 +1721,186 @@ body:has(.home-widget-grid) #app-scroll {
   background: var(--surface-base);
   color: var(--text-muted);
 }
+.poliedron-chat__activity-toggle {
+  flex-shrink: 0;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-base);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.poliedron-chat__activity-toggle[aria-pressed="true"] {
+  color: var(--text-primary, inherit);
+  border-color: currentColor;
+}
+.poliedron-attivita {
+  margin: 0 16px 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-base);
+  max-height: 45vh;
+  overflow-y: auto;
+}
+.poliedron-attivita > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.poliedron-attivita > header button {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.poliedron-attivita ol { list-style: none; margin: 0; padding: 0; }
+.poliedron-attivita h3 {
+  margin: 10px 0 4px;
+  font-size: 12px;
+  text-transform: capitalize;
+  color: var(--text-muted);
+}
+.poliedron-attivita__item {
+  display: flex;
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border-subtle);
+}
+.poliedron-attivita__item time { font-size: 12px; color: var(--text-muted); min-width: 40px; }
+.poliedron-attivita__item p { margin: 2px 0 0; font-size: 13px; color: var(--text-muted); }
+.poliedron-attivita__item small { display: inline-block; margin-top: 2px; font-size: 12px; color: var(--text-muted); font-weight: 700; }
+.poliedron-attivita__restore { display: inline-flex; gap: 6px; margin-top: 4px; }
+.poliedron-attivita__restore button {
+  padding: 3px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-base);
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.poliedron-attivita__restore button:disabled { opacity: 0.5; cursor: default; }
+/* POL-AI-TEAM-002 — Chat come WhatsApp: elenco delle chat (Poliedron, team,
+   gruppi) e conversazione. Su telefono due schermate a tutto schermo, su
+   computer due colonne. */
+.poliedron-chat__header { position: relative; }
+.poliedron-chat__header .poliedron-chat__activity-toggle { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; color: var(--text-primary); background: var(--surface-elevated); }
+.poliedron-chat.poliedron-wa { flex-direction: row; }
+.poliedron-wa__list {
+  display: flex; flex-direction: column; flex: 0 0 360px; width: 360px; min-width: 0; min-height: 0;
+  border-right: 1px solid var(--border-subtle); background: var(--surface-elevated);
+}
+.poliedron-wa__pane { position: relative; display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; min-height: 0; }
+.poliedron-wa.is-compact .poliedron-wa__list { flex: 1 1 0; width: 100%; border-right: 0; }
+.poliedron-wa__rows { flex: 1 1 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: env(safe-area-inset-bottom, 0px); }
+.poliedron-wa__rows ul { list-style: none; margin: 0; padding: 0; }
+.poliedron-wa__row {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 72px; padding: 0 0 0 14px;
+  border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.poliedron-wa__row:hover, .poliedron-wa__row[aria-current="true"] { background: var(--surface-interactive); }
+.poliedron-wa__row:focus-visible { outline: 3px solid var(--brand-accent); outline-offset: -3px; }
+.poliedron-wa__row-text { flex: 1; min-width: 0; align-self: stretch; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding-right: 14px; border-bottom: 1px solid var(--border-subtle); }
+.poliedron-wa__row-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.poliedron-wa__row-top strong { font-size: 16px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.poliedron-wa__row-top time { flex-shrink: 0; font-size: 12px; color: var(--text-muted); }
+.poliedron-wa__row-text small { display: block; font-size: 14px; line-height: 1.35; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.poliedron-wa__gem { width: 48px; height: 48px; flex: 0 0 48px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-interactive); }
+.poliedron-wa__gem img { width: 40px; height: 40px; object-fit: contain; }
+.poliedron-wa__back, .poliedron-wa__icon-button {
+  flex: 0 0 40px; width: 40px; height: 40px; display: grid; place-items: center; padding: 0;
+  border: 0; border-radius: 50%; background: transparent; color: var(--text-primary); cursor: pointer;
+}
+.poliedron-wa__back { margin-right: -6px; }
+.poliedron-wa__back:hover, .poliedron-wa__icon-button:hover, .poliedron-wa__back:focus-visible, .poliedron-wa__icon-button:focus-visible { background: var(--surface-interactive); outline: none; }
+.poliedron-wa__form { padding: 12px; border-bottom: 1px solid var(--border-subtle); }
+.poliedron-wa__list { position: relative; }
+.poliedron-wa__topbar {
+  position: relative; z-index: 3; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 4px;
+}
+.poliedron-wa__topbar .poliedron-chat__options summary { width: 48px; height: 48px; background: var(--surface-elevated); box-shadow: 0 2px 12px #0f172a1f; }
+.poliedron-wa__menu-left .poliedron-chat__options-panel { left: 0; right: auto; top: calc(100% + 6px); width: 280px; max-width: calc(100vw - 32px); }
+.poliedron-wa__menu-left { position: relative; }
+.poliedron-wa__new {
+  width: 48px; height: 48px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%;
+  background: var(--brand-primary); box-shadow: 0 4px 14px color-mix(in srgb, var(--brand-primary) 35%, transparent); cursor: pointer;
+}
+.poliedron-wa__new:focus-visible { outline: 3px solid var(--brand-accent); outline-offset: 2px; }
+.poliedron-wa__title { margin: 6px 16px 12px; font-size: 34px; line-height: 1.1; font-weight: 800; letter-spacing: -.02em; color: var(--text-primary); }
+.poliedron-wa__search {
+  display: flex; align-items: center; gap: 10px; margin: 0 16px 12px; padding: 0 14px; min-height: 46px;
+  border-radius: 23px; background: color-mix(in srgb, var(--text-primary) 6%, var(--surface-elevated)); color: var(--text-muted);
+}
+.poliedron-wa__section { margin: 14px 16px 4px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
+.poliedron-team__avatar[data-kind="action"] { background: var(--brand-primary); color: #fff; }
+.poliedron-team__avatar[data-kind="patient"] { background: color-mix(in srgb, #25d366 18%, var(--surface-elevated)); color: #128c4a; }
+.poliedron-wa__list > .poliedron-chat__header ~ .poliedron-wa__rows > .poliedron-wa__search { margin-top: 12px; }
+.poliedron-wa__search input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--text-primary); font: inherit; font-size: 16px; outline: none; box-shadow: none; }
+.poliedron-wa__search input:focus, .poliedron-wa__search input:focus-visible { outline: none; box-shadow: none; }
+.poliedron-wa__search:focus-within { box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-accent) 55%, transparent); }
+.poliedron-wa__chips { display: flex; gap: 8px; padding: 0 16px 10px; overflow-x: auto; scrollbar-width: none; }
+.poliedron-wa__chips button {
+  flex-shrink: 0; min-height: 36px; padding: 0 16px; border-radius: 18px; border: 1px solid var(--border-subtle);
+  background: transparent; color: var(--text-primary); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.poliedron-wa__chips button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--brand-accent) 16%, var(--surface-elevated));
+  border-color: color-mix(in srgb, var(--brand-accent) 50%, transparent); color: var(--brand-primary);
+}
+.poliedron-wa__none { padding: 28px 16px; text-align: center; font-size: 14px; color: var(--text-muted); }
+.poliedron-wa.is-compact .poliedron-wa__rows { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
+.poliedron-wa__dock {
+  position: absolute; z-index: 4; left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  max-width: 520px; margin: 0 auto; display: flex; gap: 2px; padding: 6px;
+  border: 1px solid var(--border-subtle); border-radius: 34px;
+  background: color-mix(in srgb, var(--surface-elevated) 90%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 10px 30px #0f172a29;
+}
+.poliedron-wa__dock button {
+  flex: 1; min-width: 0; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  border: 0; border-radius: 28px; background: transparent; color: var(--text-primary); font: inherit; font-size: 11px; font-weight: 600; cursor: pointer;
+}
+.poliedron-wa__dock button.is-active { background: var(--surface-interactive); color: var(--brand-primary); }
+.poliedron-wa__dock button:focus-visible { outline: 3px solid var(--brand-accent); outline-offset: -3px; }
+.poliedron-team__avatar {
+  width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--brand-primary) 12%, var(--surface-elevated)); color: var(--brand-primary);
+  font-weight: 800; font-size: 13px; letter-spacing: .02em;
+}
+.poliedron-team__avatar[data-kind="group"] { background: linear-gradient(145deg, var(--brand-primary), var(--brand-accent)); color: #fff; }
+.poliedron-wa__row .poliedron-team__avatar { width: 48px; height: 48px; flex-basis: 48px; font-size: 15px; }
+.poliedron-chat__empty .poliedron-team__avatar { width: 48px; height: 48px; }
+.poliedron-team__form { display: flex; flex-direction: column; gap: 10px; }
+.poliedron-team__form input, .poliedron-team__form textarea {
+  font: inherit; font-size: 16px; padding: 10px 12px; border-radius: 12px;
+  border: 1px solid var(--border-subtle); background: var(--surface-page); color: inherit; resize: none;
+}
+.poliedron-team__form fieldset { border: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0 12px; }
+.poliedron-team__form legend { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+.poliedron-team__form label { font-size: 14px; display: flex; align-items: center; gap: 8px; min-height: 40px; }
+.poliedron-team__form p { margin: 0; font-size: 13px; color: var(--danger, #b42318); }
+.poliedron-team__form-actions { display: flex; gap: 8px; }
+.poliedron-team__form-actions button {
+  flex: 1; min-height: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--border-subtle);
+  background: var(--surface-elevated); color: var(--brand-primary); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+}
+.poliedron-team__form-actions button[type="submit"] { background: var(--brand-primary); border-color: var(--brand-primary); color: #fff; }
+.poliedron-team__pareri { margin-top: 8px; font-size: 13px; }
+.poliedron-team__pareri summary { cursor: pointer; font-weight: 700; color: var(--brand-primary); }
+.poliedron-team__pareri div { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-subtle); }
+.poliedron-team__pareri p { margin: 2px 0 0; }
 .poliedron-chat__nav select {
   border: none;
   background: transparent;

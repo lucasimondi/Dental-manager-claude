@@ -10,7 +10,10 @@ import { NAVIGATION_INDEX } from '../../lib/poliedron/navigationIndex';
 import { buildIntelligencePermissions, filterNavigationIndex, isActionAllowed } from '../../lib/poliedron/permissionEngine';
 import { ACTION_REGISTRY } from '../../lib/poliedron/actionRegistry';
 import { buildContext } from '../../lib/poliedron/contextEngine';
+import { runModelTask } from '../../lib/poliedron/modelGateway.js';
+import { decisioneConferma } from '../../lib/poliedron/confirmationReply.js';
 import { processQuery } from '../../lib/poliedron/poliedraCore';
+import { tabelleDopoRipristino } from '../../lib/poliedron/attivita.js';
 import { runActionPlan } from '../../lib/poliedron/planner/actionExecutor';
 import {
   createChatRequestId,
@@ -64,10 +67,11 @@ const summarizeStructuredResult = (result) => {
    SAME component's state/panel — never two AI systems (§16 same
    identity, one Poliedra AI Core). */
 export default function Poliedron({
+  phoneApp = false,
   isMobile, page, setPage, patients, plans, payments, pricelist, appointments, richiami, impegni, goSchedaPaz,
   features, isStudioAdmin, vertical, studioId, userId, currentPatient, positionLocked = false,
   quickActionCtx, supabaseClient, onArchivioFilterHint, openPrescription, openNew, openNewPlan, openNewPayment, openBooking,
-  externalCommandRequest, onExternalCommandHandled, chatHost,
+  externalCommandRequest, onExternalCommandHandled, chatHost, onDataChanged,
   /* POL-CHAT-001 merge: PR #51 declared an `unreadCount = 0` PROP here
      because §7 explicitly shipped the bell without a notification engine.
      PR #53 supplies the real producer — the conversation hook below returns
@@ -89,6 +93,9 @@ export default function Poliedron({
   const [chatActionRunning, setChatActionRunning] = useState(false);
   const [externalContext, setExternalContext] = useState(null);
   const [chatStructuredState, setChatStructuredState] = useState(null);
+  const chatStructuredStateRef = useRef(null);
+  chatStructuredStateRef.current = chatStructuredState;
+  const modelConfirmationRef = useRef(null);
   const [chatSending, setChatSending] = useState(false);
   const [chatError, setChatError] = useState('');
   const inputRef = useRef(null);
@@ -208,8 +215,8 @@ export default function Poliedron({
     setExternalContext(null);
   }, []);
 
-  const processRequest = useCallback((q, { allowModel = false, conversationHistory = [], attachment = null } = {}) =>
-    processQuery({
+  const processRequest = useCallback(async (q, { allowModel = false, conversationHistory = [], attachment = null } = {}) => {
+    const result = await processQuery({
       query: q,
       context,
       permissions: processPermissions,
@@ -218,7 +225,18 @@ export default function Poliedron({
       supabaseClient,
       allowModel,
       attachment: attachmentPayload(attachment),
-    }), [context, processPermissions, processSources, supabaseClient]);
+    });
+    // POL-AI-010: Poliedron executes clear, conflict-free writes directly;
+    // refresh exactly what changed so agenda and patient views stay current.
+    if (result?.dataChanged?.length) {
+      // The written rows are applied at once; the reconciling reload runs in the
+      // background so the answer is never held back by it.
+      Promise.resolve(onDataChanged?.(result.dataChanged, result.dataRecords)).catch((error) => {
+        console.warn('Poliedron: aggiornamento dei dati non riuscito', error);
+      });
+    }
+    return result;
+  }, [context, processPermissions, processSources, supabaseClient, onDataChanged]);
 
   const executePersistedQuery = useCallback(async (
     q,
@@ -391,6 +409,16 @@ export default function Poliedron({
       return false;
     }
     setChatError('');
+    // POL-AI-010: a typed "sì" / "no" decides the pending confirmation, like the buttons.
+    const pendingConfirmation = !retryMessage ? chatStructuredStateRef.current?.modelConfirmation : null;
+    const decisione = pendingConfirmation ? decisioneConferma(text) : null;
+    if (decisione) {
+      try {
+        await appendMessage({ requestId: createChatRequestId(), role: 'user', content: text, deliveryStatus: 'sent' });
+      } catch { /* the decision itself must not depend on chat history */ }
+      await modelConfirmationRef.current?.(pendingConfirmation, decisione === 'annulla', true);
+      return true;
+    }
     setChatStructuredState(null);
     setChatActionRunResult(null);
     const retainedRequest = retryMessage
@@ -424,7 +452,7 @@ export default function Poliedron({
         const { navId, filtroTipo } = result.directNavigation;
         if (navId === 'archivio') onArchivioFilterHint?.(filtroTipo || 'tutti');
         setPage(navId);
-      } else if (!result.answer) {
+      } else if (!result.answer || result.modelConfirmation) {
         setChatStructuredState(result);
       }
       return true;
@@ -435,7 +463,7 @@ export default function Poliedron({
       setChatError(described?.message || 'Non riesco a completare la richiesta. Riprova.');
       return false;
     }
-  }, [chatAttachment, conversationErrorState, conversationLoading, onArchivioFilterHint, openPreparedDocument, primaryConversation?.id, runPersistedRequest, setPage]);
+  }, [appendMessage, chatAttachment, conversationErrorState, conversationLoading, onArchivioFilterHint, openPreparedDocument, primaryConversation?.id, runPersistedRequest, setPage]);
 
   const attachChatFile = useCallback(async (file) => {
     if (!file) return;
@@ -450,6 +478,71 @@ export default function Poliedron({
       setChatAttachmentPreparing(false);
     }
   }, []);
+
+  const consumedConfirmations = useRef(new Set());
+  const confirmationIdentity = useRef('');
+  confirmationIdentity.current = `${studioId}:${userId}`;
+  useEffect(() => {
+    setState(null); setChatStructuredState(null);
+    consumedConfirmations.current.clear();
+  }, [studioId, userId]);
+  const handleModelConfirmation = useCallback(async (pending, cancelled, isChat) => {
+    if (actionExecutionRef.current || consumedConfirmations.current.has(pending.token)) return;
+    consumedConfirmations.current.add(pending.token);
+    actionExecutionRef.current = true;
+    setChatActionRunning(true);
+    const show = isChat ? setChatStructuredState : setState;
+    const identity = confirmationIdentity.current;
+    show(null);
+    let text;
+    try {
+      const response = await runModelTask({ supabaseClient, confirm: { token: pending.token, cancelled } });
+      if (identity !== confirmationIdentity.current) return;
+      text = response.error ? 'Esito non disponibile. Controlla i dati nell’app prima di riprovare.' : response.text;
+      // POL-AI-010: refresh exactly what the confirmed action changed (agenda,
+      // patients, recalls, commitments); unknown outcome → refresh them all.
+      const changed = response.raw?.changed || (response.error ? ['appointments', 'patients', 'richiami', 'impegni_personali'] : []);
+      if (!cancelled && changed.length) {
+        Promise.resolve(onDataChanged?.(changed, response.raw?.records)).catch((error) => {
+          console.warn('Poliedron: aggiornamento dei dati non riuscito', error);
+        });
+      }
+      if (identity !== confirmationIdentity.current) return;
+      // Outcome is authoritative even if saving chat history subsequently fails.
+      show({ answer: text });
+      if (primaryConversation?.id) {
+        try { await appendMessage({ requestId: createChatRequestId(), role: 'assistant', content: text, deliveryStatus: 'sent', readAt: new Date().toISOString() }); }
+        catch { show({ answer: text + '\nEsito non salvato nella cronologia.' }); }
+      }
+    } finally {
+      actionExecutionRef.current = false;
+      setChatActionRunning(false);
+    }
+  }, [supabaseClient, onDataChanged, primaryConversation?.id, appendMessage]);
+  modelConfirmationRef.current = handleModelConfirmation;
+
+  // POL-AI-010: "Attività di Poliedron" — read-only log of the executed actions.
+  const loadPoliedronActivity = useCallback(async () => {
+    if (!supabaseClient || !studioId) return [];
+    const { data, error } = await supabaseClient.from('poliedron_attivita')
+      .select('id, azione, riepilogo, tabella, record_id, ripristino_di, created_at')
+      .eq('studio_id', studioId).order('created_at', { ascending: false }).limit(100);
+    if (error) throw error;
+    return data || [];
+  }, [supabaseClient, studioId]);
+  const restorePoliedronActivity = useCallback(async (row) => {
+    const { data: tabella, error } = await supabaseClient.rpc('poliedron_ripristina_v1', { p_attivita: row.id, p_studio: studioId });
+    if (error) throw new Error(error.message);
+    Promise.resolve(onDataChanged?.(tabelleDopoRipristino(tabella))).catch((e) => console.warn('Poliedron: aggiornamento dei dati non riuscito', e));
+  }, [supabaseClient, studioId, onDataChanged]);
+
+  // POL-AI-TEAM-002: the Poliedron team (Clinic Manager and specialists),
+  // read-only consultation through the same authenticated gateway.
+  const askTeam = useCallback(async ({ team, input, history }) => {
+    const result = await runModelTask({ taskType: 'ASK', input, history, team, context, supabaseClient });
+    return { text: result.text, error: result.error, pareri: result.raw?.team?.pareri || [] };
+  }, [context, supabaseClient]);
+  const teamIdentity = useMemo(() => ({ studioId, userId }), [studioId, userId]);
 
   /** POL-AI-005B §CONFIRM: called only from an explicit user click on the
    *  Level-2 preview's Confirm button — never automatically. Re-loads
@@ -621,9 +714,9 @@ export default function Poliedron({
           gets the large freely-positionable Orb, desktop gets the
           discreet edge-anchored dock. Both call the exact same onToggle,
           opening the exact same panel/state below. */}
-      {isMobile
+      {!(page === 'chat' && (phoneApp || isMobile)) && (isMobile
         ? <PoliedronMobileDock page={page} setPage={setPage} open={open} onToggle={onToggle} panelId={panelId} positionLocked={positionLocked} />
-        : <PoliedronEdgeDock open={open} onToggle={onToggle} panelId={panelId} positionLocked={positionLocked} />}
+        : <PoliedronEdgeDock open={open} onToggle={onToggle} panelId={panelId} positionLocked={positionLocked} />)}
       {/* POL-CHAT-001 merge — FASE 3: PR #51's bell was a placeholder that
           reopened the quick panel and carried a badge with no producer; PR
           #53's bell was a real Chat entry point but re-declared its own
@@ -648,6 +741,7 @@ export default function Poliedron({
           panel being in flight, NEVER to the Chat backend being missing. */}
       {open && (
         <PoliedronPanel
+          onModelConfirmation={(p, cancel) => handleModelConfirmation(p, cancel, false)}
           panelId={panelId}
           isMobile={isMobile}
           query={query}
@@ -671,6 +765,7 @@ export default function Poliedron({
       )}
       {chatHost && ReactDOM.createPortal(
         <PoliedronChatPage
+          phoneApp={phoneApp}
           messages={conversationMessages}
           loading={conversationLoading}
           loadingOlder={conversationLoadingOlder}
@@ -679,6 +774,7 @@ export default function Poliedron({
           error={chatSurface.message}
           errorKind={chatSurface.kind}
           surfaceStatus={chatSurface.status}
+          onModelConfirmation={(p, cancel) => handleModelConfirmation(p, cancel, true)}
           structuredState={chatStructuredState}
           onSend={(text) => runChatMessage(text)}
           onRetry={(message) => runChatMessage(message.content, message)}
@@ -698,6 +794,11 @@ export default function Poliedron({
           actionRunResult={chatActionRunResult}
           navItems={navigationIndex.filter((item) => item.id !== 'chat')}
           onNavigate={setPage}
+          loadActivity={loadPoliedronActivity}
+          restoreActivity={restorePoliedronActivity}
+          askTeam={askTeam}
+          teamIdentity={teamIdentity}
+          patients={patients}
         />,
         chatHost
       )}

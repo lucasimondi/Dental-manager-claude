@@ -14,9 +14,10 @@ staff confirmations.
   Tested by `tests/whatsappAssistenteLogica.test.mjs`.
 - `promemoria.js`: the hourly reminder run (who gets a reminder tomorrow, one send
   per appointment, history logging). Called by `index.ts` on `/promemoria`.
-- `agendaSlots.js`: **byte-identical copy** of `src/lib/agendaSlots.js`, so the
-  assistant proposes exactly the free slots the app would. A test fails if the two
-  differ: after changing the app file, copy it here.
+- `agendaSlots.js`: from POL-AI-010 step 1 a one-line re-export of
+  `../_shared/agendaSlots.js`, the single slot calculator shared with the app
+  (`src/lib/agendaSlots.js`) and `agente-assistente`, so the assistant proposes
+  exactly the free slots the app would.
 
 End-to-end behaviour (Meta, Supabase and Claude simulated) is tested by
 `tests/whatsappWebhookFlusso.test.mjs`.
@@ -68,7 +69,9 @@ End-to-end behaviour (Meta, Supabase and Claude simulated) is tested by
 - `verify_jwt = false`: Meta calls the webhook without a Supabase JWT. The function
   authenticates POSTs with the `X-Hub-Signature-256` HMAC and the GET handshake with
   `WHATSAPP_VERIFY_TOKEN`.
-- Deploy all four files (`index.ts`, `logica.js`, `promemoria.js`, `agendaSlots.js`).
+- Deploy all four files (`index.ts`, `logica.js`, `promemoria.js`, `agendaSlots.js`)
+  **plus `../_shared/agendaSlots.js`** (POL-AI-010): without it the function no longer
+  bundles. Production v6 still carries the old self-contained copy until redeployed.
 - Public entry point: `api/whatsapp-webhook.js` (Vercel) forwards the raw body.
 - Requires migrations `20261002120000_pol_wa_003a_assistente_whatsapp.sql` and
   `20261004160000_pol_wa_003b_promemoria.sql`.

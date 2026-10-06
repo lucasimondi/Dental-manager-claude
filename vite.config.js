@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { resolve } from 'node:path';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
@@ -14,7 +15,7 @@ export default defineConfig({
       // invisible to an already-open PWA (backgrounded/resumed, never a
       // real reload) until the next full relaunch.
       injectRegister: false,
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'poliedron.webmanifest', 'poliedron-*.png'],
       manifest: {
         name: 'Poliedra',
         short_name: 'Poliedra',
@@ -50,7 +51,16 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2}'],
+        // The Poliedron phone app has its own page (icon + manifest). Without
+        // this, the studio app's service worker answered /poliedron/ with the
+        // studio's index.html, so "Installa" installed Poliedra, not Poliedron.
+        navigateFallbackDenylist: [/^\/poliedron/],
         runtimeCaching: [
+          {
+            urlPattern: ({ request, url }) => request.mode === 'navigate' && url.pathname.startsWith('/poliedron'),
+            handler: 'NetworkFirst',
+            options: { cacheName: 'poliedron-app-shell', networkTimeoutSeconds: 4 },
+          },
           {
             urlPattern: ({ url }) => url.origin === 'https://fonts.googleapis.com',
             handler: 'StaleWhileRevalidate',
@@ -68,10 +78,25 @@ export default defineConfig({
         ],
       },
     }),
+    {
+      name: 'poliedron-install-identity',
+      enforce: 'post',
+      transformIndexHtml: {
+        order: 'post',
+        handler(html, context) {
+          if (!context.filename.replaceAll('\\', '/').endsWith('/poliedron/index.html')) return html;
+          // vite-plugin-pwa injects the main app's manifest into every entry.
+          // This install must have its own identity and launch URL.
+          return html.replace(/<link\b[^>]*rel=["']manifest["'][^>]*>/g, '')
+            .replace('</head>', '<link rel="manifest" href="/poliedron.webmanifest"/></head>');
+        },
+      },
+    },
   ],
   build: {
     outDir: 'dist', // cache bust 155200,
     rollupOptions: {
+      input: { main: resolve('index.html'), poliedron: resolve('poliedron/index.html') },
       output: {
         // POL-PERF-001: funzione invece dell'elenco fisso. Con l'elenco,
         // Rollup metteva React e alcuni helper condivisi dentro i chunk di

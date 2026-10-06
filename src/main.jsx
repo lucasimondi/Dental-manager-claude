@@ -4,6 +4,19 @@ import App from './App.jsx';
 import LoadingScreen from './components/LoadingScreen.jsx';
 import { lazyWithRetry } from './lib/lazyWithRetry.js';
 import './styles.css';
+import { isPoliedronAppPath } from './lib/poliedron/phoneApp.js';
+
+// Also restores install identity if the offline SW serves the shared HTML shell.
+if (isPoliedronAppPath(window.location.pathname)) {
+  document.title = 'Poliedron';
+  document.querySelectorAll('link[rel="manifest"]').forEach((link, index) => {
+    if (index > 0) link.remove();
+    else link.href = '/poliedron.webmanifest';
+  });
+  document.querySelector('meta[name="apple-mobile-web-app-title"]')?.setAttribute('content', 'Poliedron');
+  document.querySelector('link[rel="apple-touch-icon"]')?.setAttribute('href', '/poliedron-v2-180.png');
+}
+
 
 // POL-PERF-001: le pagine pubbliche sono caricate solo quando si apre il
 // loro indirizzo. Prima erano importate qui in modo statico e finivano nel
