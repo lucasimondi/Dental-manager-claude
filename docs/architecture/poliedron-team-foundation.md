@@ -123,3 +123,10 @@ PO: "Deve essere come WhatsApp, dove ci sono le chat con i contatti e io vado ne
 - La pagina Chat si apre sull'elenco delle chat: Poliedron, Clinic Manager, specialisti e gruppi, ciascuno con ultimo messaggio e ora; "+" crea un gruppo. Su telefono elenco e conversazione sono due schermate a tutto schermo (freccia indietro); su computer due colonne.
 - Su telefono la barra di navigazione in basso è nascosta nella Chat; i moduli sono nel menu ⋮ insieme a "Registro attività" e "Installa Poliedron sul telefono" (dal gestionale apre l'app `/poliedron/` con le istruzioni di installazione).
 - Il test mobile `tests/browser/poliedron-mobile.cjs` ora apre la chat di Poliedron dall'elenco.
+
+### Elenco chat stile WhatsApp iOS, nuova chat e ricerca (2026-10-06)
+PO (con screenshot di WhatsApp): tutto schermo con dock flottante (chat, calendario, pazienti, gestionale), freccia indietro anche nelle schermate del "+", sezione cerca nelle chat, "+" per scrivere una chat nuova anche a un paziente.
+- Elenco: ⋯ a sinistra (Registro attività, Installa, moduli), "+" a destra, titolo grande, ricerca, filtri Tutte/Team/Pazienti/Gruppi, dock flottante Chat · Agenda · Pazienti · Richiami · Studio (solo moduli consentiti all'utente).
+- "+" → Nuova chat (con freccia indietro): Scrivi a un paziente, Nuovo gruppo, assistenti.
+- Chat con un paziente: il messaggio si scrive in Poliedron e si apre WhatsApp dello studio (wa.me) con il testo pronto; bloccato senza telefono o senza consenso WhatsApp in scheda. Lo storico di ciò che è stato inviato resta sul dispositivo (non c'è ancora l'invio automatico via API né la lettura delle risposte).
+- Ricerca: chat per nome/anteprima, pazienti per nome o telefono, messaggi dentro tutte le chat.

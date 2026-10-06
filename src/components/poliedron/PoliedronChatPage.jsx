@@ -8,6 +8,8 @@ import PoliedronSearchResults from './PoliedronSearchResults';
 import PoliedronAttivita from './PoliedronAttivita';
 import { useTeamState, TeamThread, TeamAvatar, GroupForm } from './PoliedronTeam';
 import { contactKey } from '../../lib/poliedron/team/threads.js';
+import PatientThread, { PatientAvatar } from './PoliedronPatientChat.jsx';
+import { patientChatKey, patientIdFromKey, patientName, searchPatients, searchMessages } from '../../lib/poliedron/team/patientChat.js';
 import PoliedronInstall from './PoliedronInstall.jsx';
 import useChatDictation from './useChatDictation.js';
 import { submitChatDraft } from '../../lib/poliedron/phoneApp.js';
@@ -118,19 +120,26 @@ export default function PoliedronChatPage({
   restoreActivity,
   askTeam,
   teamIdentity,
+  patients = [],
 }) {
   const [draft, setDraft] = useState('');
   const [showActivity, setShowActivity] = useState(false);
   // WhatsApp-style: a list of chats (Poliedron, team, groups); on a phone the
   // list and the open chat are two screens, on a computer two panes.
   const [openChat, setOpenChat] = useState(null);
-  const [creatingGroup, setCreatingGroup] = useState(false);
+  // null | 'menu' (Nuova chat) | 'group' | 'patient'
+  const [newChat, setNewChat] = useState(null);
+  const [patientQuery, setPatientQuery] = useState('');
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('tutte');
   const team = useTeamState(teamIdentity?.studioId, teamIdentity?.userId);
   const [awayFromBottom, setAwayFromBottom] = useState(false);
   const menuRef = useRef(null);
   const compact = useNarrowScreen() || phoneApp;
   const activeChat = openChat || (compact ? null : 'poliedron');
   const activeContact = activeChat && activeChat !== 'poliedron' ? team.contacts.find((c) => contactKey(c) === activeChat) : null;
+  const activePatientId = patientIdFromKey(activeChat);
+  const activePatient = activePatientId ? patients.find((p) => String(p.id) === activePatientId) : null;
   const poliedronOpen = activeChat === 'poliedron';
   const [pendingUser, setPendingUser] = useState(null);
   const [composerError, setComposerError] = useState('');
@@ -299,57 +308,202 @@ export default function PoliedronChatPage({
         at: last?.at,
       };
     }) : []),
+    ...Object.entries(team.state.threads)
+      .filter(([key, thread]) => patientIdFromKey(key) && thread?.length)
+      .map(([key, thread]) => {
+        const patient = patients.find((p) => String(p.id) === patientIdFromKey(key));
+        if (!patient) return null;
+        const last = thread.at(-1);
+        return { key, label: patientName(patient), avatar: <PatientAvatar patient={patient} />, preview: `Tu: ${last.content}`, at: last.at };
+      })
+      .filter(Boolean)
+      .sort((x, y) => String(y.at).localeCompare(String(x.at))),
   ];
 
-  const chatList = (
-    <aside className="poliedron-wa__list" aria-label="Elenco chat">
-      <header className="poliedron-chat__header">
-        <span className="poliedron-chat__brand"><img src={poliedroGem} width="40" height="40" alt="" /></span>
-        <div className="poliedron-chat__header-text">
-          <h1>{phoneApp ? 'Poliedron' : 'Chat'}</h1>
-          <p>Poliedron e il suo team</p>
-        </div>
-        {askTeam && (
-          <button type="button" className="poliedron-wa__icon-button" aria-label="Nuovo gruppo" onClick={() => setCreatingGroup((v) => !v)}>
-            <Ic n="plus" s={20} />
-          </button>
-        )}
-        {(compact || !poliedronOpen) && optionsMenu}
-      </header>
-      <div className="poliedron-wa__rows">
-        {creatingGroup && (
+  // WhatsApp-style dock for the chat list: Chat plus the studio's daily
+  // places; Studio opens the full management app (Home).
+  const DOCK = [
+    { id: 'agenda', label: 'Agenda', icon: 'cal' },
+    { id: 'paz', label: 'Pazienti', icon: 'pz' },
+    { id: 'richiami', label: 'Richiami', icon: 'clk' },
+    { id: 'home', label: 'Studio', icon: 'home' },
+  ].filter((item) => navItems.some((nav) => nav.id === item.id));
+  const needle = search.trim().toLowerCase();
+  const kindOf = (key) => (key.startsWith('group:') ? 'gruppi' : key.startsWith('assistant:') ? 'team' : key.startsWith('patient:') ? 'pazienti' : 'tutte');
+  const visibleRows = rows.filter((row) => {
+    if (filter !== 'tutte' && kindOf(row.key) !== filter) return false;
+    return !needle || `${row.label} ${row.preview}`.toLowerCase().includes(needle);
+  });
+  const groupCount = rows.filter((row) => row.key.startsWith('group:')).length;
+  const rowByKey = Object.fromEntries(rows.map((row) => [row.key, row]));
+  const foundPatients = needle ? searchPatients(patients, search, 8).filter((p) => !rowByKey[patientChatKey(p.id)] || filter === 'pazienti') : [];
+  const foundMessages = needle ? searchMessages({ poliedron: messages, ...team.state.threads }, search, 30).filter((hit) => rowByKey[hit.key]) : [];
+  const openPatient = (patient) => { setNewChat(null); setPatientQuery(''); setOpenChat(patientChatKey(patient.id)); };
+  const rowButton = (row, extra = null) => (
+    <button
+      type="button"
+      className="poliedron-wa__row"
+      aria-label={`Chat con ${row.label}`}
+      aria-current={activeChat === row.key ? 'true' : undefined}
+      onClick={() => { setOpenChat(row.key); setNewChat(null); }}
+    >
+      {row.avatar}
+      <span className="poliedron-wa__row-text">
+        <span className="poliedron-wa__row-top">
+          <strong>{row.label}</strong>
+          {row.at && <time dateTime={row.at}>{time(row.at)}</time>}
+        </span>
+        <small>{extra ?? row.preview}</small>
+      </span>
+    </button>
+  );
+  const subHeader = (title, subtitle, onBack) => (
+    <header className="poliedron-chat__header">
+      <button type="button" className="poliedron-wa__back" onClick={onBack} aria-label="Indietro"><Ic n="back" s={20} /></button>
+      <div className="poliedron-chat__header-text">
+        <h1>{title}</h1>
+        {subtitle && <p>{subtitle}</p>}
+      </div>
+    </header>
+  );
+
+  let chatList;
+  if (newChat === 'group') {
+    chatList = (
+      <aside className="poliedron-wa__list" aria-label="Nuovo gruppo">
+        {subHeader('Nuovo gruppo', 'Il Clinic Manager coordina gli specialisti scelti', () => setNewChat('menu'))}
+        <div className="poliedron-wa__rows">
           <div className="poliedron-wa__form">
             <GroupForm
-              onCancel={() => setCreatingGroup(false)}
-              onCreate={(data) => { const key = team.createGroup(data); setCreatingGroup(false); setOpenChat(key); }}
+              onCancel={() => setNewChat('menu')}
+              onCreate={(data) => { const key = team.createGroup(data); setNewChat(null); setOpenChat(key); }}
             />
           </div>
-        )}
-        <ul>
-          {rows.map((row) => (
-            <li key={row.key}>
-              <button
-                type="button"
-                className="poliedron-wa__row"
-                aria-label={`Chat con ${row.label}`}
-                aria-current={activeChat === row.key ? 'true' : undefined}
-                onClick={() => setOpenChat(row.key)}
-              >
-                {row.avatar}
-                <span className="poliedron-wa__row-text">
-                  <span className="poliedron-wa__row-top">
-                    <strong>{row.label}</strong>
-                    {row.at && <time dateTime={row.at}>{time(row.at)}</time>}
+        </div>
+      </aside>
+    );
+  } else if (newChat === 'patient') {
+    const list = searchPatients(patients, patientQuery, 50);
+    chatList = (
+      <aside className="poliedron-wa__list" aria-label="Scrivi a un paziente">
+        {subHeader('Scrivi a un paziente', 'Il messaggio parte dal WhatsApp dello studio', () => setNewChat('menu'))}
+        <div className="poliedron-wa__rows">
+          <label className="poliedron-wa__search">
+            <Ic n="srch" s={18} />
+            <input type="search" autoFocus value={patientQuery} onChange={(e) => setPatientQuery(e.target.value)} placeholder="Cerca paziente per nome o telefono" aria-label="Cerca paziente" />
+          </label>
+          <ul>
+            {list.map((p) => (
+              <li key={p.id}>
+                <button type="button" className="poliedron-wa__row" onClick={() => openPatient(p)} aria-label={`Scrivi a ${patientName(p)}`}>
+                  <PatientAvatar patient={p} />
+                  <span className="poliedron-wa__row-text">
+                    <span className="poliedron-wa__row-top"><strong>{patientName(p)}</strong></span>
+                    <small>{p.telefono ? `${p.telefono}${p.consensoWhatsapp ? '' : ' · senza consenso WhatsApp'}` : 'Nessun telefono'}</small>
                   </span>
-                  <small>{row.preview}</small>
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </aside>
-  );
+                </button>
+              </li>
+            ))}
+            {!list.length && <li className="poliedron-wa__none">Nessun paziente trovato.</li>}
+          </ul>
+        </div>
+      </aside>
+    );
+  } else if (newChat === 'menu') {
+    const entry = (icon, label, detail, onClick) => (
+      <li>
+        <button type="button" className="poliedron-wa__row" onClick={onClick}>
+          <span className="poliedron-team__avatar" data-kind="action" aria-hidden="true"><Ic n={icon} s={20} /></span>
+          <span className="poliedron-wa__row-text">
+            <span className="poliedron-wa__row-top"><strong>{label}</strong></span>
+            <small>{detail}</small>
+          </span>
+        </button>
+      </li>
+    );
+    chatList = (
+      <aside className="poliedron-wa__list" aria-label="Nuova chat">
+        {subHeader('Nuova chat', null, () => setNewChat(null))}
+        <div className="poliedron-wa__rows">
+          <ul>
+            {entry('wa', 'Scrivi a un paziente', 'Messaggio WhatsApp dal numero dello studio', () => setNewChat('patient'))}
+            {askTeam && entry('users', 'Nuovo gruppo', 'Più specialisti con un obiettivo comune', () => setNewChat('group'))}
+          </ul>
+          <h2 className="poliedron-wa__section">Assistenti</h2>
+          <ul>
+            {rows.filter((row) => row.key === 'poliedron' || row.key.startsWith('assistant:')).map((row) => <li key={row.key}>{rowButton(row)}</li>)}
+          </ul>
+        </div>
+      </aside>
+    );
+  } else {
+    chatList = (
+      <aside className="poliedron-wa__list" aria-label="Elenco chat">
+        <div className="poliedron-wa__topbar">
+          <div className="poliedron-wa__menu-left">{optionsMenu}</div>
+          <button type="button" className="poliedron-wa__new" aria-label="Nuova chat" onClick={() => setNewChat('menu')}>
+            <Ic n="plus" s={24} c="#fff" />
+          </button>
+        </div>
+        <div className="poliedron-wa__rows">
+          <h1 className="poliedron-wa__title">{phoneApp ? 'Poliedron' : 'Chat'}</h1>
+          <label className="poliedron-wa__search">
+            <Ic n="srch" s={18} />
+            <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cerca chat, messaggi o pazienti" aria-label="Cerca nelle chat" />
+          </label>
+          <div className="poliedron-wa__chips" role="group" aria-label="Filtra le chat">
+            {[['tutte', 'Tutte'], ['team', 'Team'], ['pazienti', 'Pazienti'], ['gruppi', groupCount ? `Gruppi ${groupCount}` : 'Gruppi']].map(([id, label]) => (
+              <button key={id} type="button" aria-pressed={filter === id} onClick={() => setFilter(id)}>{label}</button>
+            ))}
+          </div>
+          {needle && <h2 className="poliedron-wa__section">Chat</h2>}
+          <ul>
+            {visibleRows.map((row) => <li key={row.key}>{rowButton(row)}</li>)}
+            {!visibleRows.length && !needle && (
+              <li className="poliedron-wa__none">
+                {filter === 'gruppi' ? 'Nessun gruppo: tocca + per crearne uno.' : filter === 'pazienti' ? 'Nessuna chat con pazienti: tocca + e scegli "Scrivi a un paziente".' : 'Nessuna chat.'}
+              </li>
+            )}
+            {!visibleRows.length && needle && <li className="poliedron-wa__none">Nessuna chat con questo nome.</li>}
+          </ul>
+          {foundPatients.length > 0 && (
+            <>
+              <h2 className="poliedron-wa__section">Pazienti</h2>
+              <ul>
+                {foundPatients.map((p) => (
+                  <li key={p.id}>
+                    <button type="button" className="poliedron-wa__row" onClick={() => openPatient(p)} aria-label={`Scrivi a ${patientName(p)}`}>
+                      <PatientAvatar patient={p} />
+                      <span className="poliedron-wa__row-text">
+                        <span className="poliedron-wa__row-top"><strong>{patientName(p)}</strong></span>
+                        <small>{p.telefono || 'Nessun telefono'}</small>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          {foundMessages.length > 0 && (
+            <>
+              <h2 className="poliedron-wa__section">Messaggi</h2>
+              <ul>
+                {foundMessages.map((hit) => <li key={`${hit.key}-${hit.id}`}>{rowButton({ ...rowByKey[hit.key], at: hit.at }, hit.content)}</li>)}
+              </ul>
+            </>
+          )}
+        </div>
+        {compact && DOCK.length > 0 && (
+          <nav className="poliedron-wa__dock" aria-label="Navigazione">
+            <button type="button" className="is-active" aria-current="page"><Ic n="chat" s={22} /><span>Chat</span></button>
+            {DOCK.map((item) => (
+              <button key={item.id} type="button" onClick={() => onNavigate?.(item.id)}><Ic n={item.icon} s={22} /><span>{item.label}</span></button>
+            ))}
+          </nav>
+        )}
+      </aside>
+    );
+  }
 
   const poliedronPane = (
     <>
@@ -371,7 +525,6 @@ export default function PoliedronChatPage({
             Attività di Poliedron
           </button>
         )}
-        {!compact && optionsMenu}
       </header>
 
       {showActivity && loadActivity && (
@@ -531,7 +684,9 @@ export default function PoliedronChatPage({
       {(!compact || !activeChat) && chatList}
       {activeChat && (
         <div className="poliedron-wa__pane">
-          {poliedronOpen ? poliedronPane : activeContact ? (
+          {poliedronOpen ? poliedronPane : activePatient ? (
+            <PatientThread key={activeChat} patient={activePatient} team={team} onBack={compact ? () => setOpenChat(null) : null} />
+          ) : activeContact ? (
             <TeamThread
               key={activeChat}
               contact={activeContact}

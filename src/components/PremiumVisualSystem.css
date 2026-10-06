@@ -1824,6 +1824,55 @@ body:has(.home-widget-grid) #app-scroll {
 .poliedron-wa__back { margin-right: -6px; }
 .poliedron-wa__back:hover, .poliedron-wa__icon-button:hover, .poliedron-wa__back:focus-visible, .poliedron-wa__icon-button:focus-visible { background: var(--surface-interactive); outline: none; }
 .poliedron-wa__form { padding: 12px; border-bottom: 1px solid var(--border-subtle); }
+.poliedron-wa__list { position: relative; }
+.poliedron-wa__topbar {
+  position: relative; z-index: 3; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 4px;
+}
+.poliedron-wa__topbar .poliedron-chat__options summary { width: 48px; height: 48px; background: var(--surface-elevated); box-shadow: 0 2px 12px #0f172a1f; }
+.poliedron-wa__menu-left .poliedron-chat__options-panel { left: 0; right: auto; top: calc(100% + 6px); width: 280px; max-width: calc(100vw - 32px); }
+.poliedron-wa__menu-left { position: relative; }
+.poliedron-wa__new {
+  width: 48px; height: 48px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%;
+  background: var(--brand-primary); box-shadow: 0 4px 14px color-mix(in srgb, var(--brand-primary) 35%, transparent); cursor: pointer;
+}
+.poliedron-wa__new:focus-visible { outline: 3px solid var(--brand-accent); outline-offset: 2px; }
+.poliedron-wa__title { margin: 6px 16px 12px; font-size: 34px; line-height: 1.1; font-weight: 800; letter-spacing: -.02em; color: var(--text-primary); }
+.poliedron-wa__search {
+  display: flex; align-items: center; gap: 10px; margin: 0 16px 12px; padding: 0 14px; min-height: 46px;
+  border-radius: 23px; background: color-mix(in srgb, var(--text-primary) 6%, var(--surface-elevated)); color: var(--text-muted);
+}
+.poliedron-wa__section { margin: 14px 16px 4px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
+.poliedron-team__avatar[data-kind="action"] { background: var(--brand-primary); color: #fff; }
+.poliedron-team__avatar[data-kind="patient"] { background: color-mix(in srgb, #25d366 18%, var(--surface-elevated)); color: #128c4a; }
+.poliedron-wa__list > .poliedron-chat__header ~ .poliedron-wa__rows > .poliedron-wa__search { margin-top: 12px; }
+.poliedron-wa__search input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--text-primary); font: inherit; font-size: 16px; outline: none; box-shadow: none; }
+.poliedron-wa__search input:focus, .poliedron-wa__search input:focus-visible { outline: none; box-shadow: none; }
+.poliedron-wa__search:focus-within { box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-accent) 55%, transparent); }
+.poliedron-wa__chips { display: flex; gap: 8px; padding: 0 16px 10px; overflow-x: auto; scrollbar-width: none; }
+.poliedron-wa__chips button {
+  flex-shrink: 0; min-height: 36px; padding: 0 16px; border-radius: 18px; border: 1px solid var(--border-subtle);
+  background: transparent; color: var(--text-primary); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.poliedron-wa__chips button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--brand-accent) 16%, var(--surface-elevated));
+  border-color: color-mix(in srgb, var(--brand-accent) 50%, transparent); color: var(--brand-primary);
+}
+.poliedron-wa__none { padding: 28px 16px; text-align: center; font-size: 14px; color: var(--text-muted); }
+.poliedron-wa.is-compact .poliedron-wa__rows { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
+.poliedron-wa__dock {
+  position: absolute; z-index: 4; left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  max-width: 520px; margin: 0 auto; display: flex; gap: 2px; padding: 6px;
+  border: 1px solid var(--border-subtle); border-radius: 34px;
+  background: color-mix(in srgb, var(--surface-elevated) 90%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 10px 30px #0f172a29;
+}
+.poliedron-wa__dock button {
+  flex: 1; min-width: 0; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  border: 0; border-radius: 28px; background: transparent; color: var(--text-primary); font: inherit; font-size: 11px; font-weight: 600; cursor: pointer;
+}
+.poliedron-wa__dock button.is-active { background: var(--surface-interactive); color: var(--brand-primary); }
+.poliedron-wa__dock button:focus-visible { outline: 3px solid var(--brand-accent); outline-offset: -3px; }
 .poliedron-team__avatar {
   width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
