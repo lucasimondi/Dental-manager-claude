@@ -86,11 +86,11 @@ test('patient commands go to Poliedron only when the studio agent may write; the
     assert.equal(result.intent,'AGENT',query);assert.deepEqual(result.dataChanged,['patients']);
   }
   assert.equal(calls,4);
-  // Consulente, plans and keystroke previews never reach the agent
-  // (payments do since POL-AI-010 passo 4a: see agentePagamenti.test.mjs).
+  // Consulente (also for plans) and keystroke previews never reach the agent
+  // (payments and plans do since POL-AI-010 passo 4: see agentePagamenti/agentePiani tests).
   await processQuery({query:'Aggiungi una nota a Mario Rossi',context:{features:{assistente_ai:'premium',agente_azione:'consulente'}},supabaseClient:client});
   await processQuery({query:'Aggiungi una nota a Mario Rossi',context:{features:{assistente_ai:'pro'}},supabaseClient:client});
-  await processQuery({query:'Crea un piano di cura per Mario Rossi',context:premium,supabaseClient:client});
+  await processQuery({query:'Crea un piano di cura per Mario Rossi',context:{features:{assistente_ai:'premium',agente_azione:'consulente'}},supabaseClient:client});
   await processQuery({query:'Aggiungi una nota a Mario Rossi',context:premium,supabaseClient:client,allowModel:false});
   assert.equal(calls,4);
 });

@@ -3602,3 +3602,28 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 ### Release (passo 4a)
 - "Mergia" del Product Owner. `agente-assistente` v32 deployata (index.ts, agenda.js, allegato.js, confirmation.js, memoria.js, pagamenti.js, pazienti.js, team.js, `_shared/agendaSlots.js`; verify_jwt true), confrontata byte per byte con il repo (9/9 identici), avvio verificato. CI `verify` verde su `a86ea83`, anteprime Vercel e Netlify OK. PR #135 mergiata.
 - Rollback: redeploy v31 (= master@5d61b1b) e revert.
+
+## POL-AI-010 passo 4b — Preventivi e piani di cura dalla chat (sempre con conferma)
+
+- TASK ID: POL-AI-010 (passo 4b)
+- OWNER: CLAUDE ("Fai pol 010"; "Vai" del Product Owner dopo il rilascio di 4a).
+- BRANCH: `claude/software-startup-speed-ugqqcf`, ripartito da `master@094dad0` (PR #135 mergiata).
+
+### Completed work
+1. `supabase/functions/agente-assistente/piani.js`: `crea_piano_cura`, `aggiorna_stato_piano`, `segna_prestazione_eseguita`; validazioni (listino, prezzi, sconto pct ≤ 100 / eur ≤ totale, stato), avviso piano con lo stesso titolo, piano solo se letto con `storico_paziente`, controllo posizione + nome della voce, richiamo come `rilevaRichiamo` dell'app (test di uguaglianza), esecuzione claim → insert/update condizionato.
+2. `index.ts`: tabella `SEMPRE_CONFERMA` (pagamenti + piani) usata dal ciclo degli strumenti e dal percorso di conferma; `observed.plans` da `storico_paziente`; regola del prompt aggiornata.
+3. Client: `poliedraCore.js` manda le frasi su preventivi/piani all'agente quando può scrivere; `App.jsx` ricarica `plans`; etichette in `attivita.js`.
+
+### Database / deployment
+Nessuna migrazione. Letti in sola lettura: colonne `plans` e `pricelist`, policy `plans_studio`, funzione `private.sync_pol_003b_plan_v1`. Deploy della funzione prima del frontend.
+
+### Tests
+`npm test` 994/994; build OK.
+
+### Risks
+- Una prestazione segnata eseguita non si annulla dalla chat (registro senza storni): si corregge nel modulo Piani.
+- Il filtro "piano invariato" usa l'uguaglianza jsonb di PostgREST su `voci`: provato solo con dati sintetici.
+- Non provato con un login reale.
+
+### Rollback
+Redeploy di `agente-assistente` v32 e revert del commit.
