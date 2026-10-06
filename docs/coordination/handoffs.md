@@ -3395,3 +3395,5 @@ Merge della PR #115 su istruzione del Product Owner.
 - Risks/unresolved: physical iPhone/Android install, OS icon refresh and authenticated production smoke not performed. Existing app performance/backend/voice functionality is outside this icon increment; no new claims about them.
 - Rollback: revert frontend commit to old manifest/HTML/bootstrap references; old assets retained, no business data affected.
 - EXACT NEXT ACTION: separate PR review → PO release approval → CI/Vercel verification → fresh physical phone installation checks.
+
+- Release authorization (2026-10-06): PO “Mergia e collega” explicitly approves PR #130 merge and frontend release. Head `cae545bbe4fa0863afdcd5f56b070af4a961e5bb` matches the tested tree; GitHub Actions run `37436833473` and Vercel preview both successful; PR mergeable without conflict against `master@239c8db`. Dedicated icon connections are already implemented. Next: expected-head merge, verify production deployment, then physical-device smoke. No backend, database or unrelated team changes authorized.
