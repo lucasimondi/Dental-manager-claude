@@ -727,6 +727,7 @@ export default function Poliedron({
           restoreActivity={restorePoliedronActivity}
           askTeam={askTeam}
           teamIdentity={teamIdentity}
+          patients={patients}
         />,
         chatHost
       )}
