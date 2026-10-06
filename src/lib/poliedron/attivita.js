@@ -9,6 +9,7 @@ const ETICHETTE = {
   crea_richiamo: 'Richiamo',
   crea_promemoria: 'Attività',
   crea_impegno_personale: 'Agenda bloccata',
+  registra_pagamento_paziente: 'Pagamento registrato',
   ripristino: 'Ripristino',
 };
 
