@@ -51,7 +51,16 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2}'],
+        // The Poliedron phone app has its own page (icon + manifest). Without
+        // this, the studio app's service worker answered /poliedron/ with the
+        // studio's index.html, so "Installa" installed Poliedra, not Poliedron.
+        navigateFallbackDenylist: [/^\/poliedron/],
         runtimeCaching: [
+          {
+            urlPattern: ({ request, url }) => request.mode === 'navigate' && url.pathname.startsWith('/poliedron'),
+            handler: 'NetworkFirst',
+            options: { cacheName: 'poliedron-app-shell', networkTimeoutSeconds: 4 },
+          },
           {
             urlPattern: ({ url }) => url.origin === 'https://fonts.googleapis.com',
             handler: 'StaleWhileRevalidate',

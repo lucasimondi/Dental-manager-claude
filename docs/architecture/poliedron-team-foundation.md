@@ -130,3 +130,10 @@ PO (con screenshot di WhatsApp): tutto schermo con dock flottante (chat, calenda
 - "+" → Nuova chat (con freccia indietro): Scrivi a un paziente, Nuovo gruppo, assistenti.
 - Chat con un paziente: il messaggio si scrive in Poliedron e si apre WhatsApp dello studio (wa.me) con il testo pronto; bloccato senza telefono o senza consenso WhatsApp in scheda. Lo storico di ciò che è stato inviato resta sul dispositivo (non c'è ancora l'invio automatico via API né la lettura delle risposte).
 - Ricerca: chat per nome/anteprima, pazienti per nome o telefono, messaggi dentro tutte le chat.
+
+### Agenda nell'app Poliedron e "Installa" (2026-10-06)
+PO: "l'agenda non è impaginata bene… togli il torna a Poliedron… il tasto installa non installa un bel niente".
+- Tolta la barra "← Torna a Poliedron": si torna alla chat dal dock. Il viewport da tastiera dell'app vale solo nella chat.
+- Causa dello spostamento dell'agenda: lo stile del contenitore mescolava `padding` e `paddingTop`; passando da Chat ad Agenda React riapplicava 13px in alto. Ora solo proprietà esplicite: agenda identica al gestionale.
+- Causa di "Installa" che non installava: il service worker del gestionale rispondeva a `/poliedron/` con la pagina del gestionale (manifest e icona Poliedra). Ora `/poliedron` è escluso dal fallback e servito dalla rete (cache NetworkFirst per l'offline), con il manifest e l'icona Poliedron approvata (#130).
+- "Installa": su Android usa il prompt del browser (catturato all'avvio); su iPhone mostra i passi di Safari (Condividi → Aggiungi alla schermata Home) e, dall'app già installata, "Apri in Safari" e "Copia link". Il foglio è disegnato sopra a tutto.

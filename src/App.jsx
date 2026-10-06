@@ -71,12 +71,14 @@ const Impostazioni = lazyWithRetry(() => import('./components/Impostazioni.jsx')
 
 export default function App() {
   const [phoneApp] = useState(() => isPoliedronAppPath(window.location.pathname));
-  const phoneViewportStyle = usePhoneViewport(phoneApp);
   const { theme, toggleTheme } = useTheme();
   const isMobile = useIsMobile();
   const [session, setSession] = useState(undefined);
   const [dataLoading, setDataLoading] = useState(true);
   const [page, setPage] = useState(() => phoneApp ? 'chat' : 'home');
+  // The keyboard-aware viewport is for the chat only: every other page of the
+  // Poliedron app (agenda, pazienti…) is laid out exactly like the studio app.
+  const phoneViewportStyle = usePhoneViewport(phoneApp && page === 'chat');
   const [patients, setPatients] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [plans, setPlans] = useState([]);
@@ -606,7 +608,6 @@ export default function App() {
         />
       )}
       <div className="app-main" style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
-      {phoneApp && page !== 'chat' && <button className="poliedron-return" type="button" onClick={() => navigateFromPoliedron('chat')}>← Torna a Poliedron</button>}
       {/* POL-UI-005: mobile top header (logo/page name/Esci) removed — it cost
           too much vertical space for no real value on a small screen and kept
           this wrapper permanently dark (see PremiumVisualSystem.css). The app
@@ -692,7 +693,10 @@ export default function App() {
         // of a percentage height — no other page is affected.
         display: page === 'chat' || (isMobile && page === 'agenda') ? 'flex' : undefined,
         flexDirection: page === 'chat' || (isMobile && page === 'agenda') ? 'column' : undefined,
-        padding: page === 'chat' ? 0 : 13,
+        // Longhand paddings only: mixing the `padding` shorthand with
+        // paddingTop let React re-apply 13px on top when moving from Chat
+        // (padding 0) to Agenda/Home (paddingTop 0 unchanged), shifting the
+        // Agenda down in the Poliedron app.
         // POL-UI-015 §3: Dashboard follows the same fullscreen principle
         // Agenda already established — its own floating greeting bar owns
         // the top safe-area (see Dashboard.jsx's sticky header), so the
@@ -726,8 +730,8 @@ export default function App() {
         // horizontal padding to widget content, so the outer wrapper shows
         // no grey framing while cards still keep their own breathing room.
         // POL-CHAT-001 merge: Chat keeps its zero inset on every breakpoint.
-        paddingLeft: isMobile ? ((page === 'agenda' || page === 'home') ? (page === 'agenda' ? 6 : 0) : (page === 'chat' ? 0 : 15)) : (page === 'chat' ? 0 : undefined),
-        paddingRight: isMobile ? ((page === 'agenda' || page === 'home') ? (page === 'agenda' ? 6 : 0) : (page === 'chat' ? 0 : 15)) : (page === 'chat' ? 0 : undefined),
+        paddingLeft: isMobile ? ((page === 'agenda' || page === 'home') ? (page === 'agenda' ? 6 : 0) : (page === 'chat' ? 0 : 15)) : (page === 'chat' ? 0 : 13),
+        paddingRight: isMobile ? ((page === 'agenda' || page === 'home') ? (page === 'agenda' ? 6 : 0) : (page === 'chat' ? 0 : 15)) : (page === 'chat' ? 0 : 13),
       }}>
         {page === 'home' && <Dashboard patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegni} implants={implants} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} onNavigateNew={goNuovoElemento} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} currentUserId={session?.user?.id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} activityPatientRequest={quickHubActivityRequest} onActivityPatientRequestHandled={(id) => setQuickHubActivityRequest((current) => current?.id === id ? null : current)} onLogout={handleLogout} openHomeCustomizerRequest={openHomeCustomizerRequest} onOpenHomeCustomizerRequestHandled={(id) => setOpenHomeCustomizerRequest((current) => current === id ? null : current)} />}
         {page !== 'home' && (
