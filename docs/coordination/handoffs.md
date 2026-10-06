@@ -3219,3 +3219,48 @@ Merge della PR #115 su istruzione del Product Owner.
 - EXACT NEXT ACTION: verifica manuale del Product Owner; nessun lavoro aperto su `claude/recipe-form-quick-actions-mobile-l8464o`.
 
 - Versione della migration: rinominata da `20261004120000` a `20261004160000` dopo il merge di master, che ha portato `20261004120000_pol_ui_044_farmaci_preferiti.sql` con la stessa versione (in produzione POL-UI-044 è registrata come `20261004135514`, nessun conflitto lì).
+
+---
+
+## POL-PERF-001 — Avvio dell'app più veloce (download iniziale ridotto)
+
+- TASK ID: POL-PERF-001
+- PREVIOUS AGENT: CLAUDE (POL-WA-003b, PR #117 mergiata, `master@e6e8357`).
+- BRANCH: `claude/software-startup-speed-ugqqcf`, da `master@e6e8357`.
+- REQUEST (verbatim, Product Owner): "Vorrei che si aprisse più velocemente tipo immediato il software cosa possiamo fare ?"
+
+### Objective
+Ridurre quello che il telefono deve scaricare ed eseguire prima di mostrare login/Home, senza cambiare comportamento.
+
+### Completed work
+1. Misura sulla build di `master`: all'avvio `index` 546 kB + `recharts` 527 kB + `pdf` 359 kB + `supabase` 212 kB (≈1,64 MB, ≈481 kB gzip).
+2. `src/main.jsx`: pagine pubbliche (`PrenotaOnline`, `FirmaConsenso`, `StoriaClinicaRemota`, due anteprime Patient Workspace) caricate con `lazyWithRetry`; radice in `<Suspense fallback={<LoadingScreen />}>`. `FirmaConsenso` portava jsPDF nell'avvio.
+3. `src/components/DashboardCharts.jsx` (nuovo): i 5 grafici di "Grafici e andamento" spostati senza modifiche; `Dashboard.jsx` li carica con `lazyWithRetry` solo quando l'utente apre la sezione (chiusa di default).
+4. `vite.config.js`: `manualChunks(id)` a funzione. Con l'elenco fisso React finiva nel chunk `recharts` e l'helper di preload di Vite in quello di jsPDF, entrambi quindi importati dal file iniziale. Ora chunk propri: `react`, `vite-helpers`, `babel-runtime`, `supabase`, `recharts`, `jspdf`, `pdfjs`.
+5. Risultato: avvio = `index` 381 kB + `react` 142 kB + `supabase` 212 kB + helper ≈2 kB (≈737 kB, ≈208 kB gzip, −55%).
+6. Test: `tests/startupBundle.test.mjs` (3).
+
+### Files changed
+`src/main.jsx`, `src/components/Dashboard.jsx`, `src/components/DashboardCharts.jsx` (nuovo), `vite.config.js`, `tests/startupBundle.test.mjs` (nuovo), `docs/coordination/current-task.md`, `docs/coordination/handoffs.md`.
+
+### Database changes
+Nessuna.
+
+### Deployment impact
+Solo frontend (Vercel al merge). Cambiano i nomi dei chunk: il service worker con `skipWaiting/clientsClaim` (POL-UI-035) e `lazyWithRetry` gestiscono il passaggio come per ogni deploy.
+
+### Tests executed / results
+- `npm test` 869/869 PASS; il nuovo test fallisce 3/3 sul codice precedente.
+- `npm run build` OK (resta l'avviso preesistente su `eval` in pdf.js).
+- Chromium 390×844 su `vite preview`: `/` mostra il login senza richiedere `recharts`/`jspdf`/`pdfjs`; `/firma/<uuid finto>` carica `FirmaConsenso` + jsPDF solo lì e mostra il proprio messaggio d'errore; `/prenota/demo` carica solo `PrenotaOnline` ("Link non valido"); nessun errore JS.
+
+### Unresolved issues / risks
+- I grafici della Home dopo il login non sono stati visti in un browser (richiede login): markup identico, coperto da test sul sorgente e build.
+- `PRODUCT_OWNER_DECISION_REQUIRED`: il resto dell'attesa è il caricamento dati (11 `DB.getAll` completi, incluso tutto lo storico appuntamenti) prima della Home. Un'apertura "immediata" richiede una cache locale dei dati (dati sanitari nel browser, cifrati e cancellati al logout) con aggiornamento in background. Non fatto.
+- Notato, non toccato (fuori scope): `getStudioId` in `src/lib/supabase.js` ricade su uno studio fisso se il token non ha `studio_id`.
+
+### Rollback
+Revert del commit.
+
+### EXACT NEXT ACTION
+Product Owner: PR/merge su istruzione; decisione sulla cache locale dei dati.

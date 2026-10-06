@@ -1,12 +1,19 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
-import PrenotaOnline from './components/PrenotaOnline.jsx';
-import FirmaConsenso from './components/FirmaConsenso.jsx';
-import StoriaClinicaRemota from './components/StoriaClinicaRemota.jsx';
-import PatientWorkspaceV2Demo from './components/PatientWorkspaceV2Demo.jsx';
-import PatientWorkspaceRealPreview from './components/PatientWorkspaceRealPreview.jsx';
+import LoadingScreen from './components/LoadingScreen.jsx';
+import { lazyWithRetry } from './lib/lazyWithRetry.js';
 import './styles.css';
+
+// POL-PERF-001: le pagine pubbliche sono caricate solo quando si apre il
+// loro indirizzo. Prima erano importate qui in modo statico e finivano nel
+// download iniziale di ogni avvio dell'app (FirmaConsenso trascinava con sé
+// jsPDF), anche per chi apre solo il gestionale.
+const PrenotaOnline = lazyWithRetry(() => import('./components/PrenotaOnline.jsx'), 'PrenotaOnline');
+const FirmaConsenso = lazyWithRetry(() => import('./components/FirmaConsenso.jsx'), 'FirmaConsenso');
+const StoriaClinicaRemota = lazyWithRetry(() => import('./components/StoriaClinicaRemota.jsx'), 'StoriaClinicaRemota');
+const PatientWorkspaceV2Demo = lazyWithRetry(() => import('./components/PatientWorkspaceV2Demo.jsx'), 'PatientWorkspaceV2Demo');
+const PatientWorkspaceRealPreview = lazyWithRetry(() => import('./components/PatientWorkspaceRealPreview.jsx'), 'PatientWorkspaceRealPreview');
 
 // Pagine pubbliche (nessun login richiesto), intercettate qui al vero entry
 // point prima che App venga anche solo montata — così App resta del tutto
@@ -26,4 +33,6 @@ else if (pathPatientWorkspaceRealPreview) elementoRadice = <PatientWorkspaceReal
 else if (pathPatientWorkspaceDemo) elementoRadice = <PatientWorkspaceV2Demo />;
 else elementoRadice = <App />;
 
-ReactDOM.createRoot(document.getElementById('root')).render(elementoRadice);
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <Suspense fallback={<LoadingScreen />}>{elementoRadice}</Suspense>
+);

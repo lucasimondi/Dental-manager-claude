@@ -73,10 +73,25 @@ export default defineConfig({
     outDir: 'dist', // cache bust 155200,
     rollupOptions: {
       output: {
-        manualChunks: {
-          supabase: ['@supabase/supabase-js'],
-          recharts: ['recharts'],
-          pdf: ['jspdf', 'pdfjs-dist'],
+        // POL-PERF-001: funzione invece dell'elenco fisso. Con l'elenco,
+        // Rollup metteva React e alcuni helper condivisi dentro i chunk di
+        // recharts e jsPDF: il file iniziale li importava da lì e ogni
+        // avvio scaricava ~880 kB di grafici e PDF anche se non servivano.
+        // Ora React/scheduler, gli helper Babel e quelli di Vite hanno chunk
+        // propri, e jsPDF (creare un PDF) e pdf.js (leggere un PDF) sono separati.
+        manualChunks(id) {
+          // L'helper di preload di Vite (usato da ogni import()) finiva nel
+          // chunk di jsPDF, che a sua volta usa import(): senza questa riga
+          // jsPDF tornerebbe nel download iniziale.
+          if (id.includes('vite/preload-helper') || id.includes('commonjsHelpers')) return 'vite-helpers';
+          if (!id.includes('node_modules')) return undefined;
+          if (/node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) return 'react';
+          if (/node_modules[\\/]@babel[\\/]runtime[\\/]/.test(id)) return 'babel-runtime';
+          if (id.includes('@supabase')) return 'supabase';
+          if (/node_modules[\\/]recharts[\\/]/.test(id)) return 'recharts';
+          if (/node_modules[\\/]jspdf[\\/]/.test(id)) return 'jspdf';
+          if (/node_modules[\\/]pdfjs-dist[\\/]/.test(id)) return 'pdfjs';
+          return undefined;
         },
       },
     },

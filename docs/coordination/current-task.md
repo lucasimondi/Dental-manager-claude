@@ -1,10 +1,25 @@
 # Current task
 
+- TASK: POL-PERF-001 — Avvio dell'app più veloce (download iniziale ridotto)
+- TITLE: all'apertura l'app scaricava ed eseguiva grafici (recharts) e librerie PDF (jsPDF) anche per la sola schermata di login/Home.
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "Vorrei che si aprisse più velocemente tipo immediato il software cosa possiamo fare ?").
+- BRANCH: `claude/software-startup-speed-ugqqcf`, da `master@e6e8357`.
+- STATUS: PUSHED — nessuna PR aperta (non richiesta). Nessuna modifica al database né a produzione.
+
+- **Causa (misurata sulla build)**: `index.html` caricava subito `index` 546 kB + `recharts` 527 kB + `pdf` 359 kB + `supabase` 212 kB (≈1,64 MB, ≈481 kB gzip). Tre motivi: (1) `main.jsx` importava in modo statico le pagine pubbliche, e `FirmaConsenso` → `pdfConsenso.js` → jsPDF; (2) `Dashboard.jsx` importava recharts per i grafici "Grafici e andamento", chiusi di default; (3) `manualChunks` a elenco fisso faceva finire React dentro il chunk di recharts e l'helper di preload di Vite dentro quello di jsPDF, quindi il file iniziale li importava da lì.
+- **Correzione**: pagine pubbliche con `lazyWithRetry` + `Suspense`; nuovo `src/components/DashboardCharts.jsx` (stessi grafici, stesso markup) caricato solo quando si aprono; `vite.config.js` con `manualChunks(id)` che separa `react`, `vite-helpers`, `babel-runtime`, `supabase`, `recharts`, `jspdf`, `pdfjs`.
+- **Risultato**: avvio = `index` 381 kB + `react` 142 kB + `supabase` 212 kB + helper 2 kB (≈737 kB, ≈208 kB gzip): −55% di JavaScript da scaricare ed eseguire.
+- VALIDATION: `npm test` 869/869 (nuovo `tests/startupBundle.test.mjs`, 3 test che falliscono sul codice precedente); `npm run build` OK; Chromium 390×844 su `vite preview`: `/` mostra il login e non richiede recharts/jsPDF/pdf.js; `/firma/<uuid>` e `/prenota/<slug>` caricano la propria pagina (messaggi di errore del componente per token/slug finti), nessun errore JS.
+- NON FATTO (richiede decisione): `PRODUCT_OWNER_DECISION_REQUIRED` — dopo il download, l'avvio aspetta 11 letture complete dal database (tutti i pazienti, tutti gli appuntamenti storici, piani, pagamenti…) prima di mostrare la Home. Per un'apertura "immediata" servirebbe mostrare subito gli ultimi dati salvati sul dispositivo e aggiornarli in background: significa tenere dati sanitari dei pazienti nella memoria del browser (cifrati, cancellati al logout). Non fatto senza decisione esplicita.
+- EXACT NEXT ACTION: Product Owner: PR/merge di questo branch su istruzione; decidere sulla cache locale dei dati.
+
+---
+
 - TASK: POL-WA-003b — Consenso WhatsApp, promemoria automatici, risposte e conferma al paziente
 - TITLE: consenso in anagrafica; promemoria del giorno prima con modello Meta approvato e scheduler orario; risposte "Confermo"/"Devo spostarlo" registrate; conferma automatica al paziente quando lo staff salva una richiesta arrivata da WhatsApp.
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggio verbatim: "Vai", dopo la proposta del piano 003b; decisione già presa in 003a: consenso "Anagrafica paziente").
 - BRANCH: `claude/whatsapp-automation-status-d2ng12`, da `master@5e674e9` (+ commit di documentazione `c20dda3`).
-- STATUS: PUSHED — PR aperta, in attesa del Product Owner. Nessuna modifica a produzione.
+- STATUS: MERGED — PR #117 (`master@e6e8357`). Lo stato dei passi di rilascio sotto non è stato verificato in questa sessione.
 
 - **Migration `20261004160000_pol_wa_003b_promemoria.sql`** (additiva, senza DROP, rieseguibile): `patients.consenso_whatsapp` (default false) + `consenso_whatsapp_il`; `whatsapp_config.promemoria_attivi` (default false), `promemoria_ora` (default 18), `promemoria_template`, `promemoria_lingua`; tabella `whatsapp_promemoria` (una riga per appuntamento, UNIQUE, lettura ai membri dello studio, nessuna scrittura client); `whatsapp_cron_segreto_valido` solo service_role; segreto dello scheduler generato nel DB e tenuto nel Vault; `whatsapp_programma_promemoria(url)` (nessun ruolo client, URL validato) da chiamare una volta per ambiente.
 - **Edge Function**: nuovo `promemoria.js` + percorsi `/promemoria` (pg_cron, segreto) e `/invia` (app, login staff, lettura della richiesta sotto RLS, testi fissi); risposte ai promemoria registrate; il prompt sa come trattare conferme e spostamenti.
