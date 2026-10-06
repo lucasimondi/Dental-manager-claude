@@ -531,9 +531,11 @@ export default function App() {
   const openQuickHubPoliedron = ({ command, patient, appointment }) => {
     setQuickHubPoliedronRequest({ id: requestId(), command, patient, appointment });
   };
-  const openPrescription = ({ patient, drug = '' }) => {
+  // POL-AI-009: `farmaci` = ricetta completa preparata da Poliedron in chat.
+  const openPrescription = ({ patient, drug = '', farmaci = null }) => {
     if (!patient) return;
-    const documentRequest = { type: 'ricetta', prefill: { farmaco: drug }, requestId: `${Date.now()}-${patient.id}` };
+    const prefill = Array.isArray(farmaci) && farmaci.length ? { farmaco: '', farmaci } : { farmaco: drug };
+    const documentRequest = { type: 'ricetta', prefill, requestId: `${Date.now()}-${patient.id}` };
     setSchedaDashPaz({ paz: patient, tab: 'doc', documentRequest });
     salvaPosizione({ schedaPazId: patient.id, schedaPazTab: 'doc', schedaPazModaleDoc: 'medico' });
   };

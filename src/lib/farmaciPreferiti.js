@@ -80,3 +80,22 @@ export function applicaFarmacoPreferito(farmaci, preferito) {
   const vuota = lista.findIndex(rigaVuota);
   return vuota >= 0 ? lista.map((f, i) => (i === vuota ? riga : f)) : [...lista, riga];
 }
+
+/**
+ * POL-AI-009: unisce i farmaci di una ricetta preparata da Poliedron alle
+ * righe già presenti. Lo stesso farmaco già in ricetta viene sostituito con
+ * i dati di Poliedron (il medico li ha appena dettati); gli altri riempiono
+ * le righe vuote o si aggiungono in fondo.
+ */
+export function unisciFarmaciPreparati(farmaci, preparati) {
+  let lista = Array.isArray(farmaci) ? [...farmaci] : [];
+  for (const p of Array.isArray(preparati) ? preparati : []) {
+    if (!String(p?.farmaco || '').trim()) continue;
+    const riga = { farmaco: p.farmaco.trim(), dosaggio: p.dosaggio || '', posologia: p.posologia || '', durata: p.durata || '', note: p.note || '' };
+    const uguale = lista.findIndex((f) => norm(f.farmaco) === norm(riga.farmaco));
+    if (uguale >= 0) { lista = lista.map((f, i) => (i === uguale ? riga : f)); continue; }
+    const vuota = lista.findIndex(rigaVuota);
+    lista = vuota >= 0 ? lista.map((f, i) => (i === vuota ? riga : f)) : [...lista, riga];
+  }
+  return lista;
+}

@@ -73,8 +73,12 @@ const extractDrugText = (query, patient) => {
     || (/^\d+(?:[.,]\d+)?$/.test(normalized) && POSOLOGY_UNITS.has(candidate[index + 1]?.normalized))
   );
   const medication = posologyIndex >= 0 ? candidate.slice(0, posologyIndex) : candidate;
-  return medication.map(({ raw }) => raw).join(' ').trim();
+  return { text: medication.map(({ raw }) => raw).join(' ').trim(), hasPosology: posologyIndex >= 0 };
 };
+
+// POL-AI-009: più farmaci nella stessa richiesta ("Amoxicillina e Ibuprofene",
+// "Amoxicillina, Ibuprofene").
+const MULTIPLE_DRUGS_PATTERN = /,|\s(?:e|più|piu|\+)\s/i;
 
 export function resolvePrescriptionRequest(query, patients = []) {
   if (!isPrescriptionRequest(query)) return null;
@@ -87,7 +91,7 @@ export function resolvePrescriptionRequest(query, patients = []) {
   const patientCandidates = scored
     .filter(({ score }) => score === bestScore)
     .map(({ patient }) => patient);
-  const drugText = extractDrugText(query, patientCandidates[0]);
+  const { text: drugText, hasPosology } = extractDrugText(query, patientCandidates[0]);
   const drugNeedsClarification = /\b(?:oppure|o)\b/i.test(drugText);
 
   return {
@@ -96,5 +100,9 @@ export function resolvePrescriptionRequest(query, patients = []) {
     drugText: drugNeedsClarification ? '' : drugText,
     requestedDrugText: drugText,
     drugNeedsClarification,
+    // POL-AI-009: posologia/durata o più farmaci → il modulo deterministico
+    // compilerebbe solo il nome; in chat la richiesta va a Poliedron, che
+    // prepara la ricetta completa (prepara_ricetta).
+    hasDetails: hasPosology || MULTIPLE_DRUGS_PATTERN.test(drugText),
   };
 }

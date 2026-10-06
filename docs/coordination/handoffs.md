@@ -3397,3 +3397,147 @@ Merge della PR #115 su istruzione del Product Owner.
 - EXACT NEXT ACTION: separate PR review → PO release approval → CI/Vercel verification → fresh physical phone installation checks.
 
 - Release authorization (2026-10-06): PO “Mergia e collega” explicitly approves PR #130 merge and frontend release. Head `cae545bbe4fa0863afdcd5f56b070af4a961e5bb` matches the tested tree; GitHub Actions run `37436833473` and Vercel preview both successful; PR mergeable without conflict against `master@239c8db`. Dedicated icon connections are already implemented. Next: expected-head merge, verify production deployment, then physical-device smoke. No backend, database or unrelated team changes authorized.
+
+---
+
+## POL-PERF-001 — Avvio dell'app più veloce (download iniziale ridotto)
+
+- TASK ID: POL-PERF-001
+- PREVIOUS AGENT: CLAUDE (POL-WA-003b, PR #117 mergiata, `master@e6e8357`).
+- BRANCH: `claude/software-startup-speed-ugqqcf`, da `master@e6e8357`.
+- REQUEST (verbatim, Product Owner): "Vorrei che si aprisse più velocemente tipo immediato il software cosa possiamo fare ?"
+
+### Objective
+Ridurre quello che il telefono deve scaricare ed eseguire prima di mostrare login/Home, senza cambiare comportamento.
+
+### Completed work
+1. Misura sulla build di `master`: all'avvio `index` 546 kB + `recharts` 527 kB + `pdf` 359 kB + `supabase` 212 kB (≈1,64 MB, ≈481 kB gzip).
+2. `src/main.jsx`: pagine pubbliche (`PrenotaOnline`, `FirmaConsenso`, `StoriaClinicaRemota`, due anteprime Patient Workspace) caricate con `lazyWithRetry`; radice in `<Suspense fallback={<LoadingScreen />}>`. `FirmaConsenso` portava jsPDF nell'avvio.
+3. `src/components/DashboardCharts.jsx` (nuovo): i 5 grafici di "Grafici e andamento" spostati senza modifiche; `Dashboard.jsx` li carica con `lazyWithRetry` solo quando l'utente apre la sezione (chiusa di default).
+4. `vite.config.js`: `manualChunks(id)` a funzione. Con l'elenco fisso React finiva nel chunk `recharts` e l'helper di preload di Vite in quello di jsPDF, entrambi quindi importati dal file iniziale. Ora chunk propri: `react`, `vite-helpers`, `babel-runtime`, `supabase`, `recharts`, `jspdf`, `pdfjs`.
+5. Risultato: avvio = `index` 381 kB + `react` 142 kB + `supabase` 212 kB + helper ≈2 kB (≈737 kB, ≈208 kB gzip, −55%).
+6. Test: `tests/startupBundle.test.mjs` (3).
+
+### Files changed
+`src/main.jsx`, `src/components/Dashboard.jsx`, `src/components/DashboardCharts.jsx` (nuovo), `vite.config.js`, `tests/startupBundle.test.mjs` (nuovo), `docs/coordination/current-task.md`, `docs/coordination/handoffs.md`.
+
+### Database changes
+Nessuna.
+
+### Deployment impact
+Solo frontend (Vercel al merge). Cambiano i nomi dei chunk: il service worker con `skipWaiting/clientsClaim` (POL-UI-035) e `lazyWithRetry` gestiscono il passaggio come per ogni deploy.
+
+### Tests executed / results
+- `npm test` 869/869 PASS; il nuovo test fallisce 3/3 sul codice precedente.
+- `npm run build` OK (resta l'avviso preesistente su `eval` in pdf.js).
+- Chromium 390×844 su `vite preview`: `/` mostra il login senza richiedere `recharts`/`jspdf`/`pdfjs`; `/firma/<uuid finto>` carica `FirmaConsenso` + jsPDF solo lì e mostra il proprio messaggio d'errore; `/prenota/demo` carica solo `PrenotaOnline` ("Link non valido"); nessun errore JS.
+
+### Unresolved issues / risks
+- I grafici della Home dopo il login non sono stati visti in un browser (richiede login): markup identico, coperto da test sul sorgente e build.
+- `PRODUCT_OWNER_DECISION_REQUIRED`: il resto dell'attesa è il caricamento dati (11 `DB.getAll` completi, incluso tutto lo storico appuntamenti) prima della Home. Un'apertura "immediata" richiede una cache locale dei dati (dati sanitari nel browser, cifrati e cancellati al logout) con aggiornamento in background. Non fatto.
+- Notato, non toccato (fuori scope): `getStudioId` in `src/lib/supabase.js` ricade su uno studio fisso se il token non ha `studio_id`.
+
+### Rollback
+Revert del commit.
+
+### EXACT NEXT ACTION
+Product Owner: PR/merge su istruzione; decisione sulla cache locale dei dati.
+
+---
+
+## POL-AI-008 — Documenti in Poliedron: allegare un PDF o una foto in Chat (Fase 1)
+
+- TASK ID: POL-AI-008
+- PREVIOUS AGENT: CLAUDE (POL-PERF-001, stesso branch).
+- BRANCH: `claude/software-startup-speed-ugqqcf`, da `master@e6e8357`.
+- REQUEST (verbatim, Product Owner): "Lavora al prossimo passo di poliedron , dovrebbe essere documenti".
+
+### Objective
+Prima fase della "Missione futura — allegati in Poliedron" (Master Context §32): allegare un file nella Chat e farlo leggere al motore condiviso, senza un widget isolato.
+
+### Completed work
+1. `agente-assistente` (prima solo in produzione) portata nel repository: v28 verbatim in un commit dedicato (`supabase/functions/agente-assistente/`, `supabase/functions/_shared/agendaSlots.js`), con README.
+2. Server: `allegato.js` (`validaAllegato`, `messaggiConAllegato`, `senzaDatiAllegato`) e 3 punti in `index.ts`: lettura di `allegato`, rifiuto con `confirm`/`team`, blocco `document`/`image` con `cache_control` nell'ultimo messaggio utente, risposta senza i byte del file.
+3. Client: `src/lib/poliedron/chatAttachment.js` (tipi, limiti, riduzione foto 2048 px JPEG, metadata senza contenuto); `modelGateway.runModelTask({ attachment })` → `body.allegato`; `processQuery({ attachment })` va direttamente al modello; `Poliedron.jsx` tiene il file in memoria (anche per "Riprova"), salva solo `metadata.allegato`; `PoliedronChatPage.jsx` graffetta, chip, nome del file nel messaggio; icona `attach` in `Ic.jsx`; stili in `PremiumVisualSystem.css`.
+4. Revisione del diff: con un file non si riusa mai la richiesta in sospeso (altrimenti il messaggio salvato avrebbe mostrato il nome del file precedente).
+
+### Files changed
+`supabase/functions/agente-assistente/{index.ts,confirmation.js,agenda.js,pazienti.js,team.js,allegato.js,README.md}`, `supabase/functions/_shared/agendaSlots.js`, `src/lib/poliedron/chatAttachment.js` (nuovo), `src/lib/poliedron/modelGateway.js`, `src/lib/poliedron/poliedraCore.js`, `src/components/poliedron/Poliedron.jsx`, `src/components/poliedron/PoliedronChatPage.jsx`, `src/components/ui/Ic.jsx`, `src/components/PremiumVisualSystem.css`, `tests/poliedronAllegati.test.mjs` (nuovo), `tests/poliedronChatSurfaces.test.mjs`, `docs/POLIEDRA_MASTER_CONTEXT.md` (stato della missione §32), `docs/architecture/deployment.md`, `docs/coordination/current-task.md`, `docs/coordination/handoffs.md`.
+
+### Database changes
+Nessuna. `poliedron_messages.metadata` (jsonb ≤ 8 KB, già esistente) contiene `{ allegato: { nome, tipo, dimensione } }`.
+
+### Deployment impact
+- Edge Function `agente-assistente`: **da deployare PRIMA del merge** (retrocompatibile: senza `allegato` si comporta come la v28). Non deployata da Claude.
+- Frontend: Vercel al merge.
+
+### Tests executed / results
+- `npm test` 880/880 PASS (11 nuovi; 1 asserzione aggiornata: il pulsante Invia ora è attivo anche con il solo file).
+- `npm run build` OK; `index.ts` analizzato con esbuild (sintassi OK; Deno non installato).
+- Chromium 390×844, harness temporaneo rimosso (vera `PoliedronChatPage` + vera `prepareAttachment`): foto PNG 4000×3000 → JPEG 153 kB; invio solo file con testo predefinito; PDF + testo; `.txt` → "Formato non supportato"; rimozione; larghezza 390 senza overflow; nessun errore JS.
+
+### Unresolved issues / risks
+- Risposta reale del modello su un file non verificata (serve il deploy).
+- Limite della richiesta HTTP alle Edge Functions non documentato da Supabase (solo 250 MB di memoria): PDF limitati a 6 MB per prudenza.
+- Gli errori del server sull'allegato (rari, il client controlla prima) arrivano come errore generico di invio.
+- `PRODUCT_OWNER_DECISION_REQUIRED` per le fasi successive: salvare il file nell'archivio del paziente (bucket privato + RLS), ricordarlo nei messaggi successivi, più file per messaggio.
+
+### Rollback
+Frontend: revert del commit POL-AI-008. Funzione: rideploy della v28 (= primo commit POL-AI-008, verbatim).
+
+### EXACT NEXT ACTION
+Product Owner: istruzione per deploy di `agente-assistente`, poi PR/merge; prova reale con un referto e una foto.
+
+---
+
+## POL-AI-009 — Poliedron ricorda, prepara le ricette e impara dalle comunicazioni
+
+- TASK ID: POL-AI-009
+- PREVIOUS AGENT: CLAUDE (POL-AI-008, stesso branch).
+- BRANCH: `claude/software-startup-speed-ugqqcf`, da `master@e6e8357`.
+- REQUEST (verbatim, Product Owner): "Deve ricordare poliedron, e deve anche produrre i documenti che richiedo tipo le ricette, quindi deve imparare dalle comunicazioni".
+
+### Objective
+Dare a Poliedron una memoria per utente, fargli preparare le ricette complete dalla chat e fargli imparare le posologie dalle ricette che il medico genera.
+
+### Completed work
+1. Lettura in sola lettura dello schema di produzione (nessun dato): `ricette_bozze` esiste in produzione ma non nel repository e nessuna parte dell'app la usa; lo strumento `compila_ricetta_medica` della funzione è già escluso dagli strumenti esposti. Non riusati.
+2. Migration `20261006120000_pol_ai_009_poliedron_memoria.sql` + test SQL.
+3. Edge Function: `memoria.js` (strumenti, normalizzazione, sezioni del prompt, ricetta) e collegamento in `index.ts` (lettura memoria e farmaci frequenti, strumenti aggiunti prima dell'elenco dei permessi, esecuzione nel ciclo, `documento` nella risposta, regola del prompt aggiornata).
+4. App: `memoryRepository.js` (memoria, apprendimento dalle ricette), `PoliedronMemoryPanel.jsx`, pulsante in `PoliedronChatPage.jsx`, `openPreparedDocument` in `Poliedron.jsx`, `openPrescription({ farmaci })` in `App.jsx`, `unisciFarmaciPreparati` in `farmaciPreferiti.js`, avviso e apprendimento in `DocMedico.jsx`, `hasDetails` in `prescriptionWorkflow.js`, instradamento e `documentRequestFromModel` in `poliedraCore.js`, file "in uso" (POL-AI-008 esteso).
+
+### Files changed
+`supabase/migrations/20261006120000_pol_ai_009_poliedron_memoria.sql`, `supabase/tests/pol_ai_009_poliedron_memoria.sql`, `supabase/functions/agente-assistente/{memoria.js,index.ts,allegato.js,README.md}`, `src/lib/poliedron/{memoryRepository.js,poliedraCore.js,prescriptionWorkflow.js}`, `src/lib/farmaciPreferiti.js`, `src/components/poliedron/{PoliedronMemoryPanel.jsx,PoliedronChatPage.jsx,Poliedron.jsx}`, `src/components/DocMedico.jsx`, `src/App.jsx`, `src/components/PremiumVisualSystem.css`, `tests/poliedronMemoriaRicette.test.mjs`, `tests/poliedronAllegati.test.mjs`, `docs/POLIEDRA_MASTER_CONTEXT.md`, `docs/coordination/current-task.md`, `docs/coordination/handoffs.md`.
+
+### Database changes
+Nuova tabella `public.poliedron_memoria` (NON applicata). Nessuna modifica a tabelle esistenti.
+
+### Deployment impact
+Migration → Edge Function `agente-assistente` → frontend (Vercel al merge). La funzione senza tabella funziona con memoria spenta; il frontend senza tabella mostra "memoria non disponibile" e non salva nulla dalle ricette.
+
+### Tests executed / results
+- `npm test` 893/893 PASS; `npm run build` OK; esbuild `index.ts` OK.
+- Postgres 16 locale (usa e getta, rimosso): migration due volte + test SQL PASS; senza migration FAIL atteso.
+- Chromium 390×844, harness temporaneo rimosso: memoria (elenco, cancellazione), file in uso (rimozione), DocMedico compilato con avviso.
+
+### Unresolved issues / risks
+- Risposte reali del modello non verificate (serve il deploy).
+- In modalità "media" (conferma ogni scrittura) `ricorda` non chiede conferma: scrive solo nella memoria personale dell'utente.
+- I farmaci frequenti predefiniti dell'app (quando lo studio non ne ha salvati) non arrivano alla funzione: Poliedron vede solo quelli salvati in Impostazioni e la memoria.
+- Con 300 voci anche l'aggiornamento di un farmaco già noto viene rifiutato dal tetto (errore ignorato, la ricetta non è toccata).
+- Il file "in uso" viene rinviato a ogni messaggio (costo in token, in parte in cache).
+- `PRODUCT_OWNER_DECISION_REQUIRED` per le fasi successive: certificati, lettere ed esami preparati da Poliedron; archiviazione del file allegato nella scheda paziente; uso o rimozione della tabella di produzione `ricette_bozze`.
+
+### Rollback
+Frontend e funzione: revert dei commit POL-AI-009 (la funzione torna a POL-AI-008). Database: `DROP TABLE IF EXISTS public.poliedron_memoria; DROP FUNCTION IF EXISTS public.poliedron_memoria_guard_v1();` (si perde la memoria imparata).
+
+### EXACT NEXT ACTION
+Product Owner: istruzione per migration, deploy della funzione e merge; prova reale in chat.
+
+### Aggiornamento POL-AI-008 / POL-AI-009 (rilascio, 2026-10-06)
+- Istruzione del Product Owner: "Sì" (ai tre passi), poi "Trova la soluzione subito".
+- Database: `poliedron_memoria` applicata in produzione via `execute_sql` (3 blocchi senza `DROP`; `apply_migration` andava in timeout perché il connettore chiede conferma sulle istruzioni `DROP`, impossibile qui). Verifica: RLS, policy, trigger, vincoli, grant solo `authenticated`, nessun `anon`. Non registrata in `supabase_migrations.schema_migrations`.
+- Edge Function `agente-assistente`: v31 (`verify_jwt=true`), 8 file identici al repository (confronto dopo il deploy); avvio verificato (`401 Sessione non valida` dal codice, chiamata via `pg_net`). La v29 precedente era identica alla v28 del repository.
+- Frontend: PR verso `master` + merge (Vercel al merge).
+- Rollback funzione: rideploy dei file del commit `3c187c5` (v28). Rollback tabella: vedi sopra.
+- EXACT NEXT ACTION: prova reale del Product Owner in Chat.

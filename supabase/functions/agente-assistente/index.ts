@@ -20,6 +20,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { signProposal, verifyProposal, claimProposal, studioToday } from "./confirmation.js";
 import { AGENDA_WRITES, prepareAgenda, executeAgenda, agendaAvailability } from "./agenda.js";
 import { PAZIENTI_WRITES, PAZIENTI_TOOLS, preparePazienti, executePazienti, schedaPaziente } from "./pazienti.js";
+import { validaAllegato, messaggiConAllegato, senzaDatiAllegato } from "./allegato.js";
+import { STRUMENTI_MEMORIA, STRUMENTO_RICETTA, normalizzaMemoria, sezioneMemoria, sezioneFarmaciFrequenti, normalizzaRicetta, documentoRicetta } from "./memoria.js";
 import { leggiRichiestaTeam, strumentiSpecialista, toolConsulta, leggiConsulti, eseguiConsulti, promptTeam, contestoGruppo, CONSULTA_SPECIALISTI } from "./team.js";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
@@ -1053,6 +1055,7 @@ serve(async (req) => {
       { data: studio, error: errStudio },
       membership,
       { data: config }, { data: faq }, { data: documenti }, { data: azioniPersonalizzate },
+      memoriaLetta, { data: studioInfoRicette },
     ] = await Promise.all([
       supabase
         .from("studios")
@@ -1067,7 +1070,14 @@ serve(async (req) => {
       supabaseAdmin.from("ai_agent_faq").select("domanda, risposta").eq("studio_id", studioId).order("ordine", { ascending: true }),
       supabaseAdmin.from("ai_agent_documenti").select("nome, testo").eq("studio_id", studioId),
       supabaseAdmin.from("ai_agent_actions").select("nome, descrizione, tipo_effetto, parametri, config, richiede_conferma").eq("studio_id", studioId).eq("attiva", true),
+      // POL-AI-009: memoria dell'utente (con il suo login, sotto RLS) e
+      // farmaci frequenti dello studio. Se la tabella non esiste ancora la
+      // lettura fallisce e la memoria resta semplicemente spenta.
+      supabase.from("poliedron_memoria").select("id, categoria, testo").eq("studio_id", studioId).eq("user_id", user.id).order("updated_at", { ascending: false }).limit(120),
+      supabase.from("studio_info").select("farmaci_preferiti").eq("studio_id", studioId).maybeSingle(),
     ]);
+    const memoriaAttiva = !memoriaLetta.error;
+    const vociMemoria = memoriaLetta.data || [];
     if (errStudio || !studio) {
       return new Response(JSON.stringify({ error: "Studio non trovato" }), {
         status: 404,
@@ -1148,6 +1158,12 @@ serve(async (req) => {
         : 'Crea o modifica un appuntamento: viene eseguito subito se i dati sono validi e l\'orario è libero. Cerca prima paziente (cerca_pazienti) o appuntamento (appuntamenti); se più risultati corrispondono chiedi quale. Non indovinare ID, date o orari.',
       input_schema: { ...t.input_schema, properties: { ...t.input_schema.properties, operatore_id: { type: 'integer', description: 'ID operatore già noto; ometti se non assegnato.' } } },
     } : t);
+    // POL-AI-009: memoria (solo dell'utente stesso) e ricetta da verificare
+    // (nessuna scrittura: l'app apre il modulo). La ricetta richiede di poter
+    // cercare i pazienti e una professione che prescrive.
+    const prescrive = ['medico_chirurgo', 'dentistico'].includes(studio.vertical || 'dentistico');
+    if (memoriaAttiva) toolsFinali = [...toolsFinali, ...STRUMENTI_MEMORIA];
+    if (prescrive && lettureAmmesse) toolsFinali = [...toolsFinali, STRUMENTO_RICETTA];
     const allowedNames = new Set(toolsFinali.map(t => t.name));
     const observed = { patients: new Set(), appointments: new Set() };
     // Lo studio in modalità "medio" vuole confermare ogni scrittura: resta il
@@ -1193,7 +1209,8 @@ REGOLE OPERATIVE PRIORITARIE (prevalgono su quanto scritto sopra):
 - Se uno strumento segnala un conflitto o un errore, non riprovare a caso: spiega il problema in una riga e, per l'agenda, proponi gli orari liberi indicati.
 - Se l'utente chiede più azioni nello stesso messaggio, eseguile tutte. Quando puoi, chiama insieme gli strumenti di lettura che ti servono (es. cerca_pazienti e disponibilita_agenda nello stesso passaggio).
 - Dopo una scrittura riuscita l'utente vede già il riepilogo del sistema: non ripeterlo, aggiungi solo ciò che serve.
-- Documenti, ricette, piani di cura e pagamenti per ora vanno fatti nei moduli dell'app: dillo con semplicità.
+- Le ricette le prepari con prepara_ricetta, quando è tra i tuoi strumenti: il modulo si apre già compilato e il medico lo controlla e lo genera. Altri documenti, piani di cura e pagamenti per ora vanno fatti nei moduli dell'app: dillo con semplicità.
+- Hai una memoria per ogni utente (sezione "Cosa ricordi di questo utente"): usala, e salva con ricorda ciò che l'utente ti chiede di ricordare o che ti corregge e vale anche in futuro.
 - Eliminare un appuntamento significa annullarlo conservando lo storico. Il consenso WhatsApp si registra solo se l'utente dice esplicitamente che il paziente lo ha dato.
 - Rispondi in modo diretto e breve; ragiona a lungo solo se serve davvero.`;
 
@@ -1207,9 +1224,9 @@ ${conoscenzaStudio}
 Oggi è ${oggiInfo} (${oggiISO} in formato YYYY-MM-DD). Usa SEMPRE questa data come riferimento
 per calcolare date relative ("domani", "martedì prossimo", "tra due settimane", ecc.) — non
 dedurre o assumere altre date, e non sbagliare mai l'anno.
-Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}`;
+Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? sezioneMemoria(vociMemoria) : ''}${prescrive ? sezioneFarmaciFrequenti(studioInfoRicette?.farmaci_preferiti) : ''}`;
 
-    const { messages, confirm, team } = await req.json();
+    const { messages, confirm, team, allegato: allegatoRichiesta } = await req.json();
     const json = (value) => new Response(JSON.stringify(value), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     // POL-AI-TEAM-002: Clinic Manager e specialisti, sempre in sola lettura.
     let richiestaTeam = null;
@@ -1219,6 +1236,16 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}`;
       return json({ error: error.message });
     }
     if (richiestaTeam && confirm) return json({ error: 'Il team di Poliedron non esegue azioni da confermare.' });
+    // POL-AI-008: un file allegato al messaggio corrente (letto, mai salvato).
+    let allegato = null;
+    if (allegatoRichiesta != null) {
+      if (confirm || richiestaTeam) return json({ error: 'Gli allegati si possono inviare solo in un messaggio normale della chat.' });
+      try {
+        allegato = validaAllegato(allegatoRichiesta);
+      } catch (error) {
+        return json({ error: error.message });
+      }
+    }
     if (confirm) {
       let proposal;
       try {
@@ -1250,6 +1277,13 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}`;
     }
     if (!Array.isArray(messages) || messages.length > 21 || messages.some(m => !['user', 'assistant'].includes(m.role) || typeof m.content !== 'string' || m.content.length > 16000)) throw new Error('Messaggi non validi');
     let convo = messages;
+    if (allegato) {
+      try {
+        convo = messaggiConAllegato(messages, allegato);
+      } catch (error) {
+        return json({ error: error.message });
+      }
+    }
     let finalText = '';
     const MAX_TURNS = 8;
     // Strumenti e parte stabile del system prompt restano in cache tra una
@@ -1283,10 +1317,13 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}`;
     // Il log dei consumi non deve rallentare la risposta: parte subito e si
     // attende solo prima di rispondere.
     const logConsumi = [];
+    // POL-AI-009: ricetta preparata in questa richiesta, aperta dall'app.
+    let documentoPreparato = null;
     const rispondi = async (value) => {
       await Promise.allSettled(logConsumi);
       const changed = [...daAggiornare];
-      return json(changed.length ? { ...value, changed, records: righeScritte } : value);
+      const conDocumento = documentoPreparato ? { ...value, documento: documentoPreparato } : value;
+      return json(changed.length ? { ...conDocumento, changed, records: righeScritte } : conDocumento);
     };
     const testoEseguite = () => eseguite.map((e) => e.text).join('\n\n');
 
@@ -1445,6 +1482,34 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}`;
               soloScrittureRiuscite = false;
             }
           }
+        } else if (tu.name === 'ricorda' || tu.name === 'dimentica') {
+          soloScrittureRiuscite = false;
+          try {
+            if (tu.name === 'ricorda') {
+              const voce = normalizzaMemoria(input);
+              const riga = { ...voce, studio_id: studioId, user_id: user.id, origine: 'chat' };
+              const { data: salvata, error } = voce.chiave
+                ? await supabase.from('poliedron_memoria').upsert(riga, { onConflict: 'studio_id,user_id,chiave' }).select('id').single()
+                : await supabase.from('poliedron_memoria').insert(riga).select('id').single();
+              result = error ? { error: error.message } : { ricordato: true, id: salvata.id };
+            } else {
+              const { data: cancellate, error } = await supabase.from('poliedron_memoria').delete().eq('id', Number(input.id)).eq('user_id', user.id).select('id');
+              result = error ? { error: error.message } : cancellate?.length ? { dimenticato: true } : { error: 'Voce non trovata.' };
+            }
+          } catch (error) {
+            result = { error: error.message };
+          }
+        } else if (tu.name === STRUMENTO_RICETTA.name) {
+          soloScrittureRiuscite = false;
+          try {
+            const { pazienteId, farmaci } = normalizzaRicetta(input);
+            const { data: paziente, error } = await supabase.from('patients').select('id, nome, cognome').eq('id', pazienteId).eq('studio_id', studioId).maybeSingle();
+            if (error || !paziente) throw new Error('Paziente non trovato: cercalo con cerca_pazienti.');
+            documentoPreparato = documentoRicetta(paziente, farmaci);
+            result = { pronta_da_verificare: true, paziente: documentoPreparato.paziente_nome, farmaci: farmaci.length, nota: "Il modulo Ricetta si apre già compilato: il medico la controlla e la genera. Non dire che è stata generata o inviata." };
+          } catch (error) {
+            result = { error: error.message };
+          }
         } else {
           soloScrittureRiuscite = false;
           result = await eseguiTool(supabase, tu.name, input, studioId, user.id, azioniAttive);
@@ -1464,7 +1529,7 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}`;
 
     // Il riepilogo delle scritture viene dal server, non dal modello.
     const testo = [testoEseguite(), finalText].filter(Boolean).join('\n\n');
-    return rispondi({ text: testo, messages: convo, ...(richiestaTeam ? { team: { assistente: richiestaTeam.assistente, pareri: pareriTeam } } : {}) });
+    return rispondi({ text: testo, messages: allegato ? senzaDatiAllegato(convo) : convo, ...(richiestaTeam ? { team: { assistente: richiestaTeam.assistente, pareri: pareriTeam } } : {}) });
   } catch (e) {
     return new Response(JSON.stringify({ error: String(e) }), {
       status: 500,

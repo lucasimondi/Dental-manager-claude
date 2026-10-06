@@ -14,6 +14,8 @@ import PoliedronInstall from './PoliedronInstall.jsx';
 import useChatDictation from './useChatDictation.js';
 import { submitChatDraft } from '../../lib/poliedron/phoneApp.js';
 import poliedroGem from '../../assets/icon-poliedra-gem.png';
+import PoliedronMemoryPanel from './PoliedronMemoryPanel';
+import { ATTACHMENT_ACCEPT, ATTACHMENT_ONLY_TEXT, formatAttachmentSize } from '../../lib/poliedron/chatAttachment.js';
 
 const NEAR_BOTTOM_PX = 120;
 const NARROW_QUERY = '(max-width: 719px)';
@@ -114,6 +116,11 @@ export default function PoliedronChatPage({
   onConfirmActionPlan,
   actionRunning,
   actionRunResult,
+  attachment = null,
+  attachmentPreparing = false,
+  onAttachFile,
+  onRemoveAttachment,
+  memoryClient = null,
   navItems = [],
   onNavigate,
   loadActivity,
@@ -151,7 +158,9 @@ export default function PoliedronChatPage({
   const nearBottomRef = useRef(true);
   const initializedRef = useRef(false);
   const listHeightRef = useRef(null);
-  const sendDisabled = loading || sending || !draft.trim() || !online || Boolean(pendingUser) || dictation.listening;
+  const fileInputRef = useRef(null);
+  const [memoriaAperta, setMemoriaAperta] = useState(false);
+  const sendDisabled = loading || sending || attachmentPreparing || (!draft.trim() && !attachment) || !online || Boolean(pendingUser) || dictation.listening;
 
   useEffect(() => {
     const update = () => setOnline(navigator.onLine !== false);
@@ -257,7 +266,9 @@ export default function PoliedronChatPage({
   };
 
   const submit = async () => {
-    const value = draft.trim();
+    // POL-AI-008: un file senza testo parte con una richiesta predefinita.
+    const value = draft.trim() || (attachment ? ATTACHMENT_ONLY_TEXT : '');
+    if (attachmentPreparing) return;
     if (!value || sending || loading) return;
     if (!online || dictation.listening) return;
     setComposerError('');
@@ -514,6 +525,18 @@ export default function PoliedronChatPage({
           <h1>Poliedron</h1>
           <p>{!online ? 'Connessione assente' : sending ? 'Sto verificando…' : 'Assistente dello studio'}</p>
         </div>
+        {memoryClient && (
+          <button
+            type="button"
+            className="poliedron-chat__memory-toggle"
+            onClick={() => setMemoriaAperta((aperta) => !aperta)}
+            aria-expanded={memoriaAperta}
+            aria-label="Cosa ricorda Poliedron"
+            title="Cosa ricorda Poliedron"
+          >
+            <Ic n="book" s={16} />
+          </button>
+        )}
         {compact && optionsMenu}
         {!compact && loadActivity && (
           <button
@@ -529,6 +552,10 @@ export default function PoliedronChatPage({
 
       {showActivity && loadActivity && (
         <PoliedronAttivita load={loadActivity} onRestore={restoreActivity} onClose={() => setShowActivity(false)} />
+      )}
+
+      {memoryClient && memoriaAperta && (
+        <PoliedronMemoryPanel client={memoryClient} onClose={() => setMemoriaAperta(false)} />
       )}
 
       <div className="poliedron-chat__timeline">
@@ -581,6 +608,12 @@ export default function PoliedronChatPage({
             )}
             <div className="poliedron-chat__bubble">
               <div>{message.content}</div>
+              {message.metadata?.allegato && (
+                <div className="poliedron-chat__attachment-tag">
+                  <Ic n="attach" s={12} />
+                  <span>{message.metadata.allegato.nome || 'File allegato'}</span>
+                </div>
+              )}
               <footer>
                 <time dateTime={message.created_at}>{formatTime(message.created_at)}</time>
                 {message.role === 'user' && message.delivery_status === 'pending' && (
@@ -637,7 +670,46 @@ export default function PoliedronChatPage({
             )}
           </div>
         )}
+        {(attachment || attachmentPreparing) && (
+          <div className="poliedron-chat__attachment" aria-live="polite">
+            <Ic n="file" s={15} />
+            <span className="poliedron-chat__attachment-name">
+              {attachmentPreparing ? 'Preparo il file…' : attachment.inUse ? `In uso: ${attachment.name}` : attachment.name}
+            </span>
+            {attachment && !attachmentPreparing && (
+              <>
+                <small>{formatAttachmentSize(attachment.size)}</small>
+                <button type="button" onClick={onRemoveAttachment} disabled={sending} aria-label={attachment.inUse ? 'Smetti di usare il file' : 'Rimuovi allegato'}>
+                  <Ic n="x" s={14} />
+                </button>
+              </>
+            )}
+          </div>
+        )}
         <div className="poliedron-chat__composer-row">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ATTACHMENT_ACCEPT}
+            hidden
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = '';
+              if (file) onAttachFile?.(file);
+            }}
+          />
+          {onAttachFile && (
+            <button
+              type="button"
+              className="poliedron-chat__attach"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading || sending || attachmentPreparing || Boolean(pendingUser)}
+              aria-label="Allega un PDF o una foto"
+              title="Allega un PDF o una foto"
+            >
+              <Ic n="attach" s={18} />
+            </button>
+          )}
           <textarea
             ref={textareaRef}
             value={draft}
@@ -650,7 +722,7 @@ export default function PoliedronChatPage({
             }}
             rows={1}
             maxLength={16000}
-            placeholder="Scrivi o detta a Poliedron…"
+            placeholder={attachment ? 'Cosa vuoi sapere dal file?' : 'Scrivi o detta a Poliedron…'}
             aria-label="Messaggio per Poliedron"
             enterKeyHint="send"
             disabled={loading}

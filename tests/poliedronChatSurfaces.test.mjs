@@ -34,7 +34,8 @@ const app = read('../src/App.jsx');
 const css = read('../src/components/PremiumVisualSystem.css');
 
 test('Chat composer exposes one accessible circular send control through the existing submit path', () => {
-  assert.match(chatPage, /const sendDisabled = loading \|\| sending \|\| !draft\.trim\(\)/);
+  // POL-AI-008: a file attached without text can be sent too.
+  assert.match(chatPage, /const sendDisabled = loading \|\| sending \|\| attachmentPreparing \|\| \(!draft\.trim\(\) && !attachment\)/);
   assert.match(chatPage, /className="poliedron-chat__send"[\s\S]*onClick=\{submit\}[\s\S]*disabled=\{sendDisabled\}[\s\S]*aria-label="Invia messaggio"/);
   assert.match(chatPage, /aria-busy=\{sending\}/);
   assert.match(chatPage, /<Ic n="send"/);

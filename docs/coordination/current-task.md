@@ -57,10 +57,64 @@
 
 ---
 
+- TASK: POL-AI-009 — Poliedron ricorda, prepara le ricette e impara dalle comunicazioni
+- TITLE: memoria per utente; ricetta completa preparata da Poliedron in chat e aperta nel modulo Ricetta da verificare; posologie imparate dalle ricette generate; file allegato che resta in uso.
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "Deve ricordare poliedron, e deve anche produrre i documenti che richiedo tipo le ricette, quindi deve imparare dalle comunicazioni").
+- BRANCH: `claude/software-startup-speed-ugqqcf` (dopo POL-PERF-001 e POL-AI-008, commit separati), da `master@e6e8357`.
+- STATUS: RILASCIATO in produzione su istruzione del Product Owner ("Sì" ai tre passi; "Trova la soluzione subito"): tabella `poliedron_memoria` applicata e verificata; `agente-assistente` v31 deployata e verificata; PR di merge del frontend aperta.
+
+- **Database**: migration `20261006120000_pol_ai_009_poliedron_memoria.sql` (nuova tabella `poliedron_memoria`: una riga per voce, privata dell'utente nello studio, RLS su `auth.uid()` + membro attivo, privilegi di default revocati, massimo 300 voci, una sola voce per farmaco).
+- **Edge Function**: `memoria.js` + `index.ts`: legge la memoria dell'utente (con il suo login) e la mette nel prompt; strumenti `ricorda` / `dimentica`; `prepara_ricetta` (verifica il paziente nello studio, non scrive nulla, restituisce `documento`); farmaci frequenti dello studio nel prompt; tolta la regola "ricette nei moduli". Senza tabella la memoria resta spenta (nessun errore).
+- **App**: ricetta con posologia/durata o più farmaci → Poliedron (prima: solo il nome del farmaco); il modulo Ricetta si apre compilato con l'avviso "Compilata da Poliedron. Controlla…"; solo per un paziente dell'elenco dello studio e con il permesso Ricetta. Alla generazione del PDF, le posologie diventano memoria ("Prescrizione abituale", senza dati del paziente). Chat: pulsante "Cosa ricorda Poliedron" con elenco e cancellazione; il file allegato resta "In uso" e accompagna i messaggi successivi finché non si toglie.
+- VALIDATION: `npm test` 893/893 (nuovo `tests/poliedronMemoriaRicette.test.mjs`, 13 test); `npm run build` OK; esbuild su `index.ts` OK. Postgres 16 locale: bootstrap → migration due volte → `supabase/tests/pol_ai_009_poliedron_memoria.sql` PASS (proprietario sì; collega, altro studio, sospeso, anon no; vincoli; tetto 300); senza migration FAIL atteso. Chromium 390×844 su harness temporaneo (rimosso): pannello memoria con 2 voci e cancellazione, file "In uso" rimovibile, DocMedico aperto con 2 farmaci completi e avviso; nessun overflow, nessun errore JS.
+- NON VERIFICATO: comportamento reale del modello (serve il deploy).
+- ORDINE DI RILASCIO: 1) migration in produzione; 2) deploy `agente-assistente` (include POL-AI-008); 3) merge del frontend. Ogni passo è compatibile con il precedente.
+- RILASCIO ESEGUITO (2026-10-06):
+  1. Migration: `apply_migration` andava in timeout (2 volte, nulla applicato, verificato). Causa: il connettore Supabase chiede una conferma per le istruzioni `DROP` (`DROP TRIGGER/POLICY IF EXISTS`), impossibile in questa sessione. Applicata con `execute_sql` in 3 blocchi equivalenti senza `DROP` (oggetti nuovi), `lock_timeout` 5 s. Verificato: RLS attiva, 1 policy (proprietario + membro attivo), trigger, 8 vincoli, grant solo `authenticated` (SELECT/INSERT/UPDATE/DELETE), nessun grant `anon`, 0 righe. **Non registrata in `supabase_migrations.schema_migrations`** (applicata fuori dal registro): il file del repository resta la fonte.
+  2. Edge Function: v29 di produzione verificata identica (byte per byte) alla copia v28 nel repository prima del deploy; deploy v31 (`verify_jwt=true`) di 8 file; i file pubblicati scaricati e confrontati con il repository: tutti identici. Avvio verificato con una chiamata senza login (via `pg_net` dal database: la rete di questa sessione non raggiunge Supabase): risposta del codice `401 {"error":"Sessione non valida"}`.
+  3. Frontend: PR verso `master` e merge.
+- EXACT NEXT ACTION: prova reale del Product Owner in Chat dopo il deploy Vercel ("Ricorda che…", "Fai una ricetta a Mario Rossi di amoxicillina 1 g ogni 8 ore per 6 giorni", allegare un referto).
+
+---
+
+- TASK: POL-AI-008 — Documenti in Poliedron: allegare un PDF o una foto in Chat (Fase 1)
+- TITLE: prima fase della "Missione futura — allegati in Poliedron" (Master Context §32): in Chat Poliedron si allega un PDF o una foto, Poliedron lo legge e risponde. Il file non viene salvato.
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "Lavora al prossimo passo di poliedron , dovrebbe essere documenti").
+- BRANCH: `claude/software-startup-speed-ugqqcf` (stesso branch di POL-PERF-001, commit separati), da `master@e6e8357`.
+- STATUS: PUSHED — nessuna PR aperta (non richiesta). **Edge Function NON deployata**, nessuna modifica al database.
+
+- **Edge Function `agente-assistente` portata nel repository**: copia verbatim della v28 di produzione (commit dedicato), poi modificata. `supabase/functions/_shared/agendaSlots.js` è quello deployato (diverso da `src/lib/agendaSlots.js`, non toccato).
+- **Server** (`allegato.js` + 3 punti in `index.ts`): campo opzionale `allegato: { nome, media_type, data }`; PDF ≤ 6 MB, foto JPEG/PNG/WebP/GIF ≤ 5 MB; rifiutato con `confirm`/`team`; diventa un blocco `document`/`image` (in cache) solo nell'ultimo messaggio dell'utente; la risposta non rimanda indietro il file. Il controllo dei messaggi di testo è invariato.
+- **App**: graffetta nel composer della Chat, chip con nome/dimensione e "Rimuovi"; si può inviare il solo file (testo predefinito); foto sempre ridotte a lato lungo 2048 px JPEG (anche HEIC dove il browser lo apre); nel database solo `metadata.allegato = { nome, tipo, dimensione }`; il messaggio mostra il nome del file; "Riprova" funziona finché il file è in memoria, altrimenti chiede di riallegarlo. Un messaggio con file va sempre al modello (le scorciatoie deterministiche leggono solo testo).
+- VALIDATION: `npm test` 880/880 (nuovo `tests/poliedronAllegati.test.mjs`, 11 test; aggiornata 1 asserzione in `poliedronChatSurfaces` per l'invio del solo file); `npm run build` OK; `index.ts` analizzato con esbuild (sintassi OK; Deno non disponibile). Chromium 390×844 su harness temporaneo (rimosso) con la vera pagina Chat e la vera preparazione file: foto 4000×3000 → JPEG 153 kB; invio del solo file; PDF + testo con Invio; `.txt` rifiutato; rimozione; nessun overflow, nessun errore JS.
+- NON VERIFICATO: risposta reale del modello su un file (richiede il deploy della funzione).
+- ORDINE DI RILASCIO (obbligatorio): 1) deploy di `agente-assistente` da questa cartella (+ `_shared/agendaSlots.js`, `verify_jwt=true`) — retrocompatibile; 2) poi merge del frontend. Al contrario, la versione attuale ignorerebbe il file e risponderebbe senza averlo letto.
+- LIMITI DELLA FASE 1: il file vale solo per il messaggio in cui è allegato (le domande successive vedono la risposta, non il file); un file per messaggio; nessun salvataggio nell'archivio del paziente; solo Chat (non il pannello rapido).
+- EXACT NEXT ACTION: Product Owner: istruzione per deploy della funzione e poi PR/merge; prova reale con un referto/una foto.
+
+---
+
+- TASK: POL-PERF-001 — Avvio dell'app più veloce (download iniziale ridotto)
+- TITLE: all'apertura l'app scaricava ed eseguiva grafici (recharts) e librerie PDF (jsPDF) anche per la sola schermata di login/Home.
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "Vorrei che si aprisse più velocemente tipo immediato il software cosa possiamo fare ?").
+- BRANCH: `claude/software-startup-speed-ugqqcf`, da `master@e6e8357`.
+- STATUS: PUSHED — nessuna PR aperta (non richiesta). Nessuna modifica al database né a produzione.
+
+- **Causa (misurata sulla build)**: `index.html` caricava subito `index` 546 kB + `recharts` 527 kB + `pdf` 359 kB + `supabase` 212 kB (≈1,64 MB, ≈481 kB gzip). Tre motivi: (1) `main.jsx` importava in modo statico le pagine pubbliche, e `FirmaConsenso` → `pdfConsenso.js` → jsPDF; (2) `Dashboard.jsx` importava recharts per i grafici "Grafici e andamento", chiusi di default; (3) `manualChunks` a elenco fisso faceva finire React dentro il chunk di recharts e l'helper di preload di Vite dentro quello di jsPDF, quindi il file iniziale li importava da lì.
+- **Correzione**: pagine pubbliche con `lazyWithRetry` + `Suspense`; nuovo `src/components/DashboardCharts.jsx` (stessi grafici, stesso markup) caricato solo quando si aprono; `vite.config.js` con `manualChunks(id)` che separa `react`, `vite-helpers`, `babel-runtime`, `supabase`, `recharts`, `jspdf`, `pdfjs`.
+- **Risultato**: avvio = `index` 381 kB + `react` 142 kB + `supabase` 212 kB + helper 2 kB (≈737 kB, ≈208 kB gzip): −55% di JavaScript da scaricare ed eseguire.
+- VALIDATION: `npm test` 869/869 (nuovo `tests/startupBundle.test.mjs`, 3 test che falliscono sul codice precedente); `npm run build` OK; Chromium 390×844 su `vite preview`: `/` mostra il login e non richiede recharts/jsPDF/pdf.js; `/firma/<uuid>` e `/prenota/<slug>` caricano la propria pagina (messaggi di errore del componente per token/slug finti), nessun errore JS.
+- NON FATTO (richiede decisione): `PRODUCT_OWNER_DECISION_REQUIRED` — dopo il download, l'avvio aspetta 11 letture complete dal database (tutti i pazienti, tutti gli appuntamenti storici, piani, pagamenti…) prima di mostrare la Home. Per un'apertura "immediata" servirebbe mostrare subito gli ultimi dati salvati sul dispositivo e aggiornarli in background: significa tenere dati sanitari dei pazienti nella memoria del browser (cifrati, cancellati al logout). Non fatto senza decisione esplicita.
+- EXACT NEXT ACTION: Product Owner: PR/merge di questo branch su istruzione; decidere sulla cache locale dei dati.
+
+---
+
 - TASK: POL-WA-003b — Consenso WhatsApp, promemoria automatici, risposte e conferma al paziente
 - TITLE: consenso in anagrafica; promemoria del giorno prima con modello Meta approvato e scheduler orario; risposte "Confermo"/"Devo spostarlo" registrate; conferma automatica al paziente quando lo staff salva una richiesta arrivata da WhatsApp.
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (messaggio verbatim: "Vai", dopo la proposta del piano 003b; decisione già presa in 003a: consenso "Anagrafica paziente").
 - BRANCH: `claude/whatsapp-automation-status-d2ng12`, da `master@5e674e9` (+ commit di documentazione `c20dda3`).
+- STATUS: MERGED — PR #117 (`master@e6e8357`). Lo stato dei passi di rilascio sotto non è stato verificato in questa sessione.
+
 - STATUS: MERGED — PR #117, merge commit `e6e8357`, su istruzione del Product Owner ("Mergia"). Migration applicata in produzione prima del merge, scheduler attivo, Edge Function `whatsapp-webhook` v6 deployata.
 
 - **Migration `20261004160000_pol_wa_003b_promemoria.sql`** (additiva, senza DROP, rieseguibile): `patients.consenso_whatsapp` (default false) + `consenso_whatsapp_il`; `whatsapp_config.promemoria_attivi` (default false), `promemoria_ora` (default 18), `promemoria_template`, `promemoria_lingua`; tabella `whatsapp_promemoria` (una riga per appuntamento, UNIQUE, lettura ai membri dello studio, nessuna scrittura client); `whatsapp_cron_segreto_valido` solo service_role; segreto dello scheduler generato nel DB e tenuto nel Vault; `whatsapp_programma_promemoria(url)` (nessun ruolo client, URL validato) da chiamare una volta per ambiente.

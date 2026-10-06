@@ -26,13 +26,13 @@ export const MODEL_TASK_TYPE = Object.freeze({
 });
 
 /**
- * runModelTask({ taskType, input, history, context, allowedTools, supabaseClient })
+ * runModelTask({ taskType, input, history, context, allowedTools, supabaseClient, attachment })
  * -> Promise<{ text, error }>
  * `allowedTools` is accepted for forward-compatibility with a future
  * tool-using provider — the current adapter does not pass tool access
  * beyond what agente-assistente already exposes server-side.
  */
-export async function runModelTask({ taskType, input, history = [], context, supabaseClient, confirm, team } = {}) {
+export async function runModelTask({ taskType, input, history = [], context, supabaseClient, confirm, team, attachment } = {}) {
   if (!supabaseClient) return { text: null, error: 'MODEL_GATEWAY_NO_CLIENT' };
   if (!input && !confirm) return { text: null, error: 'MODEL_GATEWAY_EMPTY_INPUT' };
   const boundedHistory = history
@@ -48,6 +48,9 @@ export async function runModelTask({ taskType, input, history = [], context, sup
       body: {
         ...(!confirm ? { messages: [...boundedHistory, { role: 'user', content: input }] } : {}),
         confirm,
+        // POL-AI-008: file allegato al messaggio corrente, letto dal modello
+        // solo in questa richiesta (mai nella cronologia, mai salvato).
+        ...(attachment ? { allegato: attachment } : {}),
         // POL-AI-TEAM-002: Clinic Manager / specialist consultation. The
         // server validates it and gives the team read-only tools only.
         ...(team ? { team } : {}),
