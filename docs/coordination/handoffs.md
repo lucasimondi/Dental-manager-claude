@@ -3598,3 +3598,7 @@ Nessuna migrazione. Verificati in sola lettura: colonne `payments` (id bigint se
 
 ### Rollback
 Redeploy della versione precedente di `agente-assistente` (v31) e revert del commit.
+
+### Release (passo 4a)
+- "Mergia" del Product Owner. `agente-assistente` v32 deployata (index.ts, agenda.js, allegato.js, confirmation.js, memoria.js, pagamenti.js, pazienti.js, team.js, `_shared/agendaSlots.js`; verify_jwt true), confrontata byte per byte con il repo (9/9 identici), avvio verificato. CI `verify` verde su `a86ea83`, anteprime Vercel e Netlify OK. PR #135 mergiata.
+- Rollback: redeploy v31 (= master@5d61b1b) e revert.

@@ -3,10 +3,10 @@
 - OWNER: CLAUDE (questa sessione, `claude/software-startup-speed-ugqqcf`). Passaggio di proprietà esplicito del Product Owner (verbatim: "Fai pol 010", dopo la domanda su chi dovesse proseguire POL-AI-010, finora della sessione su `claude/whatsapp-automation-status-d2ng12`). L'altra sessione non deve più lavorare su POL-AI-010 senza nuovo passaggio.
 - DECISIONE DI SICUREZZA (proposta al Product Owner, nessuna obiezione): pagamenti, preventivi e piani di cura dalla chat mostrano sempre un riepilogo e si registrano solo dopo "Conferma" (agenda e pazienti restano a esecuzione diretta).
 - BRANCH: `claude/software-startup-speed-ugqqcf`, da `master@5d61b1b`.
-- STATUS: passo 4a (pagamenti) IMPLEMENTATO e testato, pushato; serve deploy di `agente-assistente` + PR e "Mergia" del Product Owner. Passo 4b (preventivi e piani di cura) da fare.
+- STATUS: passo 4a (pagamenti) RILASCIATO su "Mergia" del Product Owner: `agente-assistente` **v32** in produzione (9 file identici byte per byte al repo, avvio verificato: 401 "Sessione non valida" senza login), PR #135 mergiata. Passo 4b (preventivi e piani di cura) da fare.
 - 4a COSA: "Mario Rossi ha pagato 150 euro con carta" / "registra un pagamento…" → con agente abilitato (premium, autonomia > consulente) Poliedron cerca il paziente e prepara il riepilogo (paziente, importo, data, metodo, stato pagato/sospeso, piano, nota); si registra solo con "Conferma". Altrimenti resta il modulo "Registra incasso". Nessuna migrazione: insert in `payments` con il login dell'utente (RLS `payments_studio`, verificata in sola lettura), id generato come l'app (`uid()`), registro finanziario dai trigger esistenti. Attività di Poliedron: "Pagamento registrato", non ripristinabile.
 - 4a VALIDATION: `npm test` 985/985 (nuovo `tests/agentePagamenti.test.mjs`, 9 test sull'handler reale); `npm run build` OK; bundle esbuild della funzione OK.
-- EXACT NEXT ACTION: deploy `agente-assistente` (tutti i file + `pagamenti.js` + `_shared/agendaSlots.js`), verifica byte per byte, PR; merge su "Mergia"; poi passo 4b.
+- EXACT NEXT ACTION: prova reale del Product Owner ("Mario Rossi ha pagato 50 euro in contanti" → riepilogo → Conferma → Incassi); poi passo 4b.
 
 # Current task — POL-AI-011 (salvare nella scheda il file allegato in Chat)
 - TASK: POL-AI-011 — il file allegato in Chat Poliedron si salva nella scheda del paziente.
