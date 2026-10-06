@@ -1858,6 +1858,17 @@ body:has(.home-widget-grid) #app-scroll {
   background: color-mix(in srgb, var(--brand-accent) 16%, var(--surface-elevated));
   border-color: color-mix(in srgb, var(--brand-accent) 50%, transparent); color: var(--brand-primary);
 }
+.poliedron-wa__clear { flex-shrink: 0; width: 22px; height: 22px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: color-mix(in srgb, var(--text-primary) 40%, transparent); cursor: pointer; }
+.poliedron-wa__search input::-webkit-search-cancel-button { display: none; }
+.poliedron-wa__patient { cursor: default; }
+.poliedron-wa__patient .poliedron-wa__row-text { padding-right: 8px; }
+.poliedron-wa__patient-actions { display: flex; gap: 6px; align-self: center; padding-right: 12px; }
+.poliedron-wa__patient-actions button {
+  min-width: 52px; min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border: 0; border-radius: 14px; background: var(--surface-interactive); color: var(--brand-primary); font: inherit; font-size: 11px; font-weight: 700; cursor: pointer;
+}
+/* While typing in a search field the keyboard is up: the dock steps aside. */
+.poliedron-wa__list:has(input:focus) .poliedron-wa__dock { display: none; }
 .poliedron-wa__none { padding: 28px 16px; text-align: center; font-size: 14px; color: var(--text-muted); }
 .poliedron-wa.is-compact .poliedron-wa__rows { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
 .poliedron-wa__dock {

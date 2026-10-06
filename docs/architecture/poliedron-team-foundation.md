@@ -144,3 +144,9 @@ PO: "La app si apre troppo lentamente, deve essere istantanea come WhatsApp".
 - Ora l'app Poliedron mostra subito l'elenco chat; i dati arrivano in sottofondo. Una pagina chiesta prima che i dati siano pronti (es. Agenda dal dock) si apre appena arrivano, con l'avviso "Apro Agenda…". Il gestionale resta invariato.
 - Conversazione: gli ultimi 40 messaggi sono tenuti sul dispositivo e mostrati subito, poi aggiornati dal server (messaggi e non letti in parallelo). Al logout vengono cancellate le copie locali della chat e del team.
 - Misura con dati simulati lenti (3 s): elenco chat visibile in ~0,6 s.
+
+### Rubrica pazienti, ricerca globale e dock (2026-10-06)
+PO: il tasto Pazienti portava al gestionale (doppione di Studio); ricerca veramente globale con scelta chat/scheda per i pazienti; X per cancellare; dock che sale con la tastiera.
+- Dock: Chat · Agenda · **Pazienti (rubrica dentro Poliedron)** · Richiami · Studio. La rubrica elenca i pazienti in ordine alfabetico con ricerca; ogni paziente ha **Chat** (WhatsApp dello studio) e **Scheda** (apre la scheda paziente sopra la chat).
+- Ricerca dell'elenco chat: pazienti (con Chat/Scheda), chat, messaggi dentro le chat e sezioni dello studio ("Nello studio"). X per cancellare il testo.
+- Mentre si scrive in una ricerca il dock si nasconde e ricompare a tastiera chiusa.
