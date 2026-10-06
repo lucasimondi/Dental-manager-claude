@@ -3355,3 +3355,11 @@ Frontend e funzione: revert dei commit POL-AI-009 (la funzione torna a POL-AI-00
 
 ### EXACT NEXT ACTION
 Product Owner: istruzione per migration, deploy della funzione e merge; prova reale in chat.
+
+### Aggiornamento POL-AI-008 / POL-AI-009 (rilascio, 2026-10-06)
+- Istruzione del Product Owner: "Sì" (ai tre passi), poi "Trova la soluzione subito".
+- Database: `poliedron_memoria` applicata in produzione via `execute_sql` (3 blocchi senza `DROP`; `apply_migration` andava in timeout perché il connettore chiede conferma sulle istruzioni `DROP`, impossibile qui). Verifica: RLS, policy, trigger, vincoli, grant solo `authenticated`, nessun `anon`. Non registrata in `supabase_migrations.schema_migrations`.
+- Edge Function `agente-assistente`: v31 (`verify_jwt=true`), 8 file identici al repository (confronto dopo il deploy); avvio verificato (`401 Sessione non valida` dal codice, chiamata via `pg_net`). La v29 precedente era identica alla v28 del repository.
+- Frontend: PR verso `master` + merge (Vercel al merge).
+- Rollback funzione: rideploy dei file del commit `3c187c5` (v28). Rollback tabella: vedi sopra.
+- EXACT NEXT ACTION: prova reale del Product Owner in Chat.

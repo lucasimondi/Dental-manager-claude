@@ -4,7 +4,7 @@
 - TITLE: memoria per utente; ricetta completa preparata da Poliedron in chat e aperta nel modulo Ricetta da verificare; posologie imparate dalle ricette generate; file allegato che resta in uso.
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "Deve ricordare poliedron, e deve anche produrre i documenti che richiedo tipo le ricette, quindi deve imparare dalle comunicazioni").
 - BRANCH: `claude/software-startup-speed-ugqqcf` (dopo POL-PERF-001 e POL-AI-008, commit separati), da `master@e6e8357`.
-- STATUS: PUSHED — nessuna PR. **Migration NON applicata, Edge Function NON deployata.**
+- STATUS: RILASCIATO in produzione su istruzione del Product Owner ("Sì" ai tre passi; "Trova la soluzione subito"): tabella `poliedron_memoria` applicata e verificata; `agente-assistente` v31 deployata e verificata; PR di merge del frontend aperta.
 
 - **Database**: migration `20261006120000_pol_ai_009_poliedron_memoria.sql` (nuova tabella `poliedron_memoria`: una riga per voce, privata dell'utente nello studio, RLS su `auth.uid()` + membro attivo, privilegi di default revocati, massimo 300 voci, una sola voce per farmaco).
 - **Edge Function**: `memoria.js` + `index.ts`: legge la memoria dell'utente (con il suo login) e la mette nel prompt; strumenti `ricorda` / `dimentica`; `prepara_ricetta` (verifica il paziente nello studio, non scrive nulla, restituisce `documento`); farmaci frequenti dello studio nel prompt; tolta la regola "ricette nei moduli". Senza tabella la memoria resta spenta (nessun errore).
@@ -12,7 +12,11 @@
 - VALIDATION: `npm test` 893/893 (nuovo `tests/poliedronMemoriaRicette.test.mjs`, 13 test); `npm run build` OK; esbuild su `index.ts` OK. Postgres 16 locale: bootstrap → migration due volte → `supabase/tests/pol_ai_009_poliedron_memoria.sql` PASS (proprietario sì; collega, altro studio, sospeso, anon no; vincoli; tetto 300); senza migration FAIL atteso. Chromium 390×844 su harness temporaneo (rimosso): pannello memoria con 2 voci e cancellazione, file "In uso" rimovibile, DocMedico aperto con 2 farmaci completi e avviso; nessun overflow, nessun errore JS.
 - NON VERIFICATO: comportamento reale del modello (serve il deploy).
 - ORDINE DI RILASCIO: 1) migration in produzione; 2) deploy `agente-assistente` (include POL-AI-008); 3) merge del frontend. Ogni passo è compatibile con il precedente.
-- EXACT NEXT ACTION: Product Owner: istruzione per i tre passi di rilascio; prova reale ("Ricorda che…", "Fai una ricetta a Mario Rossi di amoxicillina 1 g ogni 8 ore per 6 giorni").
+- RILASCIO ESEGUITO (2026-10-06):
+  1. Migration: `apply_migration` andava in timeout (2 volte, nulla applicato, verificato). Causa: il connettore Supabase chiede una conferma per le istruzioni `DROP` (`DROP TRIGGER/POLICY IF EXISTS`), impossibile in questa sessione. Applicata con `execute_sql` in 3 blocchi equivalenti senza `DROP` (oggetti nuovi), `lock_timeout` 5 s. Verificato: RLS attiva, 1 policy (proprietario + membro attivo), trigger, 8 vincoli, grant solo `authenticated` (SELECT/INSERT/UPDATE/DELETE), nessun grant `anon`, 0 righe. **Non registrata in `supabase_migrations.schema_migrations`** (applicata fuori dal registro): il file del repository resta la fonte.
+  2. Edge Function: v29 di produzione verificata identica (byte per byte) alla copia v28 nel repository prima del deploy; deploy v31 (`verify_jwt=true`) di 8 file; i file pubblicati scaricati e confrontati con il repository: tutti identici. Avvio verificato con una chiamata senza login (via `pg_net` dal database: la rete di questa sessione non raggiunge Supabase): risposta del codice `401 {"error":"Sessione non valida"}`.
+  3. Frontend: PR verso `master` e merge.
+- EXACT NEXT ACTION: prova reale del Product Owner in Chat dopo il deploy Vercel ("Ricorda che…", "Fai una ricetta a Mario Rossi di amoxicillina 1 g ogni 8 ore per 6 giorni", allegare un referto).
 
 ---
 
