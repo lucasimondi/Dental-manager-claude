@@ -16,6 +16,26 @@ const mergeMessages = (current, incoming) => {
   return [...byId.values()].sort((a, b) => a.id - b.id);
 };
 
+// Instant opening, WhatsApp style: the last messages of this user's chat are
+// kept on the device and shown at once, then refreshed from the server. The
+// copy is removed at logout (see App.jsx handleLogout).
+export const CHAT_CACHE_PREFIX = 'poliedron-chat-cache:v1:';
+const CACHE_MESSAGES = 40;
+const cacheKeyFor = (studioId, userId) => (studioId && userId ? `${CHAT_CACHE_PREFIX}${studioId}:${userId}` : null);
+const readCache = (key) => {
+  if (!key) return null;
+  try {
+    const value = JSON.parse(window.localStorage.getItem(key) || 'null');
+    return value?.conversation?.id && Array.isArray(value.messages) ? value : null;
+  } catch { return null; }
+};
+const writeCache = (key, conversation, messages) => {
+  if (!key || !conversation?.id) return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify({ conversation, messages: messages.slice(-CACHE_MESSAGES) }));
+  } catch { /* storage full or blocked: the chat still works */ }
+};
+
 export default function usePoliedronConversation({ client, studioId, userId }) {
   const [conversation, setConversation] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -60,15 +80,23 @@ export default function usePoliedronConversation({ client, studioId, userId }) {
     setError(null);
     if (!client || !studioId || !userId) return undefined;
 
-    setLoading(true);
+    const cached = readCache(cacheKeyFor(studioId, userId));
+    if (cached) {
+      setConversation(cached.conversation);
+      setMessages(cached.messages);
+      setHasOlder(cached.messages.length >= CACHE_MESSAGES);
+    }
+    setLoading(!cached);
     (async () => {
       try {
-        const primary = await getOrCreatePrimaryConversation({ client, studioId, userId });
-        const recent = await loadConversationMessages({ client, conversationId: primary.id });
-        const unread = await countUnreadMessages({ client, conversationId: primary.id });
+        const primary = cached?.conversation || await getOrCreatePrimaryConversation({ client, studioId, userId });
+        const [recent, unread] = await Promise.all([
+          loadConversationMessages({ client, conversationId: primary.id }),
+          countUnreadMessages({ client, conversationId: primary.id }),
+        ]);
         if (cancelled) return;
         setConversation(primary);
-        setMessages(recent.messages);
+        setMessages((current) => (cached ? mergeMessages(current, recent.messages) : recent.messages));
         setHasOlder(recent.hasOlder);
         setUnreadCount(unread);
       } catch (nextError) {
@@ -79,6 +107,10 @@ export default function usePoliedronConversation({ client, studioId, userId }) {
     })();
     return () => { cancelled = true; };
   }, [client, studioId, userId, initializationAttempt]);
+
+  useEffect(() => {
+    writeCache(cacheKeyFor(studioId, userId), conversation, messages);
+  }, [conversation, messages, studioId, userId]);
 
   useEffect(() => {
     if (!conversation?.id) return undefined;
