@@ -7,6 +7,7 @@
 import { classifyIntent, INTENT, extractAmount } from './intentEngine.js';
 import { federatedSearch, suggestedIdle } from './searchEngine.js';
 import { runModelTask, MODEL_TASK_TYPE } from './modelGateway.js';
+import { isSaveToRecordRequest, saveTargetCandidates } from './attachmentToPatient.js';
 
 /* POL-AI-009: a prescription prepared by agente-assistente (prepara_ricetta).
    Only the shape is checked here; Poliedron.jsx opens it only for a patient
@@ -150,6 +151,15 @@ export async function processQuery({
   // with the file — the deterministic routes below read only text and would
   // answer without ever looking at the document.
   if (attachment) {
+    // POL-AI-011: "salvalo nella scheda di …" — no model call: the app asks
+    // which patient (pre-selected when the name is unambiguous) and saves the
+    // file in that patient's "Foto" section after an explicit confirmation.
+    if (isSaveToRecordRequest(q)) {
+      return {
+        intent: 'SAVE_ATTACHMENT', entities: {}, answer: null, confirmationRequired: false, suggestedActions: [], searchResults: [],
+        attachmentSave: { candidates: saveTargetCandidates(q, sources.patients || []) },
+      };
+    }
     const base = { intent: INTENT.ASK, entities: {}, answer: null, confirmationRequired: false, suggestedActions: [], searchResults: [] };
     if (!allowModel) return { ...base, awaitingSubmit: true };
     const modelResult = await runModelTask({

@@ -3541,3 +3541,36 @@ Product Owner: istruzione per migration, deploy della funzione e merge; prova re
 - Frontend: PR verso `master` + merge (Vercel al merge).
 - Rollback funzione: rideploy dei file del commit `3c187c5` (v28). Rollback tabella: vedi sopra.
 - EXACT NEXT ACTION: prova reale del Product Owner in Chat.
+
+---
+
+## Aggiornamento POL-PERF-001 / POL-AI-008 / POL-AI-009 (merge)
+- PR #133 mergiata su istruzione del Product Owner ("Sì" ai tre passi): `master@81c72b0`. CI `verify` verde (2 run), anteprime Vercel e Netlify OK; deploy Vercel di produzione READY su `81c72b0`.
+
+## POL-AI-011 — Salvare nella scheda del paziente il file allegato in Chat
+
+- TASK ID: POL-AI-011
+- PREVIOUS AGENT: CLAUDE (POL-AI-009, PR #133 mergiata).
+- BRANCH: `claude/software-startup-speed-ugqqcf`, ripartito da `master@81c72b0`.
+- REQUEST (verbatim, Product Owner): "Salvare file nella scheda".
+
+### Completed work
+1. `src/lib/poliedron/attachmentToPatient.js`: riconoscimento della richiesta ("salva/archivia/metti… nella scheda/cartella/fascicolo"), candidati dal testo (`trovaPazienteInTesto`, poi `cercaPazienti` sul nome dopo "scheda di …"), percorso identico a `PatientPhotos.jsx`, caricamento in `patient-files` con `upsert:false`.
+2. `poliedraCore.js`: con un file allegato e una richiesta di salvataggio restituisce `attachmentSave { candidates }` senza chiamare il modello.
+3. `PoliedronSaveAttachment.jsx` (scheda di conferma), pulsante sul file in `PoliedronChatPage.jsx`, salvataggio e messaggio in `Poliedron.jsx`; stili in `PremiumVisualSystem.css`.
+
+### Database / deployment
+Nessuna modifica al database né alle Edge Function. Verificato in sola lettura: `patient-files` privato, policy `patient_files_studio_{select,insert,update,delete}`, nessun limite di tipo/dimensione. Solo frontend (Vercel al merge).
+
+### Tests
+`npm test` 976/976; build OK; Chromium 390×844 su harness temporaneo rimosso (flusso completo con caricamento simulato).
+
+### Risks
+- Caricamento reale non provato con un login.
+- Le foto si salvano nella versione ridotta (lato lungo 2048 px, JPEG) usata per la lettura; i PDF identici all'originale.
+
+### Rollback
+Revert del commit.
+
+### EXACT NEXT ACTION
+"Mergia" del Product Owner, poi prova reale.

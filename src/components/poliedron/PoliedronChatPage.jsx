@@ -15,6 +15,7 @@ import useChatDictation from './useChatDictation.js';
 import { submitChatDraft } from '../../lib/poliedron/phoneApp.js';
 import poliedroGem from '../../assets/icon-poliedra-gem.png';
 import PoliedronMemoryPanel from './PoliedronMemoryPanel';
+import PoliedronSaveAttachment from './PoliedronSaveAttachment';
 import { ATTACHMENT_ACCEPT, ATTACHMENT_ONLY_TEXT, formatAttachmentSize } from '../../lib/poliedron/chatAttachment.js';
 
 const NEAR_BOTTOM_PX = 120;
@@ -47,6 +48,7 @@ const formatTime = (value) => {
 
 function StructuredResult({
   state, onModelConfirmation,
+  attachment, patients, attachmentSaving, onSaveAttachment, onCancelSaveAttachment,
   onSelectResult,
   onConfirmAction,
   onModifyAction,
@@ -55,6 +57,19 @@ function StructuredResult({
   actionRunResult,
 }) {
   if (!state) return null;
+  if (state.attachmentSave) {
+    return (
+      <PoliedronSaveAttachment
+        key={(state.attachmentSave.candidates || []).map((p) => p.id).join(',') || 'nessuno'}
+        attachment={attachment}
+        candidates={state.attachmentSave.candidates}
+        patients={patients}
+        busy={attachmentSaving}
+        onSave={onSaveAttachment}
+        onCancel={onCancelSaveAttachment}
+      />
+    );
+  }
   if (state.modelConfirmation) return <PoliedronModelConfirmation pending={state.modelConfirmation} busy={actionRunning} onDecision={onModelConfirmation} />;
   if (state.answer) return <p role="status" style={{ whiteSpace: 'pre-wrap' }}>{state.answer}</p>;
   if (state.intelligence) {
@@ -120,6 +135,10 @@ export default function PoliedronChatPage({
   attachmentPreparing = false,
   onAttachFile,
   onRemoveAttachment,
+  onRequestSaveAttachment,
+  onSaveAttachment,
+  onCancelSaveAttachment,
+  attachmentSaving = false,
   memoryClient = null,
   navItems = [],
   onNavigate,
@@ -639,6 +658,11 @@ export default function PoliedronChatPage({
         )}
 
         <StructuredResult
+          attachment={attachment}
+          patients={patients}
+          attachmentSaving={attachmentSaving}
+          onSaveAttachment={onSaveAttachment}
+          onCancelSaveAttachment={onCancelSaveAttachment}
           onModelConfirmation={onModelConfirmation}
           state={structuredState}
           onSelectResult={onSelectResult}
@@ -679,6 +703,11 @@ export default function PoliedronChatPage({
             {attachment && !attachmentPreparing && (
               <>
                 <small>{formatAttachmentSize(attachment.size)}</small>
+                {onRequestSaveAttachment && (
+                  <button type="button" className="poliedron-chat__attachment-save" onClick={onRequestSaveAttachment} disabled={sending || attachmentSaving} aria-label="Salva nella scheda del paziente" title="Salva nella scheda del paziente">
+                    <Ic n="folder" s={14} />
+                  </button>
+                )}
                 <button type="button" onClick={onRemoveAttachment} disabled={sending} aria-label={attachment.inUse ? 'Smetti di usare il file' : 'Rimuovi allegato'}>
                   <Ic n="x" s={14} />
                 </button>
