@@ -17,7 +17,7 @@ if (isPoliedronAppPath(window.location.pathname)) {
     else link.href = '/poliedron.webmanifest';
   });
   document.querySelector('meta[name="apple-mobile-web-app-title"]')?.setAttribute('content', 'Poliedron');
-  document.querySelector('link[rel="apple-touch-icon"]')?.setAttribute('href', '/poliedron-180.png');
+  document.querySelector('link[rel="apple-touch-icon"]')?.setAttribute('href', '/poliedron-v2-180.png');
 }
 
 
