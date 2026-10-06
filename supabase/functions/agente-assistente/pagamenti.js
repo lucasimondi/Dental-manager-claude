@@ -143,7 +143,7 @@ export async function executePagamenti(client, proposal) {
     .insert({ id: nuovoIdPagamento(), ...dati, studio_id: proposal.studioId, user_id: proposal.userId })
     .select('id, paziente_id, piano_id, data, importo, metodo, nota, stato')
     .single();
-  if (error || !data) throw new Error('Pagamento non registrato: ' + (error?.message || 'errore sconosciuto'));
+  if (error || !data) throw new Error(error?.message || 'errore sconosciuto.');
   return {
     text: `Fatto. ${proposal.pagamenti.done}`,
     changed: ['payments'],
