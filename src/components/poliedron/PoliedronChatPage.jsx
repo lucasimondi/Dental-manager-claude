@@ -9,7 +9,7 @@ import PoliedronAttivita from './PoliedronAttivita';
 import { useTeamState, TeamThread, TeamAvatar, GroupForm } from './PoliedronTeam';
 import { contactKey } from '../../lib/poliedron/team/threads.js';
 import PatientThread, { PatientAvatar } from './PoliedronPatientChat.jsx';
-import { patientChatKey, patientIdFromKey, patientName, searchPatients, searchMessages } from '../../lib/poliedron/team/patientChat.js';
+import { patientChatKey, patientIdFromKey, patientName, searchPatients, searchMessages, parseNewPatient, sameNamePatients } from '../../lib/poliedron/team/patientChat.js';
 import PoliedronInstall from './PoliedronInstall.jsx';
 import useChatDictation from './useChatDictation.js';
 import { submitChatDraft } from '../../lib/poliedron/phoneApp.js';
@@ -148,6 +148,7 @@ export default function PoliedronChatPage({
   teamIdentity,
   patients = [],
   onOpenPatient,
+  onCreatePatient,
 }) {
   const [draft, setDraft] = useState('');
   const [showActivity, setShowActivity] = useState(false);
@@ -157,6 +158,9 @@ export default function PoliedronChatPage({
   // null | 'menu' (Nuova chat) | 'group' | 'patient'
   const [newChat, setNewChat] = useState(null);
   const [patientQuery, setPatientQuery] = useState('');
+  // New patient: form fields (prefilled from a search) and save state.
+  const [newPatient, setNewPatient] = useState({ nome: '', cognome: '', telefono: '' });
+  const [creating, setCreating] = useState(null); // null | 'saving' | error message
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('tutte');
   const team = useTeamState(teamIdentity?.studioId, teamIdentity?.userId);
@@ -414,6 +418,48 @@ export default function PoliedronChatPage({
       </span>
     </div>
   );
+  // New patient, two ways: the "Aggiungi paziente" form, or one tap on the
+  // "Crea paziente …" row that appears when a search reads "Nome Cognome tel".
+  const createPatient = async (data, afterQuery) => {
+    if (!onCreatePatient || creating === 'saving') return null;
+    setCreating('saving');
+    try {
+      const saved = await onCreatePatient({ nome: data.nome.trim(), cognome: data.cognome.trim(), telefono: data.telefono?.trim() || null });
+      setCreating(null);
+      setNewPatient({ nome: '', cognome: '', telefono: '' });
+      setPatientQuery(afterQuery ?? patientName(saved));
+      setNewChat('rubrica');
+      return saved;
+    } catch (error) {
+      setCreating(`Scheda non creata: ${error?.message || 'riprova'}.`);
+      return null;
+    }
+  };
+  const openAddPatient = (prefill = null) => {
+    setCreating(null);
+    setNewPatient({ nome: prefill?.nome || '', cognome: prefill?.cognome || '', telefono: prefill?.telefono || '' });
+    setNewChat('addPatient');
+  };
+  const createFromSearch = (text) => {
+    if (!onCreatePatient) return null;
+    const candidate = parseNewPatient(text);
+    if (!candidate) return null;
+    const twins = sameNamePatients(patients, candidate);
+    const samePhone = candidate.telefono && twins.some((p) => String(p.telefono || '').replace(/\D/g, '') === candidate.telefono.replace(/\D/g, ''));
+    if (samePhone) return null;
+    return (
+      <div className="poliedron-wa__create">
+        <button type="button" className="poliedron-wa__row" onClick={() => createPatient(candidate, text)} disabled={creating === 'saving'} aria-label={`Crea paziente ${candidate.nome} ${candidate.cognome}`}>
+          <span className="poliedron-team__avatar" data-kind="action" aria-hidden="true"><Ic n="plus" s={20} /></span>
+          <span className="poliedron-wa__row-text">
+            <span className="poliedron-wa__row-top"><strong>{creating === 'saving' ? 'Creo la scheda…' : `Crea paziente ${candidate.nome} ${candidate.cognome}`}</strong></span>
+            <small>{[candidate.telefono, twins.length ? 'esiste già un paziente con questo nome' : 'nuova scheda nel gestionale'].filter(Boolean).join(' · ')}</small>
+          </span>
+        </button>
+        {creating && creating !== 'saving' && <p className="poliedron-wa__create-error" role="alert">{creating}</p>}
+      </div>
+    );
+  };
   const searchField = (value, setValue, placeholder, label, autoFocus = false) => (
     <label className="poliedron-wa__search">
       <Ic n="srch" s={18} />
@@ -457,6 +503,30 @@ export default function PoliedronChatPage({
         </div>
       </aside>
     );
+  } else if (newChat === 'addPatient') {
+    const valid = newPatient.nome.trim() && newPatient.cognome.trim();
+    const twins = valid ? sameNamePatients(patients, { nome: newPatient.nome.trim(), cognome: newPatient.cognome.trim() }) : [];
+    chatList = (
+      <aside className="poliedron-wa__list" aria-label="Nuovo paziente">
+        {subHeader('Nuovo paziente', 'Crea la scheda nel gestionale', () => setNewChat('rubrica'))}
+        <div className="poliedron-wa__rows">
+          <form
+            className="poliedron-team__form poliedron-wa__form"
+            onSubmit={(e) => { e.preventDefault(); if (valid) createPatient(newPatient); }}
+          >
+            <input value={newPatient.nome} onChange={(e) => setNewPatient((v) => ({ ...v, nome: e.target.value }))} placeholder="Nome" aria-label="Nome" autoComplete="off" autoCapitalize="words" maxLength={100} autoFocus />
+            <input value={newPatient.cognome} onChange={(e) => setNewPatient((v) => ({ ...v, cognome: e.target.value }))} placeholder="Cognome" aria-label="Cognome" autoComplete="off" autoCapitalize="words" maxLength={100} />
+            <input value={newPatient.telefono} onChange={(e) => setNewPatient((v) => ({ ...v, telefono: e.target.value }))} placeholder="Telefono (facoltativo)" aria-label="Telefono" type="tel" inputMode="tel" maxLength={30} />
+            {twins.length > 0 && <p className="poliedron-wa__create-note">Attenzione: esiste già un paziente {newPatient.nome.trim()} {newPatient.cognome.trim()}.</p>}
+            {creating && creating !== 'saving' && <p role="alert">{creating}</p>}
+            <span className="poliedron-team__form-actions">
+              <button type="submit" disabled={!valid || creating === 'saving'}>{creating === 'saving' ? 'Salvo…' : 'Crea paziente'}</button>
+              <button type="button" onClick={() => setNewChat('rubrica')}>Annulla</button>
+            </span>
+          </form>
+        </div>
+      </aside>
+    );
   } else if (newChat === 'patient' || newChat === 'rubrica') {
     const rubrica = newChat === 'rubrica';
     const list = sortedPatients(searchPatients(patients, patientQuery, patientQuery.trim() ? 60 : 100000)).slice(0, 200);
@@ -465,14 +535,20 @@ export default function PoliedronChatPage({
         {rubrica ? (
           <div className="poliedron-wa__topbar">
             <div className="poliedron-wa__menu-left">{optionsMenu}</div>
+            {onCreatePatient && (
+              <button type="button" className="poliedron-wa__new" aria-label="Aggiungi paziente" onClick={() => openAddPatient(parseNewPatient(patientQuery))}>
+                <Ic n="plus" s={24} c="#fff" />
+              </button>
+            )}
           </div>
         ) : subHeader('Scrivi a un paziente', 'Il messaggio parte dal WhatsApp dello studio', () => setNewChat('menu'))}
         <div className="poliedron-wa__rows">
           {rubrica && <h1 className="poliedron-wa__title">Pazienti</h1>}
-          {searchField(patientQuery, setPatientQuery, 'Cerca per nome o telefono', 'Cerca paziente', !rubrica)}
+          {searchField(patientQuery, setPatientQuery, 'Cerca o scrivi Nome Cognome telefono', 'Cerca paziente', !rubrica)}
+          {createFromSearch(patientQuery)}
           <ul>
             {list.map((p) => <li key={p.id}>{patientRow(p)}</li>)}
-            {!list.length && <li className="poliedron-wa__none">{patients.length ? 'Nessun paziente trovato.' : 'Carico i pazienti…'}</li>}
+            {!list.length && !(onCreatePatient && parseNewPatient(patientQuery)) && <li className="poliedron-wa__none">{patients.length ? 'Nessun paziente trovato. Scrivi "Nome Cognome telefono" per crearlo.' : 'Carico i pazienti…'}</li>}
           </ul>
           {list.length === 200 && <p className="poliedron-wa__none">Scrivi un nome per vedere gli altri pazienti.</p>}
         </div>
@@ -497,6 +573,7 @@ export default function PoliedronChatPage({
         <div className="poliedron-wa__rows">
           <ul>
             {entry('wa', 'Scrivi a un paziente', 'Messaggio WhatsApp dal numero dello studio', () => setNewChat('patient'))}
+            {onCreatePatient && entry('pz', 'Nuovo paziente', 'Crea la scheda nel gestionale', () => openAddPatient())}
             {askTeam && entry('users', 'Nuovo gruppo', 'Più specialisti con un obiettivo comune', () => setNewChat('group'))}
           </ul>
           <h2 className="poliedron-wa__section">Assistenti</h2>
@@ -525,6 +602,7 @@ export default function PoliedronChatPage({
               ))}
             </div>
           )}
+          {needle && createFromSearch(search)}
           {foundPatients.length > 0 && (
             <>
               <h2 className="poliedron-wa__section">Pazienti</h2>
@@ -566,7 +644,7 @@ export default function PoliedronChatPage({
               </ul>
             </>
           )}
-          {needle && !foundPatients.length && !visibleRows.length && !foundMessages.length && !foundSections.length && (
+          {needle && !foundPatients.length && !visibleRows.length && !foundMessages.length && !foundSections.length && !(onCreatePatient && parseNewPatient(search)) && (
             <p className="poliedron-wa__none">Nessun risultato per "{search.trim()}".</p>
           )}
         </div>
