@@ -156,3 +156,9 @@ PO: "Non rendere obbligatorio il consenso per scrivere al paziente, cerchiamo pi
 - La chat con il paziente blocca solo se manca il telefono; senza consenso mostra un promemoria ("Consenso WhatsApp non registrato in scheda") ma permette l'invio.
 - In alto nella chat del paziente c'è **Scheda** per aprire la sua scheda.
 - **PENDING_PO_DECISION — consenso WhatsApp nella chat pazienti**: definire come gestirlo (es. richiesta di consenso al primo messaggio, registrazione rapida dalla chat, regole per i messaggi di servizio). Da riprendere con il PO prima dell'invio diretto via WhatsApp Business.
+
+### Nuovo paziente da Poliedron (2026-10-06)
+PO: inserimento paziente "come la rubrica del telefono", che crea la scheda nel gestionale; poi "mettiamo la duplice funzione, quindi anche il tasto aggiungi paziente".
+- **Pulsante**: "+" nella rubrica Pazienti e voce "Nuovo paziente" in Nuova chat → schermata con freccia indietro, Nome, Cognome, Telefono (facoltativo); avviso se esiste già un paziente con lo stesso nome.
+- **Dalla ricerca**: scrivendo "Nome Cognome telefono" (in rubrica o nella ricerca globale) compare "+ Crea paziente …": un tocco crea la scheda. Non compare se lo stesso nome con lo stesso telefono esiste già; segnala gli omonimi. Nessuna creazione automatica senza tocco (la ricerca cambia a ogni lettera).
+- Salvataggio con la stessa scrittura del gestionale (`DB.insert('dm_p')`, studio e utente dalla sessione, RLS invariata); il paziente compare subito con Chat e Scheda.

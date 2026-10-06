@@ -30,3 +30,20 @@ test('message search spans chats, newest first, ignores one-letter queries', () 
   assert.deepEqual(hits.map((h) => h.key), ['patient:7', 'poliedron']);
   assert.deepEqual(searchMessages({ poliedron: [{ id: 1, content: 'a' }] }, 'a'), []);
 });
+
+import { parseNewPatient, sameNamePatients } from '../src/lib/poliedron/team/patientChat.js';
+test('new contact from the search box: name, surname and optional phone', () => {
+  assert.deepEqual(parseNewPatient('mario rossi 333 1234567'), { nome: 'Mario', cognome: 'Rossi', telefono: '333 1234567' });
+  assert.deepEqual(parseNewPatient('Mario De Luca +39 333-1234567'), { nome: 'Mario', cognome: 'De Luca', telefono: '+39 333-1234567' });
+  assert.deepEqual(parseNewPatient("anna d'amico"), { nome: 'Anna', cognome: "D'Amico", telefono: null });
+  assert.equal(parseNewPatient('rossi'), null, 'one word is a search, not a contact');
+  assert.equal(parseNewPatient('333 1234567'), null, 'a phone alone is a search');
+  assert.equal(parseNewPatient('mario 333 rossi'), null, 'surname after the phone is ambiguous');
+  assert.equal(parseNewPatient('mario rossi 12'), null, 'phone too short');
+  assert.equal(parseNewPatient('mario r0ssi'), null);
+});
+test('same-name patients are found case-insensitively', () => {
+  const list = [{ id: 1, nome: 'Mario', cognome: 'Rossi' }, { id: 2, nome: 'Maria', cognome: 'Rossi' }];
+  assert.deepEqual(sameNamePatients(list, { nome: 'mario', cognome: 'ROSSI' }).map((p) => p.id), [1]);
+  assert.deepEqual(sameNamePatients(list, null), []);
+});

@@ -834,6 +834,13 @@ export default function App() {
         richiami={richiami}
         impegni={impegni}
         goSchedaPaz={goSchedaPaz}
+        onCreatePatient={async (data) => {
+          // New patient from Poliedron (rubrica or search): saved at once, then
+          // added to the list without re-sending it through the sync setter.
+          const saved = await DB.insert('dm_p', data);
+          setPatients((current) => [...current, saved]);
+          return saved;
+        }}
         features={features}
         isStudioAdmin={isStudioAdmin}
         vertical={studioInfo?.vertical}
