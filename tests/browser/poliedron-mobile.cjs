@@ -243,7 +243,8 @@ const { chromium: pw } = require("playwright");
           .getByRole("button", { name: "Pazienti", exact: true })
           .click();
         await page
-          .getByRole("button", { name: "← Torna a Poliedron", exact: true })
+          .locator(".poliedron-mobile-dock")
+          .getByRole("button", { name: "Chat", exact: true })
           .click();
         await page.getByRole("button", { name: "Chat con Poliedron" }).click();
         await page.locator(".poliedron-chat__message").last().waitFor();
