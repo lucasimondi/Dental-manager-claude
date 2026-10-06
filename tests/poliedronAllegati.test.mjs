@@ -176,7 +176,7 @@ test('Edge Function wiring: validated before use, not allowed with confirmations
 test('Chat UI: paperclip, removable file chip, file-only send, retry needs the file in memory', () => {
   assert.match(chatPage, /aria-label="Allega un PDF o una foto"/);
   assert.match(chatPage, /accept=\{ATTACHMENT_ACCEPT\}/);
-  assert.match(chatPage, /aria-label="Rimuovi allegato"/);
+  assert.match(chatPage, /'Rimuovi allegato'/);
   assert.match(chatPage, /const value = draft\.trim\(\) \|\| \(attachment \? ATTACHMENT_ONLY_TEXT : ''\);/);
   assert.match(chatPage, /message\.metadata\?\.allegato/);
   assert.match(controller, /attachmentsByRequestRef\.current\.get\(retryMessage\.request_id\)/);

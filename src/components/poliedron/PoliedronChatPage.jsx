@@ -4,6 +4,7 @@ import PoliedronActionPreview from './PoliedronActionPreview';
 import PoliedronActionPreviewLevel2 from './PoliedronActionPreviewLevel2';
 import PoliedronIntelligenceResults from './PoliedronIntelligenceResults';
 import PoliedronSearchResults from './PoliedronSearchResults';
+import PoliedronMemoryPanel from './PoliedronMemoryPanel';
 import { ATTACHMENT_ACCEPT, ATTACHMENT_ONLY_TEXT, formatAttachmentSize } from '../../lib/poliedron/chatAttachment.js';
 
 const NEAR_BOTTOM_PX = 120;
@@ -88,6 +89,7 @@ export default function PoliedronChatPage({
   attachmentPreparing = false,
   onAttachFile,
   onRemoveAttachment,
+  memoryClient = null,
   navItems = [],
   onNavigate,
 }) {
@@ -96,6 +98,7 @@ export default function PoliedronChatPage({
   const nearBottomRef = useRef(true);
   const initializedRef = useRef(false);
   const fileInputRef = useRef(null);
+  const [memoriaAperta, setMemoriaAperta] = useState(false);
   const sendDisabled = loading || sending || attachmentPreparing || (!draft.trim() && !attachment);
 
   useEffect(() => {
@@ -147,6 +150,18 @@ export default function PoliedronChatPage({
           <h1>Chat Polyedron</h1>
           <p>La linea diretta persistente con il tuo Polyedron</p>
         </div>
+        {memoryClient && (
+          <button
+            type="button"
+            className="poliedron-chat__memory-toggle"
+            onClick={() => setMemoriaAperta((aperta) => !aperta)}
+            aria-expanded={memoriaAperta}
+            aria-label="Cosa ricorda Poliedron"
+            title="Cosa ricorda Poliedron"
+          >
+            <Ic n="book" s={16} />
+          </button>
+        )}
         {navItems.length > 0 && (
           <label className="poliedron-chat__nav">
             <Ic n="back" s={15} />
@@ -166,6 +181,10 @@ export default function PoliedronChatPage({
           </label>
         )}
       </header>
+
+      {memoryClient && memoriaAperta && (
+        <PoliedronMemoryPanel client={memoryClient} onClose={() => setMemoriaAperta(false)} />
+      )}
 
       <div
         ref={scrollRef}
@@ -268,12 +287,12 @@ export default function PoliedronChatPage({
           <div className="poliedron-chat__attachment" aria-live="polite">
             <Ic n="file" s={15} />
             <span className="poliedron-chat__attachment-name">
-              {attachmentPreparing ? 'Preparo il file…' : attachment.name}
+              {attachmentPreparing ? 'Preparo il file…' : attachment.inUse ? `In uso: ${attachment.name}` : attachment.name}
             </span>
             {attachment && !attachmentPreparing && (
               <>
                 <small>{formatAttachmentSize(attachment.size)}</small>
-                <button type="button" onClick={onRemoveAttachment} disabled={sending} aria-label="Rimuovi allegato">
+                <button type="button" onClick={onRemoveAttachment} disabled={sending} aria-label={attachment.inUse ? 'Smetti di usare il file' : 'Rimuovi allegato'}>
                   <Ic n="x" s={14} />
                 </button>
               </>

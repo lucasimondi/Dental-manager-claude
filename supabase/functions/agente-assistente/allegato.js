@@ -2,10 +2,10 @@
 // Chat Poliedron. Logica pura (niente rete, niente database), testata da
 // tests/poliedronAllegati.test.mjs.
 //
-// Il file arriva in base64 insieme alla richiesta, viene letto dal modello
-// solo nel turno corrente e non viene salvato da nessuna parte: la
-// cronologia della chat contiene solo il testo e, nei metadata del
-// messaggio, nome/tipo/dimensione.
+// Il file arriva in base64 insieme alla richiesta (l'app lo rimanda con
+// ogni messaggio finché l'utente lo tiene allegato) e non viene salvato da
+// nessuna parte: la cronologia della chat contiene solo il testo e, nei
+// metadata del messaggio, nome/tipo/dimensione.
 
 export const TIPI_ALLEGATO = Object.freeze({
   'application/pdf': 'document',
@@ -53,7 +53,7 @@ export function messaggiConAllegato(messaggi, allegato) {
     source: { type: 'base64', media_type: allegato.tipo, data: allegato.dati },
     cache_control: { type: 'ephemeral' },
   };
-  const testo = `${ultimo.content}\n\n(File allegato: "${allegato.nome}". Non viene salvato: se servono dati dal file, riportali nella risposta.)`;
+  const testo = `${ultimo.content}\n\n(File allegato: "${allegato.nome}". L'utente lo tiene allegato ai messaggi finché gli serve; non viene archiviato. Se contiene qualcosa che l'utente vuole ricordare in futuro, usa ricorda.)`;
   return [...messaggi.slice(0, -1), { role: 'user', content: [blocco, { type: 'text', text: testo }] }];
 }
 

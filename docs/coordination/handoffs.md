@@ -3309,3 +3309,49 @@ Frontend: revert del commit POL-AI-008. Funzione: rideploy della v28 (= primo co
 
 ### EXACT NEXT ACTION
 Product Owner: istruzione per deploy di `agente-assistente`, poi PR/merge; prova reale con un referto e una foto.
+
+---
+
+## POL-AI-009 — Poliedron ricorda, prepara le ricette e impara dalle comunicazioni
+
+- TASK ID: POL-AI-009
+- PREVIOUS AGENT: CLAUDE (POL-AI-008, stesso branch).
+- BRANCH: `claude/software-startup-speed-ugqqcf`, da `master@e6e8357`.
+- REQUEST (verbatim, Product Owner): "Deve ricordare poliedron, e deve anche produrre i documenti che richiedo tipo le ricette, quindi deve imparare dalle comunicazioni".
+
+### Objective
+Dare a Poliedron una memoria per utente, fargli preparare le ricette complete dalla chat e fargli imparare le posologie dalle ricette che il medico genera.
+
+### Completed work
+1. Lettura in sola lettura dello schema di produzione (nessun dato): `ricette_bozze` esiste in produzione ma non nel repository e nessuna parte dell'app la usa; lo strumento `compila_ricetta_medica` della funzione è già escluso dagli strumenti esposti. Non riusati.
+2. Migration `20261006120000_pol_ai_009_poliedron_memoria.sql` + test SQL.
+3. Edge Function: `memoria.js` (strumenti, normalizzazione, sezioni del prompt, ricetta) e collegamento in `index.ts` (lettura memoria e farmaci frequenti, strumenti aggiunti prima dell'elenco dei permessi, esecuzione nel ciclo, `documento` nella risposta, regola del prompt aggiornata).
+4. App: `memoryRepository.js` (memoria, apprendimento dalle ricette), `PoliedronMemoryPanel.jsx`, pulsante in `PoliedronChatPage.jsx`, `openPreparedDocument` in `Poliedron.jsx`, `openPrescription({ farmaci })` in `App.jsx`, `unisciFarmaciPreparati` in `farmaciPreferiti.js`, avviso e apprendimento in `DocMedico.jsx`, `hasDetails` in `prescriptionWorkflow.js`, instradamento e `documentRequestFromModel` in `poliedraCore.js`, file "in uso" (POL-AI-008 esteso).
+
+### Files changed
+`supabase/migrations/20261006120000_pol_ai_009_poliedron_memoria.sql`, `supabase/tests/pol_ai_009_poliedron_memoria.sql`, `supabase/functions/agente-assistente/{memoria.js,index.ts,allegato.js,README.md}`, `src/lib/poliedron/{memoryRepository.js,poliedraCore.js,prescriptionWorkflow.js}`, `src/lib/farmaciPreferiti.js`, `src/components/poliedron/{PoliedronMemoryPanel.jsx,PoliedronChatPage.jsx,Poliedron.jsx}`, `src/components/DocMedico.jsx`, `src/App.jsx`, `src/components/PremiumVisualSystem.css`, `tests/poliedronMemoriaRicette.test.mjs`, `tests/poliedronAllegati.test.mjs`, `docs/POLIEDRA_MASTER_CONTEXT.md`, `docs/coordination/current-task.md`, `docs/coordination/handoffs.md`.
+
+### Database changes
+Nuova tabella `public.poliedron_memoria` (NON applicata). Nessuna modifica a tabelle esistenti.
+
+### Deployment impact
+Migration → Edge Function `agente-assistente` → frontend (Vercel al merge). La funzione senza tabella funziona con memoria spenta; il frontend senza tabella mostra "memoria non disponibile" e non salva nulla dalle ricette.
+
+### Tests executed / results
+- `npm test` 893/893 PASS; `npm run build` OK; esbuild `index.ts` OK.
+- Postgres 16 locale (usa e getta, rimosso): migration due volte + test SQL PASS; senza migration FAIL atteso.
+- Chromium 390×844, harness temporaneo rimosso: memoria (elenco, cancellazione), file in uso (rimozione), DocMedico compilato con avviso.
+
+### Unresolved issues / risks
+- Risposte reali del modello non verificate (serve il deploy).
+- In modalità "media" (conferma ogni scrittura) `ricorda` non chiede conferma: scrive solo nella memoria personale dell'utente.
+- I farmaci frequenti predefiniti dell'app (quando lo studio non ne ha salvati) non arrivano alla funzione: Poliedron vede solo quelli salvati in Impostazioni e la memoria.
+- Con 300 voci anche l'aggiornamento di un farmaco già noto viene rifiutato dal tetto (errore ignorato, la ricetta non è toccata).
+- Il file "in uso" viene rinviato a ogni messaggio (costo in token, in parte in cache).
+- `PRODUCT_OWNER_DECISION_REQUIRED` per le fasi successive: certificati, lettere ed esami preparati da Poliedron; archiviazione del file allegato nella scheda paziente; uso o rimozione della tabella di produzione `ricette_bozze`.
+
+### Rollback
+Frontend e funzione: revert dei commit POL-AI-009 (la funzione torna a POL-AI-008). Database: `DROP TABLE IF EXISTS public.poliedron_memoria; DROP FUNCTION IF EXISTS public.poliedron_memoria_guard_v1();` (si perde la memoria imparata).
+
+### EXACT NEXT ACTION
+Product Owner: istruzione per migration, deploy della funzione e merge; prova reale in chat.

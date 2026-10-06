@@ -1,5 +1,21 @@
 # Current task
 
+- TASK: POL-AI-009 — Poliedron ricorda, prepara le ricette e impara dalle comunicazioni
+- TITLE: memoria per utente; ricetta completa preparata da Poliedron in chat e aperta nel modulo Ricetta da verificare; posologie imparate dalle ricette generate; file allegato che resta in uso.
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "Deve ricordare poliedron, e deve anche produrre i documenti che richiedo tipo le ricette, quindi deve imparare dalle comunicazioni").
+- BRANCH: `claude/software-startup-speed-ugqqcf` (dopo POL-PERF-001 e POL-AI-008, commit separati), da `master@e6e8357`.
+- STATUS: PUSHED — nessuna PR. **Migration NON applicata, Edge Function NON deployata.**
+
+- **Database**: migration `20261006120000_pol_ai_009_poliedron_memoria.sql` (nuova tabella `poliedron_memoria`: una riga per voce, privata dell'utente nello studio, RLS su `auth.uid()` + membro attivo, privilegi di default revocati, massimo 300 voci, una sola voce per farmaco).
+- **Edge Function**: `memoria.js` + `index.ts`: legge la memoria dell'utente (con il suo login) e la mette nel prompt; strumenti `ricorda` / `dimentica`; `prepara_ricetta` (verifica il paziente nello studio, non scrive nulla, restituisce `documento`); farmaci frequenti dello studio nel prompt; tolta la regola "ricette nei moduli". Senza tabella la memoria resta spenta (nessun errore).
+- **App**: ricetta con posologia/durata o più farmaci → Poliedron (prima: solo il nome del farmaco); il modulo Ricetta si apre compilato con l'avviso "Compilata da Poliedron. Controlla…"; solo per un paziente dell'elenco dello studio e con il permesso Ricetta. Alla generazione del PDF, le posologie diventano memoria ("Prescrizione abituale", senza dati del paziente). Chat: pulsante "Cosa ricorda Poliedron" con elenco e cancellazione; il file allegato resta "In uso" e accompagna i messaggi successivi finché non si toglie.
+- VALIDATION: `npm test` 893/893 (nuovo `tests/poliedronMemoriaRicette.test.mjs`, 13 test); `npm run build` OK; esbuild su `index.ts` OK. Postgres 16 locale: bootstrap → migration due volte → `supabase/tests/pol_ai_009_poliedron_memoria.sql` PASS (proprietario sì; collega, altro studio, sospeso, anon no; vincoli; tetto 300); senza migration FAIL atteso. Chromium 390×844 su harness temporaneo (rimosso): pannello memoria con 2 voci e cancellazione, file "In uso" rimovibile, DocMedico aperto con 2 farmaci completi e avviso; nessun overflow, nessun errore JS.
+- NON VERIFICATO: comportamento reale del modello (serve il deploy).
+- ORDINE DI RILASCIO: 1) migration in produzione; 2) deploy `agente-assistente` (include POL-AI-008); 3) merge del frontend. Ogni passo è compatibile con il precedente.
+- EXACT NEXT ACTION: Product Owner: istruzione per i tre passi di rilascio; prova reale ("Ricorda che…", "Fai una ricetta a Mario Rossi di amoxicillina 1 g ogni 8 ore per 6 giorni").
+
+---
+
 - TASK: POL-AI-008 — Documenti in Poliedron: allegare un PDF o una foto in Chat (Fase 1)
 - TITLE: prima fase della "Missione futura — allegati in Poliedron" (Master Context §32): in Chat Poliedron si allega un PDF o una foto, Poliedron lo legge e risponde. Il file non viene salvato.
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "Lavora al prossimo passo di poliedron , dovrebbe essere documenti").

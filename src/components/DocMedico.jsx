@@ -6,6 +6,8 @@ import { useFormPersistente } from '../lib/useFormPersistente';
 import { supabase } from '../lib/supabase.js';
 import { applyConfiguredSignature } from '../lib/pdfSignature.js';
 import { applicaFarmacoPreferito, resolveFarmaciPreferiti } from '../lib/farmaciPreferiti.js';
+import { unisciFarmaciPreparati } from '../lib/farmaciPreferiti.js';
+import { imparaDaRicetta } from '../lib/poliedron/memoryRepository.js';
 
 
 const TIPI = [
@@ -151,9 +153,11 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
   // documenti_medici (RLS studio-scoped) — non è dentro studioInfo/si,
   // va letto dalla sessione come fa già Dashboard.jsx.
   const [studioId, setStudioId] = useState(null);
+  const [userId, setUserId] = useState(null);
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setStudioId(session?.user?.app_metadata?.studio_id || null);
+      setUserId(session?.user?.id || null);
     });
   }, []);
 
@@ -217,9 +221,18 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
     includiPazienteVuoto: true,
   });
   const appliedRequestRef = useRef(null);
+  // POL-AI-009: ricetta preparata da Poliedron in chat (farmaci completi).
+  const [compilataDaPoliedron, setCompilataDaPoliedron] = useState(false);
   useEffect(() => {
     if (!requestId || appliedRequestRef.current === requestId) return;
     appliedRequestRef.current = requestId;
+    const preparati = Array.isArray(initialPrefill?.farmaci) ? initialPrefill.farmaci.filter((f) => f?.farmaco?.trim()) : [];
+    if (preparati.length) {
+      setCnt((current) => ({ ...current, farmaci: unisciFarmaciPreparati(current.farmaci, preparati) }));
+      setCompilataDaPoliedron(true);
+      onInitialRequestHandled?.(requestId);
+      return;
+    }
     const farmaco = initialPrefill?.farmaco?.trim();
     if (farmaco) {
       setCnt((current) => {
@@ -233,7 +246,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
       });
     }
     onInitialRequestHandled?.(requestId);
-  }, [initialPrefill?.farmaco, requestId, setCnt, onInitialRequestHandled]);
+  }, [initialPrefill?.farmaco, initialPrefill?.farmaci, requestId, setCnt, onInitialRequestHandled]);
 
   // Ricetta
   const farmaci = cnt.farmaci;
@@ -500,6 +513,9 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
     const dataUrl = doc.output('datauristring');
     const filename = `ricetta_${paz.cognome}_${data}.pdf`;
     void salvaInArchivioSeAttivo('ricetta', 'Ricetta medica', dataUrl);
+    // POL-AI-009: Poliedron impara le posologie che il medico usa davvero.
+    void imparaDaRicetta(supabase, { studioId, userId, farmaci: farmaci.filter((f) => f.farmaco.trim()) });
+    setCompilataDaPoliedron(false);
     clearContenutoDraft();
     setPronto({ dataUrl, filename, titolo: 'Ricetta medica', tipoDoc: 'ricetta' });
     setGenerated(true);
@@ -880,6 +896,12 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
           <div ref={farmaciSectionRef}>
           <Crd style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}><Ic n="pill" s={11} c={C.txm} />Farmaci prescritti</div>
+            {compilataDaPoliedron && (
+              <div role="status" data-ricetta-poliedron="true" style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: C.priL, color: C.txt, fontSize: 12.5, lineHeight: 1.45, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <Ic n="spark" s={14} c={C.pri} />
+                <span><strong>Compilata da Poliedron.</strong> Controlla farmaci, dosi e durata prima di generare la ricetta.</span>
+              </div>
+            )}
             {farmaciPreferiti.length > 0 && (
               <div data-farmaci-preferiti="true" style={{ marginBottom: 12 }}>
                 <button

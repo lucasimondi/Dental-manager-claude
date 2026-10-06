@@ -608,6 +608,8 @@ Portare la lettura documenti dentro il motore condiviso di Poliedron (allegare u
 
 Stato (ottobre 2026): prioritizzata dal Product Owner ("prossimo passo di poliedron … documenti"). Fase 1 = POL-AI-008: un PDF o una foto allegati a un messaggio della Chat, letti dal modello solo in quel messaggio e mai salvati. Restano da decidere per le fasi successive: salvataggio del file nell'archivio del paziente, file ricordato nei messaggi successivi, più file per messaggio.
 
+Decisione Product Owner (ottobre 2026, verbatim): "Deve ricordare poliedron, e deve anche produrre i documenti che richiedo tipo le ricette, quindi deve imparare dalle comunicazioni". Fase 2 = POL-AI-009: memoria per utente (tabella `poliedron_memoria`, privata, visibile e cancellabile in Chat), ricetta preparata da Poliedron e aperta nel modulo Ricetta già compilato (il medico verifica e genera: l'AI non finalizza), apprendimento delle posologie dalle ricette generate, file allegato che resta in uso nei messaggi successivi della sessione. Ancora aperti: archivio del file nella scheda paziente, altri documenti (certificati, lettere, esami) preparati da Poliedron.
+
 ## 33. Referral / Founder model
 
 Idea da mantenere in roadmap: founder / ambassador / referral partner con tracking segnalazioni e possibile revenue sharing/passivo ricorrente collegato alla rete generata.

@@ -99,9 +99,9 @@ export default function Poliedron({
   const actionExecutionRef = useRef(false);
   const pendingPanelRequestRef = useRef(null);
   const pendingChatRequestRef = useRef(null);
-  // POL-AI-008: file allegato al prossimo messaggio della Chat. Resta solo in
-  // memoria (mai salvato): per riprovare un invio fallito lo si ritrova qui
-  // per request_id; dopo un ricaricamento della pagina va riallegato.
+  // POL-AI-008: file allegato ai messaggi della Chat. Resta solo in memoria
+  // (mai salvato): per riprovare un invio fallito lo si ritrova qui per
+  // request_id; dopo un ricaricamento della pagina va riallegato.
   const [chatAttachment, setChatAttachment] = useState(null);
   const [chatAttachmentPreparing, setChatAttachmentPreparing] = useState(false);
   const attachmentsByRequestRef = useRef(new Map());
@@ -286,7 +286,30 @@ export default function Poliedron({
     }
   }, [executePersistedQuery, primaryConversation?.id]);
 
+  /* POL-AI-009: a prescription prepared by Poliedron in chat opens the real
+     Ricetta form already filled in; the clinician reviews it and generates
+     the PDF. Only for a patient of this studio's (RLS-scoped) list and only
+     when the Ricetta action is allowed for this user. */
+  const openPreparedDocument = useCallback((documentRequest) => {
+    if (!documentRequest || documentRequest.type !== 'ricetta') return false;
+    const patient = (patients || []).find((p) => String(p.id) === String(documentRequest.patientId));
+    const allowed = actions.some((action) => action.id === 'prescription.create');
+    if (!patient || !allowed || !openPrescription) {
+      setChatError(!patient
+        ? 'Non trovo il paziente della ricetta tra quelli dello studio.'
+        : 'Non posso aprire il modulo Ricetta con i permessi attuali.');
+      return false;
+    }
+    openPrescription({ patient, farmaci: documentRequest.farmaci });
+    return true;
+  }, [actions, openPrescription, patients]);
+
   const applyQuickResult = useCallback((result) => {
+    if (result.documentRequest && openPreparedDocument(result.documentRequest)) {
+      setLoading(false);
+      close();
+      return;
+    }
     if (result.directNavigation) {
       const { navId, filtroTipo } = result.directNavigation;
       if (navId === 'archivio') onArchivioFilterHint?.(filtroTipo || 'tutti');
@@ -299,7 +322,7 @@ export default function Poliedron({
     setState(result);
     setHighlightedIndex(0);
     setLoading(false);
-  }, [close, onArchivioFilterHint, setPage]);
+  }, [close, onArchivioFilterHint, openPreparedDocument, setPage]);
 
   const runQuery = useCallback((q, { allowModel = false, persist = false } = {}) => {
     if (actionExecutionRef.current) return;
@@ -380,7 +403,9 @@ export default function Poliedron({
     pendingChatRequestRef.current = retainedRequest;
     if (attachment) {
       attachmentsByRequestRef.current.set(retainedRequest.requestId, attachment);
-      if (!retryMessage) setChatAttachment(null);
+      // POL-AI-009: il file resta "in uso" e accompagna anche i messaggi
+      // successivi, finché l'utente non lo toglie (Poliedron se lo ricorda).
+      if (!retryMessage) setChatAttachment((current) => (current === attachment ? { ...attachment, inUse: true } : current));
     }
     try {
       const result = await runPersistedRequest(text, {
@@ -393,7 +418,9 @@ export default function Poliedron({
       if (pendingChatRequestRef.current?.requestId === retainedRequest.requestId) {
         pendingChatRequestRef.current = null;
       }
-      if (result.directNavigation) {
+      if (result.documentRequest) {
+        openPreparedDocument(result.documentRequest);
+      } else if (result.directNavigation) {
         const { navId, filtroTipo } = result.directNavigation;
         if (navId === 'archivio') onArchivioFilterHint?.(filtroTipo || 'tutti');
         setPage(navId);
@@ -408,7 +435,7 @@ export default function Poliedron({
       setChatError(described?.message || 'Non riesco a completare la richiesta. Riprova.');
       return false;
     }
-  }, [chatAttachment, conversationErrorState, conversationLoading, onArchivioFilterHint, primaryConversation?.id, runPersistedRequest, setPage]);
+  }, [chatAttachment, conversationErrorState, conversationLoading, onArchivioFilterHint, openPreparedDocument, primaryConversation?.id, runPersistedRequest, setPage]);
 
   const attachChatFile = useCallback(async (file) => {
     if (!file) return;
@@ -659,6 +686,7 @@ export default function Poliedron({
           attachmentPreparing={chatAttachmentPreparing}
           onAttachFile={attachChatFile}
           onRemoveAttachment={() => setChatAttachment(null)}
+          memoryClient={supabaseClient}
           onRetryInitialization={conversationError ? retryInitialization : null}
           onLoadOlder={loadOlderMessages}
           onVisible={markVisibleMessagesRead}

@@ -7,6 +7,26 @@
 import { classifyIntent, INTENT, extractAmount } from './intentEngine.js';
 import { federatedSearch, suggestedIdle } from './searchEngine.js';
 import { runModelTask, MODEL_TASK_TYPE } from './modelGateway.js';
+
+/* POL-AI-009: a prescription prepared by agente-assistente (prepara_ricetta).
+   Only the shape is checked here; Poliedron.jsx opens it only for a patient
+   in its own studio-scoped list and with the Ricetta action allowed. */
+export function documentRequestFromModel(modelResult) {
+  const doc = modelResult?.raw?.documento;
+  if (!doc || doc.tipo !== 'ricetta' || doc.paziente_id == null || !Array.isArray(doc.farmaci)) return null;
+  const farmaci = doc.farmaci
+    .filter((f) => typeof f?.farmaco === 'string' && f.farmaco.trim())
+    .slice(0, 10)
+    .map((f) => ({
+      farmaco: f.farmaco.trim(),
+      dosaggio: typeof f.dosaggio === 'string' ? f.dosaggio : '',
+      posologia: typeof f.posologia === 'string' ? f.posologia : '',
+      durata: typeof f.durata === 'string' ? f.durata : '',
+      note: typeof f.note === 'string' ? f.note : '',
+    }));
+  if (!farmaci.length) return null;
+  return { type: 'ricetta', patientId: doc.paziente_id, patientName: typeof doc.paziente_nome === 'string' ? doc.paziente_nome : '', farmaci };
+}
 import { resolveCommandAlias } from './commandAliases.js';
 import { cercaPazienti } from '../ricercaPazienti.js';
 import { resolvePrescriptionRequest } from './prescriptionWorkflow.js';
@@ -128,6 +148,7 @@ export async function processQuery({
       ...base,
       answer: modelResult.text || 'Non sono riuscito a leggere il file in questo momento.',
       modelError: modelResult.error || null,
+      documentRequest: documentRequestFromModel(modelResult),
     };
   }
 
@@ -176,6 +197,28 @@ export async function processQuery({
   }
 
   const prescriptionRequest = resolvePrescriptionRequest(q, sources.patients || []);
+  // POL-AI-009: a prescription with posology, duration or several drugs is
+  // prepared by the model (prepara_ricetta fills every field of the form);
+  // the deterministic workflow below would only carry the drug name.
+  if (prescriptionRequest?.hasDetails && allowModel && supabaseClient) {
+    const modelResult = await runModelTask({
+      taskType: MODEL_TASK_TYPE.ASK,
+      input: q,
+      history: conversationHistory,
+      context,
+      supabaseClient,
+    });
+    return {
+      intent: INTENT.ASK,
+      entities: {},
+      answer: modelResult.text || 'Non sono riuscito a preparare la ricetta in questo momento.',
+      confirmationRequired: false,
+      suggestedActions: [],
+      searchResults: [],
+      modelError: modelResult.error || null,
+      documentRequest: documentRequestFromModel(modelResult),
+    };
+  }
   if (prescriptionRequest) {
     const prescriptionAction = (sources.actions || []).find((action) => action.id === 'prescription.create');
     if (!prescriptionAction) {
@@ -343,6 +386,7 @@ export async function processQuery({
         searchResults: [],
         answer: modelResult.text || 'Non sono riuscito a rispondere in questo momento.',
         modelError: modelResult.error || null,
+        documentRequest: documentRequestFromModel(modelResult),
       };
     }
     if (!hasResults) return { ...base, searchResults: [], awaitingSubmit: true };
@@ -391,6 +435,7 @@ export async function processQuery({
         searchResults: [],
         answer: modelResult.text || 'Non sono riuscito a rispondere in questo momento.',
         modelError: modelResult.error || null,
+        documentRequest: documentRequestFromModel(modelResult),
       };
     }
     return { ...base, searchResults: [], answer: result.answer };
@@ -410,6 +455,7 @@ export async function processQuery({
       searchResults: [],
       answer: modelResult.text || 'Non sono riuscito a rispondere in questo momento.',
       modelError: modelResult.error || null,
+      documentRequest: documentRequestFromModel(modelResult),
     };
   }
 
