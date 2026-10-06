@@ -71,3 +71,4 @@
 .poliedron-install__help ol { padding-left: 22px; display: grid; gap: 6px; }
 .poliedron-install__help button { min-height: 48px; border-radius: 14px; border: 1px solid var(--border-subtle); background: var(--surface-elevated); color: var(--brand-primary); font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
 .poliedron-install__help button.is-primary { background: var(--brand-primary); border-color: var(--brand-primary); color: #fff; }
+.poliedron-pending-page { position: fixed; z-index: 1000; left: 50%; bottom: calc(110px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); padding: 10px 16px; border-radius: 20px; background: var(--text-primary); color: var(--surface-elevated); font-size: 14px; font-weight: 600; box-shadow: 0 6px 20px #0f172a33; }

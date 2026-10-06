@@ -75,6 +75,8 @@ export default function App() {
   const isMobile = useIsMobile();
   const [session, setSession] = useState(undefined);
   const [dataLoading, setDataLoading] = useState(true);
+  // Poliedron app: a page asked for while studio data is still loading.
+  const [pendingPage, setPendingPage] = useState(null);
   const [page, setPage] = useState(() => phoneApp ? 'chat' : 'home');
   // The keyboard-aware viewport is for the chat only: every other page of the
   // Poliedron app (agenda, pazienti…) is laid out exactly like the studio app.
@@ -317,6 +319,13 @@ export default function App() {
     salvaPosizione({ page });
   }, [page, dataLoading]);
 
+  // Poliedron app: open the page asked for during loading as soon as data is in.
+  useEffect(() => {
+    if (dataLoading || !pendingPage) return;
+    setPage(pendingPage);
+    setPendingPage(null);
+  }, [dataLoading, pendingPage]);
+
   // Aggiornamento automatico: appointments/patients/payments possono essere scritti
   // anche fuori dal flusso normale dell'app (es. dall'assistente AI, o da un altro
   // dispositivo/utente dello stesso studio) — senza questo, restano visibili solo
@@ -550,6 +559,12 @@ export default function App() {
   // so make it one: state clearing is now moot (a reload wipes it anyway)
   // but left in place in case the reload is ever slow on a bad connection.
   const handleLogout = async () => {
+    // Chat copies kept on the device for instant opening go away with the session.
+    try {
+      for (const key of Object.keys(window.localStorage)) {
+        if (key.startsWith('poliedron-chat-cache:') || key.startsWith('poliedron-team:')) window.localStorage.removeItem(key);
+      }
+    } catch { /* storage blocked */ }
     await supabase.auth.signOut();
     setPatients([]); setAppointments([]); setPlans([]); setPayments([]); setImpegni([]); setRichiami([]);
     setPricelist([]); setTemplates([]); setAppTypes([]); setStudioInfo(DEF_STUDIO); setImplants([]);
@@ -559,7 +574,9 @@ export default function App() {
 
   if (session === undefined) return <LoadingScreen />;
   if (session === null) return <LoginScreen onLogin={() => {}} brand={phoneApp ? 'Poliedron' : 'Poliedra'} />;
-  if (dataLoading) return <LoadingScreen />;
+  // The Poliedron app opens on the chat at once (WhatsApp style); studio data
+  // keeps loading in the background and other pages open once it is ready.
+  if (dataLoading && !phoneApp) return <LoadingScreen />;
 
   if (!studioAttivo && !isSuperAdmin) {
     return (
@@ -591,6 +608,7 @@ export default function App() {
     ? studioInfo.custom_logo_b64
     : LOGO_WHITE_PER_SLUG[getLogoSlug(studioInfo?.vertical)];
   const navigateFromPoliedron = (nextPage) => {
+    if (phoneApp && dataLoading && nextPage !== 'chat') { setPendingPage(nextPage); return; }
     setSchedaDashPaz(null);
     pulisciPosizione(['schedaPazId', 'schedaPazTab']);
     setPage(nextPage);
@@ -609,6 +627,7 @@ export default function App() {
           onLogout={handleLogout}
         />
       )}
+      {pendingPage && <div className="poliedron-pending-page" role="status">Apro {NAV.find((n) => n.id === pendingPage)?.l || 'la pagina'}…</div>}
       <div className="app-main" style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
       {/* POL-UI-005: mobile top header (logo/page name/Esci) removed — it cost
           too much vertical space for no real value on a small screen and kept

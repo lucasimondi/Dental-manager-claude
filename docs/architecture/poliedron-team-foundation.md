@@ -137,3 +137,10 @@ PO: "l'agenda non è impaginata bene… togli il torna a Poliedron… il tasto i
 - Causa dello spostamento dell'agenda: lo stile del contenitore mescolava `padding` e `paddingTop`; passando da Chat ad Agenda React riapplicava 13px in alto. Ora solo proprietà esplicite: agenda identica al gestionale.
 - Causa di "Installa" che non installava: il service worker del gestionale rispondeva a `/poliedron/` con la pagina del gestionale (manifest e icona Poliedra). Ora `/poliedron` è escluso dal fallback e servito dalla rete (cache NetworkFirst per l'offline), con il manifest e l'icona Poliedron approvata (#130).
 - "Installa": su Android usa il prompt del browser (catturato all'avvio); su iPhone mostra i passi di Safari (Condividi → Aggiungi alla schermata Home) e, dall'app già installata, "Apri in Safari" e "Copia link". Il foglio è disegnato sopra a tutto.
+
+### Apertura istantanea dell'app Poliedron (2026-10-06)
+PO: "La app si apre troppo lentamente, deve essere istantanea come WhatsApp".
+- Causa: l'app mostrava "caricamento" finché non arrivavano tutti i dati dello studio (pazienti, appuntamenti, piani, pagamenti, listino, …) e solo dopo caricava la conversazione con 3 richieste in fila.
+- Ora l'app Poliedron mostra subito l'elenco chat; i dati arrivano in sottofondo. Una pagina chiesta prima che i dati siano pronti (es. Agenda dal dock) si apre appena arrivano, con l'avviso "Apro Agenda…". Il gestionale resta invariato.
+- Conversazione: gli ultimi 40 messaggi sono tenuti sul dispositivo e mostrati subito, poi aggiornati dal server (messaggi e non letti in parallelo). Al logout vengono cancellate le copie locali della chat e del team.
+- Misura con dati simulati lenti (3 s): elenco chat visibile in ~0,6 s.
