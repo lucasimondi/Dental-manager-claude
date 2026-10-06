@@ -3574,3 +3574,27 @@ Revert del commit.
 
 ### EXACT NEXT ACTION
 "Mergia" del Product Owner, poi prova reale.
+
+## POL-AI-010 passo 4a — Pagamenti dalla chat (sempre con conferma)
+
+- TASK ID: POL-AI-010 (passo 4a)
+- OWNER: CLAUDE, passaggio esplicito del Product Owner ("Fai pol 010").
+- BRANCH: `claude/software-startup-speed-ugqqcf`, da `master@5d61b1b`.
+
+### Completed work
+1. `supabase/functions/agente-assistente/pagamenti.js`: strumento `registra_pagamento_paziente`; validazione importo (formato italiano, > 0, ≤ 1.000.000), metodo (Contanti/Carta/Bonifico/POS/Assegno), stato (pagato/sospeso), data (non futura), nota; paziente solo se letto nella stessa richiesta; regola del piano dell'app; avviso duplicato stesso giorno/importo; esecuzione: claim → insert `payments`.
+2. `index.ts`: strumento esposto solo dove le scritture sono ammesse; nel ciclo degli strumenti un pagamento produce sempre una proposta firmata; percorso di conferma dedicato; `registraAttivita` scrive `tabella` solo per i valori ammessi dal CHECK di `poliedron_attivita`.
+3. Client: `poliedraCore.js` manda le frasi di pagamento all'agente quando può scrivere (anteprime da tastiera mai); `App.jsx` ricarica `payments`; `attivita.js` etichetta "Pagamento registrato".
+
+### Database / deployment
+Nessuna migrazione. Verificati in sola lettura: colonne `payments` (id bigint senza default), policy `payments_studio`, colonne/stati `plans`. Serve il deploy della funzione prima del frontend (il frontend vecchio non manda frasi di pagamento all'agente; la funzione nuova è compatibile).
+
+### Tests
+`npm test` 985/985; build OK.
+
+### Risks
+- Un pagamento non si annulla dalla chat: si corregge in Incassi (il registro finanziario non ha storni; tema del passo 5).
+- Non provato con un login reale.
+
+### Rollback
+Redeploy della versione precedente di `agente-assistente` (v31) e revert del commit.

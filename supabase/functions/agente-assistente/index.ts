@@ -20,6 +20,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { signProposal, verifyProposal, claimProposal, studioToday } from "./confirmation.js";
 import { AGENDA_WRITES, prepareAgenda, executeAgenda, agendaAvailability } from "./agenda.js";
 import { PAZIENTI_WRITES, PAZIENTI_TOOLS, preparePazienti, executePazienti, schedaPaziente } from "./pazienti.js";
+import { PAGAMENTI_WRITES, PAGAMENTI_TOOLS, preparePagamenti, executePagamenti } from "./pagamenti.js";
 import { validaAllegato, messaggiConAllegato, senzaDatiAllegato } from "./allegato.js";
 import { STRUMENTI_MEMORIA, STRUMENTO_RICETTA, normalizzaMemoria, sezioneMemoria, sezioneFarmaciFrequenti, normalizzaRicetta, documentoRicetta } from "./memoria.js";
 import { leggiRichiestaTeam, strumentiSpecialista, toolConsulta, leggiConsulti, eseguiConsulti, promptTeam, contestoGruppo, CONSULTA_SPECIALISTI } from "./team.js";
@@ -428,14 +429,20 @@ async function eseguiAzionePersonalizzata(supabase, azione, input, studioId) {
 
 // POL-AI-010: every write executed by Poliedron leaves a readable trace in the
 // studio's "Attività di Poliedron" (same id as the claim the RPC consumed).
+// Tabelle ammesse da poliedron_attivita.tabella (CHECK della migration
+// 20261005170000): per le altre (es. payments) la riga resta senza tabella e
+// l'azione dice già di cosa si tratta.
+const TABELLE_ATTIVITA = new Set(['appointments', 'patients', 'richiami', 'todos', 'impegni_personali']);
+
 function registraAttivita(supabase, proposal, done) {
+  const tabella = done.changed?.[0] ?? null;
   return supabase.from('poliedron_attivita').insert({
     id: proposal.id, studio_id: proposal.studioId, user_id: proposal.userId, azione: proposal.name,
-    riepilogo: String(done.text || '').slice(0, 4000), tabella: done.changed?.[0] ?? null,
+    riepilogo: String(done.text || '').slice(0, 4000), tabella: TABELLE_ATTIVITA.has(tabella) ? tabella : null,
     record_id: done.appointmentId ?? done.recordId ?? null,
     // Before/after, so the studio can undo the action from the log ("Ripristina").
     prima: proposal.agenda ? proposal.agenda.before : proposal.pazienti?.before ?? null,
-    dopo: proposal.agenda ? { ...proposal.agenda.after, id: done.appointmentId } : proposal.pazienti?.dati ?? null,
+    dopo: proposal.agenda ? { ...proposal.agenda.after, id: done.appointmentId } : proposal.pazienti?.dati ?? (proposal.pagamenti ? { ...proposal.pagamenti.dati, id: done.recordId } : null),
   }).then((r) => { if (r.error) console.error('poliedron_attivita', r.error.message); return r; }, (e) => e);
 }
 
@@ -1150,6 +1157,9 @@ serve(async (req) => {
     toolsFinali = [
       ...toolsFinali,
       ...PAZIENTI_TOOLS.filter(t => (t.name === 'scheda_paziente' && lettureAmmesse) || (PAZIENTI_WRITES.has(t.name) && scrittureAmmesse)),
+      // POL-AI-010 passo 4a: pagamenti, solo dove le scritture sono ammesse e
+      // sempre con conferma (vedi il ciclo degli strumenti).
+      ...(scrittureAmmesse ? PAGAMENTI_TOOLS : []),
     ];
     toolsFinali = toolsFinali.map(t => AGENDA_WRITES.has(t.name) ? {
       ...t,
@@ -1209,7 +1219,7 @@ REGOLE OPERATIVE PRIORITARIE (prevalgono su quanto scritto sopra):
 - Se uno strumento segnala un conflitto o un errore, non riprovare a caso: spiega il problema in una riga e, per l'agenda, proponi gli orari liberi indicati.
 - Se l'utente chiede più azioni nello stesso messaggio, eseguile tutte. Quando puoi, chiama insieme gli strumenti di lettura che ti servono (es. cerca_pazienti e disponibilita_agenda nello stesso passaggio).
 - Dopo una scrittura riuscita l'utente vede già il riepilogo del sistema: non ripeterlo, aggiungi solo ciò che serve.
-- Le ricette le prepari con prepara_ricetta, quando è tra i tuoi strumenti: il modulo si apre già compilato e il medico lo controlla e lo genera. Altri documenti, piani di cura e pagamenti per ora vanno fatti nei moduli dell'app: dillo con semplicità.
+- Le ricette le prepari con prepara_ricetta, quando è tra i tuoi strumenti: il modulo si apre già compilato e il medico lo controlla e lo genera. I pagamenti li registri con registra_pagamento_paziente: l'utente vede un riepilogo e conferma lui. Altri documenti e i piani di cura per ora vanno fatti nei moduli dell'app: dillo con semplicità.
 - Hai una memoria per ogni utente (sezione "Cosa ricordi di questo utente"): usala, e salva con ricorda ciò che l'utente ti chiede di ricordare o che ti corregge e vale anche in futuro.
 - Eliminare un appuntamento significa annullarlo conservando lo storico. Il consenso WhatsApp si registra solo se l'utente dice esplicitamente che il paziente lo ha dato.
 - Rispondi in modo diretto e breve; ragiona a lungo solo se serve davvero.`;
@@ -1257,6 +1267,15 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
       if (confirm.cancelled === true) {
         await claimProposal(supabase, proposal);
         return json({ text: 'Operazione annullata. Nessuna modifica eseguita.' });
+      }
+      if (proposal.pagamenti) {
+        try {
+          const done = await executePagamenti(supabase, proposal);
+          await registraAttivita(supabase, proposal, done);
+          return json(done);
+        } catch (error) {
+          return json({ text: 'Pagamento non registrato: ' + error.message + ' Controlla i pagamenti del paziente prima di inviare una nuova richiesta.', changed: ['payments'], uncertain: true });
+        }
       }
       if (proposal.pazienti) {
         try {
@@ -1439,6 +1458,19 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
             const pareri = await eseguiConsulti(consulti, consultaSpecialista);
             pareriTeam.push(...pareri);
             result = { pareri, nota: 'Sono pareri degli specialisti, non fatti verificati: integrali conservando le divergenze e i dati mancanti.' };
+          }
+        } else if (PAGAMENTI_WRITES.has(tu.name)) {
+          // POL-AI-010 passo 4a: un pagamento non si esegue mai direttamente,
+          // si propone sempre il riepilogo firmato da confermare.
+          soloScrittureRiuscite = false;
+          try {
+            const prepared = await preparePagamenti(supabase, tu.name, input, studioId, observed);
+            const proposal = { id: crypto.randomUUID(), userId: user.id, studioId, name: tu.name, pagamenti: prepared, expiresAt: Date.now() + 10 * 60 * 1000 };
+            const token = await signProposal(proposal, SUPABASE_SERVICE_ROLE_KEY);
+            const premessa = eseguite.length ? testoEseguite() + '\n\n' : '';
+            return rispondi({ text: premessa + (prepared.avviso ? `${prepared.avviso} Vuoi registrarlo comunque?` : 'Controlla il riepilogo e conferma per registrare il pagamento.'), needsConfirmation: { token, summary: prepared.summary, expiresAt: proposal.expiresAt } });
+          } catch (error) {
+            result = { error: error.message };
           }
         } else if (AGENDA_WRITES.has(tu.name) || PAZIENTI_WRITES.has(tu.name)) {
           const isAgenda = AGENDA_WRITES.has(tu.name);

@@ -104,6 +104,8 @@ const AGENT_ACTION_RE = /\b(?:ricordami|promemoria|ferie|blocca|impegn[oi]|conse
 const PATIENT_DATA_RE = /\b(?:telefono|cellulare|numero|e-?mail|indirizzo|codice fiscale)\b.*(?:\s(?:è|e')\s|\bdiventa\b|\bnuov[oa]\b|:)/i;
 // Domains still served by their dedicated modules (POL-AI-010 steps 3-4).
 const MODULE_ONLY_RE = /preventiv|piano di cura|pagament|incass|spes[ae]|cost[oi]\b|uscit|document|certificat|lettera|ricett|fattur/i;
+// POL-AI-010 passo 4a: "Mario Rossi ha pagato 120 euro con carta".
+const PAID_RE = /\b(?:ha|hanno)\s+(?:pagato|versato|saldato|lasciato)\b[^?]*\d/i;
 const AUTONOMY_RANK = { consulente: 0, medio: 1, su_richiesta: 2, completo: 3 };
 
 // Mirrors the server gate in agente-assistente: premium plan and an autonomy
@@ -193,6 +195,17 @@ export async function processQuery({
   const agentWriteRequest = agentCanWrite(context) && !MODULE_ONLY_RE.test(q) && (
     [INTENT.CREATE, INTENT.UPDATE].includes(preliminaryIntent.type) || AGENT_ACTION_RE.test(q) || PATIENT_DATA_RE.test(q)
   );
+  // POL-AI-010 passo 4a: with the agent allowed to write, a patient payment
+  // is prepared by Poliedron and registered only after the user confirms the
+  // summary (server-side, always). Otherwise the "Registra incasso" form opens.
+  const agentPaymentRequest = agentCanWrite(context) && !/\?\s*$/.test(q)
+    && Boolean(parseRegisterPaymentRequest(q) || PAID_RE.test(q));
+  if (agentPaymentRequest && allowModel) {
+    const result = await runModelTask({ taskType: MODEL_TASK_TYPE.ASK, input: q, history: conversationHistory, context, supabaseClient });
+    return { intent: 'AGENT', answer: result.text, modelError: result.error,
+      modelConfirmation: result.raw?.needsConfirmation || null, dataChanged: result.raw?.changed || null, dataRecords: result.raw?.records || null,
+      searchResults: [], suggestedActions: [] };
+  }
   const dedicatedRoute = [INTENT.NAVIGATE, INTENT.ANALYZE].includes(preliminaryIntent.type)
     || resolvePrescriptionRequest(q, sources.patients || [])
     || parseCreatePlanRequest(q) || parseRegisterPaymentRequest(q);

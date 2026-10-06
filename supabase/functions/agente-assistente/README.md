@@ -27,6 +27,13 @@ Reviewed writes exposed to the model: agenda (create, modify, soft-cancel) and, 
 step 2, patients and clinical organisation (`pazienti.js`: new patient,
 contact/consent update, dated note, recall, activity, agenda block; executed by
 `poliedron_execute_pazienti_v1`). Read tool `scheda_paziente`.
+From step 4a, patient payments (`pagamenti.js`, tool `registra_pagamento_paziente`):
+**always** a signed summary first (also with full autonomy), then on "Conferma" a
+claim in `poliedron_action_claims` and one insert into `payments` with the user's
+session (RLS `payments_studio`); the existing triggers feed the financial ledger
+when `stato = 'pagato'`. Plan link as in the app (one open plan → automatic, several
+→ ask, none → NULL); same amount on the same day → warning in the summary. Not
+undoable from the activity log (the ledger has no reversals): corrected in Incassi.
 Any ID the model writes against must come from a read in the same request. Read tools include real availability and
 operator listing. Other domain writes remain in existing deterministic workflows
 and will be integrated in subsequent steps. No permanent deletion or forced overlap.
@@ -57,6 +64,8 @@ The folder below was re-imported from production v28 (identical to the code abov
   studio membership, AI plan gate), system prompt, tool loop with Claude, usage logging.
 - `confirmation.js`, `agenda.js`, `pazienti.js`, `team.js`: signed confirmations,
   agenda and patient tools, Poliedron team (read-only).
+- `pagamenti.js` (POL-AI-010 passo 4a): payments from chat, always confirmed.
+  Tested by `tests/agentePagamenti.test.mjs`.
 - `allegato.js` (POL-AI-008): pure logic for a PDF/photo attached to a chat message.
   Tested by `tests/poliedronAllegati.test.mjs`.
 - `memoria.js` (POL-AI-009): memory tools (`ricorda`, `dimentica`), the prompt sections

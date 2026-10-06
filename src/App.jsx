@@ -790,7 +790,7 @@ export default function App() {
         onDataChanged={async (changed, records) => {
           // POL-AI-010: show the rows Poliedron just wrote immediately (returned by
           // the server), then reload only the tables its action touched.
-          const reload = { appointments: ['dm_a', setAppointments], patients: ['dm_p', setPatients], richiami: ['dm_ri', setRichiami], impegni_personali: ['dm_ip', setImpegni] };
+          const reload = { appointments: ['dm_a', setAppointments], patients: ['dm_p', setPatients], richiami: ['dm_ri', setRichiami], impegni_personali: ['dm_ip', setImpegni], payments: ['dm_py', setPayments] };
           for (const [t, rows] of Object.entries(records || {})) {
             if (!reload[t] || !Array.isArray(rows)) continue;
             reload[t][1]((prev) => {

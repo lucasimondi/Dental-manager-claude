@@ -539,7 +539,7 @@ export default function Poliedron({
       text = response.error ? 'Esito non disponibile. Controlla i dati nell’app prima di riprovare.' : response.text;
       // POL-AI-010: refresh exactly what the confirmed action changed (agenda,
       // patients, recalls, commitments); unknown outcome → refresh them all.
-      const changed = response.raw?.changed || (response.error ? ['appointments', 'patients', 'richiami', 'impegni_personali'] : []);
+      const changed = response.raw?.changed || (response.error ? ['appointments', 'patients', 'richiami', 'impegni_personali', 'payments'] : []);
       if (!cancelled && changed.length) {
         Promise.resolve(onDataChanged?.(changed, response.raw?.records)).catch((error) => {
           console.warn('Poliedron: aggiornamento dei dati non riuscito', error);
