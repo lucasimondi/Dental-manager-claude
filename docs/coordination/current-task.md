@@ -1,3 +1,10 @@
+# Current task — POL-AI-010 passo 4 (Pagamenti, poi Preventivi e piani di cura)
+- TASK: POL-AI-010 — Poliedron fa tutto dalla chat; passo 4 "Piani e pagamenti" (piano già deciso: 0 versionare, 1 Agenda, 2 Pazienti e clinica, 3 Documenti, 4 Piani e pagamenti, 5 irreversibili con doppia conferma, 6 WhatsApp).
+- OWNER: CLAUDE (questa sessione, `claude/software-startup-speed-ugqqcf`). Passaggio di proprietà esplicito del Product Owner (verbatim: "Fai pol 010", dopo la domanda su chi dovesse proseguire POL-AI-010, finora della sessione su `claude/whatsapp-automation-status-d2ng12`). L'altra sessione non deve più lavorare su POL-AI-010 senza nuovo passaggio.
+- DECISIONE DI SICUREZZA (proposta al Product Owner, nessuna obiezione): pagamenti, preventivi e piani di cura dalla chat mostrano sempre un riepilogo e si registrano solo dopo "Conferma" (agenda e pazienti restano a esecuzione diretta).
+- BRANCH: `claude/software-startup-speed-ugqqcf`, da `master@5d61b1b`.
+- STATUS: analisi in corso.
+
 # Current task — POL-AI-011 (salvare nella scheda il file allegato in Chat)
 - TASK: POL-AI-011 — il file allegato in Chat Poliedron si salva nella scheda del paziente.
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "Salvare file nella scheda", scelto tra i prossimi passi proposti).
