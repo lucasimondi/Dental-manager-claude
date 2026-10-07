@@ -162,3 +162,16 @@ PO: inserimento paziente "come la rubrica del telefono", che crea la scheda nel 
 - **Pulsante**: "+" nella rubrica Pazienti e voce "Nuovo paziente" in Nuova chat → schermata con freccia indietro, Nome, Cognome, Telefono (facoltativo); avviso se esiste già un paziente con lo stesso nome.
 - **Dalla ricerca**: scrivendo "Nome Cognome telefono" (in rubrica o nella ricerca globale) compare "+ Crea paziente …": un tocco crea la scheda. Non compare se lo stesso nome con lo stesso telefono esiste già; segnala gli omonimi. Nessuna creazione automatica senza tocco (la ricerca cambia a ogni lettera).
 - Salvataggio con la stessa scrittura del gestionale (`DB.insert('dm_p')`, studio e utente dalla sessione, RLS invariata); il paziente compare subito con Chat e Scheda.
+
+### POL-AI-TEAM-003 — avvisi divisi tra gli assistenti, risposte rapide, non letti (2026-10-07)
+PO: "dobbiamo dividere i compiti degli assistenti, quindi anche chi si occupa di mandare i vari avvisi… farlo mandare da agente agenda/pazienti… ci devono essere le notifiche e si deve vedere che è stato mandato messaggio… il messaggio deve essere propositivo e darmi possibilità di scegliere tra è venuto o no, e se aggiungere qualcosa; finché non viene risposto viene mandato… in neretto se non letto e il numerino rosso… ordinarle".
+- **Chi manda cosa** (`src/lib/poliedron/team/alerts.js`, deterministico, nessuna chiamata AI):
+  - Assistente Agenda → esito degli appuntamenti passati (ultimi 7 giorni) di pazienti con prestazioni ancora da segnare: "È venuto / Non è venuto / Aggiungi nota / Apri scheda".
+  - Assistente Clinico → piano fermo o mai iniziato: "Crea richiamo / Già gestito / Aggiungi nota / Apri scheda".
+  - Assistente Finanza → piano con prestazioni eseguite ma non accettato né rifiutato: "Apri scheda / Già gestito / Aggiungi nota".
+  - Assistente Documenti → anamnesi mancante: "Apri scheda / Già gestito / Aggiungi nota".
+- **Risposte**: È venuto → nota "Presente all'appuntamento del …" in scheda (+ link Apri scheda per segnare le prestazioni); Non è venuto → nota + richiamo "da rifissare"; Nota → nota in scheda; Crea richiamo → richiamo; Già gestito → solo chiusura. Ogni risposta chiude l'avviso marcando "fatto" l'Attività con lo stesso marcatore (o creandola già fatta), così Home/Attività e ogni dispositivo concordano.
+- **Insistenza**: finché non c'è risposta l'assistente ripete l'avviso ("Promemoria — …") circa una volta al giorno; gli avvisi risolti altrove si chiudono da soli ("Risolto").
+- **Non letti**: chat in grassetto con numero rosso; totale sul tasto Chat del dock, sul campanello e sull'icona dell'app (Badging API dove supportata). Aprire la chat la segna letta. Le chat sono ordinate per attività più recente.
+- La Home non scrive più il riassunto generico nella chat di Poliedron: crea solo le Attività.
+- Limiti: le chat del team (e lo stato letto/non letto) sono sul dispositivo; le notifiche push a telefono chiuso richiedono il backend Web Push (prossimo passo, da approvare).

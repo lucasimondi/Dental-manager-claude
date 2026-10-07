@@ -18,29 +18,14 @@ import { logHomeLayoutEvent } from '../lib/homeLayoutDiagnostics.js';
 import { buildActivityText } from '../lib/appointmentQuickHub.js';
 import { MOBILE_DOCK_BOTTOM, MOBILE_DOCK_HEIGHT, MOBILE_DOCK_PROTECTED_GAP } from '../lib/poliedron/poliedronMobileDock.js';
 import { HOME_ATTENTION_EMPTY_LABEL, buildHomeAttentionItems } from '../lib/homeAttention.js';
-import { buildDataHealthActivities, ACTIVITY_KIND } from '../lib/domain/dataHealthActivities.js';
+import { buildDataHealthActivities } from '../lib/domain/dataHealthActivities.js';
 import { computeDataHealthScore } from '../lib/domain/dataHealthScore.js';
-import { getOrCreatePrimaryConversation, appendConversationMessage, createChatRequestId } from '../lib/poliedron/conversationRepository.js';
 
 // Lazy come in SchedaPaz/PatientWorkspaceV2: jsPDF entra nel bundle solo
 // quando si apre davvero la ricetta.
 const DocMedico = React.lazy(() => import('./DocMedico.jsx'));
 // POL-PERF-001: stesso principio per recharts — vedi DashboardCharts.jsx.
 const DashboardCharts = lazyWithRetry(() => import('./DashboardCharts.jsx'), 'DashboardCharts');
-
-// Unica fonte per la label leggibile di ogni ACTIVITY_KIND — usata dalla
-// notifica in Chat Poliedron del controllo dati automatico qui sotto. Il
-// dettaglio per-paziente/per-kind cliccabile che un tempo viveva anche qui
-// (widget `poliedron_status`) si è spostato in PoliedronHub.jsx (POL-UI-025
-// — "deve essere aperta in una sezione dedicata, in home... troppo
-// incasinato"), che ha la propria copia di questa stessa etichetta.
-const DATA_HEALTH_KIND_LABEL = {
-  [ACTIVITY_KIND.YESTERDAY_APPOINTMENT_NOT_MARKED]: 'hanno prestazioni non ancora segnate come eseguite dopo l’appuntamento di ieri',
-  [ACTIVITY_KIND.PLAN_AWAITING_ACCEPTANCE_DECISION]: 'hanno un piano con prestazioni già eseguite ma non ancora accettato né rifiutato',
-  [ACTIVITY_KIND.PLAN_NEVER_STARTED]: 'hanno un piano aperto da settimane senza nessuna prestazione eseguita',
-  [ACTIVITY_KIND.STALLED_TREATMENT]: 'hanno un piano che sembra fermo, senza un prossimo appuntamento in agenda',
-  [ACTIVITY_KIND.ANAMNESI_MANCANTE]: 'non hanno ancora nessuna anamnesi compilata',
-};
 
 const PALETTE = [
   '#1A4E66','#2EC4B6','#2D9E61','#7C3AED','#E63946',
@@ -557,32 +542,13 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
       if (!inserite.length) return;
       setTodoList((prev) => [...inserite.map((x) => x.nuova), ...prev]);
 
-      // Notifica in Chat Poliedron — best-effort: un problema qui non deve
-      // mai impedire la creazione delle Attività sopra, già andata a buon
-      // fine.
-      if (studioId && currentUserId) {
-        try {
-          const conversation = await getOrCreatePrimaryConversation({ client: supabase, studioId, userId: currentUserId });
-          const perTipo = new Map();
-          for (const { entry } of inserite) {
-            const lista = perTipo.get(entry.kind) || [];
-            if (!lista.includes(entry.patientName)) lista.push(entry.patientName);
-            perTipo.set(entry.kind, lista);
-          }
-          const righe = [...perTipo.entries()].map(([kind, nomi]) => `• ${nomi.join(', ')} ${DATA_HEALTH_KIND_LABEL[kind] || kind}`);
-          const content = `🩺 Controllo dati automatico — ${inserite.length} ${inserite.length === 1 ? 'nuova attività' : 'nuove attività'}:\n${righe.join('\n')}\n\nDettagli e conferma in Attività, sulla Home.`;
-          await appendConversationMessage({
-            client: supabase,
-            conversationId: conversation.id,
-            requestId: createChatRequestId(),
-            role: 'assistant',
-            content,
-            metadata: { source: 'data_health_scan', count: inserite.length },
-          });
-        } catch { /* la notifica in chat è un extra: le Attività sono già salvate */ }
-      }
+      // POL-AI-TEAM-003 — PO: "dobbiamo farlo mandare da agente agenda/
+      // pazienti". The chat notification is no longer a generic summary in
+      // Poliedron's own chat: each assistant sends its alerts, with quick
+      // replies, in its own chat (see lib/poliedron/team/alerts.js, wired in
+      // Poliedron.jsx). Here only the Attività rows are created.
     })();
-  }, [dataHealthFindings, patients, plans, studioId, currentUserId]);
+  }, [dataHealthFindings, patients, plans]);
 
   const addTodo = async () => {
     if (!todoInput.trim()) return;

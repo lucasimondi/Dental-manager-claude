@@ -15,28 +15,28 @@ test('client contacts and server team use the same assistant ids', () => {
   assert.ok(SPECIALISTI.marketing && SPECIALISTI.clinical);
 });
 test('every client team request is accepted by the server validator', () => {
-  let state = addGroup({ groups: [], threads: {} }, { title: 'Crescita', objective: 'Più igiene', assistantIds: ['marketing', 'clinical'] }, { ...ids, id: 'g1' });
+  let state = addGroup({ groups: [], threads: {}, alertsSent: {} }, { title: 'Crescita', objective: 'Più igiene', assistantIds: ['marketing', 'clinical'] }, { ...ids, id: 'g1' });
   for (const c of teamContacts(state)) assert.ok(leggiRichiestaTeam(teamRequestFor(c)), contactKey(c));
   assert.deepEqual(teamRequestFor(teamContacts(state).at(-1)), { assistente: 'clinic-manager', membri: ['marketing', 'clinical'], titolo: 'Crescita', obiettivo: 'Più igiene' });
 });
 test('state is kept per studio and user; invalid stored groups are dropped', () => {
   const storage = memory();
-  let state = addGroup({ groups: [], threads: {} }, { title: 'A', objective: 'B', assistantIds: ['finance'] }, { ...ids, id: 'g1' });
+  let state = addGroup({ groups: [], threads: {}, alertsSent: {} }, { title: 'A', objective: 'B', assistantIds: ['finance'] }, { ...ids, id: 'g1' });
   state = appendMessage(state, 'group:g1', { id: '1', role: 'user', content: 'ciao' });
   saveTeamState(storage, 's1', 'u1', state);
-  assert.deepEqual(loadTeamState(storage, 's1', 'u1'), state);
-  assert.deepEqual(loadTeamState(storage, 's2', 'u1'), { groups: [], threads: {} });
-  assert.deepEqual(loadTeamState(storage, 's1', 'u2'), { groups: [], threads: {} });
+  assert.deepEqual(loadTeamState(storage, 's1', 'u1'), { ...state, alertsSent: {} });
+  assert.deepEqual(loadTeamState(storage, 's2', 'u1'), { groups: [], threads: {}, alertsSent: {} });
+  assert.deepEqual(loadTeamState(storage, 's1', 'u2'), { groups: [], threads: {}, alertsSent: {} });
   storage.setItem('poliedron-team:v1:s1:u1', JSON.stringify({ groups: [{ id: 'x', title: 'X', objective: 'Y', assistantIds: ['hacker'] }], threads: {} }));
   assert.deepEqual(loadTeamState(storage, 's1', 'u1').groups, []);
   storage.setItem('poliedron-team:v1:s1:u1', '{broken');
-  assert.deepEqual(loadTeamState(storage, 's1', 'u1'), { groups: [], threads: {} });
-  assert.deepEqual(loadTeamState({ getItem() { throw new Error('blocked'); } }, 's1', 'u1'), { groups: [], threads: {} });
+  assert.deepEqual(loadTeamState(storage, 's1', 'u1'), { groups: [], threads: {}, alertsSent: {} });
+  assert.deepEqual(loadTeamState({ getItem() { throw new Error('blocked'); } }, 's1', 'u1'), { groups: [], threads: {}, alertsSent: {} });
 });
 test('removing a group deletes its conversation; threads are bounded', () => {
-  let state = addGroup({ groups: [], threads: {} }, { title: 'A', objective: 'B', assistantIds: ['agenda'] }, { ...ids, id: 'g1' });
+  let state = addGroup({ groups: [], threads: {}, alertsSent: {} }, { title: 'A', objective: 'B', assistantIds: ['agenda'] }, { ...ids, id: 'g1' });
   state = appendMessage(state, 'group:g1', { id: '1', role: 'user', content: 'x' });
-  assert.deepEqual(removeGroup(state, 'g1'), { groups: [], threads: {} });
+  assert.deepEqual(removeGroup(state, 'g1'), { groups: [], threads: {}, alertsSent: {} });
   for (let i = 0; i < MAX_THREAD_MESSAGES + 5; i++) state = appendMessage(state, 'assistant:agenda', { id: String(i), role: 'user', content: 'x' });
   assert.equal(state.threads['assistant:agenda'].length, MAX_THREAD_MESSAGES);
 });

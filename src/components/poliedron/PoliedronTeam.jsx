@@ -4,8 +4,9 @@ import { TEAM_ASSISTANTS } from '../../lib/poliedron/team/catalog.js';
 import useChatDictation from './useChatDictation.js';
 import {
   loadTeamState, saveTeamState, teamContacts, addGroup, removeGroup,
-  appendMessage, teamRequestFor, threadHistory,
+  appendMessage, teamRequestFor, threadHistory, markThreadRead,
 } from '../../lib/poliedron/team/threads.js';
+import { ACTION_LABEL } from '../../lib/poliedron/team/alerts.js';
 
 // POL-AI-TEAM-002: the Poliedron team as chat contacts, WhatsApp style.
 // Specialists answer in read-only consultation; the Clinic Manager (and every
@@ -92,7 +93,44 @@ function Pareri({ pareri }) {
 const formatTime = (value) => (value ? new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit' }).format(new Date(value)) : '');
 
 /** One conversation with a team contact: header, messages, composer. */
-export function TeamThread({ contact, team, ask, onBack, onDeleteGroup }) {
+// Quick replies under an alert: one tap answers; "Aggiungi nota" opens a
+// small field in the bubble. Once answered the buttons give way to the answer.
+function AlertActions({ message, onAction }) {
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(null);
+  if (message.answered) return <p className="poliedron-alert__answered">Risposta: {message.answered}</p>;
+  if (!onAction) return null;
+  const run = async (action, text) => {
+    setBusy(action);
+    try { await onAction(message.alert, action, text); } finally { setBusy(null); }
+  };
+  return (
+    <div className="poliedron-alert">
+      <div className="poliedron-alert__actions">
+        {message.alert.actions.map((action) => (
+          <button
+            key={action}
+            type="button"
+            className={action === message.alert.actions[0] ? 'is-primary' : undefined}
+            disabled={Boolean(busy)}
+            onClick={() => (action === 'nota' ? setNoteOpen((v) => !v) : run(action))}
+          >
+            {busy === action ? '…' : ACTION_LABEL[action] || action}
+          </button>
+        ))}
+      </div>
+      {noteOpen && (
+        <form className="poliedron-alert__note" onSubmit={(e) => { e.preventDefault(); if (note.trim()) run('nota', note.trim()); }}>
+          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Scrivi la nota per la scheda…" aria-label="Nota per la scheda del paziente" autoFocus maxLength={2000} />
+          <button type="submit" disabled={!note.trim() || Boolean(busy)}>Salva</button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+export function TeamThread({ contact, team, ask, onBack, onDeleteGroup, onAlertAction, onOpenPatientTab, patients = [] }) {
   const key = contact.kind === 'group' ? `group:${contact.id}` : `assistant:${contact.id}`;
   const thread = team.state.threads[key] || [];
   const [draft, setDraft] = useState('');
@@ -105,6 +143,11 @@ export function TeamThread({ contact, team, ask, onBack, onDeleteGroup }) {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [thread.length, sending, key]);
+  // Open chat = read, like WhatsApp.
+  const hasUnread = thread.some((m) => m.unread);
+  useEffect(() => {
+    if (hasUnread) team.setState((s) => markThreadRead(s, key));
+  }, [hasUnread, key, team]);
 
   const send = async () => {
     const text = draft.trim();
@@ -139,7 +182,7 @@ export function TeamThread({ contact, team, ask, onBack, onDeleteGroup }) {
         <TeamAvatar contact={contact} />
         <div className="poliedron-chat__header-text">
           <h1>{contact.label}</h1>
-          <p>{sending ? (coordinated ? 'Consulta il team…' : 'Sta analizzando…') : contact.kind === 'group' ? contact.assistantIds.map(nameOf).join(', ') : 'Sola lettura · pareri'}</p>
+          <p>{sending ? (coordinated ? 'Consulta il team…' : 'Sta analizzando…') : contact.kind === 'group' ? contact.assistantIds.map(nameOf).join(', ') : 'Avvisi e pareri'}</p>
         </div>
         {contact.kind === 'group' && onDeleteGroup && (
           <button
@@ -169,6 +212,15 @@ export function TeamThread({ contact, team, ask, onBack, onDeleteGroup }) {
               <div className="poliedron-chat__bubble">
                 <div style={{ whiteSpace: 'pre-wrap' }}>{m.content}</div>
                 <Pareri pareri={m.pareri} />
+                {m.alert && <AlertActions message={m} onAction={onAlertAction} />}
+                {m.links?.length > 0 && onOpenPatientTab && (
+                  <div className="poliedron-alert__actions">
+                    {m.links.map((link) => {
+                      const patient = patients.find((p) => String(p.id) === String(link.patientId));
+                      return patient ? <button key={link.label} type="button" onClick={() => onOpenPatientTab(patient, link.tab)}>{link.label}</button> : null;
+                    })}
+                  </div>
+                )}
                 <footer>
                   <time dateTime={m.at}>{formatTime(m.at)}</time>
                   {m.failed && <span>Non inviato: riprova.</span>}

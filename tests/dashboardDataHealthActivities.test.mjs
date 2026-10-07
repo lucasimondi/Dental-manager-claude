@@ -13,7 +13,7 @@ const source = fs.readFileSync(new URL('../src/components/Dashboard.jsx', import
 // ma chiaro e con la cliccabili".
 
 test('the automatic data-health scan reuses the shared, tested selector instead of a bespoke rule', () => {
-  assert.match(source, /import \{ buildDataHealthActivities, ACTIVITY_KIND \} from '\.\.\/lib\/domain\/dataHealthActivities\.js';/);
+  assert.match(source, /import \{ buildDataHealthActivities \} from '\.\.\/lib\/domain\/dataHealthActivities\.js';/);
   assert.match(source, /buildDataHealthActivities\(\{ patients, plans, appointments, today: t, formatDate: fmtD \}\)/);
 });
 
@@ -32,17 +32,10 @@ test('every Attività row renders as a real clickable control — patient-linked
   assert.match(source, /<button type="button" onClick=\{apriTodo\}/);
 });
 
-test('new findings also post one summary notification into the persisted Poliedron chat, naming the affected patients', () => {
-  assert.match(source, /import \{ getOrCreatePrimaryConversation, appendConversationMessage, createChatRequestId \} from '\.\.\/lib\/poliedron\/conversationRepository\.js';/);
-  assert.match(source, /getOrCreatePrimaryConversation\(\{ client: supabase, studioId, userId: currentUserId \}\)/);
-  assert.match(source, /role: 'assistant',/);
-  assert.match(source, /lista\.push\(entry\.patientName\)/);
-});
-
-test('the chat notification is best-effort and never blocks or undoes the already-saved Attività rows', () => {
+test('POL-AI-TEAM-003: Home only creates the Attività rows — alerts are sent by each assistant in its own chat, not as a summary in Poliedron\'s chat', () => {
+  assert.doesNotMatch(source, /getOrCreatePrimaryConversation|appendConversationMessage/);
   assert.match(source, /setTodoList\(\(prev\) => \[\.\.\.inserite\.map\(\(x\) => x\.nuova\), \.\.\.prev\]\);/);
-  const chatBlockIndex = source.indexOf('Notifica in Chat Poliedron');
-  const setTodoListIndex = source.indexOf('setTodoList((prev) => [...inserite.map');
-  assert.ok(setTodoListIndex >= 0 && chatBlockIndex > setTodoListIndex, 'Attività rows must be saved to state before the chat notification is attempted');
-  assert.match(source, /\} catch \{ \/\* la notifica in chat è un extra: le Attività sono già salvate \*\/ \}/);
+  const controller = fs.readFileSync(new URL('../src/components/poliedron/Poliedron.jsx', import.meta.url), 'utf8');
+  assert.match(controller, /buildAlerts\(\{ patients, plans, appointments, todos: alertTodos/);
+  assert.match(controller, /deliverAlerts\(/);
 });

@@ -23,6 +23,10 @@ import { describeChatError, resolveChatSurfaceState } from '../../lib/poliedron/
 import { attachmentMetadata, attachmentPayload, prepareAttachment } from '../../lib/poliedron/chatAttachment.js';
 import { saveAttachmentToPatient } from '../../lib/poliedron/attachmentToPatient.js';
 import { DB } from '../../lib/supabase.js';
+import { useTeamState } from './PoliedronTeam';
+import { buildAlerts, alertsToDeliver, alertMarker, ACTION_LABEL } from '../../lib/poliedron/team/alerts.js';
+import { ACTIVITY_KIND } from '../../lib/domain/dataHealthActivities.js';
+import { deliverAlerts, closeSolvedAlerts, answerAlert, appendMessage as appendTeamMessage, unreadIn } from '../../lib/poliedron/team/threads.js';
 
 const summarizeStructuredResult = (result) => {
   if (result?.answer) return result.answer;
@@ -130,7 +134,7 @@ export default function Poliedron({
     hasOlder: conversationHasOlder,
     loading: conversationLoading,
     loadingOlder: conversationLoadingOlder,
-    unreadCount,
+    unreadCount: conversationUnreadCount,
     error: conversationError,
     errorState: conversationErrorState,
     loadOlder: loadOlderMessages,
@@ -582,6 +586,112 @@ export default function Poliedron({
   }, [context, supabaseClient]);
   const teamIdentity = useMemo(() => ({ studioId, userId }), [studioId, userId]);
 
+  // POL-AI-TEAM-003 — the team's chats and the proactive alerts each
+  // assistant sends (Agenda: appointment outcomes; Clinico: stalled or
+  // never-started plans; Finanza: plans awaiting acceptance; Documenti:
+  // missing anamnesi). Deterministic, no model calls. An alert is resolved
+  // by a done Attività row with the same marker, so the studio app and
+  // every device agree; until then the assistant reminds once a day.
+  const team = useTeamState(studioId, userId);
+  const setTeamState = team.setState;
+  const [alertTodos, setAlertTodos] = useState(null);
+  const studioDay = () => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Rome' }).format(new Date());
+  const newMessageId = () => (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  useEffect(() => {
+    if (!supabaseClient || !studioId) return undefined;
+    let active = true;
+    const load = async () => {
+      const { data, error } = await supabaseClient.from('todos').select('id, paziente_id, testo, fatto, data, categoria');
+      if (active && !error) setAlertTodos(data || []);
+    };
+    load();
+    const onVisible = () => { if (!document.hidden) load(); };
+    document.addEventListener('visibilitychange', onVisible);
+    const timer = setInterval(load, 15 * 60 * 1000);
+    return () => { active = false; document.removeEventListener('visibilitychange', onVisible); clearInterval(timer); };
+  }, [supabaseClient, studioId]);
+  useEffect(() => {
+    if (!alertTodos || !patients?.length) return;
+    const alerts = buildAlerts({ patients, plans, appointments, todos: alertTodos, today: studioDay() });
+    setTeamState((current) => {
+      const closed = closeSolvedAlerts(current, alerts.map((a) => a.id));
+      return deliverAlerts(closed, alertsToDeliver(alerts, closed.alertsSent), new Date().toISOString(), newMessageId);
+    });
+  }, [alertTodos, patients, plans, appointments, setTeamState]);
+
+  const handleAlertAction = useCallback(async (alert, action, note = '') => {
+    const patient = (patients || []).find((p) => String(p.id) === String(alert.patientId));
+    if (action === 'scheda') {
+      if (patient) goSchedaPaz?.(patient, alert.kind === ACTIVITY_KIND.ANAMNESI_MANCANTE ? 'clinical' : alert.kind === ACTIVITY_KIND.YESTERDAY_APPOINTMENT_NOT_MARKED ? 'info' : 'piani');
+      return;
+    }
+    const day = studioDay();
+    const dateIt = (iso) => (iso ? new Intl.DateTimeFormat('it-IT', { timeZone: 'UTC', day: '2-digit', month: '2-digit' }).format(new Date(`${iso}T12:00:00Z`)) : '');
+    const appDate = dateIt(alert.appointment?.data);
+    const addNote = async (testo) => {
+      const { data: row, error } = await supabaseClient.from('patients').select('annotazioni').eq('id', alert.patientId).single();
+      if (error) throw error;
+      const annotazioni = [...(Array.isArray(row?.annotazioni) ? row.annotazioni : []), { testo, data: new Date().toISOString() }];
+      const { error: updateError } = await supabaseClient.from('patients').update({ annotazioni }).eq('id', alert.patientId);
+      if (updateError) throw updateError;
+    };
+    const addRecall = (motivo) => DB.insert('dm_ri', { pazienteId: alert.patientId, categoria: 'generico', motivo, dataScadenza: day, origine: 'bot', stato: 'da_fare' });
+    let reply = '';
+    const label = action === 'nota' ? `Nota: ${note}` : ACTION_LABEL[action] || action;
+    try {
+      if (action === 'venuto') {
+        await addNote(`Presente all'appuntamento del ${appDate}${note ? ` — ${note}` : ''}.`);
+        reply = `Segnato: ${alert.patientName} è venuto/a il ${appDate}. Ricordati di segnare nel piano le prestazioni eseguite (Apri scheda → Piani).`;
+      } else if (action === 'assente') {
+        await addNote(`Non si è presentato/a all'appuntamento del ${appDate}.`);
+        await addRecall(`Non si è presentato/a all'appuntamento del ${appDate}: da rifissare`);
+        reply = `Segnato come assente il ${appDate} e creato un richiamo "da rifissare" in Richiami.`;
+      } else if (action === 'nota') {
+        if (!note.trim()) return;
+        await addNote(note.trim());
+        reply = 'Nota aggiunta nella scheda del paziente.';
+      } else if (action === 'richiamo') {
+        await addRecall(`Ricontattare per riprendere il piano di cura`);
+        reply = `Richiamo creato per ${alert.patientName}: lo trovi in Richiami.`;
+      } else if (action === 'gestito') {
+        reply = 'Ok, lo segno come gestito.';
+      }
+      // Resolve: the same marker an Attività row carries, marked done.
+      const open = (alertTodos || []).find((t) => !t.fatto && String(t.paziente_id) === String(alert.patientId) && String(t.testo || '').includes(alertMarker(alert.kind)));
+      if (open) {
+        await supabaseClient.from('todos').update({ fatto: true }).eq('id', open.id);
+        setAlertTodos((list) => (list || []).map((t) => (t.id === open.id ? { ...t, fatto: true } : t)));
+      } else {
+        const row = { id: Date.now(), testo: `${alert.patientName}: ${alertMarker(alert.kind)} — gestito da Poliedron (${ACTION_LABEL[action] || action})`, fatto: true, data: day, paziente_id: alert.patientId, categoria: alert.kind };
+        const { error } = await supabaseClient.from('todos').insert([row]);
+        if (!error) setAlertTodos((list) => [...(list || []), row]);
+      }
+      Promise.resolve(onDataChanged?.(['patients', 'richiami', 'todos'])).catch(() => {});
+    } catch (error) {
+      reply = `Non sono riuscito a registrarlo: ${error?.message || 'riprova'}.`;
+      setTeamState((current) => appendTeamMessage(current, `assistant:${alert.owner || 'agenda'}`, { id: newMessageId(), role: 'assistant', content: reply, at: new Date().toISOString() }));
+      return;
+    }
+    const key = `assistant:${alert.owner || 'agenda'}`;
+    setTeamState((current) => {
+      let next = answerAlert(current, alert.id, label);
+      next = appendTeamMessage(next, key, { id: newMessageId(), role: 'user', content: label, at: new Date().toISOString() });
+      return appendTeamMessage(next, key, { id: newMessageId(), role: 'assistant', content: reply, at: new Date().toISOString(), links: action === 'venuto' ? [{ label: 'Apri scheda', patientId: alert.patientId, tab: 'piani' }] : undefined });
+    });
+  }, [patients, goSchedaPaz, supabaseClient, alertTodos, onDataChanged, setTeamState]);
+
+  const teamUnread = useMemo(() => Object.values(team.state.threads).reduce((sum, thread) => sum + unreadIn(thread), 0), [team.state.threads]);
+  // Unread chats also on the app icon, where the system supports it.
+  // The bell (and the app icon) count Poliedron's chat plus the team chats.
+  const unreadCount = (conversationUnreadCount || 0) + teamUnread;
+  useEffect(() => {
+    const total = unreadCount;
+    try {
+      if (total > 0) navigator.setAppBadge?.(total)?.catch?.(() => {});
+      else navigator.clearAppBadge?.()?.catch?.(() => {});
+    } catch { /* not supported */ }
+  }, [unreadCount]);
+
   /** POL-AI-005B §CONFIRM: called only from an explicit user click on the
    *  Level-2 preview's Confirm button — never automatically. Re-loads
    *  `patients` fresh is the caller's job in principle, but since this
@@ -843,6 +953,10 @@ export default function Poliedron({
           patients={patients}
           onOpenPatient={goSchedaPaz ? (patient) => goSchedaPaz(patient, 'info') : undefined}
           onCreatePatient={onCreatePatient}
+          team={team}
+          poliedronUnread={conversationUnreadCount || 0}
+          onAlertAction={handleAlertAction}
+          onOpenPatientTab={goSchedaPaz ? (patient, tab) => goSchedaPaz(patient, tab) : undefined}
         />,
         chatHost
       )}
