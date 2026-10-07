@@ -66,6 +66,10 @@ export const openAIResponseToAnthropic = (response = {}) => {
   };
 };
 
+const openAIInstructions = (system) => Array.isArray(system)
+  ? system.map((block) => typeof block === 'string' ? block : block?.text || '').filter(Boolean).join('\n\n')
+  : String(system || '');
+
 export async function callOpenAI({ apiKey, model, system, messages, tools, signal }) {
   if (!apiKey) return { ok: false, failure: providerFailure('openai', 503, 'provider_not_configured') };
   const resp = await fetch('https://api.openai.com/v1/responses', {
@@ -73,7 +77,7 @@ export async function callOpenAI({ apiKey, model, system, messages, tools, signa
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
       model,
-      instructions: system,
+      instructions: openAIInstructions(system),
       input: anthropicConversationToOpenAI(messages),
       ...(tools?.length ? { tools: anthropicToolsToOpenAI(tools), tool_choice: 'auto' } : {}),
     }),
