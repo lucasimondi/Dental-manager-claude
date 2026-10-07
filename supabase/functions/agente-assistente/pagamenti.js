@@ -133,7 +133,7 @@ export async function executePagamenti(client, proposal) {
     id: proposal.id, studio_id: proposal.studioId, user_id: proposal.userId,
   });
   if (errClaim?.code === '23505') throw new Error('Questa operazione è già stata eseguita.');
-  if (errClaim) throw new Error('Impossibile acquisire l'operazione. Nessun pagamento registrato.');
+  if (errClaim) throw new Error("Impossibile acquisire l'operazione. Nessun pagamento registrato.");
   const { dati } = proposal.pagamenti;
   // payments.id non ha un default nel database: lo genera chi scrive, con lo
   // stesso schema dell'app (uid() in src/lib/utils.js).
