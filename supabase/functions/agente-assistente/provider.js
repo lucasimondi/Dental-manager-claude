@@ -19,6 +19,7 @@ export const anthropicToolsToOpenAI = (tools = []) => tools.map((t) => ({
   name: t.name,
   description: t.description || '',
   parameters: t.input_schema || { type: 'object', properties: {} },
+  strict: false,
 }));
 
 export const anthropicConversationToOpenAI = (messages = []) => {
@@ -81,8 +82,10 @@ export async function callOpenAI({ apiKey, model, system, messages, tools, signa
   if (!resp.ok) {
     const errText = await resp.text();
     const status = resp.status;
+    let errorCode = null, errorParam = null, errorType = null;
+    try { const parsed = JSON.parse(errText); errorCode = parsed?.error?.code || null; errorParam = parsed?.error?.param || null; errorType = parsed?.error?.type || null; } catch {}
     const kind = status === 429 ? 'rate_limit_or_quota' : status >= 500 ? 'provider_unavailable' : status === 401 || status === 403 ? 'provider_auth' : 'provider_error';
-    console.error('llm_provider_error', JSON.stringify({ provider: 'openai', status, kind, requestId: resp.headers?.get?.('x-request-id') || null }));
+    console.error('llm_provider_error', JSON.stringify({ provider: 'openai', status, kind, errorCode, errorParam, errorType, requestId: resp.headers?.get?.('x-request-id') || null }));
     return { ok: false, failure: providerFailure('openai', status, kind, resp.headers?.get?.('x-request-id') || null) };
   }
   const raw = await resp.json();
