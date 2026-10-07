@@ -71,6 +71,8 @@ The folder below was re-imported from production v28 (identical to the code abov
   agenda and patient tools, Poliedron team (read-only).
 - `pagamenti.js` (POL-AI-010 passo 4a): payments from chat, always confirmed.
   Tested by `tests/agentePagamenti.test.mjs`.
+- `piani.js` (POL-AI-010 passo 4b): treatment plans/quotes from chat, always confirmed; writes the same `plans.voci` shape used by the app.
+  Tested by `tests/agentePiani.test.mjs`.
 - `allegato.js` (POL-AI-008): pure logic for a PDF/photo attached to a chat message.
   Tested by `tests/poliedronAllegati.test.mjs`.
 - `memoria.js` (POL-AI-009): memory tools (`ricorda`, `dimentica`), the prompt sections
