@@ -1,8 +1,9 @@
+import { normalizeItalianOperational } from './poliedron-language.js';
 export const POLIEDRON_CORE_VERSION='1.0';
 const clean=(v='')=>String(v).trim().replace(/\s+/g,' '), lower=(v='')=>clean(v).toLocaleLowerCase('it-IT');
 export function parseItalianDay(text=''){const q=lower(text);if(/\boggi\b/.test(q))return{relative_day:0,confidence:1};if(/\bdomani\b/.test(q))return{relative_day:1,confidence:1};if(/\bdopodomani\b/.test(q))return{relative_day:2,confidence:1};return null}
 export function parseItalianTime(text=''){const m=lower(text).match(/\b(?:alle|ore)\s*(\d{1,2})(?:[.:](\d{2}))?\b/);if(!m)return null;const h=Number(m[1]),min=Number(m[2]||0);if(h>23||min>59)return null;return{time:`${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}`,confidence:1}}
-export function understandPoliedron(text=''){const raw=clean(text),q=lower(raw);if(!q)return{intent:'UNKNOWN',confidence:0,entities:{},missing:[]};const day=parseItalianDay(q),time=parseItalianTime(q),entities={...(day||{}),...(time||{})};
+export function understandPoliedron(text=''){const raw=clean(text),q=normalizeItalianOperational(raw);if(!q)return{intent:'UNKNOWN',confidence:0,entities:{},missing:[]};const day=parseItalianDay(q),time=parseItalianTime(q),entities={...(day||{}),...(time||{})};
 if((/\bappuntament\w*\b|\bagenda\b/.test(q))&&!/\b(?:crea|fissa|sposta|cancella|elimina)\b/.test(q))return{intent:'AGENDA_READ',confidence:.99,entities,missing:day?[]:['day']};
 const patient=q.match(/^(?:cerca|trova|apri|scheda)\s+(?:il\s+)?(?:paziente\s+)?(.{2,80})$/);if(patient)return{intent:'PATIENT_SEARCH',confidence:.98,entities:{query:patient[1].trim()},missing:[]};
 if(/\b(?:richiam\w*|controlli? periodici?)\b/.test(q))return{intent:'RECALLS_READ',confidence:.98,entities:{entro_giorni:30},missing:[]};
