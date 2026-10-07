@@ -900,7 +900,8 @@ FUNZIONALITÀ ATTIVE:
 ## Conflitti di orario in agenda
 
 Se l'orario richiesto è occupato (da un altro appuntamento O da un impegno personale come
-ferie/chiamate), il sistema non scrive nulla e te lo segnala con gli orari liberi del giorno.
+ferie/chiamate), il sistema non scrive nulla e te lo segnala dicendo chi lo occupa
+("occupato_da") e con gli orari liberi del giorno. Non nominare mai un occupante diverso.
 NON spostare o annullare l'appuntamento/impegno esistente di tua iniziativa e non forzare mai
 la sovrapposizione: spiega il conflitto in una riga e proponi gli orari liberi.
 
@@ -1217,6 +1218,7 @@ REGOLE OPERATIVE PRIORITARIE (prevalgono su quanto scritto sopra):
 - La precisione viene prima di tutto. Prima di scrivere trova il paziente con cerca_pazienti o l'appuntamento con appuntamenti. Se più risultati possono corrispondere, se manca un dato indispensabile (chi, giorno, ora) o la richiesta si può leggere in due modi, NON scrivere: fai una sola domanda breve elencando le opzioni (con un dato che le distingua, es. data di nascita o telefono). Non indovinare mai ID, date o orari.
 - Per le date usa solo il calendario dei prossimi giorni indicato sotto. Se l'utente non dice la durata usa 30 minuti; se non dice il tipo di visita usa "Visita".
 - Se uno strumento segnala un conflitto o un errore, non riprovare a caso: spiega il problema in una riga e, per l'agenda, proponi gli orari liberi indicati.
+- Nomi di pazienti, orari e appuntamenti li affermi solo se li hai letti da uno strumento in questa richiesta: i messaggi precedenti della chat possono essere sbagliati o superati. Se un orario è occupato, di' chi lo occupa solo come indicato in "occupato_da" (se "stesso_paziente" è vero, l'appuntamento esiste già: dillo e non crearne un altro). Se non sei sicuro, rileggi con appuntamenti prima di rispondere; se un dato non c'è, dillo invece di supporlo.
 - Se l'utente chiede più azioni nello stesso messaggio, eseguile tutte. Quando puoi, chiama insieme gli strumenti di lettura che ti servono (es. cerca_pazienti e disponibilita_agenda nello stesso passaggio).
 - Dopo una scrittura riuscita l'utente vede già il riepilogo del sistema: non ripeterlo, aggiungi solo ciò che serve.
 - Le ricette le prepari con prepara_ricetta, quando è tra i tuoi strumenti: il modulo si apre già compilato e il medico lo controlla e lo genera. I pagamenti li registri con registra_pagamento_paziente: l'utente vede un riepilogo e conferma lui. Altri documenti e i piani di cura per ora vanno fatti nei moduli dell'app: dillo con semplicità.
@@ -1347,7 +1349,7 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
     const testoEseguite = () => eseguite.map((e) => e.text).join('\n\n');
 
     // Una chiamata al modello, con il consumo registrato in background.
-    const chiamaClaude = async (system, messaggi, tools, signal) => {
+    const chiamaClaude = async (system, messaggi, tools, signal, effort = "low") => {
       const resp = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
@@ -1358,7 +1360,7 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
         body: JSON.stringify({
           model: "claude-sonnet-5",
           max_tokens: 4096,
-          output_config: { effort: "low" },
+          output_config: { effort },
           system,
           messages: messaggi,
           ...(tools.length ? { tools } : {}),
@@ -1415,8 +1417,11 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
     const pareriTeam = [];
     let consultazioni = 0;
 
+    // Dopo una scrittura in agenda fallita (orario occupato, dato non valido)
+    // il passaggio successivo ragiona di più: lì un errore costa caro.
+    let sforzo = "low";
     for (let turn = 0; turn < MAX_TURNS; turn++) {
-      const risposta = await chiamaClaude(systemRichiesta, convo, toolsRichiesta);
+      const risposta = await chiamaClaude(systemRichiesta, convo, toolsRichiesta, undefined, sforzo);
 
       if (!risposta.ok) {
         const errText = risposta.errText;
@@ -1489,8 +1494,14 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
           } catch (error) {
             result = { error: error.message };
             soloScrittureRiuscite = false;
-            // Orario occupato: si allegano subito gli orari liberi del giorno,
-            // così il modello propone alternative senza un altro passaggio.
+            if (isAgenda) sforzo = "medium";
+            // Orario occupato: si dice chi lo occupa (letto adesso dall'agenda) e
+            // si allegano gli orari liberi del giorno, così il modello non deve
+            // indovinare e propone alternative senza un altro passaggio.
+            if (isAgenda && Array.isArray(error.occupato_da)) {
+              result.occupato_da = error.occupato_da;
+              for (const o of error.occupato_da) if (o.appuntamento_id != null) observed.appointments.add(o.appuntamento_id);
+            }
             if (isAgenda && /Orario occupato/.test(error.message) && input.data) {
               try {
                 const libero = await agendaAvailability(supabase, { data: input.data, durata: input.durata ?? 30, operatore_id: input.operatore_id }, studioId);

@@ -1,5 +1,10 @@
 # Handoffs
 
+## POL-AI-TEAM-004 — agenda conflicts name the occupant (PR pending "Mergia")
+
+- Branch `claude/whatsapp-automation-status-d2ng12` from `master@176f66d`. Edge Function only; no schema/RLS change. Deploy of `agente-assistente` only after PO "Mergia".
+- Investigated "Claude API down" report: Supabase function logs of the last 24h show no 5xx from `agente-assistente` (only two 401 = expired session, 2026-10-06 14:58 and 16:09 UTC); no evidence of an outage on our side.
+
 ## POL-FIN-002 — merged (PR #75), plus a follow-up fix (PR #76)
 
 - PR #75 ("POL-FIN-002 — Modulo Incassi e gestione Da incassare", branch `feature/modulo-incassi`, base `master@6b7d2a9`) merged to `master` by explicit Product Owner instruction. Merge commit `6c76cf0`.

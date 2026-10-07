@@ -34,13 +34,43 @@ export function validateAppointment(row) {
   if (!Number.isSafeInteger(row.paziente_id) || !row.tipo?.trim()) throw new Error('Paziente e tipo visita obbligatori');
   if (row.note != null && (typeof row.note !== 'string' || row.note.length > 4000)) throw new Error('Note non valide');
 }
-export function hasConflict(row, appointments, impegni) {
-  if (row.stato === 'annullato') return false;
+/** What overlaps the row: active appointments (same operator or unassigned) and personal commitments. */
+export function findConflicts(row, appointments, impegni) {
+  if (row.stato === 'annullato') return [];
   const start = minutes(row.ora), end = start + row.durata;
-  return appointments.some((a) => String(a.id) !== String(row.id) && a.stato !== 'annullato'
-    && (!row.operatore_id || !a.operatore_id || String(a.operatore_id) === String(row.operatore_id))
-    && overlaps(start, end, minutes(a.ora), minutes(a.ora) + (a.durata || 30)))
-    || impegni.some((i) => i.tutto_il_giorno || (i.ora_inizio && i.ora_fine && overlaps(start, end, minutes(i.ora_inizio), minutes(i.ora_fine))));
+  return [
+    ...appointments.filter((a) => String(a.id) !== String(row.id) && a.stato !== 'annullato'
+      && (!row.operatore_id || !a.operatore_id || String(a.operatore_id) === String(row.operatore_id))
+      && overlaps(start, end, minutes(a.ora), minutes(a.ora) + (a.durata || 30)))
+      .map((a) => ({ appointment: a })),
+    ...impegni.filter((i) => i.tutto_il_giorno || (i.ora_inizio && i.ora_fine && overlaps(start, end, minutes(i.ora_inizio), minutes(i.ora_fine))))
+      .map((i) => ({ impegno: i })),
+  ];
+}
+export function hasConflict(row, appointments, impegni) {
+  return findConflicts(row, appointments, impegni).length > 0;
+}
+/**
+ * Who occupies the slot, as read from the agenda now. The model must report
+ * this and nothing else: without it, it used to guess a name from the chat.
+ */
+export function describeConflicts(row, conflicts) {
+  return conflicts.map(({ appointment: a, impegno: i }) => {
+    if (i) return { tipo: 'impegno', tutto_il_giorno: Boolean(i.tutto_il_giorno), ora_inizio: i.ora_inizio?.slice(0, 5) || null, ora_fine: i.ora_fine?.slice(0, 5) || null };
+    const name = [a.patients?.nome, a.patients?.cognome].filter(Boolean).join(' ').trim();
+    return {
+      tipo: 'appuntamento', appuntamento_id: a.id, paziente_id: a.paziente_id ?? null, paziente: name || null,
+      ora: a.ora.slice(0, 5), durata: a.durata || 30, tipo_visita: a.tipo || null, stato: a.stato,
+      stesso_paziente: a.paziente_id != null && String(a.paziente_id) === String(row.paziente_id),
+    };
+  });
+}
+export function conflictMessage(occupants) {
+  const parts = occupants.map((o) => (o.tipo === 'impegno'
+    ? (o.tutto_il_giorno ? 'un impegno di tutto il giorno' : `un impegno dalle ${o.ora_inizio} alle ${o.ora_fine}`)
+    : `${o.stesso_paziente ? 'un appuntamento dello stesso paziente' : 'l\'appuntamento'}${o.paziente ? ` di ${o.paziente}` : ''} alle ${o.ora} (${[o.tipo_visita, `${o.durata} min`, o.stato].filter(Boolean).join(', ')})`));
+  const same = occupants.some((o) => o.stesso_paziente);
+  return `Orario occupato: c'è già ${parts.join(' e ')}.${same ? ' Il paziente ha già questo appuntamento: non serve crearne un altro.' : ' Scegli un altro orario.'}`;
 }
 async function one(query) {
   const { data, error } = await query.single();
@@ -74,11 +104,14 @@ export async function prepareAgenda(client, name, input, studioId, observed) {
 export async function checkAvailability(client, row, studioId) {
   if (row.stato === 'annullato') return;
   const [a, i] = await Promise.all([
-    client.from('appointments').select(select).eq('studio_id', studioId).eq('data', row.data),
+    client.from('appointments').select(`${select}, patients(nome, cognome)`).eq('studio_id', studioId).eq('data', row.data),
     client.from('impegni_personali').select('tutto_il_giorno, ora_inizio, ora_fine').eq('studio_id', studioId).lte('data_inizio', row.data).gte('data_fine', row.data),
   ]);
   if (a.error || i.error) throw new Error('Impossibile verificare la disponibilità');
-  if (hasConflict(row, a.data || [], i.data || [])) throw new Error('Orario occupato da un appuntamento o impegno. Scegli un altro orario.');
+  const conflicts = findConflicts(row, a.data || [], i.data || []);
+  if (!conflicts.length) return;
+  const occupants = describeConflicts(row, conflicts);
+  throw Object.assign(new Error(conflictMessage(occupants)), { occupato_da: occupants });
 }
 export async function executeAgenda(client, proposal) {
   const { data, error } = await client.rpc('poliedron_execute_agenda_v1', {

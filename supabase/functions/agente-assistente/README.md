@@ -19,9 +19,14 @@ step 2b (direct execution and speed) is not yet deployed.
   replay is needed. Rechecks active membership, current plan/autonomy and signature.
 - Uncertain result: explicit message and refresh; never automatically replay writes.
 
-Speed: `output_config.effort = "low"`, prompt caching on the tools and on the
+Speed: `output_config.effort = "low"` (raised to `"medium"` for the step right
+after a failed agenda write, e.g. an occupied slot), prompt caching on the tools and on the
 stable system block (studio name, knowledge, date and level come after the cache
 point), initial reads in parallel, usage logging off the critical path.
+
+Occupied slot: the error names who occupies it (`occupato_da`: patient, time,
+type, `stesso_paziente`), read from the agenda at that moment; the prompt forbids
+stating agenda facts not read by a tool in the current request (POL-AI-TEAM-004).
 
 Reviewed writes exposed to the model: agenda (create, modify, soft-cancel) and, from
 step 2, patients and clinical organisation (`pazienti.js`: new patient,
