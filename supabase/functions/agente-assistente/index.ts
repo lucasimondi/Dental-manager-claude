@@ -1363,8 +1363,27 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
       const parsed = understandPoliedron(lastUserText);
       const decision = coreDecision(parsed);
       if (decision.action === 'CLARIFY') {
-        const labels = { day: 'Per quale giorno?', time: 'A che ora?' };
+        const labels = { patient: 'Per quale paziente?', day: 'Per quale giorno?', time: 'A che ora?', type: 'Che tipo di appuntamento devo inserire?' };
         return json({ text: decision.missing.map((x) => labels[x] || `Mi manca: ${x}`).join(' '), core_mode: true, core_version: '1.0' });
+      }
+      if (decision.action === 'PREPARE_WRITE_CONFIRMATION' && parsed.intent === 'APPOINTMENT_CREATE' && allowedNames.has('crea_appuntamento')) {
+        const found = await eseguiTool(supabase, 'cerca_pazienti', { query: parsed.entities.patient_query }, studioId, user.id, azioniPersonalizzate);
+        const patients = found?.risultati || [];
+        if (patients.length === 0) return json({ text: `Non trovo il paziente “${parsed.entities.patient_query}”. Vuoi prima crearlo?`, core_mode: true, core_version: '1.0' });
+        if (patients.length > 1) return json({ text: 'Ho trovato più pazienti con questo nome. Dimmi quale intendi: ' + patients.map((p) => `${p.nome} ${p.cognome}`).join(', '), core_mode: true, core_version: '1.0', data: { risultati: patients } });
+        const patient = patients[0];
+        observed.patients.add(patient.id);
+        const base = new Date(studioToday() + 'T12:00:00Z');
+        base.setUTCDate(base.getUTCDate() + parsed.entities.relative_day);
+        const input = { paziente_id: patient.id, data: base.toISOString().slice(0,10), ora: parsed.entities.time, durata: 30, tipo: parsed.entities.tipo, stato: 'confermato' };
+        try {
+          const prepared = await prepareAgenda(supabase, 'crea_appuntamento', input, studioId, observed);
+          const proposal = { id: crypto.randomUUID(), userId: user.id, studioId, name: 'crea_appuntamento', agenda: prepared, expiresAt: Date.now() + 10 * 60 * 1000 };
+          const token = await signProposal(proposal, SUPABASE_SERVICE_ROLE_KEY);
+          return json({ text: 'Ho preparato l’appuntamento. Controlla il riepilogo e conferma.', needsConfirmation: { token, summary: prepared.summary, expiresAt: proposal.expiresAt }, core_mode: true, core_version: '1.0' });
+        } catch (error) {
+          return json({ text: error.message, core_mode: true, core_version: '1.0', uncertain: true });
+        }
       }
       if (decision.action === 'EXECUTE_READ') {
         const map = {
