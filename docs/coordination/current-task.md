@@ -1,3 +1,12 @@
+# Roadmap decision — POL-AI-LEARN-001 Poliedron Learning Engine (2026-10-07)
+- PO: Poliedron deve usare LLM oggi e nel frattempo addestrarsi/migliorare fino a poter avere ML/modello specializzato proprietario.
+- ARCHITECTURE: `docs/architecture/poliedron-learning-engine.md`.
+- LOCK: LLM + Resolver + Confidence Engine deterministico + Action Engine + Learning Events + futuro ML in shadow mode.
+- PRIVACY: nessun dato sanitario grezzo diventa automaticamente training data.
+- NEXT AFTER SAFE AUTONOMY: Confidence Engine v1 + schema learning events/RLS/retention + correction capture + replay benchmark.
+
+---
+
 # Current task — POL-AI-010 Safe Autonomy (2026-10-07)
 - OWNER: ChatGPT, authorized directly by Product Owner: eliminare le conferme superflue e rendere Poliedron preciso/fail-closed.
 - BRANCH: `claude/pol-ai-010-safe-autonomy`, da master dopo merge PR #145.
