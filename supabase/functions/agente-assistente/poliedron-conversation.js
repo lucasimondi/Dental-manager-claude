@@ -49,3 +49,16 @@ export function conversationalReference(text='',context={}){
  if(refersBack&&patients.length!==1&&appointments.length!==1)return{kind:'AMBIGUOUS_REFERENCE',target:'unknown',count:Math.max(patients.length,appointments.length)};
  return{kind:'REFERENCE',patient_id:patients.length===1?patients[0].id:null,appointment_id:appointments.length===1?appointments[0].id:null};
 }
+
+export function conversationEnvelope(messages=[]){
+ const recent=messages.slice(-8);const refs={patient_ids:[],appointment_ids:[]};
+ for(const m of recent){
+   const meta=m&&typeof m==='object'?m.meta:null;
+   if(meta?.patient_id&&!refs.patient_ids.includes(meta.patient_id))refs.patient_ids.push(meta.patient_id);
+   if(meta?.appointment_id&&!refs.appointment_ids.includes(meta.appointment_id))refs.appointment_ids.push(meta.appointment_id);
+ }
+ return{version:1,patient_ids:refs.patient_ids.slice(-3),appointment_ids:refs.appointment_ids.slice(-3)};
+}
+export function observedContextFromEnvelope(envelope={}){
+ return{observed_patients:(envelope.patient_ids||[]).map(id=>({id})),observed_appointments:(envelope.appointment_ids||[]).map(id=>({id}))};
+}
