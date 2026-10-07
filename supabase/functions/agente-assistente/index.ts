@@ -28,6 +28,7 @@ import { STRUMENTI_MEMORIA, STRUMENTO_RICETTA, normalizzaMemoria, sezioneMemoria
 import { leggiRichiestaTeam, strumentiSpecialista, toolConsulta, leggiConsulti, eseguiConsulti, promptTeam, contestoGruppo, CONSULTA_SPECIALISTI } from "./team.js";
 import { normalizeProvider, callOpenAI, providerFailure, providerOrder, runProviderChain } from "./provider.js";
 import { emergencyIntent, emergencyMessage } from "./emergency.js";
+import { understandPoliedron, coreDecision } from "./poliedron-core.js";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") || "gpt-6-luna";
@@ -452,6 +453,27 @@ function registraAttivita(supabase, proposal, done) {
     prima: proposal.agenda ? proposal.agenda.before : proposal.pazienti?.before ?? null,
     dopo: proposal.agenda ? { ...proposal.agenda.after, id: done.appointmentId } : proposal.pazienti?.dati ?? (proposal.pagamenti ? { ...proposal.pagamenti.dati, id: done.recordId } : null),
   }).then((r) => { if (r.error) console.error('poliedron_attivita', r.error.message); return r; }, (e) => e);
+}
+
+
+function formatCoreRead(tool, out) {
+  if (tool === 'appuntamenti') {
+    const rows = out?.risultati || [];
+    if (!rows.length) return 'Non risultano appuntamenti per il giorno richiesto.';
+    return rows.map((r) => `${String(r.ora || '').slice(0,5)} — ${r.paziente || r.tipo || 'Appuntamento'}`).join('\n');
+  }
+  if (tool === 'cerca_pazienti') {
+    const rows = out?.risultati || [];
+    if (!rows.length) return 'Non ho trovato pazienti corrispondenti.';
+    return rows.map((r) => `${r.nome || ''} ${r.cognome || ''}`.trim()).join('\n');
+  }
+  if (tool === 'richiami') {
+    const scaduti = out?.scaduti || [], prossimi = out?.prossimi || [];
+    if (!scaduti.length && !prossimi.length) return 'Non risultano richiami scaduti o in scadenza nei prossimi 30 giorni.';
+    return `Richiami scaduti: ${scaduti.length}. Prossimi richiami: ${prossimi.length}.`;
+  }
+  if (tool === 'kpi_controllo_gestione') return 'Ho recuperato i KPI correnti dello studio.';
+  return 'Operazione completata.';
 }
 
 async function eseguiTool(supabase, name, input, studioId, userId, azioniPersonalizzate) {
@@ -1332,6 +1354,36 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
         convo = messaggiConAllegato(messages, allegato);
       } catch (error) {
         return json({ error: error.message });
+      }
+    }
+    // Core-first: routine safe reads and clarifications do not require an LLM.
+    // Team/specialist and attachment requests still use the richer model path.
+    if (!richiestaTeam && !allegato) {
+      const lastUserText = [...convo].reverse().find((m) => m.role === 'user')?.content || '';
+      const parsed = understandPoliedron(lastUserText);
+      const decision = coreDecision(parsed);
+      if (decision.action === 'CLARIFY') {
+        const labels = { day: 'Per quale giorno?', time: 'A che ora?' };
+        return json({ text: decision.missing.map((x) => labels[x] || `Mi manca: ${x}`).join(' '), core_mode: true, core_version: '1.0' });
+      }
+      if (decision.action === 'EXECUTE_READ') {
+        const map = {
+          AGENDA_READ: ['appuntamenti', {}],
+          PATIENT_SEARCH: ['cerca_pazienti', { query: parsed.entities.query }],
+          RECALLS_READ: ['richiami', { entro_giorni: parsed.entities.entro_giorni || 30 }],
+          KPI_READ: ['kpi_controllo_gestione', {}],
+        };
+        const [tool, input] = map[parsed.intent] || [];
+        if (tool) {
+          if (tool === 'appuntamenti' && Number.isInteger(parsed.entities.relative_day)) {
+            const base = new Date(studioToday() + 'T12:00:00');
+            base.setDate(base.getDate() + parsed.entities.relative_day);
+            input.da = base.toISOString().slice(0, 10); input.a = input.da;
+          }
+          const out = await eseguiTool(supabase, tool, input, studioId, user.id, azioniPersonalizzate);
+          if (!out?.error) return json({ text: formatCoreRead(tool, out), core_mode: true, core_version: '1.0', tool, data: out });
+          console.error('poliedron_core_read_error', JSON.stringify({ tool, kind: 'tool_error' }));
+        }
       }
     }
     let finalText = '';
