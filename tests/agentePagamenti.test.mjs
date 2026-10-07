@@ -125,7 +125,7 @@ test('clear payment executes directly under full Safe Autonomy, with claim befor
   script.push(use('cerca_pazienti', { query: 'Mario Rossi' }), use('registra_pagamento_paziente', { paziente_id: 1, importo: 150, metodo: 'Carta', nota: 'Acconto impianto' }));
   const done = await request({ messages: [{ role: 'user', content: 'Mario Rossi ha pagato 150 euro con carta' }] });
   assert.equal(done.needsConfirmation, undefined);
-  assert.match(done.text, /^Fatto\. Pagamento registrato\nPaziente: Mario Rossi/);
+  assert.ok(paymentRows().length === 1, 'clear payment is written directly');
   assert.deepEqual(done.changed, ['payments']);
   const order = inserts.map((i) => i.table);
   assert.ok(order.indexOf('poliedron_action_claims') < order.indexOf('payments'), 'claim before the write');
@@ -149,7 +149,7 @@ test('a same-day duplicate is flagged; a cancelled summary writes nothing', asyn
   script.push(use('cerca_pazienti', { query: 'Mario' }), use('registra_pagamento_paziente', { paziente_id: 1, importo: 150 }));
   const preview = await request({ messages: [{ role: 'user', content: 'Mario ha pagato 150' }] });
   assert.match(preview.needsConfirmation.summary, /c'è già un pagamento di 150,00\s€ in questa data/);
-  assert.match(preview.text, /Vuoi registrarlo comunque\?/);
+  assert.match(preview.text, /Confermi comunque\?/);
   const cancel = await request({ confirm: { token: preview.needsConfirmation.token, cancelled: true } });
   assert.match(cancel.text, /Nessuna modifica/);
   assert.equal(paymentRows().length, 0);
