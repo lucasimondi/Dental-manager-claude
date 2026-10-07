@@ -13,6 +13,8 @@ test('provider selector accepts explicit providers and auto', () => {
 test('fallback is limited to transient provider failures', () => {
   assert.equal(shouldFallback({ ok:false, failure:providerFailure('openai',429,'rate_limit_or_quota') }), true);
   assert.equal(shouldFallback({ ok:false, failure:providerFailure('openai',503,'provider_unavailable') }), true);
+  assert.equal(shouldFallback({ ok:false, failure:providerFailure('openai',503,'network_error') }), true);
+  assert.equal(shouldFallback({ ok:false, failure:providerFailure('openai',503,'timeout') }), true);
   assert.equal(shouldFallback({ ok:false, failure:providerFailure('openai',400,'provider_error') }), false);
   assert.equal(shouldFallback({ ok:false, failure:providerFailure('openai',401,'provider_auth') }), false);
 });

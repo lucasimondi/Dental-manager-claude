@@ -68,7 +68,9 @@ export const openAIResponseToAnthropic = (response = {}) => {
 
 export async function callOpenAI({ apiKey, model, system, messages, tools, signal }) {
   if (!apiKey) return { ok: false, failure: providerFailure('openai', 503, 'provider_not_configured') };
-  const resp = await fetch('https://api.openai.com/v1/responses', {
+  let resp;
+  try {
+    resp = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
@@ -77,8 +79,13 @@ export async function callOpenAI({ apiKey, model, system, messages, tools, signa
       input: anthropicConversationToOpenAI(messages),
       ...(tools?.length ? { tools: anthropicToolsToOpenAI(tools), tool_choice: 'auto' } : {}),
     }),
-    signal,
-  });
+      signal,
+    });
+  } catch (error) {
+    const kind = error?.name === 'AbortError' ? 'timeout' : 'network_error';
+    console.error('llm_provider_error', JSON.stringify({ provider: 'openai', status: 503, kind }));
+    return { ok: false, failure: providerFailure('openai', 503, kind) };
+  }
   if (!resp.ok) {
     const errText = await resp.text();
     const status = resp.status;
