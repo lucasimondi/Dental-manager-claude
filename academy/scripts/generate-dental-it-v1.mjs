@@ -2,7 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const OUT=path.resolve('academy/datasets/synthetic/dental-it-factory-v1.jsonl');
-const NAMES=['Mario Rossi','Andrea Bianchi','Giulia Verdi','Luca Gallo','Sara Romano','Paolo Ferri','Elena Costa','Marco Riva'];
+const FIRST=['Mario','Andrea','Giulia','Luca','Sara','Paolo','Elena','Marco','Anna','Davide','Chiara','Stefano'];
+const LAST=['Rossi','Bianchi','Verdi','Gallo','Romano','Ferri','Costa','Riva','Fontana','Marino','Greco','Conti'];
+const NAMES=FIRST.flatMap(first=>LAST.map(last=>`${first} ${last}`));
 const SURNAMES=NAMES.map(x=>x.split(' ')[1]);
 const AMOUNTS=[50,80,90,120,150,200,250,300,350,500];
 const TEETH=['11','16','21','26','36','46'];
