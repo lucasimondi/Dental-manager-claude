@@ -6,10 +6,14 @@ const tokens=(s)=>new Set(normalizeItalianOperational(s).replace(/[^a-zà-ÿ0-9'
 const score=(a,b)=>{const A=tokens(a),B=tokens(b);if(!A.size||!B.size)return 0;let n=0;for(const x of A)if(B.has(x))n++;return n/Math.sqrt(A.size*B.size)};
 
 export function matchItalianIntent(text=''){
- let best={intent:'UNKNOWN',score:0,example:null},second=0;
- for(const row of ITALIAN_OPERATIONAL_EXAMPLES)for(const example of row.utterances){const s=score(text,example);if(s>best.score){second=best.score;best={intent:row.intent,score:s,example}}else if(s>second)second=s}
- const margin=best.score-second;
- // Language similarity may route/clarify; it never authorizes a write.
+ const byIntent=new Map();
+ for(const row of ITALIAN_OPERATIONAL_EXAMPLES)for(const example of row.utterances){const s=score(text,example);const prev=byIntent.get(row.intent);if(!prev||s>prev.score)byIntent.set(row.intent,{intent:row.intent,score:s,example})}
+ const ranked=[...byIntent.values()].sort((a,b)=>b.score-a.score);
+ const best=ranked[0]||{intent:'UNKNOWN',score:0,example:null};
+ const alternative=ranked[1]?.score||0;
+ const margin=best.score-alternative;
+ // Compare competing intents, not paraphrases of the same intent.
+ // Similarity can route/clarify; it never authorizes a write.
  const accepted=best.score>=0.72&&margin>=0.08;
  return {...best,margin,accepted};
 }
