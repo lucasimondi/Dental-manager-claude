@@ -21,6 +21,7 @@ import { signProposal, verifyProposal, claimProposal, studioToday } from "./conf
 import { AGENDA_WRITES, prepareAgenda, executeAgenda, agendaAvailability } from "./agenda.js";
 import { PAZIENTI_WRITES, PAZIENTI_TOOLS, preparePazienti, executePazienti, schedaPaziente } from "./pazienti.js";
 import { PAGAMENTI_WRITES, PAGAMENTI_TOOLS, preparePagamenti, executePagamenti } from "./pagamenti.js";
+import { PIANI_WRITES, PIANI_TOOLS, preparePiani, executePiani } from "./piani.js";
 import { validaAllegato, messaggiConAllegato, senzaDatiAllegato } from "./allegato.js";
 import { STRUMENTI_MEMORIA, STRUMENTO_RICETTA, normalizzaMemoria, sezioneMemoria, sezioneFarmaciFrequenti, normalizzaRicetta, documentoRicetta } from "./memoria.js";
 import { leggiRichiestaTeam, strumentiSpecialista, toolConsulta, leggiConsulti, eseguiConsulti, promptTeam, contestoGruppo, CONSULTA_SPECIALISTI } from "./team.js";
@@ -1161,6 +1162,8 @@ serve(async (req) => {
       // POL-AI-010 passo 4a: pagamenti, solo dove le scritture sono ammesse e
       // sempre con conferma (vedi il ciclo degli strumenti).
       ...(scrittureAmmesse ? PAGAMENTI_TOOLS : []),
+      // POL-AI-010 passo 4b: preventivi/piani di cura, sempre con riepilogo e conferma.
+      ...(scrittureAmmesse ? PIANI_TOOLS : []),
     ];
     toolsFinali = toolsFinali.map(t => AGENDA_WRITES.has(t.name) ? {
       ...t,
@@ -1269,6 +1272,15 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
       if (confirm.cancelled === true) {
         await claimProposal(supabase, proposal);
         return json({ text: 'Operazione annullata. Nessuna modifica eseguita.' });
+      }
+      if (proposal.piani) {
+        try {
+          const done = await executePiani(supabase, proposal);
+          await registraAttivita(supabase, proposal, done);
+          return json(done);
+        } catch (error) {
+          return json({ text: 'Piano di cura non creato: ' + error.message + ' Controlla i piani del paziente prima di inviare una nuova richiesta.', changed: ['plans'], uncertain: true });
+        }
       }
       if (proposal.pagamenti) {
         try {
@@ -1463,6 +1475,18 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
             const pareri = await eseguiConsulti(consulti, consultaSpecialista);
             pareriTeam.push(...pareri);
             result = { pareri, nota: 'Sono pareri degli specialisti, non fatti verificati: integrali conservando le divergenze e i dati mancanti.' };
+          }
+        } else if (PIANI_WRITES.has(tu.name)) {
+          // POL-AI-010 passo 4b: preventivi/piani non si eseguono mai direttamente.
+          soloScrittureRiuscite = false;
+          try {
+            const prepared = await preparePiani(supabase, tu.name, input, studioId, observed);
+            const proposal = { id: crypto.randomUUID(), userId: user.id, studioId, name: tu.name, piani: prepared, expiresAt: Date.now() + 10 * 60 * 1000 };
+            const token = await signProposal(proposal, SUPABASE_SERVICE_ROLE_KEY);
+            const premessa = eseguite.length ? testoEseguite() + '\n\n' : '';
+            return rispondi({ text: premessa + (prepared.avviso ? prepared.avviso + ' Vuoi crearlo comunque?' : 'Controlla il riepilogo e conferma per creare il piano di cura.'), needsConfirmation: { token, summary: prepared.summary, expiresAt: proposal.expiresAt } });
+          } catch (error) {
+            result = { error: error.message };
           }
         } else if (PAGAMENTI_WRITES.has(tu.name)) {
           // POL-AI-010 passo 4a: un pagamento non si esegue mai direttamente,
