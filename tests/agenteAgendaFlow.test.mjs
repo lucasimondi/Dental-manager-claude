@@ -88,6 +88,31 @@ test('occupied slot: nothing written, the model receives the conflict with real 
   assert.match(toolResult.error,/Orario occupato/);
   assert.ok(toolResult.orari_liberi.includes('09:30')&&!toolResult.orari_liberi.includes('09:00'));
   assert.match(result.text,/9:30/);
+  assert.equal(toolResult.occupato_da[0].appuntamento_id,9,'the occupant comes from the agenda, not from a guess');
+  assert.equal(toolResult.occupato_da[0].stesso_paziente,false);
+  assert.deepEqual(calls[2].output_config,{effort:'medium'},'more reasoning right after a failed agenda write');
+  assert.deepEqual(calls[0].output_config,{effort:'low'});
+});
+test('slot taken by the same patient: the model is told who it is and that the appointment already exists',async()=>{
+  database.patients.push({id:2,nome:'Giacomo',cognome:'Lauretti',studio_id:'s1'});
+  database.appointments=[{id:9,studio_id:'s1',data:day,ora:'11:00',durata:30,tipo:'Visita',stato:'confermato',paziente_id:2,patients:{nome:'Giacomo',cognome:'Lauretti'}},
+    {id:10,studio_id:'s1',data:day,ora:'12:00',durata:30,tipo:'Igiene',stato:'confermato',paziente_id:3,patients:{nome:'Ana',cognome:'Hernandez'}}];
+  script.push(use('cerca_pazienti',{query:'Giacomo Lauretti'}),use('crea_appuntamento',{paziente_id:2,data:day,ora:'11:00',tipo:'Visita'}),say('Giacomo Lauretti ha già un appuntamento alle 11:00.'));
+  await request({messages:[{role:'user',content:'Metti Giacomo Lauretti alle 11'}]});
+  const toolResult=JSON.parse(calls[2].messages.at(-1).content[0].content);
+  assert.equal(toolResult.occupato_da.length,1);
+  assert.equal(toolResult.occupato_da[0].paziente,'Giacomo Lauretti');
+  assert.equal(toolResult.occupato_da[0].stesso_paziente,true);
+  assert.match(toolResult.error,/stesso paziente di Giacomo Lauretti alle 11:00 \(Visita, 30 min, confermato\)/);
+  assert.match(toolResult.error,/non serve crearne un altro/);
+  assert.doesNotMatch(JSON.stringify(toolResult),/Hernandez/);
+  assert.equal(rpcCalls.length,0);
+});
+test('the system prompt forbids agenda facts not read in this request',async()=>{
+  script.push(say('ok'));
+  await request({messages:[{role:'user',content:'ciao'}]});
+  assert.match(calls[0].system[0].text,/li affermi solo se li hai letti da uno strumento in questa richiesta/);
+  assert.match(calls[0].system[0].text,/occupato_da/);
 });
 test('medio autonomy: signed preview → explicit confirmation → single RPC, no model call after confirmation',async()=>{
   const result=await preview();assert.ok(result.needsConfirmation?.token);assert.equal(rpcCalls.length,0);

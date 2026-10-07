@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { signProposal, verifyProposal, claimProposal, studioToday } from '../supabase/functions/agente-assistente/confirmation.js';
-import { hasConflict, validateAppointment, prepareAgenda, executeAgenda } from '../supabase/functions/agente-assistente/agenda.js';
+import { hasConflict, findConflicts, describeConflicts, conflictMessage, validateAppointment, prepareAgenda, executeAgenda } from '../supabase/functions/agente-assistente/agenda.js';
 import { runModelTask } from '../src/lib/poliedron/modelGateway.js';
 import { processQuery } from '../src/lib/poliedron/poliedraCore.js';
 
@@ -93,4 +93,14 @@ test('patient commands go to Poliedron only when the studio agent may write; the
   await processQuery({query:'Crea un piano di cura per Mario Rossi',context:premium,supabaseClient:client});
   await processQuery({query:'Aggiungi una nota a Mario Rossi',context:premium,supabaseClient:client,allowModel:false});
   assert.equal(calls,4);
+});
+
+test('conflict description names the real occupant, flags the same patient and personal commitments',()=>{
+  const row={id:null,paziente_id:5,data:'2099-10-04',ora:'11:00',durata:30,stato:'confermato',operatore_id:null};
+  const other={id:7,paziente_id:5,ora:'11:00:00',durata:30,tipo:'Visita',stato:'confermato',patients:{nome:'Giacomo',cognome:'Lauretti'}};
+  const occ=describeConflicts(row,findConflicts(row,[other],[{tutto_il_giorno:false,ora_inizio:'10:45:00',ora_fine:'11:15:00'}]));
+  assert.deepEqual(occ[0],{tipo:'appuntamento',appuntamento_id:7,paziente_id:5,paziente:'Giacomo Lauretti',ora:'11:00',durata:30,tipo_visita:'Visita',stato:'confermato',stesso_paziente:true});
+  assert.deepEqual(occ[1],{tipo:'impegno',tutto_il_giorno:false,ora_inizio:'10:45',ora_fine:'11:15'});
+  assert.match(conflictMessage(occ),/^Orario occupato: c'è già un appuntamento dello stesso paziente di Giacomo Lauretti alle 11:00 \(Visita, 30 min, confermato\) e un impegno dalle 10:45 alle 11:15\. Il paziente ha già/);
+  assert.match(conflictMessage([{...occ[0],stesso_paziente:false}]),/c'è già l'appuntamento di Giacomo Lauretti .* Scegli un altro orario\.$/);
 });

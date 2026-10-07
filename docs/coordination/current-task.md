@@ -1,3 +1,11 @@
+# Current task — POL-AI-TEAM-004 (Poliedron non deve indovinare chi occupa un orario)
+- TASK: il PO ha segnalato una risposta sbagliata ("occupato da Hernandez", in realtà era l'appuntamento già esistente di Giacomo Lauretti) e ha chiesto "Perché sbaglia ?"; poi "Ok procedi".
+- OWNER: CLAUDE, branch `claude/whatsapp-automation-status-d2ng12`, da `master@176f66d`.
+- CAUSE: (1) l'errore "Orario occupato" non diceva chi occupa lo slot, quindi il modello indovinava un nome dalla chat; (2) la cronologia tra un messaggio e l'altro contiene solo testo, non i dati letti; (3) effort "low".
+- COSA: `agenda.js` restituisce `occupato_da` (paziente, ora, durata, tipo, stato, `stesso_paziente`) e un messaggio esplicito ("il paziente ha già questo appuntamento"); gli appuntamenti occupanti diventano "osservati" (modificabili senza rilettura); dopo una scrittura in agenda fallita il passaggio successivo usa effort "medium"; nuova regola nel prompt: nomi/orari/appuntamenti solo se letti da uno strumento in questa richiesta.
+- VALIDATION: `npm test` 996/996 (3 nuovi test); `npm run build` OK.
+- EXACT NEXT ACTION: "Mergia" del PO → merge PR e deploy di `agente-assistente` (oggi v32 in produzione: deploy con tutti i file identici al repo).
+
 # Current task — POL-AI-010 passo 4 (Pagamenti, poi Preventivi e piani di cura)
 - TASK: POL-AI-010 — Poliedron fa tutto dalla chat; passo 4 "Piani e pagamenti" (piano già deciso: 0 versionare, 1 Agenda, 2 Pazienti e clinica, 3 Documenti, 4 Piani e pagamenti, 5 irreversibili con doppia conferma, 6 WhatsApp).
 - OWNER: CLAUDE (questa sessione, `claude/software-startup-speed-ugqqcf`). Passaggio di proprietà esplicito del Product Owner (verbatim: "Fai pol 010", dopo la domanda su chi dovesse proseguire POL-AI-010, finora della sessione su `claude/whatsapp-automation-status-d2ng12`). L'altra sessione non deve più lavorare su POL-AI-010 senza nuovo passaggio.
