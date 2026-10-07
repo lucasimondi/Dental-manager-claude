@@ -31,7 +31,7 @@ import { emergencyIntent, emergencyMessage } from "./emergency.js";
 import { understandPoliedron } from "./poliedron-core.js";
 import { deriveContext, enrichWithContext } from "./poliedron-context.js";
 import { planPoliedron, confidenceDecision } from "./poliedron-planner.js";
-import { deriveConversationState, completeConversationalTurn, conversationEnvelope } from "./poliedron-conversation.js";
+import { deriveConversationState, completeConversationalTurn, conversationEnvelope, observedContextFromEnvelope, conversationalReference } from "./poliedron-conversation.js";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") || "gpt-6-luna";
@@ -1283,7 +1283,9 @@ per calcolare date relative ("domani", "martedì prossimo", "tra due settimane",
 dedurre o assumere altre date, e non sbagliare mai l'anno.
 Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? sezioneMemoria(vociMemoria) : ''}${prescrive ? sezioneFarmaciFrequenti(studioInfoRicette?.farmaci_preferiti) : ''}`;
 
-    const { messages, confirm, team, allegato: allegatoRichiesta } = await req.json();
+    const { messages, confirm, team, allegato: allegatoRichiesta, conversation_context: conversationContext } = await req.json();
+    const safeConversationContext = conversationContext?.version === 1 && Array.isArray(conversationContext.patient_ids) && Array.isArray(conversationContext.appointment_ids) && conversationContext.patient_ids.length <= 3 && conversationContext.appointment_ids.length <= 3
+      ? conversationContext : { version: 1, patient_ids: [], appointment_ids: [] };
     const json = (value) => new Response(JSON.stringify(value), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     // POL-AI-TEAM-002: Clinic Manager e specialisti, sempre in sola lettura.
     let richiestaTeam = null;
@@ -1364,6 +1366,11 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
     if (!richiestaTeam && !allegato) {
       const lastUserText = [...convo].reverse().find((m) => m.role === 'user')?.content || '';
       const context = deriveContext(convo);
+      const reference = conversationalReference(lastUserText, observedContextFromEnvelope(safeConversationContext));
+      if (reference.kind === 'AMBIGUOUS_REFERENCE') return json({ text: reference.target === 'appointment' ? 'A quale appuntamento ti riferisci?' : 'A quale elemento ti riferisci?', core_mode: true, core_version: '1.1', conversation_context: safeConversationContext });
+      // Mutating references are recognized here but remain on the mature write path until
+      // their prepare/permission policy is shared with Core. Recognition never bypasses safety.
+
       const conversationState = deriveConversationState(convo.slice(0, -1));
       const conversational = completeConversationalTurn(lastUserText, conversationState);
       const parsed = enrichWithContext(conversational, context);
