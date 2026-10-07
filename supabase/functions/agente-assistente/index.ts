@@ -1367,7 +1367,7 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
       const plan = planPoliedron(parsed);
       // Core-first owns only requests it can completely and safely resolve.
       // Incomplete/unsupported/compound commands stay on the mature LLM tool path.
-      const coreOwnsRequest = parsed.intent !== 'UNKNOWN' && !(parsed.missing?.length) && plan.steps?.length > 0;
+      const coreOwnsRequest = parsed.intent !== 'UNKNOWN' && plan.steps?.length > 0;
       const gate = coreOwnsRequest ? confidenceDecision(parsed, plan) : { decision: 'ESCALATE' };
       const decision = gate.decision === 'EXECUTE' ? { action: 'EXECUTE_READ' } : gate.decision === 'PREPARE_CONFIRM' ? { action: 'PREPARE_WRITE_CONFIRMATION' } : gate.decision === 'CLARIFY' ? { action: 'CLARIFY', missing: gate.missing } : { action: 'ESCALATE_LLM' };
       if (decision.action === 'CLARIFY' && parsed.intent === 'APPOINTMENT_CREATE') {
