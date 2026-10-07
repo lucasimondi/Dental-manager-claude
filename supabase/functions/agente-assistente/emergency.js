@@ -6,9 +6,9 @@ export function emergencyIntent(text = '') {
   if (!q) return null;
   const write = /\b(crea|aggiungi|inserisci|fissa|sposta|cancella|elimina|modifica|registra|segna|paga|incassa)\b/;
   if (write.test(q)) return { kind: 'blocked_write', confidence: 1 };
-  if (/\b(richiam|controlli? periodici?)\b/.test(q)) return { kind: 'tool', tool: 'richiami', input: { entro_giorni: 30 }, confidence: .99 };
+  if (/\b(richiam\w*|controlli? periodici?)\b/.test(q)) return { kind: 'tool', tool: 'richiami', input: { entro_giorni: 30 }, confidence: .99 };
   if (/\b(incassat\w*|fatturat\w*|ebitda|break[ -]?even|margine\w*|situazione economica|kpi)\b/.test(q)) return { kind: 'tool', tool: 'kpi_controllo_gestione', input: {}, confidence: .98 };
-  if (/\b(agenda|appuntament)\b/.test(q)) {
+  if (/\b(agenda|appuntament\w*)\b/.test(q)) {
     if (/\bdomani\b/.test(q)) return { kind: 'tool', tool: 'appuntamenti', input: { relative_day: 1 }, confidence: .99 };
     if (/\boggi\b/.test(q)) return { kind: 'tool', tool: 'appuntamenti', input: { relative_day: 0 }, confidence: .99 };
     return { kind: 'needs_clarification', message: 'Per quale giorno vuoi vedere gli appuntamenti?', confidence: .99 };
