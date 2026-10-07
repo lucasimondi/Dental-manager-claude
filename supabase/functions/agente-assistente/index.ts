@@ -1395,7 +1395,7 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
         const kind = status === 429 ? "rate_limit_or_quota" : status >= 500 ? "provider_unavailable" : status === 401 || status === 403 ? "provider_auth" : "provider_error";
         // Do not log credentials or full prompts. Provider error bodies are capped.
         console.error("llm_provider_error", JSON.stringify({ provider: "anthropic", status, kind, detail: errText.slice(0, 800) }));
-        return { ok: false, errText, status, kind, provider: "anthropic" };
+        return { ok: false, errText };
       }
       const data = await resp.json();
       if (data.usage) {
