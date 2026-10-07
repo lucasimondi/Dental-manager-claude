@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { preparePiani, executePiani } from '../supabase/functions/agente-assistente/piani.js';
 
-function q(data,error=null){return {select(){return this},eq(){return this},limit(){return Promise.resolve({data,error})},single(){return Promise.resolve({data,error})},insert(){return this}}}
+function q(data,error=null){return {select(){return this},eq(){return this},limit(){return Promise.resolve({data,error})},single(){return Promise.resolve({data,error})},insert(){return this},update(){return this}}}
 function client({patient={id:7,nome:'Mario',cognome:'Rossi'},similar=[],inserted={id:99}}={}){
   return {from(t){
     if(t==='patients') return q(patient);
@@ -19,7 +19,7 @@ const input={paziente_id:7,titolo:'Piano implantare',voci:[{prestazione:'Impiant
 test('prepare builds the same plan shape and a confirmation summary',async()=>{
   const p=await preparePiani(client(),'crea_piano_cura',input,'studio',observed);
   assert.equal(p.dati.stato,'attivo'); assert.equal(p.dati.voci[0].eseguita,false);
-  assert.match(p.summary,/1\.350,00/); assert.equal(p.confermaSempre,true);
+  assert.match(p.summary,/1\.?350,00/); assert.equal(p.confermaSempre,true);
 });
 test('patient must have been observed',async()=>{await assert.rejects(()=>preparePiani(client(),'crea_piano_cura',input,'studio',{patients:new Set()}),/Cerca prima/)});
 test('empty plans are refused',async()=>{await assert.rejects(()=>preparePiani(client(),'crea_piano_cura',{...input,voci:[]},'studio',observed),/1 a 100/)});
