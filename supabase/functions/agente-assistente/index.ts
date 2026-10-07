@@ -624,7 +624,17 @@ async function eseguiTool(supabase, name, input, studioId, userId, azioniPersona
     if (errRi) return { error: errRi.message };
 
     const totaleSpeso = (pagamenti || []).filter((p) => p.stato === "pagato" || !p.stato).reduce((s, p) => s + Number(p.importo || 0), 0);
-    return { piani: piani || [], pagamenti: pagamenti || [], richiami: richiamiPaz || [], totale_speso: Math.round(totaleSpeso * 100) / 100 };
+    return {
+      piani: (piani || []).map((pl) => ({
+        ...pl,
+        // Indice stabile nella risposta dello strumento: i tool di modifica
+        // del piano richiedono questo valore, così il modello non deve
+        // indovinare quale prestazione aggiornare.
+        voci: (pl.voci || []).map((v, voce_index) => ({ ...v, voce_index })),
+      })),
+      pagamenti: pagamenti || [], richiami: richiamiPaz || [],
+      totale_speso: Math.round(totaleSpeso * 100) / 100,
+    };
   }
 
   if (name === "catalogo_prestazioni") {
