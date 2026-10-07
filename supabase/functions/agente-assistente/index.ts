@@ -31,7 +31,7 @@ const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 const POLIEDRON_LLM_PROVIDER = normalizeProvider(Deno.env.get("POLIEDRON_LLM_PROVIDER"));
-const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") || "gpt-6-luna";
+const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") || "gpt-5-mini";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -1416,7 +1416,7 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
         const status = resp.status;
         const kind = status === 429 ? "rate_limit_or_quota" : status >= 500 ? "provider_unavailable" : status === 401 || status === 403 ? "provider_auth" : "provider_error";
         // Do not log credentials or full prompts. Provider error bodies are capped.
-        console.error("llm_provider_error", JSON.stringify({ provider: "anthropic", status, kind, detail: errText.slice(0, 800) }));
+        console.error("llm_provider_error", JSON.stringify({ provider: "anthropic", status, kind, requestId: resp.headers?.get?.("request-id") || null }));
         return { ok: false, errText };
       }
       const data = await resp.json();
