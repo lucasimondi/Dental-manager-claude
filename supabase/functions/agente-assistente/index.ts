@@ -27,6 +27,9 @@ import { STRUMENTI_MEMORIA, STRUMENTO_RICETTA, normalizzaMemoria, sezioneMemoria
 import { leggiRichiestaTeam, strumentiSpecialista, toolConsulta, leggiConsulti, eseguiConsulti, promptTeam, contestoGruppo, CONSULTA_SPECIALISTI } from "./team.js";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+const POLIEDRON_LLM_PROVIDER = (Deno.env.get("POLIEDRON_LLM_PROVIDER") || "anthropic").toLowerCase();
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -1372,6 +1375,15 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
 
     // Una chiamata al modello, con il consumo registrato in background.
     const chiamaClaude = async (system, messaggi, tools, signal, effort = "low") => {
+      // Provider selection is intentionally one-at-a-time. Anthropic remains the
+      // production adapter until the OpenAI/Gemini tool-protocol adapters are enabled.
+      // This prevents a fallback model from silently changing write semantics.
+      if (POLIEDRON_LLM_PROVIDER !== "anthropic") {
+        const configured = POLIEDRON_LLM_PROVIDER === "openai" ? Boolean(OPENAI_API_KEY)
+          : POLIEDRON_LLM_PROVIDER === "gemini" ? Boolean(GEMINI_API_KEY) : false;
+        console.error("llm_provider_not_enabled", JSON.stringify({ provider: POLIEDRON_LLM_PROVIDER, configured }));
+        return { ok: false, errText: `Provider ${POLIEDRON_LLM_PROVIDER} configured but adapter not enabled` };
+      }
       const resp = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
