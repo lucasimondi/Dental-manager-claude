@@ -28,6 +28,9 @@ import { STRUMENTI_MEMORIA, STRUMENTO_RICETTA, normalizzaMemoria, sezioneMemoria
 import { leggiRichiestaTeam, strumentiSpecialista, toolConsulta, leggiConsulti, eseguiConsulti, promptTeam, contestoGruppo, CONSULTA_SPECIALISTI } from "./team.js";
 import { normalizeProvider, callOpenAI, providerFailure, providerOrder, runProviderChain } from "./provider.js";
 import { emergencyIntent, emergencyMessage } from "./emergency.js";
+import { understandPoliedron } from "./poliedron-core.js";
+import { deriveContext, enrichWithContext } from "./poliedron-context.js";
+import { planPoliedron, confidenceDecision } from "./poliedron-planner.js";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") || "gpt-6-luna";
@@ -452,6 +455,27 @@ function registraAttivita(supabase, proposal, done) {
     prima: proposal.agenda ? proposal.agenda.before : proposal.pazienti?.before ?? null,
     dopo: proposal.agenda ? { ...proposal.agenda.after, id: done.appointmentId } : proposal.pazienti?.dati ?? (proposal.pagamenti ? { ...proposal.pagamenti.dati, id: done.recordId } : null),
   }).then((r) => { if (r.error) console.error('poliedron_attivita', r.error.message); return r; }, (e) => e);
+}
+
+
+function formatCoreRead(tool, out) {
+  if (tool === 'appuntamenti') {
+    const rows = out?.risultati || [];
+    if (!rows.length) return 'Non risultano appuntamenti per il giorno richiesto.';
+    return rows.map((r) => `${String(r.ora || '').slice(0,5)} — ${r.paziente || r.tipo || 'Appuntamento'}`).join('\n');
+  }
+  if (tool === 'cerca_pazienti') {
+    const rows = out?.risultati || [];
+    if (!rows.length) return 'Non ho trovato pazienti corrispondenti.';
+    return rows.map((r) => `${r.nome || ''} ${r.cognome || ''}`.trim()).join('\n');
+  }
+  if (tool === 'richiami') {
+    const scaduti = out?.scaduti || [], prossimi = out?.prossimi || [];
+    if (!scaduti.length && !prossimi.length) return 'Non risultano richiami scaduti o in scadenza nei prossimi 30 giorni.';
+    return `Richiami scaduti: ${scaduti.length}. Prossimi richiami: ${prossimi.length}.`;
+  }
+  if (tool === 'kpi_controllo_gestione') return 'Ho recuperato i KPI correnti dello studio.';
+  return 'Operazione completata.';
 }
 
 async function eseguiTool(supabase, name, input, studioId, userId, azioniPersonalizzate) {
@@ -1332,6 +1356,62 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
         convo = messaggiConAllegato(messages, allegato);
       } catch (error) {
         return json({ error: error.message });
+      }
+    }
+    // Core-first: routine safe reads and clarifications do not require an LLM.
+    // Team/specialist and attachment requests still use the richer model path.
+    if (!richiestaTeam && !allegato) {
+      const lastUserText = [...convo].reverse().find((m) => m.role === 'user')?.content || '';
+      const context = deriveContext(convo);
+      const parsed = enrichWithContext(understandPoliedron(lastUserText), context);
+      const plan = planPoliedron(parsed);
+      // Core-first owns only requests it can completely and safely resolve.
+      // Incomplete/unsupported/compound commands stay on the mature LLM tool path.
+      const looksCompound = /\b(?:e|poi|inoltre)\b/i.test(lastUserText) && /\b(?:nota|richiam|appuntament|pazient|promemoria)\w*/i.test(lastUserText);
+      const coreOwnsRequest = parsed.intent !== 'UNKNOWN' && plan.steps?.length > 0 && !looksCompound;
+      const gate = coreOwnsRequest ? confidenceDecision(parsed, plan) : { decision: 'ESCALATE' };
+      const decision = gate.decision === 'EXECUTE' ? { action: 'EXECUTE_READ' } : gate.decision === 'PREPARE_CONFIRM' ? { action: 'PREPARE_WRITE_CONFIRMATION' } : gate.decision === 'CLARIFY' ? { action: 'CLARIFY', missing: gate.missing } : { action: 'ESCALATE_LLM' };
+      if (decision.action === 'CLARIFY' && parsed.intent === 'APPOINTMENT_CREATE') {
+        const labels = { patient: 'Per quale paziente?', day: 'Per quale giorno?', time: 'A che ora?', type: 'Che tipo di appuntamento devo inserire?' };
+        return json({ text: decision.missing.map((x) => labels[x] || `Mi manca: ${x}`).join(' '), core_mode: true, core_version: '1.0' });
+      }
+      if (decision.action === 'PREPARE_WRITE_CONFIRMATION' && parsed.intent === 'APPOINTMENT_CREATE' && allowedNames.has('crea_appuntamento')) {
+        const found = await eseguiTool(supabase, 'cerca_pazienti', { query: parsed.entities.patient_query }, studioId, user.id, azioniPersonalizzate);
+        const patients = found?.risultati || [];
+        if (patients.length === 0) return json({ text: `Non trovo il paziente “${parsed.entities.patient_query}”. Vuoi prima crearlo?`, core_mode: true, core_version: '1.0' });
+        if (patients.length > 1) return json({ text: 'Ho trovato più pazienti con questo nome. Dimmi quale intendi: ' + patients.map((p) => `${p.nome} ${p.cognome}`).join(', '), core_mode: true, core_version: '1.0', data: { risultati: patients } });
+        const patient = patients[0];
+        observed.patients.add(patient.id);
+        const base = new Date(studioToday() + 'T12:00:00Z');
+        base.setUTCDate(base.getUTCDate() + parsed.entities.relative_day);
+        const input = { paziente_id: patient.id, data: base.toISOString().slice(0,10), ora: parsed.entities.time, durata: 30, tipo: parsed.entities.tipo, stato: 'confermato' };
+        try {
+          const prepared = await prepareAgenda(supabase, 'crea_appuntamento', input, studioId, observed);
+          const proposal = { id: crypto.randomUUID(), userId: user.id, studioId, name: 'crea_appuntamento', agenda: prepared, expiresAt: Date.now() + 10 * 60 * 1000 };
+          const token = await signProposal(proposal, SUPABASE_SERVICE_ROLE_KEY);
+          return json({ text: 'Ho preparato l’appuntamento. Controlla il riepilogo e conferma.', needsConfirmation: { token, summary: prepared.summary, expiresAt: proposal.expiresAt }, core_mode: true, core_version: '1.0' });
+        } catch (error) {
+          return json({ text: error.message, core_mode: true, core_version: '1.0', uncertain: true });
+        }
+      }
+      if (decision.action === 'EXECUTE_READ') {
+        const map = {
+          AGENDA_READ: ['appuntamenti', {}],
+          PATIENT_SEARCH: ['cerca_pazienti', { query: parsed.entities.query }],
+          RECALLS_READ: ['richiami', { entro_giorni: parsed.entities.entro_giorni || 30 }],
+          KPI_READ: ['kpi_controllo_gestione', {}],
+        };
+        const [tool, input] = map[parsed.intent] || [];
+        if (tool) {
+          if (tool === 'appuntamenti' && Number.isInteger(parsed.entities.relative_day)) {
+            const base = new Date(studioToday() + 'T12:00:00');
+            base.setDate(base.getDate() + parsed.entities.relative_day);
+            input.da = base.toISOString().slice(0, 10); input.a = input.da;
+          }
+          const out = await eseguiTool(supabase, tool, input, studioId, user.id, azioniPersonalizzate);
+          if (!out?.error) return json({ text: formatCoreRead(tool, out), core_mode: true, core_version: '1.0', tool, data: out });
+          console.error('poliedron_core_read_error', JSON.stringify({ tool, kind: 'tool_error' }));
+        }
       }
     }
     let finalText = '';
