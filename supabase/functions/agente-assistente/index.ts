@@ -26,7 +26,7 @@ import { classifyAction, DECISION } from "./confidence.js";
 import { validaAllegato, messaggiConAllegato, senzaDatiAllegato } from "./allegato.js";
 import { STRUMENTI_MEMORIA, STRUMENTO_RICETTA, normalizzaMemoria, sezioneMemoria, sezioneFarmaciFrequenti, normalizzaRicetta, documentoRicetta } from "./memoria.js";
 import { leggiRichiestaTeam, strumentiSpecialista, toolConsulta, leggiConsulti, eseguiConsulti, promptTeam, contestoGruppo, CONSULTA_SPECIALISTI } from "./team.js";
-import { normalizeProvider, callOpenAI } from "./provider.js";
+import { normalizeProvider, callOpenAI, providerFailure, shouldFallback } from "./provider.js";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") || "gpt-6-luna";
@@ -1393,7 +1393,7 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
       }
       if (POLIEDRON_LLM_PROVIDER === "gemini") {
         console.error("llm_provider_not_enabled", JSON.stringify({ provider: "gemini", configured: Boolean(GEMINI_API_KEY) }));
-        return { ok: false, errText: "Provider gemini configurato ma adapter non ancora abilitato" };
+        return { ok: false, failure: providerFailure("gemini", 503, "provider_not_enabled") };
       }
       const resp = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -1418,7 +1418,7 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
         const kind = status === 429 ? "rate_limit_or_quota" : status >= 500 ? "provider_unavailable" : status === 401 || status === 403 ? "provider_auth" : "provider_error";
         // Do not log credentials or full prompts. Provider error bodies are capped.
         console.error("llm_provider_error", JSON.stringify({ provider: "anthropic", status, kind, requestId: resp.headers?.get?.("request-id") || null }));
-        return { ok: false, errText };
+        return { ok: false, failure: providerFailure("anthropic", status, kind, resp.headers?.get?.("request-id") || null) };
       }
       const data = await resp.json();
       if (data.usage) {
