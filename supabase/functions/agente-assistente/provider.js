@@ -73,7 +73,7 @@ export async function callOpenAI({ apiKey, model, system, messages, tools, signa
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
       model,
-      instructions: system,
+      instructions: Array.isArray(system) ? system.map((part) => part?.text || '').filter(Boolean).join('\n\n') : String(system || ''),
       input: anthropicConversationToOpenAI(messages),
       ...(tools?.length ? { tools: anthropicToolsToOpenAI(tools), tool_choice: 'auto' } : {}),
     }),
