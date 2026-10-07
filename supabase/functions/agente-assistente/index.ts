@@ -31,7 +31,7 @@ import { emergencyIntent, emergencyMessage } from "./emergency.js";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") || "gpt-6-luna";
-const POLIEDRON_LLM_PROVIDER = normalizeProvider(Deno.env.get("POLIEDRON_LLM_PROVIDER"));
+const POLIEDRON_LLM_PROVIDER = normalizeProvider(Deno.env.get("POLIEDRON_LLM_PROVIDER") || "auto");
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -1381,7 +1381,7 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
     const chiamaClaude = async (system, messaggi, tools, signal, effort = "low") => {
       // One provider per model turn. All providers are normalized to the same
       // tool-use contract before Poliedron's authorization/write layer sees them.
-      if (POLIEDRON_LLM_PROVIDER === "openai") {
+      const callOpenAIProvider = async () => {
         const result = await callOpenAI({ apiKey: OPENAI_API_KEY, model: OPENAI_MODEL, system, messages: messaggi, tools, signal });
         if (result.ok && result.data?.usage) {
           const u = result.data.usage;
@@ -1391,11 +1391,15 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
           }).then((r) => r, (e) => e));
         }
         return result;
-      }
+      };
+      if (POLIEDRON_LLM_PROVIDER === "openai") return callOpenAIProvider();
       if (POLIEDRON_LLM_PROVIDER === "gemini") {
         console.error("llm_provider_not_enabled", JSON.stringify({ provider: "gemini", configured: Boolean(GEMINI_API_KEY) }));
         return { ok: false, failure: providerFailure("gemini", 503, "provider_not_enabled") };
       }
+      const callAnthropicProvider = async () => {
+      if (!ANTHROPIC_API_KEY) return { ok: false, failure: providerFailure("anthropic", 503, "provider_not_configured") };
+      try {
       const resp = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
@@ -1434,6 +1438,17 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
         }).then((r) => r, (e) => e));
       }
       return { ok: true, data };
+      } catch (error) {
+        const kind = error?.name === "AbortError" ? "timeout" : "network_error";
+        console.error("llm_provider_error", JSON.stringify({ provider: "anthropic", status: 503, kind }));
+        return { ok: false, failure: providerFailure("anthropic", 503, kind) };
+      }
+      };
+      if (POLIEDRON_LLM_PROVIDER === "anthropic") return callAnthropicProvider();
+      const primary = await callOpenAIProvider();
+      if (primary.ok || !shouldFallback(primary)) return primary;
+      console.warn("llm_provider_fallback", JSON.stringify({ from: "openai", to: "anthropic", kind: primary.failure?.kind || null }));
+      return callAnthropicProvider();
     };
 
     // Uno specialista consultato dal Clinic Manager: ciclo breve, solo i suoi
