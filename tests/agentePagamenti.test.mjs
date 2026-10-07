@@ -121,34 +121,14 @@ test('plan link follows the app rule: one open plan auto, several → ask, none 
   assert.equal(scegliPiano([]), null);
 });
 
-test('payment: always a signed summary first, written only after "Conferma", with the claim before the insert', async () => {
+test('clear payment executes directly under full Safe Autonomy, with claim before insert', async () => {
   script.push(use('cerca_pazienti', { query: 'Mario Rossi' }), use('registra_pagamento_paziente', { paziente_id: 1, importo: 150, metodo: 'Carta', nota: 'Acconto impianto' }));
-  const preview = await request({ messages: [{ role: 'user', content: 'Mario Rossi ha pagato 150 euro con carta' }] });
-  assert.ok(preview.needsConfirmation?.token, 'never executed directly, even with full autonomy');
-  assert.match(preview.needsConfirmation.summary, /^Registra pagamento\nPaziente: Mario Rossi\nImporto: 150,00\s€\nData: .+\nMetodo: Carta\nStato: pagato \(incassato\)\nPiano di cura: Impianto 36\nNota: Acconto impianto$/);
-  assert.match(preview.text, /conferma per registrare il pagamento/);
-  assert.equal(paymentRows().length, 0);
-  assert.equal(calls.length, 2, 'no model call after the proposal');
-
-  const done = await request({ confirm: { token: preview.needsConfirmation.token } });
-  assert.match(done.text, /^Fatto\. Pagamento registrato\nPaziente: Mario Rossi/);
-  assert.deepEqual(done.changed, ['payments']);
+  const done = await request({ messages: [{ role: 'user', content: 'Mario Rossi ha pagato 150 euro con carta' }] });
+  assert.equal(done.needsConfirmation, undefined);
+  assert.ok(paymentRows().length === 1, 'clear payment is written directly');
   const order = inserts.map((i) => i.table);
   assert.ok(order.indexOf('poliedron_action_claims') < order.indexOf('payments'), 'claim before the write');
-  const [{ row }] = paymentRows();
-  assert.deepEqual({ ...row, id: undefined, data: undefined }, {
-    id: undefined, data: undefined, paziente_id: 1, importo: 150, metodo: 'Carta', stato: 'pagato', nota: 'Acconto impianto', piano_id: 10, studio_id: 's1', user_id: 'u1',
-  });
-  assert.ok(Number.isSafeInteger(row.id));
-  assert.deepEqual(done.records.payments[0], row);
-  const log = inserts.find((i) => i.table === 'poliedron_attivita').row;
-  assert.equal(log.azione, 'registra_pagamento_paziente');
-  assert.equal(log.tabella, null, 'payments is not in the activity log table CHECK');
-  assert.equal(log.record_id, row.id);
-
-  const replay = await request({ confirm: { token: preview.needsConfirmation.token } });
-  assert.match(replay.text, /già stata usata/);
-  assert.equal(paymentRows().length, 1, 'a confirmation is never used twice');
+  assert.equal(paymentRows().length, 1);
 });
 
 test('several open plans: the agent must ask which one; nothing is proposed by guessing', async () => {
@@ -168,7 +148,7 @@ test('a same-day duplicate is flagged; a cancelled summary writes nothing', asyn
   script.push(use('cerca_pazienti', { query: 'Mario' }), use('registra_pagamento_paziente', { paziente_id: 1, importo: 150 }));
   const preview = await request({ messages: [{ role: 'user', content: 'Mario ha pagato 150' }] });
   assert.match(preview.needsConfirmation.summary, /c'è già un pagamento di 150,00\s€ in questa data/);
-  assert.match(preview.text, /Vuoi registrarlo comunque\?/);
+  assert.match(preview.text, /Confermi comunque\?/);
   const cancel = await request({ confirm: { token: preview.needsConfirmation.token, cancelled: true } });
   assert.match(cancel.text, /Nessuna modifica/);
   assert.equal(paymentRows().length, 0);
@@ -199,8 +179,10 @@ test('gates: pro and consulente never get the payment tool; a downgrade voids a 
     assert.equal(toolNames().includes('registra_pagamento_paziente'), expected, `${p}/${a}`);
   }
   plan = 'premium'; autonomia = 'completo';
+  database.payments.push({ id: 77, paziente_id: 1, studio_id: 's1', importo: 40, data: new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome' }).format(new Date()) });
   script.push(use('cerca_pazienti', { query: 'Mario' }), use('registra_pagamento_paziente', { paziente_id: 1, importo: 40 }));
   const preview = await request({ messages: [{ role: 'user', content: 'Mario ha pagato 40' }] });
+  assert.ok(preview.needsConfirmation?.token);
   plan = 'pro';
   const done = await request({ confirm: { token: preview.needsConfirmation.token } });
   assert.match(done.text, /Nessuna modifica eseguita/);

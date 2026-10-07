@@ -1,0 +1,31 @@
+{
+  "schema_version": "poliedron-academy-example-v1",
+  "id": "dental-syn-0001",
+  "split": "train_synthetic",
+  "source": "synthetic",
+  "vertical": "dental",
+  "locale": "it-IT",
+  "utterance": "Rossi ha pagato 150 euro con carta",
+  "context": [],
+  "expected": {
+    "intent": "registra_pagamento_paziente",
+    "entities": {
+      "patient_reference": "Rossi",
+      "amount_eur": 150,
+      "payment_method": "Carta"
+    },
+    "missing_fields": [],
+    "ambiguity": {
+      "is_ambiguous": true,
+      "reasons": [
+        "patient_not_authoritatively_resolved"
+      ]
+    },
+    "decision": "NEEDS_DATA",
+    "clarification": null
+  },
+  "tags": [
+    "payment",
+    "surname-only"
+  ]
+}

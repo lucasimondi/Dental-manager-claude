@@ -22,6 +22,7 @@ import { AGENDA_WRITES, prepareAgenda, executeAgenda, agendaAvailability } from 
 import { PAZIENTI_WRITES, PAZIENTI_TOOLS, preparePazienti, executePazienti, schedaPaziente } from "./pazienti.js";
 import { PAGAMENTI_WRITES, PAGAMENTI_TOOLS, preparePagamenti, executePagamenti } from "./pagamenti.js";
 import { PIANI_WRITES, PIANI_TOOLS, preparePiani, executePiani } from "./piani.js";
+import { classifyAction, DECISION } from "./confidence.js";
 import { validaAllegato, messaggiConAllegato, senzaDatiAllegato } from "./allegato.js";
 import { STRUMENTI_MEMORIA, STRUMENTO_RICETTA, normalizzaMemoria, sezioneMemoria, sezioneFarmaciFrequenti, normalizzaRicetta, documentoRicetta } from "./memoria.js";
 import { leggiRichiestaTeam, strumentiSpecialista, toolConsulta, leggiConsulti, eseguiConsulti, promptTeam, contestoGruppo, CONSULTA_SPECIALISTI } from "./team.js";
@@ -1486,30 +1487,49 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
             pareriTeam.push(...pareri);
             result = { pareri, nota: 'Sono pareri degli specialisti, non fatti verificati: integrali conservando le divergenze e i dati mancanti.' };
           }
-        } else if (PIANI_WRITES.has(tu.name)) {
-          // POL-AI-010 passo 4b: preventivi/piani non si eseguono mai direttamente.
-          soloScrittureRiuscite = false;
+        } else if (PIANI_WRITES.has(tu.name) || PAGAMENTI_WRITES.has(tu.name)) {
+          // POL-AI-010 Safe Autonomy: una scrittura non distruttiva si esegue
+          // direttamente SOLO dopo le verifiche deterministiche del dominio.
+          // Qualsiasi avviso (es. possibile duplicato) resta fail-closed e
+          // richiede una conferma esplicita; le future azioni distruttive non
+          // passeranno da questo percorso.
+          const isPiano = PIANI_WRITES.has(tu.name);
+          let proposal = null;
           try {
-            const prepared = await preparePiani(supabase, tu.name, input, studioId, observed);
-            const proposal = { id: crypto.randomUUID(), userId: user.id, studioId, name: tu.name, piani: prepared, expiresAt: Date.now() + 10 * 60 * 1000 };
-            const token = await signProposal(proposal, SUPABASE_SERVICE_ROLE_KEY);
-            const premessa = eseguite.length ? testoEseguite() + '\n\n' : '';
-            return rispondi({ text: premessa + (prepared.avviso ? prepared.avviso + ' Vuoi crearlo comunque?' : 'Controlla il riepilogo e conferma per creare il piano di cura.'), needsConfirmation: { token, summary: prepared.summary, expiresAt: proposal.expiresAt } });
+            const prepared = isPiano
+              ? await preparePiani(supabase, tu.name, input, studioId, observed)
+              : await preparePagamenti(supabase, tu.name, input, studioId, observed);
+            proposal = {
+              id: crypto.randomUUID(), userId: user.id, studioId, name: tu.name,
+              [isPiano ? 'piani' : 'pagamenti']: prepared,
+              expiresAt: Date.now() + 10 * 60 * 1000,
+            };
+            const confidence = classifyAction({ prepared });
+            if (confidence.decision !== DECISION.HIGH) {
+              soloScrittureRiuscite = false;
+              const token = await signProposal(proposal, SUPABASE_SERVICE_ROLE_KEY);
+              const premessa = eseguite.length ? testoEseguite() + '\n\n' : '';
+              return rispondi({
+                text: premessa + prepared.avviso + ' Confermi comunque?',
+                needsConfirmation: { token, summary: prepared.summary, expiresAt: proposal.expiresAt },
+              });
+            }
           } catch (error) {
             result = { error: error.message };
+            soloScrittureRiuscite = false;
           }
-        } else if (PAGAMENTI_WRITES.has(tu.name)) {
-          // POL-AI-010 passo 4a: un pagamento non si esegue mai direttamente,
-          // si propone sempre il riepilogo firmato da confermare.
-          soloScrittureRiuscite = false;
-          try {
-            const prepared = await preparePagamenti(supabase, tu.name, input, studioId, observed);
-            const proposal = { id: crypto.randomUUID(), userId: user.id, studioId, name: tu.name, pagamenti: prepared, expiresAt: Date.now() + 10 * 60 * 1000 };
-            const token = await signProposal(proposal, SUPABASE_SERVICE_ROLE_KEY);
-            const premessa = eseguite.length ? testoEseguite() + '\n\n' : '';
-            return rispondi({ text: premessa + (prepared.avviso ? `${prepared.avviso} Vuoi registrarlo comunque?` : 'Controlla il riepilogo e conferma per registrare il pagamento.'), needsConfirmation: { token, summary: prepared.summary, expiresAt: proposal.expiresAt } });
-          } catch (error) {
-            result = { error: error.message };
+          if (proposal && !result) {
+            try {
+              const out = isPiano
+                ? await executePiani(supabase, proposal)
+                : await executePagamenti(supabase, proposal);
+              await registraAttivita(user.id, tu.name, input, out.recordId ?? null, out.changed?.[0] ?? null);
+              eseguite.push({ text: out.text, changed: out.changed || [], records: out.records });
+              result = { ok: true, eseguito: out.text };
+            } catch (error) {
+              result = { error: error.message };
+              soloScrittureRiuscite = false;
+            }
           }
         } else if (AGENDA_WRITES.has(tu.name) || PAZIENTI_WRITES.has(tu.name)) {
           const isAgenda = AGENDA_WRITES.has(tu.name);

@@ -3607,3 +3607,16 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 ### Release (passo 4a)
 - "Mergia" del Product Owner. `agente-assistente` v32 deployata (index.ts, agenda.js, allegato.js, confirmation.js, memoria.js, pagamenti.js, pazienti.js, team.js, `_shared/agendaSlots.js`; verify_jwt true), confrontata byte per byte con il repo (9/9 identici), avvio verificato. CI `verify` verde su `a86ea83`, anteprime Vercel e Netlify OK. PR #135 mergiata.
 - Rollback: redeploy v31 (= master@5d61b1b) e revert.
+
+
+## POL-AI-010 Safe Autonomy — handoff 2026-10-07
+- OWNER: ChatGPT.
+- BRANCH: `claude/pol-ai-010-safe-autonomy`.
+- OBJECTIVE: rimuovere conferme ripetitive dalle scritture non distruttive quando i dati sono deterministici; fallire chiuso su ambiguità/conflitti.
+- COMPLETED: percorso diretto per piani/pagamenti verificati; avvisi restano con proposta firmata; nuovo tool `aggiungi_prestazione_piano`; guard duplicato stessa prestazione+dente; test aggiornati/aggiunti.
+- FILES: `supabase/functions/agente-assistente/index.ts`, `piani.js`, `pagamenti.js`, `tests/agentePianiGestione.test.mjs`, coordination docs.
+- DB/MIGRATIONS: nessuna.
+- DEPLOY: nessuno.
+- VALIDATION: test aggiunti ma non eseguiti localmente in questa sessione; attendere CI. Il container non può raggiungere GitHub.
+- RISKS: Undo generalizzato non implementato in questa tranche; cancellazioni/storni restano fuori scope e dovranno richiedere protezione forte.
+- NEXT: aprire PR, attendere CI, review; merge solo su ordine PO.
