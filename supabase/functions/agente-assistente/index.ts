@@ -31,7 +31,7 @@ import { emergencyIntent, emergencyMessage } from "./emergency.js";
 import { understandPoliedron } from "./poliedron-core.js";
 import { deriveContext, enrichWithContext } from "./poliedron-context.js";
 import { planPoliedron, confidenceDecision } from "./poliedron-planner.js";
-import { deriveConversationState, completeConversationalTurn } from "./poliedron-conversation.js";
+import { deriveConversationState, completeConversationalTurn, conversationEnvelope } from "./poliedron-conversation.js";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") || "gpt-6-luna";
@@ -1412,7 +1412,14 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
             input.da = base.toISOString().slice(0, 10); input.a = input.da;
           }
           const out = await eseguiTool(supabase, tool, input, studioId, user.id, azioniPersonalizzate);
-          if (!out?.error) return json({ text: formatCoreRead(tool, out), core_mode: true, core_version: '1.0', tool, data: out });
+          if (!out?.error) {
+            const resultRows = Array.isArray(out?.risultati) ? out.risultati : Array.isArray(out?.appuntamenti) ? out.appuntamenti : [];
+            const meta = {};
+            if (tool === 'cerca_pazienti' && resultRows.length === 1 && resultRows[0]?.id) meta.patient_id = resultRows[0].id;
+            if (tool === 'appuntamenti' && resultRows.length === 1 && resultRows[0]?.id) meta.appointment_id = resultRows[0].id;
+            const envelope = conversationEnvelope([...convo, { role: 'assistant', content: formatCoreRead(tool, out), meta }]);
+            return json({ text: formatCoreRead(tool, out), core_mode: true, core_version: '1.1', tool, data: out, conversation_context: envelope });
+          }
           console.error('poliedron_core_read_error', JSON.stringify({ tool, kind: 'tool_error' }));
         }
       }
