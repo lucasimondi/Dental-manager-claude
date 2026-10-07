@@ -129,7 +129,7 @@ export const nuovoIdPiano=()=>Date.now()+Math.floor(Math.random()*99999);
 export async function executePiani(client,proposal){
   const {error:claim}=await client.from('poliedron_action_claims').insert({id:proposal.id,studio_id:proposal.studioId,user_id:proposal.userId});
   if(claim?.code==='23505') throw new Error('Questa operazione è già stata eseguita.');
-  if(claim) throw new Error('Impossibile acquisire l'operazione. Nessun piano modificato.');
+  if(claim) throw new Error("Impossibile acquisire l'operazione. Nessun piano modificato.");
   const dati=proposal.piani.dati;
   const query=proposal.name==='crea_piano_cura'
     ? client.from('plans').insert({id:nuovoIdPiano(),...dati,studio_id:proposal.studioId,user_id:proposal.userId})
