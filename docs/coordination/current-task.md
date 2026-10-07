@@ -1,3 +1,14 @@
+# Current task — POL-AI-010 Safe Autonomy (2026-10-07)
+- OWNER: ChatGPT, authorized directly by Product Owner: eliminare le conferme superflue e rendere Poliedron preciso/fail-closed.
+- BRANCH: `claude/pol-ai-010-safe-autonomy`, da master dopo merge PR #145.
+- PRINCIPIO PO: **chiaro → esegue; ambiguo → chiede; pericoloso → conferma; reversibile → Undo**.
+- SCOPE: piani e pagamenti non distruttivi verificati eseguono direttamente; duplicati/ambiguità restano bloccati; aggiunta prestazione a piano esistente. Nessuna cancellazione/storno in questo task.
+- SAFETY: RLS/tenant invariati; paziente deve essere osservato; piano deve appartenere al paziente; prezzi non possono essere inventati; duplicati producono avviso e conferma.
+- STATUS: implementazione su branch, PR/test CI ancora da completare.
+- NEXT: PR + CI; merge solo su approvazione Product Owner.
+
+---
+
 # Current task — POL-AI-TEAM-004 (Poliedron non deve indovinare chi occupa un orario)
 - TASK: il PO ha segnalato una risposta sbagliata ("occupato da Hernandez", in realtà era l'appuntamento già esistente di Giacomo Lauretti) e ha chiesto "Perché sbaglia ?"; poi "Ok procedi".
 - OWNER: CLAUDE, branch `claude/whatsapp-automation-status-d2ng12`, da `master@176f66d`.
