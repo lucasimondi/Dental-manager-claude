@@ -28,7 +28,9 @@ import { STRUMENTI_MEMORIA, STRUMENTO_RICETTA, normalizzaMemoria, sezioneMemoria
 import { leggiRichiestaTeam, strumentiSpecialista, toolConsulta, leggiConsulti, eseguiConsulti, promptTeam, contestoGruppo, CONSULTA_SPECIALISTI } from "./team.js";
 import { normalizeProvider, callOpenAI, providerFailure, providerOrder, runProviderChain } from "./provider.js";
 import { emergencyIntent, emergencyMessage } from "./emergency.js";
-import { understandPoliedron, coreDecision } from "./poliedron-core.js";
+import { understandPoliedron } from "./poliedron-core.js";
+import { deriveContext, enrichWithContext } from "./poliedron-context.js";
+import { planPoliedron, confidenceDecision } from "./poliedron-planner.js";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") || "gpt-6-luna";
@@ -1360,8 +1362,11 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
     // Team/specialist and attachment requests still use the richer model path.
     if (!richiestaTeam && !allegato) {
       const lastUserText = [...convo].reverse().find((m) => m.role === 'user')?.content || '';
-      const parsed = understandPoliedron(lastUserText);
-      const decision = coreDecision(parsed);
+      const context = deriveContext(convo);
+      const parsed = enrichWithContext(understandPoliedron(lastUserText), context);
+      const plan = planPoliedron(parsed);
+      const gate = confidenceDecision(parsed, plan);
+      const decision = gate.decision === 'EXECUTE' ? { action: 'EXECUTE_READ' } : gate.decision === 'PREPARE_CONFIRM' ? { action: 'PREPARE_WRITE_CONFIRMATION' } : gate.decision === 'CLARIFY' ? { action: 'CLARIFY', missing: gate.missing } : { action: 'ESCALATE_LLM' };
       if (decision.action === 'CLARIFY') {
         const labels = { patient: 'Per quale paziente?', day: 'Per quale giorno?', time: 'A che ora?', type: 'Che tipo di appuntamento devo inserire?' };
         return json({ text: decision.missing.map((x) => labels[x] || `Mi manca: ${x}`).join(' '), core_mode: true, core_version: '1.0' });
