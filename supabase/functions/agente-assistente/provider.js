@@ -98,3 +98,29 @@ export async function callOpenAI({ apiKey, model, system, messages, tools, signa
   const raw = await resp.json();
   return { ok: true, data: openAIResponseToAnthropic(raw), raw };
 }
+
+
+export const PROVIDER_CAPABILITIES = Object.freeze({
+  openai: new Set(['chat', 'tool_use', 'reasoning']),
+  anthropic: new Set(['chat', 'tool_use', 'reasoning']),
+  gemini: new Set(['chat', 'tool_use', 'reasoning']),
+});
+
+export const providerOrder = ({ preferred = 'auto', capability = 'tool_use', configured = {} } = {}) => {
+  const available = (name) => configured[name] !== false && PROVIDER_CAPABILITIES[name]?.has(capability);
+  if (preferred !== 'auto') return available(preferred) ? [preferred] : [];
+  return ['openai', 'anthropic', 'gemini'].filter(available);
+};
+
+export async function runProviderChain({ providers, invoke, canReplay = true, onFallback = () => {} }) {
+  let last = null;
+  for (let i = 0; i < providers.length; i++) {
+    const provider = providers[i];
+    const result = await invoke(provider);
+    last = result;
+    if (result?.ok) return { ...result, provider };
+    if (!canReplay || !shouldFallback(result) || i === providers.length - 1) return result;
+    onFallback({ from: provider, to: providers[i + 1], failure: result?.failure || null });
+  }
+  return last || { ok: false, failure: providerFailure('router', 503, 'provider_not_configured') };
+}
