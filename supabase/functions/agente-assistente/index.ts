@@ -27,6 +27,7 @@ import { validaAllegato, messaggiConAllegato, senzaDatiAllegato } from "./allega
 import { STRUMENTI_MEMORIA, STRUMENTO_RICETTA, normalizzaMemoria, sezioneMemoria, sezioneFarmaciFrequenti, normalizzaRicetta, documentoRicetta } from "./memoria.js";
 import { leggiRichiestaTeam, strumentiSpecialista, toolConsulta, leggiConsulti, eseguiConsulti, promptTeam, contestoGruppo, CONSULTA_SPECIALISTI } from "./team.js";
 import { normalizeProvider, callOpenAI, providerFailure, shouldFallback } from "./provider.js";
+import { emergencyIntent, emergencyMessage } from "./emergency.js";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") || "gpt-6-luna";
@@ -1476,13 +1477,30 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
       const risposta = await chiamaClaude(systemRichiesta, convo, toolsRichiesta, undefined, sforzo);
 
       if (!risposta.ok) {
-        const errText = risposta.errText;
         await Promise.allSettled(logConsumi);
-        if (eseguite.length) return rispondi({ text: testoEseguite() + '\n\nNon sono riuscito a completare il resto della richiesta: riprova.' });
-        return new Response(JSON.stringify({ error: "Errore API Claude: " + errText }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        // Never replay through emergency mode after a write: that could duplicate effects.
+        if (eseguite.length) return rispondi({ text: testoEseguite() + '\n\nIl servizio AI è temporaneamente indisponibile; non ho ripetuto alcuna operazione.' });
+
+        // Deterministic read-only continuity mode. It can only call tools that are
+        // explicitly safe and never mutates clinical/business data.
+        const rawUserText = [...convo].reverse().find((m) => m.role === 'user' && typeof m.content === 'string')?.content || '';
+        const emergency = emergencyIntent(rawUserText);
+        if (emergency?.kind === 'tool' && ['appuntamenti','cerca_pazienti','richiami','kpi_controllo_gestione'].includes(emergency.tool)) {
+          try {
+            const input = { ...(emergency.input || {}) };
+            if (emergency.tool === 'appuntamenti' && Number.isInteger(input.relative_day)) {
+              const base = new Date(studioToday());
+              base.setDate(base.getDate() + input.relative_day);
+              const day = base.toISOString().slice(0, 10);
+              delete input.relative_day; input.da = day; input.a = day;
+            }
+            const out = await eseguiTool(supabase, emergency.tool, input, studioId, user.id, []);
+            return rispondi({ text: 'Modalità essenziale attiva: servizio AI temporaneamente indisponibile.', emergency_mode: true, tool: emergency.tool, data: out });
+          } catch (error) {
+            console.error('emergency_core_error', JSON.stringify({ tool: emergency.tool, kind: 'read_failure' }));
+          }
+        }
+        return rispondi({ text: emergencyMessage(emergency), emergency_mode: true });
       }
 
       const data = risposta.data;
