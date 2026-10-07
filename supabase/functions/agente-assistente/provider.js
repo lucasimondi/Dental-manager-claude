@@ -4,8 +4,15 @@
 
 export const normalizeProvider = (value) => {
   const v = String(value || '').trim().toLowerCase();
-  return ['anthropic', 'openai', 'gemini'].includes(v) ? v : 'anthropic';
+  return ['anthropic', 'openai', 'gemini', 'auto'].includes(v) ? v : 'anthropic';
 };
+
+export const providerFailure = (provider, status, kind, requestId = null) => ({
+  provider, status, kind, requestId,
+  retryable: status === 429 || status >= 500 || kind === 'network_error' || kind === 'timeout',
+});
+
+export const shouldFallback = (result) => Boolean(!result?.ok && result?.failure?.retryable);
 
 export const anthropicToolsToOpenAI = (tools = []) => tools.map((t) => ({
   type: 'function',
@@ -59,7 +66,7 @@ export const openAIResponseToAnthropic = (response = {}) => {
 };
 
 export async function callOpenAI({ apiKey, model, system, messages, tools, signal }) {
-  if (!apiKey) return { ok: false, errText: 'OPENAI_API_KEY non configurata', status: 503, kind: 'provider_not_configured' };
+  if (!apiKey) return { ok: false, failure: providerFailure('openai', 503, 'provider_not_configured') };
   const resp = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
@@ -76,7 +83,7 @@ export async function callOpenAI({ apiKey, model, system, messages, tools, signa
     const status = resp.status;
     const kind = status === 429 ? 'rate_limit_or_quota' : status >= 500 ? 'provider_unavailable' : status === 401 || status === 403 ? 'provider_auth' : 'provider_error';
     console.error('llm_provider_error', JSON.stringify({ provider: 'openai', status, kind, requestId: resp.headers?.get?.('x-request-id') || null }));
-    return { ok: false, errText, status, kind };
+    return { ok: false, failure: providerFailure('openai', status, kind, resp.headers?.get?.('x-request-id') || null) };
   }
   const raw = await resp.json();
   return { ok: true, data: openAIResponseToAnthropic(raw), raw };
