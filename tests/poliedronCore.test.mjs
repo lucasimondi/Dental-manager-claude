@@ -6,3 +6,6 @@ test('understands appointment creation entities',()=>{const p=understandPoliedro
 test('never guesses missing write data',()=>{const p=understandPoliedron('fissa appuntamento domani');assert.deepEqual(p.missing,['time']);assert.equal(coreDecision(p).action,'CLARIFY')});
 test('invalid time is rejected',()=>assert.equal(parseItalianTime('ore 27:80'),null));
 test('unknown language escalates',()=>assert.equal(coreDecision(understandPoliedron('sistemami un po tutto')).action,'ESCALATE_LLM'));
+
+test('routine reads remain core-first candidates',()=>{for(const q of ['agenda domani','cerca paziente Luca Rossi','richiami','fatturato']){const p=understandPoliedron(q);assert.equal(coreDecision(p).action,'EXECUTE_READ')}});
+test('writes never execute directly in Core v1',()=>{for(const q of ['crea appuntamento domani ore 15','sposta appuntamento domani ore 16','cancella appuntamento']){const d=coreDecision(understandPoliedron(q));assert.notEqual(d.action,'EXECUTE_READ')}});
