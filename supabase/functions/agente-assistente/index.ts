@@ -31,6 +31,7 @@ import { emergencyIntent, emergencyMessage } from "./emergency.js";
 import { understandPoliedron } from "./poliedron-core.js";
 import { deriveContext, enrichWithContext } from "./poliedron-context.js";
 import { planPoliedron, confidenceDecision } from "./poliedron-planner.js";
+import { deriveConversationState, completeConversationalTurn } from "./poliedron-conversation.js";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") || "gpt-6-luna";
@@ -1363,7 +1364,9 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
     if (!richiestaTeam && !allegato) {
       const lastUserText = [...convo].reverse().find((m) => m.role === 'user')?.content || '';
       const context = deriveContext(convo);
-      const parsed = enrichWithContext(understandPoliedron(lastUserText), context);
+      const conversationState = deriveConversationState(convo.slice(0, -1));
+      const conversational = completeConversationalTurn(lastUserText, conversationState);
+      const parsed = enrichWithContext(conversational, context);
       const plan = planPoliedron(parsed);
       // Core-first owns only requests it can completely and safely resolve.
       // Incomplete/unsupported/compound commands stay on the mature LLM tool path.
