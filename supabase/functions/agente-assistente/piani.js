@@ -1,6 +1,7 @@
 // POL-AI-010 passo 4b — preventivi e piani di cura dalla chat di Poliedron.
-// I piani creati qui hanno lo stesso shape di Piani.jsx e sono SEMPRE
-// confermati prima della scrittura.
+// I piani hanno lo stesso shape di Piani.jsx. Safe Autonomy: le azioni non
+// distruttive e univoche si eseguono direttamente; conflitti/duplicati
+// fermano il flusso e richiedono conferma o chiarimento.
 import { studioToday } from './confirmation.js';
 
 export const PIANI_WRITES = new Set(['crea_piano_cura','imposta_stato_piano','segna_prestazione_eseguita','aggiungi_prestazione_piano']);
@@ -86,7 +87,7 @@ export async function preparePiani(client,name,input={},studioId,observed){
     const righe=voci.map((v,i)=>`${i+1}. ${v.prestazione}${v.dente?` — dente ${v.dente}`:''}: ${euro(v.prezzo)}`);
     const corpo=[`Paziente: ${chi}`,`Piano: ${titolo}`,...righe,`Subtotale: ${euro(t.sub)}`,sconto?`Sconto: ${scontoTipo==='pct'?sconto+'%':euro(sconto)}`:null,`Totale: ${euro(t.finale)}`,scadenza?`Scadenza pagamento: ${scadenza}`:null].filter(Boolean).join('\n');
     const avviso=simili?.length?`Attenzione: ${chi} ha già un piano chiamato “${titolo}”.`:null;
-    return {dati,avviso,confermaSempre:true,summary:`Crea piano di cura\n${corpo}${avviso?`\n${avviso}`:''}`,done:`Piano di cura creato\n${corpo}`};
+    return {dati,avviso,summary:`Crea piano di cura\n${corpo}${avviso?`\n${avviso}`:''}`,done:`Piano di cura creato\n${corpo}`};
   }
 
   const {data:plan,error:epl}=await client.from('plans').select('id, paziente_id, titolo, stato, voci, sconto, sconto_tipo').eq('studio_id',studioId).eq('id',input.piano_id).eq('paziente_id',paz.id).single();
@@ -112,7 +113,7 @@ export async function preparePiani(client,name,input={},studioId,observed){
     if(!['accettato','rifiutato'].includes(input.stato)) throw new Error('Stato non valido.');
     if(plan.stato===input.stato) throw new Error(`Il piano è già ${input.stato}.`);
     const corpo=`Paziente: ${chi}\nPiano: ${plan.titolo}\nStato: ${plan.stato||'attivo'} → ${input.stato}`;
-    return {dati:{piano_id:plan.id,stato:input.stato},before:{stato:plan.stato||'attivo'},confermaSempre:true,summary:`Aggiorna piano di cura\n${corpo}`,done:`Piano aggiornato\n${corpo}`};
+    return {dati:{piano_id:plan.id,stato:input.stato},before:{stato:plan.stato||'attivo'},summary:`Aggiorna piano di cura\n${corpo}`,done:`Piano aggiornato\n${corpo}`};
   }
 
   const idx=Number(input.voce_index);
@@ -121,14 +122,14 @@ export async function preparePiani(client,name,input={},studioId,observed){
   if(voce.eseguita===true) throw new Error('Questa prestazione risulta già eseguita.');
   const nuove=plan.voci.map((v,i)=>i===idx?{...v,eseguita:true,dataEsec:studioToday()}:v);
   const corpo=`Paziente: ${chi}\nPiano: ${plan.titolo}\nPrestazione: ${voce.prestazione}${voce.dente?` — dente ${voce.dente}`:''}`;
-  return {dati:{piano_id:plan.id,voci:nuove},before:{voci:plan.voci},confermaSempre:true,summary:`Segna prestazione eseguita\n${corpo}`,done:`Prestazione segnata come eseguita\n${corpo}`};
+  return {dati:{piano_id:plan.id,voci:nuove},before:{voci:plan.voci},summary:`Segna prestazione eseguita\n${corpo}`,done:`Prestazione segnata come eseguita\n${corpo}`};
 }
 export const nuovoIdPiano=()=>Date.now()+Math.floor(Math.random()*99999);
 
 export async function executePiani(client,proposal){
   const {error:claim}=await client.from('poliedron_action_claims').insert({id:proposal.id,studio_id:proposal.studioId,user_id:proposal.userId});
-  if(claim?.code==='23505') throw new Error('Questa conferma è già stata usata.');
-  if(claim) throw new Error('Impossibile acquisire la conferma. Nessun piano creato.');
+  if(claim?.code==='23505') throw new Error('Questa operazione è già stata eseguita.');
+  if(claim) throw new Error('Impossibile acquisire l'operazione. Nessun piano modificato.');
   const dati=proposal.piani.dati;
   const query=proposal.name==='crea_piano_cura'
     ? client.from('plans').insert({id:nuovoIdPiano(),...dati,studio_id:proposal.studioId,user_id:proposal.userId})
