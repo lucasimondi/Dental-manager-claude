@@ -610,6 +610,16 @@ Stato (ottobre 2026): prioritizzata dal Product Owner ("prossimo passo di polied
 
 Decisione Product Owner (ottobre 2026, verbatim): "Deve ricordare poliedron, e deve anche produrre i documenti che richiedo tipo le ricette, quindi deve imparare dalle comunicazioni". Fase 2 = POL-AI-009: memoria per utente (tabella `poliedron_memoria`, privata, visibile e cancellabile in Chat), ricetta preparata da Poliedron e aperta nel modulo Ricetta già compilato (il medico verifica e genera: l'AI non finalizza), apprendimento delle posologie dalle ricette generate, file allegato che resta in uso nei messaggi successivi della sessione. Ancora aperti: archivio del file nella scheda paziente, altri documenti (certificati, lettere, esami) preparati da Poliedron.
 
+### Poliedron Learning Engine — decisione Product Owner (ottobre 2026)
+
+Poliedron deve usare gli LLM generalisti disponibili senza restare dipendente dalla loro sola intelligenza. Durante l'uso deve costruire, in modo privacy-safe e governato, esperienza proprietaria su intenti, linguaggio operativo, risoluzione delle entità, ambiguità, errori e correzioni.
+
+Architettura approvata: **LLM generalista + Resolver sui dati autorevoli + Confidence Engine deterministico + Action Engine + Learning Event Pipeline + futuro ML Poliedra**. Il ML specialistico verrà introdotto inizialmente in shadow mode e potrà evolvere, se dataset/qualità/economia lo giustificano, verso un modello linguistico specializzato Poliedron. Il motore deterministico di dominio resta sempre autorevole.
+
+Regola operativa: **capito + verificato → esegui; capito ma non verificato → cerca; più interpretazioni plausibili → domanda mirata; non capito → chiedi; pericoloso/distruttivo → conferma; reversibile sicuro → esegui + Undo quando supportato**.
+
+I dati sanitari grezzi non diventano automaticamente dati di training. Dataset di training/evaluation richiedono un processo separato con minimizzazione, de-identificazione/governance, retention e isolamento tenant. Vedi `docs/architecture/poliedron-learning-engine.md`.
+
 ## 33. Referral / Founder model
 
 Idea da mantenere in roadmap: founder / ambassador / referral partner con tracking segnalazioni e possibile revenue sharing/passivo ricorrente collegato alla rete generata.
