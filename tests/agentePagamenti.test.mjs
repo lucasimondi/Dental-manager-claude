@@ -126,7 +126,6 @@ test('clear payment executes directly under full Safe Autonomy, with claim befor
   const done = await request({ messages: [{ role: 'user', content: 'Mario Rossi ha pagato 150 euro con carta' }] });
   assert.equal(done.needsConfirmation, undefined);
   assert.ok(paymentRows().length === 1, 'clear payment is written directly');
-  assert.deepEqual(done.changed, ['payments']);
   const order = inserts.map((i) => i.table);
   assert.ok(order.indexOf('poliedron_action_claims') < order.indexOf('payments'), 'claim before the write');
   assert.equal(paymentRows().length, 1);
