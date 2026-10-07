@@ -5,7 +5,7 @@ const OUT=path.resolve('academy/datasets/synthetic/dental-it-factory-v1.jsonl');
 const FIRST=['Mario','Andrea','Giulia','Luca','Sara','Paolo','Elena','Marco','Anna','Davide','Chiara','Stefano'];
 const LAST=['Rossi','Bianchi','Verdi','Gallo','Romano','Ferri','Costa','Riva','Fontana','Marino','Greco','Conti'];
 const NAMES=FIRST.flatMap(first=>LAST.map(last=>`${first} ${last}`));
-const SURNAMES=NAMES.map(x=>x.split(' ')[1]);
+const SURNAMES=LAST;
 const AMOUNTS=[50,80,90,120,150,200,250,300,350,500];
 const TEETH=['11','16','21','26','36','46'];
 const PAYMENTS=[['carta','Carta'],['cash','Contanti'],['contanti','Contanti'],['bonifico','Bonifico'],['pos','POS'],['bancomat','Carta'],['con la carta','Carta'],['in contanti','Contanti']];
@@ -48,7 +48,12 @@ for(const name of NAMES){
 const typoSeeds=[['pagato','pagto'],['aggiungi','agiungi'],['preventivo','preventvo'],['devitalizzazione','devitalizazione'],['contanti','cotanti']];
 for(const [good,bad] of typoSeeds)for(const name of NAMES.slice(0,4)){
  const utterance=`${name} ${good==='pagato'?'ha pagato 120 euro':good==='contanti'?'ha pagato 120 euro contanti':good==='aggiungi'?'aggiungi igiene al preventivo':good==='preventivo'?'aggiungi igiene al preventivo':'devitalizzazione 26 fatta'}`.replace(good,bad);
- add(utterance,{intent:'unknown',entities:{patient_reference:name},missing_fields:[],ambiguity:ambiguity(true,['noisy_input_requires_interpretation']),decision:'NEEDS_DATA',clarification:null},['noise','typo']);
+ let expected;
+ if(good==='pagato') expected={intent:'registra_pagamento_paziente',entities:{patient_reference:name,amount_eur:120},missing_fields:['payment_method'],ambiguity:ambiguity(false),decision:'NEEDS_DATA',clarification:null};
+ else if(good==='contanti') expected={intent:'registra_pagamento_paziente',entities:{patient_reference:name,amount_eur:120,payment_method:'Contanti'},missing_fields:[],ambiguity:ambiguity(false),decision:'NEEDS_DATA',clarification:null};
+ else if(good==='aggiungi'||good==='preventivo') expected={intent:'aggiungi_prestazione_piano',entities:{patient_reference:name,treatment:'igiene'},missing_fields:['authoritative_patient_id','authoritative_plan_id','authoritative_price'],ambiguity:ambiguity(false),decision:'NEEDS_DATA',clarification:null};
+ else expected={intent:'segna_prestazione_eseguita',entities:{patient_reference:name,treatment:'endodonzia',tooth:'26'},missing_fields:['authoritative_patient_id','authoritative_plan_id'],ambiguity:ambiguity(false),decision:'NEEDS_DATA',clarification:null};
+ add(utterance,expected,['noise','typo','recoverable']);
 }
 
 fs.mkdirSync(path.dirname(OUT),{recursive:true});
