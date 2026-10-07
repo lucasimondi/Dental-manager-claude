@@ -11,7 +11,7 @@ const storageKey = (studioId, userId) => `poliedron-team:v1:${studioId}:${userId
 export const contactKey = (contact) => (contact.kind === 'group' ? `group:${contact.id}` : `assistant:${contact.id}`);
 
 export function emptyTeamState() {
-  return { groups: [], threads: {} };
+  return { groups: [], threads: {}, alertsSent: {} };
 }
 
 export function loadTeamState(storage, studioId, userId) {
@@ -23,7 +23,8 @@ export function loadTeamState(storage, studioId, userId) {
       try { defineTeamGroup({ ...g, studioId, userId }); return true; } catch { return false; }
     }) : [];
     const threads = raw.threads && typeof raw.threads === 'object' ? raw.threads : {};
-    return { groups, threads };
+    const alertsSent = raw.alertsSent && typeof raw.alertsSent === 'object' ? raw.alertsSent : {};
+    return { groups, threads, alertsSent };
   } catch {
     return emptyTeamState();
   }
@@ -50,7 +51,7 @@ export function addGroup(state, { title, objective, assistantIds }, { studioId, 
 export function removeGroup(state, groupId) {
   const threads = { ...state.threads };
   delete threads[`group:${groupId}`];
-  return { groups: state.groups.filter((g) => g.id !== groupId), threads };
+  return { ...state, groups: state.groups.filter((g) => g.id !== groupId), threads };
 }
 
 export function appendMessage(state, key, message) {
@@ -66,12 +67,71 @@ export function teamRequestFor(contact) {
   return { assistente: contact.id };
 }
 
-/** Model history: the last answered user/assistant turns of this thread. */
+/** Model history: the last answered user/assistant turns of this thread.
+ *  Alerts start a thread with an assistant message and can follow each
+ *  other, so leading assistant turns are dropped and consecutive turns of
+ *  the same role are merged (the model expects user/assistant alternation). */
 export function threadHistory(thread = []) {
-  return thread
-    .filter((m) => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim() && !m.failed)
-    .slice(-20)
-    .map((m) => ({ role: m.role, content: m.content }));
+  const turns = [];
+  for (const m of thread) {
+    if (!(m?.role === 'user' || m?.role === 'assistant') || typeof m.content !== 'string' || !m.content.trim() || m.failed) continue;
+    const last = turns.at(-1);
+    if (last && last.role === m.role) last.content = `${last.content}\n\n${m.content}`;
+    else turns.push({ role: m.role, content: m.content });
+  }
+  while (turns.length && turns[0].role !== 'user') turns.shift();
+  return turns.slice(-20);
+}
+
+/** Unread assistant messages in a thread. */
+export const unreadIn = (thread = []) => thread.filter((m) => m?.unread).length;
+
+export function markThreadRead(state, key) {
+  const thread = state.threads[key];
+  if (!thread?.some((m) => m.unread)) return state;
+  return { ...state, threads: { ...state.threads, [key]: thread.map((m) => (m.unread ? { ...m, unread: false } : m)) } };
+}
+
+/** Append proactive alerts (and daily reminders) to their owners' chats. */
+export function deliverAlerts(state, deliveries, nowIso, newId) {
+  if (!deliveries.length) return state;
+  let next = { ...state, alertsSent: { ...(state.alertsSent || {}) } };
+  for (const { alert, reminder } of deliveries) {
+    const key = `assistant:${alert.owner}`;
+    next = appendMessage(next, key, {
+      id: newId(),
+      role: 'assistant',
+      content: reminder ? `Promemoria — ${alert.text}` : alert.text,
+      at: nowIso,
+      unread: true,
+      alert: { id: alert.id, kind: alert.kind, patientId: alert.patientId, patientName: alert.patientName, appointment: alert.appointment, actions: alert.actions },
+    });
+    const previous = next.alertsSent[alert.id];
+    next.alertsSent[alert.id] = { at: nowIso, count: (previous?.count || 0) + 1, answered: false };
+  }
+  return next;
+}
+
+/** Record the answer: buttons disappear from every copy of the alert. */
+export function answerAlert(state, alertId, answer) {
+  const threads = {};
+  for (const [key, thread] of Object.entries(state.threads)) {
+    threads[key] = thread.some((m) => m.alert?.id === alertId && !m.answered)
+      ? thread.map((m) => (m.alert?.id === alertId && !m.answered ? { ...m, answered: answer, unread: false } : m))
+      : thread;
+  }
+  const previous = (state.alertsSent || {})[alertId] || {};
+  return { ...state, threads, alertsSent: { ...(state.alertsSent || {}), [alertId]: { ...previous, answered: true } } };
+}
+
+/** Pending alerts no longer active (solved elsewhere) are closed quietly. */
+export function closeSolvedAlerts(state, activeIds) {
+  const active = new Set(activeIds);
+  let next = state;
+  for (const [id, record] of Object.entries(state.alertsSent || {})) {
+    if (!record.answered && !active.has(id)) next = answerAlert(next, id, 'Risolto');
+  }
+  return next;
 }
 
 export const PARERE_LABEL = Object.freeze({ ok: null, non_disponibile: 'non disponibile' });

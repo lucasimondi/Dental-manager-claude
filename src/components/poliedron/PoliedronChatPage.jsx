@@ -6,8 +6,8 @@ import PoliedronActionPreviewLevel2 from './PoliedronActionPreviewLevel2';
 import PoliedronIntelligenceResults from './PoliedronIntelligenceResults';
 import PoliedronSearchResults from './PoliedronSearchResults';
 import PoliedronAttivita from './PoliedronAttivita';
-import { useTeamState, TeamThread, TeamAvatar, GroupForm } from './PoliedronTeam';
-import { contactKey } from '../../lib/poliedron/team/threads.js';
+import { TeamThread, TeamAvatar, GroupForm } from './PoliedronTeam';
+import { contactKey, unreadIn } from '../../lib/poliedron/team/threads.js';
 import PatientThread, { PatientAvatar } from './PoliedronPatientChat.jsx';
 import { patientChatKey, patientIdFromKey, patientName, searchPatients, searchMessages, parseNewPatient, sameNamePatients } from '../../lib/poliedron/team/patientChat.js';
 import PoliedronInstall from './PoliedronInstall.jsx';
@@ -149,6 +149,10 @@ export default function PoliedronChatPage({
   patients = [],
   onOpenPatient,
   onCreatePatient,
+  team,
+  poliedronUnread = 0,
+  onAlertAction,
+  onOpenPatientTab,
 }) {
   const [draft, setDraft] = useState('');
   const [showActivity, setShowActivity] = useState(false);
@@ -163,7 +167,6 @@ export default function PoliedronChatPage({
   const [creating, setCreating] = useState(null); // null | 'saving' | error message
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('tutte');
-  const team = useTeamState(teamIdentity?.studioId, teamIdentity?.userId);
   const [awayFromBottom, setAwayFromBottom] = useState(false);
   const menuRef = useRef(null);
   const compact = useNarrowScreen() || phoneApp;
@@ -334,13 +337,14 @@ export default function PoliedronChatPage({
   const lastPoliedron = messages.at(-1);
   const rows = [
     { key: 'poliedron', label: 'Poliedron', avatar: <span className="poliedron-wa__gem"><img src={poliedroGem} width="48" height="48" alt="" /></span>,
-      preview: lastPoliedron ? `${lastPoliedron.role === 'user' ? 'Tu: ' : ''}${lastPoliedron.content}` : 'Assistente dello studio: agenda, pazienti, richiami', at: lastPoliedron?.created_at },
+      preview: lastPoliedron ? `${lastPoliedron.role === 'user' ? 'Tu: ' : ''}${lastPoliedron.content}` : 'Assistente dello studio: agenda, pazienti, richiami', at: lastPoliedron?.created_at, unread: poliedronUnread },
     ...(askTeam ? team.contacts.map((c) => {
       const last = (team.state.threads[contactKey(c)] || []).at(-1);
       return {
         key: contactKey(c), label: c.label, avatar: <TeamAvatar contact={c} />,
         preview: last ? `${last.role === 'user' ? 'Tu: ' : ''}${last.content}` : c.kind === 'group' ? `Gruppo · ${c.description}` : c.description,
         at: last?.at,
+        unread: unreadIn(team.state.threads[contactKey(c)]),
       };
     }) : []),
     ...Object.entries(team.state.threads)
@@ -351,9 +355,13 @@ export default function PoliedronChatPage({
         const last = thread.at(-1);
         return { key, label: patientName(patient), avatar: <PatientAvatar patient={patient} />, preview: `Tu: ${last.content}`, at: last.at };
       })
-      .filter(Boolean)
-      .sort((x, y) => String(y.at).localeCompare(String(x.at))),
-  ];
+      .filter(Boolean),
+  ]
+    // WhatsApp order: the most recent conversation first; chats never used
+    // keep their natural order (Poliedron, Clinic Manager, specialists…).
+    .map((row, index) => ({ ...row, index }))
+    .sort((x, y) => (x.at || y.at ? String(y.at || '').localeCompare(String(x.at || '')) : x.index - y.index));
+  const totalUnread = rows.reduce((sum, row) => sum + (row.unread || 0), 0);
 
   // WhatsApp-style dock for the chat list: Chat plus the studio's daily
   // places; Studio opens the full management app (Home).
@@ -366,7 +374,7 @@ export default function PoliedronChatPage({
   ].filter((item) => navItems.some((nav) => nav.id === item.id));
   const dock = compact && (
     <nav className="poliedron-wa__dock" aria-label="Navigazione">
-      <button type="button" className={newChat !== 'rubrica' ? 'is-active' : undefined} aria-current={newChat !== 'rubrica' ? 'page' : undefined} onClick={() => setNewChat(null)}><Ic n="chat" s={22} /><span>Chat</span></button>
+      <button type="button" className={newChat !== 'rubrica' ? 'is-active' : undefined} aria-current={newChat !== 'rubrica' ? 'page' : undefined} onClick={() => setNewChat(null)} aria-label={totalUnread ? `Chat, ${totalUnread} non letti` : 'Chat'}><Ic n="chat" s={22} /><span>Chat</span>{totalUnread > 0 && <b className="poliedron-wa__badge is-dock">{totalUnread > 99 ? '99+' : totalUnread}</b>}</button>
       <button type="button" onClick={() => onNavigate?.('agenda')} hidden={!DOCK_LINKS.some((l) => l.id === 'agenda')}><Ic n="cal" s={22} /><span>Agenda</span></button>
       <button type="button" className={newChat === 'rubrica' ? 'is-active' : undefined} aria-current={newChat === 'rubrica' ? 'page' : undefined} onClick={() => setNewChat('rubrica')}><Ic n="pz" s={22} /><span>Pazienti</span></button>
       {DOCK_LINKS.filter((l) => l.id !== 'agenda').map((item) => (
@@ -389,8 +397,8 @@ export default function PoliedronChatPage({
   const rowButton = (row, extra = null) => (
     <button
       type="button"
-      className="poliedron-wa__row"
-      aria-label={`Chat con ${row.label}`}
+      className={`poliedron-wa__row${row.unread && extra == null ? ' is-unread' : ''}`}
+      aria-label={`Chat con ${row.label}${row.unread && extra == null ? `, ${row.unread} non letti` : ''}`}
       aria-current={activeChat === row.key ? 'true' : undefined}
       onClick={() => { setOpenChat(row.key); setNewChat(null); }}
     >
@@ -400,7 +408,10 @@ export default function PoliedronChatPage({
           <strong>{row.label}</strong>
           {row.at && <time dateTime={row.at}>{time(row.at)}</time>}
         </span>
-        <small>{extra ?? row.preview}</small>
+        <span className="poliedron-wa__row-bottom">
+          <small>{extra ?? row.preview}</small>
+          {row.unread > 0 && extra == null && <b className="poliedron-wa__badge">{row.unread > 99 ? '99+' : row.unread}</b>}
+        </span>
       </span>
     </button>
   );
@@ -911,6 +922,9 @@ export default function PoliedronChatPage({
               contact={activeContact}
               team={team}
               ask={askTeam}
+              onAlertAction={onAlertAction}
+              onOpenPatientTab={onOpenPatientTab}
+              patients={patients}
               onBack={compact ? () => setOpenChat(null) : null}
               onDeleteGroup={(id) => { team.deleteGroup(id); setOpenChat(null); }}
             />

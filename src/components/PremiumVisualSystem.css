@@ -1866,6 +1866,29 @@ body:has(.home-widget-grid) #app-scroll {
 .poliedron-wa__create .poliedron-wa__row-top strong { color: var(--brand-primary); }
 .poliedron-wa__create-error, .poliedron-wa__create-note { margin: 0 16px 10px; font-size: 13px; color: var(--danger, #b42318); }
 .poliedron-wa__create-note { margin: 0; color: var(--warning, #b54708); }
+.poliedron-wa__row-bottom { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.poliedron-wa__row-bottom small { flex: 1; min-width: 0; }
+.poliedron-wa__badge {
+  flex-shrink: 0; min-width: 20px; height: 20px; padding: 0 6px; display: inline-grid; place-items: center; box-sizing: border-box;
+  border-radius: 10px; background: #e5383b; color: #fff; font-size: 11px; font-weight: 800; line-height: 1;
+}
+.poliedron-wa__dock button { position: relative; }
+.poliedron-wa__badge.is-dock { position: absolute; top: 4px; left: calc(50% + 6px); }
+.poliedron-wa__row.is-unread .poliedron-wa__row-top strong { font-weight: 850; color: var(--text-primary); }
+.poliedron-wa__row.is-unread .poliedron-wa__row-text small { color: var(--text-primary); font-weight: 650; }
+.poliedron-wa__row.is-unread .poliedron-wa__row-top time { color: #e5383b; font-weight: 700; }
+.poliedron-alert { margin-top: 10px; }
+.poliedron-alert__actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.poliedron-alert__actions button {
+  min-height: 38px; padding: 0 12px; border-radius: 19px; border: 1px solid color-mix(in srgb, var(--brand-primary) 35%, transparent);
+  background: var(--surface-elevated); color: var(--brand-primary); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.poliedron-alert__actions button.is-primary { background: var(--brand-primary); border-color: var(--brand-primary); color: #fff; }
+.poliedron-alert__actions button:disabled { opacity: .6; cursor: default; }
+.poliedron-alert__note { display: flex; gap: 6px; margin-top: 8px; }
+.poliedron-alert__note input { flex: 1; min-width: 0; font: inherit; font-size: 16px; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--border-subtle); background: var(--surface-page); color: inherit; }
+.poliedron-alert__note button { padding: 0 14px; border-radius: 12px; border: 0; background: var(--brand-primary); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.poliedron-alert__answered { margin: 8px 0 0; font-size: 12.5px; font-weight: 700; color: var(--text-muted); }
 .poliedron-wa__clear { flex-shrink: 0; width: 22px; height: 22px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: color-mix(in srgb, var(--text-primary) 40%, transparent); cursor: pointer; }
 .poliedron-wa__search input::-webkit-search-cancel-button { display: none; }
 .poliedron-wa__patient { cursor: default; }
