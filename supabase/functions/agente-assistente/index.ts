@@ -22,6 +22,7 @@ import { AGENDA_WRITES, prepareAgenda, executeAgenda, agendaAvailability } from 
 import { PAZIENTI_WRITES, PAZIENTI_TOOLS, preparePazienti, executePazienti, schedaPaziente } from "./pazienti.js";
 import { PAGAMENTI_WRITES, PAGAMENTI_TOOLS, preparePagamenti, executePagamenti } from "./pagamenti.js";
 import { PIANI_WRITES, PIANI_TOOLS, preparePiani, executePiani } from "./piani.js";
+import { classifyAction, DECISION } from "./confidence.js";
 import { validaAllegato, messaggiConAllegato, senzaDatiAllegato } from "./allegato.js";
 import { STRUMENTI_MEMORIA, STRUMENTO_RICETTA, normalizzaMemoria, sezioneMemoria, sezioneFarmaciFrequenti, normalizzaRicetta, documentoRicetta } from "./memoria.js";
 import { leggiRichiestaTeam, strumentiSpecialista, toolConsulta, leggiConsulti, eseguiConsulti, promptTeam, contestoGruppo, CONSULTA_SPECIALISTI } from "./team.js";
@@ -1503,7 +1504,8 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
               [isPiano ? 'piani' : 'pagamenti']: prepared,
               expiresAt: Date.now() + 10 * 60 * 1000,
             };
-            if (prepared.avviso) {
+            const confidence = classifyAction({ prepared });
+            if (confidence.decision !== DECISION.HIGH) {
               soloScrittureRiuscite = false;
               const token = await signProposal(proposal, SUPABASE_SERVICE_ROLE_KEY);
               const premessa = eseguite.length ? testoEseguite() + '\n\n' : '';
