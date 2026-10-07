@@ -8,7 +8,7 @@ const forbiddenKeys=new Set(['patient_id','paziente_id','studio_id','user_id','r
 
 function walk(dir){return fs.readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(path.join(dir,e.name)):e.name.endsWith('.jsonl')?[path.join(dir,e.name)]:[])}
 function keysDeep(v,out=[]){if(Array.isArray(v))v.forEach(x=>keysDeep(x,out));else if(v&&typeof v==='object')for(const [k,x] of Object.entries(v)){out.push(k);keysDeep(x,out)}return out}
-const files=walk(ROOT), ids=new Set(), utterancesBySplit=new Map(), errors=[];
+const files=walk(ROOT), ids=new Set(), utterancesBySplit=new Map(), utteranceIdsBySplit=new Map(), errors=[];
 for(const file of files){
  const lines=fs.readFileSync(file,'utf8').split(/\r?\n/).filter(Boolean);
  lines.forEach((line,i)=>{
@@ -21,6 +21,10 @@ for(const file of files){
   const norm=String(x.utterance||'').trim().toLocaleLowerCase('it-IT');
   if(!norm) errors.push(`${x.id}: empty utterance`);
   const prior=utterancesBySplit.get(norm)||new Set(); prior.add(x.split); utterancesBySplit.set(norm,prior);
+  const splitKey=`${x.split}::${norm}`;
+  const priorId=utteranceIdsBySplit.get(splitKey);
+  if(priorId) errors.push(`${x.id}: duplicate normalized utterance in ${x.split} (same as ${priorId})`);
+  else utteranceIdsBySplit.set(splitKey,x.id);
  });
 }
 for(const [u,splits] of utterancesBySplit) if(splits.has('exam_holdout')&&[...splits].some(x=>x!=='exam_holdout')) errors.push(`exam leakage: "${u}"`);
