@@ -10,3 +10,5 @@ test('ordinary unrelated language is not forced into a reference',()=>{assert.eq
 
 test('conversation envelope keeps only bounded explicit references',()=>{const msgs=[{role:'assistant',content:'a',meta:{patient_id:1}},{role:'assistant',content:'b',meta:{patient_id:2,appointment_id:9}},{role:'assistant',content:'c',meta:{patient_id:3}},{role:'assistant',content:'d',meta:{patient_id:4}}];const e=conversationEnvelope(msgs);assert.deepEqual(e.patient_ids,[2,3,4]);assert.deepEqual(e.appointment_ids,[9]);assert.deepEqual(observedContextFromEnvelope(e).observed_appointments,[{id:9}])});
 test('conversation envelope never extracts ids from natural-language text',()=>{const e=conversationEnvelope([{role:'assistant',content:'appuntamento 999 paziente 123'}]);assert.deepEqual(e.patient_ids,[]);assert.deepEqual(e.appointment_ids,[])});
+
+test('client conversation envelope cannot create a reference unless structurally bounded',()=>{const valid={version:1,patient_ids:[7],appointment_ids:[9]};const ctx=observedContextFromEnvelope(valid);assert.equal(conversationalReference('spostalo domani alle 16',ctx).appointment_id,9)});
