@@ -1,0 +1,32 @@
+{
+  "schema_version": "poliedron-teacher-request-v1",
+  "task": "paraphrase_preserving_semantics",
+  "locale": "it-IT",
+  "constraints": {
+    "preserve_expected_labels": true,
+    "fictional_only": true,
+    "no_new_facts": true,
+    "no_patient_data": true,
+    "output_count": 8
+  },
+  "styles": [
+    "spoken",
+    "front_desk",
+    "clinician_terse",
+    "dictation_noise",
+    "typos",
+    "word_order",
+    "colloquial"
+  ],
+  "output_contract": {
+    "candidate_id": "string",
+    "source_example_id": "string",
+    "utterance": "string",
+    "style": "string",
+    "teacher": {
+      "provider": "string",
+      "model": "string",
+      "version": "string"
+    }
+  }
+}
