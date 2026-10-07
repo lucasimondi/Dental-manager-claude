@@ -1,7 +1,7 @@
 // POL-AI-010 passo 4a — pagamenti dalla chat di Poliedron.
 // Stesso contratto di pazienti.js (prepare → riepilogo → execute), con una
-// differenza decisa dal Product Owner: un pagamento si registra SEMPRE dopo
-// la conferma esplicita dell'utente (riepilogo firmato), mai direttamente.
+// Safe Autonomy: un pagamento con paziente/importo/piano verificati si registra
+// direttamente; possibili duplicati e ambiguità restano fail-closed.
 //
 // Semantica identica all'app (IncassoModal / incassiActions.js):
 // - colonne `payments`: paziente_id, data, importo, metodo, nota, stato, piano_id;
@@ -22,7 +22,7 @@ const PIANI_CHIUSI = new Set(['concluso', 'rifiutato']);
 export const PAGAMENTI_TOOLS = [
   {
     name: 'registra_pagamento_paziente',
-    description: "Registra un pagamento di un paziente. Viene mostrato all'utente un riepilogo da confermare: non dire che è registrato finché non lo conferma. Cerca prima il paziente con cerca_pazienti (se più pazienti corrispondono chiedi quale). stato: 'pagato' se il paziente HA pagato (incassato), 'sospeso' se DEVE ancora pagare. Se il paziente ha più piani di cura aperti e l'utente non dice quale, chiedi a quale piano collegarlo (piano_id). Non inventare importi, date o metodi.",
+    description: "Registra un pagamento di un paziente. Cerca prima il paziente con cerca_pazienti (se più pazienti corrispondono chiedi quale). stato: 'pagato' se il paziente HA pagato (incassato), 'sospeso' se DEVE ancora pagare. Se il paziente ha più piani di cura aperti e l'utente non dice quale, chiedi a quale piano collegarlo (piano_id). Non inventare importi, date o metodi.",
     input_schema: {
       type: 'object',
       properties: {
@@ -115,8 +115,6 @@ export async function preparePagamenti(client, name, input = {}, studioId, obser
     dati,
     before: null,
     avviso,
-    // Sempre con conferma (Product Owner), anche senza avvisi.
-    confermaSempre: true,
     summary: `Registra pagamento\n${corpo}${avviso ? `\n${avviso}` : ''}`,
     done: `Pagamento registrato\n${corpo}`,
   };
@@ -134,8 +132,8 @@ export async function executePagamenti(client, proposal) {
   const { error: errClaim } = await client.from('poliedron_action_claims').insert({
     id: proposal.id, studio_id: proposal.studioId, user_id: proposal.userId,
   });
-  if (errClaim?.code === '23505') throw new Error('Questa conferma è già stata usata.');
-  if (errClaim) throw new Error('Impossibile acquisire la conferma. Nessun pagamento registrato.');
+  if (errClaim?.code === '23505') throw new Error('Questa operazione è già stata eseguita.');
+  if (errClaim) throw new Error('Impossibile acquisire l'operazione. Nessun pagamento registrato.');
   const { dati } = proposal.pagamenti;
   // payments.id non ha un default nel database: lo genera chi scrive, con lo
   // stesso schema dell'app (uid() in src/lib/utils.js).
