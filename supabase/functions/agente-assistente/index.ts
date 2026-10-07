@@ -25,11 +25,13 @@ import { PIANI_WRITES, PIANI_TOOLS, preparePiani, executePiani } from "./piani.j
 import { validaAllegato, messaggiConAllegato, senzaDatiAllegato } from "./allegato.js";
 import { STRUMENTI_MEMORIA, STRUMENTO_RICETTA, normalizzaMemoria, sezioneMemoria, sezioneFarmaciFrequenti, normalizzaRicetta, documentoRicetta } from "./memoria.js";
 import { leggiRichiestaTeam, strumentiSpecialista, toolConsulta, leggiConsulti, eseguiConsulti, promptTeam, contestoGruppo, CONSULTA_SPECIALISTI } from "./team.js";
+import { normalizeProvider, callOpenAI } from "./provider.js";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-const POLIEDRON_LLM_PROVIDER = (Deno.env.get("POLIEDRON_LLM_PROVIDER") || "anthropic").toLowerCase();
+const POLIEDRON_LLM_PROVIDER = normalizeProvider(Deno.env.get("POLIEDRON_LLM_PROVIDER"));
+const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") || "gpt-6-luna";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -1375,14 +1377,22 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
 
     // Una chiamata al modello, con il consumo registrato in background.
     const chiamaClaude = async (system, messaggi, tools, signal, effort = "low") => {
-      // Provider selection is intentionally one-at-a-time. Anthropic remains the
-      // production adapter until the OpenAI/Gemini tool-protocol adapters are enabled.
-      // This prevents a fallback model from silently changing write semantics.
-      if (POLIEDRON_LLM_PROVIDER !== "anthropic") {
-        const configured = POLIEDRON_LLM_PROVIDER === "openai" ? Boolean(OPENAI_API_KEY)
-          : POLIEDRON_LLM_PROVIDER === "gemini" ? Boolean(GEMINI_API_KEY) : false;
-        console.error("llm_provider_not_enabled", JSON.stringify({ provider: POLIEDRON_LLM_PROVIDER, configured }));
-        return { ok: false, errText: `Provider ${POLIEDRON_LLM_PROVIDER} configured but adapter not enabled` };
+      // One provider per model turn. All providers are normalized to the same
+      // tool-use contract before Poliedron's authorization/write layer sees them.
+      if (POLIEDRON_LLM_PROVIDER === "openai") {
+        const result = await callOpenAI({ apiKey: OPENAI_API_KEY, model: OPENAI_MODEL, system, messages: messaggi, tools, signal });
+        if (result.ok && result.data?.usage) {
+          const u = result.data.usage;
+          logConsumi.push(supabase.from("ai_agent_usage").insert({
+            studio_id: studioId, fonte: "chat", modello: OPENAI_MODEL,
+            input_tokens: u.input_tokens || 0, output_tokens: u.output_tokens || 0, costo_usd: 0,
+          }).then((r) => r, (e) => e));
+        }
+        return result;
+      }
+      if (POLIEDRON_LLM_PROVIDER === "gemini") {
+        console.error("llm_provider_not_enabled", JSON.stringify({ provider: "gemini", configured: Boolean(GEMINI_API_KEY) }));
+        return { ok: false, errText: "Provider gemini configurato ma adapter non ancora abilitato" };
       }
       const resp = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
