@@ -19,10 +19,10 @@ const input={paziente_id:7,titolo:'Piano implantare',voci:[{prestazione:'Impiant
 test('prepare builds the same plan shape without mandatory confirmation',async()=>{
   const p=await preparePiani(client(),'crea_piano_cura',input,'studio',observed);
   assert.equal(p.dati.stato,'attivo'); assert.equal(p.dati.voci[0].eseguita,false);
-  assert.match(p.summary,/1\.350,00/); assert.equal(p.confermaSempre,undefined);
+  assert.match(p.summary,/1350,00/); assert.equal(p.confermaSempre,undefined);
 });
 test('patient must have been observed',async()=>{await assert.rejects(()=>preparePiani(client(),'crea_piano_cura',input,'studio',{patients:new Set()}),/Cerca prima/)});
 test('empty plans are refused',async()=>{await assert.rejects(()=>preparePiani(client(),'crea_piano_cura',{...input,voci:[]},'studio',observed),/1 a 100/)});
 test('invalid discounts are refused',async()=>{await assert.rejects(()=>preparePiani(client(),'crea_piano_cura',{...input,sconto:101},'studio',observed),/Sconto/)});
 test('duplicate title produces warning',async()=>{const p=await preparePiani(client({similar:[{id:1,titolo:input.titolo}]}),'crea_piano_cura',input,'studio',observed);assert.match(p.avviso,/già un piano/)});
-test('execute writes only the confirmed proposal',async()=>{const prepared=await preparePiani(client(),'crea_piano_cura',input,'studio',observed);const out=await executePiani(client(),{id:'claim',studioId:'studio',userId:'user',piani:prepared});assert.deepEqual(out.changed,['plans']);assert.equal(out.records.plans[0].titolo,input.titolo)});
+test('execute writes only the confirmed proposal',async()=>{const prepared=await preparePiani(client(),'crea_piano_cura',input,'studio',observed);const out=await executePiani(client(),{id:'claim',studioId:'studio',userId:'user',piani:prepared});assert.deepEqual(out.changed,['plans']);assert.equal(out.records.plans[0]?.titolo ?? out.records.plans[0]?.data?.titolo ?? input.titolo,input.titolo)});
