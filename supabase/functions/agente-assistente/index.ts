@@ -26,7 +26,7 @@ import { classifyAction, DECISION } from "./confidence.js";
 import { validaAllegato, messaggiConAllegato, senzaDatiAllegato } from "./allegato.js";
 import { STRUMENTI_MEMORIA, STRUMENTO_RICETTA, normalizzaMemoria, sezioneMemoria, sezioneFarmaciFrequenti, normalizzaRicetta, documentoRicetta } from "./memoria.js";
 import { leggiRichiestaTeam, strumentiSpecialista, toolConsulta, leggiConsulti, eseguiConsulti, promptTeam, contestoGruppo, CONSULTA_SPECIALISTI } from "./team.js";
-import { normalizeProvider, callOpenAI, providerFailure, shouldFallback } from "./provider.js";
+import { normalizeProvider, callOpenAI, providerFailure, providerOrder, runProviderChain } from "./provider.js";
 import { emergencyIntent, emergencyMessage } from "./emergency.js";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
@@ -1444,11 +1444,21 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
         return { ok: false, failure: providerFailure("anthropic", 503, kind) };
       }
       };
-      if (POLIEDRON_LLM_PROVIDER === "anthropic") return callAnthropicProvider();
-      const primary = await callOpenAIProvider();
-      if (primary.ok || !shouldFallback(primary)) return primary;
-      console.warn("llm_provider_fallback", JSON.stringify({ from: "openai", to: "anthropic", kind: primary.failure?.kind || null }));
-      return callAnthropicProvider();
+      const providers = providerOrder({
+        preferred: POLIEDRON_LLM_PROVIDER,
+        capability: "tool_use",
+        configured: {
+          openai: Boolean(OPENAI_API_KEY),
+          anthropic: Boolean(ANTHROPIC_API_KEY),
+          gemini: false, // adapter intentionally disabled until implemented and tested
+        },
+      });
+      return runProviderChain({
+        providers,
+        canReplay: true,
+        invoke: (provider) => provider === "openai" ? callOpenAIProvider() : callAnthropicProvider(),
+        onFallback: ({ from, to, failure }) => console.warn("llm_provider_fallback", JSON.stringify({ from, to, kind: failure?.kind || null })),
+      });
     };
 
     // Uno specialista consultato dal Clinic Manager: ciclo breve, solo i suoi
