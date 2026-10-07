@@ -28,3 +28,24 @@ export function completeConversationalTurn(text='',state={}){
  // Never infer a patient from pronouns or free text here: identity resolution stays authoritative.
  return {intent:pending.intent,confidence:.93,entities,missing,conversation_completed:true};
 }
+
+export function conversationalReference(text='',context={}){
+ const q=normalizeItalianOperational(text);
+ const correction=/\b(?:no|anzi|correggo|intendevo)\b/i.test(q);
+ const refersBack=/\b(?:quello|quella|quello di prima|lui|lei|lo|la|spostalo|spostala|cancellalo|cancellala)\b/i.test(q);
+ if(!correction&&!refersBack)return{kind:'NONE'};
+ const appointments=Array.isArray(context.observed_appointments)?context.observed_appointments:[];
+ const patients=Array.isArray(context.observed_patients)?context.observed_patients:[];
+ if(/\bspostal[oa]\b/i.test(q)){
+   if(appointments.length!==1)return{kind:'AMBIGUOUS_REFERENCE',target:'appointment',count:appointments.length};
+   const day=parseItalianDay(q),time=parseItalianTime(q);
+   return{kind:'APPOINTMENT_MOVE',appointment_id:appointments[0].id,...(day||{}),...(time||{}),missing:[...(!day?['day']:[]),...(!time?['time']:[])]};
+ }
+ if(/\bcancellal[oa]\b/i.test(q)){
+   if(appointments.length!==1)return{kind:'AMBIGUOUS_REFERENCE',target:'appointment',count:appointments.length};
+   return{kind:'APPOINTMENT_DELETE',appointment_id:appointments[0].id};
+ }
+ if(correction)return{kind:'CORRECTION',text:q};
+ if(refersBack&&patients.length!==1&&appointments.length!==1)return{kind:'AMBIGUOUS_REFERENCE',target:'unknown',count:Math.max(patients.length,appointments.length)};
+ return{kind:'REFERENCE',patient_id:patients.length===1?patients[0].id:null,appointment_id:appointments.length===1?appointments[0].id:null};
+}
