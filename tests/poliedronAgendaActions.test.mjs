@@ -174,7 +174,7 @@ test('parser: source vs destination, weekdays, dates and other domains', () => {
   assert.equal(p('annulla il pagamento di domani'), null);
   assert.equal(p('cancella la nota di rossi di domani'), null);
   assert.equal(understandPoliedron('annulla appuntamento di Rossi').intent, 'APPOINTMENT_DELETE');
-  assert.equal(understandPoliedron('metti in agenda le ferie domani').intent, 'UNKNOWN');
+  assert.equal(understandPoliedron('metti in agenda le ferie domani').intent, 'AGENDA_BLOCK', 'holidays block the agenda, never become an appointment');
   // 2026-10-08 is a Thursday.
   assert.equal(resolveDay({ weekday: 4 }, '2026-10-08'), '2026-10-08');
   assert.equal(resolveDay({ weekday: 5 }, '2026-10-08'), '2026-10-09');

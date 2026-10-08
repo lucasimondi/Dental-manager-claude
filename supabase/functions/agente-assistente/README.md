@@ -84,6 +84,11 @@ The folder below was re-imported from production v28 (identical to the code abov
   appointment and executes create/move/cancel without the model (same policy as the
   tools: direct if clear, signed summary in "medio"). Tested by
   `tests/poliedronAgendaActions.test.mjs`.
+- `poliedron-actions.js` (Core, pure parsers) + `poliedron-core-actions.js` (execution):
+  payments ("X ha pagato 150 euro con carta"), notes, phone/email, new patient (exactly
+  nome + cognome), recalls ("tra 6 mesi"), agenda blocks/holidays/calls, appointment
+  duration/type/status, free slots. Same domain modules, RLS client, confirmation and
+  activity log as the tools. Tested by `tests/poliedronCoreActions.test.mjs`.
 - `../_shared/agendaSlots.js`: imported by `agenda.js`. Kept exactly as deployed; it is
   **not** identical to `src/lib/agendaSlots.js` (time zone and validation differ).
 

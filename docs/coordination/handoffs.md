@@ -1,5 +1,14 @@
 # Handoffs
 
+## POL-AI Core actions — pagamenti, scheda paziente, richiami, blocchi/ferie, agenda avanzata (2026-10-08)
+
+- Agent: CLAUDE. Branch `claude/poliedron-agenda-actions-kz6mmk` da `master@667fccd`. Dettagli in `current-task.md`.
+- Files: `supabase/functions/agente-assistente/{poliedron-actions.js (new), poliedron-core-actions.js (new), poliedron-agenda.js, poliedron-core.js, poliedron-conversation.js, poliedron-planner.js, index.ts, README.md}`, `src/lib/poliedron/poliedraCore.js`, tests (new `poliedronCoreActions.test.mjs`; frasi/aspettative aggiornate in 5 test esistenti, motivate in current-task).
+- Database: none. Security: stessi `prepare*` + RPC/insert con il login dell'utente; permessi per azione (`CORE_ACTION_TOOLS` ∩ `allowedNames`); "medio" conferma sempre; pagamenti con `classifyAction`.
+- Tests: 1107/1107; build OK; controprova eseguita.
+- Risks: parser deterministici e ancorati: frasi diverse vanno al modello. "Pomeriggio/mattina" usano orari fissi 13:00/14:00 + apertura/chiusura dello studio (mostrati nel riepilogo). Metodo di pagamento non detto = Contanti (come lo strumento).
+- Exact next action: "Mergia" → deploy v42 → merge → prova reale.
+
 ## POL-AI agenda follow-ups — "spostalo"/"cancellalo" con contesto firmato (2026-10-08)
 
 - Task/branch: vedi `current-task.md` (blocco "POL-AI agenda follow-ups"). Agent: CLAUDE. Branch `claude/poliedron-agenda-actions-kz6mmk` da `master@6844cfb`.

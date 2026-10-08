@@ -1,5 +1,7 @@
 // POL-AI-010 passo 4a: pagamenti dalla chat di Poliedron, sempre con conferma.
 // The real Edge handler, external services replaced with synthetic data.
+// Phrases here go through the model path ("Incassa…"); the deterministic
+// Core path for "X ha pagato…" is covered in tests/poliedronCoreActions.test.mjs.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -123,7 +125,7 @@ test('plan link follows the app rule: one open plan auto, several → ask, none 
 
 test('clear payment executes directly under full Safe Autonomy, with claim before insert', async () => {
   script.push(use('cerca_pazienti', { query: 'Mario Rossi' }), use('registra_pagamento_paziente', { paziente_id: 1, importo: 150, metodo: 'Carta', nota: 'Acconto impianto' }));
-  const done = await request({ messages: [{ role: 'user', content: 'Mario Rossi ha pagato 150 euro con carta' }] });
+  const done = await request({ messages: [{ role: 'user', content: 'Incassa 150 euro con carta da Mario Rossi' }] });
   assert.equal(done.needsConfirmation, undefined);
   assert.ok(paymentRows().length === 1, 'clear payment is written directly');
   const order = inserts.map((i) => i.table);
@@ -145,7 +147,7 @@ test('several open plans: the agent must ask which one; nothing is proposed by g
     use('registra_pagamento_paziente', { paziente_id: 2, importo: '80,00' }),
     say('Anna Verdi ha due piani aperti: Ortodonzia o Conservativa?'),
   );
-  const result = await request({ messages: [{ role: 'user', content: 'Registra un pagamento di 80 euro per Anna Verdi' }] });
+  const result = await request({ messages: [{ role: 'user', content: 'Incassa 80 euro da Anna Verdi' }] });
   assert.equal(result.needsConfirmation, undefined);
   assert.match(toolError(2), /più piani di cura aperti/);
   assert.equal(paymentRows().length, 0);
@@ -154,7 +156,7 @@ test('several open plans: the agent must ask which one; nothing is proposed by g
 test('a same-day duplicate is flagged; a cancelled summary writes nothing', async () => {
   database.payments.push({ id: 5, paziente_id: 1, studio_id: 's1', importo: 150, data: new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome' }).format(new Date()) });
   script.push(use('cerca_pazienti', { query: 'Mario' }), use('registra_pagamento_paziente', { paziente_id: 1, importo: 150 }));
-  const preview = await request({ messages: [{ role: 'user', content: 'Mario ha pagato 150' }] });
+  const preview = await request({ messages: [{ role: 'user', content: 'Incassa 150 da Mario' }] });
   assert.match(preview.needsConfirmation.summary, /c'è già un pagamento di 150,00\s€ in questa data/);
   assert.match(preview.text, /Confermi comunque\?/);
   const cancel = await request({ confirm: { token: preview.needsConfirmation.token, cancelled: true } });
@@ -189,7 +191,7 @@ test('gates: pro and consulente never get the payment tool; a downgrade voids a 
   plan = 'premium'; autonomia = 'completo';
   database.payments.push({ id: 77, paziente_id: 1, studio_id: 's1', importo: 40, data: new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome' }).format(new Date()) });
   script.push(use('cerca_pazienti', { query: 'Mario' }), use('registra_pagamento_paziente', { paziente_id: 1, importo: 40 }));
-  const preview = await request({ messages: [{ role: 'user', content: 'Mario ha pagato 40' }] });
+  const preview = await request({ messages: [{ role: 'user', content: 'Incassa 40 da Mario' }] });
   assert.ok(preview.needsConfirmation?.token);
   plan = 'pro';
   const done = await request({ confirm: { token: preview.needsConfirmation.token } });

@@ -1,3 +1,21 @@
+# Current task — POL-AI Core actions: pagamenti, scheda paziente, richiami, blocchi/ferie, agenda avanzata (2026-10-08)
+- OWNER: CLAUDE, su istruzione diretta del Product Owner ("Ok questo funziona, lavoriamo su altre azioni?" → scelte tutte e quattro: Agenda avanzata, Blocchi e ferie, Scheda paziente, Pagamenti).
+- BRANCH: `claude/poliedron-agenda-actions-kz6mmk`, ripartito da `master@667fccd` (PR #164 mergiata, `agente-assistente` v41 in produzione).
+- COSA (senza modello, stessi moduli di dominio degli strumenti, stessa politica: chiaro → eseguito e registrato in Attività; doppione/conflitto o modalità "medio" → riepilogo firmato da confermare; ambiguo → domanda; paziente non trovato o frase non chiara → decide il modello):
+  - Pagamenti: "Mario Rossi ha pagato 150 euro con carta", "registra un pagamento di 80 € in contanti per Rossi", "…ieri", bancomat → POS; metodo non detto → Contanti (scritto nel riepilogo). Più piani aperti → chiede quale; pagamento uguale nello stesso giorno → conferma.
+  - Scheda paziente: nota ("Aggiungi una nota a Rossi: …", testo conservato com'è), telefono/email ("Il telefono di Rossi è …", "cambia l'email di Rossi in …"), nuovo paziente ("Nuovo paziente Anna Bianchi 333…": solo nome + cognome, con 3 parole decide il modello; omonimo → conferma), richiamo ("Richiamo per Rossi tra 6 mesi per controllo", "fra due settimane", "il 12/03").
+  - Blocchi e ferie: "Ferie dal 10 al 15 agosto", "blocca venerdì pomeriggio" (pomeriggio = 14:00–chiusura, mattina = apertura–13:00 dagli orari dello studio), "blocca domani dalle 14 alle 16 per corso", "chiudi l'agenda lunedì", "chiamata col laboratorio domani alle 12" (30 min). Se nel periodo ci sono appuntamenti, li elenca e chiede conferma (restano in agenda).
+  - Agenda avanzata: "allunga l'appuntamento di Rossi di domani a 60 minuti", "cambia l'appuntamento di Rossi in controllo", "conferma l'appuntamento di Rossi", "segna da confermare l'appuntamento di domani alle 15", "allungalo/confermalo" (contesto firmato); "trova un posto per Rossi giovedì" e "fissa Rossi giovedì" senza ora → orari liberi + "A che ora lo fisso?", la risposta "alle 10 per controllo" lo fissa; "orari liberi giovedì" / "ho spazio domani?" → elenco orari.
+  - Una risposta che non aggiunge niente ("ok grazie") dopo una domanda di Poliedron non viene più presa come risposta (prima la domanda si ripeteva).
+  - App: instradate al server anche "cambia l'email di…", "chiudi l'agenda…", "chiamata col…", "allungalo/confermalo", "trova un posto…", "orari liberi…".
+- NESSUNA modifica a database, RLS, migrazioni.
+- TEST CAMBIATI DI PROPOSITO: 4 test del percorso del modello usavano frasi ora gestite dal Core ("X ha pagato…", "Crea il paziente…"): frasi cambiate ("Incassa…", "Registra in anagrafica…") per continuare a coprire il modello; 3 test aggiornati al nuovo comportamento ("ferie domani" ora blocca l'agenda; "Ho spazio domani?" elenca gli orari; "va bene quello" va al modello, mai eseguibile senza paziente).
+- VALIDATION: `npm test` 1107/1107 (nuovo `tests/poliedronCoreActions.test.mjs`, 11 test sull'handler reale); controprova: senza la conferma su doppioni/conflitti falliscono 2 test. `npm run build` OK.
+- RILASCIO: deploy `agente-assistente` (22 file: i 20 di oggi + `poliedron-actions.js`, `poliedron-core-actions.js`) + merge, solo su "Mergia".
+- EXACT NEXT ACTION: "Mergia" → deploy v42 + verifica → merge → prova reale.
+
+---
+
 # Current task — POL-AI agenda follow-ups ("spostalo", "cancellalo" senza LLM) (2026-10-08)
 - OWNER: CLAUDE, su istruzione diretta del Product Owner ("Sì" alla proposta: far gestire a Poliedron "spostalo"/"cancellalo" ricordando in modo sicuro l'appuntamento appena discusso).
 - BRANCH: `claude/poliedron-agenda-actions-kz6mmk`, ripartito da `master@6844cfb` (PR #163 mergiata, `agente-assistente` v40 in produzione).

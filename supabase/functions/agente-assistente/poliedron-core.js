@@ -1,13 +1,17 @@
 import { normalizeItalianOperational } from './poliedron-language.js';
 import { parseDay, parseTime, parseAppointmentChange, isOtherDomain, DAY_WORDS } from './poliedron-agenda.js';
+import { parseCoreAction } from './poliedron-actions.js';
 export const POLIEDRON_CORE_VERSION='1.0';
 const clean=(v='')=>String(v).trim().replace(/\s+/g,' '), lower=(v='')=>clean(v).toLocaleLowerCase('it-IT');
 export function parseItalianDay(text=''){return parseDay(lower(text))}
 export function parseItalianTime(text=''){return parseTime(lower(text))}
 export function understandPoliedron(text=''){const raw=clean(text),q=normalizeItalianOperational(raw);if(!q)return{intent:'UNKNOWN',confidence:0,entities:{},missing:[]};const day=parseItalianDay(q),time=parseItalianTime(q),entities={...(day||{}),...(time||{})};
+const action=parseCoreAction(raw);if(action)return action;
 const change=parseAppointmentChange(q);if(change)return change;
+// "Trova un posto per Mario Rossi giovedì (per igiene)": a booking still missing the time; the answer lists the free slots.
+const slot=q.match(new RegExp(`^(?:trova|trovami|cerca|cercami|dammi|proponi|proponimi)\\s+(?:un\\s+)?(?:posto|spazio|buco|orario|appuntamento)(?:\\s+liber[oi])?\\s+(?:per|a)\\s+([a-zà-ÿ' -]{3,60}?)(?=\\s+(?:${DAY_WORDS}|il\\s+\\d|\\d|per)(?![a-zà-ÿ])|$)`));if(slot){const tm=q.match(/\b(?:per|tipo)\s+(igiene|controllo|visita|devitalizzazione|estrazione|implantologia|ortodonzia)\b/);return{intent:'APPOINTMENT_CREATE',confidence:.94,entities:{...entities,patient_query:slot[1].trim(),...(tm?{tipo:tm[1]}:{})},missing:[...(!day?['day']:[]),...(!time?['time']:[]),...(!tm?['type']:[])]};}
 if((/\bappuntament\w*\b|\bagenda\b/.test(q))&&!/\b(?:crea|fissa|sposta|cancella|elimina)\b/.test(q))return{intent:'AGENDA_READ',confidence:.99,entities,missing:day?[]:['day']};
-if(/\b(?:liber[oa]|disponibilit[aà]|spazio|posto)\b/.test(q)&&/\b(?:ho|agenda|alle|ore|domani|oggi)\b/.test(q))return{intent:'AGENDA_AVAILABILITY',confidence:.97,entities,missing:[...(!day?['day']:[]),...(!time?['time']:[])]};
+if(/\b(?:liber[oia]|disponibilit[aà]|spazio|posto|posti|buchi)\b/.test(q)&&(day||/\b(?:ho|agenda|alle|ore)\b/.test(q)))return{intent:'AGENDA_AVAILABILITY',confidence:.97,entities,missing:!day?['day']:[]};
 if(/\b(?:fissa|prenota|inserisci|aggiungi)\b/.test(q)&&!/\bappuntament\w*\b/.test(q)&&day&&!isOtherDomain(q)){const m=q.match(new RegExp(`\\b(?:fissa|prenota|inserisci|aggiungi)\\s+([a-zà-ÿ' -]{3,70}?)(?=\\s+(?:il\\s+\\d|\\d|${DAY_WORDS}|alle|ore|per)(?![a-zà-ÿ]))`));const tm=q.match(/\b(?:per|tipo)\s+(igiene|controllo|visita|devitalizzazione|estrazione|implantologia|ortodonzia)\b/);const e={...entities,...(m?{patient_query:m[1].trim().replace(/^in agenda\s+/,'')}:{}),...(tm?{tipo:tm[1]}:{})};return{intent:'APPOINTMENT_CREATE',confidence:.94,entities:e,missing:[...(!m?['patient']:[]),...(!day?['day']:[]),...(!time?['time']:[]),...(!tm?['type']:[])]};}
 const patient=q.match(/^(?:cerca|trova|apri|scheda)\s+(?:il\s+)?(?:paziente\s+)?(.{2,80})$/);if(patient)return{intent:'PATIENT_SEARCH',confidence:.98,entities:{query:patient[1].trim()},missing:[]};
 if(/\b(?:richiam\w*|controlli? periodici?)\b/.test(q))return{intent:'RECALLS_READ',confidence:.98,entities:{entro_giorni:30},missing:[]};

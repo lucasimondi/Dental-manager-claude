@@ -12,6 +12,6 @@ test('conversation keeps asking only for fields still missing',()=>{
 });
 test('conversation does not invent patient identity from a follow-up',()=>{
  const state=deriveConversationState([{role:'user',content:'Crea appuntamento domani ore 15 per igiene'}]);
- const p=completeConversationalTurn('va bene quello',state);assert.ok(p.missing.includes('patient'));assert.equal(p.entities.patient_query,undefined);
+ const p=completeConversationalTurn('va bene quello',state);assert.ok(p.intent==='UNKNOWN'||p.missing.includes('patient'),'never executable without an identified patient');assert.equal(p.entities.patient_query,undefined);
 });
 test('unrelated conversation without pending task stays unknown',()=>{assert.equal(completeConversationalTurn('va bene quello',{pending:null}).intent,'UNKNOWN')});
