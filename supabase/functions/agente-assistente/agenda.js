@@ -115,11 +115,12 @@ export async function checkAvailability(client, row, studioId) {
 }
 /**
  * Active appointments a chat command can refer to ("sposta Mario Rossi a
- * venerdì", "cancella l'appuntamento di domani alle 15"): the given day, or
- * from today on; optionally one patient and one start time.
+ * venerdì", "cancella l'appuntamento di domani alle 15", "spostalo"): the given
+ * day, or from today on; optionally one appointment, one patient, one start time.
  */
-export async function appointmentsForChange(client, studioId, { pazienteId = null, data = null, ora = null } = {}) {
+export async function appointmentsForChange(client, studioId, { id = null, pazienteId = null, data = null, ora = null } = {}) {
   let query = client.from('appointments').select(`${select}, patients(nome, cognome)`).eq('studio_id', studioId);
+  if (id != null) query = query.eq('id', id);
   query = data ? query.eq('data', data) : query.gte('data', studioToday());
   if (pazienteId != null) query = query.eq('paziente_id', pazienteId);
   const { data: rows, error } = await query.order('data', { ascending: true }).order('ora', { ascending: true }).limit(50);

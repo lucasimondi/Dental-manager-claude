@@ -1,5 +1,14 @@
 # Handoffs
 
+## POL-AI agenda follow-ups — "spostalo"/"cancellalo" con contesto firmato (2026-10-08)
+
+- Task/branch: vedi `current-task.md` (blocco "POL-AI agenda follow-ups"). Agent: CLAUDE. Branch `claude/poliedron-agenda-actions-kz6mmk` da `master@6844cfb`.
+- Files: `supabase/functions/agente-assistente/{confirmation.js, index.ts, agenda.js, poliedron-conversation.js}`, `src/lib/poliedron/{modelGateway.js, poliedraCore.js}`, `tests/poliedronAgendaActions.test.mjs`, `tests/poliedronAllegati.test.mjs` (asserzione sul testo del sorgente aggiornata al nuovo campo).
+- Database: none. Security: token HMAC con chiave dedicata, legato a utente/studio/messaggio, TTL 30 min, max 3 ID; ogni appuntamento viene riletto con il client dell'utente prima di scrivere.
+- Tests: `npm test` 1096/1096; build OK; controprova negativa eseguita.
+- Risks: se l'app tronca un messaggio lungo nella cronologia il legame non torna e decide il modello (sicuro). Il token vive in memoria nel modulo del gateway: una seconda chat aperta nello stesso browser non lo usa perché il messaggio precedente è diverso.
+- Exact next action: "Mergia" → deploy v41 + verifica → merge → prova reale.
+
 ## POL-AI agenda actions — Poliedron crea, sposta e annulla appuntamenti senza LLM (2026-10-08)
 
 - Task: azioni base in agenda dalla chat (mettere, togliere, spostare appuntamenti), continuazione della PR #162. Previous agent: Codex/ChatGPT (PR #162, mergiata). Agent: CLAUDE.

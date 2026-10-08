@@ -110,6 +110,9 @@ const PAID_RE = /\b(?:ha|hanno)\s+(?:pagato|versato|saldato|lasciato)\b[^?]*\d/i
 // domani": agenda commands without the word "appuntamento" (served by the
 // server's deterministic Core, no model call when the request is complete).
 const AGENDA_COMMAND_RE = /\b(?:fissa|metti|mettimi|sposta|anticipa|posticipa|rimanda|cancella|elimina|annulla|togli|disdici)\b.*(?:\b(?:oggi|domani|dopodomani|sabato|domenica)\b|\b(?:luned|marted|mercoled|gioved|venerd)[iì](?![a-zà-ÿ])|\b(?:alle|ore)\s+\d)/i;
+// "spostalo a venerdì", "cancellala": the appointment just discussed (the
+// server resolves it from its signed context, or asks).
+const AGENDA_REFERENCE_RE = /\b(?:spostal|anticipal|posticipal|rimandal|cancellal|annullal|toglil|eliminal|disdicil)[oa]\b/i;
 const AUTONOMY_RANK = { consulente: 0, medio: 1, su_richiesta: 2, completo: 3 };
 
 // Mirrors the server gate in agente-assistente: premium plan and an autonomy
@@ -191,6 +194,7 @@ export async function processQuery({
   // authenticated gateway. Never call a model during keystroke previews.
   const agendaRequest = /appuntament|prenot|sposta.*visita|annulla.*visita/i.test(q)
     || (AGENDA_COMMAND_RE.test(q) && !MODULE_ONLY_RE.test(q))
+    || AGENDA_REFERENCE_RE.test(q)
     || conversationHistory.slice(-2).some(m => /appuntament|prenot/i.test(m.content || ''));
   const preliminaryIntent = classifyIntent(q, { navigationIndex: sources.navigationIndex || [] });
   // POL-AI-010: when the studio's agent may write, patient and agenda commands

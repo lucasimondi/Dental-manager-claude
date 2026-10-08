@@ -164,7 +164,7 @@ test('Edge Function: the file becomes a cached block of the last user message, a
 });
 
 test('Edge Function wiring: validated before use, not allowed with confirmations or the team', () => {
-  assert.match(edge, /const \{ messages, confirm, team, allegato: allegatoRichiesta \} = await req\.json\(\);/);
+  assert.match(edge, /const \{ messages, confirm, team, allegato: allegatoRichiesta(, conversation_context: contextToken)? \} = await req\.json\(\);/);
   assert.match(edge, /if \(confirm \|\| richiestaTeam\) return json\(\{ error: 'Gli allegati/);
   assert.match(edge, /allegato = validaAllegato\(allegatoRichiesta\);/);
   assert.match(edge, /convo = messaggiConAllegato\(messages, allegato\);/);
