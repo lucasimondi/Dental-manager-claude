@@ -7,7 +7,8 @@
 - Database: none. Security: token HMAC con chiave dedicata, legato a utente/studio/messaggio, TTL 30 min, max 3 ID; ogni appuntamento viene riletto con il client dell'utente prima di scrivere.
 - Tests: `npm test` 1096/1096; build OK; controprova negativa eseguita.
 - Risks: se l'app tronca un messaggio lungo nella cronologia il legame non torna e decide il modello (sicuro). Il token vive in memoria nel modulo del gateway: una seconda chat aperta nello stesso browser non lo usa perché il messaggio precedente è diverso.
-- Exact next action: "Mergia" → deploy v41 + verifica → merge → prova reale.
+- Release: PR #164; `agente-assistente` v41 deployata e verificata (20 file identici, avvio 401 "Sessione non valida").
+- Exact next action: prova reale del PO in Chat.
 
 ## POL-AI agenda actions — Poliedron crea, sposta e annulla appuntamenti senza LLM (2026-10-08)
 

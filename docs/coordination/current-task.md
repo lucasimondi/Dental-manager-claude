@@ -8,7 +8,8 @@
 - NESSUNA modifica a database, RLS, migrazioni.
 - VALIDATION: `npm test` 1096/1096 (5 nuovi test in `tests/poliedronAgendaActions.test.mjs` sull'handler reale: spostalo dopo una lettura, cancellalo dopo uno spostamento, token falsificato / di un'altra conversazione / di un altro utente → nessuna scrittura e passaggio al modello, token non valido come conferma, 2 candidati → domanda, gateway dell'app); controprova: senza il legame al messaggio precedente il test di sicurezza fallisce. `npm run build` OK.
 - RILASCIO: deploy `agente-assistente` (stessi 20 file) + merge, solo su "Mergia". Retrocompatibile: l'app vecchia non manda il token (si comporta come oggi); la funzione vecchia ignora il token dell'app nuova.
-- EXACT NEXT ACTION: "Mergia" del PO → deploy v41 + verifica byte per byte → merge → prova: "Che appuntamenti ho domani?" poi "spostalo alle 17"; "Fissa Mario Rossi domani alle 15 per igiene" poi "cancellalo".
+- RILASCIO ESEGUITO su "Mergia" (2026-10-08): produzione v40 verificata identica a `master@6844cfb`; deploy `agente-assistente` **v41** (`verify_jwt=true`, 20 file) riletta: **identica byte per byte** al branch; avvio verificato via `pg_net` (chiave anon → 401 "Sessione non valida" dal codice). Rollback: ridistribuire i file di `master@6844cfb` (= v40) e revert del merge.
+- EXACT NEXT ACTION: prova reale del PO: "Che appuntamenti ho domani?" poi "spostalo alle 17"; "Fissa Mario Rossi domani alle 15 per igiene" poi "cancellalo".
 
 ---
 
