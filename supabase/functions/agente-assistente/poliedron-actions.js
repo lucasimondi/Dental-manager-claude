@@ -89,7 +89,7 @@ export function parseAgendaBlock(text = '') {
   const span = range(q);
   const day = span ? null : agendaMentions(q).find((m) => m.kind === 'day')?.value || null;
   if (!span && !day) return { intent: 'AGENDA_BLOCK', confidence: .94, entities: {}, missing: ['day'] };
-  const times = [...q.matchAll(/\b(?:dalle|alle|ore)\s*(\d{1,2})(?:[.:](\d{2}))?\b/g)].map((m) => `${m[1].padStart(2, '0')}:${m[2] || '00'}`);
+  const times = agendaMentions(q).filter((m) => m.kind === 'time').map((m) => m.value);
   const part = /\bpomeriggio\b/.test(q) ? 'pomeriggio' : /\bmattin/.test(q) ? 'mattina' : null;
   const title = q.match(/\bper\s+([a-zà-ÿ' ]{3,60})$/);
   const tipo = ferie ? 'ferie' : call ? 'chiamata' : 'personale';
