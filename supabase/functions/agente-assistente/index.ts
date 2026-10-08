@@ -1461,7 +1461,8 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
           : parsed.intent === 'AGENDA_BLOCK'
             ? { day: 'Per quale giorno blocco l’agenda?', time: 'A che ora?', end: 'Fino a che ora?' }
             : { patient: 'Di quale paziente è l’appuntamento?', target: 'A quando lo sposto? Dimmi giorno e/o ora.', unclear: 'Non ho capito quale appuntamento e quando: dimmelo con giorno e ora (es. “sposta Mario Rossi da domani alle 15 a venerdì alle 10”).' };
-        let text = decision.missing.map((x) => labels[x] || `Mi manca: ${x}`).join(' ');
+        labels.time_unclear = 'Non ho capito l’orario: scrivilo per esempio “alle 14:30”.';
+        let text = decision.missing.includes('time_unclear') ? labels.time_unclear : decision.missing.map((x) => labels[x] || `Mi manca: ${x}`).join(' ');
         // A booking with patient and day but no time: offer the free slots of that day.
         const date = parsed.intent === 'APPOINTMENT_CREATE' && decision.missing.includes('time') && !decision.missing.includes('day') ? dayIso(parsed.entities) : null;
         if (date) {

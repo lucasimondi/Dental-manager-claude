@@ -1,11 +1,14 @@
 import { normalizeItalianOperational } from './poliedron-language.js';
-import { parseDay, parseTime, parseAppointmentChange, isOtherDomain, DAY_WORDS } from './poliedron-agenda.js';
+import { parseDay, parseTime, parseAppointmentChange, isOtherDomain, hasUnreadTime, DAY_WORDS } from './poliedron-agenda.js';
 import { parseCoreAction } from './poliedron-actions.js';
 export const POLIEDRON_CORE_VERSION='1.0';
 const clean=(v='')=>String(v).trim().replace(/\s+/g,' '), lower=(v='')=>clean(v).toLocaleLowerCase('it-IT');
 export function parseItalianDay(text=''){return parseDay(lower(text))}
 export function parseItalianTime(text=''){return parseTime(lower(text))}
-export function understandPoliedron(text=''){const raw=clean(text),q=normalizeItalianOperational(raw);if(!q)return{intent:'UNKNOWN',confidence:0,entities:{},missing:[]};const day=parseItalianDay(q),time=parseItalianTime(q),entities={...(day||{}),...(time||{})};
+// An agenda write whose time could not be read asks again: never keep the old time or guess one.
+const TIME_SENSITIVE=new Set(['APPOINTMENT_CREATE','APPOINTMENT_MOVE','APPOINTMENT_DELETE','APPOINTMENT_UPDATE','AGENDA_BLOCK','AGENDA_AVAILABILITY']);
+export function understandPoliedron(text=''){const r=understandPoliedronRaw(text);if(TIME_SENSITIVE.has(r.intent)&&hasUnreadTime(normalizeItalianOperational(clean(text))))return{...r,missing:[...new Set([...(r.missing||[]),'time_unclear'])]};return r}
+function understandPoliedronRaw(text=''){const raw=clean(text),q=normalizeItalianOperational(raw);if(!q)return{intent:'UNKNOWN',confidence:0,entities:{},missing:[]};const day=parseItalianDay(q),time=parseItalianTime(q),entities={...(day||{}),...(time||{})};
 const action=parseCoreAction(raw);if(action)return action;
 const change=parseAppointmentChange(q);if(change)return change;
 // "Trova un posto per Mario Rossi giovedì (per igiene)": a booking still missing the time; the answer lists the free slots.

@@ -28,7 +28,7 @@ export function completeConversationalTurn(text='',state={}){
  if(!day&&!time&&!tipo)return direct;
  if(day)Object.assign(entities,day);if(time)Object.assign(entities,time);if(tipo)entities.tipo=tipo;
  let missing=[...pending.missing];
- if(day)missing=missing.filter(x=>x!=='day');if(time)missing=missing.filter(x=>x!=='time');if(tipo)missing=missing.filter(x=>x!=='type');if(day||time)missing=missing.filter(x=>x!=='target');
+ if(day)missing=missing.filter(x=>x!=='day');if(time)missing=missing.filter(x=>x!=='time'&&x!=='time_unclear');if(tipo)missing=missing.filter(x=>x!=='type');if(day||time)missing=missing.filter(x=>x!=='target');
  // Never infer a patient from pronouns or free text here: identity resolution stays authoritative.
  return {intent:pending.intent,confidence:.93,entities,missing,conversation_completed:true};
 }

@@ -9,7 +9,10 @@ export const MONTH_NAMES = MONTHS;
 /** Words that start a day mention: used as stop-words when reading a patient name. */
 export const DAY_WORDS = `oggi|domani|dopodomani|${WEEKDAY}`;
 const DAY_RE = new RegExp(`\\b(?:(oggi|dopodomani|domani)|(${WEEKDAY})(?:\\s+(\\d{1,2})(?:\\s+(${MONTH}))?)?|(\\d{1,2})\\s*[/-]\\s*(\\d{1,2})(?:\\s*[/-]\\s*(\\d{2,4}))?|(?:il\\s+)?(\\d{1,2})\\s+(${MONTH})(?:\\s+(\\d{4}))?|il\\s+(\\d{1,2})(?![\\d:./]))(?![\\wà-ÿ])`, 'g');
-const TIME_RE = /\b(alle|ore|alle ore|dalle|delle)\s*(\d{1,2})(?:[.:](\d{2})|\s+e\s+(mezza|mezzo|un quarto|trenta|quindici|quarantacinque))?(?:\s+(?:del|di)\s+(pomeriggio|sera))?\b/g;
+// "alle 14:30", "14.30", "14,30", "1430", "930", "14 e 30", "14 e mezza", "3 del pomeriggio".
+const TIME_RE = /\b(alle|ore|alle ore|dalle|delle)\s*(\d{1,2})(?:[.:,](\d{2})|(\d{2})(?!\d)|\s+e\s+(\d{2}|mezza|mezzo|un quarto|trenta|quindici|quarantacinque))?(?:\s+(?:del|di)\s+(pomeriggio|sera))?\b/g;
+// A time cue ("alle", "ore"…) followed by digits: every one must be read, or the request is unclear.
+const TIME_CUE_RE = /\b(?:alle|ore|dalle|delle)\s*\d/g;
 const pad = (n) => String(n).padStart(2, '0');
 
 function dayEntity(m) {
@@ -25,8 +28,9 @@ function dayEntity(m) {
 
 function timeEntity(m) {
   let h = Number(m[2]);
-  const min = m[3] != null ? Number(m[3]) : { mezza: 30, mezzo: 30, trenta: 30, 'un quarto': 15, quindici: 15, quarantacinque: 45 }[m[4]] ?? 0;
-  if (m[5] && h >= 1 && h < 12) h += 12;
+  const words = { mezza: 30, mezzo: 30, trenta: 30, 'un quarto': 15, quindici: 15, quarantacinque: 45 };
+  const min = m[3] != null ? Number(m[3]) : m[4] != null ? Number(m[4]) : m[5] != null ? (/^\d+$/.test(m[5]) ? Number(m[5]) : words[m[5]]) : 0;
+  if (m[6] && h >= 1 && h < 12) h += 12;
   if (h > 23 || min > 59) return null;
   return `${pad(h)}:${pad(min)}`;
 }
@@ -45,6 +49,15 @@ export function agendaMentions(q = '') {
 export function parseDay(q = '') {
   const day = agendaMentions(q).find((m) => m.kind === 'day');
   return day ? { ...day.value, confidence: 1 } : null;
+}
+
+/**
+ * True when the text has a time the parser could not read ("alle 25", "ore
+ * 14:75"): the caller must ask instead of keeping the old time or guessing.
+ */
+export function hasUnreadTime(q = '') {
+  const cues = (q.match(TIME_CUE_RE) || []).length;
+  return cues > agendaMentions(q).filter((m) => m.kind === 'time').length;
 }
 
 export function parseTime(q = '') {

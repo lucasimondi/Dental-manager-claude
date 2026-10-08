@@ -277,3 +277,22 @@ test('app: the gateway sends back the last signed context and drops it when abse
   const r = await processQuery({ query: 'Spostalo a venerdì alle 10', supabaseClient });
   assert.equal(r.intent, 'AGENDA');
 });
+
+test('times written without separators are read ("alle 1430"); an unreadable time asks, never keeps the old one', async () => {
+  // Real report: "Sposta appuntamento stivi Pajo da oggi a martedì alle 1430" kept 15:15.
+  const out = await ask('Sposta appuntamento Mario Test da domani a dopodomani alle 1430');
+  assert.equal(rpcCalls[0].args.p_after.ora, '14:30');
+  assert.equal(rpcCalls[0].args.p_after.data, D2);
+  assert.match(out.text, /^Fatto\./);
+  database.appointments = [appt(10, mario, D1, '09:00')];
+  rpcCalls = [];
+  const unclear = await ask('Sposta Mario Test a dopodomani alle 25');
+  assert.equal(unclear.text, 'Non ho capito l’orario: scrivilo per esempio “alle 14:30”.');
+  assert.equal(rpcCalls.length, 0);
+  const answer = await ask2([{ role: 'user', content: 'Sposta Mario Test a dopodomani alle 25' }, { role: 'assistant', content: unclear.text }, { role: 'user', content: 'alle 14:30' }]);
+  assert.equal(rpcCalls.length, 1);
+  assert.equal(rpcCalls[0].args.p_after.ora, '14:30');
+  assert.equal(rpcCalls[0].args.p_after.data, D2);
+  assert.match(answer.text, /^Fatto\./);
+  assert.equal(calls.length, 0);
+});
