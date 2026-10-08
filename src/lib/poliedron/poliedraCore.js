@@ -106,6 +106,10 @@ const PATIENT_DATA_RE = /\b(?:telefono|cellulare|numero|e-?mail|indirizzo|codice
 const MODULE_ONLY_RE = /preventiv|piano di cura|pagament|incass|spes[ae]|cost[oi]\b|uscit|document|certificat|lettera|ricett|fattur/i;
 // POL-AI-010 passo 4a: "Mario Rossi ha pagato 120 euro con carta".
 const PAID_RE = /\b(?:ha|hanno)\s+(?:pagato|versato|saldato|lasciato)\b[^?]*\d/i;
+// "Fissa Rossi domani alle 15", "sposta Bianchi a venerdì", "togli Verdi da
+// domani": agenda commands without the word "appuntamento" (served by the
+// server's deterministic Core, no model call when the request is complete).
+const AGENDA_COMMAND_RE = /\b(?:fissa|metti|mettimi|sposta|anticipa|posticipa|rimanda|cancella|elimina|annulla|togli|disdici)\b.*(?:\b(?:oggi|domani|dopodomani|sabato|domenica)\b|\b(?:luned|marted|mercoled|gioved|venerd)[iì](?![a-zà-ÿ])|\b(?:alle|ore)\s+\d)/i;
 const AUTONOMY_RANK = { consulente: 0, medio: 1, su_richiesta: 2, completo: 3 };
 
 // Mirrors the server gate in agente-assistente: premium plan and an autonomy
@@ -186,6 +190,7 @@ export async function processQuery({
   // Explicit agenda requests and their conversational follow-ups use the same
   // authenticated gateway. Never call a model during keystroke previews.
   const agendaRequest = /appuntament|prenot|sposta.*visita|annulla.*visita/i.test(q)
+    || (AGENDA_COMMAND_RE.test(q) && !MODULE_ONLY_RE.test(q))
     || conversationHistory.slice(-2).some(m => /appuntament|prenot/i.test(m.content || ''));
   const preliminaryIntent = classifyIntent(q, { navigationIndex: sources.navigationIndex || [] });
   // POL-AI-010: when the studio's agent may write, patient and agenda commands

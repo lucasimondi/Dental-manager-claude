@@ -78,6 +78,12 @@ The folder below was re-imported from production v28 (identical to the code abov
 - `memoria.js` (POL-AI-009): memory tools (`ricorda`, `dimentica`), the prompt sections
   "Cosa ricordi di questo utente" / "Farmaci frequenti dello studio", and
   `prepara_ricetta`. Tested by `tests/poliedronMemoriaRicette.test.mjs`.
+- `poliedron-agenda.js` (Core): Italian day/time parsing (oggi/domani, weekdays, `12/10`,
+  `12 ottobre`, "alle 3 del pomeriggio") and "sposta…/cancella…" commands, with the
+  current slot told apart from the destination. `index.ts` resolves patient and
+  appointment and executes create/move/cancel without the model (same policy as the
+  tools: direct if clear, signed summary in "medio"). Tested by
+  `tests/poliedronAgendaActions.test.mjs`.
 - `../_shared/agendaSlots.js`: imported by `agenda.js`. Kept exactly as deployed; it is
   **not** identical to `src/lib/agendaSlots.js` (time zone and validation differ).
 

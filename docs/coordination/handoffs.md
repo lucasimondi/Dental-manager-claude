@@ -1,5 +1,17 @@
 # Handoffs
 
+## POL-AI agenda actions — Poliedron crea, sposta e annulla appuntamenti senza LLM (2026-10-08)
+
+- Task: azioni base in agenda dalla chat (mettere, togliere, spostare appuntamenti), continuazione della PR #162. Previous agent: Codex/ChatGPT (PR #162, mergiata). Agent: CLAUDE.
+- Branch: `claude/poliedron-agenda-actions-kz6mmk` from `master@ae04126`.
+- Completed: vedi `current-task.md` (blocco "POL-AI agenda actions"). Prenotazione Core ora eseguita direttamente come nel percorso del modello (prima: sempre conferma); sposta/annulla risolti dal Core; instradamento dell'app per comandi senza "appuntamento"; "spostalo/cancellalo" senza contesto osservato non blocca più la richiesta (va al modello).
+- Files: `supabase/functions/agente-assistente/{poliedron-agenda.js (new), poliedron-core.js, poliedron-conversation.js, agenda.js, index.ts, README.md}`, `src/lib/poliedron/poliedraCore.js`, `tests/poliedronAgendaActions.test.mjs` (new), coordination docs.
+- Database: none. RLS/tenant: unchanged (user client, `studio_id` filters, same RPC and activity log).
+- Tests: `npm test` 1091/1091; `npm run build` OK.
+- Risks: il parser italiano è deterministico: frasi non coperte vanno al modello (nessuna scrittura indovinata). "venerdì 10" è letto come giorno 10 (verificato col giorno della settimana). Un giorno della settimana uguale a oggi significa oggi (stessa convenzione di `appointmentIntent.js` nell'app).
+- Unresolved: deploy della Edge Function non eseguito (serve "Mergia"); contesto conversazionale (`conversation_context`) ancora sempre vuoto lato server, quindi "spostalo" resta al modello.
+- Exact next action: revisione PO → PR → "Mergia" → deploy `agente-assistente` → prova reale.
+
 ## POL-AI-TEAM-004 — agenda conflicts name the occupant (PR pending "Mergia")
 
 - Branch `claude/whatsapp-automation-status-d2ng12` from `master@176f66d`. Edge Function only; no schema/RLS change. Deploy of `agente-assistente` only after PO "Mergia".

@@ -18,7 +18,8 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import { signProposal, verifyProposal, claimProposal, studioToday } from "./confirmation.js";
-import { AGENDA_WRITES, prepareAgenda, executeAgenda, agendaAvailability } from "./agenda.js";
+import { AGENDA_WRITES, prepareAgenda, executeAgenda, agendaAvailability, appointmentsForChange } from "./agenda.js";
+import { resolveDay, hasDay } from "./poliedron-agenda.js";
 import { PAZIENTI_WRITES, PAZIENTI_TOOLS, preparePazienti, executePazienti, schedaPaziente } from "./pazienti.js";
 import { PAGAMENTI_WRITES, PAGAMENTI_TOOLS, preparePagamenti, executePagamenti } from "./pagamenti.js";
 import { PIANI_WRITES, PIANI_TOOLS, preparePiani, executePiani } from "./piani.js";
@@ -1369,7 +1370,8 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
       const lastUserText = [...convo].reverse().find((m) => m.role === 'user')?.content || '';
       const context = deriveContext(convo);
       const reference = conversationalReference(lastUserText, observedContextFromEnvelope(safeConversationContext));
-      if (reference.kind === 'AMBIGUOUS_REFERENCE') return json({ text: reference.target === 'appointment' ? 'A quale appuntamento ti riferisci?' : 'A quale elemento ti riferisci?', core_mode: true, core_version: '1.1', conversation_context: safeConversationContext });
+      // With nothing observed (no trusted context yet) the model path reads the chat instead.
+      if (reference.kind === 'AMBIGUOUS_REFERENCE' && reference.count > 1) return json({ text: reference.target === 'appointment' ? 'A quale appuntamento ti riferisci?' : 'A quale elemento ti riferisci?', core_mode: true, core_version: '1.1', conversation_context: safeConversationContext });
       // Mutating references are recognized here but remain on the mature write path until
       // their prepare/permission policy is shared with Core. Recognition never bypasses safety.
 
@@ -1379,41 +1381,106 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
       const plan = planPoliedron(parsed);
       // Core-first owns only requests it can completely and safely resolve.
       // Incomplete/unsupported/compound commands stay on the mature LLM tool path.
-      const looksCompound = /\b(?:e|poi|inoltre)\b/i.test(lastUserText) && /\b(?:nota|richiam|appuntament|pazient|promemoria)\w*/i.test(lastUserText);
+      const agendaVerbs = lastUserText.match(/\b(?:sposta|anticipa|posticipa|rimanda|cancella|elimina|annulla|togli|rimuovi|disdici|fissa|prenota|metti|crea|inserisci|aggiungi)\w*/gi) || [];
+      const looksCompound = agendaVerbs.length > 1 || (/\b(?:e|poi|inoltre)\b/i.test(lastUserText) && /\b(?:nota|richiam|appuntament|pazient|promemoria)\w*/i.test(lastUserText));
       const coreOwnsRequest = parsed.intent !== 'UNKNOWN' && plan.steps?.length > 0 && !looksCompound;
       const gate = coreOwnsRequest ? confidenceDecision(parsed, plan) : { decision: 'ESCALATE' };
       const decision = gate.decision === 'EXECUTE' ? { action: 'EXECUTE_READ' } : gate.decision === 'PREPARE_CONFIRM' ? { action: 'PREPARE_WRITE_CONFIRMATION' } : gate.decision === 'CLARIFY' ? { action: 'CLARIFY', missing: gate.missing } : { action: 'ESCALATE_LLM' };
-      if (decision.action === 'CLARIFY' && parsed.intent === 'APPOINTMENT_CREATE') {
-        const labels = { patient: 'Per quale paziente?', day: 'Per quale giorno?', time: 'A che ora?', type: 'Che tipo di appuntamento devo inserire?' };
-        return json({ text: decision.missing.map((x) => labels[x] || `Mi manca: ${x}`).join(' '), core_mode: true, core_version: '1.0' });
+      const coreReply = (value) => json({ core_mode: true, core_version: '1.3', ...value });
+      const dayIso = (e) => resolveDay(e, studioToday());
+      const fmtDay = (iso) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+      // Same policy as the model path: clear and conflict-free → executed now
+      // (undoable from "Attività di Poliedron"); "medio" autonomy → signed summary.
+      const agendaWrite = async (name, input, slotDate) => {
+        let prepared;
+        try {
+          prepared = await prepareAgenda(supabase, name, input, studioId, observed);
+        } catch (error) {
+          let text = error.message;
+          if (/Orario occupato/.test(text) && slotDate) {
+            try {
+              const free = await agendaAvailability(supabase, { data: slotDate, durata: input.durata ?? 30 }, studioId);
+              text += free.orari_liberi.length ? ` Orari liberi ${fmtDay(slotDate)}: ${free.orari_liberi.slice(0, 8).join(', ')}.` : ` ${fmtDay(slotDate)} non ci sono orari liberi.`;
+            } catch { /* the conflict itself stays the answer */ }
+          }
+          return coreReply({ text, uncertain: true });
+        }
+        const proposal = { id: crypto.randomUUID(), userId: user.id, studioId, name, agenda: prepared, expiresAt: Date.now() + 10 * 60 * 1000 };
+        if (confermaOgniScrittura || prepared.avviso) {
+          const token = await signProposal(proposal, SUPABASE_SERVICE_ROLE_KEY);
+          return coreReply({ text: 'Controlla il riepilogo prima di confermare.', needsConfirmation: { token, summary: prepared.summary, expiresAt: proposal.expiresAt } });
+        }
+        let done;
+        try {
+          done = await executeAgenda(supabase, proposal);
+        } catch (error) {
+          return coreReply({ text: 'Non eseguito: ' + error.message + ' Controlla l’agenda prima di riprovare.', changed: ['appointments'], uncertain: true });
+        }
+        await registraAttivita(supabase, proposal, done);
+        return coreReply(done);
+      };
+      // One patient or none: homonyms are never guessed.
+      const findPatient = async (query) => {
+        const found = await eseguiTool(supabase, 'cerca_pazienti', { query }, studioId, user.id, azioniPersonalizzate);
+        const patients = found?.risultati || [];
+        if (found?.error) return { reply: coreReply({ text: 'Non riesco a cercare il paziente adesso.', uncertain: true }) };
+        if (patients.length === 0) return { reply: coreReply({ text: `Non trovo il paziente “${query}”. Vuoi prima crearlo?` }) };
+        if (patients.length > 1) return { reply: coreReply({ text: 'Ho trovato più pazienti con questo nome. Dimmi quale intendi: ' + patients.map((p) => `${p.nome} ${p.cognome}`).join(', '), data: { risultati: patients } }) };
+        observed.patients.add(patients[0].id);
+        return { patient: patients[0] };
+      };
+      if (decision.action === 'CLARIFY' && ['APPOINTMENT_CREATE', 'APPOINTMENT_MOVE', 'APPOINTMENT_DELETE'].includes(parsed.intent)) {
+        const labels = parsed.intent === 'APPOINTMENT_CREATE'
+          ? { patient: 'Per quale paziente?', day: 'Per quale giorno?', time: 'A che ora?', type: 'Che tipo di appuntamento devo inserire?' }
+          : { patient: 'Di quale paziente è l’appuntamento?', target: 'A quando lo sposto? Dimmi giorno e/o ora.', unclear: 'Non ho capito quale appuntamento e quando: dimmelo con giorno e ora (es. “sposta Mario Rossi da domani alle 15 a venerdì alle 10”).' };
+        return coreReply({ text: decision.missing.map((x) => labels[x] || `Mi manca: ${x}`).join(' ') });
       }
       if (decision.action === 'PREPARE_WRITE_CONFIRMATION' && parsed.intent === 'APPOINTMENT_CREATE' && allowedNames.has('crea_appuntamento')) {
-        const found = await eseguiTool(supabase, 'cerca_pazienti', { query: parsed.entities.patient_query }, studioId, user.id, azioniPersonalizzate);
-        const patients = found?.risultati || [];
-        if (patients.length === 0) return json({ text: `Non trovo il paziente “${parsed.entities.patient_query}”. Vuoi prima crearlo?`, core_mode: true, core_version: '1.0' });
-        if (patients.length > 1) return json({ text: 'Ho trovato più pazienti con questo nome. Dimmi quale intendi: ' + patients.map((p) => `${p.nome} ${p.cognome}`).join(', '), core_mode: true, core_version: '1.0', data: { risultati: patients } });
-        const patient = patients[0];
-        observed.patients.add(patient.id);
-        const base = new Date(studioToday() + 'T12:00:00Z');
-        base.setUTCDate(base.getUTCDate() + parsed.entities.relative_day);
-        const input = { paziente_id: patient.id, data: base.toISOString().slice(0,10), ora: parsed.entities.time, durata: 30, tipo: parsed.entities.tipo, stato: 'confermato' };
-        try {
-          const prepared = await prepareAgenda(supabase, 'crea_appuntamento', input, studioId, observed);
-          const proposal = { id: crypto.randomUUID(), userId: user.id, studioId, name: 'crea_appuntamento', agenda: prepared, expiresAt: Date.now() + 10 * 60 * 1000 };
-          const token = await signProposal(proposal, SUPABASE_SERVICE_ROLE_KEY);
-          return json({ text: 'Ho preparato l’appuntamento. Controlla il riepilogo e conferma.', needsConfirmation: { token, summary: prepared.summary, expiresAt: proposal.expiresAt }, core_mode: true, core_version: '1.0' });
-        } catch (error) {
-          return json({ text: error.message, core_mode: true, core_version: '1.0', uncertain: true });
+        const date = dayIso(parsed.entities);
+        if (!date) return coreReply({ text: 'Quel giorno non esiste o non corrisponde al giorno della settimana: dimmi la data esatta.' });
+        const { patient, reply } = await findPatient(parsed.entities.patient_query);
+        if (reply) return reply;
+        return await agendaWrite('crea_appuntamento', { paziente_id: patient.id, data: date, ora: parsed.entities.time, durata: 30, tipo: parsed.entities.tipo, stato: 'confermato' }, date);
+      }
+      const changeTool = { APPOINTMENT_MOVE: 'modifica_appuntamento', APPOINTMENT_DELETE: 'elimina_appuntamento' }[parsed.intent];
+      if (decision.action === 'PREPARE_WRITE_CONFIRMATION' && changeTool && allowedNames.has(changeTool)) {
+        const e = parsed.entities, from = e.from || {};
+        const fromDate = hasDay(from) ? dayIso(from) : null;
+        const toDate = hasDay(e) ? dayIso(e) : null;
+        if ((hasDay(from) && !fromDate) || (hasDay(e) && !toDate)) return coreReply({ text: 'Quel giorno non esiste o non corrisponde al giorno della settimana: dimmi la data esatta.' });
+        let patient = null;
+        if (e.patient_query) {
+          const found = await findPatient(e.patient_query);
+          if (found.reply) return found.reply;
+          patient = found.patient;
         }
+        let rows;
+        try {
+          rows = await appointmentsForChange(supabase, studioId, { pazienteId: patient?.id ?? null, data: fromDate, ora: from.time ?? null });
+        } catch (error) {
+          return coreReply({ text: error.message, uncertain: true });
+        }
+        const who = patient ? ` di ${patient.nome} ${patient.cognome}` : '';
+        const when = `${fromDate ? ` ${fmtDay(fromDate)}` : ' da oggi in poi'}${from.time ? ` alle ${from.time}` : ''}`;
+        if (!rows.length) return coreReply({ text: `Non trovo appuntamenti${who}${when}.` });
+        const line = (a) => `${fmtDay(a.data)} alle ${String(a.ora).slice(0, 5)} — ${[a.patients?.nome, a.patients?.cognome].filter(Boolean).join(' ') || 'paziente'} (${a.tipo})`;
+        if (rows.length > 1) {
+          return coreReply({ text: `Ho trovato ${rows.length} appuntamenti${who}${when}:\n${rows.slice(0, 6).map(line).join('\n')}${rows.length > 6 ? '\n…' : ''}\nQuale intendi? Dimmi giorno e ora.`, data: { risultati: rows.slice(0, 6) } });
+        }
+        const appt = rows[0];
+        observed.appointments.add(appt.id);
+        if (changeTool === 'elimina_appuntamento') return await agendaWrite(changeTool, { appuntamento_id: appt.id });
+        const input = { appuntamento_id: appt.id, data: toDate || appt.data, ora: e.time || String(appt.ora).slice(0, 5) };
+        if (input.data === appt.data && input.ora === String(appt.ora).slice(0, 5)) return coreReply({ text: `L’appuntamento è già ${line(appt)}: non l’ho spostato.` });
+        return await agendaWrite(changeTool, input, input.data);
       }
       if (decision.action === 'EXECUTE_READ' && parsed.intent === 'AGENDA_AVAILABILITY') {
-        const base = new Date(studioToday() + 'T12:00:00Z');
-        base.setUTCDate(base.getUTCDate() + parsed.entities.relative_day);
-        const date = base.toISOString().slice(0, 10);
+        const date = dayIso(parsed.entities);
+        if (!date) return coreReply({ text: 'Quel giorno non esiste o non corrisponde al giorno della settimana: dimmi la data esatta.' });
         try {
           const slots = await agendaAvailability(supabase, { data: date, durata: 30 }, studioId);
           const available = slots.orari_liberi.includes(parsed.entities.time);
-          return json({ text: available ? `Sì, il ${date} alle ${parsed.entities.time} risulta libero per 30 minuti.` : `No, il ${date} alle ${parsed.entities.time} non risulta disponibile per 30 minuti.`, core_mode: true, core_version: '1.2', data: slots });
+          return json({ text: available ? `Sì, ${fmtDay(date)} alle ${parsed.entities.time} risulta libero per 30 minuti.` : `No, ${fmtDay(date)} alle ${parsed.entities.time} non risulta disponibile per 30 minuti.${slots.orari_liberi.length ? ` Orari liberi: ${slots.orari_liberi.slice(0, 8).join(', ')}.` : ''}`, core_mode: true, core_version: '1.2', data: slots });
         } catch (error) { return json({ text: 'Non riesco a verificare la disponibilità adesso.', uncertain: true, core_mode: true }); }
       }
       if (decision.action === 'EXECUTE_READ') {
@@ -1425,10 +1492,8 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
         };
         const [tool, input] = map[parsed.intent] || [];
         if (tool) {
-          if (tool === 'appuntamenti' && Number.isInteger(parsed.entities.relative_day)) {
-            const base = new Date(studioToday() + 'T12:00:00');
-            base.setDate(base.getDate() + parsed.entities.relative_day);
-            input.da = base.toISOString().slice(0, 10); input.a = input.da;
+          if (tool === 'appuntamenti' && dayIso(parsed.entities)) {
+            input.da = dayIso(parsed.entities); input.a = input.da;
           }
           const out = await eseguiTool(supabase, tool, input, studioId, user.id, azioniPersonalizzate);
           if (!out?.error) {

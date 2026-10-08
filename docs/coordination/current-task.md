@@ -1,3 +1,19 @@
+# Current task — POL-AI agenda actions (Poliedron mette, sposta e toglie appuntamenti senza LLM) (2026-10-08)
+- OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "Guarda la 162 mergiata e poi continua tu , dobbiamo rendere poliedron capace di svolger azioni basilari su agenda come mettere appuntamenti toglierli spostarli").
+- BRANCH: `claude/poliedron-agenda-actions-kz6mmk`, da `master@ae04126` (PR #162 mergiata).
+- PUNTO DI PARTENZA (#162): Core riconosceva "ho spazio domani alle 15?" e "Fissa Mario Rossi domani alle 15 per igiene", ma: la prenotazione chiedeva sempre conferma; "sposta"/"cancella" erano riconosciuti male (nessun paziente/origine/destinazione) e finivano al modello; dall'app i comandi senza la parola "appuntamento" non arrivavano neanche al server; "spostalo/cancellalo" rispondeva sempre "A quale appuntamento ti riferisci?" (contesto conversazionale sempre vuoto).
+- COSA:
+  - `poliedron-agenda.js` (nuovo, puro): giorni (oggi/domani/dopodomani, giorni della settimana, `12/10`, `12 ottobre`, "il 5"; data inesistente o in contrasto col giorno della settimana → domanda), orari ("alle 10 e mezza", "alle 3 del pomeriggio"), comandi sposta/anticipa/posticipa/rimanda e cancella/annulla/togli/disdici con paziente, appuntamento di partenza e destinazione ("da domani alle 15 a venerdì alle 10", "dalle 15 alle 16", "l'appuntamento di domani alle 15 di Bianchi"). Pagamenti, piani, richiami, note, impegni, ferie, "tutti gli appuntamenti" restano al modello.
+  - `index.ts`: crea/sposta/annulla senza modello. Paziente unico (omonimi → domanda), appuntamento unico tra quelli attivi (più candidati → elenco e domanda; nessuno → lo dice). Stessa politica degli strumenti: chiaro e senza conflitti → eseguito subito con `poliedron_execute_agenda_v1` + "Attività di Poliedron" (ripristinabile); modalità "medio" → riepilogo firmato e Conferma; orario occupato → chi lo occupa + orari liberi. Permessi invariati (`allowedNames`: pro/consulente → percorso del modello senza strumenti di scrittura). Due comandi nello stesso messaggio → modello. Agenda/disponibilità leggono anche i giorni della settimana.
+  - App (`poliedraCore.js`): "Fissa Rossi domani alle 15", "Sposta Bianchi a venerdì", "Togli Verdi da domani" arrivano al server (prima cadevano nella ricerca).
+- NESSUNA modifica a database, RLS, migrazioni.
+- VALIDATION: `npm test` 1091/1091 (nuovo `tests/poliedronAgendaActions.test.mjs`, 14 test sull'handler reale bundlato: sposta/anticipa/annulla/crea senza chiamate al modello, elenco con più candidati, omonimi, appuntamento annullato non trovato, conflitto con occupante e orari liberi, "medio" con conferma, "consulente" senza scritture, comandi doppi al modello, parser, instradamento dell'app); `npm run build` OK.
+- NON VERIFICATO: prova reale in produzione (serve il deploy di `agente-assistente`).
+- RILASCIO: deploy di `agente-assistente` (tutti i file della cartella, incluso il nuovo `poliedron-agenda.js`, + `../_shared/agendaSlots.js`, `verify_jwt=true`) e merge del frontend, solo su "Mergia" del Product Owner. Rollback: revert del commit e deploy della versione precedente.
+- EXACT NEXT ACTION: revisione del Product Owner → PR/"Mergia" → deploy → prova: "Sposta Mario Rossi a venerdì alle 10", "Cancella l'appuntamento di domani alle 15", "Fissa Mario Rossi domani alle 15 per igiene".
+
+---
+
 # Roadmap decision — POL-AI-LEARN-001 Poliedron Learning Engine (2026-10-07)
 - PO: Poliedron deve usare LLM oggi e nel frattempo addestrarsi/migliorare fino a poter avere ML/modello specializzato proprietario.
 - ARCHITECTURE: `docs/architecture/poliedron-learning-engine.md`.
