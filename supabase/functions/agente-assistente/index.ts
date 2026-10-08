@@ -1283,7 +1283,9 @@ per calcolare date relative ("domani", "martedì prossimo", "tra due settimane",
 dedurre o assumere altre date, e non sbagliare mai l'anno.
 Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? sezioneMemoria(vociMemoria) : ''}${prescrive ? sezioneFarmaciFrequenti(studioInfoRicette?.farmaci_preferiti) : ''}`;
 
-    const { messages, confirm, team, allegato: allegatoRichiesta, conversation_context: conversationContext } = await req.json();
+    const { messages, confirm, team, allegato: allegatoRichiesta } = await req.json();
+    // Conversation references are derived from authenticated server-side observations only.
+    const conversationContext = null;
     const safeConversationContext = conversationContext?.version === 1 && Array.isArray(conversationContext.patient_ids) && Array.isArray(conversationContext.appointment_ids) && conversationContext.patient_ids.length <= 3 && conversationContext.appointment_ids.length <= 3
       ? conversationContext : { version: 1, patient_ids: [], appointment_ids: [] };
     const json = (value) => new Response(JSON.stringify(value), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
