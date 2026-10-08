@@ -44,6 +44,19 @@ export default async function handler(req, res) {
       return json(res, 409, { error: 'Meta ha autorizzato il collegamento ma non ha restituito WABA/Phone Number ID. Riapri il collegamento e completa tutti i passaggi.' });
     }
 
+    // Subscribe our app to the studio's WABA: without it Meta delivers none of
+    // this number's webhooks (patient messages, Coexistence staff echoes).
+    // Fail closed: a saved number that never receives messages looks connected
+    // but silently does nothing. Repeating the call is harmless.
+    const subRes = await fetch(`https://graph.facebook.com/${GRAPH_VERSION}/${encodeURIComponent(wabaId)}/subscribed_apps`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${tokenBody.access_token}` },
+    });
+    const subBody = await subRes.json().catch(() => ({}));
+    if (!subRes.ok || subBody?.success !== true) {
+      return json(res, 502, { error: 'Meta non ha attivato la ricezione dei messaggi per questo numero. Riprova il collegamento.' });
+    }
+
     const config = { studio_id, waba_id: wabaId, phone_number_id: phoneId, attivo: true };
     const headers = {
       apikey: SUPABASE_ANON_KEY,
