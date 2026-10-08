@@ -1769,8 +1769,10 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
               const out = isPiano
                 ? await executePiani(supabase, proposal)
                 : await executePagamenti(supabase, proposal);
-              await registraAttivita(user.id, tu.name, input, out.recordId ?? null, out.changed?.[0] ?? null);
               eseguite.push({ text: out.text, changed: out.changed || [], records: out.records });
+              for (const t of out.changed || []) daAggiornare.add(t);
+              for (const [t, rows] of Object.entries(out.records || {})) righeScritte[t] = [...(righeScritte[t] || []), ...rows];
+              logConsumi.push(registraAttivita(supabase, proposal, out));
               result = { ok: true, eseguito: out.text };
             } catch (error) {
               result = { error: error.message };
