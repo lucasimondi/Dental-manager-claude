@@ -3,6 +3,7 @@ export function planPoliedron(parsed){
   const c=Number(parsed.confidence||0);
   const plans={
     AGENDA_READ:[['READ_AGENDA','read']],
+    AGENDA_AVAILABILITY:[['CHECK_AVAILABILITY','read']],
     PATIENT_SEARCH:[['SEARCH_PATIENT','read']],
     RECALLS_READ:[['READ_RECALLS','read']],
     KPI_READ:[['READ_KPI','read']],
