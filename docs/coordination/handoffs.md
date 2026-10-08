@@ -9,8 +9,9 @@
 - Database: none. RLS/tenant: unchanged (user client, `studio_id` filters, same RPC and activity log).
 - Tests: `npm test` 1091/1091; `npm run build` OK.
 - Risks: il parser italiano è deterministico: frasi non coperte vanno al modello (nessuna scrittura indovinata). "venerdì 10" è letto come giorno 10 (verificato col giorno della settimana). Un giorno della settimana uguale a oggi significa oggi (stessa convenzione di `appointmentIntent.js` nell'app).
-- Unresolved: deploy della Edge Function non eseguito (serve "Mergia"); contesto conversazionale (`conversation_context`) ancora sempre vuoto lato server, quindi "spostalo" resta al modello.
-- Exact next action: revisione PO → PR → "Mergia" → deploy `agente-assistente` → prova reale.
+- Release: PR #163; `agente-assistente` v40 deployata e verificata (20 file identici al repository, avvio 401 "Sessione non valida"). La v39 precedente non conteneva le PR #155–#162: ora sono in produzione insieme a questo lavoro. Corretto anche il log Attività dopo pagamenti/piani diretti (bug in produzione).
+- Unresolved: contesto conversazionale (`conversation_context`) ancora sempre vuoto lato server, quindi "spostalo" resta al modello.
+- Exact next action: prova reale del PO in Chat (vedi current-task).
 
 ## POL-AI-TEAM-004 — agenda conflicts name the occupant (PR pending "Mergia")
 
