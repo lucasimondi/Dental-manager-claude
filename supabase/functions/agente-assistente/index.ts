@@ -17,7 +17,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-import { signProposal, verifyProposal, claimProposal, studioToday } from "./confirmation.js";
+import { signProposal, verifyProposal, claimProposal, studioToday, signContext, verifyContext } from "./confirmation.js";
 import { AGENDA_WRITES, prepareAgenda, executeAgenda, agendaAvailability, appointmentsForChange } from "./agenda.js";
 import { resolveDay, hasDay } from "./poliedron-agenda.js";
 import { PAZIENTI_WRITES, PAZIENTI_TOOLS, preparePazienti, executePazienti, schedaPaziente } from "./pazienti.js";
@@ -32,7 +32,7 @@ import { emergencyIntent, emergencyMessage } from "./emergency.js";
 import { understandPoliedron } from "./poliedron-core.js";
 import { deriveContext, enrichWithContext } from "./poliedron-context.js";
 import { planPoliedron, confidenceDecision } from "./poliedron-planner.js";
-import { deriveConversationState, completeConversationalTurn, conversationEnvelope, observedContextFromEnvelope, conversationalReference } from "./poliedron-conversation.js";
+import { deriveConversationState, completeConversationalTurn, observedContextFromEnvelope, conversationalReference } from "./poliedron-conversation.js";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") || "gpt-6-luna";
@@ -1284,11 +1284,7 @@ per calcolare date relative ("domani", "martedì prossimo", "tra due settimane",
 dedurre o assumere altre date, e non sbagliare mai l'anno.
 Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? sezioneMemoria(vociMemoria) : ''}${prescrive ? sezioneFarmaciFrequenti(studioInfoRicette?.farmaci_preferiti) : ''}`;
 
-    const { messages, confirm, team, allegato: allegatoRichiesta } = await req.json();
-    // Conversation references are derived from authenticated server-side observations only.
-    const conversationContext = null;
-    const safeConversationContext = conversationContext?.version === 1 && Array.isArray(conversationContext.patient_ids) && Array.isArray(conversationContext.appointment_ids) && conversationContext.patient_ids.length <= 3 && conversationContext.appointment_ids.length <= 3
-      ? conversationContext : { version: 1, patient_ids: [], appointment_ids: [] };
+    const { messages, confirm, team, allegato: allegatoRichiesta, conversation_context: contextToken } = await req.json();
     const json = (value) => new Response(JSON.stringify(value), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     // POL-AI-TEAM-002: Clinic Manager e specialisti, sempre in sola lettura.
     let richiestaTeam = null;
@@ -1357,6 +1353,15 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
     }
     if (!Array.isArray(messages) || messages.length > 21 || messages.some(m => !['user', 'assistant'].includes(m.role) || typeof m.content !== 'string' || m.content.length > 16000)) throw new Error('Messaggi non validi');
     let convo = messages;
+    // Conversation references come only from what this server signed for this
+    // user/studio in the answer to the previous user message (see signContext).
+    const userTexts = messages.filter((m) => m.role === 'user').map((m) => m.content);
+    const lastUserText = userTexts.at(-1) || '';
+    const safeConversationContext = (userTexts.length > 1 && await verifyContext(contextToken, SUPABASE_SERVICE_ROLE_KEY, { userId: user.id, studioId, previousUserText: userTexts.at(-2) }))
+      || { appointment_ids: [], patient_ids: [] };
+    const contextFor = async (appointmentIds = [], patientIds = []) => (appointmentIds.length || patientIds.length)
+      ? { conversation_context: await signContext({ userId: user.id, studioId, answeredText: lastUserText, appointmentIds, patientIds }, SUPABASE_SERVICE_ROLE_KEY) }
+      : {};
     if (allegato) {
       try {
         convo = messaggiConAllegato(messages, allegato);
@@ -1367,13 +1372,11 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
     // Core-first: routine safe reads and clarifications do not require an LLM.
     // Team/specialist and attachment requests still use the richer model path.
     if (!richiestaTeam && !allegato) {
-      const lastUserText = [...convo].reverse().find((m) => m.role === 'user')?.content || '';
       const context = deriveContext(convo);
       const reference = conversationalReference(lastUserText, observedContextFromEnvelope(safeConversationContext));
-      // With nothing observed (no trusted context yet) the model path reads the chat instead.
-      if (reference.kind === 'AMBIGUOUS_REFERENCE' && reference.count > 1) return json({ text: reference.target === 'appointment' ? 'A quale appuntamento ti riferisci?' : 'A quale elemento ti riferisci?', core_mode: true, core_version: '1.1', conversation_context: safeConversationContext });
-      // Mutating references are recognized here but remain on the mature write path until
-      // their prepare/permission policy is shared with Core. Recognition never bypasses safety.
+      // "spostalo" after a list of 2-3 appointments: ask which. With nothing
+      // observed (no valid context) the model path reads the chat instead.
+      if (reference.kind === 'AMBIGUOUS_REFERENCE' && reference.target === 'appointment' && reference.count > 1) return json({ text: 'A quale appuntamento ti riferisci? Dimmi giorno e ora.', core_mode: true, core_version: '1.4' });
 
       const conversationState = deriveConversationState(convo.slice(0, -1));
       const conversational = completeConversationalTurn(lastUserText, conversationState);
@@ -1417,7 +1420,7 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
           return coreReply({ text: 'Non eseguito: ' + error.message + ' Controlla l’agenda prima di riprovare.', changed: ['appointments'], uncertain: true });
         }
         await registraAttivita(supabase, proposal, done);
-        return coreReply(done);
+        return coreReply({ ...done, ...await contextFor(done.appointmentId != null ? [done.appointmentId] : []) });
       };
       // One patient or none: homonyms are never guessed.
       const findPatient = async (query) => {
@@ -1429,6 +1432,27 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
         observed.patients.add(patients[0].id);
         return { patient: patients[0] };
       };
+      // "spostalo a venerdì alle 10" / "cancellalo": the one appointment the
+      // previous answer was about (signed context), re-read now under RLS.
+      const refTool = { APPOINTMENT_MOVE: 'modifica_appuntamento', APPOINTMENT_DELETE: 'elimina_appuntamento' }[reference.kind];
+      if (refTool && reference.appointment_id != null && allowedNames.has(refTool) && !looksCompound) {
+        const toDate = hasDay(reference) ? dayIso(reference) : null;
+        if (hasDay(reference) && !toDate) return coreReply({ text: 'Quel giorno non esiste o non corrisponde al giorno della settimana: dimmi la data esatta.' });
+        if (refTool === 'modifica_appuntamento' && !toDate && !reference.time) return coreReply({ text: 'A quando lo sposto? Dimmi giorno e/o ora.' });
+        let rows;
+        try {
+          rows = await appointmentsForChange(supabase, studioId, { id: reference.appointment_id });
+        } catch (error) {
+          return coreReply({ text: error.message, uncertain: true });
+        }
+        if (!rows.length) return coreReply({ text: 'Non trovo più quell’appuntamento in agenda (forse è già stato annullato o è passato).' });
+        const appt = rows[0];
+        observed.appointments.add(appt.id);
+        if (refTool === 'elimina_appuntamento') return await agendaWrite(refTool, { appuntamento_id: appt.id });
+        const input = { appuntamento_id: appt.id, data: toDate || appt.data, ora: reference.time || String(appt.ora).slice(0, 5) };
+        if (input.data === appt.data && input.ora === String(appt.ora).slice(0, 5)) return coreReply({ text: 'L’appuntamento è già a quell’ora: non l’ho spostato.' });
+        return await agendaWrite(refTool, input, input.data);
+      }
       if (decision.action === 'CLARIFY' && ['APPOINTMENT_CREATE', 'APPOINTMENT_MOVE', 'APPOINTMENT_DELETE'].includes(parsed.intent)) {
         const labels = parsed.intent === 'APPOINTMENT_CREATE'
           ? { patient: 'Per quale paziente?', day: 'Per quale giorno?', time: 'A che ora?', type: 'Che tipo di appuntamento devo inserire?' }
@@ -1465,7 +1489,7 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
         if (!rows.length) return coreReply({ text: `Non trovo appuntamenti${who}${when}.` });
         const line = (a) => `${fmtDay(a.data)} alle ${String(a.ora).slice(0, 5)} — ${[a.patients?.nome, a.patients?.cognome].filter(Boolean).join(' ') || 'paziente'} (${a.tipo})`;
         if (rows.length > 1) {
-          return coreReply({ text: `Ho trovato ${rows.length} appuntamenti${who}${when}:\n${rows.slice(0, 6).map(line).join('\n')}${rows.length > 6 ? '\n…' : ''}\nQuale intendi? Dimmi giorno e ora.`, data: { risultati: rows.slice(0, 6) } });
+          return coreReply({ text: `Ho trovato ${rows.length} appuntamenti${who}${when}:\n${rows.slice(0, 6).map(line).join('\n')}${rows.length > 6 ? '\n…' : ''}\nQuale intendi? Dimmi giorno e ora.`, data: { risultati: rows.slice(0, 6) }, ...await contextFor(rows.length <= 3 ? rows.map((a) => a.id) : []) });
         }
         const appt = rows[0];
         observed.appointments.add(appt.id);
@@ -1497,12 +1521,10 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
           }
           const out = await eseguiTool(supabase, tool, input, studioId, user.id, azioniPersonalizzate);
           if (!out?.error) {
-            const resultRows = Array.isArray(out?.risultati) ? out.risultati : Array.isArray(out?.appuntamenti) ? out.appuntamenti : [];
-            const meta = {};
-            if (tool === 'cerca_pazienti' && resultRows.length === 1 && resultRows[0]?.id) meta.patient_id = resultRows[0].id;
-            if (tool === 'appuntamenti' && resultRows.length === 1 && resultRows[0]?.id) meta.appointment_id = resultRows[0].id;
-            const envelope = conversationEnvelope([...convo, { role: 'assistant', content: formatCoreRead(tool, out), meta }]);
-            return json({ text: formatCoreRead(tool, out), core_mode: true, core_version: '1.1', tool, data: out, conversation_context: envelope });
+            const resultRows = Array.isArray(out?.risultati) ? out.risultati : [];
+            const active = tool === 'appuntamenti' ? resultRows.filter((a) => a.stato !== 'annullato') : [];
+            const ctx = await contextFor(active.length <= 3 ? active.map((a) => a.id) : [], tool === 'cerca_pazienti' && resultRows.length === 1 ? [resultRows[0].id] : []);
+            return json({ text: formatCoreRead(tool, out), core_mode: true, core_version: '1.1', tool, data: out, ...ctx });
           }
           console.error('poliedron_core_read_error', JSON.stringify({ tool, kind: 'tool_error' }));
         }
@@ -1547,7 +1569,9 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
       await Promise.allSettled(logConsumi);
       const changed = [...daAggiornare];
       const conDocumento = documentoPreparato ? { ...value, documento: documentoPreparato } : value;
-      return json(changed.length ? { ...conDocumento, changed, records: righeScritte } : conDocumento);
+      const scritti = (righeScritte.appointments || []).map((a) => a.id).filter((id) => id != null);
+      const ctx = !richiestaTeam && scritti.length === 1 ? await contextFor(scritti) : {};
+      return json(changed.length ? { ...conDocumento, changed, records: righeScritte, ...ctx } : { ...conDocumento, ...ctx });
     };
     const testoEseguite = () => eseguite.map((e) => e.text).join('\n\n');
 

@@ -32,6 +32,12 @@ export const MODEL_TASK_TYPE = Object.freeze({
  * tool-using provider — the current adapter does not pass tool access
  * beyond what agente-assistente already exposes server-side.
  */
+// Signed by agente-assistente: which appointment the last answer was about,
+// so "spostalo" / "cancellalo" work without the model. Opaque here; the
+// server checks signature, user, studio, expiry and that it answers the
+// previous message of the history it receives.
+let lastConversationContext = null;
+
 export async function runModelTask({ taskType, input, history = [], context, supabaseClient, confirm, team, attachment } = {}) {
   if (!supabaseClient) return { text: null, error: 'MODEL_GATEWAY_NO_CLIENT' };
   if (!input && !confirm) return { text: null, error: 'MODEL_GATEWAY_EMPTY_INPUT' };
@@ -47,6 +53,7 @@ export async function runModelTask({ taskType, input, history = [], context, sup
     const { data, error } = await supabaseClient.functions.invoke('agente-assistente', {
       body: {
         ...(!confirm ? { messages: [...boundedHistory, { role: 'user', content: input }] } : {}),
+        ...(!confirm && lastConversationContext ? { conversation_context: lastConversationContext } : {}),
         confirm,
         // POL-AI-008: file allegato al messaggio corrente, letto dal modello
         // solo in questa richiesta (mai nella cronologia, mai salvato).
@@ -62,6 +69,7 @@ export async function runModelTask({ taskType, input, history = [], context, sup
     });
     if (error) return { text: null, error: error.message || 'MODEL_GATEWAY_ERROR' };
     if (data?.error) return { text: null, error: data.error };
+    lastConversationContext = typeof data?.conversation_context === 'string' ? data.conversation_context : null;
     return { text: data?.text || null, error: null, raw: data };
   } catch (e) {
     return { text: null, error: e?.message || 'MODEL_GATEWAY_EXCEPTION' };

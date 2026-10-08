@@ -193,3 +193,87 @@ test('app routing: agenda commands without "appuntamento" reach the server', asy
   }
   assert.equal(n, 4);
 });
+
+// Follow-ups: "spostalo" / "cancellalo" resolve the appointment the previous
+// answer was about, from a context the server signed for that answer.
+async function ask2(messages, extra = {}) {
+  const response = await handler(new Request('https://local.test', { method: 'POST', headers: { Authorization: 'Bearer test' }, body: JSON.stringify({ messages, ...extra }) }));
+  return response.json();
+}
+async function readTomorrow() {
+  const first = await ask2([{ role: 'user', content: 'Che appuntamenti ho domani?' }]);
+  assert.equal(calls.length, 0);
+  assert.equal(typeof first.conversation_context, 'string', 'a single appointment read returns a signed context');
+  return [{ role: 'user', content: 'Che appuntamenti ho domani?' }, { role: 'assistant', content: first.text }, first.conversation_context];
+}
+
+test('"spostalo a dopodomani alle 11" after reading the agenda moves that appointment, no model call', async () => {
+  const [u, a, token] = await readTomorrow();
+  const out = await ask2([u, a, { role: 'user', content: 'Spostalo a dopodomani alle 11' }], { conversation_context: token });
+  assert.equal(calls.length, 0);
+  assert.equal(rpcCalls.length, 1);
+  assert.equal(rpcCalls[0].args.p_before.id, 10);
+  assert.equal(rpcCalls[0].args.p_after.data, D2);
+  assert.equal(rpcCalls[0].args.p_after.ora, '11:00');
+  assert.match(out.text, /^Fatto\. Appuntamento modificato/);
+  assert.equal(typeof out.conversation_context, 'string', 'the moved appointment stays the subject');
+});
+
+test('"cancellalo" right after a move cancels the same appointment', async () => {
+  const first = await ask2([{ role: 'user', content: 'Sposta Mario Test a dopodomani alle 11' }]);
+  rpcCalls = [];
+  database.appointments = [appt(10, mario, D2, '11:00')];
+  const out = await ask2([{ role: 'user', content: 'Sposta Mario Test a dopodomani alle 11' }, { role: 'assistant', content: first.text }, { role: 'user', content: 'Anzi cancellalo' }], { conversation_context: first.conversation_context });
+  assert.equal(calls.length, 0);
+  assert.equal(rpcCalls.length, 1);
+  assert.equal(rpcCalls[0].args.p_after.stato, 'annullato');
+  assert.equal(rpcCalls[0].args.p_after.id, 10);
+  assert.match(out.text, /Appuntamento annullato/);
+});
+
+test('the context is trusted only if signed, for this user, about the previous message', async () => {
+  const [u, a, token] = await readTomorrow();
+  const follow = { role: 'user', content: 'Cancellalo' };
+  const [body, sig] = token.split('.');
+  const forged = Buffer.from(JSON.stringify({ ...JSON.parse(Buffer.from(body, 'base64').toString()), appointment_ids: [99] })).toString('base64') + '.' + sig;
+  const cases = [
+    [[u, a, follow], forged],
+    [[{ role: 'user', content: 'Un altro messaggio' }, a, follow], token],
+  ];
+  for (const [messages, ctx] of cases) {
+    script.push({ content: [{ type: 'text', text: 'Quale appuntamento?' }] });
+    await ask2(messages, { conversation_context: ctx });
+  }
+  user = { id: 'u2', app_metadata: { studio_id: 's1' } };
+  database.studio_users.push({ user_id: 'u2', studio_id: 's1', stato: 'attivo' });
+  script.push({ content: [{ type: 'text', text: 'Quale appuntamento?' }] });
+  await ask2([u, a, follow], { conversation_context: token });
+  assert.equal(rpcCalls.length, 0, 'forged, misplaced or foreign contexts never write');
+  assert.equal(calls.length, 3, 'they fall back to the model path');
+});
+
+test('a context is never a confirmation, and two candidates make "spostalo" ask', async () => {
+  const [u, a, token] = await readTomorrow();
+  const confirmed = await ask2([], { confirm: { token } });
+  assert.match(confirmed.text, /Conferma non valida/);
+  database.appointments.push(appt(11, mario, D1, '16:00'));
+  const list = await ask2([{ role: 'user', content: 'Che appuntamenti ho domani?' }]);
+  const out = await ask2([{ role: 'user', content: 'Che appuntamenti ho domani?' }, { role: 'assistant', content: list.text }, { role: 'user', content: 'Spostalo alle 12' }], { conversation_context: list.conversation_context });
+  assert.match(out.text, /A quale appuntamento ti riferisci/);
+  assert.equal(rpcCalls.length, 0);
+});
+
+test('app: the gateway sends back the last signed context and drops it when absent', async () => {
+  const { runModelTask } = await import('../src/lib/poliedron/modelGateway.js');
+  const bodies = [];
+  const replies = [{ text: 'a', conversation_context: 'ctx-1' }, { text: 'b' }, { text: 'c' }];
+  const supabaseClient = { functions: { invoke: async (_name, { body }) => { bodies.push(body); return { data: replies.shift() }; } } };
+  await runModelTask({ taskType: 'ASK', input: 'uno', supabaseClient });
+  await runModelTask({ taskType: 'ASK', input: 'due', supabaseClient });
+  await runModelTask({ taskType: 'ASK', input: 'tre', supabaseClient });
+  assert.equal(bodies[0].conversation_context, undefined);
+  assert.equal(bodies[1].conversation_context, 'ctx-1');
+  assert.equal(bodies[2].conversation_context, undefined);
+  const r = await processQuery({ query: 'Spostalo a venerdì alle 10', supabaseClient });
+  assert.equal(r.intent, 'AGENDA');
+});

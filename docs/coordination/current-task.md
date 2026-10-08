@@ -1,3 +1,18 @@
+# Current task — POL-AI agenda follow-ups ("spostalo", "cancellalo" senza LLM) (2026-10-08)
+- OWNER: CLAUDE, su istruzione diretta del Product Owner ("Sì" alla proposta: far gestire a Poliedron "spostalo"/"cancellalo" ricordando in modo sicuro l'appuntamento appena discusso).
+- BRANCH: `claude/poliedron-agenda-actions-kz6mmk`, ripartito da `master@6844cfb` (PR #163 mergiata, `agente-assistente` v40 in produzione).
+- COSA:
+  - Contesto firmato (`confirmation.js`: `signContext`/`verifyContext`): la funzione restituisce `conversation_context`, un token HMAC con chiave separata da quella delle conferme (`poliedron-context-v1`), legato a utente, studio, scadenza 30 minuti e al messaggio dell'utente a cui risponde; contiene al massimo 3 ID di appuntamenti/pazienti. Viene emesso dopo una lettura dell'agenda (1–3 appuntamenti attivi), dopo creazione/spostamento/annullamento (Core o modello, un solo appuntamento scritto) e con l'elenco di 2–3 candidati. Un token falsificato, scaduto, di un altro utente/studio o non relativo al messaggio precedente viene ignorato (si passa al modello). Non può essere usato come conferma.
+  - `index.ts`: "spostalo a venerdì alle 10", "anticipala alle 9", "cancellalo", "annullala", "toglilo" → l'appuntamento del contesto viene riletto con il login dell'utente (RLS, studio, attivo, da oggi in poi) e modificato/annullato con la stessa politica di sempre (diretto; "medio" con conferma; conflitti con occupante e orari liberi). Con 2–3 appuntamenti nel contesto chiede quale. Senza contesto valido decide il modello come prima. Rimosso l'avviso "A quale elemento ti riferisci?" che poteva bloccare frasi normali contenenti "lo/la".
+  - App: `modelGateway.js` conserva l'ultimo token e lo rimanda con la richiesta successiva (nessun dato leggibile lato app); `poliedraCore.js` manda al server anche "spostalo/cancellalo…".
+- NESSUNA modifica a database, RLS, migrazioni.
+- VALIDATION: `npm test` 1096/1096 (5 nuovi test in `tests/poliedronAgendaActions.test.mjs` sull'handler reale: spostalo dopo una lettura, cancellalo dopo uno spostamento, token falsificato / di un'altra conversazione / di un altro utente → nessuna scrittura e passaggio al modello, token non valido come conferma, 2 candidati → domanda, gateway dell'app); controprova: senza il legame al messaggio precedente il test di sicurezza fallisce. `npm run build` OK.
+- RILASCIO: deploy `agente-assistente` (stessi 20 file) + merge, solo su "Mergia". Retrocompatibile: l'app vecchia non manda il token (si comporta come oggi); la funzione vecchia ignora il token dell'app nuova.
+- RILASCIO ESEGUITO su "Mergia" (2026-10-08): produzione v40 verificata identica a `master@6844cfb`; deploy `agente-assistente` **v41** (`verify_jwt=true`, 20 file) riletta: **identica byte per byte** al branch; avvio verificato via `pg_net` (chiave anon → 401 "Sessione non valida" dal codice). Rollback: ridistribuire i file di `master@6844cfb` (= v40) e revert del merge.
+- EXACT NEXT ACTION: prova reale del PO: "Che appuntamenti ho domani?" poi "spostalo alle 17"; "Fissa Mario Rossi domani alle 15 per igiene" poi "cancellalo".
+
+---
+
 # Current task — POL-AI agenda actions (Poliedron mette, sposta e toglie appuntamenti senza LLM) (2026-10-08)
 - OWNER: CLAUDE, su istruzione diretta del Product Owner (verbatim: "Guarda la 162 mergiata e poi continua tu , dobbiamo rendere poliedron capace di svolger azioni basilari su agenda come mettere appuntamenti toglierli spostarli").
 - BRANCH: `claude/poliedron-agenda-actions-kz6mmk`, da `master@ae04126` (PR #162 mergiata).
