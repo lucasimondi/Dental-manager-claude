@@ -113,6 +113,19 @@ export async function checkAvailability(client, row, studioId) {
   const occupants = describeConflicts(row, conflicts);
   throw Object.assign(new Error(conflictMessage(occupants)), { occupato_da: occupants });
 }
+/**
+ * Active appointments a chat command can refer to ("sposta Mario Rossi a
+ * venerdì", "cancella l'appuntamento di domani alle 15"): the given day, or
+ * from today on; optionally one patient and one start time.
+ */
+export async function appointmentsForChange(client, studioId, { pazienteId = null, data = null, ora = null } = {}) {
+  let query = client.from('appointments').select(`${select}, patients(nome, cognome)`).eq('studio_id', studioId);
+  query = data ? query.eq('data', data) : query.gte('data', studioToday());
+  if (pazienteId != null) query = query.eq('paziente_id', pazienteId);
+  const { data: rows, error } = await query.order('data', { ascending: true }).order('ora', { ascending: true }).limit(50);
+  if (error) throw new Error('Agenda non leggibile adesso');
+  return (rows || []).filter((a) => a.stato !== 'annullato' && (!ora || String(a.ora).slice(0, 5) === ora));
+}
 export async function executeAgenda(client, proposal) {
   const { data, error } = await client.rpc('poliedron_execute_agenda_v1', {
     p_id: proposal.id, p_studio: proposal.studioId,

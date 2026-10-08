@@ -129,6 +129,14 @@ test('clear payment executes directly under full Safe Autonomy, with claim befor
   const order = inserts.map((i) => i.table);
   assert.ok(order.indexOf('poliedron_action_claims') < order.indexOf('payments'), 'claim before the write');
   assert.equal(paymentRows().length, 1);
+  // The executed write is reported as done (not as an error after the insert),
+  // logged in the activity register and refreshed in the app.
+  assert.match(done.text, /^Fatto\. Pagamento registrato/);
+  assert.equal(calls.length, 2, 'no extra model turn after a successful write');
+  assert.deepEqual(done.changed, ['payments']);
+  const log = inserts.filter((i) => i.table === 'poliedron_attivita');
+  assert.equal(log.length, 1);
+  assert.equal(log[0].row.azione, 'registra_pagamento_paziente');
 });
 
 test('several open plans: the agent must ask which one; nothing is proposed by guessing', async () => {
