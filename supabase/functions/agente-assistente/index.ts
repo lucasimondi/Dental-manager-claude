@@ -1406,6 +1406,16 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
           return json({ text: error.message, core_mode: true, core_version: '1.0', uncertain: true });
         }
       }
+      if (decision.action === 'EXECUTE_READ' && parsed.intent === 'AGENDA_AVAILABILITY') {
+        const base = new Date(studioToday() + 'T12:00:00Z');
+        base.setUTCDate(base.getUTCDate() + parsed.entities.relative_day);
+        const date = base.toISOString().slice(0, 10);
+        try {
+          const slots = await agendaAvailability(supabase, { data: date, durata: 30 }, studioId);
+          const available = slots.orari_liberi.includes(parsed.entities.time);
+          return json({ text: available ? `Sì, il ${date} alle ${parsed.entities.time} risulta libero per 30 minuti.` : `No, il ${date} alle ${parsed.entities.time} non risulta disponibile per 30 minuti.`, core_mode: true, core_version: '1.2', data: slots });
+        } catch (error) { return json({ text: 'Non riesco a verificare la disponibilità adesso.', uncertain: true, core_mode: true }); }
+      }
       if (decision.action === 'EXECUTE_READ') {
         const map = {
           AGENDA_READ: ['appuntamenti', {}],
