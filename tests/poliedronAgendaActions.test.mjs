@@ -139,6 +139,20 @@ test('booking without the word "appuntamento" executes directly (PR #162 parse, 
   assert.match(out.text, /^Fatto\. Appuntamento creato/);
 });
 
+test('PO case: "Fissa appuntamento Giulia simondi venerdì 16 ore 17" books a Visita directly', async () => {
+  database.patients.push(patient(2, 'Giulia', 'Simondi'));
+  const d = new Date(`${D2}T12:00:00Z`);
+  const weekday = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'][d.getUTCDay()];
+  const out = await ask(`Fissa appuntamento Giulia simondi ${weekday} ${d.getUTCDate()} ore 17`);
+  assert.equal(calls.length, 0, 'no model call');
+  assert.equal(rpcCalls.length, 1);
+  assert.equal(rpcCalls[0].args.p_after.paziente_id, 2);
+  assert.equal(rpcCalls[0].args.p_after.data, D2);
+  assert.equal(rpcCalls[0].args.p_after.ora, '17:00');
+  assert.equal(rpcCalls[0].args.p_after.tipo, 'Visita');
+  assert.match(out.text, /^Fatto\. Appuntamento creato\nPaziente: Giulia Simondi/);
+});
+
 test('"medio" autonomy keeps the signed summary + confirmation', async () => {
   autonomia = 'medio';
   const out = await ask('Sposta Mario Test a dopodomani alle 10');

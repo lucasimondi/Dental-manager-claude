@@ -1,3 +1,13 @@
+# Current task — POL-AI agenda: "Fissa appuntamento Giulia simondi venerdì 16 ore 17" (2026-10-10)
+- OWNER: CLAUDE, branch `claude/whatsapp-automation-status-d2ng12`, da `master@8234480`. Segnalazione del PO con screenshot: Poliedron ha risposto "Per quale paziente? Che tipo di appuntamento devo inserire?".
+- CAUSE (`poliedron-core.js`, riconoscimento senza modello): (1) dopo "appuntamento" il nome era accettato solo se preceduto da "per/a/al/alla/paziente"; (2) senza tipo detto chiedeva sempre il tipo, mentre la regola del prompt del modello è "se non dice il tipo usa 'Visita'".
+- COSA: nome anche subito dopo "appuntamento" (mai una parola di giorno, ora o tipo di visita); tipo non detto → "Visita"; "di igiene" riconosciuto come tipo. Il paziente resta obbligatorio e mai indovinato (omonimi → domanda).
+- NESSUNA modifica a database, RLS, migrazioni, app.
+- VALIDATION: `npm test` 1102/1102 (nuovo test sull'handler reale con la frase del PO: crea l'appuntamento senza chiamare il modello; test del parser per giorni/ore/tipi mai presi come paziente; test che fissavano "tipo obbligatorio" aggiornati alla regola "Visita"); senza la correzione 6 test falliscono. `npm run build` OK.
+- RILASCIO: deploy `agente-assistente` (tutti i file, `verify_jwt=true`) + merge, solo su "Mergia".
+
+---
+
 # Current task — POL-WA-003e (WhatsApp automatico in Coexistence: chiusura lacune prima del primo collegamento) (2026-10-08)
 - OWNER: CLAUDE, branch `claude/whatsapp-automation-status-d2ng12`, da `master@667fccd`. PO: "Si prepara correzioni" dopo la verifica dello stato.
 - STATO VERIFICATO IN PRODUZIONE (sola lettura): `whatsapp-webhook` v10 = repo (salvo la vecchia copia di `agendaSlots.js`); cron `whatsapp-promemoria` attivo; `whatsapp_config` vuota, nessuno studio con `whatsapp_automatico`, 0 messaggi/conversazioni/promemoria, 0 pazienti con consenso; Vercel senza variabili Meta (`VITE_META_APP_ID`, `VITE_META_WHATSAPP_CONFIG_ID`, `META_APP_ID`, `META_APP_SECRET`, `SUPABASE_ANON_KEY`). Secret WhatsApp su Supabase non verificabili da qui.

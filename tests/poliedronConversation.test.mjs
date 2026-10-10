@@ -6,9 +6,10 @@ test('conversation fills missing appointment slots without repeating the command
  const state=deriveConversationState(messages);const p=completeConversationalTurn('alle 15, igiene',state);
  assert.equal(p.intent,'APPOINTMENT_CREATE');assert.equal(p.entities.patient_query,'mario rossi');assert.equal(p.entities.time,'15:00');assert.equal(p.entities.tipo,'igiene');assert.deepEqual(p.missing,[]);
 });
-test('conversation keeps asking only for fields still missing',()=>{
+test('conversation keeps asking only for fields still missing; an unsaid visit type is "Visita"',()=>{
  const state=deriveConversationState([{role:'user',content:'Fissa un appuntamento per Mario Rossi domani'}]);
- const p=completeConversationalTurn('alle 15',state);assert.deepEqual(p.missing,['type']);
+ assert.deepEqual(state.pending.missing,['time']);
+ const p=completeConversationalTurn('alle 15',state);assert.deepEqual(p.missing,[]);assert.equal(p.entities.tipo,'Visita');
 });
 test('conversation does not invent patient identity from a follow-up',()=>{
  const state=deriveConversationState([{role:'user',content:'Crea appuntamento domani ore 15 per igiene'}]);
