@@ -129,7 +129,7 @@ test('medio autonomy keeps the summary + confirmation before any write', async (
 
 test('new patient: duplicate name is flagged in the summary, never silently created', async () => {
   script.push(use('cerca_pazienti', { query: 'Mario Rossi' }), use('crea_paziente', { nome: ' Mario ', cognome: 'Rossi', email: 'mario@example.test' }));
-  const preview = await request({ messages: [{ role: 'user', content: 'Crea il paziente Mario Rossi' }] });
+  const preview = await request({ messages: [{ role: 'user', content: 'Registra in anagrafica Mario Rossi' }] });
   assert.match(preview.needsConfirmation.summary, /Nuovo paziente\nMario Rossi/);
   assert.match(preview.needsConfirmation.summary, /c'è già un paziente Mario Rossi/);
   assert.match(preview.text, /Vuoi crearlo comunque\?/);

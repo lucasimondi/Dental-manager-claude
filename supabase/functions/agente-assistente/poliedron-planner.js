@@ -9,6 +9,8 @@ export function planPoliedron(parsed){
     KPI_READ:[['READ_KPI','read']],
     APPOINTMENT_CREATE:[['SEARCH_PATIENT','read'],['RESOLVE_PATIENT','read'],['CHECK_AVAILABILITY','read'],['PREPARE_APPOINTMENT','prepare'],['CONFIRM','confirm'],['WRITE_APPOINTMENT','write'],['VERIFY_WRITE','verify']],
     APPOINTMENT_MOVE:[['RESOLVE_APPOINTMENT','read'],['CHECK_AVAILABILITY','read'],['PREPARE_MOVE','prepare'],['CONFIRM','confirm'],['WRITE_MOVE','write'],['VERIFY_WRITE','verify']],
+    // Core actions (poliedron-core-actions.js): prepared by the domain module, then written.
+    ...Object.fromEntries(['APPOINTMENT_UPDATE','AGENDA_BLOCK','PATIENT_NOTE','PATIENT_CONTACT','PATIENT_CREATE','RECALL_CREATE','PAYMENT_CREATE'].map((i)=>[i,[['PREPARE','prepare'],['WRITE','write']]])),
     APPOINTMENT_DELETE:[['RESOLVE_APPOINTMENT','read'],['PREPARE_CANCEL','prepare'],['CONFIRM','confirm'],['WRITE_CANCEL','write'],['VERIFY_WRITE','verify']],
   };
   const steps=(plans[parsed.intent]||[]).map(([action,kind])=>({action,kind}));

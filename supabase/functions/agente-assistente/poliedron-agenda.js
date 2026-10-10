@@ -5,10 +5,14 @@ const WEEKDAY_STEMS = ['domenica', 'luned', 'marted', 'mercoled', 'gioved', 'ven
 const MONTHS = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
 const WEEKDAY = 'domenica|luned[iì]|marted[iì]|mercoled[iì]|gioved[iì]|venerd[iì]|sabato';
 const MONTH = MONTHS.join('|');
+export const MONTH_NAMES = MONTHS;
 /** Words that start a day mention: used as stop-words when reading a patient name. */
 export const DAY_WORDS = `oggi|domani|dopodomani|${WEEKDAY}`;
 const DAY_RE = new RegExp(`\\b(?:(oggi|dopodomani|domani)|(${WEEKDAY})(?:\\s+(\\d{1,2})(?:\\s+(${MONTH}))?)?|(\\d{1,2})\\s*[/-]\\s*(\\d{1,2})(?:\\s*[/-]\\s*(\\d{2,4}))?|(?:il\\s+)?(\\d{1,2})\\s+(${MONTH})(?:\\s+(\\d{4}))?|il\\s+(\\d{1,2})(?![\\d:./]))(?![\\wà-ÿ])`, 'g');
-const TIME_RE = /\b(alle|ore|alle ore|dalle|delle)\s*(\d{1,2})(?:[.:](\d{2})|\s+e\s+(mezza|mezzo|un quarto|trenta|quindici|quarantacinque))?(?:\s+(?:del|di)\s+(pomeriggio|sera))?\b/g;
+// "alle 14:30", "14.30", "14,30", "1430", "930", "14 e 30", "14 e mezza", "3 del pomeriggio".
+const TIME_RE = /\b(alle|ore|alle ore|dalle|delle)\s*(\d{1,2})(?:[.:,](\d{2})|(\d{2})(?!\d)|\s+e\s+(\d{2}|mezza|mezzo|un quarto|trenta|quindici|quarantacinque))?(?:\s+(?:del|di)\s+(pomeriggio|sera))?\b/g;
+// A time cue ("alle", "ore"…) followed by digits: every one must be read, or the request is unclear.
+const TIME_CUE_RE = /\b(?:alle|ore|dalle|delle)\s*\d/g;
 const pad = (n) => String(n).padStart(2, '0');
 
 function dayEntity(m) {
@@ -24,8 +28,9 @@ function dayEntity(m) {
 
 function timeEntity(m) {
   let h = Number(m[2]);
-  const min = m[3] != null ? Number(m[3]) : { mezza: 30, mezzo: 30, trenta: 30, 'un quarto': 15, quindici: 15, quarantacinque: 45 }[m[4]] ?? 0;
-  if (m[5] && h >= 1 && h < 12) h += 12;
+  const words = { mezza: 30, mezzo: 30, trenta: 30, 'un quarto': 15, quindici: 15, quarantacinque: 45 };
+  const min = m[3] != null ? Number(m[3]) : m[4] != null ? Number(m[4]) : m[5] != null ? (/^\d+$/.test(m[5]) ? Number(m[5]) : words[m[5]]) : 0;
+  if (m[6] && h >= 1 && h < 12) h += 12;
   if (h > 23 || min > 59) return null;
   return `${pad(h)}:${pad(min)}`;
 }
@@ -44,6 +49,15 @@ export function agendaMentions(q = '') {
 export function parseDay(q = '') {
   const day = agendaMentions(q).find((m) => m.kind === 'day');
   return day ? { ...day.value, confidence: 1 } : null;
+}
+
+/**
+ * True when the text has a time the parser could not read ("alle 25", "ore
+ * 14:75"): the caller must ask instead of keeping the old time or guessing.
+ */
+export function hasUnreadTime(q = '') {
+  const cues = (q.match(TIME_CUE_RE) || []).length;
+  return cues > agendaMentions(q).filter((m) => m.kind === 'time').length;
 }
 
 export function parseTime(q = '') {
@@ -85,7 +99,7 @@ const OTHER_DOMAIN_RE = /\b(?:pagament\w*|incass\w*|pian[oi]|preventiv\w*|richia
 /** Requests about payments, plans, recalls, blocks…: not a plain appointment command. */
 export const isOtherDomain = (q = '') => OTHER_DOMAIN_RE.test(q);
 const NOUN_RE = /\b(?:l'|un\s+|il\s+)?(?:appuntament[oi]|prenotazion[ei])\b/g;
-const NAME_STOP = new Set(['di', 'del', 'dello', 'della', 'da', 'dal', 'dalla', 'a', 'al', 'alla', 'ad', 'per', 'in', 'con', 'e', 'che', 'alle', 'ore', 'dalle', 'delle', 'agenda', 'giorno', 'paziente', 'sig', 'signor', 'signora', 'il', 'lo', 'la', 'un', 'una', 'mio', 'suo', 'tutto', 'tutti']);
+const NAME_STOP = new Set(['confermare', 'confermato', 'confermata', 'come', 'minuti', 'igiene', 'controllo', 'visita', 'di', 'del', 'dello', 'della', 'da', 'dal', 'dalla', 'a', 'al', 'alla', 'ad', 'per', 'in', 'con', 'e', 'che', 'alle', 'ore', 'dalle', 'delle', 'agenda', 'giorno', 'paziente', 'sig', 'signor', 'signora', 'il', 'lo', 'la', 'un', 'una', 'mio', 'suo', 'tutto', 'tutti']);
 const LEAD_RE = /^(?:(?:l'|il|lo|la|un|una|gli|le)\s+)?(?:(?:di|a|al|alla|per|del|della|con|da|dal|dalla)\s+)?(?:(?:il|la)\s+)?(?:(?:paziente|sig\.?|signor[ae]?)\s+)?/;
 const SOURCE_DAY_PREP = /(?:^|\s)(?:di|del|dello|da|dal|dall')\s*$/;
 const TARGET_DAY_PREP = /(?:^|\s)(?:a|al|ad|per|in|verso|a giorno)\s*$/;
@@ -111,6 +125,15 @@ function patientFrom(q, verbEnd, mentions) {
     if (name) return name;
   }
   return null;
+}
+
+/** Which appointment a sentence names: patient and/or slot (every day/time mention is the current slot). */
+export function identifyAppointment(q, verbEnd = 0) {
+  const mentions = agendaMentions(q);
+  const from = merge(mentions);
+  if (!from) return null;
+  const patient = patientFrom(q, verbEnd, mentions);
+  return { ...(patient ? { patient_query: patient } : {}), from };
 }
 
 const merge = (items) => {

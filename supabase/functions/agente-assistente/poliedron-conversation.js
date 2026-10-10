@@ -2,6 +2,8 @@ import { understandPoliedron, parseItalianDay, parseItalianTime } from './polied
 import { normalizeItalianOperational } from './poliedron-language.js';
 
 const TTL_MESSAGES=6;
+// Pending requests a short reply ("alle 10", "giovedì", "per igiene") can complete.
+const FILLABLE=new Set(['APPOINTMENT_CREATE','APPOINTMENT_MOVE','AGENDA_AVAILABILITY','AGENDA_READ']);
 const TYPES=['igiene','controllo','visita','devitalizzazione','estrazione','implantologia','ortodonzia'];
 const typeFrom=(q)=>TYPES.find(x=>new RegExp('\\b'+x+'\\b','i').test(q))||null;
 
@@ -19,12 +21,14 @@ export function deriveConversationState(messages=[]){
 export function completeConversationalTurn(text='',state={}){
  const direct=understandPoliedron(text);
  if(direct.intent!=='UNKNOWN')return {...direct,conversation_completed:false};
- const pending=state.pending;if(!pending)return direct;
+ const pending=state.pending;if(!pending||!FILLABLE.has(pending.intent))return direct;
  const q=normalizeItalianOperational(text);const entities={...pending.entities};
  const day=parseItalianDay(q);const time=parseItalianTime(q);const tipo=typeFrom(q);
+ // A reply that adds nothing ("ok", an unrelated question) is not an answer to the pending question.
+ if(!day&&!time&&!tipo)return direct;
  if(day)Object.assign(entities,day);if(time)Object.assign(entities,time);if(tipo)entities.tipo=tipo;
  let missing=[...pending.missing];
- if(day)missing=missing.filter(x=>x!=='day');if(time)missing=missing.filter(x=>x!=='time');if(tipo)missing=missing.filter(x=>x!=='type');if(day||time)missing=missing.filter(x=>x!=='target');
+ if(day)missing=missing.filter(x=>x!=='day');if(time)missing=missing.filter(x=>x!=='time'&&x!=='time_unclear');if(tipo)missing=missing.filter(x=>x!=='type');if(day||time)missing=missing.filter(x=>x!=='target');
  // Never infer a patient from pronouns or free text here: identity resolution stays authoritative.
  return {intent:pending.intent,confidence:.93,entities,missing,conversation_completed:true};
 }

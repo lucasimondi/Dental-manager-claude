@@ -1,10 +1,33 @@
 # Current task — POL-AI agenda: "Fissa appuntamento Giulia simondi venerdì 16 ore 17" (2026-10-10)
-- OWNER: CLAUDE, branch `claude/whatsapp-automation-status-d2ng12`, da `master@8234480`. Segnalazione del PO con screenshot: Poliedron ha risposto "Per quale paziente? Che tipo di appuntamento devo inserire?".
+- OWNER: CLAUDE, branch `claude/whatsapp-automation-status-d2ng12`, da `master@8234480`, poi allineato a `master@5b58f67` (#166, conflitto in `poliedron-core.js` risolto applicando la regola "Visita" anche alle nuove righe di #166). Segnalazione del PO con screenshot: Poliedron ha risposto "Per quale paziente? Che tipo di appuntamento devo inserire?".
 - CAUSE (`poliedron-core.js`, riconoscimento senza modello): (1) dopo "appuntamento" il nome era accettato solo se preceduto da "per/a/al/alla/paziente"; (2) senza tipo detto chiedeva sempre il tipo, mentre la regola del prompt del modello è "se non dice il tipo usa 'Visita'".
 - COSA: nome anche subito dopo "appuntamento" (mai una parola di giorno, ora o tipo di visita); tipo non detto → "Visita"; "di igiene" riconosciuto come tipo. Il paziente resta obbligatorio e mai indovinato (omonimi → domanda).
 - NESSUNA modifica a database, RLS, migrazioni, app.
 - VALIDATION: `npm test` 1102/1102 (nuovo test sull'handler reale con la frase del PO: crea l'appuntamento senza chiamare il modello; test del parser per giorni/ore/tipi mai presi come paziente; test che fissavano "tipo obbligatorio" aggiornati alla regola "Visita"); senza la correzione 6 test falliscono. `npm run build` OK.
 - RILASCIO: deploy `agente-assistente` (tutti i file, `verify_jwt=true`) + merge, solo su "Mergia".
+
+---
+
+# Current task — POL-AI Core actions: pagamenti, scheda paziente, richiami, blocchi/ferie, agenda avanzata (2026-10-08)
+- OWNER: CLAUDE, su istruzione diretta del Product Owner ("Ok questo funziona, lavoriamo su altre azioni?" → scelte tutte e quattro: Agenda avanzata, Blocchi e ferie, Scheda paziente, Pagamenti).
+- BRANCH: `claude/poliedron-agenda-actions-kz6mmk`, ripartito da `master@667fccd` (PR #164 mergiata, `agente-assistente` v41 in produzione).
+- COSA (senza modello, stessi moduli di dominio degli strumenti, stessa politica: chiaro → eseguito e registrato in Attività; doppione/conflitto o modalità "medio" → riepilogo firmato da confermare; ambiguo → domanda; paziente non trovato o frase non chiara → decide il modello):
+  - Pagamenti: "Mario Rossi ha pagato 150 euro con carta", "registra un pagamento di 80 € in contanti per Rossi", "…ieri", bancomat → POS; metodo non detto → Contanti (scritto nel riepilogo). Più piani aperti → chiede quale; pagamento uguale nello stesso giorno → conferma.
+  - Scheda paziente: nota ("Aggiungi una nota a Rossi: …", testo conservato com'è), telefono/email ("Il telefono di Rossi è …", "cambia l'email di Rossi in …"), nuovo paziente ("Nuovo paziente Anna Bianchi 333…": solo nome + cognome, con 3 parole decide il modello; omonimo → conferma), richiamo ("Richiamo per Rossi tra 6 mesi per controllo", "fra due settimane", "il 12/03").
+  - Blocchi e ferie: "Ferie dal 10 al 15 agosto", "blocca venerdì pomeriggio" (pomeriggio = 14:00–chiusura, mattina = apertura–13:00 dagli orari dello studio), "blocca domani dalle 14 alle 16 per corso", "chiudi l'agenda lunedì", "chiamata col laboratorio domani alle 12" (30 min). Se nel periodo ci sono appuntamenti, li elenca e chiede conferma (restano in agenda).
+  - Agenda avanzata: "allunga l'appuntamento di Rossi di domani a 60 minuti", "cambia l'appuntamento di Rossi in controllo", "conferma l'appuntamento di Rossi", "segna da confermare l'appuntamento di domani alle 15", "allungalo/confermalo" (contesto firmato); "trova un posto per Rossi giovedì" e "fissa Rossi giovedì" senza ora → orari liberi + "A che ora lo fisso?", la risposta "alle 10 per controllo" lo fissa; "orari liberi giovedì" / "ho spazio domani?" → elenco orari.
+  - BUG segnalato dal PO (produzione v41): "Sposta appuntamento stivi Pajo da oggi a martedì alle 1430" → spostato a martedì ma alle 15:15 (l'ora vecchia). Causa: "1430" senza separatore non era letto come orario e, senza orario di destinazione, lo spostamento manteneva quello di partenza. Corretto: letti "1430", "930", "14,30", "14 e 30"; se dopo "alle/ore" c'è un orario che non si riesce a leggere ("alle 25") Poliedron chiede "Non ho capito l'orario…" e non scrive nulla; la risposta "alle 14:30" completa la richiesta. L'appuntamento di Stivi Pajo resta a martedì 13/10 alle 15:15 finché il PO non lo corregge (nessuna modifica fatta da qui ai dati di produzione).
+  - Una risposta che non aggiunge niente ("ok grazie") dopo una domanda di Poliedron non viene più presa come risposta (prima la domanda si ripeteva).
+  - App: instradate al server anche "cambia l'email di…", "chiudi l'agenda…", "chiamata col…", "allungalo/confermalo", "trova un posto…", "orari liberi…".
+- NESSUNA modifica a database, RLS, migrazioni.
+- TEST CAMBIATI DI PROPOSITO: 4 test del percorso del modello usavano frasi ora gestite dal Core ("X ha pagato…", "Crea il paziente…"): frasi cambiate ("Incassa…", "Registra in anagrafica…") per continuare a coprire il modello; 3 test aggiornati al nuovo comportamento ("ferie domani" ora blocca l'agenda; "Ho spazio domani?" elenca gli orari; "va bene quello" va al modello, mai eseguibile senza paziente).
+- VALIDATION: `npm test` 1108/1108 (nuovo `tests/poliedronCoreActions.test.mjs`, 11 test sull'handler reale; +1 test con la frase reale "alle 1430" e orario illeggibile); controprove: senza la conferma su doppioni/conflitti falliscono 2 test; senza il controllo sull'orario illeggibile fallisce il test nuovo. `npm run build` OK.
+- RILASCIO: deploy `agente-assistente` (22 file: i 20 di oggi + `poliedron-actions.js`, `poliedron-core-actions.js`) + merge, solo su "Mergia".
+- RILASCIO ESEGUITO su "Mergia tutto insieme" (2026-10-10): produzione v41 verificata identica a `master@667fccd`; deploy `agente-assistente` **v42** (`verify_jwt=true`, 22 file) riletta: **identica byte per byte** al branch; avvio verificato via `pg_net` (chiave anon → 401 "Sessione non valida" dal codice). Rollback: ridistribuire i file di `master@667fccd` (= v41) e revert del merge.
+- EXACT NEXT ACTION: prova reale del PO in Chat; correggere a mano lo spostamento di Stivi Pajo ("Sposta Stivi Pajo a martedì alle 14:30" o Ripristina in Attività).
+
+---
+
 
 ---
 
