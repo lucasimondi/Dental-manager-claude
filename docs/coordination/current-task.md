@@ -1,3 +1,13 @@
+# Current task — POL-AI agenda: "Fissa appuntamento Giulia simondi venerdì 16 ore 17" (2026-10-10)
+- OWNER: CLAUDE, branch `claude/whatsapp-automation-status-d2ng12`, da `master@8234480`, poi allineato a `master@5b58f67` (#166, conflitto in `poliedron-core.js` risolto applicando la regola "Visita" anche alle nuove righe di #166). Segnalazione del PO con screenshot: Poliedron ha risposto "Per quale paziente? Che tipo di appuntamento devo inserire?".
+- CAUSE (`poliedron-core.js`, riconoscimento senza modello): (1) dopo "appuntamento" il nome era accettato solo se preceduto da "per/a/al/alla/paziente"; (2) senza tipo detto chiedeva sempre il tipo, mentre la regola del prompt del modello è "se non dice il tipo usa 'Visita'".
+- COSA: nome anche subito dopo "appuntamento" (mai una parola di giorno, ora o tipo di visita); tipo non detto → "Visita"; "di igiene" riconosciuto come tipo. Il paziente resta obbligatorio e mai indovinato (omonimi → domanda).
+- NESSUNA modifica a database, RLS, migrazioni, app.
+- VALIDATION: `npm test` 1102/1102 (nuovo test sull'handler reale con la frase del PO: crea l'appuntamento senza chiamare il modello; test del parser per giorni/ore/tipi mai presi come paziente; test che fissavano "tipo obbligatorio" aggiornati alla regola "Visita"); senza la correzione 6 test falliscono. `npm run build` OK.
+- RILASCIO: deploy `agente-assistente` (tutti i file, `verify_jwt=true`) + merge, solo su "Mergia".
+
+---
+
 # Current task — POL-AI Core actions: pagamenti, scheda paziente, richiami, blocchi/ferie, agenda avanzata (2026-10-08)
 - OWNER: CLAUDE, su istruzione diretta del Product Owner ("Ok questo funziona, lavoriamo su altre azioni?" → scelte tutte e quattro: Agenda avanzata, Blocchi e ferie, Scheda paziente, Pagamenti).
 - BRANCH: `claude/poliedron-agenda-actions-kz6mmk`, ripartito da `master@667fccd` (PR #164 mergiata, `agente-assistente` v41 in produzione).
@@ -15,6 +25,9 @@
 - RILASCIO: deploy `agente-assistente` (22 file: i 20 di oggi + `poliedron-actions.js`, `poliedron-core-actions.js`) + merge, solo su "Mergia".
 - RILASCIO ESEGUITO su "Mergia tutto insieme" (2026-10-10): produzione v41 verificata identica a `master@667fccd`; deploy `agente-assistente` **v42** (`verify_jwt=true`, 22 file) riletta: **identica byte per byte** al branch; avvio verificato via `pg_net` (chiave anon → 401 "Sessione non valida" dal codice). Rollback: ridistribuire i file di `master@667fccd` (= v41) e revert del merge.
 - EXACT NEXT ACTION: prova reale del PO in Chat; correggere a mano lo spostamento di Stivi Pajo ("Sposta Stivi Pajo a martedì alle 14:30" o Ripristina in Attività).
+
+---
+
 
 ---
 
