@@ -5,6 +5,8 @@
 - NESSUNA modifica a database, RLS, migrazioni, app.
 - VALIDATION: `npm test` 1102/1102 (nuovo test sull'handler reale con la frase del PO: crea l'appuntamento senza chiamare il modello; test del parser per giorni/ore/tipi mai presi come paziente; test che fissavano "tipo obbligatorio" aggiornati alla regola "Visita"); senza la correzione 6 test falliscono. `npm run build` OK.
 - RILASCIO: deploy `agente-assistente` (tutti i file, `verify_jwt=true`) + merge, solo su "Mergia".
+- STATO RILASCIO (2026-10-10, "Mergia" del PO): PR #167 MERGIATA (`master@0f164c6`). Deploy di `agente-assistente` NON eseguito: lo strumento di deploy richiede tutti i 22 file (~240.000 caratteri) in una sola chiamata; due tentativi sono stati respinti dal server (entrypoint mancante / modulo mancante) senza pubblicare nulla. Produzione verificata invariata: **v42 = `master@5b58f67`** (senza la correzione).
+- EXACT NEXT ACTION: deploy di `agente-assistente` da `master@0f164c6` con la Supabase CLI (`supabase functions deploy agente-assistente --project-ref idklxdqebfceplrualgh`, `verify_jwt` invariato) o con lo strumento MCP da una sessione che invii i 22 file per intero; poi verifica byte per byte e prova del PO con la frase dello screenshot.
 
 ---
 
