@@ -112,7 +112,12 @@ const PAID_RE = /\b(?:ha|hanno)\s+(?:pagato|versato|saldato|lasciato)\b[^?]*\d/i
 const AGENDA_COMMAND_RE = /\b(?:fissa|metti|mettimi|sposta|anticipa|posticipa|rimanda|cancella|elimina|annulla|togli|disdici)\b.*(?:\b(?:oggi|domani|dopodomani|sabato|domenica)\b|\b(?:luned|marted|mercoled|gioved|venerd)[iì](?![a-zà-ÿ])|\b(?:alle|ore)\s+\d)/i;
 // "spostalo a venerdì", "cancellala": the appointment just discussed (the
 // server resolves it from its signed context, or asks).
-const AGENDA_REFERENCE_RE = /\b(?:spostal|anticipal|posticipal|rimandal|cancellal|annullal|toglil|eliminal|disdicil)[oa]\b/i;
+const AGENDA_REFERENCE_RE = /\b(?:spostal|anticipal|posticipal|rimandal|cancellal|annullal|toglil|eliminal|disdicil|allungal|accorcial|confermal|segnal)[oa]\b/i;
+// "Trova un posto per Rossi giovedì", "orari liberi venerdì", "chiudi l'agenda
+// lunedì", "chiamata col laboratorio domani alle 12": agenda, not a search.
+const AGENDA_FREE_RE = /\b(?:posto|posti|spazio|buco|buchi|orari?\s+liber[oi])\b.*\b(?:oggi|domani|dopodomani|sabato|domenica|(?:luned|marted|mercoled|gioved|venerd)[iì](?![a-zà-ÿ])|per\s+[a-zà-ÿ])|^(?:trova|trovami|cerca|cercami|dammi|proponi)\s+(?:un\s+)?(?:posto|spazio|buco|orario)\b|^(?:chiudi|blocca)\s+(?:l'agenda|agenda|lo studio)\b|^(?:segna\s+|metti\s+)?(?:una\s+)?(?:chiamata|telefonata|riunione)\s+(?:con|col|coi|alla|al|allo)\b/i;
+// "Cambia l'email di Rossi in …": patient data, not a search.
+const PATIENT_FIELD_CHANGE_RE = /^(?:cambia|aggiorna|modifica|imposta)\s+(?:il|l'|la)?\s*(?:telefono|cellulare|numero|e-?mail|mail)\s+(?:di|del|della)\b/i;
 const AUTONOMY_RANK = { consulente: 0, medio: 1, su_richiesta: 2, completo: 3 };
 
 // Mirrors the server gate in agente-assistente: premium plan and an autonomy
@@ -195,6 +200,7 @@ export async function processQuery({
   const agendaRequest = /appuntament|prenot|sposta.*visita|annulla.*visita/i.test(q)
     || (AGENDA_COMMAND_RE.test(q) && !MODULE_ONLY_RE.test(q))
     || AGENDA_REFERENCE_RE.test(q)
+    || AGENDA_FREE_RE.test(q)
     || conversationHistory.slice(-2).some(m => /appuntament|prenot/i.test(m.content || ''));
   const preliminaryIntent = classifyIntent(q, { navigationIndex: sources.navigationIndex || [] });
   // POL-AI-010: when the studio's agent may write, patient and agenda commands
@@ -202,7 +208,7 @@ export async function processQuery({
   // instead of opening a form. Prescriptions, plans and payments keep their
   // dedicated workflows until their own steps.
   const agentWriteRequest = agentCanWrite(context) && !MODULE_ONLY_RE.test(q) && (
-    [INTENT.CREATE, INTENT.UPDATE].includes(preliminaryIntent.type) || AGENT_ACTION_RE.test(q) || PATIENT_DATA_RE.test(q)
+    [INTENT.CREATE, INTENT.UPDATE].includes(preliminaryIntent.type) || AGENT_ACTION_RE.test(q) || PATIENT_DATA_RE.test(q) || PATIENT_FIELD_CHANGE_RE.test(q)
   );
   // POL-AI-010 passo 4a: with the agent allowed to write, a patient payment
   // is prepared by Poliedron and registered only after the user confirms the

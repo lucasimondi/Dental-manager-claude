@@ -20,6 +20,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { signProposal, verifyProposal, claimProposal, studioToday, signContext, verifyContext } from "./confirmation.js";
 import { AGENDA_WRITES, prepareAgenda, executeAgenda, agendaAvailability, appointmentsForChange } from "./agenda.js";
 import { resolveDay, hasDay } from "./poliedron-agenda.js";
+import { runCoreAction, CORE_ACTION_TOOLS } from "./poliedron-core-actions.js";
 import { PAZIENTI_WRITES, PAZIENTI_TOOLS, preparePazienti, executePazienti, schedaPaziente } from "./pazienti.js";
 import { PAGAMENTI_WRITES, PAGAMENTI_TOOLS, preparePagamenti, executePagamenti } from "./pagamenti.js";
 import { PIANI_WRITES, PIANI_TOOLS, preparePiani, executePiani } from "./piani.js";
@@ -1427,7 +1428,7 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
         const found = await eseguiTool(supabase, 'cerca_pazienti', { query }, studioId, user.id, azioniPersonalizzate);
         const patients = found?.risultati || [];
         if (found?.error) return { reply: coreReply({ text: 'Non riesco a cercare il paziente adesso.', uncertain: true }) };
-        if (patients.length === 0) return { reply: coreReply({ text: `Non trovo il paziente “${query}”. Vuoi prima crearlo?` }) };
+        if (patients.length === 0) return { notFound: true, reply: coreReply({ text: `Non trovo il paziente “${query}”. Vuoi prima crearlo?` }) };
         if (patients.length > 1) return { reply: coreReply({ text: 'Ho trovato più pazienti con questo nome. Dimmi quale intendi: ' + patients.map((p) => `${p.nome} ${p.cognome}`).join(', '), data: { risultati: patients } }) };
         observed.patients.add(patients[0].id);
         return { patient: patients[0] };
@@ -1453,11 +1454,34 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
         if (input.data === appt.data && input.ora === String(appt.ora).slice(0, 5)) return coreReply({ text: 'L’appuntamento è già a quell’ora: non l’ho spostato.' });
         return await agendaWrite(refTool, input, input.data);
       }
-      if (decision.action === 'CLARIFY' && ['APPOINTMENT_CREATE', 'APPOINTMENT_MOVE', 'APPOINTMENT_DELETE'].includes(parsed.intent)) {
+      const coreTool = CORE_ACTION_TOOLS[parsed.intent];
+      if (decision.action === 'CLARIFY' && (['APPOINTMENT_CREATE', 'APPOINTMENT_MOVE', 'APPOINTMENT_DELETE'].includes(parsed.intent) || (coreTool && parsed.intent !== 'PATIENT_CREATE'))) {
         const labels = parsed.intent === 'APPOINTMENT_CREATE'
           ? { patient: 'Per quale paziente?', day: 'Per quale giorno?', time: 'A che ora?', type: 'Che tipo di appuntamento devo inserire?' }
-          : { patient: 'Di quale paziente è l’appuntamento?', target: 'A quando lo sposto? Dimmi giorno e/o ora.', unclear: 'Non ho capito quale appuntamento e quando: dimmelo con giorno e ora (es. “sposta Mario Rossi da domani alle 15 a venerdì alle 10”).' };
-        return coreReply({ text: decision.missing.map((x) => labels[x] || `Mi manca: ${x}`).join(' ') });
+          : parsed.intent === 'AGENDA_BLOCK'
+            ? { day: 'Per quale giorno blocco l’agenda?', time: 'A che ora?', end: 'Fino a che ora?' }
+            : { patient: 'Di quale paziente è l’appuntamento?', target: 'A quando lo sposto? Dimmi giorno e/o ora.', unclear: 'Non ho capito quale appuntamento e quando: dimmelo con giorno e ora (es. “sposta Mario Rossi da domani alle 15 a venerdì alle 10”).' };
+        labels.time_unclear = 'Non ho capito l’orario: scrivilo per esempio “alle 14:30”.';
+        let text = decision.missing.includes('time_unclear') ? labels.time_unclear : decision.missing.map((x) => labels[x] || `Mi manca: ${x}`).join(' ');
+        // A booking with patient and day but no time: offer the free slots of that day.
+        const date = parsed.intent === 'APPOINTMENT_CREATE' && decision.missing.includes('time') && !decision.missing.includes('day') ? dayIso(parsed.entities) : null;
+        if (date) {
+          try {
+            const free = await agendaAvailability(supabase, { data: date, durata: 30 }, studioId);
+            text = (free.orari_liberi.length ? `Orari liberi ${fmtDay(date)}: ${free.orari_liberi.slice(0, 10).join(', ')}.` : `${fmtDay(date)} non ci sono orari liberi.`) + ' ' + text.replace('A che ora?', free.orari_liberi.length ? 'A che ora lo fisso?' : 'Vuoi un altro giorno?');
+          } catch { /* the plain question stays */ }
+        }
+        return coreReply({ text });
+      }
+      // Notes, contacts, new patients, recalls, payments, agenda blocks, appointment details.
+      if (decision.action === 'PREPARE_WRITE_CONFIRMATION' && coreTool && allowedNames.has(coreTool) && !looksCompound) {
+        const done = await runCoreAction(parsed, {
+          supabase, studioId, userId: user.id, observed, today: studioToday(), dayIso, fmtDay, findPatient, agendaWrite, contextFor,
+          context: safeConversationContext, confirmEach: confermaOgniScrittura, reply: coreReply,
+          sign: (proposal) => signProposal(proposal, SUPABASE_SERVICE_ROLE_KEY),
+          log: (proposal, result) => registraAttivita(supabase, proposal, result),
+        });
+        if (done) return done;
       }
       if (decision.action === 'PREPARE_WRITE_CONFIRMATION' && parsed.intent === 'APPOINTMENT_CREATE' && allowedNames.has('crea_appuntamento')) {
         const date = dayIso(parsed.entities);
@@ -1503,6 +1527,9 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
         if (!date) return coreReply({ text: 'Quel giorno non esiste o non corrisponde al giorno della settimana: dimmi la data esatta.' });
         try {
           const slots = await agendaAvailability(supabase, { data: date, durata: 30 }, studioId);
+          if (!parsed.entities.time) {
+            return json({ text: slots.orari_liberi.length ? `Orari liberi ${fmtDay(date)} (30 minuti): ${slots.orari_liberi.slice(0, 12).join(', ')}${slots.orari_liberi.length > 12 ? '…' : ''}.` : `${fmtDay(date)} non ci sono orari liberi.`, core_mode: true, core_version: '1.2', data: slots });
+          }
           const available = slots.orari_liberi.includes(parsed.entities.time);
           return json({ text: available ? `Sì, ${fmtDay(date)} alle ${parsed.entities.time} risulta libero per 30 minuti.` : `No, ${fmtDay(date)} alle ${parsed.entities.time} non risulta disponibile per 30 minuti.${slots.orari_liberi.length ? ` Orari liberi: ${slots.orari_liberi.slice(0, 8).join(', ')}.` : ''}`, core_mode: true, core_version: '1.2', data: slots });
         } catch (error) { return json({ text: 'Non riesco a verificare la disponibilità adesso.', uncertain: true, core_mode: true }); }

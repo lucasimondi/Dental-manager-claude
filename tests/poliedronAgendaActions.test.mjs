@@ -174,7 +174,7 @@ test('parser: source vs destination, weekdays, dates and other domains', () => {
   assert.equal(p('annulla il pagamento di domani'), null);
   assert.equal(p('cancella la nota di rossi di domani'), null);
   assert.equal(understandPoliedron('annulla appuntamento di Rossi').intent, 'APPOINTMENT_DELETE');
-  assert.equal(understandPoliedron('metti in agenda le ferie domani').intent, 'UNKNOWN');
+  assert.equal(understandPoliedron('metti in agenda le ferie domani').intent, 'AGENDA_BLOCK', 'holidays block the agenda, never become an appointment');
   // 2026-10-08 is a Thursday.
   assert.equal(resolveDay({ weekday: 4 }, '2026-10-08'), '2026-10-08');
   assert.equal(resolveDay({ weekday: 5 }, '2026-10-08'), '2026-10-09');
@@ -276,4 +276,23 @@ test('app: the gateway sends back the last signed context and drops it when abse
   assert.equal(bodies[2].conversation_context, undefined);
   const r = await processQuery({ query: 'Spostalo a venerdì alle 10', supabaseClient });
   assert.equal(r.intent, 'AGENDA');
+});
+
+test('times written without separators are read ("alle 1430"); an unreadable time asks, never keeps the old one', async () => {
+  // Real report: "Sposta appuntamento stivi Pajo da oggi a martedì alle 1430" kept 15:15.
+  const out = await ask('Sposta appuntamento Mario Test da domani a dopodomani alle 1430');
+  assert.equal(rpcCalls[0].args.p_after.ora, '14:30');
+  assert.equal(rpcCalls[0].args.p_after.data, D2);
+  assert.match(out.text, /^Fatto\./);
+  database.appointments = [appt(10, mario, D1, '09:00')];
+  rpcCalls = [];
+  const unclear = await ask('Sposta Mario Test a dopodomani alle 25');
+  assert.equal(unclear.text, 'Non ho capito l’orario: scrivilo per esempio “alle 14:30”.');
+  assert.equal(rpcCalls.length, 0);
+  const answer = await ask2([{ role: 'user', content: 'Sposta Mario Test a dopodomani alle 25' }, { role: 'assistant', content: unclear.text }, { role: 'user', content: 'alle 14:30' }]);
+  assert.equal(rpcCalls.length, 1);
+  assert.equal(rpcCalls[0].args.p_after.ora, '14:30');
+  assert.equal(rpcCalls[0].args.p_after.data, D2);
+  assert.match(answer.text, /^Fatto\./);
+  assert.equal(calls.length, 0);
 });
