@@ -13,7 +13,8 @@
 - TEST CAMBIATI DI PROPOSITO: 4 test del percorso del modello usavano frasi ora gestite dal Core ("X ha pagato…", "Crea il paziente…"): frasi cambiate ("Incassa…", "Registra in anagrafica…") per continuare a coprire il modello; 3 test aggiornati al nuovo comportamento ("ferie domani" ora blocca l'agenda; "Ho spazio domani?" elenca gli orari; "va bene quello" va al modello, mai eseguibile senza paziente).
 - VALIDATION: `npm test` 1108/1108 (nuovo `tests/poliedronCoreActions.test.mjs`, 11 test sull'handler reale; +1 test con la frase reale "alle 1430" e orario illeggibile); controprove: senza la conferma su doppioni/conflitti falliscono 2 test; senza il controllo sull'orario illeggibile fallisce il test nuovo. `npm run build` OK.
 - RILASCIO: deploy `agente-assistente` (22 file: i 20 di oggi + `poliedron-actions.js`, `poliedron-core-actions.js`) + merge, solo su "Mergia".
-- EXACT NEXT ACTION: "Mergia" → deploy v42 + verifica → merge → prova reale.
+- RILASCIO ESEGUITO su "Mergia tutto insieme" (2026-10-10): produzione v41 verificata identica a `master@667fccd`; deploy `agente-assistente` **v42** (`verify_jwt=true`, 22 file) riletta: **identica byte per byte** al branch; avvio verificato via `pg_net` (chiave anon → 401 "Sessione non valida" dal codice). Rollback: ridistribuire i file di `master@667fccd` (= v41) e revert del merge.
+- EXACT NEXT ACTION: prova reale del PO in Chat; correggere a mano lo spostamento di Stivi Pajo ("Sposta Stivi Pajo a martedì alle 14:30" o Ripristina in Attività).
 
 ---
 

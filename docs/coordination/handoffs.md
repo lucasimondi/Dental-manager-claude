@@ -7,7 +7,8 @@
 - Database: none. Security: stessi `prepare*` + RPC/insert con il login dell'utente; permessi per azione (`CORE_ACTION_TOOLS` ∩ `allowedNames`); "medio" conferma sempre; pagamenti con `classifyAction`.
 - Tests: 1107/1107; build OK; controprova eseguita.
 - Risks: parser deterministici e ancorati: frasi diverse vanno al modello. "Pomeriggio/mattina" usano orari fissi 13:00/14:00 + apertura/chiusura dello studio (mostrati nel riepilogo). Metodo di pagamento non detto = Contanti (come lo strumento).
-- Exact next action: "Mergia" → deploy v42 → merge → prova reale.
+- Release: PR #166; `agente-assistente` v42 deployata e verificata (22 file identici, avvio 401 "Sessione non valida"). Tests finali 1108/1108.
+- Exact next action: prova reale del PO in Chat.
 
 ## POL-AI agenda follow-ups — "spostalo"/"cancellalo" con contesto firmato (2026-10-08)
 
