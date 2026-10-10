@@ -34,7 +34,10 @@ non promozionali).
    - URL di callback: `https://dental-manager-git-master-acmeproduction.vercel.app/api/whatsapp-webhook`
      (se il prodotto ha un dominio personalizzato, usare quello con lo stesso percorso)
    - Token di verifica: lo stesso valore di `WHATSAPP_VERIFY_TOKEN`
-   - Dopo "Verifica e salva", sottoscrivere il campo **messages**.
+   - Dopo "Verifica e salva", sottoscrivere i campi **messages** e **smb_message_echoes**.
+     `smb_message_echoes` (Coexistence) avvisa quando lo staff scrive dal telefono con
+     WhatsApp Business: senza, l'assistente non si mette in pausa e risponde sopra lo staff.
+     `history` e `smb_app_state_sync` oggi non sono usati dal codice (si possono lasciare spenti).
 6. **Modelli**: WhatsApp Manager → Modelli di messaggio → Crea modello, con i testi qui sotto.
 7. **Tech Provider**: per collegare i numeri degli studi con Coexistence (sotto) l'App deve
    usare l'Embedded Signup di Meta: App → Aggiungi prodotto → *Facebook Login for Business*,
@@ -115,6 +118,12 @@ Meta setup required before enabling the button in production:
 5. Never put `META_APP_SECRET` or a permanent WhatsApp access token in a VITE_ variable.
 6. The callback exchanges Meta's one-time code server-side and writes WABA/Phone Number ID
    through Supabase using the signed-in user's JWT, so existing RLS remains the authority.
+
+After Meta returns the IDs, the callback calls `POST /{waba_id}/subscribed_apps` with
+the business token from the code exchange: without this subscription Meta delivers none
+of that number's webhooks. If Meta refuses, nothing is saved and the user retries.
+The app-level webhook fields `messages` and `smb_message_echoes` (step 5 above) must
+also be on.
 
 The signup UI requests `featureType: whatsapp_business_app_onboarding` and listens only
 to Meta origins for `WA_EMBEDDED_SIGNUP` session events. If Meta does not return both IDs,

@@ -18,6 +18,17 @@
 
 ---
 
+# Current task — POL-WA-003e (WhatsApp automatico in Coexistence: chiusura lacune prima del primo collegamento) (2026-10-08)
+- OWNER: CLAUDE, branch `claude/whatsapp-automation-status-d2ng12`, da `master@667fccd`. PO: "Si prepara correzioni" dopo la verifica dello stato.
+- STATO VERIFICATO IN PRODUZIONE (sola lettura): `whatsapp-webhook` v10 = repo (salvo la vecchia copia di `agendaSlots.js`); cron `whatsapp-promemoria` attivo; `whatsapp_config` vuota, nessuno studio con `whatsapp_automatico`, 0 messaggi/conversazioni/promemoria, 0 pazienti con consenso; Vercel senza variabili Meta (`VITE_META_APP_ID`, `VITE_META_WHATSAPP_CONFIG_ID`, `META_APP_ID`, `META_APP_SECRET`, `SUPABASE_ANON_KEY`). Secret WhatsApp su Supabase non verificabili da qui.
+- COSA: `api/whatsapp-embedded-signup.js` iscrive l'app al WABA dello studio (`POST /{waba_id}/subscribed_apps` con il token del business) prima di salvare il numero; se Meta rifiuta non salva nulla. Runbook: campi webhook `messages` + `smb_message_echoes` (pausa quando lo staff scrive dal telefono).
+- NESSUNA modifica a database, RLS, Edge Function, secret.
+- VALIDATION: nuovo `tests/whatsappEmbeddedSignup.test.mjs` (3 test; senza la correzione 2 falliscono); `npm test` 1099/1099, `npm run build` OK.
+- BLOCCATO DA (azioni del PO su Meta/credenziali): verifica azienda, Tech Provider + configurazione Embedded Signup Coexistence, approvazione modello `promemoria_appuntamento`, nuove credenziali su Vercel/Supabase (gate PO). PENDING_PO_DECISION consenso: per i promemoria automatici serve `consenso_whatsapp`.
+- EXACT NEXT ACTION: "Mergia" del PO (solo frontend/API Vercel, nessun deploy Supabase).
+
+---
+
 # Current task — POL-AI agenda follow-ups ("spostalo", "cancellalo" senza LLM) (2026-10-08)
 - OWNER: CLAUDE, su istruzione diretta del Product Owner ("Sì" alla proposta: far gestire a Poliedron "spostalo"/"cancellalo" ricordando in modo sicuro l'appuntamento appena discusso).
 - BRANCH: `claude/poliedron-agenda-actions-kz6mmk`, ripartito da `master@6844cfb` (PR #163 mergiata, `agente-assistente` v40 in produzione).
