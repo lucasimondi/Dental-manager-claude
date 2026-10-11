@@ -118,3 +118,10 @@ Deploy all files of this folder plus `../_shared/agendaSlots.js` with `verify_jw
 Order: migration `20261006120000_pol_ai_009_poliedron_memoria.sql` → this function → frontend.
 The attachment field is optional, so this version is backward compatible: deploy it
 **before** the frontend that sends `allegato` (the old version would ignore the file).
+
+## Deploy
+
+Automatic from GitHub (`.github/workflows/deploy-agente-assistente.yml`): every push to
+`master` that touches this folder or `../_shared/` runs the full test suite and then
+`supabase functions deploy agente-assistente` (needs the repository secret
+`SUPABASE_ACCESS_TOKEN`). It can also be started by hand from the Actions tab.

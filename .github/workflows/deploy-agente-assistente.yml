@@ -1,0 +1,50 @@
+name: Deploy agente-assistente
+
+# Publishes the Poliedron Edge Function (agente-assistente) from master with the
+# Supabase CLI. Runs after a merge that touches the function (merges happen only
+# on the Product Owner's "Mergia") or by hand from the Actions tab.
+# Needs the repository secret SUPABASE_ACCESS_TOKEN (Supabase personal access token).
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'supabase/functions/agente-assistente/**'
+      - 'supabase/functions/_shared/**'
+      - '.github/workflows/deploy-agente-assistente.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-agente-assistente
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJECT_REF: idklxdqebfceplrualgh
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      # Nothing reaches production unless the whole suite passes on this commit.
+      - name: Test
+        run: npm test
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Deploy
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then echo "Secret SUPABASE_ACCESS_TOKEN mancante"; exit 1; fi
+          # No supabase/config.toml: verify_jwt stays on, as in production.
+          supabase functions deploy agente-assistente --project-ref "$PROJECT_REF" --use-api

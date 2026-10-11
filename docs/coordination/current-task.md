@@ -1,3 +1,13 @@
+# Current task — Rilascio automatico di `agente-assistente` da GitHub (2026-10-11)
+- OWNER: CLAUDE, branch `claude/whatsapp-automation-status-d2ng12`, da `master@0f164c6`.
+- PERCHÉ: lo strumento MCP di deploy richiede tutti i 22 file (~240.000 caratteri) in un solo invio e non è più affidabile; la correzione "Fissa appuntamento Giulia simondi…" (#167) è mergiata ma non pubblicata (produzione v42 = `master@5b58f67`).
+- DECISIONE PO: ha creato il secret di repository `SUPABASE_ACCESS_TOKEN` (verbatim: "Secret fatta") dopo la proposta del rilascio automatico.
+- COSA: `.github/workflows/deploy-agente-assistente.yml`: su push a `master` che tocca `supabase/functions/agente-assistente/**`, `supabase/functions/_shared/**` o il workflow stesso, oppure a mano (workflow_dispatch): `npm ci`, `npm test`, poi `supabase functions deploy agente-assistente --project-ref idklxdqebfceplrualgh --use-api` (nessun `config.toml`: `verify_jwt` resta attivo come in produzione). Solo questa funzione; `whatsapp-webhook` (verify_jwt=false) resta manuale.
+- NESSUNA modifica a codice applicativo, database, RLS.
+- EXACT NEXT ACTION: "Mergia" → il merge avvia il workflow → verifica che la produzione sia identica al master (22 file) → prova del PO con la frase dello screenshot.
+
+---
+
 # Current task — POL-AI agenda: "Fissa appuntamento Giulia simondi venerdì 16 ore 17" (2026-10-10)
 - OWNER: CLAUDE, branch `claude/whatsapp-automation-status-d2ng12`, da `master@8234480`, poi allineato a `master@5b58f67` (#166, conflitto in `poliedron-core.js` risolto applicando la regola "Visita" anche alle nuove righe di #166). Segnalazione del PO con screenshot: Poliedron ha risposto "Per quale paziente? Che tipo di appuntamento devo inserire?".
 - CAUSE (`poliedron-core.js`, riconoscimento senza modello): (1) dopo "appuntamento" il nome era accettato solo se preceduto da "per/a/al/alla/paziente"; (2) senza tipo detto chiedeva sempre il tipo, mentre la regola del prompt del modello è "se non dice il tipo usa 'Visita'".
@@ -5,6 +15,8 @@
 - NESSUNA modifica a database, RLS, migrazioni, app.
 - VALIDATION: `npm test` 1102/1102 (nuovo test sull'handler reale con la frase del PO: crea l'appuntamento senza chiamare il modello; test del parser per giorni/ore/tipi mai presi come paziente; test che fissavano "tipo obbligatorio" aggiornati alla regola "Visita"); senza la correzione 6 test falliscono. `npm run build` OK.
 - RILASCIO: deploy `agente-assistente` (tutti i file, `verify_jwt=true`) + merge, solo su "Mergia".
+- STATO RILASCIO (2026-10-10, "Mergia" del PO): PR #167 MERGIATA (`master@0f164c6`). Deploy di `agente-assistente` NON eseguito: lo strumento di deploy richiede tutti i 22 file (~240.000 caratteri) in una sola chiamata; due tentativi sono stati respinti dal server (entrypoint mancante / modulo mancante) senza pubblicare nulla. Produzione verificata invariata: **v42 = `master@5b58f67`** (senza la correzione).
+- EXACT NEXT ACTION: deploy di `agente-assistente` da `master@0f164c6` con la Supabase CLI (`supabase functions deploy agente-assistente --project-ref idklxdqebfceplrualgh`, `verify_jwt` invariato) o con lo strumento MCP da una sessione che invii i 22 file per intero; poi verifica byte per byte e prova del PO con la frase dello screenshot.
 
 ---
 
