@@ -15,7 +15,7 @@
 - DECISIONE PO: ha creato il secret di repository `SUPABASE_ACCESS_TOKEN` (verbatim: "Secret fatta") dopo la proposta del rilascio automatico.
 - COSA: `.github/workflows/deploy-agente-assistente.yml`: su push a `master` che tocca `supabase/functions/agente-assistente/**`, `supabase/functions/_shared/**` o il workflow stesso, oppure a mano (workflow_dispatch): `npm ci`, `npm test`, poi `supabase functions deploy agente-assistente --project-ref idklxdqebfceplrualgh --use-api` (nessun `config.toml`: `verify_jwt` resta attivo come in produzione). Solo questa funzione; `whatsapp-webhook` (verify_jwt=false) resta manuale.
 - NESSUNA modifica a codice applicativo, database, RLS.
-- EXACT NEXT ACTION: "Mergia" → il merge avvia il workflow → verifica che la produzione sia identica al master (22 file) → prova del PO con la frase dello screenshot.
+- RILASCIO ESEGUITO (2026-10-11): PR #168 mergiata (`master@53aaf11`); workflow "Deploy agente-assistente" run #1 riuscito; produzione **v43** = 22 file identici byte per byte a `master@53aaf11`, `verify_jwt=true`; include #167.
 
 ---
 
