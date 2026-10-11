@@ -838,6 +838,7 @@ export default function App() {
         impegni={impegni}
         goSchedaPaz={goSchedaPaz}
         farmaciPreferiti={farmaciPreferitiStudio}
+        studioInfo={studioInfo}
         onCreatePatient={async (data) => {
           // New patient from Poliedron (rubrica or search): saved at once, then
           // added to the list without re-sending it through the sync setter.

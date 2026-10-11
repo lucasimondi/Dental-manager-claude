@@ -17,7 +17,7 @@ test('PO case: "amoxicillina e clavulanico per Tizio Caio" → Augmentin with th
   assert.equal(r.documentRequest.farmaci.length, 1, 'one combined drug, not two');
   assert.match(r.documentRequest.farmaci[0].farmaco, /Augmentin/);
   assert.equal(r.documentRequest.farmaci[0].posologia, F.find((f) => /Augmentin/.test(f.farmaco)).posologia);
-  assert.match(r.answer, /pronta da verificare.*posologia abituale.*Controllala e generala tu/);
+  assert.match(r.answer, /pronta da verificare.*posologia abituale.*solo quando confermi/);
 });
 
 test('other phrasings: "ricetta di…per", "ricetta a…di", "prescrivi…a", brand names, several drugs', () => {

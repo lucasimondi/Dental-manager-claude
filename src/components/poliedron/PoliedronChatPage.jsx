@@ -1,4 +1,5 @@
 import PoliedronModelConfirmation from './PoliedronModelConfirmation';
+import PoliedronPreparedDocument from './PoliedronPreparedDocument';
 import React, { useEffect, useRef, useState } from 'react';
 import { Ic } from '../ui';
 import PoliedronActionPreview from './PoliedronActionPreview';
@@ -120,6 +121,7 @@ export default function PoliedronChatPage({
   sending,
   error,
   structuredState, onModelConfirmation,
+  preparedDocument, preparedDocumentBusy, onSendPreparedDocument, onSavePreparedDocument, onEditPreparedDocument, onDiscardPreparedDocument,
   onSend,
   onRetry,
   onRetryInitialization,
@@ -800,6 +802,15 @@ export default function PoliedronChatPage({
           onConfirmActionPlan={onConfirmActionPlan}
           actionRunning={actionRunning}
           actionRunResult={actionRunResult}
+        />
+
+        <PoliedronPreparedDocument
+          prepared={preparedDocument}
+          busy={preparedDocumentBusy}
+          onSend={onSendPreparedDocument}
+          onSave={onSavePreparedDocument}
+          onEdit={onEditPreparedDocument}
+          onDiscard={onDiscardPreparedDocument}
         />
 
         {(sending || pendingUser) && (

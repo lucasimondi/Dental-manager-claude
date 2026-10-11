@@ -26,7 +26,7 @@ test('DocMedico: l’archiviazione riuscita aggiorna la lista senza smontare ant
   assert.doesNotMatch(callback, /setDocumentFlow\(null\)|setTab\('doc'\)/);
 
   const medico = source('src/components/DocMedico.jsx');
-  assert.match(medico, /setPronto\(\{ dataUrl, filename, titolo: 'Ricetta medica'/);
+  assert.match(medico, /setPronto\(pdf\);/);
   assert.match(medico, /setArchiviato\(true\);\s*onDocumentSaved\?\.\(saved\)/);
 });
 

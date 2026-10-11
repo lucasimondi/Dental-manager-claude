@@ -139,7 +139,7 @@ export function resolveQuickPrescription(text, { patients = [], favorites = [], 
     `Ricetta per ${fullName(patient)} pronta da verificare.`,
     usual.length ? `${usual.join(', ')}: ho usato la posologia abituale dello studio.` : '',
     free.length ? `${free.join(', ')}: completa dosaggio e posologia nel modulo.` : '',
-    'Controllala e generala tu.',
+    'Controllala qui sotto: la invio al paziente solo quando confermi.',
   ].filter(Boolean).join(' ');
   return {
     ...base,

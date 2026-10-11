@@ -192,7 +192,7 @@ test('app wiring: patient from the studio list, Ricetta permission, review banne
   assert.match(controller, /openPrescription\(\{ patient, farmaci: documentRequest\.farmaci \}\)/);
   assert.match(app, /const prefill = Array\.isArray\(farmaci\) && farmaci\.length \? \{ farmaco: '', farmaci \} : \{ farmaco: drug \};/);
   assert.match(docMedico, /Compilata da Poliedron\.<\/strong> Controlla farmaci, dosi e durata prima di generare la ricetta\./);
-  assert.match(docMedico, /void imparaDaRicetta\(supabase, \{ studioId, userId, farmaci: farmaci\.filter\(\(f\) => f\.farmaco\.trim\(\)\) \}\);/);
+  assert.match(docMedico, /const farmaciRicetta = farmaci\.filter\(f => f\.farmaco\.trim\(\)\);[\s\S]*void imparaDaRicetta\(supabase, \{ studioId, userId, farmaci: farmaciRicetta \}\);/);
   // Learning happens only when the ricetta PDF is generated, not on prefill.
   assert.ok(docMedico.indexOf('void imparaDaRicetta') > docMedico.indexOf('const generaRicetta = () => {'));
   assert.ok(docMedico.indexOf('void imparaDaRicetta') < docMedico.indexOf('const generaEsamiEmatici = () => {'));
