@@ -31,6 +31,7 @@ export function documentRequestFromModel(modelResult) {
 import { resolveCommandAlias } from './commandAliases.js';
 import { cercaPazienti } from '../ricercaPazienti.js';
 import { resolvePrescriptionRequest } from './prescriptionWorkflow.js';
+import { resolveQuickPrescription } from './quickPrescription.js';
 import { parseAppointmentRequest } from './planner/appointmentIntent.js';
 import { parseCreatePlanRequest, parseRegisterPaymentRequest } from './planner/createIntent.js';
 import { classifyIntelligenceQuery, scanPatientOpportunities } from './intelligence/index.js';
@@ -194,6 +195,13 @@ export async function processQuery({
       documentRequest: documentRequestFromModel(modelResult),
     };
   }
+
+  // "Amoxicillina e clavulanico per Tizio Caio": the Ricetta form opens already
+  // filled with the studio's usual posology; no model call, nothing written.
+  const quickPrescription = resolveQuickPrescription(q, {
+    patients: sources.patients || [], favorites: sources.farmaciPreferiti || [], actions: sources.actions || [], submitted: allowModel,
+  });
+  if (quickPrescription) return quickPrescription;
 
   // Explicit agenda requests and their conversational follow-ups use the same
   // authenticated gateway. Never call a model during keystroke previews.
