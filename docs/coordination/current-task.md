@@ -1,10 +1,21 @@
+# Current task — Ricetta rapida dalla chat ("amoxicillina e clavulanico per Tizio Caio") (2026-10-11)
+- OWNER: CLAUDE, branch `claude/whatsapp-automation-status-d2ng12`, da `master@53aaf11`. PO verbatim: "Ora dobbiamo dargli la possibilità di fare ricette con un comando tipo amoxicillina e clavulanico per Tizio Caio".
+- PRIMA: `resolvePrescriptionRequest` riconosceva solo frasi rigide (verbo operativo + "ricetta"); "amoxicillina e clavulanico per Tizio Caio", "ricetta di … per …", "prescrivi … a …" non erano riconosciute.
+- COSA: nuovo `src/lib/poliedron/quickPrescription.js` (puro), chiamato da `processQuery` prima degli altri percorsi: "<farmaco> per <paziente>" (solo se è davvero un farmaco: preferiti dello studio o radici di farmaci comuni), "ricetta di/con … per/a …", "ricetta per … di …", "prescrivi … a …". Farmaci abbinati ai **farmaci frequenti dello studio** (Impostazioni → Documenti; nomi commerciali → principio attivo, "amoxicillina e clavulanico" = Augmentin, una riga sola); dose diversa da quella del preferito o farmaco non in elenco → solo il nome, posologia da completare. Paziente unico (omonimi o nessuno → domanda). Apre il modulo Ricetta già compilato (stesso `documentRequest` di POL-AI-009: solo pazienti dello studio e azione Ricetta consentita); **nessuna chiamata al modello, nessuna scrittura**: il medico controlla e genera. Mai su anteprima da tastiera. Frasi con posologia dettata → percorso esistente.
+- `App.jsx` passa a Poliedron i farmaci frequenti (`resolveFarmaciPreferiti(studioInfo)`).
+- NESSUNA modifica a server, database, RLS.
+- VALIDATION: nuovo `tests/poliedronQuickPrescription.test.mjs` (8 test); `npm test` 1122/1122; `npm run build` OK.
+- EXACT NEXT ACTION: "Mergia" (deploy Vercel automatico) → prova del PO in chat.
+
+---
+
 # Current task — Rilascio automatico di `agente-assistente` da GitHub (2026-10-11)
 - OWNER: CLAUDE, branch `claude/whatsapp-automation-status-d2ng12`, da `master@0f164c6`.
 - PERCHÉ: lo strumento MCP di deploy richiede tutti i 22 file (~240.000 caratteri) in un solo invio e non è più affidabile; la correzione "Fissa appuntamento Giulia simondi…" (#167) è mergiata ma non pubblicata (produzione v42 = `master@5b58f67`).
 - DECISIONE PO: ha creato il secret di repository `SUPABASE_ACCESS_TOKEN` (verbatim: "Secret fatta") dopo la proposta del rilascio automatico.
 - COSA: `.github/workflows/deploy-agente-assistente.yml`: su push a `master` che tocca `supabase/functions/agente-assistente/**`, `supabase/functions/_shared/**` o il workflow stesso, oppure a mano (workflow_dispatch): `npm ci`, `npm test`, poi `supabase functions deploy agente-assistente --project-ref idklxdqebfceplrualgh --use-api` (nessun `config.toml`: `verify_jwt` resta attivo come in produzione). Solo questa funzione; `whatsapp-webhook` (verify_jwt=false) resta manuale.
 - NESSUNA modifica a codice applicativo, database, RLS.
-- EXACT NEXT ACTION: "Mergia" → il merge avvia il workflow → verifica che la produzione sia identica al master (22 file) → prova del PO con la frase dello screenshot.
+- RILASCIO ESEGUITO (2026-10-11): PR #168 mergiata (`master@53aaf11`); workflow "Deploy agente-assistente" run #1 riuscito; produzione **v43** = 22 file identici byte per byte a `master@53aaf11`, `verify_jwt=true`; include #167.
 
 ---
 

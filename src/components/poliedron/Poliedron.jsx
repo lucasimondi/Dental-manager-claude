@@ -80,7 +80,7 @@ const summarizeStructuredResult = (result) => {
    identity, one Poliedra AI Core). */
 export default function Poliedron({
   phoneApp = false,
-  isMobile, page, setPage, patients, plans, payments, pricelist, appointments, richiami, impegni, goSchedaPaz, onCreatePatient,
+  isMobile, page, setPage, patients, plans, payments, pricelist, appointments, richiami, impegni, goSchedaPaz, onCreatePatient, farmaciPreferiti,
   features, isStudioAdmin, vertical, studioId, userId, currentPatient, positionLocked = false,
   quickActionCtx, supabaseClient, onArchivioFilterHint, openPrescription, openNew, openNewPlan, openNewPayment, openBooking,
   externalCommandRequest, onExternalCommandHandled, chatHost, onDataChanged,
@@ -189,7 +189,8 @@ export default function Poliedron({
     activities: impegni,
     navigationIndex,
     actions,
-  }), [patients, plans, payments, pricelist, appointments, richiami, impegni, navigationIndex, actions]);
+    farmaciPreferiti,
+  }), [patients, plans, payments, pricelist, appointments, richiami, impegni, navigationIndex, actions, farmaciPreferiti]);
 
   useEffect(() => {
     pageRef.current = page;

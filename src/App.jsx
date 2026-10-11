@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
+﻿import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase, DB } from './lib/supabase.js';
 import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, getLogoSlug, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, uid, applyBrandColors, applyHeaderColor } from './lib/utils';
@@ -53,6 +53,7 @@ import Dashboard from './components/Dashboard.jsx';
 import QuickBookingModal from './components/QuickBookingModal.jsx';
 import RouteErrorBoundary from './components/RouteErrorBoundary.jsx';
 import { lazyWithRetry } from './lib/lazyWithRetry.js';
+import { resolveFarmaciPreferiti } from './lib/farmaciPreferiti.js';
 const ControlloGestione = lazyWithRetry(() => import('./components/ControlloGestione.jsx'), 'ControlloGestione');
 const PoliedronHub = lazyWithRetry(() => import('./components/PoliedronHub.jsx'), 'PoliedronHub');
 const FinancialWorkspace = lazyWithRetry(() => import('./components/FinancialWorkspace.jsx'), 'FinancialWorkspace');
@@ -88,6 +89,8 @@ export default function App() {
   const [pricelist, setPricelist] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [studioInfo, setStudioInfo] = useState(DEF_STUDIO);
+  // Studio favourite drugs (Impostazioni → Documenti): Poliedron's quick prescription fills the form with them.
+  const farmaciPreferitiStudio = useMemo(() => resolveFarmaciPreferiti(studioInfo), [studioInfo]);
   const [appTypes, setAppTypes] = useState([]);
   const [userName, setUserName] = useState('');
   const [implants, setImplants] = useState([]);
@@ -834,6 +837,7 @@ export default function App() {
         richiami={richiami}
         impegni={impegni}
         goSchedaPaz={goSchedaPaz}
+        farmaciPreferiti={farmaciPreferitiStudio}
         onCreatePatient={async (data) => {
           // New patient from Poliedron (rubrica or search): saved at once, then
           // added to the list without re-sending it through the sync setter.
