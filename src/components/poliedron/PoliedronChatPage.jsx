@@ -145,6 +145,7 @@ export default function PoliedronChatPage({
   navItems = [],
   onNavigate,
   loadActivity,
+  loadActivityStats,
   restoreActivity,
   askTeam,
   teamIdentity,
@@ -701,7 +702,7 @@ export default function PoliedronChatPage({
       </header>
 
       {showActivity && loadActivity && (
-        <PoliedronAttivita load={loadActivity} onRestore={restoreActivity} onClose={() => setShowActivity(false)} />
+        <PoliedronAttivita load={loadActivity} loadStats={loadActivityStats} onRestore={restoreActivity} onClose={() => setShowActivity(false)} />
       )}
 
       {memoryClient && memoriaAperta && (

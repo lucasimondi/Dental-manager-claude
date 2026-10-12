@@ -1762,6 +1762,11 @@ body:has(.home-widget-grid) #app-scroll {
   cursor: pointer;
 }
 .poliedron-attivita ol { list-style: none; margin: 0; padding: 0; }
+.poliedron-attivita__stats { margin-bottom: 8px; padding-bottom: 6px; font-size: 13px; }
+.poliedron-attivita__stats p { margin: 0 0 4px; }
+.poliedron-attivita__stats ul { list-style: none; margin: 0; padding: 0; }
+.poliedron-attivita__stats li { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; color: var(--text-muted); }
+.poliedron-attivita__stats small { font-weight: 700; }
 .poliedron-attivita h3 {
   margin: 10px 0 4px;
   font-size: 12px;

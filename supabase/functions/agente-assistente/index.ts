@@ -30,6 +30,7 @@ import { STRUMENTI_MEMORIA, STRUMENTO_RICETTA, normalizzaMemoria, sezioneMemoria
 import { leggiRichiestaTeam, strumentiSpecialista, toolConsulta, leggiConsulti, eseguiConsulti, promptTeam, contestoGruppo, CONSULTA_SPECIALISTI } from "./team.js";
 import { normalizeProvider, callOpenAI, providerFailure, providerOrder, runProviderChain } from "./provider.js";
 import { emergencyIntent, emergencyMessage } from "./emergency.js";
+import { rigaEvento, registraEvento } from "./poliedron-eventi.js";
 import { understandPoliedron } from "./poliedron-core.js";
 import { deriveContext, enrichWithContext } from "./poliedron-context.js";
 import { planPoliedron, confidenceDecision } from "./poliedron-planner.js";
@@ -1063,7 +1064,24 @@ function buildConoscenzaStudio(config, faq, documenti) {
   return blocco;
 }
 
+// POL-AI-011: every answer leaves one structured row (route, intent, outcome,
+// tool names; never the text) for the "Come risponde Poliedron" dashboard,
+// written after the answer is ready and without ever changing it.
 serve(async (req) => {
+  const inizio = Date.now();
+  const evento = { azioni: [] };
+  const risposta = await gestisci(req, evento);
+  if (evento.client && risposta.status === 200) {
+    const salva = risposta.clone().json()
+      .then((body) => { const riga = rigaEvento(body, evento, Date.now() - inizio); return riga && registraEvento(evento.client, riga); })
+      .catch(() => null);
+    const runtime = (globalThis as any).EdgeRuntime;
+    if (runtime?.waitUntil) runtime.waitUntil(salva); else await salva;
+  }
+  return risposta;
+});
+
+async function gestisci(req, evento) {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
@@ -1151,6 +1169,7 @@ serve(async (req) => {
       });
     }
     if (membership.error || !membership.data) throw new Error('Accesso allo studio non consentito');
+    Object.assign(evento, { client: supabase, studioId, userId: user.id });
 
     const TOOL_SOLO_LETTURA = new Set(["scheda_paziente", "disponibilita_agenda", "cerca_pazienti", "appuntamenti", "situazione_economica", "kpi_controllo_gestione", "andamento_kpi", "richiami", "storico_paziente", "catalogo_prestazioni"]);
 
@@ -1306,6 +1325,7 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
       }
     }
     if (confirm) {
+      evento.conferma = true;
       let proposal;
       try {
         proposal = await verifyProposal(confirm.token, SUPABASE_SERVICE_ROLE_KEY, { userId: user.id, studioId, allowedNames });
@@ -1314,6 +1334,7 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
         return json({ text: `${error.message} Nessuna modifica eseguita.` });
       }
       if (confirm.cancelled === true) {
+        evento.annullata = true;
         await claimProposal(supabase, proposal);
         return json({ text: 'Operazione annullata. Nessuna modifica eseguita.' });
       }
@@ -1382,6 +1403,7 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
       const conversationState = deriveConversationState(convo.slice(0, -1));
       const conversational = completeConversationalTurn(lastUserText, conversationState);
       const parsed = enrichWithContext(conversational, context);
+      if (parsed.intent !== 'UNKNOWN') evento.intento = parsed.intent;
       const plan = planPoliedron(parsed);
       // Core-first owns only requests it can completely and safely resolve.
       // Incomplete/unsupported/compound commands stay on the mature LLM tool path.
@@ -1753,6 +1775,7 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
         return rispondi({ text: emergencyMessage(emergency), emergency_mode: true });
       }
 
+      evento.provider = risposta.provider || POLIEDRON_LLM_PROVIDER;
       const data = risposta.data;
       const toolUses = data.content.filter((b) => b.type === "tool_use");
       const textBlocks = data.content.filter((b) => b.type === "text").map((b) => b.text).join("\n");
@@ -1769,6 +1792,8 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
       // subito con il riepilogo del server, senza un'altra chiamata al modello.
       let soloScrittureRiuscite = true;
       for (const tu of toolUses) {
+        // Only real tool names are recorded: an invented one is not stored as such.
+        evento.azioni.push(permessi.has(tu.name) ? tu.name : 'non_consentito');
         let result;
         const input = tu.input || {};
         if (!permessi.has(tu.name)) {
@@ -1932,4 +1957,4 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}
