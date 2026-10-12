@@ -342,9 +342,12 @@ export default function Poliedron({
     return true;
   }, [actions, openPrescription, patients]);
 
+  const preparedStorageKey = studioId && userId ? `poliedron_ricetta_preparata_${studioId}_${userId}` : null;
+  const preparedRestoredRef = useRef(false);
+
   /* In chat a prescription becomes a real PDF at once (same generator and
      layout as the Ricetta form). Nothing is archived or sent until the
-     clinician confirms; "Modifica" opens the usual form. */
+     clinician confirms, downloads or shares it; "Modifica" opens the usual form. */
   const prepareDocumentInChat = useCallback((documentRequest) => {
     if (!documentRequest || documentRequest.type !== 'ricetta') return false;
     const patient = (patients || []).find((p) => String(p.id) === String(documentRequest.patientId));
@@ -353,21 +356,60 @@ export default function Poliedron({
     try {
       const data = new Date().toISOString().slice(0, 10);
       const pdf = buildRicettaPdf({ si: studioInfo, paziente: patient, farmaci: documentRequest.farmaci, data });
-      setChatPreparedDocument({ id: `${Date.now()}`, request: documentRequest, patient, farmaci: documentRequest.farmaci, pdf, data, status: 'ready', notice: '' });
+      preparedRestoredRef.current = true;
+      setChatPreparedDocument({ id: `${Date.now()}`, request: documentRequest, patient, farmaci: documentRequest.farmaci, pdf, data, status: 'ready', notice: '', savedAt: Date.now() });
       return true;
     } catch {
       return openPreparedDocument(documentRequest);
     }
   }, [actions, openPreparedDocument, patients, studioInfo]);
 
+  // Once per prescription: a download, a send and a save never archive twice.
   const archivePreparedDocument = useCallback(async (prepared) => {
+    if (prepared.archiveDone) return prepared.archived;
     const saved = await archiviaDocumento(supabaseClient, {
       si: studioInfo, studioId, paziente: prepared.patient, tipoDoc: prepared.pdf.tipoDoc, titolo: prepared.pdf.titolo, data: prepared.data, dataUrl: prepared.pdf.dataUrl,
     });
     // Poliedron learns the posology the clinician actually confirmed.
     void imparaDaRicetta(supabaseClient, { studioId, userId, farmaci: prepared.farmaci });
+    setChatPreparedDocument((current) => current?.id === prepared.id ? { ...current, archiveDone: true, archived: saved } : current);
     return saved;
   }, [studioId, studioInfo, supabaseClient, userId]);
+
+  /* "Condividi" or "Scarica" from the PDF viewer: the clinician took the
+     prescription out of the app, so it goes into the patient's archive too. */
+  const exportPreparedDocument = useCallback(async () => {
+    const prepared = chatPreparedDocument;
+    if (!prepared || prepared.archiveDone) return;
+    const saved = await archivePreparedDocument(prepared);
+    if (saved) setChatPreparedDocument((current) => current?.id === prepared.id ? { ...current, notice: 'Salvata nell\u2019archivio della scheda del paziente.' } : current);
+  }, [archivePreparedDocument, chatPreparedDocument]);
+
+  /* The prepared prescription survives a reload of the app (iOS reloads an
+     installed app after a download, a share or a long time in background):
+     kept on this device only, for 12 hours, like the Documenti form drafts.
+     The PDF is rebuilt from the same data, never stored. */
+  useEffect(() => {
+    if (!preparedStorageKey || preparedRestoredRef.current || !studioInfo || !(patients || []).length) return;
+    preparedRestoredRef.current = true;
+    try {
+      const raw = window.localStorage.getItem(preparedStorageKey);
+      const stored = raw ? JSON.parse(raw) : null;
+      if (!stored || Date.now() - stored.savedAt > 12 * 60 * 60 * 1000) { window.localStorage.removeItem(preparedStorageKey); return; }
+      const patient = patients.find((p) => String(p.id) === String(stored.patientId));
+      if (!patient) return;
+      const pdf = buildRicettaPdf({ si: studioInfo, paziente: patient, farmaci: stored.farmaci, data: stored.data });
+      setChatPreparedDocument((current) => current || { ...stored, patient, pdf });
+    } catch { /* storage unavailable or old data: nothing to restore */ }
+  }, [patients, preparedStorageKey, studioInfo]);
+  useEffect(() => {
+    if (!preparedStorageKey || !preparedRestoredRef.current) return;
+    try {
+      if (!chatPreparedDocument) { window.localStorage.removeItem(preparedStorageKey); return; }
+      const { id, request, farmaci, data, status, notice, archiveDone, archived, patient, savedAt } = chatPreparedDocument;
+      window.localStorage.setItem(preparedStorageKey, JSON.stringify({ id, request, patientId: patient.id, farmaci, data, status, notice, archiveDone: Boolean(archiveDone), archived: archived || null, savedAt: savedAt || Date.now() }));
+    } catch { /* storage full or blocked: the card still works until a reload */ }
+  }, [chatPreparedDocument, preparedStorageKey]);
 
   const sendPreparedDocument = useCallback(async () => {
     const prepared = chatPreparedDocument;
@@ -1005,6 +1047,7 @@ export default function Poliedron({
           onSavePreparedDocument={savePreparedDocument}
           onEditPreparedDocument={editPreparedDocument}
           onDiscardPreparedDocument={() => setChatPreparedDocument(null)}
+          onExportPreparedDocument={exportPreparedDocument}
           onSend={(text) => runChatMessage(text)}
           onRetry={(message) => runChatMessage(message.content, message)}
           attachment={chatAttachment}

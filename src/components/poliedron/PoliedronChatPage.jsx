@@ -121,7 +121,7 @@ export default function PoliedronChatPage({
   sending,
   error,
   structuredState, onModelConfirmation,
-  preparedDocument, preparedDocumentBusy, onSendPreparedDocument, onSavePreparedDocument, onEditPreparedDocument, onDiscardPreparedDocument,
+  preparedDocument, preparedDocumentBusy, onSendPreparedDocument, onSavePreparedDocument, onEditPreparedDocument, onDiscardPreparedDocument, onExportPreparedDocument,
   onSend,
   onRetry,
   onRetryInitialization,
@@ -811,6 +811,7 @@ export default function PoliedronChatPage({
           onSave={onSavePreparedDocument}
           onEdit={onEditPreparedDocument}
           onDiscard={onDiscardPreparedDocument}
+          onExport={onExportPreparedDocument}
         />
 
         {(sending || pendingUser) && (

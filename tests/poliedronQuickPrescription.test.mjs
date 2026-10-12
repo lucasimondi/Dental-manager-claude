@@ -28,10 +28,22 @@ test('other phrasings: "ricetta di…per", "ricetta a…di", "prescrivi…a", br
   assert.equal(run('Tachipirina per Mario Rossi').documentRequest.farmaci[0].farmaco, 'Paracetamolo 1000 mg');
 });
 
-test('a dose different from the favorite, or a drug not in the list: name only, posology left to the clinician', () => {
-  const [line] = run('amoxicillina 500 mg per Tizio Caio').documentRequest.farmaci;
-  assert.equal(line.farmaco, 'Amoxicillina 500 mg');
-  assert.equal(line.posologia, '');
+// PO: "per ibuprofene 400 già non capisce" (the studio keeps Ibuprofene 600 mg).
+test('a dose different from the favorite keeps the said dose, takes the usual posology and asks to check it', () => {
+  const r400 = run('ibuprofene 400 per Tizio Caio');
+  const [ibu] = r400.documentRequest.farmaci;
+  assert.equal(ibu.farmaco, 'Ibuprofene 400 mg');
+  assert.equal(ibu.dosaggio, '400 mg');
+  assert.match(ibu.posologia, /ogni 8 ore/);
+  assert.match(r400.answer, /Ibuprofene 400 mg: ho usato la posologia abituale di Ibuprofene 600 mg, controlla che valga per questa dose/);
+  const [amox] = run('amoxicillina 500 mg per Tizio Caio').documentRequest.farmaci;
+  assert.equal(amox.farmaco, 'Amoxicillina 500 mg');
+  assert.equal(amox.dosaggio, '500 mg');
+  // "1" is not a dose of a favorite just because "125" contains it.
+  assert.equal(run('augmentin 1 g per Tizio Caio').documentRequest.farmaci[0].dosaggio, '1 g');
+});
+
+test('a drug not in the list: name only, posology left to the clinician', () => {
   const r = run('ricetta di metronidazolo per Tizio Caio');
   assert.equal(r.documentRequest.farmaci[0].posologia, '');
   assert.match(r.answer, /completa dosaggio e posologia/);
@@ -70,4 +82,13 @@ test('processQuery answers from the app, with no model call', async () => {
   const r = await processQuery({ query: 'amoxicillina e clavulanico per Tizio Caio', sources: { patients, actions, farmaciPreferiti: F }, allowModel: true, supabaseClient: null });
   assert.equal(r.intent, 'PRESCRIPTION');
   assert.equal(r.documentRequest.patientId, 1);
+});
+
+// PO screenshot: "Zytromax per Andrea Abello" went to the model.
+test('drug names typed or dictated with a typo are recognized; studio words never are', () => {
+  assert.match(run('Zytromax per Mario Rossi').documentRequest.farmaci[0].farmaco, /Zitromax/);
+  assert.match(run('amoxicilina per Mario Rossi').documentRequest.farmaci[0].farmaco, /Amoxicillina/);
+  for (const w of ['appuntamento', 'preventivo', 'certificato', 'promemoria', 'radiografia', 'otturazione', 'pulizia', 'messaggio']) {
+    assert.equal(run(`${w} per Mario Rossi`), null, w);
+  }
 });

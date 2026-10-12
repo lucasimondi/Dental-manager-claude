@@ -48,15 +48,36 @@ const PATTERNS = [
   { re: new RegExp(`^${DRUG}\\s+(?:per|a)\\s+(?:paziente\\s+)?${NAME}$`, 'i'), drug: 1, patient: 2, explicit: false },
 ];
 
-const drugTokens = (text) => words(text).flatMap((w) => SYNONYMS[w] || [w]).filter((w) => !NOISE.has(w) && !/^\d/.test(w));
+// Spelling as typed or dictated ("Zytromax", "Augmentina", "Brufenn"):
+// y→i, ph→f, k→c, no h, no double letters, on both sides of a comparison.
+const canon = (w) => w.replace(/y/g, 'i').replace(/ph/g, 'f').replace(/k/g, 'c').replace(/h/g, '').replace(/(.)\1+/g, '$1');
+const CANON_SYNONYMS = Object.freeze(Object.fromEntries(Object.entries(SYNONYMS).map(([k, v]) => [canon(k), v.map(canon)])));
+const CANON_STEMS = DRUG_STEMS.map(canon);
+const drugTokens = (text) => words(text).map(canon).flatMap((w) => CANON_SYNONYMS[w] || [w]).filter((w) => !NOISE.has(w) && !/^\d/.test(w));
+// One typo allowed on a long word: "amoxicilina", "ibuprofne".
+const nearStem = (t) => t.length >= 6 && CANON_STEMS.some((s) => s.length >= 6 && oneEditAway(t.slice(0, s.length + 1), s));
+function oneEditAway(a, b) {
+  // a may be one letter longer than the stem (the stem is a prefix of the word)
+  for (const cand of [a.slice(0, b.length), a.slice(0, b.length + 1), a.slice(0, b.length - 1)]) {
+    if (Math.abs(cand.length - b.length) > 1) continue;
+    let i = 0; let j = 0; let edits = 0;
+    while (i < cand.length && j < b.length) {
+      if (cand[i] === b[j]) { i++; j++; continue; }
+      if (++edits > 1) break;
+      if (cand.length > b.length) i++; else if (cand.length < b.length) j++; else { i++; j++; }
+    }
+    if (edits + (cand.length - i) + (b.length - j) <= 1) return true;
+  }
+  return false;
+}
 const looksLikeDrug = (text, favorites) => {
   const tokens = drugTokens(text);
   if (!tokens.length) return false;
-  return tokens.some((t) => DRUG_STEMS.some((s) => t.startsWith(s))) || Boolean(matchFavorite(text, favorites));
+  return tokens.some((t) => CANON_STEMS.some((s) => t.startsWith(s)) || nearStem(t)) || Boolean(matchFavorite(text, favorites));
 };
 
 /** The favorite this text names: all its words in the favorite's name, fewest extra words wins. */
-export function matchFavorite(text, favorites = []) {
+export function matchFavorite(text, favorites = [], { anyDose = false } = {}) {
   const tokens = drugTokens(text);
   if (!tokens.length) return null;
   let best = null;
@@ -70,9 +91,28 @@ export function matchFavorite(text, favorites = []) {
   // A dose said in the sentence that the favorite does not have: keep the
   // name only, never a posology meant for another dose.
   const doses = (normalizza(text).match(/\d+(?:[.,]\d+)?/g) || []);
-  const favDose = normalizza(`${best.fav.farmaco} ${best.fav.dosaggio || ''}`);
-  if (doses.some((d) => !favDose.includes(d))) return null;
+  const favDoses = normalizza(`${best.fav.farmaco} ${best.fav.dosaggio || ''}`).match(/\d+(?:[.,]\d+)?/g) || [];
+  if (!anyDose && doses.some((d) => !favDoses.includes(d))) return null;
   return best.fav;
+}
+
+const doseOf = (text) => normalizza(text).match(/\d+(?:[.,]\d+)?\s*(?:mg|g|gr|ml|%)?/g) || [];
+const withUnit = (dose) => (/[a-z%]$/i.test(dose) ? dose : `${dose} mg`).replace(/\s+/g, ' ');
+
+/** The same drug at a dose said in the sentence ("ibuprofene 400" when the
+    studio keeps Ibuprofene 600 mg): name and dose as said, the usual
+    posology and duration of the favorite, flagged so the clinician checks it. */
+function adaptedFavorite(text, favorites) {
+  const said = doseOf(text);
+  const fav = said.length === 1 ? matchFavorite(text, favorites, { anyDose: true }) : null;
+  if (!fav || doseOf(`${fav.farmaco} ${fav.dosaggio || ''}`).length > 2) return null;
+  const dose = withUnit(said[0].trim());
+  const name = clean(text.replace(/\d+(?:[.,]\d+)?\s*(?:mg|g|gr|ml|%)?/i, '')).replace(/\s+(?:da|di)$/i, '');
+  return {
+    farmaco: `${name.charAt(0).toUpperCase()}${name.slice(1)} ${dose}`,
+    dosaggio: dose, posologia: fav.posologia || '', durata: fav.durata || '', note: fav.note || '',
+    abituale: true, adattata: fav.farmaco,
+  };
 }
 
 /** Drug lines for the form: one favorite for the whole phrase, otherwise one per part. */
@@ -81,9 +121,9 @@ export function prescriptionLines(drugText, favorites = []) {
   const parts = whole ? [drugText] : drugText.split(/\s*(?:,|;|\+|\bpiù\b|\bpiu\b|\be\b)\s*/i).map((p) => p.trim()).filter(Boolean);
   return parts.map((part) => {
     const fav = whole || matchFavorite(part, favorites);
-    return fav
-      ? { farmaco: fav.farmaco, dosaggio: fav.dosaggio || '', posologia: fav.posologia || '', durata: fav.durata || '', note: fav.note || '', abituale: true }
-      : { farmaco: part.charAt(0).toUpperCase() + part.slice(1), dosaggio: '', posologia: '', durata: '', note: '', abituale: false };
+    if (fav) return { farmaco: fav.farmaco, dosaggio: fav.dosaggio || '', posologia: fav.posologia || '', durata: fav.durata || '', note: fav.note || '', abituale: true };
+    return adaptedFavorite(part, favorites)
+      || { farmaco: part.charAt(0).toUpperCase() + part.slice(1), dosaggio: '', posologia: '', durata: '', note: '', abituale: false };
   }).slice(0, 10);
 }
 
@@ -132,12 +172,14 @@ export function resolveQuickPrescription(text, { patients = [], favorites = [], 
   }
   const patient = candidates[0];
   const lines = prescriptionLines(parsed.drugText, favorites);
-  const farmaci = lines.map(({ abituale, ...line }) => line);
-  const usual = lines.filter((l) => l.abituale).map((l) => l.farmaco);
+  const farmaci = lines.map(({ abituale, adattata, ...line }) => line);
+  const usual = lines.filter((l) => l.abituale && !l.adattata).map((l) => l.farmaco);
+  const adapted = lines.filter((l) => l.adattata);
   const free = lines.filter((l) => !l.abituale).map((l) => l.farmaco);
   const answer = [
     `Ricetta per ${fullName(patient)} pronta da verificare.`,
     usual.length ? `${usual.join(', ')}: ho usato la posologia abituale dello studio.` : '',
+    ...adapted.map((l) => `${l.farmaco}: ho usato la posologia abituale di ${l.adattata}, controlla che valga per questa dose.`),
     free.length ? `${free.join(', ')}: completa dosaggio e posologia nel modulo.` : '',
     'Controllala qui sotto: la invio al paziente solo quando confermi.',
   ].filter(Boolean).join(' ');
