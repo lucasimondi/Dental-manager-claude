@@ -1,3 +1,12 @@
+# Current task — La PWA non riceve gli aggiornamenti quando torna dal background (2026-10-12)
+- OWNER: CLAUDE, branch `claude/whatsapp-automation-status-d2ng12`, da `master@d536347`. PO verbatim: "Ancora non lo fa , non mi arrivano gli aggiornamenti ogni tanto".
+- CAUSE: (1) il deploy di produzione di #170 era ancora in coda su Vercel; (2) il browser cerca un nuovo service worker solo a una navigazione vera: la PWA installata, ripresa dal background, non naviga e restava sulla versione vecchia finché non veniva chiusa del tutto.
+- COSA: `App.jsx` chiama `registration.update()` a ogni ritorno in primo piano (`visibilitychange`/`focus`, al massimo una volta al minuto) e ogni 30 minuti; la nuova versione mostra il banner "Nuova versione disponibile — tocca per aggiornare" (nessun ricaricamento automatico, invariato).
+- VALIDATION: `tests/pwaUpdatePrompt.test.mjs` +1 test; `npm test` 1127/1127; `npm run build` OK.
+- EXACT NEXT ACTION: "Mergia" (deploy Vercel automatico).
+
+---
+
 # Current task — Ricetta in PDF direttamente in chat, invio al paziente su conferma (2026-10-11)
 - OWNER: CLAUDE, branch `claude/whatsapp-automation-status-d2ng12`, da `master@9a49dae`. PO verbatim: "Adesso mi apre la pagina dei documenti , dobbiamo però fare un modo che poliedron apra in autonomia crei e mi mandi direttamente il pdf in chat , poi lo manderà direttamente al paziente su mia conferma".
 - COSA: nella chat di Poliedron la ricetta rapida (#169) diventa subito un **PDF vero** (stesso generatore e stessa impaginazione del modulo Ricetta, estratti in `src/lib/documenti/pdfLayout.js`; `DocMedico` usa lo stesso codice). Card nuova `PoliedronPreparedDocument`: farmaci, "Apri il PDF", "Modifica" (apre il modulo come prima), "Invia a <nome>" → seconda conferma "Hai controllato la ricetta?" → "Sì, invia"; poi "Salva senza inviare", "Scarta".
@@ -6,7 +15,7 @@
 - Fuori dalla chat (pannello/comandi rapidi) resta l'apertura del modulo.
 - NESSUNA modifica a server, database, RLS.
 - VALIDATION: nuovo `tests/poliedronPreparedDocument.test.mjs` (PDF reale; impostazioni archivio rispettate; preparare non archivia/condivide/impara; condivisione prima dell'archivio; doppia conferma); 3 test sorgente aggiornati al refactor di DocMedico; `npm test` 1126/1126; `npm run build` OK.
-- EXACT NEXT ACTION: "Mergia" (deploy Vercel automatico) → prova del PO dal telefono.
+- RILASCIO: PR #170 mergiata (`master@d536347`); il deploy di produzione Vercel è rimasto in coda (QUEUED) circa 8 minuti prima di partire.
 
 ---
 

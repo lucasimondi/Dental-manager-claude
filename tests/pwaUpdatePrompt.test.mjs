@@ -37,3 +37,13 @@ test('update-ready banner is dismissible and only reloads when the user taps it'
   assert.match(app, /onClick=\{\(\)\s*=>\s*setUpdateReady\(null\)\}/);
   assert.match(app, /Nuova versione disponibile/);
 });
+
+// Product Owner: "non mi arrivano gli aggiornamenti ogni tanto". The browser
+// checks for a new service worker only on a real navigation; an installed
+// PWA resumed from the background never navigates, so it must ask itself.
+test('the app asks for a new version on every return to the foreground and periodically', () => {
+  assert.match(app, /addEventListener\('visibilitychange', onVisible\)/);
+  assert.match(app, /registration\.update\(\)/);
+  assert.match(app, /setInterval\(check, 30 \* 60 \* 1000\)/);
+  assert.match(app, /removeEventListener\('visibilitychange', onVisible\)/);
+});
