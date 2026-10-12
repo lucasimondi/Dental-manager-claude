@@ -8,7 +8,8 @@
 - Privacy: conforme al Learning Engine approvato: nessun testo delle chat, nessun nome/ID di paziente; solo percorso, intento, esito, nomi di strumenti, fornitore, durata; 180 giorni.
 - Tests: 1143/1143; build OK; migrazione + RLS verificate su PostgreSQL locale; controprova eseguita.
 - Risks: "chiarimento" è stimato da una risposta che termina con "?". Le conferme sono contate a parte (seconda metà di una richiesta precedente).
-- Exact next action: "Mergia" → migrazione in produzione → merge (deploy automatico funzione + app) → il riquadro si popola con l'uso.
+- Release: migrazione applicata e verificata in produzione; PR #175 mergiata (deploy automatico di funzione e app).
+- Exact next action: uso reale; leggere il riquadro dopo qualche giorno.
 
 ## POL-AI Core actions — pagamenti, scheda paziente, richiami, blocchi/ferie, agenda avanzata (2026-10-08)
 

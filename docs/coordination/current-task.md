@@ -10,7 +10,8 @@
   - App: in "Registro attività" di Poliedron, riquadro "Ultimi 30 giorni: N richieste. Senza modello AI (Core): X%. Con il modello AI: Y%." + cosa ha risolto il Core, quali strumenti ha usato il modello, cosa il Core aveva capito ma ha passato al modello. Nascosto se non ci sono dati o la tabella non esiste ancora.
 - VALIDATION: `npm test` 1143/1143 (nuovo `tests/poliedronEventi.test.mjs`, 11 test: handler reale su Core/modello/conferma/errori, nessun testo o nome nei dati, scrittura fallita non cambia la risposta, migrazione, collegamento app); controprova: senza la registrazione delle azioni il test del modello fallisce. Migrazione eseguita su un PostgreSQL 16 locale usa e getta: tabella, RPC e RLS verificate (altro studio / altro utente / testo libero / UPDATE / statistiche di un altro studio → rifiutati). `npm run build` OK.
 - RILASCIO (solo su "Mergia"): 1) applicare la migrazione in produzione; 2) merge → la CI rilascia `agente-assistente` (workflow `deploy-agente-assistente.yml`) e Vercel l'app. Ordine indifferente per la sicurezza: senza tabella la scrittura fallisce in silenzio e il riquadro resta nascosto.
-- EXACT NEXT ACTION: "Mergia" del PO.
+- RILASCIO ESEGUITO su "Mergia" (2026-10-12): migrazione `pol_ai_011_poliedron_eventi` applicata in produzione e verificata (RLS attiva, 2 policy, grant authenticated = INSERT/SELECT, nessun grant anon, `poliedron_statistiche_v1` SECURITY INVOKER, job `poliedron-eventi-pulizia` 03:17). Merge della PR #175 → la CI rilascia `agente-assistente`, Vercel l'app.
+- EXACT NEXT ACTION: uso reale; tra qualche giorno leggere il riquadro e scegliere cosa portare nel Core.
 
 ---
 
