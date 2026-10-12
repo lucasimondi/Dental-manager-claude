@@ -106,10 +106,14 @@ export const PROVIDER_CAPABILITIES = Object.freeze({
   gemini: new Set(['chat', 'tool_use', 'reasoning']),
 });
 
+// The chosen provider goes first; every other configured one stays behind it
+// as an automatic fallback (PO: "Devi farlo automaticamente" after OpenAI
+// ran out of credit and Poliedron answered "servizi AI indisponibili").
 export const providerOrder = ({ preferred = 'auto', capability = 'tool_use', configured = {} } = {}) => {
   const available = (name) => configured[name] !== false && PROVIDER_CAPABILITIES[name]?.has(capability);
-  if (preferred !== 'auto') return available(preferred) ? [preferred] : [];
-  return ['openai', 'anthropic', 'gemini'].filter(available);
+  const all = ['openai', 'anthropic', 'gemini'].filter(available);
+  if (preferred === 'auto' || !all.includes(preferred)) return all;
+  return [preferred, ...all.filter((name) => name !== preferred)];
 };
 
 export async function runProviderChain({ providers, invoke, canReplay = true, onFallback = () => {} }) {
