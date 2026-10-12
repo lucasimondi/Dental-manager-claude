@@ -1,5 +1,16 @@
 # Handoffs
 
+## POL-AI-011 — Cruscotto "Come risponde Poliedron" (Core vs modello) (2026-10-12)
+
+- Task: misurare la quota di richieste chiuse dal Core senza modello e cosa va ancora alle API (PO: "Sì"). Previous agent: CLAUDE (stessa sessione, PR #166). Agent: CLAUDE. Branch `claude/poliedron-agenda-actions-kz6mmk` da `master@767a386`. Dettagli in `current-task.md`.
+- Files: `supabase/migrations/20261012120000_pol_ai_011_poliedron_eventi.sql` (new), `supabase/functions/agente-assistente/{poliedron-eventi.js (new), index.ts, README.md}`, `src/lib/poliedron/statistiche.js` (new), `src/components/poliedron/{Poliedron.jsx, PoliedronChatPage.jsx, PoliedronAttivita.jsx}`, `src/components/PremiumVisualSystem.css`, `tests/poliedronEventi.test.mjs` (new).
+- Database: nuova tabella `poliedron_eventi` + RLS + `poliedron_statistiche_v1` + job pg_cron `poliedron-eventi-pulizia` (non ancora applicati in produzione).
+- Privacy: conforme al Learning Engine approvato: nessun testo delle chat, nessun nome/ID di paziente; solo percorso, intento, esito, nomi di strumenti, fornitore, durata; 180 giorni.
+- Tests: 1143/1143; build OK; migrazione + RLS verificate su PostgreSQL locale; controprova eseguita.
+- Risks: "chiarimento" è stimato da una risposta che termina con "?". Le conferme sono contate a parte (seconda metà di una richiesta precedente).
+- Release: migrazione applicata e verificata in produzione; PR #175 mergiata (deploy automatico di funzione e app).
+- Exact next action: uso reale; leggere il riquadro dopo qualche giorno.
+
 ## POL-AI Core actions — pagamenti, scheda paziente, richiami, blocchi/ferie, agenda avanzata (2026-10-08)
 
 - Agent: CLAUDE. Branch `claude/poliedron-agenda-actions-kz6mmk` da `master@667fccd`. Dettagli in `current-task.md`.

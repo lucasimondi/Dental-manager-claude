@@ -689,6 +689,13 @@ export default function Poliedron({
     if (error) throw error;
     return data || [];
   }, [supabaseClient, studioId]);
+  // POL-AI-011: share of answers closed by the Core without the model (last 30 days).
+  const loadPoliedronStats = useCallback(async () => {
+    if (!supabaseClient || !studioId) return null;
+    const { data, error } = await supabaseClient.rpc('poliedron_statistiche_v1', { p_studio: studioId, p_giorni: 30 });
+    if (error) throw error;
+    return data;
+  }, [supabaseClient, studioId]);
   const restorePoliedronActivity = useCallback(async (row) => {
     const { data: tabella, error } = await supabaseClient.rpc('poliedron_ripristina_v1', { p_attivita: row.id, p_studio: studioId });
     if (error) throw new Error(error.message);
@@ -1071,6 +1078,7 @@ export default function Poliedron({
           navItems={navigationIndex.filter((item) => item.id !== 'chat')}
           onNavigate={setPage}
           loadActivity={loadPoliedronActivity}
+          loadActivityStats={loadPoliedronStats}
           restoreActivity={restorePoliedronActivity}
           askTeam={askTeam}
           teamIdentity={teamIdentity}

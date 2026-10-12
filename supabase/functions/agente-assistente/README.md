@@ -89,6 +89,12 @@ The folder below was re-imported from production v28 (identical to the code abov
   nome + cognome), recalls ("tra 6 mesi"), agenda blocks/holidays/calls, appointment
   duration/type/status, free slots. Same domain modules, RLS client, confirmation and
   activity log as the tools. Tested by `tests/poliedronCoreActions.test.mjs`.
+- `poliedron-eventi.js` (POL-AI-011): one row per answer in `public.poliedron_eventi`
+  (route core/modello/essenziale/conferma, Core intent, outcome, names of the tools the
+  model called, provider, duration; never the chat text or patient data), written with
+  the user's login after the answer is ready (`EdgeRuntime.waitUntil`), never changing
+  it. Read by the app through `poliedron_statistiche_v1`. Tested by
+  `tests/poliedronEventi.test.mjs`.
 - `../_shared/agendaSlots.js`: imported by `agenda.js`. Kept exactly as deployed; it is
   **not** identical to `src/lib/agendaSlots.js` (time zone and validation differ).
 
