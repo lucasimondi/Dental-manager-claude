@@ -1,9 +1,20 @@
+# Current task — Riserva automatica tra fornitori AI (2026-10-12)
+- OWNER: CLAUDE, branch `claude/whatsapp-automation-status-d2ng12`, da `master@767a386`. PO verbatim: "Devi farlo automaticamente" (dopo "I servizi AI sono temporaneamente indisponibili": OpenAI 429 `insufficient_quota`/`credit_balance_exhausted`).
+- CAUSA: `providerOrder` usava la catena di riserva solo con `POLIEDRON_LLM_PROVIDER=auto`; con un fornitore fissato provava solo quello. Nei log 24h nessun `llm_provider_fallback`.
+- COSA: il fornitore scelto resta il primo, gli altri configurati (OpenAI, Anthropic) seguono come riserva automatica sugli errori temporanei (429, 5xx, rete, timeout). Nuovo log `llm_provider_chain_failed` con fornitori provati e quali sono configurati (solo booleani, mai le chiavi).
+- LIMITE: se `ANTHROPIC_API_KEY` non è impostata la riserva non esiste; il log lo mostrerà dopo il deploy → eventuale azione PO (secret in Supabase, non in chat).
+- RILASCIO: tocca `supabase/functions/agente-assistente/**` → al merge il workflow "Deploy agente-assistente" pubblica la funzione.
+- VALIDATION: `tests/poliedronProviderRouter.test.mjs` +2 test; `npm test` 1134/1134.
+- EXACT NEXT ACTION: "Mergia" → verifica deploy e log.
+
+---
+
 # Current task — Nome dei PDF: "Nome Cognome.pdf" (2026-10-12)
 - OWNER: CLAUDE, branch `claude/whatsapp-automation-status-d2ng12`, da `master@d47e165`. PO verbatim: "Ok allora il pdf generato deve avere solo il nome cognome del paziente .pdf."
 - COSA: `nomeFilePaziente(paziente)` in `src/lib/documenti/pdfLayout.js` ("Nome Cognome.pdf", senza caratteri non ammessi nei nomi file; "Paziente.pdf" se mancano). Usato per la ricetta (chat Poliedron e modulo Documenti), esami, certificato, lettera, protocollo, documento libero (`DocMedico`) e per ricetta/anamnesi di `pdfDocs.js`. Il titolo in archivio (`documenti_medici.titolo`) resta invariato ("Ricetta medica", …).
 - NESSUNA modifica a server, database, RLS.
 - VALIDATION: nuovo test in `tests/poliedronPreparedDocument.test.mjs`; 4 test che fissavano il vecchio nome aggiornati; `npm test` 1132/1132; `npm run build` OK.
-- EXACT NEXT ACTION: "Mergia" (deploy Vercel automatico).
+- RILASCIO: PR #173 mergiata (`master@767a386`).
 
 ---
 

@@ -1678,12 +1678,15 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
           gemini: false, // adapter intentionally disabled until implemented and tested
         },
       });
-      return runProviderChain({
+      const chained = await runProviderChain({
         providers,
         canReplay: true,
         invoke: (provider) => provider === "openai" ? callOpenAIProvider() : callAnthropicProvider(),
         onFallback: ({ from, to, failure }) => console.warn("llm_provider_fallback", JSON.stringify({ from, to, kind: failure?.kind || null })),
       });
+      // Which providers are set up (never their keys), to see why no fallback ran.
+      if (!chained?.ok) console.error("llm_provider_chain_failed", JSON.stringify({ preferred: POLIEDRON_LLM_PROVIDER, tried: providers, configured: { openai: Boolean(OPENAI_API_KEY), anthropic: Boolean(ANTHROPIC_API_KEY) } }));
+      return chained;
     };
 
     // Uno specialista consultato dal Clinic Manager: ciclo breve, solo i suoi

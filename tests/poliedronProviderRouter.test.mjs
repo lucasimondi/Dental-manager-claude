@@ -34,6 +34,23 @@ test('auto provider order is capability based and skips unconfigured providers',
   assert.deepEqual(providerOrder({ preferred:'auto', capability:'tool_use', configured:{openai:true,anthropic:true,gemini:false} }), ['openai','anthropic']);
 });
 
+// PO: "Devi farlo automaticamente" — OpenAI out of credit, no fallback ran
+// because the provider was fixed. The chosen one first, the others behind it.
+test('a fixed provider keeps the other configured providers as automatic fallback', () => {
+  const configured = { openai: true, anthropic: true, gemini: false };
+  assert.deepEqual(providerOrder({ preferred: 'openai', configured }), ['openai', 'anthropic']);
+  assert.deepEqual(providerOrder({ preferred: 'anthropic', configured }), ['anthropic', 'openai']);
+  assert.deepEqual(providerOrder({ preferred: 'openai', configured: { openai: true, anthropic: false, gemini: false } }), ['openai']);
+  assert.deepEqual(providerOrder({ preferred: 'openai', configured: { openai: false, anthropic: true, gemini: false } }), ['anthropic']);
+});
+
+test('credit exhausted on OpenAI moves the request to Claude', async () => {
+  const seen = [];
+  const out = await runProviderChain({ providers: providerOrder({ preferred: 'openai', configured: { openai: true, anthropic: true, gemini: false } }), invoke: async (p) => { seen.push(p); return p === 'openai' ? { ok: false, failure: providerFailure(p, 429, 'rate_limit_or_quota') } : { ok: true, data: { content: [] } }; } });
+  assert.deepEqual(seen, ['openai', 'anthropic']);
+  assert.equal(out.provider, 'anthropic');
+});
+
 test('provider chain falls through transient failures', async () => {
   const seen=[];
   const out=await runProviderChain({providers:['openai','anthropic'],invoke:async(p)=>{seen.push(p);return p==='openai'?{ok:false,failure:providerFailure(p,429,'rate_limit_or_quota')}:{ok:true,data:{content:[]}}}});
