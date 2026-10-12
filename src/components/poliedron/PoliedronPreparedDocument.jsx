@@ -6,8 +6,9 @@ const PdfViewerModal = lazy(() => import('../ui/PdfViewerModal.jsx'));
    dallo studio finché il medico non conferma l'invio (Master Context: il
    clinico resta responsabile dell'atto). "Invia" apre la condivisione del
    telefono con il PDF (WhatsApp → contatto del paziente, numero già copiato);
-   l'invio automatico arriverà con WhatsApp Business collegato. */
-export default function PoliedronPreparedDocument({ prepared, busy, onSend, onSave, onEdit, onDiscard }) {
+   l'invio automatico arriverà con WhatsApp Business collegato. Anche
+   "Condividi"/"Scarica" dall'anteprima la salvano nell'archivio del paziente. */
+export default function PoliedronPreparedDocument({ prepared, busy, onSend, onSave, onEdit, onDiscard, onExport }) {
   const [confirming, setConfirming] = useState(false);
   const [preview, setPreview] = useState(false);
   if (!prepared) return null;
@@ -35,7 +36,7 @@ export default function PoliedronPreparedDocument({ prepared, busy, onSend, onSa
       {!done && !confirming && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           <button type="button" disabled={busy} onClick={() => setConfirming(true)} style={primary}>Invia a {patient?.nome || 'paziente'}</button>
-          <button type="button" disabled={busy} onClick={onSave} style={btn}>Salva senza inviare</button>
+          {!prepared.archiveDone && <button type="button" disabled={busy} onClick={onSave} style={btn}>Salva senza inviare</button>}
           <button type="button" disabled={busy} onClick={onDiscard} style={btn}>Scarta</button>
         </div>
       )}
@@ -51,7 +52,7 @@ export default function PoliedronPreparedDocument({ prepared, busy, onSend, onSa
       {notice && <p role="status" style={{ margin: '10px 0 0', fontSize: 13 }}>{notice}</p>}
       {preview && (
         <Suspense fallback={null}>
-          <PdfViewerModal titolo={pdf.titolo} dataUrl={pdf.dataUrl} filename={pdf.filename} onClose={() => setPreview(false)} />
+          <PdfViewerModal titolo={pdf.titolo} dataUrl={pdf.dataUrl} filename={pdf.filename} onExport={onExport} onClose={() => setPreview(false)} />
         </Suspense>
       )}
     </section>

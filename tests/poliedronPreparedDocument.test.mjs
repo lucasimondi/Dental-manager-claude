@@ -55,3 +55,27 @@ test('card: sending needs a second explicit confirmation', async () => {
   assert.match(html, /Tizio Caio/);
   assert.doesNotMatch(html, /Sì, invia/);
 });
+
+// PO: "la scheda mi fa aprire una sola volta poi sparisce" — iOS reloads the
+// installed app after a download/share; the card lived only in memory.
+test('the prepared prescription survives a reload: kept on this device for 12 hours, PDF rebuilt, never stored', () => {
+  const poliedron = source('src/components/poliedron/Poliedron.jsx');
+  assert.match(poliedron, /poliedron_ricetta_preparata_\$\{studioId\}_\$\{userId\}/);
+  assert.match(poliedron, /12 \* 60 \* 60 \* 1000/);
+  const persist = poliedron.slice(poliedron.indexOf('window.localStorage.setItem(preparedStorageKey'));
+  assert.doesNotMatch(persist.slice(0, persist.indexOf(';')), /pdf|dataUrl/, 'the PDF itself is not written to the device');
+  const restore = poliedron.slice(poliedron.indexOf('const raw = window.localStorage.getItem(preparedStorageKey)'), poliedron.indexOf('window.localStorage.setItem(preparedStorageKey'));
+  assert.match(restore, /buildRicettaPdf\(\{ si: studioInfo, paziente: patient, farmaci: stored\.farmaci, data: stored\.data \}\)/);
+});
+
+// PO: "le salva nel software? Quando le scarico".
+test('sharing or downloading from the PDF viewer archives the prescription, once', () => {
+  const viewer = source('src/components/ui/PdfViewerModal.jsx');
+  assert.match(viewer, /scaricaPdf\(dataUrl, filename\); onExport\?\.\(\);/);
+  assert.match(viewer, /if \(!ok\) scaricaPdf\(dataUrl, filename\);\s*onExport\?\.\(\);/);
+  const card = source('src/components/poliedron/PoliedronPreparedDocument.jsx');
+  assert.match(card, /onExport=\{onExport\}/);
+  const poliedron = source('src/components/poliedron/Poliedron.jsx');
+  assert.match(poliedron, /if \(prepared\.archiveDone\) return prepared\.archived;/);
+  assert.match(poliedron, /onExportPreparedDocument=\{exportPreparedDocument\}/);
+});

@@ -1,9 +1,22 @@
+# Current task — Ricetta in chat: dosi diverse, nomi sbagliati, card che sparisce, archivio al download (2026-10-12)
+- OWNER: CLAUDE, branch `claude/whatsapp-automation-status-d2ng12`, da `master@6ec4030`. PO verbatim: "per amoxicillina è ok , per ibuprofene 400 già non capisce , inoltre la scheda mi fa aprire una sola volta poi sparisce, inoltre le salva nel software ? Quando le scarico intendo" + screenshot "Zytromax per Andrea Abello" → "I servizi AI sono temporaneamente indisponibili".
+- (1) DOSE: "ibuprofene 400" con preferito Ibuprofene 600 mg → riga "Ibuprofene 400 mg", dosaggio 400 mg, posologia/durata abituali del preferito e risposta esplicita "ho usato la posologia abituale di Ibuprofene 600 mg, controlla che valga per questa dose". Cambia la regola di #169 (prima: posologia vuota); il medico conferma comunque prima di archiviare/inviare. Confronto delle dosi per numero intero (il "1" di "1 g" non combacia più con "125").
+- (2) REFUSI: "Zytromax", "amoxicilina", "Brufenn" riconosciuti (y→i, ph→f, k→c, niente h e doppie; un errore ammesso su parole lunghe). Verificato che parole dello studio (appuntamento, preventivo, certificato, radiografia, …) non diventano farmaci.
+- (3) CARD CHE SPARISCE: su iPhone l'app installata si ricarica dopo download/condivisione e la ricetta preparata era solo in memoria. Ora resta su questo dispositivo (localStorage, chiave per studio e utente, 12 ore, come le bozze del modulo Documenti); il PDF non viene salvato, si rigenera dagli stessi dati.
+- (4) ARCHIVIO: "Condividi"/"Scarica" dall'anteprima salvano la ricetta nell'archivio del paziente (se lo studio archivia le ricette), una sola volta anche con invio/salva successivi.
+- AI NON DISPONIBILE: log di `agente-assistente` 14:51 UTC: `llm_provider_error provider=openai status=429 errorType=insufficient_quota errorCode=credit_balance_exhausted`; nessun fallback ad Anthropic registrato (fornitore forzato su OpenAI o chiave Anthropic assente). Serve azione del PO: ricaricare il credito OpenAI oppure impostare `POLIEDRON_LLM_PROVIDER=anthropic`/`auto` con `ANTHROPIC_API_KEY` valida. `PRODUCT_OWNER_DECISION_REQUIRED` (fornitore/credito).
+- NESSUNA modifica a server, database, RLS.
+- VALIDATION: test nuovi/aggiornati in `tests/poliedronQuickPrescription.test.mjs` e `tests/poliedronPreparedDocument.test.mjs`; `npm test` verde; `npm run build` OK.
+- EXACT NEXT ACTION: "Mergia" (deploy Vercel automatico); decisione PO sul credito del modello.
+
+---
+
 # Current task — La PWA non riceve gli aggiornamenti quando torna dal background (2026-10-12)
 - OWNER: CLAUDE, branch `claude/whatsapp-automation-status-d2ng12`, da `master@d536347`. PO verbatim: "Ancora non lo fa , non mi arrivano gli aggiornamenti ogni tanto".
 - CAUSE: (1) il deploy di produzione di #170 era ancora in coda su Vercel; (2) il browser cerca un nuovo service worker solo a una navigazione vera: la PWA installata, ripresa dal background, non naviga e restava sulla versione vecchia finché non veniva chiusa del tutto.
 - COSA: `App.jsx` chiama `registration.update()` a ogni ritorno in primo piano (`visibilitychange`/`focus`, al massimo una volta al minuto) e ogni 30 minuti; la nuova versione mostra il banner "Nuova versione disponibile — tocca per aggiornare" (nessun ricaricamento automatico, invariato).
 - VALIDATION: `tests/pwaUpdatePrompt.test.mjs` +1 test; `npm test` 1127/1127; `npm run build` OK.
-- EXACT NEXT ACTION: "Mergia" (deploy Vercel automatico).
+- RILASCIO: PR #171 mergiata (`master@6ec4030`).
 
 ---
 

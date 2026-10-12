@@ -38,7 +38,9 @@ function dataUrlToBytes(dataUrl) {
  * comportamento su iOS e Android, perché non dipendiamo dal renderer PDF
  * nativo di nessuno dei due sistemi).
  */
-export default function PdfViewerModal({ titolo, dataUrl, filename, onClose }) {
+// onExport (opzionale): chiamato dopo "Condividi" o "Scarica", per chi deve
+// sapere che il documento è uscito dall'app (Poliedron lo archivia).
+export default function PdfViewerModal({ titolo, dataUrl, filename, onClose, onExport }) {
   const [errore, setErrore] = useState(false);
   const [erroreDettaglio, setErroreDettaglio] = useState('');
   const [caricamento, setCaricamento] = useState(true);
@@ -137,10 +139,11 @@ export default function PdfViewerModal({ titolo, dataUrl, filename, onClose }) {
           onClick={async () => {
             const ok = await condividiPdf(dataUrl, filename);
             if (!ok) scaricaPdf(dataUrl, filename);
+            onExport?.();
           }}
           full
         />
-        <Btn ch="Scarica" ic="download" v="sec" onClick={() => scaricaPdf(dataUrl, filename)} full />
+        <Btn ch="Scarica" ic="download" v="sec" onClick={() => { scaricaPdf(dataUrl, filename); onExport?.(); }} full />
       </div>
     </div>,
     document.body
