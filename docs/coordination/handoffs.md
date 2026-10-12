@@ -1,5 +1,9 @@
 # Handoffs
 
+## 2026-10-12 — CLAUDE — Guida riuso Poliedron
+- Nuovo `docs/architecture/poliedron-riuso.md` per sessioni che costruiscono un'altra app con Poliedron (solo documentazione).
+- NEXT: merge su approvazione PO.
+
 ## 2026-10-12 — CLAUDE — POL-AI-011 rilascio: deploy manuale v45
 - Migrazione `pol_ai_011_poliedron_eventi` applicata; PR #175 mergiata (`master@ecd964b`).
 - CI "Deploy agente-assistente" fallita 2 volte (500 interno Supabase). Deploy manuale via MCP di tutti i 23 file → v45; read-back 23/23 identici a master; boot check 401 "Sessione non valida".

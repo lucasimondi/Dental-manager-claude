@@ -1,3 +1,12 @@
+# Current task — Guida per riusare Poliedron in un'altra app (2026-10-12)
+- OWNER: CLAUDE, su istruzione del Product Owner ("Voglio che un'altra chat di Claude possa leggere e prendere il codice di poliedron per poter costruire un'altra app con poliedron" → proposta guida fissa → "Si").
+- BRANCH: `claude/poliedron-agenda-actions-kz6mmk` (da `master@ecd964b`).
+- COSA: `docs/architecture/poliedron-riuso.md` — regole (repo solo fonte, progetto Supabase separato, niente dati né segreti), schema del flusso, mappa dei file server/app con cosa si riusa e cosa va riscritto, migrazioni e tabelle di base non versionate (colonne lette dallo schema di produzione, solo metadati, nessun dato), secret richiesti (solo nomi), invarianti di sicurezza, ordine di lavoro.
+- NESSUNA modifica a codice, database, RLS.
+- EXACT NEXT ACTION: "Mergia" → la guida è su master e un'altra sessione può leggerla.
+
+---
+
 # Current task — POL-AI-011 Cruscotto "Come risponde Poliedron" (Core vs modello) (2026-10-12)
 - OWNER: CLAUDE, su istruzione diretta del Product Owner ("Sì" alla proposta: cruscotto con la percentuale di richieste chiuse dal Core e cosa va ancora al modello, per ridurre la dipendenza dalle API).
 - BRANCH: `claude/poliedron-agenda-actions-kz6mmk`, ripartito da `master@767a386`.
