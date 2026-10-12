@@ -153,6 +153,14 @@ export function createPdfLayout({ si, data }) {
   return { STUDIO, hasFirma, intestazione, pazienteBox, footer, finalizzaMultipagina };
 }
 
+/** Nome del file di ogni documento del paziente: "Nome Cognome.pdf" (PO).
+    Senza caratteri che i telefoni o WhatsApp non accettano in un nome file. */
+export function nomeFilePaziente(paziente) {
+  const nome = [paziente?.nome, paziente?.cognome].map((v) => String(v || '').trim()).filter(Boolean).join(' ')
+    .replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return `${nome || 'Paziente'}.pdf`;
+}
+
 /** La ricetta medica in PDF: { dataUrl, filename, titolo, tipoDoc }. */
 export function buildRicettaPdf({ si, paziente, farmaci, data }) {
   const { STUDIO, intestazione, pazienteBox, finalizzaMultipagina } = createPdfLayout({ si, data });
@@ -205,7 +213,7 @@ export function buildRicettaPdf({ si, paziente, farmaci, data }) {
   finalizzaMultipagina(doc, W, M);
   return {
     dataUrl: doc.output('datauristring'),
-    filename: `ricetta_${paziente.cognome}_${data}.pdf`,
+    filename: nomeFilePaziente(paziente),
     titolo: 'Ricetta medica',
     tipoDoc: 'ricetta',
   };

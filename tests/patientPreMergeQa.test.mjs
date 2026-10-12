@@ -14,7 +14,7 @@ test('A. Ricetta produce un PDF reale visualizzabile e scaricabile', () => {
     farmaci: [{ nome: 'Farmaco QA', posologia: '1 al giorno' }],
   });
   assert.match(result.dataUrl, /^data:application\/pdf;/);
-  assert.equal(result.filename, 'ricetta_Rossi_2026-08-26.pdf');
+  assert.equal(result.filename, 'Mario Rossi.pdf');
   assert.ok(result.doc.output('arraybuffer').byteLength > 1000);
 });
 

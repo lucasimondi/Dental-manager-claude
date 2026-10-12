@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { applyConfiguredSignature } from './pdfSignature.js';
+import { nomeFilePaziente } from './documenti/pdfLayout.js';
 
 const fmtD = (d) => (d ? new Date(d + 'T12:00').toLocaleDateString('it-IT') : '-');
 
@@ -177,7 +178,7 @@ export function creaRicettaPdf({ paziente, studio, farmaci, data }) {
   doc.setTextColor(150, 160, 170);
   doc.text(`${STUDIO.nome} · ${STUDIO.addr} · P.IVA ${STUDIO.piva}`, W / 2, 287, { align: 'center' });
 
-  const filename = `ricetta_${(paz.cognome || 'paziente').replace(/\s+/g, '_')}_${oggi}.pdf`;
+  const filename = nomeFilePaziente(paz);
   return { doc, dataUrl: doc.output('datauristring'), filename };
 }
 
@@ -349,7 +350,7 @@ export function creaAnamnesiPdf({ paziente, studio, risposte, farmaci, allergie,
   doc.setTextColor(150, 160, 170);
   doc.text(`${STUDIO.nome} · ${STUDIO.addr} · P.IVA ${STUDIO.piva}`, W / 2, 287, { align: 'center' });
 
-  const filename = `anamnesi_${(paz.cognome || 'paziente').replace(/\s+/g, '_')}_${oggi}.pdf`;
+  const filename = nomeFilePaziente(paz);
   return { doc, dataUrl: doc.output('datauristring'), filename };
 }
 

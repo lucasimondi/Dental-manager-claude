@@ -4,7 +4,7 @@ import { Btn, Crd, Fld, Inp, Sel, Modal, Ic, PannelloInvioDocumento } from './ui
 import { C, fmt, fmtD, today, VERTICALI_CON_RICETTA } from '../lib/utils';
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { supabase } from '../lib/supabase.js';
-import { createPdfLayout, buildRicettaPdf, archiviaDocumento } from '../lib/documenti/pdfLayout.js';
+import { createPdfLayout, buildRicettaPdf, archiviaDocumento, nomeFilePaziente } from '../lib/documenti/pdfLayout.js';
 import { applicaFarmacoPreferito, resolveFarmaciPreferiti } from '../lib/farmaciPreferiti.js';
 import { unisciFarmaciPreparati } from '../lib/farmaciPreferiti.js';
 import { imparaDaRicetta } from '../lib/poliedron/memoryRepository.js';
@@ -393,7 +393,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
 
     finalizzaMultipagina(doc, W, M);
     const dataUrl = doc.output('datauristring');
-    const filename = `esami_ematici_${paz.cognome}_${data}.pdf`;
+    const filename = nomeFilePaziente(paz);
     salvaInArchivioSeAttivo('esami', 'Prescrizione esami ematici', dataUrl);
     clearContenutoDraft();
     setPronto({ dataUrl, filename, titolo: 'Prescrizione esami ematici', tipoDoc: 'esami' });
@@ -452,7 +452,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
 
     finalizzaMultipagina(doc, W, M);
     const dataUrl = doc.output('datauristring');
-    const filename = `certificato_${paz.cognome}_${data}.pdf`;
+    const filename = nomeFilePaziente(paz);
     salvaInArchivioSeAttivo('certificato', 'Certificato di visita', dataUrl);
     clearContenutoDraft();
     setPronto({ dataUrl, filename, titolo: 'Certificato di visita', tipoDoc: 'certificato' });
@@ -520,7 +520,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
 
     finalizzaMultipagina(doc, W, M);
     const dataUrl = doc.output('datauristring');
-    const filename = `lettera_${paz.cognome}_${data}.pdf`;
+    const filename = nomeFilePaziente(paz);
     salvaInArchivioSeAttivo('lettera', 'Lettera per specialista', dataUrl);
     clearContenutoDraft();
     setPronto({ dataUrl, filename, titolo: 'Lettera per specialista', tipoDoc: 'lettera' });
@@ -564,7 +564,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
 
     finalizzaMultipagina(doc, W, M);
     const dataUrl = doc.output('datauristring');
-    const filename = `protocollo_${protocolloId}_${paz.cognome}_${data}.pdf`;
+    const filename = nomeFilePaziente(paz);
     salvaInArchivioSeAttivo('protocollo', titoloProtocollo, dataUrl);
     clearContenutoDraft();
     setPronto({ dataUrl, filename, titolo: titoloProtocollo, tipoDoc: 'protocollo' });
@@ -615,7 +615,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
 
     finalizzaMultipagina(doc, W, M);
     const dataUrl = doc.output('datauristring');
-    const filename = `documento_${paz.cognome}_${data}.pdf`;
+    const filename = nomeFilePaziente(paz);
     salvaInArchivioSeAttivo('vuoto', titoloVuoto.trim() || 'Documento libero', dataUrl);
     clearContenutoDraft();
     setPronto({ dataUrl, filename, titolo: titoloVuoto.trim() || 'Documento libero', tipoDoc: 'vuoto' });

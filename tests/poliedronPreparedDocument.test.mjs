@@ -12,7 +12,7 @@ const source = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 
 test('the chat PDF is a real prescription with patient, drug, posology and studio header', () => {
   const pdf = buildRicettaPdf({ si, paziente, farmaci, data: '2026-10-11' });
-  assert.equal(pdf.filename, 'ricetta_Caio_2026-10-11.pdf');
+  assert.equal(pdf.filename, 'Tizio Caio.pdf');
   assert.equal(pdf.tipoDoc, 'ricetta');
   const bytes = Buffer.from(pdf.dataUrl.split(',')[1], 'base64').toString('latin1');
   assert.match(bytes, /^%PDF-/);
@@ -78,4 +78,16 @@ test('sharing or downloading from the PDF viewer archives the prescription, once
   const poliedron = source('src/components/poliedron/Poliedron.jsx');
   assert.match(poliedron, /if \(prepared\.archiveDone\) return prepared\.archived;/);
   assert.match(poliedron, /onExportPreparedDocument=\{exportPreparedDocument\}/);
+});
+
+// PO: "il pdf generato deve avere solo il nome cognome del paziente .pdf".
+test('every patient document is saved as "Nome Cognome.pdf"', async () => {
+  const { nomeFilePaziente } = await import('../src/lib/documenti/pdfLayout.js');
+  assert.equal(nomeFilePaziente({ nome: 'Andrea', cognome: 'Abello' }), 'Andrea Abello.pdf');
+  assert.equal(nomeFilePaziente({ nome: ' Maria ', cognome: "D'Amico / De Luca" }), "Maria D'Amico De Luca.pdf");
+  assert.equal(nomeFilePaziente({}), 'Paziente.pdf');
+  const doc = source('src/components/DocMedico.jsx');
+  assert.equal((doc.match(/const filename = nomeFilePaziente\(paz\);/g) || []).length, 5);
+  assert.doesNotMatch(doc, /const filename = `/);
+  assert.doesNotMatch(source('src/lib/pdfDocs.js'), /const filename = `/);
 });
