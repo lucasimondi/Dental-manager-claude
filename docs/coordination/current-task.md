@@ -1,3 +1,20 @@
+# Current task — POL-VITA-001 Archivio personale e assistente di vita (2026-10-12)
+- OWNER: CLAUDE, su istruzione diretta del PO ("POL-VITA-001-brief leggi questo e iniziamo nuovo progetto catalogazione facile"). Brief integrale: `docs/mission/POL-VITA-001-brief.md`.
+- BRANCH: `claude/catalogazione-facile-latjs9`, da `master@ecd964b7`. Ogni fase avrà poi un proprio branch.
+- STATO: solo analisi e registrazione. **Nessun codice, migrazione, Edge Function o modifica a Supabase/Google finché il PO non decide i 4 gate del brief** (`PRODUCT_OWNER_DECISION_REQUIRED`).
+- VERIFICHE SUL REPOSITORY (a supporto delle decisioni):
+  - Master Context §"Tenant safety": "Ogni funzione deve rispettare `studio_id`". Un ambito personale su `auth.uid()` è una seconda dimensione di tenancy, non prevista → gate 1 confermato. `docs/architecture/tenancy.md`: `getStudioId()` ha un UUID di fallback fisso; lo spazio personale non deve mai usarlo (identità solo da `auth.uid()` lato database, fail-closed).
+  - Master Context descrive Poliedra come SaaS per professionisti sanitari: l'archivio personale è un ampliamento di prodotto. Da chiarire se è una funzione solo per il PO o per tutti gli utenti (cambia onboarding, consenso, OAuth verificato da Google, costi AI).
+  - `estrai-spesa-documento` è chiamata da `src/components/ui/UploadDocumentoSpesa.jsx` ma **non è versionata** in `supabase/functions/` (ci sono solo `agente-assistente`, `whatsapp-webhook`, `_shared`). La Fase 2 non può "riusarla" finché il suo codice non è nel repo: va prima recuperata in sola lettura.
+  - Nessuna integrazione Gmail esistente; esiste `google_calendar_tokens` (Master Context: modello di accesso da dimostrare, backlog P0). Il refresh token Gmail non deve seguire quel modello finché non è chiarito: tabella propria, cifrata, leggibile solo dal service role.
+  - Team: `src/lib/poliedron/team/catalog.js` (`TEAM_ASSISTANTS`) + `agente-assistente/team.js`, regole in `docs/architecture/poliedron-team-foundation.md` → Fase 5 si innesta lì.
+  - Criterio "nessun dato personale in `poliedron_eventi`": quella tabella (POL-AI-011) registra intento e nomi di strumenti; i nuovi strumenti read-only andranno registrati senza argomenti (già così per costruzione) — da coprire con test.
+  - Fornitore AI (gate 4): ultimo stato registrato 2026-10-12 = OpenAI 429 `insufficient_quota`, riserva automatica pronta ma attiva solo se `ANTHROPIC_API_KEY` è impostata.
+- DECISIONI PO APERTE: (1) ambito personale su `auth.uid()`; (2) stesso progetto Supabase o progetto separato; (3) trattamento dati sanitari di terzi e di pazienti; (4) fornitore AI/credito. Più: (5) funzione solo per il PO o di prodotto; (6) modalità OAuth Google (app in test: refresh token scade dopo 7 giorni; verifica Google per scope `gmail.readonly` = scope "restricted", richiede valutazione di sicurezza per uso pubblico).
+- EXACT NEXT ACTION: risposte del PO ai gate → piano tecnico della Fase 1 (migrazione `documenti_personali` + bucket privato + RLS owner-only + test a due utenti) su branch dedicato.
+
+---
+
 # Current task — POL-AI-011 Cruscotto "Come risponde Poliedron" (Core vs modello) (2026-10-12)
 - OWNER: CLAUDE, su istruzione diretta del Product Owner ("Sì" alla proposta: cruscotto con la percentuale di richieste chiuse dal Core e cosa va ancora al modello, per ridurre la dipendenza dalle API).
 - BRANCH: `claude/poliedron-agenda-actions-kz6mmk`, ripartito da `master@767a386`.

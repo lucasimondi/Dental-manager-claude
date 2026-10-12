@@ -1,5 +1,17 @@
 # Handoffs
 
+## POL-VITA-001 — Archivio personale e assistente di vita: avvio (2026-10-12)
+
+- Task: POL-VITA-001, brief del PO in `docs/mission/POL-VITA-001-brief.md`. Previous agent: nessuno (task nuovo). Agent: CLAUDE. Branch `claude/catalogazione-facile-latjs9`.
+- Objective: archivio personale (allegati Gmail → interpretazione → pratiche, scadenze, ricerca in chat, team personale, download/sintesi, cancellazione definitiva).
+- Completed work: brief registrato; analisi di compatibilità con Master Context, tenancy, team e funzioni esistenti (dettagli in `current-task.md`).
+- Files changed: `docs/mission/POL-VITA-001-brief.md` (new), `docs/coordination/current-task.md`, questo file.
+- Database: none. Tests: non eseguiti (solo documentazione).
+- Unresolved: gate PO 1–4 del brief + (5) uso solo personale o di prodotto + (6) modalità OAuth Google. `estrai-spesa-documento` non è versionata nel repo.
+- Risks: nuova dimensione di tenancy; dati art. 9 GDPR di terzi; scope Gmail "restricted".
+- Exact next action: decisioni del PO → piano tecnico Fase 1.
+
+
 ## POL-AI-011 — Cruscotto "Come risponde Poliedron" (Core vs modello) (2026-10-12)
 
 - Task: misurare la quota di richieste chiuse dal Core senza modello e cosa va ancora alle API (PO: "Sì"). Previous agent: CLAUDE (stessa sessione, PR #166). Agent: CLAUDE. Branch `claude/poliedron-agenda-actions-kz6mmk` da `master@767a386`. Dettagli in `current-task.md`.
