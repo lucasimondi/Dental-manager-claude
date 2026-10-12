@@ -175,6 +175,30 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
+  // The browser looks for a new service worker only on a real navigation. An
+  // installed PWA brought back from the background never navigates, so it
+  // stayed on the old version until it was closed for good ("non mi
+  // arrivano gli aggiornamenti"). Ask on every return to the app (at most
+  // once a minute) and every 30 minutes; a new version then shows the banner.
+  useEffect(() => {
+    let lastCheck = Date.now();
+    const check = () => {
+      const registration = swRegistrationRef.current;
+      if (!registration || Date.now() - lastCheck < 60 * 1000) return;
+      lastCheck = Date.now();
+      registration.update().catch(() => {}); // offline: next time
+    };
+    const onVisible = () => { if (document.visibilityState === 'visible') check(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    const timer = setInterval(check, 30 * 60 * 1000);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+      clearInterval(timer);
+    };
+  }, []);
+
   // Colori brand (piano Premium): riapplica pri/priL/priD/acc sopra la palette
   // di tema ogni volta che cambia il tema (altrimenti il toggle chiaro/scuro li
   // sovrascriverebbe), i colori salvati dallo studio, o se la feature si disattiva.
