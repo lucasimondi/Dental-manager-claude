@@ -23,6 +23,9 @@ import { describeChatError, resolveChatSurfaceState } from '../../lib/poliedron/
 import { attachmentMetadata, attachmentPayload, prepareAttachment } from '../../lib/poliedron/chatAttachment.js';
 import { saveAttachmentToPatient } from '../../lib/poliedron/attachmentToPatient.js';
 import { DB } from '../../lib/supabase.js';
+import { buildRicettaPdf, archiviaDocumento } from '../../lib/documenti/pdfLayout.js';
+import { condividiPdf, copiaNumero } from '../../lib/condivisionePdf';
+import { imparaDaRicetta } from '../../lib/poliedron/memoryRepository.js';
 import { useTeamState } from './PoliedronTeam';
 import { buildAlerts, alertsToDeliver, alertMarker, ACTION_LABEL } from '../../lib/poliedron/team/alerts.js';
 import { ACTIVITY_KIND } from '../../lib/domain/dataHealthActivities.js';
@@ -80,7 +83,7 @@ const summarizeStructuredResult = (result) => {
    identity, one Poliedra AI Core). */
 export default function Poliedron({
   phoneApp = false,
-  isMobile, page, setPage, patients, plans, payments, pricelist, appointments, richiami, impegni, goSchedaPaz, onCreatePatient, farmaciPreferiti,
+  isMobile, page, setPage, patients, plans, payments, pricelist, appointments, richiami, impegni, goSchedaPaz, onCreatePatient, farmaciPreferiti, studioInfo,
   features, isStudioAdmin, vertical, studioId, userId, currentPatient, positionLocked = false,
   quickActionCtx, supabaseClient, onArchivioFilterHint, openPrescription, openNew, openNewPlan, openNewPayment, openBooking,
   externalCommandRequest, onExternalCommandHandled, chatHost, onDataChanged,
@@ -105,6 +108,9 @@ export default function Poliedron({
   const [chatActionRunning, setChatActionRunning] = useState(false);
   const [externalContext, setExternalContext] = useState(null);
   const [chatStructuredState, setChatStructuredState] = useState(null);
+  // A prescription Poliedron prepared as a PDF in chat, waiting for the clinician.
+  const [chatPreparedDocument, setChatPreparedDocument] = useState(null);
+  const [preparedDocumentBusy, setPreparedDocumentBusy] = useState(false);
   const chatStructuredStateRef = useRef(null);
   chatStructuredStateRef.current = chatStructuredState;
   const modelConfirmationRef = useRef(null);
@@ -336,6 +342,74 @@ export default function Poliedron({
     return true;
   }, [actions, openPrescription, patients]);
 
+  /* In chat a prescription becomes a real PDF at once (same generator and
+     layout as the Ricetta form). Nothing is archived or sent until the
+     clinician confirms; "Modifica" opens the usual form. */
+  const prepareDocumentInChat = useCallback((documentRequest) => {
+    if (!documentRequest || documentRequest.type !== 'ricetta') return false;
+    const patient = (patients || []).find((p) => String(p.id) === String(documentRequest.patientId));
+    const allowed = actions.some((action) => action.id === 'prescription.create');
+    if (!patient || !allowed || !studioInfo) return openPreparedDocument(documentRequest);
+    try {
+      const data = new Date().toISOString().slice(0, 10);
+      const pdf = buildRicettaPdf({ si: studioInfo, paziente: patient, farmaci: documentRequest.farmaci, data });
+      setChatPreparedDocument({ id: `${Date.now()}`, request: documentRequest, patient, farmaci: documentRequest.farmaci, pdf, data, status: 'ready', notice: '' });
+      return true;
+    } catch {
+      return openPreparedDocument(documentRequest);
+    }
+  }, [actions, openPreparedDocument, patients, studioInfo]);
+
+  const archivePreparedDocument = useCallback(async (prepared) => {
+    const saved = await archiviaDocumento(supabaseClient, {
+      si: studioInfo, studioId, paziente: prepared.patient, tipoDoc: prepared.pdf.tipoDoc, titolo: prepared.pdf.titolo, data: prepared.data, dataUrl: prepared.pdf.dataUrl,
+    });
+    // Poliedron learns the posology the clinician actually confirmed.
+    void imparaDaRicetta(supabaseClient, { studioId, userId, farmaci: prepared.farmaci });
+    return saved;
+  }, [studioId, studioInfo, supabaseClient, userId]);
+
+  const sendPreparedDocument = useCallback(async () => {
+    const prepared = chatPreparedDocument;
+    if (!prepared || preparedDocumentBusy) return;
+    setPreparedDocumentBusy(true);
+    const name = `${prepared.patient.nome} ${prepared.patient.cognome}`;
+    try {
+      // The share sheet must open straight from the tap: archive afterwards.
+      const copied = prepared.patient.telefono ? await copiaNumero(prepared.patient.telefono) : false;
+      const shared = await condividiPdf(prepared.pdf.dataUrl, prepared.pdf.filename);
+      const saved = await archivePreparedDocument(prepared);
+      const where = saved ? ' È salvata nell\u2019archivio della scheda.' : '';
+      const notice = shared
+        ? `Ho aperto l\u2019invio: scegli WhatsApp e ${copied ? `incolla il numero di ${prepared.patient.nome} (già copiato)` : `il contatto di ${name}`}.${where}`
+        : `Su questo dispositivo non posso aprire l\u2019invio: usa “Apri il PDF” e scaricalo.${where}`;
+      setChatPreparedDocument((current) => current?.id === prepared.id ? { ...current, status: 'sent', notice } : current);
+      try { await appendMessage({ requestId: createChatRequestId(), role: 'assistant', content: `Ricetta per ${name} confermata${shared ? ' e pronta da inviare' : ''}.${where}`, deliveryStatus: 'sent', readAt: new Date().toISOString() }); } catch { /* the card already says it */ }
+    } finally {
+      setPreparedDocumentBusy(false);
+    }
+  }, [appendMessage, archivePreparedDocument, chatPreparedDocument, preparedDocumentBusy]);
+
+  const savePreparedDocument = useCallback(async () => {
+    const prepared = chatPreparedDocument;
+    if (!prepared || preparedDocumentBusy) return;
+    setPreparedDocumentBusy(true);
+    try {
+      const saved = await archivePreparedDocument(prepared);
+      const notice = saved ? 'Salvata nell\u2019archivio della scheda del paziente.' : 'Lo studio non archivia le ricette (Impostazioni → Documenti): scarica il PDF da “Apri il PDF”.';
+      setChatPreparedDocument((current) => current?.id === prepared.id ? { ...current, status: 'saved', notice } : current);
+    } finally {
+      setPreparedDocumentBusy(false);
+    }
+  }, [archivePreparedDocument, chatPreparedDocument, preparedDocumentBusy]);
+
+  const editPreparedDocument = useCallback(() => {
+    const prepared = chatPreparedDocument;
+    if (!prepared) return;
+    setChatPreparedDocument(null);
+    openPreparedDocument(prepared.request);
+  }, [chatPreparedDocument, openPreparedDocument]);
+
   const applyQuickResult = useCallback((result) => {
     if (result.documentRequest && openPreparedDocument(result.documentRequest)) {
       setLoading(false);
@@ -461,7 +535,7 @@ export default function Poliedron({
         pendingChatRequestRef.current = null;
       }
       if (result.documentRequest) {
-        openPreparedDocument(result.documentRequest);
+        prepareDocumentInChat(result.documentRequest);
       } else if (result.directNavigation) {
         const { navId, filtroTipo } = result.directNavigation;
         if (navId === 'archivio') onArchivioFilterHint?.(filtroTipo || 'tutti');
@@ -477,7 +551,7 @@ export default function Poliedron({
       setChatError(described?.message || 'Non riesco a completare la richiesta. Riprova.');
       return false;
     }
-  }, [appendMessage, chatAttachment, conversationErrorState, conversationLoading, onArchivioFilterHint, openPreparedDocument, primaryConversation?.id, runPersistedRequest, setPage]);
+  }, [appendMessage, chatAttachment, conversationErrorState, conversationLoading, onArchivioFilterHint, prepareDocumentInChat, primaryConversation?.id, runPersistedRequest, setPage]);
 
   // POL-AI-011: the attached file goes into the patient's "Foto" section
   // (private patient-files storage, studio RLS) only after the confirmation.
@@ -925,6 +999,12 @@ export default function Poliedron({
           surfaceStatus={chatSurface.status}
           onModelConfirmation={(p, cancel) => handleModelConfirmation(p, cancel, true)}
           structuredState={chatStructuredState}
+          preparedDocument={chatPreparedDocument}
+          preparedDocumentBusy={preparedDocumentBusy}
+          onSendPreparedDocument={sendPreparedDocument}
+          onSavePreparedDocument={savePreparedDocument}
+          onEditPreparedDocument={editPreparedDocument}
+          onDiscardPreparedDocument={() => setChatPreparedDocument(null)}
           onSend={(text) => runChatMessage(text)}
           onRetry={(message) => runChatMessage(message.content, message)}
           attachment={chatAttachment}

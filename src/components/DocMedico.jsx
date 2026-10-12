@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { jsPDF } from 'jspdf';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Ic, PannelloInvioDocumento } from './ui';
-import { C, fmt, fmtD, today, VERTICALI_CON_RICETTA, DEF_DOCUMENTI_SETTINGS } from '../lib/utils';
+import { C, fmt, fmtD, today, VERTICALI_CON_RICETTA } from '../lib/utils';
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { supabase } from '../lib/supabase.js';
-import { applyConfiguredSignature } from '../lib/pdfSignature.js';
+import { createPdfLayout, buildRicettaPdf, archiviaDocumento } from '../lib/documenti/pdfLayout.js';
 import { applicaFarmacoPreferito, resolveFarmaciPreferiti } from '../lib/farmaciPreferiti.js';
 import { unisciFarmaciPreparati } from '../lib/farmaciPreferiti.js';
 import { imparaDaRicetta } from '../lib/poliedron/memoryRepository.js';
@@ -104,13 +104,6 @@ In caso di allineatore rotto, perso o che non calza più correttamente, contatta
 // può essere null finché l'utente non sceglie o crea il paziente: il form
 // è già compilabile, solo "Genera PDF" resta bloccato.
 export default function DocMedico({ paz, si, onClose, initialType, initialPrefill, requestId, onInitialRequestHandled, onDocumentSaved, pazienteSelector }) {
-  // Lo studio "reale" di Luca (Studio Simondi): unico caso in cui mostriamo
-  // il timbro professionale completo con firma scansionata personale.
-  // Per qualsiasi altro studio (anche un altro dentista) usiamo un footer
-  // generico con i SUOI dati, senza la firma di Luca.
-  // Il timbro completo con firma scansionata compare per QUALSIASI studio
-  // che ne abbia caricata una da Impostazioni — non solo per Studio Simondi.
-  const hasFirma = !!si?.firma_b64;
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   // La ricetta medica richiede l'iscrizione all'Ordine dei Medici e Odontoiatri:
   // disponibile solo per dentisti e medici chirurghi, non per altri professionisti sanitari.
@@ -161,7 +154,6 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
     });
   }, []);
 
-  const docSet = { ...DEF_DOCUMENTI_SETTINGS, ...(si?.documenti_settings || {}) };
 
   // Documento pronto dopo la generazione: invece di scaricare in automatico,
   // teniamo qui dataUrl+filename+titolo e mostriamo un pannello di azioni
@@ -174,17 +166,8 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
   useEffect(() => { if (paz) setErroreGenerazione(''); }, [paz?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const salvaInArchivioSeAttivo = async (tipoDoc, titolo, dataUrl) => {
-    if (!docSet[tipoDoc] || !studioId) return false;
-    const { data: saved, error } = await supabase.from('documenti_medici').insert([{
-      studio_id: studioId,
-      paziente_id: paz.id,
-      paziente_nome: `${paz.nome} ${paz.cognome}`,
-      tipo: tipoDoc,
-      titolo,
-      data,
-      pdf_base64: dataUrl,
-    }]).select('id, tipo, titolo, data, paziente_id, created_at').single();
-    if (error) return false;
+    const saved = await archiviaDocumento(supabase, { si, studioId, paziente: paz, tipoDoc, titolo, data, dataUrl });
+    if (!saved) return false;
     setArchiviato(true);
     onDocumentSaved?.(saved);
     return true;
@@ -327,197 +310,18 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
   const [menuPreferitiAperto, setMenuPreferitiAperto] = useState(false);
   const giaInRicetta = (nome) => farmaci.some((f) => f.farmaco?.trim().toLowerCase() === nome.trim().toLowerCase());
 
-  const intestazione = (doc, W, M) => {
-    let y = 18;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.setTextColor(26, 78, 102);
-    doc.text(STUDIO.nome, W / 2, y, { align: 'center' }); y += 6;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(74, 144, 196);
-    doc.text(STUDIO.spec, W / 2, y, { align: 'center' }); y += 5;
-    doc.text(STUDIO.iscr, W / 2, y, { align: 'center' }); y += 5;
-    doc.setTextColor(100, 100, 100);
-    doc.text(`${STUDIO.addr}   |   Tel: ${STUDIO.tel}`, W / 2, y, { align: 'center' }); y += 7;
-    doc.setDrawColor(26, 107, 138);
-    doc.setLineWidth(0.5);
-    doc.line(M, y, W - M, y); y += 8;
-    return y;
-  };
-
-  const pazienteBox = (doc, paz, y, W, M) => {
-    doc.setFillColor(245, 247, 250);
-    doc.rect(M, y, W - M * 2, 14, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(113, 128, 150);
-    doc.text('PAZIENTE', M + 3, y + 4);
-    doc.text('DATA', W / 2, y + 4);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(11);
-    doc.setTextColor(26, 32, 44);
-    doc.text(`${paz.nome} ${paz.cognome}`, M + 3, y + 11);
-    if (paz.dataNascita) {
-      doc.setFontSize(8);
-      doc.setTextColor(113, 128, 150);
-      doc.text(`Nato/a il ${fmtD(paz.dataNascita)}`, M + 3, y + 16);
-    }
-    doc.setFontSize(11);
-    doc.setTextColor(26, 32, 44);
-    doc.text(new Date(data + 'T12:00').toLocaleDateString('it-IT'), W / 2, y + 11);
-    return y + (paz.dataNascita ? 22 : 18);
-  };
-
-  const footer = (doc, W, M) => {
-    const fY = 228;
-
-    if (hasFirma) {
-      // ── TIMBRO PROFESSIONALE personale di Luca (con firma scansionata) ──
-      const tW = 60, tH = 21;
-      const tX = (W - tW) / 2;
-      const tY = fY + 5;
-      const pad = 3;
-
-      doc.setDrawColor(26, 78, 102);
-      doc.setLineWidth(0.8);
-      doc.roundedRect(tX, tY, tW, tH, 2.5, 2.5, 'S');
-      doc.setLineWidth(0.3);
-      doc.roundedRect(tX + 1, tY + 1, tW - 2, tH - 2, 2, 2, 'S');
-
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(4.5);
-      doc.setTextColor(26, 78, 102);
-      doc.text(STUDIO.nome, tX + tW / 2, tY + 4.5, { align: 'center', maxWidth: tW - pad * 2 });
-
-      doc.setDrawColor(26, 78, 102);
-      doc.setLineWidth(0.2);
-      doc.line(tX + 4, tY + 5.8, tX + tW - 4, tY + 5.8);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(3);
-      doc.setTextColor(26, 78, 102);
-      doc.text(STUDIO.spec, tX + tW / 2, tY + 8, { align: 'center', maxWidth: tW - pad * 2 });
-
-      doc.text(STUDIO.iscr, tX + tW / 2, tY + 10.5, { align: 'center', maxWidth: tW - pad * 2 });
-
-      doc.setLineWidth(0.2);
-      doc.line(tX + 5, tY + 12, tX + tW - 5, tY + 12);
-
-      doc.setFontSize(2.8);
-      doc.text(STUDIO.addr, tX + tW / 2, tY + 14, { align: 'center', maxWidth: tW - pad * 2 });
-      doc.text(`Tel. ${STUDIO.tel} · ${STUDIO.email}`, tX + tW / 2, tY + 16.5, { align: 'center', maxWidth: tW - pad * 2 });
-
-      doc.setFontSize(2.5);
-      doc.setTextColor(80, 110, 130);
-      doc.text(`P.IVA ${STUDIO.piva}`, tX + tW / 2, tY + 19, { align: 'center', maxWidth: tW - pad * 2 });
-
-      try {
-        applyConfiguredSignature(doc, si.firma_b64, tX + tW / 2 - 14, tY - 4);
-      } catch(e) {}
-    } else {
-      // ── Footer generico per qualsiasi altro studio: nessuna firma personale ──
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      doc.setTextColor(100, 100, 100);
-      const righe = [STUDIO.nome, STUDIO.addr, [STUDIO.tel, STUDIO.email].filter(Boolean).join(' · ')].filter(Boolean);
-      let yy = fY + 8;
-      righe.forEach((r) => { doc.text(r, W / 2, yy, { align: 'center' }); yy += 4; });
-    }
-
-    // ── FOOTER TESTO ──
-    doc.setDrawColor(200, 210, 220);
-    doc.setLineWidth(0.3);
-    doc.line(M, 283, W - M, 283);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
-    doc.setTextColor(150, 160, 170);
-    doc.text(`${STUDIO.nome} · ${STUDIO.addr} · P.IVA ${STUDIO.piva}`, W / 2, 287, { align: 'center' });
-  };
-
-  // Da chiamare UNA SOLA VOLTA a fine documento, dopo aver generato tutto il
-  // contenuto (con eventuali doc.addPage() già inseriti dove serviva).
-  // Ripete intestazione studio + timbro/firma su OGNI pagina (il timbro non
-  // si sposta mai: stessa posizione, stesso aspetto, identico su ciascun
-  // foglio) e aggiunge "Pagina X di Y" in alto a destra solo se il
-  // documento ha più di una pagina.
-  const finalizzaMultipagina = (doc, W, M) => {
-    const nPagine = doc.internal.getNumberOfPages();
-    for (let p = 1; p <= nPagine; p++) {
-      doc.setPage(p);
-      if (p > 1) {
-        // Sulle pagine successive alla prima ripetiamo solo l'intestazione
-        // studio (senza il box paziente/titolo, già mostrati in pagina 1)
-        intestazione(doc, W, M);
-      }
-      footer(doc, W, M);
-      if (nPagine > 1) {
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7.5);
-        doc.setTextColor(150, 160, 170);
-        doc.text(`Pagina ${p} di ${nPagine}`, W - M, 12, { align: 'right' });
-      }
-    }
-  };
+  // Layout PDF condiviso con Poliedron (src/lib/documenti/pdfLayout.js).
+  const { intestazione, pazienteBox, finalizzaMultipagina } = createPdfLayout({ si, data });
 
   const generaRicetta = () => {
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const W = 210, M = 18;
-    let y = intestazione(doc, W, M);
-
-    // Titolo
-    doc.setFillColor(26, 107, 138);
-    doc.rect(M, y, W - M * 2, 9, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.setTextColor(255, 255, 255);
-    doc.text('RICETTA MEDICA', W / 2, y + 6, { align: 'center' });
-    y += 13;
-
-    y = pazienteBox(doc, paz, y, W, M);
-    y += 4;
-
-    // Farmaci
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(26, 107, 138);
-    doc.text('PRESCRIZIONE:', M, y); y += 6;
-
-    farmaci.filter(f => f.farmaco.trim()).forEach((f, i) => {
-      const details = [f.dosaggio && `Dosaggio: ${f.dosaggio}`, f.posologia && `Posologia: ${f.posologia}`, f.durata && `Durata: ${f.durata}`, f.note && `Note: ${f.note}`].filter(Boolean);
-      const rh = 10 + details.length * 5;
-      if (y + rh > 220) { doc.addPage(); y = 52; }
-      doc.setFillColor(i % 2 === 0 ? 247 : 255, i % 2 === 0 ? 250 : 255, i % 2 === 0 ? 252 : 255);
-      doc.rect(M, y, W - M * 2, rh, 'F');
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.setTextColor(26, 32, 44);
-      doc.text(`${i + 1}. ${f.farmaco}`, M + 3, y + 7);
-      if (details.length) {
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
-        doc.setTextColor(74, 85, 104);
-        details.forEach((line, detailIndex) => doc.text(line, M + 5, y + 13 + detailIndex * 5));
-      }
-      y += rh + 2;
-    });
-
-    y += 8;
-    y += 4;
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(8);
-    doc.setTextColor(130, 130, 130);
-    doc.text('Ricetta valida 30 giorni dalla data di emissione. · Medico prescrittore: ' + STUDIO.nome, M, y);
-
-    finalizzaMultipagina(doc, W, M);
-    const dataUrl = doc.output('datauristring');
-    const filename = `ricetta_${paz.cognome}_${data}.pdf`;
-    void salvaInArchivioSeAttivo('ricetta', 'Ricetta medica', dataUrl);
+    const farmaciRicetta = farmaci.filter(f => f.farmaco.trim());
+    const pdf = buildRicettaPdf({ si, paziente: paz, farmaci: farmaciRicetta, data });
+    void salvaInArchivioSeAttivo('ricetta', pdf.titolo, pdf.dataUrl);
     // POL-AI-009: Poliedron impara le posologie che il medico usa davvero.
-    void imparaDaRicetta(supabase, { studioId, userId, farmaci: farmaci.filter((f) => f.farmaco.trim()) });
+    void imparaDaRicetta(supabase, { studioId, userId, farmaci: farmaciRicetta });
     setCompilataDaPoliedron(false);
     clearContenutoDraft();
-    setPronto({ dataUrl, filename, titolo: 'Ricetta medica', tipoDoc: 'ricetta' });
+    setPronto(pdf);
     setGenerated(true);
   };
 

@@ -1,3 +1,15 @@
+# Current task — Ricetta in PDF direttamente in chat, invio al paziente su conferma (2026-10-11)
+- OWNER: CLAUDE, branch `claude/whatsapp-automation-status-d2ng12`, da `master@9a49dae`. PO verbatim: "Adesso mi apre la pagina dei documenti , dobbiamo però fare un modo che poliedron apra in autonomia crei e mi mandi direttamente il pdf in chat , poi lo manderà direttamente al paziente su mia conferma".
+- COSA: nella chat di Poliedron la ricetta rapida (#169) diventa subito un **PDF vero** (stesso generatore e stessa impaginazione del modulo Ricetta, estratti in `src/lib/documenti/pdfLayout.js`; `DocMedico` usa lo stesso codice). Card nuova `PoliedronPreparedDocument`: farmaci, "Apri il PDF", "Modifica" (apre il modulo come prima), "Invia a <nome>" → seconda conferma "Hai controllato la ricetta?" → "Sì, invia"; poi "Salva senza inviare", "Scarta".
+- GUARDRAIL (Master Context: "l'AI non finalizza autonomamente atti clinici sensibili"): preparare il PDF **non** archivia, **non** invia e **non** aggiorna la memoria delle posologie; tutto ciò avviene solo dopo la conferma esplicita del medico. Interpretazione registrata: la ricetta preparata è una bozza finché il medico non conferma.
+- INVIO: finché WhatsApp Business (API) non è collegato, "Sì, invia" apre la condivisione del telefono con il PDF (WhatsApp) e copia il numero del paziente; poi salva in archivio (se lo studio archivia le ricette). L'invio diretto senza passaggi richiede la configurazione Meta (vedi #165) — follow-up.
+- Fuori dalla chat (pannello/comandi rapidi) resta l'apertura del modulo.
+- NESSUNA modifica a server, database, RLS.
+- VALIDATION: nuovo `tests/poliedronPreparedDocument.test.mjs` (PDF reale; impostazioni archivio rispettate; preparare non archivia/condivide/impara; condivisione prima dell'archivio; doppia conferma); 3 test sorgente aggiornati al refactor di DocMedico; `npm test` 1126/1126; `npm run build` OK.
+- EXACT NEXT ACTION: "Mergia" (deploy Vercel automatico) → prova del PO dal telefono.
+
+---
+
 # Current task — Ricetta rapida dalla chat ("amoxicillina e clavulanico per Tizio Caio") (2026-10-11)
 - OWNER: CLAUDE, branch `claude/whatsapp-automation-status-d2ng12`, da `master@53aaf11`. PO verbatim: "Ora dobbiamo dargli la possibilità di fare ricette con un comando tipo amoxicillina e clavulanico per Tizio Caio".
 - PRIMA: `resolvePrescriptionRequest` riconosceva solo frasi rigide (verbo operativo + "ricetta"); "amoxicillina e clavulanico per Tizio Caio", "ricetta di … per …", "prescrivi … a …" non erano riconosciute.
@@ -5,7 +17,7 @@
 - `App.jsx` passa a Poliedron i farmaci frequenti (`resolveFarmaciPreferiti(studioInfo)`).
 - NESSUNA modifica a server, database, RLS.
 - VALIDATION: nuovo `tests/poliedronQuickPrescription.test.mjs` (8 test); `npm test` 1122/1122; `npm run build` OK.
-- EXACT NEXT ACTION: "Mergia" (deploy Vercel automatico) → prova del PO in chat.
+- RILASCIO ESEGUITO: PR #169 mergiata (`master@9a49dae`), deploy Vercel automatico.
 
 ---
 

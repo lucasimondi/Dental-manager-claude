@@ -134,7 +134,10 @@ test('A. Genera PDF resta sopra il dock mobile e usa il generatore storico DocMe
   assert.match(doc, /const generaRicetta = \(\) => \{/);
   assert.doesNotMatch(doc, /generaRicettaLegacy|creaRicettaPdf/);
   assert.match(doc, /data-document-scroll="true"[\s\S]*paddingBottom: 'calc\(124px/);
-  assert.match(doc, /setPronto\(\{ dataUrl, filename, titolo: 'Ricetta medica'/);
+  // Il PDF della ricetta viene dal layout condiviso con Poliedron (stesso generatore storico).
+  assert.match(doc, /const pdf = buildRicettaPdf\(\{ si, paziente: paz, farmaci: farmaciRicetta, data \}\);[\s\S]*setPronto\(pdf\);/);
+  const layout = await source('src/lib/documenti/pdfLayout.js');
+  assert.match(layout, /titolo: 'Ricetta medica'/);
 });
 
 test('Foto, fisioterapia e documenti restano lazy/on-demand senza query al mount generale', async () => {
