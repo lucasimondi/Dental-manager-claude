@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-10-12 — CLAUDE — POL-AI-011 rilascio: deploy manuale v45
+- Migrazione `pol_ai_011_poliedron_eventi` applicata; PR #175 mergiata (`master@ecd964b`).
+- CI "Deploy agente-assistente" fallita 2 volte (500 interno Supabase). Deploy manuale via MCP di tutti i 23 file → v45; read-back 23/23 identici a master; boot check 401 "Sessione non valida".
+- NEXT: verificare che il prossimo deploy automatico passi; dopo qualche giorno d'uso leggere il riquadro "Come risponde Poliedron".
+
 ## POL-AI-011 — Cruscotto "Come risponde Poliedron" (Core vs modello) (2026-10-12)
 
 - Task: misurare la quota di richieste chiuse dal Core senza modello e cosa va ancora alle API (PO: "Sì"). Previous agent: CLAUDE (stessa sessione, PR #166). Agent: CLAUDE. Branch `claude/poliedron-agenda-actions-kz6mmk` da `master@767a386`. Dettagli in `current-task.md`.
