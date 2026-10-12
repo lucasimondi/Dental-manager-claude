@@ -16,7 +16,7 @@ test('Ricetta: il generatore produce un PDF reale non vuoto con i campi clinici 
   assert.ok(bytes.byteLength > 1000);
   assert.equal(String.fromCharCode(...bytes.slice(0, 4)), '%PDF');
   assert.match(result.dataUrl, /^data:application\/pdf/);
-  assert.equal(result.filename, 'ricetta_Rossi_2026-08-27.pdf');
+  assert.equal(result.filename, 'Ada Rossi.pdf');
 });
 
 test('DocMedico: l’archiviazione riuscita aggiorna la lista senza smontare anteprima e download', () => {

@@ -83,7 +83,7 @@ test('H. Anamnesi produce un documento PDF reale, visualizzabile e scaricabile',
     data: '2026-08-27',
   });
   assert.match(result.dataUrl, /^data:application\/pdf;/);
-  assert.match(result.filename, /anamnesi_Verdi_2026-08-27\.pdf/);
+  assert.equal(result.filename, 'Luca Verdi.pdf');
   assert.ok(result.doc.output('arraybuffer').byteLength > 1000);
 });
 

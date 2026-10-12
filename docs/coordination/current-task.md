@@ -1,3 +1,12 @@
+# Current task — Nome dei PDF: "Nome Cognome.pdf" (2026-10-12)
+- OWNER: CLAUDE, branch `claude/whatsapp-automation-status-d2ng12`, da `master@d47e165`. PO verbatim: "Ok allora il pdf generato deve avere solo il nome cognome del paziente .pdf."
+- COSA: `nomeFilePaziente(paziente)` in `src/lib/documenti/pdfLayout.js` ("Nome Cognome.pdf", senza caratteri non ammessi nei nomi file; "Paziente.pdf" se mancano). Usato per la ricetta (chat Poliedron e modulo Documenti), esami, certificato, lettera, protocollo, documento libero (`DocMedico`) e per ricetta/anamnesi di `pdfDocs.js`. Il titolo in archivio (`documenti_medici.titolo`) resta invariato ("Ricetta medica", …).
+- NESSUNA modifica a server, database, RLS.
+- VALIDATION: nuovo test in `tests/poliedronPreparedDocument.test.mjs`; 4 test che fissavano il vecchio nome aggiornati; `npm test` 1132/1132; `npm run build` OK.
+- EXACT NEXT ACTION: "Mergia" (deploy Vercel automatico).
+
+---
+
 # Current task — Ricetta in chat: dosi diverse, nomi sbagliati, card che sparisce, archivio al download (2026-10-12)
 - OWNER: CLAUDE, branch `claude/whatsapp-automation-status-d2ng12`, da `master@6ec4030`. PO verbatim: "per amoxicillina è ok , per ibuprofene 400 già non capisce , inoltre la scheda mi fa aprire una sola volta poi sparisce, inoltre le salva nel software ? Quando le scarico intendo" + screenshot "Zytromax per Andrea Abello" → "I servizi AI sono temporaneamente indisponibili".
 - (1) DOSE: "ibuprofene 400" con preferito Ibuprofene 600 mg → riga "Ibuprofene 400 mg", dosaggio 400 mg, posologia/durata abituali del preferito e risposta esplicita "ho usato la posologia abituale di Ibuprofene 600 mg, controlla che valga per questa dose". Cambia la regola di #169 (prima: posologia vuota); il medico conferma comunque prima di archiviare/inviare. Confronto delle dosi per numero intero (il "1" di "1 g" non combacia più con "125").
@@ -7,7 +16,7 @@
 - AI NON DISPONIBILE: log di `agente-assistente` 14:51 UTC: `llm_provider_error provider=openai status=429 errorType=insufficient_quota errorCode=credit_balance_exhausted`; nessun fallback ad Anthropic registrato (fornitore forzato su OpenAI o chiave Anthropic assente). Serve azione del PO: ricaricare il credito OpenAI oppure impostare `POLIEDRON_LLM_PROVIDER=anthropic`/`auto` con `ANTHROPIC_API_KEY` valida. `PRODUCT_OWNER_DECISION_REQUIRED` (fornitore/credito).
 - NESSUNA modifica a server, database, RLS.
 - VALIDATION: test nuovi/aggiornati in `tests/poliedronQuickPrescription.test.mjs` e `tests/poliedronPreparedDocument.test.mjs`; `npm test` verde; `npm run build` OK.
-- EXACT NEXT ACTION: "Mergia" (deploy Vercel automatico); decisione PO sul credito del modello.
+- RILASCIO: PR #172 mergiata (`master@d47e165`). Resta la decisione PO sul credito del modello.
 
 ---
 
