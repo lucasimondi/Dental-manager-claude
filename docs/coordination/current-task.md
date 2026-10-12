@@ -1,3 +1,13 @@
+# Current task — POL-AI-011 Cruscotto "Come risponde Poliedron" (Core vs modello) (2026-10-12)
+- OWNER: CLAUDE, su istruzione diretta del Product Owner ("Sì" alla proposta: cruscotto con la percentuale di richieste chiuse dal Core e cosa va ancora al modello, per ridurre la dipendenza dalle API).
+- BRANCH: `claude/poliedron-agenda-actions-kz6mmk`, ripartito da `master@767a386`.
+- VINCOLO (Learning Engine approvato, `docs/architecture/poliedron-learning-engine.md`): nessun testo delle chat, nessun nome o ID di paziente. Si registrano solo dati strutturati: percorso (core / modello / essenziale / conferma), intento riconosciuto dal Core, esito, nomi delle azioni chiamate dal modello, fornitore, durata.
+- COSA: tabella `poliedron_eventi` (RLS: scrive solo l'utente stesso membro attivo dello studio; leggono i membri attivi; conservazione 180 giorni), funzione `poliedron_statistiche_v1` (aggregati per studio, con i permessi dell'utente); `agente-assistente` registra un evento per ogni risposta (best effort, mai blocca la risposta); in "Attività di Poliedron" un riquadro con gli ultimi 30 giorni.
+- GATE: migrazione nuova (tabella + RLS) → applicata in produzione solo su "Mergia", prima del merge (il merge rilascia la funzione in automatico via CI).
+- EXACT NEXT ACTION: implementazione + test.
+
+---
+
 # Current task — Nome dei PDF: "Nome Cognome.pdf" (2026-10-12)
 - OWNER: CLAUDE, branch `claude/whatsapp-automation-status-d2ng12`, da `master@d47e165`. PO verbatim: "Ok allora il pdf generato deve avere solo il nome cognome del paziente .pdf."
 - COSA: `nomeFilePaziente(paziente)` in `src/lib/documenti/pdfLayout.js` ("Nome Cognome.pdf", senza caratteri non ammessi nei nomi file; "Paziente.pdf" se mancano). Usato per la ricetta (chat Poliedron e modulo Documenti), esami, certificato, lettera, protocollo, documento libero (`DocMedico`) e per ricetta/anamnesi di `pdfDocs.js`. Il titolo in archivio (`documenti_medici.titolo`) resta invariato ("Ricetta medica", …).
