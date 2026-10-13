@@ -1,3 +1,12 @@
+# Current task — Nome file "Nome Cognome.pdf" per tutti i PDF (2026-10-13)
+- OWNER: CLAUDE, branch `claude/catalogazione-facile-latjs9` da `master@3808dc8d`. PO verbatim: "Il nome del documento deve essere il nome paziente.pdf".
+- CAUSA: la regola (PR #173) valeva solo per ricetta/documenti medici generati. Restavano nomi tipo `ricetta_rossi_mario_2026-10-13.pdf` in: Archivio documenti (scarica/apri), documenti della Scheda 2.0, fatture/rimborsi (generazione e scarico dall'archivio), preventivi, consenso firmato.
+- COSA: `nomeFileDaNome(nomeCompleto)` in `pdfLayout.js` (stessa pulizia di `nomeFilePaziente`), usato con `paziente_nome` dell'archivio; `normalizePatientDocument` espone `patientName`. Nessuna modifica a server o database.
+- VALIDATION: `tests/nomeFilePdfOvunque.test.mjs` (3); controprova: fallisce sul codice precedente. `npm test` 1175/1175; build OK.
+- EXACT NEXT ACTION: "Mergia".
+
+---
+
 # Current task — Documento aperto che sopravvive al cambio app (2026-10-13)
 - OWNER: CLAUDE, branch `claude/catalogazione-facile-latjs9` ripartito da `master@ecab1402` (PR #177 già mergiata). PO verbatim: "Devi fare un modo che io possa passare da app all altra senza perdere quello che stavo facendo tipo una ricetta, deve rimanere aperto il documento anche quando cambio app e ritorno".
 - CAUSE (su iPhone la PWA viene ricaricata da zero al ritorno): (1) le bozze dei form scadevano dopo **2 minuti**; (2) la ricetta aperta dalla Home (azione rapida) non salvava né la finestra aperta né il paziente; (3) nella scheda paziente veniva salvato `schedaPazModaleDoc` ma nessuno lo rileggeva: il documento non si riapriva; (4) nell'app Poliedron del telefono la scheda non veniva mai ripristinata.

@@ -156,8 +156,12 @@ export function createPdfLayout({ si, data }) {
 /** Nome del file di ogni documento del paziente: "Nome Cognome.pdf" (PO).
     Senza caratteri che i telefoni o WhatsApp non accettano in un nome file. */
 export function nomeFilePaziente(paziente) {
-  const nome = [paziente?.nome, paziente?.cognome].map((v) => String(v || '').trim()).filter(Boolean).join(' ')
-    .replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return nomeFileDaNome([paziente?.nome, paziente?.cognome].map((v) => String(v || '').trim()).filter(Boolean).join(' '));
+}
+
+/** Stessa regola partendo dal nome completo già scritto (es. `paziente_nome` dell'archivio). */
+export function nomeFileDaNome(nomeCompleto) {
+  const nome = String(nomeCompleto || '').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim();
   return `${nome || 'Paziente'}.pdf`;
 }
 

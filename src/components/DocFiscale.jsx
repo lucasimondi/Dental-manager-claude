@@ -7,6 +7,7 @@ import { useFormPersistente, DURATA_BOZZE_MS } from '../lib/useFormPersistente';
 import { generaXmlFatturaPA, scaricaXml, speseFatturaPAValida } from '../lib/fatturaPA.js';
 import { drawFiscalStamp } from '../lib/pdfSignature.js';
 import { scaricaPdf } from '../lib/condivisionePdf';
+import { nomeFilePaziente, nomeFileDaNome } from '../lib/documenti/pdfLayout.js';
 
 const getNumeroProgressivo = (tipo) => {
   const key = tipo === 'fattura' ? 'dm_fattura_num' : 'dm_rimborso_num';
@@ -237,7 +238,7 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
     // salva numero progressivo
     saveNumeroProgressivo(tipo, parseInt(numero), new Date(data + 'T12:00').getFullYear());
 
-    const nomeFile = `${tipo}_${String(numero).padStart(3,'0')}_${paz.cognome.replace(/\s+/g,'_')}_${data}.pdf`.toLowerCase();
+    const nomeFile = nomeFilePaziente(paz);
     const pdfBase64 = doc.output('datauristring');
 
     // Salva in Supabase solo se l'impostazione per questo tipo di documento
@@ -320,7 +321,7 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
                         if (!doc) continue;
                         const { data: full } = await supabase.from('documenti_fiscali').select('pdf_base64').eq('id', id).single();
                         if (full?.pdf_base64) {
-                          scaricaPdf(full.pdf_base64, `${doc.tipo}_${doc.numero}_${doc.paziente_nome.replace(/\s+/g,'_')}_${doc.data}.pdf`.toLowerCase());
+                          scaricaPdf(full.pdf_base64, nomeFileDaNome(doc.paziente_nome));
                           await new Promise(r => setTimeout(r, 300));
                         }
                       }
@@ -364,7 +365,7 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
                             <button onClick={async () => {
                               const { data: full } = await supabase.from('documenti_fiscali').select('pdf_base64').eq('id', doc.id).single();
                               if (full?.pdf_base64) {
-                                scaricaPdf(full.pdf_base64, `${doc.tipo}_${doc.numero}_${doc.paziente_nome.replace(/\s+/g,'_')}_${doc.data}.pdf`.toLowerCase());
+                                scaricaPdf(full.pdf_base64, nomeFileDaNome(doc.paziente_nome));
                               }
                             }} style={{ background: C.priL, border: 'none', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: C.pri, display: 'flex' }}><Ic n="download" s={12} c={C.pri} /></button>
                             <button onClick={async () => {
