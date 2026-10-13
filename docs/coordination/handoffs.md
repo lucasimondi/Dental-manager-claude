@@ -1,5 +1,14 @@
 # Handoffs
 
+## POL-VITA-001 — Schema di Cowork adottato, sicurezza e cancellazione (2026-10-13)
+
+- Task: POL-VITA-001. Previous agent: CLAUDE (stessa sessione). Agent: CLAUDE. Branch `claude/catalogazione-facile-latjs9`. Lo schema del progetto separato è stato creato da Cowork; il PO lo ha adottato come base.
+- Files: `supabase/archivio/{README.md, migrations/20261012201509_schema_archivio_documenti.sql, migrations/20261013090000_pol_vita_001_sicurezza_e_cancellazione.sql, tests/bootstrap_locale.sql, tests/archivio_rls_cancellazione.sql}`, `tests/archivioPersonale.test.mjs`, coordinamento.
+- Database (solo progetto separato `tkcwvjzjkfhcuebrjvsp`, mai la produzione dello studio): applicati `pol_vita_001_a_proprietario`, `pol_vita_001_c_privilegi`; in sospeso trigger registrazioni, cancellazione definitiva, correzione `registra_documento` (timeout dello strumento su comandi distruttivi).
+- Tests: SQL locale superato + controprova; `npm test` 1151/1151; build OK.
+- Risks: finché la sezione 5 non è applicata, un import che ometta `azione_richiesta` fallisce. Cowork non deve modificare lo schema in parallelo senza passare dal repo.
+- Exact next action: applicare le sezioni in sospeso, PO disattiva le registrazioni, poi Fase 1.
+
 ## POL-VITA-001 — Archivio personale e assistente di vita: avvio (2026-10-12)
 
 - Task: POL-VITA-001, brief del PO in `docs/mission/POL-VITA-001-brief.md`. Previous agent: nessuno (task nuovo). Agent: CLAUDE. Branch `claude/catalogazione-facile-latjs9`.

@@ -1,7 +1,7 @@
 # Current task — POL-VITA-001 Archivio personale e assistente di vita (2026-10-12)
 - OWNER: CLAUDE, su istruzione diretta del PO ("POL-VITA-001-brief leggi questo e iniziamo nuovo progetto catalogazione facile"). Brief integrale: `docs/mission/POL-VITA-001-brief.md`.
 - BRANCH: `claude/catalogazione-facile-latjs9`, da `master@ecd964b7`. Ogni fase avrà poi un proprio branch.
-- STATO: gate 1–5 decisi dal PO (sotto); resta aperta la decisione sullo schema già presente nel progetto separato. Nessun codice né modifica a Supabase/Google finora.
+- STATO: gate decisi; schema di Cowork adottato, versionato e rafforzato; applicazione al progetto separato parziale (vedi sotto).
 - VERIFICHE SUL REPOSITORY (a supporto delle decisioni):
   - Master Context §"Tenant safety": "Ogni funzione deve rispettare `studio_id`". Un ambito personale su `auth.uid()` è una seconda dimensione di tenancy, non prevista → gate 1 confermato. `docs/architecture/tenancy.md`: `getStudioId()` ha un UUID di fallback fisso; lo spazio personale non deve mai usarlo (identità solo da `auth.uid()` lato database, fail-closed).
   - Master Context descrive Poliedra come SaaS per professionisti sanitari: l'archivio personale è un ampliamento di prodotto. Da chiarire se è una funzione solo per il PO o per tutti gli utenti (cambia onboarding, consenso, OAuth verificato da Google, costi AI).
@@ -21,8 +21,14 @@
   - 0 utenti auth, 0 bucket, 0 documenti, nessuna Edge Function.
   - Differenze dal brief: originali su Drive invece che bucket privato; owner per email invece di `auth.uid()`; nessuna cancellazione definitiva; nessun pgvector.
   - Rischio: con 0 utenti, se in quel progetto la registrazione è aperta e la conferma email è disattivata, chiunque potrebbe registrarsi con l'email del PO e diventare "proprietario". Da verificare/chiudere (signup disattivato) prima di caricare dati.
-- DECISIONE PO APERTA: adottare lo schema esistente come base (versionandolo nel repo) o rifarlo come da brief? E chi l'ha creato: c'è un'altra sessione che ci sta lavorando (AGENTS.md: un solo owner)?
-- EXACT NEXT ACTION: risposta del PO sullo schema esistente → versionare la migrazione in `supabase/archivio/migrations/`, chiudere il signup, poi Fase 1 (import Gmail).
+- DECISIONE PO (2026-10-13): "Cowork, si usiamo come base" → lo schema è di Cowork; diventa la base. Originali su Google Drive (schema invariato).
+- FATTO (2026-10-13), commit `1396d1c0`:
+  - `supabase/archivio/migrations/20261012201509_schema_archivio_documenti.sql`: schema di Cowork copiato parola per parola da `supabase_migrations.schema_migrations`.
+  - `supabase/archivio/migrations/20261013090000_pol_vita_001_sicurezza_e_cancellazione.sql`: (1) `e_proprietario()` richiede un utente reale in `auth.users` con l'email del PO confermata; (2) trigger su `auth.users` che rifiuta altre email; (3) niente accesso `anon`, niente TRUNCATE/REFERENCES/TRIGGER per `authenticated`; (4) `elimina_documento`/`elimina_pratica` (cancellazione definitiva, restituiscono gli id dei file Drive da cancellare); (5) **bug di Cowork corretto**: `registra_documento` falliva se il JSON non conteneva `azione_richiesta` (NULL in colonna NOT NULL).
+  - Test: `supabase/archivio/tests/archivio_rls_cancellazione.sql` su PostgreSQL 16 locale → tutti superati (anon, altro utente, token con email del PO ma utente diverso, email non confermata, TRUNCATE, dedup per hash, cancellazione senza residui). Controprova: con il solo schema di Cowork il test fallisce. `tests/archivioPersonale.test.mjs` (6). `npm test` 1151/1151, `npm run build` OK.
+- APPLICATO al progetto separato (2026-10-13): `pol_vita_001_a_proprietario` (sezione 1) e `pol_vita_001_c_privilegi` (sezione 3).
+- NON APPLICATO: sezione 2 (trigger su `auth.users`), sezione 4 (cancellazione) e sezione 5 (correzione `registra_documento`). `apply_migration` va in timeout dopo 60 s senza applicare nulla (verificato: nessun lock, nessuna sessione attiva; succede solo con `drop`/`delete` → probabile conferma "comando distruttivo" che non arriva al PO in questa sessione). La sezione 2 non è indispensabile: la sezione 1 già esclude chi non può confermare l'email del PO.
+- EXACT NEXT ACTION: applicare sezioni 4 e 5 (e, se si vuole, 2): o il PO conferma quando richiesto, o le incolla nell'SQL Editor di Supabase dal file del repo. Poi: PO disattiva le registrazioni (Authentication → Sign In / Providers → "Allow new users to sign up" OFF) dopo aver creato il proprio utente; poi Fase 1 (import Gmail).
 ---
 
 # Current task — POL-AI-011 Cruscotto "Come risponde Poliedron" (Core vs modello) (2026-10-12)
