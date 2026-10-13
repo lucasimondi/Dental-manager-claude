@@ -54,10 +54,10 @@ export default defineConfig({
         // The Poliedron phone app has its own page (icon + manifest). Without
         // this, the studio app's service worker answered /poliedron/ with the
         // studio's index.html, so "Installa" installed Poliedra, not Poliedron.
-        navigateFallbackDenylist: [/^\/poliedron/],
+        navigateFallbackDenylist: [/^\/poliedron/, /^\/personal/],
         runtimeCaching: [
           {
-            urlPattern: ({ request, url }) => request.mode === 'navigate' && url.pathname.startsWith('/poliedron'),
+            urlPattern: ({ request, url }) => request.mode === 'navigate' && (url.pathname.startsWith('/poliedron') || url.pathname.startsWith('/personal')),
             handler: 'NetworkFirst',
             options: { cacheName: 'poliedron-app-shell', networkTimeoutSeconds: 4 },
           },
@@ -84,11 +84,15 @@ export default defineConfig({
       transformIndexHtml: {
         order: 'post',
         handler(html, context) {
-          if (!context.filename.replaceAll('\\', '/').endsWith('/poliedron/index.html')) return html;
+          const file = context.filename.replaceAll('\\', '/');
+          // POL-VITA-001: Poliedron Personal (/personal/) ha anch'essa una propria identità.
+          const manifest = file.endsWith('/poliedron/index.html') ? '/poliedron.webmanifest'
+            : file.endsWith('/personal/index.html') ? '/personal.webmanifest' : null;
+          if (!manifest) return html;
           // vite-plugin-pwa injects the main app's manifest into every entry.
           // This install must have its own identity and launch URL.
           return html.replace(/<link\b[^>]*rel=["']manifest["'][^>]*>/g, '')
-            .replace('</head>', '<link rel="manifest" href="/poliedron.webmanifest"/></head>');
+            .replace('</head>', `<link rel="manifest" href="${manifest}"/></head>`);
         },
       },
     },
@@ -96,7 +100,7 @@ export default defineConfig({
   build: {
     outDir: 'dist', // cache bust 155200,
     rollupOptions: {
-      input: { main: resolve('index.html'), poliedron: resolve('poliedron/index.html') },
+      input: { main: resolve('index.html'), poliedron: resolve('poliedron/index.html'), personal: resolve('personal/index.html') },
       output: {
         // POL-PERF-001: funzione invece dell'elenco fisso. Con l'elenco,
         // Rollup metteva React e alcuni helper condivisi dentro i chunk di

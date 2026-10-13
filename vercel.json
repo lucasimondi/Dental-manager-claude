@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/personal",
+      "destination": "/personal/index.html"
+    },
+    {
+      "source": "/personal/",
+      "destination": "/personal/index.html"
+    },
+    {
       "source": "/poliedron",
       "destination": "/poliedron/index.html"
     },
@@ -47,6 +55,15 @@
         {
           "key": "Cache-Control",
           "value": "no-cache"
+        }
+      ]
+    },
+    {
+      "source": "/personal/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
         }
       ]
     }

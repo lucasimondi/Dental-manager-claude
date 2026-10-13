@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:personal": "vite --config vite.personal.config.js",
     "build": "vite build",
+    "build:personal": "vite build --config vite.personal.config.js",
     "test": "node --test tests/*.test.mjs",
     "preview": "vite preview"
   },
