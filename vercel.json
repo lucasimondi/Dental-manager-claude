@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/archivio",
+      "destination": "/archivio/index.html"
+    },
+    {
+      "source": "/archivio/",
+      "destination": "/archivio/index.html"
+    },
+    {
       "source": "/personal",
       "destination": "/personal/index.html"
     },
@@ -60,6 +68,15 @@
     },
     {
       "source": "/personal/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/archivio/:path*",
       "headers": [
         {
           "key": "Cache-Control",

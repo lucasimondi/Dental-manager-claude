@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'node:path';
+import { copyFileSync, mkdirSync } from 'node:fs';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
@@ -54,10 +55,10 @@ export default defineConfig({
         // The Poliedron phone app has its own page (icon + manifest). Without
         // this, the studio app's service worker answered /poliedron/ with the
         // studio's index.html, so "Installa" installed Poliedra, not Poliedron.
-        navigateFallbackDenylist: [/^\/poliedron/, /^\/personal/],
+        navigateFallbackDenylist: [/^\/poliedron/, /^\/personal/, /^\/archivio/],
         runtimeCaching: [
           {
-            urlPattern: ({ request, url }) => request.mode === 'navigate' && (url.pathname.startsWith('/poliedron') || url.pathname.startsWith('/personal')),
+            urlPattern: ({ request, url }) => request.mode === 'navigate' && (url.pathname.startsWith('/poliedron') || url.pathname.startsWith('/personal') || url.pathname.startsWith('/archivio')),
             handler: 'NetworkFirst',
             options: { cacheName: 'poliedron-app-shell', networkTimeoutSeconds: 4 },
           },
@@ -78,6 +79,16 @@ export default defineConfig({
         ],
       },
     }),
+    {
+      // POL-VITA-002: dashboard dell'archivio personale (file unico, fonte poliedron/archivio/index.html),
+      // pubblicata così com'è su /archivio/. Si collega solo al progetto Supabase archivio-documenti.
+      name: 'archivio-dashboard',
+      apply: 'build',
+      closeBundle() {
+        mkdirSync(resolve('dist/archivio'), { recursive: true });
+        copyFileSync(resolve('poliedron/archivio/index.html'), resolve('dist/archivio/index.html'));
+      },
+    },
     {
       name: 'poliedron-install-identity',
       enforce: 'post',
