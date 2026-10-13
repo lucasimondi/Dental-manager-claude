@@ -5,6 +5,23 @@
 - LIMITE: il pannello "documento pronto" dopo Genera PDF non viene ripristinato (il PDF non si salva nel telefono); la ricetta è comunque in archivio se lo studio archivia, e si rigenera.
 - VALIDATION: nuovo `tests/documentoApertoRipristino.test.mjs` (8; render reale di `useFormPersistente` con bozza vecchia di 1 h / 11 h / 13 h); controprova: con il codice precedente 7/7 falliscono. Aggiornata 1 asserzione di `mobileHomeRound2.test.mjs` che fissava `useState(false)`. `npm test` 1167/1167; `npm run build` OK.
 - EXACT NEXT ACTION: PR → "Mergia" del PO → prova su iPhone: apri una ricetta, scrivi, passa a WhatsApp, torna.
+# Current task — Certificato riposo con i dati della scheda (2026-10-13)
+- OWNER: CLAUDE, branch `claude/poliedron-agenda-actions-kz6mmk` (da `master@ecd964b`). PO verbatim (con foto di un certificato): "Inserisci questi dati nella cartella del paziente e fai in modo che io possa redigere anche questo tipo di documenti con questi dati in automatico, fallo veloce, lo chiamiamo certificato riposo con i dati che ci sono lì".
+- COSA: in Documenti medici nuovo tipo "Certificato riposo" (`src/lib/documenti/certificatoRiposo.js`): visita in data X, "necessita di almeno N giorni di riposo", "In fede", dati anagrafici dalla scheda (nome, luogo e data di nascita, residenza, CAP/comune, codice fiscale); avviso se nella scheda mancano luogo di nascita / residenza / CF. Archiviato tra i Certificati (tipo `certificato`, titolo "Certificato riposo"). Scheda paziente: nuovo campo "Luogo di nascita".
+- MIGRAZIONE: `20261013090000_pol_doc_riposo_luogo_nascita.sql` — `patients.luogo_nascita text` (nullable, ≤120 caratteri). Nessuna modifica RLS (le policy di `patients` coprono già la riga). Va applicata PRIMA del rilascio dell'app (il salvataggio della scheda col nuovo campo fallirebbe senza colonna).
+- DATI DEL PAZIENTE DELLA FOTO: NON inseriti da Claude (AGENTS.md: mai modificare a mano i dati di produzione). Li inserisce il PO dalla scheda (Modifica) dopo il rilascio.
+- VALIDATION: nuovo `tests/certificatoRiposo.test.mjs` (5 test); `npm test` 1150/1150; `npm run build` OK; migrazione su PostgreSQL 16 locale usa e getta (idempotente, limite di lunghezza verificato).
+- RILASCIO su "Mergia" (2026-10-13): migrazione `pol_doc_riposo_luogo_nascita` applicata in produzione e verificata (`patients.luogo_nascita` text, nullable); master unito nel branch (#177), poi merge → Vercel rilascia l'app.
+- EXACT NEXT ACTION: il PO completa la scheda di Antonio Chionna (Modifica) e prova il Certificato riposo.
+
+---
+
+# Current task — Guida per riusare Poliedron in un'altra app (2026-10-12)
+- OWNER: CLAUDE, su istruzione del Product Owner ("Voglio che un'altra chat di Claude possa leggere e prendere il codice di poliedron per poter costruire un'altra app con poliedron" → proposta guida fissa → "Si").
+- BRANCH: `claude/poliedron-agenda-actions-kz6mmk` (da `master@ecd964b`).
+- COSA: `docs/architecture/poliedron-riuso.md` — regole (repo solo fonte, progetto Supabase separato, niente dati né segreti), schema del flusso, mappa dei file server/app con cosa si riusa e cosa va riscritto, migrazioni e tabelle di base non versionate (colonne lette dallo schema di produzione, solo metadati, nessun dato), secret richiesti (solo nomi), invarianti di sicurezza, ordine di lavoro.
+- NESSUNA modifica a codice, database, RLS.
+- EXACT NEXT ACTION: "Mergia" → la guida è su master e un'altra sessione può leggerla. Rilasciata insieme al certificato riposo (2026-10-13).
 
 ---
 
@@ -58,6 +75,7 @@
 - VALIDATION: `npm test` 1143/1143 (nuovo `tests/poliedronEventi.test.mjs`, 11 test: handler reale su Core/modello/conferma/errori, nessun testo o nome nei dati, scrittura fallita non cambia la risposta, migrazione, collegamento app); controprova: senza la registrazione delle azioni il test del modello fallisce. Migrazione eseguita su un PostgreSQL 16 locale usa e getta: tabella, RPC e RLS verificate (altro studio / altro utente / testo libero / UPDATE / statistiche di un altro studio → rifiutati). `npm run build` OK.
 - RILASCIO (solo su "Mergia"): 1) applicare la migrazione in produzione; 2) merge → la CI rilascia `agente-assistente` (workflow `deploy-agente-assistente.yml`) e Vercel l'app. Ordine indifferente per la sicurezza: senza tabella la scrittura fallisce in silenzio e il riquadro resta nascosto.
 - RILASCIO ESEGUITO su "Mergia" (2026-10-12): migrazione `pol_ai_011_poliedron_eventi` applicata in produzione e verificata (RLS attiva, 2 policy, grant authenticated = INSERT/SELECT, nessun grant anon, `poliedron_statistiche_v1` SECURITY INVOKER, job `poliedron-eventi-pulizia` 03:17). Merge della PR #175 → la CI rilascia `agente-assistente`, Vercel l'app.
+- ESITO DEPLOY (2026-10-12): il workflow "Deploy agente-assistente" (run 38298970672) è fallito due volte con `unexpected deploy status 500: Function deploy failed due to an internal error` (errore interno Supabase; `deno bundle` locale OK, nessun errore nuovo nel codice). Pubblicazione manuale via Supabase MCP di tutti i 23 file di `master@ecd964b` → versione 45 ATTIVA; riletta: 23/23 file identici a master; avvio verificato (richiesta senza sessione → 401 "Sessione non valida"). Causa del 500 in CI non nota: controllare il prossimo deploy automatico.
 - EXACT NEXT ACTION: uso reale; tra qualche giorno leggere il riquadro e scegliere cosa portare nel Core.
 
 ---

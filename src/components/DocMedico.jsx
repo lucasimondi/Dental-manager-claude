@@ -8,12 +8,14 @@ import { createPdfLayout, buildRicettaPdf, archiviaDocumento, nomeFilePaziente }
 import { applicaFarmacoPreferito, resolveFarmaciPreferiti } from '../lib/farmaciPreferiti.js';
 import { unisciFarmaciPreparati } from '../lib/farmaciPreferiti.js';
 import { imparaDaRicetta } from '../lib/poliedron/memoryRepository.js';
+import { buildCertificatoRiposoPdf, datiAnagraficiPaziente, giorniRiposoValidi } from '../lib/documenti/certificatoRiposo.js';
 
 
 const TIPI = [
   { id: 'ricetta', icona: 'pill', label: 'Ricetta medica', desc: 'Prescrizione farmaci e posologia' },
   { id: 'esami', icona: 'drop', label: 'Prescrizione esami ematici', desc: 'Richiesta esami del sangue' },
   { id: 'certificato', icona: 'clip', label: 'Certificato di visita', desc: 'Certificato attestante la visita effettuata' },
+  { id: 'riposo', icona: 'clip', label: 'Certificato riposo', desc: 'Visita e giorni di riposo, con i dati anagrafici della scheda' },
   { id: 'lettera', icona: 'mail', label: 'Lettera per specialista', desc: 'Referral / lettera di consulenza' },
   { id: 'protocollo', icona: 'book', label: 'Protocollo post-trattamento', desc: 'Istruzioni da consegnare al paziente' },
   { id: 'vuoto', icona: 'file', label: 'Foglio bianco intestato', desc: 'Documento libero da compilare, con intestazione e timbro' },
@@ -195,6 +197,8 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
     motivoCert: '',
     dataVisita: today(),
     noteCert: '',
+    giorniRiposo: '1',
+    noteRiposo: '',
     specialista: '',
     motivoLettera: '',
     anamnesi: '',
@@ -278,6 +282,12 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
   const setDataVisita = (v) => setCnt((c) => ({ ...c, dataVisita: v }));
   const noteCert = cnt.noteCert;
   const setNoteCert = (v) => setCnt((c) => ({ ...c, noteCert: v }));
+
+  // Certificato riposo (usa la stessa data visita del certificato)
+  const giorniRiposo = cnt.giorniRiposo ?? '1';
+  const setGiorniRiposo = (v) => setCnt((c) => ({ ...c, giorniRiposo: v }));
+  const noteRiposo = cnt.noteRiposo ?? '';
+  const setNoteRiposo = (v) => setCnt((c) => ({ ...c, noteRiposo: v }));
 
   // Lettera
   const specialista = cnt.specialista;
@@ -470,6 +480,16 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
     setGenerated(true);
   };
 
+  const generaCertificatoRiposo = () => {
+    const giorni = giorniRiposoValidi(giorniRiposo);
+    if (!giorni) throw new Error('giorni');
+    const pdf = buildCertificatoRiposoPdf({ si, paziente: paz, data, dataVisita, giorni, note: noteRiposo });
+    salvaInArchivioSeAttivo(pdf.tipoDoc, pdf.titolo, pdf.dataUrl);
+    clearContenutoDraft();
+    setPronto(pdf);
+    setGenerated(true);
+  };
+
   const generaLettera = () => {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const W = 210, M = 18;
@@ -647,6 +667,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
       if (tipo === 'ricetta') generaRicetta();
       else if (tipo === 'esami') generaEsamiEmatici();
       else if (tipo === 'certificato') generaCertificato();
+      else if (tipo === 'riposo') generaCertificatoRiposo();
       else if (tipo === 'lettera') generaLettera();
       else if (tipo === 'vuoto') generaVuoto();
       else generaProtocollo();
@@ -852,6 +873,31 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
             <Fld label="Note cliniche (opzionale)">
               <textarea value={noteCert} onChange={e => setNoteCert(e.target.value)} rows={3} placeholder={isDentistico ? 'es. Riscontrata carie dente 46, pianificato trattamento...' : 'es. Osservazioni cliniche, piano di trattamento...'} style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${C.brd}`, borderRadius: 10, fontSize: 13, color: C.txt, background: C.sur, boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }} />
             </Fld>
+          </Crd>
+        )}
+
+        {/* ── CERTIFICATO RIPOSO ── */}
+        {tipo === 'riposo' && (
+          <Crd style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}><Ic n="clip" s={11} c={C.txm} />Certificato riposo</div>
+            <Fld label="Data visita">
+              <Inp type="date" value={dataVisita} onChange={e => setDataVisita(e.target.value)} />
+            </Fld>
+            <Fld label="Giorni di riposo">
+              <Inp type="number" min="1" max="365" inputMode="numeric" value={giorniRiposo} onChange={e => setGiorniRiposo(e.target.value)} />
+            </Fld>
+            <Fld label="Altro da aggiungere (opzionale)">
+              <textarea value={noteRiposo} onChange={e => setNoteRiposo(e.target.value)} rows={2} style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${C.brd}`, borderRadius: 10, fontSize: 13, color: C.txt, background: C.sur, boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }} />
+            </Fld>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', margin: '6px 0 6px' }}>Dati dalla scheda paziente</div>
+            {paz ? (
+              <div data-testid="riposo-anagrafica" style={{ fontSize: 12, color: C.txt, lineHeight: 1.5 }}>
+                {datiAnagraficiPaziente(paz).map((riga) => <div key={riga}>{riga}</div>)}
+                {(!paz.luogoNascita || !paz.indirizzo || !paz.cf) && (
+                  <div style={{ color: C.war, marginTop: 4 }}>Mancano {[!paz.luogoNascita && 'luogo di nascita', !paz.indirizzo && 'residenza', !paz.cf && 'codice fiscale'].filter(Boolean).join(', ')}: completali nella scheda del paziente (Modifica).</div>
+                )}
+              </div>
+            ) : <div style={{ fontSize: 12, color: C.txm }}>Seleziona il paziente.</div>}
           </Crd>
         )}
 
