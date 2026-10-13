@@ -13,6 +13,36 @@
 - CI "Deploy agente-assistente" fallita 2 volte (500 interno Supabase). Deploy manuale via MCP di tutti i 23 file → v45; read-back 23/23 identici a master; boot check 401 "Sessione non valida".
 - NEXT: verificare che il prossimo deploy automatico passi; dopo qualche giorno d'uso leggere il riquadro "Come risponde Poliedron".
 
+## POL-VITA-001 — Poliedron Personal (2026-10-13)
+
+- Task: POL-VITA-001. Agent: CLAUDE. Branch `claude/catalogazione-facile-latjs9`. PO: import a Cowork; app separata "Poliedron Personal", stesso repo, login con link via email.
+- Files: `personal/**` (new), `vite.personal.config.js` (new), `package.json` (script), `.gitignore`, `tests/poliedronPersonal.test.mjs` (new), coordinamento.
+- Database: sezione 5 (`registra_documento`) applicata al progetto separato; sezioni 2+4 consegnate al PO per l'SQL Editor (lo strumento non applica SQL con drop/delete).
+- Tests: 1158/1158; entrambe le build OK; schermate verificate.
+- Risks: il link via email funziona solo dopo aver impostato Site URL/Redirect URLs in Supabase Auth; la cancellazione da Drive dell'originale resta manuale (link mostrato) finché Cowork non la gestisce.
+- Exact next action: passi PO in `personal/README.md`.
+
+## POL-VITA-001 — Schema di Cowork adottato, sicurezza e cancellazione (2026-10-13)
+
+- Task: POL-VITA-001. Previous agent: CLAUDE (stessa sessione). Agent: CLAUDE. Branch `claude/catalogazione-facile-latjs9`. Lo schema del progetto separato è stato creato da Cowork; il PO lo ha adottato come base.
+- Files: `supabase/archivio/{README.md, migrations/20261012201509_schema_archivio_documenti.sql, migrations/20261013090000_pol_vita_001_sicurezza_e_cancellazione.sql, tests/bootstrap_locale.sql, tests/archivio_rls_cancellazione.sql}`, `tests/archivioPersonale.test.mjs`, coordinamento.
+- Database (solo progetto separato `tkcwvjzjkfhcuebrjvsp`, mai la produzione dello studio): applicati `pol_vita_001_a_proprietario`, `pol_vita_001_c_privilegi`; in sospeso trigger registrazioni, cancellazione definitiva, correzione `registra_documento` (timeout dello strumento su comandi distruttivi).
+- Tests: SQL locale superato + controprova; `npm test` 1151/1151; build OK.
+- Risks: finché la sezione 5 non è applicata, un import che ometta `azione_richiesta` fallisce. Cowork non deve modificare lo schema in parallelo senza passare dal repo.
+- Exact next action: applicare le sezioni in sospeso, PO disattiva le registrazioni, poi Fase 1.
+
+## POL-VITA-001 — Archivio personale e assistente di vita: avvio (2026-10-12)
+
+- Task: POL-VITA-001, brief del PO in `docs/mission/POL-VITA-001-brief.md`. Previous agent: nessuno (task nuovo). Agent: CLAUDE. Branch `claude/catalogazione-facile-latjs9`.
+- Objective: archivio personale (allegati Gmail → interpretazione → pratiche, scadenze, ricerca in chat, team personale, download/sintesi, cancellazione definitiva).
+- Completed work: brief registrato; analisi di compatibilità con Master Context, tenancy, team e funzioni esistenti (dettagli in `current-task.md`).
+- Files changed: `docs/mission/POL-VITA-001-brief.md` (new), `docs/coordination/current-task.md`, questo file.
+- Database: none. Tests: non eseguiti (solo documentazione).
+- Unresolved: gate PO 1–4 del brief + (5) uso solo personale o di prodotto + (6) modalità OAuth Google. `estrai-spesa-documento` non è versionata nel repo.
+- Risks: nuova dimensione di tenancy; dati art. 9 GDPR di terzi; scope Gmail "restricted".
+- Exact next action: decisioni del PO → piano tecnico Fase 1.
+
+
 ## POL-AI-011 — Cruscotto "Come risponde Poliedron" (Core vs modello) (2026-10-12)
 
 - Task: misurare la quota di richieste chiuse dal Core senza modello e cosa va ancora alle API (PO: "Sì"). Previous agent: CLAUDE (stessa sessione, PR #166). Agent: CLAUDE. Branch `claude/poliedron-agenda-actions-kz6mmk` da `master@767a386`. Dettagli in `current-task.md`.

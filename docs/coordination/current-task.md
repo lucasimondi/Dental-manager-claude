@@ -4,7 +4,8 @@
 - MIGRAZIONE: `20261013090000_pol_doc_riposo_luogo_nascita.sql` — `patients.luogo_nascita text` (nullable, ≤120 caratteri). Nessuna modifica RLS (le policy di `patients` coprono già la riga). Va applicata PRIMA del rilascio dell'app (il salvataggio della scheda col nuovo campo fallirebbe senza colonna).
 - DATI DEL PAZIENTE DELLA FOTO: NON inseriti da Claude (AGENTS.md: mai modificare a mano i dati di produzione). Li inserisce il PO dalla scheda (Modifica) dopo il rilascio.
 - VALIDATION: nuovo `tests/certificatoRiposo.test.mjs` (5 test); `npm test` 1150/1150; `npm run build` OK; migrazione su PostgreSQL 16 locale usa e getta (idempotente, limite di lunghezza verificato).
-- EXACT NEXT ACTION: "Mergia" → applicare la migrazione in produzione, poi merge (Vercel rilascia l'app).
+- RILASCIO su "Mergia" (2026-10-13): migrazione `pol_doc_riposo_luogo_nascita` applicata in produzione e verificata (`patients.luogo_nascita` text, nullable); master unito nel branch (#177), poi merge → Vercel rilascia l'app.
+- EXACT NEXT ACTION: il PO completa la scheda di Antonio Chionna (Modifica) e prova il Certificato riposo.
 
 ---
 
@@ -13,8 +14,45 @@
 - BRANCH: `claude/poliedron-agenda-actions-kz6mmk` (da `master@ecd964b`).
 - COSA: `docs/architecture/poliedron-riuso.md` — regole (repo solo fonte, progetto Supabase separato, niente dati né segreti), schema del flusso, mappa dei file server/app con cosa si riusa e cosa va riscritto, migrazioni e tabelle di base non versionate (colonne lette dallo schema di produzione, solo metadati, nessun dato), secret richiesti (solo nomi), invarianti di sicurezza, ordine di lavoro.
 - NESSUNA modifica a codice, database, RLS.
-- EXACT NEXT ACTION: "Mergia" → la guida è su master e un'altra sessione può leggerla.
+- EXACT NEXT ACTION: "Mergia" → la guida è su master e un'altra sessione può leggerla. Rilasciata insieme al certificato riposo (2026-10-13).
 
+---
+
+# Current task — POL-VITA-001 Archivio personale e assistente di vita (2026-10-12)
+- OWNER: CLAUDE, su istruzione diretta del PO ("POL-VITA-001-brief leggi questo e iniziamo nuovo progetto catalogazione facile"). Brief integrale: `docs/mission/POL-VITA-001-brief.md`.
+- BRANCH: `claude/catalogazione-facile-latjs9`, da `master@ecd964b7`. Ogni fase avrà poi un proprio branch.
+- STATO: gate decisi; schema di Cowork adottato, versionato e rafforzato; applicazione al progetto separato parziale (vedi sotto).
+- VERIFICHE SUL REPOSITORY (a supporto delle decisioni):
+  - Master Context §"Tenant safety": "Ogni funzione deve rispettare `studio_id`". Un ambito personale su `auth.uid()` è una seconda dimensione di tenancy, non prevista → gate 1 confermato. `docs/architecture/tenancy.md`: `getStudioId()` ha un UUID di fallback fisso; lo spazio personale non deve mai usarlo (identità solo da `auth.uid()` lato database, fail-closed).
+  - Master Context descrive Poliedra come SaaS per professionisti sanitari: l'archivio personale è un ampliamento di prodotto. Da chiarire se è una funzione solo per il PO o per tutti gli utenti (cambia onboarding, consenso, OAuth verificato da Google, costi AI).
+  - `estrai-spesa-documento` è chiamata da `src/components/ui/UploadDocumentoSpesa.jsx` ma **non è versionata** in `supabase/functions/` (ci sono solo `agente-assistente`, `whatsapp-webhook`, `_shared`). La Fase 2 non può "riusarla" finché il suo codice non è nel repo: va prima recuperata in sola lettura.
+  - Nessuna integrazione Gmail esistente; esiste `google_calendar_tokens` (Master Context: modello di accesso da dimostrare, backlog P0). Il refresh token Gmail non deve seguire quel modello finché non è chiarito: tabella propria, cifrata, leggibile solo dal service role.
+  - Team: `src/lib/poliedron/team/catalog.js` (`TEAM_ASSISTANTS`) + `agente-assistente/team.js`, regole in `docs/architecture/poliedron-team-foundation.md` → Fase 5 si innesta lì.
+  - Criterio "nessun dato personale in `poliedron_eventi`": quella tabella (POL-AI-011) registra intento e nomi di strumenti; i nuovi strumenti read-only andranno registrati senza argomenti (già così per costruzione) — da coprire con test.
+  - Fornitore AI (gate 4): ultimo stato registrato 2026-10-12 = OpenAI 429 `insufficient_quota`, riserva automatica pronta ma attiva solo se `ANTHROPIC_API_KEY` è impostata.
+- DECISIONI PO (2026-10-12, risposte in chat):
+  1+2. **Progetto Supabase separato `archivio-documenti` (`tkcwvjzjkfhcuebrjvsp`)**, non la produzione.
+  3. Dati sanitari: **come da brief** (categoria separata, esclusa dal team AI salvo richiesta; documenti di pazienti solo segnalati con proposta di spostamento nella scheda paziente).
+  4. Fornitore AI: Anthropic primo + OpenAI riserva (la `ANTHROPIC_API_KEY` la imposta il PO nei secret, non in chat). PO verbatim: "poliedron da solo deve comunque permettermi la ricerca e le azioni come sta facendo con dental" → ricerca, scadenze e azioni dell'archivio vanno nel **Core deterministico**, senza modello; il modello serve solo per leggere/interpretare i documenti.
+  5. **Solo per il PO**, app Google OAuth in modalità test (refresh token 7 giorni → riconnessione periodica).
+- SCOPERTA 2026-10-13 (lettura in sola lettura del progetto separato): **non è vuoto**. Migrazione `20261012201509 schema_archivio_documenti` applicata da un'altra sessione/strumento, **non versionata in questo repo**:
+  - tabelle `fascicoli` (18 righe: identita, immobili, successione, conti, fiscale, previdenza, utenze, studio_fornitori, studio_fatture_emesse, legale, assicurazioni, veicoli, famiglia_scuola, sanitario_famiglia, clinico_pazienti, servizi, acquisti, altro), `pratiche`, `documenti` (hash SHA-256, id messaggio/thread Gmail, **originale su Google Drive** `drive_file_id`/`drive_url`, titolo, riassunto, importo, tag, azione/urgenza, `dati_estratti`, `ricerca` tsvector italiano), `soggetti`, `documenti_soggetti`, `scadenze`, `log_elaborazione`; viste `v_pratiche`, `v_conteggi_fascicoli` (security_invoker).
+  - RLS su tutte: policy `proprietario` = `auth.jwt()->>'email' = <email del PO>` (proprietario unico per email, nessuna colonna owner). `registra_documento(jsonb)` SECURITY DEFINER eseguibile solo dal service role (dedup per hash, crea pratiche/soggetti/scadenze). `cerca_documenti` full-text, `archivia_pratiche_ferme`.
+  - 0 utenti auth, 0 bucket, 0 documenti, nessuna Edge Function.
+  - Differenze dal brief: originali su Drive invece che bucket privato; owner per email invece di `auth.uid()`; nessuna cancellazione definitiva; nessun pgvector.
+  - Rischio: con 0 utenti, se in quel progetto la registrazione è aperta e la conferma email è disattivata, chiunque potrebbe registrarsi con l'email del PO e diventare "proprietario". Da verificare/chiudere (signup disattivato) prima di caricare dati.
+- DECISIONE PO (2026-10-13): "Cowork, si usiamo come base" → lo schema è di Cowork; diventa la base. Originali su Google Drive (schema invariato).
+- FATTO (2026-10-13), commit `1396d1c0`:
+  - `supabase/archivio/migrations/20261012201509_schema_archivio_documenti.sql`: schema di Cowork copiato parola per parola da `supabase_migrations.schema_migrations`.
+  - `supabase/archivio/migrations/20261013090000_pol_vita_001_sicurezza_e_cancellazione.sql`: (1) `e_proprietario()` richiede un utente reale in `auth.users` con l'email del PO confermata; (2) trigger su `auth.users` che rifiuta altre email; (3) niente accesso `anon`, niente TRUNCATE/REFERENCES/TRIGGER per `authenticated`; (4) `elimina_documento`/`elimina_pratica` (cancellazione definitiva, restituiscono gli id dei file Drive da cancellare); (5) **bug di Cowork corretto**: `registra_documento` falliva se il JSON non conteneva `azione_richiesta` (NULL in colonna NOT NULL).
+  - Test: `supabase/archivio/tests/archivio_rls_cancellazione.sql` su PostgreSQL 16 locale → tutti superati (anon, altro utente, token con email del PO ma utente diverso, email non confermata, TRUNCATE, dedup per hash, cancellazione senza residui). Controprova: con il solo schema di Cowork il test fallisce. `tests/archivioPersonale.test.mjs` (6). `npm test` 1151/1151, `npm run build` OK.
+- APPLICATO al progetto separato (2026-10-13): `pol_vita_001_a_proprietario` (sezione 1), `pol_vita_001_c_privilegi` (sezione 3), `pol_vita_001_e_registra_documento` (sezione 5).
+- NON APPLICATO: sezione 2 (trigger su `auth.users`) e sezione 4 (cancellazione). `apply_migration` va in timeout dopo 60 s senza applicare nulla ogni volta che lo SQL contiene `drop`/`delete` (verificato: nessun lock; la sezione 5, senza quelle parole, è passata subito) → conferma "comando distruttivo" che non arriva al PO. Consegnato al PO un file unico da incollare nell'SQL Editor (sezioni 2+4 in una transazione + riga in `schema_migrations`), verificato su PostgreSQL locale. La sezione 2 non è indispensabile: la sezione 1 già esclude chi non può confermare l'email del PO.
+- DECISIONI PO (2026-10-13): import e interpretazione li fa **Cowork** (connettori Gmail/Drive → `registra_documento`; niente app OAuth né Edge Function di import). Accesso: **"Poliedron Personal"**, app separata nello stesso repo (progetto Vercel a sé), login con **link via email**.
+- FATTO (2026-10-13): `personal/` + `vite.personal.config.js` + script `dev:personal`/`build:personal` (uscita `dist-personal/`). Core deterministico `personal/src/lib/coreArchivio.js` (debito verso una controparte, scadenze con periodo, cose da fare, pratiche, fascicoli per sinonimi, ricerca libera); dati `personal/src/lib/archivio.js`; interfaccia `personal/src/App.jsx` (Chiedi / Scadenze / Pratiche / Fascicoli; Pagata, Segna risolta, Elimina con conferma, link all'originale su Drive; avviso sui documenti di pazienti). Nessun codice/chiave dello studio nel bundle (verificato). Test `tests/poliedronPersonal.test.mjs` (7, incluso client finto e isolamento). `npm test` 1158/1158; `npm run build` e `npm run build:personal` OK; schermate a 390 px (accesso; "Quanto devo a Edison?" con dati finti) senza errori.
+- PO 2026-10-13: "Troppe cose, fai tu tutto io voglio l'app funzionante ora" → autorizzazione a pubblicare e mergiare.
+- MODIFICHE PER RENDERLA OPERATIVA SUBITO: (a) accesso con email+password (il link via email richiede Site URL/Redirect in Supabase Auth, non modificabili con i connettori); (b) `eliminaDocumento` usa la funzione del DB se c'è, altrimenti fa gli stessi passi dall'app con la RLS del proprietario; (c) creazione di un progetto Vercel negata (403) → Personal è un'entry della build principale su `/personal/` (rewrite in `vercel.json`, escluso dal fallback del service worker dello studio, manifest proprio `public/personal.webmanifest`). Verificato: nessun chunk della pagina contiene il progetto dello studio. `npm test` 1160/1160; build OK; pagina `/personal/` aperta nel browser senza errori.
+- EXACT NEXT ACTION: merge su master → deploy Vercel automatico → PO apre `/personal/`, "Crea l'accesso", conferma email, entra. Cowork carica i documenti.
 ---
 
 # Current task — POL-AI-011 Cruscotto "Come risponde Poliedron" (Core vs modello) (2026-10-12)
