@@ -48,3 +48,4 @@ a { color: var(--pol-blue-500); }
 .pp-accesso h1 { color: var(--pol-blue-600); }
 .pp-accesso form { display: flex; flex-direction: column; gap: 10px; }
 .pp-accesso button { padding: 12px; }
+.pp-accesso .pp-link, .pp-link { border: none; background: none; color: var(--pol-blue-500); padding: 12px 0; text-decoration: underline; }

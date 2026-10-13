@@ -58,9 +58,25 @@ export async function cambiaStatoPratica(db, id, stato) {
   return esito(await db.from('pratiche').update({ stato, aggiornata_il: new Date().toISOString() }).eq('id', id).select('id, stato').single());
 }
 
-// Cancellazione definitiva lato database; restituisce gli id dei file Drive ancora da togliere.
+// Cancellazione definitiva; restituisce gli id dei file Drive ancora da togliere.
+// Usa la funzione del database (una sola transazione). Se non è ancora installata, fa gli
+// stessi passi dall'app con i permessi del proprietario (RLS): log, documento (scadenze e
+// collegamenti in cascata), soggetti rimasti senza documenti.
 export async function eliminaDocumento(db, id) {
-  return esito(await db.rpc('elimina_documento', { p_id: id }));
+  const r = await db.rpc('elimina_documento', { p_id: id });
+  if (!r.error) return r.data;
+  if (!/elimina_documento|PGRST202|schema cache|does not exist/i.test(`${r.error.code} ${r.error.message}`)) esito(r);
+
+  const doc = esito(await db.from('documenti').select('id, hash_sha256, gmail_message_id, drive_file_id').eq('id', id).maybeSingle());
+  if (!doc) return { eliminato: false };
+  const legami = esito(await db.from('documenti_soggetti').select('soggetto_id').eq('documento_id', id));
+  esito(await db.from('log_elaborazione').delete().in('riferimento', [doc.id, doc.hash_sha256, doc.gmail_message_id].filter(Boolean)));
+  esito(await db.from('documenti').delete().eq('id', id));
+  for (const { soggetto_id: sid } of legami) {
+    const ancora = esito(await db.from('documenti_soggetti').select('documento_id').eq('soggetto_id', sid).limit(1));
+    if (!ancora.length) esito(await db.from('soggetti').delete().eq('id', sid));
+  }
+  return { eliminato: true, drive_file_ids: doc.drive_file_id ? [doc.drive_file_id] : [] };
 }
 
 // Risponde a una richiesta in linguaggio naturale con il solo Core (nessun modello AI).

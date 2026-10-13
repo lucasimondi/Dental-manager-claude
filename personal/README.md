@@ -1,7 +1,7 @@
 # Poliedron Personal (POL-VITA-001)
 
 App separata dall'app dello studio, collegata solo al progetto Supabase `archivio-documenti`
-(`tkcwvjzjkfhcuebrjvsp`). Decisione PO 2026-10-13: stesso repository, app distinta, accesso con link via email.
+(`tkcwvjzjkfhcuebrjvsp`). Decisione PO 2026-10-13: stesso repository, app distinta, accesso con email e password (il link via email richiede impostazioni di Supabase Auth non modificabili da qui).
 
 - Nessun codice, chiave o service worker dell'app dello studio (verificato da `tests/poliedronPersonal.test.mjs`).
 - Core deterministico (`src/lib/coreArchivio.js`), nessun modello AI: "Quanto devo a Edison?", "Scadenze di questo mese",

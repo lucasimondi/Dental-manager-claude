@@ -9,12 +9,22 @@ const ESEMPI = ['Quanto devo a Edison?', 'Scadenze di questo mese', 'Cosa devo f
 
 function Accesso() {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [modo, setModo] = useState('entra');
   const [stato, setStato] = useState(null);
   const invia = async (e) => {
     e.preventDefault();
     setStato('invio');
-    const { error } = await archivioDb.auth.signInWithOtp({ email: email.trim(), options: { emailRedirectTo: window.location.origin } });
-    setStato(error ? `Errore: ${error.message}` : 'Controlla la posta: ti ho mandato il link per entrare.');
+    const credenziali = { email: email.trim(), password };
+    if (modo === 'entra') {
+      const { error } = await archivioDb.auth.signInWithPassword(credenziali);
+      setStato(error ? (/confirm/i.test(error.message) ? 'Prima conferma l\'email: apri il link che ti ho mandato, poi torna qui ed entra.' : 'Email o password non corretti.') : null);
+    } else {
+      const { data: d, error } = await archivioDb.auth.signUp(credenziali);
+      if (error) setStato(`Errore: ${error.message}`);
+      else if (d.session) setStato(null);
+      else { setModo('entra'); setStato('Ti ho mandato un\'email: apri il link per confermarla (la pagina che si apre può anche non caricarsi, va bene così), poi torna qui ed entra.'); }
+    }
   };
   return (
     <main className="pp-accesso">
@@ -22,8 +32,12 @@ function Accesso() {
       <p>Il tuo archivio personale. Accesso riservato.</p>
       <form onSubmit={invia}>
         <input type="email" required autoComplete="email" placeholder="La tua email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <button type="submit" disabled={stato === 'invio'}>Mandami il link</button>
+        <input type="password" required minLength={8} autoComplete={modo === 'entra' ? 'current-password' : 'new-password'} placeholder={modo === 'entra' ? 'Password' : 'Scegli una password (min. 8)'} value={password} onChange={(e) => setPassword(e.target.value)} />
+        <button type="submit" disabled={stato === 'invio'}>{modo === 'entra' ? 'Entra' : 'Crea accesso'}</button>
       </form>
+      <button className="pp-link" onClick={() => { setModo(modo === 'entra' ? 'crea' : 'entra'); setStato(null); }}>
+        {modo === 'entra' ? 'Prima volta? Crea l\'accesso' : 'Hai già l\'accesso? Entra'}
+      </button>
       {stato && stato !== 'invio' && <p className="pp-nota">{stato}</p>}
     </main>
   );

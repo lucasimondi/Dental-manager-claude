@@ -103,6 +103,41 @@ test('azioni: pagata e cancellazione definitiva', async () => {
   assert.deepEqual(db.chiamate[1], { rpc: 'elimina_documento', args: { p_id: 'd1' } });
 });
 
+test('cancellazione: se la funzione del database manca, l\'app fa gli stessi passi senza residui', async () => {
+  const chiamate = [];
+  const dati = { soggettiAncoraUsati: { s1: [], s2: [{ documento_id: 'altro' }] } };
+  const db = {
+    rpc: async () => ({ data: null, error: { code: 'PGRST202', message: 'Could not find the function public.elimina_documento(p_id) in the schema cache' } }),
+    from(tabella) {
+      const q = { tabella, filtri: [] };
+      chiamate.push(q);
+      const catena = new Proxy({}, { get(_t, m) {
+        if (m === 'then') {
+          let data = null;
+          if (tabella === 'documenti' && q.filtri[0][0] === 'select') data = { id: 'd1', hash_sha256: 'h1', gmail_message_id: 'm1', drive_file_id: 'drv1' };
+          if (tabella === 'documenti_soggetti' && q.filtri.some((f) => f[0] === 'eq' && f[1] === 'documento_id')) data = [{ soggetto_id: 's1' }, { soggetto_id: 's2' }];
+          if (tabella === 'documenti_soggetti' && q.filtri.some((f) => f[0] === 'eq' && f[1] === 'soggetto_id')) data = dati.soggettiAncoraUsati[q.filtri.find((f) => f[0] === 'eq' && f[1] === 'soggetto_id')[2]];
+          return (ok) => Promise.resolve({ data, error: null }).then(ok);
+        }
+        return (...a) => { q.filtri.push([m, ...a]); return catena; };
+      } });
+      return catena;
+    },
+  };
+  assert.deepEqual(await eliminaDocumento(db, 'd1'), { eliminato: true, drive_file_ids: ['drv1'] });
+  const cancellazioni = chiamate.filter((q) => q.filtri.some((f) => f[0] === 'delete')).map((q) => [q.tabella, q.filtri.find((f) => f[0] === 'eq' || f[0] === 'in').slice(1)]);
+  assert.deepEqual(cancellazioni, [
+    ['log_elaborazione', ['riferimento', ['d1', 'h1', 'm1']]],
+    ['documenti', ['id', 'd1']],
+    ['soggetti', ['id', 's1']],
+  ]);
+});
+
+test('cancellazione: un errore diverso dalla funzione mancante non viene aggirato', async () => {
+  const db = { rpc: async () => ({ data: null, error: { code: '42501', message: 'Archivio personale: operazione non consentita' } }), from: () => { throw new Error('non deve arrivare qui'); } };
+  await assert.rejects(eliminaDocumento(db, 'd1'), /operazione non consentita/);
+});
+
 const fileDi = (dir) => readdirSync(dir).flatMap((f) => (statSync(join(dir, f)).isDirectory() ? fileDi(join(dir, f)) : [join(dir, f)]));
 
 test('Poliedron Personal è isolata dall\'app dello studio', () => {
