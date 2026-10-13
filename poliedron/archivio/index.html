@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Archivio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --carta:#E9EDEC; --foglio:#FFFFFF; --inchiostro:#17232E; --grafite:#59646D; --linea:#D3D9D7;
+  --timbro:#1F4E79; --rosso:#A4262C; --ambra:#8A5A00; --verde:#2E6B4F;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--carta);color:var(--inchiostro);font:16px/1.5 "Atkinson Hyperlegible",system-ui,sans-serif;font-variant-numeric:tabular-nums}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--timbro);outline-offset:2px}
+a{color:var(--timbro)}
+[hidden]{display:none!important}
+
+/* Login */
+#login{min-height:100vh;display:grid;place-items:center;padding:24px}
+.login-box{background:var(--foglio);border:1px solid var(--linea);border-top:6px solid var(--timbro);border-radius:4px 4px 8px 8px;padding:28px;max-width:380px;width:100%}
+.login-box h1{margin:0 0 4px;font-size:28px}
+.login-box p{color:var(--grafite);margin:0 0 18px}
+.campo{width:100%;padding:10px 12px;border:1px solid var(--linea);border-radius:6px;background:#fff}
+.btn{border:1px solid var(--inchiostro);background:var(--inchiostro);color:#fff;border-radius:6px;padding:9px 14px;text-decoration:none;display:inline-block}
+.btn.chiaro{background:transparent;color:var(--inchiostro);border-color:var(--linea)}
+.btn.piccolo{padding:4px 10px;font-size:14px}
+#msg-login{margin-top:12px;color:var(--grafite);font-size:15px}
+
+/* Testata */
+header{display:flex;align-items:center;gap:16px;padding:16px 20px 12px;flex-wrap:wrap}
+header h1{margin:0;font-size:26px;letter-spacing:-.01em}
+.cerca{flex:1;min-width:200px;max-width:520px;display:flex;gap:8px}
+nav.viste{display:flex;gap:4px}
+nav.viste button{border:none;background:none;padding:6px 10px;border-radius:6px;color:var(--grafite)}
+nav.viste button[aria-current="true"]{background:var(--foglio);color:var(--inchiostro);font-weight:700}
+#esci{margin-left:auto}
+
+/* Cartelle: l'elemento caratteristico */
+.cartelle{display:flex;gap:3px;overflow-x:auto;padding:8px 20px 0;scrollbar-width:thin;align-items:flex-end}
+.cartella{flex:none;border:1px solid var(--linea);border-bottom:none;border-top:5px solid var(--c);border-radius:9px 9px 0 0;background:#F6F8F7;padding:7px 12px 6px;font-size:14px;color:var(--grafite);transform:translateY(2px)}
+.cartella b{color:var(--inchiostro);margin-left:6px;font-weight:700}
+.cartella[aria-current="true"]{background:var(--foglio);color:var(--inchiostro);padding-bottom:10px;transform:none;font-weight:700}
+.cartella .punto{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--rosso);margin-left:6px;vertical-align:middle}
+main{background:var(--foglio);min-height:70vh;border-top:1px solid var(--linea);padding:20px clamp(16px,4vw,40px) 60px}
+main h2{font-size:22px;margin:0 0 4px}
+main h3{font-size:17px;margin:28px 0 8px}
+.sotto{color:var(--grafite);margin:0 0 16px}
+
+/* Elenchi */
+.elenco{list-style:none;margin:0;padding:0}
+.riga{display:grid;grid-template-columns:4px 1fr auto;gap:12px;padding:10px 0;border-bottom:1px solid var(--linea);align-items:start}
+.riga:last-child{border-bottom:none}
+.riga .barra{align-self:stretch;border-radius:2px;background:var(--c,var(--linea))}
+.riga button.titolo{all:unset;cursor:pointer;font-weight:700;display:block}
+.riga button.titolo:hover{text-decoration:underline}
+.riga button.titolo:focus-visible{outline:3px solid var(--timbro)}
+.meta{color:var(--grafite);font-size:14px}
+.destra{text-align:right;white-space:nowrap;font-size:15px}
+.etichetta{display:inline-block;font-size:12.5px;padding:1px 8px;border-radius:10px;border:1px solid currentColor;margin-left:6px;vertical-align:1px}
+.u-alta{color:var(--rosso)} .u-media{color:var(--ambra)} .u-bassa{color:var(--verde)}
+.scaduta{color:var(--rosso);font-weight:700}
+.vuoto{color:var(--grafite);padding:12px 0}
+.filtri{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px;align-items:center}
+.filtri button[aria-pressed="true"]{background:var(--inchiostro);color:#fff;border-color:var(--inchiostro)}
+.mese{font-size:15px;color:var(--grafite);margin:22px 0 2px;font-weight:700}
+
+/* Pannello di dettaglio */
+#velo{position:fixed;inset:0;background:rgba(23,35,46,.35)}
+#pannello{position:fixed;top:0;right:0;bottom:0;width:min(600px,100%);background:var(--foglio);overflow-y:auto;padding:20px 24px 60px;border-left:6px solid var(--c,var(--timbro))}
+@media (prefers-reduced-motion:no-preference){#pannello{animation:entra .18s ease-out}@keyframes entra{from{transform:translateX(24px);opacity:.6}}}
+#pannello h2{font-size:22px;margin:8px 0 6px;line-height:1.25}
+.azioni{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.riquadro{background:#FBF6EC;border-left:4px solid var(--ambra);padding:10px 12px;margin:12px 0;border-radius:0 6px 6px 0}
+.riquadro.alta{background:#FBEFEF;border-color:var(--rosso)}
+dl.dati{display:grid;grid-template-columns:minmax(120px,max-content) 1fr;gap:4px 14px;margin:0;font-size:15px}
+dl.dati dt{color:var(--grafite)} dl.dati dd{margin:0;word-break:break-word}
+textarea.campo{min-height:90px}
+.errore{color:var(--rosso)}
+@media (max-width:640px){header h1{font-size:22px} .riga{grid-template-columns:4px 1fr} .destra{grid-column:2;text-align:left}}
+</style>
+</head>
+<body>
+
+<section id="login" hidden>
+  <div class="login-box">
+    <h1>Archivio</h1>
+    <p>Accesso riservato. Inserisci la tua email e apri il link che ricevi.</p>
+    <label for="email" class="meta">Email</label>
+    <input id="email" class="campo" type="email" autocomplete="email" placeholder="nome@esempio.it">
+    <div style="margin-top:12px"><button class="btn" id="invia-link">Invia link di accesso</button></div>
+    <div id="msg-login" role="status"></div>
+  </div>
+</section>
+
+<div id="app" hidden>
+  <header>
+    <h1>Archivio</h1>
+    <div class="cerca">
+      <input id="q" class="campo" type="search" placeholder="Cerca: visura, bolletta, carta d'identità…" aria-label="Cerca nei documenti">
+      <button class="btn" data-azione="cerca">Cerca</button>
+    </div>
+    <nav class="viste" aria-label="Viste">
+      <button data-azione="vista" data-id="oggi">Oggi</button>
+      <button data-azione="vista" data-id="pratiche">Pratiche</button>
+      <button data-azione="vista" data-id="linea">Linea del tempo</button>
+    </nav>
+    <button class="btn chiaro piccolo" id="esci" data-azione="esci">Esci</button>
+  </header>
+  <div class="cartelle" id="cartelle" role="tablist" aria-label="Fascicoli"></div>
+  <main id="contenuto" aria-live="polite"></main>
+</div>
+
+<div id="velo" hidden data-azione="chiudi"></div>
+<aside id="pannello" hidden aria-modal="true" role="dialog"></aside>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+/* ====== CONFIGURAZIONE: incolla qui i tuoi valori ====== */
+const SUPABASE_URL = 'https://tkcwvjzjkfhcuebrjvsp.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_oJeCgTR2TiLKJmC9L_kiFA_mL4hb48f'; // chiave pubblica (publishable/anon), NON la secret
+/* ======================================================= */
+
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const COLORI = {
+  identita:'#1F4E79', immobili:'#6B4E2E', successione:'#4B3F72', conti:'#2E6B4F', fiscale:'#8A5A00',
+  previdenza:'#3C6E8F', utenze:'#5E7A2E', studio_fornitori:'#2F6F73', studio_fatture_emesse:'#1E7A5A',
+  legale:'#A4262C', assicurazioni:'#7A4E6B', veicoli:'#4A5560', famiglia_scuola:'#9C5B12',
+  sanitario_famiglia:'#8C2F5A', clinico_pazienti:'#5A6B7A', servizi:'#607080', acquisti:'#786A50', altro:'#8A9298'
+};
+const COLS = 'id,titolo,fascicolo,tipo_documento,data_documento,email_data,email_mittente,importo,urgenza,azione_richiesta,azione_descrizione,analisi_contenuto,drive_url';
+const st = { vista:'oggi', fascicolo:null, anno:'', q:'', fascicoli:[], filtroPratiche:'aperte', offset:0 };
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dataIt = d => d ? new Date(d.length === 10 ? d + 'T12:00:00' : d).toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'}) : '';
+const euro = n => n == null ? '' : Number(n).toLocaleString('it-IT',{style:'currency',currency:'EUR'});
+const giorno = n => new Date(Date.now() + n*864e5).toISOString().slice(0,10);
+const nomeFasc = c => (st.fascicoli.find(f => f.codice === c) || {}).nome || c || '';
+const mitt = s => (s || '').replace(/<[^>]*>/g,'').replace(/"/g,'').trim() || s || '';
+const dataEff = d => d.data_documento || d.email_data;
+const statoIt = { aperta:'Aperta', in_corso:'In corso', risolta:'Risolta', archiviata:'Archiviata' };
+
+/* ---------- Accesso ---------- */
+let avviata = false;
+sb.auth.onAuthStateChange((evento, sessione) => {
+  if (!sessione) { avviata = false; $('#app').hidden = true; $('#login').hidden = false; return; }
+  if (avviata) return;
+  avviata = true; $('#login').hidden = true; $('#app').hidden = false;
+  caricaFascicoli().then(render);
+});
+
+$('#invia-link').onclick = async () => {
+  const email = $('#email').value.trim();
+  if (!email) return;
+  const { error } = await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: location.origin + location.pathname } });
+  $('#msg-login').textContent = error ? 'Invio non riuscito: ' + error.message : 'Link inviato a ' + email + '. Aprilo da questo dispositivo per entrare.';
+};
+
+/* ---------- Dati ---------- */
+async function caricaFascicoli(){
+  const { data, error } = await sb.from('v_conteggi_fascicoli').select('*').order('ordine');
+  if (error) return mostraErrore(error);
+  st.fascicoli = data;
+  renderCartelle();
+}
+
+function renderCartelle(){
+  $('#cartelle').innerHTML = st.fascicoli.filter(f => f.n > 0 || f.codice === st.fascicolo).map(f => `
+    <button class="cartella" role="tab" style="--c:${COLORI[f.codice] || '#888'}" data-azione="fascicolo" data-id="${f.codice}"
+      aria-current="${st.vista === 'fascicolo' && st.fascicolo === f.codice}">
+      ${esc(f.nome)}<b>${f.n}</b>${f.n_azioni ? '<span class="punto" title="Documenti con azioni richieste"></span>' : ''}
+    </button>`).join('') || '<span class="meta" style="padding:8px 0">Nessun documento archiviato. Lo script li aggiungerà man mano.</span>';
+}
+
+function mostraErrore(e){ $('#contenuto').innerHTML = `<p class="errore">Errore nel caricamento: ${esc(e.message || e)}</p>`; }
+
+/* ---------- Componenti ---------- */
+function rigaDoc(d){
+  const urg = d.urgenza && d.azione_richiesta ? `<span class="etichetta u-${d.urgenza}">${d.urgenza === 'alta' ? 'urgente' : 'da fare'}</span>` : '';
+  const meta = [dataIt(dataEff(d)), mitt(d.email_mittente), d.analisi_contenuto === false ? 'catalogato senza leggere il contenuto' : ''].filter(Boolean).map(esc).join(', ');
+  return `<li class="riga" style="--c:${COLORI[d.fascicolo] || '#888'}">
+    <span class="barra"></span>
+    <div><button class="titolo" data-azione="doc" data-id="${d.id}">${esc(d.titolo || 'Senza titolo')}</button>${urg}
+      <div class="meta">${meta}</div>
+      ${d.azione_richiesta && d.azione_descrizione ? `<div class="meta">${esc(d.azione_descrizione)}</div>` : ''}</div>
+    <div class="destra">${euro(d.importo)}</div></li>`;
+}
+
+function rigaScadenza(s){
+  const scaduta = s.data < giorno(0);
+  const doc = s.documenti ? `<button class="titolo" data-azione="doc" data-id="${s.documento_id}">${esc(s.documenti.titolo)}</button>` : '';
+  return `<li class="riga" style="--c:${scaduta ? 'var(--rosso)' : 'var(--ambra)'}">
+    <span class="barra"></span>
+    <div><span class="${scaduta ? 'scaduta' : ''}">${dataIt(s.data)}${scaduta ? ', scaduta' : ''}</span>: ${esc(s.descrizione)}
+      <div class="meta">${doc}</div></div>
+    <div class="destra">${euro(s.importo)} <button class="btn chiaro piccolo" data-azione="scad-fatta" data-id="${s.id}">Segna come fatta</button></div></li>`;
+}
+
+function rigaPratica(p){
+  return `<li class="riga" style="--c:${COLORI[p.fascicolo] || '#888'}">
+    <span class="barra"></span>
+    <div><button class="titolo" data-azione="pratica" data-id="${p.id}">${esc(p.titolo)}</button>
+      <span class="etichetta u-${p.urgenza}">${p.urgenza}</span>
+      <div class="meta">${esc(nomeFasc(p.fascicolo))}, ${p.n_documenti} documenti${p.ultima_attivita ? ', ultimo il ' + dataIt(p.ultima_attivita) : ''}</div></div>
+    <div class="destra meta">${statoIt[p.stato]}${p.prossima_scadenza ? '<br>scade il ' + dataIt(p.prossima_scadenza) : ''}</div></li>`;
+}
+
+const elenco = (righe, vuoto) => righe.length ? `<ul class="elenco">${righe.join('')}</ul>` : `<p class="vuoto">${vuoto}</p>`;
+
+/* ---------- Viste ---------- */
+async function render(){
+  document.querySelectorAll('nav.viste button').forEach(b => b.setAttribute('aria-current', String(b.dataset.id === st.vista)));
+  renderCartelle();
+  $('#contenuto').innerHTML = '<p class="vuoto">Caricamento…</p>';
+  try {
+    if (st.vista === 'oggi') await vistaOggi();
+    else if (st.vista === 'pratiche') await vistaPratiche();
+    else if (st.vista === 'linea') await vistaLinea(false);
+    else if (st.vista === 'fascicolo') await vistaFascicolo(false);
+    else if (st.vista === 'ricerca') await vistaRicerca();
+  } catch (e) { mostraErrore(e); }
+}
+
+async function vistaOggi(){
+  const [sc, pr, az] = await Promise.all([
+    sb.from('scadenze').select('id,data,descrizione,importo,documento_id,documenti(titolo)')
+      .eq('completata', false).gte('data', giorno(-90)).lte('data', giorno(30)).order('data'),
+    sb.from('v_pratiche').select('*').in('stato', ['aperta','in_corso']).eq('urgenza','alta')
+      .order('ultima_attivita', { ascending:false, nullsFirst:false }).limit(20),
+    sb.from('documenti').select(COLS).eq('azione_richiesta', true).gte('email_data', giorno(-60))
+      .order('email_data', { ascending:false }).limit(40)
+  ]);
+  for (const r of [sc, pr, az]) if (r.error) throw r.error;
+  $('#contenuto').innerHTML = `
+    <h2>Oggi</h2><p class="sotto">Quello che richiede attenzione adesso.</p>
+    <h3>Pratiche urgenti</h3>${elenco(pr.data.map(rigaPratica), 'Nessuna pratica urgente aperta.')}
+    <h3>Scadenze: ultimi 90 giorni e prossimi 30</h3>${elenco(sc.data.map(rigaScadenza), 'Nessuna scadenza in questo periodo.')}
+    <h3>Documenti recenti da gestire</h3>${elenco(az.data.map(rigaDoc), 'Nessun documento recente richiede azioni.')}`;
+}
+
+async function vistaPratiche(){
+  const stati = { aperte:['aperta','in_corso'], risolte:['risolta'], archiviate:['archiviata'] }[st.filtroPratiche];
+  const { data, error } = await sb.from('v_pratiche').select('*').in('stato', stati)
+    .order('ultima_attivita', { ascending:false, nullsFirst:false }).limit(300);
+  if (error) throw error;
+  const f = (id, testo) => `<button class="btn chiaro piccolo" data-azione="filtro-pratiche" data-id="${id}" aria-pressed="${st.filtroPratiche === id}">${testo}</button>`;
+  $('#contenuto').innerHTML = `
+    <h2>Pratiche</h2><p class="sotto">Ogni pratica raccoglie i documenti della stessa questione.</p>
+    <div class="filtri">${f('aperte','Aperte')}${f('risolte','Risolte')}${f('archiviate','Archiviate')}
+      ${st.filtroPratiche === 'aperte' ? '<button class="btn chiaro piccolo" data-azione="archivia-ferme">Archivia le pratiche ferme da oltre 12 mesi</button>' : ''}</div>
+    ${elenco(data.map(rigaPratica), 'Nessuna pratica in questo stato.')}`;
+}
+
+async function vistaLinea(aggiungi){
+  if (!aggiungi) st.offset = 0;
+  const { data, error } = await sb.from('documenti').select(COLS)
+    .order('email_data', { ascending:false }).range(st.offset, st.offset + 99);
+  if (error) throw error;
+  let html = '', meseCorrente = aggiungi ? ([...document.querySelectorAll('#linea .mese')].pop()?.dataset.m || '') : '';
+  for (const d of data) {
+    const m = (d.email_data || '').slice(0,7);
+    if (m !== meseCorrente) {
+      meseCorrente = m;
+      const etichetta = new Date(m + '-15').toLocaleDateString('it-IT',{month:'long',year:'numeric'});
+      html += `</ul><div class="mese" data-m="${m}">${etichetta.charAt(0).toUpperCase() + etichetta.slice(1)}</div><ul class="elenco">`;
+    }
+    html += rigaDoc(d);
+  }
+  const altri = data.length === 100 ? '<p><button class="btn chiaro" data-azione="altri-linea">Mostra altri</button></p>' : '';
+  if (!aggiungi) {
+    $('#contenuto').innerHTML = `<h2>Linea del tempo</h2><p class="sotto">Tutti i documenti, dal più recente.</p><div id="linea"><ul class="elenco">${html}</ul></div><div id="altri">${altri}</div>`;
+    if (!data.length) $('#linea').innerHTML = '<p class="vuoto">Nessun documento ancora.</p>';
+  } else {
+    $('#linea').insertAdjacentHTML('beforeend', `<ul class="elenco">${html}</ul>`);
+    $('#altri').innerHTML = altri;
+  }
+}
+
+async function vistaFascicolo(aggiungi){
+  if (!aggiungi) st.offset = 0;
+  let q = sb.from('documenti').select(COLS).eq('fascicolo', st.fascicolo);
+  if (st.anno) {
+    const a = st.anno, b = String(+st.anno + 1);
+    q = q.or(`and(data_documento.gte.${a}-01-01,data_documento.lt.${b}-01-01),and(data_documento.is.null,email_data.gte.${a}-01-01,email_data.lt.${b}-01-01)`);
+  }
+  const { data, error } = await q.order('email_data', { ascending:false }).range(st.offset, st.offset + 99);
+  if (error) throw error;
+  const altri = data.length === 100 ? '<p><button class="btn chiaro" data-azione="altri-fascicolo">Mostra altri</button></p>' : '';
+  if (aggiungi) { $('#lista-fasc').insertAdjacentHTML('beforeend', data.map(rigaDoc).join('')); $('#altri').innerHTML = altri; return; }
+  const annoOggi = new Date().getFullYear();
+  const anni = Array.from({ length: annoOggi - 2009 }, (_, i) => annoOggi - i);
+  $('#contenuto').innerHTML = `
+    <h2>${esc(nomeFasc(st.fascicolo))}</h2>
+    <div class="filtri"><label class="meta" for="anno">Anno</label>
+      <select id="anno" class="campo" style="width:auto"><option value="">Tutti</option>${anni.map(a => `<option ${String(a) === st.anno ? 'selected' : ''}>${a}</option>`).join('')}</select></div>
+    ${data.length ? `<ul class="elenco" id="lista-fasc">${data.map(rigaDoc).join('')}</ul>` : '<p class="vuoto">Nessun documento per questo filtro.</p>'}
+    <div id="altri">${altri}</div>`;
+  $('#anno').onchange = e => { st.anno = e.target.value; render(); };
+}
+
+async function vistaRicerca(){
+  const { data, error } = await sb.rpc('cerca_documenti', { q: st.q, fasc: null, lim: 100 });
+  if (error) throw error;
+  $('#contenuto').innerHTML = `<h2>Risultati per “${esc(st.q)}”</h2><p class="sotto">${data.length} documenti trovati.</p>
+    ${elenco(data.map(rigaDoc), 'Nessun risultato. Prova con il nome di un ente, un fornitore o un tipo di documento.')}`;
+}
+
+/* ---------- Pannelli di dettaglio ---------- */
+function apriPannello(html, colore){
+  const p = $('#pannello');
+  p.style.setProperty('--c', colore || 'var(--timbro)');
+  p.innerHTML = `<button class="btn chiaro piccolo" data-azione="chiudi">Chiudi</button>${html}`;
+  p.hidden = false; $('#velo').hidden = false; p.scrollTop = 0;
+  p.querySelector('button').focus();
+}
+function chiudiPannello(){ $('#pannello').hidden = true; $('#velo').hidden = true; }
+
+async function apriDocumento(id){
+  const { data: d, error } = await sb.from('documenti')
+    .select('*, pratiche(id,titolo,stato), documenti_soggetti(ruolo, soggetti(nome,tipo)), scadenze(id,data,descrizione,importo,completata)')
+    .eq('id', id).single();
+  if (error) return apriPannello(`<p class="errore">${esc(error.message)}</p>`);
+  const dati = Object.entries(d.dati_estratti || {}).filter(([,v]) => v !== null && v !== '');
+  const opzioni = st.fascicoli.map(f => `<option value="${f.codice}" ${f.codice === d.fascicolo ? 'selected' : ''}>${esc(f.nome)}</option>`).join('');
+  apriPannello(`
+    <p class="meta" style="margin-top:14px">${esc(nomeFasc(d.fascicolo))}${d.tipo_documento ? ', ' + esc(d.tipo_documento) : ''}</p>
+    <h2>${esc(d.titolo)}</h2>
+    <p class="meta">${dataIt(dataEff(d))}${d.importo != null ? ', ' + euro(d.importo) : ''}</p>
+    <div class="azioni">
+      ${d.drive_url ? `<a class="btn" href="${esc(d.drive_url)}" target="_blank" rel="noopener">Apri il file</a>` : ''}
+      <a class="btn chiaro" href="https://mail.google.com/mail/u/0/#all/${esc(d.gmail_message_id)}" target="_blank" rel="noopener">Apri l'email</a>
+    </div>
+    ${d.azione_richiesta ? `<div class="riquadro ${d.urgenza === 'alta' ? 'alta' : ''}"><b>Da fare:</b> ${esc(d.azione_descrizione || 'azione richiesta')}
+      <div style="margin-top:8px"><button class="btn chiaro piccolo" data-azione="doc-gestito" data-id="${d.id}">Segna come gestito</button></div></div>` : ''}
+    ${d.riassunto ? `<p>${esc(d.riassunto)}</p>` : ''}
+    ${d.analisi_contenuto === false ? '<p class="meta">Catalogato solo da email e nome file, senza leggere il contenuto.</p>' : ''}
+    ${d.pratiche ? `<h3>Pratica</h3><p><button class="btn chiaro" data-azione="pratica" data-id="${d.pratiche.id}">${esc(d.pratiche.titolo)}</button> <span class="meta">${statoIt[d.pratiche.stato]}</span></p>` : ''}
+    ${d.scadenze?.length ? `<h3>Scadenze</h3><ul class="elenco">${d.scadenze.map(s => `<li class="riga" style="--c:${s.completata ? 'var(--verde)' : 'var(--ambra)'}"><span class="barra"></span>
+      <div>${dataIt(s.data)}: ${esc(s.descrizione)}${s.completata ? ' <span class="meta">(fatta)</span>' : ''}</div>
+      <div class="destra">${euro(s.importo)} ${s.completata ? '' : `<button class="btn chiaro piccolo" data-azione="scad-fatta" data-id="${s.id}" data-doc="${d.id}">Segna come fatta</button>`}</div></li>`).join('')}</ul>` : ''}
+    ${d.documenti_soggetti?.length ? `<h3>Soggetti</h3><p>${d.documenti_soggetti.map(x => esc(x.soggetti?.nome) + (x.ruolo ? ` <span class="meta">(${esc(x.ruolo)})</span>` : '')).join(', ')}</p>` : ''}
+    ${dati.length ? `<h3>Dati estratti</h3><dl class="dati">${dati.map(([k,v]) => `<dt>${esc(k.replace(/_/g,' '))}</dt><dd>${esc(typeof v === 'object' ? JSON.stringify(v) : v)}</dd>`).join('')}</dl>` : ''}
+    <h3>Email di origine</h3>
+    <dl class="dati"><dt>Oggetto</dt><dd>${esc(d.email_oggetto)}</dd><dt>Da</dt><dd>${esc(d.email_mittente)}</dd>
+      <dt>Ricevuta</dt><dd>${dataIt(d.email_data)}</dd><dt>File</dt><dd>${esc(d.nome_file_originale)}</dd></dl>
+    <h3>Sposta in un altro fascicolo</h3>
+    <div class="filtri"><select id="nuovo-fasc" class="campo" style="width:auto">${opzioni}</select>
+      <button class="btn chiaro piccolo" data-azione="sposta" data-id="${d.id}">Sposta</button></div>
+    <p class="meta">Lo spostamento cambia il fascicolo nell'archivio; il file su Drive resta nella cartella originale.</p>
+  `, COLORI[d.fascicolo]);
+}
+
+async function apriPratica(id){
+  const [p, docs, sc] = await Promise.all([
+    sb.from('v_pratiche').select('*').eq('id', id).single(),
+    sb.from('documenti').select(COLS).eq('pratica_id', id).order('email_data', { ascending:true }),
+    sb.from('scadenze').select('id,data,descrizione,importo,completata,documento_id').eq('pratica_id', id).order('data')
+  ]);
+  if (p.error) return apriPannello(`<p class="errore">${esc(p.error.message)}</p>`);
+  const x = p.data;
+  const bottoneStato = (s, t) => `<button class="btn chiaro piccolo" data-azione="stato-pratica" data-id="${id}" data-stato="${s}" aria-pressed="${x.stato === s}">${t}</button>`;
+  apriPannello(`
+    <p class="meta" style="margin-top:14px">Pratica, ${esc(nomeFasc(x.fascicolo))}</p>
+    <h2>${esc(x.titolo)}</h2>
+    <div class="filtri">${bottoneStato('aperta','Aperta')}${bottoneStato('in_corso','In corso')}${bottoneStato('risolta','Risolta')}${bottoneStato('archiviata','Archiviata')}</div>
+    <div class="filtri"><label class="meta" for="urg">Urgenza</label>
+      <select id="urg" class="campo" style="width:auto">${['bassa','media','alta'].map(u => `<option ${u === x.urgenza ? 'selected' : ''}>${u}</option>`).join('')}</select></div>
+    <h3>Note</h3>
+    <textarea id="note" class="campo" placeholder="Cosa è stato fatto, con chi hai parlato, prossimi passi">${esc(x.note || '')}</textarea>
+    <div style="margin-top:8px"><button class="btn piccolo" data-azione="salva-pratica" data-id="${id}">Salva note e urgenza</button> <span id="salvato" class="meta" role="status"></span></div>
+    ${sc.data?.length ? `<h3>Scadenze</h3><ul class="elenco">${sc.data.map(s => `<li class="riga" style="--c:${s.completata ? 'var(--verde)' : 'var(--ambra)'}"><span class="barra"></span>
+      <div>${dataIt(s.data)}: ${esc(s.descrizione)}${s.completata ? ' <span class="meta">(fatta)</span>' : ''}</div><div class="destra">${euro(s.importo)}</div></li>`).join('')}</ul>` : ''}
+    <h3>Documenti, in ordine cronologico</h3>
+    ${elenco((docs.data || []).map(rigaDoc), 'Nessun documento collegato.')}
+  `, COLORI[x.fascicolo]);
+}
+
+/* ---------- Interazioni ---------- */
+document.addEventListener('click', async ev => {
+  const t = ev.target.closest('[data-azione]');
+  if (!t) return;
+  const { azione, id } = t.dataset;
+  try {
+    switch (azione) {
+      case 'vista': st.vista = id; chiudiPannello(); return render();
+      case 'fascicolo': st.vista = 'fascicolo'; st.fascicolo = id; st.anno = ''; chiudiPannello(); return render();
+      case 'cerca': return cerca();
+      case 'doc': return apriDocumento(id);
+      case 'pratica': return apriPratica(id);
+      case 'chiudi': return chiudiPannello();
+      case 'esci': return sb.auth.signOut();
+      case 'filtro-pratiche': st.filtroPratiche = id; return render();
+      case 'altri-linea': st.offset += 100; return vistaLinea(true);
+      case 'altri-fascicolo': st.offset += 100; return vistaFascicolo(true);
+      case 'scad-fatta': {
+        const { error } = await sb.from('scadenze').update({ completata: true }).eq('id', id);
+        if (error) throw error;
+        if (t.dataset.doc) return apriDocumento(t.dataset.doc);
+        return render();
+      }
+      case 'doc-gestito': {
+        const { error } = await sb.from('documenti').update({ azione_richiesta: false }).eq('id', id);
+        if (error) throw error;
+        await caricaFascicoli(); apriDocumento(id); return render();
+      }
+      case 'sposta': {
+        const { error } = await sb.from('documenti').update({ fascicolo: $('#nuovo-fasc').value }).eq('id', id);
+        if (error) throw error;
+        await caricaFascicoli(); apriDocumento(id); return render();
+      }
+      case 'stato-pratica': {
+        const { error } = await sb.from('pratiche').update({ stato: t.dataset.stato, aggiornata_il: new Date().toISOString() }).eq('id', id);
+        if (error) throw error;
+        apriPratica(id); return render();
+      }
+      case 'salva-pratica': {
+        const { error } = await sb.from('pratiche').update({ note: $('#note').value, urgenza: $('#urg').value, aggiornata_il: new Date().toISOString() }).eq('id', id);
+        if (error) throw error;
+        $('#salvato').textContent = 'Salvato.'; return;
+      }
+      case 'archivia-ferme': {
+        if (!confirm('Archiviare tutte le pratiche aperte senza documenti negli ultimi 12 mesi?')) return;
+        const { data, error } = await sb.rpc('archivia_pratiche_ferme', { mesi: 12 });
+        if (error) throw error;
+        alert(`Archiviate ${data} pratiche.`); return render();
+      }
+    }
+  } catch (e) { alert('Operazione non riuscita: ' + (e.message || e)); }
+});
+
+function cerca(){
+  const q = $('#q').value.trim();
+  if (!q) return;
+  st.q = q; st.vista = 'ricerca'; chiudiPannello(); render();
+}
+$('#q').addEventListener('keydown', e => { if (e.key === 'Enter') cerca(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') chiudiPannello(); });
+</script>
+</body>
+</html>

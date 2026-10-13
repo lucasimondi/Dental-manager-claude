@@ -16,3 +16,7 @@ Before acting, read in order:
 Do not infer state from previous Claude sessions or conversation history. Work only on the recorded task and branch. If ownership is assigned to another agent, stop and request an explicit handoff. Product Owner gates in `AGENTS.md` are mandatory.
 
 If implementation would conflict with the Master Context and the conflict cannot be resolved from repository evidence, record `PRODUCT_OWNER_DECISION_REQUIRED` rather than silently overriding Product Owner direction.
+
+## Archivio documenti personali
+
+For anything about the personal document archive (Gmail attachments import, Google Drive "Archivio personale", Supabase project `archivio-documenti`, the archive dashboard), read `poliedron/archivio/CLAUDE.md` first and follow it. Its non-negotiable rules (no secrets in the repo, patient clinical content never sent to models, drafts only and no messages sent to third parties, no deletions) always apply.
