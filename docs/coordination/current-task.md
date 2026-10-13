@@ -1,7 +1,7 @@
 # Current task — POL-VITA-001 Archivio personale e assistente di vita (2026-10-12)
 - OWNER: CLAUDE, su istruzione diretta del PO ("POL-VITA-001-brief leggi questo e iniziamo nuovo progetto catalogazione facile"). Brief integrale: `docs/mission/POL-VITA-001-brief.md`.
 - BRANCH: `claude/catalogazione-facile-latjs9`, da `master@ecd964b7`. Ogni fase avrà poi un proprio branch.
-- STATO: solo analisi e registrazione. **Nessun codice, migrazione, Edge Function o modifica a Supabase/Google finché il PO non decide i 4 gate del brief** (`PRODUCT_OWNER_DECISION_REQUIRED`).
+- STATO: gate 1–5 decisi dal PO (sotto); resta aperta la decisione sullo schema già presente nel progetto separato. Nessun codice né modifica a Supabase/Google finora.
 - VERIFICHE SUL REPOSITORY (a supporto delle decisioni):
   - Master Context §"Tenant safety": "Ogni funzione deve rispettare `studio_id`". Un ambito personale su `auth.uid()` è una seconda dimensione di tenancy, non prevista → gate 1 confermato. `docs/architecture/tenancy.md`: `getStudioId()` ha un UUID di fallback fisso; lo spazio personale non deve mai usarlo (identità solo da `auth.uid()` lato database, fail-closed).
   - Master Context descrive Poliedra come SaaS per professionisti sanitari: l'archivio personale è un ampliamento di prodotto. Da chiarire se è una funzione solo per il PO o per tutti gli utenti (cambia onboarding, consenso, OAuth verificato da Google, costi AI).
@@ -10,9 +10,19 @@
   - Team: `src/lib/poliedron/team/catalog.js` (`TEAM_ASSISTANTS`) + `agente-assistente/team.js`, regole in `docs/architecture/poliedron-team-foundation.md` → Fase 5 si innesta lì.
   - Criterio "nessun dato personale in `poliedron_eventi`": quella tabella (POL-AI-011) registra intento e nomi di strumenti; i nuovi strumenti read-only andranno registrati senza argomenti (già così per costruzione) — da coprire con test.
   - Fornitore AI (gate 4): ultimo stato registrato 2026-10-12 = OpenAI 429 `insufficient_quota`, riserva automatica pronta ma attiva solo se `ANTHROPIC_API_KEY` è impostata.
-- DECISIONI PO APERTE: (1) ambito personale su `auth.uid()`; (2) stesso progetto Supabase o progetto separato; (3) trattamento dati sanitari di terzi e di pazienti; (4) fornitore AI/credito. Più: (5) funzione solo per il PO o di prodotto; (6) modalità OAuth Google (app in test: refresh token scade dopo 7 giorni; verifica Google per scope `gmail.readonly` = scope "restricted", richiede valutazione di sicurezza per uso pubblico).
-- EXACT NEXT ACTION: risposte del PO ai gate → piano tecnico della Fase 1 (migrazione `documenti_personali` + bucket privato + RLS owner-only + test a due utenti) su branch dedicato.
-
+- DECISIONI PO (2026-10-12, risposte in chat):
+  1+2. **Progetto Supabase separato `archivio-documenti` (`tkcwvjzjkfhcuebrjvsp`)**, non la produzione.
+  3. Dati sanitari: **come da brief** (categoria separata, esclusa dal team AI salvo richiesta; documenti di pazienti solo segnalati con proposta di spostamento nella scheda paziente).
+  4. Fornitore AI: Anthropic primo + OpenAI riserva (la `ANTHROPIC_API_KEY` la imposta il PO nei secret, non in chat). PO verbatim: "poliedron da solo deve comunque permettermi la ricerca e le azioni come sta facendo con dental" → ricerca, scadenze e azioni dell'archivio vanno nel **Core deterministico**, senza modello; il modello serve solo per leggere/interpretare i documenti.
+  5. **Solo per il PO**, app Google OAuth in modalità test (refresh token 7 giorni → riconnessione periodica).
+- SCOPERTA 2026-10-13 (lettura in sola lettura del progetto separato): **non è vuoto**. Migrazione `20261012201509 schema_archivio_documenti` applicata da un'altra sessione/strumento, **non versionata in questo repo**:
+  - tabelle `fascicoli` (18 righe: identita, immobili, successione, conti, fiscale, previdenza, utenze, studio_fornitori, studio_fatture_emesse, legale, assicurazioni, veicoli, famiglia_scuola, sanitario_famiglia, clinico_pazienti, servizi, acquisti, altro), `pratiche`, `documenti` (hash SHA-256, id messaggio/thread Gmail, **originale su Google Drive** `drive_file_id`/`drive_url`, titolo, riassunto, importo, tag, azione/urgenza, `dati_estratti`, `ricerca` tsvector italiano), `soggetti`, `documenti_soggetti`, `scadenze`, `log_elaborazione`; viste `v_pratiche`, `v_conteggi_fascicoli` (security_invoker).
+  - RLS su tutte: policy `proprietario` = `auth.jwt()->>'email' = <email del PO>` (proprietario unico per email, nessuna colonna owner). `registra_documento(jsonb)` SECURITY DEFINER eseguibile solo dal service role (dedup per hash, crea pratiche/soggetti/scadenze). `cerca_documenti` full-text, `archivia_pratiche_ferme`.
+  - 0 utenti auth, 0 bucket, 0 documenti, nessuna Edge Function.
+  - Differenze dal brief: originali su Drive invece che bucket privato; owner per email invece di `auth.uid()`; nessuna cancellazione definitiva; nessun pgvector.
+  - Rischio: con 0 utenti, se in quel progetto la registrazione è aperta e la conferma email è disattivata, chiunque potrebbe registrarsi con l'email del PO e diventare "proprietario". Da verificare/chiudere (signup disattivato) prima di caricare dati.
+- DECISIONE PO APERTA: adottare lo schema esistente come base (versionandolo nel repo) o rifarlo come da brief? E chi l'ha creato: c'è un'altra sessione che ci sta lavorando (AGENTS.md: un solo owner)?
+- EXACT NEXT ACTION: risposta del PO sullo schema esistente → versionare la migrazione in `supabase/archivio/migrations/`, chiudere il signup, poi Fase 1 (import Gmail).
 ---
 
 # Current task — POL-AI-011 Cruscotto "Come risponde Poliedron" (Core vs modello) (2026-10-12)
