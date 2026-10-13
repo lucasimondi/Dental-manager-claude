@@ -1,6 +1,7 @@
 import React, { Suspense, lazy, useState } from 'react';
 import { Btn, Crd, Bdg, Ic, Modal } from './ui';
 import { C, fmt, fmtD, today } from '../lib/utils';
+import { documentoAperto, segnaDocumentoAperto } from '../lib/posizioneNavigazione.js';
 import { aggregateSaldi, totalePagatoPaziente } from '../lib/domain/incassiMath.js';
 import { waAbilitato, waUrl } from './ui/WaAction.jsx';
 import PianoDrillDown from './PianoDrillDown.jsx';
@@ -38,7 +39,15 @@ const PatientWorkspaceConsentFlow = lazy(() => import('./PatientWorkspaceDocumen
 
 export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {}, implants = [], setImplants, setPatients, setPayments, richiami = [], setRichiami, onNuovoAppuntamento, onPatientChange, studioMembership, currentUserId, isStudioAdmin, saldiPiani = {}, pricelist = [], features }) {
   const [tab, setTab] = useState(initTab || 'info');
-  const [documentFlow, setDocumentFlow] = useState(() => initialDocumentRequest?.type === 'ricetta' ? 'ricetta' : null);
+  // Il documento aperto (ricetta, documento medico, fattura, consenso) si riapre da solo se l'app
+  // viene ricaricata da zero tornando da un'altra app (iPhone); il testo lo tiene la sua bozza.
+  const [documentFlow, setDocumentFlowStato] = useState(() => {
+    if (initialDocumentRequest?.type === 'ricetta') return 'ricetta';
+    const aperto = documentoAperto('scheda', paz?.id)?.flusso;
+    return ['ricetta', 'medico', 'fiscale', 'consenso'].includes(aperto) ? aperto : null;
+  });
+  // Salvato nel punto in cui si apre o si chiude (questo file non usa effetti post-mount).
+  const setDocumentFlow = (flusso) => { setDocumentFlowStato(flusso); if (paz?.id != null) segnaDocumentoAperto('scheda', paz.id, flusso); };
   // POL-UI-020: Product Owner — la croce in header segnala lo stato
   // dell'anamnesi: bianca se mai compilata, verde se compilata senza
   // condizioni a rischio riferite, rossa lampeggiante se ci sono

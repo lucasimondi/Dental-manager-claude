@@ -309,7 +309,9 @@ test('shared Home Toast remains available for inline patient creation after Da i
 
 test('ROUND 4 (rev. azioni rapide mobile): Home "Ricetta" opens the full DocMedico Ricetta form immediately, with the patient picker inside it', () => {
   assert.match(dashboardSrc, /openRicettaPicker: \(\) => setRicettaPickerOpen\(true\)/);
-  assert.match(dashboardSrc, /const \[ricettaPickerOpen, setRicettaPickerOpen\] = useState\(false\);/);
+  // POL-VITA-001 follow-up (PO: "deve rimanere aperto il documento anche quando cambio app e ritorno"):
+  // chiusa all'avvio salvo una ricetta rimasta aperta prima di un ricaricamento dell'app.
+  assert.match(dashboardSrc, /const \[ricettaPickerOpen, setRicettaPickerOpen\] = useState\(\(\) => Boolean\(documentoAperto\('home'\)\)\);/);
   assert.match(dashboardSrc, /const DocMedico = React\.lazy\(\(\) => import\('\.\/DocMedico\.jsx'\)\);/);
   const modalBlock = dashboardSrc.slice(dashboardSrc.indexOf('{ricettaPickerOpen && ('), dashboardSrc.indexOf('{bookingOpen && ('));
   // No bottom-sheet Modal in between any more: the full-screen form (top

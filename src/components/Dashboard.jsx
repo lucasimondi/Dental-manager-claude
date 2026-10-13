@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { lazyWithRetry } from '../lib/lazyWithRetry.js';
+import { documentoAperto, segnaDocumentoAperto } from '../lib/posizioneNavigazione.js';
 import { Crd, Bdg, Modal, Ic, Btn, Fld, Sel, Inp, Txt, TimePicker, SelettorePaziente, EmptyState, Toast } from './ui';
 import { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
 import { C, fmt, fmtD, today, uid, RICHIAMO_CATEGORIE, TODO_CATEGORIE, todoCategoriaTab, pazientiNuoviIn } from '../lib/utils';
@@ -178,9 +179,18 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
   // completa (DocMedico, a schermo intero dall'alto) con in testa la card
   // "Paziente": ricerca, oppure creazione al volo con nome e cognome +
   // "Salva paziente" se non esiste ancora.
-  const [ricettaPickerOpen, setRicettaPickerOpen] = useState(false);
+  // La ricetta aperta dalla Home (e il paziente scelto) si riapre da sola se l'app viene
+  // ricaricata da zero tornando da un'altra app (iPhone); farmaci e testo li tiene la bozza.
+  const [ricettaPickerOpen, setRicettaPickerOpen] = useState(() => Boolean(documentoAperto('home')));
   const [ricettaPickerSearch, setRicettaPickerSearch] = useState('');
-  const [ricettaPazienteId, setRicettaPazienteId] = useState('');
+  const [ricettaPazienteId, setRicettaPazienteId] = useState(() => {
+    const id = documentoAperto('home')?.pazId || '';
+    return id && (patients || []).some((p) => String(p.id) === id) ? id : '';
+  });
+  useEffect(() => {
+    if (ricettaPickerOpen) segnaDocumentoAperto('home', ricettaPazienteId, 'ricetta');
+    else if (documentoAperto('home')) segnaDocumentoAperto('home', '', null);
+  }, [ricettaPickerOpen, ricettaPazienteId]);
   // Product Owner round 6 — the picker's search field must also let the
   // user create a brand-new patient inline (name/surname only), then open
   // Ricetta for them immediately. Reuses SelettorePaziente's own existing

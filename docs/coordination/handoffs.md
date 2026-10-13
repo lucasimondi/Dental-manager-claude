@@ -1,5 +1,12 @@
 # Handoffs
 
+## Documento aperto che sopravvive al cambio app (2026-10-13)
+
+- Agent: CLAUDE. Branch `claude/catalogazione-facile-latjs9` da `master@ecab1402`. Dettagli in `current-task.md`.
+- Files: `src/lib/{posizioneNavigazione.js, useFormPersistente.js}`, `src/components/{DocMedico.jsx, DocFiscale.jsx, SchedaPaz.jsx, PatientWorkspaceV2.jsx, Dashboard.jsx}`, `src/App.jsx`, `tests/documentoApertoRipristino.test.mjs` (new), `tests/mobileHomeRound2.test.mjs`.
+- Database: none. Tests: 1167/1167; build OK; controprova eseguita.
+- Risks: bozze dei documenti visibili fino a 12 h sullo stesso dispositivo (stesso comportamento della ricetta preparata in chat); altri form 30 min.
+- Exact next action: merge e prova reale su iPhone.
 ## 2026-10-13 — CLAUDE — Certificato riposo
 - Nuovo tipo documento "Certificato riposo" + campo "Luogo di nascita" in scheda (migrazione `patients.luogo_nascita`, da applicare prima del merge).
 - Dati del paziente della foto da inserire dal PO in scheda: nessuna scrittura manuale in produzione.

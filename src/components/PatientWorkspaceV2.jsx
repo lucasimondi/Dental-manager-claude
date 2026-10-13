@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Ic } from './ui';
 import { fmt, fmtD } from '../lib/utils';
+import { documentoAperto, segnaDocumentoAperto } from '../lib/posizioneNavigazione.js';
 import { PATIENT_WORKSPACE_ACTIONS } from '../lib/patientWorkspaceActionRegistry';
 import { createPatientWorkspaceContext } from '../lib/patientWorkspaceDomain';
 import { aggregateDocumentTimeline } from '../lib/patientWorkspaceDocuments';
@@ -187,7 +188,17 @@ export default function PatientWorkspaceV2({ context, patient, plans, payments, 
   // Demo fixture regression label: /5 completate. Real mode always renders the actual denominator below.
   const model = useMemo(() => buildPatientWorkspaceV2Model({ patient, plans, payments, appointments }), [patient, plans, payments, appointments]);
   const [drawer, setDrawer] = useState(null);
-  const [quickCreate, setQuickCreate] = useState(() => initialDocumentRequest?.type === 'ricetta' ? 'prescription' : null);
+  // Ricetta o consenso aperti si riaprono da soli dopo un ricaricamento dell'app (cambio app su iPhone).
+  const [quickCreate, setQuickCreateStato] = useState(() => {
+    if (initialDocumentRequest?.type === 'ricetta') return 'prescription';
+    const aperto = realMode ? documentoAperto('scheda', patient?.id)?.flusso : null;
+    return aperto === 'ricetta' ? 'prescription' : aperto === 'consenso' ? 'consent' : null;
+  });
+  // Salvato nel punto in cui si apre o si chiude (questo file non usa effetti post-mount).
+  const setQuickCreate = (kind) => {
+    setQuickCreateStato(kind);
+    if (realMode && patient?.id != null) segnaDocumentoAperto('scheda', patient.id, kind === 'prescription' ? 'ricetta' : kind === 'consent' ? 'consenso' : null);
+  };
   const [tab, setTab] = useState(() => initialTab === 'doc' || initialDocumentRequest ? 'doc' : initialTab || 'info');
   const [planFilter, setPlanFilter] = useState('Tutte');
   const [openTreatmentMenu, setOpenTreatmentMenu] = useState(null);
