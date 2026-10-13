@@ -9,18 +9,16 @@ App separata dall'app dello studio, collegata solo al progetto Supabase `archivi
 - Azioni: scadenza pagata, pratica risolta, cancellazione definitiva del documento (`elimina_documento`).
 - I documenti li carica Cowork (Gmail → Drive → `registra_documento`).
 
+## Dove gira
+
+Entry della build principale, sullo stesso sito dell'app dello studio: **`/personal/`** (come `/poliedron/`).
+Creare un progetto Vercel separato non è stato possibile (403: permesso negato al connettore).
+Dati, chiavi e login restano quelli del solo progetto `archivio-documenti`; la sessione è salvata con una chiave propria.
+Accesso con email e password ("Crea l'accesso" la prima volta, poi conferma dal link nell'email).
+
 ## Comandi
 
 ```sh
-npm run dev:personal     # http://localhost:5174
-npm run build:personal   # → dist-personal/
+npm run dev:personal     # http://localhost:5174/personal/
+npm run build            # include /personal/ in dist/
 ```
-
-## Pubblicazione (una volta, dal PO)
-
-1. Vercel → nuovo progetto dallo stesso repository: Root Directory `.`, Build Command `npm run build:personal`,
-   Output Directory `dist-personal`, Install Command `npm ci`.
-2. Supabase `archivio-documenti` → Authentication → URL Configuration: Site URL = indirizzo Vercel del punto 1,
-   e lo stesso in Redirect URLs.
-3. Primo accesso con la propria email (crea l'utente), poi Authentication → Sign In / Providers →
-   "Allow new users to sign up" OFF.

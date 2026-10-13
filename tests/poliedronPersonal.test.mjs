@@ -148,8 +148,14 @@ test('Poliedron Personal è isolata dall\'app dello studio', () => {
     assert.doesNotMatch(src, /service_role|sb_secret_/, `${file}: chiave segreta`);
   }
   assert.match(readFileSync('personal/src/lib/supabasePersonal.js', 'utf8'), /tkcwvjzjkfhcuebrjvsp/);
-  const config = readFileSync('vite.personal.config.js', 'utf8');
-  assert.match(config, /root: resolve\('personal'\)/);
-  assert.match(config, /outDir: resolve\('dist-personal'\)/);
-  assert.doesNotMatch(config, /VitePWA/);
+  const config = readFileSync('vite.config.js', 'utf8');
+  assert.match(config, /personal: resolve\('personal\/index\.html'\)/);
+  assert.match(config, /navigateFallbackDenylist: \[[^\]]*\/\^\\\/personal\//, 'il service worker dello studio non risponde su /personal');
+  assert.match(config, /'\/personal\.webmanifest'/);
+  const vercel = JSON.parse(readFileSync('vercel.json', 'utf8'));
+  const indice = (src) => vercel.rewrites.findIndex((r) => r.source === src);
+  assert.ok(indice('/personal/') >= 0 && indice('/personal/') < indice('/(.*)'), 'rewrite di /personal prima di quella generale');
+  const manifest = JSON.parse(readFileSync('public/personal.webmanifest', 'utf8'));
+  assert.equal(manifest.start_url, '/personal/');
+  assert.equal(manifest.name, 'Poliedron Personal');
 });
