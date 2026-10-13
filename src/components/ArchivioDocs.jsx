@@ -5,6 +5,7 @@ import { cercaPazienti } from '../lib/ricercaPazienti';
 import { C, fmt, fmtD, today } from '../lib/utils';
 import { supabase } from '../lib/supabase.js';
 import { scaricaPdf } from '../lib/condivisionePdf';
+import { nomeFileDaNome } from '../lib/documenti/pdfLayout.js';
 
 // POL-UI-005: one icon per document type instead of emoji (📄🧾💊🩸📋✉️📖📝✍️) —
 // shared across the filter chips, list rows and edit-modal title below.
@@ -53,9 +54,7 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
   const downloadDoc = async (doc) => {
     const { data } = await supabase.from(doc.tabella).select('pdf_base64').eq('id', doc.id).single();
     if (!data?.pdf_base64) { alert('PDF non disponibile'); return; }
-    const nomeBase = doc.tabella === 'documenti_fiscali' ? `${doc.tipo}_${doc.numero}` : (doc.titolo || doc.tipo);
-    const filename = `${nomeBase}_${doc.paziente_nome.replace(/\s+/g,'_')}_${doc.data}.pdf`.toLowerCase();
-    scaricaPdf(data.pdf_base64, filename);
+    scaricaPdf(data.pdf_base64, nomeFileDaNome(doc.paziente_nome));
   };
 
   const visualizzaDoc = async (doc) => {
@@ -63,8 +62,7 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
     const { data } = await supabase.from(doc.tabella).select('pdf_base64').eq('id', doc.id).single();
     setCaricamentoAnteprima(null);
     if (!data?.pdf_base64) { alert('PDF non disponibile'); return; }
-    const nomeBase = doc.tabella === 'documenti_fiscali' ? `${doc.tipo}_${doc.numero}` : (doc.titolo || doc.tipo);
-    const filename = `${nomeBase}_${doc.paziente_nome.replace(/\s+/g,'_')}_${doc.data}.pdf`.toLowerCase();
+    const filename = nomeFileDaNome(doc.paziente_nome);
     const titolo = doc.tabella === 'documenti_fiscali' ? `${doc.tipo === 'fattura' ? 'Fattura' : 'Rimborso'} n. ${doc.numero}` : (doc.titolo || doc.tipo);
     setDocInVisualizzazione({ titolo, dataUrl: data.pdf_base64, filename });
   };

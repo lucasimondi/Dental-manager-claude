@@ -1,6 +1,7 @@
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { fmt, fmtD } from '../lib/utils';
+import { nomeFileDaNome } from '../lib/documenti/pdfLayout.js';
 import { loadPatientDocumentMetadata, loadPatientDocumentPdf } from '../lib/patientWorkspaceDocuments';
 
 // POL-DOC-ARCHIVE-MOBILE-OPEN-FIX: archived-document "Apri"/"Stampa" used to
@@ -21,7 +22,7 @@ const SECTIONS = [
 ];
 const EMPTY_DOCUMENTS_CHANGE = () => {};
 
-const fileNameFor = (document) => `${document.type || 'documento'}_${document.date || 'senza-data'}.pdf`.replace(/\s+/g, '_').toLowerCase();
+const fileNameFor = (document) => nomeFileDaNome(document.patientName);
 
 export default function PatientWorkspaceDocuments({ patientId, client = supabase, reloadToken = 0, onDocumentsChange = EMPTY_DOCUMENTS_CHANGE }) {
   const [documents, setDocuments] = useState([]);

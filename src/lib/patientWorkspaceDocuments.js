@@ -14,6 +14,7 @@ export function normalizePatientDocument(row, source) {
     source,
     sourceId: row?.id,
     patientId: row?.paziente_id,
+    patientName: row?.paziente_nome || '',
     title: fiscal
       ? `${type === 'fattura' ? 'Fattura' : 'Rimborso'}${row?.numero ? ` n. ${row.numero}` : ''}`
       : (row?.titolo || type),

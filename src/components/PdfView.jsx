@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { jsPDF } from 'jspdf';
 import { waAbilitato } from './ui/WaAction.jsx';
 import Ic from './ui/Ic.jsx';
+import { nomeFilePaziente } from '../lib/documenti/pdfLayout.js';
 
 export default function PdfView({ pl, paz, si, features, onClose }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
@@ -159,7 +160,7 @@ export default function PdfView({ pl, paz, si, features, onClose }) {
       const foot = [si.tel && `Tel: ${si.tel}`, si.addr1, si.addr2, si.email].filter(Boolean);
       txt(foot.join('   |   '), W / 2, footerY, { align: 'center' });
 
-      const nomeFile = `preventivo_${(paz?.cognome || 'paziente').replace(/\s+/g, '_')}_${String(pl.id || Date.now()).slice(-6)}.pdf`.toLowerCase();
+      const nomeFile = nomeFilePaziente(paz);
 
       const ua = navigator.userAgent || '';
       const isIOS = /iPad|iPhone|iPod/.test(ua) || (ua.includes('Mac') && 'ontouchend' in document);
