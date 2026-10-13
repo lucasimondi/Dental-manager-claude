@@ -1,14 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
+import { DURATA_BOZZE_MS } from './posizioneNavigazione.js';
 
 const PREFIX = 'dm_form_draft::';
 
-// Una bozza serve a sopravvivere a un cambio app breve (whatsapp, una
-// chiamata), non a restare valida per ore o giorni: oltre questa soglia
-// viene considerata scaduta e si riparte puliti, invece di far ricomparire
-// a sorpresa un form vecchio e magari non più pertinente.
-const TTL_MS = 2 * 60 * 1000;
+// Una bozza deve sopravvivere a un cambio app (WhatsApp, una chiamata: PO
+// "deve rimanere aperto il documento anche quando cambio app e ritorno"), ma
+// non far ricomparire a sorpresa un form vecchio. Era 2 minuti: troppo poco.
+// Default 30 minuti: molti form (pagamenti, piani, richiami) cancellano la
+// bozza solo al salvataggio, non all'annullamento, e un pagamento lasciato a
+// metà non deve riproporsi ore dopo. I documenti (ricetta, documento medico,
+// fattura) passano { durata: DURATA_BOZZE_MS } (12 ore) e cancellano la bozza
+// quando vengono chiusi volontariamente.
+const TTL_MS = 30 * 60 * 1000;
+export { DURATA_BOZZE_MS };
 
-const leggiDraft = (key) => {
+const leggiDraft = (key, durata = TTL_MS) => {
   try {
     const salvato = localStorage.getItem(key);
     if (!salvato) return undefined;
@@ -17,7 +23,7 @@ const leggiDraft = (key) => {
     // formato (senza wrapper, da prima dell'introduzione della scadenza) o
     // scaduto viene trattato come assente, non come valore valido.
     if (!parsed || typeof parsed !== 'object' || typeof parsed.t !== 'number') return undefined;
-    if (Date.now() - parsed.t > TTL_MS) return undefined;
+    if (Date.now() - parsed.t > durata) return undefined;
     return parsed.v;
   } catch { return undefined; } // draft corrotto o non leggibile: ignora e riparti pulito
 };
@@ -26,8 +32,7 @@ const leggiDraft = (key) => {
  * Drop-in replacement per useState su un oggetto form, che salva
  * automaticamente il contenuto in localStorage mentre l'utente scrive e lo
  * ripristina se l'app viene ricaricata da zero (schermo spento, cambio app
- * in multitasking) — ma solo entro pochi minuti (TTL_MS sopra): non è una
- * cache permanente, è pensata per sopravvivere a un'interruzione breve.
+ * in multitasking) — entro TTL_MS (sopra): non è una cache permanente.
  *
  * Uso: identico a useState, basta dargli una chiave stabile e unica per
  * quel form:
@@ -37,10 +42,10 @@ const leggiDraft = (key) => {
  * salvato con successo o esplicitamente annullato — altrimenti resterebbe
  * a "riproporsi" (fino alla scadenza) anche dopo un salvataggio riuscito.
  */
-export function useFormPersistente(chiave, valoreIniziale) {
+export function useFormPersistente(chiave, valoreIniziale, { durata = TTL_MS } = {}) {
   const key = PREFIX + chiave;
   const [state, setState] = useState(() => {
-    const draft = leggiDraft(key);
+    const draft = leggiDraft(key, durata);
     if (draft !== undefined) return draft;
     return typeof valoreIniziale === 'function' ? valoreIniziale() : valoreIniziale;
   });
@@ -66,6 +71,6 @@ export function useFormPersistente(chiave, valoreIniziale) {
  * chiave, senza doverlo caricare in uno stato — utile per mostrare un
  * banner "hai una bozza in sospeso" prima ancora di aprire il form.
  */
-export function haDraftSalvato(chiave) {
-  return leggiDraft(PREFIX + chiave) !== undefined;
+export function haDraftSalvato(chiave, { durata = TTL_MS } = {}) {
+  return leggiDraft(PREFIX + chiave, durata) !== undefined;
 }

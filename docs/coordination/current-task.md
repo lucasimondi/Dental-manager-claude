@@ -1,3 +1,13 @@
+# Current task — Documento aperto che sopravvive al cambio app (2026-10-13)
+- OWNER: CLAUDE, branch `claude/catalogazione-facile-latjs9` ripartito da `master@ecab1402` (PR #177 già mergiata). PO verbatim: "Devi fare un modo che io possa passare da app all altra senza perdere quello che stavo facendo tipo una ricetta, deve rimanere aperto il documento anche quando cambio app e ritorno".
+- CAUSE (su iPhone la PWA viene ricaricata da zero al ritorno): (1) le bozze dei form scadevano dopo **2 minuti**; (2) la ricetta aperta dalla Home (azione rapida) non salvava né la finestra aperta né il paziente; (3) nella scheda paziente veniva salvato `schedaPazModaleDoc` ma nessuno lo rileggeva: il documento non si riapriva; (4) nell'app Poliedron del telefono la scheda non veniva mai ripristinata.
+- COSA: `posizioneNavigazione.js` → `segnaDocumentoAperto(dove, pazId, flusso)` / `documentoAperto(dove, pazId)` (12 ore). Riapertura automatica in SchedaPaz (ricetta, documento medico, fattura, consenso), Scheda Paziente 2.0 (ricetta, consenso), Home (ricetta + paziente scelto), app Poliedron (solo se c'era un documento aperto). `useFormPersistente` accetta `{ durata }`: documenti (DocMedico contenuto + tipo, DocFiscale) 12 ore; altri form da 2 a 30 minuti (pagamenti/piani/richiami cancellano la bozza solo al salvataggio: un pagamento a metà non deve riproporsi ore dopo). DocMedico e DocFiscale cancellano la bozza alla chiusura volontaria (Indietro/Annulla/Chiudi). SchedaPaz e Scheda 2.0 restano senza `useEffect` (regola dei test esistenti): il salvataggio avviene nel setter.
+- LIMITE: il pannello "documento pronto" dopo Genera PDF non viene ripristinato (il PDF non si salva nel telefono); la ricetta è comunque in archivio se lo studio archivia, e si rigenera.
+- VALIDATION: nuovo `tests/documentoApertoRipristino.test.mjs` (8; render reale di `useFormPersistente` con bozza vecchia di 1 h / 11 h / 13 h); controprova: con il codice precedente 7/7 falliscono. Aggiornata 1 asserzione di `mobileHomeRound2.test.mjs` che fissava `useState(false)`. `npm test` 1167/1167; `npm run build` OK.
+- EXACT NEXT ACTION: PR → "Mergia" del PO → prova su iPhone: apri una ricetta, scrivi, passa a WhatsApp, torna.
+
+---
+
 # Current task — POL-VITA-001 Archivio personale e assistente di vita (2026-10-12)
 - OWNER: CLAUDE, su istruzione diretta del PO ("POL-VITA-001-brief leggi questo e iniziamo nuovo progetto catalogazione facile"). Brief integrale: `docs/mission/POL-VITA-001-brief.md`.
 - BRANCH: `claude/catalogazione-facile-latjs9`, da `master@ecd964b7`. Ogni fase avrà poi un proprio branch.

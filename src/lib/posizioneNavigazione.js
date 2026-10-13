@@ -37,3 +37,23 @@ export function pulisciPosizione(chiavi) {
     localStorage.setItem(KEY, JSON.stringify(attuale));
   } catch { /* vedi sopra */ }
 }
+
+// Documento aperto (ricetta, documento medico, fattura, consenso): su iPhone l'app
+// installata viene spesso ricaricata da zero quando si passa a un'altra app e si torna.
+// Si ricorda quale documento era aperto e per quale paziente, così al rientro si riapre
+// da solo con quello che si stava scrivendo (il testo lo tiene useFormPersistente).
+// Stessa durata delle bozze: oltre, si riparte puliti.
+export const DURATA_BOZZE_MS = 12 * 60 * 60 * 1000;
+
+// `dove`: 'scheda' (scheda paziente) o 'home' (azione rapida Ricetta). `pazId` può essere
+// vuoto per la ricetta dalla Home con il paziente non ancora scelto.
+export function segnaDocumentoAperto(dove, pazId, flusso) {
+  salvaPosizione({ documentoAperto: flusso ? { dove, pazId: pazId == null ? '' : String(pazId), flusso, t: Date.now() } : null });
+}
+
+export function documentoAperto(dove, pazId) {
+  const doc = leggiPosizione()?.documentoAperto;
+  if (!doc || doc.dove !== dove || typeof doc.t !== 'number' || Date.now() - doc.t > DURATA_BOZZE_MS) return null;
+  if (pazId !== undefined && String(doc.pazId) !== String(pazId ?? '')) return null;
+  return doc;
+}

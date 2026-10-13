@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase.js';
 import { jsPDF } from 'jspdf';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Ic, PannelloInvioDocumento } from './ui';
 import { C, fmt, fmtD, today, DEF_DOCUMENTI_SETTINGS } from '../lib/utils';
-import { useFormPersistente } from '../lib/useFormPersistente';
+import { useFormPersistente, DURATA_BOZZE_MS } from '../lib/useFormPersistente';
 import { generaXmlFatturaPA, scaricaXml, speseFatturaPAValida } from '../lib/fatturaPA.js';
 import { drawFiscalStamp } from '../lib/pdfSignature.js';
 import { scaricaPdf } from '../lib/condivisionePdf';
@@ -53,7 +53,9 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
   const initNum = getNumeroProgressivo('fattura');
   const [numero, setNumero] = useState(String(initNum.num).padStart(3, '0'));
   const [data, setData] = useState(today());
-  const [voci, setVoci, clearVociDraft] = useFormPersistente(`doc_fiscale_voci_${paz?.id || 'x'}`, []);
+  const [voci, setVoci, clearVociDraft] = useFormPersistente(`doc_fiscale_voci_${paz?.id || 'x'}`, [], { durata: DURATA_BOZZE_MS });
+  // Chiusura volontaria: la bozza non si ripresenta (un ricaricamento dell'app non passa di qui).
+  const chiudi = () => { clearVociDraft(); onClose?.(); };
   const [nuovaVoce, setNuovaVoce] = useState({ desc: '', importo: '' });
   const [selectedPiani, setSelectedPiani] = useState([]);
   const [iban, setIban] = useState(STUDIO.iban);
@@ -281,7 +283,7 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
     <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
       {/* HEADER */}
       <div style={{ background: C.priD, padding: '12px 14px', paddingTop: 'max(12px,env(safe-area-inset-top))', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-        <button onClick={onClose} aria-label="Indietro" style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 10, padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <button onClick={chiudi} aria-label="Indietro" style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 10, padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <Ic n="back" s={20} c="#fff" />
         </button>
         <span style={{ color: '#fff', fontWeight: 800, fontSize: 15, flex: 1 }}>Documento fiscale</span>
@@ -503,7 +505,7 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
         {voci.length > 0 && !pronto && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
             <div style={{ display: 'flex', gap: 8 }}>
-              <Btn ch="Annulla" v="sec" onClick={onClose} full />
+              <Btn ch="Annulla" v="sec" onClick={chiudi} full />
               <Btn ch={`Genera ${tipo === 'fattura' ? 'Fattura' : 'Rimborso'} PDF`} ic="download" onClick={generaPdf} full />
             </div>
             {tipo === 'fattura' && !isSanitario && (
@@ -524,7 +526,7 @@ export default function DocFiscale({ paz, plans, si, onClose }) {
             pronto={pronto}
             paziente={paz}
             archiviato={docSet[pronto.tipoDoc]}
-            onChiudi={onClose}
+            onChiudi={chiudi}
             onNuovoDocumento={() => { setPronto(null); setGenerated(false); }}
           />
         )}

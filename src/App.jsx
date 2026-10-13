@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { supabase, DB } from './lib/supabase.js';
 import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, getLogoSlug, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, uid, applyBrandColors, applyHeaderColor } from './lib/utils';
 import { generaRichiamiBot } from './lib/richiamiBot';
-import { salvaPosizione, leggiPosizione, pulisciPosizione } from './lib/posizioneNavigazione';
+import { salvaPosizione, leggiPosizione, pulisciPosizione, segnaDocumentoAperto, documentoAperto } from './lib/posizioneNavigazione';
 import { fetchSaldiPiani } from './lib/domain/incassiService.js';
 // POL-AI-001: MobileDock (the POL-UI-009/010 poliedro-button-opens-full-nav-
 // menu) is superseded by Poliedron — the same floating polyhedron concept,
@@ -310,9 +310,12 @@ export default function App() {
   // verrebbe mai riletto perché il componente che lo conterrebbe non si
   // rimonterebbe mai da solo.
   useEffect(() => {
-    if (dataLoading || phoneApp) return;
+    if (dataLoading) return;
     const pos = leggiPosizione();
     if (!pos) return;
+    // App Poliedron del telefono: si ripristina solo un documento rimasto aperto (es. ricetta
+    // preparata in chat), non la navigazione dell'app dello studio.
+    if (phoneApp && !documentoAperto('scheda', pos.schedaPazId)) return;
     // La pagina NON viene ripristinata: l'app deve sempre aprirsi su Dashboard
     // (page resta 'home', il suo default), qualunque fosse l'ultima pagina
     // visitata prima della chiusura/ricarica. Il resto della posizione (scheda
@@ -573,7 +576,8 @@ export default function App() {
     const prefill = Array.isArray(farmaci) && farmaci.length ? { farmaco: '', farmaci } : { farmaco: drug };
     const documentRequest = { type: 'ricetta', prefill, requestId: `${Date.now()}-${patient.id}` };
     setSchedaDashPaz({ paz: patient, tab: 'doc', documentRequest });
-    salvaPosizione({ schedaPazId: patient.id, schedaPazTab: 'doc', schedaPazModaleDoc: 'medico' });
+    salvaPosizione({ schedaPazId: patient.id, schedaPazTab: 'doc' });
+    segnaDocumentoAperto('scheda', patient.id, 'ricetta');
   };
   const goAgendaPaz = (pazId) => { setAgendaInitPaz(pazId); setPage('agenda'); };
 
@@ -706,7 +710,7 @@ export default function App() {
             currentUserId={session?.user?.id}
             isStudioAdmin={isStudioAdmin}
             documentClient={supabase}
-            onClose={() => { setSchedaDashPaz(null); pulisciPosizione(['schedaPazId', 'schedaPazTab']); }}
+            onClose={() => { setSchedaDashPaz(null); pulisciPosizione(['schedaPazId', 'schedaPazTab', 'documentoAperto']); }}
             onEdit={() => setSchedaDashPaz(null)}
             onNuovoPiano={(id) => { setSchedaDashPaz(null); goNuovoPiano(id); }}
             initialDocumentRequest={schedaDashPaz.documentRequest}

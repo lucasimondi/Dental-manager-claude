@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { jsPDF } from 'jspdf';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Ic, PannelloInvioDocumento } from './ui';
 import { C, fmt, fmtD, today, VERTICALI_CON_RICETTA } from '../lib/utils';
-import { useFormPersistente } from '../lib/useFormPersistente';
+import { useFormPersistente, DURATA_BOZZE_MS } from '../lib/useFormPersistente';
 import { supabase } from '../lib/supabase.js';
 import { createPdfLayout, buildRicettaPdf, archiviaDocumento, nomeFilePaziente } from '../lib/documenti/pdfLayout.js';
 import { applicaFarmacoPreferito, resolveFarmaciPreferiti } from '../lib/farmaciPreferiti.js';
@@ -118,7 +118,15 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
     email: si?.email || '',
     piva: si?.piva || '',
   };
-  const [tipo, setTipo] = useState(initialType === 'ricetta' && puoiPrescrivere ? 'ricetta' : (puoiPrescrivere ? 'ricetta' : 'certificato'));
+  // Il tipo scelto (certificato, esami, …) resta dopo un ricaricamento dell'app (cambio app su
+  // iPhone) insieme al contenuto; una richiesta esplicita di ricetta vince sempre.
+  const [tipoSalvato, setTipoSalvato, clearTipoDraft] = useFormPersistente(`doc_medico_tipo_${paz?.id || 'x'}`, null, { durata: DURATA_BOZZE_MS });
+  const [tipo, setTipoCorrente] = useState(() => {
+    if (initialType === 'ricetta' && puoiPrescrivere) return 'ricetta';
+    if (tipoSalvato && tipiDisponibili.some((t) => t.id === tipoSalvato)) return tipoSalvato;
+    return puoiPrescrivere ? 'ricetta' : 'certificato';
+  });
+  const setTipo = (nuovo) => { setTipoCorrente(nuovo); setTipoSalvato(nuovo); };
   const [data, setData] = useState(today());
   const [generated, setGenerated] = useState(false);
 
@@ -202,7 +210,10 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
     titoloVuoto: '',
     testoVuoto: '',
     includiPazienteVuoto: true,
-  });
+  }, { durata: DURATA_BOZZE_MS });
+  // Chiusura volontaria (Indietro, Annulla, Chiudi): la bozza non deve ripresentarsi.
+  // Un ricaricamento dell'app invece non passa di qui, quindi la bozza resta.
+  const chiudi = () => { clearContenutoDraft(); clearTipoDraft(); onClose?.(); };
   const appliedRequestRef = useRef(null);
   // POL-AI-009: ricetta preparata da Poliedron in chat (farmaci completi).
   const [compilataDaPoliedron, setCompilataDaPoliedron] = useState(false);
@@ -655,7 +666,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
     <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 9999, display: 'flex', flexDirection: 'column' }}>
       {/* HEADER */}
       <div style={{ background: C.priD, padding: '12px 14px', paddingTop: 'max(12px,env(safe-area-inset-top))', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-        <button onClick={onClose} aria-label="Indietro" style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 10, padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <button onClick={chiudi} aria-label="Indietro" style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 10, padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <Ic n="back" s={20} c="#fff" />
         </button>
         <div style={{ flex: 1 }}>
@@ -923,7 +934,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
         {erroreGenerazione && <div role="alert" style={{ color: C.dan, background: C.danL, borderRadius: 8, padding: 10, marginBottom: 10, fontSize: 12 }}>{erroreGenerazione}</div>}
         {!pronto ? (
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            <Btn ch="Annulla" v="sec" onClick={onClose} full />
+            <Btn ch="Annulla" v="sec" onClick={chiudi} full />
             <Btn ch="⬇️ Genera PDF" onClick={genera} full />
           </div>
         ) : (
@@ -931,7 +942,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
             pronto={pronto}
             paziente={paz}
             archiviato={archiviato}
-            onChiudi={onClose}
+            onChiudi={chiudi}
             onNuovoDocumento={() => { setPronto(null); setGenerated(false); }}
           />
         )}
