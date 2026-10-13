@@ -1,5 +1,14 @@
 # Handoffs
 
+## POL-VITA-001 — Poliedron Personal (2026-10-13)
+
+- Task: POL-VITA-001. Agent: CLAUDE. Branch `claude/catalogazione-facile-latjs9`. PO: import a Cowork; app separata "Poliedron Personal", stesso repo, login con link via email.
+- Files: `personal/**` (new), `vite.personal.config.js` (new), `package.json` (script), `.gitignore`, `tests/poliedronPersonal.test.mjs` (new), coordinamento.
+- Database: sezione 5 (`registra_documento`) applicata al progetto separato; sezioni 2+4 consegnate al PO per l'SQL Editor (lo strumento non applica SQL con drop/delete).
+- Tests: 1158/1158; entrambe le build OK; schermate verificate.
+- Risks: il link via email funziona solo dopo aver impostato Site URL/Redirect URLs in Supabase Auth; la cancellazione da Drive dell'originale resta manuale (link mostrato) finché Cowork non la gestisce.
+- Exact next action: passi PO in `personal/README.md`.
+
 ## POL-VITA-001 — Schema di Cowork adottato, sicurezza e cancellazione (2026-10-13)
 
 - Task: POL-VITA-001. Previous agent: CLAUDE (stessa sessione). Agent: CLAUDE. Branch `claude/catalogazione-facile-latjs9`. Lo schema del progetto separato è stato creato da Cowork; il PO lo ha adottato come base.

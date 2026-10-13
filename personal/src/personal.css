@@ -1,0 +1,50 @@
+/* POL-VITA-001 — Poliedron Personal. Usa i token condivisi di designTokens.css. */
+body { font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; color: var(--pol-ink); background: var(--pol-bg); }
+button { font: inherit; cursor: pointer; border: 1px solid var(--pol-line-strong); background: var(--pol-surface); color: var(--pol-ink); border-radius: 10px; padding: 8px 12px; }
+a { color: var(--pol-blue-500); }
+
+.pp-app { max-width: 760px; margin: 0 auto; padding: 0 16px calc(32px + env(safe-area-inset-bottom)); }
+.pp-top { display: flex; align-items: center; justify-content: space-between; padding: calc(12px + env(safe-area-inset-top)) 0 8px; }
+.pp-top h1 { font-size: 20px; margin: 0; color: var(--pol-blue-600); }
+.pp-esci { padding: 6px 10px; font-size: 14px; }
+
+.pp-chiedi { display: flex; gap: 8px; position: sticky; top: 0; padding: 8px 0; background: var(--pol-bg); z-index: 1; }
+.pp-chiedi input, .pp-accesso input { flex: 1; min-width: 0; font: inherit; font-size: 16px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--pol-line-strong); background: var(--pol-surface); }
+.pp-chiedi button[type="submit"], .pp-accesso button { background: var(--pol-blue-500); color: #fff; border-color: transparent; font-weight: 600; }
+
+.pp-tab { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0 12px; }
+.pp-tab button { flex: 0 0 auto; border-radius: 999px; }
+.pp-tab button.attivo { background: var(--pol-blue-500); color: #fff; border-color: transparent; }
+
+.pp-esempi { display: flex; flex-wrap: wrap; gap: 8px; }
+.pp-frase { font-weight: 600; margin: 4px 0 12px; }
+
+.pp-card { background: var(--pol-surface); border: 1px solid var(--pol-line); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; }
+.pp-card header { display: flex; justify-content: space-between; gap: 12px; }
+.pp-card p { margin: 6px 0; }
+.pp-card footer { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 8px; }
+.pp-meta { color: var(--pol-ink-muted); font-size: 13px; }
+.pp-importo { font-weight: 700; white-space: nowrap; }
+.pp-azione { font-size: 14px; }
+.pp-alta { color: #b42318; }
+.pp-media { color: #b54708; }
+.pp-bassa { color: var(--pol-ink-muted); }
+
+.pp-lista { list-style: none; margin: 0; padding: 0; }
+.pp-lista li { display: flex; justify-content: space-between; align-items: center; gap: 12px; background: var(--pol-surface); border: 1px solid var(--pol-line); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+.pp-destra { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.pp-scaduta { border-color: #f04438 !important; }
+.pp-cliccabile { cursor: pointer; }
+.pp-stato { font-size: 12px; text-transform: uppercase; }
+
+.pp-avviso { background: #fffaeb; border: 1px solid #fedf89; border-radius: 10px; padding: 8px 12px; margin: 6px 0 10px; font-size: 14px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pp-errore { color: #b42318; }
+.pp-vuoto, .pp-caricamento, .pp-nota { color: var(--pol-ink-muted); }
+.pp-link-rosso { border: none; background: none; color: #b42318; padding: 0; }
+.pp-rosso { background: #b42318; color: #fff; border-color: transparent; margin: 0 6px; }
+.pp-conferma { font-size: 14px; }
+
+.pp-accesso { max-width: 420px; margin: 18vh auto 0; padding: 0 16px; }
+.pp-accesso h1 { color: var(--pol-blue-600); }
+.pp-accesso form { display: flex; flex-direction: column; gap: 10px; }
+.pp-accesso button { padding: 12px; }
