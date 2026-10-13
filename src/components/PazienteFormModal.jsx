@@ -26,6 +26,7 @@ export default function PazienteFormModal({ patient, si, onSave, onClose }) {
         <Fld label="Nome"><Inp value={form.nome || ''} onChange={(e) => F({ nome: e.target.value })} /></Fld>
         <Fld label="Cognome"><Inp value={form.cognome || ''} onChange={(e) => F({ cognome: e.target.value })} /></Fld>
         <Fld label="Data nascita"><Inp type="date" value={form.dataNascita || ''} onChange={(e) => F({ dataNascita: e.target.value })} /></Fld>
+        <Fld label="Luogo di nascita"><Inp value={form.luogoNascita || ''} onChange={(e) => F({ luogoNascita: e.target.value })} placeholder="es. Cisternino (BR)" /></Fld>
         <Fld label="Codice fiscale"><Inp value={form.cf || ''} onChange={(e) => F({ cf: e.target.value.toUpperCase() })} /></Fld>
         <Fld label="Telefono"><Inp type="tel" value={form.telefono || ''} onChange={(e) => F({ telefono: e.target.value })} /></Fld>
         <Fld label="Email"><Inp type="email" value={form.email || ''} onChange={(e) => F({ email: e.target.value })} /></Fld>

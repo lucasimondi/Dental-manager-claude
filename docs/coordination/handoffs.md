@@ -1,5 +1,9 @@
 # Handoffs
 
+## 2026-10-13 — CLAUDE — Certificato riposo
+- Nuovo tipo documento "Certificato riposo" + campo "Luogo di nascita" in scheda (migrazione `patients.luogo_nascita`, da applicare prima del merge).
+- Dati del paziente della foto da inserire dal PO in scheda: nessuna scrittura manuale in produzione.
+
 ## 2026-10-12 — CLAUDE — Guida riuso Poliedron
 - Nuovo `docs/architecture/poliedron-riuso.md` per sessioni che costruiscono un'altra app con Poliedron (solo documentazione).
 - NEXT: merge su approvazione PO.

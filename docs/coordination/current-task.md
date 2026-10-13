@@ -1,3 +1,13 @@
+# Current task — Certificato riposo con i dati della scheda (2026-10-13)
+- OWNER: CLAUDE, branch `claude/poliedron-agenda-actions-kz6mmk` (da `master@ecd964b`). PO verbatim (con foto di un certificato): "Inserisci questi dati nella cartella del paziente e fai in modo che io possa redigere anche questo tipo di documenti con questi dati in automatico, fallo veloce, lo chiamiamo certificato riposo con i dati che ci sono lì".
+- COSA: in Documenti medici nuovo tipo "Certificato riposo" (`src/lib/documenti/certificatoRiposo.js`): visita in data X, "necessita di almeno N giorni di riposo", "In fede", dati anagrafici dalla scheda (nome, luogo e data di nascita, residenza, CAP/comune, codice fiscale); avviso se nella scheda mancano luogo di nascita / residenza / CF. Archiviato tra i Certificati (tipo `certificato`, titolo "Certificato riposo"). Scheda paziente: nuovo campo "Luogo di nascita".
+- MIGRAZIONE: `20261013090000_pol_doc_riposo_luogo_nascita.sql` — `patients.luogo_nascita text` (nullable, ≤120 caratteri). Nessuna modifica RLS (le policy di `patients` coprono già la riga). Va applicata PRIMA del rilascio dell'app (il salvataggio della scheda col nuovo campo fallirebbe senza colonna).
+- DATI DEL PAZIENTE DELLA FOTO: NON inseriti da Claude (AGENTS.md: mai modificare a mano i dati di produzione). Li inserisce il PO dalla scheda (Modifica) dopo il rilascio.
+- VALIDATION: nuovo `tests/certificatoRiposo.test.mjs` (5 test); `npm test` 1150/1150; `npm run build` OK; migrazione su PostgreSQL 16 locale usa e getta (idempotente, limite di lunghezza verificato).
+- EXACT NEXT ACTION: "Mergia" → applicare la migrazione in produzione, poi merge (Vercel rilascia l'app).
+
+---
+
 # Current task — Guida per riusare Poliedron in un'altra app (2026-10-12)
 - OWNER: CLAUDE, su istruzione del Product Owner ("Voglio che un'altra chat di Claude possa leggere e prendere il codice di poliedron per poter costruire un'altra app con poliedron" → proposta guida fissa → "Si").
 - BRANCH: `claude/poliedron-agenda-actions-kz6mmk` (da `master@ecd964b`).
