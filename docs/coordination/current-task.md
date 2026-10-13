@@ -1,3 +1,12 @@
+# Current task — POL-VITA-002 Installazione archivio documenti personali (Fase 1) (2026-10-13)
+- OWNER: CLAUDE (Claude Code), su istruzione diretta del PO ("Nuovo task: installazione dell'archivio documenti personali").
+- BRANCH: `claude/catalogazione-facile-latjs9` (AGENTS.md: mai lavorare su master), da `master@2aa08aa5`.
+- FONTE DI VERITÀ: `poliedron/archivio/CLAUDE.md` (letto per intero), con le sue regole non negoziabili: nessun segreto nel repo/log; contenuto clinico dei pazienti mai a servizi esterni; nessun invio a terzi; nessuna cancellazione; solo migrazioni additive e idempotenti.
+- PASSI (Fase 1): (1) verificare `lotti_importazione` nel progetto `tkcwvjzjkfhcuebrjvsp`, altrimenti `aggiornamento-lotti.sql`; (2) Apps Script con clasp (`Code.gs` + `appsscript.json`, `.claspignore`); (3) chiavi nelle Proprietà script (solo il PO); (4) `setup` + `elabora` (PO) e verifica; (5) dashboard `index.html` su Vercel + Site URL (PO).
+- STATO: in corso.
+
+---
+
 # Current task — Nome file "Nome Cognome.pdf" per tutti i PDF (2026-10-13)
 - OWNER: CLAUDE, branch `claude/catalogazione-facile-latjs9` da `master@3808dc8d`. PO verbatim: "Il nome del documento deve essere il nome paziente.pdf".
 - CAUSA: la regola (PR #173) valeva solo per ricetta/documenti medici generati. Restavano nomi tipo `ricetta_rossi_mario_2026-10-13.pdf` in: Archivio documenti (scarica/apri), documenti della Scheda 2.0, fatture/rimborsi (generazione e scarico dall'archivio), preventivi, consenso firmato.
