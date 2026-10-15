@@ -2,6 +2,7 @@
 // Salvate nel database dell'archivio (tabella impostazioni_app, solo il proprietario): uguali su
 // telefono e computer e non perse reinstallando l'app.
 import { ETICHETTE_PREDEFINITE } from './agenda.js';
+import { CATEGORIE_SPESA, CATEGORIE_INCASSO } from './conti.js';
 
 const CHIAVE = 'personal';
 
@@ -18,6 +19,8 @@ export const IMPOSTAZIONI_PREDEFINITE = Object.freeze({
     { id: 'riscaldamento', nome: 'Riscaldamento', fascicoli: ['riscaldamento'], parole: ['pellet', 'legna', 'gasolio', 'gpl', 'caldaia', 'stufa'] },
   ],
   etichette: ETICHETTE_PREDEFINITE,
+  categorieSpesa: CATEGORIE_SPESA,
+  categorieIncasso: CATEGORIE_INCASSO,
 });
 
 const copia = (o) => JSON.parse(JSON.stringify(o));
@@ -44,7 +47,8 @@ export function normalizza(valore) {
   const etichette = Array.isArray(v.etichette) && v.etichette.length
     ? unici(v.etichette.filter((e) => e && testo(e.nome)).map((e) => ({ id: e.id || slug(e.nome), nome: testo(e.nome), colore: colore(e.colore) })))
     : base.etichette;
-  return { persone, categorie, sezioni, etichette };
+  const elenco = (xs, predefiniti) => (Array.isArray(xs) && xs.length ? [...new Set(xs.map(testo).filter(Boolean))] : [...predefiniti]);
+  return { persone, categorie, sezioni, etichette, categorieSpesa: elenco(v.categorieSpesa, base.categorieSpesa), categorieIncasso: elenco(v.categorieIncasso, base.categorieIncasso) };
 }
 
 export async function leggiImpostazioni(db) {

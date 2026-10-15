@@ -1,10 +1,20 @@
+# Current task — POL-VITA-006 Personal: Conti (incassi, spese, bilancino), cruscotto, Documenti con anteprime, pagine scorrevoli, tasto + completo (2026-10-15)
+- OWNER: CLAUDE. BRANCH: `claude/catalogazione-facile-latjs9` ripartito da `master@a6a0f7f` (PR #188 mergiata).
+- RICHIESTA PO (sintesi): sezione incassi e pagamenti per registrare incassi e spese, con bilancino; pratica ben impaginata, scorrevole, con tasto di chiusura ben raggiungibile; Home più bella, professionale e utile come dashboard; Documenti organizzati meglio con l'anteprima nel tasto; tasto + con tutte le aggiunte (scansione documenti, foto, fotocamera, caricamento da altra fonte). Poi, a lavoro iniziato: "Per quanto riguarda il più e il dock e poliedron in alto per ora va bene così" → posizioni invariate.
+- FATTO: migrazione additiva `20261016090000_pol_vita_006_movimenti.sql` applicata (tabella `movimenti`, RLS proprietario, niente anon; una sola spesa per scadenza). `Code.gs`: `azione: 'miniature'` (solo file in archivio, mai `clinico_pazienti`, max 12), deployment @4 stesso URL. App: Conti nel dock al posto di Pagamenti (Movimenti, Da pagare, Bilancio con barre mensili e categorie); "Pagato" registra la spesa da solo (e la toglie se torna da pagare); pagamento da fare inserito a mano; Home a cruscotto (saldo del mese, azioni rapide, indicatori, agenda, pagamenti, ultimi documenti con anteprima, pratiche); Documenti con Recenti/Cartelle/Pratiche/sezioni e griglia con miniature; pratica con intestazione, numeri, pagamenti e cronologia per anno; pagine con corpo scorrevole, tasto di chiusura in basso a destra e chiusura scorrendo dal bordo; + con foglio Aggiungi (scansione multipagina → PDF, fotocamera, foto, file da iCloud/Drive/altre app, documento personale, spesa, incasso, pagamento, evento); categorie di spese e incassi in Impostazioni.
+- VALIDATION: `npm test` 1217/1217 (+11 test in `tests/personalConti.test.mjs`), anche con Node 20; build OK; Chromium 390×844 con dati finti: nessun errore, nessun overflow; pratica scorre (2452 px su 729), il tasto chiude; spesa e spesa da pagamento scritte con i campi giusti; scansione di 2 pagine → PDF → pagina di archiviazione.
+- NON VERIFICATO DA QUI: miniature reali da Drive (la rete del container blocca script.google.com).
+- STATO: in revisione (PR).
+
+---
+
 # Current task — POL-VITA-005 Chat Poliedron in Personal (2026-10-15)
 - OWNER: CLAUDE. BRANCH: `claude/catalogazione-facile-latjs9` (stessa PR di POL-VITA-004, non ancora mergiata).
 - DECISIONE PO (verbatim): "Come per poliedron entrambi, se ai allora farà tutto, se poliedron svolgerà comandi di ricerca e restituzione documenti".
 - FATTO: `Code.gs` `azione: 'chiedi'` dopo la verifica del proprietario → `chiediPoliedron_` (Claude con strumenti di sola lettura `cerca_documenti`, `documento`, `scadenze`, `pratiche`, `riepilogo_archivio`; massimo 5 giri; ultimi 6 messaggi; documento aperto come contesto). `clinico_pazienti` escluso da ogni risultato e dal documento aperto. Nessuna scrittura, nessun invio. Deployment web app aggiornato (stesso URL, @3). App: pulsante Poliedron in testata, pagina chat con "Poliedron AI" / "Solo ricerca" (Core), ripiego automatico sul Core se l'AI non risponde, link ai documenti citati, "Chiedi a Poliedron su questo documento".
 - VALIDATION: `npm test` (+7 test in `tests/personalChat.test.mjs`); build OK; Chromium 390×844 con script e database finti: risposta AI con link apribile, ripiego sulla ricerca, domanda sul documento aperto con `documento_id`; nessun errore, nessun overflow.
 - NON VERIFICATO DA QUI: chiamata reale a Claude dalla web app (la rete del container blocca script.google.com). Da provare con la prima domanda del PO.
-- STATO: in revisione (PR #188).
+- STATO: completato (PR #188 mergiata).
 
 ---
 
@@ -15,7 +25,7 @@
 - FATTO: `personal/src/lib/studio.js` (secondo client, sessione propria persistente, solo tabelle dell'agenda: appointments/patients(nome, cognome)/app_types in lettura, impegni_personali lettura e scrittura; fail closed senza studio_id); `lib/agenda.js` (calcoli puri); `Agenda.jsx` (Giorno con griglia oraria, Settimana, Mese; scadenze in striscia in alto; eventi bianchi con contorno; editor evento; dettaglio appuntamento in sola lettura); Oggi in agenda; etichette con colori in Impostazioni; scadenza modificabile (descrizione, data, importo); pulsante + contestuale (in Agenda crea un evento).
 - VALIDATION: `npm test` 1199/1199 (+6 test agenda e confini con lo studio); build OK; Chromium 390×844 con dati finti di studio e archivio: scrittura evento con studio_id e user_id della sessione, modifica scadenza, nessun errore e nessun overflow.
 - PROSSIMO: chat Poliedron (POL-VITA-005), nella stessa PR.
-- STATO: in revisione (PR).
+- STATO: completato (PR #188 mergiata).
 
 ---
 
