@@ -86,9 +86,24 @@ test('app: login con password che resta valido sulla Home e recupero password vi
   assert.match(client, /persistSession: true/);
   assert.match(client, /flowType: 'implicit'/);
   assert.match(app, /signInWithPassword/);
-  assert.match(app, /resetPasswordForEmail\(email\.trim\(\), \{ redirectTo: `\$\{location\.origin\}\$\{INDIRIZZO_APP\}` \}\)/);
-  assert.match(app, /const INDIRIZZO_APP = '\/poliedron\/personal\/';/);
+  assert.match(app, /resetPasswordForEmail\(email\.trim\(\), \{ redirectTo: INDIRIZZO_APP\(\) \}\)/);
+  assert.match(app, /const INDIRIZZO_APP = \(\) => `\$\{location\.origin\}\$\{location\.pathname\}`;/);
   assert.match(app, /evento === 'PASSWORD_RECOVERY'/);
   assert.match(app, /auth\.updateUser\(\{ password \}\)/);
   assert.doesNotMatch(app, /signInWithOtp|signUp\(/, 'niente link magici né nuove registrazioni');
+});
+
+test('dominio proprio: personal.poliedrasoft.it apre Poliedron Personal con il suo manifest', () => {
+  const vercel = JSON.parse(readFileSync('vercel.json', 'utf8'));
+  const host = (r) => r.has?.some((h) => h.type === 'host' && h.value === 'personal.poliedrasoft.it');
+  const radice = vercel.rewrites.findIndex((r) => r.source === '/' && host(r));
+  const manifesto = vercel.rewrites.findIndex((r) => r.source === '/personal.webmanifest' && host(r));
+  const generale = vercel.rewrites.findIndex((r) => r.source === '/(.*)');
+  assert.ok(radice >= 0 && radice < generale);
+  assert.equal(vercel.rewrites[radice].destination, '/personal/index.html');
+  assert.ok(manifesto >= 0 && manifesto < generale);
+  const m = JSON.parse(readFileSync('public/personal-dominio.webmanifest', 'utf8'));
+  assert.equal(m.start_url, '/');
+  assert.equal(m.scope, '/');
+  assert.equal(m.name, 'Poliedron Personal');
 });

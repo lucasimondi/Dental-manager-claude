@@ -1,6 +1,26 @@
 {
   "rewrites": [
     {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "personal.poliedrasoft.it"
+        }
+      ],
+      "destination": "/personal/index.html"
+    },
+    {
+      "source": "/personal.webmanifest",
+      "has": [
+        {
+          "type": "host",
+          "value": "personal.poliedrasoft.it"
+        }
+      ],
+      "destination": "/personal-dominio.webmanifest"
+    },
+    {
       "source": "/poliedron/personal",
       "destination": "/personal/index.html"
     },
