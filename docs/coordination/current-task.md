@@ -1,3 +1,14 @@
+# Current task — POL-VITA-004 Agenda di Poliedron Personal = agenda dello studio (2026-10-15)
+- OWNER: CLAUDE. BRANCH: `claude/catalogazione-facile-latjs9` da `master@5d2b805` (PR #187 mergiata).
+- DECISIONI PO (verbatim, sintesi): "L'agenda deve essere la stessa di studio … la modifichiamo in entrambi i software … appuntamento anche senza … database pazienti … nome evento con orari durata ed etichette … se personale avrà una grafica leggermente diversa tipo un contorno"; scadenze dell'archivio in agenda "senza dare fastidio agli appuntamenti", eliminabili, modificabili, segnabili pagate. Il PO ha autorizzato la lettura della sola struttura delle tabelle dell'agenda in produzione ("Mergia e procedi").
+- VERIFICATO (sola struttura, nessun dato): `appointments`, `impegni_personali` (senza paziente: titolo, tipo, colore, date, ore, note, recurrence_id), `app_types`; RLS `studio_id = auth.jwt()->app_metadata->>studio_id` su tutte e tre. L'agenda dello studio disegna già gli impegni personali con contorno tratteggiato e mostra il `tipo` come etichetta: nessuna modifica allo studio né al suo database.
+- FATTO: `personal/src/lib/studio.js` (secondo client, sessione propria persistente, solo tabelle dell'agenda: appointments/patients(nome, cognome)/app_types in lettura, impegni_personali lettura e scrittura; fail closed senza studio_id); `lib/agenda.js` (calcoli puri); `Agenda.jsx` (Giorno con griglia oraria, Settimana, Mese; scadenze in striscia in alto; eventi bianchi con contorno; editor evento; dettaglio appuntamento in sola lettura); Oggi in agenda; etichette con colori in Impostazioni; scadenza modificabile (descrizione, data, importo); pulsante + contestuale (in Agenda crea un evento).
+- VALIDATION: `npm test` 1199/1199 (+6 test agenda e confini con lo studio); build OK; Chromium 390×844 con dati finti di studio e archivio: scrittura evento con studio_id e user_id della sessione, modifica scadenza, nessun errore e nessun overflow.
+- PROSSIMO: chat Poliedron (POL-VITA-005), dopo il merge.
+- STATO: in revisione (PR).
+
+---
+
 # Current task — POL-VITA-003 (seguito) Poliedron Personal: impaginazione iPhone, Pagamenti, sezioni, anteprima, Personali, impostazioni (2026-10-15)
 - OWNER: CLAUDE. BRANCH: `claude/catalogazione-facile-latjs9` da `master@acdd858` (PR #180–#186 mergiate). Indirizzo dell'app: https://personal.poliedrasoft.it (dominio aggiunto al progetto Vercel, CNAME del PO su IONOS).
 - RICHIESTA PO (verbatim, sintesi): impaginazione corretta su iPhone; ogni pratica o dettaglio con tasto per chiudere e tornare dov'eri con il dock visibile; tasti cliccabili; Pagamenti cliccabile con elenco, cancellare, segnare pagato, vedere il documento di origine; aree Bollette e Riscaldamento (pellet, legna…); anteprima dei documenti; sezioni Tutti, Carta d'identità, Codice fiscale per Luca, Martina e Giulia Simondi, persone aggiungibili; setup per creare altre sezioni.

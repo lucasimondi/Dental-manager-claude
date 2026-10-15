@@ -200,3 +200,11 @@ export async function documentiPersonali(db) {
     .or(`categoria.not.is.null,persona.not.is.null,fascicolo.eq.identita,tag.cs.{${TAG_PORTAFOGLIO}}`)
     .order('creato_il', { ascending: false }).limit(300));
 }
+
+export async function aggiornaScadenza(db, id, campi) {
+  const riga = {};
+  if ('descrizione' in campi) riga.descrizione = String(campi.descrizione || '').trim() || 'Scadenza';
+  if ('data' in campi && /^\d{4}-\d{2}-\d{2}$/.test(campi.data)) riga.data = campi.data;
+  if ('importo' in campi) riga.importo = campi.importo === '' || campi.importo == null ? null : Number(String(campi.importo).replace(',', '.'));
+  return esito(await db.from('scadenze').update(riga).eq('id', id).select('id, data, descrizione, importo, completata').single());
+}

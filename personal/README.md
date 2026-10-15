@@ -11,6 +11,14 @@ Collegata solo al progetto Supabase `archivio-documenti` (`tkcwvjzjkfhcuebrjvsp`
 - **Pratiche**: aperte, risolte, tutte.
 - **Dettaglio documento**: apri il file su Drive, apri l'email, Portafoglio, scadenze ("Fatta"), dati estratti, sposta fascicolo, elimina dall'archivio (il file su Drive resta).
 
+## Agenda (POL-VITA-004)
+È l'agenda dello studio: stessi dati, modificabile dalle due app. Si collega una volta con l'account di Poliedra (sessione propria, persistente).
+- Appuntamenti dei pazienti in sola lettura, a blocchi pieni. Si spostano dall'agenda dello studio.
+- Eventi personali senza paziente (`impegni_personali`), bianchi con il contorno del colore dell'etichetta. Si creano, modificano ed eliminano da qui; nello studio compaiono con il contorno tratteggiato.
+- Etichette e colori in Impostazioni.
+- Pagamenti e scadenze dell'archivio in una striscia in alto e nei pallini del mese.
+- `lib/studio.js` è l'unico file che conosce il progetto dello studio e tocca solo le tabelle dell'agenda (test in `tests/poliedronPersonal.test.mjs`).
+
 ## Accesso
 Email e password. La sessione resta valida nell'app sulla Home, che su iOS ha una memoria separata da Safari: per questo non si usano link magici.
 "Imposta o recupera la password" manda un link (flusso implicito). Il link si apre in Safari: lì si sceglie la password, poi si entra dall'app.
