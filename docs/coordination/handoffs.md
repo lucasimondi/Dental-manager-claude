@@ -1,5 +1,9 @@
 # Handoffs
 
+## 2026-10-15 — CLAUDE — Prenotazione senza verbo
+- "Appuntamento <nome> <giorno> ore <hh:mm>" ora fissa l'appuntamento (Core, senza modello); nome con parola in più → suggerimento, nessuna scrittura.
+- NEXT: merge su "Mergia" e verifica del deploy di `agente-assistente`.
+
 ## Documento aperto che sopravvive al cambio app (2026-10-13)
 
 - Agent: CLAUDE. Branch `claude/catalogazione-facile-latjs9` da `master@ecab1402`. Dettagli in `current-task.md`.

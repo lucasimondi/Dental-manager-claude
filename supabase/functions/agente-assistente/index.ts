@@ -1450,7 +1450,19 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
         const found = await eseguiTool(supabase, 'cerca_pazienti', { query }, studioId, user.id, azioniPersonalizzate);
         const patients = found?.risultati || [];
         if (found?.error) return { reply: coreReply({ text: 'Non riesco a cercare il paziente adesso.', uncertain: true }) };
-        if (patients.length === 0) return { notFound: true, reply: coreReply({ text: `Non trovo il paziente “${query}”. Vuoi prima crearlo?` }) };
+        if (patients.length === 0) {
+          // A dictated name with one word too many ("Maria vita Savalli"): suggest, never pick.
+          const words = String(query || '').trim().split(/\s+/).filter(Boolean);
+          const simili = new Map();
+          if (words.length >= 3) {
+            for (let i = 0; i < words.length && simili.size < 5; i++) {
+              const retry = await eseguiTool(supabase, 'cerca_pazienti', { query: words.filter((_, j) => j !== i).join(' ') }, studioId, user.id, azioniPersonalizzate);
+              for (const p of retry?.risultati || []) simili.set(p.id, p);
+            }
+          }
+          const forse = [...simili.values()].slice(0, 5).map((p) => `${p.nome} ${p.cognome}`);
+          return { notFound: true, reply: coreReply({ text: forse.length ? `Non trovo il paziente “${query}”. Forse intendi ${forse.join(' o ')}? Ripeti la richiesta con il nome giusto.` : `Non trovo il paziente “${query}”. Vuoi prima crearlo?` }) };
+        }
         if (patients.length > 1) return { reply: coreReply({ text: 'Ho trovato più pazienti con questo nome. Dimmi quale intendi: ' + patients.map((p) => `${p.nome} ${p.cognome}`).join(', '), data: { risultati: patients } }) };
         observed.patients.add(patients[0].id);
         return { patient: patients[0] };
