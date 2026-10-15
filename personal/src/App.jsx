@@ -8,7 +8,7 @@ import {
   cercaDocumenti, conteggiFascicoli, eliminaDocumento, pratiche as caricaPratiche, documentiDellaPratica, rispondi,
   segnaScadenza, cambiaStatoPratica, documentiDaGestire, documentiRecenti, documentoCompleto, impostaPortafoglio,
   caricaDocumento, eCaricato, nelPortafoglio, anteprimaFile, pagamenti as caricaPagamenti, eliminaScadenza,
-  aggiornaDocumento, documentiSezione, documentiPersonali, aggiornaScadenza,
+  aggiornaDocumento, documentiSezione, documentiPersonali, aggiornaScadenza, chiediPoliedron, partiRisposta,
 } from './lib/archivio.js';
 import { VistaAgenda, PaginaEvento, PaginaAppuntamento, ElencoGiorno } from './Agenda.jsx';
 import { sessioneStudio, esciStudio, appuntamentiTra, impegniTra, studioDb } from './lib/studio.js';
@@ -18,7 +18,7 @@ import { preparaFile } from './lib/file.js';
 import { IMPOSTAZIONI_PREDEFINITE, leggiImpostazioni, salvaImpostazioni, categoriaDi, personaDi, slug } from './lib/impostazioni.js';
 import {
   IconaOggi, IconaDocumenti, IconaPortafoglio, IconaPratiche, IconaPiu, IconaCerca, IconaChiudi, IconaIndietro, IconaFreccia,
-  IconaApri, IconaEmail, IconaCalendario, IconaFotocamera, IconaFile, IconaStella, IconaCestino, IconaEsci, IconaEuro, IconaImpostazioni,
+  IconaApri, IconaEmail, IconaCalendario, IconaFotocamera, IconaFile, IconaStella, IconaCestino, IconaEsci, IconaEuro, IconaImpostazioni, IconaChat, IconaInvia,
 } from './Icone.jsx';
 
 
@@ -580,6 +580,11 @@ function PaginaDocumento({ id, ctx, chiudi }) {
           <IconaStella size={18} piena={portafoglio} /> {portafoglio ? 'Nei Personali' : 'Tieni a portata di mano'}
         </button>
       </div>
+      {doc.fascicolo !== 'clinico_pazienti' && (
+        <button className="pp-chiedi-doc" onClick={() => apri({ tipo: 'chat', documentoId: doc.id, titoloDoc: titoloDoc(doc) })}>
+          <IconaChat size={18} /> Chiedi a Poliedron su questo documento
+        </button>
+      )}
       {doc.fascicolo === 'clinico_pazienti' && <p className="pp-avviso">Documento di un paziente: archiviato senza leggerne il contenuto.</p>}
       {doc.azione_richiesta && <p className={`pp-avviso pp-avviso-${doc.urgenza || 'media'}`}><strong>Da fare:</strong> {doc.azione_descrizione || 'azione richiesta'}</p>}
       {doc.riassunto && <p className="pp-paragrafo">{doc.riassunto}</p>}
@@ -977,7 +982,76 @@ function PaginaSezione({ id, ctx, chiudi }) {
   );
 }
 
-const TITOLI_PAGINE = { evento: 'Evento', appuntamento: 'Appuntamento', documento: 'Documento', pagamento: 'Pagamento', pratica: 'Pratica', carica: 'Carica un documento', impostazioni: 'Impostazioni', sezione: 'Sezione' };
+const SUGGERIMENTI_CHAT = ['Quanto devo pagare questo mese?', 'Quali bollette Edison ho pagato quest\'anno?', 'Dov\'è la carta d\'identità di Giulia?', 'Che pratiche ho aperte?'];
+
+function PaginaChat({ documentoId, titoloDoc: titolo, ctx }) {
+  const { apri } = ctx;
+  const [modo, setModo] = useState('ai');
+  const [messaggi, setMessaggi] = useState([]);
+  const [testo, setTesto] = useState('');
+  const [attesa, setAttesa] = useState(false);
+  const fondo = useRef(null);
+  useEffect(() => { fondo.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, [messaggi, attesa]);
+
+  const invia = async (domanda) => {
+    const q = domanda.trim();
+    if (!q || attesa) return;
+    setTesto('');
+    const storia = messaggi.filter((m) => m.testo).map((m) => ({ ruolo: m.ruolo, testo: m.testo }));
+    setMessaggi((m) => [...m, { ruolo: 'utente', testo: q }]);
+    setAttesa(true);
+    let nuovo;
+    if (modo === 'ai') {
+      try {
+        nuovo = { ruolo: 'assistente', testo: await chiediPoliedron({ token: await tokenSessione(), domanda: q, documentoId, storia }), fonte: 'ai' };
+      } catch (e) {
+        nuovo = { ruolo: 'assistente', risposta: await rispondi(archivioDb, q).catch(() => null), fonte: 'core', nota: `${e.message} Ti rispondo con la ricerca di Poliedron.` };
+      }
+    } else {
+      nuovo = { ruolo: 'assistente', risposta: await rispondi(archivioDb, q).catch(() => null), fonte: 'core' };
+    }
+    setMessaggi((m) => [...m, nuovo]);
+    setAttesa(false);
+  };
+
+  return (
+    <div className="pp-chat">
+      <Segmenti voci={[['ai', 'Poliedron AI'], ['core', 'Solo ricerca']]} attiva={modo} onScegli={setModo} />
+      {titolo && <p className="pp-chat-contesto"><IconaFile size={14} /> Sul documento: <strong>{titolo}</strong></p>}
+      {!messaggi.length && (
+        <div className="pp-chat-vuota">
+          <p>{modo === 'ai' ? 'Chiedimi qualsiasi cosa sull\'archivio: documenti, pagamenti, pratiche, persone. Rispondo solo con quello che trovo.' : 'Ricerca senza AI: fornitori, bollette, scadenze, "quanto devo a…", pratiche.'}</p>
+          <div className="pp-suggerimenti">
+            {(titolo ? ['Riassumimi questo documento', 'Cosa devo fare?', 'Ci sono scadenze?'] : SUGGERIMENTI_CHAT).map((x) => <button key={x} className="pp-chip" onClick={() => invia(x)}>{x}</button>)}
+          </div>
+        </div>
+      )}
+      {messaggi.map((m, i) => (
+        <div key={i} className={`pp-messaggio-chat ${m.ruolo}`}>
+          {m.ruolo === 'utente' ? m.testo : (
+            <>
+              {m.nota && <p className="pp-riga-meta">{m.nota}</p>}
+              {m.testo && <div className="pp-chat-testo">{partiRisposta(m.testo).map((p, j) => (p.doc
+                ? <button key={j} className="pp-chat-link" onClick={() => apri({ tipo: 'documento', id: p.doc })}><IconaFile size={14} />{p.titolo}</button>
+                : <span key={j}>{p.testo}</span>))}</div>}
+              {m.risposta && <Risultato risposta={m.risposta} ctx={ctx} />}
+              {!m.testo && !m.risposta && <p>Nessun risultato.</p>}
+              <span className="pp-chat-fonte">{m.fonte === 'ai' ? 'Poliedron AI' : 'Poliedron · ricerca'}</span>
+            </>
+          )}
+        </div>
+      ))}
+      {attesa && <div className="pp-messaggio-chat assistente"><span className="pp-rotella" /> {modo === 'ai' ? 'Cerco nell\'archivio…' : 'Cerco…'}</div>}
+      <div ref={fondo} />
+      <form className="pp-chat-barra" onSubmit={(e) => { e.preventDefault(); invia(testo); }}>
+        <input value={testo} onChange={(e) => setTesto(e.target.value)} placeholder="Scrivi a Poliedron…" enterKeyHint="send" aria-label="Domanda a Poliedron" />
+        <button type="submit" className="pp-chat-invia" disabled={!testo.trim() || attesa} aria-label="Invia"><IconaInvia size={20} /></button>
+      </form>
+    </div>
+  );
+}
+
+const TITOLI_PAGINE = { chat: 'Poliedron', evento: 'Evento', appuntamento: 'Appuntamento', documento: 'Documento', pagamento: 'Pagamento', pratica: 'Pratica', carica: 'Carica un documento', impostazioni: 'Impostazioni', sezione: 'Sezione' };
 
 /* ---------- app ---------- */
 const VISTE = [
@@ -1042,6 +1116,7 @@ function Archivio({ email }) {
       case 'sezione': return <PaginaSezione id={p.id} ctx={ctx} chiudi={indietro} />;
       case 'evento': return <PaginaEvento evento={p.evento} ctx={ctx} chiudi={indietro} />;
       case 'appuntamento': return <PaginaAppuntamento a={p.a} />;
+      case 'chat': return <PaginaChat documentoId={p.documentoId} titoloDoc={p.titoloDoc} ctx={ctx} />;
       default: return null;
     }
   };
@@ -1050,7 +1125,10 @@ function Archivio({ email }) {
     <div className="pp-app">
       <header className="pp-testata">
         <h1>{vista === 'oggi' ? saluto() : TITOLI[vista]}</h1>
-        <button className="pp-icona-bottone" onClick={() => apri({ tipo: 'impostazioni' })} aria-label="Impostazioni"><IconaImpostazioni size={20} /></button>
+        <span className="pp-testata-azioni">
+          <button className="pp-poliedron" onClick={() => apri({ tipo: 'chat' })} aria-label="Chiedi a Poliedron"><IconaChat size={18} /><span>Poliedron</span></button>
+          <button className="pp-icona-bottone" onClick={() => apri({ tipo: 'impostazioni' })} aria-label="Impostazioni"><IconaImpostazioni size={20} /></button>
+        </span>
       </header>
       {occupato > 0 && <div className="pp-barra-caricamento" aria-hidden="true" />}
       {errore && !pagine.length && <p className="pp-messaggio pp-messaggio-errore" role="alert">{errore}</p>}

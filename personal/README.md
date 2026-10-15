@@ -1,4 +1,4 @@
-# Poliedron Personal (POL-VITA-001, POL-VITA-003)
+# Poliedron Personal (POL-VITA-001, 003, 004, 005)
 
 App per telefono dell'archivio personale, servita su **`https://personal.poliedrasoft.it/`** (dominio proprio, rewrite per host in `vercel.json`, manifest `personal-dominio.webmanifest`) e anche su `/poliedron/personal/` e `/personal/` del sito dello studio, dalla build principale e installabile sulla schermata Home. Sotto `/poliedron/` il service worker dello studio non interviene, nemmeno nelle copie vecchie rimaste in Safari.
 Collegata solo al progetto Supabase `archivio-documenti` (`tkcwvjzjkfhcuebrjvsp`); nessun codice, chiave o service worker dell'app dello studio (verificato da `tests/poliedronPersonal.test.mjs`).
@@ -18,6 +18,12 @@ Collegata solo al progetto Supabase `archivio-documenti` (`tkcwvjzjkfhcuebrjvsp`
 - Etichette e colori in Impostazioni.
 - Pagamenti e scadenze dell'archivio in una striscia in alto e nei pallini del mese.
 - `lib/studio.js` è l'unico file che conosce il progetto dello studio e tocca solo le tabelle dell'agenda (test in `tests/poliedronPersonal.test.mjs`).
+
+## Chat Poliedron (POL-VITA-005)
+Pulsante **Poliedron** in alto e "Chiedi a Poliedron su questo documento" nel dettaglio.
+- **Poliedron AI**: la domanda va alla web app di `Code.gs` (`azione: 'chiedi'`, solo il proprietario verificato), dove Claude risponde usando strumenti di sola lettura sull'archivio (ricerca, dettaglio, scadenze, pratiche, riepilogo). La chiave Anthropic resta nelle Proprietà script. Cita i documenti come link apribili.
+- **Solo ricerca**: il Core deterministico, senza AI. È anche il ripiego automatico se l'AI non risponde.
+- I documenti clinici dei pazienti sono esclusi da ogni risultato passato al modello; l'agenda dello studio non passa dalla chat. Niente invii: al massimo bozze di testo.
 
 ## Accesso
 Email e password. La sessione resta valida nell'app sulla Home, che su iOS ha una memoria separata da Safari: per questo non si usano link magici.
