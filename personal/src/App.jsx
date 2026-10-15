@@ -38,6 +38,9 @@ const quando = (d) => {
 const titoloDoc = (d) => d.titolo || d.nome_file_originale || d.email_oggetto || 'Documento';
 const saluto = () => { const h = new Date().getHours(); return h < 13 ? 'Buongiorno' : h < 18 ? 'Buon pomeriggio' : 'Buonasera'; };
 const VISTA_KEY = 'poliedron-personal-vista';
+// Indirizzo pubblico dell'app: sotto /poliedron/ il service worker dello studio non interviene,
+// nemmeno nelle copie vecchie rimaste in Safari (che su /personal/ mostrerebbero l'app dello studio).
+const INDIRIZZO_APP = '/poliedron/personal/';
 const leggiVista = () => { try { return localStorage.getItem(VISTA_KEY) || 'oggi'; } catch { return 'oggi'; } };
 
 /* ---------- accesso ---------- */
@@ -55,7 +58,7 @@ function Accesso() {
       const { error } = await archivioDb.auth.signInWithPassword({ email: email.trim(), password });
       if (error) setStato({ errore: true, testo: /confirm/i.test(error.message) ? 'Email non ancora confermata.' : 'Email o password non corretti. Se non hai ancora una password, tocca "Imposta o recupera la password".' });
     } else {
-      const { error } = await archivioDb.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${location.origin}/personal/` });
+      const { error } = await archivioDb.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${location.origin}${INDIRIZZO_APP}` });
       setStato(error ? { errore: true, testo: `Invio non riuscito: ${error.message}` } : { testo: 'Ti ho mandato un\'email. Aprila, tocca il link e scegli la password nella pagina che si apre. Poi torna qui ed entra con email e password.' });
     }
     setInvio(false);

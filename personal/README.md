@@ -1,6 +1,6 @@
 # Poliedron Personal (POL-VITA-001, POL-VITA-003)
 
-App per telefono dell'archivio personale, servita su **`/personal/`** dalla build principale e installabile sulla schermata Home.
+App per telefono dell'archivio personale, servita su **`/poliedron/personal/`** (alias `/personal/`) dalla build principale e installabile sulla schermata Home. Sotto `/poliedron/` il service worker dello studio non interviene, nemmeno nelle copie vecchie rimaste in Safari.
 Collegata solo al progetto Supabase `archivio-documenti` (`tkcwvjzjkfhcuebrjvsp`); nessun codice, chiave o service worker dell'app dello studio (verificato da `tests/poliedronPersonal.test.mjs`).
 
 ## Sezioni

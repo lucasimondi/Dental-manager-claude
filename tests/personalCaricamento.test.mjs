@@ -86,7 +86,8 @@ test('app: login con password che resta valido sulla Home e recupero password vi
   assert.match(client, /persistSession: true/);
   assert.match(client, /flowType: 'implicit'/);
   assert.match(app, /signInWithPassword/);
-  assert.match(app, /resetPasswordForEmail\(email\.trim\(\), \{ redirectTo: `\$\{location\.origin\}\/personal\/` \}\)/);
+  assert.match(app, /resetPasswordForEmail\(email\.trim\(\), \{ redirectTo: `\$\{location\.origin\}\$\{INDIRIZZO_APP\}` \}\)/);
+  assert.match(app, /const INDIRIZZO_APP = '\/poliedron\/personal\/';/);
   assert.match(app, /evento === 'PASSWORD_RECOVERY'/);
   assert.match(app, /auth\.updateUser\(\{ password \}\)/);
   assert.doesNotMatch(app, /signInWithOtp|signUp\(/, 'niente link magici né nuove registrazioni');

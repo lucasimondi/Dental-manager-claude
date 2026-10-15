@@ -156,6 +156,11 @@ test('Poliedron Personal è isolata dall\'app dello studio', () => {
   const indice = (src) => vercel.rewrites.findIndex((r) => r.source === src);
   assert.ok(indice('/personal/') >= 0 && indice('/personal/') < indice('/(.*)'), 'rewrite di /personal prima di quella generale');
   const manifest = JSON.parse(readFileSync('public/personal.webmanifest', 'utf8'));
-  assert.equal(manifest.start_url, '/personal/');
+  assert.equal(manifest.start_url, '/poliedron/personal/');
+  assert.equal(manifest.scope, '/poliedron/personal/');
+  for (const src of ['/poliedron/personal', '/poliedron/personal/']) {
+    assert.ok(indice(src) >= 0 && indice(src) < indice('/poliedron/') && indice(src) < indice('/(.*)'), src);
+    assert.equal(vercel.rewrites[indice(src)].destination, '/personal/index.html');
+  }
   assert.equal(manifest.name, 'Poliedron Personal');
 });
