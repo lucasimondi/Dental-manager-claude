@@ -52,6 +52,7 @@ const FASCICOLI = {
   fiscale: 'Fiscale e tasse',
   previdenza: 'Previdenza ed ENPAM',
   utenze: 'Utenze',
+  riscaldamento: 'Riscaldamento',
   studio_fornitori: 'Studio - fornitori',
   studio_fatture_emesse: 'Studio - fatture emesse',
   legale: 'Legale e contenziosi',
@@ -459,6 +460,7 @@ function analizza_(meta, nome, contenuto, pratiche) {
     '- Se il documento è più vecchio di 12 mesi, azione_richiesta è true solo se il contenuto indica una questione rimasta aperta.',
     '- Scadenze: solo date reali presenti nel documento (pagamenti, rinnovi, termini legali, scadenza di documenti d\'identità).',
     '- Materiale pubblicitario: fascicolo "altro" con tag "promozionale".',
+    '- Combustibili per il riscaldamento (pellet, legna, gasolio, GPL, cippato) e manutenzione di caldaie e stufe: fascicolo "riscaldamento". Le bollette di luce, gas di rete e acqua restano in "utenze".',
     '- Scrivi in italiano.',
   ].join('\n');
 
@@ -698,6 +700,7 @@ function doPost(e) {
     if (!utente || String(utente.email).toLowerCase() !== PROPRIETARIO || !utente.email_confirmed_at) {
       return rispostaJson_({ ok: false, errore: 'Accesso non autorizzato' });
     }
+    if (req.azione === 'file') return rispostaJson_(fileDelDocumento_(req.drive_file_id));
     if (!req.dati || !req.nome) return rispostaJson_({ ok: false, errore: 'File mancante' });
 
     const nome = pulisciNome_(String(req.nome)) || 'documento';
@@ -747,12 +750,34 @@ function doPost(e) {
       soggetti: Array.isArray(analisi.soggetti) ? analisi.soggetti : [],
       scadenze: Array.isArray(analisi.scadenze) ? analisi.scadenze : [], pratica: analisi.pratica || {},
     } } });
-    return rispostaJson_({ ok: true, id: esito && esito.id, titolo: analisi.titolo || nome, fascicolo: fasc });
+    const idDoc = esito && esito.documento_id;
+    // Persona e categoria scelte da Luca (documenti personali: carta d'identità, codice fiscale, ...)
+    if (idDoc && (req.persona || req.categoria)) {
+      sb_('documenti?id=eq.' + idDoc, { method: 'patch', body: {
+        persona: req.persona ? String(req.persona).slice(0, 120) : null,
+        categoria: req.categoria ? String(req.categoria).slice(0, 60) : null,
+      } });
+    }
+    return rispostaJson_({ ok: true, id: idDoc, titolo: analisi.titolo || nome, fascicolo: fasc });
   } catch (err) {
     if (file) { try { file.setTrashed(true); } catch (x) {} } // niente file orfani se la registrazione fallisce
     logErrore_('caricamento app', err);
     return rispostaJson_({ ok: false, errore: String(err && err.message || err).slice(0, 300) });
   }
+}
+
+// Anteprima nell'app: solo file registrati nell'archivio (mai un file Drive qualsiasi).
+const ANTEPRIMA_MAX_BYTE = 15 * 1024 * 1024;
+function fileDelDocumento_(driveFileId) {
+  const id = String(driveFileId || '');
+  if (!/^[\w-]{10,}$/.test(id)) return { ok: false, errore: 'File non valido' };
+  if (!sb_('documenti?select=id&drive_file_id=eq.' + encodeURIComponent(id) + '&limit=1').length) {
+    return { ok: false, errore: 'File non presente in archivio' };
+  }
+  const blob = DriveApp.getFileById(id).getBlob();
+  const bytes = blob.getBytes();
+  if (bytes.length > ANTEPRIMA_MAX_BYTE) return { ok: false, errore: 'File troppo grande per l\'anteprima' };
+  return { ok: true, nome: blob.getName(), mime: blob.getContentType(), dati: Utilities.base64Encode(bytes) };
 }
 
 function utenteSupabase_(token) {

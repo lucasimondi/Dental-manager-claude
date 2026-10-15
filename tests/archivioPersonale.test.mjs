@@ -21,6 +21,7 @@ test('lo schema di Cowork è la base, seguito dalla migrazione di sicurezza', ()
     '20261012201509_schema_archivio_documenti.sql',
     '20261013090000_pol_vita_001_sicurezza_e_cancellazione.sql',
     '20261013200000_lotti_importazione.sql',
+    '20261015200000_pol_vita_003_personal.sql',
   ]);
 });
 
