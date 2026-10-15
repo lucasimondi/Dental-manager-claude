@@ -1,3 +1,15 @@
+# Current task — POL-VITA-003 Poliedron Personal: app per telefono dell'archivio + documenti caricati dal PO (2026-10-15)
+- OWNER: CLAUDE (Claude Code), su richiesta diretta del PO: "quando installo su home continua a chiedermi link di accesso, inoltre dobbiamo cambiare layout completamente … deve essere webapp per telefono, fatta bene anche graficamente, inoltre voglio poter caricare io dei documenti, ad esempio carte identità ecc, e averle sempre a portata di mano".
+- BRANCH: `claude/catalogazione-facile-latjs9`, ripartito da `master@8c62ef3b` (PR #180 e #182 mergiate).
+- DECISIONI PO (2026-10-15): app = Poliedron Personal (`/personal/`) rifatta per telefono; accesso = email + password (niente link: la PWA sulla home iOS non condivide la sessione con Safari); documenti caricati = Google Drive.
+- PIANO: (1) Apps Script: endpoint `doPost` (web app) che riceve il file, verifica il token Supabase del PO, salva su Drive `Archivio personale/Caricati`, analizza (mai i clinici: `eClinico_`) e registra con `registra_documento` (`gmail_message_id` = `caricato:<uuid>`, nessuna modifica di schema); (2) Personal: nuovo layout mobile (barra in basso: Oggi, Documenti, Portafoglio, Pratiche), dettaglio documento, caricamento da fotocamera/file, Portafoglio (tag `portafoglio`), password dimenticata/impostata; (3) test, build, PR.
+- FATTO: (1) `Code.gs` `doPost` + `utenteSupabase_` + `rispostaJson_`; manifest `webapp` (USER_DEPLOYING, ANYONE_ANONYMOUS); `clasp push -f` e `clasp create-deployment` (deployment @1, URL in `personal/src/lib/archivio.js`). Nessuna modifica di schema. (2) Personal riscritta: `App.jsx`, `Icone.jsx`, `personal.css` (chiaro/scuro), `lib/file.js` (riduzione foto), `lib/archivio.js` (portafoglio, caricamento, dettaglio, sposta); client con flusso implicito; manifest/meta aggiornati. (3) `tests/personalCaricamento.test.mjs` (7 test). `npm test` 1190/1190, build OK; prova in Chromium 390×844 con dati finti: tutte le sezioni, chiaro/scuro, flusso di caricamento completo, nessun errore in console.
+- NON VERIFICATO DA QUI: chiamata reale alla web app (la rete del container blocca script.google.com). Da verificare con il primo caricamento del PO.
+- DA FARE (PO): Supabase Redirect URLs `https://dental-manager-acmeproduction.vercel.app/**`; impostare la password da "Imposta o recupera la password"; reinstallare l'app sulla Home da `/personal/`.
+- STATO: in revisione (PR).
+
+---
+
 # Current task — POL-VITA-002 Installazione archivio documenti personali (Fase 1) (2026-10-13)
 - OWNER: CLAUDE (Claude Code), su istruzione diretta del PO ("Nuovo task: installazione dell'archivio documenti personali").
 - BRANCH: `claude/catalogazione-facile-latjs9` (AGENTS.md: mai lavorare su master), da `master@2aa08aa5`.

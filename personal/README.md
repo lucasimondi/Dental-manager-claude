@@ -1,23 +1,22 @@
-# Poliedron Personal (POL-VITA-001)
+# Poliedron Personal (POL-VITA-001, POL-VITA-003)
 
-App separata dall'app dello studio, collegata solo al progetto Supabase `archivio-documenti`
-(`tkcwvjzjkfhcuebrjvsp`). Decisione PO 2026-10-13: stesso repository, app distinta, accesso con email e password (il link via email richiede impostazioni di Supabase Auth non modificabili da qui).
+App per telefono dell'archivio personale, servita su **`/personal/`** dalla build principale e installabile sulla schermata Home.
+Collegata solo al progetto Supabase `archivio-documenti` (`tkcwvjzjkfhcuebrjvsp`); nessun codice, chiave o service worker dell'app dello studio (verificato da `tests/poliedronPersonal.test.mjs`).
 
-- Nessun codice, chiave o service worker dell'app dello studio (verificato da `tests/poliedronPersonal.test.mjs`).
-- Core deterministico (`src/lib/coreArchivio.js`), nessun modello AI: "Quanto devo a Edison?", "Scadenze di questo mese",
-  "Cosa devo fare?", "Bollette", "Le mie pratiche", "pratica Edison", ricerca libera.
-- Azioni: scadenza pagata, pratica risolta, cancellazione definitiva del documento (`elimina_documento`).
-- I documenti li carica Cowork (Gmail → Drive → `registra_documento`).
+## Sezioni
+- **Oggi**: scadenze entro 30 giorni (e quelle già scadute), documenti da gestire, ultimi arrivati.
+- **Documenti**: fascicoli e ricerca. Il Core deterministico (`src/lib/coreArchivio.js`, nessun modello AI) risponde a richieste come "Quanto devo a Edison?", "Scadenze di questo mese", "Cosa devo fare?" e "Bollette".
+- **+ Carica**: foto o PDF dal telefono. Il file va a Google Drive tramite la web app di `poliedron/archivio/Code.gs` (`doPost`), che verifica a ogni richiesta il token di sessione del proprietario, salva in `Archivio personale/Caricati/<anno>`, cataloga e registra con `registra_documento` (`gmail_message_id` = `caricato:<uuid>`). I documenti clinici non vengono mai letti.
+- **Portafoglio**: documenti con il tag `portafoglio` più tutti quelli del fascicolo `identita`. Si aggiungono o tolgono dal dettaglio del documento.
+- **Pratiche**: aperte, risolte, tutte.
+- **Dettaglio documento**: apri il file su Drive, apri l'email, Portafoglio, scadenze ("Fatta"), dati estratti, sposta fascicolo, elimina dall'archivio (il file su Drive resta).
 
-## Dove gira
-
-Entry della build principale, sullo stesso sito dell'app dello studio: **`/personal/`** (come `/poliedron/`).
-Creare un progetto Vercel separato non è stato possibile (403: permesso negato al connettore).
-Dati, chiavi e login restano quelli del solo progetto `archivio-documenti`; la sessione è salvata con una chiave propria.
-Accesso con email e password ("Crea l'accesso" la prima volta, poi conferma dal link nell'email).
+## Accesso
+Email e password. La sessione resta valida nell'app sulla Home, che su iOS ha una memoria separata da Safari: per questo non si usano link magici.
+"Imposta o recupera la password" manda un link (flusso implicito). Il link si apre in Safari: lì si sceglie la password, poi si entra dall'app.
+Supabase Auth deve avere `https://dental-manager-acmeproduction.vercel.app/**` tra i Redirect URLs.
 
 ## Comandi
-
 ```sh
 npm run dev:personal     # http://localhost:5174/personal/
 npm run build            # include /personal/ in dist/
