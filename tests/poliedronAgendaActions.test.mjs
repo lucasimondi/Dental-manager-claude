@@ -310,3 +310,37 @@ test('times written without separators are read ("alle 1430"); an unreadable tim
   assert.match(answer.text, /^Fatto\./);
   assert.equal(calls.length, 0);
 });
+
+// PO 2026-10-15: "Appuntamento Maria vita Savalli domani ore 915" answered with
+// tomorrow's agenda. A booking dictated without the verb is a booking.
+test('PO case: "Appuntamento <nome> domani ore 1015" books, it does not read the agenda', async () => {
+  database.patients.push(patient(2, 'Maria', 'Savalli'));
+  const out = await ask('Appuntamento Maria Savalli domani ore 1015');
+  assert.equal(calls.length, 0, 'no model call');
+  assert.equal(rpcCalls.length, 1);
+  assert.equal(rpcCalls[0].args.p_after.paziente_id, 2);
+  assert.equal(rpcCalls[0].args.p_after.data, D1);
+  assert.equal(rpcCalls[0].args.p_after.ora, '10:15');
+  assert.match(out.text, /^Fatto\. Appuntamento creato\nPaziente: Maria Savalli/);
+});
+
+test('a dictated extra word in the name: suggests the patient, never books a guess', async () => {
+  database.patients.push(patient(2, 'Maria', 'Savalli'));
+  const out = await ask('Appuntamento Maria vita Savalli domani ore 915');
+  assert.equal(calls.length, 0);
+  assert.equal(rpcCalls.length, 0, 'nothing written');
+  assert.match(out.text, /Non trovo il paziente “maria vita savalli”\. Forse intendi Maria Savalli\?/);
+});
+
+test('parser: verbless booking vs agenda reads', () => {
+  const create = (t) => understandPoliedron(t);
+  for (const [t, who] of [['Appuntamento Maria Savalli domani ore 9:15', 'maria savalli'], ['Appuntamento domani per Mario Rossi alle 10', 'mario rossi'], ['Nuovo appuntamento Mario Rossi giovedì alle 11 per igiene', 'mario rossi']]) {
+    const p = create(t);
+    assert.equal(p.intent, 'APPOINTMENT_CREATE', t);
+    assert.equal(p.entities.patient_query, who, t);
+    assert.deepEqual(p.missing, [], t);
+  }
+  for (const t of ['Appuntamenti domani', 'Appuntamento di domani alle 10', 'appuntamento domani alle 10', 'Appuntamento Mario Rossi domani alle 10?', 'Appuntamento Mario Rossi domani', 'Che appuntamenti ho domani?']) {
+    assert.equal(create(t).intent, 'AGENDA_READ', t);
+  }
+});

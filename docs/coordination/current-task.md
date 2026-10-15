@@ -1,3 +1,13 @@
+# Current task — Poliedron: "Appuntamento <nome> domani ore 915" leggeva l'agenda invece di fissare (2026-10-15)
+- OWNER: CLAUDE, branch `claude/poliedron-agenda-actions-kz6mmk`, ripartito da `master@2aa08aa` (PR #176 già mergiata). PO verbatim (screenshot: "Appuntamento Maria vita Savalli domani ore 915" → elenco appuntamenti di domani): "Non capisce di nuovo nulla …".
+- CAUSA: nel Core una frase con "appuntamento" senza verbo (fissa/crea/…) veniva sempre letta come AGENDA_READ.
+- COSA: `poliedron-core.js` — frase che inizia con "appuntamento" (o "nuovo appuntamento") + nome + giorno + ora, senza "?" finale → APPOINTMENT_CREATE (anche "appuntamento domani per <nome> alle …"); senza nome o senza ora resta lettura dell'agenda. `index.ts` (`findPatient`) — nome non trovato con 3+ parole (es. "vita" dettato in più): riprova togliendo una parola alla volta e suggerisce "Forse intendi Maria Savalli?", senza mai scrivere su un paziente indovinato.
+- VALIDATION: `tests/poliedronAgendaActions.test.mjs` +3 test (handler reale: prenota senza modello; nome con parola in più → suggerimento, niente scritto; parser create vs letture); controprova: senza la modifica falliscono tutti e 3. `npm test` 1178/1178; `npm run build` OK.
+- RILASCIO: tocca `supabase/functions/agente-assistente/**` → al merge il workflow "Deploy agente-assistente" pubblica la funzione (l'ultimo deploy automatico era fallito con 500 Supabase: verificare, altrimenti deploy manuale via MCP).
+- EXACT NEXT ACTION: "Mergia" → merge, verifica deploy della funzione.
+
+---
+
 # Current task — Nome file "Nome Cognome.pdf" per tutti i PDF (2026-10-13)
 - OWNER: CLAUDE, branch `claude/catalogazione-facile-latjs9` da `master@3808dc8d`. PO verbatim: "Il nome del documento deve essere il nome paziente.pdf".
 - CAUSA: la regola (PR #173) valeva solo per ricetta/documenti medici generati. Restavano nomi tipo `ricetta_rossi_mario_2026-10-13.pdf` in: Archivio documenti (scarica/apri), documenti della Scheda 2.0, fatture/rimborsi (generazione e scarico dall'archivio), preventivi, consenso firmato.
