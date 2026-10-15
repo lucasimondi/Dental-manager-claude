@@ -1,3 +1,15 @@
+# Current task — POL-VITA-002 Installazione archivio documenti personali (Fase 1) (2026-10-13)
+- OWNER: CLAUDE (Claude Code), su istruzione diretta del PO ("Nuovo task: installazione dell'archivio documenti personali").
+- BRANCH: `claude/catalogazione-facile-latjs9` (AGENTS.md: mai lavorare su master), da `master@2aa08aa5`.
+- FONTE DI VERITÀ: `poliedron/archivio/CLAUDE.md` (letto per intero), con le sue regole non negoziabili: nessun segreto nel repo/log; contenuto clinico dei pazienti mai a servizi esterni; nessun invio a terzi; nessuna cancellazione; solo migrazioni additive e idempotenti.
+- PASSI (Fase 1): (1) verificare `lotti_importazione` nel progetto `tkcwvjzjkfhcuebrjvsp`, altrimenti `aggiornamento-lotti.sql`; (2) Apps Script con clasp (`Code.gs` + `appsscript.json`, `.claspignore`); (3) chiavi nelle Proprietà script (solo il PO); (4) `setup` + `elabora` (PO) e verifica; (5) dashboard `index.html` su Vercel + Site URL (PO).
+- FATTO: (1) `lotti_importazione` mancava → applicata `pol_vita_002_lotti_importazione` (= `aggiornamento-lotti.sql` con policy creata solo se manca, senza `drop`; + niente anon/TRUNCATE), versionata in `supabase/archivio/migrations/20261013200000_lotti_importazione.sql`, verificata (RLS, policy proprietario, colonne usate dallo script). (2) clasp 3.4.1, login come il PO (codice incollato dal PO in chat, sua scelta), progetto "Archivio personale" scriptId in `.clasp.json`, `.claspignore` come da CLAUDE.md, `clasp push -f` di Code.gs + appsscript.json (manifesto ripristinato dopo `clasp create`), verificato con `clasp pull`: identici. (5) dashboard: Vercel nega la creazione di un progetto (403) → PO ha scelto `/archivio/` sul sito esistente: plugin di build copia `poliedron/archivio/index.html` in `dist/archivio/`, rewrite e esclusione dal service worker dello studio; aperta nel browser (CDN sostituita da bundle locale perché bloccata in questo ambiente): nessun errore.
+- FATTO (2026-10-15): (3) Proprietà script inserite dal PO; (4) `setup` + `elabora` eseguiti dal PO: cartella Drive creata, documenti registrati (35 alle 13:15 UTC), etichette Gmail ok. Corretti in `Code.gs` (push clasp + commit): risposta di Claude con `output_config.format` json_schema + max_tokens 4000 (prima JSON malformato/troncato); `elabora` riprende i thread rimessi in coda da `riprovaErrori` nei mesi già superati dal cursore.
+- DA FARE (PO): Site URL in Supabase Auth + `DASHBOARD_URL`; primo accesso a `/archivio/`; registrazioni OFF. Dopo: rimuovere il login clasp da questo ambiente.
+- STATO: in corso (PR #180 mergiata su "Mergia" del PO).
+
+---
+
 # Current task — Poliedron: "Appuntamento <nome> domani ore 915" leggeva l'agenda invece di fissare (2026-10-15)
 - OWNER: CLAUDE, branch `claude/poliedron-agenda-actions-kz6mmk`, ripartito da `master@2aa08aa` (PR #176 già mergiata). PO verbatim (screenshot: "Appuntamento Maria vita Savalli domani ore 915" → elenco appuntamenti di domani): "Non capisce di nuovo nulla …".
 - CAUSA: nel Core una frase con "appuntamento" senza verbo (fissa/crea/…) veniva sempre letta come AGENDA_READ.
