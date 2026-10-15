@@ -2,8 +2,8 @@
   "name": "Poliedron Personal",
   "short_name": "Personal",
   "description": "Archivio personale: documenti, portafoglio, scadenze e pratiche",
-  "start_url": "/personal/",
-  "scope": "/personal/",
+  "start_url": "/poliedron/personal/",
+  "scope": "/poliedron/personal/",
   "display": "standalone",
   "background_color": "#f2f4f7",
   "theme_color": "#f2f4f7",
@@ -19,5 +19,5 @@
       "type": "image/png"
     }
   ],
-  "id": "/personal/"
+  "id": "/poliedron/personal/"
 }
