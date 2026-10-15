@@ -1,6 +1,8 @@
 // POL-VITA-003 — impostazioni di Poliedron Personal (persone, documenti personali, sezioni).
 // Salvate nel database dell'archivio (tabella impostazioni_app, solo il proprietario): uguali su
 // telefono e computer e non perse reinstallando l'app.
+import { ETICHETTE_PREDEFINITE } from './agenda.js';
+
 const CHIAVE = 'personal';
 
 export const IMPOSTAZIONI_PREDEFINITE = Object.freeze({
@@ -15,6 +17,7 @@ export const IMPOSTAZIONI_PREDEFINITE = Object.freeze({
     { id: 'bollette', nome: 'Bollette', fascicoli: ['utenze'], parole: ['bolletta'] },
     { id: 'riscaldamento', nome: 'Riscaldamento', fascicoli: ['riscaldamento'], parole: ['pellet', 'legna', 'gasolio', 'gpl', 'caldaia', 'stufa'] },
   ],
+  etichette: ETICHETTE_PREDEFINITE,
 });
 
 const copia = (o) => JSON.parse(JSON.stringify(o));
@@ -37,7 +40,11 @@ export function normalizza(valore) {
       fascicoli: (s.fascicoli || []).map(testo).filter(Boolean), parole: (s.parole || []).map(testo).filter(Boolean),
     })))
     : base.sezioni;
-  return { persone, categorie, sezioni };
+  const colore = (c) => (/^#[0-9a-f]{6}$/i.test(testo(c)) ? testo(c) : '#64748b');
+  const etichette = Array.isArray(v.etichette) && v.etichette.length
+    ? unici(v.etichette.filter((e) => e && testo(e.nome)).map((e) => ({ id: e.id || slug(e.nome), nome: testo(e.nome), colore: colore(e.colore) })))
+    : base.etichette;
+  return { persone, categorie, sezioni, etichette };
 }
 
 export async function leggiImpostazioni(db) {

@@ -8,15 +8,19 @@ import {
   cercaDocumenti, conteggiFascicoli, eliminaDocumento, pratiche as caricaPratiche, documentiDellaPratica, rispondi,
   segnaScadenza, cambiaStatoPratica, documentiDaGestire, documentiRecenti, documentoCompleto, impostaPortafoglio,
   caricaDocumento, eCaricato, nelPortafoglio, anteprimaFile, pagamenti as caricaPagamenti, eliminaScadenza,
-  aggiornaDocumento, documentiSezione, documentiPersonali,
+  aggiornaDocumento, documentiSezione, documentiPersonali, aggiornaScadenza, chiediPoliedron, partiRisposta,
 } from './lib/archivio.js';
+import { VistaAgenda, PaginaEvento, PaginaAppuntamento, ElencoGiorno } from './Agenda.jsx';
+import { sessioneStudio, esciStudio, appuntamentiTra, impegniTra, studioDb } from './lib/studio.js';
+import { oggi as oggiAgenda } from './lib/agenda.js';
 import { euro } from './lib/coreArchivio.js';
 import { preparaFile } from './lib/file.js';
 import { IMPOSTAZIONI_PREDEFINITE, leggiImpostazioni, salvaImpostazioni, categoriaDi, personaDi, slug } from './lib/impostazioni.js';
 import {
   IconaOggi, IconaDocumenti, IconaPortafoglio, IconaPratiche, IconaPiu, IconaCerca, IconaChiudi, IconaIndietro, IconaFreccia,
-  IconaApri, IconaEmail, IconaCalendario, IconaFotocamera, IconaFile, IconaStella, IconaCestino, IconaEsci, IconaEuro, IconaImpostazioni,
+  IconaApri, IconaEmail, IconaCalendario, IconaFotocamera, IconaFile, IconaStella, IconaCestino, IconaEsci, IconaEuro, IconaImpostazioni, IconaChat, IconaInvia,
 } from './Icone.jsx';
+
 
 /* ---------- utilità ---------- */
 const COLORI = {
@@ -285,11 +289,19 @@ function VistaOggi({ ctx }) {
       ]);
       const limite = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
       const aperte = tutte.filter((s) => !s.completata);
-      setDati({ prossime: aperte.filter((s) => s.data <= limite), aperte, daGestire, recenti, totale: fascicoli.reduce((t, f) => t + Number(f.n || 0), 0) });
+      // Agenda di oggi, se l'agenda dello studio è collegata (altrimenti la sezione non compare).
+      let agenda = null;
+      if (await sessioneStudio().catch(() => null)) {
+        const g = oggiAgenda();
+        const [appuntamenti, impegni] = await Promise.all([appuntamentiTra(g, g), impegniTra(g, g)]).catch(() => [null, null]);
+        if (appuntamenti) agenda = { appuntamenti, impegni, scadenze: tutte.filter((s) => s.data === g) };
+      }
+      setDati({ prossime: aperte.filter((s) => s.data <= limite), aperte, daGestire, recenti, agenda, totale: fascicoli.reduce((t, f) => t + Number(f.n || 0), 0) });
     });
   }, [esegui, versione]);
   if (!dati) return null;
   const scaduti = dati.aperte.filter((s) => s.data < oggiIso()).length;
+  const agendaOggi = dati.agenda;
   const daPagare = dati.aperte.reduce((t, s) => t + Number(s.importo || 0), 0);
   return (
     <>
@@ -308,6 +320,11 @@ function VistaOggi({ ctx }) {
           <span className="pp-tessera-numero">{dati.totale}</span><span>documenti in archivio</span>
         </button>
       </div>
+      {agendaOggi && (
+        <Sezione titolo="Oggi in agenda" azione={<button className="pp-testo-link" onClick={() => vai('agenda')}>Agenda</button>}>
+          <ElencoGiorno giorno={oggiAgenda()} dati={agendaOggi} ctx={ctx} etichette={ctx.impostazioni.etichette} coloriTipi={{}} intestazione={false} />
+        </Sezione>
+      )}
       <Sezione titolo="Prossimi pagamenti" azione={<button className="pp-testo-link" onClick={() => vai('pagamenti')}>Tutti</button>}>
         {dati.prossime.length
           ? <Gruppo>{dati.prossime.slice(0, 6).map((s) => <RigaPagamento key={s.id} s={s} onApri={(x) => apri({ tipo: 'pagamento', s: x })} onPagato={pagato} />)}</Gruppo>
@@ -563,6 +580,11 @@ function PaginaDocumento({ id, ctx, chiudi }) {
           <IconaStella size={18} piena={portafoglio} /> {portafoglio ? 'Nei Personali' : 'Tieni a portata di mano'}
         </button>
       </div>
+      {doc.fascicolo !== 'clinico_pazienti' && (
+        <button className="pp-chiedi-doc" onClick={() => apri({ tipo: 'chat', documentoId: doc.id, titoloDoc: titoloDoc(doc) })}>
+          <IconaChat size={18} /> Chiedi a Poliedron su questo documento
+        </button>
+      )}
       {doc.fascicolo === 'clinico_pazienti' && <p className="pp-avviso">Documento di un paziente: archiviato senza leggerne il contenuto.</p>}
       {doc.azione_richiesta && <p className={`pp-avviso pp-avviso-${doc.urgenza || 'media'}`}><strong>Da fare:</strong> {doc.azione_descrizione || 'azione richiesta'}</p>}
       {doc.riassunto && <p className="pp-paragrafo">{doc.riassunto}</p>}
@@ -623,7 +645,12 @@ function PaginaPagamento({ s: iniziale, ctx, chiudi }) {
   const { esegui, aggiorna, mostra, apri } = ctx;
   const [s, setS] = useState(iniziale);
   const [conferma, setConferma] = useState(false);
+  const [modifica, setModifica] = useState(null);
   const scaduto = !s.completata && s.data < oggiIso();
+  const salvaModifica = () => esegui(async () => {
+    const r = await aggiornaScadenza(archivioDb, s.id, modifica);
+    setS({ ...s, ...r }); setModifica(null); aggiorna(); mostra('Pagamento aggiornato');
+  });
   const cambiaStato = (completata) => esegui(async () => {
     await segnaScadenza(archivioDb, s.id, completata);
     setS({ ...s, completata }); aggiorna(); mostra(completata ? 'Segnato come pagato' : 'Segnato da pagare');
@@ -640,7 +667,21 @@ function PaginaPagamento({ s: iniziale, ctx, chiudi }) {
         {s.completata
           ? <button className="pp-bottone pp-bottone-chiaro" onClick={() => cambiaStato(false)}>Segna da pagare</button>
           : <button className="pp-bottone pp-bottone-verde" onClick={() => cambiaStato(true)}>Segna come pagato</button>}
+        {!modifica && <button className="pp-bottone pp-bottone-chiaro" onClick={() => setModifica({ descrizione: s.descrizione, data: s.data, importo: s.importo ?? '' })}>Modifica</button>}
       </div>
+      {modifica && (
+        <div className="pp-modifica">
+          <label className="pp-campo"><span>Descrizione</span><input value={modifica.descrizione} onChange={(e) => setModifica({ ...modifica, descrizione: e.target.value })} /></label>
+          <div className="pp-due">
+            <label className="pp-campo"><span>Data</span><input type="date" value={modifica.data} onChange={(e) => setModifica({ ...modifica, data: e.target.value })} /></label>
+            <label className="pp-campo"><span>Importo (€)</span><input inputMode="decimal" value={modifica.importo} onChange={(e) => setModifica({ ...modifica, importo: e.target.value })} placeholder="nessuno" /></label>
+          </div>
+          <div className="pp-azioni">
+            <button className="pp-bottone" onClick={salvaModifica} disabled={!modifica.descrizione.trim() || !modifica.data}>Salva</button>
+            <button className="pp-bottone pp-bottone-chiaro" onClick={() => setModifica(null)}>Annulla</button>
+          </div>
+        </div>
+      )}
       <Sezione titolo="Da dove viene">
         {s.documento || s.documento_id ? (
           <Gruppo>
@@ -807,7 +848,7 @@ function ListaModificabile({ voci, onTogli, onAggiungi, segnaposto }) {
 
 function PaginaImpostazioni({ ctx, email }) {
   const { impostazioni, salvaImp, apri } = ctx;
-  const { persone, categorie, sezioni } = impostazioni;
+  const { persone, categorie, sezioni, etichette } = impostazioni;
   return (
     <>
       <Sezione titolo="Persone">
@@ -840,6 +881,26 @@ function PaginaImpostazioni({ ctx, email }) {
           <button className="pp-riga pp-riga-aggiungi" onClick={() => apri({ tipo: 'sezione', id: null })}><IconaPiu size={18} /><span>Nuova sezione</span></button>
         </Gruppo>
       </Sezione>
+      <Sezione titolo="Etichette dell'agenda">
+        <p className="pp-riga-meta pp-spiegazione">Per i tuoi eventi. Il colore compare anche nell'agenda dello studio.</p>
+        <Gruppo>
+          {etichette.map((e) => (
+            <div key={e.id} className="pp-voce">
+              <span><span className="pp-punto" style={{ '--c': e.colore }} />{e.nome}</span>
+              <span className="pp-voce-azioni">
+                <input type="color" className="pp-colore pp-colore-piccolo" value={e.colore} aria-label={`Colore di ${e.nome}`}
+                  onChange={(ev) => salvaImp({ ...impostazioni, etichette: etichette.map((x) => (x.id === e.id ? { ...x, colore: ev.target.value } : x)) })} />
+                <button className="pp-icona-bottone pp-piccolo" aria-label={`Togli ${e.nome}`} disabled={etichette.length < 2}
+                  onClick={() => salvaImp({ ...impostazioni, etichette: etichette.filter((x) => x.id !== e.id) })}><IconaChiudi size={16} /></button>
+              </span>
+            </div>
+          ))}
+          <NuovaEtichetta onAggiungi={(nome, colore) => salvaImp({ ...impostazioni, etichette: [...etichette, { id: slug(nome), nome, colore }] })} />
+        </Gruppo>
+      </Sezione>
+      <Sezione titolo="Agenda dello studio">
+        <StatoStudio />
+      </Sezione>
       <Sezione titolo="Account">
         <Gruppo>
           <div className="pp-voce"><span>{email}</span></div>
@@ -847,6 +908,34 @@ function PaginaImpostazioni({ ctx, email }) {
         </Gruppo>
       </Sezione>
     </>
+  );
+}
+
+function NuovaEtichetta({ onAggiungi }) {
+  const [nome, setNome] = useState('');
+  const [colore, setColore] = useState('#7c3aed');
+  return (
+    <form className="pp-voce pp-voce-nuova" onSubmit={(e) => { e.preventDefault(); if (nome.trim()) { onAggiungi(nome.trim(), colore); setNome(''); } }}>
+      <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nuova etichetta" />
+      <input type="color" className="pp-colore pp-colore-piccolo" value={colore} onChange={(e) => setColore(e.target.value)} aria-label="Colore" />
+      <button type="submit" className="pp-chip-azione" disabled={!nome.trim()}>Aggiungi</button>
+    </form>
+  );
+}
+
+function StatoStudio() {
+  const [sessione, setSessione] = useState(undefined);
+  useEffect(() => {
+    sessioneStudio().then(setSessione);
+    const { data } = studioDb.auth.onAuthStateChange((_e, s) => setSessione(s));
+    return () => data.subscription.unsubscribe();
+  }, []);
+  if (sessione === undefined) return null;
+  return (
+    <Gruppo>
+      <div className="pp-voce"><span>{sessione ? `Collegata come ${sessione.user?.email}` : 'Non collegata: apri Agenda per collegarla.'}</span></div>
+      {sessione && <button className="pp-riga pp-rosso" onClick={() => esciStudio()}><IconaEsci size={18} /><span>Scollega l'agenda dello studio</span></button>}
+    </Gruppo>
   );
 }
 
@@ -893,20 +982,89 @@ function PaginaSezione({ id, ctx, chiudi }) {
   );
 }
 
-const TITOLI_PAGINE = { documento: 'Documento', pagamento: 'Pagamento', pratica: 'Pratica', carica: 'Carica un documento', impostazioni: 'Impostazioni', sezione: 'Sezione' };
+const SUGGERIMENTI_CHAT = ['Quanto devo pagare questo mese?', 'Quali bollette Edison ho pagato quest\'anno?', 'Dov\'è la carta d\'identità di Giulia?', 'Che pratiche ho aperte?'];
+
+function PaginaChat({ documentoId, titoloDoc: titolo, ctx }) {
+  const { apri } = ctx;
+  const [modo, setModo] = useState('ai');
+  const [messaggi, setMessaggi] = useState([]);
+  const [testo, setTesto] = useState('');
+  const [attesa, setAttesa] = useState(false);
+  const fondo = useRef(null);
+  useEffect(() => { fondo.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, [messaggi, attesa]);
+
+  const invia = async (domanda) => {
+    const q = domanda.trim();
+    if (!q || attesa) return;
+    setTesto('');
+    const storia = messaggi.filter((m) => m.testo).map((m) => ({ ruolo: m.ruolo, testo: m.testo }));
+    setMessaggi((m) => [...m, { ruolo: 'utente', testo: q }]);
+    setAttesa(true);
+    let nuovo;
+    if (modo === 'ai') {
+      try {
+        nuovo = { ruolo: 'assistente', testo: await chiediPoliedron({ token: await tokenSessione(), domanda: q, documentoId, storia }), fonte: 'ai' };
+      } catch (e) {
+        nuovo = { ruolo: 'assistente', risposta: await rispondi(archivioDb, q).catch(() => null), fonte: 'core', nota: `${e.message} Ti rispondo con la ricerca di Poliedron.` };
+      }
+    } else {
+      nuovo = { ruolo: 'assistente', risposta: await rispondi(archivioDb, q).catch(() => null), fonte: 'core' };
+    }
+    setMessaggi((m) => [...m, nuovo]);
+    setAttesa(false);
+  };
+
+  return (
+    <div className="pp-chat">
+      <Segmenti voci={[['ai', 'Poliedron AI'], ['core', 'Solo ricerca']]} attiva={modo} onScegli={setModo} />
+      {titolo && <p className="pp-chat-contesto"><IconaFile size={14} /> Sul documento: <strong>{titolo}</strong></p>}
+      {!messaggi.length && (
+        <div className="pp-chat-vuota">
+          <p>{modo === 'ai' ? 'Chiedimi qualsiasi cosa sull\'archivio: documenti, pagamenti, pratiche, persone. Rispondo solo con quello che trovo.' : 'Ricerca senza AI: fornitori, bollette, scadenze, "quanto devo a…", pratiche.'}</p>
+          <div className="pp-suggerimenti">
+            {(titolo ? ['Riassumimi questo documento', 'Cosa devo fare?', 'Ci sono scadenze?'] : SUGGERIMENTI_CHAT).map((x) => <button key={x} className="pp-chip" onClick={() => invia(x)}>{x}</button>)}
+          </div>
+        </div>
+      )}
+      {messaggi.map((m, i) => (
+        <div key={i} className={`pp-messaggio-chat ${m.ruolo}`}>
+          {m.ruolo === 'utente' ? m.testo : (
+            <>
+              {m.nota && <p className="pp-riga-meta">{m.nota}</p>}
+              {m.testo && <div className="pp-chat-testo">{partiRisposta(m.testo).map((p, j) => (p.doc
+                ? <button key={j} className="pp-chat-link" onClick={() => apri({ tipo: 'documento', id: p.doc })}><IconaFile size={14} />{p.titolo}</button>
+                : <span key={j}>{p.testo}</span>))}</div>}
+              {m.risposta && <Risultato risposta={m.risposta} ctx={ctx} />}
+              {!m.testo && !m.risposta && <p>Nessun risultato.</p>}
+              <span className="pp-chat-fonte">{m.fonte === 'ai' ? 'Poliedron AI' : 'Poliedron · ricerca'}</span>
+            </>
+          )}
+        </div>
+      ))}
+      {attesa && <div className="pp-messaggio-chat assistente"><span className="pp-rotella" /> {modo === 'ai' ? 'Cerco nell\'archivio…' : 'Cerco…'}</div>}
+      <div ref={fondo} />
+      <form className="pp-chat-barra" onSubmit={(e) => { e.preventDefault(); invia(testo); }}>
+        <input value={testo} onChange={(e) => setTesto(e.target.value)} placeholder="Scrivi a Poliedron…" enterKeyHint="send" aria-label="Domanda a Poliedron" />
+        <button type="submit" className="pp-chat-invia" disabled={!testo.trim() || attesa} aria-label="Invia"><IconaInvia size={20} /></button>
+      </form>
+    </div>
+  );
+}
+
+const TITOLI_PAGINE = { chat: 'Poliedron', evento: 'Evento', appuntamento: 'Appuntamento', documento: 'Documento', pagamento: 'Pagamento', pratica: 'Pratica', carica: 'Carica un documento', impostazioni: 'Impostazioni', sezione: 'Sezione' };
 
 /* ---------- app ---------- */
 const VISTE = [
   ['oggi', 'Oggi', IconaOggi],
   ['documenti', 'Documenti', IconaDocumenti],
-  ['carica', 'Carica', IconaPiu],
+  ['agenda', 'Agenda', IconaCalendario],
   ['pagamenti', 'Pagamenti', IconaEuro],
   ['personali', 'Personali', IconaPortafoglio],
 ];
-const TITOLI = { documenti: 'Documenti', pagamenti: 'Pagamenti', personali: 'Personali' };
+const TITOLI = { documenti: 'Documenti', agenda: 'Agenda', pagamenti: 'Pagamenti', personali: 'Personali' };
 
 function Archivio({ email }) {
-  const [vista, setVistaStato] = useState(() => (VISTE.some(([k]) => k === leggiVista() && k !== 'carica') ? leggiVista() : 'oggi'));
+  const [vista, setVistaStato] = useState(() => (VISTE.some(([k]) => k === leggiVista()) ? leggiVista() : 'oggi'));
   const [pagine, setPagine] = useState([]);
   const [errore, setErrore] = useState(null);
   const [toast, setToast] = useState(null);
@@ -956,6 +1114,9 @@ function Archivio({ email }) {
       case 'carica': return <PaginaCarica opzioni={p.opzioni || {}} ctx={ctx} sostituisci={sostituisci} />;
       case 'impostazioni': return <PaginaImpostazioni ctx={ctx} email={email} />;
       case 'sezione': return <PaginaSezione id={p.id} ctx={ctx} chiudi={indietro} />;
+      case 'evento': return <PaginaEvento evento={p.evento} ctx={ctx} chiudi={indietro} />;
+      case 'appuntamento': return <PaginaAppuntamento a={p.a} />;
+      case 'chat': return <PaginaChat documentoId={p.documentoId} titoloDoc={p.titoloDoc} ctx={ctx} />;
       default: return null;
     }
   };
@@ -964,13 +1125,17 @@ function Archivio({ email }) {
     <div className="pp-app">
       <header className="pp-testata">
         <h1>{vista === 'oggi' ? saluto() : TITOLI[vista]}</h1>
-        <button className="pp-icona-bottone" onClick={() => apri({ tipo: 'impostazioni' })} aria-label="Impostazioni"><IconaImpostazioni size={20} /></button>
+        <span className="pp-testata-azioni">
+          <button className="pp-poliedron" onClick={() => apri({ tipo: 'chat' })} aria-label="Chiedi a Poliedron"><IconaChat size={18} /><span>Poliedron</span></button>
+          <button className="pp-icona-bottone" onClick={() => apri({ tipo: 'impostazioni' })} aria-label="Impostazioni"><IconaImpostazioni size={20} /></button>
+        </span>
       </header>
       {occupato > 0 && <div className="pp-barra-caricamento" aria-hidden="true" />}
       {errore && !pagine.length && <p className="pp-messaggio pp-messaggio-errore" role="alert">{errore}</p>}
       <main className="pp-contenuto">
         {vista === 'oggi' && <VistaOggi ctx={ctx} />}
         {vista === 'documenti' && <VistaDocumenti ctx={ctx} />}
+        {vista === 'agenda' && <VistaAgenda ctx={ctx} />}
         {vista === 'pagamenti' && <VistaPagamenti ctx={ctx} />}
         {vista === 'personali' && <VistaPersonali ctx={ctx} />}
       </main>
@@ -981,14 +1146,16 @@ function Archivio({ email }) {
         </Pagina>
       ))}
       <nav className="pp-schede" aria-label="Sezioni">
-        {VISTE.map(([k, l, Icona]) => (k === 'carica'
-          ? <button key={k} className="pp-scheda-carica" onClick={() => apri({ tipo: 'carica' })} aria-label="Carica un documento"><Icona size={26} /></button>
-          : (
-            <button key={k} className={`pp-scheda${vista === k && !pagine.length ? ' attiva' : ''}${vista === k && pagine.length ? ' sotto' : ''}`} onClick={() => vai(k)} aria-current={vista === k ? 'page' : undefined}>
-              <Icona size={22} /><span>{l}</span>
-            </button>
-          )))}
+        {VISTE.map(([k, l, Icona]) => (
+          <button key={k} className={`pp-scheda${vista === k && !pagine.length ? ' attiva' : ''}${vista === k && pagine.length ? ' sotto' : ''}`} onClick={() => vai(k)} aria-current={vista === k ? 'page' : undefined}>
+            <Icona size={22} /><span>{l}</span>
+          </button>
+        ))}
       </nav>
+      {!pagine.length && (
+        <button className="pp-fab" onClick={() => apri(vista === 'agenda' ? { tipo: 'evento' } : { tipo: 'carica' })}
+          aria-label={vista === 'agenda' ? 'Nuovo evento' : 'Carica un documento'}><IconaPiu size={26} /></button>
+      )}
       {toast && <div className="pp-toast" role="status">{toast}</div>}
     </div>
   );

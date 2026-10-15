@@ -296,3 +296,104 @@ a { color: var(--pp-blu); text-decoration: none; }
 .pp-spunta input { width: 22px; height: 22px; accent-color: var(--pp-blu); flex-shrink: 0; }
 .pp-punto { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 10px; background: var(--c); }
 @media (max-width: 360px) { .pp-due { grid-template-columns: 1fr; } .pp-riassunto { gap: 8px; } .pp-tessera-numero { font-size: 21px; } }
+
+/* ---------- POL-VITA-004: Agenda (stessi dati dell'agenda dello studio) ---------- */
+.pp-fab {
+  position: fixed; z-index: 9; right: max(16px, calc((100vw - 640px) / 2 + 16px)); bottom: calc(var(--pp-dock) + 14px + env(safe-area-inset-bottom));
+  width: 56px; height: 56px; border-radius: 18px; display: grid; place-items: center; color: #fff; background: var(--pp-blu);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--pp-blu) 40%, transparent);
+}
+@media (prefers-color-scheme: dark) { .pp-fab { color: #0b0f17; } }
+.pp-schede { grid-template-columns: repeat(5, 1fr); }
+
+.pp-agenda-testa { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; margin: 2px 0 10px; }
+.pp-agenda-titolo { display: flex; flex-direction: column; align-items: center; font-weight: 700; font-size: 17px; text-transform: capitalize; color: var(--pp-inchiostro); min-height: 44px; justify-content: center; }
+.pp-agenda-titolo small { font-size: 12px; font-weight: 600; color: var(--pp-blu); text-transform: none; }
+
+.pp-agenda-striscia { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.pp-agenda-pillola { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 10px; border-radius: 8px; font-size: 13px; font-weight: 650; text-align: left; }
+.pp-agenda-pillola.pp-evento { color: var(--c); background: var(--pp-superficie); border: 1.5px solid var(--c); }
+.pp-agenda-scadenza { color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); border: 1px dashed color-mix(in srgb, var(--c) 60%, transparent); }
+.pp-agenda-scadenza.fatta { opacity: .55; text-decoration: line-through; }
+
+.pp-agenda-griglia { height: calc(100dvh - 300px - env(safe-area-inset-bottom)); min-height: 320px; overflow-y: auto; -webkit-overflow-scrolling: touch; border-radius: var(--pp-raggio); background: var(--pp-superficie); box-shadow: var(--pp-ombra); }
+.pp-agenda-ore { position: relative; }
+.pp-agenda-ora { position: absolute; left: 0; right: 0; display: block; text-align: left; border-top: 1px solid var(--pp-linea); }
+.pp-agenda-ora span { display: inline-block; width: 48px; padding: 2px 0 0 8px; font-size: 11px; color: var(--pp-grigio); font-variant-numeric: tabular-nums; }
+.pp-agenda-ora:active { background: var(--pp-blu-chiaro); }
+.pp-agenda-adesso { position: absolute; left: 48px; right: 0; height: 2px; background: #e63946; z-index: 3; pointer-events: none; }
+.pp-agenda-adesso::before { content: ''; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: #e63946; }
+.pp-agenda-blocco {
+  position: absolute; z-index: 2; display: flex; flex-direction: column; gap: 1px; padding: 3px 6px; border-radius: 7px; overflow: hidden; text-align: left;
+  font-size: 12px; line-height: 1.25;
+}
+.pp-agenda-blocco strong { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-agenda-blocco span { font-size: 11px; opacity: .85; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* studio: blocco pieno; tuoi eventi: bianco con contorno del colore dell'etichetta */
+.pp-agenda-blocco.pp-appuntamento { color: #fff; background: var(--c); }
+.pp-agenda-blocco.pp-evento { color: var(--c); background: var(--pp-superficie); border: 2px solid var(--c); box-shadow: 0 1px 3px rgba(16, 24, 40, .12); }
+.pp-agenda-blocco.pp-evento strong { color: var(--pp-inchiostro); }
+
+.pp-agenda-elenco h3 { margin: 18px 4px 8px; font-size: 15px; text-transform: capitalize; color: var(--pp-grigio); }
+.pp-agenda-elenco h3.oggi { color: var(--pp-blu); }
+.pp-agenda-segno { width: 12px; height: 34px; flex-shrink: 0; border-radius: 4px; display: grid; place-items: center; font-size: 11px; font-weight: 800; }
+.pp-agenda-segno.pp-appuntamento { background: var(--c); }
+.pp-agenda-segno.pp-evento { background: var(--pp-superficie); border: 2px solid var(--c); }
+.pp-agenda-segno.pp-agenda-scadenza { width: 22px; height: 22px; border-radius: 6px; }
+
+.pp-mese { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; padding: 8px; border-radius: var(--pp-raggio); background: var(--pp-superficie); box-shadow: var(--pp-ombra); }
+.pp-mese-intestazione { text-align: center; font-size: 12px; font-weight: 700; color: var(--pp-grigio); padding: 4px 0; }
+.pp-mese-giorno { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 46px; padding: 6px 0 4px; border-radius: 10px; font-weight: 600; color: var(--pp-inchiostro); }
+.pp-mese-giorno.fuori { color: var(--pp-grigio); opacity: .5; }
+.pp-mese-giorno.oggi > span:first-child { color: var(--pp-blu); font-weight: 800; }
+.pp-mese-giorno.scelto { background: var(--pp-blu); color: #fff; }
+.pp-mese-giorno.scelto > span:first-child { color: #fff; }
+.pp-mese-punti { display: flex; gap: 3px; min-height: 6px; }
+.pp-mese-punti i, .pp-legenda i { display: inline-block; width: 6px; height: 6px; border-radius: 50%; }
+.pp-mese-punti i.app, .pp-legenda i.app { background: #0c447c; }
+.pp-mese-punti i.ev, .pp-legenda i.ev { background: var(--pp-superficie); border: 1.5px solid #7c3aed; width: 4px; height: 4px; }
+.pp-mese-punti i.sc, .pp-legenda i.sc { background: #b45309; border-radius: 1px; }
+.pp-mese-giorno.scelto .pp-mese-punti i.app { background: #fff; }
+.pp-legenda { display: flex; align-items: center; gap: 6px; margin: 8px 4px 0; }
+.pp-legenda i { margin-left: 6px; }
+
+.pp-studio-accesso { padding: 8px 4px; }
+.pp-studio-accesso h2 { margin: 8px 0 6px; font-size: 22px; }
+.pp-evento-anteprima { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; margin: 4px 0 6px; border-radius: 12px; border: 2px solid var(--c); background: var(--pp-superficie); }
+.pp-evento-anteprima span { color: var(--c); font-size: 13px; font-weight: 650; }
+.pp-etichette { display: flex; flex-wrap: wrap; gap: 8px; }
+.pp-etichetta-scelta { padding: 7px 12px; border-radius: 999px; border: 1.5px solid var(--c); color: var(--c); background: var(--pp-superficie); font-weight: 650; font-size: 14px; }
+.pp-etichetta-scelta.attiva { background: var(--c); color: #fff; }
+.pp-colore { width: 100%; height: 44px; padding: 2px; border: 1px solid var(--pp-linea); border-radius: 12px; background: var(--pp-superficie); }
+.pp-colore-piccolo { width: 40px; height: 34px; flex-shrink: 0; }
+.pp-voce-azioni { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.pp-modifica { margin: 6px 0 4px; padding: 4px 12px 12px; border-radius: var(--pp-raggio); background: var(--pp-superficie); box-shadow: var(--pp-ombra); }
+.pp-due > * { min-width: 0; }
+.pp-campo input { min-width: 0; max-width: 100%; }
+.pp-campo input[type="date"], .pp-campo input[type="time"] { -webkit-appearance: none; appearance: none; min-height: 48px; }
+
+/* ---------- POL-VITA-005: chat Poliedron ---------- */
+.pp-testata-azioni { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.pp-poliedron { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 14px; border-radius: 999px; font-weight: 700; font-size: 14px; color: #fff; background: linear-gradient(135deg, #2f6fb0, var(--pp-blu)); box-shadow: 0 4px 12px rgba(12, 68, 124, .3); }
+@media (max-width: 360px) { .pp-poliedron span { display: none; } .pp-poliedron { width: 40px; padding: 0; justify-content: center; } }
+.pp-chiedi-doc { display: flex; align-items: center; gap: 8px; width: 100%; margin: 4px 0 8px; padding: 12px 14px; border-radius: 12px; font-weight: 650; color: var(--pp-blu); background: var(--pp-blu-chiaro); }
+.pp-chat { display: flex; flex-direction: column; gap: 10px; min-height: 100%; padding-bottom: 72px; }
+.pp-chat-contesto { display: flex; align-items: center; gap: 6px; margin: 0 2px; font-size: 13px; color: var(--pp-grigio); }
+.pp-chat-vuota p { color: var(--pp-grigio); margin: 4px 2px 0; }
+.pp-chat-vuota .pp-suggerimenti { flex-wrap: wrap; }
+.pp-messaggio-chat { max-width: 88%; padding: 10px 14px; border-radius: 18px; line-height: 1.45; overflow-wrap: anywhere; }
+.pp-messaggio-chat.utente { align-self: flex-end; color: #fff; background: var(--pp-blu); border-bottom-right-radius: 6px; }
+@media (prefers-color-scheme: dark) { .pp-messaggio-chat.utente { color: #0b0f17; } }
+.pp-messaggio-chat.assistente { align-self: flex-start; background: var(--pp-superficie); box-shadow: var(--pp-ombra); border-bottom-left-radius: 6px; display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.pp-messaggio-chat.assistente:has(.pp-rotella) { flex-direction: row; align-items: center; width: auto; color: var(--pp-grigio); }
+.pp-chat-testo { white-space: pre-wrap; }
+.pp-chat-link { display: inline-flex; align-items: center; gap: 4px; margin: 1px 2px; padding: 2px 8px; border-radius: 8px; font-weight: 650; font-size: 14px; color: var(--pp-blu); background: var(--pp-blu-chiaro); white-space: normal; text-align: left; }
+.pp-chat-fonte { align-self: flex-end; font-size: 11px; color: var(--pp-grigio); }
+.pp-messaggio-chat .pp-gruppo { box-shadow: none; border: 1px solid var(--pp-linea); }
+.pp-chat-barra {
+  position: fixed; z-index: 9; left: 0; right: 0; bottom: calc(var(--pp-dock) + env(safe-area-inset-bottom)); max-width: 640px; margin: 0 auto;
+  display: flex; gap: 8px; padding: 8px 12px; background: color-mix(in srgb, var(--pp-sfondo) 92%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--pp-linea);
+}
+.pp-chat-barra input { flex: 1; min-width: 0; padding: 12px 16px; font-size: 16px; border-radius: 999px; border: 1px solid var(--pp-linea); background: var(--pp-superficie); color: var(--pp-inchiostro); }
+.pp-chat-invia { width: 46px; height: 46px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--pp-blu); }
+.pp-chat-invia:disabled { opacity: .4; }

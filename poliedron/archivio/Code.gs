@@ -701,6 +701,7 @@ function doPost(e) {
       return rispostaJson_({ ok: false, errore: 'Accesso non autorizzato' });
     }
     if (req.azione === 'file') return rispostaJson_(fileDelDocumento_(req.drive_file_id));
+    if (req.azione === 'chiedi') return rispostaJson_(chiediPoliedron_(req));
     if (!req.dati || !req.nome) return rispostaJson_({ ok: false, errore: 'File mancante' });
 
     const nome = pulisciNome_(String(req.nome)) || 'documento';
@@ -778,6 +779,121 @@ function fileDelDocumento_(driveFileId) {
   const bytes = blob.getBytes();
   if (bytes.length > ANTEPRIMA_MAX_BYTE) return { ok: false, errore: 'File troppo grande per l\'anteprima' };
   return { ok: true, nome: blob.getName(), mime: blob.getContentType(), dati: Utilities.base64Encode(bytes) };
+}
+
+/* =====================================================================
+ * CHAT POLIEDRON (dall'app Personal)
+ * Claude risponde sull'archivio usando strumenti di sola lettura. I documenti clinici dei
+ * pazienti non vengono mai passati al modello: sono esclusi da ogni risultato (si dice solo
+ * quanti sono). L'agenda dello studio non passa di qui.
+ * ===================================================================*/
+const CHAT_MAX_GIRI = 5;
+const CAMPI_CHAT = 'id,titolo,fascicolo,tipo_documento,data_documento,email_data,email_mittente,importo,riassunto,azione_richiesta,azione_descrizione,persona,categoria,pratica_id';
+const senzaClinici_ = (docs) => docs.filter(function (d) { return d.fascicolo !== 'clinico_pazienti'; });
+const breve_ = (d) => ({
+  id: d.id, titolo: d.titolo, fascicolo: d.fascicolo, tipo: d.tipo_documento, data: d.data_documento || String(d.email_data || '').slice(0, 10),
+  da: d.email_mittente, importo: d.importo, riassunto: d.riassunto, da_fare: d.azione_richiesta ? (d.azione_descrizione || true) : undefined,
+  persona: d.persona || undefined, categoria: d.categoria || undefined,
+});
+const enc_ = encodeURIComponent;
+
+const STRUMENTI_CHAT = [
+  { name: 'cerca_documenti', description: 'Cerca documenti nell\'archivio per parole (nome di un ente, fornitore, tipo di documento, numero) e/o per fascicolo. Restituisce titolo, data, importo e riassunto.',
+    input_schema: { type: 'object', properties: { testo: { type: 'string' }, fascicolo: { type: 'string', description: 'codice del fascicolo, facoltativo' }, limite: { type: 'integer' } } } },
+  { name: 'documento', description: 'Dettaglio di un documento per id: dati estratti, scadenze, pratica.',
+    input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
+  { name: 'scadenze', description: 'Pagamenti e scadenze. Filtri facoltativi: da/a (YYYY-MM-DD), solo_aperte (default true), testo nella descrizione.',
+    input_schema: { type: 'object', properties: { da: { type: 'string' }, a: { type: 'string' }, solo_aperte: { type: 'boolean' }, testo: { type: 'string' } } } },
+  { name: 'pratiche', description: 'Pratiche (vicende che raggruppano documenti), con numero di documenti e prossima scadenza. Filtro facoltativo sul titolo.',
+    input_schema: { type: 'object', properties: { testo: { type: 'string' }, solo_aperte: { type: 'boolean' } } } },
+  { name: 'riepilogo_archivio', description: 'Quanti documenti per fascicolo e quanti da gestire.', input_schema: { type: 'object', properties: {} } },
+];
+
+function strumentoChat_(nome, input) {
+  input = input || {};
+  if (nome === 'cerca_documenti') {
+    const lim = Math.min(Math.max(Number(input.limite) || 15, 1), 30);
+    const docs = sb_('rpc/cerca_documenti', { method: 'post', body: { q: String(input.testo || ''), fasc: input.fascicolo || null, lim: lim + 10 } });
+    const visibili = senzaClinici_(docs || []);
+    return { documenti: visibili.slice(0, lim).map(breve_), esclusi_clinici: (docs || []).length - visibili.length };
+  }
+  if (nome === 'documento') {
+    const d = sb_('documenti?select=' + CAMPI_CHAT + ',dati_estratti,scadenze(id,data,descrizione,importo,completata),pratica:pratiche(id,titolo,stato)&id=eq.' + enc_(String(input.id || '')))[0];
+    if (!d) return { errore: 'Documento non trovato' };
+    if (d.fascicolo === 'clinico_pazienti') return { errore: 'Documento clinico di un paziente: il contenuto non è consultabile dall\'assistente.' };
+    return Object.assign(breve_(d), { dati: d.dati_estratti, scadenze: d.scadenze, pratica: d.pratica });
+  }
+  if (nome === 'scadenze') {
+    let q = 'scadenze?select=id,data,descrizione,importo,completata,documento:documenti(id,titolo,fascicolo)&order=data.asc&limit=80';
+    if (input.solo_aperte !== false) q += '&completata=eq.false';
+    if (input.da) q += '&data=gte.' + enc_(input.da);
+    if (input.a) q += '&data=lte.' + enc_(input.a);
+    if (input.testo) q += '&descrizione=ilike.' + enc_('*' + String(input.testo).replace(/[*,()]/g, ' ') + '*');
+    return { scadenze: (sb_(q) || []).filter(function (s) { return !s.documento || s.documento.fascicolo !== 'clinico_pazienti'; }) };
+  }
+  if (nome === 'pratiche') {
+    let q = 'v_pratiche?select=id,titolo,fascicolo,stato,urgenza,n_documenti,prossima_scadenza,ultima_attivita&order=ultima_attivita.desc.nullslast&limit=60&fascicolo=neq.clinico_pazienti';
+    if (input.solo_aperte !== false) q += '&stato=in.(aperta,in_corso)';
+    if (input.testo) q += '&titolo=ilike.' + enc_('*' + String(input.testo).replace(/[*,()]/g, ' ') + '*');
+    return { pratiche: sb_(q) || [] };
+  }
+  if (nome === 'riepilogo_archivio') {
+    return { fascicoli: (sb_('v_conteggi_fascicoli?select=codice,nome,n,n_azioni&order=ordine') || []).filter(function (f) { return f.n > 0; }) };
+  }
+  return { errore: 'Strumento sconosciuto' };
+}
+
+function chiediPoliedron_(req) {
+  const domanda = String(req.domanda || '').slice(0, 2000).trim();
+  if (!domanda) return { ok: false, errore: 'Domanda vuota' };
+  const oggi = Utilities.formatDate(new Date(), CONFIG.FUSO, 'yyyy-MM-dd');
+  const system = [
+    'Sei Poliedron, l\'assistente dell\'archivio personale di Luca Simondi (odontoiatra, studi a Cuneo e Neive; famiglia: Martina e Giulia Simondi). Oggi è ' + oggi + '.',
+    'Rispondi in italiano, breve e concreto, usando SOLO i dati che ottieni con gli strumenti: se un dato non c\'è, dillo. Non inventare importi, date o nomi.',
+    'Quando citi un documento scrivi [[doc:ID|titolo breve]] con l\'id esatto, così Luca può aprirlo. Per i pagamenti indica data e importo.',
+    'Fascicoli: ' + Object.keys(FASCICOLI).join(', ') + '. I documenti clinici dei pazienti non sono consultabili: se servono, rimanda all\'app dello studio.',
+    'Non mandi email né messaggi: se Luca chiede di scrivere a qualcuno, prepara solo il testo come bozza.',
+  ].join('\n');
+  const messaggi = [];
+  (Array.isArray(req.storia) ? req.storia.slice(-6) : []).forEach(function (m) {
+    if (m && m.testo) messaggi.push({ role: m.ruolo === 'assistente' ? 'assistant' : 'user', content: String(m.testo).slice(0, 2000) });
+  });
+  let contesto = '';
+  if (req.documento_id) {
+    const d = strumentoChat_('documento', { id: req.documento_id });
+    contesto = d.errore ? '' : '\n\n[Documento aperto nell\'app]\n' + JSON.stringify(d).slice(0, 6000);
+  }
+  messaggi.push({ role: 'user', content: domanda + contesto });
+
+  for (let giro = 0; giro < CHAT_MAX_GIRI; giro++) {
+    const r = claudeMessaggi_({ model: CONFIG.MODELLO, max_tokens: 1500, system: system, tools: STRUMENTI_CHAT, messages: messaggi });
+    if (r.stop_reason !== 'tool_use') {
+      const testo = (r.content || []).filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('').trim();
+      return { ok: true, risposta: testo || 'Non ho trovato una risposta.' };
+    }
+    messaggi.push({ role: 'assistant', content: r.content });
+    messaggi.push({ role: 'user', content: r.content.filter(function (b) { return b.type === 'tool_use'; }).map(function (b) {
+      let out;
+      try { out = strumentoChat_(b.name, b.input); } catch (e) { out = { errore: String(e && e.message || e).slice(0, 200) }; }
+      return { type: 'tool_result', tool_use_id: b.id, content: JSON.stringify(out).slice(0, 20000) };
+    }) });
+  }
+  return { ok: true, risposta: 'Domanda troppo ampia: prova a restringerla (un fornitore, un periodo, un tipo di documento).' };
+}
+
+function claudeMessaggi_(body) {
+  const p = props_();
+  for (let tentativo = 1; tentativo <= 3; tentativo++) {
+    const res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
+      method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+      headers: { 'x-api-key': p.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' }, payload: JSON.stringify(body),
+    });
+    const code = res.getResponseCode();
+    if (code === 200) return JSON.parse(res.getContentText());
+    if (code === 429 || code >= 500) { Utilities.sleep(tentativo * 2000); continue; }
+    throw new Error('API Claude ' + code + ': ' + res.getContentText().slice(0, 300));
+  }
+  throw new Error('Assistente occupato, riprova tra poco.');
 }
 
 function utenteSupabase_(token) {

@@ -200,3 +200,41 @@ export async function documentiPersonali(db) {
     .or(`categoria.not.is.null,persona.not.is.null,fascicolo.eq.identita,tag.cs.{${TAG_PORTAFOGLIO}}`)
     .order('creato_il', { ascending: false }).limit(300));
 }
+
+export async function aggiornaScadenza(db, id, campi) {
+  const riga = {};
+  if ('descrizione' in campi) riga.descrizione = String(campi.descrizione || '').trim() || 'Scadenza';
+  if ('data' in campi && /^\d{4}-\d{2}-\d{2}$/.test(campi.data)) riga.data = campi.data;
+  if ('importo' in campi) riga.importo = campi.importo === '' || campi.importo == null ? null : Number(String(campi.importo).replace(',', '.'));
+  return esito(await db.from('scadenze').update(riga).eq('id', id).select('id, data, descrizione, importo, completata').single());
+}
+
+// POL-VITA-005 — chat Poliedron: l'AI (Claude, nello script) risponde usando strumenti di sola
+// lettura sull'archivio; i documenti clinici dei pazienti non le vengono mai passati.
+export async function chiediPoliedron({ token, domanda, documentoId, storia }, fetchImpl = fetch) {
+  if (!token) throw new Error('Sessione scaduta: esci e rientra.');
+  const res = await fetchImpl(URL_CARICAMENTO, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ token, azione: 'chiedi', domanda, documento_id: documentoId || null, storia: (storia || []).slice(-6) }),
+  });
+  let r;
+  try { r = await res.json(); } catch { throw new Error('Assistente non raggiungibile.'); }
+  if (!r.ok) throw new Error(r.errore || 'Assistente non disponibile.');
+  return r.risposta;
+}
+
+// Testo della risposta → parti: testo semplice e link ai documenti [[doc:ID|titolo]].
+export function partiRisposta(testo) {
+  const parti = [];
+  const re = /\[\[doc:([0-9a-f-]{36})(?:\|([^\]]*))?\]\]/gi;
+  let ultimo = 0;
+  let m;
+  while ((m = re.exec(testo))) {
+    if (m.index > ultimo) parti.push({ testo: testo.slice(ultimo, m.index) });
+    parti.push({ doc: m[1], titolo: (m[2] || 'documento').trim() });
+    ultimo = re.lastIndex;
+  }
+  if (ultimo < testo.length) parti.push({ testo: testo.slice(ultimo) });
+  return parti;
+}

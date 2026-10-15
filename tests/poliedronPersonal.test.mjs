@@ -143,7 +143,9 @@ const fileDi = (dir) => readdirSync(dir).flatMap((f) => (statSync(join(dir, f)).
 test('Poliedron Personal è isolata dall\'app dello studio', () => {
   for (const file of fileDi('personal/src')) {
     const src = readFileSync(file, 'utf8');
-    assert.doesNotMatch(src, /idklxdqebfceplrualgh/, `${file}: progetto dello studio`);
+    // POL-VITA-004 (decisione PO 2026-10-15): l'agenda è quella dello studio. Il progetto dello
+    // studio compare solo in lib/studio.js, che tocca solo le tabelle dell'agenda (test dedicato).
+    if (!file.replaceAll('\\', '/').endsWith('lib/studio.js')) assert.doesNotMatch(src, /idklxdqebfceplrualgh/, `${file}: progetto dello studio`);
     assert.doesNotMatch(src, /from ['"](?:\.\.\/)+src\/(?:lib|components)\//, `${file}: importa codice dello studio`);
     assert.doesNotMatch(src, /service_role|sb_secret_/, `${file}: chiave segreta`);
   }
@@ -163,4 +165,21 @@ test('Poliedron Personal è isolata dall\'app dello studio', () => {
     assert.equal(vercel.rewrites[indice(src)].destination, '/personal/index.html');
   }
   assert.equal(manifest.name, 'Poliedron Personal');
+});
+
+test('POL-VITA-004: l\'agenda di Personal tocca solo le tabelle dell\'agenda dello studio', () => {
+  const studio = readFileSync('personal/src/lib/studio.js', 'utf8');
+  const tabelle = [...studio.matchAll(/\.from\('([a-z_]+)'\)/g)].map((m) => m[1]);
+  assert.deepEqual([...new Set(tabelle)].sort(), ['app_types', 'appointments', 'impegni_personali', 'patients']);
+  // Pazienti: solo nome e cognome; appuntamenti e tipi solo in lettura; si scrive solo sugli eventi personali.
+  assert.match(studio, /from\('patients'\)\.select\('id, nome, cognome'\)/);
+  for (const t of ['appointments', 'patients', 'app_types']) {
+    assert.doesNotMatch(studio, new RegExp(`from\\('${t}'\\)[^;]*\\.(insert|update|delete|upsert)\\(`), `${t} in sola lettura`);
+  }
+  assert.match(studio, /storageKey: 'poliedron-personal-studio-auth'/);
+  assert.match(studio, /if \(!id\) throw new Error\('Account dello studio senza studio associato\.'\)/, 'fail closed senza studio_id');
+  assert.match(studio, /studio_id: studioDellaSessione\(sessione\), user_id: sessione\.user\.id/);
+  assert.doesNotMatch(studio, /service_role|sb_secret_/);
+  const chiaveStudio = readFileSync('src/lib/supabase.js', 'utf8').match(/SUPABASE_KEY = '([^']+)'/)[1];
+  assert.ok(chiaveStudio.startsWith('sb_publishable_') && studio.includes(chiaveStudio), 'solo la chiave pubblicabile dello studio');
 });
