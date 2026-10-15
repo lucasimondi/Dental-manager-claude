@@ -1,12 +1,12 @@
 {
   "name": "Poliedron Personal",
   "short_name": "Personal",
-  "description": "Archivio personale: documenti, pratiche e scadenze",
+  "description": "Archivio personale: documenti, portafoglio, scadenze e pratiche",
   "start_url": "/personal/",
   "scope": "/personal/",
   "display": "standalone",
-  "background_color": "#eef3f9",
-  "theme_color": "#0c447c",
+  "background_color": "#f2f4f7",
+  "theme_color": "#f2f4f7",
   "icons": [
     {
       "src": "/poliedron-v2-192.png",

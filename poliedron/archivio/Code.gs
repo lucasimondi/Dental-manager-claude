@@ -679,6 +679,95 @@ function sha256_(bytes) {
 function dataValida_(s) { return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null; }
 function pulisciNome_(s) { return String(s).replace(/[\\\/:*?"<>|\r\n]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 120); }
 
+/* =====================================================================
+ * CARICAMENTO DALL'APP (Poliedron Personal)
+ * Web app: esegui come proprietario, accesso "Chiunque". L'identità non viene dal
+ * link ma dal token di sessione Supabase dell'app, verificato a ogni richiesta:
+ * passa solo il proprietario dell'archivio con email confermata.
+ * Il file va su Drive in "Archivio personale/Caricati" e viene catalogato come gli
+ * allegati Gmail; i documenti clinici non vengono mai inviati all'analisi.
+ * ===================================================================*/
+const CARTELLA_CARICATI = 'Caricati';
+const PROPRIETARIO = 'luca.simondi@gmail.com';
+
+function doPost(e) {
+  let file = null;
+  try {
+    const req = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    const utente = utenteSupabase_(req.token);
+    if (!utente || String(utente.email).toLowerCase() !== PROPRIETARIO || !utente.email_confirmed_at) {
+      return rispostaJson_({ ok: false, errore: 'Accesso non autorizzato' });
+    }
+    if (!req.dati || !req.nome) return rispostaJson_({ ok: false, errore: 'File mancante' });
+
+    const nome = pulisciNome_(String(req.nome)) || 'documento';
+    const mime = String(req.mime || 'application/octet-stream').toLowerCase();
+    const bytes = Utilities.base64Decode(req.dati);
+    const hash = sha256_(bytes);
+    const esistente = sb_('documenti?select=id,titolo&hash_sha256=eq.' + hash);
+    if (esistente.length) return rispostaJson_({ ok: true, duplicato: true, id: esistente[0].id, titolo: esistente[0].titolo });
+
+    const ora = new Date();
+    const cartella = sottocartella_(sottocartella_(cartellaRadice_(), CARTELLA_CARICATI),
+      Utilities.formatDate(ora, CONFIG.FUSO, 'yyyy'));
+    file = cartella.createFile(Utilities.newBlob(bytes, mime, nome));
+
+    const meta = { oggetto: String(req.descrizione || ''), mittente: PROPRIETARIO, destinatari: '', data: ora,
+      corpo: 'Documento caricato da Luca dall\'app.' + (req.descrizione ? ' Descrizione: ' + req.descrizione : '') };
+    let analisi, analisiContenuto = true;
+    const clinico = req.fascicolo === 'clinico_pazienti' || eClinico_(meta, nome);
+    if (req.nonAnalizzare || clinico) {
+      analisiContenuto = false;
+      analisi = { fascicolo: clinico ? 'clinico_pazienti' : (req.fascicolo || 'altro'),
+        titolo: req.descrizione || nome.replace(/\.[^.]+$/, ''), tag: [] };
+    } else {
+      const contenuto = contenutoPerAnalisi_(bytes, mime, nome, file);
+      if (!contenuto) analisiContenuto = false;
+      analisi = analizza_(meta, nome, contenuto, praticheAperte_());
+    }
+    // La scelta di Luca nell'app vale più della classificazione automatica (mai per i clinici)
+    if (req.fascicolo && FASCICOLI[req.fascicolo] && analisi.fascicolo !== 'clinico_pazienti') analisi.fascicolo = req.fascicolo;
+    const fasc = FASCICOLI[analisi.fascicolo] ? analisi.fascicolo : 'altro';
+    const tag = (Array.isArray(analisi.tag) ? analisi.tag.slice(0, 7) : []).concat(req.portafoglio ? ['portafoglio'] : []);
+    const estensione = (nome.match(/\.[a-z0-9]+$/i) || [''])[0].toLowerCase();
+    file.setName((dataValida_(analisi.data_documento) || Utilities.formatDate(ora, CONFIG.FUSO, 'yyyy-MM-dd')) + '_' +
+      pulisciNome_(analisi.titolo || nome.replace(/\.[^.]+$/, '')) + estensione);
+
+    const esito = sb_('rpc/registra_documento', { method: 'post', body: { p: {
+      hash_sha256: hash, gmail_message_id: 'caricato:' + Utilities.getUuid(), gmail_thread_id: null,
+      email_oggetto: req.descrizione || null, email_mittente: 'Caricato dall\'app', email_data: ora.toISOString(),
+      nome_file_originale: nome, mime_type: mime, dimensione_byte: bytes.length,
+      drive_file_id: file.getId(), drive_url: file.getUrl(), fascicolo: fasc,
+      tipo_documento: analisi.tipo_documento || null, titolo: analisi.titolo || nome,
+      riassunto: analisi.riassunto || null, data_documento: dataValida_(analisi.data_documento),
+      importo: typeof analisi.importo === 'number' ? analisi.importo : null, tag: tag,
+      azione_richiesta: analisi.azione_richiesta === true, azione_descrizione: analisi.azione_descrizione || null,
+      urgenza: analisi.urgenza || null, analisi_contenuto: analisiContenuto,
+      dati_estratti: analisi.dati && typeof analisi.dati === 'object' ? analisi.dati : {},
+      soggetti: Array.isArray(analisi.soggetti) ? analisi.soggetti : [],
+      scadenze: Array.isArray(analisi.scadenze) ? analisi.scadenze : [], pratica: analisi.pratica || {},
+    } } });
+    return rispostaJson_({ ok: true, id: esito && esito.id, titolo: analisi.titolo || nome, fascicolo: fasc });
+  } catch (err) {
+    if (file) { try { file.setTrashed(true); } catch (x) {} } // niente file orfani se la registrazione fallisce
+    logErrore_('caricamento app', err);
+    return rispostaJson_({ ok: false, errore: String(err && err.message || err).slice(0, 300) });
+  }
+}
+
+function utenteSupabase_(token) {
+  if (!token) return null;
+  const p = props_();
+  const res = UrlFetchApp.fetch(p.SUPABASE_URL + '/auth/v1/user', {
+    headers: { apikey: p.SUPABASE_KEY, Authorization: 'Bearer ' + token }, muteHttpExceptions: true,
+  });
+  return res.getResponseCode() === 200 ? JSON.parse(res.getContentText()) : null;
+}
+
+function rispostaJson_(o) {
+  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
+}
+
 /* Rimette in coda i thread finiti in errore (togli l'etichetta Archivio/Errore) */
 function riprovaErrori() {
   const errore = etichetta_(CONFIG.ETICHETTA_ERRORE);

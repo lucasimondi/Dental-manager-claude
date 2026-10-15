@@ -2,7 +2,7 @@
 // Ogni funzione riceve il client: la RLS del progetto lascia leggere e scrivere solo il PO.
 import { capisciRichiesta, riepilogoDebito } from './coreArchivio.js';
 
-const CAMPI_DOC = 'id, titolo, riassunto, fascicolo, tipo_documento, data_documento, email_data, email_oggetto, email_mittente, importo, azione_richiesta, azione_descrizione, urgenza, drive_url, drive_file_id, nome_file_originale, pratica_id';
+const CAMPI_DOC = 'id, titolo, riassunto, fascicolo, tipo_documento, data_documento, email_data, email_oggetto, email_mittente, importo, azione_richiesta, azione_descrizione, urgenza, drive_url, drive_file_id, nome_file_originale, mime_type, pratica_id, tag, gmail_message_id, creato_il';
 const CAMPI_SCADENZA = `id, data, descrizione, importo, completata, documento_id, pratica_id,
   documento:documenti(id, titolo, drive_url, fascicolo), pratica:pratiche(id, titolo)`;
 
@@ -106,4 +106,54 @@ export async function rispondi(db, testo) {
     default:
       return { richiesta, tipo: 'documenti', titolo: null, documenti: await cercaDocumenti(db, richiesta.testo) };
   }
+}
+
+// POL-VITA-003 — documenti caricati dall'app e Portafoglio.
+// Web app Apps Script del PO (indirizzo pubblico: l'accesso è verificato dal token di sessione).
+export const URL_CARICAMENTO = 'https://script.google.com/macros/s/AKfycbzQf7Hb8R4zBC8xAa3N-BH6GnScWO__a_kQgZ6uMHhFGLr4rsVYupyLBfpxJHlmIwSUDw/exec';
+export const TAG_PORTAFOGLIO = 'portafoglio';
+
+export const eCaricato = (doc) => String(doc?.gmail_message_id || '').startsWith('caricato:');
+export const nelPortafoglio = (doc) => (doc?.tag || []).includes(TAG_PORTAFOGLIO);
+
+export async function documentiRecenti(db, limite = 10) {
+  return esito(await db.from('documenti').select(CAMPI_DOC).order('creato_il', { ascending: false }).limit(limite));
+}
+
+// Portafoglio: i documenti che Luca ha messo a portata di mano, più tutti quelli d'identità.
+export async function portafoglio(db) {
+  return esito(await db.from('documenti').select(CAMPI_DOC)
+    .or(`tag.cs.{${TAG_PORTAFOGLIO}},fascicolo.eq.identita`)
+    .order('creato_il', { ascending: false }).limit(200));
+}
+
+export async function documentoCompleto(db, id) {
+  return esito(await db.from('documenti')
+    .select(`${CAMPI_DOC}, dati_estratti, analisi_contenuto, scadenze(id, data, descrizione, importo, completata), pratica:pratiche(id, titolo, stato)`)
+    .eq('id', id).single());
+}
+
+export async function impostaPortafoglio(db, doc, dentro) {
+  const altri = (doc.tag || []).filter((t) => t !== TAG_PORTAFOGLIO);
+  const tag = dentro ? [...altri, TAG_PORTAFOGLIO] : altri;
+  return esito(await db.from('documenti').update({ tag }).eq('id', doc.id).select('id, tag').single());
+}
+
+export async function spostaFascicolo(db, id, fascicolo) {
+  return esito(await db.from('documenti').update({ fascicolo }).eq('id', id).select('id, fascicolo').single());
+}
+
+// Invia il file allo script, che lo salva su Drive e lo cataloga. Content-Type text/plain:
+// richiesta "semplice", senza preflight CORS (Apps Script non risponde alle OPTIONS).
+export async function caricaDocumento({ token, dati, nome, mime, descrizione, fascicolo, portafoglio: tieni, nonAnalizzare }, fetchImpl = fetch) {
+  if (!token) throw new Error('Sessione scaduta: esci e rientra.');
+  const res = await fetchImpl(URL_CARICAMENTO, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ token, dati, nome, mime, descrizione: descrizione || '', fascicolo: fascicolo || null, portafoglio: !!tieni, nonAnalizzare: !!nonAnalizzare }),
+  });
+  let r;
+  try { r = await res.json(); } catch { throw new Error('Risposta non valida dallo script di archiviazione.'); }
+  if (!r.ok) throw new Error(r.errore || 'Caricamento non riuscito');
+  return r;
 }
