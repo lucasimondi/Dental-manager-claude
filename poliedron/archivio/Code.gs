@@ -425,7 +425,7 @@ function analizza_(meta, nome, contenuto, pratiche) {
     '  "urgenza": "bassa | media | alta",',
     '  "pratica": {"id_esistente": "uuid dall\'elenco oppure null", "nuova_titolo": "titolo oppure null"},',
     '  "tag": ["max 6 parole chiave minuscole"],',
-    '  "dati": { campi utili estratti: numero documento, codice cliente, POD/PDR, IBAN del beneficiario, foglio/particella catastale, numero e scadenza del documento d\'identità, partita IVA, protocollo, ecc. }',
+    '  "dati": [{"campo": "nome del campo", "valore": "valore"}] con i campi utili estratti: numero documento, codice cliente, POD/PDR, IBAN del beneficiario, foglio/particella catastale, numero e scadenza del documento d\'identità, partita IVA, protocollo, ecc.',
     '}',
     '',
     'Regole:',
@@ -457,12 +457,49 @@ function analizza_(meta, nome, contenuto, pratiche) {
   ].join('\n');
 
   const blocchi = contenuto ? [contenuto, { type: 'text', text: intestazione }] : [{ type: 'text', text: intestazione }];
-  return parseJson_(claude_(system, blocchi));
+  const analisi = parseJson_(claude_(system, blocchi, SCHEMA_ANALISI));
+  // "dati" arriva come elenco campo/valore (lo schema vincolato non ammette chiavi libere)
+  if (Array.isArray(analisi.dati)) {
+    const dati = {};
+    analisi.dati.forEach(function (d) { if (d && d.campo) dati[String(d.campo)] = d.valore; });
+    analisi.dati = dati;
+  }
+  return analisi;
 }
 
-function claude_(system, content) {
+// Schema vincolato della risposta: Claude non può restituire JSON malformato.
+const NULLABILE_ = function (tipo) { return { type: [tipo, 'null'] }; };
+const SCHEMA_ANALISI = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['fascicolo', 'tipo_documento', 'titolo', 'riassunto', 'data_documento', 'importo', 'soggetti',
+    'scadenze', 'azione_richiesta', 'azione_descrizione', 'urgenza', 'pratica', 'tag', 'dati'],
+  properties: {
+    fascicolo: { type: 'string' },
+    tipo_documento: { type: 'string' },
+    titolo: { type: 'string' },
+    riassunto: { type: 'string' },
+    data_documento: NULLABILE_('string'),
+    importo: NULLABILE_('number'),
+    soggetti: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['nome', 'tipo', 'ruolo'],
+      properties: { nome: { type: 'string' }, tipo: { type: 'string' }, ruolo: NULLABILE_('string') } } },
+    scadenze: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['data', 'descrizione', 'importo'],
+      properties: { data: { type: 'string' }, descrizione: { type: 'string' }, importo: NULLABILE_('number') } } },
+    azione_richiesta: { type: 'boolean' },
+    azione_descrizione: NULLABILE_('string'),
+    urgenza: { type: 'string', enum: ['bassa', 'media', 'alta'] },
+    pratica: { type: 'object', additionalProperties: false, required: ['id_esistente', 'nuova_titolo'],
+      properties: { id_esistente: NULLABILE_('string'), nuova_titolo: NULLABILE_('string') } },
+    tag: { type: 'array', items: { type: 'string' } },
+    dati: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['campo', 'valore'],
+      properties: { campo: { type: 'string' }, valore: { type: 'string' } } } },
+  },
+};
+
+function claude_(system, content, schema) {
   const p = props_();
-  const body = { model: CONFIG.MODELLO, max_tokens: 2000, system: system, messages: [{ role: 'user', content: content }] };
+  const body = { model: CONFIG.MODELLO, max_tokens: 4000, system: system, messages: [{ role: 'user', content: content }] };
+  if (schema) body.output_config = { format: { type: 'json_schema', schema: schema } };
   for (let tentativo = 1; tentativo <= 4; tentativo++) {
     const res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
       method: 'post',
@@ -473,9 +510,17 @@ function claude_(system, content) {
     });
     const code = res.getResponseCode();
     if (code === 200) {
-      return JSON.parse(res.getContentText()).content
+      const risposta = JSON.parse(res.getContentText());
+      if (risposta.stop_reason === 'max_tokens') throw new Error('Risposta di Claude troncata (max_tokens)');
+      return risposta.content
         .filter(function (b) { return b.type === 'text'; })
         .map(function (b) { return b.text; }).join('');
+    }
+    // Se il modello non accetta lo schema vincolato, si riprova senza (vale il parsing tollerante)
+    if (code === 400 && body.output_config && /output_config|json_schema|schema/i.test(res.getContentText())) {
+      console.warn('Schema non accettato, riprovo senza: ' + res.getContentText().slice(0, 300));
+      delete body.output_config;
+      continue;
     }
     if (code === 429 || code >= 500) { Utilities.sleep(tentativo * 8000); continue; }
     throw new Error('API Claude ' + code + ': ' + res.getContentText().slice(0, 500));
