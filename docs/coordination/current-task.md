@@ -1,3 +1,13 @@
+# Current task — Poliedron crea piani di cura e preventivi dal Core (2026-10-15)
+- OWNER: CLAUDE, branch `claude/poliedron-agenda-actions-kz6mmk`, da `master@1712aa8`. PO verbatim: "Ora volgio che facci i piani di cura ed i preventivi".
+- PRIMA: piani/preventivi solo tramite modello AI (`piani.js`, strumento `crea_piano_cura`); nell'app "crea/fai un piano…" apriva il modulo "Nuovo piano".
+- COSA: nuovo `poliedron-piani.js` (Core, senza modello): "Preventivo per Mario Rossi: igiene, otturazione semplice 36 e 37, devitalizzazione molare 46" → voci con denti (FDI), quantità ("2 impianti"), prezzi dal listino dello studio (`pricelist` filtrato per studio; doppioni uniti; "igiene/pulizia" → Ablazione tartaro) o detti nella frase ("sbiancamento 300 euro"). Prestazione non nel listino, più voci possibili o stesso nome con prezzi diversi → domanda, niente scritto. Scrittura con `preparePiani`/`executePiani` esistenti: stessa validazione, RLS, registro attività; autonomia "medio" o piano con lo stesso titolo → conferma firmata. App (`poliedraCore.js`): un comando con le prestazioni va a Poliedron; senza prestazioni resta il modulo "Nuovo piano".
+- VALIDATION: nuovo `tests/poliedronPiani.test.mjs` (8 test, handler reale; controprova: senza il parser falliscono 4 test handler); `npm test` 1186/1186; `npm run build` OK. Riconoscimento provato sui nomi del listino reale (lettura sola dei nomi/prezzi, nessun dato paziente).
+- RILASCIO: tocca `supabase/functions/agente-assistente/**` → al merge il workflow pubblica la funzione; Vercel l'app.
+- EXACT NEXT ACTION: "Mergia".
+
+---
+
 # Current task — POL-VITA-002 Installazione archivio documenti personali (Fase 1) (2026-10-13)
 - OWNER: CLAUDE (Claude Code), su istruzione diretta del PO ("Nuovo task: installazione dell'archivio documenti personali").
 - BRANCH: `claude/catalogazione-facile-latjs9` (AGENTS.md: mai lavorare su master), da `master@2aa08aa5`.

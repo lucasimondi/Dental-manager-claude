@@ -5,6 +5,7 @@
    state, easy to unit test without mounting any component. */
 
 import { classifyIntent, INTENT, extractAmount } from './intentEngine.js';
+import { parsePlanCreate } from '../../../supabase/functions/agente-assistente/poliedron-piani.js';
 import { federatedSearch, suggestedIdle } from './searchEngine.js';
 import { runModelTask, MODEL_TASK_TYPE } from './modelGateway.js';
 import { isSaveToRecordRequest, saveTargetCandidates } from './attachmentToPatient.js';
@@ -223,7 +224,11 @@ export async function processQuery({
   // summary (server-side, always). Otherwise the "Registra incasso" form opens.
   const agentPaymentRequest = agentCanWrite(context) && !/\?\s*$/.test(q)
     && Boolean(parseRegisterPaymentRequest(q) || PAID_RE.test(q));
-  if (agentPaymentRequest && allowModel) {
+  // Preventivo/piano with its treatments in the sentence ("Preventivo per Mario
+  // Rossi: igiene, otturazione 36"): Poliedron creates it server-side with the
+  // listino prices. Without treatments the "Nuovo piano" form still opens.
+  const agentPlanRequest = agentCanWrite(context) && Boolean(parsePlanCreate(q));
+  if ((agentPaymentRequest || agentPlanRequest) && allowModel) {
     const result = await runModelTask({ taskType: MODEL_TASK_TYPE.ASK, input: q, history: conversationHistory, context, supabaseClient });
     return { intent: 'AGENT', answer: result.text, modelError: result.error,
       modelConfirmation: result.raw?.needsConfirmation || null, dataChanged: result.raw?.changed || null, dataRecords: result.raw?.records || null,

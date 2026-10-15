@@ -1,5 +1,9 @@
 # Handoffs
 
+## 2026-10-15 — CLAUDE — Piani di cura e preventivi dal Core
+- "Preventivo per <paziente>: <prestazioni con denti/prezzi>" crea il piano con i prezzi del listino, senza modello; dubbi → domanda.
+- NEXT: merge su "Mergia", verifica deploy funzione.
+
 ## 2026-10-15 — CLAUDE — Prenotazione senza verbo
 - "Appuntamento <nome> <giorno> ore <hh:mm>" ora fissa l'appuntamento (Core, senza modello); nome con parola in più → suggerimento, nessuna scrittura.
 - NEXT: merge su "Mergia" e verifica del deploy di `agente-assistente`.

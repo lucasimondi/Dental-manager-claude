@@ -1408,7 +1408,7 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
       // Core-first owns only requests it can completely and safely resolve.
       // Incomplete/unsupported/compound commands stay on the mature LLM tool path.
       const agendaVerbs = lastUserText.match(/\b(?:sposta|anticipa|posticipa|rimanda|cancella|elimina|annulla|togli|rimuovi|disdici|fissa|prenota|metti|crea|inserisci|aggiungi)\w*/gi) || [];
-      const looksCompound = agendaVerbs.length > 1 || (/\b(?:e|poi|inoltre)\b/i.test(lastUserText) && /\b(?:nota|richiam|appuntament|pazient|promemoria)\w*/i.test(lastUserText));
+      const looksCompound = parsed.intent === 'PLAN_CREATE' ? agendaVerbs.length > 1 : agendaVerbs.length > 1 || (/\b(?:e|poi|inoltre)\b/i.test(lastUserText) && /\b(?:nota|richiam|appuntament|pazient|promemoria)\w*/i.test(lastUserText));
       const coreOwnsRequest = parsed.intent !== 'UNKNOWN' && plan.steps?.length > 0 && !looksCompound;
       const gate = coreOwnsRequest ? confidenceDecision(parsed, plan) : { decision: 'ESCALATE' };
       const decision = gate.decision === 'EXECUTE' ? { action: 'EXECUTE_READ' } : gate.decision === 'PREPARE_CONFIRM' ? { action: 'PREPARE_WRITE_CONFIRMATION' } : gate.decision === 'CLARIFY' ? { action: 'CLARIFY', missing: gate.missing } : { action: 'ESCALATE_LLM' };
