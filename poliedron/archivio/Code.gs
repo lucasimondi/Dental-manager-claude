@@ -102,6 +102,28 @@ function elabora() {
     const pratiche = praticheAperte_();
     const meseOggi = Utilities.formatDate(new Date(), CONFIG.FUSO, 'yyyy-MM');
 
+    // Recupero: thread di mesi già superati dal cursore e rimessi in coda con riprovaErrori
+    const cursore = sp.getProperty('LOTTO_MESE');
+    if (cursore) {
+      const prima = Math.floor(new Date(+cursore.slice(0, 4), +cursore.slice(5, 7) - 1, 1).getTime() / 1000);
+      const recupero = GmailApp.search(CONFIG.QUERY_BASE + ' before:' + prima +
+        ' -label:' + etichettaQuery_(CONFIG.ETICHETTA_FATTO) +
+        ' -label:' + etichettaQuery_(CONFIG.ETICHETTA_ERRORE), 0, 20).reverse();
+      for (let i = 0; i < recupero.length; i++) {
+        const t = recupero[i];
+        if (Date.now() - inizio > CONFIG.TEMPO_MAX_MS) return;
+        try {
+          elaboraThread_(t, pratiche, inizio, null);
+          t.addLabel(fatto);
+        } catch (e) {
+          if (e.message === 'TEMPO' || e.message === 'RIPROVA') return;
+          console.error('Thread ' + t.getId() + ': ' + (e.stack || e));
+          t.addLabel(errore);
+          logErrore_('thread ' + t.getId() + ' — ' + t.getFirstMessageSubject(), e);
+        }
+      }
+    }
+
     while (Date.now() - inizio < CONFIG.TEMPO_MAX_MS) {
       const mese = sp.getProperty('LOTTO_MESE') || CONFIG.INIZIO_STORICO;
       const a = +mese.slice(0, 4), m = +mese.slice(5, 7);
