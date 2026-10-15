@@ -142,3 +142,44 @@ test('only the own studio listino is read', async () => {
   assert.equal(planInsert().length, 0);
   assert.match(out.text, /non è nel listino/);
 });
+
+// PO 2026-10-15: "Fammi anche avere possibilità di scrivere: otturazione 80 euro,
+// capsula 350 euro, paziente Vaioli e lui mi dà il pdf da mandare".
+import { documentRequestFromModel } from '../src/lib/poliedron/poliedraCore.js';
+import { buildPreventivoPdf, totaliPreventivo } from '../src/lib/documenti/preventivoPdf.js';
+import { readFileSync } from 'node:fs';
+const source = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
+
+test('PO case: "otturazione 80 euro, capsula 350 euro, paziente Vaioli" creates the plan and returns its preventivo', async () => {
+  database.patients.push({ id: 2, nome: 'Luca', cognome: 'Vaioli', studio_id: 's1' });
+  const out = await ask('otturazione 80 euro , capsula 350 euro , paziente Vaioli');
+  assert.equal(calls.length, 0, 'no model call');
+  assert.deepEqual(planInsert()[0].row.voci.map((v) => [v.prestazione, v.prezzo]), [['Otturazione composita', 80], ['Capsula', 350]], 'the listino name when unique, the price said');
+  assert.equal(out.documento.tipo, 'preventivo');
+  assert.equal(out.documento.paziente_id, 2);
+  const req = documentRequestFromModel({ raw: out });
+  assert.equal(req.type, 'preventivo');
+  assert.equal(req.patientId, 2);
+  assert.equal(totaliPreventivo(req.piano).tot, 430);
+  const pdf = buildPreventivoPdf({ pl: req.piano, paz: { nome: 'Luca', cognome: 'Vaioli' }, si: { nome: 'Studio test' } });
+  assert.equal(pdf.filename, 'Luca Vaioli.pdf');
+  const bytes = Buffer.from(pdf.dataUrl.split(',')[1], 'base64').toString('latin1');
+  for (const t of ['PREVENTIVO', 'Luca Vaioli', 'Otturazione composita', 'Capsula', '430.00']) assert.ok(bytes.includes(t), t);
+});
+
+test('patient-last phrasing: prices required without the word "preventivo", never payments or notes', () => {
+  const who = (t) => parsePlanCreate(t)?.entities.patient_query ?? null;
+  assert.equal(who('Otturazione 80 euro, capsula 350 euro, paziente Vaioli'), 'Vaioli');
+  assert.equal(who('paziente Vaioli: otturazione 80 euro, capsula 350 euro'), 'Vaioli');
+  assert.equal(who('preventivo: otturazione semplice 36, capsula zirconio 46 per Mario Rossi'), 'Mario Rossi');
+  for (const t of ['otturazione, capsula, paziente Vaioli', 'registra un pagamento di 80 € per paziente Rossi', 'acconto 80 euro paziente Rossi', 'aggiungi una nota per paziente Rossi', 'Crea un piano di cura per Mario Rossi']) assert.equal(parsePlanCreate(t), null, t);
+});
+
+test('app wiring: the PDF in chat uses the same drawing as the Piani module; confirmations also prepare it', () => {
+  assert.match(source('src/components/PdfView.jsx'), /const doc = disegnaPreventivo\(\{ pl, paz, si \}\);/);
+  const poliedron = source('src/components/poliedron/Poliedron.jsx');
+  assert.match(poliedron, /buildPreventivoPdf\(\{ pl: documentRequest\.piano, paz: patient, si: studioInfo \}\)/);
+  assert.match(poliedron, /if \(!cancelled && !response\.error\) prepareDocumentInChat\(documentRequestFromModel\(response\)\);/);
+  assert.match(poliedron, /if \(prepared\.kind === 'preventivo'\) return null;/, 'the plan is the record: no second archive copy');
+  assert.match(source('src/components/poliedron/PoliedronPreparedDocument.jsx'), /Preventivo' : 'Ricetta medica'/);
+});

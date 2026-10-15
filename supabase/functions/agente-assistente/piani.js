@@ -136,5 +136,8 @@ export async function executePiani(client,proposal){
     : client.from('plans').update(proposal.name==='imposta_stato_piano'?{stato:dati.stato}:{voci:dati.voci}).eq('studio_id',proposal.studioId).eq('id',dati.piano_id);
   const {data,error}=await query.select().single();
   if(error||!data) throw new Error(error?.message||'errore sconosciuto.');
-  return {text:`Fatto. ${proposal.piani.done}`,changed:['plans'],recordId:data.id,records:{plans:[data]}};
+  const out={text:`Fatto. ${proposal.piani.done}`,changed:['plans'],recordId:data.id,records:{plans:[data]}};
+  // A new plan comes back with its preventivo: the app turns it into the PDF to send.
+  if(proposal.name==='crea_piano_cura') out.documento={tipo:'preventivo',paziente_id:data.paziente_id,piano:{id:data.id,titolo:data.titolo,data:data.data,voci:data.voci,sconto:data.sconto,sconto_tipo:data.sconto_tipo}};
+  return out;
 }

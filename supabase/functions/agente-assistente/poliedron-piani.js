@@ -39,10 +39,34 @@ export function parseVoce(raw = '') {
 export function parsePlanCreate(text = '') {
   const t = clean(text);
   if (/\?\s*$/.test(t)) return null;
-  const m = t.match(new RegExp(`^(?:(?:fai|fammi|crea|creami|prepara|preparami|nuovo|nuova|scrivi|inserisci)\\s+)?(?:(?:un|una|il|lo)\\s+)?(?:nuovo\\s+)?(preventivo|piano(?:\\s+di\\s+(?:cura|trattamento))?(?!\\s+di\\s+(?:cura|trattamento)))\\s+(?:per|a|al|alla|di|del|della)\\s+(?:(?:il|la)\\s+)?(?:paziente\\s+)?(${NAME})\\s*(?::|,|–|-|\\bcon\\b|\\bper\\b)\\s*(.+)$`, 'i'));
-  if (!m) return null;
-  const [, kind, patient, rest] = m;
-  // Items: commas, "e", "+", "più". A piece made only of teeth ("36 e 37") belongs to the previous item.
+  return parsePlanWithPatientFirst(t) || parsePlanWithPatientLast(t);
+}
+
+const KEYWORD = '(?:preventivo|piano(?:\\s+di\\s+(?:cura|trattamento))?(?!\\s+di\\s+(?:cura|trattamento)))';
+// Without the word "preventivo" only a list where every item has its price counts,
+// and never a sentence about payments, notes, recalls or the agenda.
+const NOT_A_PLAN = /\b(?:pag\w*|incass\w*|accont\w*|bonific\w*|version\w*|saldat\w*|not[ae]|ricord\w*|richiam\w*|appuntament\w*|fissa|sposta|cancella|registra|deve|devono)\b/i;
+
+/**
+ * "Otturazione 80 euro, capsula 350 euro, paziente Vaioli" (PO 2026-10-15),
+ * "preventivo: otturazione 36, capsula 46 per Mario Rossi", "paziente Vaioli:
+ * otturazione 80 euro, capsula 350 euro".
+ */
+function parsePlanWithPatientLast(t) {
+  let keyword = false, items, patient;
+  let m = t.match(new RegExp(`^(?:(?:fai|fammi|crea|creami|prepara|preparami|nuovo|nuova)\\s+)?(?:(?:un|una|il|lo)\\s+)?${KEYWORD}\\s*:?\\s+(.+?)[,;]?\\s+(?:per\\s+(?:(?:il|la)\\s+)?paziente|paziente|per)\\s+(${NAME})$`, 'i'));
+  if (m) { keyword = true; [, items, patient] = m; }
+  else if ((m = t.match(new RegExp(`^(.+?)[,;]?\\s+(?:per\\s+(?:(?:il|la)\\s+)?paziente|paziente)\\s+(${NAME})$`, 'i')))) [, items, patient] = m;
+  else if ((m = t.match(new RegExp(`^paziente\\s+(${NAME})\\s*[:,]\\s*(.+)$`, 'i')))) [, patient, items] = m;
+  else return null;
+  if (!keyword && NOT_A_PLAN.test(t)) return null;
+  const voci = splitVoci(items);
+  if (!voci || (!keyword && voci.some((v) => v.prezzo == null))) return null;
+  return { intent: 'PLAN_CREATE', confidence: .94, entities: { patient_query: clean(patient), tipo: 'preventivo', voci }, missing: [] };
+}
+
+/** Items: commas, "e", "+", "più". A piece made only of teeth ("36 e 37") belongs to the previous item. */
+function splitVoci(rest) {
   const pieces = rest.split(/\s*(?:,|;|\+|\bpiù\b|\be\b)\s*/i).map(clean).filter(Boolean);
   const voci = [];
   for (const piece of pieces) {
@@ -54,7 +78,15 @@ export function parsePlanCreate(text = '') {
     if (!v) return null;
     voci.push(v);
   }
-  if (!voci.length || voci.length > 30) return null;
+  return voci.length && voci.length <= 30 ? voci : null;
+}
+
+function parsePlanWithPatientFirst(t) {
+  const m = t.match(new RegExp(`^(?:(?:fai|fammi|crea|creami|prepara|preparami|nuovo|nuova|scrivi|inserisci)\\s+)?(?:(?:un|una|il|lo)\\s+)?(?:nuovo\\s+)?(preventivo|piano(?:\\s+di\\s+(?:cura|trattamento))?(?!\\s+di\\s+(?:cura|trattamento)))\\s+(?:per|a|al|alla|di|del|della)\\s+(?:(?:il|la)\\s+)?(?:paziente\\s+)?(${NAME})\\s*(?::|,|–|-|\\bcon\\b|\\bper\\b)\\s*(.+)$`, 'i'));
+  if (!m) return null;
+  const [, kind, patient, rest] = m;
+  const voci = splitVoci(rest);
+  if (!voci) return null;
   return { intent: 'PLAN_CREATE', confidence: .94, entities: { patient_query: clean(patient), tipo: /^preventivo$/i.test(kind) ? 'preventivo' : 'piano', voci }, missing: [] };
 }
 
