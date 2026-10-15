@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/poliedron/archivio",
+      "destination": "/archivio/index.html"
+    },
+    {
+      "source": "/poliedron/archivio/",
+      "destination": "/archivio/index.html"
+    },
+    {
       "source": "/archivio",
       "destination": "/archivio/index.html"
     },

@@ -30,3 +30,11 @@ test('lo script Apps Script carica solo Code.gs e appsscript.json', () => {
   assert.match(clasp.scriptId, /^[\w-]{20,}$/);
   assert.equal(Object.keys(clasp).some((k) => /token|secret|key/i.test(k)), false);
 });
+
+test('/poliedron/archivio/ apre la dashboard anche con un service worker dello studio non aggiornato', () => {
+  const i = (src) => vercel.rewrites.findIndex((r) => r.source === src);
+  for (const src of ['/poliedron/archivio', '/poliedron/archivio/']) {
+    assert.ok(i(src) >= 0 && i(src) < i('/poliedron/') && i(src) < i('/(.*)'), src);
+    assert.equal(vercel.rewrites[i(src)].destination, '/archivio/index.html');
+  }
+});
