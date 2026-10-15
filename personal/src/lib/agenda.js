@@ -90,3 +90,19 @@ export function conteggi(giorni, dati) {
     return [g, { appuntamenti: e.aOrario.filter((x) => x.tipo === 'appuntamento').length, eventi: e.aOrario.filter((x) => x.tipo === 'evento').length + e.tuttoIlGiorno.length, scadenze: e.scadenze.length }];
   }));
 }
+
+// Evento (impegno personale, senza paziente): stessa forma che usa l'agenda dello studio.
+export function rigaImpegno(evento) {
+  const tuttoIlGiorno = !!evento.tutto_il_giorno;
+  return {
+    titolo: String(evento.titolo || '').trim() || 'Evento',
+    tipo: evento.tipo || 'personale',
+    colore: evento.colore || null,
+    data_inizio: evento.data_inizio,
+    data_fine: evento.data_fine && evento.data_fine >= evento.data_inizio ? evento.data_fine : evento.data_inizio,
+    tutto_il_giorno: tuttoIlGiorno,
+    ora_inizio: tuttoIlGiorno ? null : evento.ora_inizio,
+    ora_fine: tuttoIlGiorno ? null : evento.ora_fine,
+    note: evento.note || null,
+  };
+}

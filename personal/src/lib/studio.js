@@ -6,6 +6,9 @@
 // impegni_personali (lettura e scrittura: gli eventi senza paziente). La RLS dello studio
 // (studio_id del token) limita ogni lettura e scrittura allo studio dell'utente.
 import { createClient } from '@supabase/supabase-js';
+import { rigaImpegno } from './agenda.js';
+
+export { rigaImpegno };
 
 const STUDIO_URL = 'https://idklxdqebfceplrualgh.supabase.co';
 const STUDIO_KEY = 'sb_publishable_7M4i2tZLVEcGrglOmPdgZA_T7flmU4T';
@@ -59,22 +62,6 @@ const CAMPI_IMPEGNO = 'id, titolo, tipo, colore, data_inizio, data_fine, tutto_i
 export async function impegniTra(da, a) {
   return esito(await studioDb.from('impegni_personali').select(CAMPI_IMPEGNO)
     .lte('data_inizio', a).gte('data_fine', da).order('data_inizio'));
-}
-
-// Evento (impegno personale, senza paziente): stessa forma che usa l'agenda dello studio.
-export function rigaImpegno(evento) {
-  const tuttoIlGiorno = !!evento.tutto_il_giorno;
-  return {
-    titolo: String(evento.titolo || '').trim() || 'Evento',
-    tipo: evento.tipo || 'personale',
-    colore: evento.colore || null,
-    data_inizio: evento.data_inizio,
-    data_fine: evento.data_fine && evento.data_fine >= evento.data_inizio ? evento.data_fine : evento.data_inizio,
-    tutto_il_giorno: tuttoIlGiorno,
-    ora_inizio: tuttoIlGiorno ? null : evento.ora_inizio,
-    ora_fine: tuttoIlGiorno ? null : evento.ora_fine,
-    note: evento.note || null,
-  };
 }
 
 export async function salvaImpegno(evento) {

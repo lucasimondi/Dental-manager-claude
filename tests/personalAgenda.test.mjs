@@ -1,8 +1,8 @@
 // POL-VITA-004 — calcoli dell'agenda di Personal.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { elementiDelGiorno, colonne, grigliaMese, giorniSettimana, piuGiorni, coloreEvento, ETICHETTE_PREDEFINITE } from '../personal/src/lib/agenda.js';
-import { rigaImpegno } from '../personal/src/lib/studio.js';
+// rigaImpegno è in agenda.js: studio.js crea il client Supabase all'import (Node 20 in CI non ha WebSocket).
+import { elementiDelGiorno, colonne, grigliaMese, giorniSettimana, piuGiorni, coloreEvento, ETICHETTE_PREDEFINITE, rigaImpegno } from '../personal/src/lib/agenda.js';
 import { normalizza } from '../personal/src/lib/impostazioni.js';
 
 test('giorno: appuntamenti ed eventi a orario, eventi di tutto il giorno e scadenze separati', () => {
