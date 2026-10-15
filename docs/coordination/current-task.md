@@ -1,3 +1,13 @@
+# Current task — POL-VITA-003 (seguito) Poliedron Personal: impaginazione iPhone, Pagamenti, sezioni, anteprima, Personali, impostazioni (2026-10-15)
+- OWNER: CLAUDE. BRANCH: `claude/catalogazione-facile-latjs9` da `master@acdd858` (PR #180–#186 mergiate). Indirizzo dell'app: https://personal.poliedrasoft.it (dominio aggiunto al progetto Vercel, CNAME del PO su IONOS).
+- RICHIESTA PO (verbatim, sintesi): impaginazione corretta su iPhone; ogni pratica o dettaglio con tasto per chiudere e tornare dov'eri con il dock visibile; tasti cliccabili; Pagamenti cliccabile con elenco, cancellare, segnare pagato, vedere il documento di origine; aree Bollette e Riscaldamento (pellet, legna…); anteprima dei documenti; sezioni Tutti, Carta d'identità, Codice fiscale per Luca, Martina e Giulia Simondi, persone aggiungibili; setup per creare altre sezioni.
+- FATTO: migrazione additiva `20261015200000_pol_vita_003_personal.sql` applicata (fascicolo `riscaldamento`, `documenti.persona` e `documenti.categoria`, tabella `impostazioni_app` con RLS proprietario). `Code.gs`: fascicolo Riscaldamento con regola di classificazione; anteprima `azione: 'file'` solo per file registrati; persona e categoria al caricamento; corretto l'id restituito (`documento_id`). Deployment web app aggiornato (stesso URL, @2). App riscritta: pagine con Indietro e dock visibile, Pagamenti, sezioni configurabili, Personali per persona e tipo, Impostazioni, anteprima immagini e PDF (pdf.js).
+- VALIDATION: `npm test` 1193/1193; build OK; Chromium a 375×667, 390×844 e 430×932 con dati finti: nessun overflow orizzontale, nessun errore in console, Indietro chiude sempre e riporta alla sezione.
+- PROSSIME RICHIESTE PO (non ancora iniziate, servono decisioni): chat Poliedron sull'archivio; Agenda personale sincronizzata con l'agenda dello studio.
+- STATO: in revisione (PR).
+
+---
+
 # Current task — POL-VITA-003 Poliedron Personal: app per telefono dell'archivio + documenti caricati dal PO (2026-10-15)
 - OWNER: CLAUDE (Claude Code), su richiesta diretta del PO: "quando installo su home continua a chiedermi link di accesso, inoltre dobbiamo cambiare layout completamente … deve essere webapp per telefono, fatta bene anche graficamente, inoltre voglio poter caricare io dei documenti, ad esempio carte identità ecc, e averle sempre a portata di mano".
 - BRANCH: `claude/catalogazione-facile-latjs9`, ripartito da `master@8c62ef3b` (PR #180 e #182 mergiate).

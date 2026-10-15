@@ -1,8 +1,9 @@
 // POL-VITA-001 — accesso ai dati dell'archivio personale (progetto Supabase separato).
 // Ogni funzione riceve il client: la RLS del progetto lascia leggere e scrivere solo il PO.
 import { capisciRichiesta, riepilogoDebito } from './coreArchivio.js';
+import { filtroSezione } from './impostazioni.js';
 
-const CAMPI_DOC = 'id, titolo, riassunto, fascicolo, tipo_documento, data_documento, email_data, email_oggetto, email_mittente, importo, azione_richiesta, azione_descrizione, urgenza, drive_url, drive_file_id, nome_file_originale, mime_type, pratica_id, tag, gmail_message_id, creato_il';
+const CAMPI_DOC = 'id, titolo, riassunto, fascicolo, tipo_documento, data_documento, email_data, email_oggetto, email_mittente, importo, azione_richiesta, azione_descrizione, urgenza, drive_url, drive_file_id, nome_file_originale, mime_type, pratica_id, tag, gmail_message_id, creato_il, persona, categoria';
 const CAMPI_SCADENZA = `id, data, descrizione, importo, completata, documento_id, pratica_id,
   documento:documenti(id, titolo, drive_url, fascicolo), pratica:pratiche(id, titolo)`;
 
@@ -145,15 +146,57 @@ export async function spostaFascicolo(db, id, fascicolo) {
 
 // Invia il file allo script, che lo salva su Drive e lo cataloga. Content-Type text/plain:
 // richiesta "semplice", senza preflight CORS (Apps Script non risponde alle OPTIONS).
-export async function caricaDocumento({ token, dati, nome, mime, descrizione, fascicolo, portafoglio: tieni, nonAnalizzare }, fetchImpl = fetch) {
+export async function caricaDocumento({ token, dati, nome, mime, descrizione, fascicolo, portafoglio: tieni, nonAnalizzare, persona, categoria }, fetchImpl = fetch) {
   if (!token) throw new Error('Sessione scaduta: esci e rientra.');
   const res = await fetchImpl(URL_CARICAMENTO, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ token, dati, nome, mime, descrizione: descrizione || '', fascicolo: fascicolo || null, portafoglio: !!tieni, nonAnalizzare: !!nonAnalizzare }),
+    body: JSON.stringify({ token, dati, nome, mime, descrizione: descrizione || '', fascicolo: fascicolo || null, portafoglio: !!tieni, nonAnalizzare: !!nonAnalizzare, persona: persona || null, categoria: categoria || null }),
   });
   let r;
   try { r = await res.json(); } catch { throw new Error('Risposta non valida dallo script di archiviazione.'); }
   if (!r.ok) throw new Error(r.errore || 'Caricamento non riuscito');
   return r;
+}
+
+// Anteprima: lo script restituisce il file solo se appartiene a un documento dell'archivio.
+export async function anteprimaFile({ token, driveFileId }, fetchImpl = fetch) {
+  if (!token) throw new Error('Sessione scaduta: esci e rientra.');
+  const res = await fetchImpl(URL_CARICAMENTO, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ token, azione: 'file', drive_file_id: driveFileId }),
+  });
+  let r;
+  try { r = await res.json(); } catch { throw new Error('Anteprima non disponibile.'); }
+  if (!r.ok) throw new Error(r.errore || 'Anteprima non disponibile.');
+  return r;
+}
+
+// Pagamenti: tutte le scadenze, con il documento e la pratica da cui derivano.
+export async function pagamenti(db) {
+  return esito(await db.from('scadenze').select(CAMPI_SCADENZA).order('data', { ascending: true }).limit(1000));
+}
+
+export async function eliminaScadenza(db, id) {
+  return esito(await db.from('scadenze').delete().eq('id', id).select('id'));
+}
+
+export async function aggiornaDocumento(db, id, campi) {
+  const consentiti = {};
+  for (const k of ['persona', 'categoria', 'fascicolo']) if (k in campi) consentiti[k] = campi[k] || (k === 'fascicolo' ? 'altro' : null);
+  return esito(await db.from('documenti').update(consentiti).eq('id', id).select('id, persona, categoria, fascicolo').single());
+}
+
+export async function documentiSezione(db, sezione) {
+  const filtro = filtroSezione(sezione);
+  if (!filtro) return [];
+  return esito(await db.from('documenti').select(CAMPI_DOC).or(filtro).order('email_data', { ascending: false }).limit(300));
+}
+
+// Documenti personali: con categoria o persona, d'identità, o tenuti a portata di mano.
+export async function documentiPersonali(db) {
+  return esito(await db.from('documenti').select(CAMPI_DOC)
+    .or(`categoria.not.is.null,persona.not.is.null,fascicolo.eq.identita,tag.cs.{${TAG_PORTAFOGLIO}}`)
+    .order('creato_il', { ascending: false }).limit(300));
 }

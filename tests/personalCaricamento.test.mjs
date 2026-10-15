@@ -32,7 +32,7 @@ test('caricamento: invia file e scelte allo script con il token di sessione, sen
   assert.match(URL_CARICAMENTO, /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/);
   assert.equal(richiesta.method, 'POST');
   assert.match(richiesta.headers['Content-Type'], /^text\/plain/);
-  assert.deepEqual(JSON.parse(richiesta.body), { token: 'jwt', dati: 'QUJD', nome: 'ci.jpg', mime: 'image/jpeg', descrizione: 'CI', fascicolo: 'identita', portafoglio: true, nonAnalizzare: false });
+  assert.deepEqual(JSON.parse(richiesta.body), { token: 'jwt', dati: 'QUJD', nome: 'ci.jpg', mime: 'image/jpeg', descrizione: 'CI', fascicolo: 'identita', portafoglio: true, nonAnalizzare: false, persona: null, categoria: null });
 });
 
 test('caricamento: errori chiari, mai un successo finto', async () => {
@@ -104,4 +104,24 @@ test('dominio proprio: personal.poliedrasoft.it porta a Poliedron Personal con i
   assert.equal(m.scope, '/personal/');
   assert.equal(m.name, 'Poliedron Personal');
   assert.match(readFileSync('personal/index.html', 'utf8'), /location\.hostname === 'personal\.poliedrasoft\.it'[\s\S]*\/personal-dominio\.webmanifest/);
+});
+
+test('POL-VITA-003: migrazione solo additiva, impostazioni protette, riscaldamento anche nello script', () => {
+  const sql = readFileSync('supabase/archivio/migrations/20261015200000_pol_vita_003_personal.sql', 'utf8');
+  assert.doesNotMatch(sql.replace(/^--.*$/gm, ''), /\b(drop|delete\s+from|truncate\s+table)\b/i);
+  assert.match(sql, /add column if not exists persona text/);
+  assert.match(sql, /add column if not exists categoria text/);
+  assert.match(sql, /create table if not exists impostazioni_app/);
+  assert.match(sql, /enable row level security/);
+  assert.match(sql, /using \(\(select e_proprietario\(\)\)\) with check \(\(select e_proprietario\(\)\)\)/);
+  assert.match(sql, /revoke all on impostazioni_app from anon/);
+  assert.match(codeGs, /riscaldamento: 'Riscaldamento'/);
+});
+
+test('script: anteprima solo di file registrati in archivio; id del documento restituito all\'app', () => {
+  const anteprima = codeGs.slice(codeGs.indexOf('function fileDelDocumento_('), codeGs.indexOf('function utenteSupabase_('));
+  assert.match(anteprima, /documenti\?select=id&drive_file_id=eq\./);
+  assert.ok(anteprima.indexOf('File non presente in archivio') < anteprima.indexOf('DriveApp.getFileById'));
+  assert.ok(doPost.indexOf("req.azione === 'file'") > doPost.indexOf('Accesso non autorizzato'), 'anteprima solo dopo la verifica del proprietario');
+  assert.match(doPost, /const idDoc = esito && esito\.documento_id;/);
 });
