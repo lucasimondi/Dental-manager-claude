@@ -81,7 +81,7 @@ test('script: file su Drive in Caricati, registrazione senza modifiche di schema
 });
 
 test('app: login con password che resta valido sulla Home e recupero password via link', () => {
-  const app = readFileSync('personal/src/App.jsx', 'utf8');
+  const app = readFileSync('personal/src/App.jsx', 'utf8') + readFileSync('personal/src/ui.jsx', 'utf8');
   const client = readFileSync('personal/src/lib/supabasePersonal.js', 'utf8');
   assert.match(client, /persistSession: true/);
   assert.match(client, /flowType: 'implicit'/);

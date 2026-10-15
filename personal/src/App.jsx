@@ -1,55 +1,37 @@
-// POL-VITA-003 — Poliedron Personal: app per telefono dell'archivio personale.
-// Dock: Oggi · Documenti · (+ carica) · Pagamenti · Personali. Ogni dettaglio si apre come pagina
-// sopra la sezione, con "Indietro" in alto e il dock sempre visibile; chiudendo si torna dov'eri.
-// Nessun modello AI nell'app: ricerca e risposte vengono dal Core deterministico (coreArchivio.js).
+// POL-VITA-003/006 — Poliedron Personal: app per telefono dell'archivio personale.
+// Dock: Oggi · Documenti · Agenda · Conti · Personali. Ogni dettaglio si apre come pagina sopra la
+// sezione, con "Indietro" in alto, il tasto di chiusura in basso a portata di pollice e il dock
+// sempre visibile; chiudendo si torna dov'eri. Il + apre tutte le aggiunte.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { archivioDb } from './lib/supabasePersonal.js';
 import {
   cercaDocumenti, conteggiFascicoli, eliminaDocumento, pratiche as caricaPratiche, documentiDellaPratica, rispondi,
   segnaScadenza, cambiaStatoPratica, documentiDaGestire, documentiRecenti, documentoCompleto, impostaPortafoglio,
   caricaDocumento, eCaricato, nelPortafoglio, anteprimaFile, pagamenti as caricaPagamenti, eliminaScadenza,
-  aggiornaDocumento, documentiSezione, documentiPersonali, aggiornaScadenza, chiediPoliedron, partiRisposta,
+  aggiornaDocumento, documentiSezione, documentiPersonali, aggiornaScadenza, chiediPoliedron, partiRisposta, praticaCompleta,
 } from './lib/archivio.js';
+import { spesaDaScadenza, annullaSpesaDaScadenza, movimentiTra, bilancio, periodo } from './lib/conti.js';
+import { impostaToken } from './lib/miniature.js';
 import { VistaAgenda, PaginaEvento, PaginaAppuntamento, ElencoGiorno } from './Agenda.jsx';
+import { VistaConti, PaginaMovimento, PaginaNuovaScadenza, RiquadroSaldo } from './Conti.jsx';
+import { FoglioAggiungi, PaginaScansione } from './Aggiungi.jsx';
 import { sessioneStudio, esciStudio, appuntamentiTra, impegniTra, studioDb } from './lib/studio.js';
 import { oggi as oggiAgenda } from './lib/agenda.js';
 import { euro } from './lib/coreArchivio.js';
 import { preparaFile } from './lib/file.js';
 import { IMPOSTAZIONI_PREDEFINITE, leggiImpostazioni, salvaImpostazioni, categoriaDi, personaDi, slug } from './lib/impostazioni.js';
 import {
+  colore, dataBreve, oggiIso, quando, titoloDoc, saluto, VISTA_KEY, leggiVista, INDIRIZZO_APP, tokenSessione,
+  Vuoto, Sezione, Gruppo, RigaDocumento, SchedaDocumento, RigaPagamento, Chips, Segmenti, Conferma,
+} from './ui.jsx';
+import { Miniatura } from './Miniatura.jsx';
+import {
   IconaOggi, IconaDocumenti, IconaPortafoglio, IconaPratiche, IconaPiu, IconaCerca, IconaChiudi, IconaIndietro, IconaFreccia,
   IconaApri, IconaEmail, IconaCalendario, IconaFotocamera, IconaFile, IconaStella, IconaCestino, IconaEsci, IconaEuro, IconaImpostazioni, IconaChat, IconaInvia,
+  IconaScansiona,
 } from './Icone.jsx';
 
-
-/* ---------- utilità ---------- */
-const COLORI = {
-  identita: '#1F4E79', immobili: '#8B5E34', successione: '#5B4B8A', conti: '#2E7D5B', fiscale: '#B7791F',
-  previdenza: '#3C7AA0', utenze: '#5E8C31', riscaldamento: '#C2410C', studio_fornitori: '#2F7F84', studio_fatture_emesse: '#1E8A66',
-  legale: '#B42318', assicurazioni: '#8E5079', veicoli: '#4A5A6A', famiglia_scuola: '#C26A1A',
-  sanitario_famiglia: '#A63D6B', clinico_pazienti: '#667085', servizi: '#5D6B82', acquisti: '#86704A', altro: '#8A94A3',
-};
-const colore = (f) => COLORI[f] || COLORI.altro;
-const dataBreve = (d) => (d ? new Date(String(d).length === 10 ? `${d}T12:00:00` : d).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
-const oggiIso = () => new Date().toISOString().slice(0, 10);
-const giorniA = (d) => Math.round((new Date(`${d}T12:00:00`) - new Date(`${oggiIso()}T12:00:00`)) / 86400000);
-const quando = (d) => {
-  const g = giorniA(d);
-  if (g === 0) return 'oggi';
-  if (g === 1) return 'domani';
-  if (g === -1) return 'ieri';
-  const n = Math.abs(g);
-  const durata = n < 60 ? `${n} giorni` : n < 730 ? `${Math.round(n / 30.4)} mesi` : `${Math.round(n / 365.25)} anni`;
-  return g < 0 ? `scaduta da ${durata}` : `tra ${durata}`;
-};
-const titoloDoc = (d) => d?.titolo || d?.nome_file_originale || d?.email_oggetto || 'Documento';
-const saluto = () => { const h = new Date().getHours(); return h < 13 ? 'Buongiorno' : h < 18 ? 'Buon pomeriggio' : 'Buonasera'; };
-const VISTA_KEY = 'poliedron-personal-vista';
-const leggiVista = () => { try { return localStorage.getItem(VISTA_KEY) || 'oggi'; } catch { return 'oggi'; } };
-// Indirizzo dell'app: personal.poliedrasoft.it (dominio proprio) oppure /poliedron/personal/ sul
-// sito dello studio. Il link per la password riporta alla stessa pagina da cui è partito.
-const INDIRIZZO_APP = () => `${location.origin}${location.pathname}`;
-const tokenSessione = async () => (await archivioDb.auth.getSession()).data.session?.access_token;
+impostaToken(tokenSessione);
 
 /* ---------- accesso ---------- */
 function Accesso() {
@@ -121,93 +103,32 @@ function NuovaPassword({ onFatto }) {
   );
 }
 
-/* ---------- elementi comuni ---------- */
-const Vuoto = ({ children }) => <p className="pp-vuoto">{children}</p>;
-const Sezione = ({ titolo, azione, children }) => (
-  <section className="pp-sezione">
-    {(titolo || azione) && <div className="pp-sezione-testa">{titolo && <h2>{titolo}</h2>}{azione}</div>}
-    {children}
-  </section>
-);
-const Gruppo = ({ children }) => <div className="pp-gruppo">{children}</div>;
-
-function RigaDocumento({ doc, onApri }) {
-  return (
-    <button className="pp-riga" onClick={() => onApri(doc)}>
-      <span className="pp-riga-icona" style={{ '--c': colore(doc.fascicolo) }}><IconaFile size={18} /></span>
-      <span className="pp-riga-testo">
-        <span className="pp-riga-titolo">{titoloDoc(doc)}</span>
-        <span className="pp-riga-meta">{[dataBreve(doc.data_documento || doc.email_data), doc.persona, eCaricato(doc) ? 'caricato da te' : null].filter(Boolean).join(' · ')}</span>
-      </span>
-      {doc.importo != null && <span className="pp-riga-importo">{euro(doc.importo)}</span>}
-      {doc.azione_richiesta && <span className={`pp-pallino pp-${doc.urgenza || 'media'}`} aria-label="Da gestire" />}
-      <IconaFreccia size={16} />
-    </button>
-  );
-}
-
-function RigaPagamento({ s, onApri, onPagato }) {
-  const scaduto = !s.completata && s.data < oggiIso();
-  const giorno = new Date(`${s.data}T12:00:00`);
-  return (
-    <div className={`pp-scadenza${scaduto ? ' pp-scadenza-scaduta' : ''}${s.completata ? ' pp-scadenza-fatta' : ''}`}>
-      <button className="pp-scadenza-corpo" onClick={() => onApri(s)}>
-        <span className="pp-scadenza-data">
-          <span className="pp-scadenza-giorno">{giorno.getDate()}</span>
-          <span className="pp-scadenza-mese">{giorno.toLocaleDateString('it-IT', { month: 'short' })}</span>
-        </span>
-        <span className="pp-scadenza-testo">
-          <span className="pp-riga-titolo">{s.descrizione}</span>
-          <span className="pp-riga-meta">{[s.completata ? 'pagato' : quando(s.data), s.pratica?.titolo || s.documento?.titolo].filter(Boolean).join(' · ')}</span>
-        </span>
-      </button>
-      <div className="pp-scadenza-destra">
-        {s.importo != null && <span className="pp-riga-importo">{euro(s.importo)}</span>}
-        {onPagato && !s.completata && <button className="pp-chip-azione" onClick={() => onPagato(s)} aria-label={`Segna pagato: ${s.descrizione}`}>Pagato</button>}
-      </div>
-    </div>
-  );
-}
-
-function Chips({ voci, attiva, onScegli }) {
-  return (
-    <div className="pp-chips" role="tablist">
-      {voci.map(([id, nome]) => (
-        <button key={id} role="tab" aria-selected={attiva === id} className={`pp-chip${attiva === id ? ' attiva' : ''}`} onClick={() => onScegli(id)}>{nome}</button>
-      ))}
-    </div>
-  );
-}
-
-function Segmenti({ voci, attiva, onScegli }) {
-  return (
-    <div className="pp-segmenti">
-      {voci.map(([k, l]) => <button key={k} className={attiva === k ? 'attivo' : ''} onClick={() => onScegli(k)}>{l}</button>)}
-    </div>
-  );
-}
-
-function Conferma({ testo, etichetta = 'Elimina', onSi, onNo }) {
-  return (
-    <div className="pp-conferma" role="alertdialog">
-      <span>{testo}</span>
-      <button className="pp-bottone pp-bottone-rosso" onClick={onSi}>{etichetta}</button>
-      <button className="pp-bottone pp-bottone-chiaro" onClick={onNo}>Annulla</button>
-    </div>
-  );
-}
-
-/* ---------- pagina sopra la sezione: Indietro in alto, dock visibile ---------- */
-function Pagina({ titolo, onIndietro, visibile, children, azione }) {
+/* ---------- pagina sopra la sezione ----------
+ * Corpo che scorre da solo (anche su iPhone), Indietro in alto, tasto di chiusura rotondo in
+ * basso a destra (a portata di pollice) e chiusura scorrendo dal bordo sinistro. Dock visibile. */
+function Pagina({ titolo, onIndietro, visibile, children, azione, senzaChiudi }) {
   const corpo = useRef(null);
+  const tocco = useRef(null);
+  const inizio = (e) => {
+    const t = e.touches[0];
+    tocco.current = t.clientX < 28 ? { x: t.clientX, y: t.clientY } : null;
+  };
+  const fine = (e) => {
+    const t0 = tocco.current;
+    tocco.current = null;
+    if (!t0) return;
+    const t = e.changedTouches[0];
+    if (t.clientX - t0.x > 70 && Math.abs(t.clientY - t0.y) < 60) onIndietro();
+  };
   return (
-    <div className="pp-pagina" hidden={!visibile} aria-hidden={!visibile} ref={corpo}>
+    <div className="pp-pagina" hidden={!visibile} aria-hidden={!visibile} onTouchStart={inizio} onTouchEnd={fine}>
       <div className="pp-pagina-barra">
         <button className="pp-indietro" onClick={onIndietro}><IconaIndietro size={20} /><span>Indietro</span></button>
         <span className="pp-pagina-titolo">{titolo}</span>
         <span className="pp-pagina-azione">{azione}</span>
       </div>
-      <div className="pp-pagina-corpo">{children}</div>
+      <div className="pp-pagina-corpo" ref={corpo}>{children}</div>
+      {!senzaChiudi && <button className="pp-chiudi-pagina" onClick={onIndietro} aria-label="Chiudi"><IconaChiudi size={22} /></button>}
     </div>
   );
 }
@@ -278,68 +199,93 @@ function Anteprima({ doc }) {
   );
 }
 
-/* ---------- Oggi ---------- */
+/* ---------- Oggi: cruscotto ---------- */
+const dataLunga = () => { const t = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }); return t.charAt(0).toUpperCase() + t.slice(1); };
+
 function VistaOggi({ ctx }) {
   const [dati, setDati] = useState(null);
-  const { esegui, apri, vai, pagato, versione } = ctx;
+  const { esegui, apri, vai, pagato, versione, aggiungi } = ctx;
   useEffect(() => {
     esegui(async () => {
-      const [tutte, daGestire, recenti, fascicoli] = await Promise.all([
-        caricaPagamenti(archivioDb), documentiDaGestire(archivioDb), documentiRecenti(archivioDb, 8), conteggiFascicoli(archivioDb),
+      const mese = periodo('mese', oggiIso().slice(0, 7));
+      const [tutte, daGestire, recenti, fascicoli, elencoPratiche, movimenti] = await Promise.all([
+        caricaPagamenti(archivioDb), documentiDaGestire(archivioDb), documentiRecenti(archivioDb, 10), conteggiFascicoli(archivioDb),
+        caricaPratiche(archivioDb), movimentiTra(archivioDb, mese.da, mese.a).catch(() => []),
       ]);
       const limite = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
       const aperte = tutte.filter((s) => !s.completata);
-      // Agenda di oggi, se l'agenda dello studio è collegata (altrimenti la sezione non compare).
+      // Agenda di oggi, se l'agenda dello studio è collegata.
       let agenda = null;
-      if (await sessioneStudio().catch(() => null)) {
+      const collegata = !!(await sessioneStudio().catch(() => null));
+      if (collegata) {
         const g = oggiAgenda();
         const [appuntamenti, impegni] = await Promise.all([appuntamentiTra(g, g), impegniTra(g, g)]).catch(() => [null, null]);
         if (appuntamenti) agenda = { appuntamenti, impegni, scadenze: tutte.filter((s) => s.data === g) };
       }
-      setDati({ prossime: aperte.filter((s) => s.data <= limite), aperte, daGestire, recenti, agenda, totale: fascicoli.reduce((t, f) => t + Number(f.n || 0), 0) });
+      setDati({
+        prossime: aperte.filter((s) => s.data <= limite), aperte, daGestire, recenti, agenda, collegata,
+        pratiche: elencoPratiche.filter((p) => ['aperta', 'in_corso'].includes(p.stato)),
+        totale: fascicoli.reduce((t, f) => t + Number(f.n || 0), 0), saldo: bilancio(movimenti),
+      });
     });
   }, [esegui, versione]);
-  if (!dati) return null;
-  const scaduti = dati.aperte.filter((s) => s.data < oggiIso()).length;
-  const agendaOggi = dati.agenda;
-  const daPagare = dati.aperte.reduce((t, s) => t + Number(s.importo || 0), 0);
+  if (!dati) return <p className="pp-data-oggi">{dataLunga()}</p>;
+  const scaduti = dati.aperte.filter((s) => s.data < oggiIso());
+  const entro30 = dati.prossime.reduce((t, s) => t + Number(s.importo || 0), 0);
+  const urgenti = [...dati.pratiche].sort((x, y) => (x.urgenza === 'alta' ? -1 : 0) - (y.urgenza === 'alta' ? -1 : 0)
+    || String(x.prossima_scadenza || '9999').localeCompare(String(y.prossima_scadenza || '9999')));
+  const apriDoc = (d) => apri({ tipo: 'documento', id: d.id });
   return (
     <>
-      <div className="pp-riassunto">
-        <button className="pp-tessera pp-tessera-forte" onClick={() => vai('pagamenti')}>
-          <span className="pp-tessera-numero">{dati.prossime.length}</span>
-          <span>pagamenti entro 30 giorni{scaduti ? `, ${scaduti} ${scaduti === 1 ? 'scaduto' : 'scaduti'}` : ''}</span>
+      <p className="pp-data-oggi">{dataLunga()}</p>
+      <RiquadroSaldo b={dati.saldo} titolo={`Saldo di ${new Date().toLocaleDateString('it-IT', { month: 'long' })}`} onApri={() => vai('conti')} />
+      <div className="pp-rapide">
+        {[['scansiona', 'Scansiona', IconaScansiona], ['spesa', 'Spesa', IconaEuro], ['incasso', 'Incasso', IconaEuro], ['fotocamera', 'Foto', IconaFotocamera]].map(([id, nome, Icona]) => (
+          <button key={id} className={`pp-rapida pp-av-${id}`} onClick={() => aggiungi(id)}><span><Icona size={22} /></span>{nome}</button>
+        ))}
+      </div>
+      <div className="pp-riassunto pp-riassunto-quattro">
+        <button className={`pp-tessera${scaduti.length ? ' pp-tessera-allarme' : ''}`} onClick={() => vai('conti', 'dapagare')}>
+          <span className="pp-tessera-numero">{scaduti.length}</span><span>{scaduti.length === 1 ? 'pagamento scaduto' : 'pagamenti scaduti'}</span>
         </button>
-        <button className="pp-tessera" onClick={() => vai('pagamenti')}>
-          <span className="pp-tessera-numero">{euro(daPagare)}</span><span>da pagare in totale</span>
+        <button className="pp-tessera" onClick={() => vai('conti', 'dapagare')}>
+          <span className="pp-tessera-numero">{euro(entro30)}</span><span>da pagare entro 30 giorni</span>
         </button>
         <button className="pp-tessera" onClick={() => apri({ tipo: 'elenco', titolo: 'Da gestire', carica: () => documentiDaGestire(archivioDb) })}>
           <span className="pp-tessera-numero">{dati.daGestire.length}</span><span>documenti da gestire</span>
         </button>
-        <button className="pp-tessera" onClick={() => vai('documenti')}>
-          <span className="pp-tessera-numero">{dati.totale}</span><span>documenti in archivio</span>
+        <button className="pp-tessera" onClick={() => vai('documenti', 'pratiche')}>
+          <span className="pp-tessera-numero">{dati.pratiche.length}</span><span>pratiche aperte</span>
         </button>
       </div>
-      {agendaOggi && (
+      {dati.agenda ? (
         <Sezione titolo="Oggi in agenda" azione={<button className="pp-testo-link" onClick={() => vai('agenda')}>Agenda</button>}>
-          <ElencoGiorno giorno={oggiAgenda()} dati={agendaOggi} ctx={ctx} etichette={ctx.impostazioni.etichette} coloriTipi={{}} intestazione={false} />
+          <ElencoGiorno giorno={oggiAgenda()} dati={dati.agenda} ctx={ctx} etichette={ctx.impostazioni.etichette} coloriTipi={{}} intestazione={false} />
         </Sezione>
+      ) : !dati.collegata && (
+        <button className="pp-invito" onClick={() => vai('agenda')}><IconaCalendario size={20} /><span><strong>Collega l'agenda dello studio</strong><br />Appuntamenti ed eventi qui, ogni mattina.</span><IconaFreccia size={16} /></button>
       )}
-      <Sezione titolo="Prossimi pagamenti" azione={<button className="pp-testo-link" onClick={() => vai('pagamenti')}>Tutti</button>}>
+      <Sezione titolo="Prossimi pagamenti" azione={<button className="pp-testo-link" onClick={() => vai('conti', 'dapagare')}>Tutti</button>}>
         {dati.prossime.length
-          ? <Gruppo>{dati.prossime.slice(0, 6).map((s) => <RigaPagamento key={s.id} s={s} onApri={(x) => apri({ tipo: 'pagamento', s: x })} onPagato={pagato} />)}</Gruppo>
+          ? <Gruppo>{dati.prossime.slice(0, 5).map((s) => <RigaPagamento key={s.id} s={s} onApri={(x) => apri({ tipo: 'pagamento', s: x })} onPagato={pagato} />)}</Gruppo>
           : <Vuoto>Nessun pagamento nei prossimi 30 giorni.</Vuoto>}
       </Sezione>
-      <Sezione titolo="Da gestire">
-        {dati.daGestire.length
-          ? <Gruppo>{dati.daGestire.slice(0, 5).map((d) => <RigaDocumento key={d.id} doc={d} onApri={(x) => apri({ tipo: 'documento', id: x.id })} />)}</Gruppo>
-          : <Vuoto>Niente da gestire.</Vuoto>}
-      </Sezione>
-      <Sezione titolo="Ultimi arrivati">
+      <Sezione titolo="Ultimi documenti" azione={<button className="pp-testo-link" onClick={() => vai('documenti')}>Tutti</button>}>
         {dati.recenti.length
-          ? <Gruppo>{dati.recenti.map((d) => <RigaDocumento key={d.id} doc={d} onApri={(x) => apri({ tipo: 'documento', id: x.id })} />)}</Gruppo>
+          ? <div className="pp-carosello">{dati.recenti.map((d) => <SchedaDocumento key={d.id} doc={d} onApri={apriDoc} />)}</div>
           : <Vuoto>L'archivio si sta riempiendo: lo script importa la posta ogni 10 minuti.</Vuoto>}
       </Sezione>
+      {dati.daGestire.length > 0 && (
+        <Sezione titolo="Da gestire" azione={dati.daGestire.length > 4 ? <button className="pp-testo-link" onClick={() => apri({ tipo: 'elenco', titolo: 'Da gestire', carica: () => documentiDaGestire(archivioDb) })}>Tutti</button> : null}>
+          <Gruppo>{dati.daGestire.slice(0, 4).map((d) => <RigaDocumento key={d.id} doc={d} onApri={apriDoc} />)}</Gruppo>
+        </Sezione>
+      )}
+      {urgenti.length > 0 && (
+        <Sezione titolo="Pratiche in corso" azione={<button className="pp-testo-link" onClick={() => vai('documenti', 'pratiche')}>Tutte</button>}>
+          <ElencoPratiche elenco={urgenti.slice(0, 4)} onApri={(p) => apri({ tipo: 'pratica', p })} />
+        </Sezione>
+      )}
+      <p className="pp-riga-meta pp-nota-fondo">{dati.totale} documenti in archivio.</p>
     </>
   );
 }
@@ -388,23 +334,46 @@ function ElencoPratiche({ elenco, onApri }) {
   );
 }
 
+// Elenco di documenti a griglia (con anteprima) o a righe; la scelta resta sul telefono.
+const MODO_KEY = 'poliedron-personal-elenco';
+function ElencoDocumenti({ elenco, onApri }) {
+  const [modo, setModoStato] = useState(() => { try { return localStorage.getItem(MODO_KEY) || 'griglia'; } catch { return 'griglia'; } });
+  const setModo = (m) => { setModoStato(m); try { localStorage.setItem(MODO_KEY, m); } catch { /* facoltativo */ } };
+  return (
+    <>
+      <div className="pp-elenco-testa">
+        <span className="pp-frase">{elenco.length} documenti</span>
+        <span className="pp-commuta" role="group" aria-label="Vista">
+          <button className={modo === 'griglia' ? 'attivo' : ''} onClick={() => setModo('griglia')} aria-label="Griglia con anteprime">▦</button>
+          <button className={modo === 'righe' ? 'attivo' : ''} onClick={() => setModo('righe')} aria-label="Elenco">☰</button>
+        </span>
+      </div>
+      {modo === 'griglia'
+        ? <div className="pp-griglia-doc">{elenco.map((d) => <SchedaDocumento key={d.id} doc={d} onApri={onApri} />)}</div>
+        : <Gruppo>{elenco.map((d) => <RigaDocumento key={d.id} doc={d} onApri={onApri} />)}</Gruppo>}
+    </>
+  );
+}
+
 function VistaDocumenti({ ctx }) {
-  const { esegui, apri, versione, impostazioni, fascicoli } = ctx;
-  const [sezione, setSezione] = useState('tutti');
+  const { esegui, apri, versione, impostazioni, fascicoli, sotto } = ctx;
+  const [sezione, setSezione] = useState(sotto || 'recenti');
   const [domanda, setDomanda] = useState('');
   const [risposta, setRisposta] = useState(null);
   const [elenco, setElenco] = useState(null);
+  const [filtro, setFiltro] = useState('tutti');
   const [filtroPratiche, setFiltroPratiche] = useState('aperte');
 
   const sezioni = impostazioni.sezioni;
-  const voci = [['tutti', 'Tutti'], ['pratiche', 'Pratiche'], ...sezioni.map((s) => [s.id, s.nome])];
-  const attiva = voci.some(([id]) => id === sezione) ? sezione : 'tutti';
+  const voci = [['recenti', 'Recenti'], ['cartelle', 'Cartelle'], ['pratiche', 'Pratiche'], ...sezioni.map((s) => [s.id, s.nome])];
+  const attiva = voci.some(([id]) => id === sezione) ? sezione : 'recenti';
 
   useEffect(() => {
     setElenco(null);
-    if (attiva === 'tutti') return;
+    if (attiva === 'cartelle') return;
     esegui(async () => {
-      if (attiva === 'pratiche') setElenco(await caricaPratiche(archivioDb));
+      if (attiva === 'recenti') setElenco(await documentiRecenti(archivioDb, 60));
+      else if (attiva === 'pratiche') setElenco(await caricaPratiche(archivioDb));
       else setElenco(await documentiSezione(archivioDb, sezioni.find((s) => s.id === attiva)));
     });
   }, [attiva, esegui, versione, sezioni]);
@@ -413,7 +382,9 @@ function VistaDocumenti({ ctx }) {
     if (!testo.trim()) { setRisposta(null); return; }
     esegui(async () => setRisposta(await rispondi(archivioDb, testo)));
   };
+  const apriDoc = (d) => apri({ tipo: 'documento', id: d.id });
   const apriFascicolo = (f) => apri({ tipo: 'elenco', titolo: f.nome, colore: colore(f.codice), carica: () => cercaDocumenti(archivioDb, '', f.codice, 300) });
+  const recentiFiltrati = (elenco || []).filter((d) => (filtro === 'dagestire' ? d.azione_richiesta : filtro === 'caricati' ? eCaricato(d) : filtro === 'importo' ? d.importo != null : true));
 
   return (
     <>
@@ -425,16 +396,39 @@ function VistaDocumenti({ ctx }) {
       {risposta ? <Risultato risposta={risposta} ctx={ctx} /> : (
         <>
           <Chips voci={voci} attiva={attiva} onScegli={setSezione} />
-          {attiva === 'tutti' && (
-            <div className="pp-griglia">
-              {fascicoli.filter((f) => f.n > 0).map((f) => (
-                <button key={f.codice} className="pp-cartella" style={{ '--c': colore(f.codice) }} onClick={() => apriFascicolo(f)}>
-                  <span className="pp-cartella-icona"><IconaDocumenti size={20} /></span>
-                  <span className="pp-cartella-nome">{f.nome}</span>
-                  <span className="pp-cartella-numero">{f.n}{f.n_azioni ? <em> · {f.n_azioni} da fare</em> : null}</span>
-                </button>
-              ))}
-            </div>
+          {attiva === 'recenti' && elenco && (
+            <>
+              <Segmenti voci={[['tutti', 'Tutti'], ['dagestire', 'Da gestire'], ['importo', 'Importo'], ['caricati', 'Caricati']]} attiva={filtro} onScegli={setFiltro} />
+              {recentiFiltrati.length ? <ElencoDocumenti elenco={recentiFiltrati} onApri={apriDoc} /> : <Vuoto>Nessun documento.</Vuoto>}
+            </>
+          )}
+          {attiva === 'cartelle' && (
+            <>
+              {sezioni.length > 0 && (
+                <Sezione titolo="Le tue sezioni">
+                  <div className="pp-griglia">
+                    {sezioni.map((s) => (
+                      <button key={s.id} className="pp-cartella pp-cartella-sezione" style={{ '--c': colore(s.fascicoli[0] || 'altro') }} onClick={() => setSezione(s.id)}>
+                        <span className="pp-cartella-icona"><IconaStella size={20} /></span>
+                        <span className="pp-cartella-nome">{s.nome}</span>
+                        <span className="pp-cartella-numero">{[...s.fascicoli.map((f) => fascicoli.find((x) => x.codice === f)?.nome || f), ...s.parole].slice(0, 3).join(', ')}</span>
+                      </button>
+                    ))}
+                  </div>
+                </Sezione>
+              )}
+              <Sezione titolo="Fascicoli">
+                <div className="pp-griglia">
+                  {fascicoli.filter((f) => f.n > 0).map((f) => (
+                    <button key={f.codice} className="pp-cartella" style={{ '--c': colore(f.codice) }} onClick={() => apriFascicolo(f)}>
+                      <span className="pp-cartella-icona"><IconaDocumenti size={20} /></span>
+                      <span className="pp-cartella-nome">{f.nome}</span>
+                      <span className="pp-cartella-numero">{f.n}{f.n_azioni ? <em> · {f.n_azioni} da fare</em> : null}</span>
+                    </button>
+                  ))}
+                </div>
+              </Sezione>
+            </>
           )}
           {attiva === 'pratiche' && elenco && (
             <>
@@ -445,57 +439,13 @@ function VistaDocumenti({ ctx }) {
               />
             </>
           )}
-          {attiva !== 'tutti' && attiva !== 'pratiche' && elenco && (
+          {!['recenti', 'cartelle', 'pratiche'].includes(attiva) && elenco && (
             elenco.length
-              ? <><p className="pp-frase">{elenco.length} documenti</p><Gruppo>{elenco.map((d) => <RigaDocumento key={d.id} doc={d} onApri={(x) => apri({ tipo: 'documento', id: x.id })} />)}</Gruppo></>
+              ? <ElencoDocumenti elenco={elenco} onApri={apriDoc} />
               : <Vuoto>Ancora nessun documento in questa sezione. Puoi cambiarne le regole in Impostazioni.</Vuoto>
           )}
         </>
       )}
-    </>
-  );
-}
-
-/* ---------- Pagamenti ---------- */
-function VistaPagamenti({ ctx }) {
-  const { esegui, apri, pagato, versione } = ctx;
-  const [tutti, setTutti] = useState(null);
-  const [filtro, setFiltro] = useState('aperti');
-  useEffect(() => { esegui(async () => setTutti(await caricaPagamenti(archivioDb))); }, [esegui, versione]);
-  if (!tutti) return null;
-  const aperti = tutti.filter((s) => !s.completata);
-  const oggi = oggiIso();
-  const tra30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
-  const totale = aperti.reduce((t, s) => t + Number(s.importo || 0), 0);
-  const scaduti = aperti.filter((s) => s.data < oggi);
-  const apriP = (s) => apri({ tipo: 'pagamento', s });
-  const gruppo = (titolo, elenco) => {
-    if (!elenco.length) return null;
-    const somma = elenco.reduce((t, s) => t + Number(s.importo || 0), 0);
-    return (
-    <Sezione key={titolo} titolo={titolo} azione={somma > 0 ? <span className="pp-riga-meta">{euro(somma)}</span> : null}>
-      <Gruppo>{elenco.map((s) => <RigaPagamento key={s.id} s={s} onApri={apriP} onPagato={pagato} />)}</Gruppo>
-    </Sezione>
-    );
-  };
-  return (
-    <>
-      <div className="pp-riassunto">
-        <div className="pp-tessera pp-tessera-forte"><span className="pp-tessera-numero">{euro(totale)}</span><span>da pagare</span></div>
-        <div className="pp-tessera"><span className="pp-tessera-numero">{scaduti.length}</span><span>{scaduti.length === 1 ? 'pagamento scaduto' : 'pagamenti scaduti'}</span></div>
-      </div>
-      <Segmenti voci={[['aperti', 'Da pagare'], ['pagati', 'Pagati'], ['tutti', 'Tutti']]} attiva={filtro} onScegli={setFiltro} />
-      {filtro === 'aperti' && (aperti.length ? [
-        gruppo('Scaduti', scaduti),
-        gruppo('Prossimi 30 giorni', aperti.filter((s) => s.data >= oggi && s.data <= tra30)),
-        gruppo('Più avanti', aperti.filter((s) => s.data > tra30)),
-      ] : <Vuoto>Nessun pagamento da fare.</Vuoto>)}
-      {filtro === 'pagati' && (tutti.some((s) => s.completata)
-        ? <Gruppo>{[...tutti].filter((s) => s.completata).reverse().map((s) => <RigaPagamento key={s.id} s={s} onApri={apriP} />)}</Gruppo>
-        : <Vuoto>Nessun pagamento segnato come pagato.</Vuoto>)}
-      {filtro === 'tutti' && (tutti.length
-        ? <Gruppo>{[...tutti].reverse().map((s) => <RigaPagamento key={s.id} s={s} onApri={apriP} onPagato={pagato} />)}</Gruppo>
-        : <Vuoto>Nessun pagamento in archivio.</Vuoto>)}
     </>
   );
 }
@@ -653,7 +603,9 @@ function PaginaPagamento({ s: iniziale, ctx, chiudi }) {
   });
   const cambiaStato = (completata) => esegui(async () => {
     await segnaScadenza(archivioDb, s.id, completata);
-    setS({ ...s, completata }); aggiorna(); mostra(completata ? 'Segnato come pagato' : 'Segnato da pagare');
+    // Pagato → spesa nei Conti; di nuovo da pagare → la spesa automatica si toglie.
+    const spesa = completata ? await spesaDaScadenza(archivioDb, s).catch(() => null) : (await annullaSpesaDaScadenza(archivioDb, s.id).catch(() => null), null);
+    setS({ ...s, completata }); aggiorna(); mostra(completata ? (spesa ? 'Pagato e registrato tra le spese' : 'Segnato come pagato') : 'Segnato da pagare');
   });
   return (
     <>
@@ -712,45 +664,93 @@ function PaginaPagamento({ s: iniziale, ctx, chiudi }) {
   );
 }
 
-function PaginaPratica({ p, ctx }) {
-  const { esegui, apri, aggiorna } = ctx;
+const STATI_PRATICA = { aperta: 'Aperta', in_corso: 'In corso', risolta: 'Risolta', archiviata: 'Archiviata' };
+
+function PaginaPratica({ p: base, ctx }) {
+  const { esegui, apri, aggiorna, pagato, mostra, fascicoli } = ctx;
+  const [p, setP] = useState(base);
   const [documenti, setDocumenti] = useState(null);
-  const [stato, setStato] = useState(p.stato);
-  useEffect(() => { esegui(async () => setDocumenti(await documentiDellaPratica(archivioDb, p.id))); }, [esegui, p.id]);
+  const carica = useCallback(() => esegui(async () => {
+    const [completa, docs] = await Promise.all([praticaCompleta(archivioDb, base.id), documentiDellaPratica(archivioDb, base.id)]);
+    setP((x) => ({ ...x, ...completa })); setDocumenti(docs);
+  }), [esegui, base.id]);
+  useEffect(() => { carica(); }, [carica]);
+  const cambiaStato = (stato) => esegui(async () => { await cambiaStatoPratica(archivioDb, p.id, stato); setP({ ...p, stato }); aggiorna(); mostra(`Pratica ${STATI_PRATICA[stato].toLowerCase()}`); });
+
+  const scadenze = p.scadenze || [];
+  const aperte = scadenze.filter((s) => !s.completata);
+  const daPagare = aperte.reduce((t, s) => t + Number(s.importo || 0), 0);
+  const totaleDoc = (documenti || []).reduce((t, d) => t + Number(d.importo || 0), 0);
+  const c = colore(p.fascicolo);
+  // Documenti in ordine di tempo, raggruppati per anno.
+  const perAnno = (documenti || []).reduce((g, d) => { const a = String(d.data_documento || d.email_data || '').slice(0, 4) || '—'; (g[a] ||= []).push(d); return g; }, {});
+
   return (
     <>
-      <div className="pp-dettaglio-testa" style={{ '--c': colore(p.fascicolo) }}>
-        <span className="pp-etichetta">{stato}</span>
+      <div className="pp-pratica-testa" style={{ '--c': c }}>
+        <span className="pp-pratica-fascicolo">{fascicoli.find((f) => f.codice === p.fascicolo)?.nome || p.fascicolo || 'Pratica'}</span>
         <h2>{p.titolo}</h2>
-        {p.note && <p className="pp-riga-meta">{p.note}</p>}
+        <span className="pp-pratica-stati">
+          <span className={`pp-stato pp-stato-${p.stato}`}>{STATI_PRATICA[p.stato] || p.stato}</span>
+          {p.urgenza === 'alta' && <span className="pp-stato pp-stato-urgente">Urgente</span>}
+        </span>
+        {p.note && <p className="pp-pratica-note">{p.note}</p>}
       </div>
-      {stato !== 'risolta' && (
-        <div className="pp-azioni">
-          <button className="pp-bottone" onClick={() => esegui(async () => { await cambiaStatoPratica(archivioDb, p.id, 'risolta'); setStato('risolta'); aggiorna(); })}>Segna risolta</button>
-        </div>
+      <div className="pp-numeri">
+        <div><strong>{documenti ? documenti.length : '…'}</strong><span>documenti</span></div>
+        <div><strong>{aperte.length ? euro(daPagare) : '—'}</strong><span>da pagare</span></div>
+        <div><strong>{p.prossima_scadenza ? dataBreve(p.prossima_scadenza).replace(/ \d{4}$/, '') : '—'}</strong><span>prossima scadenza</span></div>
+      </div>
+      <div className="pp-azioni">
+        {['aperta', 'in_corso'].includes(p.stato)
+          ? <button className="pp-bottone pp-bottone-verde" onClick={() => cambiaStato('risolta')}>Segna risolta</button>
+          : <button className="pp-bottone pp-bottone-chiaro" onClick={() => cambiaStato('aperta')}>Riapri</button>}
+        {p.stato === 'aperta' && <button className="pp-bottone pp-bottone-chiaro" onClick={() => cambiaStato('in_corso')}>In corso</button>}
+      </div>
+      {scadenze.length > 0 && (
+        <Sezione titolo="Pagamenti e scadenze">
+          <Gruppo>{scadenze.map((s) => <RigaPagamento key={s.id} s={s} onApri={(x) => apri({ tipo: 'pagamento', s: x })} onPagato={async (x) => { await pagato(x); carica(); }} />)}</Gruppo>
+        </Sezione>
       )}
-      <Sezione titolo={documenti ? `${documenti.length} documenti` : 'Documenti'}>
-        {documenti && <Gruppo>{documenti.map((d) => <RigaDocumento key={d.id} doc={d} onApri={(x) => apri({ tipo: 'documento', id: x.id })} />)}</Gruppo>}
+      <Sezione titolo="Documenti" azione={totaleDoc > 0 ? <span className="pp-riga-meta">{euro(totaleDoc)} in totale</span> : null}>
+        {!documenti ? <Vuoto>Carico…</Vuoto> : !documenti.length ? <Vuoto>Nessun documento.</Vuoto> : (
+          <div className="pp-cronologia">
+            {Object.entries(perAnno).map(([anno, docs]) => (
+              <div key={anno}>
+                <h3 className="pp-cronologia-anno">{anno}</h3>
+                {docs.map((d) => (
+                  <button key={d.id} className="pp-cronologia-voce" onClick={() => apri({ tipo: 'documento', id: d.id })}>
+                    <Miniatura doc={d} colore={c} />
+                    <span className="pp-riga-testo">
+                      <span className="pp-riga-titolo">{titoloDoc(d)}</span>
+                      <span className="pp-riga-meta">{[dataBreve(d.data_documento || d.email_data), d.tipo_documento].filter(Boolean).join(' · ')}</span>
+                      {d.riassunto && <span className="pp-cronologia-riassunto">{d.riassunto}</span>}
+                    </span>
+                    {d.importo != null && <span className="pp-riga-importo">{euro(d.importo)}</span>}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
       </Sezione>
     </>
   );
 }
 
-function PaginaElenco({ carica, colore: c, ctx }) {
+function PaginaElenco({ carica, ctx }) {
   const { esegui, apri, versione } = ctx;
   const [elenco, setElenco] = useState(null);
   useEffect(() => { esegui(async () => setElenco(await carica())); }, [esegui, carica, versione]);
-  if (!elenco) return null;
-  return elenco.length
-    ? <><p className="pp-frase" style={{ '--c': c }}>{elenco.length} documenti</p><Gruppo>{elenco.map((d) => <RigaDocumento key={d.id} doc={d} onApri={(x) => apri({ tipo: 'documento', id: x.id })} />)}</Gruppo></>
-    : <Vuoto>Nessun documento.</Vuoto>;
+  if (!elenco) return <Vuoto>Carico…</Vuoto>;
+  return elenco.length ? <ElencoDocumenti elenco={elenco} onApri={(x) => apri({ tipo: 'documento', id: x.id })} /> : <Vuoto>Nessun documento.</Vuoto>;
 }
 
-function PaginaCarica({ opzioni, ctx, sostituisci }) {
+function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) {
   const { aggiorna, mostra, impostazioni, fascicoli } = ctx;
-  const [file, setFile] = useState(null);
-  const [anteprima, setAnteprima] = useState(null);
-  const [descrizione, setDescrizione] = useState('');
+  const [file, setFile] = useState(fileIniziale || null);
+  const [anteprima, setAnteprima] = useState(() => (fileIniziale?.type?.startsWith('image/') ? URL.createObjectURL(fileIniziale) : null));
+  const [descrizione, setDescrizione] = useState(opzioni.descrizione || '');
   const [fascicolo, setFascicolo] = useState(opzioni.fascicolo || '');
   const [persona, setPersona] = useState(opzioni.persona || '');
   const [categoria, setCategoria] = useState(opzioni.categoria || '');
@@ -783,16 +783,17 @@ function PaginaCarica({ opzioni, ctx, sostituisci }) {
   return (
     <>
       <input ref={fotocamera} type="file" accept="image/*" capture="environment" hidden onChange={(e) => scegli(e.target.files[0])} />
-      <input ref={archivio} type="file" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx" hidden onChange={(e) => scegli(e.target.files[0])} />
+      <input ref={archivio} type="file" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.odt,.ods,.txt,.rtf,.heic,.heif" hidden onChange={(e) => scegli(e.target.files[0])} />
       {!file ? (
         <div className="pp-sorgenti">
+          <button className="pp-sorgente" onClick={() => sostituisci({ tipo: 'scansione', opzioni })}><IconaScansiona size={28} /><span>Scansiona</span></button>
           <button className="pp-sorgente" onClick={() => fotocamera.current.click()}><IconaFotocamera size={28} /><span>Scatta una foto</span></button>
-          <button className="pp-sorgente" onClick={() => archivio.current.click()}><IconaFile size={28} /><span>Scegli foto o PDF</span></button>
+          <button className="pp-sorgente pp-sorgente-larga" onClick={() => archivio.current.click()}><IconaFile size={28} /><span>Foto, PDF o file da iCloud, Drive e altre app</span></button>
         </div>
       ) : (
         <div className="pp-scelto">
           {anteprima ? <img src={anteprima} alt="" /> : <span className="pp-scelto-icona"><IconaFile size={28} /></span>}
-          <div><strong>{file.name}</strong><span className="pp-riga-meta">{(file.size / 1048576).toFixed(1)} MB</span></div>
+          <div><strong>{file.name}</strong><span className="pp-riga-meta">{file.size < 1048576 ? `${Math.max(1, Math.round(file.size / 1024))} KB` : `${(file.size / 1048576).toFixed(1)} MB`}</span></div>
           <button className="pp-testo-link" onClick={() => { setFile(null); setAnteprima(null); }}>Cambia</button>
         </div>
       )}
@@ -880,6 +881,22 @@ function PaginaImpostazioni({ ctx, email }) {
           ))}
           <button className="pp-riga pp-riga-aggiungi" onClick={() => apri({ tipo: 'sezione', id: null })}><IconaPiu size={18} /><span>Nuova sezione</span></button>
         </Gruppo>
+      </Sezione>
+      <Sezione titolo="Categorie delle spese">
+        <ListaModificabile
+          voci={impostazioni.categorieSpesa.map((c) => ({ id: c, nome: c }))}
+          onTogli={(c) => salvaImp({ ...impostazioni, categorieSpesa: impostazioni.categorieSpesa.filter((x) => x !== c) })}
+          onAggiungi={(c) => salvaImp({ ...impostazioni, categorieSpesa: [...impostazioni.categorieSpesa, c] })}
+          segnaposto="Es. Animali"
+        />
+      </Sezione>
+      <Sezione titolo="Categorie degli incassi">
+        <ListaModificabile
+          voci={impostazioni.categorieIncasso.map((c) => ({ id: c, nome: c }))}
+          onTogli={(c) => salvaImp({ ...impostazioni, categorieIncasso: impostazioni.categorieIncasso.filter((x) => x !== c) })}
+          onAggiungi={(c) => salvaImp({ ...impostazioni, categorieIncasso: [...impostazioni.categorieIncasso, c] })}
+          segnaposto="Es. Vendite"
+        />
       </Sezione>
       <Sezione titolo="Etichette dell'agenda">
         <p className="pp-riga-meta pp-spiegazione">Per i tuoi eventi. Il colore compare anche nell'agenda dello studio.</p>
@@ -1051,28 +1068,38 @@ function PaginaChat({ documentoId, titoloDoc: titolo, ctx }) {
   );
 }
 
-const TITOLI_PAGINE = { chat: 'Poliedron', evento: 'Evento', appuntamento: 'Appuntamento', documento: 'Documento', pagamento: 'Pagamento', pratica: 'Pratica', carica: 'Carica un documento', impostazioni: 'Impostazioni', sezione: 'Sezione' };
+const TITOLI_PAGINE = {
+  chat: 'Poliedron', evento: 'Evento', appuntamento: 'Appuntamento', documento: 'Documento', pagamento: 'Pagamento', pratica: 'Pratica',
+  carica: 'Archivia un documento', impostazioni: 'Impostazioni', sezione: 'Sezione', scansione: 'Scansiona', scadenza: 'Pagamento da fare',
+};
+const titoloPagina = (p) => p.titolo || (p.tipo === 'movimento' ? (p.m?.id ? 'Movimento' : p.m?.tipo === 'entrata' ? 'Nuovo incasso' : 'Nuova spesa') : TITOLI_PAGINE[p.tipo]);
+// Pagine con un modulo o con la propria barra in basso: niente tasto di chiusura in basso.
+const PAGINE_MODULO = new Set(['chat', 'carica', 'scansione', 'movimento', 'scadenza', 'evento', 'sezione', 'impostazioni']);
 
 /* ---------- app ---------- */
 const VISTE = [
   ['oggi', 'Oggi', IconaOggi],
   ['documenti', 'Documenti', IconaDocumenti],
   ['agenda', 'Agenda', IconaCalendario],
-  ['pagamenti', 'Pagamenti', IconaEuro],
+  ['conti', 'Conti', IconaEuro],
   ['personali', 'Personali', IconaPortafoglio],
 ];
-const TITOLI = { documenti: 'Documenti', agenda: 'Agenda', pagamenti: 'Pagamenti', personali: 'Personali' };
+const TITOLI = { documenti: 'Documenti', agenda: 'Agenda', conti: 'Conti', personali: 'Personali' };
+const vistaIniziale = () => { const v = leggiVista() === 'pagamenti' ? 'conti' : leggiVista(); return VISTE.some(([k]) => k === v) ? v : 'oggi'; };
 
 function Archivio({ email }) {
-  const [vista, setVistaStato] = useState(() => (VISTE.some(([k]) => k === leggiVista()) ? leggiVista() : 'oggi'));
+  const [vista, setVistaStato] = useState(vistaIniziale);
+  const [sotto, setSotto] = useState(null);
   const [pagine, setPagine] = useState([]);
   const [errore, setErrore] = useState(null);
   const [toast, setToast] = useState(null);
   const [occupato, setOccupato] = useState(0);
   const [versione, setVersione] = useState(0);
   const [fascicoli, setFascicoli] = useState([]);
+  const [foglio, setFoglio] = useState(false);
   const [impostazioni, setImpostazioni] = useState(() => JSON.parse(JSON.stringify(IMPOSTAZIONI_PREDEFINITE)));
   const contatore = useRef(0);
+  const ingressi = { fotocamera: useRef(null), libreria: useRef(null), file: useRef(null) };
 
   const esegui = useCallback(async (fn) => {
     setErrore(null); setOccupato((n) => n + 1);
@@ -1087,18 +1114,38 @@ function Archivio({ email }) {
     setImpostazioni(nuove);
     try { setImpostazioni(await salvaImpostazioni(archivioDb, nuove)); } catch (e) { setErrore(`Impostazioni non salvate: ${e.message}`); }
   }, []);
-  const vai = useCallback((v) => {
-    setPagine([]); setVistaStato(v); setErrore(null);
+  const vai = useCallback((v, sottoVista = null) => {
+    setPagine([]); setVistaStato(v); setSotto(sottoVista); setErrore(null);
     try { localStorage.setItem(VISTA_KEY, v); } catch { /* facoltativo */ }
     window.scrollTo(0, 0);
   }, []);
-  const apri = useCallback((p) => { contatore.current += 1; setErrore(null); setPagine((st) => [...st, { ...p, chiave: contatore.current }]); }, []);
+  const apri = useCallback((p) => { contatore.current += 1; setErrore(null); setFoglio(false); setPagine((st) => [...st, { ...p, chiave: contatore.current }]); }, []);
   const indietro = useCallback(() => { setErrore(null); setPagine((st) => st.slice(0, -1)); }, []);
   const sostituisci = useCallback((p) => { contatore.current += 1; setPagine((st) => [...st.slice(0, -1), { ...p, chiave: contatore.current }]); }, []);
 
+  // Tasto + e azioni rapide della Home. Foto e file: il selettore si apre subito (gesto dell'utente).
+  const aggiungi = useCallback((id) => {
+    setFoglio(false);
+    if (ingressi[id]) { ingressi[id].current?.click(); return; }
+    const pagina = {
+      scansiona: { tipo: 'scansione' },
+      personale: { tipo: 'carica', opzioni: { fascicolo: 'identita', portafoglio: true } },
+      spesa: { tipo: 'movimento', m: { tipo: 'uscita' } },
+      incasso: { tipo: 'movimento', m: { tipo: 'entrata' } },
+      pagamento: { tipo: 'scadenza' },
+      evento: { tipo: 'evento' },
+    }[id];
+    if (pagina) apri(pagina);
+  }, [apri]); // eslint-disable-line react-hooks/exhaustive-deps
+  const fileScelto = (e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) apri({ tipo: 'carica', file: f }); };
+
   const ctx = {
-    esegui, aggiorna, mostra, versione, impostazioni, salvaImp, fascicoli, apri, vai,
-    pagato: (s) => esegui(async () => { await segnaScadenza(archivioDb, s.id, true); aggiorna(); mostra('Segnato come pagato'); }),
+    esegui, aggiorna, mostra, versione, impostazioni, salvaImp, fascicoli, apri, vai, aggiungi, sotto,
+    pagato: (s) => esegui(async () => {
+      await segnaScadenza(archivioDb, s.id, true);
+      const spesa = await spesaDaScadenza(archivioDb, s).catch(() => null);
+      aggiorna(); mostra(spesa ? 'Pagato e registrato tra le spese' : 'Segnato come pagato');
+    }),
   };
 
   useEffect(() => {
@@ -1110,8 +1157,11 @@ function Archivio({ email }) {
       case 'documento': return <PaginaDocumento id={p.id} ctx={ctx} chiudi={indietro} />;
       case 'pagamento': return <PaginaPagamento s={p.s} ctx={ctx} chiudi={indietro} />;
       case 'pratica': return <PaginaPratica p={p.p} ctx={ctx} />;
-      case 'elenco': return <PaginaElenco carica={p.carica} colore={p.colore} ctx={ctx} />;
-      case 'carica': return <PaginaCarica opzioni={p.opzioni || {}} ctx={ctx} sostituisci={sostituisci} />;
+      case 'elenco': return <PaginaElenco carica={p.carica} ctx={ctx} />;
+      case 'carica': return <PaginaCarica opzioni={p.opzioni || {}} file={p.file} ctx={ctx} sostituisci={sostituisci} />;
+      case 'scansione': return <PaginaScansione ctx={ctx} sostituisci={sostituisci} />;
+      case 'movimento': return <PaginaMovimento m={p.m || {}} ctx={ctx} chiudi={indietro} />;
+      case 'scadenza': return <PaginaNuovaScadenza ctx={ctx} chiudi={indietro} />;
       case 'impostazioni': return <PaginaImpostazioni ctx={ctx} email={email} />;
       case 'sezione': return <PaginaSezione id={p.id} ctx={ctx} chiudi={indietro} />;
       case 'evento': return <PaginaEvento evento={p.evento} ctx={ctx} chiudi={indietro} />;
@@ -1123,6 +1173,9 @@ function Archivio({ email }) {
 
   return (
     <div className="pp-app">
+      <input ref={ingressi.fotocamera} type="file" accept="image/*" capture="environment" hidden onChange={fileScelto} />
+      <input ref={ingressi.libreria} type="file" accept="image/*" hidden onChange={fileScelto} />
+      <input ref={ingressi.file} type="file" hidden onChange={fileScelto} />
       <header className="pp-testata">
         <h1>{vista === 'oggi' ? saluto() : TITOLI[vista]}</h1>
         <span className="pp-testata-azioni">
@@ -1132,15 +1185,15 @@ function Archivio({ email }) {
       </header>
       {occupato > 0 && <div className="pp-barra-caricamento" aria-hidden="true" />}
       {errore && !pagine.length && <p className="pp-messaggio pp-messaggio-errore" role="alert">{errore}</p>}
-      <main className="pp-contenuto">
+      <main className="pp-contenuto" key={`${vista}-${sotto || ''}`}>
         {vista === 'oggi' && <VistaOggi ctx={ctx} />}
         {vista === 'documenti' && <VistaDocumenti ctx={ctx} />}
         {vista === 'agenda' && <VistaAgenda ctx={ctx} />}
-        {vista === 'pagamenti' && <VistaPagamenti ctx={ctx} />}
+        {vista === 'conti' && <VistaConti ctx={ctx} />}
         {vista === 'personali' && <VistaPersonali ctx={ctx} />}
       </main>
       {pagine.map((p, i) => (
-        <Pagina key={p.chiave} titolo={p.titolo || TITOLI_PAGINE[p.tipo]} visibile={i === pagine.length - 1} onIndietro={indietro}>
+        <Pagina key={p.chiave} titolo={titoloPagina(p)} visibile={i === pagine.length - 1} onIndietro={indietro} senzaChiudi={PAGINE_MODULO.has(p.tipo)}>
           {i === pagine.length - 1 && errore && <p className="pp-messaggio pp-messaggio-errore" role="alert">{errore}</p>}
           {contenutoPagina(p)}
         </Pagina>
@@ -1152,10 +1205,8 @@ function Archivio({ email }) {
           </button>
         ))}
       </nav>
-      {!pagine.length && (
-        <button className="pp-fab" onClick={() => apri(vista === 'agenda' ? { tipo: 'evento' } : { tipo: 'carica' })}
-          aria-label={vista === 'agenda' ? 'Nuovo evento' : 'Carica un documento'}><IconaPiu size={26} /></button>
-      )}
+      {!pagine.length && <button className="pp-fab" onClick={() => setFoglio(true)} aria-label="Aggiungi"><IconaPiu size={26} /></button>}
+      {foglio && <FoglioAggiungi onScegli={aggiungi} onChiudi={() => setFoglio(false)} />}
       {toast && <div className="pp-toast" role="status">{toast}</div>}
     </div>
   );

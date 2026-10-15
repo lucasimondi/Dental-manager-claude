@@ -702,6 +702,7 @@ function doPost(e) {
     }
     if (req.azione === 'file') return rispostaJson_(fileDelDocumento_(req.drive_file_id));
     if (req.azione === 'chiedi') return rispostaJson_(chiediPoliedron_(req));
+    if (req.azione === 'miniature') return rispostaJson_(miniature_(req.ids));
     if (!req.dati || !req.nome) return rispostaJson_({ ok: false, errore: 'File mancante' });
 
     const nome = pulisciNome_(String(req.nome)) || 'documento';
@@ -779,6 +780,23 @@ function fileDelDocumento_(driveFileId) {
   const bytes = blob.getBytes();
   if (bytes.length > ANTEPRIMA_MAX_BYTE) return { ok: false, errore: 'File troppo grande per l\'anteprima' };
   return { ok: true, nome: blob.getName(), mime: blob.getContentType(), dati: Utilities.base64Encode(bytes) };
+}
+
+// Miniature per gli elenchi dell'app: solo file registrati in archivio, mai dei pazienti.
+const MINIATURE_MAX = 12;
+function miniature_(ids) {
+  const richiesti = (Array.isArray(ids) ? ids : []).map(String).filter(function (id) { return /^[\w-]{10,}$/.test(id); }).slice(0, MINIATURE_MAX);
+  if (!richiesti.length) return { ok: true, miniature: {} };
+  const ammessi = sb_('documenti?select=drive_file_id&fascicolo=neq.clinico_pazienti&drive_file_id=in.(' + richiesti.map(enc_).join(',') + ')')
+    .map(function (d) { return d.drive_file_id; });
+  const out = {};
+  ammessi.forEach(function (id) {
+    try {
+      const t = DriveApp.getFileById(id).getThumbnail();
+      out[id] = t ? 'data:' + (t.getContentType() || 'image/png') + ';base64,' + Utilities.base64Encode(t.getBytes()) : null;
+    } catch (e) { out[id] = null; }
+  });
+  return { ok: true, miniature: out };
 }
 
 /* =====================================================================

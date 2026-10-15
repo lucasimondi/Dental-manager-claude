@@ -11,7 +11,8 @@ Questa cartella (`poliedron/archivio/`) contiene il sistema che importa, catalog
 | Originali | Google Drive, cartella `Archivio personale/<anno>/<mese>` | creati dallo script |
 | Consultazione | Dashboard web (Vercel) e in futuro Poliedron | `index.html` |
 | App per telefono | Poliedron Personal su `/personal/` (consultazione, Portafoglio, caricamento) | `personal/` nella radice del repo |
-| Caricamento dall'app | Web app dello stesso Apps Script (`doPost`), file in `Archivio personale/Caricati/<anno>` | `Code.gs` |
+| Caricamento dall'app | Web app dello stesso Apps Script (`doPost`), file in `Archivio personale/Caricati/<anno>`; anche anteprima, miniature (mai dei pazienti) e chat | `Code.gs` |
+| Conti dell'app | Tabella `movimenti` (incassi e spese di Luca, RLS proprietario) | `supabase/archivio/migrations/` |
 | Guida manuale | per Luca | `LEGGIMI.md` |
 
 Riferimenti fissi:

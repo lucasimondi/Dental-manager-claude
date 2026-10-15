@@ -238,3 +238,12 @@ export function partiRisposta(testo) {
   if (ultimo < testo.length) parti.push({ testo: testo.slice(ultimo) });
   return parti;
 }
+
+// POL-VITA-006 — pratica con i suoi pagamenti (la pagina della pratica).
+export async function praticaCompleta(db, id) {
+  const [pratica, scadenze] = await Promise.all([
+    db.from('v_pratiche').select('*').eq('id', id).maybeSingle().then(esito),
+    db.from('scadenze').select(CAMPI_SCADENZA).eq('pratica_id', id).order('data', { ascending: true }).then(esito),
+  ]);
+  return { ...(pratica || {}), scadenze };
+}

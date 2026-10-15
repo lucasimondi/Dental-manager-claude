@@ -1,4 +1,4 @@
-# Poliedron Personal (POL-VITA-001, 003, 004, 005)
+# Poliedron Personal (POL-VITA-001, 003, 004, 005, 006)
 
 App per telefono dell'archivio personale, servita su **`https://personal.poliedrasoft.it/`** (dominio proprio, rewrite per host in `vercel.json`, manifest `personal-dominio.webmanifest`) e anche su `/poliedron/personal/` e `/personal/` del sito dello studio, dalla build principale e installabile sulla schermata Home. Sotto `/poliedron/` il service worker dello studio non interviene, nemmeno nelle copie vecchie rimaste in Safari.
 Collegata solo al progetto Supabase `archivio-documenti` (`tkcwvjzjkfhcuebrjvsp`); nessun codice, chiave o service worker dell'app dello studio (verificato da `tests/poliedronPersonal.test.mjs`).
@@ -10,6 +10,13 @@ Collegata solo al progetto Supabase `archivio-documenti` (`tkcwvjzjkfhcuebrjvsp`
 - **Portafoglio**: documenti con il tag `portafoglio` più tutti quelli del fascicolo `identita`. Si aggiungono o tolgono dal dettaglio del documento.
 - **Pratiche**: aperte, risolte, tutte.
 - **Dettaglio documento**: apri il file su Drive, apri l'email, Portafoglio, scadenze ("Fatta"), dati estratti, sposta fascicolo, elimina dall'archivio (il file su Drive resta).
+
+## Conti, cruscotto e aggiunte (POL-VITA-006)
+- **Conti** (nel dock): incassi e spese (tabella `movimenti`), pagamenti da fare dell'archivio e bilancino del mese o dell'anno. Segnare "Pagato" un pagamento registra la spesa (una sola per pagamento); rimetterlo da pagare la toglie.
+- **Oggi** è un cruscotto: saldo del mese, azioni rapide, indicatori, agenda, prossimi pagamenti, ultimi documenti con anteprima, pratiche in corso.
+- **Documenti**: Recenti, Cartelle (sezioni e fascicoli), Pratiche e sezioni; griglia con le miniature dei file (`azione: 'miniature'` dello script, mai per i documenti dei pazienti; memorizzate nel telefono).
+- **Pagine**: il corpo scorre da solo; si chiudono con Indietro, con il tasto rotondo in basso a destra o scorrendo dal bordo sinistro.
+- **+**: scansione multipagina (foto → bianco e nero o colori → un PDF), fotocamera, foto, file da iCloud, Drive e altre app, documento personale, spesa, incasso, pagamento da fare, evento.
 
 ## Agenda (POL-VITA-004)
 È l'agenda dello studio: stessi dati, modificabile dalle due app. Si collega una volta con l'account di Poliedra (sessione propria, persistente).
