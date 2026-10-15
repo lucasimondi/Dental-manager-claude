@@ -13,6 +13,12 @@
 <link rel="icon" href="/poliedron-v2-192.png" sizes="192x192"/>
 <link rel="apple-touch-icon" href="/poliedron-v2-180.png"/>
 <title>Poliedron Personal</title>
+<script>
+  // Sul dominio proprio l'app vive su /personal/: manifest con start_url e scope di quell'indirizzo.
+  if (location.hostname === 'personal.poliedrasoft.it') document.addEventListener('DOMContentLoaded', function () {
+    var l = document.querySelector('link[rel="manifest"]'); if (l) l.href = '/personal-dominio.webmanifest';
+  });
+</script>
 </head>
 <body>
 <div id="root"></div>

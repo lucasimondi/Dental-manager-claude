@@ -93,17 +93,15 @@ test('app: login con password che resta valido sulla Home e recupero password vi
   assert.doesNotMatch(app, /signInWithOtp|signUp\(/, 'niente link magici né nuove registrazioni');
 });
 
-test('dominio proprio: personal.poliedrasoft.it apre Poliedron Personal con il suo manifest', () => {
+test('dominio proprio: personal.poliedrasoft.it porta a Poliedron Personal con il suo manifest', () => {
   const vercel = JSON.parse(readFileSync('vercel.json', 'utf8'));
-  const host = (r) => r.has?.some((h) => h.type === 'host' && h.value === 'personal.poliedrasoft.it');
-  const radice = vercel.rewrites.findIndex((r) => r.source === '/' && host(r));
-  const manifesto = vercel.rewrites.findIndex((r) => r.source === '/personal.webmanifest' && host(r));
-  const generale = vercel.rewrites.findIndex((r) => r.source === '/(.*)');
-  assert.ok(radice >= 0 && radice < generale);
-  assert.equal(vercel.rewrites[radice].destination, '/personal/index.html');
-  assert.ok(manifesto >= 0 && manifesto < generale);
+  const redirect = (vercel.redirects || []).find((r) => r.source === '/' && r.has?.some((h) => h.type === 'host' && h.value === 'personal.poliedrasoft.it'));
+  assert.ok(redirect, 'la radice del dominio proprio deve portare all\'app (i file statici vincono sulle rewrite)');
+  assert.equal(redirect.destination, '/personal/');
+  assert.equal(redirect.permanent, false);
   const m = JSON.parse(readFileSync('public/personal-dominio.webmanifest', 'utf8'));
-  assert.equal(m.start_url, '/');
-  assert.equal(m.scope, '/');
+  assert.equal(m.start_url, '/personal/');
+  assert.equal(m.scope, '/personal/');
   assert.equal(m.name, 'Poliedron Personal');
+  assert.match(readFileSync('personal/index.html', 'utf8'), /location\.hostname === 'personal\.poliedrasoft\.it'[\s\S]*\/personal-dominio\.webmanifest/);
 });

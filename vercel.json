@@ -1,26 +1,6 @@
 {
   "rewrites": [
     {
-      "source": "/",
-      "has": [
-        {
-          "type": "host",
-          "value": "personal.poliedrasoft.it"
-        }
-      ],
-      "destination": "/personal/index.html"
-    },
-    {
-      "source": "/personal.webmanifest",
-      "has": [
-        {
-          "type": "host",
-          "value": "personal.poliedrasoft.it"
-        }
-      ],
-      "destination": "/personal-dominio.webmanifest"
-    },
-    {
       "source": "/poliedron/personal",
       "destination": "/personal/index.html"
     },
@@ -119,6 +99,19 @@
           "value": "no-cache, no-store, must-revalidate"
         }
       ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "personal.poliedrasoft.it"
+        }
+      ],
+      "destination": "/personal/",
+      "permanent": false
     }
   ]
 }
