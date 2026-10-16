@@ -4,7 +4,7 @@ import { euro } from './lib/coreArchivio.js';
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, AppointmentBlock, useSlotHeight, AgendaSwitch, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState, useGridSwipe } from '../../shared/agenda/AgendaPresentation.jsx';
 import { getVisibleWeekDays } from '../../shared/agenda/visibleDays.js';
-import { daIso, piuGiorni, oggi, ora, coloreEvento, nomeEtichetta, elementiDelGiorno, giorniSettimana } from './lib/agenda.js';
+import { daIso, piuGiorni, oggi, coloreEvento, nomeEtichetta, elementiDelGiorno, giorniSettimana } from './lib/agenda.js';
 export { ViewPicker };
 
 function EventoPersonaleBlock({ evento, top, height, co, onClick }) {
@@ -60,6 +60,21 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
   const pick = <ViewPicker view={view} setView={setView} touchSafe />;
   const appSwitch = <div className="personal-agenda-app-toolbar"><AgendaSwitch inline target="studio" day={giorno} month={month} view={view} /></div>;
   const navigate = n => setGiorno(piuGiorni(giorno, n * (weekly ? 7 : 1)));
+  // DayStrip notifica anche al primo mount la settimana che sta mostrando.
+  // In Personal ignoriamo quella prima notifica: altrimenti il 16 diventa lunedì 12.
+  const skipWeekSync = useRef(true);
+  const lastViewForWeekSync = useRef(view);
+  if (lastViewForWeekSync.current !== view) {
+    lastViewForWeekSync.current = view;
+    if (view === 'settimana') skipWeekSync.current = true;
+  }
+  const sincronizzaSettimana = (weekStart) => {
+    if (skipWeekSync.current) {
+      skipWeekSync.current = false;
+      return;
+    }
+    setGiorno(weekStart);
+  };
   const { onTouchStartSwipe, onTouchEndSwipe } = useGridSwipe(days, navigate);
   const monthNavigate = n => { const d = daIso(month); d.setMonth(d.getMonth() + n, 1); changeMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`); };
   const openSlot = (ds, slot) => ctx.apri({ tipo: 'evento', evento: { data_inizio: ds, ora_inizio: slot, ora_fine: Number(slot.slice(0,2)) === 23 ? '23:59' : `${String(Number(slot.slice(0,2)) + 1).padStart(2,'0')}:${slot.slice(3)}` } });
@@ -92,7 +107,7 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
         {!extras.aOrario.some(x => x.tipo === 'appuntamento') && <CalendarEmptyState />}
       </div>
     </> : <>
-      <DayStrip selDay={giorno} setSelDay={ds => { setGiorno(ds); if (weekly) setView('giorno'); }} today={oggi()} compact oraColW={34} singleDay={!weekly} hiddenWeekdays={hiddenWeekdays} highlightSelected={!weekly} onWeekChange={weekly ? wk => setGiorno(wk) : undefined} overlayRef={overlayRef} viewPicker={pick} floatingFooter={appSwitch} />
+      <DayStrip selDay={giorno} setSelDay={ds => { setGiorno(ds); if (weekly) setView('giorno'); }} today={oggi()} compact oraColW={34} singleDay={!weekly} hiddenWeekdays={hiddenWeekdays} highlightSelected={!weekly} onWeekChange={weekly ? sincronizzaSettimana : undefined} overlayRef={overlayRef} viewPicker={pick} floatingFooter={appSwitch} />
       {visibleExtras.some(e => e.scadenze.length || e.tuttoIlGiorno.length) && <div className="personal-agenda-extras" aria-label="Scadenze ed eventi del giorno">
         {visibleExtras.flatMap(el => [
           ...el.scadenze.map(s => <button key={`${el.day}-s-${s.id}`} onClick={() => ctx.apri({ tipo: 'pagamento', s })}>€ {s.descrizione}{weekly ? ' · ' + daIso(el.day).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' }) : ''}</button>),
