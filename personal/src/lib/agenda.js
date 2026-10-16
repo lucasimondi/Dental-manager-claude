@@ -35,8 +35,8 @@ export const ETICHETTE_PREDEFINITE = Object.freeze([
 export const COLORE_SCADENZA = '#b45309';
 
 // Colore di un evento: il suo, poi quello dell'etichetta, poi grigio.
-export const coloreEvento = (ev, etichette) => ev.colore || etichette.find((e) => e.id === ev.tipo || e.nome === ev.tipo)?.colore || '#64748b';
-export const nomeEtichetta = (tipo, etichette) => etichette.find((e) => e.id === tipo || e.nome === tipo)?.nome || tipo || 'Personale';
+export const coloreEvento = (ev, etichette) => ev.colore || etichette.find((e) => e.id === (ev.etichetta || ev.tipo) || e.nome === (ev.etichetta || ev.tipo))?.colore || '#64748b';
+export const nomeEtichetta = (tipo, etichette) => etichette.find((e) => e.id === (typeof tipo === 'object' ? (tipo.etichetta || tipo.tipo) : tipo) || e.nome === (typeof tipo === 'object' ? (tipo.etichetta || tipo.tipo) : tipo))?.nome || tipo || 'Personale';
 
 // Tutto ciò che cade in un giorno, già separato fra "in alto" (tutto il giorno, scadenze) e "a orario".
 export function elementiDelGiorno(giorno, { appuntamenti = [], impegni = [], scadenze = [] }) {
@@ -96,7 +96,8 @@ export function rigaImpegno(evento) {
   const tuttoIlGiorno = !!evento.tutto_il_giorno;
   return {
     titolo: String(evento.titolo || '').trim() || 'Evento',
-    tipo: evento.tipo || 'personale',
+    tipo: ['personale', 'ferie', 'chiamata', 'altro'].includes(evento.tipo) ? evento.tipo : 'personale',
+    etichetta: evento.tipo || evento.etichetta || 'personale',
     colore: evento.colore || null,
     data_inizio: evento.data_inizio,
     data_fine: evento.data_fine && evento.data_fine >= evento.data_inizio ? evento.data_fine : evento.data_inizio,

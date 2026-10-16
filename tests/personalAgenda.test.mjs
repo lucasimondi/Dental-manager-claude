@@ -35,7 +35,7 @@ test('mese e settimana partono da lunedì', () => {
 
 test('evento → riga di impegni_personali come la usa l\'agenda dello studio', () => {
   assert.deepEqual(rigaImpegno({ titolo: ' Calcetto ', tipo: 'sport', colore: '#059669', data_inizio: '2026-10-20', ora_inizio: '20:00', ora_fine: '21:30' }), {
-    titolo: 'Calcetto', tipo: 'sport', colore: '#059669', data_inizio: '2026-10-20', data_fine: '2026-10-20',
+    titolo: 'Calcetto', tipo: 'personale', etichetta: 'sport', colore: '#059669', data_inizio: '2026-10-20', data_fine: '2026-10-20',
     tutto_il_giorno: false, ora_inizio: '20:00', ora_fine: '21:30', note: null,
   });
   const ferie = rigaImpegno({ titolo: 'Ferie', tutto_il_giorno: true, data_inizio: '2026-08-01', data_fine: '2026-08-15', ora_inizio: '09:00' });

@@ -1055,13 +1055,13 @@ function Archivio({ email }) {
       <header className="pp-testata">
         <h1>{vista === 'oggi' ? saluto() : TITOLI[vista]}</h1>
         <span className="pp-testata-azioni">
-          <button className="pp-poliedron" onClick={() => apri({ tipo: 'chat' })} aria-label="Chiedi a Poliedron"><IconaChat size={18} /><span>Poliedron</span></button>
+          
           <button className="pp-icona-bottone" onClick={() => apri({ tipo: 'impostazioni' })} aria-label="Impostazioni"><IconaImpostazioni size={20} /></button>
         </span>
       </header>
       {occupato > 0 && <div className="pp-barra-caricamento" aria-hidden="true" />}
       {errore && !pagine.length && <p className="pp-messaggio pp-messaggio-errore" role="alert">{errore}</p>}
-      <main className="pp-contenuto" key={`${vista}-${sotto || ''}`}>
+      <main className={`pp-contenuto${vista === 'agenda' ? ' pp-contenuto-agenda' : ''}`} key={`${vista}-${sotto || ''}`}>
         {vista === 'oggi' && <VistaOggi ctx={ctx} />}
         {vista === 'documenti' && <VistaDocumenti ctx={ctx} />}
         {vista === 'agenda' && <VistaAgenda ctx={ctx} />}
@@ -1080,6 +1080,7 @@ function Archivio({ email }) {
             <Icona size={22} /><span>{l}</span>
           </button>
         ))}
+        <button className={`pp-scheda pp-scheda-poliedron${pagine.at(-1)?.tipo === 'chat' ? ' attiva' : ''}`} onClick={() => apri({ tipo: 'chat' })} aria-label="Apri Poliedron"><IconaChat size={23} /><span>Poliedron</span></button>
       </nav>
       {!pagine.length && <button className="pp-fab" onClick={() => setFoglio(true)} aria-label="Aggiungi"><IconaPiu size={26} /></button>}
       {foglio && <FoglioAggiungi onScegli={aggiungi} onChiudi={() => setFoglio(false)} />}

@@ -95,8 +95,8 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, dati, ctx, e
     const calcola = () => {
       const el = pagina.current;
       if (!el) return;
-      const dock = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pp-dock')) || 62;
-      const sotto = dock + (parseFloat(getComputedStyle(el).getPropertyValue('--ag-sicura')) || 0) + 8;
+      // The grid reaches the viewport bottom; the floating dock overlays it.
+      const sotto = Math.max(0, (parseFloat(getComputedStyle(el).getPropertyValue('--ag-sicura')) || 0));
       setAltezzaPagina(Math.max(380, window.innerHeight - el.getBoundingClientRect().top - sotto));
       if (contenitore.current) setAltezzaGriglia(contenitore.current.clientHeight);
     };
