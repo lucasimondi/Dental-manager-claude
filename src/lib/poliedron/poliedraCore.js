@@ -5,6 +5,7 @@
    state, easy to unit test without mounting any component. */
 
 import { classifyIntent, INTENT, extractAmount } from './intentEngine.js';
+import { parsePlanCreate } from '../../../supabase/functions/agente-assistente/poliedron-piani.js';
 import { federatedSearch, suggestedIdle } from './searchEngine.js';
 import { runModelTask, MODEL_TASK_TYPE } from './modelGateway.js';
 import { isSaveToRecordRequest, saveTargetCandidates } from './attachmentToPatient.js';
@@ -14,6 +15,7 @@ import { isSaveToRecordRequest, saveTargetCandidates } from './attachmentToPatie
    in its own studio-scoped list and with the Ricetta action allowed. */
 export function documentRequestFromModel(modelResult) {
   const doc = modelResult?.raw?.documento;
+  if (doc?.tipo === 'preventivo') return preventivoRequest(doc);
   if (!doc || doc.tipo !== 'ricetta' || doc.paziente_id == null || !Array.isArray(doc.farmaci)) return null;
   const farmaci = doc.farmaci
     .filter((f) => typeof f?.farmaco === 'string' && f.farmaco.trim())
@@ -27,6 +29,21 @@ export function documentRequestFromModel(modelResult) {
     }));
   if (!farmaci.length) return null;
   return { type: 'ricetta', patientId: doc.paziente_id, patientName: typeof doc.paziente_nome === 'string' ? doc.paziente_nome : '', farmaci };
+}
+/* A plan just created by agente-assistente comes back with its preventivo
+   (PO 2026-10-15): only the shape is checked; the PDF is drawn in the app. */
+function preventivoRequest(doc) {
+  const piano = doc.piano;
+  if (doc.paziente_id == null || !piano || !Array.isArray(piano.voci)) return null;
+  const voci = piano.voci
+    .filter((v) => typeof v?.prestazione === 'string' && v.prestazione.trim() && Number.isFinite(Number(v.prezzo)))
+    .slice(0, 100)
+    .map((v) => ({ prestazione: v.prestazione.trim(), prezzo: Number(v.prezzo), dente: typeof v.dente === 'string' ? v.dente : '', eseguita: Boolean(v.eseguita) }));
+  if (!voci.length) return null;
+  return {
+    type: 'preventivo', patientId: doc.paziente_id,
+    piano: { id: piano.id ?? null, titolo: String(piano.titolo || 'Preventivo'), data: piano.data || null, voci, sconto: Number(piano.sconto) || 0, sconto_tipo: piano.sconto_tipo === 'valore' ? 'valore' : 'pct' },
+  };
 }
 import { resolveCommandAlias } from './commandAliases.js';
 import { cercaPazienti } from '../ricercaPazienti.js';
@@ -223,10 +240,15 @@ export async function processQuery({
   // summary (server-side, always). Otherwise the "Registra incasso" form opens.
   const agentPaymentRequest = agentCanWrite(context) && !/\?\s*$/.test(q)
     && Boolean(parseRegisterPaymentRequest(q) || PAID_RE.test(q));
-  if (agentPaymentRequest && allowModel) {
+  // Preventivo/piano with its treatments in the sentence ("Preventivo per Mario
+  // Rossi: igiene, otturazione 36"): Poliedron creates it server-side with the
+  // listino prices. Without treatments the "Nuovo piano" form still opens.
+  const agentPlanRequest = agentCanWrite(context) && Boolean(parsePlanCreate(q));
+  if ((agentPaymentRequest || agentPlanRequest) && allowModel) {
     const result = await runModelTask({ taskType: MODEL_TASK_TYPE.ASK, input: q, history: conversationHistory, context, supabaseClient });
     return { intent: 'AGENT', answer: result.text, modelError: result.error,
       modelConfirmation: result.raw?.needsConfirmation || null, dataChanged: result.raw?.changed || null, dataRecords: result.raw?.records || null,
+      documentRequest: documentRequestFromModel(result),
       searchResults: [], suggestedActions: [] };
   }
   const dedicatedRoute = [INTENT.NAVIGATE, INTENT.ANALYZE].includes(preliminaryIntent.type)

@@ -6,6 +6,8 @@
 // ambiguous → one question; nothing invented.
 import { preparePazienti, executePazienti } from './pazienti.js';
 import { preparePagamenti, executePagamenti } from './pagamenti.js';
+import { preparePiani, executePiani } from './piani.js';
+import { vociDaListino, titoloPiano } from './poliedron-piani.js';
 import { classifyAction, DECISION } from './confidence.js';
 import { appointmentsForChange } from './agenda.js';
 import { resolveDay, hasDay } from './poliedron-agenda.js';
@@ -19,6 +21,7 @@ export const CORE_ACTION_TOOLS = Object.freeze({
   PATIENT_CREATE: 'crea_paziente',
   RECALL_CREATE: 'crea_richiamo',
   PAYMENT_CREATE: 'registra_pagamento_paziente',
+  PLAN_CREATE: 'crea_piano_cura',
 });
 
 const addDays = (iso, n) => { const d = new Date(`${iso}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
@@ -84,9 +87,11 @@ async function domainWrite(kind, name, prepared, env) {
   }
   let done;
   try {
-    done = kind === 'pagamenti' ? await executePagamenti(env.supabase, proposal) : await executePazienti(env.supabase, proposal);
+    done = kind === 'pagamenti' ? await executePagamenti(env.supabase, proposal)
+      : kind === 'piani' ? await executePiani(env.supabase, proposal)
+        : await executePazienti(env.supabase, proposal);
   } catch (error) {
-    return reply({ text: `Non eseguito: ${error.message}`, changed: kind === 'pagamenti' ? ['payments'] : ['patients', 'richiami', 'impegni_personali'], uncertain: true });
+    return reply({ text: `Non eseguito: ${error.message}`, changed: kind === 'pagamenti' ? ['payments'] : kind === 'piani' ? ['plans'] : ['patients', 'richiami', 'impegni_personali'], uncertain: true });
   }
   await env.log(proposal, done);
   return reply(done);
@@ -140,6 +145,22 @@ export async function runCoreAction(parsed, env) {
       const plans = error.message.match(/Piani: (.*)\.$/);
       return reply({ text: plans ? `${patient.nome} ${patient.cognome} ha più piani di cura aperti: ${plans[1].replace(/ \(piano_id \d+(, del [^)]*)?\)/g, '')}. A quale collego il pagamento?` : error.message, uncertain: true });
     }
+  }
+
+  // "Preventivo per Mario Rossi: igiene, otturazione 36 e 37": prices from the
+  // studio's listino (or said in the sentence); an unknown or ambiguous item asks.
+  if (parsed.intent === 'PLAN_CREATE') {
+    const { patient, reply: r, escalate } = await findPatient(e.patient_query);
+    if (escalate) return null;
+    if (r) return r;
+    const { data: listino, error } = await env.supabase.from('pricelist').select('nome, prezzo').eq('studio_id', env.studioId);
+    if (error) return reply({ text: 'Non riesco a leggere il listino adesso: non ho creato il piano.', uncertain: true });
+    const built = vociDaListino(e.voci, listino || []);
+    if (built.problemi) return reply({ text: `Per il ${e.tipo === 'preventivo' ? 'preventivo' : 'piano di cura'} di ${patient.nome} ${patient.cognome} mi serve un chiarimento:\n${built.problemi.join('\n')}\nRipeti la richiesta con la prestazione esatta o il prezzo.` });
+    const { prepared, reply: r2 } = await prepare(() => preparePiani(env.supabase, 'crea_piano_cura', { paziente_id: patient.id, titolo: titoloPiano(built.voci), voci: built.voci }, env.studioId, env.observed), env);
+    if (r2) return r2;
+    prepared.done += '\nLo trovi nei piani di cura del paziente, da lì puoi aprire o inviare il preventivo.';
+    return domainWrite('piani', 'crea_piano_cura', prepared, env);
   }
 
   if (parsed.intent === 'PATIENT_CREATE') {

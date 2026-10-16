@@ -5,6 +5,7 @@
 // own: the model path then decides, as before. Identity, permissions and
 // validation always happen server-side afterwards.
 import { agendaMentions, hasDay, identifyAppointment, DAY_WORDS, MONTH_NAMES } from './poliedron-agenda.js';
+import { parsePlanCreate } from './poliedron-piani.js';
 
 const clean = (v = '') => String(v).normalize('NFC').replace(/[’‘]/g, "'").replace(/\s+/g, ' ').trim();
 const lower = (v = '') => clean(v).toLocaleLowerCase('it-IT');
@@ -193,6 +194,6 @@ export function parsePayment(text = '') {
 
 /** First parser that recognises the sentence, or null. Order: most specific first. */
 export function parseCoreAction(text = '') {
-  return parsePayment(text) || parsePatientNote(text) || parsePatientContact(text) || parseNewPatient(text)
+  return parsePlanCreate(text) || parsePayment(text) || parsePatientNote(text) || parsePatientContact(text) || parseNewPatient(text)
     || parseRecall(text) || parseAgendaBlock(text) || parseAppointmentUpdate(text);
 }
