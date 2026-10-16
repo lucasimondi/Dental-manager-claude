@@ -28,11 +28,15 @@ Importa tutti gli allegati Gmail, escludendo Promozioni e Social, **dal più vec
 
 1. Calcola lo SHA-256 del file e salta quelli già importati (stesso hash).
 2. Salva l'originale su Drive in `Archivio personale/<anno>/<mese>`, usando la data dell'email.
-3. Leggi il file e classificalo in uno di questi fascicoli: `identita`, `immobili`, `successione`, `conti`, `fiscale`, `previdenza`, `utenze`, `riscaldamento` (pellet, legna, gasolio, GPL, caldaie e stufe; aggiunto il 2026-10-15 su richiesta di Luca), `studio_fornitori`, `studio_fatture_emesse`, `legale`, `assicurazioni`, `veicoli`, `famiglia_scuola`, `sanitario_famiglia`, `clinico_pazienti`, `servizi`, `acquisti`, `altro`.
+3. Leggi il file e classificalo in uno di questi fascicoli: `identita`, `immobili`, `successione`, `conti`, `fiscale`, `previdenza`, `utenze`, `riscaldamento` (pellet, legna, gasolio, GPL, caldaie e stufe; aggiunto il 2026-10-15 su richiesta di Luca), `studio_fornitori`, `studio_fatture_emesse`, `legale`, `assicurazioni`, `veicoli`, `famiglia_scuola`, `sanitario_famiglia`, `clinico_pazienti`, `servizi`, `acquisti`, `formazione` (corsi ECM, congressi, tesi), `personale_studio` (curriculum e candidature), `corrispondenza` (email personali, catene), `foto_video`, `pubblicita` (volantini, listini, offerte non richieste), `altro` (solo se nient'altro va bene; le cinque categorie nuove sono state aggiunte il 2026-10-16 su richiesta di Luca). Ogni documento ha anche `ente` (chi lo ha emesso o riguarda, nome sempre uguale) e `rilevanza` (alta, normale, bassa: le cose poco utili si nascondono nell'app).
 4. Registralo in Supabase con `registra_documento(jsonb)`, compilando questi campi: `hash_sha256`, `gmail_message_id`, `gmail_thread_id`, `email_oggetto`, `email_mittente`, `email_data`, `nome_file_originale`, `mime_type`, `dimensione_byte`, `drive_file_id`, `drive_url`, `fascicolo`, `tipo_documento`, `titolo`, `riassunto` (2 righe), `data_documento`, `importo`, `tag[]`, `azione_richiesta`, `azione_descrizione`, `urgenza` (bassa/media/alta), `dati_estratti{}`, `pratica {id_esistente | nuova_titolo}`, `soggetti[{nome, tipo, ruolo}]`, `scadenze[{data, descrizione, importo}]`.
 5. Raggruppa nella stessa pratica i documenti della stessa vicenda (stesso soggetto e stesso oggetto). I titoli delle pratiche seguono il formato "Soggetto – oggetto", per esempio "Fornitore luce – via Roma 1" per fatture, solleciti e preavvisi della stessa utenza.
 6. I documenti dei pazienti vanno in `clinico_pazienti`, **senza riassunto clinico**.
 7. Alla fine di ogni lotto produci un resoconto: email a Luca più una riga in `lotti_importazione`.
+
+Riordino (POL-VITA-007): `riordinaLotto_()` rilegge 30 documenti a ogni giro di `elabora` usando solo i dati già in archivio (mai i file, mai i clinici) e corregge fascicolo, tipo, titolo ("Tipo – Ente – riferimento"), ente, rilevanza e tag; titolo e fascicolo di prima restano in `titolo_originale` e `fascicolo_originale`. `riordinaDaCapo()` lo fa ripartire.
+
+Limite di spesa dell'API: se Claude risponde che il limite è raggiunto, lo script si mette in pausa per un'ora (`API_PAUSA_FINO`) e non segna le email come errore. Dopo aver alzato il limite su console.anthropic.com, Luca esegue `riprovaErrori` (toglie la pausa e rimette in coda tutte le email in errore).
 
 `Code.gs` implementa già tutto questo. Se modifichi lo script, la specifica resta il riferimento.
 
@@ -42,6 +46,7 @@ Importa tutti gli allegati Gmail, escludendo Promozioni e Social, **dal più vec
 - **Pazienti.** Il contenuto dei documenti clinici dei pazienti non va mai inviato a un modello o a un servizio esterno. Se tocchi `eClinico_()`, puoi solo ampliare i criteri, mai restringerli.
 - **Niente invii a terzi.** Non inviare email, PEC o messaggi a nome di Luca. Prepara solo bozze. Le uniche email automatiche ammesse sono quelle dello script a Luca stesso (resoconto lotti e riepilogo giornaliero).
 - **Niente cancellazioni.** Non cancellare email, file su Drive o righe con dati. Le pratiche si archiviano, non si eliminano.
+  Eccezione decisa da Luca il 2026-10-16: dall'app Personal Luca può scegliere, documento per documento o con la selezione multipla e dopo una conferma, di eliminare documenti dall'archivio e, se spunta la casella, anche i loro file da Drive. I file vanno nel Cestino di Drive (recuperabili per 30 giorni), solo se registrati in archivio, compresi quelli dei pazienti. Claude non lo fa mai di sua iniziativa.
 - **Database.** Solo migrazioni additive e idempotenti (`create ... if not exists`, `create or replace`). Prima di qualsiasi modifica distruttiva serve la conferma esplicita di Luca.
 - **Clinica.** Non usare dati dei pazienti per nessuna analisi, report o statistica.
 

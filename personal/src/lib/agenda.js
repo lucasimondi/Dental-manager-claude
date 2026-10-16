@@ -106,3 +106,39 @@ export function rigaImpegno(evento) {
     note: evento.note || null,
   };
 }
+
+// POL-VITA-007 — come l'agenda dello studio (src/components/Agenda.jsx).
+export const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+
+// Stesso calcolo dello studio: chi si sovrappone si divide la colonna del giorno.
+export function layoutOverlap(voci) {
+  const items = voci.map((v) => ({ ...v, col: 0, totalCols: 1 })).sort((x, y) => x.start - y.start || y.end - x.end);
+  let cluster = [];
+  let fine = -Infinity;
+  const chiudi = () => {
+    const colEnds = [];
+    cluster.forEach((it) => {
+      let i = colEnds.findIndex((e) => e <= it.start);
+      if (i === -1) { i = colEnds.length; colEnds.push(it.end); } else colEnds[i] = it.end;
+      it.col = i;
+    });
+    cluster.forEach((it) => { it.totalCols = colEnds.length; });
+    cluster = [];
+  };
+  items.forEach((it) => {
+    if (it.start >= fine) { chiudi(); fine = it.end; } else fine = Math.max(fine, it.end);
+    cluster.push(it);
+  });
+  chiudi();
+  return items;
+}
+
+// Etichetta del mese della settimana mostrata (anche a cavallo di due mesi o anni).
+export function etichettaMese(lunedi) {
+  const a = daIso(lunedi);
+  const b = daIso(piuGiorni(lunedi, 6));
+  if (a.getMonth() === b.getMonth()) return `${MESI[a.getMonth()]} ${a.getFullYear()}`;
+  if (a.getFullYear() === b.getFullYear()) return `${MESI[a.getMonth()].slice(0, 3)} – ${MESI[b.getMonth()].slice(0, 3)} ${a.getFullYear()}`;
+  return `${MESI[a.getMonth()].slice(0, 3)} ${a.getFullYear()} – ${MESI[b.getMonth()].slice(0, 3)} ${b.getFullYear()}`;
+}
+
