@@ -2,7 +2,8 @@
 import { archivioDb } from './lib/supabasePersonal.js';
 import { eCaricato } from './lib/archivio.js';
 import { euro } from './lib/coreArchivio.js';
-import { IconaFreccia } from './Icone.jsx';
+import { useState } from 'react';
+import { IconaFreccia, IconaPratiche } from './Icone.jsx';
 import { Miniatura } from './Miniatura.jsx';
 
 /* ---------- utilità ---------- */
@@ -126,3 +127,41 @@ export function Conferma({ testo, etichetta = 'Elimina', onSi, onNo }) {
   );
 }
 
+
+export function ElencoPratiche({ elenco, onApri }) {
+  if (!elenco.length) return <Vuoto>Nessuna pratica.</Vuoto>;
+  return (
+    <Gruppo>
+      {elenco.map((p) => (
+        <button key={p.id} className="pp-riga" onClick={() => onApri(p)}>
+          <span className="pp-riga-icona" style={{ '--c': colore(p.fascicolo) }}><IconaPratiche size={18} /></span>
+          <span className="pp-riga-testo">
+            <span className="pp-riga-titolo">{p.titolo}</span>
+            <span className="pp-riga-meta">{[`${p.n_documenti} documenti`, p.prossima_scadenza && `scade ${dataBreve(p.prossima_scadenza)}`, p.stato !== 'aperta' && p.stato].filter(Boolean).join(' · ')}</span>
+          </span>
+          {p.urgenza === 'alta' && <span className="pp-pallino pp-alta" aria-label="Urgente" />}
+          <IconaFreccia size={16} />
+        </button>
+      ))}
+    </Gruppo>
+  );
+}
+
+
+// Conferma di eliminazione con la scelta di togliere anche i file da Google Drive (Cestino, 30 giorni).
+export function ConfermaElimina({ n, onSi, onNo }) {
+  const [ancheDrive, setAncheDrive] = useState(false);
+  const cosa = n === 1 ? 'il documento' : `${n} documenti`;
+  return (
+    <div className="pp-conferma" role="alertdialog">
+      <span>Eliminare {cosa} dall'archivio?</span>
+      <label className="pp-conferma-drive">
+        <input type="checkbox" checked={ancheDrive} onChange={(e) => setAncheDrive(e.target.checked)} />
+        <span><strong>Elimina anche da Google Drive</strong><br />
+          <small>{ancheDrive ? 'I file vanno nel Cestino di Drive: recuperabili per 30 giorni, poi spariscono.' : 'I file restano nel tuo Google Drive.'}</small></span>
+      </label>
+      <button className="pp-bottone pp-bottone-rosso" onClick={() => onSi(ancheDrive)}>{ancheDrive ? 'Elimina anche da Drive' : 'Elimina'}</button>
+      <button className="pp-bottone pp-bottone-chiaro" onClick={onNo}>Annulla</button>
+    </div>
+  );
+}

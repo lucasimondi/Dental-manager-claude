@@ -1,8 +1,7 @@
-// POL-VITA-004 — Agenda di Poliedron Personal: è l'agenda dello studio (stessi dati).
-// Appuntamenti dei pazienti a blocchi pieni; eventi personali (impegni_personali, senza paziente)
-// bianchi con il contorno del colore dell'etichetta; pagamenti e scadenze dell'archivio in una
-// striscia in alto, fuori dalla griglia oraria, così non coprono gli appuntamenti.
-import { useEffect, useMemo, useRef, useState } from 'react';
+// POL-VITA-004/007 — Agenda di Poliedron Personal: è l'agenda dello studio (stessi dati).
+// Giorno e Settimana sono identici a Poliedra (AgendaGriglia.jsx); Mese con i pallini e l'elenco
+// del giorno. Pagamenti e scadenze dell'archivio stanno sopra la griglia, mai sugli appuntamenti.
+import { useEffect, useMemo, useState } from 'react';
 import { archivioDb } from './lib/supabasePersonal.js';
 import { pagamenti as caricaPagamenti } from './lib/archivio.js';
 import { euro } from './lib/coreArchivio.js';
@@ -10,14 +9,12 @@ import {
   studioDb, sessioneStudio, entraStudio, appuntamentiTra, impegniTra, salvaImpegno, eliminaImpegno, tipiAppuntamento,
 } from './lib/studio.js';
 import {
-  isoData, daIso, piuGiorni, oggi, minuti, ora, giorniSettimana, grigliaMese, stessoMese, elementiDelGiorno, colonne,
+  isoData, daIso, piuGiorni, oggi, minuti, ora, giorniSettimana, grigliaMese, stessoMese, elementiDelGiorno,
   conteggi, coloreEvento, nomeEtichetta, COLORE_SCADENZA,
 } from './lib/agenda.js';
 import { IconaIndietro, IconaFreccia, IconaCestino } from './Icone.jsx';
+import { GrigliaPoliedra, ViewPicker } from './AgendaGriglia.jsx';
 
-const ORA_INIZIO = 7;
-const ORA_FINE = 22;
-const ALTEZZA_ORA = 56;
 const nomeGiorno = (s, forma = 'long') => daIso(s).toLocaleDateString('it-IT', { weekday: forma, day: 'numeric', month: 'long' });
 const meseAnno = (s) => { const t = daIso(s).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' }); return t.charAt(0).toUpperCase() + t.slice(1); };
 
@@ -57,76 +54,6 @@ function useDatiAgenda(da, a, versione, esegui) {
   return dati;
 }
 
-function StrisciaAlta({ el, ctx, etichette }) {
-  if (!el.scadenze.length && !el.tuttoIlGiorno.length) return null;
-  return (
-    <div className="pp-agenda-striscia">
-      {el.tuttoIlGiorno.map((e) => (
-        <button key={e.id} className="pp-agenda-pillola pp-evento" style={{ '--c': coloreEvento(e, etichette) }} onClick={() => ctx.apri({ tipo: 'evento', evento: e })}>{e.titolo}</button>
-      ))}
-      {el.scadenze.map((s) => (
-        <button key={s.id} className={`pp-agenda-pillola pp-agenda-scadenza${s.completata ? ' fatta' : ''}`} style={{ '--c': COLORE_SCADENZA }} onClick={() => ctx.apri({ tipo: 'pagamento', s })}>
-          € {s.descrizione}{s.importo != null ? ` · ${euro(s.importo)}` : ''}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function GrigliaGiorno({ giorno, dati, ctx, etichette, coloriTipi }) {
-  const el = elementiDelGiorno(giorno, dati);
-  const contenitore = useRef(null);
-  useEffect(() => {
-    // Apre la giornata all'ora attuale (o alle 8) invece che alle 7.
-    const ore = giorno === oggi() ? new Date().getHours() - 1 : 8;
-    contenitore.current?.scrollTo?.({ top: Math.max(0, (ore - ORA_INIZIO) * ALTEZZA_ORA) });
-  }, [giorno]);
-  const ore = Array.from({ length: ORA_FINE - ORA_INIZIO }, (_, i) => ORA_INIZIO + i);
-  const adesso = new Date();
-  const minAdesso = adesso.getHours() * 60 + adesso.getMinutes();
-  const nuovo = (h) => ctx.apri({ tipo: 'evento', evento: { data_inizio: giorno, ora_inizio: ora(h * 60), ora_fine: ora(h * 60 + 60) } });
-  return (
-    <>
-      <StrisciaAlta el={el} ctx={ctx} etichette={etichette} />
-      <div className="pp-agenda-griglia" ref={contenitore}>
-        <div className="pp-agenda-ore" style={{ height: ore.length * ALTEZZA_ORA }}>
-          {ore.map((h) => (
-            <button key={h} className="pp-agenda-ora" style={{ top: (h - ORA_INIZIO) * ALTEZZA_ORA, height: ALTEZZA_ORA }} onClick={() => nuovo(h)} aria-label={`Nuovo evento alle ${h}`}>
-              <span>{due(h)}:00</span>
-            </button>
-          ))}
-          {giorno === oggi() && minAdesso >= ORA_INIZIO * 60 && minAdesso < ORA_FINE * 60 && (
-            <div className="pp-agenda-adesso" style={{ top: ((minAdesso - ORA_INIZIO * 60) / 60) * ALTEZZA_ORA }} />
-          )}
-          {colonne(el.aOrario).map((x) => {
-            const top = Math.max(0, ((x.inizio - ORA_INIZIO * 60) / 60) * ALTEZZA_ORA);
-            const altezza = Math.max(22, ((x.fine - x.inizio) / 60) * ALTEZZA_ORA - 2);
-            const larghezza = `calc((100% - 52px) / ${x.colonne})`;
-            const stile = { top, height: altezza, left: `calc(52px + ${larghezza} * ${x.col})`, width: `calc(${larghezza} - 3px)` };
-            if (x.tipo === 'appuntamento') {
-              const a = x.dato;
-              const c = a.colore || coloriTipi[a.tipo] || '#0c447c';
-              return (
-                <button key={x.id} className="pp-agenda-blocco pp-appuntamento" style={{ ...stile, '--c': c }} onClick={() => ctx.apri({ tipo: 'appuntamento', a })}>
-                  <strong>{a.paziente || a.tipo || 'Appuntamento'}</strong>
-                  <span>{a.ora?.slice(0, 5)} · {a.tipo || ''}</span>
-                </button>
-              );
-            }
-            const e = x.dato;
-            return (
-              <button key={x.id} className="pp-agenda-blocco pp-evento" style={{ ...stile, '--c': coloreEvento(e, etichette) }} onClick={() => ctx.apri({ tipo: 'evento', evento: e })}>
-                <strong>{e.titolo}</strong>
-                <span>{e.ora_inizio?.slice(0, 5)}–{e.ora_fine?.slice(0, 5)} · {nomeEtichetta(e.tipo, etichette)}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </>
-  );
-}
-const due = (n) => String(n).padStart(2, '0');
 
 export function ElencoGiorno({ giorno, dati, ctx, etichette, coloriTipi, intestazione = true }) {
   const el = elementiDelGiorno(giorno, dati);
@@ -173,7 +100,7 @@ export function VistaAgenda({ ctx }) {
   const { esegui, versione, impostazioni } = ctx;
   const etichette = impostazioni.etichette;
   const [collegata, setCollegata] = useState(undefined);
-  const [modo, setModo] = useState('giorno');
+  const [modo, setModo] = useState('settimana');
   const [giorno, setGiorno] = useState(oggi());
   const [coloriTipi, setColoriTipi] = useState({});
 
@@ -209,42 +136,40 @@ function ContenutoAgenda({ ctx, modo, setModo, giorno, setGiorno, da, a, etichet
   const griglia = modo === 'mese' ? grigliaMese(giorno) : [];
   const numeri = useMemo(() => (dati && modo === 'mese' ? conteggi(griglia, dati) : {}), [dati, modo, griglia.join()]);
 
+  if (modo !== 'mese') {
+    return !dati ? <p className="pp-vuoto">Carico l'agenda…</p>
+      : <GrigliaPoliedra view={modo} setView={setModo} giorno={giorno} setGiorno={setGiorno} dati={dati} ctx={ctx} etichette={etichette} coloriTipi={coloriTipi} />;
+  }
   return (
     <>
-      <div className="pp-segmenti">
-        {[['giorno', 'Giorno'], ['settimana', 'Settimana'], ['mese', 'Mese']].map(([k, l]) => <button key={k} className={modo === k ? 'attivo' : ''} onClick={() => setModo(k)}>{l}</button>)}
-      </div>
-      <div className="pp-agenda-testa">
-        <button className="pp-icona-bottone" onClick={() => sposta(-1)} aria-label="Precedente"><IconaIndietro size={18} /></button>
-        <button className="pp-agenda-titolo" onClick={() => setGiorno(oggi())}>{titolo}{giorno !== oggi() && <small>Torna a oggi</small>}</button>
-        <button className="pp-icona-bottone" onClick={() => sposta(1)} aria-label="Successivo"><IconaFreccia size={18} /></button>
+      <div className="ag-barra">
+        <span className="ag-barra-sinistra">
+          <button className="pp-icona-bottone pp-piccolo" onClick={() => sposta(-1)} aria-label="Mese precedente"><IconaIndietro size={16} /></button>
+          <button className="ag-mese" onClick={() => setGiorno(oggi())}>{titolo}</button>
+          <button className="pp-icona-bottone pp-piccolo" onClick={() => sposta(1)} aria-label="Mese successivo"><IconaFreccia size={16} /></button>
+        </span>
+        <ViewPicker view={modo} setView={setModo} />
       </div>
       {!dati ? <p className="pp-vuoto">Carico l'agenda…</p> : (
         <>
-          {modo === 'giorno' && <GrigliaGiorno giorno={giorno} dati={dati} ctx={ctx} etichette={etichette} coloriTipi={coloriTipi} />}
-          {modo === 'settimana' && giorniSettimana(giorno).map((g) => <ElencoGiorno key={g} giorno={g} dati={dati} ctx={ctx} etichette={etichette} coloriTipi={coloriTipi} />)}
-          {modo === 'mese' && (
-            <>
-              <div className="pp-mese">
-                {['L', 'M', 'M', 'G', 'V', 'S', 'D'].map((x, i) => <span key={i} className="pp-mese-intestazione">{x}</span>)}
-                {griglia.map((g) => {
-                  const n = numeri[g] || {};
-                  return (
-                    <button key={g} className={`pp-mese-giorno${stessoMese(g, giorno) ? '' : ' fuori'}${g === giorno ? ' scelto' : ''}${g === oggi() ? ' oggi' : ''}`} onClick={() => setGiorno(g)}>
-                      <span>{daIso(g).getDate()}</span>
-                      <span className="pp-mese-punti">
-                        {n.appuntamenti > 0 && <i className="app" />}
-                        {n.eventi > 0 && <i className="ev" />}
-                        {n.scadenze > 0 && <i className="sc" />}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="pp-riga-meta pp-legenda"><i className="app" /> studio <i className="ev" /> tuoi eventi <i className="sc" /> pagamenti</p>
-              <ElencoGiorno giorno={giorno} dati={dati} ctx={ctx} etichette={etichette} coloriTipi={coloriTipi} />
-            </>
-          )}
+          <div className="pp-mese">
+            {['L', 'M', 'M', 'G', 'V', 'S', 'D'].map((x, i) => <span key={i} className="pp-mese-intestazione">{x}</span>)}
+            {griglia.map((g) => {
+              const n = numeri[g] || {};
+              return (
+                <button key={g} className={`pp-mese-giorno${stessoMese(g, giorno) ? '' : ' fuori'}${g === giorno ? ' scelto' : ''}${g === oggi() ? ' oggi' : ''}`} onClick={() => setGiorno(g)}>
+                  <span>{daIso(g).getDate()}</span>
+                  <span className="pp-mese-punti">
+                    {n.appuntamenti > 0 && <i className="app" />}
+                    {n.eventi > 0 && <i className="ev" />}
+                    {n.scadenze > 0 && <i className="sc" />}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="pp-riga-meta pp-legenda"><i className="app" /> studio <i className="ev" /> tuoi eventi <i className="sc" /> pagamenti</p>
+          <ElencoGiorno giorno={giorno} dati={dati} ctx={ctx} etichette={etichette} coloriTipi={coloriTipi} />
         </>
       )}
     </>

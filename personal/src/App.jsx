@@ -8,7 +8,7 @@ import {
   cercaDocumenti, conteggiFascicoli, eliminaDocumento, pratiche as caricaPratiche, documentiDellaPratica, rispondi,
   segnaScadenza, cambiaStatoPratica, documentiDaGestire, documentiRecenti, documentoCompleto, impostaPortafoglio,
   caricaDocumento, eCaricato, nelPortafoglio, anteprimaFile, pagamenti as caricaPagamenti, eliminaScadenza,
-  aggiornaDocumento, documentiSezione, documentiPersonali, aggiornaScadenza, chiediPoliedron, partiRisposta, praticaCompleta,
+  aggiornaDocumento, documentiSezione, documentiPersonali, aggiornaScadenza, chiediPoliedron, partiRisposta, praticaCompleta, cestinaSuDrive,
 } from './lib/archivio.js';
 import { spesaDaScadenza, annullaSpesaDaScadenza, movimentiTra, bilancio, periodo } from './lib/conti.js';
 import { impostaToken } from './lib/miniature.js';
@@ -22,8 +22,9 @@ import { preparaFile } from './lib/file.js';
 import { IMPOSTAZIONI_PREDEFINITE, leggiImpostazioni, salvaImpostazioni, categoriaDi, personaDi, slug } from './lib/impostazioni.js';
 import {
   colore, dataBreve, oggiIso, quando, titoloDoc, saluto, VISTA_KEY, leggiVista, INDIRIZZO_APP, tokenSessione,
-  Vuoto, Sezione, Gruppo, RigaDocumento, SchedaDocumento, RigaPagamento, Chips, Segmenti, Conferma,
+  Vuoto, Sezione, Gruppo, RigaDocumento, SchedaDocumento, RigaPagamento, Chips, Segmenti, Conferma, ConfermaElimina, ElencoPratiche,
 } from './ui.jsx';
+import { VistaDocumenti, PaginaRicerca } from './Documenti.jsx';
 import { Miniatura } from './Miniatura.jsx';
 import {
   IconaOggi, IconaDocumenti, IconaPortafoglio, IconaPratiche, IconaPiu, IconaCerca, IconaChiudi, IconaIndietro, IconaFreccia,
@@ -315,141 +316,6 @@ function Risultato({ risposta, ctx }) {
   );
 }
 
-function ElencoPratiche({ elenco, onApri }) {
-  if (!elenco.length) return <Vuoto>Nessuna pratica.</Vuoto>;
-  return (
-    <Gruppo>
-      {elenco.map((p) => (
-        <button key={p.id} className="pp-riga" onClick={() => onApri(p)}>
-          <span className="pp-riga-icona" style={{ '--c': colore(p.fascicolo) }}><IconaPratiche size={18} /></span>
-          <span className="pp-riga-testo">
-            <span className="pp-riga-titolo">{p.titolo}</span>
-            <span className="pp-riga-meta">{[`${p.n_documenti} documenti`, p.prossima_scadenza && `scade ${dataBreve(p.prossima_scadenza)}`, p.stato !== 'aperta' && p.stato].filter(Boolean).join(' · ')}</span>
-          </span>
-          {p.urgenza === 'alta' && <span className="pp-pallino pp-alta" aria-label="Urgente" />}
-          <IconaFreccia size={16} />
-        </button>
-      ))}
-    </Gruppo>
-  );
-}
-
-// Elenco di documenti a griglia (con anteprima) o a righe; la scelta resta sul telefono.
-const MODO_KEY = 'poliedron-personal-elenco';
-function ElencoDocumenti({ elenco, onApri }) {
-  const [modo, setModoStato] = useState(() => { try { return localStorage.getItem(MODO_KEY) || 'griglia'; } catch { return 'griglia'; } });
-  const setModo = (m) => { setModoStato(m); try { localStorage.setItem(MODO_KEY, m); } catch { /* facoltativo */ } };
-  return (
-    <>
-      <div className="pp-elenco-testa">
-        <span className="pp-frase">{elenco.length} documenti</span>
-        <span className="pp-commuta" role="group" aria-label="Vista">
-          <button className={modo === 'griglia' ? 'attivo' : ''} onClick={() => setModo('griglia')} aria-label="Griglia con anteprime">▦</button>
-          <button className={modo === 'righe' ? 'attivo' : ''} onClick={() => setModo('righe')} aria-label="Elenco">☰</button>
-        </span>
-      </div>
-      {modo === 'griglia'
-        ? <div className="pp-griglia-doc">{elenco.map((d) => <SchedaDocumento key={d.id} doc={d} onApri={onApri} />)}</div>
-        : <Gruppo>{elenco.map((d) => <RigaDocumento key={d.id} doc={d} onApri={onApri} />)}</Gruppo>}
-    </>
-  );
-}
-
-function VistaDocumenti({ ctx }) {
-  const { esegui, apri, versione, impostazioni, fascicoli, sotto } = ctx;
-  const [sezione, setSezione] = useState(sotto || 'recenti');
-  const [domanda, setDomanda] = useState('');
-  const [risposta, setRisposta] = useState(null);
-  const [elenco, setElenco] = useState(null);
-  const [filtro, setFiltro] = useState('tutti');
-  const [filtroPratiche, setFiltroPratiche] = useState('aperte');
-
-  const sezioni = impostazioni.sezioni;
-  const voci = [['recenti', 'Recenti'], ['cartelle', 'Cartelle'], ['pratiche', 'Pratiche'], ...sezioni.map((s) => [s.id, s.nome])];
-  const attiva = voci.some(([id]) => id === sezione) ? sezione : 'recenti';
-
-  useEffect(() => {
-    setElenco(null);
-    if (attiva === 'cartelle') return;
-    esegui(async () => {
-      if (attiva === 'recenti') setElenco(await documentiRecenti(archivioDb, 60));
-      else if (attiva === 'pratiche') setElenco(await caricaPratiche(archivioDb));
-      else setElenco(await documentiSezione(archivioDb, sezioni.find((s) => s.id === attiva)));
-    });
-  }, [attiva, esegui, versione, sezioni]);
-
-  const cerca = (testo) => {
-    if (!testo.trim()) { setRisposta(null); return; }
-    esegui(async () => setRisposta(await rispondi(archivioDb, testo)));
-  };
-  const apriDoc = (d) => apri({ tipo: 'documento', id: d.id });
-  const apriFascicolo = (f) => apri({ tipo: 'elenco', titolo: f.nome, colore: colore(f.codice), carica: () => cercaDocumenti(archivioDb, '', f.codice, 300) });
-  const recentiFiltrati = (elenco || []).filter((d) => (filtro === 'dagestire' ? d.azione_richiesta : filtro === 'caricati' ? eCaricato(d) : filtro === 'importo' ? d.importo != null : true));
-
-  return (
-    <>
-      <form className="pp-cerca" onSubmit={(e) => { e.preventDefault(); cerca(domanda); e.target.querySelector('input')?.blur(); }}>
-        <IconaCerca size={18} />
-        <input type="search" value={domanda} onChange={(e) => { setDomanda(e.target.value); if (!e.target.value) setRisposta(null); }} placeholder="Cerca o chiedi: “quanto devo a Edison?”" enterKeyHint="search" aria-label="Cerca nell'archivio" />
-        {domanda && <button type="button" className="pp-cerca-pulisci" aria-label="Cancella ricerca" onClick={() => { setDomanda(''); setRisposta(null); }}><IconaChiudi size={16} /></button>}
-      </form>
-      {risposta ? <Risultato risposta={risposta} ctx={ctx} /> : (
-        <>
-          <Chips voci={voci} attiva={attiva} onScegli={setSezione} />
-          {attiva === 'recenti' && elenco && (
-            <>
-              <Segmenti voci={[['tutti', 'Tutti'], ['dagestire', 'Da gestire'], ['importo', 'Importo'], ['caricati', 'Caricati']]} attiva={filtro} onScegli={setFiltro} />
-              {recentiFiltrati.length ? <ElencoDocumenti elenco={recentiFiltrati} onApri={apriDoc} /> : <Vuoto>Nessun documento.</Vuoto>}
-            </>
-          )}
-          {attiva === 'cartelle' && (
-            <>
-              {sezioni.length > 0 && (
-                <Sezione titolo="Le tue sezioni">
-                  <div className="pp-griglia">
-                    {sezioni.map((s) => (
-                      <button key={s.id} className="pp-cartella pp-cartella-sezione" style={{ '--c': colore(s.fascicoli[0] || 'altro') }} onClick={() => setSezione(s.id)}>
-                        <span className="pp-cartella-icona"><IconaStella size={20} /></span>
-                        <span className="pp-cartella-nome">{s.nome}</span>
-                        <span className="pp-cartella-numero">{[...s.fascicoli.map((f) => fascicoli.find((x) => x.codice === f)?.nome || f), ...s.parole].slice(0, 3).join(', ')}</span>
-                      </button>
-                    ))}
-                  </div>
-                </Sezione>
-              )}
-              <Sezione titolo="Fascicoli">
-                <div className="pp-griglia">
-                  {fascicoli.filter((f) => f.n > 0).map((f) => (
-                    <button key={f.codice} className="pp-cartella" style={{ '--c': colore(f.codice) }} onClick={() => apriFascicolo(f)}>
-                      <span className="pp-cartella-icona"><IconaDocumenti size={20} /></span>
-                      <span className="pp-cartella-nome">{f.nome}</span>
-                      <span className="pp-cartella-numero">{f.n}{f.n_azioni ? <em> · {f.n_azioni} da fare</em> : null}</span>
-                    </button>
-                  ))}
-                </div>
-              </Sezione>
-            </>
-          )}
-          {attiva === 'pratiche' && elenco && (
-            <>
-              <Segmenti voci={[['aperte', 'Aperte'], ['risolte', 'Risolte'], ['tutte', 'Tutte']]} attiva={filtroPratiche} onScegli={setFiltroPratiche} />
-              <ElencoPratiche
-                elenco={elenco.filter((p) => (filtroPratiche === 'aperte' ? ['aperta', 'in_corso'].includes(p.stato) : filtroPratiche === 'risolte' ? p.stato === 'risolta' : true))}
-                onApri={(p) => apri({ tipo: 'pratica', p })}
-              />
-            </>
-          )}
-          {!['recenti', 'cartelle', 'pratiche'].includes(attiva) && elenco && (
-            elenco.length
-              ? <ElencoDocumenti elenco={elenco} onApri={apriDoc} />
-              : <Vuoto>Ancora nessun documento in questa sezione. Puoi cambiarne le regole in Impostazioni.</Vuoto>
-          )}
-        </>
-      )}
-    </>
-  );
-}
-
 /* ---------- Personali (carta d'identità, codice fiscale, ... per persona) ---------- */
 function CartaDocumento({ doc, onApri, etichetta }) {
   return (
@@ -554,15 +420,28 @@ function PaginaDocumento({ id, ctx, chiudi }) {
           </Gruppo>
         </Sezione>
       )}
-      <Sezione titolo="Documento personale">
+      <Sezione titolo="Catalogo">
         <div className="pp-campi">
+          <label className="pp-campo-riga"><span>Titolo</span>
+            <input className="pp-campo-testo" defaultValue={doc.titolo || ''} onBlur={(e) => e.target.value.trim() && e.target.value.trim() !== doc.titolo && cambia(() => aggiornaDocumento(archivioDb, doc.id, { titolo: e.target.value }), 'Titolo salvato')} />
+          </label>
+          <label className="pp-campo-riga"><span>Ente</span>
+            <input className="pp-campo-testo" defaultValue={doc.ente || ''} placeholder="Es. Enel Energia" onBlur={(e) => e.target.value.trim() !== (doc.ente || '') && cambia(() => aggiornaDocumento(archivioDb, doc.id, { ente: e.target.value }), 'Ente salvato')} />
+          </label>
+          <label className="pp-campo-riga"><span>Importanza</span>
+            <select className="pp-select" value={doc.rilevanza || 'normale'} onChange={(e) => cambia(() => aggiornaDocumento(archivioDb, doc.id, { rilevanza: e.target.value }), 'Salvato')}>
+              <option value="alta">Importante</option>
+              <option value="normale">Normale</option>
+              <option value="bassa">Poco utile (nascosto)</option>
+            </select>
+          </label>
           <label className="pp-campo-riga"><span>Persona</span>
             <select className="pp-select" value={doc.persona || ''} onChange={(e) => cambia(() => aggiornaDocumento(archivioDb, doc.id, { persona: e.target.value }), 'Salvato')}>
               <option value="">Nessuna</option>
               {persone.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
           </label>
-          <label className="pp-campo-riga"><span>Tipo</span>
+          <label className="pp-campo-riga"><span>Doc. personale</span>
             <select className="pp-select" value={doc.categoria || ''} onChange={(e) => cambia(() => aggiornaDocumento(archivioDb, doc.id, { categoria: e.target.value }), 'Salvato')}>
               <option value="">Nessuno</option>
               {categorie.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
@@ -584,8 +463,12 @@ function PaginaDocumento({ id, ctx, chiudi }) {
       <div className="pp-elimina">
         {!conferma
           ? <button className="pp-testo-link pp-rosso" onClick={() => setConferma(true)}><IconaCestino size={16} /> Elimina dall'archivio</button>
-          : <Conferma testo="Eliminare per sempre dall'archivio? Il file su Drive resta." onNo={() => setConferma(false)}
-            onSi={() => esegui(async () => { await eliminaDocumento(archivioDb, doc.id); aggiorna(); mostra('Eliminato dall\'archivio'); chiudi(); })} />}
+          : <ConfermaElimina n={1} onNo={() => setConferma(false)}
+            onSi={(ancheDrive) => esegui(async () => {
+              const r = ancheDrive ? await cestinaSuDrive({ token: await tokenSessione(), ids: [doc.drive_file_id] }) : null;
+              await eliminaDocumento(archivioDb, doc.id); aggiorna();
+              mostra(r?.cestinati.length ? 'Eliminato; il file è nel Cestino di Drive' : 'Eliminato dall\'archivio'); chiudi();
+            })} />}
       </div>
     </>
   );
@@ -736,14 +619,6 @@ function PaginaPratica({ p: base, ctx }) {
       </Sezione>
     </>
   );
-}
-
-function PaginaElenco({ carica, ctx }) {
-  const { esegui, apri, versione } = ctx;
-  const [elenco, setElenco] = useState(null);
-  useEffect(() => { esegui(async () => setElenco(await carica())); }, [esegui, carica, versione]);
-  if (!elenco) return <Vuoto>Carico…</Vuoto>;
-  return elenco.length ? <ElencoDocumenti elenco={elenco} onApri={(x) => apri({ tipo: 'documento', id: x.id })} /> : <Vuoto>Nessun documento.</Vuoto>;
 }
 
 function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) {
@@ -1157,7 +1032,8 @@ function Archivio({ email }) {
       case 'documento': return <PaginaDocumento id={p.id} ctx={ctx} chiudi={indietro} />;
       case 'pagamento': return <PaginaPagamento s={p.s} ctx={ctx} chiudi={indietro} />;
       case 'pratica': return <PaginaPratica p={p.p} ctx={ctx} />;
-      case 'elenco': return <PaginaElenco carica={p.carica} ctx={ctx} />;
+      case 'elenco': return <PaginaRicerca carica={p.carica} ctx={ctx} />;
+      case 'ricerca': return <PaginaRicerca filtri={p.filtri} sezione={p.sezione} ctx={ctx} />;
       case 'carica': return <PaginaCarica opzioni={p.opzioni || {}} file={p.file} ctx={ctx} sostituisci={sostituisci} />;
       case 'scansione': return <PaginaScansione ctx={ctx} sostituisci={sostituisci} />;
       case 'movimento': return <PaginaMovimento m={p.m || {}} ctx={ctx} chiudi={indietro} />;
