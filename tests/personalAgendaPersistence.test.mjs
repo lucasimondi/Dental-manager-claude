@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { studioDb, salvaImpegno, impegniTra } from '../personal/src/lib/studio.js';
+// Node 20 has no native WebSocket. This adapter test never subscribes to realtime;
+// make any accidental socket connection fail instead of using the network.
+const nativeWebSocket = globalThis.WebSocket;
+globalThis.WebSocket ??= class UnexpectedSocket {
+ constructor() { throw new Error('Unexpected realtime connection in persistence unit test'); }
+};
+const { studioDb, salvaImpegno, impegniTra } = await import('../personal/src/lib/studio.js');
+if (nativeWebSocket === undefined) delete globalThis.WebSocket;
 
 test('Personal saves the required numeric id and reloads the authoritative record; missing tenant fails closed', async () => {
  const getSession=studioDb.auth.getSession,from=studioDb.from;
