@@ -656,4 +656,7 @@ i.entrata { background: var(--pp-verde); } i.uscita { background: var(--pp-rosso
 .pp-contenuto:has(.pp-barra-selezione), .pp-pagina-corpo:has(.pp-barra-selezione) { padding-bottom: 200px; }
 .pp-scheda-doc-stella ~ .pp-scheda-doc-pallino { left: 32px; }
 input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
-.pp-app:has(.pp-barra-selezione) .pp-toast { bottom: calc(var(--pp-dock) + 180px + env(safe-area-inset-bottom)); }
+.pp-app:has(.pp-barra-selezione) .pp-toast { bottom: auto; top: calc(env(safe-area-inset-top) + 72px); }
+.pp-conferma-drive { width: 100%; display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border-radius: 10px; background: var(--pp-superficie); font-size: 14px; }
+.pp-conferma-drive input { width: 22px; height: 22px; flex-shrink: 0; margin: 1px 0 0; accent-color: var(--pp-rosso); }
+.pp-conferma-drive small { color: var(--pp-grigio); }

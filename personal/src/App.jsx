@@ -8,7 +8,7 @@ import {
   cercaDocumenti, conteggiFascicoli, eliminaDocumento, pratiche as caricaPratiche, documentiDellaPratica, rispondi,
   segnaScadenza, cambiaStatoPratica, documentiDaGestire, documentiRecenti, documentoCompleto, impostaPortafoglio,
   caricaDocumento, eCaricato, nelPortafoglio, anteprimaFile, pagamenti as caricaPagamenti, eliminaScadenza,
-  aggiornaDocumento, documentiSezione, documentiPersonali, aggiornaScadenza, chiediPoliedron, partiRisposta, praticaCompleta,
+  aggiornaDocumento, documentiSezione, documentiPersonali, aggiornaScadenza, chiediPoliedron, partiRisposta, praticaCompleta, cestinaSuDrive,
 } from './lib/archivio.js';
 import { spesaDaScadenza, annullaSpesaDaScadenza, movimentiTra, bilancio, periodo } from './lib/conti.js';
 import { impostaToken } from './lib/miniature.js';
@@ -22,7 +22,7 @@ import { preparaFile } from './lib/file.js';
 import { IMPOSTAZIONI_PREDEFINITE, leggiImpostazioni, salvaImpostazioni, categoriaDi, personaDi, slug } from './lib/impostazioni.js';
 import {
   colore, dataBreve, oggiIso, quando, titoloDoc, saluto, VISTA_KEY, leggiVista, INDIRIZZO_APP, tokenSessione,
-  Vuoto, Sezione, Gruppo, RigaDocumento, SchedaDocumento, RigaPagamento, Chips, Segmenti, Conferma, ElencoPratiche,
+  Vuoto, Sezione, Gruppo, RigaDocumento, SchedaDocumento, RigaPagamento, Chips, Segmenti, Conferma, ConfermaElimina, ElencoPratiche,
 } from './ui.jsx';
 import { VistaDocumenti, PaginaRicerca } from './Documenti.jsx';
 import { Miniatura } from './Miniatura.jsx';
@@ -463,8 +463,12 @@ function PaginaDocumento({ id, ctx, chiudi }) {
       <div className="pp-elimina">
         {!conferma
           ? <button className="pp-testo-link pp-rosso" onClick={() => setConferma(true)}><IconaCestino size={16} /> Elimina dall'archivio</button>
-          : <Conferma testo="Eliminare per sempre dall'archivio? Il file su Drive resta." onNo={() => setConferma(false)}
-            onSi={() => esegui(async () => { await eliminaDocumento(archivioDb, doc.id); aggiorna(); mostra('Eliminato dall\'archivio'); chiudi(); })} />}
+          : <ConfermaElimina n={1} onNo={() => setConferma(false)}
+            onSi={(ancheDrive) => esegui(async () => {
+              const r = ancheDrive ? await cestinaSuDrive({ token: await tokenSessione(), ids: [doc.drive_file_id] }) : null;
+              await eliminaDocumento(archivioDb, doc.id); aggiorna();
+              mostra(r?.cestinati.length ? 'Eliminato; il file è nel Cestino di Drive' : 'Eliminato dall\'archivio'); chiudi();
+            })} />}
       </div>
     </>
   );

@@ -132,7 +132,7 @@ test('miniature: chieste allo script con il token, solo file in archivio e mai d
   assert.match(corpo.tipo, /^text\/plain/);
   const doPost = codeGs.slice(codeGs.indexOf('function doPost('), codeGs.indexOf('function fileDelDocumento_('));
   assert.ok(doPost.indexOf("req.azione === 'miniature'") > doPost.indexOf('PROPRIETARIO || !utente.email_confirmed_at'));
-  const fn = codeGs.slice(codeGs.indexOf('function miniature_('), codeGs.indexOf('CATALOGO MIGLIORE'));
+  const fn = codeGs.slice(codeGs.indexOf('function miniature_('), codeGs.indexOf('// Eliminazione anche da Drive'));
   assert.match(fn, /fascicolo=neq\.clinico_pazienti/);
   assert.match(fn, /drive_file_id=in\./);
   assert.match(fn, /\.slice\(0, MINIATURE_MAX\)/);

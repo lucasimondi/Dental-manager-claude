@@ -5,11 +5,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { archivioDb } from './lib/supabasePersonal.js';
 import {
-  cercaArchivio, enti as caricaEnti, aggiornaDocumenti, eliminaDocumenti, portafoglioDocumenti, documentiSezione,
+  cercaArchivio, enti as caricaEnti, aggiornaDocumenti, eliminaDocumenti, portafoglioDocumenti, documentiSezione, cestinaSuDrive,
   pratiche as caricaPratiche, eCaricato,
 } from './lib/archivio.js';
 import { euro } from './lib/coreArchivio.js';
-import { colore, dataBreve, titoloDoc, Vuoto, Sezione, Gruppo, Chips, Segmenti, Conferma, ElencoPratiche } from './ui.jsx';
+import { colore, dataBreve, titoloDoc, Vuoto, Sezione, Gruppo, Chips, Segmenti, ConfermaElimina, ElencoPratiche, tokenSessione } from './ui.jsx';
 import { Miniatura } from './Miniatura.jsx';
 import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaStella, IconaCestino } from './Icone.jsx';
 
@@ -136,11 +136,17 @@ export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione }) {
       esegui(async () => { await portafoglioDocumenti(archivioDb, scelti, id === 'personali_si'); fatto(id === 'personali_si' ? 'Aggiunti ai Personali' : 'Tolti dai Personali'); });
     } },
   };
-  const elimina = () => esegui(async () => {
+  const elimina = (ancheDrive) => esegui(async () => {
     setConferma(false);
     setAvanzamento({ fatti: 0, totale: ids.length });
-    try { await eliminaDocumenti(archivioDb, ids, (fatti, totale) => setAvanzamento({ fatti, totale })); } finally { setAvanzamento(null); }
-    fatto(`${ids.length} ${ids.length === 1 ? 'documento eliminato' : 'documenti eliminati'} dall'archivio`);
+    let suDrive = null;
+    try {
+      // Prima Drive (lo script controlla che i file siano in archivio), poi l'archivio.
+      if (ancheDrive) suDrive = await cestinaSuDrive({ token: await tokenSessione(), ids: scelti.map((d) => d.drive_file_id) });
+      await eliminaDocumenti(archivioDb, ids, (fatti, totale) => setAvanzamento({ fatti, totale }));
+    } finally { setAvanzamento(null); }
+    const quanti = `${ids.length} ${ids.length === 1 ? 'documento eliminato' : 'documenti eliminati'}`;
+    fatto(suDrive ? `${quanti}; ${suDrive.cestinati.length} file nel Cestino di Drive` : `${quanti} dall'archivio`);
   });
 
   return (
@@ -168,7 +174,7 @@ export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione }) {
           </div>
           {avanzamento ? <p className="pp-riga-meta"><span className="pp-rotella" /> Elimino {avanzamento.fatti}/{avanzamento.totale}…</p>
             : conferma ? (
-              <Conferma testo={`Eliminare ${ids.length} ${ids.length === 1 ? 'documento' : 'documenti'} dall'archivio? I file restano nel tuo Google Drive.`} onNo={() => setConferma(false)} onSi={elimina} />
+              <ConfermaElimina n={ids.length} onNo={() => setConferma(false)} onSi={elimina} />
             ) : (
               <div className="pp-barra-selezione-azioni">
                 <button disabled={!ids.length} onClick={() => setFoglio('sposta')}><IconaDocumenti size={18} /><span>Sposta</span></button>

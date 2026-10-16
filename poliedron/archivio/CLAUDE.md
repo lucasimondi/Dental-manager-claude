@@ -46,6 +46,7 @@ Limite di spesa dell'API: se Claude risponde che il limite è raggiunto, lo scri
 - **Pazienti.** Il contenuto dei documenti clinici dei pazienti non va mai inviato a un modello o a un servizio esterno. Se tocchi `eClinico_()`, puoi solo ampliare i criteri, mai restringerli.
 - **Niente invii a terzi.** Non inviare email, PEC o messaggi a nome di Luca. Prepara solo bozze. Le uniche email automatiche ammesse sono quelle dello script a Luca stesso (resoconto lotti e riepilogo giornaliero).
 - **Niente cancellazioni.** Non cancellare email, file su Drive o righe con dati. Le pratiche si archiviano, non si eliminano.
+  Eccezione decisa da Luca il 2026-10-16: dall'app Personal Luca può scegliere, documento per documento o con la selezione multipla e dopo una conferma, di eliminare documenti dall'archivio e, se spunta la casella, anche i loro file da Drive. I file vanno nel Cestino di Drive (recuperabili per 30 giorni), solo se registrati in archivio, compresi quelli dei pazienti. Claude non lo fa mai di sua iniziativa.
 - **Database.** Solo migrazioni additive e idempotenti (`create ... if not exists`, `create or replace`). Prima di qualsiasi modifica distruttiva serve la conferma esplicita di Luca.
 - **Clinica.** Non usare dati dei pazienti per nessuna analisi, report o statistica.
 

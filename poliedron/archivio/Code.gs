@@ -748,6 +748,7 @@ function doPost(e) {
     if (req.azione === 'file') return rispostaJson_(fileDelDocumento_(req.drive_file_id));
     if (req.azione === 'chiedi') return rispostaJson_(chiediPoliedron_(req));
     if (req.azione === 'miniature') return rispostaJson_(miniature_(req.ids));
+    if (req.azione === 'cestina') return rispostaJson_(cestinaFile_(req.ids));
     if (!req.dati || !req.nome) return rispostaJson_({ ok: false, errore: 'File mancante' });
 
     const nome = pulisciNome_(String(req.nome)) || 'documento';
@@ -843,6 +844,24 @@ function miniature_(ids) {
     } catch (e) { out[id] = null; }
   });
   return { ok: true, miniature: out };
+}
+
+// Eliminazione anche da Drive, scelta da Luca nell'app (decisione PO 2026-10-16): i file vanno nel
+// Cestino di Drive (recuperabili per 30 giorni) e solo se registrati in archivio. Si chiama PRIMA di
+// togliere i documenti dall'archivio, così la verifica sull'archivio è ancora possibile.
+const CESTINA_MAX = 50;
+function cestinaFile_(ids) {
+  const richiesti = (Array.isArray(ids) ? ids : []).map(String).filter(function (id) { return /^[\w-]{10,}$/.test(id); }).slice(0, CESTINA_MAX);
+  if (!richiesti.length) return { ok: true, cestinati: [], non_trovati: [] };
+  const registrati = sb_('documenti?select=drive_file_id&drive_file_id=in.(' + richiesti.map(enc_).join(',') + ')')
+    .map(function (d) { return d.drive_file_id; });
+  const cestinati = [];
+  const nonTrovati = [];
+  richiesti.forEach(function (id) {
+    if (registrati.indexOf(id) < 0) { nonTrovati.push(id); return; }
+    try { DriveApp.getFileById(id).setTrashed(true); cestinati.push(id); } catch (e) { nonTrovati.push(id); }
+  });
+  return { ok: true, cestinati: cestinati, non_trovati: nonTrovati };
 }
 
 /* =====================================================================

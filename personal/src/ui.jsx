@@ -2,6 +2,7 @@
 import { archivioDb } from './lib/supabasePersonal.js';
 import { eCaricato } from './lib/archivio.js';
 import { euro } from './lib/coreArchivio.js';
+import { useState } from 'react';
 import { IconaFreccia, IconaPratiche } from './Icone.jsx';
 import { Miniatura } from './Miniatura.jsx';
 
@@ -146,3 +147,21 @@ export function ElencoPratiche({ elenco, onApri }) {
   );
 }
 
+
+// Conferma di eliminazione con la scelta di togliere anche i file da Google Drive (Cestino, 30 giorni).
+export function ConfermaElimina({ n, onSi, onNo }) {
+  const [ancheDrive, setAncheDrive] = useState(false);
+  const cosa = n === 1 ? 'il documento' : `${n} documenti`;
+  return (
+    <div className="pp-conferma" role="alertdialog">
+      <span>Eliminare {cosa} dall'archivio?</span>
+      <label className="pp-conferma-drive">
+        <input type="checkbox" checked={ancheDrive} onChange={(e) => setAncheDrive(e.target.checked)} />
+        <span><strong>Elimina anche da Google Drive</strong><br />
+          <small>{ancheDrive ? 'I file vanno nel Cestino di Drive: recuperabili per 30 giorni, poi spariscono.' : 'I file restano nel tuo Google Drive.'}</small></span>
+      </label>
+      <button className="pp-bottone pp-bottone-rosso" onClick={() => onSi(ancheDrive)}>{ancheDrive ? 'Elimina anche da Drive' : 'Elimina'}</button>
+      <button className="pp-bottone pp-bottone-chiaro" onClick={onNo}>Annulla</button>
+    </div>
+  );
+}

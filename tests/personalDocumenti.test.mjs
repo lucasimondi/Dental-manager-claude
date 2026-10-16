@@ -82,8 +82,12 @@ test('eliminazione di più documenti: uno alla volta con la stessa funzione del 
 
 test('app: selezione multipla con conferma prima di eliminare; i file su Drive restano', () => {
   const src = readFileSync('personal/src/Documenti.jsx', 'utf8');
-  assert.match(src, /Conferma testo=\{`Eliminare \$\{ids\.length\}/);
-  assert.match(src, /I file restano nel tuo Google Drive/);
+  const ui = readFileSync('personal/src/ui.jsx', 'utf8');
+  assert.match(src, /<ConfermaElimina n=\{ids\.length\}/);
+  assert.match(ui, /useState\(false\);\n {2}const cosa/, 'la casella di Drive parte spenta');
+  assert.match(ui, /I file restano nel tuo Google Drive/);
+  assert.match(ui, /Cestino di Drive: recuperabili per 30 giorni/);
+  assert.ok(src.indexOf('cestinaSuDrive(') < src.indexOf('await eliminaDocumenti('), 'prima Drive, poi l\'archivio');
   assert.match(src, /setTimeout\(\(\) => \{ lungo\.current = true; onLungo\(\)/, 'tieni premuto per selezionare');
   assert.match(src, /f\.codice !== 'clinico_pazienti'/, 'non si spostano documenti nel clinico dall\'app');
 });
@@ -120,4 +124,30 @@ test('agenda: Giorno e Settimana come Poliedra (colonna ore 34, 8–20 a mezz\'o
   assert.match(src, /\{a\.cognome \|\| a\.paziente \|\| '—'\}/);
   assert.match(css, /\.ag-impegno \{[^}]*dashed/);
   assert.match(readFileSync('personal/src/Agenda.jsx', 'utf8'), /useState\('settimana'\)/);
+});
+
+test('Drive: file nel Cestino a blocchi di 50, solo su scelta; errore → nessun documento eliminato', async () => {
+  const { cestinaSuDrive } = await import('../personal/src/lib/archivio.js');
+  const corpi = [];
+  const fetchFinto = async (_u, o) => { const b = JSON.parse(o.body); corpi.push(b); return { json: async () => ({ ok: true, cestinati: b.ids, non_trovati: [] }) }; };
+  const ids = Array.from({ length: 60 }, (_, i) => `file${String(i).padStart(8, '0')}`);
+  const r = await cestinaSuDrive({ token: 'jwt', ids: [...ids, null, ids[0]] }, fetchFinto);
+  assert.equal(corpi.length, 2);
+  assert.equal(corpi[0].azione, 'cestina');
+  assert.equal(corpi[0].ids.length, 50);
+  assert.equal(r.cestinati.length, 60);
+  assert.deepEqual(await cestinaSuDrive({ token: 'jwt', ids: [] }, fetchFinto), { cestinati: [], non_trovati: [] });
+  await assert.rejects(cestinaSuDrive({ token: 'jwt', ids: ['x1234567890'] }, async () => ({ json: async () => ({ ok: false, errore: 'Accesso non autorizzato' }) })), /Accesso non autorizzato/);
+});
+
+test('script: cestina solo file registrati in archivio, dopo la verifica del proprietario, mai cancellazione definitiva', () => {
+  const codeGs = readFileSync('poliedron/archivio/Code.gs', 'utf8');
+  const doPost = codeGs.slice(codeGs.indexOf('function doPost('), codeGs.indexOf('function fileDelDocumento_('));
+  assert.ok(doPost.indexOf("req.azione === 'cestina'") > doPost.indexOf('PROPRIETARIO || !utente.email_confirmed_at'));
+  const fn = codeGs.slice(codeGs.indexOf('function cestinaFile_('), codeGs.indexOf('CATALOGO MIGLIORE'));
+  assert.match(fn, /drive_file_id=in\./);
+  assert.match(fn, /registrati\.indexOf\(id\) < 0/);
+  assert.match(fn, /setTrashed\(true\)/);
+  assert.doesNotMatch(fn, /Drive\.Files\.remove|\.remove\(|delete/i);
+  assert.match(readFileSync('poliedron/archivio/CLAUDE.md', 'utf8'), /Eccezione decisa da Luca il 2026-10-16/);
 });

@@ -310,3 +310,23 @@ export async function eliminaDocumenti(db, ids, avanzamento = () => {}) {
   }
   return fatti;
 }
+
+// Su richiesta di Luca (scelta nella conferma): i file vanno nel Cestino di Google Drive, a blocchi.
+export async function cestinaSuDrive({ token, ids }, fetchImpl = fetch) {
+  const validi = [...new Set((ids || []).filter(Boolean))];
+  if (!validi.length) return { cestinati: [], non_trovati: [] };
+  if (!token) throw new Error('Sessione scaduta: esci e rientra.');
+  const esito = { cestinati: [], non_trovati: [] };
+  for (let i = 0; i < validi.length; i += 50) {
+    const res = await fetchImpl(URL_CARICAMENTO, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ token, azione: 'cestina', ids: validi.slice(i, i + 50) }),
+    });
+    let r;
+    try { r = await res.json(); } catch { throw new Error('Google Drive non raggiungibile: nessun documento eliminato.'); }
+    if (!r.ok) throw new Error(r.errore || 'Eliminazione da Drive non riuscita: nessun documento eliminato.');
+    esito.cestinati.push(...(r.cestinati || []));
+    esito.non_trovati.push(...(r.non_trovati || []));
+  }
+  return esito;
+}
