@@ -42,3 +42,8 @@ Supabase Auth deve avere `https://dental-manager-acmeproduction.vercel.app/**` t
 npm run dev:personal     # http://localhost:5174/personal/
 npm run build            # include /personal/ in dist/
 ```
+
+### Agenda — POL-VITA-011
+Personal mostra tutte le 24 ore (Giorno/Settimana), indipendentemente dall'orario clinico dello Studio. Il collegamento in alto «Vai a Studio» usa `/studio` sul dominio Personal: è già servito dal rewrite SPA di Vercel e non incontra il redirect della sola `/` verso Personal. Non passa dal dominio tecnico Vercel; conserva data, vista e mese. Le sessioni delle due app restano separate.
+
+I nuovi impegni usano un ID numerico generato dal client, come nello Studio: la tabella esistente richiede `id` e non ha un default. Il messaggio di successo arriva solo dopo la risposta del database; durante il salvataggio il pulsante è disabilitato. Nessuna migrazione.

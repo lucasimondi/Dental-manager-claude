@@ -7,3 +7,5 @@ dist-personal/
 # Regenerated visual-test output; reviewed comparisons live in docs/validation.
 tests/visual/results*/
 src/components/__AgendaBaseline.jsx
+
+shared/__agendaBaseline/

@@ -1,0 +1,10 @@
+npm test
+✔ the browser preflight is answered for the staff path (0.380615ms)
+ℹ tests 1272
+ℹ suites 0
+ℹ pass 1272
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6165.449303

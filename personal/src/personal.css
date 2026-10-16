@@ -226,7 +226,7 @@ a { color: var(--pp-blu); text-decoration: none; }
 
 /* ---------- POL-VITA-003: pagine sopra la sezione, con Indietro e dock visibile ---------- */
 .pp-pagina {
-  position: fixed; z-index: 8; left: 0; right: 0; top: 0; bottom: calc(var(--pp-dock) + env(safe-area-inset-bottom));
+  position: fixed; z-index: 40; left: 0; right: 0; top: 0; bottom: calc(84px + env(safe-area-inset-bottom));
   max-width: 640px; margin: 0 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
   background: var(--pp-sfondo); animation: pp-entra .2s ease-out;
 }
@@ -633,3 +633,8 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; d
 .pp-contenuto-agenda button { line-height: normal; }
 
 .pp-contenuto-agenda { background: #F7F8FA; }
+
+/* POL-VITA-011: details sit above agenda controls, outside the floating dock. */
+.personal-agenda-app-toolbar { flex: 0 0 auto; display: flex; justify-content: flex-end; padding: 4px 6px; }
+.personal-agenda-app-toolbar .agenda-app-switch-inline { pointer-events: auto; position: static; min-height: 32px; padding: 4px 10px; box-shadow: none; }
+.pp-pagina-corpo { touch-action: pan-y; overflow-wrap: anywhere; }

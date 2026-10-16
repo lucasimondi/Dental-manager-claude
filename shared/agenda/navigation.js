@@ -9,9 +9,10 @@ export function readAgendaLocation(search = globalThis.location?.search || '') {
 }
 export function agendaDestination(target, day, view, location = globalThis.location, month) {
   const customPersonal = location.hostname === 'personal.poliedrasoft.it';
-  const origin = customPersonal ? 'https://dental-manager-acmeproduction.vercel.app' : location.origin;
+  // /studio is already served by the SPA rewrite; unlike / it is not redirected to Personal.
+  const origin = location.origin;
   const productionStudio = location.hostname === 'dental-manager-acmeproduction.vercel.app';
-  const url = new URL(target === 'studio' ? '/' : productionStudio ? 'https://personal.poliedrasoft.it/' : '/personal/', origin);
+  const url = new URL(target === 'studio' ? (customPersonal ? '/studio' : '/') : productionStudio ? 'https://personal.poliedrasoft.it/' : '/personal/', origin);
   url.search = new URLSearchParams({ agenda: '1', agendaDate: day, agendaView: view, ...(view === 'mese' && month ? { agendaMonth: month } : {}) }).toString();
   return url.href;
 }

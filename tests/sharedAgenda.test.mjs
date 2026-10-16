@@ -13,7 +13,7 @@ test('agenda switch carries day and view without session, patient or clinical da
   }
 });
 test('production switch goes to the existing Studio and Personal origins; previews stay isolated', () => {
-  assert.equal(new URL(agendaDestination('studio','2026-10-16','mese',{hostname:'personal.poliedrasoft.it',origin:'https://personal.poliedrasoft.it'})).origin,'https://dental-manager-acmeproduction.vercel.app');
+  assert.equal(new URL(agendaDestination('studio','2026-10-16','mese',{hostname:'personal.poliedrasoft.it',origin:'https://personal.poliedrasoft.it'})).href,'https://personal.poliedrasoft.it/studio?agenda=1&agendaDate=2026-10-16&agendaView=mese');
   assert.equal(new URL(agendaDestination('personal','2026-10-16','mese',{hostname:'dental-manager-acmeproduction.vercel.app',origin:'https://dental-manager-acmeproduction.vercel.app'})).origin,'https://personal.poliedrasoft.it');
   assert.equal(new URL(agendaDestination('studio','2026-10-16','mese',{hostname:'localhost',origin:'http://localhost:5173'})).origin,'http://localhost:5173');
 });
@@ -43,4 +43,14 @@ test('month navigation preserves selected day separately from visible month acro
   const url = new URL(agendaDestination('personal','2026-10-16','mese',{hostname:'localhost',origin:'http://localhost:5173'},'2026-11-01'));
   assert.deepEqual(readAgendaLocation(url.search),{requested:true,day:'2026-10-16',view:'mese',month:'2026-11-01'});
   assert.equal(readAgendaLocation('?agendaMonth=2026-02-30').month,undefined);
+});
+
+test('Studio on the Personal domain bypasses only the root redirect and uses the existing Studio SPA', () => {
+  const config=JSON.parse(readFileSync('vercel.json','utf8'));
+  const studio=new URL(agendaDestination('studio','2026-10-16','giorno',{hostname:'personal.poliedrasoft.it',origin:'https://personal.poliedrasoft.it'}));
+  assert.equal(studio.pathname,'/studio');
+  assert.equal(config.redirects.some(r=>r.source===studio.pathname),false);
+  assert.ok(config.rewrites.some(r=>r.source==='/(.*)'&&r.destination==='/index.html'));
+  const back=new URL(agendaDestination('personal','2026-10-16','giorno',{hostname:studio.hostname,origin:studio.origin}));
+  assert.equal(back.href,'https://personal.poliedrasoft.it/personal/?agenda=1&agendaDate=2026-10-16&agendaView=giorno');
 });

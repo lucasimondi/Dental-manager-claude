@@ -142,14 +142,19 @@ export function PaginaEvento({ evento: iniziale = {}, ctx, chiudi }) {
     ora_inizio: (iniziale.ora_inizio || '09:00').slice(0, 5), ora_fine: (iniziale.ora_fine || iniziale.ora_inizio || '10:00').slice(0, 5),
   }));
   const [conferma, setConferma] = useState(false);
+  const [salvando, setSalvando] = useState(false);
   const cambia = (k, v) => setEv((x) => ({ ...x, [k]: v }));
   const etichetta = etichette.find((e) => e.id === ev.tipo || e.nome === ev.tipo);
   const colore = ev.colore || etichetta?.colore || '#64748b';
   const valido = ev.titolo.trim() && ev.data_inizio && (ev.tutto_il_giorno || minuti(ev.ora_fine) > minuti(ev.ora_inizio));
-  const salva = () => esegui(async () => {
-    await salvaImpegno({ ...ev, data_fine: ev.data_fine && ev.data_fine >= ev.data_inizio ? ev.data_fine : ev.data_inizio, colore: ev.colore || etichetta?.colore || null });
-    aggiorna(); mostra(ev.id ? 'Evento aggiornato' : 'Evento aggiunto all\'agenda'); chiudi();
-  });
+  const salva = async () => {
+    if (salvando || !valido) return;
+    setSalvando(true);
+    try { await esegui(async () => {
+      await salvaImpegno({ ...ev, data_fine: ev.data_fine && ev.data_fine >= ev.data_inizio ? ev.data_fine : ev.data_inizio, colore: ev.colore || etichetta?.colore || null });
+      aggiorna(); mostra(ev.id ? 'Evento aggiornato' : 'Evento aggiunto all\'agenda'); chiudi();
+    }); } finally { setSalvando(false); }
+  };
   return (
     <>
       <div className="pp-evento-anteprima" style={{ '--c': colore }}><strong>{ev.titolo || 'Nuovo evento'}</strong><span>{nomeEtichetta(ev.tipo, etichette)}</span></div>
@@ -176,7 +181,7 @@ export function PaginaEvento({ evento: iniziale = {}, ctx, chiudi }) {
         <input type="color" className="pp-colore" value={colore} onChange={(e) => cambia('colore', e.target.value)} />
       </label>
       <label className="pp-campo"><span>Note</span><input value={ev.note || ''} onChange={(e) => cambia('note', e.target.value)} placeholder="Dove, con chi…" /></label>
-      <button className="pp-bottone pp-bottone-largo" disabled={!valido} onClick={salva}>{ev.id ? 'Salva modifiche' : 'Aggiungi all\'agenda'}</button>
+      <button className="pp-bottone pp-bottone-largo" disabled={!valido || salvando} onClick={salva}>{salvando ? 'Salvataggio…' : ev.id ? 'Salva modifiche' : 'Aggiungi all\'agenda'}</button>
       <p className="pp-riga-meta">Compare anche nell'agenda dello studio, con il contorno tratteggiato dei tuoi impegni.</p>
       {ev.id && (
         <div className="pp-elimina">

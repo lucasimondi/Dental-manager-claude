@@ -343,8 +343,8 @@ export function useSlotHeight(containerRef, isMobile, slots, slotH, resetKey) {
   return effectiveSlotH;
 }
 
-export function AgendaSwitch({ target, day, view, month }) {
-  return <a className="agenda-app-switch" href={agendaDestination(target, day, view, globalThis.location, month)}>Vai a {target === 'studio' ? 'Studio' : 'Personal'} <span aria-hidden="true">↗</span></a>;
+export function AgendaSwitch({ target, day, view, month, inline = false }) {
+  return <a className={`agenda-app-switch${inline ? ' agenda-app-switch-inline' : ''}`} href={agendaDestination(target, day, view, globalThis.location, month)}>Vai a {target === 'studio' ? 'Studio' : 'Personal'} <span aria-hidden="true">↗</span></a>;
 }
 
 // Original month list card. Apps provide labels and permitted actions, never clinical services.
@@ -363,11 +363,11 @@ export function MonthDateLabel({ palette: C = DEFAULT_PALETTE, day }) {
   return <div style={{ fontSize: 12, fontWeight: 700, color: C.txm, marginBottom: 8 }}>{new Date(day + 'T12:00').toLocaleDateString('it-IT')}</div>;
 }
 
-export function MonthToolbar({ date, overlayRef, children }) {
+export function MonthToolbar({ date, overlayRef, children, floatingFooter }) {
   return <div ref={overlayRef} className="agenda-mobile-floating-controls"><div className="agenda-mobile-floating-toolbar">
     <span className="agenda-mobile-floating-month">{MESI[date.getMonth()]} {date.getFullYear()}</span>
     <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>{children}</div>
-  </div></div>;
+  </div>{floatingFooter}</div>;
 }
 
 export function CalendarEmptyState({ palette: C = DEFAULT_PALETTE }) {
