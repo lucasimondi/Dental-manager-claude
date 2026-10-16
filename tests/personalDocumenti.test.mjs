@@ -117,13 +117,13 @@ test('agenda: etichetta del mese anche a cavallo di mesi e anni; settimana da lu
 test('agenda: Giorno e Settimana come Poliedra (colonna ore 34, 8–20 a mezz\'ore, impegni tratteggiati)', () => {
   const src = readFileSync('personal/src/AgendaGriglia.jsx', 'utf8');
   const css = readFileSync('personal/src/personal.css', 'utf8');
-  assert.match(src, /const ORA_COL = 34/);
-  assert.match(src, /const SLOT_MIN = 30/);
-  assert.match(src, /Math\.min\(8,/);
-  assert.match(src, /Math\.max\(20,/);
-  assert.match(src, /\{a\.cognome \|\| a\.paziente \|\| '—'\}/);
-  assert.match(css, /\.ag-impegno \{[^}]*dashed/);
-  assert.match(readFileSync('personal/src/Agenda.jsx', 'utf8'), /useState\('settimana'\)/);
+  const shared = readFileSync('shared/agenda/AgendaPresentation.jsx', 'utf8');
+  assert.match(src, /oraColW=\{34\}/);
+  assert.match(src, /oraInizio = 8, oraFine = 20, slotMin = 30/);
+  assert.match(src, /a.cognome \|\| a.paziente \|\| '—'/);
+  assert.match(shared, /border: `1.5px dashed/);
+  assert.doesNotMatch(css, /\.ag-pagina/);
+  assert.match(readFileSync('personal/src/Agenda.jsx', 'utf8'), /readAgendaLocation\(\).view \|\| 'settimana'/);
 });
 
 test('Drive: file nel Cestino a blocchi di 50, solo su scelta; errore → nessun documento eliminato', async () => {

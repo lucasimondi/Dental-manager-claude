@@ -3,7 +3,8 @@
 // Secondo client, separato da quello dell'archivio: accesso con l'account dello studio, sessione
 // salvata con una chiave propria e rinnovata da sola. Tocca SOLO le tabelle dell'agenda:
 // appointments (lettura), patients (solo nome e cognome, lettura), app_types (lettura) e
-// impegni_personali (lettura e scrittura: gli eventi senza paziente). La RLS dello studio
+// impegni_personali (lettura e scrittura: gli eventi senza paziente), studio_info
+// (sola lettura di agenda_settings). La RLS dello studio
 // (studio_id del token) limita ogni lettura e scrittura allo studio dell'utente.
 import { createClient } from '@supabase/supabase-js';
 import { rigaImpegno } from './agenda.js';
@@ -77,4 +78,12 @@ export async function salvaImpegno(evento) {
 
 export async function eliminaImpegno(id) {
   return esito(await studioDb.from('impegni_personali').delete().eq('id', id).select('id'));
+}
+
+// Same authoritative settings as Studio; no writes and no tenant fallback.
+export async function impostazioniAgenda() {
+  const sessione = await sessioneStudio();
+  const studioId = studioDellaSessione(sessione);
+  const riga = esito(await studioDb.from('studio_info').select('agenda_settings').eq('studio_id', studioId).maybeSingle());
+  return riga?.agenda_settings || {};
 }

@@ -1,3 +1,6 @@
+import { layoutAppointments as layoutOverlap } from '../../shared/agenda/geometry.js';
+import { readAgendaLocation } from '../../shared/agenda/navigation.js';
+import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, EventBlock, AppointmentBlock, useSlotHeight, AgendaSwitch, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState, useGridSwipe } from '../../shared/agenda/AgendaPresentation.jsx';
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker, SelettorePaziente, EmptyState, PageHeader } from './ui';
 import WaAction, { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
@@ -11,7 +14,6 @@ import { getVisibleWeekDays } from '../lib/agendaVisibleDays.js';
 import { MOBILE_DOCK_BOTTOM, MOBILE_DOCK_HEIGHT } from '../lib/poliedron/poliedronMobileDock.js';
 import { normalizePhoneForTel } from '../lib/appointmentQuickHub.js';
 
-const WD_SHORT = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
 const toISO = (d) => d.toISOString().slice(0, 10);
 const MOBILE_APPOINTMENT_MENU_DOCK_OFFSET = MOBILE_DOCK_BOTTOM + MOBILE_DOCK_HEIGHT;
@@ -48,35 +50,7 @@ const RIPETI_OPZIONI = [
 // del suo "cluster" di sovrapposizione temporale, così quelli che si sovrappongono
 // (tipicamente operatori/poltrone diversi alla stessa ora, con filtro "Tutti" attivo)
 // si affiancano invece di disegnarsi uno sopra l'altro nascondendosi a vicenda.
-const layoutOverlap = (dayApps) => {
-  const items = dayApps.map((a) => {
-    const [ah, am] = a.ora.split(':').map(Number);
-    const start = (ah || 0) * 60 + (am || 0);
-    const end = start + Math.max(Number(a.durata) || 0, 1);
-    return { a, start, end, col: 0, totalCols: 1 };
-  });
-  let cluster = [];
-  let clusterEnd = -Infinity;
-  const flush = () => {
-    if (cluster.length === 0) return;
-    const colEnds = []; // fine dell'ultimo appuntamento assegnato a ciascuna colonna
-    cluster.forEach((item) => {
-      let idx = colEnds.findIndex((e) => e <= item.start);
-      if (idx === -1) { idx = colEnds.length; colEnds.push(item.end); }
-      else colEnds[idx] = item.end;
-      item.col = idx;
-    });
-    cluster.forEach((item) => { item.totalCols = colEnds.length; });
-    cluster = [];
-  };
-  items.forEach((item) => {
-    if (item.start >= clusterEnd) { flush(); clusterEnd = item.end; }
-    else clusterEnd = Math.max(clusterEnd, item.end);
-    cluster.push(item);
-  });
-  flush();
-  return items;
-};
+
 
 const startOfWeek = (d) => {
   const dt = new Date(d + 'T12:00');
@@ -113,31 +87,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   // con window.innerHeight e sottrazioni indovinate. useLayoutEffect (non
   // useEffect) per leggerla/applicarla PRIMA del paint, evitando un flash
   // di slot troppo corti al primo render.
-  const [gridHeight, setGridHeight] = useState(0);
-  useLayoutEffect(() => {
-    const el = containerRef.current;
-    if (!el) return undefined;
-    const update = () => setGridHeight(el.clientHeight);
-    update();
-    if (typeof ResizeObserver === 'undefined') {
-      window.addEventListener('resize', update);
-      return () => window.removeEventListener('resize', update);
-    }
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
-  // effectiveSlotH è l'UNICA altezza-slot usata ovunque su mobile — righe,
-  // posizione/durata appuntamenti, now-line, drag, resize, scroll iniziale —
-  // per non avere metà codice su slotH e metà su un valore diverso. Se il
-  // range orario configurato (slots.length * slotH) è più corto dello
-  // spazio reale disponibile, gli slot si espandono uniformemente fino a
-  // riempirlo; altrimenti resta lo slotH base e la vista scrolla come
-  // sempre. Desktop invariato: usa sempre e solo lo slotH base del padre.
-  const effectiveSlotH = isMobile && gridHeight > 0
-    ? Math.max(slotH, gridHeight / slots.length)
-    : slotH;
+  const effectiveSlotH = useSlotHeight(containerRef, isMobile, slots, slotH);
 
   const appPosition = (a) => {
     const [ah, am] = a.ora.split(':').map(Number);
@@ -212,25 +162,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   // Swipe orizzontale sulla griglia: solo vista Giorno (days.length === 1), va al giorno
   // successivo/precedente. Ignorato se in corso un resize o uno spostamento di appuntamento,
   // per non entrare in conflitto con quei gesti.
-  const swipeStartRef = useRef(null);
-  const swipeAttivo = (days.length === 1 || days.length === 7) && typeof onSwipeDay === 'function';
-  const onTouchStartSwipe = (e) => {
-    if (swipeAttivo && e.touches.length === 1 && !resizing && !moving) {
-      swipeStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    } else {
-      swipeStartRef.current = null;
-    }
-  };
-  const onTouchEndSwipe = (e) => {
-    if (!swipeAttivo || !swipeStartRef.current || resizing || moving) { swipeStartRef.current = null; return; }
-    const touch = e.changedTouches[0];
-    const dx = touch.clientX - swipeStartRef.current.x;
-    const dy = touch.clientY - swipeStartRef.current.y;
-    swipeStartRef.current = null;
-    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-      onSwipeDay(dx < 0 ? 1 : -1);
-    }
-  };
+  const { onTouchStartSwipe, onTouchEndSwipe } = useGridSwipe(days, onSwipeDay, resizing, moving);
 
   const nowMin = now.getHours() * 60 + now.getMinutes() - oraInizio * 60;
   const nowTop = (nowMin / slotMin) * effectiveSlotH;
@@ -262,57 +194,10 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
             spazio assegnato — e a quel punto è la PAGINA a scrollare per compensare,
             non l'elemento stesso. È il bug reale dietro lo scroll incoerente di prima:
             dipendeva da quanti appuntamenti/ore c'erano, non era mai stato casuale. */}
-        <div ref={containerRef} className={isMobile ? 'agenda-mobile-calendar-scroller' : undefined} style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y', overscrollBehavior: 'contain', position: 'relative' }}>
-          {/* POL-UI-010 (slot fit): minHeight ora usa slots.length*effectiveSlotH
-              — coerente con ogni altro uso di effectiveSlotH sopra — invece del
-              precedente max(100%, slots.length*slotH). Quando il range orario è
-              corto, effectiveSlotH si è già espanso per riempire gridHeight, quindi
-              slots.length*effectiveSlotH combacia esattamente con lo spazio
-              disponibile (niente più margine di sicurezza necessario); quando il
-              range è lungo, effectiveSlotH resta lo slotH base e il contenitore
-              scrolla come sempre. Desktop invariato. */}
-          <div style={{ display: 'flex', flexDirection: 'column', minHeight: isMobile ? slots.length * effectiveSlotH : slots.length * slotH, background: C.sur }}>
-            {isMobile && <div aria-hidden="true" className="agenda-mobile-scroll-spacer agenda-mobile-scroll-spacer--top" />}
-            <div className="agenda-time-grid" style={{ display: 'flex', flex: 1 }}>
-
-            {/* Colonna ore — sticky. Compatta su mobile (oraColW), per rubare meno spazio
-                possibile alle 7 colonne giorno; deve restare identica al gutter di DayStrip. */}
-            <div className="agenda-time-gutter" style={{ width: oraColW || 46, flexShrink: 0, borderRight: `1.5px solid ${C.brd}`, background: C.bg, position: 'sticky', left: 0, zIndex: 3 }}>
-              {slots.map((slot) => {
-                const isHour = slot.endsWith(':00');
-                return (
-                  <div key={slot} style={{ height: effectiveSlotH, borderBottom: `1px solid ${isHour ? C.brd : C.brd + '40'}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: isMobile ? 3 : 5, paddingTop: 2, boxSizing: 'border-box' }}>
-                    <span style={{ fontSize: isHour ? 9.5 : 8, color: isHour ? C.txm : C.txl, fontWeight: isHour ? 800 : 500 }}>{isHour ? slot : ''}</span>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Griglia giorni */}
-            <div style={{ flex: 1, display: 'flex', position: 'relative' }}>
-          {days.map((d, di) => {
-            const ds = toISO(d);
-            const dayApps = appointments.filter(a => a.data === ds).sort((a, b) => a.ora.localeCompare(b.ora));
-            const dayImpOrari = (impegni || []).filter(imp => !imp.tuttoIlGiorno && imp.oraInizio && ds >= imp.dataInizio && ds <= imp.dataFine);
-            const isToday = ds === t;
-            const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-            return (
-              <div className="agenda-grid-day" key={di} style={{ flex: 1, position: 'relative', borderLeft: di > 0 ? `1.5px solid ${C.brd}` : 'none', background: isMobile ? C.sur : isWeekend ? C.bg : isToday ? C.priL : C.sur }}>
-                {slots.map((slot) => {
-                  const isHour = slot.endsWith(':00');
-                  return (
-                    <div key={slot} onClick={() => { if (!selModeWA) apriNuovo(ds, slot); }} style={{ height: effectiveSlotH, borderBottom: `1px solid ${isHour ? C.brd + '60' : C.brd + '25'}`, cursor: selModeWA ? 'default' : 'pointer', boxSizing: 'border-box' }}
-                      onMouseEnter={e => e.currentTarget.style.background = C.priL + '70'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'} />
-                  );
-                })}
-                {isToday && showNowLine && (
-                  <div style={{ position: 'absolute', top: nowTop, left: di === 0 ? -6 : 0, right: 0, zIndex: 5, pointerEvents: 'none', display: 'flex', alignItems: 'center' }}>
-                    {di === 0 && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#E63946', flexShrink: 0 }} />}
-                    <div style={{ flex: 1, height: 1.5, background: '#E63946' }} />
-                  </div>
-                )}
-                {dayImpOrari.map(imp => {
+        <TimeGrid palette={C} containerRef={containerRef} isMobile={isMobile} slots={slots} slotH={slotH} effectiveSlotH={effectiveSlotH} oraColW={oraColW} days={days} today={t} showNowLine={showNowLine} nowTop={nowTop} selectionMode={selModeWA} onSlot={apriNuovo} renderDay={(ds) => {
+          const dayApps = appointments.filter(a => a.data === ds).sort((a, b) => a.ora.localeCompare(b.ora));
+          const dayImpOrari = (impegni || []).filter(imp => !imp.tuttoIlGiorno && imp.oraInizio && ds >= imp.dataInizio && ds <= imp.dataFine);
+          return <>                {dayImpOrari.map(imp => {
                   const inizioMin = orarioInMinutiUI(imp.oraInizio) - oraInizio * 60;
                   const fineMin = orarioInMinutiUI(imp.oraFine || imp.oraInizio) - oraInizio * 60;
                   const top = (inizioMin / slotMin) * effectiveSlotH;
@@ -320,13 +205,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                   if (top + height < 0 || top >= slots.length * effectiveSlotH) return null;
                   const co = imp.colore || TIPO_IMPEGNO.find(x => x.id === imp.tipo)?.colore || C.pri;
                   return (
-                    <div key={'imp-' + imp.id} onClick={() => apriEditImpegno(imp)} title={imp.titolo} style={{
-                      position: 'absolute', top, left: 2, right: 2, height, zIndex: 1, cursor: 'pointer',
-                      background: co + '35', border: `1.5px dashed ${co}AA`, borderRadius: 5,
-                      display: 'flex', alignItems: 'flex-start', padding: '2px 5px', boxSizing: 'border-box', overflow: 'hidden',
-                    }}>
-                      <span style={{ fontSize: 9, fontWeight: 800, color: co, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{imp.titolo}</span>
-                    </div>
+                    <EventBlock key={'imp-' + imp.id} title={imp.titolo} top={top} height={height} co={co} onClick={() => apriEditImpegno(imp)} />
                   );
                 })}
                 {layoutOverlap(dayApps).map(({ a, col, totalCols }) => {
@@ -343,57 +222,22 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                   // Appuntamenti sovrapposti nello stesso slot (es. operatori diversi con filtro
                   // "Tutti" attivo) si affiancano in colonne invece di disegnarsi uno sopra
                   // l'altro, così restano tutti visibili e cliccabili.
-                  const widthPct = 100 / totalCols;
-                  const leftPct = col * widthPct;
                   return (
-                    <div key={a.id} style={{ position: 'absolute', top, left: `calc(${leftPct}% + 2px)`, width: `calc(${widthPct}% - 4px)`, height, background: co, borderRadius: 5, overflow: 'hidden', zIndex: isBeingResized || isBeingMoved ? 10 : 2, borderLeft: `3px solid ${co}DD`, boxShadow: isBeingResized || isBeingMoved ? '0 6px 16px rgba(0,0,0,0.35)' : '0 1px 3px rgba(0,0,0,0.15)', userSelect: 'none', opacity: isBeingMoved ? 0.85 : (selModeWA && !isSelezionabileWA ? 0.35 : 1), outline: isSelected ? '2.5px solid #25D366' : 'none', outlineOffset: -1 }}>
-                      {/* Contenuto appuntamento — in modalità selezione tocca per selezionare/deselezionare;
-                          altrimenti trascina per spostare l'orario, tocca/clicca senza muovere per aprire il menu azioni */}
-                      <div
-                        onMouseDown={e => { if (selModeWA || isBeingResized) return; movedRef.current = false; setMoving({ id: a.id, startY: e.clientY, startOra: a.ora }); }}
-                        onTouchStart={e => { if (selModeWA || isBeingResized) return; movedRef.current = false; setMoving({ id: a.id, startY: e.touches[0].clientY, startOra: a.ora }); }}
-                        onClick={e => {
+                    <AppointmentBlock key={a.id} a={a} label={p ? p.cognome : '—'} co={co} top={top} height={height} col={col} totalCols={totalCols} isBeingResized={isBeingResized} isBeingMoved={isBeingMoved} selectionMode={selModeWA} selectable={isSelezionabileWA} selected={isSelected} operatore={operatore} poltrona={poltrona} selectionIndicator={<Ic n="ok" s={9} c="#fff" />}
+                      onResizeMouse={e => { e.stopPropagation(); e.preventDefault(); setResizing({ id: a.id, startY: e.clientY, startDurata: Number(a.durata) }); }}
+                      onMoveMouse={e => { if (selModeWA || isBeingResized) return; movedRef.current = false; setMoving({ id: a.id, startY: e.clientY, startOra: a.ora }); }}
+                      onResizeTouch={e => { e.stopPropagation(); setResizing({ id: a.id, startY: e.touches[0].clientY, startDurata: Number(a.durata) }); }}
+                      onMoveTouch={e => { if (selModeWA || isBeingResized) return; movedRef.current = false; setMoving({ id: a.id, startY: e.touches[0].clientY, startOra: a.ora }); }}
+                      onOpen={e => {
                           e.stopPropagation();
                           if (selModeWA) { if (isSelezionabileWA) toggleSelApp(a.id); return; }
                           if (isBeingResized || movedRef.current) { movedRef.current = false; return; }
                           setMenuApp(a);
                         }}
-                        style={{ padding: '2px 5px', cursor: selModeWA ? (isSelezionabileWA ? 'pointer' : 'not-allowed') : (isBeingMoved ? 'grabbing' : 'grab'), paddingBottom: height > 26 ? 9 : 2, touchAction: 'none' }}
-                      >
-                        {operatore && !selModeWA && (
-                          <div title={operatore.nome} style={{ position: 'absolute', top: 3, right: 3, width: 7, height: 7, borderRadius: '50%', background: operatore.colore, border: '1px solid rgba(255,255,255,0.8)' }} />
-                        )}
-                        {poltrona && !selModeWA && (
-                          <div title={poltrona.nome} style={{ position: 'absolute', top: 3, right: operatore ? 13 : 3, width: 7, height: 7, borderRadius: 2, background: poltrona.colore, border: '1px solid rgba(255,255,255,0.8)' }} />
-                        )}
-                        <div style={{ fontSize: 9, lineHeight: '10px', fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.ora} {p ? `${p.cognome}` : '—'}</div>
-                        {height > 28 && <div style={{ fontSize: 8, lineHeight: '9px', color: 'rgba(255,255,255,0.9)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.tipo}</div>}
-                        {height > 44 && <div style={{ fontSize: 8, lineHeight: '9px', color: 'rgba(255,255,255,0.7)' }}>{a.durata} min</div>}
-                      </div>
-                      {/* Checkbox selezione — solo in modalità invio WhatsApp di massa */}
-                      {selModeWA && isSelezionabileWA && (
-                        <div style={{ position: 'absolute', top: 2, right: 2, width: 13, height: 13, borderRadius: 4, background: isSelected ? '#25D366' : 'rgba(255,255,255,0.85)', border: `1.5px solid ${isSelected ? '#25D366' : 'rgba(0,0,0,0.2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 3 }}>
-                          {isSelected && <Ic n="ok" s={9} c="#fff" />}
-                        </div>
-                      )}
-                      {/* RESIZE HANDLE - nascosta sugli appuntamenti troppo brevi per contenerla senza sovrapporsi al testo, e comunque disattivata in modalità selezione */}
-                      {height > 26 && !selModeWA && <div
-                        onMouseDown={e => { e.stopPropagation(); e.preventDefault(); setResizing({ id: a.id, startY: e.clientY, startDurata: Number(a.durata) }); }}
-                        onTouchStart={e => { e.stopPropagation(); setResizing({ id: a.id, startY: e.touches[0].clientY, startDurata: Number(a.durata) }); }}
-                        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 8, cursor: 'ns-resize', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.15)', borderBottomLeftRadius: 5, borderBottomRightRadius: 5, touchAction: 'none' }}>
-                        <div style={{ width: 16, height: 2, background: 'rgba(255,255,255,0.6)', borderRadius: 1 }} />
-                      </div>}
-                    </div>
+                    />
                   );
-                })}
-              </div>
-            );
-          })}
-            </div>
-            </div>
-            {isMobile && <div aria-hidden="true" className="agenda-mobile-scroll-spacer agenda-mobile-scroll-spacer--bottom" />}
-          </div>
-        </div>
+                })}</>;
+        }} />
       </div>
       {/* Menu contestuale appuntamento — si apre al tap (non al drag) su un blocco appuntamento */}
       {menuApp && (() => {
@@ -529,148 +373,6 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
    Va incollato sulla stessa riga dell'etichetta mese: non aggiunge nessuna riga
    in più, a differenza della vecchia barra a tre tab che occupava spazio prezioso
    sullo schermo del telefono. */
-function ViewPicker({ view, setView, touchSafe = false }) {
-  const [open, setOpen] = useState(false);
-  const LABEL = { giorno: 'Giorno', settimana: 'Settimana', mese: 'Mese' };
-  return (
-    <div style={{ position: 'relative', flexShrink: 0 }}>
-      <button
-        className={touchSafe ? 'agenda-mobile-touch-target' : 'agenda-view-picker'}
-        onClick={() => setOpen(v => !v)}
-        style={touchSafe
-          ? { display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 44, height: 44, padding: 0, background: 'transparent', border: 'none', cursor: 'pointer' }
-          : { display: 'flex', alignItems: 'center', gap: 4, background: C.priL, color: C.pri, border: 'none', borderRadius: 14, padding: '5px 8px 5px 11px', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
-      >
-        <span className={touchSafe ? 'agenda-view-picker' : undefined} style={touchSafe ? { display: 'flex', alignItems: 'center', gap: 4, borderRadius: 14, padding: '5px 8px 5px 11px', fontSize: 12, fontWeight: 800, pointerEvents: 'none' } : { display: 'contents' }}>
-          {LABEL[view]}
-          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke={C.pri} strokeWidth="3" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="M6 9l6 6 6-6" /></svg>
-        </span>
-      </button>
-      {open && <div className="agenda-floating-interactive" onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 34 }} />}
-      {open && (
-        <div className="agenda-floating-interactive" style={{ position: 'absolute', top: touchSafe ? 48 : 30, right: 0, background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 10, boxShadow: '0 8px 22px rgba(0,0,0,0.18)', width: 126, overflow: 'hidden', zIndex: 35 }}>
-          {['giorno', 'settimana', 'mese'].map((v) => (
-            <button key={v} onClick={() => { setView(v); setOpen(false); }} style={{ display: 'block', width: '100%', padding: '9px 12px', border: 'none', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', textAlign: 'left', background: view === v ? C.priL : 'transparent', color: view === v ? C.pri : C.txt }}>{LABEL[v]}</button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function DayStrip({ selDay, setSelDay, today: t, onWeekChange, highlightSelected = true, viewPicker, compact, oraColW, onPrevWeek, onNextWeek, hiddenWeekdays = [], singleDay = false, overlayRef, floatingFooter }) {
-  const scrollRef = useRef(null);
-  const [stripBaseWeek, setStripBaseWeek] = useState(() => toISO(startOfWeek(selDay)));
-  const settleTimer = useRef(null);
-  const itemWidthRef = useRef(0);
-
-  useEffect(() => {
-    const wk = toISO(startOfWeek(selDay));
-    if (wk !== stripBaseWeek) setStripBaseWeek(wk);
-  }, [selDay]);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const w = el.clientWidth;
-    itemWidthRef.current = w;
-    el.scrollLeft = w * 2;
-    if (onWeekChange) onWeekChange(stripBaseWeek);
-  }, [stripBaseWeek]);
-
-  const windowStart = new Date(stripBaseWeek + 'T12:00');
-  windowStart.setDate(windowStart.getDate() - 14);
-  const weeks = singleDay
-    ? [[new Date(selDay + 'T12:00')]]
-    : Array.from({ length: 5 }, (_, wi) => {
-      const ws = new Date(windowStart);
-      ws.setDate(ws.getDate() + wi * 7);
-      return getVisibleWeekDays(ws, hiddenWeekdays);
-    });
-
-  const onScroll = () => {
-    if (settleTimer.current) clearTimeout(settleTimer.current);
-    settleTimer.current = setTimeout(() => {
-      const el = scrollRef.current;
-      if (!el || !itemWidthRef.current) return;
-      const idx = Math.round(el.scrollLeft / itemWidthRef.current);
-      if (!singleDay && idx !== 2) {
-        const nb = new Date(stripBaseWeek + 'T12:00');
-        nb.setDate(nb.getDate() + (idx - 2) * 7);
-        setStripBaseWeek(toISO(nb));
-      }
-    }, 120);
-  };
-
-  // Etichetta mese, fissa, calcolata dalla settimana attualmente mostrata (si aggiorna
-  // anche solo scorrendo, senza dover toccare un giorno) — se la settimana attraversa
-  // due mesi (o due anni) li mostra entrambi, es. "Lug – Ago 2026".
-  const wkMonStart = new Date(stripBaseWeek + 'T12:00');
-  const wkMonEnd = new Date(wkMonStart); wkMonEnd.setDate(wkMonEnd.getDate() + 6);
-  const meseLabel = wkMonStart.getMonth() === wkMonEnd.getMonth()
-    ? `${MESI[wkMonStart.getMonth()]} ${wkMonStart.getFullYear()}`
-    : wkMonStart.getFullYear() === wkMonEnd.getFullYear()
-      ? `${MESI[wkMonStart.getMonth()].slice(0, 3)} – ${MESI[wkMonEnd.getMonth()].slice(0, 3)} ${wkMonStart.getFullYear()}`
-      : `${MESI[wkMonStart.getMonth()].slice(0, 3)} ${wkMonStart.getFullYear()} – ${MESI[wkMonEnd.getMonth()].slice(0, 3)} ${wkMonEnd.getFullYear()}`;
-
-  // "compact" (mobile): striscia più bassa, per lasciare più spazio verticale
-  // alla griglia oraria sotto — cerchio del giorno e padding ridotti, il
-  // gutter resta 46px (deve coincidere con la colonna ore della griglia).
-  const circleD = compact ? 25 : 30;
-  return (
-    <div ref={overlayRef} className={compact ? 'agenda-mobile-floating-controls' : undefined} style={{ flexShrink: 0 }}>
-      <div className={compact ? 'agenda-mobile-floating-toolbar' : undefined} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: compact ? '0 4px 4px' : '0 4px 6px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          {/* POL-UI-006: controlli espliciti settimana precedente/successiva
-              per desktop, oltre allo scroll/swipe già esistente sulla
-              striscia sotto — stesso pattern già usato dalla vista Mese
-              (frecce ‹/›). Cambiano realmente la settimana mostrata: usano
-              lo stesso navSettimana(n) del gesto di swipe, non un
-              placeholder finto. Non mostrati su mobile (compact), dove lo
-              swipe resta l'interazione primaria. */}
-          {!compact && onPrevWeek && (
-            <button onClick={onPrevWeek} aria-label="Settimana precedente" style={{ background: C.bg, border: 'none', borderRadius: 7, width: 26, height: 26, cursor: 'pointer', fontSize: 15, color: C.txm, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>‹</button>
-          )}
-          <span className={compact ? 'agenda-mobile-floating-month' : undefined} style={{ fontSize: 13, fontWeight: 800, color: C.txt, textTransform: 'capitalize' }}>{meseLabel}</span>
-          {!compact && onNextWeek && (
-            <button onClick={onNextWeek} aria-label="Settimana successiva" style={{ background: C.bg, border: 'none', borderRadius: 7, width: 26, height: 26, cursor: 'pointer', fontSize: 15, color: C.txm, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>›</button>
-          )}
-        </div>
-        {viewPicker}
-      </div>
-      {/* Gutter da 46px, identico alla colonna ore della griglia sotto: senza, le colonne di
-          questa striscia non coinciderebbero con quelle della griglia (uno sfasamento che
-          confonde su quale giorno si sta guardando). */}
-      <div className={compact ? 'agenda-mobile-floating-week-strip' : undefined} style={{ display: 'flex', marginBottom: compact ? 6 : 8, borderRadius: 12, background: C.sur, border: `1px solid ${C.brd}`, overflow: 'hidden', boxShadow: '0 1px 2px rgba(15,23,42,.04), 0 6px 16px rgba(15,23,42,.06)' }}>
-        <div style={{ width: oraColW || 46, flexShrink: 0, borderRight: `1px solid ${C.brd}` }} />
-        <div ref={scrollRef} onScroll={onScroll} style={{ flex: 1, minWidth: 0, display: 'flex', overflowX: singleDay ? 'hidden' : 'auto', scrollSnapType: singleDay ? 'none' : 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
-          {weeks.map((week, wi) => (
-            <div key={wi} style={{ flex: '0 0 100%', scrollSnapAlign: 'start', display: 'grid', gridTemplateColumns: `repeat(${week.length}, minmax(0, 1fr))`, padding: compact ? '3px 0' : '8px 4px' }}>
-              {week.map((d, di) => {
-                const ds = toISO(d);
-                const isToday = ds === t;
-                const isSel = highlightSelected && ds === selDay;
-                return (
-                  <div className={compact ? 'agenda-mobile-day-item' : undefined} key={di} onClick={() => setSelDay(ds)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: compact ? 1 : 3, cursor: 'pointer', padding: compact ? 0 : '2px 0' }}>
-                    <span style={{ fontSize: compact ? 8 : 9, fontWeight: 700, color: compact && isToday ? C.dan : isToday ? C.pri : C.txl, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{WD_SHORT[d.getDay()]}</span>
-                    <span
-                      className={compact ? `agenda-mobile-day-number${isToday ? ' is-today' : ''}${isSel && !isToday ? ' is-selected' : ''}` : undefined}
-                      style={{ fontSize: compact ? 13 : 15, fontWeight: 800, width: circleD, height: circleD, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: compact ? 'transparent' : isSel ? C.pri : isToday ? C.priL : 'transparent', color: compact ? (isToday ? C.dan : isSel ? C.pri : C.txt) : isSel ? '#fff' : isToday ? C.pri : C.txt, boxShadow: compact ? 'none' : isSel ? `0 4px 10px -2px ${C.pri}66` : 'none', transition: 'background .14s ease, box-shadow .14s ease' }}
-                    >
-                      {d.getDate()}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      </div>
-      {floatingFooter}
-    </div>
-  );
-}
-
 export default function Agenda({ patients, setPatients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni, setImpegni, si, setStudioInfo, onOpenPatient, onOpenRecall, onOpenActivity, onPoliedronCommand }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const labelPoltrona = isDentistico ? 'Poltrona' : 'Postazione';
@@ -686,8 +388,8 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   const [slotMin, setSlotMin] = useState(() => { try { return si?.agenda_settings?.slotMin ?? Number(localStorage.getItem('ag_slotMin') || DEF_AGENDA_SETTINGS.slotMin); } catch { return DEF_AGENDA_SETTINGS.slotMin; } });
   const [zoom, setZoom] = useState(() => { try { return si?.agenda_settings?.zoom ?? (Number(localStorage.getItem('ag_zoom')) || DEF_AGENDA_SETTINGS.zoom); } catch { return DEF_AGENDA_SETTINGS.zoom; } });
   const [hiddenWeekdays, setHiddenWeekdays] = useState(() => si?.agenda_settings?.hiddenWeekdays || DEF_AGENDA_SETTINGS.hiddenWeekdays);
-  const [view, setView] = useState('settimana');
-  const [selDay, setSelDay] = useState(today());
+  const [view, setView] = useState(() => readAgendaLocation().view || 'settimana');
+  const [selDay, setSelDay] = useState(() => readAgendaLocation().day || today());
   const [modal, setModal] = useState(false);
 
   // Ricorda se il modale "nuovo/modifica appuntamento" era aperto, così se
@@ -748,9 +450,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     else setToast(`Conferma WhatsApp non inviata: ${data.errore || 'avvisa il paziente per telefono'}`);
   };
   const [fabOpen, setFabOpen] = useState(false);
-  const [vd, setVd] = useState(new Date());
-  const wheelRef = useRef(0);
-  const touchXRef = useRef(null);
+  const [vd, setVd] = useState(() => new Date((readAgendaLocation().month || readAgendaLocation().day || today()) + 'T12:00'));
   // _editId: null = si sta creando un nuovo appuntamento, altrimenti è l'id
   // dell'appuntamento in modifica — persistito insieme al resto del form così
   // se l'app si ricarica da zero a metà modifica sappiamo quale riaprire
@@ -1334,9 +1034,10 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
         minHeight: 0,
         ...(isMobile
           ? { flex: 1, position: 'relative', '--agenda-mobile-overlay-clearance': `${mobileOverlayHeight}px` }
-          : { height: '100%' }),
+          : { height: '100%', position: 'relative' }),
       }}
     >
+      <AgendaSwitch target="personal" day={selDay} month={toISO(vd)} view={view} />
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
       {/* Barra invio WhatsApp di massa in corso — resta finché non sono partite tutte
@@ -1360,10 +1061,10 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       {haFiltriRisorse && !isMobile && chipsRisorse}
 
       {view === 'giorno' && (
-        <DayStrip selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} oraColW={oraColW} singleDay={isMobile} hiddenWeekdays={hiddenWeekdays} overlayRef={isMobile ? overlayRef : undefined} floatingFooter={isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker view={view} setView={setView} touchSafe={isMobile} /></div>} />
+        <DayStrip palette={C} selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} oraColW={oraColW} singleDay={isMobile} hiddenWeekdays={hiddenWeekdays} overlayRef={isMobile ? overlayRef : undefined} floatingFooter={isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker palette={C} view={view} setView={setView} touchSafe={isMobile} /></div>} />
       )}
       {view === 'settimana' && (
-        <DayStrip
+        <DayStrip palette={C}
           selDay={selDay}
           setSelDay={(ds) => { setSelDay(ds); setView('giorno'); }}
           today={t}
@@ -1376,21 +1077,16 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           hiddenWeekdays={hiddenWeekdays}
           overlayRef={isMobile ? overlayRef : undefined}
           floatingFooter={isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null}
-          viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker view={view} setView={setView} touchSafe={isMobile} /></div>}
+          viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker palette={C} view={view} setView={setView} touchSafe={isMobile} /></div>}
         />
       )}
       {view === 'mese' && isMobile && (
-        <div ref={overlayRef} className="agenda-mobile-floating-controls">
-          <div className="agenda-mobile-floating-toolbar">
-            <span className="agenda-mobile-floating-month">{MESI[vd.getMonth()]} {vd.getFullYear()}</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+        <MonthToolbar date={vd} overlayRef={overlayRef}>
               {notificheBell}
               {filtroButton}
               <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 14, padding: '5px 10px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
-              <ViewPicker view={view} setView={setView} touchSafe />
-            </div>
-          </div>
-        </div>
+              <ViewPicker palette={C} view={view} setView={setView} touchSafe />
+        </MonthToolbar>
       )}
       {view === 'mese' && !isMobile && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexShrink: 0 }}>
@@ -1402,7 +1098,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
             {isMobile && filtroButton}
             <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
           </div>
-          <ViewPicker view={view} setView={setView} />
+          <ViewPicker palette={C} view={view} setView={setView} />
         </div>
       )}
 
@@ -1419,102 +1115,26 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
         </div>
       )}
       {view === 'mese' && (() => {
-        const K = vd.getFullYear(), mese = vd.getMonth();
-        const primo = new Date(K, mese, 1).getDay();
-        const giorni = new Date(K, mese + 1, 0).getDate();
-        const celle = Array(primo === 0 ? 6 : primo - 1).fill(null).concat(Array.from({ length: giorni }, (_, i) => i + 1));
         return (
           <div className={isMobile ? 'agenda-mobile-month-surface' : undefined}>
-            <Crd
-              onWheel={e => {
-                const now = Date.now();
-                if (now - (wheelRef.current || 0) < 350) return; // throttle: uno scatto di mese per volta
-                if (Math.abs(e.deltaY) < 15) return;
-                wheelRef.current = now;
-                navMese(e.deltaY > 0 ? 1 : -1);
-              }}
-              onTouchStart={e => { touchXRef.current = e.touches[0].clientX; }}
-              onTouchEnd={e => {
-                if (touchXRef.current == null) return;
-                const dx = e.changedTouches[0].clientX - touchXRef.current;
-                if (Math.abs(dx) > 50) navMese(dx < 0 ? 1 : -1);
-                touchXRef.current = null;
-              }}
-              style={{ marginBottom: 10 }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <button onClick={() => navMese(-1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 32, height: 32, cursor: 'pointer', fontSize: 17, color: C.txm }}>‹</button>
-                <span style={{ fontWeight: 700 }}>{MESI[mese]} {K}</span>
-                <button onClick={() => navMese(1)} style={{ background: C.bg, border: 'none', borderRadius: 7, width: 32, height: 32, cursor: 'pointer', fontSize: 17, color: C.txm }}>›</button>
-              </div>
-              <div style={{ textAlign: 'center', fontSize: 10, color: C.txl, marginBottom: 6 }}>Scorri con la rotellina o trascina per cambiare mese</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2, marginBottom: 4 }}>
-                {['L','M','M','G','V','S','D'].map((d, i) => <div key={i} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: C.txm, padding: '2px 0' }}>{d}</div>)}
-                {celle.map((g, i) => {
-                  if (!g) return <div key={i} />;
-                  const ds = `${K}-${String(mese+1).padStart(2,'0')}-${String(g).padStart(2,'0')}`;
-                  const cnt = appointmentsAgenda.filter(a => a.data === ds).length;
-                  const dayImp = (impegni || []).filter(imp => ds >= imp.dataInizio && ds <= imp.dataFine);
-                  const isSel = ds === selDay, isTod = ds === t;
-                  return (
-                    <div key={i} onClick={() => { setSelDay(ds); setView('giorno'); }} style={{ textAlign: 'center', padding: '5px 2px', borderRadius: 7, cursor: 'pointer', background: isSel ? C.pri : isTod ? C.priL : 'transparent', color: isSel ? '#fff' : isTod ? C.pri : C.txt, fontWeight: isSel || isTod ? 700 : 400, fontSize: 12, position: 'relative', minHeight: 28 }}>
-                      {dayImp.length > 0 && (
-                        <div style={{ display: 'flex', gap: 1, position: 'absolute', top: 2, left: 3, right: 3, height: 3 }}>
-                          {dayImp.slice(0, 3).map((imp) => (
-                            <div key={imp.id} style={{ flex: 1, height: 3, borderRadius: 2, background: imp.colore || TIPO_IMPEGNO.find(x => x.id === imp.tipo)?.colore || C.pri }} />
-                          ))}
-                        </div>
-                      )}
-                      {g}
-                      {cnt > 0 && <div style={{ display: 'flex', gap: 1, justifyContent: 'center', position: 'absolute', bottom: 1, left: '50%', transform: 'translateX(-50%)' }}>
-                        {Array.from({ length: Math.min(cnt, 3) }, (_, j) => <div key={j} style={{ width: 4, height: 4, borderRadius: '50%', background: isSel ? '#fff' : C.pri }} />)}
-                      </div>}
-                    </div>
-                  );
-                })}
-              </div>
-            </Crd>
+            <MonthCalendar palette={C} date={vd} selDay={selDay} today={t} onNavigate={navMese} onSelect={ds => { setSelDay(ds); setView('giorno'); }} daySummary={ds => ({ count: appointmentsAgenda.filter(a => a.data === ds).length, marks: (impegni || []).filter(imp => ds >= imp.dataInizio && ds <= imp.dataFine).map(imp => ({ ...imp, colore: imp.colore || TIPO_IMPEGNO.find(x => x.id === imp.tipo)?.colore || C.pri })) })} />
             {(impegni || []).filter(imp => selDay >= imp.dataInizio && selDay <= imp.dataFine).map(imp => {
               const co = imp.colore || TIPO_IMPEGNO.find(x => x.id === imp.tipo)?.colore || C.pri;
               return (
-                <Crd key={imp.id} style={{ marginBottom: 8, borderLeft: `4px solid ${co}`, cursor: 'pointer' }} onClick={() => apriEditImpegno(imp)}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ background: co + '20', borderRadius: 7, padding: '4px 9px', textAlign: 'center', flexShrink: 0 }}>
-                      <div style={{ fontSize: 10, fontWeight: 900, color: co, textTransform: 'uppercase' }}>{TIPO_IMPEGNO.find(x => x.id === imp.tipo)?.label || imp.tipo}</div>
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700 }}>{imp.titolo}</div>
-                      <div style={{ fontSize: 11, color: C.txm }}>{imp.tuttoIlGiorno ? 'Tutto il giorno' : `${(imp.oraInizio || '').slice(0,5)} – ${(imp.oraFine || '').slice(0,5)}`}{imp.dataInizio !== imp.dataFine ? ` · ${fmtD(imp.dataInizio)} – ${fmtD(imp.dataFine)}` : ''}</div>
-                    </div>
-                  </div>
-                </Crd>
+                <MonthDetailCard key={imp.id} palette={C} co={co} title={imp.titolo} badge={TIPO_IMPEGNO.find(x => x.id === imp.tipo)?.label || imp.tipo} subtitle={<>{imp.tuttoIlGiorno ? 'Tutto il giorno' : `${(imp.oraInizio || '').slice(0,5)} – ${(imp.oraFine || '').slice(0,5)}`}{imp.dataInizio !== imp.dataFine ? ` · ${fmtD(imp.dataInizio)} – ${fmtD(imp.dataFine)}` : ''}</>} onClick={() => apriEditImpegno(imp)} />
               );
             })}
-            <div style={{ fontSize: 12, fontWeight: 700, color: C.txm, marginBottom: 8 }}>{fmtD(selDay)}</div>
+            <MonthDateLabel palette={C} day={selDay} />
             {appointmentsAgenda.filter(a => a.data === selDay).sort((a, b) => a.ora.localeCompare(b.ora)).map(a => {
               const p = patients.find(x => x.id === a.pazienteId);
               const co = getColore(a);
               return (
-                <Crd key={a.id} style={{ marginBottom: 8, borderLeft: `4px solid ${co}`, cursor: 'pointer' }} onClick={() => apriEdit(a)}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ background: co + '20', borderRadius: 7, padding: '4px 7px', textAlign: 'center', flexShrink: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 900, color: co }}>{a.ora}</div>
-                      <div style={{ fontSize: 9, color: co }}>{a.durata}m</div>
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700 }}>{p ? `${p.nome} ${p.cognome}` : '—'}</div>
-                      <div style={{ fontSize: 11, color: C.txm }}>{a.tipo}</div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 5 }}>
-                      <WaAction tel={p?.telefono} features={features} variant="icon" onClick={() => apriWA(a)} />
-                      <button onClick={e => { e.stopPropagation(); del(a.id); }} style={{ background: C.danL, border: 'none', borderRadius: 6, padding: 6, cursor: 'pointer', display: 'flex' }}><Ic n="del" s={13} c={C.dan} /></button>
-                    </div>
-                  </div>
-                </Crd>
+                <MonthDetailCard key={a.id} palette={C} co={co} title={p ? `${p.nome} ${p.cognome}` : '—'} subtitle={a.tipo} time={a.ora} duration={a.durata} onClick={() => apriEdit(a)} actions={<>                      <WaAction tel={p?.telefono} features={features} variant="icon" onClick={() => apriWA(a)} />
+                      <button onClick={e => { e.stopPropagation(); del(a.id); }} style={{ background: C.danL, border: 'none', borderRadius: 6, padding: 6, cursor: 'pointer', display: 'flex' }}><Ic n="del" s={13} c={C.dan} /></button></>} />
               );
             })}
             {appointmentsAgenda.filter(a => a.data === selDay).length === 0 && (
-              <EmptyState icon="cal" title="Nessun appuntamento" subtitle="Tocca un giorno per aggiungerne uno" />
+              <CalendarEmptyState palette={C} />
             )}
           </div>
         );

@@ -3730,3 +3730,17 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - VALIDATION: test aggiunti ma non eseguiti localmente in questa sessione; attendere CI. Il container non può raggiungere GitHub.
 - RISKS: Undo generalizzato non implementato in questa tranche; cancellazioni/storni restano fuori scope e dovranno richiedere protezione forte.
 - NEXT: aprire PR, attendere CI, review; merge solo su ordine PO.
+
+
+## POL-VITA-010 — original agenda presentation shared with Personal (2026-10-16)
+- TASK ID: POL-VITA-010 / issue #198.
+- OWNER / PREVIOUS AGENT: Codex; previous Personal layout work CLAUDE (POL-VITA-007/008/009).
+- BRANCH: `codex/pol-vita-010-shared-agenda`, from `master@4252c0431f7cdc0a08828d441a33d6c77d6f2e78`.
+- OBJECTIVE: reuse original Studio mobile agenda without a CSS replica or clinical dependency, preserve Day/Week/Month, validate iPhone layouts and prepare PR. Follow-up PO request: switching between Studio and Personal from both agendas.
+- COMPLETED: neutral original components and CSS in `shared/agenda`; both adapters consume them; original interval packing, visible weekdays, palette, slot measurement and swipe implementation shared; legacy Personal overrides removed; Studio clinical menu/drag/resize/booking/WhatsApp callbacks retained; Personal reads only authorized agenda settings and retains existing event persistence; switch carries validated day/view/month UI state only.
+- FILES: `shared/agenda/*`, Studio Agenda/Ic/App/utils/visibleDays, Personal Agenda/AgendaGriglia/App/studio adapter/CSS, visual fixtures and runner, updated regression checks, new switch tests, pinned Playwright/pngjs dev dependencies, dedicated visual CI workflow, architecture/validation docs. Standalone Personal dev server permits the shared workspace modules.
+- DB / MIGRATIONS / RLS / EDGE FUNCTIONS / PRODUCTION DATA: none.
+- VALIDATION: `npm test` 1,270/1,270; main and standalone Personal builds; `git diff --check`; Chromium 153 and WebKit 26.5 at 375x812, 390x844, 430x932, all three views, plus configured-week scenario. Pixel/geometry assertions and interaction tests, synthetic data and blocked remote requests. See validation report and CI artifacts for exact scope.
+- LIMITS: browser emulation, not a physical iPhone; no production login or real writes. App-specific actions/docks and the new switch differ intentionally; the shared calendar region must match. Existing duplicate-key/chunk-size/pdfjs warnings unchanged.
+- ROLLBACK: revert this PR, no backend rollback. `stable/2026-08-27-full-recovery` still points to `070b28fd4eae4e2cc397584201d0bb149468fae7`.
+- NEXT: inspect draft PR and attached screenshot comparisons, wait for CI and preview; review before any merge. Do not merge or deploy manually.
