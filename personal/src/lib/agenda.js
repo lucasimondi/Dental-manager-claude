@@ -6,6 +6,37 @@ export const daIso = (s) => { const [a, m, g] = s.split('-').map(Number); return
 export const piuGiorni = (s, n) => { const d = daIso(s); d.setDate(d.getDate() + n); return isoData(d); };
 export const oggi = () => isoData(new Date());
 
+// Genera occorrenze usando date locali e un limite esplicito: nessuna conversione UTC
+// e nessuna deriva del giorno nei mesi più corti (es. 31 gennaio → 28 febbraio → 31 marzo).
+export function generaDateRipetizione(dataInizio, finoAl, frequenza, massimo = 366) {
+  if (!dataInizio) return [];
+  if (!frequenza || frequenza === 'nessuna') return [dataInizio];
+  if (!finoAl || finoAl < dataInizio) return [];
+  const passi = { giornaliera: 1, settimanale: 7, quindicinale: 14 };
+  if (frequenza !== 'mensile' && !passi[frequenza]) return [];
+  const limite = Math.max(1, Math.min(366, Number(massimo) || 366));
+  const out = [];
+  const giornoAncoraggio = daIso(dataInizio).getDate();
+  let indice = 0;
+  while (out.length < limite) {
+    let data;
+    if (frequenza === 'mensile') {
+      const d = daIso(dataInizio);
+      d.setDate(1);
+      d.setMonth(d.getMonth() + indice);
+      const ultimoGiorno = new Date(d.getFullYear(), d.getMonth() + 1, 0, 12).getDate();
+      d.setDate(Math.min(giornoAncoraggio, ultimoGiorno));
+      data = isoData(d);
+    } else {
+      data = piuGiorni(dataInizio, indice * passi[frequenza]);
+    }
+    if (data > finoAl) break;
+    out.push(data);
+    indice += 1;
+  }
+  return out;
+}
+
 export const minuti = (ora) => {
   const [h, m] = String(ora || '0:0').split(':').map(Number);
   return (h || 0) * 60 + (m || 0);
@@ -105,6 +136,7 @@ export function rigaImpegno(evento) {
     ora_inizio: tuttoIlGiorno ? null : evento.ora_inizio,
     ora_fine: tuttoIlGiorno ? null : evento.ora_fine,
     note: evento.note || null,
+    recurrence_id: evento.recurrence_id ?? evento.recurrenceId ?? null,
   };
 }
 

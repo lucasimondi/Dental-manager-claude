@@ -1030,10 +1030,9 @@ function Archivio({ email }) {
       <input ref={ingressi.file} type="file" hidden onChange={fileScelto} />
       <header className={`pp-testata${vista === 'agenda' && !pagine.length ? ' pp-testata-agenda' : ''}`}>
         {vista !== 'agenda' && <h1>{vista === 'oggi' ? saluto() : TITOLI[vista]}</h1>}
-        <span className="pp-testata-azioni">
-          
+        {!pagine.length && !foglio && <span className="pp-testata-azioni">
           <button className="pp-icona-bottone" onClick={() => apri({ tipo: 'impostazioni' })} aria-label="Impostazioni"><IconaImpostazioni size={20} /></button>
-        </span>
+        </span>}
       </header>
       {occupato > 0 && <div className="pp-barra-caricamento" aria-hidden="true" />}
       {errore && !pagine.length && <p className="pp-messaggio pp-messaggio-errore" role="alert">{errore}</p>}

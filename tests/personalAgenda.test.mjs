@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 // rigaImpegno è in agenda.js: studio.js crea il client Supabase all'import (Node 20 in CI non ha WebSocket).
-import { elementiDelGiorno, colonne, grigliaMese, giorniSettimana, piuGiorni, coloreEvento, ETICHETTE_PREDEFINITE, rigaImpegno } from '../personal/src/lib/agenda.js';
+import { elementiDelGiorno, colonne, grigliaMese, giorniSettimana, piuGiorni, generaDateRipetizione, coloreEvento, ETICHETTE_PREDEFINITE, rigaImpegno } from '../personal/src/lib/agenda.js';
 import { normalizza } from '../personal/src/lib/impostazioni.js';
 
 test('giorno: appuntamenti ed eventi a orario, eventi di tutto il giorno e scadenze separati', () => {
@@ -36,7 +36,7 @@ test('mese e settimana partono da lunedì', () => {
 test('evento → riga di impegni_personali come la usa l\'agenda dello studio', () => {
   assert.deepEqual(rigaImpegno({ titolo: ' Calcetto ', tipo: 'sport', colore: '#059669', data_inizio: '2026-10-20', ora_inizio: '20:00', ora_fine: '21:30' }), {
     titolo: 'Calcetto', tipo: 'personale', etichetta: 'sport', colore: '#059669', data_inizio: '2026-10-20', data_fine: '2026-10-20',
-    tutto_il_giorno: false, ora_inizio: '20:00', ora_fine: '21:30', note: null,
+    tutto_il_giorno: false, ora_inizio: '20:00', ora_fine: '21:30', note: null, recurrence_id: null,
   });
   const ferie = rigaImpegno({ titolo: 'Ferie', tutto_il_giorno: true, data_inizio: '2026-08-01', data_fine: '2026-08-15', ora_inizio: '09:00' });
   assert.equal(ferie.ora_inizio, null);
@@ -49,4 +49,24 @@ test('etichette: predefinite, colore valido, colore dell\'evento prima di quello
   assert.equal(normalizza({ etichette: [{ nome: 'Barca', colore: 'rosso' }] }).etichette[0].colore, '#64748b');
   assert.equal(coloreEvento({ tipo: 'sport' }, ETICHETTE_PREDEFINITE), '#059669');
   assert.equal(coloreEvento({ tipo: 'sport', colore: '#111111' }, ETICHETTE_PREDEFINITE), '#111111');
+});
+
+
+test('ripetizione settimanale mantiene il giorno scelto e non sposta l’evento al lunedì della settimana', () => {
+  const date = generaDateRipetizione('2026-10-16', '2026-10-30', 'settimanale');
+  assert.deepEqual(date, ['2026-10-16', '2026-10-23', '2026-10-30']);
+  const impegni = date.map((data, id) => ({ id, titolo: 'Impegno', data_inizio: data, data_fine: data, tutto_il_giorno: true }));
+  assert.equal(elementiDelGiorno('2026-10-12', { impegni }).tuttoIlGiorno.length, 0);
+  assert.equal(elementiDelGiorno('2026-10-16', { impegni }).tuttoIlGiorno.length, 1);
+});
+
+test('ripetizione mensile mantiene il giorno di partenza anche dopo febbraio', () => {
+  assert.deepEqual(
+    generaDateRipetizione('2027-01-31', '2027-03-31', 'mensile'),
+    ['2027-01-31', '2027-02-28', '2027-03-31'],
+  );
+});
+
+test('rigaImpegno conserva il gruppo di ripetizione già esistente', () => {
+  assert.equal(rigaImpegno({ titolo: 'Riunione', data_inizio: '2026-10-16', recurrence_id: 12345 }).recurrence_id, 12345);
 });
