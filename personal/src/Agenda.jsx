@@ -277,7 +277,11 @@ export function PaginaEvento({ evento: iniziale = {}, ctx, chiudi }) {
             <select value={ev.ripeti || 'nessuna'} onChange={(e) => setEv((x) => ({
               ...x,
               ripeti: e.target.value,
-              ripeti_fino: e.target.value === 'nessuna' ? '' : (x.ripeti_fino || x.data_inizio),
+              ripeti_fino: e.target.value === 'nessuna' ? '' : (
+                x.ripeti === 'nessuna' || !x.ripeti_fino || x.ripeti_fino <= x.data_inizio
+                  ? piuGiorni(x.data_inizio, ({ giornaliera: 7, settimanale: 28, quindicinale: 56, mensile: 180 })[e.target.value] || 28)
+                  : x.ripeti_fino
+              ),
             }))}>
               <option value="nessuna">Non si ripete</option>
               <option value="giornaliera">Ogni giorno</option>
