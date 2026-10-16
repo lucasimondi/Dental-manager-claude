@@ -273,7 +273,7 @@ export function EventBlock({ title, top, height, co, onClick, startTime, descrip
   return (                    <div onClick={onClick} title={[startTime, title, description].filter(Boolean).join(' · ')} style={{
                       position: 'absolute', top, left: 2, right: 2, height, zIndex: 1, cursor: 'pointer',
                       background: co + '35', border: `1.5px dashed ${co}AA`, borderRadius: 5,
-                      display: 'flex', ...(showDetails ? { flexDirection: 'column', gap: 1 } : {}), alignItems: 'flex-start', padding: '2px 5px', boxSizing: 'border-box', overflow: 'hidden',
+                      display: 'flex', ...(showDetails ? { flexDirection: 'column', gap: 1, padding: '1px 4px' } : {}), alignItems: 'flex-start', ...(showDetails ? {} : { padding: '2px 5px' }), boxSizing: 'border-box', overflow: 'hidden',
                     }}>
                       <span style={{ ...(showDetails ? { width: '100%' } : {}), fontSize: 9, fontWeight: 800, color: co, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{startTime ? startTime + ' ' : ''}{title}</span>
                       {height > 36 && description && <span style={{ width: '100%', fontSize: 8, lineHeight: '9px', fontWeight: 600, color: co, display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, whiteSpace: 'normal', overflowWrap: 'anywhere', overflow: 'hidden' }}>{description}</span>}

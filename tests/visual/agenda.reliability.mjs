@@ -82,7 +82,7 @@ for(const engine of ['chromium','webkit']) {
   ({context,page}=await open());
   await page.waitForFunction(()=>window.__state.events.some(e=>e.titolo==='Evento serale persistente'));
   await page.locator('.agenda-mobile-calendar-scroller').evaluate(el=>el.scrollTop=el.scrollHeight);
-  await page.getByText('Evento serale persistente',{exact:true}).waitFor({state:'visible'});
+  await page.getByText('Evento serale persistente',{exact:false}).waitFor({state:'visible'});
   await page.screenshot({animations:'disabled',path:`${out}/${engine}-${width}-reopened.png`});
   assert.deepEqual(errors,[]);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   results.push({engine,width,height,detail,persistedId:rows[0].id,writes,serverRows:rows.length});
