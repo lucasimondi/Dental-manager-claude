@@ -97,7 +97,7 @@ export function rigaImpegno(evento) {
   return {
     titolo: String(evento.titolo || '').trim() || 'Evento',
     tipo: ['personale', 'ferie', 'chiamata', 'altro'].includes(evento.tipo) ? evento.tipo : 'personale',
-    etichetta: evento.etichetta || evento.tipo || 'personale',
+    etichetta: evento.tipo || evento.etichetta || 'personale',
     colore: evento.colore || null,
     data_inizio: evento.data_inizio,
     data_fine: evento.data_fine && evento.data_fine >= evento.data_inizio ? evento.data_fine : evento.data_inizio,
