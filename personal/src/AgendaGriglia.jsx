@@ -54,7 +54,10 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
       skipWeekSync.current = false;
       return;
     }
-    setGiorno(weekStart);
+    // Conserva il giorno della settimana selezionato: se sto guardando venerdì,
+    // passare alla settimana successiva deve portarmi al venerdì successivo, non al lunedì.
+    const offset = (daIso(giorno).getDay() + 6) % 7;
+    setGiorno(piuGiorni(weekStart, offset));
   };
   const { onTouchStartSwipe, onTouchEndSwipe } = useGridSwipe(days, navigate);
   const monthNavigate = n => { const d = daIso(month); d.setMonth(d.getMonth() + n, 1); changeMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`); };
