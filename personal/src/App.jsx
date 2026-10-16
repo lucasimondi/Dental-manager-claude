@@ -25,6 +25,7 @@ import {
   Vuoto, Sezione, Gruppo, RigaDocumento, SchedaDocumento, RigaPagamento, Chips, Segmenti, Conferma, ConfermaElimina, ElencoPratiche,
 } from './ui.jsx';
 import { VistaDocumenti, PaginaRicerca } from './Documenti.jsx';
+import AttivitaEsterne from './AttivitaEsterne.jsx';
 import { Miniatura } from './Miniatura.jsx';
 import {
   IconaOggi, IconaDocumenti, IconaPortafoglio, IconaPratiche, IconaPiu, IconaCerca, IconaChiudi, IconaIndietro, IconaFreccia,
@@ -944,7 +945,7 @@ function PaginaChat({ documentoId, titoloDoc: titolo, ctx }) {
 }
 
 const TITOLI_PAGINE = {
-  chat: 'Poliedron', evento: 'Evento', appuntamento: 'Appuntamento', documento: 'Documento', pagamento: 'Pagamento', pratica: 'Pratica',
+  attivita: 'Attività esterne', chat: 'Poliedron', evento: 'Evento', appuntamento: 'Appuntamento', documento: 'Documento', pagamento: 'Pagamento', pratica: 'Pratica',
   carica: 'Archivia un documento', impostazioni: 'Impostazioni', sezione: 'Sezione', scansione: 'Scansiona', scadenza: 'Pagamento da fare',
 };
 const titoloPagina = (p) => p.titolo || (p.tipo === 'movimento' ? (p.m?.id ? 'Movimento' : p.m?.tipo === 'entrata' ? 'Nuovo incasso' : 'Nuova spesa') : TITOLI_PAGINE[p.tipo]);
@@ -1042,6 +1043,7 @@ function Archivio({ email }) {
       case 'sezione': return <PaginaSezione id={p.id} ctx={ctx} chiudi={indietro} />;
       case 'evento': return <PaginaEvento evento={p.evento} ctx={ctx} chiudi={indietro} />;
       case 'appuntamento': return <PaginaAppuntamento a={p.a} />;
+      case 'attivita': return <AttivitaEsterne />;
       case 'chat': return <PaginaChat documentoId={p.documentoId} titoloDoc={p.titoloDoc} ctx={ctx} />;
       default: return null;
     }
@@ -1055,6 +1057,7 @@ function Archivio({ email }) {
       <header className="pp-testata">
         <h1>{vista === 'oggi' ? saluto() : TITOLI[vista]}</h1>
         <span className="pp-testata-azioni">
+          <button className="pp-icona-bottone" onClick={() => apri({ tipo: 'attivita' })} aria-label="Attività esterne">Attività</button>
           <button className="pp-poliedron" onClick={() => apri({ tipo: 'chat' })} aria-label="Chiedi a Poliedron"><IconaChat size={18} /><span>Poliedron</span></button>
           <button className="pp-icona-bottone" onClick={() => apri({ tipo: 'impostazioni' })} aria-label="Impostazioni"><IconaImpostazioni size={20} /></button>
         </span>
