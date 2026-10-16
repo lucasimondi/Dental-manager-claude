@@ -888,7 +888,22 @@ function PaginaChat({ documentoId, titoloDoc: titolo, ctx }) {
     try { setAttivitaEsterne(await elencoAttivita(archivioDb)); setErroreAttivita(''); }
     catch (e) { setErroreAttivita(e.message); }
   }, []);
-  useEffect(() => { ricaricaAttivita(); }, [ricaricaAttivita]);
+  useEffect(() => {
+    ricaricaAttivita();
+    let active = true;
+    let channel;
+    const subscribe = async () => {
+      const { data } = await archivioDb.auth.getUser();
+      if (!active || !data?.user?.id) return;
+      channel = archivioDb.channel('personal-attivita-' + data.user.id)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'attivita_esterne', filter: 'user_id=eq.' + data.user.id }, () => { if (active) ricaricaAttivita(); })
+        .subscribe();
+    };
+    subscribe().catch(() => {});
+    const refresh = () => { if (document.visibilityState === 'visible') ricaricaAttivita(); };
+    document.addEventListener('visibilitychange', refresh);
+    return () => { active = false; document.removeEventListener('visibilitychange', refresh); if (channel) archivioDb.removeChannel(channel); };
+  }, [ricaricaAttivita]);
   const [testo, setTesto] = useState('');
   const [attesa, setAttesa] = useState(false);
   const fondo = useRef(null);
