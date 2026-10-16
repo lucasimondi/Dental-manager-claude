@@ -58,7 +58,7 @@ export async function tipiAppuntamento() {
   return esito(await studioDb.from('app_types').select('nome, colore'));
 }
 
-const CAMPI_IMPEGNO = 'id, titolo, tipo, colore, data_inizio, data_fine, tutto_il_giorno, ora_inizio, ora_fine, note, recurrence_id';
+const CAMPI_IMPEGNO = 'id, titolo, tipo, etichetta, colore, data_inizio, data_fine, tutto_il_giorno, ora_inizio, ora_fine, note, recurrence_id';
 
 export async function impegniTra(da, a) {
   return esito(await studioDb.from('impegni_personali').select(CAMPI_IMPEGNO)
