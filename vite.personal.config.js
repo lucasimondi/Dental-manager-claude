@@ -10,5 +10,5 @@ export default defineConfig({
   publicDir: resolve('public'),
   plugins: [react()],
   build: { outDir: resolve('dist-personal'), emptyOutDir: true },
-  server: { port: 5174 },
+  server: { port: 5174, fs: { allow: [resolve('.')] } },
 });

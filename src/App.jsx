@@ -1,3 +1,4 @@
+import { readAgendaLocation } from '../shared/agenda/navigation.js';
 ﻿import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase, DB } from './lib/supabase.js';
@@ -78,7 +79,7 @@ export default function App() {
   const [dataLoading, setDataLoading] = useState(true);
   // Poliedron app: a page asked for while studio data is still loading.
   const [pendingPage, setPendingPage] = useState(null);
-  const [page, setPage] = useState(() => phoneApp ? 'chat' : 'home');
+  const [page, setPage] = useState(() => readAgendaLocation().requested ? 'agenda' : phoneApp ? 'chat' : 'home');
   // The keyboard-aware viewport is for the chat only: every other page of the
   // Poliedron app (agenda, pazienti…) is laid out exactly like the studio app.
   const phoneViewportStyle = usePhoneViewport(phoneApp && page === 'chat');

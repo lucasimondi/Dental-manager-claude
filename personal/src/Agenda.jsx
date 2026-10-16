@@ -1,22 +1,23 @@
+import { readAgendaLocation } from '../../shared/agenda/navigation.js';
 // POL-VITA-004/007 — Agenda di Poliedron Personal: è l'agenda dello studio (stessi dati).
-// Giorno e Settimana sono identici a Poliedra (AgendaGriglia.jsx); Mese con i pallini e l'elenco
-// del giorno. Pagamenti e scadenze dell'archivio stanno sopra la griglia, mai sugli appuntamenti.
+// Tutte le viste usano i componenti originali condivisi in shared/agenda.
+// Appuntamenti clinici in sola lettura; eventi e scadenze conservano le azioni personali.
 import { useEffect, useMemo, useState } from 'react';
 import { archivioDb } from './lib/supabasePersonal.js';
 import { pagamenti as caricaPagamenti } from './lib/archivio.js';
 import { euro } from './lib/coreArchivio.js';
 import {
-  studioDb, sessioneStudio, entraStudio, appuntamentiTra, impegniTra, salvaImpegno, eliminaImpegno, tipiAppuntamento,
+  studioDb, sessioneStudio, entraStudio, appuntamentiTra, impegniTra, salvaImpegno, eliminaImpegno, tipiAppuntamento, impostazioniAgenda,
 } from './lib/studio.js';
 import {
-  isoData, daIso, piuGiorni, oggi, minuti, ora, giorniSettimana, grigliaMese, stessoMese, elementiDelGiorno,
-  conteggi, coloreEvento, nomeEtichetta, COLORE_SCADENZA,
+  daIso, oggi, minuti, ora, giorniSettimana, grigliaMese, elementiDelGiorno,
+  coloreEvento, nomeEtichetta, COLORE_SCADENZA,
 } from './lib/agenda.js';
-import { IconaIndietro, IconaFreccia, IconaCestino } from './Icone.jsx';
-import { GrigliaPoliedra, ViewPicker } from './AgendaGriglia.jsx';
+import { IconaFreccia, IconaCestino } from './Icone.jsx';
+import { GrigliaPoliedra } from './AgendaGriglia.jsx';
 
 const nomeGiorno = (s, forma = 'long') => daIso(s).toLocaleDateString('it-IT', { weekday: forma, day: 'numeric', month: 'long' });
-const meseAnno = (s) => { const t = daIso(s).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' }); return t.charAt(0).toUpperCase() + t.slice(1); };
+
 
 function AccessoStudio({ onEntrato }) {
   const [email, setEmail] = useState('');
@@ -46,8 +47,8 @@ function useDatiAgenda(da, a, versione, esegui) {
   useEffect(() => {
     let vivo = true;
     esegui(async () => {
-      const [appuntamenti, impegni, tutti] = await Promise.all([appuntamentiTra(da, a), impegniTra(da, a), caricaPagamenti(archivioDb)]);
-      if (vivo) setDati({ appuntamenti, impegni, scadenze: tutti.filter((s) => s.data >= da && s.data <= a) });
+      const [appuntamenti, impegni, tutti, settings] = await Promise.all([appuntamentiTra(da, a), impegniTra(da, a), caricaPagamenti(archivioDb), impostazioniAgenda()]);
+      if (vivo) setDati({ appuntamenti, impegni, settings, scadenze: tutti.filter((s) => s.data >= da && s.data <= a) });
     });
     return () => { vivo = false; };
   }, [da, a, versione, esegui]);
@@ -100,8 +101,9 @@ export function VistaAgenda({ ctx }) {
   const { esegui, versione, impostazioni } = ctx;
   const etichette = impostazioni.etichette;
   const [collegata, setCollegata] = useState(undefined);
-  const [modo, setModo] = useState('settimana');
-  const [giorno, setGiorno] = useState(oggi());
+  const [modo, setModo] = useState(() => readAgendaLocation().view || 'settimana');
+  const [giorno, setGiorno] = useState(() => readAgendaLocation().day || oggi());
+  const [mese, setMese] = useState(() => readAgendaLocation().month || readAgendaLocation().day || oggi());
   const [coloriTipi, setColoriTipi] = useState({});
 
   useEffect(() => {
@@ -112,69 +114,24 @@ export function VistaAgenda({ ctx }) {
   useEffect(() => { if (collegata) tipiAppuntamento().then((t) => setColoriTipi(Object.fromEntries(t.map((x) => [x.nome, x.colore])))).catch(() => {}); }, [collegata]);
 
   const [da, a] = useMemo(() => {
-    if (modo === 'mese') { const g = grigliaMese(giorno); return [g[0], g[41]]; }
+    if (modo === 'mese') { const g = grigliaMese(mese); return [giorno < g[0] ? giorno : g[0], giorno > g[41] ? giorno : g[41]]; }
     if (modo === 'settimana') { const g = giorniSettimana(giorno); return [g[0], g[6]]; }
     return [giorno, giorno];
-  }, [modo, giorno]);
+  }, [modo, giorno, mese]);
 
   if (collegata === undefined) return null;
   if (!collegata) return <AccessoStudio onEntrato={() => setCollegata(true)} />;
   return (
-    <ContenutoAgenda {...{ ctx, modo, setModo, giorno, setGiorno, da, a, etichette, coloriTipi, versione, esegui }} />
+    <ContenutoAgenda {...{ ctx, modo, setModo, giorno, setGiorno, mese, setMese, da, a, etichette, coloriTipi, versione, esegui }} />
   );
 }
 
-function ContenutoAgenda({ ctx, modo, setModo, giorno, setGiorno, da, a, etichette, coloriTipi, versione, esegui }) {
+function ContenutoAgenda({ ctx, modo, setModo, giorno, setGiorno, mese, setMese, da, a, etichette, coloriTipi, versione, esegui }) {
   const dati = useDatiAgenda(da, a, versione, esegui);
-  const passo = modo === 'mese' ? null : modo === 'settimana' ? 7 : 1;
-  const sposta = (verso) => {
-    if (passo) { setGiorno(piuGiorni(giorno, verso * passo)); return; }
-    const d = daIso(giorno);
-    setGiorno(isoData(new Date(d.getFullYear(), d.getMonth() + verso, 1, 12)));
-  };
-  const titolo = modo === 'mese' ? meseAnno(giorno) : modo === 'settimana' ? `${daIso(da).getDate()} – ${nomeGiorno(a, undefined).replace(/^\w+ /, '')}` : nomeGiorno(giorno);
-  const griglia = modo === 'mese' ? grigliaMese(giorno) : [];
-  const numeri = useMemo(() => (dati && modo === 'mese' ? conteggi(griglia, dati) : {}), [dati, modo, griglia.join()]);
-
-  if (modo !== 'mese') {
-    return !dati ? <p className="pp-vuoto">Carico l'agenda…</p>
-      : <GrigliaPoliedra view={modo} setView={setModo} giorno={giorno} setGiorno={setGiorno} dati={dati} ctx={ctx} etichette={etichette} coloriTipi={coloriTipi} />;
-  }
-  return (
-    <>
-      <div className="ag-barra">
-        <span className="ag-barra-sinistra">
-          <button className="pp-icona-bottone pp-piccolo" onClick={() => sposta(-1)} aria-label="Mese precedente"><IconaIndietro size={16} /></button>
-          <button className="ag-mese" onClick={() => setGiorno(oggi())}>{titolo}</button>
-          <button className="pp-icona-bottone pp-piccolo" onClick={() => sposta(1)} aria-label="Mese successivo"><IconaFreccia size={16} /></button>
-        </span>
-        <ViewPicker view={modo} setView={setModo} />
-      </div>
-      {!dati ? <p className="pp-vuoto">Carico l'agenda…</p> : (
-        <>
-          <div className="pp-mese">
-            {['L', 'M', 'M', 'G', 'V', 'S', 'D'].map((x, i) => <span key={i} className="pp-mese-intestazione">{x}</span>)}
-            {griglia.map((g) => {
-              const n = numeri[g] || {};
-              return (
-                <button key={g} className={`pp-mese-giorno${stessoMese(g, giorno) ? '' : ' fuori'}${g === giorno ? ' scelto' : ''}${g === oggi() ? ' oggi' : ''}`} onClick={() => setGiorno(g)}>
-                  <span>{daIso(g).getDate()}</span>
-                  <span className="pp-mese-punti">
-                    {n.appuntamenti > 0 && <i className="app" />}
-                    {n.eventi > 0 && <i className="ev" />}
-                    {n.scadenze > 0 && <i className="sc" />}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          <p className="pp-riga-meta pp-legenda"><i className="app" /> studio <i className="ev" /> tuoi eventi <i className="sc" /> pagamenti</p>
-          <ElencoGiorno giorno={giorno} dati={dati} ctx={ctx} etichette={etichette} coloriTipi={coloriTipi} />
-        </>
-      )}
-    </>
-  );
+  return !dati ? <p className="pp-vuoto">Carico l'agenda…</p>
+    : <GrigliaPoliedra view={modo} setView={setModo} giorno={giorno} setGiorno={setGiorno} mese={mese} setMese={setMese} dati={dati} ctx={ctx} etichette={etichette} coloriTipi={coloriTipi} />;
 }
+
 
 export function PaginaEvento({ evento: iniziale = {}, ctx, chiudi }) {
   const { esegui, aggiorna, mostra, impostazioni } = ctx;

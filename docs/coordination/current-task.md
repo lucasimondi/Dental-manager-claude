@@ -1,3 +1,14 @@
+# Current task — POL-VITA-010
+- OWNER: Codex. BRANCH: `codex/pol-vita-010-shared-agenda`.
+- AUTHORIZATION: Product Owner requested complete implementation, comparative iPhone screenshots, all tests and PR; no merge.
+- SCOPE: shared original agenda presentation, distinct Studio/Personal adapters, no database or clinical changes.
+- IMPLEMENTED: original presentation/geometry shared by both apps; original Studio actions retained; Personal settings adapter; bidirectional app switch preserving day/view/displayed month.
+- VALIDATION: Node 1,270/1,270; main and standalone Personal builds; comparative Chromium/WebKit mobile matrix, screenshots and pixel checks in `docs/validation/POL-VITA-010/`.
+- DATABASE/DEPLOYMENT: none. Immutable stable checkpoint preserved.
+- STATUS: WAITING_PRODUCT_OWNER — dedicated PR for review, no merge authorized.
+
+---
+
 # Current task — POL-AI-012 Preventivo: PDF impaginato, tasto Preventivo, ritorno alla scheda, preventivo da Poliedron (2026-10-16)
 - OWNER: CLAUDE. BRANCH: `claude/preventivo-layout-poliedron-b4w1br` da `master@57b19dc` (PR #189 mergiata).
 - RICHIESTA PO (verbatim): "Il pdf preventivo non è impaginato bene, il codice fiscale è troppo vicino a scritta preventivo , impagina fai un bel layout . Inoltre metti un tastino preventivo da qualche parte , inoltre quando scarichi il preventivo poi non c'è modo di tornare indietro alla scheda paziente . Inoltre poliedron non è in grado di generare un preventivo quindi fai in modo che lo sia ,quando chiedo preventivo lui deve generare piano di cura sulla scheda paziente e darmi il preventivo in chat".

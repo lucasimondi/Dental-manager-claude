@@ -1,3 +1,4 @@
+import { readAgendaLocation } from '../../shared/agenda/navigation.js';
 // POL-VITA-003/006 — Poliedron Personal: app per telefono dell'archivio personale.
 // Dock: Oggi · Documenti · Agenda · Conti · Personali. Ogni dettaglio si apre come pagina sopra la
 // sezione, con "Indietro" in alto, il tasto di chiusura in basso a portata di pollice e il dock
@@ -960,7 +961,7 @@ const VISTE = [
   ['personali', 'Personali', IconaPortafoglio],
 ];
 const TITOLI = { documenti: 'Documenti', agenda: 'Agenda', conti: 'Conti', personali: 'Personali' };
-const vistaIniziale = () => { const v = leggiVista() === 'pagamenti' ? 'conti' : leggiVista(); return VISTE.some(([k]) => k === v) ? v : 'oggi'; };
+const vistaIniziale = () => { if (readAgendaLocation().requested) return 'agenda'; const v = leggiVista() === 'pagamenti' ? 'conti' : leggiVista(); return VISTE.some(([k]) => k === v) ? v : 'oggi'; };
 
 function Archivio({ email }) {
   const [vista, setVistaStato] = useState(vistaIniziale);

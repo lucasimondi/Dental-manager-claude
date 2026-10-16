@@ -1,0 +1,118 @@
+@media (max-width: 719px) {
+  /* Agenda chrome is an overlay, not a header. The timeline remains the
+     full-height page surface and scrolls beneath these independent controls. */
+  .agenda-mobile-floating-controls {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    box-sizing: border-box;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 16px);
+    z-index: 30;
+    pointer-events: none;
+  }
+  .agenda-mobile-floating-controls button,
+  .agenda-mobile-floating-controls [role="button"],
+  .agenda-mobile-floating-controls .agenda-floating-interactive,
+  .agenda-mobile-floating-week-strip {
+    pointer-events: auto;
+  }
+  .agenda-mobile-floating-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 4px 4px;
+  }
+  .agenda-mobile-floating-month,
+  .agenda-view-picker,
+  .agenda-mobile-floating-controls .pol-icon-btn {
+    border: 1px solid var(--border-medium) !important;
+    background: color-mix(in srgb, var(--surface-interactive) 88%, transparent) !important;
+    box-shadow: var(--shadow-sm) !important;
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+  }
+  .agenda-mobile-floating-month {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 5px 11px;
+    border-radius: 999px;
+  }
+  .agenda-mobile-floating-week-strip {
+    margin-inline: 0;
+    margin-bottom: 4px !important;
+    border-inline: 0 !important;
+    background: color-mix(in srgb, var(--surface-interactive) 88%, transparent) !important;
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+  }
+  .agenda-mobile-day-item {
+    min-height: var(--pol-touch-min);
+    justify-content: center;
+  }
+  .agenda-mobile-day-number {
+    box-sizing: border-box;
+    border: 2px solid transparent;
+  }
+  .agenda-mobile-day-number.is-today {
+    border-color: var(--danger);
+    background: transparent;
+    color: var(--danger);
+  }
+  .agenda-mobile-day-number.is-selected:not(.is-today) {
+    border-color: color-mix(in srgb, var(--brand-primary) 42%, transparent);
+    background: color-mix(in srgb, var(--brand-primary) 10%, transparent);
+    color: var(--brand-primary);
+  }
+  .agenda-mobile-selection-toolbar {
+    margin: 0 4px 4px !important;
+    padding: 6px;
+    border: 1px solid var(--border-medium);
+    border-radius: var(--pol-radius-md);
+    background: color-mix(in srgb, var(--surface-interactive) 92%, transparent);
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+  }
+  .agenda-mobile-grid-surface {
+    position: relative;
+    z-index: 0;
+  }
+  .agenda-mobile-calendar-scroller {
+    scrollbar-width: none;
+  }
+  .agenda-mobile-calendar-scroller::-webkit-scrollbar {
+    display: none;
+  }
+  .agenda-mobile-scroll-spacer {
+    flex: 0 0 auto;
+    width: 100%;
+    background: var(--surface-interactive);
+    pointer-events: none;
+  }
+  .agenda-mobile-scroll-spacer--top {
+    height: var(--agenda-mobile-overlay-clearance, 0px);
+  }
+  .agenda-mobile-scroll-spacer--bottom {
+    height: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+  .agenda-mobile-month-surface {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-top: var(--agenda-mobile-overlay-clearance, 0px);
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    scrollbar-gutter: stable;
+  }
+
+}
+
+.agenda-app-switch { position: absolute; z-index: 31; right: 6px; bottom: calc(160px + env(safe-area-inset-bottom, 0px)); display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 6px 12px; border-radius: 999px; background: var(--surface-interactive, #fff); color: var(--brand-primary, #185FA5); border: 1px solid var(--border-medium, #DCE1E6); box-shadow: var(--shadow-sm, 0 3px 10px rgba(31,49,78,.06)); font-size: 12px; font-weight: 700; text-decoration: none; }
+@media (min-width: 720px) { .agenda-app-switch { top: 0; bottom: auto; } }
+/* The original Studio global scrollbar is 4px wide. Own this metric here too,
+   so Month's stable gutter cannot change column widths in the Personal shell. */
+.agenda-mobile-month-surface::-webkit-scrollbar { width: 4px; }
+.agenda-mobile-month-surface::-webkit-scrollbar-thumb { background: var(--dm-scroll, #CBD5E0); border-radius: 4px; }

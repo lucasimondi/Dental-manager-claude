@@ -1,3 +1,4 @@
+import { C_LIGHT } from '../../shared/agenda/palette.js';
 /* ── STORAGE locale (fallback) ── */
 export const LS = {
   get: (k, d) => {
@@ -24,16 +25,7 @@ export const LS = {
    bisogno di essere riscritto.
    Tutti i valori restano esadecimali a 6 cifre (mai rgba) perché in alcuni
    punti del codice vengono concatenati con un suffisso alpha, es. C.pri + '30'. ── */
-export const C_LIGHT = {
-  bg: '#F7F8FA', sur: '#FFFFFF',
-  pri: '#185FA5', priL: '#E6F1FB', priD: '#0C447C',
-  acc: '#0F6E56',
-  suc: '#27500A', sucL: '#EAF3DE',
-  war: '#854F0B',
-  dan: '#791F1F', danL: '#FCEBEB',
-  pur: '#3C3489', purL: '#EEEDFE',
-  txt: '#1A2433', txm: '#5F6B7A', txl: '#8A93A0', brd: '#DCE1E6',
-};
+export { C_LIGHT } from '../../shared/agenda/palette.js';
 
 // Stessa direzione navy/blue/indigo dell'header/sidebar premium (le tinte
 // bg/priD riusano esattamente gli stop del gradiente già spedito in

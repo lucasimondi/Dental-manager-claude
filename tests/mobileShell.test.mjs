@@ -3,9 +3,11 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const app = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8');
-const agenda = readFileSync(new URL('../src/components/Agenda.jsx', import.meta.url), 'utf8');
+const presentation = readFileSync(new URL('../shared/agenda/AgendaPresentation.jsx', import.meta.url), 'utf8');
+const agenda = presentation + readFileSync(new URL('../src/components/Agenda.jsx', import.meta.url), 'utf8');
 const tokens = readFileSync(new URL('../src/styles/designTokens.css', import.meta.url), 'utf8');
-const premium = readFileSync(new URL('../src/components/PremiumVisualSystem.css', import.meta.url), 'utf8');
+const sharedCss = readFileSync(new URL('../shared/agenda/agenda.css', import.meta.url), 'utf8');
+const premium = sharedCss + readFileSync(new URL('../src/components/PremiumVisualSystem.css', import.meta.url), 'utf8');
 
 test('mobile shell uses a definite dynamic viewport flex chain', () => {
   assert.match(tokens, /html,\s*body,\s*#root\s*\{[\s\S]*height:\s*100%;[\s\S]*min-height:\s*100%;[\s\S]*margin:\s*0;[\s\S]*padding:\s*0;/);

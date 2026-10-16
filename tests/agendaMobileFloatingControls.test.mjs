@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const agendaSource = await readFile(new URL('../src/components/Agenda.jsx', import.meta.url), 'utf8');
-const premiumCss = await readFile(new URL('../src/components/PremiumVisualSystem.css', import.meta.url), 'utf8');
+const presentation = await readFile(new URL('../shared/agenda/AgendaPresentation.jsx', import.meta.url), 'utf8');
+const agendaSource = presentation + await readFile(new URL('../src/components/Agenda.jsx', import.meta.url), 'utf8');
+const sharedCss = await readFile(new URL('../shared/agenda/agenda.css', import.meta.url), 'utf8');
+const premiumCss = sharedCss + await readFile(new URL('../src/components/PremiumVisualSystem.css', import.meta.url), 'utf8');
 
 test('Agenda mobile floating container owns one safe-area-aware top clearance', () => {
   assert.match(
