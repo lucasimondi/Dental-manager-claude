@@ -119,7 +119,7 @@ test('agenda: Giorno e Settimana come Poliedra (colonna ore 34, 8–20 a mezz\'o
   const css = readFileSync('personal/src/personal.css', 'utf8');
   const shared = readFileSync('shared/agenda/AgendaPresentation.jsx', 'utf8');
   assert.match(src, /oraColW=\{34\}/);
-  assert.match(src, /oraInizio = 8, oraFine = 20, slotMin = 30/);
+  assert.match(src, /oraInizio = 0, oraFine = 24/);
   assert.match(src, /a.cognome \|\| a.paziente \|\| '—'/);
   assert.match(shared, /border: `1.5px dashed/);
   assert.doesNotMatch(css, /\.ag-pagina/);

@@ -10,7 +10,8 @@
     "build:personal": "vite build --config vite.personal.config.js",
     "test": "node --test tests/*.test.mjs",
     "preview": "vite preview",
-    "test:agenda:visual": "node tests/visual/agenda.compare.mjs"
+    "test:agenda:visual": "node tests/visual/agenda.compare.mjs",
+    "test:agenda:reliability": "node tests/visual/agenda.reliability.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

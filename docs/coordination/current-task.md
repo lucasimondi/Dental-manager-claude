@@ -1,3 +1,15 @@
+# Current task — POL-VITA-011
+- OWNER: Codex. BRANCH: `codex/pol-vita-011-agenda-persistence`, from master `173a78ed` (PR #199 merged with PO approval).
+- AUTHORIZATION: PO requests appointment detail scroll/stacking fix, accessible Studio switch without Vercel destination, all 24 hours, reliable event persistence after reopening.
+- SCOPE: Personal UI and persistence adapter; shared navigation/presentation compatibility. No clinical logic, schema, RLS or production data changes.
+- IMPLEMENTED: real page shell above agenda floats with dock clearance; top Studio switch to existing same-origin `/studio` route on Personal domain; Personal 00–24 timeline and valid last slot; required numeric event ID and pending-save guard. Studio clinical behavior/schema/RLS unchanged.
+- VALIDATION: Node 1,272/1,272; main and standalone Personal builds OK; 20 comparative scenarios with frozen baseline dependencies (Studio geometry/pixels unchanged); 6 Chromium/WebKit reliability cases including failed save and browser-context close/reopen, three iPhone viewport widths. Evidence in `docs/validation/POL-VITA-011/`.
+- DATABASE/DEPLOYMENT: read-only column metadata inspection only; no migrations, production writes, DNS or deployment changes. Frontend deployment on merge. Rollback by reverting the PR; immutable stable checkpoint preserved.
+- LIMITS: synthetic server, emulated mobile browser engines (no physical iPhone); public-domain smoke test after deployment. Previously unsaved events are not claimed recovered.
+- STATUS: READY_FOR_REVIEW — prepare dedicated PR; new merge awaits PO approval.
+
+---
+
 # Current task — POL-VITA-010
 - OWNER: Codex. BRANCH: `codex/pol-vita-010-shared-agenda`.
 - AUTHORIZATION: Product Owner requested complete implementation, comparative iPhone screenshots, all tests and PR; no merge.

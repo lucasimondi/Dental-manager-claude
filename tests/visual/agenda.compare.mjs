@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module';
 const { chromium, webkit } = createRequire(import.meta.url)('playwright');
 const { PNG } = createRequire(import.meta.url)('pngjs');
-import { mkdir, writeFile, readFile, unlink } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, unlink, rm } from 'node:fs/promises';
 import { spawn, execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 const out = process.env.AGENDA_SCREENSHOTS || 'tests/visual/results';
@@ -9,7 +9,13 @@ await mkdir(out, { recursive: true });
 const base = process.env.AGENDA_BASE_REF || execFileSync('git', ['merge-base', 'HEAD', 'origin/master']).toString().trim();
 // Temporary baseline is always removed: production keeps no copy of the original agenda.
 const baseline = 'src/components/__AgendaBaseline.jsx';
-await writeFile(baseline, execFileSync('git', ['show', `${base}:src/components/Agenda.jsx`]));
+const baselineShared = 'shared/__agendaBaseline';
+await mkdir(baselineShared, {recursive:true});
+// Freeze the shared dependencies too: the baseline must never load modified presentation/CSS.
+for (const path of execFileSync('git',['ls-tree','-r','--name-only',base,'shared/agenda']).toString().trim().split('\n').filter(Boolean)) {
+  await writeFile(path.replace('shared/agenda',baselineShared),execFileSync('git',['show',`${base}:${path}`]));
+}
+await writeFile(baseline, execFileSync('git', ['show', `${base}:src/components/Agenda.jsx`]).toString().replaceAll('../../shared/agenda/','../../shared/__agendaBaseline/'));
 const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', '5173', '--strictPort'], { stdio: 'ignore' });
 for (let i=0;i<50;i++) { try { if ((await fetch('http://127.0.0.1:5173')).ok) break; } catch {} await new Promise(resolve=>setTimeout(resolve,100)); }
 const results = [];
@@ -36,12 +42,8 @@ for (const engine of engines) {
         });
         await page.goto(`http://127.0.0.1:5173/tests/visual/agenda.html?mode=${mode}&agenda=1&agendaDate=2026-10-16&agendaView=${view}${configured ? '&configured=1' : ''}`);
         await page.locator('.agenda-mobile-page').waitFor();
-        // Original Studio initializes in week view. Pick the requested view through the real control.
+        // The merged Studio baseline supports day/view deep links.
         const picker = page.locator('button').filter({ has: page.locator('.agenda-view-picker') });
-        if (mode === 'baseline' && view !== 'settimana') {
-          await page.locator('.agenda-mobile-day-number').filter({ hasText: /^16$/ }).click();
-          if (view === 'mese') { await picker.click(); await page.getByRole('button', {name:'Mese',exact:true}).click(); }
-        }
         await page.waitForTimeout(200);
         assert.deepEqual(errors, [], `${engine}/${width}/${mode}/${view} console`);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'horizontal overflow');
@@ -72,9 +74,9 @@ for (const engine of engines) {
           assert.ok(await page.locator('.agenda-mobile-calendar-scroller').evaluate(el => el.scrollTop > 0), 'timeline scrolls below dock');
         }
         if (mode === 'personal' && view === 'giorno') {
-          await page.locator('.agenda-mobile-calendar-scroller').evaluate(el => el.scrollTop=0);
+          await page.locator('.agenda-mobile-calendar-scroller').evaluate(el => el.scrollTop=400);
           await page.locator('[data-appointment-id="10"]').click();
-          await page.getByText('Appuntamento dello studio — sola lettura').waitFor(); await page.getByRole('button',{name:'Chiudi',exact:true}).click();
+          await page.getByText('Appuntamento dello studio',{exact:true}).waitFor(); await page.getByRole('button',{name:'Chiudi',exact:true}).click();
           await page.getByRole('button',{name:'Aggiungi',exact:true}).click();
           await page.getByPlaceholder('Es. Calcetto, cena, dentista Giulia').fill('Evento di prova');
           await page.getByRole('button',{name:"Aggiungi all'agenda",exact:true}).click();
@@ -108,7 +110,8 @@ for (const engine of engines) {
       }
       const geometry = m => Object.fromEntries(Object.entries(m).filter(([key])=>key !== 'switch'));
       assert.deepEqual(geometry(measurements.baseline), geometry(measurements.studio), 'Studio geometry changed');
-      assert.deepEqual(geometry(measurements.studio), geometry(measurements.personal), 'Personal geometry differs');
+      assert.equal(measurements.studio.columns, measurements.personal.columns, 'Shared day columns differ');
+      // PO requests 24h in Personal with a top app switch; grid height and chrome clearance intentionally differ.
       const original = PNG.sync.read(await readFile(screenshots.baseline)), current = PNG.sync.read(await readFile(screenshots.studio));
       const link = measurements.studio.switch;
       let changed = 0;
@@ -119,24 +122,17 @@ for (const engine of engines) {
         if ([0,1,2].some(c=>Math.abs(original.data[i+c]-current.data[i+c])>2)) changed++;
       }
       assert.equal(changed,0,`${engine}/${width}/${view}: original Studio pixels changed outside navigation link`);
-      const personal = PNG.sync.read(await readFile(screenshots.personal));
-      let personalChanges=0;
-      const top = view === 'mese' ? 64 : 64, bottom = view === 'mese' ? 320 : height-220;
-      for(let y=top;y<bottom;y++) for(let x=6;x<width-6;x++) {
-        const i=(y*width+x)*4;
-        if([0,1,2].some(c=>Math.abs(current.data[i+c]-personal.data[i+c])>2)) personalChanges++;
-      }
-      assert.equal(personalChanges,0,`${engine}/${width}/${view}: Personal calendar pixels differ from Studio`);
+      // Personal is reviewed alongside Studio: its 24h range and top link are intentional changes.
       const comparison = new PNG({width:width*3,height});
       for(const [index, mode] of ['baseline','studio','personal'].entries()) {
         const src=PNG.sync.read(await readFile(screenshots[mode]));
         PNG.bitblt(src,comparison,0,0,width,height,index*width,0);
       }
       await writeFile(`${out}/${engine}-${width}-${view}${configured ? '-configured' : ''}-comparison.png`,PNG.sync.write(comparison));
-      console.log(`${engine} ${width} ${view}: geometry identical; Studio pixel regression 0; interactions OK`);
+      console.log(`${engine} ${width} ${view}: Studio geometry/pixels unchanged; Personal 24h; interactions OK`);
     }
   }
   await browser.close();
 }
 await writeFile(`${out}/metrics.json`,JSON.stringify(results,null,2));
-} finally { server.kill(); await unlink(baseline).catch(()=>{}); }
+} finally { server.kill(); await unlink(baseline).catch(()=>{}); await rm(baselineShared,{recursive:true,force:true}); }

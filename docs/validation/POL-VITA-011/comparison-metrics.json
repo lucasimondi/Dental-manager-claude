@@ -1,0 +1,2402 @@
+[
+  {
+    "engine": "chromium",
+    "width": 375,
+    "height": 812,
+    "view": "giorno",
+    "configured": false,
+    "mode": "baseline",
+    "metrics": {
+      "switch": {
+        "x": 225.640625,
+        "y": 616,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 363,
+        "height": 812
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 363,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 363,
+        "height": 811.875
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 811.875
+      },
+      "month": null,
+      "columns": 1
+    },
+    "screenshot": "tests/visual/results/chromium-375-giorno-baseline.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 375,
+    "height": 812,
+    "view": "giorno",
+    "configured": false,
+    "mode": "studio",
+    "metrics": {
+      "switch": {
+        "x": 225.640625,
+        "y": 616,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 363,
+        "height": 812
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 363,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 363,
+        "height": 811.875
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 811.875
+      },
+      "month": null,
+      "columns": 1
+    },
+    "screenshot": "tests/visual/results/chromium-375-giorno-studio.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 375,
+    "height": 812,
+    "view": "giorno",
+    "configured": false,
+    "mode": "personal",
+    "metrics": {
+      "switch": {
+        "x": 244.765625,
+        "y": 124,
+        "width": 118.234375,
+        "height": 32
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 363,
+        "height": 812
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 363,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": -288,
+        "width": 363,
+        "height": 1152
+      },
+      "gutter": {
+        "x": 6,
+        "y": -288,
+        "width": 34,
+        "height": 1152
+      },
+      "month": null,
+      "columns": 1
+    },
+    "screenshot": "tests/visual/results/chromium-375-giorno-personal.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 375,
+    "height": 812,
+    "view": "settimana",
+    "configured": false,
+    "mode": "baseline",
+    "metrics": {
+      "switch": {
+        "x": 225.640625,
+        "y": 616,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 363,
+        "height": 812
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 363,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 363,
+        "height": 811.875
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 811.875
+      },
+      "month": null,
+      "columns": 7
+    },
+    "screenshot": "tests/visual/results/chromium-375-settimana-baseline.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 375,
+    "height": 812,
+    "view": "settimana",
+    "configured": false,
+    "mode": "studio",
+    "metrics": {
+      "switch": {
+        "x": 225.640625,
+        "y": 616,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 363,
+        "height": 812
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 363,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 363,
+        "height": 811.875
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 811.875
+      },
+      "month": null,
+      "columns": 7
+    },
+    "screenshot": "tests/visual/results/chromium-375-settimana-studio.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 375,
+    "height": 812,
+    "view": "settimana",
+    "configured": false,
+    "mode": "personal",
+    "metrics": {
+      "switch": {
+        "x": 244.765625,
+        "y": 124,
+        "width": 118.234375,
+        "height": 32
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 363,
+        "height": 812
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 363,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": -288,
+        "width": 363,
+        "height": 1152
+      },
+      "gutter": {
+        "x": 6,
+        "y": -288,
+        "width": 34,
+        "height": 1152
+      },
+      "month": null,
+      "columns": 7
+    },
+    "screenshot": "tests/visual/results/chromium-375-settimana-personal.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 375,
+    "height": 812,
+    "view": "mese",
+    "configured": false,
+    "mode": "baseline",
+    "metrics": {
+      "switch": {
+        "x": 225.640625,
+        "y": 616,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 363,
+        "height": 812
+      },
+      "strip": null,
+      "grid": null,
+      "gutter": null,
+      "month": {
+        "x": 6,
+        "y": 0,
+        "width": 363,
+        "height": 812
+      },
+      "columns": 0
+    },
+    "screenshot": "tests/visual/results/chromium-375-mese-baseline.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 375,
+    "height": 812,
+    "view": "mese",
+    "configured": false,
+    "mode": "studio",
+    "metrics": {
+      "switch": {
+        "x": 225.640625,
+        "y": 616,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 363,
+        "height": 812
+      },
+      "strip": null,
+      "grid": null,
+      "gutter": null,
+      "month": {
+        "x": 6,
+        "y": 0,
+        "width": 363,
+        "height": 812
+      },
+      "columns": 0
+    },
+    "screenshot": "tests/visual/results/chromium-375-mese-studio.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 375,
+    "height": 812,
+    "view": "mese",
+    "configured": false,
+    "mode": "personal",
+    "metrics": {
+      "switch": {
+        "x": 244.765625,
+        "y": 68,
+        "width": 118.234375,
+        "height": 32
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 363,
+        "height": 812
+      },
+      "strip": null,
+      "grid": null,
+      "gutter": null,
+      "month": {
+        "x": 6,
+        "y": 0,
+        "width": 363,
+        "height": 812
+      },
+      "columns": 0
+    },
+    "screenshot": "tests/visual/results/chromium-375-mese-personal.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 390,
+    "height": 844,
+    "view": "giorno",
+    "configured": false,
+    "mode": "baseline",
+    "metrics": {
+      "switch": {
+        "x": 240.640625,
+        "y": 648,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 844
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 378,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 378,
+        "height": 843.75
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 843.75
+      },
+      "month": null,
+      "columns": 1
+    },
+    "screenshot": "tests/visual/results/chromium-390-giorno-baseline.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 390,
+    "height": 844,
+    "view": "giorno",
+    "configured": false,
+    "mode": "studio",
+    "metrics": {
+      "switch": {
+        "x": 240.640625,
+        "y": 648,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 844
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 378,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 378,
+        "height": 843.75
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 843.75
+      },
+      "month": null,
+      "columns": 1
+    },
+    "screenshot": "tests/visual/results/chromium-390-giorno-studio.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 390,
+    "height": 844,
+    "view": "giorno",
+    "configured": false,
+    "mode": "personal",
+    "metrics": {
+      "switch": {
+        "x": 259.765625,
+        "y": 124,
+        "width": 118.234375,
+        "height": 32
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 844
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 378,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": -288,
+        "width": 378,
+        "height": 1152
+      },
+      "gutter": {
+        "x": 6,
+        "y": -288,
+        "width": 34,
+        "height": 1152
+      },
+      "month": null,
+      "columns": 1
+    },
+    "screenshot": "tests/visual/results/chromium-390-giorno-personal.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 390,
+    "height": 844,
+    "view": "settimana",
+    "configured": false,
+    "mode": "baseline",
+    "metrics": {
+      "switch": {
+        "x": 240.640625,
+        "y": 648,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 844
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 378,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 378,
+        "height": 843.75
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 843.75
+      },
+      "month": null,
+      "columns": 7
+    },
+    "screenshot": "tests/visual/results/chromium-390-settimana-baseline.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 390,
+    "height": 844,
+    "view": "settimana",
+    "configured": false,
+    "mode": "studio",
+    "metrics": {
+      "switch": {
+        "x": 240.640625,
+        "y": 648,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 844
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 378,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 378,
+        "height": 843.75
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 843.75
+      },
+      "month": null,
+      "columns": 7
+    },
+    "screenshot": "tests/visual/results/chromium-390-settimana-studio.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 390,
+    "height": 844,
+    "view": "settimana",
+    "configured": false,
+    "mode": "personal",
+    "metrics": {
+      "switch": {
+        "x": 259.765625,
+        "y": 124,
+        "width": 118.234375,
+        "height": 32
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 844
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 378,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": -288,
+        "width": 378,
+        "height": 1152
+      },
+      "gutter": {
+        "x": 6,
+        "y": -288,
+        "width": 34,
+        "height": 1152
+      },
+      "month": null,
+      "columns": 7
+    },
+    "screenshot": "tests/visual/results/chromium-390-settimana-personal.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 390,
+    "height": 844,
+    "view": "mese",
+    "configured": false,
+    "mode": "baseline",
+    "metrics": {
+      "switch": {
+        "x": 240.640625,
+        "y": 648,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 844
+      },
+      "strip": null,
+      "grid": null,
+      "gutter": null,
+      "month": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 844
+      },
+      "columns": 0
+    },
+    "screenshot": "tests/visual/results/chromium-390-mese-baseline.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 390,
+    "height": 844,
+    "view": "mese",
+    "configured": false,
+    "mode": "studio",
+    "metrics": {
+      "switch": {
+        "x": 240.640625,
+        "y": 648,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 844
+      },
+      "strip": null,
+      "grid": null,
+      "gutter": null,
+      "month": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 844
+      },
+      "columns": 0
+    },
+    "screenshot": "tests/visual/results/chromium-390-mese-studio.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 390,
+    "height": 844,
+    "view": "mese",
+    "configured": false,
+    "mode": "personal",
+    "metrics": {
+      "switch": {
+        "x": 259.765625,
+        "y": 68,
+        "width": 118.234375,
+        "height": 32
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 844
+      },
+      "strip": null,
+      "grid": null,
+      "gutter": null,
+      "month": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 844
+      },
+      "columns": 0
+    },
+    "screenshot": "tests/visual/results/chromium-390-mese-personal.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 430,
+    "height": 932,
+    "view": "giorno",
+    "configured": false,
+    "mode": "baseline",
+    "metrics": {
+      "switch": {
+        "x": 280.640625,
+        "y": 736,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 418,
+        "height": 932
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 418,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 418,
+        "height": 931.875
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 931.875
+      },
+      "month": null,
+      "columns": 1
+    },
+    "screenshot": "tests/visual/results/chromium-430-giorno-baseline.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 430,
+    "height": 932,
+    "view": "giorno",
+    "configured": false,
+    "mode": "studio",
+    "metrics": {
+      "switch": {
+        "x": 280.640625,
+        "y": 736,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 418,
+        "height": 932
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 418,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 418,
+        "height": 931.875
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 931.875
+      },
+      "month": null,
+      "columns": 1
+    },
+    "screenshot": "tests/visual/results/chromium-430-giorno-studio.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 430,
+    "height": 932,
+    "view": "giorno",
+    "configured": false,
+    "mode": "personal",
+    "metrics": {
+      "switch": {
+        "x": 299.765625,
+        "y": 124,
+        "width": 118.234375,
+        "height": 32
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 418,
+        "height": 932
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 418,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": -288,
+        "width": 418,
+        "height": 1152
+      },
+      "gutter": {
+        "x": 6,
+        "y": -288,
+        "width": 34,
+        "height": 1152
+      },
+      "month": null,
+      "columns": 1
+    },
+    "screenshot": "tests/visual/results/chromium-430-giorno-personal.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 430,
+    "height": 932,
+    "view": "settimana",
+    "configured": false,
+    "mode": "baseline",
+    "metrics": {
+      "switch": {
+        "x": 280.640625,
+        "y": 736,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 418,
+        "height": 932
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 418,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 418,
+        "height": 931.875
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 931.875
+      },
+      "month": null,
+      "columns": 7
+    },
+    "screenshot": "tests/visual/results/chromium-430-settimana-baseline.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 430,
+    "height": 932,
+    "view": "settimana",
+    "configured": false,
+    "mode": "studio",
+    "metrics": {
+      "switch": {
+        "x": 280.640625,
+        "y": 736,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 418,
+        "height": 932
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 418,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 418,
+        "height": 931.875
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 931.875
+      },
+      "month": null,
+      "columns": 7
+    },
+    "screenshot": "tests/visual/results/chromium-430-settimana-studio.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 430,
+    "height": 932,
+    "view": "settimana",
+    "configured": false,
+    "mode": "personal",
+    "metrics": {
+      "switch": {
+        "x": 299.765625,
+        "y": 124,
+        "width": 118.234375,
+        "height": 32
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 418,
+        "height": 932
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 418,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": -288,
+        "width": 418,
+        "height": 1152
+      },
+      "gutter": {
+        "x": 6,
+        "y": -288,
+        "width": 34,
+        "height": 1152
+      },
+      "month": null,
+      "columns": 7
+    },
+    "screenshot": "tests/visual/results/chromium-430-settimana-personal.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 430,
+    "height": 932,
+    "view": "mese",
+    "configured": false,
+    "mode": "baseline",
+    "metrics": {
+      "switch": {
+        "x": 280.640625,
+        "y": 736,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 418,
+        "height": 932
+      },
+      "strip": null,
+      "grid": null,
+      "gutter": null,
+      "month": {
+        "x": 6,
+        "y": 0,
+        "width": 418,
+        "height": 932
+      },
+      "columns": 0
+    },
+    "screenshot": "tests/visual/results/chromium-430-mese-baseline.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 430,
+    "height": 932,
+    "view": "mese",
+    "configured": false,
+    "mode": "studio",
+    "metrics": {
+      "switch": {
+        "x": 280.640625,
+        "y": 736,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 418,
+        "height": 932
+      },
+      "strip": null,
+      "grid": null,
+      "gutter": null,
+      "month": {
+        "x": 6,
+        "y": 0,
+        "width": 418,
+        "height": 932
+      },
+      "columns": 0
+    },
+    "screenshot": "tests/visual/results/chromium-430-mese-studio.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 430,
+    "height": 932,
+    "view": "mese",
+    "configured": false,
+    "mode": "personal",
+    "metrics": {
+      "switch": {
+        "x": 299.765625,
+        "y": 68,
+        "width": 118.234375,
+        "height": 32
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 418,
+        "height": 932
+      },
+      "strip": null,
+      "grid": null,
+      "gutter": null,
+      "month": {
+        "x": 6,
+        "y": 0,
+        "width": 418,
+        "height": 932
+      },
+      "columns": 0
+    },
+    "screenshot": "tests/visual/results/chromium-430-mese-personal.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 390,
+    "height": 844,
+    "view": "settimana",
+    "configured": true,
+    "mode": "baseline",
+    "metrics": {
+      "switch": {
+        "x": 240.640625,
+        "y": 648,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 844
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 378,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 378,
+        "height": 843.75
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 843.75
+      },
+      "month": null,
+      "columns": 5
+    },
+    "screenshot": "tests/visual/results/chromium-390-settimana-configured-baseline.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 390,
+    "height": 844,
+    "view": "settimana",
+    "configured": true,
+    "mode": "studio",
+    "metrics": {
+      "switch": {
+        "x": 240.640625,
+        "y": 648,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 844
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 378,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 378,
+        "height": 843.75
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 843.75
+      },
+      "month": null,
+      "columns": 5
+    },
+    "screenshot": "tests/visual/results/chromium-390-settimana-configured-studio.png"
+  },
+  {
+    "engine": "chromium",
+    "width": 390,
+    "height": 844,
+    "view": "settimana",
+    "configured": true,
+    "mode": "personal",
+    "metrics": {
+      "switch": {
+        "x": 259.765625,
+        "y": 124,
+        "width": 118.234375,
+        "height": 32
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 844
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 378,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": -624,
+        "width": 378,
+        "height": 2304
+      },
+      "gutter": {
+        "x": 6,
+        "y": -624,
+        "width": 34,
+        "height": 2304
+      },
+      "month": null,
+      "columns": 5
+    },
+    "screenshot": "tests/visual/results/chromium-390-settimana-configured-personal.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 375,
+    "height": 812,
+    "view": "giorno",
+    "configured": false,
+    "mode": "baseline",
+    "metrics": {
+      "switch": {
+        "x": 225.640625,
+        "y": 616,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 363,
+        "height": 812
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 363,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 363,
+        "height": 811.875
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 811.875
+      },
+      "month": null,
+      "columns": 1
+    },
+    "screenshot": "tests/visual/results/webkit-375-giorno-baseline.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 375,
+    "height": 812,
+    "view": "giorno",
+    "configured": false,
+    "mode": "studio",
+    "metrics": {
+      "switch": {
+        "x": 225.640625,
+        "y": 616,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 363,
+        "height": 812
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 363,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 363,
+        "height": 811.875
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 811.875
+      },
+      "month": null,
+      "columns": 1
+    },
+    "screenshot": "tests/visual/results/webkit-375-giorno-studio.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 375,
+    "height": 812,
+    "view": "giorno",
+    "configured": false,
+    "mode": "personal",
+    "metrics": {
+      "switch": {
+        "x": 244.765625,
+        "y": 124,
+        "width": 118.234375,
+        "height": 32
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 363,
+        "height": 812
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 363,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": -288,
+        "width": 363,
+        "height": 1152
+      },
+      "gutter": {
+        "x": 6,
+        "y": -288,
+        "width": 34,
+        "height": 1152
+      },
+      "month": null,
+      "columns": 1
+    },
+    "screenshot": "tests/visual/results/webkit-375-giorno-personal.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 375,
+    "height": 812,
+    "view": "settimana",
+    "configured": false,
+    "mode": "baseline",
+    "metrics": {
+      "switch": {
+        "x": 225.640625,
+        "y": 616,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 363,
+        "height": 812
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 363,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 363,
+        "height": 811.875
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 811.875
+      },
+      "month": null,
+      "columns": 7
+    },
+    "screenshot": "tests/visual/results/webkit-375-settimana-baseline.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 375,
+    "height": 812,
+    "view": "settimana",
+    "configured": false,
+    "mode": "studio",
+    "metrics": {
+      "switch": {
+        "x": 225.640625,
+        "y": 616,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 363,
+        "height": 812
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 363,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 363,
+        "height": 811.875
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 811.875
+      },
+      "month": null,
+      "columns": 7
+    },
+    "screenshot": "tests/visual/results/webkit-375-settimana-studio.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 375,
+    "height": 812,
+    "view": "settimana",
+    "configured": false,
+    "mode": "personal",
+    "metrics": {
+      "switch": {
+        "x": 244.765625,
+        "y": 124,
+        "width": 118.234375,
+        "height": 32
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 363,
+        "height": 812
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 363,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": -288,
+        "width": 363,
+        "height": 1152
+      },
+      "gutter": {
+        "x": 6,
+        "y": -288,
+        "width": 34,
+        "height": 1152
+      },
+      "month": null,
+      "columns": 7
+    },
+    "screenshot": "tests/visual/results/webkit-375-settimana-personal.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 375,
+    "height": 812,
+    "view": "mese",
+    "configured": false,
+    "mode": "baseline",
+    "metrics": {
+      "switch": {
+        "x": 225.640625,
+        "y": 616,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 363,
+        "height": 812
+      },
+      "strip": null,
+      "grid": null,
+      "gutter": null,
+      "month": {
+        "x": 6,
+        "y": 0,
+        "width": 363,
+        "height": 812
+      },
+      "columns": 0
+    },
+    "screenshot": "tests/visual/results/webkit-375-mese-baseline.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 375,
+    "height": 812,
+    "view": "mese",
+    "configured": false,
+    "mode": "studio",
+    "metrics": {
+      "switch": {
+        "x": 225.640625,
+        "y": 616,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 363,
+        "height": 812
+      },
+      "strip": null,
+      "grid": null,
+      "gutter": null,
+      "month": {
+        "x": 6,
+        "y": 0,
+        "width": 363,
+        "height": 812
+      },
+      "columns": 0
+    },
+    "screenshot": "tests/visual/results/webkit-375-mese-studio.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 375,
+    "height": 812,
+    "view": "mese",
+    "configured": false,
+    "mode": "personal",
+    "metrics": {
+      "switch": {
+        "x": 244.765625,
+        "y": 68,
+        "width": 118.234375,
+        "height": 32
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 363,
+        "height": 812
+      },
+      "strip": null,
+      "grid": null,
+      "gutter": null,
+      "month": {
+        "x": 6,
+        "y": 0,
+        "width": 363,
+        "height": 812
+      },
+      "columns": 0
+    },
+    "screenshot": "tests/visual/results/webkit-375-mese-personal.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 390,
+    "height": 844,
+    "view": "giorno",
+    "configured": false,
+    "mode": "baseline",
+    "metrics": {
+      "switch": {
+        "x": 240.640625,
+        "y": 647.984375,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 843.984375
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 378,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 378,
+        "height": 843.75
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 843.75
+      },
+      "month": null,
+      "columns": 1
+    },
+    "screenshot": "tests/visual/results/webkit-390-giorno-baseline.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 390,
+    "height": 844,
+    "view": "giorno",
+    "configured": false,
+    "mode": "studio",
+    "metrics": {
+      "switch": {
+        "x": 240.640625,
+        "y": 647.984375,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 843.984375
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 378,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 378,
+        "height": 843.75
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 843.75
+      },
+      "month": null,
+      "columns": 1
+    },
+    "screenshot": "tests/visual/results/webkit-390-giorno-studio.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 390,
+    "height": 844,
+    "view": "giorno",
+    "configured": false,
+    "mode": "personal",
+    "metrics": {
+      "switch": {
+        "x": 259.765625,
+        "y": 124,
+        "width": 118.234375,
+        "height": 32
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 843.984375
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 378,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": -288,
+        "width": 378,
+        "height": 1152
+      },
+      "gutter": {
+        "x": 6,
+        "y": -288,
+        "width": 34,
+        "height": 1152
+      },
+      "month": null,
+      "columns": 1
+    },
+    "screenshot": "tests/visual/results/webkit-390-giorno-personal.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 390,
+    "height": 844,
+    "view": "settimana",
+    "configured": false,
+    "mode": "baseline",
+    "metrics": {
+      "switch": {
+        "x": 240.640625,
+        "y": 647.984375,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 843.984375
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 378,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 378,
+        "height": 843.75
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 843.75
+      },
+      "month": null,
+      "columns": 7
+    },
+    "screenshot": "tests/visual/results/webkit-390-settimana-baseline.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 390,
+    "height": 844,
+    "view": "settimana",
+    "configured": false,
+    "mode": "studio",
+    "metrics": {
+      "switch": {
+        "x": 240.640625,
+        "y": 647.984375,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 843.984375
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 378,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 378,
+        "height": 843.75
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 843.75
+      },
+      "month": null,
+      "columns": 7
+    },
+    "screenshot": "tests/visual/results/webkit-390-settimana-studio.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 390,
+    "height": 844,
+    "view": "settimana",
+    "configured": false,
+    "mode": "personal",
+    "metrics": {
+      "switch": {
+        "x": 259.765625,
+        "y": 124,
+        "width": 118.234375,
+        "height": 32
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 843.984375
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 378,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": -288,
+        "width": 378,
+        "height": 1152
+      },
+      "gutter": {
+        "x": 6,
+        "y": -288,
+        "width": 34,
+        "height": 1152
+      },
+      "month": null,
+      "columns": 7
+    },
+    "screenshot": "tests/visual/results/webkit-390-settimana-personal.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 390,
+    "height": 844,
+    "view": "mese",
+    "configured": false,
+    "mode": "baseline",
+    "metrics": {
+      "switch": {
+        "x": 240.640625,
+        "y": 647.984375,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 843.984375
+      },
+      "strip": null,
+      "grid": null,
+      "gutter": null,
+      "month": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 843.984375
+      },
+      "columns": 0
+    },
+    "screenshot": "tests/visual/results/webkit-390-mese-baseline.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 390,
+    "height": 844,
+    "view": "mese",
+    "configured": false,
+    "mode": "studio",
+    "metrics": {
+      "switch": {
+        "x": 240.640625,
+        "y": 647.984375,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 843.984375
+      },
+      "strip": null,
+      "grid": null,
+      "gutter": null,
+      "month": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 843.984375
+      },
+      "columns": 0
+    },
+    "screenshot": "tests/visual/results/webkit-390-mese-studio.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 390,
+    "height": 844,
+    "view": "mese",
+    "configured": false,
+    "mode": "personal",
+    "metrics": {
+      "switch": {
+        "x": 259.765625,
+        "y": 68,
+        "width": 118.234375,
+        "height": 32
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 843.984375
+      },
+      "strip": null,
+      "grid": null,
+      "gutter": null,
+      "month": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 843.984375
+      },
+      "columns": 0
+    },
+    "screenshot": "tests/visual/results/webkit-390-mese-personal.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 430,
+    "height": 932,
+    "view": "giorno",
+    "configured": false,
+    "mode": "baseline",
+    "metrics": {
+      "switch": {
+        "x": 280.640625,
+        "y": 736,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 418,
+        "height": 932
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 418,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 418,
+        "height": 931.875
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 931.875
+      },
+      "month": null,
+      "columns": 1
+    },
+    "screenshot": "tests/visual/results/webkit-430-giorno-baseline.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 430,
+    "height": 932,
+    "view": "giorno",
+    "configured": false,
+    "mode": "studio",
+    "metrics": {
+      "switch": {
+        "x": 280.640625,
+        "y": 736,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 418,
+        "height": 932
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 418,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 418,
+        "height": 931.875
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 931.875
+      },
+      "month": null,
+      "columns": 1
+    },
+    "screenshot": "tests/visual/results/webkit-430-giorno-studio.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 430,
+    "height": 932,
+    "view": "giorno",
+    "configured": false,
+    "mode": "personal",
+    "metrics": {
+      "switch": {
+        "x": 299.765625,
+        "y": 124,
+        "width": 118.234375,
+        "height": 32
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 418,
+        "height": 932
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 418,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": -288,
+        "width": 418,
+        "height": 1152
+      },
+      "gutter": {
+        "x": 6,
+        "y": -288,
+        "width": 34,
+        "height": 1152
+      },
+      "month": null,
+      "columns": 1
+    },
+    "screenshot": "tests/visual/results/webkit-430-giorno-personal.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 430,
+    "height": 932,
+    "view": "settimana",
+    "configured": false,
+    "mode": "baseline",
+    "metrics": {
+      "switch": {
+        "x": 280.640625,
+        "y": 736,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 418,
+        "height": 932
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 418,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 418,
+        "height": 931.875
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 931.875
+      },
+      "month": null,
+      "columns": 7
+    },
+    "screenshot": "tests/visual/results/webkit-430-settimana-baseline.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 430,
+    "height": 932,
+    "view": "settimana",
+    "configured": false,
+    "mode": "studio",
+    "metrics": {
+      "switch": {
+        "x": 280.640625,
+        "y": 736,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 418,
+        "height": 932
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 418,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 418,
+        "height": 931.875
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 931.875
+      },
+      "month": null,
+      "columns": 7
+    },
+    "screenshot": "tests/visual/results/webkit-430-settimana-studio.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 430,
+    "height": 932,
+    "view": "settimana",
+    "configured": false,
+    "mode": "personal",
+    "metrics": {
+      "switch": {
+        "x": 299.765625,
+        "y": 124,
+        "width": 118.234375,
+        "height": 32
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 418,
+        "height": 932
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 418,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": -288,
+        "width": 418,
+        "height": 1152
+      },
+      "gutter": {
+        "x": 6,
+        "y": -288,
+        "width": 34,
+        "height": 1152
+      },
+      "month": null,
+      "columns": 7
+    },
+    "screenshot": "tests/visual/results/webkit-430-settimana-personal.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 430,
+    "height": 932,
+    "view": "mese",
+    "configured": false,
+    "mode": "baseline",
+    "metrics": {
+      "switch": {
+        "x": 280.640625,
+        "y": 736,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 418,
+        "height": 932
+      },
+      "strip": null,
+      "grid": null,
+      "gutter": null,
+      "month": {
+        "x": 6,
+        "y": 0,
+        "width": 418,
+        "height": 932
+      },
+      "columns": 0
+    },
+    "screenshot": "tests/visual/results/webkit-430-mese-baseline.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 430,
+    "height": 932,
+    "view": "mese",
+    "configured": false,
+    "mode": "studio",
+    "metrics": {
+      "switch": {
+        "x": 280.640625,
+        "y": 736,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 418,
+        "height": 932
+      },
+      "strip": null,
+      "grid": null,
+      "gutter": null,
+      "month": {
+        "x": 6,
+        "y": 0,
+        "width": 418,
+        "height": 932
+      },
+      "columns": 0
+    },
+    "screenshot": "tests/visual/results/webkit-430-mese-studio.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 430,
+    "height": 932,
+    "view": "mese",
+    "configured": false,
+    "mode": "personal",
+    "metrics": {
+      "switch": {
+        "x": 299.765625,
+        "y": 68,
+        "width": 118.234375,
+        "height": 32
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 418,
+        "height": 932
+      },
+      "strip": null,
+      "grid": null,
+      "gutter": null,
+      "month": {
+        "x": 6,
+        "y": 0,
+        "width": 418,
+        "height": 932
+      },
+      "columns": 0
+    },
+    "screenshot": "tests/visual/results/webkit-430-mese-personal.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 390,
+    "height": 844,
+    "view": "settimana",
+    "configured": true,
+    "mode": "baseline",
+    "metrics": {
+      "switch": {
+        "x": 240.640625,
+        "y": 647.984375,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 843.984375
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 378,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 378,
+        "height": 843.75
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 843.75
+      },
+      "month": null,
+      "columns": 5
+    },
+    "screenshot": "tests/visual/results/webkit-390-settimana-configured-baseline.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 390,
+    "height": 844,
+    "view": "settimana",
+    "configured": true,
+    "mode": "studio",
+    "metrics": {
+      "switch": {
+        "x": 240.640625,
+        "y": 647.984375,
+        "width": 137.359375,
+        "height": 36
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 843.984375
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 378,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": 120,
+        "width": 378,
+        "height": 843.75
+      },
+      "gutter": {
+        "x": 6,
+        "y": 120,
+        "width": 34,
+        "height": 843.75
+      },
+      "month": null,
+      "columns": 5
+    },
+    "screenshot": "tests/visual/results/webkit-390-settimana-configured-studio.png"
+  },
+  {
+    "engine": "webkit",
+    "width": 390,
+    "height": 844,
+    "view": "settimana",
+    "configured": true,
+    "mode": "personal",
+    "metrics": {
+      "switch": {
+        "x": 259.765625,
+        "y": 124,
+        "width": 118.234375,
+        "height": 32
+      },
+      "page": {
+        "x": 6,
+        "y": 0,
+        "width": 378,
+        "height": 843.984375
+      },
+      "strip": {
+        "x": 6,
+        "y": 64,
+        "width": 378,
+        "height": 52
+      },
+      "grid": {
+        "x": 6,
+        "y": -624,
+        "width": 378,
+        "height": 2304
+      },
+      "gutter": {
+        "x": 6,
+        "y": -624,
+        "width": 34,
+        "height": 2304
+      },
+      "month": null,
+      "columns": 5
+    },
+    "screenshot": "tests/visual/results/webkit-390-settimana-configured-personal.png"
+  }
+]

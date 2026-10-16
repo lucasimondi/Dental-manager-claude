@@ -72,8 +72,9 @@ export async function salvaImpegno(evento) {
   if (evento.id) {
     return esito(await studioDb.from('impegni_personali').update(riga).eq('id', evento.id).select(CAMPI_IMPEGNO).single());
   }
+  // The existing Studio table requires a client-generated bigint (same convention as Studio uid).
   return esito(await studioDb.from('impegni_personali')
-    .insert({ ...riga, studio_id: studioDellaSessione(sessione), user_id: sessione.user.id }).select(CAMPI_IMPEGNO).single());
+    .insert({ ...riga, id: Date.now() + Math.floor(Math.random() * 99999), studio_id: studioDellaSessione(sessione), user_id: sessione.user.id }).select(CAMPI_IMPEGNO).single());
 }
 
 export async function eliminaImpegno(id) {

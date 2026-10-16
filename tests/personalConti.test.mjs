@@ -162,7 +162,7 @@ test('app: Conti nel dock, + con tutte le aggiunte, pagine con chiusura in basso
   const aggiungi = readFileSync('personal/src/Aggiungi.jsx', 'utf8');
   assert.match(app, /\['conti', 'Conti', IconaEuro\]/);
   assert.match(app, /leggiVista\(\) === 'pagamenti' \? 'conti'/);
-  assert.match(app, /className="pp-chiudi-pagina"/);
+  assert.match(readFileSync('personal/src/Pagina.jsx', 'utf8'), /className="pp-chiudi-pagina"/);
   for (const voce of ['scansiona', 'fotocamera', 'libreria', 'file', 'personale', 'spesa', 'incasso', 'pagamento', 'evento']) {
     assert.match(aggiungi, new RegExp(`\\['${voce}',`), voce);
   }
