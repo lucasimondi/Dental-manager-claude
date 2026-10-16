@@ -1052,8 +1052,8 @@ function Archivio({ email }) {
       <input ref={ingressi.fotocamera} type="file" accept="image/*" capture="environment" hidden onChange={fileScelto} />
       <input ref={ingressi.libreria} type="file" accept="image/*" hidden onChange={fileScelto} />
       <input ref={ingressi.file} type="file" hidden onChange={fileScelto} />
-      <header className="pp-testata">
-        <h1>{vista === 'oggi' ? saluto() : TITOLI[vista]}</h1>
+      <header className={`pp-testata${vista === 'agenda' && !pagine.length ? ' pp-testata-agenda' : ''}`}>
+        {vista !== 'agenda' && <h1>{vista === 'oggi' ? saluto() : TITOLI[vista]}</h1>}
         <span className="pp-testata-azioni">
           
           <button className="pp-icona-bottone" onClick={() => apri({ tipo: 'impostazioni' })} aria-label="Impostazioni"><IconaImpostazioni size={20} /></button>
