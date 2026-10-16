@@ -100,7 +100,7 @@ export function VistaAgenda({ ctx }) {
   const { esegui, versione, impostazioni } = ctx;
   const etichette = impostazioni.etichette;
   const [collegata, setCollegata] = useState(undefined);
-  const [modo, setModo] = useState('settimana');
+  const [modo, setModo] = useState('giorno');
   const [giorno, setGiorno] = useState(oggi());
   const [coloriTipi, setColoriTipi] = useState({});
 
