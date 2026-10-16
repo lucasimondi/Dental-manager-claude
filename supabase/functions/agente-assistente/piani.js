@@ -120,7 +120,7 @@ export async function preparePiani(client,name,input={},studioId,observed){
     const righe=voci.map((v,i)=>`${i+1}. ${v.prestazione}${v.dente?` — dente ${v.dente}`:''}: ${euro(v.prezzo)}`);
     const corpo=[`Paziente: ${chi}`,`Piano: ${titolo}`,...righe,`Subtotale: ${euro(t.sub)}`,sconto?`Sconto: ${scontoTipo==='pct'?sconto+'%':euro(sconto)}`:null,`Totale: ${euro(t.finale)}`,scadenza?`Scadenza pagamento: ${scadenza}`:null].filter(Boolean).join('\n');
     const avviso=simili?.length?`Attenzione: ${chi} ha già un piano chiamato “${titolo}”.`:null;
-    return {dati,avviso,paziente:{id:paz.id,nome:paz.nome,cognome:paz.cognome},summary:`Crea piano di cura\n${corpo}${avviso?`\n${avviso}`:''}`,done:`Piano di cura creato\n${corpo}`};
+    return {dati,avviso,paziente:{id:paz.id,nome:paz.nome,cognome:paz.cognome},summary:`Crea piano di cura\n${corpo}${avviso?`\n${avviso}`:''}`,done:`Piano di cura e preventivo creati (in Preventivi e nella scheda del paziente, in attesa)\n${corpo}`};
   }
 
   const {data:plan,error:epl}=await client.from('plans').select('id, paziente_id, titolo, stato, voci, sconto, sconto_tipo').eq('studio_id',studioId).eq('id',input.piano_id).eq('paziente_id',paz.id).single();
@@ -171,6 +171,6 @@ export async function executePiani(client,proposal){
   if(error||!data) throw new Error(error?.message||'errore sconosciuto.');
   const out={text:`Fatto. ${proposal.piani.done}`,changed:['plans'],recordId:data.id,records:{plans:[data]}};
   // Un piano nuovo porta con sé il suo preventivo, da mostrare subito in chat.
-  if(proposal.name==='crea_piano_cura'&&proposal.piani.paziente) out.documento=documentoPreventivo(proposal.piani.paziente,data);
+  if(proposal.name==='crea_piano_cura') out.documento=documentoPreventivo(proposal.piani.paziente||{id:data.paziente_id},data);
   return out;
 }

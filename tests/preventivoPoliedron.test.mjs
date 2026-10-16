@@ -15,7 +15,9 @@ const paziente = { id: 7, nome: 'Mario', cognome: 'Rossi', cf: 'rssmra80a01d205x
 const piano = { id: 1760000000030, titolo: 'Protesi', voci: [{ prestazione: 'Corona composito ceramica', dente: '27', prezzo: 350 }, { prestazione: 'Impianto', dente: '16', prezzo: 1000, eseguita: true }], sconto: 10, scontoTipo: 'pct' };
 
 test('totals, number and euro format of the quote', () => {
-  assert.deepEqual(totaliPreventivo(piano), { subtotale: 1350, sconto: 10, scontato: 135, totale: 1215 });
+  const t = totaliPreventivo(piano);
+  assert.deepEqual([t.subtotale, t.sconto, t.scontato, t.totale, t.tot], [1350, 10, 135, 1215, 1215]);
+  assert.equal(totaliPreventivo({ voci: [{ prezzo: 100 }], sconto: 10, sconto_tipo: 'valore' }).totale, 90, 'database field name too');
   assert.equal(totaliPreventivo({ voci: [{ prezzo: 100 }], sconto: 500, scontoTipo: 'valore' }).totale, 0);
   assert.equal(numeroPreventivo(piano), '000030');
   assert.equal(euroIt(1358), '€ 1.358,00');
@@ -98,9 +100,9 @@ test('the app maps the server quote to its plan shape and checks the patient', (
   const raw = { documento: { tipo: 'preventivo', paziente_id: 7, paziente_nome: 'Mario Rossi', piano_id: 5, piano: { id: 5, paziente_id: 7, titolo: 'Protesi', voci: [{ prestazione: 'Corona', dente: '27', prezzo: '350' }], sconto: 5, sconto_tipo: 'valore', scadenza_pagamento: null } } };
   const req = documentRequestFromModel({ raw });
   assert.equal(req.type, 'preventivo');
-  assert.deepEqual(req.plan.voci, [{ prestazione: 'Corona', dente: '27', prezzo: 350, eseguita: false }]);
-  assert.equal(req.plan.scontoTipo, 'valore');
-  assert.equal(req.plan.pazienteId, 7);
+  assert.deepEqual(req.piano.voci, [{ prestazione: 'Corona', dente: '27', prezzo: 350, eseguita: false }]);
+  assert.equal(req.piano.scontoTipo, 'valore');
+  assert.equal(req.piano.pazienteId, 7);
   assert.equal(documentRequestFromModel({ raw: { documento: { ...raw.documento, piano: { ...raw.documento.piano, paziente_id: 8 } } } }), null);
   assert.equal(documentRequestFromModel({ raw: { documento: { ...raw.documento, piano: { id: 5, voci: [] } } } }), null);
 });
@@ -116,8 +118,8 @@ test('agent wiring: tool exposed with reads, prompt asks to create the plan, cha
   assert.match(index, /if \(out\.documento\) documentoPreparato = out\.documento;/);
   assert.doesNotMatch(index, /i piani di cura per ora vanno fatti nei moduli/);
   const poliedron = source('src/components/poliedron/Poliedron.jsx');
-  assert.match(poliedron, /buildPreventivoPdf\(\{ si: studioInfo, paziente: patient, piano: documentRequest\.plan, data \}\)/);
-  assert.match(poliedron, /if \(documentRequest\) prepareDocumentInChat\(documentRequest\);/);
+  assert.match(poliedron, /buildPreventivoPdf\(\{ pl: documentRequest\.piano, paz: patient, si: studioInfo \}\)/);
+  assert.match(poliedron, /if \(!cancelled && !response\.error\) prepareDocumentInChat\(documentRequestFromModel\(response\)\);/);
   assert.match(source('src/App.jsx'), /plans: \['dm_pl', setPlans\]/);
   const card = source('src/components/poliedron/PoliedronPreparedDocument.jsx');
   assert.match(card, /onClick=\{onOpenPatient\}[^>]*>Apri la scheda/);

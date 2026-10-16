@@ -14,7 +14,7 @@ const PdfViewerModal = lazy(() => import('../ui/PdfViewerModal.jsx'));
 function PreventivoPronto({ prepared, busy, onSend, onDiscard, onExport, onOpenPatient }) {
   const [confirming, setConfirming] = useState(false);
   const [preview, setPreview] = useState(false);
-  const { patient, plan, pdf, status, notice } = prepared;
+  const { patient, piano: plan, pdf, status, notice } = prepared;
   const name = [patient?.nome, patient?.cognome].filter(Boolean).join(' ');
   const { scontato, totale } = totaliPreventivo(plan);
   const sent = status === 'sent';
@@ -23,7 +23,7 @@ function PreventivoPronto({ prepared, busy, onSend, onDiscard, onExport, onOpenP
   return (
     <section aria-label="Preventivo pronto" className="poliedron-prepared-doc" style={{ padding: 16, border: '1px solid #c7d2fe', borderRadius: 16, background: '#f5f7ff', overflowWrap: 'anywhere' }}>
       <h3 style={{ marginTop: 0, marginBottom: 2 }}>Preventivo · {name}</h3>
-      <p style={{ margin: '0 0 10px', fontSize: 13, opacity: 0.8 }}>{plan.titolo} · salvato nei piani della scheda</p>
+      <p style={{ margin: '0 0 10px', fontSize: 13, opacity: 0.8 }}>{plan.titolo} · salvato nei Preventivi e nella scheda del paziente (in attesa)</p>
       <ol style={{ margin: '0 0 8px', paddingLeft: 20 }}>
         {plan.voci.map((v, i) => (
           <li key={i} style={{ marginBottom: 4 }}>

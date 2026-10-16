@@ -19,6 +19,7 @@ const INTENTI = {
   PATIENT_CREATE: 'Nuovo paziente',
   RECALL_CREATE: 'Creare un richiamo',
   PAYMENT_CREATE: 'Registrare un pagamento',
+  PLAN_CREATE: 'Preventivo / piano di cura',
 };
 
 const AZIONI = {

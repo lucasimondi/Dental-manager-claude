@@ -7,7 +7,22 @@
 - VALIDATION: `npm test` 1227/1227 (+10 in `tests/preventivoPoliedron.test.mjs`; aggiornati `nomeFilePdfOvunque` e `planExecutionUi` per il nuovo tasto); `npm run build` OK; PDF reso in PNG (1 voce e 28 voci su 2 pagine); Chromium 390×844 con dati finti: anteprima senza overflow, "Apri PDF" → visualizzatore interno, Chiudi → anteprima, Indietro → scheda; nessun errore in console.
 - NON VERIFICATO DA QUI: chiamata reale all'agente (serve il deploy di `agente-assistente`).
 - RILASCIO: tocca `supabase/functions/agente-assistente/**` → al merge il workflow "Deploy agente-assistente" pubblica la funzione; verificarlo. Rollback: revert del commit e redeploy della versione precedente della funzione.
+- MERGE CON MASTER (PR #190, Core: preventivi con i prezzi del listino): un solo generatore PDF (il nuovo layout; `buildPreventivoPdf` accetta `{ pl, paz, si }` e `{ piano, paziente, si }`, `totaliPreventivo` anche `sconto_tipo` e `tot`), una sola chiave `piano` nella richiesta del documento, le due strade restano: frase con prestazioni → Core (listino, senza modello); altre richieste "preventivo …" → agente (`crea_piano_cura`/`prepara_preventivo`). Aggiornati i controlli di `tests/poliedronPiani.test.mjs` sul vecchio disegno (formato "430,00", nuovo generatore).
+- SEGUITO PO (verbatim): "Lo salvi nei preventivi del Poliedra, così come il piano di cura". Il preventivo È il piano (`plans`, stato "attivo" = In attesa): compare nella pagina Piani/preventivi e nella scheda; i messaggi ora lo dicono ("Piano di cura e preventivo creati (in Preventivi e nella scheda del paziente, in attesa)"). Nessuna copia in `documenti_medici` (schema non verificato nel repo).
+- VALIDATION (dopo il merge): `npm test` 1238/1238.
 - STATO: in revisione.
+
+---
+
+# Current task — Poliedron crea piani di cura e preventivi dal Core (2026-10-15)
+- OWNER: CLAUDE, branch `claude/poliedron-agenda-actions-kz6mmk`, da `master@1712aa8`. PO verbatim: "Ora volgio che facci i piani di cura ed i preventivi".
+- PRIMA: piani/preventivi solo tramite modello AI (`piani.js`, strumento `crea_piano_cura`); nell'app "crea/fai un piano…" apriva il modulo "Nuovo piano".
+- COSA: nuovo `poliedron-piani.js` (Core, senza modello): "Preventivo per Mario Rossi: igiene, otturazione semplice 36 e 37, devitalizzazione molare 46" → voci con denti (FDI), quantità ("2 impianti"), prezzi dal listino dello studio (`pricelist` filtrato per studio; doppioni uniti; "igiene/pulizia" → Ablazione tartaro) o detti nella frase ("sbiancamento 300 euro"). Prestazione non nel listino, più voci possibili o stesso nome con prezzi diversi → domanda, niente scritto. Scrittura con `preparePiani`/`executePiani` esistenti: stessa validazione, RLS, registro attività; autonomia "medio" o piano con lo stesso titolo → conferma firmata. App (`poliedraCore.js`): un comando con le prestazioni va a Poliedron; senza prestazioni resta il modulo "Nuovo piano".
+- VALIDATION: nuovo `tests/poliedronPiani.test.mjs` (8 test, handler reale; controprova: senza il parser falliscono 4 test handler); `npm test` 1186/1186; `npm run build` OK. Riconoscimento provato sui nomi del listino reale (lettura sola dei nomi/prezzi, nessun dato paziente).
+- RILASCIO: tocca `supabase/functions/agente-assistente/**` → al merge il workflow pubblica la funzione; Vercel l'app.
+- AGGIUNTA (PO verbatim: "Fammi anche avere possibilità di scrivere : otturazione 80 euro , capsula 350 euro , paziente Vaioli (sono esempio ) e lui mi dà il pdf da mandare"): frase con il paziente in fondo ("…, paziente Vaioli") o in testa ("paziente Vaioli: …"); senza la parola "preventivo" vale solo se ogni voce ha il prezzo e mai per frasi su pagamenti/note/agenda. Dopo la creazione (diretta o confermata) la risposta porta `documento: {tipo:'preventivo', piano}`; l'app disegna il PDF con lo stesso disegno del modulo Piani (`src/lib/documenti/preventivoPdf.js`, ora usato anche da `PdfView.jsx`) e mostra in chat la scheda "Preventivo · paziente" con voci, totale, "Apri il PDF", "Invia a …" (condivisione → WhatsApp), "Chiudi". Nessuna copia in archivio: il piano è già il record.
+- VALIDATION (aggiornata): `tests/poliedronPiani.test.mjs` 11 test; `npm test` 1193/1193; `npm run build` OK; PDF controllato a vista.
+- EXACT NEXT ACTION: "Mergia".
 
 ---
 

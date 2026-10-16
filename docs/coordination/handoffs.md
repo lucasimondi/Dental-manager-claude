@@ -7,6 +7,11 @@
 - RISKS: l'agente deve scegliere prezzi da listino o detti dall'utente (regola già nello strumento); il preventivo condiviso dalla chat non finisce in archivio documenti (il piano è in scheda).
 - NEXT: "Mergia" del PO, verifica del deploy di `agente-assistente`, prova reale: "Preventivo per <paziente>: corona composito ceramica sul 27".
 
+## 2026-10-15 — CLAUDE — Piani di cura e preventivi dal Core
+- "Preventivo per <paziente>: <prestazioni con denti/prezzi>" crea il piano con i prezzi del listino, senza modello; dubbi → domanda.
+- Anche "otturazione 80 euro, capsula 350 euro, paziente Vaioli"; dopo la creazione la chat mostra il preventivo in PDF da inviare.
+- NEXT: merge su "Mergia", verifica deploy funzione.
+
 ## 2026-10-15 — CLAUDE — Prenotazione senza verbo
 - "Appuntamento <nome> <giorno> ore <hh:mm>" ora fissa l'appuntamento (Core, senza modello); nome con parola in più → suggerimento, nessuna scrittura.
 - NEXT: merge su "Mergia" e verifica del deploy di `agente-assistente`.

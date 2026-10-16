@@ -364,9 +364,9 @@ export default function Poliedron({
       if (!patient || !studioInfo) return openPreparedDocument(documentRequest);
       try {
         const data = new Date().toISOString().slice(0, 10);
-        const pdf = buildPreventivoPdf({ si: studioInfo, paziente: patient, piano: documentRequest.plan, data });
+        const pdf = buildPreventivoPdf({ pl: documentRequest.piano, paz: patient, si: studioInfo });
         preparedRestoredRef.current = true;
-        setChatPreparedDocument({ id: `${Date.now()}`, kind: 'preventivo', request: documentRequest, patient, plan: documentRequest.plan, pdf, data, status: 'ready', notice: '', savedAt: Date.now() });
+        setChatPreparedDocument({ id: `${Date.now()}`, kind: 'preventivo', request: documentRequest, patient, piano: documentRequest.piano, pdf, data, status: 'ready', notice: '', savedAt: Date.now() });
         return true;
       } catch {
         return openPreparedDocument(documentRequest);
@@ -389,8 +389,8 @@ export default function Poliedron({
 
   // Once per prescription: a download, a send and a save never archive twice.
   const archivePreparedDocument = useCallback(async (prepared) => {
+    if (prepared.kind === 'preventivo') return null; // il piano è già nei preventivi e nella scheda del paziente
     if (prepared.archiveDone) return prepared.archived;
-    if (prepared.kind === 'preventivo') return null; // il piano è già nella scheda del paziente
     const saved = await archiviaDocumento(supabaseClient, {
       si: studioInfo, studioId, paziente: prepared.patient, tipoDoc: prepared.pdf.tipoDoc, titolo: prepared.pdf.titolo, data: prepared.data, dataUrl: prepared.pdf.dataUrl,
     });
@@ -423,7 +423,7 @@ export default function Poliedron({
       const patient = patients.find((p) => String(p.id) === String(stored.patientId));
       if (!patient) return;
       const pdf = stored.kind === 'preventivo'
-        ? buildPreventivoPdf({ si: studioInfo, paziente: patient, piano: stored.plan, data: stored.data })
+        ? buildPreventivoPdf({ pl: stored.piano, paz: patient, si: studioInfo, data: stored.data })
         : buildRicettaPdf({ si: studioInfo, paziente: patient, farmaci: stored.farmaci, data: stored.data });
       setChatPreparedDocument((current) => current || { ...stored, patient, pdf });
     } catch { /* storage unavailable or old data: nothing to restore */ }
@@ -432,8 +432,8 @@ export default function Poliedron({
     if (!preparedStorageKey || !preparedRestoredRef.current) return;
     try {
       if (!chatPreparedDocument) { window.localStorage.removeItem(preparedStorageKey); return; }
-      const { id, kind, request, farmaci, plan, data, status, notice, archiveDone, archived, patient, savedAt } = chatPreparedDocument;
-      window.localStorage.setItem(preparedStorageKey, JSON.stringify({ id, kind: kind || 'ricetta', request, patientId: patient.id, farmaci, plan, data, status, notice, archiveDone: Boolean(archiveDone), archived: archived || null, savedAt: savedAt || Date.now() }));
+      const { id, kind, request, farmaci, piano, data, status, notice, archiveDone, archived, patient, savedAt } = chatPreparedDocument;
+      window.localStorage.setItem(preparedStorageKey, JSON.stringify({ id, kind: kind || 'ricetta', request, patientId: patient.id, farmaci, piano, data, status, notice, archiveDone: Boolean(archiveDone), archived: archived || null, savedAt: savedAt || Date.now() }));
     } catch { /* storage full or blocked: the card still works until a reload */ }
   }, [chatPreparedDocument, preparedStorageKey]);
 
@@ -447,7 +447,7 @@ export default function Poliedron({
       const copied = prepared.patient.telefono ? await copiaNumero(prepared.patient.telefono) : false;
       const shared = await condividiPdf(prepared.pdf.dataUrl, prepared.pdf.filename);
       const saved = await archivePreparedDocument(prepared);
-      const where = saved ? ' È salvata nell\u2019archivio della scheda.' : '';
+      const where = prepared.kind === 'preventivo' ? ' È salvato nei Preventivi e nella scheda del paziente.' : saved ? ' È salvata nell\u2019archivio della scheda.' : '';
       const notice = shared
         ? `Ho aperto l\u2019invio: scegli WhatsApp e ${copied ? `incolla il numero di ${prepared.patient.nome} (già copiato)` : `il contatto di ${name}`}.${where}`
         : `Su questo dispositivo non posso aprire l\u2019invio: usa “Apri il PDF” e scaricalo.${where}`;
@@ -694,9 +694,8 @@ export default function Poliedron({
         });
       }
       if (identity !== confirmationIdentity.current) return;
-      // A confirmed new plan brings its quote: shown in chat at once.
-      const documentRequest = !cancelled && !response.error ? documentRequestFromModel(response) : null;
-      if (documentRequest) prepareDocumentInChat(documentRequest);
+      // A confirmed new plan comes back with its preventivo, ready to send.
+      if (!cancelled && !response.error) prepareDocumentInChat(documentRequestFromModel(response));
       // Outcome is authoritative even if saving chat history subsequently fails.
       show({ answer: text });
       if (primaryConversation?.id) {

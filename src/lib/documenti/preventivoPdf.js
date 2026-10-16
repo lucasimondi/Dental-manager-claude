@@ -18,13 +18,16 @@ export const euroIt = (n) => {
   return `€ ${Number(n) < 0 ? '-' : ''}${interi.replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${decimali}`;
 };
 
-/** Subtotale, sconto e totale del piano (stessa regola di Piani e PianoDrillDown). */
+/** Subtotale, sconto e totale del piano (stessa regola di Piani e PianoDrillDown).
+    Accetta scontoTipo (app) e sconto_tipo (database); nomi brevi (sub/sc/tot) per i chiamanti del Core. */
 export function totaliPreventivo(piano) {
   const voci = Array.isArray(piano?.voci) ? piano.voci : [];
   const subtotale = voci.reduce((s, v) => s + (Number(v.prezzo) || 0), 0);
   const sconto = Number(piano?.sconto) || 0;
-  const scontato = piano?.scontoTipo === 'pct' ? subtotale * (sconto / 100) : Math.min(sconto, subtotale);
-  return { subtotale, sconto, scontato, totale: Math.max(0, subtotale - scontato) };
+  const tipo = piano?.scontoTipo ?? piano?.sconto_tipo ?? 'pct';
+  const scontato = tipo === 'pct' ? subtotale * (sconto / 100) : Math.min(sconto, subtotale);
+  const totale = Math.max(0, subtotale - scontato);
+  return { subtotale, sconto, scontato, totale, tipo, sub: subtotale, sc: sconto, tot: totale };
 }
 
 /** Il numero del preventivo: le ultime 6 cifre dell'id del piano. */
@@ -39,7 +42,9 @@ const dataIt = (iso) => {
  * buildPreventivoPdf({ si, paziente, piano, data? }) -> { dataUrl, filename, titolo, tipoDoc }
  * `data` (YYYY-MM-DD) è la data di emissione: di default oggi.
  */
-export function buildPreventivoPdf({ si = {}, paziente = {}, piano, data }) {
+export function buildPreventivoPdf({ si = {}, paziente: pazienteArg, piano: pianoArg, pl, paz, data }) {
+  const paziente = pazienteArg || paz || {};
+  const piano = pianoArg || pl;
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const voci = Array.isArray(piano?.voci) ? piano.voci : [];
   const { scontato, totale, subtotale, sconto } = totaliPreventivo(piano);
@@ -154,7 +159,7 @@ export function buildPreventivoPdf({ si = {}, paziente = {}, piano, data }) {
     font('normal', 9.5); colore(GRIGIO_SCURO);
     txt('Subtotale', totX + 4, y + 4); txt(euroIt(subtotale), colImporto, y + 4, { align: 'right' }); y += 7;
     colore([45, 158, 97]);
-    txt(`Sconto ${piano?.scontoTipo === 'pct' ? `${sconto}%` : ''}`.trim(), totX + 4, y + 4);
+    txt(`Sconto ${(piano?.scontoTipo ?? piano?.sconto_tipo ?? 'pct') === 'pct' ? `${sconto}%` : ''}`.trim(), totX + 4, y + 4);
     txt(`- ${euroIt(scontato)}`, colImporto, y + 4, { align: 'right' }); y += 7;
   }
   box(totX, y, W - M - totX, 11, BLU);
