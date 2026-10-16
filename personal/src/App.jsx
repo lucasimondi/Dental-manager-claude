@@ -26,6 +26,7 @@ import {
 } from './ui.jsx';
 import { VistaDocumenti, PaginaRicerca } from './Documenti.jsx';
 import AttivitaEsterne from './AttivitaEsterne.jsx';
+import { elencoAttivita } from './lib/attivitaDb.js';
 import { Miniatura } from './Miniatura.jsx';
 import {
   IconaOggi, IconaDocumenti, IconaPortafoglio, IconaPratiche, IconaPiu, IconaCerca, IconaChiudi, IconaIndietro, IconaFreccia,
@@ -881,6 +882,13 @@ function PaginaChat({ documentoId, titoloDoc: titolo, ctx }) {
   const { apri } = ctx;
   const [modo, setModo] = useState('ai');
   const [messaggi, setMessaggi] = useState([]);
+  const [attivitaEsterne, setAttivitaEsterne] = useState([]);
+  const [erroreAttivita, setErroreAttivita] = useState('');
+  const ricaricaAttivita = useCallback(async () => {
+    try { setAttivitaEsterne(await elencoAttivita(archivioDb)); setErroreAttivita(''); }
+    catch (e) { setErroreAttivita(e.message); }
+  }, []);
+  useEffect(() => { ricaricaAttivita(); }, [ricaricaAttivita]);
   const [testo, setTesto] = useState('');
   const [attesa, setAttesa] = useState(false);
   const fondo = useRef(null);
@@ -910,6 +918,12 @@ function PaginaChat({ documentoId, titoloDoc: titolo, ctx }) {
   return (
     <div className="pp-chat">
       <Segmenti voci={[['ai', 'Poliedron AI'], ['core', 'Solo ricerca']]} attiva={modo} onScegli={setModo} />
+      <section className="pp-chat-attivita" aria-label="Aggiornamenti attività esterne">
+        <div className="pp-chat-attivita-testa"><strong>Attività esterne</strong><button type="button" onClick={ricaricaAttivita}>Aggiorna</button><button type="button" onClick={() => apri({ tipo: 'attivita' })}>Apri</button></div>
+        {erroreAttivita && <p role="alert" className="pp-riga-meta">{erroreAttivita}</p>}
+        {attivitaEsterne.slice(0, 3).map(a => <p key={a.id} className="pp-riga-meta"><strong>{a.titolo}</strong> · {a.stato.replaceAll('_', ' ')}{a.prova ? ' · risultato documentato' : ''}</p>)}
+        {!attivitaEsterne.length && !erroreAttivita && <p className="pp-riga-meta">Nessuna attività registrata.</p>}
+      </section>
       {titolo && <p className="pp-chat-contesto"><IconaFile size={14} /> Sul documento: <strong>{titolo}</strong></p>}
       {!messaggi.length && (
         <div className="pp-chat-vuota">
