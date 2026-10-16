@@ -268,14 +268,17 @@ export function MonthCalendar({ palette: C = DEFAULT_PALETTE, date: vd, selDay, 
             </div>);
 }
 
-export function EventBlock({ title, top, height, co, onClick, startTime, description }) { return (                    <div onClick={onClick} title={[startTime, title, description].filter(Boolean).join(' · ')} style={{
+export function EventBlock({ title, top, height, co, onClick, startTime, description }) {
+  const showDetails = Boolean(startTime || description);
+  return (                    <div onClick={onClick} title={[startTime, title, description].filter(Boolean).join(' · ')} style={{
                       position: 'absolute', top, left: 2, right: 2, height, zIndex: 1, cursor: 'pointer',
                       background: co + '35', border: `1.5px dashed ${co}AA`, borderRadius: 5,
-                      display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1, padding: '2px 5px', boxSizing: 'border-box', overflow: 'hidden',
+                      display: 'flex', ...(showDetails ? { flexDirection: 'column', gap: 1 } : {}), alignItems: 'flex-start', padding: '2px 5px', boxSizing: 'border-box', overflow: 'hidden',
                     }}>
-                      <span style={{ width: '100%', fontSize: 9, fontWeight: 800, color: co, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{startTime ? startTime + ' ' : ''}{title}</span>
+                      <span style={{ ...(showDetails ? { width: '100%' } : {}), fontSize: 9, fontWeight: 800, color: co, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{startTime ? startTime + ' ' : ''}{title}</span>
                       {height > 36 && description && <span style={{ width: '100%', fontSize: 8, lineHeight: '9px', fontWeight: 600, color: co, display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, whiteSpace: 'normal', overflowWrap: 'anywhere', overflow: 'hidden' }}>{description}</span>}
-                    </div>); }
+                    </div>);
+}
 
 export function AppointmentBlock({ a, label, co, top, height, col = 0, totalCols = 1, isBeingResized = false, isBeingMoved = false, selectionMode: selModeWA = false, selectable: isSelezionabileWA = false, selected: isSelected = false, operatore, poltrona, onMoveMouse, onMoveTouch, onOpen, onResizeMouse, onResizeTouch, selectionIndicator, readOnly = false }) {
   const widthPct = 100 / totalCols, leftPct = col * widthPct;
