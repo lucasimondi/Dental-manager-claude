@@ -23,7 +23,7 @@ test('nessun PDF del paziente usa più nomi tipo "ricetta_rossi_2026-10-13.pdf"'
   const siti = {
     'src/components/ArchivioDocs.jsx': /nomeFileDaNome\(doc\.paziente_nome\)/,
     'src/components/DocFiscale.jsx': /const nomeFile = nomeFilePaziente\(paz\);/,
-    'src/components/PdfView.jsx': /const nomeFile = nomeFilePaziente\(paz\);/,
+    'src/lib/documenti/preventivoPdf.js': /filename: nomeFilePaziente\(paziente\),/,
     'src/lib/pdfConsenso.js': /const filename = nomeFilePaziente\(paziente\);/,
     'src/components/PatientWorkspaceDocuments.jsx': /const fileNameFor = \(document\) => nomeFileDaNome\(document\.patientName\);/,
   };

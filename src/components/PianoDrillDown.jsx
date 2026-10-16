@@ -208,7 +208,7 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
                 <button onClick={() => openIncassoPiano(pl, tot)} style={{ background: C.pri, border: 'none', borderRadius: 8, padding: '7px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: '#fff', fontWeight: 700, fontSize: 11 }}><Ic n="eur" s={12} c="#fff" />Incassato</button>
               </div>
               <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                <button onClick={() => setPdfPlan(pl)} title="Stampa PDF" aria-label="Stampa PDF" style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 7, padding: 7, cursor: 'pointer', display: 'flex' }}><Ic n="prt" s={13} c={C.txm} /></button>
+                <button onClick={() => setPdfPlan(pl)} title="Preventivo PDF" aria-label="Preventivo" style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: C.pri, fontWeight: 700, fontSize: 11 }}><Ic n="file" s={13} c={C.pri} />Preventivo</button>
                 <button onClick={() => openEditPlan(pl)} title="Modifica piano" aria-label="Modifica piano" style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 7, padding: 7, cursor: 'pointer', display: 'flex' }}><Ic n="edit" s={13} c={C.txm} /></button>
                 <button onClick={() => delPlan(pl.id)} title="Cancella piano" aria-label="Cancella piano" style={{ background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 7, padding: 7, cursor: 'pointer', display: 'flex' }}><Ic n="del" s={13} c={C.dan} /></button>
               </div>

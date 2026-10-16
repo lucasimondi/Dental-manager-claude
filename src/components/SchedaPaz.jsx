@@ -5,6 +5,7 @@ import { documentoAperto, segnaDocumentoAperto } from '../lib/posizioneNavigazio
 import { aggregateSaldi, totalePagatoPaziente } from '../lib/domain/incassiMath.js';
 import { waAbilitato, waUrl } from './ui/WaAction.jsx';
 import PianoDrillDown from './PianoDrillDown.jsx';
+import PdfView from './PdfView.jsx';
 import IncassoModal from './IncassoModal.jsx';
 import PazienteFormModal from './PazienteFormModal.jsx';
 
@@ -73,6 +74,9 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
   // Nuovo/Modifica paziente already uses — setPatients/onPatientChange
   // are already real props here, no new plumbing through App.jsx needed.
   const [editOpen, setEditOpen] = useState(false);
+  // PO: "metti un tastino preventivo": apre il preventivo del piano (scelto
+  // se sono più di uno); senza piani apre la creazione del piano.
+  const [preventivo, setPreventivo] = useState(null); // null | 'scegli' | piano
   const [documentsReloadToken, setDocumentsReloadToken] = useState(0);
   // POL-UI-021: Anagrafica/Piani/Pagamenti/Foto nel tab Info partono
   // chiuse ("cliccabile non sempre a vista" / "sempre a comparsa") — un
@@ -134,10 +138,16 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
   // le stesse delle pagine corrispondenti". Piani/Pagamenti estratti in
   // funzioni così il tab dedicato e la sezione "a comparsa" nel tab Info
   // renderizzano esattamente lo stesso markup — mai due implementazioni.
+  const apriPreventivo = () => {
+    if (!patPlans.length) { onNuovoPiano(paz.id); return; }
+    setPreventivo(patPlans.length === 1 ? patPlans[0] : 'scegli');
+  };
+
   const renderPianiSection = () => (
     <div>
-      <div style={{ marginBottom: 10 }}>
+      <div style={{ marginBottom: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <Btn ch="+ Nuovo piano" v="pri" sz="sm" onClick={() => onNuovoPiano(paz.id)} />
+        <Btn ch="Preventivo" ic="file" v="sec" sz="sm" onClick={apriPreventivo} />
       </div>
       <PianoDrillDown
         plans={patPlans}
@@ -147,6 +157,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
         setPayments={setPayments}
         pricelist={pricelist}
         si={si}
+        features={features}
       />
     </div>
   );
@@ -535,6 +546,19 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
         </Suspense>
       )}
 
+      {preventivo === 'scegli' && (
+        <Modal title="Di quale piano vuoi il preventivo?" onClose={() => setPreventivo(null)}>
+          {patPlans.map((pl) => (
+            <button key={pl.id} type="button" onClick={() => setPreventivo(pl)} style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '12px 10px', marginBottom: 8, background: C.bg, border: `1px solid ${C.brd}`, borderRadius: 10, cursor: 'pointer', textAlign: 'left', font: 'inherit' }}>
+              <span style={{ minWidth: 0 }}><strong style={{ display: 'block', color: C.txt, fontSize: 13 }}>{pl.titolo}</strong><small style={{ color: C.txm }}>{fmtD(pl.data)} · {(pl.voci || []).length} prestazioni</small></span>
+              <Ic n="file" s={16} c={C.pri} />
+            </button>
+          ))}
+        </Modal>
+      )}
+      {preventivo && preventivo !== 'scegli' && (
+        <PdfView pl={preventivo} paz={paz} si={si} features={features} onClose={() => setPreventivo(null)} />
+      )}
     </div>
   );
 }

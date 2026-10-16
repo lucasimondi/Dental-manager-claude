@@ -89,8 +89,10 @@ test('Accetta/Non accetta is a single segmented control, not two separate button
   assert.match(source, /onClick=\{\(\) => setStato\(pl\.id, 'rifiutato'\)\}/);
 });
 
-test('PDF/Modifica/Cancella are de-emphasized icon-only buttons, not full-weight text buttons', () => {
-  assert.match(source, /title="Stampa PDF" aria-label="Stampa PDF"/);
+// PO 2026-10-16: "metti un tastino preventivo" — the PDF icon became a small
+// labelled "Preventivo" button; Modifica/Cancella stay icon-only.
+test('Modifica/Cancella are de-emphasized icon-only buttons; the quote has a small labelled button', () => {
+  assert.match(source, /title="Preventivo PDF" aria-label="Preventivo"[^>]*>.*Preventivo<\/button>/);
   assert.match(source, /title="Modifica piano" aria-label="Modifica piano"/);
   assert.match(source, /title="Cancella piano" aria-label="Cancella piano"/);
   assert.doesNotMatch(source, />PDF<\/button>/);

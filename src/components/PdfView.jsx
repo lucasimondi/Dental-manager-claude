@@ -1,21 +1,19 @@
-import React, { useState } from 'react';
-import { jsPDF } from 'jspdf';
+import React, { Suspense, lazy, useState } from 'react';
 import { waAbilitato } from './ui/WaAction.jsx';
 import Ic from './ui/Ic.jsx';
-import { nomeFilePaziente } from '../lib/documenti/pdfLayout.js';
+import { buildPreventivoPdf, totaliPreventivo, numeroPreventivo, euroIt } from '../lib/documenti/preventivoPdf.js';
+
+const PdfViewerModal = lazy(() => import('./ui/PdfViewerModal.jsx'));
 
 export default function PdfView({ pl, paz, si, features, onClose }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
-  const sub = pl.voci.reduce((s, v) => s + Number(v.prezzo), 0);
-  const sc = Number(pl.sconto) || 0;
-  const scontato = pl.scontoTipo === 'pct' ? sub * (sc / 100) : Math.min(sc, sub);
-  const tot = Math.max(0, sub - scontato);
-  const fmtE = (n) => `€ ${Number(n).toFixed(2)}`;
+  const { subtotale: sub, sconto: sc, scontato, totale: tot } = totaliPreventivo(pl);
+  const fmtE = euroIt;
 
   const buildTesto = () => {
     const righe = pl.voci.map((v, i) => `${i + 1}. ${v.prestazione}${(isDentistico && v.dente) ? ' (d.' + v.dente + ')' : ''} — ${fmtE(v.prezzo)}${v.eseguita ? ' ✓' : ''}`).join('\n');
     const scontoR = scontato > 0 ? `\n🏷️ Sconto: −${fmtE(scontato)}` : '';
-    return `📋 *${si.nome || 'Studio'}*\n${si.spec || ''}\n${'─'.repeat(32)}\n\n📋 *PREVENTIVO*\nPaziente: ${paz?.nome || ''} ${paz?.cognome || ''}\nData: ${new Date().toLocaleDateString('it-IT')}\nN°: ${String(pl.id || '').slice(-6).padStart(6, '0')}\n\nPiano: *${pl.titolo}*\n\n${righe}${scontoR}\n${'─'.repeat(32)}\n💰 *TOTALE: ${fmtE(tot)}*\n${'─'.repeat(32)}\n📞 ${si.tel || ''}  ✉️ ${si.email || ''}\n${si.addr1 || ''}`;
+    return `📋 *${si.nome || 'Studio'}*\n${si.spec || ''}\n${'─'.repeat(32)}\n\n📋 *PREVENTIVO*\nPaziente: ${paz?.nome || ''} ${paz?.cognome || ''}\nData: ${new Date().toLocaleDateString('it-IT')}\nN°: ${numeroPreventivo(pl)}\n\nPiano: *${pl.titolo}*\n\n${righe}${scontoR}\n${'─'.repeat(32)}\n💰 *TOTALE: ${fmtE(tot)}*\n${'─'.repeat(32)}\n📞 ${si.tel || ''}  ✉️ ${si.email || ''}\n${si.addr1 || ''}`;
   };
 
   const sendWA = () => {
@@ -41,194 +39,41 @@ export default function PdfView({ pl, paz, si, features, onClose }) {
     }
   };
 
-  const [generating, setGenerating] = useState(false);
+  // Il PDF si apre DENTRO l'app (PdfViewerModal, con Chiudi, Condividi e
+  // Scarica): mai più una finestra nuova, da cui sull'app installata
+  // dell'iPhone non si torna alla scheda del paziente.
+  const [pdf, setPdf] = useState(null);
   const [pdfMsg, setPdfMsg] = useState(null);
 
-  const generaPdf = () => {
-    if (generating) return;
+  const apriPdf = () => {
     setPdfMsg(null);
-    setGenerating(true);
-    buildAndSave();
-  };
-
-  const buildAndSave = () => {
     try {
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      const W = 210, margin = 14;
-      const contentW = W - margin * 2;
-      let y = 18;
-
-      const txt = (t, x, yy, opts = {}) => doc.text(String(t ?? ''), x, yy, opts);
-      const hLine = (yy) => { doc.setDrawColor(203, 213, 224); doc.setLineWidth(0.3); doc.line(margin, yy, W - margin, yy); };
-      const box = (x, yy, w, h, r, g, b) => { doc.setFillColor(r, g, b); doc.rect(x, yy, w, h, 'F'); };
-
-      doc.setFont('helvetica', 'bolditalic'); doc.setFontSize(22); doc.setTextColor(26, 78, 102);
-      txt(si.nome || 'Studio', W / 2, y, { align: 'center' }); y += 7;
-      if (si.spec) { doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(74, 144, 196); txt(si.spec, W / 2, y, { align: 'center' }); y += 5; }
-      if (si.iscr) { doc.setFontSize(8); txt(si.iscr, W / 2, y, { align: 'center' }); y += 5; }
-      y += 2;
-      doc.setFontSize(8); doc.setTextColor(74, 85, 104);
-      const contatti = [si.tel && `Tel: ${si.tel}`, si.email, si.piva && `P.IVA ${si.piva}`].filter(Boolean);
-      txt(contatti.join('   |   '), W / 2, y, { align: 'center' }); y += 3;
-      hLine(y); y += 5;
-
-      box(margin, y, contentW, 16, 247, 250, 252);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(113, 128, 150);
-      txt('DATA', margin + 3, y + 4); txt('PAZIENTE', W / 2, y + 4, { align: 'center' }); txt('N° PREVENTIVO', W - margin - 3, y + 4, { align: 'right' });
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(26, 32, 44);
-      txt(new Date().toLocaleDateString('it-IT'), margin + 3, y + 10);
-      txt(`${paz?.nome || ''} ${paz?.cognome || ''}`, W / 2, y + 10, { align: 'center' });
-      txt(String(pl.id || '').slice(-6).padStart(6, '0'), W - margin - 3, y + 10, { align: 'right' });
-      y += 20;
-
-      if (paz?.cf || paz?.dataNascita) {
-        doc.setFontSize(8); doc.setTextColor(113, 128, 150);
-        const cf = [paz.cf && `C.F.: ${paz.cf}`, paz.dataNascita && `Nato il: ${new Date(paz.dataNascita + 'T12:00').toLocaleDateString('it-IT')}`].filter(Boolean);
-        txt(cf.join('   '), W / 2, y, { align: 'center' }); y += 6;
-      }
-
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(26, 32, 44);
-      const tw = doc.getTextWidth('PREVENTIVO') + 10;
-      doc.setDrawColor(26, 32, 44); doc.setLineWidth(0.5);
-      doc.rect(W / 2 - tw / 2, y - 5, tw, 8);
-      txt('PREVENTIVO', W / 2, y, { align: 'center' }); y += 10;
-
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(74, 144, 196);
-      txt(`PIANO DI CURA: ${(pl.titolo || '').toUpperCase()}`, margin, y);
-      doc.setDrawColor(74, 144, 196); doc.setLineWidth(0.4); doc.line(margin, y + 2, W - margin, y + 2);
-      y += 7;
-
-      const cols = isDentistico ? [8, 82, 18, 28, 24] : [8, 100, 28, 24];
-      const heads = isDentistico ? ['#', 'Prestazione', 'Dente', 'Importo', 'Stato'] : ['#', 'Prestazione', 'Importo', 'Stato'];
-      box(margin, y, contentW, 7, 26, 107, 138);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(255, 255, 255);
-      let cx = margin + 2;
-      heads.forEach((h, i) => { txt(h, cx, y + 5); cx += cols[i]; });
-      y += 7;
-
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
-      pl.voci.forEach((v, i) => {
-        if (y > 270) { doc.addPage(); y = 18; }
-        const rowH = 7;
-        if (i % 2 === 0) box(margin, y, contentW, rowH, 247, 250, 252); else box(margin, y, contentW, rowH, 255, 255, 255);
-        doc.setTextColor(26, 32, 44);
-        cx = margin + 2;
-        txt(String(i + 1), cx, y + 5); cx += cols[0];
-        const prest = doc.splitTextToSize(v.prestazione, cols[1] - 3)[0] || '';
-        txt(prest, cx, y + 5); cx += cols[1];
-        if (isDentistico) { txt(v.dente || '—', cx, y + 5); cx += cols[2]; }
-        const importoColIdx = isDentistico ? 3 : 2;
-        const statoColIdx = isDentistico ? 4 : 3;
-        txt(`€ ${Number(v.prezzo).toFixed(2)}`, cx, y + 5); cx += cols[importoColIdx];
-        if (v.eseguita) { box(cx - 1, y + 1, cols[statoColIdx] - 2, 5, 232, 247, 238); doc.setTextColor(45, 158, 97); txt('Eseguita', cx + 1, y + 5); }
-        else { box(cx - 1, y + 1, cols[statoColIdx] - 2, 5, 254, 243, 226); doc.setTextColor(224, 128, 64); txt('Da fare', cx + 1, y + 5); }
-        y += rowH;
-      });
-
-      if (scontato > 0) {
-        box(margin, y, contentW, 7, 240, 255, 244);
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(45, 158, 97);
-        txt(`Sconto ${pl.scontoTipo === 'pct' ? sc + '%' : '€ ' + Number(sc).toFixed(2)}`, margin + 2, y + 5);
-        txt(`−€ ${scontato.toFixed(2)}`, W - margin - 3, y + 5, { align: 'right' });
-        y += 7;
-      }
-
-      box(margin, y, contentW, 9, 235, 248, 255);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(26, 107, 138);
-      txt('TOTALE', margin + 3, y + 6);
-      txt(`€ ${tot.toFixed(2)}`, W - margin - 3, y + 6, { align: 'right' });
-      y += 13;
-
-      if (paz?.note) {
-        if (y > 265) { doc.addPage(); y = 18; }
-        y += 2;
-        const noteLines = doc.splitTextToSize(paz.note, contentW - 30);
-        const boxH = Math.max(10, 6 + noteLines.length * 4);
-        box(margin, y, contentW, boxH, 255, 251, 235);
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(120, 53, 15);
-        txt('Note cliniche:', margin + 2, y + 4);
-        doc.setFont('helvetica', 'normal');
-        noteLines.forEach((ln, li) => txt(ln, margin + 2, y + 4 + (li + 1) * 4));
-        y += boxH + 4;
-      }
-
-      // Footer fisso a fondo pagina (y=285 su A4 210x297mm)
-      const footerY = 287;
-      doc.setDrawColor(203, 213, 224); doc.setLineWidth(0.3);
-      doc.line(margin, footerY - 4, W - margin, footerY - 4);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(74, 85, 104);
-      const foot = [si.tel && `Tel: ${si.tel}`, si.addr1, si.addr2, si.email].filter(Boolean);
-      txt(foot.join('   |   '), W / 2, footerY, { align: 'center' });
-
-      const nomeFile = nomeFilePaziente(paz);
-
-      const ua = navigator.userAgent || '';
-      const isIOS = /iPad|iPhone|iPod/.test(ua) || (ua.includes('Mac') && 'ontouchend' in document);
-      const isSafari = /^((?!chrome|android|crios|fxios).)*safari/i.test(ua);
-
-      let ok = false;
-
-      if (isIOS || isSafari) {
-        try {
-          const dataUri = doc.output('datauristring', { filename: nomeFile });
-          const w = window.open();
-          if (w) {
-            w.document.write(`<!DOCTYPE html><html><head><title>${nomeFile}</title><style>body{margin:0}embed{width:100%;height:100vh}</style></head><body><embed src="${dataUri}" type="application/pdf"/></body></html>`);
-            w.document.close();
-            ok = true;
-            setPdfMsg({ type: 'info', text: '✓ PDF aperto in una nuova scheda. Usa il pulsante di condivisione/salvataggio del browser per scaricarlo.' });
-          }
-        } catch (e1) { console.error('Metodo dataURI fallito:', e1); }
-      }
-
-      if (!ok) {
-        try {
-          const blob = doc.output('blob');
-          const blobUrl = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = blobUrl; a.download = nomeFile; a.style.display = 'none';
-          document.body.appendChild(a); a.click(); document.body.removeChild(a);
-          setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-          ok = true;
-          setPdfMsg({ type: 'info', text: '✓ PDF scaricato. Controlla la cartella Download del dispositivo.' });
-        } catch (e2) { console.error('Metodo blob fallito:', e2); }
-      }
-
-      if (!ok) {
-        try {
-          doc.save(nomeFile);
-          ok = true;
-          setPdfMsg({ type: 'info', text: '✓ PDF generato.' });
-        } catch (e3) {
-          console.error('Tutti i metodi falliti:', e3);
-          setPdfMsg({ type: 'error', text: 'Impossibile generare il PDF su questo dispositivo. Usa WhatsApp o Email per condividere il preventivo come testo.' });
-        }
-      }
+      setPdf(buildPreventivoPdf({ si, paziente: paz, piano: pl }));
     } catch (err) {
       console.error('Errore PDF:', err);
       setPdfMsg({ type: 'error', text: 'Errore nella generazione del PDF: ' + (err && err.message ? err.message : String(err)) });
-    } finally {
-      setGenerating(false);
     }
   };
 
-  const S = {
-    tbl: { width: '100%', borderCollapse: 'collapse', fontSize: 13, fontFamily: 'Arial,sans-serif' },
-    th: { background: '#1A6B8A', color: '#fff', padding: '8px 10px', textAlign: 'left', fontSize: 11, textTransform: 'uppercase' },
-    tdE: { background: '#F7FAFC', padding: '8px 10px', borderBottom: '1px solid #E2E8F0', fontFamily: 'Arial,sans-serif', fontSize: 12 },
-    tdO: { background: '#fff', padding: '8px 10px', borderBottom: '1px solid #E2E8F0', fontFamily: 'Arial,sans-serif', fontSize: 12 },
-    tdT: { background: '#EBF8FF', padding: '10px', fontWeight: 'bold', fontSize: 14, color: '#1A6B8A', fontFamily: 'Arial,sans-serif' },
-    tdS: { background: '#F0FFF4', padding: '10px', fontWeight: 'bold', fontSize: 12, color: '#2D9E61', fontFamily: 'Arial,sans-serif' },
-  };
+  const nome = [paz?.nome, paz?.cognome].filter(Boolean).join(' ');
+  const datiPaziente = [paz?.cf && `C.F. ${String(paz.cf).toUpperCase()}`, paz?.dataNascita && `Nato/a il ${new Date(paz.dataNascita + 'T12:00').toLocaleDateString('it-IT')}`, paz?.indirizzo].filter(Boolean);
+  const etichetta = { fontSize: 9, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: '#718096' };
+  const riquadro = { flex: '1 1 200px', minWidth: 0, background: '#F6F9FC', borderLeft: '3px solid #4A90C4', padding: '10px 12px' };
+  const cella = { padding: '9px 8px', borderBottom: '1px solid #D6DEE8', fontSize: 12, verticalAlign: 'top' };
+  const testa = { background: '#1A4E66', color: '#fff', padding: '8px', textAlign: 'left', fontSize: 10, letterSpacing: '.04em', textTransform: 'uppercase' };
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 3000, background: '#C8D4E0', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ background: '#124E66', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-        <button onClick={onClose} aria-label="Indietro" style={{ minHeight: 44, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 10, padding: '8px 12px', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}><Ic n="back" s={15} c="#fff" />Chiudi</button>
-        <span style={{ color: '#fff', fontWeight: 700, fontSize: 14, flex: 1, textAlign: 'center' }}>Anteprima preventivo</span>
+      <div style={{ background: '#124E66', padding: '10px 14px', paddingTop: 'max(10px, env(safe-area-inset-top))', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        <button onClick={onClose} aria-label="Torna alla scheda" style={{ minHeight: 44, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 10, padding: '8px 12px', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}><Ic n="back" s={15} c="#fff" />Indietro</button>
+        <span style={{ color: '#fff', fontWeight: 700, fontSize: 14, flex: 1, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Preventivo{nome ? ` · ${nome}` : ''}</span>
+        <span style={{ width: 44, flexShrink: 0 }} aria-hidden="true" />
       </div>
 
       <div style={{ background: '#0F3D52', padding: '10px 14px', display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
+        <button onClick={apriPdf} style={{ flex: '1 1 0', minWidth: 90, background: '#F4A261', border: 'none', borderRadius: 9, padding: '10px 0', color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <Ic n="file" s={13} c="#fff" />Apri PDF
+        </button>
         {waAbilitato(features) && (
         <button onClick={sendWA} style={{ flex: '1 1 0', minWidth: 90, background: '#25D366', border: 'none', borderRadius: 9, padding: '10px 0', color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
           <svg width={16} height={16} viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
@@ -243,9 +88,11 @@ export default function PdfView({ pl, paz, si, features, onClose }) {
             <Ic n="send" s={13} c="#fff" />Condividi
           </button>
         )}
-        <button onClick={generaPdf} disabled={generating} style={{ flex: '1 1 0', minWidth: 90, background: generating ? '#555' : '#F4A261', border: 'none', borderRadius: 9, padding: '10px 0', color: '#fff', fontWeight: 800, fontSize: 13, cursor: generating ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-          <Ic n={generating ? 'clk' : 'download'} s={13} c="#fff" />{generating ? 'Attendi…' : 'Scarica PDF'}
-        </button>
+        {navigator.share && (
+          <button onClick={shareNativo} style={{ flex: '1 1 0', minWidth: 90, background: '#2EC4B6', border: 'none', borderRadius: 9, padding: '10px 0', color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <Ic n="send" s={13} c="#fff" />Testo
+          </button>
+        )}
       </div>
 
       {pdfMsg && (
@@ -256,49 +103,76 @@ export default function PdfView({ pl, paz, si, features, onClose }) {
         </div>
       )}
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 10px 40px' }}>
-        <div style={{ background: '#fff', maxWidth: 680, margin: '0 auto', boxShadow: '0 4px 24px rgba(0,0,0,0.15)', borderRadius: 4, padding: '28px 24px', fontFamily: 'Georgia,serif', color: '#1A202C' }}>
-          <div style={{ textAlign: 'center', marginBottom: 6 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 10px 40px', paddingBottom: 'max(40px, env(safe-area-inset-bottom))' }}>
+        <div style={{ background: '#fff', maxWidth: 680, margin: '0 auto', boxShadow: '0 4px 24px rgba(0,0,0,0.15)', borderRadius: 4, padding: '28px 22px', fontFamily: 'Helvetica,Arial,sans-serif', color: '#1A202C' }}>
+          <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 24, fontStyle: 'italic', fontWeight: 'bold', color: '#1A4E66' }}>{si.nome || 'Studio'}</div>
-            {si.spec && <div style={{ fontSize: 11, color: '#4A90C4', fontFamily: 'Arial,sans-serif', marginTop: 2 }}>{si.spec}</div>}
-            {si.iscr && <div style={{ fontSize: 10, color: '#4A90C4', fontFamily: 'Arial,sans-serif', marginTop: 1 }}>{si.iscr}</div>}
+            {si.spec && <div style={{ fontSize: 11, color: '#4A90C4', marginTop: 3 }}>{si.spec}</div>}
+            {si.iscr && <div style={{ fontSize: 10, color: '#4A90C4', marginTop: 2 }}>{si.iscr}</div>}
+            <div style={{ fontSize: 10, color: '#4A5568', marginTop: 6 }}>{[si.tel && `Tel. ${si.tel}`, si.email, si.piva && `P.IVA ${si.piva}`].filter(Boolean).join('  ·  ')}</div>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, fontFamily: 'Arial,sans-serif', fontSize: 10, color: '#4A5568', margin: '8px 0', flexWrap: 'wrap' }}>
-            {si.tel && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="ph" s={10} c="#4A5568" />{si.tel}</span>}{si.email && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="mail" s={10} c="#4A5568" />{si.email}</span>}{si.piva && <span>P.IVA {si.piva}</span>}
+          <div style={{ borderTop: '2px solid #1A4E66', margin: '12px 0 16px' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: '.14em' }}>PREVENTIVO</span>
+            <span style={{ fontSize: 11, color: '#718096', textAlign: 'right', lineHeight: 1.5 }}>N° {numeroPreventivo(pl)}<br />Data {new Date().toLocaleDateString('it-IT')}</span>
           </div>
-          <hr style={{ border: 'none', borderTop: '1px solid #CBD5E0', margin: '8px 0' }} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', background: '#F7FAFC', borderRadius: 6, padding: '9px 12px', marginBottom: 12, fontFamily: 'Arial,sans-serif' }}>
-            <div><div style={{ fontSize: 9, fontWeight: 'bold', textTransform: 'uppercase', color: '#718096' }}>Data</div><div style={{ fontSize: 12, fontWeight: 700 }}>{new Date().toLocaleDateString('it-IT')}</div></div>
-            <div style={{ textAlign: 'center' }}><div style={{ fontSize: 9, fontWeight: 'bold', textTransform: 'uppercase', color: '#718096' }}>Paziente</div><div style={{ fontSize: 12, fontWeight: 700 }}>{paz?.nome} {paz?.cognome}</div>{paz?.cf && <div style={{ fontSize: 10, color: '#718096', fontFamily: 'monospace' }}>CF: {paz.cf}</div>}</div>
-            <div style={{ textAlign: 'right' }}><div style={{ fontSize: 9, fontWeight: 'bold', textTransform: 'uppercase', color: '#718096' }}>N° Prev.</div><div style={{ fontSize: 12, fontWeight: 700 }}>{String(pl.id || '').slice(-6).padStart(6, '0')}</div></div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
+            <div style={riquadro}>
+              <div style={etichetta}>Paziente</div>
+              <div style={{ fontSize: 14, fontWeight: 700, marginTop: 4 }}>{nome || '—'}</div>
+              {datiPaziente.map((riga) => <div key={riga} style={{ fontSize: 11, color: '#4A5568', marginTop: 3, overflowWrap: 'anywhere' }}>{riga}</div>)}
+            </div>
+            <div style={riquadro}>
+              <div style={etichetta}>Piano di cura</div>
+              <div style={{ fontSize: 13, fontWeight: 700, marginTop: 4, overflowWrap: 'anywhere' }}>{pl.titolo || 'Piano di cura'}</div>
+              <div style={{ fontSize: 11, color: '#4A5568', marginTop: 3 }}>{pl.voci.length} {pl.voci.length === 1 ? 'prestazione' : 'prestazioni'}</div>
+            </div>
           </div>
-          <div style={{ textAlign: 'center', margin: '8px 0 12px' }}><span style={{ fontSize: 14, fontWeight: 'bold', letterSpacing: '.16em', textTransform: 'uppercase', border: '2px solid #1A202C', display: 'inline-block', padding: '4px 20px' }}>PREVENTIVO</span></div>
-          <div style={{ fontSize: 10, fontWeight: 'bold', color: '#4A90C4', textTransform: 'uppercase', letterSpacing: '.08em', borderBottom: '1.5px solid #4A90C4', paddingBottom: 3, marginBottom: 10, fontFamily: 'Arial,sans-serif' }}>Piano di cura: {pl.titolo}</div>
-          <table style={S.tbl}>
-            <thead><tr>{(isDentistico ? ['#', 'Prestazione', 'Dente', 'Importo', 'Stato'] : ['#', 'Prestazione', 'Importo', 'Stato']).map((h) => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
-            <tbody>
-              {pl.voci.map((v, i) => {
-                const td = i % 2 === 0 ? S.tdE : S.tdO;
-                return (
-                  <tr key={i}>
-                    <td style={{ ...td, width: 24 }}>{i + 1}</td>
-                    <td style={td}>{v.prestazione}</td>
-                    {isDentistico && <td style={{ ...td, width: 55, textAlign: 'center' }}>{v.dente || '—'}</td>}
-                    <td style={{ ...td, width: 80, textAlign: 'right' }}>€ {Number(v.prezzo).toFixed(2)}</td>
-                    <td style={{ ...td, width: 90 }}><span style={{ background: v.eseguita ? '#E8F7EE' : '#FEF3E2', color: v.eseguita ? '#2D9E61' : '#E08040', padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: 3 }}>{v.eseguita && <Ic n="ok" s={9} c="#2D9E61" />}{v.eseguita ? 'Eseguita' : 'Da eseguire'}</span></td>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead><tr>
+                <th style={{ ...testa, width: 22 }}>#</th>
+                <th style={testa}>Prestazione</th>
+                {isDentistico && <th style={{ ...testa, width: 46 }}>Dente</th>}
+                <th style={{ ...testa, width: 74 }}>Stato</th>
+                <th style={{ ...testa, width: 80, textAlign: 'right' }}>Importo</th>
+              </tr></thead>
+              <tbody>
+                {pl.voci.map((v, i) => (
+                  <tr key={i} style={{ background: i % 2 ? '#F6F9FC' : '#fff' }}>
+                    <td style={{ ...cella, color: '#718096' }}>{i + 1}</td>
+                    <td style={{ ...cella, overflowWrap: 'anywhere' }}>{v.prestazione}</td>
+                    {isDentistico && <td style={cella}>{v.dente || '—'}</td>}
+                    <td style={{ ...cella, fontSize: 10, fontWeight: 700, color: v.eseguita ? '#2D9E61' : '#E08040' }}>{v.eseguita ? 'Eseguita' : 'Da eseguire'}</td>
+                    <td style={{ ...cella, textAlign: 'right', whiteSpace: 'nowrap' }}>{fmtE(v.prezzo)}</td>
                   </tr>
-                );
-              })}
-              {scontato > 0 && <tr><td colSpan={isDentistico ? 3 : 2} style={S.tdS}>Sconto {pl.scontoTipo === 'pct' ? `${sc}%` : `€ ${Number(sc).toFixed(2)}`}</td><td colSpan={2} style={{ ...S.tdS, textAlign: 'right' }}>−{fmtE(scontato)}</td></tr>}
-              <tr><td colSpan={isDentistico ? 3 : 2} style={S.tdT}><b>TOTALE</b></td><td colSpan={2} style={{ ...S.tdT, textAlign: 'right' }}><b>{fmtE(tot)}</b></td></tr>
-            </tbody>
-          </table>
-          {paz?.note && <div style={{ marginTop: 10, background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 4, padding: 9, fontSize: 11, color: '#78350F', fontFamily: 'Arial,sans-serif', display: 'flex', alignItems: 'flex-start', gap: 5 }}><Ic n="warn" s={11} c="#78350F" /><span><b>Note:</b> {paz.note}</span></div>}
-          <div style={{ marginTop: 16, paddingTop: 8, borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap', gap: 4, fontFamily: 'Arial,sans-serif', fontSize: 10, color: '#4A5568' }}>
-            {si.addr1 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="pin" s={10} c="#4A5568" />{si.addr1}</span>}{si.addr2 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="pin" s={10} c="#4A5568" />{si.addr2}</span>}
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ marginLeft: 'auto', maxWidth: 300, marginTop: 14 }}>
+            {scontato > 0 && <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#4A5568', padding: '3px 10px' }}><span>Subtotale</span><span>{fmtE(sub)}</span></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#2D9E61', padding: '3px 10px' }}><span>Sconto{pl.scontoTipo === 'pct' ? ` ${sc}%` : ''}</span><span>- {fmtE(scontato)}</span></div>
+            </>}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1A4E66', color: '#fff', padding: '10px 12px', marginTop: 4 }}><span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.12em' }}>TOTALE</span><span style={{ fontSize: 17, fontWeight: 800 }}>{fmtE(tot)}</span></div>
+          </div>
+          {paz?.note && <div style={{ marginTop: 14, background: '#FFFBEB', padding: 10, fontSize: 11, color: '#78350F', display: 'flex', alignItems: 'flex-start', gap: 5 }}><Ic n="warn" s={11} c="#78350F" /><span><b>Note:</b> {paz.note}</span></div>}
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 20, marginTop: 40, fontSize: 10, color: '#718096' }}>
+            <div style={{ flex: 1, borderTop: '1px solid #A0AEC0', paddingTop: 4 }}>Il medico</div>
+            <div style={{ flex: 1, borderTop: '1px solid #A0AEC0', paddingTop: 4 }}>Il paziente, per accettazione</div>
+          </div>
+          <div style={{ marginTop: 18, paddingTop: 8, borderTop: '1px solid #E2E8F0', textAlign: 'center', fontSize: 10, color: '#4A5568' }}>
+            {[si.tel && `Tel. ${si.tel}`, si.addr1, si.addr2, si.email].filter(Boolean).join('  ·  ')}
           </div>
         </div>
       </div>
+
+      {pdf && (
+        <Suspense fallback={null}>
+          <PdfViewerModal titolo={pdf.titolo} dataUrl={pdf.dataUrl} filename={pdf.filename} zIndex={3100} onClose={() => setPdf(null)} />
+        </Suspense>
+      )}
     </div>
   );
 }
