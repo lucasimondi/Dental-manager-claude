@@ -12,7 +12,7 @@ import { ACTION_REGISTRY } from '../../lib/poliedron/actionRegistry';
 import { buildContext } from '../../lib/poliedron/contextEngine';
 import { runModelTask } from '../../lib/poliedron/modelGateway.js';
 import { decisioneConferma } from '../../lib/poliedron/confirmationReply.js';
-import { processQuery } from '../../lib/poliedron/poliedraCore';
+import { processQuery, documentRequestFromModel } from '../../lib/poliedron/poliedraCore';
 import { tabelleDopoRipristino } from '../../lib/poliedron/attivita.js';
 import { runActionPlan } from '../../lib/poliedron/planner/actionExecutor';
 import {
@@ -25,7 +25,6 @@ import { saveAttachmentToPatient } from '../../lib/poliedron/attachmentToPatient
 import { DB } from '../../lib/supabase.js';
 import { buildRicettaPdf, archiviaDocumento } from '../../lib/documenti/pdfLayout.js';
 import { buildPreventivoPdf } from '../../lib/documenti/preventivoPdf.js';
-import { documentRequestFromModel } from '../../lib/poliedron/poliedraCore';
 import { condividiPdf, copiaNumero } from '../../lib/condivisionePdf';
 import { imparaDaRicetta } from '../../lib/poliedron/memoryRepository.js';
 import { useTeamState } from './PoliedronTeam';
@@ -331,6 +330,13 @@ export default function Poliedron({
      the PDF. Only for a patient of this studio's (RLS-scoped) list and only
      when the Ricetta action is allowed for this user. */
   const openPreparedDocument = useCallback((documentRequest) => {
+    // A quote that cannot be shown in chat: open the patient's plans instead.
+    if (documentRequest?.type === 'preventivo') {
+      const patient = (patients || []).find((p) => String(p.id) === String(documentRequest.patientId));
+      if (!patient || !goSchedaPaz) return false;
+      goSchedaPaz(patient, 'piani');
+      return true;
+    }
     if (!documentRequest || documentRequest.type !== 'ricetta') return false;
     const patient = (patients || []).find((p) => String(p.id) === String(documentRequest.patientId));
     const allowed = actions.some((action) => action.id === 'prescription.create');
@@ -342,7 +348,7 @@ export default function Poliedron({
     }
     openPrescription({ patient, farmaci: documentRequest.farmaci });
     return true;
-  }, [actions, openPrescription, patients]);
+  }, [actions, goSchedaPaz, openPrescription, patients]);
 
   const preparedStorageKey = studioId && userId ? `poliedron_ricetta_preparata_${studioId}_${userId}` : null;
   const preparedRestoredRef = useRef(false);
@@ -351,18 +357,19 @@ export default function Poliedron({
      layout as the Ricetta form). Nothing is archived or sent until the
      clinician confirms, downloads or shares it; "Modifica" opens the usual form. */
   const prepareDocumentInChat = useCallback((documentRequest) => {
-    // The preventivo of a plan Poliedron just created: the PDF to send, at once.
-    // The plan is already saved, so nothing else is written here.
+    // PO: "quando chiedo preventivo … darmi il preventivo in chat". The plan is
+    // already saved on the patient's record; the PDF is built here, never stored.
     if (documentRequest?.type === 'preventivo') {
       const patient = (patients || []).find((p) => String(p.id) === String(documentRequest.patientId));
-      if (!patient || !studioInfo) return false;
+      if (!patient || !studioInfo) return openPreparedDocument(documentRequest);
       try {
+        const data = new Date().toISOString().slice(0, 10);
         const pdf = buildPreventivoPdf({ pl: documentRequest.piano, paz: patient, si: studioInfo });
         preparedRestoredRef.current = true;
-        setChatPreparedDocument({ id: `${Date.now()}`, kind: 'preventivo', request: documentRequest, patient, piano: documentRequest.piano, pdf, data: documentRequest.piano.data, status: 'ready', notice: '', archiveDone: true, savedAt: Date.now() });
+        setChatPreparedDocument({ id: `${Date.now()}`, kind: 'preventivo', request: documentRequest, patient, piano: documentRequest.piano, pdf, data, status: 'ready', notice: '', savedAt: Date.now() });
         return true;
       } catch {
-        return false;
+        return openPreparedDocument(documentRequest);
       }
     }
     if (!documentRequest || documentRequest.type !== 'ricetta') return false;
@@ -382,7 +389,7 @@ export default function Poliedron({
 
   // Once per prescription: a download, a send and a save never archive twice.
   const archivePreparedDocument = useCallback(async (prepared) => {
-    if (prepared.kind === 'preventivo') return null;
+    if (prepared.kind === 'preventivo') return null; // il piano è già nei preventivi e nella scheda del paziente
     if (prepared.archiveDone) return prepared.archived;
     const saved = await archiviaDocumento(supabaseClient, {
       si: studioInfo, studioId, paziente: prepared.patient, tipoDoc: prepared.pdf.tipoDoc, titolo: prepared.pdf.titolo, data: prepared.data, dataUrl: prepared.pdf.dataUrl,
@@ -416,7 +423,7 @@ export default function Poliedron({
       const patient = patients.find((p) => String(p.id) === String(stored.patientId));
       if (!patient) return;
       const pdf = stored.kind === 'preventivo'
-        ? buildPreventivoPdf({ pl: stored.piano, paz: patient, si: studioInfo })
+        ? buildPreventivoPdf({ pl: stored.piano, paz: patient, si: studioInfo, data: stored.data })
         : buildRicettaPdf({ si: studioInfo, paziente: patient, farmaci: stored.farmaci, data: stored.data });
       setChatPreparedDocument((current) => current || { ...stored, patient, pdf });
     } catch { /* storage unavailable or old data: nothing to restore */ }
@@ -440,13 +447,13 @@ export default function Poliedron({
       const copied = prepared.patient.telefono ? await copiaNumero(prepared.patient.telefono) : false;
       const shared = await condividiPdf(prepared.pdf.dataUrl, prepared.pdf.filename);
       const saved = await archivePreparedDocument(prepared);
-      const preventivo = prepared.kind === 'preventivo';
-      const where = preventivo ? ' Il piano è nei piani di cura del paziente.' : saved ? ' È salvata nell\u2019archivio della scheda.' : '';
+      const where = prepared.kind === 'preventivo' ? ' È salvato nei Preventivi e nella scheda del paziente.' : saved ? ' È salvata nell\u2019archivio della scheda.' : '';
       const notice = shared
         ? `Ho aperto l\u2019invio: scegli WhatsApp e ${copied ? `incolla il numero di ${prepared.patient.nome} (già copiato)` : `il contatto di ${name}`}.${where}`
         : `Su questo dispositivo non posso aprire l\u2019invio: usa “Apri il PDF” e scaricalo.${where}`;
       setChatPreparedDocument((current) => current?.id === prepared.id ? { ...current, status: 'sent', notice } : current);
-      try { await appendMessage({ requestId: createChatRequestId(), role: 'assistant', content: `${preventivo ? 'Preventivo' : 'Ricetta'} per ${name} ${preventivo ? 'pronto' : 'confermata'}${shared ? ' da inviare' : ''}.${where}`, deliveryStatus: 'sent', readAt: new Date().toISOString() }); } catch { /* the card already says it */ }
+      const documento = prepared.kind === 'preventivo' ? 'Preventivo' : 'Ricetta';
+      try { await appendMessage({ requestId: createChatRequestId(), role: 'assistant', content: `${documento} per ${name} confermat${prepared.kind === 'preventivo' ? 'o' : 'a'}${shared ? ' e pront' + (prepared.kind === 'preventivo' ? 'o' : 'a') + ' da inviare' : ''}.${where}`, deliveryStatus: 'sent', readAt: new Date().toISOString() }); } catch { /* the card already says it */ }
     } finally {
       setPreparedDocumentBusy(false);
     }
@@ -467,7 +474,7 @@ export default function Poliedron({
 
   const editPreparedDocument = useCallback(() => {
     const prepared = chatPreparedDocument;
-    if (!prepared || prepared.kind === 'preventivo') return;
+    if (!prepared) return;
     setChatPreparedDocument(null);
     openPreparedDocument(prepared.request);
   }, [chatPreparedDocument, openPreparedDocument]);
@@ -1076,6 +1083,7 @@ export default function Poliedron({
           onSavePreparedDocument={savePreparedDocument}
           onEditPreparedDocument={editPreparedDocument}
           onDiscardPreparedDocument={() => setChatPreparedDocument(null)}
+          onOpenPreparedPatient={() => { if (chatPreparedDocument?.patient) goSchedaPaz?.(chatPreparedDocument.patient, 'piani'); }}
           onExportPreparedDocument={exportPreparedDocument}
           onSend={(text) => runChatMessage(text)}
           onRetry={(message) => runChatMessage(message.content, message)}

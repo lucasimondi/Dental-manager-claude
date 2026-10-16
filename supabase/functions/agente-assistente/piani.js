@@ -42,6 +42,39 @@ export const PIANI_TOOLS = [{
   input_schema:{type:'object',properties:{paziente_id:{type:'integer'},piano_id:{type:'integer'},prestazione:{type:'string'},prezzo:{type:'number'},dente:{type:'string'}},required:['paziente_id','piano_id','prestazione','prezzo']}
 }];
 
+// PO: "quando chiedo preventivo deve generare il piano di cura sulla scheda
+// paziente e darmi il preventivo in chat". Lettura soltanto: l'app genera il
+// PDF del piano (stesso generatore dell'anteprima preventivo) e lo mostra.
+export const STRUMENTO_PREVENTIVO = Object.freeze({
+  name: 'prepara_preventivo',
+  description: "Mostra in chat il preventivo in PDF di un piano di cura GIÀ ESISTENTE del paziente. Prima usa storico_paziente per leggere i piani reali e ottenere il piano_id; se il paziente ha più piani e non è chiaro quale, chiedi. Dopo crea_piano_cura NON serve: il preventivo del nuovo piano compare da solo. Non dire che il preventivo è stato inviato al paziente.",
+  input_schema: { type: 'object', properties: { paziente_id: { type: 'integer' }, piano_id: { type: 'integer' } }, required: ['paziente_id', 'piano_id'] },
+});
+
+const COLONNE_PIANO='id, paziente_id, titolo, data, voci, stato, sconto, sconto_tipo, scadenza_pagamento';
+
+/** Il preventivo che l'app mostrerà in chat: il piano letto dal database, nessun PDF. */
+export function documentoPreventivo(paziente, piano) {
+  return {
+    tipo: 'preventivo',
+    paziente_id: paziente.id,
+    paziente_nome: [paziente.nome, paziente.cognome].filter(Boolean).join(' '),
+    piano_id: piano.id,
+    piano,
+  };
+}
+
+export async function preparaPreventivo(client, input = {}, studioId) {
+  const pazienteId = Number(input.paziente_id), pianoId = Number(input.piano_id);
+  if (!Number.isInteger(pazienteId) || !Number.isInteger(pianoId)) throw new Error('Indica paziente e piano: leggi prima lo storico del paziente.');
+  const { data: paz, error: ep } = await client.from('patients').select('id, nome, cognome').eq('studio_id', studioId).eq('id', pazienteId).single();
+  if (ep || !paz) throw new Error('Paziente non trovato: cercalo con cerca_pazienti.');
+  const { data: piano, error } = await client.from('plans').select(COLONNE_PIANO).eq('studio_id', studioId).eq('id', pianoId).eq('paziente_id', paz.id).single();
+  if (error || !piano) throw new Error('Piano non trovato per questo paziente. Leggi prima lo storico del paziente.');
+  if (!Array.isArray(piano.voci) || !piano.voci.length) throw new Error('Il piano non ha prestazioni: aggiungile prima di preparare il preventivo.');
+  return documentoPreventivo(paz, piano);
+}
+
 const RE_DATA=/^\d{4}-\d{2}-\d{2}$/;
 const validaData=(s)=>RE_DATA.test(s||'') && new Date(s+'T12:00:00Z').toISOString().slice(0,10)===s;
 const euro=(n)=>new Intl.NumberFormat('it-IT',{style:'currency',currency:'EUR'}).format(n);
@@ -87,7 +120,7 @@ export async function preparePiani(client,name,input={},studioId,observed){
     const righe=voci.map((v,i)=>`${i+1}. ${v.prestazione}${v.dente?` — dente ${v.dente}`:''}: ${euro(v.prezzo)}`);
     const corpo=[`Paziente: ${chi}`,`Piano: ${titolo}`,...righe,`Subtotale: ${euro(t.sub)}`,sconto?`Sconto: ${scontoTipo==='pct'?sconto+'%':euro(sconto)}`:null,`Totale: ${euro(t.finale)}`,scadenza?`Scadenza pagamento: ${scadenza}`:null].filter(Boolean).join('\n');
     const avviso=simili?.length?`Attenzione: ${chi} ha già un piano chiamato “${titolo}”.`:null;
-    return {dati,avviso,summary:`Crea piano di cura\n${corpo}${avviso?`\n${avviso}`:''}`,done:`Piano di cura creato\n${corpo}`};
+    return {dati,avviso,paziente:{id:paz.id,nome:paz.nome,cognome:paz.cognome},summary:`Crea piano di cura\n${corpo}${avviso?`\n${avviso}`:''}`,done:`Piano di cura e preventivo creati (in Preventivi e nella scheda del paziente, in attesa)\n${corpo}`};
   }
 
   const {data:plan,error:epl}=await client.from('plans').select('id, paziente_id, titolo, stato, voci, sconto, sconto_tipo').eq('studio_id',studioId).eq('id',input.piano_id).eq('paziente_id',paz.id).single();
@@ -137,7 +170,7 @@ export async function executePiani(client,proposal){
   const {data,error}=await query.select().single();
   if(error||!data) throw new Error(error?.message||'errore sconosciuto.');
   const out={text:`Fatto. ${proposal.piani.done}`,changed:['plans'],recordId:data.id,records:{plans:[data]}};
-  // A new plan comes back with its preventivo: the app turns it into the PDF to send.
-  if(proposal.name==='crea_piano_cura') out.documento={tipo:'preventivo',paziente_id:data.paziente_id,piano:{id:data.id,titolo:data.titolo,data:data.data,voci:data.voci,sconto:data.sconto,sconto_tipo:data.sconto_tipo}};
+  // Un piano nuovo porta con sé il suo preventivo, da mostrare subito in chat.
+  if(proposal.name==='crea_piano_cura') out.documento=documentoPreventivo(proposal.piani.paziente||{id:data.paziente_id},data);
   return out;
 }

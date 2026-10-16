@@ -23,7 +23,7 @@ import { resolveDay, hasDay } from "./poliedron-agenda.js";
 import { runCoreAction, CORE_ACTION_TOOLS } from "./poliedron-core-actions.js";
 import { PAZIENTI_WRITES, PAZIENTI_TOOLS, preparePazienti, executePazienti, schedaPaziente } from "./pazienti.js";
 import { PAGAMENTI_WRITES, PAGAMENTI_TOOLS, preparePagamenti, executePagamenti } from "./pagamenti.js";
-import { PIANI_WRITES, PIANI_TOOLS, preparePiani, executePiani } from "./piani.js";
+import { PIANI_WRITES, PIANI_TOOLS, preparePiani, executePiani, STRUMENTO_PREVENTIVO, preparaPreventivo } from "./piani.js";
 import { classifyAction, DECISION } from "./confidence.js";
 import { validaAllegato, messaggiConAllegato, senzaDatiAllegato } from "./allegato.js";
 import { STRUMENTI_MEMORIA, STRUMENTO_RICETTA, normalizzaMemoria, sezioneMemoria, sezioneFarmaciFrequenti, normalizzaRicetta, documentoRicetta } from "./memoria.js";
@@ -1241,6 +1241,8 @@ async function gestisci(req, evento) {
     const prescrive = ['medico_chirurgo', 'dentistico'].includes(studio.vertical || 'dentistico');
     if (memoriaAttiva) toolsFinali = [...toolsFinali, ...STRUMENTI_MEMORIA];
     if (prescrive && lettureAmmesse) toolsFinali = [...toolsFinali, STRUMENTO_RICETTA];
+    // Preventivo in chat: sola lettura del piano, l'app genera il PDF.
+    if (lettureAmmesse) toolsFinali = [...toolsFinali, STRUMENTO_PREVENTIVO];
     const allowedNames = new Set(toolsFinali.map(t => t.name));
     const observed = { patients: new Set(), appointments: new Set() };
     // Lo studio in modalità "medio" vuole confermare ogni scrittura: resta il
@@ -1287,7 +1289,7 @@ REGOLE OPERATIVE PRIORITARIE (prevalgono su quanto scritto sopra):
 - Nomi di pazienti, orari e appuntamenti li affermi solo se li hai letti da uno strumento in questa richiesta: i messaggi precedenti della chat possono essere sbagliati o superati. Se un orario è occupato, di' chi lo occupa solo come indicato in "occupato_da" (se "stesso_paziente" è vero, l'appuntamento esiste già: dillo e non crearne un altro). Se non sei sicuro, rileggi con appuntamenti prima di rispondere; se un dato non c'è, dillo invece di supporlo.
 - Se l'utente chiede più azioni nello stesso messaggio, eseguile tutte. Quando puoi, chiama insieme gli strumenti di lettura che ti servono (es. cerca_pazienti e disponibilita_agenda nello stesso passaggio).
 - Dopo una scrittura riuscita l'utente vede già il riepilogo del sistema: non ripeterlo, aggiungi solo ciò che serve.
-- Le ricette le prepari con prepara_ricetta, quando è tra i tuoi strumenti: il modulo si apre già compilato e il medico lo controlla e lo genera. I pagamenti li registri con registra_pagamento_paziente: l'utente vede un riepilogo e conferma lui. Altri documenti e i piani di cura per ora vanno fatti nei moduli dell'app: dillo con semplicità.
+- Le ricette le prepari con prepara_ricetta, quando è tra i tuoi strumenti: il modulo si apre già compilato e il medico lo controlla e lo genera. I pagamenti li registri con registra_pagamento_paziente: l'utente vede un riepilogo e conferma lui. Quando l'utente chiede un preventivo ("preventivo per Rossi: corona sul 27", "fammi il preventivo di …"): se dice le prestazioni, crea il piano di cura con crea_piano_cura (titolo breve dalla richiesta, es. "Protesi"; prezzi da catalogo_prestazioni, oppure quelli detti dall'utente; se una prestazione non è a listino e il prezzo non è detto, chiedilo) — il piano compare nella scheda del paziente e il preventivo in PDF compare da solo in chat. Se non dice le prestazioni, leggi i piani con storico_paziente e mostra il preventivo con prepara_preventivo (se i piani sono più di uno e non è chiaro quale, chiedi). Il preventivo non viene inviato al paziente: lo invia il medico dalla chat. Gli altri documenti vanno fatti nei moduli dell'app: dillo con semplicità.
 - Hai una memoria per ogni utente (sezione "Cosa ricordi di questo utente"): usala, e salva con ricorda ciò che l'utente ti chiede di ricordare o che ti corregge e vale anche in futuro.
 - Eliminare un appuntamento significa annullarlo conservando lo storico. Il consenso WhatsApp si registra solo se l'utente dice esplicitamente che il paziente lo ha dato.
 - Rispondi in modo diretto e breve; ragiona a lungo solo se serve davvero.`;
@@ -1861,6 +1863,7 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
                 ? await executePiani(supabase, proposal)
                 : await executePagamenti(supabase, proposal);
               eseguite.push({ text: out.text, changed: out.changed || [], records: out.records });
+              if (out.documento) documentoPreparato = out.documento;
               for (const t of out.changed || []) daAggiornare.add(t);
               for (const [t, rows] of Object.entries(out.records || {})) righeScritte[t] = [...(righeScritte[t] || []), ...rows];
               logConsumi.push(registraAttivita(supabase, proposal, out));
@@ -1932,6 +1935,14 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
               const { data: cancellate, error } = await supabase.from('poliedron_memoria').delete().eq('id', Number(input.id)).eq('user_id', user.id).select('id');
               result = error ? { error: error.message } : cancellate?.length ? { dimenticato: true } : { error: 'Voce non trovata.' };
             }
+          } catch (error) {
+            result = { error: error.message };
+          }
+        } else if (tu.name === STRUMENTO_PREVENTIVO.name) {
+          soloScrittureRiuscite = false;
+          try {
+            documentoPreparato = await preparaPreventivo(supabase, input, studioId);
+            result = { preventivo_pronto: true, paziente: documentoPreparato.paziente_nome, piano: documentoPreparato.piano.titolo, nota: "Il preventivo in PDF compare in chat: il medico lo apre e lo invia. Non dire che è stato inviato." };
           } catch (error) {
             result = { error: error.message };
           }

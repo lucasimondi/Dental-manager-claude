@@ -1,5 +1,12 @@
 # Handoffs
 
+## 2026-10-16 — CLAUDE — POL-AI-012 Preventivo (PDF, tasto, ritorno alla scheda, Poliedron)
+- TASK: POL-AI-012. BRANCH: `claude/preventivo-layout-poliedron-b4w1br` da `master@57b19dc`. Dettagli in `current-task.md`.
+- FILES: `src/lib/documenti/preventivoPdf.js` (nuovo), `src/components/{PdfView.jsx, SchedaPaz.jsx, PianoDrillDown.jsx, Piani.jsx, ui/PdfViewerModal.jsx}`, `src/components/poliedron/{Poliedron.jsx, PoliedronChatPage.jsx, PoliedronPreparedDocument.jsx}`, `src/lib/poliedron/poliedraCore.js`, `src/App.jsx`, `supabase/functions/agente-assistente/{index.ts, piani.js}`, `tests/preventivoPoliedron.test.mjs` (nuovo), `tests/{nomeFilePdfOvunque, planExecutionUi}.test.mjs`.
+- DATABASE: nessuna. TESTS: 1227/1227; build OK; prova Chromium 390×844.
+- RISKS: l'agente deve scegliere prezzi da listino o detti dall'utente (regola già nello strumento); il preventivo condiviso dalla chat non finisce in archivio documenti (il piano è in scheda).
+- NEXT: "Mergia" del PO, verifica del deploy di `agente-assistente`, prova reale: "Preventivo per <paziente>: corona composito ceramica sul 27".
+
 ## 2026-10-15 — CLAUDE — Piani di cura e preventivi dal Core
 - "Preventivo per <paziente>: <prestazioni con denti/prezzi>" crea il piano con i prezzi del listino, senza modello; dubbi → domanda.
 - Anche "otturazione 80 euro, capsula 350 euro, paziente Vaioli"; dopo la creazione la chat mostra il preventivo in PDF da inviare.

@@ -187,7 +187,7 @@ export default function Piani({ patients, plans, setPlans, payments = [], setPay
                     <div style={{ fontWeight: 800, fontSize: 14, color: C.pri }}>{fmt(tot)}</div>
                     <Bdg ch={pl.stato || 'attivo'} co={statoC} />
                     <div style={{ marginTop: 6 }}>
-                      <button onClick={() => { setFiltroModal(null); setPdfPlan(pl); }} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '5px 9px', cursor: 'pointer', color: C.pri, fontWeight: 700, fontSize: 11 }}>PDF</button>
+                      <button onClick={() => { setFiltroModal(null); setPdfPlan(pl); }} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '5px 9px', cursor: 'pointer', color: C.pri, fontWeight: 700, fontSize: 11 }}>Preventivo</button>
                     </div>
                   </div>
                 </div>

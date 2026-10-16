@@ -15,7 +15,7 @@ import { isSaveToRecordRequest, saveTargetCandidates } from './attachmentToPatie
    in its own studio-scoped list and with the Ricetta action allowed. */
 export function documentRequestFromModel(modelResult) {
   const doc = modelResult?.raw?.documento;
-  if (doc?.tipo === 'preventivo') return preventivoRequest(doc);
+  if (doc?.tipo === 'preventivo') return quoteRequestFromDocument(doc);
   if (!doc || doc.tipo !== 'ricetta' || doc.paziente_id == null || !Array.isArray(doc.farmaci)) return null;
   const farmaci = doc.farmaci
     .filter((f) => typeof f?.farmaco === 'string' && f.farmaco.trim())
@@ -30,21 +30,36 @@ export function documentRequestFromModel(modelResult) {
   if (!farmaci.length) return null;
   return { type: 'ricetta', patientId: doc.paziente_id, patientName: typeof doc.paziente_nome === 'string' ? doc.paziente_nome : '', farmaci };
 }
-/* A plan just created by agente-assistente comes back with its preventivo
-   (PO 2026-10-15): only the shape is checked; the PDF is drawn in the app. */
-function preventivoRequest(doc) {
-  const piano = doc.piano;
-  if (doc.paziente_id == null || !piano || !Array.isArray(piano.voci)) return null;
-  const voci = piano.voci
-    .filter((v) => typeof v?.prestazione === 'string' && v.prestazione.trim() && Number.isFinite(Number(v.prezzo)))
-    .slice(0, 100)
-    .map((v) => ({ prestazione: v.prestazione.trim(), prezzo: Number(v.prezzo), dente: typeof v.dente === 'string' ? v.dente : '', eseguita: Boolean(v.eseguita) }));
-  if (!voci.length) return null;
+/* A quote (preventivo) prepared by agente-assistente: the plan as read from
+   the database (crea_piano_cura or prepara_preventivo), mapped to the app's
+   plan shape. Poliedron.jsx builds the PDF only for a patient of its own list. */
+function quoteRequestFromDocument(doc) {
+  const plan = doc?.piano;
+  if (doc?.paziente_id == null || !plan || plan.id == null || !Array.isArray(plan.voci) || !plan.voci.length) return null;
+  if (plan.paziente_id != null && String(plan.paziente_id) !== String(doc.paziente_id)) return null;
   return {
-    type: 'preventivo', patientId: doc.paziente_id,
-    piano: { id: piano.id ?? null, titolo: String(piano.titolo || 'Preventivo'), data: piano.data || null, voci, sconto: Number(piano.sconto) || 0, sconto_tipo: piano.sconto_tipo === 'valore' ? 'valore' : 'pct' },
+    type: 'preventivo',
+    patientId: doc.paziente_id,
+    patientName: typeof doc.paziente_nome === 'string' ? doc.paziente_nome : '',
+    piano: {
+      id: plan.id, pazienteId: doc.paziente_id, titolo: String(plan.titolo || 'Piano di cura'), data: plan.data || null,
+      voci: plan.voci.map((v) => ({ prestazione: String(v?.prestazione || ''), dente: v?.dente ? String(v.dente) : '', prezzo: Number(v?.prezzo) || 0, eseguita: v?.eseguita === true })),
+      stato: plan.stato || 'attivo', sconto: Number(plan.sconto) || 0, scontoTipo: plan.sconto_tipo === 'valore' ? 'valore' : 'pct',
+      scadenzaPagamento: plan.scadenza_pagamento || '',
+    },
   };
 }
+
+// PO: "quando chiedo preventivo lui deve generare piano di cura sulla scheda
+// paziente e darmi il preventivo in chat". Statistics ("quanti preventivi in
+// attesa?") and the bare word (opens Piani) keep their own routes.
+const QUOTE_RE = /\bpreventiv[oi]\b/i;
+const QUOTE_STATS_RE = /\b(?:quanti|quante|in attesa|scadut\w*|accettat\w*|rifiutat\w*|fermi|aperti)\b/i;
+export function isQuoteRequest(q) {
+  const text = String(q || '').trim();
+  return QUOTE_RE.test(text) && text.split(/\s+/).length >= 2 && !QUOTE_STATS_RE.test(text);
+}
+
 import { resolveCommandAlias } from './commandAliases.js';
 import { cercaPazienti } from '../ricercaPazienti.js';
 import { resolvePrescriptionRequest } from './prescriptionWorkflow.js';
@@ -250,6 +265,15 @@ export async function processQuery({
       modelConfirmation: result.raw?.needsConfirmation || null, dataChanged: result.raw?.changed || null, dataRecords: result.raw?.records || null,
       documentRequest: documentRequestFromModel(result),
       searchResults: [], suggestedActions: [] };
+  }
+  // A quote: the agent creates the plan (crea_piano_cura) or reads an existing
+  // one (prepara_preventivo) and the app shows the PDF in chat. Without write
+  // rights "crea preventivo per X" keeps opening the Nuovo piano form.
+  if (isQuoteRequest(q) && allowModel && supabaseClient && (agentCanWrite(context) || !parseCreatePlanRequest(q))) {
+    const result = await runModelTask({ taskType: MODEL_TASK_TYPE.ASK, input: q, history: conversationHistory, context, supabaseClient });
+    return { intent: 'AGENT', answer: result.text, modelError: result.error,
+      modelConfirmation: result.raw?.needsConfirmation || null, dataChanged: result.raw?.changed || null, dataRecords: result.raw?.records || null,
+      documentRequest: documentRequestFromModel(result), searchResults: [], suggestedActions: [] };
   }
   const dedicatedRoute = [INTENT.NAVIGATE, INTENT.ANALYZE].includes(preliminaryIntent.type)
     || resolvePrescriptionRequest(q, sources.patients || [])

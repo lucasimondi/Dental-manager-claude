@@ -68,7 +68,7 @@ test('PO case: a preventivo with listino prices and teeth is created at once, no
   assert.deepEqual(row.voci.map((v) => [v.prestazione, v.dente, v.prezzo]), [
     ['Igiene orale professionale', '', 80], ['Otturazione composita', '36', 120], ['Otturazione composita', '37', 120], ['Corona in zirconio', '46', 650],
   ]);
-  assert.match(out.text, /^Fatto\. Piano di cura creato\nPaziente: Mario Rossi/);
+  assert.match(out.text, /^Fatto\. Piano di cura e preventivo creati \(in Preventivi e nella scheda del paziente, in attesa\)\nPaziente: Mario Rossi/);
   assert.match(out.text, /Totale: 970,00\s€/);
   assert.deepEqual(out.changed, ['plans']);
 });
@@ -164,7 +164,7 @@ test('PO case: "otturazione 80 euro, capsula 350 euro, paziente Vaioli" creates 
   const pdf = buildPreventivoPdf({ pl: req.piano, paz: { nome: 'Luca', cognome: 'Vaioli' }, si: { nome: 'Studio test' } });
   assert.equal(pdf.filename, 'Luca Vaioli.pdf');
   const bytes = Buffer.from(pdf.dataUrl.split(',')[1], 'base64').toString('latin1');
-  for (const t of ['PREVENTIVO', 'Luca Vaioli', 'Otturazione composita', 'Capsula', '430.00']) assert.ok(bytes.includes(t), t);
+  for (const t of ['PREVENTIVO', 'Luca Vaioli', 'Otturazione composita', 'Capsula', '430,00']) assert.ok(bytes.includes(t), t);
 });
 
 test('patient-last phrasing: prices required without the word "preventivo", never payments or notes', () => {
@@ -176,10 +176,11 @@ test('patient-last phrasing: prices required without the word "preventivo", neve
 });
 
 test('app wiring: the PDF in chat uses the same drawing as the Piani module; confirmations also prepare it', () => {
-  assert.match(source('src/components/PdfView.jsx'), /const doc = disegnaPreventivo\(\{ pl, paz, si \}\);/);
+  // POL-AI-012: one generator with the new layout (PO: "fai un bel layout").
+  assert.match(source('src/components/PdfView.jsx'), /buildPreventivoPdf\(\{ si, paziente: paz, piano: pl \}\)/);
   const poliedron = source('src/components/poliedron/Poliedron.jsx');
   assert.match(poliedron, /buildPreventivoPdf\(\{ pl: documentRequest\.piano, paz: patient, si: studioInfo \}\)/);
   assert.match(poliedron, /if \(!cancelled && !response\.error\) prepareDocumentInChat\(documentRequestFromModel\(response\)\);/);
   assert.match(poliedron, /if \(prepared\.kind === 'preventivo'\) return null;/, 'the plan is the record: no second archive copy');
-  assert.match(source('src/components/poliedron/PoliedronPreparedDocument.jsx'), /Preventivo' : 'Ricetta medica'/);
+  assert.match(source('src/components/poliedron/PoliedronPreparedDocument.jsx'), /Preventivo · \{name\}/);
 });
