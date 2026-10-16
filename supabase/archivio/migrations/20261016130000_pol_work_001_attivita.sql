@@ -6,6 +6,7 @@ create table if not exists public.attivita_esterne (
  origine text not null default 'work_manuale' check (origine in ('api','work_manuale','browser_agent')),
  stato text not null default 'in_attesa' check (stato in ('in_attesa','in_corso','richiede_conferma','completata','errore')),
  prova text,
+ constraint completata_richiede_prova check (stato <> 'completata' or nullif(btrim(prova), '') is not null),
  risultato text,
  created_at timestamptz not null default now(),
  updated_at timestamptz not null default now()
