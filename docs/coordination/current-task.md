@@ -10,6 +10,59 @@
 
 ---
 
+# Current task — POL-VITA-006 Personal: Conti (incassi, spese, bilancino), cruscotto, Documenti con anteprime, pagine scorrevoli, tasto + completo (2026-10-15)
+- OWNER: CLAUDE. BRANCH: `claude/catalogazione-facile-latjs9` ripartito da `master@a6a0f7f` (PR #188 mergiata).
+- RICHIESTA PO (sintesi): sezione incassi e pagamenti per registrare incassi e spese, con bilancino; pratica ben impaginata, scorrevole, con tasto di chiusura ben raggiungibile; Home più bella, professionale e utile come dashboard; Documenti organizzati meglio con l'anteprima nel tasto; tasto + con tutte le aggiunte (scansione documenti, foto, fotocamera, caricamento da altra fonte). Poi, a lavoro iniziato: "Per quanto riguarda il più e il dock e poliedron in alto per ora va bene così" → posizioni invariate.
+- FATTO: migrazione additiva `20261016090000_pol_vita_006_movimenti.sql` applicata (tabella `movimenti`, RLS proprietario, niente anon; una sola spesa per scadenza). `Code.gs`: `azione: 'miniature'` (solo file in archivio, mai `clinico_pazienti`, max 12), deployment @4 stesso URL. App: Conti nel dock al posto di Pagamenti (Movimenti, Da pagare, Bilancio con barre mensili e categorie); "Pagato" registra la spesa da solo (e la toglie se torna da pagare); pagamento da fare inserito a mano; Home a cruscotto (saldo del mese, azioni rapide, indicatori, agenda, pagamenti, ultimi documenti con anteprima, pratiche); Documenti con Recenti/Cartelle/Pratiche/sezioni e griglia con miniature; pratica con intestazione, numeri, pagamenti e cronologia per anno; pagine con corpo scorrevole, tasto di chiusura in basso a destra e chiusura scorrendo dal bordo; + con foglio Aggiungi (scansione multipagina → PDF, fotocamera, foto, file da iCloud/Drive/altre app, documento personale, spesa, incasso, pagamento, evento); categorie di spese e incassi in Impostazioni.
+- VALIDATION: `npm test` 1217/1217 (+11 test in `tests/personalConti.test.mjs`), anche con Node 20; build OK; Chromium 390×844 con dati finti: nessun errore, nessun overflow; pratica scorre (2452 px su 729), il tasto chiude; spesa e spesa da pagamento scritte con i campi giusti; scansione di 2 pagine → PDF → pagina di archiviazione.
+- NON VERIFICATO DA QUI: miniature reali da Drive (la rete del container blocca script.google.com).
+- STATO: in revisione (PR).
+
+---
+
+# Current task — POL-VITA-005 Chat Poliedron in Personal (2026-10-15)
+- OWNER: CLAUDE. BRANCH: `claude/catalogazione-facile-latjs9` (stessa PR di POL-VITA-004, non ancora mergiata).
+- DECISIONE PO (verbatim): "Come per poliedron entrambi, se ai allora farà tutto, se poliedron svolgerà comandi di ricerca e restituzione documenti".
+- FATTO: `Code.gs` `azione: 'chiedi'` dopo la verifica del proprietario → `chiediPoliedron_` (Claude con strumenti di sola lettura `cerca_documenti`, `documento`, `scadenze`, `pratiche`, `riepilogo_archivio`; massimo 5 giri; ultimi 6 messaggi; documento aperto come contesto). `clinico_pazienti` escluso da ogni risultato e dal documento aperto. Nessuna scrittura, nessun invio. Deployment web app aggiornato (stesso URL, @3). App: pulsante Poliedron in testata, pagina chat con "Poliedron AI" / "Solo ricerca" (Core), ripiego automatico sul Core se l'AI non risponde, link ai documenti citati, "Chiedi a Poliedron su questo documento".
+- VALIDATION: `npm test` (+7 test in `tests/personalChat.test.mjs`); build OK; Chromium 390×844 con script e database finti: risposta AI con link apribile, ripiego sulla ricerca, domanda sul documento aperto con `documento_id`; nessun errore, nessun overflow.
+- NON VERIFICATO DA QUI: chiamata reale a Claude dalla web app (la rete del container blocca script.google.com). Da provare con la prima domanda del PO.
+- STATO: completato (PR #188 mergiata).
+
+---
+
+# Current task — POL-VITA-004 Agenda di Poliedron Personal = agenda dello studio (2026-10-15)
+- OWNER: CLAUDE. BRANCH: `claude/catalogazione-facile-latjs9` da `master@5d2b805` (PR #187 mergiata).
+- DECISIONI PO (verbatim, sintesi): "L'agenda deve essere la stessa di studio … la modifichiamo in entrambi i software … appuntamento anche senza … database pazienti … nome evento con orari durata ed etichette … se personale avrà una grafica leggermente diversa tipo un contorno"; scadenze dell'archivio in agenda "senza dare fastidio agli appuntamenti", eliminabili, modificabili, segnabili pagate. Il PO ha autorizzato la lettura della sola struttura delle tabelle dell'agenda in produzione ("Mergia e procedi").
+- VERIFICATO (sola struttura, nessun dato): `appointments`, `impegni_personali` (senza paziente: titolo, tipo, colore, date, ore, note, recurrence_id), `app_types`; RLS `studio_id = auth.jwt()->app_metadata->>studio_id` su tutte e tre. L'agenda dello studio disegna già gli impegni personali con contorno tratteggiato e mostra il `tipo` come etichetta: nessuna modifica allo studio né al suo database.
+- FATTO: `personal/src/lib/studio.js` (secondo client, sessione propria persistente, solo tabelle dell'agenda: appointments/patients(nome, cognome)/app_types in lettura, impegni_personali lettura e scrittura; fail closed senza studio_id); `lib/agenda.js` (calcoli puri); `Agenda.jsx` (Giorno con griglia oraria, Settimana, Mese; scadenze in striscia in alto; eventi bianchi con contorno; editor evento; dettaglio appuntamento in sola lettura); Oggi in agenda; etichette con colori in Impostazioni; scadenza modificabile (descrizione, data, importo); pulsante + contestuale (in Agenda crea un evento).
+- VALIDATION: `npm test` 1199/1199 (+6 test agenda e confini con lo studio); build OK; Chromium 390×844 con dati finti di studio e archivio: scrittura evento con studio_id e user_id della sessione, modifica scadenza, nessun errore e nessun overflow.
+- PROSSIMO: chat Poliedron (POL-VITA-005), nella stessa PR.
+- STATO: completato (PR #188 mergiata).
+
+---
+
+# Current task — POL-VITA-003 (seguito) Poliedron Personal: impaginazione iPhone, Pagamenti, sezioni, anteprima, Personali, impostazioni (2026-10-15)
+- OWNER: CLAUDE. BRANCH: `claude/catalogazione-facile-latjs9` da `master@acdd858` (PR #180–#186 mergiate). Indirizzo dell'app: https://personal.poliedrasoft.it (dominio aggiunto al progetto Vercel, CNAME del PO su IONOS).
+- RICHIESTA PO (verbatim, sintesi): impaginazione corretta su iPhone; ogni pratica o dettaglio con tasto per chiudere e tornare dov'eri con il dock visibile; tasti cliccabili; Pagamenti cliccabile con elenco, cancellare, segnare pagato, vedere il documento di origine; aree Bollette e Riscaldamento (pellet, legna…); anteprima dei documenti; sezioni Tutti, Carta d'identità, Codice fiscale per Luca, Martina e Giulia Simondi, persone aggiungibili; setup per creare altre sezioni.
+- FATTO: migrazione additiva `20261015200000_pol_vita_003_personal.sql` applicata (fascicolo `riscaldamento`, `documenti.persona` e `documenti.categoria`, tabella `impostazioni_app` con RLS proprietario). `Code.gs`: fascicolo Riscaldamento con regola di classificazione; anteprima `azione: 'file'` solo per file registrati; persona e categoria al caricamento; corretto l'id restituito (`documento_id`). Deployment web app aggiornato (stesso URL, @2). App riscritta: pagine con Indietro e dock visibile, Pagamenti, sezioni configurabili, Personali per persona e tipo, Impostazioni, anteprima immagini e PDF (pdf.js).
+- VALIDATION: `npm test` 1193/1193; build OK; Chromium a 375×667, 390×844 e 430×932 con dati finti: nessun overflow orizzontale, nessun errore in console, Indietro chiude sempre e riporta alla sezione.
+- PROSSIME RICHIESTE PO (non ancora iniziate, servono decisioni): chat Poliedron sull'archivio; Agenda personale sincronizzata con l'agenda dello studio.
+- STATO: in revisione (PR).
+
+---
+
+# Current task — POL-VITA-003 Poliedron Personal: app per telefono dell'archivio + documenti caricati dal PO (2026-10-15)
+- OWNER: CLAUDE (Claude Code), su richiesta diretta del PO: "quando installo su home continua a chiedermi link di accesso, inoltre dobbiamo cambiare layout completamente … deve essere webapp per telefono, fatta bene anche graficamente, inoltre voglio poter caricare io dei documenti, ad esempio carte identità ecc, e averle sempre a portata di mano".
+- BRANCH: `claude/catalogazione-facile-latjs9`, ripartito da `master@8c62ef3b` (PR #180 e #182 mergiate).
+- DECISIONI PO (2026-10-15): app = Poliedron Personal (`/personal/`) rifatta per telefono; accesso = email + password (niente link: la PWA sulla home iOS non condivide la sessione con Safari); documenti caricati = Google Drive.
+- PIANO: (1) Apps Script: endpoint `doPost` (web app) che riceve il file, verifica il token Supabase del PO, salva su Drive `Archivio personale/Caricati`, analizza (mai i clinici: `eClinico_`) e registra con `registra_documento` (`gmail_message_id` = `caricato:<uuid>`, nessuna modifica di schema); (2) Personal: nuovo layout mobile (barra in basso: Oggi, Documenti, Portafoglio, Pratiche), dettaglio documento, caricamento da fotocamera/file, Portafoglio (tag `portafoglio`), password dimenticata/impostata; (3) test, build, PR.
+- FATTO: (1) `Code.gs` `doPost` + `utenteSupabase_` + `rispostaJson_`; manifest `webapp` (USER_DEPLOYING, ANYONE_ANONYMOUS); `clasp push -f` e `clasp create-deployment` (deployment @1, URL in `personal/src/lib/archivio.js`). Nessuna modifica di schema. (2) Personal riscritta: `App.jsx`, `Icone.jsx`, `personal.css` (chiaro/scuro), `lib/file.js` (riduzione foto), `lib/archivio.js` (portafoglio, caricamento, dettaglio, sposta); client con flusso implicito; manifest/meta aggiornati. (3) `tests/personalCaricamento.test.mjs` (7 test). `npm test` 1190/1190, build OK; prova in Chromium 390×844 con dati finti: tutte le sezioni, chiaro/scuro, flusso di caricamento completo, nessun errore in console.
+- NON VERIFICATO DA QUI: chiamata reale alla web app (la rete del container blocca script.google.com). Da verificare con il primo caricamento del PO.
+- DA FARE (PO): Supabase Redirect URLs `https://dental-manager-acmeproduction.vercel.app/**`; impostare la password da "Imposta o recupera la password"; reinstallare l'app sulla Home da `/personal/`.
+- STATO: in revisione (PR).
+
+---
+
 # Current task — POL-VITA-002 Installazione archivio documenti personali (Fase 1) (2026-10-13)
 - OWNER: CLAUDE (Claude Code), su istruzione diretta del PO ("Nuovo task: installazione dell'archivio documenti personali").
 - BRANCH: `claude/catalogazione-facile-latjs9` (AGENTS.md: mai lavorare su master), da `master@2aa08aa5`.

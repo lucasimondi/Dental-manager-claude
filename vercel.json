@@ -1,6 +1,22 @@
 {
   "rewrites": [
     {
+      "source": "/poliedron/personal",
+      "destination": "/personal/index.html"
+    },
+    {
+      "source": "/poliedron/personal/",
+      "destination": "/personal/index.html"
+    },
+    {
+      "source": "/poliedron/archivio",
+      "destination": "/archivio/index.html"
+    },
+    {
+      "source": "/poliedron/archivio/",
+      "destination": "/archivio/index.html"
+    },
+    {
       "source": "/archivio",
       "destination": "/archivio/index.html"
     },
@@ -83,6 +99,19 @@
           "value": "no-cache, no-store, must-revalidate"
         }
       ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "personal.poliedrasoft.it"
+        }
+      ],
+      "destination": "/personal/",
+      "permanent": false
     }
   ]
 }

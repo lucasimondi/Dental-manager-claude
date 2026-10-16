@@ -52,6 +52,7 @@ const FASCICOLI = {
   fiscale: 'Fiscale e tasse',
   previdenza: 'Previdenza ed ENPAM',
   utenze: 'Utenze',
+  riscaldamento: 'Riscaldamento',
   studio_fornitori: 'Studio - fornitori',
   studio_fatture_emesse: 'Studio - fatture emesse',
   legale: 'Legale e contenziosi',
@@ -459,6 +460,7 @@ function analizza_(meta, nome, contenuto, pratiche) {
     '- Se il documento è più vecchio di 12 mesi, azione_richiesta è true solo se il contenuto indica una questione rimasta aperta.',
     '- Scadenze: solo date reali presenti nel documento (pagamenti, rinnovi, termini legali, scadenza di documenti d\'identità).',
     '- Materiale pubblicitario: fascicolo "altro" con tag "promozionale".',
+    '- Combustibili per il riscaldamento (pellet, legna, gasolio, GPL, cippato) e manutenzione di caldaie e stufe: fascicolo "riscaldamento". Le bollette di luce, gas di rete e acqua restano in "utenze".',
     '- Scrivi in italiano.',
   ].join('\n');
 
@@ -678,6 +680,252 @@ function sha256_(bytes) {
 }
 function dataValida_(s) { return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null; }
 function pulisciNome_(s) { return String(s).replace(/[\\\/:*?"<>|\r\n]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 120); }
+
+/* =====================================================================
+ * CARICAMENTO DALL'APP (Poliedron Personal)
+ * Web app: esegui come proprietario, accesso "Chiunque". L'identità non viene dal
+ * link ma dal token di sessione Supabase dell'app, verificato a ogni richiesta:
+ * passa solo il proprietario dell'archivio con email confermata.
+ * Il file va su Drive in "Archivio personale/Caricati" e viene catalogato come gli
+ * allegati Gmail; i documenti clinici non vengono mai inviati all'analisi.
+ * ===================================================================*/
+const CARTELLA_CARICATI = 'Caricati';
+const PROPRIETARIO = 'luca.simondi@gmail.com';
+
+function doPost(e) {
+  let file = null;
+  try {
+    const req = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    const utente = utenteSupabase_(req.token);
+    if (!utente || String(utente.email).toLowerCase() !== PROPRIETARIO || !utente.email_confirmed_at) {
+      return rispostaJson_({ ok: false, errore: 'Accesso non autorizzato' });
+    }
+    if (req.azione === 'file') return rispostaJson_(fileDelDocumento_(req.drive_file_id));
+    if (req.azione === 'chiedi') return rispostaJson_(chiediPoliedron_(req));
+    if (req.azione === 'miniature') return rispostaJson_(miniature_(req.ids));
+    if (!req.dati || !req.nome) return rispostaJson_({ ok: false, errore: 'File mancante' });
+
+    const nome = pulisciNome_(String(req.nome)) || 'documento';
+    const mime = String(req.mime || 'application/octet-stream').toLowerCase();
+    const bytes = Utilities.base64Decode(req.dati);
+    const hash = sha256_(bytes);
+    const esistente = sb_('documenti?select=id,titolo&hash_sha256=eq.' + hash);
+    if (esistente.length) return rispostaJson_({ ok: true, duplicato: true, id: esistente[0].id, titolo: esistente[0].titolo });
+
+    const ora = new Date();
+    const cartella = sottocartella_(sottocartella_(cartellaRadice_(), CARTELLA_CARICATI),
+      Utilities.formatDate(ora, CONFIG.FUSO, 'yyyy'));
+    file = cartella.createFile(Utilities.newBlob(bytes, mime, nome));
+
+    const meta = { oggetto: String(req.descrizione || ''), mittente: PROPRIETARIO, destinatari: '', data: ora,
+      corpo: 'Documento caricato da Luca dall\'app.' + (req.descrizione ? ' Descrizione: ' + req.descrizione : '') };
+    let analisi, analisiContenuto = true;
+    const clinico = req.fascicolo === 'clinico_pazienti' || eClinico_(meta, nome);
+    if (req.nonAnalizzare || clinico) {
+      analisiContenuto = false;
+      analisi = { fascicolo: clinico ? 'clinico_pazienti' : (req.fascicolo || 'altro'),
+        titolo: req.descrizione || nome.replace(/\.[^.]+$/, ''), tag: [] };
+    } else {
+      const contenuto = contenutoPerAnalisi_(bytes, mime, nome, file);
+      if (!contenuto) analisiContenuto = false;
+      analisi = analizza_(meta, nome, contenuto, praticheAperte_());
+    }
+    // La scelta di Luca nell'app vale più della classificazione automatica (mai per i clinici)
+    if (req.fascicolo && FASCICOLI[req.fascicolo] && analisi.fascicolo !== 'clinico_pazienti') analisi.fascicolo = req.fascicolo;
+    const fasc = FASCICOLI[analisi.fascicolo] ? analisi.fascicolo : 'altro';
+    const tag = (Array.isArray(analisi.tag) ? analisi.tag.slice(0, 7) : []).concat(req.portafoglio ? ['portafoglio'] : []);
+    const estensione = (nome.match(/\.[a-z0-9]+$/i) || [''])[0].toLowerCase();
+    file.setName((dataValida_(analisi.data_documento) || Utilities.formatDate(ora, CONFIG.FUSO, 'yyyy-MM-dd')) + '_' +
+      pulisciNome_(analisi.titolo || nome.replace(/\.[^.]+$/, '')) + estensione);
+
+    const esito = sb_('rpc/registra_documento', { method: 'post', body: { p: {
+      hash_sha256: hash, gmail_message_id: 'caricato:' + Utilities.getUuid(), gmail_thread_id: null,
+      email_oggetto: req.descrizione || null, email_mittente: 'Caricato dall\'app', email_data: ora.toISOString(),
+      nome_file_originale: nome, mime_type: mime, dimensione_byte: bytes.length,
+      drive_file_id: file.getId(), drive_url: file.getUrl(), fascicolo: fasc,
+      tipo_documento: analisi.tipo_documento || null, titolo: analisi.titolo || nome,
+      riassunto: analisi.riassunto || null, data_documento: dataValida_(analisi.data_documento),
+      importo: typeof analisi.importo === 'number' ? analisi.importo : null, tag: tag,
+      azione_richiesta: analisi.azione_richiesta === true, azione_descrizione: analisi.azione_descrizione || null,
+      urgenza: analisi.urgenza || null, analisi_contenuto: analisiContenuto,
+      dati_estratti: analisi.dati && typeof analisi.dati === 'object' ? analisi.dati : {},
+      soggetti: Array.isArray(analisi.soggetti) ? analisi.soggetti : [],
+      scadenze: Array.isArray(analisi.scadenze) ? analisi.scadenze : [], pratica: analisi.pratica || {},
+    } } });
+    const idDoc = esito && esito.documento_id;
+    // Persona e categoria scelte da Luca (documenti personali: carta d'identità, codice fiscale, ...)
+    if (idDoc && (req.persona || req.categoria)) {
+      sb_('documenti?id=eq.' + idDoc, { method: 'patch', body: {
+        persona: req.persona ? String(req.persona).slice(0, 120) : null,
+        categoria: req.categoria ? String(req.categoria).slice(0, 60) : null,
+      } });
+    }
+    return rispostaJson_({ ok: true, id: idDoc, titolo: analisi.titolo || nome, fascicolo: fasc });
+  } catch (err) {
+    if (file) { try { file.setTrashed(true); } catch (x) {} } // niente file orfani se la registrazione fallisce
+    logErrore_('caricamento app', err);
+    return rispostaJson_({ ok: false, errore: String(err && err.message || err).slice(0, 300) });
+  }
+}
+
+// Anteprima nell'app: solo file registrati nell'archivio (mai un file Drive qualsiasi).
+const ANTEPRIMA_MAX_BYTE = 15 * 1024 * 1024;
+function fileDelDocumento_(driveFileId) {
+  const id = String(driveFileId || '');
+  if (!/^[\w-]{10,}$/.test(id)) return { ok: false, errore: 'File non valido' };
+  if (!sb_('documenti?select=id&drive_file_id=eq.' + encodeURIComponent(id) + '&limit=1').length) {
+    return { ok: false, errore: 'File non presente in archivio' };
+  }
+  const blob = DriveApp.getFileById(id).getBlob();
+  const bytes = blob.getBytes();
+  if (bytes.length > ANTEPRIMA_MAX_BYTE) return { ok: false, errore: 'File troppo grande per l\'anteprima' };
+  return { ok: true, nome: blob.getName(), mime: blob.getContentType(), dati: Utilities.base64Encode(bytes) };
+}
+
+// Miniature per gli elenchi dell'app: solo file registrati in archivio, mai dei pazienti.
+const MINIATURE_MAX = 12;
+function miniature_(ids) {
+  const richiesti = (Array.isArray(ids) ? ids : []).map(String).filter(function (id) { return /^[\w-]{10,}$/.test(id); }).slice(0, MINIATURE_MAX);
+  if (!richiesti.length) return { ok: true, miniature: {} };
+  const ammessi = sb_('documenti?select=drive_file_id&fascicolo=neq.clinico_pazienti&drive_file_id=in.(' + richiesti.map(enc_).join(',') + ')')
+    .map(function (d) { return d.drive_file_id; });
+  const out = {};
+  ammessi.forEach(function (id) {
+    try {
+      const t = DriveApp.getFileById(id).getThumbnail();
+      out[id] = t ? 'data:' + (t.getContentType() || 'image/png') + ';base64,' + Utilities.base64Encode(t.getBytes()) : null;
+    } catch (e) { out[id] = null; }
+  });
+  return { ok: true, miniature: out };
+}
+
+/* =====================================================================
+ * CHAT POLIEDRON (dall'app Personal)
+ * Claude risponde sull'archivio usando strumenti di sola lettura. I documenti clinici dei
+ * pazienti non vengono mai passati al modello: sono esclusi da ogni risultato (si dice solo
+ * quanti sono). L'agenda dello studio non passa di qui.
+ * ===================================================================*/
+const CHAT_MAX_GIRI = 5;
+const CAMPI_CHAT = 'id,titolo,fascicolo,tipo_documento,data_documento,email_data,email_mittente,importo,riassunto,azione_richiesta,azione_descrizione,persona,categoria,pratica_id';
+const senzaClinici_ = (docs) => docs.filter(function (d) { return d.fascicolo !== 'clinico_pazienti'; });
+const breve_ = (d) => ({
+  id: d.id, titolo: d.titolo, fascicolo: d.fascicolo, tipo: d.tipo_documento, data: d.data_documento || String(d.email_data || '').slice(0, 10),
+  da: d.email_mittente, importo: d.importo, riassunto: d.riassunto, da_fare: d.azione_richiesta ? (d.azione_descrizione || true) : undefined,
+  persona: d.persona || undefined, categoria: d.categoria || undefined,
+});
+const enc_ = encodeURIComponent;
+
+const STRUMENTI_CHAT = [
+  { name: 'cerca_documenti', description: 'Cerca documenti nell\'archivio per parole (nome di un ente, fornitore, tipo di documento, numero) e/o per fascicolo. Restituisce titolo, data, importo e riassunto.',
+    input_schema: { type: 'object', properties: { testo: { type: 'string' }, fascicolo: { type: 'string', description: 'codice del fascicolo, facoltativo' }, limite: { type: 'integer' } } } },
+  { name: 'documento', description: 'Dettaglio di un documento per id: dati estratti, scadenze, pratica.',
+    input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
+  { name: 'scadenze', description: 'Pagamenti e scadenze. Filtri facoltativi: da/a (YYYY-MM-DD), solo_aperte (default true), testo nella descrizione.',
+    input_schema: { type: 'object', properties: { da: { type: 'string' }, a: { type: 'string' }, solo_aperte: { type: 'boolean' }, testo: { type: 'string' } } } },
+  { name: 'pratiche', description: 'Pratiche (vicende che raggruppano documenti), con numero di documenti e prossima scadenza. Filtro facoltativo sul titolo.',
+    input_schema: { type: 'object', properties: { testo: { type: 'string' }, solo_aperte: { type: 'boolean' } } } },
+  { name: 'riepilogo_archivio', description: 'Quanti documenti per fascicolo e quanti da gestire.', input_schema: { type: 'object', properties: {} } },
+];
+
+function strumentoChat_(nome, input) {
+  input = input || {};
+  if (nome === 'cerca_documenti') {
+    const lim = Math.min(Math.max(Number(input.limite) || 15, 1), 30);
+    const docs = sb_('rpc/cerca_documenti', { method: 'post', body: { q: String(input.testo || ''), fasc: input.fascicolo || null, lim: lim + 10 } });
+    const visibili = senzaClinici_(docs || []);
+    return { documenti: visibili.slice(0, lim).map(breve_), esclusi_clinici: (docs || []).length - visibili.length };
+  }
+  if (nome === 'documento') {
+    const d = sb_('documenti?select=' + CAMPI_CHAT + ',dati_estratti,scadenze(id,data,descrizione,importo,completata),pratica:pratiche(id,titolo,stato)&id=eq.' + enc_(String(input.id || '')))[0];
+    if (!d) return { errore: 'Documento non trovato' };
+    if (d.fascicolo === 'clinico_pazienti') return { errore: 'Documento clinico di un paziente: il contenuto non è consultabile dall\'assistente.' };
+    return Object.assign(breve_(d), { dati: d.dati_estratti, scadenze: d.scadenze, pratica: d.pratica });
+  }
+  if (nome === 'scadenze') {
+    let q = 'scadenze?select=id,data,descrizione,importo,completata,documento:documenti(id,titolo,fascicolo)&order=data.asc&limit=80';
+    if (input.solo_aperte !== false) q += '&completata=eq.false';
+    if (input.da) q += '&data=gte.' + enc_(input.da);
+    if (input.a) q += '&data=lte.' + enc_(input.a);
+    if (input.testo) q += '&descrizione=ilike.' + enc_('*' + String(input.testo).replace(/[*,()]/g, ' ') + '*');
+    return { scadenze: (sb_(q) || []).filter(function (s) { return !s.documento || s.documento.fascicolo !== 'clinico_pazienti'; }) };
+  }
+  if (nome === 'pratiche') {
+    let q = 'v_pratiche?select=id,titolo,fascicolo,stato,urgenza,n_documenti,prossima_scadenza,ultima_attivita&order=ultima_attivita.desc.nullslast&limit=60&fascicolo=neq.clinico_pazienti';
+    if (input.solo_aperte !== false) q += '&stato=in.(aperta,in_corso)';
+    if (input.testo) q += '&titolo=ilike.' + enc_('*' + String(input.testo).replace(/[*,()]/g, ' ') + '*');
+    return { pratiche: sb_(q) || [] };
+  }
+  if (nome === 'riepilogo_archivio') {
+    return { fascicoli: (sb_('v_conteggi_fascicoli?select=codice,nome,n,n_azioni&order=ordine') || []).filter(function (f) { return f.n > 0; }) };
+  }
+  return { errore: 'Strumento sconosciuto' };
+}
+
+function chiediPoliedron_(req) {
+  const domanda = String(req.domanda || '').slice(0, 2000).trim();
+  if (!domanda) return { ok: false, errore: 'Domanda vuota' };
+  const oggi = Utilities.formatDate(new Date(), CONFIG.FUSO, 'yyyy-MM-dd');
+  const system = [
+    'Sei Poliedron, l\'assistente dell\'archivio personale di Luca Simondi (odontoiatra, studi a Cuneo e Neive; famiglia: Martina e Giulia Simondi). Oggi è ' + oggi + '.',
+    'Rispondi in italiano, breve e concreto, usando SOLO i dati che ottieni con gli strumenti: se un dato non c\'è, dillo. Non inventare importi, date o nomi.',
+    'Quando citi un documento scrivi [[doc:ID|titolo breve]] con l\'id esatto, così Luca può aprirlo. Per i pagamenti indica data e importo.',
+    'Fascicoli: ' + Object.keys(FASCICOLI).join(', ') + '. I documenti clinici dei pazienti non sono consultabili: se servono, rimanda all\'app dello studio.',
+    'Non mandi email né messaggi: se Luca chiede di scrivere a qualcuno, prepara solo il testo come bozza.',
+  ].join('\n');
+  const messaggi = [];
+  (Array.isArray(req.storia) ? req.storia.slice(-6) : []).forEach(function (m) {
+    if (m && m.testo) messaggi.push({ role: m.ruolo === 'assistente' ? 'assistant' : 'user', content: String(m.testo).slice(0, 2000) });
+  });
+  let contesto = '';
+  if (req.documento_id) {
+    const d = strumentoChat_('documento', { id: req.documento_id });
+    contesto = d.errore ? '' : '\n\n[Documento aperto nell\'app]\n' + JSON.stringify(d).slice(0, 6000);
+  }
+  messaggi.push({ role: 'user', content: domanda + contesto });
+
+  for (let giro = 0; giro < CHAT_MAX_GIRI; giro++) {
+    const r = claudeMessaggi_({ model: CONFIG.MODELLO, max_tokens: 1500, system: system, tools: STRUMENTI_CHAT, messages: messaggi });
+    if (r.stop_reason !== 'tool_use') {
+      const testo = (r.content || []).filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('').trim();
+      return { ok: true, risposta: testo || 'Non ho trovato una risposta.' };
+    }
+    messaggi.push({ role: 'assistant', content: r.content });
+    messaggi.push({ role: 'user', content: r.content.filter(function (b) { return b.type === 'tool_use'; }).map(function (b) {
+      let out;
+      try { out = strumentoChat_(b.name, b.input); } catch (e) { out = { errore: String(e && e.message || e).slice(0, 200) }; }
+      return { type: 'tool_result', tool_use_id: b.id, content: JSON.stringify(out).slice(0, 20000) };
+    }) });
+  }
+  return { ok: true, risposta: 'Domanda troppo ampia: prova a restringerla (un fornitore, un periodo, un tipo di documento).' };
+}
+
+function claudeMessaggi_(body) {
+  const p = props_();
+  for (let tentativo = 1; tentativo <= 3; tentativo++) {
+    const res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
+      method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+      headers: { 'x-api-key': p.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' }, payload: JSON.stringify(body),
+    });
+    const code = res.getResponseCode();
+    if (code === 200) return JSON.parse(res.getContentText());
+    if (code === 429 || code >= 500) { Utilities.sleep(tentativo * 2000); continue; }
+    throw new Error('API Claude ' + code + ': ' + res.getContentText().slice(0, 300));
+  }
+  throw new Error('Assistente occupato, riprova tra poco.');
+}
+
+function utenteSupabase_(token) {
+  if (!token) return null;
+  const p = props_();
+  const res = UrlFetchApp.fetch(p.SUPABASE_URL + '/auth/v1/user', {
+    headers: { apikey: p.SUPABASE_KEY, Authorization: 'Bearer ' + token }, muteHttpExceptions: true,
+  });
+  return res.getResponseCode() === 200 ? JSON.parse(res.getContentText()) : null;
+}
+
+function rispostaJson_(o) {
+  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
+}
 
 /* Rimette in coda i thread finiti in errore (togli l'etichetta Archivio/Errore) */
 function riprovaErrori() {
