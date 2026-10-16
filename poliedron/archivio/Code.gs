@@ -63,8 +63,14 @@ const FASCICOLI = {
   clinico_pazienti: 'Clinico pazienti',
   servizi: 'Abbonamenti e servizi',
   acquisti: 'Acquisti',
+  formazione: 'Formazione e congressi',
+  personale_studio: 'Studio - personale e candidature',
+  corrispondenza: 'Corrispondenza personale',
+  foto_video: 'Foto e video',
+  pubblicita: 'Pubblicità e offerte',
   altro: 'Altro',
 };
+const RILEVANZE = ['alta', 'normale', 'bassa'];
 
 /* =====================================================================
  * INSTALLAZIONE — esegui una volta "setup" dall'editor
@@ -93,6 +99,8 @@ function setup() {
  * Arrivato al mese corrente resta lì e importa la posta nuova man mano.
  */
 function elabora() {
+  // Limite di spesa dell'API raggiunto: si aspetta (ricontrollo ogni ora), niente email scartate.
+  if (apiInPausa_()) return;
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(1000)) return;
   const inizio = Date.now();
@@ -103,13 +111,18 @@ function elabora() {
     const pratiche = praticheAperte_();
     const meseOggi = Utilities.formatDate(new Date(), CONFIG.FUSO, 'yyyy-MM');
 
+    // Riordino dell'archivio già importato (POL-VITA-007): un lotto a ogni giro, anche mentre lo
+    // storico è ancora in importazione; altri lotti in fondo se avanza tempo.
+    try { riordinaLotto_(); } catch (e) { if (e.message !== 'RIPROVA') logErrore_('riordino', e); }
+    if (apiInPausa_()) return;
+
     // Recupero: thread di mesi già superati dal cursore e rimessi in coda con riprovaErrori
     const cursore = sp.getProperty('LOTTO_MESE');
     if (cursore) {
       const prima = Math.floor(new Date(+cursore.slice(0, 4), +cursore.slice(5, 7) - 1, 1).getTime() / 1000);
       const recupero = GmailApp.search(CONFIG.QUERY_BASE + ' before:' + prima +
         ' -label:' + etichettaQuery_(CONFIG.ETICHETTA_FATTO) +
-        ' -label:' + etichettaQuery_(CONFIG.ETICHETTA_ERRORE), 0, 20).reverse();
+        ' -label:' + etichettaQuery_(CONFIG.ETICHETTA_ERRORE), 0, 40).reverse();
       for (let i = 0; i < recupero.length; i++) {
         const t = recupero[i];
         if (Date.now() - inizio > CONFIG.TEMPO_MAX_MS) return;
@@ -160,6 +173,10 @@ function elabora() {
       }
       salvaStatLotto_(mese, stat);
       if (interrotto) break;
+    }
+    // Tempo avanzato: riordina i documenti già in archivio (POL-VITA-007), a piccoli lotti.
+    while (Date.now() - inizio < CONFIG.TEMPO_MAX_MS - 60000) {
+      if (!riordinaLotto_()) break;
     }
   } finally {
     lock.releaseLock();
@@ -322,6 +339,8 @@ function elaboraAllegato_(m, a, pratiche) {
       },
     });
 
+    completaCatalogo_(esito && esito.documento_id, analisi, fasc);
+
     // Rende subito collegabile una pratica appena creata ai documenti successivi dello stesso giro
     if (esito && esito.pratica_id && analisi.pratica && analisi.pratica.nuova_titolo &&
         !pratiche.some(function (p) { return p.id === esito.pratica_id; })) {
@@ -448,6 +467,8 @@ function analizza_(meta, nome, contenuto, pratiche) {
     '  "urgenza": "bassa | media | alta",',
     '  "pratica": {"id_esistente": "uuid dall\'elenco oppure null", "nuova_titolo": "titolo oppure null"},',
     '  "tag": ["max 6 parole chiave minuscole"],',
+    '  "ente": "chi ha emesso o riguarda il documento, nome breve e sempre uguale (es. \\"Enel Energia\\", \\"Agenzia delle Entrate\\", \\"Intesa Sanpaolo\\", \\"Comune di Cuneo\\"), oppure null",',
+    '  "rilevanza": "alta | normale | bassa",',
     '  "dati": [{"campo": "nome del campo", "valore": "valore"}] con i campi utili estratti: numero documento, codice cliente, POD/PDR, IBAN del beneficiario, foglio/particella catastale, numero e scadenza del documento d\'identità, partita IVA, protocollo, ecc.',
     '}',
     '',
@@ -459,7 +480,14 @@ function analizza_(meta, nome, contenuto, pratiche) {
     '- Urgenza alta: diffide, atti legali, preavvisi di sospensione, recupero crediti, scadenze entro 7 giorni da oggi.',
     '- Se il documento è più vecchio di 12 mesi, azione_richiesta è true solo se il contenuto indica una questione rimasta aperta.',
     '- Scadenze: solo date reali presenti nel documento (pagamenti, rinnovi, termini legali, scadenza di documenti d\'identità).',
-    '- Materiale pubblicitario: fascicolo "altro" con tag "promozionale".',
+    '- Pubblicità, volantini, listini, newsletter, offerte commerciali non richieste: fascicolo "pubblicita", rilevanza bassa.',
+    '- Corsi ECM, congressi, materiale didattico, tesi e articoli scientifici: fascicolo "formazione".',
+    '- Curriculum, candidature e documenti del personale dello studio: fascicolo "personale_studio".',
+    '- Foto e video personali senza valore di documento: fascicolo "foto_video", rilevanza bassa.',
+    '- Email personali, auguri, catene, presentazioni inoltrate: fascicolo "corrispondenza", rilevanza bassa.',
+    '- "altro" solo se nessun fascicolo va bene.',
+    '- Rilevanza alta: documenti d\'identità, contratti, atti, rogiti, polizze, diffide, avvisi fiscali, certificati, estratti conto, tutto ciò che va conservato. Bassa: pubblicità, foto, catene, file senza contenuto utile. Il resto normale.',
+    '- Titolo nel formato "Tipo – Ente – riferimento" (es. "Fattura – Enel Energia – settembre 2024, via Roma 1").',
     '- Combustibili per il riscaldamento (pellet, legna, gasolio, GPL, cippato) e manutenzione di caldaie e stufe: fascicolo "riscaldamento". Le bollette di luce, gas di rete e acqua restano in "utenze".',
     '- Scrivi in italiano.',
   ].join('\n');
@@ -497,7 +525,7 @@ const SCHEMA_ANALISI = {
   type: 'object',
   additionalProperties: false,
   required: ['fascicolo', 'tipo_documento', 'titolo', 'riassunto', 'data_documento', 'importo', 'soggetti',
-    'scadenze', 'azione_richiesta', 'azione_descrizione', 'urgenza', 'pratica', 'tag', 'dati'],
+    'scadenze', 'azione_richiesta', 'azione_descrizione', 'urgenza', 'pratica', 'tag', 'dati', 'ente', 'rilevanza'],
   properties: {
     fascicolo: { type: 'string' },
     tipo_documento: { type: 'string' },
@@ -515,6 +543,8 @@ const SCHEMA_ANALISI = {
     pratica: { type: 'object', additionalProperties: false, required: ['id_esistente', 'nuova_titolo'],
       properties: { id_esistente: NULLABILE_('string'), nuova_titolo: NULLABILE_('string') } },
     tag: { type: 'array', items: { type: 'string' } },
+    ente: NULLABILE_('string'),
+    rilevanza: { type: 'string', enum: RILEVANZE },
     dati: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['campo', 'valore'],
       properties: { campo: { type: 'string' }, valore: { type: 'string' } } } },
   },
@@ -547,9 +577,24 @@ function claude_(system, content, schema) {
       continue;
     }
     if (code === 429 || code >= 500) { Utilities.sleep(tentativo * 8000); continue; }
+    // Limite di spesa o credito esaurito: non è colpa dell'email. Pausa e si riprova più tardi,
+    // senza segnare il thread come errore (prima finivano in Archivio/Errore a centinaia).
+    if (LIMITE_API.test(res.getContentText())) { pausaApi_(res.getContentText()); throw new Error('RIPROVA'); }
     throw new Error('API Claude ' + code + ': ' + res.getContentText().slice(0, 500));
   }
   throw new Error('RIPROVA'); // API sovraccarica: si riprova al giro successivo
+}
+
+const LIMITE_API = /usage limits|credit balance|spend limit|billing/i;
+const PAUSA_API_MS = 60 * 60 * 1000;
+function pausaApi_(testo) {
+  const sp = PropertiesService.getScriptProperties();
+  const gia = Number(sp.getProperty('API_PAUSA_FINO') || 0) > Date.now();
+  sp.setProperty('API_PAUSA_FINO', String(Date.now() + PAUSA_API_MS));
+  if (!gia) logErrore_('API Claude in pausa (limite di spesa)', new Error(String(testo).slice(0, 300)));
+}
+function apiInPausa_() {
+  return Number(PropertiesService.getScriptProperties().getProperty('API_PAUSA_FINO') || 0) > Date.now();
 }
 
 function parseJson_(testo) {
@@ -753,6 +798,7 @@ function doPost(e) {
       scadenze: Array.isArray(analisi.scadenze) ? analisi.scadenze : [], pratica: analisi.pratica || {},
     } } });
     const idDoc = esito && esito.documento_id;
+    completaCatalogo_(idDoc, analisi, fasc);
     // Persona e categoria scelte da Luca (documenti personali: carta d'identità, codice fiscale, ...)
     if (idDoc && (req.persona || req.categoria)) {
       sb_('documenti?id=eq.' + idDoc, { method: 'patch', body: {
@@ -797,6 +843,115 @@ function miniature_(ids) {
     } catch (e) { out[id] = null; }
   });
   return { ok: true, miniature: out };
+}
+
+/* =====================================================================
+ * CATALOGO MIGLIORE (POL-VITA-007)
+ * Ogni documento ha un ente (chi lo ha emesso o chi riguarda) e una rilevanza: le cose poco utili
+ * (pubblicità, foto, catene) si nascondono nell'app. Il riordino rilegge SOLO i dati già in
+ * archivio (titolo, riassunto, mittente, oggetto, nome del file), mai i file, e mai i documenti
+ * clinici dei pazienti. Conserva titolo e fascicolo di prima in titolo_originale e
+ * fascicolo_originale. Gira a piccoli lotti in coda a "elabora", quando avanza tempo.
+ * ===================================================================*/
+const RIORDINO_LOTTO = 30;
+
+function completaCatalogo_(idDoc, analisi, fasc) {
+  if (!idDoc || !analisi) return;
+  try {
+    sb_('documenti?id=eq.' + idDoc, { method: 'patch', body: {
+      ente: analisi.ente ? String(analisi.ente).slice(0, 120) : null,
+      rilevanza: fasc === 'clinico_pazienti' ? 'alta' : (RILEVANZE.indexOf(analisi.rilevanza) >= 0 ? analisi.rilevanza : 'normale'),
+      riordinato_il: new Date().toISOString(),
+    } });
+  } catch (e) { logErrore_('catalogo ' + idDoc, e); }
+}
+
+const SCHEMA_RIORDINO = {
+  type: 'object', additionalProperties: false, required: ['documenti'],
+  properties: { documenti: { type: 'array', items: {
+    type: 'object', additionalProperties: false,
+    required: ['id', 'fascicolo', 'tipo_documento', 'titolo', 'ente', 'rilevanza', 'tag'],
+    properties: {
+      id: { type: 'string' }, fascicolo: { type: 'string' }, tipo_documento: { type: 'string' }, titolo: { type: 'string' },
+      ente: { type: ['string', 'null'] }, rilevanza: { type: 'string', enum: RILEVANZE }, tag: { type: 'array', items: { type: 'string' } },
+    },
+  } } },
+};
+
+// Un lotto di documenti da riordinare; restituisce false quando non ce ne sono più.
+function riordinaLotto_() {
+  const docs = sb_('documenti?select=id,fascicolo,tipo_documento,titolo,riassunto,email_mittente,email_oggetto,nome_file_originale,mime_type,data_documento,email_data,importo,tag,gmail_message_id,titolo_originale,fascicolo_originale' +
+    '&riordinato_il=is.null&order=email_data.desc.nullslast&limit=' + RIORDINO_LOTTO);
+  if (!docs.length) return false;
+  const ora = new Date().toISOString();
+  // I clinici non vanno al modello: si segnano come riordinati così come sono.
+  const clinici = docs.filter(function (d) { return d.fascicolo === 'clinico_pazienti'; });
+  clinici.forEach(function (d) { sb_('documenti?id=eq.' + d.id, { method: 'patch', body: { riordinato_il: ora, rilevanza: 'alta' } }); });
+  const daRileggere = docs.filter(function (d) { return d.fascicolo !== 'clinico_pazienti'; });
+  if (!daRileggere.length) return true;
+
+  const elencoFascicoli = Object.keys(FASCICOLI).filter(function (k) { return k !== 'clinico_pazienti'; })
+    .map(function (k) { return k + ' = ' + FASCICOLI[k]; }).join('\n');
+  const system = [
+    'Sei l\'archivista personale di Luca Simondi, odontoiatra con studi a Cuneo e Neive. Riordini il suo archivio:',
+    'per ogni documento ricevi i dati già estratti e restituisci fascicolo, tipo, titolo, ente, rilevanza e tag corretti.',
+    'Fascicoli ammessi (codice = nome):', elencoFascicoli,
+    'Tipi ammessi: fattura, ricevuta, scontrino, estratto conto, contratto, preventivo, offerta, polizza, atto, rogito, visura, diffida, sollecito, avviso di pagamento, F24, dichiarazione, certificato, documento di identità, referto, prescrizione, attestato, programma corso, curriculum, comunicazione, newsletter, pubblicità, foto, video, presentazione, modulo, altro.',
+    'Regole:',
+    '- Titolo nel formato "Tipo – Ente – riferimento" (numero, mese e anno, immobile, targa, persona), al massimo 80 caratteri, senza nomi di file.',
+    '- Ente: chi ha emesso il documento o chi riguarda, nome breve e sempre scritto allo stesso modo (es. "Enel Energia", "Agenzia delle Entrate", "Comune di Cuneo", "OPT Parker Store"). null se è un privato senza importanza.',
+    '- Pubblicità, volantini, listini, offerte non richieste, newsletter → "pubblicita", rilevanza bassa.',
+    '- Corsi ECM, congressi, tesi, materiale scientifico → "formazione". Curriculum e candidature → "personale_studio".',
+    '- Foto e video personali → "foto_video", rilevanza bassa. Email personali, auguri, catene, presentazioni inoltrate → "corrispondenza", rilevanza bassa.',
+    '- Annunci immobiliari o di barche ricevuti come pubblicità → "pubblicita"; un rogito o un preventivo richiesto resta nel suo fascicolo.',
+    '- Non spostare in un altro fascicolo un documento già classificato bene. "altro" solo se nessuno va bene.',
+    '- Rilevanza alta: identità, contratti, atti, rogiti, polizze, diffide, fiscale, certificati, estratti conto, garanzie. Bassa: pubblicità, foto, catene, file vuoti. Il resto normale.',
+    '- tag: al massimo 5 parole chiave minuscole utili per cercare.',
+    '- Usa solo i dati ricevuti, non inventare. Restituisci tutti gli id ricevuti. Scrivi in italiano.',
+  ].join('\n');
+  const righe = daRileggere.map(function (d) {
+    return JSON.stringify({ id: d.id, fascicolo: d.fascicolo, tipo: d.tipo_documento, titolo: d.titolo_originale || d.titolo,
+      riassunto: String(d.riassunto || '').slice(0, 300), mittente: d.email_mittente, oggetto: d.email_oggetto,
+      file: d.nome_file_originale, mime: d.mime_type, data: d.data_documento || String(d.email_data || '').slice(0, 10), importo: d.importo, tag: d.tag,
+      caricato_da_luca: String(d.gmail_message_id || '').indexOf('caricato:') === 0 });
+  }).join('\n');
+  let risposta;
+  try {
+    risposta = parseJson_(claude_(system, [{ type: 'text', text: 'Documenti da riordinare (uno per riga, JSON):\n' + righe }], SCHEMA_RIORDINO));
+  } catch (e) {
+    if (e.message !== 'RIPROVA') logErrore_('riordino', e);
+    return false; // riprova al prossimo giro
+  }
+  const perId = {};
+  (risposta && risposta.documenti || []).forEach(function (r) { if (r && r.id) perId[r.id] = r; });
+  daRileggere.forEach(function (d) {
+    const r = perId[d.id];
+    const corpo = { riordinato_il: ora };
+    if (r) {
+      const caricato = String(d.gmail_message_id || '').indexOf('caricato:') === 0;
+      // Mai fuori dal clinico, mai dentro dal riordino; i caricati da Luca restano dove li ha messi.
+      const fasc = FASCICOLI[r.fascicolo] && r.fascicolo !== 'clinico_pazienti' && !caricato ? r.fascicolo : d.fascicolo;
+      corpo.fascicolo = fasc;
+      if (d.fascicolo_originale == null) corpo.fascicolo_originale = d.fascicolo;
+      if (r.titolo && String(r.titolo).trim()) {
+        corpo.titolo = String(r.titolo).trim().slice(0, 120);
+        if (d.titolo_originale == null) corpo.titolo_originale = d.titolo;
+      }
+      if (r.tipo_documento) corpo.tipo_documento = String(r.tipo_documento).slice(0, 60);
+      corpo.ente = r.ente ? String(r.ente).trim().slice(0, 120) : null;
+      corpo.rilevanza = RILEVANZE.indexOf(r.rilevanza) >= 0 ? r.rilevanza : 'normale';
+      const tag = (Array.isArray(r.tag) ? r.tag : []).map(function (t) { return String(t).toLowerCase().slice(0, 30); }).slice(0, 5);
+      const speciali = (d.tag || []).filter(function (t) { return t === 'portafoglio'; });
+      corpo.tag = speciali.concat(tag.filter(function (t) { return speciali.indexOf(t) < 0; }));
+    }
+    try { sb_('documenti?id=eq.' + d.id, { method: 'patch', body: corpo }); } catch (e) { logErrore_('riordino ' + d.id, e); }
+  });
+  return true;
+}
+
+// Da eseguire a mano dall'editor per ripartire da capo (es. dopo aver cambiato le regole).
+function riordinaDaCapo() {
+  sb_('documenti?riordinato_il=not.is.null', { method: 'patch', body: { riordinato_il: null } });
 }
 
 /* =====================================================================
@@ -909,6 +1064,7 @@ function claudeMessaggi_(body) {
     const code = res.getResponseCode();
     if (code === 200) return JSON.parse(res.getContentText());
     if (code === 429 || code >= 500) { Utilities.sleep(tentativo * 2000); continue; }
+    if (LIMITE_API.test(res.getContentText())) throw new Error('Poliedron AI è ferma: è stato raggiunto il limite di spesa dell\'API di Claude.');
     throw new Error('API Claude ' + code + ': ' + res.getContentText().slice(0, 300));
   }
   throw new Error('Assistente occupato, riprova tra poco.');
@@ -927,8 +1083,20 @@ function rispostaJson_(o) {
   return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
 }
 
-/* Rimette in coda i thread finiti in errore (togli l'etichetta Archivio/Errore) */
+/* Rimette in coda TUTTI i thread finiti in errore (toglie l'etichetta Archivio/Errore, a blocchi di
+ * 100 finché ce ne sono o finché c'è tempo; se ne restano, basta eseguirla di nuovo). Toglie
+ * anche la pausa dell'API, da usare dopo aver alzato il limite di spesa. */
 function riprovaErrori() {
+  PropertiesService.getScriptProperties().deleteProperty('API_PAUSA_FINO');
   const errore = etichetta_(CONFIG.ETICHETTA_ERRORE);
-  errore.getThreads(0, 100).forEach(function (t) { t.removeLabel(errore); });
+  const inizio = Date.now();
+  let totale = 0;
+  while (Date.now() - inizio < 4 * 60 * 1000) {
+    const threads = errore.getThreads(0, 100);
+    if (!threads.length) break;
+    threads.forEach(function (t) { t.removeLabel(errore); });
+    totale += threads.length;
+  }
+  console.log('Rimessi in coda: ' + totale);
+  return totale;
 }

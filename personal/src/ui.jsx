@@ -2,7 +2,7 @@
 import { archivioDb } from './lib/supabasePersonal.js';
 import { eCaricato } from './lib/archivio.js';
 import { euro } from './lib/coreArchivio.js';
-import { IconaFreccia } from './Icone.jsx';
+import { IconaFreccia, IconaPratiche } from './Icone.jsx';
 import { Miniatura } from './Miniatura.jsx';
 
 /* ---------- utilità ---------- */
@@ -123,6 +123,26 @@ export function Conferma({ testo, etichetta = 'Elimina', onSi, onNo }) {
       <button className="pp-bottone pp-bottone-rosso" onClick={onSi}>{etichetta}</button>
       <button className="pp-bottone pp-bottone-chiaro" onClick={onNo}>Annulla</button>
     </div>
+  );
+}
+
+
+export function ElencoPratiche({ elenco, onApri }) {
+  if (!elenco.length) return <Vuoto>Nessuna pratica.</Vuoto>;
+  return (
+    <Gruppo>
+      {elenco.map((p) => (
+        <button key={p.id} className="pp-riga" onClick={() => onApri(p)}>
+          <span className="pp-riga-icona" style={{ '--c': colore(p.fascicolo) }}><IconaPratiche size={18} /></span>
+          <span className="pp-riga-testo">
+            <span className="pp-riga-titolo">{p.titolo}</span>
+            <span className="pp-riga-meta">{[`${p.n_documenti} documenti`, p.prossima_scadenza && `scade ${dataBreve(p.prossima_scadenza)}`, p.stato !== 'aperta' && p.stato].filter(Boolean).join(' · ')}</span>
+          </span>
+          {p.urgenza === 'alta' && <span className="pp-pallino pp-alta" aria-label="Urgente" />}
+          <IconaFreccia size={16} />
+        </button>
+      ))}
+    </Gruppo>
   );
 }
 

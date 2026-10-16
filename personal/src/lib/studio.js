@@ -50,7 +50,8 @@ export async function appuntamentiTra(da, a) {
   const ids = [...new Set(app.map((x) => x.paziente_id).filter(Boolean))];
   const pazienti = ids.length ? esito(await studioDb.from('patients').select('id, nome, cognome').in('id', ids)) : [];
   const nome = new Map(pazienti.map((p) => [p.id, [p.nome, p.cognome].filter(Boolean).join(' ')]));
-  return app.filter((x) => x.stato !== 'annullato').map((x) => ({ ...x, paziente: nome.get(x.paziente_id) || null }));
+  const cognome = new Map(pazienti.map((p) => [p.id, p.cognome || p.nome || null]));
+  return app.filter((x) => x.stato !== 'annullato').map((x) => ({ ...x, paziente: nome.get(x.paziente_id) || null, cognome: cognome.get(x.paziente_id) || null }));
 }
 
 export async function tipiAppuntamento() {

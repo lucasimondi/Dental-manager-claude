@@ -3,7 +3,7 @@
 import { capisciRichiesta, riepilogoDebito } from './coreArchivio.js';
 import { filtroSezione } from './impostazioni.js';
 
-const CAMPI_DOC = 'id, titolo, riassunto, fascicolo, tipo_documento, data_documento, email_data, email_oggetto, email_mittente, importo, azione_richiesta, azione_descrizione, urgenza, drive_url, drive_file_id, nome_file_originale, mime_type, pratica_id, tag, gmail_message_id, creato_il, persona, categoria';
+const CAMPI_DOC = 'id, titolo, riassunto, fascicolo, tipo_documento, data_documento, email_data, email_oggetto, email_mittente, importo, azione_richiesta, azione_descrizione, urgenza, drive_url, drive_file_id, nome_file_originale, mime_type, pratica_id, tag, gmail_message_id, creato_il, persona, categoria, ente, rilevanza';
 const CAMPI_SCADENZA = `id, data, descrizione, importo, completata, documento_id, pratica_id,
   documento:documenti(id, titolo, drive_url, fascicolo), pratica:pratiche(id, titolo)`;
 
@@ -182,10 +182,20 @@ export async function eliminaScadenza(db, id) {
   return esito(await db.from('scadenze').delete().eq('id', id).select('id'));
 }
 
+// Campi che Luca può cambiare dall'app, uno per uno o su più documenti insieme.
+const CAMPI_MODIFICABILI = ['persona', 'categoria', 'fascicolo', 'ente', 'rilevanza', 'titolo'];
+function pulisciCampo(k, v) {
+  const t = String(v ?? '').trim();
+  if (k === 'fascicolo') return t || 'altro';
+  if (k === 'rilevanza') return ['alta', 'normale', 'bassa'].includes(t) ? t : null;
+  if (k === 'titolo') return t.slice(0, 160) || 'Documento';
+  return t.slice(0, 120) || null;
+}
+
 export async function aggiornaDocumento(db, id, campi) {
   const consentiti = {};
-  for (const k of ['persona', 'categoria', 'fascicolo']) if (k in campi) consentiti[k] = campi[k] || (k === 'fascicolo' ? 'altro' : null);
-  return esito(await db.from('documenti').update(consentiti).eq('id', id).select('id, persona, categoria, fascicolo').single());
+  for (const k of CAMPI_MODIFICABILI) if (k in campi) consentiti[k] = pulisciCampo(k, campi[k]);
+  return esito(await db.from('documenti').update(consentiti).eq('id', id).select('id, persona, categoria, fascicolo, ente, rilevanza, titolo').single());
 }
 
 export async function documentiSezione(db, sezione) {
@@ -246,4 +256,57 @@ export async function praticaCompleta(db, id) {
     db.from('scadenze').select(CAMPI_SCADENZA).eq('pratica_id', id).order('data', { ascending: true }).then(esito),
   ]);
   return { ...(pratica || {}), scadenze };
+}
+
+/* ---------- POL-VITA-007: ricerca con filtri, enti, azioni su più documenti ---------- */
+const parolaSicura = (w) => String(w).replace(/[",()*\\.:]/g, ' ').trim();
+
+// Ricerca immediata: ogni parola deve comparire in titolo, ente, riassunto, tipo, mittente o nome
+// del file. Filtri facoltativi; le cose "poco utili" (rilevanza bassa) si vedono solo se chieste.
+export async function cercaArchivio(db, { testo = '', fascicolo, ente, anno, tipo, persona, anchePocoUtili = false, ordine = 'recenti', limite = 120 } = {}) {
+  let q = db.from('documenti').select(CAMPI_DOC);
+  for (const w of parolaSicura(testo).split(/\s+/).filter((x) => x.length > 1).slice(0, 6)) {
+    const p = `*${w}*`;
+    q = q.or(`titolo.ilike.${p},ente.ilike.${p},riassunto.ilike.${p},tipo_documento.ilike.${p},email_mittente.ilike.${p},nome_file_originale.ilike.${p},persona.ilike.${p}`);
+  }
+  if (fascicolo) q = q.eq('fascicolo', fascicolo);
+  if (ente) q = q.eq('ente', ente);
+  if (tipo) q = q.eq('tipo_documento', tipo);
+  if (persona) q = q.eq('persona', persona);
+  if (anno) {
+    const a = Number(anno);
+    q = q.or(`and(data_documento.gte.${a}-01-01,data_documento.lte.${a}-12-31),and(data_documento.is.null,email_data.gte.${a}-01-01,email_data.lt.${a + 1}-01-01)`);
+  }
+  if (!anchePocoUtili && !fascicolo && !ente) q = q.or('rilevanza.is.null,rilevanza.neq.bassa');
+  q = ordine === 'titolo' ? q.order('titolo', { ascending: true }) : q.order('email_data', { ascending: false, nullsFirst: false });
+  return esito(await q.limit(limite));
+}
+
+export async function enti(db) {
+  return esito(await db.from('v_enti').select('ente, n, ultimo, fascicolo').order('n', { ascending: false }).limit(500));
+}
+
+// Stessa modifica su più documenti in una sola richiesta.
+export async function aggiornaDocumenti(db, ids, campi) {
+  if (!ids.length) return [];
+  const consentiti = {};
+  for (const k of CAMPI_MODIFICABILI) if (k in campi && k !== 'titolo') consentiti[k] = pulisciCampo(k, campi[k]);
+  if (!Object.keys(consentiti).length) return [];
+  return esito(await db.from('documenti').update(consentiti).in('id', ids).select('id'));
+}
+
+// Personali: aggiunge o toglie il tag a più documenti, senza toccare gli altri tag.
+export async function portafoglioDocumenti(db, docs, dentro) {
+  for (const d of docs) await impostaPortafoglio(db, d, dentro);
+}
+
+// Eliminazione di più documenti, uno alla volta (stessa funzione del singolo); i file su Drive restano.
+export async function eliminaDocumenti(db, ids, avanzamento = () => {}) {
+  let fatti = 0;
+  for (const id of ids) {
+    await eliminaDocumento(db, id);
+    fatti += 1;
+    avanzamento(fatti, ids.length);
+  }
+  return fatti;
 }
