@@ -721,3 +721,25 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; d
   .pp-scheda { overflow: hidden; }
   .pp-scheda span { overflow: hidden; max-width: 100%; text-overflow: ellipsis; }
 }
+
+/* POL-VITA-010 — iPhone: agenda leggibile, senza spazi inutili. */
+.pp-contenuto-agenda { padding-top: calc(env(safe-area-inset-top) + 8px); }
+.pp-testata-agenda .pp-testata-azioni { top: calc(env(safe-area-inset-top) + 2px); }
+.pp-contenuto-agenda .ag-pagina { margin-inline: 0; width: 100%; }
+.pp-contenuto-agenda .ag-barra {
+  padding: 0 58px 4px 8px; min-height: 44px;
+}
+.pp-contenuto-agenda .ag-mese { max-width: 42vw; }
+.pp-contenuto-agenda .ag-picker-pillola { max-width: 31vw; }
+.pp-contenuto-agenda .ag-striscia { margin-bottom: 0; }
+.pp-app:has(.pp-contenuto-agenda) .pp-fab {
+  width: 48px; height: 48px; border-radius: 16px;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: calc(98px + env(safe-area-inset-bottom));
+}
+@media (max-width: 390px) {
+  .pp-contenuto-agenda .ag-barra { padding-right: 54px; }
+  .pp-contenuto-agenda .ag-mese { max-width: 39vw; }
+  .pp-schede { left: 6px; right: 6px; }
+  .pp-scheda { font-size: 9px; }
+}
