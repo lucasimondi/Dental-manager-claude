@@ -211,7 +211,7 @@ export function PaginaEvento({ evento: iniziale = {}, ctx, chiudi }) {
       <div className="pp-campo"><span>Etichetta</span>
         <div className="pp-etichette">
           {etichette.map((e) => (
-            <button key={e.id} type="button" className={`pp-etichetta-scelta${(ev.tipo === e.id || ev.tipo === e.nome) ? ' attiva' : ''}`} style={{ '--c': e.colore }} onClick={() => setEv((x) => ({ ...x, tipo: e.id, colore: '' }))}>{e.nome}</button>
+            <button key={e.id} type="button" className={`pp-etichetta-scelta${(ev.tipo === e.id || ev.tipo === e.nome) ? ' attiva' : ''}`} style={{ '--c': e.colore }} onClick={() => setEv((x) => ({ ...x, tipo: e.id, etichetta: e.id, colore: '' }))}>{e.nome}</button>
           ))}
         </div>
       </div>
