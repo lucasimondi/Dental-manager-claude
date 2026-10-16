@@ -2,29 +2,10 @@ import { layoutAppointments } from '../../shared/agenda/geometry.js';
 import { euro } from './lib/coreArchivio.js';
 // POL-VITA-010: Personal adapter; original presentation is owned by shared/agenda.
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, AppointmentBlock, useSlotHeight, AgendaSwitch, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState, useGridSwipe } from '../../shared/agenda/AgendaPresentation.jsx';
+import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, AppointmentBlock, EventBlock, useSlotHeight, AgendaSwitch, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState, useGridSwipe } from '../../shared/agenda/AgendaPresentation.jsx';
 import { getVisibleWeekDays } from '../../shared/agenda/visibleDays.js';
 import { daIso, piuGiorni, oggi, coloreEvento, nomeEtichetta, elementiDelGiorno, giorniSettimana } from './lib/agenda.js';
 export { ViewPicker };
-
-function EventoPersonaleBlock({ evento, top, height, co, onClick }) {
-  const inizio = (evento.ora_inizio || '').slice(0, 5);
-  const fine = (evento.ora_fine || '').slice(0, 5);
-  const titolo = evento.titolo || 'Evento';
-  const descrizione = evento.note || '';
-  return (
-    <button
-      type="button"
-      className="personal-agenda-event-block"
-      title={[inizio && fine ? inizio + '–' + fine : inizio, titolo, descrizione].filter(Boolean).join(' · ')}
-      onClick={onClick}
-      style={{ top, height, '--c': co, background: co + '28', border: '1.5px dashed ' + co + 'AA' }}
-    >
-      <span className="personal-agenda-event-heading">{inizio ? inizio + ' ' : ''}{titolo}</span>
-      {height > 36 && descrizione && <span className="personal-agenda-event-note">{descrizione}</span>}
-    </button>
-  );
-}
 
 export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMese, dati, ctx, etichette, coloriTipi }) {
   const [localMonth, setLocalMonth] = useState(giorno);
@@ -85,7 +66,7 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
         const top = (x.inizio - oraInizio * 60) / slotMin * effectiveSlotH;
         const height = Math.max((x.fine - x.inizio) / slotMin * effectiveSlotH, effectiveSlotH * .5);
         if (top + height < 0 || top >= slots.length * effectiveSlotH) return null;
-        return <EventoPersonaleBlock key={x.id} evento={x.dato} top={top} height={height} co={coloreEvento(x.dato, etichette)} onClick={() => ctx.apri({ tipo: 'evento', evento: x.dato })} />;
+        return <EventBlock key={x.id} title={x.dato.titolo} startTime={(x.dato.ora_inizio || '').slice(0, 5)} description={x.dato.note || ''} top={top} height={height} co={coloreEvento(x.dato, etichette)} onClick={() => ctx.apri({ tipo: 'evento', evento: x.dato })} />;
       })}
       {layoutAppointments(dati.appuntamenti.filter(a => a.data === ds).sort((a,b) => a.ora.localeCompare(b.ora))).map(x => {
         const a = x.a, top = (x.start - oraInizio * 60) / slotMin * effectiveSlotH;
