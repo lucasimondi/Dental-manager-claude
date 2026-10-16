@@ -62,7 +62,7 @@ const CAMPI_IMPEGNO = 'id, titolo, tipo, etichetta, colore, data_inizio, data_fi
 
 export async function impegniTra(da, a) {
   return esito(await studioDb.from('impegni_personali').select(CAMPI_IMPEGNO)
-    .lte('data_inizio', a).gte('data_fine', da).order('data_inizio'));
+    .lte('data_inizio', a).gte('data_fine', da).order('data_inizio')).map((e) => ({ ...e, tipo: e.etichetta || e.tipo }));
 }
 
 export async function salvaImpegno(evento) {
