@@ -660,3 +660,26 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; d
 .pp-conferma-drive { width: 100%; display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border-radius: 10px; background: var(--pp-superficie); font-size: 14px; }
 .pp-conferma-drive input { width: 22px; height: 22px; flex-shrink: 0; margin: 1px 0 0; accent-color: var(--pp-rosso); }
 .pp-conferma-drive small { color: var(--pp-grigio); }
+
+/* POL-VITA-008 — floating dock, full-width agenda and scroll behind dock. */
+.pp-schede {
+  left: max(10px, env(safe-area-inset-left));
+  right: max(10px, env(safe-area-inset-right));
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  width: auto;
+  max-width: 620px;
+  height: 66px;
+  padding: 5px 7px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  border: 1px solid var(--pp-linea);
+  border-radius: 23px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.13);
+  background: color-mix(in srgb, var(--pp-superficie) 82%, transparent);
+}
+.pp-scheda { min-width: 0; min-height: 48px; border-radius: 15px; font-size: 10px; }
+.pp-scheda-poliedron { color: var(--pp-blu); }
+.pp-contenuto-agenda { padding-left: 0; padding-right: 0; padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+.pp-contenuto-agenda .ag-barra { padding-left: 10px; padding-right: 10px; }
+.pp-contenuto-agenda .pp-agenda-elenco { padding-left: 12px; padding-right: 12px; }
+.pp-fab { bottom: calc(88px + env(safe-area-inset-bottom)); }
+@media (max-width: 375px) { .pp-schede { left: 6px; right: 6px; padding: 4px; } .pp-scheda { font-size: 9px; } }
