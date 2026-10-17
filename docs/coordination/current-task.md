@@ -56,6 +56,12 @@
 - VALIDATION: Node 1,270/1,270; main and standalone Personal builds; comparative Chromium/WebKit mobile matrix, screenshots and pixel checks in `docs/validation/POL-VITA-010/`.
 - DATABASE/DEPLOYMENT: none. Immutable stable checkpoint preserved.
 - STATUS: WAITING_PRODUCT_OWNER — dedicated PR for review, no merge authorized.
+# Current task — App bloccata: pagina che non scorre dopo due finestre aperte (2026-10-17)
+- OWNER: CLAUDE, branch `claude/poliedron-agenda-actions-kz6mmk`, da `master@370bdaf`. PO verbatim: "Controlla perché si è frizzato il poliedron studio, si è ingrandito di colpo e non scrolla, ora l'ho riavviato, ma controlla cosa sia successo".
+- EVIDENZA: nessun registro errori lato app (solo ErrorBoundary locale): la sequenza esatta sul telefono non è ricostruibile. Difetto certo trovato: `Modal.jsx` salvava/ripristinava `body.style.overflow` per finestra; due finestre chiuse in ordine inverso lasciavano `overflow: hidden` → pagina bloccata fino al riavvio. Lo "zoom" non è riproducibile dal codice (viewport con maximum-scale=1); probabile pizzico/doppio tocco con pagina bloccata.
+- FIX: blocco dello scorrimento condiviso (contatore): pagina bloccata finché c'è almeno una finestra, sempre sbloccata dopo l'ultima. Test `tests/modalScrollLock.test.mjs`. `npm test` 1259/1259; `npm run build` OK.
+- IN SOSPESO (stesso branch, non ancora committato): POL-DATI-001 Cestino (migrazione scritta, UI e test da fare).
+- EXACT NEXT ACTION: "Mergia" per il fix; poi completare il cestino.
 
 ---
 
