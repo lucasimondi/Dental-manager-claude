@@ -70,3 +70,15 @@ test('ripetizione mensile mantiene il giorno di partenza anche dopo febbraio', (
 test('rigaImpegno conserva il gruppo di ripetizione già esistente', () => {
   assert.equal(rigaImpegno({ titolo: 'Riunione', data_inizio: '2026-10-16', recurrence_id: 12345 }).recurrence_id, 12345);
 });
+
+test('ripetizione: recurrence_id è un uuid valido (colonna uuid nel database dello studio)', async () => {
+  const { nuovoIdRipetizione } = await import('../personal/src/lib/agenda.js');
+  const fs = await import('node:fs');
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+  assert.match(nuovoIdRipetizione(), uuid);
+  assert.notEqual(nuovoIdRipetizione(), nuovoIdRipetizione());
+  const personal = fs.readFileSync('personal/src/Agenda.jsx', 'utf8');
+  const studio = fs.readFileSync('src/components/Agenda.jsx', 'utf8');
+  assert.match(personal, /recurrenceId = date\.length > 1 \? nuovoIdRipetizione\(\)/);
+  assert.match(studio, /recurrenceId = occorrenze\.length > 1 \? crypto\.randomUUID\(\)/);
+});

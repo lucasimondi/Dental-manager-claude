@@ -841,7 +841,8 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       }
     }
     if (occorrenze.length === 0) return;
-    const recurrenceId = occorrenze.length > 1 ? uid() : null;
+    // recurrence_id è uuid nel database (id invece è bigint).
+    const recurrenceId = occorrenze.length > 1 ? crypto.randomUUID() : null;
     const nuovi = occorrenze.map(data => ({
       ...base, dataInizio: data, dataFine: data, oraInizio: impForm.oraInizio, oraFine: impForm.oraFine,
       recurrenceId, id: uid(),
