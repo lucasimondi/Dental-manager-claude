@@ -41,7 +41,7 @@ Tempo di installazione: circa 30 minuti.
 
 5. Seleziona la funzione **`setup`**, premi **Esegui** e autorizza gli accessi richiesti (Gmail, Drive, connessioni esterne).
 6. Fai una prova: esegui **`elabora`** a mano e controlla tre cose:
-   - su Drive compare la cartella **Archivio personale**, con gli originali divisi per anno e mese;
+   - su Drive compare la cartella **Archivio personale**, con gli originali divisi per categoria e anno (es. `Utenze/2024`) e, per le persone elencate nelle Impostazioni dell'app, in `Persone/<Nome>`;
    - in Supabase, nella tabella `documenti`, ci sono le prime righe;
    - in Gmail i thread elaborati hanno l'etichetta **Archivio/Elaborato**.
 
@@ -73,6 +73,8 @@ Quando ha finito, apri **Pratiche** nella dashboard e usa **Archivia le pratiche
 ## Manutenzione
 
 - **Thread in errore**: hanno l'etichetta **Archivio/Errore**. Per rimetterli in coda esegui `riprovaErrori`. Gli errori sono registrati nella tabella `log_elaborazione`.
+- **Limite di spesa di Claude raggiunto**: l'importazione non si ferma. I nuovi documenti entrano con un catalogo provvisorio (tag "da analizzare") e vengono analizzati davvero quando Claude torna disponibile, senza che tu debba fare nulla.
+- **Trovare un file da Mail o WhatsApp**: Allega → File → Google Drive → Archivio personale → la categoria o `Persone`. Per sistemare subito tutto l'archivio esegui `sistemaDrive` (altrimenti lo script lo fa un po' a ogni giro).
 - **Categoria sbagliata**: dal dettaglio del documento nella dashboard usa **Sposta**.
 - **Modello**: si cambia in `CONFIG.MODELLO`. Quello predefinito è economico e adatto allo smistamento.
 - **Duplicati**: ogni file viene identificato dal suo contenuto (hash SHA-256), quindi lo stesso allegato ricevuto più volte viene archiviato una volta sola.

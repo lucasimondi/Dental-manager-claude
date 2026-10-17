@@ -86,7 +86,7 @@ test('riordino: niente da fare → false; documento senza risposta → solo segn
 test('script: un lotto di riordino a ogni giro, catalogo completato anche per i nuovi e i caricati', () => {
   const elabora = codice.slice(codice.indexOf('function elabora()'), codice.indexOf('function elaboraThread_('));
   assert.match(elabora, /try \{ riordinaLotto_\(\); \}/);
-  assert.equal((codice.match(/completaCatalogo_\(/g) || []).length, 3); // definizione + import + caricamento
+  assert.equal((codice.match(/completaCatalogo_\(/g) || []).length, 4); // definizione + import + caricamento + analisi dei rimasti (POL-VITA-013)
   for (const f of ['formazione', 'personale_studio', 'corrispondenza', 'foto_video', 'pubblicita']) assert.match(codice, new RegExp(`\\b${f}: '`));
   assert.match(codice, /required: \[[^\]]*'ente', 'rilevanza'\]/);
 });
@@ -110,6 +110,8 @@ test('limite di spesa dell\'API: pausa di un\'ora e RIPROVA, mai email segnate c
   assert.throws(() => ctx.claude_('s', [{ type: 'text', text: 'x' }], null), /RIPROVA/);
   assert.equal(errori.length, 1, 'un solo avviso nel registro, non uno per email');
   const elabora = codice.slice(codice.indexOf('function elabora()'), codice.indexOf('function elaboraThread_('));
-  assert.match(elabora, /if \(apiInPausa_\(\)\) return;\n {2}const lock/);
+  // POL-VITA-013: in pausa l'importazione continua senza Claude; si fermano solo riordino e analisi.
+  assert.doesNotMatch(elabora, /if \(apiInPausa_\(\)\) return;\n {2}const lock/);
+  assert.match(elabora, /if \(!apiInPausa_\(\)\) \{/);
   assert.match(codice, /function riprovaErrori\(\) \{\n {2}PropertiesService\.getScriptProperties\(\)\.deleteProperty\('API_PAUSA_FINO'\)/);
 });

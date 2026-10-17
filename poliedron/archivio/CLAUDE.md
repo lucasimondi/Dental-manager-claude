@@ -8,7 +8,7 @@ Questa cartella (`poliedron/archivio/`) contiene il sistema che importa, catalog
 |---|---|---|
 | Motore di importazione | Google Apps Script sull'account di Luca (trigger ogni 10 min + riepilogo alle 7) | `Code.gs`, `appsscript.json` |
 | Indice e logica | Supabase, progetto `archivio-documenti` | `schema.sql`, `aggiornamento-lotti.sql` |
-| Originali | Google Drive, cartella `Archivio personale/<anno>/<mese>` | creati dallo script |
+| Originali | Google Drive: `Archivio personale/<Categoria>/<anno>` e `Archivio personale/Persone/<Persona>` (POL-VITA-013) | creati e spostati dallo script |
 | Consultazione | Dashboard web (Vercel) e in futuro Poliedron | `index.html` |
 | App per telefono | Poliedron Personal su `/personal/` (consultazione, Portafoglio, caricamento) | `personal/` nella radice del repo |
 | Caricamento dall'app | Web app dello stesso Apps Script (`doPost`), file in `Archivio personale/Caricati/<anno>`; anche anteprima, miniature (mai dei pazienti) e chat | `Code.gs` |
@@ -27,7 +27,7 @@ Riferimenti fissi:
 Importa tutti gli allegati Gmail, escludendo Promozioni e Social, **dal più vecchio al più recente, a lotti** (un lotto corrisponde a un mese di posta). Per ogni allegato:
 
 1. Calcola lo SHA-256 del file e salta quelli già importati (stesso hash).
-2. Salva l'originale su Drive in `Archivio personale/<anno>/<mese>`, usando la data dell'email.
+2. Salva l'originale su Drive in `Archivio personale/<Categoria>/<anno>` (anno del documento, altrimenti dell'email). I documenti delle persone elencate nelle Impostazioni dell'app vanno in `Archivio personale/Persone/<Persona>`. `ordinaDrive_()` sposta a ogni giro i file fuori posto (anche dopo un cambio di categoria o persona dall'app) e annota la cartella in `drive_cartella`; `sistemaDrive()` lo fa a mano per ~5 minuti. Si sposta, non si copia né si cancella: id e link restano uguali. Le vecchie cartelle anno/mese restano vuote.
 3. Leggi il file e classificalo in uno di questi fascicoli: `identita`, `immobili`, `successione`, `conti`, `fiscale`, `previdenza`, `utenze`, `riscaldamento` (pellet, legna, gasolio, GPL, caldaie e stufe; aggiunto il 2026-10-15 su richiesta di Luca), `studio_fornitori`, `studio_fatture_emesse`, `legale`, `assicurazioni`, `veicoli`, `famiglia_scuola`, `sanitario_famiglia`, `clinico_pazienti`, `servizi`, `acquisti`, `formazione` (corsi ECM, congressi, tesi), `personale_studio` (curriculum e candidature), `corrispondenza` (email personali, catene), `foto_video`, `pubblicita` (volantini, listini, offerte non richieste), `altro` (solo se nient'altro va bene; le cinque categorie nuove sono state aggiunte il 2026-10-16 su richiesta di Luca). Ogni documento ha anche `ente` (chi lo ha emesso o riguarda, nome sempre uguale) e `rilevanza` (alta, normale, bassa: le cose poco utili si nascondono nell'app).
 4. Registralo in Supabase con `registra_documento(jsonb)`, compilando questi campi: `hash_sha256`, `gmail_message_id`, `gmail_thread_id`, `email_oggetto`, `email_mittente`, `email_data`, `nome_file_originale`, `mime_type`, `dimensione_byte`, `drive_file_id`, `drive_url`, `fascicolo`, `tipo_documento`, `titolo`, `riassunto` (2 righe), `data_documento`, `importo`, `tag[]`, `azione_richiesta`, `azione_descrizione`, `urgenza` (bassa/media/alta), `dati_estratti{}`, `pratica {id_esistente | nuova_titolo}`, `soggetti[{nome, tipo, ruolo}]`, `scadenze[{data, descrizione, importo}]`.
 5. Raggruppa nella stessa pratica i documenti della stessa vicenda (stesso soggetto e stesso oggetto). I titoli delle pratiche seguono il formato "Soggetto – oggetto", per esempio "Fornitore luce – via Roma 1" per fatture, solleciti e preavvisi della stessa utenza.
@@ -36,7 +36,7 @@ Importa tutti gli allegati Gmail, escludendo Promozioni e Social, **dal più vec
 
 Riordino (POL-VITA-007): `riordinaLotto_()` rilegge 30 documenti a ogni giro di `elabora` usando solo i dati già in archivio (mai i file, mai i clinici) e corregge fascicolo, tipo, titolo ("Tipo – Ente – riferimento"), ente, rilevanza e tag; titolo e fascicolo di prima restano in `titolo_originale` e `fascicolo_originale`. `riordinaDaCapo()` lo fa ripartire.
 
-Limite di spesa dell'API: se Claude risponde che il limite è raggiunto, lo script si mette in pausa per un'ora (`API_PAUSA_FINO`) e non segna le email come errore. Dopo aver alzato il limite su console.anthropic.com, Luca esegue `riprovaErrori` (toglie la pausa e rimette in coda tutte le email in errore).
+Limite di spesa dell'API: se Claude risponde che il limite è raggiunto, lo script si mette in pausa per un'ora (`API_PAUSA_FINO`) e non segna le email come errore. Dal 2026-10-17 (POL-VITA-013, richiesta di Luca) l'importazione **continua senza Claude**: `analisiDiRiserva_()` assegna fascicolo, tipo, ente e titolo con regole su oggetto, nome del file e mittente (nulla esce dallo script), il documento resta `da_analizzare` con il tag "da analizzare". Quando l'API torna disponibile, `analizzaRimasti_()` rilegge pochi documenti a ogni giro (mai i clinici; se le regole cliniche li riconoscono finiscono in `clinico_pazienti`) e completa il catalogo con l'RPC `completa_analisi`. Riordino e analisi aspettano la fine della pausa. Dopo aver alzato il limite su console.anthropic.com, Luca può eseguire `riprovaErrori` (toglie la pausa e rimette in coda tutte le email in errore).
 
 `Code.gs` implementa già tutto questo. Se modifichi lo script, la specifica resta il riferimento.
 
@@ -120,7 +120,7 @@ Se ci sono thread in errore, leggi la causa in `log_elaborazione`. Se è transit
   ```
   Prima di eseguire, mostra a Luca le due pratiche.
 - **Dopo lo storico.** Proponi a Luca di eseguire `select archivia_pratiche_ferme(12);` per chiudere le vicende ferme da oltre un anno.
-- **Riclassificazioni.** `update documenti set fascicolo = '...' where id = '...'`. Il file su Drive resta nella cartella anno/mese, quindi non va spostato.
+- **Riclassificazioni.** `update documenti set fascicolo = '...' where id = '...'`. Il file su Drive segue da solo al giro successivo (`ordinaDrive_`).
 
 ## 7. Fase 4: integrazione in Poliedron
 

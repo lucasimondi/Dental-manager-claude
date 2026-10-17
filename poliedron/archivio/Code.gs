@@ -99,8 +99,8 @@ function setup() {
  * Arrivato al mese corrente resta lì e importa la posta nuova man mano.
  */
 function elabora() {
-  // Limite di spesa dell'API raggiunto: si aspetta (ricontrollo ogni ora), niente email scartate.
-  if (apiInPausa_()) return;
+  // Limite di spesa dell'API raggiunto (POL-VITA-013): l'importazione continua senza Claude, con un
+  // catalogo provvisorio a regole; l'analisi completa si fa quando l'API torna disponibile.
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(1000)) return;
   const inizio = Date.now();
@@ -111,10 +111,16 @@ function elabora() {
     const pratiche = praticheAperte_();
     const meseOggi = Utilities.formatDate(new Date(), CONFIG.FUSO, 'yyyy-MM');
 
-    // Riordino dell'archivio già importato (POL-VITA-007): un lotto a ogni giro, anche mentre lo
-    // storico è ancora in importazione; altri lotti in fondo se avanza tempo.
-    try { riordinaLotto_(); } catch (e) { if (e.message !== 'RIPROVA') logErrore_('riordino', e); }
-    if (apiInPausa_()) return;
+    // Cartelle di Drive per categoria e persona (POL-VITA-013): un po' a ogni giro.
+    try { ordinaDrive_(inizio + ORDINA_DRIVE_MS); } catch (e) { logErrore_('ordine Drive', e); }
+
+    if (!apiInPausa_()) {
+      // Documenti importati senza Claude: analisi completa, pochi a ogni giro.
+      try { analizzaRimasti_(inizio + ANALISI_RIMASTI_MS); } catch (e) { if (e.message !== 'RIPROVA') logErrore_('analisi rimasti', e); }
+      // Riordino dell'archivio già importato (POL-VITA-007): un lotto a ogni giro, anche mentre lo
+      // storico è ancora in importazione; altri lotti in fondo se avanza tempo.
+      try { riordinaLotto_(); } catch (e) { if (e.message !== 'RIPROVA') logErrore_('riordino', e); }
+    }
 
     // Recupero: thread di mesi già superati dal cursore e rimessi in coda con riprovaErrori
     const cursore = sp.getProperty('LOTTO_MESE');
@@ -130,7 +136,7 @@ function elabora() {
           elaboraThread_(t, pratiche, inizio, null);
           t.addLabel(fatto);
         } catch (e) {
-          if (e.message === 'TEMPO' || e.message === 'RIPROVA') return;
+          if (e.message === 'TEMPO' || e.message === 'RIPROVA' || QUOTA_GOOGLE.test(e.message)) return;
           console.error('Thread ' + t.getId() + ': ' + (e.stack || e));
           t.addLabel(errore);
           logErrore_('thread ' + t.getId() + ' — ' + t.getFirstMessageSubject(), e);
@@ -164,7 +170,7 @@ function elabora() {
           elaboraThread_(t, pratiche, inizio, stat);
           t.addLabel(fatto);
         } catch (e) {
-          if (e.message === 'TEMPO' || e.message === 'RIPROVA') { interrotto = true; break; }
+          if (e.message === 'TEMPO' || e.message === 'RIPROVA' || QUOTA_GOOGLE.test(e.message)) { interrotto = true; break; }
           console.error('Thread ' + t.getId() + ': ' + (e.stack || e));
           t.addLabel(errore);
           stat.errori++;
@@ -175,13 +181,17 @@ function elabora() {
       if (interrotto) break;
     }
     // Tempo avanzato: riordina i documenti già in archivio (POL-VITA-007), a piccoli lotti.
-    while (Date.now() - inizio < CONFIG.TEMPO_MAX_MS - 60000) {
+    while (!apiInPausa_() && Date.now() - inizio < CONFIG.TEMPO_MAX_MS - 60000) {
       if (!riordinaLotto_()) break;
     }
   } finally {
     lock.releaseLock();
   }
 }
+
+// Quote giornaliere di Google (UrlFetch, Gmail, Drive) esaurite: si riprende al giro dopo, senza
+// segnare l'email come errore (POL-VITA-013: senza Claude l'importazione corre molto più veloce).
+const QUOTA_GOOGLE = /too many times|invoked too many|quota|limit exceeded|rate limit/i;
 
 function elaboraThread_(thread, pratiche, inizio, stat) {
   const messaggi = thread.getMessages();
@@ -233,6 +243,8 @@ function chiudiLotto_(mese) {
   } catch (e) { logErrore_('lotto ' + mese, e); }
 
   if (!CONFIG.EMAIL_PER_LOTTO) return;
+  // Senza Claude i lotti si chiudono a raffica: niente decine di email, il resoconto resta in archivio.
+  if (apiInPausa_()) return;
   const nomeMese = Utilities.formatDate(new Date(+mese.slice(0, 4), +mese.slice(5, 7) - 1, 15), CONFIG.FUSO, 'MMMM yyyy');
   const fascicoli = Object.keys(s.per_fascicolo).sort(function (x, y) { return s.per_fascicolo[y] - s.per_fascicolo[x]; })
     .map(function (k) { return '  ' + (FASCICOLI[k] || k) + ': ' + s.per_fascicolo[k]; }).join('\n');
@@ -287,23 +299,31 @@ function elaboraAllegato_(m, a, pratiche) {
         riassunto: 'Documento clinico: archiviato senza analisi del contenuto.',
         tag: ['clinico'],
       };
+    } else if (apiInPausa_()) {
+      analisi = analisiDiRiserva_(meta, nome, mime);
+      analisiContenuto = false;
     } else {
       meta.corpo = (m.getPlainBody() || '').replace(/\s+\n/g, '\n').slice(0, 2500);
       const contenuto = contenutoPerAnalisi_(bytes, mime, nome, file);
       if (!contenuto) analisiContenuto = false;
-      analisi = analizza_(meta, nome, contenuto, pratiche);
+      try {
+        analisi = analizza_(meta, nome, contenuto, pratiche);
+      } catch (e) {
+        if (e.message !== 'RIPROVA' || !apiInPausa_()) throw e;
+        analisi = analisiDiRiserva_(meta, nome, mime); // limite di spesa raggiunto proprio ora
+        analisiContenuto = false;
+      }
     }
 
     const fasc = FASCICOLI[analisi.fascicolo] ? analisi.fascicolo : 'altro';
     const dataRif = dataValida_(analisi.data_documento) ||
       Utilities.formatDate(meta.data, CONFIG.FUSO, 'yyyy-MM-dd');
-    // Originale su Drive: Archivio personale/<anno>/<mese> (data dell'email)
-    const cartella = sottocartella_(
-      sottocartella_(cartellaRadice_(), Utilities.formatDate(meta.data, CONFIG.FUSO, 'yyyy')),
-      Utilities.formatDate(meta.data, CONFIG.FUSO, 'MM'));
+    // Originale su Drive: Archivio personale/<Categoria>/<anno> (POL-VITA-013)
+    const percorso = percorsoDrive_({ fascicolo: fasc, data_documento: dataValida_(analisi.data_documento),
+      email_data: meta.data.toISOString() }, []);
     const estensione = (nome.match(/\.[a-z0-9]+$/i) || [''])[0].toLowerCase();
     file.setName(dataRif + '_' + pulisciNome_(analisi.titolo || nome.replace(/\.[^.]+$/, '')) + estensione);
-    file.moveTo(cartella);
+    file.moveTo(cartellaDaPercorso_(percorso));
 
     const esito = sb_('rpc/registra_documento', {
       method: 'post',
@@ -339,7 +359,7 @@ function elaboraAllegato_(m, a, pratiche) {
       },
     });
 
-    completaCatalogo_(esito && esito.documento_id, analisi, fasc);
+    completaCatalogo_(esito && esito.documento_id, analisi, fasc, percorso);
 
     // Rende subito collegabile una pratica appena creata ai documenti successivi dello stesso giro
     if (esito && esito.pratica_id && analisi.pratica && analisi.pratica.nuova_titolo &&
@@ -771,11 +791,21 @@ function doPost(e) {
       analisiContenuto = false;
       analisi = { fascicolo: clinico ? 'clinico_pazienti' : (req.fascicolo || 'altro'),
         titolo: req.descrizione || nome.replace(/\.[^.]+$/, ''), tag: [] };
+    } else if (apiInPausa_()) {
+      analisiContenuto = false;
+      analisi = analisiDiRiserva_(meta, nome, mime);
     } else {
       const contenuto = contenutoPerAnalisi_(bytes, mime, nome, file);
       if (!contenuto) analisiContenuto = false;
-      analisi = analizza_(meta, nome, contenuto, praticheAperte_());
+      try {
+        analisi = analizza_(meta, nome, contenuto, praticheAperte_());
+      } catch (e) {
+        if (e.message !== 'RIPROVA' || !apiInPausa_()) throw e;
+        analisiContenuto = false;
+        analisi = analisiDiRiserva_(meta, nome, mime);
+      }
     }
+    if (analisi.riserva && req.descrizione) analisi.titolo = String(req.descrizione).slice(0, 120);
     // La scelta di Luca nell'app vale più della classificazione automatica (mai per i clinici)
     if (req.fascicolo && FASCICOLI[req.fascicolo] && analisi.fascicolo !== 'clinico_pazienti') analisi.fascicolo = req.fascicolo;
     const fasc = FASCICOLI[analisi.fascicolo] ? analisi.fascicolo : 'altro';
@@ -874,14 +904,18 @@ function cestinaFile_(ids) {
  * ===================================================================*/
 const RIORDINO_LOTTO = 30;
 
-function completaCatalogo_(idDoc, analisi, fasc) {
+function completaCatalogo_(idDoc, analisi, fasc, percorso) {
   if (!idDoc || !analisi) return;
+  const corpo = {
+    ente: analisi.ente ? String(analisi.ente).slice(0, 120) : null,
+    rilevanza: fasc === 'clinico_pazienti' ? 'alta' : (RILEVANZE.indexOf(analisi.rilevanza) >= 0 ? analisi.rilevanza : 'normale'),
+    riordinato_il: new Date().toISOString(),
+  };
+  // Catalogo provvisorio (senza Claude): l'analisi completa arriverà con analizzaRimasti_.
+  if (analisi.riserva) corpo.da_analizzare = true;
+  if (percorso) corpo.drive_cartella = percorso;
   try {
-    sb_('documenti?id=eq.' + idDoc, { method: 'patch', body: {
-      ente: analisi.ente ? String(analisi.ente).slice(0, 120) : null,
-      rilevanza: fasc === 'clinico_pazienti' ? 'alta' : (RILEVANZE.indexOf(analisi.rilevanza) >= 0 ? analisi.rilevanza : 'normale'),
-      riordinato_il: new Date().toISOString(),
-    } });
+    sb_('documenti?id=eq.' + idDoc, { method: 'patch', body: corpo });
   } catch (e) { logErrore_('catalogo ' + idDoc, e); }
 }
 
@@ -900,7 +934,7 @@ const SCHEMA_RIORDINO = {
 // Un lotto di documenti da riordinare; restituisce false quando non ce ne sono più.
 function riordinaLotto_() {
   const docs = sb_('documenti?select=id,fascicolo,tipo_documento,titolo,riassunto,email_mittente,email_oggetto,nome_file_originale,mime_type,data_documento,email_data,importo,tag,gmail_message_id,titolo_originale,fascicolo_originale' +
-    '&riordinato_il=is.null&order=email_data.desc.nullslast&limit=' + RIORDINO_LOTTO);
+    '&riordinato_il=is.null&da_analizzare=is.false&order=email_data.desc.nullslast&limit=' + RIORDINO_LOTTO);
   if (!docs.length) return false;
   const ora = new Date().toISOString();
   // I clinici non vanno al modello: si segnano come riordinati così come sono.
@@ -971,6 +1005,206 @@ function riordinaLotto_() {
 // Da eseguire a mano dall'editor per ripartire da capo (es. dopo aver cambiato le regole).
 function riordinaDaCapo() {
   sb_('documenti?riordinato_il=not.is.null', { method: 'patch', body: { riordinato_il: null } });
+}
+
+/* =====================================================================
+ * IMPORTAZIONE SENZA CLAUDE (POL-VITA-013)
+ * Quando il limite di spesa dell'API è raggiunto l'importazione non si ferma: ogni allegato va su
+ * Drive e in archivio con un catalogo provvisorio a regole (oggetto, mittente, nome del file; nulla
+ * esce dallo script). I documenti restano "da_analizzare" e, quando l'API torna disponibile,
+ * analizzaRimasti_ li rilegge davvero (mai i clinici) e completa il catalogo.
+ * ===================================================================*/
+const ANALISI_RIMASTI_MS = 90 * 1000;
+const ANALISI_RIMASTI_LOTTO = 6;
+
+// In ordine di priorità: vince la prima regola che trova una parola.
+const REGOLE_RISERVA = [
+  ['identita', /\b(carta d.?identit\w*|passaport\w*|patente|codice fiscale|tessera sanitaria)\b/],
+  ['legale', /\b(avvocat\w*|diffida|tribunale|decreto ingiuntivo|atto di citazione|ricorso|precetto|ufficiale giudiziario)\b/],
+  ['successione', /\b(successione|eredit\w*|testamento|de cuius)\b/],
+  ['immobili', /\b(rogito|catast\w*|visura|condominio|locazione|affitto|compravendita|notai\w*|planimetri\w*|agibilit\w*)\b/],
+  ['riscaldamento', /\b(pellet|legna|gasolio|gpl|cippato|caldai\w*|stufa|bruciatore)\b/],
+  ['utenze', /\b(bollett\w*|enel|iren|hera|a2a|edison|sorgenia|eni plenitude|acquedott\w*|egea|alpi acque|servizio idrico|fornitura (gas|luce|energia))\b/],
+  ['previdenza', /\b(enpam|inps|pension\w*|contribut\w* previdenzial\w*|quota a)\b/],
+  ['fiscale', /\b(f24|730|modello unico|redditi|agenzia delle entrate|entrate|iva|imu|tari|tasi|cartella esattoriale|riscossione|certificazione unica|cu \d{4}|commercialist\w*)\b/],
+  ['assicurazioni', /\b(polizz\w*|assicura\w*|sinistro|generali|allianz|unipol\w*|reale mutua|axa|zurich|cattolica)\b/],
+  ['veicoli', /\b(bollo auto|libretto di circolazione|revisione auto|targa|aci|carrozzeri\w*|tagliando|concessionari\w*)\b/],
+  ['conti', /\b(estratto conto|estratti conto|banca|bancari\w*|intesa|unicredit|bper|fineco|banco bpm|credem|mutuo|bonifico|carta di credito|dossier titoli)\b/],
+  ['studio_fornitori', /\b(henry schein|dentsply|ivoclar|straumann|nobel biocare|zimmer|dental\w*|deposito dentale|laboratorio odontotecnico|odontotecnic\w*)\b/],
+  ['formazione', /\b(ecm|congress\w*|corso di|corsi di|seminari\w*|webinar|attestat\w*|master|tesi)\b/],
+  ['personale_studio', /\b(curriculum|cv|candidatur\w*|assunzion\w*|busta paga|cedolin\w*)\b/],
+  ['famiglia_scuola', /\b(scuola|asilo|iscrizion\w*|pagell\w*|mensa|liceo|universit\w*)\b/],
+  ['servizi', /\b(abbonament\w*|rinnov\w*|canone|tim|vodafone|fastweb|wind|iliad|netflix|spotify|aruba)\b/],
+  ['acquisti', /\b(ordine n\w*|il tuo ordine|conferma d.?ordine|amazon|ebay|spedizion\w*|scontrino|ricevuta di acquisto)\b/],
+  ['pubblicita', /\b(newsletter|promo\w*|offert\w*|sconto|sconti|listino|volantin\w*|catalogo)\b/],
+  ['corrispondenza', /\b(auguri|buon natale|buona pasqua|pps|catena)\b/],
+];
+const TIPI_RISERVA = [
+  ['fattura', /\b(fattur\w*|invoice)\b/], ['estratto conto', /\bestratt\w* cont\w*\b/], ['F24', /\bf24\b/],
+  ['bolletta', /\bbollett\w*\b/], ['contratto', /\bcontratt\w*\b/], ['preventivo', /\bpreventiv\w*\b/],
+  ['polizza', /\bpolizz\w*\b/], ['ricevuta', /\bricevut\w*\b/], ['sollecito', /\bsollecit\w*\b/],
+  ['certificato', /\bcertificat\w*\b/], ['comunicazione', /\bcomunicazion\w*\b/],
+];
+
+function normalizzaTesto_(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[_.\-]+/g, ' ');
+}
+// "Enel Energia <noreply@enel.it>" → "Enel Energia"; senza nome, il dominio ("enel.it").
+function enteDaMittente_(mittente) {
+  const m = String(mittente || '');
+  const nome = m.replace(/<[^>]*>/, '').replace(/["']/g, '').trim();
+  if (nome && nome.indexOf('@') < 0) return nome.slice(0, 120);
+  const dominio = (m.match(/@([\w.-]+)/) || [])[1];
+  return dominio ? dominio.toLowerCase().replace(/^(mail|email|pec|noreply|no-reply)\./, '') : null;
+}
+
+function analisiDiRiserva_(meta, nome, mime) {
+  // Prima oggetto e nome del file; il mittente solo se non bastano (un F24 dal commercialista
+  // non diventa "utenze" perché arriva da un indirizzo con "enel" nel nome).
+  const t = normalizzaTesto_(meta.oggetto + ' ' + nome);
+  const daMittente = normalizzaTesto_(meta.mittente);
+  const video = /^video\//.test(mime || '');
+  const foto = /^image\//.test(mime || '') && /^(img|dsc|pxl|photo|foto|whatsapp image)[\s_-]?\d/i.test(nome);
+  const regola = REGOLE_RISERVA.filter(function (r) { return r[1].test(t); })[0] ||
+    (video || foto ? ['foto_video'] : null) ||
+    REGOLE_RISERVA.filter(function (r) { return r[1].test(daMittente); })[0];
+  const tipo = TIPI_RISERVA.filter(function (r) { return r[1].test(t); })[0];
+  const fascicolo = regola ? regola[0] : 'altro';
+  const daLuca = String(meta.mittente || '').toLowerCase().indexOf(PROPRIETARIO) >= 0;
+  const ente = daLuca ? null : enteDaMittente_(meta.mittente);
+  const oggetto = String(meta.oggetto || '').replace(/^\s*((r|i|fw|fwd|re|inoltro)\s*:\s*)+/i, '').trim();
+  const titolo = [tipo ? tipo[0].charAt(0).toUpperCase() + tipo[0].slice(1) : null, ente, oggetto || nome.replace(/\.[^.]+$/, '')]
+    .filter(Boolean).join(' – ').slice(0, 120);
+  return {
+    riserva: true,
+    fascicolo: fascicolo,
+    tipo_documento: tipo ? tipo[0] : null,
+    titolo: titolo,
+    riassunto: 'Catalogo provvisorio: verrà analizzato appena possibile.',
+    data_documento: null,
+    tag: ['da analizzare'],
+    ente: ente,
+    rilevanza: ['pubblicita', 'foto_video', 'corrispondenza'].indexOf(fascicolo) >= 0 ? 'bassa' : 'normale',
+  };
+}
+
+// Analisi completa dei documenti importati senza Claude; false quando non ne restano.
+function analizzaRimasti_(scadenza) {
+  const docs = sb_('documenti?select=id,fascicolo,gmail_message_id,email_oggetto,email_mittente,email_data,nome_file_originale,mime_type,drive_file_id' +
+    '&da_analizzare=is.true&order=email_data.desc.nullslast&limit=' + ANALISI_RIMASTI_LOTTO);
+  if (!docs.length) return false;
+  let pratiche = null;
+  for (let i = 0; i < docs.length; i++) {
+    if (Date.now() > scadenza || apiInPausa_()) return true;
+    const d = docs[i];
+    const meta = { oggetto: d.email_oggetto || '', mittente: d.email_mittente || '', destinatari: '',
+      data: d.email_data ? new Date(d.email_data) : new Date() };
+    const nome = d.nome_file_originale || 'documento';
+    // Mai al modello i documenti dei pazienti: se le regole cliniche lo riconoscono, va nel clinico.
+    if (d.fascicolo === 'clinico_pazienti' || eClinico_(meta, nome)) {
+      sb_('documenti?id=eq.' + d.id, { method: 'patch', body: { fascicolo: 'clinico_pazienti', rilevanza: 'alta', da_analizzare: false,
+        riassunto: 'Documento clinico: archiviato senza analisi del contenuto.' } });
+      continue;
+    }
+    const caricato = String(d.gmail_message_id || '').indexOf('caricato:') === 0;
+    try {
+      if (!caricato) {
+        try { meta.corpo = (GmailApp.getMessageById(d.gmail_message_id).getPlainBody() || '').replace(/\s+\n/g, '\n').slice(0, 2500); } catch (e) {}
+      }
+      const file = DriveApp.getFileById(d.drive_file_id);
+      const bytes = file.getBlob().getBytes();
+      const contenuto = contenutoPerAnalisi_(bytes, String(d.mime_type || '').toLowerCase(), nome, file);
+      pratiche = pratiche || praticheAperte_();
+      const analisi = analizza_(meta, nome, contenuto, pratiche);
+      const esito = sb_('rpc/completa_analisi', { method: 'post', body: { p_id: d.id, p: {
+        fascicolo: analisi.fascicolo, mantieni_fascicolo: caricato, tipo_documento: analisi.tipo_documento || null,
+        titolo: analisi.titolo || null, riassunto: analisi.riassunto || null, data_documento: dataValida_(analisi.data_documento),
+        importo: typeof analisi.importo === 'number' ? analisi.importo : null,
+        tag: Array.isArray(analisi.tag) ? analisi.tag.slice(0, 8) : [],
+        azione_richiesta: analisi.azione_richiesta === true, azione_descrizione: analisi.azione_descrizione || null,
+        urgenza: analisi.urgenza || null, analisi_contenuto: !!contenuto,
+        dati_estratti: analisi.dati && typeof analisi.dati === 'object' ? analisi.dati : {},
+        soggetti: Array.isArray(analisi.soggetti) ? analisi.soggetti : [],
+        scadenze: Array.isArray(analisi.scadenze) ? analisi.scadenze : [], pratica: analisi.pratica || {},
+      } } });
+      completaCatalogo_(d.id, analisi, esito && esito.fascicolo || analisi.fascicolo);
+      const estensione = (nome.match(/\.[a-z0-9]+$/i) || [''])[0].toLowerCase();
+      const dataRif = dataValida_(analisi.data_documento) || Utilities.formatDate(meta.data, CONFIG.FUSO, 'yyyy-MM-dd');
+      try { file.setName(dataRif + '_' + pulisciNome_(analisi.titolo || nome.replace(/\.[^.]+$/, '')) + estensione); } catch (e) {}
+    } catch (e) {
+      if (e.message === 'RIPROVA') throw e;
+      logErrore_('analisi ' + d.id, e);
+      // File sparito o illeggibile: resta il catalogo provvisorio, non si riprova all'infinito.
+      try { sb_('documenti?id=eq.' + d.id, { method: 'patch', body: { da_analizzare: false } }); } catch (x) {}
+    }
+  }
+  return true;
+}
+
+/* =====================================================================
+ * CARTELLE DI DRIVE PER CATEGORIA E PERSONA (POL-VITA-013)
+ * Per trovare un file in pochi tocchi anche da Mail o WhatsApp (Allega → Google Drive):
+ *   Archivio personale/Persone/<Persona>       documenti delle persone elencate in Impostazioni
+ *   Archivio personale/<Categoria>/<anno>      tutti gli altri (anche "Clinico pazienti")
+ * I file si spostano, non si copiano né si cancellano: id e link restano gli stessi. Quando cambia
+ * la categoria o la persona di un documento (anche dall'app), il file segue al giro successivo.
+ * ===================================================================*/
+const ORDINA_DRIVE_MS = 75 * 1000;
+const CARTELLA_PERSONE = 'Persone';
+const PERSONE_PREDEFINITE = ['Luca Simondi', 'Martina Simondi', 'Giulia Simondi'];
+
+function personeConfigurate_() {
+  try {
+    const r = sb_('impostazioni_app?select=valore&chiave=eq.personal');
+    const persone = r && r[0] && r[0].valore && r[0].valore.persone;
+    if (Array.isArray(persone)) return persone.map(function (p) { return String(p).trim(); }).filter(Boolean);
+  } catch (e) { logErrore_('impostazioni persone', e); }
+  return PERSONE_PREDEFINITE.slice();
+}
+
+function percorsoDrive_(d, persone) {
+  if (d.fascicolo !== 'clinico_pazienti' && d.persona && persone.indexOf(d.persona) >= 0) {
+    return CARTELLA_PERSONE + '/' + pulisciNome_(d.persona);
+  }
+  const data = dataValida_(d.data_documento) || String(d.email_data || '').slice(0, 10);
+  const anno = /^\d{4}/.test(data) ? data.slice(0, 4) : 'Senza data';
+  return (FASCICOLI[d.fascicolo] || FASCICOLI.altro) + '/' + anno;
+}
+
+function cartellaDaPercorso_(percorso) {
+  return percorso.split('/').reduce(function (padre, nome) { return sottocartella_(padre, nome); }, cartellaRadice_());
+}
+
+// Sposta i file non ancora nella cartella giusta finché c'è tempo; false quando sono tutti a posto.
+function ordinaDrive_(scadenza) {
+  const persone = personeConfigurate_();
+  let daSpostare = [];
+  for (let da = 0; ; da += 1000) {
+    const pagina = sb_('documenti?select=id,drive_file_id,fascicolo,persona,data_documento,email_data,drive_cartella' +
+      '&drive_file_id=not.is.null&order=id&limit=1000&offset=' + da);
+    daSpostare = daSpostare.concat(pagina.filter(function (d) {
+      const voluto = percorsoDrive_(d, persone);
+      return d.drive_cartella !== voluto && d.drive_cartella !== '!' + voluto;
+    }));
+    if (pagina.length < 1000) break;
+  }
+  for (let i = 0; i < daSpostare.length; i++) {
+    if (Date.now() > scadenza) return true;
+    const d = daSpostare[i];
+    const voluto = percorsoDrive_(d, persone);
+    let segnato = voluto;
+    try { DriveApp.getFileById(d.drive_file_id).moveTo(cartellaDaPercorso_(voluto)); }
+    catch (e) { segnato = '!' + voluto; logErrore_('Drive ' + d.id, e); } // file sparito: non si riprova
+    sb_('documenti?id=eq.' + d.id, { method: 'patch', body: { drive_cartella: segnato } });
+  }
+  return false;
+}
+
+// Da eseguire a mano dall'editor per sistemare tutto l'archivio in una volta (gira per ~5 minuti;
+// se restano file, eseguila di nuovo o lascia fare al giro automatico).
+function sistemaDrive() {
+  const restano = ordinaDrive_(Date.now() + 5 * 60 * 1000);
+  console.log(restano ? 'Restano file da spostare: eseguila di nuovo.' : 'Archivio su Drive in ordine.');
 }
 
 /* =====================================================================
