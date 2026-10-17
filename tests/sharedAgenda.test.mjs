@@ -54,3 +54,17 @@ test('Studio on the Personal domain bypasses only the root redirect and uses the
   const back=new URL(agendaDestination('personal','2026-10-16','giorno',{hostname:studio.hostname,origin:studio.origin}));
   assert.equal(back.href,'https://personal.poliedrasoft.it/personal/?agenda=1&agendaDate=2026-10-16&agendaView=giorno');
 });
+
+// PR #209: the quick weekend toggle never hides a day the studio keeps open
+// until the user actually uses it.
+import { agendaHiddenWeekdays, weekendsHiddenState } from '../src/lib/agendaVisibleDays.js';
+test('Studio weekend toggle: configured closing days by default, both only on request', () => {
+  assert.deepEqual(agendaHiddenWeekdays({ configured: [0], view: 'settimana' }), [0], 'closed on Sunday only: Saturday stays visible');
+  assert.equal(weekendsHiddenState({ configured: [0] }), false);
+  assert.deepEqual(agendaHiddenWeekdays({ configured: [0, 6], view: 'settimana' }), [0, 6]);
+  assert.equal(weekendsHiddenState({ configured: [0, 6] }), true);
+  assert.deepEqual(agendaHiddenWeekdays({ configured: [], view: 'settimana' }), []);
+  assert.deepEqual(agendaHiddenWeekdays({ configured: [3], view: 'settimana_lavoro' }), [3, 0, 6], 'work week keeps the studio closing days too');
+  assert.deepEqual(agendaHiddenWeekdays({ configured: [0], view: 'settimana', override: true }), [0, 6]);
+  assert.deepEqual(agendaHiddenWeekdays({ configured: [0, 6, 3], view: 'settimana', override: false }), [3]);
+});
