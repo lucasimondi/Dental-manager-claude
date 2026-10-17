@@ -29,3 +29,4 @@ export const IconaFoto = (p) => <Svg {...p}><rect x="3" y="4.5" width="18" heigh
 export const IconaNuvola = (p) => <Svg {...p}><path d="M7 18.5h10.5a4 4 0 0 0 .6-7.96A6 6 0 0 0 6.6 9.1 4.7 4.7 0 0 0 7 18.5Z" /><path d="M12 15.5v-5M9.8 12.7 12 10.5l2.2 2.2" /></Svg>;
 export const IconaRuota = (p) => <Svg {...p}><path d="M20 11a8 8 0 1 0-2.3 5.7" /><path d="M20 5v6h-6" /></Svg>;
 export const IconaGrafico = (p) => <Svg {...p}><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></Svg>;
+export const IconaCondividi = (p) => <Svg {...p}><path d="M12 3v12M8 7l4-4 4 4" /><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1" /></Svg>;
