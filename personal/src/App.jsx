@@ -999,6 +999,7 @@ function Archivio({ email }) {
       incasso: { tipo: 'movimento', m: { tipo: 'entrata' } },
       pagamento: { tipo: 'scadenza' },
       evento: { tipo: 'evento' },
+      appuntamento: { tipo: 'evento', cosa: 'appuntamento' },
     }[id];
     if (pagina) apri(pagina);
   }, [apri]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1030,8 +1031,8 @@ function Archivio({ email }) {
       case 'scadenza': return <PaginaNuovaScadenza ctx={ctx} chiudi={indietro} />;
       case 'impostazioni': return <PaginaImpostazioni ctx={ctx} email={email} />;
       case 'sezione': return <PaginaSezione id={p.id} ctx={ctx} chiudi={indietro} />;
-      case 'evento': return <PaginaEvento evento={p.evento} ctx={ctx} chiudi={indietro} />;
-      case 'appuntamento': return <PaginaAppuntamento a={p.a} />;
+      case 'evento': return <PaginaEvento evento={p.evento} cosa={p.cosa} ctx={ctx} chiudi={indietro} />;
+      case 'appuntamento': return <PaginaAppuntamento a={p.a} ctx={ctx} chiudi={indietro} />;
       case 'chat': return <PaginaChat documentoId={p.documentoId} titoloDoc={p.titoloDoc} ctx={ctx} />;
       default: return null;
     }

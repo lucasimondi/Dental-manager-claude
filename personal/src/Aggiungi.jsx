@@ -22,6 +22,7 @@ const VOCI = [
     ['incasso', 'Incasso', 'registra un\'entrata', IconaEuro],
     ['pagamento', 'Pagamento da fare', 'promemoria con scadenza', IconaFile],
     ['evento', 'Evento', 'in agenda', IconaCalendario],
+    ['appuntamento', 'Appuntamento', 'paziente dello studio', IconaCalendario],
   ]],
 ];
 

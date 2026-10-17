@@ -68,6 +68,7 @@ const FIELD_MAP = {
     oraInizio: 'ora_inizio',
     oraFine: 'ora_fine',
     recurrenceId: 'recurrence_id',
+    visibileStudio: 'visibile_studio',
   },
   richiami: {
     pazienteId: 'paziente_id',

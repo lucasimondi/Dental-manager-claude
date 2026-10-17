@@ -2,14 +2,15 @@
 // "l'agenda deve essere la stessa di studio, la modifichiamo in entrambi i software").
 // Secondo client, separato da quello dell'archivio: accesso con l'account dello studio, sessione
 // salvata con una chiave propria e rinnovata da sola. Tocca SOLO le tabelle dell'agenda:
-// appointments (lettura), patients (solo nome e cognome, lettura), app_types (lettura) e
+// appointments (lettura e scrittura, POL-VITA-013: "da agenda personale io posso agire anche su
+// agenda studio"), patients (solo id, nome e cognome, lettura), app_types (lettura) e
 // impegni_personali (lettura e scrittura: gli eventi senza paziente), studio_info
 // (sola lettura di agenda_settings). La RLS dello studio
 // (studio_id del token) limita ogni lettura e scrittura allo studio dell'utente.
 import { createClient } from '@supabase/supabase-js';
-import { rigaImpegno } from './agenda.js';
+import { rigaImpegno, rigaAppuntamento } from './agenda.js';
 
-export { rigaImpegno };
+export { rigaImpegno, rigaAppuntamento };
 
 const STUDIO_URL = 'https://idklxdqebfceplrualgh.supabase.co';
 const STUDIO_KEY = 'sb_publishable_7M4i2tZLVEcGrglOmPdgZA_T7flmU4T';
@@ -55,11 +56,35 @@ export async function appuntamentiTra(da, a) {
   return app.filter((x) => x.stato !== 'annullato').map((x) => ({ ...x, paziente: nome.get(x.paziente_id) || null, cognome: cognome.get(x.paziente_id) || null }));
 }
 
+// Appuntamenti dei pazienti: stesse colonne e stessa convenzione dello studio (id bigint dal
+// client, user_id e studio_id della sessione). Il trigger dello studio controlla la coerenza.
+export async function cercaPazienti(testo) {
+  const t = String(testo || '').replace(/[,()*%\\]/g, ' ').trim();
+  if (t.length < 2) return [];
+  const parole = t.split(/\s+/).slice(0, 3);
+  let q = studioDb.from('patients').select('id, nome, cognome');
+  for (const p of parole) q = q.or(`nome.ilike.*${p}*,cognome.ilike.*${p}*`);
+  return esito(await q.order('cognome').limit(20));
+}
+
+export async function salvaAppuntamento(a) {
+  const riga = rigaAppuntamento(a);
+  if (a.id) return esito(await studioDb.from('appointments').update(riga).eq('id', a.id).select('id').single());
+  const sessione = await sessioneStudio();
+  return esito(await studioDb.from('appointments')
+    .insert({ ...riga, id: Date.now() + Math.floor(Math.random() * 99999), studio_id: studioDellaSessione(sessione), user_id: sessione.user.id })
+    .select('id').single());
+}
+
+export async function eliminaAppuntamento(id) {
+  return esito(await studioDb.from('appointments').delete().eq('id', id).select('id'));
+}
+
 export async function tipiAppuntamento() {
   return esito(await studioDb.from('app_types').select('nome, colore'));
 }
 
-const CAMPI_IMPEGNO = 'id, titolo, tipo, etichetta, colore, data_inizio, data_fine, tutto_il_giorno, ora_inizio, ora_fine, note, recurrence_id';
+const CAMPI_IMPEGNO = 'id, titolo, tipo, etichetta, colore, data_inizio, data_fine, tutto_il_giorno, ora_inizio, ora_fine, note, recurrence_id, visibile_studio';
 
 export async function impegniTra(da, a) {
   return esito(await studioDb.from('impegni_personali').select(CAMPI_IMPEGNO)

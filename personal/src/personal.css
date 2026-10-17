@@ -465,7 +465,7 @@ a { color: var(--pp-blu); text-decoration: none; }
 .pp-rapida > span { width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: var(--k, var(--pp-blu)); background: var(--pp-superficie); box-shadow: var(--pp-ombra); }
 .pp-rapida:active > span { transform: scale(.94); }
 .pp-av-scansiona { --k: #0c447c; } .pp-av-fotocamera { --k: #7c3aed; } .pp-av-libreria { --k: #db2777; } .pp-av-file { --k: #0284c7; }
-.pp-av-personale { --k: #1f4e79; } .pp-av-spesa { --k: #b42318; } .pp-av-incasso { --k: #067647; } .pp-av-pagamento { --k: #b54708; } .pp-av-evento { --k: #059669; }
+.pp-av-personale { --k: #1f4e79; } .pp-av-spesa { --k: #b42318; } .pp-av-incasso { --k: #067647; } .pp-av-pagamento { --k: #b54708; } .pp-av-evento { --k: #059669; } .pp-av-appuntamento { --k: #185fa5; }
 .pp-riassunto-quattro { margin-top: 14px; }
 .pp-riassunto-quattro .pp-tessera:first-child { background: var(--pp-superficie); color: var(--pp-grigio); }
 .pp-riassunto-quattro .pp-tessera:first-child .pp-tessera-numero { color: var(--pp-inchiostro); }
@@ -660,3 +660,9 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; d
 .pp-condividi-piccolo.pronto { color: #fff; background: var(--pp-verde); animation: pp-pulsa 1.2s ease-in-out infinite; }
 @keyframes pp-pulsa { 50% { transform: scale(1.1); } }
 .pp-altri-personali { margin-top: 22px; }
+
+/* POL-VITA-013: nuovo evento o appuntamento, paziente scelto */
+.pp-segmenti-due { grid-template-columns: repeat(2, 1fr); }
+.pp-appuntamento-anteprima { border-style: solid; background: color-mix(in srgb, var(--c) 12%, var(--pp-superficie)); }
+.pp-paziente-scelto { border-radius: 12px; border: 1px solid var(--pp-linea); }
+.pp-trovati { margin-top: 8px; max-height: 260px; overflow-y: auto; }

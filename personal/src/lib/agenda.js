@@ -137,6 +137,8 @@ export function rigaImpegno(evento) {
     ora_fine: tuttoIlGiorno ? null : evento.ora_fine,
     note: evento.note || null,
     recurrence_id: evento.recurrence_id ?? evento.recurrenceId ?? null,
+    // POL-VITA-013: visibile anche nell'agenda dello studio, salvo scelta contraria.
+    visibile_studio: evento.visibile_studio !== false,
   };
 }
 
@@ -209,3 +211,20 @@ export function applicaAOccorrenza(occorrenza, modificato, spostamento) {
   const nuovoInizio = piuGiorni(inizio, spostamento);
   return { ...modificato, id, recurrence_id: occorrenza.recurrence_id, data_inizio: nuovoInizio, data_fine: fine ? piuGiorni(nuovoInizio, durata) : nuovoInizio };
 }
+
+// POL-VITA-013 — appuntamento dei pazienti scritto da Personal nell'agenda dello studio.
+export const STATI_APPUNTAMENTO = [['confermato', 'Confermato'], ['da confermare', 'Da confermare'], ['annullato', 'Annullato']];
+
+export function rigaAppuntamento(a) {
+  const ora = String(a.ora || '09:00').slice(0, 5);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(a.data || '')) throw new Error('Scegli il giorno dell\'appuntamento.');
+  if (!/^\d{2}:\d{2}$/.test(ora)) throw new Error('Scegli l\'ora dell\'appuntamento.');
+  const paziente = Number(a.paziente_id);
+  if (!Number.isFinite(paziente) || paziente <= 0) throw new Error('Scegli il paziente.');
+  const stato = STATI_APPUNTAMENTO.some(([k]) => k === a.stato) ? a.stato : 'confermato';
+  return {
+    paziente_id: paziente, data: a.data, ora, durata: Math.min(Math.max(Number(a.durata) || 30, 5), 600),
+    tipo: String(a.tipo || '').trim() || 'Visita', colore: a.colore || null, note: String(a.note || '').trim() || null, stato,
+  };
+}
+

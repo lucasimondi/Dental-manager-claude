@@ -96,6 +96,8 @@ export default function App() {
   const [userName, setUserName] = useState('');
   const [implants, setImplants] = useState([]);
   const [impegni, setImpegni] = useState([]);
+  // POL-VITA-013: gli eventi che Personal segna "non visibile nello studio" restano solo in Personal.
+  const impegniStudio = useMemo(() => impegni.filter((i) => i.visibileStudio !== false), [impegni]);
   const [richiami, setRichiami] = useState([]);
   const [initPatId, setInitPatId] = useState(null);
   // POL-UX-001 bugfix: Home quick actions "Nuovo paziente"/"Nuovo preventivo"/
@@ -786,7 +788,7 @@ export default function App() {
         paddingLeft: isMobile ? ((page === 'agenda' || page === 'home') ? (page === 'agenda' ? 6 : 0) : (page === 'chat' ? 0 : 15)) : (page === 'chat' ? 0 : 13),
         paddingRight: isMobile ? ((page === 'agenda' || page === 'home') ? (page === 'agenda' ? 6 : 0) : (page === 'chat' ? 0 : 15)) : (page === 'chat' ? 0 : 13),
       }}>
-        {page === 'home' && <Dashboard patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegni} implants={implants} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} onNavigateNew={goNuovoElemento} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} currentUserId={session?.user?.id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} activityPatientRequest={quickHubActivityRequest} onActivityPatientRequestHandled={(id) => setQuickHubActivityRequest((current) => current?.id === id ? null : current)} onLogout={handleLogout} openHomeCustomizerRequest={openHomeCustomizerRequest} onOpenHomeCustomizerRequestHandled={(id) => setOpenHomeCustomizerRequest((current) => current === id ? null : current)} />}
+        {page === 'home' && <Dashboard patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegniStudio} implants={implants} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} onNavigateNew={goNuovoElemento} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} currentUserId={session?.user?.id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} activityPatientRequest={quickHubActivityRequest} onActivityPatientRequestHandled={(id) => setQuickHubActivityRequest((current) => current?.id === id ? null : current)} onLogout={handleLogout} openHomeCustomizerRequest={openHomeCustomizerRequest} onOpenHomeCustomizerRequestHandled={(id) => setOpenHomeCustomizerRequest((current) => current === id ? null : current)} />}
         {page !== 'home' && (
           <RouteErrorBoundary key={page}>
           <Suspense fallback={<LoadingScreen />}>
@@ -820,7 +822,7 @@ export default function App() {
             )}
             {(page === 'paga' || page === 'incassi') && <FinancialWorkspace studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} payments={payments} pricelist={pricelist} setPlans={setPlansSync} setPayments={setPaymentsSync} onOpenPaz={goSchedaPaz} autoOpenNew={autoOpenNew === 'paga'} autoOpenNewPrefill={autoOpenNew === 'paga' ? autoOpenNewPrefill : null} onAutoOpenNewHandled={() => { setAutoOpenNew(null); setAutoOpenNewPrefill(null); }} />}
             {page === 'listino' && <Listino pricelist={pricelist} setPricelist={setPricelistSync} si={studioInfo} />}
-            {page === 'agenda' && <Agenda patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} onOpenPatient={(patient) => goSchedaPaz(patient, 'info')} onOpenRecall={openQuickHubRecall} onOpenActivity={openQuickHubActivity} onPoliedronCommand={openQuickHubPoliedron} />}
+            {page === 'agenda' && <Agenda patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegniStudio} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} onOpenPatient={(patient) => goSchedaPaz(patient, 'info')} onOpenRecall={openQuickHubRecall} onOpenActivity={openQuickHubActivity} onPoliedronCommand={openQuickHubPoliedron} />}
             {page === 'richiami' && <Richiami patients={patients} plans={plans} payments={payments} appointments={appointments} richiami={richiami} setRichiami={setRichiamiSync} templates={templates} features={features} onOpenPaz={goSchedaPaz} si={studioInfo} autoOpenNew={autoOpenNew === 'richiami'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} initialPatientRequest={quickHubRecallRequest} onInitialPatientRequestHandled={(id) => setQuickHubRecallRequest((current) => current?.id === id ? null : current)} />}
             {page === 'attivita' && <Attivita patients={patients} onOpenPaz={goSchedaPaz} richiami={richiami} setRichiami={setRichiamiSync} plans={plans} payments={payments} appointments={appointments} templates={templates} features={features} si={studioInfo} />}
             {page === 'spese' && <Spese studioId={session?.user?.app_metadata?.studio_id} patients={patients} autoOpenNew={autoOpenNew === 'spese'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} />}
@@ -864,7 +866,7 @@ export default function App() {
         pricelist={pricelist}
         appointments={appointments}
         richiami={richiami}
-        impegni={impegni}
+        impegni={impegniStudio}
         goSchedaPaz={goSchedaPaz}
         farmaciPreferiti={farmaciPreferitiStudio}
         studioInfo={studioInfo}
@@ -900,7 +902,7 @@ export default function App() {
             patients={patients}
             appTypes={appTypes}
             appointments={appointments}
-            impegni={impegni}
+            impegni={impegniStudio}
             si={studioInfo}
             features={features}
             setAppointments={setAppointmentsSync}
