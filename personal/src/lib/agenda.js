@@ -137,6 +137,8 @@ export function rigaImpegno(evento) {
     ora_fine: tuttoIlGiorno ? null : evento.ora_fine,
     note: evento.note || null,
     recurrence_id: evento.recurrence_id ?? evento.recurrenceId ?? null,
+    // POL-VITA-013: visibile anche nell'agenda dello studio, salvo scelta contraria.
+    visibile_studio: evento.visibile_studio !== false,
   };
 }
 
@@ -184,3 +186,45 @@ export function nuovoIdRipetizione() {
   const h = b.map((x) => x.toString(16).padStart(2, '0')).join('');
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
+
+// Eventi ripetuti: quali occorrenze toccare quando se ne modifica o elimina una.
+// 'questo' = solo l'evento aperto; 'successivi' = questo e quelli dopo; 'tutti' = l'intera serie.
+export const AMBITI_SERIE = [
+  ['questo', 'Solo questo evento'],
+  ['successivi', 'Questo e i successivi'],
+  ['tutti', 'Tutti gli eventi della serie'],
+];
+
+export const giorniTra = (da, a) => Math.round((daIso(a).getTime() - daIso(da).getTime()) / 86400000);
+
+// Occorrenze della serie interessate dalla scelta (righe con data_inizio).
+export function occorrenzeDaToccare(serie, evento, ambito) {
+  if (ambito === 'questo' || !evento.recurrence_id) return serie.filter((x) => x.id === evento.id);
+  const stessa = serie.filter((x) => x.recurrence_id === evento.recurrence_id);
+  return ambito === 'successivi' ? stessa.filter((x) => x.data_inizio >= evento.data_inizio_originale) : stessa;
+}
+
+// Modifica applicata a un'altra occorrenza: stessi campi, date spostate degli stessi giorni.
+export function applicaAOccorrenza(occorrenza, modificato, spostamento) {
+  const { id, data_inizio: inizio, data_fine: fine } = occorrenza;
+  const durata = Math.max(0, giorniTra(modificato.data_inizio, modificato.data_fine || modificato.data_inizio));
+  const nuovoInizio = piuGiorni(inizio, spostamento);
+  return { ...modificato, id, recurrence_id: occorrenza.recurrence_id, data_inizio: nuovoInizio, data_fine: fine ? piuGiorni(nuovoInizio, durata) : nuovoInizio };
+}
+
+// POL-VITA-013 — appuntamento dei pazienti scritto da Personal nell'agenda dello studio.
+export const STATI_APPUNTAMENTO = [['confermato', 'Confermato'], ['da confermare', 'Da confermare'], ['annullato', 'Annullato']];
+
+export function rigaAppuntamento(a) {
+  const ora = String(a.ora || '09:00').slice(0, 5);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(a.data || '')) throw new Error('Scegli il giorno dell\'appuntamento.');
+  if (!/^\d{2}:\d{2}$/.test(ora)) throw new Error('Scegli l\'ora dell\'appuntamento.');
+  const paziente = Number(a.paziente_id);
+  if (!Number.isFinite(paziente) || paziente <= 0) throw new Error('Scegli il paziente.');
+  const stato = STATI_APPUNTAMENTO.some(([k]) => k === a.stato) ? a.stato : 'confermato';
+  return {
+    paziente_id: paziente, data: a.data, ora, durata: Math.min(Math.max(Number(a.durata) || 30, 5), 600),
+    tipo: String(a.tipo || '').trim() || 'Visita', colore: a.colore || null, note: String(a.note || '').trim() || null, stato,
+  };
+}
+

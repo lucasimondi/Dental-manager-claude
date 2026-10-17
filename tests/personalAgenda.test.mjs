@@ -36,7 +36,7 @@ test('mese e settimana partono da lunedì', () => {
 test('evento → riga di impegni_personali come la usa l\'agenda dello studio', () => {
   assert.deepEqual(rigaImpegno({ titolo: ' Calcetto ', tipo: 'sport', colore: '#059669', data_inizio: '2026-10-20', ora_inizio: '20:00', ora_fine: '21:30' }), {
     titolo: 'Calcetto', tipo: 'personale', etichetta: 'sport', colore: '#059669', data_inizio: '2026-10-20', data_fine: '2026-10-20',
-    tutto_il_giorno: false, ora_inizio: '20:00', ora_fine: '21:30', note: null, recurrence_id: null,
+    tutto_il_giorno: false, ora_inizio: '20:00', ora_fine: '21:30', note: null, recurrence_id: null, visibile_studio: true,
   });
   const ferie = rigaImpegno({ titolo: 'Ferie', tutto_il_giorno: true, data_inizio: '2026-08-01', data_fine: '2026-08-15', ora_inizio: '09:00' });
   assert.equal(ferie.ora_inizio, null);
@@ -81,4 +81,50 @@ test('ripetizione: recurrence_id è un uuid valido (colonna uuid nel database de
   const studio = fs.readFileSync('src/components/Agenda.jsx', 'utf8');
   assert.match(personal, /recurrenceId = date\.length > 1 \? nuovoIdRipetizione\(\)/);
   assert.match(studio, /recurrenceId = occorrenze\.length > 1 \? crypto\.randomUUID\(\)/);
+});
+
+test('evento ripetuto: modifica ed eliminazione chiedono solo questo, successivi o tutti', async () => {
+  const { occorrenzeDaToccare, applicaAOccorrenza, AMBITI_SERIE } = await import('../personal/src/lib/agenda.js');
+  const fs = await import('node:fs');
+  const serie = ['2026-10-17', '2026-10-31', '2026-11-14'].map((d, i) => ({ id: i + 1, recurrence_id: 'r', data_inizio: d, data_fine: d }));
+  const aperto = { ...serie[1], data_inizio_originale: '2026-10-31' };
+  assert.deepEqual(AMBITI_SERIE.map(([k]) => k), ['questo', 'successivi', 'tutti']);
+  assert.deepEqual(occorrenzeDaToccare(serie, aperto, 'questo').map((x) => x.id), [2]);
+  assert.deepEqual(occorrenzeDaToccare(serie, aperto, 'successivi').map((x) => x.id), [2, 3]);
+  assert.deepEqual(occorrenzeDaToccare(serie, aperto, 'tutti').map((x) => x.id), [1, 2, 3]);
+  // Spostando l'evento aperto di un giorno, gli altri della serie si spostano dello stesso giorno.
+  const mod = applicaAOccorrenza(serie[2], { titolo: 'Bimbe dai nonni', data_inizio: '2026-11-01', data_fine: '2026-11-01' }, 1);
+  assert.deepEqual([mod.id, mod.titolo, mod.data_inizio, mod.data_fine, mod.recurrence_id], [3, 'Bimbe dai nonni', '2026-11-15', '2026-11-15', 'r']);
+  const ui = fs.readFileSync('personal/src/Agenda.jsx', 'utf8');
+  assert.match(ui, /if \(inSerie && !ambito\) \{ setChiediSerie\('salva'\)/);
+  assert.match(ui, /inSerie \? setChiediSerie\('elimina'\)/);
+});
+
+test('agenda Personal: tutta la settimana, domenica compresa', async () => {
+  const fs = await import('node:fs');
+  const griglia = fs.readFileSync('personal/src/AgendaGriglia.jsx', 'utf8');
+  assert.match(griglia, /const GIORNI_NASCOSTI_PERSONAL = \[\];/);
+  assert.match(griglia, /const hiddenWeekdays = GIORNI_NASCOSTI_PERSONAL;/);
+});
+
+test('POL-VITA-013: appuntamento dello studio scritto da Personal, validato come nello studio', async () => {
+  const { rigaAppuntamento } = await import('../personal/src/lib/agenda.js');
+  assert.deepEqual(rigaAppuntamento({ paziente_id: '42', data: '2026-10-20', ora: '09:15:00', durata: '45', tipo: ' Igiene ', note: ' ', stato: 'boh' }), {
+    paziente_id: 42, data: '2026-10-20', ora: '09:15', durata: 45, tipo: 'Igiene', colore: null, note: null, stato: 'confermato',
+  });
+  assert.throws(() => rigaAppuntamento({ data: '2026-10-20', ora: '09:00' }), /paziente/);
+  assert.throws(() => rigaAppuntamento({ paziente_id: 1, data: '', ora: '09:00' }), /giorno/);
+});
+
+test('POL-VITA-013: eventi nascosti restano in Personal e spariscono solo nello studio', async () => {
+  const fs = await import('node:fs');
+  const { rigaImpegno } = await import('../personal/src/lib/agenda.js');
+  assert.equal(rigaImpegno({ titolo: 'x', data_inizio: '2026-10-20' }).visibile_studio, true);
+  assert.equal(rigaImpegno({ titolo: 'x', data_inizio: '2026-10-20', visibile_studio: false }).visibile_studio, false);
+  const app = fs.readFileSync('src/App.jsx', 'utf8');
+  assert.match(app, /const impegniStudio = useMemo\(\(\) => impegni\.filter\(\(i\) => i\.visibileStudio !== false\), \[impegni\]\);/);
+  assert.doesNotMatch(app, /impegni=\{impegni\}/, 'lo studio riceve solo gli eventi visibili');
+  assert.match(fs.readFileSync('src/lib/supabase.js', 'utf8'), /visibileStudio: 'visibile_studio'/);
+  const sql = fs.readFileSync('supabase/migrations/20261017120000_pol_vita_013_impegni_visibili_studio.sql', 'utf8');
+  assert.match(sql, /add column if not exists visibile_studio boolean not null default true/);
 });
