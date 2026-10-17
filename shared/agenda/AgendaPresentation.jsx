@@ -8,9 +8,9 @@ const WD_SHORT = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
 const toISO = d => d.toISOString().slice(0,10);
 const startOfWeek = d => { const dt = new Date(d + 'T12:00'); const day = dt.getDay(); dt.setDate(dt.getDate() + (day === 0 ? -6 : 1 - day)); return dt; };
-export function ViewPicker({ view, setView, touchSafe = false, palette: C = DEFAULT_PALETTE }) {
+export function ViewPicker({ view, setView, touchSafe = false, palette: C = DEFAULT_PALETTE, weekendsHidden = false, onToggleWeekends }) {
   const [open, setOpen] = useState(false);
-  const LABEL = { giorno: 'Giorno', settimana: 'Settimana', mese: 'Mese' };
+  const LABEL = { giorno: 'Giorno', settimana: 'Settimana', settimana_lavoro: 'Settimana lavoro', mese: 'Mese' };
   return (
     <div style={{ position: 'relative', flexShrink: 0 }}>
       <button
@@ -27,10 +27,11 @@ export function ViewPicker({ view, setView, touchSafe = false, palette: C = DEFA
       </button>
       {open && <div className="agenda-floating-interactive" onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 34 }} />}
       {open && (
-        <div className="agenda-floating-interactive" style={{ position: 'absolute', top: touchSafe ? 48 : 30, right: 0, background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 10, boxShadow: '0 8px 22px rgba(0,0,0,0.18)', width: 126, overflow: 'hidden', zIndex: 35 }}>
-          {['giorno', 'settimana', 'mese'].map((v) => (
+        <div className="agenda-floating-interactive" style={{ position: 'absolute', top: touchSafe ? 48 : 30, right: 0, background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 10, boxShadow: '0 8px 22px rgba(0,0,0,0.18)', width: 178, overflow: 'hidden', zIndex: 35 }}>
+          {['giorno', 'settimana', 'settimana_lavoro', 'mese'].map((v) => (
             <button key={v} onClick={() => { setView(v); setOpen(false); }} style={{ display: 'block', width: '100%', padding: '9px 12px', border: 'none', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', textAlign: 'left', background: view === v ? C.priL : 'transparent', color: view === v ? C.pri : C.txt }}>{LABEL[v]}</button>
           ))}
+          {onToggleWeekends && <button onClick={() => { onToggleWeekends(); setOpen(false); }} aria-pressed={weekendsHidden} style={{ display: 'block', width: '100%', padding: '9px 12px', border: 'none', borderTop: `1px solid ${C.brd}`, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', textAlign: 'left', background: weekendsHidden ? C.priL : 'transparent', color: weekendsHidden ? C.pri : C.txt }}>{weekendsHidden ? 'Mostra sabato e domenica' : 'Nascondi sabato e domenica'}</button>}
         </div>
       )}
     </div>
@@ -297,9 +298,9 @@ export function AppointmentBlock({ a, label, co, top, height, col = 0, totalCols
                         {poltrona && !selModeWA && (
                           <div title={poltrona.nome} style={{ position: 'absolute', top: 3, right: operatore ? 13 : 3, width: 7, height: 7, borderRadius: 2, background: poltrona.colore, border: '1px solid rgba(255,255,255,0.8)' }} />
                         )}
-                        <div style={{ fontSize: 9, lineHeight: '10px', fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.ora} {label}</div>
-                        {height > 28 && <div style={{ fontSize: 8, lineHeight: '9px', color: 'rgba(255,255,255,0.9)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.tipo}</div>}
-                        {height > 44 && <div style={{ fontSize: 8, lineHeight: '9px', color: 'rgba(255,255,255,0.7)' }}>{a.durata} min</div>}
+                        <div style={{ fontSize: 9, lineHeight: '10px', fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(() => { const [h, m] = String(a.ora || '00:00').split(':').map(Number); const fine = ((h || 0) * 60 + (m || 0) + Number(a.durata || 0)) % (24 * 60); return `${String(h || 0).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}–${String(Math.floor(fine / 60)).padStart(2, '0')}:${String(fine % 60).padStart(2, '0')}`; })()}</div>
+                        {height > 18 && <div style={{ fontSize: 8, lineHeight: '9px', color: 'rgba(255,255,255,0.94)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label || a.tipo || 'Appuntamento'}</div>}
+                        {height > 44 && a.tipo && a.tipo !== label && <div style={{ fontSize: 8, lineHeight: '9px', color: 'rgba(255,255,255,0.7)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.tipo}</div>}
                       </div>
                       {/* Checkbox selezione — solo in modalità invio WhatsApp di massa */}
                       {selModeWA && isSelezionabileWA && (

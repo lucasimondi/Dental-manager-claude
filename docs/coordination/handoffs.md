@@ -3785,3 +3785,14 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - TEST: 1292/1292 su Node 20.
 - LIMITI: le regole provvisorie sono approssimative (il catalogo vero arriva con Claude); i primi giri dopo il deploy vanno controllati in `log_elaborazione` e nei conteggi `drive_cartella`/`da_analizzare`.
 - PROSSIMO PASSO: verifica dei primi giri, review della PR, merge solo su "Mergia" del PO.
+
+## 2026-10-17 — Codex — POL-VITA-014 Agenda: orari completi, weekend e avvio Personal
+- OWNER: Codex (`/root`), richiesta diretta Product Owner. BRANCH: `work`.
+- OBJECTIVE: migliorare la lettura degli appuntamenti in Studio e Personal; offrire una settimana lun–ven e una rapida esclusione del weekend; eliminare l'attesa a pagina vuota nell'apertura dell'agenda Personal.
+- COMPLETED: `shared/agenda/AgendaPresentation.jsx` ora rende per ogni appuntamento l'intervallo completo `HH:MM–HH:MM` e, sotto, il paziente/titolo; `ViewPicker` contiene `Settimana lavoro` e il pulsante accessibile `Nascondi/Mostra sabato e domenica`. Il parser e il link di passaggio Studio/Personal conservano la nuova vista. Gli adapter Studio e Personal passano le colonne corrette, quindi Settimana lavoro è sempre lunedì–venerdì e il comando weekend allarga la vista senza cambiare le impostazioni condivise del tenant. Personal apre subito la griglia vuota e popola appuntamenti, eventi, impostazioni e scadenze al termine delle letture autorevoli; le scadenze restano non bloccanti come prima. Studio ora passa nome e cognome del paziente al blocco condiviso.
+- FILES: `shared/agenda/AgendaPresentation.jsx`, `shared/agenda/navigation.js`, `src/components/Agenda.jsx`, `personal/src/Agenda.jsx`, `personal/src/AgendaGriglia.jsx`, test agenda e documentazione coordinamento.
+- DATABASE / RLS / EDGE / PRODUCTION DATA: nessuna modifica, nessuna lettura/scrittura di dati di produzione.
+- TESTS: `npm test` 1297/1297; `npm run build` OK; `npm run build:personal` OK; `git diff --check` OK. I build riportano solo gli avvisi preesistenti di chiavi duplicate, eval di pdfjs e bundle grande.
+- RISKS / LIMITS: non provato su iPhone fisico; il toggle weekend è intenzionalmente locale alla sessione UI e non modifica `studio_info.agenda_settings`.
+- ROLLBACK: revert del commit; nessun dato o migration da ripristinare.
+- EXACT NEXT ACTION: aprire/revisionare PR, attendere approvazione PO prima di merge o deploy.

@@ -68,7 +68,7 @@ test('Agenda mobile controls float above the scrolling grid', () => {
 });
 
 test('Agenda day strip follows the grid day source and uses mobile-only today styling', () => {
-  assert.match(agenda, /getVisibleWeekDays\(weekStart, hiddenWeekdays\)/);
+  assert.match(agenda, /getVisibleWeekDays\(weekStart, agendaHiddenWeekdays\)/);
   assert.match(agenda, /getVisibleWeekDays\(ws, hiddenWeekdays\)/);
   assert.match(agenda, /gridTemplateColumns:\s*`repeat\(\$\{week\.length\}, minmax\(0, 1fr\)\)`/);
   assert.match(agenda, /agenda-mobile-day-number\$\{isToday \? ' is-today'/);

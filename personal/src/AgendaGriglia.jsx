@@ -13,11 +13,12 @@ const GIORNI_NASCOSTI_PERSONAL = [];
 export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMese, dati, ctx, etichette, coloriTipi }) {
   const [localMonth, setLocalMonth] = useState(giorno);
   const month = mese || localMonth, changeMonth = setMese || setLocalMonth;
-  const weekly = view === 'settimana';
-  // Personal mostra sempre tutta la settimana, domenica compresa: i giorni nascosti
-  // dello studio (giorni di chiusura) valgono solo per l'agenda dello studio.
+  const weekly = view === 'settimana' || view === 'settimana_lavoro';
+  const [weekendsHidden, setWeekendsHidden] = useState(false);
+  // La scelta rapida è solo locale alla schermata: non cambia l'orario/configurazione
+  // condivisa dello studio. Settimana lavoro nasconde sempre sabato e domenica.
   const { slotMin = 30, zoom = 1 } = dati.settings || {};
-  const hiddenWeekdays = GIORNI_NASCOSTI_PERSONAL;
+  const hiddenWeekdays = view === 'settimana_lavoro' || weekendsHidden ? [0, 6] : GIORNI_NASCOSTI_PERSONAL;
   const oraInizio = 0, oraFine = 24;
   const days = weekly ? getVisibleWeekDays(daIso(giorniSettimana(giorno)[0]), hiddenWeekdays) : [daIso(giorno)];
   const slots = [];
@@ -46,7 +47,7 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
   useEffect(() => { if (containerRef.current) containerRef.current.scrollTop = showNowLine ? Math.max(0, nowTop - effectiveSlotH * 2) : 0; }, [giorno, view]);
   // POL-VITA-008: "Vai a Studio" accanto al selettore della vista, alla sua sinistra.
   const appSwitch = <AgendaSwitch inline target="studio" day={giorno} month={month} view={view} />;
-  const pick = <span className="personal-agenda-azioni">{appSwitch}<ViewPicker view={view} setView={setView} touchSafe /></span>;
+  const pick = <span className="personal-agenda-azioni">{appSwitch}<ViewPicker view={view} setView={setView} touchSafe weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendsHidden(hidden => !hidden)} /></span>;
   const navigate = n => setGiorno(piuGiorni(giorno, n * (weekly ? 7 : 1)));
   // DayStrip notifica anche al primo mount la settimana che sta mostrando.
   // In Personal ignoriamo quella prima notifica: altrimenti il 16 diventa lunedì 12.

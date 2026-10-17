@@ -45,7 +45,8 @@ function AccessoStudio({ onEntrato }) {
 }
 
 function useDatiAgenda(da, a, versione, esegui) {
-  const [dati, setDati] = useState(null);
+  // Disegna subito la struttura dell'agenda; appuntamenti e impostazioni autorevoli la aggiornano appena arrivano.
+  const [dati, setDati] = useState(() => ({ appuntamenti: [], impegni: [], settings: {}, scadenze: [] }));
   const impostazioniCache = useRef(null);
   const pagamentiCache = useRef({ versione: null, dati: null, promise: null });
   const versioneCorrente = useRef(versione);
@@ -154,7 +155,7 @@ export function VistaAgenda({ ctx }) {
 
   const [da, a] = useMemo(() => {
     if (modo === 'mese') { const g = grigliaMese(mese); return [giorno < g[0] ? giorno : g[0], giorno > g[41] ? giorno : g[41]]; }
-    if (modo === 'settimana') { const g = giorniSettimana(giorno); return [g[0], g[6]]; }
+    if (modo === 'settimana' || modo === 'settimana_lavoro') { const g = giorniSettimana(giorno); return [g[0], g[6]]; }
     return [giorno, giorno];
   }, [modo, giorno, mese]);
 
@@ -167,8 +168,7 @@ export function VistaAgenda({ ctx }) {
 
 function ContenutoAgenda({ ctx, modo, setModo, giorno, setGiorno, mese, setMese, da, a, etichette, coloriTipi, versione, esegui }) {
   const dati = useDatiAgenda(da, a, versione, esegui);
-  return !dati ? <p className="pp-vuoto">Carico l'agenda…</p>
-    : <GrigliaPoliedra view={modo} setView={setModo} giorno={giorno} setGiorno={setGiorno} mese={mese} setMese={setMese} dati={dati} ctx={ctx} etichette={etichette} coloriTipi={coloriTipi} />;
+  return <GrigliaPoliedra view={modo} setView={setModo} giorno={giorno} setGiorno={setGiorno} mese={mese} setMese={setMese} dati={dati} ctx={ctx} etichette={etichette} coloriTipi={coloriTipi} />;
 }
 
 

@@ -100,11 +100,13 @@ test('evento ripetuto: modifica ed eliminazione chiedono solo questo, successivi
   assert.match(ui, /inSerie \? setChiediSerie\('elimina'\)/);
 });
 
-test('agenda Personal: tutta la settimana, domenica compresa', async () => {
+test('agenda Personal: settimana completa, scelta per nascondere il weekend e Settimana lavoro', async () => {
   const fs = await import('node:fs');
   const griglia = fs.readFileSync('personal/src/AgendaGriglia.jsx', 'utf8');
   assert.match(griglia, /const GIORNI_NASCOSTI_PERSONAL = \[\];/);
-  assert.match(griglia, /const hiddenWeekdays = GIORNI_NASCOSTI_PERSONAL;/);
+  assert.match(griglia, /const weekly = view === 'settimana' \|\| view === 'settimana_lavoro';/);
+  assert.match(griglia, /view === 'settimana_lavoro' \|\| weekendsHidden \? \[0, 6\] : GIORNI_NASCOSTI_PERSONAL/);
+  assert.match(griglia, /onToggleWeekends=\{\(\) => setWeekendsHidden/);
 });
 
 test('POL-VITA-013: appuntamento dello studio scritto da Personal, validato come nello studio', async () => {

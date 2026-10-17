@@ -2172,3 +2172,15 @@ not apply remotely, deploy, merge POL-RBAC-001A/POL-RBAC-001, or merge PR
 #15/#16 without explicit Product Owner approval.
 
 (POL-RBAC-001/POL-RBAC-001A have since merged to `master`; PR #16 is closed. This record is kept for audit history — see "Current task" above for the active task.)
+
+---
+
+# Current task — POL-VITA-014 Agenda: orari completi, weekend e avvio Personal (2026-10-17)
+- OWNER: Codex (`/root`), richiesta diretta del Product Owner.
+- BRANCH: `work`.
+- RICHIESTA PO: nelle agende Studio e Personal mostrare l'orario completo con sotto il nome di appuntamento/paziente; un controllo per nascondere sabato e domenica, una vista `Settimana lavoro` (lun–ven) e apertura di Personal immediata.
+- FATTO: componente condiviso `AppointmentBlock` ora presenta `inizio–fine` e nella riga seguente il paziente/titolo; `ViewPicker` offre `Settimana lavoro` e il comando accessibile mostra/nascondi weekend. Entrambi gli adapter calcolano cinque colonne nella settimana lavoro; Studio mantiene la scelta come sola preferenza della vista e non riscrive le impostazioni del tenant. Personal mostra immediatamente lo scheletro interattivo dell'agenda vuota, quindi applica i dati autorevoli in background senza aspettare appuntamenti/impegni/impostazioni.
+- DB / RLS / EDGE / DEPLOY: nessuna modifica; solo frontend.
+- VALIDATION: `npm test` 1297/1297; `npm run build`; `npm run build:personal`; `git diff --check`.
+- ROLLBACK: revert del commit frontend; nessun rollback dati necessario.
+- STATO: pronto per PR/review; nessun merge o deploy senza approvazione PO.
