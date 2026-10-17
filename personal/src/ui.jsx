@@ -89,7 +89,7 @@ export function RigaPagamento({ s, onApri, onPagato }) {
         </span>
         <span className="pp-scadenza-testo">
           <span className="pp-riga-titolo">{s.descrizione}</span>
-          <span className="pp-riga-meta">{[s.completata ? 'pagato' : quando(s.data), s.pratica?.titolo || s.documento?.titolo].filter(Boolean).join(' · ')}</span>
+          <span className="pp-riga-meta">{[s.completata ? 'pagato' : quando(s.data), s.categoria, s.ricorrenza ? 'fisso' : null, s.pratica?.titolo || s.documento?.titolo].filter(Boolean).join(' · ')}</span>
         </span>
       </button>
       <div className="pp-scadenza-destra">

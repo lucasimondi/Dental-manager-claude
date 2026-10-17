@@ -9,10 +9,10 @@ import { archivioDb } from './lib/supabasePersonal.js';
 import {
   cercaDocumenti, conteggiFascicoli, eliminaDocumento, pratiche as caricaPratiche, documentiDellaPratica, rispondi,
   segnaScadenza, cambiaStatoPratica, documentiDaGestire, documentiRecenti, documentoCompleto, impostaPortafoglio,
-  caricaDocumento, eCaricato, nelPortafoglio, anteprimaFile, pagamenti as caricaPagamenti, eliminaScadenza,
+  caricaDocumento, eCaricato, nelPortafoglio, anteprimaFile, pagamenti as caricaPagamenti, eliminaScadenza, prossimoPagamentoFisso, pagamentoDaDocumento, RICORRENZE,
   aggiornaDocumento, documentiSezione, documentiPersonali, aggiornaScadenza, chiediPoliedron, partiRisposta, praticaCompleta, cestinaSuDrive,
 } from './lib/archivio.js';
-import { spesaDaScadenza, annullaSpesaDaScadenza, movimentiTra, bilancio, periodo } from './lib/conti.js';
+import { spesaDaScadenza, annullaSpesaDaScadenza, movimentiTra, bilancio, periodo, CATEGORIE_PAGAMENTO } from './lib/conti.js';
 import { impostaToken } from './lib/miniature.js';
 import { VistaAgenda, PaginaEvento, PaginaAppuntamento, ElencoGiorno } from './Agenda.jsx';
 import { VistaConti, PaginaMovimento, PaginaNuovaScadenza, RiquadroSaldo } from './Conti.jsx';
@@ -478,7 +478,9 @@ function PaginaPagamento({ s: iniziale, ctx, chiudi }) {
     await segnaScadenza(archivioDb, s.id, completata);
     // Pagato → spesa nei Conti; di nuovo da pagare → la spesa automatica si toglie.
     const spesa = completata ? await spesaDaScadenza(archivioDb, s).catch(() => null) : (await annullaSpesaDaScadenza(archivioDb, s.id).catch(() => null), null);
-    setS({ ...s, completata }); aggiorna(); mostra(completata ? (spesa ? 'Pagato e registrato tra le spese' : 'Segnato come pagato') : 'Segnato da pagare');
+    const prossimo = completata && s.ricorrenza ? await prossimoPagamentoFisso(archivioDb, s).catch(() => null) : null;
+    setS({ ...s, completata }); aggiorna();
+    mostra([completata ? (spesa ? 'Pagato e registrato tra le spese' : 'Segnato come pagato') : 'Segnato da pagare', prossimo ? `prossimo il ${dataBreve(prossimo.data)}` : null].filter(Boolean).join(' · '));
   });
   return (
     <>
@@ -487,12 +489,13 @@ function PaginaPagamento({ s: iniziale, ctx, chiudi }) {
         <h2>{s.descrizione}</h2>
         {s.importo != null && <p className="pp-importo-grande">{euro(s.importo)}</p>}
         <p className="pp-riga-meta"><IconaCalendario size={14} /> {dataBreve(s.data)}{!s.completata ? ` · ${quando(s.data)}` : ''}</p>
+        {(s.categoria || s.ricorrenza) && <p className="pp-riga-meta">{[s.categoria, RICORRENZE.find(([k]) => k === s.ricorrenza)?.[1]].filter(Boolean).join(' · ')}</p>}
       </div>
       <div className="pp-azioni">
         {s.completata
           ? <button className="pp-bottone pp-bottone-chiaro" onClick={() => cambiaStato(false)}>Segna da pagare</button>
           : <button className="pp-bottone pp-bottone-verde" onClick={() => cambiaStato(true)}>Segna come pagato</button>}
-        {!modifica && <button className="pp-bottone pp-bottone-chiaro" onClick={() => setModifica({ descrizione: s.descrizione, data: s.data, importo: s.importo ?? '' })}>Modifica</button>}
+        {!modifica && <button className="pp-bottone pp-bottone-chiaro" onClick={() => setModifica({ descrizione: s.descrizione, data: s.data, importo: s.importo ?? '', categoria: s.categoria || '', ricorrenza: s.ricorrenza || '' })}>Modifica</button>}
       </div>
       {modifica && (
         <div className="pp-modifica">
@@ -500,6 +503,19 @@ function PaginaPagamento({ s: iniziale, ctx, chiudi }) {
           <div className="pp-due">
             <label className="pp-campo"><span>Data</span><input type="date" value={modifica.data} onChange={(e) => setModifica({ ...modifica, data: e.target.value })} /></label>
             <label className="pp-campo"><span>Importo (€)</span><input inputMode="decimal" value={modifica.importo} onChange={(e) => setModifica({ ...modifica, importo: e.target.value })} placeholder="nessuno" /></label>
+          </div>
+          <div className="pp-due">
+            <label className="pp-campo"><span>Tipo</span>
+              <select className="pp-select" value={modifica.categoria} onChange={(e) => setModifica({ ...modifica, categoria: e.target.value })}>
+                <option value="">—</option>
+                {[...new Set([...CATEGORIE_PAGAMENTO, ...(modifica.categoria ? [modifica.categoria] : [])])].map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </label>
+            <label className="pp-campo"><span>Si ripete</span>
+              <select className="pp-select" value={modifica.ricorrenza} onChange={(e) => setModifica({ ...modifica, ricorrenza: e.target.value })}>
+                {RICORRENZE.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+              </select>
+            </label>
           </div>
           <div className="pp-azioni">
             <button className="pp-bottone" onClick={salvaModifica} disabled={!modifica.descrizione.trim() || !modifica.data}>Salva</button>
@@ -516,7 +532,11 @@ function PaginaPagamento({ s: iniziale, ctx, chiudi }) {
               <IconaFreccia size={16} />
             </button>
           </Gruppo>
-        ) : <Vuoto>Nessun documento collegato.</Vuoto>}
+        ) : (
+          <button className="pp-riga pp-riga-aggiungi pp-riga-sola" onClick={() => apri({ tipo: 'carica', opzioni: { pagamentoId: s.id, descrizione: s.descrizione } })}>
+            <IconaPiu size={18} /><span>Allega la foto o il PDF (bolletta, polizza, ricevuta…)</span>
+          </button>
+        )}
         {s.pratica && (
           <Gruppo>
             <button className="pp-riga" onClick={() => apri({ tipo: 'pratica', p: s.pratica })}>
@@ -638,6 +658,13 @@ function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) {
       setStato({ invio: true, testo: nonAnalizzare ? 'Salvo su Drive…' : 'Salvo su Drive e leggo il documento…' });
       const r = await caricaDocumento({ token: await tokenSessione(), ...pronto, descrizione, fascicolo, portafoglio: tieni, nonAnalizzare, persona, categoria });
       aggiorna();
+      // Da Conti: il documento diventa (o si collega a) un pagamento da fare.
+      if (r.id && (opzioni.pagamento || opzioni.pagamentoId)) {
+        const [primo] = await pagamentoDaDocumento(archivioDb, r.id, { categoria: opzioni.categoriaPagamento || null, pagamentoId: opzioni.pagamentoId || null });
+        aggiorna();
+        mostra(opzioni.pagamentoId ? 'Documento allegato al pagamento' : 'Letto: controlla importo e scadenza');
+        if (primo) { sostituisci({ tipo: 'pagamento', s: primo }); return; }
+      }
       mostra(r.duplicato ? 'Era già in archivio' : `Archiviato: ${r.titolo}`);
       if (r.id) sostituisci({ tipo: 'documento', id: r.id });
     } catch (e) {
@@ -1010,7 +1037,9 @@ function Archivio({ email }) {
     pagato: (s) => esegui(async () => {
       await segnaScadenza(archivioDb, s.id, true);
       const spesa = await spesaDaScadenza(archivioDb, s).catch(() => null);
-      aggiorna(); mostra(spesa ? 'Pagato e registrato tra le spese' : 'Segnato come pagato');
+      const prossimo = s.ricorrenza ? await prossimoPagamentoFisso(archivioDb, s).catch(() => null) : null;
+      aggiorna();
+      mostra([spesa ? 'Pagato e registrato tra le spese' : 'Segnato come pagato', prossimo ? `prossimo il ${new Date(`${prossimo.data}T12:00:00`).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}` : null].filter(Boolean).join(' · '));
     }),
   };
 
