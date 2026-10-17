@@ -68,3 +68,23 @@ Preserve production behavior unless the task explicitly authorizes a behavior ch
 ## Completion checklist
 
 Before handoff: inspect the diff, verify scope, run proportionate checks, record exact results, list database and deployment impact, document rollback, update `current-task.md`, and append a complete handoff.
+
+## Explicit merge authorization: "Mergia"
+
+The Product Owner's exact command **"Mergia"** authorizes merging only the specific pull request for the task just reported as ready. It is not blanket approval for unrelated pull requests and does not authorize unattended auto-merge.
+
+Before merging:
+1. Identify the exact PR discussed as ready. If the target is ambiguous, multiple PRs could match, or no PR exists, stop and ask which PR.
+2. Confirm the PR is open, not a draft, targets `master`, and contains the intended completed work.
+3. Inspect the PR diff for unintended changes, secrets, generated artifacts, or unrelated scope.
+4. Confirm all required CI checks and tests pass, the build succeeds, and there are no merge conflicts or unresolved blocking review comments.
+5. Do not bypass branch protection, required reviews, failing checks, or repository permissions. If a prerequisite is missing, explain the blocker and stop.
+6. If the PR head has changed since it was reviewed, re-check the diff and checks before merging.
+
+After the explicit "Mergia" and successful checks:
+1. Merge only that PR, using squash unless the repository's established workflow for that PR explicitly requires another method.
+2. Verify GitHub reports it merged and record the merge commit SHA.
+3. Check the deployment associated with the merge when available. Report the actual result; never claim deployment succeeded without verification.
+4. Report the PR link, merge commit, checks, and deployment status concisely.
+
+Never push directly to `master` for normal implementation work. If Codex's available GitHub access cannot perform the merge, say so plainly and provide the shortest actionable next step.
