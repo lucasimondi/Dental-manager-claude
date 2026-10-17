@@ -1,3 +1,12 @@
+# Current task — POL-VITA-009 Personal: agenda scorrevole in orizzontale trascinando la griglia (2026-10-17)
+- OWNER: CLAUDE (agenda di Personal passata a Claude dal PO, vedi POL-VITA-008). BRANCH: `claude/catalogazione-facile-latjs9` ripartito da `master@a061334f` (PR #203 mergiata).
+- RICHIESTA PO (verbatim): "L'agenda sia giorni che settimana deve essere scrollabile in orizzontale anche scrollando agenda e non solo numeri dei giorni, e cambia settimana o giorno".
+- FATTO: `personal/src/lib/swipeAgenda.js` — le colonne dei giorni seguono il dito; oltre 70 px (o con un colpo veloce) scivolano via e arriva il giorno/la settimana dopo (sinistra) o prima (destra); gesto diagonale o verticale = scorrimento delle ore; velocità misurata con `event.timeStamp`. `AgendaGriglia.jsx` usa il nuovo gesto al posto di `useGridSwipe` (che cambiava solo al rilascio, senza seguire il dito). Mese invariato; `shared/agenda` e Studio invariati.
+- VALIDATION: `npm test` 1283/1283 (Node 20; +3 test `personalSwipeAgenda`); build OK; Chromium 390×844 touch (CDP): Settimana 17→24→17→10, trascinamento corto e gesto verticale senza cambio; Giorno 10→11→10; nessun errore.
+- STATO: in revisione (PR).
+
+---
+
 # Current task — POL-VITA-008 Personal: eventi del giorno flottanti, "Vai a Studio" accanto alla vista, Personali solo delle persone, anteprime, Condividi (2026-10-17)
 - OWNER: CLAUDE. Passaggio di consegne esplicito dal PO (domanda in chat, risposta "Passa a Claude"): l'agenda di Personal passa da Codex (POL-VITA-010/011/012) a Claude. BRANCH: `claude/catalogazione-facile-latjs9` ripartito da `master@15d67178` (PR #202 mergiata).
 - RICHIESTA PO (verbatim, sintesi): "Eventi giornalieri: devono stare sotto il flottante dei giorni, sempre flottante quindi non deve bloccare scorrimenti ma subito sotto. Il flottante vai a studio deve essere a sinistra di selettore visualizzazione. La sezione personale deve contenere solo documenti delle persone elencate nelle impostazioni, gli altri documenti mettili dentro documenti (catalogandoli), inoltre deve esserci anteprima nei tasti cliccabili, inoltre deve esserci il tastino condividi (mail, whatsapp ecc, deve riprendere il tasto condividi dei vari sistemi operativi)."

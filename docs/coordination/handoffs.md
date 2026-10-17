@@ -3766,3 +3766,12 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - TEST: 1280/1280 su Node 20, build OK, prova Chromium 390×844 con dati finti.
 - LIMITI: niente iPhone fisico; il foglio di condivisione reale va provato sul telefono.
 - PROSSIMO PASSO: review della PR, merge solo su "Mergia" del PO.
+
+
+## 2026-10-17 — Claude — POL-VITA-009 (Personal: agenda scorrevole trascinando la griglia)
+- BRANCH: `claude/catalogazione-facile-latjs9` da `master@a061334f`.
+- COMPLETATO: in Giorno e Settimana la griglia segue il dito in orizzontale e cambia giorno o settimana (`personal/src/lib/swipeAgenda.js`); lo scorrimento verticale delle ore resta.
+- DB / SCRIPT / EDGE: nessuna modifica. `shared/agenda` invariato.
+- TEST: 1283/1283 su Node 20, build OK, prova touch in Chromium 390×844.
+- LIMITI: niente iPhone fisico; la sensazione del gesto va provata sul telefono.
+- PROSSIMO PASSO: review della PR, merge solo su "Mergia" del PO.

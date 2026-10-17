@@ -2,8 +2,9 @@ import { layoutAppointments } from '../../shared/agenda/geometry.js';
 import { euro } from './lib/coreArchivio.js';
 // POL-VITA-010: Personal adapter; original presentation is owned by shared/agenda.
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, AppointmentBlock, EventBlock, useSlotHeight, AgendaSwitch, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState, useGridSwipe } from '../../shared/agenda/AgendaPresentation.jsx';
+import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, AppointmentBlock, EventBlock, useSlotHeight, AgendaSwitch, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState } from '../../shared/agenda/AgendaPresentation.jsx';
 import { getVisibleWeekDays } from '../../shared/agenda/visibleDays.js';
+import { useSwipeAgenda } from './lib/swipeAgenda.js';
 import { daIso, piuGiorni, oggi, coloreEvento, nomeEtichetta, elementiDelGiorno, giorniSettimana } from './lib/agenda.js';
 export { ViewPicker };
 
@@ -60,7 +61,8 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
     const offset = (daIso(giorno).getDay() + 6) % 7;
     setGiorno(piuGiorni(weekStart, offset));
   };
-  const { onTouchStartSwipe, onTouchEndSwipe } = useGridSwipe(days, navigate);
+  // POL-VITA-009: la griglia segue il dito e cambia giorno o settimana (anche fuori dalla striscia).
+  const swipe = useSwipeAgenda(containerRef, navigate, view !== 'mese');
   const monthNavigate = n => { const d = daIso(month); d.setMonth(d.getMonth() + n, 1); changeMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`); };
   const openSlot = (ds, slot) => ctx.apri({ tipo: 'evento', evento: { data_inizio: ds, ora_inizio: slot, ora_fine: Number(slot.slice(0,2)) === 23 ? '23:59' : `${String(Number(slot.slice(0,2)) + 1).padStart(2,'0')}:${slot.slice(3)}` } });
   const renderDay = ds => {
@@ -109,7 +111,7 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
       </div>
     </> : <>
       <DayStrip selDay={giorno} setSelDay={ds => { setGiorno(ds); if (weekly) setView('giorno'); }} today={oggi()} compact oraColW={34} singleDay={!weekly} hiddenWeekdays={hiddenWeekdays} highlightSelected={!weekly} onWeekChange={weekly ? sincronizzaSettimana : undefined} overlayRef={overlayRef} viewPicker={pick} floatingFooter={fasciaGiorno} />
-      <div className="agenda-mobile-grid-surface" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onTouchStart={onTouchStartSwipe} onTouchEnd={onTouchEndSwipe}>
+      <div className="agenda-mobile-grid-surface" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }} {...swipe}>
         <TimeGrid containerRef={containerRef} isMobile slots={slots} slotH={slotH} effectiveSlotH={effectiveSlotH} oraColW={34} days={days} today={oggi()} showNowLine={showNowLine} nowTop={nowTop} onSlot={openSlot} renderDay={renderDay} />
       </div>
     </>}
