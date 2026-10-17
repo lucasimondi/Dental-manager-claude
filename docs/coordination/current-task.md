@@ -1,3 +1,14 @@
+# Current task — POL-VITA-013 Archivio: importazione senza Claude e cartelle di Drive per categoria e persona (2026-10-17)
+- OWNER: CLAUDE. BRANCH: `claude/catalogazione-facile-latjs9` ripartito da `master@dd058380` (PR #204 mergiata).
+- RICHIESTA PO (verbatim): "Sistema archivio , non.Ce altro modo per importare ?!" — risposta alla proposta di ordinare la cartella Drive per persona e categoria; l'importazione era ferma al lotto 2017-10 per il limite di spesa dell'API Claude (accesso di nuovo dal 2026-11-01).
+- FATTO: `Code.gs` — con l'API in pausa l'importazione continua con `analisiDiRiserva_()` (regole su oggetto, nome del file, poi mittente; nulla esce dallo script), documenti `da_analizzare` con tag "da analizzare"; `analizzaRimasti_()` li analizza davvero quando l'API torna (mai i clinici: se le regole cliniche li riconoscono vanno in `clinico_pazienti`) tramite il nuovo RPC `completa_analisi`; riordino e analisi aspettano la fine della pausa; niente email di resoconto per lotto durante la pausa; quote giornaliere Google esaurite → si riprende al giro dopo, mai email in errore. Drive: `Archivio personale/<Categoria>/<anno>` e `Persone/<Persona>` (persone delle Impostazioni dell'app), `ordinaDrive_()` a ogni giro (75 s) e `sistemaDrive()` a mano; i file si spostano (id e link invariati), cartella annotata in `drive_cartella`. Doc: `CLAUDE.md` e `LEGGIMI.md` dell'archivio.
+- DATABASE: migrazione additiva `20261017120000_pol_vita_013_riserva_e_drive.sql` applicata (colonne `da_analizzare`, `drive_cartella`, indice, funzione `completa_analisi` solo service_role); provata su un documento reale in un blocco annullato (fascicolo, titolo, tag con portafoglio, pratica, scadenza OK; nessuna modifica rimasta).
+- DEPLOY: `clasp push -f`, versione 8, web app `AKfycbzQ…UDw` @8. Rollback: ridistribuire la versione 7 e ripristinare `Code.gs` dal commit precedente; le colonne nuove sono innocue.
+- VALIDATION: `npm test` 1292/1292 (Node 20; +9 test `archivioRiservaDrive`, aggiornati `archivioRiordino` e `archivioPersonale`); `node --check` OK.
+- STATO: in revisione (PR); script già attivo sull'account di Luca.
+
+---
+
 # Current task — POL-VITA-009 Personal: agenda scorrevole in orizzontale trascinando la griglia (2026-10-17)
 - OWNER: CLAUDE (agenda di Personal passata a Claude dal PO, vedi POL-VITA-008). BRANCH: `claude/catalogazione-facile-latjs9` ripartito da `master@a061334f` (PR #203 mergiata).
 - RICHIESTA PO (verbatim): "L'agenda sia giorni che settimana deve essere scrollabile in orizzontale anche scrollando agenda e non solo numeri dei giorni, e cambia settimana o giorno".

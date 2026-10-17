@@ -3775,3 +3775,13 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - TEST: 1283/1283 su Node 20, build OK, prova touch in Chromium 390×844.
 - LIMITI: niente iPhone fisico; la sensazione del gesto va provata sul telefono.
 - PROSSIMO PASSO: review della PR, merge solo su "Mergia" del PO.
+
+
+## 2026-10-17 — Claude — POL-VITA-013 (Archivio: importazione senza Claude, Drive per categoria e persona)
+- BRANCH: `claude/catalogazione-facile-latjs9` da `master@dd058380`.
+- COMPLETATO: importazione che continua con catalogo provvisorio a regole quando l'API Claude è in pausa, analisi completa automatica dei documenti rimasti quando torna; cartelle Drive `<Categoria>/<anno>` e `Persone/<Persona>` con spostamento automatico.
+- DB: migrazione additiva applicata (`da_analizzare`, `drive_cartella`, `completa_analisi`).
+- SCRIPT: versione 8 attiva (trigger e web app).
+- TEST: 1292/1292 su Node 20.
+- LIMITI: le regole provvisorie sono approssimative (il catalogo vero arriva con Claude); i primi giri dopo il deploy vanno controllati in `log_elaborazione` e nei conteggi `drive_cartella`/`da_analizzare`.
+- PROSSIMO PASSO: verifica dei primi giri, review della PR, merge solo su "Mergia" del PO.
