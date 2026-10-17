@@ -102,7 +102,7 @@ test('pagamento segnato pagato → una sola spesa collegata, con la categoria de
 test('pagamento da fare inserito a mano: scadenza senza documento', async () => {
   const db = clientFinto();
   await nuovaScadenza(db, { data: '2026-11-01', descrizione: 'Rata auto', importo: '310,00' });
-  assert.deepEqual(db.chiamate[0].passi[0], ['insert', { data: '2026-11-01', descrizione: 'Rata auto', importo: 310, completata: false }]);
+  assert.deepEqual(db.chiamate[0].passi[0], ['insert', { data: '2026-11-01', descrizione: 'Rata auto', importo: 310, completata: false, categoria: null, ricorrenza: null, documento_id: null }]);
   await assert.rejects(nuovaScadenza(db, { data: '', descrizione: 'x' }), /Data/);
 });
 
@@ -167,4 +167,25 @@ test('app: Conti nel dock, + con tutte le aggiunte, pagine con chiusura in basso
     assert.match(aggiungi, new RegExp(`\\['${voce}',`), voce);
   }
   assert.match(app, /capture="environment"/);
+});
+
+test('POL-VITA-014: Da pagare mostra solo pagamenti attuali; i fissi si ripropongono', async () => {
+  const { prossimaData, RICORRENZE } = await import('../personal/src/lib/archivio.js');
+  const { totaliPerCategoria, CATEGORIE_PAGAMENTO } = await import('../personal/src/lib/conti.js');
+  const { readFileSync } = await import('node:fs');
+  assert.equal(prossimaData('2026-01-31', 'mensile'), '2026-02-28');
+  assert.equal(prossimaData('2026-11-15', 'trimestrale'), '2027-02-15');
+  assert.equal(prossimaData('2026-10-17', 'annuale'), '2027-10-17');
+  assert.equal(prossimaData('2026-10-17', ''), null);
+  assert.deepEqual(RICORRENZE.map(([k]) => k), ['', 'mensile', 'bimestrale', 'trimestrale', 'semestrale', 'annuale']);
+  assert.ok(CATEGORIE_PAGAMENTO.includes('Pulizia') && CATEGORIE_PAGAMENTO.includes('Bollo auto'));
+  assert.deepEqual(totaliPerCategoria([
+    { importo: 80, categoria: 'Bollette' }, { importo: 20.5, categoria: 'Bollette' }, { importo: 300, categoria: 'Assicurazioni' }, { importo: 10, documento: { fascicolo: 'utenze' } },
+  ]), [{ categoria: 'Assicurazioni', totale: 300 }, { categoria: 'Bollette', totale: 110.5 }]);
+  const lib = readFileSync('personal/src/lib/archivio.js', 'utf8');
+  assert.match(lib, /export async function pagamenti\(db\) \{\n  return esito\(await db\.from\('scadenze'\)\.select\(CAMPI_SCADENZA\)\.eq\('storica', false\)/);
+  const sql = readFileSync('supabase/archivio/migrations/20261017200000_pol_vita_014_pagamenti_attuali.sql', 'utf8');
+  assert.match(sql, /add column if not exists storica boolean not null default false/);
+  assert.match(sql, /update scadenze set storica = true where documento_id is not null/);
+  assert.doesNotMatch(sql.split('\n').filter((r) => !r.trim().startsWith('--')).join('\n'), /delete from|drop table|drop column/i);
 });
