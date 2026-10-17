@@ -175,3 +175,12 @@ export function etichettaMese(lunedi) {
   return `${MESI[a.getMonth()].slice(0, 3)} ${a.getFullYear()} – ${MESI[b.getMonth()].slice(0, 3)} ${b.getFullYear()}`;
 }
 
+
+// impegni_personali.recurrence_id è uuid nel database dello studio (id resta bigint).
+export function nuovoIdRipetizione() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  const b = Array.from({ length: 16 }, () => Math.floor(Math.random() * 256));
+  b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
+  const h = b.map((x) => x.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}

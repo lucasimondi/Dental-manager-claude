@@ -11,7 +11,7 @@ import {
 } from './lib/studio.js';
 import {
   daIso, oggi, minuti, ora, giorniSettimana, grigliaMese, elementiDelGiorno, generaDateRipetizione, piuGiorni,
-  coloreEvento, nomeEtichetta, COLORE_SCADENZA,
+  coloreEvento, nomeEtichetta, COLORE_SCADENZA, nuovoIdRipetizione,
 } from './lib/agenda.js';
 import { IconaFreccia, IconaCestino } from './Icone.jsx';
 import { GrigliaPoliedra } from './AgendaGriglia.jsx';
@@ -219,7 +219,7 @@ export function PaginaEvento({ evento: iniziale = {}, ctx, chiudi }) {
           const date = generaDateRipetizione(ev.data_inizio, dataFineRipetizione, ev.ripeti);
           if (!date.length) throw new Error('Controlla la data finale della ripetizione.');
           const durataGiorni = Math.max(0, Math.round((daIso(dataFineEvento).getTime() - daIso(ev.data_inizio).getTime()) / 86400000));
-          const recurrenceId = date.length > 1 ? Date.now() + Math.floor(Math.random() * 99999) : null;
+          const recurrenceId = date.length > 1 ? nuovoIdRipetizione() : null;
           const occorrenze = date.map((data) => ({
             ...payload,
             data_inizio: data,
