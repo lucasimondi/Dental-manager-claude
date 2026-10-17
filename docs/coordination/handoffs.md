@@ -1,5 +1,9 @@
 # Handoffs
 
+## 2026-10-17 — CLAUDE — Personal: slot come prima + pinch-to-zoom
+- PO: slot di #210 "troppo alti" → formula precedente; ingrandimento con due dita (`personal/src/lib/pinchZoom.js`, listener nativi `touchmove` non passivi solo con 2 tocchi, `gesturestart` bloccato per Safari). Range 1×–4×, ancoraggio dello scroll sul punto tra le dita, valore in localStorage.
+- Test: `tests/personalPinchZoom.test.mjs`, `tests/personalAgenda.test.mjs` aggiornato. Nessun database.
+
 ## 2026-10-17 — CLAUDE — PR #209 iphone-agenda rosso
 - Causa: la PR mostra nel blocco appuntamento "09:00–10:30" + nome completo su riga separata; `tests/visual/agenda.compare.mjs` cercava ancora "09:00 Esempio" anche in modalità Studio → timeout. Non è fixture né rendering mancante.
 - Test: Studio cerca il blocco `[data-appointment-id="10"]` con "Paziente Esempio" e clicca "09:00–10:30" (baseline invariata). Confronto pixel: l'interno dei blocchi appuntamento è l'unica nuova zona autorizzata; in cambio la geometria di ogni blocco (posizione/dimensione) è ora confrontata con l'originale.

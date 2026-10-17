@@ -1,3 +1,11 @@
+# Current task — Agenda Personal: slot come prima e pinch-to-zoom (2026-10-17)
+- OWNER: CLAUDE, branch `claude/poliedron-agenda-actions-kz6mmk`, da `master@55c80040` (PR #210 mergiata). PO verbatim: "Allora gli slot adesso sono troppo alti dobbiamo tornare a quelli di prima, aggiungiamo funzione di ingrandimenti con le dita, il pinch to zoom".
+- COSA: Personal torna all'altezza slot precedente (`max(24, availH/slot)·zoom`, tolto `PX_PER_MIN_MIN`); nuovo `personal/src/lib/pinchZoom.js`: due dita sulla griglia (Giorno/Settimana) ingrandiscono gli slot da 1× (come prima) a 4×, l'orario sotto le dita resta fermo, il fattore è ricordato sul dispositivo (localStorage, facoltativo). Un dito continua a cambiare giorno/settimana; un secondo dito riporta a posto le colonne già trascinate. Mese ("Ott 2026") invariato. Studio invariato.
+- VALIDATION: `npm test` 1303/1303 (+3 `tests/personalPinchZoom.test.mjs`); build e build:personal OK; `test:agenda:visual` Chromium (Studio pixel identico); reliability Chromium 3/3; prova pinch reale in Chromium 390×844 (tocchi CDP): 3×, minuto sotto le dita invariato, ricordato dopo ricarica, ritorno a 1×. WebKit in CI.
+- EXACT NEXT ACTION: CI della PR verde → "Mergia".
+
+---
+
 # Current task — Agenda Personal: mese su una riga e slot più alti (2026-10-17)
 - OWNER: CLAUDE, branch `claude/poliedron-agenda-actions-kz6mmk`, da `master@6c9a296` (PR #209 mergiata). PO verbatim (screenshot Personal, Settimana lavoro): "La scritta del mese deve essere adattata bene, così è spaginata, inoltre dobbiamo trovare una soluzione per gli appuntamenti corti, forse conviene aumentare un po' verticalmente la misura degli slot?"
 - COSA: Personal passa `shortMonth` a `DayStrip` → "Ott 2026" su una riga (Studio invariato: default false). Personal: almeno 1,3 px al minuto (39 px ogni 30 min, prima ~24) → un appuntamento di 30 min mostra orario e nome; lo zoom scala da lì.
