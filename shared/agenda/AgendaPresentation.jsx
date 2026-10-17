@@ -38,7 +38,7 @@ export function ViewPicker({ view, setView, touchSafe = false, palette: C = DEFA
   );
 }
 
-export function DayStrip({ palette: C = DEFAULT_PALETTE, selDay, setSelDay, today: t, onWeekChange, highlightSelected = true, viewPicker, compact, oraColW, onPrevWeek, onNextWeek, hiddenWeekdays = [], singleDay = false, overlayRef, floatingFooter }) {
+export function DayStrip({ palette: C = DEFAULT_PALETTE, selDay, setSelDay, today: t, onWeekChange, highlightSelected = true, viewPicker, compact, oraColW, onPrevWeek, onNextWeek, hiddenWeekdays = [], singleDay = false, overlayRef, floatingFooter, shortMonth = false }) {
   const scrollRef = useRef(null);
   const [stripBaseWeek, setStripBaseWeek] = useState(() => toISO(startOfWeek(selDay)));
   const settleTimer = useRef(null);
@@ -88,8 +88,9 @@ export function DayStrip({ palette: C = DEFAULT_PALETTE, selDay, setSelDay, toda
   // due mesi (o due anni) li mostra entrambi, es. "Lug – Ago 2026".
   const wkMonStart = new Date(stripBaseWeek + 'T12:00');
   const wkMonEnd = new Date(wkMonStart); wkMonEnd.setDate(wkMonEnd.getDate() + 6);
+  // shortMonth (Personal, toolbar affollata): "Ott 2026" su una riga sola invece di "Ottobre 2026" a capo.
   const meseLabel = wkMonStart.getMonth() === wkMonEnd.getMonth()
-    ? `${MESI[wkMonStart.getMonth()]} ${wkMonStart.getFullYear()}`
+    ? `${shortMonth ? MESI[wkMonStart.getMonth()].slice(0, 3) : MESI[wkMonStart.getMonth()]} ${wkMonStart.getFullYear()}`
     : wkMonStart.getFullYear() === wkMonEnd.getFullYear()
       ? `${MESI[wkMonStart.getMonth()].slice(0, 3)} – ${MESI[wkMonEnd.getMonth()].slice(0, 3)} ${wkMonStart.getFullYear()}`
       : `${MESI[wkMonStart.getMonth()].slice(0, 3)} ${wkMonStart.getFullYear()} – ${MESI[wkMonEnd.getMonth()].slice(0, 3)} ${wkMonEnd.getFullYear()}`;
@@ -112,7 +113,7 @@ export function DayStrip({ palette: C = DEFAULT_PALETTE, selDay, setSelDay, toda
           {!compact && onPrevWeek && (
             <button onClick={onPrevWeek} aria-label="Settimana precedente" style={{ background: C.bg, border: 'none', borderRadius: 7, width: 26, height: 26, cursor: 'pointer', fontSize: 15, color: C.txm, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>‹</button>
           )}
-          <span className={compact ? 'agenda-mobile-floating-month' : undefined} style={{ fontSize: 13, fontWeight: 800, color: C.txt, textTransform: 'capitalize' }}>{meseLabel}</span>
+          <span className={compact ? 'agenda-mobile-floating-month' : undefined} style={{ fontSize: 13, fontWeight: 800, color: C.txt, textTransform: 'capitalize', ...(shortMonth ? { whiteSpace: 'nowrap', flexShrink: 0 } : {}) }}>{meseLabel}</span>
           {!compact && onNextWeek && (
             <button onClick={onNextWeek} aria-label="Settimana successiva" style={{ background: C.bg, border: 'none', borderRadius: 7, width: 26, height: 26, cursor: 'pointer', fontSize: 15, color: C.txm, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>›</button>
           )}

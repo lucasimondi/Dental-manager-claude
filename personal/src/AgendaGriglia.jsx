@@ -9,6 +9,7 @@ import { daIso, piuGiorni, oggi, coloreEvento, nomeEtichetta, elementiDelGiorno,
 export { ViewPicker };
 
 const GIORNI_NASCOSTI_PERSONAL = [];
+export const PX_PER_MIN_MIN = 1.3;
 
 export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMese, dati, ctx, etichette, coloriTipi }) {
   const [localMonth, setLocalMonth] = useState(giorno);
@@ -27,7 +28,9 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
   const [overlayHeight, setOverlayHeight] = useState(0);
   const [availH, setAvailH] = useState(() => Math.max(360, window.innerHeight - 126));
   const [now, setNow] = useState(new Date());
-  const slotH = Math.max(24, Math.round(availH / slots.length * zoom));
+  // PO 2026-10-17 ("appuntamenti corti"): almeno 1,3 px al minuto (39 px ogni mezz'ora),
+  // così un appuntamento di 30 minuti mostra orario e nome; lo zoom scala da lì.
+  const slotH = Math.round(Math.max(slotMin * PX_PER_MIN_MIN, availH / slots.length) * zoom);
   const effectiveSlotH = useSlotHeight(containerRef, true, slots, slotH, view);
   useEffect(() => {
     const resize = () => setAvailH(Math.max(360, window.innerHeight - 126));
@@ -116,7 +119,7 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
         {!extras.aOrario.some(x => x.tipo === 'appuntamento') && <CalendarEmptyState />}
       </div>
     </> : <>
-      <DayStrip selDay={giorno} setSelDay={ds => { setGiorno(ds); if (weekly) setView('giorno'); }} today={oggi()} compact oraColW={34} singleDay={!weekly} hiddenWeekdays={hiddenWeekdays} highlightSelected={!weekly} onWeekChange={weekly ? sincronizzaSettimana : undefined} overlayRef={overlayRef} viewPicker={pick} floatingFooter={fasciaGiorno} />
+      <DayStrip selDay={giorno} setSelDay={ds => { setGiorno(ds); if (weekly) setView('giorno'); }} today={oggi()} compact oraColW={34} singleDay={!weekly} hiddenWeekdays={hiddenWeekdays} highlightSelected={!weekly} onWeekChange={weekly ? sincronizzaSettimana : undefined} overlayRef={overlayRef} viewPicker={pick} floatingFooter={fasciaGiorno} shortMonth />
       <div className="agenda-mobile-grid-surface" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }} {...swipe}>
         <TimeGrid containerRef={containerRef} isMobile slots={slots} slotH={slotH} effectiveSlotH={effectiveSlotH} oraColW={34} days={days} today={oggi()} showNowLine={showNowLine} nowTop={nowTop} onSlot={openSlot} renderDay={renderDay} />
       </div>

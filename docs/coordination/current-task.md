@@ -1,3 +1,12 @@
+# Current task — Agenda Personal: mese su una riga e slot più alti (2026-10-17)
+- OWNER: CLAUDE, branch `claude/poliedron-agenda-actions-kz6mmk`, da `master@6c9a296` (PR #209 mergiata). PO verbatim (screenshot Personal, Settimana lavoro): "La scritta del mese deve essere adattata bene, così è spaginata, inoltre dobbiamo trovare una soluzione per gli appuntamenti corti, forse conviene aumentare un po' verticalmente la misura degli slot?"
+- COSA: Personal passa `shortMonth` a `DayStrip` → "Ott 2026" su una riga (Studio invariato: default false). Personal: almeno 1,3 px al minuto (39 px ogni 30 min, prima ~24) → un appuntamento di 30 min mostra orario e nome; lo zoom scala da lì.
+- TEST: `tests/visual/agenda.compare.mjs` — dopo il merge di #209 anche la baseline (master) mostra "09:00–10:30": il selettore della baseline accetta entrambi i formati (altrimenti ogni PR futura sull'agenda falliva). Nuovo test in `tests/personalAgenda.test.mjs`.
+- VALIDATION: `npm test` 1299/1299; build e build:personal OK; `test:agenda:visual` Chromium 10/10 (Studio pixel identico); reliability Chromium 3/3; WebKit in CI.
+- EXACT NEXT ACTION: CI della PR verde → "Mergia".
+
+---
+
 # Current task — POL-VITA-013 Archivio: importazione senza Claude e cartelle di Drive per categoria e persona (2026-10-17)
 - OWNER: CLAUDE. BRANCH: `claude/catalogazione-facile-latjs9` ripartito da `master@dd058380` (PR #204 mergiata).
 - RICHIESTA PO (verbatim): "Sistema archivio , non.Ce altro modo per importare ?!" — risposta alla proposta di ordinare la cartella Drive per persona e categoria; l'importazione era ferma al lotto 2017-10 per il limite di spesa dell'API Claude (accesso di nuovo dal 2026-11-01).
@@ -47,6 +56,12 @@
 - VALIDATION: Node 1,270/1,270; main and standalone Personal builds; comparative Chromium/WebKit mobile matrix, screenshots and pixel checks in `docs/validation/POL-VITA-010/`.
 - DATABASE/DEPLOYMENT: none. Immutable stable checkpoint preserved.
 - STATUS: WAITING_PRODUCT_OWNER — dedicated PR for review, no merge authorized.
+# Current task — App bloccata: pagina che non scorre dopo due finestre aperte (2026-10-17)
+- OWNER: CLAUDE, branch `claude/poliedron-agenda-actions-kz6mmk`, da `master@370bdaf`. PO verbatim: "Controlla perché si è frizzato il poliedron studio, si è ingrandito di colpo e non scrolla, ora l'ho riavviato, ma controlla cosa sia successo".
+- EVIDENZA: nessun registro errori lato app (solo ErrorBoundary locale): la sequenza esatta sul telefono non è ricostruibile. Difetto certo trovato: `Modal.jsx` salvava/ripristinava `body.style.overflow` per finestra; due finestre chiuse in ordine inverso lasciavano `overflow: hidden` → pagina bloccata fino al riavvio. Lo "zoom" non è riproducibile dal codice (viewport con maximum-scale=1); probabile pizzico/doppio tocco con pagina bloccata.
+- FIX: blocco dello scorrimento condiviso (contatore): pagina bloccata finché c'è almeno una finestra, sempre sbloccata dopo l'ultima. Test `tests/modalScrollLock.test.mjs`. `npm test` 1259/1259; `npm run build` OK.
+- IN SOSPESO (stesso branch, non ancora committato): POL-DATI-001 Cestino (migrazione scritta, UI e test da fare).
+- EXACT NEXT ACTION: "Mergia" per il fix; poi completare il cestino.
 
 ---
 

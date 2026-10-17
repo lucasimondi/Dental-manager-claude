@@ -103,7 +103,8 @@ for (const engine of engines) {
           // on its own line, the patient's full name (PR #209). Both must be rendered.
           const block = page.locator('[data-appointment-id="10"]');
           if (mode !== 'baseline') await block.getByText('Paziente Esempio',{exact:true}).waitFor();
-          const content = mode === 'baseline' ? page.getByText('09:00 Esempio',{exact:true}) : block.getByText('09:00–10:30',{exact:true});
+          // The baseline is whatever master renders: the old "09:00 Esempio" or the current range.
+          const content = mode === 'baseline' ? block.getByText(/^09:00(?: Esempio|–10:30)$/).first() : block.getByText('09:00–10:30',{exact:true});
           await content.click();
           await page.locator('.agenda-appointment-menu-sheet').waitFor();
           // Menu creation remains owned by Studio (no personal clinical actions).
