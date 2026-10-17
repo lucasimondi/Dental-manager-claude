@@ -82,3 +82,27 @@ test('ripetizione: recurrence_id è un uuid valido (colonna uuid nel database de
   assert.match(personal, /recurrenceId = date\.length > 1 \? nuovoIdRipetizione\(\)/);
   assert.match(studio, /recurrenceId = occorrenze\.length > 1 \? crypto\.randomUUID\(\)/);
 });
+
+test('evento ripetuto: modifica ed eliminazione chiedono solo questo, successivi o tutti', async () => {
+  const { occorrenzeDaToccare, applicaAOccorrenza, AMBITI_SERIE } = await import('../personal/src/lib/agenda.js');
+  const fs = await import('node:fs');
+  const serie = ['2026-10-17', '2026-10-31', '2026-11-14'].map((d, i) => ({ id: i + 1, recurrence_id: 'r', data_inizio: d, data_fine: d }));
+  const aperto = { ...serie[1], data_inizio_originale: '2026-10-31' };
+  assert.deepEqual(AMBITI_SERIE.map(([k]) => k), ['questo', 'successivi', 'tutti']);
+  assert.deepEqual(occorrenzeDaToccare(serie, aperto, 'questo').map((x) => x.id), [2]);
+  assert.deepEqual(occorrenzeDaToccare(serie, aperto, 'successivi').map((x) => x.id), [2, 3]);
+  assert.deepEqual(occorrenzeDaToccare(serie, aperto, 'tutti').map((x) => x.id), [1, 2, 3]);
+  // Spostando l'evento aperto di un giorno, gli altri della serie si spostano dello stesso giorno.
+  const mod = applicaAOccorrenza(serie[2], { titolo: 'Bimbe dai nonni', data_inizio: '2026-11-01', data_fine: '2026-11-01' }, 1);
+  assert.deepEqual([mod.id, mod.titolo, mod.data_inizio, mod.data_fine, mod.recurrence_id], [3, 'Bimbe dai nonni', '2026-11-15', '2026-11-15', 'r']);
+  const ui = fs.readFileSync('personal/src/Agenda.jsx', 'utf8');
+  assert.match(ui, /if \(inSerie && !ambito\) \{ setChiediSerie\('salva'\)/);
+  assert.match(ui, /inSerie \? setChiediSerie\('elimina'\)/);
+});
+
+test('agenda Personal: tutta la settimana, domenica compresa', async () => {
+  const fs = await import('node:fs');
+  const griglia = fs.readFileSync('personal/src/AgendaGriglia.jsx', 'utf8');
+  assert.match(griglia, /const GIORNI_NASCOSTI_PERSONAL = \[\];/);
+  assert.match(griglia, /const hiddenWeekdays = GIORNI_NASCOSTI_PERSONAL;/);
+});

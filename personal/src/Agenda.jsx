@@ -7,11 +7,12 @@ import { archivioDb } from './lib/supabasePersonal.js';
 import { pagamenti as caricaPagamenti } from './lib/archivio.js';
 import { euro } from './lib/coreArchivio.js';
 import {
-  studioDb, sessioneStudio, entraStudio, appuntamentiTra, impegniTra, salvaImpegno, salvaImpegni, eliminaImpegno, tipiAppuntamento, impostazioniAgenda,
+  studioDb, sessioneStudio, entraStudio, appuntamentiTra, impegniTra, salvaImpegno, salvaImpegni, eliminaImpegno, impegniDellaSerie, aggiornaImpegni, eliminaImpegni, tipiAppuntamento, impostazioniAgenda,
 } from './lib/studio.js';
 import {
   daIso, oggi, minuti, ora, giorniSettimana, grigliaMese, elementiDelGiorno, generaDateRipetizione, piuGiorni,
   coloreEvento, nomeEtichetta, COLORE_SCADENZA, nuovoIdRipetizione,
+  AMBITI_SERIE, occorrenzeDaToccare, applicaAOccorrenza, giorniTra,
 } from './lib/agenda.js';
 import { IconaFreccia, IconaCestino } from './Icone.jsx';
 import { GrigliaPoliedra } from './AgendaGriglia.jsx';
@@ -194,6 +195,9 @@ export function PaginaEvento({ evento: iniziale = {}, ctx, chiudi }) {
   }));
   const [conferma, setConferma] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  // Evento di una serie: prima di salvare o eliminare si chiede quali occorrenze toccare.
+  const [chiediSerie, setChiediSerie] = useState(null);
+  const inSerie = !!(iniziale.id && iniziale.recurrence_id);
   const cambia = (k, v) => setEv((x) => ({ ...x, [k]: v }));
   const etichetta = etichette.find((e) => e.id === ev.tipo || e.nome === ev.tipo);
   const colore = ev.colore || etichetta?.colore || '#64748b';
@@ -205,8 +209,9 @@ export function PaginaEvento({ evento: iniziale = {}, ctx, chiudi }) {
     && (ev.tutto_il_giorno || minuti(ev.ora_fine) > minuti(ev.ora_inizio))
     && (ev.id || ev.ripeti === 'nessuna' || dataFineRipetizione >= ev.data_inizio);
 
-  const salva = async () => {
+  const salva = async (ambito) => {
     if (salvando || !valido) return;
+    if (inSerie && !ambito) { setChiediSerie('salva'); return; }
     setSalvando(true);
     try {
       await esegui(async () => {
@@ -229,6 +234,13 @@ export function PaginaEvento({ evento: iniziale = {}, ctx, chiudi }) {
           await salvaImpegni(occorrenze);
           aggiorna();
           mostra(date.length > 1 ? 'Creati ' + date.length + ' impegni ricorrenti' : "Evento aggiunto all'agenda");
+        } else if (inSerie && ambito && ambito !== 'questo') {
+          const serie = await impegniDellaSerie(iniziale.recurrence_id);
+          const spostamento = giorniTra(iniziale.data_inizio, payload.data_inizio);
+          const daToccare = occorrenzeDaToccare(serie, { ...iniziale, data_inizio_originale: iniziale.data_inizio }, ambito);
+          await aggiornaImpegni(daToccare.map((o) => (o.id === ev.id ? payload : applicaAOccorrenza(o, payload, spostamento))));
+          aggiorna();
+          mostra(`Aggiornati ${daToccare.length} eventi della serie`);
         } else {
           await salvaImpegno(payload);
           aggiorna();
@@ -240,6 +252,19 @@ export function PaginaEvento({ evento: iniziale = {}, ctx, chiudi }) {
       setSalvando(false);
     }
   };
+
+  const elimina = (ambito) => esegui(async () => {
+    if (inSerie && ambito !== 'questo') {
+      const serie = await impegniDellaSerie(iniziale.recurrence_id);
+      const ids = occorrenzeDaToccare(serie, { ...iniziale, data_inizio_originale: iniziale.data_inizio }, ambito).map((o) => o.id);
+      await eliminaImpegni(ids.includes(ev.id) ? ids : [...ids, ev.id]);
+      mostra(`Eliminati ${Math.max(ids.length, 1)} eventi della serie`);
+    } else {
+      await eliminaImpegno(ev.id);
+      mostra('Evento eliminato');
+    }
+    aggiorna(); chiudi();
+  });
 
   return (
     <>
@@ -310,18 +335,38 @@ export function PaginaEvento({ evento: iniziale = {}, ctx, chiudi }) {
       <label className="pp-campo"><span>Descrizione / note</span>
         <textarea rows={3} value={ev.note || ''} onChange={(e) => cambia('note', e.target.value)} placeholder="Aggiungi dettagli, luogo o persone coinvolte…" />
       </label>
-      <button className="pp-bottone pp-bottone-largo" disabled={!valido || salvando} onClick={salva}>{salvando ? 'Salvataggio…' : ev.id ? 'Salva modifiche' : ev.ripeti !== 'nessuna' ? 'Crea impegni' : "Aggiungi all'agenda"}</button>
+      <button className="pp-bottone pp-bottone-largo" disabled={!valido || salvando} onClick={() => salva()}>{salvando ? 'Salvataggio…' : ev.id ? 'Salva modifiche' : ev.ripeti !== 'nessuna' ? 'Crea impegni' : "Aggiungi all'agenda"}</button>
       <p className="pp-riga-meta">Compare anche nell'agenda dello studio, con il contorno tratteggiato dei tuoi impegni.</p>
       {ev.id && (
         <div className="pp-elimina">
           {!conferma
-            ? <button className="pp-testo-link pp-rosso" onClick={() => setConferma(true)}><IconaCestino size={16} /> Elimina evento</button>
+            ? <button className="pp-testo-link pp-rosso" onClick={() => (inSerie ? setChiediSerie('elimina') : setConferma(true))}><IconaCestino size={16} /> Elimina evento</button>
             : (
               <div className="pp-conferma"><span>Eliminare l'evento? Sparisce anche dall'agenda dello studio.</span>
-                <button className="pp-bottone pp-bottone-rosso" onClick={() => esegui(async () => { await eliminaImpegno(ev.id); aggiorna(); mostra('Evento eliminato'); chiudi(); })}>Elimina</button>
+                <button className="pp-bottone pp-bottone-rosso" onClick={() => elimina('questo')}>Elimina</button>
                 <button className="pp-bottone pp-bottone-chiaro" onClick={() => setConferma(false)}>Annulla</button>
               </div>
             )}
+        </div>
+      )}
+      {chiediSerie && (
+        <div className="pp-velo" onClick={() => setChiediSerie(null)}>
+          <div className="pp-foglio" role="dialog" aria-modal="true" aria-label="Evento ripetuto" onClick={(e) => e.stopPropagation()}>
+            <div className="pp-foglio-maniglia" />
+            <div className="pp-foglio-testa"><span>{chiediSerie === 'salva' ? 'Modificare anche gli altri eventi?' : 'Eliminare anche gli altri eventi?'}</span></div>
+            <div className="pp-foglio-corpo">
+              <p className="pp-riga-meta pp-spiegazione">"{iniziale.titolo}" si ripete. {chiediSerie === 'elimina' ? "Gli eventi eliminati spariscono anche dall'agenda dello studio." : "Le modifiche valgono anche nell'agenda dello studio."}</p>
+              <div className="pp-gruppo">
+                {AMBITI_SERIE.map(([ambito, etichetta]) => (
+                  <button key={ambito} className={`pp-riga${chiediSerie === 'elimina' ? ' pp-rosso' : ''}`}
+                    onClick={() => { const azione = chiediSerie; setChiediSerie(null); if (azione === 'salva') salva(ambito); else elimina(ambito); }}>
+                    <span className="pp-riga-testo"><span className="pp-riga-titolo">{etichetta}</span></span>
+                  </button>
+                ))}
+              </div>
+              <button className="pp-bottone pp-bottone-chiaro pp-bottone-largo" onClick={() => setChiediSerie(null)}>Annulla</button>
+            </div>
+          </div>
         </div>
       )}
     </>

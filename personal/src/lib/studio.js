@@ -99,6 +99,26 @@ export async function salvaImpegni(eventi) {
   return esito(await studioDb.from('impegni_personali').insert(rows).select(CAMPI_IMPEGNO));
 }
 
+export async function impegniDellaSerie(recurrenceId) {
+  if (!recurrenceId) return [];
+  return esito(await studioDb.from('impegni_personali').select(CAMPI_IMPEGNO).eq('recurrence_id', recurrenceId).order('data_inizio'));
+}
+
+// Aggiorna più occorrenze di una serie (una richiesta per evento: le date possono spostarsi).
+export async function aggiornaImpegni(eventi) {
+  const fatti = [];
+  for (const evento of eventi) {
+    const riga = { ...rigaImpegno(evento), updated_at: new Date().toISOString() };
+    fatti.push(esito(await studioDb.from('impegni_personali').update(riga).eq('id', evento.id).select(CAMPI_IMPEGNO).single()));
+  }
+  return fatti;
+}
+
+export async function eliminaImpegni(ids) {
+  if (!ids.length) return [];
+  return esito(await studioDb.from('impegni_personali').delete().in('id', ids).select('id'));
+}
+
 export async function eliminaImpegno(id) {
   return esito(await studioDb.from('impegni_personali').delete().eq('id', id).select('id'));
 }

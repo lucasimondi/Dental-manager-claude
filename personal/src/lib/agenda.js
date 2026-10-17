@@ -184,3 +184,28 @@ export function nuovoIdRipetizione() {
   const h = b.map((x) => x.toString(16).padStart(2, '0')).join('');
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
+
+// Eventi ripetuti: quali occorrenze toccare quando se ne modifica o elimina una.
+// 'questo' = solo l'evento aperto; 'successivi' = questo e quelli dopo; 'tutti' = l'intera serie.
+export const AMBITI_SERIE = [
+  ['questo', 'Solo questo evento'],
+  ['successivi', 'Questo e i successivi'],
+  ['tutti', 'Tutti gli eventi della serie'],
+];
+
+export const giorniTra = (da, a) => Math.round((daIso(a).getTime() - daIso(da).getTime()) / 86400000);
+
+// Occorrenze della serie interessate dalla scelta (righe con data_inizio).
+export function occorrenzeDaToccare(serie, evento, ambito) {
+  if (ambito === 'questo' || !evento.recurrence_id) return serie.filter((x) => x.id === evento.id);
+  const stessa = serie.filter((x) => x.recurrence_id === evento.recurrence_id);
+  return ambito === 'successivi' ? stessa.filter((x) => x.data_inizio >= evento.data_inizio_originale) : stessa;
+}
+
+// Modifica applicata a un'altra occorrenza: stessi campi, date spostate degli stessi giorni.
+export function applicaAOccorrenza(occorrenza, modificato, spostamento) {
+  const { id, data_inizio: inizio, data_fine: fine } = occorrenza;
+  const durata = Math.max(0, giorniTra(modificato.data_inizio, modificato.data_fine || modificato.data_inizio));
+  const nuovoInizio = piuGiorni(inizio, spostamento);
+  return { ...modificato, id, recurrence_id: occorrenza.recurrence_id, data_inizio: nuovoInizio, data_fine: fine ? piuGiorni(nuovoInizio, durata) : nuovoInizio };
+}
