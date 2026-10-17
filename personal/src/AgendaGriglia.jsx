@@ -79,7 +79,12 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
     </>;
   };
   const extras = elementiDelGiorno(giorno, dati);
-  const visibleExtras = (weekly ? giorniSettimana(giorno) : [giorno]).map(day => ({ day, ...elementiDelGiorno(day, dati) }));
+  // La fascia degli eventi di tutto il giorno usa le stesse colonne della griglia oraria,
+  // incluse le giornate nascoste: ogni impegno resta sopra il proprio giorno.
+  const visibleExtras = days.map(d => {
+    const day = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    return { day, ...elementiDelGiorno(day, dati) };
+  });
   return <div className="agenda-mobile-page" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, position: 'relative', '--agenda-mobile-overlay-clearance': `${overlayHeight}px` }}>
     {view === 'mese' ? <>
       <MonthToolbar date={daIso(month)} overlayRef={overlayRef} floatingFooter={appSwitch}><button onClick={() => changeMonth(oggi())} style={{ background: '#E6F1FB', border: 'none', borderRadius: 14, padding: '5px 10px', color: '#185FA5', fontWeight: 700, fontSize: 10 }}>Oggi</button>{pick}</MonthToolbar>
@@ -92,11 +97,12 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
       </div>
     </> : <>
       <DayStrip selDay={giorno} setSelDay={ds => { setGiorno(ds); if (weekly) setView('giorno'); }} today={oggi()} compact oraColW={34} singleDay={!weekly} hiddenWeekdays={hiddenWeekdays} highlightSelected={!weekly} onWeekChange={weekly ? sincronizzaSettimana : undefined} overlayRef={overlayRef} viewPicker={pick} floatingFooter={appSwitch} />
-      {visibleExtras.some(e => e.scadenze.length || e.tuttoIlGiorno.length) && <div className="personal-agenda-extras" aria-label="Scadenze ed eventi del giorno">
-        {visibleExtras.flatMap(el => [
-          ...el.scadenze.map(s => <button key={`${el.day}-s-${s.id}`} onClick={() => ctx.apri({ tipo: 'pagamento', s })}>€ {s.descrizione}{weekly ? ' · ' + daIso(el.day).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' }) : ''}</button>),
-          ...el.tuttoIlGiorno.map(evento => <button key={`${el.day}-e-${evento.id}`} onClick={() => ctx.apri({ tipo: 'evento', evento })}>{weekly ? daIso(el.day).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' }) + ' · ' : ''}{evento.titolo}</button>),
-        ])}
+      {visibleExtras.some(e => e.scadenze.length || e.tuttoIlGiorno.length) && <div className="personal-agenda-extras" aria-label="Scadenze ed eventi del giorno" style={{ gridTemplateColumns: `34px repeat(${days.length}, minmax(0, 1fr))` }}>
+        <div aria-hidden="true" className="personal-agenda-extras-gutter" />
+        {visibleExtras.map(el => <div key={el.day} className="personal-agenda-extras-day" aria-label={daIso(el.day).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}>
+          {el.scadenze.map(s => <button key={`${el.day}-s-${s.id}`} title={s.descrizione} onClick={() => ctx.apri({ tipo: 'pagamento', s })}>€ {s.descrizione}</button>)}
+          {el.tuttoIlGiorno.map(evento => <button key={`${el.day}-e-${evento.id}`} title={evento.titolo} onClick={() => ctx.apri({ tipo: 'evento', evento })}>{evento.titolo}</button>)}
+        </div>)}
       </div>}
       <div className="agenda-mobile-grid-surface" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onTouchStart={onTouchStartSwipe} onTouchEnd={onTouchEndSwipe}>
         <TimeGrid containerRef={containerRef} isMobile slots={slots} slotH={slotH} effectiveSlotH={effectiveSlotH} oraColW={34} days={days} today={oggi()} showNowLine={showNowLine} nowTop={nowTop} onSlot={openSlot} renderDay={renderDay} />
