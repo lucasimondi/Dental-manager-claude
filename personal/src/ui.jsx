@@ -2,8 +2,9 @@
 import { archivioDb } from './lib/supabasePersonal.js';
 import { eCaricato } from './lib/archivio.js';
 import { euro } from './lib/coreArchivio.js';
-import { useState } from 'react';
-import { IconaFreccia, IconaPratiche } from './Icone.jsx';
+import { useEffect, useState } from 'react';
+import { preparaFile, comeFile, condividi } from './lib/condividi.js';
+import { IconaFreccia, IconaPratiche, IconaCondividi } from './Icone.jsx';
 import { Miniatura } from './Miniatura.jsx';
 
 /* ---------- utilità ---------- */
@@ -164,4 +165,43 @@ export function ConfermaElimina({ n, onSi, onNo }) {
       <button className="pp-bottone pp-bottone-chiaro" onClick={onNo}>Annulla</button>
     </div>
   );
+}
+
+// POL-VITA-008 — Condividi (foglio di condivisione del sistema). Nel dettaglio il file si prepara
+// all'apertura; nelle schede il primo tocco lo prepara e il secondo apre il foglio, perché iOS
+// apre la condivisione solo se parte subito dal tocco.
+export function BottoneCondividi({ doc, piccolo = false, mostra }) {
+  const [file, setFile] = useState(null);
+  const [stato, setStato] = useState('pronto');
+  useEffect(() => {
+    setFile(null);
+    if (piccolo || !doc?.drive_file_id) return undefined;
+    let vivo = true;
+    tokenSessione().then((t) => preparaFile(doc.drive_file_id, t)).then((f) => { if (vivo) setFile(comeFile(f)); }).catch(() => {});
+    return () => { vivo = false; };
+  }, [doc?.drive_file_id, piccolo]);
+  const tocca = async (e) => {
+    e.stopPropagation();
+    if (piccolo && !file && doc?.drive_file_id && stato !== 'carico' && stato !== 'secondo') {
+      setStato('carico');
+      try { setFile(comeFile(await preparaFile(doc.drive_file_id, await tokenSessione()))); } catch { /* si condivide il link */ }
+      setStato('secondo');
+      mostra?.('Pronto: tocca di nuovo per condividere');
+      return;
+    }
+    try {
+      const r = await condividi({ titolo: titoloDoc(doc), link: doc.drive_url, file });
+      if (r === 'copiato') mostra?.('Link copiato');
+      if (r === 'non_disponibile') mostra?.('Condivisione non disponibile su questo dispositivo');
+    } catch (err) { mostra?.(`Condivisione non riuscita: ${err.message}`); }
+    setStato('pronto');
+  };
+  if (piccolo) {
+    return (
+      <span role="button" tabIndex={0} className={`pp-condividi-piccolo${stato === 'secondo' ? ' pronto' : ''}`} onClick={tocca} onKeyDown={(e) => e.key === 'Enter' && tocca(e)} aria-label={`Condividi ${titoloDoc(doc)}`}>
+        {stato === 'carico' ? <span className="pp-rotella" /> : <IconaCondividi size={16} />}
+      </span>
+    );
+  }
+  return <button className="pp-bottone pp-bottone-chiaro" onClick={tocca}><IconaCondividi size={18} /> Condividi</button>;
 }

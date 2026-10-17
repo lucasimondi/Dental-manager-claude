@@ -1,3 +1,12 @@
+# Current task — POL-VITA-008 Personal: eventi del giorno flottanti, "Vai a Studio" accanto alla vista, Personali solo delle persone, anteprime, Condividi (2026-10-17)
+- OWNER: CLAUDE. Passaggio di consegne esplicito dal PO (domanda in chat, risposta "Passa a Claude"): l'agenda di Personal passa da Codex (POL-VITA-010/011/012) a Claude. BRANCH: `claude/catalogazione-facile-latjs9` ripartito da `master@15d67178` (PR #202 mergiata).
+- RICHIESTA PO (verbatim, sintesi): "Eventi giornalieri: devono stare sotto il flottante dei giorni, sempre flottante quindi non deve bloccare scorrimenti ma subito sotto. Il flottante vai a studio deve essere a sinistra di selettore visualizzazione. La sezione personale deve contenere solo documenti delle persone elencate nelle impostazioni, gli altri documenti mettili dentro documenti (catalogandoli), inoltre deve esserci anteprima nei tasti cliccabili, inoltre deve esserci il tastino condividi (mail, whatsapp ecc, deve riprendere il tasto condividi dei vari sistemi operativi)."
+- FATTO: `AgendaGriglia.jsx` — fascia eventi del giorno/scadenze come `floatingFooter` dei controlli flottanti (pointer-events solo sulle pillole, la griglia scorre sotto); "Vai a Studio" nella barra, a sinistra del selettore Giorno/Settimana/Mese (anche nel Mese). Personali: solo documenti di persone elencate in Impostazioni; gli altri restano in Documenti con un link per assegnarli; schede con miniatura e pulsante Condividi. Dettaglio documento: Condividi. `lib/condividi.js`: Web Share API con il file vero (preparato prima del tocco per iOS), poi link, poi link copiato. Nessuna modifica a database, script o codice dello studio; componenti condivisi `shared/agenda` invariati.
+- VALIDATION: `npm test` 1280/1280 (Node 20; +5 test `personalCondividi`); build OK; Chromium 390×844 con dati finti: fascia dentro i controlli flottanti e ferma mentre la griglia scorre, switch a sinistra della vista, 2 schede Personali (escluso il documento di un estraneo), condivisione del file `ci.pdf` dalla scheda e dal dettaglio; nessun errore, nessun overflow.
+- STATO: in revisione (PR).
+
+---
+
 # Current task — POL-VITA-011
 - OWNER: Codex. BRANCH: `codex/pol-vita-011-agenda-persistence`, from master `173a78ed` (PR #199 merged with PO approval).
 - AUTHORIZATION: PO requests appointment detail scroll/stacking fix, accessible Studio switch without Vercel destination, all 24 hours, reliable event persistence after reopening.

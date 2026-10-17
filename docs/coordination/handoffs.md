@@ -3756,3 +3756,13 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - RISKS/LIMITS: no physical iPhone or real production insert (test server only); public-domain link needs post-deploy smoke test. The Studio route is supported by existing Vercel SPA config; no speculative alternate domain used. Failed past saves cannot be declared recovered. Personal intentionally differs from the previous Studio hour range; Studio's own settings remain unchanged.
 - DEPLOYMENT/ROLLBACK: frontend only; no Edge Functions or migrations. Revert PR commit to roll back. Stable checkpoint `stable/2026-08-27-full-recovery@070b28fd4eae4e2cc397584201d0bb149468fae7` preserved.
 - EXACT NEXT ACTION: review dedicated PR and checks, obtain PO approval before merging; after deployment smoke-test `/studio` from Personal and reopen a saved evening event on physical iPhone.
+
+
+## 2026-10-17 — Claude — POL-VITA-008 (Personal: agenda, Personali, Condividi)
+- OWNERSHIP: il PO ha trasferito l'agenda di Personal da Codex a Claude (domanda esplicita in chat, risposta "Passa a Claude"). Il lavoro Codex POL-VITA-010/011/012 su master è la base; `shared/agenda` non modificato.
+- BRANCH: `claude/catalogazione-facile-latjs9` da `master@15d67178`.
+- COMPLETATO: fascia eventi del giorno flottante sotto la striscia dei giorni; "Vai a Studio" a sinistra del selettore vista; Personali solo per le persone in Impostazioni; anteprime e Condividi (Web Share API) nelle schede e nel dettaglio.
+- DB / SCRIPT / EDGE: nessuna modifica.
+- TEST: 1280/1280 su Node 20, build OK, prova Chromium 390×844 con dati finti.
+- LIMITI: niente iPhone fisico; il foglio di condivisione reale va provato sul telefono.
+- PROSSIMO PASSO: review della PR, merge solo su "Mergia" del PO.

@@ -20,11 +20,12 @@ import { FoglioAggiungi, PaginaScansione } from './Aggiungi.jsx';
 import { sessioneStudio, esciStudio, appuntamentiTra, impegniTra, studioDb } from './lib/studio.js';
 import { oggi as oggiAgenda } from './lib/agenda.js';
 import { euro } from './lib/coreArchivio.js';
-import { preparaFile } from './lib/file.js';
+import { preparaFile as preparaCaricamento } from './lib/file.js';
+import { preparaFile } from './lib/condividi.js';
 import { IMPOSTAZIONI_PREDEFINITE, leggiImpostazioni, salvaImpostazioni, categoriaDi, personaDi, slug } from './lib/impostazioni.js';
 import {
   colore, dataBreve, oggiIso, quando, titoloDoc, saluto, VISTA_KEY, leggiVista, INDIRIZZO_APP, tokenSessione,
-  Vuoto, Sezione, Gruppo, RigaDocumento, SchedaDocumento, RigaPagamento, Chips, Segmenti, Conferma, ConfermaElimina, ElencoPratiche,
+  Vuoto, Sezione, Gruppo, RigaDocumento, SchedaDocumento, RigaPagamento, Chips, Segmenti, Conferma, ConfermaElimina, ElencoPratiche, BottoneCondividi,
 } from './ui.jsx';
 import { VistaDocumenti, PaginaRicerca } from './Documenti.jsx';
 import { Miniatura } from './Miniatura.jsx';
@@ -152,7 +153,7 @@ function Anteprima({ doc }) {
     let vivo = true;
     (async () => {
       try {
-        const file = await anteprimaFile({ token: await tokenSessione(), driveFileId: doc.drive_file_id });
+        const file = await preparaFile(doc.drive_file_id, await tokenSessione());
         if (!vivo) return;
         if (tipo === 'immagine') { setStato({ fase: 'immagine', src: `data:${file.mime};base64,${file.dati}` }); return; }
         setStato({ fase: 'pdf' });
@@ -293,12 +294,16 @@ function Risultato({ risposta, ctx }) {
 }
 
 /* ---------- Personali (carta d'identità, codice fiscale, ... per persona) ---------- */
-function CartaDocumento({ doc, onApri, etichetta }) {
+function CartaDocumento({ doc, onApri, etichetta, mostra }) {
   return (
-    <button className="pp-carta" style={{ '--c': colore(doc.fascicolo === 'identita' ? 'identita' : doc.fascicolo) }} onClick={() => onApri(doc)}>
-      <span className="pp-carta-tipo">{etichetta || doc.tipo_documento || doc.fascicolo}</span>
-      <span className="pp-carta-titolo">{titoloDoc(doc)}</span>
-      <span className="pp-carta-piede">{[doc.persona, dataBreve(doc.data_documento || doc.email_data)].filter(Boolean).join(' · ')}</span>
+    <button className="pp-carta pp-carta-con-anteprima" style={{ '--c': colore(doc.fascicolo === 'identita' ? 'identita' : doc.fascicolo) }} onClick={() => onApri(doc)}>
+      <Miniatura doc={doc} colore={colore(doc.fascicolo === 'identita' ? 'identita' : doc.fascicolo)} grande />
+      <span className="pp-carta-testo">
+        <span className="pp-carta-tipo">{etichetta || doc.tipo_documento || doc.fascicolo}</span>
+        <span className="pp-carta-titolo">{titoloDoc(doc)}</span>
+        <span className="pp-carta-piede">{[doc._persona || doc.persona, dataBreve(doc.data_documento || doc.email_data)].filter(Boolean).join(' · ')}</span>
+      </span>
+      <BottoneCondividi doc={doc} piccolo mostra={mostra} />
     </button>
   );
 }
@@ -317,9 +322,9 @@ function VistaPersonali({ ctx }) {
   const aggiungi = (persona, categoria) => apri({ tipo: 'carica', opzioni: { persona, categoria, fascicolo: 'identita', portafoglio: true } });
 
   const perPersona = (persona, elenco) => (
-    <Sezione key={persona || 'nessuno'} titolo={persona || 'Senza persona'}>
+    <Sezione key={persona} titolo={persona}>
       <div className="pp-carte">
-        {elenco.map((d) => <CartaDocumento key={d.id} doc={d} etichetta={nomeCat(d._cat)} onApri={apriDoc} />)}
+        {elenco.map((d) => <CartaDocumento key={d.id} doc={d} etichetta={nomeCat(d._cat)} onApri={apriDoc} mostra={ctx.mostra} />)}
         {persona && attiva !== 'tutti' && !elenco.length && (
           <button className="pp-carta pp-carta-nuova" onClick={() => aggiungi(persona, attiva)}><IconaPiu size={24} /><span>Aggiungi {nomeCat(attiva)}</span></button>
         )}
@@ -330,13 +335,21 @@ function VistaPersonali({ ctx }) {
     </Sezione>
   );
 
-  const filtrati = attiva === 'tutti' ? arricchiti : arricchiti.filter((d) => d._cat === attiva);
-  const senzaPersona = filtrati.filter((d) => !d._persona || !persone.includes(d._persona));
+  // POL-VITA-008: qui solo i documenti delle persone elencate in Impostazioni; gli altri restano in
+  // Documenti, catalogati per categoria ed ente.
+  const delleMie = arricchiti.filter((d) => d._persona && persone.includes(d._persona));
+  const filtrati = attiva === 'tutti' ? delleMie : delleMie.filter((d) => d._cat === attiva);
+  const altri = arricchiti.length - delleMie.length;
   return (
     <>
       <Chips voci={[['tutti', 'Tutti'], ...categorie.map((c) => [c.id, c.nome])]} attiva={attiva} onScegli={setScheda} />
       {persone.map((p) => perPersona(p, filtrati.filter((d) => d._persona === p)))}
-      {senzaPersona.length > 0 && perPersona(null, senzaPersona)}
+      {altri > 0 && (
+        <button className="pp-riga pp-riga-sola pp-altri-personali" onClick={() => apri({ tipo: 'elenco', titolo: 'Documenti d\'identità di altri', carica: async () => arricchiti.filter((d) => !(d._persona && persone.includes(d._persona))) })}>
+          <span className="pp-riga-testo"><span className="pp-riga-titolo">{altri} documenti di altre persone</span><span className="pp-riga-meta">Restano in Documenti. Se uno è vostro, aprilo e scegli la persona.</span></span>
+          <IconaFreccia size={16} />
+        </button>
+      )}
       <p className="pp-riga-meta pp-nota-fondo">Persone e tipi di documento si cambiano in Impostazioni (icona in alto a destra).</p>
     </>
   );
@@ -367,6 +380,7 @@ function PaginaDocumento({ id, ctx, chiudi }) {
       </div>
       <div className="pp-azioni">
         {doc.drive_url && <a className="pp-bottone" href={doc.drive_url} target="_blank" rel="noreferrer"><IconaApri size={18} /> Apri il file</a>}
+        {(doc.drive_file_id || doc.drive_url) && <BottoneCondividi doc={doc} mostra={mostra} />}
         {!eCaricato(doc) && doc.gmail_message_id && <a className="pp-bottone pp-bottone-chiaro" href={`https://mail.google.com/mail/u/0/#all/${doc.gmail_message_id}`} target="_blank" rel="noreferrer"><IconaEmail size={18} /> Email</a>}
         <button className={`pp-bottone pp-bottone-chiaro${portafoglio ? ' pp-attivo' : ''}`} onClick={() => cambia(() => impostaPortafoglio(archivioDb, doc, !portafoglio), portafoglio ? 'Tolto dai Personali' : 'Aggiunto ai Personali')}>
           <IconaStella size={18} piena={portafoglio} /> {portafoglio ? 'Nei Personali' : 'Tieni a portata di mano'}
@@ -620,7 +634,7 @@ function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) {
   const invia = async () => {
     setStato({ invio: true, testo: 'Preparo il file…' });
     try {
-      const pronto = await preparaFile(file);
+      const pronto = await preparaCaricamento(file);
       setStato({ invio: true, testo: nonAnalizzare ? 'Salvo su Drive…' : 'Salvo su Drive e leggo il documento…' });
       const r = await caricaDocumento({ token: await tokenSessione(), ...pronto, descrizione, fascicolo, portafoglio: tieni, nonAnalizzare, persona, categoria });
       aggiorna();

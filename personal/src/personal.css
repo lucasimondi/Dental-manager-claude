@@ -644,3 +644,19 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; d
 .personal-agenda-app-toolbar { flex: 0 0 auto; display: flex; justify-content: flex-end; padding: 4px 6px; }
 .personal-agenda-app-toolbar .agenda-app-switch-inline { pointer-events: auto; position: static; min-height: 32px; padding: 4px 10px; box-shadow: none; }
 .pp-pagina-corpo { touch-action: pan-y; overflow-wrap: anywhere; }
+
+/* POL-VITA-008: fascia eventi del giorno flottante sotto la striscia; "Vai a Studio" a sinistra della vista */
+.agenda-mobile-floating-controls .personal-agenda-extras { margin: 0; padding: 0 0 4px; pointer-events: none; }
+.agenda-mobile-floating-controls .personal-agenda-extras button { pointer-events: auto; background: color-mix(in srgb, var(--pp-superficie) 90%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 2px 8px rgba(15, 23, 42, .08); }
+.personal-agenda-azioni { display: inline-flex; align-items: center; gap: 6px; }
+.personal-agenda-azioni .agenda-app-switch-inline { pointer-events: auto; position: static; min-height: 32px; padding: 4px 10px; box-shadow: none; white-space: nowrap; }
+/* POL-VITA-008: schede dei Personali con anteprima e Condividi */
+.pp-carta-con-anteprima { padding: 0; gap: 0; min-height: 0; }
+.pp-carta-con-anteprima .pp-mini-grande { aspect-ratio: 16 / 10; border-radius: 0; border-bottom: 0; background: rgba(255, 255, 255, .16); color: rgba(255, 255, 255, .85); }
+.pp-carta-con-anteprima .pp-mini-grande img { object-position: center; }
+.pp-carta-testo { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 4px; padding: 12px 16px 14px; width: 100%; }
+.pp-condividi-piccolo { position: absolute; z-index: 2; top: 8px; right: 8px; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+  color: var(--pp-blu); background: rgba(255, 255, 255, .94); box-shadow: 0 2px 8px rgba(0, 0, 0, .2); cursor: pointer; }
+.pp-condividi-piccolo.pronto { color: #fff; background: var(--pp-verde); animation: pp-pulsa 1.2s ease-in-out infinite; }
+@keyframes pp-pulsa { 50% { transform: scale(1.1); } }
+.pp-altri-personali { margin-top: 22px; }
