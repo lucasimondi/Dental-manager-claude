@@ -6,7 +6,7 @@ const nativeWebSocket = globalThis.WebSocket;
 globalThis.WebSocket ??= class UnexpectedSocket {
  constructor() { throw new Error('Unexpected realtime connection in persistence unit test'); }
 };
-const { studioDb, salvaImpegno, impegniTra } = await import('../personal/src/lib/studio.js');
+const { studioDb, salvaImpegno, impegniTra, salvaAppuntamento } = await import('../personal/src/lib/studio.js');
 if (nativeWebSocket === undefined) delete globalThis.WebSocket;
 
 test('Personal saves the required numeric id and reloads the authoritative record; missing tenant fails closed', async () => {
@@ -33,5 +33,24 @@ test('Personal saves the required numeric id and reloads the authoritative recor
   assert.equal(rows.length,1);assert.equal(updates,1);assert.equal(rows[0].titolo,'Cena aggiornata');
   session={user:{id:'test-user',app_metadata:{}}};
   await assert.rejects(salvaImpegno(input),/senza studio associato/);assert.equal(rows.length,1);
+ }finally{studioDb.auth.getSession=getSession;studioDb.from=from;}
+});
+
+test('Personal lets the database assign appointments.id (GENERATED ALWAYS AS IDENTITY)', async () => {
+ const getSession=studioDb.auth.getSession,from=studioDb.from;
+ studioDb.auth.getSession=async()=>({data:{session:{user:{id:'test-user',app_metadata:{studio_id:'test-studio'}}}}});
+ let inserted=null;
+ studioDb.from=table=>{
+  assert.equal(table,'appointments');
+  return {
+   insert(r){inserted=r;return this;},
+   select(){return this;},single(){return Promise.resolve({data:{id:42},error:null});},
+  };
+ };
+ try{
+  const saved=await salvaAppuntamento({paziente_id:7,data:'2026-10-18',ora:'11:00',durata:30,tipo:'Urgenza',stato:'confermato'});
+  assert.equal(saved.id,42);
+  assert.ok(!('id' in inserted));
+  assert.equal(inserted.studio_id,'test-studio');assert.equal(inserted.user_id,'test-user');
  }finally{studioDb.auth.getSession=getSession;studioDb.from=from;}
 });
