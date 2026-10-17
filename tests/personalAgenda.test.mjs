@@ -134,12 +134,14 @@ test('POL-VITA-013: eventi nascosti restano in Personal e spariscono solo nello 
 
 // PO 2026-10-17: "La scritta del mese deve essere adattata bene, così è spaginata …
 // forse conviene aumentare un po' verticalmente la misura degli slot".
-test('Personal agenda: short month on one line and taller slots, Studio untouched', () => {
+test('Personal agenda: short month on one line, original slot height, Studio untouched', () => {
   const griglia = readFileSync(new URL('../personal/src/AgendaGriglia.jsx', import.meta.url), 'utf8');
   const shared = readFileSync(new URL('../shared/agenda/AgendaPresentation.jsx', import.meta.url), 'utf8');
   assert.match(griglia, /viewPicker=\{pick\} floatingFooter=\{fasciaGiorno\} shortMonth \/>/);
-  assert.match(griglia, /export const PX_PER_MIN_MIN = 1\.3;/);
-  assert.match(griglia, /Math\.round\(Math\.max\(slotMin \* PX_PER_MIN_MIN, availH \/ slots\.length\) \* zoom\)/);
+  // PO 2026-10-17: slot di nuovo come prima; più spazio solo col pinch (1 = come prima).
+  assert.doesNotMatch(griglia, /PX_PER_MIN_MIN/);
+  assert.match(griglia, /const slotH = Math\.round\(Math\.max\(24, availH \/ slots\.length \* zoom\) \* pinch\);/);
+  assert.match(griglia, /usePinchZoom\(containerRef, view !== 'mese'\)/);
   assert.match(shared, /shortMonth = false \}\) \{/, 'Studio keeps the full month name by default');
   assert.match(shared, /shortMonth \? \{ whiteSpace: 'nowrap', flexShrink: 0 \} : \{\}/);
 });

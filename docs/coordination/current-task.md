@@ -3,7 +3,15 @@
 - CAUSA: `salvaAppuntamento` (personal/src/lib/studio.js) inviava un id generato dal client, ma in produzione `appointments.id` è GENERATED ALWAYS AS IDENTITY (come già annotato in `20261004160708_pol_ai_010_action_claims.sql`).
 - FATTO: l'inserimento non manda più `id`, lo assegna il database come per lo Studio. Nessuna modifica a schema, RLS, Studio o `impegni_personali` (che invece richiede l'id dal client).
 - VALIDATION: `npm test` 1301/1301 (+1 test in `personalAgendaPersistence`); build:personal OK.
-- EXACT NEXT ACTION: PR → CI verde → merge su approvazione PO.
+- EXACT NEXT ACTION: PR #212 → merge (PO: "Mergia").
+
+---
+
+# Current task — Agenda Personal: slot come prima e pinch-to-zoom (2026-10-17)
+- OWNER: CLAUDE, branch `claude/poliedron-agenda-actions-kz6mmk`, da `master@55c80040` (PR #210 mergiata). PO verbatim: "Allora gli slot adesso sono troppo alti dobbiamo tornare a quelli di prima, aggiungiamo funzione di ingrandimenti con le dita, il pinch to zoom".
+- COSA: Personal torna all'altezza slot precedente (`max(24, availH/slot)·zoom`, tolto `PX_PER_MIN_MIN`); nuovo `personal/src/lib/pinchZoom.js`: due dita sulla griglia (Giorno/Settimana) ingrandiscono gli slot da 1× (come prima) a 4×, l'orario sotto le dita resta fermo, il fattore è ricordato sul dispositivo (localStorage, facoltativo). Un dito continua a cambiare giorno/settimana; un secondo dito riporta a posto le colonne già trascinate. Mese ("Ott 2026") invariato. Studio invariato.
+- VALIDATION: `npm test` 1303/1303 (+3 `tests/personalPinchZoom.test.mjs`); build e build:personal OK; `test:agenda:visual` Chromium (Studio pixel identico); reliability Chromium 3/3; prova pinch reale in Chromium 390×844 (tocchi CDP): 3×, minuto sotto le dita invariato, ricordato dopo ricarica, ritorno a 1×. WebKit in CI.
+- EXACT NEXT ACTION: CI della PR verde → "Mergia".
 
 ---
 
