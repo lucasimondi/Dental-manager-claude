@@ -626,9 +626,10 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; d
 .pp-testata-agenda .pp-testata-azioni { position: fixed; right: 82px; bottom: calc(91px + env(safe-area-inset-bottom)); pointer-events: auto; }
 .pp-testata-agenda .pp-icona-bottone { background: var(--pp-superficie); border-radius: 50%; box-shadow: var(--pp-ombra-alta); }
 .pp-contenuto-agenda { flex: 1; min-height: 0; width: 100%; padding: 0 6px env(safe-area-inset-bottom); display: flex; flex-direction: column; overflow: hidden; }
-.personal-agenda-extras { position: relative; flex: 0 0 auto; display: flex; gap: 6px; min-width: 0; max-width: 100%; margin: 0 6px 5px; padding: 2px 0 4px; overflow-x: auto; overflow-y: hidden; z-index: 1; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x; }
-.personal-agenda-extras::-webkit-scrollbar { display: none; }
-.personal-agenda-extras button { flex-shrink: 0; min-height: 28px; max-width: 85%; padding: 5px 9px; border-radius: 12px; color: var(--pp-inchiostro); background: var(--pp-superficie); border: 1px solid var(--pp-linea); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; touch-action: pan-x; }
+.personal-agenda-extras { position: relative; flex: 0 0 auto; display: grid; gap: 4px; min-width: 0; max-width: 100%; margin: 0 6px 5px; padding: 2px 0 4px; z-index: 1; align-items: start; }
+.personal-agenda-extras-gutter { min-width: 0; }
+.personal-agenda-extras-day { min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+.personal-agenda-extras button { display: block; width: 100%; min-width: 0; min-height: 28px; padding: 5px 4px; border-radius: 9px; color: var(--pp-inchiostro); background: var(--pp-superficie); border: 1px solid var(--pp-linea); font-size: 10px; line-height: 1.2; text-align: left; white-space: normal; overflow-wrap: anywhere; overflow: hidden; touch-action: manipulation; }
 .pp-campo textarea { display: block; width: 100%; min-height: 82px; padding: 10px 12px; border: 1px solid var(--pp-linea); border-radius: 12px; background: var(--pp-superficie); color: var(--pp-inchiostro); font: inherit; resize: vertical; }
 .pp-evento-ripetizione { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
 .pp-evento-descrizione { display: -webkit-box; margin-top: 2px; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
