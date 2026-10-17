@@ -5,11 +5,11 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, AppointmentBlock, EventBlock, useSlotHeight, AgendaSwitch, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState } from '../../shared/agenda/AgendaPresentation.jsx';
 import { getVisibleWeekDays } from '../../shared/agenda/visibleDays.js';
 import { useSwipeAgenda } from './lib/swipeAgenda.js';
+import { usePinchZoom, scrollAncorato } from './lib/pinchZoom.js';
 import { daIso, piuGiorni, oggi, coloreEvento, nomeEtichetta, elementiDelGiorno, giorniSettimana } from './lib/agenda.js';
 export { ViewPicker };
 
 const GIORNI_NASCOSTI_PERSONAL = [];
-export const PX_PER_MIN_MIN = 1.3;
 
 export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMese, dati, ctx, etichette, coloriTipi }) {
   const [localMonth, setLocalMonth] = useState(giorno);
@@ -28,10 +28,22 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
   const [overlayHeight, setOverlayHeight] = useState(0);
   const [availH, setAvailH] = useState(() => Math.max(360, window.innerHeight - 126));
   const [now, setNow] = useState(new Date());
-  // PO 2026-10-17 ("appuntamenti corti"): almeno 1,3 px al minuto (39 px ogni mezz'ora),
-  // così un appuntamento di 30 minuti mostra orario e nome; lo zoom scala da lì.
-  const slotH = Math.round(Math.max(slotMin * PX_PER_MIN_MIN, availH / slots.length) * zoom);
+  // PO 2026-10-17: slot come prima ("troppo alti") e, per gli appuntamenti corti,
+  // pinch-to-zoom con due dita: pinch 1 è l'altezza di sempre.
+  const [pinch, ancoraPinch] = usePinchZoom(containerRef, view !== 'mese');
+  const slotH = Math.round(Math.max(24, availH / slots.length * zoom) * pinch);
   const effectiveSlotH = useSlotHeight(containerRef, true, slots, slotH, view);
+  const slotHPrima = useRef(effectiveSlotH);
+  useLayoutEffect(() => {
+    const el = containerRef.current, a = ancoraPinch.current;
+    ancoraPinch.current = null;
+    if (el && a && slotHPrima.current !== effectiveSlotH) {
+      const grid = el.querySelector('.agenda-time-grid');
+      const gridTop = grid ? grid.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop : 0;
+      el.scrollTop = scrollAncorato({ scrollTop: a.scrollTop, y: a.y, gridTop, oldSlotH: slotHPrima.current, newSlotH: effectiveSlotH });
+    }
+    slotHPrima.current = effectiveSlotH;
+  }, [effectiveSlotH]);
   useEffect(() => {
     const resize = () => setAvailH(Math.max(360, window.innerHeight - 126));
     window.addEventListener('resize', resize); window.addEventListener('orientationchange', resize);
