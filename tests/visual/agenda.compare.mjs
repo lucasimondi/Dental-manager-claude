@@ -65,7 +65,7 @@ for (const engine of engines) {
         await page.screenshot({ path, animations: 'disabled' }); screenshots[mode] = path;
         const metrics = await page.evaluate(() => {
           const box = selector => { const e=document.querySelector(selector); if (!e) return null; const r=e.getBoundingClientRect(); return { x:r.x,y:r.y,width:r.width,height:r.height }; };
-          return { switch:box('.agenda-app-switch'), page:box('.agenda-mobile-page'),strip:box('.agenda-mobile-floating-week-strip'),grid:box('.agenda-time-grid'),gutter:box('.agenda-time-gutter'),month:box('.agenda-mobile-month-surface'),columns:document.querySelectorAll('.agenda-grid-day').length };
+          return { switch:box('.agenda-app-switch'), page:box('.agenda-mobile-page'),strip:box('.agenda-mobile-floating-week-strip'),grid:box('.agenda-time-grid'),gutter:box('.agenda-time-gutter'),month:box('.agenda-mobile-month-surface'),columns:document.querySelectorAll('.agenda-grid-day').length, blocks:[...document.querySelectorAll('.agenda-time-grid [data-appointment-id]')].map(e=>{ const r=e.getBoundingClientRect(); return { id:e.dataset.appointmentId,x:r.x,y:r.y,width:r.width,height:r.height }; }) };
         });
         measurements[mode] = metrics;
         results.push({ engine,width,height,view,configured,mode,metrics,screenshot:path });
@@ -99,8 +99,12 @@ for (const engine of engines) {
           assert.ok(await page.locator('.agenda-mobile-calendar-scroller').evaluate(el=>el.clientHeight>0));
         }
         if ((mode === 'studio' || mode === 'baseline') && view === 'giorno') {
-          // The original has no data attribute; use the same rendered appointment label.
-          const content=page.getByText('09:00 Esempio',{exact:true});
+          // The original block reads "09:00 Esempio"; Studio now shows the full range and,
+          // on its own line, the patient's full name (PR #209). Both must be rendered.
+          const block = page.locator('[data-appointment-id="10"]');
+          if (mode !== 'baseline') await block.getByText('Paziente Esempio',{exact:true}).waitFor();
+          // The baseline is whatever master renders: the old "09:00 Esempio" or the current range.
+          const content = mode === 'baseline' ? block.getByText(/^09:00(?: Esempio|–10:30)$/).first() : block.getByText('09:00–10:30',{exact:true});
           await content.click();
           await page.locator('.agenda-appointment-menu-sheet').waitFor();
           // Menu creation remains owned by Studio (no personal clinical actions).
@@ -121,6 +125,9 @@ for (const engine of engines) {
       for (let y=0;y<height;y++) for(let x=0;x<width;x++) {
         // New switch is the only authorized addition to the Studio image (including its shadow).
         if (link && x >= link.x-20 && x <= link.x+link.width+20 && y >= link.y-20 && y <= link.y+link.height+20) continue;
+        // PR #209: the text inside each appointment block is the other authorized change
+        // ("09:00–10:30" + full name). Its boxes are asserted identical to the original above.
+        if (measurements.studio.blocks.some(b => x >= Math.floor(b.x) && x <= Math.ceil(b.x+b.width) && y >= Math.floor(b.y) && y <= Math.ceil(b.y+b.height))) continue;
         const i=(y*width+x)*4;
         if ([0,1,2].some(c=>Math.abs(original.data[i+c]-current.data[i+c])>2)) changed++;
       }

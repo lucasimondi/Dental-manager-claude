@@ -32,7 +32,12 @@ export function useSwipeAgenda(containerRef, onNavigate, attivo = true) {
     el.style.transform = x ? `translateX(${x}px)` : '';
   };
   const onTouchStart = (e) => {
-    if (!attivo || e.touches.length !== 1) { g.current = null; return; }
+    if (!attivo || e.touches.length !== 1) {
+      // Secondo dito (pinch): le colonne già spostate tornano al loro posto.
+      if (g.current?.dx) sposta(colonne(), 0, 180);
+      g.current = null;
+      return;
+    }
     g.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: istante(e), dir: null, dx: 0 };
   };
   const onTouchMove = (e) => {

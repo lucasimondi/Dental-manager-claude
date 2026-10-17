@@ -8,9 +8,9 @@ const WD_SHORT = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
 const toISO = d => d.toISOString().slice(0,10);
 const startOfWeek = d => { const dt = new Date(d + 'T12:00'); const day = dt.getDay(); dt.setDate(dt.getDate() + (day === 0 ? -6 : 1 - day)); return dt; };
-export function ViewPicker({ view, setView, touchSafe = false, palette: C = DEFAULT_PALETTE }) {
+export function ViewPicker({ view, setView, touchSafe = false, palette: C = DEFAULT_PALETTE, weekendsHidden = false, onToggleWeekends }) {
   const [open, setOpen] = useState(false);
-  const LABEL = { giorno: 'Giorno', settimana: 'Settimana', mese: 'Mese' };
+  const LABEL = { giorno: 'Giorno', settimana: 'Settimana', settimana_lavoro: 'Settimana lavoro', mese: 'Mese' };
   return (
     <div style={{ position: 'relative', flexShrink: 0 }}>
       <button
@@ -27,17 +27,18 @@ export function ViewPicker({ view, setView, touchSafe = false, palette: C = DEFA
       </button>
       {open && <div className="agenda-floating-interactive" onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 34 }} />}
       {open && (
-        <div className="agenda-floating-interactive" style={{ position: 'absolute', top: touchSafe ? 48 : 30, right: 0, background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 10, boxShadow: '0 8px 22px rgba(0,0,0,0.18)', width: 126, overflow: 'hidden', zIndex: 35 }}>
-          {['giorno', 'settimana', 'mese'].map((v) => (
+        <div className="agenda-floating-interactive" style={{ position: 'absolute', top: touchSafe ? 48 : 30, right: 0, background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 10, boxShadow: '0 8px 22px rgba(0,0,0,0.18)', width: 178, overflow: 'hidden', zIndex: 35 }}>
+          {['giorno', 'settimana', 'settimana_lavoro', 'mese'].map((v) => (
             <button key={v} onClick={() => { setView(v); setOpen(false); }} style={{ display: 'block', width: '100%', padding: '9px 12px', border: 'none', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', textAlign: 'left', background: view === v ? C.priL : 'transparent', color: view === v ? C.pri : C.txt }}>{LABEL[v]}</button>
           ))}
+          {onToggleWeekends && <button onClick={() => { onToggleWeekends(); setOpen(false); }} aria-pressed={weekendsHidden} style={{ display: 'block', width: '100%', padding: '9px 12px', border: 'none', borderTop: `1px solid ${C.brd}`, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', textAlign: 'left', background: weekendsHidden ? C.priL : 'transparent', color: weekendsHidden ? C.pri : C.txt }}>{weekendsHidden ? 'Mostra sabato e domenica' : 'Nascondi sabato e domenica'}</button>}
         </div>
       )}
     </div>
   );
 }
 
-export function DayStrip({ palette: C = DEFAULT_PALETTE, selDay, setSelDay, today: t, onWeekChange, highlightSelected = true, viewPicker, compact, oraColW, onPrevWeek, onNextWeek, hiddenWeekdays = [], singleDay = false, overlayRef, floatingFooter }) {
+export function DayStrip({ palette: C = DEFAULT_PALETTE, selDay, setSelDay, today: t, onWeekChange, highlightSelected = true, viewPicker, compact, oraColW, onPrevWeek, onNextWeek, hiddenWeekdays = [], singleDay = false, overlayRef, floatingFooter, shortMonth = false }) {
   const scrollRef = useRef(null);
   const [stripBaseWeek, setStripBaseWeek] = useState(() => toISO(startOfWeek(selDay)));
   const settleTimer = useRef(null);
@@ -87,8 +88,9 @@ export function DayStrip({ palette: C = DEFAULT_PALETTE, selDay, setSelDay, toda
   // due mesi (o due anni) li mostra entrambi, es. "Lug – Ago 2026".
   const wkMonStart = new Date(stripBaseWeek + 'T12:00');
   const wkMonEnd = new Date(wkMonStart); wkMonEnd.setDate(wkMonEnd.getDate() + 6);
+  // shortMonth (Personal, toolbar affollata): "Ott 2026" su una riga sola invece di "Ottobre 2026" a capo.
   const meseLabel = wkMonStart.getMonth() === wkMonEnd.getMonth()
-    ? `${MESI[wkMonStart.getMonth()]} ${wkMonStart.getFullYear()}`
+    ? `${shortMonth ? MESI[wkMonStart.getMonth()].slice(0, 3) : MESI[wkMonStart.getMonth()]} ${wkMonStart.getFullYear()}`
     : wkMonStart.getFullYear() === wkMonEnd.getFullYear()
       ? `${MESI[wkMonStart.getMonth()].slice(0, 3)} – ${MESI[wkMonEnd.getMonth()].slice(0, 3)} ${wkMonStart.getFullYear()}`
       : `${MESI[wkMonStart.getMonth()].slice(0, 3)} ${wkMonStart.getFullYear()} – ${MESI[wkMonEnd.getMonth()].slice(0, 3)} ${wkMonEnd.getFullYear()}`;
@@ -111,7 +113,7 @@ export function DayStrip({ palette: C = DEFAULT_PALETTE, selDay, setSelDay, toda
           {!compact && onPrevWeek && (
             <button onClick={onPrevWeek} aria-label="Settimana precedente" style={{ background: C.bg, border: 'none', borderRadius: 7, width: 26, height: 26, cursor: 'pointer', fontSize: 15, color: C.txm, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>‹</button>
           )}
-          <span className={compact ? 'agenda-mobile-floating-month' : undefined} style={{ fontSize: 13, fontWeight: 800, color: C.txt, textTransform: 'capitalize' }}>{meseLabel}</span>
+          <span className={compact ? 'agenda-mobile-floating-month' : undefined} style={{ fontSize: 13, fontWeight: 800, color: C.txt, textTransform: 'capitalize', ...(shortMonth ? { whiteSpace: 'nowrap', flexShrink: 0 } : {}) }}>{meseLabel}</span>
           {!compact && onNextWeek && (
             <button onClick={onNextWeek} aria-label="Settimana successiva" style={{ background: C.bg, border: 'none', borderRadius: 7, width: 26, height: 26, cursor: 'pointer', fontSize: 15, color: C.txm, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>›</button>
           )}
@@ -304,12 +306,9 @@ export function AppointmentBlock({ a, label, aCapo = false, co, top, height, col
                         {poltrona && !selModeWA && (
                           <div title={poltrona.nome} style={{ position: 'absolute', top: 3, right: operatore ? 13 : 3, width: 7, height: 7, borderRadius: 2, background: poltrona.colore, border: '1px solid rgba(255,255,255,0.8)' }} />
                         )}
-                        {aCapo ? (<>
-                          <div style={{ fontSize: 8, lineHeight: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.92)' }}>{a.ora}</div>
-                          <div style={{ fontSize: 9, lineHeight: '10px', fontWeight: 800, color: '#fff', whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{label}</div>
-                        </>) : <div style={{ fontSize: 9, lineHeight: '10px', fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.ora} {label}</div>}
-                        {height > (aCapo ? 40 : 28) && <div style={{ fontSize: 8, lineHeight: '9px', color: 'rgba(255,255,255,0.9)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.tipo}</div>}
-                        {!aCapo && height > 44 && <div style={{ fontSize: 8, lineHeight: '9px', color: 'rgba(255,255,255,0.7)' }}>{a.durata} min</div>}
+                        <div style={{ fontSize: 9, lineHeight: '10px', fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(() => { const [h, m] = String(a.ora || '00:00').split(':').map(Number); const fine = ((h || 0) * 60 + (m || 0) + Number(a.durata || 0)) % (24 * 60); return `${String(h || 0).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}–${String(Math.floor(fine / 60)).padStart(2, '0')}:${String(fine % 60).padStart(2, '0')}`; })()}</div>
+                        {height > 18 && <div style={{ fontSize: aCapo ? 9 : 8, lineHeight: aCapo ? '10px' : '9px', fontWeight: aCapo ? 800 : undefined, color: 'rgba(255,255,255,0.94)', overflow: 'hidden', ...(aCapo ? { whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'break-word' } : { textOverflow: 'ellipsis', whiteSpace: 'nowrap' }) }}>{label || a.tipo || 'Appuntamento'}</div>}
+                        {height > 44 && a.tipo && a.tipo !== label && <div style={{ fontSize: 8, lineHeight: '9px', color: 'rgba(255,255,255,0.7)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.tipo}</div>}
                       </div>
                       {/* Checkbox selezione — solo in modalità invio WhatsApp di massa */}
                       {selModeWA && isSelezionabileWA && (

@@ -56,8 +56,9 @@ export async function appuntamentiTra(da, a) {
   return app.filter((x) => x.stato !== 'annullato').map((x) => ({ ...x, paziente: nome.get(x.paziente_id) || null, cognome: cognome.get(x.paziente_id) || null }));
 }
 
-// Appuntamenti dei pazienti: stesse colonne e stessa convenzione dello studio (id bigint dal
-// client, user_id e studio_id della sessione). Il trigger dello studio controlla la coerenza.
+// Appuntamenti dei pazienti: stesse colonne dello studio, user_id e studio_id della sessione.
+// appointments.id è GENERATED ALWAYS AS IDENTITY: lo assegna il database, mai il client.
+// Il trigger dello studio controlla la coerenza.
 export async function cercaPazienti(testo) {
   const t = String(testo || '').replace(/[,()*%\\]/g, ' ').trim();
   if (t.length < 2) return [];
@@ -72,7 +73,7 @@ export async function salvaAppuntamento(a) {
   if (a.id) return esito(await studioDb.from('appointments').update(riga).eq('id', a.id).select('id').single());
   const sessione = await sessioneStudio();
   return esito(await studioDb.from('appointments')
-    .insert({ ...riga, id: Date.now() + Math.floor(Math.random() * 99999), studio_id: studioDellaSessione(sessione), user_id: sessione.user.id })
+    .insert({ ...riga, studio_id: studioDellaSessione(sessione), user_id: sessione.user.id })
     .select('id').single());
 }
 

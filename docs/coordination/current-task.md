@@ -1,3 +1,29 @@
+# Current task — Personal: gli appuntamenti dello studio non si salvano (2026-10-17)
+- OWNER: CLAUDE, branch `claude/studio-appointments-not-adding-t4xls2`, da `master@55c8004`. PO verbatim (screenshot "cannot insert a non-DEFAULT value into column \"id\""): "Da personal non si aggiungono gli appuntamenti studio".
+- CAUSA: `salvaAppuntamento` (personal/src/lib/studio.js) inviava un id generato dal client, ma in produzione `appointments.id` è GENERATED ALWAYS AS IDENTITY (come già annotato in `20261004160708_pol_ai_010_action_claims.sql`).
+- FATTO: l'inserimento non manda più `id`, lo assegna il database come per lo Studio. Nessuna modifica a schema, RLS, Studio o `impegni_personali` (che invece richiede l'id dal client).
+- VALIDATION: `npm test` 1301/1301 (+1 test in `personalAgendaPersistence`); build:personal OK.
+- EXACT NEXT ACTION: PR #212 → merge (PO: "Mergia").
+
+---
+
+# Current task — Agenda Personal: slot come prima e pinch-to-zoom (2026-10-17)
+- OWNER: CLAUDE, branch `claude/poliedron-agenda-actions-kz6mmk`, da `master@55c80040` (PR #210 mergiata). PO verbatim: "Allora gli slot adesso sono troppo alti dobbiamo tornare a quelli di prima, aggiungiamo funzione di ingrandimenti con le dita, il pinch to zoom".
+- COSA: Personal torna all'altezza slot precedente (`max(24, availH/slot)·zoom`, tolto `PX_PER_MIN_MIN`); nuovo `personal/src/lib/pinchZoom.js`: due dita sulla griglia (Giorno/Settimana) ingrandiscono gli slot da 1× (come prima) a 4×, l'orario sotto le dita resta fermo, il fattore è ricordato sul dispositivo (localStorage, facoltativo). Un dito continua a cambiare giorno/settimana; un secondo dito riporta a posto le colonne già trascinate. Mese ("Ott 2026") invariato. Studio invariato.
+- VALIDATION: `npm test` 1303/1303 (+3 `tests/personalPinchZoom.test.mjs`); build e build:personal OK; `test:agenda:visual` Chromium (Studio pixel identico); reliability Chromium 3/3; prova pinch reale in Chromium 390×844 (tocchi CDP): 3×, minuto sotto le dita invariato, ricordato dopo ricarica, ritorno a 1×. WebKit in CI.
+- EXACT NEXT ACTION: CI della PR verde → "Mergia".
+
+---
+
+# Current task — Agenda Personal: mese su una riga e slot più alti (2026-10-17)
+- OWNER: CLAUDE, branch `claude/poliedron-agenda-actions-kz6mmk`, da `master@6c9a296` (PR #209 mergiata). PO verbatim (screenshot Personal, Settimana lavoro): "La scritta del mese deve essere adattata bene, così è spaginata, inoltre dobbiamo trovare una soluzione per gli appuntamenti corti, forse conviene aumentare un po' verticalmente la misura degli slot?"
+- COSA: Personal passa `shortMonth` a `DayStrip` → "Ott 2026" su una riga (Studio invariato: default false). Personal: almeno 1,3 px al minuto (39 px ogni 30 min, prima ~24) → un appuntamento di 30 min mostra orario e nome; lo zoom scala da lì.
+- TEST: `tests/visual/agenda.compare.mjs` — dopo il merge di #209 anche la baseline (master) mostra "09:00–10:30": il selettore della baseline accetta entrambi i formati (altrimenti ogni PR futura sull'agenda falliva). Nuovo test in `tests/personalAgenda.test.mjs`.
+- VALIDATION: `npm test` 1299/1299; build e build:personal OK; `test:agenda:visual` Chromium 10/10 (Studio pixel identico); reliability Chromium 3/3; WebKit in CI.
+- EXACT NEXT ACTION: CI della PR verde → "Mergia".
+
+---
+
 # Current task — POL-VITA-013 Archivio: importazione senza Claude e cartelle di Drive per categoria e persona (2026-10-17)
 - OWNER: CLAUDE. BRANCH: `claude/catalogazione-facile-latjs9` ripartito da `master@dd058380` (PR #204 mergiata).
 - RICHIESTA PO (verbatim): "Sistema archivio , non.Ce altro modo per importare ?!" — risposta alla proposta di ordinare la cartella Drive per persona e categoria; l'importazione era ferma al lotto 2017-10 per il limite di spesa dell'API Claude (accesso di nuovo dal 2026-11-01).
@@ -47,6 +73,12 @@
 - VALIDATION: Node 1,270/1,270; main and standalone Personal builds; comparative Chromium/WebKit mobile matrix, screenshots and pixel checks in `docs/validation/POL-VITA-010/`.
 - DATABASE/DEPLOYMENT: none. Immutable stable checkpoint preserved.
 - STATUS: WAITING_PRODUCT_OWNER — dedicated PR for review, no merge authorized.
+# Current task — App bloccata: pagina che non scorre dopo due finestre aperte (2026-10-17)
+- OWNER: CLAUDE, branch `claude/poliedron-agenda-actions-kz6mmk`, da `master@370bdaf`. PO verbatim: "Controlla perché si è frizzato il poliedron studio, si è ingrandito di colpo e non scrolla, ora l'ho riavviato, ma controlla cosa sia successo".
+- EVIDENZA: nessun registro errori lato app (solo ErrorBoundary locale): la sequenza esatta sul telefono non è ricostruibile. Difetto certo trovato: `Modal.jsx` salvava/ripristinava `body.style.overflow` per finestra; due finestre chiuse in ordine inverso lasciavano `overflow: hidden` → pagina bloccata fino al riavvio. Lo "zoom" non è riproducibile dal codice (viewport con maximum-scale=1); probabile pizzico/doppio tocco con pagina bloccata.
+- FIX: blocco dello scorrimento condiviso (contatore): pagina bloccata finché c'è almeno una finestra, sempre sbloccata dopo l'ultima. Test `tests/modalScrollLock.test.mjs`. `npm test` 1259/1259; `npm run build` OK.
+- IN SOSPESO (stesso branch, non ancora committato): POL-DATI-001 Cestino (migrazione scritta, UI e test da fare).
+- EXACT NEXT ACTION: "Mergia" per il fix; poi completare il cestino.
 
 ---
 
@@ -2172,3 +2204,15 @@ not apply remotely, deploy, merge POL-RBAC-001A/POL-RBAC-001, or merge PR
 #15/#16 without explicit Product Owner approval.
 
 (POL-RBAC-001/POL-RBAC-001A have since merged to `master`; PR #16 is closed. This record is kept for audit history — see "Current task" above for the active task.)
+
+---
+
+# Current task — POL-VITA-014 Agenda: orari completi, weekend e avvio Personal (2026-10-17)
+- OWNER: Codex (`/root`), richiesta diretta del Product Owner.
+- BRANCH: `work`.
+- RICHIESTA PO: nelle agende Studio e Personal mostrare l'orario completo con sotto il nome di appuntamento/paziente; un controllo per nascondere sabato e domenica, una vista `Settimana lavoro` (lun–ven) e apertura di Personal immediata.
+- FATTO: componente condiviso `AppointmentBlock` ora presenta `inizio–fine` e nella riga seguente il paziente/titolo; `ViewPicker` offre `Settimana lavoro` e il comando accessibile mostra/nascondi weekend. Entrambi gli adapter calcolano cinque colonne nella settimana lavoro; Studio mantiene la scelta come sola preferenza della vista e non riscrive le impostazioni del tenant. Personal mostra immediatamente lo scheletro interattivo dell'agenda vuota, quindi applica i dati autorevoli in background senza aspettare appuntamenti/impegni/impostazioni.
+- DB / RLS / EDGE / DEPLOY: nessuna modifica; solo frontend.
+- VALIDATION: `npm test` 1297/1297; `npm run build`; `npm run build:personal`; `git diff --check`.
+- ROLLBACK: revert del commit frontend; nessun rollback dati necessario.
+- STATO: pronto per PR/review; nessun merge o deploy senza approvazione PO.

@@ -1,5 +1,15 @@
 # Handoffs
 
+## 2026-10-17 — CLAUDE — Personal: slot come prima + pinch-to-zoom
+- PO: slot di #210 "troppo alti" → formula precedente; ingrandimento con due dita (`personal/src/lib/pinchZoom.js`, listener nativi `touchmove` non passivi solo con 2 tocchi, `gesturestart` bloccato per Safari). Range 1×–4×, ancoraggio dello scroll sul punto tra le dita, valore in localStorage.
+- Test: `tests/personalPinchZoom.test.mjs`, `tests/personalAgenda.test.mjs` aggiornato. Nessun database.
+
+## 2026-10-17 — CLAUDE — PR #209 iphone-agenda rosso
+- Causa: la PR mostra nel blocco appuntamento "09:00–10:30" + nome completo su riga separata; `tests/visual/agenda.compare.mjs` cercava ancora "09:00 Esempio" anche in modalità Studio → timeout. Non è fixture né rendering mancante.
+- Test: Studio cerca il blocco `[data-appointment-id="10"]` con "Paziente Esempio" e clicca "09:00–10:30" (baseline invariata). Confronto pixel: l'interno dei blocchi appuntamento è l'unica nuova zona autorizzata; in cambio la geometria di ogni blocco (posizione/dimensione) è ora confrontata con l'originale.
+- Correzione di comportamento: il selettore rapido "sabato e domenica" partiva attivo con un solo giorno di chiusura (es. solo domenica) e nascondeva anche il sabato aperto. Ora finché non si tocca restano i giorni configurati (`agendaHiddenWeekdays` in `src/lib/agendaVisibleDays.js`, test in `tests/sharedAgenda.test.mjs`).
+- Validazione locale: `npm test` 1298/1298; build e build:personal OK; `test:agenda:visual` Chromium 10/10; `test:agenda:reliability` Chromium 3/3. WebKit non disponibile qui → verificato in CI.
+
 ## 2026-10-16 — CLAUDE — POL-AI-012 Preventivo (PDF, tasto, ritorno alla scheda, Poliedron)
 - TASK: POL-AI-012. BRANCH: `claude/preventivo-layout-poliedron-b4w1br` da `master@57b19dc`. Dettagli in `current-task.md`.
 - FILES: `src/lib/documenti/preventivoPdf.js` (nuovo), `src/components/{PdfView.jsx, SchedaPaz.jsx, PianoDrillDown.jsx, Piani.jsx, ui/PdfViewerModal.jsx}`, `src/components/poliedron/{Poliedron.jsx, PoliedronChatPage.jsx, PoliedronPreparedDocument.jsx}`, `src/lib/poliedron/poliedraCore.js`, `src/App.jsx`, `supabase/functions/agente-assistente/{index.ts, piani.js}`, `tests/preventivoPoliedron.test.mjs` (nuovo), `tests/{nomeFilePdfOvunque, planExecutionUi}.test.mjs`.
@@ -3785,3 +3795,14 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - TEST: 1292/1292 su Node 20.
 - LIMITI: le regole provvisorie sono approssimative (il catalogo vero arriva con Claude); i primi giri dopo il deploy vanno controllati in `log_elaborazione` e nei conteggi `drive_cartella`/`da_analizzare`.
 - PROSSIMO PASSO: verifica dei primi giri, review della PR, merge solo su "Mergia" del PO.
+
+## 2026-10-17 — Codex — POL-VITA-014 Agenda: orari completi, weekend e avvio Personal
+- OWNER: Codex (`/root`), richiesta diretta Product Owner. BRANCH: `work`.
+- OBJECTIVE: migliorare la lettura degli appuntamenti in Studio e Personal; offrire una settimana lun–ven e una rapida esclusione del weekend; eliminare l'attesa a pagina vuota nell'apertura dell'agenda Personal.
+- COMPLETED: `shared/agenda/AgendaPresentation.jsx` ora rende per ogni appuntamento l'intervallo completo `HH:MM–HH:MM` e, sotto, il paziente/titolo; `ViewPicker` contiene `Settimana lavoro` e il pulsante accessibile `Nascondi/Mostra sabato e domenica`. Il parser e il link di passaggio Studio/Personal conservano la nuova vista. Gli adapter Studio e Personal passano le colonne corrette, quindi Settimana lavoro è sempre lunedì–venerdì e il comando weekend allarga la vista senza cambiare le impostazioni condivise del tenant. Personal apre subito la griglia vuota e popola appuntamenti, eventi, impostazioni e scadenze al termine delle letture autorevoli; le scadenze restano non bloccanti come prima. Studio ora passa nome e cognome del paziente al blocco condiviso.
+- FILES: `shared/agenda/AgendaPresentation.jsx`, `shared/agenda/navigation.js`, `src/components/Agenda.jsx`, `personal/src/Agenda.jsx`, `personal/src/AgendaGriglia.jsx`, test agenda e documentazione coordinamento.
+- DATABASE / RLS / EDGE / PRODUCTION DATA: nessuna modifica, nessuna lettura/scrittura di dati di produzione.
+- TESTS: `npm test` 1297/1297; `npm run build` OK; `npm run build:personal` OK; `git diff --check` OK. I build riportano solo gli avvisi preesistenti di chiavi duplicate, eval di pdfjs e bundle grande.
+- RISKS / LIMITS: non provato su iPhone fisico; il toggle weekend è intenzionalmente locale alla sessione UI e non modifica `studio_info.agenda_settings`.
+- ROLLBACK: revert del commit; nessun dato o migration da ripristinare.
+- EXACT NEXT ACTION: aprire/revisionare PR, attendere approvazione PO prima di merge o deploy.

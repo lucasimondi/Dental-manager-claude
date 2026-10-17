@@ -10,7 +10,7 @@ import { useIsMobile } from '../lib/useIsMobile';
 import { salvaPosizione, leggiPosizione } from '../lib/posizioneNavigazione';
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { supabase } from '../lib/supabase.js';
-import { getVisibleWeekDays } from '../lib/agendaVisibleDays.js';
+import { getVisibleWeekDays, agendaHiddenWeekdays as computeHiddenWeekdays, weekendsHiddenState } from '../lib/agendaVisibleDays.js';
 import { MOBILE_DOCK_BOTTOM, MOBILE_DOCK_HEIGHT } from '../lib/poliedron/poliedronMobileDock.js';
 import { normalizePhoneForTel } from '../lib/appointmentQuickHub.js';
 
@@ -223,7 +223,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                   // "Tutti" attivo) si affiancano in colonne invece di disegnarsi uno sopra
                   // l'altro, così restano tutti visibili e cliccabili.
                   return (
-                    <AppointmentBlock key={a.id} a={a} label={p ? p.cognome : '—'} co={co} top={top} height={height} col={col} totalCols={totalCols} isBeingResized={isBeingResized} isBeingMoved={isBeingMoved} selectionMode={selModeWA} selectable={isSelezionabileWA} selected={isSelected} operatore={operatore} poltrona={poltrona} selectionIndicator={<Ic n="ok" s={9} c="#fff" />}
+                    <AppointmentBlock key={a.id} a={a} label={p ? `${p.nome || ''} ${p.cognome || ''}`.trim() : '—'} co={co} top={top} height={height} col={col} totalCols={totalCols} isBeingResized={isBeingResized} isBeingMoved={isBeingMoved} selectionMode={selModeWA} selectable={isSelezionabileWA} selected={isSelected} operatore={operatore} poltrona={poltrona} selectionIndicator={<Ic n="ok" s={9} c="#fff" />}
                       onResizeMouse={e => { e.stopPropagation(); e.preventDefault(); setResizing({ id: a.id, startY: e.clientY, startDurata: Number(a.durata) }); }}
                       onMoveMouse={e => { if (selModeWA || isBeingResized) return; movedRef.current = false; setMoving({ id: a.id, startY: e.clientY, startOra: a.ora }); }}
                       onResizeTouch={e => { e.stopPropagation(); setResizing({ id: a.id, startY: e.touches[0].clientY, startDurata: Number(a.durata) }); }}
@@ -388,6 +388,9 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   const [slotMin, setSlotMin] = useState(() => { try { return si?.agenda_settings?.slotMin ?? Number(localStorage.getItem('ag_slotMin') || DEF_AGENDA_SETTINGS.slotMin); } catch { return DEF_AGENDA_SETTINGS.slotMin; } });
   const [zoom, setZoom] = useState(() => { try { return si?.agenda_settings?.zoom ?? (Number(localStorage.getItem('ag_zoom')) || DEF_AGENDA_SETTINGS.zoom); } catch { return DEF_AGENDA_SETTINGS.zoom; } });
   const [hiddenWeekdays, setHiddenWeekdays] = useState(() => si?.agenda_settings?.hiddenWeekdays || DEF_AGENDA_SETTINGS.hiddenWeekdays);
+  // Scelta veloce della sola vista: non modifica le impostazioni condivise dello studio.
+  // null = come configurato dallo studio; true/false = scelta esplicita dal selettore.
+  const [weekendOverride, setWeekendOverride] = useState(null);
   const [view, setView] = useState(() => readAgendaLocation().view || 'settimana');
   const [selDay, setSelDay] = useState(() => readAgendaLocation().day || today());
   const [modal, setModal] = useState(false);
@@ -555,7 +558,8 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     setOraFine(si.agenda_settings.oraFine ?? DEF_AGENDA_SETTINGS.oraFine);
     setSlotMin(si.agenda_settings.slotMin ?? DEF_AGENDA_SETTINGS.slotMin);
     setZoom(si.agenda_settings.zoom ?? DEF_AGENDA_SETTINGS.zoom);
-    setHiddenWeekdays(si.agenda_settings.hiddenWeekdays || DEF_AGENDA_SETTINGS.hiddenWeekdays);
+    const configuredHidden = si.agenda_settings.hiddenWeekdays || DEF_AGENDA_SETTINGS.hiddenWeekdays;
+    setHiddenWeekdays(configuredHidden);
   }, [si?.agenda_settings]);
   // availH reattivo: ricalcolato a ogni resize/orientazione, non solo al primo render.
   // Fornisce uno slot di base; su mobile il ResizeObserver di GridView misura poi
@@ -583,7 +587,13 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   const getColore = (a) => a.colore || tipiList.find(t => t.nome === a.tipo)?.colore || C.pri;
 
   const weekStart = startOfWeek(selDay);
-  const weekDays = getVisibleWeekDays(weekStart, hiddenWeekdays);
+  // La vista normale può mostrare/nascondere il fine settimana con il controllo rapido;
+  // Settimana lavoro resta sempre lunedì–venerdì, senza toccare la configurazione dello studio.
+  // Finché non si tocca il selettore restano i giorni di chiusura configurati: uno studio
+  // chiuso solo la domenica continua a vedere il sabato (e i suoi appuntamenti).
+  const weekendsHidden = weekendsHiddenState({ configured: hiddenWeekdays, override: weekendOverride });
+  const agendaHiddenWeekdays = computeHiddenWeekdays({ configured: hiddenWeekdays, view, override: weekendOverride });
+  const weekDays = getVisibleWeekDays(weekStart, agendaHiddenWeekdays);
   const t = today();
 
   const apriNuovo = (data, ora) => {
@@ -884,7 +894,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   const gridProps = { slots, slotH, slotMin, oraInizio, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight };
 
   // Appuntamenti effettivamente visibili nella vista corrente (per il conteggio "Seleziona tutti" e il badge)
-  const giorniVisibili = view === 'giorno' ? [selDay] : view === 'settimana' ? weekDays.map(toISO) : [];
+  const giorniVisibili = view === 'giorno' ? [selDay] : (view === 'settimana' || view === 'settimana_lavoro') ? weekDays.map(toISO) : [];
   const appVisibili = appointmentsAgenda.filter(a => giorniVisibili.includes(a.data));
   const appVisibiliConTel = selezionabiliWAMass(appVisibili);
 
@@ -968,7 +978,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   // intera restava lì sempre visibile, sottraendo spazio verticale alla griglia
   // esattamente come notifiche/filtri. La barra attiva di selezione (che appare
   // solo durante un invio in corso, transitoria) resta invece a riga intera.
-  const waCompatta = !selModeWA && waAbilitato(features) && (view === 'giorno' || view === 'settimana') && (
+  const waCompatta = !selModeWA && waAbilitato(features) && (view === 'giorno' || view === 'settimana' || view === 'settimana_lavoro') && (
     <button
       onClick={() => { setSelModeWA(true); setSelAppIds([]); }}
       disabled={appVisibiliConTel.length === 0}
@@ -1062,9 +1072,9 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       {haFiltriRisorse && !isMobile && chipsRisorse}
 
       {view === 'giorno' && (
-        <DayStrip palette={C} selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} oraColW={oraColW} singleDay={isMobile} hiddenWeekdays={hiddenWeekdays} overlayRef={isMobile ? overlayRef : undefined} floatingFooter={isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker palette={C} view={view} setView={setView} touchSafe={isMobile} /></div>} />
+        <DayStrip palette={C} selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} oraColW={oraColW} singleDay={isMobile} hiddenWeekdays={agendaHiddenWeekdays} overlayRef={isMobile ? overlayRef : undefined} floatingFooter={isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>} />
       )}
-      {view === 'settimana' && (
+      {(view === 'settimana' || view === 'settimana_lavoro') && (
         <DayStrip palette={C}
           selDay={selDay}
           setSelDay={(ds) => { setSelDay(ds); setView('giorno'); }}
@@ -1075,10 +1085,10 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           oraColW={oraColW}
           onPrevWeek={() => navSettimana(-1)}
           onNextWeek={() => navSettimana(1)}
-          hiddenWeekdays={hiddenWeekdays}
+          hiddenWeekdays={agendaHiddenWeekdays}
           overlayRef={isMobile ? overlayRef : undefined}
           floatingFooter={isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null}
-          viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker palette={C} view={view} setView={setView} touchSafe={isMobile} /></div>}
+          viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>}
         />
       )}
       {view === 'mese' && isMobile && (
@@ -1086,7 +1096,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
               {notificheBell}
               {filtroButton}
               <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 14, padding: '5px 10px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
-              <ViewPicker palette={C} view={view} setView={setView} touchSafe />
+              <ViewPicker palette={C} view={view} setView={setView} touchSafe weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} />
         </MonthToolbar>
       )}
       {view === 'mese' && !isMobile && (
@@ -1099,20 +1109,20 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
             {isMobile && filtroButton}
             <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
           </div>
-          <ViewPicker palette={C} view={view} setView={setView} />
+          <ViewPicker palette={C} view={view} setView={setView} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} />
         </div>
       )}
 
       {/* Toolbar invio WhatsApp di massa — solo vista Giorno/Settimana, dove ha senso "tutti gli appuntamenti visibili".
           Su mobile l'idle button è già in alto (icona compatta accanto al selettore vista): questa riga intera
           compare solo per la barra di selezione attiva (transitoria), non resta lì a occupare spazio in permanenza. */}
-      {(view === 'giorno' || view === 'settimana') && waAbilitato(features) && !isMobile && waSelectionToolbar}
+      {(view === 'giorno' || view === 'settimana' || view === 'settimana_lavoro') && waAbilitato(features) && !isMobile && waSelectionToolbar}
 
       {/* VIEWS */}
-      {(view === 'giorno' || view === 'settimana') && (
+      {(view === 'giorno' || view === 'settimana' || view === 'settimana_lavoro') && (
         <div className={isMobile ? 'agenda-mobile-grid-surface' : undefined} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {view === 'giorno' && <GridView days={[new Date(selDay + 'T12:00')]} {...gridProps} onSwipeDay={navGiorno} features={features} />}
-          {view === 'settimana' && <GridView days={weekDays} {...gridProps} onSwipeDay={navSettimana} features={features} />}
+          {(view === 'settimana' || view === 'settimana_lavoro') && <GridView days={weekDays} {...gridProps} onSwipeDay={navSettimana} features={features} />}
         </div>
       )}
       {view === 'mese' && (() => {

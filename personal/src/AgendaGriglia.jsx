@@ -5,6 +5,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, AppointmentBlock, EventBlock, useSlotHeight, AgendaSwitch, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState } from '../../shared/agenda/AgendaPresentation.jsx';
 import { getVisibleWeekDays } from '../../shared/agenda/visibleDays.js';
 import { useSwipeAgenda } from './lib/swipeAgenda.js';
+import { usePinchZoom, scrollAncorato } from './lib/pinchZoom.js';
 import { daIso, piuGiorni, oggi, coloreEvento, nomeEtichetta, elementiDelGiorno, giorniSettimana } from './lib/agenda.js';
 export { ViewPicker };
 
@@ -13,11 +14,12 @@ const GIORNI_NASCOSTI_PERSONAL = [];
 export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMese, dati, ctx, etichette, coloriTipi }) {
   const [localMonth, setLocalMonth] = useState(giorno);
   const month = mese || localMonth, changeMonth = setMese || setLocalMonth;
-  const weekly = view === 'settimana';
-  // Personal mostra sempre tutta la settimana, domenica compresa: i giorni nascosti
-  // dello studio (giorni di chiusura) valgono solo per l'agenda dello studio.
+  const weekly = view === 'settimana' || view === 'settimana_lavoro';
+  const [weekendsHidden, setWeekendsHidden] = useState(false);
+  // La scelta rapida è solo locale alla schermata: non cambia l'orario/configurazione
+  // condivisa dello studio. Settimana lavoro nasconde sempre sabato e domenica.
   const { slotMin = 30, zoom = 1 } = dati.settings || {};
-  const hiddenWeekdays = GIORNI_NASCOSTI_PERSONAL;
+  const hiddenWeekdays = view === 'settimana_lavoro' || weekendsHidden ? [0, 6] : GIORNI_NASCOSTI_PERSONAL;
   const oraInizio = 0, oraFine = 24;
   const days = weekly ? getVisibleWeekDays(daIso(giorniSettimana(giorno)[0]), hiddenWeekdays) : [daIso(giorno)];
   const slots = [];
@@ -26,8 +28,22 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
   const [overlayHeight, setOverlayHeight] = useState(0);
   const [availH, setAvailH] = useState(() => Math.max(360, window.innerHeight - 126));
   const [now, setNow] = useState(new Date());
-  const slotH = Math.max(24, Math.round(availH / slots.length * zoom));
+  // PO 2026-10-17: slot come prima ("troppo alti") e, per gli appuntamenti corti,
+  // pinch-to-zoom con due dita: pinch 1 è l'altezza di sempre.
+  const [pinch, ancoraPinch] = usePinchZoom(containerRef, view !== 'mese');
+  const slotH = Math.round(Math.max(24, availH / slots.length * zoom) * pinch);
   const effectiveSlotH = useSlotHeight(containerRef, true, slots, slotH, view);
+  const slotHPrima = useRef(effectiveSlotH);
+  useLayoutEffect(() => {
+    const el = containerRef.current, a = ancoraPinch.current;
+    ancoraPinch.current = null;
+    if (el && a && slotHPrima.current !== effectiveSlotH) {
+      const grid = el.querySelector('.agenda-time-grid');
+      const gridTop = grid ? grid.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop : 0;
+      el.scrollTop = scrollAncorato({ scrollTop: a.scrollTop, y: a.y, gridTop, oldSlotH: slotHPrima.current, newSlotH: effectiveSlotH });
+    }
+    slotHPrima.current = effectiveSlotH;
+  }, [effectiveSlotH]);
   useEffect(() => {
     const resize = () => setAvailH(Math.max(360, window.innerHeight - 126));
     window.addEventListener('resize', resize); window.addEventListener('orientationchange', resize);
@@ -46,7 +62,7 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
   useEffect(() => { if (containerRef.current) containerRef.current.scrollTop = showNowLine ? Math.max(0, nowTop - effectiveSlotH * 2) : 0; }, [giorno, view]);
   // POL-VITA-008: "Vai a Studio" accanto al selettore della vista, alla sua sinistra.
   const appSwitch = <AgendaSwitch inline target="studio" day={giorno} month={month} view={view} />;
-  const pick = <span className="personal-agenda-azioni">{appSwitch}<ViewPicker view={view} setView={setView} touchSafe /></span>;
+  const pick = <span className="personal-agenda-azioni">{appSwitch}<ViewPicker view={view} setView={setView} touchSafe weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendsHidden(hidden => !hidden)} /></span>;
   const navigate = n => setGiorno(piuGiorni(giorno, n * (weekly ? 7 : 1)));
   // DayStrip notifica anche al primo mount la settimana che sta mostrando.
   // In Personal ignoriamo quella prima notifica: altrimenti il 16 diventa lunedì 12.
@@ -115,7 +131,7 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
         {!extras.aOrario.some(x => x.tipo === 'appuntamento') && <CalendarEmptyState />}
       </div>
     </> : <>
-      <DayStrip selDay={giorno} setSelDay={ds => { setGiorno(ds); if (weekly) setView('giorno'); }} today={oggi()} compact oraColW={34} singleDay={!weekly} hiddenWeekdays={hiddenWeekdays} highlightSelected={!weekly} onWeekChange={weekly ? sincronizzaSettimana : undefined} overlayRef={overlayRef} viewPicker={pick} floatingFooter={fasciaGiorno} />
+      <DayStrip selDay={giorno} setSelDay={ds => { setGiorno(ds); if (weekly) setView('giorno'); }} today={oggi()} compact oraColW={34} singleDay={!weekly} hiddenWeekdays={hiddenWeekdays} highlightSelected={!weekly} onWeekChange={weekly ? sincronizzaSettimana : undefined} overlayRef={overlayRef} viewPicker={pick} floatingFooter={fasciaGiorno} shortMonth />
       <div className="agenda-mobile-grid-surface" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }} {...swipe}>
         <TimeGrid containerRef={containerRef} isMobile slots={slots} slotH={slotH} effectiveSlotH={effectiveSlotH} oraColW={34} days={days} today={oggi()} showNowLine={showNowLine} nowTop={nowTop} onSlot={openSlot} renderDay={renderDay} />
       </div>
