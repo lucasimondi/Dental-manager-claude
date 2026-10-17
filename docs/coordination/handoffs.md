@@ -1,5 +1,11 @@
 # Handoffs
 
+## 2026-10-17 — CLAUDE — PR #209 iphone-agenda rosso
+- Causa: la PR mostra nel blocco appuntamento "09:00–10:30" + nome completo su riga separata; `tests/visual/agenda.compare.mjs` cercava ancora "09:00 Esempio" anche in modalità Studio → timeout. Non è fixture né rendering mancante.
+- Test: Studio cerca il blocco `[data-appointment-id="10"]` con "Paziente Esempio" e clicca "09:00–10:30" (baseline invariata). Confronto pixel: l'interno dei blocchi appuntamento è l'unica nuova zona autorizzata; in cambio la geometria di ogni blocco (posizione/dimensione) è ora confrontata con l'originale.
+- Correzione di comportamento: il selettore rapido "sabato e domenica" partiva attivo con un solo giorno di chiusura (es. solo domenica) e nascondeva anche il sabato aperto. Ora finché non si tocca restano i giorni configurati (`agendaHiddenWeekdays` in `src/lib/agendaVisibleDays.js`, test in `tests/sharedAgenda.test.mjs`).
+- Validazione locale: `npm test` 1298/1298; build e build:personal OK; `test:agenda:visual` Chromium 10/10; `test:agenda:reliability` Chromium 3/3. WebKit non disponibile qui → verificato in CI.
+
 ## 2026-10-16 — CLAUDE — POL-AI-012 Preventivo (PDF, tasto, ritorno alla scheda, Poliedron)
 - TASK: POL-AI-012. BRANCH: `claude/preventivo-layout-poliedron-b4w1br` da `master@57b19dc`. Dettagli in `current-task.md`.
 - FILES: `src/lib/documenti/preventivoPdf.js` (nuovo), `src/components/{PdfView.jsx, SchedaPaz.jsx, PianoDrillDown.jsx, Piani.jsx, ui/PdfViewerModal.jsx}`, `src/components/poliedron/{Poliedron.jsx, PoliedronChatPage.jsx, PoliedronPreparedDocument.jsx}`, `src/lib/poliedron/poliedraCore.js`, `src/App.jsx`, `supabase/functions/agente-assistente/{index.ts, piani.js}`, `tests/preventivoPoliedron.test.mjs` (nuovo), `tests/{nomeFilePdfOvunque, planExecutionUi}.test.mjs`.
