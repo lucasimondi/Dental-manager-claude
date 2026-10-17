@@ -444,6 +444,7 @@ function ModuloAppuntamento({ a: iniziale, ctx, chiudi }) {
   return (
     <>
       <div className="pp-evento-anteprima pp-appuntamento-anteprima" style={{ '--c': colore }}>
+        <span className="pp-etichetta">{f.id ? 'Appuntamento dello studio' : 'Nuovo appuntamento dello studio'}</span>
         <strong>{f.paziente || 'Nuovo appuntamento'}</strong>
         <span>{nomeGiorno(f.data)} · {f.ora}–{fine}{f.tipo ? ` · ${f.tipo}` : ''}</span>
       </div>

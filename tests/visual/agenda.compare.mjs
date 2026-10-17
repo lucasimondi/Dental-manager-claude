@@ -110,7 +110,10 @@ for (const engine of engines) {
       }
       const geometry = m => Object.fromEntries(Object.entries(m).filter(([key])=>key !== 'switch'));
       assert.deepEqual(geometry(measurements.baseline), geometry(measurements.studio), 'Studio geometry changed');
-      assert.equal(measurements.studio.columns, measurements.personal.columns, 'Shared day columns differ');
+      // PO 2026-10-17 ("devi farmi vedere anche le domeniche"): Personal shows all 7 days even when
+      // Studio hides closing days; otherwise the shared columns match.
+      if (configured && view === 'settimana') assert.equal(measurements.personal.columns, 7, 'Personal week shows every day');
+      else assert.equal(measurements.studio.columns, measurements.personal.columns, 'Shared day columns differ');
       // PO requests 24h in Personal with a top app switch; grid height and chrome clearance intentionally differ.
       const original = PNG.sync.read(await readFile(screenshots.baseline)), current = PNG.sync.read(await readFile(screenshots.studio));
       const link = measurements.studio.switch;
