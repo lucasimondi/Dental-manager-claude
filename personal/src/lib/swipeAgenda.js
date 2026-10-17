@@ -48,7 +48,15 @@ export function useSwipeAgenda(containerRef, onNavigate, attivo = true) {
   const onTouchEnd = (e) => {
     const s = g.current;
     g.current = null;
-    if (!s || s.dir !== 'orizzontale') return;
+    if (!s) return;
+    // Posizione finale dal rilascio: un colpo rapidissimo può arrivare senza touchmove.
+    const fine = e?.changedTouches?.[0];
+    if (fine) {
+      const dx = fine.clientX - s.x, dy = fine.clientY - s.y;
+      if (!s.dir) s.dir = direzione(dx, dy);
+      if (s.dir === 'orizzontale') s.dx = dx;
+    }
+    if (s.dir !== 'orizzontale') return;
     const el = colonne();
     const verso = esito(s.dx, istante(e) - s.t);
     if (!verso) { sposta(el, 0, 180); return; }
