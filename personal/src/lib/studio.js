@@ -77,6 +77,28 @@ export async function salvaImpegno(evento) {
     .insert({ ...riga, id: Date.now() + Math.floor(Math.random() * 99999), studio_id: studioDellaSessione(sessione), user_id: sessione.user.id }).select(CAMPI_IMPEGNO).single());
 }
 
+// Inserimento atomico delle occorrenze di una ripetizione: una sola richiesta evita
+// serie salvate a metà se una delle righe non è valida. Nessuna modifica a schema o RLS.
+export async function salvaImpegni(eventi) {
+  if (!Array.isArray(eventi) || eventi.length === 0) return [];
+  const sessione = await sessioneStudio();
+  const studioId = studioDellaSessione(sessione);
+  const usati = new Set();
+  const rows = eventi.map((evento) => {
+    let id;
+    do { id = Date.now() + Math.floor(Math.random() * 99999); } while (usati.has(id));
+    usati.add(id);
+    return {
+      ...rigaImpegno(evento),
+      id,
+      studio_id: studioId,
+      user_id: sessione.user.id,
+      updated_at: new Date().toISOString(),
+    };
+  });
+  return esito(await studioDb.from('impegni_personali').insert(rows).select(CAMPI_IMPEGNO));
+}
+
 export async function eliminaImpegno(id) {
   return esito(await studioDb.from('impegni_personali').delete().eq('id', id).select('id'));
 }
