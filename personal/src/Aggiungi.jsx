@@ -16,6 +16,7 @@ const VOCI = [
     ['libreria', 'Foto', 'dalla libreria', IconaFoto],
     ['file', 'File', 'iCloud, Drive, altre app', IconaNuvola],
     ['personale', 'Documento personale', "carta d'identità, codice fiscale…", IconaPortafoglio],
+    ['fotovideo', 'Foto o video', 'nei tuoi album', IconaFoto],
   ]],
   ['Conti e agenda', [
     ['spesa', 'Spesa', 'registra un\'uscita', IconaEuro],

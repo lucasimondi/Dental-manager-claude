@@ -29,6 +29,8 @@ import {
   Vuoto, Sezione, Gruppo, RigaDocumento, SchedaDocumento, RigaPagamento, Chips, Segmenti, Conferma, ConfermaElimina, ElencoPratiche, BottoneCondividi,
 } from './ui.jsx';
 import { VistaDocumenti, PaginaRicerca } from './Documenti.jsx';
+import { VistaFoto, PaginaFoto } from './Foto.jsx';
+import { catalogaFoto } from './lib/foto.js';
 import { Miniatura } from './Miniatura.jsx';
 import {
   IconaOggi, IconaDocumenti, IconaPortafoglio, IconaPratiche, IconaPiu, IconaCerca, IconaChiudi, IconaIndietro, IconaFreccia,
@@ -666,6 +668,12 @@ function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) {
         mostra(opzioni.pagamentoId ? 'Documento allegato al pagamento' : 'Letto: controlla importo e scadenza');
         if (primo) { sostituisci({ tipo: 'pagamento', s: primo }); return; }
       }
+      // Da Foto e video: la foto o il video va nell'album scelto.
+      if (r.id && fascicolo === 'foto_video') {
+        if (opzioni.album) await catalogaFoto(archivioDb, r.id, { album: opzioni.album }).catch(() => {});
+        aggiorna(); mostra(r.duplicato ? 'Era già in archivio' : `Aggiunto a Foto e video${opzioni.album ? ` · ${opzioni.album}` : ''}`);
+        sostituisci({ tipo: 'fotovideo', album: opzioni.album || null }); return;
+      }
       mostra(r.duplicato ? 'Era già in archivio' : `Archiviato: ${r.titolo}`);
       if (r.id) sostituisci({ tipo: 'documento', id: r.id });
     } catch (e) {
@@ -1013,7 +1021,7 @@ function VistaPoliedron({ ctx, chat, setChat }) {
 
 const TITOLI_PAGINE = {
   evento: 'Evento', appuntamento: 'Appuntamento', documento: 'Documento', pagamento: 'Pagamento', pratica: 'Pratica',
-  carica: 'Archivia un documento', impostazioni: 'Impostazioni', sezione: 'Sezione', scansione: 'Scansiona', scadenza: 'Pagamento da fare',
+  carica: 'Archivia un documento', fotovideo: 'Foto e video', foto: 'Foto', impostazioni: 'Impostazioni', sezione: 'Sezione', scansione: 'Scansiona', scadenza: 'Pagamento da fare',
 };
 const titoloPagina = (p) => p.titolo || (p.tipo === 'movimento' ? (p.m?.id ? 'Movimento' : p.m?.tipo === 'entrata' ? 'Nuovo incasso' : 'Nuova spesa') : TITOLI_PAGINE[p.tipo]);
 // Pagine con un modulo o con la propria barra in basso: niente tasto di chiusura in basso.
@@ -1074,6 +1082,7 @@ function Archivio({ email }) {
     const pagina = {
       scansiona: { tipo: 'scansione' },
       personale: { tipo: 'carica', opzioni: { fascicolo: 'identita', portafoglio: true } },
+      fotovideo: { tipo: 'carica', opzioni: { fascicolo: 'foto_video', descrizione: 'Foto o video personale' } },
       spesa: { tipo: 'movimento', m: { tipo: 'uscita' } },
       incasso: { tipo: 'movimento', m: { tipo: 'entrata' } },
       pagamento: { tipo: 'scadenza' },
@@ -1112,6 +1121,8 @@ function Archivio({ email }) {
       case 'pratica': return <PaginaPratica p={p.p} ctx={ctx} />;
       case 'elenco': return <PaginaRicerca carica={p.carica} ctx={ctx} />;
       case 'ricerca': return <PaginaRicerca filtri={p.filtri} sezione={p.sezione} ctx={ctx} />;
+      case 'fotovideo': return <VistaFoto ctx={ctx} albumIniziale={p.album || null} />;
+      case 'foto': return <PaginaFoto ids={p.ids} indice={p.indice} ctx={ctx} />;
       case 'carica': return <PaginaCarica opzioni={p.opzioni || {}} file={p.file} ctx={ctx} sostituisci={sostituisci} />;
       case 'scansione': return <PaginaScansione ctx={ctx} sostituisci={sostituisci} />;
       case 'movimento': return <PaginaMovimento m={p.m || {}} ctx={ctx} chiudi={indietro} />;
