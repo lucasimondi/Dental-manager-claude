@@ -5,7 +5,8 @@
 // appointments (lettura e scrittura, POL-VITA-013: "da agenda personale io posso agire anche su
 // agenda studio"), patients (solo id, nome e cognome, lettura), app_types (lettura) e
 // impegni_personali (lettura e scrittura: gli eventi senza paziente), studio_info
-// (sola lettura di agenda_settings). La RLS dello studio
+// (sola lettura di agenda_settings). POL-VITA-022: payments e pagamenti_esterni (lettura e nuovi
+// incassi registrati da Conti), collaborazioni e spese (sola lettura) per il lavoro netto. La RLS dello studio
 // (studio_id del token) limita ogni lettura e scrittura allo studio dell'utente.
 import { createClient } from '@supabase/supabase-js';
 import { rigaImpegno, rigaAppuntamento } from './agenda.js';
@@ -155,4 +156,46 @@ export async function impostazioniAgenda() {
   const studioId = studioDellaSessione(sessione);
   const riga = esito(await studioDb.from('studio_info').select('agenda_settings').eq('studio_id', studioId).maybeSingle());
   return riga?.agenda_settings || {};
+}
+
+/* ---------- POL-VITA-022: incassi registrati anche nello studio ---------- */
+// id di pagamenti_esterni: lo assegna il client come fa il gestionale (Date.now()); payments.id
+// è un'identity del database.
+export async function collaborazioniStudio() {
+  return esito(await studioDb.from('collaborazioni').select('id, nome').order('nome'));
+}
+
+export async function registraIncassoStudio({ tabella, riga }) {
+  const sessione = await sessioneStudio();
+  if (!sessione) throw new Error('Per registrare l\'incasso nello studio collega prima l\'agenda (scheda Agenda).');
+  const studio = studioDellaSessione(sessione);
+  if (tabella === 'payments') {
+    return esito(await studioDb.from('payments').insert({ ...riga, studio_id: studio, user_id: sessione.user.id }).select('id').single()).id;
+  }
+  if (tabella === 'pagamenti_esterni') {
+    return esito(await studioDb.from('pagamenti_esterni').insert({ ...riga, id: Date.now(), studio_id: studio }).select('id').single()).id;
+  }
+  throw new Error('Tabella dello studio non ammessa');
+}
+
+// Lavoro dallo studio (sola lettura): incassi dei pazienti, collaborazioni e spese del periodo, più
+// le spese ricorrenti (si dividono per mese in lavoroDelPeriodo). A pagine da 1000 righe.
+async function tutte(crea) {
+  const out = [];
+  for (let da = 0; da < 50000; da += 1000) {
+    const pezzo = esito(await crea().range(da, da + 999));
+    out.push(...pezzo);
+    if (pezzo.length < 1000) break;
+  }
+  return out;
+}
+
+export async function datiLavoro(da, a) {
+  const [pagamenti, esterni, spese, ricorrenti] = await Promise.all([
+    tutte(() => studioDb.from('payments').select('data, importo, stato').gte('data', da).lte('data', a).order('id')),
+    tutte(() => studioDb.from('pagamenti_esterni').select('data, importo, collaborazione_nome').gte('data', da).lte('data', a).order('id')),
+    tutte(() => studioDb.from('spese').select('data, importo, ricorrente').or('ricorrente.is.null,ricorrente.eq.false').gte('data', da).lte('data', a).order('id')),
+    tutte(() => studioDb.from('spese').select('data, importo, ricorrente, frequenza, data_fine').eq('ricorrente', true).order('id')),
+  ]);
+  return { pagamenti, esterni, spese: [...spese, ...ricorrenti] };
 }

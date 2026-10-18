@@ -7,7 +7,9 @@ import { euro } from '../../lib/coreArchivio.js';
 import {
   movimentiTra, salvaMovimento, eliminaMovimento, nuovaScadenza, bilancio, perMese, periodo, spostaPeriodo,
   CATEGORIE_SPESA, CATEGORIE_INCASSO, importoNumero, CATEGORIE_PAGAMENTO, totaliPerCategoria,
+  CATEGORIE_STUDIO, tabellaStudio, METODI_STUDIO, rigaIncassoStudio, lavoroDelPeriodo, movimentiLavoro,
 } from '../../lib/conti.js';
+import { sessioneStudio, cercaPazienti, collaborazioniStudio, registraIncassoStudio, datiLavoro } from '../../lib/studio.js';
 import { Vuoto, Sezione, Gruppo, Segmenti, Conferma, RigaPagamento, oggiIso, dataBreve } from '../../ui.jsx';
 import { IconaIndietro, IconaFreccia, IconaCestino, IconaPiu, IconaFile, IconaFotocamera } from '../../Icone.jsx';
 
@@ -101,18 +103,32 @@ export function VistaConti({ ctx }) {
   const [anno, setAnno] = useState(null);
   const [scadenze, setScadenze] = useState(null);
   const [filtro, setFiltro] = useState('aperti');
+  const [lavoro, setLavoro] = useState(undefined); // dati dello studio; null = agenda non collegata
 
   useEffect(() => {
     // I promemoria delle cartelle senza importo non sono pagamenti (POL-VITA-016): restano in Agenda e Oggi.
     if (scheda === 'dapagare') { esegui(async () => setScadenze((await caricaPagamenti(archivioDb)).filter((s) => !(s.cartella && s.importo == null)))); return; }
     const { da, a } = periodo(tipo, rif);
+    const y = periodo('anno', rif);
     esegui(async () => {
       setMovimenti(await movimentiTra(archivioDb, da, a));
-      if (scheda === 'bilancio') { const y = periodo('anno', rif); setAnno(await movimentiTra(archivioDb, y.da, y.a)); }
+      if (scheda === 'bilancio') setAnno(await movimentiTra(archivioDb, y.da, y.a));
     });
+    // Lavoro dallo studio (POL-VITA-022): letto dallo studio, mai copiato. Senza agenda collegata non c'è.
+    (async () => {
+      if (!(await sessioneStudio().catch(() => null))) { setLavoro(null); return; }
+      setLavoro(await datiLavoro(scheda === 'bilancio' ? y.da : da, scheda === 'bilancio' ? y.a : a));
+    })().catch(() => setLavoro(null));
   }, [scheda, tipo, rif, esegui, versione]);
 
-  const b = useMemo(() => bilancio(movimenti || []), [movimenti]);
+  const { da, a } = periodo(tipo, rif);
+  const lav = useMemo(() => (lavoro ? lavoroDelPeriodo(lavoro, da, a) : null), [lavoro, da, a]);
+  const b = useMemo(() => bilancio([...(movimenti || []), ...movimentiLavoro(lavoro, da, a)]), [movimenti, lavoro, da, a]);
+  const annoConLavoro = useMemo(() => {
+    if (!anno) return null;
+    const y = periodo('anno', rif);
+    return [...anno, ...movimentiLavoro(lavoro, y.da, y.a)];
+  }, [anno, lavoro, rif]);
   const apriM = (m) => apri({ tipo: 'movimento', m });
 
   return (
@@ -123,6 +139,7 @@ export function VistaConti({ ctx }) {
       {scheda === 'movimenti' && movimenti && (
         <>
           <RiquadroSaldo b={b} titolo={`Saldo · ${nomePeriodo(tipo, rif)}`} onApri={() => setScheda('bilancio')} />
+          <LavoroStudio l={lav} caricato={lavoro !== undefined} />
           <div className="pp-azioni pp-azioni-due">
             <button className="pp-bottone pp-bottone-verde" onClick={() => apri({ tipo: 'movimento', m: { tipo: 'entrata' } })}><IconaPiu size={18} /> Incasso</button>
             <button className="pp-bottone pp-bottone-rosso" onClick={() => apri({ tipo: 'movimento', m: { tipo: 'uscita' } })}><IconaPiu size={18} /> Spesa</button>
@@ -140,9 +157,10 @@ export function VistaConti({ ctx }) {
       {scheda === 'bilancio' && movimenti && (
         <>
           <RiquadroSaldo b={b} titolo={`Bilancio · ${nomePeriodo(tipo, rif)}`} />
+          <LavoroStudio l={lav} caricato={lavoro !== undefined} />
           {anno && (
             <Sezione titolo={`Mese per mese · ${rif.slice(0, 4)}`}>
-              <div className="pp-pannello"><Barre mesi={perMese(anno, rif.slice(0, 4))} />
+              <div className="pp-pannello"><Barre mesi={perMese(annoConLavoro || anno, rif.slice(0, 4))} />
                 <p className="pp-legenda pp-riga-meta"><i className="entrata" /> Entrate <i className="uscita" /> Uscite</p></div>
             </Sezione>
           )}
@@ -153,6 +171,22 @@ export function VistaConti({ ctx }) {
 
       {scheda === 'dapagare' && scadenze && <DaPagare tutti={scadenze} filtro={filtro} setFiltro={setFiltro} apri={apri} pagato={pagato} />}
     </>
+  );
+}
+
+// Lavoro dallo studio: incassi dei pazienti + collaborazioni − spese dello studio = netto, che entra nel saldo.
+function LavoroStudio({ l, caricato }) {
+  if (!caricato) return null;
+  if (!l) return <p className="pp-riga-meta pp-spiegazione">Collega l'agenda dello studio (scheda Agenda) per vedere qui il lavoro netto dello studio.</p>;
+  return (
+    <Sezione titolo="Lavoro dallo studio" azione={<span className="pp-riga-meta">si registra nello studio</span>}>
+      <Gruppo>
+        <div className="pp-voce"><span>Incassi dai pazienti</span><strong>{euro(l.pazienti)}</strong></div>
+        {l.perCollaborazione.map((c) => <div key={c.nome} className="pp-voce"><span>{c.nome}</span><strong>{euro(c.totale)}</strong></div>)}
+        <div className="pp-voce"><span>Spese dello studio</span><strong className="pp-rosso">−{euro(l.spese)}</strong></div>
+        <div className="pp-voce"><span><strong>Netto</strong></span><strong className={l.netto >= 0 ? 'pp-verde' : 'pp-rosso'}>{euro(l.netto)}</strong></div>
+      </Gruppo>
+    </Sezione>
   );
 }
 
@@ -208,14 +242,23 @@ function DaPagare({ tutti, filtro, setFiltro, apri, pagato }) {
 }
 
 /* ---------- incasso o spesa: nuovo o modifica ---------- */
+// POL-VITA-022: un incasso "Studio" (paziente) o "Collaborazione" si registra SOLO nello studio, come
+// nel gestionale; Personal lo rilegge da lì nel lavoro netto (una sola fonte, niente doppioni).
 export function PaginaMovimento({ m: iniziale, ctx, chiudi }) {
   const { esegui, aggiorna, mostra, apri, impostazioni } = ctx;
   const [m, setM] = useState(() => ({ data: oggiIso(), importo: '', descrizione: '', categoria: '', note: '', ...iniziale, importo: iniziale.importo ?? '' }));
   const [conferma, setConferma] = useState(false);
   const entrata = m.tipo === 'entrata';
-  const categorie = entrata ? (impostazioni.categorieIncasso || CATEGORIE_INCASSO) : (impostazioni.categorieSpesa || CATEGORIE_SPESA);
-  const valido = importoNumero(m.importo) > 0 && /^\d{4}-\d{2}-\d{2}$/.test(m.data);
+  const tabella = entrata && !m.id ? tabellaStudio(m.categoria) : null;
+  const categorie = entrata ? [...new Set([...(m.id ? [] : Object.keys(CATEGORIE_STUDIO)), ...(impostazioni.categorieIncasso || CATEGORIE_INCASSO)])] : (impostazioni.categorieSpesa || CATEGORIE_SPESA);
+  const valido = importoNumero(m.importo) > 0 && /^\d{4}-\d{2}-\d{2}$/.test(m.data)
+    && (tabella !== 'payments' || m.paziente_id) && (tabella !== 'pagamenti_esterni' || m.collaborazione_id);
   const salva = () => esegui(async () => {
+    if (tabella) {
+      await registraIncassoStudio(rigaIncassoStudio(m));
+      aggiorna(); mostra('Registrato nello studio: lo trovi in "Lavoro dallo studio"'); chiudi();
+      return;
+    }
     await salvaMovimento(archivioDb, m);
     aggiorna(); mostra(m.id ? 'Movimento aggiornato' : entrata ? 'Incasso registrato' : 'Spesa registrata'); chiudi();
   });
@@ -224,9 +267,6 @@ export function PaginaMovimento({ m: iniziale, ctx, chiudi }) {
       <Segmenti voci={[['uscita', 'Spesa'], ['entrata', 'Incasso']]} attiva={m.tipo || 'uscita'} onScegli={(t) => setM({ ...m, tipo: t, categoria: '' })} />
       <label className="pp-campo pp-campo-importo"><span>Importo (€)</span>
         <input inputMode="decimal" autoFocus={!m.id} value={m.importo} onChange={(e) => setM({ ...m, importo: e.target.value })} placeholder="0,00" />
-      </label>
-      <label className="pp-campo"><span>Descrizione</span>
-        <input value={m.descrizione} onChange={(e) => setM({ ...m, descrizione: e.target.value })} placeholder={entrata ? 'Es. Stipendio, rimborso' : 'Es. Spesa al supermercato'} />
       </label>
       <div className="pp-due">
         <label className="pp-campo"><span>Data</span><input type="date" value={m.data} onChange={(e) => setM({ ...m, data: e.target.value })} /></label>
@@ -237,6 +277,13 @@ export function PaginaMovimento({ m: iniziale, ctx, chiudi }) {
           </select>
         </label>
       </div>
+      {tabella && <IncassoStudio m={m} setM={setM} tabella={tabella} />}
+      {tabella && <p className="pp-riga-meta">Si registra nello studio (come dal gestionale): lì si modifica o si elimina, e qui lo vedi nel lavoro netto.</p>}
+      {!tabella && (
+        <label className="pp-campo"><span>Descrizione</span>
+          <input value={m.descrizione} onChange={(e) => setM({ ...m, descrizione: e.target.value })} placeholder={entrata ? 'Es. Direzione sanitaria, rimborso' : 'Es. Spesa al supermercato'} />
+        </label>
+      )}
       <label className="pp-campo"><span>Note</span><input value={m.note || ''} onChange={(e) => setM({ ...m, note: e.target.value })} placeholder="facoltative" /></label>
       {m.documento?.id && (
         <Sezione titolo="Documento collegato">
@@ -249,7 +296,7 @@ export function PaginaMovimento({ m: iniziale, ctx, chiudi }) {
           </Gruppo>
         </Sezione>
       )}
-      <button className={`pp-bottone pp-bottone-largo ${entrata ? 'pp-bottone-verde' : ''}`} disabled={!valido} onClick={salva}>{m.id ? 'Salva' : entrata ? 'Registra incasso' : 'Registra spesa'}</button>
+      <button className={`pp-bottone pp-bottone-largo ${entrata ? 'pp-bottone-verde' : ''}`} disabled={!valido} onClick={salva}>{m.id ? 'Salva' : tabella ? 'Registra nello studio' : entrata ? 'Registra incasso' : 'Registra spesa'}</button>
       {m.id && (
         <div className="pp-elimina">
           {!conferma
@@ -258,6 +305,69 @@ export function PaginaMovimento({ m: iniziale, ctx, chiudi }) {
               onSi={() => esegui(async () => { await eliminaMovimento(archivioDb, m.id); aggiorna(); mostra('Movimento eliminato'); chiudi(); })} />}
         </div>
       )}
+    </>
+  );
+}
+
+// Paziente (Studio) o collaborazione (Collaborazione) e metodo, come nel gestionale dello studio.
+function IncassoStudio({ m, setM, tabella }) {
+  const [collegata, setCollegata] = useState(null);
+  const [cerca, setCerca] = useState('');
+  const [trovati, setTrovati] = useState([]);
+  const [collab, setCollab] = useState(null);
+  useEffect(() => { sessioneStudio().then((x) => setCollegata(!!x)).catch(() => setCollegata(false)); }, []);
+  useEffect(() => {
+    if (collegata && tabella === 'pagamenti_esterni' && !collab) collaborazioniStudio().then(setCollab).catch(() => setCollab([]));
+  }, [collegata, tabella, collab]);
+  useEffect(() => {
+    if (tabella !== 'payments' || m.paziente_id || cerca.trim().length < 2) { setTrovati([]); return undefined; }
+    const t = setTimeout(() => cercaPazienti(cerca).then(setTrovati).catch(() => setTrovati([])), 250);
+    return () => clearTimeout(t);
+  }, [cerca, m.paziente_id, tabella]);
+  if (collegata === null) return null;
+  if (!collegata) return <p className="pp-riga-meta pp-rosso">Per registrarlo anche nello studio collega prima l'agenda (scheda Agenda).</p>;
+  const metodo = m.metodo || (tabella === 'payments' ? 'Contanti' : 'Bonifico');
+  return (
+    <>
+      {tabella === 'payments' && (m.paziente_id ? (
+        <div className="pp-campo"><span>Paziente dello studio</span>
+          <div className="pp-voce pp-paziente-scelto"><strong>{m.paziente}</strong>
+            <button type="button" className="pp-testo-link" onClick={() => { setM((x) => ({ ...x, paziente_id: null, paziente: '' })); setCerca(''); }}>Cambia</button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <label className="pp-campo"><span>Paziente dello studio</span>
+            <input value={cerca} onChange={(e) => setCerca(e.target.value)} placeholder="Cerca per nome o cognome" />
+          </label>
+          {trovati.length > 0 && (
+            <div className="pp-gruppo pp-trovati">
+              {trovati.map((p) => {
+                const nome = [p.nome, p.cognome].filter(Boolean).join(' ');
+                return <button key={p.id} type="button" className="pp-riga" onClick={() => setM((x) => ({ ...x, paziente_id: p.id, paziente: nome }))}><span className="pp-riga-testo"><span className="pp-riga-titolo">{nome}</span></span></button>;
+              })}
+            </div>
+          )}
+          {cerca.trim().length >= 2 && !trovati.length && <p className="pp-riga-meta">Nessun paziente trovato. I nuovi pazienti si creano nello studio.</p>}
+        </>
+      ))}
+      {tabella === 'pagamenti_esterni' && (
+        <label className="pp-campo"><span>Collaborazione</span>
+          <select className="pp-select" value={m.collaborazione_id || ''} onChange={(e) => {
+            const c = (collab || []).find((x) => String(x.id) === e.target.value);
+            setM((x) => ({ ...x, collaborazione_id: c?.id || null, collaborazione_nome: c?.nome || '' }));
+          }}>
+            <option value="">Scegli…</option>
+            {(collab || []).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </select>
+        </label>
+      )}
+      {tabella === 'pagamenti_esterni' && collab && !collab.length && <p className="pp-riga-meta">Nessuna collaborazione: aggiungila nello studio (Pagamenti › Collaborazioni esterne).</p>}
+      <label className="pp-campo"><span>Metodo</span>
+        <select className="pp-select" value={metodo} onChange={(e) => setM((x) => ({ ...x, metodo: e.target.value }))}>
+          {METODI_STUDIO.map((x) => <option key={x}>{x}</option>)}
+        </select>
+      </label>
     </>
   );
 }

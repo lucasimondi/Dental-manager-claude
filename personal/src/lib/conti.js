@@ -8,7 +8,33 @@ const esito = ({ data, error }) => {
 };
 
 export const CATEGORIE_SPESA = ['Casa', 'Bollette', 'Riscaldamento', 'Spesa', 'Auto', 'Salute', 'Scuola', 'Tasse', 'Assicurazioni', 'Svago', 'Altro'];
-export const CATEGORIE_INCASSO = ['Lavoro', 'Rimborsi', 'Affitti', 'Altro'];
+export const CATEGORIE_INCASSO = ['Studio', 'Collaborazione', 'Lavoro', 'Rimborsi', 'Affitti', 'Altro'];
+
+// POL-VITA-022 — incassi di studio o di collaborazione: si registrano SOLO nel gestionale dello
+// studio (una sola fonte, come l'agenda: PO 2026-10-18) e Personal li rilegge da lì per il reddito
+// di lavoro netto. Studio → payments (pagamento di un paziente), Collaborazione → pagamenti_esterni.
+export const CATEGORIE_STUDIO = { Studio: 'payments', Collaborazione: 'pagamenti_esterni' };
+export const tabellaStudio = (categoria) => CATEGORIE_STUDIO[categoria] || null;
+export const METODI_STUDIO = ['Contanti', 'Carta', 'Bonifico', 'POS', 'Assegno'];
+
+// Riga per lo studio, con le stesse colonne che usa il gestionale. Senza paziente o collaborazione
+// non si registra nulla.
+export function rigaIncassoStudio(m) {
+  const tabella = tabellaStudio(m.categoria);
+  if (m.tipo !== 'entrata' || !tabella) return null;
+  const importo = importoNumero(m.importo);
+  if (!(importo > 0)) throw new Error('Importo non valido');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(m.data || ''))) throw new Error('Data non valida');
+  const metodo = METODI_STUDIO.includes(m.metodo) ? m.metodo : (tabella === 'payments' ? 'Contanti' : 'Bonifico');
+  const nota = String(m.note || '').trim() || null;
+  if (tabella === 'payments') {
+    if (!m.paziente_id) throw new Error('Scegli il paziente dello studio');
+    return { tabella, riga: { paziente_id: Number(m.paziente_id), data: m.data, importo, metodo, nota, stato: 'pagato' } };
+  }
+  if (!m.collaborazione_id) throw new Error('Scegli la collaborazione');
+  return { tabella, riga: { collaborazione_id: Number(m.collaborazione_id), collaborazione_nome: String(m.collaborazione_nome || '').trim() || null, data: m.data, importo, metodo, note: nota } };
+}
+
 
 // Categoria di spesa suggerita dal fascicolo del documento da cui viene il pagamento.
 const PER_FASCICOLO = {
@@ -129,4 +155,57 @@ export function perMese(movimenti, anno) {
     const delMese = movimenti.filter((m) => String(m.data).startsWith(chiave));
     return { mese: chiave, entrate: somma(delMese.filter((m) => m.tipo === 'entrata')), uscite: somma(delMese.filter((m) => m.tipo === 'uscita')) };
   });
+}
+
+/* ---------- POL-VITA-022: lavoro dallo studio (netto) ---------- */
+// PO 2026-10-18: "in studio ci sono solo io", il reddito vero è l'utile dello studio: incassi dei
+// pazienti + collaborazioni − spese dello studio. Spese ricorrenti come le proietta il gestionale
+// (importo × volte l'anno), divise per mese dall'inizio a data_fine.
+const VOLTE_ANNO = { Mensile: 12, Bimestrale: 6, Trimestrale: 4, Semestrale: 2, Annuale: 1 };
+const tondo = (n) => Math.round(n * 100) / 100;
+export function mesiTra(da, a) {
+  const out = [];
+  let [y, m] = da.slice(0, 7).split('-').map(Number);
+  const fine = a.slice(0, 7);
+  for (let k = 0; k < 600; k++) {
+    const chiave = `${y}-${String(m).padStart(2, '0')}`;
+    if (chiave > fine) break;
+    out.push(chiave);
+    m += 1; if (m > 12) { m = 1; y += 1; }
+  }
+  return out;
+}
+
+export function lavoroDelPeriodo({ pagamenti = [], esterni = [], spese = [] } = {}, da, a) {
+  const dentro = (d) => Boolean(d) && d >= da && d <= a;
+  const pazienti = tondo(pagamenti.filter((p) => p.stato !== 'sospeso' && dentro(p.data)).reduce((t, p) => t + Number(p.importo || 0), 0));
+  const per = {};
+  for (const e of esterni.filter((x) => dentro(x.data))) {
+    const nome = e.collaborazione_nome || 'Collaborazione';
+    per[nome] = (per[nome] || 0) + Number(e.importo || 0);
+  }
+  const perCollaborazione = Object.entries(per).map(([nome, totale]) => ({ nome, totale: tondo(totale) })).sort((x, y) => y.totale - x.totale);
+  const collaborazioni = tondo(perCollaborazione.reduce((t, c) => t + c.totale, 0));
+  const mesi = mesiTra(da, a);
+  let speseStudio = spese.filter((s) => !s.ricorrente && dentro(s.data)).reduce((t, s) => t + Number(s.importo || 0), 0);
+  for (const s of spese.filter((x) => x.ricorrente)) {
+    const quota = Number(s.importo || 0) * (VOLTE_ANNO[s.frequenza] || 12) / 12;
+    const inizio = String(s.data || '').slice(0, 7);
+    const fine = String(s.data_fine || '').slice(0, 7);
+    speseStudio += quota * mesi.filter((m) => (!inizio || m >= inizio) && (!fine || m <= fine)).length;
+  }
+  speseStudio = tondo(speseStudio);
+  return { pazienti, collaborazioni, perCollaborazione, spese: speseStudio, netto: tondo(pazienti + collaborazioni - speseStudio) };
+}
+
+// Il netto di ogni mese come movimento (solo per bilancio e grafico, non si salva da nessuna parte).
+export function movimentiLavoro(dati, da, a) {
+  if (!dati) return [];
+  return mesiTra(da, a).map((mese) => {
+    const fine = periodo('mese', mese).a;
+    const l = lavoroDelPeriodo(dati, `${mese}-01` < da ? da : `${mese}-01`, fine > a ? a : fine);
+    if (!l.netto) return null;
+    return { id: `lavoro-${mese}`, data: `${mese}-01`, tipo: l.netto >= 0 ? 'entrata' : 'uscita', importo: Math.abs(l.netto),
+      categoria: 'Lavoro (studio, netto)', descrizione: 'Lavoro dallo studio (netto)', daStudio: true };
+  }).filter(Boolean);
 }
