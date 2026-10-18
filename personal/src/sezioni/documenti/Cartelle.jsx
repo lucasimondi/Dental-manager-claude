@@ -4,17 +4,17 @@
 // selezione multipla per condividere, spostare, eliminare. La cartella si rinomina, si unisce a
 // un'altra, si toglie (i documenti restano) o si elimina con i suoi documenti.
 import { useEffect, useMemo, useState } from 'react';
-import { archivioDb } from './lib/supabasePersonal.js';
-import { cercaArchivio, eliminaDocumenti, cestinaSuDrive, segnaScadenza } from './lib/archivio.js';
+import { archivioDb } from '../../lib/supabasePersonal.js';
+import { cercaArchivio, eliminaDocumenti, cestinaSuDrive, segnaScadenza } from '../../lib/archivio.js';
 import {
   caricaCartelle, cartella as caricaCartella, cartelleVisibili, periodoCartella, contattiCartella, promemoriaCartella, nuovoPromemoria,
   salvaCartella, rinominaCartella, sciogliCartella, analizzaCartella, bozzaRisposta, icsPromemoria, ETICHETTE_SUGGERITE, etichettePulite,
-} from './lib/cartelle.js';
-import { condividi } from './lib/condividi.js';
-import { euro } from './lib/coreArchivio.js';
-import { colore, dataBreve, quando, oggiIso, Vuoto, Sezione, Gruppo, ConfermaElimina, tokenSessione } from './ui.jsx';
-import { ElencoSelezionabile, FoglioScelta } from './Documenti.jsx';
-import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaCalendario, IconaChat, IconaEmail, IconaCestino, IconaStella } from './Icone.jsx';
+} from '../../lib/cartelle.js';
+import { condividi } from '../../lib/condividi.js';
+import { euro } from '../../lib/coreArchivio.js';
+import { colore, dataBreve, quando, oggiIso, Vuoto, Sezione, Gruppo, ConfermaElimina, tokenSessione } from '../../ui.jsx';
+import { ElencoSelezionabile, FoglioScelta } from './Selezione.jsx';
+import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaCalendario, IconaChat, IconaEmail, IconaCestino, IconaStella } from '../../Icone.jsx';
 
 const MODO_KEY = 'poliedron-personal-cartelle';
 const leggiModo = () => { try { return localStorage.getItem(MODO_KEY) || 'griglia'; } catch { return 'griglia'; } };

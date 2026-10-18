@@ -126,9 +126,9 @@ test('condividi più file insieme col foglio del sistema', async () => {
 });
 
 test('app: Documenti si apre sulle cartelle, a icone o in elenco; selezione con Condividi e Cartella', () => {
-  const doc = readFileSync('personal/src/Documenti.jsx', 'utf8');
-  const cart = readFileSync('personal/src/Cartelle.jsx', 'utf8');
-  const app = readFileSync('personal/src/App.jsx', 'utf8');
+  const doc = ['Documenti', 'Selezione'].map((f) => readFileSync(`personal/src/sezioni/documenti/${f}.jsx`, 'utf8')).join('\n');
+  const cart = readFileSync('personal/src/sezioni/documenti/Cartelle.jsx', 'utf8');
+  const app = readFileSync('personal/src/sezioni/documenti/index.jsx', 'utf8');
   assert.match(doc, /useState\(sotto === 'enti' \? 'cartelle' : sotto \|\| 'cartelle'\)/);
   assert.match(doc, /\['cartelle', 'Cartelle'\], \['recenti', 'Recenti'\]/);
   assert.match(doc, /<span>\{statoCondividi \|\| 'Condividi'\}<\/span>/);
@@ -140,8 +140,8 @@ test('app: Documenti si apre sulle cartelle, a icone o in elenco; selezione con 
   assert.match(cart, /Togli solo la cartella/);
   assert.match(cart, /<ConfermaElimina n=\{documenti\.length\}/);
   assert.match(cart, /Non invia nulla/);
-  assert.match(app, /case 'cartella': return <PaginaCartella/);
-  assert.match(app, /case 'senza-cartella'/);
+  assert.match(app, /cartella: \{ titolo: 'Cartella', render: [^\n]*<PaginaCartella/);
+  assert.match(app, /'senza-cartella': \{ render:/);
 });
 
 test('migrazione 014: solo aggiunte, tabella nuova (quella vecchia "cartelle" non si tocca), vista senza clinici', () => {

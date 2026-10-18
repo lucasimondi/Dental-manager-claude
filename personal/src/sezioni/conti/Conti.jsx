@@ -1,15 +1,15 @@
 // POL-VITA-006 — Conti: incassi e spese registrati da Luca, pagamenti da fare dall'archivio e
 // bilancino del mese o dell'anno. I pagamenti segnati "pagato" diventano spese da soli.
 import { useEffect, useMemo, useState } from 'react';
-import { archivioDb } from './lib/supabasePersonal.js';
-import { pagamenti as caricaPagamenti, RICORRENZE } from './lib/archivio.js';
-import { euro } from './lib/coreArchivio.js';
+import { archivioDb } from '../../lib/supabasePersonal.js';
+import { pagamenti as caricaPagamenti, RICORRENZE } from '../../lib/archivio.js';
+import { euro } from '../../lib/coreArchivio.js';
 import {
   movimentiTra, salvaMovimento, eliminaMovimento, nuovaScadenza, bilancio, perMese, periodo, spostaPeriodo,
   CATEGORIE_SPESA, CATEGORIE_INCASSO, importoNumero, CATEGORIE_PAGAMENTO, totaliPerCategoria,
-} from './lib/conti.js';
-import { Vuoto, Sezione, Gruppo, Segmenti, Conferma, RigaPagamento, oggiIso, dataBreve } from './ui.jsx';
-import { IconaIndietro, IconaFreccia, IconaCestino, IconaPiu, IconaFile, IconaFotocamera } from './Icone.jsx';
+} from '../../lib/conti.js';
+import { Vuoto, Sezione, Gruppo, Segmenti, Conferma, RigaPagamento, oggiIso, dataBreve } from '../../ui.jsx';
+import { IconaIndietro, IconaFreccia, IconaCestino, IconaPiu, IconaFile, IconaFotocamera } from '../../Icone.jsx';
 
 const meseCorrente = () => oggiIso().slice(0, 7);
 const nomePeriodo = (tipo, rif) => {

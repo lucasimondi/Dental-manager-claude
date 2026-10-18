@@ -8,7 +8,7 @@ const codeGs = readFileSync('poliedron/archivio/Code.gs', 'utf8');
 const sezione = (da, a) => codeGs.slice(codeGs.indexOf(da), codeGs.indexOf(a));
 const doPost = sezione('function doPost(', 'function fileDelDocumento_(');
 const chat = sezione('const CHAT_MAX_GIRI', 'function claudeMessaggi_(');
-const app = readFileSync('personal/src/App.jsx', 'utf8');
+const app = ['sezioni/poliedron/Poliedron.jsx', 'sezioni/documenti/Documento.jsx'].map((f) => readFileSync(`personal/src/${f}`, 'utf8')).join('\n');
 const ID = '0b6f2a7e-1c3d-4e5f-8a9b-0c1d2e3f4a5b';
 
 test('chat: domanda allo script con token, documento aperto e ultimi 6 messaggi, senza preflight', async () => {

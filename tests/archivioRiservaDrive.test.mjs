@@ -140,7 +140,9 @@ test('script: con il limite raggiunto si importa con il catalogo provvisorio, il
   const fn = codice.slice(codice.indexOf('function elabora('), codice.indexOf('function elaboraThread_('));
   assert.doesNotMatch(fn.slice(0, 400), /if \(apiInPausa_\(\)\) return;/, 'niente più uscita immediata');
   assert.match(fn, /if \(!apiInPausa_\(\)\) \{[\s\S]*analizzaRimasti_[\s\S]*riordinaLotto_\(\)/);
-  assert.match(fn, /while \(!apiInPausa_\(\) && Date\.now\(\)/);
+  // Il riordino (solo testo del catalogo) aspetta Claude: la piccola quota gratuita di Gemini va alle analisi.
+  assert.match(fn, /if \(!claudeInPausa_\(\)\) try \{ riordinaLotto_\(\); \}/);
+  assert.match(fn, /while \(!claudeInPausa_\(\) && Date\.now\(\)/);
   const all = codice.slice(codice.indexOf('function elaboraAllegato_('), codice.indexOf('function eClinico_('));
   assert.ok(all.indexOf('eClinico_(meta, nome)') < all.indexOf('apiInPausa_()'), 'prima il controllo clinico');
   assert.match(all, /analisiDiRiserva_\(meta, nome, mime\)/);

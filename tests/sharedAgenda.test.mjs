@@ -24,7 +24,7 @@ test('malformed calendar links never initialize an invalid date or unsupported v
 });
 test('both applications consume original neutral presentation; no CSS replica or Studio dependency in shared', () => {
   const shared=readFileSync('shared/agenda/AgendaPresentation.jsx','utf8');
-  for(const file of ['src/components/Agenda.jsx','personal/src/AgendaGriglia.jsx']) {
+  for(const file of ['src/components/Agenda.jsx','personal/src/sezioni/agenda/AgendaGriglia.jsx']) {
     const src=readFileSync(file,'utf8');
     assert.match(src,/shared\/agenda\/AgendaPresentation.jsx/);
     for(const name of ['DayStrip','ViewPicker','TimeGrid','MonthCalendar','AppointmentBlock','EventBlock','AgendaSwitch','MonthDetailCard','MonthToolbar','CalendarEmptyState']) assert.ok(src.includes(`<${name}`),`${file}: ${name}`);

@@ -81,7 +81,7 @@ test('eliminazione di più documenti: uno alla volta con la stessa funzione del 
 });
 
 test('app: selezione multipla con conferma prima di eliminare; i file su Drive restano', () => {
-  const src = readFileSync('personal/src/Documenti.jsx', 'utf8');
+  const src = readFileSync('personal/src/sezioni/documenti/Selezione.jsx', 'utf8');
   const ui = readFileSync('personal/src/ui.jsx', 'utf8');
   assert.match(src, /<ConfermaElimina n=\{ids\.length\}/);
   assert.match(ui, /useState\(false\);\n {2}const cosa/, 'la casella di Drive parte spenta');
@@ -115,7 +115,7 @@ test('agenda: etichetta del mese anche a cavallo di mesi e anni; settimana da lu
 });
 
 test('agenda: Giorno e Settimana come Poliedra (colonna ore 34, 8–20 a mezz\'ore, impegni tratteggiati)', () => {
-  const src = readFileSync('personal/src/AgendaGriglia.jsx', 'utf8');
+  const src = readFileSync('personal/src/sezioni/agenda/AgendaGriglia.jsx', 'utf8');
   const css = readFileSync('personal/src/personal.css', 'utf8');
   const shared = readFileSync('shared/agenda/AgendaPresentation.jsx', 'utf8');
   assert.match(src, /oraColW=\{34\}/);
@@ -123,7 +123,7 @@ test('agenda: Giorno e Settimana come Poliedra (colonna ore 34, 8–20 a mezz\'o
   assert.match(src, /a.cognome \|\| a.paziente \|\| '—'/);
   assert.match(shared, /border: `1.5px dashed/);
   assert.doesNotMatch(css, /\.ag-pagina/);
-  assert.match(readFileSync('personal/src/Agenda.jsx', 'utf8'), /readAgendaLocation\(\).view \|\| 'settimana'/);
+  assert.match(readFileSync('personal/src/sezioni/agenda/Agenda.jsx', 'utf8'), /readAgendaLocation\(\).view \|\| 'settimana'/);
 });
 
 test('Drive: file nel Cestino a blocchi di 50, solo su scelta; errore → nessun documento eliminato', async () => {

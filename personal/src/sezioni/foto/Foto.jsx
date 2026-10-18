@@ -1,12 +1,12 @@
 // POL-VITA-015 — Foto e video: album, anni e luoghi, visore a tutto schermo con scorrimento,
 // catalogazione (album, luogo, titolo, data) di una foto o di più foto insieme.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { archivioDb } from './lib/supabasePersonal.js';
-import { anteprimaFile } from './lib/archivio.js';
-import { fotoEVideo, album as raggruppaAlbum, perAnno, luoghi as elencoLuoghi, catalogaFoto, eVideo, dataFoto, DA_CATALOGARE, ALBUM_PREDEFINITI } from './lib/foto.js';
-import { dataBreve, titoloDoc, tokenSessione, Vuoto, Sezione, Chips, Segmenti } from './ui.jsx';
-import { Miniatura } from './Miniatura.jsx';
-import { IconaIndietro, IconaFreccia, IconaApri, IconaFile, IconaPiu, IconaChiudi } from './Icone.jsx';
+import { archivioDb } from '../../lib/supabasePersonal.js';
+import { anteprimaFile } from '../../lib/archivio.js';
+import { fotoEVideo, album as raggruppaAlbum, perAnno, luoghi as elencoLuoghi, catalogaFoto, eVideo, dataFoto, DA_CATALOGARE, ALBUM_PREDEFINITI } from '../../lib/foto.js';
+import { dataBreve, titoloDoc, tokenSessione, Vuoto, Sezione, Chips, Segmenti } from '../../ui.jsx';
+import { Miniatura } from '../../Miniatura.jsx';
+import { IconaIndietro, IconaFreccia, IconaApri, IconaFile, IconaPiu, IconaChiudi } from '../../Icone.jsx';
 
 const COLORE = '#7c3aed';
 

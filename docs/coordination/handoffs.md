@@ -1,5 +1,8 @@
 # Handoffs
 
+## 2026-10-18 — CLAUDE — Archivio: Gemini di riserva
+- `modello_()` sceglie Claude o Gemini; `apiInPausa_()` = nessun modello. Piano gratuito per scelta di Luca (Google può usare i contenuti). Script da pubblicare a mano da Luca: questa sessione non ha clasp.
+
 ## 2026-10-18 — CLAUDE — Personal: chat Poliedron a pagina intera + graffetta
 - La chat è la scheda `poliedron` (stato in `Archivio`, `CHAT_VUOTA`), helper puri in `personal/src/lib/chat.js`. Allegato = archiviazione normale + domanda sul documento: il modello non legge mai il file grezzo, solo il catalogo, e i clinici restano esclusi dallo script.
 - Variante non fatta: allegare senza archiviare (servirebbe una nuova azione in `Code.gs` e un `clasp push`, non disponibile in questa sessione).
@@ -3820,3 +3823,17 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - TEST: 1311/1311 su Node 20, build OK, prova Chromium.
 - LIMITI: AI ferma fino al ripristino del credito Claude; nomi di cartella provvisori per i documenti importati senza Claude.
 - PROSSIMO PASSO: review della PR, merge solo su "Mergia" del PO.
+
+## 2026-10-18 — Claude — POL-VITA-017 Personal a sezioni
+- BRANCH: `claude/document-layout-management-vaktuz` da `master@4f9cdc3`, poi unito `master@d4ed134` (cartelle: `Cartelle.jsx` in `sezioni/documenti/`).
+- COMPLETATO: codice di Personal diviso per sezione in `personal/src/sezioni/` con registro (`sezioni/index.js`); `App.jsx` è solo la cornice. Comportamento invariato.
+- DB / SCRIPT / STUDIO / SHARED: nessuna modifica.
+- TEST: 1316/1316; confronto testuale di 16 schermate master↔branch in Chromium identico; agenda visual e reliability Chromium OK.
+- COME AGGIUNGERE UNA SEZIONE: cartella `sezioni/<nome>/` con `index.jsx` (`export const <nome> = { id, nome, Icona, Vista?, pagine }`), import nel registro e, se va nel dock, in `DOCK`.
+- PROSSIMO PASSO: review della PR, merge solo su "Mergia" del PO; poi eventuale parte 2 (aspetto a sezioni) su richiesta.
+
+## 2026-10-18 — Claude — POL-VITA-017 (seguito) Agenda e Documenti in file più piccoli
+- BRANCH: `claude/document-layout-management-vaktuz` da `master@75aeba7`.
+- COMPLETATO: Agenda divisa in Agenda / Evento / Appuntamento; Documenti in Documenti / Selezione / Filtri / Ricerca. Comportamento invariato.
+- TEST: 1335/1335; confronto di 21 schermate master↔branch identico; agenda visual e reliability Chromium OK.
+- PROSSIMO PASSO: PR e merge su "Mergia" del PO.
