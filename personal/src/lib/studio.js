@@ -5,7 +5,7 @@
 // appointments (lettura e scrittura, POL-VITA-013: "da agenda personale io posso agire anche su
 // agenda studio"), patients (solo id, nome e cognome, lettura), app_types (lettura) e
 // impegni_personali (lettura e scrittura: gli eventi senza paziente), studio_info
-// (sola lettura di agenda_settings). POL-VITA-021: payments e pagamenti_esterni (lettura e nuovi
+// (sola lettura di agenda_settings). POL-VITA-022: payments e pagamenti_esterni (lettura e nuovi
 // incassi registrati da Conti), collaborazioni e spese (sola lettura) per il lavoro netto. La RLS dello studio
 // (studio_id del token) limita ogni lettura e scrittura allo studio dell'utente.
 import { createClient } from '@supabase/supabase-js';
@@ -158,7 +158,7 @@ export async function impostazioniAgenda() {
   return riga?.agenda_settings || {};
 }
 
-/* ---------- POL-VITA-021: incassi registrati anche nello studio ---------- */
+/* ---------- POL-VITA-022: incassi registrati anche nello studio ---------- */
 // id di pagamenti_esterni: lo assegna il client come fa il gestionale (Date.now()); payments.id
 // è un'identity del database.
 export async function collaborazioniStudio() {

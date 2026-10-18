@@ -1,4 +1,4 @@
-// POL-VITA-021: incassi di studio o di collaborazione registrati solo nello studio; Personal legge il lavoro netto.
+// POL-VITA-022: incassi di studio o di collaborazione registrati solo nello studio; Personal legge il lavoro netto.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -76,7 +76,7 @@ test('il netto entra nel bilancio come entrata del mese, una per mese', () => {
 
 test('studio.js: nuovi incassi solo in payments e pagamenti_esterni, spese e collaborazioni in lettura', () => {
   const src = readFileSync(new URL('../personal/src/lib/studio.js', import.meta.url), 'utf8');
-  const parte = src.slice(src.indexOf('POL-VITA-021: incassi'));
+  const parte = src.slice(src.indexOf('POL-VITA-022: incassi'));
   assert.match(parte, /studioDellaSessione\(sessione\)/);
   assert.match(parte, /user_id: sessione\.user\.id/);
   assert.doesNotMatch(parte, /\.(update|delete|upsert)\(/);

@@ -114,7 +114,7 @@ export function VistaConti({ ctx }) {
       setMovimenti(await movimentiTra(archivioDb, da, a));
       if (scheda === 'bilancio') setAnno(await movimentiTra(archivioDb, y.da, y.a));
     });
-    // Lavoro dallo studio (POL-VITA-021): letto dallo studio, mai copiato. Senza agenda collegata non c'è.
+    // Lavoro dallo studio (POL-VITA-022): letto dallo studio, mai copiato. Senza agenda collegata non c'è.
     (async () => {
       if (!(await sessioneStudio().catch(() => null))) { setLavoro(null); return; }
       setLavoro(await datiLavoro(scheda === 'bilancio' ? y.da : da, scheda === 'bilancio' ? y.a : a));
@@ -242,7 +242,7 @@ function DaPagare({ tutti, filtro, setFiltro, apri, pagato }) {
 }
 
 /* ---------- incasso o spesa: nuovo o modifica ---------- */
-// POL-VITA-021: un incasso "Studio" (paziente) o "Collaborazione" si registra SOLO nello studio, come
+// POL-VITA-022: un incasso "Studio" (paziente) o "Collaborazione" si registra SOLO nello studio, come
 // nel gestionale; Personal lo rilegge da lì nel lavoro netto (una sola fonte, niente doppioni).
 export function PaginaMovimento({ m: iniziale, ctx, chiudi }) {
   const { esegui, aggiorna, mostra, apri, impostazioni } = ctx;

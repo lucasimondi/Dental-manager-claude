@@ -10,7 +10,7 @@ const esito = ({ data, error }) => {
 export const CATEGORIE_SPESA = ['Casa', 'Bollette', 'Riscaldamento', 'Spesa', 'Auto', 'Salute', 'Scuola', 'Tasse', 'Assicurazioni', 'Svago', 'Altro'];
 export const CATEGORIE_INCASSO = ['Studio', 'Collaborazione', 'Lavoro', 'Rimborsi', 'Affitti', 'Altro'];
 
-// POL-VITA-021 — incassi di studio o di collaborazione: si registrano SOLO nel gestionale dello
+// POL-VITA-022 — incassi di studio o di collaborazione: si registrano SOLO nel gestionale dello
 // studio (una sola fonte, come l'agenda: PO 2026-10-18) e Personal li rilegge da lì per il reddito
 // di lavoro netto. Studio → payments (pagamento di un paziente), Collaborazione → pagamenti_esterni.
 export const CATEGORIE_STUDIO = { Studio: 'payments', Collaborazione: 'pagamenti_esterni' };
@@ -157,7 +157,7 @@ export function perMese(movimenti, anno) {
   });
 }
 
-/* ---------- POL-VITA-021: lavoro dallo studio (netto) ---------- */
+/* ---------- POL-VITA-022: lavoro dallo studio (netto) ---------- */
 // PO 2026-10-18: "in studio ci sono solo io", il reddito vero è l'utile dello studio: incassi dei
 // pazienti + collaborazioni − spese dello studio. Spese ricorrenti come le proietta il gestionale
 // (importo × volte l'anno), divise per mese dall'inizio a data_fine.
