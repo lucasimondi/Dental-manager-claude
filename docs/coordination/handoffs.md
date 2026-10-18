@@ -3856,3 +3856,13 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - DEPLOY APERTO: `Code.gs` da pubblicare (clasp non disponibile in questa sessione).
 - TEST: 1365/1365; prova Chromium touch OK.
 - PROSSIMO PASSO: PR e merge su "Mergia"; pubblicare lo script.
+
+## 2026-10-18 — Claude — POL-VITA-020 script pubblicato
+- PR #223 mergiata. Script online verificato identico a master prima del push (nessuna modifica manuale persa); `clasp push -f` + web app @15 (stesso URL), versione 15 = `master@3754a39`.
+- Credenziali clasp solo nel contenitore della sessione (`~/.clasprc.json`, mai nel repository).
+- Rollback: ridistribuire @14.
+
+## 2026-10-18 — Claude — POL-VITA-021 automatismi reversibili
+- COMPLETATO: Annulla dopo Pagato (spesa e prossimo fisso creati in quel momento), Segna da pagare che toglie anche il successivo automatico, Elimina pagamento che toglie la spesa, "Non lo pago più" sui fissi, Annulla sui promemoria dell'assistente.
+- DATI: spesa orfana "Scadenza ultima rata finanziamento" 368,89 € (2026-10-18) lasciata com'è in attesa di Luca.
+- TEST: 1372/1372; prova Chromium OK.

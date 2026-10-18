@@ -49,10 +49,10 @@ test('promemoria confermato: pagamento in Da pagare, evento in agenda (con o sen
   const fatti = [];
   const salva = { nuovaScadenza: async (s) => fatti.push(['scadenza', s]), salvaImpegno: async (e) => fatti.push(['impegno', e]) };
   const p = promemoriaIniziale({ tipo: 'promemoria', cosa: 'pagamento', titolo: 'Bollo auto', data: '2026-10-30', importo: 214.5, categoria: 'Auto', ricorrenza: 'annuale' });
-  assert.match(await aggiungiPromemoria(p, salva), /^Aggiunto a Da pagare per venerdì 30 ottobre/);
+  assert.match((await aggiungiPromemoria(p, salva)).messaggio, /^Aggiunto a Da pagare per venerdì 30 ottobre/);
   assert.deepEqual(fatti[0], ['scadenza', { data: '2026-10-30', descrizione: 'Bollo auto', importo: 214.5, categoria: 'Auto', ricorrenza: 'annuale' }]);
   const conOra = promemoriaIniziale({ cosa: 'evento', titolo: 'Chiamare il commercialista', data: '2026-10-20', ora: '10:00' });
-  assert.equal(await aggiungiPromemoria(conOra, salva), 'In agenda martedì 20 ottobre alle 10:00');
+  assert.equal((await aggiungiPromemoria(conOra, salva)).messaggio, 'In agenda martedì 20 ottobre alle 10:00');
   assert.deepEqual([fatti[1][1].tutto_il_giorno, fatti[1][1].ora_inizio, fatti[1][1].ora_fine, fatti[1][1].tipo], [false, '10:00', '11:00', 'personale']);
   await aggiungiPromemoria(promemoriaIniziale({ cosa: 'evento', titolo: 'Compleanno Giulia', data: '2026-11-03' }), salva);
   assert.deepEqual([fatti[2][1].tutto_il_giorno, fatti[2][1].ora_inizio], [true, null]);

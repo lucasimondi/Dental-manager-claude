@@ -238,9 +238,10 @@ export async function prossimoPagamentoFisso(db, s) {
   if (!data) return null;
   const gia = esito(await db.from('scadenze').select('id, data').eq('descrizione', s.descrizione).eq('data', data).eq('storica', false).limit(1));
   if (gia.length) return gia[0];
-  return esito(await db.from('scadenze').insert({
+  // nuovo: creato adesso dal "Pagato" (si toglie con Annulla); se c'era già resta com'è.
+  return { ...esito(await db.from('scadenze').insert({
     data, descrizione: s.descrizione, importo: s.importo ?? null, categoria: s.categoria || null, ricorrenza: s.ricorrenza, completata: false,
-  }).select('id, data').single());
+  }).select('id, data').single()), nuovo: true };
 }
 
 // Bolletta, polizza, bollo… caricati da Conti: la lettura del documento (OCR + AI nello script) ha già
