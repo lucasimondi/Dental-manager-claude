@@ -115,7 +115,7 @@ function elabora() {
     const pratiche = praticheAperte_();
     const meseOggi = Utilities.formatDate(new Date(), CONFIG.FUSO, 'yyyy-MM');
 
-    // Notifiche sul telefono dei promemoria (POL-VITA-017): dalle 8 alle 21, al massimo una volta l'ora.
+    // Notifiche sul telefono dei promemoria (POL-VITA-018): dalle 8 alle 21, al massimo una volta l'ora.
     inviaNotifiche_(false);
 
     // Cartelle di Drive per categoria e persona (POL-VITA-013): un po' a ogni giro.
@@ -717,7 +717,7 @@ function parseJson_(testo) {
 /* =====================================================================
  * RIEPILOGO GIORNALIERO
  * ===================================================================*/
-/* Notifiche sul telefono (POL-VITA-017): la funzione Supabase `notifiche-personal` manda i promemoria
+/* Notifiche sul telefono (POL-VITA-018): la funzione Supabase `notifiche-personal` manda i promemoria
  * di oggi ai telefoni iscritti, una volta al giorno per promemoria (chiamarla più volte non crea
  * doppioni). Qui la si chiama alle 7 col riepilogo e poi, per i promemoria aggiunti in giornata,
  * al massimo una volta l'ora tra le 8 e le 21. */
@@ -1529,7 +1529,7 @@ function bozzaRisposta_(req) {
   return { ok: true, testo: testo, a: meta.mittente, oggetto: 'Re: ' + meta.oggetto, link: 'https://mail.google.com/mail/u/0/#drafts' };
 }
 
-// Cartelle suggerite dall'AI (POL-VITA-017): dai nomi delle cartelle e dagli oggetti delle email
+// Cartelle suggerite dall'AI (POL-VITA-018): dai nomi delle cartelle e dagli oggetti delle email
 // (mai i clinici) propone quali unire perché parlano della stessa cosa. Non cambia nulla: Luca sceglie.
 const SCHEMA_SUGGERIMENTI = {
   type: 'object', additionalProperties: false, required: ['gruppi'],

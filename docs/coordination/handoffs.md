@@ -3837,3 +3837,12 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - COMPLETATO: Agenda divisa in Agenda / Evento / Appuntamento; Documenti in Documenti / Selezione / Filtri / Ricerca. Comportamento invariato.
 - TEST: 1335/1335; confronto di 21 schermate master↔branch identico; agenda visual e reliability Chromium OK.
 - PROSSIMO PASSO: PR e merge su "Mergia" del PO.
+
+
+## 2026-10-18 — Claude — POL-VITA-018 (cartelle suggerite, notifiche, stato delle cartelle)
+- BRANCH: `claude/catalogazione-facile-latjs9`.
+- COMPLETATO: proposte di cartelle da unire (database + AI), notifiche push dei promemoria (funzione Supabase `notifiche-personal`, service worker dedicato, Impostazioni), stato delle cartelle con avviso dopo 15 giorni in attesa.
+- DB: migrazione additiva applicata. FUNZIONE: `notifiche-personal` attiva. SCRIPT: versione 12.
+- ATTENZIONE PER TUTTI: prima di `clasp push` unire sempre `origin/master` (un push da un ramo vecchio sovrascrive lo script di altre sessioni: successo con Gemini, PR #218, ripristinato in pochi minuti). I codici POL-VITA-014/015/017 sono stati usati due volte da sessioni diverse.
+- TEST: 1347/1347 su Node 20.
+- PROSSIMO PASSO: review della PR, merge solo su "Mergia"; prova della notifica sull'iPhone di Luca.

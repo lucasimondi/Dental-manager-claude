@@ -1,4 +1,4 @@
-// POL-VITA-017 — notifiche sul telefono (web push) per Poliedron Personal, progetto archivio-documenti.
+// POL-VITA-018 — notifiche sul telefono (web push) per Poliedron Personal, progetto archivio-documenti.
 // - GET: chiave pubblica VAPID per iscrivere il telefono (le chiavi le crea questa funzione la prima
 //   volta e le tiene in push_chiavi, tabella senza accesso dall'app; nessuno le vede o le copia).
 // - POST {azione:'prova'}: notifica di prova, solo per Luca (token di sessione con email confermata).

@@ -9,6 +9,7 @@ import { cercaArchivio, eliminaDocumenti, cestinaSuDrive, segnaScadenza } from '
 import {
   caricaCartelle, cartella as caricaCartella, cartelleVisibili, periodoCartella, contattiCartella, promemoriaCartella, nuovoPromemoria,
   salvaCartella, rinominaCartella, sciogliCartella, analizzaCartella, bozzaRisposta, icsPromemoria, ETICHETTE_SUGGERITE, etichettePulite,
+  STATI, COLORI_STATO, GIORNI_ATTESA, inAttesaDaTroppo, giorniDa, suggerimentiCartelle, nomeProposto, ignoraSuggerimento, unisciCartelle, suggerisciConAI,
 } from '../../lib/cartelle.js';
 import { condividi } from '../../lib/condividi.js';
 import { euro } from '../../lib/coreArchivio.js';
@@ -30,10 +31,14 @@ export function VistaCartelle({ ctx, anchePocoUtili = false }) {
   const [cartelle, setCartelle] = useState(null);
   const [testo, setTesto] = useState('');
   const [etichetta, setEtichetta] = useState(null);
+  const [stato, setStato] = useState('attive');
+  const [suggeriti, setSuggeriti] = useState(0);
   const [modo, setModoStato] = useState(leggiModo);
   const setModo = (m) => { setModoStato(m); try { localStorage.setItem(MODO_KEY, m); } catch { /* facoltativo */ } };
   useEffect(() => { esegui(async () => setCartelle(await caricaCartelle(archivioDb))); }, [esegui, versione]);
-  const visibili = useMemo(() => cartelleVisibili(cartelle, { testo, anchePocoUtili, etichetta }), [cartelle, testo, anchePocoUtili, etichetta]);
+  useEffect(() => { suggerimentiCartelle(archivioDb).then((r) => setSuggeriti(r.length)).catch(() => setSuggeriti(0)); }, [versione]);
+  const visibili = useMemo(() => cartelleVisibili(cartelle, { testo, anchePocoUtili, etichetta, stato }), [cartelle, testo, anchePocoUtili, etichetta, stato]);
+  const ferme = useMemo(() => inAttesaDaTroppo(cartelle), [cartelle]);
   const tutteEtichette = useMemo(() => [...new Set((cartelle || []).flatMap((c) => c.etichette || []))].sort(), [cartelle]);
   if (!cartelle) return <Vuoto>Carico le cartelle…</Vuoto>;
   const nomeFasc = (c) => fascicoli.find((f) => f.codice === c.fascicolo)?.nome || '';
@@ -41,6 +46,27 @@ export function VistaCartelle({ ctx, anchePocoUtili = false }) {
   return (
     <>
       <div className="pp-cerca pp-cerca-piccola"><IconaCerca size={16} /><input value={testo} onChange={(e) => setTesto(e.target.value)} placeholder="Trova una cartella" aria-label="Trova una cartella" /></div>
+      {ferme.length > 0 && (
+        <button className="pp-avviso-attesa" onClick={() => setStato('in_attesa')}>
+          <span className="pp-pallino pp-media" aria-hidden="true" />
+          <span className="pp-riga-testo"><span className="pp-riga-titolo">{ferme.length === 1 ? `${ferme[0].ente} è in attesa` : `${ferme.length} cartelle in attesa`} da più di {GIORNI_ATTESA} giorni</span>
+            <span className="pp-riga-meta">{ferme.slice(0, 3).map((c) => `${c.ente} (${giorniDa(c.stato_dal)} gg)`).join(' · ')}</span></span>
+          <IconaFreccia size={16} />
+        </button>
+      )}
+      {suggeriti > 0 && (
+        <Gruppo>
+          <button className="pp-riga pp-riga-sola" onClick={() => apri({ tipo: 'suggerimenti-cartelle', titolo: 'Cartelle da unire' })}>
+            <span className="pp-riga-testo"><span className="pp-riga-titolo">{suggeriti} {suggeriti === 1 ? 'proposta' : 'proposte'} di cartelle da unire</span><span className="pp-riga-meta">Stesso mittente o stessa pratica: guardale e decidi tu</span></span>
+            <IconaFreccia size={16} />
+          </button>
+        </Gruppo>
+      )}
+      <div className="pp-filtri">
+        {[['attive', 'Attive'], ['aperta', 'Aperte'], ['in_attesa', 'In attesa'], ['chiusa', 'Chiuse']].map(([id, nome]) => (
+          <button key={id} className={`pp-filtro${stato === id ? ' attivo' : ''}`} onClick={() => setStato(id)}>{nome}</button>
+        ))}
+      </div>
       {tutteEtichette.length > 0 && (
         <div className="pp-filtri">
           {tutteEtichette.map((e) => (
@@ -62,6 +88,7 @@ export function VistaCartelle({ ctx, anchePocoUtili = false }) {
             <button key={c.ente} className="pp-cartella pp-cartella-ente" style={{ '--c': colore(c.fascicolo) }} onClick={() => apriCartella(c)}>
               <span className="pp-cartella-icona"><IconaDocumenti size={20} /></span>
               <span className="pp-cartella-nome">{c.ente}</span>
+              {c.stato && <span className="pp-badge-stato" style={{ '--c': COLORI_STATO[c.stato] }}>{STATI[c.stato]}</span>}
               {(c.etichette || []).length > 0 && <span className="pp-cartella-etichette">{c.etichette.slice(0, 2).map((e) => <span key={e} className="pp-etichetta-mini">{e}</span>)}</span>}
               <span className="pp-cartella-numero">{c.n} {c.n === 1 ? 'documento' : 'documenti'}<br />{periodoCartella(c.dal, c.al)}{c.n_promemoria ? <em> · {c.n_promemoria} promemoria</em> : c.n_da_fare ? <em> · {c.n_da_fare} da fare</em> : null}</span>
             </button>
@@ -74,7 +101,7 @@ export function VistaCartelle({ ctx, anchePocoUtili = false }) {
               <span className="pp-ente-iniziale" style={{ '--c': colore(c.fascicolo) }}>{c.ente.slice(0, 1).toUpperCase()}</span>
               <span className="pp-riga-testo">
                 <span className="pp-riga-titolo">{c.ente}</span>
-                <span className="pp-riga-meta">{[nomeFasc(c), periodoCartella(c.dal, c.al), ...(c.etichette || [])].filter(Boolean).join(' · ')}</span>
+                <span className="pp-riga-meta">{[STATI[c.stato], nomeFasc(c), periodoCartella(c.dal, c.al), ...(c.etichette || [])].filter(Boolean).join(' · ')}</span>
               </span>
               {c.n_promemoria > 0 && <span className="pp-pallino pp-media" aria-label="Promemoria aperti" />}
               <span className="pp-conteggio">{c.n}</span>
@@ -156,6 +183,15 @@ export function PaginaCartella({ ente: enteIniziale, ctx, chiudi, sostituisci })
           {etichette.map((e) => <button key={e} className="pp-etichetta-mini" onClick={() => sceltaEtichetta(e)} aria-label={`Togli l'etichetta ${e}`}>{e} ×</button>)}
           <button className="pp-etichetta-mini pp-etichetta-aggiungi" onClick={() => setPannello('etichetta')}>＋ Etichetta</button>
         </div>
+        <div className="pp-stato-cartella" role="group" aria-label="Stato della cartella">
+          {Object.entries(STATI).map(([id, nome]) => (
+            <button key={id} className={info?.stato === id ? 'attivo' : ''} style={{ '--c': COLORI_STATO[id] }} aria-pressed={info?.stato === id}
+              onClick={() => esegui(async () => { await salvaCartella(archivioDb, ente, { stato: info?.stato === id ? null : id }); ricarica(); mostra(info?.stato === id ? 'Stato tolto' : `Cartella: ${nome.toLowerCase()}`); })}>
+              {nome}
+            </button>
+          ))}
+        </div>
+        {info?.stato && info?.stato_dal && <p className="pp-riga-meta">{STATI[info.stato]} dal {dataBreve(info.stato_dal)}{info.stato === 'in_attesa' ? ` · da ${giorniDa(info.stato_dal)} giorni` : ''}</p>}
         {info?.note && <p className="pp-cartella-note">{info.note}</p>}
         <div className="pp-cartella-azioni">
           <button onClick={analizza} disabled={!!lavoro}><IconaChat size={18} /><span>Sintesi AI</span></button>
@@ -360,6 +396,73 @@ function FormBozza({ ente, ctx, onFatto, onAnnulla }) {
       <div className="pp-form-azioni">
         <button className="pp-bottone" disabled={attesa} onClick={prepara}>{attesa ? 'Scrivo…' : 'Prepara la bozza'}</button>
         <button className="pp-bottone pp-bottone-chiaro" onClick={onAnnulla}>Annulla</button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- cartelle da unire (POL-VITA-018) ---------- */
+// Proposte dal database (stesso dominio del mittente) e, a richiesta, dall'AI. Nulla cambia finché Luca
+// non sceglie le cartelle, il nome e tocca "Unisci"; "Non unire" scarta la proposta per sempre.
+export function PaginaSuggerimenti({ ctx }) {
+  const { esegui, mostra, aggiorna } = ctx;
+  const [proposte, setProposte] = useState(null);
+  const [ai, setAi] = useState(null);
+  const [attesaAi, setAttesaAi] = useState(false);
+  const [rinfresca, setRinfresca] = useState(0);
+  useEffect(() => { esegui(async () => setProposte(await suggerimentiCartelle(archivioDb))); }, [esegui, rinfresca]);
+  const chiediAi = () => esegui(async () => {
+    setAttesaAi(true);
+    try { setAi((await suggerisciConAI({ token: await tokenSessione() })).map((g) => ({ chiave: `ai:${g.nome}`, nome: g.nome, enti: g.enti, motivo: g.motivo }))); } finally { setAttesaAi(false); }
+  });
+  const fatto = (msg, chiave) => { mostra(msg); aggiorna(); setAi((xs) => xs && xs.filter((g) => g.chiave !== chiave)); setRinfresca((n) => n + 1); };
+  if (!proposte) return <Vuoto>Carico le proposte…</Vuoto>;
+  return (
+    <>
+      <p className="pp-riga-meta">Cartelle che sembrano la stessa cosa (stesso mittente o stessa pratica). Scegli quali unire e con che nome: i documenti, i promemoria e le etichette vanno nella cartella unita.</p>
+      <Gruppo>
+        <button className="pp-riga pp-riga-sola" onClick={chiediAi} disabled={attesaAi}>
+          <IconaChat size={18} />
+          <span className="pp-riga-testo"><span className="pp-riga-titolo">{attesaAi ? 'Poliedron sta guardando le cartelle…' : 'Chiedi a Poliedron di proporne altre'}</span><span className="pp-riga-meta">Legge i nomi delle cartelle e gli oggetti delle email (mai i documenti dei pazienti)</span></span>
+        </button>
+      </Gruppo>
+      {ai && (
+        <Sezione titolo={`Proposte dell'AI (${ai.length})`}>
+          {!ai.length && <Vuoto>Nessuna proposta in più.</Vuoto>}
+          {ai.map((g) => <Proposta key={g.chiave} proposta={g} ctx={ctx} onFatto={(m) => fatto(m, g.chiave)} onIgnora={() => setAi((xs) => xs.filter((x) => x.chiave !== g.chiave))} />)}
+        </Sezione>
+      )}
+      <Sezione titolo={`Stesso mittente (${proposte.length})`}>
+        {!proposte.length && <Vuoto>Nessuna proposta: le cartelle sono già in ordine.</Vuoto>}
+        {proposte.map((p) => (
+          <Proposta key={p.chiave} proposta={{ ...p, nome: nomeProposto(p), motivo: `Tutte da @${p.dominio} · ${p.n} documenti` }} ctx={ctx}
+            onFatto={(m) => fatto(m, p.chiave)}
+            onIgnora={() => esegui(async () => { await ignoraSuggerimento(archivioDb, p.chiave); setRinfresca((n) => n + 1); mostra('Proposta scartata'); })} />
+        ))}
+      </Sezione>
+    </>
+  );
+}
+
+function Proposta({ proposta, ctx, onFatto, onIgnora }) {
+  const [scelti, setScelti] = useState(() => new Set(proposta.enti));
+  const [nome, setNome] = useState(proposta.nome);
+  const cambia = (e) => setScelti((s) => { const n = new Set(s); if (n.has(e)) n.delete(e); else n.add(e); return n; });
+  const unisci = () => ctx.esegui(async () => {
+    const enti = proposta.enti.filter((e) => scelti.has(e));
+    await unisciCartelle(archivioDb, enti, nome);
+    onFatto(`${enti.length} cartelle unite in "${nome.trim()}"`);
+  });
+  return (
+    <div className="pp-pannello pp-suggerimento">
+      <span className="pp-riga-meta">{proposta.motivo}</span>
+      {proposta.enti.map((e) => (
+        <label key={e}><input type="checkbox" checked={scelti.has(e)} onChange={() => cambia(e)} /> {e}</label>
+      ))}
+      <input type="text" value={nome} onChange={(e) => setNome(e.target.value)} aria-label="Nome della cartella unita" />
+      <div className="pp-form-azioni">
+        <button className="pp-bottone" disabled={scelti.size < 2 || !nome.trim()} onClick={unisci}>Unisci {scelti.size}</button>
+        <button className="pp-bottone pp-bottone-chiaro" onClick={onIgnora}>Non unire</button>
       </div>
     </div>
   );

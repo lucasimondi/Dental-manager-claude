@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
 import { sessioneStudio, esciStudio, studioDb } from '../../lib/studio.js';
 import { slug } from '../../lib/impostazioni.js';
-import { colore, Sezione, Gruppo, Conferma } from '../../ui.jsx';
+import { colore, Sezione, Gruppo, Conferma, tokenSessione } from '../../ui.jsx';
+import { statoNotifiche, attivaNotifiche, disattivaNotifiche, provaNotifica } from '../../lib/notifiche.js';
 import { IconaPiu, IconaChiudi, IconaFreccia, IconaCestino, IconaEsci } from '../../Icone.jsx';
 
 function ListaModificabile({ voci, onTogli, onAggiungi, segnaposto }) {
@@ -20,6 +21,43 @@ function ListaModificabile({ voci, onTogli, onAggiungi, segnaposto }) {
         <input value={nuovo} onChange={(e) => setNuovo(e.target.value)} placeholder={segnaposto} />
         <button type="submit" className="pp-chip-azione" disabled={!nuovo.trim()}>Aggiungi</button>
       </form>
+    </Gruppo>
+  );
+}
+
+// POL-VITA-018 — notifiche dei promemoria (cartelle, pagamenti, scadenze): alle 7 e, per quelli
+// aggiunti in giornata, entro un'ora (dalle 8 alle 21).
+function NotificheTelefono({ ctx }) {
+  const { esegui, mostra } = ctx;
+  const [stato, setStato] = useState(null);
+  const leggi = () => statoNotifiche().then(setStato).catch(() => setStato({ ok: false, motivo: 'browser' }));
+  useEffect(() => { leggi(); }, []);
+  if (!stato) return <Gruppo><div className="pp-voce"><span className="pp-riga-meta">Controllo…</span></div></Gruppo>;
+  if (!stato.ok) {
+    return (
+      <Gruppo><div className="pp-voce pp-voce-testo">
+        {stato.motivo === 'installa'
+          ? <span>Su iPhone le notifiche funzionano con l'app sulla schermata Home: in Safari tocca <strong>Condividi › Aggiungi alla schermata Home</strong>, apri Personal da lì e torna qui.</span>
+          : <span>Questo browser non riceve notifiche. Usa l'app installata sul telefono.</span>}
+      </div></Gruppo>
+    );
+  }
+  const attiva = () => esegui(async () => { await attivaNotifiche(archivioDb); await leggi(); mostra('Notifiche attive su questo telefono'); });
+  const spegni = () => esegui(async () => { await disattivaNotifiche(archivioDb); await leggi(); mostra('Notifiche spente su questo telefono'); });
+  const prova = () => esegui(async () => { await provaNotifica({ token: await tokenSessione(), endpoint: stato.endpoint }); mostra('Notifica di prova inviata'); });
+  return (
+    <Gruppo>
+      <div className="pp-voce pp-voce-testo">
+        <span>{stato.attive ? 'Attive su questo telefono.' : 'Spente su questo telefono.'} Ricevi i promemoria del giorno alle 7 e, per quelli aggiunti in giornata, entro un'ora (dalle 8 alle 21).</span>
+      </div>
+      {stato.attive ? (
+        <div className="pp-voce pp-voce-azioni">
+          <button className="pp-chip-azione" onClick={prova}>Invia una prova</button>
+          <button className="pp-testo-link" onClick={spegni}>Spegni</button>
+        </div>
+      ) : (
+        <div className="pp-voce pp-voce-azioni"><button className="pp-bottone" onClick={attiva}>Attiva le notifiche</button></div>
+      )}
     </Gruppo>
   );
 }
@@ -91,6 +129,9 @@ export function PaginaImpostazioni({ ctx, email }) {
           ))}
           <NuovaEtichetta onAggiungi={(nome, colore) => salvaImp({ ...impostazioni, etichette: [...etichette, { id: slug(nome), nome, colore }] })} />
         </Gruppo>
+      </Sezione>
+      <Sezione titolo="Notifiche sul telefono">
+        <NotificheTelefono ctx={ctx} />
       </Sezione>
       <Sezione titolo="Agenda dello studio">
         <StatoStudio />

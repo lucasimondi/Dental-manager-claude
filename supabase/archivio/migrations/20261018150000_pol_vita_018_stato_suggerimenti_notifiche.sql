@@ -1,4 +1,4 @@
--- POL-VITA-017 — progetto separato `archivio-documenti` (tkcwvjzjkfhcuebrjvsp).
+-- POL-VITA-018 (applicata come pol_vita_017_stato_suggerimenti_notifiche) — progetto separato `archivio-documenti` (tkcwvjzjkfhcuebrjvsp).
 -- 1) Stato delle cartelle (aperta, in attesa, chiusa) con la data del cambio.
 -- 2) Cartelle suggerite: cartelle diverse con lo stesso dominio del mittente (es. due persone di
 --    prelios.com per la stessa pratica Kerdos) → proposta di unirle; i suggerimenti scartati restano scartati.
