@@ -115,6 +115,9 @@ function elabora() {
     const pratiche = praticheAperte_();
     const meseOggi = Utilities.formatDate(new Date(), CONFIG.FUSO, 'yyyy-MM');
 
+    // Notifiche sul telefono dei promemoria (POL-VITA-018): dalle 8 alle 21, al massimo una volta l'ora.
+    inviaNotifiche_(false);
+
     // Cartelle di Drive per categoria e persona (POL-VITA-013): un po' a ogni giro.
     try { ordinaDrive_(inizio + ORDINA_DRIVE_MS); } catch (e) { logErrore_('ordine Drive', e); }
 
@@ -714,7 +717,28 @@ function parseJson_(testo) {
 /* =====================================================================
  * RIEPILOGO GIORNALIERO
  * ===================================================================*/
+/* Notifiche sul telefono (POL-VITA-018): la funzione Supabase `notifiche-personal` manda i promemoria
+ * di oggi ai telefoni iscritti, una volta al giorno per promemoria (chiamarla più volte non crea
+ * doppioni). Qui la si chiama alle 7 col riepilogo e poi, per i promemoria aggiunti in giornata,
+ * al massimo una volta l'ora tra le 8 e le 21. */
+function inviaNotifiche_(subito) {
+  try {
+    const sp = PropertiesService.getScriptProperties();
+    const ora = Number(Utilities.formatDate(new Date(), CONFIG.FUSO, 'H'));
+    if (!subito) {
+      if (ora < 8 || ora > 21) return;
+      if (Date.now() - Number(sp.getProperty('NOTIFICHE_ULTIMA') || 0) < 55 * 60 * 1000) return;
+    }
+    sp.setProperty('NOTIFICHE_ULTIMA', String(Date.now()));
+    const res = UrlFetchApp.fetch(props_().SUPABASE_URL + '/functions/v1/notifiche-personal', {
+      method: 'post', contentType: 'application/json', payload: JSON.stringify({ azione: 'invia' }), muteHttpExceptions: true,
+    });
+    if (res.getResponseCode() >= 300) logErrore_('notifiche', new Error(res.getResponseCode() + ' ' + res.getContentText().slice(0, 300)));
+  } catch (e) { logErrore_('notifiche', e); }
+}
+
 function digest() {
+  inviaNotifiche_(true);
   const p = props_();
   const oggi = Utilities.formatDate(new Date(), CONFIG.FUSO, 'yyyy-MM-dd');
   const limite = Utilities.formatDate(new Date(Date.now() + CONFIG.GIORNI_DIGEST * 864e5), CONFIG.FUSO, 'yyyy-MM-dd');
@@ -858,6 +882,7 @@ function doPost(e) {
     if (req.azione === 'cestina') return rispostaJson_(cestinaFile_(req.ids));
     if (req.azione === 'cartella') return rispostaJson_(analizzaCartella_(req));
     if (req.azione === 'bozza') return rispostaJson_(bozzaRisposta_(req));
+    if (req.azione === 'suggerisci') return rispostaJson_(suggerisciCartelle_());
     if (!req.dati || !req.nome) return rispostaJson_({ ok: false, errore: 'File mancante' });
 
     const nome = pulisciNome_(String(req.nome)) || 'documento';
@@ -1502,6 +1527,45 @@ function bozzaRisposta_(req) {
   if (!testo) return { ok: false, errore: 'Bozza vuota, riprova.' };
   msg.createDraftReply(testo); // solo bozza: Luca la rilegge e la invia lui da Gmail
   return { ok: true, testo: testo, a: meta.mittente, oggetto: 'Re: ' + meta.oggetto, link: 'https://mail.google.com/mail/u/0/#drafts' };
+}
+
+// Cartelle suggerite dall'AI (POL-VITA-018): dai nomi delle cartelle e dagli oggetti delle email
+// (mai i clinici) propone quali unire perché parlano della stessa cosa. Non cambia nulla: Luca sceglie.
+const SCHEMA_SUGGERIMENTI = {
+  type: 'object', additionalProperties: false, required: ['gruppi'],
+  properties: { gruppi: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['nome', 'enti', 'motivo'],
+    properties: { nome: { type: 'string' }, enti: { type: 'array', items: { type: 'string' } }, motivo: { type: 'string' } } } } },
+};
+function suggerisciCartelle_() {
+  const docs = sb_('documenti?select=ente,email_oggetto&ente=not.is.null&fascicolo=neq.clinico_pazienti&order=email_data.desc.nullslast&limit=4000');
+  const perEnte = {};
+  docs.forEach(function (d) {
+    const e = perEnte[d.ente] || (perEnte[d.ente] = { n: 0, oggetti: [] });
+    e.n++;
+    if (e.oggetti.length < 3 && d.email_oggetto && e.oggetti.indexOf(d.email_oggetto) < 0) e.oggetti.push(String(d.email_oggetto).slice(0, 80));
+  });
+  const enti = Object.keys(perEnte).sort(function (a, b) { return perEnte[b].n - perEnte[a].n; }).slice(0, 250);
+  if (enti.length < 2) return { ok: true, gruppi: [] };
+  const righe = enti.map(function (e) { return JSON.stringify({ cartella: e, documenti: perEnte[e].n, oggetti: perEnte[e].oggetti }); }).join('\n');
+  const system = [
+    'Riordini le cartelle dell\'archivio di Luca Simondi (una cartella per ente). Molte hanno il nome di una persona',
+    'che scrive per conto di un\'azienda o di uno studio (es. due impiegati della stessa società per la stessa pratica).',
+    'Proponi SOLO gruppi di cartelle che riguardano chiaramente lo stesso ente o la stessa vicenda, con un nome breve',
+    'per la cartella unita (es. "Studio Giordano", "Kerdos SPV", "OPT S.r.l."). Non unire persone diverse senza un legame',
+    'evidente negli oggetti. Usa i nomi delle cartelle esattamente come li ricevi. motivo: una frase. Al massimo 20 gruppi.',
+  ].join(' ');
+  let r;
+  try {
+    r = claudeMessaggi_({ model: CONFIG.MODELLO, max_tokens: 3000, system: system,
+      output_config: { format: { type: 'json_schema', schema: SCHEMA_SUGGERIMENTI } },
+      messages: [{ role: 'user', content: 'Cartelle (una per riga, JSON):\n' + righe }] });
+  } catch (e) { return { ok: false, errore: String(e && e.message || e).slice(0, 300) }; }
+  const esito = parseJson_((r.content || []).filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join(''));
+  const gruppi = (esito.gruppi || []).map(function (g) {
+    return { nome: String(g.nome || '').trim().slice(0, 120), motivo: String(g.motivo || '').slice(0, 200),
+      enti: (g.enti || []).filter(function (e) { return perEnte[e]; }) };
+  }).filter(function (g) { return g.nome && g.enti.length >= 2; }).slice(0, 20);
+  return { ok: true, gruppi: gruppi };
 }
 
 function utenteSupabase_(token) {
