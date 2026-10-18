@@ -60,7 +60,7 @@ export async function spesaDaScadenza(db, s, data = new Date().toISOString().sli
   if (gia.length) return gia[0];
   return esito(await db.from('movimenti').insert({
     data, tipo: 'uscita', importo: Number(s.importo), descrizione: s.descrizione || 'Pagamento',
-    categoria: categoriaDaFascicolo(s.documento?.fascicolo), documento_id: s.documento_id || s.documento?.id || null, scadenza_id: s.id,
+    categoria: s.categoria || categoriaDaFascicolo(s.documento?.fascicolo), documento_id: s.documento_id || s.documento?.id || null, scadenza_id: s.id,
   }).select('id').single());
 }
 
@@ -69,13 +69,26 @@ export async function annullaSpesaDaScadenza(db, scadenzaId) {
   return esito(await db.from('movimenti').delete().eq('scadenza_id', scadenzaId).select('id'));
 }
 
-// Promemoria di pagamento inserito a mano (scadenza senza documento).
-export async function nuovaScadenza(db, { data, descrizione, importo }) {
+// Pagamento da fare inserito a mano: categoria (bollette, pulizia, …), ricorrenza per i pagamenti
+// fissi e, se c'è, il documento (foto o PDF) a cui si riferisce.
+export const CATEGORIE_PAGAMENTO = ['Bollette', 'Pulizia', 'Assicurazioni', 'Bollo auto', 'Affitto o mutuo', 'Tasse', 'Scuola', 'Abbonamenti', 'Altro'];
+export async function nuovaScadenza(db, { data, descrizione, importo, categoria, ricorrenza, documento_id: documentoId }) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(data || ''))) throw new Error('Data non valida');
   const n = importoNumero(importo);
   return esito(await db.from('scadenze').insert({
     data, descrizione: String(descrizione || '').trim() || 'Pagamento', importo: Number.isFinite(n) ? n : null, completata: false,
+    categoria: String(categoria || '').trim() || null, ricorrenza: ricorrenza || null, documento_id: documentoId || null,
   }).select('id').single());
+}
+
+// Totali di Da pagare per categoria (per vedere quanto va in bollette, pulizia, assicurazioni…).
+export function totaliPerCategoria(scadenze) {
+  const per = {};
+  for (const s of scadenze) {
+    const c = s.categoria || categoriaDaFascicolo(s.documento?.fascicolo);
+    per[c] = Math.round(((per[c] || 0) + Number(s.importo || 0)) * 100) / 100;
+  }
+  return Object.entries(per).map(([categoria, totale]) => ({ categoria, totale })).sort((x, y) => y.totale - x.totale);
 }
 
 /* ---------- bilancino ---------- */

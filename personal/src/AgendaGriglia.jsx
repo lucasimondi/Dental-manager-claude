@@ -5,6 +5,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, AppointmentBlock, EventBlock, useSlotHeight, AgendaSwitch, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState } from '../../shared/agenda/AgendaPresentation.jsx';
 import { getVisibleWeekDays } from '../../shared/agenda/visibleDays.js';
 import { useSwipeAgenda } from './lib/swipeAgenda.js';
+import { usePinchZoom, scrollAncorato } from './lib/pinchZoom.js';
 import { daIso, piuGiorni, oggi, coloreEvento, nomeEtichetta, elementiDelGiorno, giorniSettimana } from './lib/agenda.js';
 export { ViewPicker };
 
@@ -27,8 +28,22 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
   const [overlayHeight, setOverlayHeight] = useState(0);
   const [availH, setAvailH] = useState(() => Math.max(360, window.innerHeight - 126));
   const [now, setNow] = useState(new Date());
-  const slotH = Math.max(24, Math.round(availH / slots.length * zoom));
+  // PO 2026-10-17: slot come prima ("troppo alti") e, per gli appuntamenti corti,
+  // pinch-to-zoom con due dita: pinch 1 è l'altezza di sempre.
+  const [pinch, ancoraPinch] = usePinchZoom(containerRef, view !== 'mese');
+  const slotH = Math.round(Math.max(24, availH / slots.length * zoom) * pinch);
   const effectiveSlotH = useSlotHeight(containerRef, true, slots, slotH, view);
+  const slotHPrima = useRef(effectiveSlotH);
+  useLayoutEffect(() => {
+    const el = containerRef.current, a = ancoraPinch.current;
+    ancoraPinch.current = null;
+    if (el && a && slotHPrima.current !== effectiveSlotH) {
+      const grid = el.querySelector('.agenda-time-grid');
+      const gridTop = grid ? grid.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop : 0;
+      el.scrollTop = scrollAncorato({ scrollTop: a.scrollTop, y: a.y, gridTop, oldSlotH: slotHPrima.current, newSlotH: effectiveSlotH });
+    }
+    slotHPrima.current = effectiveSlotH;
+  }, [effectiveSlotH]);
   useEffect(() => {
     const resize = () => setAvailH(Math.max(360, window.innerHeight - 126));
     window.addEventListener('resize', resize); window.addEventListener('orientationchange', resize);
@@ -78,12 +93,12 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
         const top = (x.inizio - oraInizio * 60) / slotMin * effectiveSlotH;
         const height = Math.max((x.fine - x.inizio) / slotMin * effectiveSlotH, effectiveSlotH * .5);
         if (top + height < 0 || top >= slots.length * effectiveSlotH) return null;
-        return <EventBlock key={x.id} title={x.dato.titolo} startTime={(x.dato.ora_inizio || '').slice(0, 5)} description={x.dato.note || ''} top={top} height={height} co={coloreEvento(x.dato, etichette)} onClick={() => ctx.apri({ tipo: 'evento', evento: x.dato })} />;
+        return <EventBlock key={x.id} title={x.dato.titolo} startTime={(x.dato.ora_inizio || '').slice(0, 5)} description={x.dato.note || ''} aCapo={weekly} top={top} height={height} co={coloreEvento(x.dato, etichette)} onClick={() => ctx.apri({ tipo: 'evento', evento: x.dato })} />;
       })}
       {layoutAppointments(dati.appuntamenti.filter(a => a.data === ds).sort((a,b) => a.ora.localeCompare(b.ora))).map(x => {
         const a = x.a, top = (x.start - oraInizio * 60) / slotMin * effectiveSlotH;
         if (top < 0 || top >= slots.length * effectiveSlotH) return null;
-        return <AppointmentBlock key={a.id} a={a} label={a.cognome || a.paziente || '—'} co={a.colore || coloriTipi[a.tipo] || '#185FA5'} top={top} height={Math.max(Number(a.durata) / slotMin * effectiveSlotH - 2, effectiveSlotH * .6)} col={x.col} totalCols={x.totalCols} readOnly onOpen={e => { e.stopPropagation(); ctx.apri({ tipo: 'appuntamento', a }); }} />;
+        return <AppointmentBlock key={a.id} a={a} label={weekly ? (a.cognome ? [a.cognome, String(a.paziente || '').replace(a.cognome, '').trim()].filter(Boolean).join(' ') : (a.paziente || a.tipo || '—')) : (a.cognome || a.paziente || '—')} aCapo={weekly} co={a.colore || coloriTipi[a.tipo] || '#185FA5'} top={top} height={Math.max(Number(a.durata) / slotMin * effectiveSlotH - 2, effectiveSlotH * .6)} col={x.col} totalCols={x.totalCols} readOnly onOpen={e => { e.stopPropagation(); ctx.apri({ tipo: 'appuntamento', a }); }} />;
       })}
     </>;
   };
@@ -116,7 +131,7 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
         {!extras.aOrario.some(x => x.tipo === 'appuntamento') && <CalendarEmptyState />}
       </div>
     </> : <>
-      <DayStrip selDay={giorno} setSelDay={ds => { setGiorno(ds); if (weekly) setView('giorno'); }} today={oggi()} compact oraColW={34} singleDay={!weekly} hiddenWeekdays={hiddenWeekdays} highlightSelected={!weekly} onWeekChange={weekly ? sincronizzaSettimana : undefined} overlayRef={overlayRef} viewPicker={pick} floatingFooter={fasciaGiorno} />
+      <DayStrip selDay={giorno} setSelDay={ds => { setGiorno(ds); if (weekly) setView('giorno'); }} today={oggi()} compact oraColW={34} singleDay={!weekly} hiddenWeekdays={hiddenWeekdays} highlightSelected={!weekly} onWeekChange={weekly ? sincronizzaSettimana : undefined} overlayRef={overlayRef} viewPicker={pick} floatingFooter={fasciaGiorno} shortMonth />
       <div className="agenda-mobile-grid-surface" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }} {...swipe}>
         <TimeGrid containerRef={containerRef} isMobile slots={slots} slotH={slotH} effectiveSlotH={effectiveSlotH} oraColW={34} days={days} today={oggi()} showNowLine={showNowLine} nowTop={nowTop} onSlot={openSlot} renderDay={renderDay} />
       </div>

@@ -1,4 +1,4 @@
--- POL-VITA-014 — progetto separato `archivio-documenti` (tkcwvjzjkfhcuebrjvsp).
+-- POL-VITA-015 (file 014, già applicata) — progetto separato `archivio-documenti` (tkcwvjzjkfhcuebrjvsp).
 -- Cartelle in Documenti: una cartella per ente (es. "Kerdos") con periodo, contatti, etichette,
 -- note, sintesi dell'AI e promemoria. I documenti restano dove sono: la cartella è il loro ente.
 -- Solo aggiunte idempotenti: nessuna colonna o riga esistente viene tolta.

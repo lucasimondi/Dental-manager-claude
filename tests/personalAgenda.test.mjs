@@ -1,6 +1,7 @@
 // POL-VITA-004 — calcoli dell'agenda di Personal.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 // rigaImpegno è in agenda.js: studio.js crea il client Supabase all'import (Node 20 in CI non ha WebSocket).
 import { elementiDelGiorno, colonne, grigliaMese, giorniSettimana, piuGiorni, generaDateRipetizione, coloreEvento, ETICHETTE_PREDEFINITE, rigaImpegno } from '../personal/src/lib/agenda.js';
 import { normalizza } from '../personal/src/lib/impostazioni.js';
@@ -129,4 +130,18 @@ test('POL-VITA-013: eventi nascosti restano in Personal e spariscono solo nello 
   assert.match(fs.readFileSync('src/lib/supabase.js', 'utf8'), /visibileStudio: 'visibile_studio'/);
   const sql = fs.readFileSync('supabase/migrations/20261017120000_pol_vita_013_impegni_visibili_studio.sql', 'utf8');
   assert.match(sql, /add column if not exists visibile_studio boolean not null default true/);
+});
+
+// PO 2026-10-17: "La scritta del mese deve essere adattata bene, così è spaginata …
+// forse conviene aumentare un po' verticalmente la misura degli slot".
+test('Personal agenda: short month on one line, original slot height, Studio untouched', () => {
+  const griglia = readFileSync(new URL('../personal/src/AgendaGriglia.jsx', import.meta.url), 'utf8');
+  const shared = readFileSync(new URL('../shared/agenda/AgendaPresentation.jsx', import.meta.url), 'utf8');
+  assert.match(griglia, /viewPicker=\{pick\} floatingFooter=\{fasciaGiorno\} shortMonth \/>/);
+  // PO 2026-10-17: slot di nuovo come prima; più spazio solo col pinch (1 = come prima).
+  assert.doesNotMatch(griglia, /PX_PER_MIN_MIN/);
+  assert.match(griglia, /const slotH = Math\.round\(Math\.max\(24, availH \/ slots\.length \* zoom\) \* pinch\);/);
+  assert.match(griglia, /usePinchZoom\(containerRef, view !== 'mese'\)/);
+  assert.match(shared, /shortMonth = false \}\) \{/, 'Studio keeps the full month name by default');
+  assert.match(shared, /shortMonth \? \{ whiteSpace: 'nowrap', flexShrink: 0 \} : \{\}/);
 });

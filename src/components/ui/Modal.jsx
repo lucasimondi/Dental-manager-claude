@@ -13,12 +13,29 @@ import { C } from '../../lib/utils';
 // context menu (agenda-appointment-menu-backdrop/-sheet in
 // PremiumVisualSystem.css), just made reusable instead of that menu
 // building its own one-off backdrop/sheet markup.
+// Page scroll lock shared by every open Modal. Each Modal used to save and
+// restore `body.style.overflow` on its own: with two modals open (e.g. the PDF
+// over a form) closed in the other order, the last one put back "hidden" and
+// the page stayed frozen until the app was restarted (PO 2026-10-17). Now the
+// page is locked while at least one Modal is open and always released after
+// the last one closes.
+let openModals = 0;
+let overflowBeforeLock = '';
+export function lockPageScroll() {
+  if (openModals === 0) overflowBeforeLock = document.body.style.overflow === 'hidden' ? '' : document.body.style.overflow;
+  openModals += 1;
+  document.body.style.overflow = 'hidden';
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    openModals = Math.max(0, openModals - 1);
+    if (openModals === 0) document.body.style.overflow = overflowBeforeLock;
+  };
+}
+
 export default function Modal({ title, icon, iconColor, onClose, children, wide, mobileVariant = 'standard', footer, backdropClassName = '', sheetClassName = '', backdropStyle }) {
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
-  }, []);
+  useEffect(() => lockPageScroll(), []);
 
   return ReactDOM.createPortal(
     <div

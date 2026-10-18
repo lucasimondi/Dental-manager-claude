@@ -1,4 +1,4 @@
-# Current task — POL-VITA-014 Personal: cartelle in Documenti (2026-10-18)
+# Current task — POL-VITA-015 Personal: cartelle in Documenti (2026-10-18)
 - OWNER: CLAUDE. BRANCH: `claude/catalogazione-facile-latjs9` ripartito da `master@6c9a296f` (PR #206 e #209 mergiate).
 - RICHIESTA PO (sintesi del verbatim): documenti mischiati → in elenco e a icone vanno in cartelle organizzate (es. cartella Kerdos con i suoi 8 documenti), apribili, cancellabili, modificabili; documenti selezionabili per inviarli, condividerli, cancellarli; info del periodo; analisi del contenuto e sintesi anche con AI; contatti da cui arriva; bozza di risposta; etichette; termini, date e promemoria ("che andranno dove?"); consigli.
 - FATTO: Documenti si apre su "Cartelle" (una per ente) a icone o in elenco, con ricerca e filtro per etichetta; "Documenti senza cartella". Pagina cartella: periodo, numero, categoria, totale, etichette, note, Sintesi AI (script, azione `cartella`, salvata in `cartelle_ente`), Rispondi (bozza in Gmail con `createDraftReply`, nulla inviato), Promemoria (scadenza con `cartella`: Agenda, Oggi, riepilogo delle 7; proposta .ics per il Calendario del telefono; esclusi dai pagamenti di Conti se senza importo), Modifica (rinomina/unisci, note), Elimina (togli solo la cartella oppure elimina documenti con scelta Drive), contatti dai mittenti, documenti selezionabili. Selezione multipla ovunque: Condividi (più file insieme col foglio del sistema, max 10, preparati prima del tocco; mai i clinici), Cartella (sposta o nuova), Categoria, Altro, Elimina. I documenti Kerdos (8, prima divisi tra due mittenti) riuniti nella cartella "Kerdos SPV" come da esempio del PO.
@@ -7,6 +7,41 @@
 - VALIDATION: `npm test` 1311/1311 (Node 20; +14 test `personalCartelle`); build OK; Chromium 390×844 con dati finti: cartelle a icone ed elenco, apertura Kerdos, contatti, selezione e condivisione di 2 file, promemoria salvato con la cartella, bozza, AI ferma con messaggio chiaro, nessun errore, nessun overflow.
 - LIMITI: con il limite di spesa Claude (fino al 2026-11-01) Sintesi AI e Rispondi mostrano l'avviso; molte cartelle dei documenti importati senza Claude hanno il nome del mittente (si sistemano con l'analisi completa o unendole da Modifica).
 - STATO: in revisione (PR).
+
+---
+
+# Current task — Personal: chat Poliedron a pagina intera con allegati (2026-10-18)
+- OWNER: CLAUDE, branch `claude/poliedron-agenda-actions-kz6mmk`, da `master@e642fa20`. PO verbatim: "Lavoriamo su chat poliedron: non è impaginata bene, deve essere una pagina a sé, come poliedron per lo studio, deve poter avere anche allegati tramite tastino".
+- COSA: Poliedron in Personal è una scheda (`vista 'poliedron'`) a pagina intera, non più una pagina sovrapposta con "Indietro": modo AI/ricerca in alto, messaggi che scorrono dentro la pagina, barra di scrittura fissa sopra il dock, "Nuova chat" in testata; la conversazione resta cambiando scheda. "Chiedi a Poliedron su questo documento" apre la scheda con il documento come contesto (chip togliibile). Graffetta: foto, PDF o file → archiviato con il caricamento normale (`caricaDocumento`: duplicati, regole cliniche dello script invariate), poi Poliedron risponde su quel documento (`documento_id`). Nessuna modifica a `Code.gs` (niente deploy Apps Script).
+- FILES: `personal/src/App.jsx`, `personal/src/lib/chat.js` (nuovo), `personal/src/Icone.jsx`, `personal/src/personal.css`, `tests/personalChatPagina.test.mjs` (nuovo).
+- VALIDATION: `npm test` 1309/1309; build e build:personal OK; `test:agenda:visual` Chromium (Studio pixel identico) e reliability Chromium 3/3; prova in Chromium 390×844 con sessione e script finti: pagina non scorre, lista sì, composer sopra il dock, allegato → caricamento → domanda con `documento_id`, conversazione conservata dopo cambio scheda.
+- EXACT NEXT ACTION: CI della PR verde → "Mergia".
+
+---
+
+# Current task — Personal: gli appuntamenti dello studio non si salvano (2026-10-17)
+- OWNER: CLAUDE, branch `claude/studio-appointments-not-adding-t4xls2`, da `master@55c8004`. PO verbatim (screenshot "cannot insert a non-DEFAULT value into column \"id\""): "Da personal non si aggiungono gli appuntamenti studio".
+- CAUSA: `salvaAppuntamento` (personal/src/lib/studio.js) inviava un id generato dal client, ma in produzione `appointments.id` è GENERATED ALWAYS AS IDENTITY (come già annotato in `20261004160708_pol_ai_010_action_claims.sql`).
+- FATTO: l'inserimento non manda più `id`, lo assegna il database come per lo Studio. Nessuna modifica a schema, RLS, Studio o `impegni_personali` (che invece richiede l'id dal client).
+- VALIDATION: `npm test` 1301/1301 (+1 test in `personalAgendaPersistence`); build:personal OK.
+- EXACT NEXT ACTION: PR #212 → merge (PO: "Mergia").
+
+---
+
+# Current task — Agenda Personal: slot come prima e pinch-to-zoom (2026-10-17)
+- OWNER: CLAUDE, branch `claude/poliedron-agenda-actions-kz6mmk`, da `master@55c80040` (PR #210 mergiata). PO verbatim: "Allora gli slot adesso sono troppo alti dobbiamo tornare a quelli di prima, aggiungiamo funzione di ingrandimenti con le dita, il pinch to zoom".
+- COSA: Personal torna all'altezza slot precedente (`max(24, availH/slot)·zoom`, tolto `PX_PER_MIN_MIN`); nuovo `personal/src/lib/pinchZoom.js`: due dita sulla griglia (Giorno/Settimana) ingrandiscono gli slot da 1× (come prima) a 4×, l'orario sotto le dita resta fermo, il fattore è ricordato sul dispositivo (localStorage, facoltativo). Un dito continua a cambiare giorno/settimana; un secondo dito riporta a posto le colonne già trascinate. Mese ("Ott 2026") invariato. Studio invariato.
+- VALIDATION: `npm test` 1303/1303 (+3 `tests/personalPinchZoom.test.mjs`); build e build:personal OK; `test:agenda:visual` Chromium (Studio pixel identico); reliability Chromium 3/3; prova pinch reale in Chromium 390×844 (tocchi CDP): 3×, minuto sotto le dita invariato, ricordato dopo ricarica, ritorno a 1×. WebKit in CI.
+- EXACT NEXT ACTION: CI della PR verde → "Mergia".
+
+---
+
+# Current task — Agenda Personal: mese su una riga e slot più alti (2026-10-17)
+- OWNER: CLAUDE, branch `claude/poliedron-agenda-actions-kz6mmk`, da `master@6c9a296` (PR #209 mergiata). PO verbatim (screenshot Personal, Settimana lavoro): "La scritta del mese deve essere adattata bene, così è spaginata, inoltre dobbiamo trovare una soluzione per gli appuntamenti corti, forse conviene aumentare un po' verticalmente la misura degli slot?"
+- COSA: Personal passa `shortMonth` a `DayStrip` → "Ott 2026" su una riga (Studio invariato: default false). Personal: almeno 1,3 px al minuto (39 px ogni 30 min, prima ~24) → un appuntamento di 30 min mostra orario e nome; lo zoom scala da lì.
+- TEST: `tests/visual/agenda.compare.mjs` — dopo il merge di #209 anche la baseline (master) mostra "09:00–10:30": il selettore della baseline accetta entrambi i formati (altrimenti ogni PR futura sull'agenda falliva). Nuovo test in `tests/personalAgenda.test.mjs`.
+- VALIDATION: `npm test` 1299/1299; build e build:personal OK; `test:agenda:visual` Chromium 10/10 (Studio pixel identico); reliability Chromium 3/3; WebKit in CI.
+- EXACT NEXT ACTION: CI della PR verde → "Mergia".
 
 ---
 
@@ -59,6 +94,12 @@
 - VALIDATION: Node 1,270/1,270; main and standalone Personal builds; comparative Chromium/WebKit mobile matrix, screenshots and pixel checks in `docs/validation/POL-VITA-010/`.
 - DATABASE/DEPLOYMENT: none. Immutable stable checkpoint preserved.
 - STATUS: WAITING_PRODUCT_OWNER — dedicated PR for review, no merge authorized.
+# Current task — App bloccata: pagina che non scorre dopo due finestre aperte (2026-10-17)
+- OWNER: CLAUDE, branch `claude/poliedron-agenda-actions-kz6mmk`, da `master@370bdaf`. PO verbatim: "Controlla perché si è frizzato il poliedron studio, si è ingrandito di colpo e non scrolla, ora l'ho riavviato, ma controlla cosa sia successo".
+- EVIDENZA: nessun registro errori lato app (solo ErrorBoundary locale): la sequenza esatta sul telefono non è ricostruibile. Difetto certo trovato: `Modal.jsx` salvava/ripristinava `body.style.overflow` per finestra; due finestre chiuse in ordine inverso lasciavano `overflow: hidden` → pagina bloccata fino al riavvio. Lo "zoom" non è riproducibile dal codice (viewport con maximum-scale=1); probabile pizzico/doppio tocco con pagina bloccata.
+- FIX: blocco dello scorrimento condiviso (contatore): pagina bloccata finché c'è almeno una finestra, sempre sbloccata dopo l'ultima. Test `tests/modalScrollLock.test.mjs`. `npm test` 1259/1259; `npm run build` OK.
+- IN SOSPESO (stesso branch, non ancora committato): POL-DATI-001 Cestino (migrazione scritta, UI e test da fare).
+- EXACT NEXT ACTION: "Mergia" per il fix; poi completare il cestino.
 
 ---
 

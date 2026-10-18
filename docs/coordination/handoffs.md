@@ -1,5 +1,13 @@
 # Handoffs
 
+## 2026-10-18 — CLAUDE — Personal: chat Poliedron a pagina intera + graffetta
+- La chat è la scheda `poliedron` (stato in `Archivio`, `CHAT_VUOTA`), helper puri in `personal/src/lib/chat.js`. Allegato = archiviazione normale + domanda sul documento: il modello non legge mai il file grezzo, solo il catalogo, e i clinici restano esclusi dallo script.
+- Variante non fatta: allegare senza archiviare (servirebbe una nuova azione in `Code.gs` e un `clasp push`, non disponibile in questa sessione).
+
+## 2026-10-17 — CLAUDE — Personal: slot come prima + pinch-to-zoom
+- PO: slot di #210 "troppo alti" → formula precedente; ingrandimento con due dita (`personal/src/lib/pinchZoom.js`, listener nativi `touchmove` non passivi solo con 2 tocchi, `gesturestart` bloccato per Safari). Range 1×–4×, ancoraggio dello scroll sul punto tra le dita, valore in localStorage.
+- Test: `tests/personalPinchZoom.test.mjs`, `tests/personalAgenda.test.mjs` aggiornato. Nessun database.
+
 ## 2026-10-17 — CLAUDE — PR #209 iphone-agenda rosso
 - Causa: la PR mostra nel blocco appuntamento "09:00–10:30" + nome completo su riga separata; `tests/visual/agenda.compare.mjs` cercava ancora "09:00 Esempio" anche in modalità Studio → timeout. Non è fixture né rendering mancante.
 - Test: Studio cerca il blocco `[data-appointment-id="10"]` con "Paziente Esempio" e clicca "09:00–10:30" (baseline invariata). Confronto pixel: l'interno dei blocchi appuntamento è l'unica nuova zona autorizzata; in cambio la geometria di ogni blocco (posizione/dimensione) è ora confrontata con l'originale.
@@ -3804,7 +3812,7 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - EXACT NEXT ACTION: aprire/revisionare PR, attendere approvazione PO prima di merge o deploy.
 
 
-## 2026-10-18 — Claude — POL-VITA-014 (Personal: cartelle in Documenti)
+## 2026-10-18 — Claude — POL-VITA-015 (Personal: cartelle in Documenti)
 - BRANCH: `claude/catalogazione-facile-latjs9` da `master@6c9a296f`.
 - COMPLETATO: cartelle per ente con periodo, contatti, etichette, note, promemoria, sintesi AI, bozza di risposta, rinomina/unione, togli/elimina; selezione multipla con Condividi più file e sposta in cartella.
 - DB: migrazione additiva applicata (`cartelle_ente`, `scadenze.cartella`, `v_cartelle`, `rinomina_cartella`); 8 documenti Kerdos con ente "Kerdos SPV".

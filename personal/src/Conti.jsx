@@ -2,14 +2,14 @@
 // bilancino del mese o dell'anno. I pagamenti segnati "pagato" diventano spese da soli.
 import { useEffect, useMemo, useState } from 'react';
 import { archivioDb } from './lib/supabasePersonal.js';
-import { pagamenti as caricaPagamenti } from './lib/archivio.js';
+import { pagamenti as caricaPagamenti, RICORRENZE } from './lib/archivio.js';
 import { euro } from './lib/coreArchivio.js';
 import {
   movimentiTra, salvaMovimento, eliminaMovimento, nuovaScadenza, bilancio, perMese, periodo, spostaPeriodo,
-  CATEGORIE_SPESA, CATEGORIE_INCASSO, importoNumero,
+  CATEGORIE_SPESA, CATEGORIE_INCASSO, importoNumero, CATEGORIE_PAGAMENTO, totaliPerCategoria,
 } from './lib/conti.js';
 import { Vuoto, Sezione, Gruppo, Segmenti, Conferma, RigaPagamento, oggiIso, dataBreve } from './ui.jsx';
-import { IconaIndietro, IconaFreccia, IconaCestino, IconaPiu, IconaFile } from './Icone.jsx';
+import { IconaIndietro, IconaFreccia, IconaCestino, IconaPiu, IconaFile, IconaFotocamera } from './Icone.jsx';
 
 const meseCorrente = () => oggiIso().slice(0, 7);
 const nomePeriodo = (tipo, rif) => {
@@ -103,7 +103,7 @@ export function VistaConti({ ctx }) {
   const [filtro, setFiltro] = useState('aperti');
 
   useEffect(() => {
-    // I promemoria delle cartelle senza importo non sono pagamenti (POL-VITA-014): restano in Agenda e Oggi.
+    // I promemoria delle cartelle senza importo non sono pagamenti (POL-VITA-015): restano in Agenda e Oggi.
     if (scheda === 'dapagare') { esegui(async () => setScadenze((await caricaPagamenti(archivioDb)).filter((s) => !(s.cartella && s.importo == null)))); return; }
     const { da, a } = periodo(tipo, rif);
     esegui(async () => {
@@ -162,6 +162,8 @@ function DaPagare({ tutti, filtro, setFiltro, apri, pagato }) {
   const tra30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
   const totale = aperti.reduce((t, s) => t + Number(s.importo || 0), 0);
   const scaduti = aperti.filter((s) => s.data < oggi);
+  const fissi = aperti.filter((s) => s.ricorrenza);
+  const perCategoria = totaliPerCategoria(aperti).filter((c) => c.totale > 0);
   const apriP = (s) => apri({ tipo: 'pagamento', s });
   const gruppo = (titolo, elenco) => {
     if (!elenco.length) return null;
@@ -178,19 +180,29 @@ function DaPagare({ tutti, filtro, setFiltro, apri, pagato }) {
         <div className="pp-tessera pp-tessera-forte"><span className="pp-tessera-numero">{euro(totale)}</span><span>da pagare</span></div>
         <div className="pp-tessera"><span className="pp-tessera-numero">{scaduti.length}</span><span>{scaduti.length === 1 ? 'pagamento scaduto' : 'pagamenti scaduti'}</span></div>
       </div>
-      <button className="pp-riga pp-riga-aggiungi pp-riga-sola" onClick={() => apri({ tipo: 'scadenza' })}><IconaPiu size={18} /><span>Aggiungi un pagamento da fare</span></button>
+      <div className="pp-azioni pp-azioni-due">
+        <button className="pp-bottone" onClick={() => apri({ tipo: 'carica', opzioni: { pagamento: true, descrizione: 'Bolletta / pagamento da fare' } })}><IconaFotocamera size={18} /> Carica bolletta</button>
+        <button className="pp-bottone pp-bottone-chiaro" onClick={() => apri({ tipo: 'scadenza' })}><IconaPiu size={18} /> Inserisci a mano</button>
+      </div>
+      <p className="pp-riga-meta pp-spiegazione">Fotografa o scegli il PDF di una bolletta, polizza o avviso: leggo importo e scadenza e lo metto qui. Per i pagamenti fissi (bollo, assicurazione, pulizie…) imposta "Si ripete": dopo ogni pagamento si ripropone da solo.</p>
+      {perCategoria.length > 0 && (
+        <Sezione titolo="Per tipo">
+          <Gruppo>{perCategoria.map((c) => <div key={c.categoria} className="pp-voce"><span>{c.categoria}</span><strong>{euro(c.totale)}</strong></div>)}</Gruppo>
+        </Sezione>
+      )}
       <Segmenti voci={[['aperti', 'Da pagare'], ['pagati', 'Pagati'], ['tutti', 'Tutti']]} attiva={filtro} onScegli={setFiltro} />
       {filtro === 'aperti' && (aperti.length ? [
         gruppo('Scaduti', scaduti),
         gruppo('Prossimi 30 giorni', aperti.filter((s) => s.data >= oggi && s.data <= tra30)),
         gruppo('Più avanti', aperti.filter((s) => s.data > tra30)),
-      ] : <Vuoto>Nessun pagamento da fare.</Vuoto>)}
+        fissi.length ? <p key="fissi" className="pp-riga-meta pp-nota-fondo">{fissi.length} {fissi.length === 1 ? 'pagamento fisso impostato' : 'pagamenti fissi impostati'}.</p> : null,
+      ] : <Vuoto>Nessun pagamento da fare. Carica una bolletta o inserisci un pagamento: le vecchie scadenze dei documenti degli anni passati restano nei loro documenti.</Vuoto>)}
       {filtro === 'pagati' && (tutti.some((s) => s.completata)
         ? <Gruppo>{[...tutti].filter((s) => s.completata).reverse().map((s) => <RigaPagamento key={s.id} s={s} onApri={apriP} />)}</Gruppo>
         : <Vuoto>Nessun pagamento segnato come pagato.</Vuoto>)}
       {filtro === 'tutti' && (tutti.length
         ? <Gruppo>{[...tutti].reverse().map((s) => <RigaPagamento key={s.id} s={s} onApri={apriP} onPagato={pagato} />)}</Gruppo>
-        : <Vuoto>Nessun pagamento in archivio.</Vuoto>)}
+        : <Vuoto>Nessun pagamento.</Vuoto>)}
     </>
   );
 }
@@ -252,18 +264,37 @@ export function PaginaMovimento({ m: iniziale, ctx, chiudi }) {
 
 /* ---------- pagamento da fare inserito a mano ---------- */
 export function PaginaNuovaScadenza({ ctx, chiudi }) {
-  const { esegui, aggiorna, mostra } = ctx;
-  const [s, setS] = useState({ data: oggiIso(), descrizione: '', importo: '' });
-  const salva = () => esegui(async () => { await nuovaScadenza(archivioDb, s); aggiorna(); mostra('Pagamento aggiunto'); chiudi(); });
+  const { esegui, aggiorna, mostra, apri } = ctx;
+  const [s, setS] = useState({ data: oggiIso(), descrizione: '', importo: '', categoria: '', ricorrenza: '' });
+  const salva = (allega) => esegui(async () => {
+    const r = await nuovaScadenza(archivioDb, s);
+    aggiorna(); mostra('Pagamento aggiunto'); chiudi();
+    if (allega) apri({ tipo: 'carica', opzioni: { pagamentoId: r.id, descrizione: s.descrizione } });
+  });
+  const valido = s.descrizione.trim() && s.data;
   return (
     <>
-      <label className="pp-campo"><span>Cosa devi pagare</span><input autoFocus value={s.descrizione} onChange={(e) => setS({ ...s, descrizione: e.target.value })} placeholder="Es. Rata assicurazione auto" /></label>
+      <label className="pp-campo"><span>Cosa devi pagare</span><input autoFocus value={s.descrizione} onChange={(e) => setS({ ...s, descrizione: e.target.value })} placeholder="Es. Bolletta luce, rata assicurazione auto" /></label>
       <div className="pp-due">
         <label className="pp-campo"><span>Entro il</span><input type="date" value={s.data} onChange={(e) => setS({ ...s, data: e.target.value })} /></label>
         <label className="pp-campo"><span>Importo (€)</span><input inputMode="decimal" value={s.importo} onChange={(e) => setS({ ...s, importo: e.target.value })} placeholder="facoltativo" /></label>
       </div>
-      <p className="pp-riga-meta">Compare in Da pagare, in Agenda e nella Home. Quando lo segni pagato diventa una spesa.</p>
-      <button className="pp-bottone pp-bottone-largo" disabled={!s.descrizione.trim() || !s.data} onClick={salva}>Aggiungi</button>
+      <div className="pp-due">
+        <label className="pp-campo"><span>Tipo</span>
+          <select className="pp-select" value={s.categoria} onChange={(e) => setS({ ...s, categoria: e.target.value })}>
+            <option value="">—</option>
+            {CATEGORIE_PAGAMENTO.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </label>
+        <label className="pp-campo"><span>Si ripete</span>
+          <select className="pp-select" value={s.ricorrenza} onChange={(e) => setS({ ...s, ricorrenza: e.target.value })}>
+            {RICORRENZE.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+          </select>
+        </label>
+      </div>
+      <p className="pp-riga-meta">Compare in Da pagare, in Agenda e nella Home. Quando lo segni pagato diventa una spesa{s.ricorrenza ? ' e si ripropone alla scadenza successiva' : ''}.</p>
+      <button className="pp-bottone pp-bottone-largo" disabled={!valido} onClick={() => salva(false)}>Aggiungi</button>
+      <button className="pp-bottone pp-bottone-chiaro pp-bottone-largo" disabled={!valido} onClick={() => salva(true)}><IconaFotocamera size={18} /> Aggiungi e allega foto o PDF</button>
     </>
   );
 }

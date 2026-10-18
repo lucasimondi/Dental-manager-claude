@@ -5,7 +5,7 @@
 // dal tocco, non dopo un download.
 import { anteprimaFile } from './archivio.js';
 
-const MAX_IN_MEMORIA = 12; // anche più documenti scelti insieme (POL-VITA-014)
+const MAX_IN_MEMORIA = 12; // anche più documenti scelti insieme (POL-VITA-015)
 const memoria = new Map(); // drive_file_id → Promise<{ nome, mime, dati }>
 
 export function preparaFile(driveFileId, token) {

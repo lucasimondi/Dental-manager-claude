@@ -4,7 +4,7 @@ import { capisciRichiesta, riepilogoDebito } from './coreArchivio.js';
 import { filtroSezione } from './impostazioni.js';
 
 export const CAMPI_DOC = 'id, titolo, riassunto, fascicolo, tipo_documento, data_documento, email_data, email_oggetto, email_mittente, importo, azione_richiesta, azione_descrizione, urgenza, drive_url, drive_file_id, nome_file_originale, mime_type, pratica_id, tag, gmail_message_id, creato_il, persona, categoria, ente, rilevanza';
-const CAMPI_SCADENZA = `id, data, descrizione, importo, completata, documento_id, pratica_id, cartella,
+const CAMPI_SCADENZA = `id, data, descrizione, importo, completata, documento_id, pratica_id, categoria, ricorrenza, storica, cartella,
   documento:documenti(id, titolo, drive_url, fascicolo), pratica:pratiche(id, titolo)`;
 
 const esito = ({ data, error }) => {
@@ -20,7 +20,7 @@ export async function cercaDocumenti(db, testo, fascicolo = null, limite = 50) {
 }
 
 export async function scadenzeAperte(db, entroGiorni = null) {
-  let q = db.from('scadenze').select(CAMPI_SCADENZA).eq('completata', false).order('data', { ascending: true });
+  let q = db.from('scadenze').select(CAMPI_SCADENZA).eq('completata', false).eq('storica', false).order('data', { ascending: true });
   if (entroGiorni != null) q = q.lte('data', traGiorni(entroGiorni));
   return esito(await q);
 }
@@ -173,9 +173,15 @@ export async function anteprimaFile({ token, driveFileId }, fetchImpl = fetch) {
   return r;
 }
 
-// Pagamenti: tutte le scadenze, con il documento e la pratica da cui derivano.
+// Pagamenti: solo quelli attuali (POL-VITA-014). Le scadenze ricavate da email di anni fa sono
+// "storiche": restano nel loro documento ma non compaiono tra i pagamenti da fare.
 export async function pagamenti(db) {
-  return esito(await db.from('scadenze').select(CAMPI_SCADENZA).order('data', { ascending: true }).limit(1000));
+  return esito(await db.from('scadenze').select(CAMPI_SCADENZA).eq('storica', false).order('data', { ascending: true }).limit(1000));
+}
+
+// Scadenze di un documento appena caricato (per collegarle a Da pagare).
+export async function scadenzeDelDocumento(db, documentoId) {
+  return esito(await db.from('scadenze').select(CAMPI_SCADENZA).eq('documento_id', documentoId).order('data', { ascending: true }));
 }
 
 export async function eliminaScadenza(db, id) {
@@ -211,12 +217,61 @@ export async function documentiPersonali(db) {
     .order('creato_il', { ascending: false }).limit(300));
 }
 
+// Pagamenti fissi: impostati una volta, si ripropongono dopo ogni pagamento.
+export const RICORRENZE = [['', 'Una volta'], ['mensile', 'Ogni mese'], ['bimestrale', 'Ogni 2 mesi'], ['trimestrale', 'Ogni 3 mesi'], ['semestrale', 'Ogni 6 mesi'], ['annuale', 'Ogni anno']];
+const MESI_RICORRENZA = { mensile: 1, bimestrale: 2, trimestrale: 3, semestrale: 6, annuale: 12 };
+
+// Prossima scadenza di un pagamento fisso: stesso giorno N mesi dopo (fine mese se il giorno manca).
+export function prossimaData(data, ricorrenza) {
+  const n = MESI_RICORRENZA[ricorrenza];
+  if (!n || !/^\d{4}-\d{2}-\d{2}$/.test(data || '')) return null;
+  const [a, m, g] = data.split('-').map(Number);
+  const totale = (m - 1) + n;
+  const anno = a + Math.floor(totale / 12), mese = (totale % 12) + 1;
+  const giorni = new Date(anno, mese, 0).getDate();
+  return `${anno}-${String(mese).padStart(2, '0')}-${String(Math.min(g, giorni)).padStart(2, '0')}`;
+}
+
+// Segnato pagato un pagamento fisso: crea il successivo (una volta sola, anche se si tocca due volte).
+export async function prossimoPagamentoFisso(db, s) {
+  const data = prossimaData(s.data, s.ricorrenza);
+  if (!data) return null;
+  const gia = esito(await db.from('scadenze').select('id, data').eq('descrizione', s.descrizione).eq('data', data).eq('storica', false).limit(1));
+  if (gia.length) return gia[0];
+  return esito(await db.from('scadenze').insert({
+    data, descrizione: s.descrizione, importo: s.importo ?? null, categoria: s.categoria || null, ricorrenza: s.ricorrenza, completata: false,
+  }).select('id, data').single());
+}
+
+// Bolletta, polizza, bollo… caricati da Conti: la lettura del documento (OCR + AI nello script) ha già
+// creato le sue scadenze; qui si segna la categoria. Se non ne ha trovate, si crea il pagamento con
+// titolo, importo e data letti, da controllare. Collega anche un documento a un pagamento esistente.
+export async function pagamentoDaDocumento(db, documentoId, { categoria = null, pagamentoId = null } = {}) {
+  if (pagamentoId) {
+    return [esito(await db.from('scadenze').update({ documento_id: documentoId }).eq('id', pagamentoId).select(CAMPI_SCADENZA).single())];
+  }
+  const trovate = esito(await db.from('scadenze').select(CAMPI_SCADENZA).eq('documento_id', documentoId).order('data', { ascending: true }));
+  if (trovate.length) {
+    if (!categoria) return trovate;
+    return esito(await db.from('scadenze').update({ categoria, storica: false }).eq('documento_id', documentoId).select(CAMPI_SCADENZA));
+  }
+  const doc = esito(await db.from('documenti').select('id, titolo, importo, data_documento, email_data').eq('id', documentoId).single());
+  const data = doc.data_documento || String(doc.email_data || '').slice(0, 10) || new Date().toISOString().slice(0, 10);
+  return [esito(await db.from('scadenze').insert({
+    documento_id: documentoId, data, descrizione: doc.titolo || 'Pagamento', importo: doc.importo ?? null, categoria, completata: false,
+  }).select(CAMPI_SCADENZA).single())];
+}
+
 export async function aggiornaScadenza(db, id, campi) {
   const riga = {};
   if ('descrizione' in campi) riga.descrizione = String(campi.descrizione || '').trim() || 'Scadenza';
   if ('data' in campi && /^\d{4}-\d{2}-\d{2}$/.test(campi.data)) riga.data = campi.data;
   if ('importo' in campi) riga.importo = campi.importo === '' || campi.importo == null ? null : Number(String(campi.importo).replace(',', '.'));
-  return esito(await db.from('scadenze').update(riga).eq('id', id).select('id, data, descrizione, importo, completata').single());
+  if ('categoria' in campi) riga.categoria = String(campi.categoria || '').trim() || null;
+  if ('ricorrenza' in campi) riga.ricorrenza = RICORRENZE.some(([k]) => k === campi.ricorrenza) ? campi.ricorrenza : null;
+  if ('documento_id' in campi) riga.documento_id = campi.documento_id || null;
+  if ('storica' in campi) riga.storica = !!campi.storica;
+  return esito(await db.from('scadenze').update(riga).eq('id', id).select('id, data, descrizione, importo, completata, categoria, ricorrenza, documento_id, storica').single());
 }
 
 // POL-VITA-005 — chat Poliedron: l'AI (Claude, nello script) risponde usando strumenti di sola

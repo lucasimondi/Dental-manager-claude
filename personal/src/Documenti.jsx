@@ -1,5 +1,5 @@
 // POL-VITA-007 — Documenti: ricerca immediata con filtri (categoria, ente, anno, tipo, persona),
-// cartelle per ente (POL-VITA-014, vista principale), categorie, pratiche; le cose poco utili (pubblicità, foto, catene) restano
+// cartelle per ente (POL-VITA-015, vista principale), categorie, pratiche; le cose poco utili (pubblicità, foto, catene) restano
 // nascoste finché non le chiedi. Selezione multipla (tieni premuto o "Seleziona") con azioni di
 // massa: sposta, importanza, ente, persona, Personali, elimina.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
