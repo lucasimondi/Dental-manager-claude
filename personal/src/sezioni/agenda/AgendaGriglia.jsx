@@ -1,12 +1,12 @@
-import { layoutAppointments } from '../../shared/agenda/geometry.js';
-import { euro } from './lib/coreArchivio.js';
+import { layoutAppointments } from '../../../../shared/agenda/geometry.js';
+import { euro } from '../../lib/coreArchivio.js';
 // POL-VITA-010: Personal adapter; original presentation is owned by shared/agenda.
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, AppointmentBlock, EventBlock, useSlotHeight, AgendaSwitch, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState } from '../../shared/agenda/AgendaPresentation.jsx';
-import { getVisibleWeekDays } from '../../shared/agenda/visibleDays.js';
-import { useSwipeAgenda } from './lib/swipeAgenda.js';
-import { usePinchZoom, scrollAncorato } from './lib/pinchZoom.js';
-import { daIso, piuGiorni, oggi, coloreEvento, nomeEtichetta, elementiDelGiorno, giorniSettimana } from './lib/agenda.js';
+import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, AppointmentBlock, EventBlock, useSlotHeight, AgendaSwitch, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState } from '../../../../shared/agenda/AgendaPresentation.jsx';
+import { getVisibleWeekDays } from '../../../../shared/agenda/visibleDays.js';
+import { useSwipeAgenda } from '../../lib/swipeAgenda.js';
+import { usePinchZoom, scrollAncorato } from '../../lib/pinchZoom.js';
+import { daIso, piuGiorni, oggi, coloreEvento, nomeEtichetta, elementiDelGiorno, giorniSettimana } from '../../lib/agenda.js';
 export { ViewPicker };
 
 const GIORNI_NASCOSTI_PERSONAL = [];

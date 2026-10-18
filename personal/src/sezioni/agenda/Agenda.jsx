@@ -1,21 +1,21 @@
-import { readAgendaLocation } from '../../shared/agenda/navigation.js';
+import { readAgendaLocation } from '../../../../shared/agenda/navigation.js';
 // POL-VITA-004/007 — Agenda di Poliedron Personal: è l'agenda dello studio (stessi dati).
 // Tutte le viste usano i componenti originali condivisi in shared/agenda.
 // POL-VITA-013: da Personal si creano, modificano ed eliminano anche gli appuntamenti dello studio.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { archivioDb } from './lib/supabasePersonal.js';
-import { pagamenti as caricaPagamenti } from './lib/archivio.js';
-import { euro } from './lib/coreArchivio.js';
+import { archivioDb } from '../../lib/supabasePersonal.js';
+import { pagamenti as caricaPagamenti } from '../../lib/archivio.js';
+import { euro } from '../../lib/coreArchivio.js';
 import {
   studioDb, sessioneStudio, entraStudio, appuntamentiTra, impegniTra, salvaImpegno, salvaImpegni, eliminaImpegno, impegniDellaSerie, aggiornaImpegni, eliminaImpegni, tipiAppuntamento, impostazioniAgenda,
   cercaPazienti, salvaAppuntamento, eliminaAppuntamento,
-} from './lib/studio.js';
+} from '../../lib/studio.js';
 import {
   daIso, oggi, minuti, ora, giorniSettimana, grigliaMese, elementiDelGiorno, generaDateRipetizione, piuGiorni,
   coloreEvento, nomeEtichetta, COLORE_SCADENZA, nuovoIdRipetizione,
   AMBITI_SERIE, occorrenzeDaToccare, applicaAOccorrenza, giorniTra, STATI_APPUNTAMENTO,
-} from './lib/agenda.js';
-import { IconaFreccia, IconaCestino } from './Icone.jsx';
+} from '../../lib/agenda.js';
+import { IconaFreccia, IconaCestino } from '../../Icone.jsx';
 import { GrigliaPoliedra } from './AgendaGriglia.jsx';
 
 const nomeGiorno = (s, forma = 'long') => daIso(s).toLocaleDateString('it-IT', { weekday: forma, day: 'numeric', month: 'long' });

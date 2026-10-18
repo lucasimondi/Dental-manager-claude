@@ -32,11 +32,11 @@ test('foto: la catalogazione tocca solo foto e video, con campi ripuliti', async
 });
 
 test('foto: area raggiungibile da Documenti e dal +, migrazione solo additiva', () => {
-  assert.match(readFileSync('personal/src/Documenti.jsx', 'utf8'), /apri\(\{ tipo: 'fotovideo' \}\)/);
+  assert.match(readFileSync('personal/src/sezioni/documenti/Documenti.jsx', 'utf8'), /apri\(\{ tipo: 'fotovideo' \}\)/);
   assert.match(readFileSync('personal/src/Aggiungi.jsx', 'utf8'), /\['fotovideo', 'Foto o video'/);
-  const app = readFileSync('personal/src/App.jsx', 'utf8');
-  assert.match(app, /case 'fotovideo': return <VistaFoto/);
-  assert.match(app, /case 'foto': return <PaginaFoto/);
+  const sezione = readFileSync('personal/src/sezioni/foto/index.jsx', 'utf8');
+  assert.match(sezione, /fotovideo: \{ titolo: 'Foto e video', render: \(p, \{ ctx \}\) => <VistaFoto/);
+  assert.match(sezione, /foto: \{ titolo: 'Foto', render: \(p, \{ ctx \}\) => <PaginaFoto/);
   const sql = readFileSync('supabase/archivio/migrations/20261018100000_pol_vita_015_foto_video.sql', 'utf8').split('\n').filter((r) => !r.startsWith('--')).join('\n');
   assert.match(sql, /add column if not exists album text/);
   assert.doesNotMatch(sql, /\bdrop\b|delete from/i);

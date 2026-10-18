@@ -3,18 +3,18 @@
 // nascoste finché non le chiedi. Selezione multipla (tieni premuto o "Seleziona") con azioni di
 // massa: sposta, importanza, ente, persona, Personali, elimina.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { archivioDb } from './lib/supabasePersonal.js';
+import { archivioDb } from '../../lib/supabasePersonal.js';
 import {
   cercaArchivio, enti as caricaEnti, aggiornaDocumenti, eliminaDocumenti, portafoglioDocumenti, documentiSezione, cestinaSuDrive,
   pratiche as caricaPratiche, eCaricato,
-} from './lib/archivio.js';
-import { euro } from './lib/coreArchivio.js';
-import { caricaCartelle } from './lib/cartelle.js';
-import { preparaFile, comeFile, condividi } from './lib/condividi.js';
+} from '../../lib/archivio.js';
+import { euro } from '../../lib/coreArchivio.js';
+import { caricaCartelle } from '../../lib/cartelle.js';
+import { preparaFile, comeFile, condividi } from '../../lib/condividi.js';
 import { VistaCartelle } from './Cartelle.jsx';
-import { colore, dataBreve, titoloDoc, Vuoto, Sezione, Gruppo, Chips, Segmenti, ConfermaElimina, ElencoPratiche, tokenSessione } from './ui.jsx';
-import { Miniatura } from './Miniatura.jsx';
-import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaStella, IconaCestino, IconaCondividi, IconaFoto } from './Icone.jsx';
+import { colore, dataBreve, titoloDoc, Vuoto, Sezione, Gruppo, Chips, Segmenti, ConfermaElimina, ElencoPratiche, tokenSessione } from '../../ui.jsx';
+import { Miniatura } from '../../Miniatura.jsx';
+import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaStella, IconaCestino, IconaCondividi, IconaFoto } from '../../Icone.jsx';
 
 const RILEVANZA = { alta: 'Importante', normale: 'Normale', bassa: 'Poco utile' };
 const MAX_CONDIVISI = 10;
