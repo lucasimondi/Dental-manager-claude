@@ -46,7 +46,16 @@ test('the manual "+ Nuova attività" modal lets the user pick a categoria, wired
 test('the Home "Attività" widget shows a visible category badge inline on each row that has one, text truncated to one line', () => {
   assert.match(dashboard, /const todoCat = todo\.categoria \? TODO_CATEGORIE\[todo\.categoria\] : null;/);
   assert.match(dashboard, /overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'/);
-  assert.match(dashboard, /todoCat && <span[\s\S]{0,120}<Ic n=\{todoCat\.icona\}[\s\S]{0,40}<Bdg ch=\{todoCat\.label\} co=\{todoCat\.colore\} \/><\/span>/);
+  assert.match(dashboard, /todoCat && <span[\s\S]{0,120}<Ic n=\{todoCat\.icona\}[\s\S]{0,40}<Bdg ch=\{todoCat\.label\} co=\{todoCat\.colore\} style=\{\{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis'[^}]*\}\} \/><\/span>/);
+});
+
+// Product Owner (foto): badge lunghi in maiuscolo ("Appuntamento di ieri non
+// segnato") coprivano il titolo e finivano sotto WhatsApp/✕. Ora titolo e
+// categoria stanno su due righe e il badge si accorcia dentro la riga.
+test('the Home "Attività" row stacks title and category so the badge never overlaps the action buttons', () => {
+  assert.match(dashboard, /onClick=\{apriTodo\}[^>]*style=\{\{ flex: 1, minWidth: 0, overflow: 'hidden'/);
+  assert.match(dashboard, /display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3 \}\}>\s*<span style=\{\{ maxWidth: '100%'/);
+  assert.doesNotMatch(dashboard, /todoCat && <span style=\{\{ flexShrink: 0/);
 });
 
 // Product Owner: "metti anche il widgets cliccabile che porti alla pagina

@@ -1,10 +1,11 @@
 import React from 'react';
 import { C } from '../../lib/utils';
 
-export const Bdg = ({ ch, co = C.pri }) => (
+export const Bdg = ({ ch, co = C.pri, style }) => (
   <span style={{
     background: co + '20', color: co, fontSize: 11, fontWeight: 700, padding: '2px 8px',
     borderRadius: 20, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap',
+    ...style,
   }}>
     {ch}
   </span>
