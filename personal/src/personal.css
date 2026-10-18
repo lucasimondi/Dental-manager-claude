@@ -786,3 +786,8 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-promemoria { gap: 8px; }
 .pp-promemoria > strong { display: inline-flex; align-items: center; gap: 6px; }
 .pp-promemoria .pp-campo { margin: 0; }
+
+/* POL-VITA-021 — avviso con Annulla: gli automatismi si possono togliere subito. */
+.pp-toast-azione { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: min(calc(100% - 32px), 440px); border-radius: 16px; padding: 8px 8px 8px 16px; }
+.pp-toast-azione button { flex-shrink: 0; padding: 8px 14px; border-radius: 999px; font-weight: 750; color: var(--pp-inchiostro); background: var(--pp-sfondo); }
+.pp-promemoria-fatto { flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
