@@ -36,6 +36,8 @@ Tempo di installazione: circa 30 minuti.
    | `SUPABASE_URL` | URL del progetto Supabase |
    | `SUPABASE_KEY` | secret key di Supabase |
    | `ANTHROPIC_API_KEY` | chiave di Claude |
+   | `GEMINI_API_KEY` | (facoltativo) chiave di Google AI Studio: analisi con Gemini quando Claude è in pausa |
+   | `GEMINI_MODELLO` | (facoltativo) modello Gemini, predefinito `gemini-flash-latest` |
    | `DASHBOARD_URL` | (facoltativo) indirizzo della dashboard |
    | `EMAIL_DIGEST` | (facoltativo) a chi mandare il riepilogo |
 
@@ -74,6 +76,7 @@ Quando ha finito, apri **Pratiche** nella dashboard e usa **Archivia le pratiche
 
 - **Thread in errore**: hanno l'etichetta **Archivio/Errore**. Per rimetterli in coda esegui `riprovaErrori`. Gli errori sono registrati nella tabella `log_elaborazione`.
 - **Limite di spesa di Claude raggiunto**: l'importazione non si ferma. I nuovi documenti entrano con un catalogo provvisorio (tag "da analizzare") e vengono analizzati davvero quando Claude torna disponibile, senza che tu debba fare nulla.
+- **Gemini di riserva** (dal 2026-10-18): se c'è `GEMINI_API_KEY`, mentre Claude è in pausa i documenti (nuovi e "da analizzare") vengono analizzati con Gemini, con lo stesso catalogo. Mai i documenti dei pazienti; chat e bozze restano a Claude, e anche il riordino aspetta Claude. Con il piano gratuito Google può usare i contenuti inviati per migliorare i suoi prodotti (scelta di Luca); quando la quota del giorno finisce Gemini si ferma 3 ore e nel frattempo si cataloga a regole. Per toglierlo basta cancellare la proprietà `GEMINI_API_KEY`.
 - **Trovare un file da Mail o WhatsApp**: Allega → File → Google Drive → Archivio personale → la categoria o `Persone`. Per sistemare subito tutto l'archivio esegui `sistemaDrive` (altrimenti lo script lo fa un po' a ogni giro).
 - **Categoria sbagliata**: dal dettaglio del documento nella dashboard usa **Sposta**.
 - **Modello**: si cambia in `CONFIG.MODELLO`. Quello predefinito è economico e adatto allo smistamento.
