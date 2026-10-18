@@ -281,12 +281,12 @@ export async function chiediPoliedron(richiesta, fetchImpl = fetch) {
 }
 
 // Risposta e proposte di pulizia in massa (PO 2026-10-18): le proposte si eseguono solo dopo la conferma di Luca.
-export async function chiediPoliedronCompleto({ token, domanda, documentoId, storia }, fetchImpl = fetch) {
+export async function chiediPoliedronCompleto({ token, domanda, documentoId, storia, agenda }, fetchImpl = fetch) {
   if (!token) throw new Error('Sessione scaduta: esci e rientra.');
   const res = await fetchImpl(URL_CARICAMENTO, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ token, azione: 'chiedi', domanda, documento_id: documentoId || null, storia: (storia || []).slice(-6) }),
+    body: JSON.stringify({ token, azione: 'chiedi', domanda, documento_id: documentoId || null, storia: (storia || []).slice(-6), ...(agenda ? { agenda } : {}) }),
   });
   let r;
   try { r = await res.json(); } catch { throw new Error('Assistente non raggiungibile.'); }
