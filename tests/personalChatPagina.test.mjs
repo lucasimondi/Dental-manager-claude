@@ -42,18 +42,26 @@ test('chat: il file archiviato diventa il documento della conversazione', () => 
 });
 
 test('chat: Poliedron è una scheda a pagina intera con la graffetta', () => {
-  const app = readFileSync(new URL('../personal/src/App.jsx', import.meta.url), 'utf8');
+  const leggi = (f) => readFileSync(new URL(`../personal/src/${f}`, import.meta.url), 'utf8');
+  const app = leggi('App.jsx');
+  const sezione = leggi('sezioni/poliedron/index.jsx');
+  const vista = leggi('sezioni/poliedron/Poliedron.jsx');
+  const documento = leggi('sezioni/documenti/Documento.jsx');
   const css = readFileSync(new URL('../personal/src/personal.css', import.meta.url), 'utf8');
-  assert.doesNotMatch(app, /PaginaChat|tipo: 'chat'/, 'non più una pagina sovrapposta');
+  for (const src of [app, sezione, vista, documento]) assert.doesNotMatch(src, /PaginaChat|tipo: 'chat'/, 'non più una pagina sovrapposta');
   assert.match(app, /onClick=\{\(\) => vai\('poliedron'\)\} aria-label="Apri Poliedron"/);
-  assert.match(app, /\{vista === 'poliedron' && <VistaPoliedron ctx=\{ctx\} chat=\{chat\} setChat=\{setChat\} \/>\}/);
+  assert.match(sezione, /id: 'poliedron', nome: 'Poliedron', Icona: IconaChat, Vista: VistaPoliedron/);
+  assert.match(app, /<Vista ctx=\{ctx\} \/>/);
+  assert.match(app, /apriChat, chat, setChat,/);
+  assert.match(vista, /const \{ apri, aggiorna, chat, setChat \} = ctx;/);
   assert.match(app, /const \[chat, setChat\] = useState\(CHAT_VUOTA\);/, 'la conversazione resta cambiando scheda');
-  assert.match(app, /ctx\.apriChat\(\{ id: doc\.id, titolo: titoloDoc\(doc\) \}\)/);
-  assert.match(app, /aria-label="Allega una foto, un PDF o un file"/);
-  assert.match(app, /type="file" accept=\{ACCETTA_ALLEGATI\}/);
+  assert.match(documento, /ctx\.apriChat\(\{ id: doc\.id, titolo: titoloDoc\(doc\) \}\)/);
+  assert.match(vista, /aria-label="Allega una foto, un PDF o un file"/);
+  assert.match(vista, /type="file" accept=\{ACCETTA_ALLEGATI\}/);
   // Il file passa dal caricamento normale: stesse regole dell'archivio (duplicati, mai clinici al modello).
-  assert.match(app, /caricaDocumento\(\{ token: await tokenSessione\(\), \.\.\.\(await preparaCaricamento\(allegato\)\) \}\)/);
-  assert.match(app, /vista !== 'poliedron' && <button className="pp-fab"/);
+  assert.match(vista, /caricaDocumento\(\{ token: await tokenSessione\(\), \.\.\.\(await preparaCaricamento\(allegato\)\) \}\)/);
+  assert.match(sezione, /senzaPiu: true/);
+  assert.match(app, /!attuale\.senzaPiu && <button className="pp-fab"/);
   assert.match(css, /\.pp-app:has\(\.pp-contenuto-chat\) \{ height: 100dvh;/);
   assert.match(css, /\.pp-chat-lista \{ flex: 1; min-height: 0; overflow-y: auto;/);
 });

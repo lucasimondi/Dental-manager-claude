@@ -78,7 +78,7 @@ test('ripetizione: recurrence_id è un uuid valido (colonna uuid nel database de
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
   assert.match(nuovoIdRipetizione(), uuid);
   assert.notEqual(nuovoIdRipetizione(), nuovoIdRipetizione());
-  const personal = fs.readFileSync('personal/src/Agenda.jsx', 'utf8');
+  const personal = fs.readFileSync('personal/src/sezioni/agenda/Agenda.jsx', 'utf8');
   const studio = fs.readFileSync('src/components/Agenda.jsx', 'utf8');
   assert.match(personal, /recurrenceId = date\.length > 1 \? nuovoIdRipetizione\(\)/);
   assert.match(studio, /recurrenceId = occorrenze\.length > 1 \? crypto\.randomUUID\(\)/);
@@ -96,14 +96,14 @@ test('evento ripetuto: modifica ed eliminazione chiedono solo questo, successivi
   // Spostando l'evento aperto di un giorno, gli altri della serie si spostano dello stesso giorno.
   const mod = applicaAOccorrenza(serie[2], { titolo: 'Bimbe dai nonni', data_inizio: '2026-11-01', data_fine: '2026-11-01' }, 1);
   assert.deepEqual([mod.id, mod.titolo, mod.data_inizio, mod.data_fine, mod.recurrence_id], [3, 'Bimbe dai nonni', '2026-11-15', '2026-11-15', 'r']);
-  const ui = fs.readFileSync('personal/src/Agenda.jsx', 'utf8');
+  const ui = fs.readFileSync('personal/src/sezioni/agenda/Agenda.jsx', 'utf8');
   assert.match(ui, /if \(inSerie && !ambito\) \{ setChiediSerie\('salva'\)/);
   assert.match(ui, /inSerie \? setChiediSerie\('elimina'\)/);
 });
 
 test('agenda Personal: settimana completa, scelta per nascondere il weekend e Settimana lavoro', async () => {
   const fs = await import('node:fs');
-  const griglia = fs.readFileSync('personal/src/AgendaGriglia.jsx', 'utf8');
+  const griglia = fs.readFileSync('personal/src/sezioni/agenda/AgendaGriglia.jsx', 'utf8');
   assert.match(griglia, /const GIORNI_NASCOSTI_PERSONAL = \[\];/);
   assert.match(griglia, /const weekly = view === 'settimana' \|\| view === 'settimana_lavoro';/);
   assert.match(griglia, /view === 'settimana_lavoro' \|\| weekendsHidden \? \[0, 6\] : GIORNI_NASCOSTI_PERSONAL/);
@@ -135,7 +135,7 @@ test('POL-VITA-013: eventi nascosti restano in Personal e spariscono solo nello 
 // PO 2026-10-17: "La scritta del mese deve essere adattata bene, così è spaginata …
 // forse conviene aumentare un po' verticalmente la misura degli slot".
 test('Personal agenda: short month on one line, original slot height, Studio untouched', () => {
-  const griglia = readFileSync(new URL('../personal/src/AgendaGriglia.jsx', import.meta.url), 'utf8');
+  const griglia = readFileSync(new URL('../personal/src/sezioni/agenda/AgendaGriglia.jsx', import.meta.url), 'utf8');
   const shared = readFileSync(new URL('../shared/agenda/AgendaPresentation.jsx', import.meta.url), 'utf8');
   assert.match(griglia, /viewPicker=\{pick\} floatingFooter=\{fasciaGiorno\} shortMonth \/>/);
   // PO 2026-10-17: slot di nuovo come prima; più spazio solo col pinch (1 = come prima).

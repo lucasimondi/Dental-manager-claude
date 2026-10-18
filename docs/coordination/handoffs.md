@@ -3810,3 +3810,11 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - RISKS / LIMITS: non provato su iPhone fisico; il toggle weekend è intenzionalmente locale alla sessione UI e non modifica `studio_info.agenda_settings`.
 - ROLLBACK: revert del commit; nessun dato o migration da ripristinare.
 - EXACT NEXT ACTION: aprire/revisionare PR, attendere approvazione PO prima di merge o deploy.
+
+## 2026-10-18 — Claude — POL-VITA-016 Personal a sezioni
+- BRANCH: `claude/document-layout-management-vaktuz` da `master@4f9cdc3`.
+- COMPLETATO: codice di Personal diviso per sezione in `personal/src/sezioni/` con registro (`sezioni/index.js`); `App.jsx` è solo la cornice. Comportamento invariato.
+- DB / SCRIPT / STUDIO / SHARED: nessuna modifica.
+- TEST: 1316/1316; confronto testuale di 16 schermate master↔branch in Chromium identico; agenda visual e reliability Chromium OK.
+- COME AGGIUNGERE UNA SEZIONE: cartella `sezioni/<nome>/` con `index.jsx` (`export const <nome> = { id, nome, Icona, Vista?, pagine }`), import nel registro e, se va nel dock, in `DOCK`.
+- PROSSIMO PASSO: review della PR, merge solo su "Mergia" del PO; poi eventuale parte 2 (aspetto a sezioni) su richiesta.
