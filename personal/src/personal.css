@@ -581,7 +581,7 @@ i.entrata { background: var(--pp-verde); } i.uscita { background: var(--pp-rosso
   backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
 }
 .pp-barra-selezione-testa { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-.pp-barra-selezione-azioni { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.pp-barra-selezione-azioni { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; }
 .pp-barra-selezione-azioni button { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 2px; border-radius: 10px; font-size: 12px; font-weight: 650; color: var(--pp-blu); }
 .pp-barra-selezione-azioni button:disabled { opacity: .4; }
 .pp-barra-selezione-azioni button.pp-rosso { color: var(--pp-rosso); }
@@ -666,3 +666,31 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; d
 .pp-appuntamento-anteprima { border-style: solid; background: color-mix(in srgb, var(--c) 12%, var(--pp-superficie)); }
 .pp-paziente-scelto { border-radius: 12px; border: 1px solid var(--pp-linea); }
 .pp-trovati { margin-top: 8px; max-height: 260px; overflow-y: auto; }
+
+/* POL-VITA-014 — cartelle in Documenti */
+.pp-pannello { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: var(--pp-raggio); background: var(--pp-superficie); box-shadow: var(--pp-ombra); color: var(--pp-inchiostro); }
+.pp-pannello + .pp-pannello { margin-top: 12px; }
+.pp-cartella-ente { min-height: 128px; }
+.pp-cartella-ente .pp-cartella-numero { line-height: 1.35; }
+.pp-cartella-etichette { display: flex; flex-wrap: wrap; gap: 4px; }
+.pp-etichetta-mini { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; color: var(--pp-blu); background: color-mix(in srgb, var(--pp-blu) 12%, transparent); }
+.pp-cartella-etichette-grandi .pp-etichetta-mini { padding: 5px 11px; font-size: 13px; min-height: 30px; }
+.pp-etichetta-aggiungi { color: var(--pp-grigio); background: transparent; border: 1.5px dashed var(--pp-linea); }
+.pp-cartella-testa { position: relative; overflow: hidden; }
+.pp-cartella-testa::before { content: ''; position: absolute; inset: 0 0 auto; height: 4px; background: var(--c); }
+.pp-cartella-testa-riga { display: flex; gap: 12px; align-items: center; }
+.pp-cartella-titolo { margin: 0; font-size: 21px; line-height: 1.2; }
+.pp-cartella-note { margin: 0; white-space: pre-wrap; font-size: 14px; color: var(--pp-grigio); }
+.pp-cartella-azioni { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin-top: 4px; }
+.pp-cartella-azioni button { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 2px; border-radius: 12px; font-size: 11px; white-space: nowrap; letter-spacing: -.01em; font-weight: 650; color: var(--pp-blu); background: var(--pp-sfondo); min-height: 56px; }
+.pp-cartella-azioni button.pp-rosso { color: var(--pp-rosso); }
+.pp-cartella-azioni button:disabled { opacity: .5; }
+.pp-sintesi p { margin: 0; line-height: 1.5; }
+.pp-sintesi ul { margin: 0; padding-left: 20px; line-height: 1.5; }
+.pp-sintesi-promemoria { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.pp-form-cartella .pp-campo { margin-top: 4px; }
+.pp-form-azioni { display: flex; gap: 8px; margin-top: 8px; }
+.pp-form-azioni .pp-bottone { flex: 1; }
+.pp-form-cartella .pp-bottone small { font-weight: 500; opacity: .8; }
+.pp-testo-lungo { margin: 0; white-space: pre-wrap; line-height: 1.5; }
+.pp-pannello a.pp-bottone { text-align: center; text-decoration: none; }

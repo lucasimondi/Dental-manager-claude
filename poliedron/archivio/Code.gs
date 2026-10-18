@@ -769,6 +769,8 @@ function doPost(e) {
     if (req.azione === 'chiedi') return rispostaJson_(chiediPoliedron_(req));
     if (req.azione === 'miniature') return rispostaJson_(miniature_(req.ids));
     if (req.azione === 'cestina') return rispostaJson_(cestinaFile_(req.ids));
+    if (req.azione === 'cartella') return rispostaJson_(analizzaCartella_(req));
+    if (req.azione === 'bozza') return rispostaJson_(bozzaRisposta_(req));
     if (!req.dati || !req.nome) return rispostaJson_({ ok: false, errore: 'File mancante' });
 
     const nome = pulisciNome_(String(req.nome)) || 'documento';
@@ -1321,6 +1323,98 @@ function claudeMessaggi_(body) {
     throw new Error('API Claude ' + code + ': ' + res.getContentText().slice(0, 300));
   }
   throw new Error('Assistente occupato, riprova tra poco.');
+}
+
+/* =====================================================================
+ * CARTELLE (POL-VITA-014): sintesi di una cartella (= un ente) e bozza di risposta.
+ * Al modello vanno solo i dati già in archivio (titoli, riassunti, date, importi, mittenti) e, per
+ * la bozza, il testo dell'ultima email della cartella. Mai i documenti clinici dei pazienti; la
+ * bozza resta tra le bozze di Gmail: non parte nulla a nome di Luca.
+ * ===================================================================*/
+const SCHEMA_CARTELLA = {
+  type: 'object', additionalProperties: false, required: ['sintesi', 'punti', 'da_fare', 'promemoria'],
+  properties: {
+    sintesi: { type: 'string' },
+    punti: { type: 'array', items: { type: 'string' } },
+    da_fare: { type: 'array', items: { type: 'string' } },
+    promemoria: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['data', 'descrizione'],
+      properties: { data: { type: 'string' }, descrizione: { type: 'string' } } } },
+  },
+};
+const enteValido_ = (x) => String(x || '').trim().slice(0, 120);
+
+function documentiCartella_(ente, campi, limite) {
+  return sb_('documenti?select=' + campi + '&ente=eq.' + enc_(ente) + '&fascicolo=neq.clinico_pazienti&order=email_data.desc.nullslast&limit=' + limite);
+}
+
+function analizzaCartella_(req) {
+  const ente = enteValido_(req.ente);
+  if (!ente) return { ok: false, errore: 'Cartella mancante' };
+  const docs = documentiCartella_(ente, 'id,titolo,tipo_documento,data_documento,email_data,email_mittente,email_oggetto,importo,riassunto,azione_richiesta,azione_descrizione', 80);
+  if (!docs.length) return { ok: false, errore: 'Cartella vuota' };
+  const oggi = Utilities.formatDate(new Date(), CONFIG.FUSO, 'yyyy-MM-dd');
+  const system = [
+    'Sei l\'archivista personale di Luca Simondi (odontoiatra, studi a Cuneo e Neive). Oggi è ' + oggi + '.',
+    'Ricevi i documenti di una cartella (tutti dallo stesso ente) e la riassumi per Luca, in italiano, usando SOLO i dati ricevuti.',
+    'sintesi: 3-5 frasi su chi è l\'ente, che rapporto c\'è con Luca, cosa è successo nel tempo e a che punto è.',
+    'punti: fino a 6 fatti chiave con date e importi (es. "Fattura n. 12 del 3/3/2024: 84,30 €").',
+    'da_fare: cose ancora aperte per Luca (pagamenti, risposte, rinnovi); vuoto se non ce ne sono.',
+    'promemoria: solo date future reali che compaiono nei documenti (scadenze, rinnovi), formato YYYY-MM-DD; vuoto se non ce ne sono.',
+    'Non inventare nulla.',
+  ].join('\n');
+  const righe = docs.map(function (d) {
+    return JSON.stringify({ titolo: d.titolo, tipo: d.tipo_documento, data: d.data_documento || String(d.email_data || '').slice(0, 10),
+      da: d.email_mittente, oggetto: d.email_oggetto, importo: d.importo, riassunto: String(d.riassunto || '').slice(0, 400),
+      da_fare: d.azione_richiesta ? (d.azione_descrizione || true) : undefined });
+  }).join('\n');
+  let r;
+  try {
+    r = claudeMessaggi_({ model: CONFIG.MODELLO, max_tokens: 1500, system: system,
+      output_config: { format: { type: 'json_schema', schema: SCHEMA_CARTELLA } },
+      messages: [{ role: 'user', content: 'Cartella: ' + ente + ' (' + docs.length + ' documenti)\n' + righe }] });
+  } catch (e) { return { ok: false, errore: String(e && e.message || e).slice(0, 300) }; }
+  const analisi = parseJson_((r.content || []).filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join(''));
+  const pulito = {
+    sintesi: String(analisi.sintesi || '').slice(0, 2000),
+    punti: (analisi.punti || []).map(String).slice(0, 8),
+    da_fare: (analisi.da_fare || []).map(String).slice(0, 8),
+    promemoria: (analisi.promemoria || []).filter(function (p) { return dataValida_(p.data) && p.data >= oggi; }).slice(0, 6),
+  };
+  sb_('cartelle_ente?on_conflict=ente', { method: 'post', prefer: 'resolution=merge-duplicates',
+    body: { ente: ente, sintesi: JSON.stringify(pulito), sintesi_il: new Date().toISOString(), aggiornata_il: new Date().toISOString() } });
+  return { ok: true, analisi: pulito };
+}
+
+function bozzaRisposta_(req) {
+  const ente = enteValido_(req.ente);
+  if (!ente) return { ok: false, errore: 'Cartella mancante' };
+  const docs = documentiCartella_(ente, 'gmail_message_id,email_oggetto,email_mittente,email_data', 30)
+    .filter(function (d) { return d.gmail_message_id && String(d.gmail_message_id).indexOf('caricato:') !== 0; });
+  if (!docs.length) return { ok: false, errore: 'In questa cartella non c\'è un\'email a cui rispondere.' };
+  let msg;
+  try { msg = GmailApp.getMessageById(docs[0].gmail_message_id); } catch (e) { return { ok: false, errore: 'Email non trovata in Gmail.' }; }
+  const meta = { oggetto: msg.getSubject() || '', mittente: msg.getFrom() || '', destinatari: [msg.getTo(), msg.getCc()].filter(Boolean).join(', ') };
+  if (eClinico_(meta, '')) return { ok: false, errore: 'Email clinica: la bozza va scritta dall\'app dello studio.' };
+  let sintesi = '';
+  try { const c = sb_('cartelle_ente?select=sintesi&ente=eq.' + enc_(ente)); sintesi = c[0] && c[0].sintesi ? String(c[0].sintesi).slice(0, 2500) : ''; } catch (e) {}
+  const system = [
+    'Scrivi la bozza di risposta di Luca Simondi (odontoiatra) all\'email ricevuta. Solo il testo della risposta, in italiano,',
+    'cortese e concreto, senza oggetto e senza citare l\'email originale. Firma: "Luca Simondi".',
+    'Non inventare fatti, importi o date: dove serve un dato che non hai scrivi [da completare].',
+  ].join(' ');
+  const contenuto = [
+    'Cartella: ' + ente, sintesi ? 'Sintesi della cartella: ' + sintesi : '',
+    'Email a cui rispondere — Da: ' + meta.mittente + ' — Oggetto: ' + meta.oggetto,
+    String(msg.getPlainBody() || '').replace(/\s+\n/g, '\n').slice(0, 4000),
+    req.istruzioni ? 'Indicazioni di Luca per la risposta: ' + String(req.istruzioni).slice(0, 500) : '',
+  ].filter(Boolean).join('\n\n');
+  let r;
+  try { r = claudeMessaggi_({ model: CONFIG.MODELLO, max_tokens: 1200, system: system, messages: [{ role: 'user', content: contenuto }] }); }
+  catch (e) { return { ok: false, errore: String(e && e.message || e).slice(0, 300) }; }
+  const testo = (r.content || []).filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('').trim();
+  if (!testo) return { ok: false, errore: 'Bozza vuota, riprova.' };
+  msg.createDraftReply(testo); // solo bozza: Luca la rilegge e la invia lui da Gmail
+  return { ok: true, testo: testo, a: meta.mittente, oggetto: 'Re: ' + meta.oggetto, link: 'https://mail.google.com/mail/u/0/#drafts' };
 }
 
 function utenteSupabase_(token) {

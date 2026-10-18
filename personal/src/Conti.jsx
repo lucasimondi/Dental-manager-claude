@@ -103,7 +103,8 @@ export function VistaConti({ ctx }) {
   const [filtro, setFiltro] = useState('aperti');
 
   useEffect(() => {
-    if (scheda === 'dapagare') { esegui(async () => setScadenze(await caricaPagamenti(archivioDb))); return; }
+    // I promemoria delle cartelle senza importo non sono pagamenti (POL-VITA-014): restano in Agenda e Oggi.
+    if (scheda === 'dapagare') { esegui(async () => setScadenze((await caricaPagamenti(archivioDb)).filter((s) => !(s.cartella && s.importo == null)))); return; }
     const { da, a } = periodo(tipo, rif);
     esegui(async () => {
       setMovimenti(await movimentiTra(archivioDb, da, a));

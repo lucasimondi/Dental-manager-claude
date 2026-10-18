@@ -1,3 +1,15 @@
+# Current task — POL-VITA-014 Personal: cartelle in Documenti (2026-10-18)
+- OWNER: CLAUDE. BRANCH: `claude/catalogazione-facile-latjs9` ripartito da `master@6c9a296f` (PR #206 e #209 mergiate).
+- RICHIESTA PO (sintesi del verbatim): documenti mischiati → in elenco e a icone vanno in cartelle organizzate (es. cartella Kerdos con i suoi 8 documenti), apribili, cancellabili, modificabili; documenti selezionabili per inviarli, condividerli, cancellarli; info del periodo; analisi del contenuto e sintesi anche con AI; contatti da cui arriva; bozza di risposta; etichette; termini, date e promemoria ("che andranno dove?"); consigli.
+- FATTO: Documenti si apre su "Cartelle" (una per ente) a icone o in elenco, con ricerca e filtro per etichetta; "Documenti senza cartella". Pagina cartella: periodo, numero, categoria, totale, etichette, note, Sintesi AI (script, azione `cartella`, salvata in `cartelle_ente`), Rispondi (bozza in Gmail con `createDraftReply`, nulla inviato), Promemoria (scadenza con `cartella`: Agenda, Oggi, riepilogo delle 7; proposta .ics per il Calendario del telefono; esclusi dai pagamenti di Conti se senza importo), Modifica (rinomina/unisci, note), Elimina (togli solo la cartella oppure elimina documenti con scelta Drive), contatti dai mittenti, documenti selezionabili. Selezione multipla ovunque: Condividi (più file insieme col foglio del sistema, max 10, preparati prima del tocco; mai i clinici), Cartella (sposta o nuova), Categoria, Altro, Elimina. I documenti Kerdos (8, prima divisi tra due mittenti) riuniti nella cartella "Kerdos SPV" come da esempio del PO.
+- DATABASE: migrazione additiva `20261018090000_pol_vita_014_cartelle.sql` applicata (tabella `cartelle_ente` con RLS proprietario, colonna `scadenze.cartella`, vista `v_cartelle` security_invoker senza clinici, funzione `rinomina_cartella` security invoker). Dati: `documenti.ente = 'Kerdos SPV'` sugli 8 documenti che citano Kerdos.
+- DEPLOY: script versione 9 (web app @9). Frontend al merge.
+- VALIDATION: `npm test` 1311/1311 (Node 20; +14 test `personalCartelle`); build OK; Chromium 390×844 con dati finti: cartelle a icone ed elenco, apertura Kerdos, contatti, selezione e condivisione di 2 file, promemoria salvato con la cartella, bozza, AI ferma con messaggio chiaro, nessun errore, nessun overflow.
+- LIMITI: con il limite di spesa Claude (fino al 2026-11-01) Sintesi AI e Rispondi mostrano l'avviso; molte cartelle dei documenti importati senza Claude hanno il nome del mittente (si sistemano con l'analisi completa o unendole da Modifica).
+- STATO: in revisione (PR).
+
+---
+
 # Current task — POL-VITA-013 Archivio: importazione senza Claude e cartelle di Drive per categoria e persona (2026-10-17)
 - OWNER: CLAUDE. BRANCH: `claude/catalogazione-facile-latjs9` ripartito da `master@dd058380` (PR #204 mergiata).
 - RICHIESTA PO (verbatim): "Sistema archivio , non.Ce altro modo per importare ?!" — risposta alla proposta di ordinare la cartella Drive per persona e categoria; l'importazione era ferma al lotto 2017-10 per il limite di spesa dell'API Claude (accesso di nuovo dal 2026-11-01).
