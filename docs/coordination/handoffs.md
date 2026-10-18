@@ -1,5 +1,9 @@
 # Handoffs
 
+## 2026-10-18 — CLAUDE — Personal: chat Poliedron a pagina intera + graffetta
+- La chat è la scheda `poliedron` (stato in `Archivio`, `CHAT_VUOTA`), helper puri in `personal/src/lib/chat.js`. Allegato = archiviazione normale + domanda sul documento: il modello non legge mai il file grezzo, solo il catalogo, e i clinici restano esclusi dallo script.
+- Variante non fatta: allegare senza archiviare (servirebbe una nuova azione in `Code.gs` e un `clasp push`, non disponibile in questa sessione).
+
 ## 2026-10-17 — CLAUDE — Personal: slot come prima + pinch-to-zoom
 - PO: slot di #210 "troppo alti" → formula precedente; ingrandimento con due dita (`personal/src/lib/pinchZoom.js`, listener nativi `touchmove` non passivi solo con 2 tocchi, `gesturestart` bloccato per Safari). Range 1×–4×, ancoraggio dello scroll sul punto tra le dita, valore in localStorage.
 - Test: `tests/personalPinchZoom.test.mjs`, `tests/personalAgenda.test.mjs` aggiornato. Nessun database.

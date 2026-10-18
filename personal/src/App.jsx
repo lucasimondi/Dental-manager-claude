@@ -21,6 +21,7 @@ import { sessioneStudio, esciStudio, appuntamentiTra, impegniTra, studioDb } fro
 import { oggi as oggiAgenda } from './lib/agenda.js';
 import { euro } from './lib/coreArchivio.js';
 import { preparaFile as preparaCaricamento } from './lib/file.js';
+import { ACCETTA_ALLEGATI, CHAT_VUOTA, dimensioneFile, domandaDa, esitoAllegato, puoInviare, storiaChat } from './lib/chat.js';
 import { preparaFile } from './lib/condividi.js';
 import { IMPOSTAZIONI_PREDEFINITE, leggiImpostazioni, salvaImpostazioni, categoriaDi, personaDi, slug } from './lib/impostazioni.js';
 import {
@@ -32,7 +33,7 @@ import { Miniatura } from './Miniatura.jsx';
 import {
   IconaOggi, IconaDocumenti, IconaPortafoglio, IconaPratiche, IconaPiu, IconaCerca, IconaChiudi, IconaIndietro, IconaFreccia,
   IconaApri, IconaEmail, IconaCalendario, IconaFotocamera, IconaFile, IconaStella, IconaCestino, IconaEsci, IconaEuro, IconaImpostazioni, IconaChat, IconaInvia,
-  IconaScansiona,
+  IconaScansiona, IconaGraffetta,
 } from './Icone.jsx';
 
 impostaToken(tokenSessione);
@@ -387,7 +388,7 @@ function PaginaDocumento({ id, ctx, chiudi }) {
         </button>
       </div>
       {doc.fascicolo !== 'clinico_pazienti' && (
-        <button className="pp-chiedi-doc" onClick={() => apri({ tipo: 'chat', documentoId: doc.id, titoloDoc: titoloDoc(doc) })}>
+        <button className="pp-chiedi-doc" onClick={() => ctx.apriChat({ id: doc.id, titolo: titoloDoc(doc) })}>
           <IconaChat size={18} /> Chiedi a Poliedron su questo documento
         </button>
       )}
@@ -893,80 +894,130 @@ function PaginaSezione({ id, ctx, chiudi }) {
 
 const SUGGERIMENTI_CHAT = ['Quanto devo pagare questo mese?', 'Quali bollette Edison ho pagato quest\'anno?', 'Dov\'è la carta d\'identità di Giulia?', 'Che pratiche ho aperte?'];
 
-function PaginaChat({ documentoId, titoloDoc: titolo, ctx }) {
-  const { apri } = ctx;
-  const [modo, setModo] = useState('ai');
-  const [messaggi, setMessaggi] = useState([]);
+// Poliedron come scheda a pagina intera (PO 2026-10-17): la conversazione resta passando da una
+// scheda all'altra; la graffetta allega una foto, un PDF o un file, che viene archiviato e letto.
+function VistaPoliedron({ ctx, chat, setChat }) {
+  const { apri, aggiorna } = ctx;
+  const { modo, messaggi, documento } = chat;
   const [testo, setTesto] = useState('');
-  const [attesa, setAttesa] = useState(false);
-  const fondo = useRef(null);
-  useEffect(() => { fondo.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, [messaggi, attesa]);
+  const [file, setFile] = useState(null);
+  const [attesa, setAttesa] = useState(null);
+  const lista = useRef(null);
+  const selettore = useRef(null);
+  useEffect(() => { const el = lista.current; if (el) el.scrollTop = el.scrollHeight; }, [messaggi.length, attesa]);
+  const aggiungi = (m) => setChat((c) => ({ ...c, messaggi: [...c.messaggi, m] }));
 
-  const invia = async (domanda) => {
-    const q = domanda.trim();
-    if (!q || attesa) return;
-    setTesto('');
-    const storia = messaggi.filter((m) => m.testo).map((m) => ({ ruolo: m.ruolo, testo: m.testo }));
-    setMessaggi((m) => [...m, { ruolo: 'utente', testo: q }]);
-    setAttesa(true);
-    let nuovo;
-    if (modo === 'ai') {
+  const invia = async (scritto) => {
+    const allegato = file;
+    if (!puoInviare({ testo: scritto, file: allegato, attesa })) return;
+    const q = scritto.trim();
+    setTesto(''); setFile(null);
+    const storia = storiaChat(messaggi);
+    aggiungi({ ruolo: 'utente', testo: q, allegato: allegato ? { nome: allegato.name, dimensione: dimensioneFile(allegato.size) } : null });
+    let documentoId = documento?.id || null;
+    if (allegato) {
+      setAttesa('Archivio il file e lo leggo…');
       try {
-        nuovo = { ruolo: 'assistente', testo: await chiediPoliedron({ token: await tokenSessione(), domanda: q, documentoId, storia }), fonte: 'ai' };
+        const r = await caricaDocumento({ token: await tokenSessione(), ...(await preparaCaricamento(allegato)) });
+        aggiorna();
+        const esito = esitoAllegato(r, allegato.name);
+        documentoId = esito.documento?.id || documentoId;
+        setChat((c) => ({ ...c, documento: esito.documento || c.documento, messaggi: [...c.messaggi, esito.messaggio] }));
       } catch (e) {
-        nuovo = { ruolo: 'assistente', risposta: await rispondi(archivioDb, q).catch(() => null), fonte: 'core', nota: `${e.message} Ti rispondo con la ricerca di Poliedron.` };
+        aggiungi({ ruolo: 'assistente', fonte: 'archivio', nota: `File non archiviato: ${e.message}` });
+        setAttesa(null);
+        return;
       }
-    } else {
+    }
+    const domanda = domandaDa(q, Boolean(allegato));
+    let nuovo = null;
+    if (modo === 'ai') {
+      setAttesa('Cerco nell\'archivio…');
+      try {
+        nuovo = { ruolo: 'assistente', testo: await chiediPoliedron({ token: await tokenSessione(), domanda, documentoId, storia }), fonte: 'ai' };
+      } catch (e) {
+        nuovo = q
+          ? { ruolo: 'assistente', risposta: await rispondi(archivioDb, q).catch(() => null), fonte: 'core', nota: `${e.message} Ti rispondo con la ricerca di Poliedron.` }
+          : { ruolo: 'assistente', fonte: 'core', nota: e.message };
+      }
+    } else if (q) {
+      setAttesa('Cerco…');
       nuovo = { ruolo: 'assistente', risposta: await rispondi(archivioDb, q).catch(() => null), fonte: 'core' };
     }
-    setMessaggi((m) => [...m, nuovo]);
-    setAttesa(false);
+    if (nuovo) aggiungi(nuovo);
+    setAttesa(null);
   };
+
+  const scegliFile = (e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) setFile(f); };
+  const etichettaFonte = (m) => (m.fonte === 'ai' ? 'Poliedron AI' : m.fonte === 'archivio' ? 'Poliedron · archivio' : 'Poliedron · ricerca');
 
   return (
     <div className="pp-chat">
-      <Segmenti voci={[['ai', 'Poliedron AI'], ['core', 'Solo ricerca']]} attiva={modo} onScegli={setModo} />
-      {titolo && <p className="pp-chat-contesto"><IconaFile size={14} /> Sul documento: <strong>{titolo}</strong></p>}
-      {!messaggi.length && (
-        <div className="pp-chat-vuota">
-          <p>{modo === 'ai' ? 'Chiedimi qualsiasi cosa sull\'archivio: documenti, pagamenti, pratiche, persone. Rispondo solo con quello che trovo.' : 'Ricerca senza AI: fornitori, bollette, scadenze, "quanto devo a…", pratiche.'}</p>
-          <div className="pp-suggerimenti">
-            {(titolo ? ['Riassumimi questo documento', 'Cosa devo fare?', 'Ci sono scadenze?'] : SUGGERIMENTI_CHAT).map((x) => <button key={x} className="pp-chip" onClick={() => invia(x)}>{x}</button>)}
+      <div className="pp-chat-modo"><Segmenti voci={[['ai', 'Poliedron AI'], ['core', 'Solo ricerca']]} attiva={modo} onScegli={(m) => setChat((c) => ({ ...c, modo: m }))} /></div>
+      <div className="pp-chat-lista" ref={lista}>
+        {!messaggi.length && (
+          <div className="pp-chat-vuota">
+            <p>{modo === 'ai' ? 'Chiedimi qualsiasi cosa sull\'archivio: documenti, pagamenti, pratiche, persone. Con la graffetta mi mandi una foto o un PDF: lo archivio e ti dico cos\'è.' : 'Ricerca senza AI: fornitori, bollette, scadenze, "quanto devo a…", pratiche.'}</p>
+            <div className="pp-suggerimenti">
+              {(documento ? ['Riassumimi questo documento', 'Cosa devo fare?', 'Ci sono scadenze?'] : SUGGERIMENTI_CHAT).map((x) => <button key={x} className="pp-chip" onClick={() => invia(x)}>{x}</button>)}
+            </div>
           </div>
-        </div>
-      )}
-      {messaggi.map((m, i) => (
-        <div key={i} className={`pp-messaggio-chat ${m.ruolo}`}>
-          {m.ruolo === 'utente' ? m.testo : (
-            <>
-              {m.nota && <p className="pp-riga-meta">{m.nota}</p>}
-              {m.testo && <div className="pp-chat-testo">{partiRisposta(m.testo).map((p, j) => (p.doc
-                ? <button key={j} className="pp-chat-link" onClick={() => apri({ tipo: 'documento', id: p.doc })}><IconaFile size={14} />{p.titolo}</button>
-                : <span key={j}>{p.testo}</span>))}</div>}
-              {m.risposta && <Risultato risposta={m.risposta} ctx={ctx} />}
-              {!m.testo && !m.risposta && <p>Nessun risultato.</p>}
-              <span className="pp-chat-fonte">{m.fonte === 'ai' ? 'Poliedron AI' : 'Poliedron · ricerca'}</span>
-            </>
-          )}
-        </div>
-      ))}
-      {attesa && <div className="pp-messaggio-chat assistente"><span className="pp-rotella" /> {modo === 'ai' ? 'Cerco nell\'archivio…' : 'Cerco…'}</div>}
-      <div ref={fondo} />
-      <form className="pp-chat-barra" onSubmit={(e) => { e.preventDefault(); invia(testo); }}>
-        <input value={testo} onChange={(e) => setTesto(e.target.value)} placeholder="Scrivi a Poliedron…" enterKeyHint="send" aria-label="Domanda a Poliedron" />
-        <button type="submit" className="pp-chat-invia" disabled={!testo.trim() || attesa} aria-label="Invia"><IconaInvia size={20} /></button>
-      </form>
+        )}
+        {messaggi.map((m, i) => (
+          <div key={i} className={`pp-messaggio-chat ${m.ruolo}`}>
+            {m.ruolo === 'utente' ? (
+              <>
+                {m.allegato && <span className="pp-chat-allegato"><IconaGraffetta size={15} /> {m.allegato.nome} · {m.allegato.dimensione}</span>}
+                {m.testo}
+              </>
+            ) : (
+              <>
+                {m.nota && <p className="pp-riga-meta">{m.nota}</p>}
+                {m.archiviato && <p className="pp-chat-testo">{m.duplicato ? 'Era già in archivio: ' : 'Archiviato: '}
+                  <button className="pp-chat-link" onClick={() => apri({ tipo: 'documento', id: m.archiviato.id })}><IconaFile size={14} />{m.archiviato.titolo}</button></p>}
+                {m.testo && <div className="pp-chat-testo">{partiRisposta(m.testo).map((p, j) => (p.doc
+                  ? <button key={j} className="pp-chat-link" onClick={() => apri({ tipo: 'documento', id: p.doc })}><IconaFile size={14} />{p.titolo}</button>
+                  : <span key={j}>{p.testo}</span>))}</div>}
+                {m.risposta && <Risultato risposta={m.risposta} ctx={ctx} />}
+                {m.fonte === 'core' && !m.risposta && !m.nota && <p>Nessun risultato.</p>}
+                <span className="pp-chat-fonte">{etichettaFonte(m)}</span>
+              </>
+            )}
+          </div>
+        ))}
+        {attesa && <div className="pp-messaggio-chat assistente"><span className="pp-rotella" /> {attesa}</div>}
+      </div>
+      <div className="pp-chat-composer">
+        {(documento || file) && (
+          <div className="pp-chat-contesti">
+            {documento && <span className="pp-chat-contesto">
+              <button onClick={() => apri({ tipo: 'documento', id: documento.id })}><IconaFile size={14} /> Sul documento: <strong>{documento.titolo}</strong></button>
+              <button className="pp-chat-togli" onClick={() => setChat((c) => ({ ...c, documento: null }))} aria-label="Non parlare più di questo documento"><IconaChiudi size={14} /></button>
+            </span>}
+            {file && <span className="pp-chat-contesto pp-chat-file">
+              <span><IconaGraffetta size={14} /> <strong>{file.name}</strong> · {dimensioneFile(file.size)}</span>
+              <button className="pp-chat-togli" onClick={() => setFile(null)} aria-label="Togli l'allegato"><IconaChiudi size={14} /></button>
+            </span>}
+          </div>
+        )}
+        <form className="pp-chat-barra" onSubmit={(e) => { e.preventDefault(); invia(testo); }}>
+          <input ref={selettore} type="file" accept={ACCETTA_ALLEGATI} hidden onChange={scegliFile} />
+          <button type="button" className="pp-chat-allega" onClick={() => selettore.current?.click()} disabled={Boolean(attesa)} aria-label="Allega una foto, un PDF o un file"><IconaGraffetta size={21} /></button>
+          <input value={testo} onChange={(e) => setTesto(e.target.value)} placeholder={file ? 'Domanda (facoltativa)…' : 'Scrivi a Poliedron…'} enterKeyHint="send" aria-label="Domanda a Poliedron" />
+          <button type="submit" className="pp-chat-invia" disabled={!puoInviare({ testo, file, attesa })} aria-label="Invia"><IconaInvia size={20} /></button>
+        </form>
+      </div>
     </div>
   );
 }
 
 const TITOLI_PAGINE = {
-  chat: 'Poliedron', evento: 'Evento', appuntamento: 'Appuntamento', documento: 'Documento', pagamento: 'Pagamento', pratica: 'Pratica',
+  evento: 'Evento', appuntamento: 'Appuntamento', documento: 'Documento', pagamento: 'Pagamento', pratica: 'Pratica',
   carica: 'Archivia un documento', impostazioni: 'Impostazioni', sezione: 'Sezione', scansione: 'Scansiona', scadenza: 'Pagamento da fare',
 };
 const titoloPagina = (p) => p.titolo || (p.tipo === 'movimento' ? (p.m?.id ? 'Movimento' : p.m?.tipo === 'entrata' ? 'Nuovo incasso' : 'Nuova spesa') : TITOLI_PAGINE[p.tipo]);
 // Pagine con un modulo o con la propria barra in basso: niente tasto di chiusura in basso.
-const PAGINE_MODULO = new Set(['chat', 'carica', 'scansione', 'movimento', 'scadenza', 'evento', 'sezione', 'impostazioni']);
+const PAGINE_MODULO = new Set(['carica', 'scansione', 'movimento', 'scadenza', 'evento', 'sezione', 'impostazioni']);
 
 /* ---------- app ---------- */
 const VISTE = [
@@ -976,8 +1027,8 @@ const VISTE = [
   ['conti', 'Conti', IconaEuro],
   ['personali', 'Personali', IconaPortafoglio],
 ];
-const TITOLI = { documenti: 'Documenti', agenda: 'Agenda', conti: 'Conti', personali: 'Personali' };
-const vistaIniziale = () => { if (readAgendaLocation().requested) return 'agenda'; const v = leggiVista() === 'pagamenti' ? 'conti' : leggiVista(); return VISTE.some(([k]) => k === v) ? v : 'oggi'; };
+const TITOLI = { documenti: 'Documenti', agenda: 'Agenda', conti: 'Conti', personali: 'Personali', poliedron: 'Poliedron' };
+const vistaIniziale = () => { if (readAgendaLocation().requested) return 'agenda'; const v = leggiVista() === 'pagamenti' ? 'conti' : leggiVista(); return VISTE.some(([k]) => k === v) || v === 'poliedron' ? v : 'oggi'; };
 
 function Archivio({ email }) {
   const [vista, setVistaStato] = useState(vistaIniziale);
@@ -989,6 +1040,7 @@ function Archivio({ email }) {
   const [versione, setVersione] = useState(0);
   const [fascicoli, setFascicoli] = useState([]);
   const [foglio, setFoglio] = useState(false);
+  const [chat, setChat] = useState(CHAT_VUOTA);
   const [impostazioni, setImpostazioni] = useState(() => JSON.parse(JSON.stringify(IMPOSTAZIONI_PREDEFINITE)));
   const contatore = useRef(0);
   const ingressi = { fotocamera: useRef(null), libreria: useRef(null), file: useRef(null) };
@@ -1032,8 +1084,14 @@ function Archivio({ email }) {
   }, [apri]); // eslint-disable-line react-hooks/exhaustive-deps
   const fileScelto = (e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) apri({ tipo: 'carica', file: f }); };
 
+  // Dal documento: la chat di Poliedron riparte su quel documento (la conversazione resta).
+  const apriChat = useCallback((documento = null) => {
+    if (documento) setChat((c) => ({ ...c, documento }));
+    vai('poliedron');
+  }, [vai]);
+
   const ctx = {
-    esegui, aggiorna, mostra, versione, impostazioni, salvaImp, fascicoli, apri, vai, aggiungi, sotto,
+    esegui, aggiorna, mostra, versione, impostazioni, salvaImp, fascicoli, apri, vai, aggiungi, sotto, apriChat,
     pagato: (s) => esegui(async () => {
       await segnaScadenza(archivioDb, s.id, true);
       const spesa = await spesaDaScadenza(archivioDb, s).catch(() => null);
@@ -1062,7 +1120,6 @@ function Archivio({ email }) {
       case 'sezione': return <PaginaSezione id={p.id} ctx={ctx} chiudi={indietro} />;
       case 'evento': return <PaginaEvento evento={p.evento} cosa={p.cosa} ctx={ctx} chiudi={indietro} />;
       case 'appuntamento': return <PaginaAppuntamento a={p.a} ctx={ctx} chiudi={indietro} />;
-      case 'chat': return <PaginaChat documentoId={p.documentoId} titoloDoc={p.titoloDoc} ctx={ctx} />;
       default: return null;
     }
   };
@@ -1075,17 +1132,19 @@ function Archivio({ email }) {
       <header className={`pp-testata${vista === 'agenda' && !pagine.length ? ' pp-testata-agenda' : ''}`}>
         {vista !== 'agenda' && <h1>{vista === 'oggi' ? saluto() : TITOLI[vista]}</h1>}
         {!pagine.length && !foglio && <span className="pp-testata-azioni">
+          {vista === 'poliedron' && chat.messaggi.length > 0 && <button className="pp-testo-link pp-nuova-chat" onClick={() => setChat((c) => ({ ...CHAT_VUOTA, modo: c.modo }))}>Nuova chat</button>}
           <button className="pp-icona-bottone" onClick={() => apri({ tipo: 'impostazioni' })} aria-label="Impostazioni"><IconaImpostazioni size={20} /></button>
         </span>}
       </header>
       {occupato > 0 && <div className="pp-barra-caricamento" aria-hidden="true" />}
       {errore && !pagine.length && <p className="pp-messaggio pp-messaggio-errore" role="alert">{errore}</p>}
-      <main className={`pp-contenuto${vista === 'agenda' ? ' pp-contenuto-agenda' : ''}`} key={`${vista}-${sotto || ''}`}>
+      <main className={`pp-contenuto${vista === 'agenda' ? ' pp-contenuto-agenda' : ''}${vista === 'poliedron' ? ' pp-contenuto-chat' : ''}`} key={`${vista}-${sotto || ''}`}>
         {vista === 'oggi' && <VistaOggi ctx={ctx} />}
         {vista === 'documenti' && <VistaDocumenti ctx={ctx} />}
         {vista === 'agenda' && <VistaAgenda ctx={ctx} />}
         {vista === 'conti' && <VistaConti ctx={ctx} />}
         {vista === 'personali' && <VistaPersonali ctx={ctx} />}
+        {vista === 'poliedron' && <VistaPoliedron ctx={ctx} chat={chat} setChat={setChat} />}
       </main>
       {pagine.map((p, i) => (
         <Pagina key={p.chiave} titolo={titoloPagina(p)} visibile={i === pagine.length - 1} onIndietro={indietro} senzaChiudi={PAGINE_MODULO.has(p.tipo)}>
@@ -1099,9 +1158,9 @@ function Archivio({ email }) {
             <Icona size={22} /><span>{l}</span>
           </button>
         ))}
-        <button className={`pp-scheda pp-scheda-poliedron${pagine.at(-1)?.tipo === 'chat' ? ' attiva' : ''}`} onClick={() => apri({ tipo: 'chat' })} aria-label="Apri Poliedron"><IconaChat size={23} /><span>Poliedron</span></button>
+        <button className={`pp-scheda pp-scheda-poliedron${vista === 'poliedron' && !pagine.length ? ' attiva' : ''}${vista === 'poliedron' && pagine.length ? ' sotto' : ''}`} onClick={() => vai('poliedron')} aria-label="Apri Poliedron" aria-current={vista === 'poliedron' ? 'page' : undefined}><IconaChat size={23} /><span>Poliedron</span></button>
       </nav>
-      {!pagine.length && <button className="pp-fab" onClick={() => setFoglio(true)} aria-label="Aggiungi"><IconaPiu size={26} /></button>}
+      {!pagine.length && vista !== 'poliedron' && <button className="pp-fab" onClick={() => setFoglio(true)} aria-label="Aggiungi"><IconaPiu size={26} /></button>}
       {foglio && <FoglioAggiungi onScegli={aggiungi} onChiudi={() => setFoglio(false)} />}
       {toast && <div className="pp-toast" role="status">{toast}</div>}
     </div>
