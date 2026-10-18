@@ -1,8 +1,9 @@
 // Conti — scheda di un pagamento da fare: pagato / da pagare, modifica, documento di origine.
 import { useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { segnaScadenza, eliminaScadenza, prossimoPagamentoFisso, RICORRENZE, aggiornaScadenza } from '../../lib/archivio.js';
-import { spesaDaScadenza, annullaSpesaDaScadenza, CATEGORIE_PAGAMENTO } from '../../lib/conti.js';
+import { RICORRENZE, aggiornaScadenza } from '../../lib/archivio.js';
+import { CATEGORIE_PAGAMENTO } from '../../lib/conti.js';
+import { segnaPagato, annullaPagato, rimettiDaPagare, eliminaPagamento, interrompiRicorrenza } from '../../lib/automatismi.js';
 import { euro } from '../../lib/coreArchivio.js';
 import { colore, dataBreve, oggiIso, quando, Sezione, Gruppo, Conferma } from '../../ui.jsx';
 import { IconaPratiche, IconaPiu, IconaFreccia, IconaCalendario, IconaFile, IconaCestino } from '../../Icone.jsx';
@@ -17,13 +18,21 @@ export function PaginaPagamento({ s: iniziale, ctx, chiudi }) {
     const r = await aggiornaScadenza(archivioDb, s.id, modifica);
     setS({ ...s, ...r }); setModifica(null); aggiorna(); mostra('Pagamento aggiornato');
   });
+  // POL-VITA-021 — tutto ciò che il Pagato crea da solo (spesa, prossimo fisso) si può annullare.
   const cambiaStato = (completata) => esegui(async () => {
-    await segnaScadenza(archivioDb, s.id, completata);
-    // Pagato → spesa nei Conti; di nuovo da pagare → la spesa automatica si toglie.
-    const spesa = completata ? await spesaDaScadenza(archivioDb, s).catch(() => null) : (await annullaSpesaDaScadenza(archivioDb, s.id).catch(() => null), null);
-    const prossimo = completata && s.ricorrenza ? await prossimoPagamentoFisso(archivioDb, s).catch(() => null) : null;
-    setS({ ...s, completata }); aggiorna();
-    mostra([completata ? (spesa ? 'Pagato e registrato tra le spese' : 'Segnato come pagato') : 'Segnato da pagare', prossimo ? `prossimo il ${dataBreve(prossimo.data)}` : null].filter(Boolean).join(' · '));
+    if (completata) {
+      const r = await segnaPagato(archivioDb, s);
+      setS({ ...s, completata: true }); aggiorna();
+      mostra(r.messaggio, { etichetta: 'Annulla', fai: async () => { const m = await annullaPagato(archivioDb, r.annulla); setS((x) => ({ ...x, completata: false })); aggiorna(); return m; } });
+    } else {
+      const m = await rimettiDaPagare(archivioDb, s);
+      setS({ ...s, completata: false }); aggiorna(); mostra(m);
+    }
+  });
+  const [confermaStop, setConfermaStop] = useState(false);
+  const fermaRicorrenza = () => esegui(async () => {
+    const m = await interrompiRicorrenza(archivioDb, s);
+    setS({ ...s, ricorrenza: null }); setConfermaStop(false); aggiorna(); mostra(m);
   });
   return (
     <>
@@ -40,6 +49,14 @@ export function PaginaPagamento({ s: iniziale, ctx, chiudi }) {
           : <button className="pp-bottone pp-bottone-verde" onClick={() => cambiaStato(true)}>Segna come pagato</button>}
         {!modifica && <button className="pp-bottone pp-bottone-chiaro" onClick={() => setModifica({ descrizione: s.descrizione, data: s.data, importo: s.importo ?? '', categoria: s.categoria || '', ricorrenza: s.ricorrenza || '' })}>Modifica</button>}
       </div>
+      {s.ricorrenza && (
+        <div className="pp-elimina">
+          {!confermaStop
+            ? <button className="pp-testo-link" onClick={() => setConfermaStop(true)}>Non lo pago più: smetti di ripeterlo</button>
+            : <Conferma testo="Non si ripete più: tolgo anche i pagamenti successivi creati in automatico ancora da pagare. Quelli già pagati restano." etichetta="Smetti"
+              onNo={() => setConfermaStop(false)} onSi={fermaRicorrenza} />}
+        </div>
+      )}
       {modifica && (
         <div className="pp-modifica">
           <label className="pp-campo"><span>Descrizione</span><input value={modifica.descrizione} onChange={(e) => setModifica({ ...modifica, descrizione: e.target.value })} /></label>
@@ -93,8 +110,8 @@ export function PaginaPagamento({ s: iniziale, ctx, chiudi }) {
       <div className="pp-elimina">
         {!conferma
           ? <button className="pp-testo-link pp-rosso" onClick={() => setConferma(true)}><IconaCestino size={16} /> Elimina questo pagamento</button>
-          : <Conferma testo="Eliminare questo pagamento? Il documento da cui deriva resta in archivio." onNo={() => setConferma(false)}
-            onSi={() => esegui(async () => { await eliminaScadenza(archivioDb, s.id); aggiorna(); mostra('Pagamento eliminato'); chiudi(); })} />}
+          : <Conferma testo={`Eliminare questo pagamento?${s.completata ? ' Tolgo anche la spesa registrata nei Conti.' : ''} Il documento da cui deriva resta in archivio.`} onNo={() => setConferma(false)}
+            onSi={() => esegui(async () => { mostra(await eliminaPagamento(archivioDb, s)); aggiorna(); chiudi(); })} />}
       </div>
     </>
   );

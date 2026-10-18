@@ -2,12 +2,12 @@
 // ricerca, allegati con la graffetta, promemoria e pagamenti proposti da aggiungere con un tasto.
 import { useEffect, useRef, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { rispondi, caricaDocumento, chiediPoliedronCompleto, partiRisposta, pagamenti as caricaPagamenti, RICORRENZE } from '../../lib/archivio.js';
+import { rispondi, caricaDocumento, chiediPoliedronCompleto, partiRisposta, pagamenti as caricaPagamenti, RICORRENZE, eliminaScadenza } from '../../lib/archivio.js';
 import { nuovaScadenza, CATEGORIE_PAGAMENTO } from '../../lib/conti.js';
-import { sessioneStudio, appuntamentiTra, impegniTra, salvaImpegno } from '../../lib/studio.js';
+import { sessioneStudio, appuntamentiTra, impegniTra, salvaImpegno, eliminaImpegno } from '../../lib/studio.js';
 import { oggi as oggiAgenda, piuGiorni } from '../../lib/agenda.js';
 import {
-  SUGGERIMENTI_ASSISTENTE, benvenuto, agendaPerAssistente, giornataRichiesta, giorniTraDate, promemoriaIniziale, aggiungiPromemoria,
+  SUGGERIMENTI_ASSISTENTE, benvenuto, agendaPerAssistente, giornataRichiesta, giorniTraDate, promemoriaIniziale, aggiungiPromemoria, annullaPromemoria,
 } from '../../lib/assistente.js';
 import { ElencoGiorno } from '../agenda/index.jsx';
 import { titoloProposta, elementiScelti, eseguiProposta, esitoProposta } from '../../lib/pulizia.js';
@@ -100,7 +100,22 @@ function PropostaPromemoria({ proposta, ctx, onFatto }) {
   const [m, setM] = useState(() => promemoriaIniziale(proposta));
   const [stato, setStato] = useState(null);
   const cambia = (campo) => (e) => setM((x) => ({ ...x, [campo]: e.target.value }));
-  if (proposta.fatto) return <div className="pp-proposta pp-proposta-fatta"><strong>Fatto.</strong> {proposta.fatto}</div>;
+  const togli = async () => {
+    setStato({ lavoro: true });
+    try {
+      const msg = await annullaPromemoria(proposta.annulla, { eliminaScadenza: (id) => eliminaScadenza(archivioDb, id), eliminaImpegno });
+      aggiorna(); setStato(null); onFatto(msg, null);
+    } catch (e) { setStato({ errore: e.message }); }
+  };
+  if (proposta.fatto) {
+    return (
+      <div className="pp-proposta pp-proposta-fatta pp-promemoria-fatto">
+        <span><strong>Fatto.</strong> {proposta.fatto}</span>
+        {proposta.annulla && <button className="pp-testo-link" disabled={stato?.lavoro} onClick={togli}>Annulla</button>}
+        {stato?.errore && <p className="pp-messaggio pp-messaggio-errore">{stato.errore}</p>}
+      </div>
+    );
+  }
   const pagamento = m.cosa === 'pagamento';
   const aggiungi = async () => {
     setStato({ lavoro: true });
@@ -112,8 +127,8 @@ function PropostaPromemoria({ proposta, ctx, onFatto }) {
           return salvaImpegno(e);
         },
       });
-      aggiorna();
-      onFatto(esito);
+      aggiorna(); setStato(null);
+      onFatto(esito.messaggio, esito.annulla);
     } catch (e) { setStato({ errore: e.message }); }
   };
   return (
@@ -301,7 +316,7 @@ export function VistaPoliedron({ ctx }) {
                 {m.risposta && <Risultato risposta={m.risposta} ctx={ctx} />}
                 {m.giornata && <Giornata giornata={m.giornata} ctx={ctx} />}
                 {(m.proposte || []).map((p, j) => {
-                  const fatto = (esito) => setChat((c) => ({ ...c, messaggi: c.messaggi.map((x, k) => (k === i ? { ...x, proposte: x.proposte.map((y, h) => (h === j ? { ...y, fatto: esito } : y)) } : x)) }));
+                  const fatto = (esito, annulla = null) => setChat((c) => ({ ...c, messaggi: c.messaggi.map((x, k) => (k === i ? { ...x, proposte: x.proposte.map((y, h) => (h === j ? { ...y, fatto: esito, annulla } : y)) } : x)) }));
                   return p.tipo === 'promemoria'
                     ? <PropostaPromemoria key={j} proposta={p} ctx={ctx} onFatto={fatto} />
                     : <Proposta key={j} proposta={p} ctx={ctx} onFatto={fatto} />;

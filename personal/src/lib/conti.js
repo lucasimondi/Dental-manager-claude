@@ -58,10 +58,11 @@ export async function spesaDaScadenza(db, s, data = new Date().toISOString().sli
   if (s.importo == null || !(Number(s.importo) > 0)) return null;
   const gia = esito(await db.from('movimenti').select('id').eq('scadenza_id', s.id).limit(1));
   if (gia.length) return gia[0];
-  return esito(await db.from('movimenti').insert({
+  // nuova: creata adesso da questo "Pagato", quindi da togliere se Luca annulla.
+  return { ...esito(await db.from('movimenti').insert({
     data, tipo: 'uscita', importo: Number(s.importo), descrizione: s.descrizione || 'Pagamento',
     categoria: s.categoria || categoriaDaFascicolo(s.documento?.fascicolo), documento_id: s.documento_id || s.documento?.id || null, scadenza_id: s.id,
-  }).select('id').single());
+  }).select('id').single()), nuova: true };
 }
 
 // Pagamento rimesso "da pagare": la spesa registrata in automatico si toglie.

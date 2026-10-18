@@ -7,8 +7,8 @@ import { readAgendaLocation } from '../../shared/agenda/navigation.js';
 // POL-VITA-017 — qui c'è solo la cornice; le sezioni sono in sezioni/ (vedi sezioni/index.js).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { archivioDb } from './lib/supabasePersonal.js';
-import { conteggiFascicoli, segnaScadenza, prossimoPagamentoFisso } from './lib/archivio.js';
-import { spesaDaScadenza } from './lib/conti.js';
+import { conteggiFascicoli } from './lib/archivio.js';
+import { segnaPagato, annullaPagato } from './lib/automatismi.js';
 import { impostaToken } from './lib/miniature.js';
 import { CHAT_VUOTA } from './lib/chat.js';
 import { IMPOSTAZIONI_PREDEFINITE, leggiImpostazioni, salvaImpostazioni } from './lib/impostazioni.js';
@@ -42,7 +42,13 @@ function Archivio({ email }) {
     try { await fn(); } catch (e) { setErrore(e.message || String(e)); } finally { setOccupato((n) => n - 1); }
   }, []);
   const aggiorna = useCallback(() => setVersione((v) => v + 1), []);
-  const mostra = useCallback((t) => { setToast(t); setTimeout(() => setToast(null), 2600); }, []);
+  // Avviso in basso; con `azione` ({ etichetta, fai }) resta di più e ha il tasto (es. Annulla).
+  const timerToast = useRef(null);
+  const mostra = useCallback((t, azione = null) => {
+    clearTimeout(timerToast.current);
+    setToast({ testo: t, azione });
+    timerToast.current = setTimeout(() => setToast(null), azione ? 7000 : 2600);
+  }, []);
   useEffect(() => { conteggiFascicoli(archivioDb).then(setFascicoli).catch(() => {}); }, [versione]);
   useEffect(() => { leggiImpostazioni(archivioDb).then(setImpostazioni).catch(() => {}); }, []);
 
@@ -85,12 +91,11 @@ function Archivio({ email }) {
 
   const ctx = {
     esegui, aggiorna, mostra, versione, impostazioni, salvaImp, fascicoli, apri, vai, aggiungi, sotto, apriChat, chat, setChat,
+    // Pagato da un elenco: spesa e prossimo fisso si creano da soli, Annulla li toglie (POL-VITA-021).
     pagato: (s) => esegui(async () => {
-      await segnaScadenza(archivioDb, s.id, true);
-      const spesa = await spesaDaScadenza(archivioDb, s).catch(() => null);
-      const prossimo = s.ricorrenza ? await prossimoPagamentoFisso(archivioDb, s).catch(() => null) : null;
+      const r = await segnaPagato(archivioDb, s);
       aggiorna();
-      mostra([spesa ? 'Pagato e registrato tra le spese' : 'Segnato come pagato', prossimo ? `prossimo il ${new Date(`${prossimo.data}T12:00:00`).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}` : null].filter(Boolean).join(' · '));
+      mostra(r.messaggio, { etichetta: 'Annulla', fai: async () => { const m = await annullaPagato(archivioDb, r.annulla); aggiorna(); return m; } });
     }),
   };
 
@@ -136,7 +141,12 @@ function Archivio({ email }) {
       </nav>
       {!sopra && !attuale.senzaPiu && <button className="pp-fab" onClick={() => setFoglio(true)} aria-label="Aggiungi"><IconaPiu size={26} /></button>}
       {foglio && <FoglioAggiungi onScegli={aggiungi} onChiudi={() => setFoglio(false)} />}
-      {toast && <div className="pp-toast" role="status">{toast}</div>}
+      {toast && (
+        <div className={`pp-toast${toast.azione ? ' pp-toast-azione' : ''}`} role="status">
+          <span>{toast.testo}</span>
+          {toast.azione && <button onClick={() => { const { fai } = toast.azione; setToast(null); esegui(async () => mostra(await fai())); }}>{toast.azione.etichetta}</button>}
+        </div>
+      )}
     </div>
   );
 }

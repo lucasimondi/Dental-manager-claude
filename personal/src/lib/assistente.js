@@ -79,15 +79,23 @@ const piuUnOra = (ora) => { const [h, m] = ora.split(':').map(Number); return `$
 export async function aggiungiPromemoria(m, { nuovaScadenza, salvaImpegno }) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(m.data)) throw new Error('Scegli la data.');
   if (!String(m.titolo || '').trim()) throw new Error('Scrivi cosa ricordare.');
+  // annulla: cosa togliere se Luca ci ripensa (POL-VITA-021, automatismi reversibili).
   if (m.cosa === 'pagamento') {
-    await nuovaScadenza({ data: m.data, descrizione: m.titolo, importo: m.importo, categoria: m.categoria, ricorrenza: m.ricorrenza || null });
-    return `Aggiunto a Da pagare per ${nomeGiorno(m.data)}`;
+    const r = await nuovaScadenza({ data: m.data, descrizione: m.titolo, importo: m.importo, categoria: m.categoria, ricorrenza: m.ricorrenza || null });
+    return { messaggio: `Aggiunto a Da pagare per ${nomeGiorno(m.data)}`, annulla: r?.id ? { cosa: 'pagamento', id: r.id } : null };
   }
   const conOra = /^\d{2}:\d{2}$/.test(m.ora || '');
-  await salvaImpegno({
+  const r = await salvaImpegno({
     titolo: m.titolo, tipo: 'personale', data_inizio: m.data, data_fine: m.data, tutto_il_giorno: !conOra,
     ora_inizio: conOra ? m.ora : null, ora_fine: conOra ? (/^\d{2}:\d{2}$/.test(m.ora_fine || '') && m.ora_fine > m.ora ? m.ora_fine : piuUnOra(m.ora)) : null,
     note: m.note || null,
   });
-  return `In agenda ${nomeGiorno(m.data)}${conOra ? ` alle ${m.ora}` : ''}`;
+  return { messaggio: `In agenda ${nomeGiorno(m.data)}${conOra ? ` alle ${m.ora}` : ''}`, annulla: r?.id ? { cosa: 'evento', id: r.id } : null };
+}
+
+// Toglie ciò che è stato appena aggiunto dalla scheda (le funzioni si passano da fuori).
+export async function annullaPromemoria(annulla, { eliminaScadenza, eliminaImpegno }) {
+  if (annulla.cosa === 'pagamento') await eliminaScadenza(annulla.id);
+  else await eliminaImpegno(annulla.id);
+  return annulla.cosa === 'pagamento' ? 'Annullato: tolto da Da pagare' : 'Annullato: tolto dall\'agenda';
 }
