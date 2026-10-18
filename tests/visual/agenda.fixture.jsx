@@ -8,7 +8,8 @@ const { default: StudioDock } = await import('../../src/components/poliedron/Pol
 const { IconaOggi, IconaDocumenti, IconaCalendario, IconaEuro, IconaPortafoglio, IconaChat, IconaPiu, IconaImpostazioni } = await import('../../personal/src/Icone.jsx');
 const { default: Studio } = await import('../../src/components/Agenda.jsx');
 const { GrigliaPoliedra } = await import('../../personal/src/sezioni/agenda/AgendaGriglia.jsx');
-const { PaginaEvento, PaginaAppuntamento } = await import('../../personal/src/sezioni/agenda/Agenda.jsx');
+const { PaginaEvento } = await import('../../personal/src/sezioni/agenda/Evento.jsx');
+const { PaginaAppuntamento } = await import('../../personal/src/sezioni/agenda/Appuntamento.jsx');
 const { Pagina } = await import('../../personal/src/Pagina.jsx');
 const { studioDb, impegniTra } = await import('../../personal/src/lib/studio.js');
 studioDb.auth.getSession = async () => ({ data: { session: { user: { id: 'fixture-user', app_metadata: { studio_id: 'fixture-studio' } } } } });

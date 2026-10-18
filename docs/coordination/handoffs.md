@@ -3834,3 +3834,18 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - TEST: 1316/1316; confronto testuale di 16 schermate master↔branch in Chromium identico; agenda visual e reliability Chromium OK.
 - COME AGGIUNGERE UNA SEZIONE: cartella `sezioni/<nome>/` con `index.jsx` (`export const <nome> = { id, nome, Icona, Vista?, pagine }`), import nel registro e, se va nel dock, in `DOCK`.
 - PROSSIMO PASSO: review della PR, merge solo su "Mergia" del PO; poi eventuale parte 2 (aspetto a sezioni) su richiesta.
+
+## 2026-10-18 — Claude — POL-VITA-017 (seguito) Agenda e Documenti in file più piccoli
+- BRANCH: `claude/document-layout-management-vaktuz` da `master@75aeba7`.
+- COMPLETATO: Agenda divisa in Agenda / Evento / Appuntamento; Documenti in Documenti / Selezione / Filtri / Ricerca. Comportamento invariato.
+- TEST: 1335/1335; confronto di 21 schermate master↔branch identico; agenda visual e reliability Chromium OK.
+- PROSSIMO PASSO: PR e merge su "Mergia" del PO.
+
+
+## 2026-10-18 — Claude — POL-VITA-018 (cartelle suggerite, notifiche, stato delle cartelle)
+- BRANCH: `claude/catalogazione-facile-latjs9`.
+- COMPLETATO: proposte di cartelle da unire (database + AI), notifiche push dei promemoria (funzione Supabase `notifiche-personal`, service worker dedicato, Impostazioni), stato delle cartelle con avviso dopo 15 giorni in attesa.
+- DB: migrazione additiva applicata. FUNZIONE: `notifiche-personal` attiva. SCRIPT: versione 12.
+- ATTENZIONE PER TUTTI: prima di `clasp push` unire sempre `origin/master` (un push da un ramo vecchio sovrascrive lo script di altre sessioni: successo con Gemini, PR #218, ripristinato in pochi minuti). I codici POL-VITA-014/015/017 sono stati usati due volte da sessioni diverse.
+- TEST: 1347/1347 su Node 20.
+- PROSSIMO PASSO: review della PR, merge solo su "Mergia"; prova della notifica sull'iPhone di Luca.

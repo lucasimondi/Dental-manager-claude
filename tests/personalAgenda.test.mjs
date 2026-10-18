@@ -78,7 +78,7 @@ test('ripetizione: recurrence_id è un uuid valido (colonna uuid nel database de
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
   assert.match(nuovoIdRipetizione(), uuid);
   assert.notEqual(nuovoIdRipetizione(), nuovoIdRipetizione());
-  const personal = fs.readFileSync('personal/src/sezioni/agenda/Agenda.jsx', 'utf8');
+  const personal = fs.readFileSync('personal/src/sezioni/agenda/Evento.jsx', 'utf8');
   const studio = fs.readFileSync('src/components/Agenda.jsx', 'utf8');
   assert.match(personal, /recurrenceId = date\.length > 1 \? nuovoIdRipetizione\(\)/);
   assert.match(studio, /recurrenceId = occorrenze\.length > 1 \? crypto\.randomUUID\(\)/);
@@ -96,7 +96,7 @@ test('evento ripetuto: modifica ed eliminazione chiedono solo questo, successivi
   // Spostando l'evento aperto di un giorno, gli altri della serie si spostano dello stesso giorno.
   const mod = applicaAOccorrenza(serie[2], { titolo: 'Bimbe dai nonni', data_inizio: '2026-11-01', data_fine: '2026-11-01' }, 1);
   assert.deepEqual([mod.id, mod.titolo, mod.data_inizio, mod.data_fine, mod.recurrence_id], [3, 'Bimbe dai nonni', '2026-11-15', '2026-11-15', 'r']);
-  const ui = fs.readFileSync('personal/src/sezioni/agenda/Agenda.jsx', 'utf8');
+  const ui = fs.readFileSync('personal/src/sezioni/agenda/Evento.jsx', 'utf8');
   assert.match(ui, /if \(inSerie && !ambito\) \{ setChiediSerie\('salva'\)/);
   assert.match(ui, /inSerie \? setChiediSerie\('elimina'\)/);
 });

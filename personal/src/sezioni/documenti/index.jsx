@@ -1,11 +1,12 @@
 // Sezione Documenti: archivio, cartelle, ricerca, schede dei documenti, pratiche, caricamento.
 import { IconaDocumenti } from '../../Icone.jsx';
 import { PaginaScansione } from '../../Aggiungi.jsx';
-import { VistaDocumenti, PaginaRicerca } from './Documenti.jsx';
+import { VistaDocumenti } from './Documenti.jsx';
+import { PaginaRicerca } from './Ricerca.jsx';
 import { PaginaDocumento } from './Documento.jsx';
 import { PaginaPratica } from './Pratica.jsx';
 import { PaginaCarica } from './Carica.jsx';
-import { PaginaCartella } from './Cartelle.jsx';
+import { PaginaCartella, PaginaSuggerimenti } from './Cartelle.jsx';
 import { archivioDb } from '../../lib/supabasePersonal.js';
 import { documentiSenzaCartella } from '../../lib/cartelle.js';
 import { CAMPI_DOC } from '../../lib/archivio.js';
@@ -17,6 +18,7 @@ export const documenti = {
   pagine: {
     documento: { titolo: 'Documento', render: (p, { ctx, chiudi }) => <PaginaDocumento id={p.id} ctx={ctx} chiudi={chiudi} /> },
     cartella: { titolo: 'Cartella', render: (p, { ctx, chiudi, sostituisci }) => <PaginaCartella key={p.ente} ente={p.ente} ctx={ctx} chiudi={chiudi} sostituisci={sostituisci} /> },
+    'suggerimenti-cartelle': { titolo: 'Cartelle da unire', render: (p, { ctx }) => <PaginaSuggerimenti ctx={ctx} /> },
     'senza-cartella': { render: (p, { ctx }) => <PaginaRicerca carica={caricaSenzaCartella} ctx={ctx} /> },
     pratica: { titolo: 'Pratica', render: (p, { ctx }) => <PaginaPratica p={p.p} ctx={ctx} /> },
     elenco: { render: (p, { ctx }) => <PaginaRicerca carica={p.carica} ctx={ctx} /> },

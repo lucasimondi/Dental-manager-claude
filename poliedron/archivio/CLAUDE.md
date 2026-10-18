@@ -13,6 +13,7 @@ Questa cartella (`poliedron/archivio/`) contiene il sistema che importa, catalog
 | App per telefono | Poliedron Personal su `/personal/` (consultazione, Portafoglio, caricamento) | `personal/` nella radice del repo |
 | Caricamento dall'app | Web app dello stesso Apps Script (`doPost`), file in `Archivio personale/Caricati/<anno>`; anche anteprima, miniature (mai dei pazienti) e chat | `Code.gs` |
 | Cartelle dell'app (POL-VITA-016) | Una cartella per ente: vista `v_cartelle`, tabella `cartelle_ente` (etichette, note, sintesi; la vecchia tabella `cartelle` dello schema iniziale non si usa e non si tocca), promemoria = `scadenze.cartella`, RPC `rinomina_cartella`; azioni `cartella` (sintesi AI) e `bozza` (bozza di risposta in Gmail, mai invii) di `doPost`, mai i clinici | `supabase/archivio/migrations/`, `Code.gs` |
+| Stato, suggerimenti e notifiche (POL-VITA-018) | `cartelle_ente.stato` (aperta, in attesa, chiusa) e `stato_dal`; vista `v_suggerimenti_cartelle` (stesso dominio del mittente) e `suggerimenti_ignorati`; azione `suggerisci` di `doPost` (proposte dell'AI, mai i clinici); notifiche: funzione Supabase `notifiche-personal` (chiavi VAPID create da lei in `push_chiavi`, mai lette dall'app), iscrizioni in `push_iscrizioni`, invii in `push_inviate`, chiamata da `inviaNotifiche_()` alle 7 e ogni ora 8–21 | `supabase/archivio/functions/notifiche-personal/`, `Code.gs` |
 | Conti dell'app | Tabella `movimenti` (incassi e spese di Luca, RLS proprietario) | `supabase/archivio/migrations/` |
 | Guida manuale | per Luca | `LEGGIMI.md` |
 

@@ -9,6 +9,19 @@ const esito = ({ data, error }) => {
   return data;
 };
 
+// POL-VITA-018 — stato della cartella.
+export const STATI = { aperta: 'Aperta', in_attesa: 'In attesa', chiusa: 'Chiusa' };
+export const COLORI_STATO = { aperta: '#2563eb', in_attesa: '#d97706', chiusa: '#64748b' };
+export const GIORNI_ATTESA = 15;
+
+// Cartelle "in attesa" da più di N giorni (per l'avviso in cima all'elenco).
+export function inAttesaDaTroppo(cartelle, giorni = GIORNI_ATTESA, ora = new Date()) {
+  const limite = ora.getTime() - giorni * 86400000;
+  return (cartelle || []).filter((c) => c.stato === 'in_attesa' && c.stato_dal && new Date(c.stato_dal).getTime() < limite)
+    .sort((a, b) => String(a.stato_dal).localeCompare(String(b.stato_dal)));
+}
+export const giorniDa = (d, ora = new Date()) => Math.max(0, Math.floor((ora.getTime() - new Date(d).getTime()) / 86400000));
+
 export const ETICHETTE_SUGGERITE = ['Da pagare', 'In attesa di risposta', 'Importante', 'Chiusa', 'Da archiviare'];
 const MESI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
 
@@ -21,9 +34,10 @@ export function periodoCartella(dal, al) {
 }
 
 // Cartelle da mostrare: quelle con almeno un documento utile (o tutte su richiesta), le più recenti prima.
-export function cartelleVisibili(cartelle, { testo = '', anchePocoUtili = false, etichetta = null } = {}) {
+export function cartelleVisibili(cartelle, { testo = '', anchePocoUtili = false, etichetta = null, stato = null } = {}) {
   const w = String(testo).trim().toLowerCase();
   return (cartelle || [])
+    .filter((c) => !stato || (stato === 'attive' ? c.stato !== 'chiusa' : (c.stato || null) === stato))
     .filter((c) => anchePocoUtili || c.n_utili > 0)
     .filter((c) => !etichetta || (c.etichette || []).includes(etichetta))
     .filter((c) => !w || c.ente.toLowerCase().includes(w) || (c.etichette || []).some((e) => e.toLowerCase().includes(w)))
@@ -84,6 +98,10 @@ export async function salvaCartella(db, ente, campi) {
   const riga = { ente, aggiornata_il: new Date().toISOString() };
   if ('etichette' in campi) riga.etichette = etichettePulite(campi.etichette);
   if ('note' in campi) riga.note = String(campi.note || '').trim().slice(0, 2000) || null;
+  if ('stato' in campi) {
+    riga.stato = STATI[campi.stato] ? campi.stato : null;
+    riga.stato_dal = riga.stato ? new Date().toISOString() : null;
+  }
   return esito(await db.from('cartelle_ente').upsert(riga, { onConflict: 'ente' }).select('ente, etichette, note').single());
 }
 
@@ -104,6 +122,31 @@ export async function documentiSenzaCartella(db, campi) {
     .order('email_data', { ascending: false }).limit(400));
 }
 
+/* ---------- cartelle suggerite (POL-VITA-018) ---------- */
+// Dal database: cartelle diverse con lo stesso dominio del mittente (es. due impiegati di prelios.com).
+export async function suggerimentiCartelle(db) {
+  return esito(await db.from('v_suggerimenti_cartelle').select('chiave, dominio, enti, n').order('n', { ascending: false }).limit(30));
+}
+// Nome proposto per la cartella unita: dal dominio ("studiogiordano.it" → "Studiogiordano"), o la cartella più grande.
+export function nomeProposto({ dominio, enti }) {
+  const base = String(dominio || '').split('.').slice(-2, -1)[0] || '';
+  const doDominio = base ? base.charAt(0).toUpperCase() + base.slice(1) : '';
+  const compatto = (x) => String(x).toLowerCase().replace(/[^a-z0-9]/g, '');
+  const conNome = (enti || []).find((e) => doDominio && compatto(e).includes(compatto(base)) && !/\.[a-z]{2,}$/i.test(e));
+  return conNome || (enti || [])[0] || doDominio;
+}
+export async function ignoraSuggerimento(db, chiave) {
+  return esito(await db.from('suggerimenti_ignorati').upsert({ chiave }, { onConflict: 'chiave' }).select('chiave'));
+}
+// Unisce le cartelle scelte in una (rinomina una alla volta: documenti, promemoria, etichette, note).
+export async function unisciCartelle(db, enti, nome) {
+  const finale = String(nome || '').trim().slice(0, 120);
+  if (!finale) throw new Error('Scrivi un nome per la cartella');
+  let n = 0;
+  for (const e of enti) if (e !== finale) n += await rinominaCartella(db, e, finale);
+  return n;
+}
+
 /* ---------- AI (nello script: Claude, mai i documenti clinici) ---------- */
 async function chiamaScript(corpo, fetchImpl) {
   if (!corpo.token) throw new Error('Sessione scaduta: esci e rientra.');
@@ -112,6 +155,11 @@ async function chiamaScript(corpo, fetchImpl) {
   try { r = await res.json(); } catch { throw new Error('Poliedron non raggiungibile.'); }
   if (!r.ok) throw new Error(r.errore || 'Poliedron non disponibile.');
   return r;
+}
+
+// Gruppi di cartelle da unire proposti dall'AI (nomi delle cartelle e oggetti delle email; nulla cambia finché Luca non sceglie).
+export async function suggerisciConAI({ token }, fetchImpl = fetch) {
+  return (await chiamaScript({ token, azione: 'suggerisci' }, fetchImpl)).gruppi || [];
 }
 
 // Sintesi della cartella (salvata dallo script in cartelle_ente.sintesi).
