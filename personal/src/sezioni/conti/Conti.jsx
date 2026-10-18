@@ -7,11 +7,9 @@ import { euro } from '../../lib/coreArchivio.js';
 import {
   movimentiTra, salvaMovimento, eliminaMovimento, nuovaScadenza, bilancio, perMese, periodo, spostaPeriodo,
   CATEGORIE_SPESA, CATEGORIE_INCASSO, importoNumero, CATEGORIE_PAGAMENTO, totaliPerCategoria,
-  CATEGORIE_STUDIO, tabellaStudio, METODI_STUDIO, rigaIncassoStudio,
+  CATEGORIE_STUDIO, tabellaStudio, METODI_STUDIO, rigaIncassoStudio, lavoroDelPeriodo, movimentiLavoro,
 } from '../../lib/conti.js';
-import {
-  sessioneStudio, cercaPazienti, collaborazioniStudio, registraIncassoStudio, aggiornaIncassoStudio, eliminaIncassoStudio,
-} from '../../lib/studio.js';
+import { sessioneStudio, cercaPazienti, collaborazioniStudio, registraIncassoStudio, datiLavoro } from '../../lib/studio.js';
 import { Vuoto, Sezione, Gruppo, Segmenti, Conferma, RigaPagamento, oggiIso, dataBreve } from '../../ui.jsx';
 import { IconaIndietro, IconaFreccia, IconaCestino, IconaPiu, IconaFile, IconaFotocamera } from '../../Icone.jsx';
 
@@ -105,18 +103,32 @@ export function VistaConti({ ctx }) {
   const [anno, setAnno] = useState(null);
   const [scadenze, setScadenze] = useState(null);
   const [filtro, setFiltro] = useState('aperti');
+  const [lavoro, setLavoro] = useState(undefined); // dati dello studio; null = agenda non collegata
 
   useEffect(() => {
     // I promemoria delle cartelle senza importo non sono pagamenti (POL-VITA-016): restano in Agenda e Oggi.
     if (scheda === 'dapagare') { esegui(async () => setScadenze((await caricaPagamenti(archivioDb)).filter((s) => !(s.cartella && s.importo == null)))); return; }
     const { da, a } = periodo(tipo, rif);
+    const y = periodo('anno', rif);
     esegui(async () => {
       setMovimenti(await movimentiTra(archivioDb, da, a));
-      if (scheda === 'bilancio') { const y = periodo('anno', rif); setAnno(await movimentiTra(archivioDb, y.da, y.a)); }
+      if (scheda === 'bilancio') setAnno(await movimentiTra(archivioDb, y.da, y.a));
     });
+    // Lavoro dallo studio (POL-VITA-021): letto dallo studio, mai copiato. Senza agenda collegata non c'è.
+    (async () => {
+      if (!(await sessioneStudio().catch(() => null))) { setLavoro(null); return; }
+      setLavoro(await datiLavoro(scheda === 'bilancio' ? y.da : da, scheda === 'bilancio' ? y.a : a));
+    })().catch(() => setLavoro(null));
   }, [scheda, tipo, rif, esegui, versione]);
 
-  const b = useMemo(() => bilancio(movimenti || []), [movimenti]);
+  const { da, a } = periodo(tipo, rif);
+  const lav = useMemo(() => (lavoro ? lavoroDelPeriodo(lavoro, da, a) : null), [lavoro, da, a]);
+  const b = useMemo(() => bilancio([...(movimenti || []), ...movimentiLavoro(lavoro, da, a)]), [movimenti, lavoro, da, a]);
+  const annoConLavoro = useMemo(() => {
+    if (!anno) return null;
+    const y = periodo('anno', rif);
+    return [...anno, ...movimentiLavoro(lavoro, y.da, y.a)];
+  }, [anno, lavoro, rif]);
   const apriM = (m) => apri({ tipo: 'movimento', m });
 
   return (
@@ -127,6 +139,7 @@ export function VistaConti({ ctx }) {
       {scheda === 'movimenti' && movimenti && (
         <>
           <RiquadroSaldo b={b} titolo={`Saldo · ${nomePeriodo(tipo, rif)}`} onApri={() => setScheda('bilancio')} />
+          <LavoroStudio l={lav} caricato={lavoro !== undefined} />
           <div className="pp-azioni pp-azioni-due">
             <button className="pp-bottone pp-bottone-verde" onClick={() => apri({ tipo: 'movimento', m: { tipo: 'entrata' } })}><IconaPiu size={18} /> Incasso</button>
             <button className="pp-bottone pp-bottone-rosso" onClick={() => apri({ tipo: 'movimento', m: { tipo: 'uscita' } })}><IconaPiu size={18} /> Spesa</button>
@@ -144,9 +157,10 @@ export function VistaConti({ ctx }) {
       {scheda === 'bilancio' && movimenti && (
         <>
           <RiquadroSaldo b={b} titolo={`Bilancio · ${nomePeriodo(tipo, rif)}`} />
+          <LavoroStudio l={lav} caricato={lavoro !== undefined} />
           {anno && (
             <Sezione titolo={`Mese per mese · ${rif.slice(0, 4)}`}>
-              <div className="pp-pannello"><Barre mesi={perMese(anno, rif.slice(0, 4))} />
+              <div className="pp-pannello"><Barre mesi={perMese(annoConLavoro || anno, rif.slice(0, 4))} />
                 <p className="pp-legenda pp-riga-meta"><i className="entrata" /> Entrate <i className="uscita" /> Uscite</p></div>
             </Sezione>
           )}
@@ -157,6 +171,22 @@ export function VistaConti({ ctx }) {
 
       {scheda === 'dapagare' && scadenze && <DaPagare tutti={scadenze} filtro={filtro} setFiltro={setFiltro} apri={apri} pagato={pagato} />}
     </>
+  );
+}
+
+// Lavoro dallo studio: incassi dei pazienti + collaborazioni − spese dello studio = netto, che entra nel saldo.
+function LavoroStudio({ l, caricato }) {
+  if (!caricato) return null;
+  if (!l) return <p className="pp-riga-meta pp-spiegazione">Collega l'agenda dello studio (scheda Agenda) per vedere qui il lavoro netto dello studio.</p>;
+  return (
+    <Sezione titolo="Lavoro dallo studio" azione={<span className="pp-riga-meta">si registra nello studio</span>}>
+      <Gruppo>
+        <div className="pp-voce"><span>Incassi dai pazienti</span><strong>{euro(l.pazienti)}</strong></div>
+        {l.perCollaborazione.map((c) => <div key={c.nome} className="pp-voce"><span>{c.nome}</span><strong>{euro(c.totale)}</strong></div>)}
+        <div className="pp-voce"><span>Spese dello studio</span><strong className="pp-rosso">−{euro(l.spese)}</strong></div>
+        <div className="pp-voce"><span><strong>Netto</strong></span><strong className={l.netto >= 0 ? 'pp-verde' : 'pp-rosso'}>{euro(l.netto)}</strong></div>
+      </Gruppo>
+    </Sezione>
   );
 }
 
@@ -212,57 +242,48 @@ function DaPagare({ tutti, filtro, setFiltro, apri, pagato }) {
 }
 
 /* ---------- incasso o spesa: nuovo o modifica ---------- */
-// POL-VITA-021: un incasso "Studio" (paziente) o "Collaborazione" si registra anche nel gestionale
-// dello studio; il movimento ricorda la riga dello studio e la aggiorna o la elimina insieme.
+// POL-VITA-021: un incasso "Studio" (paziente) o "Collaborazione" si registra SOLO nello studio, come
+// nel gestionale; Personal lo rilegge da lì nel lavoro netto (una sola fonte, niente doppioni).
 export function PaginaMovimento({ m: iniziale, ctx, chiudi }) {
   const { esegui, aggiorna, mostra, apri, impostazioni } = ctx;
   const [m, setM] = useState(() => ({ data: oggiIso(), importo: '', descrizione: '', categoria: '', note: '', ...iniziale, importo: iniziale.importo ?? '' }));
   const [conferma, setConferma] = useState(false);
   const entrata = m.tipo === 'entrata';
-  const collegato = Boolean(m.studio_tabella && m.studio_riga);
-  const tabella = entrata && !m.id ? tabellaStudio(m.categoria) : null; // nuovo incasso da registrare anche in studio
-  const categorie = entrata ? [...new Set([...Object.keys(CATEGORIE_STUDIO), ...(impostazioni.categorieIncasso || CATEGORIE_INCASSO)])] : (impostazioni.categorieSpesa || CATEGORIE_SPESA);
+  const tabella = entrata && !m.id ? tabellaStudio(m.categoria) : null;
+  const categorie = entrata ? [...new Set([...(m.id ? [] : Object.keys(CATEGORIE_STUDIO)), ...(impostazioni.categorieIncasso || CATEGORIE_INCASSO)])] : (impostazioni.categorieSpesa || CATEGORIE_SPESA);
   const valido = importoNumero(m.importo) > 0 && /^\d{4}-\d{2}-\d{2}$/.test(m.data)
     && (tabella !== 'payments' || m.paziente_id) && (tabella !== 'pagamenti_esterni' || m.collaborazione_id);
   const salva = () => esegui(async () => {
-    let finale = m;
     if (tabella) {
-      const studio = rigaIncassoStudio(m);
-      const riga = await registraIncassoStudio(studio);
-      finale = { ...m, studio_tabella: studio.tabella, studio_riga: riga };
-    } else if (collegato) {
-      await aggiornaIncassoStudio(m.studio_tabella, m.studio_riga, { data: m.data, importo: importoNumero(m.importo), note: m.note });
+      await registraIncassoStudio(rigaIncassoStudio(m));
+      aggiorna(); mostra('Registrato nello studio: lo trovi in "Lavoro dallo studio"'); chiudi();
+      return;
     }
-    try { await salvaMovimento(archivioDb, finale); } catch (e) {
-      if (tabella) throw new Error(`Registrato nello studio ma non in Personal: ${e.message}`);
-      throw e;
-    }
-    aggiorna(); mostra(m.id ? 'Movimento aggiornato' : tabella ? 'Incasso registrato anche nello studio' : entrata ? 'Incasso registrato' : 'Spesa registrata'); chiudi();
-  });
-  const elimina = () => esegui(async () => {
-    if (collegato) await eliminaIncassoStudio(m.studio_tabella, m.studio_riga);
-    await eliminaMovimento(archivioDb, m.id); aggiorna(); mostra('Movimento eliminato'); chiudi();
+    await salvaMovimento(archivioDb, m);
+    aggiorna(); mostra(m.id ? 'Movimento aggiornato' : entrata ? 'Incasso registrato' : 'Spesa registrata'); chiudi();
   });
   return (
     <>
-      {!collegato && <Segmenti voci={[['uscita', 'Spesa'], ['entrata', 'Incasso']]} attiva={m.tipo || 'uscita'} onScegli={(t) => setM({ ...m, tipo: t, categoria: '' })} />}
+      <Segmenti voci={[['uscita', 'Spesa'], ['entrata', 'Incasso']]} attiva={m.tipo || 'uscita'} onScegli={(t) => setM({ ...m, tipo: t, categoria: '' })} />
       <label className="pp-campo pp-campo-importo"><span>Importo (€)</span>
         <input inputMode="decimal" autoFocus={!m.id} value={m.importo} onChange={(e) => setM({ ...m, importo: e.target.value })} placeholder="0,00" />
       </label>
       <div className="pp-due">
         <label className="pp-campo"><span>Data</span><input type="date" value={m.data} onChange={(e) => setM({ ...m, data: e.target.value })} /></label>
         <label className="pp-campo"><span>Categoria</span>
-          <select className="pp-select" value={m.categoria || ''} disabled={collegato} onChange={(e) => setM({ ...m, categoria: e.target.value })}>
+          <select className="pp-select" value={m.categoria || ''} onChange={(e) => setM({ ...m, categoria: e.target.value })}>
             <option value="">—</option>
             {[...new Set([...categorie, ...(m.categoria ? [m.categoria] : [])])].map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </label>
       </div>
       {tabella && <IncassoStudio m={m} setM={setM} tabella={tabella} />}
-      {collegato && <p className="pp-riga-meta">Registrato anche nello studio ({m.studio_tabella === 'payments' ? 'pagamenti dei pazienti' : 'collaborazioni esterne'}): data, importo e note si aggiornano anche lì.</p>}
-      <label className="pp-campo"><span>Descrizione</span>
-        <input value={m.descrizione} onChange={(e) => setM({ ...m, descrizione: e.target.value })} placeholder={tabella ? 'facoltativa' : entrata ? 'Es. Stipendio, rimborso' : 'Es. Spesa al supermercato'} />
-      </label>
+      {tabella && <p className="pp-riga-meta">Si registra nello studio (come dal gestionale): lì si modifica o si elimina, e qui lo vedi nel lavoro netto.</p>}
+      {!tabella && (
+        <label className="pp-campo"><span>Descrizione</span>
+          <input value={m.descrizione} onChange={(e) => setM({ ...m, descrizione: e.target.value })} placeholder={entrata ? 'Es. Direzione sanitaria, rimborso' : 'Es. Spesa al supermercato'} />
+        </label>
+      )}
       <label className="pp-campo"><span>Note</span><input value={m.note || ''} onChange={(e) => setM({ ...m, note: e.target.value })} placeholder="facoltative" /></label>
       {m.documento?.id && (
         <Sezione titolo="Documento collegato">
@@ -275,12 +296,13 @@ export function PaginaMovimento({ m: iniziale, ctx, chiudi }) {
           </Gruppo>
         </Sezione>
       )}
-      <button className={`pp-bottone pp-bottone-largo ${entrata ? 'pp-bottone-verde' : ''}`} disabled={!valido} onClick={salva}>{m.id ? 'Salva' : entrata ? 'Registra incasso' : 'Registra spesa'}</button>
+      <button className={`pp-bottone pp-bottone-largo ${entrata ? 'pp-bottone-verde' : ''}`} disabled={!valido} onClick={salva}>{m.id ? 'Salva' : tabella ? 'Registra nello studio' : entrata ? 'Registra incasso' : 'Registra spesa'}</button>
       {m.id && (
         <div className="pp-elimina">
           {!conferma
             ? <button className="pp-testo-link pp-rosso" onClick={() => setConferma(true)}><IconaCestino size={16} /> Elimina il movimento</button>
-            : <Conferma testo={collegato ? 'Eliminare il movimento? Si elimina anche dallo studio.' : 'Eliminare questo movimento?'} onNo={() => setConferma(false)} onSi={elimina} />}
+            : <Conferma testo="Eliminare questo movimento?" onNo={() => setConferma(false)}
+              onSi={() => esegui(async () => { await eliminaMovimento(archivioDb, m.id); aggiorna(); mostra('Movimento eliminato'); chiudi(); })} />}
         </div>
       )}
     </>

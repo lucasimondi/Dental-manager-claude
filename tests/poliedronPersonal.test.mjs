@@ -170,12 +170,12 @@ test('Poliedron Personal è isolata dall\'app dello studio', () => {
 test('POL-VITA-004: l\'agenda di Personal tocca solo le tabelle dell\'agenda dello studio', () => {
   const studio = readFileSync('personal/src/lib/studio.js', 'utf8');
   const tabelle = [...studio.matchAll(/\.from\('([a-z_]+)'\)/g)].map((m) => m[1]);
-  // POL-VITA-021: anche gli incassi di studio (payments) e di collaborazione (pagamenti_esterni).
-  assert.deepEqual([...new Set(tabelle)].sort(), ['app_types', 'appointments', 'collaborazioni', 'impegni_personali', 'pagamenti_esterni', 'patients', 'payments', 'studio_info']);
+  // POL-VITA-021: incassi di studio (payments) e di collaborazione (pagamenti_esterni), spese in lettura.
+  assert.deepEqual([...new Set(tabelle)].sort(), ['app_types', 'appointments', 'collaborazioni', 'impegni_personali', 'pagamenti_esterni', 'patients', 'payments', 'spese', 'studio_info']);
   // Pazienti: solo nome e cognome; pazienti e tipi solo in lettura. Si scrive sugli eventi personali
   // e, da POL-VITA-013 (PO: "da agenda personale io posso agire anche su agenda studio"), sugli appuntamenti.
   assert.match(studio, /from\('patients'\)\.select\('id, nome, cognome'\)/);
-  for (const t of ['patients', 'app_types', 'collaborazioni']) {
+  for (const t of ['patients', 'app_types', 'collaborazioni', 'spese']) {
     assert.doesNotMatch(studio, new RegExp(`from\\('${t}'\\)[^;]*\\.(insert|update|delete|upsert)\\(`), `${t} in sola lettura`);
   }
   assert.match(studio, /storageKey: 'poliedron-personal-studio-auth'/);

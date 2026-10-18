@@ -5,8 +5,8 @@
 // appointments (lettura e scrittura, POL-VITA-013: "da agenda personale io posso agire anche su
 // agenda studio"), patients (solo id, nome e cognome, lettura), app_types (lettura) e
 // impegni_personali (lettura e scrittura: gli eventi senza paziente), studio_info
-// (sola lettura di agenda_settings). POL-VITA-021: anche payments e pagamenti_esterni (scrittura
-// degli incassi di studio e di collaborazione registrati da Conti) e collaborazioni (lettura). La RLS dello studio
+// (sola lettura di agenda_settings). POL-VITA-021: payments e pagamenti_esterni (lettura e nuovi
+// incassi registrati da Conti), collaborazioni e spese (sola lettura) per il lavoro netto. La RLS dello studio
 // (studio_id del token) limita ogni lettura e scrittura allo studio dell'utente.
 import { createClient } from '@supabase/supabase-js';
 import { rigaImpegno, rigaAppuntamento } from './agenda.js';
@@ -178,15 +178,24 @@ export async function registraIncassoStudio({ tabella, riga }) {
   throw new Error('Tabella dello studio non ammessa');
 }
 
-// Modifica del movimento già registrato: nello studio cambiano solo data, importo e nota.
-export async function aggiornaIncassoStudio(tabella, id, { data, importo, note }) {
-  if (!['payments', 'pagamenti_esterni'].includes(tabella)) throw new Error('Tabella dello studio non ammessa');
-  const nota = String(note || '').trim() || null;
-  const riga = tabella === 'payments' ? { data, importo, nota } : { data, importo, note: nota };
-  return esito(await studioDb.from(tabella).update(riga).eq('id', id).select('id'));
+// Lavoro dallo studio (sola lettura): incassi dei pazienti, collaborazioni e spese del periodo, più
+// le spese ricorrenti (si dividono per mese in lavoroDelPeriodo). A pagine da 1000 righe.
+async function tutte(crea) {
+  const out = [];
+  for (let da = 0; da < 50000; da += 1000) {
+    const pezzo = esito(await crea().range(da, da + 999));
+    out.push(...pezzo);
+    if (pezzo.length < 1000) break;
+  }
+  return out;
 }
 
-export async function eliminaIncassoStudio(tabella, id) {
-  if (!['payments', 'pagamenti_esterni'].includes(tabella)) throw new Error('Tabella dello studio non ammessa');
-  return esito(await studioDb.from(tabella).delete().eq('id', id).select('id'));
+export async function datiLavoro(da, a) {
+  const [pagamenti, esterni, spese, ricorrenti] = await Promise.all([
+    tutte(() => studioDb.from('payments').select('data, importo, stato').gte('data', da).lte('data', a).order('id')),
+    tutte(() => studioDb.from('pagamenti_esterni').select('data, importo, collaborazione_nome').gte('data', da).lte('data', a).order('id')),
+    tutte(() => studioDb.from('spese').select('data, importo, ricorrente').or('ricorrente.is.null,ricorrente.eq.false').gte('data', da).lte('data', a).order('id')),
+    tutte(() => studioDb.from('spese').select('data, importo, ricorrente, frequenza, data_fine').eq('ricorrente', true).order('id')),
+  ]);
+  return { pagamenti, esterni, spese: [...spese, ...ricorrenti] };
 }

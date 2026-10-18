@@ -1,6 +1,6 @@
 // POL-VITA-006 — Conti di Personal: incassi e spese registrati da Luca (tabella movimenti,
 // solo il proprietario) e bilancino. I calcoli sono puri e testabili.
-const CAMPI = 'id, data, tipo, importo, descrizione, categoria, documento_id, scadenza_id, note, studio_tabella, studio_riga, documento:documenti(id, titolo, fascicolo)';
+const CAMPI = 'id, data, tipo, importo, descrizione, categoria, documento_id, scadenza_id, note, documento:documenti(id, titolo, fascicolo)';
 
 const esito = ({ data, error }) => {
   if (error) throw new Error(error.message || 'Errore conti');
@@ -10,9 +10,9 @@ const esito = ({ data, error }) => {
 export const CATEGORIE_SPESA = ['Casa', 'Bollette', 'Riscaldamento', 'Spesa', 'Auto', 'Salute', 'Scuola', 'Tasse', 'Assicurazioni', 'Svago', 'Altro'];
 export const CATEGORIE_INCASSO = ['Studio', 'Collaborazione', 'Lavoro', 'Rimborsi', 'Affitti', 'Altro'];
 
-// POL-VITA-021 — incassi di studio o di collaborazione: si registrano anche nel gestionale dello
-// studio (PO 2026-10-18, "stessa logica" dell'agenda). Studio → payments (pagamento di un paziente),
-// Collaborazione → pagamenti_esterni (incasso da una collaborazione esterna).
+// POL-VITA-021 — incassi di studio o di collaborazione: si registrano SOLO nel gestionale dello
+// studio (una sola fonte, come l'agenda: PO 2026-10-18) e Personal li rilegge da lì per il reddito
+// di lavoro netto. Studio → payments (pagamento di un paziente), Collaborazione → pagamenti_esterni.
 export const CATEGORIE_STUDIO = { Studio: 'payments', Collaborazione: 'pagamenti_esterni' };
 export const tabellaStudio = (categoria) => CATEGORIE_STUDIO[categoria] || null;
 export const METODI_STUDIO = ['Contanti', 'Carta', 'Bonifico', 'POS', 'Assegno'];
@@ -35,12 +35,6 @@ export function rigaIncassoStudio(m) {
   return { tabella, riga: { collaborazione_id: Number(m.collaborazione_id), collaborazione_nome: String(m.collaborazione_nome || '').trim() || null, data: m.data, importo, metodo, note: nota } };
 }
 
-// Descrizione proposta per il movimento di Personal quando Luca non la scrive.
-export function descrizioneIncassoStudio(m) {
-  if (m.categoria === 'Studio' && m.paziente) return `Studio – ${m.paziente}`;
-  if (m.categoria === 'Collaborazione' && m.collaborazione_nome) return m.collaborazione_nome;
-  return '';
-}
 
 // Categoria di spesa suggerita dal fascicolo del documento da cui viene il pagamento.
 const PER_FASCICOLO = {
@@ -63,11 +57,10 @@ export function rigaMovimento(m) {
     data: m.data,
     tipo: m.tipo === 'entrata' ? 'entrata' : 'uscita',
     importo,
-    descrizione: String(m.descrizione || '').trim() || descrizioneIncassoStudio(m) || (m.tipo === 'entrata' ? 'Incasso' : 'Spesa'),
+    descrizione: String(m.descrizione || '').trim() || (m.tipo === 'entrata' ? 'Incasso' : 'Spesa'),
     categoria: String(m.categoria || '').trim() || null,
     documento_id: m.documento_id || null,
     note: String(m.note || '').trim() || null,
-    ...(m.studio_tabella && m.studio_riga ? { studio_tabella: m.studio_tabella, studio_riga: m.studio_riga } : {}),
   };
 }
 
@@ -161,4 +154,57 @@ export function perMese(movimenti, anno) {
     const delMese = movimenti.filter((m) => String(m.data).startsWith(chiave));
     return { mese: chiave, entrate: somma(delMese.filter((m) => m.tipo === 'entrata')), uscite: somma(delMese.filter((m) => m.tipo === 'uscita')) };
   });
+}
+
+/* ---------- POL-VITA-021: lavoro dallo studio (netto) ---------- */
+// PO 2026-10-18: "in studio ci sono solo io", il reddito vero è l'utile dello studio: incassi dei
+// pazienti + collaborazioni − spese dello studio. Spese ricorrenti come le proietta il gestionale
+// (importo × volte l'anno), divise per mese dall'inizio a data_fine.
+const VOLTE_ANNO = { Mensile: 12, Bimestrale: 6, Trimestrale: 4, Semestrale: 2, Annuale: 1 };
+const tondo = (n) => Math.round(n * 100) / 100;
+export function mesiTra(da, a) {
+  const out = [];
+  let [y, m] = da.slice(0, 7).split('-').map(Number);
+  const fine = a.slice(0, 7);
+  for (let k = 0; k < 600; k++) {
+    const chiave = `${y}-${String(m).padStart(2, '0')}`;
+    if (chiave > fine) break;
+    out.push(chiave);
+    m += 1; if (m > 12) { m = 1; y += 1; }
+  }
+  return out;
+}
+
+export function lavoroDelPeriodo({ pagamenti = [], esterni = [], spese = [] } = {}, da, a) {
+  const dentro = (d) => Boolean(d) && d >= da && d <= a;
+  const pazienti = tondo(pagamenti.filter((p) => p.stato !== 'sospeso' && dentro(p.data)).reduce((t, p) => t + Number(p.importo || 0), 0));
+  const per = {};
+  for (const e of esterni.filter((x) => dentro(x.data))) {
+    const nome = e.collaborazione_nome || 'Collaborazione';
+    per[nome] = (per[nome] || 0) + Number(e.importo || 0);
+  }
+  const perCollaborazione = Object.entries(per).map(([nome, totale]) => ({ nome, totale: tondo(totale) })).sort((x, y) => y.totale - x.totale);
+  const collaborazioni = tondo(perCollaborazione.reduce((t, c) => t + c.totale, 0));
+  const mesi = mesiTra(da, a);
+  let speseStudio = spese.filter((s) => !s.ricorrente && dentro(s.data)).reduce((t, s) => t + Number(s.importo || 0), 0);
+  for (const s of spese.filter((x) => x.ricorrente)) {
+    const quota = Number(s.importo || 0) * (VOLTE_ANNO[s.frequenza] || 12) / 12;
+    const inizio = String(s.data || '').slice(0, 7);
+    const fine = String(s.data_fine || '').slice(0, 7);
+    speseStudio += quota * mesi.filter((m) => (!inizio || m >= inizio) && (!fine || m <= fine)).length;
+  }
+  speseStudio = tondo(speseStudio);
+  return { pazienti, collaborazioni, perCollaborazione, spese: speseStudio, netto: tondo(pazienti + collaborazioni - speseStudio) };
+}
+
+// Il netto di ogni mese come movimento (solo per bilancio e grafico, non si salva da nessuna parte).
+export function movimentiLavoro(dati, da, a) {
+  if (!dati) return [];
+  return mesiTra(da, a).map((mese) => {
+    const fine = periodo('mese', mese).a;
+    const l = lavoroDelPeriodo(dati, `${mese}-01` < da ? da : `${mese}-01`, fine > a ? a : fine);
+    if (!l.netto) return null;
+    return { id: `lavoro-${mese}`, data: `${mese}-01`, tipo: l.netto >= 0 ? 'entrata' : 'uscita', importo: Math.abs(l.netto),
+      categoria: 'Lavoro (studio, netto)', descrizione: 'Lavoro dallo studio (netto)', daStudio: true };
+  }).filter(Boolean);
 }

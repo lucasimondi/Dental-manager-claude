@@ -1,8 +1,9 @@
 -- POL-VITA-021 — progetto separato `archivio-documenti` (tkcwvjzjkfhcuebrjvsp).
 -- Incassi di studio o di collaborazione registrati da Personal anche nel gestionale dello studio
 -- (PO 2026-10-18: "Gli incassi se sono di studio o collaborazione vanno anche registrati in studio,
--- stessa logica"). Il movimento ricorda la riga creata nello studio (payments o pagamenti_esterni)
--- per aggiornarla o eliminarla insieme. Solo aggiunte idempotenti.
+-- stessa logica"). Prima idea: il movimento ricordava la riga creata nello studio. Decisione finale
+-- del PO (stesso giorno): una sola fonte, gli incassi stanno solo nello studio e Personal ne legge il
+-- netto; queste colonne restano vuote e non usate (già applicate, non si tolgono). Solo aggiunte idempotenti.
 -- ROLLBACK: nessuno necessario; eventuale rimozione solo con conferma del PO.
 alter table movimenti add column if not exists studio_tabella text;
 alter table movimenti add column if not exists studio_riga bigint;

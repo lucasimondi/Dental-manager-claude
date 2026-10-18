@@ -213,6 +213,7 @@ a { color: var(--pp-blu); text-decoration: none; }
 .pp-bottone-largo { width: 100%; margin-top: 16px; padding: 15px; font-size: 17px; }
 .pp-testo-link { display: inline-flex; align-items: center; gap: 6px; padding: 10px 0; color: var(--pp-blu); font-weight: 600; }
 .pp-rosso { color: var(--pp-rosso); }
+.pp-verde { color: var(--pp-verde); }
 .pp-messaggio { margin: 14px 4px 0; color: var(--pp-grigio); }
 .pp-messaggio-errore { color: var(--pp-rosso); }
 .pp-toast { position: fixed; left: 50%; bottom: calc(var(--pp-dock) + 16px + env(safe-area-inset-bottom)); z-index: 40; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 999px; background: var(--pp-inchiostro); color: var(--pp-sfondo); font-weight: 600; font-size: 14px; box-shadow: var(--pp-ombra-alta); animation: pp-dissolvi .2s ease-out; }
