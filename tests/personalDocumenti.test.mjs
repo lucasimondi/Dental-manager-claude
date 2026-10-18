@@ -81,7 +81,7 @@ test('eliminazione di più documenti: uno alla volta con la stessa funzione del 
 });
 
 test('app: selezione multipla con conferma prima di eliminare; i file su Drive restano', () => {
-  const src = readFileSync('personal/src/sezioni/documenti/Documenti.jsx', 'utf8');
+  const src = readFileSync('personal/src/sezioni/documenti/Selezione.jsx', 'utf8');
   const ui = readFileSync('personal/src/ui.jsx', 'utf8');
   assert.match(src, /<ConfermaElimina n=\{ids\.length\}/);
   assert.match(ui, /useState\(false\);\n {2}const cosa/, 'la casella di Drive parte spenta');
