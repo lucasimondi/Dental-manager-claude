@@ -1,7 +1,8 @@
 // Poliedron — la chat a pagina intera: AI sull'archivio o sola ricerca, allegati con la graffetta.
 import { useEffect, useRef, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { rispondi, caricaDocumento, chiediPoliedron, partiRisposta } from '../../lib/archivio.js';
+import { rispondi, caricaDocumento, chiediPoliedronCompleto, partiRisposta } from '../../lib/archivio.js';
+import { titoloProposta, elementiScelti, eseguiProposta, esitoProposta } from '../../lib/pulizia.js';
 import { euro } from '../../lib/coreArchivio.js';
 import { preparaFile as preparaCaricamento } from '../../lib/file.js';
 import { ACCETTA_ALLEGATI, dimensioneFile, domandaDa, esitoAllegato, puoInviare, storiaChat } from '../../lib/chat.js';
@@ -33,7 +34,59 @@ function Risultato({ risposta, ctx }) {
   );
 }
 
-const SUGGERIMENTI_CHAT = ['Quanto devo pagare questo mese?', 'Quali bollette Edison ho pagato quest\'anno?', 'Dov\'è la carta d\'identità di Giulia?', 'Che pratiche ho aperte?'];
+/* ---------- Proposte di pulizia in massa: Luca sceglie e conferma ---------- */
+function Proposta({ proposta, ctx, onFatto }) {
+  const { apri, aggiorna } = ctx;
+  const [esclusi, setEsclusi] = useState(() => new Set());
+  const [aperta, setAperta] = useState(false);
+  const [ancheDrive, setAncheDrive] = useState(true);
+  const [ancheEmail, setAncheEmail] = useState(true);
+  const [stato, setStato] = useState(null);
+  const scelti = elementiScelti(proposta, esclusi);
+  const clinici = scelti.filter((e) => e.fascicolo === 'clinico_pazienti').length;
+  const commuta = (id) => setEsclusi((x) => { const n = new Set(x); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const conferma = async () => {
+    setStato({ lavoro: true, testo: 'Sto eseguendo…' });
+    try {
+      const r = await eseguiProposta({ proposta, elementi: scelti, db: archivioDb, token: await tokenSessione(), ancheDrive, ancheEmail,
+        avanzamento: (fatti, totale) => setStato({ lavoro: true, testo: `${fatti} di ${totale}…` }) });
+      aggiorna();
+      onFatto(esitoProposta(proposta, r));
+    } catch (e) { setStato({ errore: e.message }); }
+  };
+  if (proposta.fatto) return <div className="pp-proposta pp-proposta-fatta"><strong>Fatto.</strong> {proposta.fatto}</div>;
+  return (
+    <div className="pp-proposta">
+      <strong>{titoloProposta(proposta, scelti.length)}</strong>
+      {proposta.descrizione && <span className="pp-riga-meta">{proposta.descrizione}</span>}
+      {!proposta.completa && <span className="pp-riga-meta">Sono i primi {proposta.n}: dopo la conferma chiedi di nuovo per i successivi.</span>}
+      {clinici > 0 && <span className="pp-riga-meta pp-rosso">Comprende {clinici} documenti dei pazienti.</span>}
+      <button className="pp-testo-link" onClick={() => setAperta((x) => !x)}>{aperta ? 'Nascondi elenco' : `Vedi elenco e togli quelli da tenere (${proposta.elementi.length})`}</button>
+      {aperta && (
+        <ul className="pp-proposta-elenco">
+          {proposta.elementi.map((e) => (
+            <li key={e.id}>
+              <label><input type="checkbox" checked={!esclusi.has(e.id)} onChange={() => commuta(e.id)} /> <span>{e.titolo}</span></label>
+              {proposta.tipo !== 'risolvi_pratiche' && <button className="pp-chat-togli" onClick={() => apri({ tipo: 'documento', id: e.id })} aria-label="Apri"><IconaFile size={14} /></button>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {proposta.tipo === 'elimina' && (
+        <>
+          <label className="pp-conferma-drive"><input type="checkbox" checked={ancheDrive} onChange={(e) => setAncheDrive(e.target.checked)} /><span>Anche i file su Google Drive <small>(Cestino di Drive, 30 giorni)</small></span></label>
+          <label className="pp-conferma-drive"><input type="checkbox" checked={ancheEmail} onChange={(e) => setAncheEmail(e.target.checked)} /><span>Anche le email da cui arrivano <small>(Cestino di Gmail, 30 giorni; tenute se hanno altri allegati utili)</small></span></label>
+        </>
+      )}
+      {stato?.errore && <p className="pp-messaggio pp-messaggio-errore">{stato.errore}</p>}
+      <button className={`pp-bottone ${proposta.tipo === 'elimina' ? 'pp-bottone-rosso' : 'pp-bottone-verde'}`} disabled={!scelti.length || stato?.lavoro} onClick={conferma}>
+        {stato?.lavoro ? stato.testo : `Conferma: ${titoloProposta(proposta, scelti.length).toLowerCase()}`}
+      </button>
+    </div>
+  );
+}
+
+const SUGGERIMENTI_CHAT = ['Quanto devo pagare questo mese?', 'Dov\'è la carta d\'identità di Giulia?', 'Trova depliant e pubblicità da eliminare', 'Chiudi le pratiche ferme da più di 2 anni'];
 
 // Poliedron come scheda a pagina intera (PO 2026-10-17): la conversazione resta passando da una
 // scheda all'altra; la graffetta allega una foto, un PDF o un file, che viene archiviato e letto.
@@ -75,7 +128,8 @@ export function VistaPoliedron({ ctx }) {
     if (modo === 'ai') {
       setAttesa('Cerco nell\'archivio…');
       try {
-        nuovo = { ruolo: 'assistente', testo: await chiediPoliedron({ token: await tokenSessione(), domanda, documentoId, storia }), fonte: 'ai' };
+        const r = await chiediPoliedronCompleto({ token: await tokenSessione(), domanda, documentoId, storia });
+        nuovo = { ruolo: 'assistente', testo: r.risposta, proposte: r.proposte, fonte: 'ai' };
       } catch (e) {
         nuovo = q
           ? { ruolo: 'assistente', risposta: await rispondi(archivioDb, q).catch(() => null), fonte: 'core', nota: `${e.message} Ti rispondo con la ricerca di Poliedron.` }
@@ -120,6 +174,8 @@ export function VistaPoliedron({ ctx }) {
                   ? <button key={j} className="pp-chat-link" onClick={() => apri({ tipo: 'documento', id: p.doc })}><IconaFile size={14} />{p.titolo}</button>
                   : <span key={j}>{p.testo}</span>))}</div>}
                 {m.risposta && <Risultato risposta={m.risposta} ctx={ctx} />}
+                {(m.proposte || []).map((p, j) => <Proposta key={j} proposta={p} ctx={ctx}
+                  onFatto={(esito) => setChat((c) => ({ ...c, messaggi: c.messaggi.map((x, k) => (k === i ? { ...x, proposte: x.proposte.map((y, h) => (h === j ? { ...y, fatto: esito } : y)) } : x)) }))} />)}
                 {m.fonte === 'core' && !m.risposta && !m.nota && <p>Nessun risultato.</p>}
                 <span className="pp-chat-fonte">{etichettaFonte(m)}</span>
               </>

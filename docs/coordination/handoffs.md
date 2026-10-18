@@ -1,5 +1,8 @@
 # Handoffs
 
+## 2026-10-18 — CLAUDE — Pulizia in massa (Poliedron + Gemini) e Risolta sulle pratiche
+- Il modello propone soltanto; l'esecuzione parte dall'app dopo la conferma di Luca (eseguiProposta: Drive → Gmail → archivio). Eccezioni alle regole sez. 3 documentate in `poliedron/archivio/CLAUDE.md`.
+
 ## 2026-10-18 — CLAUDE — Archivio: Gemini di riserva
 - `modello_()` sceglie Claude o Gemini; `apiInPausa_()` = nessun modello. Piano gratuito per scelta di Luca (Google può usare i contenuti). Script da pubblicare a mano da Luca: questa sessione non ha clasp.
 

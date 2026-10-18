@@ -751,6 +751,18 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; d
 .pp-testo-lungo { margin: 0; white-space: pre-wrap; line-height: 1.5; }
 .pp-pannello a.pp-bottone { text-align: center; text-decoration: none; }
 
+/* PO 2026-10-18 — proposte di pulizia in massa nella chat, da confermare. */
+.pp-proposta { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 14px; border: 1px solid var(--pp-linea); background: var(--pp-sfondo); }
+.pp-proposta .pp-testo-link { align-self: flex-start; }
+.pp-proposta-fatta { color: var(--pp-verde); }
+.pp-proposta-elenco { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.pp-proposta-elenco li { display: flex; align-items: center; gap: 4px; }
+.pp-proposta-elenco label { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 4px 2px; font-size: 14px; }
+.pp-proposta-elenco label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-proposta-elenco input { width: 20px; height: 20px; flex-shrink: 0; accent-color: var(--pp-blu); }
+.pp-riga-pratica { display: flex; align-items: center; }
+.pp-riga-pratica > .pp-riga { flex: 1; min-width: 0; }
+.pp-risolvi { flex-shrink: 0; margin-right: 8px; padding: 6px 10px; border-radius: 999px; font-size: 13px; font-weight: 650; color: var(--pp-verde); background: color-mix(in srgb, var(--pp-verde) 12%, transparent); }
 /* POL-VITA-018 — notifiche, stato e suggerimenti delle cartelle */
 .pp-voce-testo { display: block; line-height: 1.45; font-size: 14px; color: var(--pp-inchiostro); }
 .pp-voce-azioni { display: flex; gap: 12px; align-items: center; justify-content: flex-start; }

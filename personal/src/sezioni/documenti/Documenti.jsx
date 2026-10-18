@@ -4,7 +4,7 @@
 // massa: sposta, importanza, ente, persona, Personali, elimina.
 import { useEffect, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { cercaArchivio, enti as caricaEnti, pratiche as caricaPratiche } from '../../lib/archivio.js';
+import { cercaArchivio, enti as caricaEnti, pratiche as caricaPratiche, cambiaStatoPratica } from '../../lib/archivio.js';
 import { VistaCartelle } from './Cartelle.jsx';
 import { colore, Vuoto, Sezione, Gruppo, Chips, Segmenti, ElencoPratiche } from '../../ui.jsx';
 import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaStella, IconaFoto } from '../../Icone.jsx';
@@ -118,6 +118,7 @@ export function VistaDocumenti({ ctx }) {
               <ElencoPratiche
                 elenco={elencoPratiche.filter((p) => (filtroPratiche === 'aperte' ? ['aperta', 'in_corso'].includes(p.stato) : filtroPratiche === 'risolte' ? p.stato === 'risolta' : true))}
                 onApri={(p) => apri({ tipo: 'pratica', p })}
+                onRisolvi={(p) => esegui(async () => { await cambiaStatoPratica(archivioDb, p.id, 'risolta'); setElencoPratiche((el) => el.map((x) => (x.id === p.id ? { ...x, stato: 'risolta' } : x))); ctx.mostra('Pratica risolta: non compare più tra le aperte'); })}
               />
             </>
           )}

@@ -670,14 +670,19 @@ function partiGemini_(content) {
 }
 
 function gemini_(system, content) {
-  const sp = PropertiesService.getScriptProperties();
-  const modello = sp.getProperty('GEMINI_MODELLO') || CONFIG.MODELLO_GEMINI;
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(modello) + ':generateContent';
-  const body = {
+  const c = geminiChiamata_({
     systemInstruction: { parts: [{ text: system }] },
     contents: [{ role: 'user', parts: partiGemini_(content) }],
     generationConfig: { responseMimeType: 'application/json', temperature: 0.2, maxOutputTokens: 8192 },
-  };
+  });
+  return (c.content.parts || []).filter(function (p) { return p.text && !p.thought; }).map(function (p) { return p.text; }).join('');
+}
+
+// Una richiesta a Gemini → il primo candidato (con content). Gestisce quote, chiave e ritentativi.
+function geminiChiamata_(body) {
+  const sp = PropertiesService.getScriptProperties();
+  const modello = sp.getProperty('GEMINI_MODELLO') || CONFIG.MODELLO_GEMINI;
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(modello) + ':generateContent';
   for (let tentativo = 1; tentativo <= 3; tentativo++) {
     const attesa = GEMINI_ULTIMA + GEMINI_INTERVALLO_MS - Date.now();
     if (attesa > 0) Utilities.sleep(attesa);
@@ -693,7 +698,7 @@ function gemini_(system, content) {
       const c = (r.candidates || [])[0];
       if (!c || !c.content) throw new Error('Gemini non ha risposto (' + ((r.promptFeedback || {}).blockReason || (c && c.finishReason) || 'motivo sconosciuto') + ')');
       if (c.finishReason === 'MAX_TOKENS') throw new Error('Risposta di Gemini troncata (max tokens)');
-      return (c.content.parts || []).filter(function (p) { return p.text && !p.thought; }).map(function (p) { return p.text; }).join('');
+      return c;
     }
     // Quota del giorno finita (piano gratuito) o chiave non valida: Gemini in pausa, si cataloga a regole.
     if ((code === 429 && /PerDay|per day|daily/i.test(testo)) || code === 401 || code === 403 || /API_KEY_INVALID|API key not valid/i.test(testo)) {
@@ -880,6 +885,7 @@ function doPost(e) {
     if (req.azione === 'chiedi') return rispostaJson_(chiediPoliedron_(req));
     if (req.azione === 'miniature') return rispostaJson_(miniature_(req.ids));
     if (req.azione === 'cestina') return rispostaJson_(cestinaFile_(req.ids));
+    if (req.azione === 'cestina_email') return rispostaJson_(cestinaEmail_(req.ids));
     if (req.azione === 'cartella') return rispostaJson_(analizzaCartella_(req));
     if (req.azione === 'bozza') return rispostaJson_(bozzaRisposta_(req));
     if (req.azione === 'suggerisci') return rispostaJson_(suggerisciCartelle_());
@@ -1006,6 +1012,29 @@ function cestinaFile_(ids) {
     try { DriveApp.getFileById(id).setTrashed(true); cestinati.push(id); } catch (e) { nonTrovati.push(id); }
   });
   return { ok: true, cestinati: cestinati, non_trovati: nonTrovati };
+}
+
+// Pulizia in massa (PO 2026-10-18, conferma esplicita di Luca: "Cestino Gmail"): le email da cui
+// arrivano i documenti che Luca elimina vanno nel Cestino di Gmail (recuperabili per 30 giorni), solo
+// se TUTTI i documenti archiviati da quell'email sono tra quelli eliminati. Mai i caricati dall'app.
+// Si chiama PRIMA di togliere i documenti dall'archivio, come cestinaFile_.
+const CESTINA_EMAIL_MAX = 100;
+function cestinaEmail_(ids) {
+  const richiesti = (Array.isArray(ids) ? ids : []).map(String).filter(function (id) { return /^[0-9a-f-]{36}$/i.test(id); }).slice(0, CESTINA_EMAIL_MAX);
+  if (!richiesti.length) return { ok: true, cestinate: 0, tenute: 0 };
+  const docs = sb_('documenti?select=id,gmail_message_id&id=in.(' + richiesti.join(',') + ')');
+  const messaggi = {};
+  docs.forEach(function (d) {
+    const m = String(d.gmail_message_id || '');
+    if (m && m.indexOf('caricato:') !== 0) messaggi[m] = true;
+  });
+  let cestinate = 0, tenute = 0;
+  Object.keys(messaggi).forEach(function (m) {
+    const tutti = sb_('documenti?select=id&gmail_message_id=eq.' + enc_(m));
+    if (tutti.some(function (d) { return richiesti.indexOf(d.id) < 0; })) { tenute++; return; } // altri allegati utili
+    try { GmailApp.getMessageById(m).moveToTrash(); cestinate++; } catch (e) { tenute++; }
+  });
+  return { ok: true, cestinate: cestinate, tenute: tenute };
 }
 
 /* =====================================================================
@@ -1337,6 +1366,16 @@ const breve_ = (d) => ({
 });
 const enc_ = encodeURIComponent;
 
+const CRITERI_DOC_ = { type: 'object', properties: {
+  descrizione: { type: 'string', description: 'cosa propone, in una frase (es. "Depliant e pubblicità ricevuti prima del 2020")' },
+  testo: { type: 'string', description: 'parole da cercare in titolo, oggetto dell\'email, nome del file o ente' },
+  fascicolo: { type: 'string', description: 'codice del fascicolo' },
+  tipo_documento: { type: 'string', description: 'es. preventivo, comunicazione, fattura' },
+  ente: { type: 'string' },
+  rilevanza: { type: 'string', description: 'alta, normale o bassa' },
+  prima_del: { type: 'string', description: 'solo documenti con email o data prima di questa data (YYYY-MM-DD)' },
+} };
+const PROPOSTA_MAX = 300;
 const STRUMENTI_CHAT = [
   { name: 'cerca_documenti', description: 'Cerca documenti nell\'archivio per parole (nome di un ente, fornitore, tipo di documento, numero) e/o per fascicolo. Restituisce titolo, data, importo e riassunto.',
     input_schema: { type: 'object', properties: { testo: { type: 'string' }, fascicolo: { type: 'string', description: 'codice del fascicolo, facoltativo' }, limite: { type: 'integer' } } } },
@@ -1347,10 +1386,64 @@ const STRUMENTI_CHAT = [
   { name: 'pratiche', description: 'Pratiche (vicende che raggruppano documenti), con numero di documenti e prossima scadenza. Filtro facoltativo sul titolo.',
     input_schema: { type: 'object', properties: { testo: { type: 'string' }, solo_aperte: { type: 'boolean' } } } },
   { name: 'riepilogo_archivio', description: 'Quanti documenti per fascicolo e quanti da gestire.', input_schema: { type: 'object', properties: {} } },
+  // Pulizia in massa (PO 2026-10-18): il modello PROPONE con dei criteri, Luca conferma nell'app.
+  { name: 'proponi_eliminazione', description: 'Propone a Luca di eliminare in massa documenti inutili (pubblicità, depliant, preventivi non accettati, newsletter, foto senza valore…) scelti con dei criteri. Non elimina nulla: Luca vede l\'elenco e conferma nell\'app; i file vanno nel Cestino di Drive e le email nel Cestino di Gmail (30 giorni). Usa criteri prudenti e dillo chiaramente.',
+    input_schema: CRITERI_DOC_ },
+  { name: 'proponi_rianalisi', description: 'Propone di far rileggere e ricatalogare in massa dall\'AI dei documenti (per esempio catalogati male o "da analizzare"). Luca conferma nell\'app.',
+    input_schema: CRITERI_DOC_ },
+  { name: 'proponi_risolvi_pratiche', description: 'Propone di segnare come risolte in massa delle pratiche aperte (spariscono dall\'app ma restano in archivio). Luca conferma nell\'app.',
+    input_schema: { type: 'object', properties: { testo: { type: 'string', description: 'parole nel titolo della pratica' }, fascicolo: { type: 'string' }, ferme_da_mesi: { type: 'integer', description: 'solo pratiche senza attività da almeno N mesi' }, descrizione: { type: 'string', description: 'cosa propone, in una frase' } } } },
 ];
 
-function strumentoChat_(nome, input) {
+// Documenti che corrispondono ai criteri. I clinici dei pazienti entrano solo se Luca li ha chiesti
+// esplicitamente nella domanda (sua decisione, 2026-10-18) e i loro titoli non arrivano mai al modello.
+function documentiPerCriteri_(c, pazientiChiesti) {
+  let q = 'documenti?select=id,titolo,fascicolo,drive_file_id,email_data&order=email_data.asc.nullslast&limit=' + PROPOSTA_MAX;
+  const pulisci = function (x) { return String(x || '').replace(/[*,()]/g, ' ').trim().slice(0, 80); };
+  if (c.fascicolo) q += '&fascicolo=eq.' + enc_(pulisci(c.fascicolo));
+  if (!(c.fascicolo === 'clinico_pazienti' && pazientiChiesti)) q += '&fascicolo=neq.clinico_pazienti';
+  if (c.tipo_documento) q += '&tipo_documento=ilike.' + enc_('*' + pulisci(c.tipo_documento) + '*');
+  if (c.ente) q += '&ente=ilike.' + enc_('*' + pulisci(c.ente) + '*');
+  if (c.rilevanza) q += '&rilevanza=eq.' + enc_(pulisci(c.rilevanza));
+  if (c.prima_del && /^\d{4}-\d{2}-\d{2}$/.test(c.prima_del)) q += '&email_data=lt.' + c.prima_del;
+  if (c.testo) {
+    const t = enc_('*' + pulisci(c.testo) + '*');
+    q += '&or=(titolo.ilike.' + t + ',email_oggetto.ilike.' + t + ',nome_file_originale.ilike.' + t + ',ente.ilike.' + t + ')';
+  }
+  return sb_(q) || [];
+}
+
+function proposta_(tipo, input, ctx) {
+  const nessunCriterio = !['testo', 'fascicolo', 'tipo_documento', 'ente', 'rilevanza', 'prima_del', 'ferme_da_mesi'].some(function (k) { return input[k]; });
+  if (nessunCriterio) return { errore: 'Servono dei criteri (testo, fascicolo, tipo, ente, rilevanza o data): non propongo azioni su tutto l\'archivio.' };
+  let elementi;
+  if (tipo === 'risolvi_pratiche') {
+    let q = 'v_pratiche?select=id,titolo,fascicolo,ultima_attivita&stato=in.(aperta,in_corso)&fascicolo=neq.clinico_pazienti&order=ultima_attivita.asc.nullsfirst&limit=' + PROPOSTA_MAX;
+    if (input.testo) q += '&titolo=ilike.' + enc_('*' + String(input.testo).replace(/[*,()]/g, ' ') + '*');
+    if (input.fascicolo) q += '&fascicolo=eq.' + enc_(String(input.fascicolo));
+    if (Number(input.ferme_da_mesi) > 0) {
+      const limite = new Date(); limite.setMonth(limite.getMonth() - Math.min(Number(input.ferme_da_mesi), 240));
+      q += '&ultima_attivita=lt.' + Utilities.formatDate(limite, CONFIG.FUSO, 'yyyy-MM-dd');
+    }
+    elementi = (sb_(q) || []).map(function (p) { return { id: p.id, titolo: p.titolo, fascicolo: p.fascicolo }; });
+  } else {
+    elementi = documentiPerCriteri_(input, tipo === 'elimina' && ctx.pazientiChiesti)
+      .filter(function (d) { return tipo !== 'rianalizza' || d.fascicolo !== 'clinico_pazienti'; })
+      .map(function (d) { return { id: d.id, titolo: d.titolo || '(senza titolo)', fascicolo: d.fascicolo, drive_file_id: d.drive_file_id || null }; });
+  }
+  if (!elementi.length) return { trovati: 0 };
+  ctx.proposte.push({ tipo: tipo, descrizione: String(input.descrizione || '').slice(0, 160), n: elementi.length, completa: elementi.length < PROPOSTA_MAX, elementi: elementi });
+  const visibili = elementi.filter(function (e) { return e.fascicolo !== 'clinico_pazienti'; });
+  return { trovati: elementi.length, di_cui_clinici: elementi.length - visibili.length, esempi: visibili.slice(0, 8).map(function (e) { return e.titolo; }),
+    nota: 'Proposta mostrata a Luca con un tasto di conferma: non è stato ancora fatto nulla.' + (elementi.length >= PROPOSTA_MAX ? ' Sono i primi ' + PROPOSTA_MAX + ': dopo la conferma si può ripetere.' : '') };
+}
+
+function strumentoChat_(nome, input, ctx) {
   input = input || {};
+  ctx = ctx || { proposte: [], pazientiChiesti: false };
+  if (nome === 'proponi_eliminazione') return proposta_('elimina', input, ctx);
+  if (nome === 'proponi_rianalisi') return proposta_('rianalizza', input, ctx);
+  if (nome === 'proponi_risolvi_pratiche') return proposta_('risolvi_pratiche', input, ctx);
   if (nome === 'cerca_documenti') {
     const lim = Math.min(Math.max(Number(input.limite) || 15, 1), 30);
     const docs = sb_('rpc/cerca_documenti', { method: 'post', body: { q: String(input.testo || ''), fasc: input.fascicolo || null, lim: lim + 10 } });
@@ -1393,6 +1486,7 @@ function chiediPoliedron_(req) {
     'Quando citi un documento scrivi [[doc:ID|titolo breve]] con l\'id esatto, così Luca può aprirlo. Per i pagamenti indica data e importo.',
     'Fascicoli: ' + Object.keys(FASCICOLI).join(', ') + '. I documenti clinici dei pazienti non sono consultabili: se servono, rimanda all\'app dello studio.',
     'Non mandi email né messaggi: se Luca chiede di scrivere a qualcuno, prepara solo il testo come bozza.',
+    'Pulizia: se Luca chiede di eliminare, rianalizzare o chiudere cose in massa usa gli strumenti proponi_*: tu proponi soltanto, è Luca a confermare con il tasto nell\'app. Criteri prudenti (es. pubblicità, depliant, newsletter, preventivi vecchi non accettati); mai documenti d\'identità, contratti, atti, fiscale o polizze se non li chiede esplicitamente. Di\' quanti sono e qualche esempio.',
   ].join('\n');
   const messaggi = [];
   (Array.isArray(req.storia) ? req.storia.slice(-6) : []).forEach(function (m) {
@@ -1405,20 +1499,62 @@ function chiediPoliedron_(req) {
   }
   messaggi.push({ role: 'user', content: domanda + contesto });
 
+  const ctx = { proposte: [], pazientiChiesti: /pazient|clinic/i.test(domanda) };
+  const esegui = function (nome, input) {
+    try { return strumentoChat_(nome, input, ctx); } catch (e) { return { errore: String(e && e.message || e).slice(0, 200) }; }
+  };
+  // Claude se disponibile, altrimenti Gemini (PO 2026-10-18); stessi strumenti, stesse regole.
+  const testo = !claudeInPausa_() ? chatClaude_(system, messaggi, esegui) : chatGemini_(system, messaggi, esegui);
+  return { ok: true, risposta: testo, proposte: ctx.proposte };
+}
+
+function chatClaude_(system, messaggi, esegui) {
   for (let giro = 0; giro < CHAT_MAX_GIRI; giro++) {
-    const r = claudeMessaggi_({ model: CONFIG.MODELLO, max_tokens: 1500, system: system, tools: STRUMENTI_CHAT, messages: messaggi });
+    let r;
+    try { r = claudeMessaggi_({ model: CONFIG.MODELLO, max_tokens: 1500, system: system, tools: STRUMENTI_CHAT, messages: messaggi }); } catch (e) {
+      if (/limite di spesa/.test(e.message) && geminiDisponibile_()) { pausaApi_(e.message); return chatGemini_(system, messaggi, esegui); }
+      throw e;
+    }
     if (r.stop_reason !== 'tool_use') {
-      const testo = (r.content || []).filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('').trim();
-      return { ok: true, risposta: testo || 'Non ho trovato una risposta.' };
+      const t = (r.content || []).filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('').trim();
+      return t || 'Non ho trovato una risposta.';
     }
     messaggi.push({ role: 'assistant', content: r.content });
     messaggi.push({ role: 'user', content: r.content.filter(function (b) { return b.type === 'tool_use'; }).map(function (b) {
-      let out;
-      try { out = strumentoChat_(b.name, b.input); } catch (e) { out = { errore: String(e && e.message || e).slice(0, 200) }; }
-      return { type: 'tool_result', tool_use_id: b.id, content: JSON.stringify(out).slice(0, 20000) };
+      return { type: 'tool_result', tool_use_id: b.id, content: JSON.stringify(esegui(b.name, b.input)).slice(0, 20000) };
     }) });
   }
-  return { ok: true, risposta: 'Domanda troppo ampia: prova a restringerla (un fornitore, un periodo, un tipo di documento).' };
+  return 'Domanda troppo ampia: prova a restringerla (un fornitore, un periodo, un tipo di documento).';
+}
+
+// Chat con Gemini: messaggi in formato Claude (solo testo) → contents di Gemini, strumenti → functionDeclarations.
+function chatGemini_(system, messaggi, esegui) {
+  if (!geminiDisponibile_()) throw new Error('Poliedron AI è ferma: Claude ha raggiunto il limite di spesa e Gemini non è disponibile ora.');
+  const contents = messaggi.filter(function (m) { return typeof m.content === 'string'; })
+    .map(function (m) { return { role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }; });
+  const strumenti = [{ functionDeclarations: STRUMENTI_CHAT.map(function (t) {
+    const f = { name: t.name, description: t.description };
+    if (Object.keys(t.input_schema.properties || {}).length) f.parameters = t.input_schema; // Gemini non vuole oggetti vuoti
+    return f;
+  }) }];
+  for (let giro = 0; giro < CHAT_MAX_GIRI; giro++) {
+    let c;
+    try { c = geminiChiamata_({ systemInstruction: { parts: [{ text: system }] }, contents: contents, tools: strumenti, generationConfig: { temperature: 0.3, maxOutputTokens: 4096 } }); } catch (e) {
+      if (e.message === 'RIPROVA') throw new Error('Poliedron AI è occupata (limite gratuito di Gemini raggiunto): riprova più tardi.');
+      throw e;
+    }
+    const parti = c.content.parts || [];
+    const chiamate = parti.filter(function (p) { return p.functionCall; });
+    if (!chiamate.length) {
+      const t = parti.filter(function (p) { return p.text && !p.thought; }).map(function (p) { return p.text; }).join('').trim();
+      return t || 'Non ho trovato una risposta.';
+    }
+    contents.push({ role: 'model', parts: parti }); // invariato: Gemini vuole indietro anche le firme dei suoi pensieri
+    contents.push({ role: 'user', parts: chiamate.map(function (p) {
+      return { functionResponse: { name: p.functionCall.name, response: { risultato: esegui(p.functionCall.name, p.functionCall.args || {}) } } };
+    }) });
+  }
+  return 'Domanda troppo ampia: prova a restringerla (un fornitore, un periodo, un tipo di documento).';
 }
 
 function claudeMessaggi_(body) {
