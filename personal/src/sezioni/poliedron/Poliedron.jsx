@@ -1,13 +1,21 @@
-// Poliedron — la chat a pagina intera: AI sull'archivio o sola ricerca, allegati con la graffetta.
+// Poliedron — la tua assistente personale a pagina intera: AI sull'archivio e sull'agenda o sola
+// ricerca, allegati con la graffetta, promemoria e pagamenti proposti da aggiungere con un tasto.
 import { useEffect, useRef, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { rispondi, caricaDocumento, chiediPoliedronCompleto, partiRisposta } from '../../lib/archivio.js';
+import { rispondi, caricaDocumento, chiediPoliedronCompleto, partiRisposta, pagamenti as caricaPagamenti, RICORRENZE } from '../../lib/archivio.js';
+import { nuovaScadenza, CATEGORIE_PAGAMENTO } from '../../lib/conti.js';
+import { sessioneStudio, appuntamentiTra, impegniTra, salvaImpegno } from '../../lib/studio.js';
+import { oggi as oggiAgenda, piuGiorni } from '../../lib/agenda.js';
+import {
+  SUGGERIMENTI_ASSISTENTE, benvenuto, agendaPerAssistente, giornataRichiesta, giorniTraDate, promemoriaIniziale, aggiungiPromemoria,
+} from '../../lib/assistente.js';
+import { ElencoGiorno } from '../agenda/index.jsx';
 import { titoloProposta, elementiScelti, eseguiProposta, esitoProposta } from '../../lib/pulizia.js';
 import { euro } from '../../lib/coreArchivio.js';
 import { preparaFile as preparaCaricamento } from '../../lib/file.js';
 import { ACCETTA_ALLEGATI, dimensioneFile, domandaDa, esitoAllegato, puoInviare, storiaChat } from '../../lib/chat.js';
 import { tokenSessione, Sezione, Gruppo, RigaDocumento, RigaPagamento, Segmenti, ElencoPratiche } from '../../ui.jsx';
-import { IconaChiudi, IconaFile, IconaInvia, IconaGraffetta } from '../../Icone.jsx';
+import { IconaChiudi, IconaFile, IconaInvia, IconaGraffetta, IconaCalendario, IconaEuro } from '../../Icone.jsx';
 
 /* ---------- Documenti ---------- */
 function Risultato({ risposta, ctx }) {
@@ -86,7 +94,101 @@ function Proposta({ proposta, ctx, onFatto }) {
   );
 }
 
-const SUGGERIMENTI_CHAT = ['Quanto devo pagare questo mese?', 'Dov\'è la carta d\'identità di Giulia?', 'Trova depliant e pubblicità da eliminare', 'Chiudi le pratiche ferme da più di 2 anni'];
+/* ---------- Promemoria proposto da Poliedron: Luca lo corregge e lo aggiunge ---------- */
+function PropostaPromemoria({ proposta, ctx, onFatto }) {
+  const { aggiorna } = ctx;
+  const [m, setM] = useState(() => promemoriaIniziale(proposta));
+  const [stato, setStato] = useState(null);
+  const cambia = (campo) => (e) => setM((x) => ({ ...x, [campo]: e.target.value }));
+  if (proposta.fatto) return <div className="pp-proposta pp-proposta-fatta"><strong>Fatto.</strong> {proposta.fatto}</div>;
+  const pagamento = m.cosa === 'pagamento';
+  const aggiungi = async () => {
+    setStato({ lavoro: true });
+    try {
+      const esito = await aggiungiPromemoria(m, {
+        nuovaScadenza: (s) => nuovaScadenza(archivioDb, s),
+        salvaImpegno: async (e) => {
+          if (!(await sessioneStudio().catch(() => null))) throw new Error('Per gli impegni collega prima l\'agenda (scheda Agenda).');
+          return salvaImpegno(e);
+        },
+      });
+      aggiorna();
+      onFatto(esito);
+    } catch (e) { setStato({ errore: e.message }); }
+  };
+  return (
+    <div className="pp-proposta pp-promemoria">
+      <strong>{pagamento ? <><IconaEuro size={16} /> Pagamento da fare</> : <><IconaCalendario size={16} /> Promemoria in agenda</>}</strong>
+      <label className="pp-campo"><span>{pagamento ? 'Cosa pagare' : 'Cosa'}</span><input value={m.titolo} onChange={cambia('titolo')} /></label>
+      <div className="pp-due">
+        <label className="pp-campo"><span>Data</span><input type="date" value={m.data} onChange={cambia('data')} /></label>
+        {pagamento
+          ? <label className="pp-campo"><span>Importo (€)</span><input inputMode="decimal" value={m.importo} onChange={cambia('importo')} placeholder="facoltativo" /></label>
+          : <label className="pp-campo"><span>Ora</span><input type="time" value={m.ora} onChange={cambia('ora')} /></label>}
+      </div>
+      {pagamento && (
+        <div className="pp-due">
+          <label className="pp-campo"><span>Tipo</span>
+            <select className="pp-select" value={m.categoria} onChange={cambia('categoria')}>
+              <option value="">—</option>
+              {[...new Set([...CATEGORIE_PAGAMENTO, ...(m.categoria ? [m.categoria] : [])])].map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </label>
+          <label className="pp-campo"><span>Si ripete</span>
+            <select className="pp-select" value={m.ricorrenza} onChange={cambia('ricorrenza')}>
+              {RICORRENZE.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+            </select>
+          </label>
+        </div>
+      )}
+      {!pagamento && !m.ora && <span className="pp-riga-meta">Senza ora: tutto il giorno.</span>}
+      {stato?.errore && <p className="pp-messaggio pp-messaggio-errore">{stato.errore}</p>}
+      <button className="pp-bottone pp-bottone-verde" disabled={stato?.lavoro || !m.titolo.trim() || !m.data} onClick={aggiungi}>
+        {stato?.lavoro ? 'Aggiungo…' : pagamento ? 'Aggiungi a Da pagare' : 'Aggiungi in agenda'}
+      </button>
+    </div>
+  );
+}
+
+/* ---------- La giornata: agenda e pagamenti, risposti dall'app (anche senza AI) ---------- */
+async function caricaGiornata({ da, a }) {
+  const [scadenze, collegata] = await Promise.all([caricaPagamenti(archivioDb).catch(() => []), sessioneStudio().catch(() => null)]);
+  const nelPeriodo = scadenze.filter((s) => s.data >= da && s.data <= a && !s.completata);
+  if (!collegata) return { appuntamenti: [], impegni: [], scadenze: nelPeriodo, collegata: false };
+  const [appuntamenti, impegni] = await Promise.all([appuntamentiTra(da, a).catch(() => []), impegniTra(da, a).catch(() => [])]);
+  return { appuntamenti, impegni, scadenze: nelPeriodo, collegata: true };
+}
+
+function fraseGiornata(g) {
+  const { dati } = g;
+  const app = dati.appuntamenti.filter((x) => x.stato !== 'annullato').length;
+  const parti = [];
+  if (app) parti.push(`${app} ${app === 1 ? 'appuntamento' : 'appuntamenti'} in studio`);
+  if (dati.impegni.length) parti.push(`${dati.impegni.length} ${dati.impegni.length === 1 ? 'impegno tuo' : 'impegni tuoi'}`);
+  if (dati.scadenze.length) parti.push(`${dati.scadenze.length} ${dati.scadenze.length === 1 ? 'pagamento' : 'pagamenti'} in scadenza`);
+  const quando = g.titolo === 'Oggi' ? 'Oggi hai' : g.titolo === 'Domani' ? 'Domani hai' : g.titolo === 'Dopodomani' ? 'Dopodomani hai' : 'Nei prossimi 7 giorni hai';
+  return parti.length ? `${quando} ${parti.join(', ')}.` : `${quando.replace(' hai', '')} niente in programma.`;
+}
+
+function Giornata({ giornata, ctx }) {
+  const giorni = giorniTraDate(giornata.da, giornata.a);
+  return (
+    <>
+      <p className="pp-frase">{fraseGiornata(giornata)}</p>
+      {!giornata.dati.collegata && <p className="pp-riga-meta">L'agenda dello studio non è collegata: la colleghi dalla scheda Agenda.</p>}
+      {giorni.map((g) => <ElencoGiorno key={g} giorno={g} dati={giornata.dati} ctx={ctx} etichette={ctx.impostazioni.etichette} coloriTipi={{}} intestazione={giorni.length > 1} />)}
+    </>
+  );
+}
+
+// Agenda dei prossimi 7 giorni per l'AI: senza nomi dei pazienti (agendaPerAssistente).
+async function agendaPerAI() {
+  if (!(await sessioneStudio().catch(() => null))) return null;
+  const da = oggiAgenda();
+  const a = piuGiorni(da, 6);
+  const [appuntamenti, impegni] = await Promise.all([appuntamentiTra(da, a), impegniTra(da, a)]);
+  return agendaPerAssistente({ da, impegni, appuntamenti });
+}
 
 // Poliedron come scheda a pagina intera (PO 2026-10-17): la conversazione resta passando da una
 // scheda all'altra; la graffetta allega una foto, un PDF o un file, che viene archiviato e letto.
@@ -98,6 +200,16 @@ export function VistaPoliedron({ ctx }) {
   const [attesa, setAttesa] = useState(null);
   const lista = useRef(null);
   const selettore = useRef(null);
+  // Tastiera aperta (si sta scrivendo): il dock flottante sparisce e la barra scende in fondo.
+  const [scrivendo, setScrivendo] = useState(false);
+  const chiusura = useRef(null);
+  useEffect(() => {
+    document.body.classList.toggle('pp-tastiera', scrivendo);
+    return () => document.body.classList.remove('pp-tastiera');
+  }, [scrivendo]);
+  useEffect(() => () => clearTimeout(chiusura.current), []);
+  const inizioScrittura = () => { clearTimeout(chiusura.current); setScrivendo(true); };
+  const fineScrittura = () => { clearTimeout(chiusura.current); chiusura.current = setTimeout(() => setScrivendo(false), 120); };
   useEffect(() => { const el = lista.current; if (el) el.scrollTop = el.scrollHeight; }, [messaggi.length, attesa]);
   const aggiungi = (m) => setChat((c) => ({ ...c, messaggi: [...c.messaggi, m] }));
 
@@ -125,10 +237,23 @@ export function VistaPoliedron({ ctx }) {
     }
     const domanda = domandaDa(q, Boolean(allegato));
     let nuovo = null;
-    if (modo === 'ai') {
-      setAttesa('Cerco nell\'archivio…');
+    // Domande sulla giornata ("cosa ho domani?"): risponde l'app con l'agenda vera, subito.
+    const richiesta = !allegato && giornataRichiesta(q, oggiAgenda());
+    if (richiesta) {
+      setAttesa('Guardo l\'agenda…');
       try {
-        const r = await chiediPoliedronCompleto({ token: await tokenSessione(), domanda, documentoId, storia });
+        aggiungi({ ruolo: 'assistente', giornata: { ...richiesta, dati: await caricaGiornata(richiesta) }, fonte: 'agenda' });
+      } catch (e) {
+        aggiungi({ ruolo: 'assistente', fonte: 'agenda', nota: `Agenda non disponibile: ${e.message}` });
+      }
+      setAttesa(null);
+      return;
+    }
+    if (modo === 'ai') {
+      setAttesa('Ci penso…');
+      try {
+        const agenda = await agendaPerAI().catch(() => null);
+        const r = await chiediPoliedronCompleto({ token: await tokenSessione(), domanda, documentoId, storia, agenda });
         nuovo = { ruolo: 'assistente', testo: r.risposta, proposte: r.proposte, fonte: 'ai' };
       } catch (e) {
         nuovo = q
@@ -144,7 +269,7 @@ export function VistaPoliedron({ ctx }) {
   };
 
   const scegliFile = (e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) setFile(f); };
-  const etichettaFonte = (m) => (m.fonte === 'ai' ? 'Poliedron AI' : m.fonte === 'archivio' ? 'Poliedron · archivio' : 'Poliedron · ricerca');
+  const etichettaFonte = (m) => (m.fonte === 'ai' ? 'Poliedron AI' : m.fonte === 'archivio' ? 'Poliedron · archivio' : m.fonte === 'agenda' ? 'Poliedron · agenda' : 'Poliedron · ricerca');
 
   return (
     <div className="pp-chat">
@@ -152,9 +277,9 @@ export function VistaPoliedron({ ctx }) {
       <div className="pp-chat-lista" ref={lista}>
         {!messaggi.length && (
           <div className="pp-chat-vuota">
-            <p>{modo === 'ai' ? 'Chiedimi qualsiasi cosa sull\'archivio: documenti, pagamenti, pratiche, persone. Con la graffetta mi mandi una foto o un PDF: lo archivio e ti dico cos\'è.' : 'Ricerca senza AI: fornitori, bollette, scadenze, "quanto devo a…", pratiche.'}</p>
+            <p>{modo === 'ai' ? benvenuto() : 'Ricerca senza AI: la tua giornata ("cosa ho domani?"), fornitori, bollette, scadenze, "quanto devo a…", pratiche.'}</p>
             <div className="pp-suggerimenti">
-              {(documento ? ['Riassumimi questo documento', 'Cosa devo fare?', 'Ci sono scadenze?'] : SUGGERIMENTI_CHAT).map((x) => <button key={x} className="pp-chip" onClick={() => invia(x)}>{x}</button>)}
+              {(documento ? ['Riassumimi questo documento', 'Cosa devo fare?', 'Ci sono scadenze?'] : SUGGERIMENTI_ASSISTENTE).map((x) => <button key={x} className="pp-chip" onClick={() => invia(x)}>{x}</button>)}
             </div>
           </div>
         )}
@@ -174,8 +299,13 @@ export function VistaPoliedron({ ctx }) {
                   ? <button key={j} className="pp-chat-link" onClick={() => apri({ tipo: 'documento', id: p.doc })}><IconaFile size={14} />{p.titolo}</button>
                   : <span key={j}>{p.testo}</span>))}</div>}
                 {m.risposta && <Risultato risposta={m.risposta} ctx={ctx} />}
-                {(m.proposte || []).map((p, j) => <Proposta key={j} proposta={p} ctx={ctx}
-                  onFatto={(esito) => setChat((c) => ({ ...c, messaggi: c.messaggi.map((x, k) => (k === i ? { ...x, proposte: x.proposte.map((y, h) => (h === j ? { ...y, fatto: esito } : y)) } : x)) }))} />)}
+                {m.giornata && <Giornata giornata={m.giornata} ctx={ctx} />}
+                {(m.proposte || []).map((p, j) => {
+                  const fatto = (esito) => setChat((c) => ({ ...c, messaggi: c.messaggi.map((x, k) => (k === i ? { ...x, proposte: x.proposte.map((y, h) => (h === j ? { ...y, fatto: esito } : y)) } : x)) }));
+                  return p.tipo === 'promemoria'
+                    ? <PropostaPromemoria key={j} proposta={p} ctx={ctx} onFatto={fatto} />
+                    : <Proposta key={j} proposta={p} ctx={ctx} onFatto={fatto} />;
+                })}
                 {m.fonte === 'core' && !m.risposta && !m.nota && <p>Nessun risultato.</p>}
                 <span className="pp-chat-fonte">{etichettaFonte(m)}</span>
               </>
@@ -200,8 +330,10 @@ export function VistaPoliedron({ ctx }) {
         <form className="pp-chat-barra" onSubmit={(e) => { e.preventDefault(); invia(testo); }}>
           <input ref={selettore} type="file" accept={ACCETTA_ALLEGATI} hidden onChange={scegliFile} />
           <button type="button" className="pp-chat-allega" onClick={() => selettore.current?.click()} disabled={Boolean(attesa)} aria-label="Allega una foto, un PDF o un file"><IconaGraffetta size={21} /></button>
-          <input value={testo} onChange={(e) => setTesto(e.target.value)} placeholder={file ? 'Domanda (facoltativa)…' : 'Scrivi a Poliedron…'} enterKeyHint="send" aria-label="Domanda a Poliedron" />
-          <button type="submit" className="pp-chat-invia" disabled={!puoInviare({ testo, file, attesa })} aria-label="Invia"><IconaInvia size={20} /></button>
+          <input value={testo} onChange={(e) => setTesto(e.target.value)} onFocus={inizioScrittura} onBlur={fineScrittura}
+            placeholder={file ? 'Domanda (facoltativa)…' : 'Scrivi alla tua assistente…'} enterKeyHint="send" aria-label="Domanda a Poliedron" />
+          {/* Il tocco su Invia non chiude la tastiera: si continua a scrivere come in Messaggi. */}
+          <button type="submit" className="pp-chat-invia" disabled={!puoInviare({ testo, file, attesa })} aria-label="Invia" onPointerDown={(e) => scrivendo && e.preventDefault()}><IconaInvia size={20} /></button>
         </form>
       </div>
     </div>

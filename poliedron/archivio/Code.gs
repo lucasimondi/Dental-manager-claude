@@ -1393,6 +1393,19 @@ const STRUMENTI_CHAT = [
     input_schema: CRITERI_DOC_ },
   { name: 'proponi_risolvi_pratiche', description: 'Propone di segnare come risolte in massa delle pratiche aperte (spariscono dall\'app ma restano in archivio). Luca conferma nell\'app.',
     input_schema: { type: 'object', properties: { testo: { type: 'string', description: 'parole nel titolo della pratica' }, fascicolo: { type: 'string' }, ferme_da_mesi: { type: 'integer', description: 'solo pratiche senza attività da almeno N mesi' }, descrizione: { type: 'string', description: 'cosa propone, in una frase' } } } },
+  // Assistente personale (PO 2026-10-18): propone un promemoria in agenda o un pagamento da fare; Luca lo aggiunge con un tasto.
+  { name: 'proponi_promemoria', description: 'Propone a Luca di aggiungere un impegno o promemoria nella sua agenda personale (cosa = "evento") oppure un pagamento da fare con scadenza (cosa = "pagamento": bollette, assicurazioni, bollo, tasse…). Non salva nulla: Luca vede la scheda, può correggerla e la aggiunge con un tasto. Usala quando Luca chiede di ricordargli qualcosa, di segnare un impegno o un pagamento.',
+    input_schema: { type: 'object', properties: {
+      cosa: { type: 'string', enum: ['evento', 'pagamento'] },
+      titolo: { type: 'string', description: 'breve, es. "Bollo auto" o "Chiamare il commercialista"' },
+      data: { type: 'string', description: 'YYYY-MM-DD' },
+      ora: { type: 'string', description: 'HH:MM, solo per gli eventi; vuota = tutto il giorno' },
+      ora_fine: { type: 'string', description: 'HH:MM, facoltativa' },
+      importo: { type: 'number', description: 'euro, solo per i pagamenti, se noto' },
+      categoria: { type: 'string', description: 'per i pagamenti: Bollette, Assicurazioni, Tasse, Auto, Casa, Pulizia, Abbonamenti, Altro' },
+      ricorrenza: { type: 'string', description: 'solo se si ripete: mensile, bimestrale, trimestrale, semestrale o annuale' },
+      note: { type: 'string' },
+    }, required: ['cosa', 'titolo', 'data'] } },
 ];
 
 // Documenti che corrispondono ai criteri. I clinici dei pazienti entrano solo se Luca li ha chiesti
@@ -1438,12 +1451,33 @@ function proposta_(tipo, input, ctx) {
     nota: 'Proposta mostrata a Luca con un tasto di conferma: non è stato ancora fatto nulla.' + (elementi.length >= PROPOSTA_MAX ? ' Sono i primi ' + PROPOSTA_MAX + ': dopo la conferma si può ripetere.' : '') };
 }
 
+// Un solo promemoria per volta, già controllato: la scheda nell'app lo mostra e Luca lo aggiunge.
+function promemoria_(input, ctx) {
+  const cosa = input.cosa === 'pagamento' ? 'pagamento' : 'evento';
+  const data = String(input.data || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return { errore: 'Serve la data in formato YYYY-MM-DD.' };
+  const ora = function (x) { return /^\d{2}:\d{2}$/.test(String(x || '')) ? String(x) : null; };
+  const importo = Number(input.importo);
+  const p = {
+    tipo: 'promemoria', cosa: cosa, titolo: String(input.titolo || '').trim().slice(0, 120) || (cosa === 'pagamento' ? 'Pagamento' : 'Promemoria'), data: data,
+    ora: cosa === 'evento' ? ora(input.ora) : null, ora_fine: cosa === 'evento' ? ora(input.ora_fine) : null,
+    importo: cosa === 'pagamento' && isFinite(importo) && importo > 0 ? Math.round(importo * 100) / 100 : null,
+    categoria: cosa === 'pagamento' ? String(input.categoria || '').slice(0, 40) || null : null,
+    ricorrenza: ['mensile', 'bimestrale', 'trimestrale', 'semestrale', 'annuale'].indexOf(input.ricorrenza) >= 0 ? input.ricorrenza : null,
+    note: String(input.note || '').slice(0, 300) || null,
+  };
+  if (ctx.proposte.filter(function (x) { return x.tipo === 'promemoria'; }).length >= 5) return { errore: 'Al massimo 5 promemoria per risposta.' };
+  ctx.proposte.push(p);
+  return { proposto: true, nota: 'Scheda mostrata a Luca con il tasto Aggiungi: non è ancora salvato.' };
+}
+
 function strumentoChat_(nome, input, ctx) {
   input = input || {};
   ctx = ctx || { proposte: [], pazientiChiesti: false };
   if (nome === 'proponi_eliminazione') return proposta_('elimina', input, ctx);
   if (nome === 'proponi_rianalisi') return proposta_('rianalizza', input, ctx);
   if (nome === 'proponi_risolvi_pratiche') return proposta_('risolvi_pratiche', input, ctx);
+  if (nome === 'proponi_promemoria') return promemoria_(input, ctx);
   if (nome === 'cerca_documenti') {
     const lim = Math.min(Math.max(Number(input.limite) || 15, 1), 30);
     const docs = sb_('rpc/cerca_documenti', { method: 'post', body: { q: String(input.testo || ''), fasc: input.fascicolo || null, lim: lim + 10 } });
@@ -1480,8 +1514,12 @@ function chiediPoliedron_(req) {
   const domanda = String(req.domanda || '').slice(0, 2000).trim();
   if (!domanda) return { ok: false, errore: 'Domanda vuota' };
   const oggi = Utilities.formatDate(new Date(), CONFIG.FUSO, 'yyyy-MM-dd');
+  const giorno = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'][Number(Utilities.formatDate(new Date(), CONFIG.FUSO, 'u')) % 7] || '';
   const system = [
-    'Sei Poliedron, l\'assistente dell\'archivio personale di Luca Simondi (odontoiatra, studi a Cuneo e Neive; famiglia: Martina e Giulia Simondi). Oggi è ' + oggi + '.',
+    'Sei Poliedron, l\'assistente personale di Luca Simondi (odontoiatra, studi a Cuneo e Neive; famiglia: Martina e Giulia Simondi). Oggi è ' + giorno + ' ' + oggi + '.',
+    'Parli con Luca come una segretaria di fiducia: diretta, calda, al femminile ("sono pronta", "ci penso io"), mai prolissa. Lo aiuti a tenere in ordine la giornata, l\'agenda, i pagamenti, i documenti e le pratiche.',
+    'Sei proattiva: se nella domanda o nei dati vedi una scadenza vicina, un impegno in conflitto o qualcosa da fare, segnalalo in una riga. Quando Luca ti chiede di ricordargli o segnare qualcosa (impegno, chiamata, pagamento, bolletta, bollo, assicurazione) usa proponi_promemoria con la data esatta (calcola "domani", "lunedì", "il 30" a partire da oggi) e di\' che basta toccare Aggiungi.',
+    'L\'agenda dei prossimi giorni, se è collegata, arriva insieme alla domanda: per gli appuntamenti dello studio conosci solo quanti sono e gli orari, non i pazienti.',
     'Rispondi in italiano, breve e concreto, usando SOLO i dati che ottieni con gli strumenti: se un dato non c\'è, dillo. Non inventare importi, date o nomi.',
     'Quando citi un documento scrivi [[doc:ID|titolo breve]] con l\'id esatto, così Luca può aprirlo. Per i pagamenti indica data e importo.',
     'Fascicoli: ' + Object.keys(FASCICOLI).join(', ') + '. I documenti clinici dei pazienti non sono consultabili: se servono, rimanda all\'app dello studio.',
@@ -1497,6 +1535,8 @@ function chiediPoliedron_(req) {
     const d = strumentoChat_('documento', { id: req.documento_id });
     contesto = d.errore ? '' : '\n\n[Documento aperto nell\'app]\n' + JSON.stringify(d).slice(0, 6000);
   }
+  // Agenda preparata dall'app: impegni personali e, dello studio, solo quanti appuntamenti e a che ore (mai i pazienti).
+  if (req.agenda) contesto += '\n\n[Agenda di Luca]\n' + String(req.agenda).slice(0, 4000);
   messaggi.push({ role: 'user', content: domanda + contesto });
 
   const ctx = { proposte: [], pazientiChiesti: /pazient|clinic/i.test(domanda) };
