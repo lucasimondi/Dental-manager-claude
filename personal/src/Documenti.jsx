@@ -11,7 +11,7 @@ import {
 import { euro } from './lib/coreArchivio.js';
 import { colore, dataBreve, titoloDoc, Vuoto, Sezione, Gruppo, Chips, Segmenti, ConfermaElimina, ElencoPratiche, tokenSessione } from './ui.jsx';
 import { Miniatura } from './Miniatura.jsx';
-import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaStella, IconaCestino } from './Icone.jsx';
+import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaStella, IconaCestino, IconaFoto } from './Icone.jsx';
 
 const RILEVANZA = { alta: 'Importante', normale: 'Normale', bassa: 'Poco utile' };
 const MODO_KEY = 'poliedron-personal-elenco';
@@ -282,6 +282,11 @@ export function VistaDocumenti({ ctx }) {
           : <Vuoto>Cerco…</Vuoto>
       ) : (
         <>
+          <button className="pp-ingresso-foto" onClick={() => apri({ tipo: 'fotovideo' })}>
+            <span className="pp-ingresso-foto-icona"><IconaFoto size={22} /></span>
+            <span className="pp-riga-testo"><span className="pp-riga-titolo">Foto e video</span><span className="pp-riga-meta">Album, anni e luoghi</span></span>
+            <IconaFreccia size={16} />
+          </button>
           <Chips voci={[['recenti', 'Recenti'], ['enti', 'Per ente'], ['categorie', 'Categorie'], ['pratiche', 'Pratiche']]} attiva={scheda} onScegli={setScheda} />
           {scheda === 'recenti' && risultati && <ElencoSelezionabile elenco={risultati} ctx={ctx} onCambiato={() => setRinfresca((n) => n + 1)} intestazione="Ultimi arrivati" />}
           {scheda === 'enti' && (
