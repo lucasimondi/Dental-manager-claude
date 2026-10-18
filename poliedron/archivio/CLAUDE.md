@@ -12,6 +12,7 @@ Questa cartella (`poliedron/archivio/`) contiene il sistema che importa, catalog
 | Consultazione | Dashboard web (Vercel) e in futuro Poliedron | `index.html` |
 | App per telefono | Poliedron Personal su `/personal/` (consultazione, Portafoglio, caricamento) | `personal/` nella radice del repo |
 | Caricamento dall'app | Web app dello stesso Apps Script (`doPost`), file in `Archivio personale/Caricati/<anno>`; anche anteprima, miniature (mai dei pazienti) e chat | `Code.gs` |
+| Cartelle dell'app (POL-VITA-016) | Una cartella per ente: vista `v_cartelle`, tabella `cartelle_ente` (etichette, note, sintesi; la vecchia tabella `cartelle` dello schema iniziale non si usa e non si tocca), promemoria = `scadenze.cartella`, RPC `rinomina_cartella`; azioni `cartella` (sintesi AI) e `bozza` (bozza di risposta in Gmail, mai invii) di `doPost`, mai i clinici | `supabase/archivio/migrations/`, `Code.gs` |
 | Conti dell'app | Tabella `movimenti` (incassi e spese di Luca, RLS proprietario) | `supabase/archivio/migrations/` |
 | Guida manuale | per Luca | `LEGGIMI.md` |
 

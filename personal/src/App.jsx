@@ -4,7 +4,7 @@ import { readAgendaLocation } from '../../shared/agenda/navigation.js';
 // Dock: Oggi · Documenti · Agenda · Conti · Personali. Ogni dettaglio si apre come pagina sopra la
 // sezione, con "Indietro" in alto, il tasto di chiusura in basso a portata di pollice e il dock
 // sempre visibile; chiudendo si torna dov'eri. Il + apre tutte le aggiunte.
-// POL-VITA-016 — qui c'è solo la cornice; le sezioni sono in sezioni/ (vedi sezioni/index.js).
+// POL-VITA-017 — qui c'è solo la cornice; le sezioni sono in sezioni/ (vedi sezioni/index.js).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { archivioDb } from './lib/supabasePersonal.js';
 import { conteggiFascicoli, segnaScadenza, prossimoPagamentoFisso } from './lib/archivio.js';

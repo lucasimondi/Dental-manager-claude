@@ -3811,8 +3811,18 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - ROLLBACK: revert del commit; nessun dato o migration da ripristinare.
 - EXACT NEXT ACTION: aprire/revisionare PR, attendere approvazione PO prima di merge o deploy.
 
-## 2026-10-18 — Claude — POL-VITA-016 Personal a sezioni
-- BRANCH: `claude/document-layout-management-vaktuz` da `master@4f9cdc3`.
+
+## 2026-10-18 — Claude — POL-VITA-016 (Personal: cartelle in Documenti)
+- BRANCH: `claude/catalogazione-facile-latjs9` da `master@6c9a296f`.
+- COMPLETATO: cartelle per ente con periodo, contatti, etichette, note, promemoria, sintesi AI, bozza di risposta, rinomina/unione, togli/elimina; selezione multipla con Condividi più file e sposta in cartella.
+- DB: migrazione additiva applicata (`cartelle_ente`, `scadenze.cartella`, `v_cartelle`, `rinomina_cartella`); 8 documenti Kerdos con ente "Kerdos SPV".
+- SCRIPT: versione 9 attiva (azioni `cartella` e `bozza`, solo bozze, mai clinici).
+- TEST: 1311/1311 su Node 20, build OK, prova Chromium.
+- LIMITI: AI ferma fino al ripristino del credito Claude; nomi di cartella provvisori per i documenti importati senza Claude.
+- PROSSIMO PASSO: review della PR, merge solo su "Mergia" del PO.
+
+## 2026-10-18 — Claude — POL-VITA-017 Personal a sezioni
+- BRANCH: `claude/document-layout-management-vaktuz` da `master@4f9cdc3`, poi unito `master@d4ed134` (cartelle: `Cartelle.jsx` in `sezioni/documenti/`).
 - COMPLETATO: codice di Personal diviso per sezione in `personal/src/sezioni/` con registro (`sezioni/index.js`); `App.jsx` è solo la cornice. Comportamento invariato.
 - DB / SCRIPT / STUDIO / SHARED: nessuna modifica.
 - TEST: 1316/1316; confronto testuale di 16 schermate master↔branch in Chromium identico; agenda visual e reliability Chromium OK.

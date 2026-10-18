@@ -5,7 +5,7 @@
 // dal tocco, non dopo un download.
 import { anteprimaFile } from './archivio.js';
 
-const MAX_IN_MEMORIA = 6;
+const MAX_IN_MEMORIA = 12; // anche più documenti scelti insieme (POL-VITA-016)
 const memoria = new Map(); // drive_file_id → Promise<{ nome, mime, dati }>
 
 export function preparaFile(driveFileId, token) {
@@ -23,12 +23,14 @@ export function comeFile({ nome, mime, dati }) {
   return new File([byte], nome || 'documento', { type: mime || 'application/octet-stream' });
 }
 
-// Va chiamata direttamente nel gestore del tocco. `file` può mancare (allora si condivide il link).
-export async function condividi({ titolo, link, file }, nav = globalThis.navigator) {
+// Va chiamata direttamente nel gestore del tocco. `file` (o `files`, più file insieme) può mancare:
+// allora si condivide il link.
+export async function condividi({ titolo, link, file, files }, nav = globalThis.navigator) {
   try {
-    if (file && nav?.canShare?.({ files: [file] })) {
-      await nav.share({ files: [file], title: titolo });
-      return 'file';
+    const tutti = files?.length ? files : file ? [file] : [];
+    if (tutti.length && nav?.canShare?.({ files: tutti })) {
+      await nav.share({ files: tutti, title: titolo });
+      return tutti.length > 1 ? 'files' : 'file';
     }
     if (nav?.share) {
       await nav.share({ title: titolo, text: titolo, ...(link ? { url: link } : {}) });

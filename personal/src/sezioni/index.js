@@ -1,4 +1,4 @@
-// POL-VITA-016 — Personal a sezioni. Ogni sezione vive nella sua cartella con un index.jsx che
+// POL-VITA-017 — Personal a sezioni. Ogni sezione vive nella sua cartella con un index.jsx che
 // dichiara cosa porta all'app: la vista del dock (Vista), le pagine che apre (pagine: tipo →
 // titolo, modulo, render) e, se serve, azioni e classi per testata e contenuto. L'app (App.jsx)
 // è solo la cornice: accesso, testata, dock, pagine sovrapposte, tasto +.

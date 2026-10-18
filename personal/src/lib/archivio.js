@@ -3,8 +3,8 @@
 import { capisciRichiesta, riepilogoDebito } from './coreArchivio.js';
 import { filtroSezione } from './impostazioni.js';
 
-const CAMPI_DOC = 'id, titolo, riassunto, fascicolo, tipo_documento, data_documento, email_data, email_oggetto, email_mittente, importo, azione_richiesta, azione_descrizione, urgenza, drive_url, drive_file_id, nome_file_originale, mime_type, pratica_id, tag, gmail_message_id, creato_il, persona, categoria, ente, rilevanza';
-const CAMPI_SCADENZA = `id, data, descrizione, importo, completata, documento_id, pratica_id, categoria, ricorrenza, storica,
+export const CAMPI_DOC = 'id, titolo, riassunto, fascicolo, tipo_documento, data_documento, email_data, email_oggetto, email_mittente, importo, azione_richiesta, azione_descrizione, urgenza, drive_url, drive_file_id, nome_file_originale, mime_type, pratica_id, tag, gmail_message_id, creato_il, persona, categoria, ente, rilevanza';
+const CAMPI_SCADENZA = `id, data, descrizione, importo, completata, documento_id, pratica_id, categoria, ricorrenza, storica, cartella,
   documento:documenti(id, titolo, drive_url, fascicolo), pratica:pratiche(id, titolo)`;
 
 const esito = ({ data, error }) => {

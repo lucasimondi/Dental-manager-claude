@@ -1,4 +1,4 @@
-// POL-VITA-016 — Personal a sezioni: ogni sezione nella sua cartella, l'app è solo la cornice.
+// POL-VITA-017 — Personal a sezioni: ogni sezione nella sua cartella, l'app è solo la cornice.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
@@ -41,10 +41,10 @@ test('sezioni: una sezione usa le altre solo attraverso il loro index.jsx', () =
 });
 
 test('sezioni: ogni pagina aperta è registrata in una sola sezione', () => {
-  const registrate = cartelle.flatMap((c) => [...leggi(join(SEZIONI, c, 'index.jsx')).matchAll(/^ {4}(\w+): \{/gm)].map((m) => m[1]));
+  const registrate = cartelle.flatMap((c) => [...leggi(join(SEZIONI, c, 'index.jsx')).matchAll(/^ {4}'?([\w-]+)'?: \{/gm)].map((m) => m[1]));
   assert.equal(new Set(registrate).size, registrate.length, `tipo di pagina doppio: ${registrate}`);
   // apri({ tipo }), sostituisci({ tipo }) e le voci del + in App.jsx (una per riga).
-  const aperte = new Set(sorgenti.flatMap((f) => [...leggi(f).matchAll(/(?:(?:apri|sostituisci)\(|^ +\w+: )\{ tipo: '(\w+)'/gm)].map((m) => m[1])));
+  const aperte = new Set(sorgenti.flatMap((f) => [...leggi(f).matchAll(/(?:(?:apri|sostituisci)\(|^ +\w+: )\{ tipo: '([\w-]+)'/gm)].map((m) => m[1])));
   assert.ok(aperte.size >= 12, `trovate ${aperte.size} pagine`);
   for (const tipo of aperte) assert.ok(registrate.includes(tipo), `pagina '${tipo}' aperta ma non registrata in nessuna sezione`);
 });
