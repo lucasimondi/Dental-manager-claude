@@ -14,6 +14,7 @@ Questa cartella (`poliedron/archivio/`) contiene il sistema che importa, catalog
 | Caricamento dall'app | Web app dello stesso Apps Script (`doPost`), file in `Archivio personale/Caricati/<anno>`; anche anteprima, miniature (mai dei pazienti) e chat | `Code.gs` |
 | Conti dell'app | Tabella `movimenti` (incassi e spese di Luca, RLS proprietario) | `supabase/archivio/migrations/` |
 | Guida manuale | per Luca | `LEGGIMI.md` |
+| Copia locale di iCloud (posta, Drive, foto) | Computer di Luca, a mano, sola lettura su iCloud; non alimenta l'archivio | `icloud/scarica_icloud.py`, `icloud/LEGGIMI.md` |
 
 Riferimenti fissi:
 - Supabase project ref: `tkcwvjzjkfhcuebrjvsp`, URL `https://tkcwvjzjkfhcuebrjvsp.supabase.co`, regione `eu-central-1`.

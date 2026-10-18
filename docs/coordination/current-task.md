@@ -1,3 +1,11 @@
+# Current task — Archivio: script per scaricare iCloud (posta, Drive, foto) (2026-10-18)
+- OWNER: CLAUDE, branch `claude/icloud-download-script-mh68zo`, da `master@e642fa2`. PO verbatim: "Possiamo inserire anche uno script che mi scarichi tutte le cose di iCloud ? Mail e doc e foto ?"
+- FATTO: `poliedron/archivio/icloud/scarica_icloud.py` (da eseguire sul computer di Luca): posta via IMAP in sola lettura (`.eml` per cartella, `BODY.PEEK`, password specifica per l'app), iCloud Drive con `pyicloud` (2FA a video), Foto con `icloudpd` senza opzioni di cancellazione; incrementale, scritture atomiche, nessuna password salvata. Guida `LEGGIMI.md`, `requirements.txt` con versioni fisse. Nessun collegamento automatico all'Archivio (Gmail/Supabase/Drive invariati).
+- VALIDATION: prova con IMAP e Drive finti (cartelle UTF-7, letterali, `\Noselect`, secondo giro senza nuovi download, errore con nuovi tentativi, nomi non validi); `py_compile` OK. Non provato su un account iCloud reale.
+- EXACT NEXT ACTION: Luca lo prova sul Mac; PR solo su richiesta del PO.
+
+---
+
 # Current task — Personal: gli appuntamenti dello studio non si salvano (2026-10-17)
 - OWNER: CLAUDE, branch `claude/studio-appointments-not-adding-t4xls2`, da `master@55c8004`. PO verbatim (screenshot "cannot insert a non-DEFAULT value into column \"id\""): "Da personal non si aggiungono gli appuntamenti studio".
 - CAUSA: `salvaAppuntamento` (personal/src/lib/studio.js) inviava un id generato dal client, ma in produzione `appointments.id` è GENERATED ALWAYS AS IDENTITY (come già annotato in `20261004160708_pol_ai_010_action_claims.sql`).

@@ -3806,3 +3806,12 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - RISKS / LIMITS: non provato su iPhone fisico; il toggle weekend è intenzionalmente locale alla sessione UI e non modifica `studio_info.agenda_settings`.
 - ROLLBACK: revert del commit; nessun dato o migration da ripristinare.
 - EXACT NEXT ACTION: aprire/revisionare PR, attendere approvazione PO prima di merge o deploy.
+
+
+## 2026-10-18 — Claude — Archivio: script di copia locale di iCloud
+- BRANCH: `claude/icloud-download-script-mh68zo` da `master@e642fa2`.
+- COMPLETATO: `poliedron/archivio/icloud/` con `scarica_icloud.py` (posta IMAP, iCloud Drive via pyicloud, Foto via icloudpd), `LEGGIMI.md`, `requirements.txt`, `.gitignore`.
+- DB / SCRIPT APPS / EDGE: nessuna modifica.
+- TEST: prova locale con server IMAP e nodi Drive finti; nessun accesso a iCloud reale da qui.
+- LIMITI: Apple può cambiare l'accesso web (pyicloud/icloudpd non ufficiali); con Protezione avanzata dei dati serve "Accedi ai dati di iCloud sul web".
+- PROSSIMO PASSO: prova di Luca sul Mac, poi eventuale PR su richiesta.

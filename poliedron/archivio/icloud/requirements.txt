@@ -1,0 +1,2 @@
+pyicloud==2026.10.1
+icloudpd==1.32.3
