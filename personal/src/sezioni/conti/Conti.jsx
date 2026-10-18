@@ -7,7 +7,11 @@ import { euro } from '../../lib/coreArchivio.js';
 import {
   movimentiTra, salvaMovimento, eliminaMovimento, nuovaScadenza, bilancio, perMese, periodo, spostaPeriodo,
   CATEGORIE_SPESA, CATEGORIE_INCASSO, importoNumero, CATEGORIE_PAGAMENTO, totaliPerCategoria,
+  CATEGORIE_STUDIO, tabellaStudio, METODI_STUDIO, rigaIncassoStudio,
 } from '../../lib/conti.js';
+import {
+  sessioneStudio, cercaPazienti, collaborazioniStudio, registraIncassoStudio, aggiornaIncassoStudio, eliminaIncassoStudio,
+} from '../../lib/studio.js';
 import { Vuoto, Sezione, Gruppo, Segmenti, Conferma, RigaPagamento, oggiIso, dataBreve } from '../../ui.jsx';
 import { IconaIndietro, IconaFreccia, IconaCestino, IconaPiu, IconaFile, IconaFotocamera } from '../../Icone.jsx';
 
@@ -208,35 +212,57 @@ function DaPagare({ tutti, filtro, setFiltro, apri, pagato }) {
 }
 
 /* ---------- incasso o spesa: nuovo o modifica ---------- */
+// POL-VITA-021: un incasso "Studio" (paziente) o "Collaborazione" si registra anche nel gestionale
+// dello studio; il movimento ricorda la riga dello studio e la aggiorna o la elimina insieme.
 export function PaginaMovimento({ m: iniziale, ctx, chiudi }) {
   const { esegui, aggiorna, mostra, apri, impostazioni } = ctx;
   const [m, setM] = useState(() => ({ data: oggiIso(), importo: '', descrizione: '', categoria: '', note: '', ...iniziale, importo: iniziale.importo ?? '' }));
   const [conferma, setConferma] = useState(false);
   const entrata = m.tipo === 'entrata';
-  const categorie = entrata ? (impostazioni.categorieIncasso || CATEGORIE_INCASSO) : (impostazioni.categorieSpesa || CATEGORIE_SPESA);
-  const valido = importoNumero(m.importo) > 0 && /^\d{4}-\d{2}-\d{2}$/.test(m.data);
+  const collegato = Boolean(m.studio_tabella && m.studio_riga);
+  const tabella = entrata && !m.id ? tabellaStudio(m.categoria) : null; // nuovo incasso da registrare anche in studio
+  const categorie = entrata ? [...new Set([...Object.keys(CATEGORIE_STUDIO), ...(impostazioni.categorieIncasso || CATEGORIE_INCASSO)])] : (impostazioni.categorieSpesa || CATEGORIE_SPESA);
+  const valido = importoNumero(m.importo) > 0 && /^\d{4}-\d{2}-\d{2}$/.test(m.data)
+    && (tabella !== 'payments' || m.paziente_id) && (tabella !== 'pagamenti_esterni' || m.collaborazione_id);
   const salva = () => esegui(async () => {
-    await salvaMovimento(archivioDb, m);
-    aggiorna(); mostra(m.id ? 'Movimento aggiornato' : entrata ? 'Incasso registrato' : 'Spesa registrata'); chiudi();
+    let finale = m;
+    if (tabella) {
+      const studio = rigaIncassoStudio(m);
+      const riga = await registraIncassoStudio(studio);
+      finale = { ...m, studio_tabella: studio.tabella, studio_riga: riga };
+    } else if (collegato) {
+      await aggiornaIncassoStudio(m.studio_tabella, m.studio_riga, { data: m.data, importo: importoNumero(m.importo), note: m.note });
+    }
+    try { await salvaMovimento(archivioDb, finale); } catch (e) {
+      if (tabella) throw new Error(`Registrato nello studio ma non in Personal: ${e.message}`);
+      throw e;
+    }
+    aggiorna(); mostra(m.id ? 'Movimento aggiornato' : tabella ? 'Incasso registrato anche nello studio' : entrata ? 'Incasso registrato' : 'Spesa registrata'); chiudi();
+  });
+  const elimina = () => esegui(async () => {
+    if (collegato) await eliminaIncassoStudio(m.studio_tabella, m.studio_riga);
+    await eliminaMovimento(archivioDb, m.id); aggiorna(); mostra('Movimento eliminato'); chiudi();
   });
   return (
     <>
-      <Segmenti voci={[['uscita', 'Spesa'], ['entrata', 'Incasso']]} attiva={m.tipo || 'uscita'} onScegli={(t) => setM({ ...m, tipo: t, categoria: '' })} />
+      {!collegato && <Segmenti voci={[['uscita', 'Spesa'], ['entrata', 'Incasso']]} attiva={m.tipo || 'uscita'} onScegli={(t) => setM({ ...m, tipo: t, categoria: '' })} />}
       <label className="pp-campo pp-campo-importo"><span>Importo (€)</span>
         <input inputMode="decimal" autoFocus={!m.id} value={m.importo} onChange={(e) => setM({ ...m, importo: e.target.value })} placeholder="0,00" />
-      </label>
-      <label className="pp-campo"><span>Descrizione</span>
-        <input value={m.descrizione} onChange={(e) => setM({ ...m, descrizione: e.target.value })} placeholder={entrata ? 'Es. Stipendio, rimborso' : 'Es. Spesa al supermercato'} />
       </label>
       <div className="pp-due">
         <label className="pp-campo"><span>Data</span><input type="date" value={m.data} onChange={(e) => setM({ ...m, data: e.target.value })} /></label>
         <label className="pp-campo"><span>Categoria</span>
-          <select className="pp-select" value={m.categoria || ''} onChange={(e) => setM({ ...m, categoria: e.target.value })}>
+          <select className="pp-select" value={m.categoria || ''} disabled={collegato} onChange={(e) => setM({ ...m, categoria: e.target.value })}>
             <option value="">—</option>
             {[...new Set([...categorie, ...(m.categoria ? [m.categoria] : [])])].map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </label>
       </div>
+      {tabella && <IncassoStudio m={m} setM={setM} tabella={tabella} />}
+      {collegato && <p className="pp-riga-meta">Registrato anche nello studio ({m.studio_tabella === 'payments' ? 'pagamenti dei pazienti' : 'collaborazioni esterne'}): data, importo e note si aggiornano anche lì.</p>}
+      <label className="pp-campo"><span>Descrizione</span>
+        <input value={m.descrizione} onChange={(e) => setM({ ...m, descrizione: e.target.value })} placeholder={tabella ? 'facoltativa' : entrata ? 'Es. Stipendio, rimborso' : 'Es. Spesa al supermercato'} />
+      </label>
       <label className="pp-campo"><span>Note</span><input value={m.note || ''} onChange={(e) => setM({ ...m, note: e.target.value })} placeholder="facoltative" /></label>
       {m.documento?.id && (
         <Sezione titolo="Documento collegato">
@@ -254,10 +280,72 @@ export function PaginaMovimento({ m: iniziale, ctx, chiudi }) {
         <div className="pp-elimina">
           {!conferma
             ? <button className="pp-testo-link pp-rosso" onClick={() => setConferma(true)}><IconaCestino size={16} /> Elimina il movimento</button>
-            : <Conferma testo="Eliminare questo movimento?" onNo={() => setConferma(false)}
-              onSi={() => esegui(async () => { await eliminaMovimento(archivioDb, m.id); aggiorna(); mostra('Movimento eliminato'); chiudi(); })} />}
+            : <Conferma testo={collegato ? 'Eliminare il movimento? Si elimina anche dallo studio.' : 'Eliminare questo movimento?'} onNo={() => setConferma(false)} onSi={elimina} />}
         </div>
       )}
+    </>
+  );
+}
+
+// Paziente (Studio) o collaborazione (Collaborazione) e metodo, come nel gestionale dello studio.
+function IncassoStudio({ m, setM, tabella }) {
+  const [collegata, setCollegata] = useState(null);
+  const [cerca, setCerca] = useState('');
+  const [trovati, setTrovati] = useState([]);
+  const [collab, setCollab] = useState(null);
+  useEffect(() => { sessioneStudio().then((x) => setCollegata(!!x)).catch(() => setCollegata(false)); }, []);
+  useEffect(() => {
+    if (collegata && tabella === 'pagamenti_esterni' && !collab) collaborazioniStudio().then(setCollab).catch(() => setCollab([]));
+  }, [collegata, tabella, collab]);
+  useEffect(() => {
+    if (tabella !== 'payments' || m.paziente_id || cerca.trim().length < 2) { setTrovati([]); return undefined; }
+    const t = setTimeout(() => cercaPazienti(cerca).then(setTrovati).catch(() => setTrovati([])), 250);
+    return () => clearTimeout(t);
+  }, [cerca, m.paziente_id, tabella]);
+  if (collegata === null) return null;
+  if (!collegata) return <p className="pp-riga-meta pp-rosso">Per registrarlo anche nello studio collega prima l'agenda (scheda Agenda).</p>;
+  const metodo = m.metodo || (tabella === 'payments' ? 'Contanti' : 'Bonifico');
+  return (
+    <>
+      {tabella === 'payments' && (m.paziente_id ? (
+        <div className="pp-campo"><span>Paziente dello studio</span>
+          <div className="pp-voce pp-paziente-scelto"><strong>{m.paziente}</strong>
+            <button type="button" className="pp-testo-link" onClick={() => { setM((x) => ({ ...x, paziente_id: null, paziente: '' })); setCerca(''); }}>Cambia</button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <label className="pp-campo"><span>Paziente dello studio</span>
+            <input value={cerca} onChange={(e) => setCerca(e.target.value)} placeholder="Cerca per nome o cognome" />
+          </label>
+          {trovati.length > 0 && (
+            <div className="pp-gruppo pp-trovati">
+              {trovati.map((p) => {
+                const nome = [p.nome, p.cognome].filter(Boolean).join(' ');
+                return <button key={p.id} type="button" className="pp-riga" onClick={() => setM((x) => ({ ...x, paziente_id: p.id, paziente: nome }))}><span className="pp-riga-testo"><span className="pp-riga-titolo">{nome}</span></span></button>;
+              })}
+            </div>
+          )}
+          {cerca.trim().length >= 2 && !trovati.length && <p className="pp-riga-meta">Nessun paziente trovato. I nuovi pazienti si creano nello studio.</p>}
+        </>
+      ))}
+      {tabella === 'pagamenti_esterni' && (
+        <label className="pp-campo"><span>Collaborazione</span>
+          <select className="pp-select" value={m.collaborazione_id || ''} onChange={(e) => {
+            const c = (collab || []).find((x) => String(x.id) === e.target.value);
+            setM((x) => ({ ...x, collaborazione_id: c?.id || null, collaborazione_nome: c?.nome || '' }));
+          }}>
+            <option value="">Scegli…</option>
+            {(collab || []).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </select>
+        </label>
+      )}
+      {tabella === 'pagamenti_esterni' && collab && !collab.length && <p className="pp-riga-meta">Nessuna collaborazione: aggiungila nello studio (Pagamenti › Collaborazioni esterne).</p>}
+      <label className="pp-campo"><span>Metodo</span>
+        <select className="pp-select" value={metodo} onChange={(e) => setM((x) => ({ ...x, metodo: e.target.value }))}>
+          {METODI_STUDIO.map((x) => <option key={x}>{x}</option>)}
+        </select>
+      </label>
     </>
   );
 }

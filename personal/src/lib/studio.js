@@ -5,7 +5,8 @@
 // appointments (lettura e scrittura, POL-VITA-013: "da agenda personale io posso agire anche su
 // agenda studio"), patients (solo id, nome e cognome, lettura), app_types (lettura) e
 // impegni_personali (lettura e scrittura: gli eventi senza paziente), studio_info
-// (sola lettura di agenda_settings). La RLS dello studio
+// (sola lettura di agenda_settings). POL-VITA-021: anche payments e pagamenti_esterni (scrittura
+// degli incassi di studio e di collaborazione registrati da Conti) e collaborazioni (lettura). La RLS dello studio
 // (studio_id del token) limita ogni lettura e scrittura allo studio dell'utente.
 import { createClient } from '@supabase/supabase-js';
 import { rigaImpegno, rigaAppuntamento } from './agenda.js';
@@ -155,4 +156,37 @@ export async function impostazioniAgenda() {
   const studioId = studioDellaSessione(sessione);
   const riga = esito(await studioDb.from('studio_info').select('agenda_settings').eq('studio_id', studioId).maybeSingle());
   return riga?.agenda_settings || {};
+}
+
+/* ---------- POL-VITA-021: incassi registrati anche nello studio ---------- */
+// id di pagamenti_esterni: lo assegna il client come fa il gestionale (Date.now()); payments.id
+// è un'identity del database.
+export async function collaborazioniStudio() {
+  return esito(await studioDb.from('collaborazioni').select('id, nome').order('nome'));
+}
+
+export async function registraIncassoStudio({ tabella, riga }) {
+  const sessione = await sessioneStudio();
+  if (!sessione) throw new Error('Per registrare l\'incasso nello studio collega prima l\'agenda (scheda Agenda).');
+  const studio = studioDellaSessione(sessione);
+  if (tabella === 'payments') {
+    return esito(await studioDb.from('payments').insert({ ...riga, studio_id: studio, user_id: sessione.user.id }).select('id').single()).id;
+  }
+  if (tabella === 'pagamenti_esterni') {
+    return esito(await studioDb.from('pagamenti_esterni').insert({ ...riga, id: Date.now(), studio_id: studio }).select('id').single()).id;
+  }
+  throw new Error('Tabella dello studio non ammessa');
+}
+
+// Modifica del movimento già registrato: nello studio cambiano solo data, importo e nota.
+export async function aggiornaIncassoStudio(tabella, id, { data, importo, note }) {
+  if (!['payments', 'pagamenti_esterni'].includes(tabella)) throw new Error('Tabella dello studio non ammessa');
+  const nota = String(note || '').trim() || null;
+  const riga = tabella === 'payments' ? { data, importo, nota } : { data, importo, note: nota };
+  return esito(await studioDb.from(tabella).update(riga).eq('id', id).select('id'));
+}
+
+export async function eliminaIncassoStudio(tabella, id) {
+  if (!['payments', 'pagamenti_esterni'].includes(tabella)) throw new Error('Tabella dello studio non ammessa');
+  return esito(await studioDb.from(tabella).delete().eq('id', id).select('id'));
 }

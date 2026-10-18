@@ -1,6 +1,6 @@
 // POL-VITA-006 — Conti di Personal: incassi e spese registrati da Luca (tabella movimenti,
 // solo il proprietario) e bilancino. I calcoli sono puri e testabili.
-const CAMPI = 'id, data, tipo, importo, descrizione, categoria, documento_id, scadenza_id, note, documento:documenti(id, titolo, fascicolo)';
+const CAMPI = 'id, data, tipo, importo, descrizione, categoria, documento_id, scadenza_id, note, studio_tabella, studio_riga, documento:documenti(id, titolo, fascicolo)';
 
 const esito = ({ data, error }) => {
   if (error) throw new Error(error.message || 'Errore conti');
@@ -8,7 +8,39 @@ const esito = ({ data, error }) => {
 };
 
 export const CATEGORIE_SPESA = ['Casa', 'Bollette', 'Riscaldamento', 'Spesa', 'Auto', 'Salute', 'Scuola', 'Tasse', 'Assicurazioni', 'Svago', 'Altro'];
-export const CATEGORIE_INCASSO = ['Lavoro', 'Rimborsi', 'Affitti', 'Altro'];
+export const CATEGORIE_INCASSO = ['Studio', 'Collaborazione', 'Lavoro', 'Rimborsi', 'Affitti', 'Altro'];
+
+// POL-VITA-021 — incassi di studio o di collaborazione: si registrano anche nel gestionale dello
+// studio (PO 2026-10-18, "stessa logica" dell'agenda). Studio → payments (pagamento di un paziente),
+// Collaborazione → pagamenti_esterni (incasso da una collaborazione esterna).
+export const CATEGORIE_STUDIO = { Studio: 'payments', Collaborazione: 'pagamenti_esterni' };
+export const tabellaStudio = (categoria) => CATEGORIE_STUDIO[categoria] || null;
+export const METODI_STUDIO = ['Contanti', 'Carta', 'Bonifico', 'POS', 'Assegno'];
+
+// Riga per lo studio, con le stesse colonne che usa il gestionale. Senza paziente o collaborazione
+// non si registra nulla.
+export function rigaIncassoStudio(m) {
+  const tabella = tabellaStudio(m.categoria);
+  if (m.tipo !== 'entrata' || !tabella) return null;
+  const importo = importoNumero(m.importo);
+  if (!(importo > 0)) throw new Error('Importo non valido');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(m.data || ''))) throw new Error('Data non valida');
+  const metodo = METODI_STUDIO.includes(m.metodo) ? m.metodo : (tabella === 'payments' ? 'Contanti' : 'Bonifico');
+  const nota = String(m.note || '').trim() || null;
+  if (tabella === 'payments') {
+    if (!m.paziente_id) throw new Error('Scegli il paziente dello studio');
+    return { tabella, riga: { paziente_id: Number(m.paziente_id), data: m.data, importo, metodo, nota, stato: 'pagato' } };
+  }
+  if (!m.collaborazione_id) throw new Error('Scegli la collaborazione');
+  return { tabella, riga: { collaborazione_id: Number(m.collaborazione_id), collaborazione_nome: String(m.collaborazione_nome || '').trim() || null, data: m.data, importo, metodo, note: nota } };
+}
+
+// Descrizione proposta per il movimento di Personal quando Luca non la scrive.
+export function descrizioneIncassoStudio(m) {
+  if (m.categoria === 'Studio' && m.paziente) return `Studio – ${m.paziente}`;
+  if (m.categoria === 'Collaborazione' && m.collaborazione_nome) return m.collaborazione_nome;
+  return '';
+}
 
 // Categoria di spesa suggerita dal fascicolo del documento da cui viene il pagamento.
 const PER_FASCICOLO = {
@@ -31,10 +63,11 @@ export function rigaMovimento(m) {
     data: m.data,
     tipo: m.tipo === 'entrata' ? 'entrata' : 'uscita',
     importo,
-    descrizione: String(m.descrizione || '').trim() || (m.tipo === 'entrata' ? 'Incasso' : 'Spesa'),
+    descrizione: String(m.descrizione || '').trim() || descrizioneIncassoStudio(m) || (m.tipo === 'entrata' ? 'Incasso' : 'Spesa'),
     categoria: String(m.categoria || '').trim() || null,
     documento_id: m.documento_id || null,
     note: String(m.note || '').trim() || null,
+    ...(m.studio_tabella && m.studio_riga ? { studio_tabella: m.studio_tabella, studio_riga: m.studio_riga } : {}),
   };
 }
 
