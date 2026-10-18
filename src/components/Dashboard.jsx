@@ -1574,10 +1574,14 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
                   return (
                     <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: `1px solid ${C.brd}` }}>
                       <button className="home-list-checkbox" onClick={() => toggleTodo(todo.id)}><span style={{ border: `2px solid ${C.brd}` }} /></button>
-                      <button type="button" onClick={apriTodo} title={todoPaziente ? 'Apri scheda paziente' : 'Vedi in Attività'} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}>
-                        <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, fontWeight: 600, color: todoPaziente ? C.pri : C.txt }}>{todo.testo}</span>
-                          {todoCat && <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 3 }}><Ic n={todoCat.icona} s={9} c={todoCat.colore} /><Bdg ch={todoCat.label} co={todoCat.colore} /></span>}
+                      {/* Titolo sopra, categoria sotto: il badge (lungo e in maiuscolo,
+                          es. "Appuntamento di ieri non segnato") non deve più spingere
+                          via il titolo né finire sotto WhatsApp/✕ — entrambi si
+                          accorciano con "…" dentro lo spazio della riga. */}
+                      <button type="button" onClick={apriTodo} title={todoPaziente ? 'Apri scheda paziente' : 'Vedi in Attività'} style={{ flex: 1, minWidth: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}>
+                        <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3 }}>
+                          <span style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, fontWeight: 600, color: todoPaziente ? C.pri : C.txt }}>{todo.testo}</span>
+                          {todoCat && <span style={{ maxWidth: '100%', minWidth: 0, display: 'inline-flex', alignItems: 'center', gap: 3 }}><Ic n={todoCat.icona} s={9} c={todoCat.colore} /><Bdg ch={todoCat.label} co={todoCat.colore} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 10, letterSpacing: '0.02em' }} /></span>}
                         </span>
                         <span style={{ flexShrink: 0, fontSize: 12, color: C.txl }}>›</span>
                       </button>
