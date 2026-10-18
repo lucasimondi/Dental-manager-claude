@@ -34,7 +34,7 @@ test('file dallo script: base64 → File con nome e tipo', () => {
 });
 
 test('app: Personali solo delle persone in Impostazioni; anteprima e Condividi nelle schede e nel dettaglio', () => {
-  const app = readFileSync('personal/src/App.jsx', 'utf8');
+  const app = readFileSync('personal/src/sezioni/personali/Personali.jsx', 'utf8') + readFileSync('personal/src/sezioni/documenti/Documento.jsx', 'utf8');
   assert.match(app, /const delleMie = arricchiti\.filter\(\(d\) => d\._persona && persone\.includes\(d\._persona\)\)/);
   assert.doesNotMatch(app, /'Senza persona'/);
   assert.match(app, /<Miniatura doc=\{doc\}[^>]*grande \/>\n {6}<span className="pp-carta-testo">/);
@@ -43,7 +43,7 @@ test('app: Personali solo delle persone in Impostazioni; anteprima e Condividi n
 });
 
 test('agenda: eventi del giorno dentro i controlli flottanti sotto la striscia; "Vai a Studio" a sinistra della vista', () => {
-  const g = readFileSync('personal/src/AgendaGriglia.jsx', 'utf8');
+  const g = readFileSync('personal/src/sezioni/agenda/AgendaGriglia.jsx', 'utf8');
   assert.match(g, /floatingFooter=\{fasciaGiorno\}/);
   assert.match(g, /<span className="personal-agenda-azioni">\{appSwitch\}<ViewPicker/);
   const css = readFileSync('personal/src/personal.css', 'utf8');
