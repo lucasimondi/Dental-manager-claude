@@ -630,8 +630,8 @@ function apiInPausa_() {
 
 /* =====================================================================
  * GEMINI DI RISERVA (PO 2026-10-18: "Ma se usassimo Gemini per analizzarli?", piano gratuito
- * scelto da Luca). Solo l'analisi dei documenti, con lo stesso prompt e lo stesso JSON di Claude;
- * la chat e le bozze restano a Claude. I documenti dei pazienti non arrivano mai qui: i chiamanti
+ * scelto da Luca). Analisi dei documenti con lo stesso prompt e lo stesso JSON di Claude; con Claude
+ * in pausa anche chat, sintesi delle cartelle, bozze e cartelle suggerite (testoAI_). I documenti dei pazienti non arrivano mai qui: i chiamanti
  * di analizza_() li escludono prima (eClinico_ e fascicolo clinico_pazienti).
  * ===================================================================*/
 const GEMINI_INTERVALLO_MS = 5000;               // piano gratuito: al massimo ~12 richieste al minuto
@@ -1557,6 +1557,33 @@ function chatGemini_(system, messaggi, esegui) {
   return 'Domanda troppo ampia: prova a restringerla (un fornitore, un periodo, un tipo di documento).';
 }
 
+// Testo da un modello per sintesi delle cartelle, bozze e cartelle suggerite: Claude se disponibile,
+// altrimenti Gemini (PO 2026-10-18: "Dobbiamo usare anche api gemini"). I chiamanti escludono già
+// i documenti clinici dei pazienti. schema → risposta JSON.
+function testoAI_(system, testo, maxToken, schema) {
+  if (!claudeInPausa_()) {
+    const body = { model: CONFIG.MODELLO, max_tokens: maxToken, system: system, messages: [{ role: 'user', content: testo }] };
+    if (schema) body.output_config = { format: { type: 'json_schema', schema: schema } };
+    try {
+      const r = claudeMessaggi_(body);
+      return (r.content || []).filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('').trim();
+    } catch (e) {
+      if (!/limite di spesa/.test(e.message) || !geminiDisponibile_()) throw e;
+      pausaApi_(e.message);
+    }
+  }
+  if (!geminiDisponibile_()) throw new Error('Poliedron AI è ferma: Claude ha raggiunto il limite di spesa e Gemini non è disponibile ora.');
+  const config = { temperature: 0.3, maxOutputTokens: 8192 };
+  if (schema) config.responseMimeType = 'application/json';
+  let c;
+  try { c = geminiChiamata_({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts: [{ text: testo }] }], generationConfig: config }); }
+  catch (e) {
+    if (e.message === 'RIPROVA') throw new Error('Poliedron AI è occupata (limite gratuito di Gemini raggiunto): riprova più tardi.');
+    throw e;
+  }
+  return (c.content.parts || []).filter(function (p) { return p.text && !p.thought; }).map(function (p) { return p.text; }).join('').trim();
+}
+
 function claudeMessaggi_(body) {
   const p = props_();
   for (let tentativo = 1; tentativo <= 3; tentativo++) {
@@ -1615,13 +1642,9 @@ function analizzaCartella_(req) {
       da: d.email_mittente, oggetto: d.email_oggetto, importo: d.importo, riassunto: String(d.riassunto || '').slice(0, 400),
       da_fare: d.azione_richiesta ? (d.azione_descrizione || true) : undefined });
   }).join('\n');
-  let r;
-  try {
-    r = claudeMessaggi_({ model: CONFIG.MODELLO, max_tokens: 1500, system: system,
-      output_config: { format: { type: 'json_schema', schema: SCHEMA_CARTELLA } },
-      messages: [{ role: 'user', content: 'Cartella: ' + ente + ' (' + docs.length + ' documenti)\n' + righe }] });
-  } catch (e) { return { ok: false, errore: String(e && e.message || e).slice(0, 300) }; }
-  const analisi = parseJson_((r.content || []).filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join(''));
+  let analisi;
+  try { analisi = parseJson_(testoAI_(system, 'Cartella: ' + ente + ' (' + docs.length + ' documenti)\n' + righe, 1500, SCHEMA_CARTELLA)); }
+  catch (e) { return { ok: false, errore: String(e && e.message || e).slice(0, 300) }; }
   const pulito = {
     sintesi: String(analisi.sintesi || '').slice(0, 2000),
     punti: (analisi.punti || []).map(String).slice(0, 8),
@@ -1656,10 +1679,9 @@ function bozzaRisposta_(req) {
     String(msg.getPlainBody() || '').replace(/\s+\n/g, '\n').slice(0, 4000),
     req.istruzioni ? 'Indicazioni di Luca per la risposta: ' + String(req.istruzioni).slice(0, 500) : '',
   ].filter(Boolean).join('\n\n');
-  let r;
-  try { r = claudeMessaggi_({ model: CONFIG.MODELLO, max_tokens: 1200, system: system, messages: [{ role: 'user', content: contenuto }] }); }
+  let testo;
+  try { testo = testoAI_(system, contenuto, 1200); }
   catch (e) { return { ok: false, errore: String(e && e.message || e).slice(0, 300) }; }
-  const testo = (r.content || []).filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('').trim();
   if (!testo) return { ok: false, errore: 'Bozza vuota, riprova.' };
   msg.createDraftReply(testo); // solo bozza: Luca la rilegge e la invia lui da Gmail
   return { ok: true, testo: testo, a: meta.mittente, oggetto: 'Re: ' + meta.oggetto, link: 'https://mail.google.com/mail/u/0/#drafts' };
@@ -1690,13 +1712,9 @@ function suggerisciCartelle_() {
     'per la cartella unita (es. "Studio Giordano", "Kerdos SPV", "OPT S.r.l."). Non unire persone diverse senza un legame',
     'evidente negli oggetti. Usa i nomi delle cartelle esattamente come li ricevi. motivo: una frase. Al massimo 20 gruppi.',
   ].join(' ');
-  let r;
-  try {
-    r = claudeMessaggi_({ model: CONFIG.MODELLO, max_tokens: 3000, system: system,
-      output_config: { format: { type: 'json_schema', schema: SCHEMA_SUGGERIMENTI } },
-      messages: [{ role: 'user', content: 'Cartelle (una per riga, JSON):\n' + righe }] });
-  } catch (e) { return { ok: false, errore: String(e && e.message || e).slice(0, 300) }; }
-  const esito = parseJson_((r.content || []).filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join(''));
+  let esito;
+  try { esito = parseJson_(testoAI_(system, 'Cartelle (una per riga, JSON):\n' + righe, 3000, SCHEMA_SUGGERIMENTI)); }
+  catch (e) { return { ok: false, errore: String(e && e.message || e).slice(0, 300) }; }
   const gruppi = (esito.gruppi || []).map(function (g) {
     return { nome: String(g.nome || '').trim().slice(0, 120), motivo: String(g.motivo || '').slice(0, 200),
       enti: (g.enti || []).filter(function (e) { return perEnte[e]; }) };

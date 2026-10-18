@@ -576,7 +576,9 @@ i.entrata { background: var(--pp-verde); } i.uscita { background: var(--pp-rosso
 .pp-filtro.attivo { color: #fff; background: var(--pp-blu); border-color: var(--pp-blu); }
 @media (prefers-color-scheme: dark) { .pp-filtro.attivo { color: #0b0f17; } }
 .pp-filtro-freccia { font-size: 10px; color: var(--pp-grigio); }
-.pp-elenco-azioni { display: inline-flex; align-items: center; gap: 10px; }
+.pp-elenco-azioni { display: inline-flex; align-items: center; gap: 10px; flex-shrink: 0; white-space: nowrap; overflow-wrap: normal; }
+.pp-elenco-testa { gap: 8px; }
+.pp-elenco-testa .pp-frase { min-width: 0; }
 .pp-cerca-piccola, .pp-cerca-foglio { margin: 10px 0; }
 .pp-cerca-piccola input, .pp-cerca-foglio input { padding: 9px 0; }
 .pp-ente-iniziale { width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px; display: grid; place-items: center; font-weight: 800; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
