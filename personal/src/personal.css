@@ -377,26 +377,45 @@ a { color: var(--pp-blu); text-decoration: none; }
 .pp-poliedron { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 14px; border-radius: 999px; font-weight: 700; font-size: 14px; color: #fff; background: linear-gradient(135deg, #2f6fb0, var(--pp-blu)); box-shadow: 0 4px 12px rgba(12, 68, 124, .3); }
 @media (max-width: 360px) { .pp-poliedron span { display: none; } .pp-poliedron { width: 40px; padding: 0; justify-content: center; } }
 .pp-chiedi-doc { display: flex; align-items: center; gap: 8px; width: 100%; margin: 4px 0 8px; padding: 12px 14px; border-radius: 12px; font-weight: 650; color: var(--pp-blu); background: var(--pp-blu-chiaro); }
-.pp-chat { display: flex; flex-direction: column; gap: 10px; min-height: 100%; padding-bottom: 72px; }
-.pp-chat-contesto { display: flex; align-items: center; gap: 6px; margin: 0 2px; font-size: 13px; color: var(--pp-grigio); }
+/* PO 2026-10-17 — Poliedron è una scheda a pagina intera, come in Studio: modo in alto, messaggi
+   che scorrono, barra di scrittura con la graffetta sempre sopra il dock. */
+.pp-app:has(.pp-contenuto-chat) { height: 100dvh; min-height: 0; padding-bottom: 0; display: flex; flex-direction: column; overflow: hidden; }
+.pp-contenuto-chat { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0; }
+.pp-chat { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.pp-chat-modo { flex-shrink: 0; padding: 0 16px; padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+.pp-chat-modo .pp-segmenti { margin: 0 0 8px; }
+.pp-chat-lista { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 10px; padding: 6px 16px 14px; padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
 .pp-chat-vuota p { color: var(--pp-grigio); margin: 4px 2px 0; }
 .pp-chat-vuota .pp-suggerimenti { flex-wrap: wrap; }
-.pp-messaggio-chat { max-width: 88%; padding: 10px 14px; border-radius: 18px; line-height: 1.45; overflow-wrap: anywhere; }
-.pp-messaggio-chat.utente { align-self: flex-end; color: #fff; background: var(--pp-blu); border-bottom-right-radius: 6px; }
+.pp-messaggio-chat { flex-shrink: 0; max-width: 88%; padding: 10px 14px; border-radius: 18px; line-height: 1.45; overflow-wrap: anywhere; }
+.pp-messaggio-chat.utente { align-self: flex-end; color: #fff; background: var(--pp-blu); border-bottom-right-radius: 6px; display: flex; flex-direction: column; gap: 4px; }
 @media (prefers-color-scheme: dark) { .pp-messaggio-chat.utente { color: #0b0f17; } }
+.pp-chat-allegato { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; opacity: .9; }
 .pp-messaggio-chat.assistente { align-self: flex-start; background: var(--pp-superficie); box-shadow: var(--pp-ombra); border-bottom-left-radius: 6px; display: flex; flex-direction: column; gap: 6px; width: 100%; }
 .pp-messaggio-chat.assistente:has(.pp-rotella) { flex-direction: row; align-items: center; width: auto; color: var(--pp-grigio); }
+.pp-messaggio-chat p { margin: 0; }
 .pp-chat-testo { white-space: pre-wrap; }
 .pp-chat-link { display: inline-flex; align-items: center; gap: 4px; margin: 1px 2px; padding: 2px 8px; border-radius: 8px; font-weight: 650; font-size: 14px; color: var(--pp-blu); background: var(--pp-blu-chiaro); white-space: normal; text-align: left; }
 .pp-chat-fonte { align-self: flex-end; font-size: 11px; color: var(--pp-grigio); }
 .pp-messaggio-chat .pp-gruppo { box-shadow: none; border: 1px solid var(--pp-linea); }
-.pp-chat-barra {
-  position: fixed; z-index: 9; left: 0; right: 0; bottom: calc(var(--pp-dock) + env(safe-area-inset-bottom)); max-width: 640px; margin: 0 auto;
-  display: flex; gap: 8px; padding: 8px 12px; background: color-mix(in srgb, var(--pp-sfondo) 92%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--pp-linea);
+.pp-chat-composer {
+  flex-shrink: 0; display: flex; flex-direction: column; gap: 6px;
+  padding: 8px 12px calc(86px + env(safe-area-inset-bottom)); padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right));
+  border-top: 1px solid var(--pp-linea); background: var(--pp-sfondo);
 }
+.pp-chat-contesti { display: flex; flex-direction: column; gap: 4px; }
+.pp-chat-contesto { display: flex; align-items: center; gap: 4px; min-width: 0; padding: 4px 4px 4px 10px; border-radius: 10px; font-size: 13px; color: var(--pp-blu); background: var(--pp-blu-chiaro); }
+.pp-chat-contesto > button:first-child, .pp-chat-contesto > span:first-child { flex: 1; min-width: 0; display: flex; align-items: center; gap: 5px; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: inherit; }
+.pp-chat-contesto strong { overflow: hidden; text-overflow: ellipsis; }
+.pp-chat-file { color: var(--pp-inchiostro); background: var(--pp-superficie); border: 1px solid var(--pp-linea); }
+.pp-chat-togli { flex-shrink: 0; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; color: var(--pp-grigio); }
+.pp-chat-barra { display: flex; align-items: center; gap: 8px; }
 .pp-chat-barra input { flex: 1; min-width: 0; padding: 12px 16px; font-size: 16px; border-radius: 999px; border: 1px solid var(--pp-linea); background: var(--pp-superficie); color: var(--pp-inchiostro); }
+.pp-chat-allega { width: 44px; height: 44px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; color: var(--pp-blu); background: var(--pp-superficie); border: 1px solid var(--pp-linea); }
+.pp-chat-allega:disabled { opacity: .4; }
 .pp-chat-invia { width: 46px; height: 46px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--pp-blu); }
 .pp-chat-invia:disabled { opacity: .4; }
+.pp-nuova-chat { font-weight: 650; color: var(--pp-blu); margin-right: 10px; }
 
 /* ---------- POL-VITA-006: pagine scorrevoli e tasto di chiusura ---------- */
 /* La pagina è una colonna: barra fissa in alto, corpo che scorre da solo (iPhone compreso). */

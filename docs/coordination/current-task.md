@@ -1,3 +1,12 @@
+# Current task — Personal: chat Poliedron a pagina intera con allegati (2026-10-18)
+- OWNER: CLAUDE, branch `claude/poliedron-agenda-actions-kz6mmk`, da `master@e642fa20`. PO verbatim: "Lavoriamo su chat poliedron: non è impaginata bene, deve essere una pagina a sé, come poliedron per lo studio, deve poter avere anche allegati tramite tastino".
+- COSA: Poliedron in Personal è una scheda (`vista 'poliedron'`) a pagina intera, non più una pagina sovrapposta con "Indietro": modo AI/ricerca in alto, messaggi che scorrono dentro la pagina, barra di scrittura fissa sopra il dock, "Nuova chat" in testata; la conversazione resta cambiando scheda. "Chiedi a Poliedron su questo documento" apre la scheda con il documento come contesto (chip togliibile). Graffetta: foto, PDF o file → archiviato con il caricamento normale (`caricaDocumento`: duplicati, regole cliniche dello script invariate), poi Poliedron risponde su quel documento (`documento_id`). Nessuna modifica a `Code.gs` (niente deploy Apps Script).
+- FILES: `personal/src/App.jsx`, `personal/src/lib/chat.js` (nuovo), `personal/src/Icone.jsx`, `personal/src/personal.css`, `tests/personalChatPagina.test.mjs` (nuovo).
+- VALIDATION: `npm test` 1309/1309; build e build:personal OK; `test:agenda:visual` Chromium (Studio pixel identico) e reliability Chromium 3/3; prova in Chromium 390×844 con sessione e script finti: pagina non scorre, lista sì, composer sopra il dock, allegato → caricamento → domanda con `documento_id`, conversazione conservata dopo cambio scheda.
+- EXACT NEXT ACTION: CI della PR verde → "Mergia".
+
+---
+
 # Current task — Personal: gli appuntamenti dello studio non si salvano (2026-10-17)
 - OWNER: CLAUDE, branch `claude/studio-appointments-not-adding-t4xls2`, da `master@55c8004`. PO verbatim (screenshot "cannot insert a non-DEFAULT value into column \"id\""): "Da personal non si aggiungono gli appuntamenti studio".
 - CAUSA: `salvaAppuntamento` (personal/src/lib/studio.js) inviava un id generato dal client, ma in produzione `appointments.id` è GENERATED ALWAYS AS IDENTITY (come già annotato in `20261004160708_pol_ai_010_action_claims.sql`).
