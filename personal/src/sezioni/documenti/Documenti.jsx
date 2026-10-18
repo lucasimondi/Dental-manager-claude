@@ -7,6 +7,7 @@ import { archivioDb } from '../../lib/supabasePersonal.js';
 import {
   cercaArchivio, enti as caricaEnti, aggiornaDocumenti, eliminaDocumenti, portafoglioDocumenti, documentiSezione, cestinaSuDrive,
   pratiche as caricaPratiche, eCaricato,
+  cambiaStatoPratica,
 } from '../../lib/archivio.js';
 import { euro } from '../../lib/coreArchivio.js';
 import { caricaCartelle } from '../../lib/cartelle.js';
@@ -376,6 +377,7 @@ export function VistaDocumenti({ ctx }) {
               <ElencoPratiche
                 elenco={elencoPratiche.filter((p) => (filtroPratiche === 'aperte' ? ['aperta', 'in_corso'].includes(p.stato) : filtroPratiche === 'risolte' ? p.stato === 'risolta' : true))}
                 onApri={(p) => apri({ tipo: 'pratica', p })}
+                onRisolvi={(p) => esegui(async () => { await cambiaStatoPratica(archivioDb, p.id, 'risolta'); setElencoPratiche((el) => el.map((x) => (x.id === p.id ? { ...x, stato: 'risolta' } : x))); ctx.mostra('Pratica risolta: non compare più tra le aperte'); })}
               />
             </>
           )}

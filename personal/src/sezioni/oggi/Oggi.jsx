@@ -1,7 +1,7 @@
 // Oggi — il cruscotto: saldo del mese, azioni rapide, agenda di oggi, pagamenti, ultimi documenti, pratiche.
 import { useEffect, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { conteggiFascicoli, pratiche as caricaPratiche, documentiDaGestire, documentiRecenti, pagamenti as caricaPagamenti } from '../../lib/archivio.js';
+import { conteggiFascicoli, pratiche as caricaPratiche, documentiDaGestire, documentiRecenti, pagamenti as caricaPagamenti, cambiaStatoPratica } from '../../lib/archivio.js';
 import { movimentiTra, bilancio, periodo } from '../../lib/conti.js';
 import { sessioneStudio, appuntamentiTra, impegniTra } from '../../lib/studio.js';
 import { oggi as oggiAgenda } from '../../lib/agenda.js';
@@ -94,7 +94,8 @@ export function VistaOggi({ ctx }) {
       )}
       {urgenti.length > 0 && (
         <Sezione titolo="Pratiche in corso" azione={<button className="pp-testo-link" onClick={() => vai('documenti', 'pratiche')}>Tutte</button>}>
-          <ElencoPratiche elenco={urgenti.slice(0, 4)} onApri={(p) => apri({ tipo: 'pratica', p })} />
+          <ElencoPratiche elenco={urgenti.slice(0, 4)} onApri={(p) => apri({ tipo: 'pratica', p })}
+            onRisolvi={(p) => ctx.esegui(async () => { await cambiaStatoPratica(archivioDb, p.id, 'risolta'); ctx.aggiorna(); ctx.mostra('Pratica risolta'); })} />
         </Sezione>
       )}
       <p className="pp-riga-meta pp-nota-fondo">{dati.totale} documenti in archivio.</p>

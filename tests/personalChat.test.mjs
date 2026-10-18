@@ -66,6 +66,6 @@ test('script: strumenti di sola lettura, nessun invio, chiave solo nelle Proprie
 test('app: AI con ripiego sulla sola ricerca e richiesta sul documento aperto', () => {
   assert.match(app, /Poliedron AI/);
   assert.match(app, /Solo ricerca/);
-  assert.match(app, /chiediPoliedron\(/);
+  assert.match(app, /chiediPoliedron(?:Completo)?\(/);
   assert.match(app, /Chiedi a Poliedron su questo documento/);
 });

@@ -276,7 +276,12 @@ export async function aggiornaScadenza(db, id, campi) {
 
 // POL-VITA-005 — chat Poliedron: l'AI (Claude, nello script) risponde usando strumenti di sola
 // lettura sull'archivio; i documenti clinici dei pazienti non le vengono mai passati.
-export async function chiediPoliedron({ token, domanda, documentoId, storia }, fetchImpl = fetch) {
+export async function chiediPoliedron(richiesta, fetchImpl = fetch) {
+  return (await chiediPoliedronCompleto(richiesta, fetchImpl)).risposta;
+}
+
+// Risposta e proposte di pulizia in massa (PO 2026-10-18): le proposte si eseguono solo dopo la conferma di Luca.
+export async function chiediPoliedronCompleto({ token, domanda, documentoId, storia }, fetchImpl = fetch) {
   if (!token) throw new Error('Sessione scaduta: esci e rientra.');
   const res = await fetchImpl(URL_CARICAMENTO, {
     method: 'POST',
@@ -286,7 +291,7 @@ export async function chiediPoliedron({ token, domanda, documentoId, storia }, f
   let r;
   try { r = await res.json(); } catch { throw new Error('Assistente non raggiungibile.'); }
   if (!r.ok) throw new Error(r.errore || 'Assistente non disponibile.');
-  return r.risposta;
+  return { risposta: r.risposta, proposte: Array.isArray(r.proposte) ? r.proposte : [] };
 }
 
 // Testo della risposta → parti: testo semplice e link ai documenti [[doc:ID|titolo]].
@@ -364,6 +369,27 @@ export async function eliminaDocumenti(db, ids, avanzamento = () => {}) {
     avanzamento(fatti, ids.length);
   }
   return fatti;
+}
+
+// Pulizia in massa (scelta di Luca, 2026-10-18): le email da cui arrivano i documenti eliminati vanno nel
+// Cestino di Gmail (30 giorni), solo se tutti i loro allegati archiviati sono tra quelli eliminati.
+export async function cestinaEmail({ token, ids }, fetchImpl = fetch) {
+  const validi = [...new Set((ids || []).filter(Boolean))];
+  if (!validi.length) return { cestinate: 0, tenute: 0 };
+  if (!token) throw new Error('Sessione scaduta: esci e rientra.');
+  const esito = { cestinate: 0, tenute: 0 };
+  for (let i = 0; i < validi.length; i += 100) {
+    const res = await fetchImpl(URL_CARICAMENTO, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ token, azione: 'cestina_email', ids: validi.slice(i, i + 100) }),
+    });
+    let r;
+    try { r = await res.json(); } catch { throw new Error('Gmail non raggiungibile: nessun documento eliminato.'); }
+    if (!r.ok) throw new Error(r.errore || 'Email non spostate nel Cestino: nessun documento eliminato.');
+    esito.cestinate += r.cestinate || 0;
+    esito.tenute += r.tenute || 0;
+  }
+  return esito;
 }
 
 // Su richiesta di Luca (scelta nella conferma): i file vanno nel Cestino di Google Drive, a blocchi.
