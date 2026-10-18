@@ -1,5 +1,5 @@
 // POL-VITA-007 — Documenti: ricerca immediata con filtri (categoria, ente, anno, tipo, persona),
-// cartelle per ente (POL-VITA-015, vista principale), categorie, pratiche; le cose poco utili (pubblicità, foto, catene) restano
+// cartelle per ente (POL-VITA-016, vista principale), categorie, pratiche; le cose poco utili (pubblicità, foto, catene) restano
 // nascoste finché non le chiedi. Selezione multipla (tieni premuto o "Seleziona") con azioni di
 // massa: sposta, importanza, ente, persona, Personali, elimina.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -14,7 +14,7 @@ import { preparaFile, comeFile, condividi } from './lib/condividi.js';
 import { VistaCartelle } from './Cartelle.jsx';
 import { colore, dataBreve, titoloDoc, Vuoto, Sezione, Gruppo, Chips, Segmenti, ConfermaElimina, ElencoPratiche, tokenSessione } from './ui.jsx';
 import { Miniatura } from './Miniatura.jsx';
-import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaStella, IconaCestino, IconaCondividi } from './Icone.jsx';
+import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaStella, IconaCestino, IconaCondividi, IconaFoto } from './Icone.jsx';
 
 const RILEVANZA = { alta: 'Importante', normale: 'Normale', bassa: 'Poco utile' };
 const MAX_CONDIVISI = 10;
@@ -320,6 +320,11 @@ export function VistaDocumenti({ ctx }) {
           : <Vuoto>Cerco…</Vuoto>
       ) : (
         <>
+          <button className="pp-ingresso-foto" onClick={() => apri({ tipo: 'fotovideo' })}>
+            <span className="pp-ingresso-foto-icona"><IconaFoto size={22} /></span>
+            <span className="pp-riga-testo"><span className="pp-riga-titolo">Foto e video</span><span className="pp-riga-meta">Album, anni e luoghi</span></span>
+            <IconaFreccia size={16} />
+          </button>
           <Chips voci={[['cartelle', 'Cartelle'], ['recenti', 'Recenti'], ['categorie', 'Categorie'], ['pratiche', 'Pratiche']]} attiva={scheda} onScegli={setScheda} />
           {scheda === 'cartelle' && <VistaCartelle ctx={ctx} anchePocoUtili={filtri.anchePocoUtili} />}
           {scheda === 'recenti' && risultati && <ElencoSelezionabile elenco={risultati} ctx={ctx} onCambiato={() => setRinfresca((n) => n + 1)} intestazione="Ultimi arrivati" />}

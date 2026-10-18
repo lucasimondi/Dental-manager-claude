@@ -1326,7 +1326,7 @@ function claudeMessaggi_(body) {
 }
 
 /* =====================================================================
- * CARTELLE (POL-VITA-015): sintesi di una cartella (= un ente) e bozza di risposta.
+ * CARTELLE (POL-VITA-016): sintesi di una cartella (= un ente) e bozza di risposta.
  * Al modello vanno solo i dati già in archivio (titoli, riassunti, date, importi, mittenti) e, per
  * la bozza, il testo dell'ultima email della cartella. Mai i documenti clinici dei pazienti; la
  * bozza resta tra le bozze di Gmail: non parte nulla a nome di Luca.

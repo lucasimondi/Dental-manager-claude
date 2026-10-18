@@ -3812,7 +3812,7 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - EXACT NEXT ACTION: aprire/revisionare PR, attendere approvazione PO prima di merge o deploy.
 
 
-## 2026-10-18 — Claude — POL-VITA-015 (Personal: cartelle in Documenti)
+## 2026-10-18 — Claude — POL-VITA-016 (Personal: cartelle in Documenti)
 - BRANCH: `claude/catalogazione-facile-latjs9` da `master@6c9a296f`.
 - COMPLETATO: cartelle per ente con periodo, contatti, etichette, note, promemoria, sintesi AI, bozza di risposta, rinomina/unione, togli/elimina; selezione multipla con Condividi più file e sposta in cartella.
 - DB: migrazione additiva applicata (`cartelle_ente`, `scadenze.cartella`, `v_cartelle`, `rinomina_cartella`); 8 documenti Kerdos con ente "Kerdos SPV".

@@ -1,4 +1,4 @@
-// POL-VITA-015 — Cartelle in Documenti: una cartella per ente (es. "Kerdos") con i suoi documenti,
+// POL-VITA-016 — Cartelle in Documenti: una cartella per ente (es. "Kerdos") con i suoi documenti,
 // il periodo, i contatti da cui arrivano, etichette, note, promemoria, sintesi dell'AI e bozza di
 // risposta. La cartella è l'ente dei documenti: rinominarla cambia l'ente di tutti (o li unisce a
 // un'altra cartella con quel nome). Mai i documenti clinici dei pazienti.

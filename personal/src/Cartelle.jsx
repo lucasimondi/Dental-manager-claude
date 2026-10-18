@@ -1,4 +1,4 @@
-// POL-VITA-015 — Cartelle in Documenti: una cartella per ente (es. "Kerdos"), in griglia o in elenco.
+// POL-VITA-016 — Cartelle in Documenti: una cartella per ente (es. "Kerdos"), in griglia o in elenco.
 // Dentro: periodo, contatti, etichette, note, promemoria (vanno in Agenda, in Oggi e nel riepilogo
 // delle 7), sintesi dell'AI, bozza di risposta (solo tra le bozze di Gmail) e i documenti, con
 // selezione multipla per condividere, spostare, eliminare. La cartella si rinomina, si unisce a

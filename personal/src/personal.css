@@ -686,7 +686,44 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; d
 .pp-paziente-scelto { border-radius: 12px; border: 1px solid var(--pp-linea); }
 .pp-trovati { margin-top: 8px; max-height: 260px; overflow-y: auto; }
 
-/* POL-VITA-015 — cartelle in Documenti */
+/* ---------- POL-VITA-015: Foto e video ---------- */
+.pp-av-fotovideo { --k: #7c3aed; }
+.pp-ingresso-foto { width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin: 4px 0 12px; border-radius: var(--pp-raggio); text-align: left; color: var(--pp-inchiostro);
+  background: linear-gradient(135deg, color-mix(in srgb, #7c3aed 14%, var(--pp-superficie)), var(--pp-superficie)); box-shadow: var(--pp-ombra); }
+.pp-ingresso-foto > svg:last-child { color: var(--pp-grigio); }
+.pp-ingresso-foto-icona { width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px; display: grid; place-items: center; color: #fff; background: #7c3aed; }
+.pp-foto-riassunto { color: var(--pp-grigio); font-size: 14px; margin: 2px 4px 10px; }
+.pp-foto-riassunto strong { color: var(--pp-inchiostro); }
+.pp-album { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (min-width: 520px) { .pp-album { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.pp-album-voce { display: flex; flex-direction: column; gap: 2px; text-align: left; color: var(--pp-inchiostro); min-width: 0; }
+.pp-album-copertina { display: block; border-radius: 14px; overflow: hidden; box-shadow: var(--pp-ombra); }
+.pp-album-copertina .pp-mini-grande { aspect-ratio: 1 / 1; border-radius: 14px; border: 0; }
+.pp-album-copertina .pp-mini-grande img { object-position: center; }
+.pp-album-nome { font-weight: 650; margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-album-voce.da-catalogare .pp-album-copertina { outline: 2px dashed color-mix(in srgb, #7c3aed 45%, transparent); outline-offset: -2px; }
+.pp-griglia-foto { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; border-radius: 12px; overflow: hidden; }
+@media (min-width: 520px) { .pp-griglia-foto { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.pp-foto { position: relative; display: block; padding: 0; min-width: 0; }
+.pp-foto .pp-mini-grande { aspect-ratio: 1 / 1; border-radius: 0; border: 0; }
+.pp-foto .pp-mini-grande img { object-position: center; }
+.pp-foto-video { position: absolute; right: 6px; bottom: 6px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; color: #fff; background: rgba(0, 0, 0, .55); }
+.pp-foto-spunta { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #fff; border: 2px solid #fff; background: rgba(0, 0, 0, .25); }
+.pp-foto.scelta .pp-foto-spunta { background: #7c3aed; }
+.pp-foto.scelta .pp-mini { opacity: .75; }
+.pp-filtro-attivo { display: flex; align-items: center; gap: 8px; margin: 2px 0 8px; }
+.pp-filtro-attivo .pp-indietro { display: inline-flex; align-items: center; gap: 2px; color: var(--pp-blu); font-weight: 600; }
+.pp-area-foto .pp-azioni-piccole { align-items: center; flex-wrap: wrap; }
+.pp-area-foto .pp-azioni-piccole .pp-select { width: auto; flex: 1; min-width: 150px; }
+.pp-visore-immagine { position: relative; margin: 0 -16px; min-height: 260px; display: grid; place-items: center; background: #0b0f17; touch-action: pan-y; }
+.pp-visore-immagine img { width: 100%; max-height: 70vh; object-fit: contain; display: block; }
+.pp-visore-attesa, .pp-visore-video { color: #e4e7ec; text-align: center; padding: 40px 16px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.pp-visore-video > span { font-size: 40px; }
+.pp-visore-freccia { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: rgba(0, 0, 0, .45); }
+.pp-visore-freccia.sx { left: 8px; } .pp-visore-freccia.dx { right: 8px; }
+.pp-visore-conto { text-align: center; margin-top: 6px; }
+.pp-visore-titolo { font-size: 19px; margin: 8px 0 2px; overflow-wrap: anywhere; }
+/* POL-VITA-016 — cartelle in Documenti */
 .pp-pannello { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: var(--pp-raggio); background: var(--pp-superficie); box-shadow: var(--pp-ombra); color: var(--pp-inchiostro); }
 .pp-pannello + .pp-pannello { margin-top: 12px; }
 .pp-cartella-ente { min-height: 128px; }
