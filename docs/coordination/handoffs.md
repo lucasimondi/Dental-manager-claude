@@ -1,5 +1,8 @@
 # Handoffs
 
+## 2026-10-18 — CLAUDE — Archivio: Gemini di riserva
+- `modello_()` sceglie Claude o Gemini; `apiInPausa_()` = nessun modello. Piano gratuito per scelta di Luca (Google può usare i contenuti). Script da pubblicare a mano da Luca: questa sessione non ha clasp.
+
 ## 2026-10-18 — CLAUDE — Personal: chat Poliedron a pagina intera + graffetta
 - La chat è la scheda `poliedron` (stato in `Archivio`, `CHAT_VUOTA`), helper puri in `personal/src/lib/chat.js`. Allegato = archiviazione normale + domanda sul documento: il modello non legge mai il file grezzo, solo il catalogo, e i clinici restano esclusi dallo script.
 - Variante non fatta: allegare senza archiviare (servirebbe una nuova azione in `Code.gs` e un `clasp push`, non disponibile in questa sessione).

@@ -13,12 +13,16 @@
  *   SUPABASE_KEY       chiave segreta (secret key / service_role)
  *   ANTHROPIC_API_KEY  chiave API di Claude
  * Facoltative:
+ *   GEMINI_API_KEY     chiave di Google AI Studio: analisi con Gemini quando Claude è in pausa
+ *   GEMINI_MODELLO     modello Gemini (predefinito: CONFIG.MODELLO_GEMINI)
  *   EMAIL_DIGEST       destinatario del riepilogo (predefinito: il tuo indirizzo)
  *   DASHBOARD_URL      indirizzo della dashboard, per il link nel riepilogo
  */
 
 const CONFIG = {
   MODELLO: 'claude-haiku-5-5',
+  // Riserva quando Claude è in pausa (PO 2026-10-18). Alias di Google che segue l'ultimo Flash.
+  MODELLO_GEMINI: 'gemini-flash-latest',
   ETICHETTA_PADRE: 'Archivio',
   ETICHETTA_FATTO: 'Archivio/Elaborato',
   ETICHETTA_ERRORE: 'Archivio/Errore',
@@ -119,7 +123,7 @@ function elabora() {
       try { analizzaRimasti_(inizio + ANALISI_RIMASTI_MS); } catch (e) { if (e.message !== 'RIPROVA') logErrore_('analisi rimasti', e); }
       // Riordino dell'archivio già importato (POL-VITA-007): un lotto a ogni giro, anche mentre lo
       // storico è ancora in importazione; altri lotti in fondo se avanza tempo.
-      try { riordinaLotto_(); } catch (e) { if (e.message !== 'RIPROVA') logErrore_('riordino', e); }
+      if (!claudeInPausa_()) try { riordinaLotto_(); } catch (e) { if (e.message !== 'RIPROVA') logErrore_('riordino', e); }
     }
 
     // Recupero: thread di mesi già superati dal cursore e rimessi in coda con riprovaErrori
@@ -181,7 +185,7 @@ function elabora() {
       if (interrotto) break;
     }
     // Tempo avanzato: riordina i documenti già in archivio (POL-VITA-007), a piccoli lotti.
-    while (!apiInPausa_() && Date.now() - inizio < CONFIG.TEMPO_MAX_MS - 60000) {
+    while (!claudeInPausa_() && Date.now() - inizio < CONFIG.TEMPO_MAX_MS - 60000) {
       if (!riordinaLotto_()) break;
     }
   } finally {
@@ -529,7 +533,7 @@ function analizza_(meta, nome, contenuto, pratiche) {
   ].join('\n');
 
   const blocchi = contenuto ? [contenuto, { type: 'text', text: intestazione }] : [{ type: 'text', text: intestazione }];
-  const analisi = parseJson_(claude_(system, blocchi, SCHEMA_ANALISI));
+  const analisi = parseJson_(modello_(system, blocchi, SCHEMA_ANALISI));
   // "dati" arriva come elenco campo/valore (lo schema vincolato non ammette chiavi libere)
   if (Array.isArray(analisi.dati)) {
     const dati = {};
@@ -613,8 +617,91 @@ function pausaApi_(testo) {
   sp.setProperty('API_PAUSA_FINO', String(Date.now() + PAUSA_API_MS));
   if (!gia) logErrore_('API Claude in pausa (limite di spesa)', new Error(String(testo).slice(0, 300)));
 }
-function apiInPausa_() {
+function claudeInPausa_() {
   return Number(PropertiesService.getScriptProperties().getProperty('API_PAUSA_FINO') || 0) > Date.now();
+}
+// Nessun modello disponibile: né Claude né Gemini. Solo allora si cataloga a regole.
+function apiInPausa_() {
+  return claudeInPausa_() && !geminiDisponibile_();
+}
+
+/* =====================================================================
+ * GEMINI DI RISERVA (PO 2026-10-18: "Ma se usassimo Gemini per analizzarli?", piano gratuito
+ * scelto da Luca). Solo l'analisi dei documenti, con lo stesso prompt e lo stesso JSON di Claude;
+ * la chat e le bozze restano a Claude. I documenti dei pazienti non arrivano mai qui: i chiamanti
+ * di analizza_() li escludono prima (eClinico_ e fascicolo clinico_pazienti).
+ * ===================================================================*/
+const GEMINI_INTERVALLO_MS = 5000;               // piano gratuito: al massimo ~12 richieste al minuto
+const GEMINI_PAUSA_MS = 3 * 60 * 60 * 1000;      // quota del giorno finita o chiave rifiutata
+let GEMINI_ULTIMA = 0;
+
+function geminiDisponibile_() {
+  const sp = PropertiesService.getScriptProperties();
+  return Boolean(sp.getProperty('GEMINI_API_KEY')) && Number(sp.getProperty('GEMINI_PAUSA_FINO') || 0) <= Date.now();
+}
+
+function pausaGemini_(testo) {
+  const sp = PropertiesService.getScriptProperties();
+  sp.setProperty('GEMINI_PAUSA_FINO', String(Date.now() + GEMINI_PAUSA_MS));
+  logErrore_('Gemini in pausa per 3 ore', new Error(String(testo).slice(0, 300)));
+}
+
+// Claude se disponibile, altrimenti Gemini; anche quando Claude va in pausa proprio ora.
+function modello_(system, content, schema) {
+  if (!claudeInPausa_()) {
+    try { return claude_(system, content, schema); } catch (e) {
+      if (e.message !== 'RIPROVA' || !claudeInPausa_() || !geminiDisponibile_()) throw e;
+    }
+  }
+  if (!geminiDisponibile_()) throw new Error('RIPROVA');
+  return gemini_(system, content);
+}
+
+// Blocchi in formato Claude (testo, PDF, immagine) → parti di Gemini.
+function partiGemini_(content) {
+  return content.map(function (b) {
+    if (b.type === 'text') return { text: b.text };
+    if (b.source && b.source.type === 'base64') return { inline_data: { mime_type: b.source.media_type, data: b.source.data } };
+    return null;
+  }).filter(Boolean);
+}
+
+function gemini_(system, content) {
+  const sp = PropertiesService.getScriptProperties();
+  const modello = sp.getProperty('GEMINI_MODELLO') || CONFIG.MODELLO_GEMINI;
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(modello) + ':generateContent';
+  const body = {
+    systemInstruction: { parts: [{ text: system }] },
+    contents: [{ role: 'user', parts: partiGemini_(content) }],
+    generationConfig: { responseMimeType: 'application/json', temperature: 0.2, maxOutputTokens: 8192 },
+  };
+  for (let tentativo = 1; tentativo <= 3; tentativo++) {
+    const attesa = GEMINI_ULTIMA + GEMINI_INTERVALLO_MS - Date.now();
+    if (attesa > 0) Utilities.sleep(attesa);
+    GEMINI_ULTIMA = Date.now();
+    const res = UrlFetchApp.fetch(url, {
+      method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+      headers: { 'x-goog-api-key': sp.getProperty('GEMINI_API_KEY') }, payload: JSON.stringify(body),
+    });
+    const code = res.getResponseCode();
+    const testo = res.getContentText();
+    if (code === 200) {
+      const r = JSON.parse(testo);
+      const c = (r.candidates || [])[0];
+      if (!c || !c.content) throw new Error('Gemini non ha risposto (' + ((r.promptFeedback || {}).blockReason || (c && c.finishReason) || 'motivo sconosciuto') + ')');
+      if (c.finishReason === 'MAX_TOKENS') throw new Error('Risposta di Gemini troncata (max tokens)');
+      return (c.content.parts || []).filter(function (p) { return p.text && !p.thought; }).map(function (p) { return p.text; }).join('');
+    }
+    // Quota del giorno finita (piano gratuito) o chiave non valida: Gemini in pausa, si cataloga a regole.
+    if ((code === 429 && /PerDay|per day|daily/i.test(testo)) || code === 401 || code === 403 || /API_KEY_INVALID|API key not valid/i.test(testo)) {
+      pausaGemini_(testo);
+      throw new Error('RIPROVA');
+    }
+    if (code === 429) { Utilities.sleep(tentativo * 20000); continue; }   // troppe richieste al minuto
+    if (code >= 500) { Utilities.sleep(tentativo * 8000); continue; }
+    throw new Error('API Gemini ' + code + ': ' + testo.slice(0, 500));
+  }
+  throw new Error('RIPROVA');
 }
 
 function parseJson_(testo) {
