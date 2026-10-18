@@ -1,5 +1,5 @@
 // POL-VITA-007 — Documenti: ricerca immediata con filtri (categoria, ente, anno, tipo, persona),
-// sfoglia per ente o per categoria, pratiche; le cose poco utili (pubblicità, foto, catene) restano
+// cartelle per ente (POL-VITA-016, vista principale), categorie, pratiche; le cose poco utili (pubblicità, foto, catene) restano
 // nascoste finché non le chiedi. Selezione multipla (tieni premuto o "Seleziona") con azioni di
 // massa: sposta, importanza, ente, persona, Personali, elimina.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -9,11 +9,15 @@ import {
   pratiche as caricaPratiche, eCaricato,
 } from './lib/archivio.js';
 import { euro } from './lib/coreArchivio.js';
+import { caricaCartelle } from './lib/cartelle.js';
+import { preparaFile, comeFile, condividi } from './lib/condividi.js';
+import { VistaCartelle } from './Cartelle.jsx';
 import { colore, dataBreve, titoloDoc, Vuoto, Sezione, Gruppo, Chips, Segmenti, ConfermaElimina, ElencoPratiche, tokenSessione } from './ui.jsx';
 import { Miniatura } from './Miniatura.jsx';
-import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaStella, IconaCestino, IconaFoto } from './Icone.jsx';
+import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaStella, IconaCestino, IconaCondividi, IconaFoto } from './Icone.jsx';
 
 const RILEVANZA = { alta: 'Importante', normale: 'Normale', bassa: 'Poco utile' };
+const MAX_CONDIVISI = 10;
 const MODO_KEY = 'poliedron-personal-elenco';
 const leggiModo = () => { try { return localStorage.getItem(MODO_KEY) || 'griglia'; } catch { return 'griglia'; } };
 
@@ -100,6 +104,8 @@ export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione }) {
   const [foglio, setFoglio] = useState(null);
   const [conferma, setConferma] = useState(false);
   const [avanzamento, setAvanzamento] = useState(null);
+  const [cartelle, setCartelle] = useState(null);
+  const [pronti, setPronti] = useState(null); // { chiave, file } dei documenti scelti, per Condividi
   const setModo = (m) => { setModoStato(m); try { localStorage.setItem(MODO_KEY, m); } catch { /* facoltativo */ } };
   useEffect(() => { setSelezione((s) => (s ? new Set([...s].filter((id) => elenco.some((d) => d.id === id))) : s)); }, [elenco]);
 
@@ -111,6 +117,32 @@ export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione }) {
   });
   const ids = [...(selezione || [])];
   const scelti = elenco.filter((d) => selezione?.has(d.id));
+  // Condividi più file: si preparano mentre li scegli, perché iOS apre il foglio solo se parte
+  // subito dal tocco (massimo 10 file, mai i clinici: lo script non li manda all'anteprima).
+  const chiaveScelti = ids.slice().sort().join(',');
+  useEffect(() => {
+    const daPreparare = scelti.filter((d) => d.drive_file_id && d.fascicolo !== 'clinico_pazienti');
+    if (!daPreparare.length || daPreparare.length > MAX_CONDIVISI) { setPronti(null); return undefined; }
+    let vivo = true;
+    setPronti(null);
+    (async () => {
+      try {
+        const token = await tokenSessione();
+        const file = await Promise.all(daPreparare.map((d) => preparaFile(d.drive_file_id, token).then(comeFile)));
+        if (vivo) setPronti({ chiave: chiaveScelti, file });
+      } catch { if (vivo) setPronti({ chiave: chiaveScelti, file: [], errore: true }); }
+    })();
+    return () => { vivo = false; };
+  }, [chiaveScelti]); // eslint-disable-line react-hooks/exhaustive-deps
+  const condividiScelti = async () => {
+    if (!pronti || pronti.chiave !== chiaveScelti) return;
+    try {
+      const r = await condividi({ titolo: scelti.length === 1 ? titoloDoc(scelti[0]) : `${scelti.length} documenti`, file: pronti.file.length === 1 ? pronti.file[0] : null, files: pronti.file });
+      if (r === 'copiato') mostra('Link copiato');
+      else if (r === 'non_disponibile') mostra('Condivisione non disponibile su questo dispositivo');
+    } catch (e) { mostra(e.message); }
+  };
+  const statoCondividi = !ids.length ? null : ids.length > MAX_CONDIVISI ? `Al massimo ${MAX_CONDIVISI}` : !pronti || pronti.chiave !== chiaveScelti ? 'Preparo…' : pronti.errore ? 'Non disponibile' : null;
   const fatto = (msg) => { setFoglio(null); setSelezione(null); aggiorna(); onCambiato?.(); mostra(msg); };
   const cambia = (campi, msg) => esegui(async () => { await aggiornaDocumenti(archivioDb, ids, campi); fatto(msg); });
 
@@ -121,18 +153,26 @@ export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione }) {
       scegli: (id) => cambia({ rilevanza: id }, `Segnati: ${RILEVANZA[id].toLowerCase()}`) },
     persona: { titolo: 'Di chi è', voci: [{ id: '', nome: 'Nessuno' }, ...impostazioni.persone.map((p) => ({ id: p, nome: p }))],
       scegli: (id) => cambia({ persona: id }, id ? `Assegnati a ${id}` : 'Persona tolta') },
+    cartella: { titolo: `Metti ${ids.length} in una cartella`, cerca: true,
+      voci: [{ id: '__nuova', nome: 'Nuova cartella…' }, ...(cartelle || []).map((c) => ({ id: c.ente, nome: c.ente, meta: `${c.n} documenti`, colore: colore(c.fascicolo) }))],
+      scegli: (id) => {
+        if (id === '__nuova') {
+          const nome = window.prompt(`Nome della nuova cartella per ${ids.length} documenti (es. Kerdos)`, scelti[0]?.ente || '');
+          if (nome != null && nome.trim()) cambia({ ente: nome }, `Nella cartella ${nome.trim()}`);
+          return;
+        }
+        cambia({ ente: id }, `Nella cartella ${id}`);
+      } },
     altro: { titolo: 'Altre azioni', voci: [
-      { id: 'ente', nome: 'Cambia ente', meta: 'fornitore, ufficio, banca…' },
+      { id: 'ente', nome: 'Togli dalla cartella', meta: 'restano in archivio, in "Senza cartella"' },
+      { id: 'importanza', nome: 'Importanza', meta: 'importante, normale, poco utile' },
       { id: 'personali_si', nome: 'Aggiungi ai Personali' },
       { id: 'personali_no', nome: 'Togli dai Personali' },
       { id: 'persona', nome: 'Assegna a una persona' },
     ], scegli: (id) => {
       if (id === 'persona') { setFoglio('persona'); return; }
-      if (id === 'ente') {
-        const nome = window.prompt(`Ente per ${ids.length} documenti (es. Enel Energia)`, scelti[0]?.ente || '');
-        if (nome != null) cambia({ ente: nome }, nome.trim() ? `Ente: ${nome.trim()}` : 'Ente tolto');
-        return;
-      }
+      if (id === 'importanza') { setFoglio('importanza'); return; }
+      if (id === 'ente') { cambia({ ente: '' }, 'Tolti dalla cartella'); return; }
       esegui(async () => { await portafoglioDocumenti(archivioDb, scelti, id === 'personali_si'); fatto(id === 'personali_si' ? 'Aggiunti ai Personali' : 'Tolti dai Personali'); });
     } },
   };
@@ -177,8 +217,9 @@ export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione }) {
               <ConfermaElimina n={ids.length} onNo={() => setConferma(false)} onSi={elimina} />
             ) : (
               <div className="pp-barra-selezione-azioni">
-                <button disabled={!ids.length} onClick={() => setFoglio('sposta')}><IconaDocumenti size={18} /><span>Sposta</span></button>
-                <button disabled={!ids.length} onClick={() => setFoglio('importanza')}><IconaStella size={18} /><span>Importanza</span></button>
+                <button disabled={!ids.length || !!statoCondividi} onClick={condividiScelti}><IconaCondividi size={18} /><span>{statoCondividi || 'Condividi'}</span></button>
+                <button disabled={!ids.length} onClick={() => { esegui(async () => setCartelle(await caricaCartelle(archivioDb))); setFoglio('cartella'); }}><IconaDocumenti size={18} /><span>Cartella</span></button>
+                <button disabled={!ids.length} onClick={() => setFoglio('sposta')}><IconaStella size={18} /><span>Categoria</span></button>
                 <button disabled={!ids.length} onClick={() => setFoglio('altro')}><span className="pp-tre-punti">•••</span><span>Altro</span></button>
                 <button disabled={!ids.length} className="pp-rosso" onClick={() => setConferma(true)}><IconaCestino size={18} /><span>Elimina</span></button>
               </div>
@@ -231,12 +272,11 @@ const conFiltri = (f) => !!(f.fascicolo || f.ente || f.anno || f.persona);
 /* ---------- vista Documenti ---------- */
 export function VistaDocumenti({ ctx }) {
   const { esegui, apri, versione, impostazioni, fascicoli, sotto } = ctx;
-  const [scheda, setScheda] = useState(sotto || 'recenti');
+  const [scheda, setScheda] = useState(sotto === 'enti' ? 'cartelle' : sotto || 'cartelle');
   const [testo, setTesto] = useState('');
   const [filtri, setFiltri] = useState(filtriVuoti);
   const [risultati, setRisultati] = useState(null);
   const [elencoEnti, setElencoEnti] = useState(null);
-  const [filtroEnti, setFiltroEnti] = useState('');
   const [elencoPratiche, setElencoPratiche] = useState(null);
   const [filtroPratiche, setFiltroPratiche] = useState('aperte');
   const [rinfresca, setRinfresca] = useState(0);
@@ -259,8 +299,6 @@ export function VistaDocumenti({ ctx }) {
   }, [testo, filtri, scheda, ricerca, esegui, versione, rinfresca]);
 
   const sezioni = impostazioni.sezioni;
-  const entiVisibili = (elencoEnti || []).filter((e) => !filtroEnti || e.ente.toLowerCase().includes(filtroEnti.toLowerCase()));
-  const apriEnte = (ente) => apri({ tipo: 'ricerca', titolo: ente, filtri: { ente } });
   const apriFascicolo = (f) => apri({ tipo: 'ricerca', titolo: f.nome, filtri: { fascicolo: f.codice } });
   const apriSezione = (s) => apri({ tipo: 'ricerca', titolo: s.nome, sezione: s });
   const principali = fascicoli.filter((f) => f.n > 0 && !['pubblicita', 'foto_video', 'corrispondenza', 'altro'].includes(f.codice));
@@ -287,27 +325,9 @@ export function VistaDocumenti({ ctx }) {
             <span className="pp-riga-testo"><span className="pp-riga-titolo">Foto e video</span><span className="pp-riga-meta">Album, anni e luoghi</span></span>
             <IconaFreccia size={16} />
           </button>
-          <Chips voci={[['recenti', 'Recenti'], ['enti', 'Per ente'], ['categorie', 'Categorie'], ['pratiche', 'Pratiche']]} attiva={scheda} onScegli={setScheda} />
+          <Chips voci={[['cartelle', 'Cartelle'], ['recenti', 'Recenti'], ['categorie', 'Categorie'], ['pratiche', 'Pratiche']]} attiva={scheda} onScegli={setScheda} />
+          {scheda === 'cartelle' && <VistaCartelle ctx={ctx} anchePocoUtili={filtri.anchePocoUtili} />}
           {scheda === 'recenti' && risultati && <ElencoSelezionabile elenco={risultati} ctx={ctx} onCambiato={() => setRinfresca((n) => n + 1)} intestazione="Ultimi arrivati" />}
-          {scheda === 'enti' && (
-            <>
-              <div className="pp-cerca pp-cerca-piccola"><IconaCerca size={16} /><input value={filtroEnti} onChange={(e) => setFiltroEnti(e.target.value)} placeholder="Trova un ente" /></div>
-              {!elencoEnti ? <Vuoto>Carico…</Vuoto> : !elencoEnti.length
-                ? <Vuoto>Gli enti compaiono man mano che l'archivio viene riordinato (qualche ora per tutto lo storico).</Vuoto>
-                : (
-                  <Gruppo>
-                    {entiVisibili.slice(0, 200).map((e) => (
-                      <button key={e.ente} className="pp-riga" onClick={() => apriEnte(e.ente)}>
-                        <span className="pp-ente-iniziale" style={{ '--c': colore(e.fascicolo) }}>{e.ente.slice(0, 1).toUpperCase()}</span>
-                        <span className="pp-riga-testo"><span className="pp-riga-titolo">{e.ente}</span><span className="pp-riga-meta">{fascicoli.find((f) => f.codice === e.fascicolo)?.nome || ''}{e.ultimo ? ` · ultimo ${dataBreve(e.ultimo)}` : ''}</span></span>
-                        <span className="pp-conteggio">{e.n}</span>
-                        <IconaFreccia size={16} />
-                      </button>
-                    ))}
-                  </Gruppo>
-                )}
-            </>
-          )}
           {scheda === 'categorie' && (
             <>
               {sezioni.length > 0 && (

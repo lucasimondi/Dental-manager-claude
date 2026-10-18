@@ -29,6 +29,11 @@ import {
   Vuoto, Sezione, Gruppo, RigaDocumento, SchedaDocumento, RigaPagamento, Chips, Segmenti, Conferma, ConfermaElimina, ElencoPratiche, BottoneCondividi,
 } from './ui.jsx';
 import { VistaDocumenti, PaginaRicerca } from './Documenti.jsx';
+import { PaginaCartella } from './Cartelle.jsx';
+import { documentiSenzaCartella } from './lib/cartelle.js';
+import { CAMPI_DOC } from './lib/archivio.js';
+
+const caricaSenzaCartella = () => documentiSenzaCartella(archivioDb, CAMPI_DOC);
 import { VistaFoto, PaginaFoto } from './Foto.jsx';
 import { catalogaFoto } from './lib/foto.js';
 import { Miniatura } from './Miniatura.jsx';
@@ -1020,7 +1025,7 @@ function VistaPoliedron({ ctx, chat, setChat }) {
 }
 
 const TITOLI_PAGINE = {
-  evento: 'Evento', appuntamento: 'Appuntamento', documento: 'Documento', pagamento: 'Pagamento', pratica: 'Pratica',
+  evento: 'Evento', appuntamento: 'Appuntamento', documento: 'Documento', pagamento: 'Pagamento', pratica: 'Pratica', cartella: 'Cartella',
   carica: 'Archivia un documento', fotovideo: 'Foto e video', foto: 'Foto', impostazioni: 'Impostazioni', sezione: 'Sezione', scansione: 'Scansiona', scadenza: 'Pagamento da fare',
 };
 const titoloPagina = (p) => p.titolo || (p.tipo === 'movimento' ? (p.m?.id ? 'Movimento' : p.m?.tipo === 'entrata' ? 'Nuovo incasso' : 'Nuova spesa') : TITOLI_PAGINE[p.tipo]);
@@ -1119,6 +1124,8 @@ function Archivio({ email }) {
       case 'documento': return <PaginaDocumento id={p.id} ctx={ctx} chiudi={indietro} />;
       case 'pagamento': return <PaginaPagamento s={p.s} ctx={ctx} chiudi={indietro} />;
       case 'pratica': return <PaginaPratica p={p.p} ctx={ctx} />;
+      case 'cartella': return <PaginaCartella key={p.ente} ente={p.ente} ctx={ctx} chiudi={indietro} sostituisci={sostituisci} />;
+      case 'senza-cartella': return <PaginaRicerca carica={caricaSenzaCartella} ctx={ctx} />;
       case 'elenco': return <PaginaRicerca carica={p.carica} ctx={ctx} />;
       case 'ricerca': return <PaginaRicerca filtri={p.filtri} sezione={p.sezione} ctx={ctx} />;
       case 'fotovideo': return <VistaFoto ctx={ctx} albumIniziale={p.album || null} />;
