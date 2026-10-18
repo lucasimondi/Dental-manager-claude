@@ -13,7 +13,7 @@ import {
 import { condividi } from '../../lib/condividi.js';
 import { euro } from '../../lib/coreArchivio.js';
 import { colore, dataBreve, quando, oggiIso, Vuoto, Sezione, Gruppo, ConfermaElimina, tokenSessione } from '../../ui.jsx';
-import { ElencoSelezionabile, FoglioScelta } from './Documenti.jsx';
+import { ElencoSelezionabile, FoglioScelta } from './Selezione.jsx';
 import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaCalendario, IconaChat, IconaEmail, IconaCestino, IconaStella } from '../../Icone.jsx';
 
 const MODO_KEY = 'poliedron-personal-cartelle';

@@ -1,7 +1,8 @@
 // Sezione Documenti: archivio, cartelle, ricerca, schede dei documenti, pratiche, caricamento.
 import { IconaDocumenti } from '../../Icone.jsx';
 import { PaginaScansione } from '../../Aggiungi.jsx';
-import { VistaDocumenti, PaginaRicerca } from './Documenti.jsx';
+import { VistaDocumenti } from './Documenti.jsx';
+import { PaginaRicerca } from './Ricerca.jsx';
 import { PaginaDocumento } from './Documento.jsx';
 import { PaginaPratica } from './Pratica.jsx';
 import { PaginaCarica } from './Carica.jsx';

@@ -126,7 +126,7 @@ test('condividi più file insieme col foglio del sistema', async () => {
 });
 
 test('app: Documenti si apre sulle cartelle, a icone o in elenco; selezione con Condividi e Cartella', () => {
-  const doc = readFileSync('personal/src/sezioni/documenti/Documenti.jsx', 'utf8');
+  const doc = ['Documenti', 'Selezione'].map((f) => readFileSync(`personal/src/sezioni/documenti/${f}.jsx`, 'utf8')).join('\n');
   const cart = readFileSync('personal/src/sezioni/documenti/Cartelle.jsx', 'utf8');
   const app = readFileSync('personal/src/sezioni/documenti/index.jsx', 'utf8');
   assert.match(doc, /useState\(sotto === 'enti' \? 'cartelle' : sotto \|\| 'cartelle'\)/);
