@@ -81,3 +81,7 @@ Quando ha finito, apri **Pratiche** nella dashboard e usa **Archivia le pratiche
 - **Categoria sbagliata**: dal dettaglio del documento nella dashboard usa **Sposta**.
 - **Modello**: si cambia in `CONFIG.MODELLO`. Quello predefinito è economico e adatto allo smistamento.
 - **Duplicati**: ogni file viene identificato dal suo contenuto (hash SHA-256), quindi lo stesso allegato ricevuto più volte viene archiviato una volta sola.
+
+## Foto da Drive (PERSONAL-FOTO-DOCK-DRIVE)
+Dopo la pubblicazione di questo script, il trigger `elabora` indicizza anche le immagini di proprietà dell'account presenti su Drive, comprese quelle caricate dal cellulare. A ogni giro tratta una pagina di massimo 25 file (budget 15 secondi), riprende il cursore e, finita la scansione, ricomincia per trovare i nuovi caricamenti. Il primo recupero può richiedere più giri.
+Gli originali restano dove sono. L'album iniziale è il nome della cartella e la data è quella di scatto nei metadati, altrimenti quella di caricamento su Drive. La catalogazione è modificabile nell'area Foto; non identifica persone o luoghi dall'immagine. Nessun contenuto passa all'AI. File già indicizzati e nomi riconoscibili come clinici vengono esclusi. Duplicati evitati per ID Drive, non fra copie con ID diversi. Google Foto e il rullino iPhone non sono Drive: le immagini devono essere effettivamente caricate su Drive. Nessuna nuova autorizzazione OAuth o migrazione.

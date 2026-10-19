@@ -15,7 +15,7 @@ import { impostazioni } from './impostazioni/index.jsx';
 
 export const SEZIONI = [oggi, documenti, agenda, conti, personali, foto, poliedron, impostazioni];
 // Il dock, nell'ordine; Poliedron ha il suo tasto in fondo.
-export const DOCK = [oggi, documenti, agenda, conti, personali];
+export const DOCK = [oggi, documenti, agenda, foto, conti, personali];
 export const VISTE = [...DOCK, poliedron];
 
 export const sezione = (id) => VISTE.find((s) => s.id === id);
