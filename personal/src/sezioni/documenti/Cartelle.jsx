@@ -1,3 +1,5 @@
+import { areaArchivio, avvisoCartella } from '../../lib/revisioneArchivio.js';
+import { scadenzeRevisione } from '../../lib/archivio.js';
 import { ScorriElimina } from '../../ScorriElimina.jsx';
 // POL-VITA-016 — Cartelle in Documenti: una cartella per ente (es. "Kerdos"), in griglia o in elenco.
 // Dentro: periodo, contatti, etichette, note, promemoria (vanno in Agenda, in Oggi e nel riepilogo
@@ -30,22 +32,41 @@ export function leggiSintesi(testo) {
 export function VistaCartelle({ ctx, anchePocoUtili = false }) {
   const { esegui, apri, versione, fascicoli } = ctx;
   const [cartelle, setCartelle] = useState(null);
+  const [area, setArea] = useState(null);
+  const [avvisi, setAvvisi] = useState({});
   const [testo, setTesto] = useState('');
   const [etichetta, setEtichetta] = useState(null);
   const [stato, setStato] = useState('attive');
   const [suggeriti, setSuggeriti] = useState(0);
   const [modo, setModoStato] = useState(leggiModo);
   const setModo = (m) => { setModoStato(m); try { localStorage.setItem(MODO_KEY, m); } catch { /* facoltativo */ } };
-  useEffect(() => { esegui(async () => setCartelle(await caricaCartelle(archivioDb))); }, [esegui, versione]);
+  useEffect(() => { esegui(async () => {
+    const [cs, ss] = await Promise.all([caricaCartelle(archivioDb), scadenzeRevisione(archivioDb, false)]);
+    setCartelle(cs);
+    setAvvisi(Object.fromEntries(cs.map((c) => [c.ente, avvisoCartella(ss.filter((s) => s.cartella === c.ente || s.documento?.ente === c.ente))])));
+  }); }, [esegui, versione]);
   useEffect(() => { suggerimentiCartelle(archivioDb).then((r) => setSuggeriti(r.length)).catch(() => setSuggeriti(0)); }, [versione]);
-  const visibili = useMemo(() => cartelleVisibili(cartelle, { testo, anchePocoUtili, etichetta, stato }), [cartelle, testo, anchePocoUtili, etichetta, stato]);
+  const visibili = useMemo(() => cartelleVisibili(cartelle, { testo, anchePocoUtili, etichetta, stato }).filter((c) => !area || area === 'tutte' || areaArchivio(c.fascicolo) === area), [cartelle, testo, anchePocoUtili, etichetta, stato, area]);
   const ferme = useMemo(() => inAttesaDaTroppo(cartelle), [cartelle]);
   const tutteEtichette = useMemo(() => [...new Set((cartelle || []).flatMap((c) => c.etichette || []))].sort(), [cartelle]);
   if (!cartelle) return <Vuoto>Carico le cartelle…</Vuoto>;
   const nomeFasc = (c) => fascicoli.find((f) => f.codice === c.fascicolo)?.nome || '';
   const apriCartella = (c) => apri({ tipo: 'cartella', ente: c.ente, titolo: c.ente });
+  const badge = (c) => avvisi[c.ente]?.n > 0 ? <span className="pp-pallino" style={{ background: avvisi[c.ente].colore }} role="status" aria-label={`${avvisi[c.ente].n} scadenze da controllare`} /> : c.n_da_fare > 0 ? <span className="pp-pallino" style={{ background: '#d97706' }} aria-label={`${c.n_da_fare} documenti da valutare`} /> : null;
+  const aree = [...new Set(cartelle.map((c) => areaArchivio(c.fascicolo)))];
+  if (!area && !testo && !etichetta) return <>
+    <p className="pp-frase">Sei aree per ritrovare tutto. Enti e pratiche restano raggruppati al loro interno.</p>
+    <div className="pp-griglia">{aree.map((nome) => {
+      const cs = cartelle.filter((c) => areaArchivio(c.fascicolo) === nome);
+      const n = cs.reduce((t, c) => t + (avvisi[c.ente]?.n || 0), 0);
+      return <button key={nome} className="pp-cartella" onClick={() => setArea(nome)}><span className="pp-cartella-icona"><IconaDocumenti size={20} /></span><strong>{nome}</strong><span>{cs.length} cartelle · {cs.reduce((t, c) => t + c.n, 0)} documenti</span>{n > 0 && <span className="pp-rosso">● {n} scadenze da controllare</span>}</button>;
+    })}</div>
+    <button className="pp-chip-azione" onClick={() => setArea('tutte')}>Tutte le cartelle</button>
+    <button className="pp-chip-azione" onClick={() => apri({ tipo: 'suggerimenti-cartelle' })}>Unisci cartelle dello stesso ente</button>
+  </>;
   return (
     <>
+      <button className="pp-chip-azione" onClick={() => setArea(null)}>‹ Aree dell’archivio</button>
       <div className="pp-cerca pp-cerca-piccola"><IconaCerca size={16} /><input value={testo} onChange={(e) => setTesto(e.target.value)} placeholder="Trova una cartella" aria-label="Trova una cartella" /></div>
       {ferme.length > 0 && (
         <button className="pp-avviso-attesa" onClick={() => setStato('in_attesa')}>
@@ -88,7 +109,7 @@ export function VistaCartelle({ ctx, anchePocoUtili = false }) {
           {visibili.map((c) => (
             <ScorriElimina key={c.ente} cartella={c} ctx={ctx}><button className="pp-cartella pp-cartella-ente" style={{ '--c': colore(c.fascicolo) }} onClick={() => apriCartella(c)}>
               <span className="pp-cartella-icona"><IconaDocumenti size={20} /></span>
-              <span className="pp-cartella-nome">{c.ente}</span>
+              <span className="pp-cartella-nome">{c.ente} {badge(c)}</span>
               {c.stato && <span className="pp-badge-stato" style={{ '--c': COLORI_STATO[c.stato] }}>{STATI[c.stato]}</span>}
               {(c.etichette || []).length > 0 && <span className="pp-cartella-etichette">{c.etichette.slice(0, 2).map((e) => <span key={e} className="pp-etichetta-mini">{e}</span>)}</span>}
               <span className="pp-cartella-numero">{c.n} {c.n === 1 ? 'documento' : 'documenti'}<br />{periodoCartella(c.dal, c.al)}{c.n_promemoria ? <em> · {c.n_promemoria} promemoria</em> : c.n_da_fare ? <em> · {c.n_da_fare} da fare</em> : null}</span>
@@ -101,7 +122,7 @@ export function VistaCartelle({ ctx, anchePocoUtili = false }) {
             <ScorriElimina key={c.ente} cartella={c} ctx={ctx}><button className="pp-riga" onClick={() => apriCartella(c)}>
               <span className="pp-ente-iniziale" style={{ '--c': colore(c.fascicolo) }}>{c.ente.slice(0, 1).toUpperCase()}</span>
               <span className="pp-riga-testo">
-                <span className="pp-riga-titolo">{c.ente}</span>
+                <span className="pp-riga-titolo">{c.ente} {badge(c)}</span>
                 <span className="pp-riga-meta">{[STATI[c.stato], nomeFasc(c), periodoCartella(c.dal, c.al), ...(c.etichette || [])].filter(Boolean).join(' · ')}</span>
               </span>
               {c.n_promemoria > 0 && <span className="pp-pallino pp-media" aria-label="Promemoria aperti" />}

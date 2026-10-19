@@ -50,6 +50,7 @@ export function VistaOggi({ ctx }) {
   return (
     <>
       <p className="pp-data-oggi">{dataLunga()}</p>
+      <button className="pp-invito" onClick={() => apri({ tipo: 'revisione' })}><span><strong>Da valutare con Poliedron</strong><br />Pagamenti da verificare, inviti e documenti importanti</span></button>
       <RiquadroSaldo b={dati.saldo} titolo={`Saldo di ${new Date().toLocaleDateString('it-IT', { month: 'long' })}`} onApri={() => vai('conti')} />
       <div className="pp-rapide">
         {[['scansiona', 'Scansiona', IconaScansiona], ['spesa', 'Spesa', IconaEuro], ['incasso', 'Incasso', IconaEuro], ['fotocamera', 'Foto', IconaFotocamera]].map(([id, nome, Icona]) => (

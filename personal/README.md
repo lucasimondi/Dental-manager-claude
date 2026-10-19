@@ -47,3 +47,10 @@ npm run build            # include /personal/ in dist/
 Personal mostra tutte le 24 ore (Giorno/Settimana), indipendentemente dall'orario clinico dello Studio. Il collegamento in alto «Vai a Studio» usa `/studio` sul dominio Personal: è già servito dal rewrite SPA di Vercel e non incontra il redirect della sola `/` verso Personal. Non passa dal dominio tecnico Vercel; conserva data, vista e mese. Le sessioni delle due app restano separate.
 
 I nuovi impegni usano un ID numerico generato dal client, come nello Studio: la tabella esistente richiede `id` e non ha un default. Il messaggio di successo arriva solo dopo la risposta del database; durante il salvataggio il pulsante è disabilitato. Nessuna migrazione.
+
+### Revisione archivio — 19 ottobre 2026
+Documenti apre sei aree tematiche virtuali: gli enti sono conservati al loro interno, senza cancellare o spostare file. Le fusioni effettive fra enti restano nella funzione «Unisci cartelle dello stesso ente». Badge rosso per termini scaduti/oggi e arancione entro 14 giorni; documenti con azione richiesta hanno un indicatore arancione.
+
+«Da valutare» è raggiungibile da Oggi, Conti e Documenti. Separa importi da verificare, inviti/opportunità, termini/rinnovi e documenti importanti. Una fattura riferita a un anno precedente resta da verificare anche con un sollecito recente; la conferma esplicita di Luca la rende un pagamento attuale. «Già saldato / risolto» chiude l'avviso senza creare una spesa odierna. Non certifica un movimento bancario.
+
+«Rileggi mail e allegati già archiviati» richiede la nuova versione Apps Script: accoda una scansione a lotti, esclusi clinici e originali foto Drive. Legge allegato e corpo email (fino a 40.000 caratteri), entro quote e limiti AI. Le date già estratte rimangono conservate; non vengono ricalcolati saldi contabili. Se il contenuto non è leggibile la classificazione resta basata sui dati disponibili. La revisione mostra fino a 2.000 scadenze recenti e 50 documenti importanti; non rappresenta una riconciliazione bancaria completa. Nessun invio di messaggi a terzi.

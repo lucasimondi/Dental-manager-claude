@@ -184,7 +184,14 @@ test('POL-VITA-014: Da pagare mostra solo pagamenti attuali; i fissi si ripropon
     { importo: 80, categoria: 'Bollette' }, { importo: 20.5, categoria: 'Bollette' }, { importo: 300, categoria: 'Assicurazioni' }, { importo: 10, documento: { fascicolo: 'utenze' } },
   ]), [{ categoria: 'Assicurazioni', totale: 300 }, { categoria: 'Bollette', totale: 110.5 }]);
   const lib = readFileSync('personal/src/lib/archivio.js', 'utf8');
-  assert.match(lib, /export async function pagamenti\(db\) \{\n  return esito\(await db\.from\('scadenze'\)\.select\(CAMPI_SCADENZA\)\.eq\('storica', false\)/);
+  const { pagamenti } = await import('../personal/src/lib/archivio.js');
+  const db = clientFinto({ scadenze: [
+    { id: 'manuale', importo: 90 },
+    { id: 'invito', importo: 100, documento: { fascicolo: 'pubblicita' } },
+    { id: 'vecchia', data: '2025-01-01', importo: 50, documento: { tipo_documento: 'fattura' } },
+  ] });
+  assert.deepEqual((await pagamenti(db)).map((s) => s.id), ['manuale']);
+  assert.ok(db.chiamate[0].passi.some(([m, k, v]) => m === 'eq' && k === 'storica' && v === false));
   const sql = readFileSync('supabase/archivio/migrations/20261017200000_pol_vita_014_pagamenti_attuali.sql', 'utf8');
   assert.match(sql, /add column if not exists storica boolean not null default false/);
   assert.match(sql, /update scadenze set storica = true where documento_id is not null/);

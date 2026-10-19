@@ -1,19 +1,10 @@
-# Current task — PERSONAL-FOTO-DOCK-DRIVE (2026-10-19)
-- OWNER: Codex, branch `codex/personal-foto-dock-drive`, da master. Richiesta diretta PO: area Foto più visibile nel dock, importazione delle foto caricate su Drive dal cellulare e catalogazione.
-- COMPLETATO: Foto nel dock con vista autonoma; importazione periodica a pagine delle immagini possedute su Drive, data di scatto se disponibile e album dalla cartella. Deduplica per identità Drive, recupero dopo errori, originali non copiati/spostati/rinominati. Nessun invio del contenuto ai modelli. Non importa da Google Foto o dal rullino del telefono.
-- DATABASE: nessuna migrazione. Usa registro e campi album/data già esistenti. Identità `drivefoto:<id>` nel campo testuale hash_sha256, distinta dagli hash di contenuto; non deduplica copie con ID Drive diversi.
-- DEPLOY: script Apps Script da pubblicare dopo merge; nessuna credenziale clasp disponibile qui. Importazione reale non ancora eseguita/verificata.
-- VALIDATION: npm test 1387/1387; build:personal OK (avviso bundle grande); ulteriori verifiche e PR nel handoff.
-- NEXT: review PR; merge solo con approvazione PO, poi pubblicazione script aggiornata da master e verifica primo lotto reale.
-
-
----
-
-Task precedente (storico):
-
-# Current task — Personal swipe delete (2026-10-19)
-- OWNER: Codex. Branch `codex/personal-swipe-delete`.
-- Richiesta PO: swipe a sinistra per eliminare documenti/allegati e cartelle anche da Drive.
-- Implementazione: gesture con conferma, Drive prima dell’archivio, cartelle complete, esclusione clinici. Nessuna migration o deploy script.
-- VALIDATION: npm test 1385/1385; npm run build OK; git diff --check OK.
-- Stato: pronta per review; nessuna prova su iPhone fisico. Merge solo su approvazione PO.
+# Current task — PERSONAL-REVISIONE-ARCHIVIO (2026-10-19)
+- OWNER: Codex; branch `codex/personal-revisione-archivio`, da master.
+- PO: meno cartelle, lettura contenuti, badge scadenze, documenti importanti con proposte, verifica vecchi pagamenti, inviti separati.
+- IN CORSO: aree tematiche virtuali, revisione senza inventare debiti, classificazione scadenze, lettura completa in Apps Script.
+- Produzione: sola lettura autorizzata dal PO; nessun backfill/deploy. Merge dopo review PO.
+- IMPLEMENTATO: sei aree virtuali (enti conservati), badge scadenze, Da valutare con verifica saldo e inviti separati. Conferme storiche senza creazione spesa odierna; decisione esplicita da pagare conservata nei tag. Rilettura Apps Script a lotti su richiesta autenticata; testo mail fino a 40k, regole legali corrette.
+- DATABASE: nessuna migration/RLS/auth modificata. Nessuna scrittura produzione. Accesso read-only ai dati estratti per verificare gli errori segnalati.
+- LIMITI: non è una fusione fisica di tutte le cartelle; revisione 2000 scadenze recenti/50 documenti; nessuna prova iPhone; script da pubblicare con credenziali clasp non presenti. Nessuna rilettura originale avviata.
+- VALIDATION FINALE: suite completa 1397/1397; test mirati finali 19/19; build:personal OK; node --check Code.gs e git diff --check OK.
+- STATO: WAITING_PRODUCT_OWNER dopo PR. Pubblicazione Apps Script ancora necessaria.
