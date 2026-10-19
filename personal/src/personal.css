@@ -792,3 +792,12 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-toast-azione { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: min(calc(100% - 32px), 440px); border-radius: 16px; padding: 8px 8px 8px 16px; }
 .pp-toast-azione button { flex-shrink: 0; padding: 8px 14px; border-radius: 999px; font-weight: 750; color: var(--pp-inchiostro); background: var(--pp-sfondo); }
 .pp-promemoria-fatto { flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+
+/* Swipe a sinistra: azione disponibile anche da tastiera. */
+.pp-scorri-elimina { position: relative; min-width: 0; border-radius: 14px; overflow: hidden; background: #b42318; }
+.pp-scorri-corpo { position: relative; height: 100%; background: var(--pp-superficie); transition: transform .18s ease; touch-action: pan-y; }
+.pp-scorri-corpo.aperto { transform: translateX(-86px); }
+.pp-scorri-corpo > button { width: 100%; height: 100%; }
+.pp-scorri-azione { position: absolute; inset: 0 0 0 auto; width: 86px; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; background: #b42318; }
+.pp-scorri-elimina:has(> .pp-scorri-azione:focus-visible) > .pp-scorri-corpo { transform: translateX(-86px); }
+@media (prefers-reduced-motion: reduce) { .pp-scorri-corpo { transition: none; } }
