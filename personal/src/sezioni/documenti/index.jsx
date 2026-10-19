@@ -1,4 +1,5 @@
 // Sezione Documenti: archivio, cartelle, ricerca, schede dei documenti, pratiche, caricamento.
+import { RevisioneArchivio } from './Revisione.jsx';
 import { IconaDocumenti } from '../../Icone.jsx';
 import { PaginaScansione } from '../../Aggiungi.jsx';
 import { VistaDocumenti } from './Documenti.jsx';
@@ -16,6 +17,7 @@ const caricaSenzaCartella = () => documentiSenzaCartella(archivioDb, CAMPI_DOC);
 export const documenti = {
   id: 'documenti', nome: 'Documenti', Icona: IconaDocumenti, Vista: VistaDocumenti,
   pagine: {
+    revisione: { titolo: 'Da valutare', render: (p, { ctx }) => <RevisioneArchivio ctx={ctx} /> },
     documento: { titolo: 'Documento', render: (p, { ctx, chiudi }) => <PaginaDocumento id={p.id} ctx={ctx} chiudi={chiudi} /> },
     cartella: { titolo: 'Cartella', render: (p, { ctx, chiudi, sostituisci }) => <PaginaCartella key={p.ente} ente={p.ente} ctx={ctx} chiudi={chiudi} sostituisci={sostituisci} /> },
     'suggerimenti-cartelle': { titolo: 'Cartelle da unire', render: (p, { ctx }) => <PaginaSuggerimenti ctx={ctx} /> },

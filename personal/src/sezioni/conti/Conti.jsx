@@ -38,6 +38,7 @@ export function RigaMovimento({ m, onApri }) {
 function Periodo({ tipo, rif, onTipo, onRif }) {
   return (
     <>
+      <button className="pp-invito" onClick={() => apri({ tipo: 'revisione' })}><span><strong>Da valutare con Poliedron</strong><br />Pagamenti da verificare, inviti e documenti importanti</span></button>
       <Segmenti voci={[['mese', 'Mese'], ['anno', 'Anno']]} attiva={tipo} onScegli={onTipo} />
       <div className="pp-agenda-testa">
         <button className="pp-icona-bottone" aria-label="Periodo precedente" onClick={() => onRif(spostaPeriodo(tipo, rif, -1))}><IconaIndietro size={20} /></button>

@@ -1,11 +1,12 @@
 // POL-VITA-001 — accesso ai dati dell'archivio personale (progetto Supabase separato).
 // Ogni funzione riceve il client: la RLS del progetto lascia leggere e scrivere solo il PO.
 import { capisciRichiesta, riepilogoDebito } from './coreArchivio.js';
+import { valutaScadenza } from './revisioneArchivio.js';
 import { filtroSezione } from './impostazioni.js';
 
-export const CAMPI_DOC = 'id, titolo, riassunto, fascicolo, tipo_documento, data_documento, email_data, email_oggetto, email_mittente, importo, azione_richiesta, azione_descrizione, urgenza, drive_url, drive_file_id, nome_file_originale, mime_type, pratica_id, tag, gmail_message_id, creato_il, persona, categoria, ente, rilevanza';
+export const CAMPI_DOC = 'id, titolo, riassunto, fascicolo, tipo_documento, data_documento, email_data, email_oggetto, email_mittente, importo, azione_richiesta, azione_descrizione, urgenza, drive_url, drive_file_id, nome_file_originale, mime_type, pratica_id, tag, gmail_message_id, creato_il, persona, categoria, ente, rilevanza, analisi_contenuto';
 const CAMPI_SCADENZA = `id, data, descrizione, importo, completata, documento_id, pratica_id, categoria, ricorrenza, storica, cartella,
-  documento:documenti(id, titolo, drive_url, fascicolo), pratica:pratiche(id, titolo)`;
+  documento:documenti(id, titolo, drive_url, fascicolo, tipo_documento, riassunto, email_oggetto, tag, analisi_contenuto, ente), pratica:pratiche(id, titolo)`;
 
 const esito = ({ data, error }) => {
   if (error) throw new Error(error.message || 'Errore archivio');
@@ -32,7 +33,7 @@ export async function scadenzeDeiDocumenti(db, idDocumenti) {
 
 export async function documentiDaGestire(db) {
   const rango = { alta: 0, media: 1, bassa: 2 };
-  const documenti = esito(await db.from('documenti').select(CAMPI_DOC).eq('azione_richiesta', true)
+  const documenti = esito(await db.from('documenti').select(CAMPI_DOC).neq('fascicolo', 'clinico_pazienti').or('azione_richiesta.eq.true,rilevanza.eq.alta,titolo.ilike.*procedura esecutiva*,titolo.ilike.*pignoramento*')
     .order('email_data', { ascending: false }).limit(50));
   return [...documenti].sort((a, b) => (rango[a.urgenza] ?? 3) - (rango[b.urgenza] ?? 3));
 }
@@ -176,7 +177,10 @@ export async function anteprimaFile({ token, driveFileId }, fetchImpl = fetch) {
 // Pagamenti: solo quelli attuali (POL-VITA-014). Le scadenze ricavate da email di anni fa sono
 // "storiche": restano nel loro documento ma non compaiono tra i pagamenti da fare.
 export async function pagamenti(db) {
-  return esito(await db.from('scadenze').select(CAMPI_SCADENZA).eq('storica', false).order('data', { ascending: true }).limit(1000));
+  return (await scadenzeRevisione(db, false)).filter((s) => {
+    const tipo = valutaScadenza({ ...s, completata: false }).tipo;
+    return tipo === 'pagamento' || (s.completata && tipo === 'verifica');
+  });
 }
 
 // Scadenze di un documento appena caricato (per collegarle a Da pagare).
@@ -411,4 +415,25 @@ export async function cestinaSuDrive({ token, ids }, fetchImpl = fetch) {
     esito.non_trovati.push(...(r.non_trovati || []));
   }
   return esito;
+}
+
+// Lo storico resta verificabile; nessuna registrazione contabile viene creata dalla revisione.
+export async function scadenzeRevisione(db, storico = true) {
+  let q = db.from('scadenze').select(CAMPI_SCADENZA).order('data', { ascending: false });
+  if (!storico) q = q.eq('storica', false);
+  return esito(await q.limit(2000));
+}
+export async function confermaDebito(db, s) {
+  if (s.documento_id && s.documento) {
+    const d = esito(await db.from('documenti').select('tag').eq('id', s.documento_id).single());
+    esito(await db.from('documenti').update({ tag: [...new Set([...(d.tag || []), `pagamento-verificato:${s.id}`])] }).eq('id', s.documento_id));
+  }
+  return aggiornaScadenza(db, s.id, { storica: false });
+}
+
+export async function avviaRilettura(token, fetchImpl = fetch) {
+  if (!token) throw new Error('Sessione scaduta');
+  const r = await fetchImpl(URL_CARICAMENTO, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ token, azione: 'rileggi_archivio' }) });
+  const risultato = await r.json();
+  if (!risultato.ok) throw new Error(risultato.errore || 'Rilettura non avviata');
 }
