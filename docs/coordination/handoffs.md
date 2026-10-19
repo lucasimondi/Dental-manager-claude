@@ -3903,3 +3903,14 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - DEPLOY: frontend da merge PO; Apps Script da pubblicare all'ultimo master, credenziali clasp assenti. Rilettura non attiva prima della pubblicazione e richiesta dall'app. Nessun invio a terzi.
 - ROLLBACK: revert PR e ripubblicare versione script precedente; disattivare proprietà RILETTURA_ATTIVA. Classificazione aggiornata dopo eventuale rilettura non viene annullata dal solo rollback codice.
 - NEXT: review PR; merge solo con approvazione PO; pubblicazione script; prova badge, Inviti e opportunità e avvio rilettura da iPhone. Non dichiarare tutti gli originali già riletti.
+
+## 2026-10-19 — Codex — PERSONAL-LEGAL
+- OWNER: Codex; precedente PERSONAL-REVISIONE-ARCHIVIO; branch `codex/personal-legal` da master.
+- OBJECTIVE: area Legal per pratiche, recuperi, aggiornamenti manuali e scansioni.
+- COMPLETED: sezione autonoma nel dock e accesso da Documenti; creazione/modifica di pratiche legali canoniche (titolo/stato/urgenza/note); collegamento di documenti legali senza pratica con guardia contro sovrascrittura; scadenze manuali senza importi/movimenti. Dettaglio include scadenze dei documenti collegati e usa Fatta senza azioni Pagato o somma dei documenti legali. Le scansioni esistenti possono creare/collegare pratiche e non modificano note.
+- FILES: sezioni/legal, lib/legal.js, registro sezioni, Documenti/Pratica, README, test Legal e aggiornamento aspettative registro/dock, coordinamento.
+- DATABASE: nessuna migrazione/schema/RLS/auth; riuso schema poliedron/archivio/schema.sql. Nessun accesso a dati produzione. Nessuna modifica Apps Script.
+- VALIDATION: npm test 1401/1401; build:personal OK, avvisi preesistenti chiavi duplicate/bundle grande; git diff --check OK. Chromium assente, nessuna prova visuale/iPhone. Ultimi aggiustamenti testo/render verificati con build e test mirati.
+- LIMITS: Legal mostra fascicolo legale, non riclassifica altri fascicoli; ultimi 300 documenti legali per collegamento; note modificabili senza audit versionato; nessuna scansione reale avviata né nuovi termini legali calcolati. Nessuna migrazione o script da pubblicare.
+- ROLLBACK: revert commit; pratiche e note restano nei dati canonici.
+- NEXT: review PR e merge solo con autorizzazione PO. Pubblicazione non ancora eseguita.

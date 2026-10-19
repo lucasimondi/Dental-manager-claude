@@ -1,10 +1,9 @@
-# Current task — PERSONAL-REVISIONE-ARCHIVIO (2026-10-19)
-- OWNER: Codex; branch `codex/personal-revisione-archivio`, da master.
-- PO: meno cartelle, lettura contenuti, badge scadenze, documenti importanti con proposte, verifica vecchi pagamenti, inviti separati.
-- IN CORSO: aree tematiche virtuali, revisione senza inventare debiti, classificazione scadenze, lettura completa in Apps Script.
-- Produzione: sola lettura autorizzata dal PO; nessun backfill/deploy. Merge dopo review PO.
-- IMPLEMENTATO: sei aree virtuali (enti conservati), badge scadenze, Da valutare con verifica saldo e inviti separati. Conferme storiche senza creazione spesa odierna; decisione esplicita da pagare conservata nei tag. Rilettura Apps Script a lotti su richiesta autenticata; testo mail fino a 40k, regole legali corrette.
-- DATABASE: nessuna migration/RLS/auth modificata. Nessuna scrittura produzione. Accesso read-only ai dati estratti per verificare gli errori segnalati.
-- LIMITI: non è una fusione fisica di tutte le cartelle; revisione 2000 scadenze recenti/50 documenti; nessuna prova iPhone; script da pubblicare con credenziali clasp non presenti. Nessuna rilettura originale avviata.
-- VALIDATION FINALE: suite completa 1397/1397; test mirati finali 19/19; build:personal OK; node --check Code.gs e git diff --check OK.
-- STATO: WAITING_PRODUCT_OWNER dopo PR. Pubblicazione Apps Script ancora necessaria.
+# Current task — PERSONAL-LEGAL (2026-10-19)
+- OWNER: Codex; branch `codex/personal-legal` da master.
+- PO: area Legal con tutte le pratiche/recuperi, aggiornamenti manuali e da scansioni.
+- SCOPE: sezione dedicata, creazione/modifica pratiche esistenti, collegamento documenti, scadenze non contabili. Nessuna migration/RLS/deploy.
+- COMPLETATO: Legal nel dock/Documenti; pratiche legali con modifica manuale, note, stati, urgenza, collegamenti documenti e scadenze senza movimenti. Scansioni riusano pratiche canoniche e preservano note.
+- TEST: npm test 1401/1401; build:personal OK; git diff --check OK. Chromium non installato: nessuna prova visiva/iPhone.
+- LIMITI: nessuna ricatalogazione retroattiva; documenti collegabili fra ultimi 300 legali; note modificabili senza versioni. Nessun accesso/scrittura produzione, nessun merge/deploy.
+- ROLLBACK: revert commit; dati manuali restano nelle pratiche canoniche.
+- STATO: WAITING_PRODUCT_OWNER; review PR e merge solo dopo autorizzazione.

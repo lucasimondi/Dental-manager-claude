@@ -48,6 +48,7 @@ export function VistaDocumenti({ ctx }) {
 
   return (
     <>
+      <button className="pp-invito" onClick={() => apri({ tipo: 'legal' })}><span><strong>Legal</strong><br />Pratiche, recuperi e aggiornamenti manuali</span></button>
       <button className="pp-invito" onClick={() => apri({ tipo: 'revisione' })}><span><strong>Da valutare con Poliedron</strong><br />Pagamenti da verificare, inviti e documenti importanti</span></button>
       <div className="pp-cerca">
         <IconaCerca size={18} />
