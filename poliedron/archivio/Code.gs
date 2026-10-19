@@ -118,6 +118,9 @@ function elabora() {
     // Notifiche sul telefono dei promemoria (POL-VITA-018): dalle 8 alle 21, al massimo una volta l'ora.
     inviaNotifiche_(false);
 
+    // Foto caricate direttamente su Drive: un lotto, senza leggere né spostare gli originali.
+    try { importaFotoDrive_(inizio + 15000); } catch (e) { logErrore_('foto Drive', e); }
+
     // Cartelle di Drive per categoria e persona (POL-VITA-013): un po' a ogni giro.
     try { ordinaDrive_(inizio + ORDINA_DRIVE_MS); } catch (e) { logErrore_('ordine Drive', e); }
 
@@ -1324,7 +1327,7 @@ function ordinaDrive_(scadenza) {
   let daSpostare = [];
   for (let da = 0; ; da += 1000) {
     const pagina = sb_('documenti?select=id,drive_file_id,fascicolo,persona,data_documento,email_data,drive_cartella' +
-      '&drive_file_id=not.is.null&order=id&limit=1000&offset=' + da);
+      '&drive_file_id=not.is.null&gmail_message_id=not.like.drivefoto:*&order=id&limit=1000&offset=' + da);
     daSpostare = daSpostare.concat(pagina.filter(function (d) {
       const voluto = percorsoDrive_(d, persone);
       return d.drive_cartella !== voluto && d.drive_cartella !== '!' + voluto;
@@ -1791,4 +1794,65 @@ function riprovaErrori() {
   }
   console.log('Rimessi in coda: ' + totale);
   return totale;
+}
+
+
+// Foto già presenti o caricate dal telefono su Drive (non Google Foto).
+// Indice per identità Drive: niente copie, rinomina, spostamenti o invii di immagini ai modelli.
+// Il cursore avanza solo dopo una pagina completata: un errore viene ritentato al giro successivo.
+function importaFotoDrive_(scadenza) {
+  if (typeof Drive === 'undefined') return;
+  const sp = PropertiesService.getScriptProperties();
+  let fino = sp.getProperty('FOTO_DRIVE_FINO');
+  if (!fino) {
+    fino = new Date().toISOString();
+    sp.setProperty('FOTO_DRIVE_FINO', fino);
+  }
+  const opzioni = {
+    q: "trashed = false and 'me' in owners and mimeType contains 'image/' and createdTime <= '" + fino + "'",
+    pageSize: 25, orderBy: 'createdTime asc',
+    fields: 'nextPageToken,files(id,name,mimeType,size,createdTime,webViewLink,parents,imageMediaMetadata(time,location))',
+  };
+  const token = sp.getProperty('FOTO_DRIVE_PAGINA');
+  if (token) opzioni.pageToken = token;
+  const pagina = Drive.Files.list(opzioni);
+  const cartelle = {};
+  const files = pagina.files || [];
+  for (let i = 0; i < files.length; i++) {
+    if (Date.now() >= scadenza) return;
+    const f = files[i];
+    // Non riclassificare gli allegati e le foto già caricati attraverso Personal.
+    const presenti = sb_('documenti?select=id,gmail_message_id,riordinato_il&drive_file_id=eq.' + encodeURIComponent(f.id) + '&limit=1');
+    const incompleto = presenti[0] && presenti[0].gmail_message_id === 'drivefoto:' + f.id && !presenti[0].riordinato_il;
+    if (presenti.length && !incompleto) continue;
+    const padre = f.parents && f.parents[0];
+    if (padre && !Object.prototype.hasOwnProperty.call(cartelle, padre)) {
+      cartelle[padre] = Drive.Files.get(padre, { fields: 'name' }).name || '';
+    }
+    const album = padre ? cartelle[padre] : '';
+    const meta = { oggetto: album, mittente: '', destinatari: '' };
+    // File riconoscibili come clinici esclusi dall'area personale; mai analisi del contenuto.
+    if (eClinico_(meta, f.name || '')) continue;
+    const immagine = f.imageMediaMetadata || {};
+    const dataScatto = String(immagine.time || '').slice(0, 10).replace(/:/g, '-');
+    const data = dataValida_(dataScatto) || dataValida_(String(f.createdTime || '').slice(0, 10));
+    const esito = incompleto ? { documento_id: presenti[0].id } : sb_('rpc/registra_documento', { method: 'post', body: { p: {
+      // Prefisso distinto dagli hash del contenuto: identità stabile, nessun download dell'originale.
+      hash_sha256: 'drivefoto:' + f.id, gmail_message_id: 'drivefoto:' + f.id,
+      email_mittente: 'Foto da Drive', email_data: f.createdTime || null,
+      nome_file_originale: f.name, mime_type: f.mimeType, dimensione_byte: Number(f.size) || null,
+      drive_file_id: f.id, drive_url: f.webViewLink || 'https://drive.google.com/file/d/' + encodeURIComponent(f.id) + '/view',
+      fascicolo: 'foto_video', tipo_documento: 'foto', titolo: f.name, data_documento: data,
+      azione_richiesta: false, analisi_contenuto: false, tag: ['Drive'], dati_estratti: {}, soggetti: [], scadenze: [], pratica: {},
+    } } });
+    if (!esito || !esito.documento_id) throw new Error('Foto Drive: registrazione non confermata');
+    sb_('documenti?id=eq.' + esito.documento_id, { method: 'patch', body: {
+      album: album || null, rilevanza: 'bassa', da_analizzare: false, riordinato_il: new Date().toISOString(),
+    } });
+  }
+  if (pagina.nextPageToken) sp.setProperty('FOTO_DRIVE_PAGINA', pagina.nextPageToken);
+  else {
+    sp.deleteProperty('FOTO_DRIVE_PAGINA');
+    sp.deleteProperty('FOTO_DRIVE_FINO');
+  }
 }

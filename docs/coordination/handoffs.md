@@ -3878,3 +3878,16 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - RISKS: no physical iPhone verification; cross-service deletion is not atomic. If Drive succeeds but archive fails, archive records remain for retry; if some Drive files fail, archive is preserved. Folder count mismatch requires refresh. Swipe covers Documenti lists including archived attachments, not chat attachments or category definitions.
 - ROLLBACK: revert branch commit; no migration.
 - NEXT ACTION: review PR; merge only on Product Owner approval under AGENTS.md.
+
+
+## 2026-10-19 — Codex — PERSONAL-FOTO-DOCK-DRIVE
+- OWNER: Codex; precedente task POL-VITA-021 di Claude conservato nello storico; branch `codex/personal-foto-dock-drive` da master.
+- OBJECTIVE: Foto più visibile nel dock e catalogazione delle immagini caricate direttamente su Drive.
+- COMPLETED: tasto Foto con vista indipendente; dock a sette elementi, minimo 44px e scorrimento orizzontale sui display stretti. Importazione immagini possedute dall'account Drive a pagine da 25 entro 15s per giro, con cursore e cutoff persistenti; data di scatto se disponibile, altrimenti data Drive; cartella come album. Salta record già indicizzati e nomi riconoscibili come clinici; completa record interrotti dopo la registrazione. Nessuna copia/spostamento/rinomina degli originali e nessun contenuto inviato ai modelli.
+- FILES: registro sezioni, indice Foto, personal.css, Code.gs, LEGGIMI.md, test Personal/Drive e coordinamento.
+- DATABASE / SECURITY: nessuna migrazione, chiave o policy modificata. RPC/album/data esistenti. Import Drive usa identità `drivefoto:<id>` (campo testuale hash_sha256), non hash di contenuto. Riordino Drive esclude questi originali.
+- TESTS: npm test 1387/1387; dopo aggiunta esplicita azione_richiesta=false, test importazione 5/5; npm run build:personal OK; npm run build OK; git diff --check OK. Build: avvisi preesistenti di bundle grande/chiavi duplicate/pdfjs. Tentata prova browser: bloccata per Chromium Playwright non installato, nessuna verifica visuale dichiarata.
+- DEPLOY / PRODUCTION: nessun merge/deploy/backfill eseguito; nessun accesso reale alle immagini. Credenziali clasp assenti in questa sessione.
+- LIMITS: importa Drive, non Google Foto/rullino; data fallback è caricamento. Album da cartella, nessun riconoscimento visuale di persone/luoghi. Deduplica per ID, non contenuto fra copie. Prima scansione richiede più giri. Documenti clinici riconosciuti solo dai nomi vengono saltati; nessun contenuto viene letto. Foto già presenti nell'indice mantengono la loro catalogazione.
+- ROLLBACK: revert PR e ripubblicare versione script precedente; indice creato resta consultabile, originali intatti.
+- EXACT NEXT ACTION: review PR e approvazione PO per merge; pubblicare lo script partendo dall'ultimo master senza sovrascrivere altre sessioni; verificare primo lotto e visibilità Foto dal dock su iPhone. Non dichiarare l'importazione attiva prima della verifica.
