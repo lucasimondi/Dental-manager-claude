@@ -1,9 +1,6 @@
-# Current task — POL-VITA-021 Personal: automatismi reversibili (Pagato → Annulla, "Non lo pago più") (2026-10-18)
-- OWNER: CLAUDE, branch `claude/document-layout-management-vaktuz`, da `master@3754a39` (+ nota deploy POL-VITA-020). PO verbatim: "Mi si è creata un pagamento automatico di fiditalia, ho dato erroneamente il pagato ma non posso tornare indietro , quindi intento fiditalia non lo pago più , però dobbiamo rendere anche gli automatismi reversibili C tipo : si crea un pagamento automatico ma ho la possibilità di cancellarlo chiudendo ogni dubbio."
-- DIAGNOSI (archivio, sola lettura): spesa `movimenti` "Scadenza ultima rata finanziamento" 368,89 € del 2026-10-18 con `scadenza_id` vuoto → il pagamento è stato eliminato dopo il Pagato e la spesa automatica è rimasta (eliminaScadenza non la toglieva). Nessun pagamento Fiditalia attuale. Nessuna modifica ai dati senza conferma di Luca.
-- COSA: `lib/automatismi.js` — `segnaPagato` ricorda cosa crea (spesa, prossimo fisso: `spesaDaScadenza`/`prossimoPagamentoFisso` ora dicono se è nuovo); `annullaPagato` toglie solo quello; `rimettiDaPagare` (scheda) toglie la spesa e il successivo automatico ancora da pagare; `eliminaPagamento` toglie anche la spesa; `interrompiRicorrenza` ("Non lo pago più: smetti di ripeterlo") toglie la ripetizione e i successivi automatici da pagare (mai quelli pagati o da documento). Avviso con tasto Annulla (7 s) dopo ogni Pagato. Promemoria/pagamenti aggiunti dall'assistente: Annulla nella scheda "Fatto".
-- VALIDATION: `npm test` 1372/1372 (+7 `tests/personalAutomatismi.test.mjs`); build OK; eslint pulito; Chromium 390×844: Pagato → avviso con Annulla → spesa e rata di novembre create → Annulla → tutto come prima; "Non lo pago più" → ripetizione tolta; nessun errore.
-- EXACT NEXT ACTION: su "Mergia" del PO → PR, CI verde, merge. Spesa orfana Fiditalia: togliere solo se Luca conferma.
-
----
-
+# Current task — Personal swipe delete (2026-10-19)
+- OWNER: Codex. Branch `codex/personal-swipe-delete`.
+- Richiesta PO: swipe a sinistra per eliminare documenti/allegati e cartelle anche da Drive.
+- Implementazione: gesture con conferma, Drive prima dell’archivio, cartelle complete, esclusione clinici. Nessuna migration o deploy script.
+- VALIDATION: npm test 1385/1385; npm run build OK; git diff --check OK.
+- Stato: pronta per review; nessuna prova su iPhone fisico. Merge solo su approvazione PO.

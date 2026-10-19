@@ -1,3 +1,4 @@
+import { ScorriElimina } from '../../ScorriElimina.jsx';
 // POL-VITA-016 — Cartelle in Documenti: una cartella per ente (es. "Kerdos"), in griglia o in elenco.
 // Dentro: periodo, contatti, etichette, note, promemoria (vanno in Agenda, in Oggi e nel riepilogo
 // delle 7), sintesi dell'AI, bozza di risposta (solo tra le bozze di Gmail) e i documenti, con
@@ -85,19 +86,19 @@ export function VistaCartelle({ ctx, anchePocoUtili = false }) {
       {modo === 'griglia' ? (
         <div className="pp-griglia">
           {visibili.map((c) => (
-            <button key={c.ente} className="pp-cartella pp-cartella-ente" style={{ '--c': colore(c.fascicolo) }} onClick={() => apriCartella(c)}>
+            <ScorriElimina key={c.ente} cartella={c} ctx={ctx}><button className="pp-cartella pp-cartella-ente" style={{ '--c': colore(c.fascicolo) }} onClick={() => apriCartella(c)}>
               <span className="pp-cartella-icona"><IconaDocumenti size={20} /></span>
               <span className="pp-cartella-nome">{c.ente}</span>
               {c.stato && <span className="pp-badge-stato" style={{ '--c': COLORI_STATO[c.stato] }}>{STATI[c.stato]}</span>}
               {(c.etichette || []).length > 0 && <span className="pp-cartella-etichette">{c.etichette.slice(0, 2).map((e) => <span key={e} className="pp-etichetta-mini">{e}</span>)}</span>}
               <span className="pp-cartella-numero">{c.n} {c.n === 1 ? 'documento' : 'documenti'}<br />{periodoCartella(c.dal, c.al)}{c.n_promemoria ? <em> · {c.n_promemoria} promemoria</em> : c.n_da_fare ? <em> · {c.n_da_fare} da fare</em> : null}</span>
-            </button>
+            </button></ScorriElimina>
           ))}
         </div>
       ) : (
         <Gruppo>
           {visibili.map((c) => (
-            <button key={c.ente} className="pp-riga" onClick={() => apriCartella(c)}>
+            <ScorriElimina key={c.ente} cartella={c} ctx={ctx}><button className="pp-riga" onClick={() => apriCartella(c)}>
               <span className="pp-ente-iniziale" style={{ '--c': colore(c.fascicolo) }}>{c.ente.slice(0, 1).toUpperCase()}</span>
               <span className="pp-riga-testo">
                 <span className="pp-riga-titolo">{c.ente}</span>
@@ -106,7 +107,7 @@ export function VistaCartelle({ ctx, anchePocoUtili = false }) {
               {c.n_promemoria > 0 && <span className="pp-pallino pp-media" aria-label="Promemoria aperti" />}
               <span className="pp-conteggio">{c.n}</span>
               <IconaFreccia size={16} />
-            </button>
+            </button></ScorriElimina>
           ))}
         </Gruppo>
       )}

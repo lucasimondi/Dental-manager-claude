@@ -3866,3 +3866,15 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - COMPLETATO: Annulla dopo Pagato (spesa e prossimo fisso creati in quel momento), Segna da pagare che toglie anche il successivo automatico, Elimina pagamento che toglie la spesa, "Non lo pago più" sui fissi, Annulla sui promemoria dell'assistente.
 - DATI: spesa orfana "Scadenza ultima rata finanziamento" 368,89 € (2026-10-18) lasciata com'è in attesa di Luca.
 - TEST: 1372/1372; prova Chromium OK.
+
+## 2026-10-19 — Codex — Personal swipe delete
+- OWNER: Codex; previous task owner Claude (POL-VITA-021, unchanged implementation).
+- BRANCH: `codex/personal-swipe-delete`.
+- OBJECTIVE: left swipe to delete archived documents/attachments and entity folders, including Drive files.
+- COMPLETED: swipe reveals Delete in document and folder grids/lists; explicit confirmation includes Drive; busy guard; preserve archive on incomplete Drive response; guard incomplete folder loading and clinical documents. Existing long press/multiselect remains available. Folders are virtual entity groups, not physical Drive folders.
+- FILES: ScorriElimina.jsx, lib/eliminazioneSwipe.js, documenti/Selezione.jsx, documenti/Cartelle.jsx, personal.css, dedicated tests, coordination docs.
+- DATABASE / SCRIPT / DEPLOY: none; existing authenticated Drive trash endpoint reused. No production data accessed or deleted.
+- VALIDATION: npm test and Vite build; exact results in current-task.md.
+- RISKS: no physical iPhone verification; cross-service deletion is not atomic. If Drive succeeds but archive fails, archive records remain for retry; if some Drive files fail, archive is preserved. Folder count mismatch requires refresh. Swipe covers Documenti lists including archived attachments, not chat attachments or category definitions.
+- ROLLBACK: revert branch commit; no migration.
+- NEXT ACTION: review PR; merge only on Product Owner approval under AGENTS.md.
