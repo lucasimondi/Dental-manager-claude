@@ -1,6 +1,8 @@
+import { differito } from '../../Differito.jsx';
 // Impostazioni: si aprono dall'icona in alto a destra, non dal dock.
 import { IconaImpostazioni } from '../../Icone.jsx';
-import { PaginaImpostazioni, PaginaSezione } from './Impostazioni.jsx';
+const PaginaImpostazioni = differito(() => import('./Impostazioni.jsx'), 'PaginaImpostazioni');
+const PaginaSezione = differito(() => import('./Impostazioni.jsx'), 'PaginaSezione');
 
 export const impostazioni = {
   id: 'impostazioni', nome: 'Impostazioni', Icona: IconaImpostazioni,

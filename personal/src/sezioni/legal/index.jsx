@@ -1,5 +1,7 @@
+import { differito } from '../../Differito.jsx';
 import { IconaPratiche } from '../../Icone.jsx';
-import { Legal, ModuloLegal } from './Legal.jsx';
+const Legal = differito(() => import('./Legal.jsx'), 'Legal');
+const ModuloLegal = differito(() => import('./Legal.jsx'), 'ModuloLegal');
 export const legal = {
   id: 'legal', nome: 'Legal', Icona: IconaPratiche, Vista: Legal,
   pagine: {

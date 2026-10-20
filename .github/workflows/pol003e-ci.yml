@@ -24,4 +24,6 @@ jobs:
       - name: Test
         run: npm test
       - name: Build
-        run: npm run build
+        run: npm run build -- --manifest
+      - name: Verify Personal startup bundle
+        run: node tests/personalStartupBundle.mjs

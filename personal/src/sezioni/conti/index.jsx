@@ -1,7 +1,11 @@
+import { differito } from '../../Differito.jsx';
 // Sezione Conti: saldo, spese e incassi, pagamenti da fare e scadenze fisse.
 import { IconaEuro } from '../../Icone.jsx';
-import { VistaConti, PaginaMovimento, PaginaNuovaScadenza, RiquadroSaldo } from './Conti.jsx';
-import { PaginaPagamento } from './Pagamento.jsx';
+const VistaConti = differito(() => import('./Conti.jsx'), 'VistaConti');
+const PaginaMovimento = differito(() => import('./Conti.jsx'), 'PaginaMovimento');
+const PaginaNuovaScadenza = differito(() => import('./Conti.jsx'), 'PaginaNuovaScadenza');
+const RiquadroSaldo = differito(() => import('./Conti.jsx'), 'RiquadroSaldo');
+const PaginaPagamento = differito(() => import('./Pagamento.jsx'), 'PaginaPagamento');
 
 export { RiquadroSaldo };
 
