@@ -802,3 +802,16 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-scorri-azione { position: absolute; inset: 0 0 0 auto; width: 86px; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; background: #b42318; }
 .pp-scorri-elimina:has(> .pp-scorri-azione:focus-visible) > .pp-scorri-corpo { transform: translateX(-86px); }
 @media (prefers-reduced-motion: reduce) { .pp-scorri-corpo { transition: none; } }
+
+/* Lista acquisti: il promemoria resta compatto, il modulo si apre su richiesta. */
+.pp-acquisti .pp-sezione-testa { align-items: center; gap: 12px; }
+.pp-acquisti .pp-sezione-testa h2 { min-width: 0; }
+.pp-acquisti-apri { flex-shrink: 0; min-height: 44px; padding: 8px 4px; }
+.pp-acquisti-form { margin: 0 0 12px; padding: 12px; border: 1px solid var(--pp-linea); border-radius: var(--pp-raggio); background: var(--pp-superficie); }
+.pp-acquisti-form .pp-campo { margin: 0; }
+.pp-acquisti-controlli { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 10px; margin-top: 10px; }
+.pp-acquisti-controlli .pp-bottone { height: 49px; align-self: end; padding: 0 16px; }
+.pp-acquisti-voce { display: flex; flex-direction: row; align-items: center; flex: 1; min-width: 0; gap: 12px; min-height: 44px; text-align: left; cursor: pointer; }
+.pp-acquisti-voce input[type="checkbox"] { flex: 0 0 22px; width: 22px; height: 22px; margin: 0; accent-color: var(--pp-blu); }
+.pp-acquisti-testo { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.pp-acquisti-comprato { text-decoration: line-through; color: var(--pp-grigio); }
