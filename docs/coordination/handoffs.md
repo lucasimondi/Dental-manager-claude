@@ -3936,8 +3936,8 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - OBJECTIVE: default sharing of past/new appointments/events, per-calendar opt-out, occupied weekends in work week, common layout.
 - COMPLETED: shared visibility model/editor, both adapters and persistence field maps, excluded-entry recovery, occupied weekend reveal, Personal realtime/focus refresh. Same shared presentation retained.
 - FILES: shared/agenda visibility modules; Studio Agenda/App/DB mapping; Personal Agenda/Grid/Event/Appointment and writers; tests and coordination.
-- DATABASE: additive boolean columns planned through CLI-generated migration. No RLS/grants/triggers/functions/financial changes; no production access or writes. Old explicit exclusions are preserved.
-- TESTS: pending GitHub CI; local environment unavailable.
+- DATABASE: additive booleans in supabase/migrations/20261020212514_agenda_visibility.sql, generated with Supabase CLI in GitHub CI. No RLS/grants/triggers/functions/financial changes; no production access or writes. Old explicit exclusions are preserved.
+- TESTS: CI e1d2b3ed: 1407/1407 Node tests, both Vite builds, isolated PostgreSQL 17 historical/new defaults, preserved explicit exclusion, persistence and representative two-tenant policies OK. Final browser sharing suite pending; local environment unavailable.
 - LIMITS: no physical iPhone validation; existing Studio optimistic write behavior preserved; visibility controls are presentation settings, not access control or redaction.
 - ROLLBACK: revert code and keep additive columns. Immutable stable checkpoint preserved.
 - NEXT: finish CI, database test and migration artifact, inspect diff, then PO review before merge/deployment.

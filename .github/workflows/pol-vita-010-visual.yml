@@ -31,6 +31,7 @@ jobs:
         env:
           AGENDA_BASE_REF: ${{ github.event.pull_request.base.sha }}
       - run: npm run test:agenda:reliability
+      - run: node tests/visual/agenda.sharing.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -38,3 +39,4 @@ jobs:
           path: |
             tests/visual/results/
             tests/visual/results-reliability/
+            tests/visual/results-sharing/

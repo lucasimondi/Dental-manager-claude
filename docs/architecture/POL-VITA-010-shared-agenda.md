@@ -21,3 +21,29 @@ The existing production Studio URL and Personal custom domain are used for that 
 The visual runner starts its own local Vite server, blocks all external requests, mounts the real components with synthetic data, and generates a temporary original Studio component from the PR base commit. It deletes that temporary file on exit; no duplicate implementation is shipped. Set `AGENDA_BASE_REF` to choose an explicit baseline. GitHub Actions uses the PR base SHA and uploads screenshots even on failure.
 
 Rollback: revert the dedicated PR. No database or backend rollback is required. The immutable checkpoint `stable/2026-08-27-full-recovery` remains at `070b28fd4eae4e2cc397584201d0bb149468fae7` and was not modified.
+
+## AGENDA-CONDIVISA — 20 October 2026
+
+The presentation remains in shared/agenda; no second agenda implementation is introduced.
+Both adapters edit the same appointments/impegni_personali record. The shared AgendaVisibility
+editor persists independent visibile_studio and visibile_personal presentation flags, both true
+by default. At least one calendar stays selected. Historical records receive the new defaults
+through additive columns; pre-existing explicit visibile_studio=false is preserved. Visibility
+does not change RLS, authorize access, hide clinical content from authorized database readers,
+or affect clinical/financial source records outside the calendar presentation.
+
+Studio receives the full canonical event array from App and filters only in Agenda. This lets
+the temporary Mostra esclusi command recover an excluded event without removing any records.
+Personal filters the same way after authenticated reads. Its data refreshes on focus,
+visibilitychange and existing-table Realtime notifications; no session is transferred between apps.
+
+The common keepOccupiedWeekends helper reveals a Saturday/Sunday only when a visible
+appointment or personal event occupies that date in the displayed week. Multi-day events
+and local calendar dates are supported; cancelled/filtered appointments do not open a column.
+The selected Settimana lavoro view and tenant closing-day settings are retained.
+
+Release order: apply supabase/migrations/20261020212514_agenda_visibility.sql to the Studio database through the controlled migration
+workflow, verify the columns/defaults, then release the frontend. The schema must precede the
+new explicit Personal select fields. No migration is needed on the separate archive project.
+Rollback frontend first; retain additive columns to preserve choices. No production operation
+has been performed in the implementation session.

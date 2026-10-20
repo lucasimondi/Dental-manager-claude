@@ -25,18 +25,9 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npm run build:personal
-      - name: Generate migration using Supabase CLI
-        run: |
-          npx --yes supabase@2.54.11 --help
-          npx --yes supabase@2.54.11 migration --help
-          npx --yes supabase@2.54.11 migration new --help
-          npx --yes supabase@2.54.11 migration new agenda_visibility
-          task_migration=$(find supabase/migrations -name '*_agenda_visibility.sql' | sort | tail -1)
-          cat supabase/proposals/agenda_visibility.sql > "$task_migration"
-          echo "GENERATED_MIGRATION=$task_migration"
       - name: Verify migration on synthetic PostgreSQL 17
         run: |
-          task_migration=$(find supabase/migrations -name '*_agenda_visibility.sql' | sort | tail -1)
+          task_migration=supabase/migrations/20261020212514_agenda_visibility.sql
           psql postgresql://postgres@localhost:5432/agenda_test -v ON_ERROR_STOP=1 -f supabase/tests/agenda_visibility_fixture.sql -f "$task_migration" -f supabase/tests/agenda_visibility.sql
       - uses: actions/upload-artifact@v4
         with:
