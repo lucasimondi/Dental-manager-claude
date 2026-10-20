@@ -596,7 +596,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   // Finché non si tocca il selettore restano i giorni di chiusura configurati: uno studio
   // chiuso solo la domenica continua a vedere il sabato (e i suoi appuntamenti).
   const weekendsHidden = weekendsHiddenState({ configured: hiddenWeekdays, override: weekendOverride });
-  
+
   const t = today();
 
   const apriNuovo = (data, ora) => {

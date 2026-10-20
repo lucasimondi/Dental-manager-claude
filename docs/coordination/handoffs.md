@@ -3941,3 +3941,7 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - LIMITS: no physical iPhone validation; existing Studio optimistic write behavior preserved; visibility controls are presentation settings, not access control or redaction.
 - ROLLBACK: revert code and keep additive columns. Immutable stable checkpoint preserved.
 - NEXT: finish CI, database test and migration artifact, inspect diff, then PO review before merge/deployment.
+
+- REVIEW: PR #234; diff checked for scope and secrets; no secret additions. Trailing whitespace removed. Final-head CI required before merge.
+- BROWSER EVIDENCE: e1d2b3ed baseline geometry/pixel comparisons and reliability pass Chromium/WebKit at 375/390/430px. Dedicated occupied-Sunday/exclusion browser scenarios added on 7afa4bcd and retained in final CI.
+- STATUS: WAITING_PRODUCT_OWNER, no merge/deploy/migration in production. Final CI results are recorded on PR #234. Exact next action: confirm final-head checks, PO approval, controlled Studio migration before frontend release, then real iPhone smoke test.
