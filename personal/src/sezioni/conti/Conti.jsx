@@ -6,7 +6,7 @@ import { pagamenti as caricaPagamenti, RICORRENZE } from '../../lib/archivio.js'
 import { euro } from '../../lib/coreArchivio.js';
 import {
   movimentiTra, salvaMovimento, eliminaMovimento, nuovaScadenza, bilancio, perMese, periodo, spostaPeriodo,
-  CATEGORIE_SPESA, CATEGORIE_INCASSO, importoNumero, CATEGORIE_PAGAMENTO, totaliPerCategoria,
+  CATEGORIE_SPESA, CATEGORIE_INCASSO, importoNumero, CATEGORIE_PAGAMENTO, totaliPerCategoria, categoriaDaFascicolo,
   CATEGORIE_STUDIO, tabellaStudio, METODI_STUDIO, rigaIncassoStudio, lavoroDelPeriodo, movimentiLavoro,
 } from '../../lib/conti.js';
 import { sessioneStudio, cercaPazienti, collaborazioniStudio, registraIncassoStudio, datiLavoro } from '../../lib/studio.js';
@@ -192,6 +192,7 @@ function LavoroStudio({ l, caricato }) {
 }
 
 function DaPagare({ tutti, filtro, setFiltro, apri, pagato }) {
+  const [categoriaAperta, setCategoriaAperta] = useState(null);
   const aperti = tutti.filter((s) => !s.completata);
   const oggi = oggiIso();
   const tra30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
@@ -222,7 +223,14 @@ function DaPagare({ tutti, filtro, setFiltro, apri, pagato }) {
       <p className="pp-riga-meta pp-spiegazione">Fotografa o scegli il PDF di una bolletta, polizza o avviso: leggo importo e scadenza e lo metto qui. Per i pagamenti fissi (bollo, assicurazione, pulizie…) imposta "Si ripete": dopo ogni pagamento si ripropone da solo.</p>
       {perCategoria.length > 0 && (
         <Sezione titolo="Per tipo">
-          <Gruppo>{perCategoria.map((c) => <div key={c.categoria} className="pp-voce"><span>{c.categoria}</span><strong>{euro(c.totale)}</strong></div>)}</Gruppo>
+          <p className="pp-riga-meta">Totali per categoria: tocca per vedere i singoli pagamenti e la loro origine.</p>
+          <Gruppo>{perCategoria.map((c) => <div key={c.categoria}>
+            <button className="pp-riga" aria-expanded={categoriaAperta === c.categoria} onClick={() => setCategoriaAperta(categoriaAperta === c.categoria ? null : c.categoria)}>
+              <span className="pp-riga-testo"><strong>{c.categoria}</strong><span className="pp-riga-meta">{aperti.filter((s) => (s.categoria || categoriaDaFascicolo(s.documento?.fascicolo)) === c.categoria).length} pagamenti · Vedi dettaglio</span></span>
+              <strong>{euro(c.totale)}</strong><IconaFreccia size={16} />
+            </button>
+            {categoriaAperta === c.categoria && aperti.filter((s) => (s.categoria || categoriaDaFascicolo(s.documento?.fascicolo)) === c.categoria).map((s) => <RigaPagamento key={s.id} s={s} onApri={apriP} />)}
+          </div>)}</Gruppo>
         </Sezione>
       )}
       <Segmenti voci={[['aperti', 'Da pagare'], ['pagati', 'Pagati'], ['tutti', 'Tutti']]} attiva={filtro} onScegli={setFiltro} />

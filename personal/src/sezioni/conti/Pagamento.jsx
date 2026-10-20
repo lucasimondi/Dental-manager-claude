@@ -84,6 +84,9 @@ export function PaginaPagamento({ s: iniziale, ctx, chiudi }) {
         </div>
       )}
       <Sezione titolo="Da dove viene">
+        {s.documento?.riassunto && <p className="pp-paragrafo">{s.documento.riassunto}</p>}
+        {s.documento?.email_oggetto && <p className="pp-riga-meta">Email: {s.documento.email_oggetto}</p>}
+        {!s.documento_id && !s.documento && <p className="pp-paragrafo">Nessun documento o email collegato: la fonte di questo pagamento non è verificabile dall’archivio. Puoi correggerlo o allegare una ricevuta.</p>}
         {s.documento || s.documento_id ? (
           <Gruppo>
             <button className="pp-riga" onClick={() => apri({ tipo: 'documento', id: s.documento?.id || s.documento_id })}>
