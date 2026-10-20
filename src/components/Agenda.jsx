@@ -886,7 +886,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   const getPoltrona = (a) => (a.poltronaId != null ? poltroneById[String(a.poltronaId)] : null);
   // POL-AI-010: gli appuntamenti annullati non occupano più l'agenda (restano
   // nello storico del paziente; se non rifissati finiscono nei Richiami).
-  const appointmentsAgenda = appointments.filter(a => (mostraEsclusi || agendaVisible(a, 'studio')) && a.stato !== 'annullato' && (!features?.multi_operatore || (
+  const appointmentsAgenda = appointments.filter(a => a.stato !== 'annullato' && (mostraEsclusi || agendaVisible(a, 'studio')) && (!features?.multi_operatore || (
     (filtroOperatore === 'tutti' || String(a.operatoreId) === String(filtroOperatore)) &&
     (filtroPoltrona === 'tutti' || String(a.poltronaId) === String(filtroPoltrona))
   )));
@@ -1079,7 +1079,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       {haFiltriRisorse && !isMobile && chipsRisorse}
 
       {view === 'giorno' && (
-        <DayStrip palette={C} selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} oraColW={oraColW} singleDay={isMobile} hiddenWeekdays={agendaHiddenWeekdays} overlayRef={isMobile ? overlayRef : undefined} floatingFooter={isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<button type="button" aria-label="Mostra eventi esclusi da questa agenda" aria-pressed={mostraEsclusi} onClick={() => setMostraEsclusi(x => !x)} style={{ minHeight: 44, fontSize: 11 }}>Esclusi{mostraEsclusi ? ' ✓' : ''}</button><ViewPicker palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>} />
+        <DayStrip palette={C} selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} oraColW={oraColW} singleDay={isMobile} hiddenWeekdays={agendaHiddenWeekdays} overlayRef={isMobile ? overlayRef : undefined} floatingFooter={isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}{(mostraEsclusi || tuttiImpegni.some(i => !agendaVisible(i, 'studio')) || appointments.some(a => !agendaVisible(a, 'studio'))) && <button type="button" aria-label="Mostra eventi esclusi da questa agenda" aria-pressed={mostraEsclusi} onClick={() => setMostraEsclusi(x => !x)} style={{ minHeight: 44, fontSize: 11 }}>Esclusi{mostraEsclusi ? ' ✓' : ''}</button>}<ViewPicker palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>} />
       )}
       {(view === 'settimana' || view === 'settimana_lavoro') && (
         <DayStrip palette={C}
@@ -1095,7 +1095,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           hiddenWeekdays={agendaHiddenWeekdays}
           overlayRef={isMobile ? overlayRef : undefined}
           floatingFooter={isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null}
-          viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<button type="button" aria-label="Mostra eventi esclusi da questa agenda" aria-pressed={mostraEsclusi} onClick={() => setMostraEsclusi(x => !x)} style={{ minHeight: 44, fontSize: 11 }}>Esclusi{mostraEsclusi ? ' ✓' : ''}</button><ViewPicker palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>}
+          viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}{(mostraEsclusi || tuttiImpegni.some(i => !agendaVisible(i, 'studio')) || appointments.some(a => !agendaVisible(a, 'studio'))) && <button type="button" aria-label="Mostra eventi esclusi da questa agenda" aria-pressed={mostraEsclusi} onClick={() => setMostraEsclusi(x => !x)} style={{ minHeight: 44, fontSize: 11 }}>Esclusi{mostraEsclusi ? ' ✓' : ''}</button>}<ViewPicker palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>}
         />
       )}
       {view === 'mese' && isMobile && (
@@ -1103,7 +1103,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
               {notificheBell}
               {filtroButton}
               <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 14, padding: '5px 10px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
-              <button type="button" aria-label="Mostra eventi esclusi da questa agenda" aria-pressed={mostraEsclusi} onClick={() => setMostraEsclusi(x => !x)} style={{ minHeight: 44, fontSize: 11 }}>Esclusi{mostraEsclusi ? ' ✓' : ''}</button><ViewPicker palette={C} view={view} setView={setView} touchSafe weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} />
+              {(mostraEsclusi || tuttiImpegni.some(i => !agendaVisible(i, 'studio')) || appointments.some(a => !agendaVisible(a, 'studio'))) && <button type="button" aria-label="Mostra eventi esclusi da questa agenda" aria-pressed={mostraEsclusi} onClick={() => setMostraEsclusi(x => !x)} style={{ minHeight: 44, fontSize: 11 }}>Esclusi{mostraEsclusi ? ' ✓' : ''}</button>}<ViewPicker palette={C} view={view} setView={setView} touchSafe weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} />
         </MonthToolbar>
       )}
       {view === 'mese' && !isMobile && (
@@ -1116,7 +1116,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
             {isMobile && filtroButton}
             <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
           </div>
-          <button type="button" aria-label="Mostra eventi esclusi da questa agenda" aria-pressed={mostraEsclusi} onClick={() => setMostraEsclusi(x => !x)} style={{ minHeight: 44, fontSize: 11 }}>Esclusi{mostraEsclusi ? ' ✓' : ''}</button><ViewPicker palette={C} view={view} setView={setView} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} />
+          {(mostraEsclusi || tuttiImpegni.some(i => !agendaVisible(i, 'studio')) || appointments.some(a => !agendaVisible(a, 'studio'))) && <button type="button" aria-label="Mostra eventi esclusi da questa agenda" aria-pressed={mostraEsclusi} onClick={() => setMostraEsclusi(x => !x)} style={{ minHeight: 44, fontSize: 11 }}>Esclusi{mostraEsclusi ? ' ✓' : ''}</button>}<ViewPicker palette={C} view={view} setView={setView} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} />
         </div>
       )}
 

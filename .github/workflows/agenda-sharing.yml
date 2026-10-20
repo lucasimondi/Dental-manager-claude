@@ -7,6 +7,14 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: agenda_test
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,6 +34,10 @@ jobs:
           task_migration=$(find supabase/migrations -name '*_agenda_visibility.sql' | sort | tail -1)
           cat supabase/proposals/agenda_visibility.sql > "$task_migration"
           echo "GENERATED_MIGRATION=$task_migration"
+      - name: Verify migration on synthetic PostgreSQL 17
+        run: |
+          task_migration=$(find supabase/migrations -name '*_agenda_visibility.sql' | sort | tail -1)
+          psql postgresql://postgres@localhost:5432/agenda_test -v ON_ERROR_STOP=1 -f supabase/tests/agenda_visibility_fixture.sql -f "$task_migration" -f supabase/tests/agenda_visibility.sql
       - uses: actions/upload-artifact@v4
         with:
           name: agenda-visibility-migration
