@@ -1,3 +1,4 @@
+import { agendaVisibility, hasVisibleAgenda } from '../../../shared/agenda/visibility.js';
 // POL-VITA-004 — calcoli dell'agenda di Personal (puri, testabili): date, griglia del mese,
 // elementi di un giorno (appuntamenti, eventi, scadenze) e colonne per gli orari sovrapposti.
 const due = (n) => String(n).padStart(2, '0');
@@ -124,6 +125,7 @@ export function conteggi(giorni, dati) {
 
 // Evento (impegno personale, senza paziente): stessa forma che usa l'agenda dello studio.
 export function rigaImpegno(evento) {
+  if (!hasVisibleAgenda(evento)) throw new Error('Seleziona almeno un’agenda.');
   const tuttoIlGiorno = !!evento.tutto_il_giorno;
   return {
     titolo: String(evento.titolo || '').trim() || 'Evento',
@@ -138,7 +140,7 @@ export function rigaImpegno(evento) {
     note: evento.note || null,
     recurrence_id: evento.recurrence_id ?? evento.recurrenceId ?? null,
     // POL-VITA-013: visibile anche nell'agenda dello studio, salvo scelta contraria.
-    visibile_studio: evento.visibile_studio !== false,
+    ...agendaVisibility(evento),
   };
 }
 
@@ -216,6 +218,7 @@ export function applicaAOccorrenza(occorrenza, modificato, spostamento) {
 export const STATI_APPUNTAMENTO = [['confermato', 'Confermato'], ['da confermare', 'Da confermare'], ['annullato', 'Annullato']];
 
 export function rigaAppuntamento(a) {
+  if (!hasVisibleAgenda(a)) throw new Error('Seleziona almeno un’agenda.');
   const ora = String(a.ora || '09:00').slice(0, 5);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(a.data || '')) throw new Error('Scegli il giorno dell\'appuntamento.');
   if (!/^\d{2}:\d{2}$/.test(ora)) throw new Error('Scegli l\'ora dell\'appuntamento.');
@@ -223,6 +226,7 @@ export function rigaAppuntamento(a) {
   if (!Number.isFinite(paziente) || paziente <= 0) throw new Error('Scegli il paziente.');
   const stato = STATI_APPUNTAMENTO.some(([k]) => k === a.stato) ? a.stato : 'confermato';
   return {
+    ...agendaVisibility(a),
     paziente_id: paziente, data: a.data, ora, durata: Math.min(Math.max(Number(a.durata) || 30, 5), 600),
     tipo: String(a.tipo || '').trim() || 'Visita', colore: a.colore || null, note: String(a.note || '').trim() || null, stato,
   };

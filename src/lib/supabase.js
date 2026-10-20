@@ -48,6 +48,8 @@ const FIELD_MAP = {
     pianoId: 'piano_id',
   },
   appointments: {
+    visibileStudio: 'visibile_studio',
+    visibilePersonal: 'visibile_personal',
     pazienteId: 'paziente_id',
     operatoreId: 'operatore_id',
     poltronaId: 'poltrona_id',
@@ -69,6 +71,7 @@ const FIELD_MAP = {
     oraFine: 'ora_fine',
     recurrenceId: 'recurrence_id',
     visibileStudio: 'visibile_studio',
+    visibilePersonal: 'visibile_personal',
   },
   richiami: {
     pazienteId: 'paziente_id',

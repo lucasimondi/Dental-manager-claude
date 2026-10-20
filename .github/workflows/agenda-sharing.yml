@@ -1,0 +1,32 @@
+name: Agenda sharing
+on:
+  pull_request:
+    branches: [master]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: npm run build:personal
+      - name: Generate migration using Supabase CLI
+        run: |
+          npx --yes supabase@2.54.11 --help
+          npx --yes supabase@2.54.11 migration --help
+          npx --yes supabase@2.54.11 migration new --help
+          npx --yes supabase@2.54.11 migration new agenda_visibility
+          task_migration=$(find supabase/migrations -name '*_agenda_visibility.sql' | sort | tail -1)
+          cat supabase/proposals/agenda_visibility.sql > "$task_migration"
+          echo "GENERATED_MIGRATION=$task_migration"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agenda-visibility-migration
+          path: supabase/migrations/*_agenda_visibility.sql

@@ -1,3 +1,5 @@
+import AgendaVisibility from '../../shared/agenda/AgendaVisibility.jsx';
+import { agendaVisible, keepOccupiedWeekends } from '../../shared/agenda/visibility.js';
 import { layoutAppointments as layoutOverlap } from '../../shared/agenda/geometry.js';
 import { readAgendaLocation } from '../../shared/agenda/navigation.js';
 import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, EventBlock, AppointmentBlock, useSlotHeight, AgendaSwitch, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState, useGridSwipe } from '../../shared/agenda/AgendaPresentation.jsx';
@@ -373,7 +375,9 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
    Va incollato sulla stessa riga dell'etichetta mese: non aggiunge nessuna riga
    in più, a differenza della vecchia barra a tre tab che occupava spazio prezioso
    sullo schermo del telefono. */
-export default function Agenda({ patients, setPatients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni, setImpegni, si, setStudioInfo, onOpenPatient, onOpenRecall, onOpenActivity, onPoliedronCommand }) {
+export default function Agenda({ patients, setPatients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni: tuttiImpegni = [], setImpegni, si, setStudioInfo, onOpenPatient, onOpenRecall, onOpenActivity, onPoliedronCommand }) {
+  const [mostraEsclusi, setMostraEsclusi] = useState(false);
+  const impegni = tuttiImpegni.filter(i => mostraEsclusi || agendaVisible(i, 'studio'));
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const labelPoltrona = isDentistico ? 'Poltrona' : 'Postazione';
   const labelPoltronePlurale = isDentistico ? 'poltrone' : 'postazioni';
@@ -458,7 +462,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   // dell'appuntamento in modifica — persistito insieme al resto del form così
   // se l'app si ricarica da zero a metà modifica sappiamo quale riaprire
   // (vedi effetto di ripristino subito sotto).
-  const [form, setForm, clearFormDraft] = useFormPersistente('nuovo_appuntamento', { pazienteId: '', data: today(), ora: '09:00', durata: agSet.durataDefault, tipo: tipiList[0]?.nome || 'Visita', colore: tipiList[0]?.colore || C.pri, note: '', stato: 'confermato', operatoreId: '', poltronaId: '', ripeti: 'nessuna', ripetiFino: '', _editId: null });
+  const [form, setForm, clearFormDraft] = useFormPersistente('nuovo_appuntamento', { pazienteId: '', data: today(), ora: '09:00', durata: agSet.durataDefault, tipo: tipiList[0]?.nome || 'Visita', colore: tipiList[0]?.colore || C.pri, note: '', stato: 'confermato', operatoreId: '', poltronaId: '', ripeti: 'nessuna', ripetiFino: '', _editId: null, visibileStudio: true, visibilePersonal: true });
 
   // Ricostruisce editApp da form._editId al primo caricamento: se l'app si
   // è ricaricata da zero mentre si stava modificando un appuntamento
@@ -491,7 +495,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   const waBatchTimersRef = useRef([]);
   const [impModal, setImpModal] = useState(false);
   const [editImp, setEditImp] = useState(null);
-  const [impForm, setImpForm] = useState({ titolo: '', tipo: 'personale', colore: '', dataInizio: today(), dataFine: today(), tuttoIlGiorno: true, oraInizio: '09:00', oraFine: '10:00', note: '', ripeti: 'no', ripetiFino: today() });
+  const [impForm, setImpForm] = useState({ titolo: '', tipo: 'personale', colore: '', dataInizio: today(), dataFine: today(), tuttoIlGiorno: true, oraInizio: '09:00', oraFine: '10:00', note: '', ripeti: 'no', ripetiFino: today(), visibileStudio: true, visibilePersonal: true });
   const IF = (f) => setImpForm((p) => ({ ...p, ...f }));
 
   const F = (f) => setForm(p => ({ ...p, ...f }));
@@ -588,25 +592,24 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
 
   const weekStart = startOfWeek(selDay);
   // La vista normale può mostrare/nascondere il fine settimana con il controllo rapido;
-  // Settimana lavoro resta sempre lunedì–venerdì, senza toccare la configurazione dello studio.
+  // Settimana lavoro aggiunge i giorni del weekend occupati, senza cambiare la configurazione.
   // Finché non si tocca il selettore restano i giorni di chiusura configurati: uno studio
   // chiuso solo la domenica continua a vedere il sabato (e i suoi appuntamenti).
   const weekendsHidden = weekendsHiddenState({ configured: hiddenWeekdays, override: weekendOverride });
-  const agendaHiddenWeekdays = computeHiddenWeekdays({ configured: hiddenWeekdays, view, override: weekendOverride });
-  const weekDays = getVisibleWeekDays(weekStart, agendaHiddenWeekdays);
+  
   const t = today();
 
   const apriNuovo = (data, ora) => {
     setPazSearch('');
     setEditApp(null);
-    setForm({ pazienteId: '', data: data || selDay, ora: ora || '09:00', durata: agSet.durataDefault, tipo: tipiList[0]?.nome || 'Visita', colore: tipiList[0]?.colore || C.pri, note: '', stato: 'confermato', operatoreId: filtroOperatore !== 'tutti' ? filtroOperatore : '', poltronaId: filtroPoltrona !== 'tutti' ? filtroPoltrona : '', ripeti: 'nessuna', ripetiFino: '', _editId: null });
+    setForm({ pazienteId: '', data: data || selDay, ora: ora || '09:00', durata: agSet.durataDefault, tipo: tipiList[0]?.nome || 'Visita', colore: tipiList[0]?.colore || C.pri, note: '', stato: 'confermato', operatoreId: filtroOperatore !== 'tutti' ? filtroOperatore : '', poltronaId: filtroPoltrona !== 'tutti' ? filtroPoltrona : '', ripeti: 'nessuna', ripetiFino: '', _editId: null, visibileStudio: true, visibilePersonal: true });
     setModal(true);
   };
 
   const apriEdit = (a) => {
     setEditApp(a);
     setPazSearch('');
-    setForm({ pazienteId: String(a.pazienteId), data: a.data, ora: a.ora, durata: a.durata, tipo: a.tipo, colore: a.colore || C.pri, note: a.note || '', stato: a.stato || 'confermato', operatoreId: a.operatoreId ? String(a.operatoreId) : '', poltronaId: a.poltronaId ? String(a.poltronaId) : '', ripeti: 'nessuna', ripetiFino: '', _editId: a.id });
+    setForm({ pazienteId: String(a.pazienteId), data: a.data, ora: a.ora, durata: a.durata, tipo: a.tipo, colore: a.colore || C.pri, note: a.note || '', stato: a.stato || 'confermato', operatoreId: a.operatoreId ? String(a.operatoreId) : '', poltronaId: a.poltronaId ? String(a.poltronaId) : '', ripeti: 'nessuna', ripetiFino: '', _editId: a.id, visibileStudio: agendaVisible(a, 'studio'), visibilePersonal: agendaVisible(a, 'personal') });
     setModal(true);
   };
 
@@ -768,11 +771,11 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     const operatoreId = form.operatoreId && operatori.some(o => String(o.id) === String(form.operatoreId)) ? Number(form.operatoreId) : null;
     const poltronaId = form.poltronaId && poltrone.some(p => String(p.id) === String(form.poltronaId)) ? Number(form.poltronaId) : null;
     if (editApp) {
-      const { ripeti, ripetiFino, ...rest } = form;
+      const { ripeti, ripetiFino, ...rest } = { ...form, visibileStudio: agendaVisible(form, 'studio'), visibilePersonal: agendaVisible(form, 'personal') };
       setAppointments(p => p.map(a => a.id === editApp.id ? { ...a, ...rest, pazienteId: Number(form.pazienteId), durata: Number(form.durata), operatoreId, poltronaId } : a));
       setToast('Aggiornato ✓');
     } else {
-      const { ripeti, ripetiFino, ...rest } = form;
+      const { ripeti, ripetiFino, ...rest } = { ...form, visibileStudio: agendaVisible(form, 'studio'), visibilePersonal: agendaVisible(form, 'personal') };
       const date = generaDateRipetizione(form.data, ripeti, ripetiFino);
       const nuovi = date.map((d) => ({ ...rest, data: d, id: uid() + Math.floor(Math.random() * 1000), pazienteId: Number(form.pazienteId), durata: Number(form.durata), operatoreId, poltronaId }));
       setAppointments(p => [...p, ...nuovi]);
@@ -797,7 +800,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
 
   const apriNuovoImpegno = (data) => {
     setEditImp(null);
-    setImpForm({ titolo: '', tipo: 'personale', colore: '', dataInizio: data || selDay, dataFine: data || selDay, tuttoIlGiorno: true, oraInizio: '09:00', oraFine: '10:00', note: '', ripeti: 'no', ripetiFino: data || selDay });
+    setImpForm({ titolo: '', tipo: 'personale', colore: '', dataInizio: data || selDay, dataFine: data || selDay, tuttoIlGiorno: true, oraInizio: '09:00', oraFine: '10:00', note: '', ripeti: 'no', ripetiFino: data || selDay, visibileStudio: true, visibilePersonal: true });
     setImpModal(true);
   };
 
@@ -807,13 +810,14 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       titolo: imp.titolo, tipo: imp.tipo, colore: imp.colore || '', dataInizio: imp.dataInizio, dataFine: imp.dataFine,
       tuttoIlGiorno: imp.tuttoIlGiorno !== false, oraInizio: imp.oraInizio || '09:00', oraFine: imp.oraFine || '10:00', note: imp.note || '',
       ripeti: 'no', ripetiFino: imp.dataInizio,
+      visibileStudio: agendaVisible(imp, 'studio'), visibilePersonal: agendaVisible(imp, 'personal'),
     });
     setImpModal(true);
   };
 
   const saveImpegno = () => {
     if (!impForm.titolo.trim()) return;
-    const base = { titolo: impForm.titolo, tipo: impForm.tipo, colore: impForm.colore, tuttoIlGiorno: impForm.tuttoIlGiorno, note: impForm.note };
+    const base = { titolo: impForm.titolo, tipo: impForm.tipo, colore: impForm.colore, tuttoIlGiorno: impForm.tuttoIlGiorno, note: impForm.note, visibileStudio: agendaVisible(impForm, 'studio'), visibilePersonal: agendaVisible(impForm, 'personal') };
 
     if (editImp) {
       const payload = impForm.tuttoIlGiorno
@@ -882,10 +886,13 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   const getPoltrona = (a) => (a.poltronaId != null ? poltroneById[String(a.poltronaId)] : null);
   // POL-AI-010: gli appuntamenti annullati non occupano più l'agenda (restano
   // nello storico del paziente; se non rifissati finiscono nei Richiami).
-  const appointmentsAgenda = appointments.filter(a => a.stato !== 'annullato' && (!features?.multi_operatore || (
+  const appointmentsAgenda = appointments.filter(a => (mostraEsclusi || agendaVisible(a, 'studio')) && a.stato !== 'annullato' && (!features?.multi_operatore || (
     (filtroOperatore === 'tutti' || String(a.operatoreId) === String(filtroOperatore)) &&
     (filtroPoltrona === 'tutti' || String(a.poltronaId) === String(filtroPoltrona))
   )));
+
+  const agendaHiddenWeekdays = keepOccupiedWeekends(weekStart, computeHiddenWeekdays({ configured: hiddenWeekdays, view, override: weekendOverride }), appointmentsAgenda, impegni);
+  const weekDays = getVisibleWeekDays(weekStart, agendaHiddenWeekdays);
 
   // Colonna orari compatta su mobile: deve restare identica tra DayStrip e
   // GridView (il commento su DayStrip spiega perché) — vedi item 5/2 della
@@ -1072,7 +1079,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       {haFiltriRisorse && !isMobile && chipsRisorse}
 
       {view === 'giorno' && (
-        <DayStrip palette={C} selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} oraColW={oraColW} singleDay={isMobile} hiddenWeekdays={agendaHiddenWeekdays} overlayRef={isMobile ? overlayRef : undefined} floatingFooter={isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>} />
+        <DayStrip palette={C} selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} oraColW={oraColW} singleDay={isMobile} hiddenWeekdays={agendaHiddenWeekdays} overlayRef={isMobile ? overlayRef : undefined} floatingFooter={isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<button type="button" aria-label="Mostra eventi esclusi da questa agenda" aria-pressed={mostraEsclusi} onClick={() => setMostraEsclusi(x => !x)} style={{ minHeight: 44, fontSize: 11 }}>Esclusi{mostraEsclusi ? ' ✓' : ''}</button><ViewPicker palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>} />
       )}
       {(view === 'settimana' || view === 'settimana_lavoro') && (
         <DayStrip palette={C}
@@ -1088,7 +1095,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           hiddenWeekdays={agendaHiddenWeekdays}
           overlayRef={isMobile ? overlayRef : undefined}
           floatingFooter={isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null}
-          viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>}
+          viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<button type="button" aria-label="Mostra eventi esclusi da questa agenda" aria-pressed={mostraEsclusi} onClick={() => setMostraEsclusi(x => !x)} style={{ minHeight: 44, fontSize: 11 }}>Esclusi{mostraEsclusi ? ' ✓' : ''}</button><ViewPicker palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>}
         />
       )}
       {view === 'mese' && isMobile && (
@@ -1096,7 +1103,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
               {notificheBell}
               {filtroButton}
               <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 14, padding: '5px 10px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
-              <ViewPicker palette={C} view={view} setView={setView} touchSafe weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} />
+              <button type="button" aria-label="Mostra eventi esclusi da questa agenda" aria-pressed={mostraEsclusi} onClick={() => setMostraEsclusi(x => !x)} style={{ minHeight: 44, fontSize: 11 }}>Esclusi{mostraEsclusi ? ' ✓' : ''}</button><ViewPicker palette={C} view={view} setView={setView} touchSafe weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} />
         </MonthToolbar>
       )}
       {view === 'mese' && !isMobile && (
@@ -1109,7 +1116,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
             {isMobile && filtroButton}
             <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
           </div>
-          <ViewPicker palette={C} view={view} setView={setView} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} />
+          <button type="button" aria-label="Mostra eventi esclusi da questa agenda" aria-pressed={mostraEsclusi} onClick={() => setMostraEsclusi(x => !x)} style={{ minHeight: 44, fontSize: 11 }}>Esclusi{mostraEsclusi ? ' ✓' : ''}</button><ViewPicker palette={C} view={view} setView={setView} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} />
         </div>
       )}
 
@@ -1281,6 +1288,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
               )}
             </div>
           )}
+          <AgendaVisibility value={form} onChange={flags => F({ visibileStudio: flags.visibile_studio, visibilePersonal: flags.visibile_personal })} />
           <Fld label="Note"><Txt value={form.note} onChange={e => F({ note: e.target.value })} /></Fld>
           {!editApp && (
             <Fld label="Ripeti">
@@ -1371,6 +1379,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
             </>
           )}
 
+          <AgendaVisibility value={impForm} onChange={flags => IF({ visibileStudio: flags.visibile_studio, visibilePersonal: flags.visibile_personal })} />
           <Fld label="Note (opzionale)"><Txt value={impForm.note} onChange={e => IF({ note: e.target.value })} /></Fld>
           {impForm.tuttoIlGiorno && impForm.dataFine < impForm.dataInizio && <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: C.danL, borderRadius: 8, padding: '8px 12px', marginBottom: 8, fontSize: 12, color: C.dan, fontWeight: 700 }}><Ic n="warn" s={13} c={C.dan} />La data di fine deve essere uguale o successiva alla data di inizio</div>}
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>

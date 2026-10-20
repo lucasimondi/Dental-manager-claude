@@ -48,7 +48,7 @@ export const esciStudio = () => studioDb.auth.signOut();
 
 export async function appuntamentiTra(da, a) {
   const app = esito(await studioDb.from('appointments')
-    .select('id, data, ora, durata, tipo, colore, note, stato, paziente_id')
+    .select('id, data, ora, durata, tipo, colore, note, stato, paziente_id, visibile_studio, visibile_personal')
     .gte('data', da).lte('data', a).order('data').order('ora'));
   const ids = [...new Set(app.map((x) => x.paziente_id).filter(Boolean))];
   const pazienti = ids.length ? esito(await studioDb.from('patients').select('id, nome, cognome').in('id', ids)) : [];
@@ -86,7 +86,7 @@ export async function tipiAppuntamento() {
   return esito(await studioDb.from('app_types').select('nome, colore'));
 }
 
-const CAMPI_IMPEGNO = 'id, titolo, tipo, etichetta, colore, data_inizio, data_fine, tutto_il_giorno, ora_inizio, ora_fine, note, recurrence_id, visibile_studio';
+const CAMPI_IMPEGNO = 'id, titolo, tipo, etichetta, colore, data_inizio, data_fine, tutto_il_giorno, ora_inizio, ora_fine, note, recurrence_id, visibile_studio, visibile_personal';
 
 export async function impegniTra(da, a) {
   return esito(await studioDb.from('impegni_personali').select(CAMPI_IMPEGNO)
