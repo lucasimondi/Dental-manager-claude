@@ -9,3 +9,6 @@
 - Rischi: il primo accesso a una schermata richiede il suo chunk; la connessione e la sessione restano dipendenze. Questo intervento non dimostra prestazioni pari a iCal. Nessuna cache persistente di contenuti personali.
 - Rollback: revert PR; nessuna migrazione.
 - Prossimo passo: controllare diff, test/build remoti e asset della build; merge soltanto dopo approvazione PO.
+
+- Verifica remota completata su 6bff9555: 1403/1403 test Node, build Vite e controllo grafo startup OK; 436381 byte JS non compressi nel grafo iniziale; tutte le 9 schermate differite. Il numero non è un tempo di apertura né un confronto con la versione precedente. CI browser agenda e preview: stato finale nei controlli PR #233.
+- Stato: WAITING_PRODUCT_OWNER. Nessun merge. Il presente aggiornamento cambia solo la documentazione.

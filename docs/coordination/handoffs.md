@@ -3928,4 +3928,5 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Rollback: revert PR; nessuna migrazione.
 - Prossimo passo: controllare diff, test/build remoti e asset della build; merge soltanto dopo approvazione PO.
 
-- PR: #233. Diff controllato, nessun file estraneo o whitespace aggiunto. Verifica del grafo reale di build in CI; suite e build in esecuzione. Ambiente locale assente.
+- Verifica remota completata su 6bff9555: 1403/1403 test Node, build Vite e controllo grafo startup OK; 436381 byte JS non compressi nel grafo iniziale; tutte le 9 schermate differite. Il numero non è un tempo di apertura né un confronto con la versione precedente. CI browser agenda e preview: stato finale nei controlli PR #233.
+- Stato: WAITING_PRODUCT_OWNER. Nessun merge. Il presente aggiornamento cambia solo la documentazione.

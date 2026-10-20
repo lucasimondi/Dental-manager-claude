@@ -3,7 +3,7 @@
 - PO: apertura Personal rapida, con riferimento iCal.
 - SCOPE: download differito schermate; metadati dock sincroni; comandi Home disponibili prima del riepilogo; riepilogo indipendente dall'attesa agenda Studio.
 - PREVIOUS: PERSONAL-ACQUISTI-LAYOUT conservato nello storico.
-- STATUS: IN_PROGRESS — verifica remota in PR; ambiente di esecuzione locale indisponibile.
+- STATUS: WAITING_PRODUCT_OWNER — PR #233; merge non eseguito, dopo controlli completati.
 - DATABASE / AUTH / DEPLOY ARCHITECTURE: nessuna modifica; nessuna cache di dati privati.
-- VALIDATION: CI Node + build da verificare; nessuna misura iPhone o promessa di equivalenza iCal.
+- VALIDATION: CI sul commit 6bff9555: suite Node 1403/1403, build Vite e controllo grafo startup OK (436381 byte JS non compressi, 9 schermate differite). Controllo browser agenda separato da verificare sulla PR; nessuna misura iPhone fisico.
 - ROLLBACK: revert PR. Nessuna migrazione.
