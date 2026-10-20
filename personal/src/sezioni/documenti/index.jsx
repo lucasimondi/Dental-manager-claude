@@ -1,13 +1,15 @@
+import { differito } from '../../Differito.jsx';
 // Sezione Documenti: archivio, cartelle, ricerca, schede dei documenti, pratiche, caricamento.
-import { RevisioneArchivio } from './Revisione.jsx';
+const RevisioneArchivio = differito(() => import('./Revisione.jsx'), 'RevisioneArchivio');
 import { IconaDocumenti } from '../../Icone.jsx';
-import { PaginaScansione } from '../../Aggiungi.jsx';
-import { VistaDocumenti } from './Documenti.jsx';
-import { PaginaRicerca } from './Ricerca.jsx';
-import { PaginaDocumento } from './Documento.jsx';
-import { PaginaPratica } from './Pratica.jsx';
-import { PaginaCarica } from './Carica.jsx';
-import { PaginaCartella, PaginaSuggerimenti } from './Cartelle.jsx';
+const PaginaScansione = differito(() => import('../../Aggiungi.jsx'), 'PaginaScansione');
+const VistaDocumenti = differito(() => import('./Documenti.jsx'), 'VistaDocumenti');
+const PaginaRicerca = differito(() => import('./Ricerca.jsx'), 'PaginaRicerca');
+const PaginaDocumento = differito(() => import('./Documento.jsx'), 'PaginaDocumento');
+const PaginaPratica = differito(() => import('./Pratica.jsx'), 'PaginaPratica');
+const PaginaCarica = differito(() => import('./Carica.jsx'), 'PaginaCarica');
+const PaginaCartella = differito(() => import('./Cartelle.jsx'), 'PaginaCartella');
+const PaginaSuggerimenti = differito(() => import('./Cartelle.jsx'), 'PaginaSuggerimenti');
 import { archivioDb } from '../../lib/supabasePersonal.js';
 import { documentiSenzaCartella } from '../../lib/cartelle.js';
 import { CAMPI_DOC } from '../../lib/archivio.js';

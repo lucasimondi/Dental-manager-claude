@@ -1,8 +1,10 @@
+import { differito } from '../../Differito.jsx';
 // Sezione Agenda: agenda personale e dello studio (giorno, settimana, mese), eventi e appuntamenti.
 import { IconaCalendario } from '../../Icone.jsx';
-import { VistaAgenda, ElencoGiorno } from './Agenda.jsx';
-import { PaginaEvento } from './Evento.jsx';
-import { PaginaAppuntamento } from './Appuntamento.jsx';
+const VistaAgenda = differito(() => import('./Agenda.jsx'), 'VistaAgenda');
+const ElencoGiorno = differito(() => import('./Agenda.jsx'), 'ElencoGiorno');
+const PaginaEvento = differito(() => import('./Evento.jsx'), 'PaginaEvento');
+const PaginaAppuntamento = differito(() => import('./Appuntamento.jsx'), 'PaginaAppuntamento');
 
 export { ElencoGiorno };
 

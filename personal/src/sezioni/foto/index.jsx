@@ -1,6 +1,8 @@
+import { differito } from '../../Differito.jsx';
 // Sezione Foto e video: album, anni, luoghi; si apre da Documenti e dal +.
 import { IconaFoto } from '../../Icone.jsx';
-import { VistaFoto, PaginaFoto } from './Foto.jsx';
+const VistaFoto = differito(() => import('./Foto.jsx'), 'VistaFoto');
+const PaginaFoto = differito(() => import('./Foto.jsx'), 'PaginaFoto');
 
 export const foto = {
   id: 'foto', nome: 'Foto', Icona: IconaFoto, Vista: VistaFoto,

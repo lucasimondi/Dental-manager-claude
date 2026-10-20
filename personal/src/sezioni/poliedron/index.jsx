@@ -1,7 +1,8 @@
+import { differito } from '../../Differito.jsx';
 // Sezione Poliedron: la chat sull'archivio, a pagina intera nel dock.
 import { IconaChat } from '../../Icone.jsx';
 import { CHAT_VUOTA } from '../../lib/chat.js';
-import { VistaPoliedron } from './Poliedron.jsx';
+const VistaPoliedron = differito(() => import('./Poliedron.jsx'), 'VistaPoliedron');
 
 // In testata: "Nuova chat" quando c'è una conversazione (il modo AI/ricerca resta).
 function AzioniPoliedron({ ctx }) {
