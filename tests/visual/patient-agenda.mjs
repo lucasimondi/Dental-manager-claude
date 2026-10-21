@@ -28,8 +28,7 @@ try {
       await record.getByText('test@example.invalid',{exact:true}).waitFor();
       assert.equal(await record.evaluate(el=>el.firstElementChild===window.__originalRecord),true,'same patient component mounted');
       await record.getByRole('button',{name:'Fissa prossimo nell’agenda',exact:true}).click();
-      await page.locator('.agenda-mobile-calendar-scroller').evaluate((el, width)=>el.scrollTop=width<768?440:150, width);
-      // A conflicting duration must be rejected even when only the tail overlaps.
+      // Pick a real free cell in the existing production grid.
       const slot=page.locator('[data-agenda-date="2026-10-23"][data-agenda-slot="11:00"]');
       await slot.evaluate(el=>el.scrollIntoView({block:'center'}));
       await page.screenshot({path:`${out}/${engine}-${width}-agenda-compressed.png`});
