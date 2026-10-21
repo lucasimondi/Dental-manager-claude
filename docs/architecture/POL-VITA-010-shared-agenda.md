@@ -47,3 +47,11 @@ workflow, verify the columns/defaults, then release the frontend. The schema mus
 new explicit Personal select fields. No migration is needed on the separate archive project.
 Rollback frontend first; retain additive columns to preserve choices. No production operation
 has been performed in the implementation session.
+
+## AGENDA-FLUIDITA — 21 October 2026
+
+Personal's swipe/pinch implementations now live in shared/agenda; compatibility exports preserve existing imports. Both adapters use useTimeline for native vertical scrolling, swipe, zoom anchoring and one-time initial scroll. Observer/data updates do not reset scrollTop. On Studio mobile, touch scrolling never initiates appointment move/resize or calls its mutation setters; clinical actions remain in the existing editor/menu and desktop mouse drag remains available.
+
+Studio mobile uses the same 24h range and minimum 24px slots as Personal. DayEvents renders the same all-day ribbon in both adapters, using exactly the active day's/week's columns. layoutAgendaDay packs timed events and appointments together so they cannot obscure one another. The temporary visibility option lives inside ViewPicker rather than an unstyled extra toolbar button. Personal's archive deadlines stay in its authenticated archive adapter; this change does not copy private archive data into Studio or modify access rights.
+
+No schema, RLS, authentication, finance or deployment architecture change. Revert the dedicated PR to roll back. Browser evidence and final validation are recorded on PR #236; no physical iPhone test is claimed.

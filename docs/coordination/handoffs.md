@@ -3969,3 +3969,6 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - RISKS/LIMITS: no physical iPhone test; browser test uses native Chromium CDP touch and WebKit wheel/touch-action checks, not native iPhone injection. Personal archive payment deadlines keep their existing adapter and are not copied across databases. Studio clinical actions retained.
 - ROLLBACK: revert PR, no schema rollback; stable/2026-08-27-full-recovery preserved at 070b28fd4eae4e2cc397584201d0bb149468fae7.
 - NEXT: complete mobile CI and inspect screenshots/diff; PO approval before merge/deploy.
+
+- CI EVIDENCE ceee4776: 1412/1412 Node tests including concurrent medical document task; both builds pass; baseline/reliability/sharing Chromium/WebKit pass. Native motion suite final outcome and screenshots recorded on PR #236.
+- FINAL STATUS: WAITING_PRODUCT_OWNER on PR #236; no production data operations, merge, migration or deploy. Review final CI and PR evidence, obtain PO merge approval, then physical iPhone smoke test.
