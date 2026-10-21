@@ -311,6 +311,8 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
         <button onClick={() => setEditOpen(true)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, padding: '6px 11px', cursor: 'pointer', color: '#fff', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}><Ic n="edit" s={13} c="#fff" />Modifica</button>
       </div>
 
+      {onNuovoAppuntamento && <button type="button" onClick={() => onNuovoAppuntamento(paz.id)} style={{ minHeight: 44, flexShrink: 0, padding: '10px 14px', textAlign: 'left', background: C.priL, color: C.pri, border: 'none', fontWeight: 700 }}>Fissa prossimo nell’agenda</button>}
+
       {/* POL-UI-021: Product Owner — "le parti da pagare pagato devono
           essere cliccabili e portare alla sezione giusta" — estese a
           tutte e 4 le celle per coerenza (stessa apparenza, stesso

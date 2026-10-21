@@ -1,3 +1,4 @@
+import { validatePatientAgendaSlot } from '../lib/patientAgendaBooking.js';
 import DayEvents from '../../shared/agenda/DayEvents.jsx';
 import { useTimeline } from '../../shared/agenda/useTimeline.js';
 import AgendaVisibility from '../../shared/agenda/AgendaVisibility.jsx';
@@ -63,7 +64,7 @@ const startOfWeek = (d) => {
   return dt;
 };
 
-function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno, onSwipeDay, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight }) {
+function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno, onSwipeDay, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight, followUpMode, onOccupiedSlot }) {
   const containerRef = useRef(null); // unico scroll container
   const resizeRef = useRef(null);
   const [now, setNow] = useState(new Date());
@@ -224,12 +225,13 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                   // l'altro, così restano tutti visibili e cliccabili.
                   return (
                     <AppointmentBlock touchScroll={isMobile} aCapo={isSettimana} key={a.id} a={a} label={p ? `${p.nome || ''} ${p.cognome || ''}`.trim() : '—'} co={co} top={top} height={height} col={col} totalCols={totalCols} isBeingResized={isBeingResized} isBeingMoved={isBeingMoved} selectionMode={selModeWA} selectable={isSelezionabileWA} selected={isSelected} operatore={operatore} poltrona={poltrona} selectionIndicator={<Ic n="ok" s={9} c="#fff" />}
-                      onResizeMouse={e => { e.stopPropagation(); e.preventDefault(); setResizing({ id: a.id, startY: e.clientY, startDurata: Number(a.durata) }); }}
-                      onMoveMouse={e => { if (selModeWA || isBeingResized) return; movedRef.current = false; setMoving({ id: a.id, startY: e.clientY, startOra: a.ora }); }}
-                      onResizeTouch={e => { e.stopPropagation(); setResizing({ id: a.id, startY: e.touches[0].clientY, startDurata: Number(a.durata) }); }}
-                      onMoveTouch={e => { if (selModeWA || isBeingResized) return; movedRef.current = false; setMoving({ id: a.id, startY: e.touches[0].clientY, startOra: a.ora }); }}
+                      onResizeMouse={e => { if (followUpMode) return; e.stopPropagation(); e.preventDefault(); setResizing({ id: a.id, startY: e.clientY, startDurata: Number(a.durata) }); }}
+                      onMoveMouse={e => { if (followUpMode || selModeWA || isBeingResized) return; movedRef.current = false; setMoving({ id: a.id, startY: e.clientY, startOra: a.ora }); }}
+                      onResizeTouch={e => { if (followUpMode) return; e.stopPropagation(); setResizing({ id: a.id, startY: e.touches[0].clientY, startDurata: Number(a.durata) }); }}
+                      onMoveTouch={e => { if (followUpMode || selModeWA || isBeingResized) return; movedRef.current = false; setMoving({ id: a.id, startY: e.touches[0].clientY, startOra: a.ora }); }}
                       onOpen={e => {
                           e.stopPropagation();
+                          if (followUpMode) { onOccupiedSlot?.(); return; }
                           if (selModeWA) { if (isSelezionabileWA) toggleSelApp(a.id); return; }
                           if (isBeingResized || movedRef.current) { movedRef.current = false; return; }
                           setMenuApp(a);
@@ -373,13 +375,18 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
    Va incollato sulla stessa riga dell'etichetta mese: non aggiunge nessuna riga
    in più, a differenza della vecchia barra a tre tab che occupava spazio prezioso
    sullo schermo del telefono. */
-export default function Agenda({ patients, setPatients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni: tuttiImpegni = [], setImpegni, si, setStudioInfo, onOpenPatient, onOpenRecall, onOpenActivity, onPoliedronCommand }) {
+export default function Agenda({ patients, setPatients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni: tuttiImpegni = [], setImpegni, si, setStudioInfo, onOpenPatient, onOpenRecall, onOpenActivity, onPoliedronCommand, followUpRequest, onBookFollowUp, onCancelFollowUp }) {
   const [mostraEsclusi, setMostraEsclusi] = useState(false);
   const impegni = tuttiImpegni.filter(i => mostraEsclusi || agendaVisible(i, 'studio'));
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const labelPoltrona = isDentistico ? 'Poltrona' : 'Postazione';
   const labelPoltronePlurale = isDentistico ? 'poltrone' : 'postazioni';
   const tipiList = appTypes?.length ? appTypes : getAppTypesDefault(si?.vertical);
+  const [followUpType, setFollowUpType] = useState(tipiList[0]?.nome || 'Visita');
+  const [followUpDuration, setFollowUpDuration] = useState(si?.agenda_settings?.durataDefault || DEF_AGENDA_SETTINGS.durataDefault);
+  const [followUpSaving, setFollowUpSaving] = useState(false);
+  const followUpLock = useRef(false);
+  useEffect(() => { if (followUpRequest) { setModal(false); setSelModeWA(false); setFabOpen(false); } }, [followUpRequest]);
 
   // Setup Agenda: le impostazioni sono condivise a livello di studio (studioInfo.agenda_settings),
   // così tutti i collaboratori vedono la stessa configurazione. localStorage resta solo come
@@ -599,7 +606,24 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
 
   const t = today();
 
+  const bookFollowUpSlot = async (data, ora) => {
+    if (followUpLock.current || !followUpRequest || !onBookFollowUp) return;
+    try {
+      const patient = patients.find(p => String(p.id) === String(followUpRequest.pazienteId));
+      if (!patient) throw new Error('Paziente non disponibile. Riapri la scheda.');
+      const tipo = tipiList.find(t => t.nome === followUpType.trim());
+      const appointment = validatePatientAgendaSlot({
+        appointment: { pazienteId: patient.id, data, ora, durata: followUpDuration, tipo: followUpType, colore: tipo?.colore || C.pri, stato: 'confermato', note: '', operatoreId: filtroOperatore !== 'tutti' ? Number(filtroOperatore) : null, poltronaId: filtroPoltrona !== 'tutti' ? Number(filtroPoltrona) : null, visibileStudio: true, visibilePersonal: true },
+        appointments, impegni: tuttiImpegni, agendaSettings: { ...agSet, oraInizio, oraFine, slotMin }, today: today(),
+      });
+      followUpLock.current = true;
+      setFollowUpSaving(true);
+      await onBookFollowUp(appointment);
+    } catch (error) { setToast(error.message || 'Appuntamento non salvato. Riprova.'); }
+    finally { followUpLock.current = false; setFollowUpSaving(false); }
+  };
   const apriNuovo = (data, ora) => {
+    if (followUpRequest) { if (data && ora) bookFollowUpSlot(data, ora); else setToast('Tocca uno spazio libero nella tua agenda.'); return; }
     setPazSearch('');
     setEditApp(null);
     setForm({ pazienteId: '', data: data || selDay, ora: ora || '09:00', durata: agSet.durataDefault, tipo: tipiList[0]?.nome || 'Visita', colore: tipiList[0]?.colore || C.pri, note: '', stato: 'confermato', operatoreId: filtroOperatore !== 'tutti' ? filtroOperatore : '', poltronaId: filtroPoltrona !== 'tutti' ? filtroPoltrona : '', ripeti: 'nessuna', ripetiFino: '', _editId: null, visibileStudio: true, visibilePersonal: true });
@@ -607,6 +631,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   };
 
   const apriEdit = (a) => {
+    if (followUpRequest) { setToast('Questo spazio è occupato. Scegli un altro orario.'); return; }
     setEditApp(a);
     setPazSearch('');
     setForm({ pazienteId: String(a.pazienteId), data: a.data, ora: a.ora, durata: a.durata, tipo: a.tipo, colore: a.colore || C.pri, note: a.note || '', stato: a.stato || 'confermato', operatoreId: a.operatoreId ? String(a.operatoreId) : '', poltronaId: a.poltronaId ? String(a.poltronaId) : '', ripeti: 'nessuna', ripetiFino: '', _editId: a.id, visibileStudio: agendaVisible(a, 'studio'), visibilePersonal: agendaVisible(a, 'personal') });
@@ -805,6 +830,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   };
 
   const apriEditImpegno = (imp) => {
+    if (followUpRequest) { setToast('Questo spazio è occupato da un impegno.'); return; }
     setEditImp(imp);
     setImpForm({
       titolo: imp.titolo, tipo: imp.tipo, colore: imp.colore || '', dataInizio: imp.dataInizio, dataFine: imp.dataFine,
@@ -898,7 +924,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   // GridView (il commento su DayStrip spiega perché) — vedi item 5/2 della
   // spec "Agenda mobile final": non deve rubare spazio alle 7 colonne.
   const oraColW = isMobile ? 34 : 46;
-  const gridProps = { slots, slotH, slotMin, oraInizio: timelineStart, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight };
+  const gridProps = { slots, slotH, slotMin, oraInizio: timelineStart, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight, followUpMode: !!followUpRequest, onOccupiedSlot: () => setToast('Questo spazio è occupato. Scegli un altro orario.') };
 
   const ribbonDays = (view === 'giorno' ? [new Date(selDay + 'T12:00')] : weekDays).map(d => {
     const date = toISO(d);
@@ -1043,6 +1069,15 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     </div>
   );
 
+  const followUpControls = followUpRequest && <div className="patient-agenda-booking" style={{ padding: '8px 10px', background: C.sur, border: `1px solid ${C.brd}`, borderRadius: 12, margin: '6px 0', flexShrink: 0 }}>
+    <div style={{ fontSize: 12, color: C.pri, fontWeight: 700, marginBottom: 6 }}>{followUpSaving ? 'Salvataggio appuntamento…' : 'Prossimo appuntamento · tocca uno spazio libero'}</div>
+    <div style={{ display: 'flex', gap: 8, alignItems: 'end', flexWrap: 'wrap' }}>
+      <label style={{ flex: '1 1 130px', fontSize: 12 }}>Prestazione<Inp aria-label="Prossima prestazione" value={followUpType} onChange={e => setFollowUpType(e.target.value)} disabled={followUpSaving} /></label>
+      <label style={{ flex: '0 1 90px', fontSize: 12 }}>Minuti<Inp aria-label="Durata prossimo appuntamento" type="number" min={slotMin} step={slotMin} value={followUpDuration} onChange={e => setFollowUpDuration(e.target.value)} disabled={followUpSaving} /></label>
+      <button type="button" onClick={onCancelFollowUp} disabled={followUpSaving} style={{ minHeight: 44, border: `1px solid ${C.brd}`, borderRadius: 8, background: C.bg, color: C.pri, padding: '8px 10px' }}>Riapri scheda</button>
+    </div>
+  </div>;
+
   return (
     // POL-UI-010 (structural): on mobile, #app-scroll is now itself a column
     // flex container for this page (App.jsx), so this root uses flex:1 —
@@ -1080,11 +1115,12 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           mobile condiviso (pulsante centrale), non qui. Su desktop resta il
           PageHeader pieno, coerente con le altre pagine. */}
       {!isMobile && <PageHeader icon="cal" title="Agenda" />}
+      {!isMobile && followUpControls}
 
       {haFiltriRisorse && !isMobile && chipsRisorse}
 
       {view === 'giorno' && (
-        <DayStrip palette={C} selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} oraColW={oraColW} singleDay={isMobile} hiddenWeekdays={agendaHiddenWeekdays} shortMonth={isMobile} overlayRef={isMobile ? overlayRef : undefined} floatingFooter={<>{dayEvents}{isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null}</>} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker hiddenCount={tuttiImpegni.filter(i => !agendaVisible(i, 'studio')).length + appointments.filter(a => !agendaVisible(a, 'studio')).length} showHidden={mostraEsclusi} onToggleHidden={() => setMostraEsclusi(x => !x)} palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>} />
+        <DayStrip palette={C} selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} oraColW={oraColW} singleDay={isMobile} hiddenWeekdays={agendaHiddenWeekdays} shortMonth={isMobile} overlayRef={isMobile ? overlayRef : undefined} floatingFooter={<>{isMobile && followUpControls}{dayEvents}{isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null}</>} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker hiddenCount={tuttiImpegni.filter(i => !agendaVisible(i, 'studio')).length + appointments.filter(a => !agendaVisible(a, 'studio')).length} showHidden={mostraEsclusi} onToggleHidden={() => setMostraEsclusi(x => !x)} palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>} />
       )}
       {(view === 'settimana' || view === 'settimana_lavoro') && (
         <DayStrip palette={C}
@@ -1100,10 +1136,11 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           hiddenWeekdays={agendaHiddenWeekdays}
           shortMonth={isMobile}
           overlayRef={isMobile ? overlayRef : undefined}
-          floatingFooter={<>{dayEvents}{isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null}</>}
+          floatingFooter={<>{isMobile && followUpControls}{dayEvents}{isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null}</>}
           viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker hiddenCount={tuttiImpegni.filter(i => !agendaVisible(i, 'studio')).length + appointments.filter(a => !agendaVisible(a, 'studio')).length} showHidden={mostraEsclusi} onToggleHidden={() => setMostraEsclusi(x => !x)} palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>}
         />
       )}
+      {view === 'mese' && isMobile && followUpControls}
       {view === 'mese' && isMobile && (
         <MonthToolbar date={vd} overlayRef={overlayRef}>
               {notificheBell}

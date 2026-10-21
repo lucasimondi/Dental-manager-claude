@@ -38,6 +38,7 @@ export default function PatientWorkspaceBoundary(props) {
       initialDocumentRequest={initialDocumentRequest}
       onDocumentRequestHandled={props.onDocumentRequestHandled}
       onClose={props.onClose}
+      onNuovoAppuntamento={props.onNuovoAppuntamento}
       onEdit={() => props.onEdit?.(paz)}
     />
   </Suspense>;

@@ -193,7 +193,7 @@ export function TimeGrid({ palette: C = DEFAULT_PALETTE, containerRef, isMobile,
                 {slots.map((slot) => {
                   const isHour = slot.endsWith(':00');
                   return (
-                    <div key={slot} onClick={() => { if (!selectionMode) onSlot(ds, slot); }} style={{ height: effectiveSlotH, borderBottom: `1px solid ${isHour ? C.brd + '60' : C.brd + '25'}`, cursor: selectionMode ? 'default' : 'pointer', boxSizing: 'border-box' }}
+                    <div key={slot} data-agenda-date={ds} data-agenda-slot={slot} onClick={() => { if (!selectionMode) onSlot(ds, slot); }} style={{ height: effectiveSlotH, borderBottom: `1px solid ${isHour ? C.brd + '60' : C.brd + '25'}`, cursor: selectionMode ? 'default' : 'pointer', boxSizing: 'border-box' }}
                       onMouseEnter={e => e.currentTarget.style.background = C.priL + '70'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'} />
                   );
