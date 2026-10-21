@@ -3945,3 +3945,15 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - REVIEW: PR #234; diff checked for scope and secrets; no secret additions. Trailing whitespace removed. Final-head CI required before merge.
 - BROWSER EVIDENCE: e1d2b3ed baseline geometry/pixel comparisons and reliability pass Chromium/WebKit at 375/390/430px. Dedicated occupied-Sunday/exclusion browser scenarios added on 7afa4bcd and retained in final CI.
 - STATUS: WAITING_PRODUCT_OWNER, no merge/deploy/migration in production. Final CI results are recorded on PR #234. Exact next action: confirm final-head checks, PO approval, controlled Studio migration before frontend release, then real iPhone smoke test.
+
+
+## 2026-10-21 — Codex — STUDIO-RICHIESTE-ESAMI
+- Owner Codex; previous AGENDA-CONDIVISA PR #234 merged. Branch codex/studio-richieste-esami from afbdbc1d.
+- Objective: requests for ultrasound, CT and other diagnostic exams in Documenti medici, same heading/layout.
+- Completed: dedicated type and persistent form, editable exam text and quick choices, anatomical site, clinical question and notes; validation prevents empty request; shared PDF heading/patient/signature/footer, long text pagination. Same prescribing vertical visibility as existing blood tests.
+- Files: DocMedico.jsx, Impostazioni.jsx, lib/documenti/richiestaEsami.js, tests/richiestaEsami.test.mjs, coordination.
+- Database/auth/security/deployment: no changes. Existing esami archive type/settings and sharing panel reused, no production data or API calls.
+- Validation: 1410/1410 Node tests; npm run build passes (existing duplicate-key, bundle-size and pdfjs warnings); git diff --check clean. Generated synthetic PDF rendered and visually inspected. No real-account/browser/iPhone test.
+- Risks: archive follows existing esami setting; stored category remains esami. No SSN prescription integration introduced.
+- Rollback: revert PR, no migration.
+- Exact next action: review PR and final-head checks, merge only on PO Mergia, verify Vercel deployment.
