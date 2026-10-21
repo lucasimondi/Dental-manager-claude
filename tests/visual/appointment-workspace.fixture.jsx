@@ -8,6 +8,7 @@ import '../../src/styles.css';
 import '../../src/styles/designTokens.css';
 import '../../src/components/PremiumVisualSystem.css';
 const patient={id:7,nome:'Paziente',cognome:'Test',telefono:'3330000000',email:'test@example.invalid'};
+const documentClient={from(){return {select(){return this},eq(){return this},order:async()=>({data:[{id:55,paziente_id:7,paziente_nome:'Paziente Test',tipo:'ricetta',titolo:'Ricetta archiviata',data:'2026-10-20'}],error:null}),single:async()=>{window.__pdfReads=(window.__pdfReads||0)+1;const {buildRicettaPdf}=await import('../../src/lib/documenti/pdfLayout.js');return {data:{pdf_base64:buildRicettaPdf({si:{nome:'Studio test'},paziente:patient,data:'2026-10-20',farmaci:[{farmaco:'Farmaco sintetico',posologia:'Di prova'}]}).dataUrl},error:null}}}}};
 const settings={oraInizio:8,oraFine:20,slotMin:30,durataDefault:30,hiddenWeekdays:[]};
 function Fixture(){
  const [appointments,setAppointments]=useState([{id:3,pazienteId:7,data:'2026-10-23',ora:'10:00',durata:60,tipo:'Visita',stato:'confermato'}]);
@@ -15,7 +16,7 @@ function Fixture(){
  const [payments,setPayments]=useState([]),[record,setRecord]=useState(null);
  window.__plans=plans;window.__payments=payments;
  const open=(p,a,action)=>{const target=appointmentPatientAction(p,a,action);if(target)setRecord({...target,patient:p,documentRequest:target.documentType?{type:target.documentType,requestId:'fixture-'+action}:null})};
- return <div className="app-shell--mobile" style={{display:'flex',height:'100dvh',flexDirection:'column'}}><main style={{display:'flex',flex:1,minHeight:0,padding:6}}><Agenda patients={[patient]} setPatients={()=>{}} appointments={appointments} setAppointments={setAppointments} impegni={[]} appTypes={[{id:1,nome:'Visita',colore:'#2563eb'}]} si={{vertical:'dentistico',agenda_settings:settings}} features={{}} renderAppointmentWorkspace={(p,a,onClose,onBusyChange)=><AppointmentWorkspace patient={p} appointment={a} plans={plans} onBusyChange={onBusyChange} onSave={async draft=>{
+ return <div className="app-shell--mobile" style={{display:'flex',height:'100dvh',flexDirection:'column'}}><main style={{display:'flex',flex:1,minHeight:0,padding:6}}><Agenda patients={[patient]} setPatients={()=>{}} appointments={appointments} setAppointments={setAppointments} impegni={[]} appTypes={[{id:1,nome:'Visita',colore:'#2563eb'}]} si={{vertical:'dentistico',agenda_settings:settings}} features={{}} renderAppointmentWorkspace={(p,a,onClose,onBusyChange)=><AppointmentWorkspace documentClient={documentClient} patient={p} appointment={a} plans={plans} onBusyChange={onBusyChange} onSave={async draft=>{
     window.__saveCalls=(window.__saveCalls||0)+1;
     if(new URLSearchParams(location.search).has('fail'))throw new Error('Errore di prova');
     let nextId=100+plans.length;

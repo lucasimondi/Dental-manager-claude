@@ -4016,3 +4016,14 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - LIMITS: sequential writes, not atomic; no new row locking/idempotency backend mechanism. After uncertain write, no automatic retry and open form blocks resubmission, showing confirmed count. Treatment not automatically executed/paid; no plan auto-acceptance. PDF generation remains explicit in its section. Nonmedical drafts retained while sheet stays open; not persisted after closing/reload. Existing doc archive behavior unchanged.
 - ROLLBACK: revert dedicated PR; no database operation; immutable stable/2026-08-27-full-recovery preserved.
 - NEXT: complete final-head browser CI and screenshot review; mark ready only when passing, then explicit PO Mergia for merge and verified Vercel release.
+
+## 2026-10-21 — Codex — APPOINTMENT-DOCUMENTS
+- OWNER: Codex; previous APPOINTMENT-RAPID-FORM PR #240 merged at 85382ebc with Vercel success. Branch codex/appointment-documents from that master.
+- OBJECTIVE: retrieve quotes and prescriptions inside the appointment without opening the patient record.
+- COMPLETED: top-of-form Documenti del paziente accordion; recent items, all/search and quote/prescription filters; canonical saved plans exposed as Preventivo / piano. Medical metadata uses existing archive schema, PDF fetched on demand. Existing in-app PDF viewer/download/share returns to mounted drafts. App plan updates and successful DocMedico archive callback refresh the list; reopening reloads saved records.
+- FILES: AppointmentDocuments, appointmentDocuments service, AppointmentWorkspace JSX/CSS, service/browser tests/fixture, architecture and coordination.
+- DATABASE / AUTH / FINANCE / DEPLOYMENT: no changes to schema, RLS, tenancy, capabilities, formulas, archive settings or deployment; no production operations.
+- VALIDATION: local 1433/1433 Node tests and Studio build pass; Personal build and final-head browser CI outcomes recorded in PR. Tests use synthetic data only, metadata-only reads, error propagation and patient filtering; browser covers filters, search, recipe/quote PDFs, return with drafts, saved quote retrieval after reopening at all four widths/engines.
+- LIMITS: patient-wide documents, not a new appointment linkage. Quote PDF regenerated from canonical current plan; exact historical snapshots unchanged. Medical retention follows existing opt-in settings/successful archive writes. No physical iPhone test claimed.
+- ROLLBACK: revert dedicated PR; no migration; immutable stable/2026-08-27-full-recovery preserved.
+- NEXT: review final diff, finish final-head browser CI/screenshots; mark WAITING_PRODUCT_OWNER only after passing, explicit PO Mergia before merge and verify Vercel.
