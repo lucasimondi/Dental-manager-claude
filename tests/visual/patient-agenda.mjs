@@ -31,7 +31,8 @@ try {
       await page.locator('.agenda-mobile-calendar-scroller').evaluate((el, width)=>el.scrollTop=width<768?440:150, width);
       // A conflicting duration must be rejected even when only the tail overlaps.
       const slot=page.locator('[data-agenda-date="2026-10-23"][data-agenda-slot="11:00"]');
-      await slot.scrollIntoViewIfNeeded();
+      await slot.evaluate(el=>el.scrollIntoView({block:'center'}));
+      await page.screenshot({path:`${out}/${engine}-${width}-agenda-compressed.png`});
       await page.evaluate(()=>window.__failSave=true);
       await slot.click();
       await page.getByText('Salvataggio di prova rifiutato',{exact:true}).waitFor();
