@@ -292,14 +292,15 @@ export function EventBlock({ title, top, height, co, onClick, startTime, descrip
 
 export function AppointmentBlock({ a, label, aCapo = false, co, top, height, col = 0, totalCols = 1, isBeingResized = false, isBeingMoved = false, selectionMode: selModeWA = false, selectable: isSelezionabileWA = false, selected: isSelected = false, operatore, poltrona, onMoveMouse, onMoveTouch, onOpen, onResizeMouse, onResizeTouch, selectionIndicator, readOnly = false, touchScroll = false }) {
   const widthPct = 100 / totalCols, leftPct = col * widthPct;
-  return (                    <div data-appointment-id={a.id} onClick={readOnly || touchScroll ? onOpen : undefined} style={{ position: 'absolute', top, left: `calc(${leftPct}% + 2px)`, width: `calc(${widthPct}% - 4px)`, height, background: co, borderRadius: 5, overflow: 'hidden', zIndex: isBeingResized || isBeingMoved ? 10 : 2, borderLeft: `3px solid ${co}DD`, boxShadow: isBeingResized || isBeingMoved ? '0 6px 16px rgba(0,0,0,0.35)' : '0 1px 3px rgba(0,0,0,0.15)', userSelect: 'none', opacity: isBeingMoved ? 0.85 : (selModeWA && !isSelezionabileWA ? 0.35 : 1), outline: isSelected ? '2.5px solid #25D366' : 'none', outlineOffset: -1 }}>
+  const dense = aCapo && totalCols > 1;
+  return (                    <div title={[a.ora, label, a.tipo].filter(Boolean).join(' · ')} data-appointment-id={a.id} onClick={readOnly || touchScroll ? onOpen : undefined} style={{ position: 'absolute', top, left: `calc(${leftPct}% + 2px)`, width: `calc(${widthPct}% - 4px)`, height, background: co, borderRadius: 5, overflow: 'hidden', zIndex: isBeingResized || isBeingMoved ? 10 : 2, borderLeft: `3px solid ${co}DD`, boxShadow: isBeingResized || isBeingMoved ? '0 6px 16px rgba(0,0,0,0.35)' : '0 1px 3px rgba(0,0,0,0.15)', userSelect: 'none', opacity: isBeingMoved ? 0.85 : (selModeWA && !isSelezionabileWA ? 0.35 : 1), outline: isSelected ? '2.5px solid #25D366' : 'none', outlineOffset: -1 }}>
                       {/* Contenuto appuntamento — in modalità selezione tocca per selezionare/deselezionare;
                           altrimenti trascina per spostare l'orario, tocca/clicca senza muovere per aprire il menu azioni */}
                       <div
                         onMouseDown={touchScroll ? undefined : onMoveMouse}
                         onTouchStart={touchScroll ? undefined : onMoveTouch}
                         onClick={onOpen}
-                        style={{ padding: '2px 5px', cursor: selModeWA ? (isSelezionabileWA ? 'pointer' : 'not-allowed') : (readOnly ? 'pointer' : isBeingMoved ? 'grabbing' : 'grab'), paddingBottom: height > 26 ? 9 : 2, touchAction: readOnly || touchScroll ? 'pan-y' : 'none' }}
+                        style={{ padding: dense ? '2px 1px' : '2px 5px', cursor: selModeWA ? (isSelezionabileWA ? 'pointer' : 'not-allowed') : (readOnly ? 'pointer' : isBeingMoved ? 'grabbing' : 'grab'), paddingBottom: height > 26 ? 9 : 2, touchAction: readOnly || touchScroll ? 'pan-y' : 'none' }}
                       >
                         {operatore && !selModeWA && (
                           <div title={operatore.nome} style={{ position: 'absolute', top: 3, right: 3, width: 7, height: 7, borderRadius: '50%', background: operatore.colore, border: '1px solid rgba(255,255,255,0.8)' }} />
@@ -307,8 +308,8 @@ export function AppointmentBlock({ a, label, aCapo = false, co, top, height, col
                         {poltrona && !selModeWA && (
                           <div title={poltrona.nome} style={{ position: 'absolute', top: 3, right: operatore ? 13 : 3, width: 7, height: 7, borderRadius: 2, background: poltrona.colore, border: '1px solid rgba(255,255,255,0.8)' }} />
                         )}
-                        <div style={{ fontSize: 9, lineHeight: '10px', fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(() => { const [h, m] = String(a.ora || '00:00').split(':').map(Number); const fine = ((h || 0) * 60 + (m || 0) + Number(a.durata || 0)) % (24 * 60); return `${String(h || 0).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}–${String(Math.floor(fine / 60)).padStart(2, '0')}:${String(fine % 60).padStart(2, '0')}`; })()}</div>
-                        {height > 18 && <div style={{ fontSize: aCapo ? 9 : 8, lineHeight: aCapo ? '10px' : '9px', fontWeight: aCapo ? 800 : undefined, color: 'rgba(255,255,255,0.94)', overflow: 'hidden', ...(aCapo ? { whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'break-word' } : { textOverflow: 'ellipsis', whiteSpace: 'nowrap' }) }}>{label || a.tipo || 'Appuntamento'}</div>}
+                        <div style={{ fontSize: dense ? 8 : 9, lineHeight: '10px', fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(() => { const [h, m] = String(a.ora || '00:00').split(':').map(Number); const fine = ((h || 0) * 60 + (m || 0) + Number(a.durata || 0)) % (24 * 60); return `${String(h || 0).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}–${String(Math.floor(fine / 60)).padStart(2, '0')}:${String(fine % 60).padStart(2, '0')}`; })()}</div>
+                        {height > 18 && <div style={{ fontSize: aCapo ? 9 : 8, lineHeight: aCapo ? '10px' : '9px', fontWeight: aCapo ? 800 : undefined, color: 'rgba(255,255,255,0.94)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label || a.tipo || 'Appuntamento'}</div>}
                         {height > 44 && a.tipo && a.tipo !== label && <div style={{ fontSize: 8, lineHeight: '9px', color: 'rgba(255,255,255,0.7)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.tipo}</div>}
                       </div>
                       {/* Checkbox selezione — solo in modalità invio WhatsApp di massa */}
