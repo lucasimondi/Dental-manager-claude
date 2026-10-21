@@ -1141,9 +1141,8 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker hiddenCount={tuttiImpegni.filter(i => !agendaVisible(i, 'studio')).length + appointments.filter(a => !agendaVisible(a, 'studio')).length} showHidden={mostraEsclusi} onToggleHidden={() => setMostraEsclusi(x => !x)} palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>}
         />
       )}
-      {view === 'mese' && isMobile && followUpControls}
       {view === 'mese' && isMobile && (
-        <MonthToolbar date={vd} overlayRef={overlayRef}>
+        <MonthToolbar date={vd} overlayRef={overlayRef} floatingFooter={followUpControls}>
               {notificheBell}
               {filtroButton}
               <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 14, padding: '5px 10px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
