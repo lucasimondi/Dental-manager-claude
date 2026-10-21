@@ -6,6 +6,7 @@ import { agendaVisible, keepOccupiedWeekends } from '../../shared/agenda/visibil
 import { layoutAgendaDay, layoutAppointments as layoutOverlap } from '../../shared/agenda/geometry.js';
 import { readAgendaLocation } from '../../shared/agenda/navigation.js';
 import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, EventBlock, AppointmentBlock, useSlotHeight, AgendaSwitch, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState, useGridSwipe } from '../../shared/agenda/AgendaPresentation.jsx';
+import { createPortal } from 'react-dom';
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker, SelettorePaziente, EmptyState, PageHeader } from './ui';
 import WaAction, { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
@@ -63,6 +64,10 @@ const startOfWeek = (d) => {
   dt.setDate(dt.getDate() + (day === 0 ? -6 : 1 - day));
   return dt;
 };
+
+function AppointmentMenuLayer({ portal, children }) {
+  return portal ? createPortal(children, document.body) : children;
+}
 
 function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno, onSwipeDay, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight, followUpMode, onOccupiedSlot, canPrescribe = true }) {
   const containerRef = useRef(null); // unico scroll container
@@ -269,6 +274,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
           { id: 'del', label: 'Elimina', ic: 'del', col: C.dan, onClick: () => { setMenuApp(null); delApp(menuApp.id); } },
         ];
         return (
+          <AppointmentMenuLayer portal={!!renderAppointmentWorkspace && !!p}>
           <div
             onClick={() => { if (!renderAppointmentWorkspace) setMenuApp(null); }}
             className="pol-modal-backdrop agenda-appointment-menu-backdrop"
@@ -284,7 +290,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
               '--agenda-mobile-overlay-clearance-menu': `${mobileOverlayHeight}px`,
             }}
           >
-            <div onClick={e => e.stopPropagation()} className={`pol-modal-sheet agenda-appointment-menu-sheet${renderAppointmentWorkspace && p ? ' appointment-workspace-sheet' : ''}`} style={{ background: C.sur, width: '100%', maxWidth: renderAppointmentWorkspace && p ? 1040 : 480, overflow: 'hidden' }}>
+            <div onClick={e => e.stopPropagation()} role={renderAppointmentWorkspace && p ? "dialog" : undefined} aria-modal={renderAppointmentWorkspace && p ? true : undefined} aria-label={renderAppointmentWorkspace && p ? "Appuntamento" : undefined} className={`pol-modal-sheet agenda-appointment-menu-sheet${renderAppointmentWorkspace && p ? ' appointment-workspace-sheet' : ''}`} style={{ background: C.sur, width: '100%', maxWidth: renderAppointmentWorkspace && p ? 1040 : 480, overflow: 'hidden' }}>
               <div className="agenda-appointment-menu-header" style={{ padding: '14px 18px', borderBottom: `1px solid ${C.brd}`, display: 'flex', alignItems: 'center', gap: 9 }}>
                 <div style={{ width: 10, height: 10, borderRadius: '50%', background: co, flexShrink: 0 }} />
                 <div style={{ minWidth: 0 }}>
@@ -368,6 +374,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
               <div aria-hidden="true" className="agenda-appointment-menu-safe-area" style={{ height: 'env(safe-area-inset-bottom,12px)' }} />
             </div>
           </div>
+          </AppointmentMenuLayer>
         );
       })()}
     </div>

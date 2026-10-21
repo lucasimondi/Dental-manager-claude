@@ -17,6 +17,7 @@ try{
    const open=async(suffix='')=>{
     await page.goto('http://127.0.0.1:5173/tests/visual/appointment-workspace.html?agenda=1&agendaDate=2026-10-23&agendaView=giorno'+suffix);
     const card=page.locator('[data-appointment-id="3"]');await card.evaluate(el=>el.scrollIntoView({block:'center'}));await card.click();await page.getByRole('navigation',{name:'Operazioni appuntamento'}).waitFor();
+    assert.equal(await page.getByRole('button',{name:'Chiudi appuntamento',exact:true}).evaluate(el=>{const b=el.getBoundingClientRect();return el.contains(document.elementFromPoint(b.x+b.width/2,b.y+b.height/2))}),true,'agenda overlays cannot cover the sheet');
    };
    await open();
    const ws=page.getByRole('region',{name:'Scheda appuntamento'}),nav=ws.getByRole('navigation');
