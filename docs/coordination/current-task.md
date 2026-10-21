@@ -6,4 +6,4 @@
 - STATUS: WAITING_PRODUCT_OWNER — implementation complete; draft PR #240 and final-head CI/screenshots required before ready. Explicit Mergia required for release.
 - DATABASE: existing adapter and schema only; no migration, tenancy/RLS/formula changes. Confirm writes before close; explicit non-atomic failure handling.
 - ROLLBACK: revert dedicated PR; immutable stable checkpoint preserved.
-- VALIDATION: 1430/1430 local Node tests and both builds pass. Final browser evidence and screenshots recorded in PR #240; no production operations.
+- VALIDATION: 1431/1431 local Node tests and both builds pass. Final browser evidence and screenshots recorded in PR #240; no production operations.

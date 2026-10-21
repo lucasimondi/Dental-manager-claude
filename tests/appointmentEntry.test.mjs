@@ -40,3 +40,7 @@ test('JSONB key order does not turn a confirmed plan update into a false failure
  let current=plan(20);const db={getById:async k=>k==='dm_p'?patient:k==='dm_a'?appointment:current,getAll:async()=>[current],update:async(k,id,row)=>{current={...row,id,voci:row.voci.map(v=>Object.fromEntries(Object.entries(v).reverse()))}},insert:async(k,row)=>({...row,id:900})};
  const r=await persistAppointmentEntry({db,patient,appointment,draft:{...draft,planId:'20',amount:''}});assert.equal(r.completed,1);
 });
+test('an explicit quote deposit awaits the saved quote ID, without creating a treatment',async()=>{
+ const calls=[];const db={getById:async k=>k==='dm_p'?patient:appointment,getAll:async()=>[],insert:async(k,row)=>{calls.push([k,row]);return {...row,id:k==='dm_pl'?600:901}}};
+ await persistAppointmentEntry({db,patient,appointment,draft:{...draft,items:[],quoteItems:[{description:'Preventivo',price:'200'}],paymentPlanId:'quote'}});assert.equal(calls.length,2);assert.equal(calls[0][1].voci[0].eseguita,false);assert.equal(calls[1][1].pianoId,600);
+});

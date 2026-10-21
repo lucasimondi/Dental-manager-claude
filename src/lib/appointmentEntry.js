@@ -31,7 +31,10 @@ export function prepareAppointmentEntry({ patient, appointment, plans, draft }) 
     if (!Number.isFinite(amount) || amount <= 0) throw new Error('Inserisci un incasso maggiore di zero oppure lascia vuoto.');
     const assignment = planAssignmentForPatient(patientPlans, patient.id);
     let target = null;
-    if (draft.paymentPlanId === 'treatment' || (draft.paymentPlanId === 'context' && treatment)) {
+    if (draft.paymentPlanId === 'quote') {
+      if (!quote) throw new Error('Compila il preventivo per collegare questo incasso.');
+      target = 'quote';
+    } else if (draft.paymentPlanId === 'treatment' || (draft.paymentPlanId === 'context' && treatment)) {
       if (!treatment) throw new Error('Compila una prestazione per collegare questo incasso.');
       target = 'treatment';
     } else if (draft.paymentPlanId && draft.paymentPlanId !== 'context') {
@@ -55,7 +58,7 @@ export async function persistAppointmentEntry({ db, patient, appointment, draft,
     ]);
     if (!freshPatient || String(freshPatient.id) !== String(patient.id) || !freshAppointment || String(freshAppointment.id) !== String(appointment.id) || String(freshAppointment.pazienteId) !== String(patient.id)) throw new Error('Impossibile verificare il paziente dell’appuntamento.');
     const prepared = prepareAppointmentEntry({ patient: freshPatient, appointment: freshAppointment, plans, draft });
-    let treatmentId;
+    let treatmentId, quoteId;
     const savePlan = async (plan, kind) => {
       writesStarted = true;
       let saved;
@@ -70,10 +73,10 @@ export async function persistAppointmentEntry({ db, patient, appointment, draft,
       completed++; onApplied('plan', saved); return saved.id;
     };
     if (prepared.treatment) treatmentId = await savePlan(prepared.treatment.plan, prepared.treatment.kind);
-    if (prepared.quote) await savePlan(prepared.quote, 'insert');
+    if (prepared.quote) quoteId = await savePlan(prepared.quote, 'insert');
     if (prepared.payment) {
       const { target, ...payload } = prepared.payment;
-      const pianoId = target === 'treatment' ? treatmentId : target;
+      const pianoId = target === 'treatment' ? treatmentId : target === 'quote' ? quoteId : target;
       writesStarted = true;
       const saved = await db.insert('dm_py', { ...payload, ...(pianoId != null ? { pianoId } : {}) });
       if (!saved?.id || String(saved.pazienteId) !== String(patient.id)) throw new Error('Incasso non confermato.');
