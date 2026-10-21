@@ -3994,3 +3994,14 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - LIMITS: treatment still belongs to an existing or explicitly created plan; no silent plan creation or clinical/financial state transition. Existing optimistic plan/payment setters are unchanged. Normal V2 browsing retains its existing controls; explicit actions enter the stable forms.
 - ROLLBACK: revert PR; no migration; immutable stable/2026-08-27-full-recovery preserved.
 - NEXT: complete final-head tests and browser QA, inspect diff, wait for PO Mergia before release.
+
+## 2026-10-21 — Codex — APPOINTMENT-WORKSPACE
+- OWNER: Codex; previous AGENDA-PATIENT-ACTIONS PR #238 merged and Vercel success verified. Branch codex/appointment-workspace from 3d31bb4.
+- OBJECTIVE: large appointment sheet containing treatment, payment, prescription, manual/list-price quote and document editing without opening the patient record.
+- COMPLETED: render slot in existing Agenda menu, responsive large sheet, embedded existing editors, persistent mounted visited panels, patient identity/vertical checks, grouped legacy actions, shared page scroll lock. Patient-wide canonical balance summary; no appointment-specific financial claim. Existing Piani/Incasso/DocMedico routes remain default.
+- FILES: App, Agenda, AppointmentWorkspace JSX/CSS, EmbeddedForm, Piani, IncassoModal, DocMedico, source regression expectations, synthetic browser fixture/runner/workflow, architecture and coordination.
+- DATABASE / AUTH / FINANCE / DEPLOYMENT: no migrations, policies, capabilities, financial formulas or deployment architecture changed; no production data operations.
+- VALIDATION: 1422/1422 local Node tests, Studio and Personal builds pass; final diff and browser CI pending in draft PR. Source tests updated only to account for optional embedded mode. No physical iPhone or real-account validation.
+- LIMITS: save per module, not atomic batch; existing optimistic setters preserved. Treatment belongs to a plan; without one the operator explicitly creates it. Drafts retained during section switches; closing/reloading does not guarantee recovery of unsaved in-memory fields. Summary is patient-wide. No SSN prescription integration.
+- ROLLBACK: revert dedicated PR; no database operation; immutable stable/2026-08-27-full-recovery preserved.
+- NEXT: complete final-head browser CI, inspect screenshots and diff; mark ready after passing checks; explicit PO Mergia required before merge/deploy.

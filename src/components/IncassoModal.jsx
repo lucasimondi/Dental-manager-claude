@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import EmbeddedForm from './EmbeddedForm.jsx';
 import { Btn, Fld, Inp, Modal, Sel, SelettorePaziente } from './ui';
 import { fmt, uid } from '../lib/utils';
 import { planAssignmentForPatient } from '../lib/domain/incassiActions.js';
@@ -11,7 +12,7 @@ const today = () => new Date().toISOString().slice(0, 10);
    prestazione's own amount, editable — instead of a second, parallel
    incasso form. Incassi.jsx itself now renders this component too; nothing
    about the resulting payments row (piano_id, stato:'pagato') changed. */
-export default function IncassoModal({ prefill, patients = [], plans = [], setPayments, onClose, onSaved }) {
+export default function IncassoModal({ prefill, patients = [], plans = [], setPayments, onClose, onSaved, embedded = false }) {
   // POL-FIN-007e: pianoContext is informational only (atteso/già pagato on
   // the locked plan, computed by the caller) — kept out of editable form
   // state so it can't be silently sent as a payment field.
@@ -53,9 +54,10 @@ export default function IncassoModal({ prefill, patients = [], plans = [], setPa
     onClose?.();
   };
 
+  const Frame = embedded ? EmbeddedForm : Modal;
   return (
-    <Modal title="Registra incasso" icon="eur" onClose={onClose} mobileVariant="sheet">
-      {!state.lockedPianoId && (
+    <Frame title="Registra incasso" icon="eur" onClose={onClose} mobileVariant="sheet">
+      {!embedded && !state.lockedPianoId && (
         <Fld label="Paziente"><SelettorePaziente patients={patients} value={state.pazienteId} onChange={(pazienteId) => update({ pazienteId, pianoId: '' })} search={pazSearch} onSearchChange={setPazSearch} autoFocus /></Fld>
       )}
       {needsPlanChoice && (
@@ -105,6 +107,6 @@ export default function IncassoModal({ prefill, patients = [], plans = [], setPa
       </div>
       {error && <p className="incassi-form-error" role="alert">{error}</p>}
       <div className="incassi-form-actions"><Btn ch="Annulla" v="sec" onClick={onClose} full /><Btn ch="Salva" onClick={save} full /></div>
-    </Modal>
+    </Frame>
   );
 }

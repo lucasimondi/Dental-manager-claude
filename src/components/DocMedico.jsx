@@ -107,7 +107,7 @@ In caso di allineatore rotto, perso o che non calza più correttamente, contatta
 // card "Paziente" subito sopra i campi del documento. In quel caso `paz`
 // può essere null finché l'utente non sceglie o crea il paziente: il form
 // è già compilabile, solo "Genera PDF" resta bloccato.
-export default function DocMedico({ paz, si, onClose, initialType, initialPrefill, requestId, onInitialRequestHandled, onDocumentSaved, pazienteSelector }) {
+export default function DocMedico({ paz, si, onClose, initialType, initialPrefill, requestId, onInitialRequestHandled, onDocumentSaved, pazienteSelector, embedded = false }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   // La ricetta medica richiede l'iscrizione all'Ordine dei Medici e Odontoiatri:
   // disponibile solo per dentisti e medici chirurghi, non per altri professionisti sanitari.
@@ -130,6 +130,11 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
     if (tipoSalvato && tipiDisponibili.some((t) => t.id === tipoSalvato)) return tipoSalvato;
     return puoiPrescrivere ? 'ricetta' : 'certificato';
   });
+  useEffect(() => {
+    if (embedded && initialType && tipiDisponibili.some(t => t.id === initialType)) {
+      setTipoCorrente(initialType); setGenerated(false);
+    }
+  }, [embedded, initialType]);
   const setTipo = (nuovo) => { setTipoCorrente(nuovo); setTipoSalvato(nuovo); };
   const [data, setData] = useState(today());
   const [generated, setGenerated] = useState(false);
@@ -149,7 +154,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
   const farmaciSectionRef = useRef(null);
   const pazienteSectionRef = useRef(null);
   useEffect(() => {
-    if (initialType !== 'ricetta' || !puoiPrescrivere) return;
+    if (embedded || initialType !== 'ricetta' || !puoiPrescrivere) return;
     (pazienteSectionRef.current || farmaciSectionRef.current)?.scrollIntoView({ block: 'start' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -705,7 +710,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
   // never overlaps it, matching the very picker Modal that opens this
   // screen.
   return (
-    <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 9999, display: 'flex', flexDirection: 'column' }}>
+    <div className={embedded ? 'appointment-document-editor' : undefined} style={{ position: embedded ? 'relative' : 'fixed', inset: embedded ? undefined : 0, background: C.bg, zIndex: embedded ? undefined : 9999, display: 'flex', flexDirection: 'column' }}>
       {/* HEADER */}
       <div style={{ background: C.priD, padding: '12px 14px', paddingTop: 'max(12px,env(safe-area-inset-top))', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
         <button onClick={chiudi} aria-label="Indietro" style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 10, padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -719,7 +724,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
 
       <div data-document-scroll="true" style={{ flex: 1, overflowY: 'auto', padding: 14, paddingBottom: 'calc(124px + env(safe-area-inset-bottom, 0px))', scrollPaddingBottom: 'calc(124px + env(safe-area-inset-bottom, 0px))' }}>
         {/* TIPO DOCUMENTO */}
-        <Crd style={{ marginBottom: 14 }}>
+        {!(embedded && initialType === 'ricetta') && <Crd style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10 }}>Tipo documento</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {tipiDisponibili.map(t => (
@@ -729,7 +734,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
               </button>
             ))}
           </div>
-        </Crd>
+        </Crd>}
 
         {/* DATA */}
         <Crd style={{ marginBottom: 14 }}>

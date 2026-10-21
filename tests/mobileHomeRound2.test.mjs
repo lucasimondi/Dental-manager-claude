@@ -325,7 +325,7 @@ test('ROUND 4 (rev. azioni rapide mobile): Home "Ricetta" opens the full DocMedi
 });
 
 test('DocMedico accepts a caller-supplied patient picker and blocks PDF generation until a patient is chosen', () => {
-  assert.match(docMedicoSrc, /onDocumentSaved, pazienteSelector \}\) \{/);
+  assert.match(docMedicoSrc, /onDocumentSaved, pazienteSelector, embedded = false \}\) \{/);
   assert.match(docMedicoSrc, /\{pazienteSelector && \(\s*<div ref=\{pazienteSectionRef\}>/);
   // The patient card sits right above the Farmaci section, so scrolling it
   // to the top shows patient + prescription fields together.
@@ -349,7 +349,7 @@ test('ROUND 4: App.jsx\'s goSchedaPaz forwards an optional documentRequest into 
 
 test('ROUND 5: DocMedico scrolls the Farmaci prescritti section into view on open when the type was already decided by the caller', () => {
   assert.match(docMedicoSrc, /const farmaciSectionRef = useRef\(null\);/);
-  assert.match(docMedicoSrc, /if \(initialType !== 'ricetta' \|\| !puoiPrescrivere\) return;/);
+  assert.match(docMedicoSrc, /if \(embedded \|\| initialType !== 'ricetta' \|\| !puoiPrescrivere\) return;/);
   assert.match(docMedicoSrc, /\(pazienteSectionRef\.current \|\| farmaciSectionRef\.current\)\?\.scrollIntoView\(\{ block: 'start' \}\)/);
   // The ref must actually be attached to the Farmaci prescritti block, and
   // the effect must run once on mount (not on every tipo change), or it
@@ -372,7 +372,7 @@ test('ROUND 6: DocMedico opens ABOVE the floating dock/orb, not underneath it', 
   // Dock: 1100, PoliedronOrb/EdgeDock: 1200, PoliedronPanel: 1300/1301 —
   // DocMedico must clear all of them. 9999 is the same tier this app's
   // own Modal.jsx already uses for a real full-screen takeover.
-  assert.match(docMedicoSrc, /zIndex: 9999, display: 'flex', flexDirection: 'column' \}\}>/);
+  assert.match(docMedicoSrc, /zIndex: embedded \? undefined : 9999, display: 'flex', flexDirection: 'column' \}\}>/);
   assert.doesNotMatch(docMedicoSrc, /zIndex: 500/, 'the old under-the-dock z-index must be gone');
   // The loading fallback (before DocMedico itself has mounted) must match,
   // or the dock would briefly cover the spinner then jump behind it.

@@ -1,0 +1,11 @@
+# Appointment workspace
+
+The Studio adapter composes AppointmentWorkspace inside the existing Agenda appointment sheet through a render slot. The same menu state keeps date, selection and scroll intact. On mobile the sheet covers the viewport above the dock; desktop uses a large centered sheet. Existing appointment actions are grouped below under Altre azioni appuntamento. Missing patients retain the existing disabled-action menu. Identity mismatches fail closed.
+
+Treatment uses the existing PianoDrillDown, including manual/list-price entry, explicit eligible-plan choice and no automatic execution or payment. A patient without plans explicitly creates the first plan. Quote creation uses Piani's actual editor in embedded mode, with the patient fixed, a separate draft namespace and no navigation-position side effects. The ordinary Piani page and modal stay the default. Quotes retain the existing lifecycle, discounts, multi-tooth entry and PDF view from PianoDrillDown.
+
+Payment uses IncassoModal embedded; the same save and allocation logic is preserved. Medical documents use a single mounted DocMedico editor, with the same prescribing-vertical gate, doctor confirmation, PDF, archive and delivery workflow. Switching Ricetta/Documenti changes only the selected type, preserving the shared editor's fields. Other visited panels remain mounted and hidden rather than remounted on tab changes. Explicit cancel/save keeps existing semantics; closing the entire sheet is not a batch save. Unsaved in-memory fields are retained while switching panels, not promised after closing/reloading.
+
+Summary labels are patient-wide, never claimed to be appointment balances: the existing get_saldo_piano service and aggregateSaldi provide totals/receivables; actual patient receipts use totalePagatoPaziente. No new financial formulas, appointment/payment links, tables, migrations, RLS, auth or deployment changes. Existing optimistic setters remain unchanged. Page scroll lock uses the existing shared reference-counted helper and releases on unmount.
+
+Validation: synthetic actual-component browser flow in Chromium/WebKit at 375/768/1024/1440, external requests intercepted; legacy action tests retained. No production records or physical iPhone validation. Rollback: revert dedicated PR, no database rollback. Immutable stable checkpoint preserved.
