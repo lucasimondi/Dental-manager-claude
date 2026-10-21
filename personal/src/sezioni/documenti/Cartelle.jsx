@@ -1,3 +1,5 @@
+import { tuttiDocumentiCartella, annoDocumento } from '../../lib/fascicolo.js';
+import { AzioniFascicolo } from './AzioniFascicolo.jsx';
 import { areaArchivio, avvisoCartella } from '../../lib/revisioneArchivio.js';
 import { scadenzeRevisione } from '../../lib/archivio.js';
 import { ScorriElimina } from '../../ScorriElimina.jsx';
@@ -36,7 +38,7 @@ export function VistaCartelle({ ctx, anchePocoUtili = false }) {
   const [avvisi, setAvvisi] = useState({});
   const [testo, setTesto] = useState('');
   const [etichetta, setEtichetta] = useState(null);
-  const [stato, setStato] = useState('attive');
+  const [stato, setStato] = useState(null);
   const [suggeriti, setSuggeriti] = useState(0);
   const [modo, setModoStato] = useState(leggiModo);
   const setModo = (m) => { setModoStato(m); try { localStorage.setItem(MODO_KEY, m); } catch { /* facoltativo */ } };
@@ -85,7 +87,7 @@ export function VistaCartelle({ ctx, anchePocoUtili = false }) {
         </Gruppo>
       )}
       <div className="pp-filtri">
-        {[['attive', 'Attive'], ['aperta', 'Aperte'], ['in_attesa', 'In attesa'], ['chiusa', 'Chiuse']].map(([id, nome]) => (
+        {[[null, 'Tutte'], ['attive', 'Attive'], ['aperta', 'Aperte'], ['in_attesa', 'In attesa'], ['chiusa', 'Chiuse']].map(([id, nome]) => (
           <button key={id} className={`pp-filtro${stato === id ? ' attivo' : ''}`} onClick={() => setStato(id)}>{nome}</button>
         ))}
       </div>
@@ -146,6 +148,7 @@ export function VistaCartelle({ ctx, anchePocoUtili = false }) {
 export function PaginaCartella({ ente: enteIniziale, ctx, chiudi, sostituisci }) {
   const { esegui, aggiorna, mostra, versione, fascicoli, apri } = ctx;
   const [ente, setEnte] = useState(enteIniziale);
+  const [anno, setAnno] = useState(null);
   const [info, setInfo] = useState(null);
   const [documenti, setDocumenti] = useState(null);
   const [promemoria, setPromemoria] = useState([]);
@@ -157,13 +160,15 @@ export function PaginaCartella({ ente: enteIniziale, ctx, chiudi, sostituisci })
 
   useEffect(() => {
     esegui(async () => {
-      const [c, docs] = await Promise.all([caricaCartella(archivioDb, ente), cercaArchivio(archivioDb, { ente, anchePocoUtili: true, limite: 400 })]);
+      const [c, docs] = await Promise.all([caricaCartella(archivioDb, ente), tuttiDocumentiCartella(archivioDb, ente)]);
       setInfo(c);
       setDocumenti(docs);
       setPromemoria(await promemoriaCartella(archivioDb, ente, docs.map((d) => d.id)));
     });
   }, [ente, esegui, versione, rinfresca]);
 
+  const anni = [...new Set((documenti || []).map(annoDocumento))].sort().reverse();
+  const contenuti = anno ? (documenti || []).filter((d) => annoDocumento(d) === anno) : documenti;
   const contatti = useMemo(() => contattiCartella(documenti), [documenti]);
   const sintesi = leggiSintesi(info?.sintesi);
   const ricarica = () => { setRinfresca((n) => n + 1); aggiorna(); };
@@ -216,7 +221,7 @@ export function PaginaCartella({ ente: enteIniziale, ctx, chiudi, sostituisci })
         {info?.stato && info?.stato_dal && <p className="pp-riga-meta">{STATI[info.stato]} dal {dataBreve(info.stato_dal)}{info.stato === 'in_attesa' ? ` · da ${giorniDa(info.stato_dal)} giorni` : ''}</p>}
         {info?.note && <p className="pp-cartella-note">{info.note}</p>}
         <div className="pp-cartella-azioni">
-          <button onClick={analizza} disabled={!!lavoro}><IconaChat size={18} /><span>Sintesi AI</span></button>
+          <button onClick={analizza} disabled={!!lavoro}><IconaChat size={18} /><span>Sintesi catalogo</span></button>
           <button onClick={() => setPannello(pannello === 'bozza' ? null : 'bozza')}><IconaEmail size={18} /><span>Rispondi</span></button>
           <button onClick={() => setPannello(pannello === 'promemoria' ? null : 'promemoria')}><IconaCalendario size={18} /><span>Promemoria</span></button>
           <button onClick={() => setPannello(pannello === 'modifica' ? null : 'modifica')}><IconaStella size={18} /><span>Modifica</span></button>
@@ -224,6 +229,12 @@ export function PaginaCartella({ ente: enteIniziale, ctx, chiudi, sostituisci })
         </div>
         {lavoro && <p className="pp-riga-meta"><span className="pp-rotella" /> {lavoro}</p>}
       </section>
+
+      <div className="pp-fascicolo-sottocartelle">
+        <strong>Sottocartelle per anno</strong>
+        <div className="pp-filtri"><button className={`pp-filtro${anno == null ? ' attivo' : ''}`} onClick={() => setAnno(null)}>Tutta la cartella</button>{anni.map((a) => <button key={a} className={`pp-filtro${anno === a ? ' attivo' : ''}`} onClick={() => setAnno(a)}>📁 {a}</button>)}</div>
+      </div>
+      <AzioniFascicolo documenti={contenuti} nome={anno ? `${ente} / ${anno}` : ente} ctx={ctx} />
 
       {pannello === 'promemoria' && (
         <FormPromemoria ente={ente} ctx={ctx} onFatto={(s) => { setPannello(null); setUltimoPromemoria(s); ricarica(); mostra('Promemoria aggiunto: lo trovi in Agenda e in Oggi'); }} onAnnulla={() => setPannello(null)} />
@@ -257,7 +268,7 @@ export function PaginaCartella({ ente: enteIniziale, ctx, chiudi, sostituisci })
       )}
 
       {sintesi && (
-        <Sezione titolo="Sintesi" azione={<span className="pp-riga-meta">{info?.sintesi_il ? `aggiornata ${dataBreve(info.sintesi_il)}` : ''}</span>}>
+        <Sezione titolo="Sintesi del catalogo (massimo 80 documenti)" azione={<span className="pp-riga-meta">{info?.sintesi_il ? `aggiornata ${dataBreve(info.sintesi_il)}` : ''}</span>}>
           <div className="pp-pannello pp-sintesi">
             {sintesi.sintesi && <p>{sintesi.sintesi}</p>}
             {sintesi.punti?.length > 0 && <ul>{sintesi.punti.map((p) => <li key={p}>{p}</li>)}</ul>}
@@ -303,7 +314,7 @@ export function PaginaCartella({ ente: enteIniziale, ctx, chiudi, sostituisci })
       )}
 
       <Sezione titolo="Documenti">
-        <ElencoSelezionabile elenco={documenti} ctx={{ ...ctx, apri }} onCambiato={ricarica} intestazione={`${documenti.length} documenti, dal più recente`} />
+        <ElencoSelezionabile elenco={contenuti} ctx={{ ...ctx, apri }} onCambiato={ricarica} intestazione={`${contenuti.length} documenti${anno ? ` · ${anno}` : ''}, dal più recente`} />
       </Sezione>
     </>
   );

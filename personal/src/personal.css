@@ -815,3 +815,12 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-acquisti-voce input[type="checkbox"] { flex: 0 0 22px; width: 22px; height: 22px; margin: 0; accent-color: var(--pp-blu); }
 .pp-acquisti-testo { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
 .pp-acquisti-comprato { text-decoration: line-through; color: var(--pp-grigio); }
+
+/* Complete folder operations share the page scroll, above the floating dock. */
+.pp-fascicolo-strumenti { margin: 16px 0; display: grid; gap: 14px; min-width: 0; }
+.pp-fascicolo-strumenti .pp-azioni { display: flex; flex-wrap: wrap; gap: 8px; }
+.pp-fascicolo-strumenti .pp-bottone { min-height: 44px; white-space: normal; }
+.pp-fascicolo-strumenti form { display: grid; gap: 8px; }
+.pp-fascicolo-strumenti .pp-testo-lungo { white-space: pre-wrap; overflow-wrap: anywhere; }
+.pp-fascicolo-strumenti details { overflow-wrap: anywhere; }
+.pp-fascicolo-risultati { padding: 12px 0; }

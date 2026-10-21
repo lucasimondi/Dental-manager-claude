@@ -33,7 +33,10 @@ function scriptFinto({ documenti = [], impostazioni = null, pausa = false, fileM
   ctx.sb_ = (percorso, opzioni = {}) => {
     if (!opzioni.method || opzioni.method === 'get') {
       if (percorso.startsWith('impostazioni_app')) return impostazioni ? [{ valore: impostazioni }] : [];
-      if (percorso.startsWith('documenti?select=')) return documenti;
+      if (percorso.startsWith('documenti?select=')) {
+        const offset = Number((percorso.match(/&offset=(\d+)/) || [])[1] || 0);
+        return documenti.slice(offset);
+      }
       if (percorso.startsWith('pratiche')) return [];
       return [];
     }
@@ -79,34 +82,34 @@ test('riserva: priorità delle regole, foto, pubblicità, ente dal dominio, cari
   assert.equal(f('Scansione', 'x.pdf', 'application/pdf', 'luca.simondi@gmail.com').ente, null);
 });
 
-test('Drive: Persone/<Persona> per le persone delle Impostazioni, altrimenti <Categoria>/<anno>', () => {
+test('Drive: cartella dell’app e anno per tutti i documenti personali; clinici separati', () => {
   const { ctx } = scriptFinto();
   const persone = ['Luca Simondi', 'Giulia Simondi'];
-  assert.equal(ctx.percorsoDrive_({ fascicolo: 'identita', persona: 'Giulia Simondi', email_data: '2019-01-01T00:00:00Z' }, persone), 'Persone/Giulia Simondi');
-  assert.equal(ctx.percorsoDrive_({ fascicolo: 'identita', persona: 'Mario Rossi', data_documento: '2012-02-01' }, persone), 'Identità/2012');
-  assert.equal(ctx.percorsoDrive_({ fascicolo: 'utenze', data_documento: null, email_data: '2018-03-05T10:00:00Z' }, persone), 'Utenze/2018');
+  assert.equal(ctx.percorsoDrive_({ fascicolo: 'identita', persona: 'Giulia Simondi', email_data: '2019-01-01T00:00:00Z' }, persone), 'Cartelle/Senza%20cartella/2019');
+  assert.equal(ctx.percorsoDrive_({ fascicolo: 'identita', persona: 'Mario Rossi', data_documento: '2012-02-01' }, persone), 'Cartelle/Senza%20cartella/2012');
+  assert.equal(ctx.percorsoDrive_({ fascicolo: 'utenze', data_documento: null, email_data: '2018-03-05T10:00:00Z' }, persone), 'Cartelle/Senza%20cartella/2018');
   assert.equal(ctx.percorsoDrive_({ fascicolo: 'clinico_pazienti', persona: 'Luca Simondi', email_data: '2020-05-01' }, persone), 'Clinico pazienti/2020', 'i clinici restano nel clinico');
-  assert.equal(ctx.percorsoDrive_({ fascicolo: 'boh', email_data: null }, persone), 'Altro/Senza data');
+  assert.equal(ctx.percorsoDrive_({ fascicolo: 'boh', email_data: null }, persone), 'Cartelle/Senza%20cartella/Senza data');
 });
 
 test('Drive: sposta solo i file fuori posto, segna la cartella; file sparito segnato e non ritentato', () => {
   const documenti = [
     { id: 'a', drive_file_id: 'fileAAAAAAAA', fascicolo: 'utenze', data_documento: '2018-03-02', drive_cartella: null },
-    { id: 'b', drive_file_id: 'fileBBBBBBBB', fascicolo: 'utenze', data_documento: '2018-03-02', drive_cartella: 'Utenze/2018' },
+    { id: 'b', drive_file_id: 'fileBBBBBBBB', fascicolo: 'utenze', data_documento: '2018-03-02', drive_cartella: 'Cartelle/Senza%20cartella/2018' },
     { id: 'c', drive_file_id: 'fileCCCCCCCC', fascicolo: 'identita', persona: 'Martina Simondi', drive_cartella: 'Identità/2019' },
     { id: 'd', drive_file_id: 'fileDDDDDDDD', fascicolo: 'fiscale', data_documento: '2015-06-01', drive_cartella: null },
-    { id: 'e', drive_file_id: 'fileEEEEEEEE', fascicolo: 'fiscale', data_documento: '2015-06-01', drive_cartella: '!Fiscale e tasse/2015' },
+    { id: 'e', drive_file_id: 'fileEEEEEEEE', fascicolo: 'fiscale', data_documento: '2015-06-01', drive_cartella: '!Cartelle/Senza%20cartella/2015' },
   ];
   const { ctx, scritture, spostati } = scriptFinto({ documenti, impostazioni: { persone: ['Martina Simondi'] }, fileMancanti: ['fileDDDDDDDD'] });
   assert.equal(ctx.ordinaDrive_(Date.now() + 60e3), false);
   assert.deepEqual(spostati, [
-    ['fileAAAAAAAA', 'Archivio personale/Utenze/2018'],
-    ['fileCCCCCCCC', 'Archivio personale/Persone/Martina Simondi'],
+    ['fileAAAAAAAA', 'Archivio personale/Cartelle/Senza cartella/2018'],
+    ['fileCCCCCCCC', 'Archivio personale/Cartelle/Senza cartella/Senza data'],
   ]);
   assert.deepEqual(scritture.map((s) => [s.percorso, s.corpo.drive_cartella]), [
-    ['documenti?id=eq.a', 'Utenze/2018'],
-    ['documenti?id=eq.c', 'Persone/Martina Simondi'],
-    ['documenti?id=eq.d', '!Fiscale e tasse/2015'],
+    ['documenti?id=eq.a', 'Cartelle/Senza%20cartella/2018'],
+    ['documenti?id=eq.c', 'Cartelle/Senza%20cartella/Senza data'],
+    ['documenti?id=eq.d', '!Cartelle/Senza%20cartella/2015'],
   ]);
   assert.ok(scritture.every((s) => s.metodo === 'patch'), 'si sposta e si annota, nulla si cancella');
 });

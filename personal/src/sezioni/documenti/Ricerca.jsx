@@ -1,3 +1,5 @@
+import { CartelleRisultati } from '../../CartelleRisultati.jsx';
+import { AzioniFascicolo } from './AzioniFascicolo.jsx';
 // Documenti — pagina di ricerca o elenco (filtri, sezione, oppure un elenco già pronto).
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
@@ -38,7 +40,7 @@ export function PaginaRicerca({ filtri: base = {}, sezione, carica, ctx }) {
         <div className="pp-filtri"><button className={`pp-filtro${anchePocoUtili ? ' attivo' : ''}`} onClick={() => setAnchePocoUtili(!anchePocoUtili)}>{anchePocoUtili ? 'Anche poco utili ✓' : 'Anche poco utili'}</button></div>
       )}
       {!filtrato ? <Vuoto>Carico…</Vuoto> : filtrato.length
-        ? <ElencoSelezionabile elenco={filtrato} ctx={ctx} onCambiato={() => setRinfresca((n) => n + 1)} />
+        ? <><CartelleRisultati documenti={filtrato} ctx={ctx} />{carica && <AzioniFascicolo documenti={filtrato} nome="Documenti di questo elenco" ctx={ctx} />}<ElencoSelezionabile elenco={filtrato} ctx={ctx} onCambiato={() => setRinfresca((n) => n + 1)} /></>
         : <Vuoto>Nessun documento.</Vuoto>}
     </>
   );

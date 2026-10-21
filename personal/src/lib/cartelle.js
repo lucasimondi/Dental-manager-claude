@@ -67,7 +67,13 @@ export const etichettePulite = (xs) => [...new Set((xs || []).map(pulisciEtichet
 
 /* ---------- dati ---------- */
 export async function caricaCartelle(db) {
-  return esito(await db.from('v_cartelle').select('*').order('al', { ascending: false, nullsFirst: false }).limit(2000));
+  const tutte = [];
+  for (let da = 0; ; ) {
+    const pagina = esito(await db.from('v_cartelle').select('*').order('ente').range(da, da + 199));
+    tutte.push(...pagina);
+    if (!pagina.length) return tutte;
+    da += pagina.length;
+  }
 }
 
 export async function cartella(db, ente) {
@@ -77,10 +83,19 @@ export async function cartella(db, ente) {
 
 export async function promemoriaCartella(db, ente, idDocumenti = []) {
   const campi = 'id, data, descrizione, importo, completata, documento_id, cartella';
-  const [propri, deiDocumenti] = await Promise.all([
-    db.from('scadenze').select(campi).eq('cartella', ente).order('data', { ascending: true }).then(esito),
-    idDocumenti.length ? db.from('scadenze').select(campi).in('documento_id', idDocumenti).order('data', { ascending: true }).then(esito) : [],
-  ]);
+  const leggi = async (filtro) => {
+    const tutte = [];
+    for (let da = 0; ; ) {
+      const pagina = esito(await filtro(db.from('scadenze').select(campi)).order('data').order('id').range(da, da + 199));
+      if (!pagina.length) return tutte;
+      tutte.push(...pagina); da += pagina.length;
+    }
+  };
+  const propri = await leggi((q) => q.eq('cartella', ente)), deiDocumenti = [];
+  // Keep URLs below proxy/header limits even for folders with thousands of documents.
+  for (let i = 0; i < idDocumenti.length; i += 50) {
+    deiDocumenti.push(...await leggi((q) => q.in('documento_id', idDocumenti.slice(i, i + 50))));
+  }
   const visti = new Set();
   return [...propri, ...deiDocumenti].filter((s) => (visti.has(s.id) ? false : visti.add(s.id))).sort((a, b) => a.data.localeCompare(b.data));
 }

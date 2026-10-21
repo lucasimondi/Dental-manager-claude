@@ -1,9 +1,8 @@
-# Current task — APPOINTMENT-RAPID-FORM (2026-10-21)
-- OWNER: Codex; branch codex/appointment-rapid-form from master 4e14cf7.
-- PO: previous embedded modules rejected; one immediate full-screen form with direct fields and collapsible sections, no module navigation.
-- PREVIOUS: PR #239 merged; production deployment not yet confirmed in prior release record.
-- SCOPE: direct treatment/price fields, optional payment, quote and inline document fields. Preserve existing domain/PDF/auth rules and legacy agenda actions.
-- STATUS: WAITING_PRODUCT_OWNER — implementation complete; draft PR #240 and final-head CI/screenshots required before ready. Explicit Mergia required for release.
-- DATABASE: existing adapter and schema only; no migration, tenancy/RLS/formula changes. Confirm writes before close; explicit non-atomic failure handling.
-- ROLLBACK: revert dedicated PR; immutable stable checkpoint preserved.
-- VALIDATION: 1431/1431 local Node tests and both builds pass. Final browser evidence and screenshots recorded in PR #240; no production operations.
+# Current task — PERSONAL-DOCUMENT-FOLDERS (2026-10-21)
+- OWNER: Codex; branch codex/personal-document-folders from master.
+- PO authorization: "Sì ma su tutti i documenti vai". Entire Personal archive, not just San Raffaele.
+- SCOPE: selectable folders in search, complete paginated folder loading, original-file ZIP export/share, scoped AI reading with coverage, matching Drive folder organization.
+- Existing archive owner authentication and clinical-patient AI exclusion remain authoritative. No Studio changes or schema/security changes.
+- STATUS: IMPLEMENTED; local 1441/1441 tests, both builds, script syntax and diff check pass. GitHub/browser CI not started: automatic approval review rejected git push because explicit destination/publication authorization is required. No remote branch or PR created by this session. Google Apps Script publishing is a release blocker (no script authorization/tooling here). No merge, remote migration, manual deployment or production backfill.
+- PREVIOUS: APPOINTMENT-RAPID-FORM; coordination record retained in handoffs.
+- ROLLBACK: revert dedicated PR; Drive file IDs preserved on moves. Immutable stable/2026-08-27-full-recovery preserved.

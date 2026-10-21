@@ -1,3 +1,4 @@
+import { CartelleRisultati } from '../../CartelleRisultati.jsx';
 // Poliedron — la tua assistente personale a pagina intera: AI sull'archivio e sull'agenda o sola
 // ricerca, allegati con la graffetta, promemoria e pagamenti proposti da aggiungere con un tasto.
 import { useEffect, useRef, useState } from 'react';
@@ -36,6 +37,7 @@ function Risultato({ risposta, ctx }) {
   if (risposta.tipo === 'pratiche') return <ElencoPratiche elenco={risposta.pratiche} onApri={(p) => apri({ tipo: 'pratica', p })} />;
   return (
     <>
+      <CartelleRisultati documenti={risposta.documenti} ctx={ctx} />
       <p className="pp-frase">{risposta.documenti.length ? `${risposta.documenti.length} documenti${risposta.titolo ? ` · ${risposta.titolo}` : ''}` : 'Nessun documento trovato.'}</p>
       {risposta.documenti.length > 0 && <Gruppo>{risposta.documenti.map((d) => <RigaDocumento key={d.id} doc={d} onApri={apriDoc} />)}</Gruppo>}
     </>

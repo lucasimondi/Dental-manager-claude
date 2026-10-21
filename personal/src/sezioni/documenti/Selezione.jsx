@@ -1,3 +1,4 @@
+import { AzioniFascicolo } from './AzioniFascicolo.jsx';
 import { ScorriElimina } from '../../ScorriElimina.jsx';
 // Documenti — elenco con selezione multipla (tieni premuto o "Seleziona") e azioni di massa; fogli di scelta.
 import { useEffect, useRef, useState } from 'react';
@@ -197,6 +198,7 @@ export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione }) {
           </span>
         </span>
       </div>
+      {scelti.length > 0 && <AzioniFascicolo documenti={scelti} ctx={ctx} />}
       <div className={modo === 'griglia' ? 'pp-griglia-doc' : 'pp-gruppo'}>
         {elenco.map((d) => <ScorriElimina key={d.id} doc={d} ctx={ctx} onCambiato={onCambiato} disabilitato={!!selezione || d.fascicolo === 'clinico_pazienti'}><VoceDocumento doc={d} modo={modo} selezione={selezione} onApri={(x) => apri({ tipo: 'documento', id: x.id })} onSeleziona={seleziona} /></ScorriElimina>)}
       </div>
