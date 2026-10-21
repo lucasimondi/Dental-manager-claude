@@ -12,7 +12,7 @@ try {
   const browser=await launcher.launch();
   try {
    for(const mode of ['studio','personal']) for(const width of [375,390,430]){
-    const context=await browser.newContext({viewport:{width,height:844},isMobile:true,hasTouch:true,timezoneId:'Europe/Rome',locale:'it-IT'});
+    const context=await browser.newContext({viewport:{width,height:844},isMobile:engine==='chromium',hasTouch:true,timezoneId:'Europe/Rome',locale:'it-IT'});
     const page=await context.newPage(),errors=[];
     page.on('pageerror',e=>errors.push(e.message));
     await page.route('**/*',r=>new URL(r.request().url()).hostname==='127.0.0.1'?r.continue():r.fulfill({json:[],headers:{'access-control-allow-origin':'*'}}));
@@ -52,8 +52,9 @@ try {
       nativeScroll=(await scroller.evaluate(el=>el.scrollTop))-initial;
       assert.ok(nativeScroll>40,`native touch must scroll ${mode}: ${nativeScroll}`);
     } else {
-      // WebKit: verify real wheel scroll plus touch-action; native iPhone touch
-      // injection is not exposed by Playwright and is not claimed here.
+      // WebKit uses a narrow touch-capable viewport with native wheel scrolling;
+      // mobile WebKit cannot inject wheel/touch gestures through Playwright.
+      // Native iPhone touch injection is not claimed here.
       await scroller.evaluate(el=>el.scrollTop=300);
       await page.mouse.move(width/2,450);await page.mouse.wheel(0,150);await page.waitForTimeout(150);
       assert.ok(await scroller.evaluate(el=>el.scrollTop>350));
