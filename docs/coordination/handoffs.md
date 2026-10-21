@@ -4005,3 +4005,14 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - LIMITS: save per module, not atomic batch; existing optimistic setters preserved. Treatment belongs to a plan; without one the operator explicitly creates it. Drafts retained during section switches; closing/reloading does not guarantee recovery of unsaved in-memory fields. Summary is patient-wide. No SSN prescription integration.
 - ROLLBACK: revert dedicated PR; no database operation; immutable stable/2026-08-27-full-recovery preserved.
 - NEXT: complete final-head browser CI, inspect screenshots and diff; mark ready after passing checks; explicit PO Mergia required before merge/deploy.
+
+## 2026-10-21 — Codex — APPOINTMENT-RAPID-FORM
+- OWNER: Codex; previous APPOINTMENT-WORKSPACE PR #239 merged, PO rejected its embedded-module UX. Branch codex/appointment-rapid-form from master 4e14cf7.
+- OBJECTIVE: immediate one-sheet direct fields, optional collapsible payment/documents/quote, no module navigation.
+- COMPLETED: treatment/list-price/price fields shown immediately; native accordion fields preserve inputs. One save for treatment/quote/payment with confirmed adapter writes and real plan ID linkage, tap lock and busy close gate. DocMedico renderInline controller preserves PDF/archive/vertical logic while rendering compact fields. Legacy agenda actions retained. No summary financial formulas added.
+- FILES: AppointmentWorkspace JSX/CSS, DocMedico inline slot, App save composition, Agenda busy gate, appointmentEntry service, service/browser tests, coordination and architecture.
+- DATABASE / AUTH / FINANCE / DEPLOYMENT: existing schema/DB adapter/RLS/capabilities/domain builders only. No migrations, formula changes, production reads/writes, merge or manual deploy.
+- VALIDATION: local Node tests and both builds run; final counts, browser outcomes and screenshots in dedicated PR. Synthetic adapters verify identity, validation-before-write, real server plan IDs, JSONB ordering, partial failure and no automatic retry. Browser covers immediate fields, accordions, manual/list prices, PDFs, unified save, double taps and error retention. No physical iPhone validation.
+- LIMITS: sequential writes, not atomic; no new row locking/idempotency backend mechanism. After uncertain write, no automatic retry and open form blocks resubmission, showing confirmed count. Treatment not automatically executed/paid; no plan auto-acceptance. PDF generation remains explicit in its section. Nonmedical drafts retained while sheet stays open; not persisted after closing/reload. Existing doc archive behavior unchanged.
+- ROLLBACK: revert dedicated PR; no database operation; immutable stable/2026-08-27-full-recovery preserved.
+- NEXT: complete final-head browser CI and screenshot review; mark ready only when passing, then explicit PO Mergia for merge and verified Vercel release.

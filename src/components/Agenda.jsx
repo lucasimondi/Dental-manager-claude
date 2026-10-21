@@ -76,7 +76,8 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   const [resizing, setResizing] = useState(null); // { id, startY, startDurata }
   const [moving, setMoving] = useState(null); // { id, startY, startOra }
   const movedRef = useRef(false); // distingue click da drag: true se il mouse si e' spostato oltre la soglia
-  const [menuApp, setMenuApp] = useState(null); // appuntamento con menu contestuale aperto (WA/Mail/Modifica/Sposta/Elimina)
+  const [menuApp, setMenuApp] = useState(null);
+  const [workspaceBusy, setWorkspaceBusy] = useState(false); // appuntamento con menu contestuale aperto (WA/Mail/Modifica/Sposta/Elimina)
   const [poliedronQuery, setPoliedronQuery] = useState('');
   const [poliedronSubmitting, setPoliedronSubmitting] = useState(false);
   const isSettimana = days.length > 1;
@@ -297,10 +298,10 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                   <div style={{ fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p ? `${p.nome} ${p.cognome}` : 'Paziente'}</div>
                   <div style={{ fontSize: 11.5, color: C.txm }}>{fmtD(menuApp.data)} · {menuApp.ora} · {menuApp.tipo}</div>
                 </div>
-                {renderAppointmentWorkspace && p && <button type="button" aria-label="Chiudi appuntamento" onClick={() => setMenuApp(null)} style={{ marginLeft: 'auto', minWidth: 44, minHeight: 44, border: 0, borderRadius: 10, cursor: 'pointer' }}>✕</button>}
+                {renderAppointmentWorkspace && p && <button type="button" aria-label="Chiudi appuntamento" disabled={workspaceBusy} onClick={() => setMenuApp(null)} style={{ marginLeft: 'auto', minWidth: 44, minHeight: 44, border: 0, borderRadius: 10, cursor: 'pointer' }}>✕</button>}
               </div>
               <div className="agenda-appointment-menu-actions" style={{ padding: 8 }}>
-                {renderAppointmentWorkspace && p ? renderAppointmentWorkspace(p, menuApp, () => setMenuApp(null)) : <>
+                {renderAppointmentWorkspace && p ? renderAppointmentWorkspace(p, menuApp, () => setMenuApp(null), setWorkspaceBusy) : <>
                 <div className="agenda-patient-actions" aria-label="Prestazioni e documenti del paziente" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, padding: 4, marginBottom: 8 }}>
                   {APPOINTMENT_PATIENT_ACTIONS.map(action => {
                     const disabled = !p || !onPatientAction || (action.id === 'prescription' && !canPrescribe);

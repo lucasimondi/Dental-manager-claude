@@ -107,7 +107,7 @@ In caso di allineatore rotto, perso o che non calza più correttamente, contatta
 // card "Paziente" subito sopra i campi del documento. In quel caso `paz`
 // può essere null finché l'utente non sceglie o crea il paziente: il form
 // è già compilabile, solo "Genera PDF" resta bloccato.
-export default function DocMedico({ paz, si, onClose, initialType, initialPrefill, requestId, onInitialRequestHandled, onDocumentSaved, pazienteSelector, embedded = false }) {
+export default function DocMedico({ paz, si, onClose, initialType, initialPrefill, requestId, onInitialRequestHandled, onDocumentSaved, pazienteSelector, embedded = false, renderInline }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   // La ricetta medica richiede l'iscrizione all'Ordine dei Medici e Odontoiatri:
   // disponibile solo per dentisti e medici chirurghi, non per altri professionisti sanitari.
@@ -701,6 +701,8 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
       setErroreGenerazione('Non è stato possibile generare il PDF. Controlla i dati inseriti e riprova.');
     }
   };
+
+  if (renderInline) return renderInline({ tipo, setTipo, data, setData, cnt, setCnt, genera, pronto, archiviato, erroreGenerazione, tipiDisponibili, nuovoDocumento: () => { setPronto(null); setGenerated(false); } });
 
   // Product Owner: "il modulo ricetta deve essere aperto piu in alto del
   // dock" — the floating Poliedron dock/orb sit at z-index 1100/1200, so
