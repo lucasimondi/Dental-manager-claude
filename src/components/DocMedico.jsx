@@ -702,7 +702,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
     }
   };
 
-  if (renderInline) return renderInline({ tipo, setTipo, data, setData, cnt, setCnt, genera, pronto, archiviato, erroreGenerazione, tipiDisponibili, nuovoDocumento: () => { setPronto(null); setGenerated(false); } });
+  if (renderInline) return renderInline({ tipo, setTipo, data, setData, cnt, setCnt, genera, pronto, archiviato, erroreGenerazione, tipiDisponibili, farmaciPreferiti, aggiungiFarmacoPreferito: fp => { setFarmaci(f => applicaFarmacoPreferito(f, fp)); setPronto(null); setGenerated(false); }, nuovoDocumento: () => { setPronto(null); setGenerated(false); } });
 
   // Product Owner: "il modulo ricetta deve essere aperto piu in alto del
   // dock" — the floating Poliedron dock/orb sit at z-index 1100/1200, so

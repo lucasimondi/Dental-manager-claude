@@ -1,6 +1,7 @@
 import { buildNewPlan, buildTreatmentItem } from './domain/treatmentPlanService.js';
 import { planAssignmentForPatient } from './domain/incassiActions.js';
 import { today } from './utils.js';
+import { expandImplantQuotes } from './domain/implantQuote.js';
 
 const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(k => [k, canonical(value[k])])) : value;
 const touched = row => [row.description, row.price, row.tooth].some(v => String(v || '').trim());
@@ -13,7 +14,8 @@ export function entryItems(rows = []) {
 }
 export function prepareAppointmentEntry({ patient, appointment, plans, draft }) {
   if (!patient?.id || String(appointment?.pazienteId) !== String(patient.id)) throw new Error('Appuntamento e paziente non corrispondono.');
-  const items = entryItems(draft.items), quoteItems = entryItems(draft.quoteItems);
+  const expanded = draft.implantPreset ? expandImplantQuotes(draft.items, draft.quoteItems) : draft;
+  const items = entryItems(expanded.items), quoteItems = entryItems(expanded.quoteItems);
   const patientPlans = plans.filter(p => String(p.pazienteId) === String(patient.id));
   let treatment = null, quote = null;
   if (items.length) {
@@ -33,6 +35,8 @@ export function prepareAppointmentEntry({ patient, appointment, plans, draft }) 
     let target = null;
     if (draft.paymentPlanId === 'quote') {
       if (!quote) throw new Error('Compila il preventivo per collegare questo incasso.');
+      target = 'quote';
+    } else if (draft.paymentPlanId === 'context' && expanded.hasImplant && !treatment && quote) {
       target = 'quote';
     } else if (draft.paymentPlanId === 'treatment' || (draft.paymentPlanId === 'context' && treatment)) {
       if (!treatment) throw new Error('Compila una prestazione per collegare questo incasso.');
