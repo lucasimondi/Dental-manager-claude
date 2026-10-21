@@ -10,14 +10,14 @@ import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker, SelettorePaziente, EmptyState, PageHeader } from './ui';
 import WaAction, { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
 import { pianificaInvioWABatch, annullaInvioWABatch } from '../lib/waBatchSender.js';
-import { C, uid, fmtD, today, getAppTypesDefault, DEF_AGENDA_SETTINGS } from '../lib/utils';
+import { C, uid, fmtD, today, getAppTypesDefault, DEF_AGENDA_SETTINGS, VERTICALI_CON_RICETTA } from '../lib/utils';
 import { useIsMobile } from '../lib/useIsMobile';
 import { salvaPosizione, leggiPosizione } from '../lib/posizioneNavigazione';
 import { useFormPersistente } from '../lib/useFormPersistente';
 import { supabase } from '../lib/supabase.js';
 import { getVisibleWeekDays, agendaHiddenWeekdays as computeHiddenWeekdays, weekendsHiddenState } from '../lib/agendaVisibleDays.js';
 import { MOBILE_DOCK_BOTTOM, MOBILE_DOCK_HEIGHT } from '../lib/poliedron/poliedronMobileDock.js';
-import { normalizePhoneForTel } from '../lib/appointmentQuickHub.js';
+import { normalizePhoneForTel, APPOINTMENT_PATIENT_ACTIONS } from '../lib/appointmentQuickHub.js';
 
 const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
 const toISO = (d) => d.toISOString().slice(0, 10);
@@ -64,7 +64,7 @@ const startOfWeek = (d) => {
   return dt;
 };
 
-function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno, onSwipeDay, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight, followUpMode, onOccupiedSlot }) {
+function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno, onSwipeDay, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onPatientAction, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight, followUpMode, onOccupiedSlot, canPrescribe = true }) {
   const containerRef = useRef(null); // unico scroll container
   const resizeRef = useRef(null);
   const [now, setNow] = useState(new Date());
@@ -292,6 +292,12 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                 </div>
               </div>
               <div className="agenda-appointment-menu-actions" style={{ padding: 8 }}>
+                <div className="agenda-patient-actions" aria-label="Prestazioni e documenti del paziente" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, padding: 4, marginBottom: 8 }}>
+                  {APPOINTMENT_PATIENT_ACTIONS.map(action => {
+                    const disabled = !p || !onPatientAction || (action.id === 'prescription' && !canPrescribe);
+                    return <button key={action.id} type="button" disabled={disabled} onClick={() => runPatientAction((patient, appointment) => onPatientAction(patient, appointment, action.id))} style={{ minHeight: 48, display: 'flex', alignItems: 'center', gap: 8, background: C.priL, color: C.pri, border: `1px solid ${C.brd}`, borderRadius: 10, padding: '10px 12px', fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1 }}><Ic n={action.icon} s={17} c={C.pri} />{action.label}</button>;
+                  })}
+                </div>
                 {isMobile && (
                   <>
                     <div className="agenda-quick-hub-grid">
@@ -375,7 +381,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
    Va incollato sulla stessa riga dell'etichetta mese: non aggiunge nessuna riga
    in più, a differenza della vecchia barra a tre tab che occupava spazio prezioso
    sullo schermo del telefono. */
-export default function Agenda({ patients, setPatients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni: tuttiImpegni = [], setImpegni, si, setStudioInfo, onOpenPatient, onOpenRecall, onOpenActivity, onPoliedronCommand, followUpRequest, onBookFollowUp, onCancelFollowUp }) {
+export default function Agenda({ patients, setPatients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni: tuttiImpegni = [], setImpegni, si, setStudioInfo, onOpenPatient, onPatientAction, onOpenRecall, onOpenActivity, onPoliedronCommand, followUpRequest, onBookFollowUp, onCancelFollowUp }) {
   const [mostraEsclusi, setMostraEsclusi] = useState(false);
   const impegni = tuttiImpegni.filter(i => mostraEsclusi || agendaVisible(i, 'studio'));
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
@@ -925,7 +931,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   // GridView (il commento su DayStrip spiega perché) — vedi item 5/2 della
   // spec "Agenda mobile final": non deve rubare spazio alle 7 colonne.
   const oraColW = isMobile ? 34 : 46;
-  const gridProps = { slots, slotH, slotMin, oraInizio: timelineStart, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight, followUpMode: !!followUpRequest, onOccupiedSlot: () => setToast('Questo spazio è occupato. Scegli un altro orario.') };
+  const gridProps = { slots, slotH, slotMin, oraInizio: timelineStart, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onPatientAction, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight, canPrescribe: !si?.vertical || VERTICALI_CON_RICETTA.has(si.vertical), followUpMode: !!followUpRequest, onOccupiedSlot: () => setToast('Questo spazio è occupato. Scegli un altro orario.') };
 
   const ribbonDays = (view === 'giorno' ? [new Date(selDay + 'T12:00')] : weekDays).map(d => {
     const date = toISO(d);

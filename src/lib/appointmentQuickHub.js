@@ -15,3 +15,17 @@ export function buildActivityText(text, patient) {
   if (!cleanText) return '';
   return name ? `${name} — ${cleanText}` : cleanText;
 }
+
+export const APPOINTMENT_PATIENT_ACTIONS = [
+  { id: 'treatment', label: 'Prestazione', icon: 'tooth' },
+  { id: 'prescription', label: 'Ricetta', icon: 'file' },
+  { id: 'documents', label: 'Documenti', icon: 'folder' },
+  { id: 'payment', label: 'Incasso', icon: 'eur' },
+];
+
+export function appointmentPatientAction(patient, appointment, action) {
+  if (!patient?.id || !appointment || String(appointment.pazienteId) !== String(patient.id) || !APPOINTMENT_PATIENT_ACTIONS.some(item => item.id === action)) return null;
+  const tab = action === 'treatment' ? 'piani' : action === 'payment' ? 'paga' : 'doc';
+  const documentType = action === 'prescription' ? 'ricetta' : action === 'documents' ? 'medico' : null;
+  return { tab, initialAction: action, documentType };
+}

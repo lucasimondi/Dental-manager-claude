@@ -12,6 +12,9 @@ export default function PatientWorkspaceBoundary(props) {
     canonicalFinancial, financialScope, features, studioMembership, currentUserId, isStudioAdmin,
   }), [paz, plans, payments, appointments, pricelist, richiami, documents, canonicalFinancial, financialScope, features, studioMembership, currentUserId, isStudioAdmin]);
 
+  // Explicit operational actions use the existing stable write/document forms.
+  // Normal V2 navigation and its capabilities remain unchanged.
+  if (['treatment', 'prescription', 'documents', 'payment'].includes(props.initialAction)) return <SchedaPaz key={`${paz?.id}:${props.initialAction}`} {...props} />;
   if (!isPatientWorkspaceV2Enabled(features)) return <SchedaPaz key={`${paz?.id || 'none'}:${initTab || 'info'}:${initialDocumentRequest?.requestId || 'default'}`} {...props} />;
   return <Suspense fallback={<div role="status" style={{ padding: 24 }}>Caricamento Scheda Paziente 2.0…</div>}>
     <PatientWorkspaceV2

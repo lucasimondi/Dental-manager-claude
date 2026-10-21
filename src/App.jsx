@@ -1,3 +1,4 @@
+import { appointmentPatientAction } from './lib/appointmentQuickHub.js';
 import PatientAgendaLayer from './components/PatientAgendaLayer.jsx';
 import { persistPatientAgendaBooking } from './lib/patientAgendaBooking.js';
 import { readAgendaLocation } from '../shared/agenda/navigation.js';
@@ -562,12 +563,20 @@ export default function App() {
   // for the Poliedron prescription workflow (initialDocumentRequest ->
   // documentFlow, see SchedaPaz.jsx) — passing { type: 'ricetta' } lands
   // directly on DocMedico's Ricetta tab instead of the generic Doc tab.
-  const goSchedaPaz = (paz, tab = 'paga', documentRequest = null) => {
+  const goSchedaPaz = (paz, tab = 'paga', documentRequest = null, initialAction = null) => {
     setPatientAgendaRequest(null);
-    setSchedaDashPaz({ paz, tab, documentRequest });
+    setSchedaDashPaz({ paz, tab, documentRequest, initialAction });
     salvaPosizione({ schedaPazId: paz.id, schedaPazTab: tab });
   };
   const requestId = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const openAppointmentPatientAction = (patient, appointment, action) => {
+    const target = appointmentPatientAction(patient, appointment, action);
+    if (!target) return;
+    const documentRequest = target.documentType ? { type: target.documentType, requestId: requestId() } : null;
+    if (target.documentType) segnaDocumentoAperto('scheda', patient.id, target.documentType);
+    goSchedaPaz(patient, target.tab, documentRequest, target.initialAction);
+  };
+
   const openQuickHubRecall = (patient) => {
     setQuickHubRecallRequest({ id: requestId(), patient });
     setPage('richiami');
@@ -749,6 +758,7 @@ export default function App() {
             onClose={() => { setPatientAgendaRequest(null); setSchedaDashPaz(null); pulisciPosizione(['schedaPazId', 'schedaPazTab', 'documentoAperto']); }}
             onEdit={() => setSchedaDashPaz(null)}
             onNuovoPiano={(id) => { setSchedaDashPaz(null); goNuovoPiano(id); }}
+            initialAction={schedaDashPaz.initialAction}
             initialDocumentRequest={schedaDashPaz.documentRequest}
             onDocumentRequestHandled={(requestId) => setSchedaDashPaz((current) =>
               current?.documentRequest?.requestId === requestId
@@ -857,7 +867,7 @@ export default function App() {
             )}
             {(page === 'paga' || page === 'incassi') && <FinancialWorkspace studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} payments={payments} pricelist={pricelist} setPlans={setPlansSync} setPayments={setPaymentsSync} onOpenPaz={goSchedaPaz} autoOpenNew={autoOpenNew === 'paga'} autoOpenNewPrefill={autoOpenNew === 'paga' ? autoOpenNewPrefill : null} onAutoOpenNewHandled={() => { setAutoOpenNew(null); setAutoOpenNewPrefill(null); }} />}
             {page === 'listino' && <Listino pricelist={pricelist} setPricelist={setPricelistSync} si={studioInfo} />}
-            {page === 'agenda' && <Agenda followUpRequest={patientAgendaRequest} onBookFollowUp={bookPatientFromAgenda} onCancelFollowUp={restorePatientFromAgenda} patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} onOpenPatient={(patient) => goSchedaPaz(patient, 'info')} onOpenRecall={openQuickHubRecall} onOpenActivity={openQuickHubActivity} onPoliedronCommand={openQuickHubPoliedron} />}
+            {page === 'agenda' && <Agenda followUpRequest={patientAgendaRequest} onBookFollowUp={bookPatientFromAgenda} onCancelFollowUp={restorePatientFromAgenda} onPatientAction={openAppointmentPatientAction} patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} onOpenPatient={(patient) => goSchedaPaz(patient, 'info')} onOpenRecall={openQuickHubRecall} onOpenActivity={openQuickHubActivity} onPoliedronCommand={openQuickHubPoliedron} />}
             {page === 'richiami' && <Richiami patients={patients} plans={plans} payments={payments} appointments={appointments} richiami={richiami} setRichiami={setRichiamiSync} templates={templates} features={features} onOpenPaz={goSchedaPaz} si={studioInfo} autoOpenNew={autoOpenNew === 'richiami'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} initialPatientRequest={quickHubRecallRequest} onInitialPatientRequestHandled={(id) => setQuickHubRecallRequest((current) => current?.id === id ? null : current)} />}
             {page === 'attivita' && <Attivita patients={patients} onOpenPaz={goSchedaPaz} richiami={richiami} setRichiami={setRichiamiSync} plans={plans} payments={payments} appointments={appointments} templates={templates} features={features} si={studioInfo} />}
             {page === 'spese' && <Spese studioId={session?.user?.app_metadata?.studio_id} patients={patients} autoOpenNew={autoOpenNew === 'spese'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} />}

@@ -335,8 +335,8 @@ test('DocMedico accepts a caller-supplied patient picker and blocks PDF generati
 });
 
 test('ROUND 4: App.jsx\'s goSchedaPaz forwards an optional documentRequest into the SAME initialDocumentRequest prop SchedaPaz already consumes — no new plumbing invented', () => {
-  assert.match(appSrc, /const goSchedaPaz = \(paz, tab = 'paga', documentRequest = null\) => \{/);
-  assert.match(appSrc, /setSchedaDashPaz\(\{ paz, tab, documentRequest \}\)/);
+  assert.match(appSrc, /const goSchedaPaz = \(paz, tab = 'paga', documentRequest = null, initialAction = null\) => \{/);
+  assert.match(appSrc, /setSchedaDashPaz\(\{ paz, tab, documentRequest, initialAction \}\)/);
   assert.match(appSrc, /initialDocumentRequest=\{schedaDashPaz\.documentRequest\}/);
   // Every pre-existing goSchedaPaz caller keeps working with its old
   // 2-argument call unchanged — documentRequest defaults to null.

@@ -3983,3 +3983,14 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - RISKS: in-memory preservation survives compression/return, not a full browser reload (existing form persistence unchanged). No atomic database slot reservation added; existing concurrent booking guarantees unchanged. Full rapid-visit form from earlier proposals is outside this navigation change. No physical iPhone test claimed.
 - ROLLBACK: revert dedicated PR; no database operation. stable/2026-08-27-full-recovery remains unchanged at 070b28fd4eae4e2cc397584201d0bb149468fae7.
 - EXACT NEXT ACTION: complete final-head browser CI and review diff; mark ready only on passing checks; obtain explicit PO Mergia before merge/deploy, then test on the real iPhone.
+
+## 2026-10-21 — Codex — AGENDA-PATIENT-ACTIONS
+- OWNER: Codex; previous PATIENT-AGENDA-RETURN PR #237 merged and Vercel success verified. Branch codex/agenda-patient-actions from master 5f6bc49.
+- OBJECTIVE: retain appointment actions and add direct treatment, prescription, documents and payment forms from the agenda.
+- COMPLETED: four new mobile/desktop menu actions with patient/appointment identity validation; existing stable operational forms reused without changing V2 browsing/flags. One eligible plan opens description/price; multiple require explicit choice; no plan uses existing new-plan action. Existing prescription vertical gate retained. Existing IncassoModal allocates payments. Document request acknowledgement retains form identity. No automatic treatment execution or payment.
+- FILES: Agenda, App, appointmentQuickHub, PatientWorkspaceBoundary, SchedaPaz, PianoDrillDown, tests/browser fixtures/workflow and coordination/architecture docs.
+- DATABASE / AUTH / FINANCE / DEPLOYMENT: no changes to schema, RLS, capabilities, financial formulas or deployment architecture; no production data operations. No merge/deploy performed.
+- VALIDATION: local 1422/1422 Node tests and Studio build pass; diff --check clean. Browser test covers real components with synthetic records, both engines at mobile/desktop. Final CI/screenshots and any follow-up adjustments are recorded in PR #238. No local browser or physical iPhone success claimed.
+- LIMITS: treatment still belongs to an existing or explicitly created plan; no silent plan creation or clinical/financial state transition. Existing optimistic plan/payment setters are unchanged. Normal V2 browsing retains its existing controls; explicit actions enter the stable forms.
+- ROLLBACK: revert PR; no migration; immutable stable/2026-08-27-full-recovery preserved.
+- NEXT: complete final-head tests and browser QA, inspect diff, wait for PO Mergia before release.

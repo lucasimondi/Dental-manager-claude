@@ -31,12 +31,15 @@ const prossimaDataMascherina = (orto) => {
    Cancella/Modifica/Accetta/Non accetta/Incassato. Click a name to drill
    into that plan's clean prestazioni list: Eseguito/Modifica/Elimina/
    Incassato per row. */
-export default function PianoDrillDown({ plans, patients = [], setPlans, payments = [], setPayments, pricelist = [], si, features }) {
-  const [expandedId, setExpandedId] = useState(null);
+export default function PianoDrillDown({ plans, patients = [], setPlans, payments = [], setPayments, pricelist = [], si, features, initialAddTreatment = false }) {
+  const entryPlans = plans.filter(plan => ['attivo', 'accettato'].includes(plan.stato));
+  const initialPlanId = initialAddTreatment && entryPlans.length === 1 ? entryPlans[0].id : null;
+  const [expandedId, setExpandedId] = useState(initialPlanId);
+  const [chooseEntryPlan, setChooseEntryPlan] = useState(initialAddTreatment && entryPlans.length > 1);
   const [confirmDelId, setConfirmDelId] = useState(null);
   const [editPlanId, setEditPlanId] = useState(null);
   const [editForm, setEditForm] = useState(null);
-  const [addingVoceFor, setAddingVoceFor] = useState(null);
+  const [addingVoceFor, setAddingVoceFor] = useState(initialPlanId);
   const [newVoce, setNewVoce] = useState({ prestazione: '', dente: '', prezzo: '' });
   const [editingVoce, setEditingVoce] = useState(null); // { planId, index }
   const [editVoceForm, setEditVoceForm] = useState({ prestazione: '', dente: '', prezzo: '' });
@@ -163,6 +166,7 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
 
   return (
     <div>
+      {chooseEntryPlan && <Crd style={{ marginBottom: 12 }}><div style={{ marginBottom: 8, color: C.txm }}>A quale piano vuoi aggiungere la prestazione?</div><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{entryPlans.map(plan => <Btn key={plan.id} ch={plan.titolo || 'Piano di cura'} sz="sm" onClick={() => { setExpandedId(plan.id); setAddingVoceFor(plan.id); setChooseEntryPlan(false); }} />)}</div></Crd>}
       {plans.map((pl) => {
         const { finale: tot, scontato } = calcTot(pl.voci, pl.sconto || 0, pl.scontoTipo || 'pct');
         const done = pl.voci.filter((v) => v.eseguita).length;

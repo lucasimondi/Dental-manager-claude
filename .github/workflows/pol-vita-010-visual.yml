@@ -10,6 +10,8 @@ on:
       - 'src/components/PatientWorkspace*.jsx'
       - 'src/components/SchedaPaz.jsx'
       - 'src/components/Pazienti.jsx'
+      - 'src/components/PianoDrillDown.jsx'
+      - 'src/lib/appointmentQuickHub.js'
       - 'src/lib/patientAgendaBooking.js'
       - 'src/components/PremiumVisualSystem.css'
       - 'src/components/ui/Ic.jsx'
@@ -33,6 +35,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium webkit
+      - run: node tests/visual/agenda-actions.mjs
       - run: node tests/visual/patient-agenda.mjs
       - run: npm run test:agenda:visual
         env:
@@ -50,3 +53,4 @@ jobs:
             tests/visual/results-sharing/
             tests/visual/results-motion/
             tests/visual/results-patient-agenda/
+            tests/visual/results-agenda-actions/
