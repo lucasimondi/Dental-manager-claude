@@ -115,7 +115,8 @@ test('azioni paziente hanno callback e sincronizzano la scheda aperta', async ()
   assert.match(quick, /setModal\('note'\)/);
   assert.match(quick, /setModal\('recall'\)/);
   assert.match(quick, /setRichiami\?\.\(\(rows\) => \[\.\.\.rows/);
-  assert.match(app, /onNuovoAppuntamento=\{\(id\) => \{ setSchedaDashPaz\(null\); goAgendaPaz\(id\); \}\}/);
+  assert.match(app, /onNuovoAppuntamento=\{compressPatientForAgenda\}/);
+  assert.match(app, /<PatientAgendaLayer/);
   assert.match(scheda, /onPatientChange=\{onPatientChange\}/);
 });
 

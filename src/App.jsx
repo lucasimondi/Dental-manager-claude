@@ -1,8 +1,10 @@
+import PatientAgendaLayer from './components/PatientAgendaLayer.jsx';
+import { persistPatientAgendaBooking } from './lib/patientAgendaBooking.js';
 import { readAgendaLocation } from '../shared/agenda/navigation.js';
 ﻿import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase, DB } from './lib/supabase.js';
-import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, getLogoSlug, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, uid, applyBrandColors, applyHeaderColor } from './lib/utils';
+import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, getLogoSlug, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, DEF_AGENDA_SETTINGS, today, uid, applyBrandColors, applyHeaderColor } from './lib/utils';
 import { generaRichiamiBot } from './lib/richiamiBot';
 import { salvaPosizione, leggiPosizione, pulisciPosizione, segnaDocumentoAperto, documentoAperto } from './lib/posizioneNavigazione';
 import { fetchSaldiPiani } from './lib/domain/incassiService.js';
@@ -113,6 +115,9 @@ export default function App() {
   const [autoOpenNewPrefill, setAutoOpenNewPrefill] = useState(null);
   const [agendaInitPaz, setAgendaInitPaz] = useState(null);
   const [schedaDashPaz, setSchedaDashPaz] = useState(null);
+  const [patientAgendaRequest, setPatientAgendaRequest] = useState(null);
+  const [patientAgendaSaving, setPatientAgendaSaving] = useState(false);
+  const patientAgendaLock = useRef(false);
   // POL-FIN-002: per-plan receivable balances for the currently-open patient
   // record, fetched here (App.jsx already does async data loading) and
   // handed to SchedaPaz as a plain prop — SchedaPaz itself must stay
@@ -558,6 +563,7 @@ export default function App() {
   // documentFlow, see SchedaPaz.jsx) — passing { type: 'ricetta' } lands
   // directly on DocMedico's Ricetta tab instead of the generic Doc tab.
   const goSchedaPaz = (paz, tab = 'paga', documentRequest = null) => {
+    setPatientAgendaRequest(null);
     setSchedaDashPaz({ paz, tab, documentRequest });
     salvaPosizione({ schedaPazId: paz.id, schedaPazTab: tab });
   };
@@ -576,6 +582,7 @@ export default function App() {
   // POL-AI-009: `farmaci` = ricetta completa preparata da Poliedron in chat.
   const openPrescription = ({ patient, drug = '', farmaci = null }) => {
     if (!patient) return;
+    setPatientAgendaRequest(null);
     const prefill = Array.isArray(farmaci) && farmaci.length ? { farmaco: '', farmaci } : { farmaco: drug };
     const documentRequest = { type: 'ricetta', prefill, requestId: `${Date.now()}-${patient.id}` };
     setSchedaDashPaz({ paz: patient, tab: 'doc', documentRequest });
@@ -583,6 +590,31 @@ export default function App() {
     segnaDocumentoAperto('scheda', patient.id, 'ricetta');
   };
   const goAgendaPaz = (pazId) => { setAgendaInitPaz(pazId); setPage('agenda'); };
+  const compressPatientForAgenda = (pazienteId) => {
+    if (!schedaDashPaz || String(schedaDashPaz.paz.id) !== String(pazienteId)) return;
+    setAgendaInitPaz(null);
+    setPatientAgendaRequest({ pazienteId });
+    setPage('agenda');
+  };
+  const restorePatientFromAgenda = () => {
+    if (!patientAgendaLock.current) setPatientAgendaRequest(null);
+  };
+  const bookPatientFromAgenda = async (appointment) => {
+    if (patientAgendaLock.current) throw new Error('Salvataggio già in corso.');
+    if (!session?.user?.app_metadata?.studio_id || !patientAgendaRequest || String(appointment.pazienteId) !== String(patientAgendaRequest.pazienteId)) throw new Error('Sessione paziente non valida. Riapri la scheda.');
+    patientAgendaLock.current = true;
+    setPatientAgendaSaving(true);
+    try {
+      const saved = await persistPatientAgendaBooking({ appointment, db: DB, agendaSettings: { ...DEF_AGENDA_SETTINGS, ...studioInfo.agenda_settings }, today: today() });
+      setAppointments(prev => [...prev.filter(row => String(row.id) !== String(saved.id)), saved]);
+      setPatientAgendaRequest(null);
+      return saved;
+    } finally {
+      patientAgendaLock.current = false;
+      setPatientAgendaSaving(false);
+    }
+  };
+
 
   // POL-UI-032: Product Owner — "Neanche uscendo e rientrando... si vedono
   // le modifiche". Root cause: this was a pure client-side state reset
@@ -690,6 +722,7 @@ export default function App() {
       {schedaDashPaz && createPortal((
         <RouteErrorBoundary>
         <Suspense fallback={<div role="status" style={{ padding: 24 }}>Caricamento scheda paziente…</div>}>
+          <PatientAgendaLayer patient={schedaDashPaz.paz} minimized={!!patientAgendaRequest} saving={patientAgendaSaving} onRestore={restorePatientFromAgenda}>
           <PatientWorkspaceBoundary
             key={schedaDashPaz.paz.id}
             paz={schedaDashPaz.paz}
@@ -704,7 +737,7 @@ export default function App() {
             onPatientChange={(updated) => setSchedaDashPaz((current) => current?.paz?.id === updated.id ? { ...current, paz: updated } : current)}
             setPayments={setPaymentsSync}
             setRichiami={setRichiamiSync}
-            onNuovoAppuntamento={(id) => { setSchedaDashPaz(null); goAgendaPaz(id); }}
+            onNuovoAppuntamento={compressPatientForAgenda}
             richiami={richiami}
             pricelist={pricelist}
             si={studioInfo}
@@ -713,7 +746,7 @@ export default function App() {
             currentUserId={session?.user?.id}
             isStudioAdmin={isStudioAdmin}
             documentClient={supabase}
-            onClose={() => { setSchedaDashPaz(null); pulisciPosizione(['schedaPazId', 'schedaPazTab', 'documentoAperto']); }}
+            onClose={() => { setPatientAgendaRequest(null); setSchedaDashPaz(null); pulisciPosizione(['schedaPazId', 'schedaPazTab', 'documentoAperto']); }}
             onEdit={() => setSchedaDashPaz(null)}
             onNuovoPiano={(id) => { setSchedaDashPaz(null); goNuovoPiano(id); }}
             initialDocumentRequest={schedaDashPaz.documentRequest}
@@ -723,6 +756,7 @@ export default function App() {
                 : current
             )}
           />
+          </PatientAgendaLayer>
         </Suspense>
         </RouteErrorBoundary>
       ), document.body)}
@@ -806,6 +840,7 @@ export default function App() {
                 implants={implants} setImplants={setImplantsSync}
                 setAppointments={setAppointmentsSync}
                 onNuovoAppuntamento={goAgendaPaz}
+                onOpenPatient={(patient) => goSchedaPaz(patient, 'info')}
                 templates={templates}
                 pricelist={pricelist}
                 autoOpenNew={autoOpenNew === 'paz'} onAutoOpenNewHandled={() => setAutoOpenNew(null)}
@@ -822,7 +857,7 @@ export default function App() {
             )}
             {(page === 'paga' || page === 'incassi') && <FinancialWorkspace studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} payments={payments} pricelist={pricelist} setPlans={setPlansSync} setPayments={setPaymentsSync} onOpenPaz={goSchedaPaz} autoOpenNew={autoOpenNew === 'paga'} autoOpenNewPrefill={autoOpenNew === 'paga' ? autoOpenNewPrefill : null} onAutoOpenNewHandled={() => { setAutoOpenNew(null); setAutoOpenNewPrefill(null); }} />}
             {page === 'listino' && <Listino pricelist={pricelist} setPricelist={setPricelistSync} si={studioInfo} />}
-            {page === 'agenda' && <Agenda patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} onOpenPatient={(patient) => goSchedaPaz(patient, 'info')} onOpenRecall={openQuickHubRecall} onOpenActivity={openQuickHubActivity} onPoliedronCommand={openQuickHubPoliedron} />}
+            {page === 'agenda' && <Agenda followUpRequest={patientAgendaRequest} onBookFollowUp={bookPatientFromAgenda} onCancelFollowUp={restorePatientFromAgenda} patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} onOpenPatient={(patient) => goSchedaPaz(patient, 'info')} onOpenRecall={openQuickHubRecall} onOpenActivity={openQuickHubActivity} onPoliedronCommand={openQuickHubPoliedron} />}
             {page === 'richiami' && <Richiami patients={patients} plans={plans} payments={payments} appointments={appointments} richiami={richiami} setRichiami={setRichiamiSync} templates={templates} features={features} onOpenPaz={goSchedaPaz} si={studioInfo} autoOpenNew={autoOpenNew === 'richiami'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} initialPatientRequest={quickHubRecallRequest} onInitialPatientRequestHandled={(id) => setQuickHubRecallRequest((current) => current?.id === id ? null : current)} />}
             {page === 'attivita' && <Attivita patients={patients} onOpenPaz={goSchedaPaz} richiami={richiami} setRichiami={setRichiamiSync} plans={plans} payments={payments} appointments={appointments} templates={templates} features={features} si={studioInfo} />}
             {page === 'spese' && <Spese studioId={session?.user?.app_metadata?.studio_id} patients={patients} autoOpenNew={autoOpenNew === 'spese'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} />}

@@ -5,6 +5,12 @@ on:
     paths:
       - 'shared/agenda/**'
       - 'src/components/Agenda.jsx'
+      - 'src/App.jsx'
+      - 'src/components/PatientAgenda*.jsx'
+      - 'src/components/PatientWorkspace*.jsx'
+      - 'src/components/SchedaPaz.jsx'
+      - 'src/components/Pazienti.jsx'
+      - 'src/lib/patientAgendaBooking.js'
       - 'src/components/PremiumVisualSystem.css'
       - 'src/components/ui/Ic.jsx'
       - 'personal/src/**'
@@ -27,6 +33,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium webkit
+      - run: node tests/visual/patient-agenda.mjs
       - run: npm run test:agenda:visual
         env:
           AGENDA_BASE_REF: ${{ github.event.pull_request.base.sha }}
@@ -42,3 +49,4 @@ jobs:
             tests/visual/results-reliability/
             tests/visual/results-sharing/
             tests/visual/results-motion/
+            tests/visual/results-patient-agenda/

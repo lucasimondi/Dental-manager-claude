@@ -7,7 +7,7 @@ import PatientWorkspaceBoundary from './PatientWorkspaceBoundary.jsx';
 import PazienteFormModal from './PazienteFormModal.jsx';
 import { salvaPosizione, pulisciPosizione } from '../lib/posizioneNavigazione';
 
-export default function Pazienti({ patients, setPatients, plans, setPlans, payments, setPayments, appointments, setAppointments, richiami, setRichiami, si, features, studioMembership, currentUserId, isStudioAdmin, onNuovoPiano, implants, setImplants, onNuovoAppuntamento, templates, pricelist, autoOpenNew, onAutoOpenNewHandled }) {
+export default function Pazienti({ patients, setPatients, plans, setPlans, payments, setPayments, appointments, setAppointments, richiami, setRichiami, si, features, studioMembership, currentUserId, isStudioAdmin, onNuovoPiano, implants, setImplants, onNuovoAppuntamento, onOpenPatient, templates, pricelist, autoOpenNew, onAutoOpenNewHandled }) {
   // POL-UI-042: the modal's own form state now lives inside the reusable
   // PazienteFormModal (also opened from the patient record's "Modifica"
   // button, see App.jsx) — this only needs to remember WHICH patient (or
@@ -289,7 +289,7 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
                 {filtered.length} {filtered.length === 1 ? 'risultato' : 'risultati'}
               </div>
               {filtered.map((p) => (
-                <RigaPaziente key={p.id} p={p} evidenzia={evidenzia} ultimaVisita={ultimaVisitaPerPaziente(p.id)} onOpen={() => { setScheda(p); salvaPosizione({ schedaPazId: p.id, schedaPazTab: 'info' }); setSearchFocus(false); }} onDelete={() => setConfirmDelId(p.id)} confirming={confirmDelId === p.id} onCancelDelete={() => setConfirmDelId(null)} onConfirmDelete={() => { del(p.id); setConfirmDelId(null); }} />
+                <RigaPaziente key={p.id} p={p} evidenzia={evidenzia} ultimaVisita={ultimaVisitaPerPaziente(p.id)} onOpen={() => { if (onOpenPatient) onOpenPatient(p); else setScheda(p); salvaPosizione({ schedaPazId: p.id, schedaPazTab: 'info' }); setSearchFocus(false); }} onDelete={() => setConfirmDelId(p.id)} confirming={confirmDelId === p.id} onCancelDelete={() => setConfirmDelId(null)} onConfirmDelete={() => { del(p.id); setConfirmDelId(null); }} />
               ))}
               {filtered.length === 0 && (
                 <EmptyState icon="pz" title={`Nessun paziente trovato per "${search}"`} />
@@ -317,7 +317,7 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
         {filtered.map((p) => (
-          <RigaPaziente key={p.id} p={p} evidenzia={evidenzia} ultimaVisita={ultimaVisitaPerPaziente(p.id)} onOpen={() => { setScheda(p); salvaPosizione({ schedaPazId: p.id, schedaPazTab: 'info' }); }} onDelete={() => setConfirmDelId(p.id)} confirming={confirmDelId === p.id} onCancelDelete={() => setConfirmDelId(null)} onConfirmDelete={() => { del(p.id); setConfirmDelId(null); }} />
+          <RigaPaziente key={p.id} p={p} evidenzia={evidenzia} ultimaVisita={ultimaVisitaPerPaziente(p.id)} onOpen={() => { if (onOpenPatient) onOpenPatient(p); else setScheda(p); salvaPosizione({ schedaPazId: p.id, schedaPazTab: 'info' }); }} onDelete={() => setConfirmDelId(p.id)} confirming={confirmDelId === p.id} onCancelDelete={() => setConfirmDelId(null)} onConfirmDelete={() => { del(p.id); setConfirmDelId(null); }} />
         ))}
         {filtered.length === 0 && <EmptyState icon="pz" title="Nessun paziente" />}
       </div>

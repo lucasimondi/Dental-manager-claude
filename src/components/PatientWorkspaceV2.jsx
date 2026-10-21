@@ -184,7 +184,7 @@ function QuickCreateDrawer({ kind, plans, context, model, realMode, onClose, onC
   </DetailDrawer>;
 }
 
-export default function PatientWorkspaceV2({ context, patient, plans, payments, appointments, studioInfo = {}, documentClient, realMode = false, capabilities = {}, canonicalFinancial, initialTab = 'info', initialDocumentRequest, onDocumentRequestHandled = () => {}, onClose = () => {}, onEdit = () => {} }) {
+export default function PatientWorkspaceV2({ context, patient, plans, payments, appointments, studioInfo = {}, documentClient, realMode = false, capabilities = {}, canonicalFinancial, initialTab = 'info', initialDocumentRequest, onDocumentRequestHandled = () => {}, onClose = () => {}, onNuovoAppuntamento, onEdit = () => {} }) {
   // Demo fixture regression label: /5 completate. Real mode always renders the actual denominator below.
   const model = useMemo(() => buildPatientWorkspaceV2Model({ patient, plans, payments, appointments }), [patient, plans, payments, appointments]);
   const [drawer, setDrawer] = useState(null);
@@ -258,7 +258,7 @@ export default function PatientWorkspaceV2({ context, patient, plans, payments, 
     </section>
 
     <main className="pw2-main">
-      <section className="pw2-action-bar" aria-label="Azioni paziente"><div><small>Azioni paziente</small><strong>Crea rapidamente</strong></div><div className="pw2-action-buttons">{!realMode && <><button data-action="ADD_TREATMENT" onClick={() => setQuickCreate('service')}>Prestazione</button><button data-action="CREATE_CLINICAL_PLAN" onClick={() => setQuickCreate('plan')}>Piano clinico</button><button data-action="CREATE_QUOTE" onClick={() => setQuickCreate('quote')}>Preventivo</button></>}<button data-action="CREATE_PRESCRIPTION" onClick={() => setQuickCreate('prescription')}>Ricetta</button><button data-action="CREATE_CONSENT" onClick={() => setQuickCreate('consent')}>Consenso</button></div></section>
+      <section className="pw2-action-bar" aria-label="Azioni paziente"><div><small>Azioni paziente</small><strong>Crea rapidamente</strong></div><div className="pw2-action-buttons">{onNuovoAppuntamento && <button onClick={() => onNuovoAppuntamento(patient.id)}>Fissa prossimo nell’agenda</button>}{!realMode && <><button data-action="ADD_TREATMENT" onClick={() => setQuickCreate('service')}>Prestazione</button><button data-action="CREATE_CLINICAL_PLAN" onClick={() => setQuickCreate('plan')}>Piano clinico</button><button data-action="CREATE_QUOTE" onClick={() => setQuickCreate('quote')}>Preventivo</button></>}<button data-action="CREATE_PRESCRIPTION" onClick={() => setQuickCreate('prescription')}>Ricetta</button><button data-action="CREATE_CONSENT" onClick={() => setQuickCreate('consent')}>Consenso</button></div></section>
       <button className="pw2-micro-profile" onClick={() => setDrawer('profile')}>
         <span>{[age != null ? `${age} anni` : null, patient?.comune, model.lastVisit ? `Ultima visita ${fmtD(model.lastVisit.data)}` : null].filter(Boolean).join('  ·  ') || 'Informazioni anagrafiche'}</span>
         <strong>Anagrafica <span aria-hidden="true">›</span></strong>
