@@ -1,3 +1,4 @@
+import { agendaVisible } from '../../../../shared/agenda/visibility.js';
 import { readAgendaLocation } from '../../../../shared/agenda/navigation.js';
 // POL-VITA-004/007 — Agenda di Poliedron Personal: è l'agenda dello studio (stessi dati).
 // Tutte le viste usano i componenti originali condivisi in shared/agenda.
@@ -40,6 +41,18 @@ function AccessoStudio({ onEntrato }) {
 function useDatiAgenda(da, a, versione, esegui) {
   // Disegna subito la struttura dell'agenda; appuntamenti e impostazioni autorevoli la aggiornano appena arrivano.
   const [dati, setDati] = useState(() => ({ appuntamenti: [], impegni: [], settings: {}, scadenze: [] }));
+  const [revisione, setRevisione] = useState(0);
+  useEffect(() => {
+    const refresh = () => setRevisione(x => x + 1);
+    const channel = studioDb.channel('personal-agenda-shared')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'impegni_personali' }, refresh)
+      .subscribe();
+    window.addEventListener('focus', refresh);
+    const visible = () => { if (document.visibilityState === 'visible') refresh(); };
+    document.addEventListener('visibilitychange', visible);
+    return () => { studioDb.removeChannel(channel); window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', visible); };
+  }, []);
   const impostazioniCache = useRef(null);
   const pagamentiCache = useRef({ versione: null, dati: null, promise: null });
   const versioneCorrente = useRef(versione);
@@ -85,7 +98,7 @@ function useDatiAgenda(da, a, versione, esegui) {
       });
     });
     return () => { vivo = false; };
-  }, [da, a, versione, esegui]);
+  }, [da, a, versione, esegui, revisione]);
   return dati;
 }
 
@@ -160,8 +173,13 @@ export function VistaAgenda({ ctx }) {
 }
 
 function ContenutoAgenda({ ctx, modo, setModo, giorno, setGiorno, mese, setMese, da, a, etichette, coloriTipi, versione, esegui }) {
-  const dati = useDatiAgenda(da, a, versione, esegui);
-  return <GrigliaPoliedra view={modo} setView={setModo} giorno={giorno} setGiorno={setGiorno} mese={mese} setMese={setMese} dati={dati} ctx={ctx} etichette={etichette} coloriTipi={coloriTipi} />;
+  const tutti = useDatiAgenda(da, a, versione, esegui);
+  const [mostraEsclusi, setMostraEsclusi] = useState(false);
+  const dati = { ...tutti,
+    appuntamenti: tutti.appuntamenti.filter(x => mostraEsclusi || agendaVisible(x, 'personal')),
+    impegni: tutti.impegni.filter(x => mostraEsclusi || agendaVisible(x, 'personal')),
+  };
+  return <GrigliaPoliedra mostraEsclusi={mostraEsclusi} setMostraEsclusi={mostraEsclusi || tutti.appuntamenti.some(x => !agendaVisible(x, 'personal')) || tutti.impegni.some(x => !agendaVisible(x, 'personal')) ? setMostraEsclusi : undefined} view={modo} setView={setModo} giorno={giorno} setGiorno={setGiorno} mese={mese} setMese={setMese} dati={dati} ctx={ctx} etichette={etichette} coloriTipi={coloriTipi} />;
 }
 
 

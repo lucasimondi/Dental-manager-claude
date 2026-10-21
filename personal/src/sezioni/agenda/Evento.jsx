@@ -1,3 +1,4 @@
+import AgendaVisibility from '../../../../shared/agenda/AgendaVisibility.jsx';
 // Agenda — nuovo evento o modifica di un evento personale (anche ripetuto: solo questo, successivi, tutti).
 import { useState } from 'react';
 import { salvaImpegno, salvaImpegni, eliminaImpegno, impegniDellaSerie, aggiornaImpegni, eliminaImpegni } from '../../lib/studio.js';
@@ -52,6 +53,7 @@ function ModuloEvento({ iniziale, ctx, chiudi, scelta }) {
     ripeti: 'nessuna',
     ripeti_fino: iniziale.data_inizio || oggi(),
     visibile_studio: iniziale.visibile_studio !== false,
+    visibile_personal: iniziale.visibile_personal !== false,
   }));
   const [conferma, setConferma] = useState(false);
   const [salvando, setSalvando] = useState(false);
@@ -196,9 +198,9 @@ function ModuloEvento({ iniziale, ctx, chiudi, scelta }) {
       <label className="pp-campo"><span>Descrizione / note</span>
         <textarea rows={3} value={ev.note || ''} onChange={(e) => cambia('note', e.target.value)} placeholder="Aggiungi dettagli, luogo o persone coinvolte…" />
       </label>
-      <label className="pp-interruttore"><input type="checkbox" checked={ev.visibile_studio} onChange={(e) => cambia('visibile_studio', e.target.checked)} /><span>Mostra anche nell'agenda dello studio</span></label>
+      <AgendaVisibility value={ev} onChange={flags => setEv(x => ({ ...x, ...flags }))} />
       <button className="pp-bottone pp-bottone-largo" disabled={!valido || salvando} onClick={() => salva()}>{salvando ? 'Salvataggio…' : ev.id ? 'Salva modifiche' : ev.ripeti !== 'nessuna' ? 'Crea impegni' : "Aggiungi all'agenda"}</button>
-      <p className="pp-riga-meta">{ev.visibile_studio ? "Compare anche nell'agenda dello studio, con il contorno tratteggiato dei tuoi impegni." : "Visibile solo qui in Personal: nell'agenda dello studio non compare."}</p>
+      <p className="pp-riga-meta">Le modifiche aggiornano lo stesso evento nelle agende selezionate.</p>
       {ev.id && (
         <div className="pp-elimina">
           {!conferma

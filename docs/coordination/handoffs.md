@@ -3930,3 +3930,18 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 
 - Verifica remota completata su 6bff9555: 1403/1403 test Node, build Vite e controllo grafo startup OK; 436381 byte JS non compressi nel grafo iniziale; tutte le 9 schermate differite. Il numero non è un tempo di apertura né un confronto con la versione precedente. CI browser agenda e preview: stato finale nei controlli PR #233.
 - Stato: WAITING_PRODUCT_OWNER. Nessun merge. Il presente aggiornamento cambia solo la documentazione.
+
+## 2026-10-20 — Codex — AGENDA-CONDIVISA
+- OWNER: Codex; previous PERSONAL-STARTUP; branch codex/agenda-condivisa from fa54f122648945b09e8f846deb6fadc9cc7b3992.
+- OBJECTIVE: default sharing of past/new appointments/events, per-calendar opt-out, occupied weekends in work week, common layout.
+- COMPLETED: shared visibility model/editor, both adapters and persistence field maps, excluded-entry recovery, occupied weekend reveal, Personal realtime/focus refresh. Same shared presentation retained.
+- FILES: shared/agenda visibility modules; Studio Agenda/App/DB mapping; Personal Agenda/Grid/Event/Appointment and writers; tests and coordination.
+- DATABASE: additive booleans in supabase/migrations/20261020212514_agenda_visibility.sql, generated with Supabase CLI in GitHub CI. No RLS/grants/triggers/functions/financial changes; no production access or writes. Old explicit exclusions are preserved.
+- TESTS: CI e1d2b3ed: 1407/1407 Node tests, both Vite builds, isolated PostgreSQL 17 historical/new defaults, preserved explicit exclusion, persistence and representative two-tenant policies OK. Final browser sharing suite pending; local environment unavailable.
+- LIMITS: no physical iPhone validation; existing Studio optimistic write behavior preserved; visibility controls are presentation settings, not access control or redaction.
+- ROLLBACK: revert code and keep additive columns. Immutable stable checkpoint preserved.
+- NEXT: finish CI, database test and migration artifact, inspect diff, then PO review before merge/deployment.
+
+- REVIEW: PR #234; diff checked for scope and secrets; no secret additions. Trailing whitespace removed. Final-head CI required before merge.
+- BROWSER EVIDENCE: e1d2b3ed baseline geometry/pixel comparisons and reliability pass Chromium/WebKit at 375/390/430px. Dedicated occupied-Sunday/exclusion browser scenarios added on 7afa4bcd and retained in final CI.
+- STATUS: WAITING_PRODUCT_OWNER, no merge/deploy/migration in production. Final CI results are recorded on PR #234. Exact next action: confirm final-head checks, PO approval, controlled Studio migration before frontend release, then real iPhone smoke test.

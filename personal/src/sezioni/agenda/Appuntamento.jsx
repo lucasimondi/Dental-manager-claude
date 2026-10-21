@@ -1,3 +1,4 @@
+import AgendaVisibility from '../../../../shared/agenda/AgendaVisibility.jsx';
 // Agenda — appuntamento dello studio creato, modificato o eliminato da Personal.
 import { useEffect, useState } from 'react';
 import { tipiAppuntamento, cercaPazienti, salvaAppuntamento, eliminaAppuntamento } from '../../lib/studio.js';
@@ -14,6 +15,7 @@ export function ModuloAppuntamento({ a: iniziale, ctx, chiudi }) {
   const { esegui, aggiorna, mostra } = ctx;
   const [tipi, setTipi] = useState([]);
   const [f, setF] = useState(() => ({
+    visibile_studio: iniziale.visibile_studio !== false, visibile_personal: iniziale.visibile_personal !== false,
     id: iniziale.id || null, paziente_id: iniziale.paziente_id || null, paziente: iniziale.paziente || '',
     data: iniziale.data || oggi(), ora: String(iniziale.ora || '09:00').slice(0, 5), durata: Number(iniziale.durata) || 30,
     tipo: iniziale.tipo || '', colore: iniziale.colore || '', note: iniziale.note || '', stato: iniziale.stato || 'confermato',
@@ -95,8 +97,9 @@ export function ModuloAppuntamento({ a: iniziale, ctx, chiudi }) {
         </select>
       </label>
       <label className="pp-campo"><span>Note</span><textarea rows={3} value={f.note} onChange={(e) => cambia('note', e.target.value)} /></label>
+      <AgendaVisibility value={f} onChange={flags => setF(x => ({ ...x, ...flags }))} />
       <button className="pp-bottone pp-bottone-largo" disabled={!valido || salvando} onClick={salva}>{salvando ? 'Salvataggio…' : f.id ? 'Salva modifiche' : 'Fissa appuntamento'}</button>
-      <p className="pp-riga-meta">È l'agenda dello studio: lo vedono subito anche gli altri. Poltrona, operatore e promemoria si scelgono dallo studio.</p>
+      <p className="pp-riga-meta">Le modifiche aggiornano lo stesso appuntamento nelle agende selezionate. Poltrona, operatore e promemoria si scelgono dallo studio.</p>
       {f.id && (
         <div className="pp-elimina">
           {!conferma
