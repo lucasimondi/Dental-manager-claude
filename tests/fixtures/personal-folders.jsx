@@ -1,0 +1,10 @@
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { AzioniFascicolo } from '/personal/src/sezioni/documenti/AzioniFascicolo.jsx';
+import { CartelleRisultati } from '/personal/src/CartelleRisultati.jsx';
+import { archivioDb } from '/personal/src/lib/supabasePersonal.js';
+import '/personal/src/personal.css';
+archivioDb.auth.getSession = async () => ({ data: { session: { access_token: 'synthetic-test-token' } } });
+const docs = Array.from({ length: 12 }, (_, i) => ({ id: `00000000-0000-0000-0000-${String(i).padStart(12, '0')}`, titolo: `Documento di prova ${i}`, ente: 'Ente di prova', fascicolo: 'formazione', drive_file_id: `synthetic-file-${i}`, email_data: '2026-10-01' }));
+const ctx = { apri: (p) => { document.querySelector('#navigation').textContent = JSON.stringify(p); } };
+createRoot(document.getElementById('root')).render(<main className="pp-app" style={{ padding: 16 }}><h1>Cartella di prova</h1><CartelleRisultati documenti={docs} ctx={ctx} /><AzioniFascicolo documenti={docs} nome="Ente di prova" ctx={ctx} /><output id="navigation" /></main>);

@@ -1,0 +1,27 @@
+name: Personal document folders
+on:
+  pull_request:
+    branches: [master]
+    paths: ['personal/**', 'poliedron/archivio/Code.gs', 'tests/personalFascicolo.test.mjs', 'tests/fixtures/personal-folders*', 'tests/visual/personal-folders.mjs', '.github/workflows/personal-folders.yml']
+permissions:
+  contents: read
+jobs:
+  folders:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: npm run build:personal
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/visual/personal-folders.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: personal-folders-screenshots
+          path: tests/visual/results-personal-folders/

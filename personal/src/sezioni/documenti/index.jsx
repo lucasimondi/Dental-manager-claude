@@ -11,10 +11,10 @@ const PaginaCarica = differito(() => import('./Carica.jsx'), 'PaginaCarica');
 const PaginaCartella = differito(() => import('./Cartelle.jsx'), 'PaginaCartella');
 const PaginaSuggerimenti = differito(() => import('./Cartelle.jsx'), 'PaginaSuggerimenti');
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { documentiSenzaCartella } from '../../lib/cartelle.js';
+import { tuttiDocumentiCartella } from '../../lib/fascicolo.js';
 import { CAMPI_DOC } from '../../lib/archivio.js';
 
-const caricaSenzaCartella = () => documentiSenzaCartella(archivioDb, CAMPI_DOC);
+const caricaSenzaCartella = () => tuttiDocumentiCartella(archivioDb, null);
 
 export const documenti = {
   id: 'documenti', nome: 'Documenti', Icona: IconaDocumenti, Vista: VistaDocumenti,

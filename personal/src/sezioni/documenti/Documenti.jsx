@@ -1,3 +1,4 @@
+import { CartelleRisultati } from '../../CartelleRisultati.jsx';
 // POL-VITA-007 — Documenti: ricerca immediata con filtri (categoria, ente, anno, tipo, persona),
 // cartelle per ente (POL-VITA-016, vista principale), categorie, pratiche; le cose poco utili (pubblicità, foto, catene) restano
 // nascoste finché non le chiedi. Selezione multipla (tieni premuto o "Seleziona") con azioni di
@@ -59,7 +60,7 @@ export function VistaDocumenti({ ctx }) {
       {ricerca ? (
         risultati
           ? (risultati.length
-            ? <ElencoSelezionabile elenco={risultati} ctx={ctx} onCambiato={() => setRinfresca((n) => n + 1)} intestazione={`${risultati.length}${risultati.length >= 200 ? '+' : ''} risultati`} />
+            ? <><CartelleRisultati documenti={risultati} ctx={ctx} /><ElencoSelezionabile elenco={risultati} ctx={ctx} onCambiato={() => setRinfresca((n) => n + 1)} intestazione={`${risultati.length}${risultati.length >= 200 ? '+' : ''} risultati`} /></>
             : <Vuoto>Nessun documento. Prova un'altra parola o togli un filtro{filtri.anchePocoUtili ? '' : ', oppure tocca "Anche poco utili"'}.</Vuoto>)
           : <Vuoto>Cerco…</Vuoto>
       ) : (
@@ -70,7 +71,7 @@ export function VistaDocumenti({ ctx }) {
             <IconaFreccia size={16} />
           </button>
           <Chips voci={[['cartelle', 'Cartelle'], ['recenti', 'Recenti'], ['categorie', 'Categorie'], ['pratiche', 'Pratiche']]} attiva={scheda} onScegli={setScheda} />
-          {scheda === 'cartelle' && <VistaCartelle ctx={ctx} anchePocoUtili={filtri.anchePocoUtili} />}
+          {scheda === 'cartelle' && <VistaCartelle ctx={ctx} anchePocoUtili={true} />}
           {scheda === 'recenti' && risultati && <ElencoSelezionabile elenco={risultati} ctx={ctx} onCambiato={() => setRinfresca((n) => n + 1)} intestazione="Ultimi arrivati" />}
           {scheda === 'categorie' && (
             <>

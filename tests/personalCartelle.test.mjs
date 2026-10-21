@@ -136,7 +136,7 @@ test('app: Documenti si apre sulle cartelle, a icone o in elenco; selezione con 
   assert.match(doc, /d\.fascicolo !== 'clinico_pazienti'/, 'i clinici non si preparano per la condivisione');
   assert.match(cart, /setModo\('griglia'\)/);
   assert.match(cart, /setModo\('righe'\)/);
-  for (const a of ['Sintesi AI', 'Rispondi', 'Promemoria', 'Modifica', 'Elimina']) assert.match(cart, new RegExp(`<span>${a}</span>`));
+  for (const a of ['Sintesi catalogo', 'Rispondi', 'Promemoria', 'Modifica', 'Elimina']) assert.match(cart, new RegExp(`<span>${a}</span>`));
   assert.match(cart, /Togli solo la cartella/);
   assert.match(cart, /<ConfermaElimina n=\{documenti\.length\}/);
   assert.match(cart, /Non invia nulla/);
