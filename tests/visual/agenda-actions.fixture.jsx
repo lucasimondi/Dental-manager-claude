@@ -7,7 +7,7 @@ import { appointmentPatientAction } from '../../src/lib/appointmentQuickHub.js';
 import '../../src/styles.css';
 import '../../src/styles/designTokens.css';
 import '../../src/components/PremiumVisualSystem.css';
-const patient={id:7,nome:'Paziente',cognome:'Test',telefono:'3330000000'};
+const patient={id:7,nome:'Paziente',cognome:'Test',telefono:'3330000000',email:'test@example.invalid'};
 const settings={oraInizio:8,oraFine:20,slotMin:30,durataDefault:30,hiddenWeekdays:[]};
 function Fixture(){
  const [appointments,setAppointments]=useState([{id:3,pazienteId:7,data:'2026-10-23',ora:'10:00',durata:60,tipo:'Visita',stato:'confermato'}]);

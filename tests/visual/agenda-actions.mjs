@@ -16,7 +16,8 @@ try{
    await page.goto('http://127.0.0.1:5173/tests/visual/agenda-actions.html?agenda=1&agendaDate=2026-10-23&agendaView=giorno');
    const card=page.locator('[data-appointment-id="3"]');await card.evaluate(el=>el.scrollIntoView({block:'center'}));await card.click();
    const menu=page.locator('.agenda-appointment-menu-sheet');await menu.waitFor();
-   for(const oldAction of ['WhatsApp','Email','Modifica','Sposta','Elimina'])assert.equal(await menu.getByRole('button',{name:oldAction,exact:true}).count(),1);
+   await page.screenshot({path:`${out}/${engine}-${width}-${action}-menu.png`});
+   for(const oldAction of ['WhatsApp','Email','Modifica','Sposta','Elimina'])assert.equal(await menu.getByRole('button',{name:oldAction,exact:true}).count(),1,oldAction);
    await menu.getByRole('button',{name:action,exact:true}).click();
    if(action==='Prestazione'){
     const editor=page.locator('.plan-inline-editor');await editor.getByPlaceholder('Descrizione prestazione').fill('Prestazione manuale di prova');await editor.locator('input[type="number"]').fill('85');await editor.getByRole('button',{name:'Aggiungi',exact:true}).click();
