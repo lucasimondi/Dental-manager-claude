@@ -10,45 +10,35 @@ try{
  for(const engine of ['chromium','webkit']){
   const browser=await({chromium,webkit}[engine]).launch();
   for(const width of [375,768,1024,1440]){
-   const context=await browser.newContext({viewport:{width,height:900},timezoneId:'Europe/Rome'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
-   await page.emulateMedia({reducedMotion:'reduce'});
+   const context=await browser.newContext({viewport:{width,height:900},timezoneId:'Europe/Rome'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.emulateMedia({reducedMotion:'reduce'});
    await page.clock.install({time:new Date('2026-10-21T06:00:00Z')});
    await page.route('**/*',route=>new URL(route.request().url()).hostname==='127.0.0.1'?route.continue():route.fulfill({json:[],headers:{'access-control-allow-origin':'*'}}));
    const open=async(suffix='')=>{
     await page.goto('http://127.0.0.1:5173/tests/visual/appointment-workspace.html?agenda=1&agendaDate=2026-10-23&agendaView=giorno'+suffix);
-    const card=page.locator('[data-appointment-id="3"]');await card.evaluate(el=>el.scrollIntoView({block:'center'}));await card.click();await page.getByRole('navigation',{name:'Operazioni appuntamento'}).waitFor();
-    assert.equal(await page.getByRole('button',{name:'Chiudi appuntamento',exact:true}).evaluate(el=>{const b=el.getBoundingClientRect();return el.contains(document.elementFromPoint(b.x+b.width/2,b.y+b.height/2))}),true,'agenda overlays cannot cover the sheet');
+    const card=page.locator('[data-appointment-id="3"]');await card.evaluate(el=>el.scrollIntoView({block:'center'}));await card.click();await page.getByLabel('Prestazione 1',{exact:true}).waitFor();
    };
+   const ws=page.getByRole('region',{name:'Scheda appuntamento'}),section=name=>ws.locator('details.appointment-form-section').filter({has:page.locator('summary > span',{hasText:name})});
    await open();
-   const ws=page.getByRole('region',{name:'Scheda appuntamento'}),nav=ws.getByRole('navigation');
-   const choose=label=>nav.getByRole('button',{name:label,exact:true}).click();
-   const editor=ws.locator('.plan-inline-editor');
-   await editor.getByPlaceholder('Descrizione prestazione').fill('Manuale 85');await editor.locator('input[type="number"]').fill('85');
-   await choose('Incasso');const pay=ws.getByRole('region',{name:'Registra incasso'});await pay.locator('input[type="number"]').fill('25');
-   await choose('Prestazioni');assert.equal(await editor.getByPlaceholder('Descrizione prestazione').inputValue(),'Manuale 85');
-   await editor.getByRole('button',{name:'Aggiungi',exact:true}).click();
-   let row=await page.evaluate(()=>window.__plans[0].voci[0]);assert.equal(row.prezzo,85);assert.equal(row.eseguita,false);assert.equal(row.incassata,false);
-   await choose('Incasso');assert.equal(await pay.locator('input[type="number"]').inputValue(),'25');await pay.getByRole('button',{name:'Salva',exact:true}).click();
-   assert.deepEqual(await page.evaluate(()=>window.__payments.map(p=>[p.pazienteId,p.importo])),[[7,25]]);
-   await choose('Ricetta');const drug=page.getByPlaceholder('es. Amoxicillina 875mg, Ibuprofene 600mg...');await drug.fill('Farmaco sintetico');
-   await choose('Preventivo');const quote=ws.getByRole('region',{name:'Nuovo piano di cura'});await quote.getByPlaceholder('es. Piano conservativa').fill('Preventivo prova');await quote.getByPlaceholder('Digita nome prestazione…').fill('Voce manuale');
-   await quote.locator('input[type="number"]').first().fill('90');await quote.getByRole('button',{name:'+ Aggiungi',exact:true}).click();
-   await quote.locator('select').filter({has:page.locator('option',{hasText:'Scegli dal listino…'})}).selectOption('Prestazione listino');await quote.getByRole('button',{name:'+ Aggiungi',exact:true}).click();
-   await choose('Ricetta');assert.equal(await drug.inputValue(),'Farmaco sintetico');
-   await choose('Preventivo');assert.equal(await quote.getByPlaceholder('es. Piano conservativa').inputValue(),'Preventivo prova');
-   await quote.getByRole('button',{name:'Salva piano',exact:true}).click();
-   const plan=await page.evaluate(()=>window.__plans[1]);assert.equal(plan.pazienteId,7);assert.equal(plan.voci.length,2);assert.equal(plan.voci[0].prezzo,90);assert.equal(plan.voci[1].prezzo,120);assert.equal(plan.voci.every(v=>!v.eseguita&&!v.incassata),true);
-   await choose('Documenti');await page.getByRole('button',{name:/Richiesta esami diagnostici/}).click();await page.getByText('Quesito clinico / motivazione (opzionale)',{exact:true}).waitFor();
-   assert.equal(await page.locator('.appointment-document-editor').evaluate(el=>getComputedStyle(el).position),'relative');assert.equal(await page.getByText('Scheda paziente richiesta',{exact:true}).count(),0);
-   await page.screenshot({path:`${out}/${engine}-${width}-documenti.png`});
-   await choose('Prestazioni');await page.getByText('Altre azioni appuntamento',{exact:true}).click();for(const label of ['WhatsApp','Email','Modifica','Sposta','Elimina'])assert.equal(await page.locator('.agenda-appointment-menu-actions > details').getByRole('button',{name:label,exact:true}).isVisible(),true);
-   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-   const box=await page.locator('.appointment-workspace-sheet').boundingBox();assert.ok(box.width>=(width < 768 ? width - 1 : Math.min(width - 40, 1000) - 1),JSON.stringify(box));
-   await page.screenshot({path:`${out}/${engine}-${width}-prestazioni.png`});await page.getByRole('button',{name:'Chiudi appuntamento',exact:true}).click();assert.equal(await page.locator('.appointment-workspace-sheet').count(),0);assert.notEqual(await page.evaluate(()=>document.body.style.overflow),'hidden');
-   // A patient without a plan creates one explicitly, in the same sheet.
-   await open('&empty=1');await ws.getByRole('button',{name:'Crea piano e inserisci prestazioni'}).click();await quote.getByPlaceholder('es. Piano conservativa').fill('Primo piano');await quote.getByPlaceholder('Digita nome prestazione…').fill('Prima voce');await quote.locator('input[type="number"]').first().fill('50');await quote.getByRole('button',{name:'+ Aggiungi',exact:true}).click();await quote.getByRole('button',{name:'Salva piano',exact:true}).click();assert.equal(await page.evaluate(()=>window.__plans.length),1);
-   await open('&vertical=fisioterapista');assert.equal(await nav.getByRole('button',{name:'Ricetta',exact:true}).isDisabled(),true);
-   assert.deepEqual(errors,[]);await context.close();console.log(`${engine}/${width}: embedded operations, drafts, quote, old actions, close and vertical gate OK`);
+   assert.equal(await ws.getByRole('navigation').count(),0);assert.equal(await ws.locator('.plan-drilldown,.appointment-embedded-form,.appointment-document-editor').count(),0);
+   assert.equal(await page.getByLabel('Prestazione 1',{exact:true}).isVisible(),true);assert.equal(await page.getByLabel('Prezzo prestazione 1 (€)',{exact:true}).isVisible(),true);
+   assert.equal(await page.getByRole('button',{name:'Chiudi appuntamento',exact:true}).evaluate(el=>{const b=el.getBoundingClientRect();return el.contains(document.elementFromPoint(b.x+b.width/2,b.y+b.height/2))}),true);
+   await page.screenshot({path:`${out}/${engine}-${width}-apertura.png`});
+   await page.getByLabel('Prestazione 1',{exact:true}).fill('Igiene manuale');await page.getByLabel('Prezzo prestazione 1 (€)',{exact:true}).fill('85');
+   const pay=section('Incasso');await pay.locator('summary').first().click();await pay.getByLabel('Incassato (€)').fill('25');await pay.getByLabel('Metodo',{exact:true}).selectOption('Carta');await pay.locator('summary').first().click();
+   const quote=section('Preventivo');await quote.locator('summary').first().click();await quote.getByLabel('Titolo preventivo').fill('Preventivo prova');await quote.getByLabel('Voce preventivo 1',{exact:true}).fill('Voce manuale');await quote.getByLabel('Prezzo voce preventivo 1 (€)',{exact:true}).fill('90');await quote.getByRole('button',{name:'+ Altra voce preventivo',exact:true}).click();await quote.getByLabel('Voce preventivo 2',{exact:true}).fill('Prestazione listino');assert.equal(await quote.getByLabel('Prezzo voce preventivo 2 (€)',{exact:true}).inputValue(),'120');await quote.locator('summary').first().click();
+   const med=section('Ricetta e documenti');await med.locator('summary').first().click();await med.getByLabel('Farmaco 1',{exact:true}).fill('Farmaco sintetico');await med.getByLabel('Posologia 1').fill('Posologia di prova');await med.locator('summary').first().click();await med.locator('summary').first().click();assert.equal(await med.getByLabel('Farmaco 1',{exact:true}).inputValue(),'Farmaco sintetico');
+   await med.getByRole('button',{name:'Genera PDF',exact:true}).click();await med.getByRole('button',{name:'Apri anteprima',exact:true}).waitFor();
+   await med.getByLabel('Tipo documento').selectOption('diagnostica');await med.getByLabel('Esami richiesti').fill('Ecografia di prova');await med.getByLabel('Quesito clinico',{exact:true}).fill('Quesito sintetico');await med.getByRole('button',{name:'Genera PDF',exact:true}).click();await med.getByRole('button',{name:'Apri anteprima',exact:true}).waitFor();
+   await page.screenshot({path:`${out}/${engine}-${width}-campi-documento.png`});await med.locator('summary').first().click();
+   assert.equal(await page.getByLabel('Prestazione 1',{exact:true}).inputValue(),'Igiene manuale');await pay.locator('summary').first().click();assert.equal(await pay.getByLabel('Incassato (€)').inputValue(),'25');
+   assert.equal(await page.evaluate(()=>window.__payments.length),0);await page.screenshot({path:`${out}/${engine}-${width}-compilazione.png`});
+   await ws.getByRole('button',{name:'Salva e chiudi',exact:true}).evaluate(el=>{el.click();el.click()});await page.locator('.appointment-workspace-sheet').waitFor({state:'detached'});
+   const saved=await page.evaluate(()=>({plans:window.__plans,payments:window.__payments,calls:window.__saveCalls}));assert.equal(saved.calls,1);assert.equal(saved.plans[0].voci[0].prezzo,85);assert.equal(saved.plans[0].voci[0].eseguita,false);assert.equal(saved.plans[0].voci[0].incassata,false);assert.equal(saved.plans[1].voci.length,2);assert.equal(saved.payments[0].pianoId,20);assert.equal(saved.payments[0].metodo,'Carta');assert.notEqual(await page.evaluate(()=>document.body.style.overflow),'hidden');
+   await open('&empty=1');await page.getByLabel('Prestazione 1',{exact:true}).fill('Prestazione listino');assert.equal(await page.getByLabel('Prezzo prestazione 1 (€)',{exact:true}).inputValue(),'120');await section('Incasso').locator('summary').first().click();await page.getByLabel('Incassato (€)').fill('10');await ws.getByRole('button',{name:'Salva e chiudi'}).click();await page.locator('.appointment-workspace-sheet').waitFor({state:'detached'});assert.equal(await page.evaluate(()=>window.__payments[0].pianoId===window.__plans[0].id),true);
+   await open('&fail=1');await page.getByLabel('Prestazione 1',{exact:true}).fill('Resta qui');await page.getByLabel('Prezzo prestazione 1 (€)',{exact:true}).fill('30');await ws.getByRole('button',{name:'Salva e chiudi'}).click();await ws.getByRole('alert').waitFor();assert.equal(await page.getByLabel('Prestazione 1',{exact:true}).inputValue(),'Resta qui');assert.equal(await page.locator('.appointment-workspace-sheet').isVisible(),true);
+   await open('&vertical=fisioterapista');await section('Ricetta e documenti').locator('summary').first().click();assert.equal(await page.getByLabel('Tipo documento').locator('option[value="ricetta"]').count(),0);assert.equal(await page.getByLabel('Tipo documento').locator('option[value="diagnostica"]').count(),0);
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.getByText('Altre azioni appuntamento',{exact:true}).click();for(const label of ['WhatsApp','Email','Modifica','Sposta','Elimina'])assert.equal(await page.locator('.agenda-appointment-menu-actions > details').getByRole('button',{name:label,exact:true}).isVisible(),true);
+   assert.deepEqual(errors,[]);await context.close();console.log(`${engine}/${width}: immediate fields, collapsible drafts, PDFs, single save, actual plan ID, error retention and vertical gate OK`);
   }await browser.close();
  }
 }finally{server.kill()}

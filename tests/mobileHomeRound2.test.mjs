@@ -325,7 +325,7 @@ test('ROUND 4 (rev. azioni rapide mobile): Home "Ricetta" opens the full DocMedi
 });
 
 test('DocMedico accepts a caller-supplied patient picker and blocks PDF generation until a patient is chosen', () => {
-  assert.match(docMedicoSrc, /onDocumentSaved, pazienteSelector, embedded = false \}\) \{/);
+  assert.match(docMedicoSrc, /onDocumentSaved, pazienteSelector, embedded = false, renderInline \}\) \{/);
   assert.match(docMedicoSrc, /\{pazienteSelector && \(\s*<div ref=\{pazienteSectionRef\}>/);
   // The patient card sits right above the Farmaci section, so scrolling it
   // to the top shows patient + prescription fields together.
