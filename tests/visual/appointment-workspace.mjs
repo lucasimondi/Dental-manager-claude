@@ -40,7 +40,7 @@ try{
    await choose('Documenti');await page.getByRole('button',{name:/Richiesta esami diagnostici/}).click();await page.getByText('Quesito clinico / motivazione (opzionale)',{exact:true}).waitFor();
    assert.equal(await page.locator('.appointment-document-editor').evaluate(el=>getComputedStyle(el).position),'relative');assert.equal(await page.getByText('Scheda paziente richiesta',{exact:true}).count(),0);
    await page.screenshot({path:`${out}/${engine}-${width}-documenti.png`});
-   await choose('Prestazioni');await page.getByText('Altre azioni appuntamento',{exact:true}).click();for(const label of ['WhatsApp','Email','Modifica','Sposta','Elimina'])assert.equal(await page.getByRole('button',{name:label,exact:true}).isVisible(),true);
+   await choose('Prestazioni');await page.getByText('Altre azioni appuntamento',{exact:true}).click();for(const label of ['WhatsApp','Email','Modifica','Sposta','Elimina'])assert.equal(await page.locator('.agenda-appointment-menu-actions > details').getByRole('button',{name:label,exact:true}).isVisible(),true);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
    const box=await page.locator('.appointment-workspace-sheet').boundingBox();assert.ok(box.width>=(width < 768 ? width - 1 : Math.min(width - 40, 1000) - 1),JSON.stringify(box));
    await page.screenshot({path:`${out}/${engine}-${width}-prestazioni.png`});await page.getByRole('button',{name:'Chiudi appuntamento',exact:true}).click();assert.equal(await page.locator('.appointment-workspace-sheet').count(),0);assert.notEqual(await page.evaluate(()=>document.body.style.overflow),'hidden');
