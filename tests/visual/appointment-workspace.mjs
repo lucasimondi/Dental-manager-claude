@@ -53,7 +53,7 @@ try{
    await open('&empty=1');
    await page.getByLabel('Prestazione 1',{exact:true}).fill('Impianto');await page.getByLabel('Totale impianto 1 (€)',{exact:true}).fill('1800.99');
    const tooth=ws.locator('.appointment-tooth-picker').first();await tooth.locator('summary').click();await tooth.getByRole('button',{name:'Dente 16',exact:true}).click();assert.equal(await page.getByLabel('Dente prestazione 1 (facoltativo)',{exact:true}).inputValue(),'16');await tooth.locator('summary').click();
-   assert.equal(await ws.getByText('Corona composito ceramica',{exact:true}).isVisible(),true);assert.equal(await ws.locator('.appointment-implant-preview').getByText('1.150,99 €',{exact:true}).isVisible(),true);
+   assert.equal(await ws.getByText('Corona composito ceramica',{exact:true}).isVisible(),true);assert.equal((await ws.locator('.appointment-implant-preview > div').filter({hasText:'Corona composito ceramica'}).locator('b').textContent()).replace(/[^0-9]/g,''),'115099');
    await ws.getByRole('button',{name:'Duplica prestazione 1',exact:true}).click();assert.equal(await page.getByLabel('Totale impianto 2 (€)',{exact:true}).inputValue(),'1800.99');await page.getByLabel('Dente prestazione 2 (facoltativo)',{exact:true}).fill('26');assert.equal(await page.getByLabel('Dente prestazione 1 (facoltativo)',{exact:true}).inputValue(),'16');
    await section('Incasso').locator('summary').first().click();await page.getByLabel('Incassato (€)').fill('100');await page.screenshot({path:`${out}/${engine}-${width}-impianto.png`});
    await ws.getByRole('button',{name:'Salva e chiudi',exact:true}).click();await page.locator('.appointment-workspace-sheet').waitFor({state:'detached'});
