@@ -11,6 +11,7 @@ try{
   const browser=await({chromium,webkit}[engine]).launch();
   for(const width of [375,768,1024,1440]){
    const context=await browser.newContext({viewport:{width,height:900},timezoneId:'Europe/Rome'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+   await page.emulateMedia({reducedMotion:'reduce'});
    await page.clock.install({time:new Date('2026-10-21T06:00:00Z')});
    await page.route('**/*',route=>new URL(route.request().url()).hostname==='127.0.0.1'?route.continue():route.fulfill({json:[],headers:{'access-control-allow-origin':'*'}}));
    const open=async(suffix='')=>{
@@ -41,7 +42,7 @@ try{
    await page.screenshot({path:`${out}/${engine}-${width}-documenti.png`});
    await choose('Prestazioni');await page.getByText('Altre azioni appuntamento',{exact:true}).click();for(const label of ['WhatsApp','Email','Modifica','Sposta','Elimina'])assert.equal(await page.getByRole('button',{name:label,exact:true}).isVisible(),true);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-   const box=await page.locator('.appointment-workspace-sheet').boundingBox();assert.ok(box.width>=Math.min(width,1000)-30,JSON.stringify(box));
+   const box=await page.locator('.appointment-workspace-sheet').boundingBox();assert.ok(box.width>=(width < 768 ? width - 1 : Math.min(width - 40, 1000) - 1),JSON.stringify(box));
    await page.screenshot({path:`${out}/${engine}-${width}-prestazioni.png`});await page.getByRole('button',{name:'Chiudi appuntamento',exact:true}).click();assert.equal(await page.locator('.appointment-workspace-sheet').count(),0);assert.notEqual(await page.evaluate(()=>document.body.style.overflow),'hidden');
    // A patient without a plan creates one explicitly, in the same sheet.
    await open('&empty=1');await ws.getByRole('button',{name:'Crea piano e inserisci prestazioni'}).click();await quote.getByPlaceholder('es. Piano conservativa').fill('Primo piano');await quote.getByPlaceholder('Digita nome prestazione…').fill('Prima voce');await quote.locator('input[type="number"]').first().fill('50');await quote.getByRole('button',{name:'+ Aggiungi',exact:true}).click();await quote.getByRole('button',{name:'Salva piano',exact:true}).click();assert.equal(await page.evaluate(()=>window.__plans.length),1);

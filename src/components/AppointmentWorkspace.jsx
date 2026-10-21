@@ -26,10 +26,11 @@ export default function AppointmentWorkspace({ patient, appointment, plans = [],
   const [tab, setTab] = useState('treatment');
   const [visited, setVisited] = useState({ treatment: true });
   const [quoteVersion, setQuoteVersion] = useState(0);
+  const [medicalVersion, setMedicalVersion] = useState(0);
   const [paymentVersion, setPaymentVersion] = useState(0);
   const [notice, setNotice] = useState('');
   if (!patient?.id || String(appointment?.pazienteId) !== String(patient.id)) return null;
-  const patPlans = plans.filter(p => String(p.pazienteId) === String(patient.id));
+  const patPlans = plans.filter(p => p && String(p.pazienteId) === String(patient.id)).map(p => ({ ...p, voci: Array.isArray(p.voci) ? p.voci : [] }));
   const patPayments = payments.filter(p => String(p.pazienteId) === String(patient.id));
   const loaded = patPlans.every(p => saldiPiani[p.id]);
   const saldo = aggregateSaldi(patPlans.map(p => saldiPiani[p.id]).filter(Boolean));
@@ -46,9 +47,9 @@ export default function AppointmentWorkspace({ patient, appointment, plans = [],
         {visited.treatment && <>{patPlans.length > 0 && <PianoDrillDown plans={patPlans} patients={[patient]} setPlans={setPlans} payments={patPayments} setPayments={setPayments} pricelist={pricelist} si={si} features={features} initialAddTreatment />}
         <Btn ch={patPlans.length ? 'Crea un altro piano / preventivo' : 'Crea piano e inserisci prestazioni'} v="sec" onClick={() => select('quote')} /></>}
       </div>
-      <div hidden={tab !== 'payment'}>{visited.payment && <IncassoModal key={paymentVersion} embedded prefill={{ pazienteId: String(patient.id) }} patients={[patient]} plans={patPlans} setPayments={setPayments} onClose={() => select('treatment')} onSaved={() => { setPaymentVersion(v => v + 1); setNotice('Incasso registrato.'); }} />}</div>
+      <div hidden={tab !== 'payment'}>{visited.payment && <IncassoModal key={paymentVersion} embedded prefill={{ pazienteId: String(patient.id) }} patients={[patient]} plans={patPlans} setPayments={setPayments} onClose={() => { setPaymentVersion(v => v + 1); select('treatment'); }} onSaved={() => setNotice('Incasso registrato.')} />}</div>
       <div hidden={tab !== 'quote'}>{visited.quote && <Piani key={quoteVersion} embedded patients={[patient]} plans={patPlans} setPlans={setPlans} payments={patPayments} setPayments={setPayments} pricelist={pricelist} templates={templates} si={si} features={features} initPatId={patient.id} onSaved={() => { setQuoteVersion(v => v + 1); select('treatment'); setNotice('Piano / preventivo salvato.'); }} onCancel={() => { setQuoteVersion(v => v + 1); select('treatment'); }} />}</div>
-      <div hidden={!['prescription','documents'].includes(tab)}>{(visited.prescription || visited.documents) && <DocMedico embedded paz={patient} si={si} initialType={medicalType} onClose={() => select('treatment')} />}</div>
+      <div hidden={!['prescription','documents'].includes(tab)}>{(visited.prescription || visited.documents) && <DocMedico key={medicalVersion} embedded paz={patient} si={si} initialType={medicalType} onClose={() => { setMedicalVersion(v => v + 1); select('treatment'); }} />}</div>
     </Suspense>
     <footer className="appointment-workspace-summary" aria-label="Situazione del paziente"><span>Piani paziente <strong>{loaded ? fmt(saldo.totale_piano) : '…'}</strong></span><span>Incassato paziente <strong>{fmt(totalePagatoPaziente(patPayments))}</strong></span><span>Saldo paziente <strong>{loaded ? fmt(saldo.saldo_piano) : '…'}</strong></span></footer>
   </section>;
