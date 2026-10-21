@@ -1,0 +1,24 @@
+/* Appointment operations stay inside the agenda sheet. */
+
+.pol-modal-sheet.appointment-workspace-sheet { height: min(94dvh, 1000px); max-height: 94dvh; display: flex; flex-direction: column; }
+.appointment-workspace-sheet .agenda-appointment-menu-header { flex-shrink: 0; }
+.appointment-workspace-sheet .agenda-appointment-menu-actions { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.appointment-workspace { min-width: 0; padding: 6px; }
+.appointment-workspace-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.appointment-workspace-tabs { display: flex; gap: 6px; flex-wrap: wrap; position: sticky; top: -8px; z-index: 3; background: var(--surface-card); padding: 10px 0; }
+.appointment-workspace-tabs button { min-height: 44px; padding: 10px 12px; border: 1px solid var(--border-soft); border-radius: 12px; background: var(--surface-base); color: var(--brand-primary); font-weight: 700; cursor: pointer; }
+.appointment-workspace-tabs button[aria-pressed="true"] { background: var(--brand-primary); color: var(--text-on-brand, white); }
+.appointment-workspace-tabs button:disabled { opacity: .45; cursor: not-allowed; }
+.appointment-workspace-hint { font-size: 12px; color: var(--text-secondary); }
+.appointment-workspace-alert { padding: 12px; margin: 8px 0; background: color-mix(in srgb, var(--danger) 8%, var(--surface-card)); color: var(--danger); border-radius: 10px; }
+.appointment-workspace-summary { display: flex; flex-wrap: wrap; gap: 14px; padding: 14px 0; border-top: 1px solid var(--border-soft); margin-top: 14px; font-size: 12px; }
+.appointment-workspace-summary span { flex: 1; min-width: 85px; }
+.appointment-workspace-summary strong { display: block; margin-top: 4px; font-size: 16px; }
+.appointment-embedded-form h3 { margin: 8px 0 16px; font-size: 16px; }
+.appointment-document-editor [data-document-scroll] { overflow-y: visible !important; padding: 10px 0 16px !important; }
+@media (max-width: 767px) {
+ .pol-modal-backdrop.agenda-appointment-menu-backdrop:has(.appointment-workspace-sheet) { padding: 0 !important; align-items: stretch !important; }
+ .pol-modal-sheet.agenda-appointment-menu-sheet.appointment-workspace-sheet { width: 100% !important; max-width: none !important; height: 100dvh !important; max-height: 100dvh !important; border-radius: 0 !important; margin: 0 !important; }
+ .appointment-workspace-sheet .agenda-appointment-menu-header { padding-top: max(14px,env(safe-area-inset-top)) !important; }
+ .appointment-workspace-sheet .agenda-appointment-menu-actions { padding-bottom: max(20px,env(safe-area-inset-bottom)) !important; }
+}

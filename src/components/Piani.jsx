@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import EmbeddedForm from './EmbeddedForm.jsx';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, StatCard, SelettorePaziente, PageHeader, EmptyState } from './ui';
 import { C, uid, fmt, today, SCADENZA_PRESET, addMesi } from '../lib/utils';
 import { cercaPazienti } from '../lib/ricercaPazienti';
@@ -21,7 +22,7 @@ import PianoDrillDown from './PianoDrillDown.jsx';
    cards and their "browse all matching plans" panel are unchanged — they
    still summarize/list across every patient at once, a different, still
    useful view than the new per-patient drill-down. */
-export default function Piani({ patients, plans, setPlans, payments = [], setPayments, pricelist, templates, si, features, initPatId, onClearInitPat, onOpenPaz, autoOpenNew, onAutoOpenNewHandled }) {
+export default function Piani({ patients, plans, setPlans, payments = [], setPayments, pricelist, templates, si, features, initPatId, onClearInitPat, onOpenPaz, autoOpenNew, onAutoOpenNewHandled, embedded = false, onSaved, onCancel }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const isMobile = useIsMobile();
   const [modal, setModal] = useState(false);
@@ -29,14 +30,14 @@ export default function Piani({ patients, plans, setPlans, payments = [], setPay
   // Ricorda se il modale "nuovo piano" era aperto, così se l'app si
   // ricarica da zero (schermo spento, cambio app) lo ritroviamo aperto con
   // il contenuto già scritto (gestito separatamente da useFormPersistente).
-  React.useEffect(() => { salvaPosizione({ pianiModaleNuovo: modal }); }, [modal]);
+  React.useEffect(() => { if (!embedded) salvaPosizione({ pianiModaleNuovo: modal }); }, [modal, embedded]);
   React.useEffect(() => {
-    if (leggiPosizione()?.pianiModaleNuovo) setModal(true);
+    if (!embedded && leggiPosizione()?.pianiModaleNuovo) setModal(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [pazSearch, setPazSearch] = useState('');
   const ortoVuoto = { attivo: false, mascherineTotali: '', frequenzaSettimane: 2, dataConsegnaInizio: '', mascherineConsegnate: 0, storico: [] };
-  const [form, setForm, clearFormDraft] = useFormPersistente('nuovo_piano_cura', { pazienteId: '', titolo: '', data: today(), voci: [], stato: 'attivo', sconto: 0, scontoTipo: 'pct', scadenzaPagamento: '', ortodonzia: null });
+  const [form, setForm, clearFormDraft] = useFormPersistente(embedded ? `appuntamento_preventivo_${initPatId}` : 'nuovo_piano_cura', { pazienteId: '', titolo: '', data: today(), voci: [], stato: 'attivo', sconto: 0, scontoTipo: 'pct', scadenzaPagamento: '', ortodonzia: null });
   const [nv, setNv] = useState({ prestazione: '', dente: '', prezzo: '' });
   const [selectedDenti, setSelectedDenti] = useState([]);
   const [pdfPlan, setPdfPlan] = useState(null);
@@ -109,11 +110,13 @@ export default function Piani({ patients, plans, setPlans, payments = [], setPay
   };
 
   const save = () => {
+    if (embedded && String(form.pazienteId) !== String(initPatId)) return;
     if (!form.pazienteId || !form.titolo || !form.voci.length) return;
     setPlans((p) => [...p, { ...form, id: uid(), pazienteId: Number(form.pazienteId) }]);
     setModal(false);
     clearFormDraft();
     setToast('Piano salvato ✓');
+    onSaved?.();
   };
 
   const selPr = (nome) => { const item = pricelist.find((p) => p.nome === nome); setNv((v) => ({ ...v, prestazione: nome, prezzo: item ? item.prezzo : v.prezzo })); };
@@ -128,8 +131,10 @@ export default function Piani({ patients, plans, setPlans, payments = [], setPay
   const selectedPatient = selectedPatientId != null ? patients.find((p) => p.id === selectedPatientId) : null;
   const selectedPatientPlans = selectedPatientId != null ? plans.filter((pl) => pl.pazienteId === selectedPatientId) : [];
 
+  const PlanFrame = embedded ? EmbeddedForm : Modal;
   return (
     <div>
+      {!embedded && <>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
       <PageHeader icon="plan" title="Piani di cura" actions={
         <Btn ch="Nuovo" ic="plus" onClick={() => { setForm({ pazienteId: '', titolo: '', data: today(), voci: [], stato: 'attivo', sconto: 0, scontoTipo: 'pct', scadenzaPagamento: '', ortodonzia: null }); setNv({ prestazione: '', dente: '', prezzo: '' }); setSelectedDenti([]); setModal(true); }} />
@@ -239,9 +244,10 @@ export default function Piani({ patients, plans, setPlans, payments = [], setPay
         </div>
       )}
 
+      </>}
       {modal && (
-        <Modal title="Nuovo piano di cura" icon="plan" onClose={() => setModal(false)} wide>
-          <Fld label="Paziente">
+        <PlanFrame title="Nuovo piano di cura" icon="plan" onClose={() => setModal(false)} wide>
+          {!embedded && <Fld label="Paziente">
             <SelettorePaziente
               patients={patients}
               value={form.pazienteId}
@@ -249,7 +255,7 @@ export default function Piani({ patients, plans, setPlans, payments = [], setPay
               search={pazSearch}
               onSearchChange={setPazSearch}
             />
-          </Fld>
+          </Fld>}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <Fld label="Titolo"><Inp value={form.titolo} onChange={(e) => setForm((f) => ({ ...f, titolo: e.target.value }))} placeholder={isDentistico ? 'es. Piano conservativa' : 'es. Piano di trattamento'} /></Fld>
             <Fld label="Data"><Inp type="date" value={form.data} onChange={(e) => setForm((f) => ({ ...f, data: e.target.value }))} /></Fld>
@@ -392,10 +398,10 @@ export default function Piani({ patients, plans, setPlans, payments = [], setPay
             </div>
           )}
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn ch="Annulla" v="sec" onClick={() => setModal(false)} full />
+            <Btn ch="Annulla" v="sec" onClick={() => { setModal(false); onCancel?.(); }} full />
             <Btn ch="Salva piano" onClick={save} dis={!form.pazienteId || !form.titolo || !form.voci.length} full />
           </div>
-        </Modal>
+        </PlanFrame>
       )}
     </div>
   );

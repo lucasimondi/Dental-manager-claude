@@ -1,9 +1,8 @@
-# Current task — AGENDA-PATIENT-ACTIONS (2026-10-21)
-- OWNER: Codex; branch codex/agenda-patient-actions from master 5f6bc49.
-- PO: appointment tap retains every existing action and adds direct treatment, prescription, documents and payment entry points.
-- PREVIOUS: PATIENT-AGENDA-RETURN PR #237 merged; Vercel release verified in its PR record.
-- SCOPE: existing appointment menu → existing stable patient forms, same authoritative patient ID; treatment entry reuses PianoDrillDown.
-- STATUS: WAITING_PRODUCT_OWNER — PR #238; implementation complete, final-head CI required before release and explicit PO Mergia.
-- DATABASE / AUTH / FINANCE: no schema or semantics changes; no production operations.
-- ROLLBACK: revert PR; preserve immutable stable/2026-08-27-full-recovery.
-- VALIDATION: 1422/1422 local Node tests, Studio build and diff --check pass; final browser CI results recorded on PR #238.
+# Current task — APPOINTMENT-WORKSPACE (2026-10-21)
+- OWNER: Codex; branch codex/appointment-workspace from master 3d31bb4.
+- PO: large appointment sheet with embedded treatment, payment, prescription, documents and manual/list-price quote. Preserve existing appointment actions; no patient-sheet navigation for these operations.
+- PREVIOUS: PR #238 merged with PO authorization; Vercel success verified.
+- STATUS: WAITING_PRODUCT_OWNER — draft PR #239; implementation complete, final-head browser CI and screenshot review required before marking ready. Explicit Mergia required for release.
+- DATABASE / AUTH / FINANCE: reuse existing forms and setters; no schema or semantic changes.
+- ROLLBACK: revert dedicated PR; immutable stable/2026-08-27-full-recovery preserved.
+- VALIDATION: 1422/1422 Node tests and both builds pass; final browser checks recorded on PR #239. Embedded operations and draft switching verified in first browser scenario; viewport/overlay checks remain required.
