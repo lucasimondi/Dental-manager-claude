@@ -891,7 +891,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       <Crd style={{ marginBottom: 14 }}>
         {[
           ['ricetta', 'pill', 'Ricetta medica'],
-          ['esami', 'drop', 'Prescrizione esami ematici'],
+          ['esami', 'drop', 'Richieste esami (ematici e diagnostici)'],
           ['certificato', 'clip', 'Certificato di visita'],
           ['lettera', 'mail', 'Lettera per specialista'],
           ['protocollo', 'book', 'Protocollo post-trattamento'],
