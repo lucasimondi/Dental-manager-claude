@@ -42,6 +42,7 @@ try {
       assert.equal(await record.evaluate(el=>el.firstElementChild===window.__originalRecord),true);
       assert.equal(await page.evaluate(()=>window.__appointments.filter(a=>a.id===99).length),1);
       assert.equal(await page.evaluate(()=>window.__writes),2);
+      assert.equal(await page.getByText('Salvataggio di prova rifiutato',{exact:true}).count(),0);
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
       assert.deepEqual(errors,[]);
       await page.screenshot({path:`${out}/${engine}-${width}-restored.png`});

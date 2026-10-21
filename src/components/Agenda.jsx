@@ -616,6 +616,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
         appointment: { pazienteId: patient.id, data, ora, durata: followUpDuration, tipo: followUpType, colore: tipo?.colore || C.pri, stato: 'confermato', note: '', operatoreId: filtroOperatore !== 'tutti' ? Number(filtroOperatore) : null, poltronaId: filtroPoltrona !== 'tutti' ? Number(filtroPoltrona) : null, visibileStudio: true, visibilePersonal: true },
         appointments, impegni: tuttiImpegni, agendaSettings: { ...agSet, oraInizio, oraFine, slotMin }, today: today(),
       });
+      setToast('');
       followUpLock.current = true;
       setFollowUpSaving(true);
       await onBookFollowUp(appointment);
