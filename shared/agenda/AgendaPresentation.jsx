@@ -275,8 +275,8 @@ export function MonthCalendar({ palette: C = DEFAULT_PALETTE, date: vd, selDay, 
 export function EventBlock({ title, top, height, co, onClick, startTime, description, aCapo = false, col = 0, totalCols = 1 }) {
   if (aCapo) return (
     <div onClick={onClick} title={[startTime, title, description].filter(Boolean).join(' · ')} style={{ position: 'absolute', top, left: `calc(${col * 100 / totalCols}% + 1px)`, width: `calc(${100 / totalCols}% - 2px)`, height, zIndex: 1, cursor: 'pointer', background: co + '35', border: `1.5px dashed ${co}AA`, borderRadius: 5, padding: '1px 2px', boxSizing: 'border-box', overflow: 'hidden', color: co }}>
-      {startTime && <div style={{ fontSize: 8, lineHeight: '9px', fontWeight: 700 }}>{startTime}</div>}
-      <div style={{ fontSize: 9, lineHeight: '10px', fontWeight: 800, whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{title}</div>
+      {startTime && <div style={{ fontSize: 8, lineHeight: '9px', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{startTime}</div>}
+      <div style={{ fontSize: 9, lineHeight: '10px', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
     </div>);
 
   const showDetails = Boolean(startTime || description);
