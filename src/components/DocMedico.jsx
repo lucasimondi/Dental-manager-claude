@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { jsPDF } from 'jspdf';
+import { buildRichiestaEsamiPdf } from '../lib/documenti/richiestaEsami.js';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Ic, PannelloInvioDocumento } from './ui';
 import { C, fmt, fmtD, today, VERTICALI_CON_RICETTA } from '../lib/utils';
 import { useFormPersistente, DURATA_BOZZE_MS } from '../lib/useFormPersistente';
@@ -13,6 +14,7 @@ import { buildCertificatoRiposoPdf, datiAnagraficiPaziente, giorniRiposoValidi }
 
 const TIPI = [
   { id: 'ricetta', icona: 'pill', label: 'Ricetta medica', desc: 'Prescrizione farmaci e posologia' },
+  { id: 'diagnostica', icona: 'file', label: 'Richiesta esami diagnostici', desc: 'Ecografia, TAC, risonanza, radiografie e altri esami' },
   { id: 'esami', icona: 'drop', label: 'Prescrizione esami ematici', desc: 'Richiesta esami del sangue' },
   { id: 'certificato', icona: 'clip', label: 'Certificato di visita', desc: 'Certificato attestante la visita effettuata' },
   { id: 'riposo', icona: 'clip', label: 'Certificato riposo', desc: 'Visita e giorni di riposo, con i dati anagrafici della scheda' },
@@ -110,7 +112,7 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
   // La ricetta medica richiede l'iscrizione all'Ordine dei Medici e Odontoiatri:
   // disponibile solo per dentisti e medici chirurghi, non per altri professionisti sanitari.
   const puoiPrescrivere = VERTICALI_CON_RICETTA.has(si?.vertical) || !si?.vertical;
-  const tipiDisponibili = puoiPrescrivere ? TIPI : TIPI.filter((t) => t.id !== 'ricetta' && t.id !== 'esami');
+  const tipiDisponibili = puoiPrescrivere ? TIPI : TIPI.filter((t) => t.id !== 'ricetta' && t.id !== 'esami' && t.id !== 'diagnostica');
   const STUDIO = {
     nome: si?.nome || 'Studio',
     spec: si?.spec || '',
@@ -194,6 +196,10 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
     esamiSelezionati: ESAMI_EMATICI_STANDARD,
     esamiExtra: [],
     noteEsami: '',
+    esamiDiagnostici: '',
+    distrettoEsami: '',
+    quesitoEsami: '',
+    noteDiagnostica: '',
     motivoCert: '',
     dataVisita: today(),
     noteCert: '',
@@ -341,6 +347,16 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
     // POL-AI-009: Poliedron impara le posologie che il medico usa davvero.
     void imparaDaRicetta(supabase, { studioId, userId, farmaci: farmaciRicetta });
     setCompilataDaPoliedron(false);
+    clearContenutoDraft();
+    setPronto(pdf);
+    setGenerated(true);
+  };
+
+  const generaRichiestaEsami = () => {
+    const pdf = buildRichiestaEsamiPdf({ si, paziente: paz, data,
+      esami: cnt.esamiDiagnostici, distretto: cnt.distrettoEsami,
+      quesito: cnt.quesitoEsami, note: cnt.noteDiagnostica });
+    void salvaInArchivioSeAttivo(pdf.tipoDoc, pdf.titolo, pdf.dataUrl);
     clearContenutoDraft();
     setPronto(pdf);
     setGenerated(true);
@@ -659,12 +675,17 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
       pazienteSectionRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
       return;
     }
+    if (tipo === 'diagnostica' && !cnt.esamiDiagnostici?.trim()) {
+      setErroreGenerazione('Indica almeno un esame da richiedere.');
+      return;
+    }
     setErroreGenerazione('');
     setArchiviato(false);
     setGenerated(false);
     setPronto(null);
     try {
       if (tipo === 'ricetta') generaRicetta();
+      else if (tipo === 'diagnostica' && puoiPrescrivere) generaRichiestaEsami();
       else if (tipo === 'esami') generaEsamiEmatici();
       else if (tipo === 'certificato') generaCertificato();
       else if (tipo === 'riposo') generaCertificatoRiposo();
@@ -873,6 +894,27 @@ export default function DocMedico({ paz, si, onClose, initialType, initialPrefil
             <Fld label="Note cliniche (opzionale)">
               <textarea value={noteCert} onChange={e => setNoteCert(e.target.value)} rows={3} placeholder={isDentistico ? 'es. Riscontrata carie dente 46, pianificato trattamento...' : 'es. Osservazioni cliniche, piano di trattamento...'} style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${C.brd}`, borderRadius: 10, fontSize: 13, color: C.txt, background: C.sur, boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }} />
             </Fld>
+          </Crd>
+        )}
+
+        {tipo === 'diagnostica' && puoiPrescrivere && (
+          <Crd style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.txm, textTransform: 'uppercase', marginBottom: 10 }}>Richiesta esami diagnostici</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+              {['Ecografia', 'TAC', 'Risonanza magnetica', 'Radiografia', 'CBCT'].map((esame) => (
+                <Btn key={esame} ch={esame} onClick={() => setCnt(c => ({ ...c, esamiDiagnostici: [c.esamiDiagnostici, esame].filter(Boolean).join('\n') }))} />
+              ))}
+            </div>
+            {[
+              ['esamiDiagnostici', 'Esami richiesti', 'es. Ecografia addome completo; TAC massiccio facciale', 4],
+              ['distrettoEsami', 'Distretto anatomico / lato (opzionale)', 'es. Addome completo, ginocchio destro', 2],
+              ['quesitoEsami', 'Quesito clinico / motivazione (opzionale)', 'Indica il motivo della richiesta', 3],
+              ['noteDiagnostica', 'Note (opzionale)', 'Eventuali specifiche da riportare nella richiesta', 2],
+            ].map(([campo, label, placeholder, rows]) => (
+              <Fld key={campo} label={label}>
+                <textarea aria-label={label} value={cnt[campo] ?? ''} onChange={e => setCnt(c => ({ ...c, [campo]: e.target.value }))} rows={rows} placeholder={placeholder} style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${C.brd}`, borderRadius: 10, fontSize: 13, color: C.txt, background: C.sur, boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }} />
+              </Fld>
+            ))}
           </Crd>
         )}
 
