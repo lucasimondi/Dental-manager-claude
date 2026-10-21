@@ -60,11 +60,26 @@ try {
       assert.ok(await scroller.evaluate(el=>el.scrollTop>350));
     }
     assert.equal(await page.evaluate(()=>JSON.stringify(window.__state.appointments)),before,'scroll never moves/writes an appointment');
+    // Wait for native momentum/smooth wheel scrolling to settle before measuring
+    // a React refresh. Otherwise browser inertia is mistaken for an app reset.
+    await page.evaluate(async () => {
+      const el = document.querySelector('.agenda-mobile-calendar-scroller');
+      await new Promise(resolve => {
+        let previous = el.scrollTop, quiet = performance.now();
+        const deadline = quiet + 4000;
+        const frame = now => {
+          if (Math.abs(el.scrollTop - previous) > .5) { previous = el.scrollTop; quiet = now; }
+          if (now - quiet > 200 || now >= deadline) resolve(); else requestAnimationFrame(frame);
+        };
+        requestAnimationFrame(frame);
+      });
+    });
     // Data refresh must not snap the timeline back to the current hour.
     const position=await scroller.evaluate(el=>el.scrollTop);
     await page.evaluate(()=>window.__fixtureSetEvents(events=>events.map(e=>({...e}))));
     await page.waitForTimeout(100);
-    assert.ok(Math.abs((await scroller.evaluate(el=>el.scrollTop))-position)<2);
+    const afterRefresh=await scroller.evaluate(el=>el.scrollTop);
+    assert.ok(Math.abs(afterRefresh-position)<2,`${engine}/${mode}/${width}: refresh moved scroll ${position} -> ${afterRefresh}`);
     await scroller.evaluate(el=>el.scrollTop=el.scrollHeight);
     await page.getByTitle('23:00 · Impegno serale',{exact:true}).waitFor();
     await page.screenshot({path:`${out}/${engine}-${mode}-${width}.png`});
