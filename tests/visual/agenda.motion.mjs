@@ -24,8 +24,8 @@ try {
     const block=page.locator('[data-appointment-id="10"]');
     await block.scrollIntoViewIfNeeded();
     // A personal event at the same time must have its own visible column.
-    const event=page.getByText('Impegno sovrapposto',{exact:true});
-    const eventBox=await event.locator('..').boundingBox(),appBox=await block.boundingBox();
+    const event=page.getByTitle('09:00 · Impegno sovrapposto',{exact:true});
+    const eventBox=await event.boundingBox(),appBox=await block.boundingBox();
     assert.ok(eventBox.x+eventBox.width<=appBox.x+2 || appBox.x+appBox.width<=eventBox.x+2,'event is not hidden by appointment');
     const before=await page.evaluate(()=>JSON.stringify(window.__state.appointments));
     const content=block.locator('div').first();
@@ -65,7 +65,7 @@ try {
     await page.waitForTimeout(100);
     assert.ok(Math.abs((await scroller.evaluate(el=>el.scrollTop))-position)<2);
     await scroller.evaluate(el=>el.scrollTop=el.scrollHeight);
-    await page.getByText('Impegno serale',{exact:true}).waitFor();
+    await page.getByTitle('23:00 · Impegno serale',{exact:true}).waitFor();
     await page.screenshot({path:`${out}/${engine}-${mode}-${width}.png`});
     assert.deepEqual(errors,[]);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
