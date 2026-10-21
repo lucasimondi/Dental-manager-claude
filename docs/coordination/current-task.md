@@ -5,3 +5,4 @@
 - STATUS: WAITING_PRODUCT_OWNER — draft PR #239; implementation complete, final-head browser CI and screenshot review required before marking ready. Explicit Mergia required for release.
 - DATABASE / AUTH / FINANCE: reuse existing forms and setters; no schema or semantic changes.
 - ROLLBACK: revert dedicated PR; immutable stable/2026-08-27-full-recovery preserved.
+- VALIDATION: 1422/1422 Node tests and both builds pass; final browser checks recorded on PR #239. Embedded operations and draft switching verified in first browser scenario; viewport/overlay checks remain required.
