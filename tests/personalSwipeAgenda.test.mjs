@@ -21,7 +21,7 @@ test('esito: oltre la soglia o con un colpo veloce cambia; sinistra = avanti', (
 
 test('app: il gesto è sulla griglia di Giorno e Settimana, non sul Mese', () => {
   const src = readFileSync('personal/src/sezioni/agenda/AgendaGriglia.jsx', 'utf8');
-  assert.match(src, /useSwipeAgenda\(containerRef, navigate, view !== 'mese'\)/);
+  assert.match(src, /useTimeline\(\{[^\n]*onNavigate: navigate, enabled: view !== 'mese'/);
   assert.match(src, /className="agenda-mobile-grid-surface"[^>]*\{\.\.\.swipe\}/);
   assert.match(src, /navigate = n => setGiorno\(piuGiorni\(giorno, n \* \(weekly \? 7 : 1\)\)\)/);
 });

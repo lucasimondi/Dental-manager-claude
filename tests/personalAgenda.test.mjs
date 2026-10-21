@@ -140,8 +140,9 @@ test('Personal agenda: short month on one line, original slot height, Studio unt
   assert.match(griglia, /viewPicker=\{pick\} floatingFooter=\{fasciaGiorno\} shortMonth \/>/);
   // PO 2026-10-17: slot di nuovo come prima; più spazio solo col pinch (1 = come prima).
   assert.doesNotMatch(griglia, /PX_PER_MIN_MIN/);
-  assert.match(griglia, /const slotH = Math\.round\(Math\.max\(24, availH \/ slots\.length \* zoom\) \* pinch\);/);
-  assert.match(griglia, /usePinchZoom\(containerRef, view !== 'mese'\)/);
+  assert.match(griglia, /const slotH = Math\.round\(Math\.max\(24, availH \/ slots\.length \* zoom\)\);/);
+  assert.match(griglia, /useTimeline\(/);
+  assert.match(readFileSync('shared/agenda/useTimeline.js', 'utf8'), /usePinchZoom\(containerRef, mobile && enabled\)/);
   assert.match(shared, /shortMonth = false \}\) \{/, 'Studio keeps the full month name by default');
   assert.match(shared, /shortMonth \? \{ whiteSpace: 'nowrap', flexShrink: 0 \} : \{\}/);
 });

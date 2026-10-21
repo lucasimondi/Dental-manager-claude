@@ -1,6 +1,8 @@
+import DayEvents from '../../shared/agenda/DayEvents.jsx';
+import { useTimeline } from '../../shared/agenda/useTimeline.js';
 import AgendaVisibility from '../../shared/agenda/AgendaVisibility.jsx';
 import { agendaVisible, keepOccupiedWeekends } from '../../shared/agenda/visibility.js';
-import { layoutAppointments as layoutOverlap } from '../../shared/agenda/geometry.js';
+import { layoutAgendaDay, layoutAppointments as layoutOverlap } from '../../shared/agenda/geometry.js';
 import { readAgendaLocation } from '../../shared/agenda/navigation.js';
 import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, EventBlock, AppointmentBlock, useSlotHeight, AgendaSwitch, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState, useGridSwipe } from '../../shared/agenda/AgendaPresentation.jsx';
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
@@ -89,7 +91,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   // con window.innerHeight e sottrazioni indovinate. useLayoutEffect (non
   // useEffect) per leggerla/applicarla PRIMA del paint, evitando un flash
   // di slot troppo corti al primo render.
-  const effectiveSlotH = useSlotHeight(containerRef, isMobile, slots, slotH);
+  const { effectiveSlotH, swipe } = useTimeline({ containerRef, mobile: isMobile, slots, slotH, day: selDay, view: isSettimana ? 'settimana' : 'giorno', nowMinutes: (now.getHours() * 60 + now.getMinutes() - oraInizio * 60) / slotMin, onNavigate: onSwipeDay, enabled: !resizing && !moving });
 
   const appPosition = (a) => {
     const [ah, am] = a.ora.split(':').map(Number);
@@ -103,12 +105,6 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
     const timer = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
-
-  useEffect(() => {
-    // Scroll iniziale: vicino all'ora corrente se è dentro l'intervallo visibile, altrimenti in cima
-    const target = showNowLine ? Math.max(0, nowTop - effectiveSlotH * 2) : 0;
-    if (containerRef.current) containerRef.current.scrollTop = target;
-  }, [effectiveSlotH, slotMin, oraInizio]);
 
   // Resize mouse handlers
   useEffect(() => {
@@ -181,7 +177,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
   // lascia semplicemente vedere lo stesso sfondo pagina che usano Home e
   // tutte le altre schermate mobile — nessun'altra modifica alla griglia.
   return (
-    <div onTouchStart={onTouchStartSwipe} onTouchEnd={onTouchEndSwipe} style={{
+    <div {...(isMobile ? swipe : { onTouchStart: onTouchStartSwipe, onTouchEnd: onTouchEndSwipe })} style={{
       display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', background: C.sur,
       border: isMobile ? 'none' : `1px solid ${C.brd}`,
       borderRadius: isMobile ? 0 : 12,
@@ -199,7 +195,9 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
         <TimeGrid palette={C} containerRef={containerRef} isMobile={isMobile} slots={slots} slotH={slotH} effectiveSlotH={effectiveSlotH} oraColW={oraColW} days={days} today={t} showNowLine={showNowLine} nowTop={nowTop} selectionMode={selModeWA} onSlot={apriNuovo} renderDay={(ds) => {
           const dayApps = appointments.filter(a => a.data === ds).sort((a, b) => a.ora.localeCompare(b.ora));
           const dayImpOrari = (impegni || []).filter(imp => !imp.tuttoIlGiorno && imp.oraInizio && ds >= imp.dataInizio && ds <= imp.dataFine);
-          return <>                {dayImpOrari.map(imp => {
+          const packed = layoutAgendaDay(dayApps, dayImpOrari);
+          return <>                {packed.filter(x => x.a.agendaEvent).map(({ a, col, totalCols }) => {
+                  const imp = a.agendaEvent;
                   const inizioMin = orarioInMinutiUI(imp.oraInizio) - oraInizio * 60;
                   const fineMin = orarioInMinutiUI(imp.oraFine || imp.oraInizio) - oraInizio * 60;
                   const top = (inizioMin / slotMin) * effectiveSlotH;
@@ -207,10 +205,10 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                   if (top + height < 0 || top >= slots.length * effectiveSlotH) return null;
                   const co = imp.colore || TIPO_IMPEGNO.find(x => x.id === imp.tipo)?.colore || C.pri;
                   return (
-                    <EventBlock key={'imp-' + imp.id} title={imp.titolo} top={top} height={height} co={co} onClick={() => apriEditImpegno(imp)} />
+                    <EventBlock col={col} totalCols={totalCols} key={'imp-' + imp.id} title={imp.titolo} startTime={(imp.oraInizio || '').slice(0, 5)} description={imp.note || ''} aCapo={isSettimana} top={top} height={height} co={co} onClick={() => apriEditImpegno(imp)} />
                   );
                 })}
-                {layoutOverlap(dayApps).map(({ a, col, totalCols }) => {
+                {packed.filter(x => !x.a.agendaEvent).map(({ a, col, totalCols }) => {
                   const { top, height } = appPosition(a);
                   if (top < 0 || top >= slots.length * effectiveSlotH) return null;
                   const p = patients.find(x => x.id === a.pazienteId);
@@ -225,7 +223,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                   // "Tutti" attivo) si affiancano in colonne invece di disegnarsi uno sopra
                   // l'altro, così restano tutti visibili e cliccabili.
                   return (
-                    <AppointmentBlock key={a.id} a={a} label={p ? `${p.nome || ''} ${p.cognome || ''}`.trim() : '—'} co={co} top={top} height={height} col={col} totalCols={totalCols} isBeingResized={isBeingResized} isBeingMoved={isBeingMoved} selectionMode={selModeWA} selectable={isSelezionabileWA} selected={isSelected} operatore={operatore} poltrona={poltrona} selectionIndicator={<Ic n="ok" s={9} c="#fff" />}
+                    <AppointmentBlock touchScroll={isMobile} aCapo={isSettimana} key={a.id} a={a} label={p ? `${p.nome || ''} ${p.cognome || ''}`.trim() : '—'} co={co} top={top} height={height} col={col} totalCols={totalCols} isBeingResized={isBeingResized} isBeingMoved={isBeingMoved} selectionMode={selModeWA} selectable={isSelezionabileWA} selected={isSelected} operatore={operatore} poltrona={poltrona} selectionIndicator={<Ic n="ok" s={9} c="#fff" />}
                       onResizeMouse={e => { e.stopPropagation(); e.preventDefault(); setResizing({ id: a.id, startY: e.clientY, startDurata: Number(a.durata) }); }}
                       onMoveMouse={e => { if (selModeWA || isBeingResized) return; movedRef.current = false; setMoving({ id: a.id, startY: e.clientY, startOra: a.ora }); }}
                       onResizeTouch={e => { e.stopPropagation(); setResizing({ id: a.id, startY: e.touches[0].clientY, startDurata: Number(a.durata) }); }}
@@ -578,11 +576,13 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     return () => { window.removeEventListener('resize', recalc); window.removeEventListener('orientationchange', recalc); };
   }, []);
   // slotH calcolato per far stare l'intervallo scelto (oraInizio-oraFine) nello schermo, poi scalato dal fattore zoom
-  const oreVisibili = Math.max(1, oraFine - oraInizio);
-  const slotH = Math.max(8, Math.round((availH / (oreVisibili * 60 / slotMin)) * zoom));
+  const timelineStart = isMobile ? 0 : oraInizio;
+  const timelineEnd = isMobile ? 24 : oraFine;
+  const oreVisibili = Math.max(1, timelineEnd - timelineStart);
+  const slotH = isMobile ? Math.round(Math.max(24, availH / (oreVisibili * 60 / slotMin) * zoom)) : Math.max(8, Math.round((availH / (oreVisibili * 60 / slotMin)) * zoom));
   // Griglia limitata all'intervallo oraInizio - oraFine scelto nelle impostazioni
   const slots = [];
-  for (let h = oraInizio; h < oraFine; h++) {
+  for (let h = timelineStart; h < timelineEnd; h++) {
     for (let m = 0; m < 60; m += slotMin) {
       slots.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
     }
@@ -898,8 +898,13 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   // GridView (il commento su DayStrip spiega perché) — vedi item 5/2 della
   // spec "Agenda mobile final": non deve rubare spazio alle 7 colonne.
   const oraColW = isMobile ? 34 : 46;
-  const gridProps = { slots, slotH, slotMin, oraInizio, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight };
+  const gridProps = { slots, slotH, slotMin, oraInizio: timelineStart, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight };
 
+  const ribbonDays = (view === 'giorno' ? [new Date(selDay + 'T12:00')] : weekDays).map(d => {
+    const date = toISO(d);
+    return { date, items: impegni.filter(i => (i.tuttoIlGiorno || !i.oraInizio) && date >= i.dataInizio && date <= (i.dataFine || i.dataInizio)).map(i => ({ id: i.id, title: i.titolo, color: i.colore || TIPO_IMPEGNO.find(t => t.id === i.tipo)?.colore, onOpen: () => apriEditImpegno(i) })) };
+  });
+  const dayEvents = <DayEvents days={ribbonDays} gutter={oraColW} />;
   // Appuntamenti effettivamente visibili nella vista corrente (per il conteggio "Seleziona tutti" e il badge)
   const giorniVisibili = view === 'giorno' ? [selDay] : (view === 'settimana' || view === 'settimana_lavoro') ? weekDays.map(toISO) : [];
   const appVisibili = appointmentsAgenda.filter(a => giorniVisibili.includes(a.data));
@@ -1079,7 +1084,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       {haFiltriRisorse && !isMobile && chipsRisorse}
 
       {view === 'giorno' && (
-        <DayStrip palette={C} selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} oraColW={oraColW} singleDay={isMobile} hiddenWeekdays={agendaHiddenWeekdays} overlayRef={isMobile ? overlayRef : undefined} floatingFooter={isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}{(mostraEsclusi || tuttiImpegni.some(i => !agendaVisible(i, 'studio')) || appointments.some(a => !agendaVisible(a, 'studio'))) && <button type="button" aria-label="Mostra eventi esclusi da questa agenda" aria-pressed={mostraEsclusi} onClick={() => setMostraEsclusi(x => !x)} style={{ minHeight: 44, fontSize: 11 }}>Esclusi{mostraEsclusi ? ' ✓' : ''}</button>}<ViewPicker palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>} />
+        <DayStrip palette={C} selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} oraColW={oraColW} singleDay={isMobile} hiddenWeekdays={agendaHiddenWeekdays} shortMonth={isMobile} overlayRef={isMobile ? overlayRef : undefined} floatingFooter={<>{dayEvents}{isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null}</>} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker hiddenCount={tuttiImpegni.filter(i => !agendaVisible(i, 'studio')).length + appointments.filter(a => !agendaVisible(a, 'studio')).length} showHidden={mostraEsclusi} onToggleHidden={() => setMostraEsclusi(x => !x)} palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>} />
       )}
       {(view === 'settimana' || view === 'settimana_lavoro') && (
         <DayStrip palette={C}
@@ -1087,15 +1092,16 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           setSelDay={(ds) => { setSelDay(ds); setView('giorno'); }}
           today={t}
           highlightSelected={false}
-          onWeekChange={(wk) => setSelDay(wk)}
+          onWeekChange={(wk) => { if (wk !== toISO(startOfWeek(selDay))) { const d = new Date(wk + 'T12:00'); d.setDate(d.getDate() + (new Date(selDay + 'T12:00').getDay() + 6) % 7); setSelDay(toISO(d)); } }}
           compact={isMobile}
           oraColW={oraColW}
           onPrevWeek={() => navSettimana(-1)}
           onNextWeek={() => navSettimana(1)}
           hiddenWeekdays={agendaHiddenWeekdays}
+          shortMonth={isMobile}
           overlayRef={isMobile ? overlayRef : undefined}
-          floatingFooter={isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null}
-          viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}{(mostraEsclusi || tuttiImpegni.some(i => !agendaVisible(i, 'studio')) || appointments.some(a => !agendaVisible(a, 'studio'))) && <button type="button" aria-label="Mostra eventi esclusi da questa agenda" aria-pressed={mostraEsclusi} onClick={() => setMostraEsclusi(x => !x)} style={{ minHeight: 44, fontSize: 11 }}>Esclusi{mostraEsclusi ? ' ✓' : ''}</button>}<ViewPicker palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>}
+          floatingFooter={<>{dayEvents}{isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null}</>}
+          viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker hiddenCount={tuttiImpegni.filter(i => !agendaVisible(i, 'studio')).length + appointments.filter(a => !agendaVisible(a, 'studio')).length} showHidden={mostraEsclusi} onToggleHidden={() => setMostraEsclusi(x => !x)} palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>}
         />
       )}
       {view === 'mese' && isMobile && (
@@ -1103,7 +1109,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
               {notificheBell}
               {filtroButton}
               <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 14, padding: '5px 10px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
-              {(mostraEsclusi || tuttiImpegni.some(i => !agendaVisible(i, 'studio')) || appointments.some(a => !agendaVisible(a, 'studio'))) && <button type="button" aria-label="Mostra eventi esclusi da questa agenda" aria-pressed={mostraEsclusi} onClick={() => setMostraEsclusi(x => !x)} style={{ minHeight: 44, fontSize: 11 }}>Esclusi{mostraEsclusi ? ' ✓' : ''}</button>}<ViewPicker palette={C} view={view} setView={setView} touchSafe weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} />
+              <ViewPicker hiddenCount={tuttiImpegni.filter(i => !agendaVisible(i, 'studio')).length + appointments.filter(a => !agendaVisible(a, 'studio')).length} showHidden={mostraEsclusi} onToggleHidden={() => setMostraEsclusi(x => !x)} palette={C} view={view} setView={setView} touchSafe weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} />
         </MonthToolbar>
       )}
       {view === 'mese' && !isMobile && (
@@ -1116,7 +1122,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
             {isMobile && filtroButton}
             <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
           </div>
-          {(mostraEsclusi || tuttiImpegni.some(i => !agendaVisible(i, 'studio')) || appointments.some(a => !agendaVisible(a, 'studio'))) && <button type="button" aria-label="Mostra eventi esclusi da questa agenda" aria-pressed={mostraEsclusi} onClick={() => setMostraEsclusi(x => !x)} style={{ minHeight: 44, fontSize: 11 }}>Esclusi{mostraEsclusi ? ' ✓' : ''}</button>}<ViewPicker palette={C} view={view} setView={setView} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} />
+          <ViewPicker hiddenCount={tuttiImpegni.filter(i => !agendaVisible(i, 'studio')).length + appointments.filter(a => !agendaVisible(a, 'studio')).length} showHidden={mostraEsclusi} onToggleHidden={() => setMostraEsclusi(x => !x)} palette={C} view={view} setView={setView} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} />
         </div>
       )}
 

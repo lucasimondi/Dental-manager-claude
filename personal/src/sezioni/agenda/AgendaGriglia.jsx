@@ -1,18 +1,18 @@
+import DayEvents from '../../../../shared/agenda/DayEvents.jsx';
+import { useTimeline } from '../../../../shared/agenda/useTimeline.js';
 import { keepOccupiedWeekends } from '../../../../shared/agenda/visibility.js';
-import { layoutAppointments } from '../../../../shared/agenda/geometry.js';
+import { layoutAgendaDay, layoutAppointments } from '../../../../shared/agenda/geometry.js';
 import { euro } from '../../lib/coreArchivio.js';
 // POL-VITA-010: Personal adapter; original presentation is owned by shared/agenda.
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, AppointmentBlock, EventBlock, useSlotHeight, AgendaSwitch, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState } from '../../../../shared/agenda/AgendaPresentation.jsx';
 import { getVisibleWeekDays } from '../../../../shared/agenda/visibleDays.js';
-import { useSwipeAgenda } from '../../lib/swipeAgenda.js';
-import { usePinchZoom, scrollAncorato } from '../../lib/pinchZoom.js';
 import { daIso, piuGiorni, oggi, coloreEvento, nomeEtichetta, elementiDelGiorno, giorniSettimana } from '../../lib/agenda.js';
 export { ViewPicker };
 
 const GIORNI_NASCOSTI_PERSONAL = [];
 
-export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMese, dati, ctx, etichette, coloriTipi, mostraEsclusi = false, setMostraEsclusi }) {
+export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMese, dati, ctx, etichette, coloriTipi, mostraEsclusi = false, setMostraEsclusi, hiddenCount = 0 }) {
   const [localMonth, setLocalMonth] = useState(giorno);
   const month = mese || localMonth, changeMonth = setMese || setLocalMonth;
   const weekly = view === 'settimana' || view === 'settimana_lavoro';
@@ -31,20 +31,9 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
   const [now, setNow] = useState(new Date());
   // PO 2026-10-17: slot come prima ("troppo alti") e, per gli appuntamenti corti,
   // pinch-to-zoom con due dita: pinch 1 è l'altezza di sempre.
-  const [pinch, ancoraPinch] = usePinchZoom(containerRef, view !== 'mese');
-  const slotH = Math.round(Math.max(24, availH / slots.length * zoom) * pinch);
-  const effectiveSlotH = useSlotHeight(containerRef, true, slots, slotH, view);
-  const slotHPrima = useRef(effectiveSlotH);
-  useLayoutEffect(() => {
-    const el = containerRef.current, a = ancoraPinch.current;
-    ancoraPinch.current = null;
-    if (el && a && slotHPrima.current !== effectiveSlotH) {
-      const grid = el.querySelector('.agenda-time-grid');
-      const gridTop = grid ? grid.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop : 0;
-      el.scrollTop = scrollAncorato({ scrollTop: a.scrollTop, y: a.y, gridTop, oldSlotH: slotHPrima.current, newSlotH: effectiveSlotH });
-    }
-    slotHPrima.current = effectiveSlotH;
-  }, [effectiveSlotH]);
+  const slotH = Math.round(Math.max(24, availH / slots.length * zoom));
+  const navigate = n => setGiorno(piuGiorni(giorno, n * (weekly ? 7 : 1)));
+  const { effectiveSlotH, swipe } = useTimeline({ containerRef, mobile: true, slots, slotH, day: giorno, view, nowMinutes: (now.getHours() * 60 + now.getMinutes()) / slotMin, onNavigate: navigate, enabled: view !== 'mese' });
   useEffect(() => {
     const resize = () => setAvailH(Math.max(360, window.innerHeight - 126));
     window.addEventListener('resize', resize); window.addEventListener('orientationchange', resize);
@@ -60,11 +49,9 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
   const nowMin = now.getHours() * 60 + now.getMinutes() - oraInizio * 60;
   const nowTop = nowMin / slotMin * effectiveSlotH;
   const showNowLine = nowMin >= 0 && nowMin <= slots.length * slotMin;
-  useEffect(() => { if (containerRef.current) containerRef.current.scrollTop = showNowLine ? Math.max(0, nowTop - effectiveSlotH * 2) : 0; }, [giorno, view]);
   // POL-VITA-008: "Vai a Studio" accanto al selettore della vista, alla sua sinistra.
   const appSwitch = <AgendaSwitch inline target="studio" day={giorno} month={month} view={view} />;
-  const pick = <span className="personal-agenda-azioni">{appSwitch}<ViewPicker view={view} setView={setView} touchSafe weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendsHidden(hidden => !hidden)} />{setMostraEsclusi && <button type="button" aria-label="Mostra eventi esclusi da questa agenda" aria-pressed={mostraEsclusi} onClick={() => setMostraEsclusi(x => !x)} style={{ minHeight: 44, fontSize: 11 }}>Esclusi{mostraEsclusi ? ' ✓' : ''}</button>}</span>;
-  const navigate = n => setGiorno(piuGiorni(giorno, n * (weekly ? 7 : 1)));
+  const pick = <span className="personal-agenda-azioni">{appSwitch}<ViewPicker hiddenCount={hiddenCount} showHidden={mostraEsclusi} onToggleHidden={setMostraEsclusi ? () => setMostraEsclusi(x => !x) : undefined} view={view} setView={setView} touchSafe weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendsHidden(hidden => !hidden)} /></span>;
   // DayStrip notifica anche al primo mount la settimana che sta mostrando.
   // In Personal ignoriamo quella prima notifica: altrimenti il 16 diventa lunedì 12.
   const skipWeekSync = useRef(true);
@@ -84,19 +71,20 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
     setGiorno(piuGiorni(weekStart, offset));
   };
   // POL-VITA-009: la griglia segue il dito e cambia giorno o settimana (anche fuori dalla striscia).
-  const swipe = useSwipeAgenda(containerRef, navigate, view !== 'mese');
   const monthNavigate = n => { const d = daIso(month); d.setMonth(d.getMonth() + n, 1); changeMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`); };
   const openSlot = (ds, slot) => ctx.apri({ tipo: 'evento', evento: { data_inizio: ds, ora_inizio: slot, ora_fine: Number(slot.slice(0,2)) === 23 ? '23:59' : `${String(Number(slot.slice(0,2)) + 1).padStart(2,'0')}:${slot.slice(3)}` } });
   const renderDay = ds => {
     const el = elementiDelGiorno(ds, dati);
+    const packed = layoutAgendaDay(dati.appuntamenti.filter(a => a.data === ds), el.aOrario.filter(x => x.tipo === 'evento').map(x => x.dato));
     return <>
-      {el.aOrario.filter(x => x.tipo === 'evento').map(x => {
+      {packed.filter(x => x.a.agendaEvent).map(item => {
+        const x = { dato: item.a.agendaEvent, id: item.a.id, inizio: item.start, fine: item.end };
         const top = (x.inizio - oraInizio * 60) / slotMin * effectiveSlotH;
         const height = Math.max((x.fine - x.inizio) / slotMin * effectiveSlotH, effectiveSlotH * .5);
         if (top + height < 0 || top >= slots.length * effectiveSlotH) return null;
-        return <EventBlock key={x.id} title={x.dato.titolo} startTime={(x.dato.ora_inizio || '').slice(0, 5)} description={x.dato.note || ''} aCapo={weekly} top={top} height={height} co={coloreEvento(x.dato, etichette)} onClick={() => ctx.apri({ tipo: 'evento', evento: x.dato })} />;
+        return <EventBlock col={item.col} totalCols={item.totalCols} key={x.id} title={x.dato.titolo} startTime={(x.dato.ora_inizio || '').slice(0, 5)} description={x.dato.note || ''} aCapo={weekly} top={top} height={height} co={coloreEvento(x.dato, etichette)} onClick={() => ctx.apri({ tipo: 'evento', evento: x.dato })} />;
       })}
-      {layoutAppointments(dati.appuntamenti.filter(a => a.data === ds).sort((a,b) => a.ora.localeCompare(b.ora))).map(x => {
+      {packed.filter(x => !x.a.agendaEvent).map(x => {
         const a = x.a, top = (x.start - oraInizio * 60) / slotMin * effectiveSlotH;
         if (top < 0 || top >= slots.length * effectiveSlotH) return null;
         return <AppointmentBlock key={a.id} a={a} label={weekly ? (a.cognome ? [a.cognome, String(a.paziente || '').replace(a.cognome, '').trim()].filter(Boolean).join(' ') : (a.paziente || a.tipo || '—')) : (a.cognome || a.paziente || '—')} aCapo={weekly} co={a.colore || coloriTipi[a.tipo] || '#185FA5'} top={top} height={Math.max(Number(a.durata) / slotMin * effectiveSlotH - 2, effectiveSlotH * .6)} col={x.col} totalCols={x.totalCols} readOnly onOpen={e => { e.stopPropagation(); ctx.apri({ tipo: 'appuntamento', a }); }} />;
@@ -112,15 +100,10 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
   });
   // POL-VITA-008: eventi di tutto il giorno e scadenze flottano subito sotto la striscia dei giorni,
   // dentro i controlli flottanti: la griglia scorre sotto di loro e solo le pillole sono toccabili.
-  const fasciaGiorno = visibleExtras.some(e => e.scadenze.length || e.tuttoIlGiorno.length)
-    ? <div className="personal-agenda-extras" aria-label="Scadenze ed eventi del giorno" style={{ gridTemplateColumns: `34px repeat(${days.length}, minmax(0, 1fr))` }}>
-      <div aria-hidden="true" className="personal-agenda-extras-gutter" />
-      {visibleExtras.map(el => <div key={el.day} className="personal-agenda-extras-day" aria-label={daIso(el.day).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}>
-        {el.scadenze.map(s => <button key={`${el.day}-s-${s.id}`} title={s.descrizione} onClick={() => ctx.apri({ tipo: 'pagamento', s })}>€ {s.descrizione}</button>)}
-        {el.tuttoIlGiorno.map(evento => <button key={`${el.day}-e-${evento.id}`} title={evento.titolo} onClick={() => ctx.apri({ tipo: 'evento', evento })}>{evento.titolo}</button>)}
-      </div>)}
-    </div>
-    : null;
+  const fasciaGiorno = <DayEvents gutter={34} days={visibleExtras.map(el => ({ date: el.day, items: [
+    ...el.scadenze.map(s => ({ id: 's-' + s.id, title: '€ ' + s.descrizione, color: '#b45309', onOpen: () => ctx.apri({ tipo: 'pagamento', s }) })),
+    ...el.tuttoIlGiorno.map(evento => ({ id: 'e-' + evento.id, title: evento.titolo, color: coloreEvento(evento, etichette), onOpen: () => ctx.apri({ tipo: 'evento', evento }) })),
+  ] }))} />;
   return <div className="agenda-mobile-page" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, position: 'relative', '--agenda-mobile-overlay-clearance': `${overlayHeight}px` }}>
     {view === 'mese' ? <>
       <MonthToolbar date={daIso(month)} overlayRef={overlayRef}><button onClick={() => changeMonth(oggi())} style={{ background: '#E6F1FB', border: 'none', borderRadius: 14, padding: '5px 10px', color: '#185FA5', fontWeight: 700, fontSize: 10 }}>Oggi</button>{pick}</MonthToolbar>

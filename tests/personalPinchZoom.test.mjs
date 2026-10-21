@@ -25,11 +25,11 @@ test('pinch: the time under the fingers stays where it is', () => {
 });
 
 test('pinch: two fingers zoom the grid, one finger still swipes', () => {
-  const src = readFileSync(new URL('../personal/src/lib/pinchZoom.js', import.meta.url), 'utf8');
+  const src = readFileSync(new URL('../shared/agenda/pinchZoom.js', import.meta.url), 'utf8');
   assert.match(src, /addEventListener\('touchmove', move, \{ passive: false \}\)/);
   assert.match(src, /e\.touches\.length !== 2/);
   assert.match(src, /gesturestart/);
   assert.match(src, /try \{ localStorage\.setItem/);
-  const swipe = readFileSync(new URL('../personal/src/lib/swipeAgenda.js', import.meta.url), 'utf8');
+  const swipe = readFileSync(new URL('../shared/agenda/swipeAgenda.js', import.meta.url), 'utf8');
   assert.match(swipe, /if \(g\.current\?\.dx\) sposta\(colonne\(\), 0, 180\);/);
 });
