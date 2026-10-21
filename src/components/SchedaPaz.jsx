@@ -38,12 +38,13 @@ const PatientQuickActions = lazy(() => import('./PatientQuickActions.jsx'));
 const PatientWorkspaceDocuments = lazy(() => import('./PatientWorkspaceDocuments.jsx'));
 const PatientWorkspaceConsentFlow = lazy(() => import('./PatientWorkspaceDocuments.jsx').then((module) => ({ default: module.PatientWorkspaceConsentFlow })));
 
-export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {}, implants = [], setImplants, setPatients, setPayments, richiami = [], setRichiami, onNuovoAppuntamento, onPatientChange, studioMembership, currentUserId, isStudioAdmin, saldiPiani = {}, pricelist = [], features }) {
+export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {}, initialAction, implants = [], setImplants, setPatients, setPayments, richiami = [], setRichiami, onNuovoAppuntamento, onPatientChange, studioMembership, currentUserId, isStudioAdmin, saldiPiani = {}, pricelist = [], features }) {
   const [tab, setTab] = useState(initTab || 'info');
   // Il documento aperto (ricetta, documento medico, fattura, consenso) si riapre da solo se l'app
   // viene ricaricata da zero tornando da un'altra app (iPhone); il testo lo tiene la sua bozza.
   const [documentFlow, setDocumentFlowStato] = useState(() => {
     if (initialDocumentRequest?.type === 'ricetta') return 'ricetta';
+    if (initialDocumentRequest?.type === 'medico') return 'medico';
     const aperto = documentoAperto('scheda', paz?.id)?.flusso;
     return ['ricetta', 'medico', 'fiscale', 'consenso'].includes(aperto) ? aperto : null;
   });
@@ -64,7 +65,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
   // sola volta al mount, basta per "apri il popup se in allarme quando la
   // scheda si apre", senza bisogno di un effetto post-mount.
   const [anamnesiPopup, setAnamnesiPopup] = useState(() => anamnesiState === 'allarme');
-  const [incassoOpen, setIncassoOpen] = useState(false);
+  const [incassoOpen, setIncassoOpen] = useState(initialAction === 'payment');
   // POL-UI-042: "Modifica" used to call an external onEdit(paz) that
   // App.jsx wired to nothing but closing this very overlay
   // (onEdit={() => setSchedaDashPaz(null)}) — clicking it just dropped
@@ -150,6 +151,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
         <Btn ch="Preventivo" ic="file" v="sec" sz="sm" onClick={apriPreventivo} />
       </div>
       <PianoDrillDown
+        initialAddTreatment={initialAction === 'treatment'}
         plans={patPlans}
         patients={[paz]}
         setPlans={setPlans}
