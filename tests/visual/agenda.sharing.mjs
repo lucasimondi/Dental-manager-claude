@@ -23,6 +23,7 @@ try {
      assert.equal(await page.locator('.agenda-grid-day').count(),excluded?5:6,`${engine} ${mode} occupied Sunday`);
      if(excluded){
       assert.equal(await page.locator('[data-appointment-id="18"]').count(),0);
+      await page.locator('button').filter({has:page.locator('.agenda-view-picker')}).click();
       await page.getByRole('button',{name:'Mostra eventi esclusi da questa agenda',exact:true}).click();
       await page.waitForFunction(()=>document.querySelectorAll('.agenda-grid-day').length===6);
      }

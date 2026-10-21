@@ -8,7 +8,7 @@ const WD_SHORT = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
 const toISO = d => d.toISOString().slice(0,10);
 const startOfWeek = d => { const dt = new Date(d + 'T12:00'); const day = dt.getDay(); dt.setDate(dt.getDate() + (day === 0 ? -6 : 1 - day)); return dt; };
-export function ViewPicker({ view, setView, touchSafe = false, palette: C = DEFAULT_PALETTE, weekendsHidden = false, onToggleWeekends }) {
+export function ViewPicker({ view, setView, touchSafe = false, palette: C = DEFAULT_PALETTE, weekendsHidden = false, onToggleWeekends, hiddenCount = 0, showHidden = false, onToggleHidden }) {
   const [open, setOpen] = useState(false);
   const LABEL = { giorno: 'Giorno', settimana: 'Settimana', settimana_lavoro: 'Settimana lavoro', mese: 'Mese' };
   return (
@@ -31,6 +31,7 @@ export function ViewPicker({ view, setView, touchSafe = false, palette: C = DEFA
           {['giorno', 'settimana', 'settimana_lavoro', 'mese'].map((v) => (
             <button key={v} onClick={() => { setView(v); setOpen(false); }} style={{ display: 'block', width: '100%', padding: '9px 12px', border: 'none', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', textAlign: 'left', background: view === v ? C.priL : 'transparent', color: view === v ? C.pri : C.txt }}>{LABEL[v]}</button>
           ))}
+          {onToggleHidden && (hiddenCount > 0 || showHidden) && <button onClick={() => { onToggleHidden(); setOpen(false); }} aria-label="Mostra eventi esclusi da questa agenda" aria-pressed={showHidden} style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 8, padding: '12px', border: 'none', borderTop: `1px solid ${C.brd}`, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', textAlign: 'left', background: showHidden ? C.priL : 'transparent', color: C.txt }}><span aria-hidden="true">{showHidden ? '✓' : '○'}</span>Eventi nascosti{hiddenCount > 0 && <span style={{ marginLeft: 'auto', color: C.pri }}>{hiddenCount}</span>}</button>}
           {onToggleWeekends && <button onClick={() => { onToggleWeekends(); setOpen(false); }} aria-pressed={weekendsHidden} style={{ display: 'block', width: '100%', padding: '9px 12px', border: 'none', borderTop: `1px solid ${C.brd}`, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', textAlign: 'left', background: weekendsHidden ? C.priL : 'transparent', color: weekendsHidden ? C.pri : C.txt }}>{weekendsHidden ? 'Mostra sabato e domenica' : 'Nascondi sabato e domenica'}</button>}
         </div>
       )}
@@ -271,16 +272,16 @@ export function MonthCalendar({ palette: C = DEFAULT_PALETTE, date: vd, selDay, 
 }
 
 // a capo = true (solo Personal, vista settimana): orario e titolo su righe proprie, non troncati.
-export function EventBlock({ title, top, height, co, onClick, startTime, description, aCapo = false }) {
+export function EventBlock({ title, top, height, co, onClick, startTime, description, aCapo = false, col = 0, totalCols = 1 }) {
   if (aCapo) return (
-    <div onClick={onClick} title={[startTime, title, description].filter(Boolean).join(' · ')} style={{ position: 'absolute', top, left: 1, right: 1, height, zIndex: 1, cursor: 'pointer', background: co + '35', border: `1.5px dashed ${co}AA`, borderRadius: 5, padding: '1px 2px', boxSizing: 'border-box', overflow: 'hidden', color: co }}>
-      {startTime && <div style={{ fontSize: 8, lineHeight: '9px', fontWeight: 700 }}>{startTime}</div>}
-      <div style={{ fontSize: 9, lineHeight: '10px', fontWeight: 800, whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{title}</div>
+    <div onClick={onClick} title={[startTime, title, description].filter(Boolean).join(' · ')} style={{ position: 'absolute', top, left: `calc(${col * 100 / totalCols}% + 1px)`, width: `calc(${100 / totalCols}% - 2px)`, height, zIndex: 1, cursor: 'pointer', background: co + '35', border: `1.5px dashed ${co}AA`, borderRadius: 5, padding: '1px 2px', boxSizing: 'border-box', overflow: 'hidden', color: co }}>
+      {startTime && <div style={{ fontSize: 8, lineHeight: '9px', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{startTime}</div>}
+      <div style={{ fontSize: 9, lineHeight: '10px', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
     </div>);
 
   const showDetails = Boolean(startTime || description);
   return (                    <div onClick={onClick} title={[startTime, title, description].filter(Boolean).join(' · ')} style={{
-                      position: 'absolute', top, left: 2, right: 2, height, zIndex: 1, cursor: 'pointer',
+                      position: 'absolute', top, left: `calc(${col * 100 / totalCols}% + 2px)`, width: `calc(${100 / totalCols}% - 4px)`, height, zIndex: 1, cursor: 'pointer',
                       background: co + '35', border: `1.5px dashed ${co}AA`, borderRadius: 5,
                       display: 'flex', ...(showDetails ? { flexDirection: 'column', gap: 1, padding: '1px 4px' } : {}), alignItems: 'flex-start', ...(showDetails ? {} : { padding: '2px 5px' }), boxSizing: 'border-box', overflow: 'hidden',
                     }}>
@@ -289,16 +290,17 @@ export function EventBlock({ title, top, height, co, onClick, startTime, descrip
                     </div>);
 }
 
-export function AppointmentBlock({ a, label, aCapo = false, co, top, height, col = 0, totalCols = 1, isBeingResized = false, isBeingMoved = false, selectionMode: selModeWA = false, selectable: isSelezionabileWA = false, selected: isSelected = false, operatore, poltrona, onMoveMouse, onMoveTouch, onOpen, onResizeMouse, onResizeTouch, selectionIndicator, readOnly = false }) {
+export function AppointmentBlock({ a, label, aCapo = false, co, top, height, col = 0, totalCols = 1, isBeingResized = false, isBeingMoved = false, selectionMode: selModeWA = false, selectable: isSelezionabileWA = false, selected: isSelected = false, operatore, poltrona, onMoveMouse, onMoveTouch, onOpen, onResizeMouse, onResizeTouch, selectionIndicator, readOnly = false, touchScroll = false }) {
   const widthPct = 100 / totalCols, leftPct = col * widthPct;
-  return (                    <div data-appointment-id={a.id} onClick={readOnly ? onOpen : undefined} style={{ position: 'absolute', top, left: `calc(${leftPct}% + 2px)`, width: `calc(${widthPct}% - 4px)`, height, background: co, borderRadius: 5, overflow: 'hidden', zIndex: isBeingResized || isBeingMoved ? 10 : 2, borderLeft: `3px solid ${co}DD`, boxShadow: isBeingResized || isBeingMoved ? '0 6px 16px rgba(0,0,0,0.35)' : '0 1px 3px rgba(0,0,0,0.15)', userSelect: 'none', opacity: isBeingMoved ? 0.85 : (selModeWA && !isSelezionabileWA ? 0.35 : 1), outline: isSelected ? '2.5px solid #25D366' : 'none', outlineOffset: -1 }}>
+  const dense = aCapo && totalCols > 1;
+  return (                    <div title={[a.ora, label, a.tipo].filter(Boolean).join(' · ')} data-appointment-id={a.id} onClick={readOnly || touchScroll ? onOpen : undefined} style={{ position: 'absolute', top, left: `calc(${leftPct}% + 2px)`, width: `calc(${widthPct}% - 4px)`, height, background: co, borderRadius: 5, overflow: 'hidden', zIndex: isBeingResized || isBeingMoved ? 10 : 2, borderLeft: `3px solid ${co}DD`, boxShadow: isBeingResized || isBeingMoved ? '0 6px 16px rgba(0,0,0,0.35)' : '0 1px 3px rgba(0,0,0,0.15)', userSelect: 'none', opacity: isBeingMoved ? 0.85 : (selModeWA && !isSelezionabileWA ? 0.35 : 1), outline: isSelected ? '2.5px solid #25D366' : 'none', outlineOffset: -1 }}>
                       {/* Contenuto appuntamento — in modalità selezione tocca per selezionare/deselezionare;
                           altrimenti trascina per spostare l'orario, tocca/clicca senza muovere per aprire il menu azioni */}
                       <div
-                        onMouseDown={onMoveMouse}
-                        onTouchStart={onMoveTouch}
+                        onMouseDown={touchScroll ? undefined : onMoveMouse}
+                        onTouchStart={touchScroll ? undefined : onMoveTouch}
                         onClick={onOpen}
-                        style={{ padding: '2px 5px', cursor: selModeWA ? (isSelezionabileWA ? 'pointer' : 'not-allowed') : (readOnly ? 'pointer' : isBeingMoved ? 'grabbing' : 'grab'), paddingBottom: height > 26 ? 9 : 2, touchAction: readOnly ? 'pan-y' : 'none' }}
+                        style={{ padding: dense ? '2px 1px' : '2px 5px', cursor: selModeWA ? (isSelezionabileWA ? 'pointer' : 'not-allowed') : (readOnly ? 'pointer' : isBeingMoved ? 'grabbing' : 'grab'), paddingBottom: height > 26 ? 9 : 2, touchAction: readOnly || touchScroll ? 'pan-y' : 'none' }}
                       >
                         {operatore && !selModeWA && (
                           <div title={operatore.nome} style={{ position: 'absolute', top: 3, right: 3, width: 7, height: 7, borderRadius: '50%', background: operatore.colore, border: '1px solid rgba(255,255,255,0.8)' }} />
@@ -306,8 +308,8 @@ export function AppointmentBlock({ a, label, aCapo = false, co, top, height, col
                         {poltrona && !selModeWA && (
                           <div title={poltrona.nome} style={{ position: 'absolute', top: 3, right: operatore ? 13 : 3, width: 7, height: 7, borderRadius: 2, background: poltrona.colore, border: '1px solid rgba(255,255,255,0.8)' }} />
                         )}
-                        <div style={{ fontSize: 9, lineHeight: '10px', fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(() => { const [h, m] = String(a.ora || '00:00').split(':').map(Number); const fine = ((h || 0) * 60 + (m || 0) + Number(a.durata || 0)) % (24 * 60); return `${String(h || 0).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}–${String(Math.floor(fine / 60)).padStart(2, '0')}:${String(fine % 60).padStart(2, '0')}`; })()}</div>
-                        {height > 18 && <div style={{ fontSize: aCapo ? 9 : 8, lineHeight: aCapo ? '10px' : '9px', fontWeight: aCapo ? 800 : undefined, color: 'rgba(255,255,255,0.94)', overflow: 'hidden', ...(aCapo ? { whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'break-word' } : { textOverflow: 'ellipsis', whiteSpace: 'nowrap' }) }}>{label || a.tipo || 'Appuntamento'}</div>}
+                        <div style={{ fontSize: dense ? 8 : 9, lineHeight: '10px', fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(() => { const [h, m] = String(a.ora || '00:00').split(':').map(Number); const fine = ((h || 0) * 60 + (m || 0) + Number(a.durata || 0)) % (24 * 60); return `${String(h || 0).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}–${String(Math.floor(fine / 60)).padStart(2, '0')}:${String(fine % 60).padStart(2, '0')}`; })()}</div>
+                        {height > 18 && <div style={{ fontSize: aCapo ? 9 : 8, lineHeight: aCapo ? '10px' : '9px', fontWeight: aCapo ? 800 : undefined, color: 'rgba(255,255,255,0.94)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label || a.tipo || 'Appuntamento'}</div>}
                         {height > 44 && a.tipo && a.tipo !== label && <div style={{ fontSize: 8, lineHeight: '9px', color: 'rgba(255,255,255,0.7)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.tipo}</div>}
                       </div>
                       {/* Checkbox selezione — solo in modalità invio WhatsApp di massa */}
@@ -317,10 +319,10 @@ export function AppointmentBlock({ a, label, aCapo = false, co, top, height, col
                         </div>
                       )}
                       {/* RESIZE HANDLE - nascosta sugli appuntamenti troppo brevi per contenerla senza sovrapporsi al testo, e comunque disattivata in modalità selezione */}
-                      {height > 26 && !selModeWA && <div
-                        onMouseDown={onResizeMouse}
-                        onTouchStart={onResizeTouch}
-                        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 8, cursor: 'ns-resize', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.15)', borderBottomLeftRadius: 5, borderBottomRightRadius: 5, touchAction: readOnly ? 'pan-y' : 'none' }}>
+                      {height > 26 && !selModeWA && !touchScroll && <div
+                        onMouseDown={touchScroll ? undefined : onResizeMouse}
+                        onTouchStart={touchScroll ? undefined : onResizeTouch}
+                        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 8, cursor: 'ns-resize', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.15)', borderBottomLeftRadius: 5, borderBottomRightRadius: 5, touchAction: readOnly || touchScroll ? 'pan-y' : 'none' }}>
                         <div style={{ width: 16, height: 2, background: 'rgba(255,255,255,0.6)', borderRadius: 1 }} />
                       </div>}
                     </div>);

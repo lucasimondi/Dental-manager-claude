@@ -116,3 +116,8 @@
    so Month's stable gutter cannot change column widths in the Personal shell. */
 .agenda-mobile-month-surface::-webkit-scrollbar { width: 4px; }
 .agenda-mobile-month-surface::-webkit-scrollbar-thumb { background: var(--dm-scroll, #CBD5E0); border-radius: 4px; }
+
+/* The same all-day ribbon in Studio and Personal; empty space lets the grid scroll. */
+.agenda-day-events { display: grid; gap: 4px; min-width: 0; margin-bottom: 4px; pointer-events: none; }
+.agenda-day-events-column { display: flex; flex-direction: column; gap: 3px; min-width: 0; max-height: 112px; overflow-y: auto; pointer-events: auto; -webkit-overflow-scrolling: touch; }
+.agenda-day-events button { width: 100%; min-height: 28px; padding: 5px 4px; border: 1px solid color-mix(in srgb, var(--event-color) 30%, transparent); border-left: 3px solid var(--event-color); border-radius: 8px; background: color-mix(in srgb, var(--event-color) 10%, #fff); color: #334155; font: 600 10px/1.25 system-ui, sans-serif; text-align: left; overflow-wrap: anywhere; cursor: pointer; touch-action: pan-y; }

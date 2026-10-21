@@ -113,7 +113,14 @@ for (const engine of engines) {
         await context.close();
       }
       const geometry = m => Object.fromEntries(Object.entries(m).filter(([key])=>key !== 'switch'));
-      assert.deepEqual(geometry(measurements.baseline), geometry(measurements.studio), 'Studio geometry changed');
+      // PO 2026-10-21 explicitly replaces Studio mobile range/motion with Personal.
+      // Month stays a strict regression comparison; timeline must now match Personal.
+      if (view === 'mese') assert.deepEqual(geometry(measurements.baseline), geometry(measurements.studio), 'Studio month geometry changed');
+      else {
+        assert.equal(measurements.studio.grid.height, measurements.personal.grid.height, 'same Personal timeline height');
+        assert.equal(measurements.studio.gutter.width, measurements.personal.gutter.width, 'same Personal gutter');
+        for (const mode of ['studio','personal']) assert.ok(measurements[mode].grid.height >= 48 * 24, 'all 24 hours have readable slots');
+      }
       // PO 2026-10-17 ("devi farmi vedere anche le domeniche"): Personal shows all 7 days even when
       // Studio hides closing days; otherwise the shared columns match.
       if (configured && view === 'settimana') assert.equal(measurements.personal.columns, 7, 'Personal week shows every day');
@@ -131,7 +138,7 @@ for (const engine of engines) {
         const i=(y*width+x)*4;
         if ([0,1,2].some(c=>Math.abs(original.data[i+c]-current.data[i+c])>2)) changed++;
       }
-      assert.equal(changed,0,`${engine}/${width}/${view}: original Studio pixels changed outside navigation link`);
+      if (view === 'mese') assert.equal(changed,0,`${engine}/${width}/${view}: original Studio month pixels changed outside navigation link`);
       // Personal is reviewed alongside Studio: its 24h range and top link are intentional changes.
       const comparison = new PNG({width:width*3,height});
       for(const [index, mode] of ['baseline','studio','personal'].entries()) {
@@ -139,7 +146,7 @@ for (const engine of engines) {
         PNG.bitblt(src,comparison,0,0,width,height,index*width,0);
       }
       await writeFile(`${out}/${engine}-${width}-${view}${configured ? '-configured' : ''}-comparison.png`,PNG.sync.write(comparison));
-      console.log(`${engine} ${width} ${view}: Studio geometry/pixels unchanged; Personal 24h; interactions OK`);
+      console.log(`${engine} ${width} ${view}: Studio/Personal 24h timeline; month regression; interactions OK`);
     }
   }
   await browser.close();

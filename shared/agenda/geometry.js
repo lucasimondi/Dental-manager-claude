@@ -28,3 +28,13 @@ export const layoutAppointments = (dayApps) => {
   flush();
   return items;
 };
+
+export function layoutAgendaDay(appointments, events) {
+  const minutes = time => { const [h, m] = String(time || '00:00').split(':').map(Number); return (h || 0) * 60 + (m || 0); };
+  const items = [...appointments, ...events.map(event => {
+    const ora = event.oraInizio ?? event.ora_inizio;
+    const end = event.oraFine ?? event.ora_fine ?? ora;
+    return { id: 'event-' + event.id, ora, durata: Math.max(15, minutes(end) - minutes(ora)), agendaEvent: event };
+  })].sort((a,b) => minutes(a.ora) - minutes(b.ora) || Number(b.durata) - Number(a.durata));
+  return layoutAppointments(items);
+}

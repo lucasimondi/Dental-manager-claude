@@ -179,7 +179,7 @@ function ContenutoAgenda({ ctx, modo, setModo, giorno, setGiorno, mese, setMese,
     appuntamenti: tutti.appuntamenti.filter(x => mostraEsclusi || agendaVisible(x, 'personal')),
     impegni: tutti.impegni.filter(x => mostraEsclusi || agendaVisible(x, 'personal')),
   };
-  return <GrigliaPoliedra mostraEsclusi={mostraEsclusi} setMostraEsclusi={mostraEsclusi || tutti.appuntamenti.some(x => !agendaVisible(x, 'personal')) || tutti.impegni.some(x => !agendaVisible(x, 'personal')) ? setMostraEsclusi : undefined} view={modo} setView={setModo} giorno={giorno} setGiorno={setGiorno} mese={mese} setMese={setMese} dati={dati} ctx={ctx} etichette={etichette} coloriTipi={coloriTipi} />;
+  return <GrigliaPoliedra hiddenCount={tutti.appuntamenti.filter(x => !agendaVisible(x, 'personal')).length + tutti.impegni.filter(x => !agendaVisible(x, 'personal')).length} mostraEsclusi={mostraEsclusi} setMostraEsclusi={mostraEsclusi || tutti.appuntamenti.some(x => !agendaVisible(x, 'personal')) || tutti.impegni.some(x => !agendaVisible(x, 'personal')) ? setMostraEsclusi : undefined} view={modo} setView={setModo} giorno={giorno} setGiorno={setGiorno} mese={mese} setMese={setMese} dati={dati} ctx={ctx} etichette={etichette} coloriTipi={coloriTipi} />;
 }
 
 
