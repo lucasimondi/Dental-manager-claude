@@ -14,7 +14,7 @@ test('rejects full-day and timed personal blocks', () => {
   for (const block of [{ tuttoIlGiorno: true }, { tuttoIlGiorno: false, oraInizio: '10:30', oraFine: '11:00' }]) assert.throws(() => validatePatientAgendaSlot({ ...opts, impegni: [{ ...block, dataInizio: appointment.data, dataFine: appointment.data }] }), /Spazio non disponibile/);
 });
 test('rejects invalid duration, missing patient/procedure and past date', () => {
-  for (const patch of [{ durata: '' }, { durata: 'abc' }, { durata: -1 }, { durata: 1500 }, { pazienteId: null }, { tipo: ' ' }, { data: '2020-01-01' }]) assert.throws(() => validatePatientAgendaSlot({ ...opts, appointment: { ...appointment, ...patch } }));
+  for (const patch of [{ durata: '' }, { durata: 'abc' }, { durata: -1 }, { durata: 15 }, { durata: 30.5 }, { durata: 1500 }, { pazienteId: null }, { tipo: ' ' }, { data: '2020-01-01' }]) assert.throws(() => validatePatientAgendaSlot({ ...opts, appointment: { ...appointment, ...patch } }));
 });
 test('protects selected chair across operators, allows a cancelled booking', () => {
   const row = { data: appointment.data, ora: '10:30', durata: 30, operatoreId: 2, poltronaId: 3 };

@@ -410,7 +410,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   // è persistito da useFormPersistente su "form", vedi sotto).
   useEffect(() => { salvaPosizione({ agendaModaleNuovo: modal }); }, [modal]);
   useEffect(() => {
-    if (leggiPosizione()?.agendaModaleNuovo) setModal(true);
+    if (!followUpRequest && leggiPosizione()?.agendaModaleNuovo) setModal(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [pazSearch, setPazSearch] = useState('');

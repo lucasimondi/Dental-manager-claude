@@ -5,7 +5,7 @@ import { computeFreeSlots } from './agendaSlots.js';
 export function validatePatientAgendaSlot({ appointment, appointments, impegni, agendaSettings, today }) {
   if (!appointment?.pazienteId || !appointment.tipo?.trim()) throw new Error('Seleziona paziente e prestazione.');
   const duration = Number(appointment.durata);
-  if (!Number.isFinite(duration) || duration <= 0 || duration > 1440) throw new Error('Inserisci una durata valida.');
+  if (!Number.isInteger(duration) || duration < Number(agendaSettings?.slotMin || 1) || duration > 1440) throw new Error('Inserisci una durata valida.');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(appointment.data || '') || appointment.data < today) throw new Error('Scegli una data da oggi in avanti.');
   const slots = computeFreeSlots({ data: appointment.data, durata: duration, operatoreId: appointment.operatoreId, appointments, impegni, agendaSettings });
   if (!slots.some(slot => slot.ora === appointment.ora)) throw new Error('Spazio non disponibile per tutta la durata: scegli un altro orario.');
