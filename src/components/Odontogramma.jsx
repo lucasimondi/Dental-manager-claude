@@ -9,7 +9,7 @@ const ODO_ROWS = [
 const denteW = (n) => { const u = n % 10; return (u === 8 || u === 7 || u === 6) ? 20 : 16; };
 const denteH = (n) => { const u = n % 10; return (u === 8 || u === 7 || u === 6) ? 26 : 22; };
 
-export default function Odontogramma({ selected, onChange, onDenteChange }) {
+export default function Odontogramma({ selected, onChange, onDenteChange, touchFriendly = false }) {
   const toggle = (d) => {
     const s = new Set(selected);
     s.has(d) ? s.delete(d) : s.add(d);
@@ -18,6 +18,14 @@ export default function Odontogramma({ selected, onChange, onDenteChange }) {
     onDenteChange(arr.length > 0 ? arr.sort((a, b) => a - b).join(', ') : '');
   };
   const clearAll = () => { onChange([]); onDenteChange(''); };
+
+  if (touchFriendly) return <div className="appointment-odontogram" aria-label="Selezione denti">
+    <div className="appointment-tooth-quadrants">{[
+      ['Q1 · superiore destro', ODO_ROWS[0].slice(0,8)], ['Q2 · superiore sinistro', ODO_ROWS[0].slice(8)],
+      ['Q4 · inferiore destro', ODO_ROWS[1].slice(0,8)], ['Q3 · inferiore sinistro', ODO_ROWS[1].slice(8)],
+    ].map(([label,teeth]) => <div key={label}><small>{label}</small><div>{teeth.map(d => <button type="button" key={d} aria-label={`Dente ${d}`} aria-pressed={selected.includes(d)} onClick={()=>toggle(d)}>{d}</button>)}</div></div>)}</div>
+    {!!selected.length && <button type="button" className="appointment-text-button" onClick={clearAll}>Deseleziona denti</button>}
+  </div>;
 
   const renderRow = (row, rowIdx) => {
     const sup = rowIdx === 0;

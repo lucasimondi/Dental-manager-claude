@@ -50,3 +50,19 @@
 .appointment-document-row strong, .appointment-document-row small { display:block; }
 .appointment-document-row small { margin-top:4px; color:var(--text-secondary); }
 .appointment-document-row > span:last-child { color:var(--brand-primary); flex-shrink:0; font-size:12px; font-weight:750; }
+.appointment-row-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:space-between; }
+.appointment-tooth-picker { margin-bottom:10px; border:1px solid var(--border-soft); border-radius:10px; padding:0 8px; }
+.appointment-tooth-picker > summary { min-height:44px; display:flex; align-items:center; cursor:pointer; font-weight:650; color:var(--brand-primary); }
+.appointment-tooth-quadrants { display:grid; grid-template-columns:1fr 1fr; gap:12px 8px; padding:6px 0 12px; }
+.appointment-tooth-quadrants small { display:block; font-size:10px; margin-bottom:6px; color:var(--text-secondary); }
+.appointment-tooth-quadrants > div > div { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:3px; }
+.appointment-tooth-quadrants button { min-width:0; min-height:44px; padding:4px 0; font:inherit; font-size:14px; border:1px solid var(--border-soft); border-radius:8px; background:var(--surface-card); color:var(--text-primary); cursor:pointer; }
+.appointment-tooth-quadrants button[aria-pressed="true"] { background:var(--brand-primary); color:var(--text-on-brand,white); }
+.appointment-implant-preview { padding:12px; border-radius:12px; background:var(--surface-card); border:1px solid var(--brand-primary); margin-bottom:8px; font-size:13px; }
+.appointment-implant-preview > div { display:flex; justify-content:space-between; gap:12px; margin:10px 0; }
+.appointment-implant-preview b { white-space:nowrap; }
+.appointment-implant-preview small, .appointment-drug-favorites small { color:var(--text-secondary); line-height:1.5; }
+.appointment-implant-preview p { color:var(--danger); }
+.appointment-drug-favorites { margin-bottom:12px; }
+.appointment-drug-favorites > div { display:grid; gap:8px; margin:8px 0; }
+.appointment-drug-favorites button { text-align:left; overflow-wrap:anywhere; }
