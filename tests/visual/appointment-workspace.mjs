@@ -68,7 +68,21 @@ try{
    await open('&empty=1');await section('Ricetta e documenti').locator('summary').first().click();const favorites=ws.locator('.appointment-drug-favorites');await favorites.locator('summary').click();await favorites.getByRole('button',{name:'Amoxicillina 1 g',exact:true}).click();assert.equal(await page.getByLabel('Farmaco 1',{exact:true}).inputValue(),'Amoxicillina 1 g');assert.equal(await page.getByLabel('Posologia 1',{exact:true}).inputValue(),'1 compressa ogni 8 ore');await page.getByLabel('Farmaco 1',{exact:true}).fill('Paracetamolo 1000 mg');assert.equal(await page.getByLabel('Posologia 1',{exact:true}).inputValue(),'1 compressa ogni 8 ore, al bisogno');await page.screenshot({path:`${out}/${engine}-${width}-farmaci.png`});
    await open('&fail=1');await page.getByLabel('Prestazione 1',{exact:true}).fill('Resta qui');await page.getByLabel('Prezzo prestazione 1 (€)',{exact:true}).fill('30');await ws.getByRole('button',{name:'Salva e chiudi'}).click();await ws.getByRole('alert').waitFor();assert.equal(await page.getByLabel('Prestazione 1',{exact:true}).inputValue(),'Resta qui');assert.equal(await page.locator('.appointment-workspace-sheet').isVisible(),true);
    await open('&vertical=fisioterapista');await section('Ricetta e documenti').locator('summary').first().click();assert.equal(await page.getByLabel('Tipo documento').locator('option[value="ricetta"]').count(),0);assert.equal(await page.getByLabel('Tipo documento').locator('option[value="diagnostica"]').count(),0);
-   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);for(const label of ['Chiama','WhatsApp','Modifica appuntamento','Sposta','Scheda'])assert.equal(await page.getByRole('navigation',{name:'Azioni paziente e appuntamento'}).getByRole('button',{name:label,exact:true}).isVisible(),true);
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);for(const label of ['WhatsApp','Modifica appuntamento','Sposta','Scheda'])assert.equal(await page.getByRole('navigation',{name:'Azioni paziente e appuntamento'}).getByRole('button',{name:label,exact:true}).isVisible(),true);
+   assert.equal(await page.locator('.agenda-appointment-menu-header').getByRole('button',{name:'Chiama',exact:true}).isVisible(),true);
+   await page.getByRole('button',{name:'Chiudi appuntamento',exact:true}).click();
+   await page.getByRole('button',{name:'Nuovo',exact:true}).click();
+   await page.getByRole('button',{name:'Appuntamento',exact:true}).click();
+   const booking=page.getByRole('dialog',{name:'Nuovo appuntamento',exact:true});
+   await booking.waitFor();
+   const geometry=await booking.evaluate(el=>({top:el.getBoundingClientRect().top,animation:getComputedStyle(el).animationName,focused:el.contains(document.activeElement)}));
+   assert.ok(geometry.top<=25,'booking opens near the top');assert.equal(geometry.animation,'none');assert.equal(geometry.focused,false,'keyboard is not opened automatically');
+   await booking.getByRole('button',{name:'+ Nuovo paziente',exact:true}).click();
+   await booking.getByLabel('Nome nuovo paziente').fill('Nuovo');await booking.getByLabel('Cognome nuovo paziente').fill('Sintetico');await booking.getByLabel('Telefono nuovo paziente').fill('3331112233');
+   await booking.getByRole('button',{name:'Crea e seleziona',exact:true}).click();
+   assert.equal(await booking.getByText('Nuovo Sintetico',{exact:true}).isVisible(),true);
+   assert.equal(await page.evaluate(()=>window.__patients.filter(p=>p.nome==='Nuovo'&&p.cognome==='Sintetico'&&p.telefono==='3331112233').length),1);
+   await booking.getByRole('button',{name:'Chiudi',exact:true}).click();
    assert.deepEqual(errors,[]);await context.close();console.log(`${engine}/${width}: immediate fields, collapsible drafts, PDFs, single save, actual plan ID, error retention and vertical gate OK`);
   }await browser.close();
  }

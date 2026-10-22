@@ -34,19 +34,16 @@ test('the quick-action menu backdrop/sheet selectors have enough specificity to 
   assert.match(sheetRuleMatch[1], /max-height:\s*calc\([\s\S]*?\)\s*!important;/);
 });
 
-test('the quick-action menu and the appointment form sheet both center on screen instead of bottom-anchoring', () => {
+test('the quick-action menu centers and booking opens at its final top position', () => {
   assert.match(premiumCss, /\.pol-modal-backdrop\.agenda-appointment-menu-backdrop\s*\{[^}]*align-items:\s*center;/s);
-  assert.match(premiumCss, /\.pol-modal-backdrop\.agenda-appointment-form-backdrop\s*\{[^}]*align-items:\s*center;/s);
+  assert.match(premiumCss, /\.pol-modal-backdrop\.agenda-appointment-form-backdrop\s*\{[^}]*align-items:\s*flex-start;/s);
 });
 
-test('the appointment form sheet now also reserves real bottom dock/FAB clearance, not just top clearance', () => {
-  const formBackdropRule = premiumCss.match(/\.pol-modal-backdrop\.agenda-appointment-form-backdrop\s*\{([^}]*)\}/s);
-  assert.ok(formBackdropRule, 'expected the form backdrop rule to exist');
-  assert.match(formBackdropRule[1], /padding-bottom:\s*calc\(max\(var\(--agenda-mobile-dock-offset, 0px\), var\(--agenda-mobile-fab-offset, 0px\)\)/s);
-
-  const formSheetRule = premiumCss.match(/\.pol-modal-sheet\.agenda-appointment-form-sheet\s*\{([^}]*)\}/s);
-  assert.ok(formSheetRule, 'expected the form sheet rule to exist');
-  assert.match(formSheetRule[1], /max-height:\s*calc\([\s\S]*?max\(var\(--agenda-mobile-dock-offset, 0px\), var\(--agenda-mobile-fab-offset, 0px\)\)[\s\S]*?\)\s*!important;/);
+test('booking uses safe-area bounds without changing position with agenda controls', () => {
+  const rule = premiumCss.match(/html \.pol-modal-backdrop\.agenda-appointment-form-backdrop\s*\{([^}]*)\}/s)[1];
+  assert.match(rule, /env\(safe-area-inset-top\)/);
+  assert.match(rule, /animation:none/);
+  assert.doesNotMatch(rule, /--agenda-mobile-overlay-clearance/);
 });
 
 test('Agenda.jsx feeds the real dock/FAB offset constants into the form modal, mirroring what the quick-action menu already receives', () => {

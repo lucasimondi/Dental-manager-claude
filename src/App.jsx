@@ -84,6 +84,10 @@ export default function App() {
   // Poliedron app: a page asked for while studio data is still loading.
   const [pendingPage, setPendingPage] = useState(null);
   const [page, setPage] = useState(() => readAgendaLocation().requested ? 'agenda' : phoneApp ? 'chat' : 'home');
+  // Warm the appointment chunk while viewing the agenda, before the first tap.
+  useEffect(() => {
+    if (page === 'agenda') import('./components/AppointmentWorkspace.jsx').catch(() => {});
+  }, [page]);
   // The keyboard-aware viewport is for the chat only: every other page of the
   // Poliedron app (agenda, pazienti…) is laid out exactly like the studio app.
   const phoneViewportStyle = usePhoneViewport(phoneApp && page === 'chat');

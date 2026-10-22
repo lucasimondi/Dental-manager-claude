@@ -4058,3 +4058,14 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 ### APPOINTMENT-PATIENT-CARD — five-icon toolbar
 - PO refinement: Chiama, WhatsApp, Modifica, Sposta and Scheda fit in one row on mobile. Icons reduced to 14px with short labels underneath and 44px touch targets. Email/Elimina remain under Altre opzioni. Existing phone normalization/handlers reused.
 - Codex, same branch and PR #245; changed Agenda, workspace CSS, browser expectations and coordination. Studio build and diff check pass. Browser validation still pending for the previously documented download issue. No database/deploy changes. Rollback: revert follow-up; next: visual CI/PO review.
+
+### APPOINTMENT-PATIENT-CARD — booking stability and quick patient
+- OWNER: Codex, same branch/PR #245; previous owner Codex.
+- PO: call beside name; booking popup higher without movement; new patient within popup; faster loading/openings.
+- COMPLETED: header call, remaining four toolbar actions; static safe-area top booking position with no animation/autofocus, removing measured floating-overlay offsets from booking geometry. Always-visible create toggle with inline name/surname/phone, auto-selection via existing quick-create path and plan limits. Memoized patient search and appointment chunk preload on agenda entry; core patient sheet geometry loaded eagerly. Existing persistence/RLS/financial behavior untouched.
+- FILES: App, Agenda, AppointmentWorkspace CSS, PremiumVisualSystem CSS, SelettorePaziente, existing regression/browser tests and coordination.
+- DATABASE/DEPLOY: none; no migration or production operations. Existing local quick-create/background persistence semantics unchanged.
+- VALIDATION: 1437/1437 Node tests; Studio and Personal builds; diff check pass. Browser suite extended with synthetic patient creation/selection/phone, top booking geometry/no autofocus and header call. Local browser run remains blocked before launch by unavailable Chromium download; no browser pass, real-device or speed benchmark claim.
+- LIMITS/RISKS: general app startup and network timing not measured. Existing temporary ID/background persistence/reconciliation behavior retained; no global refactor. DOM tests still require CI.
+- ROLLBACK: revert PR/follow-up, no DB action. Stable checkpoint untouched.
+- NEXT: final-head browser CI and screenshot review, then ready/PO Mergia and verified Vercel.

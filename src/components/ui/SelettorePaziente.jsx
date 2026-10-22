@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { C } from '../../lib/utils';
 import { cercaPazienti } from '../../lib/ricercaPazienti';
 import Ic from './Ic.jsx';
@@ -6,21 +6,23 @@ import Ic from './Ic.jsx';
 // Riquadro "nessun risultato" con creazione rapida: precompila nome/cognome
 // dal testo cercato (prima parola = nome, resto = cognome), l'utente può
 // correggerli prima di confermare.
-function CreaPazienteInline({ testoIniziale, onCrea, label = '+ Crea paziente' }) {
+function CreaPazienteInline({ testoIniziale, onCrea, label = '+ Crea paziente', explicit = false, collectPhone = false }) {
   const parti = testoIniziale.trim().split(/\s+/);
   const [nome, setNome] = useState(parti[0] || '');
   const [cognome, setCognome] = useState(parti.slice(1).join(' ') || '');
+  const [telefono, setTelefono] = useState('');
   const puoCreare = nome.trim() && cognome.trim();
   return (
-    <div style={{ padding: 12 }}>
-      <div style={{ fontSize: 11.5, color: C.txl, marginBottom: 8 }}>Nessun paziente trovato — crea un nuovo paziente:</div>
+    <div className="patient-create-inline" style={{ padding: 12 }}>
+      <div style={{ fontSize: 11.5, color: C.txl, marginBottom: 8 }}>{explicit ? 'Nuovo paziente' : 'Nessun paziente trovato — crea un nuovo paziente:'}</div>
       <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-        <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome" style={{ flex: 1, minWidth: 0, border: `1px solid ${C.brd}`, borderRadius: 8, padding: '7px 9px', fontSize: 12.5, fontFamily: 'inherit', color: C.txt, background: C.bg }} />
-        <input value={cognome} onChange={(e) => setCognome(e.target.value)} placeholder="Cognome" style={{ flex: 1, minWidth: 0, border: `1px solid ${C.brd}`, borderRadius: 8, padding: '7px 9px', fontSize: 12.5, fontFamily: 'inherit', color: C.txt, background: C.bg }} />
+        <input value={nome} onChange={(e) => setNome(e.target.value)} aria-label="Nome nuovo paziente" placeholder="Nome" style={{ flex: 1, minWidth: 0, border: `1px solid ${C.brd}`, borderRadius: 8, padding: '7px 9px', fontSize: 16, fontFamily: 'inherit', color: C.txt, background: C.bg }} />
+        <input value={cognome} onChange={(e) => setCognome(e.target.value)} aria-label="Cognome nuovo paziente" placeholder="Cognome" style={{ flex: 1, minWidth: 0, border: `1px solid ${C.brd}`, borderRadius: 8, padding: '7px 9px', fontSize: 16, fontFamily: 'inherit', color: C.txt, background: C.bg }} />
       </div>
-      <button
+      {collectPhone && <input type="tel" aria-label="Telefono nuovo paziente" placeholder="Telefono (facoltativo)" value={telefono} onChange={e=>setTelefono(e.target.value)} style={{boxSizing:'border-box',width:'100%',marginBottom:8,border:`1px solid ${C.brd}`,borderRadius:8,padding:'9px',fontSize:16,color:C.txt,background:C.bg}} />}
+      <button type="button"
         disabled={!puoCreare}
-        onClick={() => onCrea(nome.trim(), cognome.trim())}
+        onClick={() => onCrea(nome.trim(), cognome.trim(), telefono.trim())}
         style={{ width: '100%', background: puoCreare ? C.pri : C.bg, color: puoCreare ? '#fff' : C.txl, border: 'none', borderRadius: 8, padding: '9px 0', fontWeight: 700, fontSize: 12.5, cursor: puoCreare ? 'pointer' : 'not-allowed' }}
       >
         {label}
@@ -41,9 +43,10 @@ function CreaPazienteInline({ testoIniziale, onCrea, label = '+ Crea paziente' }
  * deve restituire l'id del paziente creato (sincrono). creaLabel (opzionale)
  * cambia solo il testo del pulsante di conferma.
  */
-export default function SelettorePaziente({ patients, value, onChange, search, onSearchChange, placeholder = 'Cerca per nome o cognome…', maxResults = 20, autoFocus, onCreaPaziente, creaLabel }) {
+export default function SelettorePaziente({ patients, value, onChange, search, onSearchChange, placeholder = 'Cerca per nome o cognome…', maxResults = 20, autoFocus, onCreaPaziente, creaLabel, showCreateButton = false }) {
   const sel = patients.find((p) => String(p.id) === String(value));
-  const filtered = search.trim() ? cercaPazienti(patients, search) : patients;
+  const filtered = useMemo(() => search.trim() ? cercaPazienti(patients, search) : patients, [patients, search]);
+  const [creating, setCreating] = useState(false);
   // Il campo, appena montato senza un paziente già selezionato, mostrava
   // subito l'elenco completo — su mobile, dentro un modale, copriva i
   // campi sotto senza un modo per chiuderlo senza scegliere qualcuno
@@ -69,7 +72,7 @@ export default function SelettorePaziente({ patients, value, onChange, search, o
     blurTimeoutRef.current = setTimeout(() => setFocused(false), 150);
   };
   useEffect(() => () => clearTimeout(blurTimeoutRef.current), []);
-  const showDropdown = focused && (!sel || search);
+  const showDropdown = !creating && focused && (!sel || search);
 
   return (
     <div style={{ position: 'relative' }} onFocus={handleFocus} onBlur={handleBlur}>
@@ -111,14 +114,15 @@ export default function SelettorePaziente({ patients, value, onChange, search, o
           ))}
         </div>
       )}
-      {focused && search.trim() && filtered.length === 0 && (
+      {!creating && focused && search.trim() && filtered.length === 0 && (
         <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: C.sur, border: `1.5px solid ${C.brd}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', marginTop: 3 }}>
           {onCreaPaziente ? (
             <CreaPazienteInline
               testoIniziale={search}
+              collectPhone={showCreateButton}
               label={creaLabel}
-              onCrea={(nome, cognome) => {
-                const id = onCreaPaziente(nome, cognome);
+              onCrea={(nome, cognome, telefono) => {
+                const id = onCreaPaziente(nome, cognome, telefono);
                 if (id != null) { onChange(String(id)); onSearchChange(''); }
               }}
             />
@@ -127,6 +131,13 @@ export default function SelettorePaziente({ patients, value, onChange, search, o
           )}
         </div>
       )}
+      {showCreateButton && onCreaPaziente && <>
+        <button type="button" className="patient-create-toggle" aria-expanded={creating} onClick={()=>{setCreating(v=>!v);setFocused(false);}}>{creating ? 'Annulla nuovo paziente' : '+ Nuovo paziente'}</button>
+        {creating && <CreaPazienteInline testoIniziale={search} explicit collectPhone label="Crea e seleziona" onCrea={(nome,cognome,telefono)=>{
+          const id = onCreaPaziente(nome,cognome,telefono);
+          if(id != null){onChange(String(id));onSearchChange('');setCreating(false);setFocused(false);}
+        }} />}
+      </>}
     </div>
   );
 }

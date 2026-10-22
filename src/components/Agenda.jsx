@@ -298,10 +298,10 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                   <div style={{ fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p ? `${p.nome} ${p.cognome}` : 'Paziente'}</div>
                   <div style={{ fontSize: 11.5, color: C.txm }}>{fmtD(menuApp.data)} · {menuApp.ora} · {menuApp.tipo}</div>
                 </div>
+                {renderAppointmentWorkspace && p && <button type="button" className="appointment-name-call" title={phone ? `Chiama ${p.nome}` : 'Telefono non disponibile'} aria-label="Chiama" disabled={workspaceBusy || !phone} onClick={() => { if (phone) window.location.href = `tel:${phone}`; }}><Ic n="ph" s={14} c={C.pri} /></button>}
                 {renderAppointmentWorkspace && p && <button type="button" aria-label="Chiudi appuntamento" disabled={workspaceBusy} onClick={() => setMenuApp(null)} style={{ marginLeft: 'auto', minWidth: 44, minHeight: 44, border: 0, borderRadius: 10, cursor: 'pointer' }}>✕</button>}
               </div>
               {renderAppointmentWorkspace && p && <nav className="appointment-patient-toolbar" aria-label="Azioni paziente e appuntamento">
-                <button type="button" title="Chiama" aria-label="Chiama" disabled={workspaceBusy || !phone} onClick={() => { if (phone) window.location.href = `tel:${phone}`; }}><Ic n="ph" s={14} c={C.pri} /><span>Chiama</span></button>
                 {azioni.filter(az => ['wa', 'edit', 'sposta'].includes(az.id)).map(az => <button key={az.id} type="button" title={az.label} aria-label={az.id === 'edit' ? 'Modifica appuntamento' : az.label} className={az.id === 'wa' ? 'appointment-whatsapp-button' : az.id === 'del' ? 'appointment-delete-button' : undefined} disabled={workspaceBusy || az.dis} onClick={az.onClick}><Ic n={az.ic} s={14} c={az.col} /><span>{az.label}</span></button>)}
                 <button type="button" disabled={workspaceBusy || !onOpenPatient} onClick={() => runPatientAction(onOpenPatient)}><Ic n="pz" s={14} c={C.pri} /><span>Scheda</span></button>
               </nav>}
@@ -681,14 +681,14 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   // tiene traccia dell'ultimo paziente creato al volo per poterlo
   // ri-agganciare al suo id reale non appena compare in patients.
   const pendingQuickPatientRef = useRef(null);
-  const creaPazienteRapido = (nome, cognome) => {
+  const creaPazienteRapido = (nome, cognome, telefono = '') => {
     if (!setPatients) return null;
     if (limitePazienti != null && patients.length >= limitePazienti) {
       setToast(`Hai raggiunto il limite di ${limitePazienti} pazienti del tuo piano.`);
       return null;
     }
     const id = uid();
-    setPatients((p) => [...p, { nome, cognome, dataNascita: '', telefono: '', email: '', cf: '', indirizzo: '', cap: '', comune: '', provincia: '', opposizione_sts: false, note: '', id }]);
+    setPatients((p) => [...p, { nome, cognome, dataNascita: '', telefono, email: '', cf: '', indirizzo: '', cap: '', comune: '', provincia: '', opposizione_sts: false, note: '', id }]);
     setToast(`Paziente ${nome} ${cognome} creato ✓`);
     pendingQuickPatientRef.current = { tempId: String(id), nome, cognome };
     return id;
@@ -1306,7 +1306,8 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
               onChange={(id) => F({ pazienteId: id })}
               search={pazSearch}
               onSearchChange={setPazSearch}
-              autoFocus
+              autoFocus={false}
+              showCreateButton
               onCreaPaziente={setPatients ? creaPazienteRapido : undefined}
             />
           </Fld>

@@ -14,7 +14,7 @@ const source = fs.readFileSync(new URL('../src/components/ui/SelettorePaziente.j
 
 test('the patient dropdown only opens while the field is focused, not merely because nothing is selected yet', () => {
   assert.match(source, /const \[focused, setFocused\] = useState\(false\);/);
-  assert.match(source, /const showDropdown = focused && \(!sel \|\| search\);/);
+  assert.match(source, /const showDropdown = !creating && focused && \(!sel \|\| search\);/);
   assert.match(source, /\{showDropdown && filtered\.length > 0 && \(/);
   assert.doesNotMatch(source, /\{\(!sel \|\| search\) && filtered\.length > 0 && \(/);
 });
@@ -42,5 +42,5 @@ test('focus/blur is handled on the outer wrapper (not just the search input), so
 });
 
 test('the "no results / create patient" panel also respects focus, not just typed text', () => {
-  assert.match(source, /\{focused && search\.trim\(\) && filtered\.length === 0 && \(/);
+  assert.match(source, /\{!creating && focused && search\.trim\(\) && filtered\.length === 0 && \(/);
 });
