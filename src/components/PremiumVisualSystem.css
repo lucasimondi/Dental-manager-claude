@@ -2768,3 +2768,10 @@ html .pol-modal-sheet.agenda-appointment-menu-sheet.appointment-workspace-sheet 
  html .pol-modal-backdrop.agenda-appointment-menu-backdrop:has(.appointment-workspace-sheet) { padding:0 !important; align-items:stretch !important; }
  html .pol-modal-sheet.agenda-appointment-menu-sheet.appointment-workspace-sheet { width:100% !important; max-width:none !important; height:100dvh !important; max-height:100dvh !important; border-radius:0 !important; margin:0 !important; }
 }
+
+.appointment-type-tags { display:flex; flex-wrap:nowrap; gap:6px; overflow-x:auto; padding:4px 0 8px; margin-bottom:8px; }
+.appointment-type-tags > button { flex-shrink:0; min-height:36px; }
+.booking-treatment-fields { margin:10px 0 16px; padding:12px; border:1px solid var(--border-soft); border-radius:12px; min-width:0; }
+.booking-treatment-fields legend { font-size:13px; font-weight:700; color:var(--brand-primary); }
+
+.booking-form-fields { border:0; padding:0; margin:0; min-width:0; }

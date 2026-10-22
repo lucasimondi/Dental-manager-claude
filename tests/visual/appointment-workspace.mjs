@@ -82,7 +82,13 @@ try{
    await booking.getByRole('button',{name:'Crea e seleziona',exact:true}).click();
    assert.equal(await booking.getByText('Nuovo Sintetico',{exact:true}).isVisible(),true);
    assert.equal(await page.evaluate(()=>window.__patients.filter(p=>p.nome==='Nuovo'&&p.cognome==='Sintetico'&&p.telefono==='3331112233').length),1);
-   await booking.getByRole('button',{name:'Chiudi',exact:true}).click();
+   assert.equal(await booking.getByRole('group',{name:'Tipo visita e colore'}).getByRole('button',{name:'Visita',exact:true}).count(),1);
+   await booking.getByLabel('Prestazione da aggiungere al piano').fill('Prestazione prenotata');
+   await booking.getByLabel('Prezzo prestazione nel piano').fill('125');
+   await booking.getByRole('button',{name:'Salva',exact:true}).click();await booking.waitFor({state:'detached'});
+   assert.equal(await page.evaluate(()=>window.__plans.filter(p=>p.voci.some(v=>v.prestazione==='Prestazione prenotata'&&v.prezzo===125)).length),1);
+   const savedAppointment=await page.evaluate(()=>window.__appointments.find(a=>a.id!==3));assert.equal('bookingPrice' in savedAppointment,false);
+
    assert.deepEqual(errors,[]);await context.close();console.log(`${engine}/${width}: immediate fields, collapsible drafts, PDFs, single save, actual plan ID, error retention and vertical gate OK`);
   }await browser.close();
  }

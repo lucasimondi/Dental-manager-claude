@@ -4069,3 +4069,13 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - LIMITS/RISKS: general app startup and network timing not measured. Existing temporary ID/background persistence/reconciliation behavior retained; no global refactor. DOM tests still require CI.
 - ROLLBACK: revert PR/follow-up, no DB action. Stable checkpoint untouched.
 - NEXT: final-head browser CI and screenshot review, then ready/PO Mergia and verified Vercel.
+
+### APPOINTMENT-PATIENT-CARD — single tag series and priced booking treatment
+- OWNER: Codex; same branch/PR #245; previous owner Codex. PO requested one color-tag series and priced treatments in the popup, avoiding existing plan items.
+- COMPLETED: normalized visit-name deduplication and single scrolling tag row. Booking description/list selection, price and optional tooth; sole active patient plan auto-selected, no plan creates canonical new plan, several plans require choice. Shared preparation filters existing procedure/tooth and sibling duplicate rows, never changes the old price/execution/payment state; no-op preserves treatment ID for contextual payment. Fresh patient/plan read, canonical builders and confirmed plan writes; booking form locked while saving, uncertain writes stop resubmission; treatment metadata excluded from appointment payload.
+- FILES: Agenda/App, AppointmentWorkspace messaging, PremiumVisualSystem, appointmentEntry, new appointmentTypes helper, entry/booking unit tests, existing browser fixture/suite and coordination.
+- DATABASE/DEPLOY: existing adapter/schema/RLS only, no migration or production operations. No financial formula changes. Appointment persistence remains its pre-existing background adapter.
+- VALIDATION: 1445/1445 Node tests; Studio/Personal builds; diff check pass. Tests cover no-op old price preservation/payment plan linkage, normalized identity, different teeth, new-plan deduplication/repeated save, several plans, cross-patient isolation, validation-before-write and uncertain errors. Browser fixture covers repeated tags plus booking patient/treatment/price; local browser validation remains blocked before launch by Chromium download failure.
+- LIMITS: no database locking/idempotency added for simultaneous writers. Plan and appointment writes are not atomic: appointment background save can fail after plan save, reported by existing global sync handling. New-patient quick persistence must finish before plan identity is verifiable. Explicit quote/implant preset flows remain unchanged; distinct teeth are separate treatments.
+- ROLLBACK: revert PR/follow-up, no DB operation. Stable checkpoint unchanged.
+- NEXT: final-head CI/browser/screenshot review, PO Mergia before merge and verified Vercel release.

@@ -8,3 +8,11 @@
 - LIMITS: existing background patient persistence/error handling and temporary ID reconciliation unchanged. Memoization and prefetch are targeted UI optimizations, not measured global app speedup.
 - RELEASE: browser CI/review before ready, explicit PO Mergia required; no merge/manual deploy.
 - ROLLBACK: revert PR; immutable stable checkpoint unchanged.
+
+## Latest follow-up — visit tags and plan entry
+- PO: one color-tag series; enter a priced treatment in the popup, saving it to a plan only when absent.
+- Unique normalized visit names render once in one horizontally scrollable tag row; persisted configuration unchanged.
+- Booking now exposes description/list price, editable price and optional tooth; selects sole active plan or creates one if none, asks when several. Fresh patient/plan reads and confirmed plan writes precede existing appointment sync. No treatment fields leak into appointment payloads.
+- Shared appointment-entry preparation skips existing same normalized procedure/tooth pairs without changing price/status; also skips repeated input rows. A no-op still preserves contextual payment linkage to the existing plan.
+- Validation: 1445/1445 Node tests, Studio/Personal builds and diff check pass. Browser fixture updated for duplicate tags and priced booking entry, local browser run still blocked by the documented download failure.
+- Limits: same tooth identity is preserved; different teeth remain distinct. Explicit new quotes and implant quote presets retain their existing behavior. Plan save and existing background appointment save are not a transaction; concurrency locking is unchanged. Uncertain plan writes block resubmission until review/reopen.

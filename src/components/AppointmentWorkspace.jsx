@@ -87,7 +87,7 @@ export default function AppointmentWorkspace({ patient, appointment, plans = [],
     try {
       const result = await onSave({...draft, implantPreset:dentist});
       setDraft(v => ({ ...v, items:[blankRow()], ...(result.treatmentId ? {planId:String(result.treatmentId)} : {}), quoteItems:[blankRow()], amount:'', paymentNote:'', paymentPlanId:'context' }));
-      if (close) onClose(); else setMessage(result.completed ? 'Dati salvati.' : 'Nessun dato da salvare.');
+      if (close) onClose(); else setMessage(result.skipped ? `Salvato. ${result.skipped} prestazioni già presenti nel piano: non duplicate.` : result.completed ? 'Dati salvati.' : 'Nessun dato da salvare.');
     } catch(e) {
       setUncertain(!!e.writesStarted);
       setError(e.writesStarted ? `${e.completed || 0} operazioni confermate. ${e.message} Verifica i dati salvati prima di ripetere: nessun nuovo invio automatico.` : e.message);
