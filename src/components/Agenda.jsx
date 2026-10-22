@@ -1,3 +1,4 @@
+import './AgendaAppointmentForm.css';
 import { validatePatientAgendaSlot } from '../lib/patientAgendaBooking.js';
 import DayEvents from '../../shared/agenda/DayEvents.jsx';
 import { useTimeline } from '../../shared/agenda/useTimeline.js';
@@ -1287,6 +1288,11 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       {modal && (
         <Modal
           title={editApp ? 'Modifica appuntamento' : 'Nuovo appuntamento'} icon={editApp ? 'edit' : 'cal'} onClose={chiudiModalApp} wide mobileVariant="sheet"
+          footer={<div className="agenda-booking-footer-actions">
+            {editApp && <Btn ch="Elimina" v="dan" onClick={() => { del(editApp.id); clearFormDraft(); setModal(false); }} />}
+            <Btn ch="Annulla" v="sec" onClick={chiudiModalApp} full />
+            <Btn ch={editApp ? 'Aggiorna' : 'Salva'} onClick={save} dis={!form.pazienteId || (!editApp && form.ripeti !== 'nessuna' && !form.ripetiFino)} full />
+          </div>}
           backdropClassName="agenda-appointment-form-backdrop" sheetClassName="agenda-appointment-form-sheet"
           backdropStyle={{
             '--agenda-mobile-overlay-clearance-form': `${mobileOverlayHeight}px`,
@@ -1376,11 +1382,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
               )}
             </Fld>
           )}
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            {editApp && <Btn ch="Elimina" v="dan" onClick={() => { del(editApp.id); clearFormDraft(); setModal(false); }} />}
-            <Btn ch="Annulla" v="sec" onClick={chiudiModalApp} full />
-            <Btn ch={editApp ? 'Aggiorna' : 'Salva'} onClick={save} dis={!form.pazienteId || (!editApp && form.ripeti !== 'nessuna' && !form.ripetiFino)} full />
-          </div>
+
         </Modal>
       )}
 

@@ -2,6 +2,7 @@ import { buildNewPlan, buildTreatmentItem } from './domain/treatmentPlanService.
 import { planAssignmentForPatient } from './domain/incassiActions.js';
 import { today } from './utils.js';
 import { expandImplantQuotes } from './domain/implantQuote.js';
+import { expandDentalRows } from './domain/dentalSites.js';
 
 const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(k => [k, canonical(value[k])])) : value;
 const touched = row => [row.description, row.price, row.tooth].some(v => String(v || '').trim());
@@ -14,7 +15,8 @@ export function entryItems(rows = []) {
 }
 export function prepareAppointmentEntry({ patient, appointment, plans, draft }) {
   if (!patient?.id || String(appointment?.pazienteId) !== String(patient.id)) throw new Error('Appuntamento e paziente non corrispondono.');
-  const expanded = draft.implantPreset ? expandImplantQuotes(draft.items, draft.quoteItems) : draft;
+  const source = draft.perTooth ? { ...draft, items: expandDentalRows(draft.items), quoteItems: expandDentalRows(draft.quoteItems) } : draft;
+  const expanded = draft.implantPreset ? expandImplantQuotes(source.items, source.quoteItems) : source;
   const items = entryItems(expanded.items), quoteItems = entryItems(expanded.quoteItems);
   const patientPlans = plans.filter(p => String(p.pazienteId) === String(patient.id));
   let treatment = null, quote = null;
@@ -63,6 +65,7 @@ export async function persistAppointmentEntry({ db, patient, appointment, draft,
     if (!freshPatient || String(freshPatient.id) !== String(patient.id) || !freshAppointment || String(freshAppointment.id) !== String(appointment.id) || String(freshAppointment.pazienteId) !== String(patient.id)) throw new Error('Impossibile verificare il paziente dell’appuntamento.');
     const prepared = prepareAppointmentEntry({ patient: freshPatient, appointment: freshAppointment, plans, draft });
     let treatmentId, quoteId;
+    const savedPlanIds = [];
     const savePlan = async (plan, kind) => {
       writesStarted = true;
       let saved;
@@ -74,7 +77,7 @@ export async function persistAppointmentEntry({ db, patient, appointment, draft,
         if (!saved || JSON.stringify(canonical(saved.voci)) !== JSON.stringify(canonical(plan.voci))) throw new Error('Modifica piano non confermata.');
       }
       if (!saved?.id || String(saved.pazienteId) !== String(patient.id)) throw new Error('Salvataggio piano non confermato.');
-      completed++; onApplied('plan', saved); return saved.id;
+      completed++; savedPlanIds.push(saved.id); onApplied('plan', saved); return saved.id;
     };
     if (prepared.treatment) treatmentId = await savePlan(prepared.treatment.plan, prepared.treatment.kind);
     if (prepared.quote) quoteId = await savePlan(prepared.quote, 'insert');
@@ -86,7 +89,7 @@ export async function persistAppointmentEntry({ db, patient, appointment, draft,
       if (!saved?.id || String(saved.pazienteId) !== String(patient.id)) throw new Error('Incasso non confermato.');
       completed++; onApplied('payment', saved);
     }
-    return { completed, treatmentId };
+    return { completed, treatmentId, savedPlanIds };
   } catch (cause) {
     const error = new Error(cause.message || 'Salvataggio non riuscito.');
     error.writesStarted = writesStarted; error.completed = completed; throw error;
