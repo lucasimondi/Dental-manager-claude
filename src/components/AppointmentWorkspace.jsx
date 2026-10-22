@@ -43,7 +43,7 @@ function EntryRows({ rows, onChange, listId, pricelist, dentist, name }) {
       {dentist && sites.length>1 && <div className="appointment-site-preview"><p className="appointment-site-count"><Ic n="ok" s={14} />{sites.length} denti · {implant?sites.length*3:sites.length} voci al salvataggio</p>{row.description.trim() && sites.map(site=><div key={site}><span><strong>{site}</strong>{implant?'Impianto + moncone + corona':row.description}</span><b>{row.price!=='' ? Number(row.price).toLocaleString('it-IT',{style:'currency',currency:'EUR'}) : '—'}</b></div>)}</div>}
       {implant && <ImplantPreview row={row} />}
     </article>;
-  })}<button type="button" className="appointment-add-row" onClick={()=>onChange([...rows,blankRow()])}><span aria-hidden="true">＋</span> Altra {name.toLowerCase()}</button></div>;
+  })}<button type="button" className="appointment-add-row" aria-label={`+ Altra ${name.toLowerCase()}`} onClick={()=>onChange([...rows,blankRow()])}><svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>Altra {name.toLowerCase()}</button></div>;
 }
 
 function SavedTreatments({ plans, patientId, open, onToggle, focusIds }) {

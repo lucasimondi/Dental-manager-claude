@@ -13,3 +13,4 @@ html .pol-modal-sheet.agenda-appointment-form-sheet { display:flex; flex-directi
  .agenda-appointment-form-sheet .pol-modal-content { padding:18px !important; }
  .agenda-appointment-form-sheet .pol-modal-footer { padding-inline:18px; }
 }
+.agenda-booking-footer-actions > button { flex:1; width:auto !important; padding-inline:10px !important; }

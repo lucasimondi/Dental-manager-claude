@@ -99,3 +99,5 @@
 .appointment-site-preview > div > span { display:flex; gap:8px; align-items:center; min-width:0; overflow-wrap:anywhere; }
 .appointment-site-preview strong { padding:5px; border-radius:6px; background:#eef4fd; color:#2355a1; font-size:11px; }
 .appointment-site-preview b { white-space:nowrap; font-weight:600; }
+
+.appointment-entry-rows > .appointment-treatment-row:only-of-type .appointment-row-heading { display:none; }
