@@ -7,3 +7,4 @@
 - VALIDATION: 1441/1441 local Node tests, Studio and Personal builds pass; diff --check clean. Browser evidence in PR.
 - RELEASE: draft PR → tests/build/visual review → WAITING_PRODUCT_OWNER; explicit Mergia required.
 - ROLLBACK: revert PR; immutable stable checkpoint preserved.
+- CI: browser setup uses the official HTTPS Ubuntu mirror after the Azure HTTP mirror stalled until timeout; all existing suites remain enabled.

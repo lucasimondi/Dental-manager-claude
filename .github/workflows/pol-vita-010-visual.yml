@@ -39,6 +39,13 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # Azure's HTTP mirror stalled browser preparation until the job timeout.
+      # Keep Ubuntu signatures/packages and all browser tests; change only the mirror.
+      - name: Use official HTTPS Ubuntu mirror for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
       - run: npx playwright install --with-deps chromium webkit
       - run: node tests/visual/appointment-workspace.mjs
       - run: node tests/visual/agenda-actions.mjs
