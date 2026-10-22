@@ -12,7 +12,7 @@ const documentClient={from(){return {select(){return this},eq(){return this},ord
 const settings={oraInizio:8,oraFine:20,slotMin:30,durataDefault:30,hiddenWeekdays:[]};
 function Fixture(){
  const [appointments,setAppointments]=useState([{id:3,pazienteId:7,data:'2026-10-23',ora:'10:00',durata:60,tipo:'Visita',stato:'confermato'}]);
- const [plans,setPlans]=useState(new URLSearchParams(location.search).has('empty') ? [] : [{id:20,pazienteId:7,titolo:'Piano test',data:'2026-10-21',stato:'attivo',voci:[],sconto:0,scontoTipo:'pct'}]);
+ const [plans,setPlans]=useState(new URLSearchParams(location.search).has('empty') ? [] : [{id:20,pazienteId:7,titolo:'Piano test',data:'2026-10-21',stato:'attivo',voci:new URLSearchParams(location.search).has('seeded')?Array.from({length:6},(_,i)=>({prestazione:'Voce precedente '+i,dente:'',prezzo:50,eseguita:false,incassata:false})):[],sconto:0,scontoTipo:'pct'}]);
  const [payments,setPayments]=useState([]),[record,setRecord]=useState(null);
  window.__plans=plans;window.__payments=payments;
  const open=(p,a,action)=>{const target=appointmentPatientAction(p,a,action);if(target)setRecord({...target,patient:p,documentRequest:target.documentType?{type:target.documentType,requestId:'fixture-'+action}:null})};

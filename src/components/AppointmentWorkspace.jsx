@@ -50,7 +50,7 @@ function SavedTreatments({ plans, patientId, open, onToggle, focusIds }) {
   const [showAll,setShowAll] = useState(false);
   const patientPlans = plans.filter(p=>p && String(p.pazienteId)===String(patientId) && Array.isArray(p.voci) && p.voci.length)
     .sort((a,b)=>Number(focusIds.includes(b.id))-Number(focusIds.includes(a.id)));
-  const rows=patientPlans.flatMap(plan=>plan.voci.map((item,index)=>({plan,item,index})));
+  const rows=patientPlans.flatMap(plan=>plan.voci.map((item,index)=>({plan,item,index})).reverse());
   if(!rows.length)return null;
   return <details className="appointment-form-section appointment-saved-treatments" open={open} onToggle={e=>onToggle(e.currentTarget.open)}><summary><span>Prestazioni salvate</span><small>{rows.length} nei piani</small></summary><div className="appointment-section-fields"><p className="appointment-field-help">Piani del paziente · anche dalle visite precedenti</p>{(showAll?rows:rows.slice(0,5)).map(({plan,item,index})=><div className="appointment-saved-row" key={`${plan.id}:${index}`}><div><strong>{item.prestazione}</strong><small>{item.dente?`Dente ${item.dente} · `:''}{plan.titolo}</small></div><b>{Number(item.prezzo||0).toLocaleString('it-IT',{style:'currency',currency:'EUR'})}</b></div>)}{!showAll && rows.length>5 && <button type="button" className="appointment-text-button" onClick={()=>setShowAll(true)}>Mostra tutte ({rows.length})</button>}</div></details>;
 }
