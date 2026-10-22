@@ -4038,3 +4038,14 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - LIMITS: exact standalone keyword only; changing description away cancels preset. Quote saved on explicit Save/Save and close. Multi-tooth string applies to the three rows, not an implicit per-tooth multiplier. Retention/uncertain-write limitations of current appointment form remain.
 - ROLLBACK: revert dedicated PR, no migration; immutable stable/2026-08-27-full-recovery preserved.
 - NEXT: complete final-head CI/screenshots, inspect scope, WAITING_PRODUCT_OWNER then explicit Mergia for merge/verified Vercel release.
+
+## 2026-10-22 — Codex — APPOINTMENT-PATIENT-CARD
+- OWNER: Codex; branch codex/appointment-patient-card from latest master; prior agent Codex.
+- OBJECTIVE: appointment popup as an accessible patient card with prominent edit/WhatsApp and directly available treatment, payment and quote controls.
+- COMPLETED: fixed primary toolbar with edit, WhatsApp and full record; shortcuts open and focus existing quote, medical, saved document and payment sections; incasso initially open. Patient heading, card spacing, responsive desktop columns and mobile fullscreen retained. Existing form save, document/vertical gates and communication flows reused.
+- FILES: Agenda.jsx, AppointmentWorkspace.jsx/CSS, existing visual regression suite and coordination files.
+- DATABASE/DEPLOY: none; no migrations, production data access, RLS, capability or financial formula changes. No merge or deploy.
+- VALIDATION: 1437/1437 Node tests pass; Studio and Personal builds pass; git diff --check pass. Updated browser checks for toolbar visibility, incasso and quote shortcut. Local browser suite blocked before launch: Playwright Chromium unavailable; browser installer receives invalid ZIP downloads. Browser screenshots/CI still required; no physical iPhone validation.
+- LIMITS: edit/WhatsApp/full record keep established navigation behavior; unsaved draft retention across leaving the sheet unchanged. No production verification.
+- ROLLBACK: revert dedicated PR; no database action; immutable stable checkpoint unchanged.
+- NEXT: run final-head Chromium/WebKit suite and review screenshots in CI, mark ready if successful, explicit PO Mergia before merging and verifying Vercel.

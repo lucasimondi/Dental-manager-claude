@@ -293,13 +293,18 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
           >
             <div onClick={e => e.stopPropagation()} role={renderAppointmentWorkspace && p ? "dialog" : undefined} aria-modal={renderAppointmentWorkspace && p ? true : undefined} aria-label={renderAppointmentWorkspace && p ? "Appuntamento" : undefined} className={`pol-modal-sheet agenda-appointment-menu-sheet${renderAppointmentWorkspace && p ? ' appointment-workspace-sheet' : ''}`} style={{ background: C.sur, width: '100%', maxWidth: renderAppointmentWorkspace && p ? 1040 : 480, overflow: 'hidden' }}>
               <div className="agenda-appointment-menu-header" style={{ padding: '14px 18px', borderBottom: `1px solid ${C.brd}`, display: 'flex', alignItems: 'center', gap: 9 }}>
-                <div style={{ width: 10, height: 10, borderRadius: '50%', background: co, flexShrink: 0 }} />
+                <div className="appointment-patient-marker" style={{ width: 10, height: 10, borderRadius: '50%', background: co, flexShrink: 0 }} />
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p ? `${p.nome} ${p.cognome}` : 'Paziente'}</div>
                   <div style={{ fontSize: 11.5, color: C.txm }}>{fmtD(menuApp.data)} · {menuApp.ora} · {menuApp.tipo}</div>
                 </div>
                 {renderAppointmentWorkspace && p && <button type="button" aria-label="Chiudi appuntamento" disabled={workspaceBusy} onClick={() => setMenuApp(null)} style={{ marginLeft: 'auto', minWidth: 44, minHeight: 44, border: 0, borderRadius: 10, cursor: 'pointer' }}>✕</button>}
               </div>
+              {renderAppointmentWorkspace && p && <nav className="appointment-patient-toolbar" aria-label="Azioni paziente e appuntamento">
+                <button type="button" disabled={workspaceBusy} onClick={() => { apriEdit(menuApp); setMenuApp(null); }}><Ic n="edit" s={18} c={C.pri} /><span>Modifica appuntamento</span></button>
+                <button type="button" className="appointment-whatsapp-button" disabled={workspaceBusy || !p.telefono} onClick={() => { apriWA(menuApp); setMenuApp(null); }}><Ic n="wa" s={18} c="#128C4B" /><span>{p.telefono ? 'WhatsApp' : 'WhatsApp · manca telefono'}</span></button>
+                <button type="button" disabled={workspaceBusy || !onOpenPatient} onClick={() => runPatientAction(onOpenPatient)}><Ic n="pz" s={18} c={C.pri} /><span>Scheda completa</span></button>
+              </nav>}
               <div className="agenda-appointment-menu-actions" style={{ padding: 8 }}>
                 {renderAppointmentWorkspace && p ? renderAppointmentWorkspace(p, menuApp, () => setMenuApp(null), setWorkspaceBusy) : <>
                 <div className="agenda-patient-actions" aria-label="Prestazioni e documenti del paziente" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, padding: 4, marginBottom: 8 }}>
@@ -355,7 +360,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                     <div className="agenda-quick-hub-divider">Appuntamento</div>
                   </>
                 )}
-                {azioni.map(az => (
+                {azioni.filter(az => !(renderAppointmentWorkspace && p) || !['edit', 'wa'].includes(az.id)).map(az => (
                   <button
                     key={az.id}
                     disabled={az.dis}
