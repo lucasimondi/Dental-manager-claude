@@ -1,0 +1,15 @@
+/* Scoped booking editor: above floating agenda controls, real usable height. */
+html .pol-modal-backdrop.agenda-appointment-form-backdrop { align-items:center; padding:24px; box-sizing:border-box; }
+html .pol-modal-sheet.agenda-appointment-form-sheet { display:flex; flex-direction:column; width:min(960px,100%) !important; max-width:960px !important; height:min(94dvh,980px); max-height:94dvh !important; margin:0 !important; border-radius:22px !important; overflow:hidden; box-shadow:0 24px 90px #142c5138; }
+.agenda-appointment-form-sheet .pol-modal-header { flex:0 0 auto; padding:18px 24px !important; background:linear-gradient(110deg,#fff,#f0f6ff) !important; }
+.agenda-appointment-form-sheet .pol-modal-header > span { font-size:19px !important; }
+.agenda-appointment-form-sheet .pol-modal-content { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:24px !important; }
+.agenda-appointment-form-sheet .pol-modal-footer { flex:0 0 auto; padding:14px 24px max(14px,env(safe-area-inset-bottom)); border-top:1px solid var(--border-soft); background:var(--surface-card,#fff); }
+.agenda-booking-footer-actions { display:flex; gap:10px; }
+@media(max-width:767px) {
+ html .pol-modal-backdrop.agenda-appointment-form-backdrop { padding:0; align-items:stretch; }
+ html .pol-modal-sheet.agenda-appointment-form-sheet { width:100% !important; height:100dvh; max-height:100dvh !important; border-radius:0 !important; }
+ .agenda-appointment-form-sheet .pol-modal-header { padding:14px 18px !important; padding-top:max(14px,env(safe-area-inset-top)) !important; }
+ .agenda-appointment-form-sheet .pol-modal-content { padding:18px !important; }
+ .agenda-appointment-form-sheet .pol-modal-footer { padding-inline:18px; }
+}

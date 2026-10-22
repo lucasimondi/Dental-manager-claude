@@ -23,7 +23,7 @@ export default function Odontogramma({ selected, onChange, onDenteChange, touchF
     <div className="appointment-tooth-quadrants">{[
       ['Q1 · superiore destro', ODO_ROWS[0].slice(0,8)], ['Q2 · superiore sinistro', ODO_ROWS[0].slice(8)],
       ['Q4 · inferiore destro', ODO_ROWS[1].slice(0,8)], ['Q3 · inferiore sinistro', ODO_ROWS[1].slice(8)],
-    ].map(([label,teeth]) => <div key={label}><small>{label}</small><div>{teeth.map(d => <button type="button" key={d} aria-label={`Dente ${d}`} aria-pressed={selected.includes(d)} onClick={()=>toggle(d)}>{d}</button>)}</div></div>)}</div>
+    ].map(([label,teeth]) => <div key={label}><small>{label}</small><div>{teeth.map(d => <button type="button" key={d} aria-label={`Dente ${d}`} aria-pressed={selected.includes(d)} onClick={()=>toggle(d)}><svg width="22" height="26" viewBox="0 0 24 28" fill="none" aria-hidden="true"><path d="M12 4C8-1 1 2 3 10c1 4 2 14 5 14 2 0 1-9 4-9s2 9 4 9c3 0 4-10 5-14C23 2 16-1 12 4Z" fill="currentColor" fillOpacity=".08" stroke="currentColor" strokeWidth="1.4"/><path d="M8 6c3 2 5 2 8 0" stroke="currentColor" strokeOpacity=".5"/></svg><span>{d}</span></button>)}</div></div>)}</div>
     {!!selected.length && <button type="button" className="appointment-text-button" onClick={clearAll}>Deseleziona denti</button>}
   </div>;
 
