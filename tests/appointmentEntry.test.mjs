@@ -44,3 +44,16 @@ test('an explicit quote deposit awaits the saved quote ID, without creating a tr
  const calls=[];const db={getById:async k=>k==='dm_p'?patient:appointment,getAll:async()=>[],insert:async(k,row)=>{calls.push([k,row]);return {...row,id:k==='dm_pl'?600:901}}};
  await persistAppointmentEntry({db,patient,appointment,draft:{...draft,items:[],quoteItems:[{description:'Preventivo',price:'200'}],paymentPlanId:'quote'}});assert.equal(calls.length,2);assert.equal(calls[0][1].voci[0].eseguita,false);assert.equal(calls[1][1].pianoId,600);
 });
+
+test('an existing treatment is reused without rewriting price or creating a duplicate; payment keeps its plan',async()=>{
+ const current={...plan(20),voci:[{prestazione:'IGIENE',prezzo:110,dente:'',eseguita:true}]};let writes=0;const payments=[];
+ const db={getById:async k=>k==='dm_p'?patient:k==='dm_a'?appointment:current,getAll:async()=>[current],update:async()=>{writes++},insert:async(k,row)=>{payments.push(row);return {...row,id:901}}};
+ const r=await persistAppointmentEntry({db,patient,appointment,draft:{...draft,planId:'20'}});
+ assert.equal(writes,0);assert.equal(r.skipped,1);assert.equal(r.treatmentId,20);assert.equal(r.completed,1);assert.equal(payments[0].pianoId,20);assert.equal(current.voci[0].prezzo,110);
+});
+test('only absent procedure/tooth pairs are appended, including duplicate rows inside a single draft',()=>{
+ const existing={...plan(20),voci:[{prestazione:'Igiene   completa',dente:'16',prezzo:90}]};
+ const rows=[{description:'  IGIENE completa ',tooth:'16',price:'120'},{description:'Igiene completa',tooth:'26',price:'120'},{description:'Igiene completa',tooth:'26',price:'130'}];
+ const r=prepareAppointmentEntry({patient,appointment,plans:[existing],draft:{...draft,items:rows,planId:'20',amount:''}});
+ assert.equal(r.treatment.skipped,2);assert.equal(r.treatment.plan.voci.length,2);assert.equal(r.treatment.plan.voci[0].prezzo,90);assert.equal(r.treatment.plan.voci[1].dente,'26');assert.equal(existing.voci.length,1);
+});

@@ -1,3 +1,4 @@
+import { uniqueAppointmentTypes } from '../lib/appointmentTypes.js';
 import { validatePatientAgendaSlot } from '../lib/patientAgendaBooking.js';
 import DayEvents from '../../shared/agenda/DayEvents.jsx';
 import { useTimeline } from '../../shared/agenda/useTimeline.js';
@@ -293,13 +294,18 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
           >
             <div onClick={e => e.stopPropagation()} role={renderAppointmentWorkspace && p ? "dialog" : undefined} aria-modal={renderAppointmentWorkspace && p ? true : undefined} aria-label={renderAppointmentWorkspace && p ? "Appuntamento" : undefined} className={`pol-modal-sheet agenda-appointment-menu-sheet${renderAppointmentWorkspace && p ? ' appointment-workspace-sheet' : ''}`} style={{ background: C.sur, width: '100%', maxWidth: renderAppointmentWorkspace && p ? 1040 : 480, overflow: 'hidden' }}>
               <div className="agenda-appointment-menu-header" style={{ padding: '14px 18px', borderBottom: `1px solid ${C.brd}`, display: 'flex', alignItems: 'center', gap: 9 }}>
-                <div style={{ width: 10, height: 10, borderRadius: '50%', background: co, flexShrink: 0 }} />
+                <div className="appointment-patient-marker" style={{ width: 10, height: 10, borderRadius: '50%', background: co, flexShrink: 0 }} />
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p ? `${p.nome} ${p.cognome}` : 'Paziente'}</div>
                   <div style={{ fontSize: 11.5, color: C.txm }}>{fmtD(menuApp.data)} · {menuApp.ora} · {menuApp.tipo}</div>
                 </div>
+                {renderAppointmentWorkspace && p && <button type="button" className="appointment-name-call" title={phone ? `Chiama ${p.nome}` : 'Telefono non disponibile'} aria-label="Chiama" disabled={workspaceBusy || !phone} onClick={() => { if (phone) window.location.href = `tel:${phone}`; }}><Ic n="ph" s={14} c={C.pri} /></button>}
                 {renderAppointmentWorkspace && p && <button type="button" aria-label="Chiudi appuntamento" disabled={workspaceBusy} onClick={() => setMenuApp(null)} style={{ marginLeft: 'auto', minWidth: 44, minHeight: 44, border: 0, borderRadius: 10, cursor: 'pointer' }}>✕</button>}
               </div>
+              {renderAppointmentWorkspace && p && <nav className="appointment-patient-toolbar" aria-label="Azioni paziente e appuntamento">
+                {azioni.filter(az => ['wa', 'edit', 'sposta'].includes(az.id)).map(az => <button key={az.id} type="button" title={az.label} aria-label={az.id === 'edit' ? 'Modifica appuntamento' : az.label} className={az.id === 'wa' ? 'appointment-whatsapp-button' : az.id === 'del' ? 'appointment-delete-button' : undefined} disabled={workspaceBusy || az.dis} onClick={az.onClick}><Ic n={az.ic} s={14} c={az.col} /><span>{az.label}</span></button>)}
+                <button type="button" disabled={workspaceBusy || !onOpenPatient} onClick={() => runPatientAction(onOpenPatient)}><Ic n="pz" s={14} c={C.pri} /><span>Scheda</span></button>
+              </nav>}
               <div className="agenda-appointment-menu-actions" style={{ padding: 8 }}>
                 {renderAppointmentWorkspace && p ? renderAppointmentWorkspace(p, menuApp, () => setMenuApp(null), setWorkspaceBusy) : <>
                 <div className="agenda-patient-actions" aria-label="Prestazioni e documenti del paziente" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, padding: 4, marginBottom: 8 }}>
@@ -310,7 +316,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                 </div>
                 </>}
                 <LegacyActions>
-                {renderAppointmentWorkspace && p && <summary style={{ padding: 14, fontWeight: 700, cursor: 'pointer' }}>Altre azioni appuntamento</summary>}
+                {renderAppointmentWorkspace && p && <summary style={{ padding: 14, fontWeight: 700, cursor: 'pointer' }}>Altre opzioni</summary>}
                 {isMobile && (
                   <>
                     <div className="agenda-quick-hub-grid">
@@ -355,7 +361,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                     <div className="agenda-quick-hub-divider">Appuntamento</div>
                   </>
                 )}
-                {azioni.map(az => (
+                {azioni.filter(az => !(renderAppointmentWorkspace && p) || ['mail', 'del'].includes(az.id)).map(az => (
                   <button
                     key={az.id}
                     disabled={az.dis}
@@ -396,13 +402,13 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
    Va incollato sulla stessa riga dell'etichetta mese: non aggiunge nessuna riga
    in più, a differenza della vecchia barra a tre tab che occupava spazio prezioso
    sullo schermo del telefono. */
-export default function Agenda({ patients, setPatients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni: tuttiImpegni = [], setImpegni, si, setStudioInfo, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, followUpRequest, onBookFollowUp, onCancelFollowUp }) {
+export default function Agenda({ patients, setPatients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni: tuttiImpegni = [], setImpegni, si, setStudioInfo, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, followUpRequest, onBookFollowUp, onCancelFollowUp, plans = [], pricelist = [], onSaveBookingTreatment }) {
   const [mostraEsclusi, setMostraEsclusi] = useState(false);
   const impegni = tuttiImpegni.filter(i => mostraEsclusi || agendaVisible(i, 'studio'));
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const labelPoltrona = isDentistico ? 'Poltrona' : 'Postazione';
   const labelPoltronePlurale = isDentistico ? 'poltrone' : 'postazioni';
-  const tipiList = appTypes?.length ? appTypes : getAppTypesDefault(si?.vertical);
+  const tipiList = React.useMemo(() => uniqueAppointmentTypes(appTypes?.length ? appTypes : getAppTypesDefault(si?.vertical)), [appTypes, si?.vertical]);
   const [followUpType, setFollowUpType] = useState(tipiList[0]?.nome || 'Visita');
   const [followUpDuration, setFollowUpDuration] = useState(si?.agenda_settings?.durataDefault || DEF_AGENDA_SETTINGS.durataDefault);
   const [followUpSaving, setFollowUpSaving] = useState(false);
@@ -647,6 +653,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   const apriNuovo = (data, ora) => {
     if (followUpRequest) { if (data && ora) bookFollowUpSlot(data, ora); else setToast('Tocca uno spazio libero nella tua agenda.'); return; }
     setPazSearch('');
+    setBookingError('');setBookingUncertain(false);
     setEditApp(null);
     setForm({ pazienteId: '', data: data || selDay, ora: ora || '09:00', durata: agSet.durataDefault, tipo: tipiList[0]?.nome || 'Visita', colore: tipiList[0]?.colore || C.pri, note: '', stato: 'confermato', operatoreId: filtroOperatore !== 'tutti' ? filtroOperatore : '', poltronaId: filtroPoltrona !== 'tutti' ? filtroPoltrona : '', ripeti: 'nessuna', ripetiFino: '', _editId: null, visibileStudio: true, visibilePersonal: true });
     setModal(true);
@@ -655,12 +662,17 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   const apriEdit = (a) => {
     if (followUpRequest) { setToast('Questo spazio è occupato. Scegli un altro orario.'); return; }
     setEditApp(a);
+    setBookingError('');setBookingUncertain(false);
     setPazSearch('');
     setForm({ pazienteId: String(a.pazienteId), data: a.data, ora: a.ora, durata: a.durata, tipo: a.tipo, colore: a.colore || C.pri, note: a.note || '', stato: a.stato || 'confermato', operatoreId: a.operatoreId ? String(a.operatoreId) : '', poltronaId: a.poltronaId ? String(a.poltronaId) : '', ripeti: 'nessuna', ripetiFino: '', _editId: a.id, visibileStudio: agendaVisible(a, 'studio'), visibilePersonal: agendaVisible(a, 'personal') });
     setModal(true);
   };
 
-  const chiudiModalApp = () => { setModal(false); clearFormDraft(); };
+  const [bookingSaving,setBookingSaving] = useState(false),[bookingUncertain,setBookingUncertain] = useState(false),[bookingError,setBookingError] = useState('');
+  const bookingLock = useRef(false);
+  const bookingPlans = plans.filter(p=>String(p.pazienteId)===String(form.pazienteId) && ['attivo','accettato'].includes(p.stato));
+  const chiudiModalApp = () => { if(bookingLock.current)return;setModal(false); clearFormDraft(); };
+
 
   // Creazione rapida paziente dal form appuntamento: l'id locale viene generato
   // subito (stesso pattern usato ovunque nell'app) così il paziente è selezionabile
@@ -676,14 +688,14 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   // tiene traccia dell'ultimo paziente creato al volo per poterlo
   // ri-agganciare al suo id reale non appena compare in patients.
   const pendingQuickPatientRef = useRef(null);
-  const creaPazienteRapido = (nome, cognome) => {
+  const creaPazienteRapido = (nome, cognome, telefono = '') => {
     if (!setPatients) return null;
     if (limitePazienti != null && patients.length >= limitePazienti) {
       setToast(`Hai raggiunto il limite di ${limitePazienti} pazienti del tuo piano.`);
       return null;
     }
     const id = uid();
-    setPatients((p) => [...p, { nome, cognome, dataNascita: '', telefono: '', email: '', cf: '', indirizzo: '', cap: '', comune: '', provincia: '', opposizione_sts: false, note: '', id }]);
+    setPatients((p) => [...p, { nome, cognome, dataNascita: '', telefono, email: '', cf: '', indirizzo: '', cap: '', comune: '', provincia: '', opposizione_sts: false, note: '', id }]);
     setToast(`Paziente ${nome} ${cognome} creato ✓`);
     pendingQuickPatientRef.current = { tempId: String(id), nome, cognome };
     return id;
@@ -808,8 +820,19 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     return out;
   };
 
-  const save = () => {
-    if (!form.pazienteId) return;
+  const save = async () => {
+    if (!form.pazienteId || bookingLock.current || bookingUncertain) return;
+    let bookingSkipped = 0;
+    const hasTreatment = [form.bookingDescription,form.bookingPrice,form.bookingTooth].some(v=>String(v ?? '').trim());
+    if (hasTreatment) {
+      if (!onSaveBookingTreatment) {setBookingError('Salvataggio prestazioni non disponibile.');return;}
+      bookingLock.current=true;setBookingSaving(true);setBookingError('');
+      try {
+        const result = await onSaveBookingTreatment({patientId:form.pazienteId,row:{description:form.bookingDescription || '',price:form.bookingPrice ?? '',tooth:form.bookingTooth || ''},planId:form.bookingPlanId || 'auto'});
+        bookingSkipped = result?.skipped || 0;
+      } catch(error) {setBookingError(error.message);setBookingUncertain(!!error.writesStarted);return;}
+      finally {bookingLock.current=false;setBookingSaving(false);}
+    }
     // form.operatoreId/poltronaId sono persistiti in localStorage (bozza) e possono
     // riferirsi a una risorsa nel frattempo eliminata o di un'altra sessione: se non
     // esiste più tra quelle attive caricate ora, la scartiamo silenziosamente invece
@@ -818,15 +841,15 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     const operatoreId = form.operatoreId && operatori.some(o => String(o.id) === String(form.operatoreId)) ? Number(form.operatoreId) : null;
     const poltronaId = form.poltronaId && poltrone.some(p => String(p.id) === String(form.poltronaId)) ? Number(form.poltronaId) : null;
     if (editApp) {
-      const { ripeti, ripetiFino, ...rest } = { ...form, visibileStudio: agendaVisible(form, 'studio'), visibilePersonal: agendaVisible(form, 'personal') };
+      const { ripeti, ripetiFino, bookingDescription, bookingPrice, bookingTooth, bookingPlanId, ...rest } = { ...form, visibileStudio: agendaVisible(form, 'studio'), visibilePersonal: agendaVisible(form, 'personal') };
       setAppointments(p => p.map(a => a.id === editApp.id ? { ...a, ...rest, pazienteId: Number(form.pazienteId), durata: Number(form.durata), operatoreId, poltronaId } : a));
-      setToast('Aggiornato ✓');
+      setToast(bookingSkipped ? 'Aggiornato ✓ · Prestazione già presente nel piano' : 'Aggiornato ✓');
     } else {
-      const { ripeti, ripetiFino, ...rest } = { ...form, visibileStudio: agendaVisible(form, 'studio'), visibilePersonal: agendaVisible(form, 'personal') };
+      const { ripeti, ripetiFino, bookingDescription, bookingPrice, bookingTooth, bookingPlanId, ...rest } = { ...form, visibileStudio: agendaVisible(form, 'studio'), visibilePersonal: agendaVisible(form, 'personal') };
       const date = generaDateRipetizione(form.data, ripeti, ripetiFino);
       const nuovi = date.map((d) => ({ ...rest, data: d, id: uid() + Math.floor(Math.random() * 1000), pazienteId: Number(form.pazienteId), durata: Number(form.durata), operatoreId, poltronaId }));
       setAppointments(p => [...p, ...nuovi]);
-      setToast(nuovi.length > 1 ? `${nuovi.length} appuntamenti creati ✓` : 'Salvato ✓');
+      setToast((nuovi.length > 1 ? `${nuovi.length} appuntamenti creati ✓` : 'Salvato ✓') + (bookingSkipped ? ' · Prestazione già presente nel piano' : ''));
     }
     // POL-WA-003b: la richiesta diventa "gestita" sia per un nuovo appuntamento sia
     // per uno spostamento/disdetta salvato sull'appuntamento esistente; se arrivava
@@ -1294,14 +1317,16 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
             '--agenda-mobile-fab-offset': `${MOBILE_APPOINTMENT_MENU_FAB_OFFSET}px`,
           }}
         >
+          <fieldset className="booking-form-fields" disabled={bookingSaving || bookingUncertain}>
           <Fld label="Paziente">
             <SelettorePaziente
               patients={patients}
               value={form.pazienteId}
-              onChange={(id) => F({ pazienteId: id })}
+              onChange={(id) => F({ pazienteId: id, bookingPlanId: 'auto' })}
               search={pazSearch}
               onSearchChange={setPazSearch}
-              autoFocus
+              autoFocus={false}
+              showCreateButton
               onCreaPaziente={setPatients ? creaPazienteRapido : undefined}
             />
           </Fld>
@@ -1322,9 +1347,9 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
             </Fld>
           </div>
           <Fld label="Tipo visita">
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+            <div className="appointment-type-tags" role="group" aria-label="Tipo visita e colore">
               {tipiList.map(tipo => (
-                <button key={tipo.id} onClick={() => F({ tipo: tipo.nome, colore: tipo.colore })} style={{ padding: '5px 10px', borderRadius: 20, border: `1.5px solid ${form.tipo === tipo.nome ? tipo.colore : C.brd}`, background: form.tipo === tipo.nome ? tipo.colore + '18' : C.sur, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <button type="button" key={tipo.id} aria-pressed={form.tipo === tipo.nome} onClick={() => F({ tipo: tipo.nome, colore: tipo.colore })} style={{ padding: '5px 10px', borderRadius: 20, border: `1.5px solid ${form.tipo === tipo.nome ? tipo.colore : C.brd}`, background: form.tipo === tipo.nome ? tipo.colore + '18' : C.sur, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: tipo.colore }} />
                   <span style={{ fontSize: 11, fontWeight: form.tipo === tipo.nome ? 700 : 500, color: form.tipo === tipo.nome ? tipo.colore : C.txm }}>{tipo.nome}</span>
                 </button>
@@ -1332,6 +1357,17 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
             </div>
             <Inp value={form.tipo} onChange={e => F({ tipo: e.target.value })} placeholder="Personalizza tipo visita" />
           </Fld>
+          {onSaveBookingTreatment && <fieldset className="booking-treatment-fields" disabled={bookingSaving || bookingUncertain}>
+            <legend>Prestazione nel piano</legend>
+            <Fld label="Prestazione"><Inp aria-label="Prestazione da aggiungere al piano" list="booking-treatment-list" placeholder="Descrizione o voce dal listino" value={form.bookingDescription || ''} onChange={e=>{const item=pricelist.find(p=>p.nome===e.target.value);F({bookingDescription:e.target.value,...(item ? {bookingPrice:String(item.prezzo)} : {})});}} /></Fld>
+            <datalist id="booking-treatment-list">{pricelist.map(p=><option key={p.id} value={p.nome} />)}</datalist>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+              <Fld label="Prezzo (€)"><Inp aria-label="Prezzo prestazione nel piano" type="number" min="0" step="0.01" inputMode="decimal" value={form.bookingPrice ?? ''} onChange={e=>F({bookingPrice:e.target.value})} /></Fld>
+              {(!si?.vertical || si.vertical === 'dentistico') && <Fld label="Dente (facoltativo)"><Inp aria-label="Dente prestazione nel piano" value={form.bookingTooth || ''} onChange={e=>F({bookingTooth:e.target.value})} /></Fld>}
+            </div>
+            {bookingPlans.length > 1 && <Fld label="Piano"><Sel aria-label="Piano per la prestazione" value={form.bookingPlanId || 'auto'} onChange={e=>F({bookingPlanId:e.target.value})}><option value="auto">Scegli piano</option>{bookingPlans.map(p=><option key={p.id} value={p.id}>{p.titolo}</option>)}</Sel></Fld>}
+            <p className="appointment-field-help">{bookingPlans.length === 1 ? `Piano: ${bookingPlans[0].titolo || 'Piano attivo'}.` : bookingPlans.length === 0 ? 'Se compili una prestazione, verrà creato un piano.' : 'Scegli il piano da aggiornare.'} Le voci già presenti per la stessa prestazione e dente non vengono duplicate.</p>
+          </fieldset>}
           {features?.multi_operatore && (operatori.length > 0 || poltrone.length > 0) && (
             <div style={{ display: 'grid', gridTemplateColumns: operatori.length > 0 && poltrone.length > 0 ? '1fr 1fr' : '1fr', gap: 10 }}>
               {operatori.length > 0 && (
@@ -1376,10 +1412,12 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
               )}
             </Fld>
           )}
+          </fieldset>
+          {bookingError && <p role="alert" className="appointment-save-error">{bookingError}{bookingUncertain && ' Verifica il piano prima di riaprire la prenotazione.'}</p>}
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            {editApp && <Btn ch="Elimina" v="dan" onClick={() => { del(editApp.id); clearFormDraft(); setModal(false); }} />}
+            {editApp && <Btn ch="Elimina" v="dan" dis={bookingSaving} onClick={() => { del(editApp.id); clearFormDraft(); setModal(false); }} />}
             <Btn ch="Annulla" v="sec" onClick={chiudiModalApp} full />
-            <Btn ch={editApp ? 'Aggiorna' : 'Salva'} onClick={save} dis={!form.pazienteId || (!editApp && form.ripeti !== 'nessuna' && !form.ripetiFino)} full />
+            <Btn ch={bookingSaving ? 'Salvataggio…' : editApp ? 'Aggiorna' : 'Salva'} onClick={save} dis={bookingSaving || bookingUncertain || !form.pazienteId || (!editApp && form.ripeti !== 'nessuna' && !form.ripetiFino)} full />
           </div>
         </Modal>
       )}

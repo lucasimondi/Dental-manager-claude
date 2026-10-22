@@ -4038,3 +4038,44 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - LIMITS: exact standalone keyword only; changing description away cancels preset. Quote saved on explicit Save/Save and close. Multi-tooth string applies to the three rows, not an implicit per-tooth multiplier. Retention/uncertain-write limitations of current appointment form remain.
 - ROLLBACK: revert dedicated PR, no migration; immutable stable/2026-08-27-full-recovery preserved.
 - NEXT: complete final-head CI/screenshots, inspect scope, WAITING_PRODUCT_OWNER then explicit Mergia for merge/verified Vercel release.
+
+## 2026-10-22 — Codex — APPOINTMENT-PATIENT-CARD
+- OWNER: Codex; branch codex/appointment-patient-card from latest master; prior agent Codex.
+- OBJECTIVE: appointment popup as an accessible patient card with prominent edit/WhatsApp and directly available treatment, payment and quote controls.
+- COMPLETED: fixed primary toolbar with edit, WhatsApp and full record; shortcuts open and focus existing quote, medical, saved document and payment sections; incasso initially open. Patient heading, card spacing, responsive desktop columns and mobile fullscreen retained. Existing form save, document/vertical gates and communication flows reused.
+- FILES: Agenda.jsx, AppointmentWorkspace.jsx/CSS, existing visual regression suite and coordination files.
+- DATABASE/DEPLOY: none; no migrations, production data access, RLS, capability or financial formula changes. No merge or deploy.
+- VALIDATION: 1437/1437 Node tests pass; Studio and Personal builds pass; git diff --check pass. Updated browser checks for toolbar visibility, incasso and quote shortcut. Local browser suite blocked before launch: Playwright Chromium unavailable; browser installer receives invalid ZIP downloads. Browser screenshots/CI still required; no physical iPhone validation.
+- LIMITS: edit/WhatsApp/full record keep established navigation behavior; unsaved draft retention across leaving the sheet unchanged. No production verification.
+- ROLLBACK: revert dedicated PR; no database action; immutable stable checkpoint unchanged.
+- NEXT: run final-head Chromium/WebKit suite and review screenshots in CI, mark ready if successful, explicit PO Mergia before merging and verifying Vercel.
+
+### APPOINTMENT-PATIENT-CARD — follow-up toolbar
+- PO: move appointment actions to the top alongside WhatsApp and shrink buttons.
+- Codex, same branch/PR #245. Modifica, WhatsApp, Email, Sposta, Elimina and Scheda now in one compact top toolbar; six columns desktop, three columns/two rows mobile; 44px touch targets. Existing handlers unchanged. Bottom section renamed Richiami e assistente; appointment actions removed from it.
+- Files: Agenda.jsx, AppointmentWorkspace.css, visual suite, coordination. No database/deployment changes. Validation: Studio build and diff check pass; prior 1437 Node tests unchanged. Local browser validation remains blocked by unavailable Chromium download. Rollback: revert follow-up commit. Next: CI visual checks and PO review before merge.
+
+### APPOINTMENT-PATIENT-CARD — five-icon toolbar
+- PO refinement: Chiama, WhatsApp, Modifica, Sposta and Scheda fit in one row on mobile. Icons reduced to 14px with short labels underneath and 44px touch targets. Email/Elimina remain under Altre opzioni. Existing phone normalization/handlers reused.
+- Codex, same branch and PR #245; changed Agenda, workspace CSS, browser expectations and coordination. Studio build and diff check pass. Browser validation still pending for the previously documented download issue. No database/deploy changes. Rollback: revert follow-up; next: visual CI/PO review.
+
+### APPOINTMENT-PATIENT-CARD — booking stability and quick patient
+- OWNER: Codex, same branch/PR #245; previous owner Codex.
+- PO: call beside name; booking popup higher without movement; new patient within popup; faster loading/openings.
+- COMPLETED: header call, remaining four toolbar actions; static safe-area top booking position with no animation/autofocus, removing measured floating-overlay offsets from booking geometry. Always-visible create toggle with inline name/surname/phone, auto-selection via existing quick-create path and plan limits. Memoized patient search and appointment chunk preload on agenda entry; core patient sheet geometry loaded eagerly. Existing persistence/RLS/financial behavior untouched.
+- FILES: App, Agenda, AppointmentWorkspace CSS, PremiumVisualSystem CSS, SelettorePaziente, existing regression/browser tests and coordination.
+- DATABASE/DEPLOY: none; no migration or production operations. Existing local quick-create/background persistence semantics unchanged.
+- VALIDATION: 1437/1437 Node tests; Studio and Personal builds; diff check pass. Browser suite extended with synthetic patient creation/selection/phone, top booking geometry/no autofocus and header call. Local browser run remains blocked before launch by unavailable Chromium download; no browser pass, real-device or speed benchmark claim.
+- LIMITS/RISKS: general app startup and network timing not measured. Existing temporary ID/background persistence/reconciliation behavior retained; no global refactor. DOM tests still require CI.
+- ROLLBACK: revert PR/follow-up, no DB action. Stable checkpoint untouched.
+- NEXT: final-head browser CI and screenshot review, then ready/PO Mergia and verified Vercel.
+
+### APPOINTMENT-PATIENT-CARD — single tag series and priced booking treatment
+- OWNER: Codex; same branch/PR #245; previous owner Codex. PO requested one color-tag series and priced treatments in the popup, avoiding existing plan items.
+- COMPLETED: normalized visit-name deduplication and single scrolling tag row. Booking description/list selection, price and optional tooth; sole active patient plan auto-selected, no plan creates canonical new plan, several plans require choice. Shared preparation filters existing procedure/tooth and sibling duplicate rows, never changes the old price/execution/payment state; no-op preserves treatment ID for contextual payment. Fresh patient/plan read, canonical builders and confirmed plan writes; booking form locked while saving, uncertain writes stop resubmission; treatment metadata excluded from appointment payload.
+- FILES: Agenda/App, AppointmentWorkspace messaging, PremiumVisualSystem, appointmentEntry, new appointmentTypes helper, entry/booking unit tests, existing browser fixture/suite and coordination.
+- DATABASE/DEPLOY: existing adapter/schema/RLS only, no migration or production operations. No financial formula changes. Appointment persistence remains its pre-existing background adapter.
+- VALIDATION: 1445/1445 Node tests; Studio/Personal builds; diff check pass. Tests cover no-op old price preservation/payment plan linkage, normalized identity, different teeth, new-plan deduplication/repeated save, several plans, cross-patient isolation, validation-before-write and uncertain errors. Browser fixture covers repeated tags plus booking patient/treatment/price; local browser validation remains blocked before launch by Chromium download failure.
+- LIMITS: no database locking/idempotency added for simultaneous writers. Plan and appointment writes are not atomic: appointment background save can fail after plan save, reported by existing global sync handling. New-patient quick persistence must finish before plan identity is verifiable. Explicit quote/implant preset flows remain unchanged; distinct teeth are separate treatments.
+- ROLLBACK: revert PR/follow-up, no DB operation. Stable checkpoint unchanged.
+- NEXT: final-head CI/browser/screenshot review, PO Mergia before merge and verified Vercel release.

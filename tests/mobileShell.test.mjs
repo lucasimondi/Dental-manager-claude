@@ -130,7 +130,7 @@ test('Agenda Nuovo/Modifica appuntamento modal reaches the viewport bottom on mo
 // mobileOverlayHeight, the exact ResizeObserver'd height of that overlay,
 // already used for the grid's own top scroll-spacer, never a guessed
 // constant — fixes it without disturbing the bottom dock clearance.
-test('Agenda Nuovo/Modifica appuntamento modal reserves real top clearance below the floating week-strip controls', () => {
+test('Agenda booking modal opens near the safe-area top above the floating controls', () => {
   const modalUi = readFileSync(new URL('../src/components/ui/Modal.jsx', import.meta.url), 'utf8');
   assert.match(modalUi, /backdropClassName = '',\s*sheetClassName = '',\s*backdropStyle/);
   assert.match(modalUi, /className=\{`pol-modal-backdrop\$\{backdropClassName/);
@@ -143,8 +143,8 @@ test('Agenda Nuovo/Modifica appuntamento modal reserves real top clearance below
   // `html .pol-modal-backdrop`/`html .pol-modal-sheet` (1 class + 1
   // element) — combining with the base .pol-modal-* class (2 classes) is
   // what actually wins; a bare new class alone would silently lose.
-  assert.match(premium, /\.pol-modal-backdrop\.agenda-appointment-form-backdrop\s*\{[\s\S]*padding-top:\s*calc\(var\(--agenda-mobile-overlay-clearance-form/);
-  assert.match(premium, /\.pol-modal-sheet\.agenda-appointment-form-sheet\s*\{[\s\S]*max-height:\s*calc\(100dvh[\s\S]*--agenda-mobile-overlay-clearance-form[\s\S]*!important/);
+  assert.match(premium, /\.pol-modal-backdrop\.agenda-appointment-form-backdrop\s*\{[\s\S]*align-items:\s*flex-start;/);
+  assert.match(premium, /\.pol-modal-sheet\.agenda-appointment-form-sheet\s*\{[\s\S]*max-height:\s*calc\(100dvh[\s\S]*safe-area-inset-top[\s\S]*!important/);
 });
 
 test('all required mobile pages share the same app-scroll surface', () => {

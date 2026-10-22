@@ -66,3 +66,53 @@
 .appointment-drug-favorites { margin-bottom:12px; }
 .appointment-drug-favorites > div { display:grid; gap:8px; margin:8px 0; }
 .appointment-drug-favorites button { text-align:left; overflow-wrap:anywhere; }
+
+/* Patient card: primary actions remain visible while clinical fields scroll. */
+.appointment-workspace-sheet .agenda-appointment-menu-header { background:linear-gradient(120deg,var(--surface-card),color-mix(in srgb,var(--brand-primary) 7%,var(--surface-card))); padding:20px 24px !important; }
+.appointment-workspace-sheet .agenda-appointment-menu-header > div:nth-child(2) > div:first-child { font-size:21px !important; letter-spacing:-.4px; }
+.appointment-workspace-sheet .agenda-appointment-menu-header > div:nth-child(2) > div:last-child { margin-top:5px; font-size:13px !important; }
+.appointment-workspace-sheet .appointment-patient-marker { width:12px !important; height:38px !important; border-radius:6px !important; }
+.appointment-patient-toolbar { display:flex; flex-wrap:wrap; flex-shrink:0; gap:8px; padding:12px 24px; border-bottom:1px solid var(--border-soft); background:var(--surface-card); }
+.appointment-patient-toolbar button { display:flex; align-items:center; justify-content:center; gap:8px; min-height:46px; padding:10px 14px; border:1px solid var(--border-soft); border-radius:12px; background:var(--surface-card); color:var(--brand-primary); font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+.appointment-patient-toolbar .appointment-whatsapp-button { background:#eaf8f0; color:#146b3b; border-color:#c7e8d6; }
+.appointment-patient-toolbar button:disabled { opacity:.45; cursor:not-allowed; }
+.appointment-patient-toolbar button:focus-visible,.appointment-section-shortcuts button:focus-visible { outline:2px solid var(--brand-primary); outline-offset:2px; }
+.appointment-workspace-sheet .agenda-appointment-menu-actions { background:color-mix(in srgb,var(--brand-primary) 3%,var(--surface-card)); padding:16px !important; }
+.appointment-section-shortcuts { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-bottom:16px; }
+.appointment-section-shortcuts button { display:grid; gap:5px; align-content:center; min-height:76px; padding:12px; text-align:left; border:1px solid var(--border-soft); border-radius:14px; background:var(--surface-card); color:var(--brand-primary); cursor:pointer; font:inherit; }
+.appointment-section-shortcuts strong { font-size:13px; }
+.appointment-section-shortcuts span { font-size:11px; color:var(--text-secondary); }
+.appointment-primary-fields { padding:18px; border:1px solid var(--border-soft); border-radius:16px; background:var(--surface-card); }
+.appointment-primary-fields h2 { margin:0 0 6px; font-size:19px; }
+.appointment-primary-fields > .appointment-field-help { margin:0 0 18px; }
+.appointment-payment-section { margin-top:0; border-top:3px solid var(--brand-primary); }
+.appointment-rapid-form fieldset > .appointment-workspace-alert { grid-column:1/-1; margin-bottom:12px; }
+.appointment-rapid-form details { scroll-margin-top:12px; }
+.appointment-save-bar { border-radius:14px; padding:12px; box-shadow:0 -8px 24px #142e5c0a; }
+@media (min-width:768px) {
+ .appointment-rapid-form fieldset { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); gap:14px; align-items:start; }
+ .appointment-rapid-form fieldset > .appointment-form-section { margin-top:0; }
+}
+@media (max-width:767px) {
+ .appointment-patient-toolbar { padding:10px 14px; gap:6px; }
+ .appointment-patient-toolbar button { flex:1 1 auto; font-size:12px; padding:9px 10px; }
+ .appointment-workspace-sheet .agenda-appointment-menu-header { padding:16px !important; padding-top:max(16px,env(safe-area-inset-top)) !important; }
+ .appointment-workspace-sheet .agenda-appointment-menu-actions { padding:10px !important; }
+ .appointment-section-shortcuts { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .appointment-section-shortcuts button { min-height:64px; }
+ .appointment-primary-fields { padding:14px; }
+ .appointment-payment-section { margin-top:14px; }
+}
+@media (prefers-reduced-motion:reduce) { .appointment-workspace-sheet * { scroll-behavior:auto !important; } }
+
+/* Five compact actions fit on one row, including narrow phones. */
+.appointment-patient-toolbar { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; padding:8px 18px; }
+.appointment-patient-toolbar button { display:flex; flex-direction:column; justify-content:center; min-width:0; min-height:44px; padding:5px 2px; gap:4px; font-size:10px; line-height:1.2; border-radius:9px; }
+.appointment-patient-toolbar button svg { flex-shrink:0; }
+@media(max-width:767px) {
+ .appointment-patient-toolbar { grid-template-columns:repeat(4,minmax(0,1fr)); padding:7px 12px; gap:5px; }
+ .appointment-patient-toolbar button { min-height:44px; font-size:10px; padding:5px 2px; }
+}
+
+.appointment-name-call { display:grid; place-items:center; flex-shrink:0; width:36px; height:36px; padding:0; border:1px solid var(--border-soft); border-radius:50%; background:var(--surface-card); cursor:pointer; }
+.appointment-name-call:disabled { opacity:.45; cursor:not-allowed; }

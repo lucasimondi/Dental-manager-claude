@@ -1,5 +1,6 @@
-import { buildNewPlan, buildTreatmentItem } from './domain/treatmentPlanService.js';
+import { buildNewPlan, buildTreatmentItem, sameProcedureAndTooth } from './domain/treatmentPlanService.js';
 import { planAssignmentForPatient } from './domain/incassiActions.js';
+import { normalizza } from './ricercaPazienti.js';
 import { today } from './utils.js';
 import { expandImplantQuotes } from './domain/implantQuote.js';
 
@@ -12,20 +13,53 @@ export function entryItems(rows = []) {
     return buildTreatmentItem({ procedureRef: { text: row.description.trim() }, tooth: { state: row.tooth?.trim() ? 'known' : 'unknown', value: row.tooth?.trim() }, price });
   });
 }
+export function preparePatientTreatment({ patient, plans, items, planId, title }) {
+  const eligible = plans.filter(p => String(p.pazienteId) === String(patient.id) && ['attivo','accettato'].includes(p.stato));
+  if (!items.length) return null;
+  if (!planId || planId === 'auto') {
+    if (eligible.length > 1) throw new Error('Scegli il piano per le prestazioni.');
+    planId = eligible.length ? String(eligible[0].id) : 'new';
+  }
+  const plan = planId === 'new' ? null : eligible.find(p=>String(p.id) === String(planId));
+  if (planId !== 'new' && !plan) throw new Error('Scegli il piano per le prestazioni.');
+  const existing = Array.isArray(plan?.voci) ? plan.voci : [], added = [];
+  const normalize = value => normalizza(value).replace(/\s+/g,' ');
+  for (const item of items) {
+    const tooth = {state:item.dente ? 'known' : 'unknown',value:String(item.dente || '')};
+    const duplicate = [...existing,...added].some(v=>sameProcedureAndTooth({...v,prestazione:normalize(v.prestazione)},normalize(item.prestazione),tooth));
+    if (!duplicate) added.push(item);
+  }
+  const skipped = items.length - added.length;
+  if (!plan) return {kind:'insert',plan:buildNewPlan({pazienteId:patient.id,titolo:title?.trim() || 'Prestazioni occasionali',voci:added}),skipped};
+  return {kind:added.length ? 'update' : 'existing',plan:added.length ? {...plan,voci:[...existing,...added]} : plan,skipped};
+}
+
+// Booking adds a plan item independently of the existing appointment sync adapter.
+export async function persistBookingTreatment({db, patientId, row, planId, onApplied = ()=>{}}) {
+  let writesStarted = false;
+  try {
+    const items = entryItems([row]);
+    const [patient,plans] = await Promise.all([db.getById('dm_p',patientId),db.getAll('dm_pl',{throwOnError:true})]);
+    if (!patient || String(patient.id) !== String(patientId)) throw new Error('Paziente non ancora verificato sul server. Attendi il salvataggio e riprova.');
+    const prepared = preparePatientTreatment({patient,plans,items,planId});
+    if (!prepared || prepared.kind === 'existing') return {skipped:prepared?.skipped || 0};
+    writesStarted = true;
+    const {id,...payload} = prepared.plan;
+    let saved;
+    if (prepared.kind === 'insert') saved = await db.insert('dm_pl',payload);
+    else { await db.update('dm_pl',id,payload); saved = await db.getById('dm_pl',id); }
+    if (!saved?.id || String(saved.pazienteId) !== String(patientId) || JSON.stringify(canonical(saved.voci)) !== JSON.stringify(canonical(prepared.plan.voci))) throw new Error('Salvataggio prestazione non confermato. Verifica il piano prima di riprovare.');
+    onApplied(saved); return {skipped:prepared.skipped,planId:saved.id};
+  } catch(cause) { const error = new Error(cause.message);error.writesStarted=writesStarted;throw error; }
+}
+
 export function prepareAppointmentEntry({ patient, appointment, plans, draft }) {
   if (!patient?.id || String(appointment?.pazienteId) !== String(patient.id)) throw new Error('Appuntamento e paziente non corrispondono.');
   const expanded = draft.implantPreset ? expandImplantQuotes(draft.items, draft.quoteItems) : draft;
   const items = entryItems(expanded.items), quoteItems = entryItems(expanded.quoteItems);
   const patientPlans = plans.filter(p => String(p.pazienteId) === String(patient.id));
   let treatment = null, quote = null;
-  if (items.length) {
-    if (draft.planId === 'new') treatment = { kind: 'insert', plan: buildNewPlan({ pazienteId: patient.id, titolo: draft.planTitle?.trim() || 'Prestazioni occasionali', voci: items }) };
-    else {
-      const plan = patientPlans.find(p => String(p.id) === String(draft.planId) && ['attivo','accettato'].includes(p.stato));
-      if (!plan) throw new Error('Scegli il piano per le prestazioni.');
-      treatment = { kind: 'update', plan: { ...plan, voci: [...(Array.isArray(plan.voci) ? plan.voci : []), ...items] } };
-    }
-  }
+  treatment = preparePatientTreatment({patient,plans:patientPlans,items,planId:draft.planId,title:draft.planTitle});
   if (quoteItems.length) quote = buildNewPlan({ pazienteId: patient.id, titolo: draft.quoteTitle?.trim() || 'Preventivo', voci: quoteItems });
   let payment = null;
   if (String(draft.amount || '').trim()) {
@@ -76,7 +110,7 @@ export async function persistAppointmentEntry({ db, patient, appointment, draft,
       if (!saved?.id || String(saved.pazienteId) !== String(patient.id)) throw new Error('Salvataggio piano non confermato.');
       completed++; onApplied('plan', saved); return saved.id;
     };
-    if (prepared.treatment) treatmentId = await savePlan(prepared.treatment.plan, prepared.treatment.kind);
+    if (prepared.treatment) treatmentId = prepared.treatment.kind === 'existing' ? prepared.treatment.plan.id : await savePlan(prepared.treatment.plan, prepared.treatment.kind);
     if (prepared.quote) quoteId = await savePlan(prepared.quote, 'insert');
     if (prepared.payment) {
       const { target, ...payload } = prepared.payment;
@@ -86,7 +120,7 @@ export async function persistAppointmentEntry({ db, patient, appointment, draft,
       if (!saved?.id || String(saved.pazienteId) !== String(patient.id)) throw new Error('Incasso non confermato.');
       completed++; onApplied('payment', saved);
     }
-    return { completed, treatmentId };
+    return { completed, treatmentId, skipped:prepared.treatment?.skipped || 0 };
   } catch (cause) {
     const error = new Error(cause.message || 'Salvataggio non riuscito.');
     error.writesStarted = writesStarted; error.completed = completed; throw error;
