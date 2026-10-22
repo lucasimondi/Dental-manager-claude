@@ -7,3 +7,5 @@
 - DATABASE: no migrations, finance semantics, authorization or tenancy changes.
 - RELEASE: draft PR; browser CI and screenshot review before ready; explicit PO Mergia required.
 - ROLLBACK: revert dedicated PR; stable checkpoint unchanged.
+
+- PO follow-up: all appointment actions moved into compact top toolbar beside WhatsApp; six controls, single desktop row / two mobile rows.

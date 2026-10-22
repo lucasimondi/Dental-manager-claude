@@ -4049,3 +4049,8 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - LIMITS: edit/WhatsApp/full record keep established navigation behavior; unsaved draft retention across leaving the sheet unchanged. No production verification.
 - ROLLBACK: revert dedicated PR; no database action; immutable stable checkpoint unchanged.
 - NEXT: run final-head Chromium/WebKit suite and review screenshots in CI, mark ready if successful, explicit PO Mergia before merging and verifying Vercel.
+
+### APPOINTMENT-PATIENT-CARD — follow-up toolbar
+- PO: move appointment actions to the top alongside WhatsApp and shrink buttons.
+- Codex, same branch/PR #245. Modifica, WhatsApp, Email, Sposta, Elimina and Scheda now in one compact top toolbar; six columns desktop, three columns/two rows mobile; 44px touch targets. Existing handlers unchanged. Bottom section renamed Richiami e assistente; appointment actions removed from it.
+- Files: Agenda.jsx, AppointmentWorkspace.css, visual suite, coordination. No database/deployment changes. Validation: Studio build and diff check pass; prior 1437 Node tests unchanged. Local browser validation remains blocked by unavailable Chromium download. Rollback: revert follow-up commit. Next: CI visual checks and PO review before merge.
