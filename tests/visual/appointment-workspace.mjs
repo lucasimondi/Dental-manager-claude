@@ -78,7 +78,7 @@ try{
    const geometry=await booking.evaluate(el=>({top:el.getBoundingClientRect().top,animation:getComputedStyle(el).animationName,focused:el.contains(document.activeElement)}));
    assert.ok(geometry.top<=25,'booking opens near the top');assert.equal(geometry.animation,'none');assert.equal(geometry.focused,false,'keyboard is not opened automatically');
    await booking.getByRole('button',{name:'+ Nuovo paziente',exact:true}).click();
-   await booking.getByLabel('Nome nuovo paziente').fill('Nuovo');await booking.getByLabel('Cognome nuovo paziente').fill('Sintetico');await booking.getByLabel('Telefono nuovo paziente').fill('3331112233');
+   await booking.getByLabel('Nome nuovo paziente',{exact:true}).fill('Nuovo');await booking.getByLabel('Cognome nuovo paziente',{exact:true}).fill('Sintetico');await booking.getByLabel('Telefono nuovo paziente').fill('3331112233');
    await booking.getByRole('button',{name:'Crea e seleziona',exact:true}).click();
    assert.equal(await booking.getByText('Nuovo Sintetico',{exact:true}).isVisible(),true);
    assert.equal(await page.evaluate(()=>window.__patients.filter(p=>p.nome==='Nuovo'&&p.cognome==='Sintetico'&&p.telefono==='3331112233').length),1);
