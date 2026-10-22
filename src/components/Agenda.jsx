@@ -301,8 +301,9 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                 {renderAppointmentWorkspace && p && <button type="button" aria-label="Chiudi appuntamento" disabled={workspaceBusy} onClick={() => setMenuApp(null)} style={{ marginLeft: 'auto', minWidth: 44, minHeight: 44, border: 0, borderRadius: 10, cursor: 'pointer' }}>✕</button>}
               </div>
               {renderAppointmentWorkspace && p && <nav className="appointment-patient-toolbar" aria-label="Azioni paziente e appuntamento">
-                {azioni.map(az => <button key={az.id} type="button" title={az.label} aria-label={az.id === 'edit' ? 'Modifica appuntamento' : az.label} className={az.id === 'wa' ? 'appointment-whatsapp-button' : az.id === 'del' ? 'appointment-delete-button' : undefined} disabled={workspaceBusy || az.dis} onClick={az.onClick}><Ic n={az.ic} s={16} c={az.col} /><span>{az.label}</span></button>)}
-                <button type="button" disabled={workspaceBusy || !onOpenPatient} onClick={() => runPatientAction(onOpenPatient)}><Ic n="pz" s={16} c={C.pri} /><span>Scheda</span></button>
+                <button type="button" title="Chiama" aria-label="Chiama" disabled={workspaceBusy || !phone} onClick={() => { if (phone) window.location.href = `tel:${phone}`; }}><Ic n="ph" s={14} c={C.pri} /><span>Chiama</span></button>
+                {azioni.filter(az => ['wa', 'edit', 'sposta'].includes(az.id)).map(az => <button key={az.id} type="button" title={az.label} aria-label={az.id === 'edit' ? 'Modifica appuntamento' : az.label} className={az.id === 'wa' ? 'appointment-whatsapp-button' : az.id === 'del' ? 'appointment-delete-button' : undefined} disabled={workspaceBusy || az.dis} onClick={az.onClick}><Ic n={az.ic} s={14} c={az.col} /><span>{az.label}</span></button>)}
+                <button type="button" disabled={workspaceBusy || !onOpenPatient} onClick={() => runPatientAction(onOpenPatient)}><Ic n="pz" s={14} c={C.pri} /><span>Scheda</span></button>
               </nav>}
               <div className="agenda-appointment-menu-actions" style={{ padding: 8 }}>
                 {renderAppointmentWorkspace && p ? renderAppointmentWorkspace(p, menuApp, () => setMenuApp(null), setWorkspaceBusy) : <>
@@ -314,7 +315,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                 </div>
                 </>}
                 <LegacyActions>
-                {renderAppointmentWorkspace && p && <summary style={{ padding: 14, fontWeight: 700, cursor: 'pointer' }}>Richiami e assistente</summary>}
+                {renderAppointmentWorkspace && p && <summary style={{ padding: 14, fontWeight: 700, cursor: 'pointer' }}>Altre opzioni</summary>}
                 {isMobile && (
                   <>
                     <div className="agenda-quick-hub-grid">
@@ -359,7 +360,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                     <div className="agenda-quick-hub-divider">Appuntamento</div>
                   </>
                 )}
-                {azioni.filter(() => !(renderAppointmentWorkspace && p)).map(az => (
+                {azioni.filter(az => !(renderAppointmentWorkspace && p) || ['mail', 'del'].includes(az.id)).map(az => (
                   <button
                     key={az.id}
                     disabled={az.dis}

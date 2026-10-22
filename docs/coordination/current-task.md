@@ -9,3 +9,5 @@
 - ROLLBACK: revert dedicated PR; stable checkpoint unchanged.
 
 - PO follow-up: all appointment actions moved into compact top toolbar beside WhatsApp; six controls, single desktop row / two mobile rows.
+
+- Latest PO correction: five small 14px icons in one row at every width: Chiama, WhatsApp, Modifica, Sposta, Scheda. Short labels below icons, 44px touch targets; Email/Elimina stay under Altre opzioni.

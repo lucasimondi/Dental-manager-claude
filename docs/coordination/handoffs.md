@@ -4054,3 +4054,7 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - PO: move appointment actions to the top alongside WhatsApp and shrink buttons.
 - Codex, same branch/PR #245. Modifica, WhatsApp, Email, Sposta, Elimina and Scheda now in one compact top toolbar; six columns desktop, three columns/two rows mobile; 44px touch targets. Existing handlers unchanged. Bottom section renamed Richiami e assistente; appointment actions removed from it.
 - Files: Agenda.jsx, AppointmentWorkspace.css, visual suite, coordination. No database/deployment changes. Validation: Studio build and diff check pass; prior 1437 Node tests unchanged. Local browser validation remains blocked by unavailable Chromium download. Rollback: revert follow-up commit. Next: CI visual checks and PO review before merge.
+
+### APPOINTMENT-PATIENT-CARD — five-icon toolbar
+- PO refinement: Chiama, WhatsApp, Modifica, Sposta and Scheda fit in one row on mobile. Icons reduced to 14px with short labels underneath and 44px touch targets. Email/Elimina remain under Altre opzioni. Existing phone normalization/handlers reused.
+- Codex, same branch and PR #245; changed Agenda, workspace CSS, browser expectations and coordination. Studio build and diff check pass. Browser validation still pending for the previously documented download issue. No database/deploy changes. Rollback: revert follow-up; next: visual CI/PO review.
