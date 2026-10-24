@@ -91,3 +91,11 @@ test('UI: save button on the file, confirmation card, nothing saved without "Sal
   assert.match(controller, /Ho salvato "\$\{attachment\.name\}" nella scheda di/);
   assert.match(controller, /if \(result\?\.attachmentSave\)/);
 });
+
+test('photo field-entry requests reach the model instead of the archive-only shortcut', async () => {
+  for (const text of ['Inserisci i dati degli impianti nella scheda di Mario Rossi', 'Salva impianti nella scheda di Mario Rossi', 'Compila la cartella con questa foto']) assert.equal(isSaveToRecordRequest(text), false);
+  assert.equal(isSaveToRecordRequest('Salva la foto dell’impianto nella scheda di Mario Rossi'), true);
+  let invoked = false;
+  const result = await processQuery({ query: 'Inserisci i dati degli impianti nella scheda di Mario Rossi', sources: { patients }, attachment: { name: 'test.jpg', media_type: 'image/jpeg', data: 'aGk=' }, supabaseClient: { functions: { invoke: async () => { invoked = true; return { data: { text: 'In quale data?' }, error: null }; } } } });
+  assert.equal(invoked, true); assert.equal(result.attachmentSave, undefined); assert.equal(result.answer, 'In quale data?');
+});
