@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import { normalizzaImpianti, prepareImpianti, executeImpianti, STRUMENTO_IMPIANTI } from '../supabase/functions/agente-assistente/impianti.js';
 
-let handler, script, calls, database, user, plan, autonomia, claims, inserts, clinical, insertFails, verifyFails;
+let handler, script, calls, database, user, plan, autonomia, claims, inserts, clinical, insertFails, verifyFails, revoked;
 class Query {
   constructor(table) { this.table = table; this.filters = []; this.mode = 'many'; }
   select() { return this; } order() { return this; } limit() { return this; } or() { return this; }
@@ -17,14 +17,17 @@ class Query {
   lte(k, v) { this.filters.push((r) => r[k] <= v); return this; }
   maybeSingle() { this.mode = 'one'; return this; } single() { this.mode = 'one'; return this; }
   insert(row) { this.inserted = row; return this; }
+  update(row) { this.updated = row; return this; }
   then(resolve, reject) {
     return Promise.resolve().then(() => {
+      if (this.updated) { for (const r of database[this.table] || []) if (this.filters.every(f => f(r))) Object.assign(r, this.updated); return { error: null }; }
       if (this.inserted) {
         inserts.push({ table: this.table, row: this.inserted });
         if (this.table === 'poliedron_action_claims') {
           if (claims.has(this.inserted.id)) return { error: { code: '23505' } };
           claims.add(this.inserted.id);
         }
+        if (this.table === 'poliedra_connector_requests') { database.poliedra_connector_requests.push({ status: 'pending', ...this.inserted }); return { error: null }; }
         if (this.table === 'implants') {
           if (insertFails) return { error: { message: 'synthetic insert failure' } };
           const rows = this.inserted.map((r, i) => ({ ...r, id: 700 + database.implants.length + i }));
@@ -71,6 +74,7 @@ test.before(async () => {
     rpc: async (name) => name === 'has_studio_capability_v1' ? { data: clinical, error: null } : { error: { message: 'unsupported RPC' } },
   });
   globalThis.fetch = async (_url, options) => {
+    if (String(_url).endsWith("/user/oauth/grants")) return { ok: true, json: async () => revoked ? [] : [{ client: { id: CONNECTOR_ID } }] };
     calls.push(JSON.parse(options.body));
     const next = script.shift();
     assert.ok(next, 'unexpected provider request');
@@ -80,7 +84,7 @@ test.before(async () => {
 });
 
 test.beforeEach(() => {
-  clinical = true; insertFails = false; verifyFails = false; script = []; calls = []; claims = new Set(); inserts = []; plan = 'premium'; autonomia = 'completo';
+  revoked = false; clinical = true; insertFails = false; verifyFails = false; script = []; calls = []; claims = new Set(); inserts = []; plan = 'premium'; autonomia = 'completo';
   user = { id: 'u1', app_metadata: { studio_id: 's1' } };
   database = {
     studio_users: [{ user_id: 'u1', studio_id: 's1', stato: 'attivo' }],
@@ -94,15 +98,14 @@ test.beforeEach(() => {
       { id: 20, paziente_id: 2, studio_id: 's1', titolo: 'Ortodonzia', stato: 'accettato', data: '2026-02-01' },
       { id: 21, paziente_id: 2, studio_id: 's1', titolo: 'Conservativa', stato: 'attivo', data: '2026-08-01' },
     ],
-    implants: [], payments: [], appointments: [], impegni_personali: [], richiami: [],
+    poliedra_connector_clients: [{ client_id: CONNECTOR_ID, provider: 'chatgpt', enabled: true, resource_uri: 'https://clinic.example/api/mcp' }], poliedra_connector_requests: [], implants: [], payments: [], appointments: [], impegni_personali: [], richiami: [],
   };
 });
-async function request(body) {
-  const response = await handler(new Request('https://local.test', { method: 'POST', headers: { Authorization: 'Bearer test' }, body: JSON.stringify(body) }));
+async function request(body, token = "test") {
+  const response = await handler(new Request('https://local.test', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(body) }));
   return { status: response.status, ...await response.json() };
 }
 const toolNames = (i = 0) => calls[i].tools.map((t) => t.name);
-const paymentRows = () => inserts.filter((i) => i.table === 'payments');
 const toolError = (i) => JSON.parse(calls[i].messages.at(-1).content.at(-1).content).error;
 
 const entry = { dente: '16', data_inserimento: '2024-04-10', marca: 'Marca test', modello: 'Serie test REF TEST-10', lotto: 'LOT-TEST', diametro: '4.0', lunghezza: '11 mm' };
@@ -198,4 +201,54 @@ test('oversized clinical summary is refused before issuing an unusable confirmat
   script.push(use('cerca_pazienti', { query: 'Mario Rossi' }), use(STRUMENTO_IMPIANTI.name, { paziente_id: 1, impianti: entries }), say('Dividi gli impianti in due richieste.'));
   const out = await request(photoRequest());
   assert.equal(out.needsConfirmation, undefined); assert.match(out.text, /Dividi/); assert.equal(database.implants.length, 0);
+});
+
+const CONNECTOR_ID = '00000000-0000-4000-8000-000000000011';
+const connectorToken = () => 'e30.' + Buffer.from(JSON.stringify({ client_id: CONNECTOR_ID, aud: ['authenticated', 'https://clinic.example/api/mcp'], app_metadata: { studio_id: 's1' } })).toString('base64url') + '.synthetic';
+const connectorCall = (name, args = {}) => request({ connector: { operation: 'call', name, arguments: args } }, connectorToken());
+test('external connector exposes reviewed tools without any model/provider call', async () => {
+  const out = await request({ connector: { operation: 'tools' } }, connectorToken());
+  assert.ok(out.tools.some(t => t.name === 'prepara_impianti'));
+  assert.ok(out.tools.every(t => !/execute|conferma|sql/i.test(t.name)));
+  assert.equal(calls.length, 0); assert.equal(inserts.filter(x => ['implants','plans','payments','appointments'].includes(x.table)).length, 0);
+});
+test('external photo fields become one private review request; only first-party approval writes', async () => {
+  const draft = await connectorCall('prepara_impianti', input());
+  assert.equal(draft.status, 'pending'); assert.ok(draft.review_url.includes('/connector/review?id='));
+  assert.equal(draft.proposal_token, undefined); assert.equal(database.implants.length, 0);
+  const refused = await request({ confirm: { connector_request_id: draft.richiesta_id } }, connectorToken());
+  assert.equal(refused.status, 500); assert.equal(database.implants.length, 0);
+  const done = await request({ confirm: { connector_request_id: draft.richiesta_id } });
+  assert.equal(done.uncertain, undefined); assert.equal(done.records.implants.length, 2);
+  const status = await connectorCall('stato_richiesta', { richiesta_id: draft.richiesta_id });
+  assert.equal(status.status, 'done'); assert.equal(status.proposal_token, undefined);
+  const repeat = await request({ confirm: { connector_request_id: draft.richiesta_id } });
+  assert.equal(repeat.status, 500); assert.equal(database.implants.length, 2); assert.equal(calls.length, 0);
+});
+test('revoked grant, disabled client, changed clinical capability block both preparation and review', async () => {
+  const draft = await connectorCall('prepara_impianti', input()); revoked = true;
+  assert.ok((await connectorCall('prepara_impianti', input())).error);
+  assert.ok((await request({ confirm: { connector_request_id: draft.richiesta_id } })).error);
+  revoked = false; clinical = false;
+  assert.ok((await connectorCall('prepara_impianti', input())).error);
+  assert.ok((await request({ confirm: { connector_request_id: draft.richiesta_id } })).error);
+  clinical = true; database.poliedra_connector_clients[0].enabled = false;
+  assert.ok((await request({ confirm: { connector_request_id: draft.richiesta_id } })).error);
+  assert.equal(database.implants.length, 0);
+});
+test('first-party cancellation consumes the request and a stale clinical preview cannot execute', async () => {
+  let draft = await connectorCall('prepara_impianti', input());
+  const cancelled = await request({ confirm: { connector_request_id: draft.richiesta_id, cancelled: true } });
+  assert.match(cancelled.text, /annullata/); assert.equal(database.poliedra_connector_requests[0].status, 'cancelled');
+  draft = await connectorCall('prepara_impianti', input());
+  database.implants.push({ ...entry, diametro: '4 mm', id: 900, paziente_id: 1, studio_id: 's1' });
+  const stale = await request({ confirm: { connector_request_id: draft.richiesta_id } });
+  assert.match(stale.error, /cambiati/); assert.equal(database.implants.length, 1);
+});
+test('ordinary sessions, wrong resource and hidden requests cannot use structured connector calls', async () => {
+  assert.ok((await request({ connector: { operation: 'tools' } })).error);
+  const draft = await connectorCall('prepara_impianti', input());
+  database.poliedra_connector_requests[0].user_id = 'other-user';
+  assert.ok((await request({ confirm: { connector_request_id: draft.richiesta_id } })).error);
+  assert.equal(database.implants.length, 0);
 });

@@ -25,6 +25,7 @@ import { PAZIENTI_WRITES, PAZIENTI_TOOLS, preparePazienti, executePazienti, sche
 import { PAGAMENTI_WRITES, PAGAMENTI_TOOLS, preparePagamenti, executePagamenti } from "./pagamenti.js";
 import { PIANI_WRITES, PIANI_TOOLS, preparePiani, executePiani, STRUMENTO_PREVENTIVO, preparaPreventivo } from "./piani.js";
 import { STRUMENTO_IMPIANTI, prepareImpianti, executeImpianti } from './impianti.js';
+import { runConnector, verifiedTokenClaims, connectorReview } from './connector.js';
 import { classifyAction, DECISION } from "./confidence.js";
 import { validaAllegato, messaggiConAllegato, senzaDatiAllegato } from "./allegato.js";
 import { STRUMENTI_MEMORIA, STRUMENTO_RICETTA, normalizzaMemoria, sezioneMemoria, sezioneFarmaciFrequenti, normalizzaRicetta, documentoRicetta } from "./memoria.js";
@@ -1309,8 +1310,23 @@ per calcolare date relative ("domani", "martedì prossimo", "tra due settimane",
 dedurre o assumere altre date, e non sbagliare mai l'anno.
 Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? sezioneMemoria(vociMemoria) : ''}${prescrive ? sezioneFarmaciFrequenti(studioInfoRicette?.farmaci_preferiti) : ''}`;
 
-    const { messages, confirm, team, allegato: allegatoRichiesta, conversation_context: contextToken } = await req.json();
     const json = (value) => new Response(JSON.stringify(value), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    let { messages, confirm, connector, team, allegato: allegatoRichiesta, conversation_context: contextToken } = await req.json();
+    const delegatedClaims = verifiedTokenClaims(authHeader);
+    const verifyConnectorGrant = async (clientId) => {
+      const response = await fetch(`${SUPABASE_URL}/auth/v1/user/oauth/grants`, { headers: { Authorization: authHeader, apikey: SUPABASE_ANON_KEY }, signal: AbortSignal.timeout(10000) });
+      if (!response.ok) return false;
+      const grants = await response.json();
+      return Array.isArray(grants) && grants.some(g => g.client?.id === clientId);
+    };
+    // OAuth clients use only the reviewed structured tools, never arbitrary chat
+    // prompts or direct confirmation tokens. Actual writes need first-party review.
+    if (delegatedClaims.client_id && !connector) throw new Error('Usa gli strumenti del connettore; le conferme si aprono in Poliedra.');
+    if (connector) {
+      const out = await runConnector({ request: connector, client: supabase, claims: delegatedClaims, studioId, userId: user.id, allowedNames, tools: toolsFinali, secret: SUPABASE_SERVICE_ROLE_KEY, read: (name, args) => eseguiTool(supabase, name, args, studioId, user.id, azioniAttive), verifyGrant: verifyConnectorGrant });
+      return json(out);
+    }
+
     // POL-AI-TEAM-002: Clinic Manager e specialisti, sempre in sola lettura.
     let richiestaTeam = null;
     try {
@@ -1330,61 +1346,75 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
       }
     }
     if (confirm) {
+      let connectorRequest = null;
+      if (confirm.connector_request_id) {
+        connectorRequest = await connectorReview(supabase, confirm.connector_request_id, delegatedClaims, user.id, studioId, SUPABASE_SERVICE_ROLE_KEY, allowedNames, verifyConnectorGrant);
+        confirm = { token: connectorRequest.proposal_token, cancelled: confirm.cancelled === true };
+      }
+      const confirmed = async (body) => {
+        if (connectorRequest) {
+          const status = body.uncertain ? 'uncertain' : confirm.cancelled ? 'cancelled' : body.records ? 'done' : 'uncertain';
+          const result = { text: body.text, changed: body.changed || [], uncertain: body.uncertain === true };
+          const saved = await supabase.from('poliedra_connector_requests').update({ status, result }).eq('id', connectorRequest.id).eq('studio_id', studioId).eq('user_id', user.id);
+          if (saved.error) body = { ...body, text: body.text + ' Stato del riepilogo non aggiornato: verifica la scheda prima di ripetere.', uncertain: true };
+        }
+        return json(body);
+      };
       evento.conferma = true;
       let proposal;
       try {
         proposal = await verifyProposal(confirm.token, SUPABASE_SERVICE_ROLE_KEY, { userId: user.id, studioId, allowedNames });
       } catch (error) {
         // Expired/invalid/no-longer-allowed: nothing was written; say so plainly.
-        return json({ text: `${error.message} Nessuna modifica eseguita.` });
+        return confirmed({ text: `${error.message} Nessuna modifica eseguita.` });
       }
       if (confirm.cancelled === true) {
         evento.annullata = true;
         await claimProposal(supabase, proposal);
-        return json({ text: 'Operazione annullata. Nessuna modifica eseguita.' });
+        return confirmed({ text: 'Operazione annullata. Nessuna modifica eseguita.' });
       }
       if (proposal.impianti) {
         try {
           const done = await executeImpianti(supabase, proposal);
           await registraAttivita(supabase, proposal, done);
-          return json(done);
+          return confirmed(done);
         } catch (error) {
-          return json({ text: 'Salvataggio impianti non confermato: ' + error.message, changed: ['implants'], uncertain: true });
+          return confirmed({ text: 'Salvataggio impianti non confermato: ' + error.message, changed: ['implants'], uncertain: true });
         }
       }
       if (proposal.piani) {
         try {
           const done = await executePiani(supabase, proposal);
           await registraAttivita(supabase, proposal, done);
-          return json(done);
+          return confirmed(done);
         } catch (error) {
-          return json({ text: 'Piano di cura non creato: ' + error.message + ' Controlla i piani del paziente prima di inviare una nuova richiesta.', changed: ['plans'], uncertain: true });
+          return confirmed({ text: 'Piano di cura non creato: ' + error.message + ' Controlla i piani del paziente prima di inviare una nuova richiesta.', changed: ['plans'], uncertain: true });
         }
       }
       if (proposal.pagamenti) {
         try {
           const done = await executePagamenti(supabase, proposal);
           await registraAttivita(supabase, proposal, done);
-          return json(done);
+          return confirmed(done);
         } catch (error) {
-          return json({ text: 'Pagamento non registrato: ' + error.message + ' Controlla i pagamenti del paziente prima di inviare una nuova richiesta.', changed: ['payments'], uncertain: true });
+          return confirmed({ text: 'Pagamento non registrato: ' + error.message + ' Controlla i pagamenti del paziente prima di inviare una nuova richiesta.', changed: ['payments'], uncertain: true });
         }
       }
       if (proposal.pazienti) {
         try {
           const done = await executePazienti(supabase, proposal);
           await registraAttivita(supabase, proposal, done);
-          return json(done);
+          return confirmed(done);
         } catch (error) {
-          return json({ text: 'Operazione non confermata: ' + error.message + ' Controlla la scheda prima di inviare una nuova richiesta.', changed: ['patients', 'richiami', 'impegni_personali'], uncertain: true });
+          return confirmed({ text: 'Operazione non confermata: ' + error.message + ' Controlla la scheda prima di inviare una nuova richiesta.', changed: ['patients', 'richiami', 'impegni_personali'], uncertain: true });
         }
       }
       try {
         const done = await executeAgenda(supabase, proposal);
         await registraAttivita(supabase, proposal, done);
-        return json(done);
+        return confirmed(done);
       } catch (error) {
-        return json({ text: 'Operazione non confermata: ' + error.message + ' Controlla l’agenda prima di inviare una nuova richiesta.', changed: ['appointments'], uncertain: true });
+        return confirmed({ text: 'Operazione non confermata: ' + error.message + ' Controlla l’agenda prima di inviare una nuova richiesta.', changed: ['appointments'], uncertain: true });
       }
     }
     if (!Array.isArray(messages) || messages.length > 21 || messages.some(m => !['user', 'assistant'].includes(m.role) || typeof m.content !== 'string' || m.content.length > 16000)) throw new Error('Messaggi non validi');

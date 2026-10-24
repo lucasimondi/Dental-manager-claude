@@ -23,5 +23,5 @@ test('the chat routes a typed decision to the same confirmation handler as the b
 
 test('an expired or invalid confirmation answers plainly and writes nothing', () => {
   const src = readFileSync(new URL('../supabase/functions/agente-assistente/index.ts', import.meta.url), 'utf8');
-  assert.match(src, /catch \(error\) \{\s*\/\/ Expired\/invalid\/no-longer-allowed[^\n]*\n\s*return json\(\{ text: `\$\{error\.message\} Nessuna modifica eseguita\.` \}\);/);
+  assert.match(src, /catch \(error\) \{\s*\/\/ Expired\/invalid\/no-longer-allowed[^\n]*\n\s*return confirmed\(\{ text: `\$\{error\.message\} Nessuna modifica eseguita\.` \}\);/);
 });

@@ -54,8 +54,10 @@ refreshing implants; never automatically retry or claim nothing was written.
 
 ## External ChatGPT / Gemini connection
 
-No connector, OAuth application, MCP server or credential provisioning is created
-or enabled here. Existing Supabase admin tools available in a development session
+The initial implant slice did not create an external connection. The later PO
+request extends this PR with the shared MCP/OAuth implementation described in
+[assistant-connectors.md](assistant-connectors.md); deployment and account linking
+remain unperformed. Existing Supabase admin tools available in a development session
 are not a general operational integration for every assistant.
 
 The target is an approved user-authorized connector for each assistant, which
@@ -65,11 +67,11 @@ tools, signed one-time clinical proposals and read-back results. Do not share
 service-role keys or ask a user to paste session JWTs in chat. Do not expose the
 Supabase management API as the clinician's day-to-day integration.
 
-Before implementing/publishing that connector, settle its host and supported
-assistant clients, OAuth/delegation lifecycle, grants/revocation, audit/retention
-and release authority with the PO. This is the repository gate on auth/deployment
-architecture, not a claim that Gemini or this ChatGPT conversation is connected.
-Expense ingestion and broader documents need their reviewed domain adapters too.
+The subsequent explicit PO request approves implementing both connectors on the
+existing Vercel/Supabase infrastructure. The expanded implementation, data boundary,
+account availability and controlled activation are documented in
+assistant-connectors.md and the corresponding runbook. Expense ingestion and
+broader documents still need their reviewed domain adapters.
 
 ## Validation / release
 

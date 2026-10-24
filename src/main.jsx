@@ -22,6 +22,7 @@ if (isPoliedronAppPath(window.location.pathname)) {
 // loro indirizzo. Prima erano importate qui in modo statico e finivano nel
 // download iniziale di ogni avvio dell'app (FirmaConsenso trascinava con sé
 // jsPDF), anche per chi apre solo il gestionale.
+const ConnectorAccess = lazyWithRetry(() => import('./components/ConnectorAccess.jsx'), 'ConnectorAccess');
 const PrenotaOnline = lazyWithRetry(() => import('./components/PrenotaOnline.jsx'), 'PrenotaOnline');
 const FirmaConsenso = lazyWithRetry(() => import('./components/FirmaConsenso.jsx'), 'FirmaConsenso');
 const StoriaClinicaRemota = lazyWithRetry(() => import('./components/StoriaClinicaRemota.jsx'), 'StoriaClinicaRemota');
@@ -39,7 +40,8 @@ const pathPatientWorkspaceDemo = window.location.pathname === '/patient-workspac
 const pathPatientWorkspaceRealPreview = window.location.pathname === '/patient-workspace-v2-real-preview' || window.location.pathname === '/patient-workspace-v2-real-preview/';
 
 let elementoRadice;
-if (pathPrenota) elementoRadice = <PrenotaOnline slug={pathPrenota[1]} />;
+if (/^\/connector\/(?:consent|review|setup)\/?$/.test(window.location.pathname)) elementoRadice = <ConnectorAccess />;
+else if (pathPrenota) elementoRadice = <PrenotaOnline slug={pathPrenota[1]} />;
 else if (pathFirma) elementoRadice = <FirmaConsenso token={pathFirma[1]} />;
 else if (pathStoriaClinica) elementoRadice = <StoriaClinicaRemota token={pathStoriaClinica[1]} />;
 else if (pathPatientWorkspaceRealPreview) elementoRadice = <PatientWorkspaceRealPreview />;

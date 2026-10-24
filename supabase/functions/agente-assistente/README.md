@@ -143,3 +143,13 @@ uncertain outcome. Manufacture/expiry never supply the placement date. Complete
 scope, external ChatGPT/Gemini connection requirements and controlled release:
 [`photo-to-actions.md`](../../../docs/architecture/photo-to-actions.md).
 No new migration/secret; deploying only the frontend does not activate this tool.
+
+### ASSISTANT-CONNECTORS (source only)
+
+`connector.js` accepts delegated structured calls, no provider/model call. It
+prepares private reviewed requests through existing domain preparers. OAuth
+clients cannot call normal chat or confirmation paths. The user's first-party
+session uses `confirm.connector_request_id` to recheck/reprepare before executing
+the same signed canonical action. See docs/architecture/assistant-connectors.md
+and docs/runbooks/assistant-connectors.md. New migration/OAuth configuration is
+required; Vercel preview alone does not activate either external account.
