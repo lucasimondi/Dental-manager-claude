@@ -1,0 +1,38 @@
+name: Assistant connectors
+on:
+  pull_request:
+    branches: [master]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: connector_test
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: node --test tests/connectorMcp.test.mjs tests/agenteImpianti.test.mjs
+      - name: Verify connector migration and two-tenant RLS
+        run: psql postgresql://postgres@localhost:5432/connector_test -v ON_ERROR_STOP=1 -f supabase/tests/assistant_connectors_fixture.sql -f supabase/migrations/20261024140257_assistant_connectors.sql -f supabase/tests/assistant_connectors.sql
+      - name: Use HTTPS Ubuntu mirror for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt; fi
+      - run: npx playwright install --with-deps chromium
+      - name: Verify real connector UI at four widths
+        run: node tests/visual/connector.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: assistant-connectors-ui
+          path: /tmp/poliedra-connector-screens

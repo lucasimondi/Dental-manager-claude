@@ -1,18 +1,12 @@
-# Current task — APPOINTMENT-PATIENT-CARD (2026-10-22)
-- OWNER: Codex; branch codex/appointment-patient-card, PR #245.
-- PO: patient card from appointment, compact actions; latest request moves call beside name, stabilizes booking near top, creates patients from booking and improves opening speed.
-- STATUS: implementation complete; draft pending browser CI and screenshot review.
-- SCOPE: call beside patient name; WhatsApp/Modifica/Sposta/Scheda top toolbar. Booking top-aligned at final position, no entrance transform or automatic keyboard, safe-area bounds independent of agenda overlay measurements. Always-visible Nuovo paziente button, inline name/surname/optional phone and automatic selection using existing quick-create persistence/reconciliation and limits. Patient search memoized; appointment chunk preloaded on agenda entry; eager shell geometry prevents lazy CSS movement.
-- VALIDATION: 1437/1437 Node tests, Studio and Personal builds pass; diff check clean. Existing browser suite updated for header call, top booking, no autofocus and create/select synthetic patient with phone. Local browser validation remains blocked by unavailable Chromium download; no timing benchmark/physical iPhone claim.
-- DATABASE: no schema, authorization, tenancy or financial changes; no production reads/writes.
-- LIMITS: existing background patient persistence/error handling and temporary ID reconciliation unchanged. Memoization and prefetch are targeted UI optimizations, not measured global app speedup.
-- RELEASE: browser CI/review before ready, explicit PO Mergia required; no merge/manual deploy.
-- ROLLBACK: revert PR; immutable stable checkpoint unchanged.
+# Current task — ASSISTANT-CONNECTORS (2026-10-24)
+- OWNER: Codex; branch codex/photo-import-workflow, PR #246 expanded by explicit PO request: build connectors for ChatGPT and Gemini.
+- PREVIOUS: PHOTO-TO-ACTIONS implant tool, 1458 tests/builds passing; no merge/deploy.
+- AUTHORIZATION: PO explicitly requested both connectors, including the necessary authenticated integration. Implementation uses current Vercel host and Supabase OAuth server; no new hosting provider. Remote auth configuration/migrations/release remain gated and unperformed.
+- SCOPE: standard shared Streamable HTTP MCP endpoint; per-user OAuth/PKCE with separate approved ChatGPT/Gemini clients; existing domain reads and reviewed draft→summary and explicit confirmation in chat→canonical execution; consent, revocation, setup page; synthetic tenant/security tests.
+- STATUS: implementation complete, draft PR #246; predecessor2144047 CI/PG17 passed; final cancellation/status guard follow-up under review. Google currently documents custom Gemini Apps connectors as US/English only; compatible implementation is not proof of Italian account availability.
+- VALIDATION: 1470/1470 Node tests, Studio/Personal builds, four-width Chromium consent/review/revoke/uncertain QA and screenshot review pass. Disposable PostgreSQL17 migration/RLS/two-tenant/client isolation/audience/retention tests pass in workflow40102076681; same SQL unchanged by final follow-up. No live OAuth account round-trip claimed.
+- DATABASE: versioned connector configuration/request migration + RLS/tests; no production data used, no remote changes.
+- RELEASE: draft PR→tests/review→WAITING_PRODUCT_OWNER; explicit Mergia, controlled migration/Edge/OAuth configuration, then user account linking. No manual deployment.
+- ROLLBACK: disable connector clients, restore prior function/endpoint; preserve immutable stable/2026-08-27-full-recovery (070b28fd4eae4e2cc397584201d0bb149468fae7).
 
-## Latest follow-up — visit tags and plan entry
-- PO: one color-tag series; enter a priced treatment in the popup, saving it to a plan only when absent.
-- Unique normalized visit names render once in one horizontally scrollable tag row; persisted configuration unchanged.
-- Booking now exposes description/list price, editable price and optional tooth; selects sole active plan or creates one if none, asks when several. Fresh patient/plan reads and confirmed plan writes precede existing appointment sync. No treatment fields leak into appointment payloads.
-- Shared appointment-entry preparation skips existing same normalized procedure/tooth pairs without changing price/status; also skips repeated input rows. A no-op still preserves contextual payment linkage to the existing plan.
-- Validation: 1445/1445 Node tests, Studio/Personal builds and diff check pass. Browser fixture updated for duplicate tags and priced booking entry, local browser run still blocked by the documented download failure.
-- Limits: same tooth identity is preserved; different teeth remain distinct. Explicit new quotes and implant quote presets retain their existing behavior. Plan save and existing background appointment save are not a transaction; concurrency locking is unchanged. Uncertain plan writes block resubmission until review/reopen.
+- LATEST PO: confirm inside ChatGPT/Gemini; implemented conferma_richiesta with matching-client binding, immutable payload, fresh revalidation and claim; browser review optional. New Node tests pass; full final validation/CI pending.
