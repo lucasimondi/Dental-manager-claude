@@ -221,7 +221,7 @@ test('app wiring: payments are refreshed after a write and labelled (not undoabl
   const app = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8');
   const controller = readFileSync(new URL('../src/components/poliedron/Poliedron.jsx', import.meta.url), 'utf8');
   assert.match(app, /payments: \['dm_py', setPayments\]/);
-  assert.match(controller, /'impegni_personali', 'payments'\]/);
+  assert.match(controller, /'impegni_personali', 'payments', 'plans', 'implants'\]/);
   assert.equal(etichettaAttivita('registra_pagamento_paziente'), 'Pagamento registrato');
   assert.equal(puoRipristinare({ id: 'x', azione: 'registra_pagamento_paziente' }, new Set()), false);
 });

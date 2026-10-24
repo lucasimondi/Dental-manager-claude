@@ -19,7 +19,10 @@ const NOT_A_NAME = /^(?:sua|suo|sue|giusta|corretta|paziente)\b/i;
 /** "Salvalo nella scheda di Rossi", "archivia nella cartella del paziente"… */
 export function isSaveToRecordRequest(text) {
   const value = String(text || '');
-  return SAVE_VERB.test(value) && RECORD_WORD.test(value);
+  // Extracting fields must reach the model/domain tools, not only archive the file.
+  const dataEntry = /\b(?:compila\w*|trascrivi\w*|registra\w*|dati)\b/i.test(value)
+    || (/\bimpiant[oi]\b/i.test(value) && !/\b(?:foto|file|immagine|etichetta|documento)\b/i.test(value));
+  return !dataEntry && SAVE_VERB.test(value) && RECORD_WORD.test(value);
 }
 
 /**
