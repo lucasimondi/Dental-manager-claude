@@ -4105,3 +4105,8 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - RELEASE: no merge/manual deploy. Existing Edge deploy workflow may run after eventual approved merge; verify actual run and Vercel, migration, OAuth config/composed hook/static clients, retention and synthetic end-to-end linking before production. Current PR remains draft pending CI/PG review.
 - ROLLBACK: disable registry entries/revoke grants before endpoint rollback, restore prior approved Edge and auth-hook configuration; do not drop clinical records or rewrite ledger. Preserve immutable stable branch.
 - NEXT ACTION: finish exact-head CI/PG17 and scope review, resolve failures, then WAITING_PRODUCT_OWNER for explicit Mergia; controlled activation and final per-account login/linking afterward.
+
+
+### ASSISTANT-CONNECTORS — final review follow-up
+- Same owner/branch/PR #246. Head2144047: POL-003E CI40102076622, Agenda sharing40102076589 and Assistant connectors40102076681 all pass; the latter verifies real PostgreSQL17 two-tenant RLS, client isolation, audience hook, immutable token grants, retention and four-width Chromium UI. Existing agenda visual workflow still running. Local1470 tests and both builds pass; no production OAuth/account activation claimed.
+- Review fix: a clinician may cancel an otherwise stale draft without revalidating its obsolete business fields; signature/ownership/delegation/capability still checked. Request completion updates only pending rows, so replay cannot overwrite an already-final state. Handler tests cover stale cancellation; targeted24/24 pass. No SQL/UI/schema change in this follow-up. Final-head CI must be checked before readiness.

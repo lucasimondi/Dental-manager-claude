@@ -1348,14 +1348,14 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
     if (confirm) {
       let connectorRequest = null;
       if (confirm.connector_request_id) {
-        connectorRequest = await connectorReview(supabase, confirm.connector_request_id, delegatedClaims, user.id, studioId, SUPABASE_SERVICE_ROLE_KEY, allowedNames, verifyConnectorGrant);
+        connectorRequest = await connectorReview(supabase, confirm.connector_request_id, delegatedClaims, user.id, studioId, SUPABASE_SERVICE_ROLE_KEY, allowedNames, verifyConnectorGrant, confirm.cancelled === true);
         confirm = { token: connectorRequest.proposal_token, cancelled: confirm.cancelled === true };
       }
       const confirmed = async (body) => {
         if (connectorRequest) {
           const status = body.uncertain ? 'uncertain' : confirm.cancelled ? 'cancelled' : body.records ? 'done' : 'uncertain';
           const result = { text: body.text, changed: body.changed || [], uncertain: body.uncertain === true };
-          const saved = await supabase.from('poliedra_connector_requests').update({ status, result }).eq('id', connectorRequest.id).eq('studio_id', studioId).eq('user_id', user.id);
+          const saved = await supabase.from('poliedra_connector_requests').update({ status, result }).eq('id', connectorRequest.id).eq('studio_id', studioId).eq('user_id', user.id).eq('status', 'pending');
           if (saved.error) body = { ...body, text: body.text + ' Stato del riepilogo non aggiornato: verifica la scheda prima di ripetere.', uncertain: true };
         }
         return json(body);

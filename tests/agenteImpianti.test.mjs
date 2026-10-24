@@ -244,6 +244,8 @@ test('first-party cancellation consumes the request and a stale clinical preview
   database.implants.push({ ...entry, diametro: '4 mm', id: 900, paziente_id: 1, studio_id: 's1' });
   const stale = await request({ confirm: { connector_request_id: draft.richiesta_id } });
   assert.match(stale.error, /cambiati/); assert.equal(database.implants.length, 1);
+  const cancelledStale = await request({ confirm: { connector_request_id: draft.richiesta_id, cancelled: true } });
+  assert.match(cancelledStale.text, /annullata/); assert.equal(database.implants.length, 1);
 });
 test('ordinary sessions, wrong resource and hidden requests cannot use structured connector calls', async () => {
   assert.ok((await request({ connector: { operation: 'tools' } })).error);

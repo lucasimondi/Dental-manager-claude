@@ -91,7 +91,7 @@ export async function runConnector({ request, client, claims, studioId, userId, 
   const review = new URL('/connector/review', approved.resource_uri); review.searchParams.set('id', id);
   return { richiesta_id: id, status: 'pending', summary: prepared.summary, review_url: review.href, expires_at: new Date(expiresAt).toISOString(), message: 'Dati preparati. Apri il link, controlla e premi Conferma. Nessun dato clinico ancora registrato.' };
 }
-export async function connectorReview(client, id, claims, userId, studioId, secret, allowedNames, verifyGrant) {
+export async function connectorReview(client, id, claims, userId, studioId, secret, allowedNames, verifyGrant, cancelled = false) {
   if (claims.client_id || !UUID.test(id || '')) throw new Error('Apri il riepilogo dal tuo accesso personale a Poliedra.');
   await clinical(client, studioId);
   const { data, error } = await client.from('poliedra_connector_requests').select('id, client_id, proposal_token, status, expires_at').eq('id', id).eq('studio_id', studioId).eq('user_id', userId).single();
@@ -102,6 +102,7 @@ export async function connectorReview(client, id, claims, userId, studioId, secr
   if (proposal.id !== id || proposal.connectorClientId !== data.client_id) throw new Error('Riepilogo non valido.');
   const domain = Object.values(DRAFTS).find(([action]) => action === proposal.name)?.[1];
   if (!domain || !proposal.connectorInput) throw new Error('Riepilogo non valido.');
+  if (cancelled) return data;
   const fresh = await prepareDomain(client, proposal.name, domain, proposal.connectorInput, studioId);
   if (JSON.stringify(fresh) !== JSON.stringify(proposal[domain])) throw new Error('I dati sono cambiati dopo il riepilogo: aggiorna la richiesta dalla chat prima di registrare.');
   return data;
