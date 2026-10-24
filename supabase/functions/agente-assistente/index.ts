@@ -1323,7 +1323,7 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
     // prompts or direct confirmation tokens. Actual writes need first-party review.
     if (delegatedClaims.client_id && !connector) throw new Error('Usa gli strumenti del connettore; le conferme si aprono in Poliedra.');
     if (connector) {
-      const out = await runConnector({ request: connector, client: supabase, claims: delegatedClaims, studioId, userId: user.id, allowedNames, tools: toolsFinali, secret: SUPABASE_SERVICE_ROLE_KEY, read: (name, args) => eseguiTool(supabase, name, args, studioId, user.id, azioniAttive), verifyGrant: verifyConnectorGrant });
+      const out = await runConnector({ request: connector, client: supabase, claims: delegatedClaims, studioId, userId: user.id, allowedNames, tools: toolsFinali, secret: SUPABASE_SERVICE_ROLE_KEY, read: (name, args) => eseguiTool(supabase, name, args, studioId, user.id, azioniAttive), verifyGrant: verifyConnectorGrant, log: (proposal, out) => registraAttivita(supabase, proposal, out) });
       return json(out);
     }
 

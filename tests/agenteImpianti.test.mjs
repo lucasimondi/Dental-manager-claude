@@ -209,7 +209,7 @@ const connectorCall = (name, args = {}) => request({ connector: { operation: 'ca
 test('external connector exposes reviewed tools without any model/provider call', async () => {
   const out = await request({ connector: { operation: 'tools' } }, connectorToken());
   assert.ok(out.tools.some(t => t.name === 'prepara_impianti'));
-  assert.ok(out.tools.every(t => !/execute|conferma|sql/i.test(t.name)));
+  assert.ok(out.tools.every(t => !/execute|sql/i.test(t.name)));
   assert.equal(calls.length, 0); assert.equal(inserts.filter(x => ['implants','plans','payments','appointments'].includes(x.table)).length, 0);
 });
 test('external photo fields become one private review request; only first-party approval writes', async () => {
@@ -253,4 +253,24 @@ test('ordinary sessions, wrong resource and hidden requests cannot use structure
   database.poliedra_connector_requests[0].user_id = 'other-user';
   assert.ok((await request({ confirm: { connector_request_id: draft.richiesta_id } })).error);
   assert.equal(database.implants.length, 0);
+});
+
+test('explicit chat confirmation saves immutable draft once without first-party navigation', async () => {
+ const draft = await connectorCall('prepara_impianti', input());
+ assert.equal(database.implants.length,0);
+ assert.ok((await connectorCall('conferma_richiesta',{richiesta_id:draft.richiesta_id})).error);
+ const done = await connectorCall('conferma_richiesta',{richiesta_id:draft.richiesta_id,decisione:'Conferma'});
+ assert.equal(done.status,'done'); assert.equal(database.implants.length,2); assert.equal(done.proposal_token,undefined);
+ const replay = await connectorCall('conferma_richiesta',{richiesta_id:draft.richiesta_id,decisione:'Conferma'});
+ assert.ok(replay.error); assert.equal(database.implants.length,2);
+});
+test('chat cancellation, wrong client and revoked grant never register implants', async () => {
+ const draft = await connectorCall('prepara_impianti', input());
+ database.poliedra_connector_requests[0].client_id='00000000-0000-4000-8000-000000000099';
+ assert.ok((await connectorCall('conferma_richiesta',{richiesta_id:draft.richiesta_id,decisione:'Conferma'})).error);
+ database.poliedra_connector_requests[0].client_id=CONNECTOR_ID; revoked=true;
+ assert.ok((await connectorCall('conferma_richiesta',{richiesta_id:draft.richiesta_id,decisione:'Conferma'})).error);
+ revoked=false;
+ const cancelled=await connectorCall('conferma_richiesta',{richiesta_id:draft.richiesta_id,decisione:'Annulla'});
+ assert.equal(cancelled.status,'cancelled'); assert.equal(database.implants.length,0);
 });

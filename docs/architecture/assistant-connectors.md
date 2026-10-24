@@ -1,5 +1,21 @@
 # Connettori ChatGPT e Gemini
 
+## PO update — confirmation inside the assistant chat (2026-10-24)
+This section supersedes the earlier mandatory browser-review wording below.
+Show the full returned summary in ChatGPT/Gemini, await a NEW explicit user reply
+Conferma or Annulla, then call conferma_richiesta with that request ID and decision.
+The same bound OAuth client can execute/cancel the immutable stored proposal after
+fresh grant/capability/domain checks and single-use claim. No proposal token or new
+clinical payload is accepted from the model. The browser link remains optional.
+MCP marks this as a write: the host may request its own approval. The server checks
+the decision enum and request binding, but cannot independently prove a natural
+language reply occurred in a new turn; the assistant/host must enforce that user
+interaction. Do not describe this as a cryptographic proof of user confirmation.
+The request-table UPDATE policy now also permits the matching OAuth client to
+record status/result; proposal_token remains immutable and other clients/tenants
+remain excluded. No existing clinical-table RLS change. Migration remains unapplied.
+
+
 PO request 2026-10-24: “Realizza connettori sia per qui che per gemini”.
 This expands PR #246 and explicitly authorizes the authenticated integration.
 Existing Vercel host, Supabase identity and domain actions remain the authorities.
@@ -13,11 +29,10 @@ No second model call is made in Poliedra. `prepara_impianti`, `prepara_preventiv
 `prepara_incasso` and `prepara_appuntamento` reuse the existing domain preparers.
 A private ten-minute request holds the signed proposal, bound to user/studio/client.
 The assistant receives only summary, request ID, expiry and review URL, never the
-proposal token. One browser review in Poliedra covers all rows. The clinician's
-normal session rechecks delegation, capability, current plan/autonomy and fresh
+proposal token. One explicit confirmation in the assistant chat covers all rows; browser review is optional. The bound delegated session (or optional normal browser session) rechecks delegation, capability, current plan/autonomy and fresh
 domain data before execution. Shared one-time claims prevent replay; canonical
-executors and implant read-back remain authoritative. The external OAuth token
-cannot call arbitrary chat, confirmations or a tool that performs clinical writes.
+executors and implant read-back remain authoritative. The external OAuth token cannot call arbitrary chat or raw confirmation tokens;
+conferma_richiesta executes only the previously prepared immutable request.
 `stato_richiesta` returns only a projection of the stored outcome, not the token.
 No prescription signing, diagnostic inference, expense import or general SQL tool.
 
@@ -58,8 +73,7 @@ Migration 20261024140257_assistant_connectors.sql adds only client registry,
 private request table, RLS/column grants, an optional audience hook and an
 administrator-only retention function. No existing table policy is weakened.
 Requests are scoped to current user/studio, active clinical membership and matching
-OAuth client; the user's normal session can review them. OAuth clients cannot
-finalize or delete requests; proposal tokens are immutable after insertion.
+OAuth client; the user's normal session can review them. Only the matching OAuth client or the owner’s normal session can finalize status; OAuth clients cannot delete requests; proposal tokens are immutable after insertion.
 Status is operational feedback, not a financial ledger. Actual domain records and
 claims remain authoritative. No originals or training data are stored here.
 Configure the approved retention job to run purge_poliedra_connector_requests()

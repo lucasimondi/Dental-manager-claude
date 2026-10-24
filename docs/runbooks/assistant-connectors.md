@@ -1,5 +1,21 @@
 # Attivare ChatGPT e Gemini per Poliedra
 
+## PO update — confirmation inside the assistant chat (2026-10-24)
+This section supersedes the earlier mandatory browser-review wording below.
+Show the full returned summary in ChatGPT/Gemini, await a NEW explicit user reply
+Conferma or Annulla, then call conferma_richiesta with that request ID and decision.
+The same bound OAuth client can execute/cancel the immutable stored proposal after
+fresh grant/capability/domain checks and single-use claim. No proposal token or new
+clinical payload is accepted from the model. The browser link remains optional.
+MCP marks this as a write: the host may request its own approval. The server checks
+the decision enum and request binding, but cannot independently prove a natural
+language reply occurred in a new turn; the assistant/host must enforce that user
+interaction. Do not describe this as a cryptographic proof of user confirmation.
+The request-table UPDATE policy now also permits the matching OAuth client to
+record status/result; proposal_token remains immutable and other clients/tenants
+remain excluded. No existing clinical-table RLS change. Migration remains unapplied.
+
+
 Implementation: PR #246. No production credentials belong in this document,
 commits, chat, screenshots or test output. The PO requested both connectors;
 merge/release still follows AGENTS.md, not an unattended auth configuration change.
@@ -77,9 +93,9 @@ spoofing or share administrative keys as a workaround.
 ## User workflow
 
 Attach the photo to the linked assistant and state the patient. It searches real
-records and asks only for missing placement date/tooth/price/payment facts. It
-returns one review URL. Open, check all rows and tap Conferma e registra. Return
-to the chat; the assistant reads stato_richiesta. Use /connector/setup for recent
+records and asks only for missing placement date/tooth/price/payment facts. It shows the full summary in chat. Reply Conferma or Annulla; the assistant calls
+conferma_richiesta and returns the verified outcome without opening Poliedra.
+The browser review URL is an optional alternative. Use /connector/setup for recent
 requests and revocation. No original photo is automatically archived by MCP.
 
 ## Rollback / disconnect

@@ -61,8 +61,8 @@ CREATE POLICY connector_requests_insert ON public.poliedra_connector_requests FO
  AND EXISTS (SELECT 1 FROM public.poliedra_connector_clients cc WHERE cc.client_id = poliedra_connector_requests.client_id AND cc.enabled)
 );
 CREATE POLICY connector_requests_finish ON public.poliedra_connector_requests FOR UPDATE TO authenticated
-USING (user_id = (SELECT auth.uid()) AND studio_id::text = (SELECT auth.jwt()->'app_metadata'->>'studio_id') AND (SELECT auth.jwt()->>'client_id') IS NULL AND (SELECT public.has_studio_capability_v1(studio_id,'clinical.general')))
-WITH CHECK (user_id = (SELECT auth.uid()) AND studio_id::text = (SELECT auth.jwt()->'app_metadata'->>'studio_id') AND (SELECT auth.jwt()->>'client_id') IS NULL AND (SELECT public.has_studio_capability_v1(studio_id,'clinical.general')));
+USING (user_id = (SELECT auth.uid()) AND studio_id::text = (SELECT auth.jwt()->'app_metadata'->>'studio_id') AND ((SELECT auth.jwt()->>'client_id') IS NULL OR client_id::text = (SELECT auth.jwt()->>'client_id')) AND (SELECT public.has_studio_capability_v1(studio_id,'clinical.general')))
+WITH CHECK (user_id = (SELECT auth.uid()) AND studio_id::text = (SELECT auth.jwt()->'app_metadata'->>'studio_id') AND ((SELECT auth.jwt()->>'client_id') IS NULL OR client_id::text = (SELECT auth.jwt()->>'client_id')) AND (SELECT public.has_studio_capability_v1(studio_id,'clinical.general')));
 CREATE POLICY connector_requests_delete ON public.poliedra_connector_requests FOR DELETE TO authenticated
 USING (user_id = (SELECT auth.uid()) AND studio_id::text = (SELECT auth.jwt()->'app_metadata'->>'studio_id') AND (SELECT auth.jwt()->>'client_id') IS NULL);
 GRANT SELECT, DELETE ON public.poliedra_connector_requests TO service_role;

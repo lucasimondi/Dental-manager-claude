@@ -82,7 +82,7 @@ export default function ConnectorAccess({ client = supabase }) {
     {message && <p className="connector-message" role="status">{message}</p>}
     {mode === 'consent' && details && <>
       <h2>{details.client?.name}</h2><p>Account: {session.user.email}</p>
-      <p>Autorizzi questa applicazione ad agire con i diritti del tuo account. I dati accessibili seguono i tuoi permessi dello studio. Il connettore prepara le registrazioni; le confermi qui, dopo averle controllate.</p>
+      <p>Autorizzi questa applicazione ad agire con i diritti del tuo account. I dati accessibili seguono i tuoi permessi dello studio. Il connettore prepara le registrazioni; le controlli e le confermi direttamente nella chat. Puoi usare questa pagina come alternativa.</p>
       <p className="connector-muted">Permessi di identità richiesti: {details.scope || 'Non indicati'}. La delega OAuth consente anche l’accesso alle API con i tuoi permessi; revocala quando non serve più.</p>
       <div className="connector-actions"><button disabled={busy} onClick={() => decideConsent(false)}>Non collegare</button><button className="primary" disabled={busy} onClick={() => decideConsent(true)}>Collega account</button></div>
     </>}

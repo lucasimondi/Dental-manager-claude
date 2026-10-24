@@ -22,7 +22,8 @@ DO $$ BEGIN
  RAISE EXCEPTION 'cross tenant INSERT allowed'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  BEGIN UPDATE public.poliedra_connector_requests SET proposal_token='tampered'; RAISE EXCEPTION 'token mutable'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  UPDATE public.poliedra_connector_requests SET status='done';
- IF EXISTS(SELECT 1 FROM public.poliedra_connector_requests WHERE status='done') THEN RAISE EXCEPTION 'OAuth client finalized clinical draft'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.poliedra_connector_requests WHERE status='done') THEN RAISE EXCEPTION 'matching OAuth client cannot record outcome'; END IF;
+ UPDATE public.poliedra_connector_requests SET status='pending';
  BEGIN PERFORM public.poliedra_connector_access_token_hook('{}'); RAISE EXCEPTION 'authenticated can mint audience'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
 END $$;
 SET request.jwt.claims='{"sub":"00000000-0000-4000-8000-000000000002","client_id":"00000000-0000-4000-8000-000000000011","app_metadata":{"studio_id":"00000000-0000-4000-8000-000000000102"}}';

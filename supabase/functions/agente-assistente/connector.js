@@ -1,8 +1,8 @@
-import { prepareImpianti, STRUMENTO_IMPIANTI } from './impianti.js';
-import { preparePiani, PIANI_TOOLS } from './piani.js';
-import { preparePagamenti, PAGAMENTI_TOOLS } from './pagamenti.js';
-import { prepareAgenda } from './agenda.js';
-import { signProposal, verifyProposal, studioToday } from './confirmation.js';
+import { prepareImpianti, executeImpianti, STRUMENTO_IMPIANTI } from './impianti.js';
+import { preparePiani, executePiani, PIANI_TOOLS } from './piani.js';
+import { preparePagamenti, executePagamenti, PAGAMENTI_TOOLS } from './pagamenti.js';
+import { prepareAgenda, executeAgenda } from './agenda.js';
+import { signProposal, verifyProposal, claimProposal, studioToday } from './confirmation.js';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const schema = properties => ({ type: 'object', properties, additionalProperties: false });
 const patientSchema = { ...schema({ paziente_id: { type: 'integer' } }), required: ['paziente_id'] };
@@ -34,8 +34,9 @@ export function connectorTools(allowedNames, tools) {
   }
   for (const [name, [action]] of Object.entries(DRAFTS)) {
     const source = [...tools, STRUMENTO_IMPIANTI, ...PIANI_TOOLS, ...PAGAMENTI_TOOLS].find(t => t.name === action);
-    if (source && allowedNames.has(action)) output.push({ name, description: `Prepara un riepilogo da dati espliciti dell’utente/foto leggibile; non registra ancora. Restituisce link alla singola conferma del medico in Poliedra. Chiedi i dati mancanti; non inventare paziente, prezzo, dente o data. ${action === 'registra_impianti_paziente' ? STRUMENTO_IMPIANTI.description : ''}`, inputSchema: action === 'registra_pagamento_paziente' ? { ...source.input_schema, required: [...source.input_schema.required, 'data', 'metodo', 'stato'] } : source.input_schema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false } });
+    if (source && allowedNames.has(action)) output.push({ name, description: `Prepara un riepilogo da dati espliciti dell’utente/foto leggibile; non registra ancora. Restituisce il riepilogo da mostrare nella chat; attendi una nuova risposta Conferma o Annulla prima di usare conferma_richiesta. Il link è facoltativo. Chiedi i dati mancanti; non inventare paziente, prezzo, dente o data. ${action === 'registra_impianti_paziente' ? STRUMENTO_IMPIANTI.description : ''}`, inputSchema: action === 'registra_pagamento_paziente' ? { ...source.input_schema, required: [...source.input_schema.required, 'data', 'metodo', 'stato'] } : source.input_schema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false } });
   }
+  output.push({ name: 'conferma_richiesta', description: 'Esegui SOLO dopo aver mostrato il summary integrale all’utente e ricevuto una sua nuova risposta esplicita Conferma oppure Annulla. Non chiamare insieme alla preparazione. Esegue esclusivamente la richiesta immutabile indicata, senza aprire Poliedra. Non ripetere dopo errore/esito incerto.', inputSchema: { ...schema({ richiesta_id: { type: 'string', format: 'uuid' }, decisione: { type: 'string', enum: ['Conferma','Annulla'] } }), required: ['richiesta_id','decisione'] }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false } });
   output.push({ name: 'stato_richiesta', description: 'Esito della richiesta. Solo done con risultato verificato significa registrato. Non ripetere automaticamente dopo esito incerto.', inputSchema: { ...schema({ richiesta_id: { type: 'string', format: 'uuid' } }), required: ['richiesta_id'] }, annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false } });
   return output.map(t => ({ ...t, securitySchemes: [{ type: 'oauth2', scopes: ['openid'] }], _meta: { securitySchemes: [{ type: 'oauth2', scopes: ['openid'] }] } }));
 }
@@ -46,7 +47,7 @@ async function prepareDomain(client, name, domain, args, studioId) {
     : domain === 'pagamenti' ? preparePagamenti(client, name, args, studioId, observed)
     : prepareAgenda(client, name, args, studioId, observed);
 }
-export async function runConnector({ request, client, claims, studioId, userId, allowedNames, tools, secret, read, verifyGrant }) {
+export async function runConnector({ request, client, claims, studioId, userId, allowedNames, tools, secret, read, verifyGrant, log = async () => {} }) {
   const approved = await authorizeConnector(client, claims, studioId);
   if (!await verifyGrant(claims.client_id)) throw new Error('Collegamento revocato.');
   const catalog = connectorTools(allowedNames, tools);
@@ -54,6 +55,24 @@ export async function runConnector({ request, client, claims, studioId, userId, 
   if (request.operation !== 'call' || !catalog.some(t => t.name === request.name)) throw new Error('Strumento non consentito.');
   const args = request.arguments;
   if (!args || Array.isArray(args) || typeof args !== 'object' || JSON.stringify(args).length > 60000) throw new Error('Argomenti non validi.');
+  if (request.name === 'conferma_richiesta') {
+    if (!['Conferma','Annulla'].includes(args.decisione)) throw new Error('Serve una conferma esplicita dell’utente sul riepilogo.');
+    const cancelled = args.decisione === 'Annulla';
+    const stored = await connectorReview(client, args.richiesta_id, claims, userId, studioId, secret, allowedNames, verifyGrant, cancelled, true);
+    const proposal = await verifyProposal(stored.proposal_token, secret, { userId, studioId, allowedNames });
+    let out;
+    try {
+      if (cancelled) { await claimProposal(client, proposal); out = { text: 'Operazione annullata. Nessuna modifica eseguita.' }; }
+      else {
+        out = proposal.impianti ? await executeImpianti(client, proposal) : proposal.piani ? await executePiani(client, proposal) : proposal.pagamenti ? await executePagamenti(client, proposal) : await executeAgenda(client, proposal);
+        await log(proposal, out);
+      }
+    } catch { out = { text: 'Esito non confermato. Controlla i dati prima di ripetere; nessun tentativo automatico.', uncertain: true }; }
+    const status = out.uncertain ? 'uncertain' : cancelled ? 'cancelled' : 'done';
+    const saved = await client.from('poliedra_connector_requests').update({ status, result: { text: out.text, changed: out.changed || [], uncertain: !!out.uncertain } }).eq('id', stored.id).eq('studio_id', studioId).eq('user_id', userId).eq('client_id', claims.client_id).eq('status','pending');
+    if (saved.error) return { ...out, status: 'uncertain', uncertain: true, message: 'Esito della richiesta non aggiornato: verifica prima di ripetere.' };
+    return { ...out, status, richiesta_id: stored.id };
+  }
   if (request.name === 'stato_richiesta') {
     if (!UUID.test(args.richiesta_id || '')) throw new Error('Richiesta non valida.');
     const { data, error } = await client.from('poliedra_connector_requests').select('id, status, result, expires_at').eq('id', args.richiesta_id).eq('studio_id', studioId).eq('user_id', userId).eq('client_id', claims.client_id).single();
@@ -89,13 +108,14 @@ export async function runConnector({ request, client, claims, studioId, userId, 
   const { error: saveError } = await client.from('poliedra_connector_requests').insert({ id, studio_id: studioId, user_id: userId, client_id: claims.client_id, proposal_token: token, summary: prepared.summary, expires_at: new Date(expiresAt).toISOString() });
   if (saveError) throw new Error('Riepilogo non confermato. Controlla Richieste assistenti prima di riprovare.');
   const review = new URL('/connector/review', approved.resource_uri); review.searchParams.set('id', id);
-  return { richiesta_id: id, status: 'pending', summary: prepared.summary, review_url: review.href, expires_at: new Date(expiresAt).toISOString(), message: 'Dati preparati. Apri il link, controlla e premi Conferma. Nessun dato clinico ancora registrato.' };
+  return { richiesta_id: id, status: 'pending', summary: prepared.summary, review_url: review.href, expires_at: new Date(expiresAt).toISOString(), message: 'Mostra il riepilogo completo qui in chat e chiedi Conferma o Annulla. Attendi una nuova risposta dell’utente prima di chiamare conferma_richiesta. Nessun dato ancora registrato; il link è facoltativo.' };
 }
-export async function connectorReview(client, id, claims, userId, studioId, secret, allowedNames, verifyGrant, cancelled = false) {
-  if (claims.client_id || !UUID.test(id || '')) throw new Error('Apri il riepilogo dal tuo accesso personale a Poliedra.');
+export async function connectorReview(client, id, claims, userId, studioId, secret, allowedNames, verifyGrant, cancelled = false, delegated = false) {
+  if ((!delegated && claims.client_id) || (delegated && !claims.client_id) || !UUID.test(id || '')) throw new Error('Apri il riepilogo dal tuo accesso personale a Poliedra.');
   await clinical(client, studioId);
   const { data, error } = await client.from('poliedra_connector_requests').select('id, client_id, proposal_token, status, expires_at').eq('id', id).eq('studio_id', studioId).eq('user_id', userId).single();
   if (error || !data || data.status !== 'pending' || Date.parse(data.expires_at) <= Date.now()) throw new Error('Richiesta scaduta, già gestita o non disponibile.');
+  if (delegated && data.client_id !== claims.client_id) throw new Error('La richiesta appartiene a un altro connettore.');
   const active = await client.from('poliedra_connector_clients').select('client_id').eq('client_id', data.client_id).eq('enabled', true).single();
   if (active.error || !active.data || !await verifyGrant(data.client_id)) throw new Error('Collegamento revocato.');
   const proposal = await verifyProposal(data.proposal_token, secret, { userId, studioId, allowedNames });
