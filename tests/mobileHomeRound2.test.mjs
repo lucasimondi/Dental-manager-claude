@@ -400,7 +400,7 @@ test('ROUND 6: the Ricetta patient picker lets you create a brand-new patient in
 });
 
 test('App.jsx passes setPatients into Dashboard, mirroring Agenda/Pazienti — required for the inline patient-creation path to exist at all', () => {
-  const line = appSrc.split('\n').find((l) => l.includes('page === \'home\' && <Dashboard'));
+  const line = appSrc.split('\n').find((l) => l.includes('<Dashboard patients='));
   assert.ok(line, 'expected to find the Dashboard element');
   assert.match(line, /setPatients=\{setPatientsSync\}/);
 });

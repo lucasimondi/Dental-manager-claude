@@ -53,11 +53,12 @@ import logoMedicalWhite from './assets/logo-poliedra-medical-outline.png';
 const LOGO_WHITE_PER_SLUG = { dental: logoDentalWhite, salus: logoSalusWhite, fisio: logoFisioWhite, mind: logoMindWhite, wellness: logoWellnessWhite, fit: logoFitWhite, medical: logoMedicalWhite };
 import LoginScreen from './components/LoginScreen.jsx';
 import LoadingScreen from './components/LoadingScreen.jsx';
-import Dashboard from './components/Dashboard.jsx';
+
 import QuickBookingModal from './components/QuickBookingModal.jsx';
 import RouteErrorBoundary from './components/RouteErrorBoundary.jsx';
 import { lazyWithRetry } from './lib/lazyWithRetry.js';
 import { resolveFarmaciPreferiti } from './lib/farmaciPreferiti.js';
+const Dashboard = lazyWithRetry(() => import('./components/Dashboard.jsx'), 'Dashboard');
 const ControlloGestione = lazyWithRetry(() => import('./components/ControlloGestione.jsx'), 'ControlloGestione');
 const PoliedronHub = lazyWithRetry(() => import('./components/PoliedronHub.jsx'), 'PoliedronHub');
 const FinancialWorkspace = lazyWithRetry(() => import('./components/FinancialWorkspace.jsx'), 'FinancialWorkspace');
@@ -83,7 +84,12 @@ export default function App() {
   const [dataLoading, setDataLoading] = useState(true);
   // Poliedron app: a page asked for while studio data is still loading.
   const [pendingPage, setPendingPage] = useState(null);
-  const [page, setPage] = useState(() => readAgendaLocation().requested ? 'agenda' : phoneApp ? 'chat' : 'home');
+  const [page, setPage] = useState(() => readAgendaLocation().requested ? 'agenda' : phoneApp ? 'chat' : 'agenda');
+  // Start downloading the landing calendar during authentication/data loading.
+  // Leave failures to lazyWithRetry when the route actually renders.
+  useEffect(() => {
+    if (page === 'agenda') import('./components/Agenda.jsx').catch(() => {});
+  }, [page]);
   // Warm the appointment chunk while viewing the agenda, before the first tap.
   useEffect(() => {
     if (page === 'agenda') import('./components/AppointmentWorkspace.jsx').catch(() => {});
@@ -330,8 +336,8 @@ export default function App() {
     // App Poliedron del telefono: si ripristina solo un documento rimasto aperto (es. ricetta
     // preparata in chat), non la navigazione dell'app dello studio.
     if (phoneApp && !documentoAperto('scheda', pos.schedaPazId)) return;
-    // La pagina NON viene ripristinata: l'app deve sempre aprirsi su Dashboard
-    // (page resta 'home', il suo default), qualunque fosse l'ultima pagina
+    // La pagina NON viene ripristinata: l'app deve sempre aprirsi su Agenda
+    // (page resta 'agenda', il suo default), qualunque fosse l'ultima pagina
     // visitata prima della chiusura/ricarica. Il resto della posizione (scheda
     // paziente con form in corso) continua a essere ripristinato normalmente.
     if (pos.schedaPazId != null) {
@@ -837,7 +843,13 @@ export default function App() {
         paddingLeft: isMobile ? ((page === 'agenda' || page === 'home') ? (page === 'agenda' ? 6 : 0) : (page === 'chat' ? 0 : 15)) : (page === 'chat' ? 0 : 13),
         paddingRight: isMobile ? ((page === 'agenda' || page === 'home') ? (page === 'agenda' ? 6 : 0) : (page === 'chat' ? 0 : 15)) : (page === 'chat' ? 0 : 13),
       }}>
-        {page === 'home' && <Dashboard patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegniStudio} implants={implants} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} onNavigateNew={goNuovoElemento} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} currentUserId={session?.user?.id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} activityPatientRequest={quickHubActivityRequest} onActivityPatientRequestHandled={(id) => setQuickHubActivityRequest((current) => current?.id === id ? null : current)} onLogout={handleLogout} openHomeCustomizerRequest={openHomeCustomizerRequest} onOpenHomeCustomizerRequestHandled={(id) => setOpenHomeCustomizerRequest((current) => current === id ? null : current)} />}
+        {page === 'home' && (
+          <RouteErrorBoundary key={page}>
+          <Suspense fallback={<LoadingScreen />}>
+          <Dashboard patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegniStudio} implants={implants} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} onNavigateNew={goNuovoElemento} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} currentUserId={session?.user?.id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} activityPatientRequest={quickHubActivityRequest} onActivityPatientRequestHandled={(id) => setQuickHubActivityRequest((current) => current?.id === id ? null : current)} onLogout={handleLogout} openHomeCustomizerRequest={openHomeCustomizerRequest} onOpenHomeCustomizerRequestHandled={(id) => setOpenHomeCustomizerRequest((current) => current === id ? null : current)} />
+          </Suspense>
+          </RouteErrorBoundary>
+        )}
         {page !== 'home' && (
           <RouteErrorBoundary key={page}>
           <Suspense fallback={<LoadingScreen />}>
