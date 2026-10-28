@@ -4118,3 +4118,15 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Tests: new handler cases prove chat save/replay prevention, missing decision, cancellation, different client and revoked grant. Targeted26/26 pass; full suite/build and exact-head PG17 CI to be recorded in PR. SQL fixture now expects the bound OAuth client to update outcome fields; token remains immutable. No actual external-account round trip claimed.
 - Limitation: host/assistant must display full summary and wait for a new user confirmation turn; server cannot prove the origin of natural-language consent. MCP write annotations retained; no claim of bypassing host approval.
 - Rollback: revert follow-up code/policy, restoring optional browser execution as mandatory; no production migration applied. Next: final validation, draft PR review, explicit Mergia and controlled OAuth release/account linking.
+
+
+## 2026-10-28 — Codex — CALENDAR-STARTUP
+- OWNER: Codex; previous task ASSISTANT-CONNECTORS remains isolated in its existing PR. Branch codex/calendar-startup from origin/master.
+- OBJECTIVE: open Studio directly on calendar and reduce startup work.
+- COMPLETED: default Agenda; preload its chunk during authentication/data loading; move Dashboard into a lazy chunk with Suspense and recovery boundary. Poliedron chat entry, explicit calendar URLs, auth/data gates and document recovery preserved.
+- FILES: src/App.jsx; tests/mobileHomeRound2.test.mjs (existing prop guard accepts wrapped Dashboard); coordination docs.
+- DATABASE/DEPLOYMENT: none; no remote or production data operations. No manual deployment/merge.
+- VALIDATION: 1472/1472 Node tests, Studio Vite production build, git diff --check passed. Existing build warnings remain. No live authenticated performance measurement or physical-device check claimed.
+- LIMITS: initial authenticated full-table data fetch remains; actual startup still depends on network/database. Calendar now downloads in parallel and Home is excluded from the initial static dependency path.
+- ROLLBACK: revert dedicated PR; immutable stable checkpoints untouched.
+- NEXT: WAITING_PRODUCT_OWNER; review PR/preview, explicit Mergia before merge.
