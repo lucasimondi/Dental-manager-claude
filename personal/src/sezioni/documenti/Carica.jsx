@@ -33,6 +33,11 @@ export function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) 
       const pronto = await preparaCaricamento(file);
       setStato({ invio: true, testo: nonAnalizzare ? 'Salvo su Drive…' : 'Salvo su Drive e leggo il documento…' });
       const r = await caricaDocumento({ token: await tokenSessione(), ...pronto, descrizione, fascicolo, portafoglio: tieni, nonAnalizzare, persona, categoria });
+      setStato({ invio: true, testo: 'Verifico il documento nell’archivio…' });
+      const verifica = await archivioDb.from('documenti').select('id').eq('id', r.id).maybeSingle();
+      if (verifica.error || !verifica.data) {
+        throw new Error('Il file potrebbe essere stato salvato su Drive, ma non risulta nell’archivio. Non ripetere il caricamento: verifica prima per evitare duplicati.');
+      }
       aggiorna();
       // Da Conti: il documento diventa (o si collega a) un pagamento da fare.
       if (r.id && (opzioni.pagamento || opzioni.pagamentoId)) {

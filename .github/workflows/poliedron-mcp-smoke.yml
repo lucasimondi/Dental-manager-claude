@@ -1,0 +1,32 @@
+name: Poliedron MCP HTTP smoke test
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/poliedron-chatgpt-connector]
+    paths:
+      - '.github/workflows/poliedron-mcp-smoke.yml'
+      - 'integrations/chatgpt-mcp/**'
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify MCP staging endpoints
+        shell: bash
+        env:
+          MCP_BASE: https://poliedron-chatgpt-mcp-staging.vercel.app
+        run: |
+          set -euo pipefail
+          echo "Remote MCP smoke check, including HTTP response diagnostics"\n          echo "Checking /health..."
+          code=$(curl --silent --show-error --max-time 20 -D health.headers -o health.body -w '%{http_code}' "$MCP_BASE/health")\n          echo "Health HTTP: $code"\n          cat health.headers\n          cat health.body\n          test "$code" = "200"
+          cat health.body
+          python3 - <<'PY'
+          import json
+          with open("health.body") as f:
+              assert json.load(f).get("status") == "ok", "health payload invalid"
+          PY
+          echo "Checking unauthenticated /mcp..."
+          code=$(curl --silent --show-error --max-time 20 -o mcp.body -w '%{http_code}' -X POST "$MCP_BASE/mcp" -H 'Content-Type: application/json' --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}')
+          echo "Unauthenticated MCP status: $code"
+          test "$code" = "401"
+          echo "PASS: health=200, MCP without token=401"

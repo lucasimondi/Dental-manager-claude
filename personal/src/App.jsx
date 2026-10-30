@@ -1,4 +1,5 @@
 import { Pagina } from './Pagina.jsx';
+import OAuthConsent from './OAuthConsent.jsx';
 import { readAgendaLocation } from '../../shared/agenda/navigation.js';
 // POL-VITA-003/006 — Poliedron Personal: app per telefono dell'archivio personale.
 // Dock: Oggi · Documenti · Agenda · Conti · Personali. Ogni dettaglio si apre come pagina sopra la
@@ -165,6 +166,7 @@ export default function App() {
     return () => sub.subscription.unsubscribe();
   }, []);
   if (sessione === undefined) return null;
+  if (window.location.pathname === '/oauth/consent') return <OAuthConsent sessione={sessione} />;
   if (recupero && sessione) return <NuovaPassword onFatto={() => setRecupero(false)} />;
   return sessione ? <Archivio email={sessione.user?.email} /> : <Accesso />;
 }
