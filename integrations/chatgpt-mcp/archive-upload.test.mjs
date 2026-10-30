@@ -11,7 +11,7 @@ test('reject invalid base64',()=>assert.throws(()=>validateUpload({...input,base
 test('upload uses canonical endpoint payload',async()=>{
  let captured;
  const fetchImpl=async(url,init)=>{captured={url,body:JSON.parse(init.body)};return {ok:true,json:async()=>({ok:true,id:'test'})}};
- const result=await uploadToCanonicalArchive({...input},{endpoint:'https://script.google.com/macros/s/example/exec',fetchImpl,token:'user-jwt'});
+ const result=await uploadToCanonicalArchive({...input,token:'user-jwt'},{endpoint:'https://script.google.com/macros/s/example/exec',fetchImpl});
  assert.equal(result.uploaded,true);
  assert.equal(result.registered,true);
  assert.equal(captured.body.fascicolo,'utenze');
@@ -20,5 +20,5 @@ test('upload uses canonical endpoint payload',async()=>{
 });
 test('server rejects unsuccessful canonical response',async()=>{
  const fetchImpl=async()=>({ok:true,json:async()=>({ok:false,errore:'failed'})});
- await assert.rejects(()=>uploadToCanonicalArchive({...input},{endpoint:'https://script.google.com/macros/s/example/exec',fetchImpl,token:'user-jwt'}));
+ await assert.rejects(()=>uploadToCanonicalArchive({...input,token:'user-jwt'},{endpoint:'https://script.google.com/macros/s/example/exec',fetchImpl}));
 });
