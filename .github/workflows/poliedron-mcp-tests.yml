@@ -25,6 +25,7 @@ jobs:
       - run: npm test
 
   remote-smoke:
+    # Live Vercel deployment verification after Node 22 rebuild
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
