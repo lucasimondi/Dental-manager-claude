@@ -3,13 +3,13 @@ import { archivioDb } from '../../lib/supabasePersonal.js';
 import { diaryId, PAGE_LENGTH, today, dateLabel, newPage, pageText, previousDate, searchDiary, splitText, loadDiary, savePage, prepareImage } from '../../lib/diario.js';
 import './diario.css';
 
-function Writing({ value, onChange, inputRef, label, placeholder, onFocus, readOnly }) {
+function Writing({ value, onChange, inputRef, label, placeholder, onFocus, readOnly, active = true }) {
   const ref = useRef(null);
-  useLayoutEffect(() => { const el = ref.current; if (el) { el.style.height = 'auto'; el.style.height = `${Math.max(42, el.scrollHeight)}px`; } }, [value]);
+  useLayoutEffect(() => { if (!active) return; const el = ref.current; if (el) { el.style.height = 'auto'; el.style.height = `${Math.max(42, el.scrollHeight)}px`; } }, [value, active]);
   return <textarea ref={(el) => { ref.current = el; inputRef?.(el); }} aria-label={label} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value, e.nativeEvent.isComposing)} onFocus={onFocus} readOnly={readOnly} spellCheck />;
 }
 
-export function Diario({ db = archivioDb }) {
+export function Diario({ db = archivioDb, active = true }) {
   const [pages, setPages] = useState([]);
   const pagesRef = useRef([]), dirty = useRef(new Set()), revisions = useRef(new Map()), saving = useRef(false), mounted = useRef(true);
   const [loaded, setLoaded] = useState(false), [error, setError] = useState(''), [status, setStatus] = useState(''), [cover, setCover] = useState(true), [index, setIndex] = useState(0);
@@ -53,24 +53,19 @@ export function Diario({ db = archivioDb }) {
   useEffect(() => {
     const warn = (e) => { if (dirty.current.size || saving.current) { e.preventDefault(); e.returnValue = ''; } };
     window.addEventListener('beforeunload', warn);
-    // Prevent app navigation while changes are pending; keep the only in-memory copy mounted.
-    const navigation = (e) => {
-      if ((dirty.current.size || saving.current) && e.target.closest('.pp-schede button, .pp-testata button')) { e.preventDefault(); e.stopPropagation(); flush(); setStatus('Attendi il salvataggio prima di uscire'); }
-    };
-    document.addEventListener('click', navigation, true);
-    return () => { window.removeEventListener('beforeunload', warn); document.removeEventListener('click', navigation, true); };
-  });
+    return () => window.removeEventListener('beforeunload', warn);
+  }, []);
   useLayoutEffect(() => {
-    if (!focus) return;
+    if (!focus || !active) return;
     const el = inputs.current.get(focus.id);
-    if (el) { el.focus(); if (el.setSelectionRange) el.setSelectionRange(focus.offset ?? el.value.length, (focus.offset ?? el.value.length) + (focus.length || 0)); el.scrollIntoView({ block: 'center', behavior: 'smooth' }); setFocus(null); }
-  }, [focus, pages, index, cover]);
+    if (el) { el.focus({ preventScroll: true }); if (el.setSelectionRange) el.setSelectionRange(focus.offset ?? el.value.length, (focus.offset ?? el.value.length) + (focus.length || 0)); if (focus.reveal) el.scrollIntoView({ block: 'nearest', behavior: 'auto' }); setFocus(null); }
+  }, [focus, pages, index, cover, active]);
 
   function go(next) {
     if (next < 0) { setCover(true); return; }
     if (next >= pagesRef.current.length) { addPage(); return; }
     setTurn(next > index ? 'af-forward' : 'af-back'); clearTimeout(timer.current); timer.current = setTimeout(() => setTurn(''), 500);
-    setCover(false); setIndex(next); setJump(''); paper.current?.scrollTo({ top: 0 });
+    setCover(false); setIndex(next); setJump(''); paper.current?.closest('.pp-contenuto-diario')?.scrollTo({ top: 0 });
   }
   function addPage() {
     const list = pagesRef.current;
@@ -132,7 +127,7 @@ export function Diario({ db = archivioDb }) {
     const blob = new Blob([JSON.stringify({ title: 'amor fati', version: 1, pages: pagesRef.current }, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = `amor-fati-${today()}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-  function result(r) { go(r.page); setFocus({ id: r.blockId, offset: r.offset, length: r.length }); }
+  function result(r) { go(r.page); setFocus({ id: r.blockId, offset: r.offset, length: r.length, reveal: true }); }
   const remember = (id) => (el) => { if (el) inputs.current.set(id, el); else inputs.current.delete(id); };
   return <section className="af-diary" aria-label="Diario amor fati" onPaste={(e) => { const fs = [...(e.clipboardData?.files || [])].filter((f) => f.type.startsWith('image/')); if (fs.length) { e.preventDefault(); images(fs); } }} onDragOver={(e) => { if ([...e.dataTransfer.types].includes('Files')) e.preventDefault(); }} onDrop={(e) => { e.preventDefault(); images([...e.dataTransfer.files]); }}>
     <div className="af-tools">
@@ -150,10 +145,10 @@ export function Diario({ db = archivioDb }) {
             <div className="af-page-heading"><span>amor fati</span><span>{String(index + 1).padStart(2, '0')}</span></div>
             <div className="af-writing">{page.blocks.map((b, bi) => <div key={b.id} className="af-entry">
               {previousDate(pages, index, bi) !== b.date && <h2>{dateLabel(b.date)}</h2>}
-              {b.type === 'image' ? <figure><img src={b.src} alt={b.caption || 'Un ricordo incollato nel diario'} loading="lazy" /><Writing inputRef={remember(b.id)} label="Didascalia della fotografia" placeholder="Un pensiero per questa foto…" value={b.caption} onChange={(text) => caption(b.id, text)} readOnly={imageBusy} /></figure>
-                : <Writing inputRef={remember(b.id)} label={`Pensiero del ${dateLabel(b.date)}`} value={b.text} onChange={(text, composing) => write(b.id, text, composing)} readOnly={imageBusy} />}
+              {b.type === 'image' ? <figure><img src={b.src} alt={b.caption || 'Un ricordo incollato nel diario'} loading="lazy" /><Writing active={active} inputRef={remember(b.id)} label="Didascalia della fotografia" placeholder="Un pensiero per questa foto…" value={b.caption} onChange={(text) => caption(b.id, text)} readOnly={imageBusy} /></figure>
+                : <Writing active={active} inputRef={remember(b.id)} label={`Pensiero del ${dateLabel(b.date)}`} value={b.text} onChange={(text, composing) => write(b.id, text, composing)} readOnly={imageBusy} />}
             </div>)}
-              <Writing inputRef={remember('new')} label="Scrivi un nuovo pensiero" value="" placeholder={page.blocks.length ? 'Continua il tuo racconto…' : 'La tua storia, una pagina alla volta…'} onChange={(text, composing) => write(null, text, composing)} readOnly={imageBusy} />
+              <Writing active={active} inputRef={remember('new')} label="Scrivi un nuovo pensiero" value="" placeholder={page.blocks.length ? 'Continua il tuo racconto…' : 'La tua storia, una pagina alla volta…'} onChange={(text, composing) => write(null, text, composing)} readOnly={imageBusy} />
             </div>
             <div className="af-page-footer"><span>{page.blocks.length ? 'Ogni giorno, una storia.' : 'Anche il silenzio ha la sua pagina.'}</span><span>{index + 1}</span></div>
           </div><button className="af-corner" aria-label="Gira pagina" onClick={() => go(index + 1)} /></div>}

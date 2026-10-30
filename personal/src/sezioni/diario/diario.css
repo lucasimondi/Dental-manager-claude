@@ -12,3 +12,10 @@
 /* Turn the paper leaf while the leather binding stays in place. */
 .af-forward,.af-back{animation:none}.af-forward .af-paper{transform-origin:left center;animation:af-turn .5s ease}.af-back .af-paper{transform-origin:left center;animation:af-turn-back .5s ease}
 @media(prefers-reduced-motion:reduce){.af-forward .af-paper,.af-back .af-paper{animation:none}}
+
+/* One vertical scroller, including the writing surface, keyboard and page controls. */
+.pp-app:has(.pp-contenuto-diario){height:100dvh;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding-bottom:0}
+.pp-contenuto-diario{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--pp-dock) + 40px + env(safe-area-inset-bottom));scroll-padding-bottom:120px}
+.af-diary .af-paper{max-height:none;overflow:visible;overscroll-behavior:auto;touch-action:pan-y}
+.af-diary .af-desk{overflow:visible}
+.af-diary .af-writing textarea{overflow:clip;touch-action:pan-y;scroll-margin-block:80px}

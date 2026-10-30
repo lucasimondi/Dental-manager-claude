@@ -36,6 +36,7 @@ function Archivio({ email }) {
   const [chat, setChat] = useState(CHAT_VUOTA);
   const [impostazioni, setImpostazioni] = useState(() => JSON.parse(JSON.stringify(IMPOSTAZIONI_PREDEFINITE)));
   const contatore = useRef(0);
+  const diarioVisitato = useRef(vista === 'diario');
   const ingressi = { fotocamera: useRef(null), libreria: useRef(null), file: useRef(null) };
 
   const esegui = useCallback(async (fn) => {
@@ -58,6 +59,7 @@ function Archivio({ email }) {
     try { setImpostazioni(await salvaImpostazioni(archivioDb, nuove)); } catch (e) { setErrore(`Impostazioni non salvate: ${e.message}`); }
   }, []);
   const vai = useCallback((v, sottoVista = null) => {
+    if (v === 'diario') diarioVisitato.current = true;
     setPagine([]); setVistaStato(v); setSotto(sottoVista); setErrore(null);
     try { localStorage.setItem(VISTA_KEY, v); } catch { /* facoltativo */ }
     window.scrollTo(0, 0);
@@ -106,6 +108,7 @@ function Archivio({ email }) {
 
   const attuale = sezione(vista);
   const { Vista, AzioniTestata } = attuale;
+  const VistaDiario = sezione('diario').Vista;
   const sopra = pagine.length > 0;
   const classeScheda = (id) => `${vista === id && !sopra ? ' attiva' : ''}${vista === id && sopra ? ' sotto' : ''}`;
 
@@ -124,8 +127,9 @@ function Archivio({ email }) {
       </header>
       {occupato > 0 && <div className="pp-barra-caricamento" aria-hidden="true" />}
       {errore && !sopra && <p className="pp-messaggio pp-messaggio-errore" role="alert">{errore}</p>}
-      <main className={`pp-contenuto${attuale.classeContenuto ? ` ${attuale.classeContenuto}` : ''}`} key={`${vista}-${sotto || ''}`}>
-        <Vista ctx={ctx} />
+      <main className={`pp-contenuto${attuale.classeContenuto ? ` ${attuale.classeContenuto}` : ''}`}>
+        <div hidden={vista !== 'diario'}>{diarioVisitato.current && <VistaDiario ctx={ctx} active={vista === 'diario'} />}</div>
+        {vista !== 'diario' && <Vista key={`${vista}-${sotto || ''}`} ctx={ctx} />}
       </main>
       {pagine.map((p, i) => (
         <Pagina key={p.chiave} titolo={titoloPagina(p)} visibile={i === pagine.length - 1} onIndietro={indietro} senzaChiudi={eModulo(p.tipo)}>

@@ -51,7 +51,7 @@ test('chat: Poliedron è una scheda a pagina intera con la graffetta', () => {
   for (const src of [app, sezione, vista, documento]) assert.doesNotMatch(src, /PaginaChat|tipo: 'chat'/, 'non più una pagina sovrapposta');
   assert.match(app, /onClick=\{\(\) => vai\('poliedron'\)\} aria-label="Apri Poliedron"/);
   assert.match(sezione, /id: 'poliedron', nome: 'Poliedron', Icona: IconaChat, Vista: VistaPoliedron/);
-  assert.match(app, /<Vista ctx=\{ctx\} \/>/);
+  assert.match(app, /<Vista\b[^>]*ctx=\{ctx\}[^>]*\/>/);
   assert.match(app, /apriChat, chat, setChat,/);
   assert.match(vista, /const \{ apri, aggiorna, chat, setChat \} = ctx;/);
   assert.match(app, /const \[chat, setChat\] = useState\(CHAT_VUOTA\);/, 'la conversazione resta cambiando scheda');
