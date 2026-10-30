@@ -4,6 +4,8 @@ import { uploadToCanonicalArchive } from "./archive-upload.mjs";
 
 const URL_BASE = process.env.POLIEDRON_SUPABASE_URL;
 const API_KEY = process.env.POLIEDRON_SUPABASE_PUBLISHABLE_KEY;
+const MCP_RESOURCE = process.env.POLIEDRON_MCP_RESOURCE_URL || "https://poliedron-chatgpt-mcp-staging.vercel.app/mcp";
+const AUTH_SERVER = process.env.POLIEDRON_SUPABASE_URL ? process.env.POLIEDRON_SUPABASE_URL + "/auth/v1" : "";
 const fields = "id,titolo,fascicolo,tipo_documento,persona,categoria,ente,drive_url,pratica_id";
 
 function respond(res,status,data) {
@@ -42,11 +44,12 @@ async function toolCall(name,args,token) {
 }
 export function handler() {
   return async (req,res)=>{
+    if(req.method==="GET"&&(req.url==="/.well-known/oauth-protected-resource"||req.url==="/.well-known/oauth-protected-resource/mcp")) return respond(res,200,{resource:MCP_RESOURCE,authorization_servers:[AUTH_SERVER],bearer_methods_supported:["header"],scopes_supported:[]});
     if(req.method==="GET"&&req.url==="/health") return respond(res,200,{status:"ok",mode:"read-only"});
     if(req.method!=="POST"||req.url!=="/mcp") return respond(res,404,{error:"not_found"});
     if(!URL_BASE||!API_KEY) return respond(res,503,{error:"not_configured"});
     const token=/^Bearer (.+)$/.exec(req.headers.authorization||"")?.[1];
-    if(!token) return respond(res,401,{error:"unauthorized"});
+    if(!token) {res.setHeader("WWW-Authenticate",`Bearer resource_metadata="${new URL("/.well-known/oauth-protected-resource",MCP_RESOURCE).href}"`);return respond(res,401,{error:"unauthorized"});}
     try {const user=await request("/auth/v1/user",token);if(!user.id)throw Error("Unauthorized");}
     catch {return respond(res,401,{error:"unauthorized"});}
     let raw="";
