@@ -24,13 +24,29 @@ test('totals, number and euro format of the quote', () => {
   assert.equal(euroIt(12222.5), '€ 12.222,50');
 });
 
-test('the quote PDF has header, patient box with C.F., plan, rows, total and signatures', () => {
+test('the quote PDF has header, patient box with C.F., plan, rows, total and physician signature field', () => {
   const pdf = buildPreventivoPdf({ si, paziente, piano, data: '2026-10-16' });
   assert.equal(pdf.filename, 'Mario Rossi.pdf');
   assert.equal(pdf.tipoDoc, 'preventivo');
   const bytes = Buffer.from(pdf.dataUrl.split(',')[1], 'base64').toString('latin1');
   assert.match(bytes, /^%PDF-/);
-  for (const t of ['PREVENTIVO', 'Mario Rossi', 'C.F. RSSMRA80A01D205X', 'PIANO DI CURA', 'Protesi', 'Corona composito ceramica', 'TOTALE', 'Il paziente, per accettazione', 'Studio Test']) assert.ok(bytes.includes(t), t);
+  assert.ok(!bytes.includes('Il paziente, per accettazione'));
+  for (const t of ['PREVENTIVO', 'Mario Rossi', 'C.F. RSSMRA80A01D205X', 'PIANO DI CURA', 'Protesi', 'Corona composito ceramica', 'TOTALE', 'Il medico', 'Studio Test']) assert.ok(bytes.includes(t), t);
+});
+
+test('configured autograph is embedded in short and multipage quotes; invalid or missing images do not break generation', () => {
+  const firma_b64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFhQGAWjR9WQAAAABJRU5ErkJggg==';
+  for (const count of [2, 14, 16, 40]) {
+    const voci = Array.from({ length: count }, (_, i) => ({ prestazione: `Prestazione ${i + 1}`, prezzo: 100 }));
+    const pdf = buildPreventivoPdf({ si: { ...si, firma_b64 }, paziente, piano: { ...piano, voci } });
+    const bytes = Buffer.from(pdf.dataUrl.split(',')[1], 'base64').toString('latin1');
+    assert.match(bytes, /\/Subtype \/Image/);
+    assert.equal((bytes.match(/\/I0 Do/g) || []).length, 1, 'autograph is drawn once, on final page');
+    assert.ok(!bytes.includes('Il paziente, per accettazione'));
+  }
+  for (const firma of [undefined, 'data:image/png;base64,invalid']) {
+    assert.doesNotThrow(() => buildPreventivoPdf({ si: { ...si, firma_b64: firma }, paziente, piano }));
+  }
 });
 
 test('a long plan flows onto more pages with numbered pages', () => {

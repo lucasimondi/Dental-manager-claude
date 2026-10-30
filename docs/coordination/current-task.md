@@ -1,7 +1,8 @@
-# Current task — CALENDAR-STARTUP (2026-10-28)
-- OWNER: Codex; branch codex/calendar-startup, from latest origin/master.
-- AUTHORIZATION: PO requests Poliedra open directly on calendar with immediate startup.
-- SCOPE: Studio default Agenda; preload calendar during auth/data fetch; lazy-load Home.
-- PRESERVE: Poliedron chat entry, explicit agenda URLs, authentication/data gates, document recovery.
-- STATUS: WAITING_PRODUCT_OWNER. 1472/1472 Node tests passed; Studio production build passed; diff check passed. No merge/deploy or database changes.
+# Current task — QUOTE-AUTOGRAPH (2026-10-30)
+- OWNER: Codex; branch codex/quote-autograph from latest master.
+- AUTHORIZATION: PO requests autograph in generated quotes and removal of patient signature.
+- SCOPE: shared quote PDF and matching preview reuse configured studio firma_b64; reserve signature space on final page. Remove patient signature field.
+- PRESERVE: financial calculations, plan persistence, clinical consent signatures, existing studio signature settings.
+- STATUS: WAITING_PRODUCT_OWNER; 1473/1473 full Node tests passed; final quote suite 11/11 and Studio build passed; diff check passed; synthetic two-page PDF visually reviewed. Previous CALENDAR-STARTUP remains isolated in its PR.
+- DATABASE/DEPLOYMENT: none; no production data accessed or signature image copied.
 - ROLLBACK: revert dedicated PR. Stable checkpoints untouched.

@@ -158,9 +158,9 @@ export default function PdfView({ pl, paz, si, features, onClose }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1A4E66', color: '#fff', padding: '10px 12px', marginTop: 4 }}><span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.12em' }}>TOTALE</span><span style={{ fontSize: 17, fontWeight: 800 }}>{fmtE(tot)}</span></div>
           </div>
           {paz?.note && <div style={{ marginTop: 14, background: '#FFFBEB', padding: 10, fontSize: 11, color: '#78350F', display: 'flex', alignItems: 'flex-start', gap: 5 }}><Ic n="warn" s={11} c="#78350F" /><span><b>Note:</b> {paz.note}</span></div>}
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 20, marginTop: 40, fontSize: 10, color: '#718096' }}>
-            <div style={{ flex: 1, borderTop: '1px solid #A0AEC0', paddingTop: 4 }}>Il medico</div>
-            <div style={{ flex: 1, borderTop: '1px solid #A0AEC0', paddingTop: 4 }}>Il paziente, per accettazione</div>
+          <div style={{ marginTop: 40, width: '40%', minWidth: 140, fontSize: 10, color: '#718096' }}>
+            {si.firma_b64 && <img src={si.firma_b64} alt="Firma del medico" style={{ display: 'block', width: '100%', height: 120, objectFit: 'contain', marginBottom: 6 }} />}
+            <div style={{ borderTop: '1px solid #A0AEC0', paddingTop: 4 }}>Il medico</div>
           </div>
           <div style={{ marginTop: 18, paddingTop: 8, borderTop: '1px solid #E2E8F0', textAlign: 'center', fontSize: 10, color: '#4A5568' }}>
             {[si.tel && `Tel. ${si.tel}`, si.addr1, si.addr2, si.email].filter(Boolean).join('  ·  ')}

@@ -4130,3 +4130,15 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - LIMITS: initial authenticated full-table data fetch remains; actual startup still depends on network/database. Calendar now downloads in parallel and Home is excluded from the initial static dependency path.
 - ROLLBACK: revert dedicated PR; immutable stable checkpoints untouched.
 - NEXT: WAITING_PRODUCT_OWNER; review PR/preview, explicit Mergia before merge.
+
+
+## 2026-10-30 — Codex — QUOTE-AUTOGRAPH
+- OWNER: Codex; previous task CALENDAR-STARTUP merged as PR #247. Dedicated branch codex/quote-autograph from master 12fb3828.
+- OBJECTIVE/AUTHORIZATION: PO requests autograph in generated quotes and removal of patient signature.
+- COMPLETED: shared PDF generator embeds configured studio firma_b64 through existing signature helper, once on final page; reserves image space and keeps totals with the signature. Matching HTML preview shows configured image. Patient acceptance line removed from PDF and preview. No signature generated, copied or hardcoded; other clinical/consent signatures unchanged.
+- FILES: src/lib/documenti/preventivoPdf.js, src/components/PdfView.jsx, tests/preventivoPoliedron.test.mjs and coordination docs.
+- DATABASE/DEPLOYMENT: none; no migrations, remote business writes or production data access. Existing signature settings used; real account configuration not inspected. No merge or manual deploy.
+- VALIDATION: full Node suite 1473/1473; after pagination adjustment targeted quote suite 11/11, Studio production build and git diff --check passed. Synthetic two-page PDF rendered with Poppler and visually reviewed, with totals and signature on final page and no overlap. Tests cover short/multipage, missing/corrupt image and removed patient signature. Existing build warnings unchanged. No authenticated live or device verification claimed.
+- LIMITS/RISKS: signature appears only if configured and decodable; missing/corrupt image retains existing helper behavior, rendering the medical signature field without an image. Existing historical PDFs must be regenerated; no archived document altered.
+- ROLLBACK: revert dedicated PR; no database action; immutable stable checkpoints untouched.
+- NEXT: PO review and explicit Mergia before merge, then verify actual deployment. No deployment claimed.
