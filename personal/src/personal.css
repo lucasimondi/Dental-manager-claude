@@ -815,3 +815,6 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-acquisti-voce input[type="checkbox"] { flex: 0 0 22px; width: 22px; height: 22px; margin: 0; accent-color: var(--pp-blu); }
 .pp-acquisti-testo { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
 .pp-acquisti-comprato { text-decoration: line-through; color: var(--pp-grigio); }
+
+/* amor fati entry point, visible before the lazy diary loads. */
+.af-home-link{display:flex;justify-content:space-between;align-items:center;width:100%;margin:8px 0 18px;padding:18px 21px;border:1px solid #cfb989;border-radius:12px;background:linear-gradient(110deg,#493526,#705338);color:#e3cd9d;text-align:left;box-shadow:0 5px 12px #4a341b18}.af-home-link strong{display:block;font:italic 25px Georgia,serif}.af-home-link small{display:block;font:11px/1.8 system-ui;color:#dbc59f}.af-home-link>span:last-child{font-size:23px}

@@ -4130,3 +4130,24 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - LIMITS: initial authenticated full-table data fetch remains; actual startup still depends on network/database. Calendar now downloads in parallel and Home is excluded from the initial static dependency path.
 - ROLLBACK: revert dedicated PR; immutable stable checkpoints untouched.
 - NEXT: WAITING_PRODUCT_OWNER; review PR/preview, explicit Mergia before merge.
+
+
+## 2026-10-30 — Codex — PERSONAL-DIARIO-AMOR-FATI
+- OWNER: Codex; previous CALENDAR-STARTUP completed/merged in master. Dedicated branch codex/personal-diario-amor-fati from master 12fb382. PO directly requests this diary.
+- OBJECTIVE: vintage amor fati diary in Personal with page turning, automatic first-writing dates, text/images, search/date/page jumps and automatic/manual/blank pages.
+- COMPLETED: lazy isolated diary section, Home leather cover card/header book access, ivory ruled paper and animated leaf, responsive/reduced-motion styling. Plain text editing, date heading continuity across blank pages, midnight append creates new day, lossless long-paste pagination preserving next pages, file/paste/drop images/captions, targeted search selection/date jump, page number jump, export JSON. Private serial autosave with version conflict refusal, visible failures, retry/export and pending-navigation guard.
+- FILES: personal lib/diario; sezioni/diario JSX/CSS/index; section registry, App header, Oggi entry, home CSS; Personal README; architecture/personal-diario-amor-fati; Node tests and section-inventory expectation; coordination docs.
+- DATABASE: no schema/migrations/RLS/auth/financial changes. Uses separate diary-prefixed JSON page rows in existing owner-only archivio impostazioni_app (versioned migration evidence in architecture doc). No production read/write; no AI/public-image URL/Studio client.
+- VALIDATION: full npm test 1479/1479; npm run build:personal and npm run build passed; git diff --check passed. CUA synthetic injected archive fixture: cover, writing, one heading for two same-day paragraphs, exact search focus, PNG clipboard paste, reload retaining text/image, manual blank page, next-page skip, 4800-character auto pagination. Cover visually inspected desktop and 375px frame. Fixtures/dev host override removed before commit. No live account/physical device/cross-device integration claim. Existing build warnings remain.
+- LIMITS: needs network persistence; app termination before save can lose pending edits. Images are re-encoded max1600px visual copies, no originals. Diary loads all page/image JSON for text search; very large photo diaries need separate lazy indexing work. Existing schema compatibility is repository-grounded but not tested on live archive. Search finds typed text/captions, no OCR inside images.
+- DEPLOY: branch/PR only; no merge/manual deployment or remote configuration. No migration needed according to repository schema.
+- ROLLBACK: revert dedicated PR; keep diary rows to preserve entries; immutable stable branches untouched.
+- EXACT NEXT ACTION: inspect final-head CI/preview and PR, then explicit PO Mergia under AGENTS.md before merge. Verify authenticated save/reopen in Personal after the approved release.
+
+### Delivery blocker — automatic approval review
+- Local implementation commit fb30666d53a653ae3a53a79898339fe691cfe5b0. Push attempt rejected by automatic approval review because explicit source disclosure authorization to the GitHub destination was considered missing. No workaround or alternative upload attempted.
+- Read-only GitHub metadata verified exact source repository lucasimondi/Dental-manager-claude, public, owner admin/push permission. No new repository, public data, credential or diary entry created remotely.
+- Next: obtain explicit PO authorization to push codex/personal-diario-amor-fati and open its PR; then verify CI and request the specific PR merge under AGENTS.md. Local checks passed; no production availability claim.
+
+### Publication authorization
+- PO replied «Autorizza» to the explicit request to publish this branch in lucasimondi/Dental-manager-claude and open its PR. The prior disclosure blocker is resolved. Git HTTPS cannot prompt for credentials in this environment; use the connected GitHub tools. No merge/production release authorized by this reply.

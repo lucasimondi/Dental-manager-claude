@@ -62,3 +62,7 @@ Dal dettaglio si collegano documenti legali senza pratica (ultimi 300) senza sov
 ### Pagamenti e acquisti — 20 ottobre 2026
 «Per tipo» mostra totali di categoria espandibili nei singoli pagamenti. Il dettaglio riporta il riassunto e l'oggetto email disponibili; se manca una fonte lo dichiara senza attribuire un'origine inventata.
 In Oggi, «Da comprare» permette aggiunta (quantità nel testo), categorie Spesa/Casa/Altro, spunta Comprato, ripristino ed eliminazione dei comprati. Una riga privata `impostazioni_app` per voce con prefisso `personal_acquisto:` evita sovrascritture di tutta la lista tra dispositivi. Nessuna spesa o pagamento è generato. Non include notifiche push, ricorrenze o inserimento vocale via chat. Nessuna migrazione o modifica dello script.
+
+## Diario — amor fati
+
+Dalla copertina in Oggi o dal libro nella testata: diario antico con pagine sfogliabili, testo e immagini incollabili, data automatica al primo pensiero del giorno, ricerca e salto a data/pagina, pagine automatiche o manuali e pagine bianche. Salvataggio privato nell’archivio esistente con controllo delle modifiche concorrenti; Esporta scarica testo e copie delle immagini in JSON. Foto ridimensionate per il diario. Serve connessione per salvare; attendere “Salvato” prima di uscire. Nessun contenuto inviato all’AI. Vedi `docs/architecture/personal-diario-amor-fati.md`.
