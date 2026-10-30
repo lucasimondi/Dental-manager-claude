@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { prepareArchive } from "./classification.mjs";
 
 const URL_BASE = process.env.POLIEDRON_SUPABASE_URL;
 const API_KEY = process.env.POLIEDRON_SUPABASE_PUBLISHABLE_KEY;
@@ -11,6 +12,7 @@ function respond(res,status,data) {
 function rpc(id,result) { return {jsonrpc:"2.0",id,result}; }
 const tools = [
   {name:"search_documents",description:"Cerca metadati documenti personali, esclusi documenti clinici.",inputSchema:{type:"object",properties:{query:{type:"string"},fascicolo:{type:"string"},limit:{type:"integer"}},required:["query"]}},
+  {name:"prepare_archive",description:"Propone una categoria senza salvare il documento.",inputSchema:{type:"object",properties:{filename:{type:"string"},description:{type:"string"},fascicolo:{type:"string"}},required:["filename"]}},
   {name:"get_document",description:"Recupera i metadati di un documento personale.",inputSchema:{type:"object",properties:{id:{type:"string"}},required:["id"]}}
 ];
 async function request(path,token,body) {
@@ -19,6 +21,7 @@ async function request(path,token,body) {
   return r.json();
 }
 async function toolCall(name,args,token) {
+  if(name==="prepare_archive") return prepareArchive(args);
   if(name==="search_documents") {
     const q=String(args.query||"").slice(0,200);
     const fasc=args.fascicolo?String(args.fascicolo).slice(0,50):null;
