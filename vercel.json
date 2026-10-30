@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/oauth/consent",
+      "destination": "/personal/index.html"
+    },
+    {
       "source": "/.well-known/oauth-protected-resource/api/mcp",
       "destination": "/api/mcp-metadata"
     },
