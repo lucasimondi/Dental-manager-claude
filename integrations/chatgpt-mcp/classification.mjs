@@ -23,7 +23,7 @@ export function prepareArchive({filename,description='',fascicolo}={}) {
   if(/[/\\\x00-\x1f]/.test(filename)) throw Error('Unsafe filename');
   if(fascicolo==='clinico_pazienti') throw Error('Clinical documents are not allowed');
   if(fascicolo&&!FASCICOLI.includes(fascicolo)) throw Error('Unknown category');
-  const sample=(filename+' '+String(description).slice(0,500)).normalize('NFKC');
+  const sample=(filename+' '+String(description).slice(0,500)).normalize('NFKC').replace(/[_-]+/g,' ');
   const suggested=fascicolo||rules.find(([,pattern])=>pattern.test(sample))?.[0]||'altro';
   return {filename,fascicolo:suggested,requires_confirmation:true,uploaded:false,registered:false};
 }
