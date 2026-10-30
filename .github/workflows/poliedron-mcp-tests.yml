@@ -23,3 +23,31 @@ jobs:
         with:
           node-version: '22'
       - run: npm test
+
+  remote-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check staging health endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          base=https://poliedron-chatgpt-mcp-staging.vercel.app
+          status=$(curl -sS --max-time 20 -D /tmp/health-headers -o /tmp/health-body -w '%{http_code}' "$base/health")
+          echo "health status: $status"
+          cat /tmp/health-headers
+          head -c 500 /tmp/health-body || true
+          echo
+          test "$status" = 200
+          python3 -c 'import json; assert json.load(open("/tmp/health-body")).get("status") == "ok"'
+      - name: Check unauthenticated MCP returns 401
+        shell: bash
+        run: |
+          set -euo pipefail
+          base=https://poliedron-chatgpt-mcp-staging.vercel.app
+          status=$(curl -sS --max-time 20 -D /tmp/mcp-headers -o /tmp/mcp-body -w '%{http_code}' -X POST "$base/mcp" -H 'content-type: application/json' --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}')
+          echo "unauthenticated MCP status: $status"
+          cat /tmp/mcp-headers
+          head -c 500 /tmp/mcp-body || true
+          echo
+          test "$status" = 401
