@@ -157,6 +157,7 @@ export async function caricaDocumento({ token, dati, nome, mime, descrizione, fa
   let r;
   try { r = await res.json(); } catch { throw new Error('Risposta non valida dallo script di archiviazione.'); }
   if (!r.ok) throw new Error(r.errore || 'Caricamento non riuscito');
+  if (!r.id) throw new Error('Il servizio non ha confermato la registrazione del documento. Controlla Drive prima di riprovare, per evitare duplicati.');
   return r;
 }
 
