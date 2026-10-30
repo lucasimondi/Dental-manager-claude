@@ -4151,3 +4151,12 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 
 ### Publication authorization
 - PO replied «Autorizza» to the explicit request to publish this branch in lucasimondi/Dental-manager-claude and open its PR. The prior disclosure blocker is resolved. Git HTTPS cannot prompt for credentials in this environment; use the connected GitHub tools. No merge/production release authorized by this reply.
+
+
+## 2026-10-30 — PERSONAL-DIARIO-SCROLL-FREEZE
+- OWNER: Codex; previous diary PR250 merged fd09711. Dedicated branch codex/diario-scroll-freeze from current master fd09711. PO reports unscrollable page/freezes.
+- COMPLETED: one explicit vertical scroller in Personal diary main with viewport/flex sizing, dock clearance and normal pan-y; paper no longer traps nested scrolling. Textarea overflow clip avoids hidden scroll interception. Page navigation resets the correct scroller. First-character focus uses preventScroll and no smooth forced recenter; search alone reveals its target.
+- FREEZE FIX: remove document-level navigation interception. Keep diary mounted (hidden) within authenticated app after first visit, so in-flight saves, unsaved text, errors and retry/export survive section changes. Textarea sizing refreshes on return. It unmounts with the authenticated app on sign-out. Network errors remain explicit; browser termination before persistence can still lose pending text.
+- FILES: Personal App, diary component/CSS, existing chat source guard accepts keyed Vista; coordination. DATABASE: no migration/RLS/auth/data changes.
+- VALIDATION: browser synthetic 375px shell: 45-line page scrolled to footer/actions, switch to Home during 10-second save and back retains new text; no live-user data or physical-device claim. Both production builds pass; full Node suite rerun after updating existing static JSX guard. No fixture/host override shipped. Final test result recorded in current task.
+- ROLLBACK: revert this follow-up PR; diary rows intact. Stable checkpoints untouched. No production deployment/merge. NEXT: review dedicated PR and exact-head checks; explicit PO Mergia required for this follow-up.
