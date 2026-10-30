@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 import { prepareArchive } from "./classification.mjs";
+import { uploadToCanonicalArchive } from "./archive-upload.mjs";
 
 const URL_BASE = process.env.POLIEDRON_SUPABASE_URL;
 const API_KEY = process.env.POLIEDRON_SUPABASE_PUBLISHABLE_KEY;
@@ -13,6 +14,7 @@ function rpc(id,result) { return {jsonrpc:"2.0",id,result}; }
 const tools = [
   {name:"search_documents",description:"Cerca metadati documenti personali, esclusi documenti clinici.",inputSchema:{type:"object",properties:{query:{type:"string"},fascicolo:{type:"string"},limit:{type:"integer"}},required:["query"]}},
   {name:"prepare_archive",description:"Propone una categoria senza salvare il documento.",inputSchema:{type:"object",properties:{filename:{type:"string"},description:{type:"string"},fascicolo:{type:"string"}},required:["filename"]}},
+  {name:"archive_document",description:"Archivia un PDF o immagine nel Drive e indice canonico, solo con conferma esplicita.",inputSchema:{type:"object",properties:{filename:{type:"string"},mime:{type:"string"},base64:{type:"string"},description:{type:"string"},fascicolo:{type:"string"},confirm:{type:"boolean"}},required:["filename","mime","base64","fascicolo","confirm"]}},
   {name:"get_document",description:"Recupera i metadati di un documento personale.",inputSchema:{type:"object",properties:{id:{type:"string"}},required:["id"]}}
 ];
 async function request(path,token,body) {
@@ -22,6 +24,7 @@ async function request(path,token,body) {
 }
 async function toolCall(name,args,token) {
   if(name==="prepare_archive") return prepareArchive(args);
+  if(name==="archive_document") return uploadToCanonicalArchive({...args,token},{endpoint:process.env.POLIEDRON_ARCHIVE_ENDPOINT});
   if(name==="search_documents") {
     const q=String(args.query||"").slice(0,200);
     const fasc=args.fascicolo?String(args.fascicolo).slice(0,50):null;
@@ -47,7 +50,7 @@ export function handler() {
     try {const user=await request("/auth/v1/user",token);if(!user.id)throw Error("Unauthorized");}
     catch {return respond(res,401,{error:"unauthorized"});}
     let raw="";
-    for await (const chunk of req) {raw+=chunk;if(raw.length>65536)return respond(res,413,{error:"too_large"});}
+    for await (const chunk of req) {raw+=chunk;if(raw.length>6000000)return respond(res,413,{error:"too_large"});}
     let msg;try{msg=JSON.parse(raw);}catch{return respond(res,400,{error:"invalid_json"});}
     if(msg.method==="initialize") return respond(res,200,rpc(msg.id,{protocolVersion:"2025-03-26",capabilities:{tools:{}},serverInfo:{name:"poliedron-personal",version:"0.1.0"}}));
     if(msg.method==="tools/list")return respond(res,200,rpc(msg.id,{tools}));
