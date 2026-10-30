@@ -3,6 +3,7 @@
    chat: stesso aspetto, stesso file "Nome Cognome.pdf". */
 import { jsPDF } from 'jspdf';
 import { nomeFilePaziente } from './pdfLayout.js';
+import { applyConfiguredSignature } from '../pdfSignature.js';
 
 const BLU = [26, 78, 102];
 const BLU_CHIARO = [74, 144, 196];
@@ -151,8 +152,10 @@ export function buildPreventivoPdf({ si = {}, paziente: pazienteArg, piano: pian
   });
 
   // ── Totali, allineati a destra ──
-  const righeTotali = scontato > 0 ? 3 : 1;
-  if (y + 8 + righeTotali * 7 + 4 > FONDO_PAGINA) { doc.addPage(); y = 20; }
+  // Mantiene i totali insieme alla firma quando serve un'ultima pagina.
+  const fineTotali = y + 6 + (scontato > 0 ? 14 : 0) + 19;
+  const limiteTotali = si.firma_b64 ? FONDO_PAGINA - 46 : FONDO_PAGINA;
+  if (fineTotali > limiteTotali) { doc.addPage(); y = 20; }
   y += 6;
   const totX = W - M - 82;
   if (scontato > 0) {
@@ -182,16 +185,17 @@ export function buildPreventivoPdf({ si = {}, paziente: pazienteArg, piano: pian
     y += boxH + 8;
   }
 
-  // ── Firme: in fondo all'ultima pagina ──
-  if (y > FONDO_PAGINA - 20) doc.addPage();
+  // ── Firma del medico: solo sull'ultima pagina, usando la firma configurata ──
   const yF = FONDO_PAGINA - 4;
+  const firmaH = si.firma_b64 ? 36 : 0;
+  const firmaY = yF - firmaH - 2;
+  if (y > (firmaH ? firmaY - 4 : FONDO_PAGINA - 20)) doc.addPage();
+  applyConfiguredSignature(doc, si.firma_b64, M + 5, firmaY, 60, firmaH || 36);
   const firmaW = 70;
   doc.setDrawColor(...GRIGIO); doc.setLineWidth(0.3);
   doc.line(M, yF, M + firmaW, yF);
-  doc.line(W - M - firmaW, yF, W - M, yF);
   font('normal', 8); colore(GRIGIO);
   txt('Il medico', M, yF + 4.5);
-  txt('Il paziente, per accettazione', W - M - firmaW, yF + 4.5);
 
   // ── Piè di pagina su ogni pagina ──
   const piede = [si.tel && `Tel. ${si.tel}`, si.addr1, si.addr2, si.email].filter(Boolean).join('   ·   ');
