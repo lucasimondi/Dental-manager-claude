@@ -52,3 +52,15 @@ jobs:
           head -c 500 /tmp/mcp-body || true
           echo
           test "$status" = 401
+
+      - name: Check OAuth protected resource metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          base=https://poliedron-chatgpt-mcp-staging.vercel.app
+          status=$(curl -sS --max-time 20 -o /tmp/oauth-meta -w '%{http_code}' "$base/.well-known/oauth-protected-resource")
+          echo "OAuth metadata HTTP: $status"
+          head -c 500 /tmp/oauth-meta
+          echo
+          test "$status" = 200
+          python3 -c 'import json; d=json.load(open("/tmp/oauth-meta")); assert d["resource"].endswith("/mcp") and d["authorization_servers"]'
