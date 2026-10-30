@@ -53,7 +53,7 @@ jobs:
           echo
           test "$status" = 401
 
-      - name: Check OAuth protected resource metadata
+      - name: Check OAuth protected resource metadata (Vercel route fix)
         shell: bash
         run: |
           set -euo pipefail
