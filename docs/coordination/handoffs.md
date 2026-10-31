@@ -4187,3 +4187,14 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - VALIDATION:1479/1479 Node tests, Personal/Studio build pass, diff check pass. CUA375px synthetic45-line reading; continuous write/save/Fine; search cursore selected53–60;100-line paste made continuations; internal editor640px with1452px content scroll0→812; backward page turn recovers; clipboard PNG/caption and reload retain contents. Simulated viewport740→390 yields390px dialog and290px field; Fine restores focus to Scrivi. Fixtures/allowedHosts override removed. Screenshot contains synthetic text only. No physical phone/IME/touch claim.
 - RISKS: new explicit writing mode requires Scrivi/Modifica then Fine. Actual reported phone behavior still needs PO use confirmation. Existing all-pages image loading/network-before-termination limits remain.
 - ROLLBACK: revert dedicated PR; retain diary rows. NEXT: publish specific PR, inspect exact-head CI/preview; wait for its explicit Mergia per AGENTS.md.
+
+
+## 2026-10-31 — PERSONAL-OAUTH-CONSENT
+- OWNER Codex; previous diary task merged PR253. Dedicated codex/personal-oauth-consent from master96445bf. PO explicitly requests correction after Personal OAuth opens Studio.
+- COMPLETED: exact consent routes use Personal HTML; dedicated Personal OAuth UI authenticates via existing archivioDb/storage, retains request across login, reads real Auth details and exposes approve/deny with client/account/scope/delegation disclosure. Opaque-ID validation, HTTPS Auth-returned destinations only, stale-load cleanup, single-flight decisions and uncertainty without retry. Studio fallback excludes consent; no-store/no-referrer headers.
+- FILES: Personal main/OAuthConsent/CSS/helper, Vercel/Vite route/cache rules, Node tests/synthetic fixture, architecture/coordination. Existing Studio consent and archive business flows untouched.
+- DATABASE/DEPLOY: none. No schema/RLS/tenant/grant/config change; no document data written; no manual deploy or merge. Stable rollback checkpoint preserved.
+- VALIDATION: full Node suite, both builds, diff check; exact final results in PR. Container-loopback cloud browser unavailable (ERR_CONNECTION_REFUSED), so synthetic fixture/browser/live OAuth/MCP checks not claimed. No production data in fixtures.
+- RISKS: underlying OAuth delegates existing Personal API user rights; disclosed explicitly. Host/user consent and existing Auth remain authoritative. Existing installed old SW may need its usual update before release smoke test.
+- ROLLBACK: revert dedicated PR; preserve archive records/grants and stable branches.
+- NEXT: publish draft PR, inspect exact-head CI and preview, WAITING_PRODUCT_OWNER for explicit merge approval; after normal Git deployment restart ChatGPT OAuth and verify read-only tools without changing existing documents.

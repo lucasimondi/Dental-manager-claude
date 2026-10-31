@@ -55,7 +55,7 @@ export default defineConfig({
         // The Poliedron phone app has its own page (icon + manifest). Without
         // this, the studio app's service worker answered /poliedron/ with the
         // studio's index.html, so "Installa" installed Poliedra, not Poliedron.
-        navigateFallbackDenylist: [/^\/poliedron/, /^\/personal/, /^\/archivio/],
+        navigateFallbackDenylist: [/^\/poliedron/, /^\/personal/, /^\/archivio/, /^\/oauth\/consent\/?$/],
         runtimeCaching: [
           {
             urlPattern: ({ request, url }) => request.mode === 'navigate' && (url.pathname.startsWith('/poliedron') || url.pathname.startsWith('/personal') || url.pathname.startsWith('/archivio')),
