@@ -20,6 +20,7 @@ export function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) 
   const [stato, setStato] = useState(null);
   const fotocamera = useRef(null);
   const archivio = useRef(null);
+  const autoAvviato = useRef(false);
 
   useEffect(() => () => anteprima && URL.revokeObjectURL(anteprima), [anteprima]);
   const scegli = (f) => {
@@ -58,6 +59,14 @@ export function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) 
       setStato({ errore: true, testo: e.message });
     }
   };
+
+  // Le foto scelte dalle azioni rapide vengono archiviate senza ulteriori tocchi.
+  // Il ref impedisce invii duplicati anche con effetti React rieseguiti.
+  useEffect(() => {
+    if (!opzioni.autoInvia || !file || autoAvviato.current) return;
+    autoAvviato.current = true;
+    void invia();
+  }, []); // Solo al montaggio: il file iniziale è già disponibile.
 
   return (
     <>
