@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { archivioDb } from '../../lib/supabasePersonal.js';
 import { diaryId, PAGE_LENGTH, today, dateLabel, newPage, pageText, previousDate, searchDiary, splitText, loadDiary, savePage, prepareImage } from '../../lib/diario.js';
+import { beginDiarySwipe, moveDiarySwipe, endDiarySwipe } from '../../lib/diarioSwipe.js';
 import './diario.css';
 
 // Reading pages contain ordinary text. A bounded native editor owns writing/IME scroll.
@@ -49,7 +50,7 @@ function TurningSheet({ turn, pages }) {
       <div className="af-page-heading"><span>amor fati</span><span>{String(turn.pageIndex + 1).padStart(2, '0')}</span></div>
       <div className="af-writing">{p.blocks.map((b, bi) => <div className="af-entry" key={b.id}>
         {previousDate(pages, turn.pageIndex, bi) !== b.date && <h2>{dateLabel(b.date)}</h2>}
-        {b.type === 'image' ? <figure><img src={b.src} alt="" /><p className="af-printed-caption">{b.caption}</p></figure> : <p className="af-printed-text">{b.text}</p>}
+        {b.type === 'image' ? <figure><img draggable={false} src={b.src} alt="" /><p className="af-printed-caption">{b.caption}</p></figure> : <p className="af-printed-text">{b.text}</p>}
       </div>)}</div><div className="af-page-footer"><span>amor fati</span><span>{turn.pageIndex + 1}</span></div>
     </div><div className="af-turn-back"><span>amor fati</span></div></div>
   </div>;
@@ -62,7 +63,7 @@ export function Diario({ db = archivioDb, active = true, ctx }) {
   const [query, setQuery] = useState(''), [date, setDate] = useState(''), [find, setFind] = useState(false), [jump, setJump] = useState(''), [turn, setTurn] = useState(null), [imageBusy, setImageBusy] = useState(false);
   const [focus, setFocus] = useState(null), [editing, setEditing] = useState(null);
   const editor = useRef(null), editorOpener = useRef(null);
-  const fileInput = useRef(null), paper = useRef(null), gesture = useRef(null), timer = useRef(null), turnLock = useRef(false), retryBlocked = useRef(false);
+  const fileInput = useRef(null), bookScroll = useRef(null), gesture = useRef(null), timer = useRef(null), turnLock = useRef(false), retryBlocked = useRef(false);
   const page = pages[index];
   const results = useMemo(() => searchDiary(pages, query, date), [pages, query, date]);
 
@@ -118,15 +119,37 @@ export function Diario({ db = archivioDb, active = true, ctx }) {
   }
 
 
+  function cancelSwipe(e) {
+    gesture.current = null;
+    e?.currentTarget.classList.remove('af-swiping');
+  }
+  function swipeStart(e) {
+    cancelSwipe(e);
+    if (turnLock.current || e.target.closest('button,input,textarea')) return;
+    gesture.current = beginDiarySwipe(e, e.currentTarget.clientWidth);
+  }
+  function swipeMove(e) {
+    gesture.current = moveDiarySwipe(gesture.current, e);
+    if (gesture.current?.axis === 'horizontal') {
+      e.currentTarget.classList.add('af-swiping');
+      if (!e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.setPointerCapture(e.pointerId);
+    } else e.currentTarget.classList.remove('af-swiping');
+  }
+  function swipeEnd(e) {
+    const direction = endDiarySwipe(gesture.current, e);
+    cancelSwipe(e);
+    if (direction) go(index + direction);
+  }
+
   function go(next) {
     if (turnLock.current) return;
-    if (next < 0) { setCover(true); window.scrollTo({ top: 0 }); return; }
+    if (next < 0) { setCover(true); bookScroll.current?.scrollTo({ top: 0 }); return; }
     if (next >= pagesRef.current.length) { addPage(); return; }
-    const scroller = window;
+    const scroller = bookScroll.current;
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (cover && !reduce && active) {
       turnLock.current = true; setTurn({ direction: 'forward', cover: true }); setCover(false); setIndex(next); setJump(''); scroller?.scrollTo({ top: 0 });
-      clearTimeout(timer.current); timer.current = setTimeout(() => { setTurn(null); turnLock.current = false; }, 850); return;
+      clearTimeout(timer.current); timer.current = setTimeout(() => { setTurn(null); turnLock.current = false; }, 500); return;
     }
     if (cover || next === index || reduce || !active) { setCover(false); setIndex(next); setJump(''); scroller?.scrollTo({ top: 0 }); return; }
     const direction = next > index ? 'forward' : 'backward';
@@ -137,7 +160,7 @@ export function Diario({ db = archivioDb, active = true, ctx }) {
     if (direction === 'forward') setIndex(next);
     setJump(''); scroller?.scrollTo({ top: 0 });
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => { setIndex(next); setTurn(null); turnLock.current = false; }, 850);
+    timer.current = setTimeout(() => { setIndex(next); setTurn(null); turnLock.current = false; }, 500);
   }
   function addPage() {
     if (turnLock.current) return;
@@ -204,7 +227,7 @@ export function Diario({ db = archivioDb, active = true, ctx }) {
   return <section className={`af-diary${cover ? ' af-closed' : ''}`}  aria-label="Diario amor fati" onPaste={(e) => { const fs = [...(e.clipboardData?.files || [])].filter((f) => f.type.startsWith('image/')); if (fs.length) { e.preventDefault(); images(fs); } }} onDragOver={(e) => { if ([...e.dataTransfer.types].includes('Files')) e.preventDefault(); }} onDrop={(e) => { e.preventDefault(); images([...e.dataTransfer.files]); }}>
     <div className="af-tools">
       <button className="af-exit" onClick={() => ctx?.vai('oggi')} aria-label="Esci dal diario">←</button>
-      <button onClick={() => { if (!turnLock.current) { setCover(true); window.scrollTo({ top: 0 }); } }} aria-label="Mostra copertina">amor fati <span>il mio diario</span></button>
+      <button onClick={() => { if (!turnLock.current) { setCover(true); bookScroll.current?.scrollTo({ top: 0 }); } }} aria-label="Mostra copertina">amor fati <span>il mio diario</span></button>
       <div><button onClick={() => setFind(!find)} aria-expanded={find}>Cerca</button><button onClick={download} disabled={!loaded} title="Scarica una copia completa con le immagini">Esporta</button></div>
     </div>
     {error && <div className="af-error" role="alert">{error}{loaded && <button onClick={() => { retryBlocked.current = false; flush(); }}>Riprova salvataggio</button>}<span>Puoi esportare una copia prima di ricaricare.</span></div>}
@@ -212,13 +235,13 @@ export function Diario({ db = archivioDb, active = true, ctx }) {
       {find && <div className="af-search"><label>Cerca una parola o un ricordo<input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cosa vuoi ritrovare?" /></label><label>Vai a una data<input type="date" value={date} onChange={(e) => { const d = e.target.value; setDate(d); const match = d && searchDiary(pagesRef.current, '', d)[0]; if (match) result(match); }} /></label>
         {(query.trim() || date) && <div className="af-results" aria-live="polite"><p>{results.length ? `${results.length} ${results.length === 1 ? 'passaggio trovato' : 'passaggi trovati'}` : 'Nessun ricordo trovato per questa ricerca.'}</p>{results.map((r) => <button key={`${r.page}-${r.blockId}`} onClick={() => result(r)}><small>{dateLabel(r.date)} · pagina {r.page + 1}</small><span>{r.excerpt}</span></button>)}</div>}
       </div>}
-      <div className="af-desk">
+      <div className="af-scroll" ref={bookScroll}><div className="af-desk">
         {cover ? <button className="af-cover" onClick={() => go(index)} aria-label="Apri il diario amor fati"><CoverArt /></button>
-          : <div className="af-book" aria-busy={!!turn}><div className="af-paper" ref={paper} onTouchStart={(e) => { gesture.current = e.target.closest('textarea,input,button') ? null : [e.touches[0].clientX, e.touches[0].clientY]; }} onTouchMove={(e) => { if (gesture.current && Math.abs(e.touches[0].clientY - gesture.current[1]) > 12) gesture.current = null; }} onTouchCancel={() => { gesture.current = null; }} onTouchEnd={(e) => { if (!gesture.current) return; const [x, y] = gesture.current; gesture.current = null; const dx = e.changedTouches[0].clientX - x, dy = e.changedTouches[0].clientY - y; if (Math.abs(dx) > 95 && Math.abs(dy) < 30) go(index + (dx < 0 ? 1 : -1)); }}>
+          : <div className="af-book" aria-busy={!!turn}><div className="af-paper" onPointerDown={swipeStart} onPointerMove={swipeMove} onPointerUp={swipeEnd} onPointerCancel={cancelSwipe} onLostPointerCapture={(e) => { if (e.target === e.currentTarget) cancelSwipe(e); }}>
             <div className="af-page-heading"><span>amor fati</span><span>{String(index + 1).padStart(2, '0')}</span></div>
             <div className="af-writing">{page.blocks.map((b, bi) => <div key={b.id} className="af-entry">
               {previousDate(pages, index, bi) !== b.date && <h2>{dateLabel(b.date)}</h2>}
-              {b.type === 'image' ? <figure><img src={b.src} alt={b.caption || 'Un ricordo incollato nel diario'} loading="lazy" /><p className="af-printed-caption">{b.caption}</p></figure>
+              {b.type === 'image' ? <figure><img draggable={false} src={b.src} alt={b.caption || 'Un ricordo incollato nel diario'} loading="lazy" /><p className="af-printed-caption">{b.caption}</p></figure>
                 : <p className="af-printed-text">{b.text}</p>}
               <button className="af-edit-entry" onClick={(e) => startWriting(b.id, e)} disabled={imageBusy || !!turn}>{b.type === 'image' ? 'Modifica didascalia' : 'Modifica pensiero'}</button>
             </div>)}
@@ -226,7 +249,7 @@ export function Diario({ db = archivioDb, active = true, ctx }) {
             </div>
             <div className="af-page-footer"><span>{page.blocks.length ? 'Ogni giorno, una storia.' : 'Anche il silenzio ha la sua pagina.'}</span><span>{index + 1}</span></div>
           </div>{turn && <TurningSheet turn={turn} pages={pages} />}<button className="af-corner" disabled={!!turn} aria-label="Gira pagina" onClick={() => go(index + 1)} /></div>}
-      </div>
+      </div></div>
       <div className="af-navigation"><button disabled={!!turn} onClick={() => cover ? go(0) : go(index - 1)} aria-label={cover ? 'Apri la prima pagina' : 'Pagina precedente'}>←</button><label>Pagina <input type="number" min="1" max={pages.length} value={jump || index + 1} onChange={(e) => setJump(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') go(Math.max(0, Math.min(pages.length - 1, Number(jump || index + 1) - 1))); }} onBlur={() => { if (jump) go(Math.max(0, Math.min(pages.length - 1, Number(jump) - 1))); }} aria-label="Vai alla pagina" /> di {pages.length}</label><button disabled={!!turn} onClick={() => cover ? go(index) : go(index + 1)} aria-label="Pagina successiva">→</button></div>
       <div className="af-actions">{!cover && <button onClick={(e) => startWriting('new', e)} disabled={imageBusy || !!turn}>Scrivi</button>}<button onClick={() => fileInput.current.click()} disabled={imageBusy || !!turn}>{imageBusy ? 'Incollo…' : '+ Foto o screenshot'}</button><button onClick={addPage} disabled={imageBusy || !!turn}>+ Pagina</button></div>
       {active && !turn && editing && (editing === 'new' || editBlock) && <WritingEditor inputRef={editor} selection={focus} label={editBlock?.type === 'image' ? 'Didascalia della fotografia' : editBlock ? `Pensiero del ${dateLabel(editBlock.date)}` : 'Scrivi un nuovo pensiero'} value={editBlock?.text ?? editBlock?.caption ?? ''} onChange={(text, composing) => editBlock?.type === 'image' ? caption(editBlock.id, text) : write(editBlock?.id || null, text, composing)} onDone={finishWriting} status={error || status} />}
