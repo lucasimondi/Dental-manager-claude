@@ -1,1 +1,30 @@
-{"version":2,"routes":[{"src":"^/health$","dest":"/api/index"},{"src":"^/mcp$","dest":"/api/index"},{"src":"^/\\.well-known/oauth-protected-resource(?:/mcp)?$","dest":"/api/index"},{"handle":"filesystem"},{"src":"/(.*)","status":404}]}
+{
+  "version": 2,
+  "routes": [
+    {
+      "src": "^/health$",
+      "dest": "/api/index"
+    },
+    {
+      "src": "^/mcp$",
+      "dest": "/api/index"
+    },
+    {
+      "src": "^/\\.well-known/oauth-protected-resource(?:/mcp)?$",
+      "dest": "/api/index"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "status": 404
+    }
+  ],
+  "functions": {
+    "api/index.mjs": {
+      "includeFiles": "node_modules/{pdfjs-dist,@napi-rs}/**",
+      "maxDuration": 60
+    }
+  }
+}

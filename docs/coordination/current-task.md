@@ -3,6 +3,7 @@
 - AUTHORIZATION: PO requests autonomous Personal MCP completion and replies Vai after OAuth/upload/search/metadata test, explicitly including content reading. Existing staging Vercel project/endpoint is the release target. Studio must remain unchanged.
 - SCOPE: restore existing standalone source from codex/poliedron-chatgpt-connector (server/upload SHA1 verified against deployed source); add authenticated original retrieval and bounded reading, tests, deploy only poliedron-chatgpt-mcp-staging. Preserve App/OAuth IDs and archive ownership checks.
 - DATA: no schema/RLS/grants/tenancy/Studio changes. Synthetic tests only; no existing document edits.
-- STATUS: implementation and validation.
+- STATUS: published and verified on standalone staging server 0.2.1; source PR pending review. 22/22 isolated tests and npm audit (0 vulnerabilities) passed. Live ChatGPT image and PDF content calls passed; native Android not directly tested.
 - ROLLBACK: restore staging deployment dpl_FN1W8N1QXnCq7PNSnSowAsyQQFby; source PR revert; retain documents/grants. Golden checkpoints untouched.
 - PREVIOUS TASK: PERSONAL-OAUTH-CONSENT merged PR255; OAuth verified in ChatGPT on 2026-10-31. Physical Android unavailable for direct tests.
+- HANDOFF: docs/coordination/handoff-personal-mcp-content.md.

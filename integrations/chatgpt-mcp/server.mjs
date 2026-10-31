@@ -53,7 +53,7 @@ async function toolCall(name,args,token) {
 export function handler() {
   return async (req,res)=>{
     if(req.method==="GET"&&(req.url==="/.well-known/oauth-protected-resource"||req.url==="/.well-known/oauth-protected-resource/mcp")) return respond(res,200,{resource:MCP_RESOURCE,authorization_servers:[AUTH_SERVER],bearer_methods_supported:["header"],scopes_supported:[]});
-    if(req.method==="GET"&&req.url==="/health") return respond(res,200,{status:"ok",mode:"read-write",version:"0.2.0",document_content:true});
+    if(req.method==="GET"&&req.url==="/health") return respond(res,200,{status:"ok",mode:"read-write",version:"0.2.1",document_content:true});
     if(req.method!=="POST"||req.url!=="/mcp") return respond(res,404,{error:"not_found"});
     if(!URL_BASE||!API_KEY) return respond(res,503,{error:"not_configured"});
     const token=/^Bearer (.+)$/.exec(req.headers.authorization||"")?.[1];
@@ -63,7 +63,7 @@ export function handler() {
     let raw="";
     for await (const chunk of req) {raw+=chunk;if(raw.length>6000000)return respond(res,413,{error:"too_large"});}
     let msg;try{msg=JSON.parse(raw);}catch{return respond(res,400,{error:"invalid_json"});}
-    if(msg.method==="initialize") return respond(res,200,rpc(msg.id,{protocolVersion:"2025-03-26",capabilities:{tools:{}},serverInfo:{name:"poliedron-personal",version:"0.2.0"}}));
+    if(msg.method==="initialize") return respond(res,200,rpc(msg.id,{protocolVersion:"2025-03-26",capabilities:{tools:{}},serverInfo:{name:"poliedron-personal",version:"0.2.1"}}));
     if(msg.method==="tools/list")return respond(res,200,rpc(msg.id,{tools}));
     if(msg.method==="notifications/initialized")return respond(res,202,{});
     if(msg.method==="tools/call"){
@@ -71,7 +71,9 @@ export function handler() {
         if(!tools.some(x=>x.name===msg.params?.name))throw Error("Unknown tool");
         const value=await toolCall(msg.params.name,msg.params.arguments||{},token);
         return respond(res,200,rpc(msg.id,msg.params.name==="get_document"?value:{content:[{type:"text",text:JSON.stringify(value)}]}));
-      }catch{return respond(res,200,rpc(msg.id,{isError:true,content:[{type:"text",text:"Operazione non autorizzata o non riuscita"}]}));}
+      }catch(error){
+        console.error("personal_mcp_failure",{tool:tools.some(x=>x.name===msg.params?.name)?msg.params.name:"unknown",code:String(error.code||error.name||"Error").slice(0,80)});
+        return respond(res,200,rpc(msg.id,{isError:true,content:[{type:"text",text:"Operazione non autorizzata o non riuscita"}]}));}
     }
     return respond(res,200,{jsonrpc:"2.0",id:msg.id??null,error:{code:-32601,message:"Method not found"}});
   };

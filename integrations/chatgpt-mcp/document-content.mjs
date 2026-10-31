@@ -44,7 +44,13 @@ export async function contentBlocks(file, {start_page=1,page_count=3}={}) {
     return {summary:{kind:'text',truncated:text.length>80000},blocks:[{type:'text',text:text.slice(0,80000)}]};
   }
   if (mime !== 'application/pdf' || bytes.toString('ascii',0,5) !== '%PDF-') throw Error('Unsupported content');
+  // Explicit imports make the Node/native and worker dependencies visible to
+  // serverless file tracing. PDF.js' implicit dynamic worker URL is not traced.
+  const canvasModule=await import('@napi-rs/canvas');
+  for(const name of ['DOMMatrix','ImageData','Path2D']) if(!globalThis[name])globalThis[name]=canvasModule[name];
   const {getDocument}=await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const {WorkerMessageHandler}=await import('pdfjs-dist/legacy/build/pdf.worker.mjs');
+  globalThis.pdfjsWorker={WorkerMessageHandler};
   const task=getDocument({data:new Uint8Array(bytes),isEvalSupported:false,useSystemFonts:true,stopAtErrors:true});
   try {
     const pdf=await task.promise;
@@ -64,8 +70,7 @@ export async function contentBlocks(file, {start_page=1,page_count=3}={}) {
         const viewport=page.getViewport({scale:1});
         const scale=Math.min(2,1600/Math.max(viewport.width,viewport.height));
         const scaled=page.getViewport({scale});
-        const {createCanvas}=await import('@napi-rs/canvas');
-        const canvas=createCanvas(Math.max(1,Math.ceil(scaled.width)),Math.max(1,Math.ceil(scaled.height)));
+        const canvas=canvasModule.createCanvas(Math.max(1,Math.ceil(scaled.width)),Math.max(1,Math.ceil(scaled.height)));
         await page.render({canvasContext:canvas.getContext('2d'),viewport:scaled}).promise;
         const image=canvas.toBuffer('image/png');
         if(image.length>4*1024*1024) throw Error('Rendered page too large');
