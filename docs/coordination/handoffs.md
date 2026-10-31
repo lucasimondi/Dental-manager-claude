@@ -4178,3 +4178,12 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - FILES: diary JSX/CSS, architecture, coordination. No schema/RLS/auth/financial/deployment architecture changes or live data writes. Golden checkpoint untouched.
 - VALIDATION: final Node tests/both builds/diff results in current task. Preview fixtures/dev host override removed.
 - ROLLBACK: revert follow-up, keep rows. NEXT: dedicated PR and exact-head CI; new explicit PO Mergia required before merge.
+
+
+## 2026-10-31 — PERSONAL-DIARIO-MOBILE-EDITOR
+- OWNER/previous agent Codex. Branch codex/diario-mobile-editor from authorized master96445bf. PO reports still blocked after PR253; vague clarification repeats si blocca. Physical cause not proven; do not claim earlier compositor screenshots demonstrated a perspective bug.
+- COMPLETED: reading uses normal paragraphs, explicit edit buttons and floating Scrivi. One bounded native textarea in a body portal, independent scrolling, no auto-height measurements; Fine/Escape, inert background/focus containment/restore, visualViewport keyboard sizing. First composing character preserves IME focus/selection. Search selects exact match in editor; PNG paste/captions, dates, automatic/manual pages, 3D turns and existing save queue retained.
+- FILES: diary JSX/CSS, architecture, coordination. DATABASE: none; no schema/RLS/auth changes or live data reads/writes. Golden stable checkpoint untouched. No manual deployment or merge.
+- VALIDATION:1479/1479 Node tests, Personal/Studio build pass, diff check pass. CUA375px synthetic45-line reading; continuous write/save/Fine; search cursore selected53–60;100-line paste made continuations; internal editor640px with1452px content scroll0→812; backward page turn recovers; clipboard PNG/caption and reload retain contents. Simulated viewport740→390 yields390px dialog and290px field; Fine restores focus to Scrivi. Fixtures/allowedHosts override removed. Screenshot contains synthetic text only. No physical phone/IME/touch claim.
+- RISKS: new explicit writing mode requires Scrivi/Modifica then Fine. Actual reported phone behavior still needs PO use confirmation. Existing all-pages image loading/network-before-termination limits remain.
+- ROLLBACK: revert dedicated PR; retain diary rows. NEXT: publish specific PR, inspect exact-head CI/preview; wait for its explicit Mergia per AGENTS.md.
