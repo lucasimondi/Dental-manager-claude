@@ -84,7 +84,12 @@ function Archivio({ email }) {
     }[id];
     if (nuova) apri(nuova);
   }, [apri]); // eslint-disable-line react-hooks/exhaustive-deps
-  const fileScelto = (e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) apri({ tipo: 'carica', file: f }); };
+  const fileScelto = (e) => {
+    const f = e.target.files?.[0];
+    const fotoRapida = e.target === ingressi.fotocamera.current || e.target === ingressi.libreria.current;
+    e.target.value = '';
+    if (f) apri({ tipo: 'carica', file: f, opzioni: fotoRapida ? { autoInvia: true } : {} });
+  };
 
   // Dal documento: la chat di Poliedron riparte su quel documento (la conversazione resta).
   const apriChat = useCallback((documento = null) => {
