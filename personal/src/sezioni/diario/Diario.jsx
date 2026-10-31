@@ -80,9 +80,9 @@ export function Diario({ db = archivioDb, active = true, ctx }) {
 
   function go(next) {
     if (turnLock.current) return;
-    if (next < 0) { setCover(true); return; }
+    if (next < 0) { setCover(true); window.scrollTo({ top: 0 }); return; }
     if (next >= pagesRef.current.length) { addPage(); return; }
-    const scroller = paper.current?.closest('.pp-contenuto-diario');
+    const scroller = window;
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (cover && !reduce && active) {
       turnLock.current = true; setTurn({ direction: 'forward', cover: true }); setCover(false); setIndex(next); setJump(''); scroller?.scrollTo({ top: 0 });
@@ -165,7 +165,7 @@ export function Diario({ db = archivioDb, active = true, ctx }) {
   return <section className={`af-diary${cover ? ' af-closed' : ''}`}  aria-label="Diario amor fati" onPaste={(e) => { const fs = [...(e.clipboardData?.files || [])].filter((f) => f.type.startsWith('image/')); if (fs.length) { e.preventDefault(); images(fs); } }} onDragOver={(e) => { if ([...e.dataTransfer.types].includes('Files')) e.preventDefault(); }} onDrop={(e) => { e.preventDefault(); images([...e.dataTransfer.files]); }}>
     <div className="af-tools">
       <button className="af-exit" onClick={() => ctx?.vai('oggi')} aria-label="Esci dal diario">←</button>
-      <button onClick={() => { if (!turnLock.current) setCover(true); }} aria-label="Mostra copertina">amor fati <span>il mio diario</span></button>
+      <button onClick={() => { if (!turnLock.current) { setCover(true); window.scrollTo({ top: 0 }); } }} aria-label="Mostra copertina">amor fati <span>il mio diario</span></button>
       <div><button onClick={() => setFind(!find)} aria-expanded={find}>Cerca</button><button onClick={download} disabled={!loaded} title="Scarica una copia completa con le immagini">Esporta</button></div>
     </div>
     {error && <div className="af-error" role="alert">{error}{loaded && <button onClick={() => { retryBlocked.current = false; flush(); }}>Riprova salvataggio</button>}<span>Puoi esportare una copia prima di ricaricare.</span></div>}
@@ -175,7 +175,7 @@ export function Diario({ db = archivioDb, active = true, ctx }) {
       </div>}
       <div className="af-desk">
         {cover ? <button className="af-cover" onClick={() => go(index)} aria-label="Apri il diario amor fati"><CoverArt /></button>
-          : <div className="af-book" aria-busy={!!turn}><div className="af-paper" ref={paper} onTouchStart={(e) => { if (!e.target.closest('textarea,input,button')) gesture.current = [e.touches[0].clientX, e.touches[0].clientY]; }} onTouchEnd={(e) => { if (!gesture.current) return; const [x, y] = gesture.current; gesture.current = null; const dx = e.changedTouches[0].clientX - x, dy = e.changedTouches[0].clientY - y; if (Math.abs(dx) > 75 && Math.abs(dy) < 55) go(index + (dx < 0 ? 1 : -1)); }}>
+          : <div className="af-book" aria-busy={!!turn}><div className="af-paper" ref={paper} onTouchStart={(e) => { gesture.current = e.target.closest('textarea,input,button') ? null : [e.touches[0].clientX, e.touches[0].clientY]; }} onTouchMove={(e) => { if (gesture.current && Math.abs(e.touches[0].clientY - gesture.current[1]) > 12) gesture.current = null; }} onTouchCancel={() => { gesture.current = null; }} onTouchEnd={(e) => { if (!gesture.current) return; const [x, y] = gesture.current; gesture.current = null; const dx = e.changedTouches[0].clientX - x, dy = e.changedTouches[0].clientY - y; if (Math.abs(dx) > 95 && Math.abs(dy) < 30) go(index + (dx < 0 ? 1 : -1)); }}>
             <div className="af-page-heading"><span>amor fati</span><span>{String(index + 1).padStart(2, '0')}</span></div>
             <div className="af-writing">{page.blocks.map((b, bi) => <div key={b.id} className="af-entry">
               {previousDate(pages, index, bi) !== b.date && <h2>{dateLabel(b.date)}</h2>}
