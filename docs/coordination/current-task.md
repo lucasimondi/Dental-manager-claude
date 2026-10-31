@@ -1,8 +1,6 @@
-# Current task — PERSONAL-OAUTH-CONSENT (2026-10-31)
-- OWNER: Codex; dedicated branch codex/personal-oauth-consent from master 96445bf.
-- AUTHORIZATION: PO "Correggi" after the Personal MCP OAuth link opened Studio at /oauth/consent.
-- SCOPE: exact OAuth consent route to the Personal entry, archive-only authentication and explicit consent; exclude it from Studio service-worker fallback. Preserve /connector/* Studio flow.
-- STATUS: implementation and local validation; dedicated PR before merge. No production release or auth configuration change.
-- DATA: no schema/RLS/tenant changes, no document writes. Existing separate Personal auth client/storage and Auth server remain authoritative.
-- ROLLBACK: revert this dedicated PR; no stored records or OAuth grants deleted. Stable checkpoints unchanged.
-- PREVIOUS TASK: diary native-scroll was merged as PR253 at 96445bf; this branch does not change the diary.
+# Current task — PERSONAL-DIARIO-TOUCH-GESTURES (2026-10-31)
+- OWNER Codex, branch codex/diario-pointer-gestures from master64e2224 (rebased after OAuth PR255).
+- AUTHORIZATION: PO reports both vertical reading scroll and horizontal page changes remain poor with touch after PR254.
+- SCOPE: investigate gesture conflicts; native vertical pan with separate horizontal recognition. Keep vintage presentation, page animation, dedicated editor, dates/photos/search/persistence. No data/schema changes.
+- STATUS WAITING_PRODUCT_OWNER.1487/1487 Node tests (including five gesture path regressions), both builds and diff check pass. New browser QA blocked by URL policy after preview connection failure; no bypass. Native physical touch remains unverified. Publish dedicated PR/check exact head before specific PO merge approval.
+- ROLLBACK revert dedicated PR, retain rows. No merge without specific PO Mergia.

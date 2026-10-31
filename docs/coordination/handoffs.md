@@ -4198,3 +4198,11 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - RISKS: underlying OAuth delegates existing Personal API user rights; disclosed explicitly. Host/user consent and existing Auth remain authoritative. Existing installed old SW may need its usual update before release smoke test.
 - ROLLBACK: revert dedicated PR; preserve archive records/grants and stable branches.
 - NEXT: publish draft PR, inspect exact-head CI and preview, WAITING_PRODUCT_OWNER for explicit merge approval; after normal Git deployment restart ChatGPT OAuth and verify read-only tools without changing existing documents.
+
+
+## 2026-10-31 — PERSONAL-DIARIO-TOUCH-GESTURES
+- OWNER/previous agent Codex; codex/diario-pointer-gestures from master06eebaa, rebased onto master64e2224 after PR255; retained OAuth handoff and resolved only coordination conflicts. PO confirms both directions fail with touch; Vai avanti authorizes continuation.
+- COMPLETED: axis-aware pointer recognizer replaces strict12px-vertical/95px-horizontal touch logic. Width-scaled42–80px distance; irreversible vertical rejection, cancellation/multi-contact handling; capture only for horizontal and ignore child implicit-capture transfer. Native vertical pan/pinch remains; no preventDefault. One fixed-inset native book viewport, stable svh pages, navigation resets own scroller, no fixed-control backdrop blurs;450ms rotation/500ms fallback; images non-draggable. Editor/persistence unchanged.
+- FILES: diary JSX/CSS, lib/diarioSwipe.js, tests/personalDiarioSwipe.test.mjs, architecture and coordination. DATABASE/PRODUCTION: none; no schema/auth/RLS/data operations. Stable checkpoints untouched. Rollback revert dedicated PR, keep diary rows.
+- VALIDATION: five gesture path tests pass; full Node suite1487/1487. Personal/Studio build results recorded in current task. No completed new browser/physical-touch test: preview refused then browser URL policy blocked acquiring internal error-page authority; no workaround. Prior diagnostic drag was mouse, so no touch claim. Temporary fixtures and allowedHosts override removed.
+- RISKS: native panning/inertia on PO hardware unverified; architecture now a single viewport scrollport rather than document scrolling. NEXT: dedicated PR and exact-head checks; specific PO Mergia before merge, then device use confirmation.
