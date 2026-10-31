@@ -103,9 +103,9 @@ export function Diario({ db = archivioDb, active = true, ctx }) {
     return () => window.removeEventListener('beforeunload', warn);
   }, []);
   useLayoutEffect(() => {
-    if (!focus || !active) return;
+    if (!focus || !active || turn) return;
     setEditing(focus.id);
-  }, [focus, active]);
+  }, [focus, active, turn, index]);
   const editBlock = page?.blocks.find((b) => b.id === editing);
   function startWriting(id, event) {
     editorOpener.current = event?.currentTarget || null;
@@ -229,7 +229,7 @@ export function Diario({ db = archivioDb, active = true, ctx }) {
       </div>
       <div className="af-navigation"><button disabled={!!turn} onClick={() => cover ? go(0) : go(index - 1)} aria-label={cover ? 'Apri la prima pagina' : 'Pagina precedente'}>←</button><label>Pagina <input type="number" min="1" max={pages.length} value={jump || index + 1} onChange={(e) => setJump(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') go(Math.max(0, Math.min(pages.length - 1, Number(jump || index + 1) - 1))); }} onBlur={() => { if (jump) go(Math.max(0, Math.min(pages.length - 1, Number(jump) - 1))); }} aria-label="Vai alla pagina" /> di {pages.length}</label><button disabled={!!turn} onClick={() => cover ? go(index) : go(index + 1)} aria-label="Pagina successiva">→</button></div>
       <div className="af-actions">{!cover && <button onClick={(e) => startWriting('new', e)} disabled={imageBusy || !!turn}>Scrivi</button>}<button onClick={() => fileInput.current.click()} disabled={imageBusy || !!turn}>{imageBusy ? 'Incollo…' : '+ Foto o screenshot'}</button><button onClick={addPage} disabled={imageBusy || !!turn}>+ Pagina</button></div>
-      {active && editing && <WritingEditor inputRef={editor} selection={focus} label={editBlock?.type === 'image' ? 'Didascalia della fotografia' : editBlock ? `Pensiero del ${dateLabel(editBlock.date)}` : 'Scrivi un nuovo pensiero'} value={editBlock?.text ?? editBlock?.caption ?? ''} onChange={(text, composing) => editBlock?.type === 'image' ? caption(editBlock.id, text) : write(editBlock?.id || null, text, composing)} onDone={finishWriting} status={error || status} />}
+      {active && !turn && editing && (editing === 'new' || editBlock) && <WritingEditor inputRef={editor} selection={focus} label={editBlock?.type === 'image' ? 'Didascalia della fotografia' : editBlock ? `Pensiero del ${dateLabel(editBlock.date)}` : 'Scrivi un nuovo pensiero'} value={editBlock?.text ?? editBlock?.caption ?? ''} onChange={(text, composing) => editBlock?.type === 'image' ? caption(editBlock.id, text) : write(editBlock?.id || null, text, composing)} onDone={finishWriting} status={error || status} />}
       <input ref={fileInput} type="file" accept="image/*" multiple hidden onChange={(e) => { images([...e.target.files]); e.target.value = ''; }} />
       <p className="af-status" role="status">{status || 'Il tuo spazio, il tuo tempo.'}</p><p className="af-hint">La data appare quando inizi a scrivere. Puoi incollare immagini e lasciare pagine bianche.</p>
     </>}
