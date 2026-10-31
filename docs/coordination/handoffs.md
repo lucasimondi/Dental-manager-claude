@@ -4169,3 +4169,12 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - VALIDATION: npm test1479/1479, Personal build pass; final Studio build/diff results in current task. CUA synthetic375px: actual page turn both directions, controls restore afterward, manual page/autosave, page3→page1 search selection, floating exit/app chrome restore. Desktop cover inspected. Screenshot contains synthetic text only. Native animation introspection API unsupported in CUA; observed sheet snapshot/transition and final state; no physical-device/live diary claim. Fixtures and dev host override removed before delivery.
 - LIMITS: no browser Fullscreen API; uses available app viewport. Automatic text-pagination behavior retained. Existing network/browser-termination persistence limits unchanged.
 - ROLLBACK: revert dedicated PR; diary data retained. NEXT: final checks, publish dedicated PR; explicit PO Mergia before production merge.
+
+
+## 2026-10-31 — PERSONAL-DIARIO-NATIVE-SCROLL
+- OWNER: Codex; previous full-screen PR252 merged a49a79f. Dedicated codex/diario-native-scroll from that master. PO reports continued non-scrolling/freezes.
+- COMPLETED: diary uses document scrolling (no fixed-height hidden-overflow app/nested scrollport), visible body and normal chaining; floating controls/full-screen retained. Perspective confined to transient turning layer, removed from static desk/book. Vertical move cancels page-swipe tracking; touchcancel and editor starts reset it. Page/cover navigation scrolls window. Original textarea, save/date/photo/search behavior retained.
+- EVIDENCE: synthetic375px45-line page showed blank rendering while DOM retained text/geometry with static perspective. Final up/down scroll on text shows bottom lines; direct document offset measured1083px. Browser write-after-scroll returns Salvato; search matches/selects. No real-account data or physical-phone/finger gesture claim; native platform behavior remains to confirm in use.
+- FILES: diary JSX/CSS, architecture, coordination. No schema/RLS/auth/financial/deployment architecture changes or live data writes. Golden checkpoint untouched.
+- VALIDATION: final Node tests/both builds/diff results in current task. Preview fixtures/dev host override removed.
+- ROLLBACK: revert follow-up, keep rows. NEXT: dedicated PR and exact-head CI; new explicit PO Mergia required before merge.
