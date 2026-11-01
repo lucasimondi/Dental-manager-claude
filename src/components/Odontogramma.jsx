@@ -23,8 +23,8 @@ export default function Odontogramma({ selected, onChange, onDenteChange, touchF
   if (compact) return <div className="odo-compact" role="group" aria-label="Odontogramma compatto">
     <div className="odo-compact-heading"><span>Seleziona i denti</span><small>{selected.length ? selected.slice().sort((a,b)=>a-b).join(' · ') : 'Facoltativo'}</small><button type="button" className="odo-compact-clear" disabled={!selected.length} onClick={clearAll}>Deseleziona</button></div>
     <div className="odo-compact-grid">{[
-      ['Sup. destro', ODO_ROWS[0].slice(0,8)], ['Sup. sinistro', ODO_ROWS[0].slice(8)],
-      ['Inf. destro', ODO_ROWS[1].slice(0,8)], ['Inf. sinistro', ODO_ROWS[1].slice(8)],
+      ['Q1 · Sup. destro', ODO_ROWS[0].slice(0,8)], ['Q2 · Sup. sinistro', ODO_ROWS[0].slice(8)],
+      ['Q4 · Inf. destro', ODO_ROWS[1].slice(0,8)], ['Q3 · Inf. sinistro', ODO_ROWS[1].slice(8)],
     ].map(([label,teeth]) => <div className="odo-compact-quadrant" key={label}><span>{label}</span><div>{teeth.map(d => <button type="button" key={d} aria-label={`Dente ${d}`} aria-pressed={selected.includes(d)} onMouseDown={event=>event.preventDefault()} onClick={()=>toggle(d)}>{d}</button>)}</div></div>)}</div>
   </div>;
 

@@ -10,7 +10,7 @@
 .patient-dental-tools .patient-dental-general { font-size:11px; color:#216b99; padding-inline:6px; }
 .patient-dental-layout { display:grid; grid-template-columns:minmax(0,1fr) minmax(280px,.85fr); gap:28px; }
 .patient-dental-chart { display:grid; grid-template-columns:1fr 1fr; gap:12px 16px; }
-.patient-dental-quadrant { min-width:0; }
+.patient-dental-quadrant { min-width:0; padding:10px; border:1px solid #dfe8ee; border-radius:12px; background:#f8fbfd; }
 .patient-dental-quadrant > small { display:block; font-size:9px; font-weight:550; color:#698296; margin-bottom:5px; }
 .patient-dental-quadrant > div { display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:3px; }
 .patient-dental-quadrant button { display:flex; flex-direction:column; align-items:center; justify-content:center; min-width:0; min-height:62px; padding:5px 0 3px; border:1px solid #e0e8ef; border-radius:9px; background:#fcfdfe; color:#6b8293; cursor:pointer; touch-action:manipulation; }
@@ -58,9 +58,10 @@
  .patient-dental-tools { margin-bottom:14px; }
  .patient-dental-tools button { padding-inline:9px; font-size:11px; }
  .patient-dental-tools .patient-dental-general { font-size:10px; }
- .patient-dental-chart { grid-template-columns:1fr; gap:8px; }
- .patient-dental-quadrant > small { margin-bottom:3px; font-size:8px; }
- .patient-dental-quadrant > div { gap:4px; }
+ .patient-dental-chart { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+ .patient-dental-quadrant { padding:8px; }
+ .patient-dental-quadrant > small { margin-bottom:7px; font-size:8px; font-weight:650; }
+ .patient-dental-quadrant > div { grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; }
  .patient-dental-quadrant button { min-height:46px; padding:3px 0 1px; border-radius:8px; }
  .patient-dental-quadrant svg { height:18px; width:17px; }
  .patient-dental-quadrant b { font-size:10px; margin-top:1px; }
@@ -90,3 +91,5 @@
 .patient-record-legacy[data-dental-home="true"] .anamnesi-cross { grid-column:3; grid-row:1; }
 .patient-record-legacy[data-dental-home="true"] .patient-clean-edit { grid-column:4; grid-row:1; width:34px; min-width:34px; min-height:36px; height:36px; padding:0; }
 .patient-record-legacy[data-dental-home="true"] .patient-clean-edit span { display:none; }
+
+.patient-dental-orientation { margin:10px 0 0; color:#6c8597; font-size:9px; text-align:center; }

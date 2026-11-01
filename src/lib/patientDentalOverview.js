@@ -1,10 +1,10 @@
 import { treatmentsFromPlans, TREATMENT_STATUS } from './patientWorkspaceClinicalFinancial.js';
 
 export const DENTAL_QUADRANTS = [
-  { label: 'Superiore destro', teeth: [18,17,16,15,14,13,12,11] },
-  { label: 'Superiore sinistro', teeth: [21,22,23,24,25,26,27,28] },
-  { label: 'Inferiore destro', teeth: [48,47,46,45,44,43,42,41] },
-  { label: 'Inferiore sinistro', teeth: [31,32,33,34,35,36,37,38] },
+  { label: 'Q1 · Superiore destro', teeth: [18,17,16,15,14,13,12,11] },
+  { label: 'Q2 · Superiore sinistro', teeth: [21,22,23,24,25,26,27,28] },
+  { label: 'Q4 · Inferiore destro', teeth: [48,47,46,45,44,43,42,41] },
+  { label: 'Q3 · Inferiore sinistro', teeth: [31,32,33,34,35,36,37,38] },
 ];
 const permanent = new Set(DENTAL_QUADRANTS.flatMap(q => q.teeth));
 export const dentalEntryTooth = value => permanent.has(Number(value)) ? String(Number(value)) : '';
