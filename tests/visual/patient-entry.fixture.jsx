@@ -10,6 +10,13 @@ const patient = {id:7,nome:'Paziente',cognome:'Sintetico',telefono:'0000000000',
 const params = new URLSearchParams(location.search);
 const count = Number(params.get('plans') || 0);
 let stored = Array.from({length:count},(_,i)=>({id:20+i,pazienteId:7,titolo:`Piano ${i+1}`,stato:'attivo',data:'2026-11-01',sconto:Number(params.get('discount')||0),scontoTipo:'eur',voci:params.get('seed')==='1'?[{prestazione:'Controllo precedente',prezzo:60,dente:'36',eseguita:false}]:[]}));
+if (params.get('history') === '1') stored = [{id:20,pazienteId:7,titolo:'Piano di cura',stato:'attivo',data:'2026-10-01',sconto:0,voci:[
+ {prestazione:'Otturazione estetica',dente:'36',prezzo:100,eseguita:true,dataEsec:'2026-10-20'},
+ {prestazione:'Igiene professionale',dente:'',prezzo:85,eseguita:true,dataEsec:'2026-10-15'},
+ {prestazione:'Otturazione estetica',dente:'16',prezzo:100,eseguita:true,dataEsec:'2026-10-05'},
+ {prestazione:'Corona',dente:'36',prezzo:500,eseguita:false},
+ {prestazione:'Otturazione estetica',dente:'46',prezzo:100,eseguita:false},
+]}];
 window.__writes = [];
 const db = {getById:async(table,id)=>table==='dm_p'?patient:stored.find(p=>p.id===id),getAll:async()=>stored,
  insert:async(table,payload)=>{await new Promise(r=>setTimeout(r,250));if(window.__failSave)throw Error('Errore sintetico');const saved={...payload,id:100+window.__writes.length};stored.push(saved);window.__writes.push({table,...saved});return saved;},

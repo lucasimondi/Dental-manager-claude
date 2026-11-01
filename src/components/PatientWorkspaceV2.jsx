@@ -1,4 +1,5 @@
 import PatientEntryActions from './PatientEntryActions.jsx';
+import PatientDentalOverview from './PatientDentalOverview.jsx';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Ic } from './ui';
 import { fmt, fmtD } from '../lib/utils';
@@ -254,7 +255,7 @@ export default function PatientWorkspaceV2({ context, patient, plans, payments, 
       </div>
     </header>
 
-    <PatientEntryActions onTreatment={onAddTreatment} onQuote={onCreateQuote} />
+    {realMode && (!studioInfo.vertical || studioInfo.vertical === 'dentistico') && tab === 'info' ? <PatientDentalOverview patientId={patient.id} plans={model.patientPlans} onAddTreatment={onAddTreatment} onCreateQuote={onCreateQuote} /> : <PatientEntryActions onTreatment={onAddTreatment} onQuote={onCreateQuote} />}
 
     <section className="pw2-kpis" aria-label="Indicatori paziente">
       {kpis.map((kpi) => <button key={kpi.id} className={kpi.tone} onClick={() => setDrawer(kpi.id)}><span className="pw2-kpi-icon"><Ic n={kpi.icon} s={17} c="currentColor" /></span><span><small>{kpi.label}</small><strong>{kpi.value}</strong></span><span aria-hidden="true">›</span></button>)}

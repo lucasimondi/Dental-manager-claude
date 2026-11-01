@@ -25,7 +25,7 @@ function ImplantPreview({ row }) {
   </div>;
 }
 
-export function EntryRows({ rows, onChange, listId, pricelist, dentist, name, allowDuplicate = true, compactTeeth = false }) {
+export function EntryRows({ rows, onChange, listId, pricelist, dentist, name, allowDuplicate = true, compactTeeth = false, collapseTeeth = false }) {
   const update = (index, patch) => onChange(rows.map((r,i) => i === index ? { ...r, ...patch } : r));
   return <div className="appointment-entry-rows">{rows.map((row,index) => {
     const implant = dentist && isImplantQuoteRequest(row.description);
@@ -35,7 +35,7 @@ export function EntryRows({ rows, onChange, listId, pricelist, dentist, name, al
       onChange={description => { const item = pricelist.find(p => p.nome === description); update(index, { description, ...(item && !isImplantQuoteRequest(description) && item.prezzo != null ? { price: String(item.prezzo) } : {}) }); }}
       onSelect={item => update(index, { description: item.nome, ...(!isImplantQuoteRequest(item.nome) && item.prezzo != null ? { price: String(item.prezzo) } : {}) })} /></Field>
     <div className="appointment-field-pair"><Field label={implant ? `Totale impianto ${index + 1} (€)` : `Prezzo ${name.toLowerCase()} ${index + 1} (€)`}><input type="number" min={implant?650:0} step="0.01" inputMode="decimal" placeholder={implant?'Inserisci totale':'0,00'} value={row.price} onChange={e => update(index, { price: e.target.value })} /></Field>{dentist && <Field label={`Dente ${name.toLowerCase()} ${index + 1} (facoltativo)`}><input value={row.tooth} placeholder="es. 16" onChange={e => update(index, { tooth: e.target.value })} /></Field>}</div>
-    {dentist && compactTeeth && <Odontogramma compact selected={selectedTeeth} onChange={()=>{}} onDenteChange={tooth=>update(index,{tooth})} />}
+    {dentist && compactTeeth && (collapseTeeth ? <details className="appointment-tooth-picker"><summary>{row.tooth ? `Denti: ${row.tooth} · Modifica selezione` : 'Seleziona altri denti'}</summary><Odontogramma compact selected={selectedTeeth} onChange={()=>{}} onDenteChange={tooth=>update(index,{tooth})} /></details> : <Odontogramma compact selected={selectedTeeth} onChange={()=>{}} onDenteChange={tooth=>update(index,{tooth})} />)}
     {dentist && !compactTeeth && <details className="appointment-tooth-picker"><summary>Odontogramma {name.toLowerCase()} {index+1}{row.tooth ? ` · ${row.tooth}` : ''}</summary><Odontogramma touchFriendly selected={selectedTeeth} onChange={()=>{}} onDenteChange={tooth=>update(index,{tooth})} /></details>}
     {implant && <ImplantPreview row={row} />}
     <div className="appointment-row-actions">{allowDuplicate && <button type="button" className="appointment-text-button" onClick={() => onChange([...rows.slice(0,index+1), {...row}, ...rows.slice(index+1)])}>Duplica {name.toLowerCase()} {index+1}</button>}

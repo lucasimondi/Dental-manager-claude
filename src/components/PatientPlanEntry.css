@@ -113,3 +113,7 @@
 .patient-quote-scope span { display:block; font-weight:650; }
 .patient-quote-scope small { display:block; font-size:9px; font-weight:400; margin-top:5px; color:#8194a6; }
 .patient-entry-success .patient-quote-scope { margin-top:26px; }
+
+/* Chart entry already supplies the clinical site: keep the first line and Save close. */
+.patient-entry-panel.from-dental-chart .patient-entry-intro { display:none; }
+.patient-entry-panel.from-dental-chart .patient-entry-footer { margin-top:16px; }

@@ -8,12 +8,14 @@ import { buildPreventivoPdf, totaliPreventivo, euroIt } from '../lib/documenti/p
 import { patientQuoteProjection } from '../lib/patientQuoteProjection.js';
 import { patientEntryViewport } from '../lib/patientEntryPresentation.js';
 import './PatientPlanEntry.css';
+import { dentalEntryTooth } from '../lib/patientDentalOverview.js';
 
 const blankRow = () => ({ description: '', price: '', tooth: '' });
-export default function PatientPlanEntry({ patient, mode, plans = [], pricelist = [], si, onSave, onClose }) {
+export default function PatientPlanEntry({ patient, mode, initialTooth = '', plans = [], pricelist = [], si, onSave, onClose }) {
   const quote = mode === 'quote';
+  const fromChart = !!dentalEntryTooth(initialTooth);
   const eligible = plans.filter(p => String(p.pazienteId) === String(patient.id) && ['attivo', 'accettato'].includes(p.stato));
-  const [rows, setRows] = useState([blankRow()]);
+  const [rows, setRows] = useState(() => [{...blankRow(),tooth:dentalEntryTooth(initialTooth)}]);
   const [planId, setPlanId] = useState(eligible.length === 1 ? String(eligible[0].id) : eligible.length ? '' : 'new');
   const [quoteScope, setQuoteScope] = useState(quote ? 'all' : 'entered');
   const [pdfPlanId, setPdfPlanId] = useState('');
@@ -104,10 +106,10 @@ export default function PatientPlanEntry({ patient, mode, plans = [], pricelist 
   </div></fieldset>;
   const patientName = [patient.nome, patient.cognome].filter(Boolean).join(' ');
   return createPortal(<div ref={shellRef} className={`patient-entry-overlay${viewport.height < 500 ? ' is-compact' : ''}`} style={{ top: viewport.top, height: viewport.height }}>
-    <section role="dialog" aria-modal="true" aria-labelledby="patient-entry-title" className="patient-entry-panel">
+    <section role="dialog" aria-modal="true" aria-labelledby="patient-entry-title" className={`patient-entry-panel${fromChart ? ' from-dental-chart' : ''}`}>
       <header className="patient-entry-header">
         <div className="patient-entry-mark" aria-hidden="true"><Ic n={quote ? 'file' : 'tooth'} s={21} c="currentColor" /></div>
-        <div className="patient-entry-heading"><span>{quote ? 'PREVENTIVO' : 'PRESTAZIONI'}</span><h2 id="patient-entry-title" ref={titleRef} tabIndex={-1}>{patientName}</h2></div>
+        <div className="patient-entry-heading"><span>{quote ? 'PREVENTIVO' : 'PRESTAZIONI'}{fromChart && rows.length === 1 && rows[0].tooth ? ` · Dente ${rows[0].tooth}` : ''}</span><h2 id="patient-entry-title" ref={titleRef} tabIndex={-1}>{patientName}</h2></div>
         <button type="button" className="patient-entry-close" aria-label="Chiudi" disabled={saving} onClick={close}><Ic n="x" s={20} c="currentColor" /></button>
       </header>
       <div className="patient-entry-scroll" ref={scrollRef} onFocusCapture={event => { if (event.target.matches('input,textarea')) { inputRef.current = event.target; setTyping(true); } }} onBlurCapture={event => { if (event.target === inputRef.current && !event.relatedTarget?.matches('input,textarea')) setTyping(false); }}>
@@ -123,7 +125,7 @@ export default function PatientPlanEntry({ patient, mode, plans = [], pricelist 
           <div className="patient-entry-intro"><h3>{quote ? 'Prepara il preventivo' : 'Quali prestazioni vuoi inserire?'}</h3><p>Cerca nel tuo listino o scrivi una voce libera.</p></div>
           {patient.anamnesiAllarme && <p role="alert" className="patient-entry-warning">Allarme anamnesi: verifica le segnalazioni nella scheda paziente.</p>}
           <fieldset className="patient-entry-fields" disabled={saving || uncertain}>
-            <EntryRows rows={rows} onChange={setRows} pricelist={pricelist} dentist={!si?.vertical || si.vertical === 'dentistico'} name="Prestazione" allowDuplicate={false} compactTeeth />
+            <EntryRows rows={rows} onChange={setRows} pricelist={pricelist} dentist={!si?.vertical || si.vertical === 'dentistico'} name="Prestazione" allowDuplicate={false} compactTeeth collapseTeeth={fromChart} />
             {!quote && scopeChoices}
             <details className="patient-entry-options" open={!quote && eligible.length > 1 && !planId}><summary>{quote ? 'Nome del preventivo' : 'Piano di destinazione'}</summary><div>
               {!quote && <label className="patient-entry-option-field">Salva nel piano<select value={planId} onChange={e => setPlanId(e.target.value)}><option value="">Scegli piano…</option>{eligible.map(p => <option key={p.id} value={p.id}>{p.titolo}</option>)}<option value="new">Nuovo piano</option></select></label>}
