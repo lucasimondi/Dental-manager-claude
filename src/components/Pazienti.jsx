@@ -7,7 +7,7 @@ import PatientWorkspaceBoundary from './PatientWorkspaceBoundary.jsx';
 import PazienteFormModal from './PazienteFormModal.jsx';
 import { salvaPosizione, pulisciPosizione } from '../lib/posizioneNavigazione';
 
-export default function Pazienti({ patients, setPatients, plans, setPlans, payments, setPayments, appointments, setAppointments, richiami, setRichiami, si, features, studioMembership, currentUserId, isStudioAdmin, onNuovoPiano, implants, setImplants, onNuovoAppuntamento, onOpenPatient, templates, pricelist, autoOpenNew, onAutoOpenNewHandled }) {
+export default function Pazienti({ patients, setPatients, plans, setPlans, payments, setPayments, appointments, setAppointments, richiami, setRichiami, si, features, studioMembership, currentUserId, isStudioAdmin, onNuovoPiano, onSavePatientEntry, implants, setImplants, onNuovoAppuntamento, onOpenPatient, templates, pricelist, autoOpenNew, onAutoOpenNewHandled }) {
   // POL-UI-042: the modal's own form state now lives inside the reusable
   // PazienteFormModal (also opened from the patient record's "Modifica"
   // button, see App.jsx) — this only needs to remember WHICH patient (or
@@ -179,6 +179,7 @@ export default function Pazienti({ patients, setPatients, plans, setPlans, payme
     return (
       <PatientWorkspaceBoundary
         key={scheda.id}
+        onSavePatientEntry={onSavePatientEntry}
         paz={scheda} plans={plans} setPlans={setPlans} payments={payments} appointments={appointments}
         si={si} features={features} studioMembership={studioMembership} currentUserId={currentUserId} isStudioAdmin={isStudioAdmin} implants={implants} setImplants={setImplants} pricelist={pricelist}
         onClose={() => { setScheda(null); pulisciPosizione(['schedaPazId', 'schedaPazTab']); }}

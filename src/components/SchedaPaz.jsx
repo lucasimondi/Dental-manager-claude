@@ -6,6 +6,7 @@ import { aggregateSaldi, totalePagatoPaziente } from '../lib/domain/incassiMath.
 import { waAbilitato, waUrl } from './ui/WaAction.jsx';
 import PianoDrillDown from './PianoDrillDown.jsx';
 import PdfView from './PdfView.jsx';
+import PatientEntryActions from './PatientEntryActions.jsx';
 import IncassoModal from './IncassoModal.jsx';
 import PazienteFormModal from './PazienteFormModal.jsx';
 
@@ -38,7 +39,7 @@ const PatientQuickActions = lazy(() => import('./PatientQuickActions.jsx'));
 const PatientWorkspaceDocuments = lazy(() => import('./PatientWorkspaceDocuments.jsx'));
 const PatientWorkspaceConsentFlow = lazy(() => import('./PatientWorkspaceDocuments.jsx').then((module) => ({ default: module.PatientWorkspaceConsentFlow })));
 
-export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {}, initialAction, implants = [], setImplants, setPatients, setPayments, richiami = [], setRichiami, onNuovoAppuntamento, onPatientChange, studioMembership, currentUserId, isStudioAdmin, saldiPiani = {}, pricelist = [], features }) {
+export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {}, initialAction, onAddTreatment, onCreateQuote, implants = [], setImplants, setPatients, setPayments, richiami = [], setRichiami, onNuovoAppuntamento, onPatientChange, studioMembership, currentUserId, isStudioAdmin, saldiPiani = {}, pricelist = [], features }) {
   const [tab, setTab] = useState(initTab || 'info');
   // Il documento aperto (ricetta, documento medico, fattura, consenso) si riapre da solo se l'app
   // viene ricaricata da zero tornando da un'altra app (iPhone); il testo lo tiene la sua bozza.
@@ -312,6 +313,8 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
         </button>
         <button onClick={() => setEditOpen(true)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, padding: '6px 11px', cursor: 'pointer', color: '#fff', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}><Ic n="edit" s={13} c="#fff" />Modifica</button>
       </div>
+
+      <PatientEntryActions onTreatment={onAddTreatment} onQuote={onCreateQuote} />
 
       {onNuovoAppuntamento && <button type="button" onClick={() => onNuovoAppuntamento(paz.id)} style={{ minHeight: 44, flexShrink: 0, padding: '10px 14px', textAlign: 'left', background: C.priL, color: C.pri, border: 'none', fontWeight: 700 }}>Fissa prossimo nell’agenda</button>}
 

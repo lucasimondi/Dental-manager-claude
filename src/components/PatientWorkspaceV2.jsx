@@ -1,3 +1,4 @@
+import PatientEntryActions from './PatientEntryActions.jsx';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Ic } from './ui';
 import { fmt, fmtD } from '../lib/utils';
@@ -184,7 +185,7 @@ function QuickCreateDrawer({ kind, plans, context, model, realMode, onClose, onC
   </DetailDrawer>;
 }
 
-export default function PatientWorkspaceV2({ context, patient, plans, payments, appointments, studioInfo = {}, documentClient, realMode = false, capabilities = {}, canonicalFinancial, initialTab = 'info', initialDocumentRequest, onDocumentRequestHandled = () => {}, onClose = () => {}, onNuovoAppuntamento, onEdit = () => {} }) {
+export default function PatientWorkspaceV2({ context, patient, plans, payments, appointments, studioInfo = {}, documentClient, realMode = false, capabilities = {}, canonicalFinancial, initialTab = 'info', initialDocumentRequest, onDocumentRequestHandled = () => {}, onClose = () => {}, onNuovoAppuntamento, onAddTreatment, onCreateQuote, onEdit = () => {} }) {
   // Demo fixture regression label: /5 completate. Real mode always renders the actual denominator below.
   const model = useMemo(() => buildPatientWorkspaceV2Model({ patient, plans, payments, appointments }), [patient, plans, payments, appointments]);
   const [drawer, setDrawer] = useState(null);
@@ -252,6 +253,8 @@ export default function PatientWorkspaceV2({ context, patient, plans, payments, 
         </div>
       </div>
     </header>
+
+    <PatientEntryActions onTreatment={onAddTreatment} onQuote={onCreateQuote} />
 
     <section className="pw2-kpis" aria-label="Indicatori paziente">
       {kpis.map((kpi) => <button key={kpi.id} className={kpi.tone} onClick={() => setDrawer(kpi.id)}><span className="pw2-kpi-icon"><Ic n={kpi.icon} s={17} c="currentColor" /></span><span><small>{kpi.label}</small><strong>{kpi.value}</strong></span><span aria-hidden="true">›</span></button>)}

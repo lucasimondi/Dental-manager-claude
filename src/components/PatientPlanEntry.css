@@ -1,0 +1,16 @@
+html .pol-modal-backdrop.patient-entry-backdrop, html .pol-modal-sheet.patient-entry-sheet { animation:none !important; }
+.patient-entry-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; padding:10px 14px; flex-shrink:0; background:var(--surface-card); }
+.patient-entry-actions button { min-width:0; min-height:48px; padding:10px; border-radius:12px; border:1px solid var(--brand-primary); background:var(--brand-primary); color:white; font:inherit; font-size:13px; font-weight:750; cursor:pointer; }
+.patient-entry-actions button + button { background:var(--surface-card); color:var(--brand-primary); }
+.patient-entry-actions button:focus-visible { outline:2px solid var(--brand-primary); outline-offset:3px; }
+.patient-plan-entry fieldset { border:0; margin:0; padding:0; min-width:0; }
+.patient-plan-entry details > summary { min-height:44px; cursor:pointer; color:var(--text-secondary); }
+.patient-entry-sheet .pol-modal-header { flex-shrink:0; }
+.patient-entry-sheet .pol-modal-content { min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+@media(max-width:767px) {
+ html .pol-modal-backdrop.patient-entry-backdrop { padding:0 !important; align-items:stretch !important; }
+ html .pol-modal-sheet.patient-entry-sheet[data-mobile-variant="fullscreen"] { width:100% !important; max-width:none !important; height:100dvh !important; max-height:100dvh !important; border-radius:0 !important; margin:0 !important; display:flex; flex-direction:column; }
+ .patient-entry-sheet .pol-modal-header { padding-top:max(12px,env(safe-area-inset-top)) !important; }
+ .patient-entry-sheet .pol-modal-content { flex:1; padding:14px !important; }
+ .patient-entry-sheet .appointment-save-bar { bottom:-14px; }
+}

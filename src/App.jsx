@@ -557,6 +557,17 @@ export default function App() {
     });
   });
 
+  const savePatientEntry = async (patient, draft) => {
+    const { persistPatientEntry } = await import('./lib/appointmentEntry.js');
+    let savedPlan;
+    const result = await persistPatientEntry({ db: DB, patient, draft, onApplied: (kind, row) => {
+      if (kind !== 'plan') return;
+      savedPlan = row;
+      setPlans(current => current.some(p => String(p.id) === String(row.id))
+        ? current.map(p => String(p.id) === String(row.id) ? row : p) : [...current, row]);
+    } });
+    return { ...result, savedPlan };
+  };
   const goNuovoPiano = (id) => { setInitPatId(id); setPage('piani'); };
   const goNuovoElemento = (target) => { setAutoOpenNew(target); setPage(target); };
   // POL-AI-007: Poliedron chat's "payment.create" — same shape as
@@ -746,6 +757,7 @@ export default function App() {
           <PatientWorkspaceBoundary
             key={schedaDashPaz.paz.id}
             paz={schedaDashPaz.paz}
+            onSavePatientEntry={savePatientEntry}
             initTab={schedaDashPaz.tab}
             plans={plans} setPlans={setPlansSync}
             payments={payments}
@@ -856,6 +868,7 @@ export default function App() {
             {page === 'paz' && (
               <Pazienti
                 patients={patients} setPatients={setPatientsSync}
+                onSavePatientEntry={savePatientEntry}
                 plans={plans} setPlans={setPlansSync}
                 payments={payments} setPayments={setPaymentsSync} appointments={appointments} si={studioInfo}
                 richiami={richiami} setRichiami={setRichiamiSync}

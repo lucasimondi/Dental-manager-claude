@@ -1,0 +1,15 @@
+# Direct patient treatment and quote entry
+
+PO: simplify patient flow; treatment and quote insertion must open in one click.
+
+Both the stable record and the enabled real V2 record expose Aggiungi prestazione and Nuovo preventivo immediately below identity. PatientWorkspaceBoundary owns a lazy, mounted-over-record editor, preserving the underlying tab and drafts. App supplies the same verified save callback to global and patient-list boundaries; actions are absent without it. Ordinary navigation, V2 status-write restrictions, feature flags and agenda actions are preserved.
+
+PatientPlanEntry is a focused modal, fullscreen on mobile, with the patient's identity fixed, description/list-price, editable price, optional tooth, duplication and the existing odontogram. EntryRows is shared with AppointmentWorkspace. A single eligible active/accepted plan is preselected, none selects New plan, multiple plans require explicit choice inside the same form. Quote starts directly with one editable line; title is optional disclosure. Save stays in the form and resets confirmed rows; Save and close returns to the same record. Saved plan PDF uses buildPreventivoPdf and PdfViewerModal, no duplicate totals or PDF builder. No implied acceptance, execution or payment.
+
+preparePatientEntry/persistPatientEntry reuse the existing preparation and persistence core. Appointment wrappers retain required identity and appointment/patient correspondence checks. Direct patient saves reread patient and plans through the existing tenant-scoped DB adapter and verify confirmed rows before updating App's plain state setters. No duplicate optimistic insert. All rows are validated before the first write; failed/uncertain writes stop, retain inputs and prohibit replay in the open editor. Saves use a synchronous tap lock. This does not add a transaction, row versioning, server idempotency or concurrent locking; existing concurrency limits remain. No schema, RLS, tenancy, capability, financial-formula, data migration or deployment architecture change.
+
+Keyboard focus starts in description, Tab stays within the dialog, Escape closes unless saving, close restores focus. Modal locks reference-count the existing shared page lock. Mobile override explicitly uses fullscreen variant, outranking the standard modal rules; animations are disabled for immediate opening.
+
+Validation: five new Node service cases plus existing appointment service and full 1502-test suite. Synthetic browser fixture tests both legacy and V2 direct opening/save-return, list-price prefill, row duplication with separate teeth, quote save and PDF viewer, multiple-plan validation and responsive form geometry at 375/768/1024/1440. Mobile final form width375/height740 without horizontal overflow. No live account or production writes; physical Android keyboard/touch and download/share not verified. Repro: tests/visual/patient-entry-responsive.html on normal local Vite preview; fixtures use synthetic in-memory adapter only.
+
+Rollback: revert dedicated PR; retain saved plans and immutable stable checkpoints. No remote migrations or manual deploy.

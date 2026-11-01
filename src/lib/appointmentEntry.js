@@ -55,6 +55,11 @@ export async function persistBookingTreatment({db, patientId, row, planId, onApp
 
 export function prepareAppointmentEntry({ patient, appointment, plans, draft }) {
   if (!patient?.id || String(appointment?.pazienteId) !== String(patient.id)) throw new Error('Appuntamento e paziente non corrispondono.');
+  return preparePatientEntry({ patient, plans, draft });
+}
+
+export function preparePatientEntry({ patient, plans, draft }) {
+  if (!patient?.id) throw new Error('Paziente non valido.');
   const expanded = draft.implantPreset ? expandImplantQuotes(draft.items, draft.quoteItems) : draft;
   const items = entryItems(expanded.items), quoteItems = entryItems(expanded.quoteItems);
   const patientPlans = plans.filter(p => String(p.pazienteId) === String(patient.id));
@@ -89,13 +94,25 @@ export function prepareAppointmentEntry({ patient, appointment, plans, draft }) 
 // Existing tenant-scoped adapter only. Validate all input before any write;
 // await the real plan ID before inserting its payment. No optimistic temp IDs.
 export async function persistAppointmentEntry({ db, patient, appointment, draft, onApplied = () => {} }) {
+  if (!appointment?.id) throw new Error('Appuntamento non valido.');
+  return persistEntry({ db, patient, appointment, draft, onApplied });
+}
+
+export async function persistPatientEntry({ db, patient, draft, onApplied = () => {} }) {
+  return persistEntry({ db, patient, draft, onApplied });
+}
+
+async function persistEntry({ db, patient, appointment, draft, onApplied }) {
   let writesStarted = false, completed = 0;
   try {
+    if (!patient?.id) throw new Error('Paziente non valido.');
     const [freshPatient, freshAppointment, plans] = await Promise.all([
-      db.getById('dm_p', patient.id), db.getById('dm_a', appointment.id), db.getAll('dm_pl', { throwOnError: true }),
+      db.getById('dm_p', patient.id), appointment ? db.getById('dm_a', appointment.id) : Promise.resolve(null), db.getAll('dm_pl', { throwOnError: true }),
     ]);
-    if (!freshPatient || String(freshPatient.id) !== String(patient.id) || !freshAppointment || String(freshAppointment.id) !== String(appointment.id) || String(freshAppointment.pazienteId) !== String(patient.id)) throw new Error('Impossibile verificare il paziente dell’appuntamento.');
-    const prepared = prepareAppointmentEntry({ patient: freshPatient, appointment: freshAppointment, plans, draft });
+    if (!freshPatient || String(freshPatient.id) !== String(patient.id) || (appointment && (!freshAppointment || String(freshAppointment.id) !== String(appointment.id) || String(freshAppointment.pazienteId) !== String(patient.id)))) throw new Error('Impossibile verificare il paziente.');
+    const prepared = appointment
+      ? prepareAppointmentEntry({ patient: freshPatient, appointment: freshAppointment, plans, draft })
+      : preparePatientEntry({ patient: freshPatient, plans, draft });
     let treatmentId, quoteId;
     const savePlan = async (plan, kind) => {
       writesStarted = true;
@@ -120,7 +137,7 @@ export async function persistAppointmentEntry({ db, patient, appointment, draft,
       if (!saved?.id || String(saved.pazienteId) !== String(patient.id)) throw new Error('Incasso non confermato.');
       completed++; onApplied('payment', saved);
     }
-    return { completed, treatmentId, skipped:prepared.treatment?.skipped || 0 };
+    return { completed, treatmentId, quoteId, skipped:prepared.treatment?.skipped || 0 };
   } catch (cause) {
     const error = new Error(cause.message || 'Salvataggio non riuscito.');
     error.writesStarted = writesStarted; error.completed = completed; throw error;

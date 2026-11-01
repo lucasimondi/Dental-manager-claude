@@ -24,7 +24,7 @@ function ImplantPreview({ row }) {
   </div>;
 }
 
-function EntryRows({ rows, onChange, listId, pricelist, dentist, name }) {
+export function EntryRows({ rows, onChange, listId, pricelist, dentist, name }) {
   const update = (index, patch) => onChange(rows.map((r,i) => i === index ? { ...r, ...patch } : r));
   return <div className="appointment-entry-rows">{rows.map((row,index) => {
     const implant = dentist && isImplantQuoteRequest(row.description);

@@ -1,10 +1,22 @@
-import React, { Suspense, lazy, useMemo } from 'react';
+import React, { Suspense, lazy, useMemo, useState } from 'react';
 import SchedaPaz from './SchedaPaz.jsx';
 import { createPatientWorkspaceRealAdapter, isPatientWorkspaceV2Enabled } from '../lib/patientWorkspaceRealAdapter.js';
+
+const PatientPlanEntry = lazy(() => import('./PatientPlanEntry.jsx'));
 
 const PatientWorkspaceV2 = lazy(() => import('./PatientWorkspaceV2.jsx'));
 
 export default function PatientWorkspaceBoundary(props) {
+  const [entry, setEntry] = useState(null);
+  const canSave = typeof props.onSavePatientEntry === 'function';
+  const actions = canSave ? { onAddTreatment: () => setEntry('treatment'), onCreateQuote: () => setEntry('quote') } : {};
+  return <>
+    <PatientRecordContent {...props} {...actions} />
+    {entry && <Suspense fallback={<div role="status">Caricamento modulo…</div>}><PatientPlanEntry key={`${props.paz.id}:${entry}`} patient={props.paz} mode={entry} plans={props.plans} pricelist={props.pricelist} si={props.si} features={props.features} onSave={draft => props.onSavePatientEntry(props.paz, draft)} onClose={() => setEntry(null)} /></Suspense>}
+  </>;
+}
+
+function PatientRecordContent(props) {
   const { paz, plans, payments, appointments, pricelist, richiami, documents, canonicalFinancial, financialScope,
     features, studioMembership, currentUserId, isStudioAdmin, initTab, initialDocumentRequest } = props;
   const context = useMemo(() => createPatientWorkspaceRealAdapter({
@@ -40,6 +52,8 @@ export default function PatientWorkspaceBoundary(props) {
       initialTab={initTab}
       initialDocumentRequest={initialDocumentRequest}
       onDocumentRequestHandled={props.onDocumentRequestHandled}
+      onAddTreatment={props.onAddTreatment}
+      onCreateQuote={props.onCreateQuote}
       onClose={props.onClose}
       onNuovoAppuntamento={props.onNuovoAppuntamento}
       onEdit={() => props.onEdit?.(paz)}
