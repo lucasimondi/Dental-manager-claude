@@ -7,3 +7,5 @@
 - DATABASE/PRODUCTION: none; no schema/RLS/capability/tenancy/financial changes. Stable refs immutable. Temporary board/host override removed.
 - STATUS WAITING_PRODUCT_OWNER after same-PR update and exact-head check inspection; explicit new Mergia per AGENTS.md before merge; no manual deployment.
 - ROLLBACK revert PR260, retain saved plan rows and immutable checkpoints.
+
+- MERGE IN_PROGRESS: PO authorized Mergia for PR260. Integrating master4ecdea035 after PR261/262; preserve all Personal code and coordination handoffs. Revalidate exact integrated tree before merge.
