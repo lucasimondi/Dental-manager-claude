@@ -66,3 +66,7 @@ In Oggi, «Da comprare» permette aggiunta (quantità nel testo), categorie Spes
 ## Diario — amor fati
 
 Dalla copertina in Oggi o dal libro nella testata: diario antico con pagine sfogliabili, testo e immagini incollabili, data automatica al primo pensiero del giorno, ricerca e salto a data/pagina, pagine automatiche o manuali e pagine bianche. Salvataggio privato nell’archivio esistente con controllo delle modifiche concorrenti; Esporta scarica testo e copie delle immagini in JSON. Foto ridimensionate per il diario. Serve connessione per salvare; attendere “Salvato” prima di uscire. Nessun contenuto inviato all’AI. Vedi `docs/architecture/personal-diario-amor-fati.md`.
+
+## Biblioteca · Filosofia
+
+Dalla Home, accanto ad *amor fati*, oppure dall’icona biblioteca nella testata. Trattato didattico con indice di 40 capitoli e cinque capitoli iniziali sviluppati: introduzione, mito e ragione, India e Cina, Mileto, pitagorici. Ricerca nell’indice, lettura sequenziale, testo ingrandibile, fonti e domande di riflessione. I capitoli futuri riportano «Da sviluppare». Il contenuto è di sola lettura; non salva avanzamento o annotazioni. Vedi `docs/architecture/personal-didattica-filosofia.md`.
