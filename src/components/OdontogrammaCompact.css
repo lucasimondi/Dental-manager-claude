@@ -1,0 +1,19 @@
+.odo-compact { border-top:1px solid #edf1f5; padding-top:10px; margin-top:2px; min-width:0; }
+.odo-compact-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:10px; }
+.odo-compact-heading > span { font-size:11px; font-weight:650; color:#57748e; }
+.odo-compact-heading small { max-width:60%; text-align:right; font-size:10px; color:#7290aa; line-height:1.4; }
+.odo-compact-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 12px; }
+.odo-compact-quadrant > span { display:block; font-size:9px; text-transform:uppercase; letter-spacing:.04em; color:#8a9db0; margin-bottom:5px; }
+.odo-compact-quadrant > div { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:3px; }
+.odo-compact-quadrant button { width:100%; min-width:0; min-height:28px; border:1px solid #dce5ed; border-radius:6px; padding:3px 1px; background:#f7fafc; color:#647d95; font:inherit; font-size:10px; font-weight:600; cursor:pointer; touch-action:manipulation; }
+.odo-compact-quadrant button[aria-pressed="true"] { background:#2d72aa; border-color:#2d72aa; color:#fff; box-shadow:0 2px 4px #2d72aa1a; }
+.odo-compact-quadrant button:focus-visible { outline:2px solid #3480bb; outline-offset:1px; }
+.odo-compact-clear { display:block; min-height:28px; padding:6px 0 0; margin-left:auto; border:0; background:none; color:#6f8da6; font:inherit; font-size:10px; cursor:pointer; }
+@media(min-width:768px) { .odo-compact-grid { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+
+.odo-compact-heading { align-items:center; margin-bottom:7px; min-height:24px; }
+.odo-compact-heading small { flex:1; line-height:1.2; }
+.odo-compact-clear { margin:0; padding:0; min-height:24px; font-size:9px; flex:none; }
+.odo-compact-grid { gap:7px 10px; }
+.odo-compact-quadrant > span { line-height:12px; margin-bottom:4px; }
+.odo-compact-quadrant button { height:26px; min-height:26px; padding:0; line-height:1; box-sizing:border-box; }

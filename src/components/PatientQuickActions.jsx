@@ -61,9 +61,9 @@ export default function PatientQuickActions({ patient, plans = [], setPatients, 
     { id: 'piano', icon: 'tooth', label: 'Nuovo piano', onClick: () => onNewPlan?.(patient.id) },
   ];
 
-  return <Crd style={{ marginTop: 10 }}>
+  return <Crd className="patient-quick-actions" style={{ marginTop: 10 }}>
     <div style={{ fontSize: 11, fontWeight: 800, color: C.pri, marginBottom: 8 }}>Azioni paziente</div>
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+    <div className="patient-quick-action-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
       {ACTIONS.map((a) => (
         <button key={a.id} type="button" onClick={a.onClick} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '11px 4px', borderRadius: 12, border: `1px solid ${C.brd}`, background: C.bg, cursor: 'pointer' }}>
           <div style={{ width: 34, height: 34, borderRadius: 10, background: C.priL, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

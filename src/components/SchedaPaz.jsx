@@ -6,6 +6,8 @@ import { aggregateSaldi, totalePagatoPaziente } from '../lib/domain/incassiMath.
 import { waAbilitato, waUrl } from './ui/WaAction.jsx';
 import PianoDrillDown from './PianoDrillDown.jsx';
 import PdfView from './PdfView.jsx';
+import PatientEntryActions from './PatientEntryActions.jsx';
+import PatientDentalOverview from './PatientDentalOverview.jsx';
 import IncassoModal from './IncassoModal.jsx';
 import PazienteFormModal from './PazienteFormModal.jsx';
 
@@ -17,8 +19,8 @@ import PazienteFormModal from './PazienteFormModal.jsx';
 // altrove in questo file (PianoDrillDown.jsx) per lo stesso concetto.
 function SezioneComparsa({ titolo, badge, aperta, onToggle, children }) {
   return (
-    <Crd style={{ marginBottom: 10 }}>
-      <button type="button" onClick={onToggle} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+    <Crd className="patient-record-section" style={{ marginBottom: 10 }}>
+      <button type="button" aria-expanded={aperta} onClick={onToggle} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
         <span style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{titolo}{badge != null ? ` (${badge})` : ''}</span>
         <span aria-hidden="true" style={{ color: C.txm, fontSize: 11, display: 'inline-block', transform: aperta ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>▶</span>
       </button>
@@ -38,7 +40,7 @@ const PatientQuickActions = lazy(() => import('./PatientQuickActions.jsx'));
 const PatientWorkspaceDocuments = lazy(() => import('./PatientWorkspaceDocuments.jsx'));
 const PatientWorkspaceConsentFlow = lazy(() => import('./PatientWorkspaceDocuments.jsx').then((module) => ({ default: module.PatientWorkspaceConsentFlow })));
 
-export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {}, initialAction, implants = [], setImplants, setPatients, setPayments, richiami = [], setRichiami, onNuovoAppuntamento, onPatientChange, studioMembership, currentUserId, isStudioAdmin, saldiPiani = {}, pricelist = [], features }) {
+export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {}, initialAction, onAddTreatment, onCreateQuote, implants = [], setImplants, setPatients, setPayments, richiami = [], setRichiami, onNuovoAppuntamento, onPatientChange, studioMembership, currentUserId, isStudioAdmin, saldiPiani = {}, pricelist = [], features }) {
   const [tab, setTab] = useState(initTab || 'info');
   // Il documento aperto (ricetta, documento medico, fattura, consenso) si riapre da solo se l'app
   // viene ricaricata da zero tornando da un'altra app (iPhone); il testo lo tiene la sua bozza.
@@ -264,67 +266,38 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
   const prossimoApp = patApp.filter((a) => a.data >= today()).sort((a, b) => a.data.localeCompare(b.data) || a.ora.localeCompare(b.ora))[0];
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: C.bg, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
-      <div style={{ background: C.priD, padding: '12px 14px', paddingTop: 'max(12px,env(safe-area-inset-top))', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-        <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 8, padding: 8, cursor: 'pointer', display: 'flex', flexShrink: 0 }}><Ic n="back" s={18} c="#fff" /></button>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: '#fff', fontWeight: 800, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{paz.nome} {paz.cognome}</div>
-          {/* POL-UI-021: Product Owner — "il numero di telefono paziente
-              deve essere sotto il nome in header". */}
-          {paz.telefono && <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11 }}>{paz.telefono}</div>}
-          {paz.cf && <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, fontFamily: 'monospace' }}>{paz.cf}</div>}
+    <div className="patient-record-clean patient-record-legacy" data-dental-home={isDentistico && tab === 'info' ? 'true' : undefined} style={{ position: 'fixed', inset: 0, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
+      <header className="patient-clean-header">
+        <div className="patient-clean-toolbar">
+          <button type="button" className="patient-clean-back" onClick={onClose} aria-label="Torna indietro"><Ic n="back" s={19} c="currentColor" /></button>
+          <span className="patient-clean-eyebrow">Scheda paziente</span>
+          <button type="button" onClick={() => setAnamnesiPopup(true)}
+            title={anamnesiState === 'mancante' ? 'Anamnesi mancante' : anamnesiState === 'allarme' ? 'Allarme anamnesi' : 'Nessun allarme anamnesi'}
+            aria-label={anamnesiState === 'mancante' ? 'Anamnesi mancante' : anamnesiState === 'allarme' ? 'Allarme anamnesi' : 'Nessun allarme anamnesi'}
+            className={anamnesiState === 'allarme' ? 'anamnesi-cross anamnesi-cross--allarme' : 'anamnesi-cross'}
+            style={{ background: anamnesiState === 'mancante' ? '#fff' : anamnesiState === 'allarme' ? C.dan : C.suc, border: anamnesiState === 'mancante' ? `1.5px solid ${C.brd}` : 'none' }}>
+            <svg width={16} height={16} viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2h8v6h6v8h-6v6H8v-6H2V8h6z" fill={anamnesiState === 'mancante' ? C.dan : '#fff'} /></svg>
+          </button>
+          <button type="button" className="patient-clean-edit" onClick={() => setEditOpen(true)} aria-label="Modifica paziente"><Ic n="edit" s={16} c="currentColor" /><span>Modifica</span></button>
         </div>
-        {/* POL-UI-020: Product Owner — "inserire i tasti chiamata e
-            WhatsApp in header". Stesso identico cerchio 34px del pulsante
-            Chiama per coerenza visiva; l'URL wa.me resta generato dall'unico
-            punto della app che lo decide (waUrl, in WaAction.jsx) — solo la
-            resa del pulsante è locale, non una seconda logica WhatsApp. */}
-        {paz.telefono && (
-          <a href={`tel:+39${paz.telefono.replace(/\D/g, '')}`} title="Chiama" aria-label="Chiama" style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, textDecoration: 'none' }}>
-            <Ic n="ph" s={15} c="#fff" />
-          </a>
-        )}
-        {paz.telefono && waAbilitato(features) && (
-          <a href={waUrl(paz.telefono)} target="_blank" rel="noopener noreferrer" title="WhatsApp" aria-label="WhatsApp" style={{ width: 34, height: 34, borderRadius: '50%', background: '#25D366', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, textDecoration: 'none' }}>
-            <Ic n="wa" s={16} c="#fff" />
-          </a>
-        )}
-        {/* POL-UI-020: croce anamnesi — bianca=mancante, verde=nessun
-            allarme, rossa lampeggiante=allarme (allergie/controindicazioni).
-            Click apre sempre il popup di dettaglio; se in allarme il popup
-            si apre già da solo all'apertura della scheda (vedi
-            anamnesiPopup, inizializzato sopra). Product Owner: la croce
-            deve leggersi come una vera croce medica ("croce rossa"), non
-            l'icona generica "cross" del set condiviso (usata altrove, es.
-            Pazienti.jsx, con significato di rifiuto/X) — disegnata qui
-            come forma piena a 5 quadrati, angoli netti, niente contorno. */}
-        <button
-          type="button"
-          onClick={() => setAnamnesiPopup(true)}
-          title={anamnesiState === 'mancante' ? 'Anamnesi mancante' : anamnesiState === 'allarme' ? 'Allarme anamnesi' : 'Nessun allarme anamnesi'}
-          aria-label={anamnesiState === 'mancante' ? 'Anamnesi mancante' : anamnesiState === 'allarme' ? 'Allarme anamnesi' : 'Nessun allarme anamnesi'}
-          className={anamnesiState === 'allarme' ? 'anamnesi-cross anamnesi-cross--allarme' : 'anamnesi-cross'}
-          style={{ background: anamnesiState === 'mancante' ? '#fff' : anamnesiState === 'allarme' ? C.dan : C.suc, border: anamnesiState === 'mancante' ? `1.5px solid ${C.brd}` : 'none' }}
-        >
-          <svg width={16} height={16} viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M8 2h8v6h6v8h-6v6H8v-6H2V8h6z" fill={anamnesiState === 'mancante' ? C.dan : '#fff'} />
-          </svg>
-        </button>
-        <button onClick={() => setEditOpen(true)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, padding: '6px 11px', cursor: 'pointer', color: '#fff', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}><Ic n="edit" s={13} c="#fff" />Modifica</button>
-      </div>
+        <div className="patient-clean-profile">
+          <div className="patient-clean-avatar" aria-hidden="true">{[paz.nome, paz.cognome].filter(Boolean).map(value => value.trim().charAt(0)).join('').toUpperCase()}</div>
+          <div className="patient-clean-identity"><h1>{paz.nome} {paz.cognome}</h1>{paz.cf && <small>CF · {paz.cf}</small>}</div>
+        </div>
+      </header>
+      {paz.telefono && <div className="patient-clean-contacts"><a href={`tel:+39${paz.telefono.replace(/\D/g, '')}`} aria-label="Chiama"><Ic n="ph" s={14} c="currentColor" />{paz.telefono}</a>{waAbilitato(features) && <a href={waUrl(paz.telefono)} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><Ic n="wa" s={15} c="currentColor" />WhatsApp</a>}</div>}
 
-      {onNuovoAppuntamento && <button type="button" onClick={() => onNuovoAppuntamento(paz.id)} style={{ minHeight: 44, flexShrink: 0, padding: '10px 14px', textAlign: 'left', background: C.priL, color: C.pri, border: 'none', fontWeight: 700 }}>Fissa prossimo nell’agenda</button>}
+      {isDentistico && tab === 'info' ? <PatientDentalOverview patientId={paz.id} plans={patPlans} onAddTreatment={onAddTreatment} onCreateQuote={onCreateQuote} /> : <PatientEntryActions onTreatment={onAddTreatment} onQuote={onCreateQuote} />}
+
+      {onNuovoAppuntamento && <button type="button" className="patient-clean-appointment" onClick={() => onNuovoAppuntamento(paz.id)}>Fissa prossimo nell’agenda</button>}
 
       {/* POL-UI-021: Product Owner — "le parti da pagare pagato devono
           essere cliccabili e portare alla sezione giusta" — estese a
           tutte e 4 le celle per coerenza (stessa apparenza, stesso
           comportamento), non solo le due esplicitamente citate. */}
-      <div style={{ background: C.priD, display: 'flex', borderTop: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+      <div className="patient-record-kpis" aria-label="Riepilogo paziente">
         {[{ l: 'Piani', v: patPlans.length, goTo: 'piani' }, { l: 'Pagato', v: saldiCaricati ? fmt(totalePagatoReale) : '…', goTo: 'paga' }, { l: 'Da pagare', v: saldiCaricati ? fmt(totDaPagare) : '…', goTo: 'paga' }, { l: 'Visite', v: patApp.length, goTo: 'app' }].map((s) => (
-          <button key={s.l} type="button" onClick={() => setTab(s.goTo)} style={{ flex: 1, textAlign: 'center', padding: '8px 2px', border: 'none', borderRight: '1px solid rgba(255,255,255,0.1)', background: 'none', cursor: 'pointer', font: 'inherit' }}>
-            <div style={{ color: s.l === 'Da pagare' && totDaPagare > 0 ? '#FCA5A5' : '#fff', fontWeight: 800, fontSize: 12 }}>{s.v}</div>
-            <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 9 }}>{s.l}</div>
-          </button>
+          <button key={s.l} type="button" onClick={() => setTab(s.goTo)}><strong>{s.v}</strong><span>{s.l}</span></button>
         ))}
       </div>
 
@@ -370,7 +343,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
                 denoti un riassunto" — mancante: invito a compilare; ok:
                 scritta verde "nessuna problematica da evidenziare"; in
                 allarme: scritta rossa con cosa (patologia/farmaci/ecc). */}
-            <Crd style={{ marginTop: 10, marginBottom: 10 }}>
+            <Crd className="patient-record-section patient-clinical-summary" style={{ marginTop: 10, marginBottom: 10 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Anamnesi</div>
               {anamnesiState === 'mancante' && (
                 <div>
@@ -398,7 +371,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
               {renderPagamentiSection()}
             </SezioneComparsa>
 
-            <Crd style={{ marginBottom: 10 }}>
+            <Crd className="patient-record-section" style={{ marginBottom: 10 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: C.pri, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Prossimo appuntamento</div>
               {prossimoApp ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

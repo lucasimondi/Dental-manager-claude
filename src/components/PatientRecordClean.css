@@ -1,0 +1,101 @@
+/* Patient record: identity first, direct clinical actions, quiet supporting tools. */
+.patient-record-clean { --patient-ink:#18334a; --patient-muted:#526c80; --patient-line:#e1e8ed; --patient-blue:#186ba3; color:var(--patient-ink); background:#f3f6f8; font-family:inherit; }
+.patient-clean-header { padding:16px 28px 18px; padding-top:max(16px,env(safe-area-inset-top)); background:#fff; flex-shrink:0; }
+.patient-clean-toolbar { display:flex; align-items:center; gap:10px; margin-bottom:22px; }
+.patient-clean-back,.patient-clean-edit { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-width:40px; min-height:40px; flex-shrink:0; padding:0 10px; border:1px solid var(--patient-line); border-radius:10px; background:#fff; color:#526d80; font:inherit; font-size:12px; font-weight:600; cursor:pointer; }
+.patient-clean-back { padding:0; }
+.patient-clean-eyebrow { flex:1; font-size:12px; font-weight:600; color:var(--patient-muted); }
+.patient-clean-profile { display:flex; align-items:center; gap:16px; }
+.patient-clean-avatar { display:grid; place-items:center; flex:none; width:56px; height:56px; border-radius:18px; color:#176c9c; background:linear-gradient(145deg,#e3f2fa,#e7f4f0); border:1px solid #d5e9ee; font-size:20px; font-weight:650; letter-spacing:-.5px; }
+.patient-clean-identity { flex:1; min-width:0; }
+.patient-clean-identity h1 { font-size:30px; line-height:1.15; font-weight:700; letter-spacing:-.9px; margin:0; overflow-wrap:anywhere; }
+.patient-clean-identity small { display:block; font-size:11px; color:var(--patient-muted); letter-spacing:.02em; margin-top:8px; overflow-wrap:anywhere; }
+.patient-clean-contacts { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:0 28px 18px; background:#fff; flex-shrink:0; }
+.patient-clean-contacts a { display:inline-flex; align-items:center; gap:8px; min-height:40px; padding:0 13px; border:1px solid var(--patient-line); border-radius:10px; color:#365d75; background:#fff; text-decoration:none; font-size:12px; font-weight:550; }
+.patient-clean-contacts a[aria-label="WhatsApp"] { color:#237267; border-color:#d4e8e2; background:#f5faf8; }
+.patient-record-clean > .patient-entry-actions { padding:0 28px 22px; background:#fff; gap:10px; }
+.patient-record-clean > .patient-entry-actions button { min-height:50px; border-radius:11px; font-size:13px; background:#176ba3; border-color:#176ba3; box-shadow:0 4px 10px #176ba315; }
+.patient-record-clean > .patient-entry-actions button + button { color:#245977; background:#fff; border-color:#c6d9e5; box-shadow:none; }
+.patient-clean-appointment { flex-shrink:0; min-height:42px; margin:0; padding:0 28px 14px; text-align:left; border:0; background:#fff; color:#316b8d; font:inherit; font-size:12px; font-weight:550; cursor:pointer; }
+.patient-record-kpis { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0; padding:18px 28px; flex-shrink:0; background:#edf4f8; border-top:1px solid #dde9f0; border-bottom:1px solid #dde9f0; }
+.patient-record-kpis > button { display:flex; flex-direction:column; align-items:flex-start; gap:6px; min-width:0; min-height:52px; padding:0 16px; border:0; border-left:1px solid #d6e3ec; border-radius:0; background:none; color:#1f4864; cursor:pointer; font:inherit; }
+.patient-record-kpis > button:first-child { border-left:0; padding-left:0; }
+.patient-record-kpis strong { font-weight:650; font-size:23px; letter-spacing:-.6px; max-width:100%; overflow-wrap:anywhere; }
+.patient-record-kpis span { color:#526f85; font-size:11px; font-weight:500; }
+.patient-record-clean .patient-record-nav { background:#fff; border-color:var(--patient-line); padding:20px 12px; }
+.patient-record-clean .patient-record-nav button { min-height:46px; border-radius:9px; font-weight:550; color:#526b7e; font-size:13px; }
+.patient-record-clean .patient-record-nav button.is-active { background:#eaf3fa; color:#14699d; box-shadow:inset 3px 0 #2585bb; }
+.patient-record-clean .patient-record-content { padding:24px 28px 70px; scroll-padding:20px; overscroll-behavior:contain; }
+.patient-record-clean .patient-record-section { border:1px solid var(--patient-line)!important; border-radius:14px!important; background:#fff; box-shadow:0 2px 4px #19374b03!important; padding:18px!important; }
+.patient-record-clean .patient-record-section > button { min-height:26px; }
+.patient-record-clean .patient-record-section > button > span:first-child { text-transform:none!important; letter-spacing:0!important; font-size:14px!important; font-weight:650!important; color:#284a61!important; }
+.patient-record-clean .patient-record-section > button > span:last-child { font-size:9px!important; color:#6c8698!important; }
+.patient-record-clean .patient-quick-actions { margin:22px 0!important; border:0!important; border-radius:0!important; background:transparent!important; box-shadow:none!important; padding:0!important; }
+.patient-record-clean .patient-quick-actions > div:first-child { margin-bottom:12px!important; font-size:12px!important; font-weight:650!important; color:#526c80!important; }
+.patient-record-clean .patient-quick-action-grid { gap:10px!important; }
+.patient-record-clean .patient-quick-action-grid > button { flex-direction:row!important; gap:10px!important; justify-content:flex-start; min-height:52px; padding:10px 12px!important; border-color:#dfe7ed!important; border-radius:11px!important; background:#fff!important; }
+.patient-record-clean .patient-quick-action-grid > button > div { background:#eef5fa!important; width:30px!important; height:30px!important; flex:none; }
+.patient-record-clean .patient-quick-action-grid > button > span { font-size:12px!important; font-weight:550!important; color:#365870!important; min-width:0; overflow-wrap:anywhere; }
+.patient-record-clean .patient-clinical-summary > div:first-child { font-size:12px!important; text-transform:none!important; font-weight:650!important; letter-spacing:0!important; color:#284a61!important; }
+.patient-record-clean button:focus-visible,.patient-record-clean a:focus-visible { outline:2px solid #1974a8; outline-offset:3px; }
+.patient-record-clean button:hover,.patient-clean-contacts a:hover { filter:brightness(.98); }
+/* V2 uses the same palette, typography and surface hierarchy. */
+.pw2-shell.patient-record-clean { background:#f3f6f8; }
+.pw2-shell.patient-record-clean .pw2-hero { background:#fff; color:#18334a; padding:26px 28px 20px; border-radius:0; box-shadow:none; margin:0; }
+.pw2-shell.patient-record-clean .pw2-hero::after,.pw2-shell.patient-record-clean .pw2-hero-glow { display:none; }
+.pw2-shell.patient-record-clean .pw2-back { background:#fff; border:1px solid #dce6ed; color:#526d80; width:40px; height:40px; border-radius:10px; backdrop-filter:none; }
+.pw2-shell.patient-record-clean .pw2-eyebrow { color:#526c80; font-size:11px; letter-spacing:.04em; }
+.pw2-shell.patient-record-clean .pw2-identity h1 { font-size:32px; font-weight:700; letter-spacing:-.9px; line-height:1.15; margin-bottom:10px; }
+.pw2-shell.patient-record-clean .pw2-identity-meta { color:#526c80; font-size:12px; }
+.pw2-shell.patient-record-clean .pw2-cf { color:#526c80; border:0; background:none; padding:0; font-size:11px; font-weight:400; }
+.pw2-shell.patient-record-clean .pw2-action { color:#365d75; background:#fff; border:1px solid #dce6ed; border-radius:10px; min-height:42px; box-shadow:none; font-size:12px; font-weight:550; }
+.pw2-shell.patient-record-clean .pw2-kpis { margin:0; padding:18px 28px; width:100%; background:#edf4f8; border-block:1px solid #dde9f0; gap:0; }
+.pw2-shell.patient-record-clean .pw2-kpis > button { min-height:54px; padding:0 16px; border:0; border-left:1px solid #d6e3ec; border-radius:0; background:none; box-shadow:none; }
+.pw2-shell.patient-record-clean .pw2-kpis > button:first-child { border-left:0; padding-left:0; }
+.pw2-shell.patient-record-clean .pw2-kpi-icon,.pw2-shell.patient-record-clean .pw2-kpis > button > span:last-child { display:none; }
+.pw2-shell.patient-record-clean .pw2-kpis strong { font-size:22px; font-weight:650; color:#1f4864; }
+.pw2-shell.patient-record-clean .pw2-kpis small { font-size:11px; color:#526f85; font-weight:500; }
+.pw2-shell.patient-record-clean .pw2-main { padding:24px 28px 80px; max-width:1220px; margin:auto; }
+.pw2-shell.patient-record-clean .pw2-active-plan,.pw2-shell.patient-record-clean .pw2-economy,.pw2-shell.patient-record-clean .pw2-micro-profile,.pw2-shell.patient-record-clean .pw2-risk,.pw2-shell.patient-record-clean .pw2-workspace,.pw2-shell.patient-record-clean .pw2-archive { background:#fff; border:1px solid #e1e8ed; border-radius:14px; box-shadow:none; }
+.pw2-shell.patient-record-clean .pw2-action-bar { padding:0; border:0; border-radius:0; background:none; box-shadow:none; gap:12px; }
+.pw2-shell.patient-record-clean .pw2-action-bar > div:first-child small { color:#526c80; font-size:12px; }
+.pw2-shell.patient-record-clean .pw2-action-bar > div:first-child strong { display:none; }
+.pw2-shell.patient-record-clean .pw2-action-buttons { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); width:100%; gap:10px; }
+.pw2-shell.patient-record-clean .pw2-action-buttons button,.pw2-shell.patient-record-clean .pw2-action-buttons button:first-child { grid-column:auto!important; min-width:0; width:100%; min-height:48px; padding:10px; border:1px solid #dfe7ed; border-radius:11px; background:#fff; color:#365870; box-shadow:none; font-size:12px; font-weight:550; }
+.pw2-shell.patient-record-clean .pw2-plan-head h2 { font-size:23px; font-weight:650; }
+.pw2-shell.patient-record-clean .pw2-plan-table article { background:#fbfcfe; box-shadow:none; border-color:#e1e8ed; border-radius:12px; }
+@media(max-width:767px) {
+ /* The whole mobile record scrolls, including identity and KPIs. */
+ .patient-record-legacy { overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+ .patient-record-legacy .patient-record-body { flex:0 0 auto; display:block; min-height:0; overflow:visible; }
+ .patient-record-legacy .patient-record-content { overflow:visible; padding:16px 20px 80px; }
+ .patient-clean-header { padding:14px 20px 18px; padding-top:max(14px,env(safe-area-inset-top)); }
+ .patient-clean-toolbar { margin-bottom:22px; gap:9px; }
+ .patient-clean-profile { gap:13px; }
+ .patient-clean-avatar { width:50px; height:50px; border-radius:16px; font-size:18px; }
+ .patient-clean-identity h1 { font-size:26px; letter-spacing:-.7px; }
+ .patient-clean-identity small { font-size:10px; margin-top:7px; }
+ .patient-clean-edit { padding:0; width:40px; }
+ .patient-clean-edit span { display:none; }
+ .patient-clean-contacts { padding:0 20px 18px; }
+ .patient-record-clean > .patient-entry-actions { padding:0 20px 20px; gap:8px; }
+ .patient-record-clean > .patient-entry-actions button { font-size:12px; min-height:50px; padding:10px 8px; }
+ .patient-clean-appointment { padding-inline:20px; }
+ .patient-record-kpis { padding:17px 20px; }
+ .patient-record-kpis > button { min-height:45px; padding:0 8px; }
+ .patient-record-kpis strong { font-size:16px; }
+ .patient-record-kpis span { font-size:10px; }
+ .patient-record-clean .patient-record-nav-mobile { background:none; padding:20px 20px 0; border:0; color:#526c80; font-size:12px; font-weight:550; }
+ .patient-record-clean .patient-record-nav-mobile select { min-height:46px; padding:10px 12px; border:1px solid #dce5ec; border-radius:11px; background:#fff; color:#284a61; font-size:13px; font-weight:600; }
+ .patient-record-clean .patient-quick-action-grid { grid-template-columns:repeat(2,minmax(0,1fr))!important; }
+ .pw2-shell.patient-record-clean .pw2-hero { padding:20px; }
+ .pw2-shell.patient-record-clean .pw2-hero-top { grid-template-columns:40px minmax(0,1fr); gap:13px; }
+ .pw2-shell.patient-record-clean .pw2-identity h1 { font-size:27px; }
+ .pw2-shell.patient-record-clean .pw2-actions { grid-column:1/-1; display:flex; flex-wrap:wrap; margin-top:5px; }
+ .pw2-shell.patient-record-clean .pw2-kpis { padding:17px 20px; grid-template-columns:repeat(4,minmax(0,1fr)); }
+ .pw2-shell.patient-record-clean .pw2-kpis > button { padding:0 7px; min-height:48px; }
+ .pw2-shell.patient-record-clean .pw2-kpis strong { font-size:16px; overflow-wrap:anywhere; }
+ .pw2-shell.patient-record-clean .pw2-kpis small { font-size:10px; }
+ .pw2-shell.patient-record-clean .pw2-main { padding:20px 20px 80px; }
+ .pw2-shell.patient-record-clean .pw2-action-buttons { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}

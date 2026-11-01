@@ -1,3 +1,5 @@
+import PatientEntryActions from './PatientEntryActions.jsx';
+import PatientDentalOverview from './PatientDentalOverview.jsx';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Ic } from './ui';
 import { fmt, fmtD } from '../lib/utils';
@@ -184,7 +186,7 @@ function QuickCreateDrawer({ kind, plans, context, model, realMode, onClose, onC
   </DetailDrawer>;
 }
 
-export default function PatientWorkspaceV2({ context, patient, plans, payments, appointments, studioInfo = {}, documentClient, realMode = false, capabilities = {}, canonicalFinancial, initialTab = 'info', initialDocumentRequest, onDocumentRequestHandled = () => {}, onClose = () => {}, onNuovoAppuntamento, onEdit = () => {} }) {
+export default function PatientWorkspaceV2({ context, patient, plans, payments, appointments, studioInfo = {}, documentClient, realMode = false, capabilities = {}, canonicalFinancial, initialTab = 'info', initialDocumentRequest, onDocumentRequestHandled = () => {}, onClose = () => {}, onNuovoAppuntamento, onAddTreatment, onCreateQuote, onEdit = () => {} }) {
   // Demo fixture regression label: /5 completate. Real mode always renders the actual denominator below.
   const model = useMemo(() => buildPatientWorkspaceV2Model({ patient, plans, payments, appointments }), [patient, plans, payments, appointments]);
   const [drawer, setDrawer] = useState(null);
@@ -229,13 +231,13 @@ export default function PatientWorkspaceV2({ context, patient, plans, payments, 
   const workspaceContext = useMemo(() => context || createPatientWorkspaceContext({ patient, activeClinicalPlan: model.activePlans[0], clinicalPlans: model.patientPlans, treatments: clinicalRows, anatomicalContext: clinicalRows.map((item) => ({ type: item.site === 'Generale' ? 'GENERAL' : 'TOOTH', value: item.site })), alerts: [], quotes: model.patientPlans.map((plan) => ({ id: plan.id, status: plan.stato, total: planNetTotal(plan).net })), payments: model.paidRows, paymentPlans: [], installments: [], appointments, recalls: [], followups: [], documents, prescriptions: documents.filter((item) => item.category === 'prescriptions'), consents: documents.filter((item) => item.category === 'consents'), automationRules: [], timeline: clinicalFinancialTimeline, canonicalFinancial }), [context, patient, model.activePlans, model.patientPlans, model.paidRows, clinicalRows, appointments, documents, clinicalFinancialTimeline, canonicalFinancial]);
   const tabs = [['info', 'Info'], ['piani', 'Piani'], ['timeline', 'Timeline'], ['foto', 'Foto'], ['doc', 'Documenti'], ['app', 'Agenda']];
 
-  return <div className="pw2-shell">
+  return <div className="pw2-shell patient-record-clean">
     <header className="pw2-hero">
       <div className="pw2-hero-glow" />
       <div className="pw2-hero-top">
         <button className="pw2-back" onClick={onClose} aria-label="Torna indietro"><Ic n="back" s={20} c="currentColor" /></button>
         <div className="pw2-identity">
-          <span className="pw2-eyebrow">Scheda Paziente 2.0 · Preview{realMode ? ' · Dati reali' : ' demo'}</span>
+          <span className="pw2-eyebrow">{realMode ? 'Scheda paziente' : 'Scheda Paziente 2.0 · Preview demo'}</span>
           <h1>{patient?.nome} {patient?.cognome}</h1>
           <div className="pw2-identity-meta">
             {patient?.sesso && <span>{patient.sesso}</span>}
@@ -252,6 +254,8 @@ export default function PatientWorkspaceV2({ context, patient, plans, payments, 
         </div>
       </div>
     </header>
+
+    {realMode && (!studioInfo.vertical || studioInfo.vertical === 'dentistico') && tab === 'info' ? <PatientDentalOverview patientId={patient.id} plans={model.patientPlans} onAddTreatment={onAddTreatment} onCreateQuote={onCreateQuote} /> : <PatientEntryActions onTreatment={onAddTreatment} onQuote={onCreateQuote} />}
 
     <section className="pw2-kpis" aria-label="Indicatori paziente">
       {kpis.map((kpi) => <button key={kpi.id} className={kpi.tone} onClick={() => setDrawer(kpi.id)}><span className="pw2-kpi-icon"><Ic n={kpi.icon} s={17} c="currentColor" /></span><span><small>{kpi.label}</small><strong>{kpi.value}</strong></span><span aria-hidden="true">›</span></button>)}

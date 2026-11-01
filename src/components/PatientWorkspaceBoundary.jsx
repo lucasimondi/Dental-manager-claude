@@ -1,10 +1,24 @@
-import React, { Suspense, lazy, useMemo } from 'react';
+import './PatientRecordClean.css';
+import { dentalEntryTooth } from '../lib/patientDentalOverview.js';
+import React, { Suspense, lazy, useMemo, useState } from 'react';
 import SchedaPaz from './SchedaPaz.jsx';
 import { createPatientWorkspaceRealAdapter, isPatientWorkspaceV2Enabled } from '../lib/patientWorkspaceRealAdapter.js';
+
+const PatientPlanEntry = lazy(() => import('./PatientPlanEntry.jsx'));
 
 const PatientWorkspaceV2 = lazy(() => import('./PatientWorkspaceV2.jsx'));
 
 export default function PatientWorkspaceBoundary(props) {
+  const [entry, setEntry] = useState(null);
+  const canSave = typeof props.onSavePatientEntry === 'function';
+  const actions = canSave ? { onAddTreatment: options => setEntry({mode:'treatment',tooth:dentalEntryTooth(options?.tooth)}), onCreateQuote: options => setEntry({mode:'quote',tooth:dentalEntryTooth(options?.tooth)}) } : {};
+  return <>
+    <PatientRecordContent {...props} {...actions} />
+    {entry && <Suspense fallback={<div role="status">Caricamento modulo…</div>}><PatientPlanEntry key={`${props.paz.id}:${entry.mode}:${entry.tooth}`} patient={props.paz} mode={entry.mode} initialTooth={entry.tooth} plans={props.plans} pricelist={props.pricelist} si={props.si} features={props.features} onSave={draft => props.onSavePatientEntry(props.paz, draft)} onClose={() => setEntry(null)} /></Suspense>}
+  </>;
+}
+
+function PatientRecordContent(props) {
   const { paz, plans, payments, appointments, pricelist, richiami, documents, canonicalFinancial, financialScope,
     features, studioMembership, currentUserId, isStudioAdmin, initTab, initialDocumentRequest } = props;
   const context = useMemo(() => createPatientWorkspaceRealAdapter({
@@ -40,6 +54,8 @@ export default function PatientWorkspaceBoundary(props) {
       initialTab={initTab}
       initialDocumentRequest={initialDocumentRequest}
       onDocumentRequestHandled={props.onDocumentRequestHandled}
+      onAddTreatment={props.onAddTreatment}
+      onCreateQuote={props.onCreateQuote}
       onClose={props.onClose}
       onNuovoAppuntamento={props.onNuovoAppuntamento}
       onEdit={() => props.onEdit?.(paz)}

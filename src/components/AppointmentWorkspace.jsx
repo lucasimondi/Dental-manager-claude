@@ -3,6 +3,7 @@ import React, { lazy, Suspense, useEffect, useId, useRef, useState } from 'react
 import { PannelloInvioDocumento } from './ui';
 import { lockPageScroll } from './ui/Modal.jsx';
 import Odontogramma from './Odontogramma.jsx';
+import TreatmentPricePicker from './TreatmentPricePicker.jsx';
 import { implantQuoteRows, isImplantQuoteRequest } from '../lib/domain/implantQuote.js';
 import { planAssignmentForPatient } from '../lib/domain/incassiActions.js';
 const AppointmentDocuments = lazy(() => import('./AppointmentDocuments.jsx'));
@@ -24,17 +25,20 @@ function ImplantPreview({ row }) {
   </div>;
 }
 
-function EntryRows({ rows, onChange, listId, pricelist, dentist, name }) {
+export function EntryRows({ rows, onChange, listId, pricelist, dentist, name, allowDuplicate = true, compactTeeth = false, collapseTeeth = false }) {
   const update = (index, patch) => onChange(rows.map((r,i) => i === index ? { ...r, ...patch } : r));
   return <div className="appointment-entry-rows">{rows.map((row,index) => {
     const implant = dentist && isImplantQuoteRequest(row.description);
     const selectedTeeth = String(row.tooth || '').split(/[^0-9]+/).map(Number).filter(d => d>=11 && d<=48 && d%10>=1 && d%10<=8);
     return <div key={index} className="appointment-entry-row">
-    <Field label={`${name} ${index + 1}`}><input list={listId} placeholder="Scrivi o scegli dal listino" value={row.description} onChange={e => { const item = pricelist.find(p => p.nome === e.target.value); update(index, { description: e.target.value, ...(item && !isImplantQuoteRequest(e.target.value) ? { price: String(item.prezzo) } : {}) }); }} /></Field>
+    <Field label={`${name} ${index + 1}`}><TreatmentPricePicker label={`${name} ${index + 1}`} value={row.description} pricelist={pricelist}
+      onChange={description => { const item = pricelist.find(p => p.nome === description); update(index, { description, ...(item && !isImplantQuoteRequest(description) && item.prezzo != null ? { price: String(item.prezzo) } : {}) }); }}
+      onSelect={item => update(index, { description: item.nome, ...(!isImplantQuoteRequest(item.nome) && item.prezzo != null ? { price: String(item.prezzo) } : {}) })} /></Field>
     <div className="appointment-field-pair"><Field label={implant ? `Totale impianto ${index + 1} (€)` : `Prezzo ${name.toLowerCase()} ${index + 1} (€)`}><input type="number" min={implant?650:0} step="0.01" inputMode="decimal" placeholder={implant?'Inserisci totale':'0,00'} value={row.price} onChange={e => update(index, { price: e.target.value })} /></Field>{dentist && <Field label={`Dente ${name.toLowerCase()} ${index + 1} (facoltativo)`}><input value={row.tooth} placeholder="es. 16" onChange={e => update(index, { tooth: e.target.value })} /></Field>}</div>
-    {dentist && <details className="appointment-tooth-picker"><summary>Odontogramma {name.toLowerCase()} {index+1}{row.tooth ? ` · ${row.tooth}` : ''}</summary><Odontogramma touchFriendly selected={selectedTeeth} onChange={()=>{}} onDenteChange={tooth=>update(index,{tooth})} /></details>}
+    {dentist && compactTeeth && (collapseTeeth ? <details className="appointment-tooth-picker"><summary>{row.tooth ? `Denti: ${row.tooth} · Modifica selezione` : 'Seleziona altri denti'}</summary><Odontogramma compact selected={selectedTeeth} onChange={()=>{}} onDenteChange={tooth=>update(index,{tooth})} /></details> : <Odontogramma compact selected={selectedTeeth} onChange={()=>{}} onDenteChange={tooth=>update(index,{tooth})} />)}
+    {dentist && !compactTeeth && <details className="appointment-tooth-picker"><summary>Odontogramma {name.toLowerCase()} {index+1}{row.tooth ? ` · ${row.tooth}` : ''}</summary><Odontogramma touchFriendly selected={selectedTeeth} onChange={()=>{}} onDenteChange={tooth=>update(index,{tooth})} /></details>}
     {implant && <ImplantPreview row={row} />}
-    <div className="appointment-row-actions"><button type="button" className="appointment-text-button" onClick={() => onChange([...rows.slice(0,index+1), {...row}, ...rows.slice(index+1)])}>Duplica {name.toLowerCase()} {index+1}</button>
+    <div className="appointment-row-actions">{allowDuplicate && <button type="button" className="appointment-text-button" onClick={() => onChange([...rows.slice(0,index+1), {...row}, ...rows.slice(index+1)])}>Duplica {name.toLowerCase()} {index+1}</button>}
     {rows.length > 1 && <button type="button" className="appointment-text-button" onClick={() => onChange(rows.filter((_,i) => i !== index))}>Rimuovi {name.toLowerCase()} {index + 1}</button>}</div>
   </div>; })}<button type="button" className="appointment-add-row" onClick={() => onChange([...rows, blankRow()])}>+ Altra {name.toLowerCase()}</button></div>;
 }
