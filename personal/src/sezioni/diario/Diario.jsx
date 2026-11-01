@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { archivioDb } from '../../lib/supabasePersonal.js';
 import { diaryId, PAGE_LENGTH, today, dateLabel, newPage, pageText, previousDate, searchDiary, splitText, loadDiary, savePage, prepareImage } from '../../lib/diario.js';
 import { beginDiarySwipe, moveDiarySwipe, endDiarySwipe } from '../../lib/diarioSwipe.js';
+import { quoteForPage } from '../../lib/diarioQuotes.js';
+import { DiaryExport } from './DiaryExport.jsx';
 import './diario.css';
 
 // Reading pages contain ordinary text. A bounded native editor owns writing/IME scroll.
@@ -39,6 +41,15 @@ function WritingEditor({ value, label, onChange, onDone, inputRef, selection, st
   </div>, document.body);
 }
 
+function PageQuote({ page }) {
+  const quote = quoteForPage(page);
+  return <blockquote className="af-quote"><p>“{quote.text}”</p><cite>{quote.author}<span>{quote.work}</span></cite></blockquote>;
+}
+function DockIcon({ name }) {
+  const paths = { back: 'M15 5l-7 7 7 7', next: 'M9 5l7 7-7 7', book: 'M12 5C8 2 3 4 3 4v15s5-2 9 1c4-3 9-1 9-1V4s-5-2-9 1v15', write: 'M14 4l6 6M4 20l5-1L21 7l-5-5L4 14z', photo: 'M3 5h18v15H3zM3 16l5-5 5 5 3-3 5 5M16 8h.01', search: 'M21 21l-6-6M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0', export: 'M12 3v12M7 8l5-5 5 5M4 14v7h16v-7' };
+  return <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]} /></svg>;
+}
+
 function CoverArt() { return <><span className="af-cover-border"><span className="af-edition">PENSIERI · RICORDI · VITA</span><span className="af-ornament">✧</span><strong>amor fati</strong><span className="af-cover-rule" /><em>Accogli ogni pagina della tua vita.</em><span className="af-cover-bottom">DIARIO PERSONALE<br /><span>Sfiora per aprire</span></span></span><span className="af-ribbon" /></>; }
 
 // The turning sheet is a read-only snapshot; the live editor and save queue stay mounted.
@@ -48,6 +59,7 @@ function TurningSheet({ turn, pages }) {
   return <div className={`af-turn-layer af-turn-${turn.direction}`} aria-hidden="true">
     <div className="af-turn-sheet"><div className="af-turn-front af-paper">
       <div className="af-page-heading"><span>amor fati</span><span>{String(turn.pageIndex + 1).padStart(2, '0')}</span></div>
+      <PageQuote page={p} />
       <div className="af-writing">{p.blocks.map((b, bi) => <div className="af-entry" key={b.id}>
         {previousDate(pages, turn.pageIndex, bi) !== b.date && <h2>{dateLabel(b.date)}</h2>}
         {b.type === 'image' ? <figure><img draggable={false} src={b.src} alt="" /><p className="af-printed-caption">{b.caption}</p></figure> : <p className="af-printed-text">{b.text}</p>}
@@ -60,7 +72,9 @@ export function Diario({ db = archivioDb, active = true, ctx }) {
   const [pages, setPages] = useState([]);
   const pagesRef = useRef([]), dirty = useRef(new Set()), revisions = useRef(new Map()), saving = useRef(false), mounted = useRef(true);
   const [loaded, setLoaded] = useState(false), [error, setError] = useState(''), [status, setStatus] = useState(''), [cover, setCover] = useState(true), [index, setIndex] = useState(0);
-  const [query, setQuery] = useState(''), [date, setDate] = useState(''), [find, setFind] = useState(false), [jump, setJump] = useState(''), [turn, setTurn] = useState(null), [imageBusy, setImageBusy] = useState(false);
+  const [query, setQuery] = useState(''), [date, setDate] = useState(''), [panel, setPanel] = useState(null), [jump, setJump] = useState(''), [turn, setTurn] = useState(null), [imageBusy, setImageBusy] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
+  const find = panel === 'search';
   const [focus, setFocus] = useState(null), [editing, setEditing] = useState(null);
   const editor = useRef(null), editorOpener = useRef(null);
   const fileInput = useRef(null), bookScroll = useRef(null), gesture = useRef(null), timer = useRef(null), turnLock = useRef(false), retryBlocked = useRef(false);
@@ -109,6 +123,7 @@ export function Diario({ db = archivioDb, active = true, ctx }) {
   }, [focus, active, turn, index]);
   const editBlock = page?.blocks.find((b) => b.id === editing);
   function startWriting(id, event) {
+    setPanel(null);
     editorOpener.current = event?.currentTarget || null;
     setFocus(null); setEditing(id);
   }
@@ -142,7 +157,8 @@ export function Diario({ db = archivioDb, active = true, ctx }) {
   }
 
   function go(next) {
-    if (turnLock.current) return;
+    if (turnLock.current || exportBusy) return;
+    setPanel(null);
     if (next < 0) { setCover(true); bookScroll.current?.scrollTo({ top: 0 }); return; }
     if (next >= pagesRef.current.length) { addPage(); return; }
     const scroller = bookScroll.current;
@@ -163,7 +179,7 @@ export function Diario({ db = archivioDb, active = true, ctx }) {
     timer.current = setTimeout(() => { setIndex(next); setTurn(null); turnLock.current = false; }, 500);
   }
   function addPage() {
-    if (turnLock.current) return;
+    if (turnLock.current || exportBusy) return;
     const list = pagesRef.current;
     const added = newPage((list.at(-1)?.order ?? -1) + 1);
     commit([...list, added], [added.id]); go(list.length); setFocus({ id: 'new' });
@@ -213,32 +229,24 @@ export function Diario({ db = archivioDb, active = true, ctx }) {
           const next = { ...newPage((list.at(-1)?.order ?? 0) + 1), blocks: [block] };
           commit([...list, next], [next.id]); setIndex(list.length);
         } else commit(list.map((p) => p.id === target.id ? { ...p, blocks: [...p.blocks, block] } : p), [target.id]);
-        setCover(false); setEditing(null); setFocus(null);
+        setCover(false); setEditing(null); setFocus(null); setPanel(null);
       }
     } catch (e) { setError(e.message); }
     finally { if (mounted.current) setImageBusy(false); }
   }
   function caption(id, text) { const current = pagesRef.current[index]; commit(pagesRef.current.map((p) => p.id === current.id ? { ...p, blocks: p.blocks.map((b) => b.id === id ? { ...b, caption: text } : b) } : p), [current.id]); }
-  function download() {
-    const blob = new Blob([JSON.stringify({ title: 'amor fati', version: 1, pages: pagesRef.current }, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = `amor-fati-${today()}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
-  function result(r) { if (turnLock.current) return; setFind(false); go(r.page); setFocus({ id: r.blockId, offset: r.offset, length: r.length, reveal: true }); }
+  function result(r) { if (turnLock.current || exportBusy) return; setPanel(null); go(r.page); setFocus({ id: r.blockId, offset: r.offset, length: r.length, reveal: true }); }
   return <section className={`af-diary${cover ? ' af-closed' : ''}`}  aria-label="Diario amor fati" onPaste={(e) => { const fs = [...(e.clipboardData?.files || [])].filter((f) => f.type.startsWith('image/')); if (fs.length) { e.preventDefault(); images(fs); } }} onDragOver={(e) => { if ([...e.dataTransfer.types].includes('Files')) e.preventDefault(); }} onDrop={(e) => { e.preventDefault(); images([...e.dataTransfer.files]); }}>
-    <div className="af-tools">
-      <button className="af-exit" onClick={() => ctx?.vai('oggi')} aria-label="Esci dal diario">←</button>
-      <button onClick={() => { if (!turnLock.current) { setCover(true); bookScroll.current?.scrollTo({ top: 0 }); } }} aria-label="Mostra copertina">amor fati <span>il mio diario</span></button>
-      <div><button onClick={() => setFind(!find)} aria-expanded={find}>Cerca</button><button onClick={download} disabled={!loaded} title="Scarica una copia completa con le immagini">Esporta</button></div>
-    </div>
-    {error && <div className="af-error" role="alert">{error}{loaded && <button onClick={() => { retryBlocked.current = false; flush(); }}>Riprova salvataggio</button>}<span>Puoi esportare una copia prima di ricaricare.</span></div>}
+    {error && <div className="af-error" role="alert">{error}{loaded && <button onClick={() => { retryBlocked.current = false; flush(); }}>Riprova salvataggio</button>}<button onClick={() => setPanel('export')}>Esporta una copia</button><span>Puoi conservare una copia prima di ricaricare.</span></div>}
     {!loaded ? <p role="status">{error ? 'Diario non aperto.' : 'Apro il tuo diario…'}</p> : <>
-      {find && <div className="af-search"><label>Cerca una parola o un ricordo<input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cosa vuoi ritrovare?" /></label><label>Vai a una data<input type="date" value={date} onChange={(e) => { const d = e.target.value; setDate(d); const match = d && searchDiary(pagesRef.current, '', d)[0]; if (match) result(match); }} /></label>
+      {find && <div className="af-panel af-search" role="dialog" aria-label="Cerca nel diario"><div className="af-panel-heading"><h2>Ritrova un ricordo</h2><button onClick={() => setPanel(null)} aria-label="Chiudi ricerca">×</button></div><label>Cerca una parola o un ricordo<input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cosa vuoi ritrovare?" /></label><label>Vai a una data<input type="date" value={date} onChange={(e) => { const d = e.target.value; setDate(d); const match = d && searchDiary(pagesRef.current, '', d)[0]; if (match) result(match); }} /></label>
         {(query.trim() || date) && <div className="af-results" aria-live="polite"><p>{results.length ? `${results.length} ${results.length === 1 ? 'passaggio trovato' : 'passaggi trovati'}` : 'Nessun ricordo trovato per questa ricerca.'}</p>{results.map((r) => <button key={`${r.page}-${r.blockId}`} onClick={() => result(r)}><small>{dateLabel(r.date)} · pagina {r.page + 1}</small><span>{r.excerpt}</span></button>)}</div>}
       </div>}
       <div className="af-scroll" ref={bookScroll}><div className="af-desk">
         {cover ? <button className="af-cover" onClick={() => go(index)} aria-label="Apri il diario amor fati"><CoverArt /></button>
           : <div className="af-book" aria-busy={!!turn}><div className="af-paper" onPointerDown={swipeStart} onPointerMove={swipeMove} onPointerUp={swipeEnd} onPointerCancel={cancelSwipe} onLostPointerCapture={(e) => { if (e.target === e.currentTarget) cancelSwipe(e); }}>
             <div className="af-page-heading"><span>amor fati</span><span>{String(index + 1).padStart(2, '0')}</span></div>
+            <PageQuote page={page} />
             <div className="af-writing">{page.blocks.map((b, bi) => <div key={b.id} className="af-entry">
               {previousDate(pages, index, bi) !== b.date && <h2>{dateLabel(b.date)}</h2>}
               {b.type === 'image' ? <figure><img draggable={false} src={b.src} alt={b.caption || 'Un ricordo incollato nel diario'} loading="lazy" /><p className="af-printed-caption">{b.caption}</p></figure>
@@ -250,11 +258,23 @@ export function Diario({ db = archivioDb, active = true, ctx }) {
             <div className="af-page-footer"><span>{page.blocks.length ? 'Ogni giorno, una storia.' : 'Anche il silenzio ha la sua pagina.'}</span><span>{index + 1}</span></div>
           </div>{turn && <TurningSheet turn={turn} pages={pages} />}<button className="af-corner" disabled={!!turn} aria-label="Gira pagina" onClick={() => go(index + 1)} /></div>}
       </div></div>
-      <div className="af-navigation"><button disabled={!!turn} onClick={() => cover ? go(0) : go(index - 1)} aria-label={cover ? 'Apri la prima pagina' : 'Pagina precedente'}>←</button><label>Pagina <input type="number" min="1" max={pages.length} value={jump || index + 1} onChange={(e) => setJump(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') go(Math.max(0, Math.min(pages.length - 1, Number(jump || index + 1) - 1))); }} onBlur={() => { if (jump) go(Math.max(0, Math.min(pages.length - 1, Number(jump) - 1))); }} aria-label="Vai alla pagina" /> di {pages.length}</label><button disabled={!!turn} onClick={() => cover ? go(index) : go(index + 1)} aria-label="Pagina successiva">→</button></div>
-      <div className="af-actions">{!cover && <button onClick={(e) => startWriting('new', e)} disabled={imageBusy || !!turn}>Scrivi</button>}<button onClick={() => fileInput.current.click()} disabled={imageBusy || !!turn}>{imageBusy ? 'Incollo…' : '+ Foto o screenshot'}</button><button onClick={addPage} disabled={imageBusy || !!turn}>+ Pagina</button></div>
+      {panel === 'pages' && <div className="af-panel af-pages" role="dialog" aria-label="Pagine del diario"><div className="af-panel-heading"><h2>Le tue pagine</h2><button onClick={() => setPanel(null)} aria-label="Chiudi pagine">×</button></div><form onSubmit={(e) => { e.preventDefault(); go(Math.max(0, Math.min(pages.length - 1, Number(jump || index + 1) - 1))); }}><label>Vai alla pagina<input type="number" min="1" max={pages.length} value={jump || index + 1} onChange={(e) => setJump(e.target.value)} /></label><button className="af-primary">Apri</button></form><div className="af-page-list">{pages.map((p, i) => <button key={p.id} onClick={() => go(i)} aria-current={index === i ? 'page' : undefined}><span>{String(i + 1).padStart(2, '0')}</span><small>{pageText(p).slice(0, 45) || 'Una pagina ancora da vivere'}</small></button>)}</div><button className="af-primary" onClick={() => { setPanel(null); addPage(); }}>+ Aggiungi una pagina</button></div>}
+      {panel === 'export' && <DiaryExport pages={pages} current={index} onClose={() => setPanel(null)} onBusy={setExportBusy} />}
       {active && !turn && editing && (editing === 'new' || editBlock) && <WritingEditor inputRef={editor} selection={focus} label={editBlock?.type === 'image' ? 'Didascalia della fotografia' : editBlock ? `Pensiero del ${dateLabel(editBlock.date)}` : 'Scrivi un nuovo pensiero'} value={editBlock?.text ?? editBlock?.caption ?? ''} onChange={(text, composing) => editBlock?.type === 'image' ? caption(editBlock.id, text) : write(editBlock?.id || null, text, composing)} onDone={finishWriting} status={error || status} />}
       <input ref={fileInput} type="file" accept="image/*" multiple hidden onChange={(e) => { images([...e.target.files]); e.target.value = ''; }} />
-      <p className="af-status" role="status">{status || 'Il tuo spazio, il tuo tempo.'}</p><p className="af-hint">La data appare quando inizi a scrivere. Puoi incollare immagini e lasciare pagine bianche.</p>
+      {status && <p className="af-status" role="status">{status}</p>}<p className="af-hint">La data appare quando inizi a scrivere. Puoi incollare immagini e lasciare pagine bianche.</p>
     </>}
+      <nav className="af-dock" aria-label="Comandi del diario">
+        <button disabled={exportBusy || !!turn} onClick={() => { if (cover) ctx?.vai('oggi'); else { setCover(true); bookScroll.current?.scrollTo({ top: 0 }); setPanel(null); } }} aria-label={cover ? 'Esci dal diario' : 'Mostra copertina'} title={cover ? 'Esci dal diario' : 'Copertina'}><DockIcon name={cover ? 'back' : 'book'} /></button>
+        <span className="af-dock-separator" />
+        <button disabled={!loaded || exportBusy || !!turn} onClick={() => cover ? go(0) : go(index - 1)} aria-label={cover ? 'Apri la prima pagina' : 'Pagina precedente'} title="Pagina precedente"><DockIcon name="back" /></button>
+        <button className="af-dock-page" disabled={!loaded || exportBusy || !!turn} onClick={() => setPanel(panel === 'pages' ? null : 'pages')} aria-label={`Pagine del diario, pagina ${index + 1} di ${pages.length}`} aria-expanded={panel === 'pages'} title="Pagine e nuova pagina"><strong>{loaded ? index + 1 : '…'}</strong><small>{loaded ? `di ${pages.length}` : 'attendi'}</small></button>
+        <button disabled={!loaded || exportBusy || !!turn} onClick={() => cover ? go(index) : go(index + 1)} aria-label="Pagina successiva" title="Pagina successiva"><DockIcon name="next" /></button>
+        <span className="af-dock-separator" />
+        <button className="af-dock-write" disabled={!loaded || exportBusy || imageBusy || !!turn} onClick={(e) => { if (cover) { go(index); setFocus({ id: 'new' }); } else startWriting('new', e); }} aria-label="Scrivi un pensiero" title="Scrivi"><DockIcon name="write" /></button>
+        <button disabled={!loaded || exportBusy || imageBusy || !!turn} onClick={() => fileInput.current.click()} aria-label="Incolla foto o screenshot" title="Foto o screenshot"><DockIcon name="photo" /></button>
+        <button disabled={!loaded || exportBusy || !!turn} onClick={() => setPanel(find ? null : 'search')} aria-label="Cerca nel diario" aria-expanded={find} title="Cerca"><DockIcon name="search" /></button>
+        <button disabled={!loaded || exportBusy || !!turn} onClick={() => setPanel(panel === 'export' ? null : 'export')} aria-label="Esporta il diario" aria-expanded={panel === 'export'} title="Esporta PDF o JPEG"><DockIcon name="export" /></button>
+      </nav>
   </section>;
 }
