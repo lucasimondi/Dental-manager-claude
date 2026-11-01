@@ -818,3 +818,25 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 
 /* amor fati entry point, visible before the lazy diary loads. */
 .af-home-link{display:flex;justify-content:space-between;align-items:center;width:100%;margin:8px 0 18px;padding:18px 21px;border:1px solid #cfb989;border-radius:12px;background:linear-gradient(110deg,#493526,#705338);color:#e3cd9d;text-align:left;box-shadow:0 5px 12px #4a341b18}.af-home-link strong{display:block;font:italic 25px Georgia,serif}.af-home-link small{display:block;font:11px/1.8 system-ui;color:#dbc59f}.af-home-link>span:last-child{font-size:23px}
+
+/* Current personal documents: originals first, information on demand. */
+.pp-portafoglio-carte { display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:16px; }
+.pp-personal-card {background:var(--pp-superficie);border:1px solid var(--pp-linea);border-radius:18px;overflow:hidden;}
+.pp-personal-apri {display:flex;flex-direction:column;gap:8px;width:100%;background:none;color:inherit;border:0;text-align:left;padding:0 0 14px;}
+.pp-personal-apri > strong,.pp-personal-apri > span {margin:0 14px;}
+.pp-personal-apri .pp-mini-grande {width:100%;height:auto;aspect-ratio:1.6;border-radius:0;}
+.pp-personal-apri .pp-mini-grande img {object-fit:contain;object-position:center;}
+.pp-personal-seleziona {display:flex;gap:10px;align-items:center;min-height:48px;padding:10px 14px;border-top:1px solid var(--pp-linea);}
+.pp-validita {display:inline-block;padding:7px 10px;border-radius:8px;background:#ecfdf3;color:#067647;font-size:14px;}
+.pp-validita.in-scadenza {background:#fffaeb;color:#93370d;}.pp-validita.scaduto {background:#fef3f2;color:#b42318;}
+.pp-personal-invio {position:sticky;bottom:90px;z-index:20;background:var(--pp-superficie);border:1px solid var(--pp-linea);border-radius:18px;padding:16px;box-shadow:var(--pp-ombra-alta);display:flex;flex-direction:column;gap:12px;}
+.pp-documento-intero {position:fixed;inset:0;z-index:1000;background:#101827;color:white;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);height:100dvh;}
+.pp-documento-intero header {display:flex;gap:12px;align-items:center;padding:10px max(12px,env(safe-area-inset-right));flex:none;}
+.pp-documento-intero header strong {flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pp-documento-intero header button {min-height:44px;min-width:52px;border:1px solid #64748b;border-radius:22px;padding:8px 14px;color:white;background:#1e293b;}
+.pp-documento-tavola {flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;touch-action:pan-x pan-y pinch-zoom;display:flex;align-items:flex-start;justify-content:center;}
+.pp-documento-tavola .pp-anteprima {width:100%;margin:0;border-radius:0;background:transparent;box-shadow:none;}
+.pp-documento-tavola .pp-anteprima img {object-fit:contain;width:100%;max-height:calc(100dvh - 150px);}
+.pp-documento-tavola .pp-anteprima-pdf {width:100%;max-width:1400px;margin:auto;}
+.pp-documento-intero footer {display:flex;gap:10px;justify-content:center;padding:12px 12px calc(12px + env(safe-area-inset-bottom));flex-wrap:wrap;}
+.pp-codici {border:1px solid var(--pp-linea);border-radius:16px;padding:16px;margin:20px 0;}

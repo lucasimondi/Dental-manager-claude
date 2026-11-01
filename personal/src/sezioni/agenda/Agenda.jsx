@@ -1,3 +1,4 @@
+import {scadenzaIdentita} from '../../lib/portafoglio.js';
 import { agendaVisible } from '../../../../shared/agenda/visibility.js';
 import { readAgendaLocation } from '../../../../shared/agenda/navigation.js';
 // POL-VITA-004/007 — Agenda di Poliedron Personal: è l'agenda dello studio (stessi dati).
@@ -5,7 +6,7 @@ import { readAgendaLocation } from '../../../../shared/agenda/navigation.js';
 // POL-VITA-013: da Personal si creano, modificano ed eliminano anche gli appuntamenti dello studio.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { pagamenti as caricaPagamenti } from '../../lib/archivio.js';
+import { scadenzeAgenda as caricaPagamenti } from '../../lib/archivio.js';
 import { euro } from '../../lib/coreArchivio.js';
 import { studioDb, sessioneStudio, entraStudio, appuntamentiTra, impegniTra, tipiAppuntamento, impostazioniAgenda } from '../../lib/studio.js';
 import { daIso, oggi, ora, giorniSettimana, grigliaMese, elementiDelGiorno, coloreEvento, nomeEtichetta, COLORE_SCADENZA } from '../../lib/agenda.js';
@@ -111,9 +112,9 @@ export function ElencoGiorno({ giorno, dati, ctx, etichette, coloriTipi, intesta
       {vuoto ? <p className="pp-vuoto">Niente in programma.</p> : (
         <div className="pp-gruppo">
           {el.scadenze.map((s) => (
-            <button key={`s${s.id}`} className="pp-riga" onClick={() => ctx.apri({ tipo: 'pagamento', s })}>
-              <span className="pp-agenda-segno pp-agenda-scadenza" style={{ '--c': COLORE_SCADENZA }}>€</span>
-              <span className="pp-riga-testo"><span className="pp-riga-titolo">{s.descrizione}</span><span className="pp-riga-meta">{s.completata ? 'pagato' : 'scadenza'}{s.importo != null ? ` · ${euro(s.importo)}` : ''}</span></span>
+            <button key={`s${s.id}`} className="pp-riga" onClick={() => ctx.apri(scadenzaIdentita(s) && s.documento_id ? {tipo:'documento',id:s.documento_id} : { tipo: 'pagamento', s })}>
+              <span className="pp-agenda-segno pp-agenda-scadenza" style={{ '--c': COLORE_SCADENZA }}>{scadenzaIdentita(s)?'↻':'€'}</span>
+              <span className="pp-riga-testo"><span className="pp-riga-titolo">{s.descrizione}</span><span className="pp-riga-meta">{s.completata ? (scadenzaIdentita(s)?'Rinnovato':'pagato') : 'scadenza'}{!scadenzaIdentita(s)&&s.importo != null ? ` · ${euro(s.importo)}` : ''}</span></span>
               <IconaFreccia size={16} />
             </button>
           ))}

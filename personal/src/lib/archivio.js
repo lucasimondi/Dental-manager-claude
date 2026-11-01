@@ -3,10 +3,11 @@
 import { capisciRichiesta, riepilogoDebito } from './coreArchivio.js';
 import { valutaScadenza } from './revisioneArchivio.js';
 import { filtroSezione } from './impostazioni.js';
+import { documentoDaPersonal, scadenzaIdentita, TAG_STORICO, storicoPersonale } from './portafoglio.js';
 
-export const CAMPI_DOC = 'id, titolo, riassunto, fascicolo, tipo_documento, data_documento, email_data, email_oggetto, email_mittente, importo, azione_richiesta, azione_descrizione, urgenza, drive_url, drive_file_id, nome_file_originale, mime_type, pratica_id, tag, gmail_message_id, creato_il, persona, categoria, ente, rilevanza, analisi_contenuto';
+export const CAMPI_DOC = 'id, titolo, riassunto, fascicolo, tipo_documento, data_documento, email_data, email_oggetto, email_mittente, importo, azione_richiesta, azione_descrizione, urgenza, drive_url, drive_file_id, nome_file_originale, mime_type, pratica_id, tag, gmail_message_id, creato_il, persona, categoria, ente, rilevanza, analisi_contenuto, dati_estratti';
 const CAMPI_SCADENZA = `id, data, descrizione, importo, completata, documento_id, pratica_id, categoria, ricorrenza, storica, cartella,
-  documento:documenti(id, titolo, drive_url, fascicolo, tipo_documento, riassunto, email_oggetto, tag, analisi_contenuto, ente), pratica:pratiche(id, titolo)`;
+  documento:documenti(id, titolo, drive_url, fascicolo, tipo_documento, riassunto, email_oggetto, tag, analisi_contenuto, ente, persona), pratica:pratiche(id, titolo)`;
 
 const esito = ({ data, error }) => {
   if (error) throw new Error(error.message || 'Errore archivio');
@@ -124,9 +125,9 @@ export async function documentiRecenti(db, limite = 10) {
 
 // Portafoglio: i documenti che Luca ha messo a portata di mano, più tutti quelli d'identità.
 export async function portafoglio(db) {
-  return esito(await db.from('documenti').select(CAMPI_DOC)
+  return (esito(await db.from('documenti').select(CAMPI_DOC)
     .or(`tag.cs.{${TAG_PORTAFOGLIO}},fascicolo.eq.identita`)
-    .order('creato_il', { ascending: false }).limit(200));
+    .order('creato_il', { ascending: false }).limit(200))).filter(d => documentoDaPersonal(d, d.categoria));
 }
 
 export async function documentoCompleto(db, id) {
@@ -437,4 +438,15 @@ export async function avviaRilettura(token, fetchImpl = fetch) {
   const r = await fetchImpl(URL_CARICAMENTO, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ token, azione: 'rileggi_archivio' }) });
   const risultato = await r.json();
   if (!risultato.ok) throw new Error(risultato.errore || 'Rilettura non avviata');
+}
+
+export async function scadenzeAgenda(db) {
+  const [payments, deadlines]=await Promise.all([pagamenti(db),scadenzeAperte(db)]);
+  return [...new Map([...payments,...deadlines.filter(s=>scadenzaIdentita(s)&&!storicoPersonale(s.documento))].map(s=>[s.id,s])).values()];
+}
+
+export async function documentiPersonaliStorici(db,persona=null) {
+  let q=db.from('documenti').select(CAMPI_DOC).contains('tag',[TAG_STORICO]).neq('fascicolo','clinico_pazienti');
+  if(persona)q=q.eq('persona',persona);
+  return esito(await q.order('creato_il',{ascending:false}).limit(300));
 }

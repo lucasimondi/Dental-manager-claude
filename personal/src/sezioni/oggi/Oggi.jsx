@@ -1,3 +1,4 @@
+import {ScadenzePersonali} from '../personali/index.jsx';
 // Oggi — il cruscotto: saldo del mese, azioni rapide, agenda di oggi, pagamenti, ultimi documenti, pratiche.
 import { useEffect, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
@@ -90,6 +91,7 @@ export function VistaOggi({ ctx }) {
       ) : dati.collegata === false && (
         <button className="pp-invito" onClick={() => vai('agenda')}><IconaCalendario size={20} /><span><strong>Collega l'agenda dello studio</strong><br />Appuntamenti ed eventi qui, ogni mattina.</span><IconaFreccia size={16} /></button>
       )}
+      <ScadenzePersonali ctx={ctx}/>
       <Sezione titolo="Prossimi pagamenti" azione={<button className="pp-testo-link" onClick={() => vai('conti', 'dapagare')}>Tutti</button>}>
         {dati.prossime.length
           ? <Gruppo>{dati.prossime.slice(0, 5).map((s) => <RigaPagamento key={s.id} s={s} onApri={(x) => apri({ tipo: 'pagamento', s: x })} onPagato={pagato} />)}</Gruppo>

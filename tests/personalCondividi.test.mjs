@@ -33,13 +33,17 @@ test('file dallo script: base64 → File con nome e tipo', () => {
   assert.equal(f.size, 4);
 });
 
-test('app: Personali solo delle persone in Impostazioni; anteprima e Condividi nelle schede e nel dettaglio', () => {
-  const app = readFileSync('personal/src/sezioni/personali/Personali.jsx', 'utf8') + readFileSync('personal/src/sezioni/documenti/Documento.jsx', 'utf8');
-  assert.match(app, /const delleMie = arricchiti\.filter\(\(d\) => d\._persona && persone\.includes\(d\._persona\)\)/);
-  assert.doesNotMatch(app, /'Senza persona'/);
-  assert.match(app, /<Miniatura doc=\{doc\}[^>]*grande \/>\n {6}<span className="pp-carta-testo">/);
-  assert.match(app, /<BottoneCondividi doc=\{doc\} piccolo/);
-  assert.match(app, /<BottoneCondividi doc=\{doc\} mostra=\{mostra\} \/>/);
+test('app: Personal keeps household filtering, original previews and file sharing', () => {
+  const wallet=readFileSync('personal/src/sezioni/personali/Personali.jsx','utf8');
+  const detail=readFileSync('personal/src/sezioni/documenti/Documento.jsx','utf8');
+  const viewer=readFileSync('personal/src/sezioni/documenti/DocumentoIntero.jsx','utf8');
+  assert.match(wallet,/persone.includes\(d\._persona\)/);
+  assert.match(wallet,/documentoDaPersonal/);
+  assert.match(wallet,/<Miniatura/);
+  assert.match(wallet,/files:files.fs/);
+  assert.doesNotMatch(wallet,/'Senza persona'/);
+  assert.match(detail,/<DocumentoIntero/);
+  assert.match(viewer,/<BottoneCondividi/);
 });
 
 test('agenda: eventi del giorno dentro i controlli flottanti sotto la striscia; "Vai a Studio" a sinistra della vista', () => {

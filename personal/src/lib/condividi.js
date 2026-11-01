@@ -32,6 +32,8 @@ export async function condividi({ titolo, link, file, files }, nav = globalThis.
       await nav.share({ files: tutti, title: titolo });
       return tutti.length > 1 ? 'files' : 'file';
     }
+    // Never silently replace multiple attachments with a title-only message.
+    if (tutti.length > 1) return 'non_disponibile';
     if (nav?.share) {
       await nav.share({ title: titolo, text: titolo, ...(link ? { url: link } : {}) });
       return 'link';
@@ -45,4 +47,10 @@ export async function condividi({ titolo, link, file, files }, nav = globalThis.
     if (e?.name === 'AbortError') return 'annullato';
     throw e;
   }
+}
+
+export function scaricaDocumento(file) {
+  const url=URL.createObjectURL(file);
+  const a=document.createElement('a');a.href=url;a.download=file.name;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
 }

@@ -1,6 +1,6 @@
-# Current task — PERSONAL-DIARIO-TOUCH-GESTURES (2026-10-31)
-- OWNER Codex, branch codex/diario-pointer-gestures from master64e2224 (rebased after OAuth PR255).
-- AUTHORIZATION: PO reports both vertical reading scroll and horizontal page changes remain poor with touch after PR254.
-- SCOPE: investigate gesture conflicts; native vertical pan with separate horizontal recognition. Keep vintage presentation, page animation, dedicated editor, dates/photos/search/persistence. No data/schema changes.
-- STATUS WAITING_PRODUCT_OWNER.1487/1487 Node tests (including five gesture path regressions), both builds and diff check pass. New browser QA blocked by URL policy after preview connection failure; no bypass. Native physical touch remains unverified. Publish dedicated PR/check exact head before specific PO merge approval.
-- ROLLBACK revert dedicated PR, retain rows. No merge without specific PO Mergia.
+# Current task — PERSONAL-WALLET-DOCUMENTS (2026-11-01)
+- OWNER: Codex; branch codex/personal-wallet-documents from master 9e187349. Prior diary task merged PR256; MCP task remains isolated PR257.
+- AUTHORIZATION: PO requests correcting Personal membership, precise cropped Luca/Martina IDs/CF in their own sections, old documents in archive, full-screen viewer/optional info, no email-transmission/payments clutter, expiry reminders without Paid, protected PIN/PUK and multi-file/email attachment workflow.
+- SCOPE: Personal-only UI/helpers/tests and authorized classification of specifically identified archive records; preserve originals and Studio. No new App, schema, RLS or OAuth change. Document crops are derived PDFs retaining source content without generative reconstruction, sanitized so hidden other-person data is excluded.
+- STATUS: implementation complete; local Node suite 1492/1492, Personal and Studio builds passed. Authorized crops/classification saved and read back. Local browser connection refused; physical Android unverified. Publish dedicated PR, inspect exact-head checks/preview, then WAITING_PRODUCT_OWNER for this PR only. Native Android DocumentsProvider is not implemented; Web Share and Download/Drive are available. Private files remain outside git.
+- ROLLBACK: revert task PR; restore recorded classification fields; originals kept. Golden checkpoint unchanged.
