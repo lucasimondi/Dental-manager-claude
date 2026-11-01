@@ -55,6 +55,7 @@ export function VistaOggi({ ctx }) {
           <button key={id} className={`pp-rapida pp-av-${id}`} onClick={() => aggiungi(id)}><span><Icona size={22} /></span>{nome}</button>
         ))}
       </div>
+      <button className="pf-home-link" onClick={() => vai('didattica')}><span><strong>Filosofia</strong><small>Biblioteca · Dalle origini al presente</small></span><span aria-hidden="true">↗</span></button>
       <button className="af-home-link" onClick={() => vai('diario')}><span><strong>amor fati</strong><small>Il tuo diario personale · Apri e scrivi</small></span><span aria-hidden="true">↗</span></button>
       <Acquisti ctx={ctx} />
     </>

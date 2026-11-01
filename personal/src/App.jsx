@@ -16,7 +16,7 @@ import { saluto, VISTA_KEY, leggiVista, tokenSessione } from './ui.jsx';
 import { differito } from './Differito.jsx';
 const FoglioAggiungi = differito(() => import('./Aggiungi.jsx'), 'FoglioAggiungi');
 import { Accesso, NuovaPassword } from './Accesso.jsx';
-import { DOCK, sezione, pagina, titoloPagina, eModulo, IconaDiario } from './sezioni/index.js';
+import { DOCK, sezione, pagina, titoloPagina, eModulo, IconaDiario, IconaBiblioteca } from './sezioni/index.js';
 import { IconaPiu, IconaImpostazioni, IconaChat } from './Icone.jsx';
 
 impostaToken(tokenSessione);
@@ -126,6 +126,7 @@ function Archivio({ email }) {
         {!attuale.senzaTitolo && <h1>{vista === 'oggi' ? saluto() : attuale.nome}</h1>}
         {!sopra && !foglio && <span className="pp-testata-azioni">
           {AzioniTestata && <AzioniTestata ctx={ctx} />}
+          {vista !== 'didattica' && <button className="pp-icona-bottone" onClick={() => vai('didattica')} aria-label="Apri Biblioteca e Filosofia"><IconaBiblioteca size={20} /></button>}
           {vista !== 'diario' && <button className="pp-icona-bottone" onClick={() => vai('diario')} aria-label="Apri il diario amor fati"><IconaDiario size={20} /></button>}
           <button className="pp-icona-bottone" onClick={() => apri({ tipo: 'impostazioni' })} aria-label="Impostazioni"><IconaImpostazioni size={20} /></button>
         </span>}
