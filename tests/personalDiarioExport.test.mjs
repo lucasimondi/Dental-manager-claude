@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { exportPageIndexes, wrapDiaryText, jpegArchive } from '../personal/src/lib/diarioExport.js';
-import { quoteForPage, DIARY_QUOTES } from '../personal/src/lib/diarioQuotes.js';
+import { assignDiaryQuotes, quoteForPage, DIARY_QUOTES } from '../personal/src/lib/diarioQuotes.js';
 test('export selects exactly current/all/chosen pages, ordered without duplicates', () => {
   assert.deepEqual(exportPageIndexes(6, 'current', 3), [3]);
   assert.deepEqual(exportPageIndexes(3, 'all', 2), [0,1,2]);
@@ -16,11 +16,10 @@ test('wrapping preserves accents, spaces, newlines and whole emoji graphemes', (
   assert.deepEqual(wrapDiaryText('', 10, (s) => s.length), ['']);
   assert.deepEqual(wrapDiaryText('a\r\nb\rc', 10, (s) => s.length), ['a','b','c']);
 });
-test('quote belongs to stable page identity, independent of position or edits', () => {
-  const p = {id:'page-a',blocks:[]};
+test('resolved page quote is shared by display/export and keeps its identity after edits', () => {
+  const [p] = assignDiaryQuotes([{id:'page-a',blocks:[]}]);
   assert.equal(quoteForPage(p), quoteForPage({...p,order:300,blocks:[{text:'modificato'}]}));
   assert(DIARY_QUOTES.every((q) => q.text && q.author && q.work && q.source.startsWith('https://')));
-  assert(new Set(Array.from({length:50}, (_,i) => quoteForPage({id:`page-${i}`}))).size > 5);
 });
 test('JPEG archive has valid directory offsets, UTF8 flags and known CRC32', async () => {
   const bytes = new TextEncoder().encode('123456789');

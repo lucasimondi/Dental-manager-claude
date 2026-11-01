@@ -3,8 +3,9 @@ import { createPortal } from 'react-dom';
 import { archivioDb } from '../../lib/supabasePersonal.js';
 import { diaryId, PAGE_LENGTH, today, dateLabel, newPage, pageText, previousDate, searchDiary, splitText, loadDiary, savePage, prepareImage } from '../../lib/diario.js';
 import { beginDiarySwipe, moveDiarySwipe, endDiarySwipe } from '../../lib/diarioSwipe.js';
-import { quoteForPage } from '../../lib/diarioQuotes.js';
+import { assignDiaryQuotes, quoteForPage, quoteText, selectDiaryQuote } from '../../lib/diarioQuotes.js';
 import { DiaryExport } from './DiaryExport.jsx';
+import { DiaryPhilosophy } from './DiaryPhilosophy.jsx';
 import './diario.css';
 
 // Reading pages contain ordinary text. A bounded native editor owns writing/IME scroll.
@@ -41,12 +42,12 @@ function WritingEditor({ value, label, onChange, onDone, inputRef, selection, st
   </div>, document.body);
 }
 
-function PageQuote({ page }) {
+function PageQuote({ page, onBrowse }) {
   const quote = quoteForPage(page);
-  return <blockquote className="af-quote"><p>“{quote.text}”</p><cite>{quote.author}<span>{quote.work}</span></cite></blockquote>;
+  return <div className="af-epigraph">{quote ? <blockquote className="af-quote"><p>{quoteText(quote)}</p><cite>{quote.author}<span>{quote.work}{quote.kind === 'thought' ? ' · Riflessione dal testo' : ''}</span></cite></blockquote> : <p className="af-quote-empty">Tutti i pensieri della biblioteca accompagnano già una pagina. Nessuna frase viene ripetuta.</p>}{onBrowse && <button className="af-browse-thoughts" onClick={onBrowse}>Esplora i pensieri <span aria-hidden="true">↗</span></button>}</div>;
 }
 function DockIcon({ name }) {
-  const paths = { back: 'M15 5l-7 7 7 7', next: 'M9 5l7 7-7 7', book: 'M12 5C8 2 3 4 3 4v15s5-2 9 1c4-3 9-1 9-1V4s-5-2-9 1v15', write: 'M14 4l6 6M4 20l5-1L21 7l-5-5L4 14z', photo: 'M3 5h18v15H3zM3 16l5-5 5 5 3-3 5 5M16 8h.01', search: 'M21 21l-6-6M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0', export: 'M12 3v12M7 8l5-5 5 5M4 14v7h16v-7' };
+  const paths = { home: 'M3 11l9-8 9 8M5 10v11h5v-7h4v7h5V10', back: 'M15 5l-7 7 7 7', next: 'M9 5l7 7-7 7', book: 'M12 5C8 2 3 4 3 4v15s5-2 9 1c4-3 9-1 9-1V4s-5-2-9 1v15', write: 'M14 4l6 6M4 20l5-1L21 7l-5-5L4 14z', photo: 'M3 5h18v15H3zM3 16l5-5 5 5 3-3 5 5M16 8h.01', search: 'M21 21l-6-6M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0', export: 'M12 3v12M7 8l5-5 5 5M4 14v7h16v-7' };
   return <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]} /></svg>;
 }
 
@@ -85,7 +86,7 @@ export function Diario({ db = archivioDb, active = true, ctx }) {
     mounted.current = true;
     loadDiary(db).then((data) => {
       if (!mounted.current) return;
-      const initial = data.length ? data : [newPage()];
+      const initial = assignDiaryQuotes(data.length ? data : [newPage()]);
       initial.forEach((p) => revisions.current.set(p.id, p.revision));
       pagesRef.current = initial; setPages(initial); setIndex(initial.length - 1); setLoaded(true);
     }).catch((e) => { if (mounted.current) setError(`Impossibile aprire il diario: ${e.message}`); });
@@ -93,7 +94,8 @@ export function Diario({ db = archivioDb, active = true, ctx }) {
   }, [db]);
 
   const commit = (next, changed) => {
-    pagesRef.current = next; setPages(next);
+    const assigned = assignDiaryQuotes(next);
+    pagesRef.current = assigned; setPages(assigned);
     changed.forEach((id) => dirty.current.add(id)); setStatus('Da salvare…');
   };
   const flush = async () => {
@@ -133,6 +135,17 @@ export function Diario({ db = archivioDb, active = true, ctx }) {
     requestAnimationFrame(() => { if (opener?.isConnected) opener.focus({ preventScroll: true }); });
   }
 
+
+  async function goHome() {
+    if (saving.current) { setStatus('Attendi il completamento del salvataggio…'); return; }
+    await flush();
+    if (dirty.current.size) return;
+    setPanel(null); ctx?.vai('oggi');
+  }
+  function chooseQuote(quoteId) {
+    const next = selectDiaryQuote(pagesRef.current, page.id, quoteId);
+    commit(next, [page.id]); setPanel(null);
+  }
 
   function cancelSwipe(e) {
     gesture.current = null;
@@ -246,7 +259,7 @@ export function Diario({ db = archivioDb, active = true, ctx }) {
         {cover ? <button className="af-cover" onClick={() => go(index)} aria-label="Apri il diario amor fati"><CoverArt /></button>
           : <div className="af-book" aria-busy={!!turn}><div className="af-paper" onPointerDown={swipeStart} onPointerMove={swipeMove} onPointerUp={swipeEnd} onPointerCancel={cancelSwipe} onLostPointerCapture={(e) => { if (e.target === e.currentTarget) cancelSwipe(e); }}>
             <div className="af-page-heading"><span>amor fati</span><span>{String(index + 1).padStart(2, '0')}</span></div>
-            <PageQuote page={page} />
+            <PageQuote page={page} onBrowse={() => setPanel('philosophy')} />
             <div className="af-writing">{page.blocks.map((b, bi) => <div key={b.id} className="af-entry">
               {previousDate(pages, index, bi) !== b.date && <h2>{dateLabel(b.date)}</h2>}
               {b.type === 'image' ? <figure><img draggable={false} src={b.src} alt={b.caption || 'Un ricordo incollato nel diario'} loading="lazy" /><p className="af-printed-caption">{b.caption}</p></figure>
@@ -258,14 +271,15 @@ export function Diario({ db = archivioDb, active = true, ctx }) {
             <div className="af-page-footer"><span>{page.blocks.length ? 'Ogni giorno, una storia.' : 'Anche il silenzio ha la sua pagina.'}</span><span>{index + 1}</span></div>
           </div>{turn && <TurningSheet turn={turn} pages={pages} />}<button className="af-corner" disabled={!!turn} aria-label="Gira pagina" onClick={() => go(index + 1)} /></div>}
       </div></div>
-      {panel === 'pages' && <div className="af-panel af-pages" role="dialog" aria-label="Pagine del diario"><div className="af-panel-heading"><h2>Le tue pagine</h2><button onClick={() => setPanel(null)} aria-label="Chiudi pagine">×</button></div><form onSubmit={(e) => { e.preventDefault(); go(Math.max(0, Math.min(pages.length - 1, Number(jump || index + 1) - 1))); }}><label>Vai alla pagina<input type="number" min="1" max={pages.length} value={jump || index + 1} onChange={(e) => setJump(e.target.value)} /></label><button className="af-primary">Apri</button></form><div className="af-page-list">{pages.map((p, i) => <button key={p.id} onClick={() => go(i)} aria-current={index === i ? 'page' : undefined}><span>{String(i + 1).padStart(2, '0')}</span><small>{pageText(p).slice(0, 45) || 'Una pagina ancora da vivere'}</small></button>)}</div><button className="af-primary" onClick={() => { setPanel(null); addPage(); }}>+ Aggiungi una pagina</button></div>}
+      {panel === 'pages' && <div className="af-panel af-pages" role="dialog" aria-label="Pagine del diario"><div className="af-panel-heading"><h2>Le tue pagine</h2><button onClick={() => setPanel(null)} aria-label="Chiudi pagine">×</button></div><div className="af-pages-shortcuts"><button onClick={() => { setCover(true); bookScroll.current?.scrollTo({ top: 0 }); setPanel(null); }}>Copertina</button><button onClick={() => setPanel('philosophy')}>Biblioteca dei pensieri ↗</button></div><form onSubmit={(e) => { e.preventDefault(); go(Math.max(0, Math.min(pages.length - 1, Number(jump || index + 1) - 1))); }}><label>Vai alla pagina<input type="number" min="1" max={pages.length} value={jump || index + 1} onChange={(e) => setJump(e.target.value)} /></label><button className="af-primary">Apri</button></form><div className="af-page-list">{pages.map((p, i) => <button key={p.id} onClick={() => go(i)} aria-current={index === i ? 'page' : undefined}><span>{String(i + 1).padStart(2, '0')}</span><small>{pageText(p).slice(0, 45) || 'Una pagina ancora da vivere'}</small></button>)}</div><button className="af-primary" onClick={() => { setPanel(null); addPage(); }}>+ Aggiungi una pagina</button></div>}
+      {panel === 'philosophy' && <DiaryPhilosophy pages={pages} page={page} onChoose={chooseQuote} onClose={() => setPanel(null)} />}
       {panel === 'export' && <DiaryExport pages={pages} current={index} onClose={() => setPanel(null)} onBusy={setExportBusy} />}
       {active && !turn && editing && (editing === 'new' || editBlock) && <WritingEditor inputRef={editor} selection={focus} label={editBlock?.type === 'image' ? 'Didascalia della fotografia' : editBlock ? `Pensiero del ${dateLabel(editBlock.date)}` : 'Scrivi un nuovo pensiero'} value={editBlock?.text ?? editBlock?.caption ?? ''} onChange={(text, composing) => editBlock?.type === 'image' ? caption(editBlock.id, text) : write(editBlock?.id || null, text, composing)} onDone={finishWriting} status={error || status} />}
       <input ref={fileInput} type="file" accept="image/*" multiple hidden onChange={(e) => { images([...e.target.files]); e.target.value = ''; }} />
       {status && <p className="af-status" role="status">{status}</p>}<p className="af-hint">La data appare quando inizi a scrivere. Puoi incollare immagini e lasciare pagine bianche.</p>
     </>}
       <nav className="af-dock" aria-label="Comandi del diario">
-        <button disabled={exportBusy || !!turn} onClick={() => { if (cover) ctx?.vai('oggi'); else { setCover(true); bookScroll.current?.scrollTo({ top: 0 }); setPanel(null); } }} aria-label={cover ? 'Esci dal diario' : 'Mostra copertina'} title={cover ? 'Esci dal diario' : 'Copertina'}><DockIcon name={cover ? 'back' : 'book'} /></button>
+        <button className="af-dock-home" disabled={exportBusy || imageBusy || !!turn} onClick={goHome} aria-label="Torna alla Home" title="Home"><DockIcon name="home" /><small>Home</small></button>
         <span className="af-dock-separator" />
         <button disabled={!loaded || exportBusy || !!turn} onClick={() => cover ? go(0) : go(index - 1)} aria-label={cover ? 'Apri la prima pagina' : 'Pagina precedente'} title="Pagina precedente"><DockIcon name="back" /></button>
         <button className="af-dock-page" disabled={!loaded || exportBusy || !!turn} onClick={() => setPanel(panel === 'pages' ? null : 'pages')} aria-label={`Pagine del diario, pagina ${index + 1} di ${pages.length}`} aria-expanded={panel === 'pages'} title="Pagine e nuova pagina"><strong>{loaded ? index + 1 : '…'}</strong><small>{loaded ? `di ${pages.length}` : 'attendi'}</small></button>
