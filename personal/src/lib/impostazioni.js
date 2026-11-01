@@ -77,8 +77,11 @@ export function personaDi(doc, persone) {
   if (doc?.persona) return doc.persona;
   const t = minuscolo(`${doc?.titolo || ''} ${doc?.riassunto || ''}`);
   // Nome completo, poi il solo nome se è unico tra le persone (es. "Martina").
-  const piena = persone.find((p) => t.includes(minuscolo(p)));
-  if (piena) return piena;
+  const primi = persone.filter((p) => new RegExp('\\b' + minuscolo(p).split(/\s+/)[0] + '\\b').test(t));
+  if (primi.length > 1) return null;
+  const piene = persone.filter((p) => t.includes(minuscolo(p)));
+  if (piene.length > 1) return null;
+  if (piene.length === 1) return piene[0];
   const perNome = persone.filter((p) => t.includes(minuscolo(p).split(/\s+/)[0]));
   return perNome.length === 1 ? perNome[0] : null;
 }

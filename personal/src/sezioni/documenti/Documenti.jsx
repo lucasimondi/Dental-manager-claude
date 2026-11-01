@@ -4,7 +4,7 @@
 // massa: sposta, importanza, ente, persona, Personali, elimina.
 import { useEffect, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { cercaArchivio, enti as caricaEnti, pratiche as caricaPratiche, cambiaStatoPratica } from '../../lib/archivio.js';
+import { documentiPersonaliStorici, cercaArchivio, enti as caricaEnti, pratiche as caricaPratiche, cambiaStatoPratica } from '../../lib/archivio.js';
 import { VistaCartelle } from './Cartelle.jsx';
 import { colore, Vuoto, Sezione, Gruppo, Chips, Segmenti, ElencoPratiche } from '../../ui.jsx';
 import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaStella, IconaFoto } from '../../Icone.jsx';
@@ -50,6 +50,10 @@ export function VistaDocumenti({ ctx }) {
     <>
       <button className="pp-invito" onClick={() => apri({ tipo: 'legal' })}><span><strong>Legal</strong><br />Pratiche, recuperi e aggiornamenti manuali</span></button>
       <button className="pp-invito" onClick={() => apri({ tipo: 'revisione' })}><span><strong>Da valutare con Poliedron</strong><br />Pagamenti da verificare, inviti e documenti importanti</span></button>
+      <details className="pp-pannello"><summary>Archivio · Documenti vecchi</summary>
+        {impostazioni.persone.map(persona=><button key={persona} className="pp-riga pp-riga-sola" onClick={()=>apri({tipo:'elenco',titolo:`Documenti vecchi di ${persona}`,carica:()=>documentiPersonaliStorici(archivioDb,persona)})}>Documenti vecchi di {persona}</button>)}
+        <button className="pp-testo-link" onClick={()=>apri({tipo:'elenco',titolo:'Tutti i documenti vecchi e originali',carica:()=>documentiPersonaliStorici(archivioDb)})}>Tutti i documenti vecchi e originali</button>
+      </details>
       <div className="pp-cerca">
         <IconaCerca size={18} />
         <input type="search" value={testo} onChange={(e) => setTesto(e.target.value)} placeholder="Cerca: Enel, IMU 2024, carta d'identità…" enterKeyHint="search" aria-label="Cerca nell'archivio" />

@@ -1,3 +1,4 @@
+import {scadenzaIdentita} from './lib/portafoglio.js';
 // POL-VITA-006 — elementi comuni di Poliedron Personal (usati da App, Conti, Agenda).
 import { archivioDb } from './lib/supabasePersonal.js';
 import { eCaricato } from './lib/archivio.js';
@@ -78,6 +79,7 @@ export function SchedaDocumento({ doc, onApri }) {
 }
 
 export function RigaPagamento({ s, onApri, onPagato }) {
+  const identita=scadenzaIdentita(s);
   const scaduto = !s.completata && s.data < oggiIso();
   const giorno = new Date(`${s.data}T12:00:00`);
   return (
@@ -89,12 +91,12 @@ export function RigaPagamento({ s, onApri, onPagato }) {
         </span>
         <span className="pp-scadenza-testo">
           <span className="pp-riga-titolo">{s.descrizione}</span>
-          <span className="pp-riga-meta">{[s.completata ? 'pagato' : quando(s.data), s.categoria, s.ricorrenza ? 'fisso' : null, s.pratica?.titolo || s.documento?.titolo].filter(Boolean).join(' · ')}</span>
+          <span className="pp-riga-meta">{[s.completata ? (identita?'Rinnovato':'pagato') : quando(s.data), identita?'Rinnovo documento':s.categoria, !identita&&s.ricorrenza ? 'fisso' : null, s.pratica?.titolo || s.documento?.titolo].filter(Boolean).join(' · ')}</span>
         </span>
       </button>
       <div className="pp-scadenza-destra">
-        {s.importo != null && <span className="pp-riga-importo">{euro(s.importo)}</span>}
-        {onPagato && !s.completata && <button className="pp-chip-azione" onClick={() => onPagato(s)} aria-label={`Segna pagato: ${s.descrizione}`}>Pagato</button>}
+        {!identita && s.importo != null && <span className="pp-riga-importo">{euro(s.importo)}</span>}
+        {onPagato && !identita && !s.completata && <button className="pp-chip-azione" onClick={() => onPagato(s)} aria-label={`Segna pagato: ${s.descrizione}`}>Pagato</button>}
       </div>
     </div>
   );

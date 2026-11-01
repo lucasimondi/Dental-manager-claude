@@ -4,3 +4,5 @@ import { IconaPortafoglio } from '../../Icone.jsx';
 const VistaPersonali = differito(() => import('./Personali.jsx'), 'VistaPersonali');
 
 export const personali = { id: 'personali', nome: 'Personali', Icona: IconaPortafoglio, Vista: VistaPersonali, pagine: {} };
+
+export {ScadenzePersonali} from './ScadenzePersonali.jsx';

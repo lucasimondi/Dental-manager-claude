@@ -1,3 +1,4 @@
+import {scadenzaIdentita} from '../../lib/portafoglio.js';
 // Conti — scheda di un pagamento da fare: pagato / da pagare, modifica, documento di origine.
 import { useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
@@ -34,6 +35,7 @@ export function PaginaPagamento({ s: iniziale, ctx, chiudi }) {
     const m = await interrompiRicorrenza(archivioDb, s);
     setS({ ...s, ricorrenza: null }); setConfermaStop(false); aggiorna(); mostra(m);
   });
+  if(scadenzaIdentita(s))return <Sezione titolo="Scadenza documento"><h2>{s.descrizione}</h2><p>{dataBreve(s.data)}</p><p className="pp-riga-meta">Da rinnovare, senza importi o stato di pagamento.</p>{s.documento_id&&<button className="pp-bottone" onClick={()=>apri({tipo:'documento',id:s.documento_id})}>Apri documento</button>}</Sezione>;
   return (
     <>
       <div className="pp-dettaglio-testa" style={{ '--c': s.completata ? '#067647' : scaduto ? '#B42318' : '#0c447c' }}>

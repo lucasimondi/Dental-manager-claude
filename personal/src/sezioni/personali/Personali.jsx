@@ -1,70 +1,60 @@
-// Personali — carta d'identità, codice fiscale, ... delle persone elencate in Impostazioni.
+// Only current household identity/personal documents, never ordinary photographs.
 import { useEffect, useMemo, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
 import { documentiPersonali } from '../../lib/archivio.js';
 import { categoriaDi, personaDi } from '../../lib/impostazioni.js';
-import { colore, dataBreve, titoloDoc, Sezione, Chips, BottoneCondividi } from '../../ui.jsx';
+import { documentoDaPersonal, avvisoDocumento } from '../../lib/portafoglio.js';
+import { preparaFile, comeFile, condividi, scaricaDocumento } from '../../lib/condividi.js';
+import { dataBreve, titoloDoc, Sezione, Chips, tokenSessione } from '../../ui.jsx';
 import { Miniatura } from '../../Miniatura.jsx';
-import { IconaPiu, IconaFreccia } from '../../Icone.jsx';
+import { IconaPiu } from '../../Icone.jsx';
 
-/* ---------- Personali (carta d'identità, codice fiscale, ... per persona) ---------- */
-function CartaDocumento({ doc, onApri, etichetta, mostra }) {
-  return (
-    <button className="pp-carta pp-carta-con-anteprima" style={{ '--c': colore(doc.fascicolo === 'identita' ? 'identita' : doc.fascicolo) }} onClick={() => onApri(doc)}>
-      <Miniatura doc={doc} colore={colore(doc.fascicolo === 'identita' ? 'identita' : doc.fascicolo)} grande />
-      <span className="pp-carta-testo">
-        <span className="pp-carta-tipo">{etichetta || doc.tipo_documento || doc.fascicolo}</span>
-        <span className="pp-carta-titolo">{titoloDoc(doc)}</span>
-        <span className="pp-carta-piede">{[doc._persona || doc.persona, dataBreve(doc.data_documento || doc.email_data)].filter(Boolean).join(' · ')}</span>
-      </span>
-      <BottoneCondividi doc={doc} piccolo mostra={mostra} />
-    </button>
-  );
-}
-
-export function VistaPersonali({ ctx }) {
-  const { esegui, apri, versione, impostazioni } = ctx;
-  const { persone, categorie } = impostazioni;
-  const [docs, setDocs] = useState(null);
-  const [scheda, setScheda] = useState('tutti');
-  useEffect(() => { esegui(async () => setDocs(await documentiPersonali(archivioDb))); }, [esegui, versione]);
-  const arricchiti = useMemo(() => (docs || []).map((d) => ({ ...d, _cat: categoriaDi(d, categorie), _persona: personaDi(d, persone) })), [docs, categorie, persone]);
-  if (!docs) return null;
-  const attiva = scheda === 'tutti' || categorie.some((c) => c.id === scheda) ? scheda : 'tutti';
-  const nomeCat = (id) => categorie.find((c) => c.id === id)?.nome;
-  const apriDoc = (d) => apri({ tipo: 'documento', id: d.id });
-  const aggiungi = (persona, categoria) => apri({ tipo: 'carica', opzioni: { persona, categoria, fascicolo: 'identita', portafoglio: true } });
-
-  const perPersona = (persona, elenco) => (
-    <Sezione key={persona} titolo={persona}>
-      <div className="pp-carte">
-        {elenco.map((d) => <CartaDocumento key={d.id} doc={d} etichetta={nomeCat(d._cat)} onApri={apriDoc} mostra={ctx.mostra} />)}
-        {persona && attiva !== 'tutti' && !elenco.length && (
-          <button className="pp-carta pp-carta-nuova" onClick={() => aggiungi(persona, attiva)}><IconaPiu size={24} /><span>Aggiungi {nomeCat(attiva)}</span></button>
-        )}
-        {persona && attiva === 'tutti' && (
-          <button className="pp-carta pp-carta-nuova pp-carta-bassa" onClick={() => aggiungi(persona, null)}><IconaPiu size={22} /><span>Aggiungi un documento</span></button>
-        )}
-      </div>
-    </Sezione>
-  );
-
-  // POL-VITA-008: qui solo i documenti delle persone elencate in Impostazioni; gli altri restano in
-  // Documenti, catalogati per categoria ed ente.
-  const delleMie = arricchiti.filter((d) => d._persona && persone.includes(d._persona));
-  const filtrati = attiva === 'tutti' ? delleMie : delleMie.filter((d) => d._cat === attiva);
-  const altri = arricchiti.length - delleMie.length;
-  return (
-    <>
-      <Chips voci={[['tutti', 'Tutti'], ...categorie.map((c) => [c.id, c.nome])]} attiva={attiva} onScegli={setScheda} />
-      {persone.map((p) => perPersona(p, filtrati.filter((d) => d._persona === p)))}
-      {altri > 0 && (
-        <button className="pp-riga pp-riga-sola pp-altri-personali" onClick={() => apri({ tipo: 'elenco', titolo: 'Documenti d\'identità di altri', carica: async () => arricchiti.filter((d) => !(d._persona && persone.includes(d._persona))) })}>
-          <span className="pp-riga-testo"><span className="pp-riga-titolo">{altri} documenti di altre persone</span><span className="pp-riga-meta">Restano in Documenti. Se uno è vostro, aprilo e scegli la persona.</span></span>
-          <IconaFreccia size={16} />
-        </button>
-      )}
-      <p className="pp-riga-meta pp-nota-fondo">Persone e tipi di documento si cambiano in Impostazioni (icona in alto a destra).</p>
-    </>
-  );
+export function VistaPersonali({ctx}) {
+  const {esegui,apri,versione,impostazioni}=ctx;
+  const {persone,categorie}=impostazioni;
+  const [docs,setDocs]=useState(null),[scheda,setScheda]=useState('tutti'),[scelti,setScelti]=useState([]),[files,setFiles]=useState(null);
+  useEffect(()=>{let active=true;esegui(async()=>{const data=await documentiPersonali(archivioDb);if(active)setDocs(data);});return()=>{active=false;};},[esegui,versione]);
+  const arr=useMemo(()=>(docs||[]).map(d=>({...d,_cat:categoriaDi(d,categorie),_persona:personaDi(d,persone)})),[docs,categorie,persone]);
+  const attivi=arr.filter(d=>documentoDaPersonal(d,d._cat)&&persone.includes(d._persona));
+  const disponibili=attivi.map(d=>d.id).sort().join(',');
+  useEffect(()=>{const ids=new Set(disponibili.split(','));setScelti(xs=>{const validi=xs.filter(id=>ids.has(id));return validi.length===xs.length?xs:validi;});},[disponibili]);
+  const key=scelti.slice().sort().join(',');
+  useEffect(()=>{
+    setFiles(null);let active=true;
+    const selected=attivi.filter(d=>scelti.includes(d.id));
+    if(!selected.length||selected.length>10)return;
+    (async()=>{try{const token=await tokenSessione();const fs=await Promise.all(selected.map(d=>preparaFile(d.drive_file_id,token).then(comeFile)));if(active)setFiles({key,fs});}catch{if(active)setFiles({key,error:true});}})();
+    return()=>{active=false;};
+  },[key,docs]); // Selected originals are prepared before the share gesture.
+  const invia=async()=>{try{const result=await condividi({titolo:'Documenti personali',files:files.fs});if(result==='non_disponibile')ctx.mostra('Scegli Scarica sul documento, poi allega da Download o Drive nella tua app mail.');}catch(e){ctx.mostra(e.message);}};
+  if(!docs)return null;
+  return <>
+    <Chips voci={[["tutti","Tutti"],...categorie.map(c=>[c.id,c.nome])]} attiva={scheda} onScegli={setScheda}/>
+    <p className="pp-riga-meta">Seleziona carta d'identità e codice fiscale per inviarli insieme.</p>
+    {persone.map(persona=>{
+      const elenco=attivi.filter(d=>d._persona===persona&&(scheda==='tutti'||d._cat===scheda));
+      return <Sezione key={persona} titolo={persona}>
+        <div className="pp-carte pp-portafoglio-carte">
+          {elenco.map(d=>{const avviso=avvisoDocumento(d);return <article className="pp-personal-card" key={d.id}>
+            <button className="pp-personal-apri" onClick={()=>apri({tipo:'documento',id:d.id})}>
+              <Miniatura doc={d} grande/>
+              <strong>{categorie.find(c=>c.id===d._cat)?.nome||titoloDoc(d)}</strong>
+              <span>{titoloDoc(d)}</span>
+              {avviso&&<span className={'pp-validita '+avviso.stato}>{avviso.testo} · {dataBreve(avviso.data)}</span>}
+            </button>
+            <label className="pp-personal-seleziona"><input type="checkbox" checked={scelti.includes(d.id)} disabled={!scelti.includes(d.id)&&scelti.length>=10} onChange={()=>setScelti(xs=>xs.includes(d.id)?xs.filter(id=>id!==d.id):[...xs,d.id])}/>Seleziona per inviare</label>
+          </article>;})}
+          <button className="pp-carta pp-carta-nuova" onClick={()=>apri({tipo:'carica',opzioni:{persona,categoria:scheda==='tutti'?null:scheda,fascicolo:'identita',portafoglio:true}})}><IconaPiu size={24}/><span>Aggiungi documento</span></button>
+        </div>
+      </Sezione>;
+    })}
+    {scelti.length>0&&<div className="pp-personal-invio" role="region" aria-label="Invia documenti insieme">
+      <strong>{scelti.length} documenti selezionati</strong>
+      <button className="pp-bottone" disabled={!files||files.key!==key||files.error} onClick={invia}>{!files?'Preparo i file…':'Invia insieme · Mail / WhatsApp'}</button>
+      {files?.error&&<p role="alert">File non disponibili. Riprova dalla scheda del documento.</p>}
+      {files?.fs?.map((file,i)=><button key={i} className="pp-testo-link" onClick={()=>scaricaDocumento(file)}>Scarica {file.name}</button>)}
+      <button className="pp-testo-link" onClick={()=>setScelti([])}>Annulla selezione</button>
+      <small>Dal pulsante Allega della mail puoi scegliere le copie in Download oppure Drive → Archivio personale.</small>
+    </div>}
+  </>;
 }
