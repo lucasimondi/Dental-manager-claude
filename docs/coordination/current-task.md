@@ -1,8 +1,8 @@
 # Current task — PATIENT-ONE-CLICK, PR260 (2026-11-01)
-- OWNER Codex; branch codex/patient-one-click; masterde7f920. Same open/unmerged PR260.
-- AUTHORIZATION: PO requests direct patient entry, corrected scrolling/keyboard/list suggestions, compact odontogram, whole-plan/entered-treatment quote choice and clean coherent patient record graphics.
-- COMPLETED: focused viewport-safe editor, native scrolling and stable footer; actual list suggestions/manual fallback; compact always-visible32-tooth selection; confirmed saved-plan PDF projection choosing all or just entered rows without copying plans; clean legacy/V2 identity/contact/KPI/actions. Partial PDF explicitly excludes global plan discount, uses confirmed saved prices.
-- VALIDATION:1508/1508 Node tests and final Studio build pass. Synthetic browser legacy/V2, list suggestions, tooth31, both scope totals/PDFs, responsive375/768/1024/1440, previous keyboard geometry simulation. Physical Android keyboard/touch/download/share unverified. Scratch screenshot synthetic only; temporary host override removed.
-- DATABASE: no schema/RLS/capability/tenancy/financial-formula or production data changes. Existing validation and uncertain-write protections retained. Immutable stable refs untouched.
-- STATUS WAITING_PRODUCT_OWNER: publish update on same PR260, inspect exact-head checks; no merge/manual deployment authorized. Explicit new Mergia required by AGENTS.md.
-- ROLLBACK revert PR260; preserve saved plan rows and stable checkpoints.
+- OWNER Codex; branch codex/patient-one-click; same open/unmerged PR260, prior remotee382fe961.
+- AUTHORIZATION: PO requests direct patient entry, compact odontogram/PDF scope, stronger patient record graphics; explicitly accepts Save below keyboard when page scrolls.
+- COMPLETED: static Save/total footer inside the main editor scroller; no keyboard-lifted action bar. Full legacy mobile record scroll including identity/KPIs; desktop sidebar retained. New toolbar/initials/name hierarchy, higher contrast, outlined contacts, one divided KPI strip and quiet secondary grid; coherent V2 palette. Existing compact odontogram, list suggestions, confirmed-plan PDF scope and persistence safeguards retained.
+- VALIDATION:1508/1508 Node tests; Studio build. CUA synthetic mobile page0→566; simulated keyboard340/offset35 editor0→611 brings Save323..367 within375 bottom; saves85 successfully. Legacy/V2 widths375/768/1024/1440 no overflow. Physical Android keyboard/touch/download/share unverified. Temporary screenshot board/host override removed.
+- DATABASE/PRODUCTION: none; no schema/RLS/capability/tenancy/financial changes. Stable refs untouched.
+- STATUS WAITING_PRODUCT_OWNER after same-PR update/exact-head checks; explicit new Mergia per AGENTS.md before merge; no manual deployment.
+- ROLLBACK revert PR260, preserve plan rows/checkpoints.

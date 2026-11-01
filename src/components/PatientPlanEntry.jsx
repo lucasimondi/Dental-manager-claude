@@ -132,14 +132,14 @@ export default function PatientPlanEntry({ patient, mode, plans = [], pricelist 
           </fieldset>
         </>}
         {error && <p ref={errorRef} tabIndex={-1} role="alert" className="patient-entry-error">{error}</p>}
+        <footer className="patient-entry-footer">
+          {!success && <div className="patient-entry-summary"><span>{rowCount} {rowCount === 1 ? 'prestazione' : 'prestazioni'}<small>{quote ? 'Totale preventivo' : 'Totale nuove voci'}</small></span><strong>{euroIt(total)}</strong></div>}
+          <div className="patient-entry-footer-actions">
+            {typing && !success && <button type="button" className="patient-entry-keyboard" onMouseDown={e => e.preventDefault()} onClick={() => { inputRef.current?.blur(); setTyping(false); }}>Nascondi tastiera</button>}
+            <button type="button" className="patient-entry-save" disabled={saving || uncertain} onClick={success ? close : save}>{saving ? 'Salvataggio…' : success ? 'Torna al paziente' : quote ? 'Salva preventivo' : 'Salva prestazioni'}<Ic n={success ? 'back' : 'ok'} s={17} c="currentColor" /></button>
+          </div>
+        </footer>
       </div>
-      <footer className="patient-entry-footer">
-        {!success && <div className="patient-entry-summary"><span>{rowCount} {rowCount === 1 ? 'prestazione' : 'prestazioni'}<small>{quote ? 'Totale preventivo' : 'Totale nuove voci'}</small></span><strong>{euroIt(total)}</strong></div>}
-        <div className="patient-entry-footer-actions">
-          {typing && !success && <button type="button" className="patient-entry-keyboard" onMouseDown={e => e.preventDefault()} onClick={() => { inputRef.current?.blur(); setTyping(false); }}>Nascondi tastiera</button>}
-          <button type="button" className="patient-entry-save" disabled={saving || uncertain} onClick={success ? close : save}>{saving ? 'Salvataggio…' : success ? 'Torna al paziente' : quote ? 'Salva preventivo' : 'Salva prestazioni'}<Ic n={success ? 'back' : 'ok'} s={17} c="currentColor" /></button>
-        </div>
-      </footer>
     </section>
     {pdf && <PdfViewerModal titolo={pdf.titolo} dataUrl={pdf.dataUrl} filename={pdf.filename} zIndex={10001} onClose={() => setPdf(null)} />}
   </div>, document.body);

@@ -267,16 +267,22 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
   return (
     <div className="patient-record-clean patient-record-legacy" style={{ position: 'fixed', inset: 0, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
       <header className="patient-clean-header">
-        <button type="button" className="patient-clean-back" onClick={onClose} aria-label="Torna indietro"><Ic n="back" s={19} c="currentColor" /></button>
-        <div className="patient-clean-identity"><span>SCHEDA PAZIENTE</span><h1>{paz.nome} {paz.cognome}</h1>{paz.cf && <small>{paz.cf}</small>}</div>
-        <button type="button" onClick={() => setAnamnesiPopup(true)}
-          title={anamnesiState === 'mancante' ? 'Anamnesi mancante' : anamnesiState === 'allarme' ? 'Allarme anamnesi' : 'Nessun allarme anamnesi'}
-          aria-label={anamnesiState === 'mancante' ? 'Anamnesi mancante' : anamnesiState === 'allarme' ? 'Allarme anamnesi' : 'Nessun allarme anamnesi'}
-          className={anamnesiState === 'allarme' ? 'anamnesi-cross anamnesi-cross--allarme' : 'anamnesi-cross'}
-          style={{ background: anamnesiState === 'mancante' ? '#fff' : anamnesiState === 'allarme' ? C.dan : C.suc, border: anamnesiState === 'mancante' ? `1.5px solid ${C.brd}` : 'none' }}>
-          <svg width={16} height={16} viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2h8v6h6v8h-6v6H8v-6H2V8h6z" fill={anamnesiState === 'mancante' ? C.dan : '#fff'} /></svg>
-        </button>
-        <button type="button" className="patient-clean-edit" onClick={() => setEditOpen(true)} aria-label="Modifica paziente"><Ic n="edit" s={16} c="currentColor" /><span>Modifica</span></button>
+        <div className="patient-clean-toolbar">
+          <button type="button" className="patient-clean-back" onClick={onClose} aria-label="Torna indietro"><Ic n="back" s={19} c="currentColor" /></button>
+          <span className="patient-clean-eyebrow">Scheda paziente</span>
+          <button type="button" onClick={() => setAnamnesiPopup(true)}
+            title={anamnesiState === 'mancante' ? 'Anamnesi mancante' : anamnesiState === 'allarme' ? 'Allarme anamnesi' : 'Nessun allarme anamnesi'}
+            aria-label={anamnesiState === 'mancante' ? 'Anamnesi mancante' : anamnesiState === 'allarme' ? 'Allarme anamnesi' : 'Nessun allarme anamnesi'}
+            className={anamnesiState === 'allarme' ? 'anamnesi-cross anamnesi-cross--allarme' : 'anamnesi-cross'}
+            style={{ background: anamnesiState === 'mancante' ? '#fff' : anamnesiState === 'allarme' ? C.dan : C.suc, border: anamnesiState === 'mancante' ? `1.5px solid ${C.brd}` : 'none' }}>
+            <svg width={16} height={16} viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2h8v6h6v8h-6v6H8v-6H2V8h6z" fill={anamnesiState === 'mancante' ? C.dan : '#fff'} /></svg>
+          </button>
+          <button type="button" className="patient-clean-edit" onClick={() => setEditOpen(true)} aria-label="Modifica paziente"><Ic n="edit" s={16} c="currentColor" /><span>Modifica</span></button>
+        </div>
+        <div className="patient-clean-profile">
+          <div className="patient-clean-avatar" aria-hidden="true">{[paz.nome, paz.cognome].filter(Boolean).map(value => value.trim().charAt(0)).join('').toUpperCase()}</div>
+          <div className="patient-clean-identity"><h1>{paz.nome} {paz.cognome}</h1>{paz.cf && <small>CF · {paz.cf}</small>}</div>
+        </div>
       </header>
       {paz.telefono && <div className="patient-clean-contacts"><a href={`tel:+39${paz.telefono.replace(/\D/g, '')}`} aria-label="Chiama"><Ic n="ph" s={14} c="currentColor" />{paz.telefono}</a>{waAbilitato(features) && <a href={waUrl(paz.telefono)} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><Ic n="wa" s={15} c="currentColor" />WhatsApp</a>}</div>}
 
