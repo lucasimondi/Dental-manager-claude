@@ -1,6 +1,6 @@
-# Current task — PERSONAL-WALLET-DOCUMENTS (2026-11-01)
-- OWNER: Codex; branch codex/personal-wallet-documents from master 9e187349. Prior diary task merged PR256; MCP task remains isolated PR257.
-- AUTHORIZATION: PO requests correcting Personal membership, precise cropped Luca/Martina IDs/CF in their own sections, old documents in archive, full-screen viewer/optional info, no email-transmission/payments clutter, expiry reminders without Paid, protected PIN/PUK and multi-file/email attachment workflow.
-- SCOPE: Personal-only UI/helpers/tests and authorized classification of specifically identified archive records; preserve originals and Studio. No new App, schema, RLS or OAuth change. Document crops are derived PDFs retaining source content without generative reconstruction, sanitized so hidden other-person data is excluded.
-- STATUS: implementation complete; local Node suite 1492/1492, Personal and Studio builds passed. Authorized crops/classification saved and read back. Local browser connection refused; physical Android unverified. Publish dedicated PR, inspect exact-head checks/preview, then WAITING_PRODUCT_OWNER for this PR only. Native Android DocumentsProvider is not implemented; Web Share and Download/Drive are available. Private files remain outside git.
-- ROLLBACK: revert task PR; restore recorded classification fields; originals kept. Golden checkpoint unchanged.
+# Current task — PERSONAL-DIARIO-DOCK-EXPORT (2026-11-01)
+- OWNER Codex; branch codex/diario-dock-export from masterdd3f7d5 (rebased after wallet PR258).
+- AUTHORIZATION: PO requests one-row floating dock, sourced philosopher quote on each page, PDF/JPEG export of current/all/selected pages instead of JSON.
+- SCOPE: diary presentation and local export only; retain touch/editor/persistence. JPEG multi-sheet delivered as ZIP of JPEGs. No data/schema/auth changes.
+- STATUS WAITING_PRODUCT_OWNER. Targeted5/5 and full1497/1497 tests pass on current masterdd3f7d5 after wallet PR258 integration. Personal/Studio builds and diff check pass. Synthetic PDF/JPEG/ZIP generated and visually/structurally checked; browser generation scopes/UI checked, dock one row375/768/1024/1440. Native Android download/share remains unverified. Dedicated PR/specific PO Mergia required.
+- ROLLBACK revert dedicated PR, keep diary rows. Stable checkpoints unchanged.
