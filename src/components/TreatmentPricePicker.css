@@ -1,0 +1,12 @@
+.treatment-price-picker { min-width:0; }
+.treatment-price-results { margin-top:8px; border:1px solid #cbdced; border-radius:14px; background:#f5f9ff; overflow:hidden; font-weight:400; }
+.treatment-price-caption { display:flex; justify-content:space-between; gap:8px; padding:9px 12px; color:#356b9c; font-size:11px; font-weight:750; }
+.treatment-price-caption span { font-weight:450; color:#6a7f95; }
+.treatment-price-results [role="listbox"] { max-height:190px; overflow-y:auto; overscroll-behavior:auto; touch-action:pan-y; }
+.treatment-price-results [role="option"] { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; padding:11px 12px; min-height:52px; border:0; border-top:1px solid #e1eaf3; background:white; color:#21364b; text-align:left; font:inherit; cursor:pointer; }
+.treatment-price-results [role="option"]:hover,.treatment-price-results [role="option"][aria-selected="true"] { background:#e8f2ff; }
+.treatment-price-results [role="option"]:focus-visible { outline:2px solid #276da9; outline-offset:-3px; }
+.treatment-price-results strong { display:block; font-size:14px; font-weight:650; line-height:1.35; }
+.treatment-price-results small { display:block; margin-top:3px; font-size:11px; color:#728398; }
+.treatment-price-results b { flex-shrink:0; font-size:13px; font-weight:750; }
+.treatment-price-empty { margin:8px 0 0; font-size:12px; line-height:1.5; font-weight:400; color:#64748b; }

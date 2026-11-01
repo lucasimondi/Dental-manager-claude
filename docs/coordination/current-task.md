@@ -1,8 +1,8 @@
-# Current task — PATIENT-ONE-CLICK (2026-11-01)
-- OWNER Codex; branch codex/patient-one-click from master de7f920.
-- AUTHORIZATION: PO requests simpler patient flow, treatment and quote entry in one click. Previous diary task merged/deployed PR259.
-- COMPLETED: direct actions in legacy/V2; focused fullscreen-mobile shared row editor; existing verified persistence reused without requiring appointment; saved PDF access and return to the mounted record.
-- DATABASE: no schema/RLS/capability/tenancy/formula/deployment changes or production data operations. Existing concurrency limits retained; uncertain writes block replay.
-- VALIDATION: 1502/1502 full Node tests, including five new direct-patient cases; Studio and Personal production builds passed; final16/16 service tests and diff check pass. Synthetic browser legacy/V2 save-return, list-price, duplication, quote PDF, multi-plan validation; geometry375/768/1024/1440, final375x740 fullscreen/no overflow. Physical Android save/share/keyboard not verified. Final build receipt in handoff.
-- STATUS WAITING_PRODUCT_OWNER after dedicated PR publication and exact-head checks; explicit new Mergia required by AGENTS.md. No merge/manual deploy.
-- ROLLBACK revert dedicated PR; keep plans and stable checkpoints unchanged.
+# Current task — PATIENT-ONE-CLICK, PR260 review correction (2026-11-01)
+- OWNER Codex; branch codex/patient-one-click from masterde7f920. PR260 remains open/unmerged; prior remote head1869cc6/tree df95285.
+- AUTHORIZATION: PO rejects UI/graphics, scrolling and keyboard overlap, duplicate action, missing list suggestions; requests senior design/development correction.
+- COMPLETED: redesigned patient editor with bounded visible-viewport portal, independent header/footer and single main scroller, compact keyboard mode, stable footer height, no unsolicited keyboard opening, hide-keyboard control; row cards and canonical total; one primary Save and explicit success/PDF state. Patient duplicate removed; blank new row focuses directly. Shared price picker shows supplied list suggestions with category/code/price, partial search, touch/mouse/keyboard selection and manual fallback.
+- VALIDATION: final1504/1504 Node tests and Studio production build pass; diff check clean. Synthetic CUA legacy/V2, list-price/free text, three-line quote245/PDF, multi-plan error/correction/save, five-row native scrolling0..1532. Viewport simulation740→340/offset35; footer stays above visible bottom375; responsive375/768/1024/1440 no horizontal overflow. Physical Android touch/IME/download/share remain unverified. Temporary host override removed.
+- DATABASE: no schema/RLS/capability/tenancy/formula or production data changes. Existing persistence and uncertain-write safeguards retained. Stable checkpoints untouched.
+- STATUS WAITING_PRODUCT_OWNER after publishing this correction to PR260 and inspecting exact-head checks. No merge/manual deploy authorized.
+- ROLLBACK revert PR260; preserve saved plan records.

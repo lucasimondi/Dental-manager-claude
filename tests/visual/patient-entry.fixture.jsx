@@ -14,9 +14,14 @@ window.__writes = [];
 const db = {getById:async(table,id)=>table==='dm_p'?patient:stored.find(p=>p.id===id),getAll:async()=>stored,
  insert:async(table,payload)=>{await new Promise(r=>setTimeout(r,250));if(window.__failSave)throw Error('Errore sintetico');const saved={...payload,id:100+window.__writes.length};stored.push(saved);window.__writes.push({table,...saved});return saved;},
  update:async(table,id,payload)=>{const saved={...payload,id};stored=stored.map(p=>p.id===id?saved:p);window.__writes.push({table,...saved});}};
+if (params.get('keyboard') === 'test') {
+ const viewport = new EventTarget(); Object.assign(viewport,{height:740,offsetTop:0});
+ Object.defineProperty(window,'visualViewport',{value:viewport,configurable:true});
+ window.addEventListener('message',event=>{if(event.source !== window.parent || event.data?.type !== 'test-keyboard')return;viewport.height=event.data.open?340:740;viewport.offsetTop=event.data.open?35:0;viewport.dispatchEvent(new Event('resize'));});
+}
 function Fixture() {
  const [plans,setPlans] = useState(stored);
  const save = async(patient,draft)=>{let savedPlan;const result=await persistPatientEntry({db,patient,draft,onApplied:(kind,row)=>{savedPlan=row;setPlans([...stored]);}});return {...result,savedPlan};};
- return <PatientWorkspaceBoundary paz={patient} plans={plans} setPlans={setPlans} payments={[]} appointments={[]} si={{nome:'Studio Test',vertical:'dentistico'}} saldiPiani={{}} pricelist={[{id:1,nome:'Igiene',prezzo:85}]} features={{patientWorkspaceV2:params.get('v2')==='1'}} onClose={()=>{}} onNuovoPiano={()=>{}} onSavePatientEntry={save} />;
+ return <PatientWorkspaceBoundary paz={patient} plans={plans} setPlans={setPlans} payments={[]} appointments={[]} si={{nome:'Studio Test',vertical:'dentistico'}} saldiPiani={{}} pricelist={[{id:1,nome:'Igiene professionale',cat:'Prevenzione',cod:'IG1',prezzo:85},{id:2,nome:'Otturazione estetica',cat:'Conservativa',prezzo:100},{id:3,nome:'Visita di controllo',cat:'Visite',prezzo:0}]} features={{patientWorkspaceV2:params.get('v2')==='1'}} onClose={()=>{}} onNuovoPiano={()=>{}} onSavePatientEntry={save} />;
 }
 createRoot(document.getElementById('root')).render(<Fixture />);

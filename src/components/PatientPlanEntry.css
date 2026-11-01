@@ -1,16 +1,106 @@
-html .pol-modal-backdrop.patient-entry-backdrop, html .pol-modal-sheet.patient-entry-sheet { animation:none !important; }
-.patient-entry-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; padding:10px 14px; flex-shrink:0; background:var(--surface-card); }
-.patient-entry-actions button { min-width:0; min-height:48px; padding:10px; border-radius:12px; border:1px solid var(--brand-primary); background:var(--brand-primary); color:white; font:inherit; font-size:13px; font-weight:750; cursor:pointer; }
-.patient-entry-actions button + button { background:var(--surface-card); color:var(--brand-primary); }
-.patient-entry-actions button:focus-visible { outline:2px solid var(--brand-primary); outline-offset:3px; }
-.patient-plan-entry fieldset { border:0; margin:0; padding:0; min-width:0; }
-.patient-plan-entry details > summary { min-height:44px; cursor:pointer; color:var(--text-secondary); }
-.patient-entry-sheet .pol-modal-header { flex-shrink:0; }
-.patient-entry-sheet .pol-modal-content { min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+.patient-entry-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; padding:12px 14px; flex-shrink:0; background:var(--surface-card); }
+.patient-entry-actions button { display:flex; align-items:center; justify-content:center; gap:8px; min-width:0; min-height:48px; padding:10px 12px; border-radius:12px; border:1px solid #2269a6; background:linear-gradient(125deg,#286fae,#185991); color:white; box-shadow:0 3px 8px #1e63951a; font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
+.patient-entry-actions button + button { background:#f2f7fd; color:#205f98; border-color:#d5e3f0; box-shadow:none; }
+.patient-entry-actions button:focus-visible { outline:2px solid #276da9; outline-offset:3px; }
+.patient-entry-overlay { position:fixed; left:0; right:0; z-index:10000; box-sizing:border-box; padding:24px; display:flex; align-items:center; justify-content:center; background:#10253c80; color:#1d3349; font-family:inherit; isolation:isolate; }
+.patient-entry-panel { display:flex; flex-direction:column; width:min(100%,780px); max-height:100%; min-height:0; height:min(850px,100%); background:#f4f7fb; border:1px solid #ffffff8c; border-radius:24px; overflow:hidden; box-shadow:0 24px 80px #0c23334a; }
+.patient-entry-header { display:flex; align-items:center; gap:12px; padding:20px 24px; flex:0 0 auto; border-bottom:1px solid #e2e9f1; background:#fff; }
+.patient-entry-mark { display:grid; place-items:center; width:44px; height:44px; flex:0 0 auto; border:1px solid #d5e6f6; border-radius:14px; color:#21679f; background:linear-gradient(140deg,#f2f8ff,#e3effb); }
+.patient-entry-heading { min-width:0; flex:1; }
+.patient-entry-heading > span { display:block; color:#68829a; font-size:10px; font-weight:800; letter-spacing:.13em; }
+.patient-entry-heading h2 { margin:5px 0 0; font-size:19px; line-height:1.25; font-weight:750; letter-spacing:-.4px; overflow-wrap:anywhere; outline:none; }
+.patient-entry-close { display:grid; place-items:center; width:40px; min-width:40px; height:40px; padding:0; border:1px solid #e0e8f0; border-radius:50%; background:#f7f9fc; color:#6f8296; cursor:pointer; }
+.patient-entry-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; touch-action:pan-y; -webkit-overflow-scrolling:touch; padding:24px; scroll-padding:16px; }
+.patient-entry-intro { margin-bottom:20px; }
+.patient-entry-intro h3 { margin:0; font-size:21px; line-height:1.3; font-weight:750; letter-spacing:-.5px; }
+.patient-entry-intro p { margin:7px 0 0; font-size:13px; color:#718399; line-height:1.5; }
+.patient-entry-fields { margin:0; padding:0; border:0; min-width:0; }
+.patient-entry-panel .appointment-entry-rows { counter-reset:patient-entry-row; }
+.patient-entry-panel .appointment-entry-row { position:relative; counter-increment:patient-entry-row; padding:20px; margin:0 0 12px; background:#fff; border:1px solid #e1e8f0; border-radius:18px; box-shadow:0 3px 12px #30466004; }
+.patient-entry-panel .appointment-entry-row::before { content:counter(patient-entry-row,decimal-leading-zero); position:absolute; top:20px; right:20px; display:grid; place-items:center; width:25px; height:23px; border-radius:7px; color:#6685a3; background:#f0f5fa; font-size:10px; font-weight:800; }
+.patient-entry-panel .appointment-entry-row + .appointment-entry-row { padding-top:20px; border-top:1px solid #e1e8f0; }
+.patient-entry-panel .appointment-field { margin-bottom:14px; color:#596f85; font-size:11px; font-weight:700; letter-spacing:.01em; gap:8px; }
+.patient-entry-panel .appointment-field > label { padding-right:30px; }
+.patient-entry-panel .appointment-field input,.patient-entry-panel .appointment-field select,.patient-entry-option-field input,.patient-entry-option-field select { display:block; width:100%; box-sizing:border-box; min-width:0; min-height:48px; padding:12px 13px; border:1px solid #dce5ee; border-radius:11px; background:#fbfcfe; color:#203a52; font:inherit; font-size:16px; font-weight:500; outline:none; }
+.patient-entry-panel input::placeholder { color:#97a7b7; font-weight:400; }
+.patient-entry-panel input:focus,.patient-entry-panel select:focus { border-color:#568dbd; box-shadow:0 0 0 3px #e6f1fb; outline:none; }
+.patient-entry-panel .appointment-field-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.patient-entry-panel .appointment-tooth-picker { margin:0; padding:0; border:0; border-top:1px solid #edf1f5; border-radius:0; }
+.patient-entry-panel .appointment-tooth-picker > summary { min-height:44px; font-size:12px; color:#4d7395; font-weight:600; }
+.patient-entry-panel .appointment-tooth-picker > summary::before { content:'+'; margin-right:8px; font-weight:500; font-size:17px; }
+.patient-entry-panel .appointment-tooth-picker[open] > summary::before { content:'−'; }
+.patient-entry-panel .appointment-row-actions:empty { display:none; }
+.patient-entry-panel .appointment-row-actions { justify-content:flex-end; border-top:1px solid #edf1f5; }
+.patient-entry-panel .appointment-text-button { font-size:12px; font-weight:600; color:#926572; padding:4px 0; }
+.patient-entry-panel .appointment-add-row { margin:0 0 20px; min-height:50px; border:1px dashed #b8ccde; border-radius:14px; background:#edf4fc; color:#316b9b; font-size:13px; font-weight:700; }
+.patient-entry-options { border-top:1px solid #e1e8f0; color:#5c748c; }
+.patient-entry-options > summary { display:flex; align-items:center; justify-content:space-between; min-height:48px; cursor:pointer; font-size:12px; font-weight:650; }
+.patient-entry-options > summary::after { content:'+'; font-size:17px; font-weight:400; }
+.patient-entry-options[open] > summary::after { content:'−'; }
+.patient-entry-option-field { display:grid; gap:8px; font-size:12px; margin-bottom:12px; }
+.patient-entry-footer { flex:0 0 auto; padding:15px 24px max(18px,env(safe-area-inset-bottom)); border-top:1px solid #dde7f0; background:#fff; box-shadow:0 -8px 22px #38567306; }
+.patient-entry-summary { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:12px; font-size:12px; color:#73879b; }
+.patient-entry-summary small { display:block; margin-top:3px; color:#8999aa; font-size:10px; }
+.patient-entry-summary strong { font-size:23px; color:#244b6d; letter-spacing:-.5px; font-weight:750; }
+.patient-entry-footer-actions { display:flex; align-items:center; gap:10px; }
+.patient-entry-save { display:flex; align-items:center; justify-content:center; gap:10px; flex:1; min-height:50px; padding:12px 14px; border:1px solid #246ba6; border-radius:12px; color:#fff; background:linear-gradient(120deg,#2b76b3,#1d6098); font:inherit; font-size:14px; font-weight:700; box-shadow:0 4px 10px #266eaa1a; cursor:pointer; }
+.patient-entry-keyboard { min-height:46px; padding:9px 0; width:82px; border:0; background:none; color:#5c7892; font:inherit; font-size:11px; line-height:1.4; cursor:pointer; }
+.patient-entry-panel button:disabled { opacity:.5; cursor:wait; }
+.patient-entry-panel button:focus-visible { outline:2px solid #4b87b8; outline-offset:2px; }
+.patient-entry-error,.patient-entry-warning { padding:14px 16px; border-radius:12px; background:#fff0f0; border:1px solid #f0cece; font-size:13px; line-height:1.5; color:#a1404c; }
+.patient-entry-success { padding:32px 4px; text-align:center; }
+.patient-entry-success-icon { display:grid; place-items:center; width:64px; height:64px; margin:0 auto 22px; border-radius:22px; background:#e6f5f1; color:#2c907b; }
+.patient-entry-success > span { font-size:10px; letter-spacing:.13em; font-weight:800; color:#6b8c87; }
+.patient-entry-success h3 { font-size:25px; letter-spacing:-.6px; margin:10px 0; }
+.patient-entry-success p { color:#7a8a9b; font-size:13px; line-height:1.6; }
+.patient-entry-saved-summary { display:grid; gap:8px; padding:20px; border:1px solid #dde7f0; border-radius:16px; background:#fff; margin:26px 0 14px; }
+.patient-entry-saved-summary strong { font-size:14px; font-weight:600; }
+.patient-entry-saved-summary span { font-size:12px; color:#7a8c9d; }
+.patient-entry-saved-summary b { font-size:24px; color:#2e577b; }
+.patient-entry-pdf { display:flex; justify-content:center; align-items:center; gap:10px; min-height:50px; width:100%; border:1px solid #cbdff0; border-radius:13px; background:#eef6ff; color:#2b6b9e; font:inherit; font-size:13px; font-weight:650; cursor:pointer; }
 @media(max-width:767px) {
- html .pol-modal-backdrop.patient-entry-backdrop { padding:0 !important; align-items:stretch !important; }
- html .pol-modal-sheet.patient-entry-sheet[data-mobile-variant="fullscreen"] { width:100% !important; max-width:none !important; height:100dvh !important; max-height:100dvh !important; border-radius:0 !important; margin:0 !important; display:flex; flex-direction:column; }
- .patient-entry-sheet .pol-modal-header { padding-top:max(12px,env(safe-area-inset-top)) !important; }
- .patient-entry-sheet .pol-modal-content { flex:1; padding:14px !important; }
- .patient-entry-sheet .appointment-save-bar { bottom:-14px; }
+ .patient-entry-overlay { padding:0; align-items:stretch; }
+ .patient-entry-panel { width:100%; height:100%; max-height:100%; border:0; border-radius:0; }
+ .patient-entry-header { padding:14px 18px; padding-top:max(14px,env(safe-area-inset-top)); gap:10px; }
+ .patient-entry-heading h2 { font-size:18px; }
+ .patient-entry-scroll { padding:20px 16px; }
+ .patient-entry-intro h3 { font-size:20px; }
+ .patient-entry-intro { margin-bottom:16px; }
+ .patient-entry-panel .appointment-entry-row { padding:16px; border-radius:16px; }
+ .patient-entry-panel .appointment-entry-row::before { top:16px; right:16px; }
+ .patient-entry-panel .appointment-entry-row + .appointment-entry-row { padding-top:16px; }
+ .patient-entry-footer { padding:12px 18px max(12px,env(safe-area-inset-bottom)); }
+ .patient-entry-summary { margin-bottom:9px; }
+ .patient-entry-summary strong { font-size:21px; }
 }
+@media(max-height:500px) {
+ .patient-entry-overlay { padding:0; }
+ .patient-entry-panel { height:100%; border-radius:0; }
+ .patient-entry-header { padding:9px 16px; }
+ .patient-entry-mark { width:34px; height:34px; border-radius:10px; }
+ .patient-entry-heading h2 { margin-top:3px; font-size:16px; }
+ .patient-entry-footer { padding:8px 16px; }
+ .patient-entry-summary { display:none; }
+ .patient-entry-save { min-height:44px; }
+ .patient-entry-scroll { padding:14px 16px; }
+ .patient-entry-intro { display:none; }
+}
+
+/* visualViewport may shrink while the layout viewport/media query stays tall. */
+.patient-entry-overlay.is-compact { padding:0; }
+.patient-entry-overlay.is-compact .patient-entry-panel { height:100%; border-radius:0; }
+.patient-entry-overlay.is-compact .patient-entry-header { padding:9px 16px; }
+.patient-entry-overlay.is-compact .patient-entry-mark { width:34px; height:34px; border-radius:10px; }
+.patient-entry-overlay.is-compact .patient-entry-heading h2 { margin-top:3px; font-size:16px; }
+.patient-entry-overlay.is-compact .patient-entry-footer { padding:8px 16px; }
+.patient-entry-overlay.is-compact .patient-entry-summary,.patient-entry-overlay.is-compact .patient-entry-intro { display:none; }
+.patient-entry-overlay.is-compact .patient-entry-save { min-height:44px; }
+.patient-entry-overlay.is-compact .patient-entry-scroll { padding:14px 16px; }
+
+.patient-entry-overlay.is-compact .patient-entry-keyboard { min-height:44px; }
+
+/* Focusing/blurring a field must never move a control between pointer down/up. */
+.patient-entry-footer-actions { height:50px; }
+.patient-entry-footer-actions > button { height:100%; min-height:0; box-sizing:border-box; line-height:1.3; }
+.patient-entry-overlay.is-compact .patient-entry-footer-actions { height:44px; }
+.patient-entry-overlay.is-compact .patient-entry-footer-actions > button { height:44px; min-height:0; }

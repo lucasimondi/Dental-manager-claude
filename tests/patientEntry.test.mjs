@@ -51,3 +51,23 @@ test('unconfirmed writes stop and are marked uncertain, without automatic replay
   await assert.rejects(()=>persistPatientEntry({db,patient,draft}),e=>e.writesStarted&&e.completed===0);
   assert.equal(writes,1);
 });
+
+test('visible list-price suggestions match partial, accent-insensitive names, codes and categories', async () => {
+  const {searchTreatmentPrices} = await import('../src/lib/patientEntryPresentation.js');
+  const list = [{id:1,nome:'Igiene professionale',cat:'Prevenzione',cod:'IG1',prezzo:85},{id:2,nome:'Otturazione estetica',cat:'Conservativa',prezzo:100},{id:3,nome:'Visita è controllo',cat:'Visite',prezzo:0},null];
+  assert.deepEqual(searchTreatmentPrices(list,'igie').map(p=>p.id),[1]);
+  assert.deepEqual(searchTreatmentPrices(list,'estetica ott').map(p=>p.id),[2]);
+  assert.deepEqual(searchTreatmentPrices(list,'VISITA E').map(p=>p.id),[3]);
+  assert.deepEqual(searchTreatmentPrices(list,'ig1').map(p=>p.id),[1]);
+  assert.deepEqual(searchTreatmentPrices(list,'prevenzione').map(p=>p.id),[1]);
+  assert.equal(searchTreatmentPrices(list,'inesistente').length,0);
+  assert.equal(searchTreatmentPrices(list,'',2).length,2);
+  assert.equal(list.length,4);
+});
+test('keyboard geometry follows visible viewport height/offset and falls back without the API', async () => {
+  const {patientEntryViewport} = await import('../src/lib/patientEntryPresentation.js');
+  assert.deepEqual(patientEntryViewport({height:340,offsetTop:45},740),{height:340,top:45});
+  assert.deepEqual(patientEntryViewport({height:740,offsetTop:0},740),{height:740,top:0});
+  assert.deepEqual(patientEntryViewport(null,390),{height:390,top:0});
+  assert.deepEqual(patientEntryViewport({height:0,offsetTop:-7},740),{height:740,top:0});
+});
