@@ -1,6 +1,11 @@
-# Current task — PERSONAL-DIARIO-DOCK-EXPORT (2026-11-01)
-- OWNER Codex; branch codex/diario-dock-export from masterdd3f7d5 (rebased after wallet PR258).
-- AUTHORIZATION: PO requests one-row floating dock, sourced philosopher quote on each page, PDF/JPEG export of current/all/selected pages instead of JSON.
-- SCOPE: diary presentation and local export only; retain touch/editor/persistence. JPEG multi-sheet delivered as ZIP of JPEGs. No data/schema/auth changes.
-- STATUS WAITING_PRODUCT_OWNER. Targeted5/5 and full1497/1497 tests pass on current masterdd3f7d5 after wallet PR258 integration. Personal/Studio builds and diff check pass. Synthetic PDF/JPEG/ZIP generated and visually/structurally checked; browser generation scopes/UI checked, dock one row375/768/1024/1440. Native Android download/share remains unverified. Dedicated PR/specific PO Mergia required.
-- ROLLBACK revert dedicated PR, keep diary rows. Stable checkpoints unchanged.
+# Current task — PERSONAL-DIARIO-HOME-PHILOSOPHY (2026-11-01)
+- OWNER Codex; branch codex/diario-home-philosophy from master de7f920 (PR259).
+- AUTHORIZATION: PO requests direct Home navigation, no repeated quotations across diary pages, philosophical library by categories and eras.
+- SCOPE: diary navigation and quote catalogue/selection only; existing Personal settings JSON for page quoteId, no schema/Auth/RLS changes. Preserve touch/editor/exports.
+- STATUS VALIDATED_LOCAL. 1504/1504 Node tests, Personal and Studio builds; browser synthetic Home/selection/filters/375px checks completed. Ready for dedicated PR and exact-head checks; specific new PO Mergia required.
+- ROLLBACK revert dedicated PR; preserve diary rows and stable checkpoints.
+
+- COMPLETED: direct Home with save flush; 162 passages / 32 philosophers / six eras / 26 schools / 13 themes; filterable source-linked library, manual unique selection, pin allocation/repair, explicit exhaustion instead of cycling; live/turn/export consistency and wrapped export attribution.
+- FILES: diary JSX/CSS/library panel, quotes/export helpers, two tests, architecture/coordination. DATABASE: none; optional quoteId metadata in existing JSON on user save, existing CAS and RLS unchanged. No live diary reads/writes.
+- LIMITS: selected catalogue is finite, not every philosopher; after 162 distinct allocations, show exhaustion without duplicates. Unpersisted legacy default pins can shift if reserved pins change. Cross-device duplicate pins repaired on next full load. Android hardware/download not newly tested.
+- NEXT: publish draft PR, verify intended diff/CI/preview and mark ready; await specific PO Mergia.

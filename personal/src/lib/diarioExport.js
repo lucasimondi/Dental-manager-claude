@@ -1,5 +1,5 @@
 import { dateLabel } from './diario.js';
-import { quoteForPage } from './diarioQuotes.js';
+import { assignDiaryQuotes, quoteForPage, quoteText } from './diarioQuotes.js';
 
 export function exportPageIndexes(count, scope, current, selected = []) {
   if (!Number.isInteger(count) || count < 1) throw new Error('Il diario non contiene pagine.');
@@ -46,6 +46,7 @@ const yieldUI = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 // Stream one physical sheet at a time, including continuations for long text/captions.
 export async function* renderDiarySheets(pages, indexes, options = {}) {
+  pages = assignDiaryQuotes(pages);
   const { createCanvas = canvasDefault, encode = encodeDefault, loadImage = imageDefault, cover = false, onProgress = () => {}, cancelled = () => false } = options;
   const check = () => { if (cancelled()) throw new Error('Esportazione annullata.'); };
   const base = () => {
@@ -79,8 +80,9 @@ export async function* renderDiarySheets(pages, indexes, options = {}) {
       ctx.fillStyle = '#806943'; ctx.font = 'italic 27px Georgia, serif'; ctx.textAlign = 'left'; ctx.fillText('amor fati', LEFT, 90);
       ctx.font = '21px sans-serif'; ctx.textAlign = 'right'; ctx.fillText(`Pagina ${pageIndex + 1}${part > 1 ? ` · continua ${part}` : ''}`, RIGHT, 90); ctx.textAlign = 'left';
       ctx.font = 'italic 27px Georgia, serif'; ctx.fillStyle = '#7d6747'; let qy = 168;
-      for (const line of wrapDiaryText(`“${quote.text}”`, RIGHT - LEFT - 60, (s) => ctx.measureText(s).width)) { ctx.fillText(line, LEFT + 30, qy); qy += 36; }
-      ctx.font = '19px Georgia, serif'; ctx.fillText(`${quote.author} · ${quote.work}`, LEFT + 30, qy + 12);
+      for (const line of wrapDiaryText(quote ? quoteText(quote) : 'Un nuovo spazio per la tua riflessione.', RIGHT - LEFT - 60, (s) => ctx.measureText(s).width)) { ctx.fillText(line, LEFT + 30, qy); qy += 36; }
+      ctx.font = '19px Georgia, serif'; const attribution = quote ? `${quote.author} · ${quote.work}${quote.kind === 'thought' ? ' · Riflessione dal testo' : ''}` : 'Tutti i pensieri della biblioteca sono già assegnati.';
+      for (const line of wrapDiaryText(attribution, RIGHT - LEFT - 60, (s) => ctx.measureText(s).width)) { ctx.fillText(line, LEFT + 30, qy + 12); qy += 27; }
       ctx.strokeStyle = '#b8a17a88'; ctx.beginPath(); ctx.moveTo(LEFT, qy + 44); ctx.lineTo(RIGHT, qy + 44); ctx.stroke();
       y = Math.max(326, qy + 92);
     };
