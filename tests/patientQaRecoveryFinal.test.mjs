@@ -193,14 +193,14 @@ const css2 = fs.readFileSync('src/components/PremiumVisualSystem.css', 'utf8');
 // wasn't centered). Replaced with a plain link matching the Chiama
 // button's own circle exactly — same size, same centering, WhatsApp
 // green.
-test('O. Header scheda paziente ha i tasti chiamata e WhatsApp, entrambi cerchi 34px ben centrati', () => {
+test('O. Scheda paziente conserva contatti accessibili e gli URL centralizzati', () => {
   assert.match(schedaPaz, /href=\{`tel:\+39\$\{paz\.telefono\.replace\(\/\\D\/g, ''\)\}`\}/);
   assert.match(schedaPaz, /href=\{waUrl\(paz\.telefono\)\}/);
   assert.match(schedaPaz, /import \{ waAbilitato, waUrl \} from '\.\/ui\/WaAction\.jsx';/);
   assert.doesNotMatch(schedaPaz, /<WaAction/);
-  const waButton = schedaPaz.match(/href=\{waUrl\(paz\.telefono\)\}[^>]*style=\{\{([^}]*)\}\}/)?.[1] || '';
-  assert.match(waButton, /width: 34, height: 34/);
-  assert.match(waButton, /alignItems: 'center', justifyContent: 'center'/);
+  assert.match(schedaPaz, /className="patient-clean-contacts"/);
+  assert.match(schedaPaz, /aria-label="Chiama"/);
+  assert.match(schedaPaz, /aria-label="WhatsApp"/);
 });
 
 // POL-UI-020 follow-up: Product Owner — "la croce di anamnesi deve
@@ -274,8 +274,10 @@ test('P4. Prossimo appuntamento mostra il primo futuro o "Nessun appuntamento"',
 // precedente.
 test('P5. Il telefono è sotto il nome in header; PhStr (secondo Chiama/WhatsApp) non è più usato nel corpo della pagina', () => {
   assert.doesNotMatch(schedaPaz, /PhStr/);
-  const headerNameBlock = schedaPaz.match(/\{paz\.nome\} \{paz\.cognome\}<\/div>[\s\S]{0,200}/)?.[0] || '';
-  assert.match(headerNameBlock, /\{paz\.telefono && <div/);
+  const name = schedaPaz.indexOf('<h1>{paz.nome} {paz.cognome}</h1>');
+  const contacts = schedaPaz.indexOf('className="patient-clean-contacts"');
+  const actions = schedaPaz.indexOf('<PatientEntryActions');
+  assert.ok(name >= 0 && contacts > name && actions > contacts);
 });
 
 test('P6. Le celle statistiche dell\'header sono cliccabili e portano al tab giusto', () => {

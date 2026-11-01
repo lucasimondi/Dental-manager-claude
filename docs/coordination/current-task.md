@@ -1,8 +1,8 @@
-# Current task — PATIENT-ONE-CLICK, PR260 review correction (2026-11-01)
-- OWNER Codex; branch codex/patient-one-click from masterde7f920. PR260 remains open/unmerged; prior remote head1869cc6/tree df95285.
-- AUTHORIZATION: PO rejects UI/graphics, scrolling and keyboard overlap, duplicate action, missing list suggestions; requests senior design/development correction.
-- COMPLETED: redesigned patient editor with bounded visible-viewport portal, independent header/footer and single main scroller, compact keyboard mode, stable footer height, no unsolicited keyboard opening, hide-keyboard control; row cards and canonical total; one primary Save and explicit success/PDF state. Patient duplicate removed; blank new row focuses directly. Shared price picker shows supplied list suggestions with category/code/price, partial search, touch/mouse/keyboard selection and manual fallback.
-- VALIDATION: final1504/1504 Node tests and Studio production build pass; diff check clean. Synthetic CUA legacy/V2, list-price/free text, three-line quote245/PDF, multi-plan error/correction/save, five-row native scrolling0..1532. Viewport simulation740→340/offset35; footer stays above visible bottom375; responsive375/768/1024/1440 no horizontal overflow. Physical Android touch/IME/download/share remain unverified. Temporary host override removed.
-- DATABASE: no schema/RLS/capability/tenancy/formula or production data changes. Existing persistence and uncertain-write safeguards retained. Stable checkpoints untouched.
-- STATUS WAITING_PRODUCT_OWNER after publishing this correction to PR260 and inspecting exact-head checks. No merge/manual deploy authorized.
-- ROLLBACK revert PR260; preserve saved plan records.
+# Current task — PATIENT-ONE-CLICK, PR260 (2026-11-01)
+- OWNER Codex; branch codex/patient-one-click; masterde7f920. Same open/unmerged PR260.
+- AUTHORIZATION: PO requests direct patient entry, corrected scrolling/keyboard/list suggestions, compact odontogram, whole-plan/entered-treatment quote choice and clean coherent patient record graphics.
+- COMPLETED: focused viewport-safe editor, native scrolling and stable footer; actual list suggestions/manual fallback; compact always-visible32-tooth selection; confirmed saved-plan PDF projection choosing all or just entered rows without copying plans; clean legacy/V2 identity/contact/KPI/actions. Partial PDF explicitly excludes global plan discount, uses confirmed saved prices.
+- VALIDATION:1508/1508 Node tests and final Studio build pass. Synthetic browser legacy/V2, list suggestions, tooth31, both scope totals/PDFs, responsive375/768/1024/1440, previous keyboard geometry simulation. Physical Android keyboard/touch/download/share unverified. Scratch screenshot synthetic only; temporary host override removed.
+- DATABASE: no schema/RLS/capability/tenancy/financial-formula or production data changes. Existing validation and uncertain-write protections retained. Immutable stable refs untouched.
+- STATUS WAITING_PRODUCT_OWNER: publish update on same PR260, inspect exact-head checks; no merge/manual deployment authorized. Explicit new Mergia required by AGENTS.md.
+- ROLLBACK revert PR260; preserve saved plan rows and stable checkpoints.

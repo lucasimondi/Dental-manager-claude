@@ -114,6 +114,7 @@ async function persistEntry({ db, patient, appointment, draft, onApplied }) {
       ? prepareAppointmentEntry({ patient: freshPatient, appointment: freshAppointment, plans, draft })
       : preparePatientEntry({ patient: freshPatient, plans, draft });
     let treatmentId, quoteId;
+    const savedPlans = [];
     const savePlan = async (plan, kind) => {
       writesStarted = true;
       let saved;
@@ -125,9 +126,10 @@ async function persistEntry({ db, patient, appointment, draft, onApplied }) {
         if (!saved || JSON.stringify(canonical(saved.voci)) !== JSON.stringify(canonical(plan.voci))) throw new Error('Modifica piano non confermata.');
       }
       if (!saved?.id || String(saved.pazienteId) !== String(patient.id)) throw new Error('Salvataggio piano non confermato.');
-      completed++; onApplied('plan', saved); return saved.id;
+      savedPlans.push(saved); completed++; onApplied('plan', saved); return saved.id;
     };
     if (prepared.treatment) treatmentId = prepared.treatment.kind === 'existing' ? prepared.treatment.plan.id : await savePlan(prepared.treatment.plan, prepared.treatment.kind);
+    if (prepared.treatment?.kind === 'existing') savedPlans.push(prepared.treatment.plan);
     if (prepared.quote) quoteId = await savePlan(prepared.quote, 'insert');
     if (prepared.payment) {
       const { target, ...payload } = prepared.payment;
@@ -137,7 +139,7 @@ async function persistEntry({ db, patient, appointment, draft, onApplied }) {
       if (!saved?.id || String(saved.pazienteId) !== String(patient.id)) throw new Error('Incasso non confermato.');
       completed++; onApplied('payment', saved);
     }
-    return { completed, treatmentId, quoteId, skipped:prepared.treatment?.skipped || 0 };
+    return { completed, treatmentId, quoteId, savedPlans, skipped:prepared.treatment?.skipped || 0 };
   } catch (cause) {
     const error = new Error(cause.message || 'Salvataggio non riuscito.');
     error.writesStarted = writesStarted; error.completed = completed; throw error;

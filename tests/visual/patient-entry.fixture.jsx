@@ -6,10 +6,10 @@ import { persistPatientEntry } from '../../src/lib/appointmentEntry.js';
 import '../../src/styles.css';
 import '../../src/styles/designTokens.css';
 import '../../src/components/PremiumVisualSystem.css';
-const patient = {id:7,nome:'Paziente',cognome:'Sintetico'};
+const patient = {id:7,nome:'Paziente',cognome:'Sintetico',telefono:'0000000000',cf:'CODICE-TEST'};
 const params = new URLSearchParams(location.search);
 const count = Number(params.get('plans') || 0);
-let stored = Array.from({length:count},(_,i)=>({id:20+i,pazienteId:7,titolo:`Piano ${i+1}`,stato:'attivo',data:'2026-11-01',voci:[]}));
+let stored = Array.from({length:count},(_,i)=>({id:20+i,pazienteId:7,titolo:`Piano ${i+1}`,stato:'attivo',data:'2026-11-01',sconto:Number(params.get('discount')||0),scontoTipo:'eur',voci:params.get('seed')==='1'?[{prestazione:'Controllo precedente',prezzo:60,dente:'36',eseguita:false}]:[]}));
 window.__writes = [];
 const db = {getById:async(table,id)=>table==='dm_p'?patient:stored.find(p=>p.id===id),getAll:async()=>stored,
  insert:async(table,payload)=>{await new Promise(r=>setTimeout(r,250));if(window.__failSave)throw Error('Errore sintetico');const saved={...payload,id:100+window.__writes.length};stored.push(saved);window.__writes.push({table,...saved});return saved;},

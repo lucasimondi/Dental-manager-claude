@@ -12,16 +12,10 @@ export default function TreatmentPricePicker({ id, label, value, pricelist = [],
   const expanded = open && options.length > 0;
   useEffect(() => {
     if (!open) return;
-    let pointerActive = false;
-    const pointer = () => { pointerActive = true; };
-    const click = event => { if (!rootRef.current?.contains(event.target)) setOpen(false); pointerActive = false; };
-    const focus = event => { if (!pointerActive && !rootRef.current?.contains(event.target)) setOpen(false); };
-    const cancel = () => { pointerActive = false; if (!rootRef.current?.contains(document.activeElement)) setOpen(false); };
-    document.addEventListener('pointerdown', pointer, true);
+    const click = event => { if (!rootRef.current?.contains(event.target)) setOpen(false); };
+    // Close after the outside click has activated its intended control, never on focus/blur.
     document.addEventListener('click', click);
-    document.addEventListener('focusin', focus);
-    document.addEventListener('pointercancel', cancel);
-    return () => { document.removeEventListener('pointerdown', pointer, true); document.removeEventListener('click', click); document.removeEventListener('focusin', focus); document.removeEventListener('pointercancel', cancel); };
+    return () => document.removeEventListener('click', click);
   }, [open]);
   useLayoutEffect(() => {
     const list = resultsRef.current, option = list?.children[active];

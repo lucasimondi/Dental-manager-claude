@@ -5,6 +5,7 @@ import Ic from './ui/Ic.jsx';
 import { EntryRows } from './AppointmentWorkspace.jsx';
 import PdfViewerModal from './ui/PdfViewerModal.jsx';
 import { buildPreventivoPdf, totaliPreventivo, euroIt } from '../lib/documenti/preventivoPdf.js';
+import { patientQuoteProjection } from '../lib/patientQuoteProjection.js';
 import { patientEntryViewport } from '../lib/patientEntryPresentation.js';
 import './PatientPlanEntry.css';
 
@@ -14,13 +15,15 @@ export default function PatientPlanEntry({ patient, mode, plans = [], pricelist 
   const eligible = plans.filter(p => String(p.pazienteId) === String(patient.id) && ['attivo', 'accettato'].includes(p.stato));
   const [rows, setRows] = useState([blankRow()]);
   const [planId, setPlanId] = useState(eligible.length === 1 ? String(eligible[0].id) : eligible.length ? '' : 'new');
+  const [quoteScope, setQuoteScope] = useState(quote ? 'all' : 'entered');
+  const [pdfPlanId, setPdfPlanId] = useState('');
   const [title, setTitle] = useState(quote ? 'Preventivo' : 'Prestazioni occasionali');
   const [saving, setSaving] = useState(false), [uncertain, setUncertain] = useState(false);
   const [error, setError] = useState(''), [success, setSuccess] = useState(null);
   const [pdf, setPdf] = useState(null), [typing, setTyping] = useState(false);
   const [viewport, setViewport] = useState(() => patientEntryViewport(window.visualViewport, window.innerHeight));
   const locked = useRef(false), shellRef = useRef(null), scrollRef = useRef(null), titleRef = useRef(null), inputRef = useRef(null), errorRef = useRef(null);
-  const previousRows = useRef(rows.length);
+  const previousRows = useRef(rows.length), viewportMounted = useRef(false);
   const onCloseRef = useRef(onClose); onCloseRef.current = onClose;
   const total = totaliPreventivo({ voci: rows.map(row => ({ prezzo: row.price })) }).totale;
   const rowCount = rows.filter(row => row.description.trim()).length;
@@ -39,7 +42,7 @@ export default function PatientPlanEntry({ patient, mode, plans = [], pricelist 
     window.addEventListener('resize', update); update();
     return () => { visual?.removeEventListener('resize', update); visual?.removeEventListener('scroll', update); window.removeEventListener('resize', update); };
   }, []);
-  useLayoutEffect(() => { const id = requestAnimationFrame(revealInput); return () => cancelAnimationFrame(id); }, [viewport.height, viewport.top]);
+  useLayoutEffect(() => { if (!viewportMounted.current) { viewportMounted.current = true; return; } const id = requestAnimationFrame(revealInput); return () => cancelAnimationFrame(id); }, [viewport.height, viewport.top]);
   useLayoutEffect(() => {
     if (rows.length > previousRows.current) {
       const inputs = scrollRef.current?.querySelectorAll('input[role="combobox"]');
@@ -78,9 +81,13 @@ export default function PatientPlanEntry({ patient, mode, plans = [], pricelist 
     if (!rowCount) { setError('Inserisci almeno una prestazione.'); return; }
     locked.current = true; setSaving(true); setError('');
     try {
-      const result = await onSave({ items: quote ? [] : rows, quoteItems: quote ? rows : [], planId, planTitle: title, quoteTitle: title, amount: '', implantPreset: !si?.vertical || si.vertical === 'dentistico' });
+      const draft = { items: quote ? [] : rows, quoteItems: quote ? rows : [], planId, planTitle: title, quoteTitle: title, amount: '', implantPreset: !si?.vertical || si.vertical === 'dentistico' };
+      const result = await onSave(draft);
       inputRef.current?.blur(); setTyping(false);
-      setSuccess({ ...result, plan: result.savedPlan || plans.find(p => String(p.id) === String(result.treatmentId)) });
+      const savedPlans = result.savedPlans?.length ? result.savedPlans : [result.savedPlan || plans.find(p => String(p.id) === String(result.treatmentId))].filter(Boolean);
+      const plan = savedPlans.find(p => String(p.id) === String(result.treatmentId)) || savedPlans[0];
+      setPdfPlanId(String(plan?.id || ''));
+      setSuccess({ ...result, plan, savedPlans, draft });
       scrollRef.current?.scrollTo({ top: 0 });
       titleRef.current?.focus({ preventScroll: true });
     } catch (e) {
@@ -88,6 +95,13 @@ export default function PatientPlanEntry({ patient, mode, plans = [], pricelist 
       setError(e.writesStarted ? `${e.completed || 0} operazioni confermate. ${e.message} Verifica il piano prima di riprovare.` : e.message);
     } finally { locked.current = false; setSaving(false); }
   };
+  const documentPlan = success?.savedPlans?.find(p => String(p.id) === pdfPlanId) || success?.plan;
+  let projection = null, projectionError = '';
+  if (documentPlan) { try { projection = patientQuoteProjection(documentPlan, success.draft, quoteScope); } catch (cause) { projectionError = cause.message; } }
+  const scopeChoices = <fieldset className="patient-quote-scope"><legend>Nel PDF del preventivo</legend><div>
+    <label className={quoteScope === 'all' ? 'is-selected' : ''}><input type="radio" name="patient-quote-scope" value="all" checked={quoteScope === 'all'} onChange={()=>setQuoteScope('all')} /><span>Tutto il piano<small>Tutte le prestazioni del piano scelto</small></span></label>
+    <label className={quoteScope === 'entered' ? 'is-selected' : ''}><input type="radio" name="patient-quote-scope" value="entered" checked={quoteScope === 'entered'} onChange={()=>setQuoteScope('entered')} /><span>{rowCount <= 1 ? 'Solo questa prestazione' : 'Solo le voci inserite ora'}<small>Prezzi delle singole voci, senza sconto globale</small></span></label>
+  </div></fieldset>;
   const patientName = [patient.nome, patient.cognome].filter(Boolean).join(' ');
   return createPortal(<div ref={shellRef} className={`patient-entry-overlay${viewport.height < 500 ? ' is-compact' : ''}`} style={{ top: viewport.top, height: viewport.height }}>
     <section role="dialog" aria-modal="true" aria-labelledby="patient-entry-title" className="patient-entry-panel">
@@ -98,12 +112,19 @@ export default function PatientPlanEntry({ patient, mode, plans = [], pricelist 
       </header>
       <div className="patient-entry-scroll" ref={scrollRef} onFocusCapture={event => { if (event.target.matches('input,textarea')) { inputRef.current = event.target; setTyping(true); } }} onBlurCapture={event => { if (event.target === inputRef.current && !event.relatedTarget?.matches('input,textarea')) setTyping(false); }}>
         {success ? <div className="patient-entry-success" role="status"><div className="patient-entry-success-icon"><Ic n="ok" s={28} c="currentColor" /></div><span>OPERAZIONE COMPLETATA</span><h3>{quote ? 'Preventivo salvato' : 'Prestazioni salvate'}</h3><p>{success.skipped ? `${success.skipped} prestazioni erano già presenti nel piano e non sono state duplicate.` : 'Le voci sono ora nella scheda del paziente.'}</p>
-          {success.plan && <><div className="patient-entry-saved-summary"><strong>{success.plan.titolo}</strong><span>{success.plan.voci?.length || 0} voci</span><b>{euroIt(totaliPreventivo(success.plan).totale)}</b></div><button type="button" className="patient-entry-pdf" onClick={() => { try { setPdf(buildPreventivoPdf({ si, paziente: patient, piano: success.plan })); } catch (e) { setError(e.message); } }}><Ic n="file" s={19} c="currentColor" />Apri PDF salvato<Ic n="eye" s={16} c="currentColor" /></button></>}
+          {documentPlan && <>
+            {success.savedPlans.length > 1 && <label className="patient-entry-option-field">Piano per il preventivo<select value={pdfPlanId} onChange={e=>setPdfPlanId(e.target.value)}>{success.savedPlans.map(p=><option key={p.id} value={p.id}>{p.titolo}</option>)}</select></label>}
+            {scopeChoices}
+            {projection && <div className="patient-entry-saved-summary"><strong>{quoteScope === 'all' ? documentPlan.titolo : 'Preventivo della prestazione'}</strong><span>{projection.voci.length} {projection.voci.length === 1 ? 'voce' : 'voci'}</span><b>{euroIt(totaliPreventivo(projection).totale)}</b></div>}
+            {projectionError && <p role="alert" className="patient-entry-error">{projectionError}</p>}
+            <button type="button" className="patient-entry-pdf" disabled={!projection} onClick={() => { try { setPdf(buildPreventivoPdf({ si, paziente: patient, piano: projection })); } catch (e) { setError(e.message); } }}><Ic n="file" s={19} c="currentColor" />Apri PDF del preventivo<Ic n="eye" s={16} c="currentColor" /></button>
+          </>}
         </div> : <>
           <div className="patient-entry-intro"><h3>{quote ? 'Prepara il preventivo' : 'Quali prestazioni vuoi inserire?'}</h3><p>Cerca nel tuo listino o scrivi una voce libera.</p></div>
           {patient.anamnesiAllarme && <p role="alert" className="patient-entry-warning">Allarme anamnesi: verifica le segnalazioni nella scheda paziente.</p>}
           <fieldset className="patient-entry-fields" disabled={saving || uncertain}>
-            <EntryRows rows={rows} onChange={setRows} pricelist={pricelist} dentist={!si?.vertical || si.vertical === 'dentistico'} name="Prestazione" allowDuplicate={false} />
+            <EntryRows rows={rows} onChange={setRows} pricelist={pricelist} dentist={!si?.vertical || si.vertical === 'dentistico'} name="Prestazione" allowDuplicate={false} compactTeeth />
+            {!quote && scopeChoices}
             <details className="patient-entry-options" open={!quote && eligible.length > 1 && !planId}><summary>{quote ? 'Nome del preventivo' : 'Piano di destinazione'}</summary><div>
               {!quote && <label className="patient-entry-option-field">Salva nel piano<select value={planId} onChange={e => setPlanId(e.target.value)}><option value="">Scegli piano…</option>{eligible.map(p => <option key={p.id} value={p.id}>{p.titolo}</option>)}<option value="new">Nuovo piano</option></select></label>}
               {(quote || planId === 'new') && <label className="patient-entry-option-field">Titolo<input value={title} onChange={e => setTitle(e.target.value)} /></label>}

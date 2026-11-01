@@ -1,3 +1,4 @@
+import './PatientRecordClean.css';
 import React, { Suspense, lazy, useMemo, useState } from 'react';
 import SchedaPaz from './SchedaPaz.jsx';
 import { createPatientWorkspaceRealAdapter, isPatientWorkspaceV2Enabled } from '../lib/patientWorkspaceRealAdapter.js';
