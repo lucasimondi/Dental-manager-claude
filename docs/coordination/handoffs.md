@@ -4318,3 +4318,27 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Integrated all19 non-coordination files byte-for-byte from that master; no patient-code conflict or change. Resolved coordination by retaining this patient task and appending all31 incoming handoff lines for diary/philosophy, without dropping either history. Existing approval persists for this task.
 - VALIDATION integrated1518/1518 tests, Studio and Personal builds pass; diff check clean. Original preview successful, no reviews/threads. Fresh CI must pass on integrated head before squash merge. No schema/production-data/manual deployment change; immutable stable checkpoint preserved.
 - RISKS/ROLLBACK unchanged: physical Android touch/IME unverified; revert PR260 preserving data/stable refs. NEXT publish merge commit with original PR head and current master as parents; inspect exact-head checks/mergeability, squash onlyPR260, record resulting SHA and normal Vercel production status.
+
+
+## 2026-11-02 — PERSONAL-PRO-RESTYLING
+- TASK/OWNER/previous agent: PERSONAL-PRO-RESTYLING, Codex, previous Codex PATIENT-ONE-CLICK merged PR260. Branch codex/personal-pro-restyling from master6c00c026.
+- OBJECTIVE: professional graphic/UI restyling and organization of Poliedron Personal, authorized by PO current request.
+- COMPLETED: five-item dock Oggi/Agenda/Documenti/Assistente/Altro; grouped secondary navigation preserving all previous view IDs; shared tokens, responsive cards/forms/header/brand and login; Home search/assistant/prioritized operational overview; archive search/filters before secondary tools. Diary full-screen/book, chat persistence and agenda viewport retained.
+- FILES: Personal App/Accesso/Icone/main, pro.css, section registry/new altro index, Oggi and Documenti; two existing navigation contract tests; README, architecture/current-task/handoff.
+- DATABASE/DEPLOY: none; no schema/auth/RLS/financial/tenancy/Studio changes or manual deployment. Immutable stable070b28fd checkpoint preserved.
+- VALIDATION:1518/1518 Node tests pass, combined and standalone Personal builds pass, diff check clean. React review complete. CUA synthetic iframe375/768/1024/1440 no horizontal overflow, compact dock/menu, search/back, chat composer, diary cover/Home and connected agenda checked. No live records. Temporary fixture and host allowlist removed.
+- LIMITS/RISKS: browser viewports are synthetic; physical Android IME/touch/offline unverified. Existing unrelated duplicate-key/pdfjs build warnings retained. Navigation groups change muscle memory; all sections reachable via Altro and remembered IDs valid.
+- ROLLBACK: revert dedicated PR; no data migration or restoration.
+- NEXT: publish dedicated PR and inspect exact-head checks, WAITING_PRODUCT_OWNER; explicit task-specific Mergia required before merge under AGENTS.md, then verify normal Vercel release.
+
+
+## 2026-11-02 — PERSONAL-PRO-RESTYLING Windows95 toggle extension
+- TASK/OWNER/previous agent: same PERSONAL-PRO-RESTYLING, Codex continuing PR263/codex/personal-pro-restyling from head d82c9b122baea2b905d34984f952ded63f3dec9f.
+- AUTHORIZATION: PO liked Windows95 mock and asked for one-button switching back to current appearance. This extends same pending PR; no merge authorization.
+- COMPLETED: AspettoProvider + header/login toggle + settings choices; namespaced device preference with unknown/blocked-storage fallback, pre-render initialization and storage-event listener cleanup. Marker-only CSS theme, original pixel SVG icons, functional Home desktop shortcuts; no fake window controls. Current section, search text and unsent chat draft survive switching. Modern retains system light/dark; Windows95 fixed light. OAuth consent excluded; diary retains full-screen book and direct Home.
+- FILES: new Aspetto.jsx/IconaTema.jsx/lib/aspetto.js/retro.css; Personal main/App/Accesso/Altro/Documenti/Oggi/Impostazioni; four new preference tests; README/architecture/current-task/handoff.
+- DATABASE/DEPLOY: none; no schema/Auth/RLS/tenant/financial/Studio changes, dependency or manual production operations. Existing immutable stable070b28fd preserved.
+- VALIDATION:1522/1522 Node tests, combined Studio/Personal and standalone Personal builds pass; diff check. CUA synthetic Moderno→Windows95→reload; settings choices; back to Moderno retains search and chat draft; connected empty agenda; no horizontal overflow320/375/768/1024/1440. Fixtures/temporary host allowance removed; no live data accessed.
+- LIMITS/RISK: physical Android touch/IME and offline unverified. Preference is browser/origin/device local, not account sync. Blocked storage retains style only for current mounted session. Existing unrelated duplicate-key/pdfjs build warnings.
+- ROLLBACK: revert theme extension or whole PR263; harmless local preference can remain, no data migration.
+- EXACT NEXT ACTION: publish same PR263, inspect exact-head checks and preview; WAITING_PRODUCT_OWNER, specific Mergia required by AGENTS.md before merge and normal Vercel production verification.

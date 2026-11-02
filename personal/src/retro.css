@@ -1,0 +1,85 @@
+/* The switch is available in both themes. No data/state or navigation remount. */
+.pp-cambio-aspetto { display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:58px;min-height:44px;padding:4px 7px;border:1px solid var(--pp-linea);border-radius:12px;color:var(--pp-blu);background:var(--pp-superficie);font-size:10px;font-weight:650;line-height:1.2; }
+.pp-aspetto-preferenze > p { color:var(--pp-grigio);font-size:14px;line-height:1.5; }
+.pp-aspetto-scelte { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px; }
+.pp-aspetto-scelte > button { display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:16px;border:2px solid var(--pp-linea);border-radius:14px;background:var(--pp-superficie);text-align:left;min-width:0; }
+.pp-aspetto-scelte > button[aria-pressed=true] { border-color:var(--pp-blu);background:var(--pp-blu-chiaro); }
+.pp-aspetto-scelte small { color:var(--pp-grigio);font-size:12px; }
+.pp-campione-moderno,.pp-campione-retro { display:grid;place-items:center;width:50px;height:40px;font-weight:700; }
+.pp-campione-moderno { color:#fff;background:#275bc4;border-radius:12px;font:700 22px system-ui; }
+.pp-campione-retro { color:white;background:#000080;border:3px solid;border-color:#fff #404040 #404040 #fff;font:700 18px Tahoma,sans-serif; }
+.pp-icona-tema,.pp-icon-modern { display:inline-flex;align-items:center;justify-content:center;flex-shrink:0; }
+.pp-icon-pixel { display:none; }
+
+/* Windows95 is explicitly light, independent of the system light/dark preference. */
+:root[data-personal-theme="win95"] {
+  color-scheme:light;
+  --pp-sfondo:#c0c0c0;--pp-superficie:#fff;--pp-inchiostro:#000;--pp-grigio:#454545;--pp-linea:#808080;
+  --pp-blu:#000080;--pp-blu-chiaro:#e6e6fa;--pp-raggio:0px;--pp-ombra:none;--pp-ombra-alta:2px 2px 0 #000;
+  --pp-rosso:#a80000;--pp-verde:#006000;--pp-ambra:#805000;
+}
+[data-personal-theme="win95"] body { background:#008080;font-family:Tahoma,'MS Sans Serif',Arial,sans-serif; }
+[data-personal-theme="win95"] .pp-app:not(.pp-vista-diario) { background:#c0c0c0;min-height:100dvh;border:2px solid;border-color:#fff #404040 #404040 #fff; }
+[data-personal-theme="win95"] .pp-app:not(.pp-vista-diario) button { font-family:Tahoma,'MS Sans Serif',Arial,sans-serif; }
+[data-personal-theme="win95"] .pp-testata:not(.pp-testata-agenda) { margin:3px;top:0;padding:calc(8px + env(safe-area-inset-top)) 10px 10px;background:#000080;backdrop-filter:none;color:#fff;border:0;box-shadow:none;align-items:center; }
+[data-personal-theme="win95"] .pp-brand { color:#fff; }
+[data-personal-theme="win95"] .pp-brand small { color:#fff;opacity:.8; }
+[data-personal-theme="win95"] .pp-brand img { border-radius:0;image-rendering:pixelated; }
+[data-personal-theme="win95"] .pp-testata h1 { color:#fff;font:700 clamp(17px,4.3vw,23px)/1.2 Tahoma,Arial,sans-serif;letter-spacing:0;margin-top:5px;white-space:normal; }
+[data-personal-theme="win95"] :is(.pp-cambio-aspetto,.pp-icona-bottone,.pp-fab,.pp-bottone,.pp-chip,.pp-chip-azione,.pp-rapida>span,.pp-menu-icona) { border-radius:0;background:#c0c0c0;color:#000;border:2px solid;border-color:#fff #404040 #404040 #fff;box-shadow:inset -1px -1px #808080,inset 1px 1px #dfdfdf; }
+[data-personal-theme="win95"] .pp-cambio-aspetto { min-width:58px;font-size:10px; }
+[data-personal-theme="win95"] :is(.pp-cambio-aspetto,.pp-icona-bottone,.pp-bottone,.pp-chip,.pp-chip-azione,.pp-fab):active { border-color:#404040 #fff #fff #404040;box-shadow:none; }
+[data-personal-theme="win95"] .pp-testata .pp-nuova-chat { color:#fff;font-size:12px; }
+[data-personal-theme="win95"] .pp-icona-bottone { width:40px;min-width:40px; }
+[data-personal-theme="win95"] .pp-schede { border:2px solid;border-color:#fff #404040 #404040 #fff;border-radius:0;background:#c0c0c0;backdrop-filter:none;box-shadow:1px 1px 0 #000;gap:3px;padding:4px;max-width:760px;height:72px; }
+[data-personal-theme="win95"] .pp-scheda { border:2px solid;border-color:#fff #404040 #404040 #fff;border-radius:0;color:#000;background:#c0c0c0;font-size:10px;min-height:60px;gap:3px;box-shadow:inset -1px -1px #808080; }
+[data-personal-theme="win95"] :is(.pp-scheda.attiva,.pp-scheda.sotto) { color:#000;background:repeating-conic-gradient(#c0c0c0 0 25%,#dfdfdf 0 50%) 0/2px 2px;border-color:#404040 #fff #fff #404040;box-shadow:none; }
+[data-personal-theme="win95"] .pp-icon-modern { display:none; }
+[data-personal-theme="win95"] .pp-icon-pixel { display:block;image-rendering:pixelated; }
+[data-personal-theme="win95"] .pp-sezione h2 { font-family:Tahoma,Arial,sans-serif;font-size:16px;letter-spacing:0; }
+[data-personal-theme="win95"] :is(.pp-gruppo,.pp-pannello,.pp-cartella,.pp-tessera,.pp-saldo,.pp-personal-card,.pp-cerca,.pp-home-cerca,.pp-invito,.pp-proposta,.pp-menu-impostazioni) { border-radius:0;box-shadow:none;background:#fff;color:#000;border:2px solid;border-color:#808080 #fff #fff #808080; }
+[data-personal-theme="win95"] :is(.pp-riga,.pp-scadenza,.pp-menu-voce) { color:#000;background:#fff; }
+[data-personal-theme="win95"] .pp-menu-impostazioni { margin-bottom:8px; }
+[data-personal-theme="win95"] :is(.pp-riga-icona,.pp-cartella-icona,.pp-scadenza-data,.pp-scadenza-icona,.pp-etichetta-mini) { border-radius:0; }
+[data-personal-theme="win95"] .pp-riassunto-quattro .pp-tessera { border-radius:0;background:#dfdfdf;color:#333;border-color:#fff #808080 #808080 #fff; }
+[data-personal-theme="win95"] .pp-riassunto-quattro .pp-tessera .pp-tessera-numero { color:#000;font-size:24px; }
+[data-personal-theme="win95"] .pp-riassunto-quattro .pp-tessera-allarme { background:#fff0e8; }
+[data-personal-theme="win95"] .pp-riassunto-quattro .pp-tessera-allarme .pp-tessera-numero { color:#a80000; }
+[data-personal-theme="win95"] .pp-home-assistente { background:#000080;border:2px solid;border-color:#fff #404040 #404040 #fff;border-radius:0;color:#fff;box-shadow:none; }
+[data-personal-theme="win95"] .pp-home-assistente small { color:#fff; }
+[data-personal-theme="win95"] .pp-assistente-simbolo { border-radius:0;background:none; }
+[data-personal-theme="win95"] .pp-home-personale > button { border-radius:0;color:#000;background:#c0c0c0;border:2px solid;border-color:#fff #404040 #404040 #fff;box-shadow:inset -1px -1px #808080; }
+[data-personal-theme="win95"] .pp-home-personale :is(strong,small) { color:#000;font-family:Tahoma,Arial,sans-serif;font-style:normal; }
+[data-personal-theme="win95"] .pp-home-personale strong { font-size:20px; }
+[data-personal-theme="win95"] .pp-saldo-numero { font:700 30px/1.4 Tahoma,Arial,sans-serif;letter-spacing:0; }
+[data-personal-theme="win95"] .pp-saldo-numero.negativo { color:#a80000; }
+[data-personal-theme="win95"] .pp-saldo-righe > span { border-radius:0;background:#dfdfdf; }
+[data-personal-theme="win95"] :is(.pp-segmenti,.pp-segmenti button,.pp-suggerimenti .pp-chip,.pp-aspetto-scelte>button) { border-radius:0; }
+[data-personal-theme="win95"] .pp-segmenti { background:#c0c0c0;border-bottom:1px solid #808080; }
+[data-personal-theme="win95"] .pp-segmenti button.attivo { background:#dfdfdf;box-shadow:inset 1px 1px #fff;border:1px solid #808080;border-bottom:0; }
+[data-personal-theme="win95"] :is(.pp-campo input,.pp-campo select,.pp-campo textarea,.pp-chat-riga,.pp-chat-contesto) { border-radius:0;background:#fff;color:#000;border:2px solid;border-color:#808080 #fff #fff #808080; }
+[data-personal-theme="win95"] .pp-pagina { background:#c0c0c0; }
+[data-personal-theme="win95"] .pp-pagina-barra { margin:3px;background:#000080;color:#fff;backdrop-filter:none; }
+[data-personal-theme="win95"] .pp-pagina-barra .pp-indietro { color:#fff; }
+[data-personal-theme="win95"] :is(.pp-foglio,.pp-foglio-testa,.pp-chat-composer) { border-radius:0;background:#c0c0c0; }
+[data-personal-theme="win95"] .pp-messaggio-chat { border-radius:0;box-shadow:none; }
+[data-personal-theme="win95"] .pp-messaggio-chat.utente { color:#fff;background:#000080; }
+[data-personal-theme="win95"] .pp-messaggio-chat.assistente { color:#000;background:#fff;border:2px solid;border-color:#808080 #fff #fff #808080; }
+[data-personal-theme="win95"] .pp-chat-fonte { color:#454545; }
+[data-personal-theme="win95"] .pp-aspetto-scelte > button { color:#000;background:#dfdfdf;border:2px solid;border-color:#fff #404040 #404040 #fff; }
+[data-personal-theme="win95"] .pp-aspetto-scelte > button[aria-pressed=true] { border-color:#000080;outline:1px dotted #000080;outline-offset:-6px; }
+[data-personal-theme="win95"] .pp-aspetto-scelte small { color:#333; }
+[data-personal-theme="win95"] .pp-accesso { background:#c0c0c0;min-height:100dvh; }
+[data-personal-theme="win95"] .pp-accesso h1 { font-family:Tahoma,Arial,sans-serif;letter-spacing:0; }
+[data-personal-theme="win95"] .pp-accesso-marchio img { border-radius:0; }
+[data-personal-theme="win95"] .pp-contenuto-agenda { --surface-interactive:#fff;--brand-primary:#000080; }
+[data-personal-theme="win95"] :focus-visible { outline:2px dotted #000080;outline-offset:3px; }
+[data-personal-theme="win95"] .pp-testata :focus-visible,[data-personal-theme="win95"] .pp-pagina-barra :focus-visible { outline-color:#fff; }
+@media(max-width:359px) { [data-personal-theme="win95"] .pp-scheda {font-size:9px;} }
+
+.pp-accesso > .pp-cambio-aspetto { float:right; }
+.pp-retro-shortcuts { display:none; }
+[data-personal-theme="win95"] .pp-retro-shortcuts { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:20px 0; }
+[data-personal-theme="win95"] .pp-retro-shortcuts button { display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px 2px;min-height:88px;font-size:11px;min-width:0;border:2px solid;border-color:#fff #404040 #404040 #fff;background:#c0c0c0;color:#000; }
+[data-personal-theme="win95"] .pp-cartella-icona { background:transparent; }
+@media(max-width:400px) { [data-personal-theme="win95"] .pp-retro-shortcuts { grid-template-columns:repeat(2,minmax(0,1fr)); } }

@@ -1,8 +1,8 @@
+import { CambioAspetto } from './Aspetto.jsx';
 // Accesso a Personal: email e password, recupero password via link, scelta della nuova password.
 import { useState } from 'react';
 import { archivioDb } from './lib/supabasePersonal.js';
 import { INDIRIZZO_APP } from './ui.jsx';
-import { IconaPortafoglio } from './Icone.jsx';
 
 /* ---------- accesso ---------- */
 export function Accesso() {
@@ -27,9 +27,11 @@ export function Accesso() {
 
   return (
     <main className="pp-accesso">
-      <div className="pp-accesso-marchio"><IconaPortafoglio size={30} /></div>
-      <h1>Personal</h1>
-      <p className="pp-accesso-sotto">Il tuo archivio: documenti, pagamenti e pratiche.</p>
+      <CambioAspetto />
+      <div className="pp-accesso-marchio"><img src="/poliedron-v2-192.png" alt="" width="56" height="56" /></div>
+      <p className="pp-accesso-eyebrow">IL TUO SPAZIO PERSONALE</p>
+      <h1>Poliedron</h1>
+      <p className="pp-accesso-sotto">Documenti, impegni e pensieri. Tutto, in un unico posto.</p>
       <form onSubmit={entra} className="pp-modulo">
         <label className="pp-campo"><span>Email</span>
           <input type="email" required autoComplete="username" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nome@esempio.it" />
@@ -60,7 +62,8 @@ export function NuovaPassword({ onFatto }) {
   };
   return (
     <main className="pp-accesso">
-      <div className="pp-accesso-marchio"><IconaPortafoglio size={30} /></div>
+      <CambioAspetto />
+      <div className="pp-accesso-marchio"><img src="/poliedron-v2-192.png" alt="" width="56" height="56" /></div>
       <h1>Scegli la password</h1>
       <p className="pp-accesso-sotto">La userai per entrare nell'app dalla schermata Home. L'iPhone può ricordarla con Face ID.</p>
       <form onSubmit={salva} className="pp-modulo">

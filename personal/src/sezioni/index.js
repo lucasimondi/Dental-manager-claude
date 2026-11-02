@@ -1,3 +1,4 @@
+import { altro } from './altro/index.jsx';
 export { IconaBiblioteca } from './didattica/index.jsx';
 import { didattica } from './didattica/index.jsx';
 export { IconaDiario } from './diario/index.jsx';
@@ -18,10 +19,10 @@ import { foto } from './foto/index.jsx';
 import { poliedron } from './poliedron/index.jsx';
 import { impostazioni } from './impostazioni/index.jsx';
 
-export const SEZIONI = [oggi, documenti, agenda, conti, personali, foto, legal, diario, didattica, poliedron, impostazioni];
-// Il dock, nell'ordine; Poliedron ha il suo tasto in fondo.
-export const DOCK = [oggi, documenti, agenda, foto, conti, legal, personali];
-export const VISTE = [...DOCK, diario, didattica, poliedron];
+export const SEZIONI = [altro, oggi, documenti, agenda, conti, personali, foto, legal, diario, didattica, poliedron, impostazioni];
+// Tre destinazioni principali; App aggiunge Assistente e Altro. Le altre viste restano navigabili.
+export const DOCK = [oggi, agenda, documenti];
+export const VISTE = [oggi, agenda, documenti, poliedron, altro, foto, conti, legal, personali, diario, didattica];
 
 export const sezione = (id) => VISTE.find((s) => s.id === id);
 
