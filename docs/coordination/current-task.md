@@ -5,5 +5,8 @@
 - CHECKPOINT: immutable stable/2026-08-27-full-recovery remains 070b28fd4eae4e2cc397584201d0bb149468fae7. Current master retained as implementation base.
 - STATUS WAITING_PRODUCT_OWNER; implementation/verification complete, dedicated PR pending. No merge or manual deployment. Previous PR260 is merged in current master.
 - VALIDATION 1518/1518 Node tests; combined and standalone Personal builds pass; CUA synthetic375/768/1024/1440 no horizontal overflow, search/back/menu/chat/diary/agenda verified. Physical Android IME/touch not verified.
-- NEXT publish dedicated PR, inspect exact-head checks; explicit Mergia required before merge under AGENTS.md.
+- PO UPDATE: add reversible Moderno/Windows95 appearance switch, remembering device preference. Extend same open PR263; no merge authorized.
+- THEME COMPLETED: header/login toggle, settings choices, per-device preference with storage-failure handling, original pixel icons and theme-only Home shortcuts. Same section/search/chat draft retained across toggles.
+- THEME VALIDATION:1522/1522 Node tests, combined/standalone Personal builds and diff check pass. Synthetic CUA switching, reload persistence, settings, search/chat draft retention and320/375/768/1024/1440 no horizontal overflow. Physical Android not verified.
+- NEXT update same PR263, inspect exact-head CI/preview, wait explicit Mergia under AGENTS.md; no production merge/deploy.
 - ROLLBACK revert dedicated PR; no database changes.

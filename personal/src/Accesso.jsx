@@ -1,3 +1,4 @@
+import { CambioAspetto } from './Aspetto.jsx';
 // Accesso a Personal: email e password, recupero password via link, scelta della nuova password.
 import { useState } from 'react';
 import { archivioDb } from './lib/supabasePersonal.js';
@@ -26,6 +27,7 @@ export function Accesso() {
 
   return (
     <main className="pp-accesso">
+      <CambioAspetto />
       <div className="pp-accesso-marchio"><img src="/poliedron-v2-192.png" alt="" width="56" height="56" /></div>
       <p className="pp-accesso-eyebrow">IL TUO SPAZIO PERSONALE</p>
       <h1>Poliedron</h1>
@@ -60,6 +62,7 @@ export function NuovaPassword({ onFatto }) {
   };
   return (
     <main className="pp-accesso">
+      <CambioAspetto />
       <div className="pp-accesso-marchio"><img src="/poliedron-v2-192.png" alt="" width="56" height="56" /></div>
       <h1>Scegli la password</h1>
       <p className="pp-accesso-sotto">La userai per entrare nell'app dalla schermata Home. L'iPhone può ricordarla con Face ID.</p>

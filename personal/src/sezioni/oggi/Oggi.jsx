@@ -1,3 +1,6 @@
+import { IconaTema } from '../../IconaTema.jsx';
+import { IconaDiario } from '../diario/index.jsx';
+import { IconaBiblioteca } from '../didattica/index.jsx';
 import {ScadenzePersonali} from '../personali/index.jsx';
 // Oggi — il cruscotto: saldo del mese, azioni rapide, agenda di oggi, pagamenti, ultimi documenti, pratiche.
 import { useEffect, useState } from 'react';
@@ -8,7 +11,7 @@ import { sessioneStudio, appuntamentiTra, impegniTra } from '../../lib/studio.js
 import { oggi as oggiAgenda } from '../../lib/agenda.js';
 import { euro } from '../../lib/coreArchivio.js';
 import { oggiIso, Vuoto, Sezione, Gruppo, RigaDocumento, SchedaDocumento, RigaPagamento, ElencoPratiche } from '../../ui.jsx';
-import { IconaCalendario, IconaFreccia, IconaFotocamera, IconaEuro, IconaScansiona, IconaCerca, IconaChat } from '../../Icone.jsx';
+import { IconaCalendario, IconaFreccia, IconaFotocamera, IconaEuro, IconaScansiona, IconaCerca, IconaChat, IconaDocumenti } from '../../Icone.jsx';
 import { ElencoGiorno } from '../agenda/index.jsx';
 import { Acquisti } from './Acquisti.jsx';
 import { RiquadroSaldo } from '../conti/index.jsx';
@@ -56,6 +59,9 @@ export function VistaOggi({ ctx }) {
           <button key={id} className={`pp-rapida pp-av-${id}`} onClick={() => aggiungi(id)}><span><Icona size={22} /></span>{nome}</button>
         ))}
       </div>
+      <nav className="pp-retro-shortcuts" aria-label="Scorciatoie del desktop">
+        {[['documenti', 'Documenti', IconaDocumenti], ['agenda', 'Agenda', IconaCalendario], ['diario', 'Diario', IconaDiario], ['didattica', 'Biblioteca', IconaBiblioteca]].map(([id, nome, Icona]) => <button key={id} onClick={() => vai(id)}><IconaTema tipo={id} Icona={Icona} size={40} /><span>{nome}</span></button>)}
+      </nav>
       <button className="pp-home-assistente" onClick={() => ctx.apriChat()}><span className="pp-assistente-simbolo"><IconaChat size={24} /></span><span><strong>Da dove iniziamo?</strong><small>Chiedi a Poliedron del tuo archivio</small></span><IconaFreccia size={18} /></button>
     </>
   );

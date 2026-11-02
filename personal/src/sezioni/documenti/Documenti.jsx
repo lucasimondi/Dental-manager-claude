@@ -1,3 +1,4 @@
+import { IconaTema } from '../../IconaTema.jsx';
 // POL-VITA-007 — Documenti: ricerca immediata con filtri (categoria, ente, anno, tipo, persona),
 // cartelle per ente (POL-VITA-016, vista principale), categorie, pratiche; le cose poco utili (pubblicità, foto, catene) restano
 // nascoste finché non le chiedi. Selezione multipla (tieni premuto o "Seleziona") con azioni di
@@ -84,7 +85,7 @@ export function VistaDocumenti({ ctx }) {
                 <div className="pp-griglia">
                   {principali.map((f) => (
                     <button key={f.codice} className="pp-cartella" style={{ '--c': colore(f.codice) }} onClick={() => apriFascicolo(f)}>
-                      <span className="pp-cartella-icona"><IconaDocumenti size={20} /></span>
+                      <span className="pp-cartella-icona"><IconaTema tipo="documenti" Icona={IconaDocumenti} size={24} /></span>
                       <span className="pp-cartella-nome">{f.nome}</span>
                       <span className="pp-cartella-numero">{f.n}{f.n_azioni ? <em> · {f.n_azioni} da fare</em> : null}</span>
                     </button>

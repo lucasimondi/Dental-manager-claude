@@ -1,3 +1,4 @@
+import { IconaTema } from '../../IconaTema.jsx';
 import { IconaAltro, IconaFreccia, IconaImpostazioni } from '../../Icone.jsx';
 import { conti } from '../conti/index.jsx';
 import { personali } from '../personali/index.jsx';
@@ -16,7 +17,7 @@ export function VistaAltro({ ctx }) {
     {gruppi.map(({ nome, voci }) => <section className="pp-sezione" key={nome} aria-label={nome}>
       <div className="pp-sezione-testa"><h2>{nome}</h2></div>
       <div className="pp-gruppo">{voci.map(([s, descrizione]) => <button key={s.id} className="pp-menu-voce" onClick={() => ctx.vai(s.id)}>
-        <span className="pp-menu-icona"><s.Icona size={23} /></span><span className="pp-menu-testo"><strong>{s.nome}</strong><small>{descrizione}</small></span><IconaFreccia size={17} />
+        <span className="pp-menu-icona"><IconaTema tipo={s.id} Icona={s.Icona} size={28} /></span><span className="pp-menu-testo"><strong>{s.nome}</strong><small>{descrizione}</small></span><IconaFreccia size={17} />
       </button>)}</div>
     </section>)}
     <button className="pp-menu-voce pp-menu-impostazioni" onClick={() => ctx.apri({ tipo: 'impostazioni' })}><span className="pp-menu-icona"><IconaImpostazioni size={23} /></span><span className="pp-menu-testo"><strong>Impostazioni</strong><small>Preferenze, persone e collegamenti</small></span><IconaFreccia size={17} /></button>

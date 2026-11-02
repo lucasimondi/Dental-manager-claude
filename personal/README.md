@@ -76,3 +76,9 @@ Dalla Home, accanto ad *amor fati*, oppure da Altro → Biblioteca. Trattato did
 La navigazione principale contiene Oggi, Agenda, Documenti, Assistente e Altro. Altro raggruppa Personali, Conti e Legal in «La tua vita pratica» e Foto, Diario e Biblioteca in «Il tuo spazio». Le viste salvate delle sezioni precedenti restano valide. Il marchio in testata torna alla Home; le impostazioni restano disponibili in alto e in Altro.
 
 La Home apre la ricerca reale dell’archivio, offre le azioni rapide e l’assistente, poi riepilogo, agenda e pagamenti. Diario, letture e acquisti vengono dopo il riepilogo operativo. In Documenti ricerca, filtri e cartelle precedono gli strumenti secondari. Il sistema visivo condiviso è in `src/pro.css`, con modalità chiara/scura e rispetto dei contenuti specializzati di agenda, chat e diario.
+
+### Aspetto Moderno / Windows 95
+
+Il pulsante «Win 95» nella testata (anche nell’agenda e nell’accesso) attiva lo stile retrò; nello stile retrò diventa «Moderno» per tornare indietro. In Impostazioni → Aspetto si possono scegliere entrambi. Il cambio è immediato senza ricaricare: non smonta le viste, non perde ricerche o bozze e non modifica i dati. La scelta si salva sul browser/dispositivo, non sull’account. Se il salvataggio locale è bloccato, funziona per la sessione corrente. Il valore predefinito è Moderno; Windows 95 usa la sua palette chiara anche con sistema scuro.
+
+La modalità retrò applica bordi in rilievo, testate blu, sfondi grigi e icone pixel originali. In Home aggiunge quattro scorciatoie del desktop. Il diario conserva il suo libro a tutto schermo: torna alla Home per cambiare stile. I contenuti dei PDF originali e la pagina di consenso OAuth non vengono modificati dal tema.
