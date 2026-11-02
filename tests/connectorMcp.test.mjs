@@ -30,7 +30,7 @@ test('unauthenticated and foreign origins cannot call tools',async()=>{
  const foreign=await request(s.handler,undefined,{authorization:'Bearer test',origin:'https://evil.test'});assert.equal(foreign.code,403);assert.equal(s.calls.length,0);
 });
 test('initialize and tool list are standard MCP, no model API involved',async()=>{
- const s=setup();let out=await request(s.handler,{jsonrpc:'2.0',id:0,method:'initialize',params:{protocolVersion:'2025-06-18'}});assert.equal(out.body.id,0);assert.equal(out.body.result.protocolVersion,'2025-06-18');
+ const s=setup();let out=await request(s.handler,{jsonrpc:'2.0',id:0,method:'initialize',params:{protocolVersion:'2025-06-18'}});assert.equal(out.body.id,0);assert.equal(out.body.result.protocolVersion,'2025-06-18'); assert.match(out.body.result.instructions, /solo con confirmation_policy explicit_request e autorizzazione esplicita/); assert.match(out.body.result.instructions, /Negli altri casi attendi una nuova risposta esplicita/);
  out=await request(s.handler);assert.deepEqual(out.body.result,{tools:[]});assert.equal(s.calls.filter(x=>x.url.includes('functions/v1')).length,1);
 });
 test('one structured call forwards only delegated auth and arguments; a timeout never retries',async()=>{

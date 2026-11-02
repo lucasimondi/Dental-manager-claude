@@ -4342,3 +4342,14 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - LIMITS/RISK: physical Android touch/IME and offline unverified. Preference is browser/origin/device local, not account sync. Blocked storage retains style only for current mounted session. Existing unrelated duplicate-key/pdfjs build warnings.
 - ROLLBACK: revert theme extension or whole PR263; harmless local preference can remain, no data migration.
 - EXACT NEXT ACTION: publish same PR263, inspect exact-head checks and preview; WAITING_PRODUCT_OWNER, specific Mergia required by AGENTS.md before merge and normal Vercel production verification.
+
+
+## 2026-11-02 — CONNECTOR-APPOINTMENT-DIRECT
+- OWNER Codex; previous task PERSONAL-PRO-RESTYLING merged PR263 at master a4ecf9e3. New branch codex/connector-appointment-direct from that master. PO explicitly requests removing redundant user confirmation for appointments.
+- COMPLETED: NEW appointment drafts return confirmation_policy explicit_request, allowing same-turn prepare/confirm only with explicit user booking instruction and permission to omit the additional confirmation. Other domains return new_reply and keep explicit fresh reply. Updated MCP initialize/tool descriptions and pending messages together. Complete summary still shown; no authorization from attachments. No persistent account preference or automatic server execution introduced.
+- FILES: server/connectorMcp.js, supabase/functions/agente-assistente/connector.js, two existing connector/handler test files, architecture/current-task/handoff.
+- DATABASE: none; no schema/Auth/RLS/tenancy/capability/financial changes. Signed request, expiry, binding, live grant, fresh-domain checks and canonical agenda RPC unchanged. Immutable stable070b28fd checkpoint preserved.
+- VALIDATION: 28/28 targeted connector tests, full1524/1524 Node tests, production build and diff check pass. Synthetic HTTP handler regressions verify policy split, one write only, replay denial, overlap forcing refusal and refreshed slot conflict. No live appointments created for tests. Existing build warnings retained.
+- LIMITS/RISKS: interaction authorization remains assistant/host enforced, not cryptographic proof. Deployment is NOT performed; release both existing Edge and Vercel components, refresh MCP metadata. Older skill wording must defer to explicit user authorization for the scoped case; host approval remains independent.
+- ROLLBACK revert dedicated PR, retain requests/appointments; no migration.
+- EXACT NEXT ACTION: publish dedicated PR, inspect exact-head checks, WAITING_PRODUCT_OWNER; explicit task-specific Mergia required by AGENTS.md before merge and normal release. Verify refreshed tools/pending response after release without creating synthetic production bookings.
