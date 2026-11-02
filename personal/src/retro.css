@@ -83,3 +83,63 @@
 [data-personal-theme="win95"] .pp-retro-shortcuts button { display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px 2px;min-height:88px;font-size:11px;min-width:0;border:2px solid;border-color:#fff #404040 #404040 #fff;background:#c0c0c0;color:#000; }
 [data-personal-theme="win95"] .pp-cartella-icona { background:transparent; }
 @media(max-width:400px) { [data-personal-theme="win95"] .pp-retro-shortcuts { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+/* Shared content icons keep their meaning in both appearances, including dialogs. */
+.pp-icona-contenuto { display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;flex-shrink:0;line-height:0; }
+.pp-brand-retro { display:none !important; }
+.pp-home-agenda { margin-bottom:24px; }
+.pp-home-agenda > .pp-sezione { margin-top:0; }
+[data-personal-theme="win95"] .pp-icona-contenuto > .pp-icona-tratto { display:none; }
+[data-personal-theme="win95"] .pp-brand-moderno { display:none; }
+[data-personal-theme="win95"] .pp-brand-retro { display:inline-flex !important; }
+[data-personal-theme="win95"] .pp-app:not(.pp-vista-diario) :is(h1,h2,h3,h4,p,small,strong,label,input,textarea,select,button) {
+  font-family:Tahoma,'MS Sans Serif',Arial,sans-serif !important;letter-spacing:normal; }
+[data-personal-theme="win95"] .pp-testata:not(.pp-testata-agenda) { padding:calc(6px + env(safe-area-inset-top)) 8px 8px;gap:8px;background:#000080 !important; }
+[data-personal-theme="win95"] .pp-testata-titoli { flex:1; }
+[data-personal-theme="win95"] .pp-brand > span { letter-spacing:0;font-size:13px; }
+[data-personal-theme="win95"] .pp-brand small { font-size:9px;letter-spacing:0;opacity:1; }
+[data-personal-theme="win95"] .pp-testata h1 { font-size:16px;margin-top:4px; }
+[data-personal-theme="win95"] .pp-testata-azioni { flex-shrink:0; }
+[data-personal-theme="win95"] :is(.pp-riga-titolo,.pp-pagina-titolo,.pp-menu-testo strong) { font-size:14px;letter-spacing:0; }
+[data-personal-theme="win95"] :is(.pp-riga-meta,.pp-data-oggi,.pp-menu-testo small,.pp-campo label) { color:#404040; }
+[data-personal-theme="win95"] :is(.pp-bottone,.pp-chip,.pp-chip-azione,.pp-chiudi-pagina,.pp-indietro,.pp-testo-link,.pp-chat-invia,.pp-azione-secondaria) {
+  border-radius:0;background:#c0c0c0;color:#000;border:2px solid;border-color:#fff #404040 #404040 #fff;box-shadow:inset -1px -1px #808080; }
+[data-personal-theme="win95"] .pp-testo-link { padding:4px 10px;min-height:36px;font-size:12px; }
+[data-personal-theme="win95"] .pp-sezione-testa { background:#c0c0c0;border-bottom:1px solid #808080;padding:4px 0 7px; }
+[data-personal-theme="win95"] .pp-home-agenda { padding:10px;background:#c0c0c0;border:2px solid;border-color:#fff #404040 #404040 #fff; }
+[data-personal-theme="win95"] .pp-home-agenda .pp-sezione-testa { padding:3px 5px;background:#000080;color:#fff;border:0; }
+[data-personal-theme="win95"] .pp-home-agenda .pp-sezione-testa h2 { color:#fff;font-size:14px; }
+[data-personal-theme="win95"] .pp-home-agenda .pp-testo-link { min-height:32px; }
+[data-personal-theme="win95"] .pp-home-agenda .pp-data-oggi { margin-bottom:8px;font-size:12px; }
+[data-personal-theme="win95"] .pp-home-assistente { background:#c0c0c0;color:#000; }
+[data-personal-theme="win95"] .pp-home-assistente small { color:#404040; }
+[data-personal-theme="win95"] .pp-home-assistente strong { font-size:15px; }
+[data-personal-theme="win95"] .pp-assistente-simbolo { border:0; }
+[data-personal-theme="win95"] :is(.pp-mini,.pp-scheda-doc,.pp-persona,.pp-etichetta,.pp-ingresso-foto,.pp-ingresso-foto-icona,.pp-messaggio,.pp-toast,.pp-agenda-pillola,.pp-scadenza-data,.pp-riga-icona) { border-radius:0;background:#dfdfdf;color:#000;box-shadow:none; }
+[data-personal-theme="win95"] :is(.pp-scheda-doc,.pp-mini,.pp-foglio,.pp-personal-card) { border:2px solid;border-color:#fff #808080 #808080 #fff; }
+[data-personal-theme="win95"] :is(.pp-cartella,.pp-cartella-icona,.pp-scheda-doc,.pp-mini) { --c:#000080 !important; }
+[data-personal-theme="win95"] :is(.pp-cartella-nome,.pp-scheda-doc-titolo,.pp-chat-contesto,.pp-badge) { color:#000; }
+[data-personal-theme="win95"] .pp-pagina-titolo { color:#fff;font-weight:700; }
+[data-personal-theme="win95"] .pp-pagina-barra .pp-indietro { color:#000; }
+[data-personal-theme="win95"] .pp-pagina-corpo { background:#c0c0c0; }
+[data-personal-theme="win95"] :is(.pp-cerca input,.pp-chat-riga textarea,.pp-campo textarea) { font-family:Tahoma,Arial,sans-serif;border-radius:0;color:#000;background:#fff; }
+[data-personal-theme="win95"] .pp-chip.attiva { background:#000080;color:#fff; }
+[data-personal-theme="win95"] .pp-barra-caricamento { background:#000080; }
+[data-personal-theme="win95"] .pp-saldo-titolo { text-transform:none;letter-spacing:0;font-size:13px; }
+/* The reader loads its own stylesheet lazily; scoped specificity wins in either load order. */
+[data-personal-theme="win95"] .pp-app .pf-library { color:#000; }
+[data-personal-theme="win95"] .pp-app :is(.pf-cover,.pf-paper,.pf-question,.pf-library button,.pf-search input) { border-radius:0;background:#fff;color:#000;box-shadow:none;border:2px solid;border-color:#808080 #fff #fff #808080; }
+[data-personal-theme="win95"] .pp-app .pf-cover { background:#c0c0c0;border-color:#fff #404040 #404040 #fff; }
+[data-personal-theme="win95"] .pp-app .pf-library button { background:#c0c0c0;border-color:#fff #404040 #404040 #fff; }
+[data-personal-theme="win95"] .pp-app :is(.pf-eyebrow,.pf-cover small,.pf-subtitle,.pf-toolbar>span,.pf-index>p,.pf-part h3>span,.pf-planned,.pf-sources>p,.pf-end) { color:#404040; }
+[data-personal-theme="win95"] .pp-app .pf-cover h1 { font-size:36px; }
+[data-personal-theme="win95"] .pp-app .pf-library a { color:#000080; }
+/* Personal-only calendar skin; geometry, gestures and stored category colors stay authoritative. */
+[data-personal-theme="win95"] .pp-contenuto-agenda { font-family:Tahoma,Arial,sans-serif;color:#000;--surface-interactive:#c0c0c0;--brand-primary:#000080;--border-medium:#808080;--shadow-sm:none; }
+[data-personal-theme="win95"] .pp-app :is(.agenda-view-picker,.agenda-app-switch,.agenda-mobile-floating-month,.agenda-mobile-floating-week-strip,.agenda-mobile-day-number,.agenda-floating-interactive,.pol-card--interactive) { border-radius:0 !important;box-shadow:none !important; }
+[data-personal-theme="win95"] .pp-app :is(.agenda-view-picker,.agenda-app-switch,.agenda-mobile-floating-month) { background:#c0c0c0 !important;color:#000 !important;border:2px solid !important;border-color:#fff #404040 #404040 #fff !important; }
+[data-personal-theme="win95"] .pp-app .agenda-mobile-day-number.is-selected { background:#000080 !important;color:#fff !important; }
+[data-personal-theme="win95"] .pp-app .agenda-mobile-month-surface > div { border-radius:0 !important;box-shadow:none !important; }
+[data-personal-theme="win95"] .pp-app .agenda-mobile-floating-toolbar button { border-radius:0 !important;background:#c0c0c0 !important;color:#000 !important;box-shadow:none !important; }
+[data-personal-theme="win95"] .pp-app [data-appointment-id] { border-radius:0 !important;box-shadow:inset 1px 1px #fff,inset -1px -1px #404040 !important; }
+[data-personal-theme="win95"] .pp-testata-agenda .pp-icona-bottone { border-radius:0;box-shadow:none; }

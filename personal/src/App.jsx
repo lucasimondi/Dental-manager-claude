@@ -126,7 +126,7 @@ function Archivio({ email }) {
       <input ref={ingressi.libreria} type="file" accept="image/*" hidden onChange={fileScelto} />
       <input ref={ingressi.file} type="file" hidden onChange={fileScelto} />
       <header className={`pp-testata${attuale.classeTestata && !sopra ? ` ${attuale.classeTestata}` : ''}`}>
-        {!attuale.senzaTitolo && <div className="pp-testata-titoli"><button className="pp-brand" onClick={() => vai('oggi')} aria-label="Poliedron Personal · Home"><img src="/poliedron-v2-192.png" alt="" width="24" height="24" /><span>Poliedron <small>PERSONAL</small></span></button><h1>{vista === 'oggi' ? saluto() : attuale.nome}</h1></div>}
+        {!attuale.senzaTitolo && <div className="pp-testata-titoli"><button className="pp-brand" onClick={() => vai('oggi')} aria-label="Poliedron Personal · Home"><span className="pp-brand-moderno"><img src="/poliedron-v2-192.png" alt="" width="24" height="24" /></span><span className="pp-brand-retro" aria-hidden="true"><IconaTema tipo="oggi" Icona={IconaAltro} size={24} /></span><span>Poliedron <small>PERSONAL</small></span></button><h1>{vista === 'oggi' ? saluto() : attuale.nome}</h1></div>}
         {!sopra && !foglio && <span className="pp-testata-azioni">
           <CambioAspetto />
           {AzioniTestata && <AzioniTestata ctx={ctx} />}

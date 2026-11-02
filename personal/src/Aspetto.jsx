@@ -1,3 +1,4 @@
+import { Pixel } from './IconaTema.jsx';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { applicaAspetto, CHIAVE_ASPETTO, leggiAspetto, normalizzaAspetto, salvaAspetto, storageAspetto } from './lib/aspetto.js';
 
@@ -15,6 +16,7 @@ export function AspettoProvider({ children }) {
   }, []);
   return <ContestoAspetto.Provider value={{ aspetto, setAspetto }}>{children}</ContestoAspetto.Provider>;
 }
+export function useAspetto() { return useContext(ContestoAspetto)?.aspetto || 'moderno'; }
 export function CambioAspetto({ esteso = false }) {
   const { aspetto, setAspetto } = useContext(ContestoAspetto);
   const retro = aspetto === 'win95';
@@ -26,6 +28,6 @@ export function CambioAspetto({ esteso = false }) {
     </div>
   </div>;
   return <button type="button" className="pp-cambio-aspetto" aria-pressed={retro} aria-label={retro ? 'Torna allo stile moderno' : 'Attiva stile Windows 95'} title={retro ? 'Torna allo stile moderno' : 'Attiva stile Windows 95'} onClick={() => setAspetto(retro ? 'moderno' : 'win95')}>
-    <svg width="20" height="18" viewBox="0 0 20 18" fill="none" aria-hidden="true"><path d="M2 1h16v11H2zM6 16h8M10 12v4" stroke="currentColor" strokeWidth="1.5" /><path d="M5 4h10v5H5z" fill="currentColor" opacity=".3" /></svg><span>{retro ? 'Moderno' : 'Win 95'}</span>
+    <svg className="pp-icon-modern" width="20" height="18" viewBox="0 0 20 18" fill="none" aria-hidden="true"><path d="M2 1h16v11H2zM6 16h8M10 12v4" stroke="currentColor" strokeWidth="1.5" /><path d="M5 4h10v5H5z" fill="currentColor" opacity=".3" /></svg><Pixel tipo="oggi" size={20} /><span>{retro ? 'Moderno' : 'Win 95'}</span>
   </button>;
 }

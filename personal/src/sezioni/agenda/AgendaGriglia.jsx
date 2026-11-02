@@ -1,3 +1,4 @@
+import { useAspetto } from '../../Aspetto.jsx';
 import DayEvents from '../../../../shared/agenda/DayEvents.jsx';
 import { useTimeline } from '../../../../shared/agenda/useTimeline.js';
 import { keepOccupiedWeekends } from '../../../../shared/agenda/visibility.js';
@@ -11,8 +12,11 @@ import { daIso, piuGiorni, oggi, coloreEvento, nomeEtichetta, elementiDelGiorno,
 export { ViewPicker };
 
 const GIORNI_NASCOSTI_PERSONAL = [];
+const PALETTE_WIN95 = { bg:'#c0c0c0', sur:'#ffffff', pri:'#000080', priL:'#dfdfdf', priD:'#000080', acc:'#008080', suc:'#008000', sucL:'#ffffff', war:'#808000', dan:'#800000', danL:'#ffffff', pur:'#800080', purL:'#ffffff', txt:'#000000', txm:'#404040', txl:'#808080', brd:'#808080' };
 
 export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMese, dati, ctx, etichette, coloriTipi, mostraEsclusi = false, setMostraEsclusi, hiddenCount = 0 }) {
+  const retro = useAspetto() === 'win95';
+  const palette = retro ? PALETTE_WIN95 : undefined;
   const [localMonth, setLocalMonth] = useState(giorno);
   const month = mese || localMonth, changeMonth = setMese || setLocalMonth;
   const weekly = view === 'settimana' || view === 'settimana_lavoro';
@@ -51,7 +55,7 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
   const showNowLine = nowMin >= 0 && nowMin <= slots.length * slotMin;
   // POL-VITA-008: "Vai a Studio" accanto al selettore della vista, alla sua sinistra.
   const appSwitch = <AgendaSwitch inline target="studio" day={giorno} month={month} view={view} />;
-  const pick = <span className="personal-agenda-azioni">{appSwitch}<ViewPicker hiddenCount={hiddenCount} showHidden={mostraEsclusi} onToggleHidden={setMostraEsclusi ? () => setMostraEsclusi(x => !x) : undefined} view={view} setView={setView} touchSafe weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendsHidden(hidden => !hidden)} /></span>;
+  const pick = <span className="personal-agenda-azioni">{appSwitch}<ViewPicker palette={palette} hiddenCount={hiddenCount} showHidden={mostraEsclusi} onToggleHidden={setMostraEsclusi ? () => setMostraEsclusi(x => !x) : undefined} view={view} setView={setView} touchSafe weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendsHidden(hidden => !hidden)} /></span>;
   // DayStrip notifica anche al primo mount la settimana che sta mostrando.
   // In Personal ignoriamo quella prima notifica: altrimenti il 16 diventa lunedì 12.
   const skipWeekSync = useRef(true);
@@ -87,7 +91,7 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
       {packed.filter(x => !x.a.agendaEvent).map(x => {
         const a = x.a, top = (x.start - oraInizio * 60) / slotMin * effectiveSlotH;
         if (top < 0 || top >= slots.length * effectiveSlotH) return null;
-        return <AppointmentBlock key={a.id} a={a} label={weekly ? (a.cognome ? [a.cognome, String(a.paziente || '').replace(a.cognome, '').trim()].filter(Boolean).join(' ') : (a.paziente || a.tipo || '—')) : (a.cognome || a.paziente || '—')} aCapo={weekly} co={a.colore || coloriTipi[a.tipo] || '#185FA5'} top={top} height={Math.max(Number(a.durata) / slotMin * effectiveSlotH - 2, effectiveSlotH * .6)} col={x.col} totalCols={x.totalCols} readOnly onOpen={e => { e.stopPropagation(); ctx.apri({ tipo: 'appuntamento', a }); }} />;
+        return <AppointmentBlock key={a.id} a={a} label={weekly ? (a.cognome ? [a.cognome, String(a.paziente || '').replace(a.cognome, '').trim()].filter(Boolean).join(' ') : (a.paziente || a.tipo || '—')) : (a.cognome || a.paziente || '—')} aCapo={weekly} co={a.colore || coloriTipi[a.tipo] || (retro ? '#000080' : '#185FA5')} top={top} height={Math.max(Number(a.durata) / slotMin * effectiveSlotH - 2, effectiveSlotH * .6)} col={x.col} totalCols={x.totalCols} readOnly onOpen={e => { e.stopPropagation(); ctx.apri({ tipo: 'appuntamento', a }); }} />;
       })}
     </>;
   };
@@ -107,17 +111,17 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
   return <div className="agenda-mobile-page" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, position: 'relative', '--agenda-mobile-overlay-clearance': `${overlayHeight}px` }}>
     {view === 'mese' ? <>
       <MonthToolbar date={daIso(month)} overlayRef={overlayRef}><button onClick={() => changeMonth(oggi())} style={{ background: '#E6F1FB', border: 'none', borderRadius: 14, padding: '5px 10px', color: '#185FA5', fontWeight: 700, fontSize: 10 }}>Oggi</button>{pick}</MonthToolbar>
-      <div className="agenda-mobile-month-surface"><MonthCalendar date={daIso(month)} selDay={giorno} today={oggi()} onNavigate={monthNavigate} onSelect={ds => { setGiorno(ds); setView('giorno'); }} daySummary={ds => { const el = elementiDelGiorno(ds, dati); return { count: el.aOrario.filter(x => x.tipo === 'appuntamento').length, marks: [...el.scadenze.map(s => ({ id: `scadenza-${s.id}`, colore: '#b54708' })), ...el.tuttoIlGiorno, ...el.aOrario.filter(x => x.tipo === 'evento').map(x => x.dato)].map(e => ({ id: e.id, colore: e.colore || coloreEvento(e, etichette) })) }; }} />
-        {[...extras.tuttoIlGiorno, ...extras.aOrario.filter(x => x.tipo === 'evento').map(x => x.dato)].map(e => <MonthDetailCard key={e.id} co={coloreEvento(e, etichette)} title={e.titolo} badge={nomeEtichetta(e.tipo, etichette)} subtitle={e.tutto_il_giorno ? 'Tutto il giorno' : `${(e.ora_inizio || '').slice(0,5)} – ${(e.ora_fine || '').slice(0,5)}`} onClick={() => ctx.apri({ tipo: 'evento', evento: e })} />)}
-        {extras.scadenze.map(s => <MonthDetailCard key={'scadenza-' + s.id} co="#b45309" title={s.descrizione} subtitle={(s.completata ? 'Pagato' : 'Scadenza') + (s.importo != null ? ' · ' + euro(s.importo) : '')} onClick={() => ctx.apri({ tipo: 'pagamento', s })} />)}
-        <MonthDateLabel day={giorno} />
-        {extras.aOrario.filter(x => x.tipo === 'appuntamento').map(({ dato: a }) => <MonthDetailCard key={a.id} co={a.colore || coloriTipi[a.tipo] || '#185FA5'} title={a.paziente || a.cognome || '—'} subtitle={a.tipo} time={a.ora} duration={a.durata} onClick={() => ctx.apri({ tipo: 'appuntamento', a })} />)}
-        {!extras.aOrario.some(x => x.tipo === 'appuntamento') && <CalendarEmptyState />}
+      <div className="agenda-mobile-month-surface"><MonthCalendar palette={palette} date={daIso(month)} selDay={giorno} today={oggi()} onNavigate={monthNavigate} onSelect={ds => { setGiorno(ds); setView('giorno'); }} daySummary={ds => { const el = elementiDelGiorno(ds, dati); return { count: el.aOrario.filter(x => x.tipo === 'appuntamento').length, marks: [...el.scadenze.map(s => ({ id: `scadenza-${s.id}`, colore: '#b54708' })), ...el.tuttoIlGiorno, ...el.aOrario.filter(x => x.tipo === 'evento').map(x => x.dato)].map(e => ({ id: e.id, colore: e.colore || coloreEvento(e, etichette) })) }; }} />
+        {[...extras.tuttoIlGiorno, ...extras.aOrario.filter(x => x.tipo === 'evento').map(x => x.dato)].map(e => <MonthDetailCard palette={palette} key={e.id} co={coloreEvento(e, etichette)} title={e.titolo} badge={nomeEtichetta(e.tipo, etichette)} subtitle={e.tutto_il_giorno ? 'Tutto il giorno' : `${(e.ora_inizio || '').slice(0,5)} – ${(e.ora_fine || '').slice(0,5)}`} onClick={() => ctx.apri({ tipo: 'evento', evento: e })} />)}
+        {extras.scadenze.map(s => <MonthDetailCard palette={palette} key={'scadenza-' + s.id} co="#b45309" title={s.descrizione} subtitle={(s.completata ? 'Pagato' : 'Scadenza') + (s.importo != null ? ' · ' + euro(s.importo) : '')} onClick={() => ctx.apri({ tipo: 'pagamento', s })} />)}
+        <MonthDateLabel palette={palette} day={giorno} />
+        {extras.aOrario.filter(x => x.tipo === 'appuntamento').map(({ dato: a }) => <MonthDetailCard palette={palette} key={a.id} co={a.colore || coloriTipi[a.tipo] || (retro ? '#000080' : '#185FA5')} title={a.paziente || a.cognome || '—'} subtitle={a.tipo} time={a.ora} duration={a.durata} onClick={() => ctx.apri({ tipo: 'appuntamento', a })} />)}
+        {!extras.aOrario.some(x => x.tipo === 'appuntamento') && <CalendarEmptyState palette={palette} />}
       </div>
     </> : <>
-      <DayStrip selDay={giorno} setSelDay={ds => { setGiorno(ds); if (weekly) setView('giorno'); }} today={oggi()} compact oraColW={34} singleDay={!weekly} hiddenWeekdays={hiddenWeekdays} highlightSelected={!weekly} onWeekChange={weekly ? sincronizzaSettimana : undefined} overlayRef={overlayRef} viewPicker={pick} floatingFooter={fasciaGiorno} shortMonth />
+      <DayStrip palette={palette} selDay={giorno} setSelDay={ds => { setGiorno(ds); if (weekly) setView('giorno'); }} today={oggi()} compact oraColW={34} singleDay={!weekly} hiddenWeekdays={hiddenWeekdays} highlightSelected={!weekly} onWeekChange={weekly ? sincronizzaSettimana : undefined} overlayRef={overlayRef} viewPicker={pick} floatingFooter={fasciaGiorno} shortMonth />
       <div className="agenda-mobile-grid-surface" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }} {...swipe}>
-        <TimeGrid containerRef={containerRef} isMobile slots={slots} slotH={slotH} effectiveSlotH={effectiveSlotH} oraColW={34} days={days} today={oggi()} showNowLine={showNowLine} nowTop={nowTop} onSlot={openSlot} renderDay={renderDay} />
+        <TimeGrid palette={palette} containerRef={containerRef} isMobile slots={slots} slotH={slotH} effectiveSlotH={effectiveSlotH} oraColW={34} days={days} today={oggi()} showNowLine={showNowLine} nowTop={nowTop} onSlot={openSlot} renderDay={renderDay} />
       </div>
     </>}
   </div>;
