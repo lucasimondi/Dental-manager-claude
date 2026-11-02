@@ -65,8 +65,14 @@ In Oggi, «Da comprare» permette aggiunta (quantità nel testo), categorie Spes
 
 ## Diario — amor fati
 
-Dalla copertina in Oggi o dal libro nella testata: diario antico con pagine sfogliabili, testo e immagini incollabili, data automatica al primo pensiero del giorno, ricerca e salto a data/pagina, pagine automatiche o manuali e pagine bianche. Salvataggio privato nell’archivio esistente con controllo delle modifiche concorrenti; Esporta scarica testo e copie delle immagini in JSON. Foto ridimensionate per il diario. Serve connessione per salvare; attendere “Salvato” prima di uscire. Nessun contenuto inviato all’AI. Vedi `docs/architecture/personal-diario-amor-fati.md`.
+Dalla copertina in Oggi o da Altro → Diario: diario antico con pagine sfogliabili, testo e immagini incollabili, data automatica al primo pensiero del giorno, ricerca e salto a data/pagina, pagine automatiche o manuali e pagine bianche. Salvataggio privato nell’archivio esistente con controllo delle modifiche concorrenti; Esporta scarica testo e copie delle immagini in JSON. Foto ridimensionate per il diario. Serve connessione per salvare; attendere “Salvato” prima di uscire. Nessun contenuto inviato all’AI. Vedi `docs/architecture/personal-diario-amor-fati.md`.
 
 ## Biblioteca · Filosofia
 
-Dalla Home, accanto ad *amor fati*, oppure dall’icona biblioteca nella testata. Trattato didattico con indice di 40 capitoli e cinque capitoli iniziali sviluppati: introduzione, mito e ragione, India e Cina, Mileto, pitagorici. Ricerca nell’indice, lettura sequenziale, testo ingrandibile, fonti e domande di riflessione. I capitoli futuri riportano «Da sviluppare». Il contenuto è di sola lettura; non salva avanzamento o annotazioni. Vedi `docs/architecture/personal-didattica-filosofia.md`.
+Dalla Home, accanto ad *amor fati*, oppure da Altro → Biblioteca. Trattato didattico con indice di 40 capitoli e cinque capitoli iniziali sviluppati: introduzione, mito e ragione, India e Cina, Mileto, pitagorici. Ricerca nell’indice, lettura sequenziale, testo ingrandibile, fonti e domande di riflessione. I capitoli futuri riportano «Da sviluppare». Il contenuto è di sola lettura; non salva avanzamento o annotazioni. Vedi `docs/architecture/personal-didattica-filosofia.md`.
+
+## Restyling professionale — 2 novembre 2026
+
+La navigazione principale contiene Oggi, Agenda, Documenti, Assistente e Altro. Altro raggruppa Personali, Conti e Legal in «La tua vita pratica» e Foto, Diario e Biblioteca in «Il tuo spazio». Le viste salvate delle sezioni precedenti restano valide. Il marchio in testata torna alla Home; le impostazioni restano disponibili in alto e in Altro.
+
+La Home apre la ricerca reale dell’archivio, offre le azioni rapide e l’assistente, poi riepilogo, agenda e pagamenti. Diario, letture e acquisti vengono dopo il riepilogo operativo. In Documenti ricerca, filtri e cartelle precedono gli strumenti secondari. Il sistema visivo condiviso è in `src/pro.css`, con modalità chiara/scura e rispetto dei contenuti specializzati di agenda, chat e diario.

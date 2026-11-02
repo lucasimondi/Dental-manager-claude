@@ -4318,3 +4318,15 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Integrated all19 non-coordination files byte-for-byte from that master; no patient-code conflict or change. Resolved coordination by retaining this patient task and appending all31 incoming handoff lines for diary/philosophy, without dropping either history. Existing approval persists for this task.
 - VALIDATION integrated1518/1518 tests, Studio and Personal builds pass; diff check clean. Original preview successful, no reviews/threads. Fresh CI must pass on integrated head before squash merge. No schema/production-data/manual deployment change; immutable stable checkpoint preserved.
 - RISKS/ROLLBACK unchanged: physical Android touch/IME unverified; revert PR260 preserving data/stable refs. NEXT publish merge commit with original PR head and current master as parents; inspect exact-head checks/mergeability, squash onlyPR260, record resulting SHA and normal Vercel production status.
+
+
+## 2026-11-02 — PERSONAL-PRO-RESTYLING
+- TASK/OWNER/previous agent: PERSONAL-PRO-RESTYLING, Codex, previous Codex PATIENT-ONE-CLICK merged PR260. Branch codex/personal-pro-restyling from master6c00c026.
+- OBJECTIVE: professional graphic/UI restyling and organization of Poliedron Personal, authorized by PO current request.
+- COMPLETED: five-item dock Oggi/Agenda/Documenti/Assistente/Altro; grouped secondary navigation preserving all previous view IDs; shared tokens, responsive cards/forms/header/brand and login; Home search/assistant/prioritized operational overview; archive search/filters before secondary tools. Diary full-screen/book, chat persistence and agenda viewport retained.
+- FILES: Personal App/Accesso/Icone/main, pro.css, section registry/new altro index, Oggi and Documenti; two existing navigation contract tests; README, architecture/current-task/handoff.
+- DATABASE/DEPLOY: none; no schema/auth/RLS/financial/tenancy/Studio changes or manual deployment. Immutable stable070b28fd checkpoint preserved.
+- VALIDATION:1518/1518 Node tests pass, combined and standalone Personal builds pass, diff check clean. React review complete. CUA synthetic iframe375/768/1024/1440 no horizontal overflow, compact dock/menu, search/back, chat composer, diary cover/Home and connected agenda checked. No live records. Temporary fixture and host allowlist removed.
+- LIMITS/RISKS: browser viewports are synthetic; physical Android IME/touch/offline unverified. Existing unrelated duplicate-key/pdfjs build warnings retained. Navigation groups change muscle memory; all sections reachable via Altro and remembered IDs valid.
+- ROLLBACK: revert dedicated PR; no data migration or restoration.
+- NEXT: publish dedicated PR and inspect exact-head checks, WAITING_PRODUCT_OWNER; explicit task-specific Mergia required before merge under AGENTS.md, then verify normal Vercel release.

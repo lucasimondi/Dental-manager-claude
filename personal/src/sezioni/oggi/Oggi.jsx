@@ -8,7 +8,7 @@ import { sessioneStudio, appuntamentiTra, impegniTra } from '../../lib/studio.js
 import { oggi as oggiAgenda } from '../../lib/agenda.js';
 import { euro } from '../../lib/coreArchivio.js';
 import { oggiIso, Vuoto, Sezione, Gruppo, RigaDocumento, SchedaDocumento, RigaPagamento, ElencoPratiche } from '../../ui.jsx';
-import { IconaCalendario, IconaFreccia, IconaFotocamera, IconaEuro, IconaScansiona } from '../../Icone.jsx';
+import { IconaCalendario, IconaFreccia, IconaFotocamera, IconaEuro, IconaScansiona, IconaCerca, IconaChat } from '../../Icone.jsx';
 import { ElencoGiorno } from '../agenda/index.jsx';
 import { Acquisti } from './Acquisti.jsx';
 import { RiquadroSaldo } from '../conti/index.jsx';
@@ -50,14 +50,13 @@ export function VistaOggi({ ctx }) {
   const comandi = (
     <>
       <p className="pp-data-oggi">{dataLunga()}</p>
-      <div className="pp-rapide">
+      <button className="pp-home-cerca" onClick={() => apri({ tipo: 'ricerca', titolo: 'Cerca nel tuo archivio' })}><IconaCerca size={20} /><span>Cerca nel tuo archivio</span></button>
+      <div className="pp-rapide" aria-label="Azioni rapide">
         {[['scansiona', 'Scansiona', IconaScansiona], ['spesa', 'Spesa', IconaEuro], ['incasso', 'Incasso', IconaEuro], ['fotocamera', 'Foto', IconaFotocamera]].map(([id, nome, Icona]) => (
           <button key={id} className={`pp-rapida pp-av-${id}`} onClick={() => aggiungi(id)}><span><Icona size={22} /></span>{nome}</button>
         ))}
       </div>
-      <button className="pf-home-link" onClick={() => vai('didattica')}><span><strong>Filosofia</strong><small>Biblioteca · Dalle origini al presente</small></span><span aria-hidden="true">↗</span></button>
-      <button className="af-home-link" onClick={() => vai('diario')}><span><strong>amor fati</strong><small>Il tuo diario personale · Apri e scrivi</small></span><span aria-hidden="true">↗</span></button>
-      <Acquisti ctx={ctx} />
+      <button className="pp-home-assistente" onClick={() => ctx.apriChat()}><span className="pp-assistente-simbolo"><IconaChat size={24} /></span><span><strong>Da dove iniziamo?</strong><small>Chiedi a Poliedron del tuo archivio</small></span><IconaFreccia size={18} /></button>
     </>
   );
   if (!dati) return <>{comandi}<p className="pp-riga-meta" role="status">Aggiorno il riepilogo…</p></>;
@@ -114,6 +113,11 @@ export function VistaOggi({ ctx }) {
             onRisolvi={(p) => ctx.esegui(async () => { await cambiaStatoPratica(archivioDb, p.id, 'risolta'); ctx.aggiorna(); ctx.mostra('Pratica risolta'); })} />
         </Sezione>
       )}
+      <Sezione titolo="Uno spazio per te"><div className="pp-home-personale">
+      <button className="pf-home-link" onClick={() => vai('didattica')}><span><strong>Filosofia</strong><small>Biblioteca · Dalle origini al presente</small></span><span aria-hidden="true">↗</span></button>
+      <button className="af-home-link" onClick={() => vai('diario')}><span><strong>amor fati</strong><small>Il tuo diario personale · Apri e scrivi</small></span><span aria-hidden="true">↗</span></button>
+      </div></Sezione>
+      <Acquisti ctx={ctx} />
       <p className="pp-riga-meta pp-nota-fondo">{dati.totale} documenti in archivio.</p>
     </>
   );

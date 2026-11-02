@@ -48,12 +48,6 @@ export function VistaDocumenti({ ctx }) {
 
   return (
     <>
-      <button className="pp-invito" onClick={() => apri({ tipo: 'legal' })}><span><strong>Legal</strong><br />Pratiche, recuperi e aggiornamenti manuali</span></button>
-      <button className="pp-invito" onClick={() => apri({ tipo: 'revisione' })}><span><strong>Da valutare con Poliedron</strong><br />Pagamenti da verificare, inviti e documenti importanti</span></button>
-      <details className="pp-pannello"><summary>Archivio · Documenti vecchi</summary>
-        {impostazioni.persone.map(persona=><button key={persona} className="pp-riga pp-riga-sola" onClick={()=>apri({tipo:'elenco',titolo:`Documenti vecchi di ${persona}`,carica:()=>documentiPersonaliStorici(archivioDb,persona)})}>Documenti vecchi di {persona}</button>)}
-        <button className="pp-testo-link" onClick={()=>apri({tipo:'elenco',titolo:'Tutti i documenti vecchi e originali',carica:()=>documentiPersonaliStorici(archivioDb)})}>Tutti i documenti vecchi e originali</button>
-      </details>
       <div className="pp-cerca">
         <IconaCerca size={18} />
         <input type="search" value={testo} onChange={(e) => setTesto(e.target.value)} placeholder="Cerca: Enel, IMU 2024, carta d'identità…" enterKeyHint="search" aria-label="Cerca nell'archivio" />
@@ -68,11 +62,6 @@ export function VistaDocumenti({ ctx }) {
           : <Vuoto>Cerco…</Vuoto>
       ) : (
         <>
-          <button className="pp-ingresso-foto" onClick={() => apri({ tipo: 'fotovideo' })}>
-            <span className="pp-ingresso-foto-icona"><IconaFoto size={22} /></span>
-            <span className="pp-riga-testo"><span className="pp-riga-titolo">Foto e video</span><span className="pp-riga-meta">Album, anni e luoghi</span></span>
-            <IconaFreccia size={16} />
-          </button>
           <Chips voci={[['cartelle', 'Cartelle'], ['recenti', 'Recenti'], ['categorie', 'Categorie'], ['pratiche', 'Pratiche']]} attiva={scheda} onScegli={setScheda} />
           {scheda === 'cartelle' && <VistaCartelle ctx={ctx} anchePocoUtili={filtri.anchePocoUtili} />}
           {scheda === 'recenti' && risultati && <ElencoSelezionabile elenco={risultati} ctx={ctx} onCambiato={() => setRinfresca((n) => n + 1)} intestazione="Ultimi arrivati" />}
@@ -130,6 +119,19 @@ export function VistaDocumenti({ ctx }) {
           )}
         </>
       )}
+      {!ricerca && <Sezione titolo="Strumenti dell’archivio">
+      <button className="pp-invito" onClick={() => apri({ tipo: 'legal' })}><span><strong>Legal</strong><br />Pratiche, recuperi e aggiornamenti manuali</span></button>
+      <button className="pp-invito" onClick={() => apri({ tipo: 'revisione' })}><span><strong>Da valutare con Poliedron</strong><br />Pagamenti da verificare, inviti e documenti importanti</span></button>
+      <details className="pp-pannello"><summary>Archivio · Documenti vecchi</summary>
+        {impostazioni.persone.map(persona=><button key={persona} className="pp-riga pp-riga-sola" onClick={()=>apri({tipo:'elenco',titolo:`Documenti vecchi di ${persona}`,carica:()=>documentiPersonaliStorici(archivioDb,persona)})}>Documenti vecchi di {persona}</button>)}
+        <button className="pp-testo-link" onClick={()=>apri({tipo:'elenco',titolo:'Tutti i documenti vecchi e originali',carica:()=>documentiPersonaliStorici(archivioDb)})}>Tutti i documenti vecchi e originali</button>
+      </details>
+          <button className="pp-ingresso-foto" onClick={() => apri({ tipo: 'fotovideo' })}>
+            <span className="pp-ingresso-foto-icona"><IconaFoto size={22} /></span>
+            <span className="pp-riga-testo"><span className="pp-riga-titolo">Foto e video</span><span className="pp-riga-meta">Album, anni e luoghi</span></span>
+            <IconaFreccia size={16} />
+          </button>
+      </Sezione>}
     </>
   );
 }

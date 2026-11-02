@@ -1,7 +1,7 @@
 import { Pagina } from './Pagina.jsx';
 import { readAgendaLocation } from '../../shared/agenda/navigation.js';
 // POL-VITA-003/006 — Poliedron Personal: app per telefono dell'archivio personale.
-// Dock: Oggi · Documenti · Agenda · Conti · Personali. Ogni dettaglio si apre come pagina sopra la
+// Dock: Oggi · Agenda · Documenti · Assistente · Altro. Ogni dettaglio si apre come pagina sopra la
 // sezione, con "Indietro" in alto, il tasto di chiusura in basso a portata di pollice e il dock
 // sempre visibile; chiudendo si torna dov'eri. Il + apre tutte le aggiunte.
 // POL-VITA-017 — qui c'è solo la cornice; le sezioni sono in sezioni/ (vedi sezioni/index.js).
@@ -16,8 +16,8 @@ import { saluto, VISTA_KEY, leggiVista, tokenSessione } from './ui.jsx';
 import { differito } from './Differito.jsx';
 const FoglioAggiungi = differito(() => import('./Aggiungi.jsx'), 'FoglioAggiungi');
 import { Accesso, NuovaPassword } from './Accesso.jsx';
-import { DOCK, sezione, pagina, titoloPagina, eModulo, IconaDiario, IconaBiblioteca } from './sezioni/index.js';
-import { IconaPiu, IconaImpostazioni, IconaChat } from './Icone.jsx';
+import { DOCK, sezione, pagina, titoloPagina, eModulo } from './sezioni/index.js';
+import { IconaPiu, IconaImpostazioni, IconaChat, IconaAltro } from './Icone.jsx';
 
 impostaToken(tokenSessione);
 
@@ -115,19 +115,18 @@ function Archivio({ email }) {
   const { Vista, AzioniTestata } = attuale;
   const VistaDiario = sezione('diario').Vista;
   const sopra = pagine.length > 0;
+  const altraSezione = !DOCK.some((s) => s.id === vista) && vista !== 'poliedron';
   const classeScheda = (id) => `${vista === id && !sopra ? ' attiva' : ''}${vista === id && sopra ? ' sotto' : ''}`;
 
   return (
-    <div className="pp-app">
+    <div className={`pp-app pp-vista-${vista}`}>
       <input ref={ingressi.fotocamera} type="file" accept="image/*" capture="environment" hidden onChange={fileScelto} />
       <input ref={ingressi.libreria} type="file" accept="image/*" hidden onChange={fileScelto} />
       <input ref={ingressi.file} type="file" hidden onChange={fileScelto} />
       <header className={`pp-testata${attuale.classeTestata && !sopra ? ` ${attuale.classeTestata}` : ''}`}>
-        {!attuale.senzaTitolo && <h1>{vista === 'oggi' ? saluto() : attuale.nome}</h1>}
+        {!attuale.senzaTitolo && <div className="pp-testata-titoli"><button className="pp-brand" onClick={() => vai('oggi')} aria-label="Poliedron Personal · Home"><img src="/poliedron-v2-192.png" alt="" width="24" height="24" /><span>Poliedron <small>PERSONAL</small></span></button><h1>{vista === 'oggi' ? saluto() : attuale.nome}</h1></div>}
         {!sopra && !foglio && <span className="pp-testata-azioni">
           {AzioniTestata && <AzioniTestata ctx={ctx} />}
-          {vista !== 'didattica' && <button className="pp-icona-bottone" onClick={() => vai('didattica')} aria-label="Apri Biblioteca e Filosofia"><IconaBiblioteca size={20} /></button>}
-          {vista !== 'diario' && <button className="pp-icona-bottone" onClick={() => vai('diario')} aria-label="Apri il diario amor fati"><IconaDiario size={20} /></button>}
           <button className="pp-icona-bottone" onClick={() => apri({ tipo: 'impostazioni' })} aria-label="Impostazioni"><IconaImpostazioni size={20} /></button>
         </span>}
       </header>
@@ -149,7 +148,8 @@ function Archivio({ email }) {
             <Icona size={22} /><span>{nome}</span>
           </button>
         ))}
-        <button className={`pp-scheda pp-scheda-poliedron${classeScheda('poliedron')}`} onClick={() => vai('poliedron')} aria-label="Apri Poliedron" aria-current={vista === 'poliedron' ? 'page' : undefined}><IconaChat size={23} /><span>Poliedron</span></button>
+        <button className={`pp-scheda pp-scheda-poliedron${classeScheda('poliedron')}`} onClick={() => vai('poliedron')} aria-label="Apri Poliedron" aria-current={vista === 'poliedron' ? 'page' : undefined}><IconaChat size={23} /><span>Assistente</span></button>
+        <button className={`pp-scheda${altraSezione ? ' attiva' : ''}`} onClick={() => vai('altro')} aria-current={altraSezione ? 'page' : undefined}><IconaAltro size={22} /><span>Altro</span></button>
       </nav>
       {!sopra && !attuale.senzaPiu && <button className="pp-fab" onClick={() => setFoglio(true)} aria-label="Aggiungi"><IconaPiu size={26} /></button>}
       {foglio && <FoglioAggiungi onScegli={aggiungi} onChiudi={() => setFoglio(false)} />}

@@ -157,11 +157,12 @@ test('scansione: la carta grigia diventa bianca, il testo nero; "originale" non 
   assert.deepEqual(migliora(orig, 'originale'), px);
 });
 
-test('app: Conti nel dock, + con tutte le aggiunte, pagine con chiusura in basso', () => {
+test('app: Conti in Altro, dock compatto, + con tutte le aggiunte e chiusura', () => {
   const app = readFileSync('personal/src/App.jsx', 'utf8');
   const aggiungi = readFileSync('personal/src/Aggiungi.jsx', 'utf8');
   assert.match(readFileSync('personal/src/sezioni/conti/index.jsx', 'utf8'), /id: 'conti', nome: 'Conti', Icona: IconaEuro/);
-  assert.match(readFileSync('personal/src/sezioni/index.js', 'utf8'), /export const DOCK = \[oggi, documenti, agenda, foto, conti, legal, personali\];/);
+  assert.match(readFileSync('personal/src/sezioni/index.js', 'utf8'), /export const DOCK = \[oggi, agenda, documenti\];/);
+  assert.match(readFileSync('personal/src/sezioni/altro/index.jsx', 'utf8'), /\[conti, 'Spese, incassi e pagamenti'\]/);
   assert.match(app, /leggiVista\(\) === 'pagamenti' \? 'conti'/);
   assert.match(readFileSync('personal/src/Pagina.jsx', 'utf8'), /className="pp-chiudi-pagina"/);
   for (const voce of ['scansiona', 'fotocamera', 'libreria', 'file', 'personale', 'spesa', 'incasso', 'pagamento', 'evento']) {
