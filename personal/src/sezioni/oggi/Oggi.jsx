@@ -52,7 +52,6 @@ export function VistaOggi({ ctx }) {
   }, [esegui, versione]);
   const comandi = (
     <>
-      <p className="pp-data-oggi">{dataLunga()}</p>
       <button className="pp-home-cerca" onClick={() => apri({ tipo: 'ricerca', titolo: 'Cerca nel tuo archivio' })}><IconaCerca size={20} /><span>Cerca nel tuo archivio</span></button>
       <div className="pp-rapide" aria-label="Azioni rapide">
         {[['scansiona', 'Scansiona', IconaScansiona], ['spesa', 'Spesa', IconaEuro], ['incasso', 'Incasso', IconaEuro], ['fotocamera', 'Foto', IconaFotocamera]].map(([id, nome, Icona]) => (
@@ -65,7 +64,17 @@ export function VistaOggi({ ctx }) {
       <button className="pp-home-assistente" onClick={() => ctx.apriChat()}><span className="pp-assistente-simbolo"><IconaChat size={24} /></span><span><strong>Da dove iniziamo?</strong><small>Chiedi a Poliedron del tuo archivio</small></span><IconaFreccia size={18} /></button>
     </>
   );
-  if (!dati) return <>{comandi}<p className="pp-riga-meta" role="status">Aggiorno il riepilogo…</p></>;
+  const agendaOggi = <div className="pp-home-agenda">
+    <p className="pp-data-oggi">{dataLunga()}</p>
+    <Sezione titolo="Oggi in agenda" azione={<button className="pp-testo-link" onClick={() => vai('agenda')}>Apri agenda</button>}>
+      {dati?.agenda
+        ? <ElencoGiorno giorno={oggiAgenda()} dati={dati.agenda} ctx={ctx} etichette={ctx.impostazioni.etichette} coloriTipi={{}} intestazione={false} />
+        : dati?.collegata === false
+          ? <button className="pp-invito" onClick={() => vai('agenda')}><IconaCalendario size={20} /><span><strong>Collega l'agenda dello studio</strong><br />Appuntamenti ed eventi qui, ogni mattina.</span><IconaFreccia size={16} /></button>
+          : <p className="pp-vuoto" role="status">{dati?.collegata === true ? 'Agenda non disponibile. Apri l’agenda per riprovare.' : 'Carico l’agenda di oggi…'}</p>}
+    </Sezione>
+  </div>;
+  if (!dati) return <>{agendaOggi}{comandi}<p className="pp-riga-meta" role="status">Aggiorno il riepilogo…</p></>;
   const scaduti = dati.aperte.filter((s) => s.data < oggiIso());
   const entro30 = dati.prossime.reduce((t, s) => t + Number(s.importo || 0), 0);
   const urgenti = [...dati.pratiche].sort((x, y) => (x.urgenza === 'alta' ? -1 : 0) - (y.urgenza === 'alta' ? -1 : 0)
@@ -73,6 +82,7 @@ export function VistaOggi({ ctx }) {
   const apriDoc = (d) => apri({ tipo: 'documento', id: d.id });
   return (
     <>
+      {agendaOggi}
       {comandi}
       <button className="pp-invito" onClick={() => apri({ tipo: 'revisione' })}><span><strong>Da valutare con Poliedron</strong><br />Pagamenti da verificare, inviti e documenti importanti</span></button>
       <RiquadroSaldo b={dati.saldo} titolo={`Saldo di ${new Date().toLocaleDateString('it-IT', { month: 'long' })}`} onApri={() => vai('conti')} />
@@ -90,13 +100,6 @@ export function VistaOggi({ ctx }) {
           <span className="pp-tessera-numero">{dati.pratiche.length}</span><span>pratiche aperte</span>
         </button>
       </div>
-      {dati.agenda ? (
-        <Sezione titolo="Oggi in agenda" azione={<button className="pp-testo-link" onClick={() => vai('agenda')}>Agenda</button>}>
-          <ElencoGiorno giorno={oggiAgenda()} dati={dati.agenda} ctx={ctx} etichette={ctx.impostazioni.etichette} coloriTipi={{}} intestazione={false} />
-        </Sezione>
-      ) : dati.collegata === false && (
-        <button className="pp-invito" onClick={() => vai('agenda')}><IconaCalendario size={20} /><span><strong>Collega l'agenda dello studio</strong><br />Appuntamenti ed eventi qui, ogni mattina.</span><IconaFreccia size={16} /></button>
-      )}
       <ScadenzePersonali ctx={ctx}/>
       <Sezione titolo="Prossimi pagamenti" azione={<button className="pp-testo-link" onClick={() => vai('conti', 'dapagare')}>Tutti</button>}>
         {dati.prossime.length

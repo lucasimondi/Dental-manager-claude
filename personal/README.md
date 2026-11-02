@@ -82,3 +82,12 @@ La Home apre la ricerca reale dell’archivio, offre le azioni rapide e l’assi
 Il pulsante «Win 95» nella testata (anche nell’agenda e nell’accesso) attiva lo stile retrò; nello stile retrò diventa «Moderno» per tornare indietro. In Impostazioni → Aspetto si possono scegliere entrambi. Il cambio è immediato senza ricaricare: non smonta le viste, non perde ricerche o bozze e non modifica i dati. La scelta si salva sul browser/dispositivo, non sull’account. Se il salvataggio locale è bloccato, funziona per la sessione corrente. Il valore predefinito è Moderno; Windows 95 usa la sua palette chiara anche con sistema scuro.
 
 La modalità retrò applica bordi in rilievo, testate blu, sfondi grigi e icone pixel originali. In Home aggiunge quattro scorciatoie del desktop. Il diario conserva il suo libro a tutto schermo: torna alla Home per cambiare stile. I contenuti dei PDF originali e la pagina di consenso OAuth non vengono modificati dal tema.
+
+
+### Windows95: contenuti e Home (2 novembre 2026)
+Le icone condivise di Personal includono anche la versione pixel per comandi,
+finestre di dettaglio e moduli. Il tema coordina caratteri, header, pulsanti,
+campi, lettore Filosofia e palette dell’agenda; i colori assegnati a categorie
+ed eventi restano dati. La Home mostra prima l’agenda di oggi, con stato di
+caricamento/collegamento/non disponibilità, poi ricerca, azioni e riepiloghi.
+Il cambio di aspetto mantiene la schermata e gli input; il diario conserva il libro.
