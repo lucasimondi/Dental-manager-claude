@@ -71,7 +71,17 @@ test.before(async () => {
   globalThis.__pagClient = () => ({
     auth: { getUser: async () => ({ data: { user }, error: null }) },
     from: (t) => new Query(t),
-    rpc: async (name) => name === 'has_studio_capability_v1' ? { data: clinical, error: null } : { error: { message: 'unsupported RPC' } },
+    rpc: async (name, args) => {
+      if (name === 'has_studio_capability_v1') return { data: clinical, error: null };
+      if (name === 'poliedron_execute_agenda_v1') {
+        if (claims.has(args.p_id)) return { error: { code: '23505' } };
+        claims.add(args.p_id);
+        const row = { ...args.p_after, studio_id: args.p_studio, id: 900 };
+        database.appointments.push(row);
+        return { data: row.id, error: null };
+      }
+      return { error: { message: 'unsupported RPC' } };
+    },
   });
   globalThis.fetch = async (_url, options) => {
     if (String(_url).endsWith("/user/oauth/grants")) return { ok: true, json: async () => revoked ? [] : [{ client: { id: CONNECTOR_ID } }] };
@@ -273,4 +283,26 @@ test('chat cancellation, wrong client and revoked grant never register implants'
  revoked=false;
  const cancelled=await connectorCall('conferma_richiesta',{richiesta_id:draft.richiesta_id,decisione:'Annulla'});
  assert.equal(cancelled.status,'cancelled'); assert.equal(database.implants.length,0);
+});
+
+test('authorized appointment flow exposes same-turn policy and executes once with fresh checks', async () => {
+ const args = { paziente_id: 1, data: '2099-11-10', ora: '17:30', tipo: 'Conservativa' };
+ const draft = await connectorCall('prepara_appuntamento', args);
+ assert.equal(draft.confirmation_policy, 'explicit_request');
+ assert.equal(draft.status, 'pending'); assert.equal(database.appointments.length, 0);
+ const done = await connectorCall('conferma_richiesta', { richiesta_id: draft.richiesta_id, decisione: 'Conferma' });
+ assert.equal(done.status, 'done'); assert.equal(done.records.appointments[0].ora, '17:30');
+ assert.equal(database.appointments.length, 1);
+ assert.ok((await connectorCall('conferma_richiesta', { richiesta_id: draft.richiesta_id, decisione: 'Conferma' })).error);
+ assert.equal(database.appointments.length, 1);
+ const implantDraft = await connectorCall('prepara_impianti', input());
+ assert.equal(implantDraft.confirmation_policy, 'new_reply');
+});
+test('same-turn appointment policy cannot force overlaps or skip refreshed availability', async () => {
+ const args = { paziente_id: 1, data: '2099-11-10', ora: '17:30', tipo: 'Conservativa' };
+ assert.ok((await connectorCall('prepara_appuntamento', { ...args, forza_sovrapposizione: true })).error);
+ const draft = await connectorCall('prepara_appuntamento', args);
+ database.appointments.push({ ...args, durata: 30, stato: 'confermato', studio_id: 's1', id: 100 });
+ assert.ok((await connectorCall('conferma_richiesta', { richiesta_id: draft.richiesta_id, decisione: 'Conferma' })).error);
+ assert.equal(database.appointments.length, 1);
 });

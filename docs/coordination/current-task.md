@@ -1,12 +1,9 @@
-# Current task — PERSONAL-PRO-RESTYLING (2026-11-02)
-- OWNER Codex; branch codex/personal-pro-restyling from master 6c00c026.
-- AUTHORIZATION: PO requests professional graphic/UI restyling and organization of Poliedron Personal.
-- SCOPE: Personal shell, five-item navigation, organized Altro, Home hierarchy, consistent visual system and sign-in branding. Studio/data/auth/financial logic excluded.
-- CHECKPOINT: immutable stable/2026-08-27-full-recovery remains 070b28fd4eae4e2cc397584201d0bb149468fae7. Current master retained as implementation base.
-- STATUS WAITING_PRODUCT_OWNER; implementation/verification complete, dedicated PR pending. No merge or manual deployment. Previous PR260 is merged in current master.
-- VALIDATION 1518/1518 Node tests; combined and standalone Personal builds pass; CUA synthetic375/768/1024/1440 no horizontal overflow, search/back/menu/chat/diary/agenda verified. Physical Android IME/touch not verified.
-- PO UPDATE: add reversible Moderno/Windows95 appearance switch, remembering device preference. Extend same open PR263; no merge authorized.
-- THEME COMPLETED: header/login toggle, settings choices, per-device preference with storage-failure handling, original pixel icons and theme-only Home shortcuts. Same section/search/chat draft retained across toggles.
-- THEME VALIDATION:1522/1522 Node tests, combined/standalone Personal builds and diff check pass. Synthetic CUA switching, reload persistence, settings, search/chat draft retention and320/375/768/1024/1440 no horizontal overflow. Physical Android not verified.
-- NEXT update same PR263, inspect exact-head CI/preview, wait explicit Mergia under AGENTS.md; no production merge/deploy.
-- ROLLBACK revert dedicated PR; no database changes.
+# Current task — CONNECTOR-APPOINTMENT-DIRECT (2026-11-02)
+- OWNER Codex; branch codex/connector-appointment-direct from current master.
+- AUTHORIZATION PO requests removing the additional confirmation for appointment insertion after confirming the existing booking.
+- SCOPE explicit user authorization permits same-turn prepare/confirm for NEW appointments only. Other domains retain new-reply confirmation. Existing signed proposal, live grant/capability/availability checks and canonical executor unchanged.
+- Previous Personal restyling task preserved in handoffs and its own PR263; no changes to its implementation.
+- STATUS WAITING_PRODUCT_OWNER; implementation complete, 1524/1524 Node tests and production build pass; diff check clean. No merge or deployment performed.
+- CHECKPOINT stable/2026-08-27-full-recovery remains immutable at070b28fd4eae4e2cc397584201d0bb149468fae7.
+- NEXT dedicated PR, exact-head CI, explicit Product Owner merge approval per AGENTS.md. Release requires both existing Edge function and Vercel transport updates; refreshed client metadata needed.
+- ROLLBACK revert this dedicated PR; no migration/data changes.

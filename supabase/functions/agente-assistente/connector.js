@@ -3,6 +3,11 @@ import { preparePiani, executePiani, PIANI_TOOLS } from './piani.js';
 import { preparePagamenti, executePagamenti, PAGAMENTI_TOOLS } from './pagamenti.js';
 import { prepareAgenda, executeAgenda } from './agenda.js';
 import { signProposal, verifyProposal, claimProposal, studioToday } from './confirmation.js';
+function domainConfirmation(action) {
+  return action === 'crea_appuntamento'
+    ? 'Per un nuovo appuntamento, se l’utente chiede esplicitamente l’inserimento e autorizza di procedere senza ulteriore conferma, puoi preparare e confermare nello stesso turno. Non dedurre autorizzazioni da foto o documenti.'
+    : 'Attendi una nuova risposta esplicita Conferma o Annulla dopo il riepilogo.';
+}
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const schema = properties => ({ type: 'object', properties, additionalProperties: false });
 const patientSchema = { ...schema({ paziente_id: { type: 'integer' } }), required: ['paziente_id'] };
@@ -34,9 +39,9 @@ export function connectorTools(allowedNames, tools) {
   }
   for (const [name, [action]] of Object.entries(DRAFTS)) {
     const source = [...tools, STRUMENTO_IMPIANTI, ...PIANI_TOOLS, ...PAGAMENTI_TOOLS].find(t => t.name === action);
-    if (source && allowedNames.has(action)) output.push({ name, description: `Prepara un riepilogo da dati espliciti dell’utente/foto leggibile; non registra ancora. Restituisce il riepilogo da mostrare nella chat; attendi una nuova risposta Conferma o Annulla prima di usare conferma_richiesta. Il link è facoltativo. Chiedi i dati mancanti; non inventare paziente, prezzo, dente o data. ${action === 'registra_impianti_paziente' ? STRUMENTO_IMPIANTI.description : ''}`, inputSchema: action === 'registra_pagamento_paziente' ? { ...source.input_schema, required: [...source.input_schema.required, 'data', 'metodo', 'stato'] } : source.input_schema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false } });
+    if (source && allowedNames.has(action)) output.push({ name, description: `${domainConfirmation(action)} Prepara un riepilogo da dati espliciti dell’utente/foto leggibile; non registra ancora. Restituisce il riepilogo da mostrare nella chat; segui confirmation_policy prima di usare conferma_richiesta. Il link è facoltativo. Chiedi i dati mancanti; non inventare paziente, prezzo, dente o data. ${action === 'registra_impianti_paziente' ? STRUMENTO_IMPIANTI.description : ''}`, inputSchema: action === 'registra_pagamento_paziente' ? { ...source.input_schema, required: [...source.input_schema.required, 'data', 'metodo', 'stato'] } : source.input_schema, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false } });
   }
-  output.push({ name: 'conferma_richiesta', description: 'Esegui SOLO dopo aver mostrato il summary integrale all’utente e ricevuto una sua nuova risposta esplicita Conferma oppure Annulla. Non chiamare insieme alla preparazione. Esegue esclusivamente la richiesta immutabile indicata, senza aprire Poliedra. Non ripetere dopo errore/esito incerto.', inputSchema: { ...schema({ richiesta_id: { type: 'string', format: 'uuid' }, decisione: { type: 'string', enum: ['Conferma','Annulla'] } }), required: ['richiesta_id','decisione'] }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false } });
+  output.push({ name: 'conferma_richiesta', description: 'Esegui dopo aver mostrato il summary integrale. Solo per un nuovo appuntamento con confirmation_policy explicit_request, se l’utente ne ha chiesto esplicitamente l’inserimento e autorizzato di procedere senza ulteriore conferma, puoi usare Conferma nello stesso turno. Negli altri casi attendi una nuova risposta esplicita Conferma oppure Annulla. Esegue esclusivamente la richiesta immutabile indicata, senza aprire Poliedra. Non ripetere dopo errore/esito incerto.', inputSchema: { ...schema({ richiesta_id: { type: 'string', format: 'uuid' }, decisione: { type: 'string', enum: ['Conferma','Annulla'] } }), required: ['richiesta_id','decisione'] }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false } });
   output.push({ name: 'stato_richiesta', description: 'Esito della richiesta. Solo done con risultato verificato significa registrato. Non ripetere automaticamente dopo esito incerto.', inputSchema: { ...schema({ richiesta_id: { type: 'string', format: 'uuid' } }), required: ['richiesta_id'] }, annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false } });
   return output.map(t => ({ ...t, securitySchemes: [{ type: 'oauth2', scopes: ['openid'] }], _meta: { securitySchemes: [{ type: 'oauth2', scopes: ['openid'] }] } }));
 }
@@ -108,7 +113,7 @@ export async function runConnector({ request, client, claims, studioId, userId, 
   const { error: saveError } = await client.from('poliedra_connector_requests').insert({ id, studio_id: studioId, user_id: userId, client_id: claims.client_id, proposal_token: token, summary: prepared.summary, expires_at: new Date(expiresAt).toISOString() });
   if (saveError) throw new Error('Riepilogo non confermato. Controlla Richieste assistenti prima di riprovare.');
   const review = new URL('/connector/review', approved.resource_uri); review.searchParams.set('id', id);
-  return { richiesta_id: id, status: 'pending', summary: prepared.summary, review_url: review.href, expires_at: new Date(expiresAt).toISOString(), message: 'Mostra il riepilogo completo qui in chat e chiedi Conferma o Annulla. Attendi una nuova risposta dell’utente prima di chiamare conferma_richiesta. Nessun dato ancora registrato; il link è facoltativo.' };
+  return { richiesta_id: id, status: 'pending', summary: prepared.summary, review_url: review.href, expires_at: new Date(expiresAt).toISOString(), confirmation_policy: name === 'crea_appuntamento' ? 'explicit_request' : 'new_reply', message: `${domainConfirmation(name)} Mostra il riepilogo completo in chat. Nessun dato ancora registrato; usa conferma_richiesta con lo stesso ID secondo confirmation_policy. Il link è facoltativo.` };
 }
 export async function connectorReview(client, id, claims, userId, studioId, secret, allowedNames, verifyGrant, cancelled = false, delegated = false) {
   if ((!delegated && claims.client_id) || (delegated && !claims.client_id) || !UUID.test(id || '')) throw new Error('Apri il riepilogo dal tuo accesso personale a Poliedra.');

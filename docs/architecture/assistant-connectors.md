@@ -1,3 +1,16 @@
+## PO update — appointment authorization (2026-11-02)
+For NEW appointment creation only, an explicit user instruction to book plus explicit
+permission to proceed without another confirmation permits prepare and confirm in
+the same assistant turn. The pending response advertises `confirmation_policy:
+explicit_request`; other domains return `new_reply` and retain the existing rule.
+The assistant still shows the complete summary, resolves patient ambiguity and
+missing facts, and never takes authorization from attachments. This is interaction
+policy, not server proof of a natural-language authorization. No persistent
+account preference or automatic execution was added. The same immutable request,
+expiry, fresh checks, one-time claim and canonical executor remain in place.
+Host-level approval is independent and cannot be disabled by this change.
+This section supersedes the mandatory NEW-reply wording below only for this case.
+
 # Connettori ChatGPT e Gemini
 
 ## PO update — confirmation inside the assistant chat (2026-10-24)
