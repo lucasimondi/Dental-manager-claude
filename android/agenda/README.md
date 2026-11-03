@@ -2,6 +2,16 @@
 
 Two real Android AppWidgets: **Giorno** (4×3 default) and **Settimana** (4×4), resizable. Both combine the existing Studio appointments and personal events visible in Personal. The week selector includes Saturday/Sunday, counts and a selectable day. Vertical ListView scrolling, previous/next period, Today, per-widget source filter and details toggle. Horizontal swiping remains the Android launcher's gesture; it is not advertised as supported. **+ Nuovo** opens the existing Personal event/patient appointment editor on the selected date, without saving anything automatically.
 
+## Agenda actions (ANDROID-PERSONAL-WIDGET-ACTIONS, v0.2.0)
+
+Third widget **Agenda · Azioni rapide** (4×2, resizable): next item still to come (today from the current time, then following days within the snapshot), with **+ Impegno**, **+ Appunt.**, **Oggi**, **Settim.** and a per-widget Dettagli/Nascondi toggle. Day and week widgets now offer **+ Impegno** (personal event) and **+ Appunt.** (Studio appointment) on the selected date, **Agenda ↗**, and a tappable update line that opens the app to refresh.
+
+- **Tap on a row** opens that exact personal event or Studio appointment in the existing Personal editor (rows without a reference open the day as before).
+- **Domani ›** on personal events opens the event's editor with dates proposed one day later and a visible notice; nothing changes until **Salva** (recurring events still ask which occurrences to change).
+- The widget never writes and holds no credentials. Rows carry only an opaque `ref` (record id, `[A-Za-z0-9-]{1,64}`), validated by the native host and again by the web app; patient names/IDs/notes still never enter the payload. Personal re-reads the row with the existing Studio session and RLS and refuses rows that are missing, cancelled, hidden from Personal, or unreadable without a Studio session (it shows a notice, never an empty editor posing as the row). Action parameters are removed from the address after use.
+- Without the released web change, a new APK still shows the agenda; row actions open the selected day only.
+- The quick widget's "next" item is computed at render time (app sync or the approximate 30-minute redraw), so it can lag a few minutes behind the clock.
+
 ## Build and install
 
 Use JDK 17, Android SDK platform 35/build-tools 35.0.0 and Gradle 8.11.1:
@@ -26,4 +36,4 @@ The bridge is AndroidX WebKit's origin-scoped WebMessage listener, exact HTTPS o
 
 ## Validation and release
 
-Use synthetic data for tests. `node --test tests/androidAgendaWidget.test.mjs`, full Node suite, both Vite builds, Android assemble/lint. Physical OPPO launcher/touch/WebView/login and row opening remain manual acceptance checks, not covered by compilation. Never claim an image mockup is a native screenshot. No manual production deploy or database operation; normal dedicated PR review/merge/release applies. Revert the web adapter and uninstall the companion for rollback; no records are changed.
+Use synthetic data for tests. `node --test tests/androidAgendaWidget.test.mjs tests/widgetAzioni.test.mjs`, full Node suite, both Vite builds, Android assemble/lint. Physical OPPO launcher/touch/WebView/login, row/Domani/quick-widget actions remain manual acceptance checks, not covered by compilation. Never claim an image mockup is a native screenshot. No manual production deploy or database operation; normal dedicated PR review/merge/release applies. Revert the web adapter and uninstall the companion for rollback; no records are changed.
