@@ -25,7 +25,11 @@ public final class AgendaService extends RemoteViewsService {
                 r.setTextViewText(R.id.time,row.optString("time").isEmpty() ? "Tutto\nil giorno" : row.optString("time"));
                 r.setTextViewText(R.id.entryTitle,details ? row.optString("title") : studio ? "Appuntamento studio" : "Impegno personale");
                 r.setTextViewText(R.id.source,studio ? "● Studio" : "● Personale");
-                r.setTextColor(R.id.source,studio ? 0xFF007E76 : 0xFF7852B5);
+                // Label color: solid left bar, tinted row, darker text for the source line.
+                int color = AgendaStore.color(row);
+                r.setInt(R.id.bar,"setBackgroundColor",color);
+                r.setInt(R.id.entryRoot,"setBackgroundColor",AgendaStore.tint(color));
+                r.setTextColor(R.id.source,AgendaStore.ink(color));
                 // Tap opens that exact row in Personal; "Domani" proposes the personal event one day later in its editor.
                 String ref = row.optString("ref"), open = ref.isEmpty() ? null : row.optString("source")+":"+ref;
                 r.setOnClickFillInIntent(R.id.entryRoot,open == null ? new Intent() : new Intent().putExtra("widgetOpen",open));

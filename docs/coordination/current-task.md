@@ -1,9 +1,9 @@
 # Current task — AGENDA-LABEL-TONE (2026-11-03)
 - OWNER Claude Code; branch ccr-7598f13b-4r75dz from master 3bb6696 (PR269 merged).
 - AUTHORIZATION PO: "I colori etichette di agenda sia personale che poliedra devono essere anche meno opachi, rendila ancora più pro".
-- SCOPE presentation only in shared/agenda (used by Studio and Personal): event blocks, all-day ribbon, month card badge and appointment accent. No data, label colors, RLS or behavior change.
+- SCOPE presentation only in shared/agenda (used by Studio and Personal): event blocks, all-day ribbon, month card badge and appointment accent. PO follow-up "Anche su android": Android widget rows show the same label color (bar + tint + colored source text), snapshot gains validated `color`; APK 0.3.0 (code 3). No data, label colors, RLS or behavior change.
 - STATUS implementation + local checks complete; PO said "Mergia"; dedicated PR, merge after green checks.
-- VALIDATION 1542/1542 Node tests; Studio and Personal builds pass; diff check clean. Synthetic before/after swatch render only; no device test.
+- VALIDATION 1543/1543 Node tests; Android compile/lint via PR Android CI; Studio and Personal builds pass; diff check clean. Synthetic before/after swatch render only; no device test.
 - Previous operational record preserved below.
 
 # Current task — ANDROID-APK-DIRECT-DOWNLOAD (2026-11-03)

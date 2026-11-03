@@ -8,6 +8,23 @@ import java.util.*;
 
 final class AgendaStore {
     static final java.util.regex.Pattern REF = java.util.regex.Pattern.compile("[A-Za-z0-9-]{1,64}");
+    static final java.util.regex.Pattern COLOR = java.util.regex.Pattern.compile("#[0-9a-fA-F]{6}");
+
+    // Label color as in the agenda (Studio/Personal); invalid or missing → source color.
+    static int color(JSONObject row) {
+        String c = row.optString("color");
+        if (COLOR.matcher(c).matches()) return 0xFF000000 | Integer.parseInt(c.substring(1), 16);
+        return "studio".equals(row.optString("source")) ? 0xFF007E76 : 0xFF7852B5;
+    }
+    // Opaque mix of the label color with white (tint) or with ink #0F172A (readable text).
+    static int mix(int c, int with, float amount) {
+        int r = Math.round(((c >> 16) & 255) * amount + ((with >> 16) & 255) * (1 - amount));
+        int g = Math.round(((c >> 8) & 255) * amount + ((with >> 8) & 255) * (1 - amount));
+        int b = Math.round((c & 255) * amount + (with & 255) * (1 - amount));
+        return 0xFF000000 | (r << 16) | (g << 8) | b;
+    }
+    static int tint(int c) { return mix(c, 0xFFFFFFFF, 0.22f); }
+    static int ink(int c) { return mix(c, 0xFF0F172A, 0.62f); }
     static final java.util.regex.Pattern OPEN = java.util.regex.Pattern.compile("(studio|personal):[A-Za-z0-9-]{1,64}");
     static SharedPreferences prefs(Context c) { return c.getSharedPreferences("agenda", Context.MODE_PRIVATE); }
     static void clear(Context c) { prefs(c).edit().remove("snapshot").apply(); }
@@ -33,8 +50,10 @@ final class AgendaStore {
                 // Opaque row reference for widget actions; anything else is dropped, never trusted.
                 String ref = row.optString("ref");
                 if (!REF.matcher(ref).matches()) ref = "";
+                String color = row.optString("color");
+                if (!COLOR.matcher(color).matches()) color = "";
                 entries.put(new JSONObject().put("source", kind).put("ref", ref).put("start", start.toString()).put("end", end.toString())
-                    .put("time", time).put("title", title.substring(0, Math.min(120, title.length()))));
+                    .put("time", time).put("title", title.substring(0, Math.min(120, title.length()))).put("color", color));
             }
             // Timestamp set by native host; JS cannot prolong a snapshot's lifetime.
             JSONObject clean = new JSONObject().put("updatedAt", System.currentTimeMillis()).put("from", from.toString()).put("to", to.toString()).put("entries", entries);
