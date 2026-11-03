@@ -1,3 +1,5 @@
+import { startAndroidAgendaWidget } from './lib/androidAgendaWidget.js';
+import { studioDb, sessioneStudio, studioDellaSessione } from './lib/studio.js';
 import { IconaTema } from './IconaTema.jsx';
 import { CambioAspetto } from './Aspetto.jsx';
 import { Pagina } from './Pagina.jsx';
@@ -26,6 +28,7 @@ impostaToken(tokenSessione);
 const vistaIniziale = () => { if (readAgendaLocation().requested) return 'agenda'; const v = leggiVista() === 'pagamenti' ? 'conti' : leggiVista(); return sezione(v) ? v : 'oggi'; };
 
 function Archivio({ email }) {
+  useEffect(() => startAndroidAgendaWidget({ db: studioDb, session: sessioneStudio, studioId: studioDellaSessione }), []);
   const [vista, setVistaStato] = useState(vistaIniziale);
   const [sotto, setSotto] = useState(null);
   const [pagine, setPagine] = useState([]);
@@ -67,6 +70,15 @@ function Archivio({ email }) {
     window.scrollTo(0, 0);
   }, []);
   const apri = useCallback((p) => { contatore.current += 1; setErrore(null); setFoglio(false); setPagine((st) => [...st, { ...p, chiave: contatore.current }]); }, []);
+  const widgetOpened = useRef(false);
+  useEffect(() => {
+    if (widgetOpened.current || new URLSearchParams(window.location.search).get('widgetNew') !== '1') return;
+    widgetOpened.current = true;
+    const day = readAgendaLocation().day;
+    apri({ tipo: 'evento', ...(day ? { evento: { data_inizio: day, data_fine: day } } : {}) });
+    const url = new URL(window.location.href); url.searchParams.delete('widgetNew');
+    window.history.replaceState(window.history.state, '', url);
+  }, [apri]);
   const indietro = useCallback(() => { setErrore(null); setPagine((st) => st.slice(0, -1)); }, []);
   const sostituisci = useCallback((p) => { contatore.current += 1; setPagine((st) => [...st.slice(0, -1), { ...p, chiave: contatore.current }]); }, []);
 

@@ -9,3 +9,8 @@ tests/visual/results*/
 src/components/__AgendaBaseline.jsx
 
 shared/__agendaBaseline/
+
+# Android companion local/build state (APK delivered through CI, never committed).
+android/**/.gradle/
+android/**/build/
+android/**/local.properties

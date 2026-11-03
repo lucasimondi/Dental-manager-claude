@@ -1,3 +1,12 @@
+# Current task — ANDROID-AGENDA-WIDGETS (2026-11-03)
+- OWNER Codex; branch codex/android-agenda-widgets from master d87bc958.
+- AUTHORIZATION PO requests Android day and week widgets with Studio and Personal events, navigation across dates.
+- SCOPE additive Android companion, origin-scoped web message snapshot adapter, no credentials in widget storage; native horizontal navigation uses arrows (Android reserves horizontal swipe for launcher).
+- STATUS local implementation complete; draft PR and exact-head CI next. No merge/deployment/database mutation performed.
+- VALIDATION1534/1534 Node tests, Studio+Personal combined and standalone Personal builds; Android assembleDebug/lintDebug pass (0 errors,18 warnings: Italian-only strings, fallback API31 widget sizing and reviewed trusted-origin JavaScript). APK signature verifies. No physical launcher/WebView/touch test.
+- RELEASE web adapter must be reviewed/merged/deployed before the production-origin APK can sync. Snapshot updates on app foreground, not background live sync. Existing immutable stable070b28fd checkpoint untouched.
+- Previous operational record preserved below.
+
 # Current task — PREVENTIVI-RAPIDI (2026-11-03)
 - OWNER Codex; branch codex/preventivi-rapidi from master cab3206a.
 - AUTHORIZATION PO approved one-screen quotes, direct PDF/JPG file delivery and dedicated persistent quote archive with "Vai".

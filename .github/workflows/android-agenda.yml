@@ -1,0 +1,27 @@
+name: Android agenda widgets
+on:
+  pull_request:
+    branches: [master]
+    paths: ['android/**', 'personal/src/lib/androidAgendaWidget.js', 'tests/androidAgendaWidget.test.mjs', '.github/workflows/android-agenda.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - run: gradle -p android/agenda :app:assembleDebug :app:lintDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: poliedra-agenda-debug-apk
+          path: android/agenda/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
