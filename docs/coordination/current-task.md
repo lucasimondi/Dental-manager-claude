@@ -1,5 +1,5 @@
 # Current task — ANDROID-APK-DIRECT-DOWNLOAD (2026-11-03)
-- OWNER Claude Code; branch ccr-f990cd9d-zhvxio restarted from master cc5664d (PR268 merged).
+- OWNER Claude Code; branch ccr-f990cd9d-apk-diretto from master cc5664d (PR268 merged; PO chose a new branch).
 - AUTHORIZATION PO could not install the zipped CI artifact ("App non installata" while opened inside the zip viewer) and authorized the needed corrections.
 - SCOPE CI only: Verify APK step (apksigner/aapt2) and, on master push/dispatch, publish the tested APK as plain `poliedra-agenda.apk` in fixed pre-release `agenda-android`. No app code, database or Vercel change.
 - STATUS PR pending; release appears after merge. Fixed signing key not added (needs PO-created secret).

@@ -4393,7 +4393,7 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 
 
 ## 2026-11-03 — ANDROID-APK-DIRECT-DOWNLOAD
-- TASK/OWNER/previous agent: ANDROID-APK-DIRECT-DOWNLOAD, Claude Code; previous ANDROID-PERSONAL-WIDGET-ACTIONS merged PR268 (cc5664d), production READY on Vercel. Branch ccr-f990cd9d-zhvxio restarted from master.
+- TASK/OWNER/previous agent: ANDROID-APK-DIRECT-DOWNLOAD, Claude Code; previous ANDROID-PERSONAL-WIDGET-ACTIONS merged PR268 (cc5664d), production READY on Vercel. Branch ccr-f990cd9d-apk-diretto from master (PO-approved new branch).
 - OBJECTIVE: make the APK installable on PO's OPPO phone; screenshot showed install attempted from inside the zip viewer (package parsed: label and icon shown, then "App non installata").
 - COMPLETED: android-agenda workflow adds Verify APK (apksigner verify --print-certs, aapt2 badging/manifest flags) and a publish job (master push of android/** or workflow file, or dispatch on master; contents: write scoped to that job only) uploading `poliedra-agenda.apk` with --clobber to pre-release `agenda-android`. Pull requests never publish. README/architecture install note.
 - DATABASE/DEPLOYMENT: none; no Vercel/app change.
