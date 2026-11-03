@@ -409,7 +409,7 @@ test('resolveCommandAlias: paz/paziente/pazienti resolve to Pazienti', () => {
 });
 
 test('resolveCommandAlias: pre, spe, and doc target verified existing destinations', () => {
-  assert.equal(resolveCommandAlias('pre').navId, 'piani');
+  assert.equal(resolveCommandAlias('pre').navId, 'preventivi');
   assert.equal(resolveCommandAlias('spe').navId, 'spese');
   assert.deepEqual(resolveCommandAlias('doc'), { navId: 'archivio', filtroTipo: 'tutti' });
 });

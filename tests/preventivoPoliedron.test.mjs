@@ -24,13 +24,14 @@ test('totals, number and euro format of the quote', () => {
   assert.equal(euroIt(12222.5), '€ 12.222,50');
 });
 
-test('the quote PDF has header, patient box with C.F., plan, rows, total and signatures', () => {
+test('the quote PDF has header, patient box with C.F., plan, rows, total and doctor signature area', () => {
   const pdf = buildPreventivoPdf({ si, paziente, piano, data: '2026-10-16' });
   assert.equal(pdf.filename, 'Mario Rossi.pdf');
   assert.equal(pdf.tipoDoc, 'preventivo');
   const bytes = Buffer.from(pdf.dataUrl.split(',')[1], 'base64').toString('latin1');
   assert.match(bytes, /^%PDF-/);
-  for (const t of ['PREVENTIVO', 'Mario Rossi', 'C.F. RSSMRA80A01D205X', 'PIANO DI CURA', 'Protesi', 'Corona composito ceramica', 'TOTALE', 'Il paziente, per accettazione', 'Studio Test']) assert.ok(bytes.includes(t), t);
+  assert.ok(!bytes.includes('Il paziente, per accettazione'));
+  for (const t of ['PREVENTIVO', 'Mario Rossi', 'C.F. RSSMRA80A01D205X', 'PIANO DI CURA', 'Protesi', 'Corona composito ceramica', 'TOTALE', 'Il medico', 'Studio Test']) assert.ok(bytes.includes(t), t);
 });
 
 test('a long plan flows onto more pages with numbered pages', () => {
@@ -43,8 +44,8 @@ test('a long plan flows onto more pages with numbered pages', () => {
 
 test('the PDF opens inside the app (with Chiudi), never in a new window', () => {
   const view = source('src/components/PdfView.jsx');
-  assert.match(view, /buildPreventivoPdf\(\{ si, paziente: paz, piano: pl \}\)/);
-  assert.match(view, /<PdfViewerModal titolo=\{pdf\.titolo\} dataUrl=\{pdf\.dataUrl\} filename=\{pdf\.filename\} zIndex=\{3100\}/);
+  assert.match(view, /archivePreventivo\(documentClient, \{ id: archiveId\.current, piano: pl, paziente: paz, si \}\)/);
+  assert.match(view, /<PdfViewerModal titolo=\{pdf\.titolo\} dataUrl=\{pdf\.dataUrl\} filename=\{pdf\.filename\} zIndex=\{zIndex \+ 100\}/);
   assert.doesNotMatch(view, /window\.open\(\)|document\.write|datauristring/);
   assert.match(view, /env\(safe-area-inset-top\)/);
   assert.match(source('src/components/ui/PdfViewerModal.jsx'), /Chiudi\n/);

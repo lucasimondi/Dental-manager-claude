@@ -62,6 +62,7 @@ const Dashboard = lazyWithRetry(() => import('./components/Dashboard.jsx'), 'Das
 const ControlloGestione = lazyWithRetry(() => import('./components/ControlloGestione.jsx'), 'ControlloGestione');
 const PoliedronHub = lazyWithRetry(() => import('./components/PoliedronHub.jsx'), 'PoliedronHub');
 const FinancialWorkspace = lazyWithRetry(() => import('./components/FinancialWorkspace.jsx'), 'FinancialWorkspace');
+const Preventivi = lazyWithRetry(() => import('./components/Preventivi.jsx'), 'Preventivi');
 const Pazienti = lazyWithRetry(() => import('./components/Pazienti.jsx'), 'Pazienti');
 const PatientWorkspaceBoundary = lazyWithRetry(() => import('./components/PatientWorkspaceBoundary.jsx'), 'PatientWorkspaceBoundary');
 const AppointmentWorkspace = lazyWithRetry(() => import('./components/AppointmentWorkspace.jsx'), 'AppointmentWorkspace');
@@ -569,7 +570,7 @@ export default function App() {
     return { ...result, savedPlan };
   };
   const goNuovoPiano = (id) => { setInitPatId(id); setPage('piani'); };
-  const goNuovoElemento = (target) => { setAutoOpenNew(target); setPage(target); };
+  const goNuovoElemento = (target) => { const page = target === 'piani' ? 'preventivi' : target; setAutoOpenNew(page); setPage(page); };
   // POL-AI-007: Poliedron chat's "payment.create" — same shape as
   // goNuovoPiano's initPatId pre-fill, just carrying { pazienteId, importo }
   // into Incassi's own openIncasso(prefill) instead of a single id.
@@ -886,6 +887,7 @@ export default function App() {
                 autoOpenNew={autoOpenNew === 'paz'} onAutoOpenNewHandled={() => setAutoOpenNew(null)}
               />
             )}
+            {page === 'preventivi' && <Preventivi patients={patients} plans={plans} pricelist={pricelist} si={studioInfo} onSave={savePatientEntry} autoOpenNew={autoOpenNew === 'preventivi'} onAutoOpenNewHandled={()=>setAutoOpenNew(null)} />}
             {page === 'piani' && (
               <Piani
                 patients={patients} plans={plans} setPlans={setPlansSync} payments={payments} setPayments={setPaymentsSync}

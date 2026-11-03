@@ -6,6 +6,7 @@ import Odontogramma from './Odontogramma.jsx';
 import TreatmentPricePicker from './TreatmentPricePicker.jsx';
 import { implantQuoteRows, isImplantQuoteRequest } from '../lib/domain/implantQuote.js';
 import { planAssignmentForPatient } from '../lib/domain/incassiActions.js';
+const PatientPlanEntry = lazy(() => import('./PatientPlanEntry.jsx'));
 const AppointmentDocuments = lazy(() => import('./AppointmentDocuments.jsx'));
 const DocMedico = lazy(() => import('./DocMedico.jsx'));
 const blankRow = () => ({ description: '', price: '', tooth: '' });
@@ -69,6 +70,7 @@ export default function AppointmentWorkspace({ patient, appointment, plans = [],
   const eligible = plans.filter(p => p && String(p.pazienteId) === String(patient?.id) && ['attivo','accettato'].includes(p.stato));
   const assignment = planAssignmentForPatient(plans.filter(Boolean), patient?.id);
   const [draft,setDraft] = useState(() => ({ items:[blankRow()], planId:eligible.length === 1 ? String(eligible[0].id) : eligible.length ? '' : 'new', planTitle:'Prestazioni occasionali', amount:'', method:'Contanti', paymentPlanId:'context', paymentNote:'', quoteTitle:'Preventivo', quoteItems:[blankRow()] }));
+  const [quoteEditor,setQuoteEditor] = useState(false);
   const [medicalOpen,setMedicalOpen] = useState(false),[saving,setSaving] = useState(false),[uncertain,setUncertain] = useState(false),[message,setMessage] = useState(''),[error,setError] = useState('');
   const [documentsOpen,setDocumentsOpen] = useState(false), [documentsReload,setDocumentsReload] = useState(0);
   const locked = useRef(false), listId = useId();
@@ -99,7 +101,7 @@ export default function AppointmentWorkspace({ patient, appointment, plans = [],
   };
   return <section className="appointment-rapid-form" aria-label="Scheda appuntamento">
     <nav className="appointment-section-shortcuts" aria-label="Compila o consulta">
-      <button type="button" onClick={()=>openSection(quoteRef)}><strong>+ Preventivo</strong><span>Prepara le voci</span></button>
+      <button type="button" onClick={()=>setQuoteEditor(true)}><strong>+ Preventivo</strong><span>Prepara le voci</span></button>
       <button type="button" onClick={()=>openSection(medicalRef)}><strong>Ricetta e documenti</strong><span>Compila e genera PDF</span></button>
       <button type="button" onClick={()=>openSection(documentsRef)}><strong>Documenti salvati</strong><span>Preventivi e ricette</span></button>
       <button type="button" onClick={()=>openSection(paymentRef)}><strong>Registra incasso</strong><span>Importo e metodo</span></button>
@@ -116,6 +118,7 @@ export default function AppointmentWorkspace({ patient, appointment, plans = [],
       <details ref={quoteRef} className="appointment-form-section"><summary><span>Preventivo</span><small>Manuale o listino</small></summary><div className="appointment-section-fields"><Field label="Titolo preventivo"><input value={draft.quoteTitle} onChange={e=>patch({quoteTitle:e.target.value})} /></Field><EntryRows rows={draft.quoteItems} onChange={quoteItems=>patch({quoteItems})} listId={listId} pricelist={pricelist} dentist={dentist} name="Voce preventivo" /></div></details>
     </fieldset>
     {error && <p className="appointment-save-error" role="alert">{error}</p>}{message && <p role="status">{message}</p>}
+    {quoteEditor && <Suspense fallback={<p role="status">Apertura preventivo…</p>}><PatientPlanEntry patient={patient} mode="quote" plans={plans} pricelist={pricelist} si={si} documentClient={documentClient} onSave={onSave} onClose={()=>{setQuoteEditor(false);setDocumentsReload(v=>v+1);}} /></Suspense>}
     <div className="appointment-save-bar"><button type="button" className="appointment-secondary-button" disabled={saving || uncertain} onClick={()=>save(false)}>{saving?'Salvataggio…':'Salva'}</button><button type="button" className="appointment-primary-button" disabled={saving || uncertain} onClick={()=>save(true)}>Salva e chiudi</button></div>
   </section>;
 }

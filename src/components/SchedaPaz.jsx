@@ -1,3 +1,4 @@
+import Preventivi from './Preventivi.jsx';
 import React, { Suspense, lazy, useState } from 'react';
 import { Btn, Crd, Bdg, Ic, Modal } from './ui';
 import { C, fmt, fmtD, today } from '../lib/utils';
@@ -135,7 +136,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
   // consistency with the rest of the app, not a bespoke one-off look.
   // Real icons (the same Ic set every other module already uses) replace
   // the emoji now that full labels are always shown, sidebar or dropdown.
-  const TABS = [{ id: 'info', icon: 'user', label: 'Info' }, { id: 'clinical', icon: 'pulse', label: 'Anamnesi' }, { id: 'piani', icon: 'tooth', label: 'Piani' }, ...(isDentistico ? [{ id: 'impl', icon: 'tag', label: 'Impianti' }] : []), ...(canAccessPhysio ? [{ id: 'fisio', icon: 'zap', label: 'Fisioterapia' }] : []), { id: 'paga', icon: 'pay', label: 'Pagamenti' }, { id: 'foto', icon: 'folder', label: 'Foto' }, { id: 'app', icon: 'cal', label: 'Agenda' }, { id: 'doc', icon: 'file', label: 'Documenti' }, ...(isStudioAdmin ? [{ id: 'privacy', icon: 'lock', label: 'Privacy' }] : [])];
+  const TABS = [{ id: 'info', icon: 'user', label: 'Info' }, { id: 'clinical', icon: 'pulse', label: 'Anamnesi' }, { id: 'piani', icon: 'tooth', label: 'Piani' }, { id: 'preventivi', icon: 'file', label: 'Preventivi' }, ...(isDentistico ? [{ id: 'impl', icon: 'tag', label: 'Impianti' }] : []), ...(canAccessPhysio ? [{ id: 'fisio', icon: 'zap', label: 'Fisioterapia' }] : []), { id: 'paga', icon: 'pay', label: 'Pagamenti' }, { id: 'foto', icon: 'folder', label: 'Foto' }, { id: 'app', icon: 'cal', label: 'Agenda' }, { id: 'doc', icon: 'file', label: 'Documenti' }, ...(isStudioAdmin ? [{ id: 'privacy', icon: 'lock', label: 'Privacy' }] : [])];
 
   // POL-UI-021: Product Owner — "le sezioni in pagina info devono essere
   // le stesse delle pagine corrispondenti". Piani/Pagamenti estratti in
@@ -402,6 +403,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
           </div>
         )}
 
+        {tab === 'preventivi' && <Preventivi patient={paz} plans={plans} si={si} />}
         {tab === 'piani' && renderPianiSection()}
 
         {tab === 'paga' && renderPagamentiSection()}

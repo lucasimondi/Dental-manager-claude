@@ -641,6 +641,7 @@ export const NAV = [
   { id: 'home', l: 'Home', ic: 'home' },
   { id: 'paz', l: 'Pazienti', ic: 'pz' },
   { id: 'piani', l: 'Piani', ic: 'plan' },
+  { id: 'preventivi', l: 'Preventivi', ic: 'file' },
   { id: 'paga', l: 'Incassi', ic: 'pay' },
   { id: 'listino', l: 'Listino', ic: 'list' },
   { id: 'agenda', l: 'Agenda', ic: 'cal' },
