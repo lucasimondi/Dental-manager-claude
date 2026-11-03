@@ -1,8 +1,17 @@
+# Current task — AGENDA-LABEL-TONE (2026-11-03)
+- OWNER Claude Code; branch ccr-7598f13b-4r75dz from master 3bb6696 (PR269 merged).
+- AUTHORIZATION PO: "I colori etichette di agenda sia personale che poliedra devono essere anche meno opachi, rendila ancora più pro".
+- SCOPE presentation only in shared/agenda (used by Studio and Personal): event blocks, all-day ribbon, month card badge and appointment accent. No data, label colors, RLS or behavior change.
+- STATUS implementation + local checks complete; PO said "Mergia"; dedicated PR, merge after green checks.
+- VALIDATION 1542/1542 Node tests; Studio and Personal builds pass; diff check clean. Synthetic before/after swatch render only; no device test.
+- Previous operational record preserved below.
+
 # Current task — ANDROID-APK-DIRECT-DOWNLOAD (2026-11-03)
 - OWNER Claude Code; branch ccr-f990cd9d-apk-diretto from master cc5664d (PR268 merged; PO chose a new branch).
 - AUTHORIZATION PO could not install the zipped CI artifact ("App non installata" while opened inside the zip viewer) and authorized the needed corrections.
 - SCOPE CI only: Verify APK step (apksigner/aapt2) and, on master push/dispatch, publish the tested APK as plain `poliedra-agenda.apk` in fixed pre-release `agenda-android`. No app code, database or Vercel change.
 - STATUS PR pending; release appears after merge. Fixed signing key not added (needs PO-created secret).
+- Previous operational record preserved below.
 
 # Current task — ANDROID-PERSONAL-WIDGET-ACTIONS (2026-11-03)
 - OWNER Claude Code; branch ccr-f990cd9d-zhvxio from master ea408c3 (ANDROID-AGENDA-WIDGETS merged as PR267).
