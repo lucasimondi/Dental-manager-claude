@@ -26,8 +26,12 @@ try{
    assert.equal(await page.getByRole('button',{name:'Modifica appuntamento',exact:true}).isVisible(),true);
    assert.equal(await page.getByLabel('Incassato (€)').isVisible(),true);
    await ws.getByRole('button',{name:'+ Preventivo',exact:false}).click();
-   assert.equal(await page.getByLabel('Titolo preventivo').isVisible(),true);
-   await section('Preventivo').locator('summary').first().click();
+   const quoteEditor=page.getByRole('dialog',{name:'Paziente Test',exact:true});
+   await quoteEditor.waitFor();
+   assert.equal(await quoteEditor.getByRole('button',{name:'Invia PDF',exact:true}).isVisible(),true);
+   assert.equal(await quoteEditor.getByRole('button',{name:'Invia JPG',exact:true}).isVisible(),true);
+   await quoteEditor.getByRole('button',{name:'Chiudi',exact:true}).click();
+   await quoteEditor.waitFor({state:'detached'});
    await page.locator('.agenda-appointment-menu-actions').evaluate(el=>el.scrollTop=0);
    await page.screenshot({path:`${out}/${engine}-${width}-apertura.png`});
    await page.getByLabel('Prestazione 1',{exact:true}).fill('Bozza conservata');
@@ -39,7 +43,7 @@ try{
    await docs.getByLabel('Cerca nei documenti').fill('');await docs.getByRole('button',{name:'Apri Ricetta archiviata',exact:true}).click();
    await page.getByRole('button',{name:'Scarica',exact:true}).waitFor();await page.getByRole('button',{name:'Chiudi anteprima documento',exact:true}).click();
    assert.equal(await page.getByLabel('Prestazione 1',{exact:true}).isVisible(),true);
-   await docs.getByRole('button',{name:'Preventivi',exact:true}).click();await docs.getByRole('button',{name:'Apri Piano test',exact:true}).click();await page.getByRole('button',{name:'Scarica',exact:true}).waitFor();await page.getByRole('button',{name:'Chiudi anteprima documento',exact:true}).click();
+   await docs.getByRole('button',{name:'Preventivi',exact:true}).click();await docs.getByRole('button',{name:'Apri Piano test',exact:true}).click();await page.getByRole('button',{name:'Anteprima senza inviare',exact:true}).click();await page.getByRole('button',{name:'Scarica',exact:true}).waitFor();await page.getByRole('button',{name:'Chiudi anteprima documento',exact:true}).click();await page.getByRole('button',{name:'Torna alla scheda',exact:true}).click();
    assert.equal(await page.getByLabel('Prestazione 1',{exact:true}).inputValue(),'Bozza conservata');
    await page.screenshot({path:`${out}/${engine}-${width}-documenti.png`});await docs.locator('summary').first().click();
 

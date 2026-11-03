@@ -8,7 +8,24 @@ import '../../src/styles.css';
 import '../../src/styles/designTokens.css';
 import '../../src/components/PremiumVisualSystem.css';
 const patient={id:7,nome:'Paziente',cognome:'Test',telefono:'3330000000',email:'test@example.invalid'};
-const documentClient={from(){return {select(){return this},eq(){return this},order:async()=>({data:[{id:55,paziente_id:7,paziente_nome:'Paziente Test',tipo:'ricetta',titolo:'Ricetta archiviata',data:'2026-10-20'}],error:null}),single:async()=>{window.__pdfReads=(window.__pdfReads||0)+1;const {buildRicettaPdf}=await import('../../src/lib/documenti/pdfLayout.js');return {data:{pdf_base64:buildRicettaPdf({si:{nome:'Studio test'},paziente:patient,data:'2026-10-20',farmaci:[{farmaco:'Farmaco sintetico',posologia:'Di prova'}]}).dataUrl},error:null}}}}};
+const quoteDocuments=[];
+const documentClient={
+ auth:{getSession:async()=>({data:{session:{user:{id:'synthetic-user',app_metadata:{studio_id:'synthetic-studio'}}}}})},
+ from(table){
+  let filters=[],payload,single=false,offset=0,end=49;
+  const q={select(){return q},eq(k,v){filters.push([k,v]);return q},order(){return q},or(){return q},range(a,b){offset=a;end=b;return q},single(){single=true;return q},upsert(row){payload=row;return q},update(row){payload=row;return q},
+   then(resolve,reject){return Promise.resolve().then(async()=>{
+    if(table==='preventivi'){
+     if(payload?.pdf_base64&&!quoteDocuments.some(d=>d.id===payload.id))quoteDocuments.push({...payload,archiviato:false,created_at:new Date().toISOString()});
+     const rows=quoteDocuments.filter(row=>filters.every(([k,v])=>row[k]===v));
+     return {data:single?rows[0]:rows.slice(offset,end+1),error:null};
+    }
+    if(single){window.__pdfReads=(window.__pdfReads||0)+1;const {buildRicettaPdf}=await import('../../src/lib/documenti/pdfLayout.js');return {data:{pdf_base64:buildRicettaPdf({si:{nome:'Studio test'},paziente:patient,data:'2026-10-20',farmaci:[{farmaco:'Farmaco sintetico',posologia:'Di prova'}]}).dataUrl},error:null};}
+    return {data:[{id:55,paziente_id:7,paziente_nome:'Paziente Test',tipo:'ricetta',titolo:'Ricetta archiviata',data:'2026-10-20'}],error:null};
+   }).then(resolve,reject)}
+  };return q;
+ }
+};
 const settings={oraInizio:8,oraFine:20,slotMin:30,durataDefault:30,hiddenWeekdays:[]};
 function Fixture(){
  const [patients,setPatients]=useState([patient]);
