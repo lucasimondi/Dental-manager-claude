@@ -4390,3 +4390,14 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - LIMITS/RISKS: no physical launcher/touch/WebView test; RemoteViews layout fit at minimum 250x200dp day size is tighter (extra status line). Quick widget "next" item refreshes only on sync/approximate 30-min redraw. Row actions need released web adapter; before release they open the day only. Exported launcher activity accepts the same validated extras from other apps, which can only open an editor in the user's own session.
 - ROLLBACK: revert the branch commit(s); reinstall previous APK or keep 0.2.0 (backward compatible snapshot). No data rollback.
 - EXACT NEXT ACTION: PO decides on opening a PR; then exact-head Android CI (assembleDebug/lintDebug), device acceptance of the three widgets and actions, task-specific "Mergia" before merge and normal Vercel release.
+
+
+## 2026-11-03 — ANDROID-APK-DIRECT-DOWNLOAD
+- TASK/OWNER/previous agent: ANDROID-APK-DIRECT-DOWNLOAD, Claude Code; previous ANDROID-PERSONAL-WIDGET-ACTIONS merged PR268 (cc5664d), production READY on Vercel. Branch ccr-f990cd9d-zhvxio restarted from master.
+- OBJECTIVE: make the APK installable on PO's OPPO phone; screenshot showed install attempted from inside the zip viewer (package parsed: label and icon shown, then "App non installata").
+- COMPLETED: android-agenda workflow adds Verify APK (apksigner verify --print-certs, aapt2 badging/manifest flags) and a publish job (master push of android/** or workflow file, or dispatch on master; contents: write scoped to that job only) uploading `poliedra-agenda.apk` with --clobber to pre-release `agenda-android`. Pull requests never publish. README/architecture install note.
+- DATABASE/DEPLOYMENT: none; no Vercel/app change.
+- VALIDATION: workflow YAML parsed locally; real run happens on the PR (apk + Verify APK) and after merge (publish).
+- RISKS: per-run debug keys still force uninstall between versions; fixed key needs PO secret. Release follows the repository's visibility (login needed if private).
+- ROLLBACK: revert PR; delete the agenda-android release if unwanted.
+- NEXT: PR checks green → PO "Mergia" → verify publish job and give PO the direct .apk link.

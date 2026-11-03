@@ -1,3 +1,9 @@
+# Current task — ANDROID-APK-DIRECT-DOWNLOAD (2026-11-03)
+- OWNER Claude Code; branch ccr-f990cd9d-zhvxio restarted from master cc5664d (PR268 merged).
+- AUTHORIZATION PO could not install the zipped CI artifact ("App non installata" while opened inside the zip viewer) and authorized the needed corrections.
+- SCOPE CI only: Verify APK step (apksigner/aapt2) and, on master push/dispatch, publish the tested APK as plain `poliedra-agenda.apk` in fixed pre-release `agenda-android`. No app code, database or Vercel change.
+- STATUS PR pending; release appears after merge. Fixed signing key not added (needs PO-created secret).
+
 # Current task — ANDROID-PERSONAL-WIDGET-ACTIONS (2026-11-03)
 - OWNER Claude Code; branch ccr-f990cd9d-zhvxio from master ea408c3 (ANDROID-AGENDA-WIDGETS merged as PR267).
 - AUTHORIZATION PO request: "Crea widget android per poliedron personal, iniziamo da agenda e varie azioni su agenda".
