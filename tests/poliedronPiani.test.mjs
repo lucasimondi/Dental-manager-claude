@@ -177,7 +177,7 @@ test('patient-last phrasing: prices required without the word "preventivo", neve
 
 test('app wiring: the PDF in chat uses the same drawing as the Piani module; confirmations also prepare it', () => {
   // POL-AI-012: one generator with the new layout (PO: "fai un bel layout").
-  assert.match(source('src/components/PdfView.jsx'), /buildPreventivoPdf\(\{ si, paziente: paz, piano: pl \}\)/);
+  assert.match(source('src/components/PdfView.jsx'), /archivePreventivo\(documentClient, \{ id: archiveId\.current, piano: pl, paziente: paz, si \}\)/);
   const poliedron = source('src/components/poliedron/Poliedron.jsx');
   assert.match(poliedron, /buildPreventivoPdf\(\{ pl: documentRequest\.piano, paz: patient, si: studioInfo \}\)/);
   assert.match(poliedron, /if \(!cancelled && !response\.error\) prepareDocumentInChat\(documentRequestFromModel\(response\)\);/);

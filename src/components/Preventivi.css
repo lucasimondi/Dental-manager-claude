@@ -1,0 +1,38 @@
+.quote-delivery { width:100%; margin:12px 0; text-align:left; }
+.quote-delivery-buttons { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.quote-delivery button { font:inherit; cursor:pointer; min-height:48px; border:1px solid #cbddea; border-radius:12px; padding:10px 14px; background:#f3f8fc; color:#205a80; font-size:14px; font-weight:700; }
+.quote-delivery-buttons > button:first-child { background:#185f91; border-color:#185f91; color:white; }
+.quote-delivery button:disabled { opacity:.55; cursor:wait; }
+.quote-delivery button:focus-visible,.quotes-page button:focus-visible { outline:3px solid #68a8d5; outline-offset:2px; }
+.quote-delivery-status { font-size:12px; color:#546d80; line-height:1.5; margin:9px 0 0; }
+.quote-delivery-secondary { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+.quote-delivery-secondary button { min-height:40px; background:white; font-size:12px; }
+.quote-discount { display:grid; grid-template-columns:2fr 1fr; gap:10px; margin:12px 0; }
+.quote-discount label { display:grid; gap:7px; font-size:12px; color:#546d80; }
+.quote-discount input,.quote-discount select { min-width:0; width:100%; box-sizing:border-box; padding:12px; font:inherit; font-size:16px; border:1px solid #dce5ee; border-radius:10px; background:white; color:#203a52; }
+.quotes-page { max-width:1100px; margin:0 auto; padding-bottom:100px; color:var(--text-primary,#203a52); }
+.quotes-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:18px; }
+.quotes-heading h2 { font-size:25px; letter-spacing:-.6px; margin:4px 0; }
+.quotes-heading p { font-size:13px; color:#627c91; margin:5px 0; }
+.quotes-page button { font:inherit; border:1px solid #d4e1ea; border-radius:10px; padding:10px 14px; min-height:44px; background:#fff; color:#275f86; cursor:pointer; }
+.quotes-heading > button { background:#185f91; color:white; font-weight:700; border-color:#185f91; }
+.quotes-tools { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:18px; }
+.quotes-tools input { flex:1; min-width:150px; border:1px solid #d4e1ea; border-radius:11px; padding:13px; font:inherit; font-size:16px; }
+.quotes-list { display:grid; gap:12px; }
+.quote-card { border:1px solid #dce6ee; background:#fff; padding:18px; border-radius:16px; box-shadow:0 3px 14px #20466806; }
+.quote-card-top { display:flex; justify-content:space-between; gap:12px; }
+.quote-card h3 { font-size:16px; margin:5px 0; overflow-wrap:anywhere; }
+.quote-card small { color:#607a8d; font-size:11px; }
+.quote-card p { margin:7px 0; font-size:13px; color:#627c91; }
+.quote-card strong { font-size:20px; white-space:nowrap; }
+.quote-card .quote-card-menu { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.quote-card-menu button { font-size:12px; padding:8px 10px; }
+.quotes-empty { padding:36px 18px; background:#fff; border:1px dashed #c7d9e6; border-radius:16px; text-align:center; color:#61788b; }
+.quote-select-patient { padding:15px; background:#fff; border:1px solid #dce6ee; border-radius:14px; margin-bottom:15px; }
+.quote-select-patient select { width:100%; padding:12px; font:inherit; font-size:16px; margin-top:8px; }
+@media(max-width:480px) { .quotes-heading { align-items:flex-start; } .quotes-heading h2{font-size:22px;} .quote-card{padding:14px;} .quote-card-top{flex-wrap:wrap;} }
+.patient-entry-panel.is-quote .patient-entry-success { padding:10px 0; }
+.patient-entry-panel.is-quote .patient-entry-success-icon { width:40px; height:40px; border-radius:12px; margin-bottom:12px; }
+.patient-entry-panel.is-quote .patient-entry-success h3 { font-size:21px; }
+.patient-entry-panel.is-quote .patient-entry-saved-summary { margin:15px 0 0; padding:14px; }
+.patient-entry-panel.is-quote .patient-entry-footer > .patient-entry-footer-actions .patient-entry-save { background:#fff; color:#4d6a81; border-color:#d6e2eb; box-shadow:none; font-size:12px; }

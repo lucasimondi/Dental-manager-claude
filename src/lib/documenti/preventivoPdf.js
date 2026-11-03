@@ -2,6 +2,7 @@
    dall'anteprima del preventivo (PdfView) e da Poliedron, che lo prepara in
    chat: stesso aspetto, stesso file "Nome Cognome.pdf". */
 import { jsPDF } from 'jspdf';
+import { applyConfiguredSignature } from '../pdfSignature.js';
 import { nomeFilePaziente } from './pdfLayout.js';
 
 const BLU = [26, 78, 102];
@@ -31,7 +32,7 @@ export function totaliPreventivo(piano) {
 }
 
 /** Il numero del preventivo: le ultime 6 cifre dell'id del piano. */
-export const numeroPreventivo = (piano) => String(piano?.id ?? '').slice(-6).padStart(6, '0');
+export const numeroPreventivo = (piano) => piano?.numeroPreventivo || String(piano?.id ?? '').slice(-6).padStart(6, '0');
 
 const dataIt = (iso) => {
   const d = iso ? new Date(`${String(iso).slice(0, 10)}T12:00`) : new Date();
@@ -169,29 +170,12 @@ export function buildPreventivoPdf({ si = {}, paziente: pazienteArg, piano: pian
   txt(euroIt(totale), colImporto, y + 7.6, { align: 'right' });
   y += 19;
 
-  // ── Note del paziente (come nell'anteprima) ──
-  if (paziente?.note) {
-    font('normal', 8.5);
-    const noteLines = doc.splitTextToSize(String(paziente.note), CW - 10);
-    const boxH = 9 + noteLines.length * 4.2;
-    if (y + boxH > FONDO_PAGINA - 30) { doc.addPage(); y = 20; }
-    box(M, y, CW, boxH, [255, 251, 235]);
-    font('bold', 8); colore([120, 53, 15]); txt('Note', M + 5, y + 5.5);
-    font('normal', 8.5);
-    noteLines.forEach((ln, li) => txt(ln, M + 5, y + 10 + li * 4.2));
-    y += boxH + 8;
-  }
-
-  // ── Firme: in fondo all'ultima pagina ──
-  if (y > FONDO_PAGINA - 20) doc.addPage();
+  // Document notes must never disclose the patient's internal clinical annotations.
+  if (y > FONDO_PAGINA - 24) doc.addPage();
   const yF = FONDO_PAGINA - 4;
-  const firmaW = 70;
-  doc.setDrawColor(...GRIGIO); doc.setLineWidth(0.3);
-  doc.line(M, yF, M + firmaW, yF);
-  doc.line(W - M - firmaW, yF, W - M, yF);
-  font('normal', 8); colore(GRIGIO);
-  txt('Il medico', M, yF + 4.5);
-  txt('Il paziente, per accettazione', W - M - firmaW, yF + 4.5);
+  applyConfiguredSignature(doc, si.firma_b64, M, yF - 25, 55, 25);
+  doc.setDrawColor(...GRIGIO); doc.setLineWidth(0.3); doc.line(M, yF, M + 70, yF);
+  font('normal', 8); colore(GRIGIO); txt('Il medico', M, yF + 4.5);
 
   // ── Piè di pagina su ogni pagina ──
   const piede = [si.tel && `Tel. ${si.tel}`, si.addr1, si.addr2, si.email].filter(Boolean).join('   ·   ');

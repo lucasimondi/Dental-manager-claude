@@ -18,7 +18,7 @@
 // that land pre-filtered inside the real `archivio` page.
 const COMMAND_GROUPS = [
   [['paz', 'paziente', 'pazienti'], 'paz'],
-  [['pre', 'prev', 'preventivo', 'preventivi'], 'piani'],
+  [['pre', 'prev', 'preventivo', 'preventivi'], 'preventivi'],
   [['pag', 'paga', 'pagamento', 'pagamenti'], 'paga'],
   [['age', 'agenda'], 'agenda'],
   [['spe', 'spesa', 'spese'], 'spese'],

@@ -14,7 +14,7 @@ export default function PatientWorkspaceBoundary(props) {
   const actions = canSave ? { onAddTreatment: options => setEntry({mode:'treatment',tooth:dentalEntryTooth(options?.tooth)}), onCreateQuote: options => setEntry({mode:'quote',tooth:dentalEntryTooth(options?.tooth)}) } : {};
   return <>
     <PatientRecordContent {...props} {...actions} />
-    {entry && <Suspense fallback={<div role="status">Caricamento modulo…</div>}><PatientPlanEntry key={`${props.paz.id}:${entry.mode}:${entry.tooth}`} patient={props.paz} mode={entry.mode} initialTooth={entry.tooth} plans={props.plans} pricelist={props.pricelist} si={props.si} features={props.features} onSave={draft => props.onSavePatientEntry(props.paz, draft)} onClose={() => setEntry(null)} /></Suspense>}
+    {entry && <Suspense fallback={<div role="status">Caricamento modulo…</div>}><PatientPlanEntry key={`${props.paz.id}:${entry.mode}:${entry.tooth}`} patient={props.paz} mode={entry.mode} initialTooth={entry.tooth} plans={props.plans} pricelist={props.pricelist} si={props.si} features={props.features} documentClient={props.documentClient} onSave={draft => props.onSavePatientEntry(props.paz, draft)} onClose={() => setEntry(null)} /></Suspense>}
   </>;
 }
 

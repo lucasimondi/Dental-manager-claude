@@ -14,7 +14,8 @@ import { NAV } from '../utils.js';
 const ALIASES = Object.freeze({
   home: ['dashboard', 'inizio', 'home page'],
   paz: ['pazienti', 'clienti', 'anagrafica', 'cartelle'],
-  piani: ['preventivi', 'piano di cura', 'piani di cura', 'preventivo'],
+  piani: ['piano di cura', 'piani di cura'],
+  preventivi: ['preventivo', 'pre', 'prev'],
   paga: ['pagamenti', 'incassi', 'incasso', 'da incassare', 'crediti', 'saldi aperti', 'riscossioni', 'soldi'],
   listino: ['listino prezzi', 'prezzi', 'tariffario', 'tariffe'],
   agenda: ['calendario', 'appuntamenti', 'appuntamento'],

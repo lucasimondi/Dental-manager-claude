@@ -366,7 +366,7 @@ export default function Poliedron({
         const data = new Date().toISOString().slice(0, 10);
         const pdf = buildPreventivoPdf({ pl: documentRequest.piano, paz: patient, si: studioInfo });
         preparedRestoredRef.current = true;
-        setChatPreparedDocument({ id: `${Date.now()}`, kind: 'preventivo', request: documentRequest, patient, piano: documentRequest.piano, pdf, data, status: 'ready', notice: '', savedAt: Date.now() });
+        setChatPreparedDocument({ id: `${Date.now()}`, kind: 'preventivo', quoteClient: supabaseClient, quoteStudio: studioInfo, request: documentRequest, patient, piano: documentRequest.piano, pdf, data, status: 'ready', notice: '', savedAt: Date.now() });
         return true;
       } catch {
         return openPreparedDocument(documentRequest);
@@ -385,7 +385,7 @@ export default function Poliedron({
     } catch {
       return openPreparedDocument(documentRequest);
     }
-  }, [actions, openPreparedDocument, patients, studioInfo]);
+  }, [actions, openPreparedDocument, patients, studioInfo, supabaseClient]);
 
   // Once per prescription: a download, a send and a save never archive twice.
   const archivePreparedDocument = useCallback(async (prepared) => {
@@ -425,9 +425,9 @@ export default function Poliedron({
       const pdf = stored.kind === 'preventivo'
         ? buildPreventivoPdf({ pl: stored.piano, paz: patient, si: studioInfo, data: stored.data })
         : buildRicettaPdf({ si: studioInfo, paziente: patient, farmaci: stored.farmaci, data: stored.data });
-      setChatPreparedDocument((current) => current || { ...stored, patient, pdf });
+      setChatPreparedDocument((current) => current || { ...stored, patient, pdf, ...(stored.kind === 'preventivo' ? { quoteClient: supabaseClient, quoteStudio: studioInfo } : {}) });
     } catch { /* storage unavailable or old data: nothing to restore */ }
-  }, [patients, preparedStorageKey, studioInfo]);
+  }, [patients, preparedStorageKey, studioInfo, supabaseClient]);
   useEffect(() => {
     if (!preparedStorageKey || !preparedRestoredRef.current) return;
     try {

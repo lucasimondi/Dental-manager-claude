@@ -65,7 +65,11 @@ export function preparePatientEntry({ patient, plans, draft }) {
   const patientPlans = plans.filter(p => String(p.pazienteId) === String(patient.id));
   let treatment = null, quote = null;
   treatment = preparePatientTreatment({patient,plans:patientPlans,items,planId:draft.planId,title:draft.planTitle});
-  if (quoteItems.length) quote = buildNewPlan({ pazienteId: patient.id, titolo: draft.quoteTitle?.trim() || 'Preventivo', voci: quoteItems });
+  if (quoteItems.length) {
+    const discount = Number(draft.quoteDiscount || 0), type = draft.quoteDiscountType || 'pct';
+    if (!Number.isFinite(discount) || discount < 0 || !['pct','eur'].includes(type) || (type === 'pct' && discount > 100)) throw new Error('Inserisci uno sconto valido (0–100%).');
+    quote = { ...buildNewPlan({ pazienteId: patient.id, titolo: draft.quoteTitle?.trim() || 'Preventivo', voci: quoteItems }), sconto: discount, scontoTipo: type };
+  }
   let payment = null;
   if (String(draft.amount || '').trim()) {
     const amount = Number(draft.amount);
