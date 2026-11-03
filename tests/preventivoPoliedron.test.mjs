@@ -45,7 +45,7 @@ test('a long plan flows onto more pages with numbered pages', () => {
 test('the PDF opens inside the app (with Chiudi), never in a new window', () => {
   const view = source('src/components/PdfView.jsx');
   assert.match(view, /archivePreventivo\(documentClient, \{ id: archiveId\.current, piano: pl, paziente: paz, si \}\)/);
-  assert.match(view, /<PdfViewerModal titolo=\{pdf\.titolo\} dataUrl=\{pdf\.dataUrl\} filename=\{pdf\.filename\} zIndex=\{3100\}/);
+  assert.match(view, /<PdfViewerModal titolo=\{pdf\.titolo\} dataUrl=\{pdf\.dataUrl\} filename=\{pdf\.filename\} zIndex=\{zIndex \+ 100\}/);
   assert.doesNotMatch(view, /window\.open\(\)|document\.write|datauristring/);
   assert.match(view, /env\(safe-area-inset-top\)/);
   assert.match(source('src/components/ui/PdfViewerModal.jsx'), /Chiudi\n/);

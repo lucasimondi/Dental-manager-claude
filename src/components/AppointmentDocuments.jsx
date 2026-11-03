@@ -49,7 +49,7 @@ export default function AppointmentDocuments({ patient, plans, si, reloadToken, 
     {!items.length && !loading && !error && <p>Nessun documento trovato.</p>}
     {(all?items:items.slice(0,3)).map(item=><button type="button" className="appointment-document-row" key={item.key} disabled={busy} onClick={()=>open(item)} aria-label={`Apri ${item.title}`}><span><strong>{item.title}</strong><small>{item.type} · {fmtD(item.date)}</small></span><span>Apri PDF</span></button>)}
     {!all && items.length>3 && <button type="button" className="appointment-text-button" onClick={()=>setAll(true)}>Mostra tutti ({items.length})</button>}
-    {quotePlan && <Suspense fallback={null}><PdfView pl={quotePlan} paz={patient} si={si} documentClient={client} onClose={()=>setQuotePlan(null)} /></Suspense>}
+    {quotePlan && <Suspense fallback={null}><PdfView zIndex={11000} pl={quotePlan} paz={patient} si={si} documentClient={client} onClose={()=>setQuotePlan(null)} /></Suspense>}
     {viewer && <Suspense fallback={<p role="status">Apertura PDF…</p>}><PdfViewerModal {...viewer} zIndex={11000} onClose={()=>setViewer(null)} /></Suspense>}
   </section>;
 }

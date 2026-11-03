@@ -7,7 +7,7 @@ import { totaliPreventivo, numeroPreventivo, euroIt } from '../lib/documenti/pre
 
 const PdfViewerModal = lazy(() => import('./ui/PdfViewerModal.jsx'));
 
-export default function PdfView({ pl, paz, si, features, onClose, documentClient = supabase }) {
+export default function PdfView({ pl, paz, si, features, onClose, documentClient = supabase, zIndex = 3000 }) {
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const { subtotale: sub, sconto: sc, scontato, totale: tot } = totaliPreventivo(pl);
   const fmtE = euroIt;
@@ -39,7 +39,7 @@ export default function PdfView({ pl, paz, si, features, onClose, documentClient
   const testa = { background: '#1A4E66', color: '#fff', padding: '8px', textAlign: 'left', fontSize: 10, letterSpacing: '.04em', textTransform: 'uppercase' };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 3000, background: '#C8D4E0', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex, background: '#C8D4E0', display: 'flex', flexDirection: 'column' }}>
       <div style={{ background: '#124E66', padding: '10px 14px', paddingTop: 'max(10px, env(safe-area-inset-top))', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
         <button onClick={onClose} aria-label="Torna alla scheda" style={{ minHeight: 44, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 10, padding: '8px 12px', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}><Ic n="back" s={15} c="#fff" />Indietro</button>
         <span style={{ color: '#fff', fontWeight: 700, fontSize: 14, flex: 1, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Preventivo{nome ? ` · ${nome}` : ''}</span>
@@ -122,7 +122,7 @@ export default function PdfView({ pl, paz, si, features, onClose, documentClient
 
       {pdf && (
         <Suspense fallback={null}>
-          <PdfViewerModal titolo={pdf.titolo} dataUrl={pdf.dataUrl} filename={pdf.filename} zIndex={3100} onClose={() => setPdf(null)} />
+          <PdfViewerModal titolo={pdf.titolo} dataUrl={pdf.dataUrl} filename={pdf.filename} zIndex={zIndex + 100} onClose={() => setPdf(null)} />
         </Suspense>
       )}
     </div>
