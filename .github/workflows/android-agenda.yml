@@ -3,6 +3,10 @@ on:
   pull_request:
     branches: [master]
     paths: ['android/**', 'personal/src/lib/androidAgendaWidget.js', 'personal/src/lib/widgetAzioni.js', 'tests/androidAgendaWidget.test.mjs', 'tests/widgetAzioni.test.mjs', '.github/workflows/android-agenda.yml']
+  # After a merge the tested APK is published as a plain .apk file (no zip) at a fixed release link.
+  push:
+    branches: [master]
+    paths: ['android/**', '.github/workflows/android-agenda.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -23,8 +27,37 @@ jobs:
         with:
           gradle-version: '8.11.1'
       - run: gradle -p android/agenda :app:assembleDebug :app:lintDebug --no-daemon
+      # Installability evidence in the log: signature schemes and the manifest Android will read.
+      - name: Verify APK
+        run: |
+          APK=android/agenda/app/build/outputs/apk/debug/app-debug.apk
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/apksigner" verify --verbose --print-certs "$APK"
+          "$BT/aapt2" dump badging "$APK" | grep -E "^(package|sdkVersion|targetSdkVersion|application-label|launchable-activity|native-code)" || true
+          "$BT/aapt2" dump xmltree --file AndroidManifest.xml "$APK" | grep -iE "testOnly|debuggable|minSdk|targetSdk" || true
       - uses: actions/upload-artifact@v4
         with:
           name: poliedra-agenda-debug-apk
           path: android/agenda/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
+  publish:
+    # Only code already on master; pull requests never publish.
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+    needs: apk
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: poliedra-agenda-debug-apk
+      - name: Publish to the agenda-android release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cp app-debug.apk poliedra-agenda.apk
+          gh release view agenda-android >/dev/null 2>&1 || gh release create agenda-android --target "$GITHUB_SHA" --prerelease \
+            --title "Poliedra Agenda (Android)" --notes "APK di prova dei widget agenda, aggiornato a ogni modifica Android su master. Scarica poliedra-agenda.apk e aprilo direttamente: non c'è nessuno zip da estrarre."
+          gh release upload agenda-android poliedra-agenda.apk --clobber
+          gh release edit agenda-android --notes "APK di prova dei widget agenda (commit ${GITHUB_SHA::7}). Scarica poliedra-agenda.apk e aprilo direttamente: non c'è nessuno zip da estrarre. Firmato in debug: è una versione di prova, non quella del Play Store."

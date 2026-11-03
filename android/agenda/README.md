@@ -20,7 +20,7 @@ Use JDK 17, Android SDK platform 35/build-tools 35.0.0 and Gradle 8.11.1:
 gradle -p android/agenda :app:assembleDebug :app:lintDebug
 ```
 
-The PR's `Android agenda widgets` check creates a debug APK artifact. A debug APK is for evaluation, not a signed Play Store release. A production signing key and distribution channel are not added by this change.
+The PR's `Android agenda widgets` check creates a debug APK artifact (zipped by GitHub: extract it first, never install from inside the zip viewer — ColorOS reports only "App non installata"). After each Android change merged to master the same workflow publishes the tested APK as a plain file, `poliedra-agenda.apk`, in the fixed pre-release `agenda-android` (Releases page): download and open it directly. The log's **Verify APK** step prints signature schemes and manifest data. Each CI build still uses a fresh debug key, so an update may require uninstalling the previous copy until a fixed signing key is configured as a repository secret (Product Owner decision). A debug APK is for evaluation, not a signed Play Store release. A production signing key and distribution channel are not added by this change.
 
 After the web adapter has been released, install the APK, open **Poliedra Agenda**, sign into Personal and connect the Studio agenda with the existing login. Android WebView sessions are independent from Chrome/PWA sessions. In the Android launcher hold an empty Home area, open Widgets and choose either Poliedra Agenda widget. Menu wording varies by launcher. Keep Android System WebView current.
 
