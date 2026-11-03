@@ -6,7 +6,6 @@ import android.content.Intent;
 import android.net.Uri;
 import android.webkit.*;
 import android.widget.*;
-import android.view.WindowManager;
 import androidx.webkit.WebViewCompat;
 import androidx.webkit.WebViewFeature;
 import java.time.LocalDate;
@@ -15,26 +14,16 @@ import java.util.Collections;
 public final class MainActivity extends Activity {
     static final String ORIGIN = "https://personal.poliedrasoft.it";
     private WebView web;
-    private TextView status;
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
-        LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL);
+        // Full-screen Poliedron agenda: no native header; screenshots allowed (PO request).
+        // Widget settings (sync on/off, patient names) live in Personal > Impostazioni > Widget Android.
+        FrameLayout root = new FrameLayout(this);
         // Respect system bars on Android 15 edge-to-edge.
         root.setOnApplyWindowInsetsListener((view, insets) -> {
             view.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom()); return insets;
         });
-        status = new TextView(this); status.setPadding(16, 8, 16, 8);
-        status.setText("Collega l’agenda · Widget aggiornati mentre l’app è aperta"); root.addView(status);
-        Button clear = new Button(this); clear.setText(AgendaStore.prefs(this).getBoolean("paused",false) ? "Collega widget" : "Scollega e svuota widget");
-        clear.setOnClickListener(v -> {
-            boolean paused = !AgendaStore.prefs(this).getBoolean("paused",false);
-            AgendaStore.prefs(this).edit().putBoolean("paused",paused).apply(); AgendaStore.clear(this); AgendaWidget.refresh(this);
-            clear.setText(paused ? "Collega widget" : "Scollega e svuota widget");
-            status.setText(paused ? "Widget scollegati e svuotati" : "Collegamento widget in corso…");
-            if (!paused) web.reload();
-        }); root.addView(clear);
-        web = new WebView(this); root.addView(web, new LinearLayout.LayoutParams(-1, 0, 1)); setContentView(root);
+        web = new WebView(this); root.addView(web, new FrameLayout.LayoutParams(-1, -1)); setContentView(root);
         web.getSettings().setJavaScriptEnabled(true); web.getSettings().setDomStorageEnabled(true);
         web.getSettings().setAllowFileAccess(false); web.getSettings().setAllowContentAccess(false);
         web.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
@@ -54,9 +43,8 @@ public final class MainActivity extends Activity {
             WebViewCompat.addWebMessageListener(web, "PoliedraWidget", Collections.singleton(ORIGIN), (view, message, sourceOrigin, mainFrame, reply) -> {
                 if (!mainFrame || !trusted(sourceOrigin) || !trusted(Uri.parse(view.getUrl() == null ? "" : view.getUrl()))) return;
                 AgendaStore.accept(this, message.getData());
-                status.setText(AgendaStore.snapshot(this) == null ? "Collega l’agenda dello studio per aggiornare i widget" : "Widget aggiornati · Giorno e Settimana disponibili nella Home Android");
             });
-        } else { status.setText("Aggiorna Android System WebView per collegare i widget"); }
+        } else { Toast.makeText(this, "Aggiorna Android System WebView per collegare i widget", Toast.LENGTH_LONG).show(); }
         open(getIntent());
     }
     static boolean trusted(Uri uri) { return "https".equals(uri.getScheme()) && "personal.poliedrasoft.it".equals(uri.getHost()) && (uri.getPort() == -1 || uri.getPort() == 443); }
