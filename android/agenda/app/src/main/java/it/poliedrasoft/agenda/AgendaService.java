@@ -26,7 +26,15 @@ public final class AgendaService extends RemoteViewsService {
                 r.setTextViewText(R.id.entryTitle,details ? row.optString("title") : studio ? "Appuntamento studio" : "Impegno personale");
                 r.setTextViewText(R.id.source,studio ? "● Studio" : "● Personale");
                 r.setTextColor(R.id.source,studio ? 0xFF007E76 : 0xFF7852B5);
-                r.setOnClickFillInIntent(R.id.entryRoot,new Intent());
+                // Tap opens that exact row in Personal; "Domani" proposes the personal event one day later in its editor.
+                String ref = row.optString("ref"), open = ref.isEmpty() ? null : row.optString("source")+":"+ref;
+                r.setOnClickFillInIntent(R.id.entryRoot,open == null ? new Intent() : new Intent().putExtra("widgetOpen",open));
+                boolean postpone = open != null && !studio;
+                r.setViewVisibility(R.id.postpone,postpone ? android.view.View.VISIBLE : android.view.View.GONE);
+                if (postpone) {
+                    r.setOnClickFillInIntent(R.id.postpone,new Intent().putExtra("widgetOpen",open).putExtra("widgetAction","rimanda"));
+                    r.setContentDescription(R.id.postpone,"Rimanda a domani: "+(details ? row.optString("title") : "impegno personale")+", conferma nell’app");
+                }
                 return r;
             }
             public RemoteViews getLoadingView() { return null; }

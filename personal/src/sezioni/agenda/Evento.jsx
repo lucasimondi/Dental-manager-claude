@@ -8,7 +8,7 @@ import {
 import { IconaCestino } from '../../Icone.jsx';
 import { ModuloAppuntamento } from './Appuntamento.jsx';
 
-export function PaginaEvento({ evento: iniziale = {}, cosa: cosaIniziale = 'evento', ctx, chiudi }) {
+export function PaginaEvento({ evento: iniziale = {}, cosa: cosaIniziale = 'evento', proposta = null, ctx, chiudi }) {
   const [cosa, setCosa] = useState(cosaIniziale);
   if (!iniziale.id && cosa === 'appuntamento') {
     return (
@@ -18,7 +18,7 @@ export function PaginaEvento({ evento: iniziale = {}, cosa: cosaIniziale = 'even
       </>
     );
   }
-  return <ModuloEvento iniziale={iniziale} ctx={ctx} chiudi={chiudi} scelta={!iniziale.id && <SceltaNuovo cosa={cosa} setCosa={setCosa} />} />;
+  return <ModuloEvento iniziale={iniziale} proposta={iniziale.id ? proposta : null} ctx={ctx} chiudi={chiudi} scelta={!iniziale.id && <SceltaNuovo cosa={cosa} setCosa={setCosa} />} />;
 }
 
 function SceltaNuovo({ cosa, setCosa }) {
@@ -31,7 +31,7 @@ function SceltaNuovo({ cosa, setCosa }) {
   );
 }
 
-function ModuloEvento({ iniziale, ctx, chiudi, scelta }) {
+function ModuloEvento({ iniziale, proposta, ctx, chiudi, scelta }) {
   const { esegui, aggiorna, mostra, impostazioni } = ctx;
   const etichette = impostazioni.etichette;
   const [ev, setEv] = useState(() => ({
@@ -54,6 +54,8 @@ function ModuloEvento({ iniziale, ctx, chiudi, scelta }) {
     ripeti_fino: iniziale.data_inizio || oggi(),
     visibile_studio: iniziale.visibile_studio !== false,
     visibile_personal: iniziale.visibile_personal !== false,
+    // Proposta del widget (es. rimanda a domani): solo nuove date, salvate soltanto con Salva.
+    ...(proposta ? { data_inizio: proposta.data_inizio, data_fine: proposta.data_fine } : {}),
   }));
   const [conferma, setConferma] = useState(false);
   const [salvando, setSalvando] = useState(false);
@@ -131,6 +133,7 @@ function ModuloEvento({ iniziale, ctx, chiudi, scelta }) {
   return (
     <>
       {scelta}
+      {proposta && <p className="pp-avviso" role="status">Spostato a {daIso(proposta.data_inizio).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })} dal widget: controlla e tocca Salva per confermare.</p>}
       <div className="pp-evento-anteprima" style={{ '--c': colore }}>
         <strong>{ev.titolo || 'Nuovo evento'}</strong>
         <span>{nomeEtichetta(ev.tipo, etichette)}{ev.tutto_il_giorno ? ' · tutto il giorno' : ' · ' + ev.ora_inizio + '–' + ev.ora_fine}</span>

@@ -1,5 +1,6 @@
 import { startAndroidAgendaWidget } from './lib/androidAgendaWidget.js';
-import { studioDb, sessioneStudio, studioDellaSessione } from './lib/studio.js';
+import { studioDb, sessioneStudio, studioDellaSessione, appuntamentoPerId, impegnoPerId } from './lib/studio.js';
+import { avviaAzioneWidget } from './lib/widgetAzioni.js';
 import { IconaTema } from './IconaTema.jsx';
 import { CambioAspetto } from './Aspetto.jsx';
 import { Pagina } from './Pagina.jsx';
@@ -70,15 +71,13 @@ function Archivio({ email }) {
     window.scrollTo(0, 0);
   }, []);
   const apri = useCallback((p) => { contatore.current += 1; setErrore(null); setFoglio(false); setPagine((st) => [...st, { ...p, chiave: contatore.current }]); }, []);
+  // Azioni dei widget Android (nuovo, apri riga, rimanda): solo editor, mai salvataggi automatici.
   const widgetOpened = useRef(false);
   useEffect(() => {
-    if (widgetOpened.current || new URLSearchParams(window.location.search).get('widgetNew') !== '1') return;
+    if (widgetOpened.current) return undefined;
     widgetOpened.current = true;
-    const day = readAgendaLocation().day;
-    apri({ tipo: 'evento', ...(day ? { evento: { data_inizio: day, data_fine: day } } : {}) });
-    const url = new URL(window.location.href); url.searchParams.delete('widgetNew');
-    window.history.replaceState(window.history.state, '', url);
-  }, [apri]);
+    return avviaAzioneWidget({ apri, mostra, errore: setErrore, appuntamento: appuntamentoPerId, impegno: impegnoPerId, sessione: sessioneStudio });
+  }, [apri, mostra]);
   const indietro = useCallback(() => { setErrore(null); setPagine((st) => st.slice(0, -1)); }, []);
   const sostituisci = useCallback((p) => { contatore.current += 1; setPagine((st) => [...st.slice(0, -1), { ...p, chiave: contatore.current }]); }, []);
 

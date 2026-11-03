@@ -57,6 +57,16 @@ export async function appuntamentiTra(da, a) {
   return app.filter((x) => x.stato !== 'annullato').map((x) => ({ ...x, paziente: nome.get(x.paziente_id) || null, cognome: cognome.get(x.paziente_id) || null }));
 }
 
+// Una sola riga, aperta dal widget Android: stesse colonne e stessa RLS dell'elenco.
+export async function appuntamentoPerId(id) {
+  const a = esito(await studioDb.from('appointments')
+    .select('id, data, ora, durata, tipo, colore, note, stato, paziente_id, visibile_studio, visibile_personal')
+    .eq('id', id).maybeSingle());
+  if (!a) return null;
+  const p = a.paziente_id ? esito(await studioDb.from('patients').select('id, nome, cognome').eq('id', a.paziente_id).maybeSingle()) : null;
+  return { ...a, paziente: p ? [p.nome, p.cognome].filter(Boolean).join(' ') : null, cognome: p ? p.cognome || p.nome || null : null };
+}
+
 // Appuntamenti dei pazienti: stesse colonne dello studio, user_id e studio_id della sessione.
 // appointments.id è GENERATED ALWAYS AS IDENTITY: lo assegna il database, mai il client.
 // Il trigger dello studio controlla la coerenza.
@@ -91,6 +101,11 @@ const CAMPI_IMPEGNO = 'id, titolo, tipo, etichetta, colore, data_inizio, data_fi
 export async function impegniTra(da, a) {
   return esito(await studioDb.from('impegni_personali').select(CAMPI_IMPEGNO)
     .lte('data_inizio', a).gte('data_fine', da).order('data_inizio')).map((e) => ({ ...e, tipo: e.etichetta || e.tipo }));
+}
+
+export async function impegnoPerId(id) {
+  const e = esito(await studioDb.from('impegni_personali').select(CAMPI_IMPEGNO).eq('id', id).maybeSingle());
+  return e ? { ...e, tipo: e.etichetta || e.tipo } : null;
 }
 
 export async function salvaImpegno(evento) {

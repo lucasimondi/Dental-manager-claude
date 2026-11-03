@@ -1,15 +1,19 @@
 import { agendaVisible } from '../../../shared/agenda/visibility.js';
 import { oggi, piuGiorni } from './agenda.js';
+import { RIF_WIDGET } from './widgetAzioni.js';
+
+// Riferimento opaco della riga per le azioni del widget (apri, rimanda); vuoto se non valido.
+const rif = id => (id == null || !RIF_WIDGET.test(String(id)) ? '' : String(id));
 
 export const WIDGET_ORIGIN = 'https://personal.poliedrasoft.it';
 export function widgetSnapshot({ appuntamenti = [], impegni = [], from, to, now = Date.now() }) {
   const entries = [
     ...appuntamenti.filter(a => a.stato !== 'annullato' && agendaVisible(a, 'personal')).map(a => ({
-      source: 'studio', start: a.data, end: a.data, time: String(a.ora || '').slice(0, 5),
+      source: 'studio', ref: rif(a.id), start: a.data, end: a.data, time: String(a.ora || '').slice(0, 5),
       title: String(a.tipo || 'Appuntamento studio').slice(0, 120),
     })),
     ...impegni.filter(e => agendaVisible(e, 'personal')).map(e => ({
-      source: 'personal', start: e.data_inizio, end: e.data_fine || e.data_inizio,
+      source: 'personal', ref: rif(e.id), start: e.data_inizio, end: e.data_fine || e.data_inizio,
       time: e.tutto_il_giorno ? '' : String(e.ora_inizio || '').slice(0, 5),
       title: String(e.titolo || 'Impegno personale').slice(0, 120),
     })),

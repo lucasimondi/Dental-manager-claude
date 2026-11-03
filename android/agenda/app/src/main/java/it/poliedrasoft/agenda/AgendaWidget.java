@@ -18,6 +18,7 @@ public class AgendaWidget extends AppWidgetProvider {
     static void refresh(Context c) {
         AppWidgetManager m = AppWidgetManager.getInstance(c);
         for (Class<?> klass : new Class<?>[]{ DayWidget.class, WeekWidget.class }) for (int id : m.getAppWidgetIds(new ComponentName(c, klass))) render(c, m, id, klass == WeekWidget.class);
+        for (int id : m.getAppWidgetIds(new ComponentName(c, QuickWidget.class))) QuickWidget.render(c, m, id);
     }
     @Override public void onUpdate(Context c, AppWidgetManager m, int[] ids) { for (int id : ids) render(c, m, id, this instanceof WeekWidget); }
     @Override public void onAppWidgetOptionsChanged(Context c, AppWidgetManager m, int id, Bundle options) { render(c, m, id, this instanceof WeekWidget); }
@@ -48,8 +49,14 @@ public class AgendaWidget extends AppWidgetProvider {
         return PendingIntent.getBroadcast(c, 0, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
     static PendingIntent open(Context c, int id, LocalDate day, boolean week, boolean mutable) {
-        Intent i = new Intent(c, MainActivity.class).setData(Uri.parse("poliedra-agenda://"+id+"/"+day)).putExtra("day", day.toString()).putExtra("view", week ? "settimana" : "giorno");
+        // Distinct data per view and purpose: PendingIntents with equal data would overwrite each other's extras.
+        Intent i = new Intent(c, MainActivity.class).setData(Uri.parse("poliedra-agenda://"+id+"/"+(week ? "settimana" : "giorno")+"/"+(mutable ? "row" : "open")+"/"+day)).putExtra("day", day.toString()).putExtra("view", week ? "settimana" : "giorno");
         return PendingIntent.getActivity(c, 0, i, PendingIntent.FLAG_UPDATE_CURRENT | (mutable ? PendingIntent.FLAG_MUTABLE : PendingIntent.FLAG_IMMUTABLE));
+    }
+    // New personal event ("evento") or Studio appointment ("appuntamento") on a date: opens the existing editor, never saves.
+    static PendingIntent create(Context c, int id, LocalDate day, String what) {
+        Intent i = new Intent(c, MainActivity.class).setData(Uri.parse("poliedra-new://"+id+"/"+what+"/"+day)).putExtra("day", day.toString()).putExtra("nuovo", what);
+        return PendingIntent.getActivity(c, 0, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
     static void render(Context c, AppWidgetManager m, int id, boolean week) {
         RemoteViews r = new RemoteViews(c.getPackageName(), R.layout.widget);
@@ -77,13 +84,14 @@ public class AgendaWidget extends AppWidgetProvider {
         r.setViewVisibility(R.id.empty,empty ? View.VISIBLE : View.GONE); r.setViewVisibility(R.id.list,empty ? View.GONE : View.VISIBLE);
         r.setTextViewText(R.id.empty,!covered ? "Apri l’app per aggiornare questo periodo" : "Nessun impegno · "+day.format(DateTimeFormatter.ofPattern("EEE d",IT)));
         String updated = snap == null ? "Da collegare" : "Agg. "+java.time.Instant.ofEpochMilli(snap.optLong("updatedAt")).atZone(java.time.ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("dd/MM HH:mm",IT));
-        r.setTextViewText(R.id.status,updated+" · aggiorna aprendo");
+        r.setTextViewText(R.id.status,updated+" · tocca qui per aggiornare");
+        r.setOnClickPendingIntent(R.id.status,open(c,id,day,week,false));
         Intent adapter = new Intent(c,AgendaService.class).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id).setData(Uri.parse("poliedra-list://"+id));
         r.setRemoteAdapter(R.id.list,adapter);
         r.setPendingIntentTemplate(R.id.list,open(c,id,day,week,true));
         r.setOnClickPendingIntent(R.id.open,open(c,id,day,week,false)); r.setOnClickPendingIntent(R.id.empty,open(c,id,day,week,false));
-        Intent add = new Intent(c,MainActivity.class).setData(Uri.parse("poliedra-new://"+id+"/"+day)).putExtra("day",day.toString()).putExtra("new",true);
-        r.setOnClickPendingIntent(R.id.add,PendingIntent.getActivity(c,0,add,PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
+        r.setOnClickPendingIntent(R.id.add,create(c,id,day,"evento"));
+        r.setOnClickPendingIntent(R.id.addStudio,create(c,id,day,"appuntamento"));
         m.updateAppWidget(id,r); m.notifyAppWidgetViewDataChanged(id,R.id.list);
     }
 }

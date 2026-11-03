@@ -4,4 +4,5 @@
   <TextView android:id="@+id/entryTitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:ellipsize="end" android:textColor="#102C46" android:textSize="14sp" android:textStyle="bold"/>
   <TextView android:id="@+id/source" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="12sp"/>
  </LinearLayout>
+ <TextView android:id="@+id/postpone" android:layout_width="72dp" android:layout_height="48dp" android:layout_marginLeft="4dp" android:gravity="center" android:background="@drawable/button_bg" android:text="Domani ›" android:textColor="#006D67" android:textSize="12sp" android:visibility="gone"/>
 </LinearLayout>

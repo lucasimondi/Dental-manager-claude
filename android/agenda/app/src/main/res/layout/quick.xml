@@ -1,0 +1,16 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:background="@drawable/widget_bg">
+ <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:gravity="center_vertical">
+  <LinearLayout android:id="@+id/next" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:gravity="center_vertical" android:orientation="vertical">
+   <TextView android:id="@+id/nextLabel" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Poliedra · Prossimo impegno" android:textSize="12sp" android:textColor="#536779" android:maxLines="1" android:ellipsize="end"/>
+   <TextView android:id="@+id/nextTitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="16sp" android:textStyle="bold" android:textColor="#102C46" android:maxLines="1" android:ellipsize="end"/>
+   <TextView android:id="@+id/nextMeta" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="12sp" android:textColor="#536779" android:maxLines="1" android:ellipsize="end"/>
+  </LinearLayout>
+  <TextView android:id="@+id/privacy" android:layout_width="72dp" android:layout_height="48dp" android:gravity="center" android:text="Dettagli" android:textSize="12sp" android:textColor="#006D67"/>
+ </LinearLayout>
+ <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical">
+  <Button android:background="@drawable/button_bg" android:textColor="#006D67" android:layout_marginLeft="2dp" android:layout_marginRight="2dp" android:minWidth="0dp" android:padding="2dp" android:id="@+id/add" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp" android:text="+ Impegno" android:textSize="12sp" android:contentDescription="Nuovo impegno personale oggi"/>
+  <Button android:background="@drawable/button_bg" android:textColor="#006D67" android:layout_marginLeft="2dp" android:layout_marginRight="2dp" android:minWidth="0dp" android:padding="2dp" android:id="@+id/addStudio" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp" android:text="+ Appunt." android:textSize="12sp" android:contentDescription="Nuovo appuntamento dello studio oggi"/>
+  <Button android:background="@drawable/button_bg" android:textColor="#006D67" android:layout_marginLeft="2dp" android:layout_marginRight="2dp" android:minWidth="0dp" android:padding="2dp" android:id="@+id/today" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp" android:text="Oggi" android:textSize="12sp" android:contentDescription="Apri l’agenda di oggi"/>
+  <Button android:background="@drawable/button_bg" android:textColor="#006D67" android:layout_marginLeft="2dp" android:layout_marginRight="2dp" android:minWidth="0dp" android:padding="2dp" android:id="@+id/week" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp" android:text="Settim." android:textSize="12sp" android:contentDescription="Apri la settimana"/>
+ </LinearLayout>
+</LinearLayout>

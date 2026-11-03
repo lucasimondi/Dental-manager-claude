@@ -6,6 +6,7 @@
   </activity>
   <receiver android:name=".DayWidget" android:label="Agenda · Giorno" android:exported="false"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/day_widget"/></receiver>
   <receiver android:name=".WeekWidget" android:label="Agenda · Settimana" android:exported="false"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/week_widget"/></receiver>
+  <receiver android:name=".QuickWidget" android:label="Agenda · Azioni rapide" android:exported="false"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/quick_widget"/></receiver>
   <service android:name=".AgendaService" android:permission="android.permission.BIND_REMOTEVIEWS" android:exported="false"/>
  </application>
 </manifest>

@@ -2,7 +2,7 @@ name: Android agenda widgets
 on:
   pull_request:
     branches: [master]
-    paths: ['android/**', 'personal/src/lib/androidAgendaWidget.js', 'tests/androidAgendaWidget.test.mjs', '.github/workflows/android-agenda.yml']
+    paths: ['android/**', 'personal/src/lib/androidAgendaWidget.js', 'personal/src/lib/widgetAzioni.js', 'tests/androidAgendaWidget.test.mjs', 'tests/widgetAzioni.test.mjs', '.github/workflows/android-agenda.yml']
   workflow_dispatch:
 permissions:
   contents: read

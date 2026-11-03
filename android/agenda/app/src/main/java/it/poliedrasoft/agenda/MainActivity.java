@@ -63,7 +63,16 @@ public final class MainActivity extends Activity {
     private void open(Intent intent) {
         String date; try { date = LocalDate.parse(intent.getStringExtra("day")).toString(); } catch (Exception ignored) { date = LocalDate.now().toString(); }
         String view = "settimana".equals(intent.getStringExtra("view")) ? "settimana" : "giorno";
-        web.loadUrl(ORIGIN + "/?agenda=1&agendaDate=" + date + "&agendaView=" + view + (intent.getBooleanExtra("new",false) ? "&widgetNew=1" : ""));
+        StringBuilder url = new StringBuilder(ORIGIN + "/?agenda=1&agendaDate=" + date + "&agendaView=" + view);
+        // Widget actions only open the existing editors; Personal reads with the user's session and RLS.
+        String what = intent.getBooleanExtra("new", false) ? "evento" : intent.getStringExtra("nuovo");
+        String row = intent.getStringExtra("widgetOpen");
+        if ("evento".equals(what) || "appuntamento".equals(what)) url.append("&widgetNew=").append(what);
+        else if (row != null && AgendaStore.OPEN.matcher(row).matches()) {
+            url.append("&widgetOpen=").append(Uri.encode(row));
+            if ("rimanda".equals(intent.getStringExtra("widgetAction")) && row.startsWith("personal:")) url.append("&widgetAction=rimanda");
+        }
+        web.loadUrl(url.toString());
     }
     @Override protected void onNewIntent(Intent intent) { super.onNewIntent(intent); setIntent(intent); open(intent); }
     @Override protected void onResume() { super.onResume(); if (web != null) web.onResume(); }
