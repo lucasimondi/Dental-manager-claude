@@ -6,6 +6,7 @@ import { sessioneStudio, esciStudio, studioDb } from '../../lib/studio.js';
 import { slug } from '../../lib/impostazioni.js';
 import { colore, Sezione, Gruppo, Conferma, tokenSessione } from '../../ui.jsx';
 import { statoNotifiche, attivaNotifiche, disattivaNotifiche, provaNotifica } from '../../lib/notifiche.js';
+import { widgetDisponibile, leggiPreferenzeWidget, salvaPreferenzeWidget } from '../../lib/androidAgendaWidget.js';
 import { IconaPiu, IconaChiudi, IconaFreccia, IconaCestino, IconaEsci } from '../../Icone.jsx';
 
 function ListaModificabile({ voci, onTogli, onAggiungi, segnaposto }) {
@@ -59,6 +60,25 @@ function NotificheTelefono({ ctx }) {
       ) : (
         <div className="pp-voce pp-voce-azioni"><button className="pp-bottone" onClick={attiva}>Attiva le notifiche</button></div>
       )}
+    </Gruppo>
+  );
+}
+
+// Widget Android: visibile solo dentro l'app Poliedra Agenda. Preferenze di questo telefono.
+function WidgetAndroid({ ctx }) {
+  const [p, setP] = useState(() => leggiPreferenzeWidget());
+  const cambia = (nuove, messaggio) => { setP(salvaPreferenzeWidget(nuove)); ctx.mostra(messaggio); };
+  return (
+    <Gruppo>
+      <label className="pp-voce pp-spunta">
+        <span>Aggiorna i widget sulla Home</span>
+        <input type="checkbox" checked={p.attivo} onChange={(e) => cambia({ ...p, attivo: e.target.checked }, e.target.checked ? 'Widget collegati' : 'Widget scollegati e svuotati')} />
+      </label>
+      <label className="pp-voce pp-spunta">
+        <span>Mostra nome e cognome dei pazienti</span>
+        <input type="checkbox" checked={p.nomi} disabled={!p.attivo} onChange={(e) => cambia({ ...p, nomi: e.target.checked }, e.target.checked ? 'Nomi dei pazienti nei widget' : 'Nomi dei pazienti tolti dai widget')} />
+      </label>
+      <div className="pp-voce pp-voce-testo"><span className="pp-riga-meta">Con i nomi attivi, chi guarda la Home vede nome, cognome e orario dei pazienti dove hai toccato Dettagli. I nomi dei prossimi 28 giorni restano su questo telefono finché scolleghi, esci o passano 24 ore senza aggiornare. Le note non vanno mai nei widget.</span></div>
     </Gruppo>
   );
 }
@@ -135,6 +155,7 @@ export function PaginaImpostazioni({ ctx, email }) {
       <Sezione titolo="Notifiche sul telefono">
         <NotificheTelefono ctx={ctx} />
       </Sezione>
+      {widgetDisponibile() && <Sezione titolo="Widget Android"><WidgetAndroid ctx={ctx} /></Sezione>}
       <Sezione titolo="Agenda dello studio">
         <StatoStudio />
       </Sezione>

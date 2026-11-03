@@ -10,13 +10,13 @@ final class AgendaStore {
     static final java.util.regex.Pattern REF = java.util.regex.Pattern.compile("[A-Za-z0-9-]{1,64}");
     static final java.util.regex.Pattern OPEN = java.util.regex.Pattern.compile("(studio|personal):[A-Za-z0-9-]{1,64}");
     static SharedPreferences prefs(Context c) { return c.getSharedPreferences("agenda", Context.MODE_PRIVATE); }
-    static void clear(Context c) { prefs(c).edit().remove("snapshot").apply(); }
+    // "paused" was the old native disconnect button; the switch now lives in Personal settings.
+    static void clear(Context c) { prefs(c).edit().remove("snapshot").remove("paused").apply(); }
     static void accept(Context c, String raw) {
         try {
             if (raw == null || raw.length() > 2000000) throw new IllegalArgumentException();
             JSONObject input = new JSONObject(raw);
             if (input.optBoolean("clear")) { clear(c); AgendaWidget.refresh(c); return; }
-            if (prefs(c).getBoolean("paused", false)) return;
             if (input.optInt("version") != 1) throw new IllegalArgumentException();
             LocalDate from = LocalDate.parse(input.getString("from")), to = LocalDate.parse(input.getString("to"));
             if (to.isBefore(from) || java.time.temporal.ChronoUnit.DAYS.between(from, to) > 60) throw new IllegalArgumentException();

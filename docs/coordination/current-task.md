@@ -1,3 +1,9 @@
+# Current task — ANDROID-WIDGET-PATIENT-NAMES (2026-11-03)
+- OWNER Claude Code; branch ccr-f990cd9d-widget-nomi from master 3bb6696 (PR269 merged; earlier task branches already merged, so a new branch as in PR269).
+- AUTHORIZATION PO: show patient names in widgets with a switch off by default; allow screenshots; app must open directly on the real Poliedron agenda without the native header.
+- SCOPE Personal androidAgendaWidget.js (device preferences, opt-in names via id/nome/cognome only), Impostazioni "Widget Android" (only inside the app), MainActivity full-screen without FLAG_SECURE, native paused flag retired; APK 0.3.0.
+- STATUS implementation + local checks complete; PR pending, no merge/deploy/database change.
+
 # Current task — ANDROID-APK-DIRECT-DOWNLOAD (2026-11-03)
 - OWNER Claude Code; branch ccr-f990cd9d-apk-diretto from master cc5664d (PR268 merged; PO chose a new branch).
 - AUTHORIZATION PO could not install the zipped CI artifact ("App non installata" while opened inside the zip viewer) and authorized the needed corrections.

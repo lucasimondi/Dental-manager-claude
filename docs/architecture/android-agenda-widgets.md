@@ -12,6 +12,12 @@ Third widget **Agenda · Azioni rapide** (4×2, resizable): next item still to c
 - Without the released web change, a new APK still shows the agenda; row actions open the selected day only.
 - The quick widget's "next" item is computed at render time (app sync or the approximate 30-minute redraw), so it can lag a few minutes behind the clock.
 
+## Patient names, screenshots and full-screen app (v0.3.0)
+
+- The app opens straight onto the Poliedron agenda (no native header or button); screenshots are allowed (FLAG_SECURE removed on PO request).
+- Widget settings moved to **Personal › Impostazioni › Widget Android**, shown only inside the Android app: *Aggiorna i widget sulla Home* (off = disconnect and clear the snapshot) and *Mostra nome e cognome dei pazienti* (**off by default**, device-local preference).
+- With names on, Personal reads only `id, nome, cognome` of the patients of visible, non-cancelled appointments in the snapshot window (existing Studio session/RLS, chunks of 100) and titles become `Cognome Nome · Tipo`. Notes are never sent. Names still show only on widgets where Dettagli is toggled. They live in the app-private snapshot (no backup) until disconnect, logout or the 24 h expiry. This is a PO decision on health data shown on the Home screen.
+
 ## Build and install
 
 Use JDK 17, Android SDK platform 35/build-tools 35.0.0 and Gradle 8.11.1:
@@ -32,7 +38,7 @@ Snapshot refresh happens on app mount, foreground focus/visibility and each fore
 
 The bridge is AndroidX WebKit's origin-scoped WebMessage listener, exact HTTPS origin, main frame only; there is no addJavascriptInterface/wildcard origin. Foreign navigations open outside the WebView; SSL errors cancel and cleartext/file/content access are disabled. The app's native private preferences hold only a bounded display snapshot. Backup is disabled. Widget details are initially hidden and explicitly revealed per widget; revealed titles are visible on Home.
 
-**No background live synchronization is claimed.** The update timestamp is always shown. Android redraws periodically (30 minutes; scheduling is approximate); snapshots older than 24 hours are hidden on the next render. An unavailable/uncovered day asks to open the app, never reports a free day. Logout/unmount/auth changes clear native data; changes to accounts or permissions made elsewhere cannot revoke an offline snapshot instantly. Use Scollega e svuota widget in the app to pause updates and remove the snapshot, or uninstall; Collega widget resumes explicit synchronization. Foreground refresh failures clear the cache. Opening the app is required to see subsequent changes made elsewhere.
+**No background live synchronization is claimed.** The update timestamp is always shown. Android redraws periodically (30 minutes; scheduling is approximate); snapshots older than 24 hours are hidden on the next render. An unavailable/uncovered day asks to open the app, never reports a free day. Logout/unmount/auth changes clear native data; changes to accounts or permissions made elsewhere cannot revoke an offline snapshot instantly. Turn off Impostazioni › Widget Android › Aggiorna i widget sulla Home to pause updates and remove the snapshot, or uninstall; turning it on resumes synchronization. Foreground refresh failures clear the cache. Opening the app is required to see subsequent changes made elsewhere.
 
 ## Validation and release
 

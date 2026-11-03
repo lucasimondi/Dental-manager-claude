@@ -4401,3 +4401,15 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - RISKS: per-run debug keys still force uninstall between versions; fixed key needs PO secret. Release follows the repository's visibility (login needed if private).
 - ROLLBACK: revert PR; delete the agenda-android release if unwanted.
 - NEXT: PR checks green → PO "Mergia" → verify publish job and give PO the direct .apk link.
+
+
+## 2026-11-03 — ANDROID-WIDGET-PATIENT-NAMES
+- TASK/OWNER/previous agent: ANDROID-WIDGET-PATIENT-NAMES, Claude Code; previous ANDROID-APK-DIRECT-DOWNLOAD merged PR269 (3bb6696), APK published to release agenda-android and installed by PO. Branch ccr-f990cd9d-widget-nomi.
+- AUTHORIZATION: PO explicitly chose patient names behind a switch off by default (health data on Home screen accepted as PO decision), screenshots allowed, no native header.
+- COMPLETED: web preferences (localStorage, defaults attivo=true nomi=false, blocked storage safe) with change event that clears and resyncs; names fetched only when opted in (patients id,nome,cognome, chunks of 100, RLS) for visible non-cancelled appointments; title "Cognome Nome · Tipo"; disconnect sends clear and stops sync. Impostazioni section rendered only when the native bridge exists. MainActivity: FrameLayout full-screen WebView, FLAG_SECURE/status/button removed, WebView-missing notice as Toast; native paused flag no longer blocks and is cleared. versionCode 3/0.3.0.
+- FILES: personal/src/lib/androidAgendaWidget.js, sezioni/impostazioni/Impostazioni.jsx, android MainActivity/AgendaStore/build.gradle, README/architecture, tests/androidAgendaWidget.test.mjs, coordination.
+- DATABASE/DEPLOYMENT: none (read-only patients columns already read by Personal agenda under RLS).
+- VALIDATION: 1544/1544 Node tests (3 new), both Vite builds, diff check; javac typecheck against android-all 15 passes. Gradle/lint in CI.
+- RISKS: names visible on Home when Dettagli on; screenshots of the app now possible (may include patient data). Preference is per device/WebView.
+- ROLLBACK: revert PR; switch off names; disconnect clears snapshot.
+- NEXT: PR checks green → PO "Mergia" → APK auto-published to agenda-android (uninstall previous debug-key build first).

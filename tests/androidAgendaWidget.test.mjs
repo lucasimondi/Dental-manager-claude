@@ -42,3 +42,36 @@ test('cleanup prevents late network results from repopulating signed-out widget 
  const stop=startAndroidAgendaWidget({db:{auth:{onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})}},session:()=>session,studioId:()=>{throw Error('must not execute after cleanup');},host});
  stop();release({user:{id:'synthetic'}});await new Promise(r=>setImmediate(r));assert(messages.every(m=>m.clear===true));
 });
+import { leggiPreferenzeWidget, salvaPreferenzeWidget, PREFERENZE_WIDGET } from '../personal/src/lib/androidAgendaWidget.js';
+function prefHost(stored) {
+ const data=new Map(stored?[[PREFERENZE_WIDGET,stored]]:[]); const events=[];
+ return {data,events,host:{localStorage:{getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v)},dispatchEvent:e=>events.push(e)}};
+}
+test('widget preferences default to synced without patient names, and survive blocked storage',()=>{
+ assert.deepEqual(leggiPreferenzeWidget(prefHost().host),{attivo:true,nomi:false});
+ assert.deepEqual(leggiPreferenzeWidget(prefHost('{bad').host),{attivo:true,nomi:false});
+ assert.deepEqual(leggiPreferenzeWidget(prefHost('{"nomi":"yes"}').host),{attivo:true,nomi:false});
+ assert.deepEqual(leggiPreferenzeWidget({localStorage:{getItem(){throw Error('blocked');}}}),{attivo:true,nomi:false});
+ const {host,data,events}=prefHost(); salvaPreferenzeWidget({attivo:true,nomi:true},host);
+ assert.equal(data.get(PREFERENZE_WIDGET),'{"attivo":true,"nomi":true}'); assert.equal(events.length,1);
+});
+test('patient names appear only when supplied, never notes',()=>{
+ const a=[{id:1,paziente_id:9,data:'2026-11-03',ora:'09:00',tipo:'Visita',note:'PRIVATE'},{id:2,paziente_id:10,data:'2026-11-03',ora:'10:00',tipo:''}];
+ assert.deepEqual(widgetSnapshot({...window,appuntamenti:a}).entries.map(e=>e.title),['Visita','Appuntamento studio']);
+ const s=widgetSnapshot({...window,appuntamenti:a,pazienti:new Map([[9,'Rossi Mario']])});
+ assert.deepEqual(s.entries.map(e=>e.title),['Rossi Mario · Visita','Appuntamento studio']); assert.doesNotMatch(JSON.stringify(s),/PRIVATE/);
+});
+test('sync reads patient names only after opt-in and stops entirely when disconnected',async()=>{
+ const run=async(prefs)=>{
+  const {host,messages}=fakeHost(); host.localStorage={getItem:()=>prefs}; const tables=[];
+  const db={auth:{onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},from(table){tables.push(table);
+   const q={select(){return this;},gte(){return this;},lte(){return this;},order(){return this;},
+    in(_c,ids){return Promise.resolve({data:ids.map(id=>({id,nome:'Mario',cognome:'Rossi'}))});},
+    async range(){return {data:table==='appointments'?[{id:1,paziente_id:9,data:'2026-11-03',ora:'09:00',tipo:'Visita'}]:[]};}};return q;}};
+  const stop=startAndroidAgendaWidget({db,session:async()=>({user:{id:'synthetic'}}),studioId:()=>'s',host});
+  await new Promise(r=>setImmediate(r)); stop(); return {tables,snap:messages.find(m=>m.entries)};
+ };
+ const off=await run(null); assert(!off.tables.includes('patients')); assert.match(off.snap.entries[0].title,/^Visita$/);
+ const on=await run('{"nomi":true}'); assert(on.tables.includes('patients')); assert.equal(on.snap.entries[0].title,'Rossi Mario · Visita');
+ const paused=await run('{"attivo":false,"nomi":true}'); assert.equal(paused.snap,undefined); assert.deepEqual(paused.tables,[]);
+});
