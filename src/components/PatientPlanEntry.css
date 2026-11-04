@@ -117,3 +117,22 @@
 /* Chart entry already supplies the clinical site: keep the first line and Save close. */
 .patient-entry-panel.from-dental-chart .patient-entry-intro { display:none; }
 .patient-entry-panel.from-dental-chart .patient-entry-footer { margin-top:16px; }
+
+/* Multi-tooth entry: per-tooth vs combined choice and read-only summary. */
+.patient-tooth-mode { margin:14px 0 0; padding:0; border:0; }
+.patient-tooth-mode legend { margin-bottom:7px; font-size:11px; font-weight:650; color:#4d6b80; }
+.patient-tooth-mode > div { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.patient-tooth-mode label { display:flex; gap:8px; align-items:flex-start; padding:10px; border:1px solid #d9e5ed; border-radius:11px; background:#fff; cursor:pointer; font-size:12px; font-weight:650; color:#1f4258; }
+.patient-tooth-mode label.is-selected { border-color:#176ba3; background:#f1f8fd; }
+.patient-tooth-mode input { margin-top:2px; accent-color:#176ba3; }
+.patient-tooth-mode small { display:block; margin-top:3px; font-size:10px; font-weight:500; color:#62808f; line-height:1.35; }
+.patient-tooth-summary { margin-top:14px; padding:12px; border:1px solid #e1eaf0; border-radius:12px; background:#f8fbfd; }
+.patient-tooth-summary > strong { display:block; margin-bottom:6px; font-size:11px; color:#4d6b80; }
+.patient-tooth-summary ul { list-style:none; margin:0; padding:0; }
+.patient-tooth-summary li { display:flex; gap:10px; padding:7px 0; border-top:1px solid #e8eff4; }
+.patient-tooth-summary li:first-child { border-top:0; }
+.patient-tooth-summary li > span { flex:none; min-width:58px; font-size:12px; font-weight:700; color:#176ba3; }
+.patient-tooth-summary li > div { flex:1; min-width:0; }
+.patient-tooth-summary p { display:flex; justify-content:space-between; gap:8px; margin:0 0 3px; font-size:12px; color:#1f4258; overflow-wrap:anywhere; }
+.patient-tooth-summary b { flex:none; font-weight:650; }
+@media(max-width:600px) { .patient-tooth-mode > div { grid-template-columns:1fr; } }

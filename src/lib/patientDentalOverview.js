@@ -8,6 +8,25 @@ export const DENTAL_QUADRANTS = [
 ];
 const permanent = new Set(DENTAL_QUADRANTS.flatMap(q => q.teeth));
 export const dentalEntryTooth = value => permanent.has(Number(value)) ? String(Number(value)) : '';
+// Chart multi-selection seed: array or explicit list of permanent FDI numbers.
+// Invalid tokens are dropped; anything that is not a string/number/array yields ''.
+export function dentalEntryTeeth(value) {
+  const tokens = Array.isArray(value) ? value : typeof value === 'number' ? [value] : typeof value === 'string' ? value.split(/[^0-9]+/) : [];
+  return [...new Set(tokens.map(dentalEntryTooth).filter(Boolean).map(Number))].sort((a,b)=>a-b).join(', ');
+}
+export const DENTAL_SELECTION_GROUPS = [
+  ...DENTAL_QUADRANTS.map(q => ({ label: q.label.split(' ·')[0], title: q.label, teeth: q.teeth })),
+  { label: 'Arcata sup.', title: 'Arcata superiore', teeth: [...DENTAL_QUADRANTS[0].teeth, ...DENTAL_QUADRANTS[1].teeth] },
+  { label: 'Arcata inf.', title: 'Arcata inferiore', teeth: [...DENTAL_QUADRANTS[2].teeth, ...DENTAL_QUADRANTS[3].teeth] },
+  { label: 'Tutti', title: 'Tutti i denti permanenti', teeth: DENTAL_QUADRANTS.flatMap(q => q.teeth) },
+];
+// Group toggle: when every tooth of the group is already selected it is removed, otherwise added.
+export function toggleDentalGroup(selected, teeth) {
+  const current = new Set((Array.isArray(selected) ? selected : []).map(Number));
+  const all = teeth.every(t => current.has(t));
+  teeth.forEach(t => all ? current.delete(t) : current.add(t));
+  return [...current].filter(t => permanent.has(t)).sort((a,b)=>a-b);
+}
 // Only explicit FDI numbers are indexed. Ranges/free text remain intact in history;
 // never infer missing teeth, diagnoses or an execution from a plan's status.
 export function dentalTeeth(site) {

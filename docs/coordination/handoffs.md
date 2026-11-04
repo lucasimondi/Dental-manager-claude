@@ -4423,3 +4423,15 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - RISKS: two near-identical legacy teals (#2EC4B6/#14B8A6) share Laguna; Studio settings list of appointment types still shows the raw saved color dot; first hour label of the range is hidden (as in Google Calendar); dark-mode anchors via --agenda-tint-anchor/--agenda-ink-anchor default to light.
 - ROLLBACK: revert the PR; no data rollback.
 - EXACT NEXT ACTION: PR checks green → PO confirms "Mergia" on this PR → squash merge, verify Vercel production.
+
+## 2026-11-04 — PATIENT-ODONTOGRAM-MULTISELECT
+- TASK/OWNER/previous agent: PATIENT-ODONTOGRAM-MULTISELECT, Claude Code; previous AGENDA-LABEL-TONE merged PR270 (602c887). Branch ccr-1dfa37b3-goptz7.
+- OBJECTIVE: faster treatment/quote entry from the patient odontogram with multiple selectable teeth and several procedures per tooth.
+- COMPLETED: PatientDentalOverview tap = select (aria-pressed), quick groups Q1–Q4/arches/all, sticky action bar (Aggiungi prestazioni / Preventivo / Deseleziona, or + Senza dente); history filtered by selection. PatientPlanEntry seeds all rows (and new rows) with the selected teeth, Una voce per dente (default) / Voce unica choice, Riepilogo per dente; totals/draft/PDF projection use expanded rows. New lib/patientToothEntry.js; patientDentalOverview.js gains dentalEntryTeeth, DENTAL_SELECTION_GROUPS, toggleDentalGroup; EntryRows optional newRowTooth.
+- FILES: src/components/PatientDentalOverview.jsx/.css, PatientPlanEntry.jsx/.css, PatientWorkspaceBoundary.jsx, AppointmentWorkspace.jsx; src/lib/patientDentalOverview.js, src/lib/patientToothEntry.js; tests/patientToothMultiSelect.test.mjs; architecture/coordination docs.
+- DATABASE/DEPLOYMENT: none. Canonical persistence and duplicate skipping unchanged. Stable 070b28fd checkpoint untouched.
+- VALIDATION: 1548/1548 Node tests; Studio build; diff check clean; synthetic Playwright flow at 375/768/1024/1440 (see architecture doc).
+- RISKS: an already recorded identical procedure on the same tooth (even if executed) is skipped by existing dedup and reported; re-treatment of the same tooth with the same name therefore needs a different description. Selection persists after save (by design, allows a second entry). No physical Android touch test. Agenda appointment flow not changed.
+- ROLLBACK: revert branch commit.
+- EXACT NEXT ACTION: PO review on preview; PR only on request; task-specific "Mergia".
+- FOLLOW-UP PO "Le radici dei superiori vanno rivolte verso alto": PatientDentalOverview ToothGlyph mirrors Q1/Q2 glyphs vertically (roots up, crown toward occlusal plane); lower arch unchanged. 1549/1549 tests; synthetic 375px screenshot checked.
