@@ -292,6 +292,9 @@ a { color: var(--pp-blu); text-decoration: none; }
 .pp-voce { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 6px 8px 6px 14px; background: var(--pp-superficie); }
 .pp-voce > span { overflow-wrap: anywhere; }
 .pp-voce-nuova input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font-size: 16px; padding: 8px 0; color: var(--pp-inchiostro); }
+.pp-voce-nuova { flex-wrap: wrap; }
+.pp-voce-colori { flex-basis: 100%; padding: 2px 0 10px; }
+.pp-voce-nuova .pp-voce-colori input { flex: 0 0 auto; padding: 0; }
 .pp-icona-bottone.pp-piccolo { width: 34px; height: 34px; box-shadow: none; background: var(--pp-sfondo); }
 .pp-spunta { cursor: pointer; }
 .pp-spunta input { width: 22px; height: 22px; accent-color: var(--pp-blu); flex-shrink: 0; }

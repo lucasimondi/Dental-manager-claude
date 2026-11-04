@@ -1,5 +1,6 @@
 import {scadenzaIdentita} from '../../lib/portafoglio.js';
 import { agendaVisible } from '../../../../shared/agenda/visibility.js';
+import { labelColor } from '../../../../shared/agenda/labelPalette.js';
 import { readAgendaLocation } from '../../../../shared/agenda/navigation.js';
 // POL-VITA-004/007 — Agenda di Poliedron Personal: è l'agenda dello studio (stessi dati).
 // Tutte le viste usano i componenti originali condivisi in shared/agenda.
@@ -113,27 +114,27 @@ export function ElencoGiorno({ giorno, dati, ctx, etichette, coloriTipi, intesta
         <div className="pp-gruppo">
           {el.scadenze.map((s) => (
             <button key={`s${s.id}`} className="pp-riga" onClick={() => ctx.apri(scadenzaIdentita(s) && s.documento_id ? {tipo:'documento',id:s.documento_id} : { tipo: 'pagamento', s })}>
-              <span className="pp-agenda-segno pp-agenda-scadenza" style={{ '--c': COLORE_SCADENZA }}>{scadenzaIdentita(s)?'↻':'€'}</span>
+              <span className="pp-agenda-segno pp-agenda-scadenza" style={{ '--c': labelColor(COLORE_SCADENZA) }}>{scadenzaIdentita(s)?'↻':'€'}</span>
               <span className="pp-riga-testo"><span className="pp-riga-titolo">{s.descrizione}</span><span className="pp-riga-meta">{s.completata ? (scadenzaIdentita(s)?'Rinnovato':'pagato') : 'scadenza'}{!scadenzaIdentita(s)&&s.importo != null ? ` · ${euro(s.importo)}` : ''}</span></span>
               <IconaFreccia size={16} />
             </button>
           ))}
           {el.tuttoIlGiorno.map((e) => (
             <button key={e.id} className="pp-riga" onClick={() => ctx.apri({ tipo: 'evento', evento: e })}>
-              <span className="pp-agenda-segno pp-evento" style={{ '--c': coloreEvento(e, etichette) }} />
+              <span className="pp-agenda-segno pp-evento" style={{ '--c': labelColor(coloreEvento(e, etichette)) }} />
               <span className="pp-riga-testo"><span className="pp-riga-titolo">{e.titolo}</span><span className="pp-riga-meta">tutto il giorno · {nomeEtichetta(e.tipo, etichette)}</span>{e.note && <span className="pp-riga-meta pp-evento-descrizione">{e.note}</span>}</span>
               <IconaFreccia size={16} />
             </button>
           ))}
           {el.aOrario.map((x) => (x.tipo === 'appuntamento' ? (
             <button key={x.id} className="pp-riga" onClick={() => ctx.apri({ tipo: 'appuntamento', a: x.dato })}>
-              <span className="pp-agenda-segno pp-appuntamento" style={{ '--c': x.dato.colore || coloriTipi[x.dato.tipo] || '#0c447c' }} />
+              <span className="pp-agenda-segno pp-appuntamento" style={{ '--c': labelColor(x.dato.colore || coloriTipi[x.dato.tipo] || '#0c447c') }} />
               <span className="pp-riga-testo"><span className="pp-riga-titolo">{x.dato.paziente || x.dato.tipo || 'Appuntamento'}</span><span className="pp-riga-meta">{ora(x.inizio)}–{ora(x.fine)}{x.dato.tipo ? ` · ${x.dato.tipo}` : ''}</span></span>
               <IconaFreccia size={16} />
             </button>
           ) : (
             <button key={x.id} className="pp-riga" onClick={() => ctx.apri({ tipo: 'evento', evento: x.dato })}>
-              <span className="pp-agenda-segno pp-evento" style={{ '--c': coloreEvento(x.dato, etichette) }} />
+              <span className="pp-agenda-segno pp-evento" style={{ '--c': labelColor(coloreEvento(x.dato, etichette)) }} />
               <span className="pp-riga-testo"><span className="pp-riga-titolo">{x.dato.titolo}</span><span className="pp-riga-meta">{ora(x.inizio)}–{ora(x.fine)} · {nomeEtichetta(x.dato.tipo, etichette)}</span>{x.dato.note && <span className="pp-riga-meta pp-evento-descrizione">{x.dato.note}</span>}</span>
               <IconaFreccia size={16} />
             </button>

@@ -1,3 +1,10 @@
+# Current task — AGENDA-RESTYLING-PALETTE (2026-11-04)
+- OWNER Claude Code; branch ccr-4ae14be0-vbbibl from master 602c887 (PR270 merged).
+- AUTHORIZATION PO asked a professional restyling of agenda label colors and grid for Studio and Personal ("all'altezza di Google calendar"), proposal first; PO answered the proposal with "Mergia" = approval of the recommended options (mixed blocks, display mapping of saved colors, swatch picker + custom, Win95 unchanged except palette). No PR existed at that time, so merge needs confirmation on the specific PR (AGENTS.md).
+- SCOPE presentation only: shared/agenda labelPalette (15 colors, display-only nearest mapping), tonal events without dashes, filled appointments with contrast-checked text, light grid (hour lines only, labels on the line, 1px borders, no today column fill), now line with dot, month marks/cards, all-day strip; Studio COLORI_DISPONIBILI = palette; Personal swatch picker in event editor and new label form; Android snapshot sends mapped color. No data, schema, RLS or behavior change; stored colors untouched.
+- STATUS implementation + local checks complete; PR opened; waiting for green checks and PO confirmation of "Mergia" on that PR.
+- VALIDATION 1545/1545 Node tests; Studio and Personal builds; agenda visual regression (Chromium, 375/390/430) pass locally. WebKit, motion/reliability and Android run in PR CI.
+
 # Current task — PATIENT-ODONTOGRAM-MULTISELECT (2026-11-04)
 - OWNER Claude Code; branch ccr-1dfa37b3-goptz7 from master 602c887 (PR270 merged).
 - AUTHORIZATION PO: "Integra flusso workflow per scheda paziente con odontogramma... inserimenti prestazione con odontogramma con denti selezionabili anche multipli", then "Selezione multipla di denti e anche più prestazioni per ogni dente".

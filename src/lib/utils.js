@@ -1,4 +1,5 @@
 import { C_LIGHT } from '../../shared/agenda/palette.js';
+import { LABEL_HEXES } from '../../shared/agenda/labelPalette.js';
 /* ── STORAGE locale (fallback) ── */
 export const LS = {
   get: (k, d) => {
@@ -561,11 +562,8 @@ export const getAppTypesDefault = (vertical) =>
   vertical === 'dentistico' ? DEF_APP_TYPES
   : APP_TYPES_PER_VERTICAL[vertical] || DEF_APP_TYPES_GENERICO;
 
-export const COLORI_DISPONIBILI = [
-  '#1A6B8A', '#2EC4B6', '#2D9E61', '#7C3AED', '#E63946', '#F4A261',
-  '#EC4899', '#DC2626', '#0EA5E9', '#84CC16', '#F59E0B', '#6366F1',
-  '#14B8A6', '#A855F7', '#64748B',
-];
+// PO 2026-11-04: stessa palette etichette dell'agenda (shared/agenda/labelPalette.js).
+export const COLORI_DISPONIBILI = [...LABEL_HEXES];
 
 // Categorie di spesa base — unica fonte di verità condivisa da Spese.jsx e
 // Costi.jsx (prima duplicata identica nei due file) e dal prompt dell'edge
