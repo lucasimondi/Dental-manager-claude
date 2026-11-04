@@ -44,5 +44,6 @@ test('cleanup prevents late network results from repopulating signed-out widget 
 });
 test('snapshot carries the agenda label color (validated #rrggbb) for both sources',()=>{
  const s=widgetSnapshot({...window,coloriTipi:{Visita:'#185FA5'},etichette:[{id:'sport',nome:'Sport',colore:'#059669'}],appuntamenti:[{id:1,data:'2026-11-03',ora:'09:00',tipo:'Visita'},{id:2,data:'2026-11-03',ora:'10:00',tipo:'Altro',colore:'#DB2777'},{id:3,data:'2026-11-03',ora:'11:00',tipo:'X',colore:'red;x'}],impegni:[{id:4,titolo:'Corsa',tipo:'sport',data_inizio:'2026-11-03',data_fine:'2026-11-03',ora_inizio:'07:00'}]});
- assert.deepEqual(s.entries.map(e=>e.color),['#059669','#185fa5','#db2777','']);
+ // PO 2026-11-04: il widget mostra il colore palette più vicino, come l'agenda.
+ assert.deepEqual(s.entries.map(e=>e.color),['#22714a','#2d6bc4','#c23d78','']);
 });

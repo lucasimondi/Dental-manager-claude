@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { getVisibleWeekDays } from './visibleDays.js';
 import './agenda.css';
 import { C_LIGHT as DEFAULT_PALETTE } from './palette.js';
+import { labelColor, labelOn } from './labelPalette.js';
 const WD_SHORT = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
 const toISO = d => d.toISOString().slice(0,10);
@@ -171,12 +172,12 @@ export function TimeGrid({ palette: C = DEFAULT_PALETTE, containerRef, isMobile,
 
             {/* Colonna ore — sticky. Compatta su mobile (oraColW), per rubare meno spazio
                 possibile alle 7 colonne giorno; deve restare identica al gutter di DayStrip. */}
-            <div className="agenda-time-gutter" style={{ width: oraColW || 46, flexShrink: 0, borderRight: `1.5px solid ${C.brd}`, background: C.bg, position: 'sticky', left: 0, zIndex: 3 }}>
+            <div className="agenda-time-gutter" style={{ width: oraColW || 46, flexShrink: 0, borderRight: `1px solid ${C.brd}`, background: C.sur, position: 'sticky', left: 0, zIndex: 3 }}>
               {slots.map((slot) => {
                 const isHour = slot.endsWith(':00');
                 return (
-                  <div key={slot} style={{ height: effectiveSlotH, borderBottom: `1px solid ${isHour ? C.brd : C.brd + '40'}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: isMobile ? 3 : 5, paddingTop: 2, boxSizing: 'border-box' }}>
-                    <span style={{ fontSize: isHour ? 9.5 : 8, color: isHour ? C.txm : C.txl, fontWeight: isHour ? 800 : 500 }}>{isHour ? slot : ''}</span>
+                  <div key={slot} style={{ height: effectiveSlotH, position: 'relative', boxSizing: 'border-box' }}>
+                    {isHour && slot !== slots[0] && <span className="agenda-hour-label" style={{ position: 'absolute', top: 0, right: isMobile ? 4 : 7, transform: 'translateY(-50%)', fontSize: 10, lineHeight: '12px', color: C.txl, fontWeight: 500, fontVariantNumeric: 'tabular-nums', background: C.sur, padding: '0 1px' }}>{slot}</span>}
                   </div>
                 );
               })}
@@ -189,19 +190,18 @@ export function TimeGrid({ palette: C = DEFAULT_PALETTE, containerRef, isMobile,
             const isToday = ds === t;
             const isWeekend = d.getDay() === 0 || d.getDay() === 6;
             return (
-              <div className="agenda-grid-day" key={di} style={{ flex: 1, position: 'relative', borderLeft: di > 0 ? `1.5px solid ${C.brd}` : 'none', background: isMobile ? C.sur : isWeekend ? C.bg : isToday ? C.priL : C.sur }}>
+              <div className="agenda-grid-day" key={di} style={{ flex: 1, position: 'relative', borderLeft: di > 0 ? `1px solid ${C.brd}` : 'none', background: isWeekend ? `color-mix(in srgb, ${C.bg} 60%, ${C.sur})` : C.sur }}>
                 {slots.map((slot) => {
                   const isHour = slot.endsWith(':00');
                   return (
-                    <div key={slot} data-agenda-date={ds} data-agenda-slot={slot} onClick={() => { if (!selectionMode) onSlot(ds, slot); }} style={{ height: effectiveSlotH, borderBottom: `1px solid ${isHour ? C.brd + '60' : C.brd + '25'}`, cursor: selectionMode ? 'default' : 'pointer', boxSizing: 'border-box' }}
+                    <div key={slot} data-agenda-date={ds} data-agenda-slot={slot} onClick={() => { if (!selectionMode) onSlot(ds, slot); }} style={{ height: effectiveSlotH, borderTop: isHour && slot !== slots[0] ? `1px solid ${C.brd}` : 'none', cursor: selectionMode ? 'default' : 'pointer', boxSizing: 'border-box' }}
                       onMouseEnter={e => e.currentTarget.style.background = C.priL + '70'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'} />
                   );
                 })}
                 {isToday && showNowLine && (
-                  <div style={{ position: 'absolute', top: nowTop, left: di === 0 ? -6 : 0, right: 0, zIndex: 5, pointerEvents: 'none', display: 'flex', alignItems: 'center' }}>
-                    {di === 0 && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#E63946', flexShrink: 0 }} />}
-                    <div style={{ flex: 1, height: 1.5, background: '#E63946' }} />
+                  <div className="agenda-now-line" style={{ position: 'absolute', top: nowTop - 1, left: 0, right: 0, height: 2, background: '#D93A2B', zIndex: 5, pointerEvents: 'none' }}>
+                    <div style={{ position: 'absolute', left: -5, top: -4, width: 10, height: 10, borderRadius: '50%', background: '#D93A2B' }} />
                   </div>
                 )}
                 {renderDay(ds, di)}
@@ -256,7 +256,7 @@ export function MonthCalendar({ palette: C = DEFAULT_PALETTE, date: vd, selDay, 
                       {dayImp.length > 0 && (
                         <div style={{ display: 'flex', gap: 1, position: 'absolute', top: 2, left: 3, right: 3, height: 3 }}>
                           {dayImp.slice(0, 3).map((imp) => (
-                            <div key={imp.id} style={{ flex: 1, height: 3, borderRadius: 2, background: imp.colore || C.pri }} />
+                            <div key={imp.id} data-agenda-tone="" style={{ flex: 1, height: 3, borderRadius: 2, background: labelColor(imp.colore, C.pri) }} />
                           ))}
                         </div>
                       )}
@@ -271,15 +271,16 @@ export function MonthCalendar({ palette: C = DEFAULT_PALETTE, date: vd, selDay, 
             </div>);
 }
 
-// PO 2026-11-03: etichette agenda (Studio e Personal) piene e leggibili, non slavate.
-// Fondo pieno tinto, bordo tratteggiato a colore pieno, barra laterale e testo scurito.
+// PO 2026-11-04: restyling agenda Studio e Personal. Impegni "tonali": fondo chiaro e testo
+// scuro dello stesso colore, barra laterale piena; niente tratteggio (sembrava provvisorio).
+// Il colore salvato è mostrato col colore palette più vicino (labelPalette.js).
 // Niente ombre: in WebKit rallentano lo scroll della griglia (tests/visual/agenda.motion.mjs).
 export function eventTone(co) {
-  const c = co || '#64748b';
+  const c = labelColor(co);
   return {
-    bg: `color-mix(in srgb, ${c} 34%, #fff)`,
+    bg: `color-mix(in srgb, ${c} 18%, var(--agenda-tint-anchor, #fff))`,
     border: c,
-    text: `color-mix(in srgb, ${c} 62%, #0f172a)`,
+    text: `color-mix(in srgb, ${c} 55%, var(--agenda-ink-anchor, #0f172a))`,
   };
 }
 
@@ -287,33 +288,34 @@ export function eventTone(co) {
 export function EventBlock({ title, top, height, co, onClick, startTime, description, aCapo = false, col = 0, totalCols = 1 }) {
   const t = eventTone(co);
   if (aCapo) return (
-    <div onClick={onClick} title={[startTime, title, description].filter(Boolean).join(' · ')} style={{ position: 'absolute', top, left: `calc(${col * 100 / totalCols}% + 1px)`, width: `calc(${100 / totalCols}% - 2px)`, height, zIndex: 1, cursor: 'pointer', background: t.bg, border: `1.5px dashed ${t.border}`, borderLeft: `3px solid ${t.border}`, borderRadius: 5, padding: '1px 2px', boxSizing: 'border-box', overflow: 'hidden', color: t.text }}>
-      {startTime && <div style={{ fontSize: 8, lineHeight: '9px', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{startTime}</div>}
-      <div style={{ fontSize: 9, lineHeight: '10px', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
+    <div onClick={onClick} title={[startTime, title, description].filter(Boolean).join(' · ')} style={{ position: 'absolute', top, left: `calc(${col * 100 / totalCols}% + 1px)`, width: `calc(${100 / totalCols}% - 2px)`, height, zIndex: 1, cursor: 'pointer', background: t.bg, borderLeft: `3px solid ${t.border}`, borderRadius: 6, padding: '2px 3px', boxSizing: 'border-box', overflow: 'hidden', color: t.text }}>
+      {startTime && <div style={{ fontSize: 9, lineHeight: '11px', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{startTime}</div>}
+      <div style={{ fontSize: 10, lineHeight: '12px', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
     </div>);
 
   const showDetails = Boolean(startTime || description);
   return (                    <div onClick={onClick} title={[startTime, title, description].filter(Boolean).join(' · ')} style={{
                       position: 'absolute', top, left: `calc(${col * 100 / totalCols}% + 2px)`, width: `calc(${100 / totalCols}% - 4px)`, height, zIndex: 1, cursor: 'pointer',
-                      background: t.bg, border: `1.5px dashed ${t.border}`, borderLeft: `3px solid ${t.border}`, borderRadius: 5,
-                      display: 'flex', ...(showDetails ? { flexDirection: 'column', gap: 1, padding: '1px 4px' } : {}), alignItems: 'flex-start', ...(showDetails ? {} : { padding: '2px 5px' }), boxSizing: 'border-box', overflow: 'hidden',
+                      background: t.bg, borderLeft: `3px solid ${t.border}`, borderRadius: 6,
+                      display: 'flex', ...(showDetails ? { flexDirection: 'column', gap: 1, padding: '2px 6px' } : {}), alignItems: 'flex-start', ...(showDetails ? {} : { padding: '2px 6px' }), boxSizing: 'border-box', overflow: 'hidden',
                     }}>
-                      <span style={{ ...(showDetails ? { width: '100%' } : {}), fontSize: 9, fontWeight: 800, color: t.text, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{startTime ? startTime + ' ' : ''}{title}</span>
-                      {height > 36 && description && <span style={{ width: '100%', fontSize: 8, lineHeight: '9px', fontWeight: 600, color: t.text, display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, whiteSpace: 'normal', overflowWrap: 'anywhere', overflow: 'hidden' }}>{description}</span>}
+                      <span style={{ ...(showDetails ? { width: '100%' } : {}), fontSize: 11, lineHeight: '14px', fontWeight: 600, color: t.text, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{startTime ? startTime + ' ' : ''}{title}</span>
+                      {height > 36 && description && <span style={{ width: '100%', fontSize: 10, lineHeight: '12px', fontWeight: 500, opacity: 0.85, color: t.text, display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, whiteSpace: 'normal', overflowWrap: 'anywhere', overflow: 'hidden' }}>{description}</span>}
                     </div>);
 }
 
 export function AppointmentBlock({ a, label, aCapo = false, co, top, height, col = 0, totalCols = 1, isBeingResized = false, isBeingMoved = false, selectionMode: selModeWA = false, selectable: isSelezionabileWA = false, selected: isSelected = false, operatore, poltrona, onMoveMouse, onMoveTouch, onOpen, onResizeMouse, onResizeTouch, selectionIndicator, readOnly = false, touchScroll = false }) {
   const widthPct = 100 / totalCols, leftPct = col * widthPct;
   const dense = aCapo && totalCols > 1;
-  return (                    <div title={[a.ora, label, a.tipo].filter(Boolean).join(' · ')} data-appointment-id={a.id} onClick={readOnly || touchScroll ? onOpen : undefined} style={{ position: 'absolute', top, left: `calc(${leftPct}% + 2px)`, width: `calc(${widthPct}% - 4px)`, height, background: co, borderRadius: 5, overflow: 'hidden', zIndex: isBeingResized || isBeingMoved ? 10 : 2, borderLeft: `3px solid color-mix(in srgb, ${co} 70%, #0f172a)`, boxShadow: isBeingResized || isBeingMoved ? '0 6px 16px rgba(0,0,0,0.35)' : '0 1px 3px rgba(0,0,0,0.15)', userSelect: 'none', opacity: isBeingMoved ? 0.85 : (selModeWA && !isSelezionabileWA ? 0.35 : 1), outline: isSelected ? '2.5px solid #25D366' : 'none', outlineOffset: -1 }}>
+  const fill = labelColor(co), ink = labelOn(fill), inkSoft = ink === '#FFFFFF' ? 'rgba(255,255,255,0.88)' : 'rgba(27,27,31,0.78)';
+  return (                    <div title={[a.ora, label, a.tipo].filter(Boolean).join(' · ')} data-appointment-id={a.id} onClick={readOnly || touchScroll ? onOpen : undefined} style={{ position: 'absolute', top, left: `calc(${leftPct}% + 2px)`, width: `calc(${widthPct}% - 4px)`, height, background: fill, borderRadius: 6, overflow: 'hidden', zIndex: isBeingResized || isBeingMoved ? 10 : 2, boxShadow: isBeingResized || isBeingMoved ? '0 6px 16px rgba(0,0,0,0.35)' : '0 0 0 1px var(--agenda-ring, #fff)', userSelect: 'none', opacity: isBeingMoved ? 0.85 : (selModeWA && !isSelezionabileWA ? 0.35 : 1), outline: isSelected ? '2.5px solid #25D366' : 'none', outlineOffset: -1 }}>
                       {/* Contenuto appuntamento — in modalità selezione tocca per selezionare/deselezionare;
                           altrimenti trascina per spostare l'orario, tocca/clicca senza muovere per aprire il menu azioni */}
                       <div
                         onMouseDown={touchScroll ? undefined : onMoveMouse}
                         onTouchStart={touchScroll ? undefined : onMoveTouch}
                         onClick={onOpen}
-                        style={{ padding: dense ? '2px 1px' : '2px 5px', cursor: selModeWA ? (isSelezionabileWA ? 'pointer' : 'not-allowed') : (readOnly ? 'pointer' : isBeingMoved ? 'grabbing' : 'grab'), paddingBottom: height > 26 ? 9 : 2, touchAction: readOnly || touchScroll ? 'pan-y' : 'none' }}
+                        style={{ padding: dense ? '2px 2px' : '3px 6px', cursor: selModeWA ? (isSelezionabileWA ? 'pointer' : 'not-allowed') : (readOnly ? 'pointer' : isBeingMoved ? 'grabbing' : 'grab'), paddingBottom: height > 26 ? 9 : 2, touchAction: readOnly || touchScroll ? 'pan-y' : 'none' }}
                       >
                         {operatore && !selModeWA && (
                           <div title={operatore.nome} style={{ position: 'absolute', top: 3, right: 3, width: 7, height: 7, borderRadius: '50%', background: operatore.colore, border: '1px solid rgba(255,255,255,0.8)' }} />
@@ -321,9 +323,9 @@ export function AppointmentBlock({ a, label, aCapo = false, co, top, height, col
                         {poltrona && !selModeWA && (
                           <div title={poltrona.nome} style={{ position: 'absolute', top: 3, right: operatore ? 13 : 3, width: 7, height: 7, borderRadius: 2, background: poltrona.colore, border: '1px solid rgba(255,255,255,0.8)' }} />
                         )}
-                        <div style={{ fontSize: dense ? 8 : 9, lineHeight: '10px', fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(() => { const [h, m] = String(a.ora || '00:00').split(':').map(Number); const fine = ((h || 0) * 60 + (m || 0) + Number(a.durata || 0)) % (24 * 60); return `${String(h || 0).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}–${String(Math.floor(fine / 60)).padStart(2, '0')}:${String(fine % 60).padStart(2, '0')}`; })()}</div>
-                        {height > 18 && <div style={{ fontSize: aCapo ? 9 : 8, lineHeight: aCapo ? '10px' : '9px', fontWeight: aCapo ? 800 : undefined, color: 'rgba(255,255,255,0.94)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label || a.tipo || 'Appuntamento'}</div>}
-                        {height > 44 && a.tipo && a.tipo !== label && <div style={{ fontSize: 8, lineHeight: '9px', color: 'rgba(255,255,255,0.7)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.tipo}</div>}
+                        <div style={{ fontSize: dense ? 8.5 : 10, lineHeight: '12px', fontWeight: 600, color: ink, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(() => { const [h, m] = String(a.ora || '00:00').split(':').map(Number); const fine = ((h || 0) * 60 + (m || 0) + Number(a.durata || 0)) % (24 * 60); return `${String(h || 0).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}–${String(Math.floor(fine / 60)).padStart(2, '0')}:${String(fine % 60).padStart(2, '0')}`; })()}</div>
+                        {height > 18 && <div style={{ fontSize: dense ? 9 : 10.5, lineHeight: '12px', fontWeight: 600, color: ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label || a.tipo || 'Appuntamento'}</div>}
+                        {height > 44 && a.tipo && a.tipo !== label && <div style={{ fontSize: 9.5, lineHeight: '12px', color: inkSoft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.tipo}</div>}
                       </div>
                       {/* Checkbox selezione — solo in modalità invio WhatsApp di massa */}
                       {selModeWA && isSelezionabileWA && (
@@ -335,8 +337,8 @@ export function AppointmentBlock({ a, label, aCapo = false, co, top, height, col
                       {height > 26 && !selModeWA && !touchScroll && <div
                         onMouseDown={touchScroll ? undefined : onResizeMouse}
                         onTouchStart={touchScroll ? undefined : onResizeTouch}
-                        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 8, cursor: 'ns-resize', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.15)', borderBottomLeftRadius: 5, borderBottomRightRadius: 5, touchAction: readOnly || touchScroll ? 'pan-y' : 'none' }}>
-                        <div style={{ width: 16, height: 2, background: 'rgba(255,255,255,0.6)', borderRadius: 1 }} />
+                        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 8, cursor: 'ns-resize', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.12)', borderBottomLeftRadius: 6, borderBottomRightRadius: 6, touchAction: readOnly || touchScroll ? 'pan-y' : 'none' }}>
+                        <div style={{ width: 16, height: 2, background: inkSoft, borderRadius: 1 }} />
                       </div>}
                     </div>);
 }
@@ -376,10 +378,11 @@ export function AgendaSwitch({ target, day, view, month, inline = false }) {
 }
 
 // Original month list card. Apps provide labels and permitted actions, never clinical services.
-export function MonthDetailCard({ palette: C = DEFAULT_PALETTE, co, title, subtitle, badge, time, duration, actions, onClick }) {
-  return <div className="pol-card--interactive" onClick={onClick} style={{ background: C.sur, borderRadius: 16, padding: 14, minWidth: 0, maxWidth: '100%', boxSizing: 'border-box', boxShadow: '0 1px 2px rgba(15,23,42,.04), 0 8px 20px rgba(15,23,42,.07)', border: `1px solid ${C.brd}`, marginBottom: 8, borderLeft: `4px solid ${co}`, cursor: 'pointer' }}>
+export function MonthDetailCard({ palette: C = DEFAULT_PALETTE, co: saved, title, subtitle, badge, time, duration, actions, onClick }) {
+  const co = labelColor(saved);
+  return <div className="pol-card--interactive" data-agenda-tone="" onClick={onClick} style={{ background: C.sur, borderRadius: 16, padding: 14, minWidth: 0, maxWidth: '100%', boxSizing: 'border-box', boxShadow: '0 1px 2px rgba(15,23,42,.04), 0 8px 20px rgba(15,23,42,.07)', border: `1px solid ${C.brd}`, marginBottom: 8, borderLeft: `4px solid ${co}`, cursor: 'pointer' }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <div data-agenda-tone="" style={{ background: eventTone(co).bg, boxShadow: `inset 0 0 0 1px ${co}`, borderRadius: 7, padding: badge ? '4px 9px' : '4px 7px', textAlign: 'center', flexShrink: 0 }}>
+      <div style={{ background: eventTone(co).bg, borderRadius: 7, padding: badge ? '4px 9px' : '4px 7px', textAlign: 'center', flexShrink: 0 }}>
         {badge ? <div style={{ fontSize: 10, fontWeight: 900, color: eventTone(co).text, textTransform: 'uppercase' }}>{badge}</div> : <><div style={{ fontSize: 13, fontWeight: 900, color: eventTone(co).text }}>{time}</div><div style={{ fontSize: 9, color: eventTone(co).text }}>{duration}m</div></>}
       </div>
       <div style={{ flex: 1 }}><div style={{ fontWeight: 700 }}>{title}</div><div style={{ fontSize: 11, color: C.txm }}>{subtitle}</div></div>

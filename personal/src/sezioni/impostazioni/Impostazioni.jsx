@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
 import { sessioneStudio, esciStudio, studioDb } from '../../lib/studio.js';
 import { slug } from '../../lib/impostazioni.js';
+import LabelSwatches from '../../../../shared/agenda/LabelSwatches.jsx';
+import { labelColor } from '../../../../shared/agenda/labelPalette.js';
 import { colore, Sezione, Gruppo, Conferma, tokenSessione } from '../../ui.jsx';
 import { statoNotifiche, attivaNotifiche, disattivaNotifiche, provaNotifica } from '../../lib/notifiche.js';
 import { IconaPiu, IconaChiudi, IconaFreccia, IconaCestino, IconaEsci } from '../../Icone.jsx';
@@ -120,7 +122,7 @@ export function PaginaImpostazioni({ ctx, email }) {
         <Gruppo>
           {etichette.map((e) => (
             <div key={e.id} className="pp-voce">
-              <span><span className="pp-punto" style={{ '--c': e.colore }} />{e.nome}</span>
+              <span><span className="pp-punto" style={{ '--c': labelColor(e.colore) }} />{e.nome}</span>
               <span className="pp-voce-azioni">
                 <input type="color" className="pp-colore pp-colore-piccolo" value={e.colore} aria-label={`Colore di ${e.nome}`}
                   onChange={(ev) => salvaImp({ ...impostazioni, etichette: etichette.map((x) => (x.id === e.id ? { ...x, colore: ev.target.value } : x)) })} />
@@ -150,12 +152,12 @@ export function PaginaImpostazioni({ ctx, email }) {
 
 function NuovaEtichetta({ onAggiungi }) {
   const [nome, setNome] = useState('');
-  const [colore, setColore] = useState('#7c3aed');
+  const [colore, setColore] = useState('#8460CC');
   return (
     <form className="pp-voce pp-voce-nuova" onSubmit={(e) => { e.preventDefault(); if (nome.trim()) { onAggiungi(nome.trim(), colore); setNome(''); } }}>
       <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nuova etichetta" />
-      <input type="color" className="pp-colore pp-colore-piccolo" value={colore} onChange={(e) => setColore(e.target.value)} aria-label="Colore" />
       <button type="submit" className="pp-chip-azione" disabled={!nome.trim()}>Aggiungi</button>
+      <LabelSwatches value={colore} onChange={setColore} size={24} className="pp-voce-colori" />
     </form>
   );
 }

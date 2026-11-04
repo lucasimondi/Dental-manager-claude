@@ -114,14 +114,15 @@ test('agenda: etichetta del mese anche a cavallo di mesi e anni; settimana da lu
   assert.equal(inizioSettimana('2026-10-18'), '2026-10-12');
 });
 
-test('agenda: Giorno e Settimana come Poliedra (colonna ore 34, 8–20 a mezz\'ore, impegni tratteggiati)', () => {
+test('agenda: Giorno e Settimana come Poliedra (colonna ore 34, 8–20 a mezz\'ore, impegni tonali)', () => {
   const src = readFileSync('personal/src/sezioni/agenda/AgendaGriglia.jsx', 'utf8');
   const css = readFileSync('personal/src/personal.css', 'utf8');
   const shared = readFileSync('shared/agenda/AgendaPresentation.jsx', 'utf8');
   assert.match(src, /oraColW=\{34\}/);
   assert.match(src, /oraInizio = 0, oraFine = 24/);
   assert.match(src, /a.cognome \|\| a.paziente \|\| '—'/);
-  assert.match(shared, /border: `1.5px dashed/);
+  // PO 2026-11-04: impegni tonali con barra laterale, niente tratteggio.
+  assert.match(shared, /borderLeft: `3px solid \$\{t\.border\}`/);
   assert.doesNotMatch(css, /\.ag-pagina/);
   assert.match(readFileSync('personal/src/sezioni/agenda/Agenda.jsx', 'utf8'), /readAgendaLocation\(\).view \|\| 'settimana'/);
 });

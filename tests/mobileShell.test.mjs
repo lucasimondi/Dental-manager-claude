@@ -72,7 +72,8 @@ test('Agenda day strip follows the grid day source and uses mobile-only today st
   assert.match(agenda, /getVisibleWeekDays\(ws, hiddenWeekdays\)/);
   assert.match(agenda, /gridTemplateColumns:\s*`repeat\(\$\{week\.length\}, minmax\(0, 1fr\)\)`/);
   assert.match(agenda, /agenda-mobile-day-number\$\{isToday \? ' is-today'/);
-  assert.match(agenda, /background:\s*isMobile \? C\.sur : isWeekend \? C\.bg : isToday \? C\.priL : C\.sur/);
+  // PO 2026-11-04: oggi è segnato solo nella striscia giorni; il weekend resta appena più scuro.
+  assert.match(agenda, /background: isWeekend \? `color-mix\(in srgb, \$\{C\.bg\} 60%, \$\{C\.sur\}\)` : C\.sur/);
   assert.match(premium, /\.agenda-mobile-day-number\.is-today\s*\{[\s\S]*border-color:\s*var\(--danger\);[\s\S]*background:\s*transparent;/);
 });
 

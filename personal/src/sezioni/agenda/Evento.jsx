@@ -1,4 +1,6 @@
 import AgendaVisibility from '../../../../shared/agenda/AgendaVisibility.jsx';
+import LabelSwatches from '../../../../shared/agenda/LabelSwatches.jsx';
+import { labelColor } from '../../../../shared/agenda/labelPalette.js';
 // Agenda — nuovo evento o modifica di un evento personale (anche ripetuto: solo questo, successivi, tutti).
 import { useState } from 'react';
 import { salvaImpegno, salvaImpegni, eliminaImpegno, impegniDellaSerie, aggiornaImpegni, eliminaImpegni } from '../../lib/studio.js';
@@ -134,7 +136,7 @@ function ModuloEvento({ iniziale, proposta, ctx, chiudi, scelta }) {
     <>
       {scelta}
       {proposta && <p className="pp-avviso" role="status">Spostato a {daIso(proposta.data_inizio).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })} dal widget: controlla e tocca Salva per confermare.</p>}
-      <div className="pp-evento-anteprima" style={{ '--c': colore }}>
+      <div className="pp-evento-anteprima" style={{ '--c': labelColor(colore) }}>
         <strong>{ev.titolo || 'Nuovo evento'}</strong>
         <span>{nomeEtichetta(ev.tipo, etichette)}{ev.tutto_il_giorno ? ' · tutto il giorno' : ' · ' + ev.ora_inizio + '–' + ev.ora_fine}</span>
       </div>
@@ -191,13 +193,13 @@ function ModuloEvento({ iniziale, proposta, ctx, chiudi, scelta }) {
       <div className="pp-campo"><span>Etichetta</span>
         <div className="pp-etichette">
           {etichette.map((e) => (
-            <button key={e.id} type="button" className={'pp-etichetta-scelta' + ((ev.tipo === e.id || ev.tipo === e.nome) ? ' attiva' : '')} style={{ '--c': e.colore }} onClick={() => setEv((x) => ({ ...x, tipo: e.id, etichetta: e.id, colore: '' }))}>{e.nome}</button>
+            <button key={e.id} type="button" className={'pp-etichetta-scelta' + ((ev.tipo === e.id || ev.tipo === e.nome) ? ' attiva' : '')} style={{ '--c': labelColor(e.colore) }} onClick={() => setEv((x) => ({ ...x, tipo: e.id, etichetta: e.id, colore: '' }))}>{e.nome}</button>
           ))}
         </div>
       </div>
-      <label className="pp-campo"><span>Colore di questo evento</span>
-        <input type="color" className="pp-colore" value={colore} onChange={(e) => cambia('colore', e.target.value)} />
-      </label>
+      <div className="pp-campo"><span>Colore di questo evento</span>
+        <LabelSwatches value={colore} onChange={(c) => cambia('colore', c)} />
+      </div>
       <label className="pp-campo"><span>Descrizione / note</span>
         <textarea rows={3} value={ev.note || ''} onChange={(e) => cambia('note', e.target.value)} placeholder="Aggiungi dettagli, luogo o persone coinvolte…" />
       </label>

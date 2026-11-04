@@ -1,12 +1,13 @@
 import { agendaVisible } from '../../../shared/agenda/visibility.js';
+import { labelColor } from '../../../shared/agenda/labelPalette.js';
 import { oggi, piuGiorni, coloreEvento, ETICHETTE_PREDEFINITE } from './agenda.js';
 import { RIF_WIDGET } from './widgetAzioni.js';
 
 // Riferimento opaco della riga per le azioni del widget (apri, rimanda); vuoto se non valido.
 const rif = id => (id == null || !RIF_WIDGET.test(String(id)) ? '' : String(id));
 
-// Colore dell'etichetta come nell'agenda (solo #rrggbb); vuoto → il widget usa il colore della fonte.
-const esadecimale = c => (/^#[0-9a-f]{6}$/i.test(String(c || '')) ? String(c).toLowerCase() : '');
+// Colore dell'etichetta come nell'agenda: colore palette più vicino (solo #rrggbb); vuoto → il widget usa il colore della fonte.
+const esadecimale = c => (/^#[0-9a-f]{6}$/i.test(String(c || '')) ? labelColor(String(c)).toLowerCase() : '');
 
 export const WIDGET_ORIGIN = 'https://personal.poliedrasoft.it';
 export function widgetSnapshot({ appuntamenti = [], impegni = [], etichette = ETICHETTE_PREDEFINITE, coloriTipi = {}, from, to, now = Date.now() }) {
