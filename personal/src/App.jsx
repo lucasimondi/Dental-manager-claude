@@ -29,7 +29,9 @@ impostaToken(tokenSessione);
 const vistaIniziale = () => { if (readAgendaLocation().requested) return 'agenda'; const v = leggiVista() === 'pagamenti' ? 'conti' : leggiVista(); return sezione(v) ? v : 'oggi'; };
 
 function Archivio({ email }) {
-  useEffect(() => startAndroidAgendaWidget({ db: studioDb, session: sessioneStudio, studioId: studioDellaSessione }), []);
+  // Il widget legge le etichette attuali (colori) al momento di ogni sincronizzazione.
+  const etichetteWidget = useRef(IMPOSTAZIONI_PREDEFINITE.etichette);
+  useEffect(() => startAndroidAgendaWidget({ db: studioDb, session: sessioneStudio, studioId: studioDellaSessione, etichette: () => etichetteWidget.current }), []);
   const [vista, setVistaStato] = useState(vistaIniziale);
   const [sotto, setSotto] = useState(null);
   const [pagine, setPagine] = useState([]);
@@ -41,6 +43,7 @@ function Archivio({ email }) {
   const [foglio, setFoglio] = useState(false);
   const [chat, setChat] = useState(CHAT_VUOTA);
   const [impostazioni, setImpostazioni] = useState(() => JSON.parse(JSON.stringify(IMPOSTAZIONI_PREDEFINITE)));
+  etichetteWidget.current = impostazioni.etichette;
   const contatore = useRef(0);
   const diarioVisitato = useRef(vista === 'diario');
   const ingressi = { fotocamera: useRef(null), libreria: useRef(null), file: useRef(null) };

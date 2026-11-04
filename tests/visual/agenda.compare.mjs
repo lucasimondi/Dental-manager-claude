@@ -65,7 +65,7 @@ for (const engine of engines) {
         await page.screenshot({ path, animations: 'disabled' }); screenshots[mode] = path;
         const metrics = await page.evaluate(() => {
           const box = selector => { const e=document.querySelector(selector); if (!e) return null; const r=e.getBoundingClientRect(); return { x:r.x,y:r.y,width:r.width,height:r.height }; };
-          return { switch:box('.agenda-app-switch'), page:box('.agenda-mobile-page'),strip:box('.agenda-mobile-floating-week-strip'),grid:box('.agenda-time-grid'),gutter:box('.agenda-time-gutter'),month:box('.agenda-mobile-month-surface'),columns:document.querySelectorAll('.agenda-grid-day').length, blocks:[...document.querySelectorAll('.agenda-time-grid [data-appointment-id]')].map(e=>{ const r=e.getBoundingClientRect(); return { id:e.dataset.appointmentId,x:r.x,y:r.y,width:r.width,height:r.height }; }) };
+          return { switch:box('.agenda-app-switch'), page:box('.agenda-mobile-page'),strip:box('.agenda-mobile-floating-week-strip'),grid:box('.agenda-time-grid'),gutter:box('.agenda-time-gutter'),month:box('.agenda-mobile-month-surface'),columns:document.querySelectorAll('.agenda-grid-day').length, tones:[...document.querySelectorAll('[data-agenda-tone]')].map(e=>{ const r=e.getBoundingClientRect(); return { x:r.x,y:r.y,width:r.width,height:r.height }; }), blocks:[...document.querySelectorAll('.agenda-time-grid [data-appointment-id]')].map(e=>{ const r=e.getBoundingClientRect(); return { id:e.dataset.appointmentId,x:r.x,y:r.y,width:r.width,height:r.height }; }) };
         });
         measurements[mode] = metrics;
         results.push({ engine,width,height,view,configured,mode,metrics,screenshot:path });
@@ -112,7 +112,7 @@ for (const engine of engines) {
         }
         await context.close();
       }
-      const geometry = m => Object.fromEntries(Object.entries(m).filter(([key])=>key !== 'switch'));
+      const geometry = m => Object.fromEntries(Object.entries(m).filter(([key])=>key !== 'switch' && key !== 'tones'));
       // PO 2026-10-21 explicitly replaces Studio mobile range/motion with Personal.
       // Month stays a strict regression comparison; timeline must now match Personal.
       if (view === 'mese') assert.deepEqual(geometry(measurements.baseline), geometry(measurements.studio), 'Studio month geometry changed');
@@ -135,6 +135,9 @@ for (const engine of engines) {
         // PR #209: the text inside each appointment block is the other authorized change
         // ("09:00–10:30" + full name). Its boxes are asserted identical to the original above.
         if (measurements.studio.blocks.some(b => x >= Math.floor(b.x) && x <= Math.ceil(b.x+b.width) && y >= Math.floor(b.y) && y <= Math.ceil(b.y+b.height))) continue;
+        // PO 2026-11-03 ("colori etichette … meno opachi, più pro"): label tone badges are the third authorized change; their box size is unchanged.
+        // 1px margin: antialiasing of the badge's rounded corners.
+        if ((measurements.studio.tones || []).some(b => x >= Math.floor(b.x)-1 && x <= Math.ceil(b.x+b.width)+1 && y >= Math.floor(b.y)-1 && y <= Math.ceil(b.y+b.height)+1)) continue;
         const i=(y*width+x)*4;
         if ([0,1,2].some(c=>Math.abs(original.data[i+c]-current.data[i+c])>2)) changed++;
       }

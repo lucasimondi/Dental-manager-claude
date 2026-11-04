@@ -4401,3 +4401,14 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - RISKS: per-run debug keys still force uninstall between versions; fixed key needs PO secret. Release follows the repository's visibility (login needed if private).
 - ROLLBACK: revert PR; delete the agenda-android release if unwanted.
 - NEXT: PR checks green → PO "Mergia" → verify publish job and give PO the direct .apk link.
+## 2026-11-03 — AGENDA-LABEL-TONE
+- TASK/OWNER/previous agent: AGENDA-LABEL-TONE, Claude Code; previous ANDROID-PERSONAL-WIDGET-ACTIONS merged PR268; rebased onto master 3bb6696 (PR269). Branch ccr-7598f13b-4r75dz.
+- OBJECTIVE: agenda label colors in Studio and Personal less washed out, more professional.
+- COMPLETED: new shared `eventTone(co)` (opaque 34% tint, full-color dashed border kept, 3px solid left accent bar, darkened text, soft shadow) for EventBlock (both layouts) and MonthDetailCard badge; all-day ribbon tint 10%→30%, border 30%→60%, colored bold text; appointment left accent now a darker shade instead of an invisible same-color alpha.
+- FILES: shared/agenda/AgendaPresentation.jsx, shared/agenda/agenda.css, tests/agendaLabelTone.test.mjs, coordination docs.
+- DATABASE/DEPLOYMENT: none. Stored label colors unchanged. Stable 070b28fd checkpoint untouched.
+- VALIDATION: 1542/1542 Node tests; Studio and Personal Vite builds; diff check clean. Visual check limited to a synthetic swatch screenshot.
+- RISKS: Win95 Personal style uses the same tones (not retro-specific); color-mix needs a modern WebView/browser (already used before in agenda.css).
+- ROLLBACK: revert the branch commit.
+- EXACT NEXT ACTION: PO visual check on preview; PR only on request; task-specific "Mergia" before merge.
+- FOLLOW-UP "Anche su android": personal/src/lib/androidAgendaWidget.js reads existing colore/tipo/etichetta columns plus app_types (nome,colore; optional, errors keep source color) and sends `color` (#rrggbb only, using the same coloreEvento/label rules as the agenda). AgendaStore validates COLOR natively, AgendaService draws a 4dp label bar, a 22% opaque tint and darker source text; QuickWidget meta text uses the label ink. App passes current labels through a ref. APK 0.3.0 (code 3). No patient data added to the snapshot. Android Gradle not runnable locally; Android CI on PR is the compile/lint gate.

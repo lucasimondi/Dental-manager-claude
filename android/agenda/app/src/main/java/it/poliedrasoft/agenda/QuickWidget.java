@@ -49,6 +49,7 @@ public final class QuickWidget extends AppWidgetProvider {
             String time = next.optString("time");
             r.setTextViewText(R.id.nextTitle, details ? next.optString("title") : studio ? "Appuntamento studio" : "Impegno personale");
             r.setTextViewText(R.id.nextMeta, when+" · "+(time.isEmpty() ? "tutto il giorno" : time)+" · "+(studio ? "Studio" : "Personale"));
+            r.setTextColor(R.id.nextMeta, AgendaStore.ink(AgendaStore.color(next)));
             String ref = next.optString("ref");
             Intent i = new Intent(c, MainActivity.class).setData(Uri.parse("poliedra-quick://"+id+"/open")).putExtra("day", day.toString()).putExtra("view", "giorno");
             if (!ref.isEmpty()) i.putExtra("widgetOpen", next.optString("source")+":"+ref);
