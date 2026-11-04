@@ -177,7 +177,7 @@ export function TimeGrid({ palette: C = DEFAULT_PALETTE, containerRef, isMobile,
                 const isHour = slot.endsWith(':00');
                 return (
                   <div key={slot} style={{ height: effectiveSlotH, position: 'relative', boxSizing: 'border-box' }}>
-                    {isHour && slot !== slots[0] && <span className="agenda-hour-label" style={{ position: 'absolute', top: 0, right: isMobile ? 4 : 7, transform: 'translateY(-50%)', fontSize: 10, lineHeight: '12px', color: C.txl, fontWeight: 500, fontVariantNumeric: 'tabular-nums', background: C.sur, padding: '0 1px' }}>{slot}</span>}
+                    {isHour && <span className="agenda-hour-label" style={{ position: 'absolute', top: slot === slots[0] ? 2 : 0, right: isMobile ? 4 : 7, transform: slot === slots[0] ? 'none' : 'translateY(-50%)', fontSize: 10, lineHeight: '12px', color: C.txl, fontWeight: 500, fontVariantNumeric: 'tabular-nums', background: C.sur, padding: '0 1px' }}>{slot}</span>}
                   </div>
                 );
               })}
