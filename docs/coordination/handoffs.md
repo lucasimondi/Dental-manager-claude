@@ -4423,3 +4423,4 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - RISKS: an already recorded identical procedure on the same tooth (even if executed) is skipped by existing dedup and reported; re-treatment of the same tooth with the same name therefore needs a different description. Selection persists after save (by design, allows a second entry). No physical Android touch test. Agenda appointment flow not changed.
 - ROLLBACK: revert branch commit.
 - EXACT NEXT ACTION: PO review on preview; PR only on request; task-specific "Mergia".
+- FOLLOW-UP PO "Le radici dei superiori vanno rivolte verso alto": PatientDentalOverview ToothGlyph mirrors Q1/Q2 glyphs vertically (roots up, crown toward occlusal plane); lower arch unchanged. 1549/1549 tests; synthetic 375px screenshot checked.

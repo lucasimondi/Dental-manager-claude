@@ -46,3 +46,8 @@ test('patient chart selects teeth instead of opening the editor and passes the s
  const entry=readFileSync(new URL('../src/components/PatientPlanEntry.jsx',import.meta.url),'utf8');
  assert.match(entry,/items: quote \? \[\] : savedRows, quoteItems: quote \? savedRows : \[\]/);
 });
+test('upper arch glyphs are mirrored so roots point up, lower arch unchanged',()=>{
+ const src=readFileSync(new URL('../src/components/PatientDentalOverview.jsx',import.meta.url),'utf8');
+ assert.match(src,/upper = Math\.floor\(tooth \/ 10\) <= 2/);
+ assert.match(src,/transform=\{upper \? 'matrix\(1 0 0 -1 0 28\)' : undefined\}/);
+});

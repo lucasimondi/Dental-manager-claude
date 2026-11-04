@@ -4,8 +4,9 @@ import { fmtD } from '../lib/utils';
 import './PatientDentalOverview.css';
 
 function ToothGlyph({ tooth }) {
-  const molar = tooth % 10 >= 6;
-  return <svg viewBox="0 0 24 28" aria-hidden="true" focusable="false"><path d={molar ? 'M5 3Q8 1 12 3Q16 1 19 3Q23 7 19 15L17 25Q16 28 14 24L12 17L10 24Q8 28 7 25L5 15Q1 7 5 3Z' : 'M7 3Q12 1 17 3Q21 6 18 13L14 25Q12 28 10 25L6 13Q3 6 7 3Z'} /><path d={molar ? 'M7 7L12 10L17 7M12 10V15' : 'M8 6Q12 8 16 6'} /></svg>;
+  const molar = tooth % 10 >= 6, upper = Math.floor(tooth / 10) <= 2;
+  // Upper teeth (Q1/Q2) are mirrored vertically: roots toward the top, crown toward the occlusal plane.
+  return <svg viewBox="0 0 24 28" aria-hidden="true" focusable="false" data-arch={upper ? 'upper' : 'lower'}><g transform={upper ? 'matrix(1 0 0 -1 0 28)' : undefined}><path d={molar ? 'M5 3Q8 1 12 3Q16 1 19 3Q23 7 19 15L17 25Q16 28 14 24L12 17L10 24Q8 28 7 25L5 15Q1 7 5 3Z' : 'M7 3Q12 1 17 3Q21 6 18 13L14 25Q12 28 10 25L6 13Q3 6 7 3Z'} /><path d={molar ? 'M7 7L12 10L17 7M12 10V15' : 'M8 6Q12 8 16 6'} /></g></svg>;
 }
 
 export default function PatientDentalOverview({ patientId, plans, onAddTreatment, onCreateQuote }) {
