@@ -273,13 +273,13 @@ export function MonthCalendar({ palette: C = DEFAULT_PALETTE, date: vd, selDay, 
 
 // PO 2026-11-03: etichette agenda (Studio e Personal) piene e leggibili, non slavate.
 // Fondo pieno tinto, bordo tratteggiato a colore pieno, barra laterale e testo scurito.
+// Niente ombre: in WebKit rallentano lo scroll della griglia (tests/visual/agenda.motion.mjs).
 export function eventTone(co) {
   const c = co || '#64748b';
   return {
     bg: `color-mix(in srgb, ${c} 34%, #fff)`,
     border: c,
     text: `color-mix(in srgb, ${c} 62%, #0f172a)`,
-    shadow: '0 1px 2px rgba(15,23,42,.10), inset 0 0 0 1px rgba(255,255,255,.35)',
   };
 }
 
@@ -287,7 +287,7 @@ export function eventTone(co) {
 export function EventBlock({ title, top, height, co, onClick, startTime, description, aCapo = false, col = 0, totalCols = 1 }) {
   const t = eventTone(co);
   if (aCapo) return (
-    <div onClick={onClick} title={[startTime, title, description].filter(Boolean).join(' · ')} style={{ position: 'absolute', top, left: `calc(${col * 100 / totalCols}% + 1px)`, width: `calc(${100 / totalCols}% - 2px)`, height, zIndex: 1, cursor: 'pointer', background: t.bg, border: `1.5px dashed ${t.border}`, borderLeft: `3px solid ${t.border}`, borderRadius: 5, boxShadow: t.shadow, padding: '1px 2px', boxSizing: 'border-box', overflow: 'hidden', color: t.text }}>
+    <div onClick={onClick} title={[startTime, title, description].filter(Boolean).join(' · ')} style={{ position: 'absolute', top, left: `calc(${col * 100 / totalCols}% + 1px)`, width: `calc(${100 / totalCols}% - 2px)`, height, zIndex: 1, cursor: 'pointer', background: t.bg, border: `1.5px dashed ${t.border}`, borderLeft: `3px solid ${t.border}`, borderRadius: 5, padding: '1px 2px', boxSizing: 'border-box', overflow: 'hidden', color: t.text }}>
       {startTime && <div style={{ fontSize: 8, lineHeight: '9px', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{startTime}</div>}
       <div style={{ fontSize: 9, lineHeight: '10px', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
     </div>);
@@ -295,7 +295,7 @@ export function EventBlock({ title, top, height, co, onClick, startTime, descrip
   const showDetails = Boolean(startTime || description);
   return (                    <div onClick={onClick} title={[startTime, title, description].filter(Boolean).join(' · ')} style={{
                       position: 'absolute', top, left: `calc(${col * 100 / totalCols}% + 2px)`, width: `calc(${100 / totalCols}% - 4px)`, height, zIndex: 1, cursor: 'pointer',
-                      background: t.bg, border: `1.5px dashed ${t.border}`, borderLeft: `3px solid ${t.border}`, borderRadius: 5, boxShadow: t.shadow,
+                      background: t.bg, border: `1.5px dashed ${t.border}`, borderLeft: `3px solid ${t.border}`, borderRadius: 5,
                       display: 'flex', ...(showDetails ? { flexDirection: 'column', gap: 1, padding: '1px 4px' } : {}), alignItems: 'flex-start', ...(showDetails ? {} : { padding: '2px 5px' }), boxSizing: 'border-box', overflow: 'hidden',
                     }}>
                       <span style={{ ...(showDetails ? { width: '100%' } : {}), fontSize: 9, fontWeight: 800, color: t.text, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{startTime ? startTime + ' ' : ''}{title}</span>
