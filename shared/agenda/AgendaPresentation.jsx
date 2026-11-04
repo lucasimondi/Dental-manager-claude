@@ -379,8 +379,8 @@ export function AgendaSwitch({ target, day, view, month, inline = false }) {
 export function MonthDetailCard({ palette: C = DEFAULT_PALETTE, co, title, subtitle, badge, time, duration, actions, onClick }) {
   return <div className="pol-card--interactive" onClick={onClick} style={{ background: C.sur, borderRadius: 16, padding: 14, minWidth: 0, maxWidth: '100%', boxSizing: 'border-box', boxShadow: '0 1px 2px rgba(15,23,42,.04), 0 8px 20px rgba(15,23,42,.07)', border: `1px solid ${C.brd}`, marginBottom: 8, borderLeft: `4px solid ${co}`, cursor: 'pointer' }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <div style={{ background: eventTone(co).bg, border: `1px solid ${co}`, borderRadius: 7, padding: badge ? '4px 9px' : '4px 7px', textAlign: 'center', flexShrink: 0 }}>
-        {badge ? <div style={{ fontSize: 10, fontWeight: 900, color: eventTone(co).text, textTransform: 'uppercase', letterSpacing: '.02em' }}>{badge}</div> : <><div style={{ fontSize: 13, fontWeight: 900, color: eventTone(co).text }}>{time}</div><div style={{ fontSize: 9, color: eventTone(co).text }}>{duration}m</div></>}
+      <div data-agenda-tone="" style={{ background: eventTone(co).bg, boxShadow: `inset 0 0 0 1px ${co}`, borderRadius: 7, padding: badge ? '4px 9px' : '4px 7px', textAlign: 'center', flexShrink: 0 }}>
+        {badge ? <div style={{ fontSize: 10, fontWeight: 900, color: eventTone(co).text, textTransform: 'uppercase' }}>{badge}</div> : <><div style={{ fontSize: 13, fontWeight: 900, color: eventTone(co).text }}>{time}</div><div style={{ fontSize: 9, color: eventTone(co).text }}>{duration}m</div></>}
       </div>
       <div style={{ flex: 1 }}><div style={{ fontWeight: 700 }}>{title}</div><div style={{ fontSize: 11, color: C.txm }}>{subtitle}</div></div>
       {actions && <div style={{ display: 'flex', gap: 5 }}>{actions}</div>}
