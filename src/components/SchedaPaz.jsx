@@ -9,6 +9,7 @@ import PianoDrillDown from './PianoDrillDown.jsx';
 import PdfView from './PdfView.jsx';
 import PatientEntryActions from './PatientEntryActions.jsx';
 import PatientDentalOverview from './PatientDentalOverview.jsx';
+import { markRowsDone, applyVoceChanges, undoVoceChanges } from '../lib/patientToothEntry.js';
 import IncassoModal from './IncassoModal.jsx';
 import PazienteFormModal from './PazienteFormModal.jsx';
 
@@ -288,7 +289,9 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
       </header>
       {paz.telefono && <div className="patient-clean-contacts"><a href={`tel:+39${paz.telefono.replace(/\D/g, '')}`} aria-label="Chiama"><Ic n="ph" s={14} c="currentColor" />{paz.telefono}</a>{waAbilitato(features) && <a href={waUrl(paz.telefono)} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><Ic n="wa" s={15} c="currentColor" />WhatsApp</a>}</div>}
 
-      {isDentistico && tab === 'info' ? <PatientDentalOverview patientId={paz.id} plans={patPlans} onAddTreatment={onAddTreatment} onCreateQuote={onCreateQuote} /> : <PatientEntryActions onTreatment={onAddTreatment} onQuote={onCreateQuote} />}
+      {isDentistico && tab === 'info' ? <PatientDentalOverview patientId={paz.id} plans={patPlans} onAddTreatment={onAddTreatment} onCreateQuote={onCreateQuote}
+        onMarkDone={typeof setPlans === 'function' ? targets => { const changes = markRowsDone(patPlans, targets); if (changes.length) setPlans(current => applyVoceChanges(current, changes)); return changes; } : undefined}
+        onUndoDone={typeof setPlans === 'function' ? changes => setPlans(current => undoVoceChanges(current, changes)) : undefined} /> : <PatientEntryActions onTreatment={onAddTreatment} onQuote={onCreateQuote} />}
 
       {onNuovoAppuntamento && <button type="button" className="patient-clean-appointment" onClick={() => onNuovoAppuntamento(paz.id)}>Fissa prossimo nell’agenda</button>}
 

@@ -13,7 +13,8 @@ import { preparePatientEntry } from '../lib/appointmentEntry.js';
 import { archivePreventivo, quoteRequestId } from '../lib/preventivi.js';
 import { supabase } from '../lib/supabase.js';
 import { dentalEntryTeeth } from '../lib/patientDentalOverview.js';
-import { expandRowsPerTooth, isMultiToothRow, rowsByTooth, toothList } from '../lib/patientToothEntry.js';
+import { toothList } from '../lib/patientToothEntry.js';
+import ToothEntryOptions, { savedEntryRows } from './ToothEntryOptions.jsx';
 
 const blankRow = () => ({ description: '', price: '', tooth: '' });
 export default function PatientPlanEntry({ patient, mode, initialTooth = '', plans = [], pricelist = [], si, onSave, onClose, documentClient = supabase, sourcePlan }) {
@@ -38,12 +39,10 @@ export default function PatientPlanEntry({ patient, mode, initialTooth = '', pla
   const previousRows = useRef(rows.length), viewportMounted = useRef(false);
   const onCloseRef = useRef(onClose); onCloseRef.current = onClose;
   // Multi-tooth rows become one canonical row per tooth unless the operator asks for a single combined row.
-  const [perTooth, setPerTooth] = useState(true);
-  const multiTooth = rows.some(row => row.description.trim() && isMultiToothRow(row));
-  const savedRows = perTooth ? expandRowsPerTooth(rows) : rows;
+  const [perTooth, setPerTooth] = useState(true), [markDone, setMarkDone] = useState(false);
+  const savedRows = savedEntryRows(rows, perTooth);
   const total = totaliPreventivo({ voci: savedRows.map(row => ({ prezzo: row.price })), sconto: discount, scontoTipo: discountType }).totale;
   const rowCount = savedRows.filter(row => row.description.trim()).length;
-  const toothSummary = multiTooth && perTooth ? rowsByTooth(savedRows) : [];
   const close = () => { if (!locked.current && !documentLock.current && !deliveryLock.current) onCloseRef.current(); };
   const revealInput = () => {
     const input = inputRef.current, scroller = scrollRef.current;
@@ -99,7 +98,7 @@ export default function PatientPlanEntry({ patient, mode, initialTooth = '', pla
     if (!rowCount) { setError('Inserisci almeno una prestazione.'); return; }
     locked.current = true; setSaving(true); setError('');
     try {
-      const draft = { items: quote ? [] : savedRows, quoteItems: quote ? savedRows : [], planId, planTitle: title, quoteTitle: title, amount: '', quoteDiscount: discount, quoteDiscountType: discountType, implantPreset: !si?.vertical || si.vertical === 'dentistico' };
+      const draft = { items: quote ? [] : savedRows, quoteItems: quote ? savedRows : [], planId, planTitle: title, quoteTitle: title, markDone: !quote && markDone, amount: '', quoteDiscount: discount, quoteDiscountType: discountType, implantPreset: !si?.vertical || si.vertical === 'dentistico' };
       let result;
       if (quote && sourceId) {
         const source = sourcePlans.find(p=>String(p.id)===sourceId && String(p.pazienteId)===String(patient.id));
@@ -159,7 +158,7 @@ export default function PatientPlanEntry({ patient, mode, initialTooth = '', pla
         <button type="button" className="patient-entry-close" aria-label="Chiudi" disabled={saving} onClick={close}><Ic n="x" s={20} c="currentColor" /></button>
       </header>
       <div className="patient-entry-scroll" ref={scrollRef} onFocusCapture={event => { if (event.target.matches('input,textarea')) { inputRef.current = event.target; setTyping(true); } }} onBlurCapture={event => { if (event.target === inputRef.current && !event.relatedTarget?.matches('input,textarea')) setTyping(false); }}>
-        {success ? <div className="patient-entry-success" role="status"><div className="patient-entry-success-icon"><Ic n="ok" s={28} c="currentColor" /></div><span>OPERAZIONE COMPLETATA</span><h3>{quote ? archivedDone ? 'Preventivo archiviato' : 'Voci salvate · prepara il documento' : 'Prestazioni salvate'}</h3><p>{success.skipped ? `${success.skipped} prestazioni erano già presenti nel piano e non sono state duplicate.` : success.documentOnly ? 'Documento preparato dal piano. Il piano clinico non è stato modificato.' : 'Le voci sono ora nella scheda del paziente.'}</p>
+        {success ? <div className="patient-entry-success" role="status"><div className="patient-entry-success-icon"><Ic n="ok" s={28} c="currentColor" /></div><span>OPERAZIONE COMPLETATA</span><h3>{quote ? archivedDone ? 'Preventivo archiviato' : 'Voci salvate · prepara il documento' : success.draft?.markDone ? 'Prestazioni eseguite registrate' : 'Prestazioni salvate'}</h3><p>{success.completedExisting ? `${success.completedExisting} ${success.completedExisting === 1 ? 'prestazione già in piano è stata segnata' : 'prestazioni già in piano sono state segnate'} come eseguita oggi${success.skipped ? `; ${success.skipped} già presenti non duplicate` : ''}.` : success.skipped ? `${success.skipped} prestazioni erano già presenti nel piano e non sono state duplicate.` : success.documentOnly ? 'Documento preparato dal piano. Il piano clinico non è stato modificato.' : 'Le voci sono ora nella scheda del paziente.'}</p>
           {documentPlan && <>
             {success.savedPlans.length > 1 && <label className="patient-entry-option-field">Piano per il preventivo<select value={pdfPlanId} onChange={e=>setPdfPlanId(e.target.value)}>{success.savedPlans.map(p=><option key={p.id} value={p.id}>{p.titolo}</option>)}</select></label>}
             {!quote && scopeChoices}
@@ -173,11 +172,7 @@ export default function PatientPlanEntry({ patient, mode, initialTooth = '', pla
           <fieldset className="patient-entry-fields" disabled={saving || uncertain}>
             {quote && sourcePlans.some(p=>String(p.pazienteId)===String(patient.id)) && <label className="patient-entry-option-field">Prestazioni da preventivare<select value={sourceId} onChange={e=>selectSource(e.target.value)}><option value="" disabled={!onSave}>Nuovo preventivo · voci libere</option>{sourcePlans.filter(p=>String(p.pazienteId)===String(patient.id)).map(p=><option key={p.id} value={p.id}>{p.titolo} · {p.data}</option>)}</select><small>Dal piano: rimuovi le voci da escludere. Si salva un documento, senza duplicare il piano.</small></label>}
             <EntryRows rows={rows} onChange={setRows} pricelist={pricelist} dentist={!si?.vertical || si.vertical === 'dentistico'} name="Prestazione" allowDuplicate={false} compactTeeth collapseTeeth={fromChart || quote} newRowTooth={seedTeeth} />
-            {multiTooth && <fieldset className="patient-tooth-mode"><legend>Più denti nella stessa riga</legend><div>
-              <label className={perTooth ? 'is-selected' : ''}><input type="radio" name="patient-tooth-mode" checked={perTooth} onChange={()=>setPerTooth(true)} /><span>Una voce per dente<small>Prezzo per ogni dente, eseguibile dente per dente</small></span></label>
-              <label className={!perTooth ? 'is-selected' : ''}><input type="radio" name="patient-tooth-mode" checked={!perTooth} onChange={()=>setPerTooth(false)} /><span>Voce unica<small>Un solo prezzo per tutti i denti (es. ponte, igiene)</small></span></label>
-            </div></fieldset>}
-            {toothSummary.length > 0 && <div className="patient-tooth-summary" aria-label="Riepilogo per dente"><strong>Riepilogo per dente</strong><ul>{toothSummary.map(group=><li key={group.site}><span>{group.site}</span><div>{group.items.map((item,i)=><p key={i}>{item.description}<b>{euroIt(Number(item.price) || 0)}</b></p>)}</div></li>)}</ul></div>}
+            <ToothEntryOptions rows={rows} perTooth={perTooth} onPerTooth={setPerTooth} markDone={markDone} onMarkDone={quote || sourceId ? undefined : setMarkDone} />
             {!quote && scopeChoices}
             {quote && <div className="quote-discount"><label>Sconto sul totale<input aria-label="Sconto sul totale" type="number" min="0" max={discountType === 'pct' ? 100 : undefined} inputMode="decimal" value={discount} placeholder="0" onChange={e=>setDiscount(e.target.value)} /></label><label>Tipo sconto<select value={discountType} onChange={e=>setDiscountType(e.target.value)}><option value="pct">%</option><option value="eur">€</option></select></label></div>}
             <details className="patient-entry-options" open={!quote && eligible.length > 1 && !planId}><summary>{quote ? 'Nome del preventivo' : 'Piano di destinazione'}</summary><div>
@@ -192,7 +187,7 @@ export default function PatientPlanEntry({ patient, mode, initialTooth = '', pla
           {(quote || success) && <QuoteDeliveryActions key={`${quoteScope}:${pdfPlanId && success?.savedPlans.length > 1 ? pdfPlanId : ''}`} disabled={saving || uncertain} prepare={prepareDocument} onPreview={setPdf} onBusyChange={busy=>{deliveryLock.current=busy;}} />}
           <div className="patient-entry-footer-actions">
             {typing && !success && <button type="button" className="patient-entry-keyboard" onMouseDown={e => e.preventDefault()} onClick={() => { inputRef.current?.blur(); setTyping(false); }}>Nascondi tastiera</button>}
-            <button type="button" className="patient-entry-save" disabled={saving || uncertain} onClick={success ? close : quote ? () => prepareDocument().catch(e=>setError(e.message)) : () => save()}>{saving ? 'Salvataggio…' : success ? 'Torna al paziente' : quote ? 'Salva senza inviare' : 'Salva prestazioni'}<Ic n={success ? 'back' : 'ok'} s={17} c="currentColor" /></button>
+            <button type="button" className="patient-entry-save" disabled={saving || uncertain} onClick={success ? close : quote ? () => prepareDocument().catch(e=>setError(e.message)) : () => save()}>{saving ? 'Salvataggio…' : success ? 'Torna al paziente' : quote ? 'Salva senza inviare' : markDone ? 'Salva come eseguite' : 'Salva prestazioni'}<Ic n={success ? 'back' : 'ok'} s={17} c="currentColor" /></button>
           </div>
         </footer>
       </div>

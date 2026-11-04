@@ -1,3 +1,10 @@
+# Current task — PATIENT-TOOTH-DONE (2026-11-04)
+- OWNER Claude Code; branch ccr-1dfa37b3-goptz7 continued from master f1069c4 (PR272 merged; old branch head merged without history rewrite).
+- AUTHORIZATION PO: "Si fai" (re-treatment when previous is executed; agenda multi-tooth) and "Inoltre deve essere facile dare eseguito".
+- SCOPE entry/presentation: Eseguite oggi in patient editor and agenda form, one-tap ✓ Eseguita with undo on the legacy dental landing, re-treatment rule for earlier-dated executions, agenda per-tooth expansion. No schema/RLS/tenancy/financial formula/deployment change.
+- STATUS implementation + local checks complete; branch pushed. Dedicated PR and task-specific "Mergia" required before merge.
+- Previous operational record preserved below.
+
 # Current task — PATIENT-ODONTOGRAM-MULTISELECT (2026-11-04)
 - OWNER Claude Code; branch ccr-1dfa37b3-goptz7 from master 602c887 (PR270 merged).
 - AUTHORIZATION PO: "Integra flusso workflow per scheda paziente con odontogramma... inserimenti prestazione con odontogramma con denti selezionabili anche multipli", then "Selezione multipla di denti e anche più prestazioni per ogni dente".

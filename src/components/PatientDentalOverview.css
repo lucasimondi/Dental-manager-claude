@@ -138,3 +138,12 @@
 .patient-record-legacy[data-dental-home="true"] .patient-clean-edit span { display:none; }
 
 .patient-dental-orientation { margin:10px 0 0; color:#6c8597; font-size:9px; text-align:center; }
+/* One-tap "eseguita" on pending rows, with undo. */
+.patient-dental-home .patient-dental-done-button { flex:none; min-height:38px; padding:7px 11px; border:1px solid #9fd3bd; border-radius:10px; background:#effaf5; color:#1d6b4f; font:inherit; font-size:12px; font-weight:700; cursor:pointer; touch-action:manipulation; }
+.patient-dental-home .patient-dental-done-button:active { background:#d9f2e6; }
+.patient-dental-done-all { width:100%; min-height:42px; margin:10px 0 2px; border:1px dashed #8fcbb1; border-radius:11px; background:#f5fcf8; color:#1d6b4f; font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
+.patient-dental-done-notice { display:flex; align-items:center; gap:10px; margin:10px 0 0; padding:9px 10px 9px 12px; border-radius:11px; background:#e9f7f0; color:#1d6b4f; font-size:12px; font-weight:600; }
+.patient-dental-done-notice.is-error { background:#fff3e6; color:#8a5a14; }
+.patient-dental-done-notice span { flex:1; min-width:0; }
+.patient-dental-done-notice button { border:0; background:none; color:inherit; font:inherit; font-weight:700; text-decoration:underline; cursor:pointer; padding:4px; }
+.patient-dental-done-notice button[aria-label] { text-decoration:none; font-size:16px; }

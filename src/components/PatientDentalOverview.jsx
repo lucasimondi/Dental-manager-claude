@@ -9,10 +9,15 @@ function ToothGlyph({ tooth }) {
   return <svg viewBox="0 0 24 28" aria-hidden="true" focusable="false" data-arch={upper ? 'upper' : 'lower'}><g transform={upper ? 'matrix(1 0 0 -1 0 28)' : undefined}><path d={molar ? 'M5 3Q8 1 12 3Q16 1 19 3Q23 7 19 15L17 25Q16 28 14 24L12 17L10 24Q8 28 7 25L5 15Q1 7 5 3Z' : 'M7 3Q12 1 17 3Q21 6 18 13L14 25Q12 28 10 25L6 13Q3 6 7 3Z'} /><path d={molar ? 'M7 7L12 10L17 7M12 10V15' : 'M8 6Q12 8 16 6'} /></g></svg>;
 }
 
-export default function PatientDentalOverview({ patientId, plans, onAddTreatment, onCreateQuote }) {
+export default function PatientDentalOverview({ patientId, plans, onAddTreatment, onCreateQuote, onMarkDone, onUndoDone }) {
   const model = useMemo(()=>patientDentalOverview(plans,patientId),[plans,patientId]);
   const [filter,setFilter] = useState('done'), [selected,setSelected] = useState([]), [expanded,setExpanded] = useState(false);
-  const canAdd = typeof onAddTreatment === 'function', canQuote = typeof onCreateQuote === 'function';
+  const canAdd = typeof onAddTreatment === 'function', canQuote = typeof onCreateQuote === 'function', canDone = typeof onMarkDone === 'function';
+  const [doneNotice,setDoneNotice] = useState(null);
+  const markDone = list => {
+    const changes = onMarkDone(list.map(r=>({planId:r.planId,itemIndex:r.itemIndex,prestazione:r.prestazione,dente:r.dente || ''})));
+    setDoneNotice(Array.isArray(changes) && changes.length ? {changes,count:changes.length} : {changes:[],count:0});
+  };
   const toggle = d => { setExpanded(false); setSelected(s => s.includes(d) ? s.filter(t=>t!==d) : [...s,d].sort((a,b)=>a-b)); };
   const open = handler => handler?.({tooth:dentalEntryTeeth(selected)});
   const rows = model[filter].filter(row=>!selected.length || row.teeth.some(t=>selected.includes(t)));
@@ -40,7 +45,9 @@ export default function PatientDentalOverview({ patientId, plans, onAddTreatment
       </div>}
     </div><div className="patient-dental-history">
       <div className="patient-dental-history-head"><div role="group" aria-label="Mostra cure"><button type="button" aria-pressed={filter === 'done'} onClick={()=>{setFilter('done');setExpanded(false);}}>Eseguite <b>{model.done.length}</b></button><button type="button" aria-pressed={filter === 'pending'} onClick={()=>{setFilter('pending');setExpanded(false);}}>Da eseguire <b>{model.pending.length}</b></button></div>{!!selected.length && <button type="button" className="patient-dental-reset" onClick={()=>{setSelected([]);setExpanded(false);}}>{selected.length === 1 ? `Dente ${selected[0]}` : `${selected.length} denti`} ×</button>}</div>
-      {!rows.length ? <p className="patient-dental-empty">{filter === 'done' ? 'Nessuna cura eseguita registrata' : 'Nessuna prestazione da eseguire'}{selected.length === 1 ? ` sul ${selected[0]}` : selected.length ? ' sui denti selezionati' : ''}.</p> : <ul>{(expanded ? rows : rows.slice(0,3)).map(row=><li key={row.key}><span className={`patient-dental-site ${filter}`}>{row.site}</span><div><strong>{row.name}</strong><small>{filter === 'done' ? row.dataEsec ? fmtD(row.dataEsec) : 'Data non registrata' : row.status} · {row.planTitle}</small></div><span className={`patient-dental-status ${filter}`} aria-label={row.status}>{filter === 'done' ? '✓' : '○'}</span></li>)}</ul>}
+      {doneNotice && <div className={`patient-dental-done-notice${doneNotice.count ? '' : ' is-error'}`} role="status">{doneNotice.count ? <><span>✓ {doneNotice.count === 1 ? '1 prestazione segnata eseguita oggi' : `${doneNotice.count} prestazioni segnate eseguite oggi`}</span>{typeof onUndoDone === 'function' && <button type="button" onClick={()=>{onUndoDone(doneNotice.changes);setDoneNotice(null);}}>Annulla</button>}</> : <span>Prestazione cambiata nel frattempo: riapri la scheda e riprova.</span>}<button type="button" aria-label="Chiudi avviso" onClick={()=>setDoneNotice(null)}>×</button></div>}
+      {canDone && filter === 'pending' && selected.length > 0 && rows.length > 1 && <button type="button" className="patient-dental-done-all" onClick={()=>markDone(rows)}>✓ Segna eseguite tutte ({rows.length}) sui denti selezionati</button>}
+      {!rows.length ? <p className="patient-dental-empty">{filter === 'done' ? 'Nessuna cura eseguita registrata' : 'Nessuna prestazione da eseguire'}{selected.length === 1 ? ` sul ${selected[0]}` : selected.length ? ' sui denti selezionati' : ''}.</p> : <ul>{(expanded ? rows : rows.slice(0,3)).map(row=><li key={row.key}><span className={`patient-dental-site ${filter}`}>{row.site}</span><div><strong>{row.name}</strong><small>{filter === 'done' ? row.dataEsec ? fmtD(row.dataEsec) : 'Data non registrata' : row.status} · {row.planTitle}</small></div>{filter === 'pending' && canDone ? <button type="button" className="patient-dental-done-button" aria-label={`Segna eseguita oggi: ${row.name}${row.dente ? ` dente ${row.dente}` : ''}`} onClick={()=>markDone([row])}>✓ Eseguita</button> : <span className={`patient-dental-status ${filter}`} aria-label={row.status}>{filter === 'done' ? '✓' : '○'}</span>}</li>)}</ul>}
       {rows.length > 3 && <button type="button" className="patient-dental-more" aria-expanded={expanded} onClick={()=>setExpanded(!expanded)}>{expanded ? 'Mostra meno' : `Mostra tutte (${rows.length})`}</button>}
     </div></div>
   </section>;

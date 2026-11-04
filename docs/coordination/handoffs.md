@@ -4424,3 +4424,14 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - ROLLBACK: revert branch commit.
 - EXACT NEXT ACTION: PO review on preview; PR only on request; task-specific "Mergia".
 - FOLLOW-UP PO "Le radici dei superiori vanno rivolte verso alto": PatientDentalOverview ToothGlyph mirrors Q1/Q2 glyphs vertically (roots up, crown toward occlusal plane); lower arch unchanged. 1549/1549 tests; synthetic 375px screenshot checked.
+
+## 2026-11-04 — PATIENT-TOOTH-DONE
+- TASK/OWNER/previous agent: PATIENT-TOOTH-DONE, Claude Code; previous PATIENT-ODONTOGRAM-MULTISELECT merged PR272 (f1069c4), Vercel production deployment success. Branch ccr-1dfa37b3-goptz7 from master; the already-merged old head is merged in (no force push).
+- OBJECTIVE: easy "eseguita", re-treatment of an executed tooth, multi-tooth in agenda.
+- COMPLETED: see architecture section "Easy eseguita, re-treatment and agenda multi-tooth".
+- FILES: src/lib/appointmentEntry.js, src/lib/patientToothEntry.js, src/components/ToothEntryOptions.jsx/.css (new), PatientPlanEntry.jsx/.css, AppointmentWorkspace.jsx, PatientDentalOverview.jsx/.css, SchedaPaz.jsx; tests/patientToothDone.test.mjs; docs.
+- DATABASE/DEPLOYMENT: none. Stable 070b28fd untouched.
+- VALIDATION: 1555/1555 Node tests; Studio build; synthetic Playwright checks (patient one-tap done/undo, Eseguite oggi re-treatment, agenda per-tooth summary).
+- RISKS: marking executed feeds existing production/"da incassare" figures exactly as PianoDrillDown does. Undo is in-session only. Re-treatment allowed only for earlier-dated executions; undated executed history still blocks. V2 chart has no one-tap button (capability disabled by design). iphone-agenda CI must confirm the agenda form.
+- ROLLBACK: revert the PR; executed marks already saved remain normal data editable in Piani.
+- EXACT NEXT ACTION: PR, green checks, PO "Mergia".

@@ -1,7 +1,7 @@
 import { buildNewPlan, buildTreatmentItem, sameProcedureAndTooth } from './domain/treatmentPlanService.js';
 import { planAssignmentForPatient } from './domain/incassiActions.js';
 import { normalizza } from './ricercaPazienti.js';
-import { today } from './utils.js';
+import { today, rilevaRichiamo, addMesi } from './utils.js';
 import { expandImplantQuotes } from './domain/implantQuote.js';
 
 const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(k => [k, canonical(value[k])])) : value;
@@ -13,7 +13,16 @@ export function entryItems(rows = []) {
     return buildTreatmentItem({ procedureRef: { text: row.description.trim() }, tooth: { state: row.tooth?.trim() ? 'known' : 'unknown', value: row.tooth?.trim() }, price });
   });
 }
-export function preparePatientTreatment({ patient, plans, items, planId, title }) {
+// Same effect as PianoDrillDown's "Segna eseguita": stamp today and suggest the
+// usual recall only when the item has none. Idempotent on completed items.
+export function completeTreatmentVoce(voce, date = today()) {
+  if (!voce || voce.eseguita === true) return voce;
+  const done = { ...voce, eseguita: true, dataEsec: date };
+  if (done.richiamoData) return done;
+  const recall = rilevaRichiamo(done.prestazione);
+  return recall ? { ...done, richiamoTipo: recall.tipo, richiamoData: addMesi(date, recall.mesi) } : done;
+}
+export function preparePatientTreatment({ patient, plans, items, planId, title, markDone = false }) {
   const eligible = plans.filter(p => String(p.pazienteId) === String(patient.id) && ['attivo','accettato'].includes(p.stato));
   if (!items.length) return null;
   if (!planId || planId === 'auto') {
@@ -22,16 +31,28 @@ export function preparePatientTreatment({ patient, plans, items, planId, title }
   }
   const plan = planId === 'new' ? null : eligible.find(p=>String(p.id) === String(planId));
   if (planId !== 'new' && !plan) throw new Error('Scegli il piano per le prestazioni.');
-  const existing = Array.isArray(plan?.voci) ? plan.voci : [], added = [];
+  const existing = Array.isArray(plan?.voci) ? [...plan.voci] : [], added = [], handled = [];
   const normalize = value => normalizza(value).replace(/\s+/g,' ');
+  let completedExisting = 0;
   for (const item of items) {
     const tooth = {state:item.dente ? 'known' : 'unknown',value:String(item.dente || '')};
-    const duplicate = [...existing,...added].some(v=>sameProcedureAndTooth({...v,prestazione:normalize(v.prestazione)},normalize(item.prestazione),tooth));
-    if (!duplicate) added.push(item);
+    const same = v => sameProcedureAndTooth({...v,prestazione:normalize(v.prestazione)},normalize(item.prestazione),tooth);
+    if (handled.some(same)) continue; // repeated inside the same submission
+    handled.push(item);
+    // An item executed on an earlier recorded date is history: the same procedure on the same tooth may be
+    // recorded again (re-treatment). Executed today or without a date stays a duplicate (never double production).
+    // A still-pending identical item is never duplicated; with markDone it is completed in place.
+    const history = v => v?.eseguita === true && /^\d{4}-\d{2}-\d{2}/.test(String(v.dataEsec || '')) && String(v.dataEsec).slice(0,10) < today();
+    const blocking = existing.filter(v => v && !history(v) && same(v));
+    const pending = existing.findIndex(v => v && v.eseguita !== true && same(v));
+    if (pending >= 0) { if (markDone) { existing[pending] = completeTreatmentVoce(existing[pending]); completedExisting++; } continue; }
+    if (blocking.length) continue;
+    added.push(markDone ? completeTreatmentVoce(item) : item);
   }
-  const skipped = items.length - added.length;
-  if (!plan) return {kind:'insert',plan:buildNewPlan({pazienteId:patient.id,titolo:title?.trim() || 'Prestazioni occasionali',voci:added}),skipped};
-  return {kind:added.length ? 'update' : 'existing',plan:added.length ? {...plan,voci:[...existing,...added]} : plan,skipped};
+  const skipped = items.length - added.length - completedExisting;
+  if (!plan) return {kind:'insert',plan:buildNewPlan({pazienteId:patient.id,titolo:title?.trim() || 'Prestazioni occasionali',voci:added}),skipped,completedExisting};
+  const changed = added.length || completedExisting;
+  return {kind:changed ? 'update' : 'existing',plan:changed ? {...plan,voci:[...existing,...added]} : plan,skipped,completedExisting};
 }
 
 // Booking adds a plan item independently of the existing appointment sync adapter.
@@ -64,7 +85,7 @@ export function preparePatientEntry({ patient, plans, draft }) {
   const items = entryItems(expanded.items), quoteItems = entryItems(expanded.quoteItems);
   const patientPlans = plans.filter(p => String(p.pazienteId) === String(patient.id));
   let treatment = null, quote = null;
-  treatment = preparePatientTreatment({patient,plans:patientPlans,items,planId:draft.planId,title:draft.planTitle});
+  treatment = preparePatientTreatment({patient,plans:patientPlans,items,planId:draft.planId,title:draft.planTitle,markDone:draft.markDone === true});
   if (quoteItems.length) {
     const discount = Number(draft.quoteDiscount || 0), type = draft.quoteDiscountType || 'pct';
     if (!Number.isFinite(discount) || discount < 0 || !['pct','eur'].includes(type) || (type === 'pct' && discount > 100)) throw new Error('Inserisci uno sconto valido (0–100%).');
@@ -143,7 +164,7 @@ async function persistEntry({ db, patient, appointment, draft, onApplied }) {
       if (!saved?.id || String(saved.pazienteId) !== String(patient.id)) throw new Error('Incasso non confermato.');
       completed++; onApplied('payment', saved);
     }
-    return { completed, treatmentId, quoteId, savedPlans, skipped:prepared.treatment?.skipped || 0 };
+    return { completed, treatmentId, quoteId, savedPlans, skipped:prepared.treatment?.skipped || 0, completedExisting:prepared.treatment?.completedExisting || 0 };
   } catch (cause) {
     const error = new Error(cause.message || 'Salvataggio non riuscito.');
     error.writesStarted = writesStarted; error.completed = completed; throw error;
