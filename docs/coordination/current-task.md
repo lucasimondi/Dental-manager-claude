@@ -1,3 +1,11 @@
+# Current task — PATIENT-ODONTOGRAM-MULTISELECT (2026-11-04)
+- OWNER Claude Code; branch ccr-1dfa37b3-goptz7 from master 602c887 (PR270 merged).
+- AUTHORIZATION PO: "Integra flusso workflow per scheda paziente con odontogramma... inserimenti prestazione con odontogramma con denti selezionabili anche multipli", then "Selezione multipla di denti e anche più prestazioni per ogni dente".
+- SCOPE presentation/entry flow only: landing odontogram multi-selection with quick groups and action bar; editor applies several procedures to every selected tooth, per-tooth expansion (default) or single combined row. No schema, RLS, tenancy, financial formula or deployment change.
+- STATUS implementation + local checks complete; branch pushed, no PR (not requested). Task-specific "Mergia" required before merge.
+- VALIDATION see handoff 2026-11-04.
+- Previous operational record preserved below.
+
 # Current task — AGENDA-LABEL-TONE (2026-11-03)
 - OWNER Claude Code; branch ccr-7598f13b-4r75dz from master 3bb6696 (PR269 merged).
 - AUTHORIZATION PO: "I colori etichette di agenda sia personale che poliedra devono essere anche meno opachi, rendila ancora più pro".

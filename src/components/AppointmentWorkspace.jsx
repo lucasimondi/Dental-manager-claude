@@ -26,7 +26,7 @@ function ImplantPreview({ row }) {
   </div>;
 }
 
-export function EntryRows({ rows, onChange, listId, pricelist, dentist, name, allowDuplicate = true, compactTeeth = false, collapseTeeth = false }) {
+export function EntryRows({ rows, onChange, listId, pricelist, dentist, name, allowDuplicate = true, compactTeeth = false, collapseTeeth = false, newRowTooth = '' }) {
   const update = (index, patch) => onChange(rows.map((r,i) => i === index ? { ...r, ...patch } : r));
   return <div className="appointment-entry-rows">{rows.map((row,index) => {
     const implant = dentist && isImplantQuoteRequest(row.description);
@@ -41,7 +41,7 @@ export function EntryRows({ rows, onChange, listId, pricelist, dentist, name, al
     {implant && <ImplantPreview row={row} />}
     <div className="appointment-row-actions">{allowDuplicate && <button type="button" className="appointment-text-button" onClick={() => onChange([...rows.slice(0,index+1), {...row}, ...rows.slice(index+1)])}>Duplica {name.toLowerCase()} {index+1}</button>}
     {rows.length > 1 && <button type="button" className="appointment-text-button" onClick={() => onChange(rows.filter((_,i) => i !== index))}>Rimuovi {name.toLowerCase()} {index + 1}</button>}</div>
-  </div>; })}<button type="button" className="appointment-add-row" onClick={() => onChange([...rows, blankRow()])}>+ Altra {name.toLowerCase()}</button></div>;
+  </div>; })}<button type="button" className="appointment-add-row" onClick={() => onChange([...rows, {...blankRow(), tooth: newRowTooth}])}>+ Altra {name.toLowerCase()}</button></div>;
 }
 
 function MedicalFields({ api, patient }) {

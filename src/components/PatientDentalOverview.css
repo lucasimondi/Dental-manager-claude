@@ -8,6 +8,18 @@
 .patient-dental-tools button { min-height:38px; padding:8px 12px; border:0; border-radius:8px; background:transparent; color:#516f84; font:inherit; font-size:12px; font-weight:600; cursor:pointer; }
 .patient-dental-tools button[aria-pressed="true"] { background:#176ba3; color:#fff; box-shadow:0 2px 5px #176ba320; }
 .patient-dental-tools .patient-dental-general { font-size:11px; color:#216b99; padding-inline:6px; }
+.patient-dental-groups { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+.patient-dental-groups button { min-height:34px; padding:6px 11px; border:1px solid #d8e4ec; border-radius:999px; background:#fff; color:#3f6278; font:inherit; font-size:11px; font-weight:600; cursor:pointer; touch-action:manipulation; }
+.patient-dental-groups button[aria-pressed="true"] { background:#176ba3; border-color:#176ba3; color:#fff; }
+.patient-dental-actionbar { position:sticky; bottom:max(8px,env(safe-area-inset-bottom)); z-index:3; display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:14px; padding:10px 10px 10px 14px; border:1px solid #dbe6ee; border-radius:14px; background:#ffffffee; backdrop-filter:blur(6px); box-shadow:0 6px 20px #19394f14; }
+.patient-dental-actionbar.has-selection { border-color:#9cc4de; background:#f3f9fdf2; }
+.patient-dental-actionbar-info { display:flex; flex-direction:column; min-width:0; }
+.patient-dental-actionbar-info strong { font-size:13px; font-weight:700; color:#19394f; }
+.patient-dental-actionbar-info span { margin-top:2px; font-size:11px; color:#5c7a8f; overflow-wrap:anywhere; }
+.patient-dental-actionbar-buttons { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px; flex:none; }
+.patient-dental-actionbar-buttons button { min-height:40px; padding:8px 13px; border:1px solid #cfdfe9; border-radius:10px; background:#fff; color:#216b99; font:inherit; font-size:12px; font-weight:650; cursor:pointer; touch-action:manipulation; }
+.patient-dental-actionbar-buttons .patient-dental-add { background:#176ba3; border-color:#176ba3; color:#fff; }
+.patient-dental-actionbar-buttons .patient-dental-clear { border-color:transparent; background:transparent; color:#5c7a8f; padding-inline:8px; }
 .patient-dental-layout { display:grid; grid-template-columns:minmax(0,1fr) minmax(280px,.85fr); gap:28px; }
 .patient-dental-chart { display:grid; grid-template-columns:1fr 1fr; gap:12px 16px; }
 .patient-dental-quadrant { min-width:0; padding:10px; border:1px solid #dfe8ee; border-radius:12px; background:#f8fbfd; }
@@ -22,6 +34,9 @@
 .patient-dental-quadrant button.has-pending { border-color:#e4cda3; background:#fff9ee; color:#99671e; }
 .patient-dental-quadrant button.has-pending svg { stroke:#bb8d43; fill:#fff1d5; }
 .patient-dental-quadrant button.is-selected { outline:2px solid #2378ad; outline-offset:1px; }
+/* Selection wins over clinical state colours; dots keep showing the state. */
+.patient-dental-quadrant button[aria-pressed="true"],.patient-dental-quadrant button.has-done[aria-pressed="true"],.patient-dental-quadrant button.has-pending[aria-pressed="true"] { background:#176ba3; border-color:#176ba3; color:#fff; }
+.patient-dental-quadrant button[aria-pressed="true"] svg,.patient-dental-quadrant button.has-done[aria-pressed="true"] svg,.patient-dental-quadrant button.has-pending[aria-pressed="true"] svg { fill:#e7f2fa; stroke:#fff; }
 .patient-dental-dots { display:flex; align-items:center; justify-content:center; gap:3px; height:6px; margin-top:3px; }
 .patient-dental-home i { display:inline-block; flex:none; width:5px; height:5px; border-radius:50%; }
 .patient-dental-home .done { background:#348c6b; }
@@ -49,12 +64,30 @@
 .patient-dental-more { min-height:40px; border:0; padding:8px 0; background:none; color:#2878a8; font:inherit; font-size:11px; cursor:pointer; }
 .patient-dental-home button:focus-visible { outline:2px solid #2378ad; outline-offset:3px; }
 .patient-dental-home button:disabled { cursor:default; opacity:.6; }
-@media(max-width:1000px) { .patient-dental-layout { grid-template-columns:1fr; gap:18px; } }
+@media(max-width:1000px) { .patient-dental-groups { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+.patient-dental-groups button { min-height:34px; padding:6px 11px; border:1px solid #d8e4ec; border-radius:999px; background:#fff; color:#3f6278; font:inherit; font-size:11px; font-weight:600; cursor:pointer; touch-action:manipulation; }
+.patient-dental-groups button[aria-pressed="true"] { background:#176ba3; border-color:#176ba3; color:#fff; }
+.patient-dental-actionbar { position:sticky; bottom:max(8px,env(safe-area-inset-bottom)); z-index:3; display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:14px; padding:10px 10px 10px 14px; border:1px solid #dbe6ee; border-radius:14px; background:#ffffffee; backdrop-filter:blur(6px); box-shadow:0 6px 20px #19394f14; }
+.patient-dental-actionbar.has-selection { border-color:#9cc4de; background:#f3f9fdf2; }
+.patient-dental-actionbar-info { display:flex; flex-direction:column; min-width:0; }
+.patient-dental-actionbar-info strong { font-size:13px; font-weight:700; color:#19394f; }
+.patient-dental-actionbar-info span { margin-top:2px; font-size:11px; color:#5c7a8f; overflow-wrap:anywhere; }
+.patient-dental-actionbar-buttons { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px; flex:none; }
+.patient-dental-actionbar-buttons button { min-height:40px; padding:8px 13px; border:1px solid #cfdfe9; border-radius:10px; background:#fff; color:#216b99; font:inherit; font-size:12px; font-weight:650; cursor:pointer; touch-action:manipulation; }
+.patient-dental-actionbar-buttons .patient-dental-add { background:#176ba3; border-color:#176ba3; color:#fff; }
+.patient-dental-actionbar-buttons .patient-dental-clear { border-color:transparent; background:transparent; color:#5c7a8f; padding-inline:8px; }
+.patient-dental-layout { grid-template-columns:1fr; gap:18px; } }
 @media(max-width:600px) {
  .patient-dental-home { padding:14px 20px 18px; }
  .patient-dental-heading { margin-bottom:12px; }
  .patient-dental-heading h2 { font-size:23px; }
  .patient-dental-heading .patient-dental-hint { font-size:10px; }
+ .patient-dental-groups { gap:5px; margin-bottom:12px; }
+ .patient-dental-groups button { min-height:32px; padding:5px 9px; font-size:10px; }
+ .patient-dental-actionbar { flex-direction:column; align-items:stretch; gap:8px; padding:10px; }
+ .patient-dental-actionbar-buttons { justify-content:stretch; }
+ .patient-dental-actionbar-buttons button { flex:1 1 0; min-height:44px; }
+ .patient-dental-actionbar-buttons .patient-dental-clear { flex:0 0 auto; }
  .patient-dental-tools { margin-bottom:14px; }
  .patient-dental-tools button { padding-inline:9px; font-size:11px; }
  .patient-dental-tools .patient-dental-general { font-size:10px; }
@@ -66,7 +99,19 @@
  .patient-dental-quadrant svg { height:18px; width:17px; }
  .patient-dental-quadrant b { font-size:10px; margin-top:1px; }
  .patient-dental-dots { margin-top:2px; }
- .patient-dental-layout { gap:15px; }
+ .patient-dental-groups { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+.patient-dental-groups button { min-height:34px; padding:6px 11px; border:1px solid #d8e4ec; border-radius:999px; background:#fff; color:#3f6278; font:inherit; font-size:11px; font-weight:600; cursor:pointer; touch-action:manipulation; }
+.patient-dental-groups button[aria-pressed="true"] { background:#176ba3; border-color:#176ba3; color:#fff; }
+.patient-dental-actionbar { position:sticky; bottom:max(8px,env(safe-area-inset-bottom)); z-index:3; display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:14px; padding:10px 10px 10px 14px; border:1px solid #dbe6ee; border-radius:14px; background:#ffffffee; backdrop-filter:blur(6px); box-shadow:0 6px 20px #19394f14; }
+.patient-dental-actionbar.has-selection { border-color:#9cc4de; background:#f3f9fdf2; }
+.patient-dental-actionbar-info { display:flex; flex-direction:column; min-width:0; }
+.patient-dental-actionbar-info strong { font-size:13px; font-weight:700; color:#19394f; }
+.patient-dental-actionbar-info span { margin-top:2px; font-size:11px; color:#5c7a8f; overflow-wrap:anywhere; }
+.patient-dental-actionbar-buttons { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px; flex:none; }
+.patient-dental-actionbar-buttons button { min-height:40px; padding:8px 13px; border:1px solid #cfdfe9; border-radius:10px; background:#fff; color:#216b99; font:inherit; font-size:12px; font-weight:650; cursor:pointer; touch-action:manipulation; }
+.patient-dental-actionbar-buttons .patient-dental-add { background:#176ba3; border-color:#176ba3; color:#fff; }
+.patient-dental-actionbar-buttons .patient-dental-clear { border-color:transparent; background:transparent; color:#5c7a8f; padding-inline:8px; }
+.patient-dental-layout { gap:15px; }
 }
 /* This landing surface scrolls as one page; administrative sections follow it. */
 .patient-record-legacy[data-dental-home="true"] { overflow-y:auto; overscroll-behavior:contain; }

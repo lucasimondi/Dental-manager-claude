@@ -4412,3 +4412,14 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - ROLLBACK: revert the branch commit.
 - EXACT NEXT ACTION: PO visual check on preview; PR only on request; task-specific "Mergia" before merge.
 - FOLLOW-UP "Anche su android": personal/src/lib/androidAgendaWidget.js reads existing colore/tipo/etichetta columns plus app_types (nome,colore; optional, errors keep source color) and sends `color` (#rrggbb only, using the same coloreEvento/label rules as the agenda). AgendaStore validates COLOR natively, AgendaService draws a 4dp label bar, a 22% opaque tint and darker source text; QuickWidget meta text uses the label ink. App passes current labels through a ref. APK 0.3.0 (code 3). No patient data added to the snapshot. Android Gradle not runnable locally; Android CI on PR is the compile/lint gate.
+
+## 2026-11-04 — PATIENT-ODONTOGRAM-MULTISELECT
+- TASK/OWNER/previous agent: PATIENT-ODONTOGRAM-MULTISELECT, Claude Code; previous AGENDA-LABEL-TONE merged PR270 (602c887). Branch ccr-1dfa37b3-goptz7.
+- OBJECTIVE: faster treatment/quote entry from the patient odontogram with multiple selectable teeth and several procedures per tooth.
+- COMPLETED: PatientDentalOverview tap = select (aria-pressed), quick groups Q1–Q4/arches/all, sticky action bar (Aggiungi prestazioni / Preventivo / Deseleziona, or + Senza dente); history filtered by selection. PatientPlanEntry seeds all rows (and new rows) with the selected teeth, Una voce per dente (default) / Voce unica choice, Riepilogo per dente; totals/draft/PDF projection use expanded rows. New lib/patientToothEntry.js; patientDentalOverview.js gains dentalEntryTeeth, DENTAL_SELECTION_GROUPS, toggleDentalGroup; EntryRows optional newRowTooth.
+- FILES: src/components/PatientDentalOverview.jsx/.css, PatientPlanEntry.jsx/.css, PatientWorkspaceBoundary.jsx, AppointmentWorkspace.jsx; src/lib/patientDentalOverview.js, src/lib/patientToothEntry.js; tests/patientToothMultiSelect.test.mjs; architecture/coordination docs.
+- DATABASE/DEPLOYMENT: none. Canonical persistence and duplicate skipping unchanged. Stable 070b28fd checkpoint untouched.
+- VALIDATION: 1548/1548 Node tests; Studio build; diff check clean; synthetic Playwright flow at 375/768/1024/1440 (see architecture doc).
+- RISKS: an already recorded identical procedure on the same tooth (even if executed) is skipped by existing dedup and reported; re-treatment of the same tooth with the same name therefore needs a different description. Selection persists after save (by design, allows a second entry). No physical Android touch test. Agenda appointment flow not changed.
+- ROLLBACK: revert branch commit.
+- EXACT NEXT ACTION: PO review on preview; PR only on request; task-specific "Mergia".
