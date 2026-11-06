@@ -1,3 +1,10 @@
+# Current task — ICLOUD-PHOTOS-DRIVE (2026-11-06)
+- OWNER Claude Code; branch ccr-9ca04a6e-v4ycz4 from master b62e2eb (PR273 merged).
+- AUTHORIZATION PO: "Crea un tool per scaricare automaticamente 1000 a volta le foto da iCloud e metterle su drive".
+- SCOPE additive standalone local tool in poliedron/foto-icloud/ (Python + pyicloud, upload with rclone or a Google Drive for desktop folder), batches of 1000 with SQLite resume state. Never deletes from iCloud; no secrets in repo (password from system keyring or prompt, session cookies in ~/.icloud-drive-foto). No app, schema, RLS, Vercel or Supabase change.
+- STATUS implementation + local checks complete; branch pushed, no PR (not requested). Real iCloud login/upload not testable here (needs PO Apple ID + 2FA on his computer).
+- VALIDATION 11/11 Python unittest with fake library (batching, resume, name collisions, video/Live, network errors, low disk, fake rclone); API surface checked against pyicloud 2026.10.1.
+
 # Current task — AGENDA-RESTYLING-PALETTE (2026-11-04)
 - OWNER Claude Code; branch ccr-4ae14be0-vbbibl from master 602c887 (PR270 merged).
 - AUTHORIZATION PO asked a professional restyling of agenda label colors and grid for Studio and Personal ("all'altezza di Google calendar"), proposal first; PO answered the proposal with "Mergia" = approval of the recommended options (mixed blocks, display mapping of saved colors, swatch picker + custom, Win95 unchanged except palette). No PR existed at that time, so merge needs confirmation on the specific PR (AGENTS.md).

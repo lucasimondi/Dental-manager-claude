@@ -4435,3 +4435,13 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - ROLLBACK: revert branch commit.
 - EXACT NEXT ACTION: PO review on preview; PR only on request; task-specific "Mergia".
 - FOLLOW-UP PO "Le radici dei superiori vanno rivolte verso alto": PatientDentalOverview ToothGlyph mirrors Q1/Q2 glyphs vertically (roots up, crown toward occlusal plane); lower arch unchanged. 1549/1549 tests; synthetic 375px screenshot checked.
+
+## 2026-11-06 — ICLOUD-PHOTOS-DRIVE
+- TASK/OWNER/previous agent: ICLOUD-PHOTOS-DRIVE, Claude Code; previous AGENDA-RESTYLING-PALETTE merged PR273 (b62e2eb). Branch ccr-9ca04a6e-v4ycz4.
+- OBJECTIVE: tool that automatically copies iCloud Photos to Google Drive 1000 at a time.
+- COMPLETED: poliedron/foto-icloud/icloud_drive.py (pyicloud login with 2FA, iterate All Photos, per-resource SQLite registry, download batch to temp dir, upload via `rclone move --files-from` or move into a local Drive for desktop folder, mark uploaded only if the temp file is gone, resume of interrupted batches, `--continua`/`--max-lotti`/`--senza-video`/`--live`/`--conta`, stops early under 2 GB free). Drive layout `Foto iCloud/<anno>/<mese>/<nome originale>`, collision suffix from asset id. LEGGIMI.md (install, rclone config, first run, nightly cron), requirements.txt, test_icloud_drive.py.
+- DATABASE/DEPLOYMENT: none. No iCloud deletion code path. Stable 070b28fd checkpoint untouched.
+- VALIDATION: `python3 -m unittest test_icloud_drive.py` 11/11; attribute check against installed pyicloud 2026.10.1. No real Apple ID/Drive run.
+- RISKS: pyicloud is unofficial (Apple can change endpoints); Advanced Data Protection / security keys may block; cron access to macOS keychain may fail; listing restarts from the top each batch (metadata only).
+- ROLLBACK: delete the folder / revert the commit; files already on Drive stay.
+- EXACT NEXT ACTION: PO runs the first batch on his computer (LEGGIMI.md §2) and reports any error.

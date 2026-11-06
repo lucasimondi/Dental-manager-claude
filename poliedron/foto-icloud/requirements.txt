@@ -1,0 +1,3 @@
+# Foto iCloud -> Google Drive
+pyicloud>=2026.10.1,<2027
+keyring>=25
