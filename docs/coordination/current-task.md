@@ -1,3 +1,11 @@
+# Current task — HOME-AGENDA-CENTRIC (2026-11-06)
+- OWNER Claude Code; branch ccr-4fbd3db0-8ou289 from master b62e2eb (PR273 merged).
+- AUTHORIZATION PO reviewed two design proposals (artifacts "Poliedra Nitido" and "Poliedra Oggi") and asked: green as leading color, Home with only essentials (no management control), agenda-centric software, one Poliedron search bar from which everything starts, plus an Agenda button in the header; "restyling home poi passiamo al resto".
+- SCOPE presentation only, Home first: header with Poliedron search launcher (opens the existing Poliedron panel, same engine/permissions), Agenda button, + Appuntamento; HomeToday day grid (per chair when active chairs exist, read with the same query as Agenda) with now line; "In poltrona ora" card with the existing four appointment actions; "Richiede attenzione" now also on desktop in the side column. Home no longer renders/offers agenda list, quick actions and management_control widgets (saved layout untouched). Green tokens scoped to `.home-oggi`. No schema, RLS, tenancy, financial formula or deployment change.
+- STATUS implementation + local checks complete; branch pushed, no PR (not requested). Task-specific "Mergia" required before merge. Next PO step: green and new header across the rest of the app.
+- VALIDATION 1558/1558 Node tests; Studio and Personal builds; tests/visual/home.mjs (Chromium, synthetic data, 375/768/1024/1440, light/dark, no horizontal overflow, no page errors).
+- Previous operational record preserved below.
+
 # Current task — AGENDA-RESTYLING-PALETTE (2026-11-04)
 - OWNER Claude Code; branch ccr-4ae14be0-vbbibl from master 602c887 (PR270 merged).
 - AUTHORIZATION PO asked a professional restyling of agenda label colors and grid for Studio and Personal ("all'altezza di Google calendar"), proposal first; PO answered the proposal with "Mergia" = approval of the recommended options (mixed blocks, display mapping of saved colors, swatch picker + custom, Win95 unchanged except palette). No PR existed at that time, so merge needs confirmation on the specific PR (AGENTS.md).

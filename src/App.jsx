@@ -148,6 +148,8 @@ export default function App() {
   // already used for activityPatientRequest below.
   const [openHomeCustomizerRequest, setOpenHomeCustomizerRequest] = useState(null);
   const [quickHubPoliedronRequest, setQuickHubPoliedronRequest] = useState(null);
+  // HOME-AGENDA-CENTRIC: la barra di ricerca della Home apre Poliedron.
+  const [poliedronSearchRequest, setPoliedronSearchRequest] = useState(null);
   const [poliedronChatHost, setPoliedronChatHost] = useState(null);
   // POL-AI-002A §20 — set by Poliedron's direct "ric"/"fat"/"doc" commands
   // so ArchivioDocs opens already filtered instead of on its unfiltered
@@ -859,7 +861,7 @@ export default function App() {
         {page === 'home' && (
           <RouteErrorBoundary key={page}>
           <Suspense fallback={<LoadingScreen />}>
-          <Dashboard patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegniStudio} implants={implants} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} onNavigateNew={goNuovoElemento} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} currentUserId={session?.user?.id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} activityPatientRequest={quickHubActivityRequest} onActivityPatientRequestHandled={(id) => setQuickHubActivityRequest((current) => current?.id === id ? null : current)} onLogout={handleLogout} openHomeCustomizerRequest={openHomeCustomizerRequest} onOpenHomeCustomizerRequestHandled={(id) => setOpenHomeCustomizerRequest((current) => current === id ? null : current)} />
+          <Dashboard patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} payments={payments} plans={plans} richiami={richiami} impegni={impegniStudio} implants={implants} onOpenPaz={goSchedaPaz} appTypes={appTypes} onGoAgenda={() => setPage('agenda')} onGoRichiami={() => setPage('richiami')} onNavigate={setPage} onNavigateNew={goNuovoElemento} templates={templates} userName={userName} si={studioInfo} features={features} studioId={session?.user?.app_metadata?.studio_id} currentUserId={session?.user?.id} isStudioAdmin={isStudioAdmin} studioMembership={studioMembership} activityPatientRequest={quickHubActivityRequest} onActivityPatientRequestHandled={(id) => setQuickHubActivityRequest((current) => current?.id === id ? null : current)} onLogout={handleLogout} openHomeCustomizerRequest={openHomeCustomizerRequest} onOpenHomeCustomizerRequestHandled={(id) => setOpenHomeCustomizerRequest((current) => current === id ? null : current)} onPatientAction={openAppointmentPatientAction} onOpenSearch={() => setPoliedronSearchRequest({ id: requestId() })} />
           </Suspense>
           </RouteErrorBoundary>
         )}
@@ -971,6 +973,8 @@ export default function App() {
         supabaseClient={supabase}
         externalCommandRequest={quickHubPoliedronRequest}
         onExternalCommandHandled={(id) => setQuickHubPoliedronRequest((current) => current?.id === id ? null : current)}
+        searchRequest={poliedronSearchRequest}
+        onSearchRequestHandled={(id) => setPoliedronSearchRequest((current) => current?.id === id ? null : current)}
         chatHost={poliedronChatHost}
       />
       {poliedronBookingOpen && (

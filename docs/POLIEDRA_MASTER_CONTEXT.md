@@ -211,6 +211,8 @@ Stile:
 
 Evitare UI crypto, colori casuali ed effetti pesanti.
 
+Aggiornamento Product Owner 2026-11-06 (HOME-AGENDA-CENTRIC): il verde diventa il colore guida ("il verde che comanda") per azioni, selezione e indicatore "ora"; blu, indaco, azzurro e turchese restano come colori informativi ed etichette. Il software è agenda-centrico: la Home mostra la giornata, il paziente in poltrona e poche cose da fare, senza controllo di gestione; una sola barra Poliedron è il punto di partenza per pazienti, sezioni, documenti e azioni. Applicato prima alla Home, poi al resto dell'app.
+
 Serve un design system condiviso con primitive coerenti per PageShell, PageHeader, SectionCard, StatCard, button, Tabs, FormSection, EmptyState, Modal/Drawer, DataCard e Toolbar.
 
 Pagine prioritarie da uniformare:
