@@ -4466,3 +4466,11 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - VALIDATION: 1559/1559 Node tests; Studio and Personal builds; diff check clean; synthetic Chromium renders at 390px (Studio/Personal, day/week, light; header also checked in dark). agenda.compare.mjs baselines will need refresh in CI.
 - RISKS: appointment block style unchanged (PR273 filled blocks); the fixture grid stays light in dark mode because it uses a fixed palette (real app switches palette). No physical device test.
 - ROLLBACK: revert this commit.
+
+## 2026-11-07 — AGENDA-MOBILE-POLISH
+- TASK/OWNER: follow-up on branch ccr-4fbd3db0-8ou289, Claude Code. PO: organise space better, higher-level graphics, "incantevole", make me want to open and fill it.
+- COMPLETED (phone only, Studio + Personal): AppointmentBlock `soft` mode (tinted fill, 3px label bar, 8px radius, dark ink; name first, then time range and type; transparent resize grip), desktop keeps the filled block. New shared/agenda/summary.js `agendaSummary` and a DayStrip `subtitle` row under the month ("Venerdì 16 ottobre · 2 appuntamenti · 4 impegni" / week range; "giornata libera"). Now line shows a red time pill in day view. Studio passes soft={isMobile} and the summary from appointmentsAgenda + visible impegni; Personal passes soft and the summary from dati.
+- FILES: shared/agenda/{AgendaPresentation.jsx,agenda.css,summary.js}, src/components/Agenda.jsx, personal/src/sezioni/agenda/AgendaGriglia.jsx, tests/homeToday.test.mjs, tests/personalAgenda.test.mjs.
+- VALIDATION: 1561/1561 Node tests; both builds; diff check; synthetic Chromium renders (390px, clock 16/10 10:40) Studio/Personal day/week.
+- RISKS: summary counts appointments (not distinct patients) and multi-day events once per range; week-view all-day chips in narrow columns still wrap per letter (pre-existing); no device test.
+- ROLLBACK: revert this commit.
