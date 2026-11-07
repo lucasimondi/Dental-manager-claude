@@ -1,5 +1,11 @@
 # Handoffs
 
+## 2026-11-07 — CLAUDE — ANDROID-AGENDA-ICON
+- BRANCH `ccr-53e419df-fmu4qm` da `master@b62e2eb`. Icona launcher di Poliedra Agenda rifatta come icona adattiva (calendario su gradiente blu Poliedra, variante monocromatica). Dettagli: `docs/architecture/android-agenda-icon.md`.
+- FILES `android/agenda/app/src/main/res/{drawable/ic_launcher_*.xml, mipmap-anydpi-v26/ic_launcher*.xml}`, `AndroidManifest.xml`, `build.gradle` (0.3.1/4); rimosso `drawable/ic_agenda.xml`. DATABASE nessuna.
+- TESTS `npm test` 1551/1551; XML ben formati; anteprima render Chromium. Gradle non disponibile: build/lint nella CI Android. Nessuna prova su dispositivo.
+- NEXT PO valuta l'anteprima; eventuale PR + "Mergia"; dopo il rilascio installare l'APK 0.3.1 e controllare l'icona nel launcher.
+
 ## 2026-10-18 — CLAUDE — Pulizia in massa (Poliedron + Gemini) e Risolta sulle pratiche
 - Il modello propone soltanto; l'esecuzione parte dall'app dopo la conferma di Luca (eseguiProposta: Drive → Gmail → archivio). Eccezioni alle regole sez. 3 documentate in `poliedron/archivio/CLAUDE.md`.
 

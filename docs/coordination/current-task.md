@@ -1,3 +1,11 @@
+# Current task — ANDROID-AGENDA-ICON (2026-11-07)
+- OWNER Claude Code; branch ccr-53e419df-fmu4qm from master b62e2eb (PR273 merged).
+- AUTHORIZATION PO: "Lavora graficamente all'icona che sembra poco professionale".
+- SCOPE presentation only: Poliedra Agenda Android launcher icon replaced by adaptive icon (background/foreground/monochrome vectors), manifest icon+roundIcon, APK 0.3.1 (code 4). No Java, widget, data or database change.
+- STATUS implementation complete; branch pushed, no PR (not requested). Task-specific "Mergia" required before merge.
+- VALIDATION XML well-formed; Chromium render of equivalent SVG under circle/squircle/48px/monochrome. Gradle unavailable here: assembleDebug/lintDebug in Android CI. No device test.
+- Previous operational record preserved below.
+
 # Current task — AGENDA-RESTYLING-PALETTE (2026-11-04)
 - OWNER Claude Code; branch ccr-4ae14be0-vbbibl from master 602c887 (PR270 merged).
 - AUTHORIZATION PO asked a professional restyling of agenda label colors and grid for Studio and Personal ("all'altezza di Google calendar"), proposal first; PO answered the proposal with "Mergia" = approval of the recommended options (mixed blocks, display mapping of saved colors, swatch picker + custom, Win95 unchanged except palette). No PR existed at that time, so merge needs confirmation on the specific PR (AGENTS.md).
