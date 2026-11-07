@@ -21,14 +21,6 @@ import { MOBILE_DOCK_BOTTOM, MOBILE_DOCK_HEIGHT, MOBILE_DOCK_PROTECTED_GAP } fro
 import { HOME_ATTENTION_EMPTY_LABEL, buildHomeAttentionItems } from '../lib/homeAttention.js';
 import { buildDataHealthActivities } from '../lib/domain/dataHealthActivities.js';
 import { computeDataHealthScore } from '../lib/domain/dataHealthScore.js';
-import HomeToday from './HomeToday.jsx';
-import { isHomeTodayWidget } from '../lib/homeToday.js';
-import './HomeToday.css';
-
-// HOME-AGENDA-CENTRIC: la Home mostra solo i widget compatibili con la
-// vista "Oggi" (niente agenda duplicata, azioni rapide o controllo di
-// gestione). Il layout salvato resta intatto: si filtra solo cosa si vede.
-const homeTodayEntry = (item) => isHomeTodayWidget(HOME_WIDGET_REGISTRY.find((d) => d.id === item.id) || item);
 
 // Lazy come in SchedaPaz/PatientWorkspaceV2: jsPDF entra nel bundle solo
 // quando si apre davvero la ricetta.
@@ -70,10 +62,10 @@ const getSaluto = (nome) => { const ora = new Date().getHours(); const s = ora <
 const fmtDataOra = (d) => d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
 const fmtOra = (d) => d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 
-export default function Dashboard({ patients, setPatients, appointments, setAppointments, payments, plans, richiami = [], impegni = [], implants = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, onNavigate, onNavigateNew, templates, userName: userNameProp, si, features, studioId, currentUserId, isStudioAdmin, studioMembership, activityPatientRequest, onActivityPatientRequestHandled, onLogout, openHomeCustomizerRequest, onOpenHomeCustomizerRequestHandled, onPatientAction, onOpenSearch }) {
+export default function Dashboard({ patients, setPatients, appointments, setAppointments, payments, plans, richiami = [], impegni = [], implants = [], onOpenPaz, appTypes, onGoAgenda, onGoRichiami, onNavigate, onNavigateNew, templates, userName: userNameProp, si, features, studioId, currentUserId, isStudioAdmin, studioMembership, activityPatientRequest, onActivityPatientRequestHandled, onLogout, openHomeCustomizerRequest, onOpenHomeCustomizerRequestHandled }) {
   const homePermissions = buildHomePermissions({ membership: studioMembership, features, vertical: si?.vertical });
   const roleLayout = createRolePresetLayout(studioMembership?.capabilities);
-  const availableWidgetCatalog = filterWidgetCatalog(HOME_WIDGET_REGISTRY, homePermissions).filter(isHomeTodayWidget);
+  const availableWidgetCatalog = filterWidgetCatalog(HOME_WIDGET_REGISTRY, homePermissions);
   // Widget economico/operativi (preventivi, richiami, scadenze, ortodonzia,
   // statistiche, grafici): stessa fonte di calcolo di Controllo di Gestione,
   // vedi useControlloDati — evita di ricalcolare qui gli stessi numeri con
@@ -348,8 +340,8 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
   }, [studioId, userId, JSON.stringify(studioMembership?.capabilities || []), homeLayoutReloadToken]);
 
   const homePeriod = resolveHomePeriod(homePeriodId);
-  const visibleWidgets = applyWidgetPermissions(widgets, HOME_WIDGET_REGISTRY, homePermissions).filter(homeTodayEntry);
-  const visibleDraftWidgets = applyWidgetPermissions(draftWidgets, HOME_WIDGET_REGISTRY, homePermissions).filter(homeTodayEntry);
+  const visibleWidgets = applyWidgetPermissions(widgets, HOME_WIDGET_REGISTRY, homePermissions);
+  const visibleDraftWidgets = applyWidgetPermissions(draftWidgets, HOME_WIDGET_REGISTRY, homePermissions);
   const hasVisibleFinancialWidget = visibleWidgets.some((item) => item.visible !== false && getHomeFinancialWidget(item.id));
 
   useEffect(() => {
@@ -716,7 +708,7 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
   );
 
   return (
-    <div className="home-page home-oggi">
+    <div className="home-page">
       {/* ── SETTINGS MODAL ── */}
       {settingsOpen && (
         <Modal title={<><Ic n="set" s={15} c={C.txt} /> Personalizza Home</>} onClose={() => setSettingsOpen(false)} wide>
@@ -1340,26 +1332,7 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
             {' · '}{todayApps.length > 0 ? `${todayApps.length} appuntament${todayApps.length === 1 ? 'o' : 'i'}` : 'nessun appuntamento'}
           </div>
         </div>
-        {/* HOME-AGENDA-CENTRIC — barra Poliedron: un solo punto di partenza
-            per pazienti, sezioni, documenti e azioni. Apre il pannello
-            Poliedron esistente (stesso motore di ricerca e permessi), non
-            una seconda ricerca. */}
-        {onOpenSearch && (
-          <button type="button" className="home-search" onClick={onOpenSearch} aria-label="Cerca con Poliedron: pazienti, sezioni, documenti e azioni">
-            <Ic n="srch" s={17} />
-            <span className="home-search__placeholder">Cerca paziente, documento, sezione o azione…</span>
-            <kbd className="home-search__kbd" aria-hidden="true">⌘K</kbd>
-          </button>
-        )}
         <div className="home-hero__actions">
-          <button type="button" className="home-hero__agenda" onClick={() => onGoAgenda && onGoAgenda()} aria-label="Agenda" title="Agenda">
-            <Ic n="cal" s={16} />
-            <span className="home-hero__agenda-label">Agenda</span>
-          </button>
-          <button type="button" className="home-hero__new" onClick={() => setBookingOpen(true)} aria-label="Nuovo appuntamento" title="Nuovo appuntamento">
-            <Ic n="plus" s={16} />
-            <span className="home-hero__new-label">Appuntamento</span>
-          </button>
           {/* POL-UI-015 bugfix round 2 — ROOT CAUSE of "la personalizzazione
               non si salva": opening this modal while the initial layout
               load (`layoutLoading`) is still in flight seeds `draftWidgets`
@@ -1411,17 +1384,6 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
         </div>
       )}
 
-      {/* HOME-AGENDA-CENTRIC — la giornata al centro: griglia di oggi e, a lato,
-          il paziente in poltrona con le azioni dell'agenda. "Richiede
-          attenzione" e Poliedron restano page chrome (non widget) e vivono
-          nella colonna laterale, su desktop e mobile. */}
-      <HomeToday today={t} now={now} appointments={appointments} patients={patients} getColore={getColore}
-        features={features} si={si}
-        onOpenAgenda={() => onGoAgenda && onGoAgenda()}
-        onOpenAppointment={apriEditApp}
-        onNewAppointment={() => setBookingOpen(true)}
-        onPatientAction={(patient, appointment, action) => onPatientAction ? onPatientAction(patient, appointment, action) : onOpenPaz && onOpenPaz(patient)}
-        onOpenPatient={(patient) => onOpenPaz && onOpenPaz(patient, 'info')}>
       {/* ── POL-UI-017 R2 §2 — RICHIEDE ATTENZIONE ──
           The mobile Home's priority area, rendered ABOVE the widget
           workspace so the first viewport answers "what needs me?" before
@@ -1486,7 +1448,6 @@ export default function Dashboard({ patients, setPatients, appointments, setAppo
           <span aria-hidden="true" style={{ fontSize: 20, color: C.txm, flexShrink: 0 }}>›</span>
         </div>
       </button>
-      </HomeToday>
 
       {/* ── WIDGET ORDINATI DINAMICAMENTE ──
          POL-UX-002 section 6: il selettore globale Mese/Anno è stato
