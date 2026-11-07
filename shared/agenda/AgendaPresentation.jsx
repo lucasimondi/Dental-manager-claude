@@ -40,7 +40,7 @@ export function ViewPicker({ view, setView, touchSafe = false, palette: C = DEFA
   );
 }
 
-export function DayStrip({ palette: C = DEFAULT_PALETTE, selDay, setSelDay, today: t, onWeekChange, highlightSelected = true, viewPicker, compact, oraColW, onPrevWeek, onNextWeek, hiddenWeekdays = [], singleDay = false, overlayRef, floatingFooter, shortMonth = false, searchBar = null, subtitle = null }) {
+export function DayStrip({ palette: C = DEFAULT_PALETTE, selDay, setSelDay, today: t, onWeekChange, highlightSelected = true, viewPicker, compact, oraColW, onPrevWeek, onNextWeek, hiddenWeekdays = [], singleDay = false, overlayRef, floatingFooter, shortMonth = false, searchBar = null }) {
   const scrollRef = useRef(null);
   const [stripBaseWeek, setStripBaseWeek] = useState(() => toISO(startOfWeek(selDay)));
   const settleTimer = useRef(null);
@@ -128,7 +128,6 @@ export function DayStrip({ palette: C = DEFAULT_PALETTE, selDay, setSelDay, toda
         </div>
         {viewPicker}
       </div>
-      {compact && subtitle && <div className="agenda-day-summary">{subtitle}</div>}
       {/* Gutter da 46px, identico alla colonna ore della griglia sotto: senza, le colonne di
           questa striscia non coinciderebbero con quelle della griglia (uno sfasamento che
           confonde su quale giorno si sta guardando). */}

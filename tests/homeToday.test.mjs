@@ -88,16 +88,6 @@ test('mobile agenda: search on top, then month and days, in Studio and Personal;
   assert.equal((personal.match(/searchBar=\{ricerca\}/g) || []).length, 2);
 });
 
-test('agenda summary: day and week lines from existing appointments and events', async () => {
-  const { agendaSummary } = await import('../shared/agenda/summary.js');
-  const apps = [{ data: '2026-10-16' }, { data: '2026-10-16' }, { data: '2026-10-20' }];
-  const events = [{ start: '2026-10-15', end: '2026-10-17' }, { start: '2026-10-19', end: '2026-10-19' }];
-  assert.equal(agendaSummary({ days: ['2026-10-16'], appointments: apps, events }), 'Venerdì 16 ottobre · 2 appuntamenti · 1 impegno');
-  assert.equal(agendaSummary({ days: ['2026-10-18'], appointments: apps, events: [] }), 'Domenica 18 ottobre · giornata libera');
-  const week = ['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17', '2026-10-18'];
-  assert.equal(agendaSummary({ days: week, appointments: apps, events }), '12–18 ottobre · 2 appuntamenti · 1 impegno');
-});
-
 test('phone agenda uses soft appointment blocks; desktop keeps the filled block', () => {
   const shared = readFileSync(new URL('../shared/agenda/AgendaPresentation.jsx', import.meta.url), 'utf8');
   const studio = readFileSync(new URL('../src/components/Agenda.jsx', import.meta.url), 'utf8');

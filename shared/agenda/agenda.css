@@ -177,18 +177,8 @@
   :root:not([data-theme="light"]) .agenda-mobile-floating-controls { --agenda-today: #FF453A; --agenda-fill: rgba(118, 118, 128, .24); }
 }
 
-/* HOME-AGENDA-CENTRIC — sintesi del giorno sotto il mese e ora attuale (solo telefono). */
+/* HOME-AGENDA-CENTRIC — ora attuale in evidenza nella vista giorno (solo telefono). */
 @media (max-width: 719px) {
-  .agenda-day-summary {
-    padding: 0 16px 6px;
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: -.01em;
-    color: var(--agenda-label-2);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
   .agenda-now-pill {
     position: absolute;
     right: calc(100% + 2px);

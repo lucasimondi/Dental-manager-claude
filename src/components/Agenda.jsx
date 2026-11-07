@@ -6,7 +6,6 @@ import AgendaVisibility from '../../shared/agenda/AgendaVisibility.jsx';
 import { agendaVisible, keepOccupiedWeekends } from '../../shared/agenda/visibility.js';
 import { layoutAgendaDay, layoutAppointments as layoutOverlap } from '../../shared/agenda/geometry.js';
 import { readAgendaLocation, agendaDestination } from '../../shared/agenda/navigation.js';
-import { agendaSummary } from '../../shared/agenda/summary.js';
 import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, EventBlock, AppointmentBlock, useSlotHeight, AgendaSwitch, AgendaSearchBar, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState, useGridSwipe } from '../../shared/agenda/AgendaPresentation.jsx';
 import { createPortal } from 'react-dom';
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
@@ -977,7 +976,6 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     return { date, items: impegni.filter(i => (i.tuttoIlGiorno || !i.oraInizio) && date >= i.dataInizio && date <= (i.dataFine || i.dataInizio)).map(i => ({ id: i.id, title: i.titolo, color: i.colore || TIPO_IMPEGNO.find(t => t.id === i.tipo)?.colore, onOpen: () => apriEditImpegno(i) })) };
   });
   const dayEvents = <DayEvents days={ribbonDays} gutter={oraColW} />;
-  const daySummary = isMobile ? agendaSummary({ days: ribbonDays.map(d => d.date), appointments: appointmentsAgenda, events: impegni.map(i => ({ start: i.dataInizio, end: i.dataFine })) }) : null;
   const mobileSearchBar = isMobile && onOpenSearch ? (
     <AgendaSearchBar onOpen={onOpenSearch} extra={
       <a className="agenda-search-app agenda-floating-interactive" href={agendaDestination('personal', selDay, view, globalThis.location, toISO(vd))} aria-label="Apri Personal" title="Personal">
@@ -1175,7 +1173,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       {haFiltriRisorse && !isMobile && chipsRisorse}
 
       {view === 'giorno' && (
-        <DayStrip palette={C} selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} oraColW={oraColW} singleDay={isMobile} hiddenWeekdays={agendaHiddenWeekdays} shortMonth={isMobile} searchBar={mobileSearchBar} subtitle={daySummary} overlayRef={isMobile ? overlayRef : undefined} floatingFooter={<>{isMobile && followUpControls}{dayEvents}{isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null}</>} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker hiddenCount={tuttiImpegni.filter(i => !agendaVisible(i, 'studio')).length + appointments.filter(a => !agendaVisible(a, 'studio')).length} showHidden={mostraEsclusi} onToggleHidden={() => setMostraEsclusi(x => !x)} palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>} />
+        <DayStrip palette={C} selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} oraColW={oraColW} singleDay={isMobile} hiddenWeekdays={agendaHiddenWeekdays} shortMonth={isMobile} searchBar={mobileSearchBar} overlayRef={isMobile ? overlayRef : undefined} floatingFooter={<>{isMobile && followUpControls}{dayEvents}{isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null}</>} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker hiddenCount={tuttiImpegni.filter(i => !agendaVisible(i, 'studio')).length + appointments.filter(a => !agendaVisible(a, 'studio')).length} showHidden={mostraEsclusi} onToggleHidden={() => setMostraEsclusi(x => !x)} palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>} />
       )}
       {(view === 'settimana' || view === 'settimana_lavoro') && (
         <DayStrip palette={C}
@@ -1191,7 +1189,6 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           hiddenWeekdays={agendaHiddenWeekdays}
           shortMonth={isMobile}
           searchBar={mobileSearchBar}
-          subtitle={daySummary}
           overlayRef={isMobile ? overlayRef : undefined}
           floatingFooter={<>{isMobile && followUpControls}{dayEvents}{isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null}</>}
           viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker hiddenCount={tuttiImpegni.filter(i => !agendaVisible(i, 'studio')).length + appointments.filter(a => !agendaVisible(a, 'studio')).length} showHidden={mostraEsclusi} onToggleHidden={() => setMostraEsclusi(x => !x)} palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>}

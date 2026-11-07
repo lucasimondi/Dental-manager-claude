@@ -6,10 +6,9 @@ import { layoutAgendaDay, layoutAppointments } from '../../../../shared/agenda/g
 import { euro } from '../../lib/coreArchivio.js';
 // POL-VITA-010: Personal adapter; original presentation is owned by shared/agenda.
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { agendaSummary } from '../../../../shared/agenda/summary.js';
 import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, AppointmentBlock, EventBlock, useSlotHeight, AgendaSearchBar, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState } from '../../../../shared/agenda/AgendaPresentation.jsx';
 import { getVisibleWeekDays } from '../../../../shared/agenda/visibleDays.js';
-import { daIso, isoData, piuGiorni, oggi, coloreEvento, nomeEtichetta, elementiDelGiorno, giorniSettimana } from '../../lib/agenda.js';
+import { daIso, piuGiorni, oggi, coloreEvento, nomeEtichetta, elementiDelGiorno, giorniSettimana } from '../../lib/agenda.js';
 export { ViewPicker };
 
 const GIORNI_NASCOSTI_PERSONAL = [];
@@ -121,7 +120,7 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
         {!extras.aOrario.some(x => x.tipo === 'appuntamento') && <CalendarEmptyState palette={palette} />}
       </div>
     </> : <>
-      <DayStrip palette={palette} selDay={giorno} setSelDay={ds => { setGiorno(ds); if (weekly) setView('giorno'); }} today={oggi()} compact oraColW={34} singleDay={!weekly} hiddenWeekdays={hiddenWeekdays} highlightSelected={!weekly} onWeekChange={weekly ? sincronizzaSettimana : undefined} searchBar={ricerca} subtitle={agendaSummary({ days: days.map(d => isoData(d)), appointments: dati.appuntamenti, events: dati.impegni.map(e => ({ start: e.data_inizio, end: e.data_fine })) })} overlayRef={overlayRef} viewPicker={pick} floatingFooter={fasciaGiorno} shortMonth />
+      <DayStrip palette={palette} selDay={giorno} setSelDay={ds => { setGiorno(ds); if (weekly) setView('giorno'); }} today={oggi()} compact oraColW={34} singleDay={!weekly} hiddenWeekdays={hiddenWeekdays} highlightSelected={!weekly} onWeekChange={weekly ? sincronizzaSettimana : undefined} searchBar={ricerca} overlayRef={overlayRef} viewPicker={pick} floatingFooter={fasciaGiorno} shortMonth />
       <div className="agenda-mobile-grid-surface" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }} {...swipe}>
         <TimeGrid palette={palette} containerRef={containerRef} isMobile slots={slots} slotH={slotH} effectiveSlotH={effectiveSlotH} oraColW={34} days={days} today={oggi()} showNowLine={showNowLine} nowTop={nowTop} onSlot={openSlot} renderDay={renderDay} />
       </div>
