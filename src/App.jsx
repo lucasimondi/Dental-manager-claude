@@ -59,6 +59,7 @@ import RouteErrorBoundary from './components/RouteErrorBoundary.jsx';
 import { lazyWithRetry } from './lib/lazyWithRetry.js';
 import { resolveFarmaciPreferiti } from './lib/farmaciPreferiti.js';
 const Dashboard = lazyWithRetry(() => import('./components/Dashboard.jsx'), 'Dashboard');
+const NotePage = lazyWithRetry(() => import('../shared/note/NotePage.jsx'), 'NotePage');
 const ControlloGestione = lazyWithRetry(() => import('./components/ControlloGestione.jsx'), 'ControlloGestione');
 const PoliedronHub = lazyWithRetry(() => import('./components/PoliedronHub.jsx'), 'PoliedronHub');
 const FinancialWorkspace = lazyWithRetry(() => import('./components/FinancialWorkspace.jsx'), 'FinancialWorkspace');
@@ -908,6 +909,7 @@ export default function App() {
             {page === 'controllo' && <ControlloGestione studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} setPlans={setPlansSync} payments={payments} setPayments={setPaymentsSync} appointments={appointments} pricelist={pricelist} onOpenPaz={goSchedaPaz} isDentistico={!studioInfo?.vertical || studioInfo.vertical === 'dentistico'} />}
             {page === 'poliedron' && <PoliedronHub patients={patients} plans={plans} appointments={appointments} payments={payments} implants={implants} studioId={session?.user?.app_metadata?.studio_id} isStudioAdmin={isStudioAdmin} features={features} studioMembership={studioMembership} si={studioInfo} onOpenPaz={goSchedaPaz} onNavigate={setPage} />}
             {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} initialFiltroTipo={archivioFiltroTipoHint} />}
+            {page === 'note' && <NotePage db={supabase} studioId={session?.user?.app_metadata?.studio_id} />}
             {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
             {page === 'agenteai' && <AgenteAISetup features={features} />}
             {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} isStudioAdmin={isStudioAdmin} isSuperAdmin={isSuperAdmin} onLogout={handleLogout} onCheckUpdate={checkForUpdate} onOpenHomeCustomizer={() => { setPage('home'); setOpenHomeCustomizerRequest(Date.now()); }} studioMembership={studioMembership} />}

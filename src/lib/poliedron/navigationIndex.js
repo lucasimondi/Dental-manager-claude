@@ -19,6 +19,7 @@ const ALIASES = Object.freeze({
   paga: ['pagamenti', 'incassi', 'incasso', 'da incassare', 'crediti', 'saldi aperti', 'riscossioni', 'soldi'],
   listino: ['listino prezzi', 'prezzi', 'tariffario', 'tariffe'],
   agenda: ['calendario', 'appuntamenti', 'appuntamento'],
+  note: ['nota', 'appunti', 'appunto', 'idee', 'promemoria veloce'],
   richiami: ['richiamo', 'promemoria', 'recall', 'follow up'],
   spese: ['spesa', 'costi', 'uscite'],
   controllo: ['controllo di gestione', 'gestione', 'economico', 'kpi', 'management control', 'conto economico'],

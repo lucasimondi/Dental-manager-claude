@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import Ic from '../ui/Ic.jsx';
+import { agendaDestination } from '../../../shared/agenda/navigation.js';
 import PoliedronOrb from './PoliedronOrb.jsx';
 
 /* POL-UI-015 §9-10: `set` (Impostazioni) no longer has a dock slot — it
@@ -24,22 +25,30 @@ import PoliedronOrb from './PoliedronOrb.jsx';
    conversation, so a second badge here would be a duplicate of the same
    count on the same screen. The dock's approved geometry, position and size
    are unchanged. */
+/* HOME-AGENDA-CENTRIC (PO 2026-11-07): la ricerca in cima all'agenda sostituisce Pazienti e
+   Chat; l'agenda è la Home. Dock: Agenda · Note · Poliedron · Documenti · Personal, la stessa
+   struttura del dock di Personal (che al posto di Personal ha Studio). Home, Pazienti e Chat
+   restano raggiungibili dalla ricerca. Senza l'archivio documenti nel piano, quel posto torna
+   a Pazienti invece di portare a una pagina non disponibile. */
 export const MOBILE_DOCK_ITEMS = Object.freeze([
-  { id: 'home', label: 'Home', icon: 'home' },
   { id: 'agenda', label: 'Agenda', icon: 'cal' },
+  { id: 'note', label: 'Note', icon: 'edit' },
   { id: '__poliedron__', label: 'Poliedron', icon: null },
-  { id: 'paz', label: 'Pazienti', icon: 'pz' },
-  { id: 'chat', label: 'Chat', icon: 'chat' },
+  { id: 'archivio', label: 'Documenti', icon: 'folder' },
+  { id: '__personal__', label: 'Personal', icon: 'home' },
 ]);
+export const mobileDockItems = ({ archivio = true } = {}) => MOBILE_DOCK_ITEMS.map((item) => (
+  item.id === 'archivio' && !archivio ? { id: 'paz', label: 'Pazienti', icon: 'pz' } : item
+));
 
-export default function PoliedronMobileDock({ page, setPage, open, onToggle, panelId, positionLocked }) {
+export default function PoliedronMobileDock({ page, setPage, open, onToggle, panelId, positionLocked, archivio = true }) {
   return (
     <nav
       className={`poliedron-mobile-dock${open ? ' is-receded' : ''}`}
       aria-label="Navigazione principale"
       aria-hidden={open ? 'true' : undefined}
     >
-      {MOBILE_DOCK_ITEMS.map((item) => {
+      {mobileDockItems({ archivio }).map((item) => {
         if (item.id === '__poliedron__') {
           return (
             <div key={item.id} className="poliedron-mobile-dock__hero-slot" data-slot="poliedron">
@@ -60,7 +69,10 @@ export default function PoliedronMobileDock({ page, setPage, open, onToggle, pan
             aria-label={item.label}
             aria-current={active ? 'page' : undefined}
             tabIndex={open ? -1 : 0}
-            onClick={() => setPage(item.id)}
+            onClick={() => {
+              if (item.id === '__personal__') { globalThis.location.assign(agendaDestination('personal', new Date().toLocaleDateString('sv-SE'), 'giorno')); return; }
+              setPage(item.id);
+            }}
           >
             <Ic n={item.icon} s={22} />
           </button>

@@ -1,0 +1,48 @@
+/* NOTE-PERSONALI — pagina Note in stile iOS, identica in Studio e Personal. */
+.note-page {
+  --note-bg: var(--surface-page, #F2F2F7);
+  --note-card: var(--surface-card, #fff);
+  --note-label: var(--text-primary, #1C1C1E);
+  --note-label-2: color-mix(in srgb, var(--text-primary, #1C1C1E) 58%, transparent);
+  --note-sep: color-mix(in srgb, var(--text-primary, #1C1C1E) 12%, transparent);
+  --note-tint: var(--brand-primary, #0B7A5C);
+  max-width: 760px; margin: 0 auto; padding: 8px 16px calc(120px + env(safe-area-inset-bottom, 0px));
+  color: var(--note-label); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+}
+.note-title { margin: 6px 0 12px; font: 700 34px/1.1 -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif; letter-spacing: -.03em; }
+.note-capture { background: var(--note-card); border-radius: 16px; padding: 12px 12px 10px 14px; box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 8px 24px -12px rgba(0,0,0,.18); display: grid; gap: 8px; margin-bottom: 14px; }
+.note-capture textarea { width: 100%; border: 0; resize: none; background: transparent; font: 400 17px/1.4 inherit; color: var(--note-label); outline: none; }
+.note-capture textarea::placeholder { color: color-mix(in srgb, var(--note-label) 35%, transparent); }
+.note-capture-bar { display: flex; align-items: center; gap: 8px; }
+.note-areas, .note-filters { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.note-areas::-webkit-scrollbar, .note-filters::-webkit-scrollbar { display: none; }
+.note-areas { flex: 1; min-width: 0; }
+.note-areas button, .note-filters button { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px; border: 0; border-radius: 15px; background: rgba(118,118,128,.12); color: var(--note-label); font: 500 13.5px inherit; cursor: pointer; }
+.note-areas button i, .note-filters button i { width: 7px; height: 7px; border-radius: 50%; background: var(--area); }
+.note-areas button.on { background: color-mix(in srgb, var(--area) 18%, var(--note-card)); color: color-mix(in srgb, var(--area) 70%, var(--note-label)); font-weight: 600; }
+.note-filters { margin-bottom: 12px; }
+.note-filters button { background: var(--note-card); box-shadow: 0 0 0 .5px var(--note-sep); }
+.note-filters button.on { background: var(--note-label); color: var(--note-card); box-shadow: none; }
+.note-add { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 0; background: var(--note-tint); color: #fff; display: grid; place-items: center; cursor: pointer; }
+.note-add:disabled { opacity: .35; cursor: default; }
+.note-add svg, .note-card-tools svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.note-grid { columns: 2 160px; column-gap: 10px; }
+.note-card { break-inside: avoid; margin: 0 0 10px; background: var(--note-card); border-radius: 16px; padding: 12px 12px 8px 13px; display: grid; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 8px 24px -12px rgba(0,0,0,.18); }
+.note-card--pin { background: color-mix(in srgb, #FFD60A 20%, var(--note-card)); }
+.note-card-body { border: 0; padding: 0; background: none; color: inherit; text-align: left; font: inherit; cursor: pointer; display: grid; gap: 4px; }
+.note-card-body b { font-size: 15.5px; font-weight: 600; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.note-card-body p { margin: 0; font-size: 14px; line-height: 1.38; color: var(--note-label-2); white-space: pre-line; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 8; -webkit-box-orient: vertical; overflow: hidden; }
+.note-card-meta { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: color-mix(in srgb, var(--note-label) 40%, transparent); }
+.note-tag { height: 20px; padding: 0 8px; border-radius: 10px; display: inline-flex; align-items: center; font-weight: 600; background: color-mix(in srgb, var(--area) 14%, var(--note-card)); color: color-mix(in srgb, var(--area) 75%, var(--note-label)); }
+.note-card-tools { margin-left: auto; display: flex; gap: 2px; }
+.note-card-tools button { min-width: 30px; height: 30px; border: 0; border-radius: 15px; background: none; color: color-mix(in srgb, var(--note-label) 45%, transparent); display: grid; place-items: center; cursor: pointer; font: 600 12.5px inherit; padding: 0 6px; }
+.note-card-tools button[aria-pressed="true"] { color: #C99A00; }
+.note-card-tools .note-danger { color: #FF3B30; }
+.note-card--edit textarea { width: 100%; border: 0; resize: vertical; background: transparent; font: 400 15px/1.4 inherit; color: var(--note-label); outline: none; }
+.note-card-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.note-card-actions button { height: 32px; padding: 0 12px; border: 0; border-radius: 16px; background: rgba(118,118,128,.12); color: var(--note-label); font: 600 13.5px inherit; cursor: pointer; }
+.note-card-actions .note-primary { background: var(--note-tint); color: #fff; }
+.note-empty, .note-error { font-size: 14.5px; color: var(--note-label-2); padding: 8px 2px 16px; }
+.note-error { color: #C81E1E; }
+.note-error button { border: 0; background: none; color: var(--note-tint); font: 600 14px inherit; cursor: pointer; }
+.note-page button:focus-visible, .note-page textarea:focus-visible { outline: 2px solid var(--note-tint); outline-offset: 2px; }
