@@ -103,7 +103,9 @@ export function DayStrip({ palette: C = DEFAULT_PALETTE, selDay, setSelDay, toda
   const circleD = compact ? 25 : 30;
   return (
     <div ref={overlayRef} className={compact ? 'agenda-mobile-floating-controls' : undefined} style={{ flexShrink: 0 }}>
-      {/* HOME-AGENDA-CENTRIC: su telefono la ricerca sta in cima, sopra mese e giorni. */}
+      {/* HOME-AGENDA-CENTRIC: su telefono ricerca, mese e giorni formano un'unica barra
+          traslucida (stile iOS); gli impegni del giorno restano flottanti sotto. */}
+      <div className={compact ? 'agenda-mobile-chrome' : undefined}>
       {compact && searchBar}
       <div className={compact ? 'agenda-mobile-floating-toolbar' : undefined} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: compact ? '0 4px 4px' : '0 4px 6px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -117,7 +119,9 @@ export function DayStrip({ palette: C = DEFAULT_PALETTE, selDay, setSelDay, toda
           {!compact && onPrevWeek && (
             <button onClick={onPrevWeek} aria-label="Settimana precedente" style={{ background: C.bg, border: 'none', borderRadius: 7, width: 26, height: 26, cursor: 'pointer', fontSize: 15, color: C.txm, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>‹</button>
           )}
-          <span className={compact ? 'agenda-mobile-floating-month' : undefined} style={{ fontSize: 13, fontWeight: 800, color: C.txt, textTransform: 'capitalize', ...(shortMonth ? { whiteSpace: 'nowrap', flexShrink: 0 } : {}) }}>{meseLabel}</span>
+          <span className={compact ? 'agenda-mobile-floating-month' : undefined} style={{ fontSize: 13, fontWeight: 800, color: C.txt, textTransform: 'capitalize', ...(shortMonth ? { whiteSpace: 'nowrap', flexShrink: 0 } : {}) }}>{compact && wkMonStart.getMonth() === wkMonEnd.getMonth()
+            ? <><span className="agenda-month-name">{MESI[wkMonStart.getMonth()]}</span> <span className="agenda-month-year">{wkMonStart.getFullYear()}</span></>
+            : meseLabel}</span>
           {!compact && onNextWeek && (
             <button onClick={onNextWeek} aria-label="Settimana successiva" style={{ background: C.bg, border: 'none', borderRadius: 7, width: 26, height: 26, cursor: 'pointer', fontSize: 15, color: C.txm, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>›</button>
           )}
@@ -151,6 +155,7 @@ export function DayStrip({ palette: C = DEFAULT_PALETTE, selDay, setSelDay, toda
             </div>
           ))}
         </div>
+      </div>
       </div>
       {floatingFooter}
     </div>

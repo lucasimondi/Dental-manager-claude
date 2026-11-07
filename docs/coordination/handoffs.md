@@ -4458,3 +4458,11 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - RISKS: overlay is taller by one row (~46px), so the first visible hour starts lower on phone; Personal dock now has six items (narrow phones use 9px labels at <=375px). Studio desktop unchanged.
 - ROLLBACK: revert this commit.
 - EXACT NEXT ACTION: PO check on phone; then limit the new Home to phone (desktop as before) and continue with the proposal items the PO confirms.
+
+## 2026-11-07 — AGENDA-MOBILE-IOS-STYLE
+- TASK/OWNER: follow-up of AGENDA-MOBILE-SEARCH on branch ccr-4fbd3db0-8ou289, Claude Code. PO: "Deve essere molto più bella, il layout deve essere da agenda creata da un designer della Apple".
+- COMPLETED (phone only, shared by Studio and Personal; desktop untouched): DayStrip wraps search, month and days in `.agenda-mobile-chrome`, one translucent material bar (blur 22px, hairline bottom) instead of separate glass pills; day events stay floating below it. iOS-like search field (filled grey, 36px, no border); large title month (28px bold) with year in system red; view picker and icon buttons without frames, tint colour; week strip without card, lowercase weekday labels, 32px day numbers, today = filled red circle with white number, selected = ink circle; grid hairlines lighter, no gutter border, now line system red; all-day chips 8px radius. Dark mode red/fill tokens.
+- FILES: shared/agenda/AgendaPresentation.jsx, shared/agenda/agenda.css, tests/mobileShell.test.mjs (today-style assertion updated to the PO decision).
+- VALIDATION: 1559/1559 Node tests; Studio and Personal builds; diff check clean; synthetic Chromium renders at 390px (Studio/Personal, day/week, light; header also checked in dark). agenda.compare.mjs baselines will need refresh in CI.
+- RISKS: appointment block style unchanged (PR273 filled blocks); the fixture grid stays light in dark mode because it uses a fixed palette (real app switches palette). No physical device test.
+- ROLLBACK: revert this commit.
