@@ -40,7 +40,7 @@ export function ViewPicker({ view, setView, touchSafe = false, palette: C = DEFA
   );
 }
 
-export function DayStrip({ palette: C = DEFAULT_PALETTE, selDay, setSelDay, today: t, onWeekChange, highlightSelected = true, viewPicker, compact, oraColW, onPrevWeek, onNextWeek, hiddenWeekdays = [], singleDay = false, overlayRef, floatingFooter, shortMonth = false }) {
+export function DayStrip({ palette: C = DEFAULT_PALETTE, selDay, setSelDay, today: t, onWeekChange, highlightSelected = true, viewPicker, compact, oraColW, onPrevWeek, onNextWeek, hiddenWeekdays = [], singleDay = false, overlayRef, floatingFooter, shortMonth = false, searchBar = null }) {
   const scrollRef = useRef(null);
   const [stripBaseWeek, setStripBaseWeek] = useState(() => toISO(startOfWeek(selDay)));
   const settleTimer = useRef(null);
@@ -103,6 +103,8 @@ export function DayStrip({ palette: C = DEFAULT_PALETTE, selDay, setSelDay, toda
   const circleD = compact ? 25 : 30;
   return (
     <div ref={overlayRef} className={compact ? 'agenda-mobile-floating-controls' : undefined} style={{ flexShrink: 0 }}>
+      {/* HOME-AGENDA-CENTRIC: su telefono la ricerca sta in cima, sopra mese e giorni. */}
+      {compact && searchBar}
       <div className={compact ? 'agenda-mobile-floating-toolbar' : undefined} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: compact ? '0 4px 4px' : '0 4px 6px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {/* POL-UI-006: controlli espliciti settimana precedente/successiva
@@ -373,6 +375,18 @@ export function useSlotHeight(containerRef, isMobile, slots, slotH, resetKey) {
   return effectiveSlotH;
 }
 
+// Barra di ricerca in cima all'agenda su telefono: un solo tocco apre la ricerca dell'app
+// (Poliedron in Studio, l'assistente in Personal). `extra` ospita un'icona accanto, es. l'altra app.
+export function AgendaSearchBar({ onOpen, label = 'Cerca paziente, documento, sezione…', extra = null }) {
+  return <div className="agenda-search-row">
+    <button type="button" className="agenda-search agenda-floating-interactive" onClick={onOpen} aria-label="Cerca">
+      <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+      <span>{label}</span>
+    </button>
+    {extra}
+  </div>;
+}
+
 export function AgendaSwitch({ target, day, view, month, inline = false }) {
   return <a className={`agenda-app-switch${inline ? ' agenda-app-switch-inline' : ''}`} href={agendaDestination(target, day, view, globalThis.location, month)}>Vai a {target === 'studio' ? 'Studio' : 'Personal'} <span aria-hidden="true">↗</span></a>;
 }
@@ -394,8 +408,8 @@ export function MonthDateLabel({ palette: C = DEFAULT_PALETTE, day }) {
   return <div style={{ fontSize: 12, fontWeight: 700, color: C.txm, marginBottom: 8 }}>{new Date(day + 'T12:00').toLocaleDateString('it-IT')}</div>;
 }
 
-export function MonthToolbar({ date, overlayRef, children, floatingFooter }) {
-  return <div ref={overlayRef} className="agenda-mobile-floating-controls"><div className="agenda-mobile-floating-toolbar">
+export function MonthToolbar({ date, overlayRef, children, floatingFooter, searchBar = null }) {
+  return <div ref={overlayRef} className="agenda-mobile-floating-controls">{searchBar}<div className="agenda-mobile-floating-toolbar">
     <span className="agenda-mobile-floating-month">{MESI[date.getMonth()]} {date.getFullYear()}</span>
     <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>{children}</div>
   </div>{floatingFooter}</div>;

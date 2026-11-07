@@ -27,7 +27,7 @@
 .pp-icona-bottone { width: 44px; height: 44px; border-radius: 14px; border: 1px solid var(--pp-linea); box-shadow: none; }
 .pp-contenuto:not(.pp-contenuto-agenda):not(.pp-contenuto-chat):not(.pp-contenuto-diario) { padding: 18px max(20px, env(safe-area-inset-left)) 32px max(20px, env(safe-area-inset-right)); }
 .pp-schede {
-  grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; max-width: 600px; height: 68px;
+  grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; max-width: 600px; height: 68px;
   left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right));
   padding: 6px; border-radius: 23px; overflow: visible;
   background: color-mix(in srgb, var(--pp-superficie) 96%, transparent);

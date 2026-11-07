@@ -1,3 +1,12 @@
+# Current task — AGENDA-MOBILE-SEARCH (2026-11-07)
+- OWNER Claude Code; branch ccr-4fbd3db0-8ou289 (continues HOME-AGENDA-CENTRIC, commit 9f2a9b4).
+- AUTHORIZATION PO, after reviewing the phone proposal (artifact "Poliedra Vita"): "prendi agenda di Poliedron e rendila come mi hai proposto ma solo metti la barra ricerca in alto poi sotto i giorni"; earlier: remove "Vai a Personal"/"Vai a Studio", Studio icon in the Personal dock, same agenda in both apps, daily events stay floating as today, phone first (desktop unchanged).
+- SCOPE presentation only, phone: shared AgendaSearchBar rendered first in DayStrip/MonthToolbar floating controls (search, then month/view, then days, then the existing floating day events). Studio search opens the existing Poliedron panel (searchRequest); a small Personal icon sits next to it; the "Vai a Personal" pill stays only when no search bar (desktop). Personal search opens the Poliedron assistant section; "Vai a Studio" removed from the agenda; Studio link added to the Personal dock (6 columns). No data, schema, RLS or behavior change beyond navigation entry points.
+- STATUS implementation + local checks complete; branch pushed, no PR (not requested). Task-specific "Mergia" required.
+- OPEN (PO): desktop Home must stay as before — the HOME-AGENDA-CENTRIC Home commit still applies on desktop and must be limited to phone in a follow-up; proposal items not yet built (patient blocks restyle, reminders, Da fare/Progetti, Studio dock "Personal").
+- VALIDATION 1559/1559 Node tests; Studio and Personal builds; synthetic Chromium render of tests/visual/agenda.html (studio/personal × giorno/settimana, 390px): search at top (16px), days strip below (110px), no app-switch pill, search tap reaches the handler, no page errors.
+- Previous operational record preserved below.
+
 # Current task — HOME-AGENDA-CENTRIC (2026-11-06)
 - OWNER Claude Code; branch ccr-4fbd3db0-8ou289 from master b62e2eb (PR273 merged).
 - AUTHORIZATION PO reviewed two design proposals (artifacts "Poliedra Nitido" and "Poliedra Oggi") and asked: green as leading color, Home with only essentials (no management control), agenda-centric software, one Poliedron search bar from which everything starts, plus an Agenda button in the header; "restyling home poi passiamo al resto".

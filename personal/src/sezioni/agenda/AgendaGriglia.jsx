@@ -6,7 +6,7 @@ import { layoutAgendaDay, layoutAppointments } from '../../../../shared/agenda/g
 import { euro } from '../../lib/coreArchivio.js';
 // POL-VITA-010: Personal adapter; original presentation is owned by shared/agenda.
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, AppointmentBlock, EventBlock, useSlotHeight, AgendaSwitch, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState } from '../../../../shared/agenda/AgendaPresentation.jsx';
+import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, AppointmentBlock, EventBlock, useSlotHeight, AgendaSearchBar, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState } from '../../../../shared/agenda/AgendaPresentation.jsx';
 import { getVisibleWeekDays } from '../../../../shared/agenda/visibleDays.js';
 import { daIso, piuGiorni, oggi, coloreEvento, nomeEtichetta, elementiDelGiorno, giorniSettimana } from '../../lib/agenda.js';
 export { ViewPicker };
@@ -53,9 +53,10 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
   const nowMin = now.getHours() * 60 + now.getMinutes() - oraInizio * 60;
   const nowTop = nowMin / slotMin * effectiveSlotH;
   const showNowLine = nowMin >= 0 && nowMin <= slots.length * slotMin;
-  // POL-VITA-008: "Vai a Studio" accanto al selettore della vista, alla sua sinistra.
-  const appSwitch = <AgendaSwitch inline target="studio" day={giorno} month={month} view={view} />;
-  const pick = <span className="personal-agenda-azioni">{appSwitch}<ViewPicker palette={palette} hiddenCount={hiddenCount} showHidden={mostraEsclusi} onToggleHidden={setMostraEsclusi ? () => setMostraEsclusi(x => !x) : undefined} view={view} setView={setView} touchSafe weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendsHidden(hidden => !hidden)} /></span>;
+  // HOME-AGENDA-CENTRIC: niente più "Vai a Studio" qui (Studio è nel dock); in cima la ricerca,
+  // che apre l'assistente Poliedron, poi mese e giorni.
+  const ricerca = <AgendaSearchBar onOpen={() => ctx.vai('poliedron')} label="Cerca o chiedi a Poliedron…" />;
+  const pick = <span className="personal-agenda-azioni"><ViewPicker palette={palette} hiddenCount={hiddenCount} showHidden={mostraEsclusi} onToggleHidden={setMostraEsclusi ? () => setMostraEsclusi(x => !x) : undefined} view={view} setView={setView} touchSafe weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendsHidden(hidden => !hidden)} /></span>;
   // DayStrip notifica anche al primo mount la settimana che sta mostrando.
   // In Personal ignoriamo quella prima notifica: altrimenti il 16 diventa lunedì 12.
   const skipWeekSync = useRef(true);
@@ -110,7 +111,7 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
   ] }))} />;
   return <div className="agenda-mobile-page" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, position: 'relative', '--agenda-mobile-overlay-clearance': `${overlayHeight}px` }}>
     {view === 'mese' ? <>
-      <MonthToolbar date={daIso(month)} overlayRef={overlayRef}><button onClick={() => changeMonth(oggi())} style={{ background: '#E6F1FB', border: 'none', borderRadius: 14, padding: '5px 10px', color: '#185FA5', fontWeight: 700, fontSize: 10 }}>Oggi</button>{pick}</MonthToolbar>
+      <MonthToolbar date={daIso(month)} overlayRef={overlayRef} searchBar={ricerca}><button onClick={() => changeMonth(oggi())} style={{ background: '#E6F1FB', border: 'none', borderRadius: 14, padding: '5px 10px', color: '#185FA5', fontWeight: 700, fontSize: 10 }}>Oggi</button>{pick}</MonthToolbar>
       <div className="agenda-mobile-month-surface"><MonthCalendar palette={palette} date={daIso(month)} selDay={giorno} today={oggi()} onNavigate={monthNavigate} onSelect={ds => { setGiorno(ds); setView('giorno'); }} daySummary={ds => { const el = elementiDelGiorno(ds, dati); return { count: el.aOrario.filter(x => x.tipo === 'appuntamento').length, marks: [...el.scadenze.map(s => ({ id: `scadenza-${s.id}`, colore: '#b54708' })), ...el.tuttoIlGiorno, ...el.aOrario.filter(x => x.tipo === 'evento').map(x => x.dato)].map(e => ({ id: e.id, colore: e.colore || coloreEvento(e, etichette) })) }; }} />
         {[...extras.tuttoIlGiorno, ...extras.aOrario.filter(x => x.tipo === 'evento').map(x => x.dato)].map(e => <MonthDetailCard palette={palette} key={e.id} co={coloreEvento(e, etichette)} title={e.titolo} badge={nomeEtichetta(e.tipo, etichette)} subtitle={e.tutto_il_giorno ? 'Tutto il giorno' : `${(e.ora_inizio || '').slice(0,5)} – ${(e.ora_fine || '').slice(0,5)}`} onClick={() => ctx.apri({ tipo: 'evento', evento: e })} />)}
         {extras.scadenze.map(s => <MonthDetailCard palette={palette} key={'scadenza-' + s.id} co="#b45309" title={s.descrizione} subtitle={(s.completata ? 'Pagato' : 'Scadenza') + (s.importo != null ? ' · ' + euro(s.importo) : '')} onClick={() => ctx.apri({ tipo: 'pagamento', s })} />)}
@@ -119,7 +120,7 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
         {!extras.aOrario.some(x => x.tipo === 'appuntamento') && <CalendarEmptyState palette={palette} />}
       </div>
     </> : <>
-      <DayStrip palette={palette} selDay={giorno} setSelDay={ds => { setGiorno(ds); if (weekly) setView('giorno'); }} today={oggi()} compact oraColW={34} singleDay={!weekly} hiddenWeekdays={hiddenWeekdays} highlightSelected={!weekly} onWeekChange={weekly ? sincronizzaSettimana : undefined} overlayRef={overlayRef} viewPicker={pick} floatingFooter={fasciaGiorno} shortMonth />
+      <DayStrip palette={palette} selDay={giorno} setSelDay={ds => { setGiorno(ds); if (weekly) setView('giorno'); }} today={oggi()} compact oraColW={34} singleDay={!weekly} hiddenWeekdays={hiddenWeekdays} highlightSelected={!weekly} onWeekChange={weekly ? sincronizzaSettimana : undefined} searchBar={ricerca} overlayRef={overlayRef} viewPicker={pick} floatingFooter={fasciaGiorno} shortMonth />
       <div className="agenda-mobile-grid-surface" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }} {...swipe}>
         <TimeGrid palette={palette} containerRef={containerRef} isMobile slots={slots} slotH={slotH} effectiveSlotH={effectiveSlotH} oraColW={34} days={days} today={oggi()} showNowLine={showNowLine} nowTop={nowTop} onSlot={openSlot} renderDay={renderDay} />
       </div>
