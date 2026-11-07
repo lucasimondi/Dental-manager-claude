@@ -27,3 +27,26 @@ test('phone agenda uses soft appointment blocks; desktop keeps the filled block'
   assert.match(personal, /<AppointmentBlock soft /);
   assert.match(shared, /isMobile && days\.length === 1 && <span className="agenda-now-pill">/);
 });
+
+test('phone agenda: no + button, tap a free slot to choose what to create; week strip also in day view', () => {
+  const studio = readFileSync(new URL('../src/components/Agenda.jsx', import.meta.url), 'utf8');
+  const personal = readFileSync(new URL('../personal/src/sezioni/agenda/AgendaGriglia.jsx', import.meta.url), 'utf8');
+  const personalSection = readFileSync(new URL('../personal/src/sezioni/agenda/index.jsx', import.meta.url), 'utf8');
+  assert.match(studio, /const toccaSlot = \(data, ora\) => \{ if \(!isMobile \|\| followUpRequest\) \{ apriNuovo\(data, ora\); return; \} setSceltaSlot\(\{ data, ora \}\); \};/);
+  assert.match(studio, /apriNuovo: toccaSlot,/);
+  assert.match(studio, />Appuntamento paziente<\/button>/);
+  assert.match(studio, /apriNuovoImpegno\(s\.data, s\.ora\)/);
+  assert.match(studio, /display: isMobile \? 'none' : undefined,\n\s+position: 'fixed',/);
+  assert.match(personalSection, /senzaPiu: true/);
+  assert.match(studio, /singleDay=\{false\}/);
+  assert.match(personal, /singleDay=\{false\}/);
+});
+
+test('floating day events: one line per event in week view, at most two plus "+N"', () => {
+  const ev = readFileSync(new URL('../shared/agenda/DayEvents.jsx', import.meta.url), 'utf8');
+  assert.match(ev, /const VISIBILI_SETTIMANA = 2;/);
+  assert.match(ev, /agenda-day-events--week/);
+  assert.match(ev, /\+\{nascosti\}/);
+  const css = readFileSync(new URL('../shared/agenda/agenda.css', import.meta.url), 'utf8');
+  assert.match(css, /\.agenda-day-events--week button \{[^}]*white-space: nowrap;[^}]*text-overflow: ellipsis;/);
+});

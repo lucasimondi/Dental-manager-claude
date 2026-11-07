@@ -120,7 +120,7 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
         {!extras.aOrario.some(x => x.tipo === 'appuntamento') && <CalendarEmptyState palette={palette} />}
       </div>
     </> : <>
-      <DayStrip palette={palette} selDay={giorno} setSelDay={ds => { setGiorno(ds); if (weekly) setView('giorno'); }} today={oggi()} compact oraColW={34} singleDay={!weekly} hiddenWeekdays={hiddenWeekdays} highlightSelected={!weekly} onWeekChange={weekly ? sincronizzaSettimana : undefined} searchBar={ricerca} overlayRef={overlayRef} viewPicker={pick} floatingFooter={fasciaGiorno} shortMonth />
+      <DayStrip palette={palette} selDay={giorno} setSelDay={ds => { setGiorno(ds); if (weekly) setView('giorno'); }} today={oggi()} compact oraColW={34} singleDay={false} hiddenWeekdays={hiddenWeekdays} highlightSelected={!weekly} onWeekChange={weekly ? sincronizzaSettimana : undefined} searchBar={ricerca} overlayRef={overlayRef} viewPicker={pick} floatingFooter={fasciaGiorno} shortMonth />
       <div className="agenda-mobile-grid-surface" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }} {...swipe}>
         <TimeGrid palette={palette} containerRef={containerRef} isMobile slots={slots} slotH={slotH} effectiveSlotH={effectiveSlotH} oraColW={34} days={days} today={oggi()} showNowLine={showNowLine} nowTop={nowTop} onSlot={openSlot} renderDay={renderDay} />
       </div>
