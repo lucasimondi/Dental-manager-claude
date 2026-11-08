@@ -1,0 +1,28 @@
+/* APP-UNICA — pagina «Altro» in stile iOS, uguale in Studio e Personal. */
+.altro-pagina {
+  --al-sfondo: transparent; --al-card: var(--surface-card, #fff); --al-testo: var(--text-primary, #1C1C1E);
+  --al-testo-2: color-mix(in srgb, var(--text-primary, #1C1C1E) 58%, transparent); --al-riempi: rgba(118,118,128,.12);
+  max-width: 760px; min-width: 0; margin: 0 auto; box-sizing: border-box; padding: 8px 16px calc(120px + env(safe-area-inset-bottom, 0px));
+  color: var(--al-testo); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, "Segoe UI", Roboto, sans-serif;
+}
+.altro-titolo { margin: 6px 0 12px; font: 700 34px/1.1 -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, "Segoe UI", Roboto, sans-serif; letter-spacing: -.03em; }
+.altro-cerca { height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 11px; background: var(--al-riempi); color: var(--al-testo-2); }
+.altro-cerca svg { width: 17px; height: 17px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.altro-cerca input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--al-testo); font-family: inherit; font-size: 16px; outline: none; }
+.altro-gruppo h2 { margin: 20px 4px 8px; font-size: 12.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--al-testo-2); }
+.altro-griglia { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+@media (min-width: 600px) { .altro-griglia { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.altro-tessera { min-width: 0; min-height: 80px; display: grid; justify-items: center; align-content: center; gap: 7px; padding: 8px 2px; border: 0; border-radius: 16px;
+  background: var(--al-card); color: var(--al-testo); font: inherit; line-height: 1.15; text-decoration: none; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,.04); -webkit-tap-highlight-color: transparent; transition: transform .1s ease; }
+.altro-tessera:active { transform: scale(.95); }
+.altro-icona { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; color: #fff; background: linear-gradient(180deg, color-mix(in srgb, var(--c) 82%, #fff), var(--c)); }
+.altro-icona svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.altro-nome { max-width: 100%; font-size: 12px; font-weight: 600; line-height: 1.15; text-align: center; overflow-wrap: anywhere; }
+.altro-riga { width: 100%; margin-top: 16px; min-height: 48px; display: flex; align-items: center; gap: 12px; padding: 0 14px; border: 0; border-radius: 14px; box-sizing: border-box;
+  background: var(--al-card); color: var(--al-testo); font: inherit; font-size: 15px; font-weight: 600; text-align: left; text-decoration: none; cursor: pointer; }
+.altro-riga + .altro-riga { margin-top: 8px; }
+.altro-riga svg { width: 20px; height: 20px; flex: none; fill: none; stroke: var(--al-testo-2); stroke-width: 1.9; stroke-linecap: round; }
+.altro-riga span { flex: 1; }
+.altro-riga i { font-style: normal; font-size: 22px; color: var(--al-testo-2); }
+.altro-vuoto { color: var(--al-testo-2); font-size: 14.5px; margin: 16px 4px; }
+.altro-pagina :is(button, a, input):focus-visible { outline: 2px solid var(--brand-primary, #1F63B5); outline-offset: 2px; }

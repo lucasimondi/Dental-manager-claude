@@ -4518,3 +4518,7 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - RISKS: parser is rule-based Italian: unusual phrasing falls back to search/AI; a title may keep extra words (editable in agenda, Annulla available). "il N" picks the next occurrence (this month or next). KPI emergency text stays generic ("Ho recuperato i KPI…") because the get_kpi_periodo output shape is not in the repository.
 - ROLLBACK: revert the branch commit; no data rollback.
 - EXACT NEXT ACTION: PO tries commands on preview; PR only on request; task-specific "Mergia".
+
+## 2026-11-08 — APP-UNICA passo 1
+- Done: shared/crea (CreaSheet, CreaButton), shared/altro (AltroPage), navigation sectionDestination/readSectionLocation/readSectionNew, Studio dock «Altro» + page `altro`, Personal dock 5 voci + Altro condiviso, Win95 removed, Studio PWA name Poliedron, tests/appUnica.test.mjs and updated dock/theme tests.
+- Next: docs/coordination/app-unica-da-fare.md (passo 2 e 3, prove su iPhone vero).

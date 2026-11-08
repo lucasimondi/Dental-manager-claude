@@ -28,8 +28,8 @@ test('pagina Password uguale in Studio e Personal, password nascosta finché non
   const page = readFileSync('shared/password/PasswordPage.jsx', 'utf8');
   assert.match(page, /\{vedi \? \(voce\.segreto \|\| '—'\) : '••••••••'\}/);
   assert.match(page, /aria-label="Copia password"/);
-  assert.match(readFileSync('src/App.jsx', 'utf8'), /page === 'password' && <PasswordPage db=\{supabase\}/);
+  assert.match(readFileSync('src/App.jsx', 'utf8'), /page === 'password' && <PasswordPage key=\{passwordNuova\} nuovaSubito=\{passwordNuova > 0\} db=\{supabase\}/);
   assert.match(readFileSync('personal/src/sezioni/password/Password.jsx', 'utf8'), /<PasswordPage db=\{studioDb\}/);
   assert.match(readFileSync('src/lib/utils.js', 'utf8'), /\{ id: 'password', l: 'Password', ic: 'lock' \}/);
-  assert.match(readFileSync('personal/src/sezioni/altro/index.jsx', 'utf8'), /\[password, 'Registro password/);
+  assert.match(readFileSync('personal/src/sezioni/altro/index.jsx', 'utf8'), /\['password', 'Password', 'password', '#4E52C4'\]/);
 });

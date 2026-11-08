@@ -549,7 +549,8 @@ test('DOCK: structure, order, destinations and geometry are unchanged; only the 
   assert.match(dockSrc, /\{ id: 'note', label: 'Note', icon: 'edit' \}/);
   assert.match(dockSrc, /\{ id: '__poliedron__', label: 'Poliedron', icon: null \}/);
   assert.match(dockSrc, /\{ id: 'archivio', label: 'Documenti', icon: 'folder' \}/);
-  assert.match(dockSrc, /\{ id: '__personal__', label: 'Personal', icon: 'home' \}/);
+  // APP-UNICA (PO 2026-11-08): l'ultimo posto è «Altro» (Lavoro e Vita), non più Personal.
+  assert.match(dockSrc, /\{ id: 'altro', label: 'Altro', icon: 'more' \}/);
   assert.doesNotMatch(dockSrc, /id: 'set'/, 'Impostazioni must not come back to the dock');
   // Geometry constants untouched.
   assert.equal(MOBILE_DOCK_BOTTOM, 16);

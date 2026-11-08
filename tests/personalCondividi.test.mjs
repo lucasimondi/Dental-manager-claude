@@ -53,7 +53,8 @@ test('agenda: eventi del giorno dentro i controlli flottanti sotto la striscia; 
   assert.match(g, /<span className="personal-agenda-azioni"><ViewPicker/);
   assert.doesNotMatch(g, /<AgendaSwitch/);
   assert.match(g, /searchBar=\{ricerca\}/);
-  assert.match(readFileSync('personal/src/App.jsx', 'utf8'), /aria-label="Apri Studio"/);
+  // APP-UNICA (PO 2026-11-08): niente più tasto Studio nel dock; lo studio è in Altro → Lavoro.
+  assert.doesNotMatch(readFileSync('personal/src/App.jsx', 'utf8'), /aria-label="Apri Studio"/);
   const css = readFileSync('personal/src/personal.css', 'utf8');
   assert.match(css, /\.agenda-mobile-floating-controls \.personal-agenda-extras \{[^}]*pointer-events: none/);
 });

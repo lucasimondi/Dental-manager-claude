@@ -46,8 +46,8 @@ test('missing table gives a clear message instead of a technical error', () => {
 
 test('Note is wired in Studio (page, search, dock) and Personal (section, dock) on the same table', () => {
   const app = readFileSync('src/App.jsx', 'utf8');
-  assert.match(app, /page === 'note' && <NotePage db=\{supabase\} studioId=\{session\?\.user\?\.app_metadata\?\.studio_id\} \/>/);
+  assert.match(app, /page === 'note' && <NotePage key=\{noteScrivi\} scriviSubito=\{noteScrivi > 0\} db=\{supabase\} studioId=\{session\?\.user\?\.app_metadata\?\.studio_id\} \/>/);
   assert.match(readFileSync('src/lib/utils.js', 'utf8'), /\{ id: 'note', l: 'Note', ic: 'edit' \}/);
-  assert.match(readFileSync('personal/src/sezioni/note/Note.jsx', 'utf8'), /<NotePage db=\{studioDb\} studioId=\{studioId\} \/>/);
+  assert.match(readFileSync('personal/src/sezioni/note/Note.jsx', 'utf8'), /<NotePage db=\{studioDb\} studioId=\{studioId\} scriviSubito=\{ctx\?\.sotto === 'scrivi'\} \/>/);
   assert.match(readFileSync('shared/note/note.js', 'utf8'), /from\('note_personali'\)/);
 });

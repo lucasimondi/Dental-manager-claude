@@ -163,8 +163,8 @@ test('app: Conti in Altro, dock compatto, + con tutte le aggiunte e chiusura', (
   assert.match(readFileSync('personal/src/sezioni/conti/index.jsx', 'utf8'), /id: 'conti', nome: 'Conti', Icona: IconaEuro/);
   // PO 2026-11-07: dock agenda-centrico (Agenda, Note | Poliedron | Documenti, Studio, Altro); Oggi in Altro.
   assert.match(readFileSync('personal/src/sezioni/index.js', 'utf8'), /export const DOCK = \[agenda, note\];\nexport const DOCK_DOPO = \[documenti\];/);
-  assert.match(readFileSync('personal/src/sezioni/altro/index.jsx', 'utf8'), /\[oggi, 'Riepilogo, pagamenti, documenti e pratiche'\]/);
-  assert.match(readFileSync('personal/src/sezioni/altro/index.jsx', 'utf8'), /\[conti, 'Spese, incassi e pagamenti'\]/);
+  // APP-UNICA (PO 2026-11-08): Altro a tessere, Vita (Personal) e Lavoro (Studio).
+  assert.match(readFileSync('personal/src/sezioni/altro/index.jsx', 'utf8'), /\['oggi', 'Oggi', 'oggi', '#E0A526'\], \['conti', 'Conti', 'conti', '#34845A'\]/);
   assert.match(app, /leggiVista\(\) === 'pagamenti' \? 'conti'/);
   assert.match(readFileSync('personal/src/Pagina.jsx', 'utf8'), /className="pp-chiudi-pagina"/);
   for (const voce of ['scansiona', 'fotocamera', 'libreria', 'file', 'personale', 'spesa', 'incasso', 'pagamento', 'evento']) {

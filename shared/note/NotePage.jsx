@@ -43,7 +43,7 @@ function Nota({ nota, occupato, onSalva, onFissa, onElimina }) {
   </article>;
 }
 
-export default function NotePage({ db, studioId, titolo = 'Note' }) {
+export default function NotePage({ db, studioId, titolo = 'Note', scriviSubito = false }) {
   const [note, setNote] = useState(null);
   const [errore, setErrore] = useState('');
   const [testo, setTesto] = useState('');
@@ -72,7 +72,7 @@ export default function NotePage({ db, studioId, titolo = 'Note' }) {
   return <div className="note-page">
     <h1 className="note-title">{titolo}</h1>
     <form className="note-capture" onSubmit={aggiungi}>
-      <textarea aria-label="Nuova nota" placeholder="Scrivi una nota…" value={testo} maxLength={4000} rows={testo.includes('\n') ? 4 : 2} onChange={(e) => setTesto(e.target.value)} />
+      <textarea autoFocus={scriviSubito} aria-label="Nuova nota" placeholder="Scrivi una nota…" value={testo} maxLength={4000} rows={testo.includes('\n') ? 4 : 2} onChange={(e) => setTesto(e.target.value)} />
       <div className="note-capture-bar">
         <div className="note-areas" role="radiogroup" aria-label="Area della nota">
           {AREE_NOTE.map((a) => <button key={a.id} type="button" role="radio" aria-checked={area === a.id} className={area === a.id ? 'on' : ''} style={{ '--area': a.colore }} onClick={() => setArea(a.id)}><i />{a.nome}</button>)}
