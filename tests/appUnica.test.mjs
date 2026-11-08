@@ -37,22 +37,30 @@ test('il + apre «Crea» in Studio e in Personal; ogni voce apre subito il suo m
   assert.match(read('shared/password/PasswordPage.jsx'), /useState\(nuovaSubito\)/);
 });
 
-test('un dock solo: Agenda · Note · Poliedron · Documenti · Altro, in Studio e in Personal', () => {
+test('DOCK-PER-TE: Agenda · Documenti · Poliedron · Studio · Per te, in Studio e in Personal', () => {
   const dock = read('src/components/poliedron/PoliedronMobileDock.jsx');
-  assert.doesNotMatch(dock, /__personal__|agendaDestination/);
-  assert.match(dock, /\{ id: 'altro', label: 'Altro', icon: 'more' \}/);
+  assert.doesNotMatch(dock, /__personal__|agendaDestination|id: 'altro'|id: 'note'/);
+  assert.match(dock, /\{ id: 'agenda'[^\n]*\n\s*\{ id: 'archivio'[^\n]*\n\s*\{ id: '__poliedron__'[^\n]*\n\s*\{ id: 'studio', label: 'Studio'[^\n]*\n\s*\{ id: 'perte', label: 'Per te'/);
   const pApp = read('personal/src/App.jsx');
-  assert.doesNotMatch(pApp, /Apri Studio|IconaStudio/);
+  assert.match(pApp, /href=\{sectionDestination\('studio', 'studio'\)\}[^\n]*<span>Studio<\/span>/);
+  assert.match(pApp, /<span>Per te<\/span>/);
+  assert.doesNotMatch(pApp, /<span>Altro<\/span>/);
+  assert.match(read('personal/src/sezioni/index.js'), /export const DOCK = \[agenda, documenti\];/);
   assert.match(read('personal/src/pro.css'), /\.pp-schede \{\n  grid-template-columns: repeat\(5, minmax\(0, 1fr\)\)/);
 });
 
-test('«Altro» uguale nelle due parti: Lavoro (studio) e Vita (personale)', () => {
+test('«Studio» raccoglie il lavoro, «Per te» la vita personale (uguale nelle due parti)', () => {
   const app = read('src/App.jsx');
-  assert.match(app, /page === 'altro' && <AltroPage gruppi=\{gruppiAltro\(\)\}/);
-  assert.match(app, /nome: 'Lavoro · Studio'[\s\S]*nome: 'Vita · Personale'/);
+  assert.match(app, /page === 'studio' && <AltroPage titolo="Studio" gruppi=\{gruppiStudio\(\)\}/);
+  assert.match(app, /\(page === 'perte' \|\| page === 'altro'\) && <AltroPage titolo="Per te" gruppi=\{gruppiPerTe\(\)\}/);
+  assert.match(app, /\['studio', 'perte'\]\.includes\(readSectionLocation\(\)\)/);
+  for (const nome of ['Spese e pagamenti', 'Documenti personali', 'Foto', 'Note', 'Diario', 'Pratiche', 'Biblioteca']) {
+    assert.match(app, new RegExp(`'${nome}'`));
+    assert.match(read('personal/src/sezioni/altro/index.jsx'), new RegExp(`'${nome}'`));
+  }
   const p = read('personal/src/sezioni/altro/index.jsx');
-  assert.match(p, /nome: 'Vita · Personale'[\s\S]*nome: 'Lavoro · Studio'/);
-  assert.match(p, /href: sectionDestination\('studio', id\)/);
+  assert.match(p, /nome: 'Per te'/);
+  assert.doesNotMatch(p, /Lavoro · Studio/);
   assert.match(read('personal/src/App.jsx'), /if \(sezione\(readSectionLocation\(\)\)\) return readSectionLocation\(\);/);
 });
 

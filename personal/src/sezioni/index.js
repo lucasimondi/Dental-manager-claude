@@ -22,10 +22,10 @@ import { poliedron } from './poliedron/index.jsx';
 import { impostazioni } from './impostazioni/index.jsx';
 
 export const SEZIONI = [altro, oggi, note, password, documenti, agenda, conti, personali, foto, legal, diario, didattica, poliedron, impostazioni];
-// HOME-AGENDA-CENTRIC (PO 2026-11-07): Agenda e Note, poi l'Assistente al centro, poi Documenti;
-// App aggiunge Studio e Altro. Oggi resta raggiungibile da Altro.
-export const DOCK = [agenda, note];
-export const DOCK_DOPO = [documenti];
+// DOCK-PER-TE (PO 2026-11-08): Agenda · Documenti · Poliedron · Studio · Per te.
+// App aggiunge Poliedron al centro, Studio (la pagina Studio dell'app) e Per te (sezione «altro»).
+export const DOCK = [agenda, documenti];
+export const DOCK_DOPO = [];
 export const VISTE = [oggi, agenda, note, password, documenti, poliedron, altro, foto, conti, legal, personali, diario, didattica];
 
 export const sezione = (id) => VISTE.find((s) => s.id === id);

@@ -63,7 +63,7 @@ a { color: var(--pp-blu); text-decoration: none; }
   background: color-mix(in srgb, var(--pp-superficie) 92%, transparent); backdrop-filter: saturate(180%) blur(18px); -webkit-backdrop-filter: saturate(180%) blur(18px);
   border-top: 1px solid var(--pp-linea);
 }
-.pp-scheda { min-height: 50px; justify-content: center; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; color: var(--pp-grigio); font-size: 11px; font-weight: 600; }
+.pp-scheda { min-height: 50px; justify-content: center; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; color: var(--pp-grigio); font-size: 11px; font-weight: 600; text-decoration: none; }
 .pp-scheda.attiva, .pp-scheda.sotto { color: var(--pp-blu); }
 .pp-scheda.sotto { opacity: .75; }
 .pp-scheda-carica { justify-self: center; width: 54px; height: 54px; border-radius: 18px; display: grid; place-items: center; color: #fff; background: var(--pp-blu); box-shadow: 0 6px 16px color-mix(in srgb, var(--pp-blu) 40%, transparent); transform: translateY(-8px); }

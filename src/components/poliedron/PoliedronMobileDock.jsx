@@ -32,12 +32,15 @@ import PoliedronOrb from './PoliedronOrb.jsx';
    struttura del dock di Personal (che al posto di Personal ha Studio). Home, Pazienti e Chat
    restano raggiungibili dalla ricerca. Senza l'archivio documenti nel piano, quel posto torna
    a Pazienti invece di portare a una pagina non disponibile. */
+/* DOCK-PER-TE (PO 2026-11-08): «Altro» era troppo generico. Agenda · Documenti · Poliedron ·
+   Studio · Per te: consultare (Agenda, Documenti), chiedere (Poliedron al centro), lavoro dello
+   studio (Studio) e vita personale (Per te: spese, documenti personali, foto, note, diario…). */
 export const MOBILE_DOCK_ITEMS = Object.freeze([
   { id: 'agenda', label: 'Agenda', icon: 'cal' },
-  { id: 'note', label: 'Note', icon: 'edit' },
-  { id: '__poliedron__', label: 'Poliedron', icon: null },
   { id: 'archivio', label: 'Documenti', icon: 'folder' },
-  { id: 'altro', label: 'Altro', icon: 'more' },
+  { id: '__poliedron__', label: 'Poliedron', icon: null },
+  { id: 'studio', label: 'Studio', icon: 'brief' },
+  { id: 'perte', label: 'Per te', icon: 'user' },
 ]);
 export const mobileDockItems = ({ archivio = true } = {}) => MOBILE_DOCK_ITEMS.map((item) => (
   item.id === 'archivio' && !archivio ? { id: 'paz', label: 'Pazienti', icon: 'pz' } : item
