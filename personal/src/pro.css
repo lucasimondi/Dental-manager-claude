@@ -5,8 +5,9 @@
   --pp-inchiostro: #18243b;
   --pp-grigio: #5d6b80;
   --pp-linea: #e1e7f0;
-  --pp-blu: #275bc4;
-  --pp-blu-chiaro: #edf2ff;
+  /* DOCK-PER-TE passo 4 (PO 2026-11-08): verde come accento principale. */
+  --pp-blu: #1f7a4d;
+  --pp-blu-chiaro: #e7f3ec;
   --pp-raggio: 18px;
   --pp-ombra: 0 2px 6px #1d355708, 0 8px 24px #1d355704;
   --pp-ombra-alta: 0 16px 48px #18243b24;
@@ -97,7 +98,7 @@
 }
 @media (max-width: 359px) { .pp-home-personale { grid-template-columns: 1fr; } .pp-testata:not(.pp-testata-agenda) { padding-left: 16px; padding-right: 16px; } }
 @media (prefers-color-scheme: dark) {
-  :root { --pp-sfondo: #101724; --pp-superficie: #1a2435; --pp-inchiostro: #eef3ff; --pp-grigio: #a5b3c9; --pp-linea: #2c3a50; --pp-blu: #9ab9ff; --pp-blu-chiaro: #253759; --pp-ombra: 0 3px 12px #00000012; }
+  :root { --pp-sfondo: #101724; --pp-superficie: #1a2435; --pp-inchiostro: #eef3ff; --pp-grigio: #a5b3c9; --pp-linea: #2c3a50; --pp-blu: #6fd49b; --pp-blu-chiaro: #17352a; --pp-ombra: 0 3px 12px #00000012; }
   .pp-home-personale .pf-home-link { background: #1b2b40; color: #d1e6ff; border-color: #3a536f; }
   .pp-home-personale .af-home-link { border-color: #90744c; }
 }
@@ -110,3 +111,11 @@
 .pp-saldo-righe > span { background: var(--pp-sfondo); }
 .pp-saldo-righe i.entrata { background: color-mix(in srgb, var(--pp-verde) 14%, transparent); }
 .pp-saldo-righe i.uscita { background: color-mix(in srgb, var(--pp-rosso) 12%, transparent); }
+
+/* DOCK-PER-TE passo 4: il + in righe con icona e titolo, accento verde. */
+.pp-aggiungi { grid-template-columns: 1fr; gap: 0; border-radius: 16px; overflow: hidden; background: var(--pp-superficie); box-shadow: var(--pp-ombra); }
+.pp-aggiungi .pp-aggiungi-voce { grid-column: auto; border: 0; border-radius: 0; box-shadow: none; padding: 10px 14px; background: transparent; }
+.pp-aggiungi .pp-aggiungi-voce + .pp-aggiungi-voce { box-shadow: inset 0 1px 0 var(--pp-linea); }
+.pp-aggiungi .pp-aggiungi-icona { width: 36px; height: 36px; border-radius: 10px; color: var(--pp-blu); background: var(--pp-blu-chiaro); }
+/* Moduli: titolo breve in alto, contenuto che scorre, Salva sempre raggiungibile. */
+.pp-pagina-corpo > .pp-bottone-largo:not(.pp-bottone-chiaro):last-of-type { position: sticky; bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 3; box-shadow: 0 10px 24px color-mix(in srgb, var(--pp-inchiostro) 18%, transparent); }

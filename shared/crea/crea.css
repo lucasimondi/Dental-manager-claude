@@ -40,3 +40,7 @@
 @keyframes crea-su { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes crea-velo { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .crea-foglio, .crea-velo { animation: none; } .crea-voce, .crea-bottone { transition: none; } }
+
+/* DOCK-PER-TE passo 4: verde come accento; Appuntamento e Impegno (in cima) tengono il loro colore. */
+.crea-griglia .crea-icona { color: #1F7A4D; background: color-mix(in srgb, #1F7A4D 13%, transparent); }
+@media (prefers-color-scheme: dark) { .crea-griglia .crea-icona { color: #6FD49B; background: color-mix(in srgb, #6FD49B 16%, transparent); } }

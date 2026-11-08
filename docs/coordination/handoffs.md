@@ -4567,3 +4567,9 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Database: none (movimenti.documento_id and scadenze.documento_id already exist). Tests 1612/1612; builds. Rollback: revert the PR.
 - Risks: the receipt upload goes through the existing Code.gs upload (analysed like any upload; clinical documents never read); a real-phone check of camera capture from the + is pending.
 - Next: step 4 (graphics pass).
+
+## Handoff — DOCK-PER-TE passo 4 (2026-11-08) — Claude Code
+- Branch `ccr-4ac3e51d-dock-per-te-4`. Files: shared/altro/{AltroPage.jsx,altro.css}, shared/crea/crea.css, personal/src/pro.css, coordination docs.
+- Database: none. Tests 1612/1612. Rollback: revert the PR.
+- Note: Personal accent token keeps its historic name `--pp-blu` but is now green; renaming is left out to keep the diff small.
+- Next: DOCK-PER-TE complete after merge; open items — real-phone check (camera from +, receipt upload), unified Documenti Tutti/Studio/Personale (app-unica passo 3).

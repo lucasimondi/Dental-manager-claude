@@ -1,3 +1,10 @@
+# Current task — DOCK-PER-TE passo 4 (2026-11-08)
+- OWNER Claude Code; branch `ccr-4ac3e51d-dock-per-te-4` (on top of step 3, PR288).
+- AUTHORIZATION PO 2026-11-08: "Mergia e vai di 4" (step 4 of DOCK-PER-TE, Master Context §9: cleaner graphics).
+- SCOPE (phone, presentation only): «Studio» and «Per te» pages as rows with icon, title and chevron instead of multicolour tiles (shared/altro); the Personal + sheet as rows; green accent (Personal `--pp-blu` token now green #1f7a4d / dark #6fd49b; Crea secondary icons green; Appuntamento/Impegno keep their colours as distinctive appointment colours); forms: the primary save button of a Personal page sticks to the bottom while the content scrolls. Studio brand colours (configurable per studio) unchanged. No data change.
+- VALIDATION 1612/1612 Node tests; Chromium 390×844 renders of Per te, Crea, + and spesa form.
+- STATUS ready; PR after PR288 merge; task-specific "Mergia" required.
+
 # Current task — DOCK-PER-TE passo 3 (2026-11-08)
 - OWNER Claude Code; branch `ccr-4ac3e51d-dock-per-te-3` (on top of step 2, PR287).
 - AUTHORIZATION PO 2026-11-08: "Avanti" after step 2 (step 3 of DOCK-PER-TE, Master Context §9: acquisition under + → Per te).
