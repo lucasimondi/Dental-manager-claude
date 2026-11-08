@@ -20,7 +20,7 @@ export function ModuloAppuntamento({ a: iniziale, ctx, chiudi }) {
     data: iniziale.data || oggi(), ora: String(iniziale.ora || '09:00').slice(0, 5), durata: Number(iniziale.durata) || 30,
     tipo: iniziale.tipo || '', colore: iniziale.colore || '', note: iniziale.note || '', stato: iniziale.stato || 'confermato',
   }));
-  const [cerca, setCerca] = useState('');
+  const [cerca, setCerca] = useState(iniziale.cerca || '');
   const [trovati, setTrovati] = useState([]);
   const [conferma, setConferma] = useState(false);
   const [salvando, setSalvando] = useState(false);

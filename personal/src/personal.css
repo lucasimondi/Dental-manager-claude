@@ -388,6 +388,9 @@ a { color: var(--pp-blu); text-decoration: none; }
 .pp-chat { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .pp-chat-modo { flex-shrink: 0; padding: 0 16px; padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
 .pp-chat-modo .pp-segmenti { margin: 0 0 8px; }
+.pp-chat-modo-riga { display: flex; align-items: center; gap: 10px; }
+.pp-chat-modo-riga .pp-segmenti { flex: 1; min-width: 0; }
+.pp-chat-esci { flex: none; display: inline-flex; align-items: center; gap: 5px; height: 34px; margin: 0 0 8px; padding: 0 12px; border: 0; border-radius: 17px; background: rgba(118,118,128,.14); color: var(--pp-testo, inherit); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .pp-chat-lista { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 10px; padding: 6px 16px 14px; padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
 .pp-chat-vuota p { color: var(--pp-grigio); margin: 4px 2px 0; }
 .pp-chat-vuota .pp-suggerimenti { flex-wrap: wrap; }

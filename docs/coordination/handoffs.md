@@ -4496,3 +4496,7 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 ## 2026-11-08 — AGENDA-PHONE-FIXES
 - Done: week view from dock/app links; chrome z-index above floating events; fitToVisualViewport in Modal (restores the original inset when the keyboard closes); Studio appointment labels filled + LabelSwatches; tests/agendaSettimanaEtichette.test.mjs; mobileShell regex accepts min(100%, calc(100dvh …)).
 - Next: PO answer on inline acting search and single agenda; not verified on a real iPhone keyboard (only synthetic Chromium).
+
+## 2026-11-08 — AGENDA-UNICA-RICERCA
+- Done: agenda "Tutto" by default in Studio and Personal; password registry (table + RLS + PGlite test + shared page, both apps); shared/ricerca engine + RicercaAgenda wired via `ricerca` prop (Studio App.jsx `ricercaAgenda`) and `fonteRicerca` (Personal useFonteRicerca); Personal chat exit button and prefilled question; tests ricercaAgenda, passwordShared, passwordPersonaliDatabase; visual agenda.ricerca in CI.
+- Next: after "Mergia", apply migration 20261108120000 with apply_migration and check advisors; real-device check of the bar with the iPhone keyboard.
