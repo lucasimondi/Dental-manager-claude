@@ -43,3 +43,15 @@ test('lettura delle scadenze: archivio separato, nessun nuovo accesso, nessun to
   assert.match(agenda, /\.\.\.\(isMobile \? scadenzeDelGiorno\(scadenzePersonali, date, apriScadenza\) : \[\]\)/);
   assert.match(agenda, /if \(!isMobile\) return undefined;\n\s+let vivo = true;\n\s+const carica = \(\) => leggiScadenzePersonali\(\)/);
 });
+
+test('finestre a comparsa sul telefono: niente icona Poliedron o dock sopra, campi mai più larghi della finestra', () => {
+  const modal = read('src/components/ui/Modal.jsx');
+  assert.match(modal, /document\.body\.classList\?\.add\('pol-modale-aperto'\)/);
+  assert.match(modal, /if \(openModals === 0\) \{ document\.body\.style\.overflow = overflowBeforeLock; document\.body\.classList\?\.remove\('pol-modale-aperto'\); \}/);
+  assert.match(read('src/styles.css'), /body\.pol-modale-aperto \.poliedron-orb, body\.pol-modale-aperto \.poliedron-mobile-dock \{ visibility:hidden !important; pointer-events:none !important; \}/);
+  assert.match(read('src/components/PremiumVisualSystem.css'), /\.pol-modal-sheet :is\(input, select, textarea\) \{ min-width: 0; max-width: 100%; box-sizing: border-box; \}/);
+  const agenda = read('src/components/Agenda.jsx');
+  assert.match(agenda, /useEffect\(\(\) => \(sceltaSlot \? lockPageScroll\(\) : undefined\), \[sceltaSlot\]\);/);
+  assert.match(agenda, /title=\{editImp \? 'Modifica impegno' : 'Nuovo impegno personale'\}[^\n]*mobileVariant="sheet"\n[^\n]*\n\s+backdropClassName="agenda-appointment-form-backdrop" sheetClassName="agenda-appointment-form-sheet"/);
+  assert.match(read('shared/ricerca/RicercaAgenda.jsx'), /document\.body\.classList\.add\('pol-modale-aperto'\)/);
+});

@@ -1,10 +1,18 @@
+# Current task — POPUP-TELEFONO (2026-11-08)
+- OWNER Claude Code; branch ccr-4fbd3db0-8ou289 from master fe5908c (PR283 merged).
+- AUTHORIZATION PO 2026-11-08: "Controlla le finestre a comparsa di impegno perché non è impaginata deve essere totalmente visibile e scrollabile, anche appuntamenti viene leggermente coperta da icona poliedron" + "Controlla tutto che sia impaginato bene".
+- FOUND (Chromium phone audit at 390×844 and 375×667): Poliedron orb (z 1200) above the free-slot «Crea» sheet (blocked the tap on «Impegno») and over the appointment/impegno forms; impegno Data/Dalle/Alle row overflowing to the right («Alle» cut); impegno form opened lower than the appointment form.
+- FIX: Modal lock adds body class `pol-modale-aperto` → orb and dock hidden while any popup (Modal, appointment workspace, free-slot sheet, search results) is open; impegno form uses the appointment form sheet (top, fully visible, scrollable to Salva); on the phone date on its own row and times below; modal fields never wider than the sheet. Desktop unchanged.
+- VALIDATION 1608/1608 Node tests; Studio and Personal builds; Chromium: agenda.compare, agenda.reliability, agenda.sharing, agenda.ricerca, appointment-workspace; popup audit with no element outside its dialog and no orb over any dialog.
+- STATUS PR open; task-specific "Mergia" required.
+
 # Current task — AGENDA-UNICA (2026-11-08)
 - OWNER Claude Code; branch ccr-4fbd3db0-8ou289 from master (PR281 and PR282 merged in).
 - AUTHORIZATION PO 2026-11-08: "la mia idea era avere una sola agenda e da lì fare tutto"; confirmed "Sì a entrambe, parti con l'agenda unica" = (1) the single agenda is Studio's, (2) personal archive deadlines appear in it.
 - SCOPE (phone only; desktop browser and the Android "Poliedra Agenda" WebView unchanged): Personal's Agenda view redirects to the Studio agenda in the same address (`agendaUnica()` + `agendaDestination('studio')`), keeping day and view; Studio agenda reads personal deadlines (bills, payments, expiring documents) from the separate archive project with the session Personal already saved on the same address (read only, `detectSessionInUrl: false`, no new login) and shows them as floating day events and month marks; tapping opens Conti in Personal. Archive public config moved to personal/src/lib/archivioConfig.js (no client created on import). Personal domain manifest scope "/" so /studio (the single agenda) stays inside the installed app. No schema, RLS or data change.
 - VALIDATION 1607/1607 Node tests; Studio and Personal builds; Chromium: agenda.compare, agenda.reliability, agenda.sharing, agenda.ricerca, appointment-workspace; probe with a mocked archive session showing a personal bill in the Studio week.
 - NEXT (second merge): Personal sections inside the Poliedron app (docs/coordination/app-unica-da-fare.md, passo 2 punti 1-4).
-- STATUS PR open; task-specific "Mergia" required.
+- STATUS MERGED 2026-11-08: PR283 squash-merged after PO "Mergia" with all checks green; merge commit fe5908c; Vercel production dpl_7nJW29WJerVn5ZU89BNgfFxExqVs READY.
 
 # Current task — PERSONAL-PDF-MANAGER (2026-11-08, continued)
 - OWNER Claude Code (takeover from Codex by explicit PO instruction 2026-11-08: "Guarda cosa ha fatto codex sui PDF e continua per creare il gestore PDF in poliedron con le librerie"); branch `ccr-4ac3e51d-ki2rcm` = `codex/personal-pdf-manager` (5a9018c) + master 254f2d4 (PR279) merged, then master a9b3514 (PR281 app unica passo 2a) merged; PR282.

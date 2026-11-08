@@ -18,6 +18,7 @@ import { createPortal } from 'react-dom';
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker, SelettorePaziente, EmptyState, PageHeader } from './ui';
 import WaAction, { apriWaDiretto, waAbilitato } from './ui/WaAction.jsx';
+import { lockPageScroll } from './ui/Modal.jsx';
 import { pianificaInvioWABatch, annullaInvioWABatch } from '../lib/waBatchSender.js';
 import { C, uid, fmtD, today, getAppTypesDefault, DEF_AGENDA_SETTINGS, VERTICALI_CON_RICETTA } from '../lib/utils';
 import { useIsMobile } from '../lib/useIsMobile';
@@ -994,6 +995,8 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   const oraColW = isMobile ? 34 : 46;
   // HOME-AGENDA-CENTRIC: su telefono non c'è più il tasto +; toccando un orario libero
   // si sceglie cosa creare, con giorno e ora già compilati.
+  // Anche il foglio «Crea» dell'orario libero blocca la pagina e nasconde icona Poliedron e dock.
+  useEffect(() => (sceltaSlot ? lockPageScroll() : undefined), [sceltaSlot]);
   const toccaSlot = (data, ora) => { if (!isMobile || followUpRequest) { apriNuovo(data, ora); return; } setSceltaSlot({ data, ora }); };
   const gridProps = { slots, slotH, slotMin, oraInizio: timelineStart, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo: toccaSlot, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight, canPrescribe: !si?.vertical || VERTICALI_CON_RICETTA.has(si.vertical), followUpMode: !!followUpRequest, onOccupiedSlot: () => setToast('Questo spazio è occupato. Scegli un altro orario.') };
 
@@ -1511,7 +1514,10 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
 
       {/* MODAL IMPEGNO PERSONALE */}
       {impModal && (
-        <Modal title={editImp ? 'Modifica impegno' : 'Nuovo impegno personale'} icon={editImp ? 'edit' : 'cal'} onClose={() => setImpModal(false)}>
+        <Modal title={editImp ? 'Modifica impegno' : 'Nuovo impegno personale'} icon={editImp ? 'edit' : 'cal'} onClose={() => setImpModal(false)} mobileVariant="sheet"
+          // PO 2026-11-08: stessa impaginazione del nuovo appuntamento (in alto, tutta visibile e scorrevole).
+          backdropClassName="agenda-appointment-form-backdrop" sheetClassName="agenda-appointment-form-sheet"
+          backdropStyle={{ '--agenda-mobile-overlay-clearance-form': `${mobileOverlayHeight}px`, '--agenda-mobile-dock-offset': `${MOBILE_APPOINTMENT_MENU_DOCK_OFFSET}px` }}>
           <Fld label="Titolo">
             <Inp value={impForm.titolo} onChange={e => IF({ titolo: e.target.value })} placeholder="Es. Ferie, Chiamata commercialista…" autoFocus />
           </Fld>
@@ -1542,14 +1548,15 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           </label>
 
           {impForm.tuttoIlGiorno ? (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
               <Fld label="Dal"><Inp type="date" value={impForm.dataInizio} onChange={e => IF({ dataInizio: e.target.value, dataFine: e.target.value > impForm.dataFine ? e.target.value : impForm.dataFine })} /></Fld>
               <Fld label="Al"><Inp type="date" value={impForm.dataFine} onChange={e => IF({ dataFine: e.target.value })} /></Fld>
             </div>
           ) : (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-                <Fld label="Data"><Inp type="date" value={impForm.dataInizio} onChange={e => IF({ dataInizio: e.target.value, ripetiFino: e.target.value > impForm.ripetiFino ? e.target.value : impForm.ripetiFino })} /></Fld>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : '1fr 1fr 1fr', gap: 10 }}>
+                {/* Sul telefono la data prende tutta la riga e gli orari stanno sotto: niente campi tagliati. */}
+                <div style={isMobile ? { gridColumn: '1 / -1', minWidth: 0 } : undefined}><Fld label="Data"><Inp type="date" value={impForm.dataInizio} onChange={e => IF({ dataInizio: e.target.value, ripetiFino: e.target.value > impForm.ripetiFino ? e.target.value : impForm.ripetiFino })} /></Fld></div>
                 <Fld label="Dalle"><TimePicker value={impForm.oraInizio} onChange={(v) => IF({ oraInizio: v })} label="Orario inizio" /></Fld>
                 <Fld label="Alle"><TimePicker value={impForm.oraFine} onChange={(v) => IF({ oraFine: v })} label="Orario fine" /></Fld>
               </div>
