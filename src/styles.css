@@ -17,5 +17,5 @@ input,select,textarea,button{font-family:inherit;}
 input:focus,select:focus,textarea:focus{outline:2px solid var(--dm-pri);outline-offset:1px;}
 @media print{.noprint{display:none!important;}}
 
-
-
+/* Finestre a comparsa sul telefono: niente icona Poliedron né dock sopra (PO 2026-11-08). */
+body.pol-modale-aperto .poliedron-orb, body.pol-modale-aperto .poliedron-mobile-dock { visibility:hidden !important; pointer-events:none !important; }

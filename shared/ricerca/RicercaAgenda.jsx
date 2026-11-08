@@ -106,6 +106,8 @@ export default function RicercaAgenda({ fonte, placeholder = 'Cerca o chiedi: «
     globalThis.visualViewport?.addEventListener('resize', misura);
     return () => globalThis.visualViewport?.removeEventListener('resize', misura);
   }, [aperta]);
+  // Con i risultati aperti l'icona di Poliedron e il dock si nascondono (stessa classe delle finestre).
+  useEffect(() => { if (!aperta) return undefined; document.body.classList.add('pol-modale-aperto'); return () => document.body.classList.remove('pol-modale-aperto'); }, [aperta]);
   useEffect(() => { if (!esito?.ok) return undefined; const t = setTimeout(() => { setEsito(null); }, 2200); return () => clearTimeout(t); }, [esito]);
   const chiudi = () => { setAperta(false); setTesto(''); setAltri([]); input.current?.blur(); };
   const esegui = async (fai, messaggio) => {
