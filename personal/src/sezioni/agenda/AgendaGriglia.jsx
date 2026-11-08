@@ -92,7 +92,7 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
       {packed.filter(x => !x.a.agendaEvent).map(x => {
         const a = x.a, top = (x.start - oraInizio * 60) / slotMin * effectiveSlotH;
         if (top < 0 || top >= slots.length * effectiveSlotH) return null;
-        return <AppointmentBlock soft key={a.id} a={a} label={weekly ? (a.cognome ? [a.cognome, String(a.paziente || '').replace(a.cognome, '').trim()].filter(Boolean).join(' ') : (a.paziente || a.tipo || '—')) : (a.cognome || a.paziente || '—')} aCapo={weekly} co={a.colore || coloriTipi[a.tipo] || (retro ? '#000080' : '#185FA5')} top={top} height={Math.max(Number(a.durata) / slotMin * effectiveSlotH - 2, effectiveSlotH * .6)} col={x.col} totalCols={x.totalCols} readOnly onOpen={e => { e.stopPropagation(); ctx.apri({ tipo: 'appuntamento', a }); }} />;
+        return <AppointmentBlock key={a.id} a={a} label={weekly ? (a.cognome ? [a.cognome, String(a.paziente || '').replace(a.cognome, '').trim()].filter(Boolean).join(' ') : (a.paziente || a.tipo || '—')) : (a.cognome || a.paziente || '—')} aCapo={weekly} co={a.colore || coloriTipi[a.tipo] || (retro ? '#000080' : '#185FA5')} top={top} height={Math.max(Number(a.durata) / slotMin * effectiveSlotH - 2, effectiveSlotH * .6)} col={x.col} totalCols={x.totalCols} readOnly onOpen={e => { e.stopPropagation(); ctx.apri({ tipo: 'appuntamento', a }); }} />;
       })}
     </>;
   };

@@ -312,23 +312,21 @@ export function EventBlock({ title, top, height, co, onClick, startTime, descrip
                     </div>);
 }
 
-export function AppointmentBlock({ a, label, aCapo = false, co, top, height, col = 0, totalCols = 1, isBeingResized = false, isBeingMoved = false, selectionMode: selModeWA = false, selectable: isSelezionabileWA = false, selected: isSelected = false, operatore, poltrona, onMoveMouse, onMoveTouch, onOpen, onResizeMouse, onResizeTouch, selectionIndicator, readOnly = false, touchScroll = false, soft = false }) {
+export function AppointmentBlock({ a, label, aCapo = false, co, top, height, col = 0, totalCols = 1, isBeingResized = false, isBeingMoved = false, selectionMode: selModeWA = false, selectable: isSelezionabileWA = false, selected: isSelected = false, operatore, poltrona, onMoveMouse, onMoveTouch, onOpen, onResizeMouse, onResizeTouch, selectionIndicator, readOnly = false, touchScroll = false }) {
   const widthPct = 100 / totalCols, leftPct = col * widthPct;
   const dense = aCapo && totalCols > 1;
-  const fill = labelColor(co);
-  // HOME-AGENDA-CENTRIC: su telefono (soft) blocco tenue con barra colorata e testo scuro,
-  // come le agende di sistema; su computer resta il blocco pieno.
-  const tone = soft ? eventTone(co) : null;
-  const ink = soft ? tone.text : labelOn(fill), inkSoft = soft ? `color-mix(in srgb, ${tone.text} 72%, transparent)` : ink === '#FFFFFF' ? 'rgba(255,255,255,0.88)' : 'rgba(27,27,31,0.78)';
+  // PO 2026-11-08: gli appuntamenti dello studio restano blocchi pieni (più "pro"); solo gli
+  // impegni personali (EventBlock) usano la tinta trasparente.
+  const fill = labelColor(co), ink = labelOn(fill), inkSoft = ink === '#FFFFFF' ? 'rgba(255,255,255,0.88)' : 'rgba(27,27,31,0.78)';
   const timeRange = (() => { const [h, m] = String(a.ora || '00:00').split(':').map(Number); const fine = ((h || 0) * 60 + (m || 0) + Number(a.durata || 0)) % (24 * 60); return `${String(h || 0).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}–${String(Math.floor(fine / 60)).padStart(2, '0')}:${String(fine % 60).padStart(2, '0')}`; })();
-  return (                    <div title={[a.ora, label, a.tipo].filter(Boolean).join(' · ')} data-appointment-id={a.id} onClick={readOnly || touchScroll ? onOpen : undefined} style={{ position: 'absolute', top, left: `calc(${leftPct}% + 2px)`, width: `calc(${widthPct}% - 4px)`, height, ...(soft ? { background: tone.bg, borderLeft: `3px solid ${fill}`, borderRadius: 8, boxSizing: 'border-box' } : { background: fill, borderRadius: 6 }), overflow: 'hidden', zIndex: isBeingResized || isBeingMoved ? 10 : 2, boxShadow: isBeingResized || isBeingMoved ? '0 6px 16px rgba(0,0,0,0.35)' : '0 0 0 1px var(--agenda-ring, #fff)', userSelect: 'none', opacity: isBeingMoved ? 0.85 : (selModeWA && !isSelezionabileWA ? 0.35 : 1), outline: isSelected ? '2.5px solid #25D366' : 'none', outlineOffset: -1 }}>
+  return (                    <div title={[a.ora, label, a.tipo].filter(Boolean).join(' · ')} data-appointment-id={a.id} onClick={readOnly || touchScroll ? onOpen : undefined} style={{ position: 'absolute', top, left: `calc(${leftPct}% + 2px)`, width: `calc(${widthPct}% - 4px)`, height, background: fill, borderRadius: 6, overflow: 'hidden', zIndex: isBeingResized || isBeingMoved ? 10 : 2, boxShadow: isBeingResized || isBeingMoved ? '0 6px 16px rgba(0,0,0,0.35)' : '0 0 0 1px var(--agenda-ring, #fff)', userSelect: 'none', opacity: isBeingMoved ? 0.85 : (selModeWA && !isSelezionabileWA ? 0.35 : 1), outline: isSelected ? '2.5px solid #25D366' : 'none', outlineOffset: -1 }}>
                       {/* Contenuto appuntamento — in modalità selezione tocca per selezionare/deselezionare;
                           altrimenti trascina per spostare l'orario, tocca/clicca senza muovere per aprire il menu azioni */}
                       <div
                         onMouseDown={touchScroll ? undefined : onMoveMouse}
                         onTouchStart={touchScroll ? undefined : onMoveTouch}
                         onClick={onOpen}
-                        style={{ padding: soft ? (dense ? '3px 3px' : '5px 7px') : dense ? '2px 2px' : '3px 6px', cursor: selModeWA ? (isSelezionabileWA ? 'pointer' : 'not-allowed') : (readOnly ? 'pointer' : isBeingMoved ? 'grabbing' : 'grab'), paddingBottom: height > 26 ? 9 : 2, touchAction: readOnly || touchScroll ? 'pan-y' : 'none' }}
+                        style={{ padding: dense ? '2px 2px' : '3px 6px', cursor: selModeWA ? (isSelezionabileWA ? 'pointer' : 'not-allowed') : (readOnly ? 'pointer' : isBeingMoved ? 'grabbing' : 'grab'), paddingBottom: height > 26 ? 9 : 2, touchAction: readOnly || touchScroll ? 'pan-y' : 'none' }}
                       >
                         {operatore && !selModeWA && (
                           <div title={operatore.nome} style={{ position: 'absolute', top: 3, right: 3, width: 7, height: 7, borderRadius: '50%', background: operatore.colore, border: '1px solid rgba(255,255,255,0.8)' }} />
@@ -336,15 +334,9 @@ export function AppointmentBlock({ a, label, aCapo = false, co, top, height, col
                         {poltrona && !selModeWA && (
                           <div title={poltrona.nome} style={{ position: 'absolute', top: 3, right: operatore ? 13 : 3, width: 7, height: 7, borderRadius: 2, background: poltrona.colore, border: '1px solid rgba(255,255,255,0.8)' }} />
                         )}
-                        {soft ? <>
-                          <div className="agenda-appt-name" style={{ fontSize: dense ? 9.5 : 12.5, lineHeight: dense ? '12px' : '15px', fontWeight: 650, letterSpacing: '-.01em', color: ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label || a.tipo || 'Appuntamento'}</div>
-                          {height > 26 && <div className="agenda-appt-time" style={{ fontSize: dense ? 8.5 : 11, lineHeight: '13px', fontWeight: 500, color: inkSoft, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dense ? String(a.ora || '').slice(0, 5) : timeRange}{!dense && height <= 44 && a.tipo && a.tipo !== label ? ` · ${a.tipo}` : ''}</div>}
-                          {height > 44 && a.tipo && a.tipo !== label && <div style={{ fontSize: dense ? 8.5 : 11, lineHeight: '13px', color: inkSoft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.tipo}</div>}
-                        </> : <>
                         <div style={{ fontSize: dense ? 8.5 : 10, lineHeight: '12px', fontWeight: 600, color: ink, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{timeRange}</div>
                         {height > 18 && <div style={{ fontSize: dense ? 9 : 10.5, lineHeight: '12px', fontWeight: 600, color: ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label || a.tipo || 'Appuntamento'}</div>}
                         {height > 44 && a.tipo && a.tipo !== label && <div style={{ fontSize: 9.5, lineHeight: '12px', color: inkSoft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.tipo}</div>}
-                        </>}
                       </div>
                       {/* Checkbox selezione — solo in modalità invio WhatsApp di massa */}
                       {selModeWA && isSelezionabileWA && (
@@ -356,7 +348,7 @@ export function AppointmentBlock({ a, label, aCapo = false, co, top, height, col
                       {height > 26 && !selModeWA && !touchScroll && <div
                         onMouseDown={touchScroll ? undefined : onResizeMouse}
                         onTouchStart={touchScroll ? undefined : onResizeTouch}
-                        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 8, cursor: 'ns-resize', display: 'flex', alignItems: 'center', justifyContent: 'center', background: soft ? 'transparent' : 'rgba(0,0,0,0.12)', borderBottomLeftRadius: 6, borderBottomRightRadius: 6, touchAction: readOnly || touchScroll ? 'pan-y' : 'none' }}>
+                        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 8, cursor: 'ns-resize', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.12)', borderBottomLeftRadius: 6, borderBottomRightRadius: 6, touchAction: readOnly || touchScroll ? 'pan-y' : 'none' }}>
                         <div style={{ width: 16, height: 2, background: inkSoft, borderRadius: 1 }} />
                       </div>}
                     </div>);

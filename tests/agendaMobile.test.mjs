@@ -17,14 +17,16 @@ test('mobile agenda: search on top, then month and days, in Studio and Personal;
   assert.equal((personal.match(/searchBar=\{ricerca\}/g) || []).length, 2);
 });
 
-test('phone agenda uses soft appointment blocks; desktop keeps the filled block', () => {
+test('studio appointments stay filled blocks on phone too; personal events keep the transparent tone', () => {
   const shared = readFileSync(new URL('../shared/agenda/AgendaPresentation.jsx', import.meta.url), 'utf8');
   const studio = readFileSync(new URL('../src/components/Agenda.jsx', import.meta.url), 'utf8');
   const personal = readFileSync(new URL('../personal/src/sezioni/agenda/AgendaGriglia.jsx', import.meta.url), 'utf8');
-  assert.match(shared, /soft \? \{ background: tone\.bg, borderLeft: `3px solid \$\{fill\}`, borderRadius: 8/);
-  assert.match(shared, /: \{ background: fill, borderRadius: 6 \}/);
-  assert.match(studio, /<AppointmentBlock touchScroll=\{isMobile\} soft=\{isMobile\}/);
-  assert.match(personal, /<AppointmentBlock soft /);
+  // PO 2026-11-08: "I colori di apt studio devono continuare ad essere più pieni e pro mentre i personali con le trasparenze".
+  assert.match(shared, /height, background: fill, borderRadius: 6, overflow: 'hidden',/);
+  assert.doesNotMatch(shared, /soft \?/);
+  assert.doesNotMatch(studio, /<AppointmentBlock[^>]*\bsoft\b/);
+  assert.doesNotMatch(personal, /<AppointmentBlock soft/);
+  assert.match(shared, /bg: `color-mix\(in srgb, \$\{c\} 18%, var\(--agenda-tint-anchor, #fff\)\)`/);
   assert.match(shared, /isMobile && days\.length === 1 && <span className="agenda-now-pill">/);
 });
 
