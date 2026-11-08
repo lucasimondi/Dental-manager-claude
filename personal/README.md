@@ -91,3 +91,8 @@ campi, lettore Filosofia e palette dell’agenda; i colori assegnati a categorie
 ed eventi restano dati. La Home mostra prima l’agenda di oggi, con stato di
 caricamento/collegamento/non disponibilità, poi ricerca, azioni e riepiloghi.
 Il cambio di aspetto mantiene la schermata e gli input; il diario conserva il libro.
+
+### Gestore PDF — PERSONAL-PDF-MANAGER (8 novembre 2026)
+Si apre da Documenti («Apri PDF · Firma e strumenti»), da **+ → PDF e firma**, da **Altro → PDF**, aprendo un PDF dell'archivio a tutto schermo, oppure condividendo un PDF o una foto a «Personal» da un'altra app Android (app installata da Chrome; `share_target` nei manifest, POST gestita solo dal worker di Personal).
+Librerie: PDF.js 4.10 (`pdfjs-personal`, viewer con moduli, Testo, Disegno, Evidenzia, ricerca) e pdf-lib (firma, pagine, unione). Tutto resta sul telefono: «Salva copia» → Condividi, Scarica o Archivia come nuovo file (senza lettura del contenuto). L'originale non viene mai modificato. La firma col dito è una firma elettronica semplice, salvata solo sul dispositivo se si sceglie «Ricorda».
+Limiti: moduli XFA non supportati; riordino/unione fissano i campi compilati; nell'APK «Poliedra Agenda» scelta file, condivisione e download non sono ancora disponibili.

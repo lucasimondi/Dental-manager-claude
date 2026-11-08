@@ -30,7 +30,7 @@ export function PaginaDocumento({ id, ctx, chiudi }) {
 
   return (
     <>
-      {intero && <DocumentoIntero doc={doc} onInfo={() => setIntero(false)} onChiudi={chiudi} mostra={mostra} />}
+      {intero && <DocumentoIntero ctx={ctx} doc={doc} onInfo={() => setIntero(false)} onChiudi={chiudi} mostra={mostra} />}
       <button className="pp-bottone" onClick={() => setIntero(true)}>Apri a tutto schermo</button>
       {avviso && <p className={'pp-validita '+avviso.stato}>{avviso.testo} · {dataBreve(avviso.data)}</p>}
       <div className="pp-dettaglio-testa" style={{ '--c': colore(doc.fascicolo) }}>

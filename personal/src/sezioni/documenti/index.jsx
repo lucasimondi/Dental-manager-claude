@@ -7,6 +7,7 @@ const VistaDocumenti = differito(() => import('./Documenti.jsx'), 'VistaDocument
 const PaginaRicerca = differito(() => import('./Ricerca.jsx'), 'PaginaRicerca');
 const PaginaDocumento = differito(() => import('./Documento.jsx'), 'PaginaDocumento');
 const PaginaPratica = differito(() => import('./Pratica.jsx'), 'PaginaPratica');
+const PaginaPdf = differito(() => import('../../pdf/PaginaPdf.jsx'), 'PaginaPdf');
 const PaginaCarica = differito(() => import('./Carica.jsx'), 'PaginaCarica');
 const PaginaCartella = differito(() => import('./Cartelle.jsx'), 'PaginaCartella');
 const PaginaSuggerimenti = differito(() => import('./Cartelle.jsx'), 'PaginaSuggerimenti');
@@ -19,6 +20,7 @@ const caricaSenzaCartella = () => documentiSenzaCartella(archivioDb, CAMPI_DOC);
 export const documenti = {
   id: 'documenti', nome: 'Documenti', Icona: IconaDocumenti, Vista: VistaDocumenti,
   pagine: {
+    pdf: { titolo: 'Gestore PDF', modulo: true, render: (p, { ctx, chiudi, sostituisci }) => <PaginaPdf file={p.file} files={p.files} ctx={ctx} chiudi={chiudi} sostituisci={sostituisci} /> },
     revisione: { titolo: 'Da valutare', render: (p, { ctx }) => <RevisioneArchivio ctx={ctx} /> },
     documento: { titolo: 'Documento', render: (p, { ctx, chiudi }) => <PaginaDocumento id={p.id} ctx={ctx} chiudi={chiudi} /> },
     cartella: { titolo: 'Cartella', render: (p, { ctx, chiudi, sostituisci }) => <PaginaCartella key={p.ente} ente={p.ente} ctx={ctx} chiudi={chiudi} sostituisci={sostituisci} /> },
