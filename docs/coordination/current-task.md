@@ -1,3 +1,10 @@
+# Current task — PERSONAL-PDF-MANAGER (2026-11-08)
+- OWNER Codex; branch `codex/personal-pdf-manager` from master `5e3f48604a56cfdd1cf6cb3cf5b715005fa855ed`.
+- AUTHORIZATION PO: full PDF manager phase 1, confirmed "Ok procediamo con un gestore molto valido". Separate task; no takeover of Claude Code's command-engine work recorded below.
+- SCOPE: Personal full-screen library viewer, forms/annotations, reusable local signature, page operations, photos to PDF, explicit file export/share/new archive upload, Android share target using Personal worker only.
+- LOCKS: originals untouched; no models/conversion services; archive with nonAnalizzare=true; no DB/RLS/tenancy/financial changes; no Studio worker change. Immutable stable/2026-08-27-full-recovery at 070b28fd preserved.
+- STATUS IN_PROGRESS. Tests and both builds plus synthetic Android Playwright required. No merge or manual deployment; task-specific Mergia required.
+
 # Current task — POLIEDRON-COMANDI-SENZA-AI (2026-11-08)
 - OWNER Claude Code; branch ccr-873bf8b7-n86ati from master b62e2eb (PR273 merged); master 2e610ed (PR274–276, incl. RICERCA-AGENDA search bar) merged in.
 - AUTHORIZATION PO: "devi renderlo indipendente da AI esterna perché altrimenti dobbiamo sempre sentirci dire AI non in funzione, deve essere in grado di eseguire comandi semplici"; PO chose both Personal and Studio, and "Esegue subito" (immediate execution with Annulla) for complete commands.
