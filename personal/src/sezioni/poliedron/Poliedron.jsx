@@ -13,6 +13,7 @@ import { ElencoGiorno } from '../agenda/index.jsx';
 import { titoloProposta, elementiScelti, eseguiProposta, esitoProposta } from '../../lib/pulizia.js';
 import { euro } from '../../lib/coreArchivio.js';
 import { preparaFile as preparaCaricamento } from '../../lib/file.js';
+import { interpretaComando, AIUTO_COMANDI } from '../../lib/comandi.js';
 import { ACCETTA_ALLEGATI, dimensioneFile, domandaDa, esitoAllegato, puoInviare, storiaChat } from '../../lib/chat.js';
 import { tokenSessione, Sezione, Gruppo, RigaDocumento, RigaPagamento, Segmenti, ElencoPratiche } from '../../ui.jsx';
 import { IconaChiudi, IconaFile, IconaInvia, IconaGraffetta, IconaCalendario, IconaEuro } from '../../Icone.jsx';
@@ -94,6 +95,17 @@ function Proposta({ proposta, ctx, onFatto }) {
   );
 }
 
+// Scrive il promemoria (pagamento → Da pagare, evento → agenda): usato dalla scheda e dai comandi diretti.
+function scriviPromemoria(m) {
+  return aggiungiPromemoria(m, {
+    nuovaScadenza: (s) => nuovaScadenza(archivioDb, s),
+    salvaImpegno: async (e) => {
+      if (!(await sessioneStudio().catch(() => null))) throw new Error('Per gli impegni collega prima l\'agenda (scheda Agenda).');
+      return salvaImpegno(e);
+    },
+  });
+}
+
 /* ---------- Promemoria proposto da Poliedron: Luca lo corregge e lo aggiunge ---------- */
 function PropostaPromemoria({ proposta, ctx, onFatto }) {
   const { aggiorna } = ctx;
@@ -120,13 +132,7 @@ function PropostaPromemoria({ proposta, ctx, onFatto }) {
   const aggiungi = async () => {
     setStato({ lavoro: true });
     try {
-      const esito = await aggiungiPromemoria(m, {
-        nuovaScadenza: (s) => nuovaScadenza(archivioDb, s),
-        salvaImpegno: async (e) => {
-          if (!(await sessioneStudio().catch(() => null))) throw new Error('Per gli impegni collega prima l\'agenda (scheda Agenda).');
-          return salvaImpegno(e);
-        },
-      });
+      const esito = await scriviPromemoria(m);
       aggiorna(); setStato(null);
       onFatto(esito.messaggio, esito.annulla);
     } catch (e) { setStato({ errore: e.message }); }
@@ -208,7 +214,7 @@ async function agendaPerAI() {
 // Poliedron come scheda a pagina intera (PO 2026-10-17): la conversazione resta passando da una
 // scheda all'altra; la graffetta allega una foto, un PDF o un file, che viene archiviato e letto.
 export function VistaPoliedron({ ctx }) {
-  const { apri, aggiorna, chat, setChat } = ctx;
+  const { apri, aggiorna, chat, setChat, vai } = ctx;
   const { modo, messaggi, documento } = chat;
   const [testo, setTesto] = useState('');
   const [file, setFile] = useState(null);
@@ -252,6 +258,31 @@ export function VistaPoliedron({ ctx }) {
     }
     const domanda = domandaDa(q, Boolean(allegato));
     let nuovo = null;
+    // Comandi semplici ("ricordami…", "devo pagare…", "apri agenda"): li esegue l'app, senza AI.
+    const comando = !allegato && interpretaComando(q, oggiAgenda());
+    if (comando) {
+      if (comando.tipo === 'aiuto') {
+        aggiungi({ ruolo: 'assistente', fonte: 'comandi', testo: `Anche senza AI eseguo subito comandi come:\n• ${AIUTO_COMANDI.join('\n• ')}\nPer il resto cerco in archivio, pagamenti e pratiche.` });
+      } else if (comando.tipo === 'chiarisci') {
+        aggiungi({ ruolo: 'assistente', fonte: 'comandi', testo: comando.testo });
+      } else if (comando.tipo === 'apri') {
+        aggiungi({ ruolo: 'assistente', fonte: 'comandi', testo: `Apro ${comando.nome}.` });
+        if (comando.pagina) apri({ tipo: comando.pagina }); else vai(comando.vista);
+      } else if (comando.tipo === 'promemoria' && !comando.completo) {
+        aggiungi({ ruolo: 'assistente', fonte: 'comandi', testo: comando.manca.includes('data') ? 'Per quando? Scegli la data e lo aggiungo.' : 'Completa la scheda e lo aggiungo.', proposte: [{ tipo: 'promemoria', ...comando.m }] });
+      } else if (comando.tipo === 'promemoria') {
+        setAttesa(comando.m.cosa === 'pagamento' ? 'Aggiungo a Da pagare…' : 'Aggiungo in agenda…');
+        try {
+          const esito = await scriviPromemoria(comando.m);
+          aggiorna();
+          aggiungi({ ruolo: 'assistente', fonte: 'comandi', proposte: [{ tipo: 'promemoria', ...comando.m, fatto: `${esito.messaggio}: ${comando.m.titolo}${comando.m.importo !== '' ? ` (${euro(comando.m.importo)})` : ''}.`, annulla: esito.annulla }] });
+        } catch (e) {
+          aggiungi({ ruolo: 'assistente', fonte: 'comandi', nota: `Non aggiunto: ${e.message}`, proposte: [{ tipo: 'promemoria', ...comando.m }] });
+        }
+        setAttesa(null);
+      }
+      return;
+    }
     // Domande sulla giornata ("cosa ho domani?"): risponde l'app con l'agenda vera, subito.
     const richiesta = !allegato && giornataRichiesta(q, oggiAgenda());
     if (richiesta) {
@@ -271,8 +302,9 @@ export function VistaPoliedron({ ctx }) {
         const r = await chiediPoliedronCompleto({ token: await tokenSessione(), domanda, documentoId, storia, agenda });
         nuovo = { ruolo: 'assistente', testo: r.risposta, proposte: r.proposte, fonte: 'ai' };
       } catch (e) {
+        // AI esterna non raggiungibile: risponde la ricerca dell'app, senza messaggi d'errore ripetuti.
         nuovo = q
-          ? { ruolo: 'assistente', risposta: await rispondi(archivioDb, q).catch(() => null), fonte: 'core', nota: `${e.message} Ti rispondo con la ricerca di Poliedron.` }
+          ? { ruolo: 'assistente', risposta: await rispondi(archivioDb, q).catch(() => null), fonte: 'core', senzaAi: true }
           : { ruolo: 'assistente', fonte: 'core', nota: e.message };
       }
     } else if (q) {
@@ -284,7 +316,7 @@ export function VistaPoliedron({ ctx }) {
   };
 
   const scegliFile = (e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) setFile(f); };
-  const etichettaFonte = (m) => (m.fonte === 'ai' ? 'Poliedron AI' : m.fonte === 'archivio' ? 'Poliedron · archivio' : m.fonte === 'agenda' ? 'Poliedron · agenda' : 'Poliedron · ricerca');
+  const etichettaFonte = (m) => (m.fonte === 'ai' ? 'Poliedron AI' : m.fonte === 'archivio' ? 'Poliedron · archivio' : m.fonte === 'agenda' ? 'Poliedron · agenda' : m.fonte === 'comandi' ? 'Poliedron · comando' : m.senzaAi ? 'Poliedron · ricerca (senza AI)' : 'Poliedron · ricerca');
 
   return (
     <div className="pp-chat">
@@ -292,7 +324,7 @@ export function VistaPoliedron({ ctx }) {
       <div className="pp-chat-lista" ref={lista}>
         {!messaggi.length && (
           <div className="pp-chat-vuota">
-            <p>{modo === 'ai' ? benvenuto() : 'Ricerca senza AI: la tua giornata ("cosa ho domani?"), fornitori, bollette, scadenze, "quanto devo a…", pratiche.'}</p>
+            <p>{modo === 'ai' ? benvenuto() : 'Senza AI: comandi ("ricordami…", "devo pagare…", "apri agenda"), la tua giornata ("cosa ho domani?"), fornitori, bollette, scadenze, "quanto devo a…", pratiche.'}</p>
             <div className="pp-suggerimenti">
               {(documento ? ['Riassumimi questo documento', 'Cosa devo fare?', 'Ci sono scadenze?'] : SUGGERIMENTI_ASSISTENTE).map((x) => <button key={x} className="pp-chip" onClick={() => invia(x)}>{x}</button>)}
             </div>
@@ -321,7 +353,7 @@ export function VistaPoliedron({ ctx }) {
                     ? <PropostaPromemoria key={j} proposta={p} ctx={ctx} onFatto={fatto} />
                     : <Proposta key={j} proposta={p} ctx={ctx} onFatto={fatto} />;
                 })}
-                {m.fonte === 'core' && !m.risposta && !m.nota && <p>Nessun risultato.</p>}
+                {m.fonte === 'core' && (!m.risposta || m.risposta.tipo === 'vuoto') && !m.nota && <p>Nessun risultato. Prova un comando: «{AIUTO_COMANDI[0]}», oppure scrivi «aiuto».</p>}
                 <span className="pp-chat-fonte">{etichettaFonte(m)}</span>
               </>
             )}

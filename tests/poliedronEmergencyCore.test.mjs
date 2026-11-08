@@ -1,7 +1,12 @@
-import test from 'node:test';import assert from 'node:assert/strict';import { emergencyIntent,emergencyMessage } from '../supabase/functions/agente-assistente/emergency.js';
-test('emergency core blocks writes',()=>{assert.equal(emergencyIntent('crea appuntamento domani alle 15').kind,'blocked_write')});
-test('agenda today is deterministic read',()=>{assert.deepEqual(emergencyIntent('agenda oggi').tool,'appuntamenti');assert.equal(emergencyIntent('agenda oggi').input.relative_day,0)});
-test('agenda tomorrow is deterministic read',()=>{assert.equal(emergencyIntent('fammi vedere gli appuntamenti domani').input.relative_day,1)});
+import test from 'node:test';import assert from 'node:assert/strict';import { readFileSync } from 'node:fs';import { emergencyIntent,emergencyMessage,DIRECT_COMMAND_EXAMPLES } from '../supabase/functions/agente-assistente/emergency.js';
+import { understandPoliedron } from '../supabase/functions/agente-assistente/poliedron-core.js';
+import { resolveDay } from '../supabase/functions/agente-assistente/poliedron-agenda.js';
+test('emergency core blocks writes',()=>{assert.equal(emergencyIntent('crea appuntamento domani alle 15').kind,'blocked_write');assert.equal(emergencyIntent('prenota Rossi').kind,'blocked_write')});
+test('agenda today is deterministic read',()=>{assert.deepEqual(emergencyIntent('agenda oggi').tool,'appuntamenti');assert.equal(emergencyIntent('agenda oggi').input.day.relative_day,0)});
+test('agenda tomorrow is deterministic read',()=>{assert.equal(emergencyIntent('fammi vedere gli appuntamenti domani').input.day.relative_day,1)});
+test('agenda of a weekday or a date is read too (PO 2026-11-08)',()=>{const v=emergencyIntent('agenda di venerdì');assert.equal(v.tool,'appuntamenti');assert.equal(resolveDay(v.input.day,'2026-11-08'),'2026-11-13');assert.equal(resolveDay(emergencyIntent('appuntamenti del 12 novembre').input.day,'2026-11-08'),'2026-11-12');assert.equal(emergencyIntent('agenda').kind,'needs_clarification')});
 test('patient search is read only',()=>{const x=emergencyIntent('cerca paziente Mario Rossi');assert.equal(x.tool,'cerca_pazienti');assert.equal(x.input.query,'mario rossi')});
 test('economic query uses canonical KPI tool',()=>{assert.equal(emergencyIntent('fatturato questo mese').tool,'kpi_controllo_gestione')});
-test('unknown language does not guess',()=>{assert.equal(emergencyIntent('organizza meglio la giornata'),null);assert.match(emergencyMessage(null),/temporaneamente indisponibili/)});
+test('unknown language does not guess and suggests the direct commands',()=>{assert.equal(emergencyIntent('organizza meglio la giornata'),null);const m=emergencyMessage(null);assert.match(m,/Senza AI eseguo i comandi diretti/);assert.match(m,/Fissa Mario Rossi domani alle 15 per igiene/);assert.doesNotMatch(m,/temporaneamente indisponibil/);assert.match(emergencyMessage({kind:'blocked_write'}),/non ho modificato nulla/)});
+test('every suggested direct command is owned by the no-LLM core',()=>{for(const c of DIRECT_COMMAND_EXAMPLES){const p=understandPoliedron(c);assert.notEqual(p.intent,'UNKNOWN',c);assert.deepEqual(p.missing,[],c)}});
+test('emergency reads answer with readable text, never only "AI unavailable"',()=>{const s=readFileSync('supabase/functions/agente-assistente/index.ts','utf8');assert.match(s,/text: formatCoreRead\(emergency\.tool, out\), emergency_mode: true/);assert.doesNotMatch(s,/Modalità essenziale attiva/)});
