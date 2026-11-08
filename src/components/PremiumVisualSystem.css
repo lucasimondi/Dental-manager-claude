@@ -2791,3 +2791,8 @@ html .pol-modal-sheet.agenda-appointment-menu-sheet.appointment-workspace-sheet 
 .acquisisci-trovato { display:block; width:100%; text-align:left; padding:10px 4px; border-bottom:1px solid var(--border-soft); color:var(--text-primary); }
 .acquisisci-errore { margin:6px 0; color:var(--danger, currentColor); font-weight:600; }
 .acquisisci-azioni { display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
+@media (max-width: 719px) {
+  /* Nessun campo più largo della finestra: date e orari si adattano invece di uscire dal bordo. */
+  .pol-modal-sheet :is(input, select, textarea) { min-width: 0; max-width: 100%; box-sizing: border-box; }
+  .pol-modal-content { overflow-x: hidden; }
+}

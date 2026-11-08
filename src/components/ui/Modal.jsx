@@ -25,12 +25,15 @@ export function lockPageScroll() {
   if (openModals === 0) overflowBeforeLock = document.body.style.overflow === 'hidden' ? '' : document.body.style.overflow;
   openModals += 1;
   document.body.style.overflow = 'hidden';
+  // PO 2026-11-08 "anche appuntamenti viene leggermente coperta da icona poliedron": con una finestra
+  // aperta l'icona di Poliedron e il dock si nascondono (CSS su questa classe) e tornano alla chiusura.
+  document.body.classList?.add('pol-modale-aperto');
   let released = false;
   return () => {
     if (released) return;
     released = true;
     openModals = Math.max(0, openModals - 1);
-    if (openModals === 0) document.body.style.overflow = overflowBeforeLock;
+    if (openModals === 0) { document.body.style.overflow = overflowBeforeLock; document.body.classList?.remove('pol-modale-aperto'); }
   };
 }
 

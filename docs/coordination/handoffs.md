@@ -4542,3 +4542,7 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 ## 2026-11-08 — AGENDA-UNICA (prima unione)
 - Done: shared/agenda/navigation.js `agendaUnica()`; Personal VistaAgenda → agenda di Studio sul telefono; src/lib/scadenzePersonali.js (scadenze dell'archivio nell'agenda unica); personal/src/lib/archivioConfig.js; manifest dominio Personal con scope "/"; tests/agendaUnica.test.mjs.
 - Next: seconda unione — sezioni di Personal dentro l'app Poliedron (app-unica-da-fare.md).
+
+## 2026-11-08 — POPUP-TELEFONO
+- Done: body class `pol-modale-aperto` (Modal lock, free-slot sheet, search) hides Poliedron orb and dock; impegno form like the appointment form; impegno date/time row fixed; modal fields max-width 100% on phone.
+- Next: AGENDA-UNICA seconda unione (sezioni di Personal dentro l'app).
