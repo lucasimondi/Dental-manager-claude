@@ -845,3 +845,6 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-codici {border:1px solid var(--pp-linea);border-radius:16px;padding:16px;margin:20px 0;}
 
 .pf-home-link{display:flex;justify-content:space-between;align-items:center;gap:16px;width:100%;box-sizing:border-box;margin:12px 0;padding:20px;border:1px solid #bfcfdf;border-radius:18px;background:linear-gradient(120deg,#edf6fc,#fff);color:#194666;text-align:left}.pf-home-link strong{display:block;font:normal 25px Georgia,serif}.pf-home-link small{display:block;font-size:13px;line-height:1.6;margin-top:5px}.pf-home-link:focus-visible{outline:3px solid #1688aa}
+
+/* NOTE-PERSONALI: la pagina Note condivisa usa i colori di Personal. */
+.pp-note { --surface-page: var(--pp-sfondo); --surface-card: var(--pp-superficie); --text-primary: var(--pp-inchiostro); --brand-primary: var(--pp-blu); }

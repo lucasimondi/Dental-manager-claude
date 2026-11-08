@@ -1,3 +1,13 @@
+# Current task — AGENDA-CENTRIC-PHONE (2026-11-08)
+- OWNER Claude Code; branch ccr-4fbd3db0-8ou289 from master b62e2eb (PR273). Supersedes HOME-AGENDA-CENTRIC, AGENDA-MOBILE-SEARCH, AGENDA-MOBILE-IOS-STYLE, AGENDA-MOBILE-POLISH records below.
+- AUTHORIZATION PO 2026-11-07: "Ok sulle raccomandazioni, procedi con l'implementazione, mantieni impegni giornalieri flottanti, crea [la PR] per poi mergiare". Recommendations accepted: Poliedron at the dock centre, agenda is the Home, Note with a new table (simple first version); phone first, desktop as before.
+- SCOPE: phone agenda identical in Studio and Personal (search, month/year, days; iOS material bar; soft appointment blocks; now pill; week strip also in day view; floating day events, week one-line chips max 2 + "+N"; no + button, tap a free slot to create). Studio dock Agenda · Note · Poliedron · Documenti (Pazienti without archive plan) · Personal; Personal dock Agenda · Note · Poliedron · Documenti · Studio · Altro (Oggi moved to Altro). New `note_personali` table (migration + RLS + PGlite test) and shared Note page in both apps. Previous Home restored exactly (desktop and phone).
+- DATABASE: migration supabase/migrations/20261107120000_note_personali.sql NOT applied to any remote project. Until it is applied, the Note page shows "Le note saranno disponibili dopo l'aggiornamento del database." Application belongs to the controlled release after "Mergia".
+- STATUS PR opened; waiting for checks and task-specific "Mergia".
+- VALIDATION 1560/1560 Node tests; Studio and Personal builds; diff check; synthetic Chromium phone renders of agenda (Studio/Personal, day/week), Note page flow (add, area, pin) and Studio dock.
+- OPEN: Poliedron voice-first on the dock centre (no dictation in the panel yet); agenda visual baselines need refresh; green brand across the app; Documenti section redesign.
+- Previous operational record preserved below.
+
 # Current task — AGENDA-MOBILE-SEARCH (2026-11-07)
 - OWNER Claude Code; branch ccr-4fbd3db0-8ou289 (continues HOME-AGENDA-CENTRIC, commit 9f2a9b4).
 - AUTHORIZATION PO, after reviewing the phone proposal (artifact "Poliedra Vita"): "prendi agenda di Poliedron e rendila come mi hai proposto ma solo metti la barra ricerca in alto poi sotto i giorni"; earlier: remove "Vai a Personal"/"Vai a Studio", Studio icon in the Personal dock, same agenda in both apps, daily events stay floating as today, phone first (desktop unchanged).
