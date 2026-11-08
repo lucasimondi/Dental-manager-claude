@@ -47,3 +47,14 @@ test('both Android manifests have scoped POST share target and Personal-only wor
  const upload=readFileSync('personal/src/sezioni/documenti/Carica.jsx','utf8');assert.match(upload,/nonAnalizzare: opzioni.soloArchiviazione \|\| nonAnalizzare/);
  const route=readFileSync('personal/src/pdf/PaginaPdf.jsx','utf8');assert.match(route,/soloArchiviazione: true, nonAnalizzare: true/);
 });
+test('signature crop hugs the ink with a margin and stays inside the pad', async () => {
+ const { ritaglioFirma } = await import('../personal/src/pdf/operazioni.js');
+ assert.deepEqual(ritaglioFirma({x0:40,y0:60,x1:200,y1:120},{width:360,height:200},8),{x:32,y:52,width:176,height:76});
+ assert.deepEqual(ritaglioFirma({x0:2,y0:1,x1:358,y1:199},{width:360,height:200},8),{x:0,y:0,width:360,height:200});
+ assert.deepEqual(ritaglioFirma(null,{width:300,height:200}),{x:0,y:0,width:300,height:200});
+});
+test('PDF manager is reachable from Documenti, Crea and Altro', () => {
+ assert.match(readFileSync('personal/src/sezioni/documenti/Documenti.jsx','utf8'),/apri\(\{ tipo: 'pdf' \}\)/);
+ assert.match(readFileSync('personal/src/sezioni/agenda/AgendaGriglia.jsx','utf8'),/id: 'pdf', nome: 'PDF e firma'[^\n]*ctx\.apri\(\{ tipo: 'pdf' \}\)/);
+ assert.match(readFileSync('personal/src/sezioni/altro/index.jsx','utf8'),/id === 'pdf' \? ctx\.apri\(\{ tipo: 'pdf' \}\)/);
+});

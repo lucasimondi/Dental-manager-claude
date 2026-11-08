@@ -4522,3 +4522,15 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 ## 2026-11-08 — APP-UNICA passo 1
 - Done: shared/crea (CreaSheet, CreaButton), shared/altro (AltroPage), navigation sectionDestination/readSectionLocation/readSectionNew, Studio dock «Altro» + page `altro`, Personal dock 5 voci + Altro condiviso, Win95 removed, Studio PWA name Poliedron, tests/appUnica.test.mjs and updated dock/theme tests.
 - Next: docs/coordination/app-unica-da-fare.md (passo 2 e 3, prove su iPhone vero).
+
+## Handoff — PERSONAL-PDF-MANAGER (2026-11-08) — Claude Code
+- Task ID: PERSONAL-PDF-MANAGER. Previous agent: Codex (branch `codex/personal-pdf-manager`, commits 223f0e7, 5a9018c, no handoff recorded). Takeover by explicit PO instruction: "Guarda cosa ha fatto codex sui PDF e continua per creare il gestore PDF in poliedron con le librerie".
+- Branch: `ccr-4ac3e51d-ki2rcm` = Codex branch + master 254f2d4 (PR279) merged (conflict only in current-task.md, both entries kept).
+- Objective: Poliedron Personal as the PO's PDF manager on Android, with existing open-source libraries (pdfjs-dist 4.10 alias `pdfjs-personal`, pdf-lib 1.17.1).
+- Completed: reviewed and verified Codex's manager; added Crea/Altro entry points, phone layout (tools at the bottom, search on demand), signature smoothing/cropping/proportional placement, 14 pt free text, annotation visual check and CI step.
+- Files changed (this session): shared/crea/CreaSheet.jsx, shared/altro/AltroPage.jsx (pdf icon), personal/src/sezioni/agenda/AgendaGriglia.jsx, personal/src/sezioni/altro/index.jsx, personal/src/pdf/{GestorePdf.jsx,Firma.jsx,operazioni.js,pdf.css}, tests/personalPdf.test.mjs, tests/visual/personal-pdf-annotazioni.mjs, .github/workflows/personal-pdf.yml, personal/README.md, coordination docs.
+- Database changes: none. Deployment impact: Personal bundle only (lazy chunk); manifests gain share_target; Personal worker handles only the share POST.
+- Tests: npm test 1601/1601; npm run build; npm run build:personal; Pixel 7 Chromium personal-pdf.mjs PASS, personal-pdf-annotazioni.mjs PASS.
+- Unresolved / risks: APK WebView lacks file chooser/share/download/intents (see current-task OPEN); share target needs reinstalling the Personal PWA from Chrome to pick up the new manifest; real Android check pending; XFA forms unsupported (message shown); page operations flatten form fields (explained in UI).
+- Rollback: revert the PR; no data written anywhere except new archive files the user explicitly saves.
+- Next action: PO tries on Android (Chrome → Personal installed → Condividi un PDF → Personal); then decide APK native support; PR on request, "Mergia" to merge.

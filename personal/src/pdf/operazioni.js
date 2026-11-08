@@ -74,3 +74,10 @@ export async function condividiCopia(file, nav = globalThis.navigator) {
   try { await nav.share({ files: [file] }); return 'condiviso'; }
   catch (e) { if (e.name === 'AbortError') return 'annullato'; throw e; }
 }
+// Crop rectangle around the drawn ink (CSS px), padded and clamped to the pad.
+export function ritaglioFirma(b, pad, margin = 8) {
+  if (!b) return { x: 0, y: 0, width: pad.width, height: pad.height };
+  const x = Math.max(0, Math.floor(b.x0 - margin)), y = Math.max(0, Math.floor(b.y0 - margin));
+  const x1 = Math.min(pad.width, Math.ceil(b.x1 + margin)), y1 = Math.min(pad.height, Math.ceil(b.y1 + margin));
+  return { x, y, width: Math.max(1, x1 - x), height: Math.max(1, y1 - y) };
+}

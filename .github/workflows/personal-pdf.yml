@@ -28,6 +28,7 @@ jobs:
       - run: npm run build
       - run: npm run build:personal
       - run: node tests/visual/personal-pdf.mjs
+      - run: node tests/visual/personal-pdf-annotazioni.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

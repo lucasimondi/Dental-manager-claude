@@ -4,3 +4,18 @@
 @media(max-width:390px){.pdf-header{padding:6px;gap:4px}.pdf-manager button{padding:8px}.pdf-navigation{gap:2px;font-size:12px}.pdf-sheet{padding:16px}}
 
 .pdf-signature-host{position:absolute;inset:0;pointer-events:none;z-index:15}
+
+/* Phone layout: slim page bar on top, tools at the bottom within thumb reach. */
+.pdf-manager .pdf-tools{order:0;border-bottom:0;border-top:1px solid #d7e0e7;padding:6px 8px calc(6px + env(safe-area-inset-bottom));gap:6px;scrollbar-width:none;background:#f9fbfd}
+.pdf-manager .pdf-tools::-webkit-scrollbar{display:none}
+.pdf-manager .pdf-tools button{min-height:40px;padding:6px 12px;border-radius:999px}
+.pdf-manager .pdf-navigation{gap:4px;padding:4px 8px}
+.pdf-manager .pdf-navigation button{min-height:36px;min-width:36px;padding:4px 8px}
+.pdf-manager .pdf-navigation input{min-height:34px;padding:4px}
+.pdf-manager .pdf-search{padding:6px 8px}
+.pdf-scroll{padding-bottom:0}
+.pdf-pad{display:block;width:100%;height:200px;touch-action:none;background:#fff;border:1px dashed #8395a8;border-radius:12px}
+.pdf-check{display:flex;align-items:center;gap:8px}
+.pdf-saved{display:flex;flex-direction:column;align-items:center;gap:6px}
+.pdf-manager .pdf-saved{min-height:96px}
+@media(max-width:390px){.pdf-manager .pdf-header{padding:6px 8px}.pdf-manager .pdf-header small{display:none}}

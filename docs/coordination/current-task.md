@@ -1,7 +1,12 @@
 # Current task — PERSONAL-PDF-MANAGER (2026-11-08, continued)
 - OWNER Claude Code (takeover from Codex by explicit PO instruction 2026-11-08: "Guarda cosa ha fatto codex sui PDF e continua per creare il gestore PDF in poliedron con le librerie"); branch `ccr-4ac3e51d-ki2rcm` = `codex/personal-pdf-manager` (5a9018c) + master 254f2d4 (PR279) merged.
 - AUTHORIZATION PO: full PDF manager phase 1 ("Ok procediamo con un gestore molto valido"); PO uses Android; existing open-source libraries only (pdfjs-dist 4.10 as `pdfjs-personal`, pdf-lib 1.17.1).
-- STATUS IN_PROGRESS.
+- SCOPE (Codex 5a9018c, verified): Personal full-screen PDF manager on PDF.js 4.10 PDFViewer (progressive pages, pinch zoom, search, AcroForm filling, Testo/Disegno/Evidenzia editors), finger signature (local only) placed/resized on the page and embedded with pdf-lib, Pagine (reorder/rotate/delete/merge, forms flattened with explicit notice), photos to PDF, "Salva copia" → share file / download / new archive file (soloArchiviazione + nonAnalizzare; original never overwritten), Android share target (POST into the Personal worker only, 24 h local inbox).
+- ADDED by Claude Code: entry points «PDF e firma» in the Crea sheet and «PDF» in Altro (besides Documenti); phone layout with a slim page bar, search on demand and tools at the bottom; smoother signature strokes, PNG cropped to the ink and placed with its real proportions; free text 14 pt; new synthetic Pixel 7 check `tests/visual/personal-pdf-annotazioni.mjs` (ink + free text + signature saved in the copy) added to the `Personal PDF Android` workflow.
+- LOCKS: no DB/RLS/tenancy/financial change; no model or conversion service; Studio worker untouched; signature is a simple electronic signature (FES) and the UI says so.
+- VALIDATION 1601/1601 Node tests; Studio and Personal builds; Chromium Pixel 7: personal-pdf.mjs and personal-pdf-annotazioni.mjs PASS.
+- OPEN: the Android companion APK (android/agenda, WebView) has no file chooser, download or navigator.share, and no "Apri con / Condividi con" intent: inside the APK the manager can open archive PDFs but not pick, share or download files. Use the Personal app installed from Chrome (share target works there). Native APK support = next step, PO decision. Real-phone check of share target pending.
+- STATUS implementation complete on branch; PR only on PO request; task-specific "Mergia" required.
 
 # Current task — APP-UNICA passo 1 (2026-11-08)
 - OWNER Claude Code; branch ccr-4fbd3db0-8ou289 from master 2e610ed (PR276 merged).
