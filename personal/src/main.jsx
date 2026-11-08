@@ -2,7 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './personal.css';
 import './pro.css';
-import './retro.css';
+import './icone-base.css';
 import { AspettoProvider } from './Aspetto.jsx';
 import { applicaAspetto, leggiAspetto, storageAspetto } from './lib/aspetto.js';
 import App from './App.jsx';

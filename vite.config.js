@@ -18,8 +18,8 @@ export default defineConfig({
       injectRegister: false,
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'poliedron.webmanifest', 'poliedron-*.png'],
       manifest: {
-        name: 'Poliedra',
-        short_name: 'Poliedra',
+        name: 'Poliedron',
+        short_name: 'Poliedron',
         description: 'Gestionale per studi professionali e sanitari',
         start_url: '/',
         scope: '/',

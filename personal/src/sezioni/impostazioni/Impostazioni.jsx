@@ -1,4 +1,3 @@
-import { CambioAspetto } from '../../Aspetto.jsx';
 // Impostazioni — persone, documenti personali, sezioni dei documenti, categorie, etichette, studio, account.
 import { useEffect, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
@@ -70,7 +69,6 @@ export function PaginaImpostazioni({ ctx, email }) {
   const { persone, categorie, sezioni, etichette } = impostazioni;
   return (
     <>
-      <Sezione titolo="Aspetto"><CambioAspetto esteso /></Sezione>
       <Sezione titolo="Persone">
         <p className="pp-riga-meta pp-spiegazione">A chi appartengono i documenti personali (carta d'identità, codice fiscale, …).</p>
         <ListaModificabile

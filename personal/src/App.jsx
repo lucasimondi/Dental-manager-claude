@@ -2,9 +2,8 @@ import { startAndroidAgendaWidget } from './lib/androidAgendaWidget.js';
 import { studioDb, sessioneStudio, studioDellaSessione, appuntamentoPerId, impegnoPerId } from './lib/studio.js';
 import { avviaAzioneWidget } from './lib/widgetAzioni.js';
 import { IconaTema } from './IconaTema.jsx';
-import { CambioAspetto } from './Aspetto.jsx';
 import { Pagina } from './Pagina.jsx';
-import { readAgendaLocation, agendaDestination } from '../../shared/agenda/navigation.js';
+import { readAgendaLocation, readSectionLocation } from '../../shared/agenda/navigation.js';
 // POL-VITA-003/006 — Poliedron Personal: app per telefono dell'archivio personale.
 // Dock: Oggi · Agenda · Documenti · Assistente · Altro. Ogni dettaglio si apre come pagina sopra la
 // sezione, con "Indietro" in alto, il tasto di chiusura in basso a portata di pollice e il dock
@@ -22,11 +21,12 @@ import { differito } from './Differito.jsx';
 const FoglioAggiungi = differito(() => import('./Aggiungi.jsx'), 'FoglioAggiungi');
 import { Accesso, NuovaPassword } from './Accesso.jsx';
 import { DOCK, DOCK_DOPO, sezione, pagina, titoloPagina, eModulo } from './sezioni/index.js';
-import { IconaPiu, IconaImpostazioni, IconaChat, IconaStudio, IconaAltro } from './Icone.jsx';
+import { IconaPiu, IconaImpostazioni, IconaChat, IconaAltro } from './Icone.jsx';
 
 impostaToken(tokenSessione);
 
-const vistaIniziale = () => { if (readAgendaLocation().requested) return 'agenda'; const v = leggiVista() === 'pagamenti' ? 'conti' : leggiVista(); return sezione(v) ? v : 'oggi'; };
+// APP-UNICA: «?sezione=conti» (da Altro di Studio) apre direttamente quella sezione.
+const vistaIniziale = () => { if (readAgendaLocation().requested) return 'agenda'; if (sezione(readSectionLocation())) return readSectionLocation(); const v = leggiVista() === 'pagamenti' ? 'conti' : leggiVista(); return sezione(v) ? v : 'oggi'; };
 
 function Archivio({ email }) {
   // Il widget legge le etichette attuali (colori) al momento di ogni sincronizzazione.
@@ -140,9 +140,8 @@ function Archivio({ email }) {
       <input ref={ingressi.libreria} type="file" accept="image/*" hidden onChange={fileScelto} />
       <input ref={ingressi.file} type="file" hidden onChange={fileScelto} />
       <header className={`pp-testata${attuale.classeTestata && !sopra ? ` ${attuale.classeTestata}` : ''}`}>
-        {!attuale.senzaTitolo && <div className="pp-testata-titoli"><button className="pp-brand" onClick={() => vai('oggi')} aria-label="Poliedron Personal · Home"><span className="pp-brand-moderno"><img src="/poliedron-v2-192.png" alt="" width="24" height="24" /></span><span className="pp-brand-retro" aria-hidden="true"><IconaTema tipo="oggi" Icona={IconaAltro} size={24} /></span><span>Poliedron <small>PERSONAL</small></span></button><h1>{vista === 'oggi' ? saluto() : attuale.nome}</h1></div>}
+        {!attuale.senzaTitolo && <div className="pp-testata-titoli"><button className="pp-brand" onClick={() => vai('oggi')} aria-label="Poliedron Personal · Home"><span className="pp-brand-moderno"><img src="/poliedron-v2-192.png" alt="" width="24" height="24" /></span><span>Poliedron <small>PERSONAL</small></span></button><h1>{vista === 'oggi' ? saluto() : attuale.nome}</h1></div>}
         {!sopra && !foglio && <span className="pp-testata-azioni">
-          <CambioAspetto />
           {AzioniTestata && <AzioniTestata ctx={ctx} />}
           <button className="pp-icona-bottone" onClick={() => apri({ tipo: 'impostazioni' })} aria-label="Impostazioni"><IconaImpostazioni size={20} /></button>
         </span>}
@@ -163,7 +162,6 @@ function Archivio({ email }) {
         {[...DOCK, 'poliedron', ...DOCK_DOPO].map((s) => s === 'poliedron'
           ? <button key="poliedron" className={`pp-scheda pp-scheda-poliedron${classeScheda('poliedron')}`} onClick={() => vai('poliedron')} aria-label="Apri Poliedron" aria-current={vista === 'poliedron' ? 'page' : undefined}><IconaTema tipo="poliedron" Icona={IconaChat} size={24} /><span>Poliedron</span></button>
           : <button key={s.id} className={`pp-scheda${classeScheda(s.id)}`} onClick={() => vai(s.id)} aria-current={vista === s.id ? 'page' : undefined}><IconaTema tipo={s.id} Icona={s.Icona} size={24} /><span>{s.nome}</span></button>)}
-        <a className="pp-scheda" href={agendaDestination('studio', new Date().toLocaleDateString('sv-SE'), 'settimana')} aria-label="Apri Studio"><IconaTema tipo="studio" Icona={IconaStudio} size={24} /><span>Studio</span></a>
         <button className={`pp-scheda${altraSezione ? ' attiva' : ''}`} onClick={() => vai('altro')} aria-current={altraSezione ? 'page' : undefined}><IconaTema tipo="altro" Icona={IconaAltro} size={24} /><span>Altro</span></button>
       </nav>
       {!sopra && !attuale.senzaPiu && <button className="pp-fab" onClick={() => setFoglio(true)} aria-label="Aggiungi"><IconaPiu size={26} /></button>}

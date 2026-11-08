@@ -5,11 +5,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 const read = p => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 
-test('i passaggi Studio <-> Personal aprono la settimana, non il giorno', () => {
+test('nessun passaggio verso il giorno; APP-UNICA: niente più tasti che portano all\'altra app dal dock o dall\'agenda', () => {
   for (const f of ['src/components/poliedron/PoliedronMobileDock.jsx', 'personal/src/App.jsx', 'src/components/Agenda.jsx']) {
     const src = read(f);
     assert.doesNotMatch(src, /agendaDestination\([^;\n]{0,140}'giorno'/, f);
-    assert.match(src, /agendaDestination\([^;\n]{0,140}'settimana'/, f);
+    assert.doesNotMatch(src, /aria-label="Apri (Personal|Studio)"/, f);
   }
 });
 

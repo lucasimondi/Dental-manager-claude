@@ -1,3 +1,11 @@
+# Current task — APP-UNICA passo 1 (2026-11-08)
+- OWNER Claude Code; branch ccr-4fbd3db0-8ou289 from master 2e610ed (PR276 merged).
+- AUTHORIZATION PO 2026-11-08 after the preview artifact "Poliedron app unica": "Ok per poliedron, tema win togliamo, il più ok cerca solo di farlo più pro e immediato e bello vai"; then "Arriva fino dove puoi però registra le cose da fare ancora".
+- SCOPE (phone only, desktop unchanged): + next to the agenda search opens the shared «Crea» sheet in Studio and Personal; one dock Agenda · Note · Poliedron · Documenti · Altro in both parts; shared «Altro» page (Lavoro · Studio, Vita · Personale) with direct cross-links (`?sezione=`); Windows 95 theme removed from Personal; Studio PWA named Poliedron. No schema, RLS or data change.
+- REMAINING WORK: docs/coordination/app-unica-da-fare.md (step 2: Personal inside the Poliedron app with one login; step 3: unified Documenti; real-iPhone checks).
+- VALIDATION 1593/1593 Node tests; Studio and Personal builds; Chromium visual: agenda.compare, agenda.reliability, agenda.sharing, agenda.ricerca, appointment-workspace; renders of the Crea sheet (Studio and Personal) and Altro page.
+- STATUS PR open; task-specific "Mergia" required.
+
 # Current task — POLIEDRON-COMANDI-SENZA-AI (2026-11-08)
 - OWNER Claude Code; branch ccr-873bf8b7-n86ati from master b62e2eb (PR273 merged); master 2e610ed (PR274–276, incl. RICERCA-AGENDA search bar) merged in.
 - AUTHORIZATION PO: "devi renderlo indipendente da AI esterna perché altrimenti dobbiamo sempre sentirci dire AI non in funzione, deve essere in grado di eseguire comandi semplici"; PO chose both Personal and Studio, and "Esegue subito" (immediate execution with Annulla) for complete commands.

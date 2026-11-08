@@ -1,0 +1,42 @@
+/* CREA — il + dell'agenda e il suo foglio, uguali in Studio e Personal (stile iOS). */
+.crea-bottone { flex: none; width: 38px; height: 38px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; cursor: pointer; pointer-events: auto;
+  background: var(--agenda-tint, #1F63B5); color: #fff; box-shadow: 0 4px 12px color-mix(in srgb, var(--agenda-tint, #1F63B5) 38%, transparent);
+  transition: transform .12s ease, box-shadow .12s ease; -webkit-tap-highlight-color: transparent; }
+.crea-bottone svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }
+.crea-bottone:active { transform: scale(.92); box-shadow: 0 2px 6px color-mix(in srgb, var(--agenda-tint, #1F63B5) 30%, transparent); }
+.crea-bottone:focus-visible { outline: 2px solid var(--agenda-tint, #1F63B5); outline-offset: 3px; }
+
+.crea-strato { position: fixed; inset: 0; z-index: 1300; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, "Segoe UI", Roboto, sans-serif; }
+.crea-velo { position: absolute; inset: 0; background: rgba(0,0,0,.34); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); animation: crea-velo .22s ease both; }
+.crea-foglio {
+  --cf-sfondo: #F2F2F7; --cf-card: #FFFFFF; --cf-testo: #1C1C1E; --cf-testo-2: rgba(60,60,67,.62); --cf-linea: rgba(60,60,67,.12);
+  position: absolute; left: 0; right: 0; bottom: 0; max-width: 560px; margin: 0 auto; box-sizing: border-box; max-height: calc(100dvh - 48px); overflow-y: auto; overscroll-behavior: contain;
+  padding: 6px 16px calc(22px + env(safe-area-inset-bottom, 0px)); border-radius: 24px 24px 0 0; background: var(--cf-sfondo); color: var(--cf-testo);
+  box-shadow: 0 -12px 40px rgba(0,0,0,.22); animation: crea-su .34s cubic-bezier(.2,.9,.25,1.08) both; transition: transform .22s ease;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .crea-foglio { --cf-sfondo: #1C1C1E; --cf-card: #2C2C2E; --cf-testo: #F2F2F7; --cf-testo-2: rgba(235,235,245,.6); --cf-linea: rgba(235,235,245,.14); } }
+:root[data-theme="dark"] .crea-foglio { --cf-sfondo: #1C1C1E; --cf-card: #2C2C2E; --cf-testo: #F2F2F7; --cf-testo-2: rgba(235,235,245,.6); --cf-linea: rgba(235,235,245,.14); }
+.crea-testa { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 14px 2px 4px; touch-action: none; cursor: grab; }
+.crea-maniglia { position: absolute; top: 2px; left: 50%; width: 38px; height: 5px; margin-left: -19px; border-radius: 3px; background: var(--cf-linea); }
+.crea-testa h2 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+.crea-chiudi { width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; background: var(--cf-linea); color: var(--cf-testo-2); cursor: pointer; }
+.crea-chiudi svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }
+.crea-gruppo h3 { margin: 16px 4px 8px; font-size: 12.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--cf-testo-2); }
+.crea-griglia { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.crea-voce { min-height: 88px; min-width: 0; display: grid; justify-items: center; align-content: center; gap: 8px; padding: 10px 4px; border: 0; border-radius: 18px;
+  background: var(--cf-card); color: var(--cf-testo); font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform .1s ease, background-color .1s ease; }
+.crea-voce:active { transform: scale(.95); }
+.crea-voce:focus-visible { outline: 2px solid var(--c); outline-offset: 2px; }
+.crea-icona { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: #fff;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c) 82%, #fff), var(--c)); box-shadow: 0 3px 8px color-mix(in srgb, var(--c) 35%, transparent); }
+.crea-icona svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.crea-nome { max-width: 100%; font-size: 12.5px; font-weight: 600; line-height: 1.15; text-align: center; overflow-wrap: normal; hyphens: none; }
+/* Le due azioni di tutti i giorni, grandi in cima: un tocco e si scrive. */
+.crea-principali { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.crea-principali .crea-voce { min-height: 64px; grid-auto-flow: column; grid-template-columns: auto minmax(0, 1fr); justify-content: start; justify-items: start; align-items: center; gap: 9px; padding: 10px; }
+.crea-principali .crea-nome { min-width: 0; font-size: 14px; font-weight: 650; text-align: left; letter-spacing: -.015em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crea-principali .crea-icona { width: 36px; height: 36px; }
+.crea-suggerimento { margin: 16px 4px 0; font-size: 13.5px; line-height: 1.4; color: var(--cf-testo-2); }
+@keyframes crea-su { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes crea-velo { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .crea-foglio, .crea-velo { animation: none; } .crea-voce, .crea-bottone { transition: none; } }
