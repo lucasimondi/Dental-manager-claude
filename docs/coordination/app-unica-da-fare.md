@@ -37,7 +37,7 @@ Anteprima approvata: artifact "Poliedron app unica" (4 schermate: Agenda con +, 
    aspettare che sia unito prima di toccare quei file (manifest, scope, rinomina) per non creare conflitti.
 0b. Dominio `personal.poliedrasoft.it`: il manifest ha `scope: /personal/`, quindi `/studio` esce dall'app installata;
    portarlo a `scope: /` (dopo il ramo di Codex) e verificare start_url, icone e widget Android (`WIDGET_ORIGIN`).
-0c. L'app Poliedron (`/poliedron`) apre ancora la chat come prima pagina: valutare con il PO se aprire l'agenda (Home agenda-centrica).
+0c. FATTO (PO 2026-11-08 "Apri sull'agenda settimana"): l'app Poliedron (`/poliedron`) apre sull'agenda in settimana.
 1. Montare le sezioni di Personal dentro l'app Studio sul telefono (lazy import da `personal/src/sezioni/*`):
    Oggi, Conti, Personali, Pratiche (legal), Foto, Diario, Biblioteca (didattica). Servono: il `ctx` di Personal
    (`apri`, `vai`, `aggiungi`, `esegui`, `mostra`, `impostazioni`, `chat`…) ricostruito in un adattatore Studio, le
@@ -50,7 +50,11 @@ Anteprima approvata: artifact "Poliedron app unica" (4 schermate: Agenda con +, 
 4. L'indirizzo di Personal (`personal.poliedrasoft.it`, `/personal/`) porta alla stessa app (redirect o stessa build)
    conservando `?sezione=` e i link dei widget Android esistenti; poi rinominare il manifest di Personal / unire i manifest
    e aggiornare `tests/poliedronPersonal.test.mjs` e `tests/personalCaricamento.test.mjs` (oggi si aspettano «Poliedron Personal»).
-5. Chat di Poliedron: una sola (oggi Studio ha il pannello Poliedron, Personal la sezione chat): decidere con il PO quale resta.
+5. Chat di Poliedron — DECISO (PO 2026-11-08 "tieni la chat che è meglio tenere", scelta di Claude Code): resta il
+   **pannello Poliedron di Studio** (tasto centrale del dock), perché agisce su agenda, pazienti, incassi e documenti dello
+   studio e ha già i comandi senza AI esterna (PR277). La chat di Personal non si cancella: le sue capacità proprie
+   (domande sull'archivio personale, allegati archiviati, promemoria) vanno portate nel pannello come fonte/azioni, poi
+   il tasto Poliedron di Personal apre lo stesso pannello. Regola: il contenuto clinico dei pazienti non va mai ai modelli.
 6. Test: visual `tests/visual/*` su 375/390/430 per le sezioni importate; nessuna modifica al desktop.
 
 ## Da fare — passo 3: Documenti unificati

@@ -10,6 +10,9 @@
 // (studio_id del token) limita ogni lettura e scrittura allo studio dell'utente.
 import { createClient } from '@supabase/supabase-js';
 import { rigaImpegno, rigaAppuntamento } from './agenda.js';
+import { CHIAVE_SCOLLEGATO, chiaveSessione, leggiSessioneSalvata } from './sessioneCondivisa.js';
+
+export { CHIAVE_SCOLLEGATO };
 
 export { rigaImpegno, rigaAppuntamento };
 
@@ -25,17 +28,9 @@ const esito = ({ data, error }) => {
   return data;
 };
 
-// APP-UNICA passo 2: un solo accesso. Se nello stesso indirizzo c'è già la sessione di Studio
-// (stesso progetto e stesso utente), Personal la riusa invece di chiedere di nuovo email e password.
-// Legge solo il token di accesso salvato dal client di Studio su questo stesso dominio.
-export const CHIAVE_SCOLLEGATO = 'poliedron-personal-studio-scollegato';
-export const CHIAVE_SESSIONE_STUDIO = `sb-${new URL(STUDIO_URL).hostname.split('.')[0]}-auth-token`;
-export function sessioneStudioSalvata(storage = globalThis.localStorage) {
-  try {
-    const s = JSON.parse(storage?.getItem(CHIAVE_SESSIONE_STUDIO) || 'null');
-    return s?.access_token && s?.refresh_token ? { access_token: s.access_token, refresh_token: s.refresh_token } : null;
-  } catch { return null; }
-}
+// APP-UNICA passo 2: un solo accesso (vedi sessioneCondivisa.js).
+export const CHIAVE_SESSIONE_STUDIO = chiaveSessione(STUDIO_URL);
+export const sessioneStudioSalvata = (storage = globalThis.localStorage) => leggiSessioneSalvata(storage, CHIAVE_SESSIONE_STUDIO);
 export async function sessioneStudio() {
   const { data } = await studioDb.auth.getSession();
   if (data.session) return data.session;

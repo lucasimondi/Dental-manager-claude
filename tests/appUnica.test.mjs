@@ -75,14 +75,16 @@ test('passo 2: dentro l\'app Poliedron (/poliedron) Studio e Personal si aprono 
 });
 
 test('passo 2: un solo accesso — Personal riusa la sessione di Studio dello stesso indirizzo, salvo scollegamento', async () => {
-  const { sessioneStudioSalvata, CHIAVE_SESSIONE_STUDIO, CHIAVE_SCOLLEGATO } = await import('../personal/src/lib/studio.js');
-  assert.equal(CHIAVE_SESSIONE_STUDIO, 'sb-idklxdqebfceplrualgh-auth-token');
-  const mem = new Map([[CHIAVE_SESSIONE_STUDIO, JSON.stringify({ access_token: 'a', refresh_token: 'r', user: { id: 'u' } })]]);
-  assert.deepEqual(sessioneStudioSalvata({ getItem: (k) => mem.get(k) }), { access_token: 'a', refresh_token: 'r' });
-  assert.equal(sessioneStudioSalvata({ getItem: () => '{rotto' }), null);
-  assert.equal(sessioneStudioSalvata({ getItem: () => { throw new Error('bloccato'); } }), null);
+  const { chiaveSessione, leggiSessioneSalvata, CHIAVE_SCOLLEGATO } = await import('../personal/src/lib/sessioneCondivisa.js');
+  const chiave = chiaveSessione('https://abcdefgh.supabase.co');
+  assert.equal(chiave, 'sb-abcdefgh-auth-token');
+  const mem = new Map([[chiave, JSON.stringify({ access_token: 'a', refresh_token: 'r', user: { id: 'u' } })]]);
+  assert.deepEqual(leggiSessioneSalvata({ getItem: (k) => mem.get(k) }, chiave), { access_token: 'a', refresh_token: 'r' });
+  assert.equal(leggiSessioneSalvata({ getItem: () => '{rotto' }, chiave), null);
+  assert.equal(leggiSessioneSalvata({ getItem: () => { throw new Error('bloccato'); } }, chiave), null);
   const src = read('personal/src/lib/studio.js');
   assert.match(src, /getItem\(CHIAVE_SCOLLEGATO\) === '1'\) return null/);
   assert.match(src, /nuova\?\.session\?\.user\?\.app_metadata\?\.studio_id \? nuova\.session : null/, 'solo con lo studio nel token');
   assert.equal(CHIAVE_SCOLLEGATO, 'poliedron-personal-studio-scollegato');
+  assert.match(src, /export const CHIAVE_SESSIONE_STUDIO = chiaveSessione\(STUDIO_URL\);/, 'la chiave è quella del client di Studio');
 });

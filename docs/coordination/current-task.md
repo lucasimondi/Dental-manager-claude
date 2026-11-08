@@ -2,8 +2,9 @@
 - OWNER Claude Code; branch ccr-4fbd3db0-8ou289 from master 254f2d4 (PR279 merged).
 - AUTHORIZATION PO 2026-11-08: "Guarda cosa è stato fatto e continua" (continue docs/coordination/app-unica-da-fare.md).
 - SCOPE: same-origin navigation between Studio and Personal inside the installed app (`appBase`, desktop browser unchanged); Personal reuses the same-origin Studio session (one login), explicit disconnect respected. No schema, RLS or data change. Files owned by Codex's in-progress PERSONAL-PDF-MANAGER (Personal App/main/documenti/manifests) deliberately untouched.
-- VALIDATION 1595/1595 Node tests; Studio and Personal builds; Chromium agenda.reliability and agenda.ricerca.
-- STATUS PR open; task-specific "Mergia" required. Remaining work in docs/coordination/app-unica-da-fare.md.
+- VALIDATION 1595/1595 Node tests (Node 22 and Node 20); Studio and Personal builds; Chromium agenda.reliability and agenda.ricerca.
+- ADDED PO 2026-11-08 "Apri sull'agenda settimana e tieni la chat che è meglio tenere mergia": the Poliedron phone app (/poliedron) opens on the agenda (week) instead of the chat; chat decision recorded in app-unica-da-fare.md (keep the Studio Poliedron panel). Session helpers moved to personal/src/lib/sessioneCondivisa.js (no Supabase import, project ref only in lib/studio.js) after the Node 20 CI failure.
+- STATUS PR281 open; "Mergia" given — merge after all checks are green. Remaining work in docs/coordination/app-unica-da-fare.md.
 
 # Current task — APP-UNICA passo 1 (2026-11-08)
 - OWNER Claude Code; branch ccr-4fbd3db0-8ou289 from master 2e610ed (PR276 merged).
