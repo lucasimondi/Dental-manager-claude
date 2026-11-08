@@ -7,12 +7,24 @@ export function readAgendaLocation(search = globalThis.location?.search || '') {
   const validMonth = /^\d{4}-\d{2}-\d{2}$/.test(month || '') && !Number.isNaN(Date.parse(month)) && new Date(month).toISOString().slice(0, 10) === month;
   return { ...(validMonth ? { month } : {}), requested: q.get('agenda') === '1', day: validDate ? raw : null, view: ['giorno', 'settimana', 'settimana_lavoro', 'mese'].includes(q.get('agendaView')) ? q.get('agendaView') : null };
 }
-export function agendaDestination(target, day, view, location = globalThis.location, month) {
+// APP-UNICA passo 2 (PO 2026-11-08, "un solo luogo"): dentro l'app installata sul telefono
+// (Poliedron in /poliedron…, oppure qualsiasi pagina aperta come app) Studio e Personal restano
+// nello STESSO indirizzo: stessa app, stesse sessioni, niente salto in un altro sito.
+// Nel browser (computer) il comportamento resta quello di prima: dallo studio di produzione
+// Personal si apre sul suo dominio personal.poliedrasoft.it.
+const comeApp = () => {
+  try { return Boolean(globalThis.matchMedia?.('(display-mode: standalone)')?.matches || globalThis.navigator?.standalone); } catch { return false; }
+};
+export function appBase(target, location = globalThis.location, { app = comeApp() } = {}) {
   const customPersonal = location.hostname === 'personal.poliedrasoft.it';
-  // /studio is already served by the SPA rewrite; unlike / it is not redirected to Personal.
-  const origin = location.origin;
   const productionStudio = location.hostname === 'dental-manager-acmeproduction.vercel.app';
-  const url = new URL(target === 'studio' ? (customPersonal ? '/studio' : '/') : productionStudio ? 'https://personal.poliedrasoft.it/' : '/personal/', origin);
+  const poliedron = /^\/poliedron(\/|$)/.test(location.pathname || '');
+  if (target === 'studio') return customPersonal ? '/studio' : poliedron ? '/poliedron/' : '/';
+  if (poliedron && !customPersonal) return '/poliedron/personal/';
+  return productionStudio && !app ? 'https://personal.poliedrasoft.it/' : '/personal/';
+}
+export function agendaDestination(target, day, view, location = globalThis.location, month) {
+  const url = new URL(appBase(target, location), location.origin);
   url.search = new URLSearchParams({ agenda: '1', agendaDate: day, agendaView: view, ...(view === 'mese' && month ? { agendaMonth: month } : {}) }).toString();
   return url.href;
 }
@@ -24,9 +36,7 @@ export function readSectionLocation(search = globalThis.location?.search || '') 
   return /^[a-z]{2,20}$/.test(s || '') ? s : null;
 }
 export function sectionDestination(target, sezione, location = globalThis.location, { nuovo = false } = {}) {
-  const customPersonal = location.hostname === 'personal.poliedrasoft.it';
-  const productionStudio = location.hostname === 'dental-manager-acmeproduction.vercel.app';
-  const url = new URL(target === 'studio' ? (customPersonal ? '/studio' : '/') : productionStudio ? 'https://personal.poliedrasoft.it/' : '/personal/', location.origin);
+  const url = new URL(appBase(target, location), location.origin);
   url.search = new URLSearchParams({ sezione, ...(nuovo ? { nuovo: '1' } : {}) }).toString();
   return url.href;
 }

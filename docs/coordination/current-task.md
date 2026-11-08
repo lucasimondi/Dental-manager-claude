@@ -1,10 +1,17 @@
+# Current task — APP-UNICA passo 2a (2026-11-08)
+- OWNER Claude Code; branch ccr-4fbd3db0-8ou289 from master 254f2d4 (PR279 merged).
+- AUTHORIZATION PO 2026-11-08: "Guarda cosa è stato fatto e continua" (continue docs/coordination/app-unica-da-fare.md).
+- SCOPE: same-origin navigation between Studio and Personal inside the installed app (`appBase`, desktop browser unchanged); Personal reuses the same-origin Studio session (one login), explicit disconnect respected. No schema, RLS or data change. Files owned by Codex's in-progress PERSONAL-PDF-MANAGER (Personal App/main/documenti/manifests) deliberately untouched.
+- VALIDATION 1595/1595 Node tests; Studio and Personal builds; Chromium agenda.reliability and agenda.ricerca.
+- STATUS PR open; task-specific "Mergia" required. Remaining work in docs/coordination/app-unica-da-fare.md.
+
 # Current task — APP-UNICA passo 1 (2026-11-08)
 - OWNER Claude Code; branch ccr-4fbd3db0-8ou289 from master 2e610ed (PR276 merged).
 - AUTHORIZATION PO 2026-11-08 after the preview artifact "Poliedron app unica": "Ok per poliedron, tema win togliamo, il più ok cerca solo di farlo più pro e immediato e bello vai"; then "Arriva fino dove puoi però registra le cose da fare ancora".
 - SCOPE (phone only, desktop unchanged): + next to the agenda search opens the shared «Crea» sheet in Studio and Personal; one dock Agenda · Note · Poliedron · Documenti · Altro in both parts; shared «Altro» page (Lavoro · Studio, Vita · Personale) with direct cross-links (`?sezione=`); Windows 95 theme removed from Personal; Studio PWA named Poliedron. No schema, RLS or data change.
 - REMAINING WORK: docs/coordination/app-unica-da-fare.md (step 2: Personal inside the Poliedron app with one login; step 3: unified Documenti; real-iPhone checks).
 - VALIDATION 1593/1593 Node tests; Studio and Personal builds; Chromium visual: agenda.compare, agenda.reliability, agenda.sharing, agenda.ricerca, appointment-workspace; renders of the Crea sheet (Studio and Personal) and Altro page.
-- STATUS PR open; task-specific "Mergia" required.
+- STATUS MERGED 2026-11-08: PR279 squash-merged after PO "Mergia" with all checks green; merge commit 254f2d4; Vercel production deployment dpl_ASKGjP9k3bPc8kupqAHiUFTfGudn READY.
 
 # Current task — POLIEDRON-COMANDI-SENZA-AI (2026-11-08)
 - OWNER Claude Code; branch ccr-873bf8b7-n86ati from master b62e2eb (PR273 merged); master 2e610ed (PR274–276, incl. RICERCA-AGENDA search bar) merged in.

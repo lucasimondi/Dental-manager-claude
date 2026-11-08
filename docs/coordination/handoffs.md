@@ -4522,3 +4522,7 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 ## 2026-11-08 — APP-UNICA passo 1
 - Done: shared/crea (CreaSheet, CreaButton), shared/altro (AltroPage), navigation sectionDestination/readSectionLocation/readSectionNew, Studio dock «Altro» + page `altro`, Personal dock 5 voci + Altro condiviso, Win95 removed, Studio PWA name Poliedron, tests/appUnica.test.mjs and updated dock/theme tests.
 - Next: docs/coordination/app-unica-da-fare.md (passo 2 e 3, prove su iPhone vero).
+
+## 2026-11-08 — APP-UNICA passo 2a
+- Done: navigation `appBase()` (stesso indirizzo nell'app installata, desktop invariato), Personal riusa la sessione di Studio dello stesso indirizzo; tests in tests/appUnica.test.mjs.
+- Next: aspettare l'unione di codex/personal-pdf-manager, poi manifest/scope di Personal e sezioni dentro l'app (app-unica-da-fare.md).

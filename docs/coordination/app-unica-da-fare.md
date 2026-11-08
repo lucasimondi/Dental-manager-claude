@@ -22,7 +22,22 @@ Anteprima approvata: artifact "Poliedron app unica" (4 schermate: Agenda con +, 
 - App Studio sul telefono chiamata **Poliedron** (manifest PWA e titolo). Personal resta «Poliedron Personal»
   finché le due parti non diventano un'app sola (passo 2), per non avere due icone uguali.
 
+## Fatto nel passo 2a (PR APP-UNICA passo 2a)
+- `shared/agenda/navigation.js` → `appBase()`: dentro l'app installata (Poliedron in `/poliedron…`, o qualsiasi
+  pagina aperta come app) Studio e Personal si aprono nello STESSO indirizzo (`/poliedron/` ↔ `/poliedron/personal/`,
+  `/` ↔ `/personal/`): niente più salto su `personal.poliedrasoft.it`. Nel browser del computer resta tutto come prima.
+- `personal/src/lib/studio.js`: un solo accesso allo studio — Personal riusa la sessione di Studio salvata nello stesso
+  indirizzo (`sb-idklxdqebfceplrualgh-auth-token`, solo se il token ha lo studio); «Esci dallo studio» in Personal resta
+  rispettato (`poliedron-personal-studio-scollegato`).
+- Resta da fare la prima volta: il collegamento all'archivio personale (progetto Supabase separato) nell'indirizzo dell'app.
+
 ## Da fare — passo 2: Personal dentro l'app Poliedron (una sola app installata)
+0. NOTA COORDINAMENTO: Codex ha in corso `codex/personal-pdf-manager` (PERSONAL-PDF-MANAGER) che tocca
+   `personal/src/App.jsx`, `personal/src/main.jsx`, `personal/src/sezioni/documenti/*` e i manifest di Personal:
+   aspettare che sia unito prima di toccare quei file (manifest, scope, rinomina) per non creare conflitti.
+0b. Dominio `personal.poliedrasoft.it`: il manifest ha `scope: /personal/`, quindi `/studio` esce dall'app installata;
+   portarlo a `scope: /` (dopo il ramo di Codex) e verificare start_url, icone e widget Android (`WIDGET_ORIGIN`).
+0c. L'app Poliedron (`/poliedron`) apre ancora la chat come prima pagina: valutare con il PO se aprire l'agenda (Home agenda-centrica).
 1. Montare le sezioni di Personal dentro l'app Studio sul telefono (lazy import da `personal/src/sezioni/*`):
    Oggi, Conti, Personali, Pratiche (legal), Foto, Diario, Biblioteca (didattica). Servono: il `ctx` di Personal
    (`apri`, `vai`, `aggiungi`, `esegui`, `mostra`, `impostazioni`, `chat`…) ricostruito in un adattatore Studio, le
