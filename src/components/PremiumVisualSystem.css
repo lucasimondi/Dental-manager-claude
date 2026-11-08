@@ -2780,3 +2780,14 @@ html .pol-modal-sheet.agenda-appointment-menu-sheet.appointment-workspace-sheet 
 .booking-treatment-fields legend { font-size:13px; font-weight:700; color:var(--brand-primary); }
 
 .booking-form-fields { border:0; padding:0; margin:0; min-width:0; }
+/* DOCUMENTI-STUDIO — acquisizione di un documento (foto o file). */
+.acquisisci-doc { display:grid; grid-template-columns:minmax(0,1fr); gap:4px; min-width:0; }
+.acquisisci-doc > * { min-width:0; }
+.acquisisci-sorgenti { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+.acquisisci-sorgenti button { min-height:64px; border:1.5px dashed var(--border-soft); border-radius:14px; background:var(--surface-card); color:var(--brand-primary); font:inherit; font-weight:700; font-size:14px; cursor:pointer; }
+.acquisisci-file { margin:0 0 8px; font-size:13px; color:var(--text-secondary); overflow-wrap:anywhere; }
+.acquisisci-paziente { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:42px; }
+.acquisisci-paziente button, .acquisisci-trovato { border:0; background:none; color:var(--brand-primary); font:inherit; font-weight:600; cursor:pointer; }
+.acquisisci-trovato { display:block; width:100%; text-align:left; padding:10px 4px; border-bottom:1px solid var(--border-soft); color:var(--text-primary); }
+.acquisisci-errore { margin:6px 0; color:var(--danger, currentColor); font-weight:600; }
+.acquisisci-azioni { display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }

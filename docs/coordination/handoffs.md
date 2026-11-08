@@ -4500,3 +4500,7 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 ## 2026-11-08 — AGENDA-UNICA-RICERCA
 - Done: agenda "Tutto" by default in Studio and Personal; password registry (table + RLS + PGlite test + shared page, both apps); shared/ricerca engine + RicercaAgenda wired via `ricerca` prop (Studio App.jsx `ricercaAgenda`) and `fonteRicerca` (Personal useFonteRicerca); Personal chat exit button and prefilled question; tests ricercaAgenda, passwordShared, passwordPersonaliDatabase; visual agenda.ricerca in CI.
 - Next: after "Mergia", apply migration 20261108120000 with apply_migration and check advisors; real-device check of the bar with the iPhone keyboard.
+
+## 2026-11-08 — DOCUMENTI-STUDIO
+- Done: migration 20261108130000_documenti_studio.sql (+ tests/documentiStudioDatabase.test.mjs), src/lib/documentiStudio.js, src/components/AcquisisciDocumento.jsx, ArchivioDocs integration, agenda-bar document search and acquisition in Studio.
+- Next: merge PR after green checks; apply 20261108120000 and 20261108130000 to production; security advisors.

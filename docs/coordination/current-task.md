@@ -1,3 +1,10 @@
+# Current task — DOCUMENTI-STUDIO (2026-11-08)
+- OWNER Claude Code; branch ccr-4fbd3db0-8ou289 (continues AGENDA-UNICA-RICERCA, commit 14d1bce).
+- AUTHORIZATION PO 2026-11-08: "Fai ancora la modifica del db in modo che si possano cercare documenti anche in studio e crearli e mergia" = approval of this database change and merge of the branch PR once all checks are green, then controlled application of migrations 20261108120000 (password_personali) and 20261108130000 (documenti_studio).
+- SCOPE: new table documenti_studio (acquired photos/files, studio-scoped RLS like the other studio documents, optional patient of the same studio, fixed file path inside the studio folder) + private bucket documenti-studio (folder = JWT studio_id) + SECURITY INVOKER RPC cerca_documenti_studio over acquired, medical and fiscal documents (titles, type, number, patient name only; file contents never read). Studio: "Acquisisci documento" modal (camera or file, title, type, optional patient) from the agenda bar and the Documenti page; acquired documents listed, opened (5-minute signed URL) and deleted in Documenti; agenda bar shows document results.
+- VALIDATION 1581/1581 Node tests (PGlite with stub Storage for the new migration); Studio and Personal builds; Chromium render of the acquisition modal (no overflow, upload then insert).
+- STATUS: PR, merge after green checks, then apply both migrations and check advisors.
+
 # Current task — AGENDA-UNICA-RICERCA (2026-11-08)
 - OWNER Claude Code; branch ccr-4fbd3db0-8ou289 (continues AGENDA-PHONE-FIXES, commit 07f9197; not merged yet).
 - AUTHORIZATION PO 2026-11-08, answers to the proposal: "Tutto di partenza" (one agenda, Studio and Personal together, in both apps); "password deve essere un registro su cui registro e devono vedersi". Earlier in the same message: inline search that searches directly and acts (create, move, delete appointments; documents, notes, passwords, document acquisition, quick actions); chat must have an exit.
