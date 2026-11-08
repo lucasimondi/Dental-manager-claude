@@ -58,7 +58,7 @@ a { color: var(--pp-blu); text-decoration: none; }
 
 /* ---------- barra in basso ---------- */
 .pp-schede {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: grid; grid-template-columns: repeat(5, 1fr); align-items: center;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: grid; grid-template-columns: repeat(6, 1fr); align-items: center;
   max-width: 640px; margin: 0 auto; height: calc(var(--pp-dock) + env(safe-area-inset-bottom)); padding: 4px 8px env(safe-area-inset-bottom);
   background: color-mix(in srgb, var(--pp-superficie) 92%, transparent); backdrop-filter: saturate(180%) blur(18px); -webkit-backdrop-filter: saturate(180%) blur(18px);
   border-top: 1px solid var(--pp-linea);
@@ -308,7 +308,7 @@ a { color: var(--pp-blu); text-decoration: none; }
   box-shadow: 0 8px 20px color-mix(in srgb, var(--pp-blu) 40%, transparent);
 }
 @media (prefers-color-scheme: dark) { .pp-fab { color: #0b0f17; } }
-.pp-schede { grid-template-columns: repeat(5, 1fr); }
+.pp-schede { grid-template-columns: repeat(6, 1fr); }
 
 .pp-agenda-testa { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; margin: 2px 0 10px; }
 .pp-agenda-titolo { display: flex; flex-direction: column; align-items: center; font-weight: 700; font-size: 17px; text-transform: capitalize; color: var(--pp-inchiostro); min-height: 44px; justify-content: center; }
@@ -845,3 +845,6 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-codici {border:1px solid var(--pp-linea);border-radius:16px;padding:16px;margin:20px 0;}
 
 .pf-home-link{display:flex;justify-content:space-between;align-items:center;gap:16px;width:100%;box-sizing:border-box;margin:12px 0;padding:20px;border:1px solid #bfcfdf;border-radius:18px;background:linear-gradient(120deg,#edf6fc,#fff);color:#194666;text-align:left}.pf-home-link strong{display:block;font:normal 25px Georgia,serif}.pf-home-link small{display:block;font-size:13px;line-height:1.6;margin-top:5px}.pf-home-link:focus-visible{outline:3px solid #1688aa}
+
+/* NOTE-PERSONALI: la pagina Note condivisa usa i colori di Personal. */
+.pp-note { --surface-page: var(--pp-sfondo); --surface-card: var(--pp-superficie); --text-primary: var(--pp-inchiostro); --brand-primary: var(--pp-blu); }

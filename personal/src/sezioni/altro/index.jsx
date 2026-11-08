@@ -6,8 +6,11 @@ import { foto } from '../foto/index.jsx';
 import { legal } from '../legal/index.jsx';
 import { diario } from '../diario/index.jsx';
 import { didattica } from '../didattica/index.jsx';
+import { oggi } from '../oggi/index.jsx';
 
 const gruppi = [
+  // HOME-AGENDA-CENTRIC: Oggi è uscito dal dock (l'agenda è la Home) e resta qui.
+  { nome: 'La tua giornata', voci: [[oggi, 'Riepilogo, pagamenti, documenti e pratiche']] },
   { nome: 'La tua vita pratica', voci: [[personali, 'Identità, tessere e documenti di famiglia'], [conti, 'Spese, incassi e pagamenti'], [legal, 'Pratiche e scadenze legali']] },
   { nome: 'Il tuo spazio', voci: [[foto, 'Album, immagini e video'], [diario, 'amor fati · Pensieri e riflessioni'], [didattica, 'Biblioteca · Filosofia e letture']] },
 ];

@@ -88,6 +88,7 @@ export default function Poliedron({
   features, isStudioAdmin, vertical, studioId, userId, currentPatient, positionLocked = false,
   quickActionCtx, supabaseClient, onArchivioFilterHint, openPrescription, openNew, openNewPlan, openNewPayment, openBooking,
   externalCommandRequest, onExternalCommandHandled, chatHost, onDataChanged,
+  searchRequest, onSearchRequestHandled,
   /* POL-CHAT-001 merge: PR #51 declared an `unreadCount = 0` PROP here
      because §7 explicitly shipped the bell without a notification engine.
      PR #53 supplies the real producer — the conversation hook below returns
@@ -909,6 +910,20 @@ export default function Poliedron({
     onExternalCommandHandled?.(externalCommandRequest.id);
   }, [externalCommandRequest?.id, onExternalCommandHandled]);
 
+  // HOME-AGENDA-CENTRIC: la barra di ricerca nell'header della Home apre
+  // questo stesso pannello (come Cmd/Ctrl+K), con la ricerca vuota e il
+  // campo già attivo. Nessun contesto paziente: è una ricerca libera.
+  useEffect(() => {
+    if (!searchRequest?.id) return;
+    setExternalContext(null);
+    setQuery('');
+    setState(null);
+    setPanelActionRunResult(null);
+    setHighlightedIndex(0);
+    setOpen(true);
+    onSearchRequestHandled?.(searchRequest.id);
+  }, [searchRequest?.id, onSearchRequestHandled]);
+
   const navCtx = useMemo(() => ({
     setPage, goSchedaPaz,
     onNavigate: setPage, onNavigateNew: (p) => openNew?.(p),
@@ -1016,7 +1031,7 @@ export default function Poliedron({
           discreet edge-anchored dock. Both call the exact same onToggle,
           opening the exact same panel/state below. */}
       {!(page === 'chat' && (phoneApp || isMobile)) && (isMobile
-        ? <PoliedronMobileDock page={page} setPage={setPage} open={open} onToggle={onToggle} panelId={panelId} positionLocked={positionLocked} />
+        ? <PoliedronMobileDock page={page} setPage={setPage} open={open} onToggle={onToggle} panelId={panelId} positionLocked={positionLocked} archivio={Boolean(features?.archivio_documenti)} />
         : <PoliedronEdgeDock open={open} onToggle={onToggle} panelId={panelId} positionLocked={positionLocked} />)}
       {/* POL-CHAT-001 merge — FASE 3: PR #51's bell was a placeholder that
           reopened the quick panel and carried a badge with no producer; PR

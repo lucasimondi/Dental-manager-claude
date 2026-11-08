@@ -27,7 +27,7 @@ test('both applications consume original neutral presentation; no CSS replica or
   for(const file of ['src/components/Agenda.jsx','personal/src/sezioni/agenda/AgendaGriglia.jsx']) {
     const src=readFileSync(file,'utf8');
     assert.match(src,/shared\/agenda\/AgendaPresentation.jsx/);
-    for(const name of ['DayStrip','ViewPicker','TimeGrid','MonthCalendar','AppointmentBlock','EventBlock','AgendaSwitch','MonthDetailCard','MonthToolbar','CalendarEmptyState']) assert.ok(src.includes(`<${name}`),`${file}: ${name}`);
+    for(const name of ['DayStrip','ViewPicker','TimeGrid','MonthCalendar','AppointmentBlock','EventBlock','AgendaSearchBar','MonthDetailCard','MonthToolbar','CalendarEmptyState']) assert.ok(src.includes(`<${name}`),`${file}: ${name}`);
     assert.doesNotMatch(src,/function (DayStrip|TimeGrid|MonthCalendar|AppointmentBlock|EventBlock)\(/);
   }
   assert.doesNotMatch(shared,/supabase|from ['"].*src\//i);

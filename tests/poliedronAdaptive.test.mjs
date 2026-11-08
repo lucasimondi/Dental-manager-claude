@@ -168,9 +168,9 @@ test('mobile Poliedron renders only the official standalone gem on a transparent
 // Product Owner revision — compact mobile dock and magnetic redock
 // ---------------------------------------------------------------------------
 
-test('mobile dock has exactly HOME, AGENDA, POLIEDRON, PAZIENTI, CHAT in that order (POL-UI-015: Setup moved to the central Poliedron panel)', () => {
+test('mobile dock has exactly AGENDA, NOTE, POLIEDRON, DOCUMENTI, PERSONAL in that order (PO 2026-11-07; Setup stays in the Poliedron panel)', () => {
   const ids = [...mobileDockSource.matchAll(/\{ id: '([^']+)'/g)].map((match) => match[1]);
-  assert.deepEqual(ids.slice(0, 5), ['home', 'agenda', '__poliedron__', 'paz', 'chat']);
+  assert.deepEqual(ids.slice(0, 5), ['agenda', 'note', '__poliedron__', 'archivio', '__personal__']);
   assert.equal(ids.slice(0, 5).length, 5);
 });
 
@@ -181,11 +181,11 @@ test('mobile dock has exactly HOME, AGENDA, POLIEDRON, PAZIENTI, CHAT in that or
    other dock item. The "one Poliedron" principle is unchanged and is
    re-asserted here: the dock must not mount a Poliedron of its own, and the
    Chat page is a portal host the single instance renders into. */
-test('mobile dock Chat button opens the real persistent Chat page, not the placeholder quick panel', () => {
+test('mobile dock routes every slot through the same generic navigation (Chat moved to bell and panel)', () => {
   assert.doesNotMatch(mobileDockSource, /if \(item\.id === 'chat'\)[\s\S]{0,400}onClick=\{onToggle\}/);
-  assert.match(mobileDockSource, /onClick=\{\(\) => setPage\(item\.id\)\}/);
+  assert.match(mobileDockSource, /setPage\(item\.id\);/);
   const ids = [...mobileDockSource.matchAll(/\{ id: '([^']+)'/g)].map((match) => match[1]);
-  assert.ok(ids.includes('chat'), 'the dock still routes to the chat page id');
+  assert.ok(!ids.includes('chat'), 'Chat is opened from the bell and the Poliedron panel, not the dock');
 });
 
 /* POL-CHAT-001 §FASE 9: the unread badge belongs to the notification bell

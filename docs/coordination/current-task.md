@@ -1,3 +1,30 @@
+# Current task — AGENDA-CENTRIC-PHONE (2026-11-08)
+- OWNER Claude Code; branch ccr-4fbd3db0-8ou289 from master b62e2eb (PR273). Supersedes HOME-AGENDA-CENTRIC, AGENDA-MOBILE-SEARCH, AGENDA-MOBILE-IOS-STYLE, AGENDA-MOBILE-POLISH records below.
+- AUTHORIZATION PO 2026-11-07: "Ok sulle raccomandazioni, procedi con l'implementazione, mantieni impegni giornalieri flottanti, crea [la PR] per poi mergiare". Recommendations accepted: Poliedron at the dock centre, agenda is the Home, Note with a new table (simple first version); phone first, desktop as before.
+- SCOPE: phone agenda identical in Studio and Personal (search, month/year, days; iOS material bar; soft appointment blocks; now pill; week strip also in day view; floating day events, week one-line chips max 2 + "+N"; no + button, tap a free slot to create). Studio dock Agenda · Note · Poliedron · Documenti (Pazienti without archive plan) · Personal; Personal dock Agenda · Note · Poliedron · Documenti · Studio · Altro (Oggi moved to Altro). New `note_personali` table (migration + RLS + PGlite test) and shared Note page in both apps. Previous Home restored exactly (desktop and phone).
+- DATABASE: migration supabase/migrations/20261107120000_note_personali.sql NOT applied to any remote project. Until it is applied, the Note page shows "Le note saranno disponibili dopo l'aggiornamento del database." Application belongs to the controlled release after "Mergia".
+- STATUS PR opened; waiting for checks and task-specific "Mergia".
+- VALIDATION 1560/1560 Node tests; Studio and Personal builds; diff check; synthetic Chromium phone renders of agenda (Studio/Personal, day/week), Note page flow (add, area, pin) and Studio dock.
+- OPEN: Poliedron voice-first on the dock centre (no dictation in the panel yet); agenda visual baselines need refresh; green brand across the app; Documenti section redesign.
+- Previous operational record preserved below.
+
+# Current task — AGENDA-MOBILE-SEARCH (2026-11-07)
+- OWNER Claude Code; branch ccr-4fbd3db0-8ou289 (continues HOME-AGENDA-CENTRIC, commit 9f2a9b4).
+- AUTHORIZATION PO, after reviewing the phone proposal (artifact "Poliedra Vita"): "prendi agenda di Poliedron e rendila come mi hai proposto ma solo metti la barra ricerca in alto poi sotto i giorni"; earlier: remove "Vai a Personal"/"Vai a Studio", Studio icon in the Personal dock, same agenda in both apps, daily events stay floating as today, phone first (desktop unchanged).
+- SCOPE presentation only, phone: shared AgendaSearchBar rendered first in DayStrip/MonthToolbar floating controls (search, then month/view, then days, then the existing floating day events). Studio search opens the existing Poliedron panel (searchRequest); a small Personal icon sits next to it; the "Vai a Personal" pill stays only when no search bar (desktop). Personal search opens the Poliedron assistant section; "Vai a Studio" removed from the agenda; Studio link added to the Personal dock (6 columns). No data, schema, RLS or behavior change beyond navigation entry points.
+- STATUS implementation + local checks complete; branch pushed, no PR (not requested). Task-specific "Mergia" required.
+- OPEN (PO): desktop Home must stay as before — the HOME-AGENDA-CENTRIC Home commit still applies on desktop and must be limited to phone in a follow-up; proposal items not yet built (patient blocks restyle, reminders, Da fare/Progetti, Studio dock "Personal").
+- VALIDATION 1559/1559 Node tests; Studio and Personal builds; synthetic Chromium render of tests/visual/agenda.html (studio/personal × giorno/settimana, 390px): search at top (16px), days strip below (110px), no app-switch pill, search tap reaches the handler, no page errors.
+- Previous operational record preserved below.
+
+# Current task — HOME-AGENDA-CENTRIC (2026-11-06)
+- OWNER Claude Code; branch ccr-4fbd3db0-8ou289 from master b62e2eb (PR273 merged).
+- AUTHORIZATION PO reviewed two design proposals (artifacts "Poliedra Nitido" and "Poliedra Oggi") and asked: green as leading color, Home with only essentials (no management control), agenda-centric software, one Poliedron search bar from which everything starts, plus an Agenda button in the header; "restyling home poi passiamo al resto".
+- SCOPE presentation only, Home first: header with Poliedron search launcher (opens the existing Poliedron panel, same engine/permissions), Agenda button, + Appuntamento; HomeToday day grid (per chair when active chairs exist, read with the same query as Agenda) with now line; "In poltrona ora" card with the existing four appointment actions; "Richiede attenzione" now also on desktop in the side column. Home no longer renders/offers agenda list, quick actions and management_control widgets (saved layout untouched). Green tokens scoped to `.home-oggi`. No schema, RLS, tenancy, financial formula or deployment change.
+- STATUS implementation + local checks complete; branch pushed, no PR (not requested). Task-specific "Mergia" required before merge. Next PO step: green and new header across the rest of the app.
+- VALIDATION 1558/1558 Node tests; Studio and Personal builds; tests/visual/home.mjs (Chromium, synthetic data, 375/768/1024/1440, light/dark, no horizontal overflow, no page errors).
+- Previous operational record preserved below.
+
 # Current task — AGENDA-RESTYLING-PALETTE (2026-11-04)
 - OWNER Claude Code; branch ccr-4ae14be0-vbbibl from master 602c887 (PR270 merged).
 - AUTHORIZATION PO asked a professional restyling of agenda label colors and grid for Studio and Personal ("all'altezza di Google calendar"), proposal first; PO answered the proposal with "Mergia" = approval of the recommended options (mixed blocks, display mapping of saved colors, swatch picker + custom, Win95 unchanged except palette). No PR existed at that time, so merge needs confirmation on the specific PR (AGENTS.md).

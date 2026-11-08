@@ -75,8 +75,18 @@ try{
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);for(const label of ['WhatsApp','Modifica appuntamento','Sposta','Scheda'])assert.equal(await page.getByRole('navigation',{name:'Azioni paziente e appuntamento'}).getByRole('button',{name:label,exact:true}).isVisible(),true);
    assert.equal(await page.locator('.agenda-appointment-menu-header').getByRole('button',{name:'Chiama',exact:true}).isVisible(),true);
    await page.getByRole('button',{name:'Chiudi appuntamento',exact:true}).click();
-   await page.getByRole('button',{name:'Nuovo',exact:true}).click();
-   await page.getByRole('button',{name:'Appuntamento',exact:true}).click();
+   // HOME-AGENDA-CENTRIC (PO 2026-11-07): su telefono niente tasto +; si tocca un orario libero e si sceglie cosa creare.
+   if(width<720){
+    assert.equal(await page.getByRole('button',{name:'Nuovo',exact:true}).count(),0);
+    const freeSlot=page.locator('[data-agenda-date="2026-10-23"][data-agenda-slot="15:00"]');await freeSlot.evaluate(el=>el.scrollIntoView({block:'center'}));await freeSlot.click();
+    const chooser=page.getByRole('dialog',{name:'Crea',exact:true});await chooser.waitFor();
+    assert.equal(await chooser.getByRole('button',{name:'Impegno',exact:true}).isVisible(),true);
+    await chooser.getByRole('button',{name:'Appuntamento paziente',exact:true}).click();
+   }else{
+    // Computer e tablet: invariati, resta il tasto Nuovo.
+    await page.getByRole('button',{name:'Nuovo',exact:true}).click();
+    await page.getByRole('button',{name:'Appuntamento',exact:true}).click();
+   }
    const booking=page.getByRole('dialog',{name:'Nuovo appuntamento',exact:true});
    await booking.waitFor();
    const geometry=await booking.evaluate(el=>({top:el.getBoundingClientRect().top,animation:getComputedStyle(el).animationName,focused:el.contains(document.activeElement)}));

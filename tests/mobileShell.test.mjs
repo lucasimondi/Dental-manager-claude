@@ -74,7 +74,8 @@ test('Agenda day strip follows the grid day source and uses mobile-only today st
   assert.match(agenda, /agenda-mobile-day-number\$\{isToday \? ' is-today'/);
   // PO 2026-11-04: oggi è segnato solo nella striscia giorni; il weekend resta appena più scuro.
   assert.match(agenda, /background: isWeekend \? `color-mix\(in srgb, \$\{C\.bg\} 60%, \$\{C\.sur\}\)` : C\.sur/);
-  assert.match(premium, /\.agenda-mobile-day-number\.is-today\s*\{[\s\S]*border-color:\s*var\(--danger\);[\s\S]*background:\s*transparent;/);
+  // PO 2026-11-07 (agenda in stile iOS): oggi è un cerchio rosso pieno con il numero bianco.
+  assert.match(premium, /\.agenda-mobile-day-number\.is-today\s*\{[^}]*background:\s*var\(--agenda-today\)\s*!important;[^}]*color:\s*#fff\s*!important;/);
 });
 
 test('Agenda appointment menu clears the canonical mobile dock and scrolls internally', () => {

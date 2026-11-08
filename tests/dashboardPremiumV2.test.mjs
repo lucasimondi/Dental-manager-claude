@@ -162,7 +162,9 @@ test('bell positioning never shares vertical space with the mobile dock (fixed a
 
 test('mobile dock no longer has a Setup/Impostazioni slot; Chat opens the same Poliedron conversation, not a second page', () => {
   assert.doesNotMatch(dockSrc, /id: 'set'/);
-  assert.match(dockSrc, /id: 'chat', label: 'Chat', icon: 'chat'/);
+  // HOME-AGENDA-CENTRIC (PO 2026-11-07): dock Agenda · Note · Poliedron · Documenti · Personal;
+  // Chat resta raggiungibile da campanella e pannello Poliedron, Pazienti e Home dalla ricerca.
+  assert.match(dockSrc, /\{ id: 'note', label: 'Note', icon: 'edit' \}/);
   // POL-CHAT-001 merge: the placeholder branch that reopened the quick panel
   // (`if (item.id === 'chat') ... onClick={onToggle}`) is gone. Chat now uses
   // the same generic navigation path as every other slot — still ONE
@@ -170,7 +172,7 @@ test('mobile dock no longer has a Setup/Impostazioni slot; Chat opens the same P
   // App.jsx's chat host. POL-CHAT-001 §FASE 9: the unread badge lives on the
   // bell only, so this slot must not carry a duplicate of the same count.
   assert.doesNotMatch(dockSrc, /if \(item\.id === 'chat'\) \{[\s\S]*onToggle/);
-  assert.match(dockSrc, /onClick=\{\(\) => setPage\(item\.id\)\}/);
+  assert.match(dockSrc, /setPage\(item\.id\);/);
   assert.doesNotMatch(dockSrc, /poliedron-mobile-dock__badge/);
   assert.match(bellSrc, /poliedron-bell__badge/);
 });
