@@ -47,7 +47,7 @@ try {
   const sig = await page.locator('.pdf-signature').boundingBox();
   assert.ok(sig.width / sig.height > 2 && sig.width / sig.height < 6, `signature keeps its proportions (${sig.width}x${sig.height})`);
   await page.screenshot({ path: `${out}/firma-posizionata.png` });
-  await page.getByRole('button', { name: 'Salva copia', exact: true }).click();
+  await page.getByRole('button', { name: 'Condividi', exact: true }).click();
   await page.getByRole('button', { name: 'Condividi PDF', exact: true }).click();
   await page.waitForFunction(() => window.pdfTest.shares.length === 1);
   const bytes = Uint8Array.from(await page.evaluate(() => window.pdfTest.shares[0].bytes));
@@ -55,6 +55,11 @@ try {
   const annots = result.getPage(0).node.Annots()?.asArray().map(a => result.context.lookup(a).get(PDFName.of('Subtype'))?.toString()) || [];
   assert.ok(annots.includes('/Ink'), `ink annotation saved (${annots})`);
   assert.ok(annots.includes('/FreeText'), `free text annotation saved (${annots})`);
+  // DOCK-PER-TE passo 2: «Pagine» dal documento apre subito l'organizzazione delle pagine.
+  await page.goto('http://127.0.0.1:5176/tests/visual/personal-pdf.html?strumento=pagine');
+  await page.locator('input[type=file]').first().setInputFiles({ name: 'pagine-fittizio.pdf', mimeType: 'application/pdf', buffer: input });
+  await page.getByRole('dialog', { name: 'Organizza pagine' }).waitFor();
+  assert.equal(await page.getByRole('dialog', { name: 'Organizza pagine' }).locator('.pdf-row').count(), 3);
   assert.deepEqual(errors, []);
-  console.log('PASS Pixel 7: ink, free text and proportional signature saved in the copy; tools bar at the bottom.');
+  console.log('PASS Pixel 7: ink, free text and proportional signature saved in the copy; tools bar at the bottom; Pagine opens directly.');
 } finally { await browser?.close(); server.kill(); }

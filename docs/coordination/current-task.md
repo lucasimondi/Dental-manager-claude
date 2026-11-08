@@ -1,3 +1,10 @@
+# Current task — DOCK-PER-TE passo 2 (2026-11-08)
+- OWNER Claude Code; branch `ccr-4ac3e51d-dock-per-te-2` (on top of step 1, PR286).
+- AUTHORIZATION PO 2026-11-08: "Mergia e vai punti 2" (step 2 of DOCK-PER-TE, Master Context §9: no duplications).
+- SCOPE (Personal, phone): PDF actions live in the document — an archive PDF shows Firma · Modifica · Pagine · Apri, and the manager opens straight on that tool (`strumento`); header button «Condividi» (share / download / archive copy); standalone PDF entries removed from + (Crea) and Per te; Documenti keeps one «Apri un PDF dal telefono» entry until step 3 moves it under + → Documento → Carica file. Personal documents become the «Personali» filter of Documenti (Per te → Documenti personali opens it). Personal starts on the agenda (no Oggi as start; brand goes to the agenda); «Riepilogo di oggi» stays in Per te. No schema, RLS or data change.
+- VALIDATION 1609/1609 Node tests; Pixel 7 personal-pdf.mjs and personal-pdf-annotazioni.mjs (incl. Pagine opened directly) PASS.
+- STATUS ready; PR after PR286 merge; task-specific "Mergia" required.
+
 # Current task — DOCK-PER-TE passo 1 (2026-11-08)
 - OWNER Claude Code; branch `ccr-4ac3e51d-dock-per-te` from master 33c130e (PR285 merged; new branch by PO choice, the old one would need a force push).
 - AUTHORIZATION PO 2026-11-08: proposal "Agenda · Documenti · Poliedron · Studio · Per te … Toglierei «Altro»" (+ acquisition under Per te, no duplications, cleaner graphics), then "Procedi qui". Recorded in POLIEDRA_MASTER_CONTEXT §9 as DOCK-PER-TE with the four-step plan.

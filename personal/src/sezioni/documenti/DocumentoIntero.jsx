@@ -7,7 +7,7 @@ import {preparaFile,comeFile,scaricaDocumento} from '../../lib/condividi.js';
 import {BottoneCondividi,titoloDoc,tokenSessione} from '../../ui.jsx';
 export function DocumentoIntero(props) {
  const { doc } = props;
- if (doc.mime_type === 'application/pdf' || /\.pdf$/i.test(doc.nome_file_originale || '')) return <PaginaPdf doc={doc} ctx={props.ctx} chiudi={props.onChiudi} onInfo={props.onInfo} />;
+ if (doc.mime_type === 'application/pdf' || /\.pdf$/i.test(doc.nome_file_originale || '')) return <PaginaPdf doc={doc} ctx={props.ctx} chiudi={props.onChiudi} onInfo={props.onInfo} strumento={props.strumento} />;
  return <DocumentoImmagine {...props} />;
 }
 function DocumentoImmagine({doc,onInfo,onChiudi,mostra}) {

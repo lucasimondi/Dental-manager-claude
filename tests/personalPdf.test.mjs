@@ -53,8 +53,17 @@ test('signature crop hugs the ink with a margin and stays inside the pad', async
  assert.deepEqual(ritaglioFirma({x0:2,y0:1,x1:358,y1:199},{width:360,height:200},8),{x:0,y:0,width:360,height:200});
  assert.deepEqual(ritaglioFirma(null,{width:300,height:200}),{x:0,y:0,width:300,height:200});
 });
-test('PDF manager is reachable from Documenti, Crea and Altro', () => {
- assert.match(readFileSync('personal/src/sezioni/documenti/Documenti.jsx','utf8'),/apri\(\{ tipo: 'pdf' \}\)/);
- assert.match(readFileSync('personal/src/sezioni/agenda/AgendaGriglia.jsx','utf8'),/id: 'pdf', nome: 'PDF e firma'[^\n]*ctx\.apri\(\{ tipo: 'pdf' \}\)/);
- assert.match(readFileSync('personal/src/sezioni/altro/index.jsx','utf8'),/id === 'pdf' \? ctx\.apri\(\{ tipo: 'pdf' \}\)/);
+test('DOCK-PER-TE passo 2: le azioni PDF stanno nel documento, nessuna sezione PDF a parte', () => {
+ const doc=readFileSync('personal/src/sezioni/documenti/Documento.jsx','utf8');
+ for (const s of ['firma','modifica','pagine']) assert.match(doc,new RegExp(`setIntero\\('${s}'\\)`));
+ assert.match(readFileSync('personal/src/pdf/GestorePdf.jsx','utf8'),/strumento === 'firma'\) setSignatureOpen\(true\)/);
+ assert.doesNotMatch(readFileSync('personal/src/sezioni/agenda/AgendaGriglia.jsx','utf8'),/PDF e firma/);
+ assert.doesNotMatch(readFileSync('personal/src/sezioni/altro/index.jsx','utf8'),/'pdf'/);
+ assert.match(readFileSync('personal/src/sezioni/documenti/Documenti.jsx','utf8'),/Apri un PDF dal telefono/);
+});
+test('DOCK-PER-TE passo 2: documenti personali come filtro di Documenti; si parte dall\'agenda', () => {
+ const d=readFileSync('personal/src/sezioni/documenti/Documenti.jsx','utf8');
+ assert.match(d,/\['personali', 'Personali'\]/); assert.match(d,/scheda === 'personali' && <personali\.Vista ctx=\{ctx\} \/>/);
+ assert.match(readFileSync('personal/src/sezioni/altro/index.jsx','utf8'),/id === 'personali' \? ctx\.vai\('documenti', 'personali'\)/);
+ assert.match(readFileSync('personal/src/App.jsx','utf8'),/v !== 'oggi' \? v : 'agenda'/);
 });

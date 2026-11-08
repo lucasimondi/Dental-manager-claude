@@ -11,6 +11,7 @@ import { colore, Vuoto, Sezione, Gruppo, Chips, Segmenti, ElencoPratiche } from 
 import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaStella, IconaFoto } from '../../Icone.jsx';
 import { ElencoSelezionabile } from './Selezione.jsx';
 import { BarraFiltri, filtriVuoti, conFiltri } from './Filtri.jsx';
+import { personali } from '../personali/index.jsx';
 
 /* ---------- vista Documenti ---------- */
 export function VistaDocumenti({ ctx }) {
@@ -49,7 +50,7 @@ export function VistaDocumenti({ ctx }) {
 
   return (
     <>
-      <button className="pp-bottone" onClick={() => apri({ tipo: 'pdf' })}>Apri PDF · Firma e strumenti</button>
+      <button className="pp-bottone pp-bottone-chiaro" onClick={() => apri({ tipo: 'pdf' })}>Apri un PDF dal telefono</button>
       <div className="pp-cerca">
         <IconaCerca size={18} />
         <input type="search" value={testo} onChange={(e) => setTesto(e.target.value)} placeholder="Cerca: Enel, IMU 2024, carta d'identità…" enterKeyHint="search" aria-label="Cerca nell'archivio" />
@@ -64,7 +65,8 @@ export function VistaDocumenti({ ctx }) {
           : <Vuoto>Cerco…</Vuoto>
       ) : (
         <>
-          <Chips voci={[['cartelle', 'Cartelle'], ['recenti', 'Recenti'], ['categorie', 'Categorie'], ['pratiche', 'Pratiche']]} attiva={scheda} onScegli={setScheda} />
+          <Chips voci={[['cartelle', 'Cartelle'], ['recenti', 'Recenti'], ['personali', 'Personali'], ['categorie', 'Categorie'], ['pratiche', 'Pratiche']]} attiva={scheda} onScegli={setScheda} />
+          {scheda === 'personali' && <personali.Vista ctx={ctx} />}
           {scheda === 'cartelle' && <VistaCartelle ctx={ctx} anchePocoUtili={filtri.anchePocoUtili} />}
           {scheda === 'recenti' && risultati && <ElencoSelezionabile elenco={risultati} ctx={ctx} onCambiato={() => setRinfresca((n) => n + 1)} intestazione="Ultimi arrivati" />}
           {scheda === 'categorie' && (
