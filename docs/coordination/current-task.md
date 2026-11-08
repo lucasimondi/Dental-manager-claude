@@ -1,3 +1,11 @@
+# Current task — AGENDA-PHONE-FIXES (2026-11-08)
+- OWNER Claude Code; branch ccr-4fbd3db0-8ou289 from master f16db79 (PR274 merged).
+- AUTHORIZATION PO 2026-11-08: "inserimento appuntamento studio non scrolla fino in fondo e metti etichette come in impegni ovviamente con colori predesignati e pieni. La vista deve iniziare sempre in settimana, inoltre il menù a tendina della vista deve sovrapporsi quando compare a tutto, adesso viene coperto da impegni flottanti".
+- SCOPE presentation only: Studio <-> Personal links open the week view; phone agenda bar (search, month, view menu) stacks above floating day events; Modal backdrop follows visualViewport so the keyboard never hides the end of the form; Studio appointment form: "Etichetta" chips like Personal impegni (filled when active) + palette swatches (no custom picker). No schema, RLS or data change.
+- OPEN (PO decision required before building): inline Poliedron search that acts (create/move/delete appointments with confirmation, documents, notes, quick actions, acquisition), single shared agenda as start in both apps, password search (security decision), chat exit controls.
+- VALIDATION 1564/1564 Node tests; Studio and Personal builds; Chromium visual: appointment-workspace (375-1440), agenda.compare (375/390/430), agenda.reliability; screenshots of form labels/bottom and open view menu.
+- STATUS branch pushed; PR only on request; task-specific "Mergia" required.
+
 # Current task — AGENDA-CENTRIC-PHONE (2026-11-08)
 - OWNER Claude Code; branch ccr-4fbd3db0-8ou289 from master b62e2eb (PR273). Supersedes HOME-AGENDA-CENTRIC, AGENDA-MOBILE-SEARCH, AGENDA-MOBILE-IOS-STYLE, AGENDA-MOBILE-POLISH records below.
 - AUTHORIZATION PO 2026-11-07: "Ok sulle raccomandazioni, procedi con l'implementazione, mantieni impegni giornalieri flottanti, crea [la PR] per poi mergiare". Recommendations accepted: Poliedron at the dock centre, agenda is the Home, Note with a new table (simple first version); phone first, desktop as before.

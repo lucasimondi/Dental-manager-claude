@@ -38,6 +38,9 @@
     padding-top: 0 !important;
   }
   .agenda-mobile-chrome {
+    /* Sopra gli impegni flottanti: il menu della vista, quando si apre, copre tutto. */
+    position: relative;
+    z-index: 3;
     padding-top: calc(env(safe-area-inset-top, 0px) + 10px);
     background: var(--agenda-material);
     backdrop-filter: blur(22px) saturate(180%);

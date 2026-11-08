@@ -146,7 +146,7 @@ test('Agenda booking modal opens near the safe-area top above the floating contr
   // element) — combining with the base .pol-modal-* class (2 classes) is
   // what actually wins; a bare new class alone would silently lose.
   assert.match(premium, /\.pol-modal-backdrop\.agenda-appointment-form-backdrop\s*\{[\s\S]*align-items:\s*flex-start;/);
-  assert.match(premium, /\.pol-modal-sheet\.agenda-appointment-form-sheet\s*\{[\s\S]*max-height:\s*calc\(100dvh[\s\S]*safe-area-inset-top[\s\S]*!important/);
+  assert.match(premium, /\.pol-modal-sheet\.agenda-appointment-form-sheet\s*\{[\s\S]*max-height:\s*(?:min\(100%,\s*)?calc\(100dvh[\s\S]*safe-area-inset-top[\s\S]*!important/);
 });
 
 test('all required mobile pages share the same app-scroll surface', () => {

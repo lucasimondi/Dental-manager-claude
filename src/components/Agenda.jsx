@@ -1,6 +1,8 @@
 import { uniqueAppointmentTypes } from '../lib/appointmentTypes.js';
 import { validatePatientAgendaSlot } from '../lib/patientAgendaBooking.js';
 import DayEvents from '../../shared/agenda/DayEvents.jsx';
+import LabelSwatches from '../../shared/agenda/LabelSwatches.jsx';
+import { labelColor, labelOn } from '../../shared/agenda/labelPalette.js';
 import { useTimeline } from '../../shared/agenda/useTimeline.js';
 import AgendaVisibility from '../../shared/agenda/AgendaVisibility.jsx';
 import { agendaVisible, keepOccupiedWeekends } from '../../shared/agenda/visibility.js';
@@ -984,7 +986,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   const dayEvents = <DayEvents days={ribbonDays} gutter={oraColW} />;
   const mobileSearchBar = isMobile && onOpenSearch ? (
     <AgendaSearchBar onOpen={onOpenSearch} extra={
-      <a className="agenda-search-app agenda-floating-interactive" href={agendaDestination('personal', selDay, view, globalThis.location, toISO(vd))} aria-label="Apri Personal" title="Personal">
+      <a className="agenda-search-app agenda-floating-interactive" href={agendaDestination('personal', selDay, 'settimana', globalThis.location, toISO(vd))} aria-label="Apri Personal" title="Personal">
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" /></svg>
       </a>} />
   ) : null;
@@ -1361,15 +1363,15 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
               </Sel>
             </Fld>
           </div>
-          <Fld label="Tipo visita">
+          <Fld label="Etichetta">
+            {/* PO 2026-11-08: etichette come negli impegni Personal, colori predefiniti e pieni. */}
             <div className="appointment-type-tags" role="group" aria-label="Tipo visita e colore">
-              {tipiList.map(tipo => (
-                <button type="button" key={tipo.id} aria-pressed={form.tipo === tipo.nome} onClick={() => F({ tipo: tipo.nome, colore: tipo.colore })} style={{ padding: '5px 10px', borderRadius: 20, border: `1.5px solid ${form.tipo === tipo.nome ? tipo.colore : C.brd}`, background: form.tipo === tipo.nome ? tipo.colore + '18' : C.sur, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: tipo.colore }} />
-                  <span style={{ fontSize: 11, fontWeight: form.tipo === tipo.nome ? 700 : 500, color: form.tipo === tipo.nome ? tipo.colore : C.txm }}>{tipo.nome}</span>
-                </button>
-              ))}
+              {tipiList.map(tipo => {
+                const attiva = form.tipo === tipo.nome, c = labelColor(tipo.colore);
+                return <button type="button" key={tipo.id} className={`appointment-label${attiva ? ' attiva' : ''}`} aria-pressed={attiva} onClick={() => F({ tipo: tipo.nome, colore: tipo.colore })} style={{ '--c': c, '--c-on': labelOn(c) }}>{tipo.nome}</button>;
+              })}
             </div>
+            <LabelSwatches className="appointment-label-colors" value={form.colore} onChange={c => F({ colore: c })} size={26} custom={false} />
             <Inp value={form.tipo} onChange={e => F({ tipo: e.target.value })} placeholder="Personalizza tipo visita" />
           </Fld>
           {onSaveBookingTreatment && <fieldset className="booking-treatment-fields" disabled={bookingSaving || bookingUncertain}>

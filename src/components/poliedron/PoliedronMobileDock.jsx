@@ -70,7 +70,7 @@ export default function PoliedronMobileDock({ page, setPage, open, onToggle, pan
             aria-current={active ? 'page' : undefined}
             tabIndex={open ? -1 : 0}
             onClick={() => {
-              if (item.id === '__personal__') { globalThis.location.assign(agendaDestination('personal', new Date().toLocaleDateString('sv-SE'), 'giorno')); return; }
+              if (item.id === '__personal__') { globalThis.location.assign(agendaDestination('personal', new Date().toLocaleDateString('sv-SE'), 'settimana')); return; }
               setPage(item.id);
             }}
           >
