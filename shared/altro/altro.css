@@ -26,3 +26,19 @@
 .altro-riga i { font-style: normal; font-size: 22px; color: var(--al-testo-2); }
 .altro-vuoto { color: var(--al-testo-2); font-size: 14.5px; margin: 16px 4px; }
 .altro-pagina :is(button, a, input):focus-visible { outline: 2px solid var(--brand-primary, #1F63B5); outline-offset: 2px; }
+
+/* DOCK-PER-TE passo 4 (PO 2026-11-08): righe con icona e titolo, verde come accento; i colori
+   distintivi restano per appuntamenti e stati. */
+.altro-pagina { --al-accento: #1F7A4D; }
+.altro-elenco { display: grid; border-radius: 14px; overflow: hidden; background: var(--al-card); box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+.altro-voce { min-width: 0; min-height: 52px; display: flex; align-items: center; gap: 12px; padding: 0 14px; border: 0; background: transparent; color: var(--al-testo);
+  font: inherit; font-size: 16px; text-align: left; text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.altro-voce + .altro-voce { box-shadow: inset 0 1px 0 color-mix(in srgb, var(--al-testo) 9%, transparent); }
+.altro-voce:active { background: var(--al-riempi); }
+.altro-voce .altro-icona { width: 32px; height: 32px; border-radius: 9px; flex: none; color: var(--al-accento); background: color-mix(in srgb, var(--al-accento) 13%, transparent); }
+.altro-voce .altro-icona svg { width: 18px; height: 18px; }
+.altro-voce .altro-nome { flex: 1; font-size: 16px; font-weight: 500; text-align: left; }
+.altro-voce i { font-style: normal; font-size: 22px; color: var(--al-testo-2); }
+.altro-pagina .altro-gruppo:first-of-type h2 { margin-top: 18px; }
+.altro-pagina .altro-cerca + .altro-gruppo .altro-elenco { margin-top: 14px; }
+@media (prefers-color-scheme: dark) { .altro-pagina { --al-accento: #6FD49B; } }

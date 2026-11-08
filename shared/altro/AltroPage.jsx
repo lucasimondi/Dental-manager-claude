@@ -37,10 +37,12 @@ function Tessera({ v }) {
   const dentro = <>
     <span className="altro-icona" style={{ '--c': v.colore }}><svg viewBox="0 0 24 24" aria-hidden="true"><path d={P[v.icona] || P.listino} /></svg></span>
     <span className="altro-nome">{v.nome}</span>
+    <i aria-hidden="true">›</i>
   </>;
+  // DOCK-PER-TE passo 4: righe leggibili con icona e titolo (non più tessere multicolore).
   return v.href
-    ? <a className="altro-tessera" href={v.href}>{dentro}</a>
-    : <button type="button" className="altro-tessera" onClick={v.fai}>{dentro}</button>;
+    ? <a className="altro-voce" href={v.href}>{dentro}</a>
+    : <button type="button" className="altro-voce" onClick={v.fai}>{dentro}</button>;
 }
 
 export default function AltroPage({ titolo = 'Altro', gruppi = [], piede = [] }) {
@@ -53,8 +55,8 @@ export default function AltroPage({ titolo = 'Altro', gruppi = [], piede = [] })
       <input type="search" aria-label="Cerca una sezione" placeholder="Cerca una sezione" value={cerca} onChange={(e) => setCerca(e.target.value)} />
     </label>
     {visibili.map((g) => <section key={g.nome} className="altro-gruppo" aria-label={g.nome}>
-      <h2>{g.nome}</h2>
-      <div className="altro-griglia">{g.voci.map((v) => <Tessera key={v.id} v={v} />)}</div>
+      {g.nome !== titolo && <h2>{g.nome}</h2>}
+      <div className="altro-elenco">{g.voci.map((v) => <Tessera key={v.id} v={v} />)}</div>
     </section>)}
     {!visibili.length && <p className="altro-vuoto">Nessuna sezione con «{cerca}».</p>}
     {!cerca && piede.map((v) => v.href
