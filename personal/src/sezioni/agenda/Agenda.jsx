@@ -9,7 +9,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
 import { scadenzeAgenda as caricaPagamenti } from '../../lib/archivio.js';
 import { euro } from '../../lib/coreArchivio.js';
-import { studioDb, sessioneStudio, entraStudio, appuntamentiTra, impegniTra, tipiAppuntamento, impostazioniAgenda } from '../../lib/studio.js';
+import { studioDb, sessioneStudio, entraStudio, appuntamentiTra, impegniTra, tipiAppuntamento, impostazioniAgenda, salvaAppuntamento, eliminaAppuntamento, salvaImpegno, eliminaImpegno } from '../../lib/studio.js';
+import { cercaDocumenti } from '../../lib/archivio.js';
+import { creaFontiStudio, impegnoSpostato } from '../../../../shared/ricerca/fonti.js';
 import { daIso, oggi, ora, giorniSettimana, grigliaMese, elementiDelGiorno, coloreEvento, nomeEtichetta, COLORE_SCADENZA } from '../../lib/agenda.js';
 import { IconaFreccia } from '../../Icone.jsx';
 import { GrigliaPoliedra } from './AgendaGriglia.jsx';
@@ -176,12 +178,54 @@ export function VistaAgenda({ ctx }) {
 
 function ContenutoAgenda({ ctx, modo, setModo, giorno, setGiorno, mese, setMese, da, a, etichette, coloriTipi, versione, esegui }) {
   const tutti = useDatiAgenda(da, a, versione, esegui);
-  const [mostraEsclusi, setMostraEsclusi] = useState(false);
+  // PO 2026-11-08: un'agenda sola, di partenza "Tutto" (Studio e Personal insieme).
+  const [mostraEsclusi, setMostraEsclusi] = useState(true);
   const dati = { ...tutti,
     appuntamenti: tutti.appuntamenti.filter(x => mostraEsclusi || agendaVisible(x, 'personal')),
     impegni: tutti.impegni.filter(x => mostraEsclusi || agendaVisible(x, 'personal')),
   };
-  return <GrigliaPoliedra hiddenCount={tutti.appuntamenti.filter(x => !agendaVisible(x, 'personal')).length + tutti.impegni.filter(x => !agendaVisible(x, 'personal')).length} mostraEsclusi={mostraEsclusi} setMostraEsclusi={mostraEsclusi || tutti.appuntamenti.some(x => !agendaVisible(x, 'personal')) || tutti.impegni.some(x => !agendaVisible(x, 'personal')) ? setMostraEsclusi : undefined} view={modo} setView={setModo} giorno={giorno} setGiorno={setGiorno} mese={mese} setMese={setMese} dati={dati} ctx={ctx} etichette={etichette} coloriTipi={coloriTipi} />;
+  const fonteRicerca = useFonteRicerca({ ctx, etichette, coloriTipi, setGiorno, versione });
+  return <GrigliaPoliedra fonteRicerca={fonteRicerca} hiddenCount={tutti.appuntamenti.filter(x => !agendaVisible(x, 'personal')).length + tutti.impegni.filter(x => !agendaVisible(x, 'personal')).length} mostraEsclusi={mostraEsclusi} setMostraEsclusi={mostraEsclusi || tutti.appuntamenti.some(x => !agendaVisible(x, 'personal')) || tutti.impegni.some(x => !agendaVisible(x, 'personal')) ? setMostraEsclusi : undefined} view={modo} setView={setModo} giorno={giorno} setGiorno={setGiorno} mese={mese} setMese={setMese} dati={dati} ctx={ctx} etichette={etichette} coloriTipi={coloriTipi} />;
 }
 
+// RICERCA-AGENDA (PO 2026-11-08): la barra cerca e agisce sul posto, come in Studio. Gli elementi
+// arrivano da un orizzonte più ampio della settimana mostrata (due mesi indietro, sei avanti).
+function useFonteRicerca({ ctx, etichette, coloriTipi, setGiorno, versione }) {
+  const [orizzonte, setOrizzonte] = useState({ appuntamenti: [], impegni: [] });
+  const [studioId, setStudioId] = useState(null);
+  const [giro, setGiro] = useState(0);
+  useEffect(() => { sessioneStudio().then((s) => setStudioId(s?.user?.app_metadata?.studio_id || null)).catch(() => {}); }, []);
+  useEffect(() => {
+    let vivo = true;
+    const da = new Date(); da.setDate(da.getDate() - 60);
+    const a = new Date(); a.setDate(a.getDate() + 180);
+    const iso = (d) => d.toLocaleDateString('sv-SE');
+    Promise.all([appuntamentiTra(iso(da), iso(a)), impegniTra(iso(da), iso(a))])
+      .then(([appuntamenti, impegni]) => { if (vivo) setOrizzonte({ appuntamenti, impegni }); }).catch(() => {});
+    return () => { vivo = false; };
+  }, [versione, giro]);
+  const fonti = useMemo(() => (studioId ? creaFontiStudio({
+    db: studioDb, studioId,
+    apriNota: () => ctx.vai('note'), apriPassword: (q) => ctx.vai('password', q || null),
+    cercaDocumenti: (q) => cercaDocumenti(archivioDb, q, null, 6).then((ds) => (ds || []).filter((d) => d.fascicolo !== 'clinico_pazienti')
+      .map((d) => ({ id: d.id, titolo: d.titolo || 'Documento', sottotitolo: d.ente || '', apri: () => ctx.apri({ tipo: 'documento', id: d.id }) }))),
+  }) : null), [studioId]);
+  const fatto = async (lavoro) => { await lavoro(); ctx.aggiorna(); setGiro((x) => x + 1); };
+  return {
+    oggi: oggi(),
+    elementi: [
+      ...orizzonte.appuntamenti.map((a) => ({ id: a.id, tipo: 'appuntamento', titolo: a.paziente || a.cognome || a.tipo || 'Appuntamento', sottotitolo: a.tipo, data: a.data, ora: String(a.ora || '').slice(0, 5), colore: labelColor(a.colore || coloriTipi[a.tipo] || '#185FA5'), dato: a })),
+      ...orizzonte.impegni.map((e) => ({ id: e.id, tipo: 'impegno', titolo: e.titolo || 'Impegno', sottotitolo: e.tutto_il_giorno ? 'tutto il giorno' : nomeEtichetta(e.tipo, etichette), data: e.data_inizio, ora: e.tutto_il_giorno ? null : String(e.ora_inizio || '').slice(0, 5) || null, colore: coloreEvento(e, etichette), dato: e })),
+    ],
+    apri: (e) => { setGiorno(e.data); ctx.apri(e.tipo === 'impegno' ? { tipo: 'evento', evento: e.dato } : { tipo: 'appuntamento', a: e.dato }); },
+    nuovoAppuntamento: ({ data, ora: o, soggetto } = {}) => ctx.apri({ tipo: 'evento', cosa: 'appuntamento', evento: { data_inizio: data || oggi(), ora_inizio: o || '09:00', cerca: soggetto || '' } }),
+    nuovoImpegno: ({ data, ora: o, titolo } = {}) => ctx.apri({ tipo: 'evento', evento: { titolo: titolo || '', data_inizio: data || oggi(), ...(o ? { ora_inizio: o, ora_fine: `${String(Math.min(23, Number(o.slice(0, 2)) + 1)).padStart(2, '0')}:${o.slice(3, 5)}` } : { tutto_il_giorno: !!data }) } }),
+    sposta: (e, verso) => fatto(() => (e.tipo === 'appuntamento' ? salvaAppuntamento({ ...e.dato, data: verso.data, ora: verso.ora || e.dato.ora }) : salvaImpegno(impegnoSpostato(e.dato, verso)))).then(() => setGiorno(verso.data)),
+    cancella: (e) => fatto(() => (e.tipo === 'appuntamento' ? eliminaAppuntamento(e.id) : eliminaImpegno(e.id))),
+    ...(fonti ? { cercaAltro: fonti.cercaAltro, nuovaNota: fonti.nuovaNota } : {}),
+    apriNote: () => ctx.vai('note'), apriPassword: (q) => ctx.vai('password', q || null), apriDocumenti: () => ctx.vai('documenti'),
+    acquisisci: () => ctx.apri({ tipo: 'carica', opzioni: {} }),
+    chiediPoliedron: (domanda) => { ctx.setChat((c) => ({ ...c, bozza: domanda })); ctx.vai('poliedron'); },
+  };
+}
 

@@ -163,7 +163,7 @@ function Archivio({ email }) {
         {[...DOCK, 'poliedron', ...DOCK_DOPO].map((s) => s === 'poliedron'
           ? <button key="poliedron" className={`pp-scheda pp-scheda-poliedron${classeScheda('poliedron')}`} onClick={() => vai('poliedron')} aria-label="Apri Poliedron" aria-current={vista === 'poliedron' ? 'page' : undefined}><IconaTema tipo="poliedron" Icona={IconaChat} size={24} /><span>Poliedron</span></button>
           : <button key={s.id} className={`pp-scheda${classeScheda(s.id)}`} onClick={() => vai(s.id)} aria-current={vista === s.id ? 'page' : undefined}><IconaTema tipo={s.id} Icona={s.Icona} size={24} /><span>{s.nome}</span></button>)}
-        <a className="pp-scheda" href={agendaDestination('studio', new Date().toLocaleDateString('sv-SE'), 'giorno')} aria-label="Apri Studio"><IconaTema tipo="studio" Icona={IconaStudio} size={24} /><span>Studio</span></a>
+        <a className="pp-scheda" href={agendaDestination('studio', new Date().toLocaleDateString('sv-SE'), 'settimana')} aria-label="Apri Studio"><IconaTema tipo="studio" Icona={IconaStudio} size={24} /><span>Studio</span></a>
         <button className={`pp-scheda${altraSezione ? ' attiva' : ''}`} onClick={() => vai('altro')} aria-current={altraSezione ? 'page' : undefined}><IconaTema tipo="altro" Icona={IconaAltro} size={24} /><span>Altro</span></button>
       </nav>
       {!sopra && !attuale.senzaPiu && <button className="pp-fab" onClick={() => setFoglio(true)} aria-label="Aggiungi"><IconaPiu size={26} /></button>}

@@ -4486,3 +4486,21 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - RISKS: until migration is applied the Note page shows the "aggiornamento del database" message; Home/Pazienti/Chat no longer in the Studio phone dock (search/bell/panel reach them); Personal dock has six slots; Poliedron centre is not yet voice-first; no physical device test.
 - ROLLBACK: revert the PR; the migration can be left unapplied or dropped (table only, no dependencies).
 - EXACT NEXT ACTION: PR checks green -> PO task-specific "Mergia" -> squash merge -> apply the note_personali migration in the controlled release -> verify Vercel production.
+
+## 2026-11-08 — AGENDA-CENTRIC-PHONE (merged)
+- PR274 squash-merged after task-specific PO "Mergia" and green checks; merge commit 1dc7bbf on master.
+- Before merge: iphone-agenda failed on visual tests still expecting the phone + button, the old header and "Vai a Studio"; fixed in-branch (appointment-workspace tap-a-slot on phone and Nuovo from 720px; agenda.compare authorises only the new header, removed +/switch and fixed dock/orb, and compares the rest of the month shifted by the header growth with a 1px/32-of-255 tolerance for re-rasterised corners; agenda.reliability checks the search bar as top control). PO follow-up applied: Studio appointments stay filled; only personal events keep the transparent tone.
+- Production: Vercel deployment dpl_G9YGSrD8tzfHu3WcyYMvgi3hqiVL READY for 1dc7bbf. Migration note_personali applied to DentalManager (idklxdqebfceplrualgh); table empty, RLS on, owner-only policies; advisors show only pre-existing findings.
+- NEXT: PO check on phone (agenda, dock, Note); then voice-first Poliedron at the dock centre, Documenti redesign, green across the app.
+
+## 2026-11-08 — AGENDA-PHONE-FIXES
+- Done: week view from dock/app links; chrome z-index above floating events; fitToVisualViewport in Modal (restores the original inset when the keyboard closes); Studio appointment labels filled + LabelSwatches; tests/agendaSettimanaEtichette.test.mjs; mobileShell regex accepts min(100%, calc(100dvh …)).
+- Next: PO answer on inline acting search and single agenda; not verified on a real iPhone keyboard (only synthetic Chromium).
+
+## 2026-11-08 — AGENDA-UNICA-RICERCA
+- Done: agenda "Tutto" by default in Studio and Personal; password registry (table + RLS + PGlite test + shared page, both apps); shared/ricerca engine + RicercaAgenda wired via `ricerca` prop (Studio App.jsx `ricercaAgenda`) and `fonteRicerca` (Personal useFonteRicerca); Personal chat exit button and prefilled question; tests ricercaAgenda, passwordShared, passwordPersonaliDatabase; visual agenda.ricerca in CI.
+- Next: after "Mergia", apply migration 20261108120000 with apply_migration and check advisors; real-device check of the bar with the iPhone keyboard.
+
+## 2026-11-08 — DOCUMENTI-STUDIO
+- Done: migration 20261108130000_documenti_studio.sql (+ tests/documentiStudioDatabase.test.mjs), src/lib/documentiStudio.js, src/components/AcquisisciDocumento.jsx, ArchivioDocs integration, agenda-bar document search and acquisition in Studio.
+- Next: merge PR after green checks; apply 20261108120000 and 20261108130000 to production; security advisors.

@@ -12,6 +12,7 @@ import { legal } from './legal/index.jsx';
 // le altre sezioni solo attraverso il loro index.jsx.
 import { oggi } from './oggi/index.jsx';
 import { note } from './note/index.jsx';
+import { password } from './password/index.jsx';
 import { documenti } from './documenti/index.jsx';
 import { agenda } from './agenda/index.jsx';
 import { conti } from './conti/index.jsx';
@@ -20,12 +21,12 @@ import { foto } from './foto/index.jsx';
 import { poliedron } from './poliedron/index.jsx';
 import { impostazioni } from './impostazioni/index.jsx';
 
-export const SEZIONI = [altro, oggi, note, documenti, agenda, conti, personali, foto, legal, diario, didattica, poliedron, impostazioni];
+export const SEZIONI = [altro, oggi, note, password, documenti, agenda, conti, personali, foto, legal, diario, didattica, poliedron, impostazioni];
 // HOME-AGENDA-CENTRIC (PO 2026-11-07): Agenda e Note, poi l'Assistente al centro, poi Documenti;
 // App aggiunge Studio e Altro. Oggi resta raggiungibile da Altro.
 export const DOCK = [agenda, note];
 export const DOCK_DOPO = [documenti];
-export const VISTE = [oggi, agenda, note, documenti, poliedron, altro, foto, conti, legal, personali, diario, didattica];
+export const VISTE = [oggi, agenda, note, password, documenti, poliedron, altro, foto, conti, legal, personali, diario, didattica];
 
 export const sezione = (id) => VISTE.find((s) => s.id === id);
 

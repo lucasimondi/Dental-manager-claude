@@ -10,7 +10,11 @@ test('mobile agenda: search on top, then month and days, in Studio and Personal;
   const strip = shared.slice(shared.indexOf('export function DayStrip'));
   assert.ok(strip.indexOf('{compact && searchBar}') < strip.indexOf('agenda-mobile-floating-toolbar'), 'search bar renders before the toolbar');
   assert.ok(strip.indexOf('agenda-mobile-floating-toolbar') < strip.indexOf('agenda-mobile-floating-week-strip'), 'days strip stays under the toolbar');
-  assert.match(studio, /const mobileSearchBar = isMobile && onOpenSearch \?/);
+  // PO 2026-11-08: la barra cerca e agisce sul posto (RicercaAgenda); senza adattatore resta quella che apre Poliedron.
+  assert.match(studio, /const mobileSearchBar = isMobile && ricerca \? \(\s*<RicercaAgenda fonte=\{fonteRicerca\}/);
+  assert.match(studio, /\) : isMobile && onOpenSearch \? \(\s*<AgendaSearchBar onOpen=\{onOpenSearch\}/);
+  assert.match(app, /ricerca=\{ricercaAgenda\} \/>\}/);
+  assert.match(personal, /const ricerca = fonteRicerca \? <RicercaAgenda fonte=\{fonteRicerca\} \/>/);
   assert.match(studio, /\{!mobileSearchBar && <AgendaSwitch target="personal"/);
   assert.equal((studio.match(/searchBar=\{mobileSearchBar\}/g) || []).length, 3);
   assert.match(app, /onPoliedronCommand=\{openQuickHubPoliedron\} onOpenSearch=\{\(\) => setPoliedronSearchRequest\(\{ id: requestId\(\) \}\)\}/);

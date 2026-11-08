@@ -4,6 +4,7 @@ import { useTimeline } from '../../../../shared/agenda/useTimeline.js';
 import { keepOccupiedWeekends } from '../../../../shared/agenda/visibility.js';
 import { layoutAgendaDay, layoutAppointments } from '../../../../shared/agenda/geometry.js';
 import { euro } from '../../lib/coreArchivio.js';
+import RicercaAgenda from '../../../../shared/ricerca/RicercaAgenda.jsx';
 // POL-VITA-010: Personal adapter; original presentation is owned by shared/agenda.
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, AppointmentBlock, EventBlock, useSlotHeight, AgendaSearchBar, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState } from '../../../../shared/agenda/AgendaPresentation.jsx';
@@ -14,7 +15,7 @@ export { ViewPicker };
 const GIORNI_NASCOSTI_PERSONAL = [];
 const PALETTE_WIN95 = { bg:'#c0c0c0', sur:'#ffffff', pri:'#000080', priL:'#dfdfdf', priD:'#000080', acc:'#008080', suc:'#008000', sucL:'#ffffff', war:'#808000', dan:'#800000', danL:'#ffffff', pur:'#800080', purL:'#ffffff', txt:'#000000', txm:'#404040', txl:'#808080', brd:'#808080' };
 
-export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMese, dati, ctx, etichette, coloriTipi, mostraEsclusi = false, setMostraEsclusi, hiddenCount = 0 }) {
+export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMese, dati, ctx, etichette, coloriTipi, mostraEsclusi = false, setMostraEsclusi, hiddenCount = 0, fonteRicerca = null }) {
   const retro = useAspetto() === 'win95';
   const palette = retro ? PALETTE_WIN95 : undefined;
   const [localMonth, setLocalMonth] = useState(giorno);
@@ -55,7 +56,8 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
   const showNowLine = nowMin >= 0 && nowMin <= slots.length * slotMin;
   // HOME-AGENDA-CENTRIC: niente più "Vai a Studio" qui (Studio è nel dock); in cima la ricerca,
   // che apre l'assistente Poliedron, poi mese e giorni.
-  const ricerca = <AgendaSearchBar onOpen={() => ctx.vai('poliedron')} label="Cerca o chiedi a Poliedron…" />;
+  // RICERCA-AGENDA (PO 2026-11-08): cerca e agisce qui; senza adattatore resta la barra che apre Poliedron.
+  const ricerca = fonteRicerca ? <RicercaAgenda fonte={fonteRicerca} /> : <AgendaSearchBar onOpen={() => ctx.vai('poliedron')} label="Cerca o chiedi a Poliedron…" />;
   const pick = <span className="personal-agenda-azioni"><ViewPicker palette={palette} hiddenCount={hiddenCount} showHidden={mostraEsclusi} onToggleHidden={setMostraEsclusi ? () => setMostraEsclusi(x => !x) : undefined} view={view} setView={setView} touchSafe weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendsHidden(hidden => !hidden)} /></span>;
   // DayStrip notifica anche al primo mount la settimana che sta mostrando.
   // In Personal ignoriamo quella prima notifica: altrimenti il 16 diventa lunedì 12.

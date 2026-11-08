@@ -644,6 +644,7 @@ export const NAV = [
   { id: 'listino', l: 'Listino', ic: 'list' },
   { id: 'agenda', l: 'Agenda', ic: 'cal' },
   { id: 'note', l: 'Note', ic: 'edit' },
+  { id: 'password', l: 'Password', ic: 'lock' },
   { id: 'richiami', l: 'Richiami', ic: 'clk' },
   { id: 'attivita', l: 'Attività', ic: 'clip' },
   { id: 'spese', l: 'Spese', ic: 'spe' },

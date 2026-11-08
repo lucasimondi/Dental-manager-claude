@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import Ic from './Ic.jsx';
 import { C } from '../../lib/utils';
@@ -36,9 +36,12 @@ export function lockPageScroll() {
 
 export default function Modal({ title, icon, iconColor, onClose, children, wide, mobileVariant = 'standard', footer, backdropClassName = '', sheetClassName = '', backdropStyle }) {
   useEffect(() => lockPageScroll(), []);
+  const backdropRef = useRef(null);
+  useEffect(() => fitToVisualViewport(backdropRef.current), []);
 
   return ReactDOM.createPortal(
     <div
+      ref={backdropRef}
       className={`pol-modal-backdrop${backdropClassName ? ` ${backdropClassName}` : ''}`}
       role="presentation"
       style={{
@@ -69,4 +72,21 @@ export default function Modal({ title, icon, iconColor, onClose, children, wide,
     </div>,
     document.body
   );
+}
+
+// Su iPhone la tastiera non accorcia 100dvh: il fondo del modulo finirebbe sotto la tastiera e
+// non si potrebbe scorrere fino in fondo. Il fondo dello sfondo segue l'area davvero visibile.
+export function fitToVisualViewport(el, g = globalThis) {
+  const vv = g.visualViewport;
+  if (!el || !vv) return () => {};
+  const base = { top: el.style.top, bottom: el.style.bottom };
+  const update = () => {
+    const hidden = Math.max(0, g.innerHeight - vv.height - vv.offsetTop);
+    el.style.bottom = hidden > 0 ? `${Math.round(hidden)}px` : base.bottom;
+    el.style.top = vv.offsetTop > 0 ? `${Math.round(vv.offsetTop)}px` : base.top;
+  };
+  update();
+  vv.addEventListener('resize', update);
+  vv.addEventListener('scroll', update);
+  return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); };
 }

@@ -1,11 +1,16 @@
 import { uniqueAppointmentTypes } from '../lib/appointmentTypes.js';
 import { validatePatientAgendaSlot } from '../lib/patientAgendaBooking.js';
 import DayEvents from '../../shared/agenda/DayEvents.jsx';
+import LabelSwatches from '../../shared/agenda/LabelSwatches.jsx';
+import { labelColor, labelOn } from '../../shared/agenda/labelPalette.js';
 import { useTimeline } from '../../shared/agenda/useTimeline.js';
 import AgendaVisibility from '../../shared/agenda/AgendaVisibility.jsx';
 import { agendaVisible, keepOccupiedWeekends } from '../../shared/agenda/visibility.js';
 import { layoutAgendaDay, layoutAppointments as layoutOverlap } from '../../shared/agenda/geometry.js';
 import { readAgendaLocation, agendaDestination } from '../../shared/agenda/navigation.js';
+import RicercaAgenda from '../../shared/ricerca/RicercaAgenda.jsx';
+import { creaFontiStudio, impegnoSpostato } from '../../shared/ricerca/fonti.js';
+import { cercaPazienti as cercaPazientiLocali } from '../lib/ricercaPazienti.js';
 import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, EventBlock, AppointmentBlock, useSlotHeight, AgendaSwitch, AgendaSearchBar, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState, useGridSwipe } from '../../shared/agenda/AgendaPresentation.jsx';
 import { createPortal } from 'react-dom';
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
@@ -402,8 +407,9 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
    Va incollato sulla stessa riga dell'etichetta mese: non aggiunge nessuna riga
    in più, a differenza della vecchia barra a tre tab che occupava spazio prezioso
    sullo schermo del telefono. */
-export default function Agenda({ patients, setPatients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni: tuttiImpegni = [], setImpegni, si, setStudioInfo, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, followUpRequest, onBookFollowUp, onCancelFollowUp, plans = [], pricelist = [], onSaveBookingTreatment, onOpenSearch }) {
-  const [mostraEsclusi, setMostraEsclusi] = useState(false);
+export default function Agenda({ patients, setPatients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni: tuttiImpegni = [], setImpegni, si, setStudioInfo, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, followUpRequest, onBookFollowUp, onCancelFollowUp, plans = [], pricelist = [], onSaveBookingTreatment, onOpenSearch, ricerca = null }) {
+  // PO 2026-11-08: un'agenda sola, di partenza "Tutto" (Studio e Personal insieme).
+  const [mostraEsclusi, setMostraEsclusi] = useState(true);
   const impegni = tuttiImpegni.filter(i => mostraEsclusi || agendaVisible(i, 'studio'));
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const labelPoltrona = isDentistico ? 'Poltrona' : 'Postazione';
@@ -982,9 +988,44 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     return { date, items: impegni.filter(i => (i.tuttoIlGiorno || !i.oraInizio) && date >= i.dataInizio && date <= (i.dataFine || i.dataInizio)).map(i => ({ id: i.id, title: i.titolo, color: i.colore || TIPO_IMPEGNO.find(t => t.id === i.tipo)?.colore, onOpen: () => apriEditImpegno(i) })) };
   });
   const dayEvents = <DayEvents days={ribbonDays} gutter={oraColW} />;
-  const mobileSearchBar = isMobile && onOpenSearch ? (
+  // RICERCA-AGENDA (PO 2026-11-08): la barra cerca e agisce qui, senza aprire un altro pannello.
+  const fontiStudio = React.useMemo(() => (ricerca?.db ? creaFontiStudio(ricerca) : null), [ricerca]);
+  const nomePaziente = (id) => { const p = patients.find(x => x.id === id); return p ? `${p.nome || ''} ${p.cognome || ''}`.trim() : 'Paziente'; };
+  const fonteRicerca = {
+    oggi: t,
+    elementi: [
+      ...appointments.filter(a => a.stato !== 'annullato').map(a => ({ id: a.id, tipo: 'appuntamento', titolo: nomePaziente(a.pazienteId), sottotitolo: a.tipo, data: a.data, ora: a.ora, colore: getColore(a), dato: a })),
+      ...tuttiImpegni.map(i => ({ id: i.id, tipo: 'impegno', titolo: i.titolo || 'Impegno', sottotitolo: i.tuttoIlGiorno || !i.oraInizio ? 'tutto il giorno' : '', data: i.dataInizio, ora: i.tuttoIlGiorno ? null : i.oraInizio, colore: i.colore || TIPO_IMPEGNO.find(x => x.id === i.tipo)?.colore, dato: i })),
+    ],
+    cercaPazienti: q => cercaPazientiLocali(patients, q).slice(0, 5).map(p => ({ id: p.id, titolo: `${p.nome || ''} ${p.cognome || ''}`.trim(), sottotitolo: p.telefono || '', apri: () => onOpenPatient?.(p) })),
+    apri: e => { setSelDay(e.data); if (e.tipo === 'impegno') apriEditImpegno(e.dato); else setView('giorno'); },
+    nuovoAppuntamento: ({ data, ora, soggetto } = {}) => {
+      apriNuovo(data || selDay, ora || undefined);
+      const trovati = soggetto ? cercaPazientiLocali(patients, soggetto) : [];
+      if (trovati.length === 1) setForm(f => ({ ...f, pazienteId: String(trovati[0].id) })); else if (soggetto) setPazSearch(soggetto);
+    },
+    nuovoImpegno: ({ data, ora, titolo } = {}) => { apriNuovoImpegno(data || selDay, ora || undefined); if (titolo) setImpForm(f => ({ ...f, titolo })); },
+    sposta: async (e, verso) => {
+      if (e.tipo === 'appuntamento') setAppointments(p => p.map(a => a.id === e.id ? { ...a, data: verso.data, ora: verso.ora || a.ora } : a));
+      else setImpegni(p => p.map(i => i.id === e.id ? impegnoSpostato(i, verso) : i));
+      setSelDay(verso.data);
+    },
+    cancella: async e => {
+      if (e.tipo === 'appuntamento') setAppointments(p => p.filter(a => a.id !== e.id));
+      else setImpegni(p => p.filter(i => i.id !== e.id));
+    },
+    ...(fontiStudio ? { cercaAltro: fontiStudio.cercaAltro, nuovaNota: fontiStudio.nuovaNota } : {}),
+    apriNote: ricerca?.apriNote, apriPassword: ricerca?.apriPassword, apriDocumenti: ricerca?.apriDocumenti, acquisisci: ricerca?.acquisisci,
+    chiediPoliedron: ricerca?.chiediPoliedron,
+  };
+  const mobileSearchBar = isMobile && ricerca ? (
+    <RicercaAgenda fonte={fonteRicerca} placeholder="Cerca o chiedi: «sposta Rossi a giovedì»" extra={
+      <a className="agenda-search-app agenda-floating-interactive" href={agendaDestination('personal', selDay, 'settimana', globalThis.location, toISO(vd))} aria-label="Apri Personal" title="Personal">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" /></svg>
+      </a>} />
+  ) : isMobile && onOpenSearch ? (
     <AgendaSearchBar onOpen={onOpenSearch} extra={
-      <a className="agenda-search-app agenda-floating-interactive" href={agendaDestination('personal', selDay, view, globalThis.location, toISO(vd))} aria-label="Apri Personal" title="Personal">
+      <a className="agenda-search-app agenda-floating-interactive" href={agendaDestination('personal', selDay, 'settimana', globalThis.location, toISO(vd))} aria-label="Apri Personal" title="Personal">
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" /></svg>
       </a>} />
   ) : null;
@@ -1361,15 +1402,15 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
               </Sel>
             </Fld>
           </div>
-          <Fld label="Tipo visita">
+          <Fld label="Etichetta">
+            {/* PO 2026-11-08: etichette come negli impegni Personal, colori predefiniti e pieni. */}
             <div className="appointment-type-tags" role="group" aria-label="Tipo visita e colore">
-              {tipiList.map(tipo => (
-                <button type="button" key={tipo.id} aria-pressed={form.tipo === tipo.nome} onClick={() => F({ tipo: tipo.nome, colore: tipo.colore })} style={{ padding: '5px 10px', borderRadius: 20, border: `1.5px solid ${form.tipo === tipo.nome ? tipo.colore : C.brd}`, background: form.tipo === tipo.nome ? tipo.colore + '18' : C.sur, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: tipo.colore }} />
-                  <span style={{ fontSize: 11, fontWeight: form.tipo === tipo.nome ? 700 : 500, color: form.tipo === tipo.nome ? tipo.colore : C.txm }}>{tipo.nome}</span>
-                </button>
-              ))}
+              {tipiList.map(tipo => {
+                const attiva = form.tipo === tipo.nome, c = labelColor(tipo.colore);
+                return <button type="button" key={tipo.id} className={`appointment-label${attiva ? ' attiva' : ''}`} aria-pressed={attiva} onClick={() => F({ tipo: tipo.nome, colore: tipo.colore })} style={{ '--c': c, '--c-on': labelOn(c) }}>{tipo.nome}</button>;
+              })}
             </div>
+            <LabelSwatches className="appointment-label-colors" value={form.colore} onChange={c => F({ colore: c })} size={26} custom={false} />
             <Inp value={form.tipo} onChange={e => F({ tipo: e.target.value })} placeholder="Personalizza tipo visita" />
           </Fld>
           {onSaveBookingTreatment && <fieldset className="booking-treatment-fields" disabled={bookingSaving || bookingUncertain}>

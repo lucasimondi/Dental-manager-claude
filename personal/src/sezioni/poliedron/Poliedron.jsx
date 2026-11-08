@@ -210,7 +210,9 @@ async function agendaPerAI() {
 export function VistaPoliedron({ ctx }) {
   const { apri, aggiorna, chat, setChat } = ctx;
   const { modo, messaggi, documento } = chat;
-  const [testo, setTesto] = useState('');
+  // Domanda arrivata dalla barra dell'agenda (RICERCA-AGENDA): già scritta, da inviare.
+  const [testo, setTesto] = useState(() => chat.bozza || '');
+  useEffect(() => { if (chat.bozza) setChat((c) => ({ ...c, bozza: '' })); }, []);
   const [file, setFile] = useState(null);
   const [attesa, setAttesa] = useState(null);
   const lista = useRef(null);
@@ -288,7 +290,8 @@ export function VistaPoliedron({ ctx }) {
 
   return (
     <div className="pp-chat">
-      <div className="pp-chat-modo"><Segmenti voci={[['ai', 'Poliedron AI'], ['core', 'Solo ricerca']]} attiva={modo} onScegli={(m) => setChat((c) => ({ ...c, modo: m }))} /></div>
+      {/* PO 2026-11-08: "non si può uscire dalla chat": un tasto per tornare all'agenda, sempre visibile. */}
+      <div className="pp-chat-modo pp-chat-modo-riga"><button type="button" className="pp-chat-esci" onClick={() => ctx.vai('agenda')} aria-label="Esci dalla chat e torna all'agenda"><IconaChiudi size={16} /><span>Chiudi</span></button><Segmenti voci={[['ai', 'Poliedron AI'], ['core', 'Solo ricerca']]} attiva={modo} onScegli={(m) => setChat((c) => ({ ...c, modo: m }))} /></div>
       <div className="pp-chat-lista" ref={lista}>
         {!messaggi.length && (
           <div className="pp-chat-vuota">

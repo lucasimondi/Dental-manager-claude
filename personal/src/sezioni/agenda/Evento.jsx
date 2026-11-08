@@ -16,7 +16,7 @@ export function PaginaEvento({ evento: iniziale = {}, cosa: cosaIniziale = 'even
     return (
       <>
         <SceltaNuovo cosa={cosa} setCosa={setCosa} />
-        <ModuloAppuntamento a={{ data: iniziale.data_inizio || oggi(), ora: (iniziale.ora_inizio || '09:00').slice(0, 5) }} ctx={ctx} chiudi={chiudi} />
+        <ModuloAppuntamento a={{ data: iniziale.data_inizio || oggi(), ora: (iniziale.ora_inizio || '09:00').slice(0, 5), cerca: iniziale.cerca || '' }} ctx={ctx} chiudi={chiudi} />
       </>
     );
   }
