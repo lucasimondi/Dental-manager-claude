@@ -4573,3 +4573,7 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Database: none. Tests 1612/1612. Rollback: revert the PR.
 - Note: Personal accent token keeps its historic name `--pp-blu` but is now green; renaming is left out to keep the diff small.
 - Next: DOCK-PER-TE complete after merge; open items — real-phone check (camera from +, receipt upload), unified Documenti Tutti/Studio/Personale (app-unica passo 3).
+
+## Handoff — STUDIO-BENTO (2026-11-08) — Claude Code
+- Branch `ccr-4ac3e51d-studio-bento`. Files: shared/altro/{AltroPage.jsx,bento.js,altro.css}, src/App.jsx (BENTO_STUDIO, gruppiStudio/gruppiPerTe), personal/src/sezioni/altro/index.jsx, tests (appUnica, passwordShared, personalConti).
+- Database: none. Tests 1613/1613. Rollback: revert the PR. Mockup: artifact "Studio e Per te — mockup", option B.

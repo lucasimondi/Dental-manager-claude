@@ -165,7 +165,7 @@ test('app: Conti in Altro, dock compatto, + con tutte le aggiunte e chiusura', (
   // DOCK-PER-TE (PO 2026-11-08): Agenda, Documenti | Poliedron | Studio, Per te.
   assert.match(readFileSync('personal/src/sezioni/index.js', 'utf8'), /export const DOCK = \[agenda, documenti\];\nexport const DOCK_DOPO = \[\];/);
   // APP-UNICA (PO 2026-11-08): Altro a tessere, Vita (Personal) e Lavoro (Studio).
-  assert.match(readFileSync('personal/src/sezioni/altro/index.jsx', 'utf8'), /\['conti', 'Spese e pagamenti', 'conti', '#34845A'\]/);
+  assert.match(readFileSync('personal/src/sezioni/altro/index.jsx', 'utf8'), /\['conti', 'Spese e pagamenti', 'conti', 'grande'/);
   assert.match(app, /leggiVista\(\) === 'pagamenti' \? 'conti'/);
   assert.match(readFileSync('personal/src/Pagina.jsx', 'utf8'), /className="pp-chiudi-pagina"/);
   // DOCK-PER-TE passo 3: + → Per te (Documento, Spesa, Foto, Nota, Password) con le loro scelte.

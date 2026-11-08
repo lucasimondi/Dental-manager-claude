@@ -733,17 +733,26 @@ export default function App() {
   // APP-UNICA (PO 2026-11-08): «Altro» con Lavoro (le sezioni dello studio) e Vita (Personal).
   const ALTRO_LAVORO = { paz: ['pazienti', '#1F5F7A'], paga: ['incassi', '#22714A'], piani: ['piani', '#2D6BC4'], preventivi: ['preventivi', '#4E52C4'], richiami: ['richiami', '#D1453B'], attivita: ['attivita', '#13808F'], spese: ['spese', '#A8323E'], controllo: ['controllo', '#1F5F7A'], listino: ['listino', '#5D6979'], wa: ['whatsapp', '#22714A'], chat: ['chat', '#2D6BC4'], agenteai: ['agente', '#8460CC'], home: ['home', '#5D6979'] };
   // DOCK-PER-TE (PO 2026-11-08): «Studio» = il lavoro dello studio; «Per te» = la vita personale.
+  // STUDIO-BENTO (PO 2026-11-08, mockup B): riquadri di grandezze diverse; le voci senza taglia
+  // dedicata diventano pulsanti bassi in fondo.
+  const BENTO_STUDIO = { paz: ['grande', 'Schede, piani di cura e documenti'], paga: ['media', 'Pagamenti dei pazienti'], preventivi: ['media', 'Da inviare e accettati'],
+    piani: ['piccola'], richiami: ['piccola'], spese: ['piccola'], controllo: ['piccola'], listino: ['piccola'], attivita: ['piccola'] };
+  const RANGO = { grande: 0, alta: 1, media: 2, piccola: 3, pulsante: 4 };
   const gruppiStudio = () => [
-    { nome: 'Studio', voci: navVisibile.filter((n) => ALTRO_LAVORO[n.id]).map((n) => ({ id: n.id, nome: n.l, icona: ALTRO_LAVORO[n.id][0], colore: ALTRO_LAVORO[n.id][1], fai: () => setPage(n.id) })) },
+    { nome: 'Studio', voci: navVisibile.filter((n) => ALTRO_LAVORO[n.id])
+      .map((n) => { const [taglia = 'pulsante', sotto] = BENTO_STUDIO[n.id] || []; return { id: n.id, nome: n.l, icona: ALTRO_LAVORO[n.id][0], colore: ALTRO_LAVORO[n.id][1], taglia, sotto, fai: () => setPage(n.id) }; })
+      .sort((x, y) => RANGO[x.taglia] - RANGO[y.taglia]) },
   ];
   const gruppiPerTe = () => [
     { nome: 'Per te', voci: [
-      ...[['conti', 'Spese e pagamenti', 'conti', '#34845A'], ['personali', 'Documenti personali', 'personali', '#8460CC'], ['foto', 'Foto', 'foto', '#C23D78']]
-        .map(([id, nome, icona, colore]) => ({ id: `vita-${id}`, nome, icona, colore, href: sectionDestination('personal', id) })),
-      { id: 'note', nome: 'Note', icona: 'nota', colore: '#C98A10', fai: () => setPage('note') },
-      ...[['diario', 'Diario', 'diario', '#9B3D96'], ['legal', 'Pratiche', 'pratiche', '#5E7F1F'], ['didattica', 'Biblioteca', 'biblioteca', '#E3772A'], ['oggi', 'Riepilogo di oggi', 'oggi', '#E0A526']]
-        .map(([id, nome, icona, colore]) => ({ id: `vita-${id}`, nome, icona, colore, href: sectionDestination('personal', id) })),
-      { id: 'password', nome: 'Password', icona: 'password', colore: '#4E52C4', fai: () => { setPasswordQuery(''); setPage('password'); } },
+      { id: 'vita-conti', nome: 'Spese e pagamenti', icona: 'conti', taglia: 'grande', sotto: 'Conti, ricevute e cose da pagare', href: sectionDestination('personal', 'conti') },
+      { id: 'vita-personali', nome: 'Documenti personali', icona: 'personali', taglia: 'alta', sotto: "Carta d'identità, patente, codice fiscale", href: sectionDestination('personal', 'personali') },
+      { id: 'vita-foto', nome: 'Foto', icona: 'foto', taglia: 'media', href: sectionDestination('personal', 'foto') },
+      { id: 'note', nome: 'Note', icona: 'nota', taglia: 'media', fai: () => setPage('note') },
+      ...[['diario', 'Diario', 'diario'], ['legal', 'Pratiche', 'pratiche'], ['didattica', 'Biblioteca', 'biblioteca']]
+        .map(([id, nome, icona]) => ({ id: `vita-${id}`, nome, icona, taglia: 'piccola', href: sectionDestination('personal', id) })),
+      { id: 'password', nome: 'Password', icona: 'password', taglia: 'pulsante', fai: () => { setPasswordQuery(''); setPage('password'); } },
+      { id: 'vita-oggi', nome: 'Oggi', icona: 'oggi', taglia: 'pulsante', href: sectionDestination('personal', 'oggi') },
     ] },
   ];
 

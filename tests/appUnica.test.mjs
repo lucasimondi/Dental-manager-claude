@@ -126,3 +126,16 @@ test('DOCK-PER-TE passo 3: ?aggiungi= si legge una volta e si toglie dall\'indir
   assert.equal(voceDaIndirizzo(w), null);
   assert.equal(voceDaIndirizzo(finta('https://x.it/personal/?aggiungi=elimina')), null);
 });
+
+test('STUDIO-BENTO: Studio e Per te a riquadri (grande, alta, media, piccola, pulsante); cercando, elenco', async () => {
+  const src = read('shared/altro/AltroPage.jsx');
+  assert.match(src, /!cerca && g\.voci\.some\(\(v\) => v\.taglia\)/);
+  const { blocchiBento } = await import('../shared/altro/bento.js');
+  const b = blocchiBento([{ taglia: 'grande' }, { taglia: 'media' }, { taglia: 'piccola' }, { taglia: 'piccola' }, { taglia: 'pulsante' }, {}]);
+  assert.deepEqual(b.map((x) => [x.tipo, x.voci.length]), [['due', 2], ['tre', 2], ['fila', 1], ['tre', 1]]);
+  const app = read('src/App.jsx');
+  assert.match(app, /paz: \['grande', 'Schede, piani di cura e documenti'\]/);
+  assert.match(app, /\.sort\(\(x, y\) => RANGO\[x\.taglia\] - RANGO\[y\.taglia\]\)/);
+  assert.match(app, /id: 'vita-conti', nome: 'Spese e pagamenti', icona: 'conti', taglia: 'grande'/);
+  assert.match(read('personal/src/sezioni/altro/index.jsx'), /\['personali', 'Documenti personali', 'personali', 'alta'/);
+});

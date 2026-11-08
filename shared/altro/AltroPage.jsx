@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import './altro.css';
+import { blocchiBento } from './bento.js';
 
 // APP-UNICA (PO 2026-11-08): «Altro», uguale in Studio e Personal. Due gruppi a tessere —
 // Lavoro (studio) e Vita (personale) — e una ricerca per trovare subito una sezione.
@@ -45,6 +46,22 @@ function Tessera({ v }) {
     : <button type="button" className="altro-voce" onClick={v.fai}>{dentro}</button>;
 }
 
+// STUDIO-BENTO (PO 2026-11-08, mockup B): ogni voce può avere una `taglia` — 'grande' (riquadro
+// verde a tutta larghezza), 'alta' (due righe), 'media' (mezza larghezza), 'piccola' (un terzo),
+// 'pulsante' (basso, in fondo) — e un `sotto` (una riga di spiegazione). Le taglie vicine si
+// raggruppano: grande/alta/media su due colonne, piccola su tre, pulsante in fila. Cercando si
+// torna all'elenco a righe.
+function Riquadro({ v }) {
+  const taglia = v.taglia || 'piccola';
+  const dentro = <>
+    <span className="bento-icona"><svg viewBox="0 0 24 24" aria-hidden="true"><path d={P[v.icona] || P.listino} /></svg></span>
+    <span className="bento-testi"><strong>{v.nome}</strong>{v.sotto && taglia !== 'piccola' && taglia !== 'pulsante' && <span>{v.sotto}</span>}</span>
+    {taglia === 'grande' && <i aria-hidden="true">›</i>}
+  </>;
+  const cls = `bento-voce bento-${taglia}`;
+  return v.href ? <a className={cls} href={v.href}>{dentro}</a> : <button type="button" className={cls} onClick={v.fai}>{dentro}</button>;
+}
+
 export default function AltroPage({ titolo = 'Altro', gruppi = [], piede = [] }) {
   const [cerca, setCerca] = useState('');
   const visibili = useMemo(() => gruppi.map((g) => ({ ...g, voci: g.voci.filter((v) => !cerca || norm(v.nome).includes(norm(cerca))) })).filter((g) => g.voci.length), [gruppi, cerca]);
@@ -56,7 +73,9 @@ export default function AltroPage({ titolo = 'Altro', gruppi = [], piede = [] })
     </label>
     {visibili.map((g) => <section key={g.nome} className="altro-gruppo" aria-label={g.nome}>
       {g.nome !== titolo && <h2>{g.nome}</h2>}
-      <div className="altro-elenco">{g.voci.map((v) => <Tessera key={v.id} v={v} />)}</div>
+      {!cerca && g.voci.some((v) => v.taglia)
+        ? blocchiBento(g.voci).map((b, i) => <div key={i} className={`bento bento-${b.tipo}`}>{b.voci.map((v) => <Riquadro key={v.id} v={v} />)}</div>)
+        : <div className="altro-elenco">{g.voci.map((v) => <Tessera key={v.id} v={v} />)}</div>}
     </section>)}
     {!visibili.length && <p className="altro-vuoto">Nessuna sezione con «{cerca}».</p>}
     {!cerca && piede.map((v) => v.href

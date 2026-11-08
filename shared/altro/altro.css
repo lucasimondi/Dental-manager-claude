@@ -42,3 +42,33 @@
 .altro-pagina .altro-gruppo:first-of-type h2 { margin-top: 18px; }
 .altro-pagina .altro-cerca + .altro-gruppo .altro-elenco { margin-top: 14px; }
 @media (prefers-color-scheme: dark) { .altro-pagina { --al-accento: #6FD49B; } }
+
+/* STUDIO-BENTO (PO 2026-11-08, mockup B): riquadri di grandezze diverse, accento verde. */
+.bento { display: grid; gap: 10px; margin-top: 10px; }
+.bento-due { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.bento-tre { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.bento-fila { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.bento-voce { min-width: 0; border: 0; border-radius: 22px; background: var(--al-card); color: var(--al-testo); font: inherit; text-align: left; text-decoration: none; cursor: pointer;
+  box-shadow: 0 1px 2px rgba(24,36,59,.06); -webkit-tap-highlight-color: transparent; transition: transform .1s ease; display: flex; }
+.bento-voce:active { transform: scale(.97); }
+.bento-icona { flex: none; display: grid; place-items: center; border-radius: 12px; width: 38px; height: 38px; color: var(--al-accento); background: color-mix(in srgb, var(--al-accento) 12%, transparent); }
+.bento-icona svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.bento-testi { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bento-testi strong { font-size: 15px; font-weight: 600; line-height: 1.2; overflow-wrap: anywhere; }
+.bento-testi span { font-size: 12.5px; line-height: 1.3; color: var(--al-testo-2); }
+.bento-voce i { font-style: normal; font-size: 24px; margin-left: auto; opacity: .85; }
+.bento-grande { grid-column: 1 / -1; min-height: 92px; padding: 18px; align-items: center; gap: 14px; color: #fff; background: var(--al-accento); }
+.bento-grande .bento-icona { width: 48px; height: 48px; border-radius: 14px; color: #fff; background: rgba(255,255,255,.18); }
+.bento-grande .bento-icona svg { width: 24px; height: 24px; }
+.bento-grande .bento-testi strong { font-size: 18px; font-weight: 700; }
+.bento-grande .bento-testi span { color: rgba(255,255,255,.85); font-size: 13px; }
+.bento-alta, .bento-media { flex-direction: column; justify-content: space-between; gap: 10px; padding: 14px; min-height: 104px; }
+.bento-alta { grid-row: span 2; min-height: 218px; }
+.bento-alta .bento-icona { width: 44px; height: 44px; border-radius: 13px; }
+.bento-piccola { flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 12px 6px; min-height: 90px; border-radius: 20px; text-align: center; }
+.bento-piccola .bento-testi strong { font-size: 13px; }
+.bento-pulsante { align-items: center; gap: 10px; padding: 0 14px; min-height: 52px; border-radius: 16px; }
+.bento-pulsante .bento-icona { width: auto; height: auto; background: transparent; }
+.bento-pulsante .bento-testi strong { font-size: 14px; }
+.bento + .altro-riga { margin-top: 16px; }
+@media (prefers-color-scheme: dark) { .bento-grande { color: #0b1a12; } .bento-grande .bento-testi span { color: rgba(11,26,18,.8); } .bento-grande .bento-icona { color: #0b1a12; background: rgba(0,0,0,.12); } }

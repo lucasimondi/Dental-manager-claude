@@ -3,12 +3,17 @@ import AltroPage from '../../../../shared/altro/AltroPage.jsx';
 
 // DOCK-PER-TE (PO 2026-11-08): «Per te», la stessa pagina che in Studio. Il lavoro dello studio
 // ha la sua voce «Studio» nel dock. L'id resta «altro» per i link già esistenti (?sezione=altro).
-const PER_TE = [['conti', 'Spese e pagamenti', 'conti', '#34845A'], ['personali', 'Documenti personali', 'personali', '#8460CC'], ['foto', 'Foto', 'foto', '#C23D78'], ['note', 'Note', 'nota', '#C98A10'],
-  ['diario', 'Diario', 'diario', '#9B3D96'], ['legal', 'Pratiche', 'pratiche', '#5E7F1F'], ['didattica', 'Biblioteca', 'biblioteca', '#E3772A'], ['oggi', 'Riepilogo di oggi', 'oggi', '#E0A526'], ['password', 'Password', 'password', '#4E52C4']];
+const PER_TE = [
+  ['conti', 'Spese e pagamenti', 'conti', 'grande', 'Conti, ricevute e cose da pagare'],
+  ['personali', 'Documenti personali', 'personali', 'alta', "Carta d'identità, patente, codice fiscale"],
+  ['foto', 'Foto', 'foto', 'media'], ['note', 'Note', 'nota', 'media'],
+  ['diario', 'Diario', 'diario', 'piccola'], ['legal', 'Pratiche', 'pratiche', 'piccola'], ['didattica', 'Biblioteca', 'biblioteca', 'piccola'],
+  ['password', 'Password', 'password', 'pulsante'], ['oggi', 'Oggi', 'oggi', 'pulsante'],
+];
 
 export function VistaAltro({ ctx }) {
   const gruppi = [
-    { nome: 'Per te', voci: PER_TE.map(([id, nome, icona, colore]) => ({ id, nome, icona, colore, fai: () => (id === 'personali' ? ctx.vai('documenti', 'personali') : ctx.vai(id)) })) },
+    { nome: 'Per te', voci: PER_TE.map(([id, nome, icona, taglia, sotto]) => ({ id, nome, icona, taglia, sotto, fai: () => (id === 'personali' ? ctx.vai('documenti', 'personali') : ctx.vai(id)) })) },
   ];
   return <AltroPage titolo="Per te" gruppi={gruppi} piede={[{ id: 'impostazioni', nome: 'Impostazioni e account', icona: 'impostazioni', fai: () => ctx.apri({ tipo: 'impostazioni' }) }]} />;
 }
