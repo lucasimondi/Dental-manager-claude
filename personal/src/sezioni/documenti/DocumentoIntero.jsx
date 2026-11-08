@@ -1,9 +1,16 @@
+import { differito } from '../../Differito.jsx';
+const PaginaPdf = differito(() => import('../../pdf/PaginaPdf.jsx'), 'PaginaPdf');
 import {useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {Anteprima} from './AnteprimaDocumento.jsx';
 import {preparaFile,comeFile,scaricaDocumento} from '../../lib/condividi.js';
 import {BottoneCondividi,titoloDoc,tokenSessione} from '../../ui.jsx';
-export function DocumentoIntero({doc,onInfo,onChiudi,mostra}) {
+export function DocumentoIntero(props) {
+ const { doc } = props;
+ if (doc.mime_type === 'application/pdf' || /\.pdf$/i.test(doc.nome_file_originale || '')) return <PaginaPdf doc={doc} ctx={props.ctx} chiudi={props.onChiudi} onInfo={props.onInfo} />;
+ return <DocumentoImmagine {...props} />;
+}
+function DocumentoImmagine({doc,onInfo,onChiudi,mostra}) {
  const container=useRef(null),[file,setFile]=useState(null),[error,setError]=useState('');
  useEffect(()=>{let active=true;(async()=>{try{const f=comeFile(await preparaFile(doc.drive_file_id,await tokenSessione()));if(active)setFile(f);}catch(e){if(active)setError(e.message);}})();return()=>{active=false;};},[doc.drive_file_id]);
  useEffect(()=>{

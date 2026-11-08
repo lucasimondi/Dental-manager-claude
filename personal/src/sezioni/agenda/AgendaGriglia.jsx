@@ -69,6 +69,7 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
     { nome: 'Per te', voci: [
       { id: 'nota', nome: 'Nota', colore: '#C98A10', fai: () => ctx.vai('note', 'scrivi') },
       { id: 'documento', nome: 'Documento', colore: '#5D6979', fai: () => ctx.aggiungi('scansiona') },
+      { id: 'pdf', nome: 'PDF e firma', colore: '#B23A3A', fai: () => ctx.apri({ tipo: 'pdf' }) },
       { id: 'spesa', nome: 'Spesa', colore: '#A8323E', fai: () => ctx.aggiungi('spesa') },
       { id: 'pagamento', nome: 'Da pagare', colore: '#9B3D96', fai: () => ctx.aggiungi('pagamento') },
       { id: 'password', nome: 'Password', colore: '#4E52C4', fai: () => ctx.vai('password', 'nuova') },

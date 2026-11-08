@@ -111,12 +111,14 @@ test('prova: solo con la sessione di Luca; errore chiaro se nessun telefono è i
   await assert.rejects(provaNotifica({ token: null }), /Sessione/);
 });
 
-test('service worker: mostra la notifica e apre l\'app; non tocca le richieste di rete', () => {
+test('service worker: conserva le notifiche e gestisce solo la POST Personal autorizzata', () => {
   const sw = readFileSync('public/personal/sw-notifiche.js', 'utf8');
   assert.match(sw, /addEventListener\('push'/);
   assert.match(sw, /showNotification\(/);
   assert.match(sw, /addEventListener\('notificationclick'/);
-  assert.doesNotMatch(sw, /addEventListener\('fetch'/);
+  assert.match(sw, /event.request.method !== 'POST'/);
+  assert.match(sw, /url.pathname !== scope.pathname/);
+  assert.match(sw, /url.searchParams.get\('receive-pdf'\) !== '1'/);
 });
 
 test('funzione notifiche: chiavi solo nel database, mai i clinici, una volta al giorno, prova solo per il proprietario', () => {

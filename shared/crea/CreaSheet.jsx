@@ -15,6 +15,7 @@ const ICONE = {
   nota: 'M5 4h10l4 4v12H5zM15 4v4h4M8.5 12.5h7M8.5 16h5',
   documento: 'M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z',
   password: 'M7 10.5V7.5a5 5 0 0 1 10 0v3M5 10.5h14v10H5zM12 14.5v2.5',
+  pdf: 'M6 3h8l4 4v14H6zM14 3v4h4M8.5 17.5c1.5-2 2.5-4.5 3-6 .5 2 1.5 3.5 3.5 4',
 };
 export const IconaCrea = ({ n }) => <svg viewBox="0 0 24 24" aria-hidden="true"><path d={ICONE[n] || ICONE.nota} /></svg>;
 
