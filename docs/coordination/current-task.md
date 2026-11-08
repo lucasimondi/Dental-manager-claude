@@ -1,3 +1,10 @@
+# Current task — STUDIO-BENTO (2026-11-08)
+- OWNER Claude Code; branch `ccr-4ac3e51d-studio-bento` from master 203a964 (PR289 merged).
+- AUTHORIZATION PO 2026-11-08: "i tasti studio e personale portano ad un elenco… rendi graficamente più bello… fammi vedere prima un mockup"; after the mockup artifact (A grid, B bento, C home icons): "B va bene, applicala a Studio e Per te".
+- SCOPE (phone, presentation only): shared AltroPage supports per-item `taglia` (grande / alta / media / piccola / pulsante) and `sotto`; consecutive sizes are grouped by `shared/altro/bento.js` (two columns, three columns, row of buttons); search falls back to the row list. Studio page: Pazienti large, Incassi and Preventivi medium, Piani/Richiami/Spese/Controllo/Listino/Attività small, others as buttons. Per te (Studio and Personal): Spese e pagamenti large, Documenti personali tall, Foto and Note medium, Diario/Pratiche/Biblioteca small, Password and Oggi buttons. No data change.
+- VALIDATION 1613/1613 Node tests; Chromium 390×844 renders of Studio and Per te (light/dark), no horizontal overflow.
+- STATUS PR open; task-specific "Mergia" required.
+
 # Current task — DOCK-PER-TE passo 4 (2026-11-08)
 - OWNER Claude Code; branch `ccr-4ac3e51d-dock-per-te-4` (on top of step 3, PR288).
 - AUTHORIZATION PO 2026-11-08: "Mergia e vai di 4" (step 4 of DOCK-PER-TE, Master Context §9: cleaner graphics).
