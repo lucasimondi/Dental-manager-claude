@@ -543,11 +543,13 @@ test('TOUCH CONTRACT: every interactive element this round adds or restyles is a
 });
 
 test('DOCK: structure, order, destinations and geometry are unchanged; only the active state gained contrast', () => {
-  assert.match(dockSrc, /\{ id: 'home', label: 'Home', icon: 'home' \}/);
+  // HOME-AGENDA-CENTRIC (PO 2026-11-07): dock Agenda · Note · Poliedron · Documenti · Personal;
+  // Chat resta raggiungibile da campanella e pannello Poliedron, Pazienti e Home dalla ricerca.
   assert.match(dockSrc, /\{ id: 'agenda', label: 'Agenda', icon: 'cal' \}/);
+  assert.match(dockSrc, /\{ id: 'note', label: 'Note', icon: 'edit' \}/);
   assert.match(dockSrc, /\{ id: '__poliedron__', label: 'Poliedron', icon: null \}/);
-  assert.match(dockSrc, /\{ id: 'paz', label: 'Pazienti', icon: 'pz' \}/);
-  assert.match(dockSrc, /\{ id: 'chat', label: 'Chat', icon: 'chat' \}/);
+  assert.match(dockSrc, /\{ id: 'archivio', label: 'Documenti', icon: 'folder' \}/);
+  assert.match(dockSrc, /\{ id: '__personal__', label: 'Personal', icon: 'home' \}/);
   assert.doesNotMatch(dockSrc, /id: 'set'/, 'Impostazioni must not come back to the dock');
   // Geometry constants untouched.
   assert.equal(MOBILE_DOCK_BOTTOM, 16);

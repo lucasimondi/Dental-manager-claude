@@ -4436,6 +4436,78 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - EXACT NEXT ACTION: PO review on preview; PR only on request; task-specific "Mergia".
 - FOLLOW-UP PO "Le radici dei superiori vanno rivolte verso alto": PatientDentalOverview ToothGlyph mirrors Q1/Q2 glyphs vertically (roots up, crown toward occlusal plane); lower arch unchanged. 1549/1549 tests; synthetic 375px screenshot checked.
 
+## 2026-11-06 — HOME-AGENDA-CENTRIC
+- TASK/OWNER/previous agent: HOME-AGENDA-CENTRIC, Claude Code; previous AGENDA-RESTYLING-PALETTE merged PR273 (b62e2eb). Branch ccr-4fbd3db0-8ou289.
+- OBJECTIVE: first step of the PO-requested professional restyling: agenda-centric Home, green as leading color, Poliedron search bar and Agenda button in the header, only essential information.
+- COMPLETED: src/lib/homeToday.js (pure: today's non-cancelled appointments, past/now/future, current/next, per-chair columns with existing layoutAppointments packing, whole-hour range; isHomeTodayWidget). src/components/HomeToday.jsx/.css (day grid, now line, density-aware blocks, empty state, "In poltrona ora" with APPOINTMENT_PATIENT_ACTIONS, side column). Dashboard: header search launcher (onOpenSearch), Agenda and + Appuntamento buttons, HomeToday wraps the existing attention section and Poliedron entry; visible/catalog widgets filtered with isHomeTodayWidget (agenda, quick_actions, management_control hidden; saved layout unchanged). App: onPatientAction=openAppointmentPatientAction, poliedronSearchRequest -> Poliedron `searchRequest` (opens the existing panel with empty query, no patient context). Synthetic visual fixture tests/visual/home.* and npm script test:home:visual.
+- FILES: src/lib/homeToday.js, src/components/HomeToday.jsx, src/components/HomeToday.css, src/components/Dashboard.jsx, src/App.jsx, src/components/poliedron/Poliedron.jsx, tests/homeToday.test.mjs, tests/visual/home.{html,fixture.jsx,mjs}, package.json, coordination docs, master context note.
+- DATABASE/DEPLOYMENT: none. Chairs read with the existing Agenda query (poltrone, studio_id, attivo) under existing RLS, only when multi_operatore is on. No writes. Stable 070b28fd checkpoint untouched.
+- VALIDATION: 1558/1558 Node tests (7 new); Studio and Personal Vite builds; diff check clean; tests/visual/home.mjs pass on Chromium (PW_CHROMIUM=/opt/pw-browsers/chromium here) at 375/768/1024/1440 light/dark.
+- RISKS/LIMITS: green is scoped to the Home; inline C.pri blue remains in the lower widgets, attention rows and the rest of the app until the global step. "Azioni rapide" tab in Personalizza Home still configures a widget the Home no longer shows. Header search opens the Poliedron panel (typing happens there). Studios that relied on financial widgets in Home now find them only in Controllo di gestione. No physical device test; WebKit not run for the new fixture.
+- ROLLBACK: revert the branch commit; no data rollback (layouts untouched).
+- EXACT NEXT ACTION: PO visual check on preview; PR only on request; task-specific "Mergia". Then next step: green tokens and header across the app (C palette in src/lib/utils.js, designTokens.css, sidebar).
+
+## 2026-11-07 — AGENDA-MOBILE-SEARCH
+- TASK/OWNER/previous agent: AGENDA-MOBILE-SEARCH, Claude Code; continues HOME-AGENDA-CENTRIC on branch ccr-4fbd3db0-8ou289 (9f2a9b4).
+- OBJECTIVE: phone agenda identical in Studio and Personal with the Poliedron search on top and the days right under it; app switching from the dock instead of "Vai a ..." pills.
+- COMPLETED: shared/agenda AgendaSearchBar + `searchBar` slot in DayStrip (compact only) and MonthToolbar, glass styling in agenda.css mobile block. Studio Agenda.jsx: `onOpenSearch` prop, mobile search bar with a Personal icon link (agendaDestination), AgendaSwitch kept only when no search bar; App passes onOpenSearch -> poliedronSearchRequest. Personal AgendaGriglia: search bar opens ctx.vai('poliedron'), AgendaSwitch removed; App.jsx dock gains "Studio" link (IconaStudio), dock grids 5 -> 6 columns (personal.css, pro.css). Floating day events unchanged (still inside the overlay, grid scrolls beneath). Agenda fixture passes onOpenSearch.
+- FILES: shared/agenda/AgendaPresentation.jsx, shared/agenda/agenda.css, src/components/Agenda.jsx, src/App.jsx, personal/src/sezioni/agenda/AgendaGriglia.jsx, personal/src/App.jsx, personal/src/Icone.jsx, personal/src/personal.css, personal/src/pro.css, tests/homeToday.test.mjs, tests/personalAgenda.test.mjs, tests/personalCondividi.test.mjs, tests/sharedAgenda.test.mjs, tests/visual/agenda.fixture.jsx, coordination docs.
+- TESTS UPDATED (PO decision change, not weakened): personalCondividi now asserts no AgendaSwitch, search slot and Studio dock link; sharedAgenda requires AgendaSearchBar in both apps instead of AgendaSwitch; personalAgenda accepts the extra DayStrip prop.
+- DATABASE/DEPLOYMENT: none. Stable 070b28fd checkpoint untouched.
+- VALIDATION: 1559/1559 Node tests; both builds; diff check clean; synthetic Chromium phone render (see current-task). tests/visual/agenda.compare.mjs not run here (its baseline metrics include the removed pill and the overlay height grows by the search row; expect baseline refresh in CI). Win95 Personal theme has no pixel icon for "studio" (falls back to the default pixel drawing).
+- RISKS: overlay is taller by one row (~46px), so the first visible hour starts lower on phone; Personal dock now has six items (narrow phones use 9px labels at <=375px). Studio desktop unchanged.
+- ROLLBACK: revert this commit.
+- EXACT NEXT ACTION: PO check on phone; then limit the new Home to phone (desktop as before) and continue with the proposal items the PO confirms.
+
+## 2026-11-07 — AGENDA-MOBILE-IOS-STYLE
+- TASK/OWNER: follow-up of AGENDA-MOBILE-SEARCH on branch ccr-4fbd3db0-8ou289, Claude Code. PO: "Deve essere molto più bella, il layout deve essere da agenda creata da un designer della Apple".
+- COMPLETED (phone only, shared by Studio and Personal; desktop untouched): DayStrip wraps search, month and days in `.agenda-mobile-chrome`, one translucent material bar (blur 22px, hairline bottom) instead of separate glass pills; day events stay floating below it. iOS-like search field (filled grey, 36px, no border); large title month (28px bold) with year in system red; view picker and icon buttons without frames, tint colour; week strip without card, lowercase weekday labels, 32px day numbers, today = filled red circle with white number, selected = ink circle; grid hairlines lighter, no gutter border, now line system red; all-day chips 8px radius. Dark mode red/fill tokens.
+- FILES: shared/agenda/AgendaPresentation.jsx, shared/agenda/agenda.css, tests/mobileShell.test.mjs (today-style assertion updated to the PO decision).
+- VALIDATION: 1559/1559 Node tests; Studio and Personal builds; diff check clean; synthetic Chromium renders at 390px (Studio/Personal, day/week, light; header also checked in dark). agenda.compare.mjs baselines will need refresh in CI.
+- RISKS: appointment block style unchanged (PR273 filled blocks); the fixture grid stays light in dark mode because it uses a fixed palette (real app switches palette). No physical device test.
+- ROLLBACK: revert this commit.
+
+## 2026-11-07 — AGENDA-MOBILE-POLISH
+- TASK/OWNER: follow-up on branch ccr-4fbd3db0-8ou289, Claude Code. PO: organise space better, higher-level graphics, "incantevole", make me want to open and fill it.
+- COMPLETED (phone only, Studio + Personal): AppointmentBlock `soft` mode (tinted fill, 3px label bar, 8px radius, dark ink; name first, then time range and type; transparent resize grip), desktop keeps the filled block. New shared/agenda/summary.js `agendaSummary` and a DayStrip `subtitle` row under the month ("Venerdì 16 ottobre · 2 appuntamenti · 4 impegni" / week range; "giornata libera"). Now line shows a red time pill in day view. Studio passes soft={isMobile} and the summary from appointmentsAgenda + visible impegni; Personal passes soft and the summary from dati.
+- FILES: shared/agenda/{AgendaPresentation.jsx,agenda.css,summary.js}, src/components/Agenda.jsx, personal/src/sezioni/agenda/AgendaGriglia.jsx, tests/homeToday.test.mjs, tests/personalAgenda.test.mjs.
+- VALIDATION: 1561/1561 Node tests; both builds; diff check; synthetic Chromium renders (390px, clock 16/10 10:40) Studio/Personal day/week.
+- RISKS: summary counts appointments (not distinct patients) and multi-day events once per range; week-view all-day chips in narrow columns still wrap per letter (pre-existing); no device test.
+- ROLLBACK: revert this commit.
+
+## 2026-11-08 — AGENDA-CENTRIC-PHONE (PR)
+- TASK/OWNER/previous agent: AGENDA-CENTRIC-PHONE, Claude Code; branch ccr-4fbd3db0-8ou289 from master b62e2eb (PR273 merged).
+- OBJECTIVE: PO-approved phone redesign: agenda as Home, same agenda in Studio and Personal, new dock, Note section; desktop unchanged.
+- COMPLETED: Home "Oggi" (HomeToday) removed and Dashboard restored to master. Agenda (shared): search bar slot, iOS chrome, soft blocks, now pill, week strip in day view, floating day events with week one-line chips (max 2 + "+N"). Studio Agenda: no FAB on phone; free-slot tap opens a chooser (Appuntamento paziente / Impegno at that time; follow-up booking keeps the direct flow); Personal agenda: no FAB (slot tap already opens the event). Studio dock: agenda, note, poliedron, archivio (paz when plan lacks archive), __personal__ link. Personal dock: agenda, note | Poliedron | documenti, Studio link, Altro; Oggi listed in Altro. Note: migration `note_personali` (owner-only within studio from JWT, patient link same studio, fixed author/studio, delete own), shared/note (note.js, NotePage.jsx, note.css), Studio page 'note' + NAV + search aliases, Personal section 'note' using studioDb session.
+- FILES: shared/agenda/{AgendaPresentation.jsx,DayEvents.jsx,agenda.css}, shared/note/*, src/App.jsx, src/components/Agenda.jsx, src/components/poliedron/{Poliedron.jsx,PoliedronMobileDock.jsx}, src/lib/utils.js, src/lib/poliedron/navigationIndex.js, personal/src/{App.jsx,Icone.jsx,personal.css,pro.css}, personal/src/sezioni/{index.js,agenda/index.jsx,agenda/AgendaGriglia.jsx,altro/index.jsx,note/*}, supabase/migrations/20261107120000_note_personali.sql, tests (agendaMobile, noteShared, notePersonaliDatabase, plus updated dock/agenda tests), tests/visual/{agenda.fixture.jsx,note.*}, docs.
+- TESTS UPDATED to PO decisions (not weakened): dock order/ids (dashboardPremiumV2, mobileHomeRound2, poliedronAdaptive, poliedronChat, poliedronChatSurfaces: Chat still reachable via bell/panel and still a single page), Personal dock/sections (personalConti, personalSezioni), agenda today style and DayStrip signature (mobileShell, personalAgenda), "Vai a Studio" removal (personalCondividi, sharedAgenda).
+- DATABASE: new migration only in repo; not applied remotely; RLS verified in isolated PGlite with two studios and two users. No production data read or written.
+- VALIDATION: 1560/1560 Node tests; Studio + Personal builds; diff check; synthetic Chromium renders. agenda.compare/reliability visual baselines not refreshed here.
+- RISKS: until migration is applied the Note page shows the "aggiornamento del database" message; Home/Pazienti/Chat no longer in the Studio phone dock (search/bell/panel reach them); Personal dock has six slots; Poliedron centre is not yet voice-first; no physical device test.
+- ROLLBACK: revert the PR; the migration can be left unapplied or dropped (table only, no dependencies).
+- EXACT NEXT ACTION: PR checks green -> PO task-specific "Mergia" -> squash merge -> apply the note_personali migration in the controlled release -> verify Vercel production.
+
+## 2026-11-08 — AGENDA-CENTRIC-PHONE (merged)
+- PR274 squash-merged after task-specific PO "Mergia" and green checks; merge commit 1dc7bbf on master.
+- Before merge: iphone-agenda failed on visual tests still expecting the phone + button, the old header and "Vai a Studio"; fixed in-branch (appointment-workspace tap-a-slot on phone and Nuovo from 720px; agenda.compare authorises only the new header, removed +/switch and fixed dock/orb, and compares the rest of the month shifted by the header growth with a 1px/32-of-255 tolerance for re-rasterised corners; agenda.reliability checks the search bar as top control). PO follow-up applied: Studio appointments stay filled; only personal events keep the transparent tone.
+- Production: Vercel deployment dpl_G9YGSrD8tzfHu3WcyYMvgi3hqiVL READY for 1dc7bbf. Migration note_personali applied to DentalManager (idklxdqebfceplrualgh); table empty, RLS on, owner-only policies; advisors show only pre-existing findings.
+- NEXT: PO check on phone (agenda, dock, Note); then voice-first Poliedron at the dock centre, Documenti redesign, green across the app.
+
+## 2026-11-08 — AGENDA-PHONE-FIXES
+- Done: week view from dock/app links; chrome z-index above floating events; fitToVisualViewport in Modal (restores the original inset when the keyboard closes); Studio appointment labels filled + LabelSwatches; tests/agendaSettimanaEtichette.test.mjs; mobileShell regex accepts min(100%, calc(100dvh …)).
+- Next: PO answer on inline acting search and single agenda; not verified on a real iPhone keyboard (only synthetic Chromium).
+
+## 2026-11-08 — AGENDA-UNICA-RICERCA
+- Done: agenda "Tutto" by default in Studio and Personal; password registry (table + RLS + PGlite test + shared page, both apps); shared/ricerca engine + RicercaAgenda wired via `ricerca` prop (Studio App.jsx `ricercaAgenda`) and `fonteRicerca` (Personal useFonteRicerca); Personal chat exit button and prefilled question; tests ricercaAgenda, passwordShared, passwordPersonaliDatabase; visual agenda.ricerca in CI.
+- Next: after "Mergia", apply migration 20261108120000 with apply_migration and check advisors; real-device check of the bar with the iPhone keyboard.
+
+## 2026-11-08 — DOCUMENTI-STUDIO
+- Done: migration 20261108130000_documenti_studio.sql (+ tests/documentiStudioDatabase.test.mjs), src/lib/documentiStudio.js, src/components/AcquisisciDocumento.jsx, ArchivioDocs integration, agenda-bar document search and acquisition in Studio.
+- Next: merge PR after green checks; apply 20261108120000 and 20261108130000 to production; security advisors.
+
+## 2026-11-08 — PR275 merged
+- Merge commit 0fdb64f; production deploy READY; migrations 20261108120000 and 20261108130000 applied; advisors clean for new objects.
+- Open: real-iPhone check of the agenda bar and of the acquisition flow.
 ## 2026-11-08 — POLIEDRON-COMANDI-SENZA-AI
 - TASK/OWNER/previous agent: POLIEDRON-COMANDI-SENZA-AI, Claude Code; previous AGENDA-RESTYLING-PALETTE merged PR273 (b62e2eb). Branch ccr-873bf8b7-n86ati.
 - OBJECTIVE: Poliedron (Personal and Studio) independent from the external AI for simple commands; stop the repeated "AI non in funzione" answers.

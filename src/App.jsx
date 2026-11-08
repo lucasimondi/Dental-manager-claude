@@ -59,6 +59,9 @@ import RouteErrorBoundary from './components/RouteErrorBoundary.jsx';
 import { lazyWithRetry } from './lib/lazyWithRetry.js';
 import { resolveFarmaciPreferiti } from './lib/farmaciPreferiti.js';
 const Dashboard = lazyWithRetry(() => import('./components/Dashboard.jsx'), 'Dashboard');
+const NotePage = lazyWithRetry(() => import('../shared/note/NotePage.jsx'), 'NotePage');
+const PasswordPage = lazyWithRetry(() => import('../shared/password/PasswordPage.jsx'), 'PasswordPage');
+const AcquisisciDocumento = lazyWithRetry(() => import('./components/AcquisisciDocumento.jsx'), 'AcquisisciDocumento');
 const ControlloGestione = lazyWithRetry(() => import('./components/ControlloGestione.jsx'), 'ControlloGestione');
 const PoliedronHub = lazyWithRetry(() => import('./components/PoliedronHub.jsx'), 'PoliedronHub');
 const FinancialWorkspace = lazyWithRetry(() => import('./components/FinancialWorkspace.jsx'), 'FinancialWorkspace');
@@ -86,6 +89,9 @@ export default function App() {
   // Poliedron app: a page asked for while studio data is still loading.
   const [pendingPage, setPendingPage] = useState(null);
   const [page, setPage] = useState(() => readAgendaLocation().requested ? 'agenda' : phoneApp ? 'chat' : 'agenda');
+  const [passwordQuery, setPasswordQuery] = useState(''); // ricerca agenda → registro password
+  const [acquisisciAperto, setAcquisisciAperto] = useState(false); // DOCUMENTI-STUDIO
+  const ultimi = useRef({});
   // Start downloading the landing calendar during authentication/data loading.
   // Leave failures to lazyWithRetry when the route actually renders.
   useEffect(() => {
@@ -148,6 +154,8 @@ export default function App() {
   // already used for activityPatientRequest below.
   const [openHomeCustomizerRequest, setOpenHomeCustomizerRequest] = useState(null);
   const [quickHubPoliedronRequest, setQuickHubPoliedronRequest] = useState(null);
+  // HOME-AGENDA-CENTRIC: la barra di ricerca della Home apre Poliedron.
+  const [poliedronSearchRequest, setPoliedronSearchRequest] = useState(null);
   const [poliedronChatHost, setPoliedronChatHost] = useState(null);
   // POL-AI-002A §20 — set by Poliedron's direct "ric"/"fat"/"doc" commands
   // so ArchivioDocs opens already filtered instead of on its unfiltered
@@ -670,6 +678,30 @@ export default function App() {
     window.location.reload();
   };
 
+  // RICERCA-AGENDA (PO 2026-11-08): la barra dell'agenda cerca e agisce sul posto.
+  const studioIdSessione = session?.user?.app_metadata?.studio_id;
+  const archivioAttivo = !!features?.archivio_documenti;
+  const ricercaAgenda = useMemo(() => ({
+    db: supabase, studioId: studioIdSessione,
+    apriNote: () => setPage('note'), apriNota: () => setPage('note'),
+    apriPassword: (q) => { setPasswordQuery(q || ''); setPage('password'); },
+    ...(archivioAttivo ? { apriDocumenti: () => setPage('archivio') } : {}),
+    // DOCUMENTI-STUDIO (PO 2026-11-08): acquisire e cercare documenti anche in Studio.
+    acquisisci: () => setAcquisisciAperto(true),
+    cercaDocumenti: async (q) => {
+      const { cercaDocumentiStudio, apriFileDocumento } = await import('./lib/documentiStudio.js');
+      return (await cercaDocumentiStudio(supabase, q, 6)).map((d) => ({
+        id: `${d.tabella}-${d.id}`, titolo: d.titolo, sottotitolo: [d.paziente_nome, d.data ? new Date(`${d.data}T12:00`).toLocaleDateString('it-IT') : ''].filter(Boolean).join(' · '),
+        apri: () => {
+          if (d.tabella === 'documenti_studio') { apriFileDocumento(supabase, d.file_path).catch(() => {}); return; }
+          const paziente = ultimi.current.patients?.find((x) => x.id === d.paziente_id);
+          if (archivioAttivo || !paziente) setPage('archivio'); else ultimi.current.goSchedaPaz?.(paziente, 'doc');
+        },
+      }));
+    },
+    chiediPoliedron: (command) => setQuickHubPoliedronRequest({ id: requestId(), command }),
+  }), [studioIdSessione, archivioAttivo]);
+  ultimi.current = { patients, goSchedaPaz: (p, tab) => goSchedaPaz(p, tab) };
   if (session === undefined) return <LoadingScreen />;
   if (session === null) return <LoginScreen onLogin={() => {}} brand={phoneApp ? 'Poliedron' : 'Poliedra'} />;
   // The Poliedron app opens on the chat at once (WhatsApp style); studio data
@@ -899,13 +931,16 @@ export default function App() {
             )}
             {(page === 'paga' || page === 'incassi') && <FinancialWorkspace studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} payments={payments} pricelist={pricelist} setPlans={setPlansSync} setPayments={setPaymentsSync} onOpenPaz={goSchedaPaz} autoOpenNew={autoOpenNew === 'paga'} autoOpenNewPrefill={autoOpenNew === 'paga' ? autoOpenNewPrefill : null} onAutoOpenNewHandled={() => { setAutoOpenNew(null); setAutoOpenNewPrefill(null); }} />}
             {page === 'listino' && <Listino pricelist={pricelist} setPricelist={setPricelistSync} si={studioInfo} />}
-            {page === 'agenda' && <Agenda plans={plans} pricelist={pricelist} onSaveBookingTreatment={async args=>{const {persistBookingTreatment}=await import('./lib/appointmentEntry.js');return persistBookingTreatment({db:DB,...args,onApplied:row=>setPlans(current=>current.some(p=>String(p.id)===String(row.id))?current.map(p=>String(p.id)===String(row.id)?row:p):[...current,row])});}} followUpRequest={patientAgendaRequest} onBookFollowUp={bookPatientFromAgenda} onCancelFollowUp={restorePatientFromAgenda} onPatientAction={openAppointmentPatientAction} renderAppointmentWorkspace={(patient, appointment, onClose, onBusyChange) => <Suspense fallback={<p role="status">Caricamento appuntamento…</p>}><AppointmentWorkspace key={appointment.id} patient={patient} appointment={appointment} plans={plans} payments={payments} onSave={async (draft) => { const { persistAppointmentEntry } = await import('./lib/appointmentEntry.js'); return persistAppointmentEntry({ db: DB, patient, appointment, draft, onApplied: (kind, row) => { const setter = kind === 'plan' ? setPlans : setPayments; setter(current => current.some(item => String(item.id) === String(row.id)) ? current.map(item => String(item.id) === String(row.id) ? row : item) : [...current, row]); } }); }} pricelist={pricelist} templates={templates} si={studioInfo} features={features} onClose={onClose} onBusyChange={onBusyChange} /></Suspense>} patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} onOpenPatient={(patient) => goSchedaPaz(patient, 'info')} onOpenRecall={openQuickHubRecall} onOpenActivity={openQuickHubActivity} onPoliedronCommand={openQuickHubPoliedron} />}
+            {page === 'agenda' && <Agenda plans={plans} pricelist={pricelist} onSaveBookingTreatment={async args=>{const {persistBookingTreatment}=await import('./lib/appointmentEntry.js');return persistBookingTreatment({db:DB,...args,onApplied:row=>setPlans(current=>current.some(p=>String(p.id)===String(row.id))?current.map(p=>String(p.id)===String(row.id)?row:p):[...current,row])});}} followUpRequest={patientAgendaRequest} onBookFollowUp={bookPatientFromAgenda} onCancelFollowUp={restorePatientFromAgenda} onPatientAction={openAppointmentPatientAction} renderAppointmentWorkspace={(patient, appointment, onClose, onBusyChange) => <Suspense fallback={<p role="status">Caricamento appuntamento…</p>}><AppointmentWorkspace key={appointment.id} patient={patient} appointment={appointment} plans={plans} payments={payments} onSave={async (draft) => { const { persistAppointmentEntry } = await import('./lib/appointmentEntry.js'); return persistAppointmentEntry({ db: DB, patient, appointment, draft, onApplied: (kind, row) => { const setter = kind === 'plan' ? setPlans : setPayments; setter(current => current.some(item => String(item.id) === String(row.id)) ? current.map(item => String(item.id) === String(row.id) ? row : item) : [...current, row]); } }); }} pricelist={pricelist} templates={templates} si={studioInfo} features={features} onClose={onClose} onBusyChange={onBusyChange} /></Suspense>} patients={patients} setPatients={setPatientsSync} appointments={appointments} setAppointments={setAppointmentsSync} appTypes={appTypes} initPazienteId={agendaInitPaz} onClearInitPaz={() => setAgendaInitPaz(null)} templates={templates} userName={userName} features={features} impegni={impegni} setImpegni={setImpegniSync} si={studioInfo} setStudioInfo={setStudioInfoSync} onOpenPatient={(patient) => goSchedaPaz(patient, 'info')} onOpenRecall={openQuickHubRecall} onOpenActivity={openQuickHubActivity} onPoliedronCommand={openQuickHubPoliedron} onOpenSearch={() => setPoliedronSearchRequest({ id: requestId() })} ricerca={ricercaAgenda} />}
             {page === 'richiami' && <Richiami patients={patients} plans={plans} payments={payments} appointments={appointments} richiami={richiami} setRichiami={setRichiamiSync} templates={templates} features={features} onOpenPaz={goSchedaPaz} si={studioInfo} autoOpenNew={autoOpenNew === 'richiami'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} initialPatientRequest={quickHubRecallRequest} onInitialPatientRequestHandled={(id) => setQuickHubRecallRequest((current) => current?.id === id ? null : current)} />}
             {page === 'attivita' && <Attivita patients={patients} onOpenPaz={goSchedaPaz} richiami={richiami} setRichiami={setRichiamiSync} plans={plans} payments={payments} appointments={appointments} templates={templates} features={features} si={studioInfo} />}
             {page === 'spese' && <Spese studioId={session?.user?.app_metadata?.studio_id} patients={patients} autoOpenNew={autoOpenNew === 'spese'} onAutoOpenNewHandled={() => setAutoOpenNew(null)} />}
             {page === 'controllo' && <ControlloGestione studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} setPlans={setPlansSync} payments={payments} setPayments={setPaymentsSync} appointments={appointments} pricelist={pricelist} onOpenPaz={goSchedaPaz} isDentistico={!studioInfo?.vertical || studioInfo.vertical === 'dentistico'} />}
             {page === 'poliedron' && <PoliedronHub patients={patients} plans={plans} appointments={appointments} payments={payments} implants={implants} studioId={session?.user?.app_metadata?.studio_id} isStudioAdmin={isStudioAdmin} features={features} studioMembership={studioMembership} si={studioInfo} onOpenPaz={goSchedaPaz} onNavigate={setPage} />}
-            {page === 'archivio' && <ArchivioDocs patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} initialFiltroTipo={archivioFiltroTipoHint} />}
+            {page === 'archivio' && <ArchivioDocs studioId={session?.user?.app_metadata?.studio_id} patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} initialFiltroTipo={archivioFiltroTipoHint} />}
+            {page === 'note' && <NotePage db={supabase} studioId={session?.user?.app_metadata?.studio_id} />}
+            {acquisisciAperto && <Suspense fallback={null}><AcquisisciDocumento db={supabase} studioId={session?.user?.app_metadata?.studio_id} patients={patients} onClose={() => setAcquisisciAperto(false)} /></Suspense>}
+            {page === 'password' && <PasswordPage db={supabase} studioId={session?.user?.app_metadata?.studio_id} cercaIniziale={passwordQuery} />}
             {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
             {page === 'agenteai' && <AgenteAISetup features={features} />}
             {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} isStudioAdmin={isStudioAdmin} isSuperAdmin={isSuperAdmin} onLogout={handleLogout} onCheckUpdate={checkForUpdate} onOpenHomeCustomizer={() => { setPage('home'); setOpenHomeCustomizerRequest(Date.now()); }} studioMembership={studioMembership} />}
@@ -971,6 +1006,8 @@ export default function App() {
         supabaseClient={supabase}
         externalCommandRequest={quickHubPoliedronRequest}
         onExternalCommandHandled={(id) => setQuickHubPoliedronRequest((current) => current?.id === id ? null : current)}
+        searchRequest={poliedronSearchRequest}
+        onSearchRequestHandled={(id) => setPoliedronSearchRequest((current) => current?.id === id ? null : current)}
         chatHost={poliedronChatHost}
       />
       {poliedronBookingOpen && (

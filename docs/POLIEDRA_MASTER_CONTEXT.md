@@ -211,6 +211,8 @@ Stile:
 
 Evitare UI crypto, colori casuali ed effetti pesanti.
 
+Aggiornamento Product Owner 2026-11-07 (AGENDA-CENTRICA SU TELEFONO): il software è agenda-centrico e su telefono l'agenda è la Home. L'agenda di Studio e di Personal è la stessa, in stile iOS: barra di ricerca Poliedron in cima, poi mese e anno, poi i giorni; impegni giornalieri flottanti; niente tasto +, si crea toccando un orario. Dock uguale nelle due app: Agenda · Note · Poliedron · Documenti · l'altra app. Il computer resta com'era. Il verde come colore guida resta una direzione da applicare al resto dell'app in un passo dedicato.
+
 Serve un design system condiviso con primitive coerenti per PageShell, PageHeader, SectionCard, StatCard, button, Tabs, FormSection, EmptyState, Modal/Drawer, DataCard e Toolbar.
 
 Pagine prioritarie da uniformare:

@@ -32,7 +32,7 @@ export function ViewPicker({ view, setView, touchSafe = false, palette: C = DEFA
           {['giorno', 'settimana', 'settimana_lavoro', 'mese'].map((v) => (
             <button key={v} onClick={() => { setView(v); setOpen(false); }} style={{ display: 'block', width: '100%', padding: '9px 12px', border: 'none', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', textAlign: 'left', background: view === v ? C.priL : 'transparent', color: view === v ? C.pri : C.txt }}>{LABEL[v]}</button>
           ))}
-          {onToggleHidden && (hiddenCount > 0 || showHidden) && <button onClick={() => { onToggleHidden(); setOpen(false); }} aria-label="Mostra eventi esclusi da questa agenda" aria-pressed={showHidden} style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 8, padding: '12px', border: 'none', borderTop: `1px solid ${C.brd}`, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', textAlign: 'left', background: showHidden ? C.priL : 'transparent', color: C.txt }}><span aria-hidden="true">{showHidden ? '✓' : '○'}</span>Eventi nascosti{hiddenCount > 0 && <span style={{ marginLeft: 'auto', color: C.pri }}>{hiddenCount}</span>}</button>}
+          {onToggleHidden && (hiddenCount > 0 || showHidden) && <button onClick={() => { onToggleHidden(); setOpen(false); }} aria-label="Mostra tutto: Studio e Personal" aria-pressed={showHidden} style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 8, padding: '12px', border: 'none', borderTop: `1px solid ${C.brd}`, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', textAlign: 'left', background: showHidden ? C.priL : 'transparent', color: C.txt }}><span aria-hidden="true">{showHidden ? '✓' : '○'}</span>Tutto (Studio e Personal){hiddenCount > 0 && <span style={{ marginLeft: 'auto', color: C.pri }}>{hiddenCount}</span>}</button>}
           {onToggleWeekends && <button onClick={() => { onToggleWeekends(); setOpen(false); }} aria-pressed={weekendsHidden} style={{ display: 'block', width: '100%', padding: '9px 12px', border: 'none', borderTop: `1px solid ${C.brd}`, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', textAlign: 'left', background: weekendsHidden ? C.priL : 'transparent', color: weekendsHidden ? C.pri : C.txt }}>{weekendsHidden ? 'Mostra sabato e domenica' : 'Nascondi sabato e domenica'}</button>}
         </div>
       )}
@@ -40,7 +40,7 @@ export function ViewPicker({ view, setView, touchSafe = false, palette: C = DEFA
   );
 }
 
-export function DayStrip({ palette: C = DEFAULT_PALETTE, selDay, setSelDay, today: t, onWeekChange, highlightSelected = true, viewPicker, compact, oraColW, onPrevWeek, onNextWeek, hiddenWeekdays = [], singleDay = false, overlayRef, floatingFooter, shortMonth = false }) {
+export function DayStrip({ palette: C = DEFAULT_PALETTE, selDay, setSelDay, today: t, onWeekChange, highlightSelected = true, viewPicker, compact, oraColW, onPrevWeek, onNextWeek, hiddenWeekdays = [], singleDay = false, overlayRef, floatingFooter, shortMonth = false, searchBar = null }) {
   const scrollRef = useRef(null);
   const [stripBaseWeek, setStripBaseWeek] = useState(() => toISO(startOfWeek(selDay)));
   const settleTimer = useRef(null);
@@ -103,6 +103,10 @@ export function DayStrip({ palette: C = DEFAULT_PALETTE, selDay, setSelDay, toda
   const circleD = compact ? 25 : 30;
   return (
     <div ref={overlayRef} className={compact ? 'agenda-mobile-floating-controls' : undefined} style={{ flexShrink: 0 }}>
+      {/* HOME-AGENDA-CENTRIC: su telefono ricerca, mese e giorni formano un'unica barra
+          traslucida (stile iOS); gli impegni del giorno restano flottanti sotto. */}
+      <div className={compact ? 'agenda-mobile-chrome' : undefined}>
+      {compact && searchBar}
       <div className={compact ? 'agenda-mobile-floating-toolbar' : undefined} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: compact ? '0 4px 4px' : '0 4px 6px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {/* POL-UI-006: controlli espliciti settimana precedente/successiva
@@ -115,7 +119,9 @@ export function DayStrip({ palette: C = DEFAULT_PALETTE, selDay, setSelDay, toda
           {!compact && onPrevWeek && (
             <button onClick={onPrevWeek} aria-label="Settimana precedente" style={{ background: C.bg, border: 'none', borderRadius: 7, width: 26, height: 26, cursor: 'pointer', fontSize: 15, color: C.txm, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>‹</button>
           )}
-          <span className={compact ? 'agenda-mobile-floating-month' : undefined} style={{ fontSize: 13, fontWeight: 800, color: C.txt, textTransform: 'capitalize', ...(shortMonth ? { whiteSpace: 'nowrap', flexShrink: 0 } : {}) }}>{meseLabel}</span>
+          <span className={compact ? 'agenda-mobile-floating-month' : undefined} style={{ fontSize: 13, fontWeight: 800, color: C.txt, textTransform: 'capitalize', ...(shortMonth ? { whiteSpace: 'nowrap', flexShrink: 0 } : {}) }}>{compact && wkMonStart.getMonth() === wkMonEnd.getMonth()
+            ? <><span className="agenda-month-name">{MESI[wkMonStart.getMonth()]}</span> <span className="agenda-month-year">{wkMonStart.getFullYear()}</span></>
+            : meseLabel}</span>
           {!compact && onNextWeek && (
             <button onClick={onNextWeek} aria-label="Settimana successiva" style={{ background: C.bg, border: 'none', borderRadius: 7, width: 26, height: 26, cursor: 'pointer', fontSize: 15, color: C.txm, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>›</button>
           )}
@@ -149,6 +155,7 @@ export function DayStrip({ palette: C = DEFAULT_PALETTE, selDay, setSelDay, toda
             </div>
           ))}
         </div>
+      </div>
       </div>
       {floatingFooter}
     </div>
@@ -202,6 +209,7 @@ export function TimeGrid({ palette: C = DEFAULT_PALETTE, containerRef, isMobile,
                 {isToday && showNowLine && (
                   <div className="agenda-now-line" style={{ position: 'absolute', top: nowTop - 1, left: 0, right: 0, height: 2, background: '#D93A2B', zIndex: 5, pointerEvents: 'none' }}>
                     <div style={{ position: 'absolute', left: -5, top: -4, width: 10, height: 10, borderRadius: '50%', background: '#D93A2B' }} />
+                    {isMobile && days.length === 1 && <span className="agenda-now-pill">{new Date().toTimeString().slice(0, 5)}</span>}
                   </div>
                 )}
                 {renderDay(ds, di)}
@@ -307,7 +315,10 @@ export function EventBlock({ title, top, height, co, onClick, startTime, descrip
 export function AppointmentBlock({ a, label, aCapo = false, co, top, height, col = 0, totalCols = 1, isBeingResized = false, isBeingMoved = false, selectionMode: selModeWA = false, selectable: isSelezionabileWA = false, selected: isSelected = false, operatore, poltrona, onMoveMouse, onMoveTouch, onOpen, onResizeMouse, onResizeTouch, selectionIndicator, readOnly = false, touchScroll = false }) {
   const widthPct = 100 / totalCols, leftPct = col * widthPct;
   const dense = aCapo && totalCols > 1;
+  // PO 2026-11-08: gli appuntamenti dello studio restano blocchi pieni (più "pro"); solo gli
+  // impegni personali (EventBlock) usano la tinta trasparente.
   const fill = labelColor(co), ink = labelOn(fill), inkSoft = ink === '#FFFFFF' ? 'rgba(255,255,255,0.88)' : 'rgba(27,27,31,0.78)';
+  const timeRange = (() => { const [h, m] = String(a.ora || '00:00').split(':').map(Number); const fine = ((h || 0) * 60 + (m || 0) + Number(a.durata || 0)) % (24 * 60); return `${String(h || 0).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}–${String(Math.floor(fine / 60)).padStart(2, '0')}:${String(fine % 60).padStart(2, '0')}`; })();
   return (                    <div title={[a.ora, label, a.tipo].filter(Boolean).join(' · ')} data-appointment-id={a.id} onClick={readOnly || touchScroll ? onOpen : undefined} style={{ position: 'absolute', top, left: `calc(${leftPct}% + 2px)`, width: `calc(${widthPct}% - 4px)`, height, background: fill, borderRadius: 6, overflow: 'hidden', zIndex: isBeingResized || isBeingMoved ? 10 : 2, boxShadow: isBeingResized || isBeingMoved ? '0 6px 16px rgba(0,0,0,0.35)' : '0 0 0 1px var(--agenda-ring, #fff)', userSelect: 'none', opacity: isBeingMoved ? 0.85 : (selModeWA && !isSelezionabileWA ? 0.35 : 1), outline: isSelected ? '2.5px solid #25D366' : 'none', outlineOffset: -1 }}>
                       {/* Contenuto appuntamento — in modalità selezione tocca per selezionare/deselezionare;
                           altrimenti trascina per spostare l'orario, tocca/clicca senza muovere per aprire il menu azioni */}
@@ -323,7 +334,7 @@ export function AppointmentBlock({ a, label, aCapo = false, co, top, height, col
                         {poltrona && !selModeWA && (
                           <div title={poltrona.nome} style={{ position: 'absolute', top: 3, right: operatore ? 13 : 3, width: 7, height: 7, borderRadius: 2, background: poltrona.colore, border: '1px solid rgba(255,255,255,0.8)' }} />
                         )}
-                        <div style={{ fontSize: dense ? 8.5 : 10, lineHeight: '12px', fontWeight: 600, color: ink, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(() => { const [h, m] = String(a.ora || '00:00').split(':').map(Number); const fine = ((h || 0) * 60 + (m || 0) + Number(a.durata || 0)) % (24 * 60); return `${String(h || 0).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}–${String(Math.floor(fine / 60)).padStart(2, '0')}:${String(fine % 60).padStart(2, '0')}`; })()}</div>
+                        <div style={{ fontSize: dense ? 8.5 : 10, lineHeight: '12px', fontWeight: 600, color: ink, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{timeRange}</div>
                         {height > 18 && <div style={{ fontSize: dense ? 9 : 10.5, lineHeight: '12px', fontWeight: 600, color: ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label || a.tipo || 'Appuntamento'}</div>}
                         {height > 44 && a.tipo && a.tipo !== label && <div style={{ fontSize: 9.5, lineHeight: '12px', color: inkSoft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.tipo}</div>}
                       </div>
@@ -373,6 +384,18 @@ export function useSlotHeight(containerRef, isMobile, slots, slotH, resetKey) {
   return effectiveSlotH;
 }
 
+// Barra di ricerca in cima all'agenda su telefono: un solo tocco apre la ricerca dell'app
+// (Poliedron in Studio, l'assistente in Personal). `extra` ospita un'icona accanto, es. l'altra app.
+export function AgendaSearchBar({ onOpen, label = 'Cerca paziente, documento, sezione…', extra = null }) {
+  return <div className="agenda-search-row">
+    <button type="button" className="agenda-search agenda-floating-interactive" onClick={onOpen} aria-label="Cerca">
+      <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+      <span>{label}</span>
+    </button>
+    {extra}
+  </div>;
+}
+
 export function AgendaSwitch({ target, day, view, month, inline = false }) {
   return <a className={`agenda-app-switch${inline ? ' agenda-app-switch-inline' : ''}`} href={agendaDestination(target, day, view, globalThis.location, month)}>Vai a {target === 'studio' ? 'Studio' : 'Personal'} <span aria-hidden="true">↗</span></a>;
 }
@@ -394,8 +417,8 @@ export function MonthDateLabel({ palette: C = DEFAULT_PALETTE, day }) {
   return <div style={{ fontSize: 12, fontWeight: 700, color: C.txm, marginBottom: 8 }}>{new Date(day + 'T12:00').toLocaleDateString('it-IT')}</div>;
 }
 
-export function MonthToolbar({ date, overlayRef, children, floatingFooter }) {
-  return <div ref={overlayRef} className="agenda-mobile-floating-controls"><div className="agenda-mobile-floating-toolbar">
+export function MonthToolbar({ date, overlayRef, children, floatingFooter, searchBar = null }) {
+  return <div ref={overlayRef} className="agenda-mobile-floating-controls">{searchBar}<div className="agenda-mobile-floating-toolbar">
     <span className="agenda-mobile-floating-month">{MESI[date.getMonth()]} {date.getFullYear()}</span>
     <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>{children}</div>
   </div>{floatingFooter}</div>;

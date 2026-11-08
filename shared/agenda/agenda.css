@@ -24,29 +24,65 @@
     gap: 8px;
     padding: 0 4px 4px;
   }
-  .agenda-mobile-floating-month,
+  /* ── HOME-AGENDA-CENTRIC · stile iOS ──────────────────────────────────
+     Una sola barra di materiale traslucido (ricerca, mese, giorni) con un
+     filo sottile sotto; controlli senza cornici; oggi nel cerchio rosso. */
+  .agenda-mobile-floating-controls {
+    --agenda-material: color-mix(in srgb, var(--surface-interactive, #fff) 78%, transparent);
+    --agenda-hairline: color-mix(in srgb, var(--text-primary, #0f172a) 12%, transparent);
+    --agenda-fill: rgba(118, 118, 128, .12);
+    --agenda-label: var(--text-primary, #0f172a);
+    --agenda-label-2: color-mix(in srgb, var(--text-primary, #0f172a) 55%, transparent);
+    --agenda-tint: var(--brand-primary, #185FA5);
+    --agenda-today: #FF3B30;
+    padding-top: 0 !important;
+  }
+  .agenda-mobile-chrome {
+    /* Sopra gli impegni flottanti: il menu della vista, quando si apre, copre tutto. */
+    position: relative;
+    z-index: 3;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 10px);
+    background: var(--agenda-material);
+    backdrop-filter: blur(22px) saturate(180%);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    border-bottom: .5px solid var(--agenda-hairline);
+    pointer-events: auto;
+    margin-bottom: 6px;
+  }
+  .agenda-search-row { display: flex; align-items: center; gap: 10px; padding: 0 14px 4px; }
+  .agenda-search {
+    flex: 1; min-width: 0; height: 36px; display: flex; align-items: center; gap: 7px; padding: 0 10px;
+    border: 0; border-radius: 10px; background: var(--agenda-fill); color: var(--agenda-label-2);
+    font: inherit; text-align: left; cursor: pointer; pointer-events: auto;
+  }
+  .agenda-search span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; letter-spacing: -.01em; color: var(--agenda-label-2); }
+  .agenda-search-app { flex: none; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; color: var(--agenda-tint); text-decoration: none; pointer-events: auto; }
+  .agenda-mobile-floating-toolbar { padding: 8px 8px 0 16px !important; }
+  .agenda-mobile-floating-month {
+    display: inline-flex; align-items: baseline; gap: 6px; padding: 0 !important;
+    border: 0 !important; background: none !important; box-shadow: none !important;
+    backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+    font-size: 17px !important; font-weight: 600 !important; letter-spacing: -.02em; color: var(--agenda-label) !important;
+  }
+  .agenda-month-name { font-size: 28px; font-weight: 700; letter-spacing: -.03em; line-height: 1.15; }
+  .agenda-month-year { font-size: 28px; font-weight: 400; letter-spacing: -.03em; line-height: 1.15; color: var(--agenda-today); }
   .agenda-view-picker,
   .agenda-mobile-floating-controls .pol-icon-btn {
-    border: 1px solid var(--border-medium) !important;
-    background: color-mix(in srgb, var(--surface-interactive) 88%, transparent) !important;
-    box-shadow: var(--shadow-sm) !important;
-    backdrop-filter: blur(16px) saturate(140%);
-    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border: 0 !important; background: none !important; box-shadow: none !important;
+    backdrop-filter: none !important; -webkit-backdrop-filter: none !important; color: var(--agenda-tint) !important;
   }
-  .agenda-mobile-floating-month {
-    display: inline-flex;
-    align-items: center;
-    min-height: 30px;
-    padding: 5px 11px;
-    border-radius: 999px;
-  }
+  .agenda-view-picker { font-size: 17px !important; font-weight: 400 !important; color: var(--agenda-tint) !important; padding: 5px 4px 5px 8px !important; }
+  .agenda-view-picker svg { stroke: currentColor; }
   .agenda-mobile-floating-week-strip {
-    margin-inline: 0;
-    margin-bottom: 4px !important;
-    border-inline: 0 !important;
-    background: color-mix(in srgb, var(--surface-interactive) 88%, transparent) !important;
-    backdrop-filter: blur(16px) saturate(140%);
-    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    margin: 0 !important; border: 0 !important; border-radius: 0 !important;
+    background: transparent !important; box-shadow: none !important;
+    backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+  }
+  .agenda-mobile-floating-week-strip > div:first-child { border-right: 0 !important; }
+  .agenda-mobile-day-item { gap: 3px !important; padding: 2px 0 6px !important; }
+  .agenda-mobile-day-item > span:first-child {
+    font-size: 11px !important; font-weight: 500 !important; letter-spacing: .02em !important;
+    text-transform: lowercase !important; color: var(--agenda-label-2) !important;
   }
   .agenda-mobile-day-item {
     min-height: var(--pol-touch-min);
@@ -54,18 +90,33 @@
   }
   .agenda-mobile-day-number {
     box-sizing: border-box;
-    border: 2px solid transparent;
+    width: 32px !important;
+    height: 32px !important;
+    border: 0;
+    font-size: 17px !important;
+    font-weight: 500 !important;
+    letter-spacing: -.02em;
+    color: var(--agenda-label) !important;
   }
   .agenda-mobile-day-number.is-today {
-    border-color: var(--danger);
-    background: transparent;
-    color: var(--danger);
+    background: var(--agenda-today) !important;
+    color: #fff !important;
+    font-weight: 600 !important;
   }
   .agenda-mobile-day-number.is-selected:not(.is-today) {
-    border-color: color-mix(in srgb, var(--brand-primary) 42%, transparent);
-    background: color-mix(in srgb, var(--brand-primary) 10%, transparent);
-    color: var(--brand-primary);
+    background: var(--agenda-label) !important;
+    color: var(--surface-interactive, #fff) !important;
+    font-weight: 600 !important;
   }
+  /* Griglia: fili sottili come le app di sistema, senza bordo sulla colonna ore. */
+  .agenda-mobile-calendar-scroller { --agenda-hairline: color-mix(in srgb, var(--text-primary, #0f172a) 9%, transparent); }
+  .agenda-mobile-calendar-scroller .agenda-time-gutter { border-right: 0 !important; }
+  .agenda-mobile-calendar-scroller .agenda-grid-day { border-left-color: var(--agenda-hairline) !important; }
+  .agenda-mobile-calendar-scroller [data-agenda-slot] { border-top-color: var(--agenda-hairline) !important; }
+  .agenda-mobile-calendar-scroller .agenda-hour-label { font-weight: 500 !important; color: color-mix(in srgb, var(--text-primary, #0f172a) 45%, transparent) !important; letter-spacing: -.01em; }
+  .agenda-mobile-calendar-scroller .agenda-now-line,
+  .agenda-mobile-calendar-scroller .agenda-now-line > div { background: #FF3B30 !important; }
+  .agenda-day-events button { border-radius: 8px; }
   .agenda-mobile-selection-toolbar {
     margin: 0 4px 4px !important;
     padding: 6px;
@@ -121,3 +172,50 @@
 .agenda-day-events { display: grid; gap: 4px; min-width: 0; margin-bottom: 4px; pointer-events: none; }
 .agenda-day-events-column { display: flex; flex-direction: column; gap: 3px; min-width: 0; max-height: 112px; overflow-y: auto; pointer-events: auto; -webkit-overflow-scrolling: touch; }
 .agenda-day-events button { width: 100%; min-height: 28px; padding: 5px 6px; border: 0; border-left: 3px solid var(--event-color); border-radius: 6px; background: color-mix(in srgb, var(--event-color) 18%, var(--agenda-tint-anchor, #fff)); color: color-mix(in srgb, var(--event-color) 55%, var(--agenda-ink-anchor, #0f172a)); font: 600 10.5px/1.25 system-ui, sans-serif; text-align: left; overflow-wrap: anywhere; cursor: pointer; touch-action: pan-y; }
+
+@media (max-width: 719px) {
+  :root[data-theme="dark"] .agenda-mobile-floating-controls { --agenda-today: #FF453A; --agenda-fill: rgba(118, 118, 128, .24); }
+}
+@media (max-width: 719px) and (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .agenda-mobile-floating-controls { --agenda-today: #FF453A; --agenda-fill: rgba(118, 118, 128, .24); }
+}
+
+/* HOME-AGENDA-CENTRIC — ora attuale in evidenza nella vista giorno (solo telefono). */
+@media (max-width: 719px) {
+  .agenda-now-pill {
+    position: absolute;
+    right: calc(100% + 2px);
+    top: -8px;
+    padding: 1px 5px;
+    border-radius: 999px;
+    background: #FF3B30;
+    color: #fff;
+    font: 600 10px/14px system-ui, -apple-system, sans-serif;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.01em;
+    white-space: nowrap;
+    z-index: 6;
+  }
+}
+@media (min-width: 720px) { .agenda-now-pill { display: none; } }
+
+/* HOME-AGENDA-CENTRIC — scelta di cosa creare toccando un orario libero (telefono, stile iOS). */
+.agenda-slot-sheet-backdrop { position: fixed; inset: 0; z-index: 1200; background: rgba(0, 0, 0, .3); display: flex; align-items: flex-end; padding: 0 8px calc(8px + env(safe-area-inset-bottom, 0px)); }
+.agenda-slot-sheet { width: 100%; display: grid; gap: 8px; animation: agenda-sheet-in .22s ease-out; }
+.agenda-slot-sheet-group { border-radius: 14px; overflow: hidden; background: color-mix(in srgb, var(--surface-interactive, #fff) 92%, transparent); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%); }
+.agenda-slot-sheet-title { padding: 13px 16px; text-align: center; font-size: 13px; color: color-mix(in srgb, var(--text-primary, #0f172a) 55%, transparent); border-bottom: .5px solid color-mix(in srgb, var(--text-primary, #0f172a) 14%, transparent); }
+.agenda-slot-sheet-title::first-letter { text-transform: uppercase; }
+.agenda-slot-sheet button { width: 100%; min-height: 56px; border: 0; background: transparent; color: var(--brand-primary, #185FA5); font: 400 19px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif; cursor: pointer; }
+.agenda-slot-sheet-group button + button { border-top: .5px solid color-mix(in srgb, var(--text-primary, #0f172a) 14%, transparent); }
+.agenda-slot-sheet-cancel { border-radius: 14px !important; background: var(--surface-interactive, #fff) !important; font-weight: 600 !important; }
+@keyframes agenda-sheet-in { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .agenda-slot-sheet { animation: none; } }
+
+/* HOME-AGENDA-CENTRIC — impegni del giorno flottanti: capsule nel giorno, righe compatte in settimana. */
+@media (max-width: 719px) {
+  .agenda-day-events button { border-radius: 13px; min-height: 26px; padding: 4px 10px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); font-size: 12px; }
+  .agenda-day-events--week { gap: 2px; }
+  .agenda-day-events--week .agenda-day-events-column { gap: 2px; padding: 0 1px; }
+  .agenda-day-events--week button { min-height: 18px; padding: 1px 4px; border-left-width: 2px; border-radius: 5px; font-size: 9.5px; line-height: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
+}
+.agenda-day-events .agenda-day-events-more { --event-color: #8E8E93; border-left: 0 !important; text-align: center !important; color: color-mix(in srgb, var(--text-primary, #0f172a) 60%, transparent) !important; background: rgba(118, 118, 128, .14) !important; }

@@ -6,17 +6,22 @@ import { C, fmt, fmtD, today } from '../lib/utils';
 import { supabase } from '../lib/supabase.js';
 import { scaricaPdf } from '../lib/condivisionePdf';
 import { nomeFileDaNome } from '../lib/documenti/pdfLayout.js';
+import { leggiDocumentiStudio, apriFileDocumento, eliminaDocumentoStudio, TIPI_DOCUMENTO } from '../lib/documentiStudio.js';
+const AcquisisciDocumento = React.lazy(() => import('./AcquisisciDocumento.jsx'));
 
 // POL-UI-005: one icon per document type instead of emoji (📄🧾💊🩸📋✉️📖📝✍️) —
 // shared across the filter chips, list rows and edit-modal title below.
 const TIPO_ICON = { fattura: 'receipt', rimborso: 'bank', ricetta: 'pill', esami: 'drop', certificato: 'clip', lettera: 'mail', protocollo: 'book', vuoto: 'file', consenso: 'edit' };
-const TIPO_LABEL = { fattura: 'Fatture', rimborso: 'Rimborsi', ricetta: 'Ricette', esami: 'Esami', certificato: 'Certificati', lettera: 'Lettere', protocollo: 'Protocolli', vuoto: 'Liberi', consenso: 'Consensi' };
+const TIPO_LABEL = { ...Object.fromEntries(TIPI_DOCUMENTO.map(t => [t.id, t.nome])), fattura: 'Fatture', rimborso: 'Rimborsi', ricetta: 'Ricette', esami: 'Esami', certificato: 'Certificati', lettera: 'Lettere', protocollo: 'Protocolli', vuoto: 'Liberi', consenso: 'Consensi' };
 
 // POL-AI-002A §20 — Poliedron's "ric"/"fat" direct commands land here
 // already filtered (see App.jsx's archivioFiltroTipoHint / Poliedron.jsx's
 // onArchivioFilterHint), instead of the unfiltered list — optional and
 // backward compatible, defaults to the page's own original behavior.
-export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedico, onApriDocConsenso, initialFiltroTipo }) {
+export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedico, onApriDocConsenso, initialFiltroTipo, studioId, acquisisciRichiesta = 0 }) {
+  // DOCUMENTI-STUDIO (PO 2026-11-08): anche i documenti acquisiti (foto o file) dello studio.
+  const [acquisisci, setAcquisisci] = useState(false);
+  useEffect(() => { if (acquisisciRichiesta) setAcquisisci(true); }, [acquisisciRichiesta]);
   const [pazModal, setPazModal] = useState(null); // 'fiscale' | 'medico' | 'consenso' | null
   const [pazSearch, setPazSearch] = useState('');
   const [docs, setDocs] = useState([]);
@@ -39,25 +44,30 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
 
   const loadDocs = async () => {
     setLoading(true);
-    const [fiscali, medici] = await Promise.all([
+    const [fiscali, medici, acquisiti] = await Promise.all([
       supabase.from('documenti_fiscali').select('id, tipo, numero, data, paziente_nome, paziente_id, importo, created_at').order('data', { ascending: false }),
       supabase.from('documenti_medici').select('id, tipo, titolo, data, paziente_nome, paziente_id, created_at').order('data', { ascending: false }),
+      leggiDocumentiStudio(supabase).catch(() => []),
     ]);
+    const nomePaz = (id) => { const p = patients.find(x => x.id === id); return p ? `${p.nome || ''} ${p.cognome || ''}`.trim() : ''; };
     const uniti = [
       ...(fiscali.data || []).map(d => ({ ...d, tabella: 'documenti_fiscali' })),
       ...(medici.data || []).map(d => ({ ...d, tabella: 'documenti_medici', numero: null, importo: null })),
+      ...acquisiti.map(d => ({ ...d, tabella: 'documenti_studio', paziente_nome: nomePaz(d.paziente_id), numero: null, importo: null })),
     ].sort((a, b) => new Date(b.data) - new Date(a.data));
     setDocs(uniti);
     setLoading(false);
   };
 
   const downloadDoc = async (doc) => {
+    if (doc.tabella === 'documenti_studio') { try { await apriFileDocumento(supabase, doc.file_path); } catch (e) { setToast(e.message); } return; }
     const { data } = await supabase.from(doc.tabella).select('pdf_base64').eq('id', doc.id).single();
     if (!data?.pdf_base64) { alert('PDF non disponibile'); return; }
     scaricaPdf(data.pdf_base64, nomeFileDaNome(doc.paziente_nome));
   };
 
   const visualizzaDoc = async (doc) => {
+    if (doc.tabella === 'documenti_studio') return downloadDoc(doc);
     setCaricamentoAnteprima(doc.id + doc.tabella);
     const { data } = await supabase.from(doc.tabella).select('pdf_base64').eq('id', doc.id).single();
     setCaricamentoAnteprima(null);
@@ -69,7 +79,8 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
 
   const deleteDoc = async (doc) => {
     if (!confirm('Eliminare questo documento?')) return;
-    await supabase.from(doc.tabella).delete().eq('id', doc.id);
+    if (doc.tabella === 'documenti_studio') await eliminaDocumentoStudio(supabase, doc);
+    else await supabase.from(doc.tabella).delete().eq('id', doc.id);
     setDocs(prev => prev.filter(d => !(d.id === doc.id && d.tabella === doc.tabella)));
     setToast('Eliminato ✓');
   };
@@ -78,7 +89,8 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
     if (!confirm(`Eliminare ${selDoc.length} documento/i?`)) return;
     for (const key of selDoc) {
       const doc = docs.find(d => `${d.id}_${d.tabella}` === key);
-      if (doc) await supabase.from(doc.tabella).delete().eq('id', doc.id);
+      if (doc?.tabella === 'documenti_studio') await eliminaDocumentoStudio(supabase, doc);
+      else if (doc) await supabase.from(doc.tabella).delete().eq('id', doc.id);
     }
     setDocs(prev => prev.filter(d => !selDoc.includes(`${d.id}_${d.tabella}`)));
     setSelDoc([]);
@@ -133,8 +145,12 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
     <div>
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
+      {acquisisci && <React.Suspense fallback={null}><AcquisisciDocumento db={supabase} studioId={studioId} patients={patients} onClose={() => setAcquisisci(false)} onSaved={() => { setToast('Documento salvato ✓'); loadDocs(); }} /></React.Suspense>}
       <PageHeader icon="folder" title="Documenti" actions={
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <button onClick={() => setAcquisisci(true)} style={{ background: C.pri, border: 'none', borderRadius: 9, padding: '8px 12px', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <Ic n="plus" s={12} c="#fff" /> Acquisisci
+          </button>
           <button onClick={() => { setPazModal('medico'); setPazSearch(''); }} style={{ background: C.priL, border: 'none', borderRadius: 9, padding: '8px 12px', color: C.pri, fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
             <Ic n="plus" s={12} c={C.pri} /> Ricetta/Cert.
           </button>

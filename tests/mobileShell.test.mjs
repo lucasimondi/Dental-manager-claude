@@ -74,7 +74,8 @@ test('Agenda day strip follows the grid day source and uses mobile-only today st
   assert.match(agenda, /agenda-mobile-day-number\$\{isToday \? ' is-today'/);
   // PO 2026-11-04: oggi è segnato solo nella striscia giorni; il weekend resta appena più scuro.
   assert.match(agenda, /background: isWeekend \? `color-mix\(in srgb, \$\{C\.bg\} 60%, \$\{C\.sur\}\)` : C\.sur/);
-  assert.match(premium, /\.agenda-mobile-day-number\.is-today\s*\{[\s\S]*border-color:\s*var\(--danger\);[\s\S]*background:\s*transparent;/);
+  // PO 2026-11-07 (agenda in stile iOS): oggi è un cerchio rosso pieno con il numero bianco.
+  assert.match(premium, /\.agenda-mobile-day-number\.is-today\s*\{[^}]*background:\s*var\(--agenda-today\)\s*!important;[^}]*color:\s*#fff\s*!important;/);
 });
 
 test('Agenda appointment menu clears the canonical mobile dock and scrolls internally', () => {
@@ -145,7 +146,7 @@ test('Agenda booking modal opens near the safe-area top above the floating contr
   // element) — combining with the base .pol-modal-* class (2 classes) is
   // what actually wins; a bare new class alone would silently lose.
   assert.match(premium, /\.pol-modal-backdrop\.agenda-appointment-form-backdrop\s*\{[\s\S]*align-items:\s*flex-start;/);
-  assert.match(premium, /\.pol-modal-sheet\.agenda-appointment-form-sheet\s*\{[\s\S]*max-height:\s*calc\(100dvh[\s\S]*safe-area-inset-top[\s\S]*!important/);
+  assert.match(premium, /\.pol-modal-sheet\.agenda-appointment-form-sheet\s*\{[\s\S]*max-height:\s*(?:min\(100%,\s*)?calc\(100dvh[\s\S]*safe-area-inset-top[\s\S]*!important/);
 });
 
 test('all required mobile pages share the same app-scroll surface', () => {

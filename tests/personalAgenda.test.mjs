@@ -143,6 +143,6 @@ test('Personal agenda: short month on one line, original slot height, Studio unt
   assert.match(griglia, /const slotH = Math\.round\(Math\.max\(24, availH \/ slots\.length \* zoom\)\);/);
   assert.match(griglia, /useTimeline\(/);
   assert.match(readFileSync('shared/agenda/useTimeline.js', 'utf8'), /usePinchZoom\(containerRef, mobile && enabled\)/);
-  assert.match(shared, /shortMonth = false \}\) \{/, 'Studio keeps the full month name by default');
+  assert.match(shared, /shortMonth = false(, searchBar = null)? \}\) \{/, 'Studio keeps the full month name by default');
   assert.match(shared, /shortMonth \? \{ whiteSpace: 'nowrap', flexShrink: 0 \} : \{\}/);
 });

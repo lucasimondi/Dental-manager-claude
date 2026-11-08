@@ -1,12 +1,17 @@
 import { uniqueAppointmentTypes } from '../lib/appointmentTypes.js';
 import { validatePatientAgendaSlot } from '../lib/patientAgendaBooking.js';
 import DayEvents from '../../shared/agenda/DayEvents.jsx';
+import LabelSwatches from '../../shared/agenda/LabelSwatches.jsx';
+import { labelColor, labelOn } from '../../shared/agenda/labelPalette.js';
 import { useTimeline } from '../../shared/agenda/useTimeline.js';
 import AgendaVisibility from '../../shared/agenda/AgendaVisibility.jsx';
 import { agendaVisible, keepOccupiedWeekends } from '../../shared/agenda/visibility.js';
 import { layoutAgendaDay, layoutAppointments as layoutOverlap } from '../../shared/agenda/geometry.js';
-import { readAgendaLocation } from '../../shared/agenda/navigation.js';
-import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, EventBlock, AppointmentBlock, useSlotHeight, AgendaSwitch, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState, useGridSwipe } from '../../shared/agenda/AgendaPresentation.jsx';
+import { readAgendaLocation, agendaDestination } from '../../shared/agenda/navigation.js';
+import RicercaAgenda from '../../shared/ricerca/RicercaAgenda.jsx';
+import { creaFontiStudio, impegnoSpostato } from '../../shared/ricerca/fonti.js';
+import { cercaPazienti as cercaPazientiLocali } from '../lib/ricercaPazienti.js';
+import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, EventBlock, AppointmentBlock, useSlotHeight, AgendaSwitch, AgendaSearchBar, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState, useGridSwipe } from '../../shared/agenda/AgendaPresentation.jsx';
 import { createPortal } from 'react-dom';
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker, SelettorePaziente, EmptyState, PageHeader } from './ui';
@@ -402,8 +407,9 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
    Va incollato sulla stessa riga dell'etichetta mese: non aggiunge nessuna riga
    in più, a differenza della vecchia barra a tre tab che occupava spazio prezioso
    sullo schermo del telefono. */
-export default function Agenda({ patients, setPatients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni: tuttiImpegni = [], setImpegni, si, setStudioInfo, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, followUpRequest, onBookFollowUp, onCancelFollowUp, plans = [], pricelist = [], onSaveBookingTreatment }) {
-  const [mostraEsclusi, setMostraEsclusi] = useState(false);
+export default function Agenda({ patients, setPatients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni: tuttiImpegni = [], setImpegni, si, setStudioInfo, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, followUpRequest, onBookFollowUp, onCancelFollowUp, plans = [], pricelist = [], onSaveBookingTreatment, onOpenSearch, ricerca = null }) {
+  // PO 2026-11-08: un'agenda sola, di partenza "Tutto" (Studio e Personal insieme).
+  const [mostraEsclusi, setMostraEsclusi] = useState(true);
   const impegni = tuttiImpegni.filter(i => mostraEsclusi || agendaVisible(i, 'studio'));
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const labelPoltrona = isDentistico ? 'Poltrona' : 'Postazione';
@@ -570,6 +576,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
 
   const isMobile = useIsMobile();
   const overlayRef = useRef(null);
+  const [sceltaSlot, setSceltaSlot] = useState(null);
   const [mobileOverlayHeight, setMobileOverlayHeight] = useState(0);
   useLayoutEffect(() => {
     if (!isMobile || !overlayRef.current) {
@@ -868,9 +875,11 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
 
   const del = (id) => { if (confirm('Eliminare?')) setAppointments(p => p.filter(a => a.id !== id)); };
 
-  const apriNuovoImpegno = (data) => {
+  const apriNuovoImpegno = (data, ora) => {
     setEditImp(null);
-    setImpForm({ titolo: '', tipo: 'personale', colore: '', dataInizio: data || selDay, dataFine: data || selDay, tuttoIlGiorno: true, oraInizio: '09:00', oraFine: '10:00', note: '', ripeti: 'no', ripetiFino: data || selDay, visibileStudio: true, visibilePersonal: true });
+    // Toccando un orario libero l'impegno parte da lì, per un'ora.
+    const oraFineSlot = ora ? `${String(Math.min(23, Number(ora.slice(0, 2)) + 1)).padStart(2, '0')}:${ora.slice(3, 5)}` : '10:00';
+    setImpForm({ titolo: '', tipo: 'personale', colore: '', dataInizio: data || selDay, dataFine: data || selDay, tuttoIlGiorno: !ora, oraInizio: ora || '09:00', oraFine: oraFineSlot, note: '', ripeti: 'no', ripetiFino: data || selDay, visibileStudio: true, visibilePersonal: true });
     setImpModal(true);
   };
 
@@ -969,13 +978,57 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   // GridView (il commento su DayStrip spiega perché) — vedi item 5/2 della
   // spec "Agenda mobile final": non deve rubare spazio alle 7 colonne.
   const oraColW = isMobile ? 34 : 46;
-  const gridProps = { slots, slotH, slotMin, oraInizio: timelineStart, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight, canPrescribe: !si?.vertical || VERTICALI_CON_RICETTA.has(si.vertical), followUpMode: !!followUpRequest, onOccupiedSlot: () => setToast('Questo spazio è occupato. Scegli un altro orario.') };
+  // HOME-AGENDA-CENTRIC: su telefono non c'è più il tasto +; toccando un orario libero
+  // si sceglie cosa creare, con giorno e ora già compilati.
+  const toccaSlot = (data, ora) => { if (!isMobile || followUpRequest) { apriNuovo(data, ora); return; } setSceltaSlot({ data, ora }); };
+  const gridProps = { slots, slotH, slotMin, oraInizio: timelineStart, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo: toccaSlot, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight, canPrescribe: !si?.vertical || VERTICALI_CON_RICETTA.has(si.vertical), followUpMode: !!followUpRequest, onOccupiedSlot: () => setToast('Questo spazio è occupato. Scegli un altro orario.') };
 
   const ribbonDays = (view === 'giorno' ? [new Date(selDay + 'T12:00')] : weekDays).map(d => {
     const date = toISO(d);
     return { date, items: impegni.filter(i => (i.tuttoIlGiorno || !i.oraInizio) && date >= i.dataInizio && date <= (i.dataFine || i.dataInizio)).map(i => ({ id: i.id, title: i.titolo, color: i.colore || TIPO_IMPEGNO.find(t => t.id === i.tipo)?.colore, onOpen: () => apriEditImpegno(i) })) };
   });
   const dayEvents = <DayEvents days={ribbonDays} gutter={oraColW} />;
+  // RICERCA-AGENDA (PO 2026-11-08): la barra cerca e agisce qui, senza aprire un altro pannello.
+  const fontiStudio = React.useMemo(() => (ricerca?.db ? creaFontiStudio(ricerca) : null), [ricerca]);
+  const nomePaziente = (id) => { const p = patients.find(x => x.id === id); return p ? `${p.nome || ''} ${p.cognome || ''}`.trim() : 'Paziente'; };
+  const fonteRicerca = {
+    oggi: t,
+    elementi: [
+      ...appointments.filter(a => a.stato !== 'annullato').map(a => ({ id: a.id, tipo: 'appuntamento', titolo: nomePaziente(a.pazienteId), sottotitolo: a.tipo, data: a.data, ora: a.ora, colore: getColore(a), dato: a })),
+      ...tuttiImpegni.map(i => ({ id: i.id, tipo: 'impegno', titolo: i.titolo || 'Impegno', sottotitolo: i.tuttoIlGiorno || !i.oraInizio ? 'tutto il giorno' : '', data: i.dataInizio, ora: i.tuttoIlGiorno ? null : i.oraInizio, colore: i.colore || TIPO_IMPEGNO.find(x => x.id === i.tipo)?.colore, dato: i })),
+    ],
+    cercaPazienti: q => cercaPazientiLocali(patients, q).slice(0, 5).map(p => ({ id: p.id, titolo: `${p.nome || ''} ${p.cognome || ''}`.trim(), sottotitolo: p.telefono || '', apri: () => onOpenPatient?.(p) })),
+    apri: e => { setSelDay(e.data); if (e.tipo === 'impegno') apriEditImpegno(e.dato); else setView('giorno'); },
+    nuovoAppuntamento: ({ data, ora, soggetto } = {}) => {
+      apriNuovo(data || selDay, ora || undefined);
+      const trovati = soggetto ? cercaPazientiLocali(patients, soggetto) : [];
+      if (trovati.length === 1) setForm(f => ({ ...f, pazienteId: String(trovati[0].id) })); else if (soggetto) setPazSearch(soggetto);
+    },
+    nuovoImpegno: ({ data, ora, titolo } = {}) => { apriNuovoImpegno(data || selDay, ora || undefined); if (titolo) setImpForm(f => ({ ...f, titolo })); },
+    sposta: async (e, verso) => {
+      if (e.tipo === 'appuntamento') setAppointments(p => p.map(a => a.id === e.id ? { ...a, data: verso.data, ora: verso.ora || a.ora } : a));
+      else setImpegni(p => p.map(i => i.id === e.id ? impegnoSpostato(i, verso) : i));
+      setSelDay(verso.data);
+    },
+    cancella: async e => {
+      if (e.tipo === 'appuntamento') setAppointments(p => p.filter(a => a.id !== e.id));
+      else setImpegni(p => p.filter(i => i.id !== e.id));
+    },
+    ...(fontiStudio ? { cercaAltro: fontiStudio.cercaAltro, nuovaNota: fontiStudio.nuovaNota } : {}),
+    apriNote: ricerca?.apriNote, apriPassword: ricerca?.apriPassword, apriDocumenti: ricerca?.apriDocumenti, acquisisci: ricerca?.acquisisci,
+    chiediPoliedron: ricerca?.chiediPoliedron,
+  };
+  const mobileSearchBar = isMobile && ricerca ? (
+    <RicercaAgenda fonte={fonteRicerca} placeholder="Cerca o chiedi: «sposta Rossi a giovedì»" extra={
+      <a className="agenda-search-app agenda-floating-interactive" href={agendaDestination('personal', selDay, 'settimana', globalThis.location, toISO(vd))} aria-label="Apri Personal" title="Personal">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" /></svg>
+      </a>} />
+  ) : isMobile && onOpenSearch ? (
+    <AgendaSearchBar onOpen={onOpenSearch} extra={
+      <a className="agenda-search-app agenda-floating-interactive" href={agendaDestination('personal', selDay, 'settimana', globalThis.location, toISO(vd))} aria-label="Apri Personal" title="Personal">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" /></svg>
+      </a>} />
+  ) : null;
   // Appuntamenti effettivamente visibili nella vista corrente (per il conteggio "Seleziona tutti" e il badge)
   const giorniVisibili = view === 'giorno' ? [selDay] : (view === 'settimana' || view === 'settimana_lavoro') ? weekDays.map(toISO) : [];
   const appVisibili = appointmentsAgenda.filter(a => giorniVisibili.includes(a.data));
@@ -1140,7 +1193,9 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           : { height: '100%', position: 'relative' }),
       }}
     >
-      <AgendaSwitch target="personal" day={selDay} month={toISO(vd)} view={view} />
+      {/* HOME-AGENDA-CENTRIC: su telefono niente "Vai a Personal": la ricerca sta in cima
+          e Personal si apre dall'icona accanto alla ricerca. */}
+      {!mobileSearchBar && <AgendaSwitch target="personal" day={selDay} month={toISO(vd)} view={view} />}
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
 
       {/* Barra invio WhatsApp di massa in corso — resta finché non sono partite tutte
@@ -1165,7 +1220,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       {haFiltriRisorse && !isMobile && chipsRisorse}
 
       {view === 'giorno' && (
-        <DayStrip palette={C} selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} oraColW={oraColW} singleDay={isMobile} hiddenWeekdays={agendaHiddenWeekdays} shortMonth={isMobile} overlayRef={isMobile ? overlayRef : undefined} floatingFooter={<>{isMobile && followUpControls}{dayEvents}{isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null}</>} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker hiddenCount={tuttiImpegni.filter(i => !agendaVisible(i, 'studio')).length + appointments.filter(a => !agendaVisible(a, 'studio')).length} showHidden={mostraEsclusi} onToggleHidden={() => setMostraEsclusi(x => !x)} palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>} />
+        <DayStrip palette={C} selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} oraColW={oraColW} singleDay={false} hiddenWeekdays={agendaHiddenWeekdays} shortMonth={isMobile} searchBar={mobileSearchBar} overlayRef={isMobile ? overlayRef : undefined} floatingFooter={<>{isMobile && followUpControls}{dayEvents}{isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null}</>} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker hiddenCount={tuttiImpegni.filter(i => !agendaVisible(i, 'studio')).length + appointments.filter(a => !agendaVisible(a, 'studio')).length} showHidden={mostraEsclusi} onToggleHidden={() => setMostraEsclusi(x => !x)} palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>} />
       )}
       {(view === 'settimana' || view === 'settimana_lavoro') && (
         <DayStrip palette={C}
@@ -1180,13 +1235,14 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           onNextWeek={() => navSettimana(1)}
           hiddenWeekdays={agendaHiddenWeekdays}
           shortMonth={isMobile}
+          searchBar={mobileSearchBar}
           overlayRef={isMobile ? overlayRef : undefined}
           floatingFooter={<>{isMobile && followUpControls}{dayEvents}{isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null}</>}
           viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker hiddenCount={tuttiImpegni.filter(i => !agendaVisible(i, 'studio')).length + appointments.filter(a => !agendaVisible(a, 'studio')).length} showHidden={mostraEsclusi} onToggleHidden={() => setMostraEsclusi(x => !x)} palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>}
         />
       )}
       {view === 'mese' && isMobile && (
-        <MonthToolbar date={vd} overlayRef={overlayRef} floatingFooter={followUpControls}>
+        <MonthToolbar date={vd} overlayRef={overlayRef} floatingFooter={followUpControls} searchBar={mobileSearchBar}>
               {notificheBell}
               {filtroButton}
               <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 14, padding: '5px 10px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
@@ -1346,15 +1402,15 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
               </Sel>
             </Fld>
           </div>
-          <Fld label="Tipo visita">
+          <Fld label="Etichetta">
+            {/* PO 2026-11-08: etichette come negli impegni Personal, colori predefiniti e pieni. */}
             <div className="appointment-type-tags" role="group" aria-label="Tipo visita e colore">
-              {tipiList.map(tipo => (
-                <button type="button" key={tipo.id} aria-pressed={form.tipo === tipo.nome} onClick={() => F({ tipo: tipo.nome, colore: tipo.colore })} style={{ padding: '5px 10px', borderRadius: 20, border: `1.5px solid ${form.tipo === tipo.nome ? tipo.colore : C.brd}`, background: form.tipo === tipo.nome ? tipo.colore + '18' : C.sur, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: tipo.colore }} />
-                  <span style={{ fontSize: 11, fontWeight: form.tipo === tipo.nome ? 700 : 500, color: form.tipo === tipo.nome ? tipo.colore : C.txm }}>{tipo.nome}</span>
-                </button>
-              ))}
+              {tipiList.map(tipo => {
+                const attiva = form.tipo === tipo.nome, c = labelColor(tipo.colore);
+                return <button type="button" key={tipo.id} className={`appointment-label${attiva ? ' attiva' : ''}`} aria-pressed={attiva} onClick={() => F({ tipo: tipo.nome, colore: tipo.colore })} style={{ '--c': c, '--c-on': labelOn(c) }}>{tipo.nome}</button>;
+              })}
             </div>
+            <LabelSwatches className="appointment-label-colors" value={form.colore} onChange={c => F({ colore: c })} size={26} custom={false} />
             <Inp value={form.tipo} onChange={e => F({ tipo: e.target.value })} placeholder="Personalizza tipo visita" />
           </Fld>
           {onSaveBookingTreatment && <fieldset className="booking-treatment-fields" disabled={bookingSaving || bookingUncertain}>
@@ -1497,7 +1553,20 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           (POL-UI-009) basso sinistra è ora occupato dal poliedro/menu: il
           FAB si sposta sopra di esso, sullo stesso bordo sinistro, senza
           sovrapposizioni. */}
+      {sceltaSlot && (
+        <div className="agenda-slot-sheet-backdrop" onClick={() => setSceltaSlot(null)}>
+          <div className="agenda-slot-sheet" role="dialog" aria-label="Crea" onClick={e => e.stopPropagation()}>
+            <div className="agenda-slot-sheet-group">
+              <div className="agenda-slot-sheet-title">{new Date(sceltaSlot.data + 'T12:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })} · {sceltaSlot.ora}</div>
+              <button type="button" onClick={() => { const s = sceltaSlot; setSceltaSlot(null); apriNuovo(s.data, s.ora); }}>Appuntamento paziente</button>
+              <button type="button" onClick={() => { const s = sceltaSlot; setSceltaSlot(null); apriNuovoImpegno(s.data, s.ora); }}>Impegno</button>
+            </div>
+            <button type="button" className="agenda-slot-sheet-cancel" onClick={() => setSceltaSlot(null)}>Annulla</button>
+          </div>
+        </div>
+      )}
       <div style={{
+        display: isMobile ? 'none' : undefined,
         position: 'fixed',
         left: isMobile ? 'max(18px, env(safe-area-inset-left, 0px))' : 16,
         bottom: isMobile ? `calc(${MOBILE_AGENDA_FAB_BOTTOM}px + env(safe-area-inset-bottom, 0px))` : 74,

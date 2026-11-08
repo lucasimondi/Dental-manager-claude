@@ -46,10 +46,14 @@ test('app: Personal keeps household filtering, original previews and file sharin
   assert.match(viewer,/<BottoneCondividi/);
 });
 
-test('agenda: eventi del giorno dentro i controlli flottanti sotto la striscia; "Vai a Studio" a sinistra della vista', () => {
+test('agenda: eventi del giorno dentro i controlli flottanti sotto la striscia; ricerca in cima, niente "Vai a Studio" (Studio è nel dock)', () => {
   const g = readFileSync('personal/src/sezioni/agenda/AgendaGriglia.jsx', 'utf8');
   assert.match(g, /floatingFooter=\{fasciaGiorno\}/);
-  assert.match(g, /<span className="personal-agenda-azioni">\{appSwitch\}<ViewPicker/);
+  // HOME-AGENDA-CENTRIC (PO 2026-11-07): ricerca in cima all'agenda, Studio nel dock.
+  assert.match(g, /<span className="personal-agenda-azioni"><ViewPicker/);
+  assert.doesNotMatch(g, /<AgendaSwitch/);
+  assert.match(g, /searchBar=\{ricerca\}/);
+  assert.match(readFileSync('personal/src/App.jsx', 'utf8'), /aria-label="Apri Studio"/);
   const css = readFileSync('personal/src/personal.css', 'utf8');
   assert.match(css, /\.agenda-mobile-floating-controls \.personal-agenda-extras \{[^}]*pointer-events: none/);
 });

@@ -46,7 +46,8 @@ for(const engine of ['chromium','webkit']) {
   await scroller.evaluate(el=>el.scrollTop=el.scrollHeight);
   assert.ok(await scroller.evaluate(el=>el.scrollTop>0));
   await page.screenshot({animations:'disabled',path:`${out}/${engine}-${width}-24h.png`});
-  const link=page.getByRole('link',{name:/Vai a Studio/});
+  // PO 2026-11-07: "Vai a Studio" left the agenda (Studio is in the dock); the search bar is now the top control.
+  const link=page.locator('.agenda-search');
   assert.ok((await link.boundingBox()).y<200);
   assert.equal(await link.evaluate(el=>{const r=el.getBoundingClientRect();return document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)===el||el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));}),true);
   // Scroll a clinic appointment into view and open the production shell, not a fake modal.

@@ -20,11 +20,14 @@ try {
      await page.goto(`http://127.0.0.1:5173/tests/visual/agenda.html?mode=${mode}&agenda=1&agendaDate=2026-10-16&agendaView=settimana_lavoro&configured=1&sharing=1${excluded?'&excluded=1':''}`);
      await page.locator('.agenda-mobile-page').waitFor();
      await page.waitForTimeout(200);
-     assert.equal(await page.locator('.agenda-grid-day').count(),excluded?5:6,`${engine} ${mode} occupied Sunday`);
+     // PO 2026-11-08: un'agenda sola, di partenza "Tutto": anche l'appuntamento escluso da questa agenda si vede.
+     assert.equal(await page.locator('.agenda-grid-day').count(),6,`${engine} ${mode} occupied Sunday`);
      if(excluded){
+      const toggle=async()=>{await page.locator('button').filter({has:page.locator('.agenda-view-picker')}).click();await page.getByRole('button',{name:'Mostra tutto: Studio e Personal',exact:true}).click();};
+      await toggle();
+      await page.waitForFunction(()=>document.querySelectorAll('.agenda-grid-day').length===5);
       assert.equal(await page.locator('[data-appointment-id="18"]').count(),0);
-      await page.locator('button').filter({has:page.locator('.agenda-view-picker')}).click();
-      await page.getByRole('button',{name:'Mostra eventi esclusi da questa agenda',exact:true}).click();
+      await toggle();
       await page.waitForFunction(()=>document.querySelectorAll('.agenda-grid-day').length===6);
      }
      assert.equal(await page.locator('[data-appointment-id="18"]').count(),1);

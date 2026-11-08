@@ -169,10 +169,10 @@ test('unread count remains authoritative across pagination and initial Realtime 
   assert.match(chatPage, /onRetryInitialization/);
 });
 
-test('Chat route is wired on desktop and replaces Setup in the mobile dock while Setup stays in Poliedron menu', () => {
+test('Chat route is wired; Setup stays in the Poliedron menu and out of the mobile dock', () => {
   assert.match(app, /page === 'chat' && <div ref=\{setPoliedronChatHost\}/);
   assert.match(app, /userId=\{session\?\.user\?\.id\}/);
-  assert.match(dock, /\{ id: 'chat', label: 'Chat', icon: 'chat' \}/);
+  // PO 2026-11-07: Chat left the dock (bell and Poliedron panel open it).
   assert.doesNotMatch(dock, /\{ id: 'set', label: 'Setup'/);
   // POL-CHAT-001 merge: PR #53 had put 'set' first in this list; the merged
   // PR #51 owns the central panel's default suggestions and already lists

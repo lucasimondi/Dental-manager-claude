@@ -1,0 +1,59 @@
+/* RICERCA-AGENDA — barra che cerca e agisce, identica in Studio e Personal (stile iOS). */
+.ricerca-campo { cursor: text; }
+.ricerca-campo input { flex: 1; min-width: 0; height: 100%; border: 0; padding: 0; background: transparent; color: var(--agenda-label, #1C1C1E); font: inherit; font-size: 16px; letter-spacing: -.01em; outline: none; -webkit-appearance: none; appearance: none; }
+.ricerca-campo input::placeholder { color: var(--agenda-label-2, rgba(60,60,67,.6)); }
+.ricerca-campo input::-webkit-search-cancel-button { display: none; }
+.ricerca-svuota { flex: none; width: 20px; height: 20px; border: 0; border-radius: 50%; padding: 0; display: grid; place-items: center; background: color-mix(in srgb, var(--agenda-label-2, #3c3c43) 55%, transparent); color: var(--agenda-bg, #fff); font-size: 15px; line-height: 1; cursor: pointer; }
+.ricerca-annulla { flex: none; border: 0; background: none; padding: 0 2px; color: var(--agenda-tint, #0B7A5C); font: inherit; font-size: 16px; font-weight: 500; cursor: pointer; pointer-events: auto; }
+.ricerca-velo { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000; background: rgba(0,0,0,.12); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+.ricerca-pannello {
+  --r-card: var(--surface-card, #fff);
+  --r-label: var(--text-primary, #1C1C1E);
+  --r-label-2: color-mix(in srgb, var(--text-primary, #1C1C1E) 58%, transparent);
+  --r-sep: color-mix(in srgb, var(--text-primary, #1C1C1E) 10%, transparent);
+  --r-fill: rgba(118,118,128,.12);
+  --r-tint: var(--brand-primary, #0B7A5C);
+  position: fixed; left: 10px; right: 10px; z-index: 1001; max-width: 640px; margin: 0 auto; box-sizing: border-box;
+  overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  padding: 10px; border-radius: 18px; background: var(--r-card); color: var(--r-label);
+  box-shadow: 0 0 0 .5px var(--r-sep), 0 18px 48px -16px rgba(0,0,0,.35);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ricerca-pannello { --r-card: var(--surface-card, #1C1C1E); --r-label: var(--text-primary, #F2F2F7); } }
+:root[data-theme="dark"] .ricerca-pannello { --r-card: var(--surface-card, #1C1C1E); --r-label: var(--text-primary, #F2F2F7); }
+.ricerca-pannello svg { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.ricerca-pannello button { font-family: inherit; }
+.ricerca-titolo { margin: 10px 6px 4px; font-size: 12.5px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: var(--r-label-2); }
+.ricerca-azioni { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.ricerca-azioni button { min-height: 72px; display: grid; justify-items: center; align-content: center; gap: 6px; padding: 8px 4px; border: 0; border-radius: 14px; background: var(--r-fill); color: var(--r-label); font-size: 12.5px; font-weight: 600; line-height: 1.15; text-align: center; cursor: pointer; }
+.ricerca-azioni button svg { color: var(--r-tint); width: 24px; height: 24px; }
+.ricerca-esempi { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 2px 4px; }
+.ricerca-esempi button { border: 0; border-radius: 15px; padding: 6px 11px; background: color-mix(in srgb, var(--r-tint) 10%, var(--r-card)); color: color-mix(in srgb, var(--r-tint) 80%, var(--r-label)); font-size: 13.5px; cursor: pointer; }
+.ricerca-voce { width: 100%; display: flex; align-items: center; gap: 12px; padding: 9px 8px; border: 0; border-radius: 12px; background: none; color: inherit; text-align: left; cursor: pointer; min-width: 0; }
+.ricerca-voce:active, .ricerca-voce:hover { background: var(--r-fill); }
+.ricerca-voce > svg { color: var(--r-tint); }
+.ricerca-voce span { flex: 1; min-width: 0; display: grid; }
+.ricerca-voce b, .ricerca-candidati b { font-size: 15.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ricerca-voce small, .ricerca-candidati small { font-size: 13px; color: var(--r-label-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ricerca-punto { flex: none; width: 10px; height: 10px; margin: 0 5px; border-radius: 50%; background: var(--c); }
+.ricerca-poliedron { margin-top: 4px; border-top: .5px solid var(--r-sep); border-radius: 0 0 12px 12px; }
+.ricerca-proposta { padding: 12px; border-radius: 14px; background: color-mix(in srgb, var(--r-tint) 7%, var(--r-card)); box-shadow: inset 0 0 0 .5px color-mix(in srgb, var(--r-tint) 25%, transparent); display: grid; gap: 8px; margin-bottom: 4px; }
+.ricerca-proposta h3 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+.ricerca-verso { margin: 0; font-size: 15px; }
+.ricerca-nota { margin: 4px 6px; font-size: 14px; color: var(--r-label-2); }
+.ricerca-candidati { display: grid; gap: 6px; }
+.ricerca-candidati button { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border: 0; border-radius: 12px; background: var(--r-card); color: var(--r-label); text-align: left; cursor: pointer; min-width: 0; box-shadow: 0 0 0 .5px var(--r-sep); }
+.ricerca-candidati button span { flex: 1; min-width: 0; display: grid; }
+.ricerca-candidati button i { flex: none; width: 18px; height: 18px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--c); }
+.ricerca-candidati button.on { box-shadow: 0 0 0 2px var(--c); }
+.ricerca-candidati button.on i { background: var(--c); box-shadow: inset 0 0 0 2px var(--c), inset 0 0 0 5px var(--r-card); }
+.ricerca-bottoni { display: flex; justify-content: flex-end; gap: 8px; }
+.ricerca-bottoni button { min-height: 40px; padding: 0 18px; border: 0; border-radius: 20px; font-size: 15.5px; font-weight: 600; cursor: pointer; }
+.ricerca-primario { background: var(--r-tint); color: #fff; }
+.ricerca-pericolo { background: #FF3B30; color: #fff; }
+.ricerca-bottoni button:disabled { opacity: .4; cursor: default; }
+.ricerca-esito { margin: 0 0 8px; padding: 9px 12px; border-radius: 12px; background: color-mix(in srgb, #34C759 16%, var(--r-card)); font-size: 14.5px; font-weight: 600; }
+.ricerca-esito--errore { background: color-mix(in srgb, #FF3B30 14%, var(--r-card)); color: #C81E1E; }
+.ricerca-pannello button:focus-visible { outline: 2px solid var(--r-tint); outline-offset: 2px; }
+.ricerca-campo input:focus, .ricerca-campo input:focus-visible { outline: none; box-shadow: none; }
+.ricerca-campo:focus-within { box-shadow: 0 0 0 2px color-mix(in srgb, var(--agenda-tint, #0B7A5C) 35%, transparent); }

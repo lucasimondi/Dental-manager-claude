@@ -202,8 +202,8 @@ test('the Chat page is the only surface with persistent history, served by the o
 // ------------------------------------------------------------------ FASE 8 ---
 
 test('every entry point opens the same Chat page', () => {
-  assert.match(dock, /\{ id: 'chat', label: 'Chat', icon: 'chat' \}/);
-  assert.match(dock, /onClick=\{\(\) => setPage\(item\.id\)\}/);
+  // PO 2026-11-07: the dock no longer has a Chat slot; bell and panel open the same page.
+  assert.match(dock, /setPage\(item\.id\);/);
   assert.match(controller, /onOpenChat=\{\(\) => setPage\('chat'\)\}/);
   assert.match(app, /page === 'chat' && <div ref=\{setPoliedronChatHost\}/);
 });
