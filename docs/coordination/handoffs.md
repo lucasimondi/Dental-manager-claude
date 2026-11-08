@@ -4504,3 +4504,7 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 ## 2026-11-08 — DOCUMENTI-STUDIO
 - Done: migration 20261108130000_documenti_studio.sql (+ tests/documentiStudioDatabase.test.mjs), src/lib/documentiStudio.js, src/components/AcquisisciDocumento.jsx, ArchivioDocs integration, agenda-bar document search and acquisition in Studio.
 - Next: merge PR after green checks; apply 20261108120000 and 20261108130000 to production; security advisors.
+
+## 2026-11-08 — PR275 merged
+- Merge commit 0fdb64f; production deploy READY; migrations 20261108120000 and 20261108130000 applied; advisors clean for new objects.
+- Open: real-iPhone check of the agenda bar and of the acquisition flow.
