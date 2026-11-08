@@ -96,3 +96,33 @@ test('passo 2: un solo accesso — Personal riusa la sessione di Studio dello st
   assert.equal(CHIAVE_SCOLLEGATO, 'poliedron-personal-studio-scollegato');
   assert.match(src, /export const CHIAVE_SESSIONE_STUDIO = chiaveSessione\(STUDIO_URL\);/, 'la chiave è quella del client di Studio');
 });
+
+test('DOCK-PER-TE passo 3: + → Per te (Documento, Spesa, Foto, Nota, Password) in Studio e Personal', async () => {
+  const { aggiungiPerTe } = await import('../shared/agenda/navigation.js');
+  const L = { hostname: 'dental-manager-acmeproduction.vercel.app', pathname: '/poliedron/', origin: 'https://dental-manager-acmeproduction.vercel.app' };
+  const url = new URL(aggiungiPerTe('spesa', L));
+  assert.equal(url.pathname, '/poliedron/personal/');
+  assert.equal(url.searchParams.get('sezione'), 'documenti');
+  assert.equal(url.searchParams.get('aggiungi'), 'spesa');
+  assert.throws(() => aggiungiPerTe('altro', L));
+  const agenda = read('src/components/Agenda.jsx');
+  assert.match(agenda, /\['documento', 'Documento', '#5D6979'\], \['spesa', 'Spesa', '#A8323E'\], \['foto', 'Foto', '#C23D78'\]\][^\n]*aggiungiPerTe\(id\)/);
+  const foglio = read('personal/src/Aggiungi.jsx');
+  for (const v of ['Scansiona', 'Scatta foto', 'Carica file', 'Apri e firma un PDF', 'Scansiona scontrino', 'Foto o file', 'Inserimento manuale', 'Fotocamera', 'Galleria']) assert.match(foglio, new RegExp(`'${v}'`));
+  const app = read('personal/src/App.jsx');
+  assert.match(app, /voceDaIndirizzo\(\)/);
+  const ingressi = read('personal/src/lib/ingressi.js');
+  assert.match(ingressi, /url\.searchParams\.get\('aggiungi'\)/);
+  assert.match(ingressi, /spesaScontrino: \{[^\n]*tipo: 'spesaRicevuta', file/);
+  assert.doesNotMatch(read('personal/src/sezioni/documenti/Documenti.jsx'), /Apri un PDF dal telefono/);
+});
+
+test('DOCK-PER-TE passo 3: ?aggiungi= si legge una volta e si toglie dall\'indirizzo', async () => {
+  const { voceDaIndirizzo } = await import('../personal/src/lib/ingressi.js');
+  const finta = (href) => { const w = { location: { href }, history: { replaceState: (_, __, u) => { w.location.href = String(u); } } }; return w; };
+  const w = finta('https://x.it/personal/?sezione=documenti&aggiungi=spesa');
+  assert.equal(voceDaIndirizzo(w), 'spesa');
+  assert.equal(w.location.href, 'https://x.it/personal/?sezione=documenti');
+  assert.equal(voceDaIndirizzo(w), null);
+  assert.equal(voceDaIndirizzo(finta('https://x.it/personal/?aggiungi=elimina')), null);
+});

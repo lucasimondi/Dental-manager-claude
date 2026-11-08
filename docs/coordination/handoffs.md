@@ -4561,3 +4561,9 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Branch `ccr-4ac3e51d-dock-per-te-2`. Files: personal/src/pdf/{GestorePdf.jsx,PaginaPdf.jsx}, personal/src/sezioni/documenti/{Documento.jsx,DocumentoIntero.jsx,Documenti.jsx}, personal/src/sezioni/{agenda/AgendaGriglia.jsx,altro/index.jsx}, personal/src/App.jsx, tests/personalPdf.test.mjs, tests/visual/personal-pdf*.
 - Database: none. Tests: 1609/1609; Pixel 7 PDF checks PASS. Rollback: revert the PR.
 - Next: step 3 (+ → Per te acquisition; spesa with receipt via movimenti.documento_id).
+
+## Handoff — DOCK-PER-TE passo 3 (2026-11-08) — Claude Code
+- Branch `ccr-4ac3e51d-dock-per-te-3`. Files: personal/src/{App.jsx,Aggiungi.jsx,lib/ingressi.js,lib/conti.js,sezioni/conti/{index.jsx,Spesa.jsx},sezioni/agenda/AgendaGriglia.jsx,sezioni/documenti/Documenti.jsx}, src/components/Agenda.jsx, shared/agenda/navigation.js (aggiungiPerTe), shared/crea/CreaSheet.jsx (foto icon), tests (appUnica, personalConti, personalFoto, personalPdf).
+- Database: none (movimenti.documento_id and scadenze.documento_id already exist). Tests 1612/1612; builds. Rollback: revert the PR.
+- Risks: the receipt upload goes through the existing Code.gs upload (analysed like any upload; clinical documents never read); a real-phone check of camera capture from the + is pending.
+- Next: step 4 (graphics pass).

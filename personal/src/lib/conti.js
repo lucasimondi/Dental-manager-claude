@@ -209,3 +209,15 @@ export function movimentiLavoro(dati, da, a) {
       categoria: 'Lavoro (studio, netto)', descrizione: 'Lavoro dallo studio (netto)', daStudio: true };
   }).filter(Boolean);
 }
+
+// DOCK-PER-TE passo 3 — una spesa acquisita con una sola schermata: allegato (facoltativo), importo,
+// data e stato. «Pagata» diventa un movimento in uscita, «Da pagare» un pagamento da fare; in
+// entrambi i casi la ricevuta resta collegata (documento_id), così si apre dai Conti.
+export function spesaDaRegistrare({ stato, importo, data, descrizione, categoria, documentoId = null }) {
+  const n = importoNumero(importo);
+  if (!(n > 0)) throw new Error('Importo non valido');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(data || ''))) throw new Error('Data non valida');
+  const testo = String(descrizione || '').trim() || 'Spesa';
+  if (stato === 'da_pagare') return { tipo: 'scadenza', dati: { data, descrizione: testo, importo: n, categoria: categoria || null, documento_id: documentoId } };
+  return { tipo: 'movimento', dati: { tipo: 'uscita', data, importo: n, descrizione: testo, categoria: categoria || null, documento_id: documentoId } };
+}

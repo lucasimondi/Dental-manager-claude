@@ -7,7 +7,7 @@ import { useTimeline } from '../../shared/agenda/useTimeline.js';
 import AgendaVisibility from '../../shared/agenda/AgendaVisibility.jsx';
 import { agendaVisible, keepOccupiedWeekends } from '../../shared/agenda/visibility.js';
 import { layoutAgendaDay, layoutAppointments as layoutOverlap } from '../../shared/agenda/geometry.js';
-import { readAgendaLocation, sectionDestination } from '../../shared/agenda/navigation.js';
+import { readAgendaLocation, sectionDestination, aggiungiPerTe } from '../../shared/agenda/navigation.js';
 import { leggiScadenzePersonali, scadenzeDelGiorno } from '../lib/scadenzePersonali.js';
 import RicercaAgenda from '../../shared/ricerca/RicercaAgenda.jsx';
 import CreaSheet, { CreaButton } from '../../shared/crea/CreaSheet.jsx';
@@ -1054,6 +1054,8 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       ricerca?.acquisisci && { id: 'documento', nome: 'Documento', colore: '#5D6979', fai: ricerca.acquisisci },
     ].filter(Boolean) },
     { nome: 'Per te', voci: [
+      // DOCK-PER-TE passo 3: Documento, Spesa e Foto personali si aprono in Personal sulle loro scelte.
+      ...[['documento', 'Documento', '#5D6979'], ['spesa', 'Spesa', '#A8323E'], ['foto', 'Foto', '#C23D78']].map(([id, nome, colore]) => ({ id: `perte-${id}`, icona: id, nome, colore, fai: () => globalThis.location.assign(aggiungiPerTe(id)) })),
       ricerca?.scriviNota && { id: 'nota', nome: 'Nota', colore: '#C98A10', fai: ricerca.scriviNota },
       ricerca?.nuovaPassword && { id: 'password', nome: 'Password', colore: '#4E52C4', fai: ricerca.nuovaPassword },
     ].filter(Boolean) },

@@ -67,11 +67,13 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
       { id: 'impegno', nome: 'Impegno', colore: '#E3772A', fai: () => ctx.apri({ tipo: 'evento', evento: { data_inizio: giorno } }) },
     ] },
     { nome: 'Per te', voci: [
-      { id: 'nota', nome: 'Nota', colore: '#C98A10', fai: () => ctx.vai('note', 'scrivi') },
-      { id: 'documento', nome: 'Documento', colore: '#5D6979', fai: () => ctx.aggiungi('scansiona') },
+      // DOCK-PER-TE passo 3: Documento, Spesa e Foto aprono le loro tre scelte.
+      { id: 'documento', nome: 'Documento', colore: '#5D6979', fai: () => ctx.aggiungi('documento') },
       { id: 'spesa', nome: 'Spesa', colore: '#A8323E', fai: () => ctx.aggiungi('spesa') },
-      { id: 'pagamento', nome: 'Da pagare', colore: '#9B3D96', fai: () => ctx.aggiungi('pagamento') },
+      { id: 'foto', nome: 'Foto', colore: '#C23D78', fai: () => ctx.aggiungi('foto') },
+      { id: 'nota', nome: 'Nota', colore: '#C98A10', fai: () => ctx.vai('note', 'scrivi') },
       { id: 'password', nome: 'Password', colore: '#4E52C4', fai: () => ctx.vai('password', 'nuova') },
+      { id: 'pagamento', nome: 'Da pagare', colore: '#9B3D96', fai: () => ctx.aggiungi('pagamento') },
       { id: 'paziente', nome: 'Paziente', colore: '#1F5F7A', fai: () => globalThis.location.assign(sectionDestination('studio', 'paz', globalThis.location, { nuovo: true })) },
     ] },
   ];

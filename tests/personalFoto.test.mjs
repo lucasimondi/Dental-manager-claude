@@ -33,7 +33,9 @@ test('foto: la catalogazione tocca solo foto e video, con campi ripuliti', async
 
 test('foto: area raggiungibile da Documenti e dal +, migrazione solo additiva', () => {
   assert.match(readFileSync('personal/src/sezioni/documenti/Documenti.jsx', 'utf8'), /apri\(\{ tipo: 'fotovideo' \}\)/);
-  assert.match(readFileSync('personal/src/Aggiungi.jsx', 'utf8'), /\['fotovideo', 'Foto o video'/);
+  // DOCK-PER-TE passo 3: + → Foto → Fotocamera · Galleria, nell'album personale (foto_video).
+  assert.match(readFileSync('personal/src/Aggiungi.jsx', 'utf8'), /\['fotoCamera', 'Fotocamera'[\s\S]*\['fotoGalleria', 'Galleria'/);
+  assert.match(readFileSync('personal/src/lib/ingressi.js', 'utf8'), /fotoGalleria: \{[^\n]*fascicolo: 'foto_video'/);
   const sezione = readFileSync('personal/src/sezioni/foto/index.jsx', 'utf8');
   assert.match(sezione, /fotovideo: \{ titolo: 'Foto e video', render: \(p, \{ ctx \}\) => <VistaFoto/);
   assert.match(sezione, /foto: \{ titolo: 'Foto', render: \(p, \{ ctx \}\) => <PaginaFoto/);

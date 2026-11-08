@@ -6,47 +6,69 @@ import { elaboraPagina, creaPdf } from './lib/scansione.js';
 import { Segmenti } from './ui.jsx';
 import {
   IconaFotocamera, IconaFile, IconaPortafoglio, IconaCalendario, IconaEuro, IconaChiudi, IconaScansiona, IconaFoto,
-  IconaNuvola, IconaRuota, IconaCestino, IconaPiu,
+  IconaNuvola, IconaRuota, IconaCestino, IconaPiu, IconaNote, IconaLucchetto, IconaIndietro,
 } from './Icone.jsx';
 
+// DOCK-PER-TE passo 3 (PO 2026-11-08): + → Per te con Documento, Spesa, Foto, Nota e Password;
+// Documento, Spesa e Foto aprono le loro tre scelte. Il resto (incassi, agenda) sotto.
 const VOCI = [
-  ['Archivia un documento', [
-    ['scansiona', 'Scansiona', 'più pagine → PDF', IconaScansiona],
-    ['fotocamera', 'Fotocamera', 'scatta una foto', IconaFotocamera],
-    ['libreria', 'Foto', 'dalla libreria', IconaFoto],
-    ['file', 'File', 'iCloud, Drive, altre app', IconaNuvola],
-    ['personale', 'Documento personale', "carta d'identità, codice fiscale…", IconaPortafoglio],
-    ['fotovideo', 'Foto o video', 'nei tuoi album', IconaFoto],
+  ['Per te', [
+    ['documento', 'Documento', 'scansiona, foto o file', IconaScansiona],
+    ['spesa', 'Spesa', 'scontrino, foto o a mano', IconaEuro],
+    ['foto', 'Foto', "nell'album personale", IconaFoto],
+    ['nota', 'Nota', 'scrivi subito', IconaNote],
+    ['password', 'Password', 'nel registro', IconaLucchetto],
   ]],
   ['Conti e agenda', [
-    ['spesa', 'Spesa', 'registra un\'uscita', IconaEuro],
     ['incasso', 'Incasso', 'registra un\'entrata', IconaEuro],
     ['pagamento', 'Pagamento da fare', 'promemoria con scadenza', IconaFile],
+    ['personale', 'Documento personale', "carta d'identità, codice fiscale…", IconaPortafoglio],
     ['evento', 'Evento', 'in agenda', IconaCalendario],
     ['appuntamento', 'Appuntamento', 'paziente dello studio', IconaCalendario],
   ]],
 ];
+export const SCELTE = {
+  documento: ['Documento', [
+    ['scansiona', 'Scansiona', 'più pagine → PDF', IconaScansiona],
+    ['fotocamera', 'Scatta foto', 'una foto, archiviata subito', IconaFotocamera],
+    ['file', 'Carica file', 'iCloud, Drive, altre app', IconaNuvola],
+    ['pdf', 'Apri e firma un PDF', 'senza archiviarlo', IconaFile],
+  ]],
+  spesa: ['Spesa', [
+    ['spesaScontrino', 'Scansiona scontrino', 'fotografa la ricevuta', IconaFotocamera],
+    ['spesaFile', 'Foto o file', 'ricevuta già sul telefono', IconaNuvola],
+    ['spesaManuale', 'Inserimento manuale', 'solo importo e data', IconaEuro],
+  ]],
+  foto: ['Foto', [
+    ['fotoCamera', 'Fotocamera', "scatta e salva nell'album", IconaFotocamera],
+    ['fotoGalleria', 'Galleria', 'scegli dal telefono', IconaFoto],
+  ]],
+};
 
-export function FoglioAggiungi({ onScegli, onChiudi }) {
+export function FoglioAggiungi({ onScegli, onChiudi, iniziale = null }) {
+  const [livello, setLivello] = useState(SCELTE[iniziale] ? iniziale : null);
   useEffect(() => {
     const esc = (e) => e.key === 'Escape' && onChiudi();
     window.addEventListener('keydown', esc);
     return () => window.removeEventListener('keydown', esc);
   }, [onChiudi]);
+  const gruppi = livello ? [SCELTE[livello]] : VOCI;
   return (
     <div className="pp-velo" onClick={onChiudi}>
-      <div className="pp-foglio" role="dialog" aria-label="Aggiungi" onClick={(e) => e.stopPropagation()}>
+      <div className="pp-foglio" role="dialog" aria-label={livello ? SCELTE[livello][0] : 'Aggiungi'} onClick={(e) => e.stopPropagation()}>
         <div className="pp-foglio-maniglia" />
-        <div className="pp-foglio-testa"><span>Aggiungi</span>
+        <div className="pp-foglio-testa">
+          {livello && <button className="pp-icona-bottone pp-piccolo" onClick={() => setLivello(null)} aria-label="Indietro"><IconaIndietro size={18} /></button>}
+          <span>{livello ? SCELTE[livello][0] : 'Aggiungi'}</span>
           <button className="pp-icona-bottone pp-piccolo" onClick={onChiudi} aria-label="Chiudi"><IconaChiudi size={18} /></button>
         </div>
         <div className="pp-foglio-corpo">
-          {VOCI.map(([titolo, voci]) => (
+          {gruppi.map(([titolo, voci]) => (
             <section key={titolo} className="pp-aggiungi-gruppo">
-              <h3>{titolo}</h3>
+              {!livello && <h3>{titolo}</h3>}
               <div className="pp-aggiungi">
                 {voci.map(([id, nome, sotto, Icona]) => (
-                  <button key={id} className={`pp-aggiungi-voce pp-av-${id}`} onClick={() => onScegli(id)}>
+                  <button key={id} className={`pp-aggiungi-voce pp-av-${id}`} onClick={() => (SCELTE[id] ? setLivello(id) : onScegli(id))}>
                     <span className="pp-aggiungi-icona"><Icona size={22} /></span>
                     <span className="pp-aggiungi-nome">{nome}</span>
                     <span className="pp-aggiungi-sotto">{sotto}</span>
