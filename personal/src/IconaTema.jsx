@@ -28,5 +28,5 @@ export function Pixel({ tipo, size = 24 }) {
   return <svg className="pp-icon-pixel" width={size} height={size} viewBox="0 0 24 24" shapeRendering="crispEdges" aria-hidden="true">{disegno}</svg>;
 }
 export function IconaTema({ tipo, Icona, size = 22 }) {
-  return <span className="pp-icona-tema" aria-hidden="true"><span className="pp-icon-modern"><Icona size={size} /></span><Pixel tipo={tipo} size={size} /></span>;
+  return <span className="pp-icona-tema" aria-hidden="true"><span className="pp-icon-modern"><Icona size={size} /></span></span>;
 }

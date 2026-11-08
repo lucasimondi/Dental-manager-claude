@@ -5,6 +5,8 @@ import { keepOccupiedWeekends } from '../../../../shared/agenda/visibility.js';
 import { layoutAgendaDay, layoutAppointments } from '../../../../shared/agenda/geometry.js';
 import { euro } from '../../lib/coreArchivio.js';
 import RicercaAgenda from '../../../../shared/ricerca/RicercaAgenda.jsx';
+import CreaSheet, { CreaButton } from '../../../../shared/crea/CreaSheet.jsx';
+import { sectionDestination } from '../../../../shared/agenda/navigation.js';
 // POL-VITA-010: Personal adapter; original presentation is owned by shared/agenda.
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, AppointmentBlock, EventBlock, useSlotHeight, AgendaSearchBar, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState } from '../../../../shared/agenda/AgendaPresentation.jsx';
@@ -57,7 +59,23 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
   // HOME-AGENDA-CENTRIC: niente più "Vai a Studio" qui (Studio è nel dock); in cima la ricerca,
   // che apre l'assistente Poliedron, poi mese e giorni.
   // RICERCA-AGENDA (PO 2026-11-08): cerca e agisce qui; senza adattatore resta la barra che apre Poliedron.
-  const ricerca = fonteRicerca ? <RicercaAgenda fonte={fonteRicerca} /> : <AgendaSearchBar onOpen={() => ctx.vai('poliedron')} label="Cerca o chiedi a Poliedron…" />;
+  // CREA (PO 2026-11-08): il + accanto alla barra; ogni voce apre subito il suo modulo.
+  const [creaAperto, setCreaAperto] = useState(false);
+  const gruppiCrea = [
+    { nome: 'In agenda', principale: true, voci: [
+      { id: 'appuntamento', nome: 'Appuntamento', colore: '#2D6BC4', fai: () => ctx.apri({ tipo: 'evento', cosa: 'appuntamento', evento: { data_inizio: giorno } }) },
+      { id: 'impegno', nome: 'Impegno', colore: '#E3772A', fai: () => ctx.apri({ tipo: 'evento', evento: { data_inizio: giorno } }) },
+    ] },
+    { nome: 'Per te', voci: [
+      { id: 'nota', nome: 'Nota', colore: '#C98A10', fai: () => ctx.vai('note', 'scrivi') },
+      { id: 'documento', nome: 'Documento', colore: '#5D6979', fai: () => ctx.aggiungi('scansiona') },
+      { id: 'spesa', nome: 'Spesa', colore: '#A8323E', fai: () => ctx.aggiungi('spesa') },
+      { id: 'pagamento', nome: 'Da pagare', colore: '#9B3D96', fai: () => ctx.aggiungi('pagamento') },
+      { id: 'password', nome: 'Password', colore: '#4E52C4', fai: () => ctx.vai('password', 'nuova') },
+      { id: 'paziente', nome: 'Paziente', colore: '#1F5F7A', fai: () => globalThis.location.assign(sectionDestination('studio', 'paz', globalThis.location, { nuovo: true })) },
+    ] },
+  ];
+  const ricerca = fonteRicerca ? <RicercaAgenda fonte={fonteRicerca} extra={<CreaButton onClick={() => setCreaAperto(true)} />} /> : <AgendaSearchBar onOpen={() => ctx.vai('poliedron')} label="Cerca o chiedi a Poliedron…" extra={<CreaButton onClick={() => setCreaAperto(true)} />} />;
   const pick = <span className="personal-agenda-azioni"><ViewPicker palette={palette} hiddenCount={hiddenCount} showHidden={mostraEsclusi} onToggleHidden={setMostraEsclusi ? () => setMostraEsclusi(x => !x) : undefined} view={view} setView={setView} touchSafe weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendsHidden(hidden => !hidden)} /></span>;
   // DayStrip notifica anche al primo mount la settimana che sta mostrando.
   // In Personal ignoriamo quella prima notifica: altrimenti il 16 diventa lunedì 12.
@@ -127,5 +145,6 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
         <TimeGrid palette={palette} containerRef={containerRef} isMobile slots={slots} slotH={slotH} effectiveSlotH={effectiveSlotH} oraColW={34} days={days} today={oggi()} showNowLine={showNowLine} nowTop={nowTop} onSlot={openSlot} renderDay={renderDay} />
       </div>
     </>}
+    <CreaSheet aperto={creaAperto} onClose={() => setCreaAperto(false)} gruppi={gruppiCrea} />
   </div>;
 }

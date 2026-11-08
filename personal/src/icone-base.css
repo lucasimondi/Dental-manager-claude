@@ -1,0 +1,6 @@
+/* Icone e piccole regole comuni dello stile unico (PO 2026-11-08: tema Windows 95 tolto). */
+.pp-icona-tema,.pp-icon-modern { display:inline-flex;align-items:center;justify-content:center;flex-shrink:0; }
+.pp-icona-contenuto { display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;flex-shrink:0;line-height:0; }
+.pp-retro-shortcuts { display:none; }
+.pp-home-agenda { margin-bottom:24px; }
+.pp-home-agenda > .pp-sezione { margin-top:0; }

@@ -1,11 +1,11 @@
 import { appointmentPatientAction } from './lib/appointmentQuickHub.js';
 import PatientAgendaLayer from './components/PatientAgendaLayer.jsx';
 import { persistPatientAgendaBooking } from './lib/patientAgendaBooking.js';
-import { readAgendaLocation } from '../shared/agenda/navigation.js';
+import { readAgendaLocation, readSectionLocation, readSectionNew, sectionDestination } from '../shared/agenda/navigation.js';
 ﻿import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase, DB } from './lib/supabase.js';
-import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, getLogoSlug, NAV, PIANI_FEATURES_DEFAULT, computeFeatures, DEF_AGENDA_SETTINGS, today, uid, applyBrandColors, applyHeaderColor } from './lib/utils';
+import { C, DEF_PRICE, DEF_TPL, DEF_STUDIO, DEF_TPL_GENERICO, getAppTypesDefault, getLogoSlug, NAV, NAV_BY_ID, PIANI_FEATURES_DEFAULT, computeFeatures, DEF_AGENDA_SETTINGS, today, uid, applyBrandColors, applyHeaderColor } from './lib/utils';
 import { generaRichiamiBot } from './lib/richiamiBot';
 import { salvaPosizione, leggiPosizione, pulisciPosizione, segnaDocumentoAperto, documentoAperto } from './lib/posizioneNavigazione';
 import { fetchSaldiPiani } from './lib/domain/incassiService.js';
@@ -62,6 +62,7 @@ const Dashboard = lazyWithRetry(() => import('./components/Dashboard.jsx'), 'Das
 const NotePage = lazyWithRetry(() => import('../shared/note/NotePage.jsx'), 'NotePage');
 const PasswordPage = lazyWithRetry(() => import('../shared/password/PasswordPage.jsx'), 'PasswordPage');
 const AcquisisciDocumento = lazyWithRetry(() => import('./components/AcquisisciDocumento.jsx'), 'AcquisisciDocumento');
+const AltroPage = lazyWithRetry(() => import('../shared/altro/AltroPage.jsx'), 'AltroPage');
 const ControlloGestione = lazyWithRetry(() => import('./components/ControlloGestione.jsx'), 'ControlloGestione');
 const PoliedronHub = lazyWithRetry(() => import('./components/PoliedronHub.jsx'), 'PoliedronHub');
 const FinancialWorkspace = lazyWithRetry(() => import('./components/FinancialWorkspace.jsx'), 'FinancialWorkspace');
@@ -88,9 +89,12 @@ export default function App() {
   const [dataLoading, setDataLoading] = useState(true);
   // Poliedron app: a page asked for while studio data is still loading.
   const [pendingPage, setPendingPage] = useState(null);
-  const [page, setPage] = useState(() => readAgendaLocation().requested ? 'agenda' : phoneApp ? 'chat' : 'agenda');
+  // APP-UNICA: «?sezione=paz» (da Altro di Personal) apre direttamente quella sezione.
+  const [page, setPage] = useState(() => readAgendaLocation().requested ? 'agenda' : NAV_BY_ID[readSectionLocation()] ? readSectionLocation() : phoneApp ? 'chat' : 'agenda');
   const [passwordQuery, setPasswordQuery] = useState(''); // ricerca agenda → registro password
   const [acquisisciAperto, setAcquisisciAperto] = useState(false); // DOCUMENTI-STUDIO
+  const [noteScrivi, setNoteScrivi] = useState(0); // CREA → Nota: campo già pronto
+  const [passwordNuova, setPasswordNuova] = useState(0); // CREA → Password: modulo già aperto
   const ultimi = useRef({});
   // Start downloading the landing calendar during authentication/data loading.
   // Leave failures to lazyWithRetry when the route actually renders.
@@ -126,7 +130,8 @@ export default function App() {
   // the list page. Mirrors the existing initPatId pattern (set target page,
   // consumer opens its own real modal, then clears it) instead of a second
   // navigation mechanism.
-  const [autoOpenNew, setAutoOpenNew] = useState(null); // 'paz' | 'piani' | 'paga' | 'richiami' | 'spese' | null
+  // «?sezione=paz&nuovo=1» (dal + di Personal): la sezione si apre con il modulo nuovo già aperto.
+  const [autoOpenNew, setAutoOpenNew] = useState(() => (readSectionNew() && NAV_BY_ID[readSectionLocation()] ? readSectionLocation() : null)); // 'paz' | 'piani' | 'paga' | 'richiami' | 'spese' | null
   // POL-AI-007: optional { pazienteId, importo } pre-fill for the 'paga'
   // target, recognized by Poliedron chat ("registra un pagamento di 100
   // euro a Mario Rossi") — every other caller of goNuovoElemento('paga')
@@ -700,8 +705,12 @@ export default function App() {
       }));
     },
     chiediPoliedron: (command) => setQuickHubPoliedronRequest({ id: requestId(), command }),
+    // CREA (PO 2026-11-08): dal + dell'agenda ogni voce apre subito il suo modulo.
+    nuovo: (target) => ultimi.current.goNuovoElemento?.(target),
+    scriviNota: () => { setNoteScrivi((n) => n + 1); setPage('note'); },
+    nuovaPassword: () => { setPasswordQuery(''); setPasswordNuova((n) => n + 1); setPage('password'); },
   }), [studioIdSessione, archivioAttivo]);
-  ultimi.current = { patients, goSchedaPaz: (p, tab) => goSchedaPaz(p, tab) };
+  ultimi.current = { patients, goSchedaPaz: (p, tab) => goSchedaPaz(p, tab), goNuovoElemento };
   if (session === undefined) return <LoadingScreen />;
   if (session === null) return <LoginScreen onLogin={() => {}} brand={phoneApp ? 'Poliedron' : 'Poliedra'} />;
   // The Poliedron app opens on the chat at once (WhatsApp style); studio data
@@ -720,6 +729,17 @@ export default function App() {
       </div>
     );
   }
+
+  // APP-UNICA (PO 2026-11-08): «Altro» con Lavoro (le sezioni dello studio) e Vita (Personal).
+  const ALTRO_LAVORO = { paz: ['pazienti', '#1F5F7A'], paga: ['incassi', '#22714A'], piani: ['piani', '#2D6BC4'], preventivi: ['preventivi', '#4E52C4'], richiami: ['richiami', '#D1453B'], attivita: ['attivita', '#13808F'], spese: ['spese', '#A8323E'], controllo: ['controllo', '#1F5F7A'], listino: ['listino', '#5D6979'], wa: ['whatsapp', '#22714A'], chat: ['chat', '#2D6BC4'], agenteai: ['agente', '#8460CC'], home: ['home', '#5D6979'] };
+  const gruppiAltro = () => [
+    { nome: 'Lavoro · Studio', voci: navVisibile.filter((n) => ALTRO_LAVORO[n.id]).map((n) => ({ id: n.id, nome: n.l, icona: ALTRO_LAVORO[n.id][0], colore: ALTRO_LAVORO[n.id][1], fai: () => setPage(n.id) })) },
+    { nome: 'Vita · Personale', voci: [
+      ...[['oggi', 'Oggi', '#E0A526'], ['conti', 'Conti', '#34845A'], ['personali', 'Personali', '#8460CC'], ['legal', 'Pratiche', '#5E7F1F'], ['foto', 'Foto', '#C23D78'], ['diario', 'Diario', '#9B3D96'], ['didattica', 'Biblioteca', '#E3772A']]
+        .map(([id, nome, colore]) => ({ id: `vita-${id}`, nome, colore, icona: id === 'legal' ? 'pratiche' : id === 'didattica' ? 'biblioteca' : id, href: sectionDestination('personal', id) })),
+      { id: 'password', nome: 'Password', icona: 'password', colore: '#4E52C4', fai: () => { setPasswordQuery(''); setPage('password'); } },
+    ] },
+  ];
 
   const navVisibile = NAV.filter((n) =>
     (n.id !== 'wa' || features.whatsapp) &&
@@ -938,9 +958,10 @@ export default function App() {
             {page === 'controllo' && <ControlloGestione studioId={session?.user?.app_metadata?.studio_id} patients={patients} plans={plans} setPlans={setPlansSync} payments={payments} setPayments={setPaymentsSync} appointments={appointments} pricelist={pricelist} onOpenPaz={goSchedaPaz} isDentistico={!studioInfo?.vertical || studioInfo.vertical === 'dentistico'} />}
             {page === 'poliedron' && <PoliedronHub patients={patients} plans={plans} appointments={appointments} payments={payments} implants={implants} studioId={session?.user?.app_metadata?.studio_id} isStudioAdmin={isStudioAdmin} features={features} studioMembership={studioMembership} si={studioInfo} onOpenPaz={goSchedaPaz} onNavigate={setPage} />}
             {page === 'archivio' && <ArchivioDocs studioId={session?.user?.app_metadata?.studio_id} patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} initialFiltroTipo={archivioFiltroTipoHint} />}
-            {page === 'note' && <NotePage db={supabase} studioId={session?.user?.app_metadata?.studio_id} />}
+            {page === 'note' && <NotePage key={noteScrivi} scriviSubito={noteScrivi > 0} db={supabase} studioId={session?.user?.app_metadata?.studio_id} />}
             {acquisisciAperto && <Suspense fallback={null}><AcquisisciDocumento db={supabase} studioId={session?.user?.app_metadata?.studio_id} patients={patients} onClose={() => setAcquisisciAperto(false)} /></Suspense>}
-            {page === 'password' && <PasswordPage db={supabase} studioId={session?.user?.app_metadata?.studio_id} cercaIniziale={passwordQuery} />}
+            {page === 'altro' && <AltroPage gruppi={gruppiAltro()} piede={[{ id: 'set', nome: 'Impostazioni e account', icona: 'impostazioni', fai: () => setPage('set') }]} />}
+            {page === 'password' && <PasswordPage key={passwordNuova} nuovaSubito={passwordNuova > 0} db={supabase} studioId={session?.user?.app_metadata?.studio_id} cercaIniziale={passwordQuery} />}
             {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
             {page === 'agenteai' && <AgenteAISetup features={features} />}
             {page === 'set' && <Impostazioni studioInfo={studioInfo} setStudioInfo={setStudioInfoSync} appTypes={appTypes} setAppTypes={setAppTypesSync} currentUserId={session?.user?.id} onNomeChange={(n) => setUserName(n)} features={features} theme={theme} toggleTheme={toggleTheme} isStudioAdmin={isStudioAdmin} isSuperAdmin={isSuperAdmin} onLogout={handleLogout} onCheckUpdate={checkForUpdate} onOpenHomeCustomizer={() => { setPage('home'); setOpenHomeCustomizerRequest(Date.now()); }} studioMembership={studioMembership} />}

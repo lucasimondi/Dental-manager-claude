@@ -2,6 +2,11 @@ import CalendarIcon from '../../../shared/agenda/CalendarIcon.jsx';
 import React from 'react';
 
 const ICONS = {
+  more: (s, c) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill={c} stroke="none" aria-hidden="true">
+      <circle cx="5.5" cy="12" r="1.9" /><circle cx="12" cy="12" r="1.9" /><circle cx="18.5" cy="12" r="1.9" />
+    </svg>
+  ),
   home: (s, c) => (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" />

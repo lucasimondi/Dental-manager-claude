@@ -16,3 +16,18 @@ export function agendaDestination(target, day, view, location = globalThis.locat
   url.search = new URLSearchParams({ agenda: '1', agendaDate: day, agendaView: view, ...(view === 'mese' && month ? { agendaMonth: month } : {}) }).toString();
   return url.href;
 }
+
+// APP-UNICA (PO 2026-11-08): da «Altro» si apre direttamente una sezione dell'altra parte
+// (Studio ↔ Personal), finché le due non sono la stessa app. Solo il nome della sezione passa.
+export function readSectionLocation(search = globalThis.location?.search || '') {
+  const s = new URLSearchParams(search).get('sezione');
+  return /^[a-z]{2,20}$/.test(s || '') ? s : null;
+}
+export function sectionDestination(target, sezione, location = globalThis.location, { nuovo = false } = {}) {
+  const customPersonal = location.hostname === 'personal.poliedrasoft.it';
+  const productionStudio = location.hostname === 'dental-manager-acmeproduction.vercel.app';
+  const url = new URL(target === 'studio' ? (customPersonal ? '/studio' : '/') : productionStudio ? 'https://personal.poliedrasoft.it/' : '/personal/', location.origin);
+  url.search = new URLSearchParams({ sezione, ...(nuovo ? { nuovo: '1' } : {}) }).toString();
+  return url.href;
+}
+export const readSectionNew = (search = globalThis.location?.search || '') => new URLSearchParams(search).get('nuovo') === '1';

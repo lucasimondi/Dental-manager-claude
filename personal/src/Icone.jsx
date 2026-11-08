@@ -1,8 +1,7 @@
-import { Pixel } from './IconaTema.jsx';
 // POL-VITA-003 — icone a tratto, 24×24, colore dal testo.
 const Svg = ({ children, size = 22, tipo }) => (
   <span className="pp-icona-contenuto" aria-hidden="true">
-  <svg className="pp-icona-tratto" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg><Pixel tipo={tipo} size={size} />
+  <svg className="pp-icona-tratto" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
   </span>
 );
 

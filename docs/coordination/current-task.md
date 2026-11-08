@@ -1,3 +1,16 @@
+# Current task — PERSONAL-PDF-MANAGER (2026-11-08, continued)
+- OWNER Claude Code (takeover from Codex by explicit PO instruction 2026-11-08: "Guarda cosa ha fatto codex sui PDF e continua per creare il gestore PDF in poliedron con le librerie"); branch `ccr-4ac3e51d-ki2rcm` = `codex/personal-pdf-manager` (5a9018c) + master 254f2d4 (PR279) merged.
+- AUTHORIZATION PO: full PDF manager phase 1 ("Ok procediamo con un gestore molto valido"); PO uses Android; existing open-source libraries only (pdfjs-dist 4.10 as `pdfjs-personal`, pdf-lib 1.17.1).
+- STATUS IN_PROGRESS.
+
+# Current task — APP-UNICA passo 1 (2026-11-08)
+- OWNER Claude Code; branch ccr-4fbd3db0-8ou289 from master 2e610ed (PR276 merged).
+- AUTHORIZATION PO 2026-11-08 after the preview artifact "Poliedron app unica": "Ok per poliedron, tema win togliamo, il più ok cerca solo di farlo più pro e immediato e bello vai"; then "Arriva fino dove puoi però registra le cose da fare ancora".
+- SCOPE (phone only, desktop unchanged): + next to the agenda search opens the shared «Crea» sheet in Studio and Personal; one dock Agenda · Note · Poliedron · Documenti · Altro in both parts; shared «Altro» page (Lavoro · Studio, Vita · Personale) with direct cross-links (`?sezione=`); Windows 95 theme removed from Personal; Studio PWA named Poliedron. No schema, RLS or data change.
+- REMAINING WORK: docs/coordination/app-unica-da-fare.md (step 2: Personal inside the Poliedron app with one login; step 3: unified Documenti; real-iPhone checks).
+- VALIDATION 1593/1593 Node tests; Studio and Personal builds; Chromium visual: agenda.compare, agenda.reliability, agenda.sharing, agenda.ricerca, appointment-workspace; renders of the Crea sheet (Studio and Personal) and Altro page.
+- STATUS PR open; task-specific "Mergia" required.
+
 # Current task — PERSONAL-PDF-MANAGER (2026-11-08)
 - OWNER Codex; branch `codex/personal-pdf-manager` from master `5e3f48604a56cfdd1cf6cb3cf5b715005fa855ed`.
 - AUTHORIZATION PO: full PDF manager phase 1, confirmed "Ok procediamo con un gestore molto valido". Separate task; no takeover of Claude Code's command-engine work recorded below.

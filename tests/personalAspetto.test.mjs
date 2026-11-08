@@ -1,33 +1,24 @@
+// PO 2026-11-08: "tema win togliamo" — un solo stile, moderno.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync, existsSync } from 'node:fs';
 import { applicaAspetto, CHIAVE_ASPETTO, leggiAspetto, normalizzaAspetto, salvaAspetto } from '../personal/src/lib/aspetto.js';
 
-test('appearance: modern default and unknown stored values never activate a theme', () => {
-  for (const valore of [null, undefined, '', 'dark', 'windows', '{}']) assert.equal(normalizzaAspetto(valore), 'moderno');
-  assert.equal(leggiAspetto(null), 'moderno');
-  assert.equal(leggiAspetto({ getItem: () => 'win95' }), 'win95');
-});
-test('appearance: Windows95 and modern roundtrip use one isolated device preference', () => {
-  const mem = new Map([['poliedron-personal-vista', 'documenti']]);
-  const storage = { getItem: (k) => mem.get(k), setItem: (k,v) => mem.set(k,v) };
-  assert.equal(salvaAspetto(storage, 'win95'), 'win95');
-  assert.equal(leggiAspetto(storage), 'win95');
-  salvaAspetto(storage, 'moderno');
-  assert.equal(leggiAspetto(storage), 'moderno');
-  assert.equal(mem.get('poliedron-personal-vista'), 'documenti');
-  assert.deepEqual([...mem.keys()], ['poliedron-personal-vista', CHIAVE_ASPETTO]);
-});
-test('appearance: unavailable storage never prevents switching during the current session', () => {
-  const storage = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('quota'); } };
-  assert.equal(leggiAspetto(storage), 'moderno');
-  assert.equal(salvaAspetto(storage, 'win95'), 'win95');
-  assert.equal(salvaAspetto(null, 'moderno'), 'moderno');
-});
-test('appearance: root marker is reversible and preserves unrelated attributes', () => {
+test('aspetto: sempre moderno, anche con una vecchia scelta win95 salvata', () => {
+  for (const valore of [null, undefined, '', 'win95', 'dark']) assert.equal(normalizzaAspetto(valore), 'moderno');
+  assert.equal(leggiAspetto({ getItem: () => 'win95' }), 'moderno');
+  const mem = new Map([[CHIAVE_ASPETTO, 'win95']]);
+  assert.equal(salvaAspetto({ setItem: (k, v) => mem.set(k, v) }), 'moderno');
+  assert.equal(mem.get(CHIAVE_ASPETTO), 'moderno');
+  assert.equal(salvaAspetto({ setItem() { throw new Error('quota'); } }), 'moderno');
   const root = { dataset: { other: 'keep' } };
-  applicaAspetto(root, 'win95');
-  assert.deepEqual(root.dataset, { other: 'keep', personalTheme: 'win95' });
-  applicaAspetto(root, 'moderno');
-  assert.equal(root.dataset.personalTheme, 'moderno');
-  assert.equal(applicaAspetto(null, 'win95'), 'win95');
+  applicaAspetto(root);
+  assert.deepEqual(root.dataset, { other: 'keep', personalTheme: 'moderno' });
+});
+
+test('aspetto: niente più interruttore né foglio di stile Windows 95', () => {
+  assert.equal(existsSync('personal/src/retro.css'), false);
+  for (const f of ['personal/src/App.jsx', 'personal/src/Accesso.jsx', 'personal/src/sezioni/impostazioni/Impostazioni.jsx', 'personal/src/main.jsx']) {
+    assert.doesNotMatch(readFileSync(f, 'utf8'), /CambioAspetto|retro\.css|Windows 95/, f);
+  }
 });

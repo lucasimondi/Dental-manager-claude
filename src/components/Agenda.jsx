@@ -7,8 +7,9 @@ import { useTimeline } from '../../shared/agenda/useTimeline.js';
 import AgendaVisibility from '../../shared/agenda/AgendaVisibility.jsx';
 import { agendaVisible, keepOccupiedWeekends } from '../../shared/agenda/visibility.js';
 import { layoutAgendaDay, layoutAppointments as layoutOverlap } from '../../shared/agenda/geometry.js';
-import { readAgendaLocation, agendaDestination } from '../../shared/agenda/navigation.js';
+import { readAgendaLocation } from '../../shared/agenda/navigation.js';
 import RicercaAgenda from '../../shared/ricerca/RicercaAgenda.jsx';
+import CreaSheet, { CreaButton } from '../../shared/crea/CreaSheet.jsx';
 import { creaFontiStudio, impegnoSpostato } from '../../shared/ricerca/fonti.js';
 import { cercaPazienti as cercaPazientiLocali } from '../lib/ricercaPazienti.js';
 import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, EventBlock, AppointmentBlock, useSlotHeight, AgendaSwitch, AgendaSearchBar, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState, useGridSwipe } from '../../shared/agenda/AgendaPresentation.jsx';
@@ -410,6 +411,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
 export default function Agenda({ patients, setPatients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni: tuttiImpegni = [], setImpegni, si, setStudioInfo, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, followUpRequest, onBookFollowUp, onCancelFollowUp, plans = [], pricelist = [], onSaveBookingTreatment, onOpenSearch, ricerca = null }) {
   // PO 2026-11-08: un'agenda sola, di partenza "Tutto" (Studio e Personal insieme).
   const [mostraEsclusi, setMostraEsclusi] = useState(true);
+  const [creaAperto, setCreaAperto] = useState(false);
   const impegni = tuttiImpegni.filter(i => mostraEsclusi || agendaVisible(i, 'studio'));
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const labelPoltrona = isDentistico ? 'Poltrona' : 'Postazione';
@@ -1018,16 +1020,27 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     apriNote: ricerca?.apriNote, apriPassword: ricerca?.apriPassword, apriDocumenti: ricerca?.apriDocumenti, acquisisci: ricerca?.acquisisci,
     chiediPoliedron: ricerca?.chiediPoliedron,
   };
+  // CREA (PO 2026-11-08): il + accanto alla barra apre il foglio «Crea»; ogni voce apre subito il suo modulo.
+  const gruppiCrea = [
+    { nome: 'In agenda', principale: true, voci: [
+      { id: 'appuntamento', nome: 'Appuntamento', colore: '#2D6BC4', fai: () => apriNuovo(selDay) },
+      { id: 'impegno', nome: 'Impegno', colore: '#E3772A', fai: () => apriNuovoImpegno(selDay) },
+    ] },
+    { nome: 'Studio', voci: [
+      ricerca?.nuovo && { id: 'paziente', nome: 'Paziente', colore: '#1F5F7A', fai: () => ricerca.nuovo('paz') },
+      ricerca?.nuovo && { id: 'incasso', nome: 'Incasso', colore: '#22714A', fai: () => ricerca.nuovo('paga') },
+      ricerca?.nuovo && { id: 'spesa', nome: 'Spesa', colore: '#A8323E', fai: () => ricerca.nuovo('spese') },
+      ricerca?.acquisisci && { id: 'documento', nome: 'Documento', colore: '#5D6979', fai: ricerca.acquisisci },
+    ].filter(Boolean) },
+    { nome: 'Per te', voci: [
+      ricerca?.scriviNota && { id: 'nota', nome: 'Nota', colore: '#C98A10', fai: ricerca.scriviNota },
+      ricerca?.nuovaPassword && { id: 'password', nome: 'Password', colore: '#4E52C4', fai: ricerca.nuovaPassword },
+    ].filter(Boolean) },
+  ];
   const mobileSearchBar = isMobile && ricerca ? (
-    <RicercaAgenda fonte={fonteRicerca} placeholder="Cerca o chiedi: «sposta Rossi a giovedì»" extra={
-      <a className="agenda-search-app agenda-floating-interactive" href={agendaDestination('personal', selDay, 'settimana', globalThis.location, toISO(vd))} aria-label="Apri Personal" title="Personal">
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" /></svg>
-      </a>} />
+    <RicercaAgenda fonte={fonteRicerca} placeholder="Cerca o chiedi: «sposta Rossi a giovedì»" extra={<CreaButton onClick={() => setCreaAperto(true)} />} />
   ) : isMobile && onOpenSearch ? (
-    <AgendaSearchBar onOpen={onOpenSearch} extra={
-      <a className="agenda-search-app agenda-floating-interactive" href={agendaDestination('personal', selDay, 'settimana', globalThis.location, toISO(vd))} aria-label="Apri Personal" title="Personal">
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" /></svg>
-      </a>} />
+    <AgendaSearchBar onOpen={onOpenSearch} extra={<CreaButton onClick={() => setCreaAperto(true)} />} />
   ) : null;
   // Appuntamenti effettivamente visibili nella vista corrente (per il conteggio "Seleziona tutti" e il badge)
   const giorniVisibili = view === 'giorno' ? [selDay] : (view === 'settimana' || view === 'settimana_lavoro') ? weekDays.map(toISO) : [];
@@ -1553,6 +1566,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           (POL-UI-009) basso sinistra è ora occupato dal poliedro/menu: il
           FAB si sposta sopra di esso, sullo stesso bordo sinistro, senza
           sovrapposizioni. */}
+      {isMobile && <CreaSheet aperto={creaAperto} onClose={() => setCreaAperto(false)} gruppi={gruppiCrea} />}
       {sceltaSlot && (
         <div className="agenda-slot-sheet-backdrop" onClick={() => setSceltaSlot(null)}>
           <div className="agenda-slot-sheet" role="dialog" aria-label="Crea" onClick={e => e.stopPropagation()}>

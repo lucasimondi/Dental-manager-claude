@@ -1,7 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import Ic from '../ui/Ic.jsx';
-import { agendaDestination } from '../../../shared/agenda/navigation.js';
 import PoliedronOrb from './PoliedronOrb.jsx';
 
 /* POL-UI-015 §9-10: `set` (Impostazioni) no longer has a dock slot — it
@@ -25,6 +24,9 @@ import PoliedronOrb from './PoliedronOrb.jsx';
    conversation, so a second badge here would be a duplicate of the same
    count on the same screen. The dock's approved geometry, position and size
    are unchanged. */
+/* APP-UNICA (PO 2026-11-08): un solo dock, uguale a Personal: Agenda · Note · Poliedron ·
+   Documenti · Altro. «Altro» raccoglie Lavoro (studio) e Vita (personale); niente più tasto
+   che porta a un'altra app. */
 /* HOME-AGENDA-CENTRIC (PO 2026-11-07): la ricerca in cima all'agenda sostituisce Pazienti e
    Chat; l'agenda è la Home. Dock: Agenda · Note · Poliedron · Documenti · Personal, la stessa
    struttura del dock di Personal (che al posto di Personal ha Studio). Home, Pazienti e Chat
@@ -35,7 +37,7 @@ export const MOBILE_DOCK_ITEMS = Object.freeze([
   { id: 'note', label: 'Note', icon: 'edit' },
   { id: '__poliedron__', label: 'Poliedron', icon: null },
   { id: 'archivio', label: 'Documenti', icon: 'folder' },
-  { id: '__personal__', label: 'Personal', icon: 'home' },
+  { id: 'altro', label: 'Altro', icon: 'more' },
 ]);
 export const mobileDockItems = ({ archivio = true } = {}) => MOBILE_DOCK_ITEMS.map((item) => (
   item.id === 'archivio' && !archivio ? { id: 'paz', label: 'Pazienti', icon: 'pz' } : item
@@ -70,7 +72,6 @@ export default function PoliedronMobileDock({ page, setPage, open, onToggle, pan
             aria-current={active ? 'page' : undefined}
             tabIndex={open ? -1 : 0}
             onClick={() => {
-              if (item.id === '__personal__') { globalThis.location.assign(agendaDestination('personal', new Date().toLocaleDateString('sv-SE'), 'settimana')); return; }
               setPage(item.id);
             }}
           >

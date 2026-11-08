@@ -16,7 +16,7 @@ function Modulo({ iniziale = VUOTA, occupato, onSalva, onAnnulla, etichetta }) {
   const [vedi, setVedi] = useState(true);
   const campo = (k, label, extra = {}) => <label className="pw-field"><span>{label}</span><input value={v[k]} onChange={(e) => setV((x) => ({ ...x, [k]: e.target.value }))} autoComplete="off" autoCapitalize="off" spellCheck={false} {...extra} /></label>;
   return <form className="pw-form" onSubmit={async (e) => { e.preventDefault(); if (await onSalva(v)) setV(VUOTA); }}>
-    {campo('titolo', 'Servizio', { placeholder: 'Banca, Email, Fornitore…', autoCapitalize: 'sentences', required: true })}
+    {campo('titolo', 'Servizio', { placeholder: 'Banca, Email, Fornitore…', autoCapitalize: 'sentences', required: true, autoFocus: etichetta === 'nuova' })}
     {campo('utente', 'Utente o email')}
     <div className="pw-field pw-field--secret">
       <label htmlFor={`pw-${etichetta}`}>Password</label>
@@ -65,12 +65,12 @@ function Voce({ voce, aperta, onApri, occupato, onSalva, onElimina, avvisa }) {
   </li>;
 }
 
-export default function PasswordPage({ db, studioId, titolo = 'Password', cercaIniziale = '' }) {
+export default function PasswordPage({ db, studioId, titolo = 'Password', cercaIniziale = '', nuovaSubito = false }) {
   const [voci, setVoci] = useState(null);
   const [errore, setErrore] = useState('');
   const [avviso, setAvviso] = useState('');
   const [cerca, setCerca] = useState(cercaIniziale);
-  const [nuova, setNuova] = useState(false);
+  const [nuova, setNuova] = useState(nuovaSubito);
   const [aperta, setAperta] = useState(null);
   const [occupato, setOccupato] = useState(false);
   const lock = useRef(false);
