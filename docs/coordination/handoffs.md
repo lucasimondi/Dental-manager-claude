@@ -4534,3 +4534,7 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Unresolved / risks: APK WebView lacks file chooser/share/download/intents (see current-task OPEN); share target needs reinstalling the Personal PWA from Chrome to pick up the new manifest; real Android check pending; XFA forms unsupported (message shown); page operations flatten form fields (explained in UI).
 - Rollback: revert the PR; no data written anywhere except new archive files the user explicitly saves.
 - Next action: PO tries on Android (Chrome → Personal installed → Condividi un PDF → Personal); then decide APK native support; PR on request, "Mergia" to merge.
+
+## 2026-11-08 — APP-UNICA passo 2a
+- Done: navigation `appBase()` (stesso indirizzo nell'app installata, desktop invariato), Personal riusa la sessione di Studio dello stesso indirizzo; tests in tests/appUnica.test.mjs.
+- Next: aspettare l'unione di codex/personal-pdf-manager, poi manifest/scope di Personal e sezioni dentro l'app (app-unica-da-fare.md).

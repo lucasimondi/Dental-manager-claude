@@ -13,6 +13,7 @@ test('sezione diretta dall\'altra parte: solo un nome semplice passa nell\'indir
   assert.equal(readSectionLocation('?sezione=<script>'), null);
   assert.equal(readSectionNew('?sezione=paz&nuovo=1'), true);
   const studio = { hostname: 'dental-manager-acmeproduction.vercel.app', origin: 'https://dental-manager-acmeproduction.vercel.app' };
+  // Nel browser del computer resta il dominio di Personal (desktop invariato).
   assert.equal(sectionDestination('personal', 'conti', studio), 'https://personal.poliedrasoft.it/?sezione=conti');
   const personal = { hostname: 'personal.poliedrasoft.it', origin: 'https://personal.poliedrasoft.it' };
   assert.equal(sectionDestination('studio', 'paz', personal, { nuovo: true }), 'https://personal.poliedrasoft.it/studio?sezione=paz&nuovo=1');
@@ -58,4 +59,32 @@ test('«Altro» uguale nelle due parti: Lavoro (studio) e Vita (personale)', () 
 test('nome dell\'app sul telefono: Poliedron', () => {
   assert.match(read('vite.config.js'), /name: 'Poliedron',\n\s+short_name: 'Poliedron',/);
   assert.match(read('index.html'), /<title>Poliedron<\/title>/);
+});
+
+test('passo 2: dentro l\'app Poliedron (/poliedron) Studio e Personal si aprono a vicenda senza uscire', async () => {
+  const { appBase, agendaDestination } = await import('../shared/agenda/navigation.js');
+  const L = (hostname, pathname) => ({ hostname, pathname, origin: `https://${hostname}` });
+  const prod = 'dental-manager-acmeproduction.vercel.app';
+  assert.equal(appBase('personal', L(prod, '/poliedron/')), '/poliedron/personal/');
+  assert.equal(appBase('studio', L(prod, '/poliedron/personal/')), '/poliedron/');
+  assert.equal(appBase('studio', L(prod, '/')), '/');
+  assert.equal(appBase('personal', L(prod, '/'), { app: true }), '/personal/', 'aperta come app: stesso indirizzo');
+  assert.equal(appBase('personal', L(prod, '/'), { app: false }), 'https://personal.poliedrasoft.it/', 'nel browser: come prima');
+  assert.equal(appBase('studio', L('personal.poliedrasoft.it', '/personal/')), '/studio');
+  assert.equal(agendaDestination('personal', '2026-11-09', 'settimana', L(prod, '/poliedron/')), `https://${prod}/poliedron/personal/?agenda=1&agendaDate=2026-11-09&agendaView=settimana`);
+});
+
+test('passo 2: un solo accesso — Personal riusa la sessione di Studio dello stesso indirizzo, salvo scollegamento', async () => {
+  const { chiaveSessione, leggiSessioneSalvata, CHIAVE_SCOLLEGATO } = await import('../personal/src/lib/sessioneCondivisa.js');
+  const chiave = chiaveSessione('https://abcdefgh.supabase.co');
+  assert.equal(chiave, 'sb-abcdefgh-auth-token');
+  const mem = new Map([[chiave, JSON.stringify({ access_token: 'a', refresh_token: 'r', user: { id: 'u' } })]]);
+  assert.deepEqual(leggiSessioneSalvata({ getItem: (k) => mem.get(k) }, chiave), { access_token: 'a', refresh_token: 'r' });
+  assert.equal(leggiSessioneSalvata({ getItem: () => '{rotto' }, chiave), null);
+  assert.equal(leggiSessioneSalvata({ getItem: () => { throw new Error('bloccato'); } }, chiave), null);
+  const src = read('personal/src/lib/studio.js');
+  assert.match(src, /getItem\(CHIAVE_SCOLLEGATO\) === '1'\) return null/);
+  assert.match(src, /nuova\?\.session\?\.user\?\.app_metadata\?\.studio_id \? nuova\.session : null/, 'solo con lo studio nel token');
+  assert.equal(CHIAVE_SCOLLEGATO, 'poliedron-personal-studio-scollegato');
+  assert.match(src, /export const CHIAVE_SESSIONE_STUDIO = chiaveSessione\(STUDIO_URL\);/, 'la chiave è quella del client di Studio');
 });

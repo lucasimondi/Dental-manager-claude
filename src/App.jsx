@@ -90,7 +90,7 @@ export default function App() {
   // Poliedron app: a page asked for while studio data is still loading.
   const [pendingPage, setPendingPage] = useState(null);
   // APP-UNICA: «?sezione=paz» (da Altro di Personal) apre direttamente quella sezione.
-  const [page, setPage] = useState(() => readAgendaLocation().requested ? 'agenda' : NAV_BY_ID[readSectionLocation()] ? readSectionLocation() : phoneApp ? 'chat' : 'agenda');
+  const [page, setPage] = useState(() => readAgendaLocation().requested ? 'agenda' : NAV_BY_ID[readSectionLocation()] ? readSectionLocation() : 'agenda'); // APP-UNICA (PO 2026-11-08): anche l'app Poliedron apre sull'agenda (settimana)
   const [passwordQuery, setPasswordQuery] = useState(''); // ricerca agenda → registro password
   const [acquisisciAperto, setAcquisisciAperto] = useState(false); // DOCUMENTI-STUDIO
   const [noteScrivi, setNoteScrivi] = useState(0); // CREA → Nota: campo già pronto

@@ -10,6 +10,9 @@
 // (studio_id del token) limita ogni lettura e scrittura allo studio dell'utente.
 import { createClient } from '@supabase/supabase-js';
 import { rigaImpegno, rigaAppuntamento } from './agenda.js';
+import { CHIAVE_SCOLLEGATO, chiaveSessione, leggiSessioneSalvata } from './sessioneCondivisa.js';
+
+export { CHIAVE_SCOLLEGATO };
 
 export { rigaImpegno, rigaAppuntamento };
 
@@ -25,9 +28,20 @@ const esito = ({ data, error }) => {
   return data;
 };
 
+// APP-UNICA passo 2: un solo accesso (vedi sessioneCondivisa.js).
+export const CHIAVE_SESSIONE_STUDIO = chiaveSessione(STUDIO_URL);
+export const sessioneStudioSalvata = (storage = globalThis.localStorage) => leggiSessioneSalvata(storage, CHIAVE_SESSIONE_STUDIO);
 export async function sessioneStudio() {
   const { data } = await studioDb.auth.getSession();
-  return data.session || null;
+  if (data.session) return data.session;
+  // Chi ha scollegato Personal dallo studio lo resta, anche se Studio è aperto nello stesso indirizzo.
+  try { if (globalThis.localStorage?.getItem(CHIAVE_SCOLLEGATO) === '1') return null; } catch { /* facoltativo */ }
+  const salvata = sessioneStudioSalvata();
+  if (!salvata) return null;
+  try {
+    const { data: nuova, error } = await studioDb.auth.setSession(salvata);
+    return !error && nuova?.session?.user?.app_metadata?.studio_id ? nuova.session : null;
+  } catch { return null; }
 }
 
 // Fail closed: senza studio nel token non si legge né si scrive nulla.
@@ -41,10 +55,14 @@ export async function entraStudio(email, password) {
   const { data, error } = await studioDb.auth.signInWithPassword({ email: email.trim(), password });
   if (error) throw new Error(/invalid/i.test(error.message) ? 'Email o password dello studio non corretti.' : error.message);
   studioDellaSessione(data.session);
+  try { globalThis.localStorage?.removeItem(CHIAVE_SCOLLEGATO); } catch { /* facoltativo */ }
   return data.session;
 }
 
-export const esciStudio = () => studioDb.auth.signOut();
+export const esciStudio = () => {
+  try { globalThis.localStorage?.setItem(CHIAVE_SCOLLEGATO, '1'); } catch { /* facoltativo */ }
+  return studioDb.auth.signOut();
+};
 
 export async function appuntamentiTra(da, a) {
   const app = esito(await studioDb.from('appointments')
