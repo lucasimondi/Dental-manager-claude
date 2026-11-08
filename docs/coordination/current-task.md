@@ -1,3 +1,9 @@
+# Current task — SCHEDA-PAZIENTE-ODONTOGRAMMA Fase 0 (2026-11-08)
+- OWNER Claude Code; branch `ccr-7c5d05c7-71lqvo`.
+- AUTHORIZATION PO 2026-11-08: specifica «DentalManager – Redesign scheda paziente» (Fase 0 analisi obbligatoria; procedere solo se la mappatura è additiva).
+- RESULT analysis only, no code: docs/coordination/scheda-paziente-redesign-fase0.md. The spec assumes a single HTML file with localStorage; the app is React/Vite on Supabase with server financial triggers on `plans.voci[].eseguita` and the `plans.stato='accettato'` gate.
+- STATUS PRODUCT_OWNER_DECISION_REQUIRED: per-voce stato vs plan acceptance, «Da incassare» formula (server RPC), bozza storage, avvisi field, pricelist flags migration, SchedaPaz vs PatientWorkspaceV2 (§5 of the analysis).
+
 # Current task — DOCK-PER-TE passo 1 (2026-11-08)
 - OWNER Claude Code; branch `ccr-4ac3e51d-dock-per-te` from master 33c130e (PR285 merged; new branch by PO choice, the old one would need a force push).
 - AUTHORIZATION PO 2026-11-08: proposal "Agenda · Documenti · Poliedron · Studio · Per te … Toglierei «Altro»" (+ acquisition under Per te, no duplications, cleaner graphics), then "Procedi qui". Recorded in POLIEDRA_MASTER_CONTEXT §9 as DOCK-PER-TE with the four-step plan.

@@ -4556,3 +4556,11 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Branch `ccr-4ac3e51d-dock-per-te` from master 33c130e. Files: src/components/poliedron/PoliedronMobileDock.jsx, src/App.jsx (gruppiStudio/gruppiPerTe, pages studio/perte, ?sezione=studio|perte), shared/altro/AltroPage.jsx (nota icon), personal/src/{App.jsx,Icone.jsx,personal.css,sezioni/index.js,sezioni/altro/index.jsx}, tests (appUnica, dashboardPremiumV2, mobileHomeRound2, personalConti, poliedronAdaptive), POLIEDRA_MASTER_CONTEXT.md.
 - Database: none. Tests: 1608/1608; both builds. Rollback: revert the PR.
 - Next: step 2 (no duplications) after "Mergia" of this PR.
+
+## Handoff — SCHEDA-PAZIENTE-ODONTOGRAMMA Fase 0 (2026-11-08)
+- Task ID: SCHEDA-PAZIENTE-ODONTOGRAMMA. Previous agent: none. Agent: Claude Code. Branch: `ccr-7c5d05c7-71lqvo`.
+- Objective: Fase 0 of the PO redesign spec (patient record + odontogram + quote draft).
+- Completed: component map, current data schema, proposed field mapping, decision list (docs/coordination/scheda-paziente-redesign-fase0.md).
+- Files changed: that document, current-task.md, this handoff. Database changes: none. Tests: none needed (docs only).
+- Unresolved / risks: per-voce `stato` would be a second financial source of truth (POL-003, POL-FIN-007); «Da incassare» formula in the spec duplicates server RPCs; bozza, avvisi and pricelist flags need storage decisions/migrations.
+- Next action: PO answers §5 decisions 1–6; then implement in the PRs listed in §6.
