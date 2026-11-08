@@ -4538,3 +4538,7 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 ## 2026-11-08 — APP-UNICA passo 2a
 - Done: navigation `appBase()` (stesso indirizzo nell'app installata, desktop invariato), Personal riusa la sessione di Studio dello stesso indirizzo; tests in tests/appUnica.test.mjs.
 - Next: aspettare l'unione di codex/personal-pdf-manager, poi manifest/scope di Personal e sezioni dentro l'app (app-unica-da-fare.md).
+
+## 2026-11-08 — AGENDA-UNICA (prima unione)
+- Done: shared/agenda/navigation.js `agendaUnica()`; Personal VistaAgenda → agenda di Studio sul telefono; src/lib/scadenzePersonali.js (scadenze dell'archivio nell'agenda unica); personal/src/lib/archivioConfig.js; manifest dominio Personal con scope "/"; tests/agendaUnica.test.mjs.
+- Next: seconda unione — sezioni di Personal dentro l'app Poliedron (app-unica-da-fare.md).

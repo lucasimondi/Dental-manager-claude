@@ -1,7 +1,7 @@
 import {scadenzaIdentita} from '../../lib/portafoglio.js';
 import { agendaVisible } from '../../../../shared/agenda/visibility.js';
 import { labelColor } from '../../../../shared/agenda/labelPalette.js';
-import { readAgendaLocation } from '../../../../shared/agenda/navigation.js';
+import { readAgendaLocation, agendaDestination, agendaUnica } from '../../../../shared/agenda/navigation.js';
 // POL-VITA-004/007 — Agenda di Poliedron Personal: è l'agenda dello studio (stessi dati).
 // Tutte le viste usano i componenti originali condivisi in shared/agenda.
 // POL-VITA-013: da Personal si creano, modificano ed eliminano anche gli appuntamenti dello studio.
@@ -147,7 +147,7 @@ export function ElencoGiorno({ giorno, dati, ctx, etichette, coloriTipi, intesta
   );
 }
 
-export function VistaAgenda({ ctx }) {
+function VistaAgendaPersonal({ ctx }) {
   const { esegui, versione, impostazioni } = ctx;
   const etichette = impostazioni.etichette;
   const [collegata, setCollegata] = useState(undefined);
@@ -227,5 +227,18 @@ function useFonteRicerca({ ctx, etichette, coloriTipi, setGiorno, versione }) {
     acquisisci: () => ctx.apri({ tipo: 'carica', opzioni: {} }),
     chiediPoliedron: (domanda) => { ctx.setChat((c) => ({ ...c, bozza: domanda })); ctx.vai('poliedron'); },
   };
+}
+
+// AGENDA-UNICA (PO 2026-11-08): sul telefono c'è una sola agenda, quella di Studio (con «Tutto»,
+// gli impegni personali e le scadenze dell'archivio). Personal ci porta lì, nello stesso indirizzo.
+export function VistaAgenda({ ctx }) {
+  const [unica] = useState(() => agendaUnica());
+  useEffect(() => {
+    if (!unica) return;
+    const l = readAgendaLocation();
+    globalThis.location.replace(agendaDestination('studio', l.day || oggi(), l.view || 'settimana', globalThis.location));
+  }, [unica]);
+  if (unica) return <p className="pp-riga-meta" role="status">Apro l'agenda…</p>;
+  return <VistaAgendaPersonal ctx={ctx} />;
 }
 

@@ -3,7 +3,7 @@
   "short_name": "Personal",
   "description": "Archivio personale: documenti, portafoglio, scadenze e pratiche",
   "start_url": "/personal/",
-  "scope": "/personal/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#f2f4f7",
   "theme_color": "#f2f4f7",

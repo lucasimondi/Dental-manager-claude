@@ -1,3 +1,11 @@
+# Current task — AGENDA-UNICA (2026-11-08)
+- OWNER Claude Code; branch ccr-4fbd3db0-8ou289 from master (PR281 and PR282 merged in).
+- AUTHORIZATION PO 2026-11-08: "la mia idea era avere una sola agenda e da lì fare tutto"; confirmed "Sì a entrambe, parti con l'agenda unica" = (1) the single agenda is Studio's, (2) personal archive deadlines appear in it.
+- SCOPE (phone only; desktop browser and the Android "Poliedra Agenda" WebView unchanged): Personal's Agenda view redirects to the Studio agenda in the same address (`agendaUnica()` + `agendaDestination('studio')`), keeping day and view; Studio agenda reads personal deadlines (bills, payments, expiring documents) from the separate archive project with the session Personal already saved on the same address (read only, `detectSessionInUrl: false`, no new login) and shows them as floating day events and month marks; tapping opens Conti in Personal. Archive public config moved to personal/src/lib/archivioConfig.js (no client created on import). Personal domain manifest scope "/" so /studio (the single agenda) stays inside the installed app. No schema, RLS or data change.
+- VALIDATION 1607/1607 Node tests; Studio and Personal builds; Chromium: agenda.compare, agenda.reliability, agenda.sharing, agenda.ricerca, appointment-workspace; probe with a mocked archive session showing a personal bill in the Studio week.
+- NEXT (second merge): Personal sections inside the Poliedron app (docs/coordination/app-unica-da-fare.md, passo 2 punti 1-4).
+- STATUS PR open; task-specific "Mergia" required.
+
 # Current task — PERSONAL-PDF-MANAGER (2026-11-08, continued)
 - OWNER Claude Code (takeover from Codex by explicit PO instruction 2026-11-08: "Guarda cosa ha fatto codex sui PDF e continua per creare il gestore PDF in poliedron con le librerie"); branch `ccr-4ac3e51d-ki2rcm` = `codex/personal-pdf-manager` (5a9018c) + master 254f2d4 (PR279) merged, then master a9b3514 (PR281 app unica passo 2a) merged; PR282.
 - AUTHORIZATION PO: full PDF manager phase 1 ("Ok procediamo con un gestore molto valido"); PO uses Android; existing open-source libraries only (pdfjs-dist 4.10 as `pdfjs-personal`, pdf-lib 1.17.1).

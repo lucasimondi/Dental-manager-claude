@@ -101,7 +101,8 @@ test('dominio proprio: personal.poliedrasoft.it porta a Poliedron Personal con i
   assert.equal(redirect.permanent, false);
   const m = JSON.parse(readFileSync('public/personal-dominio.webmanifest', 'utf8'));
   assert.equal(m.start_url, '/personal/');
-  assert.equal(m.scope, '/personal/');
+  // AGENDA-UNICA (PO 2026-11-08): l'app installata dal dominio comprende anche lo Studio (/studio), dove vive l'agenda unica.
+  assert.equal(m.scope, '/');
   assert.equal(m.name, 'Poliedron Personal');
   assert.match(readFileSync('personal/index.html', 'utf8'), /location\.hostname === 'personal\.poliedrasoft\.it'[\s\S]*\/personal-dominio\.webmanifest/);
 });

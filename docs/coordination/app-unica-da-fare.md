@@ -31,6 +31,11 @@ Anteprima approvata: artifact "Poliedron app unica" (4 schermate: Agenda con +, 
   rispettato (`poliedron-personal-studio-scollegato`).
 - Resta da fare la prima volta: il collegamento all'archivio personale (progetto Supabase separato) nell'indirizzo dell'app.
 
+## Fatto — AGENDA-UNICA (PO 2026-11-08: "una sola agenda e da lì fare tutto", base = agenda di Studio)
+- Sul telefono l'agenda di Personal porta all'agenda di Studio (stesso indirizzo, stesso giorno e vista); computer e app
+  Android «Poliedra Agenda» invariati. Le scadenze dell'archivio personale compaiono nell'agenda unica.
+- 0 e 0b qui sotto sono risolti: il ramo PDF è unito (PR282) e il manifest del dominio Personal ha `scope: /`.
+
 ## Da fare — passo 2: Personal dentro l'app Poliedron (una sola app installata)
 0. NOTA COORDINAMENTO: Codex ha in corso `codex/personal-pdf-manager` (PERSONAL-PDF-MANAGER) che tocca
    `personal/src/App.jsx`, `personal/src/main.jsx`, `personal/src/sezioni/documenti/*` e i manifest di Personal:
