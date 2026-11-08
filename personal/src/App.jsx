@@ -1,3 +1,4 @@
+import { useIngressoPdf } from './pdf/useIngressoPdf.js';
 import { startAndroidAgendaWidget } from './lib/androidAgendaWidget.js';
 import { studioDb, sessioneStudio, studioDellaSessione, appuntamentoPerId, impegnoPerId } from './lib/studio.js';
 import { avviaAzioneWidget } from './lib/widgetAzioni.js';
@@ -74,6 +75,7 @@ function Archivio({ email }) {
     window.scrollTo(0, 0);
   }, []);
   const apri = useCallback((p) => { contatore.current += 1; setErrore(null); setFoglio(false); setPagine((st) => [...st, { ...p, chiave: contatore.current }]); }, []);
+  useIngressoPdf(apri, setErrore);
   // Azioni dei widget Android (nuovo, apri riga, rimanda): solo editor, mai salvataggi automatici.
   const widgetOpened = useRef(false);
   useEffect(() => {

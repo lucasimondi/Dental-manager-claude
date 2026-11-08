@@ -19,5 +19,21 @@
       "type": "image/png"
     }
   ],
-  "id": "/poliedron/personal/"
+  "id": "/poliedron/personal/",
+  "share_target": {
+    "action": "/poliedron/personal/?receive-pdf=1",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "files": [
+        {
+          "name": "files",
+          "accept": [
+            "application/pdf",
+            "image/*"
+          ]
+        }
+      ]
+    }
+  }
 }

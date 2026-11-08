@@ -49,6 +49,7 @@ export function VistaDocumenti({ ctx }) {
 
   return (
     <>
+      <button className="pp-bottone" onClick={() => apri({ tipo: 'pdf' })}>Apri PDF · Firma e strumenti</button>
       <div className="pp-cerca">
         <IconaCerca size={18} />
         <input type="search" value={testo} onChange={(e) => setTesto(e.target.value)} placeholder="Cerca: Enel, IMU 2024, carta d'identità…" enterKeyHint="search" aria-label="Cerca nell'archivio" />

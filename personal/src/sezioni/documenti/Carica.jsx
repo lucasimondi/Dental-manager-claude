@@ -16,7 +16,7 @@ export function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) 
   const [persona, setPersona] = useState(opzioni.persona || '');
   const [categoria, setCategoria] = useState(opzioni.categoria || '');
   const [tieni, setTieni] = useState(!!opzioni.portafoglio);
-  const [nonAnalizzare, setNonAnalizzare] = useState(false);
+  const [nonAnalizzare, setNonAnalizzare] = useState(!!opzioni.nonAnalizzare || !!opzioni.soloArchiviazione);
   const [stato, setStato] = useState(null);
   const fotocamera = useRef(null);
   const archivio = useRef(null);
@@ -33,7 +33,7 @@ export function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) 
     try {
       const pronto = await preparaCaricamento(file);
       setStato({ invio: true, testo: nonAnalizzare ? 'Salvo su Drive…' : 'Salvo su Drive e leggo il documento…' });
-      const r = await caricaDocumento({ token: await tokenSessione(), ...pronto, descrizione, fascicolo, portafoglio: tieni, nonAnalizzare, persona, categoria });
+      const r = await caricaDocumento({ token: await tokenSessione(), ...pronto, descrizione, fascicolo, portafoglio: tieni, nonAnalizzare: opzioni.soloArchiviazione || nonAnalizzare, persona, categoria });
       setStato({ invio: true, testo: 'Verifico il documento nell’archivio…' });
       const verifica = await archivioDb.from('documenti').select('id').eq('id', r.id).maybeSingle();
       if (verifica.error || !verifica.data) {
@@ -109,7 +109,7 @@ export function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) 
         </select>
       </label>
       <label className="pp-interruttore"><input type="checkbox" checked={tieni} onChange={(e) => setTieni(e.target.checked)} /><span>Tieni a portata di mano (Personali)</span></label>
-      <label className="pp-interruttore"><input type="checkbox" checked={nonAnalizzare} onChange={(e) => setNonAnalizzare(e.target.checked)} /><span>Non leggere il contenuto (solo archiviazione)</span></label>
+      <label className="pp-interruttore"><input type="checkbox" disabled={!!opzioni.soloArchiviazione} checked={nonAnalizzare} onChange={(e) => setNonAnalizzare(e.target.checked)} /><span>Non leggere il contenuto (solo archiviazione)</span></label>
       <p className="pp-riga-meta">Il file va nel tuo Google Drive, cartella "Archivio personale/Caricati". I documenti dei pazienti non vengono mai letti.</p>
       <button className="pp-bottone pp-bottone-largo" disabled={!file || stato?.invio} onClick={invia}>{stato?.invio ? stato.testo : 'Archivia'}</button>
       {stato?.errore && <p className="pp-messaggio pp-messaggio-errore">{stato.testo}</p>}
