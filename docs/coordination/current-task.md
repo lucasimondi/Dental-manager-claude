@@ -1,3 +1,10 @@
+# Current task — POLIEDRON-COMANDI-SENZA-AI (2026-11-08)
+- OWNER Claude Code; branch ccr-873bf8b7-n86ati from master b62e2eb (PR273 merged); master 2e610ed (PR274–276, incl. RICERCA-AGENDA search bar) merged in.
+- AUTHORIZATION PO: "devi renderlo indipendente da AI esterna perché altrimenti dobbiamo sempre sentirci dire AI non in funzione, deve essere in grado di eseguire comandi semplici"; PO chose both Personal and Studio, and "Esegue subito" (immediate execution with Annulla) for complete commands.
+- SCOPE Personal: new lib/comandi.js (pure Italian parser: promemoria/pagamenti with date, time, amount; apri sezione; aiuto), executed by the chat before any AI call through the existing aggiungiPromemoria (Annulla via annullaPromemoria); incomplete commands show the existing filled card; AI failure falls back to the local search without the error sentence. Studio: agente-assistente emergency core (LLM down) reads any day (parseDay/resolveDay), answers with formatCoreRead text (previously only "Modalità essenziale attiva…" with data the client never showed) and lists direct no-LLM commands instead of "servizi AI temporaneamente indisponibili". No schema, RLS, tenancy or financial change; writes use existing functions/tables.
+- STATUS implementation + local checks complete; PR277 opened on PO request. Task-specific "Mergia" required; agente-assistente is deployed by its workflow only after merge.
+- VALIDATION 1560/1560 Node tests; Studio and Personal builds pass.
+
 # Current task — DOCUMENTI-STUDIO (2026-11-08)
 - OWNER Claude Code; branch ccr-4fbd3db0-8ou289 (continues AGENDA-UNICA-RICERCA, commit 14d1bce).
 - AUTHORIZATION PO 2026-11-08: "Fai ancora la modifica del db in modo che si possano cercare documenti anche in studio e crearli e mergia" = approval of this database change and merge of the branch PR once all checks are green, then controlled application of migrations 20261108120000 (password_personali) and 20261108130000 (documenti_studio).
@@ -42,7 +49,7 @@
 - Previous operational record preserved below.
 
 # Current task — HOME-AGENDA-CENTRIC (2026-11-06)
-- OWNER Claude Code; branch ccr-4fbd3db0-8ou289 from master b62e2eb (PR273 merged).
+- OWNER Claude Code; branch ccr-4fbd3db0-8ou289 from master b62e2eb (PR273 merged); master 2e610ed (PR274–276, incl. RICERCA-AGENDA search bar) merged in.
 - AUTHORIZATION PO reviewed two design proposals (artifacts "Poliedra Nitido" and "Poliedra Oggi") and asked: green as leading color, Home with only essentials (no management control), agenda-centric software, one Poliedron search bar from which everything starts, plus an Agenda button in the header; "restyling home poi passiamo al resto".
 - SCOPE presentation only, Home first: header with Poliedron search launcher (opens the existing Poliedron panel, same engine/permissions), Agenda button, + Appuntamento; HomeToday day grid (per chair when active chairs exist, read with the same query as Agenda) with now line; "In poltrona ora" card with the existing four appointment actions; "Richiede attenzione" now also on desktop in the side column. Home no longer renders/offers agenda list, quick actions and management_control widgets (saved layout untouched). Green tokens scoped to `.home-oggi`. No schema, RLS, tenancy, financial formula or deployment change.
 - STATUS implementation + local checks complete; branch pushed, no PR (not requested). Task-specific "Mergia" required before merge. Next PO step: green and new header across the rest of the app.

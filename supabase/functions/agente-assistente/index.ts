@@ -1819,14 +1819,15 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
         if (emergency?.kind === 'tool' && ['appuntamenti','cerca_pazienti','richiami','kpi_controllo_gestione'].includes(emergency.tool)) {
           try {
             const input = { ...(emergency.input || {}) };
-            if (emergency.tool === 'appuntamenti' && Number.isInteger(input.relative_day)) {
-              const base = new Date(studioToday());
-              base.setDate(base.getDate() + input.relative_day);
-              const day = base.toISOString().slice(0, 10);
-              delete input.relative_day; input.da = day; input.a = day;
+            if (emergency.tool === 'appuntamenti') {
+              const day = resolveDay(input.day, studioToday());
+              delete input.day;
+              if (!day) return rispondi({ text: 'Quel giorno non esiste o non corrisponde al giorno della settimana: dimmi la data esatta.', emergency_mode: true });
+              input.da = day; input.a = day;
             }
             const out = await eseguiTool(supabase, emergency.tool, input, studioId, user.id, []);
-            return rispondi({ text: 'Modalità essenziale attiva: servizio AI temporaneamente indisponibile.', emergency_mode: true, tool: emergency.tool, data: out });
+            // The same readable answer as the core-first read: the client shows `text` only.
+            if (!out?.error) return rispondi({ text: formatCoreRead(emergency.tool, out), emergency_mode: true, tool: emergency.tool, data: out });
           } catch (error) {
             console.error('emergency_core_error', JSON.stringify({ tool: emergency.tool, kind: 'read_failure' }));
           }

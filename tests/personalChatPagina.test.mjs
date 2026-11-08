@@ -53,7 +53,7 @@ test('chat: Poliedron è una scheda a pagina intera con la graffetta', () => {
   assert.match(sezione, /id: 'poliedron', nome: 'Poliedron', Icona: IconaChat, Vista: VistaPoliedron/);
   assert.match(app, /<Vista\b[^>]*ctx=\{ctx\}[^>]*\/>/);
   assert.match(app, /apriChat, chat, setChat,/);
-  assert.match(vista, /const \{ apri, aggiorna, chat, setChat \} = ctx;/);
+  assert.match(vista, /const \{ apri, aggiorna, chat, setChat, vai \} = ctx;/);
   assert.match(app, /const \[chat, setChat\] = useState\(CHAT_VUOTA\);/, 'la conversazione resta cambiando scheda');
   assert.match(documento, /ctx\.apriChat\(\{ id: doc\.id, titolo: titoloDoc\(doc\) \}\)/);
   assert.match(vista, /aria-label="Allega una foto, un PDF o un file"/);
