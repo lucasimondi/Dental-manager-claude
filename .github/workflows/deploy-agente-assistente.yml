@@ -47,4 +47,5 @@ jobs:
         run: |
           if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then echo "Secret SUPABASE_ACCESS_TOKEN mancante"; exit 1; fi
           # No supabase/config.toml: verify_jwt stays on, as in production.
-          supabase functions deploy agente-assistente --project-ref "$PROJECT_REF" --use-api
+          # --yes: the CLI now asks for confirmation and a CI run cannot answer (2026-11-08 run failed, nothing deployed).
+          supabase functions deploy agente-assistente --project-ref "$PROJECT_REF" --use-api --yes
