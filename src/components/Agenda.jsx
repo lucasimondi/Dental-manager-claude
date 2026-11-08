@@ -7,7 +7,8 @@ import { useTimeline } from '../../shared/agenda/useTimeline.js';
 import AgendaVisibility from '../../shared/agenda/AgendaVisibility.jsx';
 import { agendaVisible, keepOccupiedWeekends } from '../../shared/agenda/visibility.js';
 import { layoutAgendaDay, layoutAppointments as layoutOverlap } from '../../shared/agenda/geometry.js';
-import { readAgendaLocation } from '../../shared/agenda/navigation.js';
+import { readAgendaLocation, sectionDestination } from '../../shared/agenda/navigation.js';
+import { leggiScadenzePersonali, scadenzeDelGiorno } from '../lib/scadenzePersonali.js';
 import RicercaAgenda from '../../shared/ricerca/RicercaAgenda.jsx';
 import CreaSheet, { CreaButton } from '../../shared/crea/CreaSheet.jsx';
 import { creaFontiStudio, impegnoSpostato } from '../../shared/ricerca/fonti.js';
@@ -412,6 +413,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   // PO 2026-11-08: un'agenda sola, di partenza "Tutto" (Studio e Personal insieme).
   const [mostraEsclusi, setMostraEsclusi] = useState(true);
   const [creaAperto, setCreaAperto] = useState(false);
+  const [scadenzePersonali, setScadenzePersonali] = useState([]);
   const impegni = tuttiImpegni.filter(i => mostraEsclusi || agendaVisible(i, 'studio'));
   const isDentistico = !si?.vertical || si.vertical === 'dentistico';
   const labelPoltrona = isDentistico ? 'Poltrona' : 'Postazione';
@@ -577,6 +579,16 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   }, [initPazienteId]);
 
   const isMobile = useIsMobile();
+  // AGENDA-UNICA: scadenze personali (archivio) lette solo sul telefono; si aggiornano tornando nell'app.
+  useEffect(() => {
+    if (!isMobile) return undefined;
+    let vivo = true;
+    const carica = () => leggiScadenzePersonali().then(r => { if (vivo) setScadenzePersonali(r.scadenze); });
+    carica();
+    const visibile = () => { if (document.visibilityState === 'visible') carica(); };
+    document.addEventListener('visibilitychange', visibile);
+    return () => { vivo = false; document.removeEventListener('visibilitychange', visibile); };
+  }, [isMobile]);
   const overlayRef = useRef(null);
   const [sceltaSlot, setSceltaSlot] = useState(null);
   const [mobileOverlayHeight, setMobileOverlayHeight] = useState(0);
@@ -985,9 +997,15 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   const toccaSlot = (data, ora) => { if (!isMobile || followUpRequest) { apriNuovo(data, ora); return; } setSceltaSlot({ data, ora }); };
   const gridProps = { slots, slotH, slotMin, oraInizio: timelineStart, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo: toccaSlot, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight, canPrescribe: !si?.vertical || VERTICALI_CON_RICETTA.has(si.vertical), followUpMode: !!followUpRequest, onOccupiedSlot: () => setToast('Questo spazio è occupato. Scegli un altro orario.') };
 
+  // AGENDA-UNICA (PO 2026-11-08): sul telefono anche le scadenze dell'archivio personale, flottanti
+  // come gli impegni del giorno; toccandole si apre Conti in Personal (stesso indirizzo).
+  const apriScadenza = () => globalThis.location.assign(sectionDestination('personal', 'conti'));
   const ribbonDays = (view === 'giorno' ? [new Date(selDay + 'T12:00')] : weekDays).map(d => {
     const date = toISO(d);
-    return { date, items: impegni.filter(i => (i.tuttoIlGiorno || !i.oraInizio) && date >= i.dataInizio && date <= (i.dataFine || i.dataInizio)).map(i => ({ id: i.id, title: i.titolo, color: i.colore || TIPO_IMPEGNO.find(t => t.id === i.tipo)?.colore, onOpen: () => apriEditImpegno(i) })) };
+    return { date, items: [
+      ...(isMobile ? scadenzeDelGiorno(scadenzePersonali, date, apriScadenza) : []),
+      ...impegni.filter(i => (i.tuttoIlGiorno || !i.oraInizio) && date >= i.dataInizio && date <= (i.dataFine || i.dataInizio)).map(i => ({ id: i.id, title: i.titolo, color: i.colore || TIPO_IMPEGNO.find(t => t.id === i.tipo)?.colore, onOpen: () => apriEditImpegno(i) })),
+    ] };
   });
   const dayEvents = <DayEvents days={ribbonDays} gutter={oraColW} />;
   // RICERCA-AGENDA (PO 2026-11-08): la barra cerca e agisce qui, senza aprire un altro pannello.
@@ -1291,7 +1309,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       {view === 'mese' && (() => {
         return (
           <div className={isMobile ? 'agenda-mobile-month-surface' : undefined}>
-            <MonthCalendar palette={C} date={vd} selDay={selDay} today={t} onNavigate={navMese} onSelect={ds => { setSelDay(ds); setView('giorno'); }} daySummary={ds => ({ count: appointmentsAgenda.filter(a => a.data === ds).length, marks: (impegni || []).filter(imp => ds >= imp.dataInizio && ds <= imp.dataFine).map(imp => ({ ...imp, colore: imp.colore || TIPO_IMPEGNO.find(x => x.id === imp.tipo)?.colore || C.pri })) })} />
+            <MonthCalendar palette={C} date={vd} selDay={selDay} today={t} onNavigate={navMese} onSelect={ds => { setSelDay(ds); setView('giorno'); }} daySummary={ds => ({ count: appointmentsAgenda.filter(a => a.data === ds).length, marks: [...(isMobile ? scadenzePersonali.filter(sc => sc.data === ds).map(sc => ({ id: `scadenza-${sc.id}`, colore: '#b45309' })) : []), ...(impegni || []).filter(imp => ds >= imp.dataInizio && ds <= imp.dataFine).map(imp => ({ ...imp, colore: imp.colore || TIPO_IMPEGNO.find(x => x.id === imp.tipo)?.colore || C.pri }))] })} />
             {(impegni || []).filter(imp => selDay >= imp.dataInizio && selDay <= imp.dataFine).map(imp => {
               const co = imp.colore || TIPO_IMPEGNO.find(x => x.id === imp.tipo)?.colore || C.pri;
               return (

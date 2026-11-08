@@ -41,3 +41,13 @@ export function sectionDestination(target, sezione, location = globalThis.locati
   return url.href;
 }
 export const readSectionNew = (search = globalThis.location?.search || '') => new URLSearchParams(search).get('nuovo') === '1';
+
+// AGENDA-UNICA (PO 2026-11-08: "una sola agenda e da lì fare tutto"; base = l'agenda di Studio).
+// Sul telefono l'agenda di Personal porta all'agenda unica. Restano com'erano il computer (schermo
+// largo) e l'app Android «Poliedra Agenda» (WebView con i widget, che espone PoliedraWidget).
+export function agendaUnica(host = globalThis) {
+  try {
+    if (host.PoliedraWidget) return false;
+    return Boolean(host.matchMedia?.('(max-width: 719px)')?.matches);
+  } catch { return false; }
+}

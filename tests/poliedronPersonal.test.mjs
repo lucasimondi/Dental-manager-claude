@@ -149,7 +149,8 @@ test('Poliedron Personal è isolata dall\'app dello studio', () => {
     assert.doesNotMatch(src, /from ['"](?:\.\.\/)+src\/(?:lib|components)\//, `${file}: importa codice dello studio`);
     assert.doesNotMatch(src, /service_role|sb_secret_/, `${file}: chiave segreta`);
   }
-  assert.match(readFileSync('personal/src/lib/supabasePersonal.js', 'utf8'), /tkcwvjzjkfhcuebrjvsp/);
+  assert.match(readFileSync('personal/src/lib/archivioConfig.js', 'utf8'), /tkcwvjzjkfhcuebrjvsp/);
+  assert.match(readFileSync('personal/src/lib/supabasePersonal.js', 'utf8'), /from '\.\/archivioConfig\.js'/);
   const config = readFileSync('vite.config.js', 'utf8');
   assert.match(config, /personal: resolve\('personal\/index\.html'\)/);
   assert.match(config, /navigateFallbackDenylist: \[[^\]]*\/\^\\\/personal\//, 'il service worker dello studio non risponde su /personal');
