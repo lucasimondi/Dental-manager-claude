@@ -1,3 +1,11 @@
+# Current task — DOCK-PER-TE passo 1 (2026-11-08)
+- OWNER Claude Code; branch `ccr-4ac3e51d-dock-per-te` from master 33c130e (PR285 merged; new branch by PO choice, the old one would need a force push).
+- AUTHORIZATION PO 2026-11-08: proposal "Agenda · Documenti · Poliedron · Studio · Per te … Toglierei «Altro»" (+ acquisition under Per te, no duplications, cleaner graphics), then "Procedi qui". Recorded in POLIEDRA_MASTER_CONTEXT §9 as DOCK-PER-TE with the four-step plan.
+- SCOPE step 1 (phone only, desktop unchanged): Studio mobile dock Agenda · Documenti · Poliedron · Studio · Per te (`MOBILE_DOCK_ITEMS`); Studio pages `studio` (work sections + Impostazioni) and `perte` (Spese e pagamenti, Documenti personali, Foto, Note, Diario, Pratiche, Biblioteca, Riepilogo di oggi, Password; `altro` kept as alias), both reachable with `?sezione=`; Personal dock Agenda · Documenti · Poliedron · Studio (link to the Studio page) · Per te (section `altro` renamed, Lavoro group removed). No schema, RLS or data change.
+- NEXT steps 2–4 per Master Context DOCK-PER-TE, each in its own PR.
+- VALIDATION 1608/1608 Node tests; Studio and Personal builds; Chromium render of dock and Per te page at 390×844. Agenda visual suites (WebKit/pinned Chromium) run in CI only.
+- STATUS PR open; task-specific "Mergia" required.
+
 # Current task — POPUP-TELEFONO (2026-11-08)
 - OWNER Claude Code; branch ccr-4fbd3db0-8ou289 from master fe5908c (PR283 merged).
 - AUTHORIZATION PO 2026-11-08: "Controlla le finestre a comparsa di impegno perché non è impaginata deve essere totalmente visibile e scrollabile, anche appuntamenti viene leggermente coperta da icona poliedron" + "Controlla tutto che sia impaginato bene".

@@ -168,9 +168,9 @@ test('mobile Poliedron renders only the official standalone gem on a transparent
 // Product Owner revision — compact mobile dock and magnetic redock
 // ---------------------------------------------------------------------------
 
-test('mobile dock has exactly AGENDA, NOTE, POLIEDRON, DOCUMENTI, ALTRO in that order (PO 2026-11-08 app unica; Setup stays in the Poliedron panel)', () => {
+test('mobile dock has exactly AGENDA, DOCUMENTI, POLIEDRON, STUDIO, PER TE in that order (PO 2026-11-08 DOCK-PER-TE; Setup stays in the Poliedron panel)', () => {
   const ids = [...mobileDockSource.matchAll(/\{ id: '([^']+)'/g)].map((match) => match[1]);
-  assert.deepEqual(ids.slice(0, 5), ['agenda', 'note', '__poliedron__', 'archivio', 'altro']);
+  assert.deepEqual(ids.slice(0, 5), ['agenda', 'archivio', '__poliedron__', 'studio', 'perte']);
   assert.equal(ids.slice(0, 5).length, 5);
 });
 

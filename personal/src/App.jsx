@@ -4,7 +4,7 @@ import { studioDb, sessioneStudio, studioDellaSessione, appuntamentoPerId, impeg
 import { avviaAzioneWidget } from './lib/widgetAzioni.js';
 import { IconaTema } from './IconaTema.jsx';
 import { Pagina } from './Pagina.jsx';
-import { readAgendaLocation, readSectionLocation } from '../../shared/agenda/navigation.js';
+import { readAgendaLocation, readSectionLocation, sectionDestination } from '../../shared/agenda/navigation.js';
 // POL-VITA-003/006 — Poliedron Personal: app per telefono dell'archivio personale.
 // Dock: Oggi · Agenda · Documenti · Assistente · Altro. Ogni dettaglio si apre come pagina sopra la
 // sezione, con "Indietro" in alto, il tasto di chiusura in basso a portata di pollice e il dock
@@ -22,7 +22,7 @@ import { differito } from './Differito.jsx';
 const FoglioAggiungi = differito(() => import('./Aggiungi.jsx'), 'FoglioAggiungi');
 import { Accesso, NuovaPassword } from './Accesso.jsx';
 import { DOCK, DOCK_DOPO, sezione, pagina, titoloPagina, eModulo } from './sezioni/index.js';
-import { IconaPiu, IconaImpostazioni, IconaChat, IconaAltro } from './Icone.jsx';
+import { IconaPiu, IconaImpostazioni, IconaChat, IconaStudio, IconaPerTe } from './Icone.jsx';
 
 impostaToken(tokenSessione);
 
@@ -164,7 +164,8 @@ function Archivio({ email }) {
         {[...DOCK, 'poliedron', ...DOCK_DOPO].map((s) => s === 'poliedron'
           ? <button key="poliedron" className={`pp-scheda pp-scheda-poliedron${classeScheda('poliedron')}`} onClick={() => vai('poliedron')} aria-label="Apri Poliedron" aria-current={vista === 'poliedron' ? 'page' : undefined}><IconaTema tipo="poliedron" Icona={IconaChat} size={24} /><span>Poliedron</span></button>
           : <button key={s.id} className={`pp-scheda${classeScheda(s.id)}`} onClick={() => vai(s.id)} aria-current={vista === s.id ? 'page' : undefined}><IconaTema tipo={s.id} Icona={s.Icona} size={24} /><span>{s.nome}</span></button>)}
-        <button className={`pp-scheda${altraSezione ? ' attiva' : ''}`} onClick={() => vai('altro')} aria-current={altraSezione ? 'page' : undefined}><IconaTema tipo="altro" Icona={IconaAltro} size={24} /><span>Altro</span></button>
+        <a className="pp-scheda" href={sectionDestination('studio', 'studio')}><IconaTema tipo="studio" Icona={IconaStudio} size={24} /><span>Studio</span></a>
+        <button className={`pp-scheda${altraSezione ? ' attiva' : ''}`} onClick={() => vai('altro')} aria-current={altraSezione ? 'page' : undefined}><IconaTema tipo="perte" Icona={IconaPerTe} size={24} /><span>Per te</span></button>
       </nav>
       {!sopra && !attuale.senzaPiu && <button className="pp-fab" onClick={() => setFoglio(true)} aria-label="Aggiungi"><IconaPiu size={26} /></button>}
       {foglio && <FoglioAggiungi onScegli={aggiungi} onChiudi={() => setFoglio(false)} />}

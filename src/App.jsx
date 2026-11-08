@@ -90,7 +90,7 @@ export default function App() {
   // Poliedron app: a page asked for while studio data is still loading.
   const [pendingPage, setPendingPage] = useState(null);
   // APP-UNICA: «?sezione=paz» (da Altro di Personal) apre direttamente quella sezione.
-  const [page, setPage] = useState(() => readAgendaLocation().requested ? 'agenda' : NAV_BY_ID[readSectionLocation()] ? readSectionLocation() : 'agenda'); // APP-UNICA (PO 2026-11-08): anche l'app Poliedron apre sull'agenda (settimana)
+  const [page, setPage] = useState(() => readAgendaLocation().requested ? 'agenda' : (NAV_BY_ID[readSectionLocation()] || ['studio', 'perte'].includes(readSectionLocation())) ? readSectionLocation() : 'agenda'); // APP-UNICA (PO 2026-11-08): anche l'app Poliedron apre sull'agenda (settimana)
   const [passwordQuery, setPasswordQuery] = useState(''); // ricerca agenda → registro password
   const [acquisisciAperto, setAcquisisciAperto] = useState(false); // DOCUMENTI-STUDIO
   const [noteScrivi, setNoteScrivi] = useState(0); // CREA → Nota: campo già pronto
@@ -732,11 +732,17 @@ export default function App() {
 
   // APP-UNICA (PO 2026-11-08): «Altro» con Lavoro (le sezioni dello studio) e Vita (Personal).
   const ALTRO_LAVORO = { paz: ['pazienti', '#1F5F7A'], paga: ['incassi', '#22714A'], piani: ['piani', '#2D6BC4'], preventivi: ['preventivi', '#4E52C4'], richiami: ['richiami', '#D1453B'], attivita: ['attivita', '#13808F'], spese: ['spese', '#A8323E'], controllo: ['controllo', '#1F5F7A'], listino: ['listino', '#5D6979'], wa: ['whatsapp', '#22714A'], chat: ['chat', '#2D6BC4'], agenteai: ['agente', '#8460CC'], home: ['home', '#5D6979'] };
-  const gruppiAltro = () => [
-    { nome: 'Lavoro · Studio', voci: navVisibile.filter((n) => ALTRO_LAVORO[n.id]).map((n) => ({ id: n.id, nome: n.l, icona: ALTRO_LAVORO[n.id][0], colore: ALTRO_LAVORO[n.id][1], fai: () => setPage(n.id) })) },
-    { nome: 'Vita · Personale', voci: [
-      ...[['oggi', 'Oggi', '#E0A526'], ['conti', 'Conti', '#34845A'], ['personali', 'Personali', '#8460CC'], ['legal', 'Pratiche', '#5E7F1F'], ['foto', 'Foto', '#C23D78'], ['diario', 'Diario', '#9B3D96'], ['didattica', 'Biblioteca', '#E3772A']]
-        .map(([id, nome, colore]) => ({ id: `vita-${id}`, nome, colore, icona: id === 'legal' ? 'pratiche' : id === 'didattica' ? 'biblioteca' : id, href: sectionDestination('personal', id) })),
+  // DOCK-PER-TE (PO 2026-11-08): «Studio» = il lavoro dello studio; «Per te» = la vita personale.
+  const gruppiStudio = () => [
+    { nome: 'Studio', voci: navVisibile.filter((n) => ALTRO_LAVORO[n.id]).map((n) => ({ id: n.id, nome: n.l, icona: ALTRO_LAVORO[n.id][0], colore: ALTRO_LAVORO[n.id][1], fai: () => setPage(n.id) })) },
+  ];
+  const gruppiPerTe = () => [
+    { nome: 'Per te', voci: [
+      ...[['conti', 'Spese e pagamenti', 'conti', '#34845A'], ['personali', 'Documenti personali', 'personali', '#8460CC'], ['foto', 'Foto', 'foto', '#C23D78']]
+        .map(([id, nome, icona, colore]) => ({ id: `vita-${id}`, nome, icona, colore, href: sectionDestination('personal', id) })),
+      { id: 'note', nome: 'Note', icona: 'nota', colore: '#C98A10', fai: () => setPage('note') },
+      ...[['diario', 'Diario', 'diario', '#9B3D96'], ['legal', 'Pratiche', 'pratiche', '#5E7F1F'], ['didattica', 'Biblioteca', 'biblioteca', '#E3772A'], ['oggi', 'Riepilogo di oggi', 'oggi', '#E0A526']]
+        .map(([id, nome, icona, colore]) => ({ id: `vita-${id}`, nome, icona, colore, href: sectionDestination('personal', id) })),
       { id: 'password', nome: 'Password', icona: 'password', colore: '#4E52C4', fai: () => { setPasswordQuery(''); setPage('password'); } },
     ] },
   ];
@@ -960,7 +966,8 @@ export default function App() {
             {page === 'archivio' && <ArchivioDocs studioId={session?.user?.app_metadata?.studio_id} patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} initialFiltroTipo={archivioFiltroTipoHint} />}
             {page === 'note' && <NotePage key={noteScrivi} scriviSubito={noteScrivi > 0} db={supabase} studioId={session?.user?.app_metadata?.studio_id} />}
             {acquisisciAperto && <Suspense fallback={null}><AcquisisciDocumento db={supabase} studioId={session?.user?.app_metadata?.studio_id} patients={patients} onClose={() => setAcquisisciAperto(false)} /></Suspense>}
-            {page === 'altro' && <AltroPage gruppi={gruppiAltro()} piede={[{ id: 'set', nome: 'Impostazioni e account', icona: 'impostazioni', fai: () => setPage('set') }]} />}
+            {page === 'studio' && <AltroPage titolo="Studio" gruppi={gruppiStudio()} piede={[{ id: 'set', nome: 'Impostazioni e account', icona: 'impostazioni', fai: () => setPage('set') }]} />}
+            {(page === 'perte' || page === 'altro') && <AltroPage titolo="Per te" gruppi={gruppiPerTe()} piede={[{ id: 'set', nome: 'Impostazioni e account', icona: 'impostazioni', fai: () => setPage('set') }]} />}
             {page === 'password' && <PasswordPage key={passwordNuova} nuovaSubito={passwordNuova > 0} db={supabase} studioId={session?.user?.app_metadata?.studio_id} cercaIniziale={passwordQuery} />}
             {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
             {page === 'agenteai' && <AgenteAISetup features={features} />}

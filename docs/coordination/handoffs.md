@@ -4551,3 +4551,8 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - PR282 merged (squash 71e0a19) after PO "Mergia"; all checks green on head e9b0b40 (master a9b3514 merged in first; conflicts only in coordination docs, both entries kept). Production deployment dpl_8xqANHS5AD6VcR9ZZ67fToKos4oD READY; manifest with share_target verified via Vercel fetch (the session sandbox cannot reach the public domain). PR280 (Codex draft) closed as superseded on PO request.
 - Database changes: none. Rollback: revert 71e0a19.
 - Next action: PO reinstalls Personal from Chrome on Android and tries Condividi → Personal with a PDF; APK native PDF support remains a separate PO decision.
+
+## Handoff — DOCK-PER-TE passo 1 (2026-11-08) — Claude Code
+- Branch `ccr-4ac3e51d-dock-per-te` from master 33c130e. Files: src/components/poliedron/PoliedronMobileDock.jsx, src/App.jsx (gruppiStudio/gruppiPerTe, pages studio/perte, ?sezione=studio|perte), shared/altro/AltroPage.jsx (nota icon), personal/src/{App.jsx,Icone.jsx,personal.css,sezioni/index.js,sezioni/altro/index.jsx}, tests (appUnica, dashboardPremiumV2, mobileHomeRound2, personalConti, poliedronAdaptive), POLIEDRA_MASTER_CONTEXT.md.
+- Database: none. Tests: 1608/1608; both builds. Rollback: revert the PR.
+- Next: step 2 (no duplications) after "Mergia" of this PR.
