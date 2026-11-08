@@ -50,7 +50,6 @@ export function VistaDocumenti({ ctx }) {
 
   return (
     <>
-      <button className="pp-bottone pp-bottone-chiaro" onClick={() => apri({ tipo: 'pdf' })}>Apri un PDF dal telefono</button>
       <div className="pp-cerca">
         <IconaCerca size={18} />
         <input type="search" value={testo} onChange={(e) => setTesto(e.target.value)} placeholder="Cerca: Enel, IMU 2024, carta d'identità…" enterKeyHint="search" aria-label="Cerca nell'archivio" />

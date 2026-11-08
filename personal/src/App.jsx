@@ -20,6 +20,7 @@ import { IMPOSTAZIONI_PREDEFINITE, leggiImpostazioni, salvaImpostazioni } from '
 import { saluto, VISTA_KEY, leggiVista, tokenSessione } from './ui.jsx';
 import { differito } from './Differito.jsx';
 const FoglioAggiungi = differito(() => import('./Aggiungi.jsx'), 'FoglioAggiungi');
+import { INGRESSI, PAGINE_AGGIUNGI, LIVELLI_AGGIUNGI, voceDaIndirizzo } from './lib/ingressi.js';
 import { Accesso, NuovaPassword } from './Accesso.jsx';
 import { DOCK, DOCK_DOPO, sezione, pagina, titoloPagina, eModulo } from './sezioni/index.js';
 import { IconaPiu, IconaImpostazioni, IconaChat, IconaStudio, IconaPerTe } from './Icone.jsx';
@@ -47,7 +48,7 @@ function Archivio({ email }) {
   etichetteWidget.current = impostazioni.etichette;
   const contatore = useRef(0);
   const diarioVisitato = useRef(vista === 'diario');
-  const ingressi = { fotocamera: useRef(null), libreria: useRef(null), file: useRef(null) };
+  const ingressi = useRef({}); // DOCK-PER-TE passo 3: selettori del + (lib/ingressi.js)
 
   const esegui = useCallback(async (fn) => {
     setErrore(null); setOccupato((n) => n + 1);
@@ -89,25 +90,12 @@ function Archivio({ email }) {
   // Tasto + e azioni rapide della Home. Foto e file: il selettore si apre subito (gesto dell'utente).
   const aggiungi = useCallback((id) => {
     setFoglio(false);
-    if (ingressi[id]) { ingressi[id].current?.click(); return; }
-    const nuova = {
-      scansiona: { tipo: 'scansione' },
-      personale: { tipo: 'carica', opzioni: { fascicolo: 'identita', portafoglio: true } },
-      fotovideo: { tipo: 'carica', opzioni: { fascicolo: 'foto_video', descrizione: 'Foto o video personale' } },
-      spesa: { tipo: 'movimento', m: { tipo: 'uscita' } },
-      incasso: { tipo: 'movimento', m: { tipo: 'entrata' } },
-      pagamento: { tipo: 'scadenza' },
-      evento: { tipo: 'evento' },
-      appuntamento: { tipo: 'evento', cosa: 'appuntamento' },
-    }[id];
-    if (nuova) apri(nuova);
-  }, [apri]); // eslint-disable-line react-hooks/exhaustive-deps
-  const fileScelto = (e) => {
-    const f = e.target.files?.[0];
-    const fotoRapida = e.target === ingressi.fotocamera.current || e.target === ingressi.libreria.current;
-    e.target.value = '';
-    if (f) apri({ tipo: 'carica', file: f, opzioni: fotoRapida ? { autoInvia: true } : {} });
-  };
+    if (INGRESSI[id]) { ingressi.current[id]?.click(); return; }
+    if (LIVELLI_AGGIUNGI.includes(id)) { setFoglio(id); return; }
+    if (id === 'nota' || id === 'password') { vai(id, id === 'nota' ? 'scrivi' : 'nuova'); return; }
+    if (PAGINE_AGGIUNGI[id]) apri(PAGINE_AGGIUNGI[id]);
+  }, [apri, vai]);
+  useEffect(() => { const voce = voceDaIndirizzo(); if (voce) aggiungi(voce); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Dal documento: la chat di Poliedron riparte su quel documento (la conversazione resta).
   const apriChat = useCallback((documento = null) => {
@@ -138,9 +126,7 @@ function Archivio({ email }) {
 
   return (
     <div className={`pp-app pp-vista-${vista}`}>
-      <input ref={ingressi.fotocamera} type="file" accept="image/*" capture="environment" hidden onChange={fileScelto} />
-      <input ref={ingressi.libreria} type="file" accept="image/*" hidden onChange={fileScelto} />
-      <input ref={ingressi.file} type="file" hidden onChange={fileScelto} />
+      {Object.entries(INGRESSI).map(([id, c]) => <input key={id} ref={(el) => { ingressi.current[id] = el; }} type="file" accept={c.accept} capture={c.capture} hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) apri(c.pagina(f)); }} />)}
       <header className={`pp-testata${attuale.classeTestata && !sopra ? ` ${attuale.classeTestata}` : ''}`}>
         {!attuale.senzaTitolo && <div className="pp-testata-titoli"><button className="pp-brand" onClick={() => vai('agenda')} aria-label="Poliedron Personal · Home"><span className="pp-brand-moderno"><img src="/poliedron-v2-192.png" alt="" width="24" height="24" /></span><span>Poliedron <small>PERSONAL</small></span></button><h1>{vista === 'oggi' ? saluto() : attuale.nome}</h1></div>}
         {!sopra && !foglio && <span className="pp-testata-azioni">
@@ -168,7 +154,7 @@ function Archivio({ email }) {
         <button className={`pp-scheda${altraSezione ? ' attiva' : ''}`} onClick={() => vai('altro')} aria-current={altraSezione ? 'page' : undefined}><IconaTema tipo="perte" Icona={IconaPerTe} size={24} /><span>Per te</span></button>
       </nav>
       {!sopra && !attuale.senzaPiu && <button className="pp-fab" onClick={() => setFoglio(true)} aria-label="Aggiungi"><IconaPiu size={26} /></button>}
-      {foglio && <FoglioAggiungi onScegli={aggiungi} onChiudi={() => setFoglio(false)} />}
+      {foglio && <FoglioAggiungi iniziale={typeof foglio === 'string' ? foglio : null} onScegli={aggiungi} onChiudi={() => setFoglio(false)} />}
       {toast && (
         <div className={`pp-toast${toast.azione ? ' pp-toast-azione' : ''}`} role="status">
           <span>{toast.testo}</span>

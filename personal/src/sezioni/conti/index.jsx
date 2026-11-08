@@ -6,6 +6,7 @@ const PaginaMovimento = differito(() => import('./Conti.jsx'), 'PaginaMovimento'
 const PaginaNuovaScadenza = differito(() => import('./Conti.jsx'), 'PaginaNuovaScadenza');
 const RiquadroSaldo = differito(() => import('./Conti.jsx'), 'RiquadroSaldo');
 const PaginaPagamento = differito(() => import('./Pagamento.jsx'), 'PaginaPagamento');
+const PaginaSpesa = differito(() => import('./Spesa.jsx'), 'PaginaSpesa');
 
 export { RiquadroSaldo };
 
@@ -17,6 +18,7 @@ export const conti = {
       titolo: (p) => (p.m?.id ? 'Movimento' : p.m?.tipo === 'entrata' ? 'Nuovo incasso' : 'Nuova spesa'), modulo: true,
       render: (p, { ctx, chiudi }) => <PaginaMovimento m={p.m || {}} ctx={ctx} chiudi={chiudi} />,
     },
+    spesaRicevuta: { titolo: 'Nuova spesa', modulo: true, render: (p, { ctx, chiudi }) => <PaginaSpesa file={p.file} ctx={ctx} chiudi={chiudi} /> },
     scadenza: { titolo: 'Pagamento da fare', modulo: true, render: (p, { ctx, chiudi }) => <PaginaNuovaScadenza ctx={ctx} chiudi={chiudi} /> },
   },
 };

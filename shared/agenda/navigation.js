@@ -40,6 +40,13 @@ export function sectionDestination(target, sezione, location = globalThis.locati
   url.search = new URLSearchParams({ sezione, ...(nuovo ? { nuovo: '1' } : {}) }).toString();
   return url.href;
 }
+// DOCK-PER-TE passo 3: dal + dello Studio a Personal, sulle scelte di Documento, Spesa o Foto.
+export function aggiungiPerTe(voce, location = globalThis.location) {
+  if (!['documento', 'spesa', 'foto'].includes(voce)) throw new Error('Voce non valida');
+  const url = new URL(sectionDestination('personal', 'documenti', location));
+  url.searchParams.set('aggiungi', voce);
+  return url.href;
+}
 export const readSectionNew = (search = globalThis.location?.search || '') => new URLSearchParams(search).get('nuovo') === '1';
 
 // AGENDA-UNICA (PO 2026-11-08: "una sola agenda e da lì fare tutto"; base = l'agenda di Studio).

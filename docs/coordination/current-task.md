@@ -1,3 +1,10 @@
+# Current task — DOCK-PER-TE passo 3 (2026-11-08)
+- OWNER Claude Code; branch `ccr-4ac3e51d-dock-per-te-3` (on top of step 2, PR287).
+- AUTHORIZATION PO 2026-11-08: "Avanti" after step 2 (step 3 of DOCK-PER-TE, Master Context §9: acquisition under + → Per te).
+- SCOPE: + → Per te = Documento (Scansiona · Scatta foto · Carica file · Apri e firma un PDF), Spesa (Scansiona scontrino · Foto o file · Inserimento manuale), Foto (Fotocamera · Galleria, album personale foto_video), Nota, Password — in the Personal + sheet (two levels) and in the Crea sheets of Studio and Personal agendas (Studio → Personal with `?aggiungi=documento|spesa|foto`, read once by `voceDaIndirizzo`). New single-screen spesa (`spesaRicevuta`, conti/Spesa.jsx): attachment, amount, date, category, Pagata / Da pagare; Pagata → movimenti row, Da pagare → scadenze row, the uploaded receipt linked through the existing `documento_id` columns (pure rule `spesaDaRegistrare`). Inputs and routing of the + moved to personal/src/lib/ingressi.js (App.jsx stays under 200 lines). «Apri un PDF dal telefono» moved from Documenti to + → Documento. No schema, RLS or data model change.
+- VALIDATION 1612/1612 Node tests; Studio and Personal builds; Chromium 390×844 renders of the + sheet, Spesa choices and spesa screen.
+- STATUS ready; PR after PR287 merge; task-specific "Mergia" required.
+
 # Current task — DOCK-PER-TE passo 2 (2026-11-08)
 - OWNER Claude Code; branch `ccr-4ac3e51d-dock-per-te-2` (on top of step 1, PR286).
 - AUTHORIZATION PO 2026-11-08: "Mergia e vai punti 2" (step 2 of DOCK-PER-TE, Master Context §9: no duplications).

@@ -168,10 +168,12 @@ test('app: Conti in Altro, dock compatto, + con tutte le aggiunte e chiusura', (
   assert.match(readFileSync('personal/src/sezioni/altro/index.jsx', 'utf8'), /\['conti', 'Spese e pagamenti', 'conti', '#34845A'\]/);
   assert.match(app, /leggiVista\(\) === 'pagamenti' \? 'conti'/);
   assert.match(readFileSync('personal/src/Pagina.jsx', 'utf8'), /className="pp-chiudi-pagina"/);
-  for (const voce of ['scansiona', 'fotocamera', 'libreria', 'file', 'personale', 'spesa', 'incasso', 'pagamento', 'evento']) {
+  // DOCK-PER-TE passo 3: + → Per te (Documento, Spesa, Foto, Nota, Password) con le loro scelte.
+  for (const voce of ['documento', 'spesa', 'foto', 'nota', 'password', 'scansiona', 'fotocamera', 'file', 'pdf', 'spesaScontrino', 'spesaFile', 'spesaManuale', 'fotoCamera', 'fotoGalleria', 'personale', 'incasso', 'pagamento', 'evento']) {
     assert.match(aggiungi, new RegExp(`\\['${voce}',`), voce);
   }
-  assert.match(app, /capture="environment"/);
+  assert.match(readFileSync('personal/src/lib/ingressi.js', 'utf8'), /capture: 'environment'/);
+  assert.match(app, /capture=\{c\.capture\}/);
 });
 
 test('POL-VITA-014: Da pagare mostra solo pagamenti attuali; i fissi si ripropongono', async () => {
@@ -200,4 +202,14 @@ test('POL-VITA-014: Da pagare mostra solo pagamenti attuali; i fissi si ripropon
   assert.match(sql, /add column if not exists storica boolean not null default false/);
   assert.match(sql, /update scadenze set storica = true where documento_id is not null/);
   assert.doesNotMatch(sql.split('\n').filter((r) => !r.trim().startsWith('--')).join('\n'), /delete from|drop table|drop column/i);
+});
+
+test('DOCK-PER-TE passo 3: spesa con ricevuta — Pagata diventa movimento, Da pagare un pagamento, documento collegato', async () => {
+  const { spesaDaRegistrare } = await import('../personal/src/lib/conti.js');
+  assert.deepEqual(spesaDaRegistrare({ stato: 'pagata', importo: '12,50', data: '2026-11-08', descrizione: 'Farmacia', categoria: 'Salute', documentoId: 'doc-1' }),
+    { tipo: 'movimento', dati: { tipo: 'uscita', data: '2026-11-08', importo: 12.5, descrizione: 'Farmacia', categoria: 'Salute', documento_id: 'doc-1' } });
+  assert.deepEqual(spesaDaRegistrare({ stato: 'da_pagare', importo: '80', data: '2026-11-30', descrizione: '', categoria: '' }),
+    { tipo: 'scadenza', dati: { data: '2026-11-30', descrizione: 'Spesa', importo: 80, categoria: null, documento_id: null } });
+  assert.throws(() => spesaDaRegistrare({ stato: 'pagata', importo: '0', data: '2026-11-08' }), /Importo/);
+  assert.throws(() => spesaDaRegistrare({ stato: 'pagata', importo: '5', data: '8/11' }), /Data/);
 });
