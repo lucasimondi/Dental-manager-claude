@@ -22,7 +22,7 @@
 - LOCKS: no DB/RLS/tenancy/financial change; no model or conversion service; Studio worker untouched; signature is a simple electronic signature (FES) and the UI says so.
 - VALIDATION 1601/1601 Node tests; Studio and Personal builds; Chromium Pixel 7: personal-pdf.mjs and personal-pdf-annotazioni.mjs PASS.
 - OPEN: the Android companion APK (android/agenda, WebView) has no file chooser, download or navigator.share, and no "Apri con / Condividi con" intent: inside the APK the manager can open archive PDFs but not pick, share or download files. Use the Personal app installed from Chrome (share target works there). Native APK support = next step, PO decision. Real-phone check of share target pending.
-- STATUS implementation complete on branch; PR only on PO request; task-specific "Mergia" required.
+- STATUS MERGED 2026-11-08: PR282 squash-merged after PO "Mergia" with all checks green (pixel7-pdf, iphone-agenda, verify ×3, Netlify, Vercel); merge commit 71e0a19. Vercel production deployment dpl_8xqANHS5AD6VcR9ZZ67fToKos4oD READY (aliases include personal.poliedrasoft.it); deployed personal-dominio.webmanifest serves share_target. Codex draft PR280 closed as superseded (PO request).
 
 # Current task — APP-UNICA passo 2a (2026-11-08)
 - OWNER Claude Code; branch ccr-4fbd3db0-8ou289 from master 254f2d4 (PR279 merged).

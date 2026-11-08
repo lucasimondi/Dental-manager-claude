@@ -4546,3 +4546,8 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 ## 2026-11-08 — POPUP-TELEFONO
 - Done: body class `pol-modale-aperto` (Modal lock, free-slot sheet, search) hides Poliedron orb and dock; impegno form like the appointment form; impegno date/time row fixed; modal fields max-width 100% on phone.
 - Next: AGENDA-UNICA seconda unione (sezioni di Personal dentro l'app).
+
+## Handoff — PERSONAL-PDF-MANAGER merged (2026-11-08) — Claude Code
+- PR282 merged (squash 71e0a19) after PO "Mergia"; all checks green on head e9b0b40 (master a9b3514 merged in first; conflicts only in coordination docs, both entries kept). Production deployment dpl_8xqANHS5AD6VcR9ZZ67fToKos4oD READY; manifest with share_target verified via Vercel fetch (the session sandbox cannot reach the public domain). PR280 (Codex draft) closed as superseded on PO request.
+- Database changes: none. Rollback: revert 71e0a19.
+- Next action: PO reinstalls Personal from Chrome on Android and tries Condividi → Personal with a PDF; APK native PDF support remains a separate PO decision.
