@@ -10,6 +10,7 @@ import { avvisoDocumento, dataScadenza, salvaValidita, storicoPersonale, archivi
 import { IconaPratiche, IconaFreccia, IconaApri, IconaEmail, IconaStella, IconaCestino, IconaChat } from '../../Icone.jsx';
 
 /* ---------- pagine ---------- */
+const ePdf = (doc) => doc.mime_type === 'application/pdf' || /\.pdf$/i.test(doc.nome_file_originale || '');
 export function PaginaDocumento({ id, ctx, chiudi }) {
   const { esegui, aggiorna, mostra, apri, impostazioni, fascicoli } = ctx;
   const [doc, setDoc] = useState(null);
@@ -30,8 +31,11 @@ export function PaginaDocumento({ id, ctx, chiudi }) {
 
   return (
     <>
-      {intero && <DocumentoIntero ctx={ctx} doc={doc} onInfo={() => setIntero(false)} onChiudi={chiudi} mostra={mostra} />}
-      <button className="pp-bottone" onClick={() => setIntero(true)}>Apri a tutto schermo</button>
+      {intero && <DocumentoIntero ctx={ctx} doc={doc} strumento={typeof intero === 'string' ? intero : undefined} onInfo={() => setIntero(false)} onChiudi={chiudi} mostra={mostra} />}
+      {/* DOCK-PER-TE passo 2: le azioni sul PDF stanno nel documento, non in una sezione a parte. */}
+      {ePdf(doc)
+        ? <div className="pp-azioni pp-azioni-pdf"><button className="pp-bottone" onClick={() => setIntero('firma')}>Firma</button><button className="pp-bottone pp-bottone-chiaro" onClick={() => setIntero('modifica')}>Modifica</button><button className="pp-bottone pp-bottone-chiaro" onClick={() => setIntero('pagine')}>Pagine</button><button className="pp-bottone pp-bottone-chiaro" onClick={() => setIntero(true)}>Apri</button></div>
+        : <button className="pp-bottone" onClick={() => setIntero(true)}>Apri a tutto schermo</button>}
       {avviso && <p className={'pp-validita '+avviso.stato}>{avviso.testo} · {dataBreve(avviso.data)}</p>}
       <div className="pp-dettaglio-testa" style={{ '--c': colore(doc.fascicolo) }}>
         <span className="pp-etichetta">{doc.tipo_documento || fascicoli.find((f) => f.codice === doc.fascicolo)?.nome || doc.fascicolo}</span>

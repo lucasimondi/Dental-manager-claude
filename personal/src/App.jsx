@@ -27,7 +27,7 @@ import { IconaPiu, IconaImpostazioni, IconaChat, IconaStudio, IconaPerTe } from 
 impostaToken(tokenSessione);
 
 // APP-UNICA: «?sezione=conti» (da Altro di Studio) apre direttamente quella sezione.
-const vistaIniziale = () => { if (readAgendaLocation().requested) return 'agenda'; if (sezione(readSectionLocation())) return readSectionLocation(); const v = leggiVista() === 'pagamenti' ? 'conti' : leggiVista(); return sezione(v) ? v : 'oggi'; };
+const vistaIniziale = () => { if (readAgendaLocation().requested) return 'agenda'; if (sezione(readSectionLocation())) return readSectionLocation(); const v = leggiVista() === 'pagamenti' ? 'conti' : leggiVista(); return sezione(v) && v !== 'oggi' ? v : 'agenda'; }; // DOCK-PER-TE passo 2: si parte dall'agenda
 
 function Archivio({ email }) {
   // Il widget legge le etichette attuali (colori) al momento di ogni sincronizzazione.
@@ -142,7 +142,7 @@ function Archivio({ email }) {
       <input ref={ingressi.libreria} type="file" accept="image/*" hidden onChange={fileScelto} />
       <input ref={ingressi.file} type="file" hidden onChange={fileScelto} />
       <header className={`pp-testata${attuale.classeTestata && !sopra ? ` ${attuale.classeTestata}` : ''}`}>
-        {!attuale.senzaTitolo && <div className="pp-testata-titoli"><button className="pp-brand" onClick={() => vai('oggi')} aria-label="Poliedron Personal · Home"><span className="pp-brand-moderno"><img src="/poliedron-v2-192.png" alt="" width="24" height="24" /></span><span>Poliedron <small>PERSONAL</small></span></button><h1>{vista === 'oggi' ? saluto() : attuale.nome}</h1></div>}
+        {!attuale.senzaTitolo && <div className="pp-testata-titoli"><button className="pp-brand" onClick={() => vai('agenda')} aria-label="Poliedron Personal · Home"><span className="pp-brand-moderno"><img src="/poliedron-v2-192.png" alt="" width="24" height="24" /></span><span>Poliedron <small>PERSONAL</small></span></button><h1>{vista === 'oggi' ? saluto() : attuale.nome}</h1></div>}
         {!sopra && !foglio && <span className="pp-testata-azioni">
           {AzioniTestata && <AzioniTestata ctx={ctx} />}
           <button className="pp-icona-bottone" onClick={() => apri({ tipo: 'impostazioni' })} aria-label="Impostazioni"><IconaImpostazioni size={20} /></button>

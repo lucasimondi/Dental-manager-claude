@@ -4556,3 +4556,8 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Branch `ccr-4ac3e51d-dock-per-te` from master 33c130e. Files: src/components/poliedron/PoliedronMobileDock.jsx, src/App.jsx (gruppiStudio/gruppiPerTe, pages studio/perte, ?sezione=studio|perte), shared/altro/AltroPage.jsx (nota icon), personal/src/{App.jsx,Icone.jsx,personal.css,sezioni/index.js,sezioni/altro/index.jsx}, tests (appUnica, dashboardPremiumV2, mobileHomeRound2, personalConti, poliedronAdaptive), POLIEDRA_MASTER_CONTEXT.md.
 - Database: none. Tests: 1608/1608; both builds. Rollback: revert the PR.
 - Next: step 2 (no duplications) after "Mergia" of this PR.
+
+## Handoff — DOCK-PER-TE passo 2 (2026-11-08) — Claude Code
+- Branch `ccr-4ac3e51d-dock-per-te-2`. Files: personal/src/pdf/{GestorePdf.jsx,PaginaPdf.jsx}, personal/src/sezioni/documenti/{Documento.jsx,DocumentoIntero.jsx,Documenti.jsx}, personal/src/sezioni/{agenda/AgendaGriglia.jsx,altro/index.jsx}, personal/src/App.jsx, tests/personalPdf.test.mjs, tests/visual/personal-pdf*.
+- Database: none. Tests: 1609/1609; Pixel 7 PDF checks PASS. Rollback: revert the PR.
+- Next: step 3 (+ → Per te acquisition; spesa with receipt via movimenti.documento_id).

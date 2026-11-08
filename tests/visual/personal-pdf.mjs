@@ -18,7 +18,7 @@ try{
  await page.route('**/*',route=>new URL(route.request().url()).hostname==='127.0.0.1'?route.continue():route.abort());
  await page.goto('http://127.0.0.1:5175/tests/visual/personal-pdf.html');
  await page.locator('input[type=file]').first().setInputFiles({name:'test-fittizio.pdf',mimeType:'application/pdf',buffer:input});
- await page.getByRole('button',{name:'Salva copia',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Condividi',exact:true}).waitFor();
  await page.waitForFunction(()=>!document.querySelector('.pdf-primary').disabled);
  await page.locator('.pdfViewer .page[data-page-number="1"] canvas').waitFor();
  await page.locator('input[name="Nome test"]').fill('LUCA TEST FITTIZIO');
@@ -28,14 +28,14 @@ try{
  await page.getByRole('button',{name:'Usa questa firma'}).click();await page.locator('.pdf-signature').waitFor();
  const sig=await page.locator('.pdf-signature').boundingBox();await page.mouse.move(sig.x+20,sig.y+20);await page.mouse.down();await page.mouse.move(sig.x+45,sig.y+65,{steps:5});await page.mouse.up();
  await page.getByLabel('Numero pagina').fill('12');await page.locator('.pdfViewer .page[data-page-number="12"] canvas').waitFor();
- await page.getByRole('button',{name:'Salva copia',exact:true}).click();await page.getByRole('button',{name:'Condividi PDF',exact:true}).click();
+ await page.getByRole('button',{name:'Condividi',exact:true}).click();await page.getByRole('button',{name:'Condividi PDF',exact:true}).click();
  await page.waitForFunction(()=>window.pdfTest.shares.length===1);
  const shared=await page.evaluate(()=>window.pdfTest.shares[0]);const result=await PDFDocument.load(Uint8Array.from(shared.bytes));assert.equal(result.getPageCount(),12);assert.equal(result.getForm().getTextField('Nome test').getText(),'LUCA TEST FITTIZIO');assert.ok(result.getPage(0).node.Resources().toString().includes('XObject'));
  const downloadPromise=page.waitForEvent('download');await page.getByRole('button',{name:'Scarica PDF',exact:true}).click();const download=await downloadPromise;assert.equal(download.suggestedFilename(),'test-fittizio - modificato.pdf');
  await page.getByRole('button',{name:'Salva nell’archivio come nuovo file'}).click();await page.waitForFunction(()=>window.pdfTest.archived);assert.deepEqual(await page.evaluate(()=>window.pdfTest.archived),shared.bytes);
  await page.getByRole('button',{name:'Torna al documento'}).click();await page.getByRole('button',{name:'Pagine',exact:true}).click();await page.getByLabel('Ruota pagina 1', {exact:true}).click();await page.getByLabel('Elimina pagina 12 dalla copia',{exact:true}).click();await page.getByRole('button',{name:'Applica alla copia'}).click();
  await page.waitForFunction(()=>document.querySelector('input[aria-label="Numero pagina"]')?.max==='11');
- await page.getByRole('button',{name:'Salva copia',exact:true}).click();await page.getByRole('button',{name:'Condividi PDF',exact:true}).click();await page.waitForFunction(()=>window.pdfTest.shares.length===2);
+ await page.getByRole('button',{name:'Condividi',exact:true}).click();await page.getByRole('button',{name:'Condividi PDF',exact:true}).click();await page.waitForFunction(()=>window.pdfTest.shares.length===2);
  const after=await PDFDocument.load(Uint8Array.from(await page.evaluate(()=>window.pdfTest.shares[1].bytes)));assert.equal(after.getPageCount(),11);assert.equal(after.getPage(0).getRotation().angle,90);
  await page.getByRole('button',{name:'Torna al documento'}).click();await page.screenshot({path:`${out}/pixel7.png`});
  assert.deepEqual(errors,[]);await writeFile(`${out}/result.json`,JSON.stringify({device:'Pixel 7',pages:12,form:true,signature:true,share:'mocked native file boundary',download:true,archive:'callback bytes verified; no real Drive upload',pageOperations:true,errors},null,2));
