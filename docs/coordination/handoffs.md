@@ -4577,3 +4577,10 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 ## Handoff — STUDIO-BENTO (2026-11-08) — Claude Code
 - Branch `ccr-4ac3e51d-studio-bento`. Files: shared/altro/{AltroPage.jsx,bento.js,altro.css}, src/App.jsx (BENTO_STUDIO, gruppiStudio/gruppiPerTe), personal/src/sezioni/altro/index.jsx, tests (appUnica, passwordShared, personalConti).
 - Database: none. Tests 1613/1613. Rollback: revert the PR. Mockup: artifact "Studio e Per te — mockup", option B.
+
+## Handoff — DOCUMENTI-DRIVE (2026-11-09) — Claude Code
+- Branch `claude/personal-documents-search-t56hee` from master 2111e66. Files: poliedron/archivio/Code.gs (importaDocumentiDrive_, analizzaRimasti_ Google formats + no rename, ordinaDrive_/bozzaRisposta_/cestinaEmail_ skip Drive files), personal/src/lib/archivio.js (daDrive, conEmail, documentiDaDrive, wider search), personal/src/sezioni/documenti/{Documenti,Documento,Selezione}.jsx, personal/src/ui.jsx, personal/src/sezioni/altro/index.jsx, src/App.jsx, shared/altro/AltroPage.jsx (documenti icon), tests/documentiDrive.test.mjs, tests/appUnica.test.mjs.
+- Database: no schema change; once the script runs, new `documenti` rows with gmail_message_id/hash `drivefile:<id>`. Rollback: revert the PR and clasp push; rows can be archived/removed from the app (Drive files are never touched).
+- Tests 1628/1628; both builds OK.
+- Risks: titles by content still blocked by the Anthropic credit (5290 queued) and Gemini free quota; Drive files shared with Luca but owned by others are not indexed ('me' in owners).
+- Next: PO "Mergia" → merge, `clasp push -f` from master; PO tops up Anthropic credit and runs `riprovaErrori` to let analysis rename the 5290 + Drive documents.

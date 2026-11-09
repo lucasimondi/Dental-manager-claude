@@ -1,7 +1,7 @@
 // Documenti — file a tutto schermo, informazioni e catalogo su richiesta.
 import { useCallback, useEffect, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { eliminaDocumento, documentoCompleto, impostaPortafoglio, eCaricato, nelPortafoglio, aggiornaDocumento, cestinaSuDrive } from '../../lib/archivio.js';
+import { eliminaDocumento, documentoCompleto, impostaPortafoglio, eCaricato, conEmail, nelPortafoglio, aggiornaDocumento, cestinaSuDrive } from '../../lib/archivio.js';
 import { euro } from '../../lib/coreArchivio.js';
 import { colore, dataBreve, titoloDoc, tokenSessione, Vuoto, Sezione, Gruppo, ConfermaElimina, BottoneCondividi } from '../../ui.jsx';
 import { DocumentoIntero } from './DocumentoIntero.jsx';
@@ -45,7 +45,7 @@ export function PaginaDocumento({ id, ctx, chiudi }) {
       <div className="pp-azioni">
         {doc.drive_url && <a className="pp-bottone" href={doc.drive_url} target="_blank" rel="noreferrer"><IconaApri size={18} /> Apri il file</a>}
         {(doc.drive_file_id || doc.drive_url) && <BottoneCondividi doc={doc} mostra={mostra} />}
-        {!eCaricato(doc) && doc.gmail_message_id && <a className="pp-bottone pp-bottone-chiaro" href={`https://mail.google.com/mail/u/0/#all/${doc.gmail_message_id}`} target="_blank" rel="noreferrer"><IconaEmail size={18} /> Email</a>}
+        {conEmail(doc) && <a className="pp-bottone pp-bottone-chiaro" href={`https://mail.google.com/mail/u/0/#all/${doc.gmail_message_id}`} target="_blank" rel="noreferrer"><IconaEmail size={18} /> Email</a>}
         <button className={`pp-bottone pp-bottone-chiaro${portafoglio ? ' pp-attivo' : ''}`} onClick={() => cambia(() => impostaPortafoglio(archivioDb, doc, !portafoglio), portafoglio ? 'Tolto dai Personali' : 'Aggiunto ai Personali')}>
           <IconaStella size={18} piena={portafoglio} /> {portafoglio ? 'Nei Personali' : 'Tieni a portata di mano'}
         </button>

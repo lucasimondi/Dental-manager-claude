@@ -117,6 +117,15 @@ export const URL_CARICAMENTO = 'https://script.google.com/macros/s/AKfycbzQf7Hb8
 export const TAG_PORTAFOGLIO = 'portafoglio';
 
 export const eCaricato = (doc) => String(doc?.gmail_message_id || '').startsWith('caricato:');
+// DOCUMENTI-DRIVE: file trovati su Drive (non arrivati per email): niente link a Gmail.
+export const daDrive = (doc) => /^drive(file|foto):/.test(String(doc?.gmail_message_id || ''));
+export const conEmail = (doc) => !!doc?.gmail_message_id && !eCaricato(doc) && !daDrive(doc);
+
+// Documenti messi direttamente su Drive (indicizzati dallo script senza spostarli).
+export async function documentiDaDrive(db, limite = 400) {
+  return esito(await db.from('documenti').select(CAMPI_DOC).like('gmail_message_id', 'drivefile:%')
+    .order('email_data', { ascending: false, nullsFirst: false }).limit(limite));
+}
 export const nelPortafoglio = (doc) => (doc?.tag || []).includes(TAG_PORTAFOGLIO);
 
 export async function documentiRecenti(db, limite = 10) {
@@ -334,7 +343,7 @@ export async function cercaArchivio(db, { testo = '', fascicolo, ente, anno, tip
   let q = db.from('documenti').select(CAMPI_DOC);
   for (const w of parolaSicura(testo).split(/\s+/).filter((x) => x.length > 1).slice(0, 6)) {
     const p = `*${w}*`;
-    q = q.or(`titolo.ilike.${p},ente.ilike.${p},riassunto.ilike.${p},tipo_documento.ilike.${p},email_mittente.ilike.${p},nome_file_originale.ilike.${p},persona.ilike.${p}`);
+    q = q.or(`titolo.ilike.${p},ente.ilike.${p},riassunto.ilike.${p},tipo_documento.ilike.${p},email_mittente.ilike.${p},email_oggetto.ilike.${p},nome_file_originale.ilike.${p},persona.ilike.${p},categoria.ilike.${p}`);
   }
   if (fascicolo) q = q.eq('fascicolo', fascicolo);
   if (ente) q = q.eq('ente', ente);
