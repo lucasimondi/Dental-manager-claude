@@ -2,6 +2,7 @@ import { useAspetto } from '../../Aspetto.jsx';
 import DayEvents from '../../../../shared/agenda/DayEvents.jsx';
 import { useTimeline } from '../../../../shared/agenda/useTimeline.js';
 import { keepOccupiedWeekends } from '../../../../shared/agenda/visibility.js';
+import { leggiDomenicaNascosta, salvaDomenicaNascosta, applicaDomenica } from '../../../../shared/agenda/domenica.js';
 import { layoutAgendaDay, layoutAppointments, raggruppaSovrapposti } from '../../../../shared/agenda/geometry.js';
 import { euro } from '../../lib/coreArchivio.js';
 import RicercaAgenda from '../../../../shared/ricerca/RicercaAgenda.jsx';
@@ -24,10 +25,12 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
   const month = mese || localMonth, changeMonth = setMese || setLocalMonth;
   const weekly = view === 'settimana' || view === 'settimana_lavoro';
   const [weekendsHidden, setWeekendsHidden] = useState(false);
+  const [domenicaNascosta, setDomenicaNascosta] = useState(() => leggiDomenicaNascosta() === true);
+  const cambiaDomenica = () => setDomenicaNascosta(v => { salvaDomenicaNascosta(!v); return !v; });
   // La scelta rapida è solo locale alla schermata: non cambia l'orario/configurazione
   // condivisa dello studio. I giorni del weekend occupati restano visibili.
   const { slotMin = 30, zoom = 1 } = dati.settings || {};
-  const hiddenWeekdays = keepOccupiedWeekends(daIso(giorniSettimana(giorno)[0]), view === 'settimana_lavoro' || weekendsHidden ? [0, 6] : GIORNI_NASCOSTI_PERSONAL, dati.appuntamenti, dati.impegni);
+  const hiddenWeekdays = keepOccupiedWeekends(daIso(giorniSettimana(giorno)[0]), view === 'settimana_lavoro' || weekendsHidden ? [0, 6] : applicaDomenica(GIORNI_NASCOSTI_PERSONAL, domenicaNascosta), dati.appuntamenti, dati.impegni);
   const oraInizio = 0, oraFine = 24;
   const days = weekly ? getVisibleWeekDays(daIso(giorniSettimana(giorno)[0]), hiddenWeekdays) : [daIso(giorno)];
   const slots = [];
@@ -78,7 +81,7 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
     ] },
   ];
   const ricerca = fonteRicerca ? <RicercaAgenda fonte={fonteRicerca} extra={<CreaButton onClick={() => setCreaAperto(true)} />} /> : <AgendaSearchBar onOpen={() => ctx.vai('poliedron')} label="Cerca o chiedi a Poliedron…" extra={<CreaButton onClick={() => setCreaAperto(true)} />} />;
-  const pick = <span className="personal-agenda-azioni"><ViewPicker palette={palette} hiddenCount={hiddenCount} showHidden={mostraEsclusi} onToggleHidden={setMostraEsclusi ? () => setMostraEsclusi(x => !x) : undefined} view={view} setView={setView} touchSafe weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendsHidden(hidden => !hidden)} /></span>;
+  const pick = <span className="personal-agenda-azioni"><ViewPicker palette={palette} hiddenCount={hiddenCount} showHidden={mostraEsclusi} onToggleHidden={setMostraEsclusi ? () => setMostraEsclusi(x => !x) : undefined} view={view} setView={setView} touchSafe weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendsHidden(hidden => !hidden)} sundayHidden={domenicaNascosta} onToggleSunday={cambiaDomenica} /></span>;
   // DayStrip notifica anche al primo mount la settimana che sta mostrando.
   // In Personal ignoriamo quella prima notifica: altrimenti il 16 diventa lunedì 12.
   const skipWeekSync = useRef(true);

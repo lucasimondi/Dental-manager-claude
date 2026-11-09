@@ -1,3 +1,10 @@
+# Current task — AGENDA-DOMENICA (2026-11-09)
+- OWNER Claude Code; branch `claude/agenda-settimana-testo-capo-p38lb1` restarted from master 1fd8ad9 (PR291 merged; old branch history merged in, no force push).
+- AUTHORIZATION PO 2026-11-09: "Va bene mergia con b 7 giorni poi mettiamo opzione per la domenica".
+- SCOPE (presentation only): «Nascondi domenica / Mostra domenica» in the view menu of Studio and Personal (shown when Saturday and Sunday are not already hidden), remembered on the device (`localStorage` key `agenda_nascondi_domenica`, shared/agenda/domenica.js). No choice = Studio follows configured closing days, Personal shows Sunday. A Sunday with appointments or events still appears (keepOccupiedWeekends). Studio shared settings untouched. No data change.
+- VALIDATION 1623/1623 Node tests; Studio and Personal builds; Chromium 390×844: toggle hides Sunday in both apps and survives reload.
+- STATUS PR open; task-specific "Mergia" required.
+
 # Current task — AGENDA-SETTIMANA-A-CAPO (2026-11-09)
 - OWNER Claude Code; branch `claude/agenda-settimana-testo-capo-p38lb1` from master a7f43d2 (PR290 merged).
 - AUTHORIZATION PO 2026-11-09: "In vista Settimana titolo di impegni e appuntamenti è troncato con «…» … voglio leggere il testo intero, andando a capo dentro il blocco"; after the mockup (A ritocco, B etichette brevi, C tre giorni): "Vai con B", then "Va bene mergia con b 7 giorni poi mettiamo opzione per la domenica".
