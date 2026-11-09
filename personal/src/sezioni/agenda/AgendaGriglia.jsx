@@ -2,14 +2,14 @@ import { useAspetto } from '../../Aspetto.jsx';
 import DayEvents from '../../../../shared/agenda/DayEvents.jsx';
 import { useTimeline } from '../../../../shared/agenda/useTimeline.js';
 import { keepOccupiedWeekends } from '../../../../shared/agenda/visibility.js';
-import { layoutAgendaDay, layoutAppointments } from '../../../../shared/agenda/geometry.js';
+import { layoutAgendaDay, layoutAppointments, raggruppaSovrapposti } from '../../../../shared/agenda/geometry.js';
 import { euro } from '../../lib/coreArchivio.js';
 import RicercaAgenda from '../../../../shared/ricerca/RicercaAgenda.jsx';
 import CreaSheet, { CreaButton } from '../../../../shared/crea/CreaSheet.jsx';
 import { sectionDestination } from '../../../../shared/agenda/navigation.js';
 // POL-VITA-010: Personal adapter; original presentation is owned by shared/agenda.
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, AppointmentBlock, EventBlock, useSlotHeight, AgendaSearchBar, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState } from '../../../../shared/agenda/AgendaPresentation.jsx';
+import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, AppointmentBlock, AppointmentGroupBlock, etichettaBreve, EventBlock, useSlotHeight, AgendaSearchBar, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState } from '../../../../shared/agenda/AgendaPresentation.jsx';
 import { getVisibleWeekDays } from '../../../../shared/agenda/visibleDays.js';
 import { daIso, piuGiorni, oggi, coloreEvento, nomeEtichetta, elementiDelGiorno, giorniSettimana } from '../../lib/agenda.js';
 export { ViewPicker };
@@ -103,18 +103,28 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
   const renderDay = ds => {
     const el = elementiDelGiorno(ds, dati);
     const packed = layoutAgendaDay(dati.appuntamenti.filter(a => a.data === ds), el.aOrario.filter(x => x.tipo === 'evento').map(x => x.dato));
+    // PO 2026-11-09 (variante B): in Settimana etichette brevi e appuntamenti sovrapposti in un solo blocco.
+    const gruppi = weekly ? raggruppaSovrapposti(packed).gruppi : [];
+    const inGruppo = new Set(gruppi.flatMap(g => g.items.map(x => x.a.id)));
+    const nomeDi = a => String(a.paziente || '').replace(a.cognome || '', '').trim();
+    const colore = a => a.colore || coloriTipi[a.tipo] || (retro ? '#000080' : '#185FA5');
     return <>
+      {gruppi.map(g => {
+        const top = (g.start - oraInizio * 60) / slotMin * effectiveSlotH;
+        if (top < 0 || top >= slots.length * effectiveSlotH) return null;
+        return <AppointmentGroupBlock key={'grp-' + g.items[0].a.id} top={top} height={Math.max((g.end - g.start) / slotMin * effectiveSlotH - 2, effectiveSlotH * .6)} items={g.items.map(({ a }) => ({ a, co: colore(a), label: a.cognome ? etichettaBreve(a.cognome, nomeDi(a)) : (a.paziente || a.tipo || '—'), onOpen: e => { e.stopPropagation(); ctx.apri({ tipo: 'appuntamento', a }); } }))} />;
+      })}
       {packed.filter(x => x.a.agendaEvent).map(item => {
         const x = { dato: item.a.agendaEvent, id: item.a.id, inizio: item.start, fine: item.end };
         const top = (x.inizio - oraInizio * 60) / slotMin * effectiveSlotH;
         const height = Math.max((x.fine - x.inizio) / slotMin * effectiveSlotH, effectiveSlotH * .5);
         if (top + height < 0 || top >= slots.length * effectiveSlotH) return null;
-        return <EventBlock col={item.col} totalCols={item.totalCols} key={x.id} title={x.dato.titolo} startTime={(x.dato.ora_inizio || '').slice(0, 5)} description={x.dato.note || ''} aCapo={weekly} top={top} height={height} co={coloreEvento(x.dato, etichette)} onClick={() => ctx.apri({ tipo: 'evento', evento: x.dato })} />;
+        return <EventBlock col={item.col} totalCols={item.totalCols} key={x.id} title={x.dato.titolo} startTime={(x.dato.ora_inizio || '').slice(0, 5)} description={x.dato.note || ''} aCapo={weekly} compatto={weekly} top={top} height={height} co={coloreEvento(x.dato, etichette)} onClick={() => ctx.apri({ tipo: 'evento', evento: x.dato })} />;
       })}
-      {packed.filter(x => !x.a.agendaEvent).map(x => {
+      {packed.filter(x => !x.a.agendaEvent && !inGruppo.has(x.a.id)).map(x => {
         const a = x.a, top = (x.start - oraInizio * 60) / slotMin * effectiveSlotH;
         if (top < 0 || top >= slots.length * effectiveSlotH) return null;
-        return <AppointmentBlock key={a.id} a={a} label={weekly ? (a.cognome ? [a.cognome, String(a.paziente || '').replace(a.cognome, '').trim()].filter(Boolean).join(' ') : (a.paziente || a.tipo || '—')) : (a.cognome || a.paziente || '—')} aCapo={weekly} co={a.colore || coloriTipi[a.tipo] || (retro ? '#000080' : '#185FA5')} top={top} height={Math.max(Number(a.durata) / slotMin * effectiveSlotH - 2, effectiveSlotH * .6)} col={x.col} totalCols={x.totalCols} readOnly onOpen={e => { e.stopPropagation(); ctx.apri({ tipo: 'appuntamento', a }); }} />;
+        return <AppointmentBlock key={a.id} a={a} label={weekly ? (a.cognome ? etichettaBreve(a.cognome, nomeDi(a)) : (a.paziente || a.tipo || '—')) : (a.cognome || a.paziente || '—')} aCapo={weekly} compatto={weekly} co={colore(a)} top={top} height={Math.max(Number(a.durata) / slotMin * effectiveSlotH - 2, effectiveSlotH * .6)} col={x.col} totalCols={x.totalCols} readOnly onOpen={e => { e.stopPropagation(); ctx.apri({ tipo: 'appuntamento', a }); }} />;
       })}
     </>;
   };

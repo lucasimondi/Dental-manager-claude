@@ -31,3 +31,37 @@ test('in settimana testo a capo con line-clamp; la vista Giorno resta invariata'
   assert.match(src, /whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'break-word', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: righe/);
   assert.match(src, /height > 18 && <div style=\{\{ fontSize: dense \? 9 : 10\.5, lineHeight: '12px', fontWeight: 600, color: ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' \}\}>/);
 });
+
+// Variante B (PO 2026-11-09): Settimana su telefono con etichette brevi e sovrapposti raggruppati.
+const breve = new Function(`${src.slice(src.indexOf('const PARTICELLE'), src.indexOf('export function tipoBreve'))}; return etichettaBreve;`.replaceAll('export function', 'function'))();
+const tipo = new Function(`${estrai('tipoBreve')}; return tipoBreve;`)();
+
+test('etichetta breve: Cognome I., cognomi lunghi accorciati senza perdere le particelle', () => {
+  assert.equal(breve('Bianchi', 'Luca'), 'Bianchi L.');
+  assert.equal(breve('Bergamaschi Rossetti', 'Maria Antonietta'), 'Bergamaschi M.');
+  assert.equal(breve('Lombardi De Santis', 'Francesca'), 'Lombardi F.');
+  assert.equal(breve('De Santis Lombardi', 'Anna'), 'De Santis A.');
+  assert.equal(breve('', 'Mario'), 'M.');
+  assert.equal(tipo('Controllo post-operatorio'), 'Controllo');
+  assert.equal(tipo(''), '');
+});
+
+test('sovrapposti: solo gruppi di soli appuntamenti diventano un blocco unico', async () => {
+  const { layoutAgendaDay, raggruppaSovrapposti } = await import('../shared/agenda/geometry.js');
+  const apps = [{ id: 1, ora: '09:00', durata: 60 }, { id: 2, ora: '09:30', durata: 60 }, { id: 3, ora: '12:00', durata: 30 }];
+  const { gruppi, singoli } = raggruppaSovrapposti(layoutAgendaDay(apps, []));
+  assert.equal(gruppi.length, 1);
+  assert.deepEqual(gruppi[0].items.map(x => x.a.id), [1, 2]);
+  assert.equal(gruppi[0].start, 540); assert.equal(gruppi[0].end, 630);
+  assert.deepEqual(singoli.map(x => x.a.id), [3]);
+  const misto = raggruppaSovrapposti(layoutAgendaDay(apps.slice(0, 1), [{ id: 9, ora_inizio: '09:15', ora_fine: '10:00' }]));
+  assert.equal(misto.gruppi.length, 0, 'con un impegno in mezzo restano affiancati');
+});
+
+test('Studio raggruppa solo su telefono in Settimana e non durante la selezione WhatsApp; Personal in Settimana', () => {
+  const studio = readFileSync(new URL('../src/components/Agenda.jsx', import.meta.url), 'utf8');
+  assert.match(studio, /const compatto = isMobile && isSettimana;/);
+  assert.match(studio, /compatto && !selModeWA \? raggruppaSovrapposti\(packed\)\.gruppi : \[\]/);
+  const personal = readFileSync(new URL('../personal/src/sezioni/agenda/AgendaGriglia.jsx', import.meta.url), 'utf8');
+  assert.match(personal, /weekly \? raggruppaSovrapposti\(packed\)\.gruppi : \[\]/);
+});
