@@ -137,5 +137,5 @@ test('STUDIO-BENTO: Studio e Per te a riquadri (grande, alta, media, piccola, pu
   assert.match(app, /paz: \['grande', 'Schede, piani di cura e documenti'\]/);
   assert.match(app, /\.sort\(\(x, y\) => RANGO\[x\.taglia\] - RANGO\[y\.taglia\]\)/);
   assert.match(app, /id: 'vita-conti', nome: 'Spese e pagamenti', icona: 'conti', taglia: 'grande'/);
-  assert.match(read('personal/src/sezioni/altro/index.jsx'), /\['personali', 'Documenti personali', 'personali', 'alta'/);
+  assert.match(read('personal/src/sezioni/altro/index.jsx'), /\['personali', 'Documenti personali', 'personali', 'media'/);
 });

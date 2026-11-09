@@ -5,7 +5,7 @@ import { IconaTema } from '../../IconaTema.jsx';
 // massa: sposta, importanza, ente, persona, Personali, elimina.
 import { useEffect, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { documentiPersonaliStorici, cercaArchivio, enti as caricaEnti, pratiche as caricaPratiche, cambiaStatoPratica } from '../../lib/archivio.js';
+import { documentiPersonaliStorici, documentiDaDrive, cercaArchivio, enti as caricaEnti, pratiche as caricaPratiche, cambiaStatoPratica } from '../../lib/archivio.js';
 import { VistaCartelle } from './Cartelle.jsx';
 import { colore, Vuoto, Sezione, Gruppo, Chips, Segmenti, ElencoPratiche } from '../../ui.jsx';
 import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaStella, IconaFoto } from '../../Icone.jsx';
@@ -64,8 +64,9 @@ export function VistaDocumenti({ ctx }) {
           : <Vuoto>Cerco…</Vuoto>
       ) : (
         <>
-          <Chips voci={[['cartelle', 'Cartelle'], ['recenti', 'Recenti'], ['personali', 'Personali'], ['categorie', 'Categorie'], ['pratiche', 'Pratiche']]} attiva={scheda} onScegli={setScheda} />
+          <Chips voci={[['cartelle', 'Cartelle'], ['recenti', 'Recenti'], ['personali', 'Personali'], ['categorie', 'Categorie'], ['drive', 'Da Drive'], ['pratiche', 'Pratiche']]} attiva={scheda} onScegli={setScheda} />
           {scheda === 'personali' && <personali.Vista ctx={ctx} />}
+          {scheda === 'drive' && <SchedaDrive ctx={ctx} />}
           {scheda === 'cartelle' && <VistaCartelle ctx={ctx} anchePocoUtili={filtri.anchePocoUtili} />}
           {scheda === 'recenti' && risultati && <ElencoSelezionabile elenco={risultati} ctx={ctx} onCambiato={() => setRinfresca((n) => n + 1)} intestazione="Ultimi arrivati" />}
           {scheda === 'categorie' && (
@@ -137,6 +138,17 @@ export function VistaDocumenti({ ctx }) {
       </Sezione>}
     </>
   );
+}
+
+// DOCUMENTI-DRIVE (PO 2026-11-09): i file messi direttamente su Drive (non arrivati per email).
+function SchedaDrive({ ctx }) {
+  const { esegui, versione } = ctx;
+  const [elenco, setElenco] = useState(null);
+  const [rinfresca, setRinfresca] = useState(0);
+  useEffect(() => { let vivo = true; esegui(async () => { const r = await documentiDaDrive(archivioDb); if (vivo) setElenco(r); }); return () => { vivo = false; }; }, [esegui, versione, rinfresca]);
+  if (!elenco) return <Vuoto>Carico…</Vuoto>;
+  if (!elenco.length) return <Vuoto>I documenti che hai su Drive (fuori dall'archivio) compaiono qui man mano che vengono letti, di solito entro qualche ora.</Vuoto>;
+  return <ElencoSelezionabile elenco={elenco} ctx={ctx} onCambiato={() => setRinfresca((n) => n + 1)} intestazione={`${elenco.length}${elenco.length >= 400 ? '+' : ''} documenti da Drive`} />;
 }
 
 /* ---------- pagina con un elenco filtrato (ente, categoria, sezione, da gestire) ---------- */

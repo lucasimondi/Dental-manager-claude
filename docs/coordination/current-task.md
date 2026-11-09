@@ -1,3 +1,12 @@
+# Current task — DOCUMENTI-DRIVE (2026-11-09)
+- OWNER Claude Code; branch `claude/personal-documents-search-t56hee` from master 2111e66 (PR292).
+- AUTHORIZATION PO 2026-11-09: "Deve esserci la sezione documenti in parte personale dove trovo tutti i documenti che ci sono su drive, organizzati bene con i titoli giusti e inerenti al contenuto, e devo poterli trovare attraverso la barra ricerca".
+- FOUND (read-only, Supabase `archivio-documenti`): 7383 documents, all from Gmail attachments or app uploads (0 non-Gmail documents; only photos were indexed from Drive); 5290 still «da analizzare» with rule-based titles because the Anthropic credit is exhausted ("credit balance is too low") and the Gemini free quota hits 429 every day.
+- SCOPE: Code.gs `importaDocumentiDrive_` indexes Luca's own Drive documents (PDF, Word, Excel, Google Docs/Sheets/Slides, OpenDocument, text) as `drivefile:<id>`, never moved, renamed or deleted, clinical-looking files skipped (eClinico_ on name + folder), queued «da analizzare» so the content title comes with `analizzaRimasti_` (Google formats read as PDF export); ordinaDrive_/rename/bozza/cestinaEmail_ skip them. App: «Documenti» tile in Per te (Studio and Personal) opening Personal Documenti with the search bar; «Da Drive» tab; search also on folder/email subject and category; no Gmail link and «da Drive» label for Drive files. No schema, RLS or migration change.
+- VALIDATION 1628/1628 Node tests (new tests/documentiDrive.test.mjs); Studio and Personal builds; `node --check` on Code.gs.
+- DEPLOY Code.gs needs `clasp push -f` from updated master (no clasp credentials in this session).
+- STATUS PR on request; task-specific "Mergia" required.
+
 # Current task — AGENDA-DOMENICA (2026-11-09)
 - OWNER Claude Code; branch `claude/agenda-settimana-testo-capo-p38lb1` restarted from master 1fd8ad9 (PR291 merged; old branch history merged in, no force push).
 - AUTHORIZATION PO 2026-11-09: "Va bene mergia con b 7 giorni poi mettiamo opzione per la domenica".

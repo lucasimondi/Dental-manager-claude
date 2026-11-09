@@ -746,11 +746,14 @@ export default function App() {
   const gruppiPerTe = () => [
     { nome: 'Per te', voci: [
       { id: 'vita-conti', nome: 'Spese e pagamenti', icona: 'conti', taglia: 'grande', sotto: 'Conti, ricevute e cose da pagare', href: sectionDestination('personal', 'conti') },
-      { id: 'vita-personali', nome: 'Documenti personali', icona: 'personali', taglia: 'alta', sotto: "Carta d'identità, patente, codice fiscale", href: sectionDestination('personal', 'personali') },
+      // DOCUMENTI-DRIVE (PO 2026-11-09): tutti i documenti di Drive nella sezione Documenti di Personal, con la ricerca.
+      { id: 'vita-documenti', nome: 'Documenti', icona: 'documenti', taglia: 'alta', sotto: 'Tutto Drive: cerca per nome, ente, anno', href: sectionDestination('personal', 'documenti') },
+      { id: 'vita-personali', nome: 'Documenti personali', icona: 'personali', taglia: 'media', sotto: "Carta d'identità, patente, codice fiscale", href: sectionDestination('personal', 'personali') },
       { id: 'vita-foto', nome: 'Foto', icona: 'foto', taglia: 'media', href: sectionDestination('personal', 'foto') },
-      { id: 'note', nome: 'Note', icona: 'nota', taglia: 'media', fai: () => setPage('note') },
-      ...[['diario', 'Diario', 'diario'], ['legal', 'Pratiche', 'pratiche'], ['didattica', 'Biblioteca', 'biblioteca']]
+      { id: 'note', nome: 'Note', icona: 'nota', taglia: 'piccola', fai: () => setPage('note') },
+      ...[['diario', 'Diario', 'diario'], ['legal', 'Pratiche', 'pratiche']]
         .map(([id, nome, icona]) => ({ id: `vita-${id}`, nome, icona, taglia: 'piccola', href: sectionDestination('personal', id) })),
+      { id: 'vita-didattica', nome: 'Biblioteca', icona: 'biblioteca', taglia: 'pulsante', href: sectionDestination('personal', 'didattica') },
       { id: 'password', nome: 'Password', icona: 'password', taglia: 'pulsante', fai: () => { setPasswordQuery(''); setPage('password'); } },
       { id: 'vita-oggi', nome: 'Oggi', icona: 'oggi', taglia: 'pulsante', href: sectionDestination('personal', 'oggi') },
     ] },

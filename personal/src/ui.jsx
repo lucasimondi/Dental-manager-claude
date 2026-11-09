@@ -1,7 +1,7 @@
 import {scadenzaIdentita} from './lib/portafoglio.js';
 // POL-VITA-006 — elementi comuni di Poliedron Personal (usati da App, Conti, Agenda).
 import { archivioDb } from './lib/supabasePersonal.js';
-import { eCaricato } from './lib/archivio.js';
+import { eCaricato, daDrive } from './lib/archivio.js';
 import { euro } from './lib/coreArchivio.js';
 import { useEffect, useState } from 'react';
 import { preparaFile, comeFile, condividi } from './lib/condividi.js';
@@ -54,7 +54,7 @@ export function RigaDocumento({ doc, onApri }) {
       <Miniatura doc={doc} colore={colore(doc.fascicolo)} />
       <span className="pp-riga-testo">
         <span className="pp-riga-titolo">{titoloDoc(doc)}</span>
-        <span className="pp-riga-meta">{[dataBreve(doc.data_documento || doc.email_data), doc.persona, eCaricato(doc) ? 'caricato da te' : null].filter(Boolean).join(' · ')}</span>
+        <span className="pp-riga-meta">{[dataBreve(doc.data_documento || doc.email_data), doc.persona, eCaricato(doc) ? 'caricato da te' : daDrive(doc) ? 'da Drive' : null].filter(Boolean).join(' · ')}</span>
       </span>
       {doc.importo != null && <span className="pp-riga-importo">{euro(doc.importo)}</span>}
       {doc.azione_richiesta && <span className={`pp-pallino pp-${doc.urgenza || 'media'}`} aria-label="Da gestire" />}

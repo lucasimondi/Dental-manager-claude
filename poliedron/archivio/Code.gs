@@ -121,6 +121,10 @@ function elabora() {
     // Foto caricate direttamente su Drive: un lotto, senza leggere né spostare gli originali.
     try { importaFotoDrive_(inizio + 15000); } catch (e) { logErrore_('foto Drive', e); }
 
+    // Documenti messi direttamente su Drive (PDF, Word, Excel, Documenti Google…): indicizzati per
+    // cercarli dall'app, senza spostarli né rinominarli.
+    try { importaDocumentiDrive_(Date.now() + 15000); } catch (e) { logErrore_('documenti Drive', e); }
+
     // Cartelle di Drive per categoria e persona (POL-VITA-013): un po' a ogni giro.
     try { ordinaDrive_(inizio + ORDINA_DRIVE_MS); } catch (e) { logErrore_('ordine Drive', e); }
 
@@ -1042,7 +1046,7 @@ function cestinaEmail_(ids) {
   const messaggi = {};
   docs.forEach(function (d) {
     const m = String(d.gmail_message_id || '');
-    if (m && m.indexOf('caricato:') !== 0) messaggi[m] = true;
+    if (m && !/^(caricato|drivefile|drivefoto):/.test(m)) messaggi[m] = true;
   });
   let cestinate = 0, tenute = 0;
   Object.keys(messaggi).forEach(function (m) {
@@ -1266,13 +1270,16 @@ function analizzaRimasti_(scadenza) {
       continue;
     }
     const caricato = String(d.gmail_message_id || '').indexOf('caricato:') === 0;
+    const daDrive = String(d.gmail_message_id || '').indexOf('drivefile:') === 0;
     try {
-      if (!caricato) {
+      if (!caricato && !daDrive) {
         try { meta.corpo = (GmailApp.getMessageById(d.gmail_message_id).getPlainBody() || '').replace(/\s+\n/g, '\n').slice(0, CONFIG.TESTO_MAX_CARATTERI); } catch (e) {}
       }
       const file = DriveApp.getFileById(d.drive_file_id);
       const bytes = file.getBlob().getBytes();
-      const contenuto = contenutoPerAnalisi_(bytes, String(d.mime_type || '').toLowerCase(), nome, file);
+      // Documenti, Fogli e Presentazioni Google: getBlob() li esporta in PDF.
+      const google = String(d.mime_type || '').indexOf('application/vnd.google-apps.') === 0;
+      const contenuto = contenutoPerAnalisi_(bytes, google ? 'application/pdf' : String(d.mime_type || '').toLowerCase(), nome, file);
       pratiche = pratiche || praticheAperte_();
       const analisi = analizza_(meta, nome, contenuto, pratiche);
       // Le decisioni espresse da Luca sopravvivono alla rilettura.
@@ -1291,7 +1298,8 @@ function analizzaRimasti_(scadenza) {
       completaCatalogo_(d.id, analisi, esito && esito.fascicolo || analisi.fascicolo);
       const estensione = (nome.match(/\.[a-z0-9]+$/i) || [''])[0].toLowerCase();
       const dataRif = dataValida_(analisi.data_documento) || Utilities.formatDate(meta.data, CONFIG.FUSO, 'yyyy-MM-dd');
-      try { file.setName(dataRif + '_' + pulisciNome_(analisi.titolo || nome.replace(/\.[^.]+$/, '')) + estensione); } catch (e) {}
+      // I file messi su Drive da Luca tengono il loro nome: il titolo giusto vive nell'archivio.
+      if (!daDrive) try { file.setName(dataRif + '_' + pulisciNome_(analisi.titolo || nome.replace(/\.[^.]+$/, '')) + estensione); } catch (e) {}
     } catch (e) {
       if (e.message === 'RIPROVA') throw e;
       logErrore_('analisi ' + d.id, e);
@@ -1342,7 +1350,7 @@ function ordinaDrive_(scadenza) {
   let daSpostare = [];
   for (let da = 0; ; da += 1000) {
     const pagina = sb_('documenti?select=id,drive_file_id,fascicolo,persona,data_documento,email_data,drive_cartella' +
-      '&drive_file_id=not.is.null&gmail_message_id=not.like.drivefoto:*&order=id&limit=1000&offset=' + da);
+      '&drive_file_id=not.is.null&gmail_message_id=not.like.drivefoto:*&gmail_message_id=not.like.drivefile:*&order=id&limit=1000&offset=' + da);
     daSpostare = daSpostare.concat(pagina.filter(function (d) {
       const voluto = percorsoDrive_(d, persone);
       return d.drive_cartella !== voluto && d.drive_cartella !== '!' + voluto;
@@ -1718,7 +1726,7 @@ function bozzaRisposta_(req) {
   const ente = enteValido_(req.ente);
   if (!ente) return { ok: false, errore: 'Cartella mancante' };
   const docs = documentiCartella_(ente, 'gmail_message_id,email_oggetto,email_mittente,email_data', 30)
-    .filter(function (d) { return d.gmail_message_id && String(d.gmail_message_id).indexOf('caricato:') !== 0; });
+    .filter(function (d) { return d.gmail_message_id && !/^(caricato|drivefile|drivefoto):/.test(String(d.gmail_message_id)); });
   if (!docs.length) return { ok: false, errore: 'In questa cartella non c\'è un\'email a cui rispondere.' };
   let msg;
   try { msg = GmailApp.getMessageById(docs[0].gmail_message_id); } catch (e) { return { ok: false, errore: 'Email non trovata in Gmail.' }; }
@@ -1869,6 +1877,75 @@ function importaFotoDrive_(scadenza) {
   else {
     sp.deleteProperty('FOTO_DRIVE_PAGINA');
     sp.deleteProperty('FOTO_DRIVE_FINO');
+  }
+}
+
+// Documenti già presenti su Drive e non arrivati da Gmail (PDF, Word, Excel, Documenti Google…).
+// Richiesta di Luca (2026-11-09): "trovo tutti i documenti che ci sono su drive … attraverso la barra ricerca".
+// Indice per identità Drive: niente copie, spostamenti, rinomine o cancellazioni dei file di Luca.
+// Catalogo provvisorio a regole (nome del file); il titolo dal contenuto arriva con analizzaRimasti_
+// quando un modello è disponibile. I file riconoscibili come clinici restano fuori (mai letti).
+const MIME_DOCUMENTI_DRIVE = [
+  "mimeType = 'application/pdf'", "mimeType = 'application/vnd.google-apps.document'",
+  "mimeType = 'application/vnd.google-apps.spreadsheet'", "mimeType = 'application/vnd.google-apps.presentation'",
+  "mimeType contains 'officedocument'", "mimeType = 'application/msword'", "mimeType = 'application/vnd.ms-excel'",
+  "mimeType contains 'opendocument'", "mimeType = 'text/plain'", "mimeType = 'application/rtf'",
+];
+function importaDocumentiDrive_(scadenza) {
+  if (typeof Drive === 'undefined') return;
+  const sp = PropertiesService.getScriptProperties();
+  let fino = sp.getProperty('DOC_DRIVE_FINO');
+  if (!fino) {
+    fino = new Date().toISOString();
+    sp.setProperty('DOC_DRIVE_FINO', fino);
+  }
+  const opzioni = {
+    q: "trashed = false and 'me' in owners and (" + MIME_DOCUMENTI_DRIVE.join(' or ') + ") and createdTime <= '" + fino + "'",
+    pageSize: 25, orderBy: 'createdTime asc',
+    fields: 'nextPageToken,files(id,name,mimeType,size,createdTime,webViewLink,parents)',
+  };
+  const token = sp.getProperty('DOC_DRIVE_PAGINA');
+  if (token) opzioni.pageToken = token;
+  const pagina = Drive.Files.list(opzioni);
+  const files = (pagina.files || []).filter(function (f) { return f.name !== 'tmp-conversione'; });
+  // Una sola lettura per pagina: i file già in archivio (allegati, caricati, già indicizzati) si saltano.
+  const presenti = {};
+  if (files.length) {
+    sb_('documenti?select=drive_file_id&drive_file_id=in.(' + files.map(function (f) { return enc_(f.id); }).join(',') + ')')
+      .forEach(function (d) { presenti[d.drive_file_id] = true; });
+  }
+  const cartelle = {};
+  for (let i = 0; i < files.length; i++) {
+    if (Date.now() >= scadenza) return; // pagina ripresa al giro successivo (i fatti si saltano)
+    const f = files[i];
+    if (presenti[f.id]) continue;
+    const padre = f.parents && f.parents[0];
+    if (padre && !Object.prototype.hasOwnProperty.call(cartelle, padre)) {
+      try { cartelle[padre] = Drive.Files.get(padre, { fields: 'name' }).name || ''; } catch (e) { cartelle[padre] = ''; }
+    }
+    const cartella = padre ? cartelle[padre] : '';
+    // Clinici riconoscibili da nome o cartella: esclusi dall'area personale, mai letti.
+    if (eClinico_({ oggetto: cartella, mittente: '', destinatari: '' }, f.name || '')) continue;
+    const riserva = analisiDiRiserva_({ oggetto: '', mittente: '', destinatari: '' }, f.name || 'documento', f.mimeType);
+    const esito = sb_('rpc/registra_documento', { method: 'post', body: { p: {
+      // Prefisso distinto dagli hash del contenuto: identità stabile, nessun download qui.
+      hash_sha256: 'drivefile:' + f.id, gmail_message_id: 'drivefile:' + f.id,
+      email_mittente: 'Drive', email_oggetto: cartella || null, email_data: f.createdTime || null,
+      nome_file_originale: f.name, mime_type: f.mimeType, dimensione_byte: Number(f.size) || null,
+      drive_file_id: f.id, drive_url: f.webViewLink || 'https://drive.google.com/file/d/' + encodeURIComponent(f.id) + '/view',
+      fascicolo: riserva.fascicolo, tipo_documento: riserva.tipo_documento, titolo: riserva.titolo, riassunto: riserva.riassunto,
+      data_documento: null, azione_richiesta: false, analisi_contenuto: false, tag: ['Drive', 'da analizzare'],
+      dati_estratti: {}, soggetti: [], scadenze: [], pratica: {},
+    } } });
+    if (!esito || !esito.documento_id) throw new Error('Documento Drive: registrazione non confermata');
+    sb_('documenti?id=eq.' + esito.documento_id, { method: 'patch', body: {
+      rilevanza: riserva.rilevanza, da_analizzare: true, riordinato_il: new Date().toISOString(),
+    } });
+  }
+  if (pagina.nextPageToken) sp.setProperty('DOC_DRIVE_PAGINA', pagina.nextPageToken);
+  else {
+    sp.deleteProperty('DOC_DRIVE_PAGINA');
+    sp.deleteProperty('DOC_DRIVE_FINO');
   }
 }
 

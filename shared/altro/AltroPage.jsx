@@ -28,6 +28,7 @@ const P = {
   biblioteca: 'M3 5h7a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H3zM21 5h-7a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h7z',
   password: 'M7 10.5V7.5a5 5 0 0 1 10 0v3M5 10.5h14v10H5zM12 14.5v2.5',
   nota: 'M5 4h10l4 4v12H5zM15 4v4h4M8.5 12.5h7M8.5 16h5',
+  documenti: 'M3 6h6l2 2h10v11H3zM7 13h10M7 16h6',
   pdf: 'M6 3h8l4 4v14H6zM14 3v4h4M8.5 17.5c1.5-2 2.5-4.5 3-6 .5 2 1.5 3.5 3.5 4',
   impostazioni: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1',
 };

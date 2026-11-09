@@ -2,7 +2,7 @@ import { ScorriElimina } from '../../ScorriElimina.jsx';
 // Documenti — elenco con selezione multipla (tieni premuto o "Seleziona") e azioni di massa; fogli di scelta.
 import { useEffect, useRef, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { aggiornaDocumenti, eliminaDocumenti, portafoglioDocumenti, cestinaSuDrive, eCaricato } from '../../lib/archivio.js';
+import { aggiornaDocumenti, eliminaDocumenti, portafoglioDocumenti, cestinaSuDrive, eCaricato, daDrive } from '../../lib/archivio.js';
 import { euro } from '../../lib/coreArchivio.js';
 import { caricaCartelle } from '../../lib/cartelle.js';
 import { preparaFile, comeFile, condividi } from '../../lib/condividi.js';
@@ -67,7 +67,7 @@ function VoceDocumento({ doc, modo, selezione, onApri, onSeleziona }) {
         <Miniatura doc={doc} colore={colore(doc.fascicolo)} />
         <span className="pp-riga-testo">
           <span className="pp-riga-titolo">{titoloDoc(doc)}</span>
-          <span className="pp-riga-meta">{[doc.tipo_documento, meta, doc.persona, eCaricato(doc) ? 'caricato da te' : null].filter(Boolean).join(' · ')}</span>
+          <span className="pp-riga-meta">{[doc.tipo_documento, meta, doc.persona, eCaricato(doc) ? 'caricato da te' : daDrive(doc) ? 'da Drive' : null].filter(Boolean).join(' · ')}</span>
         </span>
         {doc.importo != null && <span className="pp-riga-importo">{euro(doc.importo)}</span>}
         {!selezione && <IconaFreccia size={16} />}
