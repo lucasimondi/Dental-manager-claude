@@ -38,3 +38,23 @@ export function layoutAgendaDay(appointments, events) {
   })].sort((a,b) => minutes(a.ora) - minutes(b.ora) || Number(b.durata) - Number(a.durata));
   return layoutAppointments(items);
 }
+
+// PO 2026-11-09 (Settimana su telefono, variante B): appuntamenti che si sovrappongono
+// diventano un unico blocco con una riga per ciascuno, invece di colonnine illeggibili.
+// Si raggruppano solo gruppi fatti di soli appuntamenti; con un impegno in mezzo restano affiancati.
+export function raggruppaSovrapposti(packed) {
+  const singoli = [], gruppi = [];
+  let cluster = [], fine = -Infinity;
+  const chiudi = () => {
+    if (cluster.length > 1 && cluster.every(x => !x.a.agendaEvent)) {
+      gruppi.push({ start: Math.min(...cluster.map(x => x.start)), end: Math.max(...cluster.map(x => x.end)), items: [...cluster].sort((x, y) => x.start - y.start) });
+    } else singoli.push(...cluster);
+    cluster = [];
+  };
+  [...packed].sort((x, y) => x.start - y.start).forEach(item => {
+    if (item.start >= fine) { chiudi(); fine = item.end; } else fine = Math.max(fine, item.end);
+    cluster.push(item);
+  });
+  chiudi();
+  return { singoli, gruppi };
+}

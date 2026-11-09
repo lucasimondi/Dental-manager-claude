@@ -6,14 +6,14 @@ import { labelColor, labelOn } from '../../shared/agenda/labelPalette.js';
 import { useTimeline } from '../../shared/agenda/useTimeline.js';
 import AgendaVisibility from '../../shared/agenda/AgendaVisibility.jsx';
 import { agendaVisible, keepOccupiedWeekends } from '../../shared/agenda/visibility.js';
-import { layoutAgendaDay, layoutAppointments as layoutOverlap } from '../../shared/agenda/geometry.js';
+import { layoutAgendaDay, layoutAppointments as layoutOverlap, raggruppaSovrapposti } from '../../shared/agenda/geometry.js';
 import { readAgendaLocation, sectionDestination, aggiungiPerTe } from '../../shared/agenda/navigation.js';
 import { leggiScadenzePersonali, scadenzeDelGiorno } from '../lib/scadenzePersonali.js';
 import RicercaAgenda from '../../shared/ricerca/RicercaAgenda.jsx';
 import CreaSheet, { CreaButton } from '../../shared/crea/CreaSheet.jsx';
 import { creaFontiStudio, impegnoSpostato } from '../../shared/ricerca/fonti.js';
 import { cercaPazienti as cercaPazientiLocali } from '../lib/ricercaPazienti.js';
-import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, EventBlock, AppointmentBlock, useSlotHeight, AgendaSwitch, AgendaSearchBar, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState, useGridSwipe } from '../../shared/agenda/AgendaPresentation.jsx';
+import { DayStrip, ViewPicker, TimeGrid, MonthCalendar, EventBlock, AppointmentBlock, AppointmentGroupBlock, etichettaBreve, useSlotHeight, AgendaSwitch, AgendaSearchBar, MonthDetailCard, MonthDateLabel, MonthToolbar, CalendarEmptyState, useGridSwipe } from '../../shared/agenda/AgendaPresentation.jsx';
 import { createPortal } from 'react-dom';
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Btn, Crd, Fld, Inp, Sel, Txt, Modal, Toast, Bdg, Ic, PhStr, TimePicker, SelettorePaziente, EmptyState, PageHeader } from './ui';
@@ -212,7 +212,19 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
           const dayApps = appointments.filter(a => a.data === ds).sort((a, b) => a.ora.localeCompare(b.ora));
           const dayImpOrari = (impegni || []).filter(imp => !imp.tuttoIlGiorno && imp.oraInizio && ds >= imp.dataInizio && ds <= imp.dataFine);
           const packed = layoutAgendaDay(dayApps, dayImpOrari);
-          return <>                {packed.filter(x => x.a.agendaEvent).map(({ a, col, totalCols }) => {
+          // PO 2026-11-09 (variante B): Settimana su telefono con etichette brevi e appuntamenti
+          // sovrapposti raggruppati in un solo blocco (non durante la selezione WhatsApp).
+          const compatto = isMobile && isSettimana;
+          const gruppi = compatto && !selModeWA ? raggruppaSovrapposti(packed).gruppi : [];
+          const inGruppo = new Set(gruppi.flatMap(g => g.items.map(x => x.a.id)));
+          const etichetta = p => p ? (compatto ? etichettaBreve(p.cognome, p.nome) : `${p.nome || ''} ${p.cognome || ''}`.trim()) : '—';
+          return <>
+                {gruppi.map(g => {
+                  const top = ((g.start - oraInizio * 60) / slotMin) * effectiveSlotH;
+                  const height = Math.max(((g.end - g.start) / slotMin) * effectiveSlotH - 2, effectiveSlotH * 0.6);
+                  if (top < 0 || top >= slots.length * effectiveSlotH) return null;
+                  return <AppointmentGroupBlock key={'grp-' + g.items[0].a.id} top={top} height={height} items={g.items.map(({ a }) => ({ a, co: getColore(a), label: etichetta(patients.find(x => x.id === a.pazienteId)), onOpen: e => { e.stopPropagation(); if (followUpMode) { onOccupiedSlot?.(); return; } setMenuApp(a); } }))} />;
+                })}                {packed.filter(x => x.a.agendaEvent).map(({ a, col, totalCols }) => {
                   const imp = a.agendaEvent;
                   const inizioMin = orarioInMinutiUI(imp.oraInizio) - oraInizio * 60;
                   const fineMin = orarioInMinutiUI(imp.oraFine || imp.oraInizio) - oraInizio * 60;
@@ -221,10 +233,10 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                   if (top + height < 0 || top >= slots.length * effectiveSlotH) return null;
                   const co = imp.colore || TIPO_IMPEGNO.find(x => x.id === imp.tipo)?.colore || C.pri;
                   return (
-                    <EventBlock col={col} totalCols={totalCols} key={'imp-' + imp.id} title={imp.titolo} startTime={(imp.oraInizio || '').slice(0, 5)} description={imp.note || ''} aCapo={isSettimana} top={top} height={height} co={co} onClick={() => apriEditImpegno(imp)} />
+                    <EventBlock col={col} totalCols={totalCols} key={'imp-' + imp.id} title={imp.titolo} startTime={(imp.oraInizio || '').slice(0, 5)} description={imp.note || ''} aCapo={isSettimana} compatto={compatto} top={top} height={height} co={co} onClick={() => apriEditImpegno(imp)} />
                   );
                 })}
-                {packed.filter(x => !x.a.agendaEvent).map(({ a, col, totalCols }) => {
+                {packed.filter(x => !x.a.agendaEvent && !inGruppo.has(x.a.id)).map(({ a, col, totalCols }) => {
                   const { top, height } = appPosition(a);
                   if (top < 0 || top >= slots.length * effectiveSlotH) return null;
                   const p = patients.find(x => x.id === a.pazienteId);
@@ -239,7 +251,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                   // "Tutti" attivo) si affiancano in colonne invece di disegnarsi uno sopra
                   // l'altro, così restano tutti visibili e cliccabili.
                   return (
-                    <AppointmentBlock touchScroll={isMobile} aCapo={isSettimana} key={a.id} a={a} label={p ? `${p.nome || ''} ${p.cognome || ''}`.trim() : '—'} co={co} top={top} height={height} col={col} totalCols={totalCols} isBeingResized={isBeingResized} isBeingMoved={isBeingMoved} selectionMode={selModeWA} selectable={isSelezionabileWA} selected={isSelected} operatore={operatore} poltrona={poltrona} selectionIndicator={<Ic n="ok" s={9} c="#fff" />}
+                    <AppointmentBlock touchScroll={isMobile} aCapo={isSettimana} compatto={compatto} key={a.id} a={a} label={etichetta(p)} co={co} top={top} height={height} col={col} totalCols={totalCols} isBeingResized={isBeingResized} isBeingMoved={isBeingMoved} selectionMode={selModeWA} selectable={isSelezionabileWA} selected={isSelected} operatore={operatore} poltrona={poltrona} selectionIndicator={<Ic n="ok" s={9} c="#fff" />}
                       onResizeMouse={e => { if (followUpMode) return; e.stopPropagation(); e.preventDefault(); setResizing({ id: a.id, startY: e.clientY, startDurata: Number(a.durata) }); }}
                       onMoveMouse={e => { if (followUpMode || selModeWA || isBeingResized) return; movedRef.current = false; setMoving({ id: a.id, startY: e.clientY, startOra: a.ora }); }}
                       onResizeTouch={e => { if (followUpMode) return; e.stopPropagation(); setResizing({ id: a.id, startY: e.touches[0].clientY, startDurata: Number(a.durata) }); }}

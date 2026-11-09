@@ -292,14 +292,66 @@ export function eventTone(co) {
   };
 }
 
+// Testo che va a capo dentro un blocco della griglia e si ferma all'ultima riga che ci sta.
+export function righeDisponibili(height, occupato, riga) {
+  return Math.max(1, Math.floor((Number(height) - occupato) / riga));
+}
+// Come dividere l'altezza del blocco: orario in alto su una riga e testo a capo sotto; se
+// non c'è posto per entrambe le righe, orario e testo stanno su un'unica riga.
+export function impaginaBlocco(height, riserva, rigaOrario, rigaTesto) {
+  for (const [sopra, riduzione] of [[3, 0], [1, 1], [0, 2]]) {
+    const ro = rigaOrario - riduzione, rt = rigaTesto - riduzione;
+    const libero = Number(height) - sopra - riserva - ro;
+    if (libero >= rt) return { inLinea: false, sopra, rigaOrario: ro, rigaTesto: rt, righe: Math.floor(libero / rt) };
+  }
+  const rt = Math.max(9, Math.min(rigaTesto, Number(height) - riserva));
+  return { inLinea: true, sopra: Math.max(0, Math.min(2, Math.floor((Number(height) - riserva - rt) / 2))), rigaOrario: rt, rigaTesto: rt, righe: 1 };
+}
+function testoACapo(righe, sillabe = false) {
+  // Sul telefono (sillabe) le parole lunghe vanno a capo con il trattino italiano, non a metà a caso.
+  return sillabe
+    ? { whiteSpace: 'normal', hyphens: 'auto', WebkitHyphens: 'auto', overflowWrap: 'break-word', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: righe, overflow: 'hidden' }
+    : { whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'break-word', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: righe, overflow: 'hidden' };
+}
+
+// PO 2026-11-09 (variante B): in Settimana su telefono il paziente è «Cognome I.»
+// e il tipo è la sua prima parola; il testo completo resta nel tooltip e nella scheda.
+const PARTICELLE = new Set(['de', 'di', 'del', 'della', 'dello', 'dei', 'degli', 'da', 'dal', 'dalla', 'la', 'lo', 'le', 'li', 'van', 'von', 'mc', 'mac', 'san', 'santa', 'st']);
+export function etichettaBreve(cognome, nome) {
+  const parti = String(cognome || '').trim().split(/\s+/).filter(Boolean);
+  let c = parti.join(' ');
+  if (c.length > 12 && parti.length > 1) {
+    let n = 1;
+    while (n < parti.length && PARTICELLE.has(parti[n - 1].toLowerCase().replace(/'$/, ''))) n += 1;
+    c = parti.slice(0, n).join(' ');
+  }
+  const iniziale = String(nome || '').trim().charAt(0).toUpperCase();
+  return [c, iniziale && iniziale + '.'].filter(Boolean).join(' ') || String(nome || '').trim();
+}
+export function tipoBreve(tipo) {
+  const parole = String(tipo || '').trim().split(/\s+/).filter(Boolean);
+  return parole[0] || '';
+}
+
 // a capo = true (solo Personal, vista settimana): orario e titolo su righe proprie, non troncati.
-export function EventBlock({ title, top, height, co, onClick, startTime, description, aCapo = false, col = 0, totalCols = 1 }) {
+export function EventBlock({ title, top, height, co, onClick, startTime, description, aCapo = false, compatto = false, col = 0, totalCols = 1 }) {
   const t = eventTone(co);
-  if (aCapo) return (
-    <div onClick={onClick} title={[startTime, title, description].filter(Boolean).join(' · ')} style={{ position: 'absolute', top, left: `calc(${col * 100 / totalCols}% + 1px)`, width: `calc(${100 / totalCols}% - 2px)`, height, zIndex: 1, cursor: 'pointer', background: t.bg, borderLeft: `3px solid ${t.border}`, borderRadius: 6, padding: '2px 3px', boxSizing: 'border-box', overflow: 'hidden', color: t.text }}>
-      {startTime && <div style={{ fontSize: 9, lineHeight: '11px', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{startTime}</div>}
-      <div style={{ fontSize: 10, lineHeight: '12px', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
+  if (aCapo) {
+    // PO 2026-11-09: in settimana il titolo va a capo dentro il blocco, tante righe quante
+    // ne entrano nell'altezza (2 ore = titolo intero, 15 minuti = una riga); orario in alto su una riga.
+    const fitto = totalCols > 1;
+    const l = startTime ? impaginaBlocco(height, 2, 11, fitto ? 11 : 12) : { inLinea: false, sopra: 2, rigaTesto: fitto ? 11 : 12, righe: righeDisponibili(height, 4, fitto ? 11 : 12) };
+    const testo = { fontSize: fitto ? 9 : 10, lineHeight: `${l.rigaTesto}px`, fontWeight: 600 };
+    return (
+    <div onClick={onClick} title={[startTime, title, description].filter(Boolean).join(' · ')} style={{ position: 'absolute', top, left: `calc(${col * 100 / totalCols}% + 1px)`, width: `calc(${100 / totalCols}% - 2px)`, height, zIndex: 1, cursor: 'pointer', background: t.bg, borderLeft: `3px solid ${t.border}`, borderRadius: 6, padding: `${l.sopra}px 3px 0`, boxSizing: 'border-box', overflow: 'hidden', color: t.text }}>
+      {l.inLinea
+        ? <div lang="it" style={{ ...testo, ...testoACapo(1, compatto) }}><span style={{ fontSize: 9, fontWeight: 500 }}>{startTime}</span> {title}</div>
+        : <>
+          {startTime && <div style={{ fontSize: 9, lineHeight: `${l.rigaOrario}px`, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{startTime}</div>}
+          <div lang="it" style={{ ...testo, ...testoACapo(l.righe, compatto) }}>{title}</div>
+        </>}
     </div>);
+  }
 
   const showDetails = Boolean(startTime || description);
   return (                    <div onClick={onClick} title={[startTime, title, description].filter(Boolean).join(' · ')} style={{
@@ -312,9 +364,26 @@ export function EventBlock({ title, top, height, co, onClick, startTime, descrip
                     </div>);
 }
 
-export function AppointmentBlock({ a, label, aCapo = false, co, top, height, col = 0, totalCols = 1, isBeingResized = false, isBeingMoved = false, selectionMode: selModeWA = false, selectable: isSelezionabileWA = false, selected: isSelected = false, operatore, poltrona, onMoveMouse, onMoveTouch, onOpen, onResizeMouse, onResizeTouch, selectionIndicator, readOnly = false, touchScroll = false }) {
+export function AppointmentBlock({ a, label, aCapo = false, compatto = false, co, top, height, col = 0, totalCols = 1, isBeingResized = false, isBeingMoved = false, selectionMode: selModeWA = false, selectable: isSelezionabileWA = false, selected: isSelected = false, operatore, poltrona, onMoveMouse, onMoveTouch, onOpen, onResizeMouse, onResizeTouch, selectionIndicator, readOnly = false, touchScroll = false }) {
   const widthPct = 100 / totalCols, leftPct = col * widthPct;
   const dense = aCapo && totalCols > 1;
+  // Settimana: righe di testo sotto l'orario, al netto della maniglia di ridimensionamento se visibile.
+  const maniglia = height > 26 && !selModeWA && !touchScroll;
+  const l = impaginaBlocco(height, maniglia ? 9 : 1, 12, 12);
+  // Il tipo va sotto il nome solo nelle righe che il nome lascia libere (misurate dopo il layout).
+  const nomeRef = useRef(null), [righeTipo, setRigheTipo] = useState(0);
+  const tipo = compatto ? tipoBreve(a.tipo) : a.tipo;
+  const conTipo = aCapo && !l.inLinea && Boolean(tipo && a.tipo !== label);
+  useLayoutEffect(() => {
+    const el = nomeRef.current;
+    if (!conTipo || !el) { setRigheTipo(0); return undefined; }
+    const misura = () => setRigheTipo(Math.max(0, l.righe - Math.round(el.offsetHeight / l.rigaTesto)));
+    misura();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(misura);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [conTipo, l.righe, l.rigaTesto, label]);
   // PO 2026-11-08: gli appuntamenti dello studio restano blocchi pieni (più "pro"); solo gli
   // impegni personali (EventBlock) usano la tinta trasparente.
   const fill = labelColor(co), ink = labelOn(fill), inkSoft = ink === '#FFFFFF' ? 'rgba(255,255,255,0.88)' : 'rgba(27,27,31,0.78)';
@@ -326,7 +395,7 @@ export function AppointmentBlock({ a, label, aCapo = false, co, top, height, col
                         onMouseDown={touchScroll ? undefined : onMoveMouse}
                         onTouchStart={touchScroll ? undefined : onMoveTouch}
                         onClick={onOpen}
-                        style={{ padding: dense ? '2px 2px' : '3px 6px', cursor: selModeWA ? (isSelezionabileWA ? 'pointer' : 'not-allowed') : (readOnly ? 'pointer' : isBeingMoved ? 'grabbing' : 'grab'), paddingBottom: height > 26 ? 9 : 2, touchAction: readOnly || touchScroll ? 'pan-y' : 'none' }}
+                        style={{ padding: aCapo ? `${l.sopra}px ${dense ? 2 : 6}px 0` : dense ? '2px 2px' : '3px 6px', cursor: selModeWA ? (isSelezionabileWA ? 'pointer' : 'not-allowed') : (readOnly ? 'pointer' : isBeingMoved ? 'grabbing' : 'grab'), ...(aCapo ? {} : { paddingBottom: height > 26 ? 9 : 2 }), touchAction: readOnly || touchScroll ? 'pan-y' : 'none' }}
                       >
                         {operatore && !selModeWA && (
                           <div title={operatore.nome} style={{ position: 'absolute', top: 3, right: 3, width: 7, height: 7, borderRadius: '50%', background: operatore.colore, border: '1px solid rgba(255,255,255,0.8)' }} />
@@ -334,9 +403,18 @@ export function AppointmentBlock({ a, label, aCapo = false, co, top, height, col
                         {poltrona && !selModeWA && (
                           <div title={poltrona.nome} style={{ position: 'absolute', top: 3, right: operatore ? 13 : 3, width: 7, height: 7, borderRadius: 2, background: poltrona.colore, border: '1px solid rgba(255,255,255,0.8)' }} />
                         )}
+                        {aCapo ? (l.inLinea
+                          ? <div lang="it" style={{ fontSize: dense ? 9 : 10.5, lineHeight: `${l.rigaTesto}px`, fontWeight: 600, color: ink, ...testoACapo(1, compatto) }}><span style={{ fontSize: dense ? 8.5 : 9.5, fontVariantNumeric: 'tabular-nums' }}>{String(a.ora || '').slice(0, 5)}</span> {label || a.tipo || 'Appuntamento'}</div>
+                          : <>
+                          <div style={{ fontSize: dense ? 8.5 : 10, lineHeight: `${l.rigaOrario}px`, fontWeight: 600, color: ink, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', ...(compatto ? { opacity: 0.88 } : {}) }}>{compatto ? String(a.ora || '').slice(0, 5) : timeRange}</div>
+                          {/* Settimana: nome a capo con tutte le righe disponibili; il tipo segue sotto solo se resta spazio. */}
+                          <div ref={nomeRef} lang="it" style={{ fontSize: dense ? 9 : 10.5, lineHeight: `${l.rigaTesto}px`, fontWeight: compatto ? 700 : 600, color: ink, ...testoACapo(l.righe, compatto) }}>{label || a.tipo || 'Appuntamento'}</div>
+                          {conTipo && righeTipo > 0 && <div lang="it" style={{ fontSize: dense ? 9 : 9.5, lineHeight: `${l.rigaTesto}px`, color: inkSoft, ...testoACapo(righeTipo, compatto) }}>{tipo}</div>}
+                          </>) : <>
                         <div style={{ fontSize: dense ? 8.5 : 10, lineHeight: '12px', fontWeight: 600, color: ink, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{timeRange}</div>
                         {height > 18 && <div style={{ fontSize: dense ? 9 : 10.5, lineHeight: '12px', fontWeight: 600, color: ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label || a.tipo || 'Appuntamento'}</div>}
                         {height > 44 && a.tipo && a.tipo !== label && <div style={{ fontSize: 9.5, lineHeight: '12px', color: inkSoft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.tipo}</div>}
+                        </>}
                       </div>
                       {/* Checkbox selezione — solo in modalità invio WhatsApp di massa */}
                       {selModeWA && isSelezionabileWA && (
@@ -352,6 +430,24 @@ export function AppointmentBlock({ a, label, aCapo = false, co, top, height, col
                         <div style={{ width: 16, height: 2, background: inkSoft, borderRadius: 1 }} />
                       </div>}
                     </div>);
+}
+
+// PO 2026-11-09 (variante B): appuntamenti sovrapposti in Settimana su telefono, un solo blocco
+// con una riga toccabile per ciascuno (pallino del suo colore, ora, «Cognome I.»).
+export function AppointmentGroupBlock({ items, top, height }) {
+  const testa = height >= 40 ? 13 : 0;
+  const spazio = Math.max(12, height - 6 - testa);
+  const entrano = Math.max(1, Math.floor(spazio / 12));
+  const visibili = items.length <= entrano ? items : items.slice(0, Math.max(1, entrano - 1));
+  const altri = items.length - visibili.length;
+  const righe = Math.max(1, Math.min(4, Math.floor((entrano - (altri ? 1 : 0)) / visibili.length)));
+  return <div data-appointment-group={items.map(x => x.a.id).join(',')} onClick={e => e.stopPropagation()} title={items.map(x => [x.a.ora, x.label, x.a.tipo].filter(Boolean).join(' · ')).join('\n')} style={{ position: 'absolute', top, left: 2, right: 2, height, zIndex: 2, background: 'var(--agenda-group-bg, #1f2937)', color: '#fff', borderRadius: 6, boxShadow: '0 0 0 1px var(--agenda-ring, #fff)', padding: '3px 3px 3px 4px', boxSizing: 'border-box', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 0 }}>
+    {testa > 0 && <div style={{ fontSize: 9, lineHeight: '12px', fontWeight: 600, opacity: 0.75, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>{items.length} appunt.</div>}
+    {visibili.map(x => <button key={x.a.id} type="button" data-appointment-id={x.a.id} onClick={x.onOpen} lang="it" style={{ all: 'unset', boxSizing: 'border-box', width: '100%', cursor: 'pointer', fontSize: 10, lineHeight: '12px', fontWeight: 700, color: '#fff', fontVariantNumeric: 'tabular-nums', flexShrink: 0, ...testoACapo(righe, true) }}>
+      <span aria-hidden="true" style={{ display: 'inline-block', width: 6, height: 6, borderRadius: 3, marginRight: 3, verticalAlign: 1, background: labelColor(x.co), boxShadow: '0 0 0 1px rgba(255,255,255,0.7)' }} />{String(x.a.ora || '').slice(0, 5)} {x.label}
+    </button>)}
+    {altri > 0 && <div style={{ fontSize: 9, lineHeight: '12px', fontWeight: 600, opacity: 0.75, flexShrink: 0 }}>+{altri}</div>}
+  </div>;
 }
 
 export function useSlotHeight(containerRef, isMobile, slots, slotH, resetKey) {
