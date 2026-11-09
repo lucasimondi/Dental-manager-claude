@@ -6,6 +6,7 @@ import { labelColor, labelOn } from '../../shared/agenda/labelPalette.js';
 import { useTimeline } from '../../shared/agenda/useTimeline.js';
 import AgendaVisibility from '../../shared/agenda/AgendaVisibility.jsx';
 import { agendaVisible, keepOccupiedWeekends } from '../../shared/agenda/visibility.js';
+import { leggiDomenicaNascosta, salvaDomenicaNascosta, applicaDomenica } from '../../shared/agenda/domenica.js';
 import { layoutAgendaDay, layoutAppointments as layoutOverlap, raggruppaSovrapposti } from '../../shared/agenda/geometry.js';
 import { readAgendaLocation, sectionDestination, aggiungiPerTe } from '../../shared/agenda/navigation.js';
 import { leggiScadenzePersonali, scadenzeDelGiorno } from '../lib/scadenzePersonali.js';
@@ -450,6 +451,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   // Scelta veloce della sola vista: non modifica le impostazioni condivise dello studio.
   // null = come configurato dallo studio; true/false = scelta esplicita dal selettore.
   const [weekendOverride, setWeekendOverride] = useState(null);
+  const [sceltaDomenica, setSceltaDomenica] = useState(() => leggiDomenicaNascosta());
   const [view, setView] = useState(() => readAgendaLocation().view || 'settimana');
   const [selDay, setSelDay] = useState(() => readAgendaLocation().day || today());
   const [modal, setModal] = useState(false);
@@ -998,7 +1000,11 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     (filtroPoltrona === 'tutti' || String(a.poltronaId) === String(filtroPoltrona))
   )));
 
-  const agendaHiddenWeekdays = keepOccupiedWeekends(weekStart, computeHiddenWeekdays({ configured: hiddenWeekdays, view, override: weekendOverride }), appointmentsAgenda, impegni);
+  const giorniNascosti = computeHiddenWeekdays({ configured: hiddenWeekdays, view, override: weekendOverride });
+  // «Nascondi domenica»: scelta di questo dispositivo, solo quando sabato e domenica non sono già nascosti.
+  const agendaHiddenWeekdays = keepOccupiedWeekends(weekStart, weekendsHidden || view === 'settimana_lavoro' ? giorniNascosti : applicaDomenica(giorniNascosti, sceltaDomenica), appointmentsAgenda, impegni);
+  const domenicaNascosta = sceltaDomenica ?? giorniNascosti.includes(0);
+  const cambiaDomenica = () => { salvaDomenicaNascosta(!domenicaNascosta); setSceltaDomenica(!domenicaNascosta); };
   const weekDays = getVisibleWeekDays(weekStart, agendaHiddenWeekdays);
 
   // Colonna orari compatta su mobile: deve restare identica tra DayStrip e
@@ -1268,7 +1274,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       {haFiltriRisorse && !isMobile && chipsRisorse}
 
       {view === 'giorno' && (
-        <DayStrip palette={C} selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} oraColW={oraColW} singleDay={false} hiddenWeekdays={agendaHiddenWeekdays} shortMonth={isMobile} searchBar={mobileSearchBar} overlayRef={isMobile ? overlayRef : undefined} floatingFooter={<>{isMobile && followUpControls}{dayEvents}{isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null}</>} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker hiddenCount={tuttiImpegni.filter(i => !agendaVisible(i, 'studio')).length + appointments.filter(a => !agendaVisible(a, 'studio')).length} showHidden={mostraEsclusi} onToggleHidden={() => setMostraEsclusi(x => !x)} palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>} />
+        <DayStrip palette={C} selDay={selDay} setSelDay={setSelDay} today={t} compact={isMobile} oraColW={oraColW} singleDay={false} hiddenWeekdays={agendaHiddenWeekdays} shortMonth={isMobile} searchBar={mobileSearchBar} overlayRef={isMobile ? overlayRef : undefined} floatingFooter={<>{isMobile && followUpControls}{dayEvents}{isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null}</>} viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker hiddenCount={tuttiImpegni.filter(i => !agendaVisible(i, 'studio')).length + appointments.filter(a => !agendaVisible(a, 'studio')).length} showHidden={mostraEsclusi} onToggleHidden={() => setMostraEsclusi(x => !x)} palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} sundayHidden={domenicaNascosta} onToggleSunday={cambiaDomenica} /></div>} />
       )}
       {(view === 'settimana' || view === 'settimana_lavoro') && (
         <DayStrip palette={C}
@@ -1286,7 +1292,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           searchBar={mobileSearchBar}
           overlayRef={isMobile ? overlayRef : undefined}
           floatingFooter={<>{isMobile && followUpControls}{dayEvents}{isMobile && selModeWA && waAbilitato(features) ? waSelectionToolbar : null}</>}
-          viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker hiddenCount={tuttiImpegni.filter(i => !agendaVisible(i, 'studio')).length + appointments.filter(a => !agendaVisible(a, 'studio')).length} showHidden={mostraEsclusi} onToggleHidden={() => setMostraEsclusi(x => !x)} palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} /></div>}
+          viewPicker={<div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8 }}>{notificheBell}{isMobile && filtroButton}{isMobile && waCompatta}<ViewPicker hiddenCount={tuttiImpegni.filter(i => !agendaVisible(i, 'studio')).length + appointments.filter(a => !agendaVisible(a, 'studio')).length} showHidden={mostraEsclusi} onToggleHidden={() => setMostraEsclusi(x => !x)} palette={C} view={view} setView={setView} touchSafe={isMobile} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} sundayHidden={domenicaNascosta} onToggleSunday={cambiaDomenica} /></div>}
         />
       )}
       {view === 'mese' && isMobile && (
@@ -1294,7 +1300,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
               {notificheBell}
               {filtroButton}
               <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 14, padding: '5px 10px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
-              <ViewPicker hiddenCount={tuttiImpegni.filter(i => !agendaVisible(i, 'studio')).length + appointments.filter(a => !agendaVisible(a, 'studio')).length} showHidden={mostraEsclusi} onToggleHidden={() => setMostraEsclusi(x => !x)} palette={C} view={view} setView={setView} touchSafe weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} />
+              <ViewPicker hiddenCount={tuttiImpegni.filter(i => !agendaVisible(i, 'studio')).length + appointments.filter(a => !agendaVisible(a, 'studio')).length} showHidden={mostraEsclusi} onToggleHidden={() => setMostraEsclusi(x => !x)} palette={C} view={view} setView={setView} touchSafe weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} sundayHidden={domenicaNascosta} onToggleSunday={cambiaDomenica} />
         </MonthToolbar>
       )}
       {view === 'mese' && !isMobile && (
@@ -1307,7 +1313,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
             {isMobile && filtroButton}
             <button onClick={() => setVd(new Date())} style={{ background: C.priL, border: 'none', borderRadius: 7, padding: '4px 8px', color: C.pri, fontWeight: 700, fontSize: 10, cursor: 'pointer' }}>Oggi</button>
           </div>
-          <ViewPicker hiddenCount={tuttiImpegni.filter(i => !agendaVisible(i, 'studio')).length + appointments.filter(a => !agendaVisible(a, 'studio')).length} showHidden={mostraEsclusi} onToggleHidden={() => setMostraEsclusi(x => !x)} palette={C} view={view} setView={setView} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} />
+          <ViewPicker hiddenCount={tuttiImpegni.filter(i => !agendaVisible(i, 'studio')).length + appointments.filter(a => !agendaVisible(a, 'studio')).length} showHidden={mostraEsclusi} onToggleHidden={() => setMostraEsclusi(x => !x)} palette={C} view={view} setView={setView} weekendsHidden={weekendsHidden || view === 'settimana_lavoro'} onToggleWeekends={() => setWeekendOverride(!weekendsHidden)} sundayHidden={domenicaNascosta} onToggleSunday={cambiaDomenica} />
         </div>
       )}
 

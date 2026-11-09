@@ -106,7 +106,7 @@ test('agenda Personal: settimana completa, scelta per nascondere il weekend e Se
   const griglia = fs.readFileSync('personal/src/sezioni/agenda/AgendaGriglia.jsx', 'utf8');
   assert.match(griglia, /const GIORNI_NASCOSTI_PERSONAL = \[\];/);
   assert.match(griglia, /const weekly = view === 'settimana' \|\| view === 'settimana_lavoro';/);
-  assert.match(griglia, /view === 'settimana_lavoro' \|\| weekendsHidden \? \[0, 6\] : GIORNI_NASCOSTI_PERSONAL/);
+  assert.match(griglia, /view === 'settimana_lavoro' \|\| weekendsHidden \? \[0, 6\] : applicaDomenica\(GIORNI_NASCOSTI_PERSONAL, domenicaNascosta\)/);
   assert.match(griglia, /onToggleWeekends=\{\(\) => setWeekendsHidden/);
 });
 

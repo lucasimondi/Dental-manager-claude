@@ -9,7 +9,7 @@ const WD_SHORT = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
 const toISO = d => d.toISOString().slice(0,10);
 const startOfWeek = d => { const dt = new Date(d + 'T12:00'); const day = dt.getDay(); dt.setDate(dt.getDate() + (day === 0 ? -6 : 1 - day)); return dt; };
-export function ViewPicker({ view, setView, touchSafe = false, palette: C = DEFAULT_PALETTE, weekendsHidden = false, onToggleWeekends, hiddenCount = 0, showHidden = false, onToggleHidden }) {
+export function ViewPicker({ view, setView, touchSafe = false, palette: C = DEFAULT_PALETTE, weekendsHidden = false, onToggleWeekends, sundayHidden = false, onToggleSunday, hiddenCount = 0, showHidden = false, onToggleHidden }) {
   const [open, setOpen] = useState(false);
   const LABEL = { giorno: 'Giorno', settimana: 'Settimana', settimana_lavoro: 'Settimana lavoro', mese: 'Mese' };
   return (
@@ -34,6 +34,7 @@ export function ViewPicker({ view, setView, touchSafe = false, palette: C = DEFA
           ))}
           {onToggleHidden && (hiddenCount > 0 || showHidden) && <button onClick={() => { onToggleHidden(); setOpen(false); }} aria-label="Mostra tutto: Studio e Personal" aria-pressed={showHidden} style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 8, padding: '12px', border: 'none', borderTop: `1px solid ${C.brd}`, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', textAlign: 'left', background: showHidden ? C.priL : 'transparent', color: C.txt }}><span aria-hidden="true">{showHidden ? '✓' : '○'}</span>Tutto (Studio e Personal){hiddenCount > 0 && <span style={{ marginLeft: 'auto', color: C.pri }}>{hiddenCount}</span>}</button>}
           {onToggleWeekends && <button onClick={() => { onToggleWeekends(); setOpen(false); }} aria-pressed={weekendsHidden} style={{ display: 'block', width: '100%', padding: '9px 12px', border: 'none', borderTop: `1px solid ${C.brd}`, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', textAlign: 'left', background: weekendsHidden ? C.priL : 'transparent', color: weekendsHidden ? C.pri : C.txt }}>{weekendsHidden ? 'Mostra sabato e domenica' : 'Nascondi sabato e domenica'}</button>}
+          {onToggleSunday && !weekendsHidden && <button onClick={() => { onToggleSunday(); setOpen(false); }} aria-pressed={sundayHidden} style={{ display: 'block', width: '100%', padding: '9px 12px', border: 'none', borderTop: `1px solid ${C.brd}`, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', textAlign: 'left', background: sundayHidden ? C.priL : 'transparent', color: sundayHidden ? C.pri : C.txt }}>{sundayHidden ? 'Mostra domenica' : 'Nascondi domenica'}</button>}
         </div>
       )}
     </div>
