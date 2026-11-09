@@ -1,3 +1,10 @@
+# Current task — AGENDA-SETTIMANA-A-CAPO (2026-11-09)
+- OWNER Claude Code; branch `claude/agenda-settimana-testo-capo-p38lb1` from master a7f43d2 (PR290 merged).
+- AUTHORIZATION PO 2026-11-09: "In vista Settimana titolo di impegni e appuntamenti è troncato con «…» … voglio leggere il testo intero, andando a capo dentro il blocco"; after the mockup (A ritocco, B etichette brevi, C tre giorni): "Vai con B", then "Va bene mergia con b 7 giorni poi mettiamo opzione per la domenica".
+- SCOPE (presentation only, shared/agenda): Week view titles wrap inside the block with line count adapted to block height (WebkitLineClamp), time row on one line on top, short blocks on a single line. Phone week (Studio mobile, Personal): patient «Cognome I.» (`etichettaBreve`), first word of type, start time only, Italian hyphenation; overlapping appointment-only clusters become one `AppointmentGroupBlock` with a tappable row each (`raggruppaSovrapposti`, geometry.js; not during Studio WhatsApp selection). Desktop week, Day and Month views unchanged. No data change.
+- VALIDATION 1619/1619 Node tests; Studio and Personal builds; Chromium 390×844 and 1280×900 renders of week 9–14 Nov 2026 (no text outside blocks, desktop pixel-identical to the first commit), tap on grouped rows opens the right appointment.
+- STATUS merged on PO "mergia". NEXT: Sunday option in week view (PO request).
+
 # Current task — STUDIO-BENTO (2026-11-08)
 - OWNER Claude Code; branch `ccr-4ac3e51d-studio-bento` from master 203a964 (PR289 merged).
 - AUTHORIZATION PO 2026-11-08: "i tasti studio e personale portano ad un elenco… rendi graficamente più bello… fammi vedere prima un mockup"; after the mockup artifact (A grid, B bento, C home icons): "B va bene, applicala a Studio e Per te".
