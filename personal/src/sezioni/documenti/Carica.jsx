@@ -7,6 +7,8 @@ import { mettiInSalute } from '../../lib/salute.js';
 import { preparaFile as preparaCaricamento } from '../../lib/file.js';
 import { tokenSessione } from '../../ui.jsx';
 import { IconaFotocamera, IconaFile, IconaScansiona } from '../../Icone.jsx';
+import { Segmenti } from '../../ui.jsx';
+import { ArchiviaStudio } from './ArchiviaStudio.jsx';
 
 export function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) {
   const { aggiorna, mostra, impostazioni, fascicoli } = ctx;
@@ -19,6 +21,8 @@ export function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) 
   const [tieni, setTieni] = useState(!!opzioni.portafoglio);
   const [nonAnalizzare, setNonAnalizzare] = useState(!!opzioni.nonAnalizzare || !!opzioni.soloArchiviazione);
   const [stato, setStato] = useState(null);
+  // ACQUISISCI-UNICO: dal tasto unico si sceglie dove archiviare (Personale o Studio · paziente).
+  const [dove, setDove] = useState('personale');
   const fotocamera = useRef(null);
   const archivio = useRef(null);
   const autoAvviato = useRef(false);
@@ -95,6 +99,8 @@ export function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) 
           <button className="pp-testo-link" onClick={() => { setFile(null); setAnteprima(null); }}>Cambia</button>
         </div>
       )}
+      {opzioni.destinazione && <div className="pp-campo"><span>Dove archiviare</span><Segmenti voci={[['personale', 'Personale'], ['studio', 'Studio · paziente']]} attiva={dove} onScegli={setDove} /></div>}
+      {dove === 'studio' ? <ArchiviaStudio file={file} titolo={descrizione || opzioni.descrizione || ''} ctx={ctx} onFatto={() => { ctx.aggiorna?.(); ctx.indietro?.(); }} /> : <>
       <label className="pp-campo"><span>Cos'è (facoltativo)</span>
         <input value={descrizione} onChange={(e) => setDescrizione(e.target.value)} placeholder="Es. Carta d'identità, fronte e retro" />
       </label>
@@ -123,6 +129,7 @@ export function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) 
       <p className="pp-riga-meta">Il file va nel tuo Google Drive, cartella "Archivio personale/Caricati". I documenti dei pazienti non vengono mai letti.</p>
       <button className="pp-bottone pp-bottone-largo" disabled={!file || stato?.invio} onClick={invia}>{stato?.invio ? stato.testo : 'Archivia'}</button>
       {stato?.errore && <p className="pp-messaggio pp-messaggio-errore">{stato.testo}</p>}
+      </>}
     </>
   );
 }

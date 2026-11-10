@@ -7,7 +7,8 @@
 //   o di recupero password dello studio non vengono mai presi dall'archivio.
 // - Sola lettura; nessun contenuto clinico (le scadenze escludono i documenti clinici dei pazienti).
 let client = null;
-async function archivio() {
+// Esportato per ACQUISISCI-UNICO: lo stesso client (stessa sessione già salvata da Personal) serve ad archiviare nel personale.
+export async function archivio() {
   if (client) return client;
   const [{ createClient }, cfg] = await Promise.all([import('@supabase/supabase-js'), import('../../personal/src/lib/archivioConfig.js')]);
   client = createClient(cfg.ARCHIVIO_URL, cfg.ARCHIVIO_KEY, {

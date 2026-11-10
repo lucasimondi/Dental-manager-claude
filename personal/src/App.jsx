@@ -1,3 +1,4 @@
+import TastoAcquisisci from '../../shared/acquisisci/TastoAcquisisci.jsx';
 import { useIngressoPdf } from './pdf/useIngressoPdf.js';
 import { startAndroidAgendaWidget } from './lib/androidAgendaWidget.js';
 import { studioDb, sessioneStudio, studioDellaSessione, appuntamentoPerId, impegnoPerId } from './lib/studio.js';
@@ -106,7 +107,7 @@ function Archivio({ email }) {
   }, [vai]);
 
   const ctx = {
-    esegui, aggiorna, mostra, versione, impostazioni, salvaImp, fascicoli, apri, vai, aggiungi, sotto, apriChat, chat, setChat,
+    esegui, aggiorna, mostra, versione, impostazioni, salvaImp, fascicoli, apri, vai, aggiungi, sotto, apriChat, chat, setChat, indietro,
     // Pagato da un elenco: spesa e prossimo fisso si creano da soli, Annulla li toglie (POL-VITA-021).
     pagato: (s) => esegui(async () => {
       const r = await segnaPagato(archivioDb, s);
@@ -155,6 +156,7 @@ function Archivio({ email }) {
         <a className="pp-scheda" href={sectionDestination('studio', 'studio')}><IconaTema tipo="studio" Icona={IconaStudio} size={24} /><span>Studio</span></a>
         <button className={`pp-scheda${altraSezione ? ' attiva' : ''}`} onClick={() => vai('altro')} aria-current={altraSezione ? 'page' : undefined}><IconaTema tipo="perte" Icona={IconaPerTe} size={24} /><span>Per te</span></button>
       </nav>
+      {!sopra && !attuale.senzaPiu && <TastoAcquisisci className="pp-acquisisci" onClick={() => apri({ tipo: 'scansione', opzioni: { destinazione: true } })} />}
       {!sopra && !attuale.senzaPiu && <button className="pp-fab" onClick={() => setFoglio(true)} aria-label="Aggiungi"><IconaPiu size={26} /></button>}
       {foglio && <FoglioAggiungi iniziale={typeof foglio === 'string' ? foglio : null} onScegli={aggiungi} onChiudi={() => setFoglio(false)} />}
       {toast && (
