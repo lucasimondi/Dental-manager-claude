@@ -288,7 +288,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
       </header>
       {paz.telefono && <div className="patient-clean-contacts"><a href={`tel:+39${paz.telefono.replace(/\D/g, '')}`} aria-label="Chiama"><Ic n="ph" s={14} c="currentColor" />{paz.telefono}</a>{waAbilitato(features) && <a href={waUrl(paz.telefono)} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><Ic n="wa" s={15} c="currentColor" />WhatsApp</a>}</div>}
 
-      {isDentistico && tab === 'info' ? <PatientDentalOverview patientId={paz.id} plans={patPlans} onAddTreatment={onAddTreatment} onCreateQuote={onCreateQuote} /> : <PatientEntryActions onTreatment={onAddTreatment} onQuote={onCreateQuote} />}
+      {isDentistico && tab === 'info' ? <PatientDentalOverview patientId={paz.id} plans={patPlans} onAddTreatment={onAddTreatment} onCreateQuote={onCreateQuote} setPlans={setPlans} /> : <PatientEntryActions onTreatment={onAddTreatment} onQuote={onCreateQuote} />}
 
       {onNuovoAppuntamento && <button type="button" className="patient-clean-appointment" onClick={() => onNuovoAppuntamento(paz.id)}>Fissa prossimo nell’agenda</button>}
 
