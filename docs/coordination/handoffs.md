@@ -4606,3 +4606,7 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Branch `ccr-9c70a578-a2q1cs` from master 143496c. Files: personal/src/{lib/scan.js (new), scan/Scan.jsx (new), App.jsx, main.jsx, Aggiungi.jsx, pro.css}, personal/index.html, public/{scan.webmanifest, scan-dominio.webmanifest, scan-180/192/512/maskable-512.png (new), personal.webmanifest, personal-dominio.webmanifest (shortcuts)}, vercel.json (rewrites), tests/personalScan.test.mjs, tests/visual/personal-scan.{html,fixture.jsx,mjs}.
 - Database: none. Tests 1646/1646; build OK; Chromium personal-scan PASS. Rollback: revert the commit (installed Scan icons then open the Studio app; remove them from the Home).
 - Risks: real-phone install check pending (Android Chrome install from /poliedron/scan/, iPhone «Aggiungi alla schermata Home»); Scan shares login with Personal (same origin storage).
+
+## Handoff — SCAN-ICONA (2026-11-10) — Claude Code
+- Branch `ccr-9c70a578-a2q1cs` from master fb49879. Files: public/scan-*.png, public/scan.webmanifest, public/scan-dominio.webmanifest, coordination docs. PR296 merged as fb49879 (production deployment dpl_4upm8jccqMz8g452AYKYLqchmqXe READY; /poliedron/scan/ and /scan.webmanifest verified).
+- Database: none. Rollback: revert the commit (previous green icon returns).
