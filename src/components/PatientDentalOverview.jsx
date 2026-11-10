@@ -1,7 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import { DENTAL_QUADRANTS, DENTAL_SELECTION_GROUPS, dentalEntryTeeth, patientDentalOverview, toggleDentalGroup } from '../lib/patientDentalOverview.js';
-import { fmtD } from '../lib/utils';
+import { fmtD, today } from '../lib/utils';
+import { usePressioneLunga } from '../lib/pressioneLunga.js';
+import { dentiAssenti, statoDente, STATO_DENTE } from '../lib/domain/denteRapido.js';
+import MenuDente, { useEsecuzioneRapida, ToastAnnulla } from './MenuDente.jsx';
 import './PatientDentalOverview.css';
+
+const ETICHETTA_STATO = { [STATO_DENTE.SANO]: 'sano', [STATO_DENTE.DA_FARE]: 'da fare', [STATO_DENTE.ESEGUITO]: 'eseguito', [STATO_DENTE.ASSENTE]: 'assente' };
+export function LegendaDenti() {
+  return <div className="patient-dental-legend dente-legenda" aria-label="Legenda colori">{[[STATO_DENTE.SANO,'Sano'],[STATO_DENTE.DA_FARE,'Da fare'],[STATO_DENTE.ESEGUITO,'Eseguito'],[STATO_DENTE.ASSENTE,'Assente']].map(([k,l])=><span key={k}><i className={`dente-legenda-${k}`} aria-hidden="true"/>{l}</span>)}<span>Tieni premuto un dente per segnarlo</span></div>;
+}
 
 function ToothGlyph({ tooth }) {
   const molar = tooth % 10 >= 6, upper = Math.floor(tooth / 10) <= 2;
@@ -9,11 +17,18 @@ function ToothGlyph({ tooth }) {
   return <svg viewBox="0 0 24 28" aria-hidden="true" focusable="false" data-arch={upper ? 'upper' : 'lower'}><g transform={upper ? 'matrix(1 0 0 -1 0 28)' : undefined}><path d={molar ? 'M5 3Q8 1 12 3Q16 1 19 3Q23 7 19 15L17 25Q16 28 14 24L12 17L10 24Q8 28 7 25L5 15Q1 7 5 3Z' : 'M7 3Q12 1 17 3Q21 6 18 13L14 25Q12 28 10 25L6 13Q3 6 7 3Z'} /><path d={molar ? 'M7 7L12 10L17 7M12 10V15' : 'M8 6Q12 8 16 6'} /></g></svg>;
 }
 
-export default function PatientDentalOverview({ patientId, plans, onAddTreatment, onCreateQuote }) {
+// PO 2026-11-10: tocco prolungato (o tasto destro) su un dente = menu rapido per segnare
+// eseguito, aggiungere una prestazione o segnare il dente assente. Il tocco breve seleziona come prima.
+export default function PatientDentalOverview({ patientId, plans, onAddTreatment, onCreateQuote, patient = null, appointments = [], setPlans, setPatients, onPatientChange }) {
   const model = useMemo(()=>patientDentalOverview(plans,patientId),[plans,patientId]);
+  const assenti = useMemo(()=>dentiAssenti(patient),[patient]);
+  const [menu,setMenu] = useState(null);
+  const rapido = useEsecuzioneRapida({ patientId, patient, appointments, setPlans, setPatients, onPatientChange, data: today() });
+  const press = usePressioneLunga({ onLungo: (dente, punto) => setMenu({ dente, punto }) });
   const [filter,setFilter] = useState('done'), [selected,setSelected] = useState([]), [expanded,setExpanded] = useState(false);
   const canAdd = typeof onAddTreatment === 'function', canQuote = typeof onCreateQuote === 'function';
   const toggle = d => { setExpanded(false); setSelected(s => s.includes(d) ? s.filter(t=>t!==d) : [...s,d].sort((a,b)=>a-b)); };
+  const tocco = d => { if (press.consumaClick()) return; toggle(d); };
   const open = handler => handler?.({tooth:dentalEntryTeeth(selected)});
   const rows = model[filter].filter(row=>!selected.length || row.teeth.some(t=>selected.includes(t)));
   const selectedLabel = selected.join(' · ');
@@ -24,12 +39,12 @@ export default function PatientDentalOverview({ patientId, plans, onAddTreatment
       return <button type="button" key={g.label} title={g.title} aria-pressed={all} onClick={()=>{setExpanded(false);setSelected(s=>toggleDentalGroup(s,g.teeth));}}>{g.label}</button>;
     })}</div>
     <div className="patient-dental-layout"><div>
+      <LegendaDenti />
       <div className="patient-dental-chart" role="group" aria-label="Odontogramma permanente · selezione multipla">{DENTAL_QUADRANTS.map(q=><div className="patient-dental-quadrant" key={q.label}><small>{q.label}</small><div>{q.teeth.map(d=>{
-        const state=model.teeth[d], on=selected.includes(d), label=[`Dente ${d}`,`${state.done} cure eseguite`,`${state.pending} da eseguire`,on ? 'selezionato' : 'tocca per selezionare'].join(' · ');
-        return <button type="button" key={d} aria-label={label} aria-pressed={on} className={`${state.done ? 'has-done ' : ''}${state.pending ? 'has-pending ' : ''}${on ? 'is-selected' : ''}`} onClick={()=>toggle(d)}><ToothGlyph tooth={d}/><b>{d}</b><span className="patient-dental-dots" aria-hidden="true">{state.done > 0 && <i className="done"/>}{state.pending > 0 && <i className="pending"/>}</span></button>;
+        const state=model.teeth[d], on=selected.includes(d), stato=statoDente(state,assenti.has(d)), label=[`Dente ${d}`,ETICHETTA_STATO[stato],`${state.done} cure eseguite`,`${state.pending} da eseguire`,on ? 'selezionato' : 'tocca per selezionare, tieni premuto per il menu'].join(' · ');
+        return <button type="button" key={d} aria-label={label} aria-pressed={on} data-dente={d} data-stato={stato} className={`dente-${stato}${state.done ? ' has-done' : ''}${state.pending ? ' has-pending' : ''}${on ? ' is-selected' : ''}${press.premuto === d ? ' is-premuto' : ''}`} {...press.bind(d)} onClick={()=>tocco(d)}><ToothGlyph tooth={d}/><b>{d}{stato === STATO_DENTE.ESEGUITO && <span className="dente-check" aria-hidden="true"> ✓</span>}</b><span className="patient-dental-dots" aria-hidden="true">{state.done > 0 && <i className="done"/>}{state.pending > 0 && <i className="pending"/>}</span></button>;
       })}</div></div>)}</div>
       <p className="patient-dental-orientation">Vista frontale · destra e sinistra del paziente</p>
-      <div className="patient-dental-legend"><span><i className="done"/>Eseguita</span><span><i className="pending"/>Da eseguire / proposta</span><span>Bianco: nessuna voce registrata</span></div>
       {(canAdd || canQuote) && <div className={`patient-dental-actionbar${selected.length ? ' has-selection' : ''}`} role="region" aria-label="Azioni sui denti selezionati">
         <div className="patient-dental-actionbar-info" aria-live="polite">{selected.length ? <><strong>{selected.length === 1 ? '1 dente' : `${selected.length} denti`}</strong><span>{selectedLabel}</span></> : <><strong>Nessun dente selezionato</strong><span>Prestazione generale, senza dente</span></>}</div>
         <div className="patient-dental-actionbar-buttons">
@@ -43,5 +58,9 @@ export default function PatientDentalOverview({ patientId, plans, onAddTreatment
       {!rows.length ? <p className="patient-dental-empty">{filter === 'done' ? 'Nessuna cura eseguita registrata' : 'Nessuna prestazione da eseguire'}{selected.length === 1 ? ` sul ${selected[0]}` : selected.length ? ' sui denti selezionati' : ''}.</p> : <ul>{(expanded ? rows : rows.slice(0,3)).map(row=><li key={row.key}><span className={`patient-dental-site ${filter}`}>{row.site}</span><div><strong>{row.name}</strong><small>{filter === 'done' ? row.dataEsec ? fmtD(row.dataEsec) : 'Data non registrata' : row.status} · {row.planTitle}</small></div><span className={`patient-dental-status ${filter}`} aria-label={row.status}>{filter === 'done' ? '✓' : '○'}</span></li>)}</ul>}
       {rows.length > 3 && <button type="button" className="patient-dental-more" aria-expanded={expanded} onClick={()=>setExpanded(!expanded)}>{expanded ? 'Mostra meno' : `Mostra tutte (${rows.length})`}</button>}
     </div></div>
+    {menu && <MenuDente dente={menu.dente} punto={menu.punto} plans={plans} patientId={patientId} assente={assenti.has(menu.dente)} rapido={rapido}
+      onAggiungi={canAdd ? () => { setMenu(null); onAddTreatment({ tooth: String(menu.dente) }); } : null}
+      onChiudi={() => setMenu(null)} />}
+    <ToastAnnulla toast={rapido.toast} onAnnulla={rapido.annulla} onChiudi={rapido.chiudiToast} />
   </section>;
 }

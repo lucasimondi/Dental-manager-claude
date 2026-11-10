@@ -38,7 +38,8 @@ test('several procedures on several teeth produce one canonical item per tooth a
 });
 test('patient chart selects teeth instead of opening the editor and passes the selection explicitly',()=>{
  const src=readFileSync(new URL('../src/components/PatientDentalOverview.jsx',import.meta.url),'utf8');
- assert.match(src,/onClick=\{\(\)=>toggle\(d\)\}/);
+ assert.match(src,/onClick=\{\(\)=>tocco\(d\)\}/);
+ assert.match(src,/const tocco = d => \{ if \(press\.consumaClick\(\)\) return; toggle\(d\); \};/);
  assert.match(src,/tooth:dentalEntryTeeth\(selected\)/);
  assert.match(src,/aria-pressed=\{on\}/);
  const boundary=readFileSync(new URL('../src/components/PatientWorkspaceBoundary.jsx',import.meta.url),'utf8');

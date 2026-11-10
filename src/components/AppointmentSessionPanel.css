@@ -1,0 +1,50 @@
+/* PO 2026-11-10 — pannello seduta dall'Agenda: 480 px a destra, tutto schermo su telefono. */
+.seduta-sheet { position:fixed; top:0; right:0; bottom:0; width:480px; max-width:100vw; background:#F4F6F8; box-shadow:-12px 0 32px rgba(15,23,42,.18); display:flex; flex-direction:column; font-family:Inter,system-ui,-apple-system,sans-serif; color:#0f172a; z-index:10000; }
+@media (max-width:640px) { .seduta-sheet { width:100vw; box-shadow:none; } }
+.seduta-panel { display:flex; flex-direction:column; height:100%; min-height:0; }
+.seduta-head { background:#fff; border-bottom:1px solid #DDE2E8; padding:14px 16px 12px; padding-top:calc(14px + env(safe-area-inset-top)); flex-shrink:0; }
+.seduta-head-riga { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.seduta-quando { display:flex; flex-wrap:wrap; gap:4px 10px; align-items:baseline; font-size:13px; color:#475569; }
+.seduta-quando strong { color:#0f172a; font-size:14px; }
+.seduta-chiudi { min-width:44px; min-height:44px; border:1px solid #DDE2E8; background:#fff; border-radius:10px; font-size:16px; cursor:pointer; }
+.seduta-paziente { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:6px; }
+.seduta-paziente h2 { margin:0; font-size:19px; font-weight:700; letter-spacing:-.01em; min-width:0; overflow-wrap:anywhere; }
+.seduta-saldo { flex-shrink:0; font-size:13px; font-weight:700; color:#15803d; background:#ecfdf3; border-radius:999px; padding:5px 10px; }
+.seduta-saldo.is-dovuto { color:#C2410C; background:#FFF1E7; }
+.seduta-tipo { font-size:13px; color:#475569; margin-top:2px; }
+.seduta-allergie { display:flex; align-items:center; gap:6px; margin-top:8px; background:#FEE4E2; color:#B42318; border:1px solid #FDA29B; border-radius:8px; padding:6px 10px; font-size:13px; font-weight:700; }
+.seduta-corpo { flex:1; min-height:0; overflow-y:auto; padding:14px 16px 20px; display:flex; flex-direction:column; gap:12px; -webkit-overflow-scrolling:touch; }
+.seduta-passi { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
+.seduta-passi button { width:100%; min-height:44px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; border:1px solid #DDE2E8; background:#fff; border-radius:10px; font:inherit; font-size:12px; font-weight:600; color:#475569; cursor:pointer; padding:4px 2px; }
+.seduta-passi button span { font-size:11px; width:20px; height:20px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; background:#F4F6F8; color:#475569; }
+.seduta-passi button.is-fatto { color:#155E75; border-color:#9ccbd6; }
+.seduta-passi button.is-fatto span { background:#155E75; color:#fff; }
+.seduta-passi button.is-attivo { background:#155E75; border-color:#155E75; color:#fff; }
+.seduta-passi button.is-attivo span { background:#fff; color:#155E75; }
+.seduta-card { background:#fff; border:1px solid #DDE2E8; border-radius:14px; padding:12px 14px; }
+.seduta-card h3 { margin:0 0 8px; font-size:14px; font-weight:700; }
+.seduta-voci { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; }
+.seduta-voci li { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-top:1px solid #EEF1F4; }
+.seduta-voci li:first-child { border-top:none; }
+.seduta-voci li > div { display:flex; flex-direction:column; min-width:0; }
+.seduta-voci strong { font-size:14px; font-weight:600; overflow-wrap:anywhere; }
+.seduta-voci small { font-size:12px; color:#64748b; }
+.seduta-voci button { flex-shrink:0; min-height:44px; padding:0 12px; border:1.5px solid #1D4ED8; background:#fff; color:#1D4ED8; border-radius:10px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+.seduta-voci button.is-eseguito, .seduta-voci button.is-eseguito:disabled { background:#1D4ED8; color:#fff; opacity:1; cursor:default; }
+.seduta-voci button:disabled { opacity:.55; cursor:not-allowed; }
+.seduta-vuoto { margin:0; font-size:13px; color:#64748b; }
+.seduta-nota { display:flex; flex-direction:column; gap:6px; font-size:14px; font-weight:700; }
+.seduta-nota textarea { font:inherit; font-size:14px; font-weight:400; border:1px solid #DDE2E8; border-radius:10px; padding:10px; resize:vertical; min-height:72px; box-sizing:border-box; width:100%; }
+.seduta-azioni { display:flex; flex-wrap:wrap; gap:8px; }
+.seduta-azioni button { flex:1 1 120px; min-height:44px; display:flex; align-items:center; justify-content:center; gap:6px; border:1px solid #DDE2E8; background:#fff; color:#0f172a; border-radius:10px; font:inherit; font-size:13.5px; font-weight:600; cursor:pointer; }
+.seduta-azioni .seduta-disdici { color:#B42318; border-color:#FDA29B; }
+.seduta-azioni button:disabled { opacity:.5; cursor:not-allowed; }
+.seduta-piede { flex-shrink:0; display:flex; gap:8px; flex-wrap:wrap; background:#fff; border-top:1px solid #DDE2E8; padding:12px 16px calc(12px + env(safe-area-inset-bottom)); }
+.seduta-piede button { flex:1 1 180px; min-height:48px; border-radius:12px; font:inherit; font-size:14.5px; font-weight:700; cursor:pointer; }
+.seduta-primario { background:#155E75; color:#fff; border:none; }
+.seduta-secondario { background:#fff; color:#155E75; border:1.5px solid #155E75; }
+.seduta-piede button:disabled { opacity:.55; cursor:not-allowed; }
+.seduta-dettagli { background:#fff; border:1px solid #DDE2E8; border-radius:14px; overflow:hidden; }
+.seduta-dettagli > summary { min-height:44px; display:flex; align-items:center; padding:0 14px; font-weight:700; font-size:14px; cursor:pointer; }
+.seduta-altre > details { background:#fff; border:1px solid #DDE2E8; border-radius:14px; }
+.seduta-corpo > * { flex-shrink:0; }

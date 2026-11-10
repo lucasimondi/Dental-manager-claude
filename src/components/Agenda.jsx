@@ -6,6 +6,7 @@ import { labelColor, labelOn } from '../../shared/agenda/labelPalette.js';
 import { useTimeline } from '../../shared/agenda/useTimeline.js';
 import AgendaVisibility from '../../shared/agenda/AgendaVisibility.jsx';
 import { agendaVisible, keepOccupiedWeekends } from '../../shared/agenda/visibility.js';
+import AppointmentSessionPanel from './AppointmentSessionPanel.jsx';
 import { leggiDomenicaNascosta, salvaDomenicaNascosta, applicaDomenica } from '../../shared/agenda/domenica.js';
 import { layoutAgendaDay, layoutAppointments as layoutOverlap, raggruppaSovrapposti } from '../../shared/agenda/geometry.js';
 import { readAgendaLocation, sectionDestination, aggiungiPerTe } from '../../shared/agenda/navigation.js';
@@ -79,7 +80,7 @@ function AppointmentMenuLayer({ portal, children }) {
   return portal ? createPortal(children, document.body) : children;
 }
 
-function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno, onSwipeDay, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight, followUpMode, onOccupiedSlot, canPrescribe = true }) {
+function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno, onSwipeDay, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight, followUpMode, onOccupiedSlot, canPrescribe = true, plans = [], setPlans, sede = '', allAppointments }) {
   const containerRef = useRef(null); // unico scroll container
   const resizeRef = useRef(null);
   const [now, setNow] = useState(new Date());
@@ -296,46 +297,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
           { id: 'sposta', label: 'Sposta', ic: 'move', col: C.txt, onClick: () => { apriSposta(menuApp); setMenuApp(null); } },
           { id: 'del', label: 'Elimina', ic: 'del', col: C.dan, onClick: () => { setMenuApp(null); delApp(menuApp.id); } },
         ];
-        return (
-          <AppointmentMenuLayer portal={!!renderAppointmentWorkspace && !!p}>
-          <div
-            onClick={() => { if (!renderAppointmentWorkspace) setMenuApp(null); }}
-            className="pol-modal-backdrop agenda-appointment-menu-backdrop"
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(10,20,40,0.55)',
-              zIndex: 9999,
-              display: 'flex',
-              justifyContent: 'center',
-              '--agenda-mobile-dock-offset': `${MOBILE_APPOINTMENT_MENU_DOCK_OFFSET}px`,
-              '--agenda-mobile-fab-offset': `${MOBILE_APPOINTMENT_MENU_FAB_OFFSET}px`,
-              '--agenda-mobile-overlay-clearance-menu': `${mobileOverlayHeight}px`,
-            }}
-          >
-            <div onClick={e => e.stopPropagation()} role={renderAppointmentWorkspace && p ? "dialog" : undefined} aria-modal={renderAppointmentWorkspace && p ? true : undefined} aria-label={renderAppointmentWorkspace && p ? "Appuntamento" : undefined} className={`pol-modal-sheet agenda-appointment-menu-sheet${renderAppointmentWorkspace && p ? ' appointment-workspace-sheet' : ''}`} style={{ background: C.sur, width: '100%', maxWidth: renderAppointmentWorkspace && p ? 1040 : 480, overflow: 'hidden' }}>
-              <div className="agenda-appointment-menu-header" style={{ padding: '14px 18px', borderBottom: `1px solid ${C.brd}`, display: 'flex', alignItems: 'center', gap: 9 }}>
-                <div className="appointment-patient-marker" style={{ width: 10, height: 10, borderRadius: '50%', background: co, flexShrink: 0 }} />
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p ? `${p.nome} ${p.cognome}` : 'Paziente'}</div>
-                  <div style={{ fontSize: 11.5, color: C.txm }}>{fmtD(menuApp.data)} · {menuApp.ora} · {menuApp.tipo}</div>
-                </div>
-                {renderAppointmentWorkspace && p && <button type="button" className="appointment-name-call" title={phone ? `Chiama ${p.nome}` : 'Telefono non disponibile'} aria-label="Chiama" disabled={workspaceBusy || !phone} onClick={() => { if (phone) window.location.href = `tel:${phone}`; }}><Ic n="ph" s={14} c={C.pri} /></button>}
-                {renderAppointmentWorkspace && p && <button type="button" aria-label="Chiudi appuntamento" disabled={workspaceBusy} onClick={() => setMenuApp(null)} style={{ marginLeft: 'auto', minWidth: 44, minHeight: 44, border: 0, borderRadius: 10, cursor: 'pointer' }}>✕</button>}
-              </div>
-              {renderAppointmentWorkspace && p && <nav className="appointment-patient-toolbar" aria-label="Azioni paziente e appuntamento">
-                {azioni.filter(az => ['wa', 'edit', 'sposta'].includes(az.id)).map(az => <button key={az.id} type="button" title={az.label} aria-label={az.id === 'edit' ? 'Modifica appuntamento' : az.label} className={az.id === 'wa' ? 'appointment-whatsapp-button' : az.id === 'del' ? 'appointment-delete-button' : undefined} disabled={workspaceBusy || az.dis} onClick={az.onClick}><Ic n={az.ic} s={14} c={az.col} /><span>{az.label}</span></button>)}
-                <button type="button" disabled={workspaceBusy || !onOpenPatient} onClick={() => runPatientAction(onOpenPatient)}><Ic n="pz" s={14} c={C.pri} /><span>Scheda</span></button>
-              </nav>}
-              <div className="agenda-appointment-menu-actions" style={{ padding: 8 }}>
-                {renderAppointmentWorkspace && p ? renderAppointmentWorkspace(p, menuApp, () => setMenuApp(null), setWorkspaceBusy) : <>
-                <div className="agenda-patient-actions" aria-label="Prestazioni e documenti del paziente" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, padding: 4, marginBottom: 8 }}>
-                  {APPOINTMENT_PATIENT_ACTIONS.map(action => {
-                    const disabled = !p || !onPatientAction || (action.id === 'prescription' && !canPrescribe);
-                    return <button key={action.id} type="button" disabled={disabled} onClick={() => runPatientAction((patient, appointment) => onPatientAction(patient, appointment, action.id))} style={{ minHeight: 48, display: 'flex', alignItems: 'center', gap: 8, background: C.priL, color: C.pri, border: `1px solid ${C.brd}`, borderRadius: 10, padding: '10px 12px', fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1 }}><Ic n={action.icon} s={17} c={C.pri} />{action.label}</button>;
-                  })}
-                </div>
-                </>}
+        const altreOpzioni = (
                 <LegacyActions>
                 {renderAppointmentWorkspace && p && <summary style={{ padding: 14, fontWeight: 700, cursor: 'pointer' }}>Altre opzioni</summary>}
                 {isMobile && (
@@ -398,6 +360,65 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                   </button>
                 ))}
                 </LegacyActions>
+        );
+        // PO 2026-11-10: con la scheda appuntamento (Studio) si apre il pannello laterale della seduta.
+        if (renderAppointmentWorkspace && p) return (
+          <AppointmentMenuLayer portal>
+            <div className="pol-modal-backdrop seduta-backdrop" onClick={() => { if (!workspaceBusy) setMenuApp(null); }} style={{ position: 'fixed', inset: 0, background: 'rgba(10,20,40,0.45)', zIndex: 9999 }} />
+            <div role="dialog" aria-modal="true" aria-label="Appuntamento" className="seduta-sheet appointment-workspace-sheet" onClick={e => e.stopPropagation()}>
+              <AppointmentSessionPanel key={menuApp.id} patient={p} appointment={menuApp} plans={plans} setPlans={setPlans} appointments={allAppointments || appointments} setAppointments={setAppointments} sede={sede} busy={workspaceBusy}
+                onStatoChange={stato => setMenuApp(m => m && { ...m, stato })}
+                onSposta={() => { apriSposta(menuApp); setMenuApp(null); }}
+                onPromemoria={p?.telefono ? () => apriWA(menuApp) : null}
+                onDisdici={() => { setAppointments(cur => cur.map(a => a.id === menuApp.id ? { ...a, stato: 'annullato' } : a)); setMenuApp(null); }}
+                onApriScheda={onOpenPatient ? () => runPatientAction(onOpenPatient) : null}
+                onChiudi={() => setMenuApp(null)}
+                renderDettagli={() => renderAppointmentWorkspace(p, menuApp, () => setMenuApp(null), setWorkspaceBusy)}
+                altreOpzioni={<div className="seduta-altre">{altreOpzioni}</div>} />
+            </div>
+          </AppointmentMenuLayer>
+        );
+        return (
+          <AppointmentMenuLayer portal={!!renderAppointmentWorkspace && !!p}>
+          <div
+            onClick={() => { if (!renderAppointmentWorkspace) setMenuApp(null); }}
+            className="pol-modal-backdrop agenda-appointment-menu-backdrop"
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(10,20,40,0.55)',
+              zIndex: 9999,
+              display: 'flex',
+              justifyContent: 'center',
+              '--agenda-mobile-dock-offset': `${MOBILE_APPOINTMENT_MENU_DOCK_OFFSET}px`,
+              '--agenda-mobile-fab-offset': `${MOBILE_APPOINTMENT_MENU_FAB_OFFSET}px`,
+              '--agenda-mobile-overlay-clearance-menu': `${mobileOverlayHeight}px`,
+            }}
+          >
+            <div onClick={e => e.stopPropagation()} role={renderAppointmentWorkspace && p ? "dialog" : undefined} aria-modal={renderAppointmentWorkspace && p ? true : undefined} aria-label={renderAppointmentWorkspace && p ? "Appuntamento" : undefined} className={`pol-modal-sheet agenda-appointment-menu-sheet${renderAppointmentWorkspace && p ? ' appointment-workspace-sheet' : ''}`} style={{ background: C.sur, width: '100%', maxWidth: renderAppointmentWorkspace && p ? 1040 : 480, overflow: 'hidden' }}>
+              <div className="agenda-appointment-menu-header" style={{ padding: '14px 18px', borderBottom: `1px solid ${C.brd}`, display: 'flex', alignItems: 'center', gap: 9 }}>
+                <div className="appointment-patient-marker" style={{ width: 10, height: 10, borderRadius: '50%', background: co, flexShrink: 0 }} />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p ? `${p.nome} ${p.cognome}` : 'Paziente'}</div>
+                  <div style={{ fontSize: 11.5, color: C.txm }}>{fmtD(menuApp.data)} · {menuApp.ora} · {menuApp.tipo}</div>
+                </div>
+                {renderAppointmentWorkspace && p && <button type="button" className="appointment-name-call" title={phone ? `Chiama ${p.nome}` : 'Telefono non disponibile'} aria-label="Chiama" disabled={workspaceBusy || !phone} onClick={() => { if (phone) window.location.href = `tel:${phone}`; }}><Ic n="ph" s={14} c={C.pri} /></button>}
+                {renderAppointmentWorkspace && p && <button type="button" aria-label="Chiudi appuntamento" disabled={workspaceBusy} onClick={() => setMenuApp(null)} style={{ marginLeft: 'auto', minWidth: 44, minHeight: 44, border: 0, borderRadius: 10, cursor: 'pointer' }}>✕</button>}
+              </div>
+              {renderAppointmentWorkspace && p && <nav className="appointment-patient-toolbar" aria-label="Azioni paziente e appuntamento">
+                {azioni.filter(az => ['wa', 'edit', 'sposta'].includes(az.id)).map(az => <button key={az.id} type="button" title={az.label} aria-label={az.id === 'edit' ? 'Modifica appuntamento' : az.label} className={az.id === 'wa' ? 'appointment-whatsapp-button' : az.id === 'del' ? 'appointment-delete-button' : undefined} disabled={workspaceBusy || az.dis} onClick={az.onClick}><Ic n={az.ic} s={14} c={az.col} /><span>{az.label}</span></button>)}
+                <button type="button" disabled={workspaceBusy || !onOpenPatient} onClick={() => runPatientAction(onOpenPatient)}><Ic n="pz" s={14} c={C.pri} /><span>Scheda</span></button>
+              </nav>}
+              <div className="agenda-appointment-menu-actions" style={{ padding: 8 }}>
+                {renderAppointmentWorkspace && p ? renderAppointmentWorkspace(p, menuApp, () => setMenuApp(null), setWorkspaceBusy) : <>
+                <div className="agenda-patient-actions" aria-label="Prestazioni e documenti del paziente" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, padding: 4, marginBottom: 8 }}>
+                  {APPOINTMENT_PATIENT_ACTIONS.map(action => {
+                    const disabled = !p || !onPatientAction || (action.id === 'prescription' && !canPrescribe);
+                    return <button key={action.id} type="button" disabled={disabled} onClick={() => runPatientAction((patient, appointment) => onPatientAction(patient, appointment, action.id))} style={{ minHeight: 48, display: 'flex', alignItems: 'center', gap: 8, background: C.priL, color: C.pri, border: `1px solid ${C.brd}`, borderRadius: 10, padding: '10px 12px', fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1 }}><Ic n={action.icon} s={17} c={C.pri} />{action.label}</button>;
+                  })}
+                </div>
+                </>}
+                {altreOpzioni}
               </div>
               <div aria-hidden="true" className="agenda-appointment-menu-safe-area" style={{ height: 'env(safe-area-inset-bottom,12px)' }} />
             </div>
@@ -423,7 +444,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
    Va incollato sulla stessa riga dell'etichetta mese: non aggiunge nessuna riga
    in più, a differenza della vecchia barra a tre tab che occupava spazio prezioso
    sullo schermo del telefono. */
-export default function Agenda({ patients, setPatients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni: tuttiImpegni = [], setImpegni, si, setStudioInfo, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, followUpRequest, onBookFollowUp, onCancelFollowUp, plans = [], pricelist = [], onSaveBookingTreatment, onOpenSearch, ricerca = null }) {
+export default function Agenda({ patients, setPatients, appointments, setAppointments, appTypes, initPazienteId, onClearInitPaz, templates, features, impegni: tuttiImpegni = [], setImpegni, si, setStudioInfo, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, followUpRequest, onBookFollowUp, onCancelFollowUp, plans = [], setPlans, pricelist = [], onSaveBookingTreatment, onOpenSearch, ricerca = null }) {
   // PO 2026-11-08: un'agenda sola, di partenza "Tutto" (Studio e Personal insieme).
   const [mostraEsclusi, setMostraEsclusi] = useState(true);
   const [creaAperto, setCreaAperto] = useState(false);
@@ -1016,7 +1037,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   // Anche il foglio «Crea» dell'orario libero blocca la pagina e nasconde icona Poliedron e dock.
   useEffect(() => (sceltaSlot ? lockPageScroll() : undefined), [sceltaSlot]);
   const toccaSlot = (data, ora) => { if (!isMobile || followUpRequest) { apriNuovo(data, ora); return; } setSceltaSlot({ data, ora }); };
-  const gridProps = { slots, slotH, slotMin, oraInizio: timelineStart, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo: toccaSlot, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight, canPrescribe: !si?.vertical || VERTICALI_CON_RICETTA.has(si.vertical), followUpMode: !!followUpRequest, onOccupiedSlot: () => setToast('Questo spazio è occupato. Scegli un altro orario.') };
+  const gridProps = { slots, slotH, slotMin, oraInizio: timelineStart, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo: toccaSlot, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight, canPrescribe: !si?.vertical || VERTICALI_CON_RICETTA.has(si.vertical), followUpMode: !!followUpRequest, onOccupiedSlot: () => setToast('Questo spazio è occupato. Scegli un altro orario.'), plans, setPlans, sede: si?.nome || '', allAppointments: appointments };
 
   // AGENDA-UNICA (PO 2026-11-08): sul telefono anche le scadenze dell'archivio personale, flottanti
   // come gli impegni del giorno; toccandole si apre Conti in Personal (stesso indirizzo).

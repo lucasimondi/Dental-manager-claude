@@ -1,0 +1,19 @@
+/* PO 2026-11-10 — menu del tocco prolungato sul dente e messaggio con «Annulla». */
+.dente-menu { position:fixed; z-index:1300; background:#fff; border:1px solid #DDE2E8; border-radius:14px; box-shadow:0 12px 32px rgba(15,23,42,.18); padding:12px; font-family:Inter,system-ui,-apple-system,sans-serif; color:#0f172a; box-sizing:border-box; max-height:min(70vh,440px); overflow:auto; }
+.dente-menu-titolo { font-size:14px; font-weight:700; margin-bottom:10px; }
+.dente-menu-titolo small { color:#64748b; font-weight:500; }
+.dente-menu button { min-height:44px; border-radius:10px; font:inherit; font-size:13.5px; font-weight:600; cursor:pointer; width:100%; }
+.dente-menu-primario { background:#1D4ED8; color:#fff; border:none; }
+.dente-menu-primario:disabled { background:#cbd5e1; cursor:not-allowed; }
+.dente-menu-voci { list-style:none; margin:10px 0; padding:0; display:flex; flex-direction:column; gap:2px; }
+.dente-menu-voci label { display:flex; align-items:center; gap:10px; min-height:44px; padding:4px 6px; border-radius:8px; cursor:pointer; }
+.dente-menu-voci label:hover { background:#F4F6F8; }
+.dente-menu-voci input { width:20px; height:20px; accent-color:#1D4ED8; flex-shrink:0; }
+.dente-menu-voci span { display:flex; flex-direction:column; font-size:13.5px; line-height:1.3; }
+.dente-menu-voci small { color:#64748b; font-size:11.5px; }
+.dente-menu-vuoto { font-size:12.5px; color:#64748b; margin:10px 2px; }
+.dente-menu-azioni { display:flex; flex-direction:column; gap:6px; border-top:1px solid #DDE2E8; padding-top:10px; }
+.dente-menu-azioni button { background:#fff; color:#0f172a; border:1px solid #DDE2E8; }
+.dente-menu button:disabled { opacity:.55; cursor:not-allowed; }
+.dente-toast { position:fixed; left:50%; bottom:calc(20px + env(safe-area-inset-bottom)); transform:translateX(-50%); z-index:1400; display:flex; align-items:center; gap:14px; background:#0f172a; color:#fff; border-radius:12px; padding:10px 10px 10px 16px; font:500 14px/1.3 Inter,system-ui,sans-serif; box-shadow:0 8px 24px rgba(15,23,42,.3); max-width:calc(100vw - 32px); box-sizing:border-box; }
+.dente-toast button { min-height:40px; padding:0 14px; border:none; border-radius:8px; background:transparent; color:#93C5FD; font:inherit; font-weight:700; cursor:pointer; }

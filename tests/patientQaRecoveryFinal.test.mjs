@@ -174,8 +174,10 @@ test('L5. Nessun frame di posizione bloccata "stantia" dopo lo sblocco (lock sol
 // persistent sidebar (desktop) / dropdown selector (mobile) — same
 // no-horizontal-scroll guarantee, different implementation.
 test('M. Tutte le sezioni della Scheda Paziente sono raggiungibili senza scroll orizzontale', () => {
-  assert.match(schedaPaz, /className="patient-record-nav"/);
-  assert.match(schedaPaz, /className="patient-record-nav-mobile"/);
+  // PO 2026-11-10: schede in alto; su telefono scorrono in orizzontale dentro la barra delle
+  // schede (non la pagina), che resta ferma in alto.
+  assert.match(schedaPaz, /className="scheda-v3-tabs"/);
+  assert.match(fs.readFileSync('src/components/SchedaPazV3.css', 'utf8'), /\.scheda-v3-tabs \{[^}]*overflow-x:auto/);
   assert.doesNotMatch(schedaPaz, /overflowX: 'auto', WebkitOverflowScrolling: 'touch'/);
   // Tutte le tab, incluse Documenti, restano presenti e invariate nel comportamento.
   for (const id of ['info', 'clinical', 'piani', 'paga', 'foto', 'app', 'doc']) assert.match(schedaPaz, new RegExp(`id: '${id}'`));
@@ -195,10 +197,10 @@ const css2 = fs.readFileSync('src/components/PremiumVisualSystem.css', 'utf8');
 // green.
 test('O. Scheda paziente conserva contatti accessibili e gli URL centralizzati', () => {
   assert.match(schedaPaz, /href=\{`tel:\+39\$\{paz\.telefono\.replace\(\/\\D\/g, ''\)\}`\}/);
-  assert.match(schedaPaz, /href=\{waUrl\(paz\.telefono\)\}/);
+  assert.match(schedaPaz, /href=\{paz\.telefono \? waUrl\(paz\.telefono\) : undefined\}/);
   assert.match(schedaPaz, /import \{ waAbilitato, waUrl \} from '\.\/ui\/WaAction\.jsx';/);
   assert.doesNotMatch(schedaPaz, /<WaAction/);
-  assert.match(schedaPaz, /className="patient-clean-contacts"/);
+  assert.match(schedaPaz, /className="scheda-v3-dati"/);
   assert.match(schedaPaz, /aria-label="Chiama"/);
   assert.match(schedaPaz, /aria-label="WhatsApp"/);
 });
@@ -275,14 +277,15 @@ test('P4. Prossimo appuntamento mostra il primo futuro o "Nessun appuntamento"',
 test('P5. Il telefono è sotto il nome in header; PhStr (secondo Chiama/WhatsApp) non è più usato nel corpo della pagina', () => {
   assert.doesNotMatch(schedaPaz, /PhStr/);
   const name = schedaPaz.indexOf('<h1>{paz.nome} {paz.cognome}</h1>');
-  const contacts = schedaPaz.indexOf('className="patient-clean-contacts"');
+  const contacts = schedaPaz.indexOf('className="scheda-v3-dati"');
   const actions = schedaPaz.indexOf('<PatientEntryActions');
   assert.ok(name >= 0 && contacts > name && actions > contacts);
 });
 
-test('P6. Le celle statistiche dell\'header sono cliccabili e portano al tab giusto', () => {
-  assert.match(schedaPaz, /goTo: 'piani' \}, \{ l: 'Pagato', v: saldiCaricati \? fmt\(totalePagatoReale\) : '…', goTo: 'paga' \}, \{ l: 'Da pagare', v: saldiCaricati \? fmt\(totDaPagare\) : '…', goTo: 'paga' \}, \{ l: 'Visite', v: patApp\.length, goTo: 'app' \}/);
-  assert.match(schedaPaz, /<button key=\{s\.l\} type="button" onClick=\{\(\) => setTab\(s\.goTo\)\}/);
+test('P6. Il riepilogo (preventivato, incassato, saldo) è cliccabile e porta al tab giusto', () => {
+  assert.match(schedaPaz, /onClick=\{\(\) => setTab\('preventivi'\)\}><span>Preventivato<\/span>/);
+  assert.match(schedaPaz, /onClick=\{\(\) => setTab\('paga'\)\}><span>Incassato<\/span><strong>\{saldiCaricati \? fmt\(totalePagatoReale\) : '…'\}<\/strong>/);
+  assert.match(schedaPaz, /className=\{saldiCaricati && totDaPagare > 0 \? 'is-dovuto' : ''\}><span>Saldo<\/span>/);
 });
 
 // N — nessuna query eager per le sezioni pesanti, invariato da prima di questo QA.

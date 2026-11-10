@@ -11,6 +11,9 @@ import PatientEntryActions from './PatientEntryActions.jsx';
 import PatientDentalOverview from './PatientDentalOverview.jsx';
 import IncassoModal from './IncassoModal.jsx';
 import PazienteFormModal from './PazienteFormModal.jsx';
+import { avanzamentoCure } from '../lib/domain/denteRapido.js';
+import { patientDentalOverview } from '../lib/patientDentalOverview.js';
+import './SchedaPazV3.css';
 
 // POL-UI-021: Product Owner — la scheda paziente su mobile deve scorrere
 // come una landing page, con alcune sezioni "sempre a comparsa" (chiuse
@@ -136,7 +139,12 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
   // consistency with the rest of the app, not a bespoke one-off look.
   // Real icons (the same Ic set every other module already uses) replace
   // the emoji now that full labels are always shown, sidebar or dropdown.
-  const TABS = [{ id: 'info', icon: 'user', label: 'Info' }, { id: 'clinical', icon: 'pulse', label: 'Anamnesi' }, { id: 'piani', icon: 'tooth', label: 'Piani' }, { id: 'preventivi', icon: 'file', label: 'Preventivi' }, ...(isDentistico ? [{ id: 'impl', icon: 'tag', label: 'Impianti' }] : []), ...(canAccessPhysio ? [{ id: 'fisio', icon: 'zap', label: 'Fisioterapia' }] : []), { id: 'paga', icon: 'pay', label: 'Pagamenti' }, { id: 'foto', icon: 'folder', label: 'Foto' }, { id: 'app', icon: 'cal', label: 'Agenda' }, { id: 'doc', icon: 'file', label: 'Documenti' }, ...(isStudioAdmin ? [{ id: 'privacy', icon: 'lock', label: 'Privacy' }] : [])];
+  // PO 2026-11-10: schede in alto, sempre in quest'ordine, ognuna col numero di elementi;
+  // le sezioni esistenti non in elenco restano raggiungibili dopo, in grigio.
+  const noteScritte = (Array.isArray(paz.annotazioni) ? paz.annotazioni : []).filter((n) => n && n.testo);
+  const daFareDenti = isDentistico ? Object.values(patientDentalOverview(patPlans, paz.id).teeth).filter((t) => t.pending > 0).length : 0;
+  const TABS = [{ id: 'info', label: 'Panoramica' }, ...(isDentistico ? [{ id: 'odo', label: 'Odontogramma', n: daFareDenti }] : []), { id: 'piani', label: 'Piano di cura', n: patPlans.length }, { id: 'preventivi', label: 'Preventivi', n: patPlans.length }, { id: 'paga', label: 'Pagamenti', n: patPay.length }, { id: 'doc', label: 'Documenti' }, { id: 'note', label: 'Note', n: noteScritte.length + (paz.note ? 1 : 0) }];
+  const TABS_ALTRE = [{ id: 'clinical', label: 'Anamnesi' }, ...(isDentistico ? [{ id: 'impl', label: 'Impianti' }] : []), ...(canAccessPhysio ? [{ id: 'fisio', label: 'Fisioterapia' }] : []), { id: 'foto', label: 'Foto' }, { id: 'app', label: 'Appuntamenti', n: patApp.length }, ...(isStudioAdmin ? [{ id: 'privacy', label: 'Privacy' }] : [])];
 
   // POL-UI-021: Product Owner — "le sezioni in pagina info devono essere
   // le stesse delle pagine corrispondenti". Piani/Pagamenti estratti in
@@ -266,9 +274,15 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
   // dal più recente; qui serve invece il primo futuro).
   const prossimoApp = patApp.filter((a) => a.data >= today()).sort((a, b) => a.data.localeCompare(b.data) || a.ora.localeCompare(b.ora))[0];
 
+  const eta = (() => { const d = paz.dataNascita ? new Date(paz.dataNascita) : null; if (!d || Number.isNaN(d.getTime())) return null; const n = new Date(); return n.getFullYear() - d.getFullYear() - ((n.getMonth() < d.getMonth() || (n.getMonth() === d.getMonth() && n.getDate() < d.getDate())) ? 1 : 0); })();
+  const ultimaVisita = patApp.find((a) => a.data < today() && a.stato !== 'annullato');
+  const allergie = paz.anamnesiAllarme ? (paz.anamnesiAllarmeDettagli || []).map((d) => d.titolo).filter(Boolean) : [];
+  const avanz = avanzamentoCure(patPlans, paz.id);
+  const iniziali = [paz.nome, paz.cognome].filter(Boolean).map(value => value.trim().charAt(0)).join('').toUpperCase();
+
   return (
-    <div className="patient-record-clean patient-record-legacy" data-dental-home={isDentistico && tab === 'info' ? 'true' : undefined} style={{ position: 'fixed', inset: 0, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
-      <header className="patient-clean-header">
+    <div className="patient-record-clean patient-record-legacy scheda-v3" style={{ position: 'fixed', inset: 0, zIndex: 500, display: 'flex', flexDirection: 'column' }}>
+      <header className="patient-clean-header scheda-v3-head">
         <div className="patient-clean-toolbar">
           <button type="button" className="patient-clean-back" onClick={onClose} aria-label="Torna indietro"><Ic n="back" s={19} c="currentColor" /></button>
           <span className="patient-clean-eyebrow">Scheda paziente</span>
@@ -281,41 +295,33 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
           </button>
           <button type="button" className="patient-clean-edit" onClick={() => setEditOpen(true)} aria-label="Modifica paziente"><Ic n="edit" s={16} c="currentColor" /><span>Modifica</span></button>
         </div>
-        <div className="patient-clean-profile">
-          <div className="patient-clean-avatar" aria-hidden="true">{[paz.nome, paz.cognome].filter(Boolean).map(value => value.trim().charAt(0)).join('').toUpperCase()}</div>
-          <div className="patient-clean-identity"><h1>{paz.nome} {paz.cognome}</h1>{paz.cf && <small>CF · {paz.cf}</small>}</div>
+        <div className="patient-clean-profile scheda-v3-profilo">
+          <div className="patient-clean-avatar" aria-hidden="true">{iniziali}</div>
+          <div className="patient-clean-identity">
+            <h1>{paz.nome} {paz.cognome}</h1>
+            <div className="scheda-v3-dati">
+              {eta != null && <span>{eta} anni</span>}
+              {paz.telefono && <a href={`tel:+39${paz.telefono.replace(/\D/g, '')}`} aria-label="Chiama">{paz.telefono}</a>}
+              {si?.nome && <span>{si.nome}</span>}
+              <span>Ultima visita {ultimaVisita ? fmtD(ultimaVisita.data) : '—'}</span>
+            </div>
+            {(allergie.length > 0 || anamnesiState === 'allarme') && <button type="button" className="scheda-v3-allergie" onClick={() => setAnamnesiPopup(true)}><Ic n="warn" s={14} c="currentColor" />{allergie.length ? allergie.join(' · ') : 'Avvertenze anamnesi'}</button>}
+          </div>
+        </div>
+        <div className="scheda-v3-azioni" role="group" aria-label="Azioni paziente">
+          <button type="button" className="scheda-v3-primario" disabled={!onNuovoAppuntamento} onClick={() => onNuovoAppuntamento?.(paz.id)}><Ic n="cal" s={16} c="currentColor" />Nuovo appuntamento</button>
+          <button type="button" onClick={apriPreventivo}><Ic n="file" s={16} c="currentColor" />Preventivo</button>
+          <button type="button" onClick={() => setIncassoOpen(true)}><Ic n="eur" s={16} c="currentColor" />Incassa</button>
+          {waAbilitato(features) && <a className={paz.telefono ? '' : 'is-disabled'} aria-label="WhatsApp" aria-disabled={!paz.telefono} href={paz.telefono ? waUrl(paz.telefono) : undefined} target="_blank" rel="noopener noreferrer"><Ic n="wa" s={16} c="currentColor" />WhatsApp</a>}
         </div>
       </header>
-      {paz.telefono && <div className="patient-clean-contacts"><a href={`tel:+39${paz.telefono.replace(/\D/g, '')}`} aria-label="Chiama"><Ic n="ph" s={14} c="currentColor" />{paz.telefono}</a>{waAbilitato(features) && <a href={waUrl(paz.telefono)} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><Ic n="wa" s={15} c="currentColor" />WhatsApp</a>}</div>}
+      <nav className="scheda-v3-tabs" aria-label="Sezioni scheda paziente">
+          {TABS.map((t) => <button type="button" key={t.id} aria-current={tab === t.id ? 'page' : undefined} className={tab === t.id ? 'is-active' : ''} onClick={() => setTab(t.id)}>{t.label}{t.n != null && <b>{t.n}</b>}</button>)}
+          <span className="scheda-v3-tabs-sep" aria-hidden="true" />
+          {TABS_ALTRE.map((t) => <button type="button" key={t.id} aria-current={tab === t.id ? 'page' : undefined} className={`is-altra${tab === t.id ? ' is-active' : ''}`} onClick={() => setTab(t.id)}>{t.label}{t.n != null && <b>{t.n}</b>}</button>)}
+        </nav>
 
-      {isDentistico && tab === 'info' ? <PatientDentalOverview patientId={paz.id} plans={patPlans} onAddTreatment={onAddTreatment} onCreateQuote={onCreateQuote} /> : <PatientEntryActions onTreatment={onAddTreatment} onQuote={onCreateQuote} />}
-
-      {onNuovoAppuntamento && <button type="button" className="patient-clean-appointment" onClick={() => onNuovoAppuntamento(paz.id)}>Fissa prossimo nell’agenda</button>}
-
-      {/* POL-UI-021: Product Owner — "le parti da pagare pagato devono
-          essere cliccabili e portare alla sezione giusta" — estese a
-          tutte e 4 le celle per coerenza (stessa apparenza, stesso
-          comportamento), non solo le due esplicitamente citate. */}
-      <div className="patient-record-kpis" aria-label="Riepilogo paziente">
-        {[{ l: 'Piani', v: patPlans.length, goTo: 'piani' }, { l: 'Pagato', v: saldiCaricati ? fmt(totalePagatoReale) : '…', goTo: 'paga' }, { l: 'Da pagare', v: saldiCaricati ? fmt(totDaPagare) : '…', goTo: 'paga' }, { l: 'Visite', v: patApp.length, goTo: 'app' }].map((s) => (
-          <button key={s.l} type="button" onClick={() => setTab(s.goTo)}><strong>{s.v}</strong><span>{s.l}</span></button>
-        ))}
-      </div>
-
-      <div className="patient-record-body">
-        <aside className="patient-record-nav" aria-label="Sezioni scheda paziente">
-          {TABS.map((t) => (
-            <button type="button" key={t.id} className={tab === t.id ? 'is-active' : ''} onClick={() => setTab(t.id)}>
-              <Ic n={t.icon} s={15} c={tab === t.id ? C.pri : C.txm} /><span>{t.label}</span>
-            </button>
-          ))}
-        </aside>
-        <label className="patient-record-nav-mobile">Sezione
-          <select value={tab} onChange={(event) => setTab(event.target.value)}>
-            {TABS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
-          </select>
-        </label>
-
+      <div className="patient-record-body scheda-v3-body">
       <div className="patient-record-content">
         {/* POL-UI-021: Product Owner — "la scheda paziente nel mobile deve
             essere scrollabile come una landing page" con sezioni in
@@ -327,8 +333,17 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
             altro CSS. Il menu a tendina/sidebar resta invariato — questa
             è la sola sostanza del tab Info, non un sostituto della
             navigazione a sezioni. */}
+        {tab === 'odo' && isDentistico && <PatientDentalOverview patientId={paz.id} plans={patPlans} onAddTreatment={onAddTreatment} onCreateQuote={onCreateQuote} patient={paz} appointments={appointments} setPlans={setPlans} setPatients={setPatients} onPatientChange={onPatientChange} />}
+        {tab === 'note' && (
+          <div className="scheda-v3-note">
+            {paz.note && <Crd style={{ marginBottom: 10 }}><div className="scheda-v3-note-titolo">Note cliniche</div><div style={{ whiteSpace: 'pre-wrap' }}>{paz.note}</div></Crd>}
+            {noteScritte.slice().reverse().map((n, i) => <Crd key={n.id || i} style={{ marginBottom: 8 }}><div className="scheda-v3-note-titolo">{n.data ? fmtD(String(n.data).slice(0, 10)) : 'Nota'}</div><div style={{ whiteSpace: 'pre-wrap' }}>{n.testo}</div></Crd>)}
+            {!paz.note && !noteScritte.length && <div style={{ textAlign: 'center', color: C.txl, padding: 30 }}>Nessuna nota. Aggiungile da Panoramica → azioni rapide.</div>}
+          </div>
+        )}
         {tab === 'info' && (
           <div>
+            <PatientEntryActions onTreatment={onAddTreatment} onQuote={onCreateQuote} />
             <SezioneComparsa titolo="Anagrafica" aperta={infoOpen.anagrafica} onToggle={() => toggleInfoOpen('anagrafica')}>
               {[['Nascita', fmtD(paz.dataNascita)], ['C.F.', paz.cf || '—'], ['Indirizzo', paz.indirizzo || '—'], ['Email', paz.email || '—']].map(([l, v]) => (
                 <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: `1px solid ${C.brd}`, gap: 10 }}>
@@ -448,6 +463,22 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
         {tab === 'clinical' && <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento anamnesi…</div>}><PatientClinicalHistory patient={paz} setPatients={setPatients} onPatientChange={onPatientChange} studio={si} /></Suspense>}
         {tab === 'privacy' && isStudioAdmin && <Suspense fallback={<div role="status" style={{ padding: 20, textAlign: 'center', color: C.txm }}>Caricamento strumenti privacy…</div>}><PatientPrivacy patient={paz} setPatients={setPatients} client={documentClient} onPatientDeleted={onClose} /></Suspense>}
       </div>
+        <aside className="scheda-v3-riepilogo" aria-label="Riepilogo paziente">
+          <div className="scheda-v3-card">
+            <h3>Piano di cura</h3>
+            <div className="scheda-v3-barra" role="progressbar" aria-valuemin={0} aria-valuemax={avanz.totale} aria-valuenow={avanz.eseguite} aria-label="Prestazioni eseguite"><i style={{ width: `${avanz.totale ? Math.round(avanz.eseguite / avanz.totale * 100) : 0}%` }} /></div>
+            <p>{avanz.eseguite} di {avanz.totale} eseguite</p>
+          </div>
+          <div className="scheda-v3-card scheda-v3-conti">
+            <button type="button" onClick={() => setTab('preventivi')}><span>Preventivato</span><strong>{saldiCaricati ? fmt(aggSaldi.totale_piano) : '…'}</strong></button>
+            <button type="button" onClick={() => setTab('paga')}><span>Incassato</span><strong>{saldiCaricati ? fmt(totalePagatoReale) : '…'}</strong></button>
+            <button type="button" onClick={() => setTab('paga')} className={saldiCaricati && totDaPagare > 0 ? 'is-dovuto' : ''}><span>Saldo</span><strong>{saldiCaricati ? fmt(totDaPagare) : '…'}</strong></button>
+          </div>
+          <div className="scheda-v3-card">
+            <h3>Prossimo appuntamento</h3>
+            {prossimoApp ? <p><strong>{fmtD(prossimoApp.data)} · {prossimoApp.ora}</strong><br />{prossimoApp.tipo}</p> : <p>Nessun appuntamento</p>}
+          </div>
+        </aside>
       </div>
 
       {incassoOpen && (

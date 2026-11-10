@@ -20,7 +20,7 @@ test('SchedaPaz imports totalePagatoPaziente alongside the existing aggregateSal
 
 test('the header stat bar and Situazione finanziaria card show the real patient-wide total, not the plan-scoped aggSaldi.totale_pagato', () => {
   assert.match(source, /const totalePagatoReale = totalePagatoPaziente\(patPay\);/);
-  assert.match(source, /\{ l: 'Pagato', v: saldiCaricati \? fmt\(totalePagatoReale\) : '…', goTo: 'paga' \}/);
+  assert.match(source, /<span>Incassato<\/span><strong>\{saldiCaricati \? fmt\(totalePagatoReale\) : '…'\}<\/strong>/);
   assert.match(source, /Pagato \{saldiCaricati \? fmt\(totalePagatoReale\) : '…'\}/);
   // Must not have silently regressed back to the plan-scoped total for display.
   assert.doesNotMatch(source, /fmt\(aggSaldi\.totale_pagato\)/);

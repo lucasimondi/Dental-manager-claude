@@ -1,0 +1,55 @@
+/* PO 2026-11-10 — nuova grafica scheda paziente: Inter, sfondo #F4F6F8, schede bianche con
+   bordo #DDE2E8 e angoli 14 px, niente gradienti; un solo tasto primario (#155E75). */
+.scheda-v3 { background:#F4F6F8; font-family:Inter,system-ui,-apple-system,sans-serif; color:#0f172a; }
+.scheda-v3 .scheda-v3-head { background:#fff; padding-bottom:14px; }
+.scheda-v3 .patient-clean-toolbar { margin-bottom:14px; }
+.scheda-v3 .patient-clean-avatar { background:#E6F1F4; border-color:#C9E0E6; color:#155E75; }
+.scheda-v3 .patient-clean-identity h1 { font-size:24px; letter-spacing:-.4px; }
+.scheda-v3-dati { display:flex; flex-wrap:wrap; gap:4px 14px; margin-top:6px; font-size:13px; color:#475569; }
+.scheda-v3-dati a { color:#155E75; font-weight:600; text-decoration:none; }
+.scheda-v3-allergie { display:inline-flex; align-items:center; gap:6px; margin-top:8px; min-height:32px; padding:4px 12px; border:1px solid #FDA29B; background:#FEE4E2; color:#B42318; border-radius:999px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; text-align:left; }
+.scheda-v3-azioni { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+.scheda-v3-azioni > button, .scheda-v3-azioni > a { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:44px; height:44px; padding:0 16px; border:1.5px solid #155E75; border-radius:10px; background:#fff; color:#155E75; font:inherit; font-size:14px; font-weight:600; text-decoration:none; cursor:pointer; box-sizing:border-box; white-space:nowrap; }
+.scheda-v3-azioni > .scheda-v3-primario { background:#155E75; color:#fff; }
+.scheda-v3-azioni > button:disabled, .scheda-v3-azioni > a.is-disabled { opacity:.5; pointer-events:none; }
+.scheda-v3-tabs { display:flex; gap:4px; flex-shrink:0; background:#fff; border-bottom:1px solid #DDE2E8; padding:0 28px; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+.scheda-v3-tabs::-webkit-scrollbar { display:none; }
+.scheda-v3-tabs button { flex:none; display:inline-flex; align-items:center; gap:6px; min-height:44px; padding:0 12px; border:0; border-bottom:3px solid transparent; background:none; color:#475569; font:inherit; font-size:14px; font-weight:600; cursor:pointer; white-space:nowrap; }
+.scheda-v3-tabs button b { min-width:20px; height:20px; padding:0 6px; border-radius:999px; background:#EEF1F4; color:#475569; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; }
+.scheda-v3-tabs button.is-active { color:#155E75; border-bottom-color:#0F766E; }
+.scheda-v3-tabs button.is-active b { background:#155E75; color:#fff; }
+.scheda-v3-tabs button.is-altra { color:#64748b; font-weight:500; font-size:13px; }
+.scheda-v3-tabs-sep { flex:none; width:1px; margin:10px 6px; background:#DDE2E8; }
+.scheda-v3 .scheda-v3-body { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:0; }
+.scheda-v3 .scheda-v3-body > .patient-record-content { min-width:0; }
+.scheda-v3-riepilogo { padding:24px 28px 40px 0; display:flex; flex-direction:column; gap:12px; overflow-y:auto; }
+.scheda-v3-card, .scheda-v3 .patient-record-clean .patient-record-section { background:#fff; border:1px solid #DDE2E8; border-radius:14px; padding:14px 16px; }
+.scheda-v3-card h3 { margin:0 0 8px; font-size:13px; font-weight:700; color:#475569; }
+.scheda-v3-card p { margin:6px 0 0; font-size:14px; color:#0f172a; line-height:1.4; }
+.scheda-v3-barra { height:8px; border-radius:999px; background:#EEF1F4; overflow:hidden; }
+.scheda-v3-barra i { display:block; height:100%; background:#1D4ED8; border-radius:999px; transition:width .2s; }
+.scheda-v3-conti { display:flex; flex-direction:column; gap:2px; padding:6px 8px; }
+.scheda-v3-conti button { display:flex; justify-content:space-between; align-items:center; min-height:44px; padding:0 8px; border:0; background:none; border-radius:8px; font:inherit; cursor:pointer; color:#0f172a; }
+.scheda-v3-conti button:hover { background:#F4F6F8; }
+.scheda-v3-conti span { font-size:13px; color:#475569; }
+.scheda-v3-conti strong { font-size:15px; font-weight:700; }
+.scheda-v3-conti .is-dovuto strong { color:#C2410C; }
+.scheda-v3-note-titolo { font-size:12px; font-weight:700; color:#475569; margin-bottom:4px; }
+.scheda-v3 .crd, .scheda-v3 .patient-record-section { border-radius:14px; }
+@media (max-width:1023px) {
+ .scheda-v3 .scheda-v3-body { grid-template-columns:minmax(0,1fr); }
+ .scheda-v3-riepilogo { padding:0 20px 90px; overflow:visible; }
+}
+@media (max-width:767px) {
+ .scheda-v3 .scheda-v3-body { display:flex; flex-direction:column; }
+ .scheda-v3-riepilogo { order:-1; padding:14px 20px 0; gap:10px; }
+ .scheda-v3-riepilogo .scheda-v3-conti { flex-direction:row; flex-wrap:wrap; }
+ .scheda-v3-riepilogo .scheda-v3-conti button { flex:1 1 30%; flex-direction:column; align-items:flex-start; justify-content:center; gap:2px; }
+ .scheda-v3 .patient-clean-identity h1 { font-size:22px; }
+ .scheda-v3-azioni > button, .scheda-v3-azioni > a { flex:1 1 calc(50% - 4px); padding:0 10px; }
+ .scheda-v3-azioni > .scheda-v3-primario { flex-basis:100%; }
+ .scheda-v3-tabs { padding:0 20px; position:sticky; top:0; z-index:5; }
+}
+
+/* Un solo tasto primario per vista: le azioni della Panoramica sono secondarie, senza gradienti. */
+.scheda-v3 .patient-entry-actions button { background:#fff !important; background-image:none !important; color:#155E75 !important; border:1.5px solid #155E75 !important; box-shadow:none !important; min-height:44px; border-radius:10px; }

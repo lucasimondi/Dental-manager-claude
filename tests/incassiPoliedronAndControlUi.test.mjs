@@ -25,21 +25,14 @@ const schedaPaz = fs.readFileSync(new URL('../src/components/SchedaPaz.jsx', imp
 // Never a horizontal scroller either way — that was already tried and
 // rejected once before this session (tests/patientQaRecoveryFinal.test.mjs
 // "M").
-test('patient record navigation is a persistent sidebar (desktop) + dropdown selector (mobile), mirroring ControlloGestione', () => {
-  assert.match(schedaPaz, /className="patient-record-nav"/);
-  assert.match(schedaPaz, /className="patient-record-nav-mobile"/);
-  assert.doesNotMatch(schedaPaz, /className="patient-record-tabs"/);
-  assert.match(css, /\.patient-record-nav\{display:flex;flex-direction:column/);
-  assert.match(css, /\.patient-record-nav-mobile\{display:none\}/);
-  assert.doesNotMatch(css, /\.patient-record-nav[^}]*overflow-x/);
-});
-
-test('patient record sidebar buttons use real icons (Ic set), not emoji, matching the rest of the app', () => {
-  assert.match(schedaPaz, /<Ic n=\{t\.icon\} s=\{15\} c=\{tab === t\.id \? C\.pri : C\.txm\} \/><span>\{t\.label\}<\/span>/);
+// PO 2026-11-10: le sezioni della scheda paziente sono schede in alto, in quest'ordine fisso,
+// con il numero di elementi; le altre sezioni esistenti restano raggiungibili dopo.
+test('patient record sections are top tabs in the fixed order, every existing section still reachable', () => {
+  assert.match(schedaPaz, /className="scheda-v3-tabs"/);
+  const order = ['Panoramica', 'Odontogramma', 'Piano di cura', 'Preventivi', 'Pagamenti', 'Documenti', 'Note'].map(l => schedaPaz.indexOf(`label: '${l}'`));
+  assert.ok(order.every((v, i) => v > 0 && (i === 0 || v > order[i - 1])), 'ordine delle schede');
+  for (const id of ['info', 'odo', 'piani', 'preventivi', 'paga', 'doc', 'note', 'clinical', 'impl', 'fisio', 'foto', 'app', 'privacy']) assert.match(schedaPaz, new RegExp(`id: '${id}'`));
   assert.doesNotMatch(schedaPaz, /emoji:/);
-  // "Piani" and "Impianti" must not share the same icon.
-  assert.match(schedaPaz, /id: 'piani', icon: 'tooth'/);
-  assert.match(schedaPaz, /id: 'impl', icon: 'tag'/);
 });
 
 // Product Owner: "la scheda paziente hai tasti per moduli un po scritti

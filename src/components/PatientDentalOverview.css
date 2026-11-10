@@ -138,3 +138,33 @@
 .patient-record-legacy[data-dental-home="true"] .patient-clean-edit span { display:none; }
 
 .patient-dental-orientation { margin:10px 0 0; color:#6c8597; font-size:9px; text-align:center; }
+
+/* PO 2026-11-10 — colori del dente per stato, legenda sopra, tocco prolungato. */
+.patient-dental-quadrant button { user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; transition:transform .12s ease, background .12s ease; }
+.patient-dental-quadrant button.is-premuto { transform:scale(.95); }
+.patient-dental-quadrant button.dente-sano { background:#fff; border-color:#cbd5e1; color:#475569; }
+.patient-dental-quadrant button.dente-sano svg { fill:#fff; stroke:#94a3b8; }
+.patient-dental-quadrant button.dente-da-fare { background:#FDE7D6; border-color:#C2410C; color:#9a3412; }
+.patient-dental-quadrant button.dente-da-fare svg { fill:#fff4ec; stroke:#C2410C; }
+.patient-dental-quadrant button.dente-eseguito { background:#1D4ED8; border-color:#1D4ED8; color:#fff; }
+.patient-dental-quadrant button.dente-eseguito svg { fill:#dbe5ff; stroke:#fff; }
+.patient-dental-quadrant button.dente-assente { background:#f1f5f9; border:1.5px dashed #94a3b8; color:#94a3b8; }
+.patient-dental-quadrant button.dente-assente svg { fill:none; stroke:#cbd5e1; stroke-dasharray:2 2; }
+/* La selezione non usa un colore di stato: anello scuro sopra il colore del dente. */
+.patient-dental-quadrant button[aria-pressed="true"],.patient-dental-quadrant button.has-done[aria-pressed="true"],.patient-dental-quadrant button.has-pending[aria-pressed="true"] { outline:3px solid #155E75; outline-offset:1px; }
+.patient-dental-quadrant button.dente-sano[aria-pressed="true"] { background:#fff; color:#155E75; }
+.patient-dental-quadrant button.dente-da-fare[aria-pressed="true"] { background:#FDE7D6; color:#9a3412; }
+.patient-dental-quadrant button.dente-eseguito[aria-pressed="true"] { background:#1D4ED8; color:#fff; }
+.patient-dental-quadrant button.dente-assente[aria-pressed="true"] { background:#f1f5f9; color:#64748b; }
+.patient-dental-quadrant button.dente-sano[aria-pressed="true"] svg { fill:#fff; stroke:#155E75; }
+.patient-dental-quadrant button.dente-da-fare[aria-pressed="true"] svg { fill:#fff4ec; stroke:#C2410C; }
+.patient-dental-quadrant button.dente-eseguito[aria-pressed="true"] svg { fill:#dbe5ff; stroke:#fff; }
+.dente-check { font-weight:800; }
+.dente-legenda { margin:0 0 10px; font-size:11px; color:#475569; }
+.dente-legenda i { display:inline-block; width:14px; height:14px; border-radius:4px; box-sizing:border-box; }
+.dente-legenda-sano { background:#fff; border:1.5px solid #cbd5e1; }
+.dente-legenda-da-fare { background:#FDE7D6; border:1.5px solid #C2410C; }
+.dente-legenda-eseguito { background:#1D4ED8; border:1.5px solid #1D4ED8; }
+.dente-legenda-assente { background:#f1f5f9; border:1.5px dashed #94a3b8; }
+.dente-legenda > span:last-child { color:#64748b; font-style:italic; }
+.patient-dental-quadrant button.dente-assente[aria-pressed="true"] svg { fill:none; stroke:#94a3b8; }
