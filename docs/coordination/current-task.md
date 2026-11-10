@@ -5,6 +5,12 @@
 - DATABASE: migration 20261110190000_documenti_studio_tag_tipi.sql (DentalManager): documenti_studio.tag text[] (≤20) + GIN index + UPDATE grant; tipo CHECK widened to free 1-40 chars (old 7 values still valid); mime CHECK and bucket allowed_mime_types widened to Office/OpenDocument/text/CSV; cerca_documenti_studio also searches tags (same signature, SECURITY INVOKER). Additive, idempotent, RLS unchanged. NOT applied yet: apply with apply_migration right after "Mergia" (before that, custom types/Office files fail with a clear error; tags are only sent when present).
 - VALIDATION 1652 Node tests incl. PGlite tests/documentiTagDatabase.test.mjs (old row valid, docx + custom type + tags, search by tag, checks, other studio isolated, idempotent); Studio and Personal builds; Chromium 390×844: three sources, new type, tag chips in Studio and Personal.
 - STATUS PR open; task-specific "Mergia" required, then apply the migration.
+# Current task — SCAN-ICONA (2026-11-10)
+- OWNER Claude Code; branch `ccr-9c70a578-a2q1cs` restarted from master fb49879 (PR296 merged).
+- AUTHORIZATION PO 2026-11-10: "Fammi una icona apposita puoi ? Fammi vedere tre proposte pro"; after the three proposals (A Gemma, B Firma, C Essenziale): "B".
+- SCOPE: Scan icon replaced with proposal B «Firma» (dark background, white tilted sheet, green scan line, gold signature): public/scan-{180,192,512}.png, scan-maskable-512.png (drawing at 80% for the Android safe zone); scan manifests splash/theme colours dark (#0b0e15 / #1d2433). No code, schema or data change.
+- VALIDATION Node tests; build.
+- STATUS PR; task-specific "Mergia" required. Installed Android icons update by themselves (WebAPK refresh); on iPhone remove and re-add.
 
 # Current task — SCAN-HOME (2026-11-10)
 - OWNER Claude Code; branch `ccr-9c70a578-a2q1cs` from master 143496c (PR295 merged).
